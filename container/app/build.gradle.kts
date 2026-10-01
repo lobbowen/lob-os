@@ -99,7 +99,7 @@ fun nativeAssetNames(): List<String> {
     if (!f.exists()) {
         throw GradleException(
             "缺少 .github/native-assets.txt —— 它是 NativeAssetRegistry 的投影，构建必需。\n" +
-                "该文件同时被 CI（fast-apk.yml / build-apk.yml）读取，用于下载校验与 APK 审计。"
+                "该文件同时被 CI（build-apk.yml）读取，用于下载校验与 APK 审计。"
         )
     }
     val names = f.readLines()
