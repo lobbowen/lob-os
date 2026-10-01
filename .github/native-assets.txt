@@ -1,0 +1,4 @@
+# deps
+libc++_shared.so
+# execs
+libnode.so

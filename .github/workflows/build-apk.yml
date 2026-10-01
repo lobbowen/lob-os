@@ -1,0 +1,364 @@
+name: Build & Pin Node Runtime
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'runtime-release-*'
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure welded OTA public key anchor
+        id: anchor
+        env:
+          OTA_PUBLIC_KEY: ${{ secrets.OTA_PUBLIC_KEY }}
+        run: |
+          ANCHOR="container/app/src/main/assets/ota-public.pem"
+          if [ -n "$OTA_PUBLIC_KEY" ]; then
+            printf '%s' "$OTA_PUBLIC_KEY" > "$ANCHOR"
+            echo "anchor written from OTA_PUBLIC_KEY secret"
+          fi
+          bash scripts/ensure-tool.sh openssl openssl
+          bash scripts/verify-ota-anchor.sh --anchor "$ANCHOR"
+      - name: Set up JDK 17
+        id: setupjava
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Show Android SDK env
+        id: sdkenv
+        run: |
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
+          echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+          ls "$ANDROID_SDK_ROOT" 2>/dev/null || true
+
+      - name: Install SDK packages (platform-tools / platform / build-tools; NDK reused if present)
+        id: sdkinstall
+        run: |
+          set -o pipefail
+          echo "== ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
+          echo "== ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          echo "== sdkmanager: $SDKMANAGER"
+          "$SDKMANAGER" --version 2>&1 | tee -a /tmp/sdk-install.log | tail -1
+
+          yes | "$SDKMANAGER" --licenses 2>&1 | tee -a /tmp/sdk-install.log | tail -2 || true
+
+          echo "== installing platform-tools / platform-35 / build-tools;35.0.0"
+          if ! "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0" 2>&1 | tee -a /tmp/sdk-install.log | tail -5; then
+            echo "[error] sdkmanager base install failed"
+            exit 1
+          fi
+          echo "== base packages installed OK"
+          echo "== 已安装的 platforms:"; ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null | sed 's/^/    /'
+
+          NDK_VER=$(ls "$ANDROID_SDK_ROOT/ndk" 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NDK_VER" ]; then
+            echo "== reusing preinstalled NDK: $NDK_VER"
+          else
+            echo "== no preinstalled NDK; resolving from remote list"
+            NDK_PKG=$("$SDKMANAGER" --list 2>/dev/null | grep -oE 'ndk;[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+            echo "== installing NDK package: $NDK_PKG"
+            "$SDKMANAGER" "$NDK_PKG" >>/tmp/sdk-install.log 2>&1 \
+              || { echo "[error] NDK install failed"; tail -40 /tmp/sdk-install.log; exit 1; }
+            NDK_VER=$(ls "$ANDROID_SDK_ROOT/ndk" 2>/dev/null | sort -V | tail -1)
+          fi
+          echo "ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/$NDK_VER" >> "$GITHUB_ENV"
+          echo "== resolved ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/$NDK_VER"
+          ls "$ANDROID_SDK_ROOT/ndk/$NDK_VER" 2>/dev/null | head
+
+      - name: Install host build deps
+        id: hostdeps
+        run: |
+          set -x
+          sudo apt-get update 2>&1 | tee -a /tmp/host-deps.log
+          sudo apt-get install -y git python3 ninja cmake make zip file 2>&1 | tee -a /tmp/host-deps.log
+
+      - name: Resolve Node version to build
+        id: nodever
+        run: |
+          set -euo pipefail
+          ABI="$(bash scripts/read-node-versions.sh abi)"
+          case "${GITHUB_REF:-}" in
+            refs/tags/runtime-release-*)
+              REST="${GITHUB_REF_NAME#runtime-release-}"
+              if [ "$REST" = "${REST%-$ABI}" ]; then
+                echo "::error title=固化 tag 的 ABI 与构建不符::tag 是 ${GITHUB_REF_NAME}，而 abi 现读自 assets/node-versions.json = $ABI，本链路只编 $ABI。"
+                echo "::error::把别的 ABI 写进 tag 名，固化出来的就是挂着别人名字的同一份二进制 —— 本次不编。"
+                exit 1
+              fi
+              TAG="${REST%-$ABI}"
+              case "$TAG" in
+                24.*) ;;
+                *) echo "::error title=固化 tag 的版本号非法::从 ${GITHUB_REF_NAME} 取出的版本是 $TAG（要形如 24.x.y）。" >&2; exit 1 ;;
+              esac
+              echo "固化轮：版本取自 tag -> $TAG（abi=$ABI）"
+              ;;
+            *)
+              TAG=$(git ls-remote --tags https://github.com/nodejs/node 2>/dev/null \
+                | grep -oE 'refs/tags/v24\.[0-9]+\.[0-9]+$' \
+                | sed 's#refs/tags/v##' | sort -V | tail -1)
+              if [ -z "$TAG" ]; then
+                echo "[warn] could not resolve latest v24.x tag via ls-remote; falling back to 24.21.0"
+                TAG="24.21.0"
+              fi
+              echo "校验轮：Resolved Node 24.x -> $TAG"
+              ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Sync node-versions.json default/bundled to resolved tag
+        id: syncjson
+        env:
+          NODE_TAG: ${{ steps.nodever.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = "container/app/src/main/assets/node-versions.json"
+          tag = os.environ["NODE_TAG"]
+          d = json.load(open(p))
+          d["default"] = tag
+          for v in d["versions"]:
+              if v.get("bundled"):
+                  v["version"] = tag
+                  v["url"] = v["url"].replace("24.21.0", tag)
+          json.dump(d, open(p, "w"), indent=2, ensure_ascii=False)
+          print("node-versions.json default ->", tag)
+          PY
+
+      - name: Cache compiled Node binary
+        id: nodecache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/lobos-node-cache
+          key: node-android-${{ steps.nodever.outputs.tag }}-${{ hashFiles('scripts/build-node-android.sh') }}
+
+      - name: Restore cached Node binary if present
+        id: restorenode
+        run: |
+          echo "=== 检查缓存的 Node 产物 ==="
+          mkdir -p container/app/src/main/jniLibs/arm64-v8a
+          DEST="container/app/src/main/jniLibs/arm64-v8a/libnode.so"
+          if [ -f /tmp/lobos-node-cache/node ]; then
+            cp -f /tmp/lobos-node-cache/node "$DEST"
+            chmod +x "$DEST"
+            echo "cache-hit=yes" >> "$GITHUB_OUTPUT"
+            echo "[ok] 复用已编译的 node 二进制，跳过 3~4 小时交叉编译："
+            ls -la "$DEST"
+            file -b "$DEST" || true
+
+            ASSETS="$(grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' | tr -d '\r')"
+            for a in $ASSETS; do
+              [ "$a" = "libnode.so" ] && continue
+              D="container/app/src/main/jniLibs/arm64-v8a/$a"
+              if [ -f "/tmp/lobos-node-cache/$a" ]; then
+                cp -f "/tmp/lobos-node-cache/$a" "$D"
+                chmod +x "$D"
+                echo "[ok] 连带恢复 $a:"
+                ls -la "$D"
+              else
+                echo "[warn] 缓存里没有 $a（多半是旧缓存）。"
+                echo "       将尝试从本机 NDK 补一份……"
+                LIB_SRC="$(bash scripts/pick.sh --allow-empty --last ndk-libcxx-$a \
+                             "${ANDROID_NDK_LATEST_HOME:-}" \
+                             "${ANDROID_NDK_HOME:-}" \
+                             "${ANDROID_NDK_ROOT:-}" \
+                             "$ANDROID_HOME/ndk" \
+                             /usr/local/lib/android/sdk/ndk \
+                             -path "*sysroot/usr/lib/aarch64-linux-android/$a" -type f)"
+                if [ -n "$LIB_SRC" ] && [ -f "$LIB_SRC" ]; then
+                  cp -f "$LIB_SRC" "$D"
+                  chmod +x "$D"
+                  echo "[ok] 已从 NDK 补齐: $LIB_SRC"
+                  ls -la "$D"
+                else
+                  echo "[error] 缓存与本机 NDK 都没有 $a。"
+                  echo "        继续下去会打出无法启动的 APK，故在此失败。"
+                  echo "        解法：重新完整编译一次（脚本已会连带打包依赖），"
+                  echo "        或让缓存 key 变化以避开这份旧缓存。"
+                  exit 1
+                fi
+              fi
+            done
+            echo "[ok] 精确命中：复用的二进制由当前 build-node-android.sh 产出（形态由下游 Gate 判）。"
+            SAVED_KEY="$(cat /tmp/lobos-node-cache/.cache-key 2>/dev/null || echo '<unknown>')"
+            echo "       缓存条目 key: $SAVED_KEY"
+          else
+            echo "cache-hit=no" >> "$GITHUB_OUTPUT"
+            echo "[miss] 无缓存产物，需要完整编译 Node（预计 3~4 小时）。"
+          fi
+
+      - name: Build Node for Android (NDK 交叉编译 arm64-v8a)
+        id: nodebuild
+        if: steps.restorenode.outputs.cache-hit != 'yes'
+        env:
+          ANDROID_NDK: ${{ env.ANDROID_NDK }}
+          ANDROID_API: "24"
+        run: |
+          echo "=== runner 资源 ==="
+          nproc; free -m | head -2
+          cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "(no cgroup v2 limit)"
+          echo "=== 开始编译 ==="
+          set -o pipefail
+          chmod +x scripts/build-node-android.sh
+          ./scripts/build-node-android.sh ${{ steps.nodever.outputs.tag }} 2>&1 | tee /tmp/node-build.log
+
+      - name: Save Node binary to cache
+        if: steps.restorenode.outputs.cache-hit != 'yes' && steps.nodebuild.outcome == 'success'
+        run: |
+          set -euo pipefail
+          echo "=== 保存 Node 产物到缓存目录 ==="
+          mkdir -p /tmp/lobos-node-cache
+          NODE_SO="container/app/src/main/jniLibs/arm64-v8a/libnode.so"
+          if [ ! -f "$NODE_SO" ]; then
+            echo "[error] $NODE_SO 不在 —— Node 编译没有可复用的产物，缓存不写。"
+            echo "        下游 pre-gradle Gate 对同一个文件也会判红；在这里先红是为了让根因落在编译步。"
+            exit 1
+          fi
+          cp -f "$NODE_SO" /tmp/lobos-node-cache/node
+          chmod +x /tmp/lobos-node-cache/node
+          echo "[ok] 已存入缓存目录：/tmp/lobos-node-cache/node（源 $NODE_SO $(stat -c%s "$NODE_SO") 字节）"
+
+          ASSETS="$({ grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' || true; } | tr -d '\r')"
+          for a in $ASSETS; do
+            SRC="container/app/src/main/jniLibs/arm64-v8a/$a"
+            if [ "$a" = "libnode.so" ]; then
+              echo "[ok] $a 已作为 node 缓存项保存"
+            elif [ -f "$SRC" ]; then
+              cp -f "$SRC" "/tmp/lobos-node-cache/$a"
+              echo "[ok] 连带保存 $a ($(stat -c%s "$SRC") 字节)"
+            else
+              echo "[warn] $SRC 不存在，缓存里将没有 $a。"
+              echo "       下次命中缓存时会尝试从 NDK 补齐（见 Restore 步骤）。"
+            fi
+          done
+          echo "node-android-${{ steps.nodever.outputs.tag }}-${{ hashFiles('scripts/build-node-android.sh') }}:${GITHUB_RUN_ID}" \
+            > /tmp/lobos-node-cache/.cache-key
+          ls -la /tmp/lobos-node-cache/
+          du -sh /tmp/lobos-node-cache/ 2>/dev/null || true
+          echo "[ok] 已写入缓存。即使后续 gradle 步骤失败，这份 Node 二进制也能被下次运行复用。"
+      - name: Build capability binaries (小件原生件)
+        run: |
+          set -euo pipefail
+          bash scripts/build-native-capabilities.sh
+
+      - name: Build debug APK (验证载体：证明这份运行时装得进真 APK)
+        id: gradlebuild
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
+          echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee /tmp/gradle-build.log
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lobos-apk
+          path: container/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Pin Node runtime to immutable Release
+        id: pin
+        if: startsWith(github.ref, 'refs/tags/runtime-release-')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(bash scripts/read-node-versions.sh default)"
+          ABI="$(bash scripts/read-node-versions.sh abi)"
+          RTAG="node-runtime-${VERSION}-${ABI}"
+          SRC="container/app/src/main/jniLibs/${ABI}"
+          ASSETS="$({ grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' || true; } | tr -d '\r')"
+          [ -n "$ASSETS" ] || { echo "[error] .github/native-assets.txt 里没有任何资产 —— 不知道要固化什么，拒绝投递。"; exit 1; }
+          DIR="$(mktemp -d)"
+          for a in $ASSETS; do
+            [ -f "$SRC/$a" ] || { echo "[error] $SRC/$a 不在 —— 本轮没产出清单要求的资产，固化会把缺口发成既成事实。"; exit 1; }
+            cp -f "$SRC/$a" "$DIR/$a"
+          done
+          cd "$DIR"
+          # shellcheck disable=SC2086
+          sha256sum $ASSETS > SHA256SUMS
+
+          # shellcheck disable=SC2086
+          python3 - "$VERSION" "$ABI" "$RTAG" "${GITHUB_RUN_ID}" $ASSETS <<'PY'
+          import sys, json, hashlib, pathlib, time
+          version, abi, tag, run_id = sys.argv[1:5]
+          files = {}
+          for name in sys.argv[5:]:
+              blob = pathlib.Path(name).read_bytes()
+              files[name] = {"sha256": hashlib.sha256(blob).hexdigest(), "size": len(blob)}
+          m = {"schema": 1, "version": version, "abi": abi, "pin_tag": tag,
+               "source_run": run_id,
+               "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+               "files": files}
+          pathlib.Path("manifest.json").write_text(json.dumps(m, indent=2, ensure_ascii=False))
+          print(json.dumps(m, indent=2, ensure_ascii=False))
+          PY
+
+          echo "RTAG=$RTAG" >> "$GITHUB_OUTPUT"
+          # --notes 必须单行：YAML 块标量里的跨行字符串一有顶格就破坏结构（本仓踩过）。
+          # shellcheck disable=SC2086
+          bash scripts/gh-release-upload.sh "$RTAG" --skip-existing \
+            --title "Node ${VERSION} runtime for Android ${ABI} (prebuilt)" \
+            --notes "$(printf '%b' "预编译的 Node ${VERSION} 安卓原生运行时（bionic 链接，${ABI}）。\n\n来源：build-apk run ${GITHUB_RUN_ID}，固化由 tag ${GITHUB_REF_NAME} 决定。\n\nmanifest.json / SHA256SUMS —— 校验与溯源。\n\n不可变引用：fast-apk.yml 按此 tag 下载，不再重编 Node；要换二进制请提升 node 版本号。")" \
+            $ASSETS manifest.json SHA256SUMS
+
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p diag
+          {
+            echo "=== build-apk failure ==="
+            echo "run : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "ref : ${GITHUB_REF_NAME} (${GITHUB_REF})"
+            echo "node: ${{ steps.nodever.outputs.tag }}"
+            echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
+            echo "ANDROID_NDK=${ANDROID_NDK:-<unset>}"
+            echo
+            echo "=== sdk-install.log tail (license noise removed) ==="
+            grep -viE "warranty|liability|indemnif|export regulation|severability|pre-release|evaluation license|open source software|MIPS|Accept\? \(y/N\)|YOUR USE OF|EXPORT RESTRICTIONS|governing law|Santa Clara|conflict of laws" /tmp/sdk-install.log 2>/dev/null | tail -40 \
+              || echo "(no sdk-install.log)"
+            echo
+            echo "=== node-build.log :: error lines + first-error context ==="
+            if [ -f /tmp/node-build.log ]; then
+              grep -anE "error:|Error [0-9]+|undefined (reference|symbol)|fatal error|ld\.lld: error|collect2: error" /tmp/node-build.log | tail -40
+              FIRST_ERR=$(grep -anE "error:|fatal error" /tmp/node-build.log | head -1 | cut -d: -f1)
+              if [ -n "${FIRST_ERR:-}" ]; then
+                START=$(( FIRST_ERR > 40 ? FIRST_ERR - 40 : 1 ))
+                echo "--- first error at line $FIRST_ERR, showing $START..$(( FIRST_ERR + 40 )) ---"
+                sed -n "${START},$(( FIRST_ERR + 40 ))p" /tmp/node-build.log | cut -c1-500
+              fi
+              echo "--- tail (warnings filtered) ---"
+              grep -avE "warning:|note:| \^|^\s*\||^\s*[0-9]+ \|" /tmp/node-build.log | tail -80
+            else
+              echo "(no node-build.log — 失败发生在 Node 编译之前，或本轮命中了缓存)"
+            fi
+            echo
+            echo "=== gradle-build.log tail ==="
+            tail -80 /tmp/gradle-build.log 2>/dev/null || echo "(no gradle-build.log — 失败发生在 gradle 之前)"
+          } > diag/ci-failure-last.txt
+          wc -c diag/ci-failure-last.txt
+      - name: Upload failure diagnostics artifact (backup)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diag-log
+          path: diag/ci-failure-last.txt
+          if-no-files-found: warn

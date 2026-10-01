@@ -1,0 +1,109 @@
+{
+  "$comment-buildTimeEpoch": "件里嵌的构建时间基准（epoch 秒）。为什么要钉（2026-10-01 定罪，债表 ENV-32）：静态链进 curl/git 的 openssl 把构建时刻写进件字节 —— 上游 util/mkbuildinf.pl:19 是 gmtime($ENV{SOURCE_DATE_EPOCH} // time())，经 crypto/build.info:118 的 GENERATE[buildinf.h] 落成 #define DATE。墙钟进字节 ⇒ 同一版本号每次重建 sha 全变 ⇒ 内容寻址的键堆积、设备全体重下、drift 第 ② 格永无宁日。取一个**过去的**整点：2026-01-01T00:00:00Z。读取口是钉值表唯一的读者 scripts/fetch-pinned.sh --time-base（⑦ 那条判据），判据宿主唯一 scripts/verify-userland-build-date.sh。",
+  "buildTimeEpoch": 1767225600,
+  "$comment-ndkVersion": "四颗交叉编译件用的 NDK 版本（债表 ENV-30）。为什么也要住这张表：件的身份 = 源码批次 × 构建时刻 × 工具链，前两格已各自钉住，第三格此前由 runner 镜像决定（build-userland.yml 取 ANDROID_NDK_LATEST_HOME，只判目录在不在），仓内没有任何声明可比 ⇒ 镜像换一版 NDK，六颗件的 sha 全变而 CI 不会红。这一格**不由下载得到**，所以 scripts/fetch-pinned.sh 只把它读出来（--ndk），判点在 build-userland.yml 的「定位 NDK」步：那里同时打「钉值/实测/本镜像现有」三个读数，不等就红。值 29.0.14206865 的出处（2026-10-01 现读，不是推的）：同一 commit 的两次独立校验轮 run 36777332724 与 36777975369，六颗 job 落在两颗镜像（Version 20260920.314.1 与 20260927.320.1）上，日志里真正使用的 clang 路径同为 .../sdk/ndk/29.0.14206865/...，且这两轮的六颗件 sha 逐颗全等。runner 上 NDK 版本目录全集与 source.properties 的 Revision 由那一步自己打印，改钉值前必须先拿到那两个读数。",
+  "ndkVersion": "29.0.14206865",
+  "sources": {
+    "zlib": {
+      "version": "1.3.2",
+      "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+      "urls": [
+        "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+        "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
+      ]
+    },
+    "openssl": {
+      "version": "3.6.3",
+      "sha256": "243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1",
+      "urls": [
+        "https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz"
+      ]
+    },
+    "curl": {
+      "version": "8.22.0",
+      "sha256": "d54dd598bf05927a726deb38df31c6a255ba83ff1de57c5d1464dac3ed8f44a1",
+      "urls": [
+        "https://curl.se/download/curl-8.22.0.tar.gz",
+        "https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.gz"
+      ]
+    },
+    "git": {
+      "version": "2.55.0",
+      "sha256": "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357",
+      "urls": [
+        "https://cdn.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz",
+        "https://mirrors.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
+      ]
+    },
+    "jq": {
+      "version": "1.8.2",
+      "sha256": "71b8d6e8f5fe81f6c6d0d110e3892251f6ce76ed095abd315e26e6e1193af3af",
+      "urls": [
+        "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-1.8.2.tar.gz"
+      ]
+    },
+    "sqlite3": {
+      "version": "3530400",
+      "sha256": "1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d",
+      "urls": [
+        "https://www.sqlite.org/2026/sqlite-amalgamation-3530400.zip"
+      ]
+    },
+    "git-config.mak.uname.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "c4844a7f15c4a6b913756aa775c71ba7869629ecf7025f4483053c722cdf4c82",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.mak.uname.patch"
+      ]
+    },
+    "git-run-command.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "80b0cda09737edbc4cd71df2afdeff10ba6ae006258abd55ba3c9ab407ccec28",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/run-command.c.patch"
+      ]
+    },
+    "git-disable-fdsan.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "e6100956c4a743196f3e5adc1ddf02d9509c7dc71d37fbc91d9422ce3e4d9018",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable-fdsan.patch"
+      ]
+    },
+    "git-disable_daemon_syslog.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "019e5bd7d041a303929507e920e039b5c920e1e42f82b75ab04aaa0d86a9b86f",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable_daemon_syslog.patch"
+      ]
+    },
+    "git-compat-posix.h.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "791f3ee9750102ba780f694887bde486d9a5ee13f112d75a1c3d603d2a6dc109",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/compat-posix.h.patch"
+      ]
+    },
+    "git-config.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "6f06347fec4df7220f753ed4c9121fecf11baccb873423528c9e2efac7f6e7c4",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.c.patch"
+      ]
+    },
+    "git-help.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "5a8abe7bbdc246ba0ba858fc8e6025c53d1be0d7bac888e984a895a3572c877a",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/help.c.patch"
+      ]
+    },
+    "git-tempfile.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "d5f122bf3a95c6d11a8a90b0ada3b44d3e7d6311356048efa3ff1c51bf96c0c5",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/tempfile.c.patch"
+      ]
+    }
+  }
+}

@@ -1,0 +1,184 @@
+package lobos.os
+
+import android.content.Context
+import lobos.RuntimeDiagnostics
+import lobos.runtime.PrefixProvisioner
+import lobos.runtime.SupplyProvisioner
+import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
+
+object CatalogClient {
+
+    const val CACHE_NAME = "catalog.json"
+    const val TTL_MS = 6 * 60 * 60 * 1000L
+
+    fun cacheFile(ctx: Context): File = File(File(ctx.filesDir, "os"), CACHE_NAME)
+
+    @Synchronized
+    fun cached(ctx: Context): JSONObject? = runCatching {
+        val f = cacheFile(ctx)
+        if (!f.isFile) null else JSONObject(f.readText())
+    }.getOrNull()
+
+    fun fetchedAt(ctx: Context): Long = cached(ctx)?.optLong("fetchedAt", 0L) ?: 0L
+
+    fun entries(ctx: Context): JSONArray {
+        val body = cached(ctx)?.optString("body", "") ?: return JSONArray()
+        val o = runCatching { JSONObject(body) }.getOrNull() ?: return JSONArray()
+        val out = JSONArray()
+        val unified = o.optJSONArray("packages")
+        if (unified != null) {
+            for (i in 0 until unified.length()) {
+                val e = unified.optJSONObject(i) ?: continue
+                out.put(normalize(e))
+            }
+            return out
+        }
+        val tools = o.optJSONArray("tools")
+        if (tools != null) {
+            for (i in 0 until tools.length()) {
+                val e = tools.optJSONObject(i) ?: continue
+                if (!e.has("kind")) e.put("kind", "toolset")
+                if (!e.has("layout")) e.put("layout", "toolset")
+                out.put(normalize(e))
+            }
+        }
+        val products = o.optJSONArray("products")
+        if (products != null) {
+            for (i in 0 until products.length()) {
+                val e = products.optJSONObject(i) ?: continue
+                if (!e.has("kind")) e.put("kind", "product")
+                out.put(normalize(e))
+            }
+        }
+        return out
+    }
+
+    private fun normalize(e: JSONObject): JSONObject {
+        if (e.optString("kind", "").isBlank()) e.put("kind", "component")
+        if (e.optString("name", "").isBlank()) e.put("name", e.optString("id", ""))
+        return e
+    }
+
+    fun entryFor(ctx: Context, name: String): JSONObject? {
+        val arr = entries(ctx)
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            if (e.optString("name") == name) return e
+        }
+        return null
+    }
+
+    @Synchronized
+    fun refresh(ctx: Context, force: Boolean): JSONObject {
+        val now = System.currentTimeMillis()
+        val fresh = fetchedAt(ctx)
+        if (!force && fresh > 0L && now - fresh < TTL_MS) {
+            return JSONObject().apply {
+                put("ok", true)
+                put("cached", true)
+                put("fetchedAt", fresh)
+                put("count", entries(ctx).length())
+            }
+        }
+        val base = SupplyProvisioner.manifestDir(ctx)
+            ?: return fail(ctx, "通道锚读不到：assets/supply/channel.json")
+        val name = SupplyProvisioner.anchorName(ctx, "manifestName")
+            ?: return fail(ctx, "通道锚没有 manifestName")
+        val sigName = SupplyProvisioner.anchorName(ctx, "sigName") ?: (name + ".sig")
+        val pubPem = runCatching {
+            ctx.assets.open("supply/userland-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull() ?: return fail(ctx, "信任根读不到：assets/supply/userland-public.pem")
+        val body = runCatching { SupplyProvisioner.httpGet(base + "/" + name) }.getOrNull()
+            ?: return fail(ctx, "清单下载失败：" + base + "/" + name)
+        val sig = runCatching {
+            android.util.Base64.decode(
+                SupplyProvisioner.httpGet(base + "/" + sigName).toString(Charsets.UTF_8).trim(),
+                android.util.Base64.DEFAULT,
+            )
+        }.getOrNull() ?: return fail(ctx, "签名下载失败：" + base + "/" + sigName)
+        if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) return fail(ctx, "清单验签不通过（拒用）")
+        val text = body.toString(Charsets.UTF_8)
+        val parsed = runCatching { JSONObject(text) }.getOrNull() ?: return fail(ctx, "清单不是合法 JSON")
+        val f = cacheFile(ctx)
+        f.parentFile?.mkdirs()
+        StateFiles.writeJson(f, JSONObject().apply {
+            put("fetchedAt", now)
+            put("baseUrl", base)
+            put("channel", parsed.optString("channel", ""))
+            put("revision", parsed.optLong("revision", 0L))
+            put("manifestName", name)
+            put("body", text)
+        })
+        Journal.append(
+            ctx, "catalog", null, "目录已刷新（签名校验通过）",
+            "channel=" + parsed.optString("channel", "") + " 包=" + entries(ctx).length(),
+        )
+        return JSONObject().apply {
+            put("ok", true)
+            put("cached", false)
+            put("fetchedAt", now)
+            put("count", entries(ctx).length())
+            put("channel", parsed.optString("channel", ""))
+            put("revision", parsed.optLong("revision", 0L))
+        }
+    }
+
+    fun list(ctx: Context): JSONObject {
+        val out = JSONArray()
+        val arr = entries(ctx)
+        var upgradable = 0
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            val name = e.optString("name", "")
+            if (name.isBlank()) continue
+            val wantSha = e.optString("sha256", "")
+            val marker = File(SupplyProvisioner.toolchainDir(ctx), "." + name + ".ok")
+            val haveSha = if (marker.isFile) {
+                runCatching { marker.readText().trim() }.getOrDefault("")
+            } else {
+                ""
+            }
+            val facilityVersion = runCatching { FacilityManager.currentVersion(ctx, name) }.getOrNull() ?: ""
+            val entryRel = e.optString("entry", "bin/" + name)
+            val bin = File(PrefixProvisioner.binDir(ctx), entryRel.substringAfterLast("/"))
+            val installed = haveSha.isNotBlank() || facilityVersion.isNotBlank() || bin.isFile
+            val up = installed && wantSha.isNotBlank() && haveSha.isNotBlank() && haveSha != wantSha
+            if (up) upgradable += 1
+            out.put(JSONObject().apply {
+                put("name", name)
+                put("kind", e.optString("kind", "component"))
+                put("layout", e.optString("layout", if (e.has("aliases")) "toolset" else "single"))
+                put("version", e.optString("version", ""))
+                put("sha256", wantSha)
+                put("size", e.optLong("size", 0L))
+                put("entry", entryRel)
+                put("deps", e.optJSONArray("deps") ?: JSONArray())
+                put("requires", e.optJSONObject("requires") ?: JSONObject.NULL)
+                put("installed", installed)
+                put("installedSha", haveSha)
+                put("installedVersion", facilityVersion)
+                put("upgradable", up)
+                put("entryOk", bin.isFile)
+            })
+        }
+        val at = fetchedAt(ctx)
+        return JSONObject().apply {
+            put("fetchedAt", at)
+            put("stale", at == 0L || System.currentTimeMillis() - at > TTL_MS)
+            put("count", out.length())
+            put("upgradable", upgradable)
+            put("packages", out)
+        }
+    }
+
+    private fun fail(ctx: Context, why: String): JSONObject {
+        RuntimeDiagnostics.append(ctx, "catalog", false, "目录刷新失败", why)
+        return JSONObject().apply {
+            put("ok", false)
+            put("detail", why)
+            put("fetchedAt", fetchedAt(ctx))
+        }
+    }
+}

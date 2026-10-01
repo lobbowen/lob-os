@@ -1,0 +1,12 @@
+libc.so
+libm.so
+libdl.so
+liblog.so
+libz.so
+libatomic.so
+libstdc++.so
+libandroid.so
+libGLESv2.so
+libEGL.so
+libnativewindow.so
+libsync.so

@@ -1,0 +1,65 @@
+name: CI (gates)
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+    paths:
+      - 'container/**'
+      - 'scripts/**'
+      - '.github/native-assets.txt'
+      - '.github/workflows/**'
+      - 'version.json'
+  pull_request:
+    paths:
+      - 'container/**'
+      - 'scripts/**'
+      - '.github/native-assets.txt'
+      - '.github/workflows/**'
+      - 'version.json'
+  workflow_dispatch: {}
+
+jobs:
+
+  container:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: container/engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Gate — 不许上注释（公用规范）
+        working-directory: .
+        run: node scripts/comment-gate.js
+
+      - name: Gate — DO 跑不通：不许启用设备所有者（公用规范）
+        working-directory: .
+        run: node scripts/do-gate.js
+      - uses: actions/checkout@v4
+
+      - name: 读设备那份 node 版本
+        id: device-node
+        working-directory: .
+        run: |
+          V="$(bash scripts/read-node-versions.sh default)"
+          echo "设备 node = $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.device-node.outputs.version }}
+
+      - name: 把 npm 钉到设备上那份
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "runner 自带 npm: $(npm --version)"
+          NPMV="$(bash scripts/read-node-versions.sh npm)"
+          npm install -g "npm@$NPMV"
+          echo "探针用 npm: $(npm --version)"

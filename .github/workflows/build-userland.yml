@@ -1,0 +1,166 @@
+name: Build Userland (C 层工具供给)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-userland.yml'
+      - 'scripts/build-userland-*.sh'
+      - 'scripts/verify-userland-build-date.sh'
+      - 'scripts/package-userland.sh'
+      - 'scripts/publish-userland-manifest.js'
+      - 'scripts/read-userland-entry.sh'
+      - 'scripts/userland-sources.json'
+      - 'scripts/fetch-pinned.sh'
+      - 'scripts/userland-verify.json'
+      - 'container/app/src/main/assets/supply/channel.json'
+      - 'container/app/src/main/assets/program-feed.json'
+    tags:
+      - 'userland-*'
+  workflow_dispatch:
+
+concurrency:
+  group: build-userland-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.ref.outputs.channel }}
+      revision: ${{ steps.ref.outputs.revision }}
+      publish: ${{ steps.ref.outputs.publish }}
+    steps:
+      - name: 解出本轮的通道与清单版本号
+        id: ref
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" =~ ^userland-(canary|stable)-([1-9][0-9]*)$ ]]; then
+            echo "发布轮：ref=${GITHUB_REF_NAME} → 通道 ${BASH_REMATCH[1]}，清单 revision ${BASH_REMATCH[2]}"
+            { echo "channel=${BASH_REMATCH[1]}"; echo "revision=${BASH_REMATCH[2]}"; echo "publish=true"; } >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/userland-* ]]; then
+            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 userland-<channel>-<revision>，" \
+              && echo "::error::channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是 C 层唯一的单调判据）。本次不投递。"
+            exit 1
+          else
+            echo "channel=canary" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "[resolve] 校验轮（ref=${GITHUB_REF}）：只构建与对账，不投递"
+          fi
+
+  build:
+    needs: resolve
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [sqlite3, jq, git, curl, pnpm, npm]
+    steps:
+      - uses: actions/checkout@v4
+      - name: 定位 NDK
+        run: |
+          set -euo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          [ -d "$NDK" ] || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
+          TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          [ -x "$TC/aarch64-linux-android21-clang" ] || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android21-clang"; exit 1; }
+          PIN_NDK=$(bash scripts/fetch-pinned.sh --ndk)
+          ACTUAL_NDK=$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties")
+          echo "[ndk] 钉值=$PIN_NDK 实测=$ACTUAL_NDK 目录=$NDK"
+          echo "[ndk] 本镜像上现有: $(ls "$(dirname "$NDK")" | tr '\n' ' ')"
+          [ -n "$ACTUAL_NDK" ] || { echo "::error title=读不出 NDK 版本::$NDK/source.properties 里没有 Pkg.Revision"; exit 1; }
+          [ "$ACTUAL_NDK" = "$PIN_NDK" ] \
+            || { echo "::error title=NDK 与钉值不符::实测 $ACTUAL_NDK ≠ 钉值 $PIN_NDK —— 件的字节会随镜像移动而没有任何东西会红；要么让镜像回到钉的那一版，要么把 ENV-30 的读数取全后改钉值并重发一轮"; exit 1; }
+          { echo "CC=$TC/aarch64-linux-android21-clang"; echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
+      - name: 产出 ${{ matrix.tool }} 件
+        run: bash scripts/build-userland-${{ matrix.tool }}.sh
+      - name: 打包 + sha256
+        run: bash scripts/package-userland.sh ${{ matrix.tool }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: userland-${{ matrix.tool }}
+          path: dist/
+          retention-days: 1
+      - name: 发布到对象存储（设备真正读的那条）
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET（GitHub 在目标网络不可达，设备只从对象存储取件）"
+            exit 1
+          fi
+          for f in dist/*.zip; do
+            B=$(basename "$f")
+            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
+            node scripts/upload-qiniu.js "$f" "userland/$B" --cache-control=31536000
+          done
+          echo "[qiniu] userland/${{ matrix.tool }} 已发布"
+
+  manifest:
+    needs: [resolve, build]
+    if: ${{ needs.resolve.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: 组装并签名清单（发前用 APK 焊死的公钥自检）
+        env:
+          OTA_PRIVATE_KEY_PEM: ${{ secrets.OTA_PRIVATE_KEY_PEM }}
+          LOBOS_USERLAND_REVISION: ${{ needs.resolve.outputs.revision }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OTA_PRIVATE_KEY_PEM:-}" ]; then
+            echo "::error title=签名私钥未配置::需要 secrets.OTA_PRIVATE_KEY_PEM（与 Program OTA 同一把，公钥焊在 APK）"
+            exit 1
+          fi
+          mkdir -p keys release
+          printf '%s' "$OTA_PRIVATE_KEY_PEM" > keys/ota-private.pem
+          chmod 600 keys/ota-private.pem
+          node scripts/publish-userland-manifest.js dist release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
+      - name: 发布清单到对象存储
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
+            exit 1
+          fi
+          CH="userland-${{ needs.resolve.outputs.channel }}"
+          ANCHOR=./container/app/src/main/assets/supply/channel.json
+          MAN=$(node -p "require('$ANCHOR').manifestName")
+          SIG=$(node -p "require('$ANCHOR').sigName")
+          export QINIU_PUBLIC_BASE="$(node -p "require('$ANCHOR').baseUrl")"
+          echo "[qiniu] 目标键: $CH/$MAN 与 $CH/$SIG（清单 revision ${{ needs.resolve.outputs.revision }}）"
+          node scripts/upload-qiniu.js release/userland-manifest.json "$CH/$MAN" --cache-control=60
+          node scripts/upload-qiniu.js release/userland-manifest.json.sig "$CH/$SIG" --cache-control=60
+          echo "[qiniu] $CH 已更新（两个键都已从 $QINIU_PUBLIC_BASE 回读并逐字节比对）"
+
+  drift:
+    needs: [resolve, build, manifest]
+    if: ${{ always() && needs.build.result == 'success' && (needs.manifest.result == 'success' || needs.manifest.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: 算出本代码声明的 tools 投影（--project 不签名、不读私钥）
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          node scripts/publish-userland-manifest.js dist --project > work/declared.json
+          node -p "'[declared] ' + require('./work/declared.json').map(t => t.name + '@' + t.version + ' 入口 ' + t.entry + ' 别名 ' + (t.aliases||[]).map(a=>a.name).join('+')).join(' | ')"

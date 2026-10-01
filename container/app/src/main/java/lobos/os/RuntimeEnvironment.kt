@@ -1,0 +1,159 @@
+package lobos.os
+
+import android.content.Context
+import lobos.RuntimeDiagnostics
+import lobos.native.NativeAssetRegistry
+import lobos.native.NativePreparer
+import lobos.runtime.NodeProvisioner
+import lobos.runtime.PrefixProvisioner
+import java.io.File
+
+object RuntimeEnvironment {
+
+    data class Snapshot(
+        val nodeBin: File,
+        val prefixReady: List<String>,
+        val prefixMissing: List<String>,
+        val envShim: File?,
+        val npmrc: File?,
+    ) {
+        val complete: Boolean get() = prefixMissing.isEmpty()
+    }
+
+    @Volatile private var cached: Snapshot? = null
+    @Volatile private var lastSupplyAt = 0L
+    private val supplyThrottleMs = 10 * 60 * 1000L
+
+    data class TreeRoot(
+        val home: File,
+        val tmpDir: File,
+        val nodeBin: File,
+        val nativeLibDir: String,
+        val prefixRoot: File,
+        val prefixBin: File,
+        val bashBin: File?,
+        val posixShim: File? = null,
+        val envShim: File? = null,
+    )
+
+    val RESERVED_ENV: Set<String> = setOf(
+        "HOME", "TMPDIR", "PATH", "LANG", "SHELL", "LD_LIBRARY_PATH", "LD_PRELOAD",
+        "NODE_BIN", "NODE_PATH", "NODE_OPTIONS", "SSL_CERT_DIR", "SSL_CERT_FILE",
+        "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "LOBOS_COMPAT_LOG", "LOBOS_BRIDGE_SOCKET",
+        "LOBOS_SESSION_TOKEN", "LOBOS_PROGRAM_ID", "LOBOS_PROGRAM_GENERATION",
+        "LOBOS_ANDROID", "LOBOS_PLATFORM", "LOBOS_SUPERVISOR_HOME", "LOBOS_UI_DIR",
+        "LOBOS_PERMISSION_MODE", "LOBOS_FLOCK_NATIVE", "LOBOS_OWN_SESSION",
+    )
+
+    fun withoutReserved(declared: Map<String, String>): Pair<Map<String, String>, List<String>> {
+        val dropped = declared.keys.filter { RESERVED_ENV.contains(it) }.sorted()
+        return declared.filterKeys { !RESERVED_ENV.contains(it) } to dropped
+    }
+
+    fun treeRootEnv(root: TreeRoot, inheritedPath: String?): Map<String, String> = buildMap {
+        put("HOME", root.home.absolutePath)
+        put("TMPDIR", root.tmpDir.absolutePath)
+        put("LANG", "C.UTF-8")
+        put("LD_LIBRARY_PATH", root.nativeLibDir)
+        put("NODE_BIN", root.nodeBin.absolutePath)
+        put(
+            "PATH",
+            joinPath(
+                root.prefixBin.absolutePath,
+                root.nodeBin.parentFile!!.absolutePath,
+                NodeProvisioner.globalBin(root.home).absolutePath,
+                inheritedPath,
+            )
+        )
+        root.posixShim?.let {
+            put("LD_PRELOAD", it.absolutePath)
+            put("LOBOS_COMPAT_LOG", File(root.home, "os/compat-degrade.log").absolutePath)
+        }
+        val caDirs = listOf(
+            "/apex/com.android.conscrypt/cacerts",
+            "/system/etc/security/cacerts",
+            "/data/misc/keychain/cacerts-added",
+        ).filter { File(it).isDirectory }
+        if (caDirs.isNotEmpty()) put("SSL_CERT_DIR", caDirs.joinToString(":"))
+        val caBundle = PrefixProvisioner.caBundleAt(root.prefixRoot)
+        if (caBundle.isFile) {
+            put("SSL_CERT_FILE", caBundle.absolutePath)
+            put("CURL_CA_BUNDLE", caBundle.absolutePath)
+            put("GIT_SSL_CAINFO", caBundle.absolutePath)
+        }
+        put("SHELL", root.bashBin?.absolutePath ?: "/system/bin/sh")
+        root.envShim?.let { put("NODE_OPTIONS", "--require " + it.absolutePath) }
+    }
+
+    fun joinPath(vararg parts: String?): String =
+        parts.filterNotNull()
+            .flatMap { it.split(File.pathSeparator) }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .joinToString(File.pathSeparator)
+
+    fun treeRootFor(ctx: Context): TreeRoot = treeRootFor(ctx, ensure(ctx))
+
+    fun treeRootFor(ctx: Context, s: Snapshot): TreeRoot = TreeRoot(
+        home = ctx.filesDir,
+        tmpDir = ctx.cacheDir,
+        nodeBin = lobos.os.FacilityManager.nodeBin(ctx) ?: s.nodeBin,
+        nativeLibDir = NativePreparer.libSearchPath(ctx),
+        prefixRoot = PrefixProvisioner.root(ctx),
+        prefixBin = PrefixProvisioner.binDir(ctx),
+        bashBin = PrefixProvisioner.bashBin(ctx),
+        posixShim = File(ctx.applicationInfo.nativeLibraryDir, NativeAssetRegistry.libNameOf("posix"))
+            .takeIf { it.isFile },
+        envShim = s.envShim,
+    )
+
+    fun ensure(ctx: Context): Snapshot {
+        cached?.takeIf { it.complete }?.let { s ->
+            RuntimeDiagnostics.append(
+                ctx, "prefix", true, "\$PREFIX 能力件全就位（本进程已装配）",
+                PrefixProvisioner.root(ctx).absolutePath + " 已有=" + s.prefixReady.joinToString()
+            )
+            return s
+        }
+        return synchronized(this) {
+            cached?.takeIf { it.complete } ?: assemble(ctx).also { cached = it }
+        }
+    }
+
+    private fun assemble(ctx: Context): Snapshot {
+        val nodeBin = NativeAssetRegistry.resolve(ctx, NativeAssetRegistry.NODE)
+
+        val ready = PrefixProvisioner.provision(ctx, nodeBin)
+        val missing = PrefixProvisioner.expected(ctx) - ready.toSet()
+        RuntimeDiagnostics.append(
+            ctx, "prefix", missing.isEmpty(),
+            if (missing.isEmpty()) "\$PREFIX 能力件全就位" else "\$PREFIX 缺件：${missing.joinToString()}",
+            PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
+        )
+
+        val envShim = NodeProvisioner.ensureEnvShim(ctx)
+        RuntimeDiagnostics.append(
+            ctx, "env-shim", envShim != null,
+            if (envShim != null) "安卓语义垫片就位（os.cpus 等）" else "安卓语义垫片未就位（不阻断；os.cpus() 仍返回 0）",
+            envShim?.absolutePath ?: "assets/node/android-env-shim.cjs 落地失败"
+        )
+
+        val npmrc = NodeProvisioner.ensureNpmPrefixRc(ctx)
+        RuntimeDiagnostics.append(
+            ctx, "npmrc", npmrc != null,
+            if (npmrc != null) ".npmrc 前缀在册" else ".npmrc 未能写入（guest 侧 npm -g 会失败）",
+            npmrc?.absolutePath ?: "写入失败（无路径可报）"
+        )
+
+        val nowSupply = System.currentTimeMillis()
+        if (nowSupply - lastSupplyAt > supplyThrottleMs) {
+            lastSupplyAt = nowSupply
+            RuntimeDiagnostics.append(
+                ctx, "supply", null, "自动供给已收敛为按需（面板经 os.packages.* 安装）",
+                "基础环境随 APK；工具/运行时/产品由商店安装",
+            )
+        }
+
+        return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
+    }
+}

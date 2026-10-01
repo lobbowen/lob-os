@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "baseUrl": "https://hubcdn.zll.ink",
+  "channel": "canary",
+  "releaseTag": "",
+  "manifestName": "program-manifest.json",
+  "autoCheck": true,
+  "startupBudgetMs": 12000
+}

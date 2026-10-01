@@ -1,0 +1,50 @@
+package lobos.permissions
+
+import android.content.Context
+import android.os.Build
+import android.provider.Settings
+
+object LifecycleChecks {
+
+    data class Line(val id: String, val ok: Boolean, val title: String, val detail: String)
+
+    fun collect(ctx: Context): List<Line> {
+        val center = PermissionCenter(ctx)
+        val out = mutableListOf<Line>()
+
+        val batt = center.batteryExempt()
+        out += Line(
+            "battery-optimization", batt, "电池优化",
+            if (batt) "已豁免（Doze 下保活更稳）"
+            else "未豁免 —— 设置→电池→不受限制；或由 UI 发 ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        )
+
+        val phantom = phantomProcessMonitor(ctx)
+        out += Line(
+            "phantom-process-killer", phantom != null, "Phantom process killer",
+            when {
+                phantom == null -> "非 Android 12+，无此机制"
+                phantom == 0 -> "监控已关闭（settings_enable_phantom_process_monitoring=0）—— 子进程不会被批量杀（终端/多 Agent 推荐）"
+                else -> "监控开启（=$phantom）：系统对 App 派生进程设上限并 SIGKILL；长跑多子进程需 " +
+                    "adb shell settings put global settings_enable_phantom_process_monitoring 0"
+            },
+        )
+
+        val notif = PermissionCatalog.SPECIAL.first { it.id == PermissionCatalog.POST_NOTIFICATIONS }
+        val notifOk = center.isGranted(notif)
+        out += Line(
+            "fgs-keepalive", notifOk, "前台服务保活前提",
+            if (notifOk) "通知可用：前台服务可持续常驻"
+            else "通知被禁：Android 13+ 前台服务通知不可见，保活与可观测性变差（请授予通知权限）",
+        )
+
+        return out
+    }
+
+    private fun phantomProcessMonitor(ctx: Context): Int? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+        return runCatching {
+            Settings.Global.getInt(ctx.contentResolver, "settings_enable_phantom_process_monitoring", 1)
+        }.getOrNull()
+    }
+}

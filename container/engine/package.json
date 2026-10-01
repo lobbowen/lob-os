@@ -1,0 +1,7 @@
+{
+  "name": "container-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lob OS 安卓容器底座（L0）可测引擎：Program 签名 OTA、runtime.json 契约、HostBridge 协议。",
+  "scripts": {}
+}

@@ -1,0 +1,79 @@
+name: Pin native capabilities
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ABI: arm64-v8a
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 确认 runner 上有 NDK
+        run: |
+          set -euo pipefail
+          NDK_HOME="${ANDROID_NDK_LATEST_HOME:-}"
+          echo "ANDROID_NDK_LATEST_HOME=$NDK_HOME"
+          [ -n "$NDK_HOME" ] || { echo "[error] runner 上没预装 NDK，无法固化。"; exit 1; }
+
+      - name: Build capabilities（唯一实现）
+        run: bash scripts/build-native-capabilities.sh
+
+      - name: 源指纹
+        run: |
+          set -euo pipefail
+          echo "FP=$FP" >> "$GITHUB_ENV"
+          echo "源指纹 = $FP"
+
+      - name: 打包（zip + sha256）
+        run: |
+          set -euo pipefail
+          ZIP="native-cap-${FP}-${ABI}.zip"
+          M="$(mktemp -d)"
+          N=0
+          while read -r TIER LIB _ID; do
+            case "$TIER" in ''|'#'*) continue ;; esac
+            P="container/app/src/main/jniLibs/${ABI}/${LIB}"
+            if [ -f "$P" ]; then cp "$P" "$M/"; N=$((N + 1)); fi
+          done < .github/native-capabilities.txt
+          [ "$N" -gt 0 ] || { echo "[error] 一件产物都没有 —— 拒绝固化空包。"; exit 1; }
+          cp /tmp/native-capabilities-manifest.txt "$M/manifest.txt"
+          ( cd "$M" && zip -q -r "$GITHUB_WORKSPACE/$ZIP" . )
+          sha256sum "$ZIP" > "$ZIP.sha256"
+          {
+            echo "ZIP=$ZIP"
+            echo "SHA=$(cut -d' ' -f1 "$ZIP.sha256")"
+          } >> "$GITHUB_ENV"
+          echo "=== 固化内容 ==="; cat "$ZIP.sha256"; cat "$M/manifest.txt"
+      - name: 发布为不可变 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          bash scripts/gh-release-upload.sh "native-cap-${FP}-${ABI}" --skip-existing \
+            --title "Native capabilities ${FP}" \
+            --notes "小件能力件固化产物。源指纹 ${FP}，ABI ${ABI}。清单见包内 manifest.txt。" \
+            "$ZIP" "$ZIP.sha256"
+
+      - name: 算出该记的那一格（不写 main：主干的唯一写入口是推送通道）
+        run: |
+          set -euo pipefail
+          FP="$FP" ZIP="$ZIP" SHA="$SHA" ABI="$ABI" node -e 'const fs=require("fs");const p=".github/native-capabilities-pin.json";const j=JSON.parse(fs.readFileSync(p,"utf8"));j.pins[process.env.FP]={tag:"native-cap-"+process.env.FP+"-"+process.env.ABI,zip:process.env.ZIP,sha256:process.env.SHA,abi:process.env.ABI};fs.writeFileSync(p,JSON.stringify(j,null,2)+String.fromCharCode(10));'
+          if git diff --quiet -- .github/native-capabilities-pin.json; then
+            echo "[record] 该指纹已在册（${FP}）—— 记录无变化"
+          else
+            echo "[record] 需要把这一格推上 main 才会有人按下发它取件（本步不推）："
+            git --no-pager diff -- .github/native-capabilities-pin.json
+            echo "::warning title=固化记录待推送::$FP 的 Release 已在位，但 fast-apk 读的是仓内那份 pin.json —— 不推就等于没固化。"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-capabilities-pin-record
+          path: .github/native-capabilities-pin.json
+          retention-days: 7
