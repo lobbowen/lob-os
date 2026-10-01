@@ -7,7 +7,7 @@ ANDROID_API="${ANDROID_API:-24}"
 ARCH="arm64"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="$ROOT/container/app/src/main/jniLibs/arm64-v8a"
+OUT_DIR="$ROOT/dist/node-runtime"
 OUT_NAME="libnode.so"
 mkdir -p "$OUT_DIR"
 
@@ -516,35 +516,14 @@ chmod +x "$OUT_DIR/libc++_shared.so"
 echo "    源: $LIBCXX_SRC"
 echo "    目标: $OUT_DIR/libc++_shared.so ($(stat -c%s "$OUT_DIR/libc++_shared.so") 字节)"
 
-echo "==> 清单一致性自检（.github/native-assets.txt）"
-MANIFEST="$ROOT/.github/native-assets.txt"
-if [ ! -f "$MANIFEST" ]; then
-  echo "==> [error] 找不到资产清单 $MANIFEST"
-  exit 1
-fi
-MISMATCH=0
-for f in "$OUT_DIR"/*.so; do
-  [ -f "$f" ] || continue
-  base="$(basename "$f")"
-  if ! grep -qxF "$base" <(grep -v '^[[:space:]]*#' "$MANIFEST" | sed 's/[[:space:]]*$//' | grep -v '^$'); then
-    echo "    [FAIL] $base 已产出，但不在 $MANIFEST 里（CI 不会下载/审计它）"
-    MISMATCH=1
+echo "==> 产物自检（本脚本产出：$OUT_NAME + libc++_shared.so）"
+for a in "$OUT_NAME" libc++_shared.so; do
+  if [ ! -f "$OUT_DIR/$a" ]; then
+    echo "==> [error] 缺少产物 $OUT_DIR/$a"
+    exit 1
   fi
 done
-while IFS= read -r a; do
-  case "$a" in ''|'#'*) continue ;; esac
-  a="$(echo "$a" | tr -d '[:space:]')"
-  if [ ! -f "$OUT_DIR/$a" ]; then
-    echo "    [FAIL] 清单要求 $a，但 $OUT_DIR 里没有它（CI 下载会 404）"
-    MISMATCH=1
-  fi
-done < "$MANIFEST"
-if [ "$MISMATCH" -ne 0 ]; then
-  echo "==> [error] 产物与 .github/native-assets.txt 不一致。"
-  echo "           该清单是 NativeAssetRegistry 的投影，二者必须同步。"
-  exit 1
-fi
-echo "    [ok] 产物与清单一致（$(ls "$OUT_DIR"/*.so | wc -l) 项）"
+echo "    [ok] 产物齐全（node 运行时 + C++ 运行期）"
 
 echo "==> 产物形态门禁（scripts/verify-runtime-elf.sh）"
 bash "$ROOT/scripts/verify-runtime-elf.sh" "$OUT_DIR"

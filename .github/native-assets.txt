@@ -1,4 +1,3 @@
 # deps
-libc++_shared.so
 # execs
-libnode.so
+libc++_shared.so

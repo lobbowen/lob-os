@@ -153,8 +153,8 @@ jobs:
         id: restorenode
         run: |
           echo "=== 检查缓存的 Node 产物 ==="
-          mkdir -p container/app/src/main/jniLibs/arm64-v8a
-          DEST="container/app/src/main/jniLibs/arm64-v8a/libnode.so"
+          mkdir -p dist/node-runtime
+          DEST="dist/node-runtime/libnode.so"
           if [ -f /tmp/lobos-node-cache/node ]; then
             cp -f /tmp/lobos-node-cache/node "$DEST"
             chmod +x "$DEST"
@@ -163,40 +163,15 @@ jobs:
             ls -la "$DEST"
             file -b "$DEST" || true
 
-            ASSETS="$(grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' | tr -d '\r')"
-            for a in $ASSETS; do
-              [ "$a" = "libnode.so" ] && continue
-              D="container/app/src/main/jniLibs/arm64-v8a/$a"
-              if [ -f "/tmp/lobos-node-cache/$a" ]; then
-                cp -f "/tmp/lobos-node-cache/$a" "$D"
-                chmod +x "$D"
-                echo "[ok] 连带恢复 $a:"
-                ls -la "$D"
-              else
-                echo "[warn] 缓存里没有 $a（多半是旧缓存）。"
-                echo "       将尝试从本机 NDK 补一份……"
-                LIB_SRC="$(bash scripts/pick.sh --allow-empty --last ndk-libcxx-$a \
-                             "${ANDROID_NDK_LATEST_HOME:-}" \
-                             "${ANDROID_NDK_HOME:-}" \
-                             "${ANDROID_NDK_ROOT:-}" \
-                             "$ANDROID_HOME/ndk" \
-                             /usr/local/lib/android/sdk/ndk \
-                             -path "*sysroot/usr/lib/aarch64-linux-android/$a" -type f)"
-                if [ -n "$LIB_SRC" ] && [ -f "$LIB_SRC" ]; then
-                  cp -f "$LIB_SRC" "$D"
-                  chmod +x "$D"
-                  echo "[ok] 已从 NDK 补齐: $LIB_SRC"
-                  ls -la "$D"
-                else
-                  echo "[error] 缓存与本机 NDK 都没有 $a。"
-                  echo "        继续下去会打出无法启动的 APK，故在此失败。"
-                  echo "        解法：重新完整编译一次（脚本已会连带打包依赖），"
-                  echo "        或让缓存 key 变化以避开这份旧缓存。"
-                  exit 1
-                fi
+            if [ ! -f dist/node-runtime/libc++_shared.so ]; then
+              SRC="$(ls "${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
+              if [ -n "$SRC" ] && [ -f "$SRC" ]; then
+                cp -f "$SRC" dist/node-runtime/libc++_shared.so
+                echo "[ok] 已从 NDK 补齐 libc++_shared.so: $SRC"
               fi
-            done
-            echo "[ok] 精确命中：复用的二进制由当前 build-node-android.sh 产出（形态由下游 Gate 判）。"
+            fi
+            [ -f dist/node-runtime/libc++_shared.so ] || { echo "::error title=缺 C++ 运行期::缓存与 NDK 都没有 libc++_shared.so"; exit 1; }
+            echo "[ok] 精确命中：复用的二进制由当前 build-node-android.sh 产出。"
             SAVED_KEY="$(cat /tmp/lobos-node-cache/.cache-key 2>/dev/null || echo '<unknown>')"
             echo "       缓存条目 key: $SAVED_KEY"
           else
@@ -225,27 +200,21 @@ jobs:
           set -euo pipefail
           echo "=== 保存 Node 产物到缓存目录 ==="
           mkdir -p /tmp/lobos-node-cache
-          NODE_SO="container/app/src/main/jniLibs/arm64-v8a/libnode.so"
+          NODE_SO="dist/node-runtime/libnode.so"
           if [ ! -f "$NODE_SO" ]; then
             echo "[error] $NODE_SO 不在 —— Node 编译没有可复用的产物，缓存不写。"
-            echo "        下游 pre-gradle Gate 对同一个文件也会判红；在这里先红是为了让根因落在编译步。"
+            echo "        根因落在编译步，便于定位。"
             exit 1
           fi
           cp -f "$NODE_SO" /tmp/lobos-node-cache/node
           chmod +x /tmp/lobos-node-cache/node
           echo "[ok] 已存入缓存目录：/tmp/lobos-node-cache/node（源 $NODE_SO $(stat -c%s "$NODE_SO") 字节）"
 
-          ASSETS="$({ grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' || true; } | tr -d '\r')"
-          for a in $ASSETS; do
-            SRC="container/app/src/main/jniLibs/arm64-v8a/$a"
-            if [ "$a" = "libnode.so" ]; then
-              echo "[ok] $a 已作为 node 缓存项保存"
-            elif [ -f "$SRC" ]; then
+          for a in libc++_shared.so; do
+            SRC="dist/node-runtime/$a"
+            if [ -f "$SRC" ]; then
               cp -f "$SRC" "/tmp/lobos-node-cache/$a"
               echo "[ok] 连带保存 $a ($(stat -c%s "$SRC") 字节)"
-            else
-              echo "[warn] $SRC 不存在，缓存里将没有 $a。"
-              echo "       下次命中缓存时会尝试从 NDK 补齐（见 Restore 步骤）。"
             fi
           done
           echo "node-android-${{ steps.nodever.outputs.tag }}-${{ hashFiles('scripts/build-node-android.sh') }}:${GITHUB_RUN_ID}" \
@@ -253,6 +222,24 @@ jobs:
           ls -la /tmp/lobos-node-cache/
           du -sh /tmp/lobos-node-cache/ 2>/dev/null || true
           echo "[ok] 已写入缓存。即使后续 gradle 步骤失败，这份 Node 二进制也能被下次运行复用。"
+      - name: 放置 C++ 运行期到 jniLibs（APK 基础环境）
+        run: |
+          set -euo pipefail
+          J=container/app/src/main/jniLibs/arm64-v8a
+          mkdir -p "$J"
+          SRC="dist/node-runtime/libc++_shared.so"
+          [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载"; exit 1; }
+          cp -f "$SRC" "$J/libc++_shared.so"
+          chmod +x "$J/libc++_shared.so"
+          ls -la "$J/libc++_shared.so"
+
+      - name: Upload node runtime (商店运行时包，不进 APK)
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-runtime
+          path: dist/node-runtime/
+          retention-days: 3
+
       - name: Build capability binaries (小件原生件)
         run: |
           set -euo pipefail

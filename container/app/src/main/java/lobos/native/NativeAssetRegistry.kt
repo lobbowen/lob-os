@@ -13,8 +13,8 @@ object NativeAssetRegistry {
         probeArgs = emptyList(),
         probeExpect = null,
         requiredDeps = emptyList(),
-        required = false,
-        note = "不是可执行文件，但必须在 nativeLibraryDir —— libnode.so 的 DT_NEEDED 依赖它",
+        required = true,
+        note = "必须随 APK：APK 内 C++ 原生件（node-pty 等）的运行期依赖",
     )
 
     val NODE = NativeExecutable(
@@ -61,7 +61,7 @@ object NativeAssetRegistry {
         ),
     )
 
-    val ALL: List<NativeExecutable> get() = listOf(LIBCXX, NODE)
+    val ALL: List<NativeExecutable> get() = listOf(LIBCXX)
 
     val REQUIRED: List<NativeExecutable> get() = ALL.filter { it.required }
 

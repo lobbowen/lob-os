@@ -51,8 +51,8 @@ object PrefixProvisioner {
             ctx.assets.open(CA_BUNDLE_ASSET).use { input -> caDst.outputStream().use { out -> input.copyTo(out) } }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
-        val preferred = lobos.os.FacilityManager.nodeBin(ctx) ?: nodeBin
-        if (linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
+        val preferred = lobos.os.FacilityManager.nodeBin(ctx) ?: nodeBin.takeIf { it.isFile }
+        if (preferred != null && linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
         return ready
     }
 

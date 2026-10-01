@@ -121,7 +121,8 @@ object RuntimeEnvironment {
     }
 
     private fun assemble(ctx: Context): Snapshot {
-        val nodeBin = NativeAssetRegistry.resolve(ctx, NativeAssetRegistry.NODE)
+        val nodeBin = lobos.os.FacilityManager.nodeBin(ctx)
+            ?: File(PrefixProvisioner.binDir(ctx), PrefixProvisioner.NODE_BIN_NAME)
 
         val ready = PrefixProvisioner.provision(ctx, nodeBin)
         val missing = PrefixProvisioner.expected(ctx) - ready.toSet()
