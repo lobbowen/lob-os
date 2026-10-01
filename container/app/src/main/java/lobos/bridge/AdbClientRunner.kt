@@ -3,7 +3,6 @@ package lobos.bridge
 import android.content.Context
 import android.system.Os
 import lobos.os.Backoff
-import lobos.native.NativeAssetRegistry
 import lobos.os.RuntimeEnvironment
 import lobos.runtime.NodeProvisioner
 import java.io.BufferedReader
@@ -192,7 +191,10 @@ object AdbClientRunner {
 
     private fun startProcess(context: Context): ServeProcess {
         val scriptDir = NodeProvisioner.ensureAdbClientScripts(context)
-        val nodeBin = NativeAssetRegistry.resolve(context, NativeAssetRegistry.NODE)
+        val nodeBin = lobos.os.NodeRuntime.path(context) ?: run {
+            lastStartError = lobos.os.NodeRuntime.missing(context)
+            return null
+        }
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath, "serve")
         args += listOf("--migrate-from", File(context.filesDir, "supervisor/adb").absolutePath)
@@ -229,7 +231,8 @@ object AdbClientRunner {
         } catch (e: Throwable) {
             return AdbOutcome(false, null, "adb-client-script-missing: " + e.message, "", -1)
         }
-        val nodeBin = NativeAssetRegistry.resolve(context, NativeAssetRegistry.NODE)
+        val nodeBin = lobos.os.NodeRuntime.path(context)
+            ?: return AdbOutcome(false, null, lobos.os.NodeRuntime.missing(context), "", -1)
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
 
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath)

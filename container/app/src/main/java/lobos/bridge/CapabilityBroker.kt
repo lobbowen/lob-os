@@ -703,13 +703,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply { put("ok", true) }
         },
         "os.runtime.status" to MethodDef(listOf("base"), false) { _ ->
-            val node = NativeAssetRegistry.resolve(this@CapabilityBroker, NativeAssetRegistry.NODE)
+            val node = lobos.os.NodeRuntime.path(this@CapabilityBroker)
             val res = lobos.os.ResidencyStatus.snapshot()
             JSONObject().apply {
                 put("name", "node")
                 put("version", NodeVersionManager(this@CapabilityBroker).currentVersion())
-                put("path", node.absolutePath)
-                put("ok", node.exists())
+                put("path", node?.absolutePath ?: JSONObject.NULL)
+                put("ok", node != null)
+                put("detail", if (node == null) lobos.os.NodeRuntime.missing(this@CapabilityBroker) else JSONObject.NULL)
                 put("degraded", res.optBoolean("degraded", false))
                 put("degradedReasons", res.optJSONArray("degradedReasons") ?: JSONArray())
                 put("actions", res.optJSONArray("actions") ?: JSONArray())

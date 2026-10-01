@@ -3,7 +3,6 @@ package lobos.ota
 import android.content.Context
 import android.system.Os
 import lobos.BuildConfig
-import lobos.native.NativeAssetRegistry
 import lobos.os.RuntimeEnvironment
 import lobos.runtime.NodeProvisioner
 import java.io.File
@@ -24,9 +23,15 @@ object ProgramVerifier {
         context: Context,
         zip: File,
         manifest: JSONObject?,
-        nodeBin: File = lobos.os.FacilityManager.nodeBin(context) ?: NativeAssetRegistry.resolve(context, NativeAssetRegistry.NODE),
+        nodeBin: File? = lobos.os.NodeRuntime.path(context),
         manifestFile: File? = null,
     ): VerifyOutcome {
+        if (nodeBin == null) {
+            return VerifyOutcome(
+                false, null, "runtime-missing",
+                lobos.os.NodeRuntime.missing(context), "", null,
+            )
+        }
         val script = try {
             NodeProvisioner.ensureKernelVerifyScript(context)
         } catch (e: Throwable) {

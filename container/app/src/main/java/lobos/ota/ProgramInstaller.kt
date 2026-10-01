@@ -1,7 +1,6 @@
 package lobos.ota
 
 import android.content.Context
-import lobos.native.NativeAssetRegistry
 import java.io.File
 import org.json.JSONObject
 
@@ -31,13 +30,16 @@ object ProgramInstaller {
         zip: File,
         manifest: JSONObject?,
         source: Source,
-        nodeBin: File = NativeAssetRegistry.resolve(context, NativeAssetRegistry.NODE),
+        nodeBin: File? = lobos.os.NodeRuntime.path(context),
         manifestFile: File? = null,
         programId: String,
         storeRoot: java.io.File? = null,
     ): InstallResult {
         if (programId.isBlank()) {
             return InstallResult(false, null, source, "manifest-id-missing", "包清单未声明 id/name：内核不猜安装目标")
+        }
+        if (nodeBin == null) {
+            return InstallResult(false, null, source, "runtime-missing", lobos.os.NodeRuntime.missing(context))
         }
         if (!zip.isFile) {
             return InstallResult(false, null, source, "zip-missing", "候选包不存在: ${zip.absolutePath}")

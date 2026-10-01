@@ -345,8 +345,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val nodeAsset = NativeAssetRegistry.NODE
-            val nodeBin = NativeAssetRegistry.resolve(this, nodeAsset)
+            val nodeBin = lobos.os.NodeRuntime.path(this) ?: run {
+                RuntimeDiagnostics.append(this, "runtime", false, "node 运行时未安装，无法启动程序", lobos.os.NodeRuntime.missing(this))
+                return SupervisorPolicy.BootOutcome.FAILED
+            }
 
             if (!res.ok) return SupervisorPolicy.BootOutcome.NO_PROGRAM
 
@@ -766,10 +768,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun runNativeProbe() {
-        val nodeBin = NativeAssetRegistry.resolve(this, NativeAssetRegistry.NODE)
-        if (!nodeBin.isFile) {
+        val nodeBin = lobos.os.NodeRuntime.path(this)
+        if (nodeBin == null) {
             RuntimeDiagnostics.append(
-                this, "nodeprobe", false, "探针（非运行时）未起跑：node 二进制不在场", nodeBin.absolutePath
+                this, "nodeprobe", false, "探针未起跑：node 运行时未安装", lobos.os.NodeRuntime.missing(this)
             )
             return
         }
