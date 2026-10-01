@@ -51,27 +51,6 @@ jobs:
             echo "SHA=$(cut -d' ' -f1 "$ZIP.sha256")"
           } >> "$GITHUB_ENV"
           echo "=== 固化内容 ==="; cat "$ZIP.sha256"; cat "$M/manifest.txt"
-      - name: 发布为不可变 Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          bash scripts/gh-release-upload.sh "native-cap-${FP}-${ABI}" --skip-existing \
-            --title "Native capabilities ${FP}" \
-            --notes "小件能力件固化产物。源指纹 ${FP}，ABI ${ABI}。清单见包内 manifest.txt。" \
-            "$ZIP" "$ZIP.sha256"
-
-      - name: 算出该记的那一格（不写 main：主干的唯一写入口是推送通道）
-        run: |
-          set -euo pipefail
-          FP="$FP" ZIP="$ZIP" SHA="$SHA" ABI="$ABI" node -e 'const fs=require("fs");const p=".github/native-capabilities-pin.json";const j=JSON.parse(fs.readFileSync(p,"utf8"));j.pins[process.env.FP]={tag:"native-cap-"+process.env.FP+"-"+process.env.ABI,zip:process.env.ZIP,sha256:process.env.SHA,abi:process.env.ABI};fs.writeFileSync(p,JSON.stringify(j,null,2)+String.fromCharCode(10));'
-          if git diff --quiet -- .github/native-capabilities-pin.json; then
-            echo "[record] 该指纹已在册（${FP}）—— 记录无变化"
-          else
-            echo "[record] 需要把这一格推上 main 才会有人按下发它取件（本步不推）："
-            git --no-pager diff -- .github/native-capabilities-pin.json
-            echo "::warning title=固化记录待推送::$FP 的 Release 已在位，但 fast-apk 读的是仓内那份 pin.json —— 不推就等于没固化。"
-          fi
       - uses: actions/upload-artifact@v4
         with:
           name: native-capabilities-pin-record

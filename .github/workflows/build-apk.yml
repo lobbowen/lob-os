@@ -273,53 +273,6 @@ jobs:
           path: container/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 3
-
-      - name: Pin Node runtime to immutable Release
-        id: pin
-        if: startsWith(github.ref, 'refs/tags/runtime-release-')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION="$(bash scripts/read-node-versions.sh default)"
-          ABI="$(bash scripts/read-node-versions.sh abi)"
-          RTAG="node-runtime-${VERSION}-${ABI}"
-          SRC="container/app/src/main/jniLibs/${ABI}"
-          ASSETS="$({ grep -v '^[[:space:]]*#' .github/native-assets.txt | grep -v '^[[:space:]]*$' || true; } | tr -d '\r')"
-          [ -n "$ASSETS" ] || { echo "[error] .github/native-assets.txt 里没有任何资产 —— 不知道要固化什么，拒绝投递。"; exit 1; }
-          DIR="$(mktemp -d)"
-          for a in $ASSETS; do
-            [ -f "$SRC/$a" ] || { echo "[error] $SRC/$a 不在 —— 本轮没产出清单要求的资产，固化会把缺口发成既成事实。"; exit 1; }
-            cp -f "$SRC/$a" "$DIR/$a"
-          done
-          cd "$DIR"
-          # shellcheck disable=SC2086
-          sha256sum $ASSETS > SHA256SUMS
-
-          # shellcheck disable=SC2086
-          python3 - "$VERSION" "$ABI" "$RTAG" "${GITHUB_RUN_ID}" $ASSETS <<'PY'
-          import sys, json, hashlib, pathlib, time
-          version, abi, tag, run_id = sys.argv[1:5]
-          files = {}
-          for name in sys.argv[5:]:
-              blob = pathlib.Path(name).read_bytes()
-              files[name] = {"sha256": hashlib.sha256(blob).hexdigest(), "size": len(blob)}
-          m = {"schema": 1, "version": version, "abi": abi, "pin_tag": tag,
-               "source_run": run_id,
-               "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-               "files": files}
-          pathlib.Path("manifest.json").write_text(json.dumps(m, indent=2, ensure_ascii=False))
-          print(json.dumps(m, indent=2, ensure_ascii=False))
-          PY
-
-          echo "RTAG=$RTAG" >> "$GITHUB_OUTPUT"
-          # --notes 必须单行：YAML 块标量里的跨行字符串一有顶格就破坏结构（本仓踩过）。
-          # shellcheck disable=SC2086
-          bash scripts/gh-release-upload.sh "$RTAG" --skip-existing \
-            --title "Node ${VERSION} runtime for Android ${ABI} (prebuilt)" \
-            --notes "$(printf '%b' "预编译的 Node ${VERSION} 安卓原生运行时（bionic 链接，${ABI}）。\n\n来源：build-apk run ${GITHUB_RUN_ID}，固化由 tag ${GITHUB_REF_NAME} 决定。\n\nmanifest.json / SHA256SUMS —— 校验与溯源。\n\n不可变引用：fast-apk.yml 按此 tag 下载，不再重编 Node；要换二进制请提升 node 版本号。")" \
-            $ASSETS manifest.json SHA256SUMS
-
       - name: Collect failure diagnostics
         if: failure()
         run: |

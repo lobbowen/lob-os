@@ -1,9 +1,8 @@
-name: CI (gates)
+name: CI
 
 on:
   push:
-    branches: [main, master]
-    tags: ['v*']
+    branches: [main]
     paths:
       - 'container/**'
       - 'scripts/**'
@@ -21,45 +20,30 @@ on:
 
 jobs:
 
-  container:
+  norms:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: container/engine
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Gate — 不许上注释（公用规范）
-        working-directory: .
+
+      - name: 规范 — 不许上注释
         run: node scripts/comment-gate.js
 
-      - name: Gate — DO 跑不通：不许启用设备所有者（公用规范）
-        working-directory: .
+      - name: 规范 — DO 跑不通：不许启用设备所有者
         run: node scripts/do-gate.js
-      - uses: actions/checkout@v4
 
-      - name: 读设备那份 node 版本
-        id: device-node
-        working-directory: .
-        run: |
-          V="$(bash scripts/read-node-versions.sh default)"
-          echo "设备 node = $V"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ steps.device-node.outputs.version }}
-
-      - name: 把 npm 钉到设备上那份
-        working-directory: .
+      - name: 语法 — 引擎与脚本（node --check）
         run: |
           set -euo pipefail
-          echo "runner 自带 npm: $(npm --version)"
-          NPMV="$(bash scripts/read-node-versions.sh npm)"
-          npm install -g "npm@$NPMV"
-          echo "探针用 npm: $(npm --version)"
+          for f in container/engine/src/*.js container/engine/src/bridge/*.js scripts/*.js; do
+            node --check "$f"
+          done
+
+      - name: 生成器自洽 — 原生件清单可由注册表重算
+        run: |
+          set -euo pipefail
+          node scripts/gen-native-assets.js
+          git diff --exit-code -- .github/native-assets.txt .github/native-capabilities.txt
