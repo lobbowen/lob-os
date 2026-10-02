@@ -80,7 +80,7 @@ object PermissionLedger {
     }
 
     fun heldIds(ctx: Context): Set<String> = try {
-        lobos.capability.CapabilityEvidenceCollector.systemReads(ctx).grantedIds()
+        lobos.capability.CapabilityEvidenceCollector.systemReads(ctx).grants
     } catch (_: Throwable) {
         emptySet()
     }
