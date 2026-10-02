@@ -232,7 +232,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
         }
         try {
-            val result = def.handle(params)
+            val result = def.handle(params, holder.session?.programId ?: "")
             if (def.audit) audit(method, params, true, null, session)
             return ok(id, result)
         } catch (e: BridgeError) {
@@ -498,7 +498,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
-        "os.state.get" to MethodDef(listOf("base"), false) { _ ->
+        "os.state.get" to MethodDef(listOf("base"), false) { _, _programId ->
             val s = OsInit.snapshot(this@CapabilityBroker)
             val since = s.atMs
             JSONObject().apply {
@@ -517,7 +517,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("programs", programsJson())
             }
         },
-        "os.journal.read" to MethodDef(listOf("base"), false) { p ->
+        "os.journal.read" to MethodDef(listOf("base"), false) { p, _programId ->
             val after = p.optLong("after", 0L)
             val limit = p.optInt("limit", 50).coerceIn(1, 1000)
             val evs = Journal.events(this@CapabilityBroker, limit).filter { it.seq > after }
@@ -526,7 +526,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("events", JSONArray().apply { evs.forEach { put(journalJson(it)) } })
             }
         },
-        "os.journal.logTail" to MethodDef(listOf("base"), false) { p ->
+        "os.journal.logTail" to MethodDef(listOf("base"), false) { p, _programId ->
             val stream = p.optString("stream", "os")
             val n = p.optInt("n", 8).coerceIn(1, 200)
             val src = if (stream == "programs" || stream == "error") {
@@ -539,7 +539,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("lines", JSONArray().apply { src.split("\n").takeLast(n).forEach { put(it) } })
             }
         },
-        "os.journal.export" to MethodDef(listOf("base"), false) { p ->
+        "os.journal.export" to MethodDef(listOf("base"), false) { p, _programId ->
             val after = p.optLong("after", 0L)
             val limit = p.optInt("limit", 1000).coerceIn(1, 5000)
             val evs = Journal.events(this@CapabilityBroker, limit).filter { it.seq > after }
@@ -549,7 +549,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("lines", JSONArray().apply { evs.forEach { put(it.toJson().toString()) } })
             }
         },
-        "os.journal.metrics" to MethodDef(listOf("base"), false) { _ ->
+        "os.journal.metrics" to MethodDef(listOf("base"), false) { _, _programId ->
             val evs = Journal.events(this@CapabilityBroker, 1000)
             val bySource = JSONObject()
             val byType = JSONObject()
@@ -570,7 +570,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("sinceLastMs", if (last > 0) System.currentTimeMillis() - last else 0L)
             }
         },
-        "os.journal.tasks" to MethodDef(listOf("base"), false) { p ->
+        "os.journal.tasks" to MethodDef(listOf("base"), false) { p, _programId ->
             val kind = p.optString("kind", "").takeIf { it.isNotBlank() }
             val running = p.optBoolean("running", false)
             JSONObject().apply {
@@ -580,13 +580,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("current", TaskRegistry.current(this@CapabilityBroker, kind)?.let { taskJson(it) } ?: JSONObject.NULL)
             }
         },
-        "os.journal.task" to MethodDef(listOf("base"), false) { p ->
+        "os.journal.task" to MethodDef(listOf("base"), false) { p, _programId ->
             val id = p.optString("id", "")
             val task = TaskRegistry.get(this@CapabilityBroker, id)
                 ?: throw BridgeError(CODE_METHOD_NOT_FOUND, "无此任务: " + id)
             JSONObject().apply { put("task", taskJson(task)) }
         },
-        "os.instances.list" to MethodDef(listOf("base"), false) { _ ->
+        "os.instances.list" to MethodDef(listOf("base"), false) { _, _programId ->
             val mods = JSONArray()
             AppRegistry.all(this@CapabilityBroker).forEach { e ->
                 val ph = e.desired.name.lowercase(Locale.US)
@@ -597,7 +597,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
             JSONObject().apply { put("modules", mods) }
         },
-        "os.instances.get" to MethodDef(listOf("base"), false) { p ->
+        "os.instances.get" to MethodDef(listOf("base"), false) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) {
                 throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（内核没有\"主程序\"概念）")
@@ -606,7 +606,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 ?: throw BridgeError(CODE_METHOD_NOT_FOUND, "无此实例: " + id)
             instanceJson(e)
         },
-        "os.instances.action" to MethodDef(listOf("base"), true) { p ->
+        "os.instances.action" to MethodDef(listOf("base"), true) { p, _programId ->
             val self = p.optString("id", "")
             val id = p.optString("id", self)
             val spec = lobos.os.ProgramRegistry.spec(this@CapabilityBroker, id)
@@ -636,17 +636,17 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("phase", desired.name.lowercase(Locale.US))
             }
         },
-        "os.session.get" to MethodDef(listOf("base"), false) { _ ->
+        "os.session.get" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply { put("sessionState", OsInit.current(this@CapabilityBroker).name.lowercase(Locale.US)) }
         },
-        "os.session.stop" to MethodDef(listOf("base"), true) { _ ->
+        "os.session.stop" to MethodDef(listOf("base"), true) { _, _programId ->
             Journal.note(
                 this@CapabilityBroker, "session", false, "会话停止被拒：停用运行时是内核保留动作",
                 "应用无权请求宿主停机；宿主停机只能经内核内部路径",
             )
             throw BridgeError(CODE_POLICY_DENIED, "停用运行时是内核保留动作，应用无权调用")
         },
-        "os.programs.overview" to MethodDef(listOf("base"), false) { _ ->
+        "os.programs.overview" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
                 put("installed", AppRegistry.all(this@CapabilityBroker).size)
                 put("programs", programsJson())
@@ -659,10 +659,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("upgrade", JSONObject().apply { put("updateAvailable", false) })
             }
         },
-        "os.programs.list" to MethodDef(listOf("base"), false) { _ ->
+        "os.programs.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply { put("programs", programsJson()) }
         },
-        "os.programs.settings" to MethodDef(listOf("base"), true) { p ->
+        "os.programs.settings" to MethodDef(listOf("base"), true) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) {
                 throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（内核没有\"主程序\"概念）")
@@ -679,10 +679,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
 
-        "os.appmgr.install" to MethodDef(listOf("base"), true) { p -> startProgramJob("install", p.optString("id", "")) },
-        "os.appmgr.upgrade" to MethodDef(listOf("base"), true) { p -> startProgramJob("upgrade", p.optString("id", "")) },
-        "os.appmgr.uninstall" to MethodDef(listOf("base"), true) { p -> startUninstallJob(p.optString("id", "")) },
-        "os.appmgr.checkUpdate" to MethodDef(listOf("base"), false) { p ->
+        "os.appmgr.install" to MethodDef(listOf("base"), true) { p, _programId -> startProgramJob("install", p.optString("id", "")) },
+        "os.appmgr.upgrade" to MethodDef(listOf("base"), true) { p, _programId -> startProgramJob("upgrade", p.optString("id", "")) },
+        "os.appmgr.uninstall" to MethodDef(listOf("base"), true) { p, _programId -> startUninstallJob(p.optString("id", "")) },
+        "os.appmgr.checkUpdate" to MethodDef(listOf("base"), false) { p, _programId ->
             val target = p.optString("id", "")
             if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
             val out = ProgramOtaUpdater.checkAndUpdate(this@CapabilityBroker, ProgramManager(this@CapabilityBroker, target), checkOnly = true)
@@ -695,30 +695,30 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
 
-        "os.registry.info" to MethodDef(listOf("base"), false) { _ -> RegistryStore.info(this@CapabilityBroker) },
-        "os.registry.apps" to MethodDef(listOf("base"), false) { _ ->
+        "os.registry.info" to MethodDef(listOf("base"), false) { _, _programId -> RegistryStore.info(this@CapabilityBroker) },
+        "os.registry.apps" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply { put("programs", programsJson()) }
         },
-        "os.registry.set" to MethodDef(listOf("base"), true) { p ->
+        "os.registry.set" to MethodDef(listOf("base"), true) { p, _programId ->
             val origin = p.optString("origin", "").trim()
             if (origin.isBlank() || !origin.startsWith("https://")) {
                 throw BridgeError(CODE_INVALID_PARAM, "origin 必须是非空 https:// URL（镜像源只走 TLS）")
             }
             RegistryStore.setOrigin(this@CapabilityBroker, origin, null)
         },
-        "os.registry.refresh" to MethodDef(listOf("base"), true) { _ ->
+        "os.registry.refresh" to MethodDef(listOf("base"), true) { _, _programId ->
             val cur = RegistryStore.info(this@CapabilityBroker).optString("origin", "")
             if (cur.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "尚未设置镜像源（先 os.registry.set）")
             RegistryStore.setOrigin(this@CapabilityBroker, cur, RegistryStore.probe(cur))
         },
-        "os.registry.probe" to MethodDef(listOf("base"), false) { p ->
+        "os.registry.probe" to MethodDef(listOf("base"), false) { p, _programId ->
             val origin = p.optString("origin", "").trim().ifBlank {
                 RegistryStore.info(this@CapabilityBroker).optString("origin", "")
             }
             if (origin.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "未提供 origin 且尚未设置镜像源")
             RegistryStore.probe(origin)
         },
-        "os.ports.list" to MethodDef(listOf("base"), false) { _ ->
+        "os.ports.list" to MethodDef(listOf("base"), false) { _, _programId ->
             val leases = PortBroker.list(this@CapabilityBroker)
             val arr = JSONArray()
             leases.forEach { l -> arr.put(JSONObject().apply { put("port", l.port); put("owner", l.owner) }) }
@@ -728,16 +728,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("capacity", PortBroker.RANGE_END - PortBroker.RANGE_START + 1)
             }
         },
-        "os.ports.claim" to MethodDef(listOf("base"), true) { p ->
+        "os.ports.claim" to MethodDef(listOf("base"), true) { p, _programId ->
             val owner = p.optString("owner", "")
             val pref = if (p.has("preferred")) p.optInt("preferred") else null
             JSONObject().apply { put("port", PortBroker.claim(this@CapabilityBroker, owner, pref)); put("mode", "claimed") }
         },
-        "os.ports.release" to MethodDef(listOf("base"), true) { p ->
+        "os.ports.release" to MethodDef(listOf("base"), true) { p, _programId ->
             PortBroker.release(this@CapabilityBroker, p.optString("owner", ""))
             JSONObject().apply { put("ok", true) }
         },
-        "os.runtime.status" to MethodDef(listOf("base"), false) { _ ->
+        "os.runtime.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val node = lobos.os.NodeRuntime.path(this@CapabilityBroker)
             val res = lobos.os.ResidencyStatus.snapshot()
             JSONObject().apply {
@@ -766,15 +766,15 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
 
-        "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _ ->
+        "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _, _programId ->
             val cur = NodeVersionManager(this@CapabilityBroker).currentVersion()
             JSONObject().apply { put("current", cur); put("latest", cur); put("updateAvailable", false) }
         },
-        "os.compat.status" to MethodDef(listOf("base"), false) { _ ->
+        "os.compat.status" to MethodDef(listOf("base"), false) { _, _programId ->
             lobos.native.DriverRegistry.report(this@CapabilityBroker)
         },
 
-        "os.env.status" to MethodDef(listOf("base"), false) { _ ->
+        "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val ev = CapabilityEvidenceCollector.systemReads(this@CapabilityBroker)
             val caps = BridgeTokens.from(ev)
             val verdicts = CapabilityCatalog.evaluate(ev)
@@ -796,10 +796,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.env.programs" to MethodDef(listOf("base"), false) { _ ->
+        "os.env.programs" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply { put("programs", programsJson()) }
         },
-        "os.nativeAssets.status" to MethodDef(listOf("base"), false) { _ ->
+        "os.nativeAssets.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val landed = RuntimeDiagnostics.latestByStage(
                 this@CapabilityBroker, "native-assets", "capability-assets", "prefix",
             )
@@ -818,29 +818,29 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.facilities.list" to MethodDef(listOf("base"), false) { _ ->
+        "os.facilities.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
                 put("root", FacilityRegistry.root(this@CapabilityBroker).absolutePath)
                 put("enabled", JSONArray(FacilityRegistry.enabled(this@CapabilityBroker).sorted()))
                 put("facilities", FacilityManager.status(this@CapabilityBroker))
             }
         },
-        "os.facilities.action" to MethodDef(listOf("base"), true) { p -> packagesAction(p) },
-        "os.catalog.list" to MethodDef(listOf("base"), false) { p ->
+        "os.facilities.action" to MethodDef(listOf("base"), true) { p, _programId -> packagesAction(p) },
+        "os.catalog.list" to MethodDef(listOf("base"), false) { p, _programId ->
             if (p.optBoolean("refresh", false)) CatalogClient.refresh(this@CapabilityBroker, false)
             CatalogClient.list(this@CapabilityBroker)
         },
-        "os.catalog.refresh" to MethodDef(listOf("base"), true) { p ->
+        "os.catalog.refresh" to MethodDef(listOf("base"), true) { p, _programId ->
             CatalogClient.refresh(this@CapabilityBroker, p.optBoolean("force", true))
         },
-        "os.packages.list" to MethodDef(listOf("base"), false) { _ ->
+        "os.packages.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
                 put("installed", FacilityManager.status(this@CapabilityBroker))
                 put("catalog", CatalogClient.list(this@CapabilityBroker))
             }
         },
-        "os.packages.action" to MethodDef(listOf("base"), true) { p -> packagesAction(p) },
-        "os.diagnostics.events" to MethodDef(listOf("base"), false) { p ->
+        "os.packages.action" to MethodDef(listOf("base"), true) { p, _programId -> packagesAction(p) },
+        "os.diagnostics.events" to MethodDef(listOf("base"), false) { p, _programId ->
             val stage = p.optString("stage", "").takeIf { it.isNotBlank() }
             val level = p.optString("level", "").takeIf { it.isNotBlank() }?.uppercase(Locale.US)
             val limit = p.optInt("limit", 200).coerceIn(1, 2000)
@@ -855,17 +855,17 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("events", JSONArray().apply { matched.forEach { put(it.toJson()) } })
             }
         },
-        "os.provisioning.get" to MethodDef(listOf("base"), false) { _ ->
+        "os.provisioning.get" to MethodDef(listOf("base"), false) { _, _programId ->
             val snap = ProvisioningProbe.snapshot(this@CapabilityBroker)
             JSONObject().apply {
                 put("present", snap != null)
                 put("snapshot", snap ?: JSONObject.NULL)
             }
         },
-        "capability.invoke" to MethodDef(listOf("base"), true) { _ -> notImplemented("capability.invoke") },
+        "capability.invoke" to MethodDef(listOf("base"), true) { _, _programId -> notImplemented("capability.invoke") },
     )
     private val METHODS: Map<String, MethodDef> = mapOf(
-        "sys.info" to MethodDef(listOf("base"), false) { _ ->
+        "sys.info" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
                 put("manufacturer", Build.MANUFACTURER)
                 put("model", Build.MODEL)
@@ -874,11 +874,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("bridge", SOCKET_NAME)
             }
         },
-        "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p ->
+        "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
             val snap = lobos.permissions.PermissionLedger.register(this@CapabilityBroker)
             lobos.permissions.PermissionLedger.toJson(snap)
         },
-        "sys.shape" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
+        "sys.shape" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             org.json.JSONObject().apply {
                 put("scale", org.json.JSONObject().apply {
                     put("ktFiles", lobos.RuntimeShape.KT_FILES)
@@ -893,7 +893,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("reconcile", lobos.RuntimeShape.reconcile())
             }
         },
-        "os.permissions.roles" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
+        "os.permissions.roles" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             JSONObject().apply {
                 put("roles", JSONArray().apply {
                     for (r in lobos.permissions.PermissionRoles.declared()) {
@@ -911,10 +911,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.notif.publish" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p ->
+        "os.notif.publish" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p, programId ->
+            if (programId.isBlank()) {
+                throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
+            }
             val n = lobos.os.ProgramNotificationHub.publish(
                 this@CapabilityBroker,
-                holder.session.programId,
+                programId,
                 p.optString("title", ""),
                 p.optString("text", ""),
                 p.optBoolean("ongoing", true),
@@ -926,33 +929,32 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("atMs", n.atMs)
             }
         },
-        "os.notif.clear" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p ->
-            val target = p.optString("programId", "").ifBlank { holder.session.programId }
+        "os.notif.clear" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p, programId ->
+            val target = p.optString("programId", "").ifBlank { programId }
+            if (target != programId) {
+                throw BridgeError(CODE_POLICY_DENIED, "只能撤下自己的通知")
+            }
             JSONObject().apply {
-                put("ok", target == holder.session.programId)
-                put("cleared", if (target == holder.session.programId) {
-                    lobos.os.ProgramNotificationHub.clear(this@CapabilityBroker, target)
-                } else {
-                    false
-                })
+                put("ok", true)
+                put("cleared", lobos.os.ProgramNotificationHub.clear(this@CapabilityBroker, target))
             }
         },
-        "os.notif.list" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _ ->
+        "os.notif.list" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _, _programId ->
             JSONObject().apply {
                 put("notices", lobos.os.ProgramNotificationHub.listJson())
             }
         },
-        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _ ->
+        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _, _programId ->
             lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker)
         },
-        "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
+        "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             JSONObject().apply {
                 put("state", AccessibilityAnchor.state(this@CapabilityBroker).name)
                 put("bound", AccessibilityAnchor.isBound(this@CapabilityBroker))
                 put("autoHeal", "无条件自愈：只看锚是否掉，不看任何开关")
             }
         },
-        "os.anchor.ensure" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p ->
+        "os.anchor.ensure" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, _programId ->
             val ms = p.optLong("timeoutMs", 8000L)
             val out = AccessibilityAnchor.ensureBound(this@CapabilityBroker, ms)
             JSONObject().apply {
@@ -962,7 +964,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("detail", out.detail)
             }
         },
-        "sys.api" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
+        "sys.api" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             ApiSpec.toJson((METHODS.keys + OS_METHODS.keys).distinct().sorted()).apply {
                 put("protocol", JSONObject().apply {
                     put("min", PROTOCOL_MIN)
@@ -976,7 +978,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "sys.nativeAssets" to MethodDef(listOf("base"), false) { p ->
+        "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
             val walkProbes = p.optBoolean("walkProbes", true)
             val report = if (walkProbes) {
                 NativePreparer.prepare(this)
@@ -988,7 +990,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("libSearchPath", NativePreparer.libSearchPath(this@CapabilityBroker))
             }
         },
-        "notif.post" to MethodDef(listOf("base"), true) { p ->
+        "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->
             val ch = "hostbridge_notif"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 notifManager.createNotificationChannel(
@@ -1003,7 +1005,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             notifManager.notify((10000 + (System.currentTimeMillis() % 55000)).toInt(), n.build())
             JSONObject().apply { put("posted", true) }
         },
-        "notif.read" to MethodDef(listOf("notification_access"), true) { p ->
+        "notif.read" to MethodDef(listOf("notification_access"), true) { p, _programId ->
             if (!NotificationStore.connected) {
                 throw BridgeError(
                     CODE_CAPABILITY_MISSING,
@@ -1017,13 +1019,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("count", arr.length())
             }
         },
-        "app.listInstalled" to MethodDef(listOf("base"), false) { _ ->
+        "app.listInstalled" to MethodDef(listOf("base"), false) { _, _programId ->
             val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             val arr = JSONArray()
             for (ai in apps) arr.put(ai.packageName)
             JSONObject().apply { put("packages", arr); put("count", arr.length()) }
         },
-        "app.launch" to MethodDef(listOf("base"), false) { p ->
+        "app.launch" to MethodDef(listOf("base"), false) { p, _programId ->
             val pkg = p.optString("pkg", "")
             val ai = packageManager.getLaunchIntentForPackage(pkg)
             if (ai == null) throw BridgeError(CODE_INVALID_PARAM, "无启动入口: $pkg")
@@ -1031,7 +1033,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             JSONObject().apply { put("launched", pkg) }
         },
-        "app.openUrl" to MethodDef(listOf("base"), false) { p ->
+        "app.openUrl" to MethodDef(listOf("base"), false) { p, _programId ->
             val url = p.optString("url", "")
             if (url.isEmpty()) throw BridgeError(CODE_INVALID_PARAM, "url 为空")
             val ai = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
@@ -1040,7 +1042,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             JSONObject().apply { put("opened", true); put("url", url) }
         },
-        "ui.tap" to MethodDef(listOf("accessibility"), true) { p ->
+        "ui.tap" to MethodDef(listOf("accessibility"), true) { p, _programId ->
             val a11y = requireA11y()
             val ok = a11y.performTap(
                 p.optDouble("x", 0.0).toFloat(),
@@ -1049,7 +1051,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.swipe" to MethodDef(listOf("accessibility"), true) { p ->
+        "ui.swipe" to MethodDef(listOf("accessibility"), true) { p, _programId ->
             val a11y = requireA11y()
             val ok = a11y.performSwipe(
                 p.optDouble("x1", 0.0).toFloat(), p.optDouble("y1", 0.0).toFloat(),
@@ -1058,7 +1060,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.inputText" to MethodDef(listOf("accessibility"), true) { p ->
+        "ui.inputText" to MethodDef(listOf("accessibility"), true) { p, _programId ->
             val a11y = requireA11y()
             val text = p.optString("text", "")
             if (p.has("selector") && p.optJSONObject("selector")?.length() == 0) {
@@ -1067,14 +1069,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val ok = a11y.inputText(text, p.optJSONObject("selector"))
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.getUiTree" to MethodDef(listOf("accessibility"), false) { p ->
+        "ui.getUiTree" to MethodDef(listOf("accessibility"), false) { p, _programId ->
             val a11y = requireA11y()
             a11y.dumpUiTree(
                 maxNodes = p.optInt("maxNodes", 3000),
                 maxDepth = p.optInt("maxDepth", 40)
             )
         },
-        "ui.screenshot" to MethodDef(listOf("mediaprojection"), true) { p ->
+        "ui.screenshot" to MethodDef(listOf("mediaprojection"), true) { p, _programId ->
             val svc = ScreenCaptureController.instance
                 ?: throw BridgeError(
                     CODE_CAPABILITY_MISSING,
@@ -1110,7 +1112,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 }
             }
         },
-        "ui.waitFor" to MethodDef(listOf("accessibility"), false) { p ->
+        "ui.waitFor" to MethodDef(listOf("accessibility"), false) { p, _programId ->
             val a11y = requireA11y()
             val selector = p.optJSONObject("selector")
                 ?: throw BridgeError(CODE_INVALID_PARAM, "waitFor 需要 selector")
@@ -1120,12 +1122,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 intervalMs = p.optLong("intervalMs", 250L)
             )
         },
-        "shell.status" to MethodDef(listOf("base"), false) { _ ->
+        "shell.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val res = AdbClientRunner.status(this)
             if (!res.ok) throw BridgeError(CODE_INTERNAL, "ADB status 失败: ${res.error ?: res.raw.take(300)}")
             res.json ?: JSONObject()
         },
-        "shell.pair" to MethodDef(listOf("base"), true) { p ->
+        "shell.pair" to MethodDef(listOf("base"), true) { p, _programId ->
             val host = p.optString("host", "")
             val pairPort = p.optInt("pairPort", 0)
             val code = p.optString("code", "")
@@ -1138,12 +1140,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             if (!res.ok) throw BridgeError(CODE_INTERNAL, "配对失败: ${res.error ?: res.raw.take(300)}")
             res.json ?: JSONObject()
         },
-        "shell.forget" to MethodDef(listOf("base"), true) { _ ->
+        "shell.forget" to MethodDef(listOf("base"), true) { _, _programId ->
             val res = AdbClientRunner.forget(this)
             if (!res.ok) throw BridgeError(CODE_INTERNAL, "forget 失败: ${res.error ?: res.raw.take(300)}")
             JSONObject().apply { put("ok", true) }
         },
-        "shell.exec" to MethodDef(listOf("adb_shell"), true) { p ->
+        "shell.exec" to MethodDef(listOf("adb_shell"), true) { p, _programId ->
             val cmd = p.optString("cmd", "")
             if (cmd.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "cmd 为空")
             val arr = p.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.optString(it) } }
@@ -1166,7 +1168,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("note", "以 shell uid(2000) 经内置 ADB 客户端（无线调试）执行。")
             }
         },
-        "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p ->
+        "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
             lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
@@ -1204,7 +1206,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 }
             }
         },
-        "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p ->
+        "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
             lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
@@ -1226,7 +1228,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 auditPathHint(f.absolutePath)?.let { put("hint", it) }
             }
         },
-        "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p ->
+        "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
             lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
@@ -1260,7 +1262,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("truncated", truncated)
             }
         },
-        "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p ->
+        "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
             lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
@@ -1272,7 +1274,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("existed", f.exists())
             }
         },
-        "build.programInstall" to MethodDef(listOf("program_update"), true) { p ->
+        "build.programInstall" to MethodDef(listOf("program_update"), true) { p, _programId ->
             val checkOnly = p.optBoolean("checkOnly", false)
             val target = p.optString("id", "")
             if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
@@ -1289,7 +1291,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("restartRequired", ota.updated)
             }
         },
-        "build.programStatus" to MethodDef(listOf("program_update"), false) { _ ->
+        "build.programStatus" to MethodDef(listOf("program_update"), false) { _, _programId ->
             val ids = lobos.os.ProgramRegistry.listIds(this)
             val single = ids.singleOrNull()?.let { ProgramManager(this@CapabilityBroker, it) }
             JSONObject().apply {
@@ -1299,7 +1301,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("integrity", JSONArray(ids.flatMap { ProgramManager(this@CapabilityBroker, it).integrityChecks() }))
             }
         },
-        "build.apk" to MethodDef(listOf("program_update"), true) { p ->
+        "build.apk" to MethodDef(listOf("program_update"), true) { p, _programId ->
             throw BridgeError(
                 CODE_INVALID_PARAM,
                 "build.apk 已废弃：内置构建链经实测不可行（Google Maven 无 aarch64 版 aapt2，" +
@@ -1307,7 +1309,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     "设备安装已签名内核，无需编译。"
             )
         },
-        "build.status" to MethodDef(listOf("program_update"), false) { _ ->
+        "build.status" to MethodDef(listOf("program_update"), false) { _, _programId ->
             val ids = lobos.os.ProgramRegistry.listIds(this)
             val single = ids.singleOrNull()?.let { ProgramManager(this@CapabilityBroker, it) }
             JSONObject().apply {
@@ -1413,7 +1415,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 data class MethodDef(
     val caps: List<String>,
     val audit: Boolean,
-    val handle: (JSONObject) -> JSONObject
+    val handle: (JSONObject, String) -> JSONObject
 )
 
 class BridgeError(val code: Int, message: String) : Exception(message)
