@@ -46,11 +46,19 @@ object FacilityRegistry {
 
     fun defaultStateDir(name: String, kind: Kind): String = "sys/" + kindDir(kind) + "/" + name
 
+    fun safeSegment(raw: String): String? {
+        val v = raw.trim()
+        if (v.isEmpty() || v.length > 64) return null
+        if (v == "." || v == "..") return null
+        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' } }
+    }
+
     fun dirFor(ctx: Context, name: String): File {
-        val known = all(ctx).firstOrNull { it.name == name }
+        val seg = safeSegment(name) ?: return File(ctx.filesDir, TIER_OPTIONAL)
+        val known = all(ctx).firstOrNull { it.name == seg }
         if (known != null && known.stateDir.isNotBlank()) return File(ctx.filesDir, known.stateDir)
-        val kind = kindOf(CatalogClient.entryFor(ctx, name)?.optString("kind", "") ?: "")
-        return File(ctx.filesDir, defaultStateDir(name, kind))
+        val kind = kindOf(CatalogClient.entryFor(ctx, seg)?.optString("kind", "") ?: "")
+        return File(ctx.filesDir, defaultStateDir(seg, kind))
     }
 
     fun seed(ctx: Context): List<Facility> = runCatching {
@@ -130,6 +138,21 @@ object FacilityRegistry {
         }
         f.parentFile?.mkdirs()
         StateFiles.writeJson(f, JSONObject().apply { put("facilities", out) })
+    }
+
+    @Synchronized
+    fun remove(ctx: Context, name: String): Boolean {
+        val f = file(ctx)
+        val o = StateFiles.readJson(f) ?: return false
+        val arr = o.optJSONArray("facilities") ?: return false
+        val out = JSONArray()
+        var hit = false
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            if (e.optString("name") == name) { hit = true } else { out.put(e) }
+        }
+        if (!hit) return false
+        return StateFiles.writeJson(f, JSONObject().apply { put("facilities", out) })
     }
 
     @Synchronized

@@ -36,7 +36,11 @@ object PackageInstaller {
             staging.deleteRecursively()
             staging.mkdirs()
             SupplyProvisioner.unzipInto(bytes, staging)
-        }.onFailure { return fail(ctx, name, "解包失败：" + it.message) }
+        }.onFailure {
+            staging.deleteRecursively()
+            runCatching { if (dir.isDirectory && dir.list()?.isEmpty() == true) dir.delete() }
+            return fail(ctx, name, "解包失败：" + it.message)
+        }
         val dest = File(dir, ver)
         val rootCanon = dir.canonicalFile.path
         if (dest.canonicalFile.path != rootCanon + File.separator + ver) {
@@ -51,12 +55,14 @@ object PackageInstaller {
             }.onFailure { return fail(ctx, name, "落位失败：" + it.message) }
         }
         dir.mkdirs()
-        StateFiles.writeAtomic(File(dir, "CURRENT"), ver)
         val entryRel = entry.optString("entry", "bin/" + name)
         val links = linkEntry(ctx, dest, entryRel, entry.optJSONArray("aliases"))
         FacilityRegistry.upsert(
             ctx, name, kind, ver, true, deps(entry), want, "ota", tier = entry.optString("tier", FacilityRegistry.TIER_OPTIONAL),
         )
+        if (!StateFiles.writeAtomic(File(dir, "CURRENT"), ver)) {
+            return fail(ctx, name, "CURRENT 落位失败（安装未提交）")
+        }
         Journal.note(
             ctx, "package", true, "包已安装",
             "name=" + name + " version=" + ver + " 入口链接=" + links,
@@ -87,19 +93,35 @@ object PackageInstaller {
     fun uninstall(ctx: Context, name: String): Boolean {
         val dir = FacilityRegistry.dirFor(ctx, name)
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
-        val entryRel = CatalogClient.entryFor(ctx, name)?.optString("entry", "") ?: ""
+        val entry = CatalogClient.entryFor(ctx, name)
+        val entryRel = entry?.optString("entry", "") ?: ""
         if (entryRel.isNotBlank()) {
-            runCatching { File(PrefixProvisioner.binDir(ctx), entryRel.substringAfterLast("/")).delete() }
+            val bin = PrefixProvisioner.binDir(ctx)
+            for (linkName in linkNames(entryRel, entry?.optJSONArray("aliases"))) {
+                val link = File(bin, linkName)
+                runCatching {
+                    if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
+                }
+            }
         }
+        FacilityRegistry.remove(ctx, name)
         Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed
     }
 
-    private fun safeSegment(raw: String): String? {
-        val v = raw.trim()
-        if (v.isEmpty() || v.length > 64) return null
-        if (v == "." || v == "..") return null
-        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' } }
+    private fun safeSegment(raw: String): String? = FacilityRegistry.safeSegment(raw)
+
+    private fun linkNames(entryRel: String, aliases: JSONArray?): List<String> {
+        val out = mutableListOf<String>()
+        out += entryRel.substringAfterLast("/")
+        if (aliases != null) {
+            for (i in 0 until aliases.length()) {
+                val a = aliases.optJSONObject(i) ?: continue
+                val an = a.optString("name", "")
+                if (an.isNotBlank()) out += an
+            }
+        }
+        return out.filter { FacilityRegistry.safeSegment(it) != null }.distinct()
     }
 
     private fun runtimeGate(ctx: Context, entry: JSONObject): String? {

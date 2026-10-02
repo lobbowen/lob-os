@@ -303,6 +303,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun packagesAction(p: JSONObject): JSONObject {
         val name = p.optString("name", "").trim()
         val action = p.optString("action", "").trim()
+        if (!lobos.os.FacilityRegistry.safeSegment(name)) {
+            throw BridgeError(CODE_INVALID_PARAM, "包名非法（只接受字母数字与 . _ -）：" + name.take(40))
+        }
         if (name.isBlank() || action.isBlank()) {
             throw BridgeError(CODE_INVALID_PARAM, "需要 name 与 action（install|upgrade|enable|disable|uninstall|rollback）")
         }
