@@ -166,19 +166,7 @@ object FacilityManager {
 
     @Synchronized
     fun setEnabled(ctx: Context, name: String, enabled: Boolean): Boolean {
-        val f = FacilityRegistry.fileFor(ctx)
-        val o = StateFiles.readJson(f) ?: return false
-        val arr = o.optJSONArray("facilities") ?: return false
-        var hit = false
-        for (i in 0 until arr.length()) {
-            val e = arr.optJSONObject(i) ?: continue
-            if (e.optString("name") == name) {
-                e.put("enabled", enabled)
-                hit = true
-            }
-        }
-        if (!hit) return false
-        StateFiles.writeJson(f, o)
+        if (!FacilityRegistry.setEnabled(ctx, name, enabled)) return false
         Journal.note(ctx, "facility", null, if (enabled) "启用设施" else "停用设施", "name=" + name)
         reconcile(ctx)
         return true

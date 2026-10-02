@@ -126,6 +126,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private class SessionHolder(val socketName: String) {
+        @Volatile
+        var granted: Set<String> = emptySet()
         @Volatile var session: lobos.os.SessionRegistry.Session? = null
     }
 
@@ -217,6 +219,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
         val session = holder.session
             ?: return error(id, CODE_SESSION_MISSING, "未建立会话：先做 bridge.handshake")
+        val missing = def.caps.filterNot { holder.granted.contains(it) }
+        if (missing.isNotEmpty()) {
+            if (def.audit) audit(method, params, false, "缺少能力组：" + missing.joinToString(), session)
+            return error(
+                id, CODE_CAPABILITY_MISSING,
+                "缺少能力组：" + missing.joinToString() + "（当前授权：" + holder.granted.joinToString() + "）",
+            )
+        }
         try {
             val result = def.handle(params)
             if (def.audit) audit(method, params, true, null, session)
@@ -266,7 +276,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             return error(id, CODE_SESSION_MISSING, "会话已被占用：每个会话只允许激活一次")
         }
         holder.session = session
-        val granted = requires.map { it.removePrefix("bridge:") }
+        val granted = serverGranted().toList()
+        holder.granted = granted.toSet()
         val caps = deviceCapabilities()
         audit("bridge.handshake", params, true, null, session)
         return ok(id, JSONObject().apply {
@@ -283,6 +294,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             put("authorizedGroups", JSONArray(granted))
         })
     }
+
+    private fun serverGranted(): Set<String> =
+        runCatching {
+            lobos.capability.BridgeTokens.from(CapabilityEvidenceCollector.systemReads(this))
+        }.getOrDefault(setOf(lobos.capability.BridgeTokens.BASE))
 
     private fun packagesAction(p: JSONObject): JSONObject {
         val name = p.optString("name", "").trim()

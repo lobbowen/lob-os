@@ -10,23 +10,26 @@ object StateFiles {
 
     const val SCHEMA_KEY = "schema"
 
-    fun writeAtomic(file: File, text: String) {
-        val dir = file.parentFile ?: return
+    fun writeAtomic(file: File, text: String): Boolean {
+        val dir = file.parentFile ?: return false
         dir.mkdirs()
         val tmp = File(dir, file.name + TMP_INFIX + android.os.Process.myPid())
-        try {
+        return try {
             FileOutputStream(tmp).use { out ->
                 out.write(text.toByteArray(Charsets.UTF_8))
                 out.flush()
                 out.fd.sync()
             }
             if (!tmp.renameTo(file)) {
-                file.writeText(text)
                 tmp.delete()
+                false
+            } else {
+                fsyncDir(dir)
+                true
             }
-            fsyncDir(dir)
         } catch (_: Throwable) {
             try { tmp.delete() } catch (_: Throwable) {}
+            false
         }
     }
 

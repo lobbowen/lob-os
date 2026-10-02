@@ -8,6 +8,14 @@ object PathGuard {
     fun integrityRoots(ctx: Context): List<File> = listOf(
         File(ctx.filesDir, "os"),
         File(ctx.filesDir, "sys"),
+        File(ctx.filesDir, "programs"),
+        File(ctx.filesDir, "usr"),
+        File(ctx.filesDir, "supervisor"),
+        File(ctx.filesDir, "adb"),
+        File(ctx.filesDir, "catalog.json"),
+        File(ctx.filesDir, "program-feed.json"),
+        File(ctx.filesDir, "program-verify.js"),
+        File(ctx.filesDir, "node-versions.json"),
     )
 
     fun rejection(ctx: Context, path: String?): String? {
