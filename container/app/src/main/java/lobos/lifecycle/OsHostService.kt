@@ -237,7 +237,6 @@ class OsHostService : Service() {
                 actions = acts,
                 tickGapMs = gapMs,
                 frozen = ResidencyPolicy.frozen(gapMs),
-                accessibilityReady = protectedNow,
                 startedAtMs = startedAtMs,
                 tier = tier.tier.name.lowercase(),
                 tierBasis = tier.basis,
