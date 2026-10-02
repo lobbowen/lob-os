@@ -636,7 +636,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             patch.remove("id")
             if (patch.length() == 0) throw BridgeError(CODE_INVALID_PARAM, "空补丁：至少给一个要写的键")
             val res = ProgramSettings.patch(this@CapabilityBroker, id, patch)
-            Journal.append(this@CapabilityBroker, "programs", res.ok, "settings 更新: " + id)
+            Journal.note(this@CapabilityBroker, "programs", res.ok, "settings 更新: " + id)
             JSONObject().apply {
                 put("ok", res.ok)
                 put("settings", res.merged)

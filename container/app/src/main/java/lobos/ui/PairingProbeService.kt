@@ -83,13 +83,14 @@ class PairingProbeService : Service() {
                 if (type == MdnsWatcher.TYPE_PAIRING) {
                     pairingHost = host; pairingPort = port
                     pairingLive = true
+                    val self = this@PairingProbeService
                     if (ProbeJournal.pairingRecordFirstSeenAt == 0L) ProbeJournal.pairingRecordFirstSeenAt = now
                     ProbeJournal.append(this@PairingProbeService, "mdns", "pairing 记录 $name host=${host ?: "?"} port=$port browse后 ${ageMs}ms")
                 } else {
                     if (connectPort != port) {
-                        lobos.capability.AdbChannelComponent.reset(this, "配对端口变化，重测通道")
+                        lobos.capability.AdbChannelComponent.reset(this@PairingProbeService, "配对端口变化，重测通道")
                         ProbeJournal.append(
-                            this@PairingProbeService, "mdns",
+                            self, "mdns",
                             "connect 端口变化 $connectPort→$port → 通道缓存作废",
                         )
                     }
@@ -110,9 +111,9 @@ class PairingProbeService : Service() {
                     )
                 } else if (connectPort > 0) {
                     connectPort = 0
-                    lobos.capability.AdbChannelComponent.reset(this, "配对端口清空，重测通道")
+                    lobos.capability.AdbChannelComponent.reset(this@PairingProbeService, "配对端口清空，重测通道")
                     ProbeJournal.append(
-                        this@PairingProbeService, "mdns",
+                        self, "mdns",
                         "connect 记录消失（${name.ifBlank { "无实例名" }}）→ 端点作废、通道缓存作废",
                     )
                 } else return
