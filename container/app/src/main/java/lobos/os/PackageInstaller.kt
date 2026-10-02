@@ -99,7 +99,7 @@ object PackageInstaller {
         val v = raw.trim()
         if (v.isEmpty() || v.length > 64) return null
         if (v == "." || v == "..") return null
-        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == "." || c == "_" || c == "-" } }
+        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' } }
     }
 
     private fun runtimeGate(ctx: Context, entry: JSONObject): String? {
