@@ -62,7 +62,8 @@ jobs:
           [ -d "${ANDROID_NDK_LATEST_HOME:-}" ] || { echo "::error title=无 NDK"; exit 1; }
           echo "ANDROID_NDK=${ANDROID_NDK_LATEST_HOME}" >> "$GITHUB_ENV"
           sudo apt-get update -qq
-          sudo apt-get install -y -qq git python3 ninja cmake make zip file >/dev/null
+          sudo apt-get install -y -qq git python3 cmake make zip file >/dev/null
+          sudo apt-get install -y -qq ninja-build >/dev/null 2>&1 || echo "[note] 无 ninja-build（本构建固定用 make，非必需）"
 
       - name: 编译 Node（一次，约 3~4 小时；命中制品则跳过）
         if: steps.reuse.outputs.hit != 'yes'
