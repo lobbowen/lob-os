@@ -76,11 +76,12 @@ object ProgramOtaSelfCheck {
         }
 
         val ids = lobos.os.ProgramRegistry.listIds(ctx)
+        var km: ProgramManager? = null
         var cur: String? = null
         var floor: String? = null
         var pend: ProgramOtaStateStore.Pending? = null
         if (ids.size == 1) {
-            val km = ProgramManager(ctx, ids[0])
+            km = ProgramManager(ctx, ids[0])
             val store = ProgramOtaStateStore(km.programRootDir())
             cur = store.currentVersion()
             floor = store.floorVersion()
@@ -136,7 +137,7 @@ object ProgramOtaSelfCheck {
                 .map { it.name to it.length() }
         } catch (_: Throwable) { emptyList() }
         val staging = try {
-            (km.programRootDir().listFiles() ?: emptyArray()).filter { ProgramManager.isStagingDir(it.name) }.map { it.name }
+            (km?.programRootDir()?.listFiles() ?: emptyArray()).filter { ProgramManager.isStagingDir(it.name) }.map { it.name }
         } catch (_: Throwable) { emptyList() }
         out += SelfCheckReport.partialItem(parts, staging)
 
