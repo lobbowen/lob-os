@@ -1,5 +1,6 @@
 package lobos.native
 
+import lobos.runtime.ProcessSupervisor
 import android.content.Context
 import android.util.Log
 import lobos.RuntimeDiagnostics
