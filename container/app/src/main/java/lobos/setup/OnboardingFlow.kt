@@ -1,5 +1,12 @@
 package lobos.setup
 
+import lobos.capability.CapabilityCatalog
+import lobos.capability.CapStatus
+import lobos.capability.CapVerdict
+import lobos.capability.Evidence
+import lobos.capability.Acquisition
+import lobos.capability.Capability
+
 enum class StageStatus { DONE, CURRENT, NEXT, BLOCKED, FAILED }
 
 data class FlowStage(

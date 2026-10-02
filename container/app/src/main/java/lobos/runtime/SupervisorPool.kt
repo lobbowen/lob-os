@@ -33,7 +33,7 @@ class SupervisorPool(private val host: Service) {
         for (id in toStop) {
             val s = supervisors.remove(id)
             try { s?.shutdown() } catch (_: Throwable) {}
-            Journal.append(host, "supervisor-pool", null, "停止监督程序", "id=" + id)
+            Journal.note(host, "supervisor-pool", null, "停止监督程序", "id=" + id)
         }
         for (id in wanted) {
             if (supervisors.containsKey(id)) continue
@@ -45,7 +45,7 @@ class SupervisorPool(private val host: Service) {
                 Log.w(TAG, "启动监督器失败: " + id, e)
                 RuntimeDiagnostics.append(host, "supervisor-pool", false, "启动监督器失败", "id=" + id + " " + e.message)
             }
-            Journal.append(host, "supervisor-pool", null, "开始监督程序", "id=" + id)
+            Journal.note(host, "supervisor-pool", null, "开始监督程序", "id=" + id)
         }
         if (wanted.isNotEmpty() || toStop.isNotEmpty()) {
             RuntimeDiagnostics.append(

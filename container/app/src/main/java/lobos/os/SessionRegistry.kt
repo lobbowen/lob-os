@@ -126,8 +126,6 @@ object SessionRegistry {
     }
 
     @Synchronized
-    @Synchronized
-    @Synchronized
     fun clear(ctx: Context) = persist(ctx, emptyList())
 
     fun socketName(token: String): String = BASE_SOCKET + "." + token.take(16)

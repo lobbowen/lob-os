@@ -45,6 +45,11 @@ object ProcessLedger {
     }
 
     fun starttimeOf(pid: Int): Long {
+        val f = statFields(pid) ?: return -1
+        if (f.size < 20) return -1
+        return f[19].toLongOrNull() ?: -1
+    }
+
     fun scanChildPid(entryPath: String): Int = runCatching {
         val me = android.os.Process.myPid()
         val names = File("/proc").list() ?: return 0
@@ -61,10 +66,6 @@ object ProcessLedger {
         }
         0
     }.getOrDefault(0)
-        val f = statFields(pid) ?: return -1
-        if (f.size < 20) return -1
-        return f[19].toLongOrNull() ?: -1
-    }
 
     fun exists(pid: Int): Boolean = statFields(pid) != null
 

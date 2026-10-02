@@ -4,6 +4,12 @@ import lobos.capability.CapabilityCatalog.S0
 import lobos.capability.CapabilityCatalog.S1
 import lobos.capability.CapabilityCatalog.S2
 import lobos.capability.CapabilityCatalog.S3
+import lobos.capability.CapabilityCatalog
+import lobos.capability.CapStatus
+import lobos.capability.CapVerdict
+import lobos.capability.Evidence
+import lobos.capability.Acquisition
+import lobos.capability.Capability
 
 enum class StepStatus { DONE, ACTION, BLOCKED, FAILED }
 

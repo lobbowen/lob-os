@@ -83,7 +83,7 @@ object BootReconciler {
         val stale = !dir.isDirectory || age > PENDING_MAX_AGE_MS
         if (!stale) return false
         pm.clearPending()
-        Journal.append(
+        Journal.note(
             ctx, "boot", null, "清理陈旧 PENDING",
             "id=" + id + " version=" + p.version + " 目录在=" + dir.isDirectory,
         )
@@ -100,7 +100,7 @@ object BootReconciler {
             if (!pm.programDir(p.version).isDirectory) continue
             pm.clearPending()
             out.add(id)
-            Journal.append(
+            Journal.note(
                 ctx, "boot", null, "撤销未完成的安装（PENDING 未激活）",
                 "id=" + id + " pending=" + p.version + " current=" + (cur ?: "无") + "（目录在但指针未切，按未安装处理）",
             )
@@ -119,13 +119,13 @@ object BootReconciler {
                 if (!km.entryPath(v).exists()) continue
                 km.setCurrentVersion(v)
                 km.clearPending()
-                Journal.append(
+                Journal.note(
                     ctx, "boot", false, "入口缺失：回退到可用版本",
                     "id=" + id + " 损坏=" + cur + " 回退=" + v + "（损坏版本的清单入口不存在）",
                 )
                 return v
             }
-            Journal.append(ctx, "boot", false, "入口缺失且无可用版本", "id=" + id + " current=" + cur)
+            Journal.note(ctx, "boot", false, "入口缺失且无可用版本", "id=" + id + " current=" + cur)
         }
         return null
     }

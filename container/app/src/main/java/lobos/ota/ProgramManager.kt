@@ -143,7 +143,7 @@ class ProgramManager(
                     },
                 ),
             )
-            lobos.os.Journal.append(
+            lobos.os.Journal.note(
                 context, "registry", null, "指针切换即登记（常驻由清单 lifecycle.resident 决定）",
                 "id=" + programId + " version=" + version + " role=" + role + " resident=" + resident,
             )

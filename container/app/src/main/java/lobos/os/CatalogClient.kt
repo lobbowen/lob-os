@@ -111,7 +111,7 @@ object CatalogClient {
             put("manifestName", name)
             put("body", text)
         })
-        Journal.append(
+        Journal.note(
             ctx, "catalog", null, "目录已刷新（签名校验通过）",
             "channel=" + parsed.optString("channel", "") + " 包=" + entries(ctx).length(),
         )

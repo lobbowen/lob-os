@@ -110,7 +110,7 @@ object AdbClientRunner {
             runCatching { proc?.destroy() }
             proc = null
         }
-        lobos.os.Journal.append(context, "adb", false, "adb serve 连续超时：强制重启通道进程", why)
+        lobos.os.Journal.note(context, "adb", false, "adb serve 连续超时：强制重启通道进程", why)
     }
 
     private fun serve(context: Context, method: String, params: JSONObject, timeoutMs: Long): AdbOutcome {
@@ -189,7 +189,7 @@ object AdbClientRunner {
         RuntimeEnvironment.treeRootEnv(RuntimeEnvironment.treeRootFor(context), Os.getenv("PATH")) +
             mapOf("LOBOS_ADB_DIR" to adbDir.absolutePath)
 
-    private fun startProcess(context: Context): ServeProcess {
+    private fun startProcess(context: Context): ServeProcess? {
         val scriptDir = NodeProvisioner.ensureAdbClientScripts(context)
         val nodeBin = lobos.os.NodeRuntime.path(context) ?: run {
             lastStartError = lobos.os.NodeRuntime.missing(context)
@@ -314,6 +314,11 @@ object AdbClientRunner {
             err.name = "adb-serve-err"
             err.isDaemon = true
             err.start()
+        }
+
+        fun destroy() {
+            alive = false
+            runCatching { process.destroy() }
         }
 
         fun call(method: String, params: JSONObject, timeoutMs: Long): CallResult {

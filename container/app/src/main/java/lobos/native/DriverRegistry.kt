@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
+import lobos.os.StateFiles
 
 object DriverRegistry {
 
@@ -142,7 +143,7 @@ object DriverRegistry {
             } else {
                 cur.add(Entry(driver, mode, 1, now, now, detail))
                 val declared = DRIVERS.firstOrNull { it.id == driver }
-                lobos.os.Journal.append(
+                lobos.os.Journal.note(
                     ctx, "compat", false,
                     "兼容层替换首次发生（shim 自行声明，非探测）",
                     "driver=" + driver + " mode=" + mode +

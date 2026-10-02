@@ -437,7 +437,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                         this@CapabilityBroker, id, false,
                         "拒绝卸载：仅存 1 个版本（" + (cur ?: "无") + "），删掉就没有可运行程序",
                     )
-                    Journal.append(
+                    Journal.note(
                         this@CapabilityBroker, "appmgr", false, "uninstall 被拒：保护最后可用版本",
                         "current=" + (cur ?: "无"),
                     )
@@ -578,7 +578,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 ?: throw BridgeError(CODE_METHOD_NOT_FOUND, "无此实例: " + id)
             val action = p.optString("action", "")
             if (action == "stop") {
-                Journal.append(
+                Journal.note(
                     this@CapabilityBroker, "instance", false, "实例动作被拒：停止是内核保留动作",
                     "id=" + id + "（内核尚未具备按程序独立停止的能力）",
                 )
@@ -605,7 +605,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply { put("sessionState", OsInit.current(this@CapabilityBroker).name.lowercase(Locale.US)) }
         },
         "os.session.stop" to MethodDef(listOf("base"), true) { _ ->
-            Journal.append(
+            Journal.note(
                 this@CapabilityBroker, "session", false, "会话停止被拒：停用运行时是内核保留动作",
                 "应用无权请求宿主停机；宿主停机只能经内核内部路径",
             )

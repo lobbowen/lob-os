@@ -138,7 +138,7 @@ class OsHostService : Service() {
                     this, "residency", false, "节拍被冻结/打断（宿主可能被回收过）",
                     "距上拍 " + (gap / 1000) + "s，阈值 " + (ResidencyPolicy.FREEZE_GAP_MS / 1000) + "s；已自证续拍",
                 )
-                lobos.os.Journal.append(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
+                lobos.os.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
             }
             val anchor = AccessibilityAnchor.state(this)
             observeAnchorTransition(anchor)
@@ -151,7 +151,7 @@ class OsHostService : Service() {
             val nowWall = System.currentTimeMillis()
             if (!lobos.os.DozeBackstop.armedRecently(nowWall)) {
                 val armed = lobos.os.DozeBackstop.schedule(this)
-                lobos.os.Journal.append(
+                lobos.os.Journal.note(
                     this, "doze", armed, "兜底闹钟未按期投递：已重挂",
                     "armed=" + armed + "（看门狗每拍校验布防）",
                 )
@@ -281,7 +281,7 @@ class OsHostService : Service() {
                 "依据=" + tier.basis.joinToString("；") +
                     (if (tier.unproven.isEmpty()) "" else "；未证=" + tier.unproven.joinToString("；")),
             )
-            lobos.os.Journal.append(this, "capability", null, "能力档位判定", tier.tier.name.lowercase())
+            lobos.os.Journal.note(this, "capability", null, "能力档位判定", tier.tier.name.lowercase())
         }
         lobos.os.ResidencyStatus.record(
             lobos.os.ResidencyStatus.Snapshot(

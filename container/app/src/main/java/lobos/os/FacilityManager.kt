@@ -74,7 +74,7 @@ object FacilityManager {
         )
         val missing = all.filter { !probe(ctx, it).installed }.map { it.name }
         if (missing.isNotEmpty()) {
-            Journal.append(ctx, "facility", false, "设施缺失（登记与实物不一致）", "缺=" + missing.joinToString(","))
+            Journal.note(ctx, "facility", false, "设施缺失（登记与实物不一致）", "缺=" + missing.joinToString(","))
         }
     }
 
@@ -161,7 +161,7 @@ object FacilityManager {
                 java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
             }
         }
-        Journal.append(ctx, "facility", null, "装配视图已更新（usr/）", "启用=" + enabled.joinToString(",") { it.name })
+        Journal.note(ctx, "facility", null, "装配视图已更新（usr/）", "启用=" + enabled.joinToString(",") { it.name })
     }
 
     @Synchronized
@@ -179,7 +179,7 @@ object FacilityManager {
         }
         if (!hit) return false
         StateFiles.writeJson(f, o)
-        Journal.append(ctx, "facility", null, if (enabled) "启用设施" else "停用设施", "name=" + name)
+        Journal.note(ctx, "facility", null, if (enabled) "启用设施" else "停用设施", "name=" + name)
         reconcile(ctx)
         return true
     }
@@ -203,7 +203,7 @@ object FacilityManager {
             o.put("facilities", out)
             StateFiles.writeJson(f, o)
         }
-        Journal.append(ctx, "facility", removed, "卸载设施", "name=" + name + " dir=" + reg.stateDir)
+        Journal.note(ctx, "facility", removed, "卸载设施", "name=" + name + " dir=" + reg.stateDir)
         reconcile(ctx)
         return removed
     }

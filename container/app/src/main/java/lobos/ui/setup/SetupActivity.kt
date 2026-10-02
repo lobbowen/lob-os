@@ -45,6 +45,8 @@ import lobos.ui.ProbeJournal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import lobos.setup.StageStatus
+import lobos.setup.StepStatus
 
 class SetupActivity : AppCompatActivity() {
 

@@ -24,6 +24,8 @@ object PrefixProvisioner {
     fun root(ctx: Context): File = File(ctx.filesDir, "usr")
     fun binDir(ctx: Context): File = File(root(ctx), "bin")
     fun libDir(ctx: Context): File = File(root(ctx), "lib")
+    fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
+
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
 
     fun provision(ctx: Context, nodeBin: File): List<String> {
