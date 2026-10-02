@@ -8,7 +8,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import lobos.ProvisioningProbe
-untimeDiagnostics
+import lobos.RuntimeDiagnostics
 import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
 import lobos.ota.ProgramOtaResolution
