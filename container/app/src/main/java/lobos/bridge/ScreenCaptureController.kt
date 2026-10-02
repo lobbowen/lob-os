@@ -1,8 +1,6 @@
 package lobos.bridge
 
 import android.app.Activity
-import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.ContextWrapper
@@ -18,13 +16,8 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import lobos.MainActivity
-import lobos.OsApplication
-import lobos.R
-import lobos.RuntimeDiagnostics
+untimeDiagnostics
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
