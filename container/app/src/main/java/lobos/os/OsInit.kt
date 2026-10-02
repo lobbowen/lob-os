@@ -3,7 +3,6 @@ package lobos.os
 import android.content.Context
 import java.io.File
 import lobos.capability.ProbeOutcome
-import lobos.lifecycle.AnchorState
 import org.json.JSONObject
 
 object OsInit {
@@ -34,8 +33,6 @@ object OsInit {
             controlPlaneUp = f.optBoolean("controlPlaneUp"),
             channel = ProbeOutcome.values().firstOrNull { it.name == f.optString("channel") }
                 ?: ProbeOutcome.NEVER_RUN,
-            anchor = AnchorState.values().firstOrNull { it.name == f.optString("anchor") }
-                ?: AnchorState.UNKNOWN,
         )
         return OsSnapshot(
             phase = phase,
@@ -56,7 +53,6 @@ object OsInit {
                 put("readingsCollected", snap.facts.readingsCollected)
                 put("controlPlaneUp", snap.facts.controlPlaneUp)
                 put("channel", snap.facts.channel.name)
-                put("anchor", snap.facts.anchor.name)
             })
             snap.interrupted?.let { put("interrupted", it) }
         }
@@ -118,17 +114,9 @@ object OsInit {
             s.facts.controlPlaneUp -> "运行时在线"
             else -> "运行时未响应"
         }
-        val channel = when (s.facts.channel) {
-            ProbeOutcome.LIVE -> "通道通"
-            ProbeOutcome.DEAD -> "通道不通"
-            ProbeOutcome.NEVER_RUN -> "通道未验"
-        }
-        val anchor = when (s.facts.anchor) {
-            AnchorState.BOUND -> "锚在位"
-            AnchorState.UNBOUND -> "锚掉线"
-            AnchorState.UNKNOWN -> "锚未知"
-        }
+        val programs = ProgramStatusHub.snapshot(ctx)
+        val running = programs.count { it.state == ProgramRunState.RUNNING }
         val prefix = s.interrupted?.let { it + " · " } ?: ""
-        return prefix + "Lob OS · " + s.phase.label + " · " + runtime + " · " + channel + " · " + anchor
-    }
-}
+        return prefix + "Lob OS · " + s.phase.label + " · " + runtime +
+            " · " + running + "/" + programs.size + " 个程序在跑"
+    }}

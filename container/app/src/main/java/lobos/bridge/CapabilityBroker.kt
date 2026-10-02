@@ -20,7 +20,7 @@ import lobos.RuntimeDiagnostics
 import lobos.capability.BridgeTokens
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
-import lobos.lifecycle.AccessibilityAnchor
+import lobos.lifecycle.AccessibilityServiceState
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
@@ -954,19 +954,19 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("noticeGroups", lobos.os.ProgramNotificationHub.groupsJson())
             }
         },
-        "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+        "os.accessibility.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             JSONObject().apply {
-                put("state", AccessibilityAnchor.state(this@CapabilityBroker).name)
-                put("bound", AccessibilityAnchor.isBound(this@CapabilityBroker))
-                put("autoHeal", "无条件自愈：只看锚是否掉，不看任何开关")
+                put("state", AccessibilityServiceState.state(this@CapabilityBroker).name)
+                put("connected", AccessibilityServiceState.isBound(this@CapabilityBroker))
+                put("role", "UI 自动化的执行体（不参与保活）")
             }
         },
-        "os.anchor.ensure" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, _programId ->
+        "os.accessibility.enable" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, _programId ->
             val ms = p.optLong("timeoutMs", 8000L)
-            val out = AccessibilityAnchor.ensureBound(this@CapabilityBroker, ms)
+            val out = AccessibilityServiceState.ensureBound(this@CapabilityBroker, ms)
             JSONObject().apply {
                 put("state", out.state.name)
-                put("bound", out.bound)
+                put("connected", out.bound)
                 put("issued", out.issued)
                 put("detail", out.detail)
             }

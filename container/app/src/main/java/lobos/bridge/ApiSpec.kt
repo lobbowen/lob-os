@@ -31,7 +31,7 @@ object ApiSpec {
     )
 
     val SYS_NAMESPACES = listOf(
-        "capability", "permissions", "anchor", "adb", "automation",
+        "capability", "permissions", "accessibility", "adb", "automation",
         "notifications", "screenshot", "power", "shell", "fs", "ui", "device",
     )
 
@@ -80,6 +80,8 @@ object ApiSpec {
         "sys.info" to "lobos.sys.info",
         "sys.api" to "lobos.sys.api",
         "sys.shape" to "lobos.sys.shape",
+        "os.anchor.state" to "lobos.sys.accessibility.state",
+        "os.anchor.ensure" to "lobos.sys.accessibility.enable",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
         "os.nativeAssets" to "lobos.sys.device.nativeAssets",
     )
