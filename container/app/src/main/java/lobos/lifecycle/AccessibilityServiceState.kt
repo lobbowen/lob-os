@@ -22,6 +22,8 @@ data class EnableOutcome(
 
 object AccessibilityServiceState {
 
+    const val ENABLE_BUDGET_MS = 5_000L
+
     private const val TAG = "AccessibilityServiceState"
 
     private fun componentString(ctx: Context): String =

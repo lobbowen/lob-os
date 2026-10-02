@@ -34,12 +34,8 @@ class OsHostService : Service() {
     private var broker: CapabilityBroker? = null
     private var capture: ScreenCaptureController? = null
 
-    private var anchorBoundLastTick: Boolean? = null
     private var lastTickMs = 0L
     private var startedAtMs = 0L
-    private var anchorRebindAttempts = 0
-    private var anchorRebindNextAt = 0L
-    private var anchorGiveUpLogged = false
     private var adbReady = false
     private var adbSampledAt = 0L
     private var degradedLast: List<String> = emptyList()
@@ -232,7 +228,7 @@ class OsHostService : Service() {
         }
         lobos.os.ResidencyStatus.record(
             lobos.os.ResidencyStatus.Snapshot(
-                anchorBound = protectedNow,
+                accessibilityReady = protectedNow,
                 adbReady = adbReady,
                 programsRunning = runningIds.size,
                 installedPrograms = installed,
@@ -241,7 +237,7 @@ class OsHostService : Service() {
                 actions = acts,
                 tickGapMs = gapMs,
                 frozen = ResidencyPolicy.frozen(gapMs),
-                anchorRebindAttempts = anchorRebindAttempts,
+                accessibilityReady = protectedNow,
                 startedAtMs = startedAtMs,
                 tier = tier.tier.name.lowercase(),
                 tierBasis = tier.basis,

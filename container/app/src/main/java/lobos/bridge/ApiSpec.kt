@@ -36,8 +36,8 @@ object ApiSpec {
     )
 
     val IDEMPOTENCE = mapOf(
-        "lobos.sys.anchor.ensure" to IDEMPOTENT,
-        "lobos.sys.anchor.state" to READONLY,
+        "lobos.sys.accessibility.enable" to IDEMPOTENT,
+        "lobos.sys.accessibility.state" to READONLY,
         "lobos.sys.permissions.ledger" to READONLY,
         "lobos.sys.permissions.roles" to READONLY,
     )

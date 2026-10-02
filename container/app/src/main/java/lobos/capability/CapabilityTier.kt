@@ -7,7 +7,7 @@ object CapabilityTier {
 
     enum class Tier(val label: String) {
         APK("apk：基础档，只有本应用自身权限"),
-        APK_ADB("apk+adb：已配对 ADB 通道在线（可写 secure settings，锚可由内核重挂）"),
+        APK_ADB("apk+adb：已配对 ADB 通道在线（可执行 adb 取权）"),
         APK_DO("apk+do：Device Owner（可选档；可用 API 需逐条验证）"),
     }
 
