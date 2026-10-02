@@ -383,10 +383,15 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 ),
                 getenv("PATH"),
             )
-            val pb = ProcessBuilder(plan.command).directory(plan.cwd)
-            pb.environment().clear()
-            pb.environment().putAll(plan.env)
-            nodeProcess = pb.start()
+            val spawned = ProcessSupervisor.spawn(
+                command = plan.command,
+                cwd = plan.cwd,
+                env = plan.env,
+                envMode = ProcessSupervisor.ENV_CLEAR,
+                owner = ProcessSupervisor.OWNER_PROGRAM,
+                programId = programId,
+            )
+            nodeProcess = spawned.process
             healthUp = false
             var launchedPid = 0
             val pidDeadline = SystemClock.elapsedRealtime() + 3_000L
@@ -563,7 +568,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             return
         }
         val r = try {
-            val p = ProcessBuilder(bin.absolutePath).redirectErrorStream(true).start()
+            val p = ProcessSupervisor.spawn(
+                command = listOf(bin.absolutePath),
+                envMode = ProcessSupervisor.ENV_INHERIT,
+                redirectErrorStream = true,
+                owner = ProcessSupervisor.OWNER_PROBE,
+            ).process
             val out = p.inputStream.bufferedReader().readText()
             if (!p.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) { p.destroy(); "timeout" } else out.trim()
         } catch (e: Throwable) {
@@ -807,7 +817,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             "端口 ${GuestAdapter.PROBE_PORT}（不碰程序控制面，仅验 exec + listen）"
         )
         val lines = java.util.concurrent.ConcurrentLinkedQueue<String>()
-        val p = ProcessBuilder(plan.command).directory(plan.cwd).redirectErrorStream(true).start()
+        val p = ProcessSupervisor.spawn(
+            command = plan.command,
+            cwd = plan.cwd,
+            envMode = ProcessSupervisor.ENV_INHERIT,
+            redirectErrorStream = true,
+            owner = ProcessSupervisor.OWNER_PROBE,
+        ).process
         probeProcess = p
         val pump = Thread {
             try {

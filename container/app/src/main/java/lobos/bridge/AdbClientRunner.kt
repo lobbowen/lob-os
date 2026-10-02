@@ -198,11 +198,15 @@ object AdbClientRunner {
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath, "serve")
         args += listOf("--migrate-from", File(context.filesDir, "supervisor/adb").absolutePath)
-        val pb = ProcessBuilder(args)
-            .directory(context.filesDir)
-            .redirectErrorStream(false)
-        pb.environment().putAll(envFor(context, adbDir))
-        return ServeProcess(pb.start())
+        val spawned = ProcessSupervisor.spawn(
+            command = args,
+            cwd = context.filesDir,
+            env = envFor(context, adbDir),
+            envMode = ProcessSupervisor.ENV_MERGE,
+            redirectErrorStream = false,
+            owner = ProcessSupervisor.OWNER_ADB_CLIENT,
+        )
+        return ServeProcess(spawned.process)
     }
 
     private fun toOutcome(obj: JSONObject, p: ServeProcess): AdbOutcome {
@@ -240,9 +244,14 @@ object AdbClientRunner {
         args += listOf("--migrate-from", File(context.filesDir, "supervisor/adb").absolutePath)
 
         return try {
-            val pb = ProcessBuilder(args).directory(context.filesDir).redirectErrorStream(false)
-            pb.environment().putAll(envFor(context, adbDir))
-            val p = pb.start()
+            val p = ProcessSupervisor.spawn(
+                command = args,
+                cwd = context.filesDir,
+                env = envFor(context, adbDir),
+                envMode = ProcessSupervisor.ENV_MERGE,
+                redirectErrorStream = false,
+                owner = ProcessSupervisor.OWNER_ADB_CLIENT,
+            ).process
             val out = StringBuilder()
             val err = StringBuilder()
             val outPump = Thread {

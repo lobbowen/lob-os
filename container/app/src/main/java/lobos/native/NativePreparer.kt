@@ -217,10 +217,12 @@ object NativePreparer {
     private fun probe(exe: NativeExecutable, f: File): AssetStatus {
         try {
             val cmd = mutableListOf(f.absolutePath).apply { addAll(exe.probeArgs) }
-            val p = ProcessBuilder(cmd)
-                .redirectErrorStream(true)
-                .apply { environment().clear() }
-                .start()
+            val p = ProcessSupervisor.spawn(
+                command = cmd,
+                envMode = ProcessSupervisor.ENV_CLEAR,
+                redirectErrorStream = true,
+                owner = ProcessSupervisor.OWNER_PROBE,
+            ).process
             val out = p.inputStream.bufferedReader().readText().trim()
             val exit = p.waitFor()
 
