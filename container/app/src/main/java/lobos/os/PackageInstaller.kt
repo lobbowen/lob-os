@@ -26,9 +26,11 @@ object PackageInstaller {
             ?: return fail(ctx, name, "下载失败：" + url)
         val got = SupplyProvisioner.sha256Hex(bytes)
         if (got != want) return fail(ctx, name, "sha256 不符：" + got.take(12) + " != " + want.take(12))
-        val ver = version?.takeIf { it.isNotBlank() }
+        val rawVer = version?.takeIf { it.isNotBlank() }
             ?: entry.optString("version", "").takeIf { it.isNotBlank() }
             ?: got.take(12)
+        val ver = safeSegment(rawVer)
+            ?: return fail(ctx, name, "版本号非法（只接受字母数字与 . _ -，且非 . 或 ..）：" + rawVer.take(40))
         val staging = File(dir, "." + ver + ".staging")
         runCatching {
             staging.deleteRecursively()
@@ -36,6 +38,11 @@ object PackageInstaller {
             SupplyProvisioner.unzipInto(bytes, staging)
         }.onFailure { return fail(ctx, name, "解包失败：" + it.message) }
         val dest = File(dir, ver)
+        val rootCanon = dir.canonicalFile.path
+        if (dest.canonicalFile.path != rootCanon + File.separator + ver) {
+            staging.deleteRecursively()
+            return fail(ctx, name, "落位越界，已拒绝：" + dest.canonicalFile.path)
+        }
         runCatching { dest.deleteRecursively() }
         if (!staging.renameTo(dest)) {
             runCatching {
@@ -44,7 +51,7 @@ object PackageInstaller {
             }.onFailure { return fail(ctx, name, "落位失败：" + it.message) }
         }
         dir.mkdirs()
-        File(dir, "CURRENT").writeText(ver)
+        StateFiles.writeAtomic(File(dir, "CURRENT"), ver)
         val entryRel = entry.optString("entry", "bin/" + name)
         val links = linkEntry(ctx, dest, entryRel, entry.optJSONArray("aliases"))
         FacilityRegistry.upsert(
@@ -88,6 +95,13 @@ object PackageInstaller {
         return removed
     }
 
+    private fun safeSegment(raw: String): String? {
+        val v = raw.trim()
+        if (v.isEmpty() || v.length > 64) return null
+        if (v == "." || v == "..") return null
+        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == "." || c == "_" || c == "-" } }
+    }
+
     private fun runtimeGate(ctx: Context, entry: JSONObject): String? {
         val req = entry.optJSONObject("requires") ?: entry.optJSONObject("runtime") ?: return null
         val runtime = req.optString("name", "").trim()
@@ -128,7 +142,7 @@ object PackageInstaller {
             runCatching { ExecBits.apply(target) }
             runCatching {
                 val link = File(bin, linkName)
-                if (link.exists()) link.delete()
+                if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
                 android.system.Os.symlink(target.absolutePath, link.absolutePath)
                 n += 1
             }

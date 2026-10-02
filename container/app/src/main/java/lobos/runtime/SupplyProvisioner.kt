@@ -120,6 +120,8 @@ object SupplyProvisioner {
             if (rel.isEmpty() || target.isEmpty()) continue
             try {
                 val dst = File(root, rel)
+                val dstCanon = dst.canonicalPath
+                if (!dstCanon.startsWith(inside) || dstCanon == root.canonicalPath) continue
                 val resolved = File(dst.parentFile, target).canonicalPath
                 if (!resolved.startsWith(inside) || resolved == root.canonicalPath) continue
                 dst.parentFile?.mkdirs()

@@ -8,6 +8,14 @@ const zlib = require('zlib');
 
 const RESULT_PREFIX = 'LOBOS_VERIFY_RESULT ';
 
+const ZIP_BUDGET = {
+  entryInflated: 64 * 1024 * 1024,
+  totalInflated: 128 * 1024 * 1024,
+  entries: 5000,
+  nameBytes: 256,
+};
+let inflatedTotal = 0;
+
 function info(msg) { process.stderr.write('[verify] ' + msg + '\n'); }
 
 function emit(obj) {
@@ -85,21 +93,41 @@ function listZip(buf) {
 
 function readEntry(buf, entry) {
   const off = entry.localOffset;
-  if (buf.readUInt32LE(off) !== 0x04034b50) throw new Error('局部头损坏: ' + entry.name);
+  if (buf.readUInt32LE(off) !== 0x04034b50) throw new Error("局部头损坏: " + entry.name);
   const lhNameLen = buf.readUInt16LE(off + 26);
   const lhExtraLen = buf.readUInt16LE(off + 28);
   const dataStart = off + 30 + lhNameLen + lhExtraLen;
   const raw = buf.subarray(dataStart, dataStart + entry.compSize);
+  if (Buffer.byteLength(entry.name, "utf8") > ZIP_BUDGET.nameBytes) {
+    throw new Error("条目名超 " + ZIP_BUDGET.nameBytes + " 字节: " + entry.name.slice(0, 40));
+  }
   let data;
-  if (entry.method === 0) data = Buffer.from(raw);
-  else if (entry.method === 8) data = zlib.inflateRawSync(raw);
-  else throw new Error('不支持的压缩方式 method=' + entry.method + ': ' + entry.name);
-  if (crc32(data) !== entry.crc) throw new Error('CRC 校验失败: ' + entry.name);
+  if (entry.method === 0) {
+    if (entry.compSize > ZIP_BUDGET.entryInflated) {
+      throw new Error("条目声明解压超预算（zip 炸弹）: " + entry.name);
+    }
+    data = Buffer.from(raw);
+  } else if (entry.method === 8) {
+    if (entry.uncompSize > ZIP_BUDGET.entryInflated) {
+      throw new Error("条目声明解压超 " + ZIP_BUDGET.entryInflated + " 字节（zip 炸弹）: " + entry.name);
+    }
+    data = zlib.inflateRawSync(raw, { maxOutputLength: ZIP_BUDGET.entryInflated });
+  } else {
+    throw new Error("不支持的压缩方式 method=" + entry.method + ": " + entry.name);
+  }
+  inflatedTotal += data.length;
+  if (inflatedTotal > ZIP_BUDGET.totalInflated) {
+    throw new Error("累计解压超预算 " + ZIP_BUDGET.totalInflated + " 字节（zip 炸弹）");
+  }
+  if (crc32(data) !== entry.crc) throw new Error("CRC 校验失败: " + entry.name);
   return data;
 }
 
 function checkZipIntegrity(buf) {
   const entries = listZip(buf);
+  if (entries.length > ZIP_BUDGET.entries) {
+    throw new Error('zip 条目数 ' + entries.length + ' 超上限 ' + ZIP_BUDGET.entries + '（疑似恶意包）');
+  }
   for (const e of entries) {
     const norm = path.posix.normalize(e.name);
     if (norm.startsWith('..') || path.posix.isAbsolute(norm)) {

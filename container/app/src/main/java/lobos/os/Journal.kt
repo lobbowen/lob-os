@@ -103,6 +103,7 @@ object Journal {
         return append(ctx, category, null as Reason?, text)
     }
 
+    @Synchronized
     fun append(ctx: Context, category: String, reason: Reason?, detail: String): Event {
         if (seq == 0L) seq = lastSeq(ctx)
         val ev = Event(++seq, System.currentTimeMillis(), category, reason, detail)

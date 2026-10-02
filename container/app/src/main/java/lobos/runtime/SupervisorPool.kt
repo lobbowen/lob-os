@@ -18,6 +18,7 @@ class SupervisorPool(private val host: Service) {
         sync()
     }
 
+    @Synchronized
     fun onHostStart(intent: Intent?) {
     runCatching { resetComponents("内核动作：" + (intent?.action ?: "无")) }
         val target = intent?.getStringExtra("programId")?.takeIf { it.isNotBlank() }

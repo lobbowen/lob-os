@@ -133,6 +133,23 @@ object FacilityRegistry {
     }
 
     @Synchronized
+    fun setEnabled(ctx: Context, name: String, enabled: Boolean): Boolean {
+        val f = file(ctx)
+        val o = StateFiles.readJson(f) ?: return false
+        val arr = o.optJSONArray("facilities") ?: return false
+        var hit = false
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            if (e.optString("name") == name) {
+                e.put("enabled", enabled)
+                hit = true
+            }
+        }
+        if (!hit) return false
+        return StateFiles.writeJson(f, o)
+    }
+
+    @Synchronized
     fun setVersion(ctx: Context, name: String, version: String) {
         val f = file(ctx)
         val o = StateFiles.readJson(f) ?: return
