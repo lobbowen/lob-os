@@ -1,6 +1,7 @@
 package lobos.os
 
 import android.content.Context
+import android.os.Process
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
@@ -136,8 +137,7 @@ object ProcessLedger {
 
     fun isolateGroup(pid: Int): Boolean = runCatching {
         if (pid <= 1) return false
-        android.system.Os.setpgid(pid, pid)
-        true
+        Process.setChildProcessGroupId(pid) != -1
     }.getOrDefault(false)
 
     fun ownsGroup(entry: Entry): Boolean =
@@ -146,7 +146,7 @@ object ProcessLedger {
     fun killGroup(entry: Entry): Boolean {
         if (!ownsGroup(entry)) return false
         return runCatching {
-            android.system.Os.kill(-entry.pgid, android.system.OsConstants.SIGTERM)
+            android.system.Os.kill(-entry.pgid, android.os.Process.TERMINATE)
             true
         }.getOrDefault(false)
     }
