@@ -89,25 +89,9 @@ object AccessibilityAnchor {
         } catch (_: Throwable) {
             false
         }
-        var how = if (wrote) "本地写 secure 设置" else "本地无 WRITE_SECURE_SETTINGS，走 ADB 通道"
-        var issued = wrote
-
-        if (!wrote) {
-            val out = adbPut(ctx, PermissionCatalog.SECURE_KEY_ACCESSIBILITY, "'" + joined + "'", deadline)
-            issued = out?.ok == true
-            how = when {
-                out == null -> how + "失败：保护激活预算（" + timeoutMs + "ms）已用尽"
-                out.ok -> how + "：写入服务名单" + (if (needMaster) "、总开关" else "")
-                else -> how + "失败：" + (out.error ?: out.raw.take(120))
-            }
-            if (needMaster && out?.ok == true) {
-                val master = adbPut(ctx, PermissionCatalog.SECURE_KEY_ACCESSIBILITY_ENABLED, "1", deadline)
-                if (master?.ok != true) how += "；总开关未置上（" + (master?.error ?: "预算用尽") + "）"
-            }
-        } else if (needMaster) {
-            how += "，总开关一并置 1"
-        }
-
+        val how = if (wrote) "本机写 secure 设置成功"
+            else "本机无 WRITE_SECURE_SETTINGS：请到系统「无障碍」页手动开启（本设计不借 ADB 静默改系统设置）"
+        val issued = wrote
         val st = state(ctx)
         val bound = st == AnchorState.BOUND
         RuntimeDiagnostics.append(
@@ -118,15 +102,5 @@ object AccessibilityAnchor {
         return BindOutcome(st, bound, issued, how + "；state=" + st)
     }
 
-    private fun adbPut(ctx: Context, key: String, value: String, deadlineMs: Long): AdbClientRunner.AdbOutcome? {
-        val left = deadlineMs - SystemClock.elapsedRealtime()
-        if (left <= 0L) return null
-        return try {
-            AdbClientRunner.shell(
-                ctx, "settings put secure " + key + " " + value, null, null, left,
-            )
-        } catch (_: Throwable) {
-            null
-        }
-    }
+
 }

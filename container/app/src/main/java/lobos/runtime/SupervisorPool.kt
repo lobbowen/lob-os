@@ -68,7 +68,11 @@ class SupervisorPool(private val host: Service) {
     }
 
     @Synchronized
-    fun running(): List<String> = supervisors.keys.toList()
+    fun running(): List<String> {
+        val ids = supervisors.keys.toList()
+        lobos.os.ProgramStatusHub.publishRunning(ids.toSet())
+        return ids
+    }
 
     fun tickComponents() {
         runCatching { lobos.capability.AdbChannelComponent.tick(host) }
