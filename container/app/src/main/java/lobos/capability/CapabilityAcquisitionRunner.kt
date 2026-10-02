@@ -8,14 +8,9 @@ import lobos.permissions.PermissionCenter
 
 data class AcquisitionResult(val ok: Boolean, val verified: Boolean, val detail: String)
 
-data class AutoFlowStep(val capId: String, val attempted: Boolean, val ok: Boolean, val detail: String)
-
 object CapabilityAcquisitionRunner {
 
     private const val DEFAULT_TIMEOUT_MS = 20_000L
-
-    private const val AUTO_FLOW_MAX_ATTEMPTS = 2
-    private const val AUTO_FLOW_BACKOFF_MS = 1_500L
 
     @Synchronized
     fun run(
@@ -78,7 +73,7 @@ object CapabilityAcquisitionRunner {
         return AcquisitionResult(
             ok = outcome.issued,
             verified = outcome.bound,
-            detail = "锚 " + outcome.state + "：" + outcome.detail +
+            detail = "无障碍服务 " + outcome.state + "：" + outcome.detail +
                 (if (listedNotBound) "（名单已登记，系统未绑定服务实例）" else ""),
         )
     }
