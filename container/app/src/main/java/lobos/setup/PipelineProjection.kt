@@ -4,6 +4,7 @@ import lobos.capability.CapabilityCatalog.S0
 import lobos.capability.CapabilityCatalog.S1
 import lobos.capability.CapabilityCatalog.S2
 import lobos.capability.CapabilityCatalog.S3
+import lobos.capability.CapabilityCatalog.OX
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapStatus
 import lobos.capability.CapVerdict
@@ -27,19 +28,24 @@ object PipelineProjection {
     const val S4 = "S4"
 
     private val GATING = listOf(
-        CapabilityCatalog.ADB_CHANNEL,
         CapabilityCatalog.RUNTIME,
         CapabilityCatalog.PROGRAM_BUNDLE,
+    )
+
+    private val OPTIONAL = listOf(
+        CapabilityCatalog.ADB_CHANNEL,
+        CapabilityCatalog.ADB_UI_AUTOMATION,
     )
 
     fun workbenchReady(verdicts: Map<String, CapVerdict>): Boolean =
         GATING.all { verdicts[it]?.status == CapStatus.GRANTED }
 
     private val TITLES = mapOf(
-        S0 to "ADB 通道",
-        S1 to "系统能力（可选）",
-        S2 to "能力与权限集",
+        S0 to "系统能力（可选）",
+        S1 to "能力与权限集",
+        S2 to "状态与权限",
         S3 to "运行时+内核",
+        CapabilityCatalog.OX to "可选组件（ADB）",
     )
 
     private fun rank(s: CapStatus): Int = when (s) {
