@@ -79,11 +79,11 @@ class PairingProbeService : Service() {
         ProbeJournal.append(this, "svc", "探针启动：开始 browse ${MdnsWatcher.TYPE_PAIRING} + ${MdnsWatcher.TYPE_CONNECT}")
         val sink = object : MdnsWatcher.Sink {
             override fun onRecord(type: String, host: String?, port: Int, name: String, ageMs: Long) {
+                val self = this@PairingProbeService
                 val now = System.currentTimeMillis()
                 if (type == MdnsWatcher.TYPE_PAIRING) {
                     pairingHost = host; pairingPort = port
                     pairingLive = true
-                    val self = this@PairingProbeService
                     if (ProbeJournal.pairingRecordFirstSeenAt == 0L) ProbeJournal.pairingRecordFirstSeenAt = now
                     ProbeJournal.append(this@PairingProbeService, "mdns", "pairing 记录 $name host=${host ?: "?"} port=$port browse后 ${ageMs}ms")
                 } else {
