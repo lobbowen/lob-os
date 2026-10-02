@@ -5,7 +5,7 @@ import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.ota.ProgramInstaller
-import lobos.ota.ProgramManager
+import lobos.ota.ProgramDir
 import lobos.ota.ProgramOtaUpdater
 
 object FacilityManager {
@@ -110,9 +110,9 @@ object FacilityManager {
         return bin.takeIf { it.isFile }
     }
 
-    fun managerFor(ctx: Context, name: String): ProgramManager? {
+    fun managerFor(ctx: Context, name: String): ProgramDir? {
         val dir = FacilityRegistry.dirFor(ctx, name)
-        return ProgramManager(ctx, name, dir)
+        return ProgramDir(ctx, name, dir)
     }
 
     fun currentVersion(ctx: Context, name: String): String? =

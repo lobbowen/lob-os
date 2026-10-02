@@ -22,7 +22,7 @@ import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.lifecycle.AccessibilityServiceState
 import lobos.ota.ProgramInstaller
-import lobos.ota.ProgramManager
+import lobos.ota.ProgramDir
 import lobos.ota.ProgramOtaUpdater
 import lobos.lifecycle.OsHostService
 import lobos.lifecycle.OsAccessibilityService
@@ -446,7 +446,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 TaskRegistry.update(this@CapabilityBroker, id, "running", 10, "检查远端 program-manifest.json")
                 val out = ProgramOtaUpdater.checkAndUpdate(
                     this@CapabilityBroker,
-                    ProgramManager(this@CapabilityBroker, target),
+                    ProgramDir(this@CapabilityBroker, target),
                     checkOnly = false,
                 )
                 val ok = out.updated || !out.available
@@ -464,7 +464,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         Thread {
             try {
                 if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
-                val km = ProgramManager(this@CapabilityBroker, target)
+                val km = ProgramDir(this@CapabilityBroker, target)
                 val cur = km.currentVersion()
                 val removable = km.installedVersions().filter { it != cur }
                 if (removable.isEmpty()) {
@@ -626,7 +626,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val desired = if (running) AppRegistry.Desired.RUNNING else AppRegistry.Desired.STOPPED
             AppRegistry.upsert(
                 this@CapabilityBroker,
-                AppRegistry.Entry(self, ProgramManager(this@CapabilityBroker, self).currentVersion(), spec.role, desired),
+                AppRegistry.Entry(self, ProgramDir(this@CapabilityBroker, self).currentVersion(), spec.role, desired),
             )
             Journal.append(this@CapabilityBroker, "instance", null, "os.instances.action=" + action + "（" + id + "）")
             JSONObject().apply {
@@ -651,9 +651,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("programs", programsJson())
                 put("versionInfo", JSONObject().apply {
                     val ids = lobos.os.ProgramRegistry.listIds(this@CapabilityBroker)
-                    val single = ids.singleOrNull()?.let { ProgramManager(this@CapabilityBroker, it).currentVersion() }
+                    val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it).currentVersion() }
                     put("current", single ?: "")
-                    put("programs", JSONObject(ids.associateWith { ProgramManager(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                    put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
                 })
                 put("upgrade", JSONObject().apply { put("updateAvailable", false) })
             }
@@ -684,7 +684,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.appmgr.checkUpdate" to MethodDef(listOf("base"), false) { p, _programId ->
             val target = p.optString("id", "")
             if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
-            val out = ProgramOtaUpdater.checkAndUpdate(this@CapabilityBroker, ProgramManager(this@CapabilityBroker, target), checkOnly = true)
+            val out = ProgramOtaUpdater.checkAndUpdate(this@CapabilityBroker, ProgramDir(this@CapabilityBroker, target), checkOnly = true)
             JSONObject().apply {
                 put("updateAvailable", out.available)
                 put("latest", out.remote ?: JSONObject.NULL)
@@ -1269,7 +1269,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val checkOnly = p.optBoolean("checkOnly", false)
             val target = p.optString("id", "")
             if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
-            val ota = ProgramOtaUpdater.checkAndUpdate(this, ProgramManager(this, target), checkOnly)
+            val ota = ProgramOtaUpdater.checkAndUpdate(this, ProgramDir(this, target), checkOnly)
             JSONObject().apply {
                 put("ok", if (checkOnly) ota.checked else ota.updated)
                 put("checked", ota.checked)
@@ -1284,12 +1284,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "build.programStatus" to MethodDef(listOf("program_update"), false) { _, _programId ->
             val ids = lobos.os.ProgramRegistry.listIds(this)
-            val single = ids.singleOrNull()?.let { ProgramManager(this@CapabilityBroker, it) }
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
             JSONObject().apply {
                 put("current", single?.currentVersion() ?: JSONObject.NULL)
-                put("programs", JSONObject(ids.associateWith { ProgramManager(this@CapabilityBroker, it).currentVersion() ?: "" }))
-                put("installed", JSONArray(ids.flatMap { ProgramManager(this@CapabilityBroker, it).installedVersions() }))
-                put("integrity", JSONArray(ids.flatMap { ProgramManager(this@CapabilityBroker, it).integrityChecks() }))
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
+                put("integrity", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).integrityChecks() }))
             }
         },
         "build.apk" to MethodDef(listOf("program_update"), true) { p, _programId ->
@@ -1302,11 +1302,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "build.status" to MethodDef(listOf("program_update"), false) { _, _programId ->
             val ids = lobos.os.ProgramRegistry.listIds(this)
-            val single = ids.singleOrNull()?.let { ProgramManager(this@CapabilityBroker, it) }
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
             JSONObject().apply {
                 put("current", single?.currentVersion() ?: JSONObject.NULL)
-                put("programs", JSONObject(ids.associateWith { ProgramManager(this@CapabilityBroker, it).currentVersion() ?: "" }))
-                put("installed", JSONArray(ids.flatMap { ProgramManager(this@CapabilityBroker, it).installedVersions() }))
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
             }
         }
     )
