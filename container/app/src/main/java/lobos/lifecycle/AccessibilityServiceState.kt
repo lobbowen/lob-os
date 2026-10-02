@@ -11,18 +11,18 @@ import lobos.bridge.AdbClientRunner
 import lobos.capability.CapabilityCriteria
 import lobos.permissions.PermissionCatalog
 
-enum class AnchorState { BOUND, UNBOUND, UNKNOWN }
+enum class ServiceState { BOUND, UNBOUND, UNKNOWN }
 
-data class BindOutcome(
-    val state: AnchorState,
+data class EnableOutcome(
+    val state: ServiceState,
     val bound: Boolean,
     val issued: Boolean,
     val detail: String,
 )
 
-object AccessibilityAnchor {
+object AccessibilityServiceState {
 
-    private const val TAG = "AccessibilityAnchor"
+    private const val TAG = "AccessibilityServiceState"
 
     private fun componentString(ctx: Context): String =
         CapabilityCriteria.names(ctx).accessibilityComponent
@@ -42,8 +42,8 @@ object AccessibilityAnchor {
         ""
     }
 
-    fun state(ctx: Context): AnchorState {
-        val c = component(ctx) ?: return AnchorState.UNKNOWN
+    fun state(ctx: Context): ServiceState {
+        val c = component(ctx) ?: return ServiceState.UNKNOWN
         return try {
             val am = ctx.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
             val enabled = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
@@ -51,20 +51,20 @@ object AccessibilityAnchor {
                 val si = info.resolveInfo?.serviceInfo ?: return@any false
                 si.packageName == c.packageName && si.name == c.className
             }
-            if (match) AnchorState.BOUND else AnchorState.UNBOUND
+            if (match) ServiceState.BOUND else ServiceState.UNBOUND
         } catch (_: Throwable) {
-            AnchorState.UNKNOWN
+            ServiceState.UNKNOWN
         }
     }
 
-    fun isBound(ctx: Context): Boolean = state(ctx) == AnchorState.BOUND
+    fun isBound(ctx: Context): Boolean = state(ctx) == ServiceState.BOUND
 
-    fun ensureBound(ctx: Context, timeoutMs: Long): BindOutcome {
-        if (isBound(ctx)) return BindOutcome(AnchorState.BOUND, true, false, "锚在位，无需动作")
+    fun ensureBound(ctx: Context, timeoutMs: Long): EnableOutcome {
+        if (isBound(ctx)) return EnableOutcome(ServiceState.BOUND, true, false, "无障碍服务已就位，无需动作")
 
         val deadline = SystemClock.elapsedRealtime() + timeoutMs
         val c = component(ctx)
-            ?: return BindOutcome(AnchorState.UNKNOWN, false, false, "组件名解析不出，不能下发")
+            ?: return EnableOutcome(ServiceState.UNKNOWN, false, false, "组件名解析不出，不能下发")
         val flat = c.flattenToString()
         val cur = enabledList(ctx)
         val without = cur.filter { it != flat }.joinToString(":")
@@ -93,13 +93,13 @@ object AccessibilityAnchor {
             else "本机无 WRITE_SECURE_SETTINGS：请到系统「无障碍」页手动开启（本设计不借 ADB 静默改系统设置）"
         val issued = wrote
         val st = state(ctx)
-        val bound = st == AnchorState.BOUND
+        val bound = st == ServiceState.BOUND
         RuntimeDiagnostics.append(
             ctx, "accessibility", bound,
-            if (bound) "锚已挂上（闸门开着）" else "挂锚未成：" + st,
+            if (bound) "锚已挂上（闸门开着）" else "无障碍服务已就位未成：" + st,
             how + "；timeout=" + timeoutMs + "ms",
         )
-        return BindOutcome(st, bound, issued, how + "；state=" + st)
+        return EnableOutcome(st, bound, issued, how + "；state=" + st)
     }
 
 

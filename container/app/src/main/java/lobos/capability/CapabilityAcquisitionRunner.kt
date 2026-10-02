@@ -2,7 +2,7 @@ package lobos.capability
 
 import android.content.Context
 import lobos.bridge.AdbClientRunner
-import lobos.lifecycle.AccessibilityAnchor
+import lobos.lifecycle.AccessibilityServiceState
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter
 
@@ -25,7 +25,7 @@ object CapabilityAcquisitionRunner {
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
     ): AcquisitionResult = when (executor) {
         CapabilityCatalog.EXEC_NOTIFICATION_LISTENER -> enableNotificationListener(ctx, timeoutMs)
-        CapabilityCatalog.EXEC_ACCESSIBILITY -> bindAccessibilityAnchor(ctx, timeoutMs)
+        CapabilityCatalog.EXEC_ACCESSIBILITY -> bindAccessibilityServiceState(ctx, timeoutMs)
         CapabilityCatalog.EXEC_BATTERY_WHITELIST -> whitelistBattery(ctx, timeoutMs)
         CapabilityCatalog.EXEC_APPOPS_ALLOW -> setAppOps(ctx, capId, timeoutMs)
         CapabilityCatalog.EXEC_PM_GRANT -> grantRuntimePerm(ctx, capId, timeoutMs)
@@ -72,8 +72,8 @@ object CapabilityAcquisitionRunner {
         return AcquisitionResult(true, true, "已记录四项厂商开关回执（下一轮判据生效）")
     }
 
-    private fun bindAccessibilityAnchor(ctx: Context, timeoutMs: Long): AcquisitionResult {
-        val outcome = AccessibilityAnchor.ensureBound(ctx, timeoutMs)
+    private fun bindAccessibilityServiceState(ctx: Context, timeoutMs: Long): AcquisitionResult {
+        val outcome = AccessibilityServiceState.ensureBound(ctx, timeoutMs)
         val listedNotBound = !outcome.bound && PermissionCenter(ctx).accessibilityEnabledInSettings()
         return AcquisitionResult(
             ok = outcome.issued,

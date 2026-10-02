@@ -25,12 +25,12 @@ class OsAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        Log.i(TAG, "OsAccessibilityService 已连接（ui_automation 能力可用）")
+        Log.i(TAG, "OsAccessibilityService 已连接（UI 自动化可用）")
         RuntimeDiagnostics.append(this, "accessibility", true, "无障碍服务已连接", "ui_automation 能力可用")
         RuntimeDiagnostics.append(
             this, "accessibility", true,
-            "锚 " + AccessibilityAnchor.state(this) + "：服务已连接（闸门开着）",
-            "HANS 拒绝把本 uid 转出 Running；ui_automation 可执行",
+            "服务已连接：UI 自动化（tap/swipe/inputText/getUiTree/waitFor）可执行",
+            "无障碍在本系统里只作自动化执行体，不承担保活职责",
         )
         OsHostService.ensureRunning(this)
     }
@@ -40,8 +40,8 @@ class OsAccessibilityService : AccessibilityService() {
         Log.i(TAG, "OsAccessibilityService 已解绑")
         RuntimeDiagnostics.append(
             this, "accessibility", false,
-            "锚 " + AccessibilityAnchor.state(this) + "：服务被解绑（闸门关闭）",
-            "挂锚只在进程出生时做；本设计没有任何死后恢复",
+            "服务被解绑：UI 自动化不可用（ui.* 将返回 -32001）",
+            "如需恢复请到系统「无障碍」页重新开启；本系统不会静默重挂",
         )
         return super.onUnbind(intent)
     }

@@ -37,7 +37,6 @@ class OsHostService : Service() {
     private var anchorBoundLastTick: Boolean? = null
     private var lastTickMs = 0L
     private var startedAtMs = 0L
-    private var anchorStateLast: AnchorState? = null
     private var anchorRebindAttempts = 0
     private var anchorRebindNextAt = 0L
     private var anchorGiveUpLogged = false
@@ -140,8 +139,7 @@ class OsHostService : Service() {
                 lobos.os.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
             }
             registerPermissionLedger(now)
-            val anchor = AccessibilityAnchor.state(this)
-            observeAnchorTransition(anchor)
+            val anchor = AccessibilityServiceState.state(this)
             publishResidency(gap, anchor)
             refreshStatusNotice(now, anchor)
             runCatching { pool?.sync() }
@@ -168,7 +166,7 @@ class OsHostService : Service() {
         }
     }
 
-    private fun refreshStatusNotice(now: Long, anchor: AnchorState) {
+    private fun refreshStatusNotice(now: Long, anchor: ServiceState) {
         if (now - lastNotifyMs < NOTIFY_MS) return
         lastNotifyMs = now
         ResidencyAudit.heartbeat(this)
@@ -176,7 +174,6 @@ class OsHostService : Service() {
             readingsCollected = true,
             controlPlaneUp = runCatching { CapabilityEvidenceCollector.controlPlaneUp() }.getOrDefault(false),
             channel = lobos.capability.AdbChannelComponent.probeOutcome(),
-            anchor = anchor,
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption())
         runCatching {
@@ -205,8 +202,8 @@ class OsHostService : Service() {
         }
     }
 
-    private fun publishResidency(gapMs: Long, anchor: AnchorState) {
-        val protectedNow = (anchor) == AnchorState.BOUND
+    private fun publishResidency(gapMs: Long, anchor: ServiceState) {
+        val protectedNow = anchor == ServiceState.BOUND
         val runningIds = runCatching { pool?.running() ?: emptyList<String>() }.getOrDefault(emptyList())
         val installed = runCatching {
             lobos.os.ProgramRegistry.list(this).count { it.startable }
@@ -259,26 +256,6 @@ class OsHostService : Service() {
                 this, "residency", reasons.isEmpty(),
                 if (reasons.isEmpty()) "常驻状态正常" else "常驻状态降级（" + reasons.size + " 项）",
                 lobos.os.ResidencyStatus.detail() + (if (acts.isEmpty()) "" else "；动作：" + acts.joinToString(" | ")),
-            )
-        }
-    }
-
-    private fun observeAnchorTransition(st: AnchorState) {
-        if (st == AnchorState.UNKNOWN) return
-        val bound = st == AnchorState.BOUND
-        val prev = anchorBoundLastTick
-        anchorBoundLastTick = bound
-        if (prev == null || prev == bound) return
-        if (bound) {
-            RuntimeDiagnostics.append(
-                this, "accessibility", true, "锚已回到位（闸门重开）",
-                "系统完成重绑，判决回到 importance=accessibility",
-            )
-        } else {
-            RuntimeDiagnostics.append(
-                this, "accessibility", false, "判决降级告警：锚掉线",
-                "锚不在位 = 判决停在 importance=traffic，随时被 o-kill；" +
-                    "无障碍只作 UI 自动化的执行体，不承担保活；系统冻结由前台服务与闹钟应对"
             )
         }
     }

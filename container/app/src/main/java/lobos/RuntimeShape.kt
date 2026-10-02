@@ -21,7 +21,7 @@ object RuntimeShape {
 
     fun layers(): String = buildString {
         append("运行层（无条件自愈，不受任何开关影响）\n")
-        append("  ├─ AccessibilityAnchor：uid 被冻结时系统仍放行无障碍服务执行\n")
+        append("  ├─ AccessibilityServiceState：uid 被冻结时系统仍放行无障碍服务执行\n")
         append("  │    ensureBound 每拍检查，掉了先摘再挂；本地写 secure 设置，无 WRITE_SECURE_SETTINGS 时借 ADB\n")
         append("  └─ 通知监听：第二个常驻锚\n")
         append("\n功能组件层（受开关控制，不自愈）\n")

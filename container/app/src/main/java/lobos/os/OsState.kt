@@ -1,7 +1,6 @@
 package lobos.os
 
 import lobos.capability.ProbeOutcome
-import lobos.lifecycle.AnchorState
 import lobos.lifecycle.ResidencyPolicy
 
 enum class OsPhase {
@@ -26,7 +25,6 @@ data class OsFacts(
     val readingsCollected: Boolean = false,
     val controlPlaneUp: Boolean = false,
     val channel: ProbeOutcome = ProbeOutcome.NEVER_RUN,
-    val anchor: AnchorState = AnchorState.UNKNOWN,
 )
 
 data class OsSnapshot(
@@ -39,12 +37,20 @@ data class OsSnapshot(
 object OsPhaseRule {
 
     fun degraded(facts: OsFacts): Boolean =
-        !facts.controlPlaneUp || facts.anchor == AnchorState.UNBOUND || channelDegraded()
+        !facts.controlPlaneUp || noProgram() || noneRunning()
 
-    private fun channelDegraded(): Boolean {
+    private fun noProgram(): Boolean {
         val reasons = runCatching { ResidencyStatus.snapshot().optJSONArray("degradedReasons") }.getOrNull()
             ?: return false
-        return ResidencyPolicy.hostDegraded((0 until reasons.length()).map { reasons.optString(it) })
+        val all = (0 until reasons.length()).map { reasons.optString(it) }
+        return all.contains(ResidencyPolicy.REASON_NO_PROGRAM)
+    }
+
+    private fun noneRunning(): Boolean {
+        val reasons = runCatching { ResidencyStatus.snapshot().optJSONArray("degradedReasons") }.getOrNull()
+            ?: return false
+        val all = (0 until reasons.length()).map { reasons.optString(it) }
+        return all.contains(ResidencyPolicy.REASON_NONE_RUNNING)
     }
 
     fun next(prev: OsPhase, facts: OsFacts): OsPhase? = when {
@@ -56,9 +62,9 @@ object OsPhaseRule {
     }
 
     fun reason(next: OsPhase, facts: OsFacts): String = when {
-        next == OsPhase.DEGRADED && !facts.controlPlaneUp -> "控制面不在线"
-        channelDegraded() -> "ADB 通道不在线（锚的能力面受损）"
-        next == OsPhase.DEGRADED -> "锚不在位"
+        !facts.controlPlaneUp -> "控制面不在线"
+        noProgram() -> "未安装任何程序"
+        noneRunning() -> "没有程序在运行"
         else -> "读数恢复"
     }
 }
