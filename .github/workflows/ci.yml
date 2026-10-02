@@ -45,6 +45,9 @@ jobs:
             node --check "$f"
           done
 
+      - name: API 规范自洽（方法表与 ApiSpec 不得漂移）
+        run: node tools/check-api-spec.js
+
       - name: 双份 canonical 必须逐字一致（跨边界签名/验签）
         run: node tools/check-dual-canonical.js
 

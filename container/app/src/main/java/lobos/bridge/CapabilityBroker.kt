@@ -129,6 +129,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private class SessionHolder(val socketName: String) {
         @Volatile
         var granted: Set<String> = emptySet()
+        @Volatile
+        var system: Boolean = false
         @Volatile var session: lobos.os.SessionRegistry.Session? = null
     }
 
@@ -216,10 +218,20 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val canonical = if (method == "notify.post") "notif.post" else method
         val def = METHODS[canonical] ?: OS_METHODS[canonical]
         if (def == null) {
+            val alias = ApiSpec.deprecatedInFavorOf(method)
+            if (alias != null && (METHODS[alias] != null || OS_METHODS[alias] != null)) {
+                return error(id, CODE_METHOD_NOT_FOUND, ApiSpec.deprecationNotice(method) ?: "")
+            }
             return error(id, CODE_METHOD_NOT_FOUND, "未知方法: $method")
         }
         val session = holder.session
             ?: return error(id, CODE_SESSION_MISSING, "未建立会话：先做 bridge.handshake")
+        if (ApiSpec.scopeOf(canonical) == ApiSpec.SCOPE_SYSTEM && !holder.system) {
+            return error(
+                id, CODE_POLICY_DENIED,
+                "该方法是系统作用域，程序会话不可调用：" + ApiSpec.canonical(canonical),
+            )
+        }
         val missing = def.caps.filterNot { holder.granted.contains(it) }
         if (missing.isNotEmpty()) {
             if (def.audit) audit(method, params, false, "缺少能力组：" + missing.joinToString(), session)
@@ -277,8 +289,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             return error(id, CODE_SESSION_MISSING, "会话已被占用：每个会话只允许激活一次")
         }
         holder.session = session
-        val granted = serverGranted().toList()
+        val granted = serverGranted(session).toList()
         holder.granted = granted.toSet()
+        holder.system = granted.contains(ApiSpec.GROUP_SYS)
         val caps = deviceCapabilities()
         audit("bridge.handshake", params, true, null, session)
         return ok(id, JSONObject().apply {
@@ -296,10 +309,21 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         })
     }
 
-    private fun serverGranted(): Set<String> =
-        runCatching {
+    private fun serverGranted(session: lobos.os.SessionRegistry.Session): Set<String> {
+        val base = runCatching {
             lobos.capability.BridgeTokens.from(CapabilityEvidenceCollector.systemReads(this))
         }.getOrDefault(setOf(lobos.capability.BridgeTokens.BASE))
+        val isSystem = !isProgramSession(session)
+        return if (isSystem) base + ApiSpec.GROUP_SYS else base
+    }
+
+    private fun isProgramSession(session: lobos.os.SessionRegistry.Session): Boolean {
+        val id = session.programId.trim()
+        if (id.isBlank()) return false
+        val declared = lobos.os.ProgramRegistry.listIds(this)
+        if (declared.isEmpty()) return true
+        return declared.contains(id)
+    }
 
     private fun packagesAction(p: JSONObject): JSONObject {
         val name = p.optString("name", "").trim()
@@ -898,34 +922,17 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("detail", out.detail)
             }
         },
-        "sys.api" to MethodDef(listOf("base"), false) { _ ->
-            JSONObject().apply {
+        "sys.api" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
+            ApiSpec.toJson((METHODS.keys + OS_METHODS.keys).distinct().sorted()).apply {
                 put("protocol", JSONObject().apply {
                     put("min", PROTOCOL_MIN)
                     put("max", BuildConfig.BRIDGE_PROTOCOL)
                 })
-                put("methods", JSONArray((METHODS.keys + OS_METHODS.keys).distinct().sorted()))
-                put("methodCount", METHODS.size + OS_METHODS.size)
-                put("layers", JSONObject().apply {
-                    put(ApiSurface.LOBOS_DEV, ApiSurface.DEV_GROUP)
-                    put(ApiSurface.LOBOS_SYS, ApiSurface.SYS_GROUP)
-                    put("summary", ApiSurface.surface())
-                    val byLayer = JSONObject()
-                    for (m in (METHODS.keys + OS_METHODS.keys).distinct().sorted()) {
-                        val l = ApiSurface.layerOf(m)
-                        val arr = byLayer.optJSONArray(l) ?: JSONArray().also { byLayer.put(l, it) }
-                        arr.put(m)
+                put("summary", ApiSpec.surface())
+                put("aliases", JSONArray().apply {
+                    for (m in (METHODS.keys + OS_METHODS.keys).distinct().sorted().filter { ApiSpec.isDeprecated(it) }) {
+                        put(JSONObject().apply { put("alias", m); put("canonical", ApiSpec.canonical(m)) })
                     }
-                    put("byLayer", byLayer)
-                })
-                put("errorCodes", JSONObject().apply {
-                    put("CAPABILITY_MISSING", CODE_CAPABILITY_MISSING)
-                    put("NOT_IMPLEMENTED", CODE_NOT_IMPLEMENTED)
-                    put("SESSION_MISSING", CODE_SESSION_MISSING)
-                    put("POLICY_DENIED", CODE_POLICY_DENIED)
-                    put("PROTOCOL_UNSUPPORTED", CODE_PROTOCOL_UNSUPPORTED)
-                    put("METHOD_NOT_FOUND", CODE_METHOD_NOT_FOUND)
-                    put("INVALID_PARAM", CODE_INVALID_PARAM)
                 })
             }
         },
