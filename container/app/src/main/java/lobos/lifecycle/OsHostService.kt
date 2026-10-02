@@ -140,6 +140,7 @@ class OsHostService : Service() {
                 )
                 lobos.os.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
             }
+            registerPermissionLedger(now)
             val anchor = AccessibilityAnchor.state(this)
             observeAnchorTransition(anchor)
             publishResidency(gap, anchor)
@@ -184,6 +185,15 @@ class OsHostService : Service() {
             (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
                 .notify(NOTIF_ID, buildNotification(OsInit.statusLine(this)))
         }
+    }
+
+    private var ledgerRegisteredAtMs: Long = 0L
+
+    private fun registerPermissionLedger(now: Long) {
+        val prev = lobos.permissions.PermissionLedger.read(this)?.atMs ?: 0L
+        if (prev > 0L && now - prev < LEDGER_INTERVAL_MS) return
+        ledgerRegisteredAtMs = prev
+        runCatching { lobos.permissions.PermissionLedger.register(this) }
     }
 
     private fun observeAnchorHealth(anchor: AnchorState) {
@@ -370,6 +380,7 @@ class OsHostService : Service() {
         private const val REQ_OPEN = 41
         private const val TICK_MS = ResidencyPolicy.FAST_TICK_MS
         private const val NOTIFY_MS = 60_000L
+        private const val LEDGER_INTERVAL_MS = 10 * 60_000L
 
         fun ensureRunning(context: Context) {
             try {

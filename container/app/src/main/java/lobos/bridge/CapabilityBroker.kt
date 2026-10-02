@@ -27,6 +27,7 @@ import lobos.capability.BridgeTokens
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityCriteria
 import lobos.capability.CapabilityEvidenceCollector
+import lobos.lifecycle.AccessibilityAnchor
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
@@ -858,6 +859,45 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("bridge", SOCKET_NAME)
             }
         },
+        "os.permissions.ledger" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { p ->
+            val snap = lobos.permissions.PermissionLedger.register(this@CapabilityBroker)
+            lobos.permissions.PermissionLedger.toJson(snap)
+        },
+        "os.permissions.roles" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { _ ->
+            JSONObject().apply {
+                put("roles", JSONArray().apply {
+                    for (r in lobos.permissions.PermissionRoles.declared()) {
+                        put(JSONObject().apply {
+                            put("id", r.id)
+                            put("purpose", r.purpose)
+                            put("policy", r.policy.name)
+                            put("autoHeal", r.autoHeal.name)
+                            put("owner", r.owner)
+                        })
+                    }
+                })
+                put("undeclared", JSONArray().apply {
+                    for (r in lobos.permissions.PermissionRoles.undeclared()) put(r.id)
+                })
+            }
+        },
+        "os.anchor.state" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { _ ->
+            JSONObject().apply {
+                put("state", AccessibilityAnchor.state(this@CapabilityBroker).name)
+                put("bound", AccessibilityAnchor.isBound(this@CapabilityBroker))
+                put("autoHeal", "无条件自愈：只看锚是否掉，不看任何开关")
+            }
+        },
+        "os.anchor.ensure" to MethodDef(listOf(ApiSurface.SYS_GROUP), true) { p ->
+            val ms = p.optLong("timeoutMs", 8000L)
+            val out = AccessibilityAnchor.ensureBound(this@CapabilityBroker, ms)
+            JSONObject().apply {
+                put("state", out.state.name)
+                put("bound", out.bound)
+                put("issued", out.issued)
+                put("detail", out.detail)
+            }
+        },
         "sys.api" to MethodDef(listOf("base"), false) { _ ->
             JSONObject().apply {
                 put("protocol", JSONObject().apply {
@@ -866,6 +906,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
                 put("methods", JSONArray((METHODS.keys + OS_METHODS.keys).distinct().sorted()))
                 put("methodCount", METHODS.size + OS_METHODS.size)
+                put("layers", JSONObject().apply {
+                    put(ApiSurface.LOBOS_DEV, ApiSurface.DEV_GROUP)
+                    put(ApiSurface.LOBOS_SYS, ApiSurface.SYS_GROUP)
+                    put("summary", ApiSurface.surface())
+                    val byLayer = JSONObject()
+                    for (m in (METHODS.keys + OS_METHODS.keys).distinct().sorted()) {
+                        val l = ApiSurface.layerOf(m)
+                        val arr = byLayer.optJSONArray(l) ?: JSONArray().also { byLayer.put(l, it) }
+                        arr.put(m)
+                    }
+                    put("byLayer", byLayer)
+                })
                 put("errorCodes", JSONObject().apply {
                     put("CAPABILITY_MISSING", CODE_CAPABILITY_MISSING)
                     put("NOT_IMPLEMENTED", CODE_NOT_IMPLEMENTED)
