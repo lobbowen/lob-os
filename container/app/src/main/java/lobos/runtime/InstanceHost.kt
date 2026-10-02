@@ -133,12 +133,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                             RuntimeDiagnostics.append(this, "health", true, "稳态探活恢复", "此前连续失败=" + failStreak)
                         }
                         failStreak = 0
+                        lobos.os.ProgramStatusHub.publishHealth(programId, true, "控制面就绪")
                     } else {
                         failStreak += 1
                         RuntimeDiagnostics.append(
                             this, "health", false, "稳态探活失败",
                             "连续=" + failStreak + "/" + SupervisorPolicy.HEALTH_FAIL_THRESHOLD,
                         )
+                        lobos.os.ProgramStatusHub.publishHealth(programId, false, "探活失败×" + failStreak)
                         if (!SupervisorPolicy.healthyProbe(failStreak)) {
                             healthUp = false
                             break
@@ -162,6 +164,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             restartWindow.add(now)
             SupervisorPolicy.pruneRestartWindow(restartWindow, now)
             if (SupervisorPolicy.shouldQuarantine(restartWindow.size)) {
+                lobos.os.ProgramStatusHub.publishQuarantined(programId, true)
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
                     "窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms 内 " + restartWindow.size +
@@ -206,6 +209,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val declaredBackoff = spec?.backoffMs?.takeIf { it.isNotEmpty() }
                 ?.let { list -> list[minOf(restartCount, list.size - 1)] }
             val backoff = declaredBackoff ?: SupervisorPolicy.backoffFor(outcome, restartCount)
+            lobos.os.ProgramStatusHub.publishRestarts(programId, restartCount)
             RuntimeDiagnostics.append(
                 this, "supervisor", null, "退避 ${backoff}ms 后重启",
                 "attempt=$restartCount 来源=" + (if (declaredBackoff != null) "清单 backoff" else "策略默认"),
@@ -689,6 +693,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             waitedMs += 300
         }
         rollbackIfPendingFailed()
+        lobos.os.ProgramStatusHub.publishHealth(programId, false, "控制面未在预算内就绪")
         RuntimeDiagnostics.append(
             this, "health", false,
             if (procDiedEarly) "内核进程已退出，控制面不会就绪（等待 ${waitedMs}ms 提前收轮）"

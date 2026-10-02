@@ -97,7 +97,7 @@ class OsHostService : Service() {
 
     private fun promoteToForeground() {
         try {
-            startForeground(NOTIF_ID, buildNotification(OsInit.statusLine(this)))
+            startForeground(NOTIF_ID, buildHostNotification())
         } catch (t: Throwable) {
             RuntimeDiagnostics.append(
                 this, "host", false, "转前台失败",
@@ -145,7 +145,6 @@ class OsHostService : Service() {
             publishResidency(gap, anchor)
             refreshStatusNotice(now, anchor)
             runCatching { pool?.sync() }
-            observeAnchorHealth(anchor)
             sampleAdb(now)
             runCatching { lobos.native.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
@@ -182,7 +181,7 @@ class OsHostService : Service() {
         OsInit.refresh(this, facts, ResidencyAudit.interruption())
         runCatching {
             (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
-                .notify(NOTIF_ID, buildNotification(OsInit.statusLine(this)))
+                .notify(NOTIF_ID, buildHostNotification())
         }
     }
 
@@ -193,64 +192,6 @@ class OsHostService : Service() {
         if (prev > 0L && now - prev < LEDGER_INTERVAL_MS) return
         ledgerRegisteredAtMs = prev
         runCatching { lobos.permissions.PermissionLedger.register(this) }
-    }
-
-    private fun observeAnchorHealth(anchor: AnchorState) {
-        val verdict = (anchor)
-        if (verdict == AnchorState.BOUND) {
-            if (anchorRebindAttempts > 0) {
-                RuntimeDiagnostics.append(
-                    this, "residency", true, "锚已恢复绑定", "此前重挂尝试=" + anchorRebindAttempts,
-                )
-            }
-            anchorRebindAttempts = 0
-            anchorRebindNextAt = 0L
-            anchorGiveUpLogged = false
-        }
-        if (verdict != anchorStateLast) {
-            anchorStateLast = verdict
-            when (verdict) {
-                AnchorState.BOUND -> RuntimeDiagnostics.append(
-                    this, "residency", true, "锚已绑定（能力面完整）", "verdict=PROTECTED",
-                )
-                AnchorState.UNBOUND -> RuntimeDiagnostics.append(
-                    this, "residency", false, "锚掉线（走 KeepAlive 周期重挂）",
-                    "verdict=DEGRADED；退避=" + ResidencyPolicy.ANCHOR_REBIND_BASE_MS + "ms 起，上限 " +
-                        ResidencyPolicy.ANCHOR_REBIND_MAX_ATTEMPTS + " 次；" +
-                        ResidencyPolicy.actions(listOf(ResidencyPolicy.REASON_ANCHOR)).joinToString(),
-                )
-                AnchorState.UNKNOWN -> RuntimeDiagnostics.append(
-                    this, "residency", null, "锚状态未知", "verdict=UNKNOWN（组件名解析不出或系统服务查不动）",
-                )
-            }
-        }
-        if (verdict != AnchorState.UNBOUND) return
-        val now = SystemClock.elapsedRealtime()
-        if (!ResidencyPolicy.shouldRebind(false, anchorRebindAttempts)) {
-            if (!anchorGiveUpLogged) {
-                anchorGiveUpLogged = true
-                RuntimeDiagnostics.append(
-                    this, "residency", false, "锚重挂达上限：转为降级上报",
-                    "尝试=" + anchorRebindAttempts + "；动作：" +
-                        ResidencyPolicy.actions(listOf(ResidencyPolicy.REASON_ANCHOR)).joinToString(),
-                )
-            }
-            return
-        }
-        if (anchorRebindNextAt > 0L && now < anchorRebindNextAt) return
-        anchorRebindAttempts += 1
-        val attempt = anchorRebindAttempts
-        val backoff = ResidencyPolicy.anchorBackoffMs(attempt)
-        anchorRebindNextAt = now + backoff
-        Thread {
-            val out = runCatching {
-                AccessibilityAnchor.ensureBound(this, AnchorPolicy.ACTIVATION_BUDGET_MS)
-            }.getOrNull()
-            RuntimeDiagnostics.append(
-                this, "residency", out?.state == AnchorState.BOUND, "锚重挂尝试 #" + attempt,
-                "结果=" + (out?.state?.name ?: "调用失败") + "；下次退避=" + backoff + "ms",
-            )
-        }.start()
     }
 
     private fun sampleAdb(now: Long) {
@@ -337,7 +278,7 @@ class OsHostService : Service() {
             RuntimeDiagnostics.append(
                 this, "accessibility", false, "判决降级告警：锚掉线",
                 "锚不在位 = 判决停在 importance=traffic，随时被 o-kill；" +
-                    "本设计不做复活，下一次挂锚的时机是进程重生（见 AccessibilityAnchor 的激活预算说明）",
+                    "无障碍只作 UI 自动化的执行体，不承担保活；系统冻结由前台服务与闹钟应对"
             )
         }
     }
@@ -355,6 +296,13 @@ class OsHostService : Service() {
         broker = null
         capture = null
         super.onDestroy()
+    }
+
+    private fun buildHostNotification(): Notification {
+        val status = lobos.os.ProgramStatusHub.summaryLine(this)
+        val progNotice = lobos.os.ProgramNotificationHub.summaryLine()
+        val text = listOfNotNull(status, progNotice).joinToString("　")
+        return buildNotification(text)
     }
 
     private fun buildNotification(text: String): Notification {

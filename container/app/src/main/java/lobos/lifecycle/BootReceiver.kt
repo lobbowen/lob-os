@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import lobos.RuntimeDiagnostics
-import lobos.os.KillAudit
+
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -16,21 +16,7 @@ class BootReceiver : BroadcastReceiver() {
         ) {
             Log.i(TAG, "BootReceiver: $action -> 拉起 OsHostService（唯一入口）")
             startQuietly(context, Intent(context, OsHostService::class.java), bootSafe = false)
-            ensureProtectionActive(context)
         }
-    }
-
-    private fun ensureProtectionActive(context: Context) {
-        val appCtx = context.applicationContext ?: context
-        Thread({
-            try {
-                runCatching { KillAudit.auditOnce(appCtx) }
-                runCatching {
-                    AccessibilityAnchor.ensureBound(appCtx, AnchorPolicy.ACTIVATION_BUDGET_MS)
-                }
-            } catch (_: Throwable) {
-            }
-        }, "protection-active").start()
     }
 
     private fun startQuietly(context: Context, svc: Intent, bootSafe: Boolean) {

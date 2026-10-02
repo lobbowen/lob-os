@@ -27,7 +27,7 @@ object ResidencyPolicy {
     fun frozen(gapMs: Long): Boolean = gapMs > FREEZE_GAP_MS
 
     fun hostDegraded(reasons: List<String>): Boolean =
-        reasons.any { it == REASON_ANCHOR || it == REASON_ADB }
+        reasons.any { it == REASON_NO_PROGRAM || it == REASON_NONE_RUNNING }
 
     fun degradedReasons(
         anchorProtected: Boolean,
@@ -37,7 +37,7 @@ object ResidencyPolicy {
     ): List<String> {
         val out = mutableListOf<String>()
         if (!anchorProtected) out.add(REASON_ANCHOR)
-        if (!adbReady) out.add(REASON_ADB)
+        if (!adbReady && ADB_REQUIRED_FOR_LIVENESS) out.add(REASON_ADB)
         if (installedPrograms <= 0) out.add(REASON_NO_PROGRAM)
         else if (programsRunning <= 0) out.add(REASON_NONE_RUNNING)
         return out
@@ -57,7 +57,9 @@ object ResidencyPolicy {
         return out
     }
 
-    const val REASON_ANCHOR = "锚未绑定"
+    const val ADB_REQUIRED_FOR_LIVENESS = false
+
+    const val REASON_ANCHOR = "未开启无障碍（UI 自动化不可用）"
 
     const val REASON_ADB = "ADB 通道不可用"
 

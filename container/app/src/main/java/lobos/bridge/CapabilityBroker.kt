@@ -911,6 +911,40 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
+        "os.notif.publish" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p ->
+            val n = lobos.os.ProgramNotificationHub.publish(
+                this@CapabilityBroker,
+                holder.session.programId,
+                p.optString("title", ""),
+                p.optString("text", ""),
+                p.optBoolean("ongoing", true),
+                p.optBoolean("silent", true),
+            )
+            JSONObject().apply {
+                put("ok", true)
+                put("programId", n.programId)
+                put("atMs", n.atMs)
+            }
+        },
+        "os.notif.clear" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p ->
+            val target = p.optString("programId", "").ifBlank { holder.session.programId }
+            JSONObject().apply {
+                put("ok", target == holder.session.programId)
+                put("cleared", if (target == holder.session.programId) {
+                    lobos.os.ProgramNotificationHub.clear(this@CapabilityBroker, target)
+                } else {
+                    false
+                })
+            }
+        },
+        "os.notif.list" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _ ->
+            JSONObject().apply {
+                put("notices", lobos.os.ProgramNotificationHub.listJson())
+            }
+        },
+        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _ ->
+            lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker)
+        },
         "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
             JSONObject().apply {
                 put("state", AccessibilityAnchor.state(this@CapabilityBroker).name)
