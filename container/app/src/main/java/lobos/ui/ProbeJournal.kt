@@ -23,7 +23,7 @@ object ProbeJournal {
     @Synchronized
     fun append(ctx: Context, tag: String, message: String) {
         val line = "${tsFmt.format(Date())} [$tag] $message\n"
-        runCatching { file(ctx).appendText(line) }
+        runCatching { lobos.os.StateFiles.appendBounded(file(ctx), line) }
     }
 
     @Synchronized

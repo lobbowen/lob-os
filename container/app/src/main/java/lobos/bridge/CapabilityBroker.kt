@@ -353,7 +353,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
             val line = ts + " " + who + " method=" + method + " ok=" + ok + " params=" + summary +
                 (if (err != null) " err=" + err else "") + "\n"
-            File(filesDir, "bridge-audit.log").appendText(line)
+            lobos.os.StateFiles.appendBounded(File(filesDir, "bridge-audit.log"), line)
         } catch (_: Throwable) {}
     }
 

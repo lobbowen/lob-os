@@ -725,7 +725,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             c.connectTimeout = 300
             c.readTimeout = 1500
             c.requestMethod = "GET"
-            c.responseCode == 200
+            try { c.responseCode == 200 } finally { c.disconnect() }
         } catch (_: Throwable) {
             false
         }

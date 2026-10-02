@@ -20,6 +20,7 @@ object SupplyProvisioner {
     private const val PUBKEY_ASSET = "supply/userland-public.pem"
     private const val MANIFEST_NAME = "userland-manifest.json"
     private const val FETCH_TIMEOUT_MS = 30000
+    internal const val MAX_FETCH_BYTES = 64 * 1024 * 1024
 
     fun toolchainDir(ctx: Context): File = File(PrefixProvisioner.libDir(ctx), "toolchain")
     fun entryLink(ctx: Context, name: String): File = File(PrefixProvisioner.binDir(ctx), name)
@@ -37,14 +38,30 @@ object SupplyProvisioner {
     private fun uncached(url: String): String =
         url + (if (url.indexOf('?') >= 0) "&" else "?") + "t=" + System.currentTimeMillis()
 
-    internal fun httpGet(url: String): ByteArray {
+    internal fun httpGet(url: String, maxBytes: Int = MAX_FETCH_BYTES): ByteArray {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = FETCH_TIMEOUT_MS
         conn.readTimeout = FETCH_TIMEOUT_MS
         conn.instanceFollowRedirects = true
-        try {
+        return try {
             if (conn.responseCode != 200) throw IllegalStateException("HTTP " + conn.responseCode + " " + url)
-            return conn.inputStream.use { it.readBytes() }
+            val declared = conn.getHeaderFieldLong("Content-Length", -1L)
+            if (declared > maxBytes.toLong()) {
+                throw IllegalStateException("响应声明 " + declared + " 字节，超上限 " + maxBytes + "：" + url)
+            }
+            conn.inputStream.use { ins ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(64 * 1024)
+                while (true) {
+                    val n = ins.read(buf)
+                    if (n <= 0) break
+                    out.write(buf, 0, n)
+                    if (out.size() > maxBytes) {
+                        throw IllegalStateException("响应超上限 " + maxBytes + " 字节：" + url)
+                    }
+                }
+                out.toByteArray()
+            }
         } finally {
             conn.disconnect()
         }
