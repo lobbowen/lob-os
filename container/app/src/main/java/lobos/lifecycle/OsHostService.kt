@@ -311,10 +311,24 @@ class OsHostService : Service() {
             Intent(this, SetupActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val summary = android.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
+        val items = mutableListOf<String>()
+        for (n in lobos.os.ProgramStatusHub.snapshot(this).take(6)) {
+            items += n.id + " · " + n.state.name.lowercase() +
+                if (n.aliveMs > 0) " · " + (n.aliveMs / 3600000) + "h" + ((n.aliveMs / 60000) % 60) + "m" else ""
+        }
+        val notices = lobos.os.ProgramNotificationHub.list()
+        for (n in notices.take(5)) items += n.title + "：" + n.text
+        if (items.isNotEmpty()) {
+            summary.setSummaryText(text)
+            for (line in items) summary.addLine(line)
+        }
         return NotificationCompat.Builder(this, OsApplication.SUPERVISOR_CHANNEL_ID)
             .setContentTitle("Lob OS 常驻")
             .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setStyle(summary)
+            .setGroup(lobos.os.ProgramNotificationHub.GROUP_PARENT)
+            .setSubText(text)
             .setSmallIcon(R.drawable.ic_lobos_logo)
             .setOngoing(true)
             .setContentIntent(pi)

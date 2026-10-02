@@ -922,6 +922,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 p.optString("text", ""),
                 p.optBoolean("ongoing", true),
                 p.optBoolean("silent", true),
+                p.optString("group", "").ifBlank { null },
+                p.optString("groupLabel", "").ifBlank { null },
+                p.optString("subText", "").ifBlank { null },
+                if (p.has("progress")) p.optInt("progress", -1) else null,
             )
             JSONObject().apply {
                 put("ok", true)
@@ -945,7 +949,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _, _programId ->
-            lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker)
+            lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
+                put("notices", lobos.os.ProgramNotificationHub.listJson())
+                put("noticeGroups", lobos.os.ProgramNotificationHub.groupsJson())
+            }
         },
         "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             JSONObject().apply {
