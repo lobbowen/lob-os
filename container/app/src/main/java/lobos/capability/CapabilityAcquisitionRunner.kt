@@ -47,45 +47,6 @@ object CapabilityAcquisitionRunner {
     }
 
     @Synchronized
-    fun runAutoFlow(ctx: Context, ids: List<String>, timeoutMs: Long = DEFAULT_TIMEOUT_MS): List<AutoFlowStep> {
-        val out = mutableListOf<AutoFlowStep>()
-        for (id in ids) {
-            val verdict = CapabilityCatalog.evaluate(CapabilityEvidenceCollector.systemReads(ctx))[id]
-            if (verdict?.status == CapStatus.GRANTED) {
-                out += AutoFlowStep(id, false, true, "判据=GRANTED，跳过（不重试）")
-                continue
-            }
-            val acq = CapabilityCatalog.byId(id)
-                ?.acquirer(CapabilityEvidenceCollector.systemReads(ctx))
-                ?.firstOrNull()
-            val target = acq?.target
-            if (acq == null || target == null || acq.kind != AcquireKind.SILENT_VIA_ADB) {
-                out += AutoFlowStep(id, false, false, "取法链首项不是静默取法，交回冲刺弹人（不挡入口）")
-                continue
-            }
-
-            var result: AcquisitionResult? = null
-            var attempt = 0
-            while (attempt < AUTO_FLOW_MAX_ATTEMPTS) {
-                attempt++
-                result = run(ctx, target, id, timeoutMs)
-                if (result.verified || result.ok) break
-                if (attempt < AUTO_FLOW_MAX_ATTEMPTS) sleepQuietly(AUTO_FLOW_BACKOFF_MS * attempt)
-            }
-            val r = result ?: AcquisitionResult(false, false, "未执行")
-            val outcome = AttemptOutcomeRule.of(r.ok, r.verified, r.detail)
-            if (outcome != null) PermissionLedger.record(ctx, id, outcome, r.detail)
-            out += AutoFlowStep(id, true, r.verified, acq.label + "（第 " + attempt + " 次）：" + r.detail)
-            RuntimeDiagnostics.append(
-                ctx, "autoflow",
-                if (r.verified) true else if (r.ok) null else false,
-                id + (if (r.verified) " 已生效" else " 未生效"),
-                r.detail + (outcome?.let { "｜记账 " + it.name } ?: "｜未记账（本次没有下发成功）"),
-            )
-        }
-        return out
-    }
-
     private fun reprobeChannel(ctx: Context): AcquisitionResult {
         AdbChannelComponent.reset(ctx, "能力获取流程要求重测通道")
         val p = AdbChannelComponent.refreshNow(ctx)

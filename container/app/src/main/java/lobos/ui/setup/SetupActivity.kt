@@ -33,10 +33,8 @@ import lobos.capability.CapVerdict
 import lobos.capability.Evidence
 import lobos.setup.OnboardingFlow
 import lobos.capability.PairingGate
-import lobos.capability.PermissionSprint
 import lobos.setup.PipelineProjection
 import lobos.setup.PipelineRefresh
-import lobos.setup.PostPairingAutoFlow
 import lobos.setup.StageStatus
 import lobos.setup.StepStatus
 import lobos.lifecycle.ResidencyAudit
@@ -59,16 +57,10 @@ class SetupActivity : AppCompatActivity() {
     private var debtsDetail: TextView? = null
     private var enterBtn: Button? = null
     private var lastEvidence: Evidence? = null
-    private val autoFlowAttempted = mutableSetOf<String>()
-    @Volatile private var autoFlowRunning = false
-    private var autoFlowNotice = ""
 
     @Volatile private var refreshInFlight = false
     @Volatile private var actionInFlight = false
-    private val sprintAsked = mutableSetOf<String>()
-    @Volatile private var sprintWaiting = false
     @Volatile private var resumed = false
-    @Volatile private var sprintFrozenUntilMs = 0L
 
     private var pendingRuntimePerm: String? = null
 
@@ -78,7 +70,6 @@ class SetupActivity : AppCompatActivity() {
         val perm = pendingRuntimePerm
         pendingRuntimePerm = null
         if (!granted) openAppDetailsAfterDenial(perm)
-        sprintWaiting = false
         refreshSoon()
     }
 
@@ -91,7 +82,6 @@ class SetupActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         resumed = true
-        sprintWaiting = false
         lobos.capability.AdbChannelComponent.reset(this, "配对冲刺结束，重测通道")
         refreshSoon()
         handler.post(poller)
@@ -246,33 +236,17 @@ class SetupActivity : AppCompatActivity() {
         channelBar?.visibility = if (live) View.GONE else View.VISIBLE
         channelBar?.text = ChannelStatusText.DOWN
 
-        advanceSprint(e)
-
-        maybeRunAutoFlow(e)
-        val pendingAuto = pendingAutoIds(e)
-
         renderDebts(verdicts)
 
         val ready = OnboardingFlow.readyToEnter(verdicts)
         val enterable = ready
         enterBtn?.visibility = if (ready) View.VISIBLE else View.GONE
         enterBtn?.isEnabled = enterable
-        progressText?.text = autoFlowProgress(e, pendingAuto)
+        progressText?.text = progressSummary(e, verdicts)
         criteriaText?.text = "判据核对：" +
             PipelineProjection.project(e, verdicts).joinToString("  ") {
                 "${it.id}${segMark(it.status)}${it.detail}"
             }
-    }
-
-    private fun advanceSprint(e: Evidence) {
-        if (!resumed || sprintWaiting) return
-        if (SystemClock.elapsedRealtime() < sprintFrozenUntilMs) return
-        val step = PermissionSprint.next(e, sprintAsked) ?: return
-        val (capId, acq) = step
-        sprintAsked += capId
-        sprintWaiting = true
-        ProbeJournal.append(this, "perm", "P0 冲刺 $capId → ${acq.kind} ${acq.label}")
-        if (!dispatch(capId, acq, null)) sprintWaiting = false
     }
 
     private fun recentActions(): String {
@@ -320,7 +294,6 @@ class SetupActivity : AppCompatActivity() {
 
     private fun startPairing() {
         lobos.capability.AdbChannelComponent.reset(this, "开始配对，重测通道")
-        sprintFrozenUntilMs = SystemClock.elapsedRealtime() + SPRINT_FREEZE_MS
         startService(Intent(this, PairingProbeService::class.java))
         ProbeJournal.append(this, "pair", "用户点「开始配对」→ 探针已起，现场核对开发者环境")
         if (lastEvidence == null) {
@@ -376,7 +349,6 @@ class SetupActivity : AppCompatActivity() {
             handler.post {
                 actionInFlight = false
                 btn?.isEnabled = true
-                sprintWaiting = false
                 result?.detail?.let {
                     ProbeJournal.append(ctx, "acq", "$capId ${acq.label}：$it")
                     toast(if (result.verified) "已生效" else it)
@@ -397,43 +369,6 @@ class SetupActivity : AppCompatActivity() {
         }
         toast("正在重测 ADB 通道…")
         dispatch(CapabilityCatalog.ADB_CHANNEL, acq, null)
-    }
-
-    private fun maybeRunAutoFlow(e: Evidence) {
-        if (!resumed || autoFlowRunning) return
-        val ids = pendingAutoIds(e)
-        if (ids.isEmpty()) return
-        autoFlowRunning = true
-        autoFlowAttempted += ids
-        ProbeJournal.append(this, "autoflow", "自动适配流启动：" + ids.joinToString())
-        Thread {
-            val ctx = applicationContext
-            val steps = runCatching { CapabilityAcquisitionRunner.runAutoFlow(ctx, ids) }
-                .getOrNull().orEmpty()
-            val summary = steps.joinToString("；") {
-                CapabilityCatalog.titleOf(it.capId) + "=" + (if (it.ok) "OK" else "未成")
-            }
-            handler.post {
-                autoFlowRunning = false
-                autoFlowNotice = if (summary.isBlank()) "自动适配流无结论" else "自动适配流：" + summary
-                ProbeJournal.append(ctx, "autoflow", autoFlowNotice)
-                refreshSoon()
-            }
-        }.apply { isDaemon = true }.start()
-    }
-
-    private fun autoFlowIds(e: Evidence): List<String> =
-        if (PostPairingAutoFlow.ready(e)) PostPairingAutoFlow.plan(e) else emptyList()
-
-    private fun pendingAutoIds(e: Evidence): List<String> =
-        autoFlowIds(e).filter { it !in autoFlowAttempted }
-
-    private fun autoFlowProgress(e: Evidence, pending: List<String>): String {
-        if (!PostPairingAutoFlow.ready(e)) return ""
-        if (autoFlowRunning) return "自动配置中：正在静默完成剩余授权…"
-        if (pending.isNotEmpty()) return "自动配置待续：还欠 ${pending.size} 项，通道一就绪就接着办"
-        if (autoFlowNotice.isNotBlank()) return autoFlowNotice
-        return if (autoFlowAttempted.isEmpty()) "" else "自动配置已完成：${autoFlowAttempted.size} 项"
     }
 
     private fun renderDebts(verdicts: Map<String, CapVerdict>) {
@@ -469,14 +404,6 @@ class SetupActivity : AppCompatActivity() {
                     OnboardingFlow.stages(e, verdicts).forEach {
                         appendLine("${it.id} ${it.title} ${it.status} ${it.detail}")
                     }
-                    appendLine(
-                        "---- P0 授权冲刺 ----" +
-                            "\n配对前必要项 ${PermissionSprint.REQUIRED.joinToString().ifBlank { "无" }}" +
-                            "\nadb 实测办不成（弹人，锚在前）${PermissionSprint.residue(e).joinToString().ifBlank { "无" }}" +
-                            "\n已抛问题 ${sprintAsked.joinToString().ifBlank { "无" }}" +
-                            "\n仍待要 ${PermissionSprint.pending(e, sprintAsked).joinToString().ifBlank { "无" }}" +
-                            "\n配对现场判定 " + PairingGate.decide(e, verdicts).notice,
-                    )
                     appendLine("---- adb 实测账（files/os/permission-ledger.json） ----")
                     if (e.permissionAttempts.isEmpty()) {
                         appendLine("还没有一次静默下发：配对成功后自动流会逐项试一遍")
