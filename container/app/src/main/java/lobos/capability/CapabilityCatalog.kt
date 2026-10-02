@@ -128,7 +128,7 @@ object CapabilityCatalog {
             },
             acquirer = { e ->
                 listOf(
-                    Acquisition(AcquireKind.USER_TAP, "开启 ADB 组件后自动打开无障碍", EXEC_ACCESSIBILITY),
+                    Acquisition(AcquireKind.SILENT_VIA_ADB, "经 ADB 静默开启无障碍（随 ADB 组件）", EXEC_ACCESSIBILITY),
                 )
             },
         ),
