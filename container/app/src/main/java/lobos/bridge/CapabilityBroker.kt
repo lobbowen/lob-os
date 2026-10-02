@@ -877,21 +877,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val snap = lobos.permissions.PermissionLedger.register(this@CapabilityBroker)
             lobos.permissions.PermissionLedger.toJson(snap)
         },
-        "sys.shape" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
-            org.json.JSONObject().apply {
-                put("scale", org.json.JSONObject().apply {
-                    put("ktFiles", lobos.RuntimeShape.KT_FILES)
-                    put("ktLines", lobos.RuntimeShape.KT_LINES)
-                    put("components", lobos.RuntimeShape.COMPONENTS)
-                    put("methods", lobos.RuntimeShape.METHODS)
-                })
-                put("layers", lobos.RuntimeShape.layers())
-                put("componentsText", lobos.RuntimeShape.components())
-                put("storage", lobos.RuntimeShape.storage())
-                put("api", lobos.RuntimeShape.api())
-                put("reconcile", lobos.RuntimeShape.reconcile())
-            }
-        },
         "os.permissions.roles" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             JSONObject().apply {
                 put("roles", JSONArray().apply {

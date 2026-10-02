@@ -79,7 +79,6 @@ object ApiSpec {
         "capability.invoke" to "lobos.sys.capability.invoke",
         "sys.info" to "lobos.sys.info",
         "sys.api" to "lobos.sys.api",
-        "sys.shape" to "lobos.sys.shape",
         "os.anchor.state" to "lobos.sys.accessibility.state",
         "os.anchor.ensure" to "lobos.sys.accessibility.enable",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
