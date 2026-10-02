@@ -140,7 +140,7 @@ object ProgramRegistry {
             requires = requires,
             env = env,
             resident = life?.optBoolean("resident", true) ?: true,
-            restart = life?.optString("restart", "on-failure") ?: "on-failure",
+            restart = restart,
             maxRestarts = life?.optInt("maxRestarts", 5) ?: 5,
             backoffMs = backoff,
             invalid = invalid,

@@ -1,5 +1,11 @@
 package lobos.setup
 
+import lobos.capability.CapabilityCatalog
+import lobos.capability.CapStatus
+import lobos.capability.Evidence
+import lobos.capability.AcquireKind
+import lobos.capability.CredentialsState
+
 object PostPairingAutoFlow {
 
     fun ready(e: Evidence): Boolean =

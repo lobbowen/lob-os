@@ -146,7 +146,7 @@ object ProgramOtaUpdater {
             is OtaPolicy.Verdict.UpToDate -> return Outcome(true, false, false, current, remote, verdict.message, upToDate = true)
             is OtaPolicy.Verdict.Available -> return Outcome(true, true, false, current, remote, verdict.message)
             is OtaPolicy.Verdict.Holdback -> return Outcome(true, true, false, current, remote, verdict.message)
-            is OtaPolicy.Verdict.Downgrade -> lobos.os.Journal.append(
+            is OtaPolicy.Verdict.Downgrade -> lobos.os.Journal.note(
                 context, "ota", null, "按显式策略降级（审计）",
                 "允许降级：" + current + " → " + remote + "；策略=program-feed.json allowDowngrade=true",
             )
@@ -194,7 +194,7 @@ object ProgramOtaUpdater {
         if (result.ok && seq > 0L) {
             st.put("pendingSequence", seq)
             saveState(context, st)
-            lobos.os.Journal.append(
+            lobos.os.Journal.note(
                 context, "ota", null, "安装成功：序列号待健康提交",
                 "sequence=" + seq + "（健康通过后才推进 lastSequence；失败则撤销，同版可重装）",
             )
@@ -218,7 +218,7 @@ object ProgramOtaUpdater {
         st.put("lastSequence", pending)
         st.remove("pendingSequence")
         saveState(context, st)
-        lobos.os.Journal.append(context, "ota", true, "健康通过：推进 feed 序列号", "lastSequence=" + pending)
+        lobos.os.Journal.note(context, "ota", true, "健康通过：推进 feed 序列号", "lastSequence=" + pending)
     }
 
     fun dropPendingSequence(context: Context) {
@@ -227,7 +227,7 @@ object ProgramOtaUpdater {
         if (pending <= 0L) return
         st.remove("pendingSequence")
         saveState(context, st)
-        lobos.os.Journal.append(
+        lobos.os.Journal.note(
             context, "ota", false, "健康未通过：撤销待推进序列号",
             "pendingSequence=" + pending + " —— 回滚后同版仍可重装",
         )

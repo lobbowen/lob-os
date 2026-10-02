@@ -94,13 +94,13 @@ object Journal {
     }.getOrDefault(0L)
 
     @Synchronized
-    fun append(ctx: Context, category: String, ok: Boolean?, detail: String, extra: String? = null): Event {
+    fun note(ctx: Context, category: String, ok: Boolean?, detail: String, extra: String? = null): Event {
         val text = buildString {
             append(detail)
             if (!extra.isNullOrBlank()) append("；").append(extra)
             if (ok != null) append("（").append(if (ok) "ok" else "failed").append("）")
         }
-        return append(ctx, category, null, text)
+        return append(ctx, category, null as Reason?, text)
     }
 
     fun append(ctx: Context, category: String, reason: Reason?, detail: String): Event {

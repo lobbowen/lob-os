@@ -50,7 +50,7 @@ object PackageInstaller {
         FacilityRegistry.upsert(
             ctx, name, kind, ver, true, deps(entry), want, "ota", tier = entry.optString("tier", FacilityRegistry.TIER_OPTIONAL),
         )
-        Journal.append(
+        Journal.note(
             ctx, "package", true, "包已安装",
             "name=" + name + " version=" + ver + " 入口链接=" + links,
         )
@@ -73,7 +73,7 @@ object PackageInstaller {
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val dir = FacilityRegistry.dirFor(ctx, name)
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
-        Journal.append(ctx, "package", removed, "回退到 APK 基线", "name=" + name)
+        Journal.note(ctx, "package", removed, "回退到 APK 基线", "name=" + name)
         return removed
     }
 
@@ -84,7 +84,7 @@ object PackageInstaller {
         if (entryRel.isNotBlank()) {
             runCatching { File(PrefixProvisioner.binDir(ctx), entryRel.substringAfterLast("/")).delete() }
         }
-        Journal.append(ctx, "package", removed, "包已卸载", "name=" + name)
+        Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed
     }
 

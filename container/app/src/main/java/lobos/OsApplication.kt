@@ -13,6 +13,7 @@ import lobos.lifecycle.AccessibilityAnchor
 import lobos.lifecycle.AnchorState
 import lobos.lifecycle.OsHostService
 import lobos.os.KillAudit
+import lobos.lifecycle.AnchorPolicy
 
 class OsApplication : Application() {
 

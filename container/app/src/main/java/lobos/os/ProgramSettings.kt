@@ -26,7 +26,7 @@ object ProgramSettings {
         val reservedEnv = envKeys.filter { lobos.os.RuntimeEnvironment.RESERVED_ENV.contains(it) }
         rejected.addAll(reservedEnv.map { "env." + it })
         if (rejected.isNotEmpty()) {
-            lobos.os.Journal.append(
+            lobos.os.Journal.note(
                 ctx, "settings", false, "程序设置被拒（键不在白名单或属保留变量）",
                 "id=" + id + " 拒绝=" + rejected.joinToString(","),
             )
@@ -42,7 +42,7 @@ object ProgramSettings {
             lobos.os.StateFiles.writeAtomic(f, all.toString())
         }.isSuccess
         if (!wrote) {
-            lobos.os.Journal.append(ctx, "settings", false, "程序设置落盘失败", "id=" + id)
+            lobos.os.Journal.note(ctx, "settings", false, "程序设置落盘失败", "id=" + id)
             return PatchResult(false, listOf("persist-failed"), cur)
         }
         return PatchResult(true, emptyList(), cur)

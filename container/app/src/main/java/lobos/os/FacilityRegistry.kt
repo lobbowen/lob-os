@@ -151,7 +151,7 @@ object FacilityRegistry {
         val seeded = seed(ctx)
         f.parentFile?.mkdirs()
         StateFiles.writeJson(f, JSONObject().apply { put("facilities", encode(seeded)) })
-        Journal.append(
+        Journal.note(
             ctx, "facility", null, "登记表初始化（来源：assets/supply/seed.json）",
             "内置=" + seeded.joinToString(",") { it.name },
         )

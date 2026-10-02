@@ -287,14 +287,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val declaredSafe = lobos.os.RuntimeEnvironment.withoutReserved(spec?.env ?: emptyMap())
             val overrideSafe = lobos.os.RuntimeEnvironment.withoutReserved(envOverride)
             if (declaredSafe.second.isNotEmpty() || overrideSafe.second.isNotEmpty()) {
-                lobos.os.Journal.append(
+                lobos.os.Journal.note(
                     this, "settings", false, "保留环境变量被拒（程序不得改写内核注入面）",
                     "id=" + programId + " 清单丢弃=" + declaredSafe.second.joinToString(",") +
                         " 设置丢弃=" + overrideSafe.second.joinToString(","),
                 )
             }
             if (argsOverride != null || envOverride.isNotEmpty()) {
-                lobos.os.Journal.append(
+                lobos.os.Journal.note(
                     this, "settings", null, "程序设置生效（内核在 spawn 时叠加）",
                     "id=" + programId + " args=" + (argsOverride?.joinToString(" ") ?: "(按清单)") +
                         " env键=" + envOverride.keys.joinToString(","),
@@ -482,7 +482,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     reason + " pgid=" + pgid + " pid=" + pid,
                 )
             }.onFailure {
-                RuntimeDiagnostics.append(this, "supervisor", false, "进程组回收失败，回退单进程", it.message)
+                RuntimeDiagnostics.append(this, "supervisor", false, "进程组回收失败，回退单进程", it.message ?: "")
             }
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
@@ -718,15 +718,17 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         } catch (_: Throwable) { }
     }
 
-    private fun isStatusUp(): Boolean = try {
+    private fun isStatusUp(): Boolean {
         if (healthPort <= 0) return false
-        val c = URL("http://127.0.0.1:" + healthPort + healthPath).openConnection() as HttpURLConnection
-        c.connectTimeout = 300
-        c.readTimeout = 1500
-        c.requestMethod = "GET"
-        c.responseCode == 200
-    } catch (_: Throwable) {
-        false
+        return try {
+            val c = URL("http://127.0.0.1:" + healthPort + healthPath).openConnection() as HttpURLConnection
+            c.connectTimeout = 300
+            c.readTimeout = 1500
+            c.requestMethod = "GET"
+            c.responseCode == 200
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun pollProbeReport(p: Process): String? {

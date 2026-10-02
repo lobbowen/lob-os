@@ -2,6 +2,7 @@ package lobos.os
 
 import lobos.capability.ProbeOutcome
 import lobos.lifecycle.AnchorState
+import lobos.lifecycle.ResidencyPolicy
 
 enum class OsPhase {
     BOOTING,
@@ -40,10 +41,11 @@ object OsPhaseRule {
     fun degraded(facts: OsFacts): Boolean =
         !facts.controlPlaneUp || facts.anchor == AnchorState.UNBOUND || channelDegraded()
 
-    private fun channelDegraded(): Boolean = runCatching {
-        val reasons = ResidencyStatus.snapshot().optJSONArray("degradedReasons") ?: return false
-        ResidencyPolicy.hostDegraded((0 until reasons.length()).map { reasons.optString(it) })
-    }.getOrDefault(false)
+    private fun channelDegraded(): Boolean {
+        val reasons = runCatching { ResidencyStatus.snapshot().optJSONArray("degradedReasons") }.getOrNull()
+            ?: return false
+        return ResidencyPolicy.hostDegraded((0 until reasons.length()).map { reasons.optString(it) })
+    }
 
     fun next(prev: OsPhase, facts: OsFacts): OsPhase? = when {
         !facts.readingsCollected -> null
