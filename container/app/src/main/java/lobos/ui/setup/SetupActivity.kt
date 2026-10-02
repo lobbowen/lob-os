@@ -29,6 +29,7 @@ import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.CapabilityNavigation
+import lobos.capability.CapStatus
 import lobos.capability.CapVerdict
 import lobos.capability.Evidence
 import lobos.setup.OnboardingFlow
