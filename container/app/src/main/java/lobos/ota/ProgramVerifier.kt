@@ -62,13 +62,16 @@ object ProgramVerifier {
         manifest?.optString("version", "")?.ifBlank { null }?.let { args += listOf("--version", it) }
 
         return try {
-            val pb = ProcessBuilder(args)
-                .directory(context.filesDir)
-                .redirectErrorStream(true)
-            pb.environment().putAll(
-                RuntimeEnvironment.treeRootEnv(RuntimeEnvironment.treeRootFor(context), Os.getenv("PATH"))
-            )
-            val proc = pb.start()
+            val proc = ProcessSupervisor.spawn(
+                command = args,
+                cwd = context.filesDir,
+                env = RuntimeEnvironment.treeRootEnv(
+                    RuntimeEnvironment.treeRootFor(context), Os.getenv("PATH"),
+                ),
+                envMode = ProcessSupervisor.ENV_MERGE,
+                redirectErrorStream = true,
+                owner = ProcessSupervisor.OWNER_VERIFIER,
+            ).process
             val out = StringBuilder()
             val pump = Thread {
                 proc.inputStream.bufferedReader().forEachLine { line ->

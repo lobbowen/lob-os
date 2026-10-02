@@ -91,6 +91,7 @@ object ProcessLedger {
     }
 
     @Synchronized
+
     fun list(ctx: Context): List<Entry> {
         val arr = read(ctx).optJSONArray("entries") ?: return emptyList()
         return (0 until arr.length()).mapNotNull { i ->
