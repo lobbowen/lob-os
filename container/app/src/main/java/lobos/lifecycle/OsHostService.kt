@@ -189,7 +189,7 @@ class OsHostService : Service() {
     private var ledgerRegisteredAtMs: Long = 0L
 
     private fun registerPermissionLedger(now: Long) {
-        val prev = lobos.permissions.PermissionLedger.readAll(this)?.atMs ?: 0L
+        val prev = lobos.permissions.PermissionLedger.read(this)?.atMs ?: 0L
         if (prev > 0L && now - prev < LEDGER_INTERVAL_MS) return
         ledgerRegisteredAtMs = prev
         runCatching { lobos.permissions.PermissionLedger.register(this) }
