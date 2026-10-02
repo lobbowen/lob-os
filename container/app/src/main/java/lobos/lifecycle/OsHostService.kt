@@ -21,7 +21,7 @@ import lobos.os.AppRegistry
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
-import lobos.ota.ProgramManager
+import lobos.ota.ProgramDir
 import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {
@@ -63,7 +63,7 @@ class OsHostService : Service() {
             handler?.post(tick)
             runCatching {
                 val ver = lobos.os.ProgramRegistry.listIds(this)
-                    .mapNotNull { ProgramManager(this, it).currentVersion() }
+                    .mapNotNull { ProgramDir(this, it).currentVersion() }
                     .singleOrNull()
                 RuntimeDiagnostics.append(
                     this, "host", true, "宿主不替任何应用决定生死（I1）",

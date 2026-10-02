@@ -7,7 +7,7 @@ import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.BridgeTokens
 import lobos.capability.CapStatus
 import lobos.capability.Evidence
-import lobos.ota.ProgramManager
+import lobos.ota.ProgramDir
 import lobos.permissions.LifecycleChecks
 import org.json.JSONObject
 import java.io.File
@@ -80,12 +80,12 @@ object ProvisioningProbe {
             val f = snapshotFile(ctx)
             if (!f.isFile) return
             val ids = lobos.os.ProgramRegistry.listIds(ctx)
-            val single = ids.singleOrNull()?.let { ProgramManager(ctx, it) }
+            val single = ids.singleOrNull()?.let { ProgramDir(ctx, it) }
             val obj = org.json.JSONObject(f.readText())
             obj.put("programVersion", single?.currentVersion() ?: "")
             obj.put("programFloor", single?.floorVersion() ?: "")
             obj.put("programPending", single?.pending()?.version ?: "")
-            obj.put("programs", org.json.JSONObject(ids.associateWith { ProgramManager(ctx, it).currentVersion() ?: "" }))
+            obj.put("programs", org.json.JSONObject(ids.associateWith { ProgramDir(ctx, it).currentVersion() ?: "" }))
             obj.put("checkedAt", System.currentTimeMillis())
             lobos.os.StateFiles.writeAtomic(f, obj.toString(2))
         } catch (_: Throwable) {
@@ -95,7 +95,7 @@ object ProvisioningProbe {
     private fun writeSnapshot(ctx: Context, e: Evidence, results: List<ProbeResult>) {
         try {
             val ids = lobos.os.ProgramRegistry.listIds(ctx)
-            val single = ids.singleOrNull()?.let { ProgramManager(ctx, it) }
+            val single = ids.singleOrNull()?.let { ProgramDir(ctx, it) }
             val obj = org.json.JSONObject().apply {
                 put("schema", 2)
                 put("appVersion", BuildConfig.VERSION_NAME)
@@ -104,7 +104,7 @@ object ProvisioningProbe {
                 put("programVersion", single?.currentVersion() ?: "")
                 put("programFloor", single?.floorVersion() ?: "")
                 put("programPending", single?.pending()?.version ?: "")
-                put("programs", org.json.JSONObject(ids.associateWith { ProgramManager(ctx, it).currentVersion() ?: "" }))
+                put("programs", org.json.JSONObject(ids.associateWith { ProgramDir(ctx, it).currentVersion() ?: "" }))
                 put("checkedAt", System.currentTimeMillis())
                 put("androidApi", Build.VERSION.SDK_INT)
                 put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
