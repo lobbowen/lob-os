@@ -32,17 +32,23 @@ object OnboardingFlow {
 
     private val F1_OWNS =
         (CapabilityCatalog.requiresInOrder(CapabilityCatalog.ADB_CREDENTIALS) +
-            CapabilityCatalog.ADB_CREDENTIALS).toSet()
+            CapabilityCatalog.ADB_CREDENTIALS +
+            CapabilityCatalog.ADB_UI_AUTOMATION).toSet()
 
-    private val F3_OWNS = (listOf(CapabilityCatalog.ADB_CHANNEL) + RUNTIME_ENV).toSet()
+    private val F3_OWNS = RUNTIME_ENV.toSet()
 
-    private val ENTRY_ORDER = listOf(CapabilityCatalog.ADB_CHANNEL) + RUNTIME_ENV
+    private val ENTRY_ORDER = RUNTIME_ENV
+
+    private val OPTIONAL_COMPONENT = listOf(
+        CapabilityCatalog.ADB_CHANNEL,
+        CapabilityCatalog.ADB_UI_AUTOMATION,
+    )
 
     fun readyToEnter(verdicts: Map<String, CapVerdict>): Boolean =
         PipelineProjection.workbenchReady(verdicts)
 
     val SKELETON: List<FlowStage> = listOf(
-        FlowStage(F1, "无线配对（一次 6 位码）", WHY_PAIR, StageStatus.NEXT),
+        FlowStage(F1, "可选组件：无线配对（一次 6 位码）", WHY_PAIR, StageStatus.NEXT),
         FlowStage(F3, "进入工作台", WHY_ENTER, StageStatus.NEXT),
     )
 
@@ -52,7 +58,7 @@ object OnboardingFlow {
         val entryGap = ENTRY_ORDER.firstOrNull { v[it]?.status != CapStatus.GRANTED }
 
         val rows = listOf(
-            Row(CapabilityCatalog.ADB_CREDENTIALS, F1_OWNS, cred?.status == CapStatus.GRANTED, true,
+            Row(CapabilityCatalog.ADB_CREDENTIALS, F1_OWNS, cred?.status == CapStatus.GRANTED, false,
                 cred?.detail ?: "", cred),
             Row(entryGap ?: CapabilityCatalog.RUNTIME, F3_OWNS, ready, true,
                 if (ready) "通道与控制面就绪"

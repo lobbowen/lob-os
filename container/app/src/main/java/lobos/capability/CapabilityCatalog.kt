@@ -5,6 +5,7 @@ import lobos.permissions.PermissionCatalog
 object CapabilityCatalog {
 
     const val S0 = "S0"
+    const val OX = "OX"
     const val S1 = "S1"
     const val S2 = "S2"
     const val S3 = "S3"
@@ -12,6 +13,7 @@ object CapabilityCatalog {
     const val DEV_OPTIONS = "dev-options"
     const val WIRELESS_DEBUG = "wireless-debug"
     const val ADB_CREDENTIALS = "adb-credentials"
+    const val ADB_UI_AUTOMATION = "adb-ui-automation"
     const val ADB_CHANNEL = "adb-channel"
     const val RUNTIME = "runtime"
     const val PROGRAM_BUNDLE = "program-bundle"
@@ -40,7 +42,7 @@ object CapabilityCatalog {
 
     val ALL: List<Capability> = listOf(
         Capability(
-            id = DEV_OPTIONS, title = "开发者选项", segment = S0,
+            id = DEV_OPTIONS, title = "开发者选项", segment = OX,
             judge = { e ->
                 if (e.devOptionsOn) CapVerdict(CapStatus.GRANTED, "已开启")
                 else CapVerdict(CapStatus.ACTION, "未开启：顶部总开关先打开")
@@ -48,7 +50,7 @@ object CapabilityCatalog {
             acquirer = { listOf(Acquisition(AcquireKind.USER_TAP, "去开发者选项页", NAV_DEV_OPTIONS)) },
         ),
         Capability(
-            id = WIRELESS_DEBUG, title = "无线调试", segment = S0, requires = setOf(DEV_OPTIONS),
+            id = WIRELESS_DEBUG, title = "无线调试", segment = OX, requires = setOf(DEV_OPTIONS),
             judge = { e ->
                 if (e.wirelessDebugOn) CapVerdict(CapStatus.GRANTED, "已开启")
                 else CapVerdict(CapStatus.ACTION, "未开启：同一页里的「无线调试」开关")
@@ -60,7 +62,7 @@ object CapabilityCatalog {
             segment = S0,
         ),
         Capability(
-            id = ADB_CREDENTIALS, title = "ADB 配对凭据", segment = S0,
+            id = ADB_CREDENTIALS, title = "ADB 配对凭据", segment = OX,
             requires = setOf(DEV_OPTIONS, WIRELESS_DEBUG, PermissionCatalog.POST_NOTIFICATIONS),
             judge = { e ->
                 when {
@@ -75,7 +77,8 @@ object CapabilityCatalog {
             bridgeToken = "adb_shell",
         ),
         Capability(
-            id = ADB_CHANNEL, title = "ADB 通道", segment = S0, requires = setOf(ADB_CREDENTIALS),
+            id = ADB_CHANNEL, title = "ADB 通道", segment = OX, requires = setOf(ADB_CREDENTIALS),
+            optional = true,
             judge = { e ->
                 val age = e.nowMs - e.channel.atMs
                 when {
@@ -108,10 +111,26 @@ object CapabilityCatalog {
             bridgeToken = "notification_access",
         ),
         perm(
-            PermissionCatalog.ACCESSIBILITY, "无障碍服务", PermTierClass.SECURE_SETTINGS,
+            PermissionCatalog.ACCESSIBILITY, "无障碍服务（保活锚）", PermTierClass.SECURE_SETTINGS,
             anchor = true,
-            note = "实证唯一挡得住 ColorOS HANS 冻整个 uid 的锚（OsHostService 的托底边）",
-            bridgeToken = "accessibility",
+            note = "实证唯一挡得住 ColorOS HANS 冻整个 uid 的锚（OsHostService 的托底边）；只做保活，不含 UI 自动化",
+        ),
+        Capability(
+            id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）", segment = OX,
+            requires = setOf(ADB_CHANNEL), optional = true, bridgeToken = "accessibility",
+            judge = { e ->
+                val svc = e.granted(PermissionCatalog.ACCESSIBILITY)
+                when {
+                    e.granted(ADB_CHANNEL) && svc -> CapVerdict(CapStatus.GRANTED, "随 ADB 组件已开启")
+                    svc -> CapVerdict(CapStatus.BLOCKED, "无障碍已开，但 ADB 组件未开：自动化不开")
+                    else -> CapVerdict(CapStatus.ACTION, "开启后随 ADB 组件一并打开无障碍")
+                }
+            },
+            acquirer = { e ->
+                listOf(
+                    Acquisition(AcquireKind.USER_TAP, "开启 ADB 组件后自动打开无障碍", EXEC_ACCESSIBILITY),
+                )
+            },
         ),
         perm(
             PermissionCatalog.MEDIAPROJECTION, "屏幕捕获授权", PermTierClass.IN_APP,
