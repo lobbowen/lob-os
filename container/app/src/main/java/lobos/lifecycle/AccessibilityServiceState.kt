@@ -7,7 +7,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import lobos.RuntimeDiagnostics
-import lobos.bridge.AdbClientRunner
 import lobos.capability.CapabilityCriteria
 import lobos.permissions.PermissionCatalog
 
@@ -98,7 +97,7 @@ object AccessibilityServiceState {
         val bound = st == ServiceState.BOUND
         RuntimeDiagnostics.append(
             ctx, "accessibility", bound,
-            if (bound) "锚已挂上（闸门开着）" else "无障碍服务已就位未成：" + st,
+            if (bound) "无障碍服务已就位（自动化可用）" else "无障碍服务未就位：" + st,
             how + "；timeout=" + timeoutMs + "ms",
         )
         return EnableOutcome(st, bound, issued, how + "；state=" + st)

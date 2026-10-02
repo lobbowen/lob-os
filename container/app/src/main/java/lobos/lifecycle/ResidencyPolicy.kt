@@ -1,6 +1,5 @@
 package lobos.lifecycle
 
-import lobos.os.Backoff
 
 object ResidencyPolicy {
 
@@ -19,13 +18,13 @@ object ResidencyPolicy {
         reasons.any { it == REASON_NO_PROGRAM || it == REASON_NONE_RUNNING }
 
     fun degradedReasons(
-        anchorProtected: Boolean,
+        accessibilityReady: Boolean,
         adbReady: Boolean,
         programsRunning: Int,
         installedPrograms: Int,
     ): List<String> {
         val out = mutableListOf<String>()
-        if (!anchorProtected) out.add(REASON_ANCHOR)
+        if (!accessibilityReady) out.add(REASON_ANCHOR)
         if (!adbReady && ADB_REQUIRED_FOR_LIVENESS) out.add(REASON_ADB)
         if (installedPrograms <= 0) out.add(REASON_NO_PROGRAM)
         else if (programsRunning <= 0) out.add(REASON_NONE_RUNNING)

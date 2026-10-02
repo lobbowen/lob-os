@@ -135,9 +135,9 @@ class OsHostService : Service() {
                 lobos.os.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
             }
             registerPermissionLedger(now)
-            val anchor = AccessibilityServiceState.state(this)
-            publishResidency(gap, anchor)
-            refreshStatusNotice(now, anchor)
+            val a11y = AccessibilityServiceState.state(this)
+            publishResidency(gap, a11y)
+            refreshStatusNotice(now, a11y)
             runCatching { pool?.sync() }
             sampleAdb(now)
             runCatching { lobos.native.DriverRegistry.ingest(this) }
@@ -162,7 +162,7 @@ class OsHostService : Service() {
         }
     }
 
-    private fun refreshStatusNotice(now: Long, anchor: ServiceState) {
+    private fun refreshStatusNotice(now: Long, a11y: ServiceState) {
         if (now - lastNotifyMs < NOTIFY_MS) return
         lastNotifyMs = now
         ResidencyAudit.heartbeat(this)
@@ -198,14 +198,14 @@ class OsHostService : Service() {
         }
     }
 
-    private fun publishResidency(gapMs: Long, anchor: ServiceState) {
-        val protectedNow = anchor == ServiceState.BOUND
+    private fun publishResidency(gapMs: Long, a11y: ServiceState) {
+        val protectedNow = a11y == ServiceState.BOUND
         val runningIds = runCatching { pool?.running() ?: emptyList<String>() }.getOrDefault(emptyList())
         val installed = runCatching {
             lobos.os.ProgramRegistry.list(this).count { it.startable }
         }.getOrDefault(0)
         val reasons = ResidencyPolicy.degradedReasons(
-            anchorProtected = protectedNow,
+            accessibilityReady = protectedNow,
             adbReady = adbReady,
             programsRunning = runningIds.size,
             installedPrograms = installed,
