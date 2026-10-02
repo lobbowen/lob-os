@@ -1,7 +1,6 @@
 package lobos.os
 
 import android.app.NotificationChannel
-import android.app.NotificationGroup
 import android.app.NotificationManager
 import android.content.Context
 import java.util.concurrent.ConcurrentHashMap
@@ -65,16 +64,6 @@ object ProgramNotificationHub {
         )
     }
 
-    private fun ensureGroup(ctx: Context, key: String, label: String) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.N) return
-        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        runCatching {
-            if (nm.getNotificationGroup(key) == null) {
-                nm.createNotificationGroup(NotificationGroup(key, label.ifBlank { "程序状态" }))
-            }
-        }
-    }
-
     fun publish(
         ctx: Context,
         programId: String,
@@ -93,7 +82,6 @@ object ProgramNotificationHub {
         val gLabel = groupLabel?.trim()?.take(60).orEmpty()
         val chKey = channelKeyOf(gRaw)
         ensureChannel(ctx, chKey, gLabel)
-        ensureGroup(ctx, gRaw, gLabel)
 
         val n = ProgramNotice(
             programId = safeId,
