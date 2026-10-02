@@ -1,0 +1,109 @@
+name: Node Runtime (编译一次，制品复用)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/build-node-android.sh'
+      - 'container/app/src/main/assets/node-versions.json'
+      - '.github/workflows/node-runtime.yml'
+
+concurrency:
+  group: node-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析 Node 版本与 ABI
+        id: ver
+        run: |
+          set -euo pipefail
+          ABI="$(bash scripts/read-node-versions.sh abi)"
+          TAG="$(bash scripts/read-node-versions.sh default)"
+          echo "abi=$ABI" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "[ver] node=$TAG abi=$ABI"
+
+      - name: 资产名
+        id: asset
+        run: |
+          echo "name=node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: 已发布就复用（不重编）
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "node-runtime-${{ steps.ver.outputs.tag }}" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            if gh release download "node-runtime-${{ steps.ver.outputs.tag }}" --repo '${{ github.repository }}' \
+                 --pattern '${{ steps.asset.outputs.name }}' --dir dist >/dev/null 2>&1; then
+              echo "[ok] 制品已存在，直接复用：${{ steps.asset.outputs.name }}"
+              echo "hit=yes" >> "$GITHUB_OUTPUT"
+              ls -la dist/
+              exit 0
+            fi
+            echo "[warn] release 在但资产取不到，转去编译。"
+          fi
+          echo "hit=no" >> "$GITHUB_OUTPUT"
+
+      - name: 环境（NDK / host 依赖）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          [ -d "${ANDROID_NDK_LATEST_HOME:-}" ] || { echo "::error title=无 NDK"; exit 1; }
+          echo "ANDROID_NDK=${ANDROID_NDK_LATEST_HOME}" >> "$GITHUB_ENV"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq git python3 ninja cmake make zip file >/dev/null
+
+      - name: 编译 Node（一次，约 3~4 小时；命中制品则跳过）
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          ANDROID_API: "24"
+        run: |
+          set -o pipefail
+          chmod +x scripts/build-node-android.sh
+          ./scripts/build-node-android.sh ${{ steps.ver.outputs.tag }} 2>&1 | tee /tmp/node-build.log
+
+      - name: 打包制品
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          ls -la dist/node-runtime/
+          tar -C dist/node-runtime -czf '${{ steps.asset.outputs.name }}' .
+          sha256sum '${{ steps.asset.outputs.name }}' | tee '${{ steps.asset.outputs.name }}.sha256'
+          mkdir -p dist
+          mv '${{ steps.asset.outputs.name }}' '${{ steps.asset.outputs.name }}.sha256' dist/
+
+      - name: 发布制品到 Release（供所有构建复用）
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="node-runtime-${{ steps.ver.outputs.tag }}"
+          if ! gh release view "$TAG" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release create "$TAG" --repo '${{ github.repository }}' \
+              --title "Node runtime ${{ steps.ver.outputs.tag }} (${{ steps.ver.outputs.abi }})" \
+              --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。"
+          fi
+          gh release upload "$TAG" \
+            'dist/${{ steps.asset.outputs.name }}' \
+            'dist/${{ steps.asset.outputs.name }}.sha256' \
+            --repo '${{ github.repository }}' --clobber
+          echo "[ok] 已发布 $TAG"
+
+      - name: 摘要
+        run: |
+          echo "### Node runtime" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 版本：\`${{ steps.ver.outputs.tag }}\` (${{ steps.ver.outputs.abi }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 复用制品：\`${{ steps.reuse.outputs.hit }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 资产：\`${{ steps.asset.outputs.name }}\`" >> "$GITHUB_STEP_SUMMARY"
