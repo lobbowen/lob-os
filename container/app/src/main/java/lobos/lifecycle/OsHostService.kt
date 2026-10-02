@@ -311,7 +311,7 @@ class OsHostService : Service() {
             Intent(this, SetupActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val summary = android.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
+        val summary = androidx.core.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
         val items = mutableListOf<String>()
         for (n in lobos.os.ProgramStatusHub.snapshot(this).take(6)) {
             items += n.id + " · " + n.state.name.lowercase() +
