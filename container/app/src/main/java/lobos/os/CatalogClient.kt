@@ -90,11 +90,13 @@ object CatalogClient {
         val pubPem = runCatching {
             ctx.assets.open("supply/userland-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
         }.getOrNull() ?: return fail(ctx, "信任根读不到：assets/supply/userland-public.pem")
-        val body = runCatching { SupplyProvisioner.httpGet(base + "/" + name) }.getOrNull()
+        val body = runCatching {
+            SupplyProvisioner.httpGet(base + "/" + name, SupplyProvisioner.MAX_MANIFEST_BYTES)
+        }.getOrNull()
             ?: return fail(ctx, "清单下载失败：" + base + "/" + name)
         val sig = runCatching {
             android.util.Base64.decode(
-                SupplyProvisioner.httpGet(base + "/" + sigName).toString(Charsets.UTF_8).trim(),
+                SupplyProvisioner.httpGet(base + "/" + sigName, SupplyProvisioner.MAX_MANIFEST_BYTES).toString(Charsets.UTF_8).trim(),
                 android.util.Base64.DEFAULT,
             )
         }.getOrNull() ?: return fail(ctx, "签名下载失败：" + base + "/" + sigName)
