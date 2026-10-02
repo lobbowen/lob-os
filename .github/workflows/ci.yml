@@ -35,6 +35,9 @@ jobs:
       - name: 规范 — DO 跑不通：不许启用设备所有者
         run: node scripts/do-gate.js
 
+      - name: 结构 — 宿主 Kotlin（括号/字符串配平自检）
+        run: node tools/ktcheck.js
+
       - name: 语法 — 引擎与脚本（node --check）
         run: |
           set -euo pipefail
