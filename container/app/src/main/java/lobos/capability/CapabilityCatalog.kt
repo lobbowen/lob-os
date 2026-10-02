@@ -103,17 +103,16 @@ object CapabilityCatalog {
         perm(PermissionCatalog.SYSTEM_ALERT_WINDOW, "悬浮窗", PermTierClass.APPOP),
         perm(
             PermissionCatalog.BATTERY_OPTIMIZATION, "电池优化豁免", PermTierClass.APPOP,
-            anchor = true, note = "不豁免则 Doze 下整机被冻结",
+            note = "不豁免则 Doze 下被限流，存活率显著下降",
         ),
         perm(
             PermissionCatalog.NOTIFICATION_ACCESS, "通知读取", PermTierClass.SECURE_SETTINGS,
-            anchor = true, note = "既是面板的通知能力，也是后台存活的一票",
+            note = "系统通知读取（程序可投递状态通知）",
             bridgeToken = "notification_access",
         ),
         perm(
-            PermissionCatalog.ACCESSIBILITY, "无障碍服务（保活锚）", PermTierClass.SECURE_SETTINGS,
-            anchor = true,
-            note = "实证唯一挡得住 ColorOS HANS 冻整个 uid 的锚（OsHostService 的托底边）；只做保活，不含 UI 自动化",
+            PermissionCatalog.ACCESSIBILITY, "无障碍服务（UI 自动化执行体）", PermTierClass.SECURE_SETTINGS,
+            note = "只作 UI 自动化执行体，不承担保活；保活靠前台服务与闹钟",
         ),
         Capability(
             id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）", segment = OX,
@@ -169,12 +168,11 @@ object CapabilityCatalog {
         optional: Boolean = false,
         note: String = "",
         bridgeToken: String? = null,
-        anchor: Boolean = false,
     ): Capability {
         require(PermissionCatalog.byId(id) != null) { "$id 不在 PermissionCatalog.ALL 里，判据无从取数" }
         return Capability(
             id = id, title = title, segment = segment, optional = optional,
-            bridgeToken = bridgeToken, keepAliveAnchor = anchor,
+            bridgeToken = bridgeToken,
             judge = { e ->
                 if (e.granted(id)) CapVerdict(CapStatus.GRANTED, "已授权")
                 else {

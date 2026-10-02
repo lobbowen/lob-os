@@ -7,7 +7,7 @@ import org.json.JSONObject
 object ResidencyStatus {
 
     data class Snapshot(
-        val anchorBound: Boolean,
+        val accessibilityReady: Boolean,
         val adbReady: Boolean,
         val programsRunning: Int,
         val installedPrograms: Int,
@@ -16,8 +16,7 @@ object ResidencyStatus {
         val actions: List<String>,
         val tickGapMs: Long,
         val frozen: Boolean,
-        val anchorRebindAttempts: Int,
-        val startedAtMs: Long,
+            val startedAtMs: Long,
         val tier: String,
         val tierBasis: List<String>,
         val adbState: String,
@@ -29,7 +28,7 @@ object ResidencyStatus {
     fun record(s: Snapshot) {
         last = JSONObject().apply {
             put("updatedAt", System.currentTimeMillis())
-            put("anchorBound", s.anchorBound)
+            put("accessibilityReady", s.accessibilityReady)
             put("adbReady", s.adbReady)
             put("programsRunning", s.programsRunning)
             put("installedPrograms", s.installedPrograms)
@@ -39,7 +38,6 @@ object ResidencyStatus {
             put("actions", JSONArray(s.actions))
             put("tickGapMs", s.tickGapMs)
             put("frozen", s.frozen)
-            put("anchorRebindAttempts", s.anchorRebindAttempts)
             put("startedAtMs", s.startedAtMs)
             put("uptimeMs", if (s.startedAtMs > 0) System.currentTimeMillis() - s.startedAtMs else 0L)
             put("tier", s.tier)
@@ -78,7 +76,7 @@ object ResidencyStatus {
         } else {
             " 降级=" + (0 until reasons.length()).joinToString(",") { reasons.optString(it) }
         }
-        "锚=" + (if (s.optBoolean("anchorBound")) "绑定" else "未绑定") +
+        "无障碍=" + (if (s.optBoolean("accessibilityReady")) "已连" else "未连") +
             " ADB=" + s.optString("adbState", if (s.optBoolean("adbReady")) "online" else "?") +
             " 程序在跑=" + s.optInt("programsRunning") + "/" + s.optInt("installedPrograms") +
             " 档位=" + s.optString("tier", "?") +

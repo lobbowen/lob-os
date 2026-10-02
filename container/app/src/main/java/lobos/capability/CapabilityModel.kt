@@ -32,5 +32,4 @@ data class Capability(
     val judge: (Evidence) -> CapVerdict,
     val acquirer: (Evidence) -> List<Acquisition> = { emptyList() },
     val bridgeToken: String? = null,
-    val keepAliveAnchor: Boolean = false,
 )
