@@ -9,7 +9,7 @@ object ProcessLedger {
 
     private const val DIR = "os"
     private const val FILE = "process-ledger.json"
-    private const val SCHEMA = 1
+    private const val SCHEMA = 2
 
     data class Entry(
         val programId: String,
@@ -18,6 +18,7 @@ object ProcessLedger {
         val starttime: Long,
         val pgid: Int,
         val startedAt: Long,
+        val ownsGroup: Boolean = false,
     )
 
     private fun file(ctx: Context): File {
@@ -26,8 +27,20 @@ object ProcessLedger {
         return File(d, FILE)
     }
 
-    private fun read(ctx: Context): JSONObject =
-        runCatching { JSONObject(file(ctx).readText()) }.getOrDefault(JSONObject())
+    private fun read(ctx: Context): JSONObject {
+        val f = file(ctx)
+        if (!f.isFile) return JSONObject()
+        return try {
+            JSONObject(f.readText())
+        } catch (e: Throwable) {
+            lobos.RuntimeDiagnostics.append(
+                ctx, "ledger", false,
+                "进程账本不可解析：按无进程处理（已失去全部归属信息）",
+                f.absolutePath + " " + e::class.java.simpleName + ": " + (e.message ?: ""),
+            )
+            JSONObject()
+        }
+    }
 
     private fun write(ctx: Context, obj: JSONObject) {
         runCatching {
@@ -86,6 +99,7 @@ object ProcessLedger {
                 starttime = o.optLong("starttime", -1L),
                 pgid = o.optInt("pgid", -1),
                 startedAt = o.optLong("startedAt", 0L),
+                ownsGroup = o.optBoolean("ownsGroup", false),
             )
         }
     }
@@ -101,6 +115,7 @@ object ProcessLedger {
                 put("starttime", e.starttime)
                 put("pgid", e.pgid)
                 put("startedAt", e.startedAt)
+                put("ownsGroup", e.ownsGroup)
             })
         }
         write(ctx, read(ctx).put("entries", arr))
@@ -116,11 +131,35 @@ object ProcessLedger {
         val rest = java.io.File("/proc/" + pid + "/stat").readText().substringAfterLast(") ")
         rest.split(" ").getOrNull(2)?.toIntOrNull() ?: -1
     }.getOrDefault(-1)
+
+    fun myPgid(): Int = pgidOf(android.os.Process.myPid())
+
+    fun isolateGroup(pid: Int): Boolean = runCatching {
+        if (pid <= 1) return false
+        android.system.Os.setpgid(pid, pid)
+        true
+    }.getOrDefault(false)
+
+    fun ownsGroup(entry: Entry): Boolean =
+        entry.ownsGroup && entry.pgid > 1 && entry.pgid == entry.pid && entry.pgid != myPgid()
+
+    fun killGroup(entry: Entry): Boolean {
+        if (!ownsGroup(entry)) return false
+        return runCatching {
+            android.system.Os.kill(-entry.pgid, android.system.OsConstants.SIGTERM)
+            true
+        }.getOrDefault(false)
+    }
     @Synchronized
     fun begin(ctx: Context, programId: String, generation: Long, pid: Int): Entry? {
         val st = starttimeOf(pid)
         if (pid <= 0 || st <= 0) return null
-        val e = Entry(programId, generation, pid, st, pgidOf(pid), System.currentTimeMillis())
+        isolateGroup(pid)
+        val pgid = pgidOf(pid)
+        val owns = pgid == pid && pgid != myPgid()
+        val e = Entry(
+            programId, generation, pid, st, pgid, System.currentTimeMillis(), owns,
+        )
         persist(ctx, list(ctx).filterNot { it.pid == pid } + e)
         return e
     }

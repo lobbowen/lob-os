@@ -64,8 +64,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     fun requestStop() {
         keepRunning = false
-        lobos.os.ProcessLedger.end(this, pidOf(nodeProcess))
-        try { reapProgramTree("宿主关停") } catch (_: Throwable) { }
+        try { reapProgramTree("外部请求停止") } catch (_: Throwable) { }
     }
 
     fun requestStart() {
@@ -77,8 +76,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     fun requestRestart() {
         keepRunning = true
         quarantineReset = true
-        lobos.os.ProcessLedger.end(this, pidOf(nodeProcess))
-        try { reapProgramTree("宿主关停") } catch (_: Throwable) { }
+        try { reapProgramTree("外部请求重启") } catch (_: Throwable) { }
         scheduleBootLoop()
     }
 
@@ -468,26 +466,30 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 .firstOrNull { it.programId == programId && it.generation == currentGeneration }
         }.getOrNull()
         val pid = e?.pid ?: -1
-        val pgid = e?.pgid ?: -1
-        val me = android.os.Process.myPid()
-        val myPgid = lobos.os.ProcessLedger.pgidOf(me)
-        val ownGroup = pgid > 0 && pgid == myPgid
-        if (ownGroup) {
-            RuntimeDiagnostics.append(
-                this, "supervisor", false, "进程组回收已拒绝：目标组就是宿主自己所在的组",
-                reason + " pgid=" + pgid + " myPgid=" + myPgid +
-                    "（组杀会连宿主一起杀掉；改为只杀已记账的 pid）",
-            )
-        } else if (pid > 0 && pgid > 0) {
-            runCatching {
-                android.system.Os.kill(-pgid, android.system.OsConstants.SIGTERM)
+        if (e != null) {
+            if (lobos.os.ProcessLedger.ownsGroup(e)) {
+                if (lobos.os.ProcessLedger.killGroup(e)) {
+                    RuntimeDiagnostics.append(
+                        this, "supervisor", null, "按账本回收自建进程组",
+                        reason + " pgid=" + e.pgid + " pid=" + pid,
+                    )
+                } else {
+                    RuntimeDiagnostics.append(
+                        this, "supervisor", false, "进程组回收失败，回退单进程",
+                        reason + " pgid=" + e.pgid + " pid=" + pid,
+                    )
+                }
+            } else {
                 RuntimeDiagnostics.append(
-                    this, "supervisor", null, "按账本回收进程组",
-                    reason + " pgid=" + pgid + " pid=" + pid,
+                    this, "supervisor", false, "组杀已拒绝：该组不是本内核自建",
+                    reason + " pgid=" + e.pgid + " pid=" + pid + " ownsGroup=" + e.ownsGroup +
+                        " myPgid=" + lobos.os.ProcessLedger.myPgid() +
+                        "（只杀已记账的单个 pid）",
                 )
-            }.onFailure {
-                RuntimeDiagnostics.append(this, "supervisor", false, "进程组回收失败，回退单进程", it.message ?: "")
             }
+        }
+        if (pid > 0 && pid != android.os.Process.myPid()) {
+            runCatching { android.os.Process.sendSignal(pid, android.os.OsConstants.SIGTERM) }
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
         if (pid > 0) runCatching { lobos.os.ProcessLedger.end(this, pid) }
@@ -522,8 +524,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private fun stopProcessTree(pid: Int) {
         if (pid <= 0) return
-        if (pid == android.os.Process.myPid()) {
+        val me = android.os.Process.myPid()
+        if (pid == me) {
             RuntimeDiagnostics.append(this, "supervisor", false, "拒绝自杀：账本 pid 是宿主自己", "pid=" + pid)
+            return
+        }
+        if (lobos.os.ProcessLedger.pgidOf(pid) == lobos.os.ProcessLedger.myPgid()) {
+            RuntimeDiagnostics.append(this, "supervisor", false, "拒绝组内杀：目标与宿主同组", "pid=" + pid + " pgid=" + lobos.os.ProcessLedger.myPgid())
             return
         }
         try { android.os.Process.sendSignal(pid, 15) } catch (_: Throwable) {}

@@ -16,10 +16,10 @@ object CompatSemantics {
         Item("open-fallback", "打不开时的回落语义（不静默）", "done", "d1/open-fallback.c"),
         Item("flock", "文件锁语义", "done", "d2/flock.c"),
         Item("pty", "伪终端语义", "done", "d2/pty-probe.c"),
-        Item("session", "会话/进程组（setsid，可整组回收）", "done", "os/RuntimeEnvironment + d1"),
+        Item("session", "会话/进程组：内核在 spawn 时 setpgid 建组，账本记归属，仅回收自建组", "done", "os/ProcessLedger（setpgid + ownsGroup）"),
         Item("case-sensitive", "大小写敏感（Linux 语义）", "done", "Android 文件系统（ext4/f2fs）本身大小写敏感；本系统不做任何不敏感化处理"),
         Item("uid-model", "单用户全权限（无多用户语义）", "done", "模型决策：单租户"),
-        Item("signal", "信号与退出码透传", "done", "整组 SIGTERM（Os.kill(-pgid)）+ 退出码入账（InstanceHost/ProcessLedger）"),
+        Item("signal", "信号与退出码透传", "done", "仅对账本标记 ownsGroup 的组发 SIGTERM；其余只杀单个 pid。退出码入账（InstanceHost/ProcessLedger）"),
     )
 
     fun write(ctx: Context) {
