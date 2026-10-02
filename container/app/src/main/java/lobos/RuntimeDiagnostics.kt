@@ -82,8 +82,8 @@ object RuntimeDiagnostics {
                 append("\n      " + ev.detail.replace("\n", "\n      "))
             }
         }
-        runCatching { file(ctx).appendText(line + "\n") }
-        runCatching { structFile(ctx).appendText(ev.toJson().toString() + "\n") }
+        runCatching { lobos.os.StateFiles.appendBounded(file(ctx), line) }
+        runCatching { lobos.os.StateFiles.appendBounded(structFile(ctx), ev.toJson().toString()) }
         runCatching {
             Journal.append(
                 ctx, "diag:" + ev.stage,
@@ -132,7 +132,7 @@ object RuntimeDiagnostics {
 
     @Synchronized
     fun recordNodeStderr(ctx: Context, text: String) {
-        if (text.isNotBlank()) nodeErrFile(ctx).appendText(text)
+        if (text.isNotBlank()) lobos.os.StateFiles.appendBounded(nodeErrFile(ctx), text)
     }
 
     @Synchronized

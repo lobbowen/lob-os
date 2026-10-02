@@ -75,18 +75,30 @@ object ProgramOtaSelfCheck {
             )
         }
 
-        val selfId = lobos.os.ProgramRegistry.listIds(ctx).singleOrNull() ?: ""
-        val km = ProgramManager(ctx, selfId)
-        val store = ProgramOtaStateStore(km.programRootDir())
-        val cur = store.currentVersion()
-        val floor = store.floorVersion()
-        val pend = store.pending()
-        out += SelfCheckReport.Item(
-            "local-state",
-            true,
-            "本地内核状态",
-            "CURRENT=" + (cur ?: "(无)") + "   FLOOR=" + (floor ?: "(无)") + "   PENDING=" + (pend?.version ?: "(无)"),
-        )
+        val ids = lobos.os.ProgramRegistry.listIds(ctx)
+        var cur: String? = null
+        var floor: String? = null
+        var pend: ProgramOtaStateStore.Pending? = null
+        if (ids.size == 1) {
+            val km = ProgramManager(ctx, ids[0])
+            val store = ProgramOtaStateStore(km.programRootDir())
+            cur = store.currentVersion()
+            floor = store.floorVersion()
+            pend = store.pending()
+            out += SelfCheckReport.Item(
+                "local-state",
+                true,
+                "本地内核状态",
+                "CURRENT=" + (cur ?: "(无)") + "   FLOOR=" + (floor ?: "(无)") + "   PENDING=" + (pend?.version ?: "(无)"),
+            )
+        } else {
+            out += SelfCheckReport.Item(
+                "local-state",
+                null,
+                "本地状态段跳过：程序数=" + ids.size + "（本段只在唯一程序时可读）",
+                ids.joinToString().ifBlank { "（无）" },
+            )
+        }
 
         if (m != null) {
             val st = try {

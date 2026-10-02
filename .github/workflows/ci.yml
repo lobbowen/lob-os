@@ -45,6 +45,9 @@ jobs:
             node --check "$f"
           done
 
+      - name: 双份 canonical 必须逐字一致（跨边界签名/验签）
+        run: node tools/check-dual-canonical.js
+
       - name: 生成器自洽 — 原生件清单可由注册表重算
         run: |
           set -euo pipefail

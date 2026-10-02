@@ -44,6 +44,25 @@ object StateFiles {
     fun readJson(file: File): JSONObject? =
         runCatching { JSONObject(file.readText()) }.getOrNull()
 
+    fun appendBounded(file: File, line: String, maxBytes: Long = 512 * 1024L, keepLines: Int = 500) {
+        val dir = file.parentFile ?: return
+        dir.mkdirs()
+        try {
+            val prev = if (file.isFile) file.readText() else ""
+            val next = (prev + line + "\n")
+            if (next.toByteArray(Charsets.UTF_8).size <= maxBytes) {
+                writeAtomic(file, next)
+                return
+            }
+            val lines = next.split("\n").filter { it.isNotBlank() }
+            if (lines.size <= keepLines) {
+                writeAtomic(file, lines.joinToString("\n") + "\n")
+                return
+            }
+            writeAtomic(file, lines.takeLast(keepLines).joinToString("\n") + "\n")
+        } catch (_: Throwable) { }
+    }
+
     fun fsyncDir(dir: File) {
         runCatching {
             val fd = Os.open(dir.absolutePath, OsConstants.O_RDONLY, 0)
