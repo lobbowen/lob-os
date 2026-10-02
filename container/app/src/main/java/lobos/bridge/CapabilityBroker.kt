@@ -1,11 +1,9 @@
 package lobos.bridge
 
-import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -14,18 +12,13 @@ import android.net.LocalServerSocket
 import android.net.LocalSocket
 import android.os.Build
 import android.os.Environment
-import android.os.IBinder
-import android.provider.Settings
 import android.util.Log
 import lobos.BuildConfig
-import lobos.MainActivity
-import lobos.OsApplication
 import lobos.ProvisioningProbe
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.capability.BridgeTokens
 import lobos.capability.CapabilityCatalog
-import lobos.capability.CapabilityCriteria
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.lifecycle.AccessibilityAnchor
 import lobos.ota.ProgramInstaller
@@ -33,8 +26,6 @@ import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
 import lobos.lifecycle.OsHostService
 import lobos.lifecycle.OsAccessibilityService
-import lobos.lifecycle.PackageInstallReceiver
-import lobos.native.AssetStatus
 import lobos.native.NativeAssetRegistry
 import lobos.native.NativePreparer
 import lobos.native.PrepareReport
@@ -883,11 +874,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("bridge", SOCKET_NAME)
             }
         },
-        "os.permissions.ledger" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { p ->
+        "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p ->
             val snap = lobos.permissions.PermissionLedger.register(this@CapabilityBroker)
             lobos.permissions.PermissionLedger.toJson(snap)
         },
-        "os.permissions.roles" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { _ ->
+        "os.permissions.roles" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
             JSONObject().apply {
                 put("roles", JSONArray().apply {
                     for (r in lobos.permissions.PermissionRoles.declared()) {
@@ -905,14 +896,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.anchor.state" to MethodDef(listOf(ApiSurface.SYS_GROUP), false) { _ ->
+        "os.anchor.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _ ->
             JSONObject().apply {
                 put("state", AccessibilityAnchor.state(this@CapabilityBroker).name)
                 put("bound", AccessibilityAnchor.isBound(this@CapabilityBroker))
                 put("autoHeal", "无条件自愈：只看锚是否掉，不看任何开关")
             }
         },
-        "os.anchor.ensure" to MethodDef(listOf(ApiSurface.SYS_GROUP), true) { p ->
+        "os.anchor.ensure" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p ->
             val ms = p.optLong("timeoutMs", 8000L)
             val out = AccessibilityAnchor.ensureBound(this@CapabilityBroker, ms)
             JSONObject().apply {

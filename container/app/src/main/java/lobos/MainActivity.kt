@@ -17,14 +17,11 @@ import lobos.bridge.ScreenCaptureController
 import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
 import lobos.capability.Evidence
-import lobos.ota.ProgramManager
-import lobos.ota.ProgramOtaUpdater
 import lobos.ota.ProgramOtaSelfCheck
 import lobos.lifecycle.OsHostService
 import lobos.runtime.InstanceHost
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter
-import lobos.runtime.GuestAdapter
 
 class MainActivity : AppCompatActivity() {
 

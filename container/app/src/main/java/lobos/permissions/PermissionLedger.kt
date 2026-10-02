@@ -27,6 +27,7 @@ object PermissionLedger {
 
     const val FILE = "permission-ledger.json"
     const val SCHEMA = 1
+    const val ATTEMPTS = "attempts"
 
     fun file(ctx: Context) = java.io.File(java.io.File(ctx.filesDir, "os"), FILE)
 
@@ -77,6 +78,47 @@ object PermissionLedger {
             snap.missing.joinToString { it.id },
         )
         return snap
+    }
+
+    @Synchronized
+    fun recordAttempt(
+        ctx: Context,
+        id: String,
+        outcome: String,
+        detail: String,
+    ) {
+        if (PermissionCatalog.byId(id) == null) return
+        val o = StateFiles.readJson(file(ctx)) ?: JSONObject()
+        val arr = o.optJSONArray(ATTEMPTS) ?: JSONArray()
+        val out = JSONArray()
+        var hit = false
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            if (e.optString("id", "") == id) hit = true else { out.put(e) }
+        }
+        out.put(JSONObject().apply {
+            put("id", id)
+            put("outcome", outcome)
+            put("atMs", System.currentTimeMillis())
+            put("detail", detail.take(300))
+        })
+        StateFiles.writeJson(file(ctx), o.apply { put(ATTEMPTS, out) })
+    }
+
+    @Synchronized
+    fun readAll(ctx: Context): Map<String, lobos.capability.SilentAttempt> {
+        val arr = StateFiles.readJson(file(ctx))?.optJSONArray(ATTEMPTS) ?: return emptyMap()
+        val out = LinkedHashMap<String, lobos.capability.SilentAttempt>()
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            val id = e.optString("id", "")
+            if (id.isBlank() || PermissionCatalog.byId(id) == null) continue
+            val outcome = lobos.capability.AttemptOutcomeRule.from(e.optString("outcome", "")) ?: continue
+            out[id] = lobos.capability.SilentAttempt(
+                outcome, e.optLong("atMs", 0L), e.optString("detail", ""),
+            )
+        }
+        return out
     }
 
     fun heldIds(ctx: Context): Set<String> = try {

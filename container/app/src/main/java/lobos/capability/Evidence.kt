@@ -31,6 +31,8 @@ object AttemptOutcomeRule {
         "Unknown operation", "does not exist",
     )
 
+    fun from(name: String): AttemptOutcome? = AttemptOutcome.values().firstOrNull { it.name == name }
+
     fun of(issued: Boolean, verified: Boolean, systemText: String): AttemptOutcome? {
         if (!issued) return null
         if (verified) return AttemptOutcome.SILENT_OK

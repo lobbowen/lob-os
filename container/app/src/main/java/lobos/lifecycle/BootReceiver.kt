@@ -6,7 +6,6 @@ import android.content.Intent
 import android.util.Log
 import lobos.RuntimeDiagnostics
 import lobos.os.KillAudit
-import lobos.runtime.InstanceHost
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {

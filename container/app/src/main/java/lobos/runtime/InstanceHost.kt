@@ -7,12 +7,8 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import lobos.MainActivity
-import lobos.OsApplication
 import lobos.ProvisioningProbe
-import lobos.R
-import lobos.RuntimeDiagnostics
+untimeDiagnostics
 import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
 import lobos.ota.ProgramOtaResolution

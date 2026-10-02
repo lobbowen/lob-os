@@ -1,7 +1,6 @@
 package lobos.capability
 
 import android.content.Context
-import lobos.RuntimeDiagnostics
 import lobos.bridge.AdbClientRunner
 import lobos.lifecycle.AccessibilityAnchor
 import lobos.permissions.PermissionCatalog

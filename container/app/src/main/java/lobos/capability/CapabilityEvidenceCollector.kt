@@ -4,9 +4,6 @@ import android.content.Context
 import lobos.ota.ProgramOtaSelfCheck
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter
-import lobos.runtime.GuestAdapter
-import java.net.HttpURLConnection
-import java.net.URL
 
 object CapabilityEvidenceCollector {
 
@@ -27,7 +24,7 @@ object CapabilityEvidenceCollector {
             credentials = CapabilityCriteria.credentialsState(ctx),
             channel = AdbChannelComponent.asChannelProbe(),
             grants = grants,
-            permissionAttempts = PermissionLedger.readAll(ctx),
+            permissionAttempts = lobos.permissions.PermissionLedger.readAll(ctx),
             controlPlaneUp = up,
             programChecks = programChecks(ctx, nowMs, up),
             oemGuards = OemGuards.confirmedAll(ctx),
@@ -50,7 +47,7 @@ object CapabilityEvidenceCollector {
             credentials = CapabilityCriteria.credentialsState(ctx),
             channel = AdbChannelComponent.asChannelProbe(),
             grants = PermissionCatalog.ALL.filter { center.isGranted(it) }.map { it.id }.toSet(),
-            permissionAttempts = PermissionLedger.readAll(ctx),
+            permissionAttempts = lobos.permissions.PermissionLedger.readAll(ctx),
             pairAttempt = AttemptStore.lastPair,
             oemGuards = OemGuards.confirmedAll(ctx),
             names = CapabilityCriteria.names(ctx),

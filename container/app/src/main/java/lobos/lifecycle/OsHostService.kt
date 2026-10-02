@@ -22,7 +22,6 @@ import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
 import lobos.ota.ProgramManager
-import lobos.runtime.InstanceHost
 import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {
@@ -190,7 +189,7 @@ class OsHostService : Service() {
     private var ledgerRegisteredAtMs: Long = 0L
 
     private fun registerPermissionLedger(now: Long) {
-        val prev = lobos.permissions.PermissionLedger.read(this)?.atMs ?: 0L
+        val prev = lobos.permissions.PermissionLedger.readAll(this)?.atMs ?: 0L
         if (prev > 0L && now - prev < LEDGER_INTERVAL_MS) return
         ledgerRegisteredAtMs = prev
         runCatching { lobos.permissions.PermissionLedger.register(this) }
@@ -259,7 +258,7 @@ class OsHostService : Service() {
         adbReady = lobos.capability.AdbChannelComponent.isOnline()
         if (adbReady && !silentGrantVerified) {
             silentGrantVerified = runCatching {
-                lobos.capability.PermissionLedger.readAll(this).values
+                lobos.permissions.PermissionLedger.readAll(this).values
                     .any { it.outcome == lobos.capability.AttemptOutcome.SILENT_OK }
             }.getOrDefault(false)
         }
