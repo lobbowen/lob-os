@@ -111,8 +111,6 @@ function packBundle(o) {
       throw new Error('程序清单缺少 args（可为空数组，' + o.srcDir + '/manifest.json）；内核不再替应用猜启动参数');
     }
   }
-  // 签名对象必须是「设备端会验的那份」：feed 清单（含 url/sha256），而不是包内清单。
-  // 否则 canonical(feed) != canonical(包内清单)，验签必然失败（OTA 恒拒装）。
 
   manifestJson.signature = signManifest(o.privateKeyPem, manifestJson);
 
