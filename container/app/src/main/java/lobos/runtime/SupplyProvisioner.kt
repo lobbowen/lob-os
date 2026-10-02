@@ -20,7 +20,8 @@ object SupplyProvisioner {
     private const val PUBKEY_ASSET = "supply/userland-public.pem"
     private const val MANIFEST_NAME = "userland-manifest.json"
     private const val FETCH_TIMEOUT_MS = 30000
-    internal const val MAX_FETCH_BYTES = 64 * 1024 * 1024
+    internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
+    internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
     fun toolchainDir(ctx: Context): File = File(PrefixProvisioner.libDir(ctx), "toolchain")
     fun entryLink(ctx: Context, name: String): File = File(PrefixProvisioner.binDir(ctx), name)
@@ -236,8 +237,8 @@ object SupplyProvisioner {
                 return 0
             }
             val sigName = anchorName(ctx, "sigName") ?: (manName + ".sig")
-            val manifestBytes = httpGet(uncached(base + "/" + manName))
-            val sigBytes = httpGet(uncached(base + "/" + sigName)).toString(Charsets.UTF_8).trim().let {
+            val manifestBytes = httpGet(uncached(base + "/" + manName), MAX_MANIFEST_BYTES)
+            val sigBytes = httpGet(uncached(base + "/" + sigName), MAX_MANIFEST_BYTES).toString(Charsets.UTF_8).trim().let {
                 android.util.Base64.decode(it, android.util.Base64.DEFAULT)
             }
             if (!verifyEd25519(pubPem, manifestBytes, sigBytes)) {
