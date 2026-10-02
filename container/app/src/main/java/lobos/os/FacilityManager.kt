@@ -25,17 +25,18 @@ object FacilityManager {
         val apk = if (f.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, f.libName) else null
         val ota = currentVersion(ctx, name)
         val caBundle = File(ctx.filesDir, "usr/ca-bundle.pem")
+        val otaDir = ota?.let { File(d, it) }
         val evidence = when {
             apk != null -> apk.absolutePath
             name == "ca" -> caBundle.absolutePath
-            ota != null -> File(d, ota).absolutePath
+            otaDir != null -> otaDir.absolutePath
             else -> d.absolutePath
         }
         val installed = when {
             apk != null -> apk.isFile
             name == "ca" -> caBundle.isFile
-            ota != null -> File(d, ota).isDirectory
-            else -> d.isDirectory
+            otaDir != null -> otaDir.isDirectory
+            else -> false
         }
         return Reality(name, installed, version, evidence)
     }
@@ -177,20 +178,7 @@ object FacilityManager {
         val reg = FacilityRegistry.all(ctx).firstOrNull { it.name == name } ?: return false
         val dir = File(ctx.filesDir, reg.stateDir)
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
-        val f = FacilityRegistry.fileFor(ctx)
-        val o = StateFiles.readJson(f)
-        if (o != null) {
-            val arr = o.optJSONArray("facilities")
-            val out = JSONArray()
-            if (arr != null) {
-                for (i in 0 until arr.length()) {
-                    val e = arr.optJSONObject(i) ?: continue
-                    if (e.optString("name") != name) out.put(e)
-                }
-            }
-            o.put("facilities", out)
-            StateFiles.writeJson(f, o)
-        }
+        FacilityRegistry.remove(ctx, name)
         Journal.note(ctx, "facility", removed, "卸载设施", "name=" + name + " dir=" + reg.stateDir)
         reconcile(ctx)
         return removed

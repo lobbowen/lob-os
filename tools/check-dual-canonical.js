@@ -13,8 +13,9 @@ function fail(msg) {
 function grab(s) {
   const i = s.indexOf('function canonical(obj)');
   if (i < 0) return null;
-  const j = s.indexOf('function canonValue');
-  return s.slice(i, j < 0 ? s.length : j).trim();
+  const j = s.indexOf('\nfunction ', s.indexOf('function canonValue'));
+  if (j < 0) return s.slice(i).trim();
+  return s.slice(i, j).trim();
 }
 
 const sa = fs.readFileSync(A, 'utf8');

@@ -44,6 +44,7 @@ object StateFiles {
     fun readJson(file: File): JSONObject? =
         runCatching { JSONObject(file.readText()) }.getOrNull()
 
+    @Synchronized
     fun appendBounded(file: File, line: String, maxBytes: Long = 512 * 1024L, keepLines: Int = 500) {
         val dir = file.parentFile ?: return
         dir.mkdirs()
