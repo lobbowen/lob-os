@@ -371,6 +371,22 @@ class SetupActivity : AppCompatActivity() {
         dispatch(CapabilityCatalog.ADB_CHANNEL, acq, null)
     }
 
+    private fun progressSummary(e: Evidence, verdicts: Map<String, CapVerdict>): String {
+        val snap = lobos.permissions.PermissionLedger.register(this)
+        val keepMissing = snap.missing
+        val oxPending = listOf(
+            CapabilityCatalog.ADB_CHANNEL,
+            CapabilityCatalog.ADB_UI_AUTOMATION,
+        ).filter { verdicts[it]?.status != CapStatus.GRANTED }
+        val parts = mutableListOf<String>()
+        parts += "权限在册 ${snap.records.size} 项" +
+            if (keepMissing.isEmpty()) "（保活必需项齐）"
+            else "（缺保活必需 ${keepMissing.size}：" + keepMissing.joinToString { it.id } + "）"
+        if (oxPending.isEmpty()) parts += "可选组件：未启用"
+        else parts += "可选组件待开：" + oxPending.joinToString { CapabilityCatalog.titleOf(it) }
+        return parts.joinToString("　")
+    }
+
     private fun renderDebts(verdicts: Map<String, CapVerdict>) {
         val debts = OnboardingFlow.debts(verdicts)
         debtsText?.text = if (debts.isEmpty()) {
