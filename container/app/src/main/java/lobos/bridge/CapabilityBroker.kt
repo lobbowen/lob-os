@@ -512,7 +512,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     put("readingsCollected", s.facts.readingsCollected)
                     put("controlPlaneUp", s.facts.controlPlaneUp)
                     put("channel", s.facts.channel.name.lowercase(Locale.US))
-                    put("anchor", s.facts.anchor.name.lowercase(Locale.US))
                 })
                 put("programs", programsJson())
             }
