@@ -1,12 +1,14 @@
 package lobos.os
 
 import android.content.Context
-import android.os.Process
+
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 
 object ProcessLedger {
+
+    private const val SIGTERM = 15
 
     private const val DIR = "os"
     private const val FILE = "process-ledger.json"
@@ -135,10 +137,7 @@ object ProcessLedger {
 
     fun myPgid(): Int = pgidOf(android.os.Process.myPid())
 
-    fun isolateGroup(pid: Int): Boolean = runCatching {
-        if (pid <= 1) return false
-        Process.setChildProcessGroupId(pid) != -1
-    }.getOrDefault(false)
+    fun groupOf(pid: Int): Int = pgidOf(pid)
 
     fun ownsGroup(entry: Entry): Boolean =
         entry.ownsGroup && entry.pgid > 1 && entry.pgid == entry.pid && entry.pgid != myPgid()
@@ -146,7 +145,7 @@ object ProcessLedger {
     fun killGroup(entry: Entry): Boolean {
         if (!ownsGroup(entry)) return false
         return runCatching {
-            android.system.Os.kill(-entry.pgid, android.os.Process.TERMINATE)
+            android.system.Os.kill(-entry.pgid, SIGTERM)
             true
         }.getOrDefault(false)
     }
@@ -154,7 +153,6 @@ object ProcessLedger {
     fun begin(ctx: Context, programId: String, generation: Long, pid: Int): Entry? {
         val st = starttimeOf(pid)
         if (pid <= 0 || st <= 0) return null
-        isolateGroup(pid)
         val pgid = pgidOf(pid)
         val owns = pgid == pid && pgid != myPgid()
         val e = Entry(

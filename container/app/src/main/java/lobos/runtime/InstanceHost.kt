@@ -493,7 +493,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
         }
         if (pid > 0 && pid != android.os.Process.myPid()) {
-            runCatching { android.os.Process.sendSignal(pid, android.os.Process.TERMINATE) }
+            runCatching { android.os.Process.sendSignal(pid, 15) }
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
         if (pid > 0) runCatching { lobos.os.ProcessLedger.end(this, pid) }
