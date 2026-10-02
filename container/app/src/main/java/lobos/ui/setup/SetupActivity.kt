@@ -37,8 +37,8 @@ import lobos.capability.PermissionSprint
 import lobos.setup.PipelineProjection
 import lobos.setup.PipelineRefresh
 import lobos.setup.PostPairingAutoFlow
-import lobos.capability.StageStatus
-import lobos.capability.StepStatus
+import lobos.setup.StageStatus
+import lobos.setup.StepStatus
 import lobos.lifecycle.ResidencyAudit
 import lobos.ui.PairingProbeService
 import lobos.ui.ProbeJournal
