@@ -65,7 +65,7 @@ object ProgramInstaller {
         val version = verify.version
             ?: return InstallResult(false, null, source, "no-version", "校验通过但包内无 version", verify.raw)
 
-        val km = ProgramDir(context, programId, storeRoot)
+        val km = ProgramManager(context, programId, storeRoot)
         if (km.isBelowFloor(version)) {
             return InstallResult(
                 ok = false, version = version, source = source, reason = "version-below-floor",
@@ -85,7 +85,7 @@ object ProgramInstaller {
             )
         }
 
-        val tmp = File(km.programDir(version).parentFile, ProgramDir.stagingDirName(version))
+        val tmp = File(km.programDir(version).parentFile, ProgramManager.stagingDirName(version))
         tmp.deleteRecursively()
         tmp.mkdirs()
         try {

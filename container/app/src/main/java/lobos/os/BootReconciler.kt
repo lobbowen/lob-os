@@ -2,7 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
-import lobos.ota.ProgramDir
+import lobos.ota.ProgramManager
 
 object BootReconciler {
 
@@ -46,7 +46,7 @@ object BootReconciler {
         val stuck = mutableListOf<String>()
 
         for (id in ProgramRegistry.listIds(ctx)) {
-            val pm = ProgramDir(ctx, id)
+            val pm = ProgramManager(ctx, id)
             val sweep = runCatching { pm.sweepStaleStaging() }.getOrNull()
             if (sweep != null) {
                 gone.addAll(sweep.first)
@@ -76,7 +76,7 @@ object BootReconciler {
         )
     }
 
-    private fun expireStalePending(ctx: Context, pm: ProgramDir, id: String): Boolean {
+    private fun expireStalePending(ctx: Context, pm: ProgramManager, id: String): Boolean {
         val p = pm.pending() ?: return false
         val dir = pm.programDir(p.version)
         val age = System.currentTimeMillis() - File(pm.programRootDir(), "PENDING").lastModified()
@@ -93,7 +93,7 @@ object BootReconciler {
     private fun reconcilePending(ctx: Context): List<String> {
         val out = mutableListOf<String>()
         for (id in ProgramRegistry.listIds(ctx)) {
-            val pm = ProgramDir(ctx, id)
+            val pm = ProgramManager(ctx, id)
             val p = pm.pending() ?: continue
             val cur = pm.currentVersion()
             if (p.version == cur) continue
@@ -110,7 +110,7 @@ object BootReconciler {
 
     private fun repairMissingEntry(ctx: Context): String? {
         for (id in ProgramRegistry.listIds(ctx)) {
-            val km = ProgramDir(ctx, id)
+            val km = ProgramManager(ctx, id)
             val cur = km.currentVersion() ?: continue
             if (cur.isBlank()) continue
             if (km.entryPath(cur).exists()) continue

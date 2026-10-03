@@ -5,7 +5,7 @@ import java.io.File
 import lobos.os.ProgramRegistry
 import org.json.JSONObject
 
-class ProgramDir(
+class ProgramManager(
     private val context: Context,
     val programId: String = "",
     storeRoot: java.io.File? = null,
@@ -13,7 +13,7 @@ class ProgramDir(
 
     init {
         if (programId.isBlank()) {
-            throw IllegalArgumentException("ProgramDir 需要显式程序 id：内核没有\"主程序\"概念")
+            throw IllegalArgumentException("ProgramManager 需要显式程序 id：内核没有\"主程序\"概念")
         }
     }
 
