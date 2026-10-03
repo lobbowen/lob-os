@@ -68,3 +68,37 @@ rehearse/bin/jq -c '.a' <<< '{"a":42}'    # → 42
 这不是设备侧的缺陷（marker 命中即跳过的取舍在 dsh-mobile 就有，理由是
 「件按 sha 命中就永不重解，重建要靠删 `.name.ok`」），但发布前的检查器
 应该比生产严一档。
+
+## 2026-10-04 全量演练结果（7 件）
+
+用 CI run `31bbe42d` 产出的 7 个件包（artifact 逐个下回本地）跑通：
+
+```
+curl 装成：6612408 字节入口=bin/curl sha=c422e0ee944f
+git 装成：3886584 字节入口=bin/git sha=0b07fc35d21e
+jq 装成：952104 字节入口=bin/jq sha=d36e002528ae
+node 装成：116846080 字节入口=bin/node sha=e94c5669bc91
+npm 装成：54 字节入口=bin/npm-cli.js sha=8e5f6f3429f8
+pnpm 装成：47033992 字节入口=bin/pnpm sha=ce0b5e064552
+sqlite3 装成：1802680 字节入口=bin/sqlite3 sha=fbf811b22003
+对账：声明 7 件，可用 7 件 —— 平
+```
+
+**node 那一行是关键**：116,846,080 字节、sha `e94c5669bc91…`，与 dsh-mobile
+Release 里的 `libnode.so` 逐字节相同 —— 同一批编译产物，从 CI 到落位全程可追溯。
+
+装完按裸名真跑（不是只看文件在）：
+
+| 件 | 判据 | 结果 |
+|---|---|---|
+| node | `node -v` | v24.21.0 |
+| jq | `jq --version` | 1.8.2 |
+| curl | `curl --version` | 8.22.0 (aarch64-android, OpenSSL 3.6.3, zlib 1.3.2) |
+| sqlite3 | `sqlite3 :memory: 'select 1+1;'` | 2 |
+| git | init → add → commit → log | cd681e2 first |
+| npm | `npm --version`（靠 PATH 上的 node） | 11.19.0 |
+| npx | 同上（npm 件的别名链） | 11.19.0 |
+| pnpm | `pnpm --version` | 12.7.0 |
+
+**这回答了「node 能不能作为商店件」**：能。装在应用私有目录、按裸名调得到、
+真跑出功能，且升级只换件不动 APK。
