@@ -38,6 +38,8 @@ object ApiSpec {
     val IDEMPOTENCE = mapOf(
         "lobos.sys.accessibility.enable" to IDEMPOTENT,
         "lobos.sys.accessibility.state" to READONLY,
+        "lobos.sys.accessibility.disable" to IDEMPOTENT,
+        "lobos.sys.accessibility.actions" to READONLY,
         "lobos.sys.permissions.ledger" to READONLY,
         "lobos.sys.permissions.roles" to READONLY,
     )
@@ -64,6 +66,9 @@ object ApiSpec {
         "ui.getUiTree" to "lobos.sys.ui.tree",
         "ui.screenshot" to "lobos.sys.screenshot.capture",
         "ui.waitFor" to "lobos.sys.ui.waitFor",
+        "ui.globalAction" to "lobos.sys.ui.globalAction",
+        "ui.events" to "lobos.sys.ui.events",
+        "ui.dropEvents" to "lobos.sys.ui.dropEvents",
         "shell.status" to "lobos.sys.adb.status",
         "shell.pair" to "lobos.sys.adb.pair",
         "shell.forget" to "lobos.sys.adb.forget",
@@ -81,6 +86,10 @@ object ApiSpec {
         "sys.api" to "lobos.sys.api",
         "os.anchor.state" to "lobos.sys.accessibility.state",
         "os.anchor.ensure" to "lobos.sys.accessibility.enable",
+        "os.accessibility.state" to "lobos.sys.accessibility.state",
+        "os.accessibility.enable" to "lobos.sys.accessibility.enable",
+        "os.accessibility.disable" to "lobos.sys.accessibility.disable",
+        "os.accessibility.actions" to "lobos.sys.accessibility.actions",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
         "os.nativeAssets" to "lobos.sys.device.nativeAssets",
     )

@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -15,7 +16,126 @@ import org.json.JSONObject
 
 class OsAccessibilityService : AccessibilityService() {
 
+    private val eventLog = java.util.concurrent.ConcurrentLinkedQueue<JSONObject>()
+    @Volatile private var eventSeq = 0L
+    @Volatile private var windowDirty = false
+    @Volatile private var uiSeqCounter = 0L
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null) return
+        eventSeq += 1
+        val ev = runCatching { event.toJson() }.getOrNull() ?: return
+        if (eventLog.size >= EVENT_LOG_MAX) eventLog.poll()
+        eventLog.add(ev)
+        if (event.eventType == TYPE_WINDOW_STATE_CHANGED || event.eventType == TYPE_WINDOW_CONTENT_CHANGED) {
+            windowDirty = true
+        }
+    }
+
+    fun eventTypeNames(): List<String> = listOf(
+        "window_state_changed", "window_content_changed", "windows_changed",
+        "view_clicked", "view_long_clicked", "view_focused", "view_selected",
+        "view_text_changed", "view_text_selected", "notification_state_changed",
+        "type_window_state_changed", "type_view_clicked", "type_view_text_changed",
+    )
+
+    fun eventTypeOf(name: String): Int = when (name.trim()) {
+        "window_state_changed" -> TYPE_WINDOW_STATE_CHANGED
+        "window_content_changed" -> TYPE_WINDOW_CONTENT_CHANGED
+        "windows_changed" -> TYPE_WINDOWS_CHANGED
+        "view_clicked" -> TYPE_VIEW_CLICKED
+        "view_long_clicked" -> TYPE_VIEW_LONG_CLICKED
+        "view_focused" -> TYPE_VIEW_FOCUSED
+        "view_selected" -> TYPE_VIEW_SELECTED
+        "view_text_changed" -> TYPE_VIEW_TEXT_CHANGED
+        "view_text_selected" -> TYPE_VIEW_TEXT_SELECTED
+        "notification_state_changed" -> TYPE_NOTIFICATION_STATE_CHANGED
+        else -> -1
+    }
+
+    fun eventCount(): Int = eventLog.size
+
+    fun eventSeq(): Long = eventSeq
+
+    fun eventsSince(seq: Long, max: Int, types: List<Int>): JSONArray {
+        val out = JSONArray()
+        val cap = max.coerceIn(1, 500)
+        val it = eventLog.iterator()
+        while (it.hasNext() && out.length() < cap) {
+            val o = it.next() ?: continue
+            if (o.optLong("seq", 0L) <= seq) continue
+            if (types.isNotEmpty() && o.optInt("type", -1) !in types) continue
+            out.put(o)
+        }
+        return out
+    }
+
+    fun dropEventsBefore(seq: Long): Int {
+        var n = 0
+        while (true) {
+            val head = eventLog.peek() ?: break
+            if (head.optLong("seq", 0L) > seq) break
+            eventLog.poll()
+            n += 1
+        }
+        return n
+    }
+
+    fun takeWindowDirty(): Boolean {
+        val v = windowDirty
+        windowDirty = false
+        return v
+    }
+
+    fun uiSeq(): Long = uiSeqCounter
+
+    fun bumpUiSeq() {
+        uiSeqCounter += 1
+        windowDirty = true
+    }
+
+    private fun AccessibilityEvent.toJson(): JSONObject = JSONObject().apply {
+        put("seq", eventSeq)
+        put("atMs", SystemClock.elapsedRealtime())
+        put("type", eventType)
+        put("typeName", eventTypeName(eventType))
+        put("packageName", packageName?.toString() ?: "")
+        put("className", className?.toString() ?: "")
+        put("sourceId", if (event.isEnabled) "enabled" else "disabled")
+        put("windowId", windowId)
+        event.text?.forEach { t -> put("text", t.toString()) }
+        val node = source
+        if (node != null) {
+            put("viewId", node.viewIdResourceName ?: "")
+            put("contentDescription", node.contentDescription?.toString() ?: "")
+            put("clickable", node.isClickable)
+            put("longClickable", node.isLongClickable)
+            put("editable", node.isEditable)
+            put("scrollable", node.isScrollable)
+            val r = Rect()
+            node.getBoundsInScreen(r)
+            put(
+                "bounds",
+                JSONArray().apply {
+                    put(r.left); put(r.top); put(r.right); put(r.bottom)
+                },
+            )
+        }
+        recycle()
+    }
+
+    private fun eventTypeName(t: Int): String = when (t) {
+        TYPE_WINDOW_STATE_CHANGED -> "window_state_changed"
+        TYPE_WINDOW_CONTENT_CHANGED -> "window_content_changed"
+        TYPE_WINDOWS_CHANGED -> "windows_changed"
+        TYPE_VIEW_CLICKED -> "view_clicked"
+        TYPE_VIEW_LONG_CLICKED -> "view_long_clicked"
+        TYPE_VIEW_FOCUSED -> "view_focused"
+        TYPE_VIEW_SELECTED -> "view_selected"
+        TYPE_VIEW_TEXT_CHANGED -> "view_text_changed"
+        TYPE_VIEW_TEXT_SELECTED -> "view_text_selected"
+        TYPE_NOTIFICATION_STATE_CHANGED -> "notification_state_changed"
+        else -> "type_" + t
     }
 
     override fun onInterrupt() {
@@ -62,6 +182,26 @@ class OsAccessibilityService : AccessibilityService() {
             lineTo(x2, y2)
         }
         return dispatchPath(path, durationMs.coerceIn(1L, 10000L))
+    }
+
+    fun globalActionOf(name: String): Int = when (name.trim().lowercase()) {
+        "back" -> GLOBAL_ACTION_BACK
+        "home" -> GLOBAL_ACTION_HOME
+        "recents" -> GLOBAL_ACTION_RECENTS
+        "notifications" -> GLOBAL_ACTION_NOTIFICATIONS
+        "quick_settings" -> GLOBAL_ACTION_QUICK_SETTINGS
+        "power_menu" -> GLOBAL_ACTION_POWER_DIALOG
+        else -> -1
+    }
+
+    fun globalActions(): List<String> = listOf(
+        "back", "home", "recents", "notifications", "quick_settings", "power_menu",
+    )
+
+    fun performGlobalAction(name: String): Boolean {
+        val id = globalActionOf(name)
+        if (id < 0) return false
+        return runCatching { performGlobalAction(id) }.getOrDefault(false)
     }
 
     private fun dispatchPath(path: Path, durationMs: Long): Boolean {
@@ -319,6 +459,8 @@ class OsAccessibilityService : AccessibilityService() {
 
     companion object {
         const val TAG = "OsAccessibilityService"
+
+        const val EVENT_LOG_MAX = 256
 
         @Volatile
         var instance: OsAccessibilityService? = null
