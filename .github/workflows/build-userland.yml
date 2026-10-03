@@ -54,7 +54,7 @@ jobs:
           mkdir -p dist
           for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
             if gh release download "$TAG" --repo "$R" --pattern "$NAME" --dir dist 2>/dev/null; then
-              echo "[ok] 取到制品：$R / $NAME"
+              echo "[ok] 取到 tar 制品：$R / $NAME"
               if [ -f "dist/$NAME.sha256" ]; then
                 ( cd dist && sha256sum -c "$NAME.sha256" ) \
                   || { echo "::error title=node 制品 sha256 不符::$R/$NAME"; exit 1; }
@@ -62,14 +62,29 @@ jobs:
               fi
               tar -C dist -xzf "dist/$NAME"
               rm -f "dist/$NAME" "dist/$NAME.sha256"
-              ls -la dist/
-              [ -f dist/libnode.so ] || { echo "::error title=制品里没有 libnode.so::$NAME"; exit 1; }
-              exit 0
+              break
             fi
-            echo "[skip] $R 没有 $NAME"
+            echo "[skip] $R 没有 $NAME（试裸资产形态）"
+            # 另一种已存在的发布形态：资产直接就是 libnode.so + libc++_shared.so
+            # + manifest.json + SHA256SUMS（dsh-mobile 2026-09-26 那次就是它）。
+            if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null; then
+              echo "[ok] 取到裸资产：$R / $TAG"
+              if [ -f dist/SHA256SUMS ]; then
+                ( cd dist && grep -E '[[:space:]]libnode\.so$' SHA256SUMS | sha256sum -c - ) \
+                  || { echo "::error title=libnode.so 的 SHA256SUMS 校验失败::$R"; exit 1; }
+                echo "[ok] sha256 校验通过（按 release 自带的 SHA256SUMS）"
+              else
+                echo "::error title=裸资产形态没有 SHA256SUMS::拒绝用未校验的 node"
+                exit 1
+              fi
+              break
+            fi
+            echo "[skip] $R 两种形态都没有"
           done
-          echo "::error title=没有 node 运行时制品::本仓与 dsh-mobile 都没有 $NAME，需先跑 Node Runtime 编译"
-          exit 1
+          ls -la dist/
+          [ -f dist/libnode.so ] \
+            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 $TAG 都取不到（两种形态都试过），需先跑 Node Runtime 编译"; exit 1; }
+          echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
 
       - name: 落成 userland 件
         env:
