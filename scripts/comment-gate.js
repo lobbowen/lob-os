@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const tool = require(path.join(__dirname, 'strip-comments.js'));
 
-const report = tool.run({});
+const report = tool.run({ check: true });
 let bad = 0;
 const offenders = report.offenders || [];
 if (report.removed !== 0) {

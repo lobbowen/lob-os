@@ -216,6 +216,11 @@ object ProgramManager {
     }
 
     @Synchronized
+    fun resolveHttpPort(ctx: Context, id: String, declared: Int): Int {
+        if (declared > 0) return declared
+        return PortBroker.claim(ctx, id)
+    }
+
     fun setDesired(ctx: Context, id: String, d: Desired): Boolean {
         if (!ProgramIndex.mutate(ctx, id) { it.copy(desired = d) }) return false
         Journal.append(ctx, "registry", null, "upsert " + id + " desired=" + d.name)
