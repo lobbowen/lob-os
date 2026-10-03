@@ -58,6 +58,7 @@ object PackageInstaller {
         dir.mkdirs()
         val entryRel = entry.optString("entry", "bin/" + name)
         val links = linkEntry(ctx, dest, entryRel, entry.optJSONArray("aliases"))
+        val spec = ProgramRegistry.spec(ctx, name)
         val base = ProgramIndex.get(ctx, name) ?: ProgramIndex.empty(name, ProgramManager.levelOfKind(kind))
         ProgramIndex.upsert(
             ctx,
@@ -69,6 +70,9 @@ object PackageInstaller {
                 origin = "ota",
                 tier = entry.optString("tier", base.tier),
                 stateDir = if (kind == "INFRA") "" else base.stateDir.ifBlank { ProgramManager.relStateDir(name, kind) },
+                role = spec?.role?.takeIf { it.isNotBlank() } ?: base.role,
+                resident = spec?.resident ?: base.resident,
+                desired = if (base.desired == Desired.STOPPED && spec?.resident == true) Desired.RUNNING else base.desired,
             ),
         )
         dirOf(ctx, name).setCurrentVersion(ver)

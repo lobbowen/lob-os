@@ -163,12 +163,11 @@ class ProgramDir(
                     env = spec?.env ?: base.env,
                     httpPort = spec?.http?.port ?: base.httpPort,
                     httpHealth = spec?.http?.health ?: base.httpHealth,
-                    desired = if (resident) lobos.os.Desired.RUNNING else base.desired,
                     invalid = spec?.invalid,
                 ),
             )
             lobos.os.Journal.note(
-                context, "registry", null, "指针切换即登记（常驻由清单 lifecycle.resident 决定）",
+                context, "registry", null, "指针切换即登记（不改动 desired，启停意图由安装与用户决定）",
                 "id=" + programId + " version=" + version + " role=" + role + " resident=" + resident,
             )
         }

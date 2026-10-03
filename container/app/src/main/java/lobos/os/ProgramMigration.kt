@@ -6,6 +6,7 @@ import java.io.File
 object ProgramMigration {
 
     private const val RETIRED = ".migrated"
+    private const val RESIDENT_ADOPTED = ".resident-adopted"
 
     data class Report(
         val migrated: Int,
@@ -37,7 +38,10 @@ object ProgramMigration {
 
     @Synchronized
     fun run(ctx: Context): Report? {
-        if (ProgramIndex.file(ctx).isFile) return relocateStateDirs(ctx)
+        if (ProgramIndex.file(ctx).isFile) {
+            relocateStateDirs(ctx)
+            return adoptResident(ctx)
+        }
         if (!needed(ctx)) return null
         val out = linkedMapOf<String, IndexEntry>()
 
@@ -171,6 +175,23 @@ object ProgramMigration {
                 " 通道=" + after.count { it.level == Level.CHANNEL } +
                 " 应用程序=" + after.count { it.level == Level.APPLICATION },
         )
+        return null
+    }
+
+    private fun adoptResident(ctx: Context): Report? {
+        val mark = File(ProgramIndex.root(ctx), RESIDENT_ADOPTED)
+        if (mark.isFile) return null
+        val raised = mutableListOf<String>()
+        for (e in ProgramIndex.all(ctx)) {
+            if (!e.resident || e.desired != Desired.STOPPED) continue
+            if (e.level == Level.INFRA) continue
+            ProgramIndex.upsert(ctx, e.copy(desired = Desired.RUNNING))
+            raised += e.id
+        }
+        runCatching { mark.writeText(raised.joinToString(",")) }
+        if (raised.isNotEmpty()) {
+            Journal.note(ctx, "index", null, "常驻程序此前被 OTA 落位压成停止，已恢复", "拉起=" + raised.joinToString(","))
+        }
         return null
     }
 
