@@ -957,6 +957,22 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("detail", out.detail)
             }
         },
+        "os.accessibility.disable" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { _, _programId ->
+            val out = AccessibilityServiceState.disable(this@CapabilityBroker)
+            JSONObject().apply {
+                put("state", out.state.name)
+                put("connected", out.bound)
+                put("issued", out.issued)
+                put("detail", out.detail)
+            }
+        },
+        "os.accessibility.actions" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            val a11y = requireA11y()
+            JSONObject().apply {
+                put("globalActions", org.json.JSONArray(a11y.globalActions()))
+                put("eventTypes", org.json.JSONArray(a11y.eventTypeNames()))
+            }
+        },
         "sys.api" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             ApiSpec.toJson((METHODS.keys + OS_METHODS.keys).distinct().sorted()).apply {
                 put("protocol", JSONObject().apply {
@@ -1068,6 +1084,47 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 maxNodes = p.optInt("maxNodes", 3000),
                 maxDepth = p.optInt("maxDepth", 40)
             )
+        },
+        "ui.globalAction" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            val action = p.optString("action", "")
+            val id = a11y.globalActionOf(action)
+            if (id < 0) {
+                throw BridgeError(
+                    CODE_INVALID_PARAM,
+                    "不支持的全局动作：" + action + "（可用：" + a11y.globalActions().joinToString(",") + "）",
+                )
+            }
+            JSONObject().apply {
+                put("ok", a11y.performGlobalAction(action))
+                put("action", action)
+            }
+        },
+        "ui.events" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+            val a11y = requireA11y()
+            val names = p.optJSONArray("types")
+            val types = names?.let { a ->
+                (0 until a.length()).map { a11y.eventTypeOf(a.optString(it)) }.filter { it >= 0 }
+            } ?: emptyList()
+            JSONObject().apply {
+                put("seq", a11y.eventSeq())
+                put("uiSeq", a11y.uiSeq())
+                put("windowDirty", a11y.takeWindowDirty())
+                put("buffered", a11y.eventCount())
+                put("typeNames", org.json.JSONArray(a11y.eventTypeNames()))
+                put("events", a11y.eventsSince(
+                    p.optLong("since", 0L),
+                    p.optInt("max", 100),
+                    types,
+                ))
+            }
+        },
+        "ui.dropEvents" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            JSONObject().apply {
+                put("dropped", a11y.dropEventsBefore(p.optLong("seq", 0L)))
+                put("seq", a11y.eventSeq())
+            }
         },
         "ui.screenshot" to MethodDef(listOf("mediaprojection"), true) { p, _programId ->
             val svc = ScreenCaptureController.instance
