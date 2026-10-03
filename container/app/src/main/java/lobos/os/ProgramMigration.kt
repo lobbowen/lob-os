@@ -81,13 +81,12 @@ object ProgramMigration {
                 "INFRA", "CHANNEL" -> Category.NONE
                 else -> Category.TOOLCHAIN
             }
-            val stateDir = e.optString("stateDir", "")
             out[name] = ProgramIndex.empty(name, level).copy(
                 category = category,
                 origin = e.optString("source", "apk").ifBlank { "apk" },
                 version = e.optString("version", ""),
                 enabled = e.optBoolean("enabled", true),
-                stateDir = stateDir,
+                stateDir = if (level == Level.INFRA) "" else ProgramManager.relStateDir(name, kindRaw),
                 deps = e.optJSONArray("deps")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList(),
                 sha256 = e.optString("sha256", ""),
                 tier = e.optString("tier", "base"),
@@ -107,7 +106,7 @@ object ProgramMigration {
                 origin = "store",
                 version = spec.version,
                 enabled = true,
-                stateDir = ProgramRegistry.programRoot(ctx).name + "/" + spec.id,
+                stateDir = ProgramManager.relStateDir(spec.id, "APP"),
                 tier = "optional",
                 role = spec.role,
                 resident = spec.resident,
