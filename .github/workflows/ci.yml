@@ -6,6 +6,7 @@ on:
     paths:
       - 'container/**'
       - 'scripts/**'
+      - 'tools/**'
       - '.github/native-assets.txt'
       - '.github/workflows/**'
       - 'version.json'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'container/**'
       - 'scripts/**'
+      - 'tools/**'
       - '.github/native-assets.txt'
       - '.github/workflows/**'
       - 'version.json'
