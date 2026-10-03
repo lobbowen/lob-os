@@ -85,7 +85,7 @@ jobs:
               echo "::error title=没有 userland-$t 的 artifact::先跑 Build Userland（node 那颗需要 Node Runtime 的制品）"
               exit 1
             fi
-            gh api "repos/${{ github/repository }}/actions/artifacts/$ID/zip" > "art-$t.zip"
+            gh api "repos/${{ github.repository }}/actions/artifacts/$ID/zip" > "art-$t.zip"
             ( cd dist && unzip -o -q "../art-$t.zip" )
             echo "  $t: $(ls dist | grep "userland-$t" | head -1)"
           done
