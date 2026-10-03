@@ -64,10 +64,9 @@ jobs:
               rm -f "dist/$NAME" "dist/$NAME.sha256"
               break
             fi
-            echo "[skip] $R 没有 $NAME（试裸资产形态）"
-            # 另一种已存在的发布形态：资产直接就是 libnode.so + libc++_shared.so
-            # + manifest.json + SHA256SUMS（dsh-mobile 2026-09-26 那次就是它）。
-            if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null; then
+            echo "[skip] $R 没有 $NAME（试裸资产形态：libnode.so 与 SHA256SUMS 必须一起下，--pattern 只能给一个模式）"
+            if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null \
+               && gh release download "$TAG" --repo "$R" --pattern 'SHA256SUMS' --dir dist 2>/dev/null; then
               echo "[ok] 取到裸资产：$R / $TAG"
               if [ -f dist/SHA256SUMS ]; then
                 ( cd dist && grep -E '[[:space:]]libnode\.so$' SHA256SUMS | sha256sum -c - ) \
@@ -79,6 +78,7 @@ jobs:
               fi
               break
             fi
+            rm -f dist/libnode.so dist/SHA256SUMS
             echo "[skip] $R 两种形态都没有"
           done
           ls -la dist/
