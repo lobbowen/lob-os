@@ -77,13 +77,24 @@ adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep supply
 
 **成功标志**：
 
-| 看什么 | 期望 |
-|---|---|
-| `stage=supply` 且 `level=OK` | 商店清单验签通过、声明 6 件全部按真名可用（对账平） |
-| 同一 stage 的 `level=FAIL` 行 | **不应有**；有的话 `message`/`detail` 里写了缺件原因 |
-| `stage=prefix` | `$PREFIX 能力件全就位` |
-| `stage=version` | `Node 运行时缺失`（**预期** —— node 不在清单里，见第 6 条） |
-| `stage=catalog` | 目录刷新成功，带 `包=6` |
+| 看什么 | 在哪查 | 期望 |
+|---|---|---|
+| `stage=supply` 且 `level=OK` | `diag.jsonl` | 商店供给对账：声明 6 件，全部按真名可用 |
+| 同一 stage 的 `level=FAIL` 行 | `diag.jsonl` | **不应有**；有的话 `message`/`detail` 写了缺件原因 |
+| `stage=prefix` | `diag.jsonl` | `$PREFIX 能力件全就位` |
+| `stage=version` | `diag.jsonl` | `Node 运行时缺失`（**预期** —— node 不在清单里，见第 6 条） |
+| `目录已刷新（签名校验通过）` | **`events.jsonl`** | `channel=canary 包=6` |
+
+**注意有两个日志文件，别只查一个**（这是两套机制，不是我写错）：
+
+```bash
+# RuntimeDiagnostics：结构性诊断（JSONL，字段 stage/level/message/detail）
+adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep -E 'supply|prefix|version'
+
+# Journal：事件流水（JSONL，字段 seq/at/category/detail）
+# 目录刷新成功走这里 —— 新代码才有，老 APK 的 journal 里查不到（它那条路不写）
+adb shell run-as lobos.app.verify cat files/os/journal/events.jsonl | grep catalog
+```
 
 对照样本（设备上开发包跑出来的真实一行，格式完全相同，只是文案是旧版的
 "C 层供给"；新代码同一处写的是"商店供给"）：
@@ -100,6 +111,7 @@ adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep supply
 
 ```bash
 adb shell run-as lobos.app.verify cat files/os/diag.jsonl | tail -30
+adb shell run-as lobos.app.verify cat files/os/journal/events.jsonl | tail -10
 ```
 
 ## 5. 确认 6 件真能用（走商店通道装的，不是手工摆的）
