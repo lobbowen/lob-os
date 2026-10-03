@@ -327,13 +327,29 @@ object SupplyProvisioner {
                     if (brokenLinks > 0) {
                         RuntimeDiagnostics.append(ctx, "supply", false, "件的链接农场有 " + brokenLinks + " 条没建成", name)
                     }
-                    root.deleteRecursively()
+                    val retired = File(tc, "." + name + ".retired")
+                    val hadOld = root.isDirectory
+                    if (hadOld) {
+                        retired.deleteRecursively()
+                        if (!root.renameTo(retired)) {
+                            RuntimeDiagnostics.append(ctx, "supply", false, "旧件挪不开，落位中止（保留原样）", name)
+                            staging.deleteRecursively()
+                            shortPieces.add(name + "（旧件挪不开，已保留原样）")
+                            continue
+                        }
+                    }
                     if (!staging.renameTo(root)) {
                         RuntimeDiagnostics.append(ctx, "supply", false, "件落位失败", name)
                         staging.deleteRecursively()
-                        shortPieces.add(name + "（落位失败）")
+                        if (hadOld && !retired.renameTo(root)) {
+                            RuntimeDiagnostics.append(ctx, "supply", false, "回退也失败，这颗件已不可用", name)
+                            shortPieces.add(name + "（落位失败且回退失败）")
+                        } else {
+                            shortPieces.add(name + (if (hadOld) "（落位失败，已回退到旧版）" else "（落位失败）"))
+                        }
                         continue
                     }
+                    retired.deleteRecursively()
                     marker.writeText(want)
                     if (brokenLinks > 0) {
                         shortPieces.add(name + "（农场 " + brokenLinks + " 条没建成）")

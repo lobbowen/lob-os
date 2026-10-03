@@ -179,8 +179,29 @@ const main = () => {
       if (!fs.existsSync(path.join(staging, entryRel))) { short.push(name + '（缺入口 ' + entryRel + '）'); continue; }
       applyLinkFarm(staging);
       const brokenNew = farmBroken(staging);
-      fs.rmSync(root, { recursive: true, force: true });
-      fs.renameSync(staging, root);
+      const retired = path.join(ROOT, '.' + name + '.retired');
+      const hadOld = fs.existsSync(root) && fs.statSync(root).isDirectory();
+      if (hadOld) {
+        fs.rmSync(retired, { recursive: true, force: true });
+        try { fs.renameSync(root, retired); } catch (e) {
+          fs.rmSync(staging, { recursive: true, force: true });
+          short.push(name + '（旧件挪不开，已保留原样）');
+          continue;
+        }
+      }
+      try {
+        fs.renameSync(staging, root);
+      } catch (e) {
+        fs.rmSync(staging, { recursive: true, force: true });
+        if (hadOld) {
+          try { fs.renameSync(retired, root); short.push(name + '（落位失败，已回退到旧版）'); }
+          catch (e2) { short.push(name + '（落位失败且回退失败）'); }
+        } else {
+          short.push(name + '（落位失败）');
+        }
+        continue;
+      }
+      fs.rmSync(retired, { recursive: true, force: true });
       fs.writeFileSync(marker, want);
       if (brokenNew > 0) { short.push(name + '（农场 ' + brokenNew + ' 条没建成）'); continue; }
       linkEntry(root, name, entryRel, t.aliases);
