@@ -221,8 +221,4 @@ object ProgramManager {
         Journal.append(ctx, "registry", null, "upsert " + id + " desired=" + d.name)
         return true
     }
-
-    @Synchronized
-
-    @Synchronized
 }

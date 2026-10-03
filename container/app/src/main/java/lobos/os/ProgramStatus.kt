@@ -132,7 +132,7 @@ object ProgramStatusHub {
             )
             lastState = lastState + (id to state)
             if (why != null) {
-                Journal.append(ctx, "state", false, "非法状态转换：" + prev + " -> " + state, "id=" + id + " " + why)
+                Journal.note(ctx, "state", false, "非法状态转换： + prev + " -> " + state, "id=" + id + " " + why)
             }
         } else if (prev == null) {
             lastState = lastState + (id to state)

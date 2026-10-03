@@ -58,6 +58,13 @@ object ProgramRegistry {
         val f = File(File(File(programRoot(ctx), id), version), MANIFEST)
         if (!f.isFile) null else JSONObject(f.readText())
     }.getOrNull()
+
+    private fun currentVersion(ctx: Context, id: String): String? {
+        val p = File(File(programRoot(ctx), id), "CURRENT")
+        if (!p.exists()) return null
+        return runCatching { p.readText().trim().ifBlank { null } }.getOrNull()
+    }
+
     fun spec(ctx: Context, id: String): Spec? {
         val version = currentVersion(ctx, id) ?: return null
         val dir = File(File(programRoot(ctx), id), version)

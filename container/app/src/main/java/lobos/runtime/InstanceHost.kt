@@ -528,8 +528,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(this, "supervisor", false, "拒绝自杀：账本 pid 是宿主自己", "pid=" + pid)
             return
         }
-        if (lobos.os.ProcessLedger.pgidOf(pid) == lobos.os.ProcessLedger.myPgid()) {
-            RuntimeDiagnostics.append(this, "supervisor", false, "拒绝组内杀：目标与宿主同组", "pid=" + pid + " pgid=" + lobos.os.ProcessLedger.myPgid())
             return
         }
         try { android.os.Process.sendSignal(pid, 15) } catch (_: Throwable) {}
