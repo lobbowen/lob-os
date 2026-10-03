@@ -73,3 +73,6 @@ jobs:
 
       - name: ApiSpec 三表须与方法表自洽（scope/idempotence/别名不得脱节）
         run: node tools/check-spec-tables.js
+
+      - name: 构建物类目须自洽（三分区在位、件声明与脚本对得上、runtime 类不入 APK）
+        run: node tools/check-components.js
