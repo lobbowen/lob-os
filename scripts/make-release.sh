@@ -3,35 +3,38 @@ set -euo pipefail
 
 VER="${1:?用法: ./scripts/make-release.sh <node-version>}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/container/app/src/main/jniLibs/arm64-v8a/libnode.so"
-OUT_DIR="$ROOT/release"
-mkdir -p "$OUT_DIR"
-OUT="$OUT_DIR/node-${VER}-android-arm64-v8a.zip"
+STAGE_DIR="$ROOT/dist/node"
 
-[ -f "$SRC" ] || { echo "缺少 node 二进制: $SRC —— 请先跑 ./scripts/build-node-android.sh $VER"; exit 1; }
+SRC="$STAGE_DIR/bin/node"
+[ -f "$SRC" ] || {
+  echo "缺少 node 件: $SRC"
+  echo "先跑 scripts/build-userland-node.sh（它从 Release 取已编译的 libnode.so 落成商店件）"
+  exit 1
+}
 
-STAGE="$(mktemp -d)"
-trap 'rm -rf "$STAGE"' EXIT
-cp -f "$SRC" "$STAGE/node"
-( cd "$STAGE" && zip -q -X "$OUT" node ) || { echo "zip 失败，请安装 zip"; exit 1; }
-SHA="$(sha256sum "$OUT" | cut -d' ' -f1)"
-SIZE="$(stat -c%s "$OUT")"
+GOT="$(sha256sum "$SRC" | cut -d' ' -f1)"
+SIZE="$(stat -c%s "$SRC")"
 
-echo "发布包: $OUT"
-echo "sha256: $SHA"
+echo "发布件: $SRC"
+echo "sha256: $GOT"
 echo "size:   $SIZE"
+echo "version: $VER"
 echo
-echo "把该 zip 上传到你的 OTA 服务器后，在 app/src/main/assets/node-versions.json 的 versions 中追加一条:"
-cat <<JSON
-  {
-    "version": "$VER",
-    "channel": "lts",
-    "minAndroidApi": 24,
-    "bundled": false,
-    "url": "<你的 OTA 基址>/node-${VER}-android-arm64-v8a.zip",
-    "sha256": "$SHA",
-    "size": $SIZE
-  }
-JSON
-echo
-echo "App 端 NodeVersionManager 会在『检查更新』时发现它，下载后做 sha256 校验并原子切换当前版本指针。"
+cat <<'TXT'
+下一步（商店通道，三步）：
+
+1. 打包成内容寻址的件包：
+     bash scripts/package-userland.sh node
+   产出 dist/userland-node-<版本>-<sha12>-android-arm64.zip
+   （包名带 sha12 前缀，同版本重建不会覆盖旧键）
+
+2. 投到商店并重发清单（清单会带 node 条目）：
+     node scripts/publish-userland-manifest.js dist          # 签名，需 keys/ota-private.pem
+     node scripts/upload-qiniu.js dist/userland-node-*.zip userland/<同名 zip>
+
+3. 设备端：os.catalog action=refresh 刷新清单 → 装 node
+   落点 files/usr/lib/toolchain/node/，usr/bin/node 由 SupplyProvisioner 建链
+
+版本真相有两处，互为对照：商店清单里 node 条目的 version，
+与实际二进制（node -p process.versions.node）。两者不一致就是发布出了问题。
+TXT

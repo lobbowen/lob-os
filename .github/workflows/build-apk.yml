@@ -58,66 +58,28 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           echo "[ok] SDK 包就绪"
 
-      - name: 解析 Node 版本与 ABI
-        id: ver
-        run: |
-          set -euo pipefail
-          echo "abi=$(bash scripts/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
-          echo "tag=$(bash scripts/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
-
-      - name: 取 Node 运行时制品（编译一次、复用；不再重编）
-        id: runtime
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          mkdir -p dist/node-runtime
-          NAME="node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}.tar.gz"
-          if gh release download "node-runtime-${{ steps.ver.outputs.tag }}" \
-               --repo '${{ github.repository }}' --pattern "$NAME" --dir /tmp/rt 2>/dev/null; then
-            tar -C dist/node-runtime -xzf "/tmp/rt/$NAME"
-            echo "[ok] 复用已发布运行时制品：$NAME"
-            echo "have=yes" >> "$GITHUB_OUTPUT"
-          else
-            echo "[warn] 未找到已发布运行时制品（先跑 workflow「Node Runtime」）"
-            echo "have=no" >> "$GITHUB_OUTPUT"
-          fi
-          ls -la dist/node-runtime/ 2>/dev/null || true
-
       - name: 放置 C++ 运行期到 jniLibs（APK 基础环境）
         run: |
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$J"
-          SRC="dist/node-runtime/libc++_shared.so"
-          if [ ! -f "$SRC" ]; then
-            NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
-            SRC="$(ls "$NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
-            echo "[note] 制品里没有 libc++_shared.so，改从 NDK 取：$SRC"
-          fi
-          [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载"; exit 1; }
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          SRC="$(ls "$NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
+          [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载；NDK=$NDK"; exit 1; }
           cp -f "$SRC" "$J/libc++_shared.so"
           chmod +x "$J/libc++_shared.so"
           ls -la "$J/libc++_shared.so"
 
-      - name: 放置 Node 运行时到 jniLibs（无 Node 则产品不可用）
-        if: steps.runtime.outputs.have == 'yes'
+      - name: node 运行时不入 APK（断言它没被误放进来）
         run: |
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
-          mkdir -p "$J"
-          LIB="$(ls dist/node-runtime/libnode.so 2>/dev/null || true)"
-          if [ -z "$LIB" ]; then
-            LIB="$(find dist/node-runtime -name 'libnode.so' | head -1)"
-          fi
-          if [ -z "$LIB" ] || [ ! -f "$LIB" ]; then
-            echo "::error title=缺 libnode.so::运行时制品里没有 node，内核将无法启动任何程序"
+          if [ -e "$J/libnode.so" ]; then
+            echo "::error title=jniLibs 里不该有 libnode.so::node 走商店通道（components/runtime/COMPONENT.md），APK 内置会让它涨 116MB 且无法独立升级"
+            ls -la "$J/libnode.so"
             exit 1
           fi
-          cp -f "$LIB" "$J/libnode.so"
-          chmod +x "$J/libnode.so"
-          ls -la "$J/libnode.so"
-          echo "::notice::Node 运行时已就位"
+          echo "[ok] jniLibs 无 libnode.so（node 由商店件供给）"
 
       - name: Build capability binaries (小件原生件)
         run: |
