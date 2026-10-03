@@ -241,6 +241,7 @@ object ProgramIndex {
         val cur = all(ctx)
         if (cur.none { it.id == id }) return false
         persist(ctx, cur.filterNot { it.id == id })
+        PortBroker.release(ctx, id)
         return true
     }
 

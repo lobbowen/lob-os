@@ -279,6 +279,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
             val spec = lobos.os.ProgramRegistry.spec(this, programId)
             currentSpec = spec
+            val resolvedPort = lobos.os.ProgramManager.resolveHttpPort(this, programId, spec?.http?.port ?: 0)
             val settings = lobos.os.ProgramSettings.read(this).optJSONObject(programId)
             val argsOverride = settings?.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.optString(it) } }
             val envOverride = settings?.optJSONObject("env")?.let { o -> o.keys().asSequence().associateWith { k -> o.optString(k) } } ?: emptyMap()
@@ -376,7 +377,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     flockNative = File(nativeDir, NativeAssetRegistry.libNameOf("flock")),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
-                    httpPort = spec?.http?.port,
+                    httpPort = resolvedPort,
                     httpEnv = spec?.http?.env,
                     declaredEnv = declaredSafe.first + overrideSafe.first,
                     sessionToken = sessionToken,
@@ -420,7 +421,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                         " starttime=" + recorded.starttime + " pgid=" + recorded.pgid
                 } else "pid 无法取得，账本未记录"
             )
-            healthPort = spec?.http?.port ?: 0
+            healthPort = resolvedPort
             healthPath = spec?.http?.health ?: "/status"
             val healthDesc = if (healthPort > 0) healthPort.toString() + healthPath else "(清单未声明健康端点)"
             RuntimeDiagnostics.append(
