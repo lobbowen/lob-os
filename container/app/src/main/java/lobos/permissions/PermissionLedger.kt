@@ -27,6 +27,7 @@ object PermissionLedger {
 
     const val FILE = "permission-ledger.json"
     const val SCHEMA = 1
+    const val SCHEMA_KEY = "schema"
     const val ATTEMPTS = "attempts"
 
     fun file(ctx: Context) = java.io.File(java.io.File(ctx.filesDir, "os"), FILE)
@@ -139,7 +140,7 @@ object PermissionLedger {
             if (names != null) {
                 for (i in 0 until names.length()) {
                     val id = names.optString(i)
-                    if (id == SCHEMA || id == "atMs" || id == "records" || id == ATTEMPTS) continue
+                    if (id == SCHEMA_KEY || id == "atMs" || id == "records" || id == ATTEMPTS) continue
                     val e = root.optJSONObject(id) ?: continue
                     accept(id, e.optString("outcome", ""), e.optLong("atMs", 0L), e.optString("detail", ""))
                 }

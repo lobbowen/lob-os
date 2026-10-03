@@ -200,7 +200,7 @@ object ProcessLedger {
         val st = starttimeOf(pid)
         if (pid <= 0 || st <= 0) return null
         val pgid = pgidOf(pid)
-        val owns = pgid == pid && pgid != myPgid()
+        val owns = pgid == pid && pgid != pgidOf(android.os.Process.myPid())
         val e = Entry(
             programId, generation, pid, st, pgid, System.currentTimeMillis(), owns,
         )
