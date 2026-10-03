@@ -74,7 +74,7 @@ object ProgramRegistry {
                 entry = "", entryFile = File(dir, ""), args = emptyList(),
                 role = "app", http = null, capabilities = emptyList(), env = emptyMap(),
                 resident = true, restart = Restart.ON_FAILURE, maxRestarts = 5,
-                backoffMs = listOf(1000L, 2000L, 5000L, 15000L, 30000L),
+                backoffMs = ProgramIndex.DEFAULT_BACKOFF,
                 invalid = "清单缺失或不可解析（" + MANIFEST + "）",
             )
         }

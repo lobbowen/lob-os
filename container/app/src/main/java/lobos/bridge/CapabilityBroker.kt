@@ -227,10 +227,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
         val missing = def.caps.filterNot { holder.granted.contains(it) }
         if (missing.isNotEmpty()) {
+            val undeclared = missing.filterNot { it in declaredCapabilities(holder.session?.programId ?: "") }
+            val why = if (undeclared.isEmpty()) {
+                "程序未在 manifest 声明：manifest.capabilities 需要显式申请"
+            } else {
+                "已声明但系统未实测到：需先在系统侧开通对应能力"
+            }
             if (def.audit) audit(method, params, false, "缺少能力组：" + missing.joinToString(), session)
             return error(
                 id, CODE_CAPABILITY_MISSING,
-                "缺少能力组：" + missing.joinToString() + "（当前授权：" + holder.granted.joinToString() + "）",
+                "缺少能力组：" + missing.joinToString() + "（$why；当前授权：" + holder.granted.joinToString() + "）",
             )
         }
         try {
@@ -307,7 +313,29 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             lobos.capability.BridgeTokens.from(CapabilityEvidenceCollector.systemReads(this))
         }.getOrDefault(setOf(lobos.capability.BridgeTokens.BASE))
         val isSystem = !isProgramSession(session)
-        return if (isSystem) base + ApiSpec.GROUP_SYS else base
+        if (isSystem) return base + ApiSpec.GROUP_SYS
+        return base - sensitiveTokens() + (base and declaredCapabilities(session.programId))
+    }
+
+    private fun sensitiveTokens(): Set<String> = runCatching {
+        lobos.capability.CapabilityCatalog.ALL.mapNotNull { it.bridgeToken }.toSet()
+    }.getOrDefault(emptySet()) - setOf(
+        lobos.capability.BridgeTokens.BASE,
+        lobos.capability.BridgeTokens.PROGRAM_UPDATE,
+    )
+
+    private fun declaredCapabilities(programId: String): Set<String> {
+        val id = programId.trim()
+        if (id.isBlank()) return emptySet()
+        val declared = runCatching {
+            val entry = lobos.os.ProgramIndex.get(this, id)
+            entry?.capabilities ?: lobos.os.ProgramRegistry.spec(this, id)?.capabilities
+        }.getOrNull().orEmpty()
+        val known = runCatching {
+            lobos.capability.CapabilityCatalog.ALL.mapNotNull { it.bridgeToken }.toSet() +
+                lobos.capability.BridgeTokens.BASE
+        }.getOrDefault(emptySet())
+        return declared.filter { it in known }.toSet()
     }
 
     private fun isProgramSession(session: lobos.os.SessionRegistry.Session): Boolean {

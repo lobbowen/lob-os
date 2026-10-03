@@ -19,7 +19,6 @@ object ManifestSchema {
     const val SC_CAPABILITIES = "capabilities"
     const val SC_ISOLATION = "isolation"
     const val SC_UI = "ui"
-    const val SC_ROLE = "role"
 
     const val LC_RESIDENT = "resident"
     const val LC_RESTART = "restart"
@@ -44,15 +43,14 @@ object ManifestSchema {
     const val CLOSED_ON_DEMAND = "on-demand"
 
     val RESTARTS = setOf("on-failure", "always", "never")
-    val ROLES = setOf("app", "system")
+    val RESTART_ALIASES = mapOf("on_failure" to "on-failure")
+
+    fun restartOf(raw: String): String = raw.trim().lowercase().let { RESTART_ALIASES[it] ?: it }
     val RUNTIMES = setOf("runtime", "toolchain", "library", "application")
     val UI_TYPES = setOf(TYPE_QUICKAPP)
     val ON_CLOSED = setOf(CLOSED_KEEP_ALIVE, CLOSED_STOP_WITH_UI, CLOSED_ON_DEMAND)
-    val NAMESPACE_SET = setOf("mount", "uts", "ipc", "pid", "net", "user", "cgroup")
 
     const val DEFAULT_HEALTH = "/status"
-    val DEFAULT_BACKOFF = listOf(1000L, 2000L, 5000L, 15000L, 30000L)
-    val DEFAULT_NAMESPACES = listOf("mount", "uts", "ipc")
     const val DEFAULT_MAX_RESTARTS = 5
 
     fun validId(raw: String): String? {
@@ -85,9 +83,6 @@ object ManifestSchema {
             for (i in 0 until a.length()) if (a.isNull(i)) errs += "$SC_ARGS 第 $i 项为 null"
         }
 
-        val role = m.optString(SC_ROLE, "app").lowercase()
-        if (role !in ROLES) errs += "$SC_ROLE 取值非法（只接受 ${ROLES.joinToString("|")}）"
-
         validateLifecycle(m.optJSONObject(SC_LIFECYCLE), errs)
         validateHttp(m.optJSONObject(SC_HTTP), errs)
         validateRequires(m.optJSONArray(SC_REQUIRES), errs)
@@ -99,7 +94,7 @@ object ManifestSchema {
 
     private fun validateLifecycle(life: JSONObject?, errs: MutableList<String>) {
         if (life == null) return
-        val restart = life.optString(LC_RESTART, "on-failure").lowercase()
+        val restart = restartOf(life.optString(LC_RESTART, "on-failure"))
         if (restart !in RESTARTS) errs += "$SC_LIFECYCLE.$LC_RESTART 取值非法（只接受 ${RESTARTS.joinToString("|")}）"
         val max = life.optInt(LC_MAX_RESTARTS, DEFAULT_MAX_RESTARTS)
         if (max < 0) errs += "$SC_LIFECYCLE.$LC_MAX_RESTARTS 不能为负"
@@ -134,11 +129,9 @@ object ManifestSchema {
 
     private fun validateIsolation(iso: JSONObject?, errs: MutableList<String>) {
         if (iso == null) return
-        iso.optJSONArray(IS_NAMESPACES)?.let { a ->
-            for (i in 0 until a.length()) {
-                val ns = a.optString(i, "").trim()
-                if (ns !in NAMESPACE_SET) errs += "$SC_ISOLATION.$IS_NAMESPACES 第 $i 项未知：$ns（可用 ${NAMESPACE_SET.joinToString(",")}）"
-            }
+        if (iso.has(IS_NAMESPACES)) {
+            errs += "$SC_ISOLATION.$IS_NAMESPACES 不再支持：无特权 app 无法创建 namespace，写了也不生效" +
+                "（软约束只有 $IS_MEMORY_MAX 与 $IS_PIDS_MAX）"
         }
         val mem = iso.optString(IS_MEMORY_MAX, "").trim()
         if (mem.isNotEmpty() && !mem.matches(Regex("^\\d+[KMGT]?$"))) errs += "$SC_ISOLATION.$IS_MEMORY_MAX 格式非法（示例 512M）"
@@ -174,17 +167,13 @@ object ManifestSchema {
         put("required", JSONArray(listOf(SC_VERSION + "（规范版本，整数）", SC_ID, SC_VERSION, SC_ENTRY)))
         put("fields", JSONArray().apply {
             put(SC_ID); put(SC_VERSION); put(SC_ENTRY); put(SC_ARGS); put(SC_ENV)
-            put(SC_ROLE); put(SC_LIFECYCLE); put(SC_HTTP); put(SC_REQUIRES)
+            put(SC_LIFECYCLE); put(SC_HTTP); put(SC_REQUIRES)
             put(SC_CAPABILITIES); put(SC_ISOLATION); put(SC_UI)
         })
         put("lifecycle", JSONArray(listOf(LC_RESIDENT, LC_RESTART, LC_MAX_RESTARTS, LC_BACKOFF)))
         put("restarts", JSONArray(RESTARTS.toList()))
-        put("roles", JSONArray(ROLES.toList()))
-        put("isolation.namespaces", JSONArray(NAMESPACE_SET.toList()))
-        put("isolation.defaultNamespaces", JSONArray(DEFAULT_NAMESPACES))
         put("ui.type", JSONArray(UI_TYPES.toList()))
         put("ui.onUiClosed", JSONArray(ON_CLOSED.toList()))
-        put("lifecycle.backoff.default", JSONArray(DEFAULT_BACKOFF))
         put("http.health.default", DEFAULT_HEALTH)
     }
 
@@ -196,7 +185,6 @@ object ManifestSchema {
         put("summary", JSONObject().apply {
             put("id", o.optString(SC_ID, ""))
             put("entry", o.optString(SC_ENTRY, ""))
-            put("role", o.optString(SC_ROLE, "app"))
             put("resident", o.optJSONObject(SC_LIFECYCLE)?.optBoolean(LC_RESIDENT, true) ?: true)
             put("restart", o.optJSONObject(SC_LIFECYCLE)?.optString(LC_RESTART, "on-failure") ?: "on-failure")
             put("isolation", o.optJSONObject(SC_ISOLATION) ?: JSONObject.NULL)

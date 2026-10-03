@@ -14,6 +14,7 @@ object SupervisorPolicy {
 
     const val BACKOFF_BASE_MS = 1_000L
     const val BACKOFF_MAX_MS = 30_000L
+    const val BACKOFF_STEPS = 5
 
     const val STABLE_MS = 15_000L
 
