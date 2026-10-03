@@ -9,7 +9,7 @@ import android.os.SystemClock
 import android.util.Log
 import lobos.ProvisioningProbe
 import lobos.RuntimeDiagnostics
-import lobos.ota.ProgramDir
+import lobos.ota.ProgramManager
 import lobos.ota.ProgramOtaUpdater
 import lobos.ota.ProgramOtaResolution
 import lobos.lifecycle.OsHostService
@@ -241,7 +241,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
             OsHostService.ensureRunning(this)
 
-            val km = ProgramDir(this, programId)
+            val km = ProgramManager(this, programId)
 
             if (!stagingSwept) {
                 stagingSwept = true
@@ -716,7 +716,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun commitPendingKernel() {
     runCatching { lobos.ota.ProgramOtaUpdater.promotePendingSequence(this) }
         try {
-            val km = ProgramDir(this, programId)
+            val km = ProgramManager(this, programId)
             val pend = km.pending() ?: return
             if (pend.version != km.currentVersion()) return
             km.setFloor(pend.version)
@@ -734,7 +734,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun rollbackIfPendingFailed() {
     runCatching { lobos.ota.ProgramOtaUpdater.dropPendingSequence(this) }
         try {
-            val km = ProgramDir(this, programId)
+            val km = ProgramManager(this, programId)
             val pend = km.pending() ?: return
             val from = pend.from ?: return
             if (km.rollbackTo(from)) {

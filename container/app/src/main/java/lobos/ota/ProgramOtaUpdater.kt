@@ -83,7 +83,7 @@ object ProgramOtaUpdater {
 
     fun checkAndUpdate(
         context: Context,
-        km: ProgramDir,
+        km: ProgramManager,
         checkOnly: Boolean = false,
         budgetMs: Long = 0L,
     ): Outcome {
@@ -97,7 +97,7 @@ object ProgramOtaUpdater {
 
     private fun checkAndUpdateNet(
         context: Context,
-        km: ProgramDir,
+        km: ProgramManager,
         checkOnly: Boolean = false,
         budgetMs: Long = 0L,
     ): Outcome {
