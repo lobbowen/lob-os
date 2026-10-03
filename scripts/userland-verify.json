@@ -1,6 +1,11 @@
 {
   "schema": 1,
   "criteria": {
+    "node": {
+      "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）",
+      "entry": "bin/node",
+      "node": "const cp = require('node:child_process'); const v = cp.spawnSync('node', ['-v'], { encoding: 'utf8', timeout: 90000 }); if (v.error) { console.error('node 起不来: ' + v.error.message); process.exit(1); } if (v.status !== 0) { console.error('node 非零退出 rc=' + v.status + ' err=' + String(v.stderr || '').slice(0, 160)); process.exit(1); } const ver = String(v.stdout || '').trim(); if (ver.charAt(0) !== 'v' || ver.split('.').length < 3) { console.error('node 版本号不对: ' + JSON.stringify(ver)); process.exit(1); } const e = cp.spawnSync('node', ['-e', 'console.log(6*7)'], { encoding: 'utf8', timeout: 90000 }); if (e.status !== 0) { console.error('node 跑不了代码: rc=' + e.status + ' err=' + String(e.stderr || '').slice(0, 200)); process.exit(1); } if (String(e.stdout || '').trim() !== '42') { console.error('node 计算结果不对: ' + JSON.stringify(String(e.stdout || '').slice(0, 40))); process.exit(1); } const s = cp.spawnSync('node', ['-e', 'require(\"http\").createServer((q,r)=>r.end(\"ok\")).listen(0,\"127.0.0.1\",function(){console.log(this.address().port);this.close()})'], { encoding: 'utf8', timeout: 90000 }); if (s.status !== 0) { console.error('node 起不了 http 服务: rc=' + s.status + ' err=' + String(s.stderr || '').slice(0, 200)); process.exit(1); } const port = String(s.stdout || '').trim(); if (!/^[0-9]+$/.test(port) || Number(port) <= 0) { console.error('node 报的监听端口不对: ' + JSON.stringify(String(s.stdout || '').slice(0, 60))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS node=' + ver + ' 代码执行 6*7=42 起服端口 ' + port);"
+    },
     "npm": {
       "criterion": "按裸名解析的 npm 真能跑起来并打印三段版本；**并且**它报出的全局前缀在可写 HOME 下 —— 文件在不算数，装东西装到只读目录也不算数。**同一颗件还按裸名提供 npx**（ENV-26）：npx 也要三段版本，且它的 --help 必须说 exec 的语义 —— 只看版本号分辨不了「别名共享本件入口」那种把 npx 链到 npm-cli.js 的错法，两者打印逐字相同",
       "entry": "bin/npm-cli.js",
