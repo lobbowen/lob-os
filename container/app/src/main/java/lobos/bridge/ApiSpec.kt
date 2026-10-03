@@ -40,6 +40,8 @@ object ApiSpec {
         "lobos.sys.accessibility.state" to READONLY,
         "lobos.sys.accessibility.disable" to IDEMPOTENT,
         "lobos.sys.accessibility.actions" to READONLY,
+        "lobos.sys.manifest.spec" to READONLY,
+        "lobos.sys.manifest.validate" to READONLY,
         "lobos.sys.permissions.ledger" to READONLY,
         "lobos.sys.permissions.roles" to READONLY,
     )
@@ -86,6 +88,8 @@ object ApiSpec {
         "sys.api" to "lobos.sys.api",
         "os.anchor.state" to "lobos.sys.accessibility.state",
         "os.anchor.ensure" to "lobos.sys.accessibility.enable",
+        "os.manifest.spec" to "lobos.sys.manifest.spec",
+        "os.manifest.validate" to "lobos.sys.manifest.validate",
         "os.accessibility.state" to "lobos.sys.accessibility.state",
         "os.accessibility.enable" to "lobos.sys.accessibility.enable",
         "os.accessibility.disable" to "lobos.sys.accessibility.disable",

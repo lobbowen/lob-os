@@ -800,6 +800,42 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.env.programs" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply { put("programs", programsJson()) }
         },
+        "os.manifest.spec" to MethodDef(listOf("base"), false) { _, _programId ->
+            lobos.os.ManifestSchema.spec().apply {
+                put("restarts", JSONArray(lobos.os.ManifestSchema.RESTARTS.toList()))
+                put("roles", JSONArray(lobos.os.ManifestSchema.ROLES.toList()))
+                put("uiTypes", JSONArray(lobos.os.ManifestSchema.UI_TYPES.toList()))
+                put("onUiClosed", JSONArray(lobos.os.ManifestSchema.ON_CLOSED.toList()))
+                put("namespaces", JSONArray(lobos.os.ManifestSchema.NAMESPACE_SET.toList()))
+            }
+        },
+        "os.manifest.validate" to MethodDef(listOf("base"), false) { p, _programId ->
+            val id = p.optString("id", "")
+            if (id.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定 id")
+            val spec = lobos.os.ProgramRegistry.spec(this@CapabilityBroker, id)
+            if (spec == null) {
+                JSONObject().apply {
+                    put("id", id)
+                    put("present", false)
+                    put("valid", false)
+                    put("errors", JSONArray(listOf("程序未安装")))
+                }
+            } else {
+                val json = runCatching {
+                    val f = java.io.File(spec.dir, "program-manifest.json")
+                    if (f.isFile) org.json.JSONObject(f.readText()) else JSONObject()
+                }.getOrDefault(JSONObject())
+                lobos.os.ManifestSchema.toJson(json).apply {
+                    put("id", id)
+                    put("present", true)
+                    put("version", spec.version)
+                    if (spec.invalid != null && !has("errors")) {
+                        put("valid", false)
+                        put("errors", JSONArray(listOf(spec.invalid)))
+                    }
+                }
+            }
+        },
         "os.nativeAssets.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val landed = RuntimeDiagnostics.latestByStage(
                 this@CapabilityBroker, "native-assets", "capability-assets", "prefix",

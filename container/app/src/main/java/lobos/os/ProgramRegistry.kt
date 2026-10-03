@@ -111,18 +111,14 @@ object ProgramRegistry {
             "never" -> Restart.NEVER
             else -> Restart.ON_FAILURE
         }
-        val restartUnknown = restartRaw !in setOf("on-failure", "on_failure", "always", "never")
-        val roleRaw = json.optString("role", "app").lowercase()
-        val roleUnknown = roleRaw !in setOf("app", "system")
         val backoff = life?.optJSONArray("backoff")?.let { a ->
             (0 until a.length()).map { a.optLong(it) }
         }?.filter { it > 0 }?.takeIf { it.isNotEmpty() }
-            ?: listOf(1000L, 2000L, 5000L, 15000L, 30000L)
+            ?: ManifestSchema.DEFAULT_BACKOFF
 
+        val schemaErrors = ManifestSchema.validate(json)
         val invalid = when {
-            restartUnknown -> "清单 lifecycle.restart 取值非法（只接受 on-failure|always|never）"
-            roleUnknown -> "清单 role 取值非法（只接受 app|system）"
-            entry.isBlank() -> "清单未声明 entry"
+            schemaErrors.isNotEmpty() -> schemaErrors.first()
             !entryFile.exists() -> "入口不存在：" + entryFile.absolutePath
             else -> null
         }
