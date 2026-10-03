@@ -115,14 +115,34 @@ jobs:
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           APKSIGNER="$(ls "$SDK"/build-tools/*/apksigner 2>/dev/null | head -1)"
           if [ -n "$APKSIGNER" ]; then
-            echo "── APK 里的 applicationId ──"
+            echo "── 签名身份 ──"
             "$APKSIGNER" verify --print-certs "$APK" 2>/dev/null | head -4 || true
-            AAPT="$(ls "$SDK"/build-tools/*/aapt2 2>/dev/null | head -1)"
-            if [ -n "$AAPT" ]; then
-              "$AAPT" dump packagename "$APK" 2>/dev/null | head -1
-            fi
           fi
-          echo "── 应为 ${{ inputs.app_id }}，且与设备上的 lobos.app 不同（否则会覆盖开发包）──"
+          echo "── APK 里的 applicationId ──"
+          GOT=""
+          for BIN in "$SDK"/build-tools/*/aapt2 "$SDK"/build-tools/*/aapt; do
+            [ -x "$BIN" ] || continue
+            for probe in "dump packagename" "dump badging"; do
+              OUT="$("$BIN" $probe "$APK" 2>/dev/null | head -3 || true)"
+              case "$OUT" in
+                *"package: name="*)
+                  GOT="$(printf '%s' "$OUT" | sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" | head -1)"
+                  ;;
+                *"${{ inputs.app_id }}"*) GOT="${{ inputs.app_id }}" ;;
+              esac
+              [ -n "$GOT" ] && break
+            done
+            [ -n "$GOT" ] && break
+          done
+          echo "读到的 applicationId: ${GOT:-（读不出来）}"
+          if [ -z "$GOT" ]; then
+            echo "::warning title=读不出 APK 的 applicationId::工具不可用或输出格式变了；请人工用 aapt dump badging 核对"
+          elif [ "$GOT" = "lobos.app" ]; then
+            echo "::error title=applicationId 仍是 lobos.app::与开发包同名，装上去会变成覆盖安装（签名不同会直接失败）。检查 LOBOS_APP_ID 是否传到了 gradle。"
+            exit 1
+          else
+            echo "[ok] applicationId=$GOT 与设备上的 lobos.app 不同 ⇒ 两个应用并存，不会覆盖开发包"
+          fi
 
       - name: Upload
         if: always()
