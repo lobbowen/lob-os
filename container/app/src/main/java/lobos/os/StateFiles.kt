@@ -9,6 +9,8 @@ import org.json.JSONObject
 object StateFiles {
 
     const val SCHEMA_KEY = "schema"
+    private const val LEDGER_DIR = "os"
+    private const val FAILED_FILE = "write-failures.log"
 
     fun writeAtomic(file: File, text: String): Boolean {
         val dir = file.parentFile ?: return false
@@ -22,13 +24,15 @@ object StateFiles {
             }
             if (!tmp.renameTo(file)) {
                 tmp.delete()
+                note("原子落位失败（rename 失败）: " + file.name)
                 false
             } else {
                 fsyncDir(dir)
                 true
             }
-        } catch (_: Throwable) {
-            try { tmp.delete() } catch (_: Throwable) {}
+        } catch (e: Throwable) {
+            runCatching { tmp.delete() }
+            note("原子落位异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
             false
         }
     }
@@ -36,10 +40,29 @@ object StateFiles {
     fun writeJson(file: File, obj: JSONObject): Boolean = try {
         if (!obj.has(SCHEMA_KEY)) obj.put(SCHEMA_KEY, 1)
         writeAtomic(file, obj.toString(2))
-        true
-    } catch (_: Throwable) {
+    } catch (e: Throwable) {
+        note("JSON 落盘异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
         false
     }
+
+    private fun note(detail: String) {
+        runCatching {
+            val f = File(File(LEDGER_DIR, ""), FAILED_FILE)
+            f.parentFile?.mkdirs()
+            val prev = if (f.isFile) f.readText() else ""
+            val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }
+            val keep = lines.takeLast(50)
+            writeAtomic(f, keep.joinToString("\n") + "\n")
+        }
+    }
+
+    fun writeFailures(ctx: android.content.Context): List<String> =
+        runCatching {
+            val f = File(File(ctx.filesDir, LEDGER_DIR), FAILED_FILE)
+            if (!f.isFile) emptyList() else f.readText().split("\n").filter { it.isNotBlank() }
+        }.getOrDefault(emptyList())
+
+    fun writeFailureCount(ctx: android.content.Context): Int = writeFailures(ctx).size
 
     fun readJson(file: File): JSONObject? =
         runCatching { JSONObject(file.readText()) }.getOrNull()

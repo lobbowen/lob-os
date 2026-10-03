@@ -992,7 +992,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.notif.publish" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p, programId ->
+        "os.notif.publish" to MethodDef(listOf("base"), true) { p, programId ->
             if (programId.isBlank()) {
                 throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
             }
@@ -1014,7 +1014,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("atMs", n.atMs)
             }
         },
-        "os.notif.clear" to MethodDef(listOf(ApiSpec.GROUP_DEV), true) { p, programId ->
+        "os.notif.clear" to MethodDef(listOf("base"), true) { p, programId ->
             val target = p.optString("programId", "").ifBlank { programId }
             if (target != programId) {
                 throw BridgeError(CODE_POLICY_DENIED, "只能撤下自己的通知")
@@ -1024,15 +1024,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("cleared", lobos.os.ProgramNotificationHub.clear(this@CapabilityBroker, target))
             }
         },
-        "os.notif.list" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _, _programId ->
+        "os.notif.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
                 put("notices", lobos.os.ProgramNotificationHub.listJson())
             }
         },
-        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_DEV), false) { _, _programId ->
+        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
                 put("notices", lobos.os.ProgramNotificationHub.listJson())
                 put("noticeGroups", lobos.os.ProgramNotificationHub.groupsJson())
+                put("writeFailures", lobos.os.StateFiles.writeFailureCount(this@CapabilityBroker))
             }
         },
         "os.accessibility.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->

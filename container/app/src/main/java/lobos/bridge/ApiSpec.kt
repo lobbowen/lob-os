@@ -60,6 +60,7 @@ object ApiSpec {
         "lobos.sys.accessibility.actions" to SCOPE_SYSTEM,
         "lobos.sys.permissions.ledger" to SCOPE_SYSTEM,
         "lobos.sys.permissions.roles" to SCOPE_SYSTEM,
+        "lobos.sys.host.status" to SCOPE_SYSTEM,
     )
 
     val CANONICAL = mapOf(
