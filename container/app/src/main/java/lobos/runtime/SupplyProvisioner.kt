@@ -386,11 +386,27 @@ object SupplyProvisioner {
                 }
             }
             val balanced = shortPieces.isEmpty()
+            val orphans = tc.listFiles()
+                ?.filter { it.isDirectory && !it.name.startsWith(".") }
+                ?.filter { dir -> tools.none { t -> t.optString("name", "") == dir.name } }
+                ?.map { it.name }
+                ?.sorted()
+                ?: emptyList()
+            if (orphans.isNotEmpty()) {
+                RuntimeDiagnostics.append(
+                    ctx, "supply", null,
+                    "有 " + orphans.size + " 件已落位但当前清单不声明它们（孤儿）",
+                    "孤儿=" + orphans.joinToString(",") +
+                        " —— 商店通道只增不删，这些目录会一直占空间。" +
+                        "若确认不再需要，手工删 " + tc.absolutePath + "/<件名> 与同级的 .<件名>.ok",
+                )
+            }
             RuntimeDiagnostics.append(
                 ctx, "supply", balanced,
                 if (balanced) "商店供给对账：声明 " + declared + " 件，全部按真名可用"
                 else "商店供给对账不平：声明 " + declared + " 件，可用 " + available + " 件",
-                (if (balanced) "" else "缺：" + shortPieces.joinToString("；") + " ← ") + base,
+                (if (balanced) "" else "缺：" + shortPieces.joinToString("；") + " ← ") + base +
+                    (if (orphans.isEmpty()) "" else "；孤儿 " + orphans.size + " 件（不判红，只点名）"),
             )
             return available
         } catch (e: Throwable) {
