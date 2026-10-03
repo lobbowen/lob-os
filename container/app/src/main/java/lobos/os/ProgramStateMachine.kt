@@ -59,8 +59,8 @@ object ProgramStateMachine {
         if (!installed && to != Run.ABSENT) return "未安装却上报 $to"
         if (installed && !manifestValid && to != Run.BROKEN) return "清单非法却上报 $to"
         if (to == Run.QUARANTINED && desired == Desired.FROZEN) return "冻结意图不该进入隔离"
-        if (to.counted() && desired == Desired.FROZEN) return "冻结意图不该处于活跃态 $to"
-        if (to.active() && desired == Desired.STOPPED) return "停止意图不该处于活跃态 $to"
+        if (counted(to) && desired == Desired.FROZEN) return "冻结意图不该处于活跃态 $to"
+        if (active(to) && desired == Desired.STOPPED) return "停止意图不该处于活跃态 $to"
         if (from == Run.RUNNING && to == Run.RESTARTING) return "RUNNING -> RESTARTING 只能由存活转存活判定触发"
         return null
     }
@@ -68,19 +68,14 @@ object ProgramStateMachine {
     fun toJson(ctx: Context): JSONObject = JSONObject().apply {
         put("runs", org.json.JSONArray(names()))
         put("desireds", org.json.JSONArray(Desired.entries.map { it.name }))
-        put("active", org.json.JSONArray(names().filter { active(runOf(it)) }))
-        put("counted", org.json.JSONArray(names().filter { counted(runOf(it)) }))
+        put("active", org.json.JSONArray(Run.entries.filter { active(it) }.map { it.name }))
+        put("counted", org.json.JSONArray(Run.entries.filter { counted(it) }.map { it.name }))
         put("table", org.json.JSONArray(Desired.entries.map { d ->
             JSONObject().apply {
                 put("desired", d.name)
                 put(
                     "reachable",
-                    org.json.JSONArray(
-                        listOf(
-                            Run.ABSENT, Run.BROKEN, Run.STOPPED, Run.STARTING,
-                            Run.RUNNING, Run.UNHEALTHY, Run.RESTARTING, Run.QUARANTINED,
-                        ).filter { reachable(d, it) }.map { it.name },
-                    ),
+                    org.json.JSONArray(Run.entries.filter { reachable(d, it) }.map { it.name }),
                 )
             }
         }))
