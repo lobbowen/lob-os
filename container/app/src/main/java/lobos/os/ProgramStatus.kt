@@ -16,7 +16,7 @@ data class ProgramStatus(
     val id: String,
     val version: String?,
     val role: String,
-    val desired: AppRegistry.Desired,
+    val desired: Desired,
     val state: ProgramRunState,
     val supervised: Boolean,
     val detail: String,
@@ -106,7 +106,7 @@ object ProgramStatusHub {
     }
 
     fun statusOf(ctx: Context, id: String): ProgramStatus {
-        val entry = AppRegistry.all(ctx).firstOrNull { it.id == id }
+        val entry = ProgramIndex.all(ctx).firstOrNull { it.id == id && it.level == Level.APPLICATION }
         val spec = ProgramRegistry.spec(ctx, id)
         val running = runningIds.contains(id)
         val quarantine = quarantined.contains(id)
@@ -123,7 +123,7 @@ object ProgramStatusHub {
             id = id,
             version = spec?.version ?: entry?.version,
             role = spec?.role ?: entry?.role ?: "app",
-            desired = entry?.desired ?: AppRegistry.Desired.STOPPED,
+            desired = entry?.desired ?: Desired.STOPPED,
             state = state,
             supervised = running,
             detail = detail.removePrefix("!"),

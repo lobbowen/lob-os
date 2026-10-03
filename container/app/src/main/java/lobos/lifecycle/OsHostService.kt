@@ -17,11 +17,12 @@ import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
 import lobos.bridge.ScreenCaptureController
 import lobos.capability.CapabilityEvidenceCollector
-import lobos.os.AppRegistry
+import lobos.os.Level
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
-import lobos.ota.ProgramManager
+import lobos.os.ProgramIndex
+import lobos.ota.ProgramDir
 import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {
@@ -63,12 +64,12 @@ class OsHostService : Service() {
             handler?.post(tick)
             runCatching {
                 val ver = lobos.os.ProgramRegistry.listIds(this)
-                    .mapNotNull { ProgramManager(this, it).currentVersion() }
+                    .mapNotNull { ProgramDir(this, it).currentVersion() }
                     .singleOrNull()
                 RuntimeDiagnostics.append(
                     this, "host", true, "宿主不替任何应用决定生死（I1）",
                     "程序表由内核程序存储拥有；此处只观测：current=" + (ver ?: "无") +
-                        "；已登记程序数=" + AppRegistry.all(this).size,
+                        "；已登记程序数=" + lobos.os.ProgramIndex.all(this).count { it.level == lobos.os.Level.APPLICATION },
                 )
             }
             lobos.os.DozeBackstop.schedule(this)

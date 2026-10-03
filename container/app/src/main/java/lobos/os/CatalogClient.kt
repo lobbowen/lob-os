@@ -142,7 +142,7 @@ object CatalogClient {
             } else {
                 ""
             }
-            val facilityVersion = runCatching { FacilityManager.currentVersion(ctx, name) }.getOrNull() ?: ""
+            val facilityVersion = runCatching { ProgramManager.currentVersion(ctx, name) }.getOrNull() ?: ""
             val entryRel = e.optString("entry", "bin/" + name)
             val bin = File(PrefixProvisioner.binDir(ctx), entryRel.substringAfterLast("/"))
             val installed = haveSha.isNotBlank() || facilityVersion.isNotBlank() || bin.isFile

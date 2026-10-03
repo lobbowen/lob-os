@@ -7,7 +7,7 @@ import lobos.native.NativeAssetRegistry
 object NodeRuntime {
 
     fun path(ctx: Context): File? =
-        FacilityManager.nodeBin(ctx)
+        ProgramManager.nodeBin(ctx)
             ?: NativeAssetRegistry.resolve(ctx, NativeAssetRegistry.NODE).takeIf { it.isFile }
 
     fun missing(ctx: Context): String =

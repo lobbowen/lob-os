@@ -44,7 +44,7 @@ object ProgramNotificationHub {
     private val notices = ConcurrentHashMap<String, ProgramNotice>()
 
     private fun channelKeyOf(raw: String): String {
-        val g = FacilityRegistry.safeSegment(raw) ?: "default"
+        val g = ProgramIndex.safeSegment(raw) ?: "default"
         return if (g == "default") CHANNEL_DEFAULT else (CHANNEL_PREFIX + g)
     }
 
@@ -76,7 +76,7 @@ object ProgramNotificationHub {
         subText: String?,
         progress: Int?,
     ): ProgramNotice {
-        val safeId = FacilityRegistry.safeSegment(programId)
+        val safeId = ProgramIndex.safeSegment(programId)
             ?: throw IllegalArgumentException("programId 非法: " + programId.take(40))
         val gRaw = groupKey?.trim().orEmpty().ifBlank { "default" }
         val gLabel = groupLabel?.trim()?.take(60).orEmpty()
@@ -127,7 +127,7 @@ object ProgramNotificationHub {
     }
 
     fun clear(ctx: Context, programId: String): Boolean {
-        val safeId = FacilityRegistry.safeSegment(programId) ?: return false
+        val safeId = ProgramIndex.safeSegment(programId) ?: return false
         val had = notices.remove(safeId) != null
         runCatching {
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -2,7 +2,12 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
-import lobos.ota.ProgramManager
+import lobos.os.Desired
+import lobos.os.Level
+import lobos.os.ProgramIndex
+import lobos.os.ProgramManager
+import lobos.os.ProgramMigration
+import lobos.ota.ProgramDir
 
 object BootReconciler {
 
@@ -37,16 +42,17 @@ object BootReconciler {
     }
 
     fun run(ctx: Context): Report {
+        ProgramMigration.run(ctx)
         val temps = StateFiles.cleanTemps(ctx, TMP_MIN_AGE_MS)
         val parts = StateFiles.cleanParts(ctx, PART_MAX_AGE_MS)
         val abandoned = TaskRegistry.abandonRunning(ctx, "boot-reconcile")
-        val notRunning = AppRegistry.reconcileNotRunning(ctx)
+        val notRunning = reconcileNotRunning(ctx)
         val cleared = mutableListOf<String>()
         val gone = mutableListOf<String>()
         val stuck = mutableListOf<String>()
 
         for (id in ProgramRegistry.listIds(ctx)) {
-            val pm = ProgramManager(ctx, id)
+            val pm = ProgramDir(ctx, id)
             val sweep = runCatching { pm.sweepStaleStaging() }.getOrNull()
             if (sweep != null) {
                 gone.addAll(sweep.first)
@@ -57,10 +63,9 @@ object BootReconciler {
 
         val reconciledPending = reconcilePending(ctx)
         cleared.addAll(reconciledPending)
-        FacilityRegistry.ensure(ctx)
         Thread { runCatching { CatalogClient.refresh(ctx, false) } }.apply { isDaemon = true }.start()
-        FacilityManager.reconcile(ctx)
-        FacilityManager.assemble(ctx)
+        ProgramManager.reconcile(ctx)
+        ProgramManager.assemble(ctx)
         lobos.native.CompatSemantics.write(ctx)
         val repaired = repairMissingEntry(ctx)
 
@@ -76,7 +81,24 @@ object BootReconciler {
         )
     }
 
-    private fun expireStalePending(ctx: Context, pm: ProgramManager, id: String): Boolean {
+    private fun reconcileNotRunning(ctx: Context): List<String> {
+        val out = mutableListOf<String>()
+        for (e in ProgramIndex.byLevel(ctx, Level.APPLICATION)) {
+            if (e.desired != Desired.RUNNING) continue
+            val cur = runCatching {
+                File(File(ProgramRegistry.programRoot(ctx), e.id), "CURRENT").readText().trim()
+            }.getOrNull().orEmpty()
+            if (e.version.isNotBlank() && cur.isNotBlank()) continue
+            ProgramIndex.mutate(ctx, e.id) { it.copy(desired = Desired.STOPPED) }
+            out.add(e.id)
+        }
+        if (out.isNotEmpty()) {
+            Journal.note(ctx, "boot", null, "声明要跑但磁盘无版本，已置为停止", "id=" + out.joinToString(","))
+        }
+        return out
+    }
+
+    private fun expireStalePending(ctx: Context, pm: ProgramDir, id: String): Boolean {
         val p = pm.pending() ?: return false
         val dir = pm.programDir(p.version)
         val age = System.currentTimeMillis() - File(pm.programRootDir(), "PENDING").lastModified()
@@ -93,7 +115,7 @@ object BootReconciler {
     private fun reconcilePending(ctx: Context): List<String> {
         val out = mutableListOf<String>()
         for (id in ProgramRegistry.listIds(ctx)) {
-            val pm = ProgramManager(ctx, id)
+            val pm = ProgramDir(ctx, id)
             val p = pm.pending() ?: continue
             val cur = pm.currentVersion()
             if (p.version == cur) continue
@@ -110,7 +132,7 @@ object BootReconciler {
 
     private fun repairMissingEntry(ctx: Context): String? {
         for (id in ProgramRegistry.listIds(ctx)) {
-            val km = ProgramManager(ctx, id)
+            val km = ProgramDir(ctx, id)
             val cur = km.currentVersion() ?: continue
             if (cur.isBlank()) continue
             if (km.entryPath(cur).exists()) continue
