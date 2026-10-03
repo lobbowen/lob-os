@@ -47,13 +47,19 @@ object ApiSpec {
     )
 
     val SCOPES = mapOf(
+        "lobos.sys.api" to SCOPE_SYSTEM,
         "lobos.sys.capability.invoke" to SCOPE_SYSTEM,
         "lobos.sys.shell.exec" to SCOPE_SYSTEM,
         "lobos.sys.fs.write" to SCOPE_SYSTEM,
-        "lobos.sys.fs.delete" to SCOPE_SYSTEM,
         "lobos.sys.device.listInstalled" to SCOPE_SYSTEM,
         "lobos.sys.device.launch" to SCOPE_SYSTEM,
         "lobos.sys.device.openUrl" to SCOPE_SYSTEM,
+        "lobos.sys.accessibility.state" to SCOPE_SYSTEM,
+        "lobos.sys.accessibility.enable" to SCOPE_SYSTEM,
+        "lobos.sys.accessibility.disable" to SCOPE_SYSTEM,
+        "lobos.sys.accessibility.actions" to SCOPE_SYSTEM,
+        "lobos.sys.permissions.ledger" to SCOPE_SYSTEM,
+        "lobos.sys.permissions.roles" to SCOPE_SYSTEM,
     )
 
     val CANONICAL = mapOf(
@@ -86,16 +92,19 @@ object ApiSpec {
         "capability.invoke" to "lobos.sys.capability.invoke",
         "sys.info" to "lobos.sys.info",
         "sys.api" to "lobos.sys.api",
-        "os.anchor.state" to "lobos.sys.accessibility.state",
-        "os.anchor.ensure" to "lobos.sys.accessibility.enable",
         "os.manifest.spec" to "lobos.sys.manifest.spec",
         "os.manifest.validate" to "lobos.sys.manifest.validate",
         "os.accessibility.state" to "lobos.sys.accessibility.state",
+        "os.permissions.ledger" to "lobos.sys.permissions.ledger",
+        "os.permissions.roles" to "lobos.sys.permissions.roles",
+        "os.host.status" to "lobos.sys.host.status",
         "os.accessibility.enable" to "lobos.sys.accessibility.enable",
         "os.accessibility.disable" to "lobos.sys.accessibility.disable",
         "os.accessibility.actions" to "lobos.sys.accessibility.actions",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
-        "os.nativeAssets" to "lobos.sys.device.nativeAssets",
+        "os.nativeAssets.status" to "lobos.sys.device.nativeAssets",
+        
+        "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
     )
 
     fun canonical(method: String): String = CANONICAL[method] ?: method
@@ -105,9 +114,9 @@ object ApiSpec {
 
     fun groupOf(method: String): String = if (tierOf(method) == TIER_SYS) GROUP_SYS else GROUP_DEV
 
-    fun idempotenceOf(method: String): String = IDEMPOTENCE[method] ?: MUTATING
+    fun idempotenceOf(method: String): String = IDEMPOTENCE[canonical(method)] ?: MUTATING
 
-    fun scopeOf(method: String): String = SCOPES[method] ?: SCOPE_PROGRAM
+    fun scopeOf(method: String): String = SCOPES[canonical(method)] ?: SCOPE_PROGRAM
 
     fun isDeprecated(method: String): Boolean = CANONICAL.containsKey(method) && canonical(method) != method
 

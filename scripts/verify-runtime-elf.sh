@@ -52,9 +52,9 @@ if [ ! -f "$MANIFEST_FILE" ]; then
   echo "[error] 找不到可执行资产清单: $MANIFEST_FILE —— 判据 3 无从进行。"
   exit 2
 fi
-EXEC_SET=" $( { sed -n '/可执行资产本体/,$p' "$MANIFEST_FILE" \
+EXEC_SET=" $( { sed -n '/^# execs/,$p' "$MANIFEST_FILE" \
                 | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
-[ -n "${EXEC_SET// /}" ] || { echo "[error] $MANIFEST_FILE 里没有「可执行资产本体」段或其为空 —— 判据 3 会空转，拒绝校验。"; exit 2; }
+[ -n "${EXEC_SET// /}" ] || { echo "[error] $MANIFEST_FILE 里没有 # execs 段或其为空 —— 判据 3 会空转，拒绝校验。"; exit 2; }
 
 echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
