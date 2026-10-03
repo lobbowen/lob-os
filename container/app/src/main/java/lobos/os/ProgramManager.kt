@@ -124,7 +124,7 @@ object ProgramManager {
         }
         val d = File(ctx.filesDir, e.stateDir)
         val version = if (e.stateDir.isNotBlank()) {
-            runCatching { File(d, "CURRENT").readText().trim() }.getOrNull().orEmpty()
+            runCatching { ProgramDir(ctx, e.id, d).currentVersion() }.getOrNull().orEmpty()
         } else {
             ""
         }

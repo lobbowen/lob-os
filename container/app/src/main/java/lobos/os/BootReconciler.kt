@@ -86,10 +86,10 @@ object BootReconciler {
         for (e in ProgramIndex.byLevel(ctx, Level.APPLICATION)) {
             if (e.desired != Desired.RUNNING) continue
             val cur = runCatching {
-                File(File(ProgramRegistry.programRoot(ctx), e.id), "CURRENT").readText().trim()
+                ProgramDir(ctx, e.id, File(ProgramRegistry.programRoot(ctx), e.id)).currentVersion()
             }.getOrNull().orEmpty()
             if (e.version.isNotBlank() && cur.isNotBlank()) continue
-            ProgramIndex.mutate(ctx, e.id) { it.copy(desired = Desired.STOPPED) }
+            ProgramManager.setDesired(ctx, e.id, Desired.STOPPED)
             out.add(e.id)
         }
         if (out.isNotEmpty()) {
