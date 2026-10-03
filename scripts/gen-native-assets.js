@@ -31,7 +31,7 @@ function parseRegistry(src) {
       if (!mm) return [];
       return mm[1].split(',').map((s) => s.trim()).filter(Boolean).map((s) => s.replace(/^"|"$/g, ''));
     };
-    out.push({ varName, libName: str('libName'), requiredDeps: list('requiredDeps') });
+    out.push({ varName, libName: str('libName'), requiredDeps: list('requiredDeps'), probeArgs: list('probeArgs') });
   }
   return out;
 }
@@ -72,12 +72,24 @@ if (!allMatch) throw new Error('无法从注册表解析 ALL 列表');
 const byVar = new Map(assets.map((a) => [a.varName, a]));
 const all = allMatch[1].split(',').map((s) => s.trim()).filter(Boolean).map((v) => byVar.get(v)).filter(Boolean);
 const deps = [...new Set(all.flatMap((a) => a.requiredDeps))];
+for (const a of all) {
+  if (!a.probeArgs || !a.probeArgs.length) {
+    if (!deps.includes(a.libName)) deps.push(a.libName);
+  }
+}
 const execs = all.map((a) => a.libName).filter((n) => !deps.includes(n));
 
 const lines = [
-  '# deps',
+  '# 随包原生资产清单 —— 由 CI 与构建脚本共同读取',
+  '#',
+  '# ⚠ 本文件由 scripts/gen-native-assets.js 生成，**请勿手改**。',
+  '#   来源：container/app/src/main/java/lobos/native/NativeAssetRegistry.kt',
+  '#   CI 会运行生成器并 `git diff --exit-code` 校验。',
+  '#',
+  '# 格式：每行一个文件名（不含 lib/<abi>/ 前缀），空行与 # 开头的行忽略。',
+  '# --- 依赖库（DT_NEEDED，必须与可执行资产同目录）---',
   ...deps,
-  '# execs',
+  '# --- 可执行资产本体 ---',
   ...execs,
   '',
 ];
@@ -86,8 +98,24 @@ fs.writeFileSync(OUT, lines.join('\n'));
 const EXTRA_CAPS = [{ id: 'node-pty', libName: 'liblobospty.so', tier: 'soft' }];
 const caps = [...parseCapability(src), ...EXTRA_CAPS];
 const TIER_ORDER = ['self-c', 'upstream', 'soft'];
-
-const capLines = [];
+const TIER_DESC = {
+  'self-c': '自有 C，NDK 现编 —— 编不出来即环境问题 ⇒ 缺件硬红',
+  upstream: '上游源码配方 —— $PREFIX 依赖它且无回退 ⇒ 缺件硬红',
+  soft: '上游配方有不确定性 —— 缺件只降级（不判红），不陪葬其它能力',
+};
+const capLines = [
+  '# 小体积原生能力件清单 —— 由构建 / 打包审计脚本与测试共同读取',
+  '#',
+  '# ⚠ 本文件由 scripts/gen-native-assets.js 生成，**请勿手改**。',
+  '#   来源：container/app/src/main/java/lobos/native/NativeAssetRegistry.kt',
+  '#        的 CAPABILITY（外加注册表外的 node-pty，见生成器内的说明）。',
+  '#   CI 会运行生成器并 `git diff --exit-code` 校验。',
+  '#',
+  '# 格式：<档位> <libName> <id>；空行与 # 开头的行忽略。',
+  '# 档位 = NativeExecutable.buildTier：',
+  ...TIER_ORDER.map((t) => '#   ' + t.padEnd(9) + ' ' + TIER_DESC[t]),
+  '',
+];
 for (const t of TIER_ORDER) {
   const group = caps.filter((c) => c.tier === t);
   if (!group.length) continue;
