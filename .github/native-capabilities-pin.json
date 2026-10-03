@@ -1,0 +1,11 @@
+{
+  "abi": "arm64-v8a",
+  "pins": {
+    "ff0ce690f0ea077b066bed9eb56e2bc52de630c6c15964de09a29742c43efa87": {
+      "tag": "native-cap-ff0ce690f0ea077b066bed9eb56e2bc52de630c6c15964de09a29742c43efa87-arm64-v8a",
+      "zip": "native-cap-ff0ce690f0ea077b066bed9eb56e2bc52de630c6c15964de09a29742c43efa87-arm64-v8a.zip",
+      "sha256": "dc947711fe4465dc55bbc90d8cd4a76465724504cc2e7fff252c40fda2247e6f",
+      "abi": "arm64-v8a"
+    }
+  }
+}

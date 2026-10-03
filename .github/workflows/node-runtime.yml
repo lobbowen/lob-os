@@ -78,10 +78,14 @@ jobs:
         if: steps.reuse.outputs.hit != 'yes'
         run: |
           set -euo pipefail
-          ls -la dist/node-runtime/
-          tar -C dist/node-runtime -czf '${{ steps.asset.outputs.name }}' .
+          mkdir -p dist/rt
+          cp -f dist/libnode.so dist/rt/
+          cp -f container/app/src/main/jniLibs/arm64-v8a/libc++_shared.so dist/rt/ 2>/dev/null \
+            || echo "[note] 本次没编出 libc++_shared.so（复用既有件），不影响 libnode"
+          ls -la dist/rt/
+          tar -C dist/rt -czf '${{ steps.asset.outputs.name }}' .
           sha256sum '${{ steps.asset.outputs.name }}' | tee '${{ steps.asset.outputs.name }}.sha256'
-          mkdir -p dist
+          rm -rf dist/rt
           mv '${{ steps.asset.outputs.name }}' '${{ steps.asset.outputs.name }}.sha256' dist/
 
       - name: 发布制品到 Release（供所有构建复用）

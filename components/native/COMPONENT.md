@@ -35,6 +35,27 @@
 - 产物形态校验：`scripts/verify-apk-native.sh`
 - 分发形态：Release `native-cap-<sha256>-arm64-v8a.zip` + `manifest.txt`
   （每行 `来源 lib名 sha256`，来源取 `self-c` / `upstream` / `soft`）
+- 固化记录：`.github/native-capabilities-pin.json`（指纹 → 不可变 Release）
+
+### 为什么固化机制要做成「命中就用，不命中就编」
+
+固化（pin）的目的是「编译一次，之后不再编」。但固化机制本身会坏：Release 被删、
+下载失败、sha256 对不上、包不完整。判据有三条，缺一即回退现场编译：
+
+1. 当前**源指纹**在 `.github/native-capabilities-pin.json` 里有条目；
+2. 能下载并**逐字节校验 sha256**（清单里那份）；
+3. 解包后**档位清单里每一件都在**（缺件 = 固化包不完整，不取用）。
+
+任一不满足就 `exec build-native-capabilities.sh` 现场编译。这样「固化机制坏了」
+只退化成「慢」，不退化成「打不出包」。
+
+**源指纹** = `container/native/**` 的内容 + `build-native-capabilities.sh` 的内容。
+构建输入变了指纹就变，从而「能不能用旧产物」有唯一判据。
+诚实记下一个缺口：**NDK 版本不在指纹里**——它由 runner 预装，本仓未钉。
+若 runner 的 NDK 大版本变更，产物可能变而指纹不变。
+
+**当前 lob-os 的指纹与 dsh-mobile 的固化记录不匹配**（`container/native/*` 的 7 个 C 源
+两边都已分叉）。这是正确行为：源不同 → 产物可能不同 → 不复用。走现场编译。
 
 ## 不变量
 
