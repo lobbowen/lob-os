@@ -9,9 +9,10 @@
 | 版本 | `24.21.0` |
 | ABI | `arm64-v8a` |
 | 商店包名 | `userland-node-<version>-<sha12>-android-arm64.zip` |
-| 落盘 | `files/usr/lib/runtime/node/<version>/bin/node`（**一次只有一个版本生效**） |
+| 落盘 | `files/usr/lib/toolchain/node/`（与 6 件工具链同构；一次只有一个版本生效） |
 | 依赖 | `libc++_shared.so`（由 `LD_LIBRARY_PATH` 指向 APK 的 `nativeLibraryDir` 供给） |
-| 验收 | `node -v` 打印三段版本 |
+| 验收 | `node -v` 打印三段版本，且真跑一段 JS + 起一个 http 服务 |
+| 判据入口 | `NodeRuntime.path(ctx)` —— **唯一**解析口，三通道依次试：程序 → 商店件 → APK 兜底 |
 
 ## 落盘位置的实测依据（2026-10-03，Android 17 / API 37 真机）
 
@@ -87,6 +88,26 @@ API 24。`memalign()` 自 API 1 可用，此处等价（对齐是页大小=2 的
 
 一次只有一个版本生效。切换 = 改 `files/usr/bin/node` 指向哪个版本目录。
 允许同时存在多个版本的**文件**（升级期间新旧共存，避免中途无可用），但只有索引选中的那一个被 `usr/bin/node` 指向。
+
+## `usr/bin/node` 的建链：两个建链者，一个判据
+
+`usr/bin/node` 有两处会写：
+
+| 建链者 | 何时跑 | 目标从哪来 |
+|---|---|---|
+| `SupplyProvisioner.linkEntry` | 商店件落位时 | 该件的件内入口（`toolchain/node/bin/node`） |
+| `PrefixProvisioner.linkNode` | 每次启动（`RuntimeEnvironment.ensure`） | `NodeRuntime.path(ctx)` |
+
+**判据只有一处**：`NodeRuntime.path`。此前 `PrefixProvisioner` 与
+`RuntimeEnvironment.treeRootFor` 各用 `ProgramManager.nodeBin`（只看程序通道），
+而 `SupplyProvisioner` 管的是商店件 —— 两个建链者互不知情，会互相覆盖：
+商店件装好后，启动路径把链改指回程序通道那份，`expected()` 还会报「缺 node」。
+
+收敛后 `ProgramManager.nodeBin` 只剩 `NodeRuntime.path` 一个调用方。
+`treeRootFor` 的兜底是 `usr/bin/node` 本身（`PrefixProvisioner` 刚建好的链），
+不改 `Snapshot.nodeBin` / `TreeRoot.nodeBin` 的非空类型 —— 消费方
+（`GuestAdapter` spawn、`NODE_BIN`、`PATH`）直接 `.absolutePath`，
+改可空会波及三处，不值得。
 
 ## 上架
 
