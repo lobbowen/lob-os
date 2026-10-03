@@ -56,6 +56,40 @@ gh secret set ANDROID_KEY_PASSWORD --repo lobbowen/lob-os
 若沿用 `dsh-mobile` 仓里那把 key，设备端覆盖安装才能继续 ——
 换 key 等于换身份，Android 没有"换回旧签名"的机制。
 
+## 私钥格式与配对自检
+
+`OTA_PRIVATE_KEY_PEM` 放的是 **ed25519 私钥的 PEM 全文**
+（`-----BEGIN PRIVATE KEY-----` 开头）。`publish-userland-manifest.js` 签完会
+**立刻用 APK 里焊死的 `userland-public.pem` 验一遍**，不配对就
+`::error title=签名不配对::` 并退出 1 —— 所以**私钥格式不对或不是同一把，
+会在 CI 里当场红，不会把设备验不过的清单推上线**。
+
+要自查格式（不涉及私钥内容）：
+
+```bash
+head -1 ota-private.pem     # 期望 -----BEGIN PRIVATE KEY-----
+node -e 'const c=require("crypto");
+  c.createPrivateKey(require("fs").readFileSync("ota-private.pem"))
+   ? console.log("可解析") : console.log("不可解析")'
+```
+
+## 私钥丢失的后果（可恢复，但要知道）
+
+ed25519 私钥目前只存在于 `dsh-mobile` 仓的 secret `OTA_PRIVATE_KEY_PEM`，
+**任何 clone 里都没有**（`keys/*` 被 `.gitignore` 白名单制排除，只放行 README）。
+
+丢了会怎样：
+
+| 现象 | 说明 |
+|---|---|
+| 已装机的件 | **不受影响** —— marker 命中就跳过，不重新验签 |
+| 装新件 / 升级 | 全部失败（`ensure` 验签不过就 `return 0`，一件不装） |
+| 程序 OTA | 同样装不上，但已装的程序照常跑 |
+| 恢复 | 找回那把私钥；或发一版换了新公钥的 APK（设备端信任根随之更新） |
+
+也就是说：**代价是"装不了新的"，不是"已有的坏掉"**。但已装机设备无法自愈，
+要恢复必须再发一版 APK —— 所以这把私钥值得单独备份。
+
 ## 私钥必须是**现有这把**
 
 设备端验签用的是 APK 焊死的 `userland-public.pem`。换一把钥匙 = 设备端
