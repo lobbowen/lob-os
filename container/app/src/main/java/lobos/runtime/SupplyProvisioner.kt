@@ -16,7 +16,6 @@ object SupplyProvisioner {
 
     private const val CHANNEL_ASSET = "supply/channel.json"
     private const val PUBKEY_ASSET = "supply/userland-public.pem"
-    private const val MANIFEST_NAME = "userland-manifest.json"
     private const val FETCH_TIMEOUT_MS = 30000
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
@@ -24,13 +23,10 @@ object SupplyProvisioner {
     fun toolchainDir(ctx: Context): File = File(PrefixProvisioner.libDir(ctx), "toolchain")
 
     internal fun manifestDir(ctx: Context): String? {
-        return try {
-            val t = ctx.assets.open(CHANNEL_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }
-            val o = JSONObject(t)
-            val base = o.optString("baseUrl", "").trimEnd('/')
-            if (base.isEmpty()) null
-            else base + "/userland-" + o.optString("channel", "canary")
-        } catch (e: Throwable) { null }
+        val o = channelAnchor(ctx) ?: return null
+        val base = o.optString("baseUrl", "").trimEnd('/')
+        if (base.isEmpty()) return null
+        return base + "/userland-" + o.optString("channel", "canary")
     }
 
     private fun uncached(url: String): String =
@@ -65,12 +61,13 @@ object SupplyProvisioner {
         }
     }
 
-    internal fun anchorName(ctx: Context, field: String): String? {
-        return try {
-            val t = ctx.assets.open(CHANNEL_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }
-            JSONObject(t).optString(field, "").ifBlank { null }
-        } catch (e: Throwable) { null }
-    }
+    internal fun channelAnchor(ctx: Context): JSONObject? = try {
+        val t = ctx.assets.open(CHANNEL_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }
+        JSONObject(t)
+    } catch (e: Throwable) { null }
+
+    internal fun anchorName(ctx: Context, field: String): String? =
+        channelAnchor(ctx)?.optString(field, "")?.ifBlank { null }
 
     private fun pemToDer(pem: String): ByteArray {
         val body = pem.replace("-----BEGIN PUBLIC KEY-----", "")
