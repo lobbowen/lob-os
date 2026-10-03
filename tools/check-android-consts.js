@@ -42,13 +42,15 @@ for (const f of files) {
 }
 
 console.log("\n=== 裸 TYPE_（缺类名限定）===");
+const WHITELIST = new Set(VERIFIED);
 let bare = 0;
 for (const f of files) {
   const rel = f.replace(ROOT + "/", "");
   const src = fs.readFileSync(f, "utf8");
   src.split("\n").forEach((ln, i) => {
-    if (/(^|[^.\w])TYPE_[A-Z_]+/.test(ln) && !/AccessibilityEvent\.TYPE_/.test(ln)) {
-      if (/const val TYPE_/.test(ln)) return;
+    for (const m of ln.matchAll(/(^|[^.\w])(TYPE_[A-Z_]+)/g)) {
+      if (/AccessibilityEvent\.TYPE_/.test(ln)) continue;
+      if (!WHITELIST.has(m[2])) continue;
       console.log("  ✗ " + rel + ":" + (i + 1) + "  " + ln.trim().slice(0, 80));
       bare++;
     }
