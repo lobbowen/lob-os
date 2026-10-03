@@ -7,6 +7,7 @@ on:
     paths:
       - 'container/**'
       - 'scripts/**'
+      - 'tools/**'
       - '.github/native-assets.txt'
       - '.github/workflows/build-apk.yml'
       - 'version.json'
