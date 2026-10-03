@@ -57,7 +57,9 @@ object ProgramIndex {
     private const val FILE = "program-index.json"
     private const val SCHEMA = 1
 
-    val DEFAULT_BACKOFF = listOf(1000L, 2000L, 5000L, 15000L, 30000L)
+    val DEFAULT_BACKOFF: List<Long> = (0 until lobos.runtime.SupervisorPolicy.BACKOFF_STEPS).map {
+        Backoff.exponential(it, lobos.runtime.SupervisorPolicy.BACKOFF_BASE_MS, lobos.runtime.SupervisorPolicy.BACKOFF_MAX_MS)
+    }
 
     fun levelOf(raw: String): Level = when (raw.trim().uppercase()) {
         "INFRA" -> Level.INFRA

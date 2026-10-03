@@ -102,7 +102,7 @@ object ProgramMigration {
                 version = spec.version,
                 enabled = true,
                 stateDir = ProgramRegistry.programRoot(ctx).name + "/" + spec.id,
-                tier = if (spec.role == "system") "base" else "optional",
+                tier = if (entry.level == Level.L0_INFRA || entry.level == Level.CAPABILITY) "base" else "optional",
                 role = spec.role,
                 resident = spec.resident,
                 restart = spec.restart,
