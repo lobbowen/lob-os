@@ -48,7 +48,7 @@ class OsAccessibilityService : AccessibilityService() {
         "view_focused" -> AccessibilityEvent.TYPE_VIEW_FOCUSED
         "view_selected" -> AccessibilityEvent.TYPE_VIEW_SELECTED
         "view_text_changed" -> AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
-        "view_text_selected" -> AccessibilityEvent.TYPE_VIEW_TEXT_SELECTED
+        "view_text_selected" -> AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
         "notification_state_changed" -> AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
         else -> -1
     }
@@ -136,7 +136,7 @@ class OsAccessibilityService : AccessibilityService() {
         AccessibilityEvent.TYPE_VIEW_FOCUSED -> "view_focused"
         AccessibilityEvent.TYPE_VIEW_SELECTED -> "view_selected"
         AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> "view_text_changed"
-        AccessibilityEvent.TYPE_VIEW_TEXT_SELECTED -> "view_text_selected"
+        AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> "view_text_selected"
         AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> "notification_state_changed"
         else -> "type_" + t
     }

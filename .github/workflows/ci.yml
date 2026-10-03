@@ -56,3 +56,6 @@ jobs:
           set -euo pipefail
           node scripts/gen-native-assets.js
           git diff --exit-code -- .github/native-assets.txt .github/native-capabilities.txt
+
+      - name: Android 常量白名单 — AccessibilityEvent.TYPE_* 必须已验证
+        run: node tools/check-android-consts.js
