@@ -149,7 +149,7 @@ object ProgramMigration {
             val old = e.stateDir
             if (old.isBlank() || old == want + "/" + e.id) continue
             val from = File(ctx.filesDir, old)
-            val to = File(ctx.filesDir, want, e.id)
+            val to = File(File(ctx.filesDir, want), e.id)
             if (from.isDirectory && !to.exists()) {
                 val ok = (to.parentFile?.mkdirs() == true) && from.renameTo(to)
                 if (!ok) {
