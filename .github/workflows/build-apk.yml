@@ -14,6 +14,8 @@ on:
       - '.github/native-capabilities-pin.json'
       - '.github/workflows/build-apk.yml'
       - 'version.json'
+    tags:
+      - 'os-release-*'
 
 concurrency:
   group: build-apk-${{ github.ref }}
@@ -91,8 +93,32 @@ jobs:
           bash scripts/ensure-native-capabilities.sh
           ls -la container/app/src/main/jniLibs/arm64-v8a/
 
+      - name: 注入发布签名（缺密钥时校验轮放行，发布轮判红）
+        id: signing
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KS_KEYPASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
+        run: |
+          set -uo pipefail
+          rc=0
+          bash scripts/inject-apk-keystore.sh keys || rc=$?
+          if [ "$rc" -eq 10 ]; then
+            if [ "${RELEASE_ROUND}" = "true" ]; then
+              echo "::error title=发布轮缺签名密钥::os-release-* 这一轮必须签发布包 —— 指纹每次不同的 debug 包装到已装设备上会 INSTALL_FAILED_UPDATE_INCOMPATIBLE。需要 secrets ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD"
+              exit 1
+            fi
+            echo "[signing] 校验轮无签名密钥，本次出 debug 签名包（仅供验证，不可发布）"
+            exit 0
+          fi
+          exit "$rc"
+
       - name: Build debug APK（第一次真正编译宿主 Kotlin）
         id: gradlebuild
+        env:
+          LOBOS_KEYSTORE_PASSWORD: ${{ env.LOBOS_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
           chmod +x gradlew
