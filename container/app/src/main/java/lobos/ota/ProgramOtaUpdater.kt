@@ -70,7 +70,7 @@ object ProgramOtaUpdater {
             val channel = o.optString("channel", "stable").trim().ifBlank { "stable" }
             val override = o.optString("releaseTag", "").trim()
             val tag = if (override.isNotBlank()) override else "program-" + channel
-            val name = o.optString("manifestName", "program-manifest.json").trim().ifBlank { "program-manifest.json" }
+            val name = o.optString("manifestName", "").trim().ifBlank { ProgramDir.MANIFEST_NAME }
             val auto = o.optBoolean("autoCheck", true)
             val budget = o.optLong("startupBudgetMs", 12000L)
             run {
