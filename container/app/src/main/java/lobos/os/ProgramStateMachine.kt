@@ -1,5 +1,8 @@
 package lobos.os
 
+import android.content.Context
+import org.json.JSONObject
+
 object ProgramStateMachine {
 
     enum class Run {
