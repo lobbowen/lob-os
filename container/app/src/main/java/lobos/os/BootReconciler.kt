@@ -83,11 +83,12 @@ object BootReconciler {
 
     private fun reconcileNotRunning(ctx: Context): List<String> {
         val out = mutableListOf<String>()
-        for (e in ProgramIndex.byLevel(ctx, Level.APPLICATION)) {
+        for (e in ProgramIndex.all(ctx)) {
             if (e.desired != Desired.RUNNING) continue
-            val cur = runCatching {
-                ProgramDir(ctx, e.id, File(ProgramRegistry.programRoot(ctx), e.id)).currentVersion()
-            }.getOrNull().orEmpty()
+            if (e.level == Level.INFRA) continue
+            val cur = runCatching { ProgramManager.stateDirOf(ctx, e.id).let { d ->
+                ProgramDir(ctx, e.id, d).currentVersion()
+            } }.getOrNull().orEmpty()
             if (e.version.isNotBlank() && cur.isNotBlank()) continue
             ProgramManager.setDesired(ctx, e.id, Desired.STOPPED)
             out.add(e.id)
