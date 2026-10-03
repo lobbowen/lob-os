@@ -314,7 +314,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }.getOrDefault(setOf(lobos.capability.BridgeTokens.BASE))
         val isSystem = !isProgramSession(session)
         if (isSystem) return base + ApiSpec.GROUP_SYS
-        return base - sensitiveTokens() + (base and declaredCapabilities(session.programId))
+        val want = declaredCapabilities(session.programId)
+        return base - sensitiveTokens() + base.filter { it in want }
     }
 
     private fun sensitiveTokens(): Set<String> = runCatching {
