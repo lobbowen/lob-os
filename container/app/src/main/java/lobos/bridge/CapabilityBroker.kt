@@ -896,14 +896,15 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("snapshot", snap ?: JSONObject.NULL)
             }
         },
-        "capability.invoke" to MethodDef(listOf("base"), true) { p, holder ->
+        "capability.invoke" to MethodDef(listOf("base"), true) { p, programId ->
             val action = p.optString("action", "query").lowercase()
-            val evidence = runCatching { lobos.capability.CapabilityEvidenceCollector.systemReads(this) }
+            val ctx = this@CapabilityBroker
+            val evidence = runCatching { lobos.capability.CapabilityEvidenceCollector.systemReads(ctx) }
                 .getOrElse { lobos.capability.Evidence() }
             when (action) {
                 "query" -> JSONObject().apply {
                     put("ok", true)
-                    put("system", holder.system)
+                    put("program", programId)
                     put("held", lobos.capability.BridgeTokens.from(evidence).toList().sorted())
                     put("catalog", JSONArray().apply {
                         for (c in lobos.capability.CapabilityCatalog.ALL) {
@@ -919,9 +920,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     })
                 }
                 "refresh" -> JSONObject().apply {
-                    val fresh = runCatching { lobos.capability.CapabilityEvidenceCollector.collect(this) }
+                    val fresh = runCatching { lobos.capability.CapabilityEvidenceCollector.collect(ctx) }
                         .getOrElse { lobos.capability.Evidence() }
                     put("ok", true)
+                    put("program", programId)
                     put("held", lobos.capability.BridgeTokens.from(fresh).toList().sorted())
                 }
                 else -> throw BridgeError(CODE_INVALID_PARAM, "action 必须是 query|refresh")
