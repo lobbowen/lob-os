@@ -829,10 +829,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.manifest.spec" to MethodDef(listOf("base"), false) { _, _programId ->
             lobos.os.ManifestSchema.spec().apply {
                 put("restarts", JSONArray(lobos.os.ManifestSchema.RESTARTS.toList()))
-                put("roles", JSONArray(lobos.os.ManifestSchema.ROLES.toList()))
                 put("uiTypes", JSONArray(lobos.os.ManifestSchema.UI_TYPES.toList()))
                 put("onUiClosed", JSONArray(lobos.os.ManifestSchema.ON_CLOSED.toList()))
-                put("namespaces", JSONArray(lobos.os.ManifestSchema.NAMESPACE_SET.toList()))
+                put("restartAliases", JSONObject().apply {
+                    for ((k, v) in lobos.os.ManifestSchema.RESTART_ALIASES) put(k, v)
+                })
             }
         },
         "os.manifest.validate" to MethodDef(listOf("base"), false) { p, _programId ->

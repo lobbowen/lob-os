@@ -64,3 +64,6 @@ jobs:
 
       - name: 外部类型 import 齐备（外部类必须显式 import）
         run: node tools/check-imports.js
+
+      - name: 已删符号零引用（删字段后不留悬空引用）
+        run: node tools/check-dead-refs.js
