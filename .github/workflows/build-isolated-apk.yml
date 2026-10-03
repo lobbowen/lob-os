@@ -11,6 +11,10 @@ on:
         description: '并存包的密钥别名'
         required: true
         default: 'lobos-verify'
+      self_signed:
+        description: '自签供给模式：填设备能访问到的供给基址（如 http://127.0.0.1:8120）。留空则用正式商店。填了就签一份自签清单并把包里的信任根换成对应的测试公钥 —— 用来在没有正式凭据时于真机上验完整供给链路'
+        required: false
+        default: ''
 
 concurrency:
   group: build-isolated-apk-${{ github.ref }}
@@ -64,6 +68,68 @@ jobs:
             -alias '${{ inputs.alias }}' -file keys/isolated-verify.cert
           echo "[ok] 证书锚点 keys/isolated-verify.cert（verify-apk-signing.sh 的 --cert 用它）"
           echo "ks=$KS" >> "$GITHUB_OUTPUT"
+
+      - name: 自签准备（仅 self_signed 非空时）
+        if: ${{ inputs.self_signed != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERLAND_BASE_URL: ${{ inputs.self_signed }}
+        run: |
+          set -euo pipefail
+          echo "── 取 7 个件的 artifact ──"
+          mkdir -p dist
+          for t in curl git jq npm pnpm sqlite3 node; do
+            ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=userland-$t&per_page=1" \
+                  --jq '.artifacts[0].id // empty')
+            if [ -z "$ID" ]; then
+              echo "::error title=没有 userland-$t 的 artifact::先跑 Build Userland（node 那颗需要 Node Runtime 的制品）"
+              exit 1
+            fi
+            gh api "repos/${{ github/repository }}/actions/artifacts/$ID/zip" > "art-$t.zip"
+            ( cd dist && unzip -o -q "../art-$t.zip" )
+            echo "  $t: $(ls dist | grep "userland-$t" | head -1)"
+          done
+          N=$(ls dist/*.zip 2>/dev/null | wc -l)
+          [ "$N" -ge 7 ] || { echo "::error title=件不够::期望 7 个（6 件工具链 + node），实到 $N"; exit 1; }
+          echo "  共 $N 个件包"
+
+          echo "── 生成自签密钥对 ──"
+          node -e '
+            const c = require("crypto"), fs = require("fs");
+            const { publicKey, privateKey } = c.generateKeyPairSync("ed25519");
+            fs.writeFileSync("keys/e2e-public.pem", publicKey.export({ type: "spki", format: "pem" }));
+            fs.writeFileSync("keys/ota-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }));
+            console.log("[ok] ed25519 自签密钥对已生成");
+          '
+
+          echo "── 签清单（7 件全投影，含 node）──"
+          LOBOS_USERLAND_REVISION=1 USERLAND_PUBKEY=keys/e2e-public.pem \
+            node scripts/publish-userland-manifest.js dist release keys/ota-private.pem canary
+          node -p "'  投影: ' + require('./release/userland-manifest.json').tools.map(t=>t.name+'@'+t.version+' '+t.entry).join(' | ')"
+
+          echo "── 把信任根与通道锚换成自签那套 ──"
+          A=container/app/src/main/assets
+          cp -f keys/e2e-public.pem "$A/supply/userland-public.pem"
+          cp -f keys/e2e-public.pem "$A/ota-public.pem"
+          node -e '
+            const fs = require("fs");
+            const p = "container/app/src/main/assets/supply/channel.json";
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            j.baseUrl = process.env.USERLAND_BASE_URL;
+            fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+            console.log("[ok] channel.json.baseUrl =", j.baseUrl);
+          '
+          cat "$A/supply/channel.json"
+
+      - name: Upload（自签的清单与件，供本机供给服务用）
+        if: ${{ inputs.self_signed != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-signed-supply-bundle
+          path: |
+            release/
+            dist/
+          retention-days: 14
 
       - name: 放置 C++ 运行期到 jniLibs
         run: |

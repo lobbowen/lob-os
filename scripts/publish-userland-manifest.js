@@ -14,7 +14,8 @@ const OUT = POS[1] || 'release';
 const KEY = POS[2] || 'keys/ota-private.pem';
 const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.USERLAND_BASE_URL || 'https://hubcdn.zll.ink').replace(/\/+$/, '');
-const PUBKEY = path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'ota-public.pem');
+const PUBKEY = process.env.USERLAND_PUBKEY
+  || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'ota-public.pem');
 const VERIFY = path.join(__dirname, 'userland-verify.json');
 const TTL_MS = 30 * 86400_000;
 
@@ -23,6 +24,7 @@ function entryOf(name) {
 }
 
 function pieceText(zipPath, rel) {
+  if (!pieceNames(zipPath).includes(rel)) return null;
   try {
     return cp.execFileSync('unzip', ['-p', zipPath, rel], {
       encoding: 'buffer', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
@@ -52,9 +54,8 @@ function aliasesOf(name, zipPath, declaredEntry) {
   if (raw === null) return [];
   if (!raw.length) {
     throw new Error(
-      '件 ' + name + ' 的根 package.json 取到了 0 字节 —— ' +
-      'unzip -p 对不存在的条目可能返回 0 且输出空（BusyBox 版 unzip 就是这样，' +
-      'GNU unzip 返回 11）。先确认件里到底有没有 package.json：unzip -l ' + zipPath
+      '件 ' + name + ' 里有 package.json 但取出来 0 字节 —— 件坏了。' +
+      '先看：unzip -l ' + zipPath
     );
   }
   let bin;
