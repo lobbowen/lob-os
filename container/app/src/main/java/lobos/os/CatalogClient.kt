@@ -23,6 +23,12 @@ object CatalogClient {
 
     fun fetchedAt(ctx: Context): Long = cached(ctx)?.optLong("fetchedAt", 0L) ?: 0L
 
+    fun cachedExpiry(ctx: Context): Long {
+        val body = cached(ctx)?.optString("body", "") ?: return 0L
+        val o = runCatching { JSONObject(body) }.getOrNull() ?: return 0L
+        return o.optLong("expiresEpochMs", 0L)
+    }
+
     fun entries(ctx: Context): JSONArray {
         val body = cached(ctx)?.optString("body", "") ?: return JSONArray()
         val o = runCatching { JSONObject(body) }.getOrNull() ?: return JSONArray()
@@ -75,6 +81,10 @@ object CatalogClient {
         val now = System.currentTimeMillis()
         val fresh = fetchedAt(ctx)
         if (!force && fresh > 0L && now - fresh < TTL_MS) {
+            val cachedExpiry = cachedExpiry(ctx)
+            if (cachedExpiry in 1 until now) {
+                return fail(ctx, "缓存的清单已过期（过期于 " + cachedExpiry + "），需要发布新一轮才能继续安装")
+            }
             return JSONObject().apply {
                 put("ok", true)
                 put("cached", true)
@@ -103,6 +113,14 @@ object CatalogClient {
         if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) return fail(ctx, "清单验签不通过（拒用）")
         val text = body.toString(Charsets.UTF_8)
         val parsed = runCatching { JSONObject(text) }.getOrNull() ?: return fail(ctx, "清单不是合法 JSON")
+        val expires = parsed.optLong("expiresEpochMs", 0L)
+        if (expires <= 0L) return fail(ctx, "清单缺 expiresEpochMs（必填字段缺失即拒绝）")
+        if (now > expires) {
+            return fail(
+                ctx,
+                "清单已过期（过期于 " + expires + "），需要发布新一轮才能继续安装",
+            )
+        }
         val f = cacheFile(ctx)
         f.parentFile?.mkdirs()
         StateFiles.writeJson(f, JSONObject().apply {

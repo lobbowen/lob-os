@@ -247,6 +247,22 @@ object SupplyProvisioner {
                 return 0
             }
             val manifest = JSONObject(manifestBytes.toString(Charsets.UTF_8))
+            val expires = manifest.optLong("expiresEpochMs", 0L)
+            if (expires <= 0L) {
+                RuntimeDiagnostics.append(
+                    ctx, "supply", false, "商店清单缺 expiresEpochMs",
+                    "必填字段缺失即拒绝安装，不许静默跳过（发布侧 publish-userland-manifest.js 一定会写这一格）",
+                )
+                return 0
+            }
+            if (System.currentTimeMillis() > expires) {
+                RuntimeDiagnostics.append(
+                    ctx, "supply", false, "商店清单已过期，拒装任何件",
+                    "过期于 " + java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                        .format(java.util.Date(expires)) + "Z —— 需要发布新一轮（tag 形如 userland-canary-<revision>）",
+                )
+                return 0
+            }
             val tools = manifest.optJSONArray("tools")
             if (tools == null) {
                 RuntimeDiagnostics.append(ctx, "supply", false, "商店清单没有 tools 数组（一件都没声明）", base)
