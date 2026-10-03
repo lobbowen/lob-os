@@ -50,6 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           KS=keys/isolated-verify.keystore
+          mkdir -p keys
           if [ -f "$KS" ]; then
             echo "[info] 已存在，沿用（换 keystore 等于换身份，会让已装的并存包失效）"
           else
