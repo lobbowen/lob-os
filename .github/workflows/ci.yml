@@ -70,3 +70,6 @@ jobs:
 
       - name: tools/ 不得硬编码绝对路径
         run: node tools/check-tool-paths.js
+
+      - name: ApiSpec 三表须与方法表自洽（scope/idempotence/别名不得脱节）
+        run: node tools/check-spec-tables.js

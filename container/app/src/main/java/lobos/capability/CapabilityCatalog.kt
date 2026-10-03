@@ -63,7 +63,7 @@ object CapabilityCatalog {
         ),
         Capability(
             id = ADB_CREDENTIALS, title = "ADB 配对凭据", segment = OX,
-            requires = setOf(DEV_OPTIONS, WIRELESS_DEBUG, PermissionCatalog.POST_NOTIFICATIONS),
+            requires = setOf(DEV_OPTIONS, WIRELESS_DEBUG),
             judge = { e ->
                 when {
                     e.credentials == CredentialsState.PAIRED ->
@@ -116,7 +116,7 @@ object CapabilityCatalog {
         ),
         Capability(
             id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）", segment = OX,
-            requires = setOf(ADB_CHANNEL), optional = true, bridgeToken = "accessibility",
+            optional = true, bridgeToken = "accessibility",
             judge = { e ->
                 val svc = e.granted(PermissionCatalog.ACCESSIBILITY)
                 when {
