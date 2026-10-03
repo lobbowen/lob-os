@@ -12,7 +12,8 @@ object NodeRuntime {
             ?: NativeAssetRegistry.resolve(ctx, NativeAssetRegistry.NODE).takeIf { it.isFile }
 
     fun missing(ctx: Context): String =
-        "node 运行时未安装：请在控制面板的系统组件里安装 node（商店里的运行时包）"
+        "node 运行时未就位。开机时 SupplyProvisioner.ensure 会在后台线程从商店装它；" +
+            "若装完仍缺，去面板的系统组件看商店供给的诊断（多半是清单过期或验签不过）"
 
     const val NAME = "node"
 

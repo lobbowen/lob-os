@@ -147,8 +147,8 @@ object RuntimeEnvironment {
         if (nowSupply - lastSupplyAt > supplyThrottleMs) {
             lastSupplyAt = nowSupply
             RuntimeDiagnostics.append(
-                ctx, "supply", null, "自动供给已收敛为按需（面板经 os.packages.* 安装）",
-                "基础环境随 APK；工具/运行时/产品由商店安装",
+                ctx, "supply", null, "商店供给由开机 reconcile 负责（BootReconciler 跑 SupplyProvisioner.ensure）",
+                "本进程只装配 \$PREFIX 与环境；件装在 " + PrefixProvisioner.libDir(ctx).absolutePath + "/toolchain，真名入口在 " + PrefixProvisioner.binDir(ctx).absolutePath,
             )
         }
 
