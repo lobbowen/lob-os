@@ -63,7 +63,10 @@ object BootReconciler {
 
         val reconciledPending = reconcilePending(ctx)
         cleared.addAll(reconciledPending)
-        Thread { runCatching { CatalogClient.refresh(ctx, false) } }.apply { isDaemon = true }.start()
+        Thread {
+            runCatching { CatalogClient.refresh(ctx, false) }
+            runCatching { lobos.runtime.SupplyProvisioner.ensure(ctx) }
+        }.apply { isDaemon = true }.start()
         ProgramManager.reconcile(ctx)
         ProgramManager.assemble(ctx)
         lobos.native.CompatSemantics.write(ctx)
