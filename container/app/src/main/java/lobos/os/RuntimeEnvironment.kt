@@ -97,7 +97,7 @@ object RuntimeEnvironment {
     fun treeRootFor(ctx: Context, s: Snapshot): TreeRoot = TreeRoot(
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
-        nodeBin = lobos.os.ProgramManager.nodeBin(ctx) ?: s.nodeBin,
+        nodeBin = NodeRuntime.path(ctx) ?: s.nodeBin,
         nativeLibDir = NativePreparer.libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
@@ -152,6 +152,8 @@ object RuntimeEnvironment {
             )
         }
 
+        val nodeBin = NodeRuntime.path(ctx)
+            ?: File(PrefixProvisioner.binDir(ctx), PrefixProvisioner.NODE_BIN_NAME)
         return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
     }
 }
