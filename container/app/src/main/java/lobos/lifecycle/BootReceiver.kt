@@ -15,17 +15,27 @@ class BootReceiver : BroadcastReceiver() {
             action == Intent.ACTION_MY_PACKAGE_REPLACED
         ) {
             Log.i(TAG, "BootReceiver: $action -> 拉起 OsHostService（唯一入口）")
-            startQuietly(context, Intent(context, OsHostService::class.java), bootSafe = false)
+            startQuietly(context, Intent(context, OsHostService::class.java))
         }
     }
 
-    private fun startQuietly(context: Context, svc: Intent, bootSafe: Boolean) {
+    private fun startQuietly(context: Context, svc: Intent) {
         try {
-            if (bootSafe && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(svc)
             } else {
                 context.startService(svc)
             }
+        } catch (e: IllegalStateException) {
+            runCatching { context.startService(svc) }
+                .onFailure { t ->
+                    Log.e(TAG, "拉起 ${svc.component?.shortClassName} 失败", t)
+                    RuntimeDiagnostics.append(
+                        context, "boot", false, "拉起 ${svc.component?.shortClassName} 失败",
+                        "startForegroundService 被拒（后台启动限制）：" +
+                            t::class.java.simpleName + ": " + (t.message ?: ""),
+                    )
+                }
         } catch (e: Throwable) {
             Log.e(TAG, "拉起 ${svc.component?.shortClassName} 失败", e)
             RuntimeDiagnostics.append(
