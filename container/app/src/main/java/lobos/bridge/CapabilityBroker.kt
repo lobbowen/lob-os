@@ -391,9 +391,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         OsAccessibilityService.instance
             ?: throw BridgeError(CODE_CAPABILITY_MISSING, "无障碍服务未连接（请在系统设置中开启 Lob OS 无障碍服务）")
 
-    private fun notImplemented(method: String): Nothing =
-        throw BridgeError(CODE_NOT_IMPLEMENTED, "未实现: " + method)
-
     private fun programJson(e: IndexEntry): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("name", e.id)
@@ -899,7 +896,37 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("snapshot", snap ?: JSONObject.NULL)
             }
         },
-        "capability.invoke" to MethodDef(listOf("base"), true) { _, _programId -> notImplemented("capability.invoke") },
+        "capability.invoke" to MethodDef(listOf("base"), true) { p, holder ->
+            val action = p.optString("action", "query").lowercase()
+            val evidence = runCatching { lobos.capability.CapabilityEvidenceCollector.systemReads(this) }
+                .getOrElse { lobos.capability.Evidence() }
+            when (action) {
+                "query" -> JSONObject().apply {
+                    put("ok", true)
+                    put("system", holder.system)
+                    put("held", lobos.capability.BridgeTokens.from(evidence).toList().sorted())
+                    put("catalog", JSONArray().apply {
+                        for (c in lobos.capability.CapabilityCatalog.ALL) {
+                            val verdict = runCatching { lobos.capability.CapabilityCatalog.rawJudge(c.id, evidence) }.getOrNull()
+                            put(JSONObject().apply {
+                                put("id", c.id)
+                                put("title", c.title)
+                                put("status", verdict?.status?.name ?: "UNKNOWN")
+                                put("detail", verdict?.detail ?: "")
+                                put("token", c.bridgeToken ?: JSONObject.NULL)
+                            })
+                        }
+                    })
+                }
+                "refresh" -> JSONObject().apply {
+                    val fresh = runCatching { lobos.capability.CapabilityEvidenceCollector.collect(this) }
+                        .getOrElse { lobos.capability.Evidence() }
+                    put("ok", true)
+                    put("held", lobos.capability.BridgeTokens.from(fresh).toList().sorted())
+                }
+                else -> throw BridgeError(CODE_INVALID_PARAM, "action 必须是 query|refresh")
+            }
+        },
     )
     private val METHODS: Map<String, MethodDef> = mapOf(
         "sys.info" to MethodDef(listOf("base"), false) { _, _programId ->
