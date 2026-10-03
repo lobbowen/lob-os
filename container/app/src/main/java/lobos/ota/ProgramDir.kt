@@ -2,10 +2,14 @@ package lobos.ota
 
 import android.content.Context
 import java.io.File
+import lobos.os.Category
+import lobos.os.Desired
+import lobos.os.Level
+import lobos.os.ProgramIndex
 import lobos.os.ProgramRegistry
 import org.json.JSONObject
 
-class ProgramManager(
+class ProgramDir(
     private val context: Context,
     val programId: String = "",
     storeRoot: java.io.File? = null,
@@ -13,7 +17,7 @@ class ProgramManager(
 
     init {
         if (programId.isBlank()) {
-            throw IllegalArgumentException("ProgramManager 需要显式程序 id：内核没有\"主程序\"概念")
+            throw IllegalArgumentException("ProgramDir 需要显式程序 id：内核没有\"主程序\"概念")
         }
     }
 
@@ -130,17 +134,28 @@ class ProgramManager(
             val spec = ProgramRegistry.spec(context, programId)
             val role = spec?.role?.takeIf { it.isNotBlank() } ?: "app"
             val resident = spec?.resident == true
-            lobos.os.AppRegistry.upsert(
+            val existing = lobos.os.ProgramIndex.get(context, programId)
+            val base = existing ?: lobos.os.ProgramIndex.empty(programId, lobos.os.Level.APPLICATION)
+            lobos.os.ProgramIndex.upsert(
                 context,
-                lobos.os.AppRegistry.Entry(
-                    id = programId,
+                base.copy(
+                    level = lobos.os.Level.APPLICATION,
+                    category = lobos.os.Category.APPLICATION,
                     version = version,
+                    enabled = true,
+                    stateDir = lobos.os.ProgramRegistry.programRoot(context).name + "/" + programId,
                     role = role,
-                    desired = if (resident) {
-                        lobos.os.AppRegistry.Desired.RUNNING
-                    } else {
-                        lobos.os.AppRegistry.Desired.STOPPED
-                    },
+                    resident = resident,
+                    restart = spec?.restart ?: base.restart,
+                    maxRestarts = spec?.maxRestarts ?: base.maxRestarts,
+                    backoffMs = spec?.backoffMs ?: base.backoffMs,
+                    capabilities = spec?.capabilities ?: base.capabilities,
+                    requires = spec?.requires ?: base.requires,
+                    env = spec?.env ?: base.env,
+                    httpPort = spec?.http?.port ?: 0,
+                    httpHealth = spec?.http?.health ?: "",
+                    desired = if (resident) lobos.os.Desired.RUNNING else lobos.os.Desired.STOPPED,
+                    invalid = spec?.invalid,
                 ),
             )
             lobos.os.Journal.note(

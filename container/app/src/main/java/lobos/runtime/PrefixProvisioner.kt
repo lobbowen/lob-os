@@ -4,6 +4,7 @@ import android.content.Context
 import android.system.Os
 import lobos.native.NativeAssetRegistry
 import java.io.File
+import lobos.os.ProgramManager
 
 object PrefixProvisioner {
 
@@ -53,7 +54,7 @@ object PrefixProvisioner {
             ctx.assets.open(CA_BUNDLE_ASSET).use { input -> caDst.outputStream().use { out -> input.copyTo(out) } }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
-        val preferred = lobos.os.FacilityManager.nodeBin(ctx) ?: nodeBin.takeIf { it.isFile }
+        val preferred = lobos.os.ProgramManager.nodeBin(ctx) ?: nodeBin.takeIf { it.isFile }
         if (preferred != null && linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
         return ready
     }
@@ -77,7 +78,7 @@ object PrefixProvisioner {
 
     fun expected(ctx: Context): List<String> {
         val base = BINS.map { it.second } + LIBS.map { it.second } + CA_BUNDLE_NAME
-        val nodePresent = lobos.os.FacilityManager.nodeBin(ctx) != null
+        val nodePresent = lobos.os.ProgramManager.nodeBin(ctx) != null
         return if (nodePresent) base + DEPS.map { it.second } + NODE_BIN_NAME else base
     }
 }

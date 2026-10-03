@@ -20,8 +20,8 @@ object PackageInstaller {
         if (url.isBlank() || want.isBlank()) return fail(ctx, name, "目录项缺 url/sha256")
         val gate = runtimeGate(ctx, entry)
         if (gate != null) return fail(ctx, name, gate)
-        val kind = FacilityRegistry.kindOf(entry.optString("kind", ""))
-        val dir = FacilityRegistry.dirFor(ctx, name)
+        val kind = entry.optString("kind", "").trim().uppercase()
+        val dir = ProgramManager.stateDirOf(ctx, name)
         val bytes = runCatching { SupplyProvisioner.httpGet(url) }.getOrNull()
             ?: return fail(ctx, name, "下载失败：" + url)
         val got = SupplyProvisioner.sha256Hex(bytes)
@@ -57,8 +57,18 @@ object PackageInstaller {
         dir.mkdirs()
         val entryRel = entry.optString("entry", "bin/" + name)
         val links = linkEntry(ctx, dest, entryRel, entry.optJSONArray("aliases"))
-        FacilityRegistry.upsert(
-            ctx, name, kind, ver, true, deps(entry), want, "ota", tier = entry.optString("tier", FacilityRegistry.TIER_OPTIONAL),
+        val base = ProgramIndex.get(ctx, name) ?: ProgramIndex.empty(name, ProgramManager.levelOfKind(kind))
+        ProgramIndex.upsert(
+            ctx,
+            base.copy(
+                version = ver,
+                enabled = true,
+                deps = deps(entry),
+                sha256 = want,
+                origin = "ota",
+                tier = entry.optString("tier", base.tier),
+                stateDir = if (kind == "INFRA") "" else base.stateDir.ifBlank { ProgramManager.relStateDir(name, kind) },
+            ),
         )
         if (!StateFiles.writeAtomic(File(dir, "CURRENT"), ver)) {
             return fail(ctx, name, "CURRENT 落位失败（安装未提交）")
@@ -78,25 +88,34 @@ object PackageInstaller {
     }
 
     fun installedVersion(ctx: Context, name: String): String? {
-        val f = File(FacilityRegistry.dirFor(ctx, name), "CURRENT")
+        val f = File(ProgramManager.stateDirOf(ctx, name), "CURRENT")
         if (!f.isFile) return null
         return runCatching { f.readText().trim().ifBlank { null } }.getOrNull()
     }
 
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
-        val dir = FacilityRegistry.dirFor(ctx, name)
+        val reg = ProgramIndex.get(ctx, name)
+        if (reg != null && !reg.removable) {
+            Journal.note(ctx, "package", false, "拒绝回滚基础设施", "name=" + name + "（随 APK 交付，无可回滚基线）")
+            return false
+        }
+        val dir = ProgramManager.stateDirOf(ctx, name)
+        if (!dir.absolutePath.startsWith(ctx.filesDir.absolutePath)) {
+            Journal.note(ctx, "package", false, "拒绝回滚越界路径", "name=" + name + " dir=" + dir.absolutePath)
+            return false
+        }
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
         Journal.note(ctx, "package", removed, "回退到 APK 基线", "name=" + name)
         return removed
     }
 
     fun uninstall(ctx: Context, name: String): Boolean {
-        val reg = FacilityRegistry.all(ctx).firstOrNull { it.name == name }
-        if (reg != null && !FacilityRegistry.removable(reg.kind)) {
+        val reg = ProgramIndex.get(ctx, name)
+        if (reg != null && !reg.removable) {
             Journal.note(ctx, "package", false, "拒绝卸载基础设施", "name=" + name + "（随 APK 交付，不可卸载）")
             return false
         }
-        val dir = FacilityRegistry.dirFor(ctx, name)
+        val dir = ProgramManager.stateDirOf(ctx, name)
         if (!dir.absolutePath.startsWith(ctx.filesDir.absolutePath)) {
             Journal.note(ctx, "package", false, "拒绝卸载越界路径", "name=" + name + " dir=" + dir.absolutePath)
             return false
@@ -113,12 +132,12 @@ object PackageInstaller {
                 }
             }
         }
-        FacilityRegistry.remove(ctx, name)
+        ProgramIndex.remove(ctx, name)
         Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed
     }
 
-    private fun safeSegment(raw: String): String? = FacilityRegistry.safeSegment(raw)
+    private fun safeSegment(raw: String): String? = ProgramIndex.safeSegment(raw)
 
     private fun linkNames(entryRel: String, aliases: JSONArray?): List<String> {
         val out = mutableListOf<String>()
@@ -130,7 +149,7 @@ object PackageInstaller {
                 if (an.isNotBlank()) out += an
             }
         }
-        return out.filter { FacilityRegistry.safeSegment(it) != null }.distinct()
+        return out.filter { ProgramIndex.safeSegment(it) != null }.distinct()
     }
 
     private fun runtimeGate(ctx: Context, entry: JSONObject): String? {
@@ -138,7 +157,7 @@ object PackageInstaller {
         val runtime = req.optString("name", "").trim()
         if (runtime.isBlank()) return null
         val range = req.optString("range", "").trim()
-        val installed = FacilityRegistry.all(ctx)
+        val installed = ProgramIndex.all(ctx)
             .firstOrNull { it.name == runtime }
             ?.let { installedVersion(ctx, runtime) ?: it.version }
             ?.takeIf { it.isNotBlank() }
