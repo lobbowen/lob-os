@@ -89,22 +89,39 @@ const tools = pieces.map((p) => {
   };
 });
 
-const manifest = {
-  schema: 1,
-  channel: CHANNEL,
-  revision: Number(process.env.LOBOS_USERLAND_REVISION || '1'),
-  version: new Date().toISOString().slice(0, 10).replace(/-/g, '.') + '.local',
-  sequence: Math.floor(Date.now() / 1000),
-  expiresEpochMs: Date.now() + 86400000,
-  tools,
-};
+const PRESIGNED = process.argv.includes('--presigned')
+  ? process.argv[process.argv.indexOf('--presigned') + 1]
+  : null;
 
 const MANIFEST_PATH = '/userland-' + CHANNEL + '/userland-manifest-2.json';
 const routes = {};
-routes[MANIFEST_PATH] = () => ({
-  type: 'application/json; charset=utf-8',
-  body: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'),
-});
+if (PRESIGNED) {
+  const man = fs.readFileSync(PRESIGNED, 'utf8');
+  const sig = fs.readFileSync(PRESIGNED.replace(/\.json$/, '.json.sig'), 'utf8');
+  const parsed = JSON.parse(man);
+  console.log('[serve] 用已签好的清单: ' + PRESIGNED);
+  console.log('[serve]   revision=' + parsed.revision + ' tools=' + (parsed.tools || []).length
+    + ' baseUrl=' + (((parsed.tools || [])[0] || {}).url || '').replace(/\/userland\/.*/, ''));
+  routes[MANIFEST_PATH] = () => ({ type: 'application/json; charset=utf-8', body: Buffer.from(man, 'utf8') });
+  routes[MANIFEST_PATH + '.sig'] = () => ({ type: 'text/plain; charset=utf-8', body: Buffer.from(sig, 'utf8') });
+} else {
+  const manifest = {
+    schema: 1,
+    channel: CHANNEL,
+    revision: Number(process.env.LOBOS_USERLAND_REVISION || '1'),
+    version: new Date().toISOString().slice(0, 10).replace(/-/g, '.') + '.local',
+    sequence: Math.floor(Date.now() / 1000),
+    expiresEpochMs: Date.now() + 86400000,
+    tools,
+  };
+  routes[MANIFEST_PATH] = () => ({
+    type: 'application/json; charset=utf-8',
+    body: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'),
+  });
+  routes[MANIFEST_PATH + '.sig'] = () => {
+    throw new Error('这个服务不签清单（没有私钥）—— 设备侧会因验签不过拒装。用 --presigned <已签清单路径>');
+  };
+}
 
 const server = http.createServer((req, res) => {
   const u = decodeURIComponent((req.url || '').split('?')[0]);
