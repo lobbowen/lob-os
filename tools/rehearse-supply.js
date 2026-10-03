@@ -132,8 +132,18 @@ const main = () => {
   console.log('[rehearse] 清单: ' + MANIFEST_URL);
   const body = httpGet(MANIFEST_URL);
   const man = JSON.parse(body.toString('utf8'));
+  const expires = Number(man.expiresEpochMs || 0);
+  if (!(expires > 0)) {
+    console.log('[rehearse] 清单缺 expiresEpochMs（必填字段缺失即拒绝）');
+    process.exit(1);
+  }
+  if (Date.now() > expires) {
+    console.log('[rehearse] 清单已过期（过期于 ' + new Date(expires).toISOString() + '），拒装');
+    process.exit(1);
+  }
   const tools = man.tools || [];
-  console.log('[rehearse] 声明 ' + tools.length + ' 件，channel=' + man.channel + ' revision=' + man.revision);
+  console.log('[rehearse] 声明 ' + tools.length + ' 件，channel=' + man.channel + ' revision=' + man.revision
+    + '，清单 ' + Math.round((expires - Date.now()) / 86400000) + ' 天后过期');
   fs.mkdirSync(ROOT, { recursive: true });
 
   const short = [];
