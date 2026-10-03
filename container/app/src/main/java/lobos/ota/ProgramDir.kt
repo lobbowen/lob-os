@@ -49,6 +49,25 @@ class ProgramDir(
 
     fun programRootDir(): File = programRoot
 
+    fun pruneOldVersions(keepExtra: Int = 1): Triple<List<String>, List<String>, Long> {
+        val names = try { programRoot.list()?.sorted() ?: emptyList() } catch (_: Throwable) { emptyList() }
+        val versions = names.filter { !isStagingDir(it) && !isReplacedDir(it) && File(programRoot, it).isDirectory }
+        val pinned = linkedSetOf<String>()
+        currentVersion()?.let { pinned.add(it) }
+        store.floorVersion()?.let { pinned.add(it) }
+        pending()?.from?.let { pinned.add(it) }
+        val spare = versions.filterNot { it in pinned }.sortedDescending().take(keepExtra.coerceAtLeast(0))
+        val droppable = versions.filterNot { it in pinned || it in spare }
+        var freed = 0L
+        val gone = mutableListOf<String>()
+        for (v in droppable) {
+            val d = File(programRoot, v)
+            val size = runCatching { d.walkBottomUp().filter { it.isFile }.sumOf { it.length() } }.getOrDefault(0L)
+            if (d.deleteRecursively()) { gone.add(v); freed += size }
+        }
+        return Triple(gone, droppable.filterNot { gone.contains(it) }, freed)
+    }
+
     fun sweepStaleStaging(): Pair<List<String>, List<String>> {
         val names = try { programRoot.list()?.sorted() ?: emptyList() } catch (_: Throwable) { emptyList() }
         val cur = currentVersion()

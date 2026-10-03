@@ -58,6 +58,15 @@ object BootReconciler {
                 gone.addAll(sweep.first)
                 stuck.addAll(sweep.second)
             }
+            val pruned = runCatching { pm.pruneOldVersions() }.getOrNull()
+            if (pruned != null && pruned.first.isNotEmpty()) {
+                RuntimeDiagnostics.append(
+                    ctx, "program-gc", true,
+                    "清掉回滚用不到的旧版本（保留 CURRENT/FLOOR/PENDING 目标 + 1 个）",
+                    "删=" + pruned.first.joinToString(",") + " 释放=" + (pruned.third / 1024) + "KB" +
+                        (if (pruned.second.isEmpty()) "" else " 删不掉=" + pruned.second.joinToString(",")),
+                )
+            }
             if (expireStalePending(ctx, pm, id)) cleared.add(id)
         }
 
