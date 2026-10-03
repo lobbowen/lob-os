@@ -186,3 +186,36 @@ sqlite3   3.53.4
 3. **node 未上架时行为不变** —— 改链前 `usr/bin/node` 指向 APK 的
    `libnode.so`（第三档兜底），商店件装好后改指商店件（第二档），
    两种状态下 `node -v` 都是 v24.21.0。
+
+## 2026-10-04 端到端：商店件 node 启动了真机上已装的程序
+
+真机上装着一个真程序 `console`（5 个版本，`CURRENT` 指向
+`0.1.0-android.53-launcher`），它的清单声明：
+
+```
+"name": "console",
+"abi": "node24-arm64-android35",
+"engines": { "node": ">=24 <25" },
+"entry": "bin/panel"
+```
+
+用**商店件那份 node**（`usr/lib/toolchain/node/bin/node`，不是 APK 里那份）
+跑它的入口：
+
+```
+[launcher] 启动页监听失败: EADDRINUSE listen EADDRINUSE: address already in use 127.0.0.1:36360
+```
+
+报端口被占用，说明它真的起来了、真的去绑端口 —— 而那个端口上已经有一个实例
+在跑（真机上的 App 正在服务）。于是这条链完整走了一遍：
+
+```
+商店件 node（37MB zip → 校验 sha → 落位 → 建链）
+  → node -v = v24.21.0（engines 要求 >=24 <25 ✓）
+  → spawn 第三方程序 console
+  → 程序执行、尝试 listen、拿到真实 errno
+```
+
+**这是「node 作为商店件」的最终判据**：不只是 `node -v` 打出版本号，而是
+它真能当别人的运行时用。之前那些验证（CI 产出件、演练器装件）验的是
+「件能装能跑」；这一条验的是「装完的件能被程序依赖」。
