@@ -147,7 +147,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: userland-node
-          path: dist/
+          path: dist/userland-node-*.zip
           retention-days: 30
 
   build:
@@ -197,7 +197,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: userland-${{ matrix.tool }}
-          path: dist/
+          path: dist/userland-${{ matrix.tool }}-*.zip
           retention-days: 1
 
   manifest:
