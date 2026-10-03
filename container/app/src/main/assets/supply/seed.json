@@ -5,7 +5,7 @@
   "bundled": [
     {
       "name": "posix",
-      "kind": "COMPONENT",
+      "kind": "INFRA",
       "libName": "liblobosposix.so",
       "entry": "",
       "deps": []
@@ -26,28 +26,28 @@
     },
     {
       "name": "flock",
-      "kind": "COMPONENT",
+      "kind": "INFRA",
       "libName": "liblobosflock.so",
       "entry": "",
       "deps": []
     },
     {
       "name": "ptyprobe",
-      "kind": "COMPONENT",
+      "kind": "INFRA",
       "libName": "liblobosptyprobe.so",
       "entry": "",
       "deps": []
     },
     {
       "name": "node-pty",
-      "kind": "COMPONENT",
+      "kind": "INFRA",
       "libName": "liblobospty.so",
       "entry": "",
       "deps": []
     },
     {
       "name": "ca",
-      "kind": "COMPONENT",
+      "kind": "INFRA",
       "libName": "",
       "entry": "ca-bundle.pem",
       "deps": []

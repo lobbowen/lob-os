@@ -59,6 +59,12 @@ object NativeAssetRegistry {
             requiredDeps = emptyList(), required = false, buildTier = "self-c",
             note = "真实 exec 由 InstanceHost.runPtyProbe() 执行",
         ),
+        NativeExecutable(
+            id = "node-pty", libName = "liblobospty.so", humanName = "node-pty 原生模块",
+            probeArgs = emptyList(), probeExpect = null,
+            requiredDeps = listOf("libc++_shared.so"), required = false, buildTier = "upstream",
+            note = "装为 usr/lib/pty.node 供 node 程序 require('node-pty')",
+        ),
     )
 
     val ALL: List<NativeExecutable> get() = listOf(LIBCXX)

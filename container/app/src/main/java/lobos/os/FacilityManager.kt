@@ -13,32 +13,21 @@ object FacilityManager {
     data class Reality(val name: String, val installed: Boolean, val version: String, val evidence: String)
 
     private fun probe(ctx: Context, f: FacilityRegistry.Facility): Reality {
-        val name = f.name
-        val stateDir = f.stateDir
-        val d = File(ctx.filesDir, stateDir)
+        if (f.kind == FacilityRegistry.Kind.INFRA) {
+            val src = FacilityRegistry.infraSourceFile(ctx, f)
+            return Reality(f.name, src.isFile, "", src.absolutePath)
+        }
+        val d = File(ctx.filesDir, f.stateDir)
         val versionFile = File(d, "VERSION")
         val version = if (versionFile.isFile) {
             runCatching { versionFile.readText().trim() }.getOrDefault("")
         } else {
             ""
         }
-        val apk = if (f.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, f.libName) else null
-        val ota = currentVersion(ctx, name)
-        val caBundle = File(ctx.filesDir, "usr/ca-bundle.pem")
-        val otaDir = ota?.let { File(d, it) }
-        val evidence = when {
-            apk != null -> apk.absolutePath
-            name == "ca" -> caBundle.absolutePath
-            otaDir != null -> otaDir.absolutePath
-            else -> d.absolutePath
-        }
-        val installed = when {
-            apk != null -> apk.isFile
-            name == "ca" -> caBundle.isFile
-            otaDir != null -> otaDir.isDirectory
-            else -> false
-        }
-        return Reality(name, installed, version, evidence)
+        val otaDir = currentVersion(ctx, f.name)?.let { File(d, it) }
+        val evidence = otaDir?.absolutePath ?: d.absolutePath
+        val installed = otaDir?.isDirectory == true
+        return Reality(f.name, installed, version, evidence)
     }
 
     @Synchronized
@@ -176,6 +165,10 @@ object FacilityManager {
     @Synchronized
     fun uninstall(ctx: Context, name: String): Boolean {
         val reg = FacilityRegistry.all(ctx).firstOrNull { it.name == name } ?: return false
+        if (!FacilityRegistry.removable(reg.kind)) {
+            Journal.note(ctx, "facility", false, "拒绝卸载基础设施", "name=" + name + "（随 APK 交付，不可卸载）")
+            return false
+        }
         val dir = File(ctx.filesDir, reg.stateDir)
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
         FacilityRegistry.remove(ctx, name)

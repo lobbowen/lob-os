@@ -7,7 +7,7 @@ import org.json.JSONObject
 
 object FacilityRegistry {
 
-    enum class Kind { RUNTIME, COMPONENT, CHANNEL }
+    enum class Kind { INFRA, RUNTIME, COMPONENT, CHANNEL }
 
     data class Facility(
         val name: String,
@@ -20,6 +20,7 @@ object FacilityRegistry {
         val sha256: String,
         val tier: String,
         val libName: String,
+        val entry: String,
     )
 
     private const val SEED_ASSET = "supply/seed.json"
@@ -36,15 +37,22 @@ object FacilityRegistry {
         Kind.RUNTIME -> "runtimes"
         Kind.CHANNEL -> "channels"
         Kind.COMPONENT -> "components"
+        Kind.INFRA -> ""
     }
 
     fun kindOf(raw: String): Kind = when (raw.trim().uppercase()) {
         "RUNTIME" -> Kind.RUNTIME
         "CHANNEL" -> Kind.CHANNEL
+        "INFRA" -> Kind.INFRA
         else -> Kind.COMPONENT
     }
 
-    fun defaultStateDir(name: String, kind: Kind): String = "sys/" + kindDir(kind) + "/" + name
+    fun defaultStateDir(name: String, kind: Kind): String = when (kind) {
+        Kind.INFRA -> ""
+        else -> "sys/" + kindDir(kind) + "/" + name
+    }
+
+    fun removable(kind: Kind): Boolean = kind != Kind.INFRA
 
     fun safeSegment(raw: String): String? {
         val v = raw.trim()
@@ -56,10 +64,17 @@ object FacilityRegistry {
     fun dirFor(ctx: Context, name: String): File {
         val seg = safeSegment(name) ?: return File(ctx.filesDir, TIER_OPTIONAL)
         val known = all(ctx).firstOrNull { it.name == seg }
-        if (known != null && known.stateDir.isNotBlank()) return File(ctx.filesDir, known.stateDir)
+        if (known != null) {
+            if (known.stateDir.isNotBlank()) return File(ctx.filesDir, known.stateDir)
+            if (known.kind == Kind.INFRA) return infraSourceFile(ctx, known)
+        }
         val kind = kindOf(CatalogClient.entryFor(ctx, seg)?.optString("kind", "") ?: "")
         return File(ctx.filesDir, defaultStateDir(seg, kind))
     }
+
+    fun infraSourceFile(ctx: Context, f: Facility): File =
+        if (f.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, f.libName)
+        else File(File(ctx.filesDir, "usr"), f.entry.ifBlank { f.name })
 
     fun seed(ctx: Context): List<Facility> = runCatching {
         val text = ctx.assets.open(SEED_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }
@@ -82,6 +97,7 @@ object FacilityRegistry {
                     sha256 = "",
                     tier = TIER_BASE,
                     libName = e.optString("libName", ""),
+                    entry = e.optString("entry", ""),
                 ),
             )
         }
@@ -100,6 +116,7 @@ object FacilityRegistry {
         source: String,
         tier: String = TIER_OPTIONAL,
         libName: String = "",
+        entry: String = "",
     ) {
         val f = file(ctx)
         val o = StateFiles.readJson(f) ?: JSONObject()
@@ -117,6 +134,7 @@ object FacilityRegistry {
                 e.put("source", source)
                 e.put("tier", tier)
                 e.put("libName", libName)
+                e.put("entry", entry)
                 e.put("stateDir", defaultStateDir(name, kind))
                 hit = true
             }
@@ -133,6 +151,7 @@ object FacilityRegistry {
                 put("source", source)
                 put("tier", tier)
                 put("libName", libName)
+                put("entry", entry)
                 put("stateDir", defaultStateDir(name, kind))
             })
         }
@@ -220,6 +239,7 @@ object FacilityRegistry {
                     sha256 = e.optString("sha256", ""),
                     tier = e.optString("tier", TIER_BASE),
                     libName = e.optString("libName", ""),
+                    entry = e.optString("entry", ""),
                 ),
             )
         }
@@ -244,6 +264,7 @@ object FacilityRegistry {
                 put("sha256", f.sha256)
                 put("tier", f.tier)
                 put("libName", f.libName)
+                put("entry", f.entry)
             })
         }
     }
