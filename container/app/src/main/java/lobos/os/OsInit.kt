@@ -115,7 +115,7 @@ object OsInit {
             else -> "运行时未响应"
         }
         val programs = ProgramStatusHub.snapshot(ctx)
-        val running = programs.count { it.state == ProgramRunState.RUNNING }
+        val running = programs.count { it.state == ProgramStateMachine.Run.RUNNING }
         val prefix = s.interrupted?.let { it + " · " } ?: ""
         return prefix + "Lob OS · " + s.phase.label + " · " + runtime +
             " · " + running + "/" + programs.size + " 个程序在跑"
