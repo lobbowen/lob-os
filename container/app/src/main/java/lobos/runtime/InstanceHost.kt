@@ -528,8 +528,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(this, "supervisor", false, "拒绝自杀：账本 pid 是宿主自己", "pid=" + pid)
             return
         }
-            return
-        }
         try { android.os.Process.sendSignal(pid, 15) } catch (_: Throwable) {}
         var waited = 0
         while (waited < 3000 && lobos.os.ProcessLedger.starttimeOf(pid) > 0) {
