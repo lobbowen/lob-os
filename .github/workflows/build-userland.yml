@@ -16,6 +16,8 @@ on:
       - 'scripts/userland-verify.json'
       - 'scripts/node-versions.json'
       - 'scripts/read-node-versions.sh'
+      - 'components/userland/COMPONENT.md'
+      - 'components/runtime/COMPONENT.md'
     tags:
       - 'userland-*'
   pull_request:

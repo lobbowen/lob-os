@@ -8,7 +8,10 @@ on:
       - 'container/**'
       - 'scripts/**'
       - 'tools/**'
+      - 'components/**'
       - '.github/native-assets.txt'
+      - '.github/native-capabilities.txt'
+      - '.github/native-capabilities-pin.json'
       - '.github/workflows/build-apk.yml'
       - 'version.json'
 
