@@ -43,6 +43,18 @@ runtime 是**别的程序依赖它才能跑**（node），userland 是**程序�
 - `scripts/` 下不得硬编码绝对路径（`tools/check-tool-paths.js`）
 - 设备端清单名不得硬编码，只能从通道锚读（`SupplyProvisioner.anchorName`）
 
+## 守护这些不变量的门禁
+
+| 门禁 | 守什么 |
+|---|---|
+| `tools/check-components.js` | 本文件的分类规则：三个类目齐全、每颗件有 entry + 能力判据、构建脚本与声明双向对得上、runtime 类不进 APK |
+| `tools/check-spec-tables.js` | API 三表自洽 |
+| `tools/check-android-consts.js` | 不得有裸的 Android 常量引用 |
+| `tools/check-dead-refs.js` | 已删符号的悬空引用 |
+| `tools/ktcheck.js` | `.kt` 结构（括号配平、companion 唯一等） |
+| `scripts/comment-gate.js` | 零遗留注释、无 JSON 散文键（判据的理由写在本目录，不写进代码） |
+| `scripts/gen-native-assets.js` 幂等 | 资产清单由 Kotlin 声明生成，不手改 |
+
 ## 目录
 
 ```
