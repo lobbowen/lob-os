@@ -48,7 +48,22 @@ adb shell am start -n lobos.app.verify/lobos.MainActivity
 `CatalogClient.refresh` → `SupplyProvisioner.ensure`。**这一步是本次要验的核心**：
 它是那 400 行 `ensure()` 第一次在真机上执行。
 
-等 1~2 分钟（6 件要下载）。
+**要等多久 / 下多少**（2026-10-04 在设备上实测）：
+
+| 装什么 | 体积 | 按实测 708 KB/s |
+|---|---|---|
+| 隔离包自身 | 9.3MB | `adb install` 那一步 |
+| 商店 6 件（当前清单） | **123MB** | 约 **3 分钟** |
+| 加上 node（尚未上架） | 235MB | 约 5.7 分钟 |
+
+各件实测体积：git 52MB、pnpm 45MB、npm 18MB、curl 6.3MB、sqlite3 1.7MB、jq 0.9MB。
+（清单里没有 `size` 字段，所以装机前无法从清单知道总量 —— 这些数字是从设备上
+已装的同名件量的。）
+
+708 KB/s 是实测 6.6MB 的 curl 件（4.2 秒）得出的，**同一网络下 `raw.githubusercontent.com`
+是 1.3 KB/s 且 5 次里 4 次超时** —— 所以分发源只能是七牛，不能是 GitHub。
+
+供给在**后台线程**，UI 先起来是正常的；别因为界面还没东西就判失败。
 
 ## 4. 查供给链结果
 
