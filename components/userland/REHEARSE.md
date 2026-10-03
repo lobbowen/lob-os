@@ -136,3 +136,53 @@ Release 里的 `libnode.so` 逐字节相同 —— 同一批编译产物，从 C
 
 **这回答了「node 能不能作为商店件」**：能。装在应用私有目录、按裸名调得到、
 真跑出功能，且升级只换件不动 APK。
+
+## 2026-10-04 真机验证：node 作为商店件在设备上可用
+
+演练器是在桌面 shell 上重演判据；这一次是**在真机的应用私有目录里按
+SupplyProvisioner.ensure 的步骤真装**（校验 sha → 暂存 → 原子 rename → 写
+`.node.ok` → 建 `usr/bin/node` 链）：
+
+```
+件包 userland-node-24.21.0-75695f75a08d-android-arm64.zip
+  实际 sha256 75695f75a08d298d6fa1c82d045f08af7ec5c136de364cbc9ad3deee073ee0b8（与包名一致）
+落位 usr/lib/toolchain/node/bin/node  116,846,080 字节
+marker .node.ok
+真名链 usr/bin/node -> usr/lib/toolchain/node/bin/node
+```
+
+跑出来的（正是 userland-verify.json 里 node 那条判据）：
+
+| 判据 | 结果 |
+|---|---|
+| `node -v` | v24.21.0 |
+| 真跑一段 JS（6*7） | 42 |
+| 起 http 服务 bind 随机端口 | port 41615 |
+| 自算自身 sha256 | e94c5669bc91… |
+
+最后一条最硬：它读自己的字节算出的哈希，与 dsh-mobile Release 里的
+`libnode.so` **逐字节相同** —— 同一批编译产物，从 CI 到真机全程可追溯。
+
+装完 7 件经 `usr/bin/<名>` 全通：
+
+```
+node      v24.21.0
+curl      curl 8.22.0 (aarch64-unknown-linux-android) libcurl/8.22.0
+jq        jq-1.8.2
+git       git version 2.55.0
+npm       11.19.0
+pnpm       12.7.0
+sqlite3   3.53.4
+```
+
+顺带证实了三件事：
+
+1. **真机上的通道布局与演练器造的逐字一致** —— 6 件在
+   `usr/lib/toolchain/<name>/`、各带 `.<name>.ok`（64 字节 = 件包 sha256）、
+   `usr/bin/<名>` 是指向件内入口的符号链接。演练器的模型是对的。
+2. **marker 存的是件包 sha256** —— 设备上 `.curl.ok` 的内容
+   `acbbb26198e9…` 与清单里 curl 条目的 sha256 逐字一致，
+   证实 `marker.readText().trim() == want` 的语义正确。
+3. **node 未上架时行为不变** —— 改链前 `usr/bin/node` 指向 APK 的
+   `libnode.so`（第三档兜底），商店件装好后改指商店件（第二档），
+   两种状态下 `node -v` 都是 v24.21.0。
