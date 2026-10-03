@@ -15,9 +15,6 @@ class ProgramDir(
     storeRoot: java.io.File? = null,
 ) {
 
-    companion object {
-        const val MANIFEST_NAME = "program-manifest.json"
-    }
 
     init {
         if (programId.isBlank()) {
@@ -68,6 +65,8 @@ class ProgramDir(
     }
 
     companion object {
+        const val MANIFEST_NAME = "program-manifest.json"
+
         private const val ENTRY_ABSENT = ".entry-absent"
 
         private const val STAGING_INFIX = ".tmp-"
