@@ -105,7 +105,7 @@ class ProgramDir(
     fun manifestFileName(): String = MANIFEST_NAME
 
     fun rawManifest(version: String): JSONObject? {
-        val p = File(programRoot, "$version/$MANIFEST_NAME")
+        val p = File(programDir(version), MANIFEST_NAME)
         if (!p.isFile) return null
         return runCatching { JSONObject(p.readText()) }.getOrNull()
     }
@@ -113,7 +113,7 @@ class ProgramDir(
     fun readProgramManifest(version: String): ProgramManifest? = readProgramManifest(version, programRoot)
 
     fun readProgramManifest(version: String, root: File): ProgramManifest? {
-        val p = File(root, "$version/$MANIFEST_NAME")
+        val p = File(File(root, version), MANIFEST_NAME)
         if (!p.exists()) return null
         return try {
             val json = JSONObject(p.readText())
