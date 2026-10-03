@@ -89,11 +89,6 @@ class OsAccessibilityService : AccessibilityService() {
 
     fun uiSeq(): Long = uiSeqCounter
 
-    fun bumpUiSeq() {
-        uiSeqCounter += 1
-        windowDirty = true
-    }
-
     private fun AccessibilityEvent.toJson(): JSONObject {
         val ev = this
         val node = ev.source

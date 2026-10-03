@@ -1,8 +1,5 @@
 package lobos.os
 
-import android.content.Context
-import org.json.JSONObject
-
 object ProgramStateMachine {
 
     enum class Run {
@@ -15,11 +12,6 @@ object ProgramStateMachine {
         ABSENT,
         BROKEN,
     }
-
-    fun names(): List<String> = Run.entries.map { it.name }
-
-    fun runOf(raw: String): Run =
-        runCatching { Run.valueOf(raw.trim().uppercase()) }.getOrDefault(Run.STOPPED)
 
     fun active(r: Run): Boolean = r == Run.RUNNING || r == Run.STARTING || r == Run.RESTARTING || r == Run.UNHEALTHY
 
@@ -61,34 +53,6 @@ object ProgramStateMachine {
         if (to == Run.QUARANTINED && desired == Desired.FROZEN) return "冻结意图不该进入隔离"
         if (counted(to) && desired == Desired.FROZEN) return "冻结意图不该处于活跃态 $to"
         if (active(to) && desired == Desired.STOPPED) return "停止意图不该处于活跃态 $to"
-        if (from == Run.RUNNING && to == Run.RESTARTING) return "RUNNING -> RESTARTING 只能由存活转存活判定触发"
         return null
-    }
-
-    fun toJson(ctx: Context): JSONObject = JSONObject().apply {
-        put("runs", org.json.JSONArray(names()))
-        put("desireds", org.json.JSONArray(Desired.entries.map { it.name }))
-        put("active", org.json.JSONArray(Run.entries.filter { active(it) }.map { it.name }))
-        put("counted", org.json.JSONArray(Run.entries.filter { counted(it) }.map { it.name }))
-        put("table", org.json.JSONArray(Desired.entries.map { d ->
-            JSONObject().apply {
-                put("desired", d.name)
-                put(
-                    "reachable",
-                    org.json.JSONArray(Run.entries.filter { reachable(d, it) }.map { it.name }),
-                )
-            }
-        }))
-    }
-
-    fun reachable(d: Desired, r: Run): Boolean = when (r) {
-        Run.ABSENT -> true
-        Run.BROKEN -> true
-        Run.STOPPED -> true
-        Run.QUARANTINED -> d == Desired.RUNNING
-        Run.STARTING -> d == Desired.RUNNING
-        Run.RESTARTING -> d == Desired.RUNNING
-        Run.RUNNING -> d == Desired.RUNNING
-        Run.UNHEALTHY -> d == Desired.RUNNING
     }
 }
