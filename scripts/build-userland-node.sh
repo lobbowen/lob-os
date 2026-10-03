@@ -24,7 +24,8 @@ for cand in \
   "$RAW_DIR/libnode.so" \
   "$ROOT_DIR/dist/libnode.so" \
   "$ROOT_DIR/dist/node-runtime/libnode.so" \
-  "$ROOT_DIR/dist/node/libnode.so"
+  "$ROOT_DIR/dist/node/libnode.so" \
+  "$ROOT_DIR/container/app/src/main/jniLibs/arm64-v8a/libnode.so"
 do
   if [ -f "$cand" ]; then SRC="$cand"; break; fi
 done
@@ -33,13 +34,14 @@ if [ -z "$SRC" ]; then
   echo "           期望在 work/ 或 dist/ 下找到 libnode.so，实际内容："
   ls -la "$RAW_DIR" 2>/dev/null | head -n 10 || true
   ls -la "$ROOT_DIR/dist" 2>/dev/null | head -n 10 || true
+  ls -la "$ROOT_DIR/container/app/src/main/jniLibs/arm64-v8a" 2>/dev/null | head -n 10 || true
   exit 1
 fi
 if [ "$SRC" != "$RAW_DIR/libnode.so" ]; then
   mv -f "$SRC" "$RAW_DIR/libnode.so"
   rm -rf "$ROOT_DIR/dist/node-runtime" "$ROOT_DIR/dist/node" 2>/dev/null || true
   SRC="$RAW_DIR/libnode.so"
-  echo "[node] 原始件挪出 dist/（留在里面会被 package-userland.sh 连同 bin/node 一起打进 zip，包体积翻倍）"
+  echo "[node] 原始件挪出 $OUT/（留在里面会被 package-userland.sh 连同 bin/node 一起打进 zip，包体积翻倍）"
 fi
 echo "[node] 取已编译运行时：$SRC"
 

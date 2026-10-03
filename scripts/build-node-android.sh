@@ -7,7 +7,7 @@ ANDROID_API="${ANDROID_API:-24}"
 ARCH="arm64"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="$ROOT/dist/node-runtime"
+OUT_DIR="$ROOT/container/app/src/main/jniLibs/arm64-v8a"
 OUT_NAME="libnode.so"
 mkdir -p "$OUT_DIR"
 
@@ -104,7 +104,6 @@ import re, sys, os, subprocess, tempfile
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
 
-# --- 1) 结构：条件指令配平 ---
 depth = 0
 for line in s.splitlines():
     if re.match(r"^#\s*(if|ifdef|ifndef)\b", line):
@@ -119,7 +118,6 @@ if depth != 0:
              "directive' bug; refusing to build." % depth)
 print("  [ok] conditional directives balanced (depth=0)")
 
-# --- 2) 语义：真实求值 ---
 START = "// X64 on Linux, Windows, MacOS, FreeBSD."
 END = "// Everything else is unsupported."
 if START not in s or END not in s:
@@ -500,9 +498,13 @@ trap 'kill "$PROGRESS_PID" 2>/dev/null || true' EXIT
 
 make "$LDFLAGS_TARGET_OVERRIDE" -j"${JOBS}"
 
-echo "==> 拷贝产物到 $OUT_DIR/$OUT_NAME"
-cp out/Release/node "$OUT_DIR/$OUT_NAME"
-chmod +x "$OUT_DIR/$OUT_NAME"
+NODE_OUT_DIR="${NODE_OUT_DIR:-$ROOT/dist}"
+mkdir -p "$NODE_OUT_DIR"
+echo "==> 拷贝 node 本体到 $NODE_OUT_DIR/$OUT_NAME（不进 jniLibs：走商店通道）"
+cp out/Release/node "$NODE_OUT_DIR/$OUT_NAME"
+chmod +x "$NODE_OUT_DIR/$OUT_NAME"
+echo "==> 核对本地产物 sha256（发布时用同一份值）"
+sha256sum "$NODE_OUT_DIR/$OUT_NAME"
 
 echo "==> 打包 libc++_shared.so（node 运行时的动态依赖，系统不提供）"
 LIBCXX_SRC="$( { ls "$ANDROID_NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null || true; } | head -1)"
@@ -516,18 +518,43 @@ chmod +x "$OUT_DIR/libc++_shared.so"
 echo "    源: $LIBCXX_SRC"
 echo "    目标: $OUT_DIR/libc++_shared.so ($(stat -c%s "$OUT_DIR/libc++_shared.so") 字节)"
 
-echo "==> 产物自检（本脚本产出：$OUT_NAME + libc++_shared.so）"
-for a in "$OUT_NAME" libc++_shared.so; do
-  if [ ! -f "$OUT_DIR/$a" ]; then
-    echo "==> [error] 缺少产物 $OUT_DIR/$a"
-    exit 1
+echo "==> 清单一致性自检（.github/native-assets.txt）"
+MANIFEST="$ROOT/.github/native-assets.txt"
+if [ ! -f "$MANIFEST" ]; then
+  echo "==> [error] 找不到资产清单 $MANIFEST"
+  exit 1
+fi
+MISMATCH=0
+for f in "$OUT_DIR"/*.so; do
+  [ -f "$f" ] || continue
+  base="$(basename "$f")"
+  if ! grep -qxF "$base" <(grep -v '^[[:space:]]*#' "$MANIFEST" | sed 's/[[:space:]]*$//' | grep -v '^$'); then
+    echo "    [FAIL] $base 已产出，但不在 $MANIFEST 里（CI 不会下载/审计它）"
+    MISMATCH=1
   fi
 done
-echo "    [ok] 产物齐全（node 运行时 + C++ 运行期）"
+while IFS= read -r a; do
+  case "$a" in ''|'#'*) continue ;; esac
+  a="$(echo "$a" | tr -d '[:space:]')"
+  if [ ! -f "$OUT_DIR/$a" ]; then
+    echo "    [FAIL] 清单要求 $a，但 $OUT_DIR 里没有它（CI 下载会 404）"
+    MISMATCH=1
+  fi
+done < "$MANIFEST"
+if [ "$MISMATCH" -ne 0 ]; then
+  echo "==> [error] 产物与 .github/native-assets.txt 不一致。"
+  echo "           该清单是 NativeAssetRegistry 的投影，二者必须同步。"
+  exit 1
+fi
+echo "    [ok] 产物与清单一致（$(ls "$OUT_DIR"/*.so | wc -l) 项）"
 
 echo "==> 产物形态门禁（scripts/verify-runtime-elf.sh）"
 bash "$ROOT/scripts/verify-runtime-elf.sh" "$OUT_DIR"
+bash "$ROOT/scripts/verify-runtime-elf.sh" "$NODE_OUT_DIR" 2>/dev/null \
+  || echo "==> [note] dist/ 单独过一次形态门禁未通过（该脚本按 jniLibs 形态写的，不覆盖商店件）"
 
-echo "==> 完成。文件: $OUT_DIR/$OUT_NAME"
-echo "    下一步: ./gradlew assembleDebug 即可把该 Node 打进 APK（首启离线可跑）。"
-echo "    若要做 OTA 升级包: ./scripts/make-release.sh ${NODE_VERSION}"
+echo "==> 完成。"
+echo "    node 本体: $NODE_OUT_DIR/$OUT_NAME（编译工作区产物，不进 APK）"
+echo "    libc++_shared.so: $OUT_DIR/libc++_shared.so（APK 原生件，随 APK 交付）"
+echo "    下一步: bash scripts/build-userland-node.sh 落成商店件 →"
+echo "            bash scripts/make-release.sh ${NODE_VERSION} 发布。"

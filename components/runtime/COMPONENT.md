@@ -44,11 +44,44 @@ jniLibs —— 于是 116 MB 每次换版本都要重发 APK。
 ## 编译
 
 - 脚本：`scripts/build-node-android.sh`
-- 并行度：`NODE_BUILD_JOBS` 覆盖，默认按内存算且**下限锁 2**。
-  记录：CI 上 4 vCPU / 16 GB，`make -j4` 在 144 分钟被硬终止（不是超时，
-  `timeout-minutes` 是 330）—— 标准 runner 被抢占或内存击穿。`-j2` 实测全程零 OOM。
-- 产物形态门禁：`scripts/verify-runtime-elf.sh`
-- 编译一次，制品发到 Release `node-runtime-<version>-<abi>`，后续构建复用不再重编。
+- 产物落 `dist/libnode.so`（**编译工作区**，不进 jniLibs）；`libc++_shared.so` 落 jniLibs
+  （它是 APK 原生件，在 `native-assets.txt` 里）
+- 编译一次，制品发到 Release `node-runtime-<version>-<abi>`，`build-userland.yml` 取它落件
+
+### 为什么脚本里有这些硬失败判据
+
+脚本本身按仓内约定不写注释（注释门禁零容忍），判据的由来记在这里。
+
+**并行度下限锁 2。** CI runner 是 4 vCPU / 16 GB。按 3.5GB/编译进程 + 2GB 余量算，
+14.7GB 只够 `-j3`。但实测矩阵更严：`make -j4` 在 **144 分钟被硬终止** ——
+配置的 `timeout-minutes` 是 330，所以**不是超时**，是 runner 被抢占或内存击穿
+（表现：日志被硬截断，连收尾步骤都没记录）。`-j2` 在 8GB cgroup 下全程零 OOM。
+下限锁 2 而不是退到 `-j1`（那会让本就几小时的构建再拖长很多，得不偿失）。
+`NODE_BUILD_JOBS` 可显式覆盖。
+
+**V8 `trap-handler.h` 补丁必须强失败。** 跨编译 arm64 目标时，x64 主机会命中
+「arm64 simulator on x64」分支，置 `V8_TRAP_HANDLER_VIA_SIMULATOR`——而 simulator 的
+`ProbeMemory` 只存在于 arm64 编译单元，x64 主机的 mksnapshot 会链接失败。修法是给条件
+阶梯的每个分支 AND 一个 false 项（**不能**套 `#if 0`，那会打乱 `#if`/`#endif` 配平，
+编译器报 `unterminated conditional directive` 并把整个头文件后半段吞掉）。
+补丁带三重验证：① 条件指令配平（depth 必须为 0）；② 阶梯结构符合预期（1 个 `#if` +
+至少 1 个 `#elif`）；③ 真实预处理求值 `V8_TRAP_HANDLER_SUPPORTED` 必须是 0。
+任一不过就 `FATAL` 退出——**因为放行一个没打成功的补丁，比编译失败更难查**。
+
+**`stack_trace_posix.cc` 禁用 execinfo。** bionic 没有 `<execinfo.h>` / `backtrace()`，
+而某些 NDK 下 clang 会把 bionic 误判为 glibc 从而 include 它。补丁强制
+`HAVE_EXECINFO_H 0`；锚点找不到就用文件头强制定义，并在事后 grep 确认。
+
+**`aligned_alloc` → `memalign`。** `aligned_alloc()` 在 bionic 要 API 28，本构建目标
+API 24。`memalign()` 自 API 1 可用，此处等价（对齐是页大小=2 的幂，size 是对齐的整数倍，
+结果可 `free()`）。补丁后会 grep 确认调用点归零（排除注释里的说明文字），并用
+`-Wl,--no-undefined` 实测该 API 下可链接。
+
+**产物五项硬红。** ELF 类型、解释器是 Android linker（`/system/bin/linker64`）、
+16KB 页对齐、DT_NEEDED 闭环（`libc++_shared.so` 必须在）、以及不在
+`scripts/native-deps.txt` 白名单里的动态库。进编译前还有一道配对的 `make -n` 断言：
+它保证「node 本体那次链接的命令行里确实有该标志」，五项门禁保证「产物里真的有」——
+中间任何一环（ld 版本、链接顺序、段裁剪）都可能丢。
 
 ## 版本切换
 

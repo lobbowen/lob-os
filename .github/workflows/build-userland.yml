@@ -50,15 +50,25 @@ jobs:
         run: |
           set -euo pipefail
           TAG="node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}"
+          NAME="$TAG.tar.gz"
           mkdir -p dist
           for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
-            if gh release download "$TAG" --repo "$R" --dir dist 2>/dev/null; then
-              echo "[ok] 取到制品：$R / $TAG"
+            if gh release download "$TAG" --repo "$R" --pattern "$NAME" --dir dist 2>/dev/null; then
+              echo "[ok] 取到制品：$R / $NAME"
+              if [ -f "dist/$NAME.sha256" ]; then
+                ( cd dist && sha256sum -c "$NAME.sha256" ) \
+                  || { echo "::error title=node 制品 sha256 不符::$R/$NAME"; exit 1; }
+                echo "[ok] sha256 校验通过"
+              fi
+              tar -C dist -xzf "dist/$NAME"
+              rm -f "dist/$NAME" "dist/$NAME.sha256"
+              ls -la dist/
+              [ -f dist/libnode.so ] || { echo "::error title=制品里没有 libnode.so::$NAME"; exit 1; }
               exit 0
             fi
-            echo "[skip] $R 没有 $TAG"
+            echo "[skip] $R 没有 $NAME"
           done
-          echo "::error title=没有 node 运行时制品::本仓与 dsh-mobile 都没有 $TAG，需先跑 Node Runtime 编译"
+          echo "::error title=没有 node 运行时制品::本仓与 dsh-mobile 都没有 $NAME，需先跑 Node Runtime 编译"
           exit 1
 
       - name: 落成 userland 件
