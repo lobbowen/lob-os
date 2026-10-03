@@ -269,6 +269,7 @@ object SupplyProvisioner {
                 return 0
             }
             val declared = tools.length()
+            val declaredNames = mutableSetOf<String>()
             val shortPieces = mutableListOf<String>()
             var available = 0
             var i = 0
@@ -279,6 +280,7 @@ object SupplyProvisioner {
                 val url = t.optString("url", "")
                 val want = t.optString("sha256", "")
                 val entryRel = t.optString("entry", "bin/" + name)
+                if (name.isNotEmpty()) declaredNames.add(name)
                 if (name.isEmpty() || url.isEmpty() || want.isEmpty()) {
                     val who = if (name.isEmpty()) "(无名)" else name
                     val miss = mutableListOf<String>()
@@ -388,7 +390,7 @@ object SupplyProvisioner {
             val balanced = shortPieces.isEmpty()
             val orphans = tc.listFiles()
                 ?.filter { it.isDirectory && !it.name.startsWith(".") }
-                ?.filter { dir -> tools.none { t -> t.optString("name", "") == dir.name } }
+                ?.filter { dir -> dir.name !in declaredNames }
                 ?.map { it.name }
                 ?.sorted()
                 ?: emptyList()
