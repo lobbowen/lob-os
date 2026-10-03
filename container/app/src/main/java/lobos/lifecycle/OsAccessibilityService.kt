@@ -17,17 +17,17 @@ import org.json.JSONObject
 class OsAccessibilityService : AccessibilityService() {
 
     private val eventLog = java.util.concurrent.ConcurrentLinkedQueue<JSONObject>()
-    @Volatile private var eventSeq = 0L
+    @Volatile private var eventSeqCounter = 0L
     @Volatile private var windowDirty = false
     @Volatile private var uiSeqCounter = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        eventSeq += 1
+        eventSeqCounter += 1
         val ev = runCatching { event.toJson() }.getOrNull() ?: return
         if (eventLog.size >= EVENT_LOG_MAX) eventLog.poll()
         eventLog.add(ev)
-        if (event.eventType == TYPE_WINDOW_STATE_CHANGED || event.eventType == TYPE_WINDOW_CONTENT_CHANGED) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             windowDirty = true
         }
     }
@@ -40,22 +40,22 @@ class OsAccessibilityService : AccessibilityService() {
     )
 
     fun eventTypeOf(name: String): Int = when (name.trim()) {
-        "window_state_changed" -> TYPE_WINDOW_STATE_CHANGED
-        "window_content_changed" -> TYPE_WINDOW_CONTENT_CHANGED
-        "windows_changed" -> TYPE_WINDOWS_CHANGED
-        "view_clicked" -> TYPE_VIEW_CLICKED
-        "view_long_clicked" -> TYPE_VIEW_LONG_CLICKED
-        "view_focused" -> TYPE_VIEW_FOCUSED
-        "view_selected" -> TYPE_VIEW_SELECTED
-        "view_text_changed" -> TYPE_VIEW_TEXT_CHANGED
-        "view_text_selected" -> TYPE_VIEW_TEXT_SELECTED
-        "notification_state_changed" -> TYPE_NOTIFICATION_STATE_CHANGED
+        "window_state_changed" -> AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        "window_content_changed" -> AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        "windows_changed" -> AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        "view_clicked" -> AccessibilityEvent.TYPE_VIEW_CLICKED
+        "view_long_clicked" -> AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
+        "view_focused" -> AccessibilityEvent.TYPE_VIEW_FOCUSED
+        "view_selected" -> AccessibilityEvent.TYPE_VIEW_SELECTED
+        "view_text_changed" -> AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        "view_text_selected" -> AccessibilityEvent.TYPE_VIEW_TEXT_SELECTED
+        "notification_state_changed" -> AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
         else -> -1
     }
 
     fun eventCount(): Int = eventLog.size
 
-    fun eventSeq(): Long = eventSeq
+    fun eventSeq(): Long = eventSeqCounter
 
     fun eventsSince(seq: Long, max: Int, types: List<Int>): JSONArray {
         val out = JSONArray()
@@ -94,47 +94,50 @@ class OsAccessibilityService : AccessibilityService() {
         windowDirty = true
     }
 
-    private fun AccessibilityEvent.toJson(): JSONObject = JSONObject().apply {
-        put("seq", eventSeq)
-        put("atMs", SystemClock.elapsedRealtime())
-        put("type", eventType)
-        put("typeName", eventTypeName(eventType))
-        put("packageName", packageName?.toString() ?: "")
-        put("className", className?.toString() ?: "")
-        put("sourceId", if (event.isEnabled) "enabled" else "disabled")
-        put("windowId", windowId)
-        event.text?.forEach { t -> put("text", t.toString()) }
-        val node = source
-        if (node != null) {
-            put("viewId", node.viewIdResourceName ?: "")
-            put("contentDescription", node.contentDescription?.toString() ?: "")
-            put("clickable", node.isClickable)
-            put("longClickable", node.isLongClickable)
-            put("editable", node.isEditable)
-            put("scrollable", node.isScrollable)
-            val r = Rect()
-            node.getBoundsInScreen(r)
-            put(
-                "bounds",
-                JSONArray().apply {
-                    put(r.left); put(r.top); put(r.right); put(r.bottom)
-                },
-            )
+    private fun AccessibilityEvent.toJson(): JSONObject {
+        val ev = this
+        val node = ev.source
+        val r = Rect()
+        if (node != null) node.getBoundsInScreen(r)
+        val text = ev.text?.joinToString("|") { it.toString() } ?: ""
+        return JSONObject().apply {
+            put("seq", eventSeqCounter)
+            put("atMs", SystemClock.elapsedRealtime())
+            put("type", ev.eventType)
+            put("typeName", eventTypeName(ev.eventType))
+            put("packageName", ev.packageName?.toString() ?: "")
+            put("className", ev.className?.toString() ?: "")
+            put("windowId", ev.windowId)
+            put("text", text)
+            if (node != null) {
+                put("viewId", node.viewIdResourceName ?: "")
+                put("contentDescription", node.contentDescription?.toString() ?: "")
+                put("clickable", node.isClickable)
+                put("longClickable", node.isLongClickable)
+                put("editable", node.isEditable)
+                put("scrollable", node.isScrollable)
+                put(
+                    "bounds",
+                    JSONArray().apply {
+                        put(r.left); put(r.top); put(r.right); put(r.bottom)
+                    },
+                )
+                node.recycle()
+            }
         }
-        recycle()
     }
 
     private fun eventTypeName(t: Int): String = when (t) {
-        TYPE_WINDOW_STATE_CHANGED -> "window_state_changed"
-        TYPE_WINDOW_CONTENT_CHANGED -> "window_content_changed"
-        TYPE_WINDOWS_CHANGED -> "windows_changed"
-        TYPE_VIEW_CLICKED -> "view_clicked"
-        TYPE_VIEW_LONG_CLICKED -> "view_long_clicked"
-        TYPE_VIEW_FOCUSED -> "view_focused"
-        TYPE_VIEW_SELECTED -> "view_selected"
-        TYPE_VIEW_TEXT_CHANGED -> "view_text_changed"
-        TYPE_VIEW_TEXT_SELECTED -> "view_text_selected"
-        TYPE_NOTIFICATION_STATE_CHANGED -> "notification_state_changed"
+        AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> "window_state_changed"
+        AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> "window_content_changed"
+        AccessibilityEvent.TYPE_WINDOWS_CHANGED -> "windows_changed"
+        AccessibilityEvent.TYPE_VIEW_CLICKED -> "view_clicked"
+        AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> "view_long_clicked"
+        AccessibilityEvent.TYPE_VIEW_FOCUSED -> "view_focused"
+        AccessibilityEvent.TYPE_VIEW_SELECTED -> "view_selected"
+        AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> "view_text_changed"
+        AccessibilityEvent.TYPE_VIEW_TEXT_SELECTED -> "view_text_selected"
+        AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> "notification_state_changed"
         else -> "type_" + t
     }
 
