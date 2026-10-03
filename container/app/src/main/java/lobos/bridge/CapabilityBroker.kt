@@ -848,10 +848,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     put("errors", JSONArray(listOf("程序未安装")))
                 }
             } else {
-                val json = runCatching {
-                    val f = java.io.File(spec.dir, "program-manifest.json")
-                    if (f.isFile) org.json.JSONObject(f.readText()) else JSONObject()
-                }.getOrDefault(JSONObject())
+                val json = ProgramManager.dirOf(this@CapabilityBroker, id)
+                    .rawManifest(spec.version) ?: JSONObject()
                 lobos.os.ManifestSchema.toJson(json).apply {
                     put("id", id)
                     put("present", true)

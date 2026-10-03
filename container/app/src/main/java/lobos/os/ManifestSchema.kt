@@ -1,12 +1,13 @@
 package lobos.os
 
+import lobos.ota.ProgramDir
 import org.json.JSONArray
 import org.json.JSONObject
 
 object ManifestSchema {
 
     const val SCHEMA = 3
-    const val NAME = "manifest.json"
+    const val SOURCE_NAME = "manifest.json"
 
     const val SC_ID = "id"
     const val SC_VERSION = "version"
@@ -175,7 +176,8 @@ object ManifestSchema {
     }
 
     fun toJson(o: JSONObject): JSONObject = JSONObject().apply {
-        put("name", NAME)
+        put("name", SOURCE_NAME)
+        put("installedAs", lobos.ota.ProgramDir.MANIFEST_NAME)
         put("schema", SCHEMA)
         put("valid", validate(o).isEmpty())
         put("errors", JSONArray(validate(o)))

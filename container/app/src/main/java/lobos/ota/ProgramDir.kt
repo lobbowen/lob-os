@@ -15,6 +15,10 @@ class ProgramDir(
     storeRoot: java.io.File? = null,
 ) {
 
+    companion object {
+        const val MANIFEST_NAME = "program-manifest.json"
+    }
+
     init {
         if (programId.isBlank()) {
             throw IllegalArgumentException("ProgramDir 需要显式程序 id：内核没有\"主程序\"概念")
@@ -98,10 +102,18 @@ class ProgramDir(
         }
     }
 
+    fun manifestFileName(): String = MANIFEST_NAME
+
+    fun rawManifest(version: String): JSONObject? {
+        val p = File(programRoot, "$version/$MANIFEST_NAME")
+        if (!p.isFile) return null
+        return runCatching { JSONObject(p.readText()) }.getOrNull()
+    }
+
     fun readProgramManifest(version: String): ProgramManifest? = readProgramManifest(version, programRoot)
 
     fun readProgramManifest(version: String, root: File): ProgramManifest? {
-        val p = File(root, "$version/program-manifest.json")
+        val p = File(root, "$version/$MANIFEST_NAME")
         if (!p.exists()) return null
         return try {
             val json = JSONObject(p.readText())

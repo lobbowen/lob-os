@@ -2,6 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
+import lobos.ota.ProgramDir
 import org.json.JSONObject
 
 enum class Restart { ON_FAILURE, ALWAYS, NEVER }
@@ -9,7 +10,6 @@ enum class Restart { ON_FAILURE, ALWAYS, NEVER }
 object ProgramRegistry {
 
     private const val DIR = "programs"
-    private const val MANIFEST = "program-manifest.json"
     private const val DEFAULT_HEALTH = "/status"
 
     data class PortDecl(val port: Int, val env: String?, val health: String)
@@ -50,7 +50,7 @@ object ProgramRegistry {
     fun installedVersions(ctx: Context, id: String): List<String> = dirOf(ctx, id).installedVersions()
 
     private fun manifest(ctx: Context, id: String, version: String): JSONObject? = runCatching {
-        val f = File(dirOf(ctx, id).programDir(version), MANIFEST)
+        val f = File(dirOf(ctx, id).programDir(version), lobos.ota.ProgramDir.MANIFEST_NAME)
         if (!f.isFile) null else JSONObject(f.readText())
     }.getOrNull()
 
@@ -68,7 +68,7 @@ object ProgramRegistry {
                 role = "app", http = null, capabilities = emptyList(), env = emptyMap(),
                 resident = true, restart = Restart.ON_FAILURE, maxRestarts = 5,
                 backoffMs = ProgramIndex.DEFAULT_BACKOFF,
-                invalid = "清单缺失或不可解析（" + MANIFEST + "）",
+                invalid = "清单缺失或不可解析（" + lobos.ota.ProgramDir.MANIFEST_NAME + "）",
             )
         }
         val entry = json.optString("entry", "").trim()
