@@ -68,27 +68,15 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
             if (e.level == Level.INFRA) return infraSourceFile(ctx, e)
-            if (e.level != Level.APPLICATION) return File(ctx.filesDir, defaultStateDir(id, levelToKind(e.level)))
-            return File(ctx.filesDir, defaultStateDir(id, catalogKindDir(ctx, id)))
+            if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
-        return File(ctx.filesDir, defaultStateDir(id, catalogKindDir(ctx, id)))
+        return File(ProgramRegistry.programRoot(ctx), id)
     }
 
     fun infraSourceFile(ctx: Context, e: IndexEntry): File =
         if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
         else File(File(ctx.filesDir, "usr"), e.assetEntry.ifBlank { e.id })
-
-    private fun levelToKind(level: Level): String = when (level) {
-        Level.INFRA -> "infra"
-        Level.CAPABILITY -> "components"
-        Level.CHANNEL -> "channels"
-        Level.APPLICATION -> "components"
-    }
-
-    private fun defaultStateDir(id: String, kindDir: String): String =
-        if (kindDir == "infra") "" else "sys/" + kindDir + "/" + id
 
     fun dirFor(ctx: Context, id: String): File = stateDirOf(ctx, id)
 
@@ -101,28 +89,15 @@ object ProgramManager {
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
-    fun relStateDir(id: String, kind: String): String = defaultStateDir(id, kindDirOf(kind))
-
-    private fun kindDirOf(kind: String): String = when (kind) {
-        "INFRA" -> "infra"
-        "RUNTIME" -> "runtimes"
-        "CHANNEL" -> "channels"
-        else -> "components"
-    }
-
-    private fun catalogKindDir(ctx: Context, id: String): String = when (CatalogClient.entryFor(ctx, id)?.optString("kind", "")) {
-        "INFRA" -> "infra"
-        "RUNTIME" -> "runtimes"
-        "CHANNEL" -> "channels"
-        else -> "components"
-    }
+    fun relStateDir(id: String, kind: String): String =
+        if (kind.trim().uppercase() == "INFRA") "" else ProgramRegistry.PROGRAMS_DIR + "/" + id
 
     fun probe(ctx: Context, e: IndexEntry): Reality {
         if (e.level == Level.INFRA) {
             val src = infraSourceFile(ctx, e)
             return Reality(e.id, e.level, src.isFile, "", src.absolutePath)
         }
-        val d = File(ctx.filesDir, e.stateDir)
+        val d = stateDirOf(ctx, e.id)
         val version = if (e.stateDir.isNotBlank()) {
             runCatching { ProgramDir(ctx, e.id, d).currentVersion() }.getOrNull().orEmpty()
         } else {
@@ -150,6 +125,7 @@ object ProgramManager {
 
     @Synchronized
     fun reconcile(ctx: Context) {
+        alignLevels(ctx)
         val snap = snapshot(ctx)
         val stateFile = File(ProgramIndex.file(ctx).parentFile ?: File(ctx.filesDir, "os"), "program-state.json")
         StateFiles.writeJson(
@@ -171,6 +147,26 @@ object ProgramManager {
     }
 
     private fun Snapshot.realityOf(e: IndexEntry): Reality? = realities[e.id]
+
+    private fun alignLevels(ctx: Context) {
+        val fixed = mutableListOf<String>()
+        for (e in ProgramIndex.all(ctx)) {
+            val want = levelFromOrigin(ctx, e) ?: continue
+            if (e.level == want) continue
+            ProgramIndex.upsert(ctx, e.copy(level = want))
+            fixed += e.id + "→" + want.name
+        }
+        if (fixed.isNotEmpty()) {
+            Journal.note(ctx, "index", null, "层级与来源不一致，已按实物纠正", "改=" + fixed.joinToString(","))
+        }
+    }
+
+    private fun levelFromOrigin(ctx: Context, e: IndexEntry): Level? = when (e.origin) {
+        "apk" -> Level.INFRA
+        "store" -> Level.APPLICATION
+        "ota" -> levelOfKind(CatalogClient.entryFor(ctx, e.id)?.optString("kind", "").orEmpty())
+        else -> null
+    }
 
     fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id, stateDirOf(ctx, id))
 

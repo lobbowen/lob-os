@@ -328,10 +328,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun declaredCapabilities(programId: String): Set<String> {
         val id = programId.trim()
         if (id.isBlank()) return emptySet()
-        val declared = runCatching {
-            val entry = lobos.os.ProgramIndex.get(this, id)
-            entry?.capabilities ?: lobos.os.ProgramRegistry.spec(this, id)?.capabilities
-        }.getOrNull().orEmpty()
+        val declared = runCatching { lobos.os.ProgramIndex.get(this, id)?.capabilities }
+            .getOrNull().orEmpty()
         val known = runCatching {
             lobos.capability.CapabilityCatalog.ALL.mapNotNull { it.bridgeToken }.toSet() +
                 lobos.capability.BridgeTokens.BASE

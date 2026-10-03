@@ -22,9 +22,14 @@ object ProgramMigration {
     }
 
     fun needed(ctx: Context): Boolean {
-        if (ProgramIndex.file(ctx).isFile) return false
+        if (ProgramIndex.file(ctx).isFile) return legacyStateDirs(ctx)
         return legacyFacilityFile(ctx).isFile || legacyAppFile(ctx).isFile || ProgramRegistry.listIds(ctx).isNotEmpty()
     }
+
+    private fun legacyStateDirs(ctx: Context): Boolean =
+        ProgramIndex.all(ctx).any { e ->
+            e.stateDir.isNotBlank() && e.stateDir != ProgramRegistry.PROGRAMS_DIR + "/" + e.id
+        }
 
     private fun legacyFacilityFile(ctx: Context) = File(File(ctx.filesDir, "sys"), "registry.json")
 
@@ -32,6 +37,7 @@ object ProgramMigration {
 
     @Synchronized
     fun run(ctx: Context): Report? {
+        if (ProgramIndex.file(ctx).isFile) return relocateStateDirs(ctx)
         if (!needed(ctx)) return null
         val out = linkedMapOf<String, IndexEntry>()
 
@@ -133,6 +139,40 @@ object ProgramMigration {
             runCatching { Desired.valueOf(raw) }.getOrNull()?.let { out[id] = it }
         }
         return out
+    }
+
+    private fun relocateStateDirs(ctx: Context): Report? {
+        val want = ProgramRegistry.PROGRAMS_DIR
+        val moved = mutableListOf<String>()
+        for (e in ProgramIndex.all(ctx)) {
+            if (e.level == Level.INFRA) continue
+            val old = e.stateDir
+            if (old.isBlank() || old == want + "/" + e.id) continue
+            val from = File(ctx.filesDir, old)
+            val to = File(ctx.filesDir, want, e.id)
+            if (from.isDirectory && !to.exists()) {
+                val ok = (to.parentFile?.mkdirs() == true) && from.renameTo(to)
+                if (!ok) {
+                    Journal.note(ctx, "index", false, "旧状态目录搬迁失败，保留原位", "id=" + e.id + " from=" + old)
+                    continue
+                }
+            } else if (to.isDirectory) {
+                runCatching { from.deleteRecursively() }
+            }
+            ProgramIndex.upsert(ctx, e.copy(stateDir = want + "/" + e.id))
+            moved += e.id
+        }
+        if (moved.isEmpty()) return null
+        val after = ProgramIndex.all(ctx)
+        Journal.note(
+            ctx, "index", true, "状态目录统一到 " + want,
+            "搬=" + moved.joinToString(",") + " 共=" + after.size +
+                " 基础设施=" + after.count { it.level == Level.INFRA } +
+                " 能力件=" + after.count { it.level == Level.CAPABILITY } +
+                " 通道=" + after.count { it.level == Level.CHANNEL } +
+                " 应用程序=" + after.count { it.level == Level.APPLICATION },
+        )
+        return null
     }
 
     private fun retire(ctx: Context, f: File) {

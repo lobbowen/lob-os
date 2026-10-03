@@ -32,7 +32,8 @@ class ProgramDir(
         val signature: String?
     )
 
-    private val programRoot = storeRoot ?: File(context.filesDir, "programs/" + programId)
+    private val programRoot =
+        storeRoot ?: File(context.filesDir, lobos.os.ProgramRegistry.PROGRAMS_DIR + "/" + programId)
     private val currentPointer = File(programRoot, "CURRENT")
 
     fun currentVersion(): String? = store.currentVersion()
@@ -150,11 +151,8 @@ class ProgramDir(
             lobos.os.ProgramIndex.upsert(
                 context,
                 base.copy(
-                    level = lobos.os.Level.APPLICATION,
-                    category = lobos.os.Category.APPLICATION,
                     version = version,
                     enabled = true,
-                    stateDir = lobos.os.ProgramRegistry.programRoot(context).name + "/" + programId,
                     role = role,
                     resident = resident,
                     restart = spec?.restart ?: base.restart,
@@ -163,9 +161,9 @@ class ProgramDir(
                     capabilities = spec?.capabilities ?: base.capabilities,
                     requires = spec?.requires ?: base.requires,
                     env = spec?.env ?: base.env,
-                    httpPort = spec?.http?.port ?: 0,
-                    httpHealth = spec?.http?.health ?: "",
-                    desired = if (resident) lobos.os.Desired.RUNNING else lobos.os.Desired.STOPPED,
+                    httpPort = spec?.http?.port ?: base.httpPort,
+                    httpHealth = spec?.http?.health ?: base.httpHealth,
+                    desired = if (resident) lobos.os.Desired.RUNNING else base.desired,
                     invalid = spec?.invalid,
                 ),
             )

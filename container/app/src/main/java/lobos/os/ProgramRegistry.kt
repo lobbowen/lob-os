@@ -9,7 +9,7 @@ enum class Restart { ON_FAILURE, ALWAYS, NEVER }
 
 object ProgramRegistry {
 
-    private const val DIR = "programs"
+    const val PROGRAMS_DIR = "programs"
     private const val DEFAULT_HEALTH = "/status"
 
     data class PortDecl(val port: Int, val env: String?, val health: String)
@@ -36,7 +36,7 @@ object ProgramRegistry {
         val startable: Boolean get() = invalid == null
     }
 
-    fun programRoot(ctx: Context): File = File(ctx.filesDir, DIR)
+    fun programRoot(ctx: Context): File = File(ctx.filesDir, PROGRAMS_DIR)
 
     fun listIds(ctx: Context): List<String> =
         programRoot(ctx).listFiles()
