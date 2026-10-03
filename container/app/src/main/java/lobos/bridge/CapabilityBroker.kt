@@ -654,7 +654,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val desired = if (running) Desired.RUNNING else Desired.STOPPED
             val selfEntry = ProgramIndex.get(this@CapabilityBroker, self)
             if (selfEntry != null) {
-                ProgramIndex.mutate(this@CapabilityBroker, self) { it.copy(desired = desired) }
+                ProgramManager.setDesired(this@CapabilityBroker, self, desired)
             }
             Journal.append(this@CapabilityBroker, "instance", null, "os.instances.action=" + action + "（" + id + "）")
             JSONObject().apply {

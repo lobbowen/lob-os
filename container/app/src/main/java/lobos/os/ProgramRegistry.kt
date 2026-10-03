@@ -54,12 +54,6 @@ object ProgramRegistry {
             ?: emptyList()
     }
 
-    fun currentVersion(ctx: Context, id: String): String? {
-        val p = File(File(programRoot(ctx), id), "CURRENT")
-        if (!p.exists()) return null
-        return runCatching { p.readText().trim().ifBlank { null } }.getOrNull()
-    }
-
     private fun manifest(ctx: Context, id: String, version: String): JSONObject? = runCatching {
         val f = File(File(File(programRoot(ctx), id), version), MANIFEST)
         if (!f.isFile) null else JSONObject(f.readText())
@@ -104,7 +98,7 @@ object ProgramRegistry {
             }
         }
         val life = json.optJSONObject("lifecycle")
-        val restartRaw = life?.optString("restart", "on-failure")?.lowercase() ?: "on-failure"
+        val restartRaw = ManifestSchema.restartOf(life?.optString("restart", "on-failure") ?: "on-failure")
         val restart = when (restartRaw) {
             "on-failure", "on_failure" -> Restart.ON_FAILURE
             "always" -> Restart.ALWAYS

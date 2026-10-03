@@ -59,9 +59,6 @@ object ManifestSchema {
         return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' } && it != "." && it != ".." }
     }
 
-    fun parse(text: String): JSONObject =
-        runCatching { JSONObject(text) }.getOrElse { JSONObject() }
-
     fun validate(m: JSONObject): List<String> {
         val errs = mutableListOf<String>()
 

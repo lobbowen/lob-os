@@ -41,10 +41,10 @@ object ProcessSupervisor {
         return Spawned(p, pid, owner, programId)
     }
 
-    fun pidOf(p: Process?): Int {
+    private fun pidOf(p: Process?): Int {
         if (p == null) return -1
         return runCatching {
-            Regex("""pid=(\d+)""").find(p.toString())?.groupValues?.get(1)?.toIntOrNull() ?: -1
+            Regex("""pid=(\d+)""").find(p.toString())?.groupValues?.get(1)?.toIntOrNull()
         }.getOrDefault(-1)
     }
 }

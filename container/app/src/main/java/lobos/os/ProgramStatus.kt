@@ -50,6 +50,9 @@ object ProgramStatusHub {
     @Volatile
     private var startRequested: Set<String> = emptySet()
 
+    @Volatile
+    private var lastState: Map<String, ProgramStateMachine.Run> = emptyMap()
+
     fun publishRunning(ids: Set<String>) {
         runningIds = ids
     }
@@ -80,6 +83,7 @@ object ProgramStatusHub {
         quarantined = quarantined - id
         startedAt = startedAt - id
         startRequested = startRequested - id
+        lastState = lastState - id
         runningIds = runningIds - id
     }
 
@@ -90,6 +94,7 @@ object ProgramStatusHub {
         quarantined = emptySet()
         startedAt = emptyMap()
         startRequested = emptySet()
+        lastState = emptyMap()
     }
 
     fun snapshot(ctx: Context): List<ProgramStatus> {
@@ -111,6 +116,7 @@ object ProgramStatusHub {
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null
+        val prev = lastState[id]
         val state = ProgramStateMachine.resolve(
             desired = desired,
             installed = installed,
@@ -120,6 +126,17 @@ object ProgramStatusHub {
             quarantined = quarantined.contains(id),
             startRequested = startRequested.contains(id),
         )
+        if (prev != null && prev != state) {
+            val why = ProgramStateMachine.transition(
+                prev, state, desired, installed, spec == null || spec.invalid == null,
+            )
+            lastState = lastState + (id to state)
+            if (why != null) {
+                Journal.append(ctx, "state", false, "非法状态转换：" + prev + " -> " + state, "id=" + id + " " + why)
+            }
+        } else if (prev == null) {
+            lastState = lastState + (id to state)
+        }
         val at = startedAt[id] ?: 0L
         return ProgramStatus(
             id = id,

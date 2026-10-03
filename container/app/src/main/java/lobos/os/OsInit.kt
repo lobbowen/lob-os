@@ -105,8 +105,6 @@ object OsInit {
     }
 
     @Synchronized
-    fun since(ctx: Context): Long = snapshot(ctx).atMs
-
     fun statusLine(ctx: Context): String {
         val s = snapshot(ctx)
         val runtime = when {

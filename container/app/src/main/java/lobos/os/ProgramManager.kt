@@ -183,27 +183,6 @@ object ProgramManager {
         return bin.takeIf { it.isFile }
     }
 
-    fun install(
-        ctx: Context,
-        name: String,
-        zip: File,
-        manifest: JSONObject?,
-        manifestFile: File?,
-    ): ProgramInstaller.InstallResult {
-        val r = ProgramInstaller.install(
-            context = ctx, zip = zip, manifest = manifest, source = ProgramInstaller.Source.OTA,
-            manifestFile = manifestFile, programId = name, storeRoot = stateDirOf(ctx, name),
-        )
-        if (r.ok && !r.version.isNullOrBlank()) {
-            ProgramIndex.mutate(ctx, name) { it.copy(version = r.version!!) }
-            reconcile(ctx)
-        }
-        return r
-    }
-
-    fun upgrade(ctx: Context, name: String, checkOnly: Boolean = false): ProgramOtaUpdater.Outcome? =
-        runCatching { ProgramOtaUpdater.checkAndUpdate(ctx, dirOf(ctx, name), checkOnly) }.getOrNull()
-
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }
         val usr = File(ctx.filesDir, "usr")
@@ -244,21 +223,6 @@ object ProgramManager {
     }
 
     @Synchronized
-    fun uninstall(ctx: Context, id: String): Boolean {
-        val e = ProgramIndex.get(ctx, id) ?: return false
-        if (!e.removable) {
-            Journal.note(ctx, "program", false, "拒绝卸载基础设施", "name=" + id + "（随 APK 交付，不可卸载）")
-            return false
-        }
-        val dir = stateDirOf(ctx, id)
-        if (!dir.absolutePath.startsWith(ctx.filesDir.absolutePath)) {
-            Journal.note(ctx, "program", false, "拒绝卸载越界路径", "name=" + id + " dir=" + dir.absolutePath)
-            return false
-        }
-        val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
-        ProgramIndex.remove(ctx, id)
-        Journal.note(ctx, "program", removed, "卸载设施", "name=" + id + " dir=" + e.stateDir)
-        reconcile(ctx)
-        return removed
-    }
+
+    @Synchronized
 }

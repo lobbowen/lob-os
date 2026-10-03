@@ -18,11 +18,4 @@ internal object ExecBits {
         if (elf || magic.startsWith("#!")) file.setExecutable(true, false)
     }
 
-    fun repair(dir: File) {
-        val kids = dir.listFiles() ?: return
-        for (f in kids) {
-            if (Files.isSymbolicLink(f.toPath())) continue
-            if (f.isDirectory) repair(f) else apply(f)
-        }
-    }
 }
