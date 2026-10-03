@@ -1,5 +1,6 @@
 package lobos.os
 
+import lobos.ota.ProgramDir
 import android.content.Context
 import lobos.RuntimeDiagnostics
 import lobos.runtime.ExecBits
@@ -70,7 +71,8 @@ object PackageInstaller {
                 stateDir = if (kind == "INFRA") "" else base.stateDir.ifBlank { ProgramManager.relStateDir(name, kind) },
             ),
         )
-        if (!StateFiles.writeAtomic(File(dir, "CURRENT"), ver)) {
+        dirOf(ctx, name).setCurrentVersion(ver)
+        if (dirOf(ctx, name).currentVersion() != ver) {
             return fail(ctx, name, "CURRENT 落位失败（安装未提交）")
         }
         Journal.note(
@@ -87,11 +89,12 @@ object PackageInstaller {
         }
     }
 
-    fun installedVersion(ctx: Context, name: String): String? {
-        val f = File(ProgramManager.stateDirOf(ctx, name), "CURRENT")
-        if (!f.isFile) return null
-        return runCatching { f.readText().trim().ifBlank { null } }.getOrNull()
-    }
+    fun installedVersion(ctx: Context, name: String): String? =
+        runCatching { ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name)).currentVersion() }
+            .getOrNull()
+
+    private fun dirOf(ctx: Context, name: String): ProgramDir =
+        ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name))
 
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)

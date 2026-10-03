@@ -44,26 +44,18 @@ object ProgramRegistry {
             ?.map { it.name }
             ?.sorted()
             ?: emptyList()
+    private fun dirOf(ctx: Context, id: String): lobos.ota.ProgramDir =
+        lobos.ota.ProgramDir(ctx, id, File(programRoot(ctx), id))
 
-    fun installedVersions(ctx: Context, id: String): List<String> {
-        val root = File(programRoot(ctx), id)
-        if (!root.exists()) return emptyList()
-        return root.list()
-            ?.filter { it != "CURRENT" && it != "FLOOR" && it != "PENDING" && File(root, it).isDirectory }
-            ?.sorted()
-            ?: emptyList()
-    }
+    fun installedVersions(ctx: Context, id: String): List<String> = dirOf(ctx, id).installedVersions()
 
     private fun manifest(ctx: Context, id: String, version: String): JSONObject? = runCatching {
-        val f = File(File(File(programRoot(ctx), id), version), MANIFEST)
+        val f = File(dirOf(ctx, id).programDir(version), MANIFEST)
         if (!f.isFile) null else JSONObject(f.readText())
     }.getOrNull()
 
-    private fun currentVersion(ctx: Context, id: String): String? {
-        val p = File(File(programRoot(ctx), id), "CURRENT")
-        if (!p.exists()) return null
-        return runCatching { p.readText().trim().ifBlank { null } }.getOrNull()
-    }
+    private fun currentVersion(ctx: Context, id: String): String? =
+        runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
     fun spec(ctx: Context, id: String): Spec? {
         val version = currentVersion(ctx, id) ?: return null
