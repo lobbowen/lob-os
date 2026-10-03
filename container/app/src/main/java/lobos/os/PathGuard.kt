@@ -8,7 +8,7 @@ object PathGuard {
     fun integrityRoots(ctx: Context): List<File> = listOf(
         File(ctx.filesDir, "os"),
         File(ctx.filesDir, "sys"),
-        File(ctx.filesDir, "programs"),
+        ProgramRegistry.programRoot(ctx),
         File(ctx.filesDir, "usr"),
         File(ctx.filesDir, "supervisor"),
         File(ctx.filesDir, "adb"),

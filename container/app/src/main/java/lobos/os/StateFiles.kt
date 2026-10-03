@@ -113,7 +113,7 @@ object StateFiles {
         sweep(File(ctx.filesDir, "os"))
         sweep(File(ctx.filesDir, "os/journal"))
         sweep(File(ctx.filesDir, "supervisor"))
-        sweep(File(ctx.filesDir, "programs"))
+        sweep(ProgramRegistry.programRoot(ctx))
         sweep(ctx.filesDir)
         return out
     }
