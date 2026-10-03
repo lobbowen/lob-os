@@ -36,7 +36,7 @@ for (const d of dirs) {
   if (!fs.existsSync(doc)) bad('components/' + d + '/COMPONENT.md 缺失（每区一份形态契约）');
   else docs.push(doc);
 }
-for (const extra of ['PUBLISH.md']) {
+for (const extra of ['PUBLISH.md', 'REHEARSE.md']) {
   const p = path.join(COMPONENTS, 'userland', extra);
   if (fs.existsSync(p)) docs.push(p);
 }
