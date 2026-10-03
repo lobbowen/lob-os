@@ -112,8 +112,15 @@ object PackageInstaller {
             return false
         }
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
-        Journal.note(ctx, "package", removed, "回退到 APK 基线", "name=" + name)
-        return removed
+        if (!removed || dir.exists()) {
+            Journal.note(
+                ctx, "package", false, "回退未完成：目录仍在（回滚后基线版仍可用，故索引保留）",
+                "name=" + name + " dir=" + dir.absolutePath + " 仍在=" + dir.exists(),
+            )
+            return false
+        }
+        Journal.note(ctx, "package", true, "回退到 APK 基线", "name=" + name)
+        return true
     }
 
     fun uninstall(ctx: Context, name: String): Boolean {
@@ -128,6 +135,13 @@ object PackageInstaller {
             return false
         }
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
+        if (!removed || dir.exists()) {
+            Journal.note(
+                ctx, "package", false, "卸载未完成：目录仍在，不改索引（否则「索引说没装、文件却还在」）",
+                "name=" + name + " dir=" + dir.absolutePath + " 仍在=" + dir.exists(),
+            )
+            return false
+        }
         val entry = CatalogClient.entryFor(ctx, name)
         val entryRel = entry?.optString("entry", "") ?: ""
         if (entryRel.isNotBlank()) {
