@@ -29,10 +29,28 @@ const dirs = fs.readdirSync(COMPONENTS, { withFileTypes: true })
   .sort();
 const want = ['native', 'runtime', 'userland'];
 for (const w of want) if (!dirs.includes(w)) bad('components/' + w + '/ 不在（三个类目缺一不可）');
+const docs = [path.join(COMPONENTS, 'README.md')];
 for (const d of dirs) {
   if (!want.includes(d)) bad('components/' + d + '/ 不在声明的三个类目里（新增类目要先改 components/README.md 的判定规则）');
   const doc = path.join(COMPONENTS, d, 'COMPONENT.md');
   if (!fs.existsSync(doc)) bad('components/' + d + '/COMPONENT.md 缺失（每区一份形态契约）');
+  else docs.push(doc);
+}
+for (const extra of ['PUBLISH.md']) {
+  const p = path.join(COMPONENTS, 'userland', extra);
+  if (fs.existsSync(p)) docs.push(p);
+}
+
+for (const doc of docs) {
+  const rel = path.relative(ROOT, doc);
+  const txt = fs.readFileSync(doc, 'utf8');
+  const refs = new Set();
+  for (const m of txt.matchAll(/(?:scripts|tools|container|\.github)\/[A-Za-z0-9._\/-]+\.[a-z]{1,4}/g)) refs.add(m[0]);
+  for (const r of refs) {
+    if (!fs.existsSync(path.join(ROOT, r))) {
+      bad(rel + ' 引用了不存在的 ' + r + ' —— 文档承诺的门禁/脚本不在仓内，读者会照着去找不存在的文件');
+    }
+  }
 }
 
 const verify = readJson(VERIFY);
