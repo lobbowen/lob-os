@@ -158,7 +158,7 @@ object PackageInstaller {
         if (runtime.isBlank()) return null
         val range = req.optString("range", "").trim()
         val installed = ProgramIndex.all(ctx)
-            .firstOrNull { it.name == runtime }
+            .firstOrNull { it.id == runtime && it.level == Level.CAPABILITY }
             ?.let { installedVersion(ctx, runtime) ?: it.version }
             ?.takeIf { it.isNotBlank() }
         if (installed == null) {
