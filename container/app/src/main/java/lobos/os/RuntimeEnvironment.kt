@@ -121,10 +121,7 @@ object RuntimeEnvironment {
     }
 
     private fun assemble(ctx: Context): Snapshot {
-        val nodeBin = lobos.os.ProgramManager.nodeBin(ctx)
-            ?: File(PrefixProvisioner.binDir(ctx), PrefixProvisioner.NODE_BIN_NAME)
-
-        val ready = PrefixProvisioner.provision(ctx, nodeBin)
+        val ready = PrefixProvisioner.provision(ctx)
         val missing = PrefixProvisioner.expected(ctx) - ready.toSet()
         RuntimeDiagnostics.append(
             ctx, "prefix", missing.isEmpty(),

@@ -29,7 +29,7 @@ object PrefixProvisioner {
 
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
 
-    fun provision(ctx: Context, nodeBin: File): List<String> {
+    fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
         for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx), LIBS to libDir(ctx))) {
@@ -54,7 +54,7 @@ object PrefixProvisioner {
             ctx.assets.open(CA_BUNDLE_ASSET).use { input -> caDst.outputStream().use { out -> input.copyTo(out) } }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
-        val preferred = lobos.os.ProgramManager.nodeBin(ctx) ?: nodeBin.takeIf { it.isFile }
+        val preferred = lobos.os.NodeRuntime.path(ctx)
         if (preferred != null && linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
         return ready
     }
@@ -78,7 +78,7 @@ object PrefixProvisioner {
 
     fun expected(ctx: Context): List<String> {
         val base = BINS.map { it.second } + LIBS.map { it.second } + CA_BUNDLE_NAME
-        val nodePresent = lobos.os.ProgramManager.nodeBin(ctx) != null
+        val nodePresent = lobos.os.NodeRuntime.path(ctx) != null
         return if (nodePresent) base + DEPS.map { it.second } + NODE_BIN_NAME else base
     }
 }
