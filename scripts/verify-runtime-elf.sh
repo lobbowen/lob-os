@@ -52,10 +52,15 @@ if [ ! -f "$MANIFEST_FILE" ]; then
   echo "[error] 找不到可执行资产清单: $MANIFEST_FILE —— 判据 3 无从进行。"
   exit 2
 fi
-EXEC_SET=" $( { sed -n '/^# execs/,$p' "$MANIFEST_FILE" \
+DEP_SET=" $( { sed -n '/依赖库/,/^#/p' "$MANIFEST_FILE" \
                 | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
-[ -n "${EXEC_SET// /}" ] || { echo "[error] $MANIFEST_FILE 里没有 # execs 段或其为空 —— 判据 3 会空转，拒绝校验。"; exit 2; }
-
+EXEC_SET=" $( { sed -n '/可执行资产本体/,$p' "$MANIFEST_FILE" \
+                | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
+[ -n "${DEP_SET// /}${EXEC_SET// /}" ] \
+  || { echo "[error] $MANIFEST_FILE 的「依赖库」与「可执行资产本体」两段都是空的 —— 清单被判据 3/4 空转，拒绝校验。"; exit 2; }
+if [ -z "${EXEC_SET// /}" ]; then
+  echo "[note] 清单的「可执行资产本体」段为空（node 走商店通道后 APK 内没有可执行件）—— 只校验依赖库段。"
+fi
 echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
 echo "   可执行资产: $EXEC_SET"
@@ -71,7 +76,20 @@ SEEN_EXEC=""
 for _b in $EXEC_SET; do
   case "$BUNDLED" in *" $_b "*) SEEN_EXEC="$SEEN_EXEC $_b" ;; esac
 done
-[ -n "$SEEN_EXEC" ] || { echo "[error] $DIR 里没有清单声明的可执行资产（$EXEC_SET）—— 判据 3 将一条不跑，拒绝校验。"; exit 2; }
+if [ -n "${EXEC_SET// /}" ] && [ -z "$SEEN_EXEC" ]; then
+  echo "[error] $DIR 里没有清单声明的可执行资产（$EXEC_SET）—— 判据 3 将一条不跑，拒绝校验。"
+  exit 2
+fi
+SEEN_DEP=""
+for _b in $DEP_SET; do
+  case "$BUNDLED" in *" $_b "*) SEEN_DEP="$SEEN_DEP $_b" ;; esac
+done
+if [ -n "${DEP_SET// /}" ] && [ -z "$SEEN_DEP" ]; then
+  echo "[error] $DIR 里没有清单声明的依赖库（$DEP_SET）—— DT_NEEDED 闭环无从进行。"
+  exit 2
+fi
+echo "   依赖库段: ${DEP_SET:-（空）}"
+echo "   已对上: 依赖库=$SEEN_DEP 可执行=$SEEN_EXEC"
 
 fail=0
 for f in "$DIR"/*.so; do
@@ -91,14 +109,18 @@ for f in "$DIR"/*.so; do
   fi
 
   machine="$(printf '%s\n' "$hdr" | awk -F': *' '/^[[:space:]]*Machine:/{gsub(/[[:space:]]+$/,"",$2); print $2}')"
-  if [ "$machine" != "AArch64" ]; then
-    echo "  [FAIL] $base —— 架构是「${machine:-读不出}」，不是 AArch64。"
-    echo "         本仓只投 arm64-v8a；装到真机上就是 exec format error。"
-    printf '%s\n' "$hdr" | { grep -E "Machine|Type:" || true; } | sed 's/^/         /'
-    fail=1
-    continue
-  fi
-  line="arch=AArch64"
+  case "$machine" in
+    AArch64|aarch64|arm64|ARM64) : ;;
+    *)
+      echo "  [FAIL] $base —— 架构是「${machine:-读不出}」，不是 arm64/aarch64。"
+      echo "         本仓只投 arm64-v8a；装到真机上就是 exec format error。"
+      echo "         注：不同工具链的 readelf 对同一架构写法不同（AArch64 / aarch64 / arm64），三者都接受。"
+      printf '%s\n' "$hdr" | { grep -E "Machine|Type:" || true; } | sed 's/^/         /'
+      fail=1
+      continue
+      ;;
+  esac
+  line="arch=$machine"
 
   load_aligns="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*LOAD/{print $NF}')"
   if [ -z "$load_aligns" ]; then
@@ -168,6 +190,15 @@ for f in "$DIR"/*.so; do
   # 没有动态段的文件照样打印一行 "There is no dynamic section in this file."，
   # 拿输出判空会把「取数失败」和「真的没依赖」混成同一种情形。
   if [ -z "$has_dynamic" ]; then
+    case " $DEP_SET " in
+      *" $base "*)
+        echo "  [FAIL] $base —— 清单把它当依赖库，但它没有 PT_DYNAMIC（静态产物）。"
+        echo "         依赖库必须是可动态链接的共享库（DT_NEEDED 的解析者），"
+        echo "         静态可执行文件冒充它会在装机后起不来。"
+        fail=1
+        continue
+        ;;
+    esac
     echo "  [skip] $base —— 无 PT_DYNAMIC（静态产物），只判架构/对齐/解释器：$line"
     continue
   fi
