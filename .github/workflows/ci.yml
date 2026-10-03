@@ -7,7 +7,9 @@ on:
       - 'container/**'
       - 'scripts/**'
       - 'tools/**'
+      - 'components/**'
       - '.github/native-assets.txt'
+      - '.github/native-capabilities.txt'
       - '.github/workflows/**'
       - 'version.json'
   pull_request:
@@ -15,7 +17,9 @@ on:
       - 'container/**'
       - 'scripts/**'
       - 'tools/**'
+      - 'components/**'
       - '.github/native-assets.txt'
+      - '.github/native-capabilities.txt'
       - '.github/workflows/**'
       - 'version.json'
   workflow_dispatch: {}
