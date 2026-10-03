@@ -43,8 +43,7 @@ object ProcessSupervisor {
 
     private fun pidOf(p: Process?): Int {
         if (p == null) return -1
-        return runCatching {
-            Regex("""pid=(\d+)""").find(p.toString())?.groupValues?.get(1)?.toIntOrNull()
-        }.getOrDefault(-1)
+        val m = Regex("""pid=(\d+)""").find(p.toString()) ?: return -1
+        return m.groupValues.getOrNull(1)?.toIntOrNull() ?: -1
     }
 }
