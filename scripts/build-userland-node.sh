@@ -6,19 +6,22 @@ cd "$HERE/.."
 ROOT_DIR=$(pwd)
 
 OUT="${OUT:-dist}"
-STAGE="$ROOT_DIR/$OUT/node"
-NODE_VERSION="${NODE_VERSION:-$(bash "$ROOT_DIR/scripts/read-node-versions.sh" default)}"
-ABI="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" abi)"
+RAW_DIR="$ROOT_DIR/work"
+STAGE="$ROOT_DIR/$OUT"
+NODE_VERSION="${NODE_VERSION:-$(bash "$ROOT_DIR/scripts/read-node-versions.sh" default || true)}"
+ABI="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" abi 2>/dev/null || true)"
+[ -n "$ABI" ] || ABI="arm64-v8a"
 
 if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" = "unknown" ]; then
   echo "::error title=取不到 node 版本::scripts/read-node-versions.sh default 失败"
   exit 1
 fi
 
-mkdir -p "$STAGE/bin"
+mkdir -p "$STAGE/bin" "$RAW_DIR"
 
 SRC=""
 for cand in \
+  "$RAW_DIR/libnode.so" \
   "$ROOT_DIR/dist/libnode.so" \
   "$ROOT_DIR/dist/node-runtime/libnode.so" \
   "$ROOT_DIR/dist/node/libnode.so"
@@ -27,14 +30,21 @@ do
 done
 if [ -z "$SRC" ]; then
   echo "::error title=没有 libnode.so::本脚本不编译 node（编译要 3~4 小时，走 Node Runtime workflow 一次）"
-  echo "           期望在 dist/ 下找到 libnode.so，实际 dist/ 内容："
-  ls -la "$ROOT_DIR/dist" 2>/dev/null | head -n 20 || true
+  echo "           期望在 work/ 或 dist/ 下找到 libnode.so，实际内容："
+  ls -la "$RAW_DIR" 2>/dev/null | head -n 10 || true
+  ls -la "$ROOT_DIR/dist" 2>/dev/null | head -n 10 || true
   exit 1
+fi
+if [ "$SRC" != "$RAW_DIR/libnode.so" ]; then
+  mv -f "$SRC" "$RAW_DIR/libnode.so"
+  rm -rf "$ROOT_DIR/dist/node-runtime" "$ROOT_DIR/dist/node" 2>/dev/null || true
+  SRC="$RAW_DIR/libnode.so"
+  echo "[node] 原始件挪出 dist/（留在里面会被 package-userland.sh 连同 bin/node 一起打进 zip，包体积翻倍）"
 fi
 echo "[node] 取已编译运行时：$SRC"
 
 GOT=$(sha256sum "$SRC" | cut -c1-64)
-echo "$GOT  libnode.so" > "$ROOT_DIR/$OUT/libnode.sha256"
+echo "$GOT  libnode.so" > "$RAW_DIR/libnode.sha256"
 printf '%s\n' "$NODE_VERSION" > "$ROOT_DIR/$OUT/node.version"
 
 cp -f "$SRC" "$STAGE/bin/node"
