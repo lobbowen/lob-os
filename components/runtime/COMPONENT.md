@@ -86,5 +86,17 @@ API 24。`memalign()` 自 API 1 可用，此处等价（对齐是页大小=2 的
 ## 版本切换
 
 一次只有一个版本生效。切换 = 改 `files/usr/bin/node` 指向哪个版本目录。
-允许同时存在多个版本的**文件**（升级期间新旧共存，避免中途无可用），
-但只有索引选中的那一个被 `usr/bin/node` 指向。
+允许同时存在多个版本的**文件**（升级期间新旧共存，避免中途无可用），但只有索引选中的那一个被 `usr/bin/node` 指向。
+
+## 上架
+
+node 与 6 件工具链走**同一条商店通道**（见 `components/userland/COMPONENT.md` 的发布段）：
+`build-userland.yml` 的 `node` job 取已编译件（从本仓或 dsh-mobile 的
+`node-runtime-<version>-<abi>` Release，两种发布形态都认）→ 落成
+`dist/bin/node` → `package-userland.sh node` → 投递 → 签进清单。
+
+清单里 node 的条目已实测投影正确（CI run 37140173937 的 manifest job 输出
+`node@24.21.0 入口 bin/node`），7 件齐全。
+
+代价要说清：node 件 72MB（压缩后），首次安装要下这一份 —— 换来的是
+**换 node 版本不用重发 APK**（116MB 的 APK 增量 vs 72MB 的单件增量）。

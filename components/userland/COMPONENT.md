@@ -41,11 +41,43 @@ node scripts/publish-userland-manifest.js dist            # 签名，产出清�
 node scripts/publish-userland-manifest.js dist --project  # 只投影不签名（CI 用）
 ```
 
-- 签名私钥：`keys/ota-private.pem`（**不入库**）
-- 公钥：`container/app/src/main/assets/supply/userland-public.pem`
+- 签名私钥：`keys/ota-private.pem`（**不入库**，由 secret `OTA_PRIVATE_KEY_PEM` 落到 CI 工作区）
+- 公钥：`container/app/src/main/assets/supply/userland-public.pem`（ed25519 信任根，随 APK 焊死）
 - 通道锚：`container/app/src/main/assets/supply/channel.json`
   （`baseUrl` + `channel` + `manifestName` + `sigName`，**清单文件名的唯一来源**）
 - 上传：`scripts/upload-qiniu.js <本地文件> <远端 key>`
+
+## 发布（tag 触发）
+
+`.github/workflows/build-userland.yml` 的四段链路：
+
+```
+resolve   从 tag 解出 channel / revision / publish
+   │     tag 形如 userland-<canary|stable>-<正整数>；
+   │     revision 落进清单的 revision 格，是商店唯一的单调判据
+   ↓
+build ×7  sqlite3 jq git curl pnpm npm + node（node 走 Release 复用已编译件）
+   │     各自：构建 → 打包（包名带 sha12）→ 投递对象存储
+   ↓
+manifest  与线上清单逐格对账 → 组装并签名（用 APK 公钥自检）→ 发布清单与 .sig
+```
+
+非 tag 触发时 `publish=false`：只构建与投影，不投递。
+
+需要的 secrets（**本仓目前 0 个**，配齐后打 tag 即可）：
+
+| secret | 用途 |
+|---|---|
+| `QINIU_AK` / `QINIU_SK` / `QINIU_BUCKET` | 投递件与清单到对象存储 |
+| `OTA_PRIVATE_KEY_PEM` | 签清单（ed25519 私钥，仓内与 artifact 都不留） |
+
+**同 name@version 不许换字节** —— 对账步会判红（内容寻址的键一旦漂移，
+设备全体重下且无法回退）。件的身份 = 源码批次 × 构建时刻 × 工具链，
+三格都由 `userland-sources.json` 钉死。
+
+**信任根跨仓一致**：`userland-public.pem` 与 dsh-mobile 仓逐字相同（同一把
+ed25519 公钥，已实测用本仓公钥能验过线上清单的 64 字节签名）。所以本仓签的
+清单，已装机的旧 APK 也能验过 —— 换仓不换信任根。
 
 ## 门禁
 
