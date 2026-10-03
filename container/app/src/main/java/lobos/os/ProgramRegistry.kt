@@ -114,7 +114,7 @@ object ProgramRegistry {
         val backoff = life?.optJSONArray("backoff")?.let { a ->
             (0 until a.length()).map { a.optLong(it) }
         }?.filter { it > 0 }?.takeIf { it.isNotEmpty() }
-            ?: ManifestSchema.DEFAULT_BACKOFF
+            ?: ProgramIndex.DEFAULT_BACKOFF
 
         val schemaErrors = ManifestSchema.validate(json)
         val invalid = when {
