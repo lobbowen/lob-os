@@ -1,0 +1,24 @@
+{
+  "$comment-why": "从 dsh-mobile 搬入过程中判定为「不搬入」的脚本清单。判据：它们依赖 dsh-mobile 独有的树（container/engine/、programs/、.github/gate-policy.json 等），在 lob-os 语境下没有对应物；搬进来只会在仓里留下调不通的死代码。tools/check-components.js 把本文件当白名单读 —— 文档里提到这些文件不算「承诺了一个不存在的脚本」。",
+  "not-ported": [
+    "scripts/append-apk-receipt.sh",
+    "scripts/attach-and-publish.sh",
+    "scripts/build-apk-local.sh",
+    "scripts/check-apk-release-version.sh",
+    "scripts/debt-gate.js",
+    "scripts/delivery-gate.js",
+    "scripts/doc-gate.js",
+    "scripts/gate-scan.js",
+    "scripts/gen-version.js",
+    "scripts/gh-access.sh",
+    "scripts/read-apk-receipts.sh",
+    "scripts/read-archived-shell-version.sh",
+    "scripts/require-ci.js",
+    "scripts/run-engine-tests.sh",
+    "scripts/validate-workflow.py",
+    "scripts/verify-apk-release-form.sh",
+    "scripts/verify-apk-signing.sh",
+    "scripts/verify-apk-version-gate.sh",
+    ".github/gate-policy.json"
+  ]
+}

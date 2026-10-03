@@ -23,6 +23,40 @@
 runtime 是**别的程序依赖它才能跑**（node），userland 是**程序自己用的工具**（curl/git）。
 两者在 `ProgramIndex` 里都靠 `deps` 声明依赖关系。
 
+## 不属于三类构建物的：APK 自身的签名
+
+签名不是构建物，是**投递凭据**，单独记在这里以免与三类混：
+
+| 项 | 值 |
+|---|---|
+| 注入 | `scripts/inject-apk-keystore.sh`（`KS_B64` + `KS_PASS` + `KS_ALIAS` + `KS_KEYPASS`） |
+| gradle 侧 | `container/app/build.gradle.kts` 读 `LOBOS_KEYSTORE_PASSWORD` / `LOBOS_KEY_ALIAS` / `LOBOS_KEY_PASSWORD` |
+| 落点 | `keys/release.keystore`（**不入库**；`.gitignore` 白名单制，`keys/*` 只放行 README） |
+| 生成 | `scripts/keygen-android-keystore.sh` |
+| 验签 | `scripts/verify-apk-signing.sh`（**未搬入**，见下） |
+
+**为什么必须接**：不接就是 AGP 现场生成的 debug 签名，指纹每次不同 ——
+新包装到已装设备上会 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。所以
+`build-apk.yml` 按轮次分两种处理：
+
+- 校验轮（push main）无密钥 → 放行，出 debug 签名包并明说「仅供验证」
+- 发布轮（`os-release-*` tag）无密钥 → 判红，列出需要的四个 secret
+
+`inject-apk-keystore.sh` 的退出码语义：`0` 注入成功 / `10` 未配置（可放行）
+/ `2` 配坏了（密码不对、别名不匹配、解码失败 —— 一律判红，不当"没配"处理）。
+
+### 已知未搬入的脚本
+
+`components/NOT-PORTED.json` 是那份清单（19 项）。它们依赖 dsh-mobile
+独有的树（`container/engine/`、`programs/`、`.github/gate-policy.json`），
+在 lob-os 语境下无对应物，搬进来只会在仓里留下调不通的死代码。
+
+`tools/check-components.js` 把那份清单当白名单读，所以本文件提到它们
+不算「承诺了一个不存在的脚本」；反过来，清单里列的文件如果其实已在仓内，
+门禁会判红（那说明当初判错了，该从清单里划掉）。
+本文件不写它们的名字之外的引用，`tools/check-components.js` 会守住这一点：
+文档里提到的仓内文件必须真实存在。
+
 ## 商店通道（userland / runtime 共同遵守）
 
 1. 身份 = `name` + `version` + `sha256`（内容寻址，包名带 sha12 前缀）

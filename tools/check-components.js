@@ -41,15 +41,29 @@ for (const extra of ['PUBLISH.md']) {
   if (fs.existsSync(p)) docs.push(p);
 }
 
+const NOT_PORTED_LIST = path.join(COMPONENTS, 'NOT-PORTED.json');
+const notPorted = new Set();
+if (fs.existsSync(NOT_PORTED_LIST)) {
+  const np = readJson(NOT_PORTED_LIST);
+  for (const p of (np && np['not-ported']) || []) notPorted.add(p);
+} else {
+  bad('components/NOT-PORTED.json 缺失（判定为不搬入的脚本要有名单，否则「文档提到但仓内没有」与「承诺了却没搬」分不清）');
+}
+for (const p of notPorted) {
+  if (fs.existsSync(path.join(ROOT, p))) {
+    bad('components/NOT-PORTED.json 列了 ' + p + '，但它已经在仓内 —— 清单该清了（留着的意思是「判错了」，会让人以为它仍不可用）');
+  }
+}
+
 for (const doc of docs) {
   const rel = path.relative(ROOT, doc);
   const txt = fs.readFileSync(doc, 'utf8');
   const refs = new Set();
   for (const m of txt.matchAll(/(?:scripts|tools|container|\.github)\/[A-Za-z0-9._\/-]+\.[a-z]{1,4}/g)) refs.add(m[0]);
   for (const r of refs) {
-    if (!fs.existsSync(path.join(ROOT, r))) {
-      bad(rel + ' 引用了不存在的 ' + r + ' —— 文档承诺的门禁/脚本不在仓内，读者会照着去找不存在的文件');
-    }
+    if (fs.existsSync(path.join(ROOT, r))) continue;
+    if (notPorted.has(r)) continue;
+    bad(rel + ' 引用了不存在的 ' + r + ' —— 文档承诺的门禁/脚本不在仓内，读者会照着去找不存在的文件');
   }
 }
 
