@@ -33,7 +33,7 @@ runtime 是**别的程序依赖它才能跑**（node），userland 是**程序�
 | gradle 侧 | `container/app/build.gradle.kts` 读 `LOBOS_KEYSTORE_PASSWORD` / `LOBOS_KEY_ALIAS` / `LOBOS_KEY_PASSWORD` |
 | 落点 | `keys/release.keystore`（**不入库**；`.gitignore` 白名单制，`keys/*` 只放行 README） |
 | 生成 | `scripts/keygen-android-keystore.sh` |
-| 验签 | `scripts/verify-apk-signing.sh`（**未搬入**，见下） |
+| 验签 | `scripts/verify-apk-signing.sh`（校验轮只查一致性，发布轮带 `--require-stable`） |
 
 **为什么必须接**：不接就是 AGP 现场生成的 debug 签名，指纹每次不同 ——
 新包装到已装设备上会 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。所以
@@ -47,15 +47,17 @@ runtime 是**别的程序依赖它才能跑**（node），userland 是**程序�
 
 ### 已知未搬入的脚本
 
-`components/NOT-PORTED.json` 是那份清单（19 项）。它们依赖 dsh-mobile
-独有的树（`container/engine/`、`programs/`、`.github/gate-policy.json`），
-在 lob-os 语境下无对应物，搬进来只会在仓里留下调不通的死代码。
+`components/NOT-PORTED.json` 是那份清单，**按依赖分四组**（发布回执台账 /
+投递与归档 / 门禁族 / 开发期工具），每组写明「为什么现在不搬」与「条件具备时
+整组搬」。门禁强制每组必须有 `why` —— 不写原因，后来人只能靠猜。
 
 `tools/check-components.js` 把那份清单当白名单读，所以本文件提到它们
 不算「承诺了一个不存在的脚本」；反过来，清单里列的文件如果其实已在仓内，
-门禁会判红（那说明当初判错了，该从清单里划掉）。
-本文件不写它们的名字之外的引用，`tools/check-components.js` 会守住这一点：
-文档里提到的仓内文件必须真实存在。
+门禁会判红（那说明当初判错了，该从清单里划掉）。文档里提到的仓内文件
+必须真实存在，这一点门禁也守着。
+
+**不要零散搬**：这些脚本多数互相调用（读台账的喂给判版本号的、判版本号的
+喂给判形态的），单独搬一个进来就是调不通的死代码。
 
 ## 商店通道（userland / runtime 共同遵守）
 

@@ -45,7 +45,14 @@ const NOT_PORTED_LIST = path.join(COMPONENTS, 'NOT-PORTED.json');
 const notPorted = new Set();
 if (fs.existsSync(NOT_PORTED_LIST)) {
   const np = readJson(NOT_PORTED_LIST);
-  for (const p of (np && np['not-ported']) || []) notPorted.add(p);
+  const groups = (np && np.groups) || {};
+  for (const [name, g] of Object.entries(groups)) {
+    if (!g || typeof g.why !== 'string' || !g.why.trim()) {
+      bad('components/NOT-PORTED.json 的组「' + name + '」没写 why —— 不写为什么不搬，后来人只能靠猜');
+    }
+    for (const p of (g && g.files) || []) notPorted.add(p);
+  }
+  if (!Object.keys(groups).length) bad('components/NOT-PORTED.json 没有任何组');
 } else {
   bad('components/NOT-PORTED.json 缺失（判定为不搬入的脚本要有名单，否则「文档提到但仓内没有」与「承诺了却没搬」分不清）');
 }

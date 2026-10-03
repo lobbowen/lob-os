@@ -124,6 +124,24 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
 
+      - name: 验签（发布轮要求稳定身份；校验轮只查签名一致性）
+        env:
+          RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
+        run: |
+          set -uo pipefail
+          APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
+          if [ -z "$APK" ]; then
+            echo "::error title=没有 APK 可验::构建步应当已产出 APK"
+            exit 1
+          fi
+          CERT_ARG=""
+          if [ -s keys/release.cert ]; then CERT_ARG="--cert keys/release.cert"; fi
+          if [ "${RELEASE_ROUND}" = "true" ]; then
+            bash scripts/verify-apk-signing.sh "$APK" $CERT_ARG --require-stable
+          else
+            bash scripts/verify-apk-signing.sh "$APK" $CERT_ARG
+          fi
+
       - name: Upload APK
         if: always()
         uses: actions/upload-artifact@v4
