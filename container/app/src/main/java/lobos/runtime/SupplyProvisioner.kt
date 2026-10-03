@@ -102,12 +102,14 @@ object SupplyProvisioner {
 
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
+        val destRoot = dest.canonicalFile
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zin ->
             var e = zin.nextEntry
             while (e != null) {
-                val name = e.name
-                if (name.contains("..")) { zin.closeEntry(); e = zin.nextEntry; continue }
-                val out = File(dest, name)
+                val out = File(dest, e.name).canonicalFile
+                if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
+                    throw IllegalArgumentException("包条目路径越界（疑似目录穿越）: " + e.name)
+                }
                 if (e.isDirectory) {
                     out.mkdirs()
                 } else {

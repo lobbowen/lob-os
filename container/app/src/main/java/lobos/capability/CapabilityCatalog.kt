@@ -120,7 +120,7 @@ object CapabilityCatalog {
             judge = { e ->
                 val svc = e.granted(PermissionCatalog.ACCESSIBILITY)
                 when {
-                    e.granted(ADB_CHANNEL) && svc -> CapVerdict(CapStatus.GRANTED, "随 ADB 组件已开启")
+                    e.channelLive() && svc -> CapVerdict(CapStatus.GRANTED, "随 ADB 组件已开启")
                     svc -> CapVerdict(CapStatus.BLOCKED, "无障碍已开，但 ADB 组件未开：自动化不开")
                     else -> CapVerdict(CapStatus.ACTION, "开启后随 ADB 组件一并打开无障碍")
                 }
