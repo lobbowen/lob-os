@@ -2,6 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import android.system.Os
+import lobos.RuntimeDiagnostics
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File

@@ -359,7 +359,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 nodePath = nodeBin.absolutePath,
                 nodeBinDir = nodeBin.parentFile!!.absolutePath,
                 prefix = PrefixProvisioner.root(this).absolutePath,
-                minNode = version
+                minNode = lobos.os.NodeRuntime.version(this)
             )
             RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 2）", "home=${filesDir.absolutePath}")
 

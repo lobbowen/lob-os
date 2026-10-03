@@ -793,13 +793,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _, _programId ->
             val cur = lobos.os.NodeRuntime.version(this@CapabilityBroker)
             val latest = runCatching {
-                val arr = CatalogClient.entries(this@CapabilityBroker).optJSONArray("tools")
+                val arr = CatalogClient.entries(this@CapabilityBroker)
                 var v = ""
-                var k = 0
-                while (arr != null && k < arr.length()) {
-                    val t = arr.optJSONObject(k)
-                    k++
-                    if (t != null && t.optString("name", "") == lobos.os.NodeRuntime.NAME) {
+                for (i in 0 until arr.length()) {
+                    val t = arr.optJSONObject(i) ?: continue
+                    if (t.optString("name", "") == lobos.os.NodeRuntime.NAME) {
                         v = t.optString("version", "")
                     }
                 }
