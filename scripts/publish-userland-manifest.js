@@ -34,17 +34,34 @@ function pieceText(zipPath, rel) {
 }
 
 function pieceNames(zipPath) {
-  return cp.execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const r = cp.spawnSync('unzip', ['-l', zipPath], { encoding: 'utf8' });
+  if (r.status !== 0) {
+    throw new Error('unzip -l 读不了件 ' + zipPath + ': ' + String(r.stderr || '').slice(0, 200));
+  }
+  const out = [];
+  for (const line of String(r.stdout || '').split('\n')) {
+    const m = /^\s*\d+\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+(.+)$/.exec(line);
+    if (m) out.push(m[1].trim());
+  }
+  if (!out.length) throw new Error('unzip -l 没解析出条目名（输出格式异常）: ' + zipPath);
+  return out;
 }
 
 function aliasesOf(name, zipPath, declaredEntry) {
   const raw = pieceText(zipPath, 'package.json');
   if (raw === null) return [];
+  if (!raw.length) {
+    throw new Error(
+      '件 ' + name + ' 的根 package.json 取到了 0 字节 —— ' +
+      'unzip -p 对不存在的条目可能返回 0 且输出空（BusyBox 版 unzip 就是这样，' +
+      'GNU unzip 返回 11）。先确认件里到底有没有 package.json：unzip -l ' + zipPath
+    );
+  }
   let bin;
   try {
     bin = JSON.parse(raw.toString('utf8')).bin;
   } catch (e) {
-    throw new Error('件 ' + name + ' 的根 package.json 读不出 bin 映射: ' + e.message);
+    throw new Error('件 ' + name + ' 的根 package.json 不是合法 JSON: ' + e.message);
   }
   if (bin === undefined) return [];
   if (typeof bin === 'string') {
