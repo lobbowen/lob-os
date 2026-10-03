@@ -61,3 +61,6 @@ jobs:
 
       - name: Android 常量白名单 — AccessibilityEvent.TYPE_* 必须已验证
         run: node tools/check-android-consts.js
+
+      - name: 外部类型 import 齐备（外部类必须显式 import）
+        run: node tools/check-imports.js
