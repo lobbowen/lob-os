@@ -51,7 +51,7 @@ object ProgramMigration {
             channel = out.values.count { it.level == Level.CHANNEL },
             application = out.values.count { it.level == Level.APPLICATION },
         )
-        Journal.append(ctx, "index", true, "程序索引迁移完成", report.toLine())
+        Journal.note(ctx, "index", true, "程序索引迁移完成", report.toLine())
         return report
     }
 

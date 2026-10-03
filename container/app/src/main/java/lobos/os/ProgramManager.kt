@@ -151,8 +151,9 @@ object ProgramManager {
     @Synchronized
     fun reconcile(ctx: Context) {
         val snap = snapshot(ctx)
+        val stateFile = File(ProgramIndex.file(ctx).parentFile ?: File(ctx.filesDir, "os"), "program-state.json")
         StateFiles.writeJson(
-            ProgramIndex.file(ctx).parentFile?.let { File(it, "program-state.json") },
+            stateFile,
             JSONObject().apply {
                 put("updatedAt", snap.updatedAt)
                 put("total", snap.entries.size)
