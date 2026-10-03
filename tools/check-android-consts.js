@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const ROOT = "/data/user/0/lobos.app/files/work/lob-os/container/app/src/main/java/lobos";
+const ROOT = path.join(__dirname, "..", "container", "app", "src", "main", "java", "lobos");
 
 const VERIFIED = new Set([
   "TYPE_WINDOW_STATE_CHANGED",
