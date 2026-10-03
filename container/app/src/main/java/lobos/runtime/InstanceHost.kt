@@ -393,11 +393,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             )
             nodeProcess = spawned.process
             healthUp = false
-            var launchedPid = 0
-            val pidDeadline = SystemClock.elapsedRealtime() + 3_000L
-            while (launchedPid <= 0 && SystemClock.elapsedRealtime() < pidDeadline) {
-                launchedPid = lobos.os.ProcessLedger.scanChildPid(entry.absolutePath)
-                if (launchedPid <= 0) sleepQuiet(100L)
+            var launchedPid = spawned.pid
+            if (launchedPid <= 0) {
+                val pidDeadline = SystemClock.elapsedRealtime() + 3_000L
+                while (launchedPid <= 0 && SystemClock.elapsedRealtime() < pidDeadline) {
+                    launchedPid = lobos.os.ProcessLedger.scanChildPid(entry.absolutePath)
+                    if (launchedPid <= 0) sleepQuiet(100L)
+                }
             }
             if (launchedPid <= 0) {
                 RuntimeDiagnostics.append(
@@ -407,9 +409,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 reapProgramTree("内核回收进程树")
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val recorded = if (launchedPid > 0) {
-                lobos.os.ProcessLedger.begin(this, spec?.id ?: "", currentGeneration, launchedPid)
-            } else null
+            val recorded = lobos.os.ProcessLedger.begin(this, programId, currentGeneration, launchedPid)
             if (launchedPid > 0 && !sessionToken.isNullOrBlank()) {
                 lobos.os.SessionRegistry.bindPid(this, sessionToken, launchedPid)
             }
@@ -475,30 +475,20 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 .firstOrNull { it.programId == programId && it.generation == currentGeneration }
         }.getOrNull()
         val pid = e?.pid ?: -1
+        val descendants = if (e != null) lobos.os.ProcessLedger.descendantsOf(pid) else emptyList()
         if (e != null) {
-            if (lobos.os.ProcessLedger.ownsGroup(e)) {
-                if (lobos.os.ProcessLedger.killGroup(e)) {
-                    RuntimeDiagnostics.append(
-                        this, "supervisor", null, "按账本回收自建进程组",
-                        reason + " pgid=" + e.pgid + " pid=" + pid,
-                    )
-                } else {
-                    RuntimeDiagnostics.append(
-                        this, "supervisor", false, "进程组回收失败，回退单进程",
-                        reason + " pgid=" + e.pgid + " pid=" + pid,
-                    )
-                }
-            } else {
-                RuntimeDiagnostics.append(
-                    this, "supervisor", false, "组杀已拒绝：该组不是本内核自建",
-                    reason + " pgid=" + e.pgid + " pid=" + pid + " ownsGroup=" + e.ownsGroup +
-                        " myPgid=" + lobos.os.ProcessLedger.myPgid() +
-                        "（只杀已记账的单个 pid）",
-                )
-            }
-        }
-        if (pid > 0 && pid != android.os.Process.myPid()) {
-            runCatching { android.os.Process.sendSignal(pid, 15) }
+            val n = lobos.os.ProcessLedger.killTree(e)
+            RuntimeDiagnostics.append(
+                this, "supervisor", n > 0,
+                "按账本回收进程树（pid + 后代）",
+                reason + " pid=" + pid + " 后代=" + descendants.size + " 已发信号=" + n +
+                    "（通用 APK 无法建进程组：子进程继承宿主组，故按 ppid 链扫后代）",
+            )
+        } else if (pid > 0) {
+            RuntimeDiagnostics.append(
+                this, "supervisor", false, "账本无本世代条目，仅销毁 Java 侧句柄",
+                reason + " pid=" + pid,
+            )
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
         if (pid > 0) runCatching { lobos.os.ProcessLedger.end(this, pid) }

@@ -66,6 +66,65 @@ object ProcessLedger {
         return f[19].toLongOrNull() ?: -1
     }
 
+    fun ppidOf(pid: Int): Int = runCatching {
+        val stat = File("/proc/" + pid + "/stat").readText()
+        stat.substringAfterLast(") ").split(" ").getOrNull(1)?.toIntOrNull() ?: -1
+    }.getOrDefault(-1)
+
+    fun descendantsOf(rootPid: Int, maxDepth: Int = 16): List<Int> {
+        if (rootPid <= 1) return emptyList()
+        val me = android.os.Process.myPid()
+        val children = HashMap<Int, MutableList<Int>>()
+        for (name in File("/proc").list() ?: return emptyList()) {
+            val pid = name.toIntOrNull() ?: continue
+            if (pid <= 1 || pid == me) continue
+            val ppid = ppidOf(pid)
+            if (ppid <= 1) continue
+            (children.getOrPut(ppid) { mutableListOf() }).add(pid)
+        }
+        val out = mutableListOf<Int>()
+        val seen = HashSet<Int>()
+        var frontier = listOf(rootPid)
+        var depth = 0
+        while (frontier.isNotEmpty() && depth < maxDepth) {
+            val next = mutableListOf<Int>()
+            for (p in frontier) {
+                for (c in children[p].orEmpty()) {
+                    if (c == me || c in seen) continue
+                    seen.add(c)
+                    out.add(c)
+                    next.add(c)
+                }
+            }
+            frontier = next
+            depth++
+        }
+        return out
+    }
+
+    fun killTree(entry: Entry, timeoutMs: Long = 3000L): Int {
+        val self = android.os.Process.myPid()
+        val rootAlive = starttimeOf(entry.pid) == entry.starttime
+        val victims = (if (rootAlive) descendantsOf(entry.pid) else emptyList()) + entry.pid
+        var signalled = 0
+        for (pid in victims) {
+            if (pid <= 1 || pid == self) continue
+            if (runCatching { android.system.Os.kill(pid, SIGTERM) }.isSuccess) signalled++
+        }
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val anyAlive = victims.any { it > 1 && it != self && starttimeOf(it) > 0 }
+            if (!anyAlive) return signalled
+            runCatching { Thread.sleep(150L) }
+        }
+        for (pid in victims) {
+            if (pid <= 1 || pid == self) continue
+            if (starttimeOf(pid) <= 0) continue
+            runCatching { android.os.Process.killProcess(pid) }
+        }
+        return signalled
+    }
+
     fun scanChildPid(entryPath: String): Int = runCatching {
         val me = android.os.Process.myPid()
         val names = File("/proc").list() ?: return 0
@@ -136,20 +195,6 @@ object ProcessLedger {
         rest.split(" ").getOrNull(2)?.toIntOrNull() ?: -1
     }.getOrDefault(-1)
 
-    fun myPgid(): Int = pgidOf(android.os.Process.myPid())
-
-    fun groupOf(pid: Int): Int = pgidOf(pid)
-
-    fun ownsGroup(entry: Entry): Boolean =
-        entry.ownsGroup && entry.pgid > 1 && entry.pgid == entry.pid && entry.pgid != myPgid()
-
-    fun killGroup(entry: Entry): Boolean {
-        if (!ownsGroup(entry)) return false
-        return runCatching {
-            android.system.Os.kill(-entry.pgid, SIGTERM)
-            true
-        }.getOrDefault(false)
-    }
     @Synchronized
     fun begin(ctx: Context, programId: String, generation: Long, pid: Int): Entry? {
         val st = starttimeOf(pid)

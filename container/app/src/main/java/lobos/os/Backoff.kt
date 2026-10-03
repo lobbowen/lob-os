@@ -1,6 +1,14 @@
 package lobos.os
 
 object Backoff {
-    fun exponential(attempt: Int, baseMs: Long, maxMs: Long, maxShift: Int = 5): Long =
-        minOf(baseMs shl attempt.coerceIn(0, maxShift), maxMs)
+    fun exponential(attempt: Int, baseMs: Long, maxMs: Long): Long {
+        if (baseMs <= 0L) return maxMs.coerceAtLeast(1L)
+        var v = baseMs
+        val n = attempt.coerceAtLeast(0)
+        for (i in 0 until n) {
+            if (v >= maxMs) return maxMs
+            v = if (v > Long.MAX_VALUE / 2) maxMs else v * 2
+        }
+        return minOf(v, maxMs)
+    }
 }
