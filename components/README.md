@@ -30,7 +30,7 @@ runtime 是**别的程序依赖它才能跑**（node），userland 是**程序�
 | 项 | 值 |
 |---|---|
 | 注入 | `scripts/inject-apk-keystore.sh`（`KS_B64` + `KS_PASS` + `KS_ALIAS` + `KS_KEYPASS`） |
-| gradle 侧 | `container/app/build.gradle.kts` 读 `LOBOS_KEYSTORE_PASSWORD` / `LOBOS_KEY_ALIAS` / `LOBOS_KEY_PASSWORD` |
+| gradle 侧 | `container/app/build.gradle.kts` 读 `LOBOS_KEYSTORE_PATH`（默认 `keys/release.keystore`）/ `LOBOS_KEYSTORE_PASSWORD` / `LOBOS_KEY_ALIAS` / `LOBOS_KEY_PASSWORD` / `LOBOS_APP_ID`（默认 `lobos.app`） |
 | 落点 | `keys/release.keystore`（**不入库**；`.gitignore` 白名单制，`keys/*` 只放行 README） |
 | 生成 | `scripts/keygen-android-keystore.sh` |
 | 验签 | `scripts/verify-apk-signing.sh`（校验轮只查一致性，发布轮带 `--require-stable`） |
@@ -44,6 +44,21 @@ runtime 是**别的程序依赖它才能跑**（node），userland 是**程序�
 
 `inject-apk-keystore.sh` 的退出码语义：`0` 注入成功 / `10` 未配置（可放行）
 / `2` 配坏了（密码不对、别名不匹配、解码失败 —— 一律判红，不当"没配"处理）。
+
+### 为什么签名要能分两把（`LOBOS_KEYSTORE_PATH` + `LOBOS_APP_ID`）
+
+**签名身份不可回退** —— Android 没有"换回旧签名"的机制，一把 keystore 一旦发过
+就必须是那把。所以「已发布的那把」与「开发验证用的那把」必须能分开。
+
+**而且光换签名不够**：同 `applicationId` + 不同签名**不是并存，是安装失败**
+（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）—— 系统认为你要覆盖装那个应用。
+要真正并存，必须 `applicationId` 也不同。两处一起换，系统才当成两个应用。
+
+用途：`.github/workflows/build-isolated-apk.yml` 手动触发，造一把只用于并存验证的
+keystore + 换一个 id，产出与设备上现有开发包并存的第二个应用。这样**新代码能在
+真机上跑，而开发用的机器完全不受影响**。
+
+生产发布轮什么都不用改（两个环境变量都有默认值，且默认值就是当前行为）。
 
 ### 已知未搬入的脚本
 

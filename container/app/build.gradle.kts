@@ -15,7 +15,7 @@ android {
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
     defaultConfig {
-        applicationId = "lobos.app"
+        applicationId = System.getenv("LOBOS_APP_ID") ?: "lobos.app"
         minSdk = 24
         targetSdk = 28
         versionCode = appVersionCode
@@ -26,7 +26,8 @@ android {
         }
     }
 
-    val releaseKeystore = rootProject.file("keys/release.keystore")
+    val keystorePath = System.getenv("LOBOS_KEYSTORE_PATH") ?: "keys/release.keystore"
+    val releaseKeystore = rootProject.file(keystorePath)
     val hasReleaseKeystore = releaseKeystore.exists()
 
     val keystorePw = System.getenv("LOBOS_KEYSTORE_PASSWORD") ?: ""
