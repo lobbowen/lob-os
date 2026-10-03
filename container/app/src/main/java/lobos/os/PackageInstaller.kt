@@ -91,7 +91,16 @@ object PackageInstaller {
     }
 
     fun uninstall(ctx: Context, name: String): Boolean {
+        val reg = FacilityRegistry.all(ctx).firstOrNull { it.name == name }
+        if (reg != null && !FacilityRegistry.removable(reg.kind)) {
+            Journal.note(ctx, "package", false, "拒绝卸载基础设施", "name=" + name + "（随 APK 交付，不可卸载）")
+            return false
+        }
         val dir = FacilityRegistry.dirFor(ctx, name)
+        if (!dir.absolutePath.startsWith(ctx.filesDir.absolutePath)) {
+            Journal.note(ctx, "package", false, "拒绝卸载越界路径", "name=" + name + " dir=" + dir.absolutePath)
+            return false
+        }
         val removed = runCatching { dir.deleteRecursively() }.getOrDefault(false)
         val entry = CatalogClient.entryFor(ctx, name)
         val entryRel = entry?.optString("entry", "") ?: ""
