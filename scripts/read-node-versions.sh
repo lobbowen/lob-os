@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-F="$ROOT/container/app/src/main/assets/node-versions.json"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+F="$HERE/node-versions.json"
 key="${1:?usage: read-node-versions.sh <key>}"
 python3 - "$F" "$key" <<'PY'
 import json, sys

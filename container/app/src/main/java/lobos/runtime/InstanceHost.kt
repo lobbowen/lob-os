@@ -328,10 +328,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
             RuntimeDiagnostics.append(this, "program", res.ok, res.title, res.detail)
 
-            val version = NodeVersionManager(this).currentVersion()
+            val nodeBinForVersion = lobos.os.NodeRuntime.path(this)
             RuntimeDiagnostics.append(
-                this, "version", true, "内置 Node 版本=$version",
-                "（以清单为准；实际二进制版本见下方 exec-probe 的输出）"
+                this, "version", nodeBinForVersion != null,
+                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.os.NodeRuntime.version(this)
+                else "Node 运行时缺失",
+                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.os.NodeRuntime.missing(this)),
             )
 
             val assets = NativePreparer.prepare(this)

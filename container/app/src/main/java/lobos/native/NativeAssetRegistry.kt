@@ -25,7 +25,8 @@ object NativeAssetRegistry {
         probeExpect = "v",
         requiredDeps = listOf("libc++_shared.so"),
         required = false,
-        note = "实为可执行文件，改名 lib*.so 借 jniLibs 通道落到 exec_type 目录",
+        note = "APK 内不该有这份（build-apk.yml 有断言）。正常形态是商店件装到 " +
+            "files/usr/lib/toolchain/node/；这一条只留作兜底认 APK 里已存在的 libnode.so，required=false",
     )
 
     val CAPABILITY: List<NativeExecutable> get() = listOf(

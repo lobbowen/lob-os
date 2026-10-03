@@ -44,7 +44,6 @@ import lobos.os.ProgramSettings
 import lobos.os.RegistryStore
 import lobos.os.TaskRegistry
 import lobos.runtime.InstanceHost
-import lobos.runtime.NodeVersionManager
 import lobos.runtime.GuestAdapter
 import java.io.BufferedReader
 import java.io.File
@@ -767,7 +766,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val res = lobos.os.ResidencyStatus.snapshot()
             JSONObject().apply {
                 put("name", "node")
-                put("version", NodeVersionManager(this@CapabilityBroker).currentVersion())
+                put("version", lobos.os.NodeRuntime.version(this@CapabilityBroker))
                 put("path", node?.absolutePath ?: JSONObject.NULL)
                 put("ok", node != null)
                 put("detail", if (node == null) lobos.os.NodeRuntime.missing(this@CapabilityBroker) else JSONObject.NULL)
@@ -792,8 +791,25 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
 
         "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _, _programId ->
-            val cur = NodeVersionManager(this@CapabilityBroker).currentVersion()
-            JSONObject().apply { put("current", cur); put("latest", cur); put("updateAvailable", false) }
+            val cur = lobos.os.NodeRuntime.version(this@CapabilityBroker)
+            val latest = runCatching {
+                val arr = CatalogClient.entries(this@CapabilityBroker).optJSONArray("tools")
+                var v = ""
+                var k = 0
+                while (arr != null && k < arr.length()) {
+                    val t = arr.optJSONObject(k)
+                    k++
+                    if (t != null && t.optString("name", "") == lobos.os.NodeRuntime.NAME) {
+                        v = t.optString("version", "")
+                    }
+                }
+                v
+            }.getOrDefault("")
+            JSONObject().apply {
+                put("current", cur)
+                put("latest", latest)
+                put("updateAvailable", latest.isNotBlank() && latest != cur)
+            }
         },
         "os.compat.status" to MethodDef(listOf("base"), false) { _, _programId ->
             lobos.native.DriverRegistry.report(this@CapabilityBroker)

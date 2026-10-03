@@ -13,6 +13,8 @@ on:
       - 'scripts/userland-sources.json'
       - 'scripts/fetch-pinned.sh'
       - 'scripts/userland-verify.json'
+      - 'scripts/node-versions.json'
+      - 'scripts/read-node-versions.sh'
   pull_request:
     paths:
       - 'scripts/build-userland-*.sh'

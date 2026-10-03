@@ -5,7 +5,7 @@ on:
   push:
     paths:
       - 'scripts/build-node-android.sh'
-      - 'container/app/src/main/assets/node-versions.json'
+      - 'scripts/node-versions.json'
       - '.github/workflows/node-runtime.yml'
 
 concurrency:
