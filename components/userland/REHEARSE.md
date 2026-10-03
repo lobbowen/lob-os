@@ -29,6 +29,39 @@ node tools/rehearse-supply.js \
 rehearse/bin/jq -c '.a' <<< '{"a":42}'    # → 42
 ```
 
+## 升级路径的验证（2026-10-04）
+
+`SupplyProvisioner.ensure` 原本是「先删旧件再落新件」（`root.deleteRecursively()`
+之后 `staging.renameTo(root)`）。**若 rename 失败，旧件已删、新件没落成 → 件消失**，
+与「可回滚」直接冲突。这段是从 dsh-mobile 原样搬来的（那边也有）。
+
+改成**先挪走旧的、落新的、成功才删旧的**：
+
+```
+root → .<name>.retired        挪不开就中止，保留原样
+staging → root                失败则 retired → root 回退；回退也失败才记「不可用」
+retired 删除
+```
+
+演练器同步改了（否则测不到真问题）。三条路径实测：
+
+| 场景 | 结果 |
+|---|---|
+| 压缩流损坏（改了 zip 里的字节） | 判红「落位失败」，**旧件完好**：入口 sha 与 marker 均未变，`.retired` 已清 |
+| 件里缺声明的入口 | 判红「缺入口 bin/jq」，**旧件完好**（marker 仍是旧 sha） |
+| 版本号变但内容相同 | 命中 marker 跳过 —— **这是内容寻址的正确形态**，不是缺陷 |
+
+**关于第三条**：marker 存的是清单里的 `sha256`，版本号不参与判定。所以
+「8.22.0 → 8.22.1 但字节没变」不会重装。这不是漏判而是设计：内容寻址下
+同内容即同身份，重装没有意义。版本号与内容是两个维度，`CatalogClient.list`
+同时给出 `installedSha` / `installedVersion` / `upgradable`，UI 两个都能看到。
+
+顺带一条实测结论：**构建可复现**。两次不同 CI run 产出的
+`userland-curl-8.22.0-*.zip` sha 完全相同（`7aa794caebc5`）—— 这正是
+`userland-sources.json` 钉 `buildTimeEpoch` 与 `ndkVersion` 的目的
+（openssl 会把构建时刻写进件字节；墙钟进字节则同版本每次重建 sha 全变，
+内容寻址的键会堆积、设备全体重下）。
+
 ## 验到了什么，没验什么
 
 **验到**（都实测过）：
