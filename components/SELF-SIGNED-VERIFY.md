@@ -98,4 +98,4 @@ adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 - 清单取不到 ⇒ `baseUrl` 与服务实际监听地址/端口不一致
 
 **诊断读不到**
-`run-as` 只对 debuggable 应用可用。备用：应用内的诊断面板。
+`run-as` 在受限 shell 上会 Permission denied（实测）。改用直接读 —— shell 与 app 同 uid 时 `cat /data/user/0/<包名>/files/os/diag.jsonl` 即可（见 VERIFY-ON-DEVICE.md）；同 uid 不成立时才需要回应用内的诊断面板。

@@ -77,7 +77,7 @@ adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 每行 `{at, stage, level, message, detail}`）。
 
 ```bash
-adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep supply
+adb shell cat /data/user/0/lobos.app.verify/files/os/diag.jsonl | grep supply
 ```
 
 **成功标志**：
@@ -94,11 +94,11 @@ adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep supply
 
 ```bash
 # RuntimeDiagnostics：结构性诊断（JSONL，字段 stage/level/message/detail）
-adb shell run-as lobos.app.verify cat files/os/diag.jsonl | grep -E 'supply|prefix|version'
+adb shell cat /data/user/0/lobos.app.verify/files/os/diag.jsonl | grep -E 'supply|prefix|version'
 
 # Journal：事件流水（JSONL，字段 seq/at/category/detail）
 # 目录刷新成功走这里 —— 新代码才有，老 APK 的 journal 里查不到（它那条路不写）
-adb shell run-as lobos.app.verify cat files/os/journal/events.jsonl | grep catalog
+adb shell cat /data/user/0/lobos.app.verify/files/os/journal/events.jsonl | grep catalog
 ```
 
 对照样本（设备上开发包跑出来的真实一行，格式完全相同，只是文案是旧版的
@@ -112,11 +112,18 @@ adb shell run-as lobos.app.verify cat files/os/journal/events.jsonl | grep catal
 
 若 `run-as` 不可用，就在应用内的诊断面板看同样的内容。
 
+**为什么不用 `run-as`**：2026-10-04 在那台设备上实测 `run-as lobos.app ...` 报
+`Permission denied`（shell 上下文受限）。但那个 shell 的 uid 就是 `u0_a46`，
+**与 app 相同**，所以直接 `cat` 绝对路径即可 —— 上面几条命令就是这么写的，
+且在设备上实测读出了内容（`run-as` 那次是真失败，别照抄）。
+
+若你的 shell 与 app 不同 uid，才需要回应用内的诊断面板。
+
 想看全部阶段：
 
 ```bash
-adb shell run-as lobos.app.verify cat files/os/diag.jsonl | tail -30
-adb shell run-as lobos.app.verify cat files/os/journal/events.jsonl | tail -10
+adb shell cat /data/user/0/lobos.app.verify/files/os/diag.jsonl | tail -30
+adb shell cat /data/user/0/lobos.app.verify/files/os/journal/events.jsonl | tail -10
 ```
 
 ## 5. 确认 6 件真能用（走商店通道装的，不是手工摆的）
