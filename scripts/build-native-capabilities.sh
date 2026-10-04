@@ -187,14 +187,16 @@ if ! node -e '
 const fs = require("node:fs");
 const p = "binding.gyp";
 let t = fs.readFileSync(p, "utf8");
-if (t.includes("enable-new-dtags")) { console.log("[pty] 已含 RUNPATH 补丁，跳过"); process.exit(0); }
+if (t.includes("-Wl,--enable-new-dtags")) { console.log("[pty] 已含 RUNPATH 补丁，跳过"); process.exit(0); }
 const m = /(\x27ldflags\x27\s*:\s*\[)/.exec(t);
 if (!m) { console.error("[pty] binding.gyp 里找不到 ldflags 数组 —— 补丁无处可落"); process.exit(1); }
 const D = String.fromCharCode(36);
-const FLAG = "\x27-Wl,--enable-new-dtags\x27, \x27-Wl,-rpath," + D + D + "ORIGIN\x27,";
+const Q = String.fromCharCode(39);
+const CALL = Q + "-Wl,-rpath,<!(printf %s " + Q + D + "ORIGIN" + Q + ")>" + Q;
+const FLAG = Q + "-Wl,--enable-new-dtags" + Q + ", " + CALL + ",";
 t = t.slice(0, m.index + m[1].length) + " " + FLAG + t.slice(m.index + m[1].length);
 fs.writeFileSync(p, t);
-console.log("[pty] ldflags 已加 -Wl,--enable-new-dtags + -Wl,-rpath," + D + D + "ORIGIN（gyp 里写双$，make 还原成单 $）");
+console.log("[pty] ldflags 已加 -Wl,--enable-new-dtags 与 $ORIGIN RUNPATH（经 gyp 的 <!(cmd)> 求值）");
 '; then
   echo '::warning title=能力件缺失::binding.gyp 补丁失败 —— 终端 PTY 本包降级（缺 $ORIGIN RUNPATH）'
   exit 0

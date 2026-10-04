@@ -75,29 +75,36 @@
   而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
   落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
 
-### `$ORIGIN` 的字面量必须绕开 shell / gyp / make 三层展开
+### `$ORIGIN` 的字面量要绕开 shell 与 make 的展开（**尚未验证**）
 
 实测踩到：把 `'-Wl,-rpath,$ORIGIN'` 写进 `binding.gyp` 源码后，CI 产出的
-`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉了。
-gyp 把 `ldflags` 拼成 Makefile 传给 `make`，`$O` 是未定义变量，
-`make` 把它展开成空，于是只剩 `RIGIN`。
+`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉，剩下 `RIGIN`。
+`gyp` 把 `ldflags` 拼成 Makefile 交给 `make`，`$O` 是未定义变量，`make`
+展开成空。
 
-修法有两层，缺一不可：
+依次试过三种写法，CI 各自给出不同的坏结果：
 
-1. **注入时**：`build-native-capabilities.sh` 用
-   `String.fromCharCode(36) + "ORIGIN"` 拼出字面量 —— 不让 **shell** 先吃掉 `$O`；
-2. **写进 gyp 时**：写入 `$$ORIGIN` —— gyp 把它交给 `make`，`make` 还原成
-   单个 `$ORIGIN`。gyp 文件里必须写双 `$`，单 `$` 会被 `make` 当变量。
+| 写进 gyp 的字面量 | CI 实测 `DT_RUNPATH` |
+|---|---|
+| `-Wl,-rpath,$ORIGIN` | `[RIGIN]`（`make` 吃掉 `$O`） |
+| `-Wl,-rpath,$$ORIGIN` | `[-soname=pty.node]`（flag 整个被挤掉） |
+| `-Wl,-rpath,<!printf %s '$ORIGIN'>` | 待验（本轮唯一在跑的写法） |
 
-判据的输入不能是被判据本身要检查的那类字符串 —— 这是两次踩坑的共同形状。
-本机测不出来（无 make，且 gyp 只在 CI 跑），只有 CI 日志能看见，
-所以自检与落位判据不能省。
+**判据：只认 CI 日志里的 `readelf -d` 那一行**，不认注入代码「看起来对」。
+本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以这三条只能靠 CI 判。
 
-落位后 `readelf -d` 自检，口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：
-`[RIGIN]` / `[$LIB]` / 无 `RUNPATH` 三种坏形态都判红（实测）。
-不合格不判红而是降级（`soft` 档）—— 但会明确写进 CI 日志，
-「绿」与「真的对了」必须能分开看。
+落位自检的口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：
+`[RIGIN]` / `[$LIB]` / `[-soname=…]` / 无 `RUNPATH` 都判红（已实测前三种）。
+不合格不判红而是降级（`soft` 档）并写进日志 ——
+所以「CI 绿」与「PTY 真的对了」必须分开看：
+**看 `liblobospty.so` 那一行有没有 `::warning` 降级提示。**
 
+若第三种写法在 CI 仍不成立，下一步是改用 `LDFLAGS` 环境变量传给
+`node-gyp`（值不进 gyp 文件，`make` 展开 `ldflags` 时原样带入），
+而不是继续在 gyp 源码里试引号 —— 那是同一条路走第三遍。
+
+判据的输入不能是被判据本身要检查的那类字符串：两次踩坑形状相同，
+都是「用含 `$` 的字符串去构造对 `$` 的判据」。
 
 ## 档位语义：判据按「缺了会怎样」分档
 
