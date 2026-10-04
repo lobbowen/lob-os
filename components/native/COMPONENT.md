@@ -75,28 +75,31 @@
   而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
   落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
 
-### `$ORIGIN` 的字面量：gyp 文件是 Python，单引号会套娃
+### `$ORIGIN` 的字面量：gyp 是 Python，值要过 make 与 shell 两层
 
 `gyp` 的 `binding.gyp` 是 **Python** 源码（`gyp/input.py` 直接 `eval`），
-不是 JSON。往 `ldflags` 里塞 `-Wl,-rpath,$ORIGIN` 时，踩了四个坑：
+不是 JSON。往 `ldflags` 里塞 `-Wl,-rpath,$ORIGIN`，踩了五个坑，
+每个都是 CI 实测（不是推断）：
 
 | 写进 gyp 的字面量 | 实际结果 |
 |---|---|
-| `'-Wl,-rpath,$ORIGIN'` | `DT_RUNPATH=[RIGIN]` —— gyp 交给 `make`，`$O` 是未定义变量，被展开成空 |
-| `'-Wl,-rpath,$$ORIGIN'` | `DT_RUNPATH=[-soname=pty.node]` —— flag 整个被挤掉 |
-| `'-Wl,-rpath,<!(printf %s '$ORIGIN')>'` | `SyntaxError: invalid syntax` —— Python 里单引号套娃，**gyp 根本不读**（CI 打出 `gyp ERR! configure`） |
-| `"-Wl,-rpath,<!printf %s '$ORIGIN'>"` | 整串用**双引号**包（gyp 是 Python），`$ORIGIN` 在 `<!cmd>` 里用单引号护住 |
+| `'-Wl,-rpath,$ORIGIN'` | `DT_RUNPATH=[RIGIN]` —— `make` 把 `$O` 当未定义变量展开成空 |
+| `'-Wl,-rpath,$$ORIGIN'` | `DT_RUNPATH=[-soname=pty.node]` —— flag 被挤掉 |
+| `'-Wl,-rpath,<!(printf %s '$ORIGIN')>'` | `SyntaxError: invalid syntax` —— Python 里单引号套娃，gyp 崩 |
+| `"-Wl,-rpath,<!printf %s '$ORIGIN'>"` | `/bin/sh: cannot open !printf` —— **`<!cmd>` 在 `ldflags` 里不被求值**，原样进了 make 命令 |
+| `"-Wl,-rpath,'$$ORIGIN'"` | 待验：`$$` 给 `make`、`'$…'` 给 shell |
 
-最后一行是目前成立的写法：
+最后一行的两层分工是这件事的本质：
 
-- 外层 `'` 换成 `"`（`'ldflags': [ "-Wl,-rpath,<!…>", ]` 是合法 Python）；
-- 值交给 gyp 的 `<!cmd>` 在生成 Makefile 时**求值**，于是 `$ORIGIN`
-  既不过 `gyp` 的展开也不过 `make` 的展开；
-- `printf %s '$ORIGIN'` 的单引号让 shell 原样输出 `$ORIGIN`。
+- **gyp** 只是 Python 源码解析 —— 外层引号必须让 Python 解析得过；
+- **make** 拼 Makefile 命令 —— `$$` 还原成单个 `$`；
+- **shell** 执行链接命令 —— 单引号让 `$ORIGIN` 不被 shell 展开。
+
+三层各要各的转义，缺一层就坏在三处之一。而 `<!cmd>` 这种「求值」写法
+只在 gyp 的 `variables` 块里成立，放进 `ldflags` 不会被求值。
 
 **判据：只认 CI 日志里 `readelf -d` 那一行**，不认注入代码「看起来对」。
-本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以每一版只能靠 CI 判。
-上表前两行是 CI 实测结果，第三行是 CI 实测报错 —— 不是推断。
+本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以每版只能靠 CI 判。
 
 落位自检口径：`RUNPATH` 必须**恰好含 `$ORIGIN`**；
 `[RIGIN]` / `[$LIB]` / `[-soname=…]` / 无 `RUNPATH` 都判红。
