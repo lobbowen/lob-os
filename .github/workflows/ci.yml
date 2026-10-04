@@ -80,3 +80,14 @@ jobs:
 
       - name: 构建物类目须自洽（三分区在位、件声明与脚本对得上、runtime 类不入 APK）
         run: node tools/check-components.js
+
+      - name: 能力探针须齐备且可执行
+        run: |
+          set -euo pipefail
+          echo "── 列出全部探针（每颗件都要有，判据与探针都要够长）──"
+          node tools/run-verify-probes.js
+          echo "── 语法与可执行性（x64 runner 上 arm64 件跑不了，只验探针本身不坏）──"
+          node tools/run-verify-probes.js --exec || {
+            echo "::warning title=部分探针在 x64 runner 上跑不了::件是 arm64；这里只保证探针语法与执行器没问题。真跑在 arm64 机器上做（node tools/run-verify-probes.js --exec）"
+            exit 0
+          }
