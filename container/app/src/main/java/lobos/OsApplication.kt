@@ -25,6 +25,14 @@ class OsApplication : Application() {
         createChannels()
         OsHostService.ensureRunning(this)
         registerWakeupEdges()
+        supplyOnStartup()
+    }
+
+    private fun supplyOnStartup() {
+        Thread {
+            runCatching { lobos.os.CatalogClient.refresh(this@OsApplication, false) }
+            runCatching { lobos.runtime.SupplyProvisioner.ensure(this@OsApplication) }
+        }.apply { isDaemon = true }.start()
     }
 
     private fun registerWakeupEdges() {

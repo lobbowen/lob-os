@@ -147,7 +147,7 @@ object RuntimeEnvironment {
         if (nowSupply - lastSupplyAt > supplyThrottleMs) {
             lastSupplyAt = nowSupply
             RuntimeDiagnostics.append(
-                ctx, "supply", null, "商店供给由开机 reconcile 负责（BootReconciler 跑 SupplyProvisioner.ensure）",
+                ctx, "supply", null, "商店供给由应用启动负责（OsApplication.onCreate 跑 SupplyProvisioner.ensure）",
                 "本进程只装配 \$PREFIX 与环境；件装在 " + PrefixProvisioner.libDir(ctx).absolutePath + "/toolchain，真名入口在 " + PrefixProvisioner.binDir(ctx).absolutePath,
             )
         }

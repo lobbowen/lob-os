@@ -71,7 +71,7 @@ ps -ef | grep serve-supply        # ppid 应为 1 = 已脱离
 
 ```bash
 adb install -r <artifact 解出的>/app-debug.apk
-adb shell am start -n lobos.app.verify/lobos.MainActivity
+adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 ```
 
 约 88MB（7 件），按实测 708 KB/s 约 2 分钟。供给在后台线程，UI 先起来是正常的。

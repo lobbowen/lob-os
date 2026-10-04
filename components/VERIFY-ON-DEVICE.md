@@ -41,12 +41,17 @@ package:lobos.app.verify
 ## 3. 首次启动，让新代码的供给链真跑一遍
 
 ```bash
-adb shell am start -n lobos.app.verify/lobos.MainActivity
+adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 ```
 
-新代码的 `BootReconciler` 会在后台线程里跑
+新代码的 `OsApplication.onCreate` 会在后台线程里跑
 `CatalogClient.refresh` → `SupplyProvisioner.ensure`。**这一步是本次要验的核心**：
 它是那 400 行 `ensure()` 第一次在真机上执行。
+
+装上后**只要启动应用**（任何入口）就会跑 —— 不需要先装程序、不需要 node 已就位。
+这一条是特意改的：原先供给挂在 `BootReconciler` 里，而它只被 `InstanceHost`
+（程序宿主）调用，于是链成了「程序启动 → 装 node → 但这次启动已因 node 缺失
+而失败 → 退避后重试才装上」。现在提到应用启动，首次启动就能装。
 
 **要等多久 / 下多少**（2026-10-04 在设备上实测）：
 
