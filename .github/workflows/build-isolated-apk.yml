@@ -1,18 +1,18 @@
-name: Build Isolated APK (隔离验证包 · 装完怎么验见 components/VERIFY-ON-DEVICE.md · 隔离机制见 components/README.md)
+name: Build Isolated APK (新项目独立包 · 与设备上的旧程序完全无关 · 装完怎么验见 components/VERIFY-ON-DEVICE.md)
 
 on:
   workflow_dispatch:
     inputs:
       app_id:
-        description: '并存包的 applicationId（必须与开发包不同）'
+        description: '本包的 applicationId（必须是新项目自己的，与设备上任何旧包都不同）'
         required: true
-        default: 'lobos.app.verify'
+        default: 'lobos.os'
       alias:
-        description: '并存包的密钥别名'
+        description: '本包的密钥别名'
         required: true
-        default: 'lobos-verify'
+        default: 'lobos-os'
       self_signed:
-        description: '自签供给模式：填设备能访问到的供给基址（如 http://127.0.0.1:8120）。留空则用正式商店。填了就签一份自签清单并把包里的信任根换成对应的测试公钥 —— 用来在没有正式凭据时于真机上验完整供给链路'
+        description: '自签供给模式：填设备能访问到的供给基址（如 http://127.0.0.1:8121）。留空则用正式商店。填了就签一份自签清单并把包里的信任根换成对应的测试公钥 —— 用来在没有正式凭据时于真机上验完整供给链路'
         required: false
         default: ''
 
@@ -49,24 +49,24 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           echo "[ok] SDK 包就绪"
 
-      - name: 造一把**只用于并存验证**的 keystore
+      - name: 造一把本项目自己的 keystore（不复用任何旧包身份）
         id: ks
         run: |
           set -euo pipefail
-          KS=keys/isolated-verify.keystore
+          KS=keys/lobos-os.keystore
           mkdir -p keys
           if [ -f "$KS" ]; then
-            echo "[info] 已存在，沿用（换 keystore 等于换身份，会让已装的并存包失效）"
+            echo "[info] 已存在，沿用（换 keystore 等于换身份，会让已装的本项目包失效）"
           else
             keytool -genkeypair -v \
-              -keystore "$KS" -storepass isolated-verify -keypass isolated-verify \
+              -keystore "$KS" -storepass lobos-os -keypass lobos-os \
               -alias '${{ inputs.alias }}' -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=LobOS Isolated Verify, OU=verify, O=lobos, C=CN"
-            echo "[ok] 已生成 $KS"
+              -dname "CN=LobOS, OU=shell, O=lobos, C=CN"
+            echo "[ok] 已生成 $KS（新项目自己的身份，与设备上任何旧包无关）"
           fi
-          keytool -exportcert -rfc -keystore "$KS" -storepass isolated-verify \
-            -alias '${{ inputs.alias }}' -file keys/isolated-verify.cert
-          echo "[ok] 证书锚点 keys/isolated-verify.cert（verify-apk-signing.sh 的 --cert 用它）"
+          keytool -exportcert -rfc -keystore "$KS" -storepass lobos-os \
+            -alias '${{ inputs.alias }}' -file keys/lobos-os.cert
+          echo "[ok] 证书锚点 keys/lobos-os.cert（verify-apk-signing.sh 的 --cert 用它）"
           echo "ks=$KS" >> "$GITHUB_OUTPUT"
 
       - name: 自签准备（仅 self_signed 非空时）
@@ -178,19 +178,19 @@ jobs:
       - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）
         run: bash scripts/verify-ota-anchor.sh
 
-      - name: Build（并存 applicationId + 并存 keystore）
+      - name: Build（独立 applicationId + 独立 keystore）
         id: gradlebuild
         env:
-          LOBOS_KEYSTORE_PATH: keys/isolated-verify.keystore
-          LOBOS_KEYSTORE_PASSWORD: isolated-verify
-          LOBOS_KEY_PASSWORD: isolated-verify
+          LOBOS_KEYSTORE_PATH: keys/lobos-os.keystore
+          LOBOS_KEYSTORE_PASSWORD: lobos-os
+          LOBOS_KEY_PASSWORD: lobos-os
           LOBOS_KEY_ALIAS: ${{ inputs.alias }}
           LOBOS_APP_ID: ${{ inputs.app_id }}
         run: |
           set -o pipefail
           S=container/app/src/main/res/values/strings.xml
           cp "$S" /tmp/strings.orig
-          sed -i 's|<string name="app_name">[^<]*</string>|<string name="app_name">Lobos 验证</string>|' "$S"
+          sed -i 's|<string name="app_name">[^<]*</string>|<string name="app_name">Lobos</string>|' "$S"
           echo "[label] app_name 现在是：$(grep 'name=\"app_name\"' "$S")"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
@@ -229,7 +229,7 @@ jobs:
           set -uo pipefail
           APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
           if [ -z "$APK" ]; then echo "::error title=没有 APK 可验"; exit 1; fi
-          bash scripts/verify-apk-signing.sh "$APK" --cert keys/isolated-verify.cert
+          bash scripts/verify-apk-signing.sh "$APK" --cert keys/lobos-os.cert
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           APKSIGNER="$(ls "$SDK"/build-tools/*/apksigner 2>/dev/null | head -1)"
           if [ -n "$APKSIGNER" ]; then

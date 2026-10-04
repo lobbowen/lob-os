@@ -15,7 +15,7 @@ android {
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
     defaultConfig {
-        applicationId = System.getenv("LOBOS_APP_ID") ?: "lobos.app"
+        applicationId = System.getenv("LOBOS_APP_ID") ?: "lobos.os"
         minSdk = 24
         targetSdk = 28
         versionCode = appVersionCode

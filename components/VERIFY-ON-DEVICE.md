@@ -5,7 +5,7 @@
 隔离包与设备上现有的 `lobos.app` **并存**（不同 `applicationId` + 不同签名 ⇒ Android 当成
 两个应用；开发环境零影响）。开发包原样保留，它上面的 6 件工具链与 node 不受影响。
 
-包：`app-debug.apk`（9.3MB，artifact `apk-isolated-lobos.app.verify`）
+包：`app-debug.apk`（artifact `apk-isolated-lobos.os`）
 
 ---
 
