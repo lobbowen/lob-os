@@ -105,6 +105,13 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
 | `tools/ktcheck.js` | `.kt` 结构（括号配平、companion 唯一等） |
 | `scripts/comment-gate.js` | 零遗留注释、无 JSON 散文键（判据的理由写在本目录，不写进代码） |
 | `scripts/gen-native-assets.js` 幂等 | 资产清单由 Kotlin 声明生成，不手改 |
+| `tools/check-gate-callers.js` | 仓内每件 `verify-*` / `check-*` 门禁都得有调用点（workflow 里跑，或被别的门禁调）。文档里承诺一个永不执行的门禁 = 一个永不生效的保证 |
+
+**为什么要有「调用点」这一条**：一份门禁脚本放在仓里、文档里点名它，
+但没有任何 workflow 跑它 —— 读的人以为它在守着，实际上它一行都没执行。
+这跟「没写」区别只在文件名好不好看。本门禁把这件事变成红的。
+判据来源：文件名形状（`verify-*` / `check-*` / `*-gate.js`）；
+不是门禁的构建脚本（`build-userland-*`）不适用。
 
 ## 目录
 

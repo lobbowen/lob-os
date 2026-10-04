@@ -123,6 +123,9 @@ jobs:
           set -euo pipefail
           bash scripts/build-userland-node.sh
 
+      - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
+        run: bash scripts/verify-userland-artifact.sh node
+
       - name: 打包 + sha256
         run: bash scripts/package-userland.sh node
 
@@ -172,6 +175,9 @@ jobs:
 
       - name: 产出 ${{ matrix.tool }} 件
         run: bash scripts/build-userland-${{ matrix.tool }}.sh
+
+      - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
+        run: bash scripts/verify-userland-artifact.sh ${{ matrix.tool }}
 
       - name: 打包 + sha256
         run: bash scripts/package-userland.sh ${{ matrix.tool }}

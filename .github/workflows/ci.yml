@@ -81,6 +81,9 @@ jobs:
       - name: 构建物类目须自洽（三分区在位、件声明与脚本对得上、runtime 类不入 APK）
         run: node tools/check-components.js
 
+      - name: 门禁须有调用点（文档与仓内不许留永不执行的口子）
+        run: node tools/check-gate-callers.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

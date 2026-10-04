@@ -93,6 +93,15 @@ jobs:
           bash scripts/ensure-native-capabilities.sh
           ls -la container/app/src/main/jniLibs/arm64-v8a/
 
+      - name: 原生件形态与依赖闭环（jniLibs/*.so）
+        run: |
+          set -euo pipefail
+          export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          bash scripts/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
+
+      - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）
+        run: bash scripts/verify-ota-anchor.sh
+
       - name: 注入发布签名（缺密钥时校验轮放行，发布轮判红）
         id: signing
         env:
@@ -123,6 +132,16 @@ jobs:
           set -o pipefail
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+
+      - name: 产物形态校验（APK 条目 vs 三份声明表）
+        run: |
+          set -uo pipefail
+          APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
+          if [ -z "$APK" ]; then
+            echo "::error title=没有 APK 可审::构建步应当已产出 APK"
+            exit 1
+          fi
+          bash scripts/verify-apk-native.sh "$APK" arm64-v8a
 
       - name: 验签（发布轮要求稳定身份；校验轮只查签名一致性）
         env:

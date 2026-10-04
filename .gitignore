@@ -9,6 +9,8 @@ container/app/src/main/jniLibs/
 
 release/
 
+dist/
+
 feed/
 
 *.log
@@ -23,5 +25,3 @@ keys/*
 keystore.properties
 .env
 .env.*
-brand-scan-report.txt
-debt-gate-report.txt

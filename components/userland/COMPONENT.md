@@ -81,7 +81,7 @@ ed25519 公钥，已实测用本仓公钥能验过线上清单的 64 字节签�
 
 ## 门禁
 
-- `scripts/verify-userland-artifact.sh`（件形态）
+- `scripts/verify-userland-artifact.sh`（件形态：aarch64 动态件 / shebang 入口形状）
 - `scripts/verify-userland-build-date.sh`（构建时间钉值）
 - `scripts/check-userland-manifest-drift.js`（清单与实际件不漂移）
 - `scripts/userland-verify.json` 里的每条探针（件起得来且功能对）

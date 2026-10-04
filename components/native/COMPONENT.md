@@ -32,7 +32,11 @@
 - 生成/校验：`scripts/gen-native-assets.js`（幂等，CI 校验不漂移）
 - 指纹：`scripts/native-capabilities-fingerprint.sh`
 - 兜底复用：`scripts/ensure-native-capabilities.sh`
-- 产物形态校验：`scripts/verify-apk-native.sh`
+- 产物形态校验：`scripts/verify-apk-native.sh`（APK 条目 vs 三份声明表）
+- 原生件 ELF 形态与依赖闭环：`scripts/verify-runtime-elf.sh`（架构 / 对齐 /
+  解释器 / DT_NEEDED 闭环 / DT_RUNPATH）
+- OTA 锚点判据：`scripts/verify-ota-anchor.sh`（Ed25519 公钥可解析；
+  配 `--private` 时额外判私钥与锚点是否同对）
 - 分发形态：Release `native-cap-<sha256>-arm64-v8a.zip` + `manifest.txt`
   （每行 `来源 lib名 sha256`，来源取 `self-c` / `upstream` / `soft`）
 - 固化记录：`.github/native-capabilities-pin.json`（指纹 → 不可变 Release）
@@ -56,6 +60,35 @@
 
 **当前 lob-os 的指纹与 dsh-mobile 的固化记录不匹配**（`container/native/*` 的 7 个 C 源
 两边都已分叉）。这是正确行为：源不同 → 产物可能不同 → 不复用。走现场编译。
+
+## 依赖必须自带 `$ORIGIN` RUNPATH（实测缺陷，已修）
+
+`bionic` **不查 `nativeLibraryDir`**，`LD_LIBRARY_PATH` 只在进程环境里有效。
+任何依赖同目录 `libc++_shared.so` 的件，都必须自带含 `$ORIGIN` 的 `DT_RUNPATH`，
+否则载荷 `run_code` 起子进程时是空环境，必然 `CANNOT LINK`。
+
+- `liblobosrg.so`：Rust 侧显式传 `-Wl,-rpath,$ORIGIN`，**已合规**。
+- `liblobospty.so`（node-pty，走 node-gyp）：**原先没有** —— 实测 APK 里
+  `readelf -d` 只有 `NEEDED libc++_shared.so` 而无 `RUNPATH`。
+  现由 `build-native-capabilities.sh` 给 `binding.gyp` 的 `ldflags` 注入
+  `-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN`（gyp 默认写 `DT_RPATH`，
+  而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
+  落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
+
+## 档位语义：判据按「缺了会怎样」分档
+
+判据 3/4/5（架构 / 16KB 对齐 / 解释器 / 依赖闭环 / RUNPATH）对
+`.github/native-capabilities.txt` 里**每一件**都跑，但结论按档位给：
+
+| 档位 | 形态或依赖不合格 |
+|---|---|
+| `self-c` / `upstream` | 判红（自有的编不出来是环境问题；上游的 `$PREFIX` 依赖它且无回退） |
+| `soft` | `::warning` 降级，**不判红** |
+
+这与 `verify-apk-native.sh` 的档位语义同源（一份数据、两处消费）。
+一视同仁地判红会让一条可降级的终端能力把整轮构建判死 —— 降级路径
+反而被门禁堵死。档位表读不到即判红（exit 2）：降级语义无从判定时不得放行。
+
 
 ## 不变量
 
