@@ -203,3 +203,22 @@ adb uninstall lobos.app.verify
 ③ node：诊断说「Node 运行时未就位」；usr/bin/node 指向 APK 的 libnode.so
    （正式凭据到位并发布 userland-canary-7 之后，这里会变成 7 件 + node 从商店装）
 ```
+
+## 能力探针：验「商店装出来的那份」
+
+诊断与目录只能证明「件在那儿、能按真名调到」，不能证明「它真能用」。真能用要看
+能力探针（`scripts/userland-verify.json` 里每颗件一条：起进程、跑一段功能、读回结果）。
+
+装完隔离包后跑：
+
+```bash
+node tools/run-verify-probes.js --exec --prefix /data/user/0/lobos.app.verify/files/usr/bin
+```
+
+`--prefix` 是关键：探针按设计用**裸名**调用（`spawnSync('jq', ...)`），而设备上
+`usr/bin` 之外还有系统自带的同名命令。给了 prefix 就把它排在 PATH 最前，并且每条
+结果会**打印实际命中的文件**（`← /data/user/0/lobos.app.verify/files/usr/bin/jq`）——
+「验的是哪一份」是判据成立的前提。
+
+预期 7 条全 `[ok]`。若某条 `[skip] PATH 上没有 X`，说明 prefix 指错了。
+若 `[FAIL]`，那行会带探针自己的报错 —— 那才是要查的东西。

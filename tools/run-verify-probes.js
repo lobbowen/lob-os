@@ -11,6 +11,10 @@ const ONLY = (() => {
   const i = process.argv.indexOf('--only');
   return i > 0 ? process.argv[i + 1] : null;
 })();
+const PREFIX = (() => {
+  const i = process.argv.indexOf('--prefix');
+  return i > 0 ? process.argv[i + 1] : null;
+})();
 
 const j = JSON.parse(fs.readFileSync(VERIFY, 'utf8'));
 const crit = j.criteria || {};
@@ -38,22 +42,27 @@ for (const name of names) {
       + ' 字 / 探针 ' + c.node.length + ' 字 / 入口 ' + (c.entry || '(未声明)'));
     continue;
   }
-  const which = cp.spawnSync('sh', ['-c', 'command -v ' + name], { encoding: 'utf8' });
+  const env = Object.assign({}, process.env);
+  if (PREFIX) env.PATH = PREFIX + path.delimiter + (env.PATH || '');
+  const which = cp.spawnSync('sh', ['-c', 'command -v ' + name], { encoding: 'utf8', env });
   if (which.status !== 0) {
     console.log('[skip] ' + label + ' PATH 上没有 ' + name + ' —— 探针按设计用裸名调用，跑不了');
     skipped++;
     continue;
   }
+  const hit = String(which.stdout || '').trim();
   const script = path.join(__dirname, 'probe-runner.mjs');
   const r = cp.spawnSync(process.execPath, [script], {
     encoding: 'utf8',
     input: c.node,
     timeout: 180000,
+    env,
   });
   const out = String(r.stdout || '').trim();
   const err = String(r.stderr || '').trim();
   if (r.status === 0 && out.includes('LOBOS_PROBE_PASS')) {
-    console.log('[ok]   ' + label + ' ' + out.replace(/\s+/g, ' ').slice(0, 120));
+    console.log('[ok]   ' + label + ' ' + out.replace(/\s+/g, ' ').slice(0, 100)
+      + '  ← ' + hit);
     ran++;
   } else {
     console.log('[FAIL] ' + label + ' 退出码 ' + r.status
