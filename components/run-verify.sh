@@ -48,7 +48,7 @@ if [ "$HAVE_ADB" = "1" ]; then
   echo "══ 3. 启动（走 LAUNCHER，别写组件名）══"
   adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
   echo "  [ok] 已发起启动"
-  echo "══ 4. 等供给（约 88MB @ 实测 708KB/s ≈ 2 分钟）══"
+  echo "══ 4. 等供给（88MB 走 loopback；瓶颈是解包落位，给 1~2 分钟）══"
   for i in $(seq 1 30); do
     sleep 10
     N=$(adb shell "cat $DIR/files/os/diag.jsonl 2>/dev/null | grep -c supply" 2>/dev/null | tr -d '\r')

@@ -74,7 +74,7 @@ adb install -r <artifact 解出的>/app-debug.apk
 adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 ```
 
-约 88MB（7 件），按实测 708 KB/s 约 2 分钟。供给在后台线程，UI 先起来是正常的。
+约 88MB（7 件）。**自签模式走本机 loopback，实测 521 MB/s（node 35MB 只要 0.07 秒）—— 瓶颈不是下载，是 App 端的解包与落位**，给 1~2 分钟。供给在后台线程，UI 先起来是正常的。
 
 验什么、怎么看：`VERIFY-ON-DEVICE.md`（第 4 步的命令适用于本模式）。
 

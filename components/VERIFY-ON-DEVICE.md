@@ -65,6 +65,15 @@ adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 （清单里没有 `size` 字段，所以装机前无法从清单知道总量 —— 这些数字是从设备上
 已装的同名件量的。）
 
+**两种模式速度差 700 倍**，别拿错预期：
+
+| 模式 | 供给源 | 实测速度 | 88MB 耗时 |
+|---|---|---|---|
+| 正式商店 | `hubcdn.zll.ink` | 708 KB/s | 约 2 分钟 |
+| 自签（`SELF-SIGNED-VERIFY.md`） | `127.0.0.1:8120` loopback | **521 MB/s**（node 35MB 仅 0.07 秒） | 下载可忽略，瓶颈是 App 端解包落位 |
+
+自签模式下如果等了 2 分钟还没结果，**不是网络慢**，去看诊断里 supply 那条说什么。
+
 708 KB/s 是实测 6.6MB 的 curl 件（4.2 秒）得出的，**同一网络下 `raw.githubusercontent.com`
 是 1.3 KB/s 且 5 次里 4 次超时** —— 所以分发源只能是七牛，不能是 GitHub。
 
