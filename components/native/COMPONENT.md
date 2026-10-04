@@ -87,9 +87,9 @@
 | `'-Wl,-rpath,$$ORIGIN'` | `DT_RUNPATH=[-soname=pty.node]` —— flag 被挤掉 |
 | `'-Wl,-rpath,<!(printf %s '$ORIGIN')>'` | `SyntaxError: invalid syntax` —— Python 里单引号套娃，gyp 崩 |
 | `"-Wl,-rpath,<!printf %s '$ORIGIN'>"` | `/bin/sh: cannot open !printf` —— **`<!cmd>` 在 `ldflags` 里不被求值**，原样进了 make 命令 |
-| `"-Wl,-rpath,'$$ORIGIN'"` | 待验：`$$` 给 `make`、`'$…'` 给 shell |
+| `"-Wl,-rpath,'$$ORIGIN'"` | **成立** —— `RUNPATH=[$ORIGIN]`，门禁判「可自解析同目录依赖」 |
 
-最后一行的两层分工是这件事的本质：
+最后一行的三层分工是这件事的本质：
 
 - **gyp** 只是 Python 源码解析 —— 外层引号必须让 Python 解析得过；
 - **make** 拼 Makefile 命令 —— `$$` 还原成单个 `$`；
@@ -97,7 +97,6 @@
 
 三层各要各的转义，缺一层就坏在三处之一。而 `<!cmd>` 这种「求值」写法
 只在 gyp 的 `variables` 块里成立，放进 `ldflags` 不会被求值。
-
 **判据：只认 CI 日志里 `readelf -d` 那一行**，不认注入代码「看起来对」。
 本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以每版只能靠 CI 判。
 
