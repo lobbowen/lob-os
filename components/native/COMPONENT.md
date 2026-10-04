@@ -75,35 +75,36 @@
   而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
   落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
 
-### `$ORIGIN` 的字面量要绕开 shell 与 make 的展开（**尚未验证**）
+### `$ORIGIN` 的字面量：gyp 文件是 Python，单引号会套娃
 
-实测踩到：把 `'-Wl,-rpath,$ORIGIN'` 写进 `binding.gyp` 源码后，CI 产出的
-`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉，剩下 `RIGIN`。
-`gyp` 把 `ldflags` 拼成 Makefile 交给 `make`，`$O` 是未定义变量，`make`
-展开成空。
+`gyp` 的 `binding.gyp` 是 **Python** 源码（`gyp/input.py` 直接 `eval`），
+不是 JSON。往 `ldflags` 里塞 `-Wl,-rpath,$ORIGIN` 时，踩了四个坑：
 
-依次试过三种写法，CI 各自给出不同的坏结果：
-
-| 写进 gyp 的字面量 | CI 实测 `DT_RUNPATH` |
+| 写进 gyp 的字面量 | 实际结果 |
 |---|---|
-| `-Wl,-rpath,$ORIGIN` | `[RIGIN]`（`make` 吃掉 `$O`） |
-| `-Wl,-rpath,$$ORIGIN` | `[-soname=pty.node]`（flag 整个被挤掉） |
-| `-Wl,-rpath,<!printf %s '$ORIGIN'>` | 待验（本轮唯一在跑的写法） |
+| `'-Wl,-rpath,$ORIGIN'` | `DT_RUNPATH=[RIGIN]` —— gyp 交给 `make`，`$O` 是未定义变量，被展开成空 |
+| `'-Wl,-rpath,$$ORIGIN'` | `DT_RUNPATH=[-soname=pty.node]` —— flag 整个被挤掉 |
+| `'-Wl,-rpath,<!(printf %s '$ORIGIN')>'` | `SyntaxError: invalid syntax` —— Python 里单引号套娃，**gyp 根本不读**（CI 打出 `gyp ERR! configure`） |
+| `"-Wl,-rpath,<!printf %s '$ORIGIN'>"` | 整串用**双引号**包（gyp 是 Python），`$ORIGIN` 在 `<!cmd>` 里用单引号护住 |
 
-**判据：只认 CI 日志里的 `readelf -d` 那一行**，不认注入代码「看起来对」。
-本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以这三条只能靠 CI 判。
+最后一行是目前成立的写法：
 
-落位自检的口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：
-`[RIGIN]` / `[$LIB]` / `[-soname=…]` / 无 `RUNPATH` 都判红（已实测前三种）。
+- 外层 `'` 换成 `"`（`'ldflags': [ "-Wl,-rpath,<!…>", ]` 是合法 Python）；
+- 值交给 gyp 的 `<!cmd>` 在生成 Makefile 时**求值**，于是 `$ORIGIN`
+  既不过 `gyp` 的展开也不过 `make` 的展开；
+- `printf %s '$ORIGIN'` 的单引号让 shell 原样输出 `$ORIGIN`。
+
+**判据：只认 CI 日志里 `readelf -d` 那一行**，不认注入代码「看起来对」。
+本机无法复现（无 `make`、`node-gyp` 只在 CI 跑），所以每一版只能靠 CI 判。
+上表前两行是 CI 实测结果，第三行是 CI 实测报错 —— 不是推断。
+
+落位自检口径：`RUNPATH` 必须**恰好含 `$ORIGIN`**；
+`[RIGIN]` / `[$LIB]` / `[-soname=…]` / 无 `RUNPATH` 都判红。
 不合格不判红而是降级（`soft` 档）并写进日志 ——
 所以「CI 绿」与「PTY 真的对了」必须分开看：
 **看 `liblobospty.so` 那一行有没有 `::warning` 降级提示。**
 
-若第三种写法在 CI 仍不成立，下一步是改用 `LDFLAGS` 环境变量传给
-`node-gyp`（值不进 gyp 文件，`make` 展开 `ldflags` 时原样带入），
-而不是继续在 gyp 源码里试引号 —— 那是同一条路走第三遍。
-
-判据的输入不能是被判据本身要检查的那类字符串：两次踩坑形状相同，
+判据的输入不能是被判据本身要检查的那类字符串：这几个坑形状相同，
 都是「用含 `$` 的字符串去构造对 `$` 的判据」。
 
 ## 档位语义：判据按「缺了会怎样」分档

@@ -191,12 +191,14 @@ if (t.includes("-Wl,--enable-new-dtags")) { console.log("[pty] 已含 RUNPATH �
 const m = /(\x27ldflags\x27\s*:\s*\[)/.exec(t);
 if (!m) { console.error("[pty] binding.gyp 里找不到 ldflags 数组 —— 补丁无处可落"); process.exit(1); }
 const D = String.fromCharCode(36);
-const Q = String.fromCharCode(39);
-const CALL = Q + "-Wl,-rpath,<!(printf %s " + Q + D + "ORIGIN" + Q + ")>" + Q;
-const FLAG = Q + "-Wl,--enable-new-dtags" + Q + ", " + CALL + ",";
+const S = String.fromCharCode(39);
+const B = String.fromCharCode(34);
+const ORIGIN = D + "ORIGIN";
+const CALL = B + "-Wl,-rpath,<!printf %s " + S + ORIGIN + S + ">" + B;
+const FLAG = S + "-Wl,--enable-new-dtags" + S + ", " + CALL + ",";
 t = t.slice(0, m.index + m[1].length) + " " + FLAG + t.slice(m.index + m[1].length);
 fs.writeFileSync(p, t);
-console.log("[pty] ldflags 已加 -Wl,--enable-new-dtags 与 $ORIGIN RUNPATH（经 gyp 的 <!(cmd)> 求值）");
+console.log("[pty] ldflags 已加 -Wl,--enable-new-dtags 与 $ORIGIN RUNPATH（gyp 是 Python，用双引号包整串）");
 '; then
   echo '::warning title=能力件缺失::binding.gyp 补丁失败 —— 终端 PTY 本包降级（缺 $ORIGIN RUNPATH）'
   exit 0
