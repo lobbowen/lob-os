@@ -183,20 +183,21 @@ p = pathlib.Path('binding.gyp')
 p.write_text(re.sub(r"\s*'-lutil'\s*,?", "", p.read_text()))
 PY
 npm install --ignore-scripts --no-audit --no-fund >/dev/null 2>&1 || true
-node - <<'JS'
+if ! node -e '
 const fs = require("node:fs");
 const p = "binding.gyp";
 let t = fs.readFileSync(p, "utf8");
-if (t.includes("enable-new-dtags")) { console.log("[pty] ldflags 已含 RUNPATH 补丁，跳过"); process.exit(0); }
-const m = /("ldflags"\s*:\s*\[)/.exec(t);
-if (!m) { console.error("[pty] binding.gyp 里找不到 ldflags 数组 —— 补丁无处可落，拒绝静默跳过"); process.exit(1); }
-t = t.slice(0, m.index + m[1].length)
-  + ' "-Wl,--enable-new-dtags", "-Wl,-rpath,$ORIGIN",'
-  + t.slice(m.index + m[1].length);
+if (t.includes("enable-new-dtags")) { console.log("[pty] 已含 RUNPATH 补丁，跳过"); process.exit(0); }
+const m = /(\x27ldflags\x27\s*:\s*\[)/.exec(t);
+if (!m) { console.error("[pty] binding.gyp 里找不到 ldflags 数组 —— 补丁无处可落"); process.exit(1); }
+const FLAG = "\x27-Wl,--enable-new-dtags\x27, \x27-Wl,-rpath,$ORIGIN\x27,";
+t = t.slice(0, m.index + m[1].length) + " " + FLAG + t.slice(m.index + m[1].length);
 fs.writeFileSync(p, t);
 console.log("[pty] ldflags 已加 -Wl,--enable-new-dtags + -Wl,-rpath,$ORIGIN");
-JS
-[ $? -eq 0 ] || { echo '::warning title=能力件缺失::binding.gyp 补丁失败 —— 终端 PTY 本包降级（缺 $ORIGIN RUNPATH）'; exit 0; }
+'; then
+  echo '::warning title=能力件缺失::binding.gyp 补丁失败 —— 终端 PTY 本包降级（缺 $ORIGIN RUNPATH）'
+  exit 0
+fi
 npx --yes node-gyp@10 rebuild --arch=arm64 --nodedir=/tmp/node-headers > /tmp/pty-gyp.log 2>&1 || {
   echo '=== node-gyp 失败取证（末 60 行）==='; tail -60 /tmp/pty-gyp.log
   echo '::warning title=能力件缺失::构建 node-pty 失败 —— 终端 PTY 本包不可用'; exit 0; }
