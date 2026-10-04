@@ -23,9 +23,31 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        initQuickAppRuntime()
         OsHostService.ensureRunning(this)
         registerWakeupEdges()
         supplyOnStartup()
+    }
+
+    private fun initQuickAppRuntime() {
+        runCatching {
+            com.didi.dimina.Dimina.init(
+                this,
+                com.didi.dimina.Dimina.DiminaConfig.Builder()
+                    .setDebugMode(false)
+                    .setShowCapsule(false)
+                    .setShowLaunchLoading(false)
+                    .build()
+            )
+        }.onFailure {
+            RuntimeDiagnostics.append(
+                this, "quickapp", false,
+                "快应用运行时（dimina）初始化失败",
+                it.javaClass.name + ": " + (it.message ?: "")
+            )
+        }.onSuccess {
+            RuntimeDiagnostics.append(this, "quickapp", true, "快应用运行时已就绪", "dimina 初始化完成")
+        }
     }
 
     private fun supplyOnStartup() {
