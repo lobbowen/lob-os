@@ -14,7 +14,12 @@ android {
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
     defaultConfig {
-        applicationId = System.getenv("LOBOS_APP_ID") ?: "lobos.os"
+        val resolvedAppId = System.getenv("LOBOS_APP_ID") ?: "lobos.os"
+        require(resolvedAppId != "lobos.app") {
+            "applicationId 不得为 lobos.app —— 那是设备上已装的旧包，同名会被当作覆盖安装，" +
+                "而它正稳定运行着、我们不能破坏它。本项目自己的包名是 lobos.os。"
+        }
+        applicationId = resolvedAppId
         minSdk = 26
         targetSdk = 28
         versionCode = appVersionCode
