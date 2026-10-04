@@ -93,6 +93,12 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
 - NDK 版本钉在 `userland-sources.json` 的 `ndkVersion`，与 runner 镜像不符即红
 - `scripts/` 下不得硬编码绝对路径（`tools/check-tool-paths.js`）
 - 设备端清单名不得硬编码，只能从通道锚读（`SupplyProvisioner.anchorName`）
+- 桥协议号三处声明必须一致：`protocol.js` 的 `PROTOCOL_VERSION`、
+  `CapabilityBroker` 的 `PROTOCOL_MIN`、`version.json` 的
+  `shell.bridgeProtocol`（→ `BuildConfig.BRIDGE_PROTOCOL`）。
+  三个消费方各读一处：引擎握手答自己的、壳按下界收客户端、
+  `program-verify.js` 拿 `BuildConfig` 比内核的 `requiresProtocol`。
+  漂移的后果是**握手在真机上失败、而仓内全绿**。
 
 ## 守护这些不变量的门禁
 
@@ -106,6 +112,7 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
 | `scripts/comment-gate.js` | 零遗留注释、无 JSON 散文键（判据的理由写在本目录，不写进代码） |
 | `scripts/gen-native-assets.js` 幂等 | 资产清单由 Kotlin 声明生成，不手改 |
 | `tools/check-gate-callers.js` | 仓内每件 `verify-*` / `check-*` 门禁都得有调用点（workflow 里跑，或被别的门禁调）。文档里承诺一个永不执行的门禁 = 一个永不生效的保证 |
+| `tools/check-protocol-version.js` | 桥协议号三处声明一致；壳侧下界不得大于 `version.json` 的上界（区间为空则所有客户端被拒） |
 
 **为什么要有「调用点」这一条**：一份门禁脚本放在仓里、文档里点名它，
 但没有任何 workflow 跑它 —— 读的人以为它在守着，实际上它一行都没执行。

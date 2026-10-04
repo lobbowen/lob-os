@@ -84,6 +84,9 @@ jobs:
       - name: 门禁须有调用点（文档与仓内不许留永不执行的口子）
         run: node tools/check-gate-callers.js
 
+      - name: 桥协议三处声明须一致（引擎 / 壳侧下界 / version.json）
+        run: node tools/check-protocol-version.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail
