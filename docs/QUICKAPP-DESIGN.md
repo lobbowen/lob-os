@@ -28,6 +28,48 @@
 
 ---
 
+### 0.1 工具链版本（接 dimina 的连带升级）
+
+接 dimina 迫使整条工具链升级，**逐项都有出处**，不是权宜：
+
+| | 原 | 现 | 依据 |
+|---|---|---|---|
+| AGP | 8.7.3 | **9.4.0** | dimina `libs.versions.toml` 的 `agp` |
+| Gradle | 8.9 | **9.6.0** | AGP 9.4 的下限（CI 报 `Minimum supported Gradle version is 9.6.0`） |
+| KGP | 2.0.21 | **2.4.20** | 见下 |
+| minSdk | 24 | **26** | dimina 要求 |
+| kotlin 插件 | 有 | **无** | AGP 9 自带 Kotlin，该插件反而冲突 |
+
+**KGP 为什么要显式声明 2.4.20**（这一步绕过一次弯路，记下来）：
+
+- dimina 1.7.6 用 Kotlin **2.4.20** 编译；AGP 9.4 内建的是 **2.2.10**
+  （读 AGP 自己的 POM）。2.2.10 的编译器读不了 2.4.20 的元数据。
+- **AGP 没有「内置 Kotlin 版本」这个开关** —— 它驱动的是 classpath 上的 KGP
+  （`KgpUtils` 反射读 KGP 实例版本），2.2.10 只是它 POM 里的一个条目。
+- 官方控制点是 buildscript classpath，AGP 9.0 发布说明有专门一节
+  *Upgrade to a higher KGP version*：
+  `classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20")`
+- 文档对升级与降级**写成不对称**：升级是支持路径；降级才要先关掉内建 Kotlin
+  （而那个开关 AGP 10.0 就取消了）。所以「跟最新走」正是官方方向。
+- dimina 用的就是这个 —— 它那两个 compose/serialization 插件不是特殊机制，
+  只是必须与同一 classpath 上的 KGP 版本对齐的消费者。
+
+**踩过的弯路（不要重走）**：
+
+1. 只升 Kotlin 到 2.4.20 不够 —— 底下的 AGP 没动，生成的元数据版本仍读不了。
+2. 加 `-Xskip-metadata-version-check` 能编过，但那是**压住真实不一致**，
+   会让真正不兼容的字节码混进来。**已去掉**（CI 证实去掉后仍编译通过）。
+
+**未验证的残余风险**：去掉 flag 后编译期已无问题，但**运行时**若 dimina 用了
+2.2→2.4 之间新增的 API，仍可能 `NoSuchMethodError`。
+**这只能靠真机运行排除，编译期无法证明** —— 我们目前没有真机环境。
+
+**死文件已清理**：`gradle-wrapper.jar`（Gradle 8.9 时代，装不了 9.x）、
+`gradle-wrapper.properties`、`gradlew`、`gradlew.bat` 全部删除。
+CI 改用 `gradle/actions/setup-gradle@v4` 指定版本，不经过 wrapper jar。
+
+---
+
 ## 1. 框架给的是什么
 
 ```
