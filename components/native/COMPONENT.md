@@ -75,17 +75,28 @@
   而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
   落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
 
-### `$ORIGIN` 的字面量必须绕开 shell / gyp 两层展开
+### `$ORIGIN` 的字面量必须绕开 shell / gyp / make 三层展开
 
 实测踩到：把 `'-Wl,-rpath,$ORIGIN'` 写进 `binding.gyp` 源码后，CI 产出的
-`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉了
-（gyp 自己会展开 Makefile 变量，`$O` 未定义即展开成空）。
-门禁的自检如实报了这个不合格，所以那轮是**绿中带降级**，不是误放行。
+`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉了。
+gyp 把 `ldflags` 拼成 Makefile 传给 `make`，`$O` 是未定义变量，
+`make` 把它展开成空，于是只剩 `RIGIN`。
 
-因此注入的字面量由 `String.fromCharCode(36) + "ORIGIN"` 拼出，
-不依赖任何一层展开 —— 判据的输入不能是被判据本身要检查的那类字符串。
-自检口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：`[RIGIN]` / `[$LIB]` /
-无 `RUNPATH` 三种坏形态都被判红（实测）。
+修法有两层，缺一不可：
+
+1. **注入时**：`build-native-capabilities.sh` 用
+   `String.fromCharCode(36) + "ORIGIN"` 拼出字面量 —— 不让 **shell** 先吃掉 `$O`；
+2. **写进 gyp 时**：写入 `$$ORIGIN` —— gyp 把它交给 `make`，`make` 还原成
+   单个 `$ORIGIN`。gyp 文件里必须写双 `$`，单 `$` 会被 `make` 当变量。
+
+判据的输入不能是被判据本身要检查的那类字符串 —— 这是两次踩坑的共同形状。
+本机测不出来（无 make，且 gyp 只在 CI 跑），只有 CI 日志能看见，
+所以自检与落位判据不能省。
+
+落位后 `readelf -d` 自检，口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：
+`[RIGIN]` / `[$LIB]` / 无 `RUNPATH` 三种坏形态都判红（实测）。
+不合格不判红而是降级（`soft` 档）—— 但会明确写进 CI 日志，
+「绿」与「真的对了」必须能分开看。
 
 
 ## 档位语义：判据按「缺了会怎样」分档
