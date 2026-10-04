@@ -5,12 +5,19 @@
   http://127.0.0.1:8120/userland-canary/userland-manifest-2.json → 200 / 12619 字节
   件 7 个，node 35MB 拉取速度 521 MB/s（loopback，非瓶颈）
 
-[包]
-  ss-apk/app-debug.apk  9,747,936 字节（9.3MB）
+[包 —— 已放到设备上，不需要 adb]
+  /sdcard/Download/lobos-isolated-verify.apk   9,748,023 字节
+  sha256 前 24 位 e3c1fc2f611cad7417cef5dd（与构建产出逐字一致）
   applicationId = lobos.app.verify（与开发包 lobos.app 不同 ⇒ 并存）
   assets/supply/channel.json.baseUrl = http://127.0.0.1:8120（CI 构建时替换）
   assets/supply/userland-public.pem = 自签公钥（≠ 真公钥，已核对）
   jniLibs/libc++_shared.so 在，libnode.so 不在
+
+[为什么走「文件管理器装」而不是 adb install]
+  开发包的 installer = com.android.packageinstaller，且 /sdcard/Download/ 下有
+  app-debug (11).apk（2026-09-23）—— 当初就是用文件管理器装的。
+  这台设备上 `settings get` 无输出（shell 受限），查不到 verifier 开关，
+  所以「adb install 会不会被拦」是未验证项。走同一条已验证的路更稳。
 
 [清单（服务供的，自签）]
   revision=1  tools=7  过期 2026-11-02（30 天）
@@ -22,15 +29,19 @@
   设备上现有包：只有 package:lobos.app（隔离包未装过，无冲突）
   存储：780G 可用（需要约 150MB）
   供给在后台线程（OsApplication.onCreate → Thread），不阻塞主线程
+  /sdcard/Download 可写（所以包是我放进去的）
 
-[程序 OTA 通道（独立）】
+[程序 OTA 通道（独立）]
   program-feed.json → hubcdn.zll.ink/program-canary/program-manifest.json → 200
 
 [装完该看到]
-  diag.jsonl: stage=supply level=OK
-             message=商店供给对账：声明 7 件，全部按真名可用
-  toolchain 下 7 个目录（含 node）
-  usr/bin/node -v → v24.21.0
-  usr/bin/node 链指向 → .../lobos.app.verify/files/usr/lib/toolchain/node/bin/node
-    （若指向 /data/app/.../lib/arm64/libnode.so ⇒ 说明回落到了 APK 兜底，
-      node 虽能用但不是商店装出来的 —— 那不是要验的那个）
+  ① pm list packages | grep lobos      → 两行：lobos.app 与 lobos.app.verify
+  ② diag.jsonl: stage=supply level=OK
+                message=商店供给对账：声明 7 件，全部按真名可用
+  ③ toolchain 下 7 个目录（含 node）
+  ④ usr/bin/node -v → v24.21.0
+  ⑤ usr/bin/node 链指向 → .../lobos.app.verify/files/usr/lib/toolchain/node/bin/node
+      （若指向 /data/app/.../lib/arm64/libnode.so ⇒ 说明回落到了 APK 兜底，
+        node 虽能用但不是商店装出来的 —— 那不是要验的那个）
+  ⑥ 能力探针 7 条全过：
+      node tools/run-verify-probes.js --exec --prefix /data/user/0/lobos.app.verify/files/usr/bin
