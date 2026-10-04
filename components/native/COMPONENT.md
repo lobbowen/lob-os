@@ -75,6 +75,19 @@
   而 bionic 忽略 `RPATH`，所以必须用 new-dtags 换出 `RUNPATH`），
   落位后 `readelf -d` 自检；不合格只降级不判红（它是 `soft` 档）。
 
+### `$ORIGIN` 的字面量必须绕开 shell / gyp 两层展开
+
+实测踩到：把 `'-Wl,-rpath,$ORIGIN'` 写进 `binding.gyp` 源码后，CI 产出的
+`liblobospty.so` 的 `DT_RUNPATH` 是 **`[RIGIN]`** —— `$O` 被吃掉了
+（gyp 自己会展开 Makefile 变量，`$O` 未定义即展开成空）。
+门禁的自检如实报了这个不合格，所以那轮是**绿中带降级**，不是误放行。
+
+因此注入的字面量由 `String.fromCharCode(36) + "ORIGIN"` 拼出，
+不依赖任何一层展开 —— 判据的输入不能是被判据本身要检查的那类字符串。
+自检口径是 `RUNPATH` 必须**恰好含 `$ORIGIN`**：`[RIGIN]` / `[$LIB]` /
+无 `RUNPATH` 三种坏形态都被判红（实测）。
+
+
 ## 档位语义：判据按「缺了会怎样」分档
 
 判据 3/4/5（架构 / 16KB 对齐 / 解释器 / 依赖闭环 / RUNPATH）对
