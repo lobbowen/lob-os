@@ -49,15 +49,19 @@ if [ "$HAVE_ADB" = "1" ]; then
   adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
   echo "  [ok] 已发起启动"
   echo "══ 4. 等供给（88MB 走 loopback；瓶颈是解包落位，给 1~2 分钟）══"
+  SEEN=0
   for i in $(seq 1 30); do
     sleep 10
-    N=$(adb shell "cat $DIR/files/os/diag.jsonl 2>/dev/null | grep -c supply" 2>/dev/null | tr -d '\r')
-    if [ "${N:-0}" -gt 0 ]; then
-      echo "  供给链已跑（$((i*10)) 秒）"
+    N=$(adb shell "cat $DIR/files/os/diag.jsonl 2>/dev/null | grep -c '\"stage\":\"supply\"'" 2>/dev/null | tr -d '\r\n ')
+    case "${N:-0}" in ''|*[!0-9]*) N=0 ;; esac
+    if [ "$N" -gt 0 ]; then
+      echo "  供给链已跑（$((i*10)) 秒，共 $N 条 supply 记录）"
+      SEEN=1
       break
     fi
     printf '.'
   done
+  [ "$SEEN" = 1 ] || echo "  [warn] 5 分钟内没等到 supply 记录 —— 查应用是否真的起来了（pm list packages | grep $PKG）"
   echo
 else
   echo "══ 2/3/4. 这台机器上没有 adb ══"
@@ -88,4 +92,3 @@ ls "$TOOLCHAIN" 2>/dev/null | tr '\n' ' '
 echo
 echo "-- node 能不能跑（最终判据）--"
 "$DIR/files/usr/bin/node" -v 2>/dev/null || echo "  （还没装好）"
-
