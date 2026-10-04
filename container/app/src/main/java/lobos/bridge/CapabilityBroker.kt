@@ -1157,6 +1157,20 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             JSONObject().apply { put("opened", true); put("url", url) }
         },
+        "os.quickapp.desktop.add" to MethodDef(listOf("package"), true) { p, programId ->
+            val target = p.optString("id", "").ifBlank { programId }
+            val r = lobos.ui.QuickAppDesktop.sync(this@CapabilityBroker, target)
+            JSONObject().apply { put("result", r); put("id", target) }
+        },
+        "os.quickapp.desktop.remove" to MethodDef(listOf("package"), true) { p, programId ->
+            val target = p.optString("id", "").ifBlank { programId }
+            val r = lobos.ui.QuickAppDesktop.remove(this@CapabilityBroker, target)
+            JSONObject().apply { put("result", r); put("id", target) }
+        },
+        "os.quickapp.desktop.status" to MethodDef(listOf("package"), false) { p, programId ->
+            val target = p.optString("id", "").ifBlank { programId }
+            lobos.ui.QuickAppDesktop.status(this@CapabilityBroker, target)
+        },
         "ui.tap" to MethodDef(listOf("accessibility"), true) { p, _programId ->
             val a11y = requireA11y()
             val ok = a11y.performTap(
