@@ -167,9 +167,12 @@ jobs:
           LOBOS_KEY_PASSWORD: isolated-verify
           LOBOS_KEY_ALIAS: ${{ inputs.alias }}
           LOBOS_APP_ID: ${{ inputs.app_id }}
-          LOBOS_APP_LABEL: 'Lobos 验证'
         run: |
           set -o pipefail
+          S=container/app/src/main/res/values/strings.xml
+          cp "$S" /tmp/strings.orig
+          sed -i 's|<string name="app_name">[^<]*</string>|<string name="app_name">Lobos 验证</string>|' "$S"
+          echo "[label] app_name 现在是：$(grep 'name=\"app_name\"' "$S")"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
 

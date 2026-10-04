@@ -21,9 +21,6 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("int", "BRIDGE_PROTOCOL", appBridgeProtocol.toString())
-        System.getenv("LOBOS_APP_LABEL")?.let { l ->
-            resValue("string", "app_name", l)
-        }
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
