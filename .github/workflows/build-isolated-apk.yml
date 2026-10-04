@@ -74,6 +74,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USERLAND_BASE_URL: ${{ inputs.self_signed }}
+          E2E_PRIVATE_KEY_PEM: ${{ secrets.E2E_PRIVATE_KEY_PEM }}
+          E2E_PUBLIC_KEY_PEM: ${{ secrets.E2E_PUBLIC_KEY_PEM }}
         run: |
           set -euo pipefail
           echo "── 取 7 个件的 artifact ──"
@@ -93,14 +95,21 @@ jobs:
           [ "$N" -ge 7 ] || { echo "::error title=件不够::期望 7 个（6 件工具链 + node），实到 $N"; exit 1; }
           echo "  共 $N 个件包"
 
-          echo "── 生成自签密钥对 ──"
-          node -e '
-            const c = require("crypto"), fs = require("fs");
-            const { publicKey, privateKey } = c.generateKeyPairSync("ed25519");
-            fs.writeFileSync("keys/e2e-public.pem", publicKey.export({ type: "spki", format: "pem" }));
-            fs.writeFileSync("keys/ota-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }));
-            console.log("[ok] ed25519 自签密钥对已生成");
-          '
+          echo "── 自签密钥对（优先用 secret 里的固定那把）──"
+          if [ -n "${E2E_PRIVATE_KEY_PEM:-}" ] && [ -n "${E2E_PUBLIC_KEY_PEM:-}" ]; then
+            printf '%s\n' "$E2E_PUBLIC_KEY_PEM" > keys/e2e-public.pem
+            printf '%s\n' "$E2E_PRIVATE_KEY_PEM" > keys/ota-private.pem
+            echo "[ok] 用 secret 里的固定密钥对（包与供给服务才能长期配套）"
+          else
+            echo "::warning title=没有 E2E 密钥对 secret::本轮现生成一对 —— 这意味着**这次构建的包只能配这次构建产出的清单**。换一轮构建后，包里的信任根与服务供的清单就对不上了（验签失败，一件都装不上）。要么配 secret，要么每次都从本轮的 self-signed-supply-bundle 重新起供给服务。"
+            node -e '
+              const c = require("crypto"), fs = require("fs");
+              const { publicKey, privateKey } = c.generateKeyPairSync("ed25519");
+              fs.writeFileSync("keys/e2e-public.pem", publicKey.export({ type: "spki", format: "pem" }));
+              fs.writeFileSync("keys/ota-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }));
+              console.log("[ok] ed25519 自签密钥对已生成");
+            '
+          fi
 
           echo "── 签清单（7 件全投影，含 node）──"
           LOBOS_USERLAND_REVISION=1 USERLAND_PUBKEY=keys/e2e-public.pem \
@@ -129,6 +138,7 @@ jobs:
           path: |
             release/
             dist/
+            keys/e2e-public.pem
           retention-days: 14
 
       - name: 放置 C++ 运行期到 jniLibs
@@ -175,6 +185,28 @@ jobs:
           echo "[label] app_name 现在是：$(grep 'name=\"app_name\"' "$S")"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+
+      - name: 配套自检（包里的信任根必须能验本轮产出的清单）
+        if: ${{ inputs.self_signed != '' }}
+        run: |
+          set -euo pipefail
+          APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1 || true)"
+          if [ -z "$APK" ]; then
+            echo "::warning title=没有 APK 可自检::跳过（本步在 Build 之后、此时应有产物）"
+            exit 0
+          fi
+          PUB=container/app/src/main/assets/supply/userland-public.pem
+          node -e '
+            const fs=require("fs"), c=require("crypto");
+            const pub=fs.readFileSync(process.argv[1],"utf8");
+            const body=fs.readFileSync("release/userland-manifest.json");
+            const sig=Buffer.from(fs.readFileSync("release/userland-manifest.json.sig","utf8").trim(),"base64");
+            if (!c.verify(null, body, pub, sig)) {
+              console.error("::error title=包与清单不配套::包里的 userland-public.pem 验不过本轮签出的清单 —— 装上去会一件都装不上（验签失败）");
+              process.exit(1);
+            }
+            console.log("[ok] 包里的信任根能验本轮清单（配套成立）");
+          ' "$PUB"
 
       - name: 验签（确认签的是并存那把，不是开发包的）
         run: |
