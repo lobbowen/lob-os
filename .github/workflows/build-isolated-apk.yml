@@ -213,6 +213,20 @@ jobs:
           else
             echo "[ok] applicationId=$GOT 与设备上的 lobos.app 不同 ⇒ 两个应用并存，不会覆盖开发包"
           fi
+          echo "── APK 里的应用名（label）──"
+          LABEL=""
+          for BIN in "$SDK"/build-tools/*/aapt2 "$SDK"/build-tools/*/aapt; do
+            [ -x "$BIN" ] || continue
+            OUT="$("$BIN" dump badging "$APK" 2>/dev/null | head -20 || true)"
+            LABEL="$(printf '%s' "$OUT" | sed -n "s/.*application-label:'\\([^']*\\)'.*/\\1/p" | head -1)"
+            [ -n "$LABEL" ] && break
+          done
+          echo "读到的 application-label: ${LABEL:-（读不出来）}"
+          if [ "$LABEL" = "Lobos" ] || [ -z "$LABEL" ]; then
+            echo "::warning title=应用名没改成「Lobos 验证」::桌面上会与开发包同名。装完用 am start -n ${{ inputs.app_id }}/lobos.ui.setup.SetupActivity 精确启动，别点桌面图标（同名时分不清）。"
+          else
+            echo "[ok] 应用名是「$LABEL」，桌面上与开发包可区分"
+          fi
 
       - name: Upload
         if: always()
