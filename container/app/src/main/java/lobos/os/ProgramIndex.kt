@@ -11,12 +11,6 @@ enum class Category { RUNTIME, TOOLCHAIN, LIBRARY, APPLICATION, NONE }
 
 enum class Desired { RUNNING, STOPPED, FROZEN }
 
-data class Isolation(
-    val namespaces: List<String> = emptyList(),
-    val memoryMax: String = "",
-    val pidsMax: Int = 0,
-)
-
 data class IndexEntry(
     val id: String,
     val level: Level,
@@ -44,7 +38,6 @@ data class IndexEntry(
     val uiPackage: String,
     val uiUrl: String,
     val onUiClosed: String,
-    val isolation: Isolation,
     val invalid: String?,
 ) {
     val managed: Boolean get() = level == Level.APPLICATION
@@ -118,7 +111,6 @@ object ProgramIndex {
         uiPackage = "",
         uiUrl = "",
         onUiClosed = "",
-        isolation = Isolation(),
         invalid = null,
     )
 
@@ -150,11 +142,6 @@ object ProgramIndex {
             put("uiPackage", e.uiPackage)
             put("uiUrl", e.uiUrl)
             put("onUiClosed", e.onUiClosed)
-            put("isolation", JSONObject().apply {
-                put("namespaces", JSONArray(e.isolation.namespaces))
-                put("memoryMax", e.isolation.memoryMax)
-                put("pidsMax", e.isolation.pidsMax)
-            })
         }
         e.invalid?.let { put("invalid", it) }
     }
@@ -171,13 +158,6 @@ object ProgramIndex {
                 put(k, envObj.optString(k))
             }
         }
-        val isoObj = o.optJSONObject("isolation")
-        val iso = Isolation(
-            namespaces = isoObj?.optJSONArray("namespaces")
-                ?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList(),
-            memoryMax = isoObj?.optString("memoryMax", "") ?: "",
-            pidsMax = isoObj?.optInt("pidsMax", 0) ?: 0,
-        )
         return IndexEntry(
             id = id,
             level = level,
@@ -210,7 +190,6 @@ object ProgramIndex {
             uiPackage = o.optString("uiPackage", ""),
             uiUrl = o.optString("uiUrl", ""),
             onUiClosed = o.optString("onUiClosed", ""),
-            isolation = iso,
             invalid = o.optString("invalid").takeIf { it.isNotBlank() },
         )
     }

@@ -106,6 +106,45 @@ LobOS 快应用     装程序包   → APK 完全不动
 **一句话**：进程型程序（起进程、占端口、后台服务）这条线已建通；
 **界面型快应用**（能被点开、有桌面图标、装完即可见）这条线尚未开始。
 
+### 3.4 进程隔离与资源限制：做了什么、明确不做什么
+
+这一条容易误解，所以写死。
+
+**进程隔离要做，防的是稳定性问题：**
+
+| 能力 | 状态 | 取证 |
+|---|---|---|
+| 后端独立进程 | **已有** | `ProcessSupervisor.spawn(owner = OWNER_PROGRAM)` |
+| 一个崩了不带崩别的 | **已有** | 独立进程即得 |
+| 卡死检测 + 自动拉起 | **已有** | `/status` 探活 → 连续失败 3 次 → 退出稳态循环 → 重启 + 退避（`SupervisorPolicy.HEALTH_FAIL_THRESHOLD = 3`） |
+
+**明确不做：进程内资源限制。** 原 schema 里的 `isolation.memoryMax` /
+`isolation.pidsMax` / `isolation.namespaces` 三个字段**已删除**。
+
+删除的理由：
+
+1. **它们从来没被执行过** —— schema 定义并校验，但全仓无任何代码读取或执行。
+   留着就是「文档/schema 声称有、实际一行没跑」。
+2. **内存上限挡不住的问题比挡住的更多**：上限内疯狂分配再释放（GC 抖动拖慢整机）、
+   死循环打满 CPU、同步 IO 卡死、缓慢泄漏 —— 这些上限一个都拦不住。
+3. **真正有效的隔离已经有**：崩溃隔离与卡死检测是独立进程带来的，Android 自身
+   在进程级也提供了隔离。
+
+**不要把它记成「还没做」而留成待办** —— 这是产品决策，不是缺口。
+若将来真的需要（例如某个程序必须限内存），那时应当基于实测的失控场景来定阈值，
+而不是先在schema 里预留一个没人执行的字段。
+
+### 3.5 进程隔离 ≠ 安全边界
+
+这是两件事，不要混：
+
+- **进程隔离**：防崩溃、卡死、资源互相拖垮 —— **稳定性**，技术问题，本框架负责。
+- **安全边界**：防恶意程序 —— **信任**问题，靠**分发闭环**（市场是唯一入口，
+  每次提交与每次更新都经我们审批 + 验证 + 安全测试），**不做技术隔离**。
+
+权限模型也是「一套共享」：LobOS 拿到 Android 权限，里面所有程序共享同一套，
+不按 `programId` 分程序授权。`programId` 只用于**识别、审计、限流**。
+
 ---
 
 ## 4. 框架职责
@@ -168,9 +207,10 @@ lifecycle     resident / restart / maxRestarts / backoff
 http          port / health
 requires      要哪些宿主能力
 capabilities  能力细节
-isolation     namespaces / memoryMax / pidsMax
 ui            type=quickapp / package / url / onUiClosed
 ```
+
+（`isolation` 已删 —— 见 3.4「明确不做进程内资源限制」）
 
 `ui.type` 只接受 `quickapp`；`onUiClosed` 三种语义：
 `keep-alive` / `stop-with-ui` / `on-demand`。

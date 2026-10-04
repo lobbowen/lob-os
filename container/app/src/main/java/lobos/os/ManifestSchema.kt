@@ -18,7 +18,6 @@ object ManifestSchema {
     const val SC_HTTP = "http"
     const val SC_REQUIRES = "requires"
     const val SC_CAPABILITIES = "capabilities"
-    const val SC_ISOLATION = "isolation"
     const val SC_UI = "ui"
 
     const val LC_RESIDENT = "resident"
@@ -28,10 +27,6 @@ object ManifestSchema {
 
     const val HT_PORT = "port"
     const val HT_HEALTH = "health"
-
-    const val IS_NAMESPACES = "namespaces"
-    const val IS_MEMORY_MAX = "memoryMax"
-    const val IS_PIDS_MAX = "pidsMax"
 
     const val UI_TYPE = "type"
     const val UI_PACKAGE = "package"
@@ -84,7 +79,6 @@ object ManifestSchema {
         validateLifecycle(m.optJSONObject(SC_LIFECYCLE), errs)
         validateHttp(m.optJSONObject(SC_HTTP), errs)
         validateRequires(m.optJSONArray(SC_REQUIRES), errs)
-        validateIsolation(m.optJSONObject(SC_ISOLATION), errs)
         validateUi(m.optJSONObject(SC_UI), errs)
 
         return errs
@@ -125,18 +119,6 @@ object ManifestSchema {
         }
     }
 
-    private fun validateIsolation(iso: JSONObject?, errs: MutableList<String>) {
-        if (iso == null) return
-        if (iso.has(IS_NAMESPACES)) {
-            errs += "$SC_ISOLATION.$IS_NAMESPACES 不再支持：无特权 app 无法创建 namespace，写了也不生效" +
-                "（软约束只有 $IS_MEMORY_MAX 与 $IS_PIDS_MAX）"
-        }
-        val mem = iso.optString(IS_MEMORY_MAX, "").trim()
-        if (mem.isNotEmpty() && !mem.matches(Regex("^\\d+[KMGT]?$"))) errs += "$SC_ISOLATION.$IS_MEMORY_MAX 格式非法（示例 512M）"
-        val pids = iso.optInt(IS_PIDS_MAX, 0)
-        if (pids < 0) errs += "$SC_ISOLATION.$IS_PIDS_MAX 不能为负"
-    }
-
     private fun validateUi(ui: JSONObject?, errs: MutableList<String>) {
         if (ui == null) return
         val type = ui.optString(UI_TYPE, "").trim()
@@ -166,7 +148,7 @@ object ManifestSchema {
         put("fields", JSONArray().apply {
             put(SC_ID); put(SC_VERSION); put(SC_ENTRY); put(SC_ARGS); put(SC_ENV)
             put(SC_LIFECYCLE); put(SC_HTTP); put(SC_REQUIRES)
-            put(SC_CAPABILITIES); put(SC_ISOLATION); put(SC_UI)
+            put(SC_CAPABILITIES); put(SC_UI)
         })
         put("lifecycle", JSONArray(listOf(LC_RESIDENT, LC_RESTART, LC_MAX_RESTARTS, LC_BACKOFF)))
         put("restarts", JSONArray(RESTARTS.toList()))
@@ -186,7 +168,6 @@ object ManifestSchema {
             put("entry", o.optString(SC_ENTRY, ""))
             put("resident", o.optJSONObject(SC_LIFECYCLE)?.optBoolean(LC_RESIDENT, true) ?: true)
             put("restart", o.optJSONObject(SC_LIFECYCLE)?.optString(LC_RESTART, "on-failure") ?: "on-failure")
-            put("isolation", o.optJSONObject(SC_ISOLATION) ?: JSONObject.NULL)
             put("ui", o.optJSONObject(SC_UI) ?: JSONObject.NULL)
         })
     }
