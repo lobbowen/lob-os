@@ -34,6 +34,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
       - name: Show Android SDK env
         run: |
           set -euo pipefail
@@ -192,8 +197,7 @@ jobs:
           cp "$S" /tmp/strings.orig
           sed -i 's|<string name="app_name">[^<]*</string>|<string name="app_name">Lobos</string>|' "$S"
           echo "[label] app_name 现在是：$(grep 'name=\"app_name\"' "$S")"
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
 
       - name: 配套自检（包里的信任根必须能验本轮产出的清单）
         if: ${{ inputs.self_signed != '' }}

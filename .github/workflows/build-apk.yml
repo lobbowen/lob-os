@@ -48,6 +48,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
       - name: Show Android SDK env
         run: |
           echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
@@ -130,8 +135,7 @@ jobs:
           LOBOS_KEYSTORE_PASSWORD: ${{ env.LOBOS_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
 
       - name: 产物形态校验（APK 条目 vs 三份声明表）
         run: |
