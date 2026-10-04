@@ -167,6 +167,7 @@ jobs:
           LOBOS_KEY_PASSWORD: isolated-verify
           LOBOS_KEY_ALIAS: ${{ inputs.alias }}
           LOBOS_APP_ID: ${{ inputs.app_id }}
+          LOBOS_APP_LABEL: 'Lobos 验证'
         run: |
           set -o pipefail
           chmod +x gradlew
