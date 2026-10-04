@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-APK="${LOBO_APK:-/data/user/0/lobos.app/files/work/ss-apk/app-debug.apk}"
-PKG=lobos.app.verify
-DIR=/data/user/0/$PKG
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$HERE/.." && pwd)"
+WORK="$(cd "$REPO/.." && pwd)"
+PKG="${LOBE_ISO_PKG:-lobos.app.verify}"
+DIR=/data/user/0/$PKG/files
+APK="${LOBO_APK:-$WORK/ss-apk/app-debug.apk}"
 
 echo "══ 0. 用法 ══"
 echo "  bash run-verify.sh              装 + 启 + 等供给 + 打结果"
@@ -52,7 +55,7 @@ if [ "$HAVE_ADB" = "1" ]; then
   SEEN=0
   for i in $(seq 1 30); do
     sleep 10
-    N=$(adb shell "cat $DIR/files/os/diag.jsonl 2>/dev/null | grep -c '\"stage\":\"supply\"'" 2>/dev/null | tr -d '\r\n ')
+    N=$(adb shell "cat $DIR/os/diag.jsonl 2>/dev/null | grep -c '\"stage\":\"supply\"'" 2>/dev/null | tr -d '\r\n ')
     case "${N:-0}" in ''|*[!0-9]*) N=0 ;; esac
     if [ "$N" -gt 0 ]; then
       echo "  供给链已跑（$((i*10)) 秒，共 $N 条 supply 记录）"
@@ -73,13 +76,13 @@ else
 fi
 
 echo "══ 5. 结果（直接读，不经 adb）══"
-if [ ! -d "$DIR/files" ]; then
+if [ ! -d "$DIR" ]; then
   echo "  $DIR 还不存在 —— 包没装上。"
   exit 1
 fi
-DIAG=$DIR/files/os/diag.jsonl
-JOURNAL=$DIR/files/os/journal/events.jsonl
-TOOLCHAIN=$DIR/files/usr/lib/toolchain
+DIAG=$DIR/os/diag.jsonl
+JOURNAL=$DIR/os/journal/events.jsonl
+TOOLCHAIN=$DIR/usr/lib/toolchain
 
 echo "-- supply（商店供给对账）--"
 grep supply "$DIAG" 2>/dev/null | tail -3 || echo "  （还没有 —— 应用刚启动或供给还在跑）"
@@ -91,4 +94,4 @@ echo "-- 装出来的件 --"
 ls "$TOOLCHAIN" 2>/dev/null | tr '\n' ' '
 echo
 echo "-- node 能不能跑（最终判据）--"
-"$DIR/files/usr/bin/node" -v 2>/dev/null || echo "  （还没装好）"
+"$DIR/usr/bin/node" -v 2>/dev/null || echo "  （还没装好）"

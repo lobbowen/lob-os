@@ -1,8 +1,12 @@
 const fs = require('fs');
+const path = require('path');
 
-const D = '/data/user/0/lobos.app/files/work';
-const iso = '/data/user/0/lobos.app.verify/files';
-const SNAP = D + '/verify-snapshot.json';
+const REPO = path.resolve(__dirname, '..');
+const BUNDLE = process.env.LOBE_BUNDLE_DIR
+  || path.join(REPO, '..', 'ss-bundle', 'dist');
+const ISO_PKG = process.env.LOBE_ISO_PKG || 'lobos.app.verify';
+const iso = '/data/user/0/' + ISO_PKG + '/files';
+const SNAP = path.join(BUNDLE, '..', 'verify-snapshot.json');
 
 const log = [];
 const p = (s) => { log.push(s); console.log(s); };
@@ -14,7 +18,7 @@ p('══ 自签供给验证：' + (fs.existsSync(iso) ? '装后' : '装前') + 
 p('');
 
 try {
-  const m = JSON.parse(fs.readFileSync(D + '/ss-bundle/dist/userland-manifest-2.json', 'utf8'));
+  const m = JSON.parse(fs.readFileSync(BUNDLE + '/userland-manifest-2.json', 'utf8'));
   p('① 供给清单（预签，7 件）:');
   p('   revision=' + m.revision + '  tools=' + m.tools.length + '  过期=' +
     new Date(Number(m.expiresEpochMs)).toISOString().slice(0, 10));
