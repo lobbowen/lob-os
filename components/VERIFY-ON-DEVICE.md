@@ -161,8 +161,36 @@ adb uninstall lobos.app.verify
 | 步骤 | 验的是 | 通过标志 |
 |---|---|---|
 | 1–2 | 隔离机制本身 | 两个 applicationId 并存 |
-| 3–4 | **新代码的 `SupplyProvisioner.ensure` 在真机成立** | 对账平、6 件可用、无缺件 |
-| 5 | 商店通道端到端 | 7 个真名全是符号链接，指向 toolchain 下的件 |
-| 6 | node 尚未投递的如实反映 | 诊断说「未就位」而不是含糊过去 |
+| 3–4 | **新代码的 `SupplyProvisioner.ensure` 在真机成立** | 对账平、全部件可用、无缺件 |
+| 5 | 商店通道端到端 | 真名全是符号链接，指向 toolchain 下的件 |
+| 6 | node 的如实反映 | 正式商店模式下说「未就位」；自签模式下**装出来且能跑** |
 
 **第 3–4 步是这次唯一真正要验的东西。** 之前所有验证都没覆盖它。
+
+## 预期输出（照这个对照判成败）
+
+**自签模式**（`SELF-SIGNED-VERIFY.md` 那套，包指向本机供给）：
+
+```
+① supply 对账
+   stage=supply  level=OK
+   message=商店供给对账：声明 7 件，全部按真名可用
+   detail=http://127.0.0.1:8120/userland-canary
+
+② 装出来的件（7 个，含 node）
+   curl git jq node npm pnpm sqlite3
+
+③ node 最终判据
+   /data/user/0/lobos.app.verify/files/usr/bin/node -v
+   → v24.21.0
+```
+
+**正式商店模式**（`channel.json` 指向 `hubcdn.zll.ink`）：
+
+```
+① supply 对账
+   message=商店供给对账：声明 6 件，全部按真名可用
+② 装出来的件：curl git jq npm pnpm sqlite3（不含 node —— 清单里没有）
+③ node：诊断说「Node 运行时未就位」；usr/bin/node 指向 APK 的 libnode.so
+   （正式凭据到位并发布 userland-canary-7 之后，这里会变成 7 件 + node 从商店装）
+```

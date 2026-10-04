@@ -33,7 +33,7 @@ object SupplyProvisioner {
         return base + "/userland-" + o.optString("channel", "canary")
     }
 
-    private fun uncached(url: String): String =
+    internal fun uncached(url: String): String =
         url + (if (url.indexOf('?') >= 0) "&" else "?") + "t=" + System.currentTimeMillis()
 
     internal fun httpGet(url: String, maxBytes: Int = MAX_FETCH_BYTES): ByteArray {
