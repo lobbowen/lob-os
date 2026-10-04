@@ -59,6 +59,40 @@ node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
 
 清单的 `baseUrl` 必须与 `--presigned` 清单里写的一致 —— 那是设备实际会去拉的地址。
 
+### 必查：包与清单必须配套（这个坑我踩过）
+
+**包里的信任根必须能验你手上这份清单**。不配套的话，设备侧 `ensure` 第一步
+验签就失败，**一件都装不上**，而症状只表现为诊断里一句「商店清单验签不通过」，
+很容易被误判成别的问题。
+
+为什么会不配套：self_signed 步若每次 CI 运行都现生成一对新密钥，那么
+「包」（这一轮构建）与「你手上那份 bundle」（另一轮构建）来自不同轮次，信任根对不上。
+
+**配了 secret 就不用担心**（固定密钥对，每轮都配套）：
+
+```bash
+gh secret set E2E_PUBLIC_KEY_PEM  --repo lobbowen/lob-os  < e2e-public.pem
+gh secret set E2E_PRIVATE_KEY_PEM --repo lobbowen/lob-os < e2e-private.pem
+```
+
+**没配 secret 时，每次都必须用同一轮的 bundle**（包与 bundle 都来自那一次触发）。
+CI 现在有「配套自检」步会替你验一遍（用包里的公钥验本轮清单，不配套直接判红），
+但那只保证**同一轮内**配套 —— 你手上有旧 bundle 就不行。
+
+自查（出问题立刻能看出来）：
+
+```bash
+# 从 APK 里取出公钥，与 bundle 的签名对一遍
+unzip -p <apk> assets/supply/userland-public.pem > /tmp/apk-pub.pem
+node -e '
+  const fs=require("fs"), c=require("crypto");
+  const pub=fs.readFileSync("/tmp/apk-pub.pem","utf8");
+  const body=fs.readFileSync(process.argv[1]);
+  const sig=Buffer.from(fs.readFileSync(process.argv[1].replace(/\.json$/,".json.sig"),"utf8").trim(),"base64");
+  console.log(c.verify(null, body, pub, sig) ? "配套 ✓ 可以起服务" : "不配套 ✘ 换同一轮的 bundle");
+' <bundle>/dist/userland-manifest-2.json
+```
+
 让它活过你的 shell（否则会话一收服务就没了）：
 
 ```bash
