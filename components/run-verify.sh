@@ -40,6 +40,8 @@ if [ "$HAVE_ADB" = "1" ] && [ "${1:-}" != "--no-install" ]; then
   adb shell pm list packages | grep -q "^package:$PKG$" \
     && echo "  [ok] $PKG 已装（与开发包 lobos.app 并存）" \
     || echo "  [warn] 没在 pm list 里看到 $PKG"
+  echo "  装着的包："
+  adb shell pm list packages 2>/dev/null | grep -i lobos | sed 's/^/    /'
 fi
 
 if [ "$HAVE_ADB" = "1" ]; then
