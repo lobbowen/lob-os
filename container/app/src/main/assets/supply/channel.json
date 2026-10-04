@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseUrl": "https://hubcdn.zll.ink",
+  "baseUrl": "https://lobcdn.zll.ink",
   "channel": "canary",
   "manifestName": "userland-manifest-2.json",
   "sigName": "userland-manifest-2.json.sig"

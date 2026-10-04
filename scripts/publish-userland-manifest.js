@@ -13,7 +13,7 @@ const DIST = POS[0] || 'dist';
 const OUT = POS[1] || 'release';
 const KEY = POS[2] || 'keys/ota-private.pem';
 const CHANNEL = POS[3] || 'canary';
-const BASE = (process.env.USERLAND_BASE_URL || 'https://hubcdn.zll.ink').replace(/\/+$/, '');
+const BASE = (process.env.USERLAND_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.USERLAND_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'ota-public.pem');
 const VERIFY = path.join(__dirname, 'userland-verify.json');

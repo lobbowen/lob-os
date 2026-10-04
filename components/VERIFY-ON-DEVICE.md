@@ -13,7 +13,7 @@
 
 - 一台连着 adb 的机器
 - 设备上现有 `lobos.app`（开发用）**不要动**
-- 网络能连 `hubcdn.zll.ink`（商店供给从那里拉）
+- 网络能连 `lobcdn.zll.ink`（商店供给从那里拉）
 
 ## 1. 装
 
@@ -69,7 +69,7 @@ adb shell monkey -p lobos.app.verify -c android.intent.category.LAUNCHER 1
 
 | 模式 | 供给源 | 实测速度 | 88MB 耗时 |
 |---|---|---|---|
-| 正式商店 | `hubcdn.zll.ink` | 708 KB/s | 约 2 分钟 |
+| 正式商店 | `lobcdn.zll.ink` | 708 KB/s | 约 2 分钟 |
 | 自签（`SELF-SIGNED-VERIFY.md`） | `127.0.0.1:8120` loopback | **521 MB/s**（node 35MB 仅 0.07 秒） | 下载可忽略，瓶颈是 App 端解包落位 |
 
 自签模式下如果等了 2 分钟还没结果，**不是网络慢**，去看诊断里 supply 那条说什么。
@@ -116,7 +116,7 @@ adb shell cat /data/user/0/lobos.app.verify/files/os/journal/events.jsonl | grep
 ```json
 {"at":1791042370975,"stage":"supply","level":"OK",
  "message":"C 层供给对账：声明 6 件，全部按真名可用",
- "detail":"https://hubcdn.zll.ink/userland-canary"}
+ "detail":"https://lobcdn.zll.ink/userland-canary"}
 ```
 
 若 `run-as` 不可用，就在应用内的诊断面板看同样的内容。
@@ -194,7 +194,7 @@ adb uninstall lobos.app.verify
    → v24.21.0
 ```
 
-**正式商店模式**（`channel.json` 指向 `hubcdn.zll.ink`）：
+**正式商店模式**（`channel.json` 指向 `lobcdn.zll.ink`）：
 
 ```
 ① supply 对账

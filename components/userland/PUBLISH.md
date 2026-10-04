@@ -129,8 +129,8 @@ ed25519 私钥目前只存在于 `dsh-mobile` 仓的 secret `OTA_PRIVATE_KEY_PEM
 线上清单的签名是现成的，可以直接验 —— 这一步不需要私钥，只需要公钥：
 
 ```bash
-curl -fsS https://hubcdn.zll.ink/userland-canary/userland-manifest-2.json -o /tmp/man.json
-curl -fsS https://hubcdn.zll.ink/userland-canary/userland-manifest-2.json.sig -o /tmp/man.sig
+curl -fsS https://lobcdn.zll.ink/userland-canary/userland-manifest-2.json -o /tmp/man.json
+curl -fsS https://lobcdn.zll.ink/userland-canary/userland-manifest-2.json.sig -o /tmp/man.sig
 node -e '
 const fs = require("fs"), crypto = require("crypto");
 const pub = fs.readFileSync("container/app/src/main/assets/supply/userland-public.pem", "utf8");
