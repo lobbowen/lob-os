@@ -1,0 +1,36 @@
+=== 自签供给验证：装前完整快照（2026-10-04）===
+
+[服务]
+  pid 20906  ppid 1（已跑 8h+，不受会话影响）
+  http://127.0.0.1:8120/userland-canary/userland-manifest-2.json → 200 / 12619 字节
+  件 7 个，node 35MB 拉取速度 521 MB/s（loopback，非瓶颈）
+
+[包]
+  ss-apk/app-debug.apk  9,747,936 字节（9.3MB）
+  applicationId = lobos.app.verify（与开发包 lobos.app 不同 ⇒ 并存）
+  assets/supply/channel.json.baseUrl = http://127.0.0.1:8120（CI 构建时替换）
+  assets/supply/userland-public.pem = 自签公钥（≠ 真公钥，已核对）
+  jniLibs/libc++_shared.so 在，libnode.so 不在
+
+[清单（服务供的，自签）]
+  revision=1  tools=7  过期 2026-11-02（30 天）
+  curl@8.22.0 git@2.55.0 jq@1.8.2 node@24.21.0 npm@11.19.0 pnpm@12.7.0 sqlite3@3530400
+  node 件 sha256 = 75695f75a08d298d6fa1c82d045f08af7ec5c136de364cbc9ad3deee073ee0b8
+  （与实际件逐字节一致，已核）
+
+[环境]
+  设备上现有包：只有 package:lobos.app（隔离包未装过，无冲突）
+  存储：780G 可用（需要约 150MB）
+  供给在后台线程（OsApplication.onCreate → Thread），不阻塞主线程
+
+[程序 OTA 通道（独立）】
+  program-feed.json → hubcdn.zll.ink/program-canary/program-manifest.json → 200
+
+[装完该看到]
+  diag.jsonl: stage=supply level=OK
+             message=商店供给对账：声明 7 件，全部按真名可用
+  toolchain 下 7 个目录（含 node）
+  usr/bin/node -v → v24.21.0
+  usr/bin/node 链指向 → .../lobos.app.verify/files/usr/lib/toolchain/node/bin/node
+    （若指向 /data/app/.../lib/arm64/libnode.so ⇒ 说明回落到了 APK 兜底，
+      node 虽能用但不是商店装出来的 —— 那不是要验的那个）
