@@ -54,6 +54,15 @@ if (!/id != INSTALLER_ID/.test(s.broker)) {
 if (!/issueInstallerSession/.test(s.broker)) add('宿主未签发 installer 会话');
 if (!/const val INSTALLER_ID/.test(s.broker)) add('缺 INSTALLER_ID 常量');
 
+if (!/CapabilityBroker\.INSTALLER_ID/.test(s.panel)) {
+  add('面板没有持 INSTALLER_ID 身份调用：传目标 id 会被 invokeLocal 的「不在册」拒掉' +
+    '（真机实测报「程序不在册」）');
+}
+if (!/session\.programId\.trim\(\) == INSTALLER_ID\).*return base \+ ApiSpec\.GROUP_SYS/s.test(s.broker)) {
+  add('serverGranted 未把 installer 当系统身份：它在 listIds 为空时会被当程序会话，' +
+    '拿到空能力集，于是 os.appmgr.install 要的 base 组缺失');
+}
+
 for (const must of ['不能反向连宿主', 'mount namespace', 'invokeLocal']) {
   if (!s.doc.includes(must)) add('文档未记「' + must + '」这一实测结论');
 }

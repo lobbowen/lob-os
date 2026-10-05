@@ -322,6 +322,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val base = runCatching {
             lobos.capability.BridgeTokens.from(CapabilityEvidenceCollector.systemReads(this))
         }.getOrDefault(setOf(lobos.capability.BridgeTokens.BASE))
+        if (session.programId.trim() == INSTALLER_ID) return base + ApiSpec.GROUP_SYS
         val isSystem = !isProgramSession(session)
         if (isSystem) return base + ApiSpec.GROUP_SYS
         val want = declaredCapabilities(session.programId)

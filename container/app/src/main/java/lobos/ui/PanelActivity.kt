@@ -196,7 +196,11 @@ class PanelActivity : AppCompatActivity() {
                 return@execute
             }
             val res = runCatching {
-                broker.invokeLocal(id, method, org.json.JSONObject().apply { put("id", id) })
+                broker.invokeLocal(
+                    CapabilityBroker.INSTALLER_ID,
+                    method,
+                    org.json.JSONObject().apply { put("id", id) },
+                )
             }.getOrElse {
                 say("$method 异常: " + (it.message ?: it.javaClass.simpleName))
                 return@execute
