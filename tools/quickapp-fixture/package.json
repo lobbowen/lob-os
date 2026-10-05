@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@dimina/compiler": "^1.2.1"
+  }
+}
