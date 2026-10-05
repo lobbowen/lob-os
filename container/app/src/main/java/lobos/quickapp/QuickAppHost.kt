@@ -84,7 +84,7 @@ object QuickAppHost {
         val dimina = runCatching { Dimina.getInstance() }.getOrElse { return 0 }
         var n = 0
         for (e in ProgramIndex.all(context)) {
-            if (e.level != ProgramIndex.Level.APPLICATION) continue
+            if (e.level != lobos.os.Level.APPLICATION) continue
             val dir = File(e.stateDir, "quickapp")
             if (!dir.isDirectory) continue
             dimina.installMiniProgram(e.id, dir.absolutePath) {}
