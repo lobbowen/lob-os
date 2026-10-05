@@ -141,6 +141,20 @@ object ProgramInstaller {
             return InstallResult(false, version, source, "postcheck-backend-missing",
                 "包内没有 $BACKEND_DIR/ —— 一个快应用是一次安装的前后端整体", verify.raw)
         }
+        if (!flattenBackend(File(payloadRoot, BACKEND_DIR), payloadRoot)) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-backend-flatten-failed",
+                "无法把 $BACKEND_DIR/ 的内容平铺到版本目录根部", verify.raw)
+        }
+        val declaredEntry = installedManifest.entry.trim()
+        if (declaredEntry.isEmpty() ||
+            !File(payloadRoot, declaredEntry).canonicalFile.startsWith(payloadRoot.canonicalFile + File.separator) ||
+            !File(payloadRoot, declaredEntry).isFile
+        ) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-entry-not-at-root",
+                "后端平铺后入口仍不存在：backend/" + installedManifest.entry, verify.raw)
+        }
 
         val aside = if (dest.exists()) {
             File(dest.parentFile, dest.name + ".replaced-" + System.currentTimeMillis())
@@ -189,6 +203,16 @@ object ProgramInstaller {
             detail = "已落盘并切换指针（待健康检查通过后提交）: " + dest.absolutePath,
             nodeVerifyOutput = verify.raw,
         )
+    }
+
+    private fun flattenBackend(backend: File, payloadRoot: File): Boolean {
+        val children = backend.listFiles() ?: return false
+        for (child in children) {
+            val dest = File(payloadRoot, child.name)
+            if (dest.exists()) return false
+            if (!child.renameTo(dest)) return false
+        }
+        return backend.delete()
     }
 
     private fun bindQuickApp(context: Context, programId: String, quickAppDir: File) {

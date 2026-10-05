@@ -64,6 +64,10 @@ if (!src.quickReg.includes('fun register')) add('QuickAppRegistry.register 未�
 if (!src.quickReg.includes('uiName = ui.name')) add('注册表没有落 ui.name');
 if (!src.quickReg.includes('uiIcon = ui.icon')) add('注册表没有落 ui.icon');
 
+if (!/fun flattenBackend/.test(src.installer)) add('安装器没有把 backend/ 平铺到版本目录根部');
+if (!src.installer.includes('postcheck-entry-not-at-root')) add('安装器未校验平铺后入口是否落在版本目录根部');
+if (!/declaredEntry\.isEmpty\(\)/.test(src.installer)) add('入口判据未防空串（File(root,"") 是目录，会误判为通过）');
+
 if (!/val uiName: String/.test(src.index)) add('IndexEntry 缺 uiName');
 if (!/val uiIcon: String/.test(src.index)) add('IndexEntry 缺 uiIcon');
 if (/uiUrl/.test(src.index)) add('IndexEntry 还留着死字段 uiUrl（无任何写入者）');

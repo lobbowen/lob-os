@@ -22,7 +22,9 @@ GuestAdapter:68
 
 **两端拿到同一个端口，且升级时端口不变** —— 因为注册表与 `config.json` 都写着它。
 
-### 1.1 查证时发现并修掉的一个真缺陷
+### 1.0 两处查证出来的真缺陷
+
+**其一：段名不一致让端口注入静默失效。**
 
 `ProgramRegistry` 原先读的是 `json.optJSONObject("ports")?.optJSONObject("http")`，
 而 `ManifestSchema` 校验的是 `http` 段、我们的测试包写的也是 `http`。
@@ -31,7 +33,25 @@ GuestAdapter:68
 已统一到 `ManifestSchema.SC_HTTP`，并把 `http.env` 补成受校验的规范字段
 （校验环境变量名合法性）。
 
-这类缺陷门禁查不出来（结构都对），**只有把「清单写的」和「代码读的」放一起看才会暴露**。
+这类缺陷门禁查不出来（结构都对），**只有把「清单写的」和「代码做的」放一起看才会暴露**。
+
+**其二：后端根本没被落位。**
+
+安装器原先只把 `<version>/` 整目录改名过去（内含 `backend/` 与 `frontend/`），
+再把 `frontend/` 摘走。**`backend/` 原地不动。**
+
+而清单写的 `entry: "server.js"` 指向版本目录**根部**，
+实际文件却在 `<version>/backend/server.js` —— **后端永远找不到入口，装完也起不来。**
+
+已修：`flattenBackend` 把 `backend/` 的内容平铺到版本目录根部，
+并新增判据 `postcheck-entry-not-at-root`（平铺后入口必须真实存在于根部）。
+平铺在 staging 阶段做，失败即整包丢弃，不留半成品。
+用测试包模拟验证：平铺前入口判据 `false`，平铺后 `true`。
+
+| 落位 | 去向 |
+|---|---|
+| `backend/` 内容 | 平铺到 `programs/<id>/<version>/`（后端本体，与清单 `entry` 对齐） |
+| `frontend/` 整目录 | 搬到 `programs/<id>/quickapp/`（dimina 直接用） |
 
 ---
 
