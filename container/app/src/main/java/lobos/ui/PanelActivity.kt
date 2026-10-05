@@ -213,17 +213,17 @@ class PanelActivity : AppCompatActivity() {
 
     private fun pollTask(taskId: String) {
         val deadline = System.currentTimeMillis() + 90000L
+        val nl = System.lineSeparator()
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(700L)
             val t = lobos.os.TaskRegistry.get(this, taskId) ?: continue
-            handler.post {
-                logBox.text = stamp.format(Date()) + "  " + t.id + "  " + t.state +
-                    "  " + t.progress + "%" + String.fromCharCode(10) + logBox.text.toString().take(3000)
-            }
+            val line = stamp.format(Date()) + "  " + t.id + "  " + t.state + "  " + t.progress + "%"
+            handler.post { logBox.text = line + nl + logBox.text.toString().take(3000) }
             if (t.state == "done" || t.state == "failed") {
+                val result = stamp.format(Date()) + "  结果：" + t.detail
                 handler.post {
-                    if (t.state == "done") toast("完成") else toast("失败")
-                    logBox.text = stamp.format(Date()) + "  结果：" + t.detail + String.fromCharCode(10) + logBox.text.toString().take(3000)
+                    toast(if (t.state == "done") "完成" else "失败")
+                    logBox.text = result + nl + logBox.text.toString().take(3000)
                 }
                 if (t.state == "done") refresh()
                 return

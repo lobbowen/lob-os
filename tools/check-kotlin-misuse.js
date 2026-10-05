@@ -22,6 +22,8 @@ const BAD = [
   [/\.canonicalFile\.endsWith\(/, 'canonicalFile.endsWith — 同上，Kotlin 的 endsWith 是无接收者扩展函数'],
   [/\.startsWith\(/, null],
   [/\.endsWith\(/, null],
+  [/String\.fromCharCode/, 'String.fromCharCode 是 JavaScript 的写法；Kotlin 用 \\n 或 System.lineSeparator()'],
+  [/=> \{/, 'JS 箭头函数：Kotlin 用 fun + lambda'],
 ];
 
 const problems = [];
