@@ -13,6 +13,7 @@ const FILES = {
   index: J('lobos/os/ProgramIndex.kt'),
   installer: J('lobos/ota/ProgramInstaller.kt'),
   pkgInstaller: J('lobos/os/PackageInstaller.kt'),
+  programDir: J('lobos/ota/ProgramDir.kt'),
   quickReg: J('lobos/quickapp/QuickAppRegistry.kt'),
   bridge: J('lobos/quickapp/LobosBridge.kt'),
   broker: J('lobos/bridge/CapabilityBroker.kt'),
@@ -74,6 +75,10 @@ if (!/fun flattenBackend/.test(src.installer)) add('安装器没有把 backend/ 
 if (!src.installer.includes('postcheck-entry-not-at-root')) add('安装器未校验平铺后入口是否落在版本目录根部');
 if (!/packedEntry\.isEmpty\(\)/.test(src.installer)) add('入口判据未防空串（File(root,"") 是目录，会误判为通过）');
 if (!/fun rewriteEntry/.test(src.installer)) add('安装器没有改写清单 entry（包内写 backend/x.js，平铺后须变成 x.js）');
+if (!src.programDir.includes('existing == null) lobos.os.Desired.RUNNING else base.desired')) {
+  add('首次登记的程序 desired 不是 RUNNING：新装程序会停在 STOPPED，后端永不启动' +
+    '（真机装成功后 desired=STOPPED，程序在跑 0/1）');
+}
 if (!src.installer.includes('postcheck-entry-not-in-package')) add('安装器未校验包内入口真实存在（校验器在装前就要用这个路径）');
 
 if (!/val uiName: String/.test(src.index)) add('IndexEntry 缺 uiName');

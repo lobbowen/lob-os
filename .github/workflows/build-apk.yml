@@ -177,13 +177,17 @@ jobs:
       - name: 发布为 release 资产（下载链接一步可得）
         if: success() && github.ref == 'refs/heads/main'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
           TAG: verify-${{ github.sha }}
         run: |
           set -euo pipefail
           APK="$(ls container/app/build/outputs/apk/debug/*.apk | head -1)"
           [ -f "$APK" ] || { echo "::error::没有 APK 可发布"; exit 1; }
           NAME="lobos-os-$(jq -r '.shell.versionName' version.json).apk"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::notice::未配置 APK_PUBLISH_TOKEN，跳过自动发布（构建本身是成功的）"
+            exit 0
+          fi
           gh release create "$TAG" "$APK#$NAME" \
             --title "验证包 $(jq -r '.shell.versionName' version.json) · ${GITHUB_SHA:0:9}" \
             --notes "commit ${GITHUB_SHA}" \

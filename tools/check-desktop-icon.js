@@ -63,6 +63,13 @@ if (!/exported="false"/.test(manifest.split('QuickAppLaunchActivity')[1] || ''))
   add('QuickAppLaunchActivity 必须 exported=false（外部只需经桌面图标进入）');
 }
 if (!/EXTRA_ID = "lobos\.quickapp\.id"/.test(launch)) add('启动落点缺 EXTRA_ID');
+if (!/action = ACTION_LAUNCH/.test(launch)) {
+  add('快捷方式 Intent 必须有 action：ShortcutInfo.Builder.setIntent 强制要求，' +
+    '缺了抛 NullPointerException（真机崩过一次，Force finishing PanelActivity）');
+}
+if (/FLAG_ACTIVITY_CLEAR_TASK/.test(launch)) {
+  add('快捷方式 Intent 不该带 FLAG_ACTIVITY_CLEAR_TASK：点图标会清掉整个任务栈');
+}
 if (!/QuickAppHost\.open/.test(launch)) add('启动落点没有转交 QuickAppHost.open');
 
 if (!uninstall.includes('DesktopIcons.withdrawNow')) add('卸载没有联动桌面入口');

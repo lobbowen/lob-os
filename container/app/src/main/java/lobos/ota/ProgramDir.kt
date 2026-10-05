@@ -174,6 +174,7 @@ class ProgramDir(
                 base.copy(
                     version = version,
                     enabled = true,
+                    desired = if (existing == null) lobos.os.Desired.RUNNING else base.desired,
                     role = role,
                     resident = resident,
                     restart = spec?.restart ?: base.restart,
