@@ -8,6 +8,7 @@ const ROOT = path.resolve(__dirname, '..');
 const P = (rel) => path.join(ROOT, rel);
 
 const FILES = {
+  setup: P('container/app/src/main/java/lobos/ui/setup/SetupActivity.kt'),
   panel: P('container/app/src/main/java/lobos/ui/PanelActivity.kt'),
   main: P('container/app/src/main/java/lobos/MainActivity.kt'),
   layout: P('container/app/src/main/res/layout/activity_main.xml'),
@@ -47,6 +48,15 @@ if (!/DesktopIcons\.withdraw/.test(s.panel)) add('面板没有「移桌面」入
 if (!/QuickAppHost\.open/.test(s.panel)) add('面板没有「打开快应用」入口');
 
 if (!/Thread\(r, "lobos-panel"\)/.test(s.panel)) add('面板的长耗时动作没有放后台线程（会 ANR）');
+
+if (!/text = "控制面板"/.test(s.setup)) add('引导页没有「控制面板」按钮：能力不就绪时用户完全没法用控制面');
+if (!/openPanel/.test(s.setup)) add('SetupActivity 没有 openPanel()');
+const panelAt = s.setup.indexOf('panelBtn = Button');
+const panelBlock = panelAt >= 0 ? s.setup.slice(panelAt, panelAt + 260) : '';
+if (/visibility = View\.GONE/.test(panelBlock)) {
+  add('引导页的面板按钮不能默认隐藏（enterBtn 就是这么把控制台挡死的）');
+}
+if (!/PanelActivity/.test(s.setup)) add('SetupActivity 没有引用 PanelActivity');
 
 if (!/id != INSTALLER_ID/.test(s.broker)) {
   add('invokeLocal 未放行 INSTALLER_ID：控制面板装不了第一个程序（它在装之前就不在 listIds 里）');

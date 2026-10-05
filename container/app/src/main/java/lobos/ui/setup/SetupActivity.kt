@@ -56,6 +56,7 @@ class SetupActivity : AppCompatActivity() {
     private var debtsText: TextView? = null
     private var debtsDetail: TextView? = null
     private var enterBtn: Button? = null
+    private var panelBtn: Button? = null
     private var lastEvidence: Evidence? = null
 
     @Volatile private var refreshInFlight = false
@@ -152,6 +153,11 @@ class SetupActivity : AppCompatActivity() {
                 col.addView(enterBtn)
             }
         }
+        panelBtn = Button(this).apply {
+            text = "控制面板"
+            setOnClickListener { openPanel() }
+        }
+        col.addView(panelBtn as View)
         progressText = TextView(this).apply {
             textSize = 12f
             setPadding(0, pad / 2, 0, 0)
@@ -397,6 +403,10 @@ class SetupActivity : AppCompatActivity() {
         debtsDetail?.text = debts.joinToString("\n") {
             "· " + it.title + "：" + (verdicts[it.id]?.detail ?: "")
         }
+    }
+
+    private fun openPanel() {
+        startActivity(Intent(this, lobos.ui.PanelActivity::class.java))
     }
 
     private fun openWorkbench() {
