@@ -158,10 +158,15 @@ object ProgramInstaller {
             return InstallResult(false, version, source, "postcheck-entry-rewrite-failed",
                 "后端平铺后无法把清单 entry 改写为落位后的相对路径：" + packedEntry, verify.raw)
         }
-        if (!File(payloadRoot, installedManifest.entry.trim()).isFile) {
+        val landedEntry = if (packedEntry.startsWith(BACKEND_DIR + "/")) {
+            packedEntry.substring(BACKEND_DIR.length + 1)
+        } else {
+            packedEntry
+        }
+        if (!File(payloadRoot, landedEntry).isFile) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-not-at-root",
-                "后端平铺后入口仍不存在：" + installedManifest.entry, verify.raw)
+                "后端平铺后入口仍不存在：" + landedEntry, verify.raw)
         }
 
         val aside = if (dest.exists()) {

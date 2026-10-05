@@ -205,7 +205,29 @@ class PanelActivity : AppCompatActivity() {
                 say("$method 异常: " + (it.message ?: it.javaClass.simpleName))
                 return@execute
             }
+            val taskId = res.optString("taskId", "")
             say("$method → " + res.toString().take(400))
+            if (taskId.isNotBlank()) pollTask(taskId)
+        }
+    }
+
+    private fun pollTask(taskId: String) {
+        val deadline = System.currentTimeMillis() + 90000L
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(700L)
+            val t = lobos.os.TaskRegistry.get(this, taskId) ?: continue
+            handler.post {
+                logBox.text = stamp.format(Date()) + "  " + t.id + "  " + t.state +
+                    "  " + t.progress + "%" + String.fromCharCode(10) + logBox.text.toString().take(3000)
+            }
+            if (t.state == "done" || t.state == "failed") {
+                handler.post {
+                    if (t.state == "done") toast("完成") else toast("失败")
+                    logBox.text = stamp.format(Date()) + "  结果：" + t.detail + String.fromCharCode(10) + logBox.text.toString().take(3000)
+                }
+                if (t.state == "done") refresh()
+                return
+            }
         }
     }
 
