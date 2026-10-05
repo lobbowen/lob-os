@@ -6,6 +6,7 @@ import android.util.Log
 import com.didi.dimina.Dimina
 import com.didi.dimina.bean.MiniProgram
 import java.io.File
+import lobos.os.PortBroker
 import lobos.os.ProgramIndex
 
 object QuickAppHost {
@@ -31,17 +32,27 @@ object QuickAppHost {
 
     fun installed(id: String): Boolean = runCatching { Dimina.getInstance().isExistsApp(id) }.getOrDefault(false)
 
-    fun install(id: String, packageDir: File, completion: (Result<org.json.JSONObject>) -> Unit) {
+    fun install(id: String, packageDir: File, port: Int, completion: (Result<org.json.JSONObject>) -> Unit) {
         val dimina = runCatching { Dimina.getInstance() }.getOrElse {
             completion(Result.failure(IllegalStateException("快应用运行时未初始化")))
             return
         }
-        val entry = packageDir.takeIf { it.isDirectory }
-            ?: run {
-                completion(Result.failure(IllegalStateException("程序包目录不存在: $packageDir")))
-                return
-            }
-        dimina.installMiniProgram(id, entry.absolutePath) { r ->
+        if (!packageDir.isDirectory) {
+            completion(Result.failure(IllegalStateException("前端目录不存在: $packageDir")))
+            return
+        }
+        val checked = QuickAppPackage.check(packageDir, id)
+        if (!checked.ok) {
+            completion(Result.failure(IllegalStateException("前端包结构不合格：${checked.problem}")))
+            return
+        }
+        val endpoint = "http://127.0.0.1:$port"
+        if (!QuickAppPackage.withEndpoint(packageDir, endpoint, port)) {
+            completion(Result.failure(IllegalStateException("无法把后端地址写进 config.json")))
+            return
+        }
+        Log.i(TAG, "前端包校验通过 $id v${checked.versionCode}，后端地址 $endpoint 已注入")
+        dimina.installMiniProgram(id, packageDir.absolutePath) { r ->
             if (r.isSuccess) Log.i(TAG, "快应用已装入 dimina: $id") else Log.e(TAG, "装入失败: $id", r.exceptionOrNull())
             completion(r)
         }
@@ -57,23 +68,19 @@ object QuickAppHost {
             Log.e(TAG, "程序不在索引里: $id")
             return
         }
-        val dir = File(entry.stateDir, "quickapp")
+        if (!installed(id)) {
+            Log.e(TAG, "前端尚未装入 dimina，先装后开: $id")
+            return
+        }
         val mp = MiniProgram(
             appId = id,
             name = id,
             path = null,
             versionName = entry.version,
         )
-        runCatching {
-            dimina.installMiniProgram(id, dir.absolutePath) { r ->
-                if (r.isFailure) {
-                    Log.e(TAG, "装入失败，跳过打开: $id", r.exceptionOrNull())
-                    return@installMiniProgram
-                }
-                runCatching { dimina.startMiniProgram(activity, mp) }
-                    .onFailure { Log.e(TAG, "打开失败: $id", it) }
-            }
-        }.onFailure { Log.e(TAG, "调 dimina 失败: $id", it) }
+        runCatching { dimina.startMiniProgram(activity, mp) }
+            .onSuccess { Log.i(TAG, "已打开快应用: $id") }
+            .onFailure { Log.e(TAG, "打开失败: $id", it) }
     }
 
     fun close(id: String): Boolean = runCatching { Dimina.getInstance().closeMiniProgram(id) }.getOrDefault(false)
@@ -81,15 +88,25 @@ object QuickAppHost {
     fun hide(id: String): Boolean = runCatching { Dimina.getInstance().hideMiniProgram(id) }.getOrDefault(false)
 
     fun syncAll(context: Context): Int {
-        val dimina = runCatching { Dimina.getInstance() }.getOrElse { return 0 }
         var n = 0
         for (e in ProgramIndex.all(context)) {
             if (e.level != lobos.os.Level.APPLICATION) continue
-            val dir = File(e.stateDir, "quickapp")
+            val dir = quickAppDirOf(e.stateDir)
             if (!dir.isDirectory) continue
-            dimina.installMiniProgram(e.id, dir.absolutePath) {}
-            n++
+            val port = PortBroker.claim(context, e.id)
+            if (port <= 0) continue
+            val ok = QuickAppPackage.check(dir, e.id).ok &&
+                QuickAppPackage.withEndpoint(dir, "http://127.0.0.1:$port", port)
+            if (!ok) {
+                Log.e(TAG, "前端包不合格，跳过: ${e.id}")
+                continue
+            }
+            runCatching { Dimina.getInstance().installMiniProgram(e.id, dir.absolutePath) {} }
+                .onSuccess { n++ }
+                .onFailure { Log.e(TAG, "装入失败: ${e.id}", it) }
         }
         return n
     }
+
+    fun quickAppDirOf(stateDir: String): File = File(stateDir, "quickapp")
 }
