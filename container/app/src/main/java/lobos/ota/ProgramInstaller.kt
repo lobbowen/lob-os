@@ -147,9 +147,10 @@ object ProgramInstaller {
                 "无法把 $BACKEND_DIR/ 的内容平铺到版本目录根部", verify.raw)
         }
         val declaredEntry = installedManifest.entry.trim()
+        val entryFile = File(payloadRoot, declaredEntry)
         if (declaredEntry.isEmpty() ||
-            !File(payloadRoot, declaredEntry).canonicalFile.startsWith(payloadRoot.canonicalFile + File.separator) ||
-            !File(payloadRoot, declaredEntry).isFile
+            !entryFile.canonicalPath.startsWith(payloadRoot.canonicalPath + File.separator) ||
+            !entryFile.isFile
         ) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-not-at-root",
