@@ -87,6 +87,9 @@ jobs:
       - name: 桥协议三处声明须一致（引擎 / 壳侧下界 / version.json）
         run: node tools/check-protocol-version.js
 
+      - name: 程序端口段须够大且合法（免得被无声改小）
+        run: node tools/check-port-range.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

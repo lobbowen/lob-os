@@ -9,7 +9,7 @@ object PortBroker {
     private const val DIR = "os"
     private const val FILE = "ports.json"
     const val RANGE_START = 41000
-    const val RANGE_END = 41999
+    const val RANGE_END = 50999
 
     data class Lease(val port: Int, val owner: String)
 
