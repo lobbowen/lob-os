@@ -86,36 +86,86 @@
 
 ---
 
-## 6. 要落到哪些地方
+## 6. 卸载摘不掉：一条查证过的硬事实
 
-```
-① 清单          ui.icon / ui.name 必填（程序自带图标与名字）
-② 能力面        两条入口都要能被调用
-                  · 甲：宿主能力（程序界面触发 → 调宿主）
-                  · 乙：控制面板直接调
-③ 宿主实现      读 ui.icon → 缩放 → requestPinShortcut → 返回真实状态
-④ 状态查询      isRequestPinShortcutSupported / getPinnedShortcuts
-⑤ 卸载联动      程序被卸 → 摘掉它的快捷方式
-⑥ 门禁          清单必填校验 + 状态只能取上述三档
-```
+我们原本计划「程序被卸 → 摘掉它的快捷方式」。**这条做不到**，理由三样，都已查证：
 
-**② 的关键**：「添加到桌面」对程序来说是**宿主能力**（跟它要文件、要通知一样），
-所以走已有的能力通道即可——我们上一轮已经注册好 `lobos` 这个 extBridge 模块。
+| 事实 | 出处 |
+|---|---|
+| `ShortcutManager` 全部 28 个公开方法里**没有任何 unpin / 取消固定的 API** | `ShortcutManager.java`（AOSP）逐个方法枚举 |
+| `removeDynamicShortcuts` 返回 `void`，且**只删 dynamic 集合**；`requestPinShortcut` 造出来的是 **pinned** | `ShortcutManager.java:254` / `:598` |
+| hapjs（真实上线的快应用框架）`uninstallShortcutAboveOreo` **直接 `return false`** | `DefaultSysOpProviderImpl.java:232` |
+
+`com.android.launcher.action.UNINSTALL_SHORTCUT` 广播 hapjs 只在 pre-O 分支用，
+我们 `minSdk=26` 走不到那条路（且它同样不是 O+ 的正规能力）。
+
+**所以卸载时我们做的是 `disableShortcuts`**：入口在桌面上留着但点不动，
+程序本体已删。这是平台给的上限，规范里要如实告知用户。
 
 ---
 
-## 7. 明确不做 / 做不到
+## 7. 线程约束（会 ANR，踩不得）
+
+`requestPinShortcut` 与 `getPinnedShortcuts` 在 AOSP 里都标了 **`@WorkerThread`**，
+内部 `getFutureOrThrow(AndroidFuture)` **同步等 Binder 返回**。
+
+**在主线程调用会 ANR。** 所以 `DesktopIcons` 把所有平台调用都放在
+`lobos-desktop-icon` 线程池上，回调再 `Handler(主线程)` 投递回去。
+
+同一份 AOSP 源码也确认了 `requestPinShortcut` 另一条硬约束：
+**「The caller doesn't have a foreground activity or a foreground service,
+or the device is locked」→ 抛 `IllegalStateException`**。
+这也再次说明「装完自动有图标」不可能（见第 2 节）。
+
+---
+
+## 8. 要落到哪些地方
+
+```
+① 清单          ui.name 必填、ui.icon 若填须为件内相对路径
+② 能力面        甲：extBridge 三个事件
+                  · desktopIcon.add      程序界面里「添加到桌面」
+                  · desktopIcon.remove   程序界面里「从桌面移除」
+                  · desktopIcon.state    问真实状态
+                乙：控制面板直接调同一套
+③ 宿主实现      读 ui.icon → requestPinShortcut → 回真实状态
+④ 状态查询      isRequestPinShortcutSupported / getPinnedShortcuts
+⑤ 卸载联动      程序被卸 → disableShortcuts（摘不掉，见第 6 节）
+⑥ 门禁          tools/check-desktop-icon.js
+```
+
+**② 的关键**：「添加到桌面」对程序来说是**宿主能力**（跟它要文件、要通知一样），
+所以走 dimina 的 `registerExtModule("lobos", …)` 即可。
+
+---
+
+## 9. 明确不做 / 做不到
 
 | | 为什么 |
 |---|---|
 | 装完自动有图标 | 系统要求用户确认 + 要前台窗口，**平台性质** |
 | 进 app 抽屉 | 抽屉只收已安装包的 Activity，快捷方式无路径进入 |
 | 静默检测「用户到底点了确认没有」 | launcher 不回这个事件 |
+| 卸载时真正摘掉图标 | 系统没给这个 API（第 6 节） |
 | 自己造 launcher 接管桌面 | 那不是「在安卓里存在」，是换掉安卓 |
 
 ---
 
-## 8. 待决
+## 10. 已定
 
-1. **图标尺寸**：给 launcher 什么尺寸/密度？（自适应大图标 vs 固定）
-2. **`ui.icon` 的必填程度**：所有快应用都必须带图标，还是没有就不给加桌面（但仍可运行）
+1. **图标尺寸**：交给 `ShortcutInfo.Builder` + `Icon.createWithBitmap`，
+   让 launcher 自己按需缩放；不自造多密度。
+2. **`ui.name` 必填、`ui.icon` 可选**：`ui.name` 是桌面入口唯一显示的字，缺了不该进桌；
+   `ui.icon` 缺了仍可加（用 launcher 默认图标），只是不像「程序自己的图标」。
+
+---
+
+## 11. 实现落点
+
+| 文件 | 职责 |
+|---|---|
+| `quickapp/DesktopIcons.kt` | 状态三档、线程池、读图标、request / disable |
+| `quickapp/LobosBridge.kt` | 甲入口三个事件，读 `ui.name`/`ui.icon` |
+| `quickapp/QuickAppLaunchActivity.kt` | 桌面图标落点（`EXTRA_ID`）→ `QuickAppHost.open` |
+| `os/PackageInstaller.kt` | 卸载时 `DesktopIcons.withdrawNow` |
+| `os/ManifestSchema.kt` | `UI_NAME` 必填、`UI_ICON` 限相对路径 |

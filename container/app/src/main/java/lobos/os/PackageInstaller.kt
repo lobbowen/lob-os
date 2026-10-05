@@ -154,6 +154,7 @@ object PackageInstaller {
             }
         }
         ProgramIndex.remove(ctx, name)
+        lobos.quickapp.DesktopIcons.withdrawNow(ctx, name)
         Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed
     }

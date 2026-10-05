@@ -119,5 +119,12 @@
             android:name=".bridge.ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <activity
+            android:name=".quickapp.QuickAppLaunchActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="lobos.quickapp"
+            android:excludeFromRecents="false" />
     </application>
 </manifest>

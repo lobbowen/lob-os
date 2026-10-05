@@ -93,6 +93,9 @@ jobs:
       - name: 快应用包结构须与规范一致（前后端同包 + 前端三必需文件）
         run: node tools/check-quickapp-package.js
 
+      - name: 桌面入口须与规范一致（三档状态取平台事实 + 摘除能力如实）
+        run: node tools/check-desktop-icon.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

@@ -31,6 +31,8 @@ object ManifestSchema {
     const val UI_TYPE = "type"
     const val UI_PACKAGE = "package"
     const val UI_URL = "url"
+    const val UI_NAME = "name"
+    const val UI_ICON = "icon"
     const val UI_ON_CLOSED = "onUiClosed"
 
     const val TYPE_QUICKAPP = "quickapp"
@@ -136,6 +138,13 @@ object ManifestSchema {
             val url = ui.optString(UI_URL, "").trim()
             if (url.isNotBlank() && !url.startsWith("http://") && !url.startsWith("https://")) {
                 errs += "$SC_UI.$UI_URL 只接受 http/https：$url"
+            }
+            if (ui.optString(UI_NAME, "").isBlank()) {
+                errs += "$SC_UI.$UI_NAME 不能为空（桌面图标下显示的就是它）"
+            }
+            val icon = ui.optString(UI_ICON, "").trim()
+            if (icon.startsWith("/") || icon.contains("..")) {
+                errs += "$SC_UI.$UI_ICON 必须是件内相对路径：$icon"
             }
         }
         val closed = ui.optString(UI_ON_CLOSED, CLOSED_KEEP_ALIVE).lowercase()

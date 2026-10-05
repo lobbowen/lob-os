@@ -46,7 +46,7 @@ class OsApplication : Application() {
                 it.javaClass.name + ": " + (it.message ?: "")
             )
         }.onSuccess {
-            runCatching { lobos.quickapp.QuickAppHost.registerCapabilities() }
+            runCatching { lobos.quickapp.QuickAppHost.registerCapabilities(this) }
                 .onFailure {
                     RuntimeDiagnostics.append(this, "quickapp", false, "能力模块注册失败", it.javaClass.name + ": " + (it.message ?: ""))
                 }

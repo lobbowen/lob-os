@@ -16,13 +16,14 @@ object QuickAppHost {
 
     fun ready(): Boolean = runCatching { Dimina.getInstance() }.isSuccess
 
-    fun registerCapabilities() {
+    fun registerCapabilities(ctx: Context) {
+        val app = ctx.applicationContext
         val dimina = runCatching { Dimina.getInstance() }.getOrElse {
             Log.e(TAG, "注册能力失败：运行时未初始化", it)
             return
         }
         dimina.registerExtModule(MODULE) { event, data, callback ->
-            LobosBridge.handle(event, data) { payload ->
+            LobosBridge.handle(app, event, data) { payload ->
                 runCatching { callback.onSuccess(payload) }
             }
             null
