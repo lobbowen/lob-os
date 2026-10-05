@@ -263,6 +263,33 @@ object ProgramInstaller {
             "快应用已配对：端口=$port 前端=" + quickAppDir.absolutePath,
             "id=" + programId,
         )
+        loadIntoDimina(context, programId, quickAppDir, port)
+    }
+
+    private fun loadIntoDimina(context: Context, programId: String, quickAppDir: File, port: Int) {
+        if (!lobos.quickapp.QuickAppHost.ready()) {
+            lobos.os.Journal.note(
+                context, "quickapp", false,
+                "快应用运行时尚未就绪，等下次 reconcile 再装入 dimina",
+                "id=" + programId,
+            )
+            return
+        }
+        lobos.quickapp.QuickAppHost.install(programId, quickAppDir, port) { r ->
+            r.onSuccess {
+                lobos.os.Journal.note(
+                    context, "quickapp", true,
+                    "前端已装入 dimina：可打开了",
+                    "id=" + programId + " port=" + port,
+                )
+            }.onFailure {
+                lobos.os.Journal.note(
+                    context, "quickapp", false,
+                    "前端装入 dimina 失败：装得上但打不开",
+                    "id=" + programId + " " + (it.message ?: it.javaClass.simpleName),
+                )
+            }
+        }
     }
 
 }

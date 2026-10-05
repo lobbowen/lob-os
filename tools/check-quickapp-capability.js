@@ -61,6 +61,18 @@ if (!/fun bindQuickApp/.test(src.installer)) add('bindQuickApp 未实现');
 if (!/PortBroker\.claim|resolveHttpPort/.test(src.installer)) add('bindQuickApp 没有分配端口');
 if (!/withEndpoint/.test(src.installer)) add('bindQuickApp 没有把后端地址注入前端 config.json');
 if (!/QuickAppRegistry\.register/.test(src.installer)) add('bindQuickApp 没有写注册表');
+if (!src.installer.includes('loadIntoDimina')) {
+  add('安装器没有把前端送进 dimina：装得上但打不开（open 先查 isExistsApp，' +
+    '没装进 dimina 就直接 return —— 真机点「打开」毫无反应且不报错）');
+}
+if ((src.installer.match(/loadIntoDimina\(/g) || []).length < 2) {
+  add('loadIntoDimina 只有定义没有调用点：装了端口、注入了 config、写了注册表，' +
+    '但前端从没送进 dimina，所以点「打开」毫无反应');
+}
+if (!/QuickAppHost\.install/.test(src.installer)) add('loadIntoDimina 没有调 QuickAppHost.install');
+if (!/QuickAppHost\.ready\(\)/.test(src.installer)) {
+  add('装入 dimina 前没查运行时是否就绪（未 init 时 install 会静默失败）');
+}
 if (!src.quickReg.includes('fun register')) add('QuickAppRegistry.register 未实现');
 if (!src.quickReg.includes('uiName = ui.name')) add('注册表没有落 ui.name');
 if (!src.quickReg.includes('uiIcon = ui.icon')) add('注册表没有落 ui.icon');
