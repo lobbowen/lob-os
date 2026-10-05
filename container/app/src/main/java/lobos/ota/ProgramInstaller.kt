@@ -83,9 +83,10 @@ object ProgramInstaller {
         if (dest.isDirectory && km.entryPath(version).exists()) {
             km.markPending(version, previousVersion)
             km.setCurrentVersion(version)
+            bindQuickApp(context, programId, km.quickAppDir())
             return InstallResult(
                 ok = true, version = version, source = source, reason = "already-installed",
-                detail = "该版本已落盘，直接切指针（待健康检查通过后提交）", nodeVerifyOutput = verify.raw,
+                detail = "该版本已落盘，直接切指针并重做前后端配对（待健康检查通过后提交）", nodeVerifyOutput = verify.raw,
             )
         }
 
@@ -141,20 +142,26 @@ object ProgramInstaller {
             return InstallResult(false, version, source, "postcheck-backend-missing",
                 "包内没有 $BACKEND_DIR/ —— 一个快应用是一次安装的前后端整体", verify.raw)
         }
+        val packedEntry = installedManifest.entry.trim()
+        if (packedEntry.isEmpty() || !File(payloadRoot, packedEntry).isFile) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-entry-not-in-package",
+                "包内找不到清单声明的入口：" + packedEntry, verify.raw)
+        }
         if (!flattenBackend(File(payloadRoot, BACKEND_DIR), payloadRoot)) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-backend-flatten-failed",
                 "无法把 $BACKEND_DIR/ 的内容平铺到版本目录根部", verify.raw)
         }
-        val declaredEntry = installedManifest.entry.trim()
-        val entryFile = File(payloadRoot, declaredEntry)
-        if (declaredEntry.isEmpty() ||
-            !entryFile.canonicalPath.startsWith(payloadRoot.canonicalPath + File.separator) ||
-            !entryFile.isFile
-        ) {
+        if (!rewriteEntry(payloadRoot, packedEntry)) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-entry-rewrite-failed",
+                "后端平铺后无法把清单 entry 改写为落位后的相对路径：" + packedEntry, verify.raw)
+        }
+        if (!File(payloadRoot, installedManifest.entry.trim()).isFile) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-not-at-root",
-                "后端平铺后入口仍不存在：backend/" + installedManifest.entry, verify.raw)
+                "后端平铺后入口仍不存在：" + installedManifest.entry, verify.raw)
         }
 
         val aside = if (dest.exists()) {
@@ -214,6 +221,19 @@ object ProgramInstaller {
             if (!child.renameTo(dest)) return false
         }
         return backend.delete()
+    }
+
+    private fun rewriteEntry(payloadRoot: File, packedEntry: String): Boolean {
+        val prefix = BACKEND_DIR + "/"
+        if (!packedEntry.startsWith(prefix)) return File(payloadRoot, packedEntry).isFile
+        val rel = packedEntry.substring(prefix.length)
+        if (rel.isBlank() || rel.contains("..") || rel.startsWith("/")) return false
+        if (!File(payloadRoot, rel).isFile) return false
+        val mf = File(payloadRoot, ProgramDir.MANIFEST_NAME)
+        if (!mf.isFile) return false
+        val json = runCatching { JSONObject(mf.readText()) }.getOrNull() ?: return false
+        json.put("entry", rel)
+        return runCatching { mf.writeText(json.toString(2)) }.isSuccess
     }
 
     private fun bindQuickApp(context: Context, programId: String, quickAppDir: File) {

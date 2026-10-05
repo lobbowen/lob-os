@@ -50,8 +50,27 @@ GuestAdapter:68
 
 | 落位 | 去向 |
 |---|---|
-| `backend/` 内容 | 平铺到 `programs/<id>/<version>/`（后端本体，与清单 `entry` 对齐） |
+| `backend/` 内容 | 平铺到 `programs/<id>/<version>/`（后端本体） |
 | `frontend/` 整目录 | 搬到 `programs/<id>/quickapp/`（dimina 直接用） |
+
+**清单 `entry` 要写包内真实位置**（`backend/server.js`），不是落位后的路径。
+因为校验器在**装前**就按 `program/<version>/<entry>` 找文件（`program-verify.js:270`），
+写平铺后的名字会让包**过不了验签**。安装器平铺后同步改写落盘清单的 `entry`
+（`rewriteEntry`），这样装前（校验器）与装后（运行时）对得上。
+
+### 1.3 升级路径的幂等缺口
+
+`ProgramInstaller` 的 `already-installed` 分支（目标版本已落盘）原先直接
+切 CURRENT 指针就返回，**跳过了 `bindQuickApp`** —— 后端平铺、端口分配、
+`config.json` 注入、注册表 `ui.*` 全都不执行，且返回 `ok:true` 不报错。
+
+触发场景：回滚后重装同一版本、App 重装但数据保留、feed 重复投递。
+
+已补：两条路径都调 `bindQuickApp`。
+（幂等前提已核实：`claim` 已领过返回原端口、`withEndpoint` 覆盖写同值、
+`mutate` 覆盖同字段。）
+
+门禁要求 `bindQuickApp` **至少两个调用点**，防止再被删掉。
 
 ---
 

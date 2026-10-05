@@ -64,9 +64,17 @@ if (!src.quickReg.includes('fun register')) add('QuickAppRegistry.register 未�
 if (!src.quickReg.includes('uiName = ui.name')) add('注册表没有落 ui.name');
 if (!src.quickReg.includes('uiIcon = ui.icon')) add('注册表没有落 ui.icon');
 
+const callSites = src.installer.split('bindQuickApp(context, programId, km.quickAppDir())').length - 1;
+if (callSites < 2) {
+  add('bindQuickApp 只有 ' + callSites + ' 个调用点：already-installed 分支必须也重做配对，' +
+    '否则回滚后重装 / App 重装数据保留 / feed 重复投递都会让 B 阶段配对静默失效');
+}
+
 if (!/fun flattenBackend/.test(src.installer)) add('安装器没有把 backend/ 平铺到版本目录根部');
 if (!src.installer.includes('postcheck-entry-not-at-root')) add('安装器未校验平铺后入口是否落在版本目录根部');
-if (!/declaredEntry\.isEmpty\(\)/.test(src.installer)) add('入口判据未防空串（File(root,"") 是目录，会误判为通过）');
+if (!/packedEntry\.isEmpty\(\)/.test(src.installer)) add('入口判据未防空串（File(root,"") 是目录，会误判为通过）');
+if (!/fun rewriteEntry/.test(src.installer)) add('安装器没有改写清单 entry（包内写 backend/x.js，平铺后须变成 x.js）');
+if (!src.installer.includes('postcheck-entry-not-in-package')) add('安装器未校验包内入口真实存在（校验器在装前就要用这个路径）');
 
 if (!/val uiName: String/.test(src.index)) add('IndexEntry 缺 uiName');
 if (!/val uiIcon: String/.test(src.index)) add('IndexEntry 缺 uiIcon');
