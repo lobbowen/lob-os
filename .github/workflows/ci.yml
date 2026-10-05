@@ -96,6 +96,9 @@ jobs:
       - name: 桌面入口须与规范一致（三档状态取平台事实 + 摘除能力如实）
         run: node tools/check-desktop-icon.js
 
+      - name: 快应用能力面须自洽（http 段读法 + 配对三步 + 作用域闸）
+        run: node tools/check-quickapp-capability.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

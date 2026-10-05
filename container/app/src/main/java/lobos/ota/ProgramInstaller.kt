@@ -182,10 +182,36 @@ object ProgramInstaller {
         km.markPending(version, previousVersion)
         km.setCurrentVersion(version)
         tmp.deleteRecursively()
+        bindQuickApp(context, programId, km.quickAppDir())
         lobos.ProvisioningProbe.refreshProgramOtaVersions(context)
         return InstallResult(
             ok = true, version = version, source = source, reason = null,
-            detail = "已落盘并切换指针（待健康检查通过后提交）: ${dest.absolutePath}", nodeVerifyOutput = verify.raw,
+            detail = "已落盘并切换指针（待健康检查通过后提交）: " + dest.absolutePath,
+            nodeVerifyOutput = verify.raw,
+        )
+    }
+
+    private fun bindQuickApp(context: Context, programId: String, quickAppDir: File) {
+        if (!quickAppDir.isDirectory) return
+        if (!lobos.quickapp.QuickAppRegistry.isQuickApp(context, programId)) return
+        val port = lobos.os.ProgramManager.resolveHttpPort(context, programId, 0)
+        if (port <= 0) {
+            Journal.note(
+                context, "quickapp", false, "端口段已满，快应用前端未注入后端地址",
+                "id=" + programId,
+            )
+            return
+        }
+        val ok = lobos.quickapp.QuickAppPackage.withEndpoint(quickAppDir, "http://127.0.0.1:" + port, port)
+        if (!ok) {
+            Journal.note(context, "quickapp", false, "无法把后端地址写进前端 config.json", "id=" + programId)
+            return
+        }
+        val registered = lobos.quickapp.QuickAppRegistry.register(context, programId)
+        Journal.note(
+            context, "quickapp", registered,
+            "快应用已配对：端口=$port 前端=" + quickAppDir.absolutePath,
+            "id=" + programId,
         )
     }
 

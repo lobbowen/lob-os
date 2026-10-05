@@ -19,6 +19,7 @@ object LobosBridge {
             "desktopIcon.add" -> desktopAdd(ctx, data, reply)
             "desktopIcon.remove" -> desktopRemove(ctx, data, reply)
             "desktopIcon.state" -> desktopState(ctx, data, reply)
+            "invoke" -> reply(invoke(ctx, data))
             else -> reply(JSONObject().apply { put("ok", false); put("error", "unknown event: $event") })
         }
     }
@@ -27,9 +28,33 @@ object LobosBridge {
         put("ok", true)
         put("runtime", "lobos")
         put("hostApis", listOf(
-            "ping", "capabilities", "backendEndpoint",
+            "ping", "capabilities", "backendEndpoint", "invoke",
             "desktopIcon.add", "desktopIcon.remove", "desktopIcon.state",
         ))
+    }
+
+    private fun invoke(ctx: Context, data: JSONObject?): JSONObject {
+        val method = data?.optString("method", "").orEmpty()
+        if (method.isBlank()) return err("invoke 缺 method")
+        val programId = data?.optString("id", "").orEmpty()
+        if (programId.isBlank()) return err("invoke 缺 id（快应用必须声明自己是谁）")
+        if (ProgramIndex.get(ctx, programId) == null) {
+            return err("程序不在索引里: $programId")
+        }
+        val canonical = lobos.bridge.ApiSpec.canonical(method)
+        if (lobos.bridge.ApiSpec.scopeOf(canonical) == lobos.bridge.ApiSpec.SCOPE_SYSTEM) {
+            return JSONObject().apply {
+                put("ok", false)
+                put("code", -32005)
+                put("error", "该方法是系统作用域，快应用不可调用：" + canonical)
+            }
+        }
+        val broker = lobos.bridge.CapabilityBroker.live()
+            ?: return JSONObject().apply {
+                put("ok", false); put("code", -32004)
+                put("error", "宿主桥未启动：能力面此刻不可用")
+            }
+        return broker.invokeLocal(programId, method, data?.optJSONObject("params") ?: JSONObject())
     }
 
     private fun backendEndpoint(ctx: Context, data: JSONObject?): JSONObject {

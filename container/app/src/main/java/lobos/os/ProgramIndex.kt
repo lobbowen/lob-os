@@ -36,7 +36,8 @@ data class IndexEntry(
     val httpHealth: String,
     val desired: Desired,
     val uiPackage: String,
-    val uiUrl: String,
+    val uiName: String,
+    val uiIcon: String,
     val onUiClosed: String,
     val invalid: String?,
 ) {
@@ -109,7 +110,8 @@ object ProgramIndex {
         httpHealth = "",
         desired = Desired.STOPPED,
         uiPackage = "",
-        uiUrl = "",
+        uiName = "",
+        uiIcon = "",
         onUiClosed = "",
         invalid = null,
     )
@@ -140,7 +142,8 @@ object ProgramIndex {
             put("httpHealth", e.httpHealth)
             put("desired", e.desired.name)
             put("uiPackage", e.uiPackage)
-            put("uiUrl", e.uiUrl)
+            put("uiName", e.uiName)
+            put("uiIcon", e.uiIcon)
             put("onUiClosed", e.onUiClosed)
         }
         e.invalid?.let { put("invalid", it) }
@@ -188,7 +191,8 @@ object ProgramIndex {
             httpHealth = o.optString("httpHealth", ""),
             desired = runCatching { Desired.valueOf(o.optString("desired", "STOPPED")) }.getOrDefault(Desired.STOPPED),
             uiPackage = o.optString("uiPackage", ""),
-            uiUrl = o.optString("uiUrl", ""),
+            uiName = o.optString("uiName", ""),
+            uiIcon = o.optString("uiIcon", ""),
             onUiClosed = o.optString("onUiClosed", ""),
             invalid = o.optString("invalid").takeIf { it.isNotBlank() },
         )

@@ -77,12 +77,12 @@ object ProgramRegistry {
         } ?: emptyList()
         val entryFile = File(dir, entry)
         val args = json.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.optString(it) } }
-        val httpObj = json.optJSONObject("ports")?.optJSONObject("http")
+        val httpObj = json.optJSONObject(ManifestSchema.SC_HTTP)
         val http = httpObj?.let {
             PortDecl(
-                port = it.optInt("port", 0),
+                port = it.optInt(ManifestSchema.HT_PORT, 0),
                 env = it.optString("env", "").ifBlank { null },
-                health = it.optString("health", "").ifBlank { DEFAULT_HEALTH },
+                health = it.optString(ManifestSchema.HT_HEALTH, "").ifBlank { DEFAULT_HEALTH },
             )
         }
         val caps = json.optJSONArray("capabilities")?.let { a ->

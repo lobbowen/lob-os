@@ -1534,6 +1534,39 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         live = null
     }
 
+    fun invokeLocal(programId: String, method: String, params: JSONObject): JSONObject {
+        if (live == null) return localFail("宿主桥未启动：快应用能力面此刻不可用")
+        val id = programId.trim()
+        if (id.isBlank()) return localFail("缺少 programId")
+        if (!lobos.os.ProgramRegistry.listIds(this).contains(id)) {
+            return localFail("程序不在册，不得发起能力调用: $id")
+        }
+        val session = lobos.os.SessionRegistry.issue(this, id, 0L)
+        val holder = SessionHolder(lobos.os.SessionRegistry.socketName(session.token))
+        holder.session = session
+        holder.granted = serverGranted(session).toSet()
+        holder.system = holder.granted.contains(ApiSpec.GROUP_SYS)
+        val req = JSONObject().apply {
+            put("id", 0)
+            put("method", method)
+            put("params", params ?: JSONObject())
+        }
+        val res = dispatch(req, holder) ?: return localFail("宿主桥无响应")
+        val err = res.optJSONObject("error")
+        if (err != null) {
+            return JSONObject().apply {
+                put("ok", false)
+                put("code", err.optInt("code", CODE_INTERNAL))
+                put("error", err.optString("message", ""))
+            }
+        }
+        return res.optJSONObject("result")?.apply { if (!has("ok")) put("ok", true) }
+            ?: JSONObject().apply { put("ok", true) }
+    }
+
+    private fun localFail(message: String): JSONObject =
+        JSONObject().apply { put("ok", false); put("code", CODE_SESSION_MISSING); put("error", message) }
+
     companion object {
         const val TAG = "CapabilityBroker"
         const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
@@ -1541,6 +1574,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         const val MAX_CONNECTIONS = 16
 
         @Volatile private var live: CapabilityBroker? = null
+
+        fun live(): CapabilityBroker? = live
 
         fun prepareSession(ctx: Context, programId: String, generation: Long): String {
             val b = live

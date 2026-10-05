@@ -26,6 +26,7 @@ object ManifestSchema {
     const val LC_BACKOFF = "backoff"
 
     const val HT_PORT = "port"
+    const val HT_ENV = "env"
     const val HT_HEALTH = "health"
 
     const val UI_TYPE = "type"
@@ -107,6 +108,10 @@ object ManifestSchema {
         if (http == null) return
         val port = http.optInt(HT_PORT, 0)
         if (port < 0 || port > 65535) errs += "$SC_HTTP.$HT_PORT 越界（0=由系统分配，1-65535）"
+        val env = http.optString(HT_ENV, "").trim()
+        if (env.isNotEmpty() && !env.matches(Regex("^[A-Za-z_][A-Za-z0-9_]*$"))) {
+            errs += "$SC_HTTP.$HT_ENV 不是合法环境变量名：$env"
+        }
         val health = http.optString(HT_HEALTH, "").trim()
         if (health.isNotEmpty() && !health.startsWith("/")) errs += "$SC_HTTP.$HT_HEALTH 必须以 / 开头"
     }
