@@ -1549,7 +1549,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (live == null) return localFail("宿主桥未启动：快应用能力面此刻不可用")
         val id = programId.trim()
         if (id.isBlank()) return localFail("缺少 programId")
-        if (!lobos.os.ProgramRegistry.listIds(this).contains(id)) {
+        if (id != INSTALLER_ID && !lobos.os.ProgramRegistry.listIds(this).contains(id)) {
             return localFail("程序不在册，不得发起能力调用: $id")
         }
         val token = lobos.os.SessionRegistry.issue(this, id, 0L)

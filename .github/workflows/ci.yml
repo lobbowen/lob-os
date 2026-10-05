@@ -105,6 +105,9 @@ jobs:
       - name: Kotlin 误用须为零（扩展函数当成员调用这类只有编译才炸）
         run: node tools/check-kotlin-misuse.js
 
+      - name: 控制面板须齐（入口 + 同进程调用 + installer 放行）
+        run: node tools/check-panel.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

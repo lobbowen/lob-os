@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var captureBtn: Button
     private lateinit var copyBtn: Button
     private lateinit var probeBtn: Button
+    private lateinit var panelBtn: Button
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var selfCheckText: String = ""
 
@@ -71,11 +72,15 @@ class MainActivity : AppCompatActivity() {
         captureBtn = findViewById(R.id.captureBtn)
         copyBtn = findViewById(R.id.copyBtn)
         probeBtn = findViewById(R.id.probeBtn)
+        panelBtn = findViewById(R.id.panelBtn)
 
         retryBtn.setOnClickListener { restartRuntime() }
         captureBtn.setOnClickListener { requestScreenCapture() }
         copyBtn.setOnClickListener { copySelfCheck() }
         probeBtn.setOnClickListener { runNativeProbeOnce() }
+        panelBtn.setOnClickListener {
+            startActivity(android.content.Intent(this, lobos.ui.PanelActivity::class.java))
+        }
 
         installChannelBar()
         reuseExistingCaptureGrant()

@@ -65,6 +65,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:text="Node 探针" />
+
+                <Button
+                    android:id="@+id/panelBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="控制面板" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
