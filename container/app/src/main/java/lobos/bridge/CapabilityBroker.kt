@@ -1541,8 +1541,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (!lobos.os.ProgramRegistry.listIds(this).contains(id)) {
             return localFail("程序不在册，不得发起能力调用: $id")
         }
-        val session = lobos.os.SessionRegistry.issue(this, id, 0L)
-        val holder = SessionHolder(lobos.os.SessionRegistry.socketName(session.token))
+        val token = lobos.os.SessionRegistry.issue(this, id, 0L)
+        val session = lobos.os.SessionRegistry.list(this).firstOrNull { it.token == token }
+            ?: return localFail("会话签发后读不回来: $id")
+        val holder = SessionHolder(lobos.os.SessionRegistry.socketName(token))
         holder.session = session
         holder.granted = serverGranted(session).toSet()
         holder.system = holder.granted.contains(ApiSpec.GROUP_SYS)

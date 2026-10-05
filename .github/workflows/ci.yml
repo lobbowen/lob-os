@@ -99,6 +99,9 @@ jobs:
       - name: 快应用能力面须自洽（http 段读法 + 配对三步 + 作用域闸）
         run: node tools/check-quickapp-capability.js
 
+      - name: 跨包符号须真实存在（写了包限定名就必须有那个声明）
+        run: node tools/check-cross-refs.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

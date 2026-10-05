@@ -2,6 +2,7 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
+import lobos.os.IndexEntry
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.ota.ProgramDir

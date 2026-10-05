@@ -196,7 +196,7 @@ object ProgramInstaller {
         if (!lobos.quickapp.QuickAppRegistry.isQuickApp(context, programId)) return
         val port = lobos.os.ProgramManager.resolveHttpPort(context, programId, 0)
         if (port <= 0) {
-            Journal.note(
+            lobos.os.Journal.note(
                 context, "quickapp", false, "端口段已满，快应用前端未注入后端地址",
                 "id=" + programId,
             )
@@ -204,11 +204,11 @@ object ProgramInstaller {
         }
         val ok = lobos.quickapp.QuickAppPackage.withEndpoint(quickAppDir, "http://127.0.0.1:" + port, port)
         if (!ok) {
-            Journal.note(context, "quickapp", false, "无法把后端地址写进前端 config.json", "id=" + programId)
+            lobos.os.Journal.note(context, "quickapp", false, "无法把后端地址写进前端 config.json", "id=" + programId)
             return
         }
         val registered = lobos.quickapp.QuickAppRegistry.register(context, programId)
-        Journal.note(
+        lobos.os.Journal.note(
             context, "quickapp", registered,
             "快应用已配对：端口=$port 前端=" + quickAppDir.absolutePath,
             "id=" + programId,
