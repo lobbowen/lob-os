@@ -135,6 +135,25 @@ GuestAdapter:68
 
 ---
 
+### 3.5 装第一个程序的死锁（真机验证时挖出）
+
+beginSession 只在 InstanceHost 启程序时调用（InstanceHost:378），
+而 os.appmgr.install 走桥方法、需要会话令牌。于是：
+没有程序 → 没有会话 → 装不了第一个程序。
+
+真机证据：@lobos_hostbridge 在监听，但那是基础名；
+sessionOfSocket 按 socketName(token) 匹配，匹配不上任何 token，
+所以握手必然失败。
+
+修：CapabilityBroker.start() 签发 installer 会话
+（lobos.installer，generation=1L —— 避开 invokeLocal 用的 0，
+两者都按 (programId, generation) 去重，用同一个会把对方顶掉）。
+
+它同时是控制面板的接入点：阶段 D 的面板就靠这个会话调
+os.appmgr.install / uninstall / checkUpdate。
+
+---
+
 ## 4. 明确不做（现在）
 
 | | 为什么 |

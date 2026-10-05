@@ -63,6 +63,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private var running = false
     private var socketName: String = GuestAdapter.BRIDGE_SOCKET
     @Volatile private var activeConnections = 0
+    @Volatile private var installerToken: String = ""
     private val executor = Executors.newCachedThreadPool()
     private lateinit var notifManager: NotificationManager
 
@@ -70,8 +71,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         notifManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         live = this
         startBridge()
+        issueInstallerSession()
         OsHostService.ensureRunning(this)
     }
+
+    fun issueInstallerSession() {
+        if (installerToken.isNotBlank()) return
+        runCatching { beginSession(INSTALLER_ID, INSTALLER_GENERATION) }
+            .onSuccess { installerToken = it }
+            .onFailure { Log.w(TAG, "安装会话签发失败（控制面装不了第一个程序）", it) }
+    }
+
+    fun installerToken(): String = installerToken
 
     fun onHostStart(intent: Intent?) {
         if (!running) startBridge()
@@ -1572,6 +1583,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     companion object {
         const val TAG = "CapabilityBroker"
         const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
+        const val INSTALLER_ID = "lobos.installer"
+        const val INSTALLER_GENERATION = 1L
         const val MAX_FRAME_CHARS = 256 * 1024
         const val MAX_CONNECTIONS = 16
 
