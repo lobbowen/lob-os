@@ -24,18 +24,29 @@
 
 ```
 <appId>.zip
-├── program-manifest.json     ← 我们的清单（已有 schema + 本次新增 frontend 段）
-├── frontend/                 ← dimina 编译产物（配置声明在这个）
-│   ├── config.json
-│   └── main/
-│       ├── app-config.json
-│       ├── logic.js
-│       ├── app.js
-│       ├── app.css
-│       ├── template.js
-│       └── page/…
-└── backend/                  ← 开发者的后端（源码或产物，形态我们不管）
-    └── …                     ← 有 program-manifest.json 声明的 entry 在里面
+└── <version>/                        ← 顶层只有一个目录，目录名就是版本号
+    ├── program-manifest.json         ← 我们的清单
+    ├── frontend/                     ← dimina 编译产物，原样保留它的结构
+    │   ├── config.json               ← 装的时候宿主会往这里加 backend.endpoint
+    │   └── main/
+    │       ├── app-config.json
+    │       ├── logic.js
+    │       ├── app.js
+    │       ├── app.css
+    │       ├── template.js
+    │       └── page/…
+    └── backend/                      ← 开发者的后端（源码或产物，形态我们不管）
+        └── …                         ← 清单声明的 entry 在里面
+```
+
+**为什么顶层保留 `<version>/` 一层**：安装器既有约定就是「顶层一个目录，里面直接是
+程序内容」（`ProgramInstaller` 的 `stageRoot` + `File(stageRoot, version)` 就是这么定位的）。
+沿用它改动最小，而**目录穿越防护、原子换、FLOOR 防回退**这些是我们自己建的安全机制，与形态无关。
+
+**装完之后落到两个地方**：
+```
+programs/<id>/<version>/    ← backend/ 的内容（后端程序）
+programs/<id>/quickapp/     ← frontend/ 的内容（前端，dimina 直接用）
 ```
 
 **为什么前端在 `frontend/` 而不是直接放根**：dimina 要求安装时能找到

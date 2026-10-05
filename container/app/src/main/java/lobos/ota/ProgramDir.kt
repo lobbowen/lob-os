@@ -49,6 +49,8 @@ class ProgramDir(
 
     fun programRootDir(): File = programRoot
 
+    fun quickAppDir(): File = File(programRoot, "quickapp")
+
     fun pruneOldVersions(keepExtra: Int = 1): Triple<List<String>, List<String>, Long> {
         val names = try { programRoot.list()?.sorted() ?: emptyList() } catch (_: Throwable) { emptyList() }
         val versions = names.filter { !isStagingDir(it) && !isReplacedDir(it) && File(programRoot, it).isDirectory }

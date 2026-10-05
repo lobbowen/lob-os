@@ -6,6 +6,10 @@ import org.json.JSONObject
 
 object ProgramInstaller {
 
+    const val FRONTEND_DIR = "frontend"
+    const val BACKEND_DIR = "backend"
+    val FRONTEND_REQUIRED = listOf("config.json", "main/app-config.json", "main/logic.js")
+
     enum class Source(val label: String) {
         OTA("远端 OTA"),
         NONE("无"),
@@ -118,6 +122,26 @@ object ProgramInstaller {
                 "包内缺少入口 ${installedManifest.entry}", verify.raw)
         }
 
+        val payloadRoot = File(stageRoot, version)
+        val frontendDir = File(payloadRoot, FRONTEND_DIR)
+        if (!frontendDir.isDirectory) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-frontend-missing",
+                "包内没有 $FRONTEND_DIR/ —— 快应用必须有前端", verify.raw)
+        }
+        for (req in FRONTEND_REQUIRED) {
+            if (!File(frontendDir, req).isFile) {
+                tmp.deleteRecursively()
+                return InstallResult(false, version, source, "postcheck-frontend-incomplete",
+                    "前端缺少 $req（dimina 要求的结构）", verify.raw)
+            }
+        }
+        if (!File(payloadRoot, BACKEND_DIR).isDirectory) {
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "postcheck-backend-missing",
+                "包内没有 $BACKEND_DIR/ —— 一个快应用是一次安装的前后端整体", verify.raw)
+        }
+
         val aside = if (dest.exists()) {
             File(dest.parentFile, dest.name + ".replaced-" + System.currentTimeMillis())
         } else null
@@ -134,6 +158,26 @@ object ProgramInstaller {
                 "无法把 ${staged.absolutePath} 重命名为 ${dest.absolutePath}（旧版本已复位）", verify.raw)
         }
         if (aside != null) aside.deleteRecursively()
+
+        val frontendTarget = km.quickAppDir()
+        val frontendAside = if (frontendTarget.exists()) {
+            File(frontendTarget.parentFile, frontendTarget.name + ".replaced-" + System.currentTimeMillis())
+        } else null
+        if (frontendAside != null && !frontendTarget.renameTo(frontendAside)) {
+            if (aside != null) aside.renameTo(dest)
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "frontend-swap-aside-failed",
+                "前端目录无法让位：不动指针，保持现状", verify.raw)
+        }
+        val stagedFrontend = File(dest, FRONTEND_DIR)
+        if (!stagedFrontend.renameTo(frontendTarget)) {
+            if (frontendAside != null) frontendAside.renameTo(frontendTarget)
+            if (aside != null) aside.renameTo(dest)
+            tmp.deleteRecursively()
+            return InstallResult(false, version, source, "frontend-rename-failed",
+                "无法把前端重命名到 ${frontendTarget.absolutePath}（后端与前端均已复位）", verify.raw)
+        }
+        if (frontendAside != null) frontendAside.deleteRecursively()
 
         km.markPending(version, previousVersion)
         km.setCurrentVersion(version)

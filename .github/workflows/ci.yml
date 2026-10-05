@@ -90,6 +90,9 @@ jobs:
       - name: 程序端口段须够大且合法（免得被无声改小）
         run: node tools/check-port-range.js
 
+      - name: 快应用包结构须与规范一致（前后端同包 + 前端三必需文件）
+        run: node tools/check-quickapp-package.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail
