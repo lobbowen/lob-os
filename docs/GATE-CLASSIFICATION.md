@@ -119,5 +119,5 @@ llvmVersion 空 → 判红 → build job 的 8 件全部不产出
 报错里带的是 `NDK 29.0.14206865 内置 LLVM 20.0.1`，正是填 `llvmVersion`
 需要的真值。所以「红」在这一轮不是路障，是**取答案的途径**。
 
-等 `scripts/build-native-llvmtoolchain.sh` 真上线（那时它才与商店件
+等 `scripts/build-userland-llvmtoolchain.sh` 真上线（那时它才与商店件
 在同一轮里跑），再去掉 `continue-on-error` —— 那才是硬判据的位置。

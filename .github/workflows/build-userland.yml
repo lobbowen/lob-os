@@ -219,7 +219,7 @@ jobs:
   # **报错信息里的那个真实版本号** —— 拿到它就能填进 userland-sources.json，
   # 填完这一步自然就绿了、且这一行可以去掉。在那之前它不参与成败判定。
   #
-  # 要真编 clang 时（scripts/build-native-llvmtoolchain.sh 上线），
+  # 要真编 clang 时（scripts/build-userland-llvmtoolchain.sh 上线），
   # 把 continue-on-error 去掉，那才是硬判据的位置。
   ndk-llvm:
     needs: resolve
@@ -251,6 +251,22 @@ jobs:
             { echo "### NDK/LLVM 版本（填进 scripts/userland-sources.json 的 llvmVersion）"; echo '```'; \
               "$CLANG" --version 2>/dev/null | head -3; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
+
+
+      - name: 编 llvmtoolchain（拿到 llvmVersion 之后才编得出来）
+        if: success()
+        run: |
+          set -euo pipefail
+          # 这一步现在预期会红：llvmVersion 还没填 → 配方第一步就 die。
+          # 与 ndk-llvm 同一个 job、同一个 continue-on-error —— 它红了不影响商店件那条链
+          # （llvmtoolchain 不在 manifest 的 needs 里，也不进 build 矩阵）。
+          # 填好 llvmVersion 并按它重钉 LLVM 源码之后，这一步才会绿。
+          TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          { echo "CC=$TC/aarch64-linux-android23-clang";
+            echo "CXX=$TC/aarch64-linux-android23-clang++";
+            echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
+          command -v cmake >/dev/null 2>&1 || sudo apt-get update -qq && sudo apt-get install -y -qq cmake
+          bash scripts/build-userland-llvmtoolchain.sh
 
   manifest:
     needs: [resolve, build, node]

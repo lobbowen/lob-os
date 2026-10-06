@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# clang / lld / binutils —— 开发环境的宿主工具（阶段1c）。
+# clang / lld / binutils —— 开发环境件（阶段1c），走**商店通道**。
+#
+# 类目判定（components/README.md 的唯一规则）：
+#   「构建物需要被**程序**用裸名调用（clang/ld.lld/llvm-ar…）→ userland」
+# 它不是被内核 dlopen 的（那才是 native），所以它在 userland 而不是 native。
+# 产出形态一直是商店件形态（dist/<tool>/bin + dist/<tool>.version），
+# 只是早先文件名与定位写错了。
 #
 # ── 形态：交叉编译 LLVM 到 aarch64-linux-android ──
 # 为什么不下载官方预编包（实测过，别再问）：

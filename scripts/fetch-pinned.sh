@@ -99,7 +99,7 @@ elif [ "${1:-}" = "--llvm" ]; then
 elif [ "${1:-}" = "--src-version" ]; then
   # 读某个 sources 键的**版本号**，不下载。
   #
-  # 为什么需要这一档：build-native-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
+  # 为什么需要这一档：build-userland-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
   # 跑的是 `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，
   # 只为了从一行输出里 sed 出版本号。而「这个件该编哪个版本」是纯查表的事。
   #

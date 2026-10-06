@@ -188,7 +188,7 @@ $ TZ=Europe/London node -e '…getHours()'
               │    sysroot（1a）· make · cmake · pkg-config · python3
               │  已完成的配套：
               │    $PREFIX/include 软链 · 别名软链（多命令件装完在 PATH 里可见）
-              │  待 CI：llvmVersion → 按它重钉 LLVM → 跑 build-native-llvmtoolchain.sh
+              │  待 CI：llvmVersion → 按它重钉 LLVM → 跑 build-userland-llvmtoolchain.sh
               │  详见下面「阶段1c 的三步解锁链」
               ↓
 第 2 阶段  商店件改动态链
