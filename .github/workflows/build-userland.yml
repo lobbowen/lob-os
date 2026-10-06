@@ -171,9 +171,9 @@ jobs:
           NDK="${ANDROID_NDK_LATEST_HOME:-}"
           [ -d "$NDK" ] || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          [ -x "$TC/aarch64-linux-android21-clang" ] || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android21-clang"; exit 1; }
+          [ -x "$TC/aarch64-linux-android23-clang" ] || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android23-clang"; exit 1; }
           echo "[ndk] 目录=$NDK 版本=$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties")"
-          { echo "CC=$TC/aarch64-linux-android21-clang"; echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
+          { echo "CC=$TC/aarch64-linux-android23-clang"; echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
 
       - name: 产出 ${{ matrix.tool }} 件
         run: bash scripts/build-userland-${{ matrix.tool }}.sh

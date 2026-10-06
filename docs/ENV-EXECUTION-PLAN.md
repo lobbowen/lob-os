@@ -909,3 +909,62 @@ TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 （顺带记一笔：交叉编译 LLVM 到 Bionic 是 Termux 级别的工程量，
 首次跑**大概率需要补 patch**。这不是失败，是预期内的第一次 ——
 配方里已经把取证的 error 行与末 60 行都打出来了，就是为那次补 patch 准备的。）
+
+---
+
+## 十三、第一次真跑 CI（2026-10-07）暴露的三件事
+
+**此前 102 个提交从未推送，CI 一次都没跑过。** 第一次推送后：
+
+### ① CI 从来没绿过 —— `comment-gate` 卡在第 1 步
+
+它挂在 `ci.yml` 的**第一个** step，HEAD 上就有 1738 条注释，于是每次 push
+都在第 1 步死掉，后面 27 步（含真正想看的构建）全跑不到。
+剥掉后**首次全绿**（`CI 0d9b203 success`）。
+
+### ② 一道门禁假定宿主是 aarch64，CI runner 是 x64 → 恒红
+
+```
+[FAIL] 本机是 aarch64（小端前提成立）
+```
+
+`pty-winsize-endian.js` 里是 `process.arch === 'arm64'`。它想问的是
+「本机字节序是小端」（因为 C 侧 memcpy 直拷 struct winsize，主机序即字节序），
+而**架构名只是小端的代理指标** —— x86_64 与 aarch64 都是小端，所以它在 CI 上判错了。
+
+改为**实测字节序**（`Buffer.writeUInt16LE(1,0)` 后读回首字节），
+并加一条探针自洽检查（小端写读为真，且大端写 24 后按小端读 ≠ 24）。
+
+### ③ NDK 已被 runner 升到 r30，而配方钉的是 r29
+
+```
+钉值表要 29.0.14206865，runner 上是 30.0.16248370
+```
+
+`actions/runner-images` 更新了镜像。已按「跟 runner」处理：
+
+| 项 | 旧 | 新 | 依据 |
+|---|---|---|---|
+| `ndkVersion` | 29.0.14206865 | **30.0.16248370** | `repository2-3.xml` 的 `<remotePackage path="ndk;30.0.16248370">` |
+| `llvmVersion` | 21.0.0 | **21.0.0（不变）** | Range 取 r30 的 `AndroidVersion.txt` → `21.0.0 / based on r574158c` |
+| `sources.llvm.version` | 21.1.0 | **21.1.0（不变）** | 同为 21.x 线 |
+
+**为什么 llvmVersion 不用改**：NDK 的 LLVM 版本与 NDK 自身版本是两件事。
+r29 与 r30 的 `AndroidVersion.txt` 都是 `21.0.0`（只有修订号不同：
+r29 是 `r563880c`，r30 是 `r574158c`）。这正是当初把它单独记一格的原因。
+
+### ④ 顺带修一处 CC 与配方自相矛盾
+
+`build` 矩阵注入的 `CC=…android21-clang`，而**所有配方自己的 `API` 默认就是 23**。
+NDK r30 的 `stderr` 是 Android 23 才引入的，于是 pkg-config / curl / git 三件
+编译报：
+
+```
+error: 'stderr' is unavailable: introduced in Android 23
+```
+
+CC 才是真正决定编译目标的那个（配方里的 `API` 变量在 configure 时才用），
+所以把 CC 提到 `android23-clang`，与配方自身对齐。
+
+**教训**：「配方里的默认值」与「CI 注入的环境变量」可以各说各话而没人发现 ——
+只有真跑一次才暴露。CI 注入的每个值都应该与配方默认值一致。
