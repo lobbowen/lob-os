@@ -240,3 +240,4 @@ object ProgramInstaller {
         json.put("entry", rel)
         return runCatching { mf.writeText(json.toString(2)) }.isSuccess
     }
+}

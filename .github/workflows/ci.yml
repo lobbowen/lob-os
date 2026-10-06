@@ -123,6 +123,9 @@ jobs:
       - name: OTA 序列号须按通道+程序隔离（跨通道判重放判据）
         run: node tools/check-ota-sequence-scope.js
 
+      - name: 括号配平（删代码漏掉外层花括号，只有编译才炸）
+        run: node tools/check-brace-balance.js
+
       - name: 安装路径须单一（两条路一个安装点，判据非平行的实现）
         run: node tools/check-install-single-path.js
 
