@@ -48,7 +48,13 @@ case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 TOOLDIR="$OUT/$TOOL/bin"
 STAGE="$OUT/.$TOOL-stage"
 
-die() { echo "::error title=$1::${2:-}"; exit 1; }
+die() {
+  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
+  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
+  local title="$1"; shift
+  echo "::error title=$title::$(printf '%s\n' "$@")"
+  exit 1
+}
 note() { echo "[$TOOL] $*"; }
 
 [ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang —— 它是编译 LLVM 的那个编译器（宿主 x86_64）"

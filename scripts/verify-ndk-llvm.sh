@@ -24,7 +24,16 @@ HERE="$(dirname "$0")"
 cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
-die() { echo "::error title=$1::${2:-}"; exit 1; }
+# 第二个及之后的参数都会并进同一条 ::error —— 早先只取 ${2:-}，
+# 于是调用点传的第 3、第 4 句被静默丢掉（写上去像是说了，其实没输出）。
+# 所以这里用 shift 收下全部剩余参数。
+die() {
+  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
+  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
+  local title="$1"; shift
+  echo "::error title=$title::$(printf '%s\n' "$@")"
+  exit 1
+}
 
 NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
 if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
@@ -78,7 +87,9 @@ WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
 if [ -z "$WANT_LLVM" ]; then
   die "钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/userland-sources.json ——" \
-    "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。"
+    "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
+    "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
+    "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
 fi
 # 允许前缀匹配：钉 20 而实际 20.0.0（钉 major 即可）；钉 20.1 而实际 20.1.8 也算配。
 case "$GOT_LLVM" in

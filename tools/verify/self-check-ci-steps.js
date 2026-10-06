@@ -117,6 +117,8 @@ function inject(inj) {
 }
 
 console.log('== 一、A 类门禁：源码缺陷必须能让它判红 ==');
+// 取快照必须在**注入之前**，第五节才拿它比对
+const PREV = new Map(INJECTIONS.map((i) => [i.file, fs.readFileSync(path.join(ROOT, i.file), 'utf8')]));
 for (const inj of INJECTIONS) inject(inj);
 
 console.log('== 二、B 类门禁：不读源码，必须如实声明 ==');
@@ -151,8 +153,15 @@ t('每个注入点在当前源码里都能找到（否则实验根本没发生�
   '  找不到的注入点会让「没红」变得毫无意义 —— 详见下面第一节的实测记录');
 
 console.log('== 五、源码未被污染 ==');
-const dirty = cp.spawnSync('git', ['status', '--porcelain', '--', 'container', 'scripts'], { encoding: 'utf8', cwd: ROOT }).stdout.trim();
-t('注入实验后 container/ 与 scripts/ 干净', dirty === '', dirty ? '  残留：\n' + dirty : '');
+// 判据是**内容**，不是「git 干不干净」——
+// 早先这里查 git status，于是「我正在正常改代码」也会被判红（实测：
+// 改了 10 个脚本的 die 定义，本项立刻报错，而那显然不是注入造成的污染）。
+// 真正要防的是：**注入实验把源码留在坏状态**。
+// 所以拿 PREV（第一节跑之前取的快照）比 —— 快照必须在注入前取，
+// 放在这里取就成了「读完再跟自己比」，恒为真，等于没判。
+const polluted = [...PREV].filter(([f, c]) => fs.readFileSync(path.join(ROOT, f), 'utf8') !== c).map(([f]) => f);
+t('注入过的文件内容与运行前一致（实验没留下坏状态）', polluted.length === 0,
+  polluted.length ? '  变了：\n    ' + polluted.join('\n    ') : '');
 
 console.log('== 通过 ' + PASS + '，失败 ' + FAIL + ' ==');
 process.exit(FAIL === 0 ? 0 : 1);
