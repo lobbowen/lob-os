@@ -175,6 +175,8 @@ object NativeAssetUpdater {
         val arr = parsed.optJSONArray("components") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
+        // 待装项：(件, 版本, 清单条目)。攒起来按包分组装，见下面 installGroup。
+        val pending = mutableListOf<Triple<NativeExecutable, String, JSONObject>>()
         val byId = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).associateBy { it.id }
 
         for (i in 0 until arr.length()) {
@@ -243,9 +245,24 @@ object NativeAssetUpdater {
                 applied.put(JSONObject().put("id", id).put("version", ver).put("wouldInstall", true))
                 continue
             }
-            val r = installOne(ctx, e, ver, c)
-            if (r.first) applied.put(JSONObject().put("id", id).put("version", ver))
-            else skipped.put(JSONObject().put("id", id).put("why", r.second ?: "未知原因"))
+            // 待装项先攒起来，装完统一处理 ——
+            // 固化包是 N 件共用一个 zip，逐件下载会把同一个文件下 N 次
+            // （早先的实现就是这样，12 件的档位表能下 12 遍同一个 zip）。
+            pending.add(Triple(e, ver, c))
+        }
+
+        // 按 (url, sha256) 分组：同组共用一次下载 + 一次解包。
+        // 分组键用 url+连字符+sha，避免 url 里出现 '#' 时键被切错。
+        for ((group, groupKey) in pending.groupBy { it.third.optString("url", "") + "-" + it.third.optString("sha256", "") }) {
+            val first = group.first().third
+            val url = first.optString("url", "")
+            val sha = first.optString("sha256", "")
+            val results = installGroup(ctx, url, sha, group)
+            for ((e, ver, _) in group) {
+                val r = results[e.id] ?: (false to "未处理")
+                if (r.first) applied.put(JSONObject().put("id", e.id).put("version", ver))
+                else skipped.put(JSONObject().put("id", e.id).put("why", r.second ?: "未知原因"))
+            }
         }
 
         res.put("ok", true)
@@ -260,40 +277,111 @@ object NativeAssetUpdater {
         return res
     }
 
-    /** 装一件：下载 → sha256 校验 → 落到 toolchain/<id>/<ver>/ → 切软链。 */
-    private fun installOne(
+    /**
+ * 装**一组**件：同一个固化包里有多件，下载与解包只做一次。
+     *
+     * 固化包是 N 件共用一个 zip（.github/native-capabilities.txt 里 12 件同一个
+     * tag/zip）。逐件下载 = 同一个文件下 N 次 —— 那不是「慢一点」，是白费流量。
+     *
+     * 三个曾经弄错的地方（都是「看起来能跑」但真机必然失败）：
+     *
+     * 1. **不能用 entry 当包内路径**。entry 是「系统里的名字」（`bash`），
+     *    包里的路径是 `libName`（`libbash.so`）。当前四件**全部**两者不同，
+     *    照 entry 去解包必然找不到文件。
+     *
+     * 2. **必须解包，不能整个拷贝**。早先把整个下载文件 `copyTo` 成「件」，
+     *    装下来的是个 zip 而不是可执行文件。
+     *
+     * 3. **落位名用 entry，包内取件用 libName** —— 两者角色不同，别混。
+     */
+    /**
+ * 装一组件：同一个固化包下载 + 解包**各一次**，然后按件从包里取。
+     *
+     * @return id → (成功?, 失败原因)
+     */
+    private fun installGroup(
         ctx: Context,
-        e: NativeExecutable,
-        version: String,
-        entry: JSONObject,
-    ): Pair<Boolean, String?> {
-        val url = entry.optString("url", "")
-        val wantSha = entry.optString("sha256", "")
-        val entryRel = entry.optString("entry", e.installedAs)
-        if (url.isBlank() || wantSha.isBlank()) return false to "清单项缺 url/sha256"
-        if (!ProgramIndex_safeSegment(version)) return false to "版本号非法（会越界）：$version"
+        url: String,
+        wantSha: String,
+        items: List<Triple<NativeExecutable, String, JSONObject>>,
+    ): Map<String, Pair<Boolean, String?>> {
+        val out = LinkedHashMap<String, Pair<Boolean, String?>>()
+        if (url.isBlank() || wantSha.isBlank()) {
+            for ((e, _, _) in items) out[e.id] = false to "清单项缺 url/sha256"
+            return out
+        }
+        val todo = items.filter { (_, ver, _) ->
+            val ok = ProgramIndex_safeSegment(ver)
+            if (!ok) out[it.first.id] = false to "版本号非法（会越界）：$ver"
+            ok
+        }
+        if (todo.isEmpty()) return out
 
-        val dir = versionDir(ctx, e.id, version)
-        val tmp = File(ctx.cacheDir, "native-${e.id}-${version}.part")
+        // 缓存文件名带 sha 前缀：同一份包只下一次，失败重试时也不必重下
+        val tmp = File(ctx.cacheDir, "native-pack-" + wantSha.take(12) + ".zip")
+        val unpacked = File(ctx.cacheDir, "native-pack-" + wantSha.take(12) + "-unpack")
         return try {
-            SupplyProvisioner.httpGetToFile(url, tmp)
+            val cached = tmp.isFile && SupplyProvisioner.sha256HexFile(tmp) == wantSha
+            if (!cached) SupplyProvisioner.httpGetToFile(url, tmp)
             val got = SupplyProvisioner.sha256HexFile(tmp)
-            if (got != wantSha) return false to "sha256 不符：${got.take(12)} != ${wantSha.take(12)}"
+            if (got != wantSha) {
+                val why = "sha256 不符：${got.take(12)} != ${wantSha.take(12)}"
+                for ((e, _, _) in todo) out[e.id] = false to why
+                return out
+            }
+            runCatching { unpacked.deleteRecursively() }
+            SupplyProvisioner.unzipFromFile(tmp, unpacked)
+
+            for ((e, ver, c) in todo) {
+                // 包内路径用 libName（不是 entry —— 见上面第 1 条）
+                val inPackage = c.optString("libName", e.libName).ifBlank { e.libName }
+                val picked = findInPackage(unpacked, inPackage)
+                out[e.id] = if (picked == null) {
+                    false to ("包里没有 $inPackage（包内实际有：" +
+                        listPackTop(unpacked).take(8).joinToString(", ") + "）")
+                } else {
+                    place(ctx, e, ver, c.optString("entry", e.installedAs), picked)
+                }
+            }
+            out
+        } catch (ex: Throwable) {
+            val why = ex.message ?: ex.javaClass.simpleName
+            for ((e, _, _) in todo) if (out[e.id] == null) out[e.id] = false to why
+            out
+        } finally {
+            runCatching { tmp.delete() }
+            runCatching { unpacked.deleteRecursively() }
+        }
+    }
+
+    /** 把包里取出的那一份落到位并切软链。 */
+    private fun place(ctx: Context, e: NativeExecutable, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+        try {
+            val dir = versionDir(ctx, e.id, version)
             runCatching { dir.deleteRecursively() }
             dir.mkdirs()
             val dest = File(dir, entryRel)
             dest.parentFile?.mkdirs()
-            tmp.copyTo(dest, overwrite = true)
-            if (!dest.isFile || dest.length() != tmp.length()) return false to "落盘后长度不符"
+            picked.copyTo(dest, overwrite = true)
+            if (!dest.isFile || dest.length() != picked.length()) return false to "落盘后长度不符"
             ExecBits.apply(dest)
-            tmp.delete()
             if (!pointEntryAt(ctx, e, dest)) return false to "入口软链切换失败"
             true to null
         } catch (ex: Throwable) {
-            runCatching { tmp.delete() }
             false to (ex.message ?: ex.javaClass.simpleName)
         }
+
+    /** 在包里找条目：先按相对路径直取，再按文件名在整棵树里找（认包内布局的差异）。 */
+    private fun findInPackage(root: File, rel: String): File? {
+        val direct = File(root, rel)
+        if (direct.isFile) return direct
+        val byName = root.walkTopDown().firstOrNull { it.isFile && it.name == File(rel).name }
+        return byName
     }
+
+    /** 包内顶层条目（诊断用，最多取几个）。 */
+    private fun listPackTop(root: File): List<String> =
+        (root.list()?.sorted() ?: emptyList()).take(8)
 
     /**
      * 把 `usr/bin/<name>`（或 `usr/lib/<lib>`）切到更新件。
