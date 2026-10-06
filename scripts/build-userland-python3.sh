@@ -187,6 +187,17 @@ PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
 
 rm -rf "$OUT/lib"
 mkdir -p "$OUT/lib"
+# 标准库落位：$OUT/lib/pythonX.Y/ —— 即件里的 lib/，与 bin/ 平级。
+#
+# 为什么这样才对（核实过整条链，不靠推理）：
+#   装完 exe 落在  programs/python3/<版本>/bin/python3  （$PREFIX/bin 那条是软链）
+#   python 的 getpath 从**可执行文件的实际位置**往上找「有 lib/pythonX.Y/os.py 的那层」
+#   → programs/python3/<版本>/lib/python3.14/os.py  ✓ 命中（与 bin/ 同级）
+#   若标准库只在 $PREFIX/lib/（软链指过去的那层），getpath 找不到 → import 失败
+# 打包侧核实：package-userland.sh 是 `cp -a dist/.` + `zip -r`，整个 dist 进包。
+#
+# 对照 git：它同样有附属目录（libexec/git-core），机制一致（相对 exe 位置），
+# 它的判据真跑通了 init/add/commit —— 那条链本来就是通的。
 cp -a "$PYDIR" "$OUT/lib/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
 
 N_LIB=$(find "$OUT/lib/python${SRC_VER%.*}" -type f | wc -l)
