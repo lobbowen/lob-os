@@ -214,7 +214,7 @@ lobos/log/
 | **1** ✅ | `Journal.Event` 加 `Level`（`note` 的 `ok` 映射进去） | 极小 | 现有 89 处 `Journal.` 调用点零改动 |
 | **2** ✅ | `ProbeJournal.append` + `ResidencyAudit` 事件走 `Journal` | 小 | 「有新东西发生却不走记录入口」清零 |
 | **3** ✅ | `KillAudit` 去内存快路径（游标保留：它是状态不是记录） | 小 | 全仓只剩 `log` 一个落盘入口 |
-| **4** | 建 `log/` 包（移 2 个文件）+ `LogLevel` + `Exporter` | 小（7 处 import） | 遥测位置就绪 |
+| **4** ✅ | 建 `log/` 包（移 2 个文件）+ `LogLevel` + `Exporter` | 小（7 处 import） | 遥测位置就绪 |
 | **5** ✅ | `ProgramDir` 移 `ota` → `os` | 小 | 已核实零命中 |
 | **6** ✅ | `capability`/`permissions` 解耦 `bridge`（搬 4 个类） | 中 | 已核实归零 |
 | **7** ✅ | 包校验移到 Kotlin（`ProgramPackageVerifier`），安装路径不再依赖 node | 中 | 鸡生蛋解开 |
