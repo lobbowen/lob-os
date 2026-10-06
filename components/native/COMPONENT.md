@@ -15,7 +15,30 @@
 | flock | `liblobosflock.so` | self-c | `flock(2)` 原生桥 | 回退 vendor 实现 |
 | posix | `liblobosposix.so` | self-c | `link`/`linkat` 用户态替代（LD_PRELOAD） | 会话落盘失败 |
 | ptyprobe | `liblobosptyprobe.so` | self-c | PTY 探针（静态可执行） | PTY 探测不可用 |
+| ptysession | `librivospty.so` | self-c | PTY 会话宿主（常驻可执行件） | `shell.exec` 只能退回 ADB；终端不可用 |
 | pty | `liblobospty.so` | soft | PTY 支撑件 | 见 `native-deps.txt` |
+
+### ptysession 为什么是「常驻可执行件」而不是共享库
+
+`ProcessBuilder` 不分配 PTY —— `isatty()` 为假、程序不进交互模式、读不到窗口大小。
+Android 的 `ProcessBuilder` 不暴露 `setsid`/`TIOCSCTTY`，**无 JNI 做不到**。
+
+仓内已有两种原生范式（`LD_PRELOAD` 注入 / 可执行件探针），本件属第三种形态但
+**仍然不写 JNI**：常驻可执行件 + 定长小端帧协议（三条流一一对应
+`ProcessBuilder` 的 stdin/stdout/stderr）。理由：
+
+- 避开 `System.loadLibrary` 的装载路径问题，也不必担心它被误当共享库 `dlopen`；
+- 协议是定长头 + 裸字节，因为 **PTY 输出是任意二进制**（含 NUL 与 0xFF），
+  JSON 编码会破坏它或变得昂贵；
+- 会话宿主起来要几十毫秒，所以**全设备一个常驻实例**，`shell.exec` 与
+  第 9 阶段的内置终端窗口共用同一个 `PtySession.Host`。
+
+落位名是 `$PREFIX/bin/pty-session`（不是 `librivospty.so`）—— 用户在 PATH 里
+敲的应该是工具名，不该看到一个 `.so` 当命令。APK 里的打包名与系统名不同这件事，
+`PtySession.locateBin()` 两个位置都认。
+
+数据回调按 **sid** 路由而不是「当前谁在跑」——挂 host 的话两个并发会话的输出会
+互相串，那是最难查的一类 bug：单独测都对，并发就错。
 
 ## 为什么这批不走商店
 

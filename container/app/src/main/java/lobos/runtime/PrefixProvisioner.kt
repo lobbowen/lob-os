@@ -13,9 +13,14 @@ object PrefixProvisioner {
 // node 不在其中：它是「程序运行时」，按需安装（对齐 Linux —— 发行版不默认装 node，
 // 用户自己装）。node 装完后由 ProgramInstallPipeline 建 usr/bin/node 软链，
 // 不由这里管。
+//
+// ptysession 在其中但**不叫** ptysession：它在 APK 里的文件名是 librivospty.so
+// （jniLibs 只打包 .so），而它在系统里的名字是 pty-session —— 对齐 Linux 的
+// /usr/bin/<工具名>，别让用户在 PATH 里看到一个「.so」当命令敲。
 private val BINS = listOf(
     NativeAssetRegistry.libNameOf("bash") to "bash",
     NativeAssetRegistry.libNameOf("ripgrep") to "rg",
+    NativeAssetRegistry.libNameOf("ptysession") to "pty-session",
 )
 
 // 底座库：无条件必需，落 $PREFIX/lib（对齐 Linux 的「库进 /lib」）。

@@ -15,6 +15,7 @@
 self-c liblobosflock.so flock
 self-c liblobosposix.so posix
 self-c liblobosptyprobe.so ptyprobe
+self-c librivospty.so ptysession
 # --- upstream ---
 upstream libbash.so bash
 upstream liblobosrg.so ripgrep

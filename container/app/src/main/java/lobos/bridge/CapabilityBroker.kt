@@ -1340,22 +1340,27 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val arr = p.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                 ?: emptyList()
             val timeoutMs = p.optLong("timeoutMs", 10_000L).coerceIn(1L, 60_000L)
-            val full = if (arr.isEmpty()) cmd
-                       else cmd + " " + arr.joinToString(" ") { shellQuote(it) }
-            val res = AdbClientRunner.shell(this, full, null, null, timeoutMs)
-            if (!res.ok) throw BridgeError(CODE_INTERNAL, "ADB shell 失败: ${res.error ?: res.raw.take(300)}")
-            val outStr = res.json?.optString("out", "") ?: ""
-            JSONObject().apply {
-                put("ok", true)
-                put(
-                    "stdout",
-                    if (outStr.length > MAX_SHELL_OUTPUT) outStr.take(MAX_SHELL_OUTPUT) + "\n…(截断)"
-                    else outStr
-                )
-                put("uid", 2000)
-                put("privileged", true)
-                put("note", "以 shell uid(2000) 经内置 ADB 客户端（无线调试）执行。")
+            // args 给了就按 argv 直接 exec（不经 shell，少一整类转义问题）；
+            // 只给 cmd 就经底座 bash -c（要管道/重定向时用这条路）。
+            // **不再默认走 ADB** —— 把命令执行挂在无线调试上，等于把系统能力挂在一
+            // 条会断的链路上，那正是「断开 ADB 就不能执行命令」的根因。
+            val r: lobos.runtime.LocalExec.Outcome = if (arr.isNotEmpty()) {
+                lobos.runtime.LocalExec.run(this, listOf(cmd) + arr, timeoutMs = timeoutMs)
+            } else {
+                lobos.runtime.LocalExec.runShell(this, cmd, timeoutMs = timeoutMs)
             }
+            if (!r.ok && r.via == lobos.runtime.LocalExec.Via.PLAIN) {
+                // 本地两条都不通 —— 最后才回落 ADB，且在结果里明说走了哪条路。
+                val adb = lobos.runtime.LocalExec.viaAdb(this, cmd, timeoutMs)
+                if (!adb.ok) {
+                    throw BridgeError(
+                        CODE_INTERNAL,
+                        "本地执行失败：${r.error ?: "（无原因）"}；ADB 也不通：${adb.error ?: "（无原因）"}",
+                    )
+                }
+                return@MethodDef adbAsJson(adb)
+            }
+            execAsJson(r)
         },
         "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
             lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
@@ -1558,7 +1563,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
     }
 
-    private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
+    // shellQuote 已删（原先只服务于「把 args 拼成 ADB 命令串」，见 git 99e5feb）。
+    // 现在 args 走 argv 直接 exec、cmd 走 bash -c，两条路都不再自己拼字符串，
+    // 所以不需要引号转义 —— 留着就是没人调用的死码。
 
     fun shutdown() {
         running = false
@@ -1653,3 +1660,47 @@ private fun JSONArray.toList(): List<String> {
     for (i in 0 until length()) out.add(getString(i))
     return out
 }
+
+/**
+ * 本地执行结果 → 桥接 JSON。
+ *
+ * `via` 与 `note` **必须带上** —— 调用方要能分辨这条结果是本地 PTY、无 PTY、
+ * 还是 ADB 回落。三者行为不同（isatty 真假不同、断网能不能用不同），
+ * 不说清楚就等于让调用方拿一个不知道来源的结果当事实用。
+ */
+private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObject().apply {
+    put("ok", r.ok)
+    put(
+        "stdout",
+        if (r.stdout.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+            r.stdout.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+        } else r.stdout,
+    )
+    if (r.stderr.isNotEmpty()) {
+        put(
+            "stderr",
+            if (r.stderr.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+                r.stderr.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+            } else r.stderr,
+        )
+    }
+    put("exitCode", r.exitCode)
+    put("via", r.via.name)
+    put("tty", r.via == lobos.runtime.LocalExec.Via.PTY)
+    put(
+        "note",
+        when (r.via) {
+            lobos.runtime.LocalExec.Via.PTY ->
+                "底座 PTY 本地执行（不依赖无线调试）；进程得到真终端：isatty 为真、可交互、能读窗口大小。"
+            lobos.runtime.LocalExec.Via.PLAIN ->
+                "本地执行但无 PTY（不依赖无线调试）；isatty 为假，进不了交互模式。" +
+                    (r.error ?: "")
+            lobos.runtime.LocalExec.Via.ADB ->
+                "经无线调试执行（本地通路不可用）—— 关掉无线调试就没有这条路了。" + (r.error ?: "")
+        },
+    )
+    if (r.error != null) put("detail", r.error)
+}
+
+/** ADB 回落结果的 JSON 形状 —— 与 [execAsJson] 同构，调用方不用分支处理。 */
+private fun adbAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = execAsJson(r)

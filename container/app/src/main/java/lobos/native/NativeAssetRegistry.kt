@@ -61,6 +61,17 @@ object NativeAssetRegistry {
             requiredDeps = emptyList(), required = false, buildTier = "self-c",
             note = "真实 exec 由 InstanceHost.runPtyProbe() 执行",
         ),
+        NativeExecutable(
+            id = "ptysession", libName = "librivospty.so", humanName = "PTY 会话宿主",
+            probeArgs = emptyList(), probeExpect = null,
+            requiredDeps = emptyList(), required = false, buildTier = "self-c",
+            note = "常驻可执行件（非库）：分配 PTY + setsid + TIOCSCTTY 后 execve。" +
+                "ProcessBuilder 不给 PTY，所以要它；走「可执行件 + 帧协议」而不是 JNI —— " +
+                "仓内已有两种原生范式（LD_PRELOAD 注入 / 可执行件探针），本件属后者，" +
+                "避开 System.loadLibrary 的装载路径与被误当共享库加载的问题。" +
+                "probeArgs 空 → 走「数据资产」分支不做 exec-probe（它起不来就没意义，" +
+                "真正的可用性判据是 PtySession 自己探 isatty/窗口大小）",
+        ),
 
         // ── 底座运行层共享库（scripts/build-base-libs.sh 编一次，全系统共用）──
         //

@@ -81,6 +81,14 @@ check_so() {
   || { echo "[error] ptyprobe 编译失败（纯 C 静态，失败即环境问题）"; exit 1; }
 check_so "$J/liblobosptyprobe.so" 1000 || exit 1
 
+# PTY 会话宿主：静态编，理由同 ptyprobe —— 它是**常驻可执行件**不是共享库，
+# 静态让它不依赖 $PREFIX/lib 的任何一件（会话是底座能力，不能因为缺库而起不来）。
+# 它要 fork/execve 别的程序，所以**不能** -pie（PIE + fork/exec 有坑），
+# 也不要 -shared（那是共享库的形态，会被误当库 dlopen）。
+"$CC" -static -O2 -o "$J/librivospty.so" container/native/d3/pty-session.c \
+  || { echo "::error title=PTY 会话宿主编译失败::纯 C 静态，失败即环境问题 —— shell.exec 与终端都依赖它"; exit 1; }
+check_so "$J/librivospty.so" 1000 || exit 1
+
 BASH_VER=5.2.15
 # ftp.gnu.org 从 GitHub runner 稳定不可达（实测 connect 134s 超时，本机同样 000），
 # 故按镜像顺序回退；任一源拿到即止。
@@ -165,7 +173,7 @@ if ! check_so "$J/liblobosrg.so" 300000; then
   exit 1
 fi
 
-for f in libbash.so liblobosrg.so liblobosptyprobe.so liblobosflock.so liblobosposix.so liblobospty.so; do
+for f in libbash.so liblobosrg.so liblobosptyprobe.so librivospty.so liblobosflock.so liblobosposix.so liblobospty.so; do
   if [ -f "$J/$f" ]; then
     before=$(stat -c%s "$J/$f"); "$TC/llvm-strip" --strip-unneeded "$J/$f" 2>/dev/null || true
     echo "[strip] $f $before -> $(stat -c%s "$J/$f") 字节"
