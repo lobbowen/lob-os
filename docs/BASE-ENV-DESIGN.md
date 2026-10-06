@@ -169,26 +169,45 @@ usr/
 │   ├── bash                命令解释器          ✅ 已有（自编）
 │   ├── busybox             多命令工具          🆕 已定待编
 │   ├── rg                  快速搜索            ✅ 已有（自编）
+│   ├── jq                  JSON 处理           🆕 已定：从商店件升为底座
 │   └── node → …            程序运行时          ✅ 商店下载
 ├── lib/                    共享库（全局库路径里）
 │   ├── libc++_shared.so    C++ 运行库          ✅ 已有
 │   ├── libssl.so           TLS                 🆕 已定待编
 │   ├── libcrypto.so        加密                🆕 已定待编
 │   ├── libz.so             压缩                🆕 进底座（curl+git 重复）
-│   ├── libpcre2-8.so       正则                🆕 进底座（jq 的 oniguruma + BusyBox grep）
+│   ├── libpcre2-8.so       正则                🆕 进底座（oniguruma + BusyBox grep）
 │   ├── libiconv.so         字符编码转换        🆕 进底座（git）
 │   ├── libcurl.so          HTTP 客户端         🆕 进底座（git 依赖）
-│   └── toolchain/…         商店下载的件         ✅ 已有
+│   └── toolchain/…         商店下载的件         ✅ 已有（curl/git/sqlite3/npm/pnpm）
 ├── etc/                    配置
 │   ├── ca-bundle.pem       根证书              ✅ 已有（建议归位到 etc/）
-│   ├── passwd / group      用户与组            ❓待判
 │   └── services            端口↔服务名         ❓待判
 └── share/
     └── zoneinfo/           时区数据            ❓待判
 ```
 
-**明确不进底座**：`libstdc++.so.6` 与 `libgcc_s.so.1` —— Android 是 Bionic ABI，
-glibc 的用不了；自编 `linker64`（系统的一部分）；`libpthread`（Android 16 起并入 libc）。
+**明确不进底座**：
+
+| 项 | 原因 |
+|---|---|
+| `libstdc++.so.6`、`libgcc_s.so.1` | Android 是 Bionic ABI，glibc 的用不了 |
+| 自编 `linker64` | 系统的一部分，不可替换 |
+| `libpthread` | Android 16 起并入 libc |
+| **`/etc/passwd`、`/etc/group`** | **我们是单用户系统**（已核实：无多用户设计，所有程序共享一个 uid、一个 HOME、同一套文件目录）。Linux 上这两个文件的核心语义是"UID ↔ 多用户映射"，我们没有这个概念。**不造。** |
+| `usr/include/` 头文件 | 看有没有程序要现场编译 C 代码 |
+
+**jq 为什么升为底座**：与 BusyBox 无实质重叠 ——
+BusyBox 有 `awk sed grep cut sort uniq tr wc head tail`，但**没有 JSON 能力**。
+而 LobOS 本身大量用 JSON（清单、配置、事件流、注册表），jq 是诊断与排障的通用工具。
+
+### 单用户带来的一个连带问题
+
+`/etc/passwd` 不进底座，但很多 C 程序启动时会调 `getpwuid()`：
+拿不到会 fallback 或打警告（git 会报 `detected dubious ownership`）。
+
+所以要保证的是 **`getpwuid()` 不让程序失败** ——
+这由代码统一兜底（HOME / SHELL 已在 env 里设了），不靠造文件。
 
 ### 判据（可复用）
 
@@ -199,24 +218,26 @@ glibc 的用不了；自编 `linker64`（系统的一部分）；`libpthread`（
 
 ### 改动态链的连带工作（发布侧）
 
-| 件 | 去掉静态链 | 改为链接 | 重编 |
-|---|---|---|---|
-| curl | zlib + openssl | `-lz -lssl -lcrypto` | ✅ |
-| git | zlib + openssl + curl | `-lz -lssl -lcrypto -lcurl` | ✅ |
-| jq | oniguruma | `-lpcre2-8` | ✅ |
+| 件 | 去掉静态链 | 改为链接 | 重编 | 归属 |
+|---|---|---|---|---|
+| curl | zlib + openssl | `-lz -lssl -lcrypto` | ✅ | 商店 |
+| git | zlib + openssl + curl | `-lz -lssl -lcrypto -lcurl` | ✅ | 商店 |
+| jq | oniguruma | `-lpcre2-8` | ✅ | **底座**（已定升入） |
+
+**归属与构建方式无关**：jq 升为底座件，构建仍在发布侧做（只是从商店清单挪到 APK 原生件清单）。
+底座件 = 随 APK 交付 + 全局入口 + 参与库依赖，不等于「必须自己写源码」。
 
 **依赖顺序**：底座库要先编好落进 APK，商店件才能链 —— 发布流水线要调顺序。
 
-### 待你确认（5 项，我不替你定）
+### 待你确认（3 项，我不替你定）
 
 | # | 项 | 我的倾向 |
 |---|---|---|
-| 1 | 时区数据 `zoneinfo` | 进 —— 否则程序处理本地时间没依据 |
-| 2 | locale 定义文件 | 进 —— 否则 `setlocale()` 可能失败 |
-| 3 | `/etc/passwd` `/etc/group` | 给虚拟视图 —— 程序常有读用户名的逻辑 |
-| 4 | `/etc/services` | 进 —— 小文件，端口名查询常用 |
-| 5 | `usr/include/` 头文件 | 看有没有程序要现场编译 C 代码 |
+| 1 | 时区数据 `zoneinfo` | 进 —— 代码从不处理时区（`zoneinfo`/`TZ`/`TimeZone` 零命中），程序处理本地时间没依据 |
+| 2 | locale 定义文件 | 进 —— `LANG=C.UTF-8` 已设（对 node 够用），但无定义文件时 `setlocale()` 可能失败 |
+| 3 | `/etc/services` | 进 —— 小文件，端口号↔服务名查询常用 |
 
+**已从清单移除**：`/etc/passwd` `/etc/group`（单用户无此语义）、`usr/include/`（除非将来有程序要现场编译）。
 另外**终端（PTY + termios）** 是最早指出、至今零实现的，必须做 —— 它不在上面清单里是因为它不是"件"而是"能力"。
 
 缺什么就**编进去**，而不是装的时候再想办法。
