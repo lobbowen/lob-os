@@ -1,18 +1,5 @@
 package lobos.log
 
-/**
- * 日志类别。
- *
- * 判据来源：这些值原先是 89 个调用点里的裸字符串，拼错要到运行时才发现
- * （比如把 "package" 写成 "pakcage"，日志静默少一类，没有任何报错）。
- * 收成常量后编译器能查出来。
- *
- * 命名说明：不叫 `Category`，会与 `os.Category`（程序分类
- * RUNTIME/TOOLCHAIN/LIBRARY/APPLICATION）混淆。
- *
- * 生成方式：从全仓 `Journal.append/note(ctx, "…")` 实跑提取。
- * 新增类别时同步加到这里，别再写裸字符串。
- */
 object Topics {
 
     const val ACQ = "acq"
@@ -47,7 +34,6 @@ object Topics {
     const val SUPERVISOR_POOL = "supervisor-pool"
     const val SVC = "svc"
 
-    /** 全部已知类别。给导出层与自检用。 */
     val ALL: List<String> = listOf(
         ACQ, ADB, ADB_CHANNEL, APPMGR, BOOT, CAPABILITY, CATALOG, COMPAT,
         DEEPLINK, DIAG, DOZE, INDEX, INSTANCE, MDNS, OS_PHASE, OTA, PACKAGE,

@@ -170,14 +170,6 @@ object ProgramManager {
     fun currentVersion(ctx: Context, id: String): String? =
         runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
-    /**
- * node 是「程序运行时」，按需安装（商店件），不是底座必备。
- * 这里不回答「底座该有什么」—— 那是 PrefixProvisioner 的事。
- *
- * 原先这里硬编码拼 `stateDirOf("node")/<ver>/bin/node`：
- * 换落位位置或改 id 就找不到，与 NodeRuntime.path() 循环依赖。
- * 查找统一交给 NodeRuntime 一处实现，这里不再自己拼路径。
- */
 fun nodeBin(ctx: Context): File? = NodeRuntime.path(ctx)
 
     fun assemble(ctx: Context) {

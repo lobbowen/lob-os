@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// 运行记录体系审计：找出所有往磁盘写"运行记录"的地方。
-//
-// 判据来源：用户指出 KillAudit 是碎片——"我们整个系统运行日志并没有一个
-// 规范的标准化的模块…它只是一个莫名其妙的东西搭在这里，位置也不对"。
-// 所以这里先回答：到底有几套在写记录？各写哪？格式是什么？有出口吗？
-
 const fs = require('fs');
 const path = require('path');
 
@@ -25,7 +19,6 @@ function walk(dir, out) {
 
 const files = walk(SRC);
 
-// 写记录的形态：StateFiles.write* / File(...).writeText / appendText / FileWriter
 const WRITE = [
   { re: /StateFiles\.write(?:Atomic|Json)\s*\(/g, how: 'StateFiles' },
   { re: /writeAtomic\s*\(/g, how: 'writeAtomic' },
@@ -41,7 +34,6 @@ for (const f of files) {
   const txt = fs.readFileSync(f, 'utf8');
   const lines = txt.split('\n');
 
-  // 该文件声明的落盘路径常量
   const paths = new Set();
   for (const m of txt.matchAll(/(?:const\s+)?(?:DIR|FILE|STRUCT_FILE|STRUCT_DIR|NODE_ERR|CURSOR_FILE|LOG_FILE)\s*=\s*"([^"]+)"/g)) {
     paths.add(m[1]);
@@ -51,7 +43,6 @@ for (const f of files) {
     for (const { re, how } of WRITE) {
       re.lastIndex = 0;
       if (!re.test(line)) continue;
-      // 排除纯读取（readText 后面接 write 才算）
       writers.push({
         rel, line: i + 1, how,
         snippet: line.trim().slice(0, 90),
@@ -62,7 +53,6 @@ for (const f of files) {
   });
 }
 
-// 按"落盘目标文件"归组：一个写手若声明了路径常量，就算一路
 const byTarget = new Map();
 for (const w of writers) {
   const key = w.paths.length ? w.paths.join(' + ') : '(动态路径，未声明常量)';
@@ -88,20 +78,13 @@ for (const [target, g] of [...byTarget.entries()].sort((a, b) => b[1].writers.si
 
 console.log('共 ' + n + ' 套落盘目标，' + new Set(writers.map((w) => w.rel)).size + ' 个文件在写。');
 
-// 数据源 vs 视图：看哪些模块把自己的数据也写进 Journal
 const ALSO_JOURNAL = /Journal\.(append|note)\s*\(/;
 const dual = [];
 for (const f of files) {
   const rel = f.replace(SRC + '/', '').replace(/^lobos\//, '');
-  if (rel === 'RuntimeDiagnostics.kt') continue;   // 它自己就是转发器
+  if (rel === 'RuntimeDiagnostics.kt') continue;
   const txt = fs.readFileSync(f, 'utf8');
   const hasJournal = ALSO_JOURNAL.test(txt);
-  // 只认「自己声明了记录类落盘路径」：形如
-//     private const val FILE = "diagnostics.txt"
-//     private const val DIR  = "os/journal"
-// 而不是在代码里「提到」 journal / node-stderr 这些名字
-// （很多模块只是调用 Journal.append 或 RuntimeDiagnostics.nodeErrFile，
-//  那恰恰说明它们已经走数据源，不算残留）。
   const RECORD_PATH = /(journal|events\.jsonl|diag\.jsonl|diagnostics\.txt|probe-journal|residency\.txt|node-stderr|kill-audit-cursor)/;
   const declaresOwn = [...txt.matchAll(/(?:const\s+val|DIR|FILE)\s*[\w]*\s*=\s*"([^"]+)"/g)]
     .some((m) => RECORD_PATH.test(m[1]));
@@ -114,14 +97,12 @@ console.log(dual.length + ' 个文件：');
 for (const d of dual.sort()) console.log('  ' + d);
 console.log('');
 
-// 有没有"读出来给人看/给反馈"的出口
 const READERS = /(Journal|ProbeJournal|ResidencyAudit|RuntimeDiagnostics|SelfCheckReport)\./g;
 const readers = new Set();
 for (const f of files) {
   const rel = f.replace(SRC + '/', '').replace(/^lobos\//, '');
   const txt = fs.readFileSync(f, 'utf8');
   for (const m of txt.matchAll(READERS)) {
-    // 排除定义文件自身
     if (!rel.startsWith(m[1] + '.kt')) readers.add(rel + ' → ' + m[1]);
   }
 }

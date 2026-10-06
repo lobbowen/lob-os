@@ -78,14 +78,6 @@ function aliasesOf(name, zipPath, declaredEntry) {
   const names = pieceNames(zipPath);
   const out = [];
   for (const alias of Object.keys(bin).sort()) {
-    // 跳过「本名」。**本名有两种**，与装侧 aliasNames 的过滤保持一致：
-    //   ① alias === name                  （键 == 件名，如 bin/npm、bin/jq）
-    //   ② alias === entry 的末段           （如 bin/npm-cli.js 件名 npm → 「npm-cli.js」的 basename）
-    // 早先只跳 ①，于是 llvmtoolchain（entry=bin/clang、件名 llvmtoolchain）
-    // 的清单里会多出 `clang` 与 `clang++`，而装侧两条都不建（它跳 programId
-    // 与 primaryName）→ 清单比实际链多，卸载时按清单删不存在的链，
-    // 而真正建过的链变成指向已删目录的死链。
-    // 判据见 tools/verify/alias-symlink-proof.js。
     const entryBase = String(declaredEntry).split('/').pop();
     if (alias === name || alias === entryBase) continue;
     const rel = bin[alias];

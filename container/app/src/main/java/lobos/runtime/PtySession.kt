@@ -12,29 +12,10 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * PTY 会话 —— 程序要终端时的执行路径。
- *
- * ── 为什么不用 ProcessBuilder ──
- * ProcessBuilder 不分配 PTY，于是 isatty() 为假、程序不进交互模式、读不到窗口大小。
- * Android 的 ProcessBuilder 不暴露 setsid/TIOCSCTTY，无 JNI 做不到。
- * 所以底座有个原生件 librivospty 做这件事（见 container/native/d3/pty-session.c），
- * 它走「常驻可执行件 + 帧协议」而不是 JNI。
- *
- * ── 三条流 ──
- *   本件 stdin  → 控制帧（OPEN / INPUT / WINSIZE / CLOSE / EXIT）
- *   本件 stdout → 数据帧（READY / DATA / EXITED / ERROR）
- *   本件 stderr → 诊断（人类可读，不参与协议）
- *
- * ── 复用点 ──
- * [forCommand] 供 shell.exec 用（建一个、执行、读完就关）；
- * 第 9 阶段的内置终端窗口长期持有一个实例 —— 同一个类，不需要重写。
- */
 object PtySession {
 
     private const val TAG = "PtySession"
 
-    // 帧类型 —— 必须与 pty-session.c 的 enum 逐一对上
     private const val F_OPEN = 1
     private const val F_READY = 2
     private const val F_DATA = 3
@@ -48,7 +29,6 @@ object PtySession {
     private const val DEFAULT_ROWS = 24
     private const val DEFAULT_COLS = 80
 
-    /** 一条已建立的 PTY 会话。 */
     class Session internal constructor(
         private val host: Host,
         val sid: Int,
@@ -58,31 +38,13 @@ object PtySession {
     ) {
         private val closed = AtomicBoolean(false)
 
-        /**
-         * 本会话的数据回调。
-         *
-         * 挂在 **sid** 上而不是 host 上 —— 挂 host 的话两个并发会话的输出会互相串
-         * （A 命令的输出进 B 的缓冲区），那是最难查的一类 bug：单独测都对，
-         * 并发就错。所以路由键是 sid，不是「当前谁在跑」。
-         */
         @Volatile var onData: ((ByteArray) -> Unit)? = null
 
-        /**
-         * 本会话的退出回调，**带退出码与终止信号**。
-         *
-         * 为什么必须带：原生侧的 EXITED 帧里就有 status 与 signal
-         * （`WEXITSTATUS` / `WTERMSIG`），而早先的回调是无参的 ——
-         * 于是 `bash -c "exit 1"` 与 `exit 0` 在调用方看来完全一样，
-         * 桥接层报的 exitCode 恒为 0。那是「命令失败了但系统说成功」，
-         * 比报错更难查：程序会以为部署成功了。
-         */
         @Volatile var onExit: ((status: Int, signal: Int) -> Unit)? = null
 
-        /** 退出码；-1 = 还在跑或未知（被信号杀死时看 [exitSignal]）。 */
         @Volatile var exitStatus: Int = -1
             private set
 
-        /** 终止信号号；0 = 正常退出。 */
         @Volatile var exitSignal: Int = 0
             private set
 
@@ -91,7 +53,6 @@ object PtySession {
             exitSignal = signal
         }
 
-        /** 写输入（用户敲的键、程序喂的数据）。 */
         fun write(data: ByteArray) {
             if (closed.get()) return
             host.send(F_INPUT, sid, data)
@@ -99,16 +60,9 @@ object PtySession {
 
         fun write(text: String) = write(text.toByteArray(Charsets.UTF_8))
 
-        /** 改窗口大小 —— 改完 TIOCGWINSZ 才能读到新值，vi/less 会重排。 */
         fun resize(rows: Int, cols: Int) {
             if (closed.get()) return
             val b = java.nio.ByteBuffer.allocate(8)
-            // 必须是 LITTLE_ENDIAN：原生侧是 memcpy(&ws, payload, sizeof(ws))，
-            // 即主机序（aarch64 小端）。而 ByteBuffer 默认是**大端** ——
-            // 用默认序写出去，24 会变成 0x1800（6144），窗口大小直接失效，
-            // 而现象是「改了尺寸但程序不知道」，不报错。
-            // 字段顺序 rows, cols, xpixel, ypixel 由 POSIX 的 struct winsize 定，
-            // 两侧都按那个顺序，所以这里只需保证字节序一致。
             b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
             b.putShort(rows.toShort()).putShort(cols.toShort())
             b.putShort(0).putShort(0)
@@ -124,7 +78,6 @@ object PtySession {
         }
     }
 
-    /** 常驻的 librivospty 进程 + 读帧线程。 */
     class Host internal constructor(pb: ProcessBuilder, private val ctx: Context? = null) : AutoCloseable {
 
         private val proc: Process = pb.start()
@@ -132,39 +85,29 @@ object PtySession {
         private val fromHost = DataInputStream(proc.inputStream)
         private val diag = StringBuilder()
 
-        /**
-         * 原生侧的 stderr —— 它是排障时唯一的线索（起不来时 stdout/stderr 全空，
-         * 只有这里写「librivospty ready」或具体 errno）。必须有人读，否则管道满了
-         * 会把原生侧**卡死**在写 stderr 上，表现为「会话永远不 READY」。
-         */
         private val diagReader = Thread({
             try {
                 proc.errorStream.bufferedReader().forEachLine { line ->
                     synchronized(diag) {
                         diag.append(line).append('\n')
-                        if (diag.length > 8192) diag.setLength(0)   // 别让它涨成内存泄漏
+                        if (diag.length > 8192) diag.setLength(0)
                     }
                 }
             } catch (_: Exception) {
-                // 宿主退出时管道关闭，这里静默即可
             }
         }, "lobos-pty-diag").apply { isDaemon = true; start() }
 
-        /** sid → 会话。读线程写入，读线程之外只读。 */
         private val sessions = ConcurrentHashMap<Int, Session>()
 
-        /** 等待 OPEN 返回 READY：调用方阻塞在 start 这一刻。 */
         private val ready = ConcurrentHashMap<Int, CountDownLatch>()
 
         @Volatile private var lastError: String = ""
 
-        /** 读帧线程：唯一的写 stdout 之外的消费者。 */
         private val reader = Thread({ pump() }, "lobos-pty-reader").apply {
             isDaemon = true
             start()
         }
 
-        /** 起一个会话并等它就绪（带超时 —— 拿不到 PTY 就明确失败，不静默挂着）。 */
         fun start(argv: List<String>, rows: Int = DEFAULT_ROWS, cols: Int = DEFAULT_COLS,
                   timeoutMs: Long = 5_000): Session {
             if (argv.isEmpty()) throw IllegalArgumentException("argv 为空 —— 没有要执行的程序")
@@ -179,15 +122,12 @@ object PtySession {
             send(F_OPEN, sid, blob.toByteArray())
             if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 ready.remove(sid)
-                // 把原生侧的诊断带上 —— 否则「没就绪」与「什么都没发生」长得一样，
-                // 排障时无从下手（这正是「诊断不许指错方向」那条判据）。
                 val d = diagnostics().trim()
                 throw IllegalStateException(
                     "PTY 会话 ${sid} 在 ${timeoutMs}ms 内没就绪" +
                         (if (d.isNotEmpty()) "；librivospty 说：$d" else "（librivospty 无任何诊断输出）")
                 )
             }
-            // OPEN 时原生侧已按默认 24x80 建立；这里把调用方要的尺寸打过去
             val s = sessions[sid] ?: throw IllegalStateException("会话 $sid 建立后丢失")
             if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)
             return s
@@ -218,14 +158,10 @@ object PtySession {
             }
         }
 
-        /**
-         * 读帧循环。
-         * 一次只处理一帧，且不缓存 DATA 之外的语义 —— 输出顺序由 poll 保证。
-         */
         private fun pump() {
             try {
                 while (true) {
-                    val kind = fromHost.read()            // 阻塞；-1 = 原生侧退出
+                    val kind = fromHost.read()
                     if (kind < 0) break
                     val sid = fromHost.read()
                     val f1 = fromHost.read()
@@ -238,7 +174,7 @@ object PtySession {
                               ((b5.toInt() and 0xFF) shl 16) or ((b6.toInt() and 0xFF) shl 24)
                     val payload = if (len > 0) {
                         val buf = ByteArray(len)
-                        fromHost.readFully(buf)   // 短读在管道上常见，必须补齐
+                        fromHost.readFully(buf)
                         buf
                     } else ByteArray(0)
 
@@ -247,9 +183,6 @@ object PtySession {
                         F_DATA -> onData(sid, payload)
                         F_EXITED -> onExited(sid, payload)
                         F_ERROR -> {
-                            // 帧尾是 NUL 结尾的 C 字符串，但**不保证**恰好一个字节的 NUL
-                            // —— 原生侧若被截断就会没有。trimEnd 掉 NUL 再解码，
-                            // 否则 Kotlin 会抛 StringIndexOutOfBounds 把真正的错误盖住。
                             var n = payload.size
                             while (n > 0 && payload[n - 1] == 0.toByte()) n--
                             lastError = String(payload, 0, n, Charsets.UTF_8)
@@ -262,7 +195,6 @@ object PtySession {
                     }
                 }
             } catch (e: EOFException) {
-                // 原生侧正常退出
             } catch (e: Exception) {
                 Log.w(TAG, "读帧线程异常", e)
             } finally {
@@ -273,7 +205,6 @@ object PtySession {
         }
 
         private fun onReady(sid: Int, payload: ByteArray) {
-            // payload = slave 路径（NUL 结尾）+ 8 字节 winsize
             val nul = payload.indexOf(0)
             if (nul < 0) { lastError = "READY 帧没有 slave 路径"; ready.remove(sid)?.countDown(); return }
             val slave = String(payload, 0, nul, Charsets.UTF_8)
@@ -281,8 +212,6 @@ object PtySession {
             val cols: Int
             if (payload.size >= nul + 1 + 8) {
                 val b = java.nio.ByteBuffer.wrap(payload, nul + 1, 8)
-                // 小端 —— 原生侧 memcpy 的 struct winsize 是主机序（aarch64 小端）。
-                // 不显式指定就是大端，rows=24 读成 6144。
                 b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                 rows = b.short.toInt() and 0xFFFF
                 cols = b.short.toInt() and 0xFFFF
@@ -292,13 +221,11 @@ object PtySession {
         }
 
         private fun onData(sid: Int, payload: ByteArray) {
-            // 按 sid 路由 —— 不按「当前谁在跑」。见 Session.onData 的说明。
             try { sessions[sid]?.onData?.invoke(payload) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
         }
 
         private fun onExited(sid: Int, payload: ByteArray) {
             val s = sessions.remove(sid)
-            // 帧是 8 字节：uint32 status + uint32 signal（小端，主机序）。
             var status = -1
             var signal = 0
             if (payload.size >= 8) {
@@ -313,7 +240,6 @@ object PtySession {
             catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }
 
-        /** 原生侧的诊断输出（启动失败之类），排障时看它。 */
         fun diagnostics(): String = synchronized(diag) { diag.toString() }
 
         override fun close() {
@@ -326,16 +252,9 @@ object PtySession {
         }
     }
 
-    // ── 宿主进程本身：全设备一个，起来就别拆（起一次要几十毫秒）──
     @Volatile private var host: Host? = null
     private val hostLock = Any()
 
-    /**
-     * 共享宿主上开一个会话 —— 内置终端窗口用它，**不另起一个宿主**。
-     *
-     * 为什么不直接把 `host(ctx)` 公开：暴露 Host 就等于让调用方能任意读写
-     * 它的内部状态（帧协议、读线程、回调路由）。这里只给「起一个会话」这一件事。
-     */
     fun openSession(
         ctx: Context,
         argv: List<String>,
@@ -359,15 +278,6 @@ object PtySession {
         }
     }
 
-    /**
-     * 找 librivospty。
-     *
-     * 两个位置都要认，因为它们的名字不同：
-     *   · $PREFIX/bin/pty-session —— 落位后的系统名（PrefixProvisioner 建）
-     *   · nativeLibraryDir/librivospty.so —— APK 里的打包名（未落位时的兜底）
-     * 找不到就抛 —— 底座不完整时**不许静默退化**到「没有终端也能凑合」，
-     * 那正是「程序要终端就报错」被反复踩的地方。
-     */
     private fun locateBin(ctx: Context): File {
         val candidates = listOf(
             File(PrefixProvisioner.binDir(ctx), "pty-session"),
@@ -381,7 +291,6 @@ object PtySession {
             )
     }
 
-    /** 可用性探针：起一个真会话、跑 `tty` 之外的真检查，然后关掉。 */
     fun probe(ctx: Context): Boolean = try {
         val h = host(ctx)
         val s = h.start(listOf("/system/bin/sh", "-c", "exit 0"), timeoutMs = 3_000)
@@ -392,15 +301,6 @@ object PtySession {
         false
     }
 
-    /**
-     * 一次性执行：建会话 → 跑完 → 收全部输出。
-     *
-     * 这是 CapabilityBroker 的 shell.exec 在 PTY 可用时走的路径。
-     * 输出含 stderr —— PTY 天然合并两个流，这与真实终端一致，也省去分别接两条管道。
-     *
-     * env/cwd 的处理：原生侧 execve 时**继承宿主进程环境**，所以要带自定义环境
-     * 或 cwd，就得另起一个宿主进程（不是复用共享那个 —— 那会把共享宿主的环境改脏）。
-     */
     fun runToCompletion(
         ctx: Context,
         argv: List<String>,
@@ -425,9 +325,6 @@ object PtySession {
                 s.close()
                 return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms", completed = false)
             }
-            // 退出码必须带出去。ok 只表示「跑完了」，**不等于「成功了」**——
-            // 早先这里恒返回 ok=true，于是 exit 1 与 exit 0 在调用方看来一样，
-            // 桥接层报的 exitCode 永远是 0，程序会以为部署成功了。那比报错更难查。
             val out = buf.toString(Charsets.UTF_8.name())
             val code = s.exitStatus
             val sig = s.exitSignal
@@ -445,32 +342,20 @@ object PtySession {
         }
     }
 
-    /** 信号号 → 名字（诊断用；未知就报数字，不编）。 */
     private fun signalName(sig: Int): String = when (sig) {
         1 -> "SIGHUP"; 2 -> "SIGINT"; 3 -> "SIGQUIT"; 9 -> "SIGKILL"
         11 -> "SIGSEGV"; 13 -> "SIGPIPE"; 15 -> "SIGTERM"
         else -> "信号 $sig"
     }
 
-    /**
-     * 一次性执行的结果。
-     *
-     * `completed` 与 `ok` **必须分开**：
-     *   · completed = 命令真的跑完了（拿到退出码或被信号终止）
-     *   · ok        = 跑完了**且**退出码为 0
-     * 早先只有一个 ok，于是「退出码非 0」与「PTY 通路坏了」被混成同一件事，
-     * 调用方会在命令失败时去回落无 PTY 通路 —— 那是把诊断指向错误的地方。
-     */
     data class Result(
         val ok: Boolean,
         val exitCode: Int,
         val output: String,
         val error: String?,
-        /** 命令是否真的执行完（false = 起不来 / 超时，属于通路问题）。 */
         val completed: Boolean = ok || exitCode != -1,
     )
 
-    /** 另起一个宿主进程，带自定义环境与工作目录（用完即弃，不进共享池）。 */
     private fun dedicatedHost(ctx: Context, env: Map<String, String>, cwd: File?): Host {
         val bin = locateBin(ctx)
         val pb = ProcessBuilder(bin.absolutePath)

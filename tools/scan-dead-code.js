@@ -1,17 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// 全仓死代码扫描。
-//
-// 这个工具最容易出错的地方是误判：Android 有大量"不用写调用点"的入口
-// （Manifest 声明的组件、反射拿到的类、序列化读的字段、布局里的 id）。
-// 把这些当死码删掉，编译能过、运行就炸。所以这里宁可漏报也不误报：
-// 白名单里的东西一律不报，并且把白名单理由打印出来，让人能核对。
-//
-// 输出分两类：
-//   · 确认死：声明处 + 全仓零引用，且不在任何白名单里
-//   · 可疑：只在白名单场景被引用（反射/Manifest/序列化），删前必须人工确认
-
 const fs = require('fs');
 const path = require('path');
 
@@ -46,18 +35,11 @@ const nonKtText = nonKtFiles
   .join('\n');
 const manifestText = fs.existsSync(MANIFEST) ? fs.readFileSync(MANIFEST, 'utf8') : '';
 
-// ── 白名单：Android 隐式入口 ──────────────────────────────────────────
-// 判据：这些名字可能通过 Manifest / 反射 / 布局 / 序列化被用到，
-// 静态引用计数为 0 不等于死码。
-
-// Manifest 的属性是跨行排的（<service\n  android:name=".X"\n  …/>），
-// 所以要按整块标签解析，不能假设 name 与标签名同行。
 const MANIFEST_COMPONENTS = new Set();
 for (const tag of manifestText.matchAll(/<(activity|service|receiver|provider|application)\b([^>]*?)\/?>/gs)) {
   const nm = /android:name="([^"]+)"/.exec(tag[2]);
   if (!nm) continue;
   const v = nm[1];
-  // ".MainActivity" → MainActivity；"lobos.os.X" 或 "lobos.os.X.Y" → X（取首字母大写段）
   if (v.startsWith('.')) MANIFEST_COMPONENTS.add(v.slice(1));
   else {
     const seg = v.split('.').find((s) => /^[A-Z]/.test(s));
@@ -70,7 +52,6 @@ const REFLECTIVE_HINTS = [
   'registerExtModule', 'newInstance', 'getMethod(',
 ];
 
-// 布局 id：R.id.xxx 被 Kotlin 以 R.id 形式引用，但代码里也可能是 findViewById(R.id.x)
 const layoutIds = new Set();
 for (const f of walk(RES, '.xml')) {
   const t = fs.readFileSync(f, 'utf8');
@@ -90,14 +71,9 @@ function isWhitelisted(name) {
   return null;
 }
 
-// ── 声明抽取 ─────────────────────────────────────────────────────────
-
 const DECL = [
-  // object / class / interface / enum class
   { kind: '类型', re: /^[ \t]*(?:internal\s+|private\s+|public\s+|abstract\s+|open\s+|sealed\s+|data\s+|value\s+)*(?:object|class|interface|enum\s+class)\s+([A-Z][A-Za-z0-9_]*)/gm },
-  // fun（顶层与成员都收；成员靠"可疑/死"两档区分，不靠这里区分）
   { kind: '函数', re: /^[ \t]*(?:internal\s+|private\s+|public\s+|override\s+|inline\s+|suspend\s+|operator\s+|infix\s+|tailrec\s+|open\s+|abstract\s+)*fun\s+(?:<[^>]+>\s*)?(?:[A-Za-z0-9_.<>]+\.)?([a-z][A-Za-z0-9_]*)\s*\(/gm },
-  // val / var（含 companion object 成员）
   { kind: '属性', re: /^[ \t]*(?:internal\s+|private\s+|public\s+|override\s+|const\s+|lateinit\s+|open\s+|abstract\s+|final\s+)*(?:val|var)\s+(?:<[^>]+>\s*)?(?:[A-Za-z0-9_.<>]+\.)?([A-Za-z_][A-Za-z0-9_]*)/gm },
 ];
 
@@ -105,7 +81,6 @@ const decls = [];
 for (const f of ktFiles) {
   const rel = f.replace(JAVA + '/', '');
   const text = fs.readFileSync(f, 'utf8');
-  // 行号索引：offset → 行号，避免每命中一次就重扫全文
   const lineStarts = [0];
   for (let i = 0; i < text.length; i += 1) if (text[i] === '\n') lineStarts.push(i + 1);
   const lineAt = (off) => {
@@ -117,7 +92,6 @@ for (const f of ktFiles) {
     return lo + 1;
   };
   for (const { kind, re } of DECL) {
-    // 每个文件每个模式都用独立实例：共享带 g 的正则会让 lastIndex 跨文件泄漏
     const rx = new RegExp(re.source, re.flags);
     let m;
     while ((m = rx.exec(text)) !== null) {
@@ -130,9 +104,6 @@ for (const f of ktFiles) {
     }
   }
 }
-
-// ── 引用计数 ─────────────────────────────────────────────────────────
-// 声明行本身要排除，否则"声明即一次引用"
 
 function countRefs(name, selfRel, selfLine) {
   let n = 0;
@@ -149,7 +120,6 @@ function countRefs(name, selfRel, selfLine) {
     }
   };
   for (const f of ktFiles) inKt(fs.readFileSync(f, 'utf8'), f.replace(JAVA + '/', ''));
-  // 非 Kotlin 来源：布局 id、assets、脚本、文档、Manifest
   const re = new RegExp('\\b' + name + '\\b', 'g');
   let mm;
   while ((mm = re.exec(nonKtText)) !== null) n += 1;
@@ -169,8 +139,6 @@ for (const d of decls) {
     suspicious.push({ ...d, why, refs });
   }
 }
-
-// ── 输出 ─────────────────────────────────────────────────────────────
 
 console.log('');
 console.log('扫描范围：' + ktFiles.length + ' 个 Kotlin 文件');

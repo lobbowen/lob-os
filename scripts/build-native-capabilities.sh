@@ -81,25 +81,11 @@ check_so() {
   || { echo "[error] ptyprobe 编译失败（纯 C 静态，失败即环境问题）"; exit 1; }
 check_so "$J/liblobosptyprobe.so" 1000 || exit 1
 
-# PTY 会话宿主：静态编，理由同 ptyprobe —— 它是**常驻可执行件**不是共享库，
-# 静态让它不依赖 $PREFIX/lib 的任何一件（会话是底座能力，不能因为缺库而起不来）。
-# 它要 fork/execve 别的程序，所以**不能** -pie（PIE + fork/exec 有坑），
-# 也不要 -shared（那是共享库的形态，会被误当库 dlopen）。
 "$CC" -static -O2 -o "$J/librivospty.so" container/native/d3/pty-session.c \
   || { echo "::error title=PTY 会话宿主编译失败::纯 C 静态，失败即环境问题 —— shell.exec 与终端都依赖它"; exit 1; }
 check_so "$J/librivospty.so" 1000 || exit 1
 
 BASH_VER=5.2.15
-# ftp.gnu.org 从 GitHub runner 稳定不可达（实测 connect 134s 超时，本机同样 000），
-# 故按镜像顺序回退；任一源拿到即止。
-# 走 fetch-pinned：它按 userland-sources.json 的 sha256 **逐字节校验**。
-#
-# 早先这里是裸 curl + 「拿到就算」—— 那行 `sha256: $(sha256sum …)` 只打印不比对，
-# 于是四个镜像任一被替换/传输损坏都会静默通过，然后编出错的 bash。
-# 而 bash 是 upstream 档、缺件硬红的底座件，它错了整个 $PREFIX 都跟着错。
-#
-# 版本号改从钉值表读（BASH_VER 保留作兜底）：两者不一致时判红，
-# 免得「脚本说 5.2.15、表里是别的版本」而无人察觉。
 BASH_VER_TABLE="$(bash scripts/fetch-pinned.sh --src-version bash 2>/dev/null || true)"
 if [ -n "$BASH_VER_TABLE" ] && [ "$BASH_VER_TABLE" != "$BASH_VER" ]; then
   echo "::error title=bash 版本不一致::构建脚本写的是 $BASH_VER，钉值表是 $BASH_VER_TABLE"
@@ -114,8 +100,6 @@ if ! bash scripts/fetch-pinned.sh --pin bash "/tmp/bash.tar.gz"; then
   exit 1
 fi
 echo "[bash] 命中钉值来源，sha256 校验通过"
-# 解包单独判红：sha256 对但 tar 解不开是另一类故障（磁盘满、解压中断），
-# 混在一个 if 里会让报错指错方向。
 tar -xzf /tmp/bash.tar.gz -C /tmp \
   || { echo "::error title=bash 解包失败::sha256 是对的，但 tar 解不开 —— 看上面 tar 的报错"; exit 1; }
 cat > /tmp/termcap_stub.c <<'EOF'
@@ -158,9 +142,6 @@ if ! check_so "$J/libbash.so" 300000; then
   echo "::error title=必需件缺失::libbash.so 未产出 —— bash 工具依赖 $PREFIX/bin/bash，无回退路径"
   exit 1
 fi
-# 早先这里还有一组 else 分支报「bash 源码下载/解包失败」。现在下载与解包各自在
-# 上游就 exit 1 了，那些分支**永不可达** —— 而文案会把排查引向「下载失败」，
-# 实际故障可能在这之后。留着它比删掉更坏。
 
 if ! command -v cargo > /dev/null 2>&1; then
   echo "runner 无 cargo，装最小 rustup"
@@ -248,11 +229,6 @@ echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE}/container/app/src/mai
 cd "$ROOT"
 
 echo "== 底座共享库（libz / libssl / libcrypto / libcurl）=="
-# 放在小件 strip 之后：小件 strip 段硬编码了六个文件名，新库不在其中。
-# 库自己的 strip 在 build-base-libs.sh 内做（每件 strip 完立刻自检形态）。
-# 这一段在脚本末尾（清单生成之前）执行，这样：
-#   · 上游任何 exec 到本脚本的回退路径都自动带上它 —— 不用在
-#     ensure-native-capabilities.sh 的五处 exec 里各加一行（那五处迟早漏一处）。
 CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {
   echo "::error title=底座共享库缺失::libz/libssl/libcrypto/libcurl 是 \$PREFIX 必备（upstream 档，缺件硬红）——"
   echo "             没有它们，curl/git 改动态链（第 2 阶段）与 busybox 的 gzip/tar（第 5 阶段）都无从谈起。"
@@ -261,8 +237,6 @@ CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {
 cd "$ROOT"
 
 echo "== busybox（基础命令集）=="
-# 静态编，不链底座 libz（理由见 build-native-busybox.sh 文件头）。
-# 命名 libbusybox.so 只为进 jniLibs（APK 只打包 .so）；落位名是 busybox。
 CC="$CC" ABI="$ABI" bash scripts/build-native-busybox.sh || {
   echo "::error title=busybox 缺失::\$PREFIX 的 tar/gzip/grep/sed/ls/cp/mv 等基础命令依赖它（upstream 档，缺件硬红）"
   exit 1

@@ -6,16 +6,6 @@ import lobos.log.Journal
 import lobos.os.ProgramDir
 import lobos.os.ProgramManager
 
-/**
- * 快应用安装后的配对步骤。
- *
- * 判据：装包（下载、校验、解包、落位、登记）是安装器的事，与"是不是快应用"无关；
- * 但快应用装完还差三步才可运行——分配后端端口、把地址写进前端 config.json、
- * 装入 dimina。这三步是快应用专属的，任何安装路径装完快应用都必须走一遍。
- *
- * 原先这段逻辑只长在 ota/ProgramInstaller 里，于是走 os/PackageInstaller 装的快应用
- * 不会被配对，两条安装路径行为不一致。抽到这里，两条路径共用同一份。
- */
 object QuickAppBinder {
 
     fun bindIfQuickApp(context: Context, programId: String, quickAppDir: File) {

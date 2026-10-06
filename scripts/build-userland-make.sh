@@ -1,17 +1,4 @@
 #!/usr/bin/env bash
-# GNU make —— 开发环境件（阶段1d）。
-#
-# ── 为什么 make 不必等 clang ──
-# make **自带构建系统**（包里带现成的 configure，无需 autoreconf）。
-# 所以交叉编译它只需要 NDK 的 clang 当编译器，不需要设备上已经有 clang。
-# 这与阶段5 的 busybox 同一形态（两者都已成功/在链路上）。
-#
-# 与 clang 那批的差别只有一个：clang 是「用编译器编出来的工具」，
-# 交叉编译 LLVM 是自举（Termux 级别的工程量）；make/cmake/pkg-config
-# 是「自带构建系统的独立工具」，交叉编译它们是常规操作。
-#
-# 形态：静态编、不链任何共享库 —— 与阶段5 的 busybox 同理由
-# （底座/工具件之间不互相依赖到「少一件就起不来」）。
 set -euo pipefail
 export LC_ALL=C
 
@@ -27,8 +14,6 @@ OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 
 die() {
-  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
-  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
   exit 1
@@ -51,7 +36,6 @@ mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$TOOL"
 mkdir -p "$WORK"
 
-# ── 取源码 ──
 MAKE_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version $TOOL)"
 SRC="$WORK/$TOOL-src"
 if [ ! -d "$SRC" ]; then
@@ -62,7 +46,6 @@ if [ ! -d "$SRC" ]; then
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 \
     || die "解包失败" "$TGZ —— 格式是否与 .tar.gz 相符？"
 fi
-# 源码树形状自检：不是「解包成功就算」
 [ -f "$SRC/configure" ] || die "源码树异常" \
   "缺 configure —— GNU make 的发布包自带它，没有的话需要 autoreconf（而那要 autotools）"
 [ -f "$SRC/Makefile.am" ] || die "源码树异常" "缺 Makefile.am"
@@ -71,18 +54,9 @@ ACTUAL="$(sed -n 's/^AC_INIT(\[GNU Make\],\[\([0-9.]*\)\].*/\1/p' "$SRC/configur
   "钉的是 $MAKE_VER，configure.ac 里是 $ACTUAL（钉值写错或源站给了别的版本）"
 note "源码 $ACTUAL 就位（自带 configure，无需 autoreconf）"
 
-# ── configure ──
 BUILD="$WORK/build"
 rm -rf "$BUILD" "$WORK/_inst" && mkdir -p "$BUILD" "$WORK/_inst"
 
-# 交叉编译的标准三件套：
-#   --host=aarch64-linux-android  我们要产出的目标
-#   --build=x86_64-pc-linux-gnu   跑 configure 的机器
-# CFLAGS/LDFLAGS 里不加 -shared 之类 —— 静态编，configure 自己带 --disable-shared
-#
-# jobserver 不预判：configure 自己探测（configure.ac 里查 pipe/sigaction/
-# SA_RESTART/WNOHANG，缺一就自动关），user_job_server=no 也能显式关。
-# 猜它「在 Android 上一定不行」是没有依据的 —— 探测交给 configure。
 ( set -e
   cd "$BUILD"
   "$SRC/configure" \
@@ -98,12 +72,8 @@ rm -rf "$BUILD" "$WORK/_inst" && mkdir -p "$BUILD" "$WORK/_inst"
 )
 note "configure 通过"
 
-# 交叉目标是否真的生效，最终由**产物架构**判定（见下面的 file 检查），
-# 那里比读 configure 的摘要可靠：摘要格式随 autoconf 版本变，产物不会。
-# 这里只记一行事实供排障时对照。
 note "configure 完成（产物架构在下面用 file 判定，不靠读 configure 摘要）"
 
-# ── 编 ──
 make -C "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
   || { echo "=== make 编译失败取证（error 行 + 末 40 行）==="; \
        grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
@@ -114,20 +84,17 @@ BIN="$BUILD/make"
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
 
-# ── 形态自检 ──
 SIZE=$(stat -c%s "$OUT/bin/$TOOL")
 [ "$SIZE" -gt 300000 ] || die "产物可疑" "make 只有 $SIZE 字节 —— 静态编不该这么小"
 INFO=$(file -b "$OUT/bin/$TOOL")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac
 "$LLVM_STRIP" --strip-unneeded "$OUT/bin/$TOOL" 2>/dev/null || true
 
-# 静态编：不该有 PT_DYNAMIC。真机动态链失败是「起不来」的最常见形态。
 DYN="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
 if [ -n "$DYN" ]; then
   die "不是静态产物" "有 PT_DYNAMIC —— 底座/工具件不该依赖任何共享库"
 fi
 
-# 16KB 对齐（Android 15+ 硬要求）
 BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
           case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac

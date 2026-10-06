@@ -31,7 +31,6 @@ object RuntimeDiagnostics {
     }
 
     private const val FILE = "diagnostics.txt"
-    // node 进程 stderr 落盘位置。node 是按需安装的程序运行时，没装时该文件不存在。
     const val NODE_ERR_FILE = "node-stderr.log"
     private const val STRUCT_DIR = "os"
     private const val STRUCT_FILE = "diag.jsonl"

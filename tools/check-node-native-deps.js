@@ -1,21 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// 二进制件的原生依赖必须由通用机制处理，不能为某个包开后门。
-//
-// 判据来源（本仓真实事故）：
-//   node 的 DT_RUNPATH=$ORIGIN，libc++_shared.so 必须与它同目录，
-//   否则裸环境启动报 "cannot locate symbol _ZTVNSt6__ndk1..."。
-// 当时的修法是在 PrefixProvisioner 里写 placeNodeDeps 专门给 node 补依赖 ——
-// 那是补丁：换个带 $ORIGIN 的二进制还要再写一遍。
-//
-// 现在改成 Linux 那一套：
-//   · ElfFacts 读二进制自己的 ELF 段（DT_NEEDED / DT_RUNPATH）
-//   · 安装器按段铺依赖，不问包"你要什么"
-//   · 运行时搜索路径统一（等价 ld.so.conf + ldconfig）
-//
-// 所以判据是「机制在、且不为具体包开后门」，不是「某个函数存在」。
-
 const fs = require('fs');
 const path = require('path');
 
@@ -34,7 +19,6 @@ const pipeline = read('ota/ProgramInstallPipeline.kt');
 const prefix = read('runtime/PrefixProvisioner.kt');
 const env = read('os/RuntimeEnvironment.kt');
 
-// 判据 1：ElfFacts 读得出段里的两样东西
 if (!/DT_NEEDED/.test(elf)) {
   problems.push('ElfFacts 不读 DT_NEEDED：拿不到二进制自己要哪些 .so');
 }
@@ -42,10 +26,6 @@ if (!/DT_RUNPATH|DT_RPATH/.test(elf)) {
   problems.push('ElfFacts 不读 DT_RUNPATH/DT_RPATH：不知道依赖该去哪找');
 }
 
-// 判据 1b：必须解析完整 RUNPATH，不能只判布尔
-//
-// 只判「RUNPATH 里有没有 」会把 $ORIGIN/../lib 这类当成「非 $ORIGIN」，
-// 依赖放错目录，链接期才炸 —— 和当初 placeNodeDeps 同一个坑的另一种形态。
 if (!/resolveRunPath/.test(pipeline)) {
   problems.push('安装器不解析完整 RUNPATH：只判布尔会把 $ORIGIN/../lib 放错目录');
 }
@@ -53,7 +33,6 @@ if (/hasOriginRunPath/.test(elf)) {
   problems.push('ElfFacts 仍有 hasOriginRunPath 布尔字段：路径本身才是判据，布尔会丢信息');
 }
 
-// 判据 2：安装器按段铺依赖
 if (!/satisfyElfDeps/.test(pipeline)) {
   problems.push('安装器不按 ELF 段铺依赖：装完的件可能起不来');
 }
@@ -61,13 +40,10 @@ if (!/ElfFacts\.read/.test(pipeline)) {
   problems.push('安装器没有读 ELF 段：铺依赖无从下手');
 }
 
-// 判据 3：依赖找不到时报错，不静默放过
-// （装上一个跑不起来的件比装不上更坏：问题推迟到运行时才暴露）
 if (!/elf-deps-unresolved/.test(pipeline)) {
   problems.push('依赖铺不齐时安装仍报成功：问题会推迟到运行时，现场更难查');
 }
 
-// 判据 4：不为具体包开后门
 if (/placeNodeDeps/.test(prefix)) {
   problems.push('PrefixProvisioner 又出现 placeNodeDeps：这是 node 专用补丁，' +
     '应由安装器按 ELF 段统一处理');
@@ -76,7 +52,6 @@ if (/NODE_DEPS_NAME/.test(prefix)) {
   problems.push('PrefixProvisioner 仍有 NODE_DEPS_NAME：node 专用后门的残留');
 }
 
-// 判据 5：运行时搜索路径统一（等价 ld.so.conf）
 if (!/fun libSearchPath/.test(env)) {
   problems.push('RuntimeEnvironment 无 libSearchPath：装到 $PREFIX/lib 或程序目录的 .so 运行时找不到');
 }

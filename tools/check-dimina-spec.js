@@ -30,8 +30,6 @@ for (const [k, p] of Object.entries(FILES)) {
 const s = {};
 for (const [k, p] of Object.entries(FILES)) s[k] = fs.readFileSync(p, 'utf8');
 
-// 官方规范（android/README.md）：
-//   config.json 必含 path（入口路径）；zip 文件名 = appId；MiniProgram(path = 入口路径)
 if (!/const val UI_ENTRY = "entry"/.test(s.schema)) {
   add('清单没有 ui.entry —— dimina 靠它决定打开哪一页，缺了容器会起来但没有入口（灰屏）');
 }

@@ -556,12 +556,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
-        // ── 底座件（原生件）的版本与更新 ──
-        //
-        // 底座件随 APK 交付（原件在 nativeLibraryDir，永远不动 = 回退基线），
-        // 但可以经 OTA 单独更新到 $PREFIX/lib/toolchain/<id>/<版本>/。
-        // 这三个方法把「当前在用哪一件」变得**可查、可更、可回**——
-        // 没有它们，底座件只能换 APK 才能换。
         "lobos.sys.native.status" to MethodDef(listOf("base"), true) { _, _programId ->
             val arr = JSONArray()
             for (s in lobos.runtime.NativeAssetUpdater.states(this@CapabilityBroker)) {
@@ -580,7 +574,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "lobos.sys.native.update" to MethodDef(listOf("base"), true) { p, _programId ->
-            // dryRun 默认 true —— 换底座件是要紧操作，不该由一次调用就静默发生。
             val dry = p.optBoolean("dryRun", true)
             lobos.runtime.NativeAssetUpdater.checkAndUpdate(
                 this@CapabilityBroker,
@@ -1382,17 +1375,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val arr = p.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.optString(it) } }
                 ?: emptyList()
             val timeoutMs = p.optLong("timeoutMs", 10_000L).coerceIn(1L, 60_000L)
-            // args 给了就按 argv 直接 exec（不经 shell，少一整类转义问题）；
-            // 只给 cmd 就经底座 bash -c（要管道/重定向时用这条路）。
-            // **不再默认走 ADB** —— 把命令执行挂在无线调试上，等于把系统能力挂在一
-            // 条会断的链路上，那正是「断开 ADB 就不能执行命令」的根因。
             val r: lobos.runtime.LocalExec.Outcome = if (arr.isNotEmpty()) {
                 lobos.runtime.LocalExec.run(this, listOf(cmd) + arr, timeoutMs = timeoutMs)
             } else {
                 lobos.runtime.LocalExec.runShell(this, cmd, timeoutMs = timeoutMs)
             }
             if (!r.ok && r.via == lobos.runtime.LocalExec.Via.PLAIN) {
-                // 本地两条都不通 —— 最后才回落 ADB，且在结果里明说走了哪条路。
                 val adb = lobos.runtime.LocalExec.viaAdb(this, cmd, timeoutMs)
                 if (!adb.ok) {
                     throw BridgeError(
@@ -1605,10 +1593,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
     }
 
-    // shellQuote 已删（原先只服务于「把 args 拼成 ADB 命令串」，见 git 99e5feb）。
-    // 现在 args 走 argv 直接 exec、cmd 走 bash -c，两条路都不再自己拼字符串，
-    // 所以不需要引号转义 —— 留着就是没人调用的死码。
-
     fun shutdown() {
         running = false
         for ((_, s) in servers) runCatching { s.close() }
@@ -1685,7 +1669,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         const val DEFAULT_FS_MAX_BYTES = 8L * 1024 * 1024
         const val MAX_FS_BYTES = 64L * 1024 * 1024
 
-
     }
 }
 
@@ -1703,13 +1686,6 @@ private fun JSONArray.toList(): List<String> {
     return out
 }
 
-/**
- * 本地执行结果 → 桥接 JSON。
- *
- * `via` 与 `note` **必须带上** —— 调用方要能分辨这条结果是本地 PTY、无 PTY、
- * 还是 ADB 回落。三者行为不同（isatty 真假不同、断网能不能用不同），
- * 不说清楚就等于让调用方拿一个不知道来源的结果当事实用。
- */
 private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObject().apply {
     put("ok", r.ok)
     put(
@@ -1744,5 +1720,4 @@ private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObj
     if (r.error != null) put("detail", r.error)
 }
 
-/** ADB 回落结果的 JSON 形状 —— 与 [execAsJson] 同构，调用方不用分支处理。 */
 private fun adbAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = execAsJson(r)

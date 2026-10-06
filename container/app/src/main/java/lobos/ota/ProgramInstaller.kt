@@ -42,9 +42,6 @@ object ProgramInstaller {
         if (programId.isBlank()) {
             return InstallResult(false, null, source, "manifest-id-missing", "包清单未声明 id/name：内核不猜安装目标")
         }
-        // 这里不再要求 node 在位。校验走 lobos.os.ProgramPackageVerifier（纯 Kotlin），
-        // 之前用 node 跑 program-verify.js，导致「装程序要先有 node、而 node 自己也要装程序」——
-        // 鸡生蛋，真机报过 runtime-missing。
         if (!zip.isFile) {
             return InstallResult(false, null, source, "zip-missing", "候选包不存在: ${zip.absolutePath}")
         }

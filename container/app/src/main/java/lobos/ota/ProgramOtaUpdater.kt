@@ -184,7 +184,6 @@ object ProgramOtaUpdater {
         val result = try {
             val installId = manifest?.optString("id", "")?.trim()?.takeIf { it.isNotBlank() }
                 ?: manifest?.optString("name", "")?.trim()?.takeIf { it.isNotBlank() } ?: ""
-            // 安装行为走唯一的 ProgramInstallPipeline；本层只负责"从哪拿包"和"有没有新版本"。
             val r = ProgramInstallPipeline.install(
                 context,
                 ProgramInstallPipeline.Spec(
@@ -225,13 +224,6 @@ object ProgramOtaUpdater {
         )
     }
 
-    // lastSequence / pendingSequence 按「通道 + 程序」隔离。
-    //
-    // 判据依据：OtaPolicy 对 sequence 的判重是 lastSequence >= sequence 即拒，
-    // 而 lastSequence 原先是 filesDir 下唯一一份 program-feed-state.json，
-    // 于是 canary 推进到 32 之后，另一个通道的 sequence 31 会被判成重放而拒绝
-    // （真机报「manifest sequence=31 不高于已提交 32 —— 疑似重放，拒绝」）。
-    // 通道只决定"去哪找新版本"，序列号本就该各通道各算。
     private fun stateFile(context: Context, cfg: Config, programId: String): File {
         val slug = (cfg.channel + "-" + programId).replace(Regex("[^A-Za-z0-9._-]"), "_")
         return File(context.filesDir, "program-feed-state-" + slug + ".json")
@@ -269,8 +261,6 @@ object ProgramOtaUpdater {
             if (f.isFile) JSONObject(f.readText()) else null
         } catch (_: Throwable) { null }
         if (scoped != null) return scoped
-        // 向后兼容：本仓早期用一份全局状态文件。首次按维度读取时把旧值搬过来，
-        // 免得设备上已推进的序列号被当成 0 而放过重放。
         val legacy = legacyStateFile(context)
         val old = try {
             if (legacy.isFile) JSONObject(legacy.readText()) else null
@@ -292,7 +282,6 @@ object ProgramOtaUpdater {
     private fun legacyStateFile(context: Context) = File(context.filesDir, "program-feed-state.json")
 
     private fun installId(context: Context): String {
-        // 灰度分桶标识是设备级的，一个设备一个 UUID；不按通道/程序拆分。
         val f = File(context.filesDir, "program-feed-install.json")
         val st = try {
             if (f.isFile) JSONObject(f.readText()) else JSONObject()

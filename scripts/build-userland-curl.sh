@@ -23,9 +23,6 @@ DEPS="$ROOT_DIR/work/curl-deps"
 mkdir -p "$DEPS"
 echo "[curl] 编译 API=$ANDROID_API  CC=$CC"
 
-# 静态依赖库（zlib + openssl + curl）由这一个脚本编一次，curl.sh 与 git.sh 共用。
-# 原先两个脚本各编一遍 —— openssl 尤其贵，编两遍换不来任何好处。
-# 参数并集的理由见 build-shared-deps.sh 的文件头。
 echo "[curl] 编静态依赖库（build-shared-deps.sh）"
 DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/build-shared-deps.sh"
 

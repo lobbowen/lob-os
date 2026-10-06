@@ -59,9 +59,6 @@ if (!/HT_ENV 不是合法环境变量名/.test(src.schema)) add('http.env 未做
 if (!/put\(envName, port\.toString\(\)\)/.test(src.guest)) add('GuestAdapter 没有把端口写进 env');
 if (!/httpEnv = spec\?\.http\?\.env/.test(src.instance)) add('InstanceHost 没有把清单 http.env 传下去');
 
-// 配对逻辑的实现位置是 QuickAppBinder；调用点是两个安装器。
-// 判据是「行为事实」而不是「在哪个文件」：分配端口、注入 config、写注册表、送进 dimina，
-// 缺任何一步都会导致「装得上但打不开」。
 const bind = src.quickBinder;
 if (!/fun bindIfQuickApp/.test(bind)) add('QuickAppBinder.bindIfQuickApp 未实现');
 if (!/PortBroker\.claim|resolveHttpPort/.test(bind)) add('配对没有分配端口');
@@ -75,7 +72,6 @@ if ((bind.match(/QuickAppHost\.install\(/g) || []).length < 1) {
   add('QuickAppHost.install 没有调用点：配对做完了但前端从没送进 dimina，点「打开」毫无反应');
 }
 
-// 两条安装路径都必须走 pipeline；配对由落位器在安装流程内完成（不是调用方各自记得调）。
 if (!src.installer.includes('QuickAppBinder.bindIfQuickApp')) {
   add('落位器没有配对快应用：装得上但打不开');
 }

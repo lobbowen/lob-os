@@ -9,10 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 
-
 import lobos.lifecycle.OsHostService
-
-
 
 class OsApplication : Application() {
 
@@ -58,13 +55,6 @@ class OsApplication : Application() {
 
     private fun supplyOnStartup() {
         Thread {
-            // 只刷商店目录。工具链/运行时装不装由「装程序时按该程序的 requires 决定」，
-            // 走 os/PackageInstaller 那条唯一安装路径。
-            //
-            // 原先这里还调 SupplyProvisioner.ensure，等于每次 App 启动就无条件从商店拉
-            // node/curl/git/jq/npm/pnpm/sqlite3，既绕过了注册表与控制面板，也让这些件的
-            // 落位规则和安装器不一致（node 落 files/programs/node/<version>/，而
-            // libc++_shared.so 落 usr/lib/，两者不相关 —— 裸环境启动必然 linker 失败）。
             runCatching { lobos.os.CatalogClient.refresh(this@OsApplication, false) }
         }.apply { isDaemon = true }.start()
     }

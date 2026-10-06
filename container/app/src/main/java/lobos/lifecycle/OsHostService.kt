@@ -47,9 +47,6 @@ class OsHostService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 采一次系统退出史。KillAudit.attribution 只有在 reading 被赋值后才说得出真话，
-        // 而 reading 只能由 auditOnce 填。宿主服务一起来就先采一遍，
-        // 这样引导页/工作台读 interruption() 时就有归因可显示，不会停在「死因未取证」。
         runCatching { lobos.log.KillAudit.auditOnce(this) }
             .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         ResidencyAudit.auditPreviousExit(this)
@@ -282,11 +279,6 @@ class OsHostService : Service() {
         return buildNotification(text)
     }
 
-    // 系统级入口该去哪：配对没完成走引导页，已完成直接进控制面板。
-    //
-    // 之前硬编码 SetupActivity，导致用户配好通道、日常从桌面进控制面板之后，
-    // 点通知仍被扔回"你还没配对"的引导页。判据复用 OnboardingFlow.readyToEnter
-    // ——它已在 SetupActivity 用着，不另写一套判断。
     private fun entryActivity(): Class<*> {
         val ready = runCatching {
             val evidence = lobos.capability.Evidence(

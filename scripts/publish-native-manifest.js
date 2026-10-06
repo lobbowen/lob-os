@@ -1,30 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-/**
- * 底座件（原生件）清单 —— 发布侧。
- *
- * 与商店清单（publish-userland-manifest.js）**并列但分流**：
- *   · 商店件       落 programs/<id>/<版本>/，由 PackageInstaller 装
- *   · 底座件(原生件) 落 $PREFIX/lib/toolchain/<id>/<版本>/，由 NativeAssetUpdater 装
- * 两者用**同一把 Ed25519 钥匙**（assets/supply/userland-public.pem）——
- * 两套信任根意味着两处要轮换、两处可能只更新一处，那是最坏形态。
- *
- * 清单里每一条对应 NativeAssetRegistry 里的一个件。三种来源：
- *   1. APK 原件（jniLibs）—— 不发 URL，设备已在用；列出来是为了让设备知道
- *      「本地这份是多少版本，比对时不必再猜」
- *   2. 固化包（native-cap-<sha256>-arm64-v8a.zip）—— 有 URL 与 sha256，可 OTA 更新
- *   3. 两份都有 → 取版本较新的那份
- *
- * 用法：
- *   node scripts/publish-native-manifest.js --project            （投影，不签名）
- *   node scripts/publish-native-manifest.js <zip> <out> <key> <channel>
- * 环境：
- *   NATIVE_BASE_URL  下载基址（默认与商店同一个对象存储）
- *   NATIVE_PUBKEY    公钥路径（默认 assets/supply/ota-public.pem）
- *   LOBOS_USERLAND_REVISION  清单 revision（发布轮必填，正整数）
- */
-
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -48,18 +24,10 @@ const TTL_MS = 30 * 86400_000;
 const problems = [];
 const bad = (m) => problems.push(m);
 
-/** 去掉 Kotlin 注释再解析，避免注释里的字符串干扰。 */
 function stripComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 }
 
-/**
- * 从 NativeAssetRegistry.kt 读出：id / libName / installName / version。
- *
- * 不猜字段名、不猜条目边界：注册表是唯一事实源，本函数只是把它读出来。
- * 读不到的条目直接判红 —— 清单少一条就等于那一件永远不能 OTA 更新，
- * 而那种缺失是静默的（设备照样跑，只是永远停在 APK 那份）。
- */
 function parseRegistry() {
   if (!fs.existsSync(REGISTRY)) {
     bad('找不到注册表 ' + REGISTRY + ' —— 底座件清单的唯一事实源没了');
@@ -70,7 +38,6 @@ function parseRegistry() {
   const re = /NativeExecutable\(/g;
   let m;
   while ((m = re.exec(body)) !== null) {
-    // 从 '(' 起做括号配平，取出这一条的实参文本
     let i = re.lastIndex - 1, depth = 0, end = -1;
     for (; i < body.length; i++) {
       if (body[i] === '(') depth++;
@@ -92,7 +59,6 @@ function parseRegistry() {
   return out;
 }
 
-/** 档位表里的 libName → id（用于把固化包里的字节对上注册表的条目）。 */
 function capsIndex() {
   const map = new Map();
   if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件档位表没了'); return map; }
@@ -105,14 +71,12 @@ function capsIndex() {
   return map;
 }
 
-/** 固化包里有哪些字节、sha256 多少。 */
 function pinEntry() {
   try {
     const j = JSON.parse(fs.readFileSync(PIN, 'utf8'));
     const pins = j.pins || {};
     const keys = Object.keys(pins);
     if (!keys.length) return null;
-    // 多条固化记录时取最后一条（本仓的做法是同一指纹一条）
     const k = keys[keys.length - 1];
     return { fingerprint: k, ...pins[k] };
   } catch (e) {
@@ -150,8 +114,6 @@ function main() {
   const byId = capsIndex();
   const pin = pinEntry();
 
-  // 只有「有版本号」的件才进清单 —— version 空串的语义是「随 APK、不单独更新」，
-  // 让它出现在清单里会让人以为它能被 OTA。
   const withVersion = reg.filter((e) => e.version && e.version.trim());
   if (!withVersion.length) {
     bad('注册表里没有一件声明了 version —— 底座件清单会是空的（空清单等于「都不可更新」且看不出来）');
@@ -159,7 +121,6 @@ function main() {
 
   const components = [];
   for (const e of withVersion) {
-    // 清单里的 id 必须是档位表里的 id（两者要对得上，否则设备认不出）
     const capsId = byId.get(e.libName);
     if (capsId && capsId !== e.id) {
       bad('注册表 id=' + e.id + ' 与档位表 id=' + capsId + ' 对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
@@ -171,12 +132,11 @@ function main() {
       libName: e.libName,
       source: 'apk',
     };
-    // 固化包里有这份字节 → 可 OTA 更新
     if (pin && zipHas(ZIP, e.libName)) {
       const zipName = path.basename(ZIP);
       c.source = 'ota';
       c.url = BASE + '/' + CHANNEL + '/native/' + zipName;
-      c.sha256 = pin.sha256;     // 固化包整体校验值（逐字节验包，见 README）
+      c.sha256 = pin.sha256;
       c.pin = pin.tag;
     }
     components.push(c);

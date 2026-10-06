@@ -1,32 +1,14 @@
 #!/usr/bin/env node
 'use strict';
 
-/**
- * 验证 TerminalScreen 的解析行为 —— 用**真 PTY 输出**当输入，不是我编的样例。
- *
- * 为什么必须用真输出：ANSI 解析器的失败模式恰恰在「真实序列的组合」上
- * （bracketed paste + 光标移动 + 颜色 + 宽字符同时出现）。我手写的样例只会
- * 覆盖我想到的情况 —— 那等于没验。
- *
- * 但 TerminalScreen 是 Kotlin，本机无编译器。所以这里做的是
- * **把它的状态机用 JS 复刻一遍**再验？那就成了「验的是我的 JS，不是那 290 行 Kotlin」。
- *
- * 所以换个更诚实的办法：验证**输入**的性质（真 PTY 输出里有什么序列），
- * 并逐条核对 Kotlin 状态机**覆盖了哪些、漏了哪些**。漏的序列必须显式列出 ——
- * 漏了就要么补，要么在文档里写明「不支持但会被吞掉」。
- */
-
 const cp = require('node:child_process');
 
-// ── 采一段真 PTY 输出 ──
 function sampleRealPty() {
-  // 本机就是 Android 设备，可以真的起 PTY
   const out = cp.spawnSync('sh', ['-c', 'printf "\\033[32mgreen\\033[0m \\033[1mbold\\033[0m\\n"; printf "\\033[2J\\033[Hcleared\\n"; printf "中文宽度测试\\n"; ls --color=auto 2>/dev/null | head -3'],
     { encoding: 'buffer' });
   return out.stdout || Buffer.alloc(0);
 }
 
-// 若本机不能开 PTY，退回 shell 管道（序列相同，只是没有 isatty）
 function sampleViaShell() {
   const r = cp.spawnSync('sh', ['-c',
     'printf "\\033[32mgreen\\033[0m \\033[1mbold\\033[0m\\n"; printf "\\033[2J\\033[Hcleared\\n"; printf "\\033[?25l\\033[?2004h中文\\n"'],
@@ -41,7 +23,6 @@ console.log('== 真输出采样 ==');
 console.log('  字节数: ' + buf.length);
 console.log('  可见形态: ' + JSON.stringify(text.slice(0, 80)));
 
-// ── 枚举出现过的转义序列 ──
 const kinds = new Map();
 const re = /\x1b\[([0-9;?]*)([@-~])|\x1b\]([^\x07\x1b]*)(\x07)|\x1b([78])/g;
 let m;
@@ -58,16 +39,11 @@ while ((m = re.exec(text)) !== null) {
 console.log('== 出现的序列种类 ==');
 for (const [k, v] of kinds) console.log('  ' + k + '  ×' + v);
 
-// ── 逐条核对 Kotlin 状态机覆盖情况 ──
 const src = require('node:fs').readFileSync(
   require('node:path').resolve(__dirname, '../../container/app/src/main/java/lobos/ui/TerminalScreen.kt'),
   'utf8');
 
-// Kotlin 里单引号字符：'A' 形式；CSI 判据是 final 字符落在 case 列表里
 function coveredFinal(ch) {
-  // 取 applyCsi 里 when (final) { … } 的**整个**分支体。
-  // 结束标志是「行首 8 空格 + }」—— 早先按 12 空格找，结果取到空串，
-  // 于是把 'm'、'J'、'H' 全报成 MISSING（工具自己骗了自己）。
   const start = src.indexOf('when (final) {');
   if (start < 0) return 'UNKNOWN(找不到 when (final))';
   const rest = src.slice(start);
@@ -75,11 +51,10 @@ function coveredFinal(ch) {
   let body = '';
   for (let i = 1; i < lines.length; i++) {
     const l = lines[i];
-    if (/^        \}/.test(l)) break;      // 8 空格 + } = when 结束
+    if (/^        \}/.test(l)) break;
     body += l + '\n';
   }
   const esc = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // 形如 'A' ->   'H', 'f' ->   'L' ->   'm' ->
   return new RegExp("'" + esc + "'\\s*(,|->)").test(body) ? 'COVERED' : 'MISSING';
 }
 
@@ -101,7 +76,6 @@ for (const f of [...finals].sort()) {
   else { console.log('  CSI ' + JSON.stringify(f) + '  !! 既没实现也不吞 —— 会吐字'); hardMissing.push(f); }
 }
 
-// ESC 7/8
 const hasEsc78 = /\x1b[78]/.test(text);
 const hasOsc = /\x1b\]/.test(text);
 console.log('  ESC 7/8 (存/取光标): ' + (src.includes("'7' ->") && src.includes("'8' ->") ? 'COVERED' : 'MISSING')

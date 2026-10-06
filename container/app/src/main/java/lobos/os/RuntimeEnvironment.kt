@@ -11,7 +11,7 @@ import java.io.File
 object RuntimeEnvironment {
 
     data class Snapshot(
-        val nodeBin: File?,   // node 是程序运行时，按需安装；没装则 null
+        val nodeBin: File?,
         val prefixReady: List<String>,
         val prefixMissing: List<String>,
         val envShim: File?,
@@ -27,7 +27,7 @@ object RuntimeEnvironment {
     data class TreeRoot(
         val home: File,
         val tmpDir: File,
-        val nodeBin: File?,   // 同上
+        val nodeBin: File?,
         val nativeLibDir: String,
         val prefixRoot: File,
         val prefixBin: File,
@@ -107,21 +107,10 @@ object RuntimeEnvironment {
         envShim = s.envShim,
     )
 
-    /**
-     * 动态链接器的搜索路径（等价 Linux 的 `ld.so.conf` + `ldconfig`）。
-     *
-     * 判据来源：装到系统里的件，其 `.so` 分散在几处 —— APK 原生库目录、
-     * `$PREFIX/lib`、各程序自己的落位目录。之前只给 APK 那一处，
-     * 于是装到别处的 `.so` 运行时找不到，node 就是这么撞上
-     * `cannot locate symbol _ZTVNSt6__ndk1...` 的。
-     *
-     * 装完即全局可用，不靠某个调用方单独设 `LD_LIBRARY_PATH`。
-     */
     fun libSearchPath(ctx: Context): String {
         val dirs = LinkedHashSet<String>()
         dirs.add(NativePreparer.libSearchPath(ctx))
         dirs.add(PrefixProvisioner.libDir(ctx).absolutePath)
-        // 已装件目录：每个件落位目录下的 lib/ 与 bin/（bin 是 $ORIGIN 所在）
         runCatching {
             ProgramRegistry.listIds(ctx).forEach { id ->
                 val root = ProgramManager.stateDirOf(ctx, id)
@@ -177,7 +166,6 @@ object RuntimeEnvironment {
             )
         }
 
-        // node 是程序运行时，按需安装 —— 没装就没有，不在这里造兜底路径。
         val nodeBin = NodeRuntime.path(ctx)
         return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
     }

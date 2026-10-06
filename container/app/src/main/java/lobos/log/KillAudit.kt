@@ -11,7 +11,6 @@ object KillAudit {
 
     private const val CURSOR_FILE = "kill-audit-cursor.txt"
 
-    // Journal 的 category。归因时按它筛。
     private const val CATEGORY = "kill-audit"
 
     private const val MAX_RECORDS = 32
@@ -30,7 +29,6 @@ object KillAudit {
             " process=" + process + " desc=" + (description?.take(160) ?: "null")
     }
 
-
     data class ExitRecord(
         val atMs: Long,
         val pid: Int,
@@ -45,9 +43,6 @@ object KillAudit {
             " process=" + process + " desc=" + (description?.take(160) ?: "null")
     }
 
-
-    // 采集后逐条写 Journal（category=kill-audit），归因由 attribution() 查 Journal。
-    // 不留内存副本：那份只活到进程结束，而退出史要跨进程留存。
     fun auditOnce(ctx: Context) {
         val pkg = ctx.packageName
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -80,8 +75,6 @@ object KillAudit {
             ?.let { writeCursor(ctx, it) }
     }
 
-    // 归因从 Journal 查，不再读内存 —— 内存副本只活到进程结束，
-    // 而退出史已经由 auditOnce 经 Journal.append 落盘（category=kill-audit）。
     fun attribution(ctx: Context, sinceMs: Long): String {
         val own = ctx.packageName
         val hits = lobos.Journal.events(ctx, limit = 400)

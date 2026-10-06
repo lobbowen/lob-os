@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-# pkg-config —— 开发环境件（阶段1d）。
-#
-# ── 它是什么 ──
-# 读 .pc 文件并输出 `-I/-L/-l` 的小程序。程序跑 ./configure 时靠它探测库；
-# cmake 的 find_package（pkg-config 模式）也用它。
-#
-# 为什么装 **pkgconf** 而不是 freedesktop 的 pkg-config：
-#   · pkgconf 是活跃维护的那支（freedesktop 那个已只做维护）
-#   · 它**零外部依赖** —— 实测 configure.ac 里无 PKG_CHECK_MODULES、
-#     不提 glib、不提 libffi。所以交叉编译它不需要先编任何依赖。
-#   · 它自带的 pkg-config 兼容 freedesktop 那个（命令行与 .pc 格式都兼容），
-#     所以装出来的就是标准 `pkg-config`。
-#
-# 落位名用 pkg-config（用户与 configure 脚本按这个名字找它），
-# 源码钉值键名用 pkgconf（上游项目名）——两者不同的原因写在上面。
 set -euo pipefail
 export LC_ALL=C
 
@@ -23,14 +8,12 @@ ROOT_DIR="$(pwd)"
 
 API="${ANDROID_API:-23}"
 JOBS="${JOBS:-4}"
-SRC_KEY="pkgconf"          # 钉值表里的键
-TOOL="pkg-config"          # 落位与调用名
+SRC_KEY="pkgconf"
+TOOL="pkg-config"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 
 die() {
-  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
-  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
   exit 1
@@ -53,7 +36,6 @@ mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$SRC_KEY"
 mkdir -p "$WORK"
 
-# ── 取源码 ──
 SRC_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version $SRC_KEY)"
 SRC="$WORK/$SRC_KEY-src"
 if [ ! -d "$SRC" ]; then
@@ -63,7 +45,6 @@ if [ ! -d "$SRC" ]; then
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 || die "解包失败" "$TGZ"
 fi
-# 形状自检：release tarball 自带 configure，无需 autoreconf
 [ -x "$SRC/configure" ] || die "源码树异常" \
   "缺 configure —— pkgconf 的 release tarball 自带它（连 aclocal.m4、Makefile.in 都在）。" \
   "没有就得装 autotools 先 autoreconf，那是另一条更重的路。"
@@ -71,14 +52,10 @@ GOT_VER="$(sed -n 's/^AC_INIT(\[pkgconf\],\[\([0-9.]*\)\].*/\1/p' "$SRC/configur
 [ "$GOT_VER" = "$SRC_VER" ] || die "版本不符" "钉的是 $SRC_VER，configure.ac 里是 $GOT_VER"
 note "源码 $GOT_VER 就位（自带 configure，零外部依赖）"
 
-# ── configure ──
 BUILD="$WORK/build"
 INST="$WORK/_inst"
 rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
 
-# 静态编（与 make/cmake 同理由：工具件不该依赖任何共享库）
-# dlopen 是 pkgconf 的一个可选能力（--enable-dlopen）—— 关掉，
-# 因为它 dlopen 的是宿主插件目录，对交叉编译出的静态件没有意义。
 (
   set -e
   cd "$BUILD"
@@ -95,7 +72,6 @@ rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
 )
 note "configure 通过"
 
-# ── 编 ──
 make -C "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
   || { echo "=== 编译失败取证（error 行 + 末 40 行）==="; \
        grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
@@ -103,7 +79,6 @@ make -C "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
 make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
   || { echo "=== install 失败（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
 
-# 落位名：源码里叫 pkgconf，用户与 configure 按 pkg-config 找它
 BIN=""
 for cand in "$INST/bin/pkg-config" "$INST/bin/pkgconf"; do
   [ -x "$cand" ] && BIN="$cand" && break
@@ -115,7 +90,6 @@ done
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
 
-# ── 形态自检 ──
 SIZE=$(stat -c%s "$OUT/bin/$TOOL")
 [ "$SIZE" -gt 50000 ] || die "产物可疑" "pkg-config 只有 $SIZE 字节 —— 静态编不该这么小"
 INFO=$(file -b "$OUT/bin/$TOOL")

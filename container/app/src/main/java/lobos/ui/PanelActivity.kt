@@ -75,8 +75,6 @@ class PanelActivity : AppCompatActivity() {
         root.addView(btn("刷新", exact = true) { refresh() })
         root.addView(btn("端口占用", exact = true) { showPorts() })
         root.addView(btn("导出运行记录（报障用）", exact = true) { exportLogs() })
-        // 终端：底座 PTY 在位才给按钮 —— 不在位时点开只会看到一片黑，
-        // 而「为什么是黑的」用户无从判断。改成按钮可见但带原因提示。
         root.addView(btn("终端", exact = true) { openTerminal() })
         root.addView(btn("底座件状态", exact = true) { showNativeComponents() })
 
@@ -107,12 +105,6 @@ class PanelActivity : AppCompatActivity() {
         handler.post { logBox.text = stamp.format(Date()) + "  " + line + "\n" + logBox.text.toString().take(3000) }
     }
 
-    /**
-     * 拉起终端窗口。
-     *
-     * 先探底座 PTY 在不在位：不在位就**明说原因**并去看诊断，而不是拉起一个
-     * 全黑的窗口让用户自己猜。「点了没反应」是最难查的一类故障。
-     */
     private fun openTerminal() {
         if (!lobos.runtime.PtySession.probe(this)) {
             say("终端起不来：底座 PTY 会话宿主不在位（librivospty.so 未随包，或没铺到 \$PREFIX/bin）")
@@ -122,7 +114,6 @@ class PanelActivity : AppCompatActivity() {
             .onFailure { say("拉起终端失败：" + (it.message ?: it.javaClass.simpleName)) }
     }
 
-    /** 底座件现在在用哪一份（原件还是 OTA 更新过的那份）。 */
     private fun showNativeComponents() {
         try {
             val rows = lobos.runtime.NativeAssetUpdater.states(this)
@@ -282,8 +273,6 @@ class PanelActivity : AppCompatActivity() {
 
     private fun programRootOf(id: String): java.io.File = lobos.os.ProgramManager.stateDirOf(this, id)
 
-    // 导出运行记录：用户报障时把这一份交给我们。走 log/Exporter 的统一出口，
-    // 不在这里自己拼文件 —— 那正是这次要消掉的「每处各拼一套」。
     private fun exportLogs() {
         worker.execute {
             val r = runCatching {

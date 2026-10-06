@@ -1,6 +1,5 @@
 package lobos.os
 
-
 import android.content.Context
 import lobos.RuntimeDiagnostics
 import lobos.runtime.ExecBits
@@ -36,8 +35,6 @@ object PackageInstaller {
                 from = lobos.ota.ProgramInstallPipeline.From.STORE,
                 programId = name,
                 zip = zipTmp,
-                // 商店应用也是带 program-manifest.json 的应用程序包；
-                // 运行时/工具是整目录可执行件，没有前后端之分。
                 shape = if (isApplication) lobos.ota.ProgramInstallPipeline.Shape.APPLICATION
                 else lobos.ota.ProgramInstallPipeline.Shape.COMPONENT,
                 expectedVersion = version?.takeIf { it.isNotBlank() }
@@ -158,7 +155,6 @@ object PackageInstaller {
         }
         return null
     }
-
 
     private fun fail(ctx: Context, name: String, why: String): JSONObject {
         RuntimeDiagnostics.append(ctx, "package", false, "包安装失败: " + name, why)

@@ -20,7 +20,6 @@ function walk(dir, out) {
 const files = walk(SRC);
 const problems = [];
 
-// 1) 整包不能进 ByteArray：node 的包上百 MB，256MB 堆装不下
 const BIG = [
   { re: /unzipInto\(bytes\b/, why: 'unzipInto(bytes, …) 把整包当 ByteArray 传，node 等大件解压必 OOM' },
   { re: /val bytes = runCatching \{ SupplyProvisioner\.httpGet\(/, why: '先用 httpGet 把整包读成 ByteArray 再解压' },
@@ -35,7 +34,6 @@ for (const f of files) {
       problems.push(rel + ':' + (i + 1) + '  ' + BIG.find((b) => b.re.test(line)).why);
     }
   });
-  // 整包下载再落盘也算：只要把 httpGet 的结果写文件，而不是直接流式写
   if (/httpGet\(/.test(fs.readFileSync(f, 'utf8')) && /zipTmp|\.zip\.part/.test(fs.readFileSync(f, 'utf8'))) {
     const src = fs.readFileSync(f, 'utf8');
     if (/httpGet\([^)]*\)[\s\S]{0,120}?FileOutputStream/.test(src)) {
@@ -44,7 +42,6 @@ for (const f of files) {
   }
 }
 
-// 2) 必须有流式三件套
 const supply = fs.readFileSync(path.join(SRC, 'lobos/runtime/SupplyProvisioner.kt'), 'utf8');
 for (const fn of ['httpGetToFile', 'sha256HexFile', 'unzipFromFile']) {
   if (!supply.includes('fun ' + fn)) {
@@ -52,7 +49,6 @@ for (const fn of ['httpGetToFile', 'sha256HexFile', 'unzipFromFile']) {
   }
 }
 
-// 3) largeHeap：解压大件需要
 const manifest = fs.readFileSync(path.join(SRC, '../AndroidManifest.xml'), 'utf8');
 if (!/android:largeHeap="true"/.test(manifest)) {
   problems.push('AndroidManifest 没开 largeHeap：应用默认堆 256MB，node 等大件落位时不够');

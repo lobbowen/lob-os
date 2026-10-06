@@ -1,26 +1,4 @@
 #!/usr/bin/env bash
-# CMake —— 开发环境件（阶段1d）。
-#
-# ── 形态：自举（bootstrap），不靠宿主 cmake ──
-# cmake 自己就是构建系统，所以「怎么编 cmake」是个真问题。三条路：
-#   (a) 用宿主 cmake 交叉编        → 需要宿主有 cmake（runner 有，但那是额外的依赖）
-#   (b) autoreconf + configure     → cmake 不是 autotools 包，这条不成立
-#   (c) **自带 bootstrap 脚本**     → 2111 行 /bin/sh，直接用编译器编源码
-# 走 (c)。核实过 bootstrap 接受 CC= / CXX= / CFLAGS= / CXXFLAGS= 参数
-# （bootstrap:1015-1018），且不认 CMAKE_TOOLCHAIN_FILE —— 所以交叉参数
-# 走环境/命令行，而不是 toolchain 文件。
-#
-# 这比 make 还独立一层：make 需要宿主有 make，cmake 连那个都不需要。
-#
-# ── 为什么不用官方的预编译包 ──
-# CMake 官方**有** `cmake-<ver>-linux-aarch64.tar.gz`（实测 4.4.4 那份 49.6 MiB），
-# 但它是 **glibc** 构建。实测它的 NEEDED：
-#   libdl.so.2 / librt.so.1 / libpthread.so.0 / libc.so.6
-#   / ld-linux-aarch64.so.1
-# Bionic 上这些**一个都没有**（它是 libc.so / libdl.so，pthread 与 rt 并进 libc，
-# 解释器是 /system/bin/linker64），外加 glibc 的 GLIBC_2.x 版本化符号。
-# 与 LLVM 那份是同一形态：要在 Android 上跑就得装 glibc 兼容层，
-# 而我们要的是原生 Android 系统。所以交叉编译。
 set -euo pipefail
 export LC_ALL=C
 
@@ -36,16 +14,12 @@ OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 
 die() {
-  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
-  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
   exit 1
 }
 note() { echo "[$TOOL] $*"; }
 
-# bootstrap 用 CC/CXX 编 C++，所以要的是 **C++ 编译器**（clang++），
-# 且它得在 PATH 里（bootstrap 按名字调，不接受绝对路径之外的形式）。
 [ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-userland.yml 的「定位 NDK」步会注入）"
 TC="$(dirname "$CC")"
 CXX="${CXX:-$TC/aarch64-linux-android${API}-clang++}"
@@ -61,7 +35,6 @@ mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$TOOL"
 mkdir -p "$WORK"
 
-# ── 取源码 ──
 CMAKE_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version $TOOL)"
 SRC="$WORK/$TOOL-src"
 if [ ! -d "$SRC" ]; then
@@ -73,9 +46,6 @@ if [ ! -d "$SRC" ]; then
 fi
 [ -x "$SRC/bootstrap" ] || die "源码树异常" \
   "缺 bootstrap —— CMake 的发布包自带它（2111 行 /bin/sh，直接用编译器编源码）。没有它就得靠宿主 cmake。"
-# 版本是三段分开写的（MAJOR/MINOR/PATCH，核实过 Source/CMakeVersion.cmake:2-4），
-# 不是一行 `set(CMake_VERSION 4.4.4)`。早先写成单行 sed 取到的是 MAJOR 那一个值，
-# 于是「版本不符」判死 —— 判据自己写错，不是源码有问题。
 GOT_VER="$(awk -F'[ ()]' '
   /^set\(CMake_VERSION_MAJOR/ {maj=$3}
   /^set\(CMake_VERSION_MINOR/ {min=$3}
@@ -87,13 +57,10 @@ GOT_VER="$(awk -F'[ ()]' '
   "钉的是 $CMAKE_VER，Source/CMakeVersion.cmake 三段拼出 $GOT_VER（钉值写错或源站给了别的版本）"
 note "源码 $GOT_VER 就位（自带 bootstrap，无需宿主 cmake）"
 
-# ── bootstrap（交叉编译 cmake 本体）──
 BUILD="$WORK/build"
 INST="$WORK/_inst"
 rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
 
-# bootstrap 按**名字**调编译器，所以要把 NDK 的 bin 放进 PATH。
-# CXXFLAGS 里给 -static：工具件不该依赖任何共享库（同 make/busybox 的理由）。
 (
   set -e
   cd "$BUILD"
@@ -113,7 +80,6 @@ rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
 )
 note "bootstrap 完成"
 
-# ── 形态自检 ──
 BIN="$INST/bin/cmake"
 [ -x "$BIN" ] || {
   echo "=== 找 cmake 可执行 ==="
@@ -126,14 +92,12 @@ INFO=$(file -b "$BIN")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac
 "$LLVM_STRIP" --strip-unneeded "$BIN" 2>/dev/null || true
 
-# 静态编：不该有 PT_DYNAMIC。真机动态链失败是「起不来」的最常见形态。
 DYN="$("$LLVM_READELF" -W -l "$BIN" 2>/dev/null | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
 [ -z "$DYN" ] || {
   NEEDED="$("$LLVM_READELF" -W -d "$BIN" 2>/dev/null | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p' | tr '\n' ' ')"
   die "不是静态产物" "有 PT_DYNAMIC（NEEDED: ${NEEDED:-?}）—— 工具件不该依赖任何共享库"
 }
 
-# 16KB 对齐（Android 15+ 硬要求）
 BAD="$("$LLVM_READELF" -W -l "$BIN" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
           case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
@@ -142,8 +106,6 @@ BAD="$("$LLVM_READELF" -W -l "$BIN" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print
         done)"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
-# cmake 还需要 share/ 下的模块与模板 —— 只拷 bin/ 会得到一个「起得来但什么都干不了」的 cmake。
-# 形态判据不是「文件在不在」，而是「模块目录在不在」。
 MODDIR=""
 for cand in "$INST/share/cmake" "$INST/share/cmake-4.4"; do
   [ -d "$cand/Modules" ] && MODDIR="$cand" && break
@@ -155,7 +117,6 @@ done
 
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
-# 模块随件走：拷到 dist/ 下与 bin/ 平级，落位后由安装器铺到同一前缀
 rm -rf "$OUT/share" && mkdir -p "$OUT/share"
 cp -a "$MODDIR" "$OUT/share/cmake"
 

@@ -57,7 +57,6 @@ jobs:
       - name: 编译底座共享库所需的宿主工具（cmake）
         run: |
           set -euo pipefail
-          # 同 build-apk.yml：zlib 共享库用 CMake 交叉编，缺 cmake 就在这里炸。
           command -v cmake >/dev/null 2>&1 || {
             sudo apt-get update -qq
             sudo apt-get install -y -qq cmake >/dev/null

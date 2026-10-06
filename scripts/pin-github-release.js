@@ -1,29 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-/**
- * 从 GitHub release 读资产 digest，生成/更新 userland-sources.json 的一格。
- *
- * ── 为什么要有这个 ──
- * 重钉一个 GitHub release 资产时，要做四步：查 tag → 按名字挑资产 →
- * 取 sha256 → 写钉值表。手做时最容易漏掉的是**「urls 与 sha256 必须对应
- * 同一份字节」**：
- *   · 一个 sha256 配两个**不同压缩**的 url（如 python 的 .tgz 与 .tar.xz）
- *     → fetch-pinned.sh:147 逐字节比对，必然失败；
- *   · 一个 sha256 配两个**不同版本**的 url → 更糟，会在运行时才发现。
- * 这个脚本从同一份 assets[] 里取 digest 与 url，**结构上不可能配错**。
- *
- * ── 为什么用 API 的 digest 而不是下载后算 ──
- * GitHub 的 release API 在每个资产上带 digest 字段（实测某 release 的
- * 62 个资产全部带），且已核对过：跟重定向后实际下载算出的 sha256 一致。
- * LLVM 源码包 140 MiB，用 API 省掉整包下载。
- *
- * 用法：
- *   node scripts/pin-github-release.js --repo llvm/llvm-project \
- *        --tag llvmorg-20.1.8 --key llvm \
- *        --match '^llvm-project-.*\.src\.tar\.xz$' [--dry]
- */
-
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
@@ -98,8 +75,6 @@ async function main() {
   }
   const asset = hits[0];
 
-  // digest 是这套流程的关键字段 —— 没有它就退回「下载后自己算」，
-  // 但那要 140 MiB，所以明说而不是默默降级。
   if (!asset.digest || !/^sha256:[0-9a-f]{64}$/.test(asset.digest)) {
     die({
       msg: '该资产没有可用的 sha256 digest（GitHub 有时不给）\n  '
@@ -114,9 +89,6 @@ async function main() {
   const out = {
     version: arg('version') || tag.replace(/^llvmorg-/, ''),
     sha256: sha,
-    // **只放这一个 url** —— digest 与 url 必须来自同一条资产记录。
-    // 曾经把 python 的 .tgz 与 .tar.xz 并列（两者 sha256 不同），
-    // 那会让 fetch-pinned 的逐字节比对必然失败。
     urls: [asset.browser_download_url],
     asset: asset.name,
     bytes: asset.size,

@@ -208,22 +208,6 @@ jobs:
           path: dist/userland-${{ matrix.tool }}-*.zip
           retention-days: 1
 
-  # ── NDK/LLVM 版本同源核对（阶段1c 编 clang 的前提）──
-  #
-  # 为什么是独立 job 而不是 build 矩阵里的一步：
-  # 它与那 11 件商店件**无关**（它们只跟 ndkVersion 走）。llvmtoolchain 与
-  # 它们不同源（编 LLVM 要交叉编译，耗时以小时计），放进去会让这一矩阵
-  # 的时长被它一个件拖住，而那一红会挡住全部产出、进而断掉 manifest 那条链。
-  # 那是「为一件事挡住一件事之外的所有事」，与门禁的作用相反。
-  #
-  # continue-on-error 仍保留，但理由已经变了：
-  # 早先是因为 llvmVersion 空着（这一步必然红，产出是报错里的真实版本号）。
-  # 那个值**已经用 Range 请求从 NDK zip 里取到并填进 userland-sources.json 了**
-  # （21.0.0 / 源码 21.1.0，见 docs/ENV-EXECUTION-PLAN.md 第九节），
-  # 所以 verify-ndk-llvm.sh 现在预期是**绿的**。
-  # 留 continue-on-error 只是因为「编 llvmtoolchain」这一步本身还没成功过 ——
-  # 首次交叉编译 LLVM 到 Bionic 大概率要补 patch。等它真绿了再去掉这一行，
-  # 那才是硬判据的位置。
   ndk-llvm:
     needs: resolve
     runs-on: ubuntu-latest
@@ -255,10 +239,6 @@ jobs:
               "$CLANG" --version 2>/dev/null | head -3; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # NDK 的 LLVM 版本**不是语义版本** —— 上游 changelog 逐版记的是 AOSP clang
-      # 修订号（r29 = clang-r563880c）。能对上 llvmorg-<ver> 的只有
-      # clang_source_info.md，它在 NDK zip 里。所以把它整份贴出来：
-      # 填 llvmVersion 要照它填，不要照 `clang --version` 的 "20.0.0git" 填。
       - name: 读出 clang_source_info.md（NDK 内置 LLVM 的真实来源）
         if: always()
         run: |
@@ -280,26 +260,12 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-
       - name: 编 llvmtoolchain（llvmVersion 已填，首次真编）
         if: success()
         run: |
           set -euo pipefail
-          # llvmVersion 已填（21.0.0 / 源码 21.1.0），verify-ndk-llvm.sh 预期绿。
-          # 这一步现在是真的去交叉编译 LLVM —— 首次跑大概率要补 patch
-          # （Termux 级别的工程量，见 build-userland-llvmtoolchain.sh 文件头）。
-          # 与 ndk-llvm 同一个 job、同一个 continue-on-error —— 它红了不影响商店件
-          # 那条链（llvmtoolchain 不在 manifest 的 needs 里，也不进 build 矩阵）。
-          # 取法与 build job 的「定位 NDK」一致（`${VAR:-}`）——
-          # 这一步跑在 `set -u` 下，直接写 "$ANDROID_NDK_LATEST_HOME" 在变量
-          # 未设置时会先被 u 选项杀掉，报的是 bash 自己的 unbound variable，
-          # 而不是我们那句「runner 上没有 ANDROID_NDK_LATEST_HOME」。
-          # 实测过这个差别：前者看不出该做什么，后者一眼就知道。
           NDK="${ANDROID_NDK_LATEST_HOME:-}"
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          # 这一步之前**没有**像 build job 那样先查存在性 ——
-          # 路径写错的话要到配方里才炸，而配方报的可能是「源码树异常」之类
-          # 与真实病因无关的话。NDK 目录、交叉编译器、llvm-ar 三样先查清。
           [ -n "$NDK" ] && [ -d "$NDK" ] \
             || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
           [ -x "$TC/aarch64-linux-android23-clang" ] \
@@ -309,30 +275,18 @@ jobs:
           { echo "CC=$TC/aarch64-linux-android23-clang";
             echo "CXX=$TC/aarch64-linux-android23-clang++";
             echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
-          # 「缺 cmake 才装」必须写成 if。
-          # 早先写的是 `command -v cmake || sudo apt-get update && sudo apt-get install cmake`
-          # —— bash 里 && 与 || **同优先级、左结合**，那是 (A || B) && C，
-          # 于是 install **无条件执行**，哪怕 runner 上已经有 cmake。
-          # 形式上像「有就跳过」，实际每次都装（每次 apt-get update，慢且脆）。
           if ! command -v cmake >/dev/null 2>&1; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq cmake
           fi
           bash scripts/build-userland-llvmtoolchain.sh
 
-      # 下面两步是本轮补上的 —— 11 件商店件每件都有，llvmtoolchain 原来没有。
-      # 缺了会怎样：编出来的东西**留在 dist/ 目录里但从未打包**，
-      # 于是 manifest 收不到它、控制面板看不到它、用户装不到它，
-      # 而 job 全程绿 —— 「编成功了但没人拿得到」。
       - name: 件形态校验（aarch64 动态件 / 别名工具各自形状）
         run: bash scripts/verify-userland-artifact.sh llvmtoolchain
 
       - name: 打包 + sha256
         run: bash scripts/package-userland.sh llvmtoolchain
 
-      # 别名集合必须两侧一致（装侧建链 / 发侧写清单读同一份 package.json）。
-      # 不一致的后果是「装上了却调不到」或「卸不干净、留死链」——
-      # 而 alias-symlink-proof.js 是离线判据，这里补一道对着真产物的。
       - name: 别名映射须与件内 package.json 一致
         run: |
           set -euo pipefail
@@ -378,8 +332,6 @@ jobs:
       - name: 底座件清单投影（与商店清单分流，同一把钥匙）
         run: |
           set -euo pipefail
-          # 底座件（原生件）的清单：从 NativeAssetRegistry 重算，不从任何派生物读。
-          # 判红条件都在脚本里（id 漂移 / 版本全空 / 档位表缺失）。
           node scripts/publish-native-manifest.js --project > work/native-declared.json
           node -p "'[native] ' + require('./work/native-declared.json').map(c => c.id + '@' + c.version + ' 来源 ' + c.source).join(' | ')"
 

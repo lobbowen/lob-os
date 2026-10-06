@@ -88,18 +88,6 @@ object NativeAssetRegistry {
                 "静态编、不链底座 libz：底座件之间不互相依赖到「少一件就起不来」",
         ),
 
-        // ── 底座运行层共享库（scripts/build-base-libs.sh 编一次，全系统共用）──
-        //
-        // 四条共同点：
-        //   · probeArgs 空 + probeExpect null → NativePreparer 走「数据资产」分支，
-        //     不做 exec-probe。**库不是可执行件**，exec 它必然失败（真库没有 PT_INTERP）。
-        //   · required=true：底座必备，缺一件 $PREFIX 就不完整。
-        //   · buildTier=upstream：上游源码配方，编不出来即环境问题 ⇒ 缺件硬红。
-        //
-        // 这几件原先在 build-userland-curl.sh 与 build-userland-git.sh 里**各编一遍静态**，
-        // 现在编一份共享放 $PREFIX/lib，第 2 阶段 curl/git 改动态链时才有东西可链。
-        // 不进 ALL：ALL 是「APK 内必需资产」，会进 .github/native-assets.txt 的
-        // 依赖库段而被 verify-runtime-elf.sh 判「必须是可动态链接的共享库」。
         NativeExecutable(
             id = "zlib", libName = "libz.so", humanName = "zlib 压缩库",
             probeArgs = emptyList(), probeExpect = null,
@@ -130,34 +118,14 @@ object NativeAssetRegistry {
         ),
     )
 
-    /**
-     * 底座库（不是可执行件）：落 $PREFIX/lib，不落 $PREFIX/bin。
-     *
-     * 与 BINS 的分工：BINS 是要被 exec 的件（bash/rg），要 ExecBits；
-     * 这里全是共享库，给执行位无意义，且 bionic 加载库不查执行位。
-     *
-     * libcxx（libc++_shared.so）在 ALL 里而不在 CAPABILITY 里 —— 它是「随包必需资产」
-     * 不是「能力件」。两处都要，别只取 CAPABILITY。
-     */
     val LIBS: List<NativeExecutable>
         get() = (ALL.filter { it.id in LIB_IDS } + CAPABILITY.filter { it.id in LIB_IDS })
 
     private val LIB_IDS = setOf("libcxx", "zlib", "openssl", "crypto", "curl")
 
-    /**
-     * 底座可执行件（要被 exec 的）：落 `$PREFIX/bin`，要给执行位。
-     *
-     * 与 [LIBS] 的分工：库给执行位无意义（bionic 加载库不查执行位），
-     * 可执行件不给执行位就是跑不起来。
-     *
-     * 分档说明：`flock` 与 `posix` **不在这里** —— 它们是被 dlopen / LD_PRELOAD
-     * 注入的，不是 exec 的；`ptyprobe` 是诊断探针，由 `InstanceHost.runPtyProbe()`
-     * 按需直接跑原文件，不占 `$PREFIX/bin` 的常规名字。
-     */
     val BINS: List<NativeExecutable>
         get() = CAPABILITY.filter { it.id in BIN_IDS }
 
-    /** 底座可执行件的 id 集合 —— 供落位方判断「这一件进 usr/bin 还是 usr/lib」。 */
     val BIN_IDS: Set<String> = setOf("bash", "ripgrep", "ptysession", "busybox")
 
     val ALL: List<NativeExecutable> get() = listOf(LIBCXX)

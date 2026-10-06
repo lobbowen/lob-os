@@ -43,9 +43,6 @@ if [ -z "$ANDROID_NDK_ROOT" ]; then
 fi
 echo "[git] NDK root = $ANDROID_NDK_ROOT"
 
-# 静态依赖库（zlib + openssl + curl）由 build-shared-deps.sh 编一次，与 curl.sh 共用。
-# 原先本脚本把三段编法整段抄了一份（实测 100 行），openssl 尤其贵 —— 编两遍换不来好处。
-# 本脚本只要**库**（git 链 -lcurl），不要 curl 命令行工具；deps 脚本正是这么编的（只 make -C lib）。
 echo "[git] 编静态依赖库（build-shared-deps.sh）"
 DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/build-shared-deps.sh"
 echo "[git] curl 库就位（静态）"

@@ -28,7 +28,6 @@ for (const p of pages) {
   if (!fs.existsSync(jsPath)) { add(p + '/index.js 不存在'); continue; }
   const js = fs.readFileSync(jsPath, 'utf8');
 
-  // 1) 页面必须用全局 Page()/Component() 注册，不能 export default
   if (/export\s+default/.test(js)) {
     add(p + '/index.js 用了 export default —— 编译器会编成 ES module（__esModule + exports），' +
       'modDefine 里没有页面注册，容器报 module not found（真机灰屏十轮的根因）');
@@ -37,13 +36,11 @@ for (const p of pages) {
     add(p + '/index.js 没有全局 Page()/Component() 调用');
   }
 
-  // 2) 不得臆造 app.xxx()（app 在 dimina JSSDK 里未注册）
   if (/\bapp\.[a-zA-Z]/.test(js)) {
     add(p + '/index.js 用了 app.' + (js.match(/\bapp\.[a-zA-Z]+/) || [''])[0].slice(4) +
       ' —— dimina JSSDK 没有注册 app 对象，官方示例也从未用过 app.xxx()');
   }
 
-  // 3) index.json 必须有 usingComponents（运行时靠它决定加载哪些视图模块）
   if (!fs.existsSync(jsonPath)) {
     add(p + '/index.json 不存在');
   } else {
@@ -57,7 +54,6 @@ for (const p of pages) {
     }
   }
 
-  // 4) 模板扩展名必须是 .wxml（编译器 DEFAULT_TEMPLATE_EXTS 只认 .wxml/.ddml）
   if (!fs.existsSync(wxmlPath)) {
     add(p + '/index.wxml 不存在（编译器只认 .wxml / .ddml，不认 .ux）');
   }

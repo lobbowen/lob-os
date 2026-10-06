@@ -103,7 +103,6 @@ object ProgramOtaSelfCheck {
         }
 
         if (m != null) {
-            // 状态按「通道 + 程序」分文件；自检读当前 cfg 与已登记程序那一份。
             val selfCheckTarget = km?.programId ?: ids.firstOrNull().orEmpty()
             val selfCheckSlug = (cfg.channel + "-" + selfCheckTarget)
                 .replace(Regex("[^A-Za-z0-9._-]"), "_")

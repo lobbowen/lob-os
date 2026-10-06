@@ -1,21 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// 商店安装的件，代码里不许硬编码。
-//
-// 判据来源（本仓真实问题）：
-//   · ProgramManager.nodeBin() 硬编码拼 stateDirOf("node")/<ver>/bin/node，
-//     而 NodeRuntime.path() 又调它 —— 互相调用 + 换落位位置就找不到
-//   · PrefixProvisioner 里有 linkNode / NODE_BIN_NAME，底座管理者替商店件建软链
-//   · libc++_shared.so 被写成「node 在场才算应有件」，而它是 C++ 运行库，与 node 无关
-//
-// 结论：node/npm/curl/git/jq/sqlite3/npx/pnpm 走商店安装，代码不该单独认识某一件。
-// 底座该有什么由 PrefixProvisioner 声明；某件装没装由安装器与注册表回答。
-//
-// 例外：node 在「程序宿主」里有正当角色（程序后端就是 node 进程）。
-// 那些引用按 `node-gyp` / `NODE_BIN` / 诊断文案等白名单放行，
-// 但不许再出现「自己拼 node 的落位路径」。
-
 const fs = require('fs');
 const path = require('path');
 
@@ -35,13 +20,10 @@ function walk(dir, out) {
 
 const TOOLS = ['node', 'npm', 'npx', 'pnpm', 'curl', 'git', 'jq', 'sqlite3'];
 
-// 同名不同物：AccessibilityNodeInfo 的局部变量 node
 const NOT_A_TOOL = /AccessibilityNodeInfo|nodeToJson|ev\.source|getBoundsInScreen|node\.(recycle|performAction|childCount|text|is[A-Z]|contentDescription|className|packageName|viewIdResourceName|getChild)|matchNode|node: Accessibility/;
 
-// 正当引用：诊断文案、对外能力暴露、环境变量名、asset 路径、说明性字符串
 const LEGIT = /RuntimeDiagnostics\.append|Journal\.(append|note)|"node-stderr|node-stderr|NODE_BIN|node-gyp|assets\/node\/|put\("name", "node"\)|NodeRuntime\.(path|version|missing|NAME)|node 进程|node 标准错误|node 运行时/;
 
-// 纯说明性字符串（不含可执行代码，如 note = "…" 跨行拼接的后半段）
 const PROSE_STRING = /^\s*"[^"]*"\s*,?\s*$/;
 
 const problems = [];
@@ -54,19 +36,16 @@ for (const tool of TOOLS) {
     lines.forEach((line, i) => {
       const t = line.trim();
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
-      // 续行注释（字符串里含 // 或 *）也算注释
       if (/^\*?\s*\/\//.test(t) || /\/\/\s*"/.test(t) || /"\s*,\s*\/\//.test(t)) return;
       if (PROSE_STRING.test(line)) return;
       if (NOT_A_TOOL.test(line) || LEGIT.test(line)) return;
       if (!re.test(line)) return;
-      // 真正要抓的：自己拼某个件的落位路径
       if (!/stateDirOf|ProgramDir|bin\/|usr\/lib|entryLink|File\(/.test(line)) return;
       problems.push(tool + '  ' + rel + ':' + (i + 1) + '  ' + t.slice(0, 76));
     });
   }
 }
 
-// 底座管理器不许替商店件干活
 const prefixFile = path.join(JAVA, 'lobos/runtime/PrefixProvisioner.kt');
 if (fs.existsSync(prefixFile)) {
   const t = fs.readFileSync(prefixFile, 'utf8');

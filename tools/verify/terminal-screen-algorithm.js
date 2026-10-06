@@ -1,24 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-/**
- * 验证 TerminalScreen 的**算法**：用 JS 逐行复刻它的状态机与关键规则，
- * 拿真 PTY 输出与已知正确答案对比。
- *
- * 为什么复刻 JS 而不是直接跑 Kotlin：本机无 Kotlin 编译器。
- * 复刻的价值在于——它检验的是「我理解的规则是否自洽」，
- * 而 Kotlin 侧与 JS 侧逐行对应（下面标了对应行）。
- * **这不是替代 Kotlin 的真机测试**，真机测试仍需 CI/设备。
- *
- * 覆盖三个最容易错的地方：
- *   1. CJK 宽字符占 2 列且续位不画（判据 6「中文文件名不乱码」）
- *   2. 转义序列被 TCP 分片切开（一次 feed 只有半个 ESC[32）
- *   3. 清屏 + 光标归位（\e[2J\e[H）后光标必须真的在 (0,0)
- */
-
 const ESC = String.fromCharCode(0x1b);
 
-// ── 与 Kotlin 同构的最小实现（只保留要验的规则）──
 class Screen {
   constructor(rows, cols) {
     this.rows = rows; this.cols = cols;
@@ -71,14 +55,12 @@ class Screen {
         else if (ch === '8') { this.r = this.sr; this.c = this.sc; this.st = 'G'; }
         else this.st = 'G';
       } else if (this.st === 'O') {
-        if (ch === String.fromCharCode(7)) this.st = 'G';   // BEL 结束 OSC
+        if (ch === String.fromCharCode(7)) this.st = 'G';
       } else if (this.st === 'C') {
         if (/[0-9;?]/.test(ch)) this.pending += ch;
         else { this.csi(this.pending, ch); this.pending = ''; this.st = 'G'; }
       }
     }
-    // 注意：pending 在 feed 末尾保留（半截序列）——Kotlin 版把 pending 独立于 buf
-    // 这里为简化直接复用同一字段，规则等价。
   }
   csi(p, f) {
     const q = p.startsWith('?') ? p.slice(1) : p;
@@ -104,8 +86,8 @@ class Screen {
         else this.g[this.r] = Array.from({ length: this.cols }, () => ({ ch: ' ', w: 1 }));
         break;
       }
-      case 'm': break;   // 样式不影响网格
-      default: break;    // 其余吞掉
+      case 'm': break;
+      default: break;
     }
   }
   lineText(r) {
@@ -128,7 +110,6 @@ const t = (name, got, want) => {
 
 console.log('== TerminalScreen 算法验证（JS 同构复刻，非 Kotlin 真机测试）==');
 
-// 1. CJK 宽字符占两列
 {
   const s = new Screen(3, 10);
   s.feed('中文');
@@ -137,23 +118,20 @@ console.log('== TerminalScreen 算法验证（JS 同构复刻，非 Kotlin 真�
   t('第二个汉字落在第 2 列', s.g[0][2].ch, '文');
 }
 
-// 2. 混合：ASCII + CJK 光标位置
 {
   const s = new Screen(3, 10);
   s.feed('ls 中');
   t('ls(2) + 中(2) + 空 → 光标 5', s.c, 5);
 }
 
-// 3. 转义序列被分片切开
 {
   const s = new Screen(3, 10);
-  s.feed('a' + ESC);            // 只喂了 ESC
+  s.feed('a' + ESC);
   t('半个 ESC 不落成字符', s.lineText(0), 'a');
   s.feed('[32mgreen' + ESC + '[0m');
   t('续上 [32m 后 green 正常显示且无残留', s.lineText(0), 'agreen');
 }
 
-// 4. 清屏 + 光标归位
 {
   const s = new Screen(3, 10);
   s.feed('hello' + ESC + '[2J' + ESC + '[H');
@@ -161,7 +139,6 @@ console.log('== TerminalScreen 算法验证（JS 同构复刻，非 Kotlin 真�
   t('2J 清掉了内容', s.lineText(0), '');
 }
 
-// 5. 光标移动 + 擦行（vi/less 依赖这些）
 {
   const s = new Screen(3, 10);
   s.feed('hello world' + ESC + '[H' + ESC + '[5C' + ESC + '[K');
@@ -169,29 +146,23 @@ console.log('== TerminalScreen 算法验证（JS 同构复刻，非 Kotlin 真�
   t('EL 从光标(5)清到行尾 → 留 c=0..4 的 hello', s.lineText(0), 'hello');
 }
 
-// 6. 换行到末尾时上滚
 {
-  // \n 是 LF：只换行、**不回列**（真实终端语义；\r 才回列）。
-  // 所以上滚后列会保留 —— 这一点必须显式验证，否则会误当成 bug 去改。
   const s = new Screen(2, 8);
-  s.feed('\r\n');                       // CRLF：明确回列换行
+  s.feed('\r\n');
   s.feed('11111');
   s.feed('\r\n');
   s.feed('22222');
-  s.feed('\r\n');                       // 这一行触发上滚
+  s.feed('\r\n');
   s.feed('33333');
   t('CRLF 下上滚正确（行0 让给第2行）', s.lineText(0), '22222');
   t('末行为最新', s.lineText(1), '33333');
 }
 {
-  // 裸 \n（LF）不回列 —— 真实终端就是这样，不是 bug。
-  // cols=8，"11111" 占 c=0..4；\n 后行1 从 c=5 起写 "222"（3 个正好到列边界）。
   const s = new Screen(3, 8);
   s.feed("11111\n222");
   t("LF 不回列：行1 从第5列起写 222", s.lineText(1), "     222");
 }
 {
-  // 填满整行 + 换行 = 真终端的 deferred wrap
   const s = new Screen(2, 5);
   s.feed('12345\n');
   t('填满行后光标停在末列（deferred wrap，不是立即换行）', s.c, 5);
@@ -199,18 +170,15 @@ console.log('== TerminalScreen 算法验证（JS 同构复刻，非 Kotlin 真�
   t('下一字符才换行 → X 落在行1', s.lineText(1), 'X');
 }
 
-// 7. OSC 序列被吞掉（终端标题等）
 {
   const s = new Screen(3, 10);
   s.feed(ESC + ']0;my title' + String.fromCharCode(7) + 'X');
   t('OSC 吞掉只留 X', s.lineText(0), 'X');
 }
 
-// 8. 光标移动用真实 bash 输出里的形态
 {
   const s = new Screen(5, 20);
   s.feed('$ ls' + '\n' + 'file1' + '\n' + ESC + '[1;1H' + 'PROMPT> ');
-  // "PROMPT> " 是 8 个字符，覆写 "file1" 的 5 格并占掉后面 3 格 → "PROMPT>1"（第 5 位起是空格被截）
   t('CUP 定位后从首格覆写（行尾空白被 trim）', s.lineText(0), 'PROMPT>');
   t('CUP 后光标落在第 8 列', s.c, 8);
 }

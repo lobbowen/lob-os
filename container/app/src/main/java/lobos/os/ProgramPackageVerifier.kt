@@ -8,26 +8,6 @@ import java.security.MessageDigest
 import java.util.zip.ZipFile
 import lobos.runtime.SupplyProvisioner
 
-/**
- * 程序包校验（Kotlin 实现，不依赖 node）。
- *
- * 为什么不用 node 跑 JS：原实现用 `node program-verify.js` 做校验，
- * 而 node 是"装程序时按需拉"的那一类 —— 内置应用安装校验需要 node，
- * node 自己安装也要走校验，鸡生蛋。真机报过 runtime-missing。
- *
- * 验证链与 JS 版逐条对齐（assets/node/program-verify.js）：
- *   1. zip 的 sha256 与清单锚点比对（有锚点才比）
- *   2. zip 完整性（条目可读）
- *   3. 包内 program-manifest.json 存在、含 version、位于 program/<version>/
- *   4. 包内清单的 ed25519 签名验证（对 canonical 后的内容）
- *   5. 外部清单的 ed25519 签名验证（若有）
- *
- * canonical 规则必须与 JS 版一致，否则签名对不上：
- *   递归按键排序、剔除顶层 signature、紧凑 JSON。
- *
- * 保留 assets/node/program-verify.js 作交叉验证工具（不在安装路径上）：
- * 两边对同一包给出一致结论才认为移植正确。
- */
 object ProgramPackageVerifier {
 
     data class Outcome(
@@ -100,14 +80,6 @@ object ProgramPackageVerifier {
         return Outcome(true, version, null, "包内与外部清单均验签通过", sha)
     }
 
-    // ── canonical：必须与 program-verify.js 逐字一致 ──────────────────
-//
-// 不用 JSONObject.toString()：Android 的 JSONObject 键序不保证，
-// 而签名是对 canonical 后的**字节**算的，键序差一个字节就验不过。
-// 这里自己按「递归排序键 → 紧凑拼接」生成字符串。
-//
-// 顶层剔除 signature（签名自己不在被签内容里）。
-
     fun canonical(o: JSONObject): String = buildString {
         append('{')
         val keys = o.keys().asSequence().filter { it != "signature" }.sorted().toList()
@@ -136,14 +108,12 @@ object ProgramPackageVerifier {
         else -> quote(v.toString())
     }
 
-    /** JSON 数字字面量：整数不带小数点，与 JS JSON.stringify 一致。 */
     private fun numberLiteral(n: Number): String {
         val d = n.toDouble()
         if (d == Math.floor(d) && !d.isInfinite() && Math.abs(d) < 1e15) return d.toLong().toString()
         return n.toString()
     }
 
-    /** JSON 字符串转义，与 JS JSON.stringify 对齐（含 \u2028/\u2029）。 */
     private fun quote(s: String): String {
         val sb = StringBuilder(s.length + 2)
         sb.append('"')
@@ -168,14 +138,11 @@ object ProgramPackageVerifier {
         return sb.toString()
     }
 
-    // ── zip 读取 ──────────────────────────────────────────────────────
-
     private fun readManifestInZip(zip: File): String? = runCatching {
         ZipFile(zip).use { zf ->
             val entries = zf.entries().toList()
             val e = entries.firstOrNull { !it.isDirectory && it.name.endsWith("program-manifest.json") }
                 ?: return null
-            // 约定必须在 program/<version>/ 下；这里只做位置检查，不猜 version
             if (!e.name.startsWith("program/") || !e.name.contains("/program-manifest.json")) return null
             zf.getInputStream(e).use { it.readBytes().toString(Charsets.UTF_8) }
         }
@@ -199,7 +166,6 @@ object ProgramPackageVerifier {
             pubPem, data, runCatching { android.util.Base64.decode(sigB64, android.util.Base64.DEFAULT) }.getOrElse { return false },
         )
 
-    /** 公钥锚点：assets/ota-public.pem 的内容。与 ProgramVerifier 原来读的是同一份。 */
     fun publicKeyPem(context: Context): String? = runCatching {
         context.assets.open("ota-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
     }.getOrNull()

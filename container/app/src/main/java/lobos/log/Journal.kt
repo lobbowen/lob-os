@@ -101,7 +101,6 @@ object Journal {
             if (!extra.isNullOrBlank()) append("；").append(extra)
             if (ok != null) append("（").append(if (ok) "ok" else "failed").append("）")
         }
-        // ok 原本只拼进文本就丢了。现在结构化落盘，调用方不用改。
         return append(ctx, category, null as Reason?, text, Level.of(ok))
     }
 
@@ -156,8 +155,6 @@ object Journal {
                         category = o.optString("category"),
                         reason = Reason.values().firstOrNull { it.code == rawReason },
                         detail = o.optString("detail"),
-                        // 老记录没有 logLevel 字段（本次升级前落的），按 INFO 读，
-                        // 不能因为缺字段就丢掉整条。
                         level = Level.values().firstOrNull { it.code == rawLevel }
                             ?: Level.INFO,
                     )

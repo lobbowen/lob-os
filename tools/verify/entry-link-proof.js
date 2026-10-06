@@ -1,4 +1,3 @@
-// 验证「linkEntry 失败」这个形态：安装报成功 vs 入口调不到，是否矛盾。
 const fs = require('fs'), os = require('os'), path = require('path');
 const W = fs.mkdtempSync(path.join(os.tmpdir(), 'lobos-link-'));
 const BIN = path.join(W, 'usr', 'bin');
@@ -10,7 +9,6 @@ fs.writeFileSync(path.join(DEST, 'jq'), '#!/bin/sh\necho jq\n');
 const entryRel = 'bin/jq';
 const linkPath = path.join(BIN, entryRel.split('/').pop());
 
-// 形态 A：linkEntry 失败（链没建成）
 const linkedA = false;
 const entryOkA = fs.existsSync(linkPath) && fs.statSync(linkPath).isFile();
 console.log('[形态A] linkEntry 失败');
@@ -21,7 +19,6 @@ console.log('  → 两者矛盾：装好了 vs 调不到');
 
 try { fs.symlinkSync(path.join(DEST, 'jq'), linkPath); } catch (e) { console.log('  建链异常:', e.message); }
 
-// 形态 B：linkEntry 成功
 const linkedB = true;
 const entryOkB = fs.existsSync(linkPath) && fs.statSync(linkPath).isFile();
 console.log('\n[形态B] linkEntry 成功');

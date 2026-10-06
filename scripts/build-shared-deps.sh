@@ -1,30 +1,4 @@
 #!/usr/bin/env bash
-# 商店件的**静态**依赖库 —— 编一次，供 curl.sh 与 git.sh 共用。
-#
-# ── 为什么抽出来 ──
-# 原先 build-userland-curl.sh 与 build-userland-git.sh 各自编一遍 zlib + openssl
-# + curl 静态库（两个不同的 work/ 目录）。实测逐行比对：
-#   · openssl 的 Configure 参数**完全相同**（android-arm64 -fPIC no-shared no-tests no-ui-console）
-#   · curl 的 configure 参数只差三处，且都是「一边有一边无」，不是互斥：
-#       --with-ca-path=/system/etc/security/cacerts   只有 git.sh 有
-#       curl_cv_openssl_with_ldl=yes                  只有 git.sh 有
-#       curl_cv_openssl_with_ldl_and_lpthread=yes      只有 git.sh 有
-#       LIBS 末尾的 -ldl                              只有 git.sh 有
-#   那三处取**并集**（对 curl.sh 只是多编一个功能，不是行为冲突）——
-#   运行时 CA 由 CURL_CA_BUNDLE / GIT_SSL_CAINFO 环境变量供给
-#   （RuntimeEnvironment 有设），编译期 ca-path 只是兜底默认值。
-#   -ldl 与两个 cv 开关则是链接需要，不能省。
-#
-# ── 本脚本只编静态库，不编任何可执行件 ──
-# 商店件（bin/curl、bin/git）由各自的脚本编；底座共享库（libz.so 等）
-# 由 build-base-libs.sh 编。三个脚本各司其职，不互相调用。
-#
-# 与 build-base-libs.sh 的区别（别混）：
-#   本脚本          → 静态 .a，装进商店件，件自足、不依赖 $PREFIX/lib
-#   build-base-libs → 共享 .so，进 APK 底座 $PREFIX/lib，多件共用
-# 第 2 阶段商店件改动态链之后，静态这份的必要性会重新评估；现在先消除重复编译。
-#
-# 用法：DEPS=<前缀目录> CC=<ndk clang> bash scripts/build-shared-deps.sh
 set -euo pipefail
 export LC_ALL=C
 
@@ -37,8 +11,6 @@ ANDROID_API="${ANDROID_API:-23}"
 JOBS="${JOBS:-2}"
 
 die() {
-  # 第二个及之后的参数都并进同一条 ::error。只取 ${2:-} 的话，
-  # 调用点传的第 3 句往后会被**静默丢掉** —— 写上去像是说了，其实没输出。
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
   exit 1
@@ -55,7 +27,6 @@ mkdir -p "$DEPS" "$ROOT_DIR/work"
 
 echo "[deps] 前缀=$DEPS API=$ANDROID_API CC=$CC"
 
-# ── zlib ────────────────────────────────────────────────────────────────────
 echo "[deps] zlib"
 bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin zlib "$ROOT_DIR/work/zlib.tar.gz"
 rm -rf "$ROOT_DIR/work/zlib" && mkdir -p "$ROOT_DIR/work/zlib"
@@ -71,7 +42,6 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$ROOT_DIR/work/zlib" --strip-components
 [ -f "$DEPS/lib/libz.a" ] || die "zlib 没产出" "$DEPS/lib 下没有 libz.a"
 echo "[deps] zlib 就位：$(ls "$DEPS/lib" | tr '\n' ' ')"
 
-# ── openssl（libssl.a + libcrypto.a）────────────────────────────────────────
 echo "[deps] openssl"
 bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin openssl "$ROOT_DIR/work/openssl.tar.gz"
 rm -rf "$ROOT_DIR/work/openssl" && mkdir -p "$ROOT_DIR/work/openssl"
@@ -98,7 +68,6 @@ for a in libssl.a libcrypto.a; do
 done
 echo "[deps] openssl 就位（静态）"
 
-# ── curl（libcurl.a）────────────────────────────────────────────────────────
 echo "[deps] curl"
 bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin curl "$ROOT_DIR/work/deps-curl.tar.gz"
 rm -rf "$ROOT_DIR/work/deps-curl" && mkdir -p "$ROOT_DIR/work/deps-curl"
