@@ -60,10 +60,8 @@ object Exporter {
 
     fun exportBundle(ctx: Context): Bundle {
         val events = Journal.events(ctx, limit = MAX_EVENTS)
-        val diags = RuntimeDiagnosticsBridge.events(ctx, limit = MAX_DIAG)
-        val stderr = runCatching {
-            RuntimeDiagnosticsBridge.nodeErrText(ctx).takeLast(MAX_STDERR)
-        }.getOrDefault("")
+        val diags = Journal.events(ctx, limit = MAX_DIAG).map { it.toJson() }
+        val stderr = nodeErrText(ctx).takeLast(MAX_STDERR)
 
         val byLevel = JSONObject()
         for (e in events) {
@@ -96,20 +94,8 @@ object Exporter {
         return f
     }
 
-    /** node stderr 与诊断视图还没收进 log 包，先经这里访问，避免 log 直接依赖 RuntimeDiagnostics。 */
-    internal object RuntimeDiagnosticsBridge {
-        fun events(ctx: Context, limit: Int): List<JSONObject> =
-            runCatching {
-                val out = mutableListOf<JSONObject>()
-                val f = File(File(ctx.filesDir, "os"), "diag.jsonl")
-                if (!f.isFile) return emptyList()
-                f.readLines().filter { it.isNotBlank() }.takeLast(limit).forEach { line ->
-                    runCatching { JSONObject(line) }.getOrNull()?.let { out += it }
-                }
-                out
-            }.getOrDefault(emptyList())
-
-        fun nodeErrText(ctx: Context): String =
-            runCatching { File(ctx.filesDir, "node-stderr.log").readText() }.getOrDefault("")
-    }
+    /** 程序 stderr。node 未安装时该文件不存在，返回空。 */
+    private fun nodeErrText(ctx: Context): String = runCatching {
+        File(ctx.filesDir, lobos.RuntimeDiagnostics.NODE_ERR_FILE).readText()
+    }.getOrDefault("")
 }

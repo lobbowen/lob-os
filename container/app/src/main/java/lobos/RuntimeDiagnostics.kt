@@ -31,14 +31,15 @@ object RuntimeDiagnostics {
     }
 
     private const val FILE = "diagnostics.txt"
-    private const val NODE_ERR = "node-stderr.log"
+    // node 进程 stderr 落盘位置。node 是按需安装的程序运行时，没装时该文件不存在。
+    const val NODE_ERR_FILE = "node-stderr.log"
     private const val STRUCT_DIR = "os"
     private const val STRUCT_FILE = "diag.jsonl"
 
     private val tsFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     fun file(ctx: Context): File = File(ctx.filesDir, FILE)
-    fun nodeErrFile(ctx: Context): File = File(ctx.filesDir, NODE_ERR)
+    fun nodeErrFile(ctx: Context): File = File(ctx.filesDir, NODE_ERR_FILE)
     private fun structFile(ctx: Context): File {
         val d = File(ctx.filesDir, STRUCT_DIR)
         d.mkdirs()

@@ -111,6 +111,9 @@ jobs:
       - name: 安装路径须单一（两条路一个安装点，判据非平行的实现）
         run: node tools/check-install-single-path.js
 
+      - name: 商店件不得有硬编码（node/npm/curl 等走商店安装，代码不单独认识）
+        run: node tools/check-store-tool-hardcode.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail
