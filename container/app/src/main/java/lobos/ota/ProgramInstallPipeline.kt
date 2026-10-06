@@ -217,12 +217,26 @@ object ProgramInstallPipeline {
         }
 
         // 组件靠真名被调用（usr/bin/<name> 软链到落位目录里的 entry）。
-        // 不建链等于装了个没人调得动的件。
+        // 不建链等于装了个没人调得动的件 —— 所以建链失败**要让安装失败**。
+        //
+        // 原先这里忽略 linkEntry 的返回值：链没建成（SELinux 拒绝 / 落位目录
+        // 不可写 / 目标不存在）时安装照样报成功，程序以为装好了，直到第一次
+        // spawn 才报 command not found。而上面那句注释恰恰说明这是要判的 ——
+        // 只是没判。
         val entryRel = spec.expectedEntryRel
             ?: runCatching {
                 lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("entry", "").orEmpty()
             }.getOrDefault("").ifBlank { "bin/" + spec.programId }
-        linkEntry(dest, entryRel)
+        if (!linkEntry(dest, entryRel)) {
+            // 不假装成功。件已落在盘上（便于排查），但明确报失败。
+            return Result(
+                false, safeVer, "entry-link-failed",
+                "件已落位但入口软链建不起来（" +
+                    lobos.runtime.PrefixProvisioner.binDir(context).absolutePath + "/" +
+                    entryRel.substringAfterLast("/") + "）—— 装了个没人调得动的件；" +
+                    "看 SELinux 是否允许该目录建链，或落位目录是否可写",
+            )
+        }
         val reg = lobos.os.ProgramIndex.get(context, spec.programId)
         val base = reg ?: lobos.os.ProgramIndex.empty(
             spec.programId, lobos.os.ProgramManager.levelOfKind(kindOf(context, spec.programId)),
