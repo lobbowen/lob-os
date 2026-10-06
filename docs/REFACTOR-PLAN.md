@@ -22,31 +22,36 @@
 
 ## 一、目录怎么改
 
-### 1.1 新建 `lobos/record/` — 运行记录模块
+### 1.1 新建 `lobos/log/` — 运行记录模块
 
-**理由**：`Journal` 是全仓唯一数据源（26 个文件引用），却藏在 `os` 包里，
-和端口、注册表这些状态管理混在一起。它是横切关注点，不属于任何单一域。
+**命名：`log/`。** 与现有 11 个顶层目录的单数惯例一致
+（`bridge` `capability` `lifecycle` `native` `os` `ota` `permissions` `quickapp` `runtime` `setup` `ui`）。
 
 ```
-lobos/record/
+lobos/log/
 ├── Journal.kt        ← 从 os/ 移入（166 行）
-├── LogLevel.kt       ← 新增：日志级别
+├── Topics.kt         ← 新增：日志类别常量（32 个裸字符串散在 89 个调用点）
+├── Level.kt          ← 日志级别（INFO/WARN/ERROR），从 RuntimeDiagnostics 收进来
+├── Recorder.kt       ← 新增：把 RuntimeDiagnostics 的转发收进来
 ├── Exporter.kt       ← 新增：导出层（用户报障 / 遥测的共同入口）
-└── Recorder.kt       ← 新增：把 RuntimeDiagnostics 的转发收进来
+└── KillAudit.kt      ← 从 os/ 移入（它是「退出史」这个日志来源）
 ```
 
-**命名冲突必须避让**（已核实，全仓现有两个 `Level`）：
+**顺带修一个问题**：32 种 category 现在是裸字符串散在调用点，
+拼错要到运行时才发现。收进 `Topics.kt` 变成常量后，编译期就能发现。
 
-| 现有 | 定义处 | 含义 |
-|---|---|---|
-| `os.Level` | `os/ProgramIndex.kt` | 程序层级：`INFRA` / `CAPABILITY` / `CHANNEL` / `APPLICATION` |
-| `RuntimeDiagnostics.Level` | 根包 | 日志级别：`INFO` / `OK` / `FAIL` |
+**三处命名冲突必须避让**（已核实，全仓现有同名类型）：
 
-所以新增的日志级别叫 **`LogLevel`**（不是 `Level`），
-并把 `RuntimeDiagnostics.Level` 一并收进 `record` 改名为 `LogLevel`，
-否则会有三个同名 `Level`。
+| 现有 | 定义处 | 含义 | 本方案 |
+|---|---|---|---|
+| `os.Level` | `os/ProgramIndex.kt` | 程序层级 `INFRA`/`CAPABILITY`/`CHANNEL`/`APPLICATION` | 不动 |
+| `os.Category` | `os/ProgramIndex.kt` | 程序分类 `RUNTIME`/`TOOLCHAIN`/`LIBRARY`/`APPLICATION` | 不动 |
+| `RuntimeDiagnostics.Level` | 根包 | 日志级别 `INFO`/`OK`/`FAIL` | 改名收进 `log`，仍叫 `Level` |
 
-**判据**：所有"发生过什么"都从 `record` 进，不从 `os` 进。
+所以：**日志类别叫 `Topics`（不叫 `Category`，会撞 `os.Category`）**；
+日志级别叫 `Level`（放 `log` 包，跨包不算冲突）。
+
+**判据**：所有"发生过什么"都从 `log` 进，不从 `os` 进。
 
 ### 1.2 `lobos/os/` 30 文件 —— **先不拆**
 
@@ -84,7 +89,7 @@ lobos/record/
 如果将来要拆，正确的顺序是**先把 `Journal`/`StateFiles` 抽出去**
 （它们已经在做这件事，见 1.1），剩下的按实际依赖重新分组，而不是照职责分组。
 
-### 1.3 `os/KillAudit.kt` → `lobos/record/`
+### 1.3 `os/KillAudit.kt` → `lobos/log/`
 
 **理由**：它采集系统退出史、经 `Journal` 落盘，
 是"记录的事件来源"，不是"os 域的状态"。
@@ -106,8 +111,8 @@ lobos/record/
 
 | 从 | 到 | 触发的 import 修改 |
 |---|---|---|
-| `os/Journal.kt` | `record/Journal.kt` | 6 处 |
-| `os/KillAudit.kt` | `record/KillAudit.kt` | 1 处 |
+| `os/Journal.kt` | `log/Journal.kt` | 6 处 |
+| `os/KillAudit.kt` | `log/KillAudit.kt` | 1 处 |
 
 **合计 7 处 import**（已实跑核实：跨包 `import lobos.os.Journal` 6 处、`os.KillAudit` 1 处）。
 
@@ -120,16 +125,18 @@ lobos/record/
 
 | 文件 | 内容 |
 |---|---|
-| `record/Level.kt` | `enum class Level { INFO, OK, WARN, ERROR }` |
-| `record/Exporter.kt` | 一次捞齐四份视图 + 带设备与版本元信息 |
-| `record/Recorder.kt` | `RuntimeDiagnostics` 的转发逻辑收进来 |
+| `log/Level.kt` | `enum class Level { INFO, WARN, ERROR }`（放 log 包不与 os.Level 冲突） |
+| `log/Topics.kt` | 32 种日志类别的常量 |
+| `log/Exporter.kt` | 一次捞齐四份视图 + 带设备与版本元信息 |
+| `log/Recorder.kt` | `RuntimeDiagnostics` 的转发逻辑收进来 |
+| `log/Event.kt` | 把 `Journal` 里的 `data class Event` 拆出来独立成文件（它现在是 `Journal` 的内部类型，外部引用要写 `Journal.Event`） |
 
 ### 2.3 修改
 
 | 文件 | 改什么 | 大小 |
 |---|---|---|
 | `os/Journal.kt` | `Event` 加 `LogLevel` 字段；`note()` 把已有的 `ok: Boolean?` 映射进去 | 3 处（`:65` 字段、`:109` 构造、`:144` 反序列化） |
-| `record/Recorder.kt` | 取代 `RuntimeDiagnostics.appendEvent()` 的转发；`RuntimeDiagnostics.Level` 改名 `LogLevel` 收进来 | — |
+| `log/Recorder.kt` | 取代 `RuntimeDiagnostics.appendEvent()` 的转发；`RuntimeDiagnostics.Level` 改名后收进来 | — |
 | `ui/ProbeJournal.kt`（50 行） | `append()` 改调 `Journal`；6 个 `@Volatile` 时间戳**留在内存**（`verdicts()` 依赖，是状态不是记录） | 小 |
 | `lifecycle/ResidencyAudit.kt` | 存活时间继续自己存（状态）；把"中断/归因"补写进 `Journal` | 小 |
 | `lifecycle/OsHostService.kt:283` | 通知点击 Intent 改用 `entryActivity()` 判断 | 已改 |
@@ -181,7 +188,7 @@ lobos/record/
           ↓
   capability  lifecycle  ota    ← 三个中层互不依赖
           ↓
-   record  os/{registry,install,runtime,state}  runtime  native
+   log    os  runtime  native
           ↓
    permissions  os/env  os/lifecycle
 ```
@@ -206,8 +213,8 @@ lobos/record/
 |---|---|---|---|
 | **1** | `Journal.Event` 加 `LogLevel`（`note` 的 `ok` 映射进去） | 极小 | 现有 89 处 `Journal.` 调用点零改动 |
 | **2** | `ProbeJournal.append` + `ResidencyAudit` 事件走 `Journal` | 小 | 「有新东西发生却不走记录入口」清零 |
-| **3** | `KillAudit` 去内存快路径、游标并入 | 小 | 全仓只剩 `record` 一个落盘入口 |
-| **4** | 建 `record/` 包（移 2 个文件）+ `LogLevel` + `Exporter` | 小（7 处 import） | 遥测位置就绪 |
+| **3** | `KillAudit` 去内存快路径、游标并入 | 小 | 全仓只剩 `log` 一个落盘入口 |
+| **4** | 建 `log/` 包（移 2 个文件）+ `LogLevel` + `Exporter` | 小（7 处 import） | 遥测位置就绪 |
 | **5** | `ProgramDir` 移 `ota` → `os` | 小 | `grep -r "ota.ProgramDir"` 零命中 |
 | **6** | `capability`/`permissions` 解耦 `bridge` | 中 | 反向依赖归零 |
 | **7** | `ProgramVerifier` 去 node 依赖 | 中 | 内置应用升级不再需要 node 在位 |
@@ -225,7 +232,7 @@ lobos/record/
 |---|---|
 | 1 | `grep "Journal.append(" ` 的调用点签名不变；`Event` 落盘含 `level` |
 | 2 | 全仓无 `probe-journal.txt` 写入；`ResidencyAudit` 的中断事件出现在 `events.jsonl` |
-| 3 | `grep "Reading"` 在 `record/KillAudit.kt` 零命中 |
+| 3 | `grep "Reading"` 在 `log/KillAudit.kt` 零命中 |
 | 4 | `node tools/audit-runtime-logs.js` 输出"数据源外的残留 = 0" |
 | 5 | （已撤回） |
 | 5 | `grep -r "ota.ProgramDir"` 零命中 |
