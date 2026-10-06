@@ -161,26 +161,44 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
         done)"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
-# 标准库：缺了它解释器起得来但 import 就死 —— 所以必须随件走。
+# 标准库与扩展模块：**调 make install 拿 CPython 自己算好的布局**，不要手写。
 #
-# 路径形态实测自 configure:6518 —— **不是** lib-python3.x（那是更早版本的名字）：
-#   $(prefix)/lib/python<VERSION><ABI_THREAD>/config-<LDVERSION>-<PLATFORM_TRIPLET>
-# 所以按这个形态找，找不到就判死（不能靠「起得来」蒙过去）。
-STDLIB_DIR=""
-for d in "$BUILD"/lib/python*.*/config-* "$WORK"/_inst/lib/python*.*/config-*; do
-  [ -d "$d" ] && STDLIB_DIR="$d" && break
-done
-[ -n "$STDLIB_DIR" ] || {
-  echo "=== build 下有什么 lib/ ==="; ls -d "$BUILD"/lib/* 2>/dev/null | head -5
-  die "找不到标准库目录" \
-    "按 configure:6518 的形态应是 <build>/lib/python3.x/config-3.x-<triplet>；" \
-    "缺了它解释器起得来但 import 就死 —— 那是最坏的形态"
-}
-note "标准库: ${STDLIB_DIR#$BUILD/}"
+# 早先我只「判它存在」而不拷 —— 件装到设备上是空壳解释器：
+# 起得来、--version 有输出，一 import 就死。而 python3 的价值恰恰在标准库。
+# （cmake 的 share/cmake 同理，那边拷了，这边漏了。）
+#
+# 为什么不手写「把 config-3.x-<triplet> 那层去掉」：
+#   build/lib/python3.14/config-3.14-aarch64-linux-android/  ← 构建期中间形态
+#   <prefix>/lib/python3.14/                                  ← 安装后的形态
+# 这个「去掉」是 CPython 自己的安装规则，我手写 mv 就是猜它。
+# 它自己算出来的布局不会错。
+PREFIX="$WORK/_inst"
+make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
+  || { echo "=== install 失败（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
 
-# 扩展模块（.so）：_socket/_ssl 等。缺了不算失败（可后补），但要报出来
-N_EXT=$(find "$STDLIB_DIR" -name '*.so' 2>/dev/null | wc -l)
-note "扩展模块 $N_EXT 个（0 也能用，只是 _socket/_ssl 等不可用）"
+PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
+[ -d "$PYDIR" ] || {
+  echo "=== $PREFIX/lib 下有什么 ==="; ls -d "$PREFIX"/lib/* 2>/dev/null | head -5
+  die "找不到安装后的标准库目录" \
+    "按 CPython 的安装规则应在 $PREFIX/lib/python${SRC_VER%.*}/；缺了它解释器起得来但 import 就死"
+}
+# os.py 在不在 —— 形态对的最终判据（目录名对了但里面空掉，是另一种坏）
+[ -f "$PYDIR/os.py" ] || die "标准库目录里没有 os.py" "$PYDIR —— 目录在但内容不对（构建没跑完？）"
+
+rm -rf "$OUT/lib"
+mkdir -p "$OUT/lib"
+cp -a "$PYDIR" "$OUT/lib/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
+
+N_LIB=$(find "$OUT/lib/python${SRC_VER%.*}" -type f | wc -l)
+N_EXT=$(find "$OUT/lib/python${SRC_VER%.*}" -name '*.so' 2>/dev/null | wc -l)
+note "标准库随件: lib/python${SRC_VER%.*}/（$N_LIB 个文件，含 $N_EXT 个扩展模块）"
+[ "$N_EXT" -gt 0 ] || note "提示：扩展模块 0 个 —— 解释器能用，但 _socket/_ssl/ctypes 等不可用"
+
+# ── lib-dynload：扩展模块的搜索目录，必须与 lib/pythonX.Y 同前缀 ──
+# 缺它时扩展模块能 import 但顶层 _socket 之类找不到（它们走 lib-dynload 的搜索路径）
+[ -d "$OUT/lib/python${SRC_VER%.*}/lib-dynload" ] \
+  && note "lib-dynload 在标准库内（形态正确）" \
+  || note "提示：lib-dynload 不在标准库内 —— 扩展模块的顶层入口可能找不到"
 
 printf '%s' "$SRC_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（aarch64、16KB 对齐合格、无 glibc 依赖）"
