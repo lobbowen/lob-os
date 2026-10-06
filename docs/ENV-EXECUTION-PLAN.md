@@ -280,7 +280,32 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
 |---|---|---|
 | 1 | 跑 `scripts/verify-ndk-llvm.sh`，从报错里读到真值 | 只能 CI（需要真 NDK） |
 | 2 | 把真值填进 `userland-sources.json` 的 `llvmVersion` | 拿到真值即可 |
-| 3 | **按该版本重钉 LLVM 源码**（版本 + sha256 都要重测） | 之后 |
+| 3 | **按该版本重钉 LLVM 源码**（版本 + sha256） | 之后，但**不必下载**（见下） |
+
+**第 3 步不需要下载 171 MiB。** GitHub 的 release API 在每个资产上给
+`digest` 字段（`sha256:…`），所以「取 sha256」是读一次 API 而不是拉一次大包：
+
+```
+GET https://api.github.com/repos/llvm/llvm-project/releases/tags/llvmorg-<版本>
+  → assets[] 里 name ~ /llvm-project-.*\.src\.tar\.xz$/ 的那条
+    digest = "sha256:6898f963c8e938981e6c4a302e83ec5beb4630147c7311183cf61069af16333d"  （20.1.8 的实测值）
+```
+
+**核过这个 digest 可不可信**：拿同一 release 里最小的资产（8 KB）实测对照——
+先跟重定向（GitHub release 资产是 302 到 CDN）再算 sha256，
+结果与 API 的 `digest` **完全一致**；且该 release 的 62 个资产**全部**带 digest，
+不是个别字段。
+
+（顺带记一笔我的工具错误：第一次对照时 node 脚本**没跟重定向**，拿到 0 字节
+（`e3b0c442…` 就是空内容的 sha256），于是我一度判「API 的 digest 不能信」。
+错在工具不在 API —— 与本会话其它几次一样。）
+
+顺带一条纪律：**当前钉的是 23.1.3（GitHub 的 latest）**，那**不是**按 NDK 挑的。
+若 NDK r29 内置 20.x，则该换的是 20.1.8 那一系。**但不能凭「更可能」就换** ——
+等 CI 报出真值再改，否则又是一次「先猜后核实」。
+
+（本会话早前为 23.1.3 算 sha256 是**下载 171 MiB 后实测**的；那时没先查
+API 有没有 `digest`。下次先查字段，再决定要不要下载。）
 
 `build-userland.yml` 里有独立的 `ndk-llvm` job 专门跑第 1 步，并且：
 
