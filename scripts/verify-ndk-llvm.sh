@@ -101,8 +101,24 @@ for si in "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md \
            "$NDK"/clang_source_info.md \
            "$NDK"/toolchains/llvm/prebuilt/*/share/clang_source_info.md; do
   [ -f "$si" ] || continue
-  # 文件里形如 "LLVM commit: ...(abc)" 或 "git-rNNNNNN (tag: llvmorg-20.1.8)"
-  v="$(grep -o 'llvmorg-[0-9][0-9.]*' "$si" | head -1)"
+  # 这个文件有两种真实形态，都要认：
+  #
+  #   (a) "20.1.8"  —— AOSP 预编包的 AndroidVersion.txt 形态
+  #       update-prebuilts.py 读的就是它：
+  #         full_version = contents[0]           # 例如 '7.0.1'
+  #         revision     = contents[1].split()[-1]  # 例如 'r326829'
+  #       **里面没有 llvmorg 字样** —— 我第一版只 grep llvmorg，
+  #       对着真实文件实测 rc=1（读不到），已修。
+  #   (b) "llvmorg-20.1.8" —— 有些构建自己写的 tag 形态
+  #
+  # (a) 先找纯语义版本：X.Y 或 X.Y.Z。
+  #     **必须用 -E 且不能带捕获组** —— 本机 grep 是 toybox 0.8.13，
+  #     不支持 BRE 的 \( \) 组（实测 grep -o '[0-9]\+\.[0-9]\+(\.[0-9]\+)\?' 返回空）。
+  #     CI 上是 GNU grep，两边都要能用，所以写成 alternation 而不用组。
+  #     「based on r563880c」那行不含 X.Y 形态，天然不会被取到。
+  v="$(grep -o -E '[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+' "$si" | head -1)"
+  # (b) 再找 llvmorg- 形态
+  [ -n "$v" ] || v="$(grep -o 'llvmorg-[0-9][0-9.]*' "$si" | head -1)"
   if [ -n "$v" ]; then GOT_LLVM="${v#llvmorg-}"; SRC="$si"; break; fi
 done
 if [ -n "$GOT_LLVM" ]; then
