@@ -25,8 +25,9 @@ object NativeAssetRegistry {
         probeExpect = "v",
         requiredDeps = listOf("libc++_shared.so"),
         required = false,
-        note = "APK 内不该有这份（build-apk.yml 有断言）。正常形态是商店件装到 " +
-            "files/usr/lib/toolchain/node/；这一条只留作兜底认 APK 里已存在的 libnode.so，required=false",
+        note = "APK 内不该有这份（build-apk.yml 有断言）。正常形态是**商店件**，" +
+            "落位由 ProgramManager.stateDirOf 决定（代码不单独认识它在哪）；" +
+            "这一条只留作兜底认 APK 里已存在的 libnode.so，required=false",
     )
 
     val CAPABILITY: List<NativeExecutable> get() = listOf(
