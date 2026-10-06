@@ -49,11 +49,30 @@ CC="$TC/aarch64-linux-android23-clang"
 CLANG_VER="$("$CC" --version 2>/dev/null | head -1 || true)"
 [ -n "$CLANG_VER" ] || die "clang 跑不起来" \
   "$CC 存在但 \`--version\` 没输出 —— 它可能是宿主二进制（不该执行）或依赖缺失。"
-case "$CLANG_VER" in
-  *aarch64*|*arm64*|*ARM64*) : ;;
-  *) die "clang 架构不对" "$CLANG_VER —— 交叉编译器必须能产出 aarch64 目标";;
-esac
+# 判「目标架构对不对」要**问它目标三元组**，不能看 `--version` 里有没有
+# "aarch64" 字样 —— 我第一版就是那么写的，实测立刻被打脸：
+#   Android (…) clang version 21.0.0 (https://…)   ← 交叉编译器的 --version 不自报目标
+# 于是 `aarch64-linux-android23-clang` 这种驱动被误判成「架构不对」，全员判红。
+# `--print-target-triple` 才是它自己认的目标；拿不到再退回真编一个 .o 看 e_machine。
+TRIPLE="$("$CC" -print-target-triple 2>/dev/null || true)"
+[ -n "$TRIPLE" ] || TRIPLE="$("$CC" -dumpmachine 2>/dev/null || true)"
+MACH=""
+OK_TARGET=0
+case "$TRIPLE" in *aarch64*|*arm64*) OK_TARGET=1 ;; esac
+if [ "$OK_TARGET" != 1 ]; then
+  TMPD="$(mktemp -d)"
+  printf 'int probe(void){return 0;}\n' > "$TMPD/probe.c"
+  if "$CC" -c -o "$TMPD/probe.o" "$TMPD/probe.c" >/dev/null 2>&1 && [ -f "$TMPD/probe.o" ]; then
+    MACH="$(od -An -tx1 -j18 -N2 "$TMPD/probe.o" 2>/dev/null | tr -d ' \n')"
+    [ "$MACH" = "b700" ] && OK_TARGET=1
+  fi
+  rm -rf "$TMPD"
+fi
+[ "$OK_TARGET" = 1 ] || die "clang 产不出 aarch64 目标" \
+  "目标三元组 = ${TRIPLE:-（读不出）}；试编 .o 的 e_machine = ${MACH:-（编不出）}（0xB7 才是 AArch64）" \
+  "驱动是 $CC —— 名字里的 aarch64 只是命名约定，判据要看它自己的目标。"
 echo "[ndk] clang: $CLANG_VER"
+[ -n "$TRIPLE" ] && echo "[ndk] 目标三元组: $TRIPLE"
 
 # ── 与钉值比对（这一步是本脚本存在的理由）──
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
