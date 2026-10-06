@@ -1,11 +1,18 @@
 package lobos.ota
-import lobos.runtime.ProcessSupervisor
+
+// 交叉验证工具，不在安装路径上。
+//
+// 安装走 lobos.os.ProgramPackageVerifier（纯 Kotlin）。本类用 node 跑
+// assets/node/program-verify.js，与前者对同一包给出一致结论，才认为移植正确。
+// 保留原因：canonical 差一个字节签名就全挂，需要一个独立实现做旁证。
+
 import android.content.Context
 import android.system.Os
+import java.io.File
 import lobos.BuildConfig
 import lobos.os.RuntimeEnvironment
 import lobos.runtime.NodeProvisioner
-import java.io.File
+import lobos.runtime.ProcessSupervisor
 import org.json.JSONObject
 
 object ProgramVerifier {

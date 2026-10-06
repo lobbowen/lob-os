@@ -35,7 +35,6 @@ object ProgramInstaller {
         zip: File,
         manifest: JSONObject?,
         source: Source,
-        nodeBin: File? = lobos.os.NodeRuntime.path(context),
         manifestFile: File? = null,
         programId: String,
         storeRoot: java.io.File? = null,
@@ -43,9 +42,9 @@ object ProgramInstaller {
         if (programId.isBlank()) {
             return InstallResult(false, null, source, "manifest-id-missing", "包清单未声明 id/name：内核不猜安装目标")
         }
-        if (nodeBin == null) {
-            return InstallResult(false, null, source, "runtime-missing", lobos.os.NodeRuntime.missing(context))
-        }
+        // 这里不再要求 node 在位。校验走 lobos.os.ProgramPackageVerifier（纯 Kotlin），
+        // 之前用 node 跑 program-verify.js，导致「装程序要先有 node、而 node 自己也要装程序」——
+        // 鸡生蛋，真机报过 runtime-missing。
         if (!zip.isFile) {
             return InstallResult(false, null, source, "zip-missing", "候选包不存在: ${zip.absolutePath}")
         }
@@ -60,11 +59,26 @@ object ProgramInstaller {
             )
         }
 
-        val verify = ProgramVerifier.verify(context, zip, manifest, nodeBin, manifestFile)
+        val pubPem = lobos.os.ProgramPackageVerifier.publicKeyPem(context)
+        if (pubPem.isNullOrBlank()) {
+            return InstallResult(
+                false, null, source, "public-key-missing",
+                "公钥锚点不可用：assets/ota-public.pem 读不出",
+            )
+        }
+        val verify = lobos.os.ProgramPackageVerifier.verify(
+            context = context,
+            zip = zip,
+            expectedSha256 = manifest?.optString("sha256", "")?.ifBlank { null },
+            externalManifest = manifestFile?.takeIf { it.isFile }
+                ?.let { runCatching { JSONObject(it.readText()) }.getOrNull() },
+            pubPem = pubPem,
+        )
         if (!verify.ok) {
             return InstallResult(
                 ok = false, version = verify.version, source = source,
-                reason = verify.reason, detail = verify.detail, nodeVerifyOutput = verify.raw,
+                reason = verify.reason, detail = verify.detail,
+                nodeVerifyOutput = "sha256=" + verify.sha256,
             )
         }
         val version = verify.version
