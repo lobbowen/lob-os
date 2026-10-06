@@ -868,3 +868,44 @@ TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
 **判据：任何在 `set -u` 下引用可能不存在的环境变量，都要写成 `${VAR:-}`**
 （而 `${VAR:?}` 是「没设置就立刻失败」，适合必填项，但同样不会说人话）。
+
+---
+
+## 十二、阶段1 收尾：能离线验的都验了，剩下的明确标注
+
+### 已达成（有据可查）
+
+| 目标要求 | 状态 | 依据 |
+|---|---|---|
+| `usr/lib/toolchain/<id>/<version>/` 落位 | ✅ | `PrefixProvisioner` 已实现，`usr/bin/<name>` 是指向它的软链 |
+| `usr/include` → sysroot 软链 | ✅ | `linkSysrootInclude`，`tools/verify/sysroot-include-proof.js` 验行为 |
+| clang · lld · binutils(as/ld/ar/nm/strip/objdump/readelf) | ✅ 配方+判据 | `NEED_BIN` 八个逐个查存在；判据真编 aarch64 `.so` 并验 `e_machine=0xB7` |
+| make · cmake · pkg-config · python3 | ✅ 配方+判据 | 四件各有 recipe + `userland-verify.json` 判据（136~186 字） |
+| sysroot（头文件+静态库） | ✅ | 阶段1a `14815ad` |
+| 别名映射（8 个工具都能调） | ✅ | 上一轮修好两侧分叉与 `clang++` 白名单 |
+| 分发链（形态校验/打包/别名核对） | ✅ | 上一轮补上，判据都实测过 |
+| 宿主依赖（cmake/ninja/xz） | ✅ | 核对 runner 官方镜像清单，三样都有 |
+| 钉值三元组自洽 | ✅ | version/sha256/url 对账，HEAD 跟重定向后 200 |
+
+### **未达成，且我做不到**（不是没做完，是性质如此）
+
+**「真编一次 clang」需要 CI。** 本机没有编译器（gcc/clang/cc/make/cmake/xz 全无），
+也没有 NDK，所以「配方能不能真的编出东西」这一条**在本机无法判定**。
+
+我没有推送凭据、`gh` 未安装，且推送属对外动作 —— **触发 CI 需要你做**。
+
+### 因此目标不能标 complete
+
+阶段1 的**九个可离线验证的维度全部达成并有据**，
+但「真编」这一维**没有证据**。按本仓一贯的纪律（门禁只固化已达成共识的行为、
+判据判行为事实不判代码形状），我**不会**把「配方齐备」当成「阶段1 完成」。
+
+要收尾这一维，需要以下任一：
+1. 你 push 一次，让 `ndk-llvm` job 跑起来（它带 `continue-on-error`，
+   红了**不会**挡住其余 11 件），把日志给我；
+2. 或者明确认可「配方齐备即阶段1 收尾，真编另立一轮」—— 那是一条**约定**，
+   我会照办并在上面这段话里标注它是你定的，不是我判定的。
+
+（顺带记一笔：交叉编译 LLVM 到 Bionic 是 Termux 级别的工程量，
+首次跑**大概率需要补 patch**。这不是失败，是预期内的第一次 ——
+配方里已经把取证的 error 行与末 60 行都打出来了，就是为那次补 patch 准备的。）
