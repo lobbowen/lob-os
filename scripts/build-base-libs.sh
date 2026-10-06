@@ -180,6 +180,13 @@ build_openssl() {
   (
     set -e
     cd "$src"
+    # OpenSSL 的 android-arm64 目标靠**裸命令名**在 PATH 上找编译器
+    # （Configurations/15-android.conf 第 107 行 which("clang")）。
+    # 找不到裸 clang 时它掉到最后一个分支，去找 aarch64-linux-android-gcc ——
+    # 而 NDK 只带 clang，不带 gcc，于是报：
+    #   no NDK aarch64-linux-android-gcc on $PATH
+    # 传 CC 绝对路径没用：第 117 行只在 CC **不含** "clang" 字样时才改写它。
+    export PATH="$TC:$PATH"
     ./Configure android-arm64 -fPIC -D__ANDROID_API__=$ANDROID_API \
       --prefix="$pre" --openssldir="$pre/ssl" \
       shared no-tests no-ui-console no-module \

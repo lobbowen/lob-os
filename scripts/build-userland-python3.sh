@@ -31,17 +31,45 @@ for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
 done
 command -v make >/dev/null 2>&1 || die "缺 make" "CPython 的构建靠 make 驱动（缺了请 apt-get install make）"
 
+# 宿主构建 python 必须与被编的 CPython **同 major.minor**。
+# CPython 3.14 的 configure 第 161-163 行是硬判（查 cpython/3.14 的 configure.ac）：
+#   build_python_ver=$($with_build_python -c "...print(major.minor)")
+#   if test "$build_python_ver" != "$PACKAGE_VERSION"; then AC_MSG_ERROR(…)
+# 即**必须相等**，不是「≥某下限」。实测报错原文：
+#   "/usr/bin/python3" has incompatible version 3.12 (expected: 3.14)
+#
+# 而早先这里只找「任意 python3」—— runner 的 `python3` 是 3.12，
+# 它自带的 3.14 在 Cached Tools 里但**不在 PATH**
+# （actions/runner-images Ubuntu2404：Cached Tools 段有 Python 3.10.21…3.14.7）。
+# 于是 configure 第一步就红，而报错指向「版本不兼容」看不出是「找错了 python」。
+CPY_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version python 2>/dev/null || true)"
+[ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.python.version"
+PY_WANT="${CPY_VER%.*}"
+
 HOST_PY="${BUILD_PYTHON:-}"
+if [ -n "$HOST_PY" ]; then
+  [ -x "$HOST_PY" ] || [ -f "$HOST_PY" ] || HOST_PY=""
+fi
 if [ -z "$HOST_PY" ]; then
-  for c in python3 python; do
-    command -v "$c" >/dev/null 2>&1 && HOST_PY="$(command -v "$c")" && break
+  for c in "python$PY_WANT" python3 python; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    cand="$(command -v "$c")"
+    cand_mm="$("$cand" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || true)"
+    [ "$cand_mm" = "$PY_WANT" ] && { HOST_PY="$cand"; break; }
   done
 fi
-[ -n "$HOST_PY" ] || die "宿主没有 python3" \
-  "CPython 的 configure 要用宿主 python 跑构建期脚本（--with-build-python）。CI runner 自带；" \
-  "本机跑请先装一个 python3"
-HOST_PY_VER="$("$HOST_PY" -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])')"
-note "宿主 python: $HOST_PY（$HOST_PY_VER）"
+if [ -n "$HOST_PY" ]; then
+  HOST_PY_VER="$("$HOST_PY" -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])')"
+else
+  HOST_PY_VER="（没找到 $PY_WANT）"
+fi
+[ -n "$HOST_PY" ] || die "找不到 $PY_WANT 的宿主 python" \
+  "要编 CPython $CPY_VER，它的构建脚本必须由**同 major.minor 的** $PY_WANT 跑" \
+  "（CPython 的 configure 要求两者相等，不是「≥下限」）。" \
+  "runner 自带 $PY_WANT 但它在 Cached Tools 里、通常不在 PATH。先查它在哪：" \
+  "  ls -d /opt/hostedtoolcache/Python/$PY_WANT.*/x64/bin/ 2>/dev/null" \
+  "然后 either 把它加进 PATH，或显式传 BUILD_PYTHON=<那个 python>。"
+note "宿主 python: $HOST_PY（$HOST_PY_VER，要 $PY_WANT）"
 
 mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$SRC_KEY"

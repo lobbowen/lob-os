@@ -169,6 +169,24 @@ jobs:
       - name: 定位 NDK（比对钉值；不比对的话改 ndkVersion 对 11 件毫无影响）
         run: bash scripts/locate-ndk.sh
 
+      # CPython 的 configure 要求**宿主构建 python 与被编版本 major.minor 相等**
+      # （不是「≥下限」）—— 所以要编 3.14 就得给它一个 3.14。
+      # runner 自带 3.14 但只在 Cached Tools 里、不在 PATH，所以显式加进来。
+      # 只对 python3 这一件有意义，但整轮都加上（开销为零，且省掉 if）。
+      - name: 把宿主 CPython 放进 PATH（仅 python3 件真正需要）
+        run: |
+          set -uo pipefail
+          WANT="$(bash scripts/fetch-pinned.sh --src-version python 2>/dev/null || true)"
+          WANT="${WANT%.*}"
+          [ -n "$WANT" ] || exit 0
+          for d in /opt/hostedtoolcache/Python/$WANT.*/x64/bin; do
+            [ -d "$d" ] || continue
+            echo "$d" >> "$GITHUB_PATH"
+            echo "[python] 已把 $d 加入 PATH"
+            exit 0
+          done
+          echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
+
       - name: 产出 ${{ matrix.tool }} 件
         run: bash scripts/build-userland-${{ matrix.tool }}.sh
 
