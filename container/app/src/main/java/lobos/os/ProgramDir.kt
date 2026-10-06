@@ -1,5 +1,4 @@
-package lobos.ota
-
+package lobos.os
 import android.content.Context
 import java.io.File
 import lobos.os.Category

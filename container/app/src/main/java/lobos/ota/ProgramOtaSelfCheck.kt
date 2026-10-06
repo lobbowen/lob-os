@@ -1,6 +1,7 @@
 package lobos.ota
 
 import android.content.Context
+import lobos.os.ProgramDir
 import lobos.RuntimeDiagnostics
 import java.io.File
 import java.net.HttpURLConnection

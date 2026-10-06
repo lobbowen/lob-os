@@ -2,7 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
-import lobos.ota.ProgramDir
+
 import org.json.JSONObject
 
 enum class Restart { ON_FAILURE, ALWAYS, NEVER }
@@ -44,13 +44,13 @@ object ProgramRegistry {
             ?.map { it.name }
             ?.sorted()
             ?: emptyList()
-    private fun dirOf(ctx: Context, id: String): lobos.ota.ProgramDir =
-        lobos.ota.ProgramDir(ctx, id, File(programRoot(ctx), id))
+    private fun dirOf(ctx: Context, id: String): lobos.ProgramDir =
+        lobos.ProgramDir(ctx, id, File(programRoot(ctx), id))
 
     fun installedVersions(ctx: Context, id: String): List<String> = dirOf(ctx, id).installedVersions()
 
     private fun manifest(ctx: Context, id: String, version: String): JSONObject? = runCatching {
-        val f = File(dirOf(ctx, id).programDir(version), lobos.ota.ProgramDir.MANIFEST_NAME)
+        val f = File(dirOf(ctx, id).programDir(version), lobos.ProgramDir.MANIFEST_NAME)
         if (!f.isFile) null else JSONObject(f.readText())
     }.getOrNull()
 
@@ -68,7 +68,7 @@ object ProgramRegistry {
                 role = "app", http = null, capabilities = emptyList(), env = emptyMap(),
                 resident = true, restart = Restart.ON_FAILURE, maxRestarts = 5,
                 backoffMs = ProgramIndex.DEFAULT_BACKOFF,
-                invalid = "清单缺失或不可解析（" + lobos.ota.ProgramDir.MANIFEST_NAME + "）",
+                invalid = "清单缺失或不可解析（" + lobos.ProgramDir.MANIFEST_NAME + "）",
             )
         }
         val entry = json.optString("entry", "").trim()

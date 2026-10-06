@@ -8,7 +8,6 @@ import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.os.ProgramMigration
-import lobos.ota.ProgramDir
 
 object BootReconciler {
 

@@ -7,20 +7,20 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
-import lobos.ProvisioningProbe
-import lobos.RuntimeDiagnostics
-import lobos.ota.ProgramDir
-import lobos.ota.ProgramOtaUpdater
-import lobos.ota.ProgramOtaResolution
-import lobos.lifecycle.OsHostService
-import lobos.native.AssetStatus
-import lobos.native.NativeAssetRegistry
-import lobos.native.NativePreparer
 import java.io.File
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import lobos.ProvisioningProbe
+import lobos.RuntimeDiagnostics
+import lobos.lifecycle.OsHostService
+import lobos.native.AssetStatus
+import lobos.native.NativeAssetRegistry
+import lobos.native.NativePreparer
+import lobos.os.ProgramDir
+import lobos.ota.ProgramOtaResolution
+import lobos.ota.ProgramOtaUpdater
 import org.json.JSONObject
 
 class InstanceHost(private val host: Service, val programId: String) : ContextWrapper(host) {

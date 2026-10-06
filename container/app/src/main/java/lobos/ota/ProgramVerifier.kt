@@ -1,5 +1,4 @@
 package lobos.ota
-
 import lobos.runtime.ProcessSupervisor
 import android.content.Context
 import android.system.Os

@@ -1,6 +1,6 @@
 package lobos.os
 
-import lobos.ota.ProgramDir
+
 import android.content.Context
 import lobos.RuntimeDiagnostics
 import lobos.runtime.ExecBits

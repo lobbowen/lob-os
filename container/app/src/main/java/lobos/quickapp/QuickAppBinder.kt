@@ -3,8 +3,8 @@ package lobos.quickapp
 import android.content.Context
 import java.io.File
 import lobos.log.Journal
+import lobos.os.ProgramDir
 import lobos.os.ProgramManager
-import lobos.ota.ProgramDir
 
 /**
  * 快应用安装后的配对步骤。

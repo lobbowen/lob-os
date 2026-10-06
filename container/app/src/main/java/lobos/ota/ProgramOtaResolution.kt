@@ -1,5 +1,4 @@
 package lobos.ota
-
 object ProgramOtaResolution {
 
     enum class State {

@@ -21,8 +21,8 @@ import lobos.os.Level
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
+import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
-import lobos.ota.ProgramDir
 import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {

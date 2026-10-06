@@ -13,7 +13,7 @@ const FILES = {
   index: J('lobos/os/ProgramIndex.kt'),
   installer: J('lobos/ota/ProgramInstaller.kt'),
   pkgInstaller: J('lobos/os/PackageInstaller.kt'),
-  programDir: J('lobos/ota/ProgramDir.kt'),
+  programDir: J('lobos/os/ProgramDir.kt'),
   quickReg: J('lobos/quickapp/QuickAppRegistry.kt'),
   quickHost: J('lobos/quickapp/QuickAppHost.kt'),
   quickBinder: J('lobos/quickapp/QuickAppBinder.kt'),

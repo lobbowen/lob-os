@@ -1,5 +1,4 @@
 package lobos.ota
-
 object OtaPolicy {
 
     data class Input(

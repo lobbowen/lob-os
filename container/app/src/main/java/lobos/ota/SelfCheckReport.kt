@@ -1,5 +1,4 @@
 package lobos.ota
-
 object SelfCheckReport {
 
     data class Item(

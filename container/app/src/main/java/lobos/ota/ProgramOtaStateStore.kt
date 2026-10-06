@@ -1,5 +1,4 @@
 package lobos.ota
-
 import java.io.File
 
 class ProgramOtaStateStore(

@@ -1,11 +1,11 @@
 package lobos.ota
-
 import android.content.Context
-import lobos.os.PowerLocks
 import android.util.Log
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import lobos.os.PowerLocks
+import lobos.os.ProgramDir
 import org.json.JSONObject
 
 object ProgramOtaUpdater {

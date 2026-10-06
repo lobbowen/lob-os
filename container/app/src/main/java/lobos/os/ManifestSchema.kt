@@ -1,6 +1,6 @@
 package lobos.os
 
-import lobos.ota.ProgramDir
+
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -179,7 +179,7 @@ object ManifestSchema {
 
     fun toJson(o: JSONObject): JSONObject = JSONObject().apply {
         put("name", SOURCE_NAME)
-        put("installedAs", lobos.ota.ProgramDir.MANIFEST_NAME)
+        put("installedAs", lobos.ProgramDir.MANIFEST_NAME)
         put("schema", SCHEMA)
         put("valid", validate(o).isEmpty())
         put("errors", JSONArray(validate(o)))

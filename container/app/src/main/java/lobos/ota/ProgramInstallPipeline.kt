@@ -1,6 +1,7 @@
 package lobos.ota
 
 import android.content.Context
+import lobos.os.ProgramDir
 import org.json.JSONObject
 import java.io.File
 
@@ -237,7 +238,7 @@ object ProgramInstallPipeline {
                 "组件已落位但注册表写入失败：" + upserted.exceptionOrNull()?.message,
             )
         }
-        val pd = lobos.ota.ProgramDir(context, spec.programId, dir)
+        val pd = lobos.ProgramDir(context, spec.programId, dir)
         runCatching { pd.setCurrentVersion(safeVer) }
         if (pd.currentVersion() != safeVer) {
             return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")

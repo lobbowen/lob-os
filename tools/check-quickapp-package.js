@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const INSTALLER = path.join(ROOT, 'container/app/src/main/java/lobos/ota/ProgramInstaller.kt');
-const DIR = path.join(ROOT, 'container/app/src/main/java/lobos/ota/ProgramDir.kt');
+const DIR = path.join(ROOT, 'container/app/src/main/java/lobos/os/ProgramDir.kt');
 const DOC = path.join(ROOT, 'docs/QUICKAPP-INSTALL.md');
 
 const problems = [];
