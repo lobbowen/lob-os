@@ -19,7 +19,19 @@
 | pty | `liblobospty.so` | soft | PTY 支撑件 | 见 `native-deps.txt` |
 | busybox | `libbusybox.so` | upstream | 基础命令集（tar/gzip/grep/sed/ls/cp/mv…） | 程序找不到基础命令 |
 
-### busybox 的两个核实结论（都是踩过的坑，不是推断）
+### busybox 的三个核实结论（都是踩过的坑，不是推断）
+
+**零、与 toybox 的关系（本机实测，别当成「重复建设」去撤）。**
+这台设备（OPPO PLP120 / Android 17）的 toybox 已提供 18 个 applet 里的 **17 个**
+（`/system/bin/grep -> toybox` 实测如此；唯一缺的是 `awk` —— 说明**厂商裁剪是真实发生的**）。
+即便如此仍要自带，理由不是「toybox 没有」，而是：
+
+- toybox 在 `/system/bin`，随 OTA 变、厂商可裁剪 —— 我们要的是**可预期**；
+- 我们 pin 了版本、验了判据、能经阶段8 的 OTA 通道更新；
+- applet 行为与 GNU/BSD 有细微差异（选项支持不同）。
+
+优先级：`$PREFIX/bin` 在 PATH 第 1 位、`/system/bin` 在第 6 位（实测），
+所以底座件**天然优先**于 toybox —— 这正是要的行为。
 
 **一、不能用 `configs/android_ndk_defconfig`。** 核实它是 **BusyBox 1.24.0 (2015)**，
 而源码取的是 1.36.1 —— 配置项名跨了十几个版本。而且它的 `EXTRA_CFLAGS` 硬编码了
