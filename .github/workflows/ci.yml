@@ -123,6 +123,9 @@ jobs:
       - name: OTA 序列号须按通道+程序隔离（跨通道判重放判据）
         run: node tools/check-ota-sequence-scope.js
 
+      - name: 安装路径须单一（两条路一个安装点，判据非平行的实现）
+        run: node tools/check-install-single-path.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

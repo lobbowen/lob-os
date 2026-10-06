@@ -147,8 +147,9 @@ object RuntimeEnvironment {
         if (nowSupply - lastSupplyAt > supplyThrottleMs) {
             lastSupplyAt = nowSupply
             RuntimeDiagnostics.append(
-                ctx, "supply", null, "商店供给由应用启动负责（OsApplication.onCreate 跑 SupplyProvisioner.ensure）",
-                "本进程只装配 \$PREFIX 与环境；件装在 " + PrefixProvisioner.libDir(ctx).absolutePath + "/toolchain，真名入口在 " + PrefixProvisioner.binDir(ctx).absolutePath,
+                ctx, "supply", null, "商店供给不再由 App 启动自动安装",
+                "启动只刷商店目录（CatalogClient.refresh）。" +
+                    "运行时与工具件由「装程序时按该程序 requires 决定」触发，走 os/PackageInstaller。",
             )
         }
 

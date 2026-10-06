@@ -83,7 +83,7 @@ object ProgramInstaller {
         if (dest.isDirectory && km.entryPath(version).exists()) {
             km.markPending(version, previousVersion)
             km.setCurrentVersion(version)
-            bindQuickApp(context, programId, km.quickAppDir())
+            lobos.quickapp.QuickAppBinder.bindIfQuickApp(context, programId, km.quickAppDir())
             return InstallResult(
                 ok = true, version = version, source = source, reason = "already-installed",
                 detail = "该版本已落盘，直接切指针并重做前后端配对（待健康检查通过后提交）", nodeVerifyOutput = verify.raw,
@@ -209,7 +209,7 @@ object ProgramInstaller {
         km.markPending(version, previousVersion)
         km.setCurrentVersion(version)
         tmp.deleteRecursively()
-        bindQuickApp(context, programId, km.quickAppDir())
+        lobos.quickapp.QuickAppBinder.bindIfQuickApp(context, programId, km.quickAppDir())
         lobos.ProvisioningProbe.refreshProgramOtaVersions(context)
         return InstallResult(
             ok = true, version = version, source = source, reason = null,
@@ -240,65 +240,3 @@ object ProgramInstaller {
         json.put("entry", rel)
         return runCatching { mf.writeText(json.toString(2)) }.isSuccess
     }
-
-    private fun bindQuickApp(context: Context, programId: String, quickAppDir: File) {
-        if (!quickAppDir.isDirectory) return
-        if (!lobos.quickapp.QuickAppRegistry.isQuickApp(context, programId)) return
-        val port = lobos.os.ProgramManager.resolveHttpPort(context, programId, 0)
-        if (port <= 0) {
-            lobos.os.Journal.note(
-                context, "quickapp", false, "端口段已满，快应用前端未注入后端地址",
-                "id=" + programId,
-            )
-            return
-        }
-        val ok = lobos.quickapp.QuickAppPackage.withEndpoint(quickAppDir, "http://127.0.0.1:" + port, port)
-        if (!ok) {
-            lobos.os.Journal.note(context, "quickapp", false, "无法把后端地址写进前端 config.json", "id=" + programId)
-            return
-        }
-        val registered = lobos.quickapp.QuickAppRegistry.register(context, programId)
-        lobos.os.Journal.note(
-            context, "quickapp", registered,
-            "快应用已配对：端口=$port 前端=" + quickAppDir.absolutePath,
-            "id=" + programId,
-        )
-        loadIntoDimina(context, programId, quickAppDir, port, uiEntryOf(context, programId))
-    }
-
-    private fun uiEntryOf(context: Context, programId: String): String {
-        val dir = lobos.os.ProgramManager.stateDirOf(context, programId)
-        val version = lobos.os.ProgramManager.currentVersion(context, programId) ?: return ""
-        val mf = java.io.File(java.io.File(dir, version), lobos.ota.ProgramDir.MANIFEST_NAME)
-        if (!mf.isFile) return ""
-        val ui = runCatching { org.json.JSONObject(mf.readText()).optJSONObject("ui") }.getOrNull()
-        return ui?.optString("entry", "")?.trim().orEmpty()
-    }
-
-    private fun loadIntoDimina(context: Context, programId: String, quickAppDir: File, port: Int, entry: String) {
-        if (!lobos.quickapp.QuickAppHost.ready()) {
-            lobos.os.Journal.note(
-                context, "quickapp", false,
-                "快应用运行时尚未就绪，等下次 reconcile 再装入 dimina",
-                "id=" + programId,
-            )
-            return
-        }
-        lobos.quickapp.QuickAppHost.install(programId, quickAppDir, port, entry) { r ->
-            r.onSuccess {
-                lobos.os.Journal.note(
-                    context, "quickapp", true,
-                    "前端已装入 dimina：可打开了",
-                    "id=" + programId + " port=" + port,
-                )
-            }.onFailure {
-                lobos.os.Journal.note(
-                    context, "quickapp", false,
-                    "前端装入 dimina 失败：装得上但打不开",
-                    "id=" + programId + " " + (it.message ?: it.javaClass.simpleName),
-                )
-            }
-        }
-    }
-
-}

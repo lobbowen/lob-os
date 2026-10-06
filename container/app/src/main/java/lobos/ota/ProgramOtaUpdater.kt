@@ -184,8 +184,23 @@ object ProgramOtaUpdater {
         val result = try {
             val installId = manifest?.optString("id", "")?.trim()?.takeIf { it.isNotBlank() }
                 ?: manifest?.optString("name", "")?.trim()?.takeIf { it.isNotBlank() } ?: ""
-            ProgramInstaller.install(
-                context, tmp, manifest, ProgramInstaller.Source.OTA, manifestFile = manifestFile, programId = installId,
+            // 安装行为走唯一的 ProgramInstallPipeline；本层只负责"从哪拿包"和"有没有新版本"。
+            val r = ProgramInstallPipeline.install(
+                context,
+                ProgramInstallPipeline.Spec(
+                    from = ProgramInstallPipeline.From.BUILTIN,
+                    programId = installId,
+                    zip = tmp,
+                    manifestText = manifestText,
+                    manifestFile = manifestFile,
+                    expectedVersion = remote,
+                ),
+            )
+            ProgramInstaller.InstallResult(
+                ok = r.ok, version = r.version,
+                source = ProgramInstaller.Source.OTA,
+                reason = r.reason, detail = r.detail,
+                nodeVerifyOutput = r.nodeVerifyOutput,
             )
         } finally {
             tmp.delete()

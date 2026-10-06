@@ -3,7 +3,10 @@ package lobos.runtime
 import java.io.File
 import java.nio.file.Files
 
-internal object ExecBits {
+// 不是 internal：安装器（lobos.ota.ProgramInstallPipeline）落位组件后要靠它给
+// entry 加执行位。原先只有 os/PackageInstaller 用，而该文件删掉了那段实现后
+// 它就没有调用方了；这里恢复为跨包可用。
+object ExecBits {
 
     fun apply(file: File) {
         val head = ByteArray(4)

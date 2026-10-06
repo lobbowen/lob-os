@@ -22,76 +22,40 @@ object PackageInstaller {
         val gate = runtimeGate(ctx, entry)
         if (gate != null) return fail(ctx, name, gate)
         val kind = entry.optString("kind", "").trim().uppercase()
-        val dir = ProgramManager.stateDirOf(ctx, name)
         val zipTmp = File(ctx.cacheDir, name + ".pkg.zip.part")
         runCatching { SupplyProvisioner.httpGetToFile(url, zipTmp) }
             .onFailure { return fail(ctx, name, "下载失败：" + url + "（" + (it.message ?: it.javaClass.simpleName) + "）") }
         val got = SupplyProvisioner.sha256HexFile(zipTmp)
         if (got != want) return fail(ctx, name, "sha256 不符：" + got.take(12) + " != " + want.take(12))
-        val rawVer = version?.takeIf { it.isNotBlank() }
-            ?: entry.optString("version", "").takeIf { it.isNotBlank() }
-            ?: got.take(12)
-        val ver = safeSegment(rawVer)
-            ?: return fail(ctx, name, "版本号非法（只接受字母数字与 . _ -，且非 . 或 ..）：" + rawVer.take(40))
-        val staging = File(dir, "." + ver + ".staging")
-        runCatching {
-            staging.deleteRecursively()
-            staging.mkdirs()
-            SupplyProvisioner.unzipFromFile(zipTmp, staging)
-        }.onFailure {
-            staging.deleteRecursively()
-            runCatching { if (dir.isDirectory && dir.list()?.isEmpty() == true) dir.delete() }
-            return fail(ctx, name, "解包失败：" + it.message)
-        }
-        runCatching { zipTmp.delete() }
-        val dest = File(dir, ver)
-        val rootCanon = dir.canonicalFile.path
-        if (dest.canonicalFile.path != rootCanon + File.separator + ver) {
-            staging.deleteRecursively()
-            return fail(ctx, name, "落位越界，已拒绝：" + dest.canonicalFile.path)
-        }
-        runCatching { dest.deleteRecursively() }
-        if (!staging.renameTo(dest)) {
-            runCatching {
-                staging.copyRecursively(dest, overwrite = true)
-                staging.deleteRecursively()
-            }.onFailure { return fail(ctx, name, "落位失败：" + it.message) }
-        }
-        dir.mkdirs()
+
         val entryRel = entry.optString("entry", "bin/" + name)
-        val links = linkEntry(ctx, dest, entryRel, entry.optJSONArray("aliases"))
-        val spec = ProgramRegistry.spec(ctx, name)
-        val base = ProgramIndex.get(ctx, name) ?: ProgramIndex.empty(name, ProgramManager.levelOfKind(kind))
-        ProgramIndex.upsert(
+        val isApplication = kind == "APPLICATION" || kind == "APP"
+        val r = lobos.ota.ProgramInstallPipeline.install(
             ctx,
-            base.copy(
-                version = ver,
-                enabled = true,
-                deps = deps(entry),
-                sha256 = want,
-                origin = "ota",
-                tier = entry.optString("tier", base.tier),
-                stateDir = if (kind == "INFRA") "" else base.stateDir.ifBlank { ProgramManager.relStateDir(name, kind) },
-                role = spec?.role?.takeIf { it.isNotBlank() } ?: base.role,
-                resident = spec?.resident ?: base.resident,
-                desired = if (base.desired == Desired.STOPPED && spec?.resident == true) Desired.RUNNING else base.desired,
+            lobos.ota.ProgramInstallPipeline.Spec(
+                from = lobos.ota.ProgramInstallPipeline.From.STORE,
+                programId = name,
+                zip = zipTmp,
+                // 商店应用也是带 program-manifest.json 的应用程序包；
+                // 运行时/工具是整目录可执行件，没有前后端之分。
+                shape = if (isApplication) lobos.ota.ProgramInstallPipeline.Shape.APPLICATION
+                else lobos.ota.ProgramInstallPipeline.Shape.COMPONENT,
+                expectedVersion = version?.takeIf { it.isNotBlank() }
+                    ?: entry.optString("version", "").takeIf { it.isNotBlank() }
+                    ?: got.take(12),
+                expectedEntryRel = entryRel,
             ),
         )
-        dirOf(ctx, name).setCurrentVersion(ver)
-        if (dirOf(ctx, name).currentVersion() != ver) {
-            return fail(ctx, name, "CURRENT 落位失败（安装未提交）")
-        }
-        Journal.note(
-            ctx, "package", true, "包已安装",
-            "name=" + name + " version=" + ver + " 入口链接=" + links,
-        )
+        runCatching { zipTmp.delete() }
+        if (!r.ok) return fail(ctx, name, "原因=${r.reason}；${r.detail}")
+
+        val dest = File(ProgramManager.stateDirOf(ctx, name), r.version.orEmpty())
         return JSONObject().apply {
             put("ok", true)
             put("name", name)
-            put("version", ver)
+            put("version", r.version)
             put("sha256", got)
             put("dir", dest.absolutePath)
-            put("links", links)
         }
     }
 
@@ -195,35 +159,6 @@ object PackageInstaller {
         return null
     }
 
-    private fun deps(entry: JSONObject): List<String> =
-        entry.optJSONArray("deps")?.let { d -> (0 until d.length()).map { d.optString(it) } } ?: emptyList()
-
-    private fun linkEntry(ctx: Context, dest: File, entryRel: String, aliases: JSONArray?): Int {
-        var n = 0
-        val bin = PrefixProvisioner.binDir(ctx)
-        bin.mkdirs()
-        val pairs = mutableListOf(entryRel.substringAfterLast("/") to entryRel)
-        if (aliases != null) {
-            for (i in 0 until aliases.length()) {
-                val a = aliases.optJSONObject(i) ?: continue
-                val an = a.optString("name", "")
-                val ae = a.optString("entry", "")
-                if (an.isNotBlank() && ae.isNotBlank()) pairs.add(an to ae)
-            }
-        }
-        for ((linkName, rel) in pairs) {
-            val target = File(dest, rel)
-            if (!target.isFile) continue
-            runCatching { ExecBits.apply(target) }
-            runCatching {
-                val link = File(bin, linkName)
-                if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
-                android.system.Os.symlink(target.absolutePath, link.absolutePath)
-                n += 1
-            }
-        }
-        return n
-    }
 
     private fun fail(ctx: Context, name: String, why: String): JSONObject {
         RuntimeDiagnostics.append(ctx, "package", false, "包安装失败: " + name, why)

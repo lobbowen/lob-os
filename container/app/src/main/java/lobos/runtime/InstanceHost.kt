@@ -351,7 +351,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     this, "runtime", false,
                     "node 运行时未就位，本次不启动程序（会按退避重试）",
                     lobos.os.NodeRuntime.missing(this) +
-                        "；商店件由开机 reconcile 在后台线程安装（SupplyProvisioner.ensure），" +
+                        "；商店件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
                         "装好后下一次重试即自动起来 —— 首次开机可能需要等一个退避周期",
                 )
                 return SupervisorPolicy.BootOutcome.FAILED

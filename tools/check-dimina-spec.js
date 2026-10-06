@@ -12,6 +12,7 @@ const FILES = {
   pkg: P('container/app/src/main/java/lobos/quickapp/QuickAppPackage.kt'),
   schema: P('container/app/src/main/java/lobos/os/ManifestSchema.kt'),
   installer: P('container/app/src/main/java/lobos/ota/ProgramInstaller.kt'),
+  binder: P('container/app/src/main/java/lobos/quickapp/QuickAppBinder.kt'),
   app: P('container/app/src/main/java/lobos/OsApplication.kt'),
   doc: P('docs/DIMINA-SPEC.md'),
 };
@@ -49,7 +50,7 @@ if (!/resolve\(id \+ "\.zip"\)/.test(s.host)) {
 }
 if (!/entry: String/.test(s.host)) add('install 没有入口页参数');
 if (!/withEntry\(packageDir, entry\)/.test(s.host)) add('install 没有把入口写进 config.json');
-if (!/uiEntryOf/.test(s.installer)) add('安装器没有从清单读 ui.entry 传给 install');
+if (!/uiEntryOf/.test(s.binder)) add('配对步骤没有从清单读 ui.entry 传给 install');
 
 if (!s.app.includes('setEnableMultiTask(true)')) {
   add('Dimina.init 必须 setEnableMultiTask(true)：官方「多小程序运行与后台保留」要求每个 appId 有独立运行时与呈现栈；' +
