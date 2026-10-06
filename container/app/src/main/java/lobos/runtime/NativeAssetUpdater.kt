@@ -191,6 +191,27 @@ object NativeAssetUpdater {
                 skipped.put(JSONObject().put("id", id).put("why", "已是 $ver（无需重复装）"))
                 continue
             }
+            // 版本下限：低于本机已装版本的一律拒装。
+            //
+            // 为什么底座件也需要这道（程序件早就有，底座件原先漏了）：
+            // 底座件是「装在 APK 旁边的执行件」—— bash / openssl 被降级意味着
+            // 回到有已知漏洞的版本。而清单可能因为**正常的发布回滚**而变旧，
+            // 那时若无脑照装，系统会静默降级。所以判据是：
+            //   远端版本 < 本机已装版本 → 拒（那不是「更新」，是「降级」）
+            //   本机没装（installedVersion=null）→ 以 APK 原件版本为基线
+            val installed = cur?.installedVersion
+            val baseline = installed ?: e.version.takeIf { it.isNotBlank() }
+            if (baseline != null && lobos.ota.ProgramOtaVersions.compare(ver, baseline) < 0) {
+                skipped.put(
+                    JSONObject().put("id", id).put("why", "远端 $ver 低于本机 $baseline —— 拒绝降级")
+                )
+                RuntimeDiagnostics.append(
+                    ctx, "native-ota", false,
+                    "拒绝把底座件降级：" + id,
+                    "远端 $ver < 本机 $baseline；降级会让 bash/openssl 回到有漏洞的旧版本",
+                )
+                continue
+            }
             // 判 source 再判 url —— 顺序不能反。
             //
             // 清单里 source='apk' 的条目**不带** url/sha256（发布侧只给可 OTA 的
