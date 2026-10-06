@@ -35,7 +35,7 @@ class OsApplication : Application() {
             com.didi.dimina.Dimina.init(
                 this,
                 com.didi.dimina.Dimina.DiminaConfig.Builder()
-                    .setDebugMode(false)
+                    .setDebugMode(true)
                     .setShowCapsule(false)
                     .setShowLaunchLoading(false)
                     .setVirtualFilePrefix("host-file://")
