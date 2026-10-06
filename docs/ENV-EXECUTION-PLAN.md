@@ -444,3 +444,45 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 ## 七、本轮不动代码
 
 这是执行方案，不是实施记录。确认顺序与判据后再动手 —— 从第 0 阶段开始。
+
+---
+
+## 六、当前状态（截至 `fd0caf0`）
+
+| 阶段 | 状态 | 提交 |
+|---|---|---|
+| 0 底座共享库 | ✅ | `106c85c` |
+| 1a sysroot | ✅ | `14815ad` |
+| 1d make/cmake/pkg-config/python3 | ✅ 配方+判据齐备，待 CI 实编 | `7fc912d` `94ae7a9` `776a2e9` `2db801c` |
+| 1c clang/lld/binutils | ⏳ 只差 `llvmVersion` 一格 | `f6328e5` `116669e` |
+| 2 商店件改动态链 | ↩️ 原方式撤回（目标已由阶段8 达成） | `c4b8e24` |
+| 3 PTY | ✅ | `11fcf8d` |
+| 4 shell.exec 改本地 | ✅ | `11fcf8d` |
+| 5 busybox | ✅ | `c78fa1d` |
+| 6 jq 升底座 | ↩️ 撤回 | — |
+| 7 zoneinfo/locale | ↩️ 撤回，改记 TZ 缺口 | `af8e4f3` |
+| 8 底座件版本化+OTA+回滚 | ✅ | `dc64173` |
+| 9 内置终端窗口 | ✅ | `d1ac5b1` |
+
+### 唯一剩余：`llvmVersion`（需要 CI，本机答不出）
+
+本轮**已把三步解锁链逐段验过**（用一个自称指定 LLVM 版本的假 NDK 驱动，
+因为本机没有编译器也没有真 NDK）：
+
+1. `verify-ndk-llvm.sh` 判红，**报错里带实测值** ✅
+   → `::error title=钉值表没有 llvmVersion::NDK 29.0.14206865 内置 LLVM 20.1.8。…`
+2. 填进 `userland-sources.json` 后转绿 ✅
+3. 版本不符时判红（实测 19.0.2 / 20.0.0 对钉 20.1.8 均判红）✅
+
+第 2 步之后还需按该版本用 `pin-github-release.js` 重钉 LLVM 源码
+（**不必下载** 171 MiB —— GitHub release API 的 `digest` 字段可用）。
+
+**本轮更正过一次的判断**：我一度以为 `case "$PINNED_LLVM" in "$WANT_LLVM"|"$WANT_LLVM".*)`
+是反的，枚举六种组合后确认它是**对的** —— 钉得短（`20`）允许源码更长（`20.1.8`），
+钉得完全匹配也过，不同 patch 才红。那次「红」是我的测试填错了格，不是代码错。
+
+### 本机仍然做不到的
+
+**没有编译器**（gcc/clang/cc 全无、无 make/cmake/xz）。
+所以「19+ 道门禁全绿」**不等于**能编译通过 —— 本会话已两次因缺编译器漏过编译错误。
+阶段 1c/1d 的真编只能在 CI 上验。
