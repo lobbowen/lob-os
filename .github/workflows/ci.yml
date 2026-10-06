@@ -105,6 +105,9 @@ jobs:
       - name: 大件落位须流式（整包进 ByteArray 会 OOM）
         run: node tools/check-big-artifact.js
 
+      - name: 页面注册须用全局 Page()（export default 会灰屏）
+        run: node tools/check-page-registration.js
+
       - name: dimina 官方规范须遵守（path 入口 / zip 名 / 不打补丁）
         run: node tools/check-dimina-spec.js
 

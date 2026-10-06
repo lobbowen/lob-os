@@ -1,15 +1,7 @@
 const pageObject = {
   data: {
     result: '点上面按钮测能力',
-    endpoint: '(尚未取到)'
-  },
-
-  onReady() {
-    const info = app.getInfo()
-    const be = (info && info.backend) || {}
-    if (be.endpoint) {
-      this.setData({ endpoint: be.endpoint })
-    }
+    endpoint: '(由后端能力事件返回)'
   },
 
   probeOpen() {
@@ -58,4 +50,4 @@ const pageObject = {
   }
 }
 
-export default pageObject
+Page(pageObject)

@@ -51,10 +51,10 @@ if (!/entry: String/.test(s.host)) add('install 没有入口页参数');
 if (!/withEntry\(packageDir, entry\)/.test(s.host)) add('install 没有把入口写进 config.json');
 if (!/uiEntryOf/.test(s.installer)) add('安装器没有从清单读 ui.entry 传给 install');
 
-if (!s.app.includes('setEnableMultiTask(false)')) {
-  add('Dimina.init 没有 setEnableMultiTask(false)：官方文档「宿主管理小程序版本与胶囊」明确' +
-    '「默认 true 会创建独立的最近任务卡片」，Android 容器下小程序页面进独立任务，' +
-    '视图层 WebView 依附的任务栈可能被拆掉（真机日志里有 Force finishing + TransitionChain CLOSE）');
+if (!s.app.includes('setEnableMultiTask(true)')) {
+  add('Dimina.init 必须 setEnableMultiTask(true)：官方「多小程序运行与后台保留」要求每个 appId 有独立运行时与呈现栈；' +
+    'false 会让快应用挤进宿主任务栈（真机实测：SetupActivity/PanelActivity/DiminaActivity 全在同一个 Task #10980）。' +
+    '跨小程序用官方 wx.navigateToMiniProgram / navigateBackMiniProgram，不用改这个开关');
 }
 if (s.app.includes('setVirtualFilePrefix')) {
   add('Dimina.init 不该设 setVirtualFilePrefix：官方「小程序包更新说明」写明 Android 端' +

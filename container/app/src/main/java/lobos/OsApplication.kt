@@ -38,7 +38,7 @@ class OsApplication : Application() {
                     .setDebugMode(true)
                     .setShowCapsule(false)
                     .setShowLaunchLoading(false)
-                    .setEnableMultiTask(false)
+                    .setEnableMultiTask(true)
                     .build()
             )
         }.onFailure {
