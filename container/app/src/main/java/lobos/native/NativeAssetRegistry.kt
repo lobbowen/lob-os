@@ -72,6 +72,15 @@ object NativeAssetRegistry {
                 "probeArgs 空 → 走「数据资产」分支不做 exec-probe（它起不来就没意义，" +
                 "真正的可用性判据是 PtySession 自己探 isatty/窗口大小）",
         ),
+        NativeExecutable(
+            id = "busybox", libName = "libbusybox.so", humanName = "busybox 基础命令集",
+            probeArgs = listOf("--list"), probeExpect = "tar",
+            requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            note = "多调用二进制：用户敲 tar/grep/ls（软链由 PrefixProvisioner 建），" +
+                "不是 busybox tar。探针用 --list 并期待 tar —— 比看二进制在不在强，" +
+                "证明 applet 真编进去了（配置项名写错时 busybox 会静默少编）。" +
+                "静态编、不链底座 libz：底座件之间不互相依赖到「少一件就起不来」",
+        ),
 
         // ── 底座运行层共享库（scripts/build-base-libs.sh 编一次，全系统共用）──
         //

@@ -19,6 +19,7 @@ self-c librivospty.so ptysession
 # --- upstream ---
 upstream libbash.so bash
 upstream liblobosrg.so ripgrep
+upstream libbusybox.so busybox
 upstream libz.so zlib
 upstream libssl.so openssl
 upstream libcrypto.so crypto

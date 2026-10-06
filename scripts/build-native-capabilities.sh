@@ -173,7 +173,7 @@ if ! check_so "$J/liblobosrg.so" 300000; then
   exit 1
 fi
 
-for f in libbash.so liblobosrg.so liblobosptyprobe.so librivospty.so liblobosflock.so liblobosposix.so liblobospty.so; do
+for f in libbash.so liblobosrg.so liblobosptyprobe.so librivospty.so libbusybox.so liblobosflock.so liblobosposix.so liblobospty.so; do
   if [ -f "$J/$f" ]; then
     before=$(stat -c%s "$J/$f"); "$TC/llvm-strip" --strip-unneeded "$J/$f" 2>/dev/null || true
     echo "[strip] $f $before -> $(stat -c%s "$J/$f") 字节"
@@ -248,6 +248,19 @@ echo "== 底座共享库（libz / libssl / libcrypto / libcurl）=="
 CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {
   echo "::error title=底座共享库缺失::libz/libssl/libcrypto/libcurl 是 \$PREFIX 必备（upstream 档，缺件硬红）——"
   echo "             没有它们，curl/git 改动态链（第 2 阶段）与 busybox 的 gzip/tar（第 5 阶段）都无从谈起。"
+  exit 1
+}
+cd "$ROOT"
+
+echo "== busybox（基础命令集）=="
+# 静态编，不链底座 libz（理由见 build-native-busybox.sh 文件头）。
+# 命名 libbusybox.so 只为进 jniLibs（APK 只打包 .so）；落位名是 busybox。
+CC="$CC" ABI="$ABI" bash scripts/build-native-busybox.sh || {
+  echo "::error title=busybox 缺失::\$PREFIX 的 tar/gzip/grep/sed/ls/cp/mv 等基础命令依赖它（upstream 档，缺件硬红）"
+  exit 1
+}
+check_so "$J/libbusybox.so" 500000 || {
+  echo "::error title=busybox 产物不合格::静态编体积异常 —— 看上面的形态自检输出"
   exit 1
 }
 cd "$ROOT"

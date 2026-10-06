@@ -17,6 +17,40 @@
 | ptyprobe | `liblobosptyprobe.so` | self-c | PTY 探针（静态可执行） | PTY 探测不可用 |
 | ptysession | `librivospty.so` | self-c | PTY 会话宿主（常驻可执行件） | `shell.exec` 只能退回 ADB；终端不可用 |
 | pty | `liblobospty.so` | soft | PTY 支撑件 | 见 `native-deps.txt` |
+| busybox | `libbusybox.so` | upstream | 基础命令集（tar/gzip/grep/sed/ls/cp/mv…） | 程序找不到基础命令 |
+
+### busybox 的两个核实结论（都是踩过的坑，不是推断）
+
+**一、不能用 `configs/android_ndk_defconfig`。** 核实它是 **BusyBox 1.24.0 (2015)**，
+而源码取的是 1.36.1 —— 配置项名跨了十几个版本。而且它的 `EXTRA_CFLAGS` 硬编码了
+`-march=armv7-a`（32 位 ARM）与 `-nostdlib`（Bionic 下链接必失败）。照抄会编出错误架构。
+正确做法是 `make defconfig` 取**本版本自己的**基线。
+
+**二、核实 applet 配置项名不能用错工具。** applet 的 config **不在** `Config.in` 里
+（`grep '^config TAR$' Config.in` 永远找不到）。busybox 源码树里有一个生成步骤，
+把各 applet 的 `.c` 文件里的 `//config:` 注释拼接成 `<dir>/Config.in` ——
+那个生成器在上游源码里，**不在本仓**（所以按下面的表查源码树，不要查本仓）。
+
+| 查什么 | 正确命令 |
+|---|---|
+| applet（如 TAR） | `grep '^//config:config NAME$' --include='*.c' .` |
+| 编译选项（如 STATIC） | `grep '^config NAME$' Config.in` |
+
+本轮据此逐个核实了 18 个 applet 名与 4 个编译选项，全部真实存在
+（`SHOW_SPLASH_WATER` 是我最初臆造的，源码里没有，已删）。
+
+**版本号是三段分开写的**：`VERSION = 1` / `PATCHLEVEL = 36` / `SUBLEVEL = 1`。
+写成一行 `VERSION = 1.36.1` 去 sed，取到的是 `1`，于是「版本不符」判死 ——
+那是判据自己写错，不是源码有问题。
+
+**静态编、不链底座 `libz`**：gzip/gunzip 的 zlib 编进去，代价 ~100-200KB，
+换来 busybox 完全自足。底座件之间不互相依赖到「少一件就起不来」的程度。
+（阶段0 的 `libz.so` 是给**商店件**改动态链用的。）
+
+**两个下载源的压缩格式与目录名都不同**（实测）：`busybox.net` 给
+`busybox-1.36.1.tar.bz2` → `busybox-1.36.1/`；github mirror 给
+`1_36_1.tar.gz` → `busybox-1_36_1/`。所以按源分别带解包方式与期望目录名，
+不能「所有源都用 tar xjf + 同一个目录名」。
 
 ### ptysession 为什么是「常驻可执行件」而不是共享库
 

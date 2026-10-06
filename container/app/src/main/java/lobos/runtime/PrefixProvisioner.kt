@@ -21,6 +21,19 @@ private val BINS = listOf(
     NativeAssetRegistry.libNameOf("bash") to "bash",
     NativeAssetRegistry.libNameOf("ripgrep") to "rg",
     NativeAssetRegistry.libNameOf("ptysession") to "pty-session",
+    NativeAssetRegistry.libNameOf("busybox") to "busybox",
+)
+
+/**
+ * busybox 的 applet 软链（照 Linux 惯例：多调用二进制 + 一堆名字）。
+ *
+ * 名单来自 scripts/build-native-busybox.sh 的 APPLETS —— 那是编译时
+ * 真正编进去的清单，这里必须一致：软链一个没编进去的名字，会得到
+ * 「敲了没反应」而不是「没有这个命令」。
+ */
+private val BUSYBOX_APPLETS = listOf(
+    "tar", "gzip", "gunzip", "grep", "sed", "awk", "ls", "cp", "mv",
+    "cat", "mkdir", "rm", "ln", "vi", "df", "ps", "true", "false",
 )
 
 // 底座库：无条件必需，落 $PREFIX/lib（对齐 Linux 的「库进 /lib」）。
@@ -67,6 +80,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                 ready += name
             }
         }
+        linkBusyboxApplets(ctx)?.let { ready += it }
         val caDst = caBundle(ctx)
         try {
             caDst.parentFile?.mkdirs()
@@ -77,6 +91,39 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     }
 
     fun bashBin(ctx: Context): File? = File(binDir(ctx), "bash").takeIf { it.isFile }
+
+    /**
+     * 建 busybox 的 applet 软链（tar → busybox，grep → busybox，…）。
+     *
+     * 照 Linux 惯例：用户敲 `tar` 而不是 `busybox tar`。判据用
+     * `busybox tar --help` 而不是 `tar --help` —— 后者只证明软链在，
+     * 前者才证明那个 applet 真编进去了。
+     *
+     * busybox 不在位时返回空列表并**不判红**：它是 upstream 档，
+     * 缺件由 verify-runtime-elf.sh 在构建期判；运行期缺了只是少一批命令，
+     * 不该让整个底座装配失败（那会让 bash/rg 也跟着不可用）。
+     */
+    private fun linkBusyboxApplets(ctx: Context): List<String> {
+        val bb = File(binDir(ctx), "busybox")
+        if (!bb.isFile) return emptyList()
+        val made = mutableListOf<String>()
+        for (applet in BUSYBOX_APPLETS) {
+            val link = File(binDir(ctx), applet)
+            try {
+                // 已存在的真文件（别的件提供同名命令）不覆盖 —— 底座不能抢位置
+                if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) continue
+                java.nio.file.Files.deleteIfExists(link.toPath())
+                java.nio.file.Files.createSymbolicLink(link.toPath(), bb.toPath())
+                made += applet
+            } catch (_: Exception) {
+                // 建不了这一条就跳过这一条，不影响其它
+            }
+        }
+        return made
+    }
+
+    /** busybox 是否就位（控制面板与判据用）。 */
+    fun busyboxBin(ctx: Context): File? = File(binDir(ctx), "busybox").takeIf { it.isFile }
 
     /**
      * 底座必备件清单。node 不在里面 —— 它是程序运行时，按需安装。
