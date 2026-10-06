@@ -25,6 +25,8 @@ object OnboardingFlow {
     const val F1 = "F1"
     const val F2 = "F2"
     const val F3 = "F3"
+    const val F4 = "F4"
+
     private val RUNTIME_ENV = listOf(CapabilityCatalog.RUNTIME, CapabilityCatalog.PROGRAM_BUNDLE)
 
     private val F1_OWNS =
@@ -35,9 +37,6 @@ object OnboardingFlow {
     private val F3_OWNS = RUNTIME_ENV.toSet()
 
     private val ENTRY_ORDER = RUNTIME_ENV
-        CapabilityCatalog.ADB_CHANNEL,
-        CapabilityCatalog.ADB_UI_AUTOMATION,
-    )
 
     fun readyToEnter(verdicts: Map<String, CapVerdict>): Boolean =
         PipelineProjection.workbenchReady(verdicts)

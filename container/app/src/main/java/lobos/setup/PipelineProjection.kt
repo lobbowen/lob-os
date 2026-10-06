@@ -31,9 +31,6 @@ object PipelineProjection {
         CapabilityCatalog.RUNTIME,
         CapabilityCatalog.PROGRAM_BUNDLE,
     )
-        CapabilityCatalog.ADB_CHANNEL,
-        CapabilityCatalog.ADB_UI_AUTOMATION,
-    )
 
     fun workbenchReady(verdicts: Map<String, CapVerdict>): Boolean =
         GATING.all { verdicts[it]?.status == CapStatus.GRANTED }
