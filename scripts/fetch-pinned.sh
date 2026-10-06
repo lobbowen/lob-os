@@ -137,7 +137,14 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 for url in "${URLS[@]}"; do
-  case "$url" in https://*|file://*) ;; *) die "来源既不是 https 也不是 file：$url" ;; esac
+  # 只认 https。早先这里还放行 file://（想着「本地测试方便」）——
+  # 但 curl 默认**禁用** file 协议（实测：`curl: (1) Protocol "file" is disabled`），
+  # 所以那条放行等于给了一个必然失败的分支：报出来的是 curl 的协议错误，
+  # 而不是「这个来源不可用，换下一条」。
+  case "$url" in
+    https://*) : ;;
+    *) die "来源不是 https（file:// 也不行 —— curl 禁用了 file 协议，配了必然失败）: $url" ;;
+  esac
   f="$TMP/download"
   if ! curl -fsSL --max-time 900 "$url" -o "$f"; then
     echo "[fetch-pinned] 下载失败，换下一条来源：$url"
