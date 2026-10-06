@@ -305,6 +305,43 @@ jobs:
           fi
           bash scripts/build-userland-llvmtoolchain.sh
 
+      # 下面两步是本轮补上的 —— 11 件商店件每件都有，llvmtoolchain 原来没有。
+      # 缺了会怎样：编出来的东西**留在 dist/ 目录里但从未打包**，
+      # 于是 manifest 收不到它、控制面板看不到它、用户装不到它，
+      # 而 job 全程绿 —— 「编成功了但没人拿得到」。
+      - name: 件形态校验（aarch64 动态件 / 别名工具各自形状）
+        run: bash scripts/verify-userland-artifact.sh llvmtoolchain
+
+      - name: 打包 + sha256
+        run: bash scripts/package-userland.sh llvmtoolchain
+
+      # 别名集合必须两侧一致（装侧建链 / 发侧写清单读同一份 package.json）。
+      # 不一致的后果是「装上了却调不到」或「卸不干净、留死链」——
+      # 而 alias-symlink-proof.js 是离线判据，这里补一道对着真产物的。
+      - name: 别名映射须与件内 package.json 一致
+        run: |
+          set -euo pipefail
+          test -f dist/llvmtoolchain/package.json \
+            || { echo "::error title=缺别名映射::dist/llvmtoolchain/package.json 没产出 —— 八个工具里只有入口能用"; exit 1; }
+          node -e '
+          const fs = require("node:fs");
+          const pkg = JSON.parse(fs.readFileSync("dist/llvmtoolchain/package.json", "utf8"));
+          const names = Object.keys(pkg.bin || {});
+          const need = ["clang", "clang++", "ld.lld", "llvm-ar", "llvm-nm", "llvm-strip", "llvm-objdump", "llvm-readobj"];
+          const missing = need.filter((n) => !names.includes(n));
+          if (missing.length) {
+            console.error("::error title=别名不全::package.json 的 bin 缺 " + missing.join(",") + "（声明了 " + names.length + " 个）");
+            process.exit(1);
+          }
+          for (const [k, v] of Object.entries(pkg.bin)) {
+            if (!fs.existsSync("dist/llvmtoolchain/" + v)) {
+              console.error("::error title=别名指向不存在的文件::" + k + " → " + v);
+              process.exit(1);
+            }
+          }
+          console.log("[ok] 别名 " + names.length + " 个，逐个指向件内真实文件");
+          '
+
   manifest:
     needs: [resolve, build, node]
     runs-on: ubuntu-latest
