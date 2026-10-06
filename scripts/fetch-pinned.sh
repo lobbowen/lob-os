@@ -70,13 +70,39 @@ elif [ "${1:-}" = "--ndk" ]; then
   fi
   echo "$ND"
   exit 0
+elif [ "${1:-}" = "--llvm" ]; then
+  # NDK **内置的 LLVM 版本**也住这张表。
+  #
+  # 为什么单独记一格：sysroot 来自 NDK，而 clang 件要编的就是 LLVM —— 两者
+  # 版本不配的话，编出来的 clang 读 sysroot 会有说不清的怪问题。
+  # 而 NDK 的版本号（29.x）与其内置 LLVM 的版本号（20.x）**是两件事**，
+  # 从前者推不出后者，所以必须显式记。
+  #
+  # 这里**只取不判**（与 --ndk 同理）：NDK 不是下载来的源码，
+  # 「实际那版等不等于钉值」由 build 脚本在 runner 上问 NDK 自己来判。
+  # 没有这一格时读出空串并由调用方决定怎么办 —— 不猜版本号。
+  if ! LV="$(node -e '
+    const path = require("node:path");
+    let tab;
+    try { tab = require(path.resolve(process.argv[1])); } catch (e) { console.error("钉值表读不出: " + e.message); process.exit(1); }
+    const v = tab.llvmVersion;
+    if (v === undefined || v === null || String(v).trim() === "") process.stdout.write("");
+    else if (!/^[0-9]+(\.[0-9]+){0,2}$/.test(String(v))) {
+      console.error("llvmVersion 形态非法（读到 " + JSON.stringify(v) + "）：应为 20 / 20.1 / 20.1.8 之一");
+      process.exit(1);
+    } else process.stdout.write(String(v));
+  ' "$TABLE")"; then
+    die "钉值表的 llvmVersion 这一格读不通"
+  fi
+  echo "$LV"
+  exit 0
 elif [ $# -ge 3 ]; then
   OUT="${1:-}"
   WANT="${2:-}"
   shift 2
   URLS=("$@")
 else
-  die "用法: $0 --pin <键> <落点>  或  $0 --time-base  或  $0 --ndk  或  $0 <落点> <期望 sha256> <url> [url...]（参数少一个都不算数）"
+  die "用法: $0 --pin <键> <落点>  或  $0 --time-base  或  $0 --ndk  或  $0 --llvm  或  $0 <落点> <期望 sha256> <url> [url...]（参数少一个都不算数）"
 fi
 
 [ -n "$OUT" ] && [ -n "$WANT" ] && [ "${#URLS[@]}" -gt 0 ] \

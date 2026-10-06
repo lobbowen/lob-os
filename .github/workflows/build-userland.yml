@@ -175,6 +175,19 @@ jobs:
           echo "[ndk] 目录=$NDK 版本=$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties")"
           { echo "CC=$TC/aarch64-linux-android21-clang"; echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
 
+      - name: 核实 NDK 与 LLVM 版本（阶段1c 编 clang 的前提）
+        run: |
+          set -euo pipefail
+          # sysroot 来自 NDK，而阶段1c 要编的 clang 就是 LLVM —— 两者版本不配，
+          # 编出来的东西会有说不清的怪问题（头文件按一个 API、编译器按另一个假设）。
+          # NDK 的版本号（29.x）与它内置的 LLVM 版本号（20.x）是两件事，
+          # 从前者推不出后者，所以这一格单独钉、并且**问 NDK 自己**来核对。
+          #
+          # 首次运行预期会红：llvmVersion 那一格还没填（填了必须是真的，
+          # 本机无 NDK 读不到，凭记忆写就是「先写后核实」）。
+          # 报错信息里会带出实际版本号 —— 填进去即可解除。
+          bash scripts/verify-ndk-llvm.sh
+
       - name: 产出 ${{ matrix.tool }} 件
         run: bash scripts/build-userland-${{ matrix.tool }}.sh
 
