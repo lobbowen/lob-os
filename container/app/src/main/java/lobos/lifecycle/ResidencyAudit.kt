@@ -42,6 +42,15 @@ object ResidencyAudit {
             gapMs = System.currentTimeMillis() - lastAliveMs,
             deviceReboot = abs(priorBasisMs - bootBasisMs()) > BOOT_BASIS_TOLERANCE_MS,
         )
+        // 存活时间本身是状态（继续写 residency.txt），但「检测到一次中断」是事件 ——
+        // 之前只在内存里，进程一死就没了，而这是常驻失败的第一手证据。
+        runCatching {
+            val d = debt
+            lobos.os.Journal.note(
+                ctx, "residency", null, "检测到常驻中断",
+                "上次存活时间=$lastAliveMs 中断时长=${d?.gapMs}ms 是否设备重启=${d?.deviceReboot}",
+            )
+        }
     }
 
     @Synchronized
@@ -51,7 +60,7 @@ object ResidencyAudit {
     }
 
     @Synchronized
-    fun interruption(): String? {
+    fun interruption(ctx: Context): String? {
         val d = debt ?: return null
         return interruptionText(
             lastAliveAt = timeFmt.format(Date(d.lastAliveMs)),

@@ -56,7 +56,7 @@ class OsHostService : Service() {
         val born = thread == null
         if (born) {
             lobos.os.ResidencyStatus.restore(this)
-            OsInit.beginLife(this, ResidencyAudit.interruption())
+            OsInit.beginLife(this, ResidencyAudit.interruption(this))
         }
         promoteToForeground()
         ensureComponents(intent)
@@ -64,7 +64,7 @@ class OsHostService : Service() {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
             handler = Handler(thread!!.looper)
-            OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption())
+            OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))
             handler?.post(tick)
             runCatching {
                 val ver = lobos.os.ProgramRegistry.listIds(this)
@@ -176,7 +176,7 @@ class OsHostService : Service() {
             controlPlaneUp = runCatching { CapabilityEvidenceCollector.controlPlaneUp() }.getOrDefault(false),
             channel = lobos.capability.AdbChannelComponent.probeOutcome(),
         )
-        OsInit.refresh(this, facts, ResidencyAudit.interruption())
+        OsInit.refresh(this, facts, ResidencyAudit.interruption(this))
         runCatching {
             (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
                 .notify(NOTIF_ID, buildHostNotification())
@@ -261,7 +261,7 @@ class OsHostService : Service() {
     }
 
     override fun onDestroy() {
-        runCatching { OsInit.transition(this, OsPhase.STOPPING, "宿主被销毁", ResidencyAudit.interruption()) }
+        runCatching { OsInit.transition(this, OsPhase.STOPPING, "宿主被销毁", ResidencyAudit.interruption(this)) }
         handler?.removeCallbacksAndMessages(null)
         thread?.quitSafely()
         thread = null

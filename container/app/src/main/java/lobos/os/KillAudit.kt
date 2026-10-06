@@ -12,6 +12,9 @@ object KillAudit {
 
     private const val CURSOR_FILE = "kill-audit-cursor.txt"
 
+    // Journal 的 category。归因时按它筛。
+    private const val CATEGORY = "kill-audit"
+
     private const val MAX_RECORDS = 32
 
     data class ExitRecord(
@@ -28,19 +31,24 @@ object KillAudit {
             " process=" + process + " desc=" + (description?.take(160) ?: "null")
     }
 
-    private data class Reading(
-        val exits: List<ExitRecord>,
-        val ownProcess: String,
-        val unreadable: String?,
-    )
 
-    @Volatile
-    private var reading: Reading? = null
+    data class ExitRecord(
+        val atMs: Long,
+        val pid: Int,
+        val process: String,
+        val reason: Int,
+        val importance: Int,
+        val description: String?,
+    ) {
+        val verdict: Journal.Reason get() = Journal.Reason.fromExitInfo(reason, description)
 
-    // 采集入口。读系统的历史退出记录（Android 11+ API）并落盘去重。
-    // 判定：这不是死码，是待接线的功能入口 —— reading 只能由它赋值，
-    // 没有它 attribution() 永远返回「死因未取证（还没读系统退出史）」。
-    // 接线点见 docs/ARCHITECTURE-AUDIT.md 问题四。
+        fun detail(): String = "reason=" + reason + " importance=" + importance +
+            " process=" + process + " desc=" + (description?.take(160) ?: "null")
+    }
+
+
+    // 采集后逐条写 Journal（category=kill-audit），归因由 attribution() 查 Journal。
+    // 不留内存副本：那份只活到进程结束，而退出史要跨进程留存。
     fun auditOnce(ctx: Context) {
         val pkg = ctx.packageName
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -65,41 +73,34 @@ object KillAudit {
                 description = it.description,
             )
         }
-        reading = Reading(records, pkg, null)
         val cursor = readCursor(ctx)
         records.asReversed().filter { isNewerThanCursor(it, cursor) }.forEach {
-            Journal.append(ctx, "kill-audit", it.verdict, it.detail())
+            Journal.append(ctx, CATEGORY, it.verdict, it.detail())
         }
         records.filter { isNewerThanCursor(it, cursor) }.maxByOrNull { it.atMs }
             ?.let { writeCursor(ctx, it) }
     }
 
-    fun attribution(sinceMs: Long): String {
-        val r = reading ?: return "死因未取证（还没读系统退出史）"
-        return attribute(r.exits, r.unreadable, sinceMs, r.ownProcess)
-    }
-
-    fun attribute(
-        exits: List<ExitRecord>,
-        unreadable: String?,
-        sinceMs: Long,
-        mainProcess: String,
-    ): String {
-        val r = exits.firstOrNull { it.process == mainProcess && it.atMs >= sinceMs }
-        if (r == null) {
+    // 归因从 Journal 查，不再读内存 —— 内存副本只活到进程结束，
+    // 而退出史已经由 auditOnce 经 Journal.append 落盘（category=kill-audit）。
+    fun attribution(ctx: Context, sinceMs: Long): String {
+        val own = ctx.packageName
+        val hits = lobos.os.Journal.events(ctx, limit = 400)
+            .filter { it.category == CATEGORY && it.atMs >= sinceMs }
+        val ev = hits.firstOrNull { it.detail.contains("process=$own") }
+        if (ev == null) {
+            val unreadable = hits.firstOrNull()?.detail
             return if (unreadable == null) {
-                "死因未取证（退出史里没有这次中断对应的记录）"
+                "死因未取证（还没读系统退出史）"
             } else {
                 "死因未取证（$unreadable）"
             }
         }
-        val at = SimpleDateFormat("MM-dd HH:mm:ss", Locale.US).format(Date(r.atMs))
-        return "死因=" + r.verdict.code + "（系统退出记录 " + at + " " + r.detail() + "）"
+        return "死因=" + ev.detail
     }
 
     private fun reportUnreadable(ctx: Context, pkg: String, why: String) {
-        reading = Reading(emptyList(), pkg, why)
-        Journal.append(ctx, "kill-audit", Journal.Reason.UNREADABLE, why)
+        Journal.append(ctx, CATEGORY, Journal.Reason.UNREADABLE, why)
     }
 
     private fun isNewerThanCursor(r: ExitRecord, cursor: Pair<Long, Int>): Boolean =

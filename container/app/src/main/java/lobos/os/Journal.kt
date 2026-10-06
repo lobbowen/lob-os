@@ -15,6 +15,25 @@ object Journal {
     private const val MAX_BYTES = 512 * 1024L
     private const val KEEP_LINES = 500
 
+    // 日志级别。与 os.Level（程序层级 INFRA/CAPABILITY/CHANNEL/APPLICATION）无关。
+    //
+    // 判据来源：note() 早就带 ok: Boolean? 三态，但只把它拼进文本 "（ok）"/"（failed）"
+    // 就丢掉了。这里把它结构化落盘，遥测才能按级别筛。
+    // 落盘字段名 logLevel，避免与 os.Level 混淆。
+    enum class LogLevel(val code: String) {
+        INFO("info"),
+        WARN("warn"),
+        ERROR("error");
+
+        companion object {
+            fun of(ok: Boolean?): LogLevel = when (ok) {
+                false -> ERROR
+                true -> INFO
+                null -> INFO
+            }
+        }
+    }
+
     enum class Reason(val code: String) {
         OEM_BG_LIMIT("bgLimit"),
         OEM_KILL("o-kill"),
@@ -68,11 +87,13 @@ object Journal {
         val category: String,
         val reason: Reason?,
         val detail: String,
+        val level: LogLevel = LogLevel.INFO,
     ) {
         fun toJson(): JSONObject = JSONObject().apply {
             put("seq", seq)
             put("at", atMs)
             put("category", category)
+            put("logLevel", level.code)
             if (reason != null) put("reason", reason.code)
             put("detail", detail)
         }
@@ -100,13 +121,20 @@ object Journal {
             if (!extra.isNullOrBlank()) append("；").append(extra)
             if (ok != null) append("（").append(if (ok) "ok" else "failed").append("）")
         }
-        return append(ctx, category, null as Reason?, text)
+        // ok 原本只拼进文本就丢了。现在结构化落盘，调用方不用改。
+        return append(ctx, category, null as Reason?, text, LogLevel.of(ok))
     }
 
     @Synchronized
-    fun append(ctx: Context, category: String, reason: Reason?, detail: String): Event {
+    fun append(
+        ctx: Context,
+        category: String,
+        reason: Reason?,
+        detail: String,
+        level: LogLevel = LogLevel.INFO,
+    ): Event {
         if (seq == 0L) seq = lastSeq(ctx)
-        val ev = Event(++seq, System.currentTimeMillis(), category, reason, detail)
+        val ev = Event(++seq, System.currentTimeMillis(), category, reason, detail, level)
         runCatching {
             val f = file(ctx)
             if (f.length() > MAX_BYTES) rotate(f)
@@ -140,6 +168,7 @@ object Journal {
                 if (line.isBlank()) return@forEach
                 val o = runCatching { JSONObject(line) }.getOrNull() ?: return@forEach
                 val rawReason = o.optString("reason")
+                val rawLevel = o.optString("logLevel")
                 out.add(
                     Event(
                         seq = o.optLong("seq"),
@@ -147,6 +176,10 @@ object Journal {
                         category = o.optString("category"),
                         reason = Reason.values().firstOrNull { it.code == rawReason },
                         detail = o.optString("detail"),
+                        // 老记录没有 logLevel 字段（本次升级前落的），按 INFO 读，
+                        // 不能因为缺字段就丢掉整条。
+                        level = LogLevel.values().firstOrNull { it.code == rawLevel }
+                            ?: LogLevel.INFO,
                     )
                 )
             }
