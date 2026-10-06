@@ -77,9 +77,14 @@ jobs:
       # 依赖只有 node（CI 自带）+ 临时目录 + 仓内文件 —— 零外部依赖，
       # 不需要 NDK、不需要编译器、不走网络。
       #
-      # 判据各自在文件头写明了「它能抓什么、不能抓什么」。
-      # 尤其 terminal-screen-algorithm 是 JS 复刻，**它验的是算法规则**，
-      # 不是那段 Kotlin 本身 —— 真机行为仍需 CI 编译 + 设备验收。
+      # **七道里只有三道真的读仓内源码**（pty-argv / pty-winsize /
+      # terminal-covers）。另外四道是 JS 复刻或环境形态验证，判不了源码缺陷 ——
+      # 实测「删掉 linkSysrootInclude 调用点」「CJK 宽度 2 改 1」它们都 rc=0。
+      # 分类与实测记录见 tools/verify/self-check-ci-steps.js 文件头。
+      # 下面先跑自检：确认这三道的判红能力没退化，再跑全部七道。
+      - name: 跨语言契约自检（门禁失败时真的会红吗）
+        run: node tools/verify/self-check-ci-steps.js
+
       - name: 跨语言契约 — PTY 帧 / 终端仿真 / 落位软链
         run: |
           set -euo pipefail
