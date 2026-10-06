@@ -82,6 +82,13 @@ object PtySession {
         fun resize(rows: Int, cols: Int) {
             if (closed.get()) return
             val b = java.nio.ByteBuffer.allocate(8)
+            // 必须是 LITTLE_ENDIAN：原生侧是 memcpy(&ws, payload, sizeof(ws))，
+            // 即主机序（aarch64 小端）。而 ByteBuffer 默认是**大端** ——
+            // 用默认序写出去，24 会变成 0x1800（6144），窗口大小直接失效，
+            // 而现象是「改了尺寸但程序不知道」，不报错。
+            // 字段顺序 rows, cols, xpixel, ypixel 由 POSIX 的 struct winsize 定，
+            // 两侧都按那个顺序，所以这里只需保证字节序一致。
+            b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
             b.putShort(rows.toShort()).putShort(cols.toShort())
             b.putShort(0).putShort(0)
             host.send(F_WINSIZE, sid, b.array())
@@ -253,6 +260,9 @@ object PtySession {
             val cols: Int
             if (payload.size >= nul + 1 + 8) {
                 val b = java.nio.ByteBuffer.wrap(payload, nul + 1, 8)
+                // 小端 —— 原生侧 memcpy 的 struct winsize 是主机序（aarch64 小端）。
+                // 不显式指定就是大端，rows=24 读成 6144。
+                b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                 rows = b.short.toInt() and 0xFFFF
                 cols = b.short.toInt() and 0xFFFF
             } else { rows = DEFAULT_ROWS; cols = DEFAULT_COLS }
