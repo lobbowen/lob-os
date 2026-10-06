@@ -117,6 +117,9 @@ jobs:
       - name: 控制面板须齐（入口 + 同进程调用 + installer 放行）
         run: node tools/check-panel.js
 
+      - name: node 原生依赖须落到 $ORIGIN（linker 阶段失败判据）
+        run: node tools/check-node-native-deps.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

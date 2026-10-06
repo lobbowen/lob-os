@@ -8,6 +8,10 @@ const pageObject = {
     this.bridge('openApp', { id: 'com.lobos.fixture' })
   },
 
+  openSecond() {
+    this.bridge('openApp', { id: 'com.lobos.second' })
+  },
+
   probeIcon() {
     this.bridge('desktopIcon.add', { id: 'com.lobos.fixture' })
   },

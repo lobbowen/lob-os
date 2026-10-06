@@ -360,14 +360,17 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (!res.ok) return SupervisorPolicy.BootOutcome.NO_PROGRAM
 
             val env = lobos.os.RuntimeEnvironment.ensure(this)
+            val tree = lobos.os.RuntimeEnvironment.treeRootFor(this, env)
+            val treeEnv = lobos.os.RuntimeEnvironment.treeRootEnv(tree, getenv("PATH"))
 
             writeRuntimeJson(
                 nodePath = nodeBin.absolutePath,
                 nodeBinDir = nodeBin.parentFile!!.absolutePath,
                 prefix = PrefixProvisioner.root(this).absolutePath,
-                minNode = lobos.os.NodeRuntime.version(this)
+                minNode = lobos.os.NodeRuntime.version(this),
+                envSnapshot = treeEnv,
             )
-            RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 2）", "home=${filesDir.absolutePath}")
+            RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 3，含实际 env 快照）", "home=${filesDir.absolutePath}")
 
             reapOrphanKernel()
 
@@ -848,16 +851,25 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private fun getenv(k: String): String? = System.getenv(k)
 
-    private fun writeRuntimeJson(nodePath: String, nodeBinDir: String, prefix: String, minNode: String) {
+    private fun writeRuntimeJson(
+        nodePath: String,
+        nodeBinDir: String,
+        prefix: String,
+        minNode: String,
+        envSnapshot: Map<String, String> = emptyMap(),
+    ) {
         val dir = File(filesDir, "supervisor")
         dir.mkdirs()
         val obj = JSONObject().apply {
-            put("schema", 2)
+            put("schema", 3)
             put("nodePath", nodePath)
             put("nodeBinDir", nodeBinDir)
             put("prefix", prefix)
             put("minNode", minNode)
             put("writtenBy", "lobos-os")
+            if (envSnapshot.isNotEmpty()) {
+                put("env", JSONObject(envSnapshot.toMap()).toString())
+            }
         }
         lobos.os.StateFiles.writeAtomic(File(dir, "runtime.json"), obj.toString(2))
     }

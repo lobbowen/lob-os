@@ -19,6 +19,8 @@ object PrefixProvisioner {
 
     const val NODE_BIN_NAME = "node"
 
+    const val NODE_DEPS_NAME = "node-$ORIGIN-libs"
+
     const val CA_BUNDLE_NAME = "ca-bundle.pem"
     private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
@@ -55,8 +57,29 @@ object PrefixProvisioner {
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
         val preferred = lobos.os.NodeRuntime.path(ctx)
-        if (preferred != null && linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
+        if (preferred != null) {
+            if (linkNode(ctx, preferred) != null) ready += NODE_BIN_NAME
+            if (placeNodeDeps(ctx, preferred) != null) ready += NODE_DEPS_NAME
+        }
         return ready
+    }
+
+    // node 的 DT_RUNPATH 是 $ORIGIN，只在自身所在目录找 libc++_shared.so。
+    // 商店供给把 node 放在 toolchain/node/bin/，那里没有 .so，于是裸环境启动必然
+    // "cannot locate symbol _ZTVNSt6__ndk1..."。把 .so 放到 $ORIGIN 同目录，
+    // 让 $ORIGIN RUNPATH 真的成立；不依赖 LD_LIBRARY_PATH 是否被传进子进程。
+    private fun placeNodeDeps(ctx: Context, nodeBin: File): File? {
+        val src = File(ctx.applicationInfo.nativeLibraryDir, NativeAssetRegistry.LIBCXX.libName)
+        if (!src.isFile) return null
+        val dst = File(nodeBin.parentFile, src.name)
+        if (dst.isFile && dst.length() == src.length()) return dst
+        return runCatching {
+            src.copyTo(dst, overwrite = true)
+            dst
+        }.getOrElse {
+            dst.delete()
+            null
+        }
     }
 
     private fun linkNode(ctx: Context, nodeBin: File): File? {
@@ -79,6 +102,6 @@ object PrefixProvisioner {
     fun expected(ctx: Context): List<String> {
         val base = BINS.map { it.second } + LIBS.map { it.second } + CA_BUNDLE_NAME
         val nodePresent = lobos.os.NodeRuntime.path(ctx) != null
-        return if (nodePresent) base + DEPS.map { it.second } + NODE_BIN_NAME else base
+        return if (nodePresent) base + DEPS.map { it.second } + NODE_BIN_NAME + NODE_DEPS_NAME else base
     }
 }

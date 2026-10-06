@@ -1,6 +1,7 @@
 <view class="page">
   <text class="title">能力探测</text>
   <button bind:tap="probeOpen">测 openApp</button>
+  <button bind:tap="openSecond">打开第二个快应用</button>
   <button bind:tap="probeIcon">测 desktopIcon.add</button>
   <button bind:tap="probeIconState">测 desktopIcon.state</button>
   <button bind:tap="probeEndpoint">测 backendEndpoint</button>

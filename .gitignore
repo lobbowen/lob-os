@@ -25,3 +25,6 @@ keys/*
 keystore.properties
 .env
 .env.*
+
+# 第二个快应用测试工程复用 fixture 的依赖，链接不进仓
+tools/quickapp-fixture-second/node_modules

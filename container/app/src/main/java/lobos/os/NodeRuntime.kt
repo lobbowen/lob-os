@@ -20,9 +20,16 @@ object NodeRuntime {
     fun version(ctx: Context): String {
         val bin = path(ctx) ?: return ""
         val out = runCatching {
-            val p = ProcessBuilder(bin.absolutePath, "-p", "process.versions.node")
+            // 不带环境起 node 时，linker 会在进入 node 之前就因缺 libc++_shared.so 失败，
+            // 这里拿到空串，诊断里表现为「Node 运行时版本=」空白。
+            val pb = ProcessBuilder(bin.absolutePath, "-p", "process.versions.node")
                 .redirectErrorStream(true)
-                .start()
+            val prior = pb.environment()["LD_LIBRARY_PATH"].orEmpty()
+            pb.environment()["LD_LIBRARY_PATH"] =
+                listOf(prior, lobos.native.NativePreparer.libSearchPath(ctx))
+                    .filter { it.isNotBlank() }
+                    .joinToString(File.pathSeparator)
+            val p = pb.start()
             val text = p.inputStream.bufferedReader().use { it.readText() }
             p.waitFor()
             if (p.exitValue() == 0) text.trim() else ""

@@ -3,13 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const SCHEMA = 2;
+const SCHEMA = 3;
 
 function runtimeJsonPath(home) {
   return path.join(home, 'supervisor', 'runtime.json');
 }
 
-function writeRuntimeJson({ home, nodePath, nodeBinDir, prefix, minNode, writtenBy }) {
+function writeRuntimeJson({ home, nodePath, nodeBinDir, prefix, minNode, writtenBy, env }) {
   const dir = path.join(home, 'supervisor');
   fs.mkdirSync(dir, { recursive: true });
   const obj = {
@@ -19,6 +19,7 @@ function writeRuntimeJson({ home, nodePath, nodeBinDir, prefix, minNode, written
     ...(prefix ? { prefix } : {}),
     minNode: minNode || 'v24.12.0',
     writtenBy: writtenBy || 'lobos-os',
+    ...(env ? { env: typeof env === 'string' ? env : JSON.stringify(env) } : {}),
   };
   fs.writeFileSync(runtimeJsonPath(home), JSON.stringify(obj, null, 2), { mode: 0o600 });
   return obj;
