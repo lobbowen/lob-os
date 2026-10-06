@@ -78,16 +78,27 @@ object NativeAssetUpdater {
             try {
                 if (java.nio.file.Files.isSymbolicLink(entry.toPath())) {
                     val real = entry.toPath().toRealPath()
-                    // 形如 .../toolchain/<id>/<version>/<file>
-                    val rel = real.parentFile?.parentFile?.parentFile
-                        ?.relativeTo(SupplyProvisioner.toolchainDir(ctx).toPath().toAbsolutePath())
-                        ?.toString()
-                    if (rel != null) {
-                        val seg = rel.split(File.separatorChar).filter { it.isNotBlank() }
-                        if (seg.size >= 2) {
-                            installedVer = seg[1]
-                            source = real.toFile()
-                        }
+                    // 版本从**相对 toolchain/ 的段**里取，不靠「往上数几层」。
+                    //
+                    // 原先写的是 parentFile?.parentFile?.parentFile —— 那等于假设
+                    // entry 恰好是单级文件名。当前四件（bash / libssl.so …）恰好
+                    // 都是单级，所以看不出错；但 entry 是清单里的相对路径，
+                    // `lib/libssl.so` 那样的多级入口一出现，往上三层落到的就是
+                    // 错的目录、版本解析成别的值 —— 而症状是「显示已装版本 X.X」
+                    // 与实际不符，**不报错**。
+                    //
+                    // 落位形态固定为 toolchain/<id>/<版本>/<entry…>：
+                    // 段 0 是 id、段 1 是版本、其余是 entry。取段 1 与 entry
+                    // 有几级无关。
+                    val seg = runCatching {
+                        SupplyProvisioner.toolchainDir(ctx).toPath().toAbsolutePath()
+                            .relativize(real)
+                            .toString()
+                            .split(File.separatorChar).filter { it.isNotBlank() }
+                    }.getOrDefault(emptyList())
+                    if (seg.size >= 2) {
+                        installedVer = seg[1]
+                        source = real.toFile()
                     }
                 } else if (entry.isFile) {
                     // 实体文件 = provision 从 APK 铺下来的原件
