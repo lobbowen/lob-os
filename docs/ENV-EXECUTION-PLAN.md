@@ -183,6 +183,10 @@ $ TZ=Europe/London node -e '…getHours()'
 第 1 阶段  开发环境本体
               │  clang / lld / binutils / make / sysroot / python3
               │  sysroot 用 NDK 那套（Bionic ABI 兼容）
+              │
+              │  已完成：sysroot（1a）、$PREFIX/include 软链、别名软链
+              │  待 CI：llvmVersion → 重钉 LLVM → 跑 build-native-llvmtoolchain.sh
+              │  详见下面「阶段1c 的三步解锁链」
               ↓
 第 2 阶段  商店件改动态链
               │  curl  → -lz -lssl -lcrypto
@@ -235,6 +239,35 @@ $ TZ=Europe/London node -e '…getHours()'
 | 9 | **在设备上有终端** | — |
 
 **第 4 阶段是关键转折**：之前"程序要终端就报错"，做完就解决了。
+
+---
+
+## 四·五、阶段1c 的三步解锁链（已逐段验过，只差 CI 那一格）
+
+阶段1c（编 clang）卡在一个本机答不出的问题：NDK r29 内置的 LLVM 是哪个版本。
+**不要猜** —— 猜错的代价是编出来的 clang 与 sysroot 悄悄不同源且无人察觉。
+
+链是三步，每步都能独立验证：
+
+| 步 | 做什么 | 现在能做吗 |
+|---|---|---|
+| 1 | 跑 `scripts/verify-ndk-llvm.sh`，从报错里读到真值 | 只能 CI（需要真 NDK） |
+| 2 | 把真值填进 `userland-sources.json` 的 `llvmVersion` | 拿到真值即可 |
+| 3 | **按该版本重钉 LLVM 源码**（版本 + sha256 都要重测） | 之后 |
+
+`build-userland.yml` 里有独立的 `ndk-llvm` job 专门跑第 1 步，并且：
+
+- **不进 `manifest` 的 needs** —— 它红不断商店件那条链（那 8 件与 llvmVersion 无关）
+- `continue-on-error` —— 这一步**当前的产出就是报错里的真值**，红是取答案的途径
+- 额外把实测版本写进 step summary —— CI 一跑答案就在摘要里
+
+第 2、3 步的判据已在本地用假 NDK 验过：
+
+- 填 `llvmVersion = 20` 后，`verify-ndk-llvm.sh` 转绿（`NDK 29.0.14206865 / LLVM 20.1`）
+- 配方拿**钉的 23.1.3** 与 **NDK 的 20** 对比 → **正确地拦住**（不配就 die）
+
+也就是说：现在钉的 LLVM 23.1.3 与 NDK r29 **不配**，跑配方会被挡住——
+这是判据在起作用，不是配方坏了。真正的做法是按 NDK 报的版本重钉 LLVM 源码。
 
 ---
 
