@@ -45,10 +45,6 @@ BUSYBOX_VER="${BUSYBOX_VER:-1.36.1}"
 # 而且失败信息是「解包失败」，看不出是格式不对。
 # 所以每个源带自己的解包方式与期望目录名。
 # 三元组：<说明> <URL> <解包flag> <期望目录名>
-SOURCES=(
-  "busybox.net|https://busybox.net/downloads/busybox-${BUSYBOX_VER}.tar.bz2|xjf|busybox-${BUSYBOX_VER}"
-  "github mirror|https://github.com/mirror/busybox/archive/refs/tags/${BUSYBOX_VER//./_}.tar.gz|xzf|busybox-${BUSYBOX_VER//./_}"
-)
 
 die() { echo "::error title=$1::${2:-}"; exit 1; }
 note() { echo "[$TOOL] $*"; }
@@ -67,29 +63,45 @@ WORK="$ROOT_DIR/work/busybox"
 mkdir -p "$WORK" "$OUT/bin"
 
 # ── 取源码 ──
-# 上游 tar.bz2 的 sha256 查不到可靠官方值时不钉它 —— 那比钉错更坏。
-# 判据不是「下载成功就算」：解包后必须能认出这是真的 busybox 源码树（见下），
-# 且目录名要与该源对应（两个源解出的目录名不同）。
+#
+# 走 fetch-pinned：它按 userland-sources.json 的 sha256 **逐字节校验**。
+#
+# 早先这里是裸 curl +「拿到就算」，而且注释写「上游 sha256 查不到可靠官方值时
+# 不钉它 —— 那比钉错更坏」。但那个前提是错的：**下下来算一次就是可靠值**
+# （实测 busybox.net 的 busybox-1.36.1.tar.bz2 = b8cc24c9…）。
+# 不钉的真实后果更坏：镜像被替换或传输损坏都会静默通过，然后编出错的 busybox，
+# 而它是 upstream 档、缺件硬红的底座件。
+#
+# **只钉 busybox.net 那一个源**：github mirror 给的是 .tar.gz，与 .tar.bz2
+# 是不同字节（实测 ea549484… ≠ b8cc24c9…）。一个 sha256 配两种压缩会让
+# 命中 github 时必然校验失败 —— 那正是 python 那次踩过的坑。
+# 所以 SOURCES 里 github 那条**不参与下载**，只留注释说明它为什么不能用。
 SRC=""
-for entry in "${SOURCES[@]}"; do
-  IFS='|' read -r name url flag dirname <<< "$entry"
-  TARBALL="$WORK/busybox-$(echo "$url" | md5sum | cut -c1-8)"
-  note "取源码 [$name] $url"
-  if curl -fsSL --connect-timeout 15 --max-time 300 "$url" -o "$TARBALL"; then
-    note "下载完成 $(stat -c%s "$TARBALL") 字节，tar $flag 解包"
-    if tar "$flag" "$TARBALL" -C "$WORK"; then
-      if [ -d "$WORK/$dirname" ]; then
-        SRC="$WORK/$dirname"; break
-      fi
-      note "解出来没有 $dirname/（这个源的目录名与预期不符），试下一个源"
-      rm -rf "$WORK"/*_1* 2>/dev/null || true
-    else
-      note "解包失败（压缩格式与 $flag 不符？）"
-    fi
-  fi
-  note "该源不可用/不可解，换下一个"
-done
-[ -n "$SRC" ] || die "取源码失败" "所有源都不可达或解包后目录名对不上"
+BS_VER_TABLE="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version busybox 2>/dev/null || true)"
+if [ -z "$BS_VER_TABLE" ]; then
+  die "钉值表里没有 sources.busybox" \
+    "没有 sha256 就不该下载底座件的源码 —— 那等于不校验。补上（scripts/pin-github-release.js 不适用，busybox 不在 GitHub Releases）"
+fi
+if [ "$BS_VER_TABLE" != "$BUSYBOX_VER" ]; then
+  die "busybox 版本不一致" \
+    "构建脚本写的是 $BUSYBOX_VER，钉值表是 $BS_VER_TABLE。两处必须一致，否则钉的 sha256 与要编的版本对不上。"
+fi
+TGZ="$WORK/busybox.tar.bz2"
+note "取源码 $BUSYBOX_VER（sha256 由钉值表逐字节校验）"
+if ! bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin busybox "$TGZ"; then
+  die "取源码失败或 sha256 不符" \
+    "钉值与来源见 scripts/userland-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
+fi
+if ! tar xjf "$TGZ" -C "$WORK"; then
+  die "解包失败" "$TGZ —— sha256 是对的但 tar xjf 解不开，看上面 tar 的报错"
+fi
+SRC="$WORK/busybox-$BUSYBOX_VER"
+if [ ! -d "$SRC" ]; then
+  die "源码树目录名不符" \
+    "期望 $SRC，实际解出：$(ls -d "$WORK"/busybox* 2>/dev/null | tr '\n' ' ')" \
+    "—— 上游改了包内目录名？按实际改这里。"
+fi
+note "源码 $BUSYBOX_VER 就位（sha256 校验通过）"
 
 # 源码树形状的自检：不是「解包成功就算」
 for must in Makefile Config.in libbb; do

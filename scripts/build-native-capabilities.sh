@@ -92,24 +92,33 @@ check_so "$J/librivospty.so" 1000 || exit 1
 BASH_VER=5.2.15
 # ftp.gnu.org 从 GitHub runner 稳定不可达（实测 connect 134s 超时，本机同样 000），
 # 故按镜像顺序回退；任一源拿到即止。
-bash_tarball=""
-for base in \
-  "https://ftp.gnu.org/gnu/bash" \
-  "https://mirrors.tuna.tsinghua.edu.cn/gnu/bash" \
-  "https://mirrors.aliyun.com/gnu/bash" \
-  "https://mirror.nju.edu.cn/gnu/bash"; do
-  echo "[bash] 尝试 $base"
-  if curl -fsSL --connect-timeout 15 --max-time 300 "${base}/bash-${BASH_VER}.tar.gz" -o /tmp/bash.tar.gz; then
-    bash_tarball="${base}/bash-${BASH_VER}.tar.gz"
-    echo "[bash] 命中 $bash_tarball"
-    break
-  fi
-  echo "[bash] 不可达，换下一个镜像"
-done
-if [ -n "$bash_tarball" ] \
-   && echo "bash-${BASH_VER} sha256: $(sha256sum /tmp/bash.tar.gz | cut -d' ' -f1)" \
-   && tar -xzf /tmp/bash.tar.gz -C /tmp; then
-  cat > /tmp/termcap_stub.c <<'EOF'
+# 走 fetch-pinned：它按 userland-sources.json 的 sha256 **逐字节校验**。
+#
+# 早先这里是裸 curl + 「拿到就算」—— 那行 `sha256: $(sha256sum …)` 只打印不比对，
+# 于是四个镜像任一被替换/传输损坏都会静默通过，然后编出错的 bash。
+# 而 bash 是 upstream 档、缺件硬红的底座件，它错了整个 $PREFIX 都跟着错。
+#
+# 版本号改从钉值表读（BASH_VER 保留作兜底）：两者不一致时判红，
+# 免得「脚本说 5.2.15、表里是别的版本」而无人察觉。
+BASH_VER_TABLE="$(bash scripts/fetch-pinned.sh --src-version bash 2>/dev/null || true)"
+if [ -n "$BASH_VER_TABLE" ] && [ "$BASH_VER_TABLE" != "$BASH_VER" ]; then
+  echo "::error title=bash 版本不一致::构建脚本写的是 $BASH_VER，钉值表是 $BASH_VER_TABLE"
+  echo "             两处必须一致 —— 改一个，另一个也要跟着改。"
+  exit 1
+fi
+echo "[bash] 取源码 $BASH_VER（sha256 由钉值表校验）"
+bash_tarball="bash-${BASH_VER}.tar.gz"
+if ! bash scripts/fetch-pinned.sh --pin bash "/tmp/bash.tar.gz"; then
+  echo "::error title=bash 源码取不到或 sha256 不符::钉值与来源见 scripts/userland-sources.json 的 sources.bash"
+  echo "             —— 所有镜像都试过了仍失败；**不要**改成不校验的下载。"
+  exit 1
+fi
+echo "[bash] 命中钉值来源，sha256 校验通过"
+# 解包单独判红：sha256 对但 tar 解不开是另一类故障（磁盘满、解压中断），
+# 混在一个 if 里会让报错指错方向。
+tar -xzf /tmp/bash.tar.gz -C /tmp \
+  || { echo "::error title=bash 解包失败::sha256 是对的，但 tar 解不开 —— 看上面 tar 的报错"; exit 1; }
+cat > /tmp/termcap_stub.c <<'EOF'
 /* bionic 无 termcap：readline 美化路径的 no-op 桩（载荷只走非交互 bash -c） */
 int tputs(const char *s, int affcnt, int (*putc_)(int)) { (void)s; (void)affcnt; (void)putc_; return 0; }
 int tgetent(char *bp, const char *name) { (void)bp; (void)name; return -1; }
@@ -123,36 +132,35 @@ char PC = 0;
 char *BC = 0;
 char *UP = 0;
 EOF
-  "$CC" -c -O2 /tmp/termcap_stub.c -o /tmp/termcap_stub.o \
-    && "$LLVM_AR" rcs /tmp/libtermcap_stub.a /tmp/termcap_stub.o
-  cp scripts/bionic-compat.c /tmp/bionic_compat.c
-  "$CC" -c -O2 /tmp/bionic_compat.c -o /tmp/bionic_compat.o \
-    && "$LLVM_AR" rcs /tmp/libbionic_compat.a /tmp/bionic_compat.o
-  (
-    set -e
-    cd /tmp/bash-${BASH_VER}
-    ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
-      --prefix=/native --disable-nls --without-bash-malloc \
-      CC="$CC" CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types -Wno-error=incompatible-pointer-types" \
-      LDFLAGS="-Wl,--allow-multiple-definition" LIBS="/tmp/libtermcap_stub.a /tmp/libbionic_compat.a" \
-      bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
-      bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \
-      bash_cv_unusable_rtsigs=no > /tmp/bash-configure.log 2>&1 \
-      || { echo "=== configure 失败取证 ==="; tail -40 /tmp/bash-configure.log; exit 1; }
-    make -j4 bash > /tmp/bash-make.log 2>&1 || {
-      echo "=== make 失败取证（error 行 + 末 120 行）==="
-      grep -nE "error:|Error [0-9]+$|undefined symbol" /tmp/bash-make.log | head -40 || true
-      tail -120 /tmp/bash-make.log
-      exit 1; }
-  ) && cp -f /tmp/bash-${BASH_VER}/bash "$J/libbash.so"
-  if ! check_so "$J/libbash.so" 300000; then
-    echo "::error title=必需件缺失::libbash.so 未产出 —— bash 工具依赖 $PREFIX/bin/bash，无回退路径"
-    exit 1
-  fi
-else
-  echo "::error title=必需件缺失::bash 源码下载/解包失败 —— bash 工具无回退路径"
+"$CC" -c -O2 /tmp/termcap_stub.c -o /tmp/termcap_stub.o \
+  && "$LLVM_AR" rcs /tmp/libtermcap_stub.a /tmp/termcap_stub.o
+cp scripts/bionic-compat.c /tmp/bionic_compat.c
+"$CC" -c -O2 /tmp/bionic_compat.c -o /tmp/bionic_compat.o \
+  && "$LLVM_AR" rcs /tmp/libbionic_compat.a /tmp/bionic_compat.o
+(
+  set -e
+  cd /tmp/bash-${BASH_VER}
+  ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+    --prefix=/native --disable-nls --without-bash-malloc \
+    CC="$CC" CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types -Wno-error=incompatible-pointer-types" \
+    LDFLAGS="-Wl,--allow-multiple-definition" LIBS="/tmp/libtermcap_stub.a /tmp/libbionic_compat.a" \
+    bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
+    bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \
+    bash_cv_unusable_rtsigs=no > /tmp/bash-configure.log 2>&1 \
+    || { echo "=== configure 失败取证 ==="; tail -40 /tmp/bash-configure.log; exit 1; }
+  make -j4 bash > /tmp/bash-make.log 2>&1 || {
+    echo "=== make 失败取证（error 行 + 末 120 行）==="
+    grep -nE "error:|Error [0-9]+$|undefined symbol" /tmp/bash-make.log | head -40 || true
+    tail -120 /tmp/bash-make.log
+    exit 1; }
+) && cp -f /tmp/bash-${BASH_VER}/bash "$J/libbash.so"
+if ! check_so "$J/libbash.so" 300000; then
+  echo "::error title=必需件缺失::libbash.so 未产出 —— bash 工具依赖 $PREFIX/bin/bash，无回退路径"
   exit 1
 fi
+# 早先这里还有一组 else 分支报「bash 源码下载/解包失败」。现在下载与解包各自在
+# 上游就 exit 1 了，那些分支**永不可达** —— 而文案会把排查引向「下载失败」，
+# 实际故障可能在这之后。留着它比删掉更坏。
 
 if ! command -v cargo > /dev/null 2>&1; then
   echo "runner 无 cargo，装最小 rustup"
