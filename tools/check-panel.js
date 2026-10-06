@@ -62,6 +62,15 @@ if (!/id != INSTALLER_ID/.test(s.broker)) {
   add('invokeLocal 未放行 INSTALLER_ID：控制面板装不了第一个程序（它在装之前就不在 listIds 里）');
 }
 if (!/issueInstallerSession/.test(s.broker)) add('宿主未签发 installer 会话');
+const listenFail = s.broker.slice(
+  s.broker.indexOf('private fun onListenFailed'),
+  s.broker.indexOf('private fun socketPresent') + 400,
+);
+if (!/onListenFailed/.test(s.broker) || !/socketPresent/.test(s.broker) ||
+    !/addrInUse && socketPresent/.test(listenFail) || !/沿用既有 socket/.test(listenFail)) {
+  add('socket 监听失败没区分「已被占用但可用」：App 重启时旧 abstract socket 未释放，' +
+    '会同时记一条 OK 和一条 FAIL，诊断里看着像矛盾（真机上出现过一次）');
+}
 if (!/const val INSTALLER_ID/.test(s.broker)) add('缺 INSTALLER_ID 常量');
 
 if (!/CapabilityBroker\.INSTALLER_ID/.test(s.panel)) {

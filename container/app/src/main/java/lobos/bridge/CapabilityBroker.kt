@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.LocalServerSocket
 import android.net.LocalSocket
+import android.net.LocalSocketAddress
 import android.os.Build
 import android.os.Environment
 import android.util.Log
@@ -84,6 +85,26 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     fun installerToken(): String = installerToken
 
+    private fun onListenFailed(name: String, e: Throwable) {
+        val addrInUse = e is java.net.BindException && (e.message ?: "").contains("Address already in use")
+        if (addrInUse && socketPresent(name)) {
+            RuntimeDiagnostics.append(
+                this, "bridge", true, "HostBridge 监听沿用既有 socket",
+                "name=" + name + "（上次进程退出时未释放，本进程不重复绑）",
+            )
+            return
+        }
+        RuntimeDiagnostics.append(
+            this, "bridge", false, "HostBridge 监听失败",
+            "name=" + name + " " + e::class.java.simpleName + ": " + e.message,
+        )
+    }
+
+    private fun socketPresent(name: String): Boolean = runCatching {
+        LocalSocket().use { s -> s.connect(LocalSocketAddress(name, LocalSocketAddress.Namespace.ABSTRACT)) }
+        true
+    }.getOrDefault(false)
+
     fun onHostStart(intent: Intent?) {
         if (!running) startBridge()
     }
@@ -101,7 +122,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val srv = try {
                 LocalServerSocket(name)
             } catch (e: Throwable) {
-                RuntimeDiagnostics.append(this, "bridge", false, "HostBridge 监听失败", "name=" + name + " " + e::class.java.simpleName + ": " + e.message)
+                onListenFailed(name, e)
                 return@execute
             }
             servers[name] = srv
