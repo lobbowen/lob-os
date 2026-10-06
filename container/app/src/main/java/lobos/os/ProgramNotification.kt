@@ -136,10 +136,6 @@ object ProgramNotificationHub {
         return had
     }
 
-    fun clearAll(ctx: Context) {
-        for (id in notices.keys.toList()) clear(ctx, id)
-    }
-
     fun list(): List<ProgramNotice> = notices.values.sortedBy { it.atMs }
 
     fun groups(): Map<String, List<ProgramNotice>> = list().groupBy { it.groupKey }

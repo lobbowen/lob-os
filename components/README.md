@@ -91,7 +91,9 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
 - 静态链进件的构建时间必须钉死（`userland-sources.json` 的 `buildTimeEpoch`），
   否则同版本每次重建 sha 全变，内容寻址失效
 - NDK 版本钉在 `userland-sources.json` 的 `ndkVersion`，与 runner 镜像不符即红
-- `scripts/` 下不得硬编码绝对路径（`tools/check-tool-paths.js`）
+- `scripts/` 下不得硬编码绝对路径（人工 review；原先有个门禁专门查这条，
+  已按 `docs/GATE-CLASSIFICATION.md` 的 A 类删除 —— 它只约束门禁脚本自身，
+  是工作习惯而非产品共识）
 - 设备端清单名不得硬编码，只能从通道锚读（`SupplyProvisioner.anchorName`）
 - 桥协议号三处声明必须一致：`protocol.js` 的 `PROTOCOL_VERSION`、
   `CapabilityBroker` 的 `PROTOCOL_MIN`、`version.json` 的
@@ -107,18 +109,17 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
 | `tools/check-components.js` | 本文件的分类规则：三个类目齐全、每颗件有 entry + 能力判据、构建脚本与声明双向对得上、runtime 类不进 APK |
 | `tools/check-spec-tables.js` | API 三表自洽 |
 | `tools/check-android-consts.js` | 不得有裸的 Android 常量引用 |
-| `tools/check-dead-refs.js` | 已删符号的悬空引用 |
 | `tools/ktcheck.js` | `.kt` 结构（括号配平、companion 唯一等） |
 | `scripts/comment-gate.js` | 零遗留注释、无 JSON 散文键（判据的理由写在本目录，不写进代码） |
 | `scripts/gen-native-assets.js` 幂等 | 资产清单由 Kotlin 声明生成，不手改 |
-| `tools/check-gate-callers.js` | 仓内每件 `verify-*` / `check-*` 门禁都得有调用点（workflow 里跑，或被别的门禁调）。文档里承诺一个永不执行的门禁 = 一个永不生效的保证 |
 | `tools/check-protocol-version.js` | 桥协议号三处声明一致；壳侧下界不得大于 `version.json` 的上界（区间为空则所有客户端被拒） |
 
-**为什么要有「调用点」这一条**：一份门禁脚本放在仓里、文档里点名它，
-但没有任何 workflow 跑它 —— 读的人以为它在守着，实际上它一行都没执行。
-这跟「没写」区别只在文件名好不好看。本门禁把这件事变成红的。
-判据来源：文件名形状（`verify-*` / `check-*` / `*-gate.js`）；
-不是门禁的构建脚本（`build-userland-*`）不适用。
+门禁总数与分类见 `docs/GATE-CLASSIFICATION.md`。
+**门禁的唯一职责是固化已达成共识的行为**；编译器能报的错误（缺 import、
+符号不存在、括号不配平）不做门禁，CI 编译直接兜住。
+
+「门禁有没有调用点」这类元检查也已删除（见 `docs/GATE-CLASSIFICATION.md`）：
+它管的是门禁自身的整洁，不是产品共识，属于为了门禁而门禁。
 
 ## 目录
 

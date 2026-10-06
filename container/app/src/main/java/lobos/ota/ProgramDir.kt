@@ -122,9 +122,6 @@ class ProgramDir(
                 "若入口需要被 exec，它必须改走 jniLibs/nativeLibraryDir（exec_type）通道。"
         }
     }
-
-    fun manifestFileName(): String = MANIFEST_NAME
-
     fun rawManifest(version: String): JSONObject? {
         val p = File(programDir(version), MANIFEST_NAME)
         if (!p.isFile) return null

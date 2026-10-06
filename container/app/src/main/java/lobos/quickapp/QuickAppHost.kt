@@ -126,27 +126,4 @@ object QuickAppHost {
     fun close(id: String): Boolean = runCatching { Dimina.getInstance().closeMiniProgram(id) }.getOrDefault(false)
 
     fun hide(id: String): Boolean = runCatching { Dimina.getInstance().hideMiniProgram(id) }.getOrDefault(false)
-
-    fun syncAll(context: Context): Int {
-        var n = 0
-        for (e in ProgramIndex.all(context)) {
-            if (e.level != lobos.os.Level.APPLICATION) continue
-            val dir = quickAppDirOf(e.stateDir)
-            if (!dir.isDirectory) continue
-            val port = PortBroker.claim(context, e.id)
-            if (port <= 0) continue
-            val ok = QuickAppPackage.check(dir, e.id).ok &&
-                QuickAppPackage.withEndpoint(dir, "http://127.0.0.1:$port", port)
-            if (!ok) {
-                Log.e(TAG, "前端包不合格，跳过: ${e.id}")
-                continue
-            }
-            runCatching { Dimina.getInstance().installMiniProgram(e.id, dir.absolutePath) {} }
-                .onSuccess { n++ }
-                .onFailure { Log.e(TAG, "装入失败: ${e.id}", it) }
-        }
-        return n
-    }
-
-    fun quickAppDirOf(stateDir: String): File = File(stateDir, "quickapp")
 }

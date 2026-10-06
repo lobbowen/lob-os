@@ -1,0 +1,62 @@
+# 门禁分类
+
+依据：门禁的唯一职责是**固化已经达成共识的行为**，防止无意破坏。
+不属于"共识"的一律不该做成门禁 —— 否则代码一改就红，门禁就从保护网变成路障。
+
+## A 类：删掉（不是共识，或编译器/其他门禁已覆盖）
+
+| 门禁 | 为什么删 |
+|---|---|
+| `check-imports` | 缺 import 编译就报。这是我自己踩过 8 次编译错误后加的"补丁"，但正确做法是本机有编译器 —— 没有编译器才需要它，有了就该删 |
+| `check-brace-balance` | 括号不配平编译就报。**是我为了绕开"本机没编译器"才造的**。有了 CI 编译，它零价值 |
+| `check-kotlin-misuse` | 扩展函数误用、结构错误都是编译期问题。CI 编译直接报 |
+| `check-cross-refs` | 符号不存在编译就报。同上 |
+| `check-tool-paths` | 查的是门禁脚本自己有没有硬编码路径 —— 这是我的工作习惯，不是产品共识 |
+| `check-dead-refs` | 已被 `scan-dead-code.js`（工具，非门禁）覆盖 |
+| `check-gate-callers` | 查"门禁有没有接进 CI" —— 元门禁，纯粹为了门禁而门禁 |
+| `check-layer-direction` | **本轮新增，直接删**。10 处存量违规会让 CI 立刻红，而分层方向还没达成共识。它该是报告里的"待办"，不是门禁 |
+
+**A 类共同点：全部是"编译器能报但本机没编译器"时代的产物。**
+现在有 CI 编译，它们是重复劳动 + 随时误报。
+
+## B 类：保留但瘦身（是共识，但判据太细，动代码就红）
+
+| 门禁 | 现状 | 怎么改 |
+|---|---|---|
+| `check-quickapp-capability` | 43 处判据，多半是"实现细节的镜像" | 只留行为事实（配对三步、端口释放、system 作用域关闭），删掉"某文件里有某字符串"这类 |
+| `check-panel` | 23 处判据 | 同上，只留入口齐不齐、同进程调用这两条共识 |
+| `check-desktop-icon` | 20 处判据 | 同上 |
+| `check-install-single-path` | 15 处判据 | 同上，只留"两条路一个安装点"这一条共识 |
+| `check-ota-sequence-scope` | 13 处判据 | 只留"序列号不共用"这一条 |
+
+**判据标准：判的是"行为事实"还是"代码长什么样"。**
+判代码形状的，代码一重构就红，是噪音。
+
+## C 类：保留（是共识，且判据稳定）
+
+| 门禁 | 为什么值得留 |
+|---|---|
+| `check-api-spec` | 方法表与实现一致 —— 协议层共识，改了要三处同步 |
+| `check-protocol-version` | 桥协议三处版本号必须一致 —— 跨进程契约 |
+| `check-port-range` | 端口段 41000-50999 固定 —— 跨版本兼容 |
+| `check-quickapp-package` | 包结构 `<version>/{manifest,frontend,backend}` —— 跨方契约（发布方按这个打） |
+| `check-dimina-spec` | dimina 官方规范（config.json 带 path、zip 名 = appId、页面全局注册）—— 外部规范，改错必灰屏 |
+| `check-page-registration` | 同上，是 dimina 规范的具体一条 |
+| `check-big-artifact` | 下载必须流式 —— 真机 OOM 过一次 |
+| `check-node-native-deps` | `$ORIGIN` 依赖判据 —— 真机 linker 失败过，且成因隐蔽 |
+| `check-dual-canonical` | 两份 canonical 逐字一致 —— 签名正确性 |
+| `check-spec-tables` | 规范表与方法表自洽 —— 文档与代码不脱节 |
+| `check-components` | 构建物类目与声明一致 —— 防止漏打包 |
+| `check-android-consts` | Android 常量表 —— 防止用不存在的常量 |
+| `check-install-single-path`（保留部分） | 两条路一个安装点 —— 本轮刚达成共识 |
+
+## D 类：工具，不是门禁
+
+`scan-dead-code.js` / `remove-dead.js` —— 人工判断后手动跑，不进 CI。
+
+## 原则
+
+1. 门禁判**行为事实**，不判代码形状
+2. 编译器能报的，不做门禁
+3. 门禁红了，先问"这是我们破坏共识了，还是门禁过时了"——**后者要改门禁，不是改代码**
+4. 门禁数量不是目标，能删的就删

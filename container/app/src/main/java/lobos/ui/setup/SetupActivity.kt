@@ -474,7 +474,5 @@ class SetupActivity : AppCompatActivity() {
         private const val POLL_MS = 2_000L
 
         private const val REFRESH_AFTER_TAP_MS = 800L
-
-        private const val SPRINT_FREEZE_MS = 5 * 60_000L
     }
 }

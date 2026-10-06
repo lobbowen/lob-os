@@ -31,8 +31,6 @@ object PipelineProjection {
         CapabilityCatalog.RUNTIME,
         CapabilityCatalog.PROGRAM_BUNDLE,
     )
-
-    private val OPTIONAL = listOf(
         CapabilityCatalog.ADB_CHANNEL,
         CapabilityCatalog.ADB_UI_AUTOMATION,
     )

@@ -57,10 +57,6 @@ object ProgramStatusHub {
         runningIds = ids
     }
 
-    fun publishStartRequested(id: String, value: Boolean) {
-        startRequested = if (value) startRequested + id else startRequested - id
-    }
-
     fun publishHealth(id: String, healthy: Boolean, detail: String) {
         healthDetail = healthDetail.toMutableMap().apply { put(id, if (healthy) detail else "!$detail") }
     }
@@ -71,10 +67,6 @@ object ProgramStatusHub {
 
     fun publishQuarantined(id: String, value: Boolean) {
         quarantined = if (value) quarantined + id else quarantined - id
-    }
-
-    fun publishStarted(id: String, atMs: Long) {
-        startedAt = startedAt.toMutableMap().apply { put(id, atMs) }
     }
 
     fun forget(id: String) {

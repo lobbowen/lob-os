@@ -63,9 +63,6 @@ object NativeAssetRegistry {
     )
 
     val ALL: List<NativeExecutable> get() = listOf(LIBCXX)
-
-    val REQUIRED: List<NativeExecutable> get() = ALL.filter { it.required }
-
     fun libNameOf(id: String): String =
         (ALL + CAPABILITY).firstOrNull { it.id == id }?.libName
             ?: error("NativeAssetRegistry 里没有 id=" + id + " 的资产 —— 拼错的 id 必须当场炸。")

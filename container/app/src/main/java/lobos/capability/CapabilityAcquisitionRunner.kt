@@ -158,12 +158,4 @@ object CapabilityAcquisitionRunner {
             .firstOrNull { "Exception" in it || "error" in it.lowercase() }
             ?: (outcome.error ?: out.trim().ifBlank { "无输出" })
     }
-
-    private fun sleepQuietly(ms: Long) {
-        try {
-            Thread.sleep(ms)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-        }
-    }
 }

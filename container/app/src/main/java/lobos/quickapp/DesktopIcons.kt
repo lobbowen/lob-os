@@ -79,15 +79,6 @@ object DesktopIcons {
         return ok
     }
 
-    fun withdrawAllNow(ctx: Context): Int {
-        val mgr = manager(ctx) ?: return 0
-        val mine = runCatching { mgr.pinnedShortcuts }.getOrNull().orEmpty()
-            .filter { it.id.startsWith(PREFIX) }
-        if (mine.isEmpty()) return 0
-        val ok = runCatching { mgr.disableShortcuts(mine.map { it.id }) }.isSuccess
-        return if (ok) mine.size else 0
-    }
-
     private fun computeState(ctx: Context, id: String): State {
         val mgr = manager(ctx) ?: return State.UNSUPPORTED
         if (!runCatching { mgr.isRequestPinShortcutSupported }.getOrDefault(false)) return State.UNSUPPORTED

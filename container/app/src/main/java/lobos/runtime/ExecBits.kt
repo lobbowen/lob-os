@@ -21,31 +21,4 @@ object ExecBits {
         if (elf || magic.startsWith("#!")) file.setExecutable(true, false)
     }
 
-    fun repair(root: File) {
-        if (!root.isDirectory) return
-        val stack = ArrayDeque<File>()
-        stack.addLast(root)
-        var guard = 0
-        while (stack.isNotEmpty() && guard < 20000) {
-            guard++
-            val d = stack.removeLast()
-            val kids = d.listFiles() ?: continue
-            for (k in kids) {
-                if (k.isDirectory) {
-                    stack.addLast(k)
-                    continue
-                }
-                if (isSymbolic(k)) continue
-                if (Files.isExecutable(k.toPath())) continue
-                apply(k)
-            }
-        }
-    }
-
-    private fun isSymbolic(f: File): Boolean = try {
-        Files.isSymbolicLink(f.toPath())
-    } catch (_: Throwable) {
-        false
-    }
-
 }

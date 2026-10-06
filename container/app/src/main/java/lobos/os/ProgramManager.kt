@@ -77,9 +77,6 @@ object ProgramManager {
     fun infraSourceFile(ctx: Context, e: IndexEntry): File =
         if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
         else File(File(ctx.filesDir, "usr"), e.assetEntry.ifBlank { e.id })
-
-    fun dirFor(ctx: Context, id: String): File = stateDirOf(ctx, id)
-
     fun levelOfKind(kind: String): Level = when (kind) {
         "INFRA" -> Level.INFRA
         "RUNTIME", "COMPONENT" -> Level.CAPABILITY

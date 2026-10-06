@@ -46,7 +46,6 @@ object ManifestSchema {
     val RESTART_ALIASES = mapOf("on_failure" to "on-failure")
 
     fun restartOf(raw: String): String = raw.trim().lowercase().let { RESTART_ALIASES[it] ?: it }
-    val RUNTIMES = setOf("runtime", "toolchain", "library", "application")
     val UI_TYPES = setOf(TYPE_QUICKAPP)
     val ON_CLOSED = setOf(CLOSED_KEEP_ALIVE, CLOSED_STOP_WITH_UI, CLOSED_ON_DEMAND)
 

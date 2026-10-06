@@ -17,7 +17,6 @@ import java.util.zip.ZipInputStream
 object SupplyProvisioner {
 
     private const val CHANNEL_ASSET = "supply/channel.json"
-    private const val PUBKEY_ASSET = "supply/userland-public.pem"
     private const val FETCH_TIMEOUT_MS = 30000
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
@@ -88,17 +87,6 @@ object SupplyProvisioner {
             v.update(data)
             v.verify(sig)
         } catch (e: Throwable) { false }
-    }
-
-    internal fun sha256Hex(bytes: ByteArray): String {
-        val d = MessageDigest.getInstance("SHA-256").digest(bytes)
-        val sb = StringBuilder()
-        for (b in d) {
-            val v = b.toInt() and 0xff
-            if (v < 16) sb.append('0')
-            sb.append(Integer.toHexString(v))
-        }
-        return sb.toString()
     }
 
     internal fun httpGetToFile(url: String, dest: File): Long {

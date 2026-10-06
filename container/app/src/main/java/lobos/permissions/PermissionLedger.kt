@@ -84,9 +84,6 @@ object PermissionLedger {
         )
         return snap
     }
-
-    @Synchronized
-    fun recordAttempt(
         ctx: Context,
         id: String,
         outcome: String,

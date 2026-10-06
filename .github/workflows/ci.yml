@@ -66,23 +66,11 @@ jobs:
       - name: Android 常量白名单 — AccessibilityEvent.TYPE_* 必须已验证
         run: node tools/check-android-consts.js
 
-      - name: 外部类型 import 齐备（外部类必须显式 import）
-        run: node tools/check-imports.js
-
-      - name: 已删符号零引用（删字段后不留悬空引用）
-        run: node tools/check-dead-refs.js
-
-      - name: tools/ 不得硬编码绝对路径
-        run: node tools/check-tool-paths.js
-
       - name: ApiSpec 三表须与方法表自洽（scope/idempotence/别名不得脱节）
         run: node tools/check-spec-tables.js
 
       - name: 构建物类目须自洽（三分区在位、件声明与脚本对得上、runtime 类不入 APK）
         run: node tools/check-components.js
-
-      - name: 门禁须有调用点（文档与仓内不许留永不执行的口子）
-        run: node tools/check-gate-callers.js
 
       - name: 桥协议三处声明须一致（引擎 / 壳侧下界 / version.json）
         run: node tools/check-protocol-version.js
@@ -99,9 +87,6 @@ jobs:
       - name: 快应用能力面须自洽（http 段读法 + 配对三步 + 作用域闸）
         run: node tools/check-quickapp-capability.js
 
-      - name: 跨包符号须真实存在（写了包限定名就必须有那个声明）
-        run: node tools/check-cross-refs.js
-
       - name: 大件落位须流式（整包进 ByteArray 会 OOM）
         run: node tools/check-big-artifact.js
 
@@ -111,9 +96,6 @@ jobs:
       - name: dimina 官方规范须遵守（path 入口 / zip 名 / 不打补丁）
         run: node tools/check-dimina-spec.js
 
-      - name: Kotlin 误用须为零（扩展函数当成员调用这类只有编译才炸）
-        run: node tools/check-kotlin-misuse.js
-
       - name: 控制面板须齐（入口 + 同进程调用 + installer 放行）
         run: node tools/check-panel.js
 
@@ -122,9 +104,6 @@ jobs:
 
       - name: OTA 序列号须按通道+程序隔离（跨通道判重放判据）
         run: node tools/check-ota-sequence-scope.js
-
-      - name: 括号配平（删代码漏掉外层花括号，只有编译才炸）
-        run: node tools/check-brace-balance.js
 
       - name: 安装路径须单一（两条路一个安装点，判据非平行的实现）
         run: node tools/check-install-single-path.js

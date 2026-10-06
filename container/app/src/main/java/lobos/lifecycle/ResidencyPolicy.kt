@@ -13,10 +13,6 @@ object ResidencyPolicy {
     const val WAKE_BACKSTOP_MS = 15 * 60_000L
 
     fun frozen(gapMs: Long): Boolean = gapMs > FREEZE_GAP_MS
-
-    fun hostDegraded(reasons: List<String>): Boolean =
-        reasons.any { it == REASON_NO_PROGRAM || it == REASON_NONE_RUNNING }
-
     fun degradedReasons(
         accessibilityReady: Boolean,
         adbReady: Boolean,

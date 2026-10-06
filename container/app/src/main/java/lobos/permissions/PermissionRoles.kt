@@ -22,7 +22,6 @@ data class PermissionRole(
 object PermissionRoles {
 
     const val OWNER_KERNEL = "kernel"
-    const val OWNER_ADB = "adb"
     const val OWNER_AUTOMATION = "automation"
     const val OWNER_APP = "app"
 
@@ -62,17 +61,6 @@ object PermissionRoles {
     )
 
     fun of(id: String): PermissionRole? = ROLES.firstOrNull { it.id == id }
-
-    fun policyOf(id: String): GrantPolicy = of(id)?.policy ?: GrantPolicy.ON_DEMAND
-
-    fun autoHealOf(id: String): AutoHeal = of(id)?.autoHeal ?: AutoHeal.NO
-
-    fun byOwner(owner: String): List<PermissionRole> = ROLES.filter { it.owner == owner }
-
-    fun byPolicy(policy: GrantPolicy): List<PermissionRole> = ROLES.filter { it.policy == policy }
-
-    fun byAutoHeal(heal: AutoHeal): List<PermissionRole> = ROLES.filter { it.autoHeal == heal }
-
     fun declared(): List<PermissionRole> = ROLES.filter { PermissionCatalog.byId(it.id) != null }
 
     fun undeclared(): List<PermissionRole> = ROLES.filter { PermissionCatalog.byId(it.id) == null }

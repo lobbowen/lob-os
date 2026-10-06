@@ -37,39 +37,6 @@ object KillAudit {
     @Volatile
     private var reading: Reading? = null
 
-    fun auditOnce(ctx: Context) {
-        val pkg = ctx.packageName
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            reportUnreadable(ctx, pkg, "本机系统（API ${Build.VERSION.SDK_INT}）不提供退出史")
-            return
-        }
-        val raw = runCatching {
-            (ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
-                .getHistoricalProcessExitReasons(pkg, 0, MAX_RECORDS)
-        }.getOrNull()
-        if (raw == null) {
-            reportUnreadable(ctx, pkg, "读系统退出史失败（binder 调用没答上来）")
-            return
-        }
-        val records = raw.map {
-            ExitRecord(
-                atMs = it.timestamp,
-                pid = it.pid,
-                process = it.processName,
-                reason = it.reason,
-                importance = it.importance,
-                description = it.description,
-            )
-        }
-        reading = Reading(records, pkg, null)
-        val cursor = readCursor(ctx)
-        records.asReversed().filter { isNewerThanCursor(it, cursor) }.forEach {
-            Journal.append(ctx, "kill-audit", it.verdict, it.detail())
-        }
-        records.filter { isNewerThanCursor(it, cursor) }.maxByOrNull { it.atMs }
-            ?.let { writeCursor(ctx, it) }
-    }
-
     fun attribution(sinceMs: Long): String {
         val r = reading ?: return "死因未取证（还没读系统退出史）"
         return attribute(r.exits, r.unreadable, sinceMs, r.ownProcess)

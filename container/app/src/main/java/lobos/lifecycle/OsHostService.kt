@@ -38,7 +38,6 @@ class OsHostService : Service() {
     private var lastTickMs = 0L
     private var startedAtMs = 0L
     private var adbReady = false
-    private var adbSampledAt = 0L
     private var degradedLast: List<String> = emptyList()
     private var silentGrantVerified = false
     private var deviceOwnerMeasured = false
