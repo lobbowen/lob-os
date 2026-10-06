@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tool: [sqlite3, jq, git, curl, pnpm, npm, sysroot]
+        tool: [sqlite3, jq, git, curl, pnpm, npm, sysroot, make]
     steps:
       - uses: actions/checkout@v4
 

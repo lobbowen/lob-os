@@ -111,6 +111,14 @@
       "urls": [
         "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/llvm-project-23.1.3.src.tar.xz"
       ]
+    },
+    "make": {
+      "version": "4.4.1",
+      "sha256": "dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3",
+      "urls": [
+        "https://mirrors.aliyun.com/gnu/make/make-4.4.1.tar.gz",
+        "https://mirror.nju.edu.cn/gnu/make/make-4.4.1.tar.gz"
+      ]
     }
   },
   "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"
