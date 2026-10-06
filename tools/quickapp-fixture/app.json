@@ -1,7 +1,6 @@
 {
   "pages": [
-    "pages/probe/index",
-    "pages/home/index"
+    "pages/probe/index"
   ],
   "window": {
     "navigationBarTitleText": "LobOS 快应用",

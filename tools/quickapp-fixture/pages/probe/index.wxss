@@ -1,0 +1,4 @@
+.page { padding: 24rpx; }
+.title { display: block; font-size: 40rpx; margin-bottom: 24rpx; }
+.result { display: block; margin-top: 24rpx; font-size: 26rpx; }
+.endpoint { display: block; margin-top: 16rpx; font-size: 24rpx; }

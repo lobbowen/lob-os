@@ -33,7 +33,7 @@ object QuickAppHost {
 
     fun installed(id: String): Boolean = runCatching { Dimina.getInstance().isExistsApp(id) }.getOrDefault(false)
 
-    fun install(id: String, packageDir: File, port: Int, completion: (Result<org.json.JSONObject>) -> Unit) {
+    fun install(id: String, packageDir: File, port: Int, entry: String, completion: (Result<org.json.JSONObject>) -> Unit) {
         val dimina = runCatching { Dimina.getInstance() }.getOrElse {
             completion(Result.failure(IllegalStateException("快应用运行时未初始化")))
             return
@@ -52,8 +52,12 @@ object QuickAppHost {
             completion(Result.failure(IllegalStateException("无法把后端地址写进 config.json")))
             return
         }
-        Log.i(TAG, "前端包校验通过 $id v${checked.versionCode}，后端地址 $endpoint 已注入")
-        val zip = packageDir.parentFile?.resolve("quickapp-" + id + ".zip")
+        if (entry.isBlank() || !QuickAppPackage.withEntry(packageDir, entry)) {
+            completion(Result.failure(IllegalStateException("入口页写不进 config.json：" + entry)))
+            return
+        }
+        Log.i(TAG, "前端包校验通过 $id v${checked.versionCode}，入口=$entry 后端地址 $endpoint 已注入")
+        val zip = packageDir.parentFile?.resolve(id + ".zip")
         if (zip == null || !zipStore(packageDir, zip)) {
             completion(Result.failure(IllegalStateException("前端目录打成 zip 失败: " + packageDir)))
             return
@@ -63,6 +67,11 @@ object QuickAppHost {
             runCatching { zip.delete() }
             completion(r)
         }
+    }
+
+    fun programRootOf(ctx: android.content.Context, id: String): File {
+        val dir = lobos.os.ProgramManager.stateDirOf(ctx, id)
+        return File(dir, "quickapp")
     }
 
     private fun zipStore(dir: File, out: File): Boolean {
@@ -96,10 +105,15 @@ object QuickAppHost {
             Log.e(TAG, "前端尚未装入 dimina，先装后开: $id")
             return "前端尚未装入 dimina"
         }
+        val entryPath = QuickAppPackage.entryOf(programRootOf(activity, id))
+        if (entryPath.isBlank()) {
+            Log.e(TAG, "config.json 没有 path，dimina 不知道打开哪一页：$id")
+            return "前端配置缺 path（入口页）"
+        }
         val mp = MiniProgram(
             appId = id,
             name = id,
-            path = null,
+            path = entryPath,
             versionName = entry.version,
         )
         return runCatching { dimina.startMiniProgram(activity, mp) }

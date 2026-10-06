@@ -34,6 +34,7 @@ object ManifestSchema {
     const val UI_URL = "url"
     const val UI_NAME = "name"
     const val UI_ICON = "icon"
+    const val UI_ENTRY = "entry"
     const val UI_ON_CLOSED = "onUiClosed"
 
     const val TYPE_QUICKAPP = "quickapp"
@@ -146,6 +147,12 @@ object ManifestSchema {
             }
             if (ui.optString(UI_NAME, "").isBlank()) {
                 errs += "$SC_UI.$UI_NAME 不能为空（桌面图标下显示的就是它）"
+            }
+            val entry = ui.optString(UI_ENTRY, "").trim()
+            if (entry.isBlank()) {
+                errs += "$SC_UI.$UI_ENTRY 不能为空（dimina 靠它决定启动哪一页；缺了容器会起来但没有入口）"
+            } else if (entry.startsWith("/") || entry.contains("..")) {
+                errs += "$SC_UI.$UI_ENTRY 必须是件内相对路径：$entry"
             }
             val icon = ui.optString(UI_ICON, "").trim()
             if (icon.startsWith("/") || icon.contains("..")) {

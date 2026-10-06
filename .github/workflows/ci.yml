@@ -102,6 +102,9 @@ jobs:
       - name: 跨包符号须真实存在（写了包限定名就必须有那个声明）
         run: node tools/check-cross-refs.js
 
+      - name: dimina 官方规范须遵守（path 入口 / zip 名 / 不打补丁）
+        run: node tools/check-dimina-spec.js
+
       - name: Kotlin 误用须为零（扩展函数当成员调用这类只有编译才炸）
         run: node tools/check-kotlin-misuse.js
 

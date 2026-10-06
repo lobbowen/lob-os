@@ -263,10 +263,19 @@ object ProgramInstaller {
             "快应用已配对：端口=$port 前端=" + quickAppDir.absolutePath,
             "id=" + programId,
         )
-        loadIntoDimina(context, programId, quickAppDir, port)
+        loadIntoDimina(context, programId, quickAppDir, port, uiEntryOf(context, programId))
     }
 
-    private fun loadIntoDimina(context: Context, programId: String, quickAppDir: File, port: Int) {
+    private fun uiEntryOf(context: Context, programId: String): String {
+        val dir = lobos.os.ProgramManager.stateDirOf(context, programId)
+        val version = lobos.os.ProgramManager.currentVersion(context, programId) ?: return ""
+        val mf = java.io.File(java.io.File(dir, version), lobos.ota.ProgramDir.MANIFEST_NAME)
+        if (!mf.isFile) return ""
+        val ui = runCatching { org.json.JSONObject(mf.readText()).optJSONObject("ui") }.getOrNull()
+        return ui?.optString("entry", "")?.trim().orEmpty()
+    }
+
+    private fun loadIntoDimina(context: Context, programId: String, quickAppDir: File, port: Int, entry: String) {
         if (!lobos.quickapp.QuickAppHost.ready()) {
             lobos.os.Journal.note(
                 context, "quickapp", false,
@@ -275,7 +284,7 @@ object ProgramInstaller {
             )
             return
         }
-        lobos.quickapp.QuickAppHost.install(programId, quickAppDir, port) { r ->
+        lobos.quickapp.QuickAppHost.install(programId, quickAppDir, port, entry) { r ->
             r.onSuccess {
                 lobos.os.Journal.note(
                     context, "quickapp", true,

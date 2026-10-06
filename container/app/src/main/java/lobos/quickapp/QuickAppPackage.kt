@@ -35,6 +35,15 @@ object QuickAppPackage {
     fun readConfig(dir: File): JSONObject? =
         runCatching { JSONObject(File(dir, CONFIG).readText()) }.getOrNull()
 
+    fun withEntry(dir: File, entry: String): Boolean = runCatching {
+        val j = readConfig(dir) ?: return false
+        j.put("path", entry)
+        File(dir, CONFIG).writeText(j.toString(2))
+        true
+    }.getOrDefault(false)
+
+    fun entryOf(dir: File): String = readConfig(dir)?.optString("path", "").orEmpty()
+
     fun withEndpoint(dir: File, endpoint: String, port: Int): Boolean = runCatching {
         val j = readConfig(dir) ?: return false
         j.put("hostManaged", true)
