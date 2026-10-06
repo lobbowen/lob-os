@@ -712,7 +712,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun commitPendingKernel() {
-    runCatching { lobos.ota.ProgramOtaUpdater.promotePendingSequence(this) }
+        runCatching {
+            val cfg = ProgramOtaUpdater.loadConfig(this)
+            if (cfg != null) ProgramOtaUpdater.promotePendingSequence(this, cfg, programId)
+        }
         try {
             val km = ProgramDir(this, programId)
             val pend = km.pending() ?: return
@@ -730,7 +733,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun rollbackIfPendingFailed() {
-    runCatching { lobos.ota.ProgramOtaUpdater.dropPendingSequence(this) }
+        runCatching {
+            val cfg = ProgramOtaUpdater.loadConfig(this)
+            if (cfg != null) ProgramOtaUpdater.dropPendingSequence(this, cfg, programId)
+        }
         try {
             val km = ProgramDir(this, programId)
             val pend = km.pending() ?: return

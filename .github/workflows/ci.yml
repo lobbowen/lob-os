@@ -120,6 +120,9 @@ jobs:
       - name: node 原生依赖须落到 $ORIGIN（linker 阶段失败判据）
         run: node tools/check-node-native-deps.js
 
+      - name: OTA 序列号须按通道+程序隔离（跨通道判重放判据）
+        run: node tools/check-ota-sequence-scope.js
+
       - name: 能力探针须齐备且可执行
         run: |
           set -euo pipefail

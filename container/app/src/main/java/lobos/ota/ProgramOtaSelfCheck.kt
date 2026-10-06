@@ -102,8 +102,18 @@ object ProgramOtaSelfCheck {
         }
 
         if (m != null) {
+            // 状态按「通道 + 程序」分文件；自检读当前 cfg 与已登记程序那一份。
+            val selfCheckTarget = km?.programId ?: ids.firstOrNull().orEmpty()
+            val selfCheckSlug = (cfg.channel + "-" + selfCheckTarget)
+                .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val scoped = File(ctx.filesDir, "program-feed-state-" + selfCheckSlug + ".json")
+            val legacy = File(ctx.filesDir, "program-feed-state.json")
             val st = try {
-                val f = File(ctx.filesDir, "program-feed-state.json")
+                val f = if (scoped.isFile) scoped else legacy
+                if (f.isFile) JSONObject(f.readText()) else JSONObject()
+            } catch (_: Throwable) { JSONObject() }
+            val installSt = try {
+                val f = File(ctx.filesDir, "program-feed-install.json")
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val v = OtaPolicy.evaluate(
@@ -115,7 +125,7 @@ object ProgramOtaSelfCheck {
                     sequence = m.optLong("sequence", 0L),
                     lastSequence = st.optLong("lastSequence", 0L),
                     rolloutPercent = m.optInt("rolloutPercent", 100),
-                    installId = st.optString("installId", "selfcheck"),
+                    installId = installSt.optString("installId", "selfcheck"),
                     nowMs = System.currentTimeMillis(),
                     hasSha256 = m.optString("sha256", "").isNotBlank(),
                     hasSignature = m.optString("signature", "").isNotBlank(),

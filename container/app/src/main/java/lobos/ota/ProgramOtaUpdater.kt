@@ -123,7 +123,7 @@ object ProgramOtaUpdater {
             ?: return Outcome(true, false, false, current, null, "manifest 缺 version 字段")
 
         val seq = manifest.optLong("sequence", 0L)
-        val st = loadState(context)
+        val st = loadState(context, cfg, km.programId)
         val verdict = OtaPolicy.evaluate(
             OtaPolicy.Input(
                 remoteVersion = remote,
@@ -193,10 +193,11 @@ object ProgramOtaUpdater {
         }
         if (result.ok && seq > 0L) {
             st.put("pendingSequence", seq)
-            saveState(context, st)
+            saveState(context, cfg, km.programId, st)
             lobos.os.Journal.note(
                 context, "ota", null, "安装成功：序列号待健康提交",
-                "sequence=" + seq + "（健康通过后才推进 lastSequence；失败则撤销，同版可重装）",
+                "channel=" + cfg.channel + " program=" + km.programId +
+                    " sequence=" + seq + "（健康通过后才推进 lastSequence；失败则撤销，同版可重装）",
             )
         }
         return Outcome(
@@ -209,45 +210,83 @@ object ProgramOtaUpdater {
         )
     }
 
-    private fun stateFile(context: Context) = File(context.filesDir, "program-feed-state.json")
+    // lastSequence / pendingSequence 按「通道 + 程序」隔离。
+    //
+    // 判据依据：OtaPolicy 对 sequence 的判重是 lastSequence >= sequence 即拒，
+    // 而 lastSequence 原先是 filesDir 下唯一一份 program-feed-state.json，
+    // 于是 canary 推进到 32 之后，另一个通道的 sequence 31 会被判成重放而拒绝
+    // （真机报「manifest sequence=31 不高于已提交 32 —— 疑似重放，拒绝」）。
+    // 通道只决定"去哪找新版本"，序列号本就该各通道各算。
+    private fun stateFile(context: Context, cfg: Config, programId: String): File {
+        val slug = (cfg.channel + "-" + programId).replace(Regex("[^A-Za-z0-9._-]"), "_")
+        return File(context.filesDir, "program-feed-state-" + slug + ".json")
+    }
 
-    fun promotePendingSequence(context: Context) {
-        val st = loadState(context)
+    fun promotePendingSequence(context: Context, cfg: Config, programId: String) {
+        val st = loadState(context, cfg, programId)
         val pending = st.optLong("pendingSequence", 0L)
         if (pending <= 0L) return
         st.put("lastSequence", pending)
         st.remove("pendingSequence")
-        saveState(context, st)
-        lobos.os.Journal.note(context, "ota", true, "健康通过：推进 feed 序列号", "lastSequence=" + pending)
-    }
-
-    fun dropPendingSequence(context: Context) {
-        val st = loadState(context)
-        val pending = st.optLong("pendingSequence", 0L)
-        if (pending <= 0L) return
-        st.remove("pendingSequence")
-        saveState(context, st)
+        saveState(context, cfg, programId, st)
         lobos.os.Journal.note(
-            context, "ota", false, "健康未通过：撤销待推进序列号",
-            "pendingSequence=" + pending + " —— 回滚后同版仍可重装",
+            context, "ota", true, "健康通过：推进 feed 序列号",
+            "channel=" + cfg.channel + " program=" + programId + " lastSequence=" + pending,
         )
     }
 
-
-    private fun loadState(context: Context): JSONObject =
-        try { JSONObject(stateFile(context).readText()) } catch (_: Throwable) { JSONObject() }
-
-    private fun saveState(context: Context, o: JSONObject) {
-        try { lobos.os.StateFiles.writeAtomic(stateFile(context), o.toString()) } catch (_: Throwable) { }
+    fun dropPendingSequence(context: Context, cfg: Config, programId: String) {
+        val st = loadState(context, cfg, programId)
+        val pending = st.optLong("pendingSequence", 0L)
+        if (pending <= 0L) return
+        st.remove("pendingSequence")
+        saveState(context, cfg, programId, st)
+        lobos.os.Journal.note(
+            context, "ota", false, "健康未通过：撤销待推进序列号",
+            "channel=" + cfg.channel + " program=" + programId +
+                " pendingSequence=" + pending + " —— 回滚后同版仍可重装",
+        )
     }
 
+    private fun loadState(context: Context, cfg: Config, programId: String): JSONObject {
+        val f = stateFile(context, cfg, programId)
+        val scoped = try {
+            if (f.isFile) JSONObject(f.readText()) else null
+        } catch (_: Throwable) { null }
+        if (scoped != null) return scoped
+        // 向后兼容：本仓早期用一份全局状态文件。首次按维度读取时把旧值搬过来，
+        // 免得设备上已推进的序列号被当成 0 而放过重放。
+        val legacy = legacyStateFile(context)
+        val old = try {
+            if (legacy.isFile) JSONObject(legacy.readText()) else null
+        } catch (_: Throwable) { null } ?: return JSONObject()
+        val moved = JSONObject().apply {
+            old.optLong("lastSequence", 0L).takeIf { it > 0L }?.let { put("lastSequence", it) }
+            old.optLong("pendingSequence", 0L).takeIf { it > 0L }?.let { put("pendingSequence", it) }
+        }
+        if (moved.length() > 0) saveState(context, cfg, programId, moved)
+        return moved
+    }
+
+    private fun saveState(context: Context, cfg: Config, programId: String, o: JSONObject) {
+        try {
+            lobos.os.StateFiles.writeAtomic(stateFile(context, cfg, programId), o.toString())
+        } catch (_: Throwable) { }
+    }
+
+    private fun legacyStateFile(context: Context) = File(context.filesDir, "program-feed-state.json")
+
     private fun installId(context: Context): String {
-        val st = loadState(context)
+        // 灰度分桶标识是设备级的，一个设备一个 UUID；不按通道/程序拆分。
+        val f = File(context.filesDir, "program-feed-install.json")
+        val st = try {
+            if (f.isFile) JSONObject(f.readText()) else JSONObject()
+        } catch (_: Throwable) { JSONObject() }
         val id = st.optString("installId", "")
         if (id.isNotBlank()) return id
         val gen = java.util.UUID.randomUUID().toString()
         st.put("installId", gen)
-        saveState(context, st)
+        try { lobos.os.StateFiles.writeAtomic(f, st.toString()) } catch (_: Throwable) { }
         return gen
     }
 
