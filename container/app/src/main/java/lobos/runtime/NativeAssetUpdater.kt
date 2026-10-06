@@ -191,6 +191,22 @@ object NativeAssetUpdater {
                 skipped.put(JSONObject().put("id", id).put("why", "已是 $ver（无需重复装）"))
                 continue
             }
+            // 判 source 再判 url —— 顺序不能反。
+            //
+            // 清单里 source='apk' 的条目**不带** url/sha256（发布侧只给可 OTA 的
+            // 那几件写下载地址）。而这一条恰好是「APK 原件版本与清单不同」才走到
+            // 这里 —— 说明设备上装的是更旧的版本、清单在说「你该升级」。
+            // 若不判 source 就去读 url，会报「清单项缺 url/sha256」：
+            // 那把诊断指向了清单生成器（它没错），而真正的原因是**这一件压根没有
+            // 可下载的更新**。诊断指错方向比诊断缺失更费时间。
+            val src = c.optString("source", "")
+            if (src != "ota") {
+                skipped.put(
+                    JSONObject().put("id", id).put("why", "清单标 source=$src（没有可下载的更新）；" +
+                        "本机是 ${cur?.installedVersion ?: "APK 原件 " + e.version.ifBlank { "（版本未声明）" }}")
+                )
+                continue
+            }
             if (dryRun) {
                 applied.put(JSONObject().put("id", id).put("version", ver).put("wouldInstall", true))
                 continue
