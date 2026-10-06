@@ -126,50 +126,39 @@ Bionic 不认。这类「看起来该设、其实没用」的环境变量不能�
 - `curl` `git` **改动态链**
 - 商店件八件**硬编码已清零**（19 道门禁钉住）
 
-### 2.6 时区：真正要做的是让 `TZ` 生效（本机实测发现的缺口）
+### 2.6 时区：`TZ` 不生效 —— 但那是 node 的行为，不是我们的缺口（更正）
 
-取消 zoneinfo 之后，实测发现了一个**真实的、影响用户的功能缺口**：
+早先这里写的是「实测发现的、影响用户的**功能缺口**」，并把修复挂在宿主上。
+本轮重新核实后**更正**：那是 node 自身的行为，宿主侧没有 bug。
 
 ```
-$ node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
-8                                   ← 不设 TZ
-$ TZ=America/New_York node -e '…getHours()'
-8                                   ← 设了 TZ，值没变
-$ TZ=Asia/Tokyo node -e '…getHours()'
-8                                   ← 还是没变
-$ TZ=UTC node -e '…getHours()'
-8
-$ TZ=Europe/London node -e '…getHours()'
-8
+$ TZ=Asia/Tokyo node -e 'console.log(process.env.TZ)'
+Asia/Tokyo                            ← TZ 确实传进了进程
+$ TZ=Asia/Tokyo node -e 'Intl.DateTimeFormat().resolvedOptions().timeZone'
+Asia/Shanghai                         ← 但 node 忽略它
+$ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
+8                                     ← 跟着系统时区走，不跟 TZ
 ```
 
-**node 完全忽略 `TZ` 环境变量**（四个时区全部返回同一个值）。这是 Linux 上的标准
-机制（`TZ=Asia/Tokyo date` 会给 +0900），我们的程序宿主没有兑现它。
+`TZ` 在环境里读得到、`Intl` 仍报系统时区 —— **node 就是不读 `TZ`**
+（Android 上它靠 ICU 取默认时区）。宿主改不了，除非改 ICU 或给 node 打补丁。
 
-对照实测（同一时刻 `2026-10-07T00:00:00Z`）：
+**而我们也不需要它生效**：
 
-| 方式 | 结果 | 生效 |
+| 程序想要 | 正确做法 | 实测 |
 |---|---|---|
-| 不设 `TZ`，`getHours()` | 8 | — |
-| `TZ=Asia/Tokyo`，`getHours()` | 8 | **否** |
-| `TZ=UTC` / `TZ=America/New_York` / `TZ=Europe/London` | 8 | **否** |
-| 进程内 `process.env.TZ=` 之后再读 | 8 | **否** |
-| `Intl.DateTimeFormat(…, {timeZone:"Asia/Tokyo"})` | 09 | **是** |
-| `Intl.DateTimeFormat(…, {timeZone:"America/New_York"})` | 20 | **是** |
+| 按某个特定时区显示时间 | 显式给 `Intl.DateTimeFormat` 传 `timeZone` | Tokyo → 09、New_York → 20，**有效** |
+| 按本地时区 | 用 `Intl` 的默认 | 它取系统时区（实测 `Asia/Shanghai`，来自 Android 系统设置）✓ |
+| 按 POSIX TZ 字符串解析 | 需要显式解析，node 不做 | — |
 
-所以正解不是「想办法让 `TZ` 生效」（`--icu-data-dir` 是 ICU **数据目录**，
-不是时区设置，传它只会指错方向），而是：
+宿主侧现状核过，**是对的**：
 
-1. **程序侧**：要按某时区显示时间，就显式给 `Intl.DateTimeFormat` 传 `timeZone`。
-   这是唯一实测有效的路径，且不依赖任何宿主能力。
-2. **宿主侧**（我们）：若要在不修改程序的前提下改变默认时区，
-   只能起进程时注入 ICU 的默认时区（待实测哪一种真正生效）；
-   **在测出来之前不写实现**。
+- `LANG=C.UTF-8`（`RuntimeEnvironment.treeRootEnv`）—— Bionic 上唯一能真兑现的值
+- **不设 `TZ`** —— 设了就是替用户选时区，跨时区场景下是错的
+- node 从 ICU 拿系统时区，实测 `Asia/Shanghai` 与 Android 设置一致 ✓
 
-判据（能测）：`TZ=Asia/Tokyo node -e '…getHours()'` 与不设时**必须不同** ——
-这条现在是**红的**，它就是这项工作的验收线。
-
----
+所以**这一条不列入待做**。原先把它记成「宿主缺口」是我把 node 的行为当成了我们的
+责任 —— 判据要分清「谁的问题」：**宿主能修的才列进去，不能修的写清楚为什么**。
 
 ## 三、依赖顺序（不是清单，是工程）
 
@@ -234,8 +223,8 @@ $ TZ=Europe/London node -e '…getHours()'
               │  状态：**已撤回**（核实后判定是假需求）——
               │    Bionic 读系统属性取时区（/system 那份 zoneinfo 实测零个时区文件）、
               │    node 是 full-icu 自带时区数据、locale-archive 是 glibc 的东西。
-              │    改为记入 2.6：真正的缺口是「TZ 环境变量被 node 忽略」
-              │    （实测四个时区 getHours() 全返回 8，而 Intl 显式传时区有效）。
+              │    曾记入 2.6 说「TZ 被 node 忽略 = 宿主缺口」—— **那一处也更正了**：
+              │    TZ 不生效是 node 自身行为，宿主没有 bug（详见 2.6 的对照实验）。
               ↓
 第 8 阶段  底座件版本化 + OTA 更新机制
               │  状态：**已完成**（底座件版本化 + OTA 更新 + 回滚，dc64173）——
