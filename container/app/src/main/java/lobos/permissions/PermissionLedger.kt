@@ -84,28 +84,6 @@ object PermissionLedger {
         )
         return snap
     }
-        ctx: Context,
-        id: String,
-        outcome: String,
-        detail: String,
-    ) {
-        if (PermissionCatalog.byId(id) == null) return
-        val o = StateFiles.readJson(file(ctx)) ?: JSONObject()
-        val arr = o.optJSONArray(ATTEMPTS) ?: JSONArray()
-        val out = JSONArray()
-        var hit = false
-        for (i in 0 until arr.length()) {
-            val e = arr.optJSONObject(i) ?: continue
-            if (e.optString("id", "") == id) hit = true else { out.put(e) }
-        }
-        out.put(JSONObject().apply {
-            put("id", id)
-            put("outcome", outcome)
-            put("atMs", System.currentTimeMillis())
-            put("detail", detail.take(300))
-        })
-        StateFiles.writeJson(file(ctx), o.apply { put(ATTEMPTS, out) })
-    }
 
     @Synchronized
     fun readAll(ctx: Context): Map<String, lobos.capability.SilentAttempt> {
