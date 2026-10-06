@@ -31,17 +31,6 @@ for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
 done
 command -v make >/dev/null 2>&1 || die "缺 make" "CPython 的构建靠 make 驱动（缺了请 apt-get install make）"
 
-# 宿主构建 python 必须与被编的 CPython **同 major.minor**。
-# CPython 3.14 的 configure 第 161-163 行是硬判（查 cpython/3.14 的 configure.ac）：
-#   build_python_ver=$($with_build_python -c "...print(major.minor)")
-#   if test "$build_python_ver" != "$PACKAGE_VERSION"; then AC_MSG_ERROR(…)
-# 即**必须相等**，不是「≥某下限」。实测报错原文：
-#   "/usr/bin/python3" has incompatible version 3.12 (expected: 3.14)
-#
-# 而早先这里只找「任意 python3」—— runner 的 `python3` 是 3.12，
-# 它自带的 3.14 在 Cached Tools 里但**不在 PATH**
-# （actions/runner-images Ubuntu2404：Cached Tools 段有 Python 3.10.21…3.14.7）。
-# 于是 configure 第一步就红，而报错指向「版本不兼容」看不出是「找错了 python」。
 CPY_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version python 2>/dev/null || true)"
 [ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.python.version"
 PY_WANT="${CPY_VER%.*}"

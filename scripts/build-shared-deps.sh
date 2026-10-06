@@ -53,9 +53,6 @@ export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --time-base
 (
   set -e
   cd "$ROOT_DIR/work/openssl"
-  # 与 build-base-libs.sh 同因：OpenSSL 的 android-arm64 目标在 PATH 上找**裸**
-  # clang（Configurations/15-android.conf 第 107 行 which("clang")）。
-  # 找不到就掉到找 aarch64-linux-android-gcc 的分支，而 NDK 不带 gcc。
   export PATH="$TC:$PATH"
   ./Configure android-arm64 -fPIC -D__ANDROID_API__=$ANDROID_API \
     --prefix="$DEPS" --openssldir="$DEPS/ssl" \
