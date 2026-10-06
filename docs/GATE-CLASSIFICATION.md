@@ -230,3 +230,57 @@ grep -o -E '[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+' file
 所以「验过了」其实什么都没验。
 
 两层的共同点：**我验的是我的想象，不是真实输入的形状。**
+
+---
+
+## 第九条：JS 复刻盯不住 Kotlin —— 升格要连注入点一起做
+
+第八条说「门禁要在它会跑的那个 shell 上验过」。这一条是它的续集：
+**复刻盯不住本体**。
+
+本轮实测：`tools/verify/alias-symlink-proof.js` 里用 JS 复刻了
+`ProgramIndex.safeSegment` 的白名单。加断言「`clang++` 要在两侧别名里」
+之后看起来很完整，但**把 Kotlin 里的 `|| c == '+'` 删掉，这道门禁 rc 仍是 0** ——
+因为它测的是复刻，Kotlin 改了它不知道。
+
+修法不是「再写一份断言」，而是**让门禁真的读 Kotlin 源码**：
+
+```js
+const KT_SEG = path.resolve(__dirname, '../../container/app/src/main/java/lobos/os/ProgramIndex.kt');
+// 取 fun safeSegment 的函数体 → 抽出 c == 'x' 的字面量集合 → 与 JS 复刻对账
+```
+
+升格后立刻见效：注入 `|| c == '+'` → **rc=1，三条判红**。
+
+### 顺带一个更值钱的发现：两侧规则分叉
+
+升格过程中对照了**装侧**（`ProgramInstallPipeline.aliasNames`）与
+**发侧**（`publish-userland-manifest.js` 的 `aliasesOf`）。两边注释都写着
+「必须与对方一致」，但实际规则不同：
+
+| | 跳过的「本名」 |
+|---|---|
+| 装侧 | `programId`（件名）**和** `primaryName`（entry 末段） |
+| 发侧（原） | 只有 `name`（件名） |
+
+llvmtoolchain 正好命中（件名 `llvmtoolchain`、entry `bin/clang`）：
+发侧清单会多出 `clang` 与 `clang++`，装侧一条都不建 ——
+**清单比实际链多，卸载时按清单删不存在的链，真正建过的变成死链。**
+
+而装侧那条链之所以不建 `clang++`，是因为 `safeSegment` 不放行 `+`。
+于是叠起来是：**装上了 clang，但 `clang++` 调不到 = 编不了 C++**，
+而 `llvmtoolchain` 的判据只跑 `clang --version` 与编一个 `.c`，
+**看不出 C++ 编不了** —— 这种缺失很安静。
+
+两处都修了（发侧跳两种本名；白名单放行 `+`），并各配一个反例：
+
+```
+反例：发侧只跳件名时确实与装侧分叉（证明上一条断言不是装饰）
+反例：白名单去掉 + 后 clang++ 建不出链（证明放行 + 是必要的）
+反例：拿掉 + 后字符集确实不同（证明 Kotlin 那两条不是装饰）
+```
+
+**判据：** 一道门禁如果只测复刻，那它对本体退化是瞎的。
+要它盯住本体，就得让它读本体；读完还要更新它自己的分类
+（本轮 `alias-symlink-proof.js` 由 B 类升为 A 类，`self-check-ci-steps.js`
+立刻报红提醒补注入点 —— 那个自检就是这么用的）。

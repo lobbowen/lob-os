@@ -78,11 +78,31 @@ object ProgramIndex {
 
     fun root(ctx: Context): File = File(ctx.filesDir, "sys")
 
+    /**
+     * 一个「段名」是否可以安全地作为文件名/目录名。
+     *
+     * 要挡的是**路径穿越**（`..`、`/`）与**命令解析上的坑**（空格），
+     * 不是「看起来不常规的字符」。白名单按这个目的列，不多挡。
+     *
+     * 为什么放行 `+`：**clang++ 是真命令**，不是怪名字。
+     * llvmtoolchain 一件里有八个工具，clang++ 是其中之一 ——
+     * 挡掉它就等于「装上了 clang 但编不了 C++」，而这种缺失很安静：
+     * 判据只跑 `clang --version` 与编一个 .c，看不出 C++ 编不了。
+     * 实测 `+` 在设备文件系统上建链完全正常（真建过 clang++/a-b/a.b 等）。
+     *
+     * 仍然拒绝：空格与制表符（shell 里要引号，`tar x` 之类的地方会碎成两个参数）、
+     * `/` 等分隔符（路径穿越）、`.`/`..`、超长名。
+     */
     fun safeSegment(raw: String): String? {
         val v = raw.trim()
         if (v.isEmpty() || v.length > 64) return null
         if (v == "." || v == "..") return null
-        return v.takeIf { it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' } }
+        // 名字里只要有字母数字与 . _ - + 之外的字符就拒 —— 空格/制表符/引号/
+        // 分隔符自然都被这条白名单挡住，不必单开一个空白检查
+        // （本机无编译器，少依赖一个没验过的 API 更稳）。
+        return v.takeIf {
+            it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' || c == '+' }
+        }
     }
 
     fun empty(id: String, level: Level): IndexEntry = IndexEntry(

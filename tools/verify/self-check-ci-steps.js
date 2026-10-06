@@ -33,9 +33,12 @@ const GATES = [
   { s: 'pty-argv-proof.js',           readsSrc: true,  inject: 2 },
   { s: 'pty-winsize-endian.js',      readsSrc: true,  inject: 2 },
   { s: 'terminal-covers-real-pty.js',readsSrc: true,  inject: 1 },
+  // 本轮升格：它现在**读 ProgramIndex.kt**（钉住 safeSegment 的白名单），
+  // 所以不再是 B 类。升格前它对 Kotlin 退化完全无感 —— 实测把
+  // `|| c == '+'` 删掉，rc 仍是 0。
+  { s: 'alias-symlink-proof.js',     readsSrc: true,  inject: 1 },
   { s: 'sysroot-include-proof.js',   readsSrc: false, inject: 0 },
   { s: 'terminal-screen-algorithm.js', readsSrc: false, inject: 0 },
-  { s: 'alias-symlink-proof.js',     readsSrc: false, inject: 0 },
   { s: 'entry-link-proof.js',        readsSrc: false, inject: 0 },
 ];
 
@@ -79,6 +82,16 @@ const INJECTIONS = [
     after:  '            else -> print(ch)',
     gate: 'terminal-covers-real-pty.js',
     why: '兜底 else -> Unit 改成吐字（未实现的 final 就会漏到屏幕上）',
+  },
+  {
+    // alias-symlink-proof 升格成 A 类后的注入点：它读 ProgramIndex.kt 的
+    // safeSegment 白名单，所以退回不含 + 的版本必须让它判红。
+    // 实测：注入前 rc=0（它那时还没读 Kotlin）；读上 Kotlin 后 rc=1。
+    file: 'container/app/src/main/java/lobos/os/ProgramIndex.kt',
+    before: " || c == '+'",
+    after:  '',
+    gate: 'alias-symlink-proof.js',
+    why: "safeSegment 白名单去掉 '+'（clang++ 建不出链 = 装上了却编不了 C++）",
   },
 ];
 

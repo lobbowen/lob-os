@@ -266,6 +266,39 @@ mkdir -p "$TOOLDIR"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 rm -rf "$STAGE"
 printf '%s' "$PINNED_LLVM" > "$OUT/$TOOL.version"
+
+# ── 写件内 package.json 的 bin 映射（别名机制的唯一真相）──
+#
+# 为什么必须写：这一件里有八个工具，而清单只能声明**一个**入口。
+# 不写别名映射的话，装上去只有 `clang` 调得动，ld.lld / llvm-ar / … 全部
+# 调不到 —— 而「装上了却调不动」比「没装」更难查。
+#
+# 两侧都读它，且规则必须一致：
+#   · 装侧 ProgramInstallPipeline.aliasNames() 读件内 package.json 建链；
+#   · 发侧 publish-userland-manifest.js 的 aliasesOf() 读同一份写进清单的 aliases，
+#     卸载时按那份删链。
+# 两侧都会**跳过「键 == 件名」的那一条**（那是本名，不是别名）。
+#
+# 形如 {"bin":{"clang":"bin/clang","ld.lld":"bin/ld.lld"}}：键=命令名，
+# 值=件内相对路径。发侧要求别名指向**各自的文件**，不能都指向 bin/clang。
+note "写件内 package.json（别名映射）"
+node -e '
+const fs = require("node:fs"), path = require("node:path");
+const dir = process.argv[1], entry = process.argv[2];
+const names = fs.readdirSync(dir).filter((n) => {
+  try { return fs.statSync(path.join(dir, n)).isFile(); } catch (e) { return false; }
+}).sort();
+const bin = {};
+for (const n of names) bin[n] = "bin/" + n;
+// 本名（键 == 件名）不重复声明 —— 两侧都会跳过它，写了也只是噪音
+delete bin[entry];
+fs.writeFileSync(path.join(dir, "..", "package.json"),
+  JSON.stringify({ name: "llvmtoolchain", bin }, null, 2) + "\n");
+console.log("[ok] package.json 声明别名 " + Object.keys(bin).length + " 个");
+' "$TOOLDIR" "$TOOL"
+[ -f "$OUT/$TOOL/package.json" ] || die "没产出 package.json" \
+  "别名映射是装侧建链与发侧写清单的唯一真相 —— 没有它这一件只有入口能用"
+
 echo
 echo "[ok] $OUT/$TOOL/bin （$(ls "$TOOLDIR" | wc -l) 个工具）"
 echo "[$TOOL] 判据：clang --version 能报版本、ld.lld --version 能报、能在真机编出一个 .so"
