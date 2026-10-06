@@ -98,7 +98,7 @@ object RuntimeEnvironment {
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
         nodeBin = NodeRuntime.path(ctx) ?: s.nodeBin,
-        nativeLibDir = NativePreparer.libSearchPath(ctx),
+        nativeLibDir = libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
         bashBin = PrefixProvisioner.bashBin(ctx),
@@ -106,6 +106,30 @@ object RuntimeEnvironment {
             .takeIf { it.isFile },
         envShim = s.envShim,
     )
+
+    /**
+     * 动态链接器的搜索路径（等价 Linux 的 `ld.so.conf` + `ldconfig`）。
+     *
+     * 判据来源：装到系统里的件，其 `.so` 分散在几处 —— APK 原生库目录、
+     * `$PREFIX/lib`、各程序自己的落位目录。之前只给 APK 那一处，
+     * 于是装到别处的 `.so` 运行时找不到，node 就是这么撞上
+     * `cannot locate symbol _ZTVNSt6__ndk1...` 的。
+     *
+     * 装完即全局可用，不靠某个调用方单独设 `LD_LIBRARY_PATH`。
+     */
+    fun libSearchPath(ctx: Context): String {
+        val dirs = LinkedHashSet<String>()
+        dirs.add(NativePreparer.libSearchPath(ctx))
+        dirs.add(PrefixProvisioner.libDir(ctx).absolutePath)
+        // 已装件目录：每个件落位目录下的 lib/ 与 bin/（bin 是 $ORIGIN 所在）
+        runCatching {
+            ProgramRegistry.listIds(ctx).forEach { id ->
+                val root = ProgramManager.stateDirOf(ctx, id)
+                dirs.add(File(root, "lib").absolutePath)
+            }
+        }
+        return dirs.filter { File(it).isDirectory }.joinToString(":")
+    }
 
     fun ensure(ctx: Context): Snapshot {
         cached?.takeIf { it.complete }?.let { s ->

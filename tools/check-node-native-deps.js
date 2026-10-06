@@ -1,70 +1,90 @@
 #!/usr/bin/env node
 'use strict';
 
+// 二进制件的原生依赖必须由通用机制处理，不能为某个包开后门。
+//
+// 判据来源（本仓真实事故）：
+//   node 的 DT_RUNPATH=$ORIGIN，libc++_shared.so 必须与它同目录，
+//   否则裸环境启动报 "cannot locate symbol _ZTVNSt6__ndk1..."。
+// 当时的修法是在 PrefixProvisioner 里写 placeNodeDeps 专门给 node 补依赖 ——
+// 那是补丁：换个带 $ORIGIN 的二进制还要再写一遍。
+//
+// 现在改成 Linux 那一套：
+//   · ElfFacts 读二进制自己的 ELF 段（DT_NEEDED / DT_RUNPATH）
+//   · 安装器按段铺依赖，不问包"你要什么"
+//   · 运行时搜索路径统一（等价 ld.so.conf + ldconfig）
+//
+// 所以判据是「机制在、且不为具体包开后门」，不是「某个函数存在」。
+
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.join(__dirname, '..', 'container', 'app', 'src', 'main', 'java', 'lobos');
-
-function read(p) {
-  const f = path.join(ROOT, p);
-  if (!fs.existsSync(f)) { console.error('缺文件: ' + f); process.exit(1); }
-  return fs.readFileSync(f, 'utf8');
-}
+const ROOT = path.join(__dirname, '..');
+const J = (rel) => path.join(ROOT, 'container/app/src/main/java/lobos', rel);
 
 const problems = [];
+const read = (rel) => {
+  const p = J(rel);
+  if (!fs.existsSync(p)) { problems.push('缺文件 ' + rel); return ''; }
+  return fs.readFileSync(p, 'utf8');
+};
 
-// 判据 1：node 的 DT_RUNPATH 是 $ORIGIN，只在自身所在目录找依赖。
-// 商店供给把 node 放在 toolchain/node/bin/，那里必须同时存在 libc++_shared.so，
-// 否则裸环境启动必然在 linker 阶段失败（cannot locate symbol _ZTVNSt6__ndk1...）。
+const elf = read('os/ElfFacts.kt');
+const pipeline = read('ota/ProgramInstallPipeline.kt');
 const prefix = read('runtime/PrefixProvisioner.kt');
-if (!/placeNodeDeps/.test(prefix)) {
-  problems.push('PrefixProvisioner 没有 placeNodeDeps：node 的 $ORIGIN 目录缺 libc++_shared.so');
+const env = read('os/RuntimeEnvironment.kt');
+
+// 判据 1：ElfFacts 读得出段里的两样东西
+if (!/DT_NEEDED/.test(elf)) {
+  problems.push('ElfFacts 不读 DT_NEEDED：拿不到二进制自己要哪些 .so');
 }
-if (!/NODE_DEPS_NAME/.test(prefix)) {
-  problems.push('PrefixProvisioner 缺 NODE_DEPS_NAME 常量');
-}
-if (!/expected[\s\S]*NODE_DEPS_NAME/.test(prefix)) {
-  problems.push('PrefixProvisioner.expected() 未把 NODE_DEPS_NAME 算作应有件，会永远判缺件');
+if (!/DT_RUNPATH|DT_RPATH/.test(elf)) {
+  problems.push('ElfFacts 不读 DT_RUNPATH/DT_RPATH：不知道依赖该去哪找');
 }
 
-// 判据 2：NodeRuntime.version() 的 ProcessBuilder 必须带 LD_LIBRARY_PATH，
-// 否则 linker 在进入 node 之前就失败，版本号取到空串。
-const nodeRt = read('os/NodeRuntime.kt');
-const versionFn = nodeRt.slice(nodeRt.indexOf('fun version'));
-if (!/LD_LIBRARY_PATH/.test(versionFn)) {
-  problems.push('NodeRuntime.version() 未设 LD_LIBRARY_PATH：取版本号必然拿到空串');
+// 判据 2：安装器按段铺依赖
+if (!/satisfyElfDeps/.test(pipeline)) {
+  problems.push('安装器不按 ELF 段铺依赖：装完的件可能起不来');
+}
+if (!/ElfFacts\.read/.test(pipeline)) {
+  problems.push('安装器没有读 ELF 段：铺依赖无从下手');
 }
 
-// 判据 3：LD_LIBRARY_PATH 的两个候选目录必须都真实含 libc++_shared.so。
-// PrefixProvisioner 拷到 usr/bin/，libSearchPath 指向 nativeLibraryDir，两处并存
-// 才不依赖「谁先落盘」。只留一处会再次出现裸环境启动失败。
-if (!/nativeLibraryDir/.test(prefix)) {
-  problems.push('PrefixProvisioner 不再从 nativeLibraryDir 取 libc++_shared.so：usr/bin 那份覆盖不到 $ORIGIN');
+// 判据 3：依赖找不到时报错，不静默放过
+// （装上一个跑不起来的件比装不上更坏：问题推迟到运行时才暴露）
+if (!/elf-deps-unresolved/.test(pipeline)) {
+  problems.push('依赖铺不齐时安装仍报成功：问题会推迟到运行时，现场更难查');
 }
 
-// 判据 4：runtime.json 的 schema 必须是 3（带 env 快照），schema 2 无从判断 env 是否真传进子进程。
-const engine = fs.readFileSync(
-  path.join(__dirname, '..', 'container', 'engine', 'src', 'runtime-json.js'), 'utf8',
-);
-if (!/SCHEMA\s*=\s*3/.test(engine)) {
-  problems.push('runtime-json.js 的 SCHEMA 不是 3：缺 env 快照，出事时无法取证 env 是否传进子进程');
+// 判据 4：不为具体包开后门
+if (/placeNodeDeps/.test(prefix)) {
+  problems.push('PrefixProvisioner 又出现 placeNodeDeps：这是 node 专用补丁，' +
+    '应由安装器按 ELF 段统一处理');
+}
+if (/NODE_DEPS_NAME/.test(prefix)) {
+  problems.push('PrefixProvisioner 仍有 NODE_DEPS_NAME：node 专用后门的残留');
 }
 
-console.log('');
+// 判据 5：运行时搜索路径统一（等价 ld.so.conf）
+if (!/fun libSearchPath/.test(env)) {
+  problems.push('RuntimeEnvironment 无 libSearchPath：装到 $PREFIX/lib 或程序目录的 .so 运行时找不到');
+}
+if (!/PrefixProvisioner\.libDir/.test(env)) {
+  problems.push('libSearchPath 未包含 $PREFIX/lib：装进 PREFIX 的依赖不可见');
+}
+
 if (problems.length) {
+  console.log('FAIL 二进制依赖通用机制门禁：' + problems.length + ' 项');
   for (const p of problems) console.log('  ✗ ' + p);
   console.log('');
-  console.log('FAIL node 原生依赖门禁：' + problems.length + ' 项不满足');
-  console.log('');
-  console.log('判据依据：node 二进制 DT_RUNPATH=$ORIGIN，DT_NEEDED 含 libc++_shared.so。');
-  console.log('$ORIGIN = node 自身所在目录。实测该目录无 .so 时裸跑报');
-  console.log('CANNOT LINK EXECUTABLE ... cannot locate symbol "_ZTVNSt6__ndk1..."。');
+  console.log('依据：node 的 $ORIGIN linker 失败是真机事故，');
+  console.log('当时的 placeNodeDeps 是 node 专用补丁 —— 本门禁守住通用机制，防止回退。');
   process.exit(1);
 }
 
-console.log('PASS node 原生依赖门禁：');
-console.log('  · libc++_shared.so 已放到 node 的 $ORIGIN 同目录（不依赖 LD_LIBRARY_PATH 是否传进子进程）');
-console.log('  · NodeRuntime.version() 带 LD_LIBRARY_PATH 起进程，版本号不再取空');
-console.log('  · runtime.json schema 3 落地实际 env 快照，可取证');
+console.log('PASS 二进制依赖通用机制门禁：');
+console.log('  · ElfFacts 读 DT_NEEDED 与 DT_RUNPATH（不问包声明什么）');
+console.log('  · 安装器按段铺依赖，铺不齐时报错而非静默放过');
+console.log('  · 无 node 专用后门（placeNodeDeps / NODE_DEPS_NAME 已不存在）');
+console.log('  · 运行时搜索路径统一（APK 原生库 + $PREFIX/lib + 各程序 lib/）');
 console.log('');

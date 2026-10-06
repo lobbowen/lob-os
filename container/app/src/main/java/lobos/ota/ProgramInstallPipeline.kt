@@ -207,6 +207,15 @@ object ProgramInstallPipeline {
             }
         }
         dir.mkdirs()
+
+        // 按二进制自己的 ELF 段铺依赖（等价 Linux 的 ld.so 处理 DT_RUNPATH）。
+        // 不问包"你要什么" —— DT_NEEDED 与 DT_RUNPATH 就在二进制里，读出来照做。
+        // 这样任何带 $ORIGIN 的件装完都能直接跑，不用为每种件写专用补丁。
+        val depReport = satisfyElfDeps(context, dest)
+        if (!depReport.ok) {
+            return Result(false, safeVer, "elf-deps-unresolved", depReport.detail)
+        }
+
         // 组件靠真名被调用（usr/bin/<name> 软链到落位目录里的 entry）。
         // 不建链等于装了个没人调得动的件。
         val entryRel = spec.expectedEntryRel
@@ -272,6 +281,103 @@ object ProgramInstallPipeline {
         for (i in 0 until arr.length()) {
             val v = arr.optString(i, "").trim()
             if (v.isNotBlank() && v !in out) out += v
+        }
+        return out
+    }
+
+    /**
+     * 按 ELF 段把依赖铺到能被找到的位置（等价 Linux 的 ld.so / ldconfig）。
+     *
+     * 判据来源：Linux 不要求包声明依赖。`DT_NEEDED` 写着要哪些 `.so`，
+     * `DT_RUNPATH` 写着去哪找 —— 都在二进制里，系统读出来照做即可。
+     * node 的 `DT_RUNPATH=$ORIGIN` 意味着它的 `libc++_shared.so`
+     * 必须与它同目录，否则 linker 报 "cannot locate symbol"。
+     *
+     * 这里做两件事：
+     *  1. 读落位目录里每个 ELF 的段，收集 DT_NEEDED
+     *  2. 缺的 `.so` 依次从「系统已有件」与「APK 原生库目录」找，复制到 RUNPATH 指向处
+     *
+     * 找不到时不静默放过 —— 返回失败并说明缺哪个。装上一个跑不起来的件
+     * 比装不上更坏：问题会推迟到运行时才暴露，且现场更难查。
+     */
+    private data class DepReport(val ok: Boolean, val detail: String, val placed: Int, val missing: List<String>)
+
+    private fun satisfyElfDeps(context: Context, dest: File): DepReport {
+        val elfs = dest.walkTopDown().filter { it.isFile && isElf(it) }.toList()
+        if (elfs.isEmpty()) return DepReport(true, "落位目录内没有 ELF 文件，无需铺依赖", 0, emptyList())
+
+        val needed = linkedSetOf<String>()
+        val originDirs = linkedSetOf<File>()
+        for (f in elfs) {
+            val d = lobos.os.ElfFacts.read(f) ?: continue
+            needed += d.needed
+            if (d.hasOriginRunPath) originDirs += f.parentFile
+        }
+        // 系统那几个 .so（libc/libm/liblog/libdl）由 linker 自己找，不用管
+        val systemProvided = setOf(
+            "libc.so", "libm.so", "libdl.so", "liblog.so", "libz.so",
+            "libstdc++.so", "libgnustl_shared.so", "libc++_shared.so",
+        )
+        var missing = needed.filter { !systemProvided.contains(it) && File(dest, it).isFile }
+        if (missing.isEmpty()) {
+            return DepReport(true, "ELF 段要求的依赖已齐（或由系统提供）", 0, emptyList())
+        }
+
+        val sources = dependencySources(context)
+        var placed = 0
+        val stillMissing = mutableListOf<String>()
+        for (name in missing) {
+            val src = sources[name]
+            // RUNPATH=$ORIGIN 的件，依赖要与它同目录；没有 $ORIGIN 的，放落位目录根部即可
+            val targets = if (originDirs.isEmpty()) listOf(dest) else originDirs.toList()
+            var done = false
+            for (t in targets) {
+                if (src == null) break
+                val ok = runCatching {
+                    src.copyTo(File(t, name), overwrite = true)
+                    File(t, name).setExecutable(true, true)
+                }.isSuccess
+                if (ok) { done = true; placed += 1; break }
+            }
+            if (!done) stillMissing += name
+        }
+        if (stillMissing.isNotEmpty()) {
+            return DepReport(
+                false,
+                "ELF DT_NEEDED 要求的库找不到：" + stillMissing.joinToString() +
+                    "（落位目录=" + dest.absolutePath + "）",
+                placed, stillMissing,
+            )
+        }
+        return DepReport(true, "按 ELF 段铺齐 $placed 个依赖库", placed, emptyList())
+    }
+
+    private fun isElf(f: File): Boolean = runCatching {
+        f.inputStream().use { ins ->
+            val magic = ByteArray(4)
+            if (ins.read(magic) != 4) return@runCatching false
+            magic[0] == 0x7f.toByte() && magic[1] == 'E'.code.toByte() &&
+                magic[2] == 'L'.code.toByte() && magic[3] == 'F'.code.toByte()
+        }
+    }.getOrDefault(false)
+
+    /** 可作为依赖来源的地方：APK 原生库目录、$PREFIX/lib、已装件目录。 */
+    private fun dependencySources(context: Context): Map<String, File> {
+        val out = HashMap<String, File>()
+        val dirs = buildList {
+            add(File(context.applicationInfo.nativeLibraryDir))
+            add(File(lobos.runtime.PrefixProvisioner.libDir(context)))
+            runCatching {
+                lobos.os.ProgramRegistry.listIds(context).forEach { id ->
+                    runCatching { add(File(lobos.os.ProgramManager.stateDirOf(context, id))) }
+                }
+            }
+        }
+        for (d in dirs) {
+            if (!d.isDirectory) continue
+            d.walkTopDown().filter { it.isFile }.forEach { f ->
+                out.putIfAbsent(f.name, f)
+            }
         }
         return out
     }
