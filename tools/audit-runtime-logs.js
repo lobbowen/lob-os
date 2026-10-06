@@ -88,6 +88,32 @@ for (const [target, g] of [...byTarget.entries()].sort((a, b) => b[1].writers.si
 
 console.log('共 ' + n + ' 套落盘目标，' + new Set(writers.map((w) => w.rel)).size + ' 个文件在写。');
 
+// 数据源 vs 视图：看哪些模块把自己的数据也写进 Journal
+const ALSO_JOURNAL = /Journal\.(append|note)\s*\(/;
+const dual = [];
+for (const f of files) {
+  const rel = f.replace(SRC + '/', '').replace(/^lobos\//, '');
+  if (rel === 'RuntimeDiagnostics.kt') continue;   // 它自己就是转发器
+  const txt = fs.readFileSync(f, 'utf8');
+  const hasJournal = ALSO_JOURNAL.test(txt);
+  // 只认「自己声明了记录类落盘路径」：形如
+//     private const val FILE = "diagnostics.txt"
+//     private const val DIR  = "os/journal"
+// 而不是在代码里「提到」 journal / node-stderr 这些名字
+// （很多模块只是调用 Journal.append 或 RuntimeDiagnostics.nodeErrFile，
+//  那恰恰说明它们已经走数据源，不算残留）。
+  const RECORD_PATH = /(journal|events\.jsonl|diag\.jsonl|diagnostics\.txt|probe-journal|residency\.txt|node-stderr|kill-audit-cursor)/;
+  const declaresOwn = [...txt.matchAll(/(?:const\s+val|DIR|FILE)\s*[\w]*\s*=\s*"([^"]+)"/g)]
+    .some((m) => RECORD_PATH.test(m[1]));
+  const hasOwn = declaresOwn;
+  if (hasJournal && hasOwn) dual.push(rel + '  ← 声明了自己的记录文件 + 也写 Journal');
+}
+console.log('');
+console.log('=== 既自己落盘、又写 Journal 的（数据源外的残留）===');
+console.log(dual.length + ' 个文件：');
+for (const d of dual.sort()) console.log('  ' + d);
+console.log('');
+
 // 有没有"读出来给人看/给反馈"的出口
 const READERS = /(Journal|ProbeJournal|ResidencyAudit|RuntimeDiagnostics|SelfCheckReport)\./g;
 const readers = new Set();

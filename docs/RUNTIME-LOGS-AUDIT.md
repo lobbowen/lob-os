@@ -1,181 +1,225 @@
-# 运行记录体系审计
+# 运行记录：全仓清点
 
-问题：系统运行记录没有统一模块，`KillAudit` 只是其中一个碎片，
-挂在通知构建里，位置不对。
+先说清楚**真实状态**，再说该怎么做。这份只写清点结果和事实，不含未经验证的判断。
 
-审计工具：`tools/audit-runtime-logs.js`（判据：谁往磁盘写、写哪、谁在读）。
-配套：`docs/ARCHITECTURE-AUDIT.md`（架构）、`docs/INSTALL-CHANNEL.md`（安装通道）。
+清点工具：`tools/audit-runtime-logs.js`
 
 ---
 
-## 一、现状
+## 一、定位
 
-### 1.1 两类东西被混在一起
+运行记录（也叫日志、审计、诊断）在系统里承担三件事：
 
-| 类别 | 是什么 | 例子 | 判据 |
-|---|---|---|---|
-| **状态** | 当前值，重启后要恢复 | `ports.json`（端口占用）、`program-index.json`（程序注册表）、`state.json`（相位）、`process-ledger.json`（进程账本） | 有 schema、要原子写、**不该有历史** |
-| **记录** | 发生过什么，只追加不修改 | `os/journal/events.jsonl`（事件流）、`diagnostics.txt` + `os/diag.jsonl`（诊断）、`residency.txt`（常驻）、`probe-journal.txt`（探针） | 追加、有时间戳、**该有保留期** |
-
-**`os/Journal` 已经是标准化的记录模块**：JSONL 格式、单调 `seq`、
-`atMs` + `category` + `reason` + `detail` 四字段齐全、
-512KB 触发轮转并保留 500 行。缺的不是模块，是**没人把它当唯一入口**。
-
-问题在于 `KillAudit` 为同一件事开了三个出口：
-写在 `events.jsonl`（对）、游标另存 `kill-audit-cursor.txt`、
-快速查询走内存 `reading` 绕过 Journal。
-
-### 1.2 五套记录并行，格式不统一
-
-| 落盘目标 | 格式 | 轮转 | 写手 | 消费端 |
-|---|---|---|---|---|
-| `os/journal/events.jsonl` | JSONL，字段齐 | ✅ 512KB/500 行 | `os/Journal` | 多处 |
-| `diagnostics.txt` + `os/diag.jsonl` + `node-stderr.log` | **同一个类三份**（文本 + JSONL + stderr） | ❌ | `RuntimeDiagnostics` | 诊断页 |
-| `probe-journal.txt` | 纯文本 | ❌ | `ui/ProbeJournal` | 引导页"最近动作" |
-| `residency.txt` | 自定义两行格式 | ❌ | `lifecycle/ResidencyAudit` | `interruption()` |
-| `kill-audit-cursor.txt` | 单行两数字 | 不适用（游标） | `os/KillAudit` | `readCursor` |
-| 退出史内存副本 | `Reading` 对象 | 不适用 | `os/KillAudit.auditOnce` | `attribution()` |
-
-**`Journal` 之外的四套都不轮转、不结构化、无字段约定。**
-`RuntimeDiagnostics` 一个类写三份不同格式的文件，是"缺统一入口"的典型症状 ——
-需要时就近加一个文件，最后自己长成了三套。
-
-### 1.3 消费端：49 处引用，但只有"给人看"一种出口
-
-读这些记录的地方 49 处，绝大多数是**写完自己读回来看**。
-
-真正对外的出口只有两个：
-
-| 出口 | 给谁 | 内容 |
+| 用途 | 给谁 | 长什么样 |
 |---|---|---|
-| 通知 | 用户 | `ProgramStatusHub.summaryLine()` / `ProgramNotificationHub.summaryLine()` —— 状态摘要 |
-| 引导页"最近动作" + 第 265/426 行 | 本机用户 | 探针日志尾部若干行、常驻中断与死因归因 |
+| **状态** | 系统自己读 | 当前值（端口占用、程序注册表）。要 schema、要原子写、**不该有历史** |
+| **记录** | 人 / 我们 | 发生过什么。追加写、有时间戳、该有保留期 |
+| **导出** | 用户报障 / 遥测 | 从记录里取一段、结构化、带上下文 |
 
-**没有给"我们"的出口**：用户报障时，我们只能 adb 拉设备文件，
-一次要捞 5 个文件、4 种格式，还要人工对齐时间戳。
-也没有结构化上报通道 —— 想统计"多少人被低内存杀了"都做不了。
-
-`KillAudit` 的位置问题**不是**"挂在通知上"（它没挂通知，
-通知文案只有状态摘要）。问题是**为同一件事开了三个出口**：
-`events.jsonl`（对）、`kill-audit-cursor.txt`（游标另存）、
-内存 `reading`（快路径绕过 Journal）。
+三者混在一起时就会出现"碎片"。这次清点就是为了把它们分开看。
 
 ---
 
-## 二、后果
+## 二、全仓清点结果
 
-| 后果 | 说明 |
+### 2.1 磁盘写入点：51 处 / 28 个文件
+
+按用途分：
+
+| 类别 | 写入点 | 说明 |
+|---|---|---|
+| **状态** | 约 35 处 | 端口、注册表、程序状态、账本、会话、任务、设置、OTA 指针、权限台账 |
+| **记录** | 约 14 处 | 见下表 |
+| **工具** | `os/StateFiles.kt` 自身 | 原子写/轮转的实现，不是记录 |
+
+### 2.3 实际链路：唯一数据源是 `Journal`，但有三份视图
+
+`RuntimeDiagnostics.appendEvent()`（`RuntimeDiagnostics.kt:71`）一次调用写三处：
+
+```
+RuntimeDiagnostics.append(stage, ok, message, detail)   ← 45 种 stage / 113 处调用
+   ├─→ diagnostics.txt        appendBounded    人读的文本视图
+   ├─→ os/diag.jsonl          appendBounded    结构化视图
+   └─→ Journal.append(...)    ← 数据源（events.jsonl）
+```
+
+**所以不是"两个标准并行"** —— `Journal` 是唯一数据源，
+另两份是它的视图。我先前判断"两个标准体量相当"，错了。
+
+### 2.4 谁在写 `Journal`
+
+| 路径 | 写入者 | 调用点 |
+|---|---|---|
+| 直接 `Journal.append/note` | 18 个文件 | — |
+| 经 `RuntimeDiagnostics` 转发 | 7 个文件 | 113 |
+| `KillAudit.auditOnce` | 1 | 退出史落盘 |
+
+`Journal` 的 23 个写入者里，18 个是直接写、7 个是经诊断转发。
+
+### 2.5 `RuntimeDiagnostics` 的 45 种 stage 是什么性质
+
+113 处调用的 stage 全是**某件事的结果快照**，不是流水事件：
+
+```
+screenshot(13) supervisor(10) nodeprobe(6) runtime(5) probe(5)
+accessibility(5) health(5) bridge(4) boot(4) program-stderr(4) quickapp(3) …
+```
+
+带 `ok: Boolean?` 三态（OK/FAIL/INFO）与 `detail`。性质上接近"诊断快照"，
+与 `Journal` 的"事件流"不同 —— **但它已经在写 Journal 了**，
+所以这两者不冲突，只是同一份数据的两种粒度。
+
+---
+
+## 三、问题在哪（基于上面事实）
+
+### 3.1 数据源是唯一的，但视图有四份
+
+数据源只有一个：`os/journal/events.jsonl`。
+
+但同一份数据被渲染成四份不同格式：
+
+| 视图 | 文件 | 谁在读 | 轮转 |
+|---|---|---|---|
+| 事件流 | `events.jsonl` | Journal 的 23 个读取者 | ✅ 512KB/500 行 |
+| 人读文本 | `diagnostics.txt` | 诊断页 | ✅（走 `appendBounded`） |
+| 结构化诊断 | `os/diag.jsonl` | `RuntimeDiagnostics.events()` | ✅ |
+| node 原始输出 | `node-stderr.log` | 诊断页 | 需单独确认 |
+
+用户报障时我们捞的是**视图**，不是数据源。要看全貌得捞 4 份再对齐。
+
+### 3.2 同一件事有多个出口
+
+死因归因（"上次为什么没的"）现在涉及四处：
+
+| 环节 | 落在哪 |
 |---|---|
-| **同一件事三个出口** | 退出史写在 `events.jsonl`（对），但游标另存 `kill-audit-cursor.txt`、快速查询走内存 `reading`。要查"上次怎么死的"得同时理解三处 |
-| **捞一次问题要 5 个文件 4 种格式** | 用户报障 → adb 拉 `events.jsonl` + `diagnostics.txt` + `diag.jsonl` + `residency.txt` + `probe-journal.txt` → 人工对齐时间 |
-| **没有"给我们"的出口** | 死因归因只在引导页第 265/426 行显示给**本机用户**。用户报障时说不清，我们只能 adb 拉 5 个文件人工对齐 |
-| **时间对不齐** | 各记录各用各的 `SimpleDateFormat`，跨文件关联靠人工 |
-| **记录模块名不副实** | `RuntimeDiagnostics` 一个类写三份文件（文本 + JSONL + stderr），说明缺的是统一入口而不是接口 |
-| **死因归因链路过长** | `KillAudit` → `ResidencyAudit.interruption()` → `OsInit` → `SetupActivity` 第 265/426 行。四层跳转才到用户眼前 |
+| 采集退出史 | `KillAudit.auditOnce` → `Journal.append`（**对，走标准模块**） |
+| 去重游标 | `kill-audit-cursor.txt`（**另存**） |
+| 快速查询 | 内存 `reading`（**绕过 Journal**） |
+| 存活时间 | `residency.txt`（**私有格式，没进 Journal**） |
 
-**通知本身是干净的**：文案只来自 `ProgramStatusHub.summaryLine()` /
-`ProgramNotificationHub.summaryLine()`，都是状态摘要，没有塞死因。
-用户判断"通知为什么关了"要靠引导页，不是通知 —— 这点没问题。
+要查"上次怎么死的"，得同时理解这四处。
 
-**证据落盘是做到的**（`Journal` 有轮转、有序列号），
-缺的是**统一**：谁该往 Journal 写、格式怎么定、怎么对外导出。
+### 3.3 没有"导出"这一层
+
+记录写完只有两种去处：本机用户看（引导页）、我们 adb 拉文件。
+
+一次要捞的文件：
+
+```
+os/journal/events.jsonl        JSONL   ← 数据源
+diagnostics.txt                 文本     ← 视图
+os/diag.jsonl                   JSONL   ← 视图
+node-stderr.log                 原始 stderr
+probe-journal.txt               文本     ← 独立，未进 Journal
+residency.txt                   自定义两行 ← 独立，未进 Journal
+kill-audit-cursor.txt           单行两数字
+```
+
+**4 种格式，3 个数据源**（Journal / probe-journal / residency）。
+
+### 3.4 遥测位置：现在没有，但要预留
+
+你说遥测是下一阶段的事，位置要留好。
+
+**留位置的关键是先把"导出层"定下来。** 遥测是导出层的一种消费方
+（另一种是用户报障导出）。导出层没有，遥测就没有落点 ——
+只能再去 3 个数据源各接一次。
+
+所以顺序是：**收拢数据源 → 定导出层 → 接遥测**。
+不能跳到遥测，那样会变成在 4 种格式上各接一次。
 
 ---
 
-## 三、`KillAudit` 的处置
+## 四、要达到的状态
 
-它有价值——系统退出史是 Android 提供的**唯一权威死因来源**，
-没有它，被回收时只能说"未取证"。
+```
+   运行事件 ──┐
+   （状态变化 / 探针结果 / 退出史 / 异常）──→  唯一记录入口  ──→  唯一落盘格式
+                                                            ├─→ 本机查询
+                                                            ├─→ 用户导出（报障）
+                                                            └─→ 遥测（下一阶段，位置预留）
+```
 
-**它的采集链路是对的**（走 `Journal.append` 落 `events.jsonl`、游标持久化）。
-**位置是错的**：为同一件事开了三个出口。
-
-| 现在 | 应该 |
+| 要点 | 具体 |
 |---|---|
-| 退出史存两份：落盘 `events.jsonl` + 内存 `reading` | 只留落盘。`attribution()` 直接查 Journal |
-| 游标单独一个 `kill-audit-cursor.txt` | 并入 Journal 的游标管理 |
-| 自成一套 `reportUnreadable` 私有路径 | 走 `Journal` 的 reason 机制（已有 `Reason.UNREADABLE`） |
-| 在 `lifecycle` 里被间接调用（`ResidencyAudit.interruption()`） | 归 `os` 的记录层，UI 只消费 |
-
-**它不该是独立模块，而应该是 `Journal` 的一个"事件来源"** ——
-和 `BootReconciler`、`CatalogClient`、`PackageInstaller` 一样，
-写记录只调 Journal，不自己管落盘。
-
----
-
-## 四、目标形态
-
-### 4.1 一层薄接口，三个用途
-
-```
-                       ┌─────────────────────────┐
-   运行事件 ──────────→│   统一记录模块（唯一入口）   │
-   （状态变化/          │  · 结构化（时间/级别/域/事件）│
-     探针结果/         │  · 追加写，不改历史          │
-     退出史/           │  · 保留期与轮转              │
-     异常）            │  · 一个游标（去重/增量）      │
-                       └───────────┬─────────────┘
-                                   │
-              ┌────────────────────┼────────────────────┐
-              ↓                    ↓                    ↓
-        本地查询              用户反馈              遥测上报
-     （诊断页/引导页）    （一键导出记录包）      （结构化出口）
-```
-
-### 4.2 记录事件的结构
-
-统一成一种格式（沿用现有 `events.jsonl` 的 JSONL，不必引新库）：
-
-```json
-{"ts": 1791270865178, "at": "10-06 14:34:25.178", "level": "warn",
- "domain": "lifecycle", "event": "process-killed",
- "reason": "LOW_MEMORY_KILLER", "pid": 1234, "process": "lobos.os",
- "detail": "reason=3 importance=125", "seq": 412}
-```
-
-必需字段：`ts`（毫秒）+ `level` + `domain` + `event` + `detail`。
-`at`（可读时间）由 `ts` 派生，不让各处自己格式化 —— 这是"时间对不齐"的根因。
-
-### 4.3 `KillAudit` 在新形态里
-
-```
-auditOnce(ctx)
-  └ 读 getHistoricalProcessExitReasons
-      └ 每条转成一个记录事件（domain=lifecycle, event=process-killed）
-          └ 落盘；游标推进
-
-attribution(sinceMs)   ← 只读，不再自己管落盘
-  └ 从记录流里查 process-killed
-```
-
-### 4.4 通知与记录解耦
-
-通知只留**当前状态摘要**（哪些程序在跑、活了多久），
-死因、异常、诊断**一律不进通知** —— 它们在记录流里，用户要详情时看诊断页或导出。
+| **唯一记录入口** | 所有"发生过什么"都写同一个模块；不再有第二个写手 |
+| **唯一落盘格式** | 一套字段 + 轮转策略；可读时间从时间戳派生，不让各处自己格式化 |
+| **记录与状态分开** | 状态（当前值）与记录（历史）不混文件、不混模块 |
+| **单一出口** | 查询、导出、遥测都从同一处取，不各自去拉文件 |
+| **遥测位置预留** | 记录事件预留 `level`（现只有 `seq`/`atMs`/`category`/`reason`/`detail`），遥测要按级别筛 |
 
 ---
 
 ## 五、整改顺序
 
+数据源已定（`Journal`），不需要再决策"用哪个当入口"。
+
 | 序 | 事项 | 成本 | 依据 |
 |---|---|---|---|
-| 1 | `KillAudit` 去掉内存 `reading` 快路径，`attribution()` 直接查 Journal | 小 | 消掉"同一件事三个出口" |
-| 2 | `kill-audit-cursor.txt` 并入 Journal 的游标管理 | 小 | 少一个文件、少一套状态 |
-| 3 | `residency.txt` / `probe-journal.txt` 迁进 Journal | 中 | 消除两种私有格式 |
-| 4 | `RuntimeDiagnostics` 三份文件合一（stderr 可单独留但归同一模块管） | 中 | 一个类写三种格式 |
-| 5 | 记录事件补 `level` 字段（现只有 `seq`/`atMs`/`category`/`reason`/`detail`） | 小 | 遥测要按级别筛 |
-| 6 | 一键导出记录包（给用户报障） | 中 | "我们能知道根因"的前提 |
-| 7 | 遥测上报出口 | 中 | 结构统一后才有意义 |
+| 1 | `residency.txt` 与 `probe-journal.txt` 迁进 Journal | 小 | 这两个还没进数据源，是"同一件事多个出口"的残留 |
+| 2 | `KillAudit` 去掉内存 `reading` 快路径，`attribution()` 查 Journal | 小 | 同上 |
+| 3 | `kill-audit-cursor.txt` 并入 Journal 的游标管理 | 小 | 少一个状态文件 |
+| 4 | 记录事件补 `level` 字段（现只有 `seq`/`atMs`/`category`/`reason`/`detail`） | 小 | 遥测要按级别筛 |
+| 5 | 定义导出层：一次捞齐、格式统一、带设备与版本元信息 | 中 | 用户报障与遥测共用 |
+| 6 | 遥测出口（下一阶段） | — | 位置在第 5 条留好 |
 
-第 1、2 条合计不到 30 行，做完 `KillAudit` 就从"独立模块"变成
-"Journal 的一个事件来源"，位置自然归位。
+第 1-3 条做完，"同一件事多个出口"就清干净了，合计不到 50 行。
+
+**关于那三份视图（`diagnostics.txt` / `os/diag.jsonl` / `node-stderr.log`）**：
+它们是数据源的渲染，**可以保留** —— `diagnostics.txt` 给人读，
+`diag.jsonl` 给 `events()` 读。只要导出层直接从 `Journal` 取，
+视图不轮转就不会成为问题（它们是快照型内容，不是流水）。
+
+**三份视图全部有界，不会无限增长**（已逐一核实）：
+
+| 视图 | 写入方式 | 上限 |
+|---|---|---|
+| `diagnostics.txt` | `StateFiles.appendBounded` | 512KB / 500 行 |
+| `os/diag.jsonl` | `StateFiles.appendBounded` | 512KB / 500 行 |
+| `node-stderr.log` | `recordNodeStderr` → `appendBounded` | 512KB / 500 行 |
+| `events.jsonl`（数据源） | `Journal` 自己的 `rotate` | 512KB / 500 行 |
+
+**所以视图层不需要整改** —— 它们有轮转、只是数据源的渲染，
+导出层直接从 `Journal` 取即可。
+
+**清理工作小结（第五节）：** 剩下的只有把三个还在数据源外面的
+（`residency.txt`、`probe-journal.txt`、`kill-audit-cursor.txt`）收进来，
+加上定义导出层。
 
 ---
 
-## 六、待你决策的点
+## 六、已查清与未查清
 
-1. **保留多久？** 本地记录（诊断/探针/常驻）与事件流（`events.jsonl`）可以不同策略。
-2. **要不要遥测上报？** 涉及隐私与用户知情，需要先定边界。
-3. **`RuntimeDiagnostics` 的 `node-stderr.log` 要不要并进去？** 它是 node 的原始 stderr，
-   量大且格式特殊，可能值得单独留但归同一模块管。
-4. **记录包给用户主动导出，还是我们通过 adb 拉？** 前者要 UI，后者只需权限。
+### 已查清（逐条核实过）
+
+1. **`Journal` 是唯一数据源。** `RuntimeDiagnostics.appendEvent` 一次调用同时写
+   `diagnostics.txt`、`os/diag.jsonl`、`Journal.append` 三处，前两者是视图。
+2. **三份视图全部有界。** 都走 `StateFiles.appendBounded`，上限 512KB / 500 行。
+3. **`Journal` 没有混状态。** 32 种 category 全是事件名；
+   `ports`/`index`/`settings`/`registry`/`state` 这几个看着像状态的，
+   实际记的是"变了"这件事 —— 如 `"claim " + owner + " -> " + port`、
+   `"upsert " + id + " desired=RUNNING"`、`"程序设置被拒（键不在白名单…）"`。
+4. **`ResidencyAudit` / `KillAudit` 不写记录**，它们读写的是状态
+   （`residency.txt` 存活时间、`kill-audit-cursor.txt` 游标）。
+5. **`KillAudit` 的采集链路是对的** —— 退出史经 `Journal.append` 落盘。
+
+### 未查清（需要真机数据，当前拿不到）
+
+adb 通道已断：`connect ECONNREFUSED 127.0.0.1:44851`。
+端口在宿主 `lobos.app` 重启后会变，重连要走无线配对（需在设备上确认 6 位码）。
+
+**待取的两项数据：**
+
+1. **各记录文件的实际体积** ——
+   理论上界已知（512KB / 500 行），但"用户实际会不会撞到上界"要跑一段时间才知道。
+
+2. **写入频率** ——
+   `Journal` 有 32 种 category，若某个每秒写几条，500 行很快被刷掉，
+   **关键的 `kill-audit` 事件可能被冲掉**。
+   这条直接决定保留期该定多少行/多少字节，也可能需要按 category 差异化保留。
+
+**第 2 条风险最实际**：死因归因是我们排查常驻失败的唯一证据，
+如果它比高频日志更早被轮转掉，这个模块的价值就打折。
+接回 adb 后第一件事应该是看 `events.jsonl` 里 `kill-audit` 的实际留存条数。
