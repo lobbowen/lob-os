@@ -784,3 +784,43 @@ x86-64 那条正是「拿宿主链接器编了」的形态 —— 而这一件**
 本机**没有编译器**，所以「真编一次」在本轮依旧做不到。
 补上这三步的意义是：**一旦 CI 编出来，后面三步会立刻指出它形态对不对**，
 而不是编完就绿、然后几个月后才发现没人拿得到。
+
+---
+
+## 十一、CI 真编之前：把「runner 上有什么」核过一遍
+
+配方依赖三样宿主工具和一个环境变量。逐条对着 **GitHub 官方 runner 镜像清单**
+（`actions/runner-images`，Ubuntu 24.04，Image 20260927.320.1）核实：
+
+| 依赖 | 配方在哪用 | runner 上有没有 | 结论 |
+|---|---|---|---|
+| `xz` / `unxz` | 解 `.tar.xz` 源码包 | `xz-utils 5.6.1+really5.4.5-1ubuntu0.3` 在 apt 包清单里 | ✅ 有 |
+| `ninja` | `cmake -G Ninja` | Tools 段 `Ninja 1.13.2` | ✅ 有 |
+| `cmake` | configure/build/install | Tools 段 `CMake 3.31.6`（apt 也会另装一个） | ✅ 有 |
+| `ANDROID_NDK_LATEST_HOME` | 交叉编译器所在 | `/usr/local/lib/android/sdk/ndk/29.0.14206865` | ✅ **与我们的 `ndkVersion` 完全一致** |
+
+所以 CI 那一步「只 apt 装 cmake」是够的 —— ninja 与 xz runner 自带。
+
+**注意 runner 上同时有三个 NDK**：
+
+```
+ANDROID_NDK_LATEST_HOME = 29.0.14206865   ← 我们要的
+ANDROID_NDK_HOME        = 27.3.13750724   ← 那个是 default
+ANDROID_NDK_ROOT        = 27.3.13750724
+```
+
+三个里两个是 27.x。配方与 `verify-ndk-llvm.sh` 都优先读 `ANDROID_NDK_LATEST_HOME`
+（`build-userland.yml` 的「定位 NDK」步也显式校验那一条），
+所以不会误用 27.x —— 但这正说明**「哪一条变量」必须写死，不能靠 fallback 顺序碰运气**。
+
+### 顺带核实了钉值本身（不用下载 158 MiB）
+
+```
+HEAD https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-project-21.1.0.src.tar.xz
+  → 302 → release-assets.githubusercontent.com → 200
+  → content-length = 158971856
+```
+
+与 release API 报的 `asset.size` **逐字节一致**（158971856），
+version 21.1.0 / sha256 `1672e3ef…878825` 也与 `userland-sources.json` 一致。
+即：**钉值三元组（version / sha256 / url）自洽，且资源真实存在。**
