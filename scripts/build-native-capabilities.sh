@@ -82,7 +82,23 @@ check_so() {
 check_so "$J/liblobosptyprobe.so" 1000 || exit 1
 
 BASH_VER=5.2.15
-if curl -fsSL "https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}.tar.gz" -o /tmp/bash.tar.gz \
+# ftp.gnu.org 从 GitHub runner 稳定不可达（实测 connect 134s 超时，本机同样 000），
+# 故按镜像顺序回退；任一源拿到即止。
+bash_tarball=""
+for base in \
+  "https://ftp.gnu.org/gnu/bash" \
+  "https://mirrors.tuna.tsinghua.edu.cn/gnu/bash" \
+  "https://mirrors.aliyun.com/gnu/bash" \
+  "https://mirror.nju.edu.cn/gnu/bash"; do
+  echo "[bash] 尝试 $base"
+  if curl -fsSL --connect-timeout 15 --max-time 300 "${base}/bash-${BASH_VER}.tar.gz" -o /tmp/bash.tar.gz; then
+    bash_tarball="${base}/bash-${BASH_VER}.tar.gz"
+    echo "[bash] 命中 $bash_tarball"
+    break
+  fi
+  echo "[bash] 不可达，换下一个镜像"
+done
+if [ -n "$bash_tarball" ] \
    && echo "bash-${BASH_VER} sha256: $(sha256sum /tmp/bash.tar.gz | cut -d' ' -f1)" \
    && tar -xzf /tmp/bash.tar.gz -C /tmp; then
   cat > /tmp/termcap_stub.c <<'EOF'
