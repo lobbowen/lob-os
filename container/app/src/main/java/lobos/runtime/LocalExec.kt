@@ -67,8 +67,21 @@ object LocalExec {
 
         if (preferPty) {
             val r = PtySession.runToCompletion(ctx, argv, env, cwd, timeoutMs)
-            if (r.ok) return Outcome(true, 0, r.output, "", Via.PTY)
-            // PTY 失败**不静默**：记下原因再往下走，调用方在结果里能看到。
+            // 关键区分：**命令跑完了** 与 **PTY 通路可用** 是两件事。
+            // 早先只看 r.ok，于是「命令退出码非 0」被当成「PTY 不可用」，
+            // 触发无 PTY 回落 —— 那会把「命令失败了」误报成「PTY 坏了」，
+            // 而后者会让人去查 PTY（真正没问题的地方）。
+            if (r.completed) {
+                return Outcome(
+                    ok = r.ok,
+                    exitCode = r.exitCode,
+                    stdout = r.output,
+                    stderr = "",
+                    via = Via.PTY,
+                    error = r.error,
+                )
+            }
+            // 只有「没跑完」（起不来 / 超时）才是通路问题
             val ptyWhy = r.error ?: "PTY 执行失败"
             val plain = runPlain(ctx, argv, env, cwd, timeoutMs)
             if (plain.ok) return plain.copy(via = Via.PLAIN, error = "PTY 不可用（$ptyWhy），已用无 PTY 通路")

@@ -67,8 +67,29 @@ object PtySession {
          */
         @Volatile var onData: ((ByteArray) -> Unit)? = null
 
-        /** 本会话的退出回调。 */
-        @Volatile var onExit: (() -> Unit)? = null
+        /**
+         * 本会话的退出回调，**带退出码与终止信号**。
+         *
+         * 为什么必须带：原生侧的 EXITED 帧里就有 status 与 signal
+         * （`WEXITSTATUS` / `WTERMSIG`），而早先的回调是无参的 ——
+         * 于是 `bash -c "exit 1"` 与 `exit 0` 在调用方看来完全一样，
+         * 桥接层报的 exitCode 恒为 0。那是「命令失败了但系统说成功」，
+         * 比报错更难查：程序会以为部署成功了。
+         */
+        @Volatile var onExit: ((status: Int, signal: Int) -> Unit)? = null
+
+        /** 退出码；-1 = 还在跑或未知（被信号杀死时看 [exitSignal]）。 */
+        @Volatile var exitStatus: Int = -1
+            private set
+
+        /** 终止信号号；0 = 正常退出。 */
+        @Volatile var exitSignal: Int = 0
+            private set
+
+        internal fun recordExit(status: Int, signal: Int) {
+            exitStatus = status
+            exitSignal = signal
+        }
 
         /** 写输入（用户敲的键、程序喂的数据）。 */
         fun write(data: ByteArray) {
@@ -224,7 +245,7 @@ object PtySession {
                     when (kind) {
                         F_READY -> onReady(sid, payload)
                         F_DATA -> onData(sid, payload)
-                        F_EXITED -> onExited(sid)
+                        F_EXITED -> onExited(sid, payload)
                         F_ERROR -> {
                             // 帧尾是 NUL 结尾的 C 字符串，但**不保证**恰好一个字节的 NUL
                             // —— 原生侧若被截断就会没有。trimEnd 掉 NUL 再解码，
@@ -275,10 +296,21 @@ object PtySession {
             try { sessions[sid]?.onData?.invoke(payload) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
         }
 
-        private fun onExited(sid: Int) {
+        private fun onExited(sid: Int, payload: ByteArray) {
             val s = sessions.remove(sid)
+            // 帧是 8 字节：uint32 status + uint32 signal（小端，主机序）。
+            var status = -1
+            var signal = 0
+            if (payload.size >= 8) {
+                val b = java.nio.ByteBuffer.wrap(payload, 0, 8)
+                b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                status = b.int
+                signal = b.int
+            }
+            s?.recordExit(status, signal)
             s?.markClosed()
-            try { s?.onExit?.invoke() } catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
+            try { s?.onExit?.invoke(status, signal) }
+            catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }
 
         /** 原生侧的诊断输出（启动失败之类），排障时看它。 */
@@ -376,11 +408,11 @@ object PtySession {
         cwd: File? = null,
         timeoutMs: Long = 10_000,
     ): Result {
-        if (argv.isEmpty()) return Result(false, "", "argv 为空")
+        if (argv.isEmpty()) return Result(false, -1, "", "argv 为空", completed = false)
         val h = try {
             if (env.isEmpty() && cwd == null) host(ctx) else dedicatedHost(ctx, env, cwd)
         } catch (e: Throwable) {
-            return Result(false, "", e.message ?: e.javaClass.simpleName)
+            return Result(false, -1, "", e.message ?: e.javaClass.simpleName, completed = false)
         }
         val ownHost = env.isNotEmpty() || cwd != null
         return try {
@@ -388,18 +420,55 @@ object PtySession {
             val buf = java.io.ByteArrayOutputStream()
             val done = CountDownLatch(1)
             s.onData = { d -> synchronized(buf) { buf.write(d) } }
-            s.onExit = { done.countDown() }
+            s.onExit = { _, _ -> done.countDown() }
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 s.close()
-                return Result(false, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms")
+                return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms", completed = false)
             }
-            Result(true, buf.toString(Charsets.UTF_8.name()), null)
+            // 退出码必须带出去。ok 只表示「跑完了」，**不等于「成功了」**——
+            // 早先这里恒返回 ok=true，于是 exit 1 与 exit 0 在调用方看来一样，
+            // 桥接层报的 exitCode 永远是 0，程序会以为部署成功了。那比报错更难查。
+            val out = buf.toString(Charsets.UTF_8.name())
+            val code = s.exitStatus
+            val sig = s.exitSignal
+            if (sig != 0) {
+                Result(false, 128 + sig, out, "被信号 $sig 终止（${signalName(sig)}）")
+            } else if (code != 0) {
+                Result(false, code, out, "退出码 $code")
+            } else {
+                Result(true, 0, out, null)
+            }
         } catch (e: Throwable) {
-            Result(false, "", e.message ?: e.javaClass.simpleName)
+            Result(false, -1, "", e.message ?: e.javaClass.simpleName, completed = false)
         } finally {
             if (ownHost) runCatching { h.close() }
         }
     }
+
+    /** 信号号 → 名字（诊断用；未知就报数字，不编）。 */
+    private fun signalName(sig: Int): String = when (sig) {
+        1 -> "SIGHUP"; 2 -> "SIGINT"; 3 -> "SIGQUIT"; 9 -> "SIGKILL"
+        11 -> "SIGSEGV"; 13 -> "SIGPIPE"; 15 -> "SIGTERM"
+        else -> "信号 $sig"
+    }
+
+    /**
+     * 一次性执行的结果。
+     *
+     * `completed` 与 `ok` **必须分开**：
+     *   · completed = 命令真的跑完了（拿到退出码或被信号终止）
+     *   · ok        = 跑完了**且**退出码为 0
+     * 早先只有一个 ok，于是「退出码非 0」与「PTY 通路坏了」被混成同一件事，
+     * 调用方会在命令失败时去回落无 PTY 通路 —— 那是把诊断指向错误的地方。
+     */
+    data class Result(
+        val ok: Boolean,
+        val exitCode: Int,
+        val output: String,
+        val error: String?,
+        /** 命令是否真的执行完（false = 起不来 / 超时，属于通路问题）。 */
+        val completed: Boolean = ok || exitCode != -1,
+    )
 
     /** 另起一个宿主进程，带自定义环境与工作目录（用完即弃，不进共享池）。 */
     private fun dedicatedHost(ctx: Context, env: Map<String, String>, cwd: File?): Host {
