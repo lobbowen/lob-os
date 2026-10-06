@@ -222,7 +222,7 @@ object ProgramInstallPipeline {
             ?: runCatching {
                 lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("entry", "").orEmpty()
             }.getOrDefault("").ifBlank { "bin/" + spec.programId }
-        linkEntry(context, dest, entryRel)
+        linkEntry(dest, entryRel)
         val reg = lobos.os.ProgramIndex.get(context, spec.programId)
         val base = reg ?: lobos.os.ProgramIndex.empty(
             spec.programId, lobos.os.ProgramManager.levelOfKind(kindOf(context, spec.programId)),
@@ -415,15 +415,54 @@ object ProgramInstallPipeline {
         return out
     }
 
-    private fun linkEntry(context: Context, dest: File, entryRel: String): Boolean {
+    private fun linkEntry(dest: File, entryRel: String): Boolean {
         val target = File(dest, entryRel)
         if (!target.isFile) return false
         runCatching { lobos.runtime.ExecBits.apply(target) }
-        val link = File(lobos.runtime.PrefixProvisioner.binDir(context), entryRel.substringAfterLast("/"))
+        val bin = lobos.runtime.PrefixProvisioner.binDir(context)
+        val primary = entryRel.substringAfterLast("/")
+        var ok = link(bin, primary, target)
+        // 别名也必须建链 —— 只建入口那一个的话，一件里只有「本名」的命令能用。
+        //
+        // 阶段1c 的 clang 就是这个形态：件里有 clang / clang++ / ld.lld / llvm-ar /
+        // llvm-nm / llvm-strip / llvm-objdump / llvm-readobj 八个，而 entry 只能声明
+        // 一个。不建别名链 = 装上了但只调得动其中一个，而「装上了却调不动」
+        // 比「没装」更难查。
+        //
+        // 卸载侧（PackageInstaller.uninstall）本来就读 aliases 删链 ——
+        // 说明别名链**曾经被建过**，安装侧是漏了。
+        for (a in aliasNames(dest)) {
+            if (a == primary) continue          // 与本名相同的话会把刚建的链删掉
+            ok = link(bin, a, target) && ok
+        }
+        return ok
+    }
+
+    /**
+     * 件内 package.json 的 bin 字段声明的别名（npm 生态约定，清单侧已支持读取）。
+     * bin 可以是字符串（此时键即名）或对象（键=名，值=件内相对路径）。
+     */
+    private fun aliasNames(dest: File): List<String> {
+        val out = mutableListOf<String>()
+        val pkg = File(dest, "package.json")
+        if (!pkg.isFile) return out
+        runCatching {
+            val bin = org.json.JSONObject(pkg.readText()).opt("bin") ?: return@runCatching
+            when (bin) {
+                is org.json.JSONObject -> for (k in bin.keys()) if (k.isNotBlank()) out += k
+                is String -> out += File(bin).name
+            }
+        }
+        return out.filter { lobos.os.ProgramIndex.safeSegment(it) != null }.distinct()
+    }
+
+    /** 建软链。已存在（真文件或链）时先删 —— 升级要能换掉旧的那条。 */
+    private fun link(binDir: File, name: String, target: File): Boolean {
+        val l = File(binDir, name)
         return runCatching {
-            link.parentFile?.mkdirs()
-            if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
-            android.system.Os.symlink(target.absolutePath, link.absolutePath)
+            l.parentFile?.mkdirs()
+            if (l.exists() || java.nio.file.Files.isSymbolicLink(l.toPath())) l.delete()
+            android.system.Os.symlink(target.absolutePath, l.absolutePath)
             true
         }.getOrDefault(false)
     }
