@@ -1,5 +1,4 @@
-package lobos.bridge
-
+package lobos.permissions
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import java.util.concurrent.ConcurrentLinkedDeque

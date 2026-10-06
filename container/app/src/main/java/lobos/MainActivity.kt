@@ -13,7 +13,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import lobos.bridge.ScreenCaptureController
+import lobos.capability.ScreenCaptureController
 import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
 import lobos.capability.Evidence

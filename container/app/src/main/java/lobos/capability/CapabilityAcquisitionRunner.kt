@@ -1,7 +1,7 @@
 package lobos.capability
 
 import android.content.Context
-import lobos.bridge.AdbClientRunner
+import lobos.capability.AdbClientRunner
 import lobos.lifecycle.AccessibilityServiceState
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter

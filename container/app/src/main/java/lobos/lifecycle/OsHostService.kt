@@ -15,7 +15,7 @@ import lobos.OsApplication
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
-import lobos.bridge.ScreenCaptureController
+import lobos.capability.ScreenCaptureController
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.os.Level
 import lobos.os.OsFacts

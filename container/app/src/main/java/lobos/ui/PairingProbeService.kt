@@ -12,7 +12,7 @@ import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
-import lobos.bridge.AdbClientRunner
+import lobos.capability.AdbClientRunner
 import lobos.bridge.MdnsWatcher
 import lobos.capability.AttemptStore
 import lobos.setup.PipelineRefresh

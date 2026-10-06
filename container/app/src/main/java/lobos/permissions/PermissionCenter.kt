@@ -8,8 +8,8 @@ import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
-import lobos.bridge.NotificationStore
-import lobos.bridge.ScreenCaptureController
+import lobos.permissions.NotificationStore
+import lobos.capability.ScreenCaptureController
 import lobos.lifecycle.OsAccessibilityService
 
 class PermissionCenter(private val ctx: Context) {
