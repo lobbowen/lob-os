@@ -197,15 +197,27 @@ $ TZ=Europe/London node -e '…getHours()'
               │  jq    → 保持 oniguruma 静态（无消费者不换）
               │  此刻底座里的库第一次被真正使用
               │
-              │  状态：**未做**。核实（2026-10-07）——
-              │    curl 仍是 --disable-shared --enable-static（build-userland-curl.sh）
-              │    git 仍链静态库（CURL_LIBCURL 指向 work/deps/lib 下的 .a）
-              │  为什么它要等：改动态链的前提是「底座那几件共享库真的在位」。
-              │    阶段0 已把它们编出来（libz/libssl/libcrypto/libcurl），
-              │    但阶段8 之前它们没有任何设备端消费路径；阶段8 完成后才有
-              │    （$PREFIX/lib + toolchain 路径）。改之前要先验「链上去能起」。
-              │  这一步不可省：静态链的件是单文件自足的，改动态链后缺任何
-              │  一件库它就起不来 —— 那是「装得上、跑不起」的形态。
+              │  状态：**原方式已撤回**（核实后判定它与当前架构冲突）。
+              │  核实到的结构性事实（2026-10-07）：
+              │    · 商店件在 build-userland.yml 编，底座 .so 在 build-apk.yml 编
+              │    · 两个 workflow **独立**，商店件构建时拿不到底座那批 .so
+              │    · 若让两边各编一份，字节可能不同 —— 那与阶段8 的
+              │      「底座件有版本、单一事实源、可回滚」直接冲突
+              │    （即：商店件链的那份 libssl.so 与设备上跑的那份不是同一个）
+              │
+              │  对齐 Linux 的真实形态：**发行版不重编已装的包**。
+              │    apt 装 curl 链的是 libssl.so.1.1；后来升级 openssl，
+              │    curl 不被重编，靠**同名替换**继续工作 —— 这正是 SONAME 的意义。
+              │    我们的阶段8（原件保留 + 软链切换）提供的正是这个替换能力。
+              │
+              │  所以底座那四件 .so 的**真实消费者**不是既有商店件，而是：
+              │    ① 程序自己编出来的原生模块（node-gyp 编译 .node 时 -I/-L）
+              │    ② 用户在设备上跑 ./configure，探测 libssl/libz 后链上
+              │  两者都只需要「设备上有 .so」，而那已经成立：
+              │    libSearchPath 含 $PREFIX/lib，DEPS 铺了 libz/libssl/libcrypto/libcurl。
+              │
+              │  换句话说：**阶段2 的目标（底座库被真正使用）已经达成**，
+              │  只是消费者不是 curl/git —— 那是本方案最初写错的地方。
               ↓
 第 3 阶段  终端：PTY 原生件
               │  librivospty.so（openpty + termios + 窗口大小）
