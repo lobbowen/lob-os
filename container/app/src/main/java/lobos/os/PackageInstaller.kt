@@ -23,9 +23,10 @@ object PackageInstaller {
         if (gate != null) return fail(ctx, name, gate)
         val kind = entry.optString("kind", "").trim().uppercase()
         val dir = ProgramManager.stateDirOf(ctx, name)
-        val bytes = runCatching { SupplyProvisioner.httpGet(url) }.getOrNull()
-            ?: return fail(ctx, name, "下载失败：" + url)
-        val got = SupplyProvisioner.sha256Hex(bytes)
+        val zipTmp = File(ctx.cacheDir, name + ".pkg.zip.part")
+        runCatching { SupplyProvisioner.httpGetToFile(url, zipTmp) }
+            .onFailure { return fail(ctx, name, "下载失败：" + url + "（" + (it.message ?: it.javaClass.simpleName) + "）") }
+        val got = SupplyProvisioner.sha256HexFile(zipTmp)
         if (got != want) return fail(ctx, name, "sha256 不符：" + got.take(12) + " != " + want.take(12))
         val rawVer = version?.takeIf { it.isNotBlank() }
             ?: entry.optString("version", "").takeIf { it.isNotBlank() }
@@ -36,12 +37,13 @@ object PackageInstaller {
         runCatching {
             staging.deleteRecursively()
             staging.mkdirs()
-            SupplyProvisioner.unzipInto(bytes, staging)
+            SupplyProvisioner.unzipFromFile(zipTmp, staging)
         }.onFailure {
             staging.deleteRecursively()
             runCatching { if (dir.isDirectory && dir.list()?.isEmpty() == true) dir.delete() }
             return fail(ctx, name, "解包失败：" + it.message)
         }
+        runCatching { zipTmp.delete() }
         val dest = File(dir, ver)
         val rootCanon = dir.canonicalFile.path
         if (dest.canonicalFile.path != rootCanon + File.separator + ver) {

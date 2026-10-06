@@ -101,6 +101,63 @@ object SupplyProvisioner {
         return sb.toString()
     }
 
+    internal fun httpGetToFile(url: String, dest: File): Long {
+        dest.parentFile?.mkdirs()
+        var conn: HttpURLConnection? = null
+        try {
+            conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 300_000
+                requestMethod = "GET"
+            }
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                throw IllegalStateException("件下载 HTTP " + code)
+            }
+            dest.outputStream().buffered().use { out ->
+                conn.inputStream.use { it.copyTo(out, 64 * 1024) }
+            }
+            return dest.length()
+        } finally {
+            runCatching { conn?.disconnect() }
+        }
+    }
+
+    internal fun sha256HexFile(f: File): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().buffered().use { ins ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    internal fun unzipFromFile(zip: File, dest: File) {
+        dest.mkdirs()
+        val destRoot = dest.canonicalFile
+        java.util.zip.ZipFile(zip).use { zf ->
+            for (e in java.util.Collections.list(zf.entries())) {
+                val out = File(dest, e.name).canonicalFile
+                if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
+                    throw IllegalArgumentException("包条目路径越界（疑似目录穿越）: " + e.name)
+                }
+                if (e.isDirectory) {
+                    out.mkdirs()
+                } else {
+                    out.parentFile?.mkdirs()
+                    zf.getInputStream(e).use { ins ->
+                        out.outputStream().use { ins.copyTo(it, 64 * 1024) }
+                    }
+                    ExecBits.apply(out)
+                }
+            }
+        }
+    }
+
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
@@ -324,15 +381,23 @@ object SupplyProvisioner {
                 }
                 val staging = File(tc, "." + name + ".staging")
                 try {
-                    val bytes = httpGet(url)
-                    val got = sha256Hex(bytes)
+                    val zipTmp = File(ctx.cacheDir, name + ".zip.part")
+                    val got = try {
+                        httpGetToFile(url, zipTmp)
+                        sha256HexFile(zipTmp)
+                    } catch (e: Throwable) {
+                        RuntimeDiagnostics.append(ctx, "supply", false, "件下载失败", name + " " + (e.message ?: e.javaClass.simpleName))
+                        shortPieces.add(name + "（下载失败）")
+                        continue
+                    }
                     if (got != want) {
                         RuntimeDiagnostics.append(ctx, "supply", false, "件 sha256 不符（已丢弃，不落位）", name + " " + got.take(12) + " != " + want.take(12))
                         shortPieces.add(name + "（sha256 不符）")
                         continue
                     }
                     staging.deleteRecursively()
-                    unzipInto(bytes, staging)
+                    unzipFromFile(zipTmp, staging)
+                    runCatching { zipTmp.delete() }
                     val stagedEntry = File(staging, entryRel)
                     if (!stagedEntry.isFile) {
                         RuntimeDiagnostics.append(ctx, "supply", false, "件缺入口（已丢弃）", name + " " + entryRel)

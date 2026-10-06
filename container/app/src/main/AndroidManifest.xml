@@ -34,7 +34,8 @@
         android:theme="@style/Theme.LobOs"
         tools:targetApi="34"
         tools:ignore="UnusedAttribute"
-        android:extractNativeLibs="true">
+        android:extractNativeLibs="true"
+        android:largeHeap="true">
 
         <service
             android:name=".lifecycle.OsHostService"

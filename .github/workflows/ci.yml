@@ -102,6 +102,9 @@ jobs:
       - name: 跨包符号须真实存在（写了包限定名就必须有那个声明）
         run: node tools/check-cross-refs.js
 
+      - name: 大件落位须流式（整包进 ByteArray 会 OOM）
+        run: node tools/check-big-artifact.js
+
       - name: dimina 官方规范须遵守（path 入口 / zip 名 / 不打补丁）
         run: node tools/check-dimina-spec.js
 
