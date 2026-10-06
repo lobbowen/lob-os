@@ -26,6 +26,35 @@ const BAD = [
   [/=> \{/, 'JS 箭头函数：Kotlin 用 fun + lambda'],
 ];
 
+// 字符串模板里的 $大写标识符 必须是本仓真实声明过的符号，否则编译期报
+// Unresolved reference（本仓真实踩过："node-$ORIGIN-libs" 里 $ORIGIN 不是 Kotlin 变量）。
+// 已转义的 \$ORIGIN 与注释里的 $ORIGIN 都合法，这里逐项排除。
+function stripComments(line) {
+  let out = '';
+  let inStr = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const c = line[i];
+    if (inStr) {
+      if (c === '\\') { out += c + (line[i + 1] || ''); i += 1; continue; }
+      if (c === '"') inStr = false;
+      out += c;
+      continue;
+    }
+    if (c === '"') { inStr = true; out += c; continue; }
+    if (c === '/' && line[i + 1] === '/') break;
+    out += c;
+  }
+  return out;
+}
+
+const declaredSymbols = new Set();
+for (const f of walk(SRC)) {
+  const text = fs.readFileSync(f, 'utf8');
+  for (const m of text.matchAll(/\b(?:const\s+val|val|var)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    declaredSymbols.add(m[1]);
+  }
+}
+
 const problems = [];
 for (const f of walk(SRC)) {
   const rel = f.replace(SRC + '/', '');
@@ -34,6 +63,18 @@ for (const f of walk(SRC)) {
     for (const [re, msg] of BAD) {
       if (!re.test(line)) continue;
       if (msg) problems.push(rel + ':' + (i + 1) + '  ' + msg);
+    }
+    const code = stripComments(line);
+    const re = /(^|[^\\$])\$([A-Z][A-Z0-9_]+)/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+      if (declaredSymbols.has(m[2])) continue;
+      problems.push(
+        rel + ':' + (i + 1) + '  字符串模板里的 $' + m[2] +
+        ' 不是本仓声明过的符号（编译期报 Unresolved reference）。' +
+        '要写字面量 $ 须用反斜杠转义（\\$' + m[2] + '）' +
+        '（本仓真实踩过："node-$ORIGIN-libs" 编译炸）',
+      );
     }
   });
 }

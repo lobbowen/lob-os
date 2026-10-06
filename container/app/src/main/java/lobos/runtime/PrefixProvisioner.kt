@@ -19,7 +19,7 @@ object PrefixProvisioner {
 
     const val NODE_BIN_NAME = "node"
 
-    const val NODE_DEPS_NAME = "node-$ORIGIN-libs"
+    const val NODE_DEPS_NAME = "node-@ORIGIN-libs"
 
     const val CA_BUNDLE_NAME = "ca-bundle.pem"
     private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
