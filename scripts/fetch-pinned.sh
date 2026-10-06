@@ -96,6 +96,30 @@ elif [ "${1:-}" = "--llvm" ]; then
   fi
   echo "$LV"
   exit 0
+elif [ "${1:-}" = "--src-version" ]; then
+  # 读某个 sources 键的**版本号**，不下载。
+  #
+  # 为什么需要这一档：build-native-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
+  # 跑的是 `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，
+  # 只为了从一行输出里 sed 出版本号。而「这个件该编哪个版本」是纯查表的事。
+  #
+  # 只取不判（与 --ndk/--llvm 同理）：sha256 校验属于 --pin 的职责。
+  KEY="${2:?用法: $0 --src-version <键>（键见 $TABLE）}"
+  if ! SV="$(node -e '
+    const path = require("node:path");
+    let tab;
+    try { tab = require(path.resolve(process.argv[1])); } catch (e) { console.error("钉值表读不出: " + e.message); process.exit(1); }
+    const s = (tab.sources || {})[process.argv[2]];
+    if (!s || typeof s.version !== "string" || !s.version.trim()) {
+      console.error("sources." + process.argv[2] + " 没有 version 格（键是否拼错？现有: " + Object.keys(tab.sources || {}).join(", ") + "）");
+      process.exit(1);
+    }
+    process.stdout.write(s.version);
+  ' "$TABLE" "$KEY")"; then
+    die "钉值表的 sources.$KEY 读不通"
+  fi
+  echo "$SV"
+  exit 0
 elif [ $# -ge 3 ]; then
   OUT="${1:-}"
   WANT="${2:-}"

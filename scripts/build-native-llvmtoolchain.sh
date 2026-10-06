@@ -74,8 +74,10 @@ note "核实 NDK 与 LLVM 是否同源"
 bash "$ROOT_DIR/scripts/verify-ndk-llvm.sh" || exit 1
 
 WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
-PINNED_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin llvm /dev/null 2>/dev/null \
-  | sed -n 's/.*version=\([0-9.]*\).*/\1/p' || true)"
+# 读钉的 LLVM 版本用 --src-version（纯查表）。早先这里跑的是
+# `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，只为了从一行输出里
+# sed 出版本号。查表 0.1 秒，下载要几分钟；而这一步只是「该不该编」的判断。
+PINNED_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version llvm 2>/dev/null || true)"
 if [ -n "$WANT_LLVM" ] && [ -n "$PINNED_LLVM" ]; then
   case "$PINNED_LLVM" in
     "$WANT_LLVM"|"$WANT_LLVM".*) : ;;
