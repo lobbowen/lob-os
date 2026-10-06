@@ -150,8 +150,8 @@ class PanelActivity : AppCompatActivity() {
 
     private fun openApp(id: String) {
         runOnUiThread {
-            runCatching { QuickAppHost.open(this, id) }
-                .onFailure { say("打不开 $id: " + (it.message ?: it.javaClass.simpleName)) }
+            val why = QuickAppHost.open(this, id)
+            if (why.isEmpty()) say("已打开 $id") else say("打不开 $id: $why")
         }
         say("请求打开 $id")
     }

@@ -82,19 +82,19 @@ object QuickAppHost {
         }.getOrDefault(false)
     }
 
-    fun open(activity: Activity, id: String) {
+    fun open(activity: Activity, id: String): String {
         val dimina = runCatching { Dimina.getInstance() }.getOrElse {
             Log.e(TAG, "快应用运行时未初始化，无法打开 $id", it)
-            return
+            return "快应用运行时未初始化"
         }
         val entry = ProgramIndex.get(activity, id)
         if (entry == null) {
             Log.e(TAG, "程序不在索引里: $id")
-            return
+            return "程序不在索引里"
         }
         if (!installed(id)) {
             Log.e(TAG, "前端尚未装入 dimina，先装后开: $id")
-            return
+            return "前端尚未装入 dimina"
         }
         val mp = MiniProgram(
             appId = id,
@@ -102,9 +102,11 @@ object QuickAppHost {
             path = null,
             versionName = entry.version,
         )
-        runCatching { dimina.startMiniProgram(activity, mp) }
-            .onSuccess { Log.i(TAG, "已打开快应用: $id") }
-            .onFailure { Log.e(TAG, "打开失败: $id", it) }
+        return runCatching { dimina.startMiniProgram(activity, mp) }
+            .fold(
+                onSuccess = { Log.i(TAG, "已打开快应用: $id"); "" },
+                onFailure = { Log.e(TAG, "打开失败: $id", it); (it.message ?: it.javaClass.simpleName) },
+            )
     }
 
     fun close(id: String): Boolean = runCatching { Dimina.getInstance().closeMiniProgram(id) }.getOrDefault(false)

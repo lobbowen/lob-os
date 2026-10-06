@@ -19,6 +19,7 @@ object LobosBridge {
             "desktopIcon.add" -> desktopAdd(ctx, data, reply)
             "desktopIcon.remove" -> desktopRemove(ctx, data, reply)
             "desktopIcon.state" -> desktopState(ctx, data, reply)
+            "openApp" -> openApp(data, reply)
             "invoke" -> reply(invoke(ctx, data))
             else -> reply(JSONObject().apply { put("ok", false); put("error", "unknown event: $event") })
         }
@@ -28,9 +29,32 @@ object LobosBridge {
         put("ok", true)
         put("runtime", "lobos")
         put("hostApis", listOf(
-            "ping", "capabilities", "backendEndpoint", "invoke",
+            "ping", "capabilities", "backendEndpoint", "openApp", "invoke",
             "desktopIcon.add", "desktopIcon.remove", "desktopIcon.state",
         ))
+    }
+
+    private fun openApp(data: JSONObject?, reply: (JSONObject) -> Unit) {
+        val id = data?.optString("id", "").orEmpty()
+        if (id.isBlank()) return reply(err("openApp 缺 id"))
+        val activity = Foreground.current()
+        if (activity == null) {
+            return reply(JSONObject().apply {
+                put("ok", false)
+                put("reason", "no-foreground-activity")
+                put("error", "当前没有前台 Activity，无法起快应用界面")
+            })
+        }
+        val from = activity.javaClass.name
+        val installed = QuickAppHost.installed(id)
+        val failure = QuickAppHost.open(activity, id)
+        reply(JSONObject().apply {
+            put("ok", failure.isEmpty())
+            put("id", id)
+            put("activity", from)
+            put("wasInstalled", installed)
+            if (failure.isNotEmpty()) put("error", failure)
+        })
     }
 
     private fun invoke(ctx: Context, data: JSONObject?): JSONObject {

@@ -23,6 +23,7 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        lobos.quickapp.Foreground.attach(this)
         initQuickAppRuntime()
         OsHostService.ensureRunning(this)
         registerWakeupEdges()
