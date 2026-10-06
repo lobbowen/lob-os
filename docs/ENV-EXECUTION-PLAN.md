@@ -181,11 +181,14 @@ $ TZ=Europe/London node -e '…getHours()'
               │  指纹纳入 userland-sources.json + 新脚本
               ↓
 第 1 阶段  开发环境本体
-              │  clang / lld / binutils / make / sysroot / python3
+              │  clang / lld / binutils / cmake / make / pkg-config / sysroot / python3
               │  sysroot 用 NDK 那套（Bionic ABI 兼容）
               │
-              │  已完成：sysroot（1a）、$PREFIX/include 软链、别名软链
-              │  待 CI：llvmVersion → 重钉 LLVM → 跑 build-native-llvmtoolchain.sh
+              │  已完成（配方 + 判据齐备，待 CI 实编）：
+              │    sysroot（1a）· make · cmake · pkg-config · python3
+              │  已完成的配套：
+              │    $PREFIX/include 软链 · 别名软链（多命令件装完在 PATH 里可见）
+              │  待 CI：llvmVersion → 按它重钉 LLVM → 跑 build-native-llvmtoolchain.sh
               │  详见下面「阶段1c 的三步解锁链」
               ↓
 第 2 阶段  商店件改动态链
@@ -193,6 +196,16 @@ $ TZ=Europe/London node -e '…getHours()'
               │  git   → -lz -lssl -lcrypto -lcurl
               │  jq    → 保持 oniguruma 静态（无消费者不换）
               │  此刻底座里的库第一次被真正使用
+              │
+              │  状态：**未做**。核实（2026-10-07）——
+              │    curl 仍是 --disable-shared --enable-static（build-userland-curl.sh）
+              │    git 仍链静态库（CURL_LIBCURL 指向 work/deps/lib 下的 .a）
+              │  为什么它要等：改动态链的前提是「底座那几件共享库真的在位」。
+              │    阶段0 已把它们编出来（libz/libssl/libcrypto/libcurl），
+              │    但阶段8 之前它们没有任何设备端消费路径；阶段8 完成后才有
+              │    （$PREFIX/lib + toolchain 路径）。改之前要先验「链上去能起」。
+              │  这一步不可省：静态链的件是单文件自足的，改动态链后缺任何
+              │  一件库它就起不来 —— 那是「装得上、跑不起」的形态。
               ↓
 第 3 阶段  终端：PTY 原生件
               │  librivospty.so（openpty + termios + 窗口大小）
@@ -206,10 +219,23 @@ $ TZ=Europe/London node -e '…getHours()'
 第 6 阶段  ~~jq 升入底座~~ → **取消**（核实后判定 jq 是商店件，见 2.1）
               ↓
 第 7 阶段  数据：zoneinfo / locale
+              │  状态：**已撤回**（核实后判定是假需求）——
+              │    Bionic 读系统属性取时区（/system 那份 zoneinfo 实测零个时区文件）、
+              │    node 是 full-icu 自带时区数据、locale-archive 是 glibc 的东西。
+              │    改为记入 2.6：真正的缺口是「TZ 环境变量被 node 忽略」
+              │    （实测四个时区 getHours() 全返回 8，而 Intl 显式传时区有效）。
               ↓
 第 8 阶段  底座件版本化 + OTA 更新机制
+              │  状态：**已完成**（底座件版本化 + OTA 更新 + 回滚，dc64173）——
+              │    原件在 APK 永远不动 = 回退基线；更新落 toolchain/<id>/<版本>/；
+              │    入口软链切换；回滚 = 删软链让 provision 重建。
               ↓
 第 9 阶段  内置终端窗口（给人用，原生 View）
+
+**状态：已完成**（d1ac5b1）—— 原生 View + ANSI 仿真
+（`ui/TerminalScreen.kt` / `TerminalView.kt` / `TerminalActivity.kt`），
+复用同一个常驻 `PtySession` 宿主。判据 5（`vi` 能编辑）与 6（颜色与中文正确）
+要求做 ANSI 仿真 —— 不解析转义序列时屏幕上就是 `[?2004h` 这种垃圾。
 ```
 
 **顺序不能乱的理由**：
