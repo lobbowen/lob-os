@@ -28,3 +28,6 @@ keystore.properties
 
 # 第二个快应用测试工程复用 fixture 的依赖，链接不进仓
 tools/quickapp-fixture-second/node_modules
+
+# 本地反例验证脚手架（不入仓，见 components/native/COMPONENT.md 的记录表）
+_scripts/
