@@ -48,9 +48,23 @@ private val DEPS: List<Pair<String, String>>
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
+/**
+ * sysroot 件在商店里的名字（scripts/build-userland-sysroot.sh 与
+ * userland-verify.json 的 criteria.sysroot.entry 对应）。
+ *
+ * 硬编码在这儿是因为 $PREFIX/include 的软链**必须**知道它 ——
+ * 与其把「当前版本在哪」抽象成一层间接，不如直接读那一个事实源。
+ * 改名时要同步改：构建脚本、userland-verify.json 的 entry、以及本行。
+ */
+private const val SYSROOT_ID = "sysroot"
+
     fun root(ctx: Context): File = File(ctx.filesDir, "usr")
     fun binDir(ctx: Context): File = File(root(ctx), "bin")
     fun libDir(ctx: Context): File = File(root(ctx), "lib")
+
+    /** $PREFIX/include —— 头文件的「位置约定」入口（Linux 里是 /usr/include）。 */
+    fun includeDir(ctx: Context): File = File(root(ctx), "include")
+
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
@@ -88,6 +102,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             }
         }
         linkBusyboxApplets(ctx)?.let { ready += it }
+        linkSysrootInclude(ctx)?.let { ready += it }
         val caDst = caBundle(ctx)
         try {
             caDst.parentFile?.mkdirs()
@@ -127,6 +142,68 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
      * 缺件由 verify-runtime-elf.sh 在构建期判；运行期缺了只是少一批命令，
      * 不该让整个底座装配失败（那会让 bash/rg 也跟着不可用）。
      */
+    /**
+     * 把 $PREFIX/include 软链到 sysroot 件的当前版本头文件目录。
+     *
+     * ── 为什么需要它 ──
+     * 编译链的三种找头文件方式里，只有这一种不要求调用方知道路径：
+     *   ① -I/-L           —— node-gyp 走这条（它自己带 flags）
+     *   ② --sysroot=<路径> —— 要显式传，configure 不会替你猜
+     *   ③ /usr/include     —— **位置约定**，configure 会自己找
+     * 少了 ③，一个跑 `./configure` 的包在设备上会报
+     * `fatal error: stdio.h: No such file or directory` ——
+     * 而那是「装好了、跑起来了、直到编译才崩」的最坏形态。
+     *
+     * ── 为什么指向「当前版本」而不是固定路径 ──
+     * sysroot 件按商店通道装，落在 `programs/sysroot/<版本>/sysroot`，
+     * 版本随升级变。所以链必须在**每次 provision 时重新指向当前版本** ——
+     * 否则升级 sysroot 后，链还指着旧版本的头文件，而那才是真正的静默出错。
+     *
+     * sysroot 不在位时返回空列表并**不判红**：开发环境是可选的
+     * （用户没装 clang 时不需要头文件）。缺它时报的是 configure 那句
+     * file not found，指向明确，不需要在这里多报一次。
+     */
+    private fun linkSysrootInclude(ctx: Context): List<String> {
+        val sysrootRoot = sysrootIncludeDir(ctx) ?: return emptyList()
+        val link = includeDir(ctx)
+        return try {
+            link.parentFile?.mkdirs()
+            // 已经是链且指向对的地方 → 不动（避免每次启动都重建）
+            val cur = runCatching { link.toPath().toRealPath() }.getOrNull()
+            if (cur != null && cur == runCatching { sysrootRoot.toPath().toRealPath() }.getOrNull()) {
+                return listOf("include")
+            }
+            if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) {
+                // 有人放了真文件在那儿 —— 不覆盖（那可能是用户自己放的）
+                return emptyList()
+            }
+            runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
+            java.nio.file.Files.createSymbolicLink(link.toPath(), sysrootRoot.toPath())
+            listOf("include")
+        } catch (_: Exception) {
+            runCatching { link.delete() }
+            emptyList()
+        }
+    }
+
+    /**
+     * sysroot 件当前版本的头文件目录；件不在位或没有头文件时返回 null。
+     *
+     * 走 `ProgramDir.currentVersion()` 而不是去列目录取「最新」——
+     * 那会把「装了两个版本」误当成「最新的那个」，而 CURRENT 指针才是事实。
+     */
+    fun sysrootIncludeDir(ctx: Context): File? {
+        return try {
+            val dir = lobos.os.ProgramDir(ctx, SYSROOT_ID).currentVersion()?.let {
+                File(lobos.os.ProgramManager.stateDirOf(ctx, SYSROOT_ID), it)
+            } ?: return null
+            val inc = File(File(dir, "sysroot"), "include")
+            if (inc.isDirectory) inc else null
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     private fun linkBusyboxApplets(ctx: Context): List<String> {
         val bb = File(binDir(ctx), "busybox")
         if (!bb.isFile) return emptyList()
