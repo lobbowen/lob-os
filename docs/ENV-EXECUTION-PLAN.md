@@ -611,3 +611,18 @@ NDK release notes 说「See `clang_source_info.md` in the toolchain」，
 
 `ndk;29.0.14206865` 与我们钉的 `ndkVersion` 一致，来源是官方
 `repository2-3.xml` 的 `<remotePackage path="ndk;29.0.14206865">`。
+
+### 6. 顺带排除掉一条「看起来能绕过去」的路（省得下轮再问）
+
+有人会问：**NDK 里不是就有 clang 吗？直接拿来做设备上的编译器不行吗？**
+不行，两条理由，都是上面查出来的事实：
+
+1. **NDK 的 clang 是「宿主 x86_64 → 目标 aarch64」的交叉编译器**，
+   宿主是 PC。它在设备上跑不起来（我们要的是「设备本机的编译器」）。
+2. **没有官方的「Android 当宿主」的 clang 预编包**。
+   `external/clang/build.py` 里 `build()` 接受 `prebuilts_path` /
+   `prebuilts_version` 并传 `LLVM_PREBUILTS_BASE` 给 make ——
+   **AOSP 自己也是下载宿主预编包**，不为 Android 宿主构建。
+
+所以「直接抄 NDK 的 clang」这条路不存在，交叉编译是唯一形态，
+与 Termux 的做法一致（它也是在 Android 上自编 clang）。
