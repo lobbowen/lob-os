@@ -37,6 +37,43 @@ object KillAudit {
     @Volatile
     private var reading: Reading? = null
 
+    // 采集入口。读系统的历史退出记录（Android 11+ API）并落盘去重。
+    // 判定：这不是死码，是待接线的功能入口 —— reading 只能由它赋值，
+    // 没有它 attribution() 永远返回「死因未取证（还没读系统退出史）」。
+    // 接线点见 docs/ARCHITECTURE-AUDIT.md 问题四。
+    fun auditOnce(ctx: Context) {
+        val pkg = ctx.packageName
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            reportUnreadable(ctx, pkg, "本机系统（API ${Build.VERSION.SDK_INT}）不提供退出史")
+            return
+        }
+        val raw = runCatching {
+            (ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
+                .getHistoricalProcessExitReasons(pkg, 0, MAX_RECORDS)
+        }.getOrNull()
+        if (raw == null) {
+            reportUnreadable(ctx, pkg, "读系统退出史失败（binder 调用没答上来）")
+            return
+        }
+        val records = raw.map {
+            ExitRecord(
+                atMs = it.timestamp,
+                pid = it.pid,
+                process = it.processName,
+                reason = it.reason,
+                importance = it.importance,
+                description = it.description,
+            )
+        }
+        reading = Reading(records, pkg, null)
+        val cursor = readCursor(ctx)
+        records.asReversed().filter { isNewerThanCursor(it, cursor) }.forEach {
+            Journal.append(ctx, "kill-audit", it.verdict, it.detail())
+        }
+        records.filter { isNewerThanCursor(it, cursor) }.maxByOrNull { it.atMs }
+            ?.let { writeCursor(ctx, it) }
+    }
+
     fun attribution(sinceMs: Long): String {
         val r = reading ?: return "死因未取证（还没读系统退出史）"
         return attribute(r.exits, r.unreadable, sinceMs, r.ownProcess)
