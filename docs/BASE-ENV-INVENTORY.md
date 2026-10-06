@@ -79,15 +79,15 @@
 + **终端（PTY + termios）**
 + 底座件的版本与 OTA 更新机制
 
-**待判（5 项）**
+**已判（见 docs/BASE-ENV-DECISIONS.md）**
 
-| # | 项 | 我的倾向 |
-|---|---|---|
-| 1 | C/C++ 编译器（gcc/g++ + sysroot） | 不确定，见下 |
-| 2 | 时区数据 `zoneinfo` | 进 —— 代码从不处理时区 |
-| 3 | locale 定义文件 | 进 —— 无定义时 `setlocale()` 可能失败 |
-| 4 | `/etc/services` | 进 —— 小文件常用 |
-| 5 | `usr/include/` 头文件 | 随第 1 项 |
+| # | 项 | 判断 | 依据 |
+|---|---|---|---|
+| 1 | C/C++ 编译器（gcc/g++ + sysroot） | **进（必备）** | 用户已定：无选装概念，要完整稳定的环境 |
+| 2 | 时区数据 `zoneinfo` | **进** | 程序调 `new Date().toString()` / `Intl.*` 就踩空 |
+| 3 | locale 定义文件 | **进** | 缺失是**静默降级**，比报错更难查 |
+| 4 | `/etc/services` | **不进** | 代码零消费者；`https` 走协议不查这个表 |
+| 5 | `usr/include/` 头文件 | 随编译器 | gcc/g++ 必需 |
 
 **明确不进**
 glibc 的 `libstdc++.so.6`（Bionic ABI）· 自编 `linker64`（系统的一部分）·
