@@ -269,18 +269,19 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
 
 ---
 
-## 四·五、阶段1c 的三步解锁链（已逐段验过，只差 CI 那一格）
+## 四·五、阶段1c 的三步解锁链 —— **已完成，见第八/九节**（本节保留原始判断过程）
 
-阶段1c（编 clang）卡在一个本机答不出的问题：NDK r29 内置的 LLVM 是哪个版本。
+~~阶段1c（编 clang）卡在一个本机答不出的问题~~ —— **答案是 21.0.0，已填入并让判据转绿。**
+下面保留当时的判断过程（当时确实答不出，第九节记了怎么答出来的）。
 **不要猜** —— 猜错的代价是编出来的 clang 与 sysroot 悄悄不同源且无人察觉。
 
 链是三步，每步都能独立验证：
 
 | 步 | 做什么 | 现在能做吗 |
 |---|---|---|
-| 1 | 跑 `scripts/verify-ndk-llvm.sh`，从报错里读到真值 | 只能 CI（需要真 NDK） |
-| 2 | 把真值填进 `userland-sources.json` 的 `llvmVersion` | 拿到真值即可 |
-| 3 | **按该版本重钉 LLVM 源码**（版本 + sha256） | 之后，但**不必下载**（见下） |
+| 1 | 跑 `scripts/verify-ndk-llvm.sh`，从报错里读到真值 | ✅ **已做** —— 不用 CI，见第九节（Range 请求取 2837 字节） |
+| 2 | 把真值填进 `userland-sources.json` 的 `llvmVersion` | ✅ **已做** —— 填 `21.0.0` |
+| 3 | **按该版本重钉 LLVM 源码**（版本 + sha256） | ✅ **已做** —— 钉 `21.1.0`，sha256 与 API 对账一致 |
 
 **第 3 步不需要下载 171 MiB。** GitHub 的 release API 在每个资产上给
 `digest` 字段（`sha256:…`），所以「取 sha256」是读一次 API 而不是拉一次大包：
@@ -454,7 +455,7 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 | 0 底座共享库 | ✅ | `106c85c` |
 | 1a sysroot | ✅ | `14815ad` |
 | 1d make/cmake/pkg-config/python3 | ✅ 配方+判据齐备，待 CI 实编 | `7fc912d` `94ae7a9` `776a2e9` `2db801c` |
-| 1c clang/lld/binutils | ⏳ 只差 `llvmVersion` 一格 | `f6328e5` `116669e` |
+| 1c clang/lld/binutils | ✅ 前提判据通过（llvmVersion=21.0.0 已实测填入），待 CI 实编 | `f6328e5` `116669e` `ec8ebce` `d4f0c2b` |
 | 2 商店件改动态链 | ↩️ 原方式撤回（目标已由阶段8 达成） | `c4b8e24` |
 | 3 PTY | ✅ | `11fcf8d` |
 | 4 shell.exec 改本地 | ✅ | `11fcf8d` |

@@ -211,16 +211,19 @@ jobs:
   # ── NDK/LLVM 版本同源核对（阶段1c 编 clang 的前提）──
   #
   # 为什么是独立 job 而不是 build 矩阵里的一步：
-  # 它与那 8 件商店件**无关**（它们只跟 ndkVersion 走），而 llvmVersion 还没填 ——
-  # 放进去会让判红，而那一红会挡住全部 8 件产出、进而断掉 manifest 那条链。
-  # 那是「为一件事挡住八件事」，与门禁的作用相反。
+  # 它与那 11 件商店件**无关**（它们只跟 ndkVersion 走）。llvmtoolchain 与
+  # 它们不同源（编 LLVM 要交叉编译，耗时以小时计），放进去会让这一矩阵
+  # 的时长被它一个件拖住，而那一红会挡住全部产出、进而断掉 manifest 那条链。
+  # 那是「为一件事挡住一件事之外的所有事」，与门禁的作用相反。
   #
-  # continue-on-error 是有意的：llvmVersion 尚未知时，这一步的产出就是
-  # **报错信息里的那个真实版本号** —— 拿到它就能填进 userland-sources.json，
-  # 填完这一步自然就绿了、且这一行可以去掉。在那之前它不参与成败判定。
-  #
-  # 要真编 clang 时（scripts/build-userland-llvmtoolchain.sh 上线），
-  # 把 continue-on-error 去掉，那才是硬判据的位置。
+  # continue-on-error 仍保留，但理由已经变了：
+  # 早先是因为 llvmVersion 空着（这一步必然红，产出是报错里的真实版本号）。
+  # 那个值**已经用 Range 请求从 NDK zip 里取到并填进 userland-sources.json 了**
+  # （21.0.0 / 源码 21.1.0，见 docs/ENV-EXECUTION-PLAN.md 第九节），
+  # 所以 verify-ndk-llvm.sh 现在预期是**绿的**。
+  # 留 continue-on-error 只是因为「编 llvmtoolchain」这一步本身还没成功过 ——
+  # 首次交叉编译 LLVM 到 Bionic 大概率要补 patch。等它真绿了再去掉这一行，
+  # 那才是硬判据的位置。
   ndk-llvm:
     needs: resolve
     runs-on: ubuntu-latest
@@ -278,14 +281,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
 
-      - name: 编 llvmtoolchain（拿到 llvmVersion 之后才编得出来）
+      - name: 编 llvmtoolchain（llvmVersion 已填，首次真编）
         if: success()
         run: |
           set -euo pipefail
-          # 这一步现在预期会红：llvmVersion 还没填 → 配方第一步就 die。
-          # 与 ndk-llvm 同一个 job、同一个 continue-on-error —— 它红了不影响商店件那条链
-          # （llvmtoolchain 不在 manifest 的 needs 里，也不进 build 矩阵）。
-          # 填好 llvmVersion 并按它重钉 LLVM 源码之后，这一步才会绿。
+          # llvmVersion 已填（21.0.0 / 源码 21.1.0），verify-ndk-llvm.sh 预期绿。
+          # 这一步现在是真的去交叉编译 LLVM —— 首次跑大概率要补 patch
+          # （Termux 级别的工程量，见 build-userland-llvmtoolchain.sh 文件头）。
+          # 与 ndk-llvm 同一个 job、同一个 continue-on-error —— 它红了不影响商店件
+          # 那条链（llvmtoolchain 不在 manifest 的 needs 里，也不进 build 矩阵）。
           TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
           { echo "CC=$TC/aarch64-linux-android23-clang";
             echo "CXX=$TC/aarch64-linux-android23-clang++";
