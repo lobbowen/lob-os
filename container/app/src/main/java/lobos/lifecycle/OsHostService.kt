@@ -50,7 +50,7 @@ class OsHostService : Service() {
         // 采一次系统退出史。KillAudit.attribution 只有在 reading 被赋值后才说得出真话，
         // 而 reading 只能由 auditOnce 填。宿主服务一起来就先采一遍，
         // 这样引导页/工作台读 interruption() 时就有归因可显示，不会停在「死因未取证」。
-        runCatching { lobos.os.KillAudit.auditOnce(this) }
+        runCatching { lobos.log.KillAudit.auditOnce(this) }
             .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         ResidencyAudit.auditPreviousExit(this)
         val born = thread == null
@@ -137,7 +137,7 @@ class OsHostService : Service() {
                     this, "residency", false, "节拍被冻结/打断（宿主可能被回收过）",
                     "距上拍 " + (gap / 1000) + "s，阈值 " + (ResidencyPolicy.FREEZE_GAP_MS / 1000) + "s；已自证续拍",
                 )
-                lobos.os.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
+                lobos.log.Journal.note(this, "residency", null, "节拍恢复（曾被冻结/回收）", "gapMs=" + gap)
             }
             registerPermissionLedger(now)
             val a11y = AccessibilityServiceState.state(this)
@@ -149,7 +149,7 @@ class OsHostService : Service() {
             val nowWall = System.currentTimeMillis()
             if (!lobos.os.DozeBackstop.armedRecently(nowWall)) {
                 val armed = lobos.os.DozeBackstop.schedule(this)
-                lobos.os.Journal.note(
+                lobos.log.Journal.note(
                     this, "doze", armed, "兜底闹钟未按期投递：已重挂",
                     "armed=" + armed + "（看门狗每拍校验布防）",
                 )
@@ -229,7 +229,7 @@ class OsHostService : Service() {
                 "依据=" + tier.basis.joinToString("；") +
                     (if (tier.unproven.isEmpty()) "" else "；未证=" + tier.unproven.joinToString("；")),
             )
-            lobos.os.Journal.note(this, "capability", null, "能力档位判定", tier.tier.name.lowercase())
+            lobos.log.Journal.note(this, "capability", null, "能力档位判定", tier.tier.name.lowercase())
         }
         lobos.os.ResidencyStatus.record(
             lobos.os.ResidencyStatus.Snapshot(

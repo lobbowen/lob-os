@@ -1,5 +1,4 @@
-package lobos.os
-
+package lobos.log
 import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
@@ -14,25 +13,6 @@ object Journal {
     private const val FILE = "events.jsonl"
     private const val MAX_BYTES = 512 * 1024L
     private const val KEEP_LINES = 500
-
-    // 日志级别。与 os.Level（程序层级 INFRA/CAPABILITY/CHANNEL/APPLICATION）无关。
-    //
-    // 判据来源：note() 早就带 ok: Boolean? 三态，但只把它拼进文本 "（ok）"/"（failed）"
-    // 就丢掉了。这里把它结构化落盘，遥测才能按级别筛。
-    // 落盘字段名 logLevel，避免与 os.Level 混淆。
-    enum class LogLevel(val code: String) {
-        INFO("info"),
-        WARN("warn"),
-        ERROR("error");
-
-        companion object {
-            fun of(ok: Boolean?): LogLevel = when (ok) {
-                false -> ERROR
-                true -> INFO
-                null -> INFO
-            }
-        }
-    }
 
     enum class Reason(val code: String) {
         OEM_BG_LIMIT("bgLimit"),
@@ -87,7 +67,7 @@ object Journal {
         val category: String,
         val reason: Reason?,
         val detail: String,
-        val level: LogLevel = LogLevel.INFO,
+        val level: Level = Level.INFO,
     ) {
         fun toJson(): JSONObject = JSONObject().apply {
             put("seq", seq)
@@ -122,7 +102,7 @@ object Journal {
             if (ok != null) append("（").append(if (ok) "ok" else "failed").append("）")
         }
         // ok 原本只拼进文本就丢了。现在结构化落盘，调用方不用改。
-        return append(ctx, category, null as Reason?, text, LogLevel.of(ok))
+        return append(ctx, category, null as Reason?, text, Level.of(ok))
     }
 
     @Synchronized
@@ -131,7 +111,7 @@ object Journal {
         category: String,
         reason: Reason?,
         detail: String,
-        level: LogLevel = LogLevel.INFO,
+        level: Level = Level.INFO,
     ): Event {
         if (seq == 0L) seq = lastSeq(ctx)
         val ev = Event(++seq, System.currentTimeMillis(), category, reason, detail, level)
@@ -152,10 +132,10 @@ object Journal {
         if (lines.size <= KEEP_LINES) return
         val keep = lines.takeLast(KEEP_LINES)
         val archived = lines.dropLast(KEEP_LINES)
-        lobos.os.StateFiles.writeAtomic(
+        StateFiles.writeAtomic(
             File(f.parentFile, FILE + ".1"), archived.joinToString("\n") + "\n"
         )
-        lobos.os.StateFiles.writeAtomic(f, keep.joinToString("\n") + "\n")
+        StateFiles.writeAtomic(f, keep.joinToString("\n") + "\n")
     }
 
     @Synchronized
@@ -178,8 +158,8 @@ object Journal {
                         detail = o.optString("detail"),
                         // 老记录没有 logLevel 字段（本次升级前落的），按 INFO 读，
                         // 不能因为缺字段就丢掉整条。
-                        level = LogLevel.values().firstOrNull { it.code == rawLevel }
-                            ?: LogLevel.INFO,
+                        level = Level.values().firstOrNull { it.code == rawLevel }
+                            ?: Level.INFO,
                     )
                 )
             }

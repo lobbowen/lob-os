@@ -5,7 +5,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import lobos.os.Journal
+import lobos.log.Journal
 import org.json.JSONObject
 
 object RuntimeDiagnostics {

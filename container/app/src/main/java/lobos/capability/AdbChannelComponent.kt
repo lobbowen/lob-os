@@ -8,8 +8,7 @@ import lobos.bridge.AdbClientRunner
 import lobos.os.Backoff
 import lobos.os.StateFiles
 import org.json.JSONObject
-import lobos.os.Journal
-
+import lobos.log.Journal
 object AdbChannelComponent {
 
     const val ID = "adb-channel"
@@ -167,7 +166,7 @@ object AdbChannelComponent {
         val s = snapshot
         snapshot = s.copy(state = State.UNPAIRED, attempts = 0, nextAttemptAt = 0L, updatedAt = System.currentTimeMillis())
         persist(ctx)
-        lobos.os.Journal.note(ctx, "adb-channel", null, "通道监督重置（内核动作）", why)
+        lobos.log.Journal.note(ctx, "adb-channel", null, "通道监督重置（内核动作）", why)
     }
 
     @Synchronized
@@ -204,7 +203,7 @@ object AdbChannelComponent {
                 val where = if (host.isNotBlank() && port > 0) "在线 @" + host + ":" + port else "在线"
                 set(ctx, State.ONLINE, where + (if (changed) "（端口变化，已按新端口重挂）" else ""), lastPort)
                 if (changed) {
-                    lobos.os.Journal.note(ctx, "adb-channel", null, "通道端口变化，已重挂", "port=" + port)
+                    lobos.log.Journal.note(ctx, "adb-channel", null, "通道端口变化，已重挂", "port=" + port)
                 }
             }
             ProbeOutcome.DEAD -> selfHeal(ctx, probe.detail.ifBlank { "通道断开" })
@@ -220,7 +219,7 @@ object AdbChannelComponent {
         attempts += 1
         if (attempts > MAX_ATTEMPTS) {
             set(ctx, State.QUARANTINED, "重连达上限（" + attempts + "）：停止打通道，等待内核重置或重新配对", lastPort)
-            lobos.os.Journal.note(
+            lobos.log.Journal.note(
                 ctx, "adb-channel", false, "通道自愈放弃（转隔离）",
                 "attempts=" + attempts + " detail=" + detail,
             )
@@ -237,7 +236,7 @@ object AdbChannelComponent {
             detail + "；第 " + attempts + " 次自愈" + (if (issued) "已下发" else "未生效") + "，退避 " + backoff + "ms",
             lastPort,
         )
-        lobos.os.Journal.note(
+        lobos.log.Journal.note(
             ctx, "adb-channel", false, "通道自愈尝试",
             "attempt=" + attempts + " detail=" + detail + " backoffMs=" + backoff + " issued=" + issued,
         )

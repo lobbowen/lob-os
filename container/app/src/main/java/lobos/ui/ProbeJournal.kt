@@ -26,7 +26,7 @@ object ProbeJournal {
         runCatching { lobos.os.StateFiles.appendBounded(file(ctx), line) }
         // 同时进统一日志：配对现场这些事件是排查常驻与通道问题的一手材料，
         // 只留在 probe-journal.txt 里就绕过了数据源，捞问题时要单独拉一个文件。
-        runCatching { lobos.os.Journal.append(ctx, tag, null as lobos.os.Journal.Reason?, message) }
+        runCatching { lobos.log.Journal.append(ctx, tag, null as lobos.log.Journal.Reason?, message) }
     }
 
     @Synchronized

@@ -36,7 +36,7 @@ import lobos.native.NativeAssetRegistry
 import lobos.native.NativePreparer
 import lobos.native.PrepareReport
 import lobos.os.CatalogClient
-import lobos.os.Journal
+import lobos.log.Journal
 import lobos.os.OsInit
 import lobos.os.OsPhase
 import lobos.os.PackageInstaller

@@ -1,5 +1,4 @@
-package lobos.os
-
+package lobos.log
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
@@ -85,7 +84,7 @@ object KillAudit {
     // 而退出史已经由 auditOnce 经 Journal.append 落盘（category=kill-audit）。
     fun attribution(ctx: Context, sinceMs: Long): String {
         val own = ctx.packageName
-        val hits = lobos.os.Journal.events(ctx, limit = 400)
+        val hits = lobos.Journal.events(ctx, limit = 400)
             .filter { it.category == CATEGORY && it.atMs >= sinceMs }
         val ev = hits.firstOrNull { it.detail.contains("process=$own") }
         if (ev == null) {
@@ -112,6 +111,6 @@ object KillAudit {
     }.getOrDefault(0L to 0)
 
     private fun writeCursor(ctx: Context, newest: ExitRecord) {
-        runCatching { lobos.os.StateFiles.writeAtomic(File(ctx.filesDir, CURSOR_FILE), "${newest.atMs} ${newest.pid}") }
+        runCatching { StateFiles.writeAtomic(File(ctx.filesDir, CURSOR_FILE), "${newest.atMs} ${newest.pid}") }
     }
 }

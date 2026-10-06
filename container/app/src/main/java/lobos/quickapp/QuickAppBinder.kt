@@ -2,7 +2,7 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
-import lobos.os.Journal
+import lobos.log.Journal
 import lobos.os.ProgramManager
 import lobos.ota.ProgramDir
 

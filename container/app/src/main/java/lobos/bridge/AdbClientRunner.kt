@@ -111,7 +111,7 @@ object AdbClientRunner {
             runCatching { proc?.destroy() }
             proc = null
         }
-        lobos.os.Journal.note(context, "adb", false, "adb serve 连续超时：强制重启通道进程", why)
+        lobos.log.Journal.note(context, "adb", false, "adb serve 连续超时：强制重启通道进程", why)
     }
 
     private fun serve(context: Context, method: String, params: JSONObject, timeoutMs: Long): AdbOutcome {

@@ -154,7 +154,7 @@ object ProgramInstallPipeline {
         // 这里不再重复调：PortBroker.claim 虽幂等，但重复注入 config.json 与重复装入 dimina
         // 是白做功，且会让日志出现两次"前端已装入 dimina"。
 
-        lobos.os.Journal.note(
+        lobos.log.Journal.note(
             context, "package", true, "包已安装",
             "id=" + spec.programId + " version=" + version +
                 " 来源=" + spec.from.label + " origin=" + spec.from.origin +
@@ -242,7 +242,7 @@ object ProgramInstallPipeline {
         if (pd.currentVersion() != safeVer) {
             return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
         }
-        lobos.os.Journal.note(
+        lobos.log.Journal.note(
             context, "package", true, "系统组件已安装",
             "id=" + spec.programId + " version=" + safeVer +
                 " 来源=" + spec.from.label + " dir=" + dest.absolutePath,

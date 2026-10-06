@@ -1,7 +1,7 @@
 package lobos.lifecycle
 
 import android.content.Context
-import lobos.os.KillAudit
+import lobos.log.KillAudit
 import android.os.SystemClock
 import java.io.File
 import java.text.SimpleDateFormat
@@ -46,7 +46,7 @@ object ResidencyAudit {
         // 之前只在内存里，进程一死就没了，而这是常驻失败的第一手证据。
         runCatching {
             val d = debt
-            lobos.os.Journal.note(
+            lobos.log.Journal.note(
                 ctx, "residency", null, "检测到常驻中断",
                 "上次存活时间=$lastAliveMs 中断时长=${d?.gapMs}ms 是否设备重启=${d?.deviceReboot}",
             )

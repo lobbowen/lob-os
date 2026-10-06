@@ -286,14 +286,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val declaredSafe = lobos.os.RuntimeEnvironment.withoutReserved(spec?.env ?: emptyMap())
             val overrideSafe = lobos.os.RuntimeEnvironment.withoutReserved(envOverride)
             if (declaredSafe.second.isNotEmpty() || overrideSafe.second.isNotEmpty()) {
-                lobos.os.Journal.note(
+                lobos.log.Journal.note(
                     this, "settings", false, "保留环境变量被拒（程序不得改写内核注入面）",
                     "id=" + programId + " 清单丢弃=" + declaredSafe.second.joinToString(",") +
                         " 设置丢弃=" + overrideSafe.second.joinToString(","),
                 )
             }
             if (argsOverride != null || envOverride.isNotEmpty()) {
-                lobos.os.Journal.note(
+                lobos.log.Journal.note(
                     this, "settings", null, "程序设置生效（内核在 spawn 时叠加）",
                     "id=" + programId + " args=" + (argsOverride?.joinToString(" ") ?: "(按清单)") +
                         " env键=" + envOverride.keys.joinToString(","),

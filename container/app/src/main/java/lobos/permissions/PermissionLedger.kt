@@ -1,7 +1,7 @@
 package lobos.permissions
 
 import android.content.Context
-import lobos.os.Journal
+import lobos.log.Journal
 import lobos.os.StateFiles
 import org.json.JSONArray
 import org.json.JSONObject
