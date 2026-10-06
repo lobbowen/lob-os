@@ -288,6 +288,20 @@ object PtySession {
     @Volatile private var host: Host? = null
     private val hostLock = Any()
 
+    /**
+     * 共享宿主上开一个会话 —— 内置终端窗口用它，**不另起一个宿主**。
+     *
+     * 为什么不直接把 `host(ctx)` 公开：暴露 Host 就等于让调用方能任意读写
+     * 它的内部状态（帧协议、读线程、回调路由）。这里只给「起一个会话」这一件事。
+     */
+    fun openSession(
+        ctx: Context,
+        argv: List<String>,
+        rows: Int = DEFAULT_ROWS,
+        cols: Int = DEFAULT_COLS,
+        timeoutMs: Long = 5_000,
+    ): Session = host(ctx).start(argv, rows, cols, timeoutMs)
+
     private fun host(ctx: Context): Host {
         host?.let { return it }
         synchronized(hostLock) {

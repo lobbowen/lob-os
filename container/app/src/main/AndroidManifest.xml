@@ -112,6 +112,17 @@
             android:exported="false"
             android:label="@string/app_name" />
 
+        <!--
+          终端窗口。exported=false：只有宿主自己能拉起，它不是对外入口。
+          configChanges 里带上 keyboardHidden/screenSize 等：转屏或输入法弹起时
+          不重建 Activity —— 重建会把 PTY 会话断掉，用户看着就是「转个屏命令就死了」。
+        -->
+        <activity
+            android:name=".ui.TerminalActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:configChanges="keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
