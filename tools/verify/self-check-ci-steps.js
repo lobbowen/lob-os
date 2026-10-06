@@ -69,6 +69,7 @@ const t = (name, cond, detail) => {
   else { console.log('  [FAIL] ' + name + (detail ? '\n         ' + detail : '')); FAIL++; }
 };
 
+const indent = (s) => String(s).split('\n').map((l) => '           ' + l).join('\n');
 const run = (s) => cp.spawnSync('node', [path.join(VERIFY, s)], { encoding: 'utf8', cwd: ROOT });
 const sawFail = (r) => r.status !== 0 || /\[FAIL\]/.test(r.stdout || '');
 
@@ -88,7 +89,18 @@ function inject(inj) {
     fs.writeFileSync(p, orig);
     injected = false;
     const back = run(inj.gate);
-    t('恢复后 ' + inj.gate + ' 重新变绿', back.status === 0, '  恢复后 rc=' + back.status);
+    if (back.status === 0) {
+      t('恢复后 ' + inj.gate + ' 重新变绿', true);
+    } else {
+      const now = fs.readFileSync(p, 'utf8');
+      const srcDirty = now !== orig;
+      t('恢复后 ' + inj.gate + ' 重新变绿', false,
+        (srcDirty
+          ? '  源码没恢复干净（与注入前逐字节不同）—— 恢复逻辑有问题'
+          : '  源码**已**恢复干净，但这道门禁在本环境仍红 —— 它有环境依赖')
+        + '\n         注入点文件：' + inj.file
+        + '\n         门禁输出：\n' + indent((back.stdout || '').trim()));
+    }
   } finally {
     if (injected && fs.readFileSync(p, 'utf8') !== orig) fs.writeFileSync(p, orig);
   }
