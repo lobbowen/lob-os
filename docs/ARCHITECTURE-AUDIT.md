@@ -7,32 +7,43 @@
 
 ## 一、死代码
 
-### 1.1 已清理：-166 行 / 32 个声明
+### 1.1 已清理：-192 行 / 34 个声明
 
-`tools/scan-dead-code.js` 扫出，`tools/remove-dead.js` 删除，全程两道门禁兜底
-（括号配平 + 跨包引用），删一个文件验一次。
+`tools/scan-dead-code.js` 扫出。删除过程手工编辑 diff
+（`remove-dead.js` 因删坏三次已弃用，见 6.2/6.3），靠 `check-kt-structure.js`
++ CI 编译兜底。
 
 | 类别 | 数量 | 例子 |
 |---|---|---|
 | 私有辅助函数 | 12 | `CapabilityAcquisitionRunner.sleepQuietly`、`KillAudit.readCursor` |
 | 冗余访问器 | 7 | `ProgramManager.dirFor`（`stateDirOf` 的别名）、`ProgramDir.manifestFileName` |
 | 未接线的功能入口 | 5 | `PermissionRoles.policyOf` / `autoHealOf` / `byOwner` / `byPolicy` / `byAutoHeal` |
-| 未使用的常量 | 6 | `OnboardingFlow.F4`、`SetupActivity.SPRINT_FREEZE_MS`、`ManifestSchema.RUNTIMES` |
-| 随主函数一起失效的孤儿 | 2 | `ExecBits.isSymbolic`（`repair` 已删）、`QuickAppHost.quickAppDirOf` |
+| 未使用的常量 | 8 | `OnboardingFlow.F4`、`SetupActivity.SPRINT_FREEZE_MS`、`ManifestSchema.RUNTIMES`、`PipelineProjection.OPTIONAL` |
+| 未使用的参数 | 1 | `OnboardingFlow.FlowStage.extraCapId` |
+| 随主函数一起失效的孤儿 | 1 | `ExecBits.isSymbolic`（`repair` 已删） |
 
-### 1.2 保留：5 个（不是死码，是未接线的功能）
+净变化：**21 文件 / -192 行 / +1 行**（+1 是 `KillAudit.auditOnce`
+删除时补的空行分隔）。
 
-`KillAudit` 的采集链 —— `attribute()` + `MAX_RECORDS` + `reportUnreadable` +
-`isNewerThanCursor` + `readCursor` + `writeCursor` 全部零引用，
+### 1.2 保留：`KillAudit` 采集链（不是死码，是未接线的功能）
+
+`KillAudit.attribute()` + `MAX_RECORDS` + `reportUnreadable` +
+`isNewerThanCursor` + `readCursor` + `writeCursor` 整块零引用，
 而 `attribution()`（读取端）正在被 `ResidencyAudit` 调用。
 
 **采集端从未接线，所以死因归因永远读不到真实数据。**
 这正是真机上那句「死因未取证（还没读系统退出史）」的来源。
 
+保留整块、待接线（见第八节待办）。不按死码删 —— 删了功能就真的不存在了。
+
 `PermissionRoles.policyOf` / `autoHealOf` / `byOwner` / `byPolicy` / `byAutoHeal`
-同理：`PermissionLedger.register()` 直接从 `role.policy` / `role.autoHeal` 取值
-（表的数据），所以这些方法是多余封装。但它们表达的是**权限策略与自动修复的分组视图**，
-一旦要接"按策略自动补权限"就会用到。**按冗余封装删除，不按功能缺口保留。**
+原判为死码，**已删**：`PermissionLedger.register()` 直接从 `role.policy` /
+`role.autoHeal` 取值（表的数据），这些方法确实是多余封装。
+
+### 1.3 最终结果
+
+`scan-dead-code.js` 复扫：**确认死 0，可疑 20**（可疑全是 Android 回调覆写，
+`MdnsWatcher` 的 mDNS 回调、`OsAccessibilityService` 等，不能删）。
 
 ---
 
@@ -88,15 +99,23 @@ ui         → bridge capability lifecycle os permissions quickapp setup
 ui.setup   → capability lifecycle setup ui (+R +ChannelStatusText)
 ```
 
-### 4.2 五处反向依赖（基础层 → 上层）
+### 4.2 十处反向依赖（基础层 → 上层）
+
+下表来自 `check-layer-direction.js` 的实测输出（本轮新增又弃用，见第七节）。
+**它比手写核对多报出一倍** —— 手写只列出 5 处，工具跑出 10 处。
 
 | # | 反向依赖 | 具体 | 性质 |
 |---|---|---|---|
 | 1 | `os` → `lifecycle` | `DozeBackstop` → `lifecycle.DozeBackstopReceiver` | **错位**：`DozeBackstopReceiver` 是 BroadcastReceiver（Android 组件），不是领域逻辑。`os` 不该知道它。 |
-| 2 | `os` → `lifecycle` | `OsState` → `lifecycle.ResidencyPolicy` | **常量放错层**：`ResidencyPolicy` 的常量（`WAKE_BACKSTOP_MS` / `REASON_NO_PROGRAM`）属于领域模型。 |
-| 3 | `os` → `capability` | `OsState` / `OsInit` → `capability.ProbeOutcome` | **合理**：`ProbeOutcome` 是值对象（data class），跨层共享值类型可接受。 |
-| 4 | `capability` → `bridge` | `AdbChannelComponent` / `CapabilityAcquisitionRunner` / `CapabilityCriteria` → `bridge.AdbClientRunner` / `bridge.OsNotificationListenerService` | **错位**：`capability`（能力定义与获取）不该依赖 `bridge`（对外接口层）。应该是 `bridge` 依赖 `capability`，现在反了。 |
-| 5 | `ota` → `runtime` | `ProgramVerifier` → `runtime.ProcessSupervisor` / `runtime.NodeProvisioner` | **可接受**：`ProcessSupervisor` 是通用进程工具。 |
+| 2 | `os` → `lifecycle` | `OsState` → `lifecycle.ResidencyPolicy` | **常量放错层**：`ResidencyPolicy` 的常量（`WAKE_BACKSTOP_MS` / `REASON_NO_PROGRAM`）属领域模型。 |
+| 3 | **`lifecycle` → `ui`** | `OsHostService` → `ui.setup.SetupActivity` | **最严重**：后台宿主服务依赖 UI 层，UI 一动服务就受影响 |
+| 4 | `capability` → `bridge` | `AdbChannelComponent` → `bridge.AdbClientRunner`；`CapabilityAcquisitionRunner` → `bridge.AdbClientRunner`；`CapabilityCriteria` → `bridge.OsNotificationListenerService` | **方向错**：`capability`（能力定义与获取）不该依赖 `bridge`（对外接口层）。应是 `bridge` 依赖 `capability`。 |
+| 5 | `permissions` → `bridge` | `PermissionCenter` → `bridge.NotificationStore` | **错位** |
+| 6 | `permissions` → `lifecycle` | `PermissionCenter` → `lifecycle.OsAccessibilityService` | **错位**：权限中心依赖保活实现 |
+| 7 | `os` / `runtime` → `ota` | `BootReconciler` / `InstanceHost` / `KillAudit` / `ProgramManager` → `ota.ProgramDir` | **`ProgramDir` 放错包**：它管 `files/programs/<id>/` 目录，属 `os` 域，却在 `ota` 包 |
+| 8 | `os` → `capability` | `OsState` / `OsInit` → `capability.ProbeOutcome` | **可接受**：值对象（data class）跨层共享 |
+| 9 | `ota` → `runtime` | `ProgramVerifier` → `runtime.ProcessSupervisor` / `runtime.NodeProvisioner` | **可接受**：通用工具 |
+| 10 | `runtime` → `lifecycle` | `InstanceHost` → `lifecycle.OsHostService` | **可接受**：需要 Service 作为 Context 载体 |
 
 ### 4.3 分层结论
 
@@ -189,35 +208,45 @@ os/
 **验证方式**：造一个已知的死码文件（`ProbeDead`），确认扫描器能报出来。
 没有这一步，一个报 0 的扫描器会被当成"仓库很干净"。
 
-### 6.2 `remove-dead.js` 删坏过代码
+### 6.2 `remove-dead.js` 删坏过代码（已删除该工具）
 
-删 `ProgramManager.dirFor` 时连带删了后面的 `levelOfKind`（正在被 `ProgramInstallPipeline` 调用）。
-第二次删 `ResidencyPolicy.hostDegraded` 时，把跨行表达式体的函数体
-（`= ` 结尾、函数体在下一行）删掉，留了悬空表达式。
-
-两次都是"行号删除"这种做法的固有风险。修正：
-- 区分单行声明 / 带花括号体 / **跨行表达式体**三种形态
-- 每删完一个文件立刻跑两道门禁，失败即中止
-- 加 `--dry` 模式打印将删内容
-- 保留"行号不含目标名字就中止"的保护
-
-**这两次都是靠读代码发现的，不是靠门禁**——
-`check-brace-balance` 查不出悬空表达式，`check-cross-refs` 查不出函数体被删。
+三次出手删坏两次；改到第四种形态后脚本自身静默退出，无法再信任。
+详细的事故清单与最终做法见 6.3。
 
 ### 6.3 结论：静态删除代码的风险高于收益
 
-本轮 32 个删除里，**2 次删坏**（6% 错误率）。
-现在脚本有三重保护，但**这类操作仍应逐个 review diff，不该批量信任工具**。
+**清理过程中删坏四次**，四种形态各不相同：
+
+| # | 形态 | 现象 | 括号配平能查？ |
+|---|---|---|---|
+| 1 | 漏删外层 `}` | `ProgramInstaller` 的 object 未闭合 | 能 |
+| 2 | 跨行表达式体 | 删 `hostDegraded`，函数体（下一行）残留成悬空表达式 | 不能 |
+| 3 | 跨行参数列表 | 删 `recordAttempt`，`ctx: Context,` 等参数残留 | 不能 |
+| 4 | 跨行 `listOf(` | 删 `ENTRY_ORDER` / `GATING`，头和 `)` 删了一半 | 不能 |
+
+四次都是 **CI 编译才炸**，每轮往返十几分钟。后三次括号完全配平，
+符号解析也查不出。
+
+为此写的 `remove-dead.js` 在三次出手删坏两次，改到第四种形态后
+**脚本自身静默退出**，已弃用（见 7.5）。
+
+**最终做法：`scan-dead-code.js` 只找不删 → 手工编辑 diff →
+`check-kt-structure.js`（三条结构判据）+ CI 编译兜底。**
+
+更根本的教训：**一开始就该把干净版本捞出来逐文件比对**，
+而不是一次次靠 CI 报错回头。
 
 ---
 
 ## 七、门禁
 
-本轮从 29 道减到 **17 道**，另有两个工具（非门禁）。
+本轮从 29 道减到 **18 道**，另有 1 个工具（非门禁）。
 
 减掉的 8 道全属同一类：**编译器能报但当时本机没编译器**的产物。
-CI 编译本来就会报缺 import、符号不存在、括号不配平、扩展函数误用，
+CI 编译本来就会报缺 import、符号不存在、扩展函数误用，
 门禁重复一遍，只在代码重构时误报。
+
+新增 1 道：`check-kt-structure.js`（判据来自上面四次删除事故）。
 
 完整分类见 `docs/GATE-CLASSIFICATION.md`。
 
@@ -225,10 +254,11 @@ CI 编译本来就会报缺 import、符号不存在、括号不配平、扩展�
 
 | 工具 | 作用 |
 |---|---|
-| `tools/scan-dead-code.js` | 死代码扫描，带 Manifest / 布局 / 回调白名单 |
-| `tools/remove-dead.js` | 按行号删除声明，三重形态判定 + `--dry` |
+| `tools/scan-dead-code.js` | 死代码扫描，带 Manifest / 布局 / 回调白名单。**只找不删。** |
 
-### 7.2 保留的门禁（17 道）
+（`tools/remove-dead.js` 已删除 —— 三次出手删坏两次，之后自身静默退出。）
+
+### 7.2 保留的门禁（18 道）
 
 协议契约类：`check-api-spec` / `check-protocol-version` / `check-dual-canonical` /
 `check-spec-tables` / `check-port-range`
@@ -237,6 +267,9 @@ CI 编译本来就会报缺 import、符号不存在、括号不配平、扩展�
 
 真机踩过的坑：`check-big-artifact`（OOM）/ `check-node-native-deps`（$ORIGIN linker 失败）/
 `check-install-single-path`（两条路一个安装点）/ `check-ota-sequence-scope`（序列号不共用）
+
+结构完整性：`check-kt-structure`（括号配平 + 悬空参数 + 孤立 `)` 后的残留片段；
+判据来自本轮四次删除事故，见 6.3）
 
 构建物与能力面：`check-components` / `check-android-consts` /
 `check-quickapp-capability` / `check-panel` / `check-desktop-icon`
@@ -259,11 +292,30 @@ CI 编译本来就会报缺 import、符号不存在、括号不配平、扩展�
 | 优先级 | 事项 | 依据 |
 |---|---|---|
 | 高 | `ProgramVerifier` 的 node 依赖（鸡生蛋） | 内置应用校验需要 node，node 自己安装也需要校验。真机报过 `runtime-missing` |
+| 高 | **`lifecycle` → `ui`**（`OsHostService` 依赖 `SetupActivity`） | 后台宿主服务依赖 UI 层，UI 改动会波及服务。4.2 表里最严重的一条 |
 | 高 | `os` 反向依赖 `lifecycle`（2 处） | 基础层依赖上层，上层无法独立替换或测试 |
+| 高 | **`ProgramDir` 放错包**（在 `ota`，被 `os`/`runtime` 依赖） | 管 `files/programs/<id>/` 目录，属 `os` 域。7 个文件受影响 |
 | 中 | `capability` → `bridge` 反向依赖（3 处） | 接口层被能力层依赖，方向错 |
-| 中 | `KillAudit` 采集端接线 | 死因归因功能实际不存在 |
+| 中 | `permissions` → `bridge`/`lifecycle`（2 处） | 权限中心依赖桥接与保活实现 |
+| 中 | `KillAudit` 采集端接线 | 死因归因功能实际不存在（真机显示「死因未取证」） |
 | 中 | 商店目录发 `packages[]`（应用程序进商店） | 商店目前只发工具链，应用程序走的是单通道 OTA |
 | 低 | `os` 包拆子目录（30 文件） | 3690 行平铺在一个包里 |
 | 低 | `bridge` 包拆三类职责 | JSON-RPC / Android 组件 / 通道实现混同包 |
 | 低 | `retestChannel` 两份实现合并 | 待产品形态定 |
 | 低 | 根包调试设施独立 | `RuntimeDiagnostics` / `ProvisioningProbe` 是全局耦合点 |
+
+---
+
+## 九、审计方法本身的局限
+
+1. **静态扫描查不出"函数体被删"**。本轮四次事故都属于这类 ——
+   括号配平的、符号解析也过得去，只有编译能炸。
+   所以「静态全绿」不等于「代码是好的」。
+
+2. **手写核对会漏**。4.2 节我手写列出 5 处反向依赖，
+   `check-layer-direction` 跑出 10 处。**工具比人可靠，但工具也会有 bug**
+   （6.1 节那个报 0 的扫描器就是例子）。所以工具的输出必须能被人核对。
+
+3. **门禁不是架构质量的保证**。门禁只能守住已达成共识的行为；
+   分层方向、包结构、职责划分这些**尚未定论**的事，
+   该写在报告里等人决策，不该做成门禁 —— 否则会像这次一样挡路。
