@@ -684,3 +684,48 @@ Base revision: [386af4a5c64ab75eaee2448dc38f2e34a40bfed0](https://github.com/llv
    现在有实证推翻了它。**21.x 上该 commit 落在 21.1.0~21.1.8 之后**
    （对每个 tag 都是 ahead:0/behind>0），所以它是 21.1.x 之后的快照 ——
    要编源码应按 **21.x 线**取，而不是任取一个 21.1.x tag。
+
+### 填上之后：拿到的是 `21.0.0`，且**上游没有 llvmorg-21.0.0 这个 tag**
+
+`AndroidVersion.txt` 的完整内容（112 字节，实测）：
+
+```
+21.0.0
+based on r563880c
+for additional information on LLVM revision and cherry-picks, see clang_source_info.md
+```
+
+但实测上游 tag 列表是：
+
+```
+llvmorg-21-init, llvmorg-21.1.0, 21.1.1, 21.1.2 … 21.1.8
+```
+
+**没有 `llvmorg-21.0.0`。** 于是原来的「按完整版本串前缀匹配」判据全判错：
+
+| 钉的源码 | 对 NDK 21.0.0 | 该不该过 |
+|---|---|---|
+| 21.1.0 | 红 | **该过**（同一条 21.x 线） |
+| 21.1.8 | 红 | **该过** |
+| 20.1.8 | 红 | 该红 |
+
+**所以判据改成比 major（= LLVM 的 release 线）。** 这不是放松判据，
+而是把「同源」这个词落到正确的粒度上 —— LLVM 的 major 就是 release 线，
+20.x 与 21.x 是两条独立的线，同线内取哪个 21.1.x 都是同源。
+
+反例仍能拦住：把源码改回 20.1.8 → `红：钉 20.x 对 NDK 21.x` ✅
+
+### 最终钉值（已与 GitHub API 独立对账）
+
+```json
+"llvmVersion": "21.0.0",
+"sources.llvm": {
+  "version": "21.1.0",
+  "sha256": "1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825"
+}
+```
+
+对账方式：再读一次 release API，拿 `assets[].digest` 与仓内比对 → **一致**。
+
+用真实数据（NDK `AndroidVersion.txt` = `21.0.0` + `clang --version` = `21.0.0git r563880c`）
+驱动 `verify-ndk-llvm.sh` → **rc=0**，阶段1c 的前提判据通过。

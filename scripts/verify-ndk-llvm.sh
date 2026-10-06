@@ -97,7 +97,9 @@ fi
 
 GOT_LLVM=""
 SRC=""
-for si in "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md \
+for si in "$NDK"/toolchains/llvm/prebuilt/*/AndroidVersion.txt \
+           "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md \
+           "$NDK"/AndroidVersion.txt \
            "$NDK"/clang_source_info.md \
            "$NDK"/toolchains/llvm/prebuilt/*/share/clang_source_info.md; do
   [ -f "$si" ] || continue
@@ -163,15 +165,22 @@ if [ -z "$WANT_LLVM" ]; then
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
     "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
 fi
-# 允许前缀匹配：钉 20 而实际 20.0.0（钉 major 即可）；钉 20.1 而实际 20.1.8 也算配。
-case "$GOT_LLVM" in
-  "$WANT_LLVM"|"$WANT_LLVM".*) : ;;
-  *)
-    die "NDK 的 LLVM 版本与钉值不符" \
-      "钉值表要 $WANT_LLVM，NDK $GOT_NDK 里是 $GOT_LLVM。改 NDK 就要同时改 llvmVersion ——" \
-      "否则编出来的 clang 与 sysroot 不同源。"
-    ;;
-esac
+# 比 **major**（= LLVM 的 release 线），不按完整版本串比。
+#
+# 为什么不能按串比（早先写的是 `"$GOT_LLVM" in "$WANT_LLVM".*`，已改）：
+# NDK 声明的版本可能**没有对应的上游 tag**。实测 r29 的 AndroidVersion.txt
+# 写 `21.0.0`，而上游 21-init 之后直接是 21.1.0，没有 llvmorg-21.0.0。
+# 按串比的话，钉 21.1.8（确实与 NDK 同在 21.x 线）会被判红。
+# major 就是 release 线，这才是「同源」要比较的东西。
+WANT_MAJOR="${WANT_LLVM%%.*}"
+GOT_MAJOR="${GOT_LLVM%%.*}"
+if [ "$WANT_MAJOR" = "$GOT_MAJOR" ]; then
+  :
+else
+  die "NDK 的 LLVM 与钉值不是同一条 release 线" \
+    "钉值表要 $WANT_LLVM（$WANT_MAJOR.x 线），NDK $GOT_NDK 里是 $GOT_LLVM（$GOT_MAJOR.x 线）。" \
+    "改 NDK 就要同时改 llvmVersion —— 否则编出来的 clang 与 sysroot 不同源。"
+fi
 
 DEGRADED=0
 [ "$SRC" = "clang --version" ] && [ -n "$GOT_REV" ] && DEGRADED=1

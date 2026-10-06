@@ -108,16 +108,33 @@ if [ -z "$PINNED_LLVM" ]; then
     "拿不到要编的 LLVM 版本。用 scripts/pin-github-release.js 钉一个：" \
     "  node scripts/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-<版本> --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
 fi
-case "$PINNED_LLVM" in
-  "$WANT_LLVM"|"$WANT_LLVM".*) : ;;
-  *)
-    die "钉的 LLVM 源码与 NDK 内置的不是同一大版本" \
-      "钉的是 $PINNED_LLVM，NDK 内置 $WANT_LLVM。编出来的 clang 会与 sysroot 的头文件假设错位，" \
-      "而且**不报错**。按 NDK 的版本重钉（sha256 由工具取，不必下载）：" \
-      "  node scripts/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_LLVM --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
-    ;;
-esac
-note "版本同源已核对：NDK $WANT_LLVM ←→ 钉的 LLVM $PINNED_LLVM"
+# ── 版本同源判据：比**release 线**，不比完整版本串 ──
+#
+# 为什么不按完整版本比（早先就是 `"$PINNED_LLVM" in "$WANT_LLVM"".*`，已改）：
+# NDK 声明的版本与上游 release tag **对不上**。实测 NDK r29 的
+# AndroidVersion.txt 写的是 `21.0.0`，而上游**没有 llvmorg-21.0.0 这个 tag**
+# （21-init 之后直接是 21.1.0）。于是按完整串比的结果是：
+#
+#   钉 21.1.0  对  NDK 21.0.0  → 判红
+#   钉 21.1.8  对  NDK 21.0.0  → 判红
+#
+# 两个都是**判错的**：它们与 NDK 同在 release/21.x 这条线上。
+# 实证：NDK 的 base revision 386af4a5 在 GitHub compare 里
+# 对 release/21.x 是 ahead:0（就在 21.x 上），对 release/20.x 是 diverged。
+#
+# 所以判据是：**major 必须相同**，且 minor 只在双方都有意义时比。
+# LLVM 的 major 就是 release 线（20.x / 21.x），这正是「同源」的含义。
+WANT_MAJOR="${WANT_LLVM%%.*}"
+PIN_MAJOR="${PINNED_LLVM%%.*}"
+if [ "$WANT_MAJOR" = "$PIN_MAJOR" ]; then
+  note "版本同源已核对：NDK $WANT_LLVM（$WANT_MAJOR.x 线）←→ 钉的 LLVM $PINNED_LLVM"
+else
+  die "钉的 LLVM 源码与 NDK 内置的不是同一条 release 线" \
+    "钉的是 $PINNED_LLVM（$PIN_MAJOR.x 线），NDK 内置 $WANT_LLVM（$WANT_MAJOR.x 线）。" \
+    "编出来的 clang 会与 sysroot 的头文件假设错位，而且**不报错**。" \
+    "按 NDK 的那条线重钉（sha256 由工具取，不必下载）：" \
+    "  node scripts/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_MAJOR.1.0 --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
+fi
 
 # ── 取源码 ──
 WORK="$ROOT_DIR/work/$TOOL"
