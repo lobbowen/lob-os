@@ -35,12 +35,15 @@ object NativeAssetRegistry {
             id = "bash", libName = "libbash.so", humanName = "bash 执行器",
             probeArgs = listOf("-c", "exit 0"), probeExpect = null,
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            installName = "bash",
+            version = "5.2.15",
             note = "jniLibs 路径；P2 起 bash 改由前缀目录提供",
         ),
         NativeExecutable(
             id = "ripgrep", libName = "liblobosrg.so", humanName = "ripgrep（glob/grep）",
             probeArgs = listOf("--version"), probeExpect = "ripgrep",
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            installName = "rg",
             note = "缺件时 glob/grep 报 SEARCH_FAILED",
         ),
         NativeExecutable(
@@ -65,6 +68,7 @@ object NativeAssetRegistry {
             id = "ptysession", libName = "librivospty.so", humanName = "PTY 会话宿主",
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = emptyList(), required = false, buildTier = "self-c",
+            installName = "pty-session",
             note = "常驻可执行件（非库）：分配 PTY + setsid + TIOCSCTTY 后 execve。" +
                 "ProcessBuilder 不给 PTY，所以要它；走「可执行件 + 帧协议」而不是 JNI —— " +
                 "仓内已有两种原生范式（LD_PRELOAD 注入 / 可执行件探针），本件属后者，" +
@@ -76,6 +80,8 @@ object NativeAssetRegistry {
             id = "busybox", libName = "libbusybox.so", humanName = "busybox 基础命令集",
             probeArgs = listOf("--list"), probeExpect = "tar",
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            installName = "busybox",
+            version = "1.36.1",
             note = "多调用二进制：用户敲 tar/grep/ls（软链由 PrefixProvisioner 建），" +
                 "不是 busybox tar。探针用 --list 并期待 tar —— 比看二进制在不在强，" +
                 "证明 applet 真编进去了（配置项名写错时 busybox 会静默少编）。" +
@@ -98,12 +104,14 @@ object NativeAssetRegistry {
             id = "zlib", libName = "libz.so", humanName = "zlib 压缩库",
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = emptyList(), required = true, buildTier = "upstream",
+            version = "1.3.2",
             note = "busybox 的 gzip/tar 与 curl 都要它；原先两个商店脚本各静态编一遍",
         ),
         NativeExecutable(
             id = "openssl", libName = "libssl.so", humanName = "OpenSSL 传输层",
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = listOf("libcrypto.so"), required = true, buildTier = "upstream",
+            version = "3.6.3",
             note = "libcurl 的 DT_NEEDED 含它 —— 同目录，解析靠链接期 -Wl,-rpath,\$ORIGIN",
         ),
         NativeExecutable(
@@ -117,6 +125,7 @@ object NativeAssetRegistry {
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = listOf("libssl.so", "libcrypto.so", "libz.so"),
             required = true, buildTier = "upstream",
+            version = "8.22.0",
             note = "git 链它；商店件另有 curl 可执行二进制（那是商店件，不是底座库）",
         ),
     )
@@ -134,6 +143,22 @@ object NativeAssetRegistry {
         get() = (ALL.filter { it.id in LIB_IDS } + CAPABILITY.filter { it.id in LIB_IDS })
 
     private val LIB_IDS = setOf("libcxx", "zlib", "openssl", "crypto", "curl")
+
+    /**
+     * 底座可执行件（要被 exec 的）：落 `$PREFIX/bin`，要给执行位。
+     *
+     * 与 [LIBS] 的分工：库给执行位无意义（bionic 加载库不查执行位），
+     * 可执行件不给执行位就是跑不起来。
+     *
+     * 分档说明：`flock` 与 `posix` **不在这里** —— 它们是被 dlopen / LD_PRELOAD
+     * 注入的，不是 exec 的；`ptyprobe` 是诊断探针，由 `InstanceHost.runPtyProbe()`
+     * 按需直接跑原文件，不占 `$PREFIX/bin` 的常规名字。
+     */
+    val BINS: List<NativeExecutable>
+        get() = CAPABILITY.filter { it.id in BIN_IDS }
+
+    /** 底座可执行件的 id 集合 —— 供落位方判断「这一件进 usr/bin 还是 usr/lib」。 */
+    val BIN_IDS: Set<String> = setOf("bash", "ripgrep", "ptysession", "busybox")
 
     val ALL: List<NativeExecutable> get() = listOf(LIBCXX)
     fun libNameOf(id: String): String =

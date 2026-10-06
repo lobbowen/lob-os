@@ -14,15 +14,15 @@ object PrefixProvisioner {
 // 用户自己装）。node 装完后由 ProgramInstallPipeline 建 usr/bin/node 软链，
 // 不由这里管。
 //
-// ptysession 在其中但**不叫** ptysession：它在 APK 里的文件名是 librivospty.so
-// （jniLibs 只打包 .so），而它在系统里的名字是 pty-session —— 对齐 Linux 的
-// /usr/bin/<工具名>，别让用户在 PATH 里看到一个「.so」当命令敲。
-private val BINS = listOf(
-    NativeAssetRegistry.libNameOf("bash") to "bash",
-    NativeAssetRegistry.libNameOf("ripgrep") to "rg",
-    NativeAssetRegistry.libNameOf("ptysession") to "pty-session",
-    NativeAssetRegistry.libNameOf("busybox") to "busybox",
-)
+// 「APK 里的文件名 → 底座里的名字」这份映射**只在注册表里**（NativeExecutable
+// 的 libName/installName），这里不再重抄 —— 抄一份必然漂移，而漂移的后果是
+// 装出来一个用户敲不出来的命令名。
+//
+// ptysession 在其中但**不叫** ptysession：它在 APK 里叫 librivospty.so
+// （jniLibs 只打包 .so），底座里叫 pty-session —— 对齐 Linux 的 /usr/bin/<工具名>，
+// 别让用户在 PATH 里看到一个「.so」当命令敲。
+private val BINS: List<Pair<String, String>>
+    get() = NativeAssetRegistry.BINS.map { it.libName to it.installedAs }
 
 /**
  * busybox 的 applet 软链（照 Linux 惯例：多调用二进制 + 一堆名字）。
@@ -70,6 +70,13 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             for ((libName, name) in items) {
                 val src = File(nativeDir, libName)
                 val dst = File(dir, name)
+                // OTA 已接管这一件（usr/bin/<name> 是指向 toolchain/<id>/<ver>/ 的软链）
+                // → **不许覆盖**。本方法在每次进程启动都会跑，无条件覆盖会把
+                // OTA 更新下来的件冲回 APK 原件，而且没有任何日志提示。
+                if (isManagedByUpdate(ctx, dst)) {
+                    ready += name
+                    continue
+                }
                 if (!src.isFile) { dst.delete(); continue }
                 if (!dst.isFile || dst.length() != src.length()) {
                     try {
@@ -88,6 +95,23 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
         return ready
+    }
+
+    /**
+     * 这一件是不是被 OTA 更新接管了。
+     *
+     * 判据形态：**软链且指向 toolchain/ 下**（即不是指向 APK 原件那份）。
+     * 为什么这样判：原件在 APK 里、永远不动；OTA 件落在
+     * `usr/lib/toolchain/<id>/<version>/`，`usr/bin/<name>` 是指向它的软链。
+     * 「软链指向 toolchain/」就是「这一件已经不是原件了」的唯一可靠标志 ——
+     * 比查清单版本可靠（清单可能还没刷新，而软链已经切过去了）。
+     */
+    private fun isManagedByUpdate(ctx: Context, dst: File): Boolean = try {
+        if (!java.nio.file.Files.isSymbolicLink(dst.toPath())) return@try false
+        val target = dst.toPath().toRealPath()
+        target.startsWith(libDir(ctx).toPath().toAbsolutePath())
+    } catch (_: Throwable) {
+        false
     }
 
     fun bashBin(ctx: Context): File? = File(binDir(ctx), "bash").takeIf { it.isFile }

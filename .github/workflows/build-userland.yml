@@ -9,6 +9,7 @@ on:
       - 'scripts/verify-userland-build-date.sh'
       - 'scripts/package-userland.sh'
       - 'scripts/publish-userland-manifest.js'
+      - 'scripts/publish-native-manifest.js'
       - 'scripts/upload-qiniu.js'
       - 'scripts/read-userland-entry.sh'
       - 'scripts/userland-sources.json'
@@ -24,6 +25,7 @@ on:
     paths:
       - 'scripts/build-userland-*.sh'
       - 'scripts/publish-userland-manifest.js'
+      - 'scripts/publish-native-manifest.js'
       - 'scripts/userland-sources.json'
       - 'scripts/userland-verify.json'
   workflow_dispatch: {}
@@ -223,6 +225,14 @@ jobs:
           mkdir -p work
           node scripts/publish-userland-manifest.js dist --project > work/declared.json
           node -p "'[declared] ' + require('./work/declared.json').map(t => t.name + '@' + t.version + ' 入口 ' + t.entry + ' 别名 ' + (t.aliases||[]).map(a=>a.name).join('+')).join(' | ')"
+
+      - name: 底座件清单投影（与商店清单分流，同一把钥匙）
+        run: |
+          set -euo pipefail
+          # 底座件（原生件）的清单：从 NativeAssetRegistry 重算，不从任何派生物读。
+          # 判红条件都在脚本里（id 漂移 / 版本全空 / 档位表缺失）。
+          node scripts/publish-native-manifest.js --project > work/native-declared.json
+          node -p "'[native] ' + require('./work/native-declared.json').map(c => c.id + '@' + c.version + ' 来源 ' + c.source).join(' | ')"
 
       - name: 组装并签名清单（用 APK 焊死的公钥自检）
         if: ${{ needs.resolve.outputs.publish == 'true' }}

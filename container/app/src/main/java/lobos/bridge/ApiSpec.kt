@@ -61,6 +61,12 @@ object ApiSpec {
         "lobos.sys.permissions.ledger" to SCOPE_SYSTEM,
         "lobos.sys.permissions.roles" to SCOPE_SYSTEM,
         "lobos.sys.host.status" to SCOPE_SYSTEM,
+        // 底座件（原生件）：换件 = 换系统能力本身，必须系统作用域。
+        // 漏登记的后果不是「文档少一条」，而是**程序会话能替换底座件** ——
+        // 那等于让程序替换 bash 与 openssl 库。
+        "lobos.sys.native.status" to SCOPE_SYSTEM,
+        "lobos.sys.native.update" to SCOPE_SYSTEM,
+        "lobos.sys.native.rollback" to SCOPE_SYSTEM,
     )
 
     val CANONICAL = mapOf(

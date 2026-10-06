@@ -556,6 +556,48 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
+        // ── 底座件（原生件）的版本与更新 ──
+        //
+        // 底座件随 APK 交付（原件在 nativeLibraryDir，永远不动 = 回退基线），
+        // 但可以经 OTA 单独更新到 $PREFIX/lib/toolchain/<id>/<版本>/。
+        // 这三个方法把「当前在用哪一件」变得**可查、可更、可回**——
+        // 没有它们，底座件只能换 APK 才能换。
+        "lobos.sys.native.status" to MethodDef(listOf("base"), true) { _, _programId ->
+            val arr = JSONArray()
+            for (s in lobos.runtime.NativeAssetUpdater.states(this@CapabilityBroker)) {
+                arr.put(JSONObject().apply {
+                    put("id", s.id)
+                    put("apkVersion", s.apkVersion)
+                    put("installedVersion", s.installedVersion ?: JSONObject.NULL)
+                    put("updated", s.updated)
+                    put("path", s.source?.absolutePath ?: JSONObject.NULL)
+                })
+            }
+            JSONObject().apply {
+                put("ok", true)
+                put("components", arr)
+                put("note", "原件在 APK 里永远保留；updated=true 表示当前用的是 OTA 更新过的那份，回滚只需删软链。")
+            }
+        },
+        "lobos.sys.native.update" to MethodDef(listOf("base"), true) { p, _programId ->
+            // dryRun 默认 true —— 换底座件是要紧操作，不该由一次调用就静默发生。
+            val dry = p.optBoolean("dryRun", true)
+            lobos.runtime.NativeAssetUpdater.checkAndUpdate(
+                this@CapabilityBroker,
+                p.optString("manifestUrl", ""),
+                dryRun = dry,
+            ).let { it.put("dryRun", dry) }
+        },
+        "lobos.sys.native.rollback" to MethodDef(listOf("base"), true) { p, _programId ->
+            val id = p.optString("id", "")
+            if (id.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "id 为空")
+            val (ok, why) = lobos.runtime.NativeAssetUpdater.rollback(this@CapabilityBroker, id)
+            JSONObject().apply {
+                put("ok", ok)
+                put("id", id)
+                put("detail", why ?: "已回滚到 APK 原件")
+            }
+        },
         "os.state.get" to MethodDef(listOf("base"), false) { _, _programId ->
             val s = OsInit.snapshot(this@CapabilityBroker)
             val since = s.atMs

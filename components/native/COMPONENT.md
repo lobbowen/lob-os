@@ -166,6 +166,53 @@ Android 的 `ProcessBuilder` 不暴露 `setsid`/`TIOCSCTTY`，**无 JNI 做不�
 判据的输入不能是被判据本身要检查的那类字符串：这几个坑形状相同，
 都是「用含 `$` 的字符串去构造对 `$` 的判据」。
 
+## 版本化与 OTA 更新（原件保留，可回滚）
+
+底座件随 APK 交付，**原件在 `nativeLibraryDir` 里永远不动**，就是回退基线。
+但底座件恰恰是最常需要打补丁的一批（bash / busybox / openssl 都是上游件，
+上游出安全更新是常规节奏）—— 若只能换 APK 才能换件，修一个 bash 的 bug
+就要重发整个 APK。
+
+```
+原件（APK）   nativeLibraryDir/libbash.so         ← 永远不动 = 回退基线
+更新件        $PREFIX/lib/toolchain/bash/<版本>/  ← OTA 落这里
+入口          $PREFIX/bin/bash → 软链到更新件     ← 优先指向新版本
+回滚          删软链，让 provision 用 APK 原件重建
+```
+
+`version` 为空串的语义是「随 APK、不单独更新」，那些件**不进 OTA 清单** ——
+让它们出现在清单里会让人以为能更新。当前有版本的五件：
+bash 5.2.15 · busybox 1.36.1 · zlib 1.3.2 · openssl 3.6.3 · curl 8.22.0
+（版本值一律照抄构建脚本常量或 `userland-sources.json` 钉值表，不凭记忆）。
+
+### 三个必须知道的事实
+
+**一、`provision()` 每次进程启动都跑。** 所以它**无条件覆盖** `usr/bin/<name>`
+会把 OTA 更新下来的件冲回 APK 原件，而且没有任何日志提示。
+`isManagedByUpdate()` 的判据形态是「软链且指向 `libDir/toolchain/`」——
+以文件系统的实际形态为准，比查清单可靠（清单可能没刷新而软链已经切过去了）。
+
+**二、落位规则与商店件不同，所以是两个安装点。**
+`ProgramDir.assertNotDirectlyExecutable` 明确断言「内核入口不该在 filesDir 里
+直接 exec」，而底座件**必须**能在 filesDir 里 exec（本机实测：chmod +x 的脚本
+输出 `EXEC_OK`）。所以不复用 `ProgramInstallPipeline` 的落位，
+但复用它的**验签与下载**（`SupplyProvisioner`）。
+
+**三、不新增签名体系。** 底座件清单与商店清单用**同一把 Ed25519 公钥**
+（`assets/supply/userland-public.pem`）。两套信任根意味着两处要轮换、
+两处可能只更新一处。
+
+### 桥接方法（系统作用域）
+
+| 方法 | 作用 |
+|---|---|
+| `lobos.sys.native.status` | 每一件当前在用哪个版本、是否已被 OTA 接管 |
+| `lobos.sys.native.update` | 比对清单并安装；**`dryRun` 默认 true** |
+| `lobos.sys.native.rollback` | 回滚一件到 APK 原件 |
+
+三者都在 `ApiSpec.SCOPES` 里登记为 `SCOPE_SYSTEM` —— 漏登记的后果不是文档少一条，
+而是**程序会话能替换底座件**（等于让程序替换 bash 与 openssl 库）。
+
 ## 档位语义：判据按「缺了会怎样」分档
 
 判据 3/4/5（架构 / 16KB 对齐 / 解释器 / 依赖闭环 / RUNPATH）对
