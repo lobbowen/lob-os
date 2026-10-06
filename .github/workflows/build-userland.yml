@@ -294,7 +294,15 @@ jobs:
           { echo "CC=$TC/aarch64-linux-android23-clang";
             echo "CXX=$TC/aarch64-linux-android23-clang++";
             echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
-          command -v cmake >/dev/null 2>&1 || sudo apt-get update -qq && sudo apt-get install -y -qq cmake
+          # 「缺 cmake 才装」必须写成 if。
+          # 早先写的是 `command -v cmake || sudo apt-get update && sudo apt-get install cmake`
+          # —— bash 里 && 与 || **同优先级、左结合**，那是 (A || B) && C，
+          # 于是 install **无条件执行**，哪怕 runner 上已经有 cmake。
+          # 形式上像「有就跳过」，实际每次都装（每次 apt-get update，慢且脆）。
+          if ! command -v cmake >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq cmake
+          fi
           bash scripts/build-userland-llvmtoolchain.sh
 
   manifest:

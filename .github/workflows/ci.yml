@@ -51,6 +51,14 @@ jobs:
             node --check "$f"
           done
 
+      # `A || B && C` 在 bash 里是 (A || B) && C —— 右边那条**无条件执行**。
+      # 本仓踩过一次：build-userland.yml 里写的是
+      #   command -v cmake || sudo apt-get update && sudo apt-get install cmake
+      # 读着像「有 cmake 就跳过」，实际每次都装（语义合法，编译器与 shell 都不报错）。
+      # 只有按 bash 的左结合语义判才看得见，所以单独一道门禁。
+      - name: Shell 优先级 — `||` 在 `&&` 之前时右边那条会无条件执行
+        run: node tools/check-shell-precedence.js
+
       - name: Kotlin 结构完整（括号配平 + 无悬空参数；删代码踩过三次）
         run: node tools/check-kt-structure.js
 
