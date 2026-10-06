@@ -541,3 +541,73 @@ r563880c    判非法形态     ← NDK 真正给的形态
 
 **不要再凭「NDK r29 大概是 LLVM 20」去填 20.1.8。**
 上一轮我钉的 `20.1.8` 现在**没有任何依据**支撑它与 r29 同源 —— 它是猜的。
+
+---
+
+## 八、再查上游：AOSP clang 的版本机制（比第七节更确定）
+
+第七节只查到「NDK 记的是 clang-rNNNNNN」。本轮把**机制**也查清了，
+来源是 AOSP 自己的仓（不是猜）：
+
+### 1. AOSP clang 的版本号是怎么来的
+
+`android.googlesource.com/platform/external/clang/+/refs/heads/main/version.py`：
+
+```python
+major = '3'
+minor = '8'
+patch = '275480'
+```
+
+配 `clang-version-inc.py`：
+
+```python
+version_string = '%s.%s.%s' % (version.major, version.minor, version.patch)
+```
+
+**所以 clang 的版本串 `3.8.275480` 里，patch 段就是 clang 修订号。**
+`external/clang/README.version` 写得更直白：
+
+```
+Version: Rolling from upstream + cherry-picks
+```
+
+—— AOSP clang **按 commit 滚动**，不是按 `llvmorg-<ver>` 发布。
+
+### 2. 「修订号 ↔ 语义版本」的映射文件叫什么
+
+`toolchain/llvm_android/update-prebuilts.py`（第 119-126 行）：
+
+```python
+version_file_path = os.path.join(clang_dir, 'AndroidVersion.txt')
+contents = [l.strip() for l in version_file.readlines()]
+full_version = contents[0]          # 例如 '7.0.1'
+revision = contents[1].split()[-1]  # 例如 'r326829'
+```
+
+注释原话：`# e.g. for contents: ['7.0.1', 'based on r326829']`
+
+**`AndroidVersion.txt` 就是那张映射表** —— 第一行语义版本、第二行修订号。
+它只存在于 **clang 预编包内**，不在 git 树里（实测 `external/clang` 下 404），
+预编包又只在 android-llvm CI 的内部存储上（`fetch_kokoro_prebuilts.py`
+指向 `pantheon.corp.google.com`）。所以**公开渠道查不到 r29 的那一行**。
+
+### 3. 与 `clang_source_info.md` 的关系
+
+NDK release notes 说「See `clang_source_info.md` in the toolchain」，
+而 `update-prebuilts.py` 读的是 `AndroidVersion.txt` —— **两个文件同一个作用**
+（给出 LLVM 语义版本 ↔ 修订号的对应）。所以第 3 步「读 clang_source_info.md」
+的思路是对的，只是文件在 NDK zip 里。
+
+### 4. 结论：缺的到底是什么（比第七节更精确）
+
+不是「缺一个版本号」，而是**缺一张映射表**，且这张表**只在预编包/NDK zip 里**。
+
+这意味着 `llvmVersion` 那一格**只能靠真 NDK 填**，无论用什么方法。
+本机拿不到 NDK，所以这一格在本机**永远填不上** —— 这不是本轮没做完，
+是它本来的性质。
+
+### 5. 顺带核实到的一条硬事实
+
+`ndk;29.0.14206865` 与我们钉的 `ndkVersion` 一致，来源是官方
+`repository2-3.xml` 的 `<remotePackage path="ndk;29.0.14206865">`。
