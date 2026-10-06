@@ -11,7 +11,7 @@ import java.io.File
 object RuntimeEnvironment {
 
     data class Snapshot(
-        val nodeBin: File,
+        val nodeBin: File?,   // node 是程序运行时，按需安装；没装则 null
         val prefixReady: List<String>,
         val prefixMissing: List<String>,
         val envShim: File?,
@@ -27,7 +27,7 @@ object RuntimeEnvironment {
     data class TreeRoot(
         val home: File,
         val tmpDir: File,
-        val nodeBin: File,
+        val nodeBin: File?,   // 同上
         val nativeLibDir: String,
         val prefixRoot: File,
         val prefixBin: File,
@@ -55,12 +55,12 @@ object RuntimeEnvironment {
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
         put("LD_LIBRARY_PATH", root.nativeLibDir)
-        put("NODE_BIN", root.nodeBin.absolutePath)
+        root.nodeBin?.let { put("NODE_BIN", it.absolutePath) }
         put(
             "PATH",
             joinPath(
                 root.prefixBin.absolutePath,
-                root.nodeBin.parentFile!!.absolutePath,
+                root.nodeBin?.parentFile?.absolutePath,
                 NodeProvisioner.globalBin(root.home).absolutePath,
                 inheritedPath,
             )
@@ -177,8 +177,8 @@ object RuntimeEnvironment {
             )
         }
 
+        // node 是程序运行时，按需安装 —— 没装就没有，不在这里造兜底路径。
         val nodeBin = NodeRuntime.path(ctx)
-            ?: File(PrefixProvisioner.binDir(ctx), PrefixProvisioner.NODE_BIN_NAME)
         return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
     }
 }

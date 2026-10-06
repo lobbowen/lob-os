@@ -30,14 +30,16 @@ object GuestAdapter {
 
     const val BRIDGE_SOCKET = "lobos_hostbridge"
 
+    // nodeBin 为 null 表示 node 未安装；调用方（InstanceHost）已提前守卫，这里不该被调到。
+    // 用 requireNotNull 让「守卫失效」变成响亮的崩溃，而不是构造出一条错命令。
     fun probePlan(root: RuntimeEnvironment.TreeRoot, script: File, inheritedPath: String?): BootPlan = BootPlan(
-        command = listOf(root.nodeBin.absolutePath, script.absolutePath, "--port", PROBE_PORT.toString()),
+        command = listOf(requireNotNull(root.nodeBin).absolutePath, script.absolutePath, "--port", PROBE_PORT.toString()),
         cwd = root.home,
         env = RuntimeEnvironment.treeRootEnv(root, inheritedPath),
     )
 
     fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan = BootPlan(
-        command = listOf(i.root.nodeBin.absolutePath, i.programEntry.absolutePath) + i.args,
+        command = listOf(requireNotNull(i.root.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args,
         cwd = i.programDir,
         env = buildMap {
             putAll(RuntimeEnvironment.treeRootEnv(i.root, inheritedPath))
