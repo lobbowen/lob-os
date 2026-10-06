@@ -486,3 +486,58 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 **没有编译器**（gcc/clang/cc 全无、无 make/cmake/xz）。
 所以「19+ 道门禁全绿」**不等于**能编译通过 —— 本会话已两次因缺编译器漏过编译错误。
 阶段 1c/1d 的真编只能在 CI 上验。
+
+---
+
+## 七、更正：NDK r29 的 LLVM 版本**不是语义版本**（本轮查上游得到）
+
+### 查到了什么（官方 changelog，不是猜）
+
+`android.googlesource.com/platform/ndk/+/mirror-goog-main-ndk/docs/changelogs/`：
+
+| NDK | release notes 原文 |
+|---|---|
+| r27 | `Updated LLVM to clang-r522817.` |
+| r28 | `Updated LLVM to clang-r530567e/d/b.` |
+| **r29** | **`Updated LLVM to clang-r563880c.`** |
+| r30 | `Updated LLVM to clang-r574158c.` |
+| r31 | `Updated LLVM to clang-r596125.` |
+
+**NDK 按 AOSP clang 修订号（`clang-rNNNNNN`）记录 LLVM，不是 LLVM 语义版本。**
+
+顺带核实到的两条：
+- `ndk;29.0.14206865` 与我们钉的 `ndkVersion` **完全一致**（来自 `repository2-3.xml` 的
+  `<remotePackage path="ndk;29.0.14206865">`，以及 r29 release 的 gradle 片段）。
+- release notes 指向 toolchain 内的 `clang_source_info.md` 才知道确切来源 ——
+  **那个文件在 NDK zip 里，本机没有 NDK 就读不到**。
+
+### 这推翻了什么
+
+`verify-ndk-llvm.sh` 现在抓的是 `clang version ([0-9][0-9.]*)`，
+而 `fetch-pinned.sh --llvm` 只接受 `/^[0-9]+(\.[0-9]+){0,2}$/`。
+
+实测这个校验对真实取值的态度：
+
+```
+20.1.8      通过
+20          通过
+r563880c    判非法形态     ← NDK 真正给的形态
+563880c     判非法形态
+```
+
+所以**「填上实测值」这一步在 r29 上根本走不通** ——
+不是我不填，是填进去会被自己的形态校验判红。
+
+### 因此要改什么（尚未实施，等定）
+
+1. `llvmVersion` 这一格要能记 `clang-rNNNNNN`，且 `fetch-pinned.sh --llvm`
+   的形态校验要接受它。
+2. 但**编 LLVM 源码仍然需要语义版本**（`llvmorg-20.1.8` 那种 release tag）。
+   `clang-r563880c` 对应哪个 `llvmorg-*` **需要真 NDK 里的 clang_source_info.md**
+   才能定，而本机拿不到 —— 这正是原来「只能 CI」的那一格的真实原因：
+   **不是缺一个版本号，是缺一份「修订号 → 语义版本」的映射**。
+3. 所以三步解锁链要改成四步：先从 CI 拿到 `clang_source_info.md` 里的语义版本，
+   再填 `llvmVersion`，再重钉。
+
+**不要再凭「NDK r29 大概是 LLVM 20」去填 20.1.8。**
+上一轮我钉的 `20.1.8` 现在**没有任何依据**支撑它与 r29 同源 —— 它是猜的。
