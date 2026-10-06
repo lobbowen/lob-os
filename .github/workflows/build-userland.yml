@@ -252,6 +252,31 @@ jobs:
               "$CLANG" --version 2>/dev/null | head -3; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # NDK 的 LLVM 版本**不是语义版本** —— 上游 changelog 逐版记的是 AOSP clang
+      # 修订号（r29 = clang-r563880c）。能对上 llvmorg-<ver> 的只有
+      # clang_source_info.md，它在 NDK zip 里。所以把它整份贴出来：
+      # 填 llvmVersion 要照它填，不要照 `clang --version` 的 "20.0.0git" 填。
+      - name: 读出 clang_source_info.md（NDK 内置 LLVM 的真实来源）
+        if: always()
+        run: |
+          set -uo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          SI="$(ls "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md "$NDK"/clang_source_info.md 2>/dev/null | head -1 || true)"
+          {
+            echo "### clang_source_info.md"
+            if [ -n "$SI" ]; then
+              echo "路径：\`$SI\`"
+              echo '```'
+              cat "$SI"
+              echo '```'
+              echo "**llvmVersion 要按这份文件填**（它给的是 llvmorg- 对应的语义版本）。"
+            else
+              echo "**没找到 clang_source_info.md** —— 这一版 clang 的 LLVM 语义版本未知。"
+              echo "此时 \`clang --version\` 里的 \`20.0.0git\` **不足以**作为同源依据"
+              echo "（verify-ndk-llvm.sh 会 exit 2 并说明）。需要人工确认后再填。"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
 
       - name: 编 llvmtoolchain（拿到 llvmVersion 之后才编得出来）
         if: success()

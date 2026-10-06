@@ -65,22 +65,78 @@ if ! "$CLANG" --version >/dev/null 2>&1; then
   die "NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行"
 fi
 
-# 输出形如：Android (…) clang version 20.0.0 (…)；也有形如 clang version 15.0.7 的。
+# ── 取 LLVM 版本：优先读 clang_source_info.md ──
+#
+# 为什么不是直接抓 `clang version N.N.N`（早先就是这么写的）：
+# **NDK r29 的 clang --version 不给语义版本。** 上游 changelog 逐版记的是
+# AOSP clang 修订号 —— r27 clang-r522817 / r28 clang-r530567e /
+# r29 clang-r563880c / r30 clang-r574158c / r31 clang-r596125。
+# 那个 rNNNNNN 不是 LLVM 版本，`clang version` 那行要么没有、要么版本号
+# 与源码不对应。所以抓正则抓出来的数**不能用来挑 llvmorg-* 源码**。
+#
+# 上游自己指了路：release notes 说 "See `clang_source_info.md` in the toolchain"。
+# 那个文件里才有「这份 LLVM 来自哪个版本/commit」，那才是能对上
+# llvmorg-<语义版本> 的东西。所以**先读它**。
+#
+# 三条路径依次降级，每条都实测过：
+#   1. clang_source_info.md（权威，唯一能给出语义版本的）
+#   2. `clang --version` 的语义版本号（老 NDK 是这个形态）
+#   3. resource dir 名 lib/clang/<ver>（最后兜底，可能只是 major）
 VER_OUT="$("$CLANG" --version 2>&1 | head -3)"
 echo "[ndk-llvm] $VER_OUT"
-GOT_LLVM="$(printf '%s\n' "$VER_OUT" \
-  | sed -n 's/.*clang version \([0-9][0-9.]*\).*/\1/p' | head -1)"
+
+# AOSP clang 的修订号在输出末尾，形如
+#   "Android (…) clang version 20.0.0git (…/ndk r563880c)"
+# 它**不在** "clang version" 紧后面，所以不能只在那一句里找。
+# 实测：只匹配 "clang version r…" 抓不到；要在整行里找独立的 rNNNNNN。
+GOT_REV="$(printf '%s\n' "$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
+[ -n "$GOT_REV" ] || GOT_REV="$(printf '%s\n' "$VER_OUT" | grep -o 'clang-r[0-9a-f]\{6,\}' | head -1 | sed 's/clang-//')"
+if [ -n "$GOT_REV" ]; then
+  echo "[ndk-llvm] NDK 这一版的 clang 修订号 = $GOT_REV（不是语义版本）"
+fi
+
+GOT_LLVM=""
+SRC=""
+for si in "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md \
+           "$NDK"/clang_source_info.md \
+           "$NDK"/toolchains/llvm/prebuilt/*/share/clang_source_info.md; do
+  [ -f "$si" ] || continue
+  # 文件里形如 "LLVM commit: ...(abc)" 或 "git-rNNNNNN (tag: llvmorg-20.1.8)"
+  v="$(grep -o 'llvmorg-[0-9][0-9.]*' "$si" | head -1)"
+  if [ -n "$v" ]; then GOT_LLVM="${v#llvmorg-}"; SRC="$si"; break; fi
+done
+if [ -n "$GOT_LLVM" ]; then
+  echo "[ndk-llvm] 从 $SRC 读到 LLVM 语义版本 = $GOT_LLVM"
+fi
+
 if [ -z "$GOT_LLVM" ]; then
-  # 退化路径：有些 NDK 的 clang 不打印 "clang version N"，改读它的 resource dir
+  # 退化路径 2：`clang version 20.0.0`（老 NDK 是这个形态）
+  GOT_LLVM="$(printf '%s\n' "$VER_OUT" \
+    | sed -n 's/.*clang version \([0-9][0-9.]*\).*/\1/p' | head -1)"
+  [ -n "$GOT_LLVM" ] && SRC="clang --version"
+fi
+if [ -z "$GOT_LLVM" ]; then
+  # 退化路径 3：resource dir 名
   RDIR="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/* 2>/dev/null | head -1 || true)"
   if [ -n "$RDIR" ]; then
     GOT_LLVM="$(basename "$RDIR")"
+    SRC="resource dir"
     echo "[ndk-llvm] 从 resource dir 读到 LLVM 版本"
   fi
 fi
-[ -n "$GOT_LLVM" ] || die "读不出 LLVM 版本" \
-  "clang --version 的输出里找不到 'clang version N.N.N'：$(printf '%s' "$VER_OUT" | head -1)"
-echo "[ndk-llvm] LLVM=$GOT_LLVM"
+if [ -n "$GOT_LLVM" ]; then
+  echo "[ndk-llvm] LLVM=$GOT_LLVM"
+  # 诚实标注数据来源：只有读到 clang_source_info.md 才算「确认同源」。
+  # 从 `clang version` 退化读到的，在带修订号时**不能**当同源依据 ——
+  # 实测那一行是 "20.0.0git"，语义版本的最后一段会带 git 后缀，
+  # 它与要编的 llvmorg-<ver> 未必是同一个发布点。
+  if [ "$SRC" = "clang --version" ] && [ -n "$GOT_REV" ]; then
+    echo "::warning title=版本来源退化::这一版 clang 带修订号 r$GOT_REV，" \
+      "但没读到 clang_source_info.md —— 下面的 $GOT_LLVM 来自 \`clang --version\` 的 git 版本串，" \
+      "**不足以证明与要编的 llvmorg-<ver> 同源**。" \
+      "请在 runner 上读 $NDK/toolchains/llvm/prebuilt/*/clang_source_info.md 确认。"
+  fi
+fi
 
 # ── 3. 与钉值核对 ──
 WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
@@ -101,5 +157,16 @@ case "$GOT_LLVM" in
     ;;
 esac
 
+DEGRADED=0
+[ "$SRC" = "clang --version" ] && [ -n "$GOT_REV" ] && DEGRADED=1
+
 echo "[ok] NDK $GOT_NDK / LLVM $GOT_LLVM 与钉值一致（ndkVersion=$WANT_NDK llvmVersion=$WANT_LLVM）"
-echo "[ok] 阶段1c（编 clang）的前提成立：sysroot 与目标编译器同源"
+if [ "$DEGRADED" = 1 ]; then
+  # 上一条已经 warning 过了。这里**不能**再说「同源成立」——
+  # 同一份输出里既说「不足以证明同源」又说「前提成立」是自相矛盾，
+  # 而人只会记住后面那句。所以这里如实说：版本号对上了，来源还没坐实。
+  echo "[ndk-llvm] 版本号对上了，但**同源尚未坐实**（见上面那条 warning）"
+  echo "[ndk-llvm] 要坐实：在 runner 上读 $NDK/toolchains/llvm/prebuilt/*/clang_source_info.md"
+  exit 2
+fi
+echo "[ok] 阶段1c（编 clang）的前提成立：sysroot 与目标编译器同源（依据 $SRC）"
