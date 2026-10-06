@@ -323,3 +323,27 @@ bash 5.2.15 · busybox 1.36.1 · zlib 1.3.2 · openssl 3.6.3 · curl 8.22.0
 
 **这类工具不要写进门禁**：它们只能判「明显形态」，判不了「语义对不对」，
 而门禁全绿会被读成「已验证」。写进契约当提醒更诚实。
+
+## 验证过的清单（反例脚本在 `_scripts/verify-tmp/`，不入仓）
+
+那些脚本依赖本机环境（真 APK、假 NDK、本机网络），所以不入库；
+但「验过什么」这件事该可查，不该只散在提交信息里。
+
+| 脚本 | 验的是什么 | 断言数 |
+|---|---|---|
+| `check-lib-counterexample.sh` | `check_lib` 能否抓真机故障（反例源是真 arm64 产物） | 7 |
+| `sysroot-counterexample.sh` | sysroot 配方的三道闸门（版本/头文件/库） | 5 |
+| `ndk-llvm-counterexample.sh` | `verify-ndk-llvm.sh` 的判红能力（假 NDK） | 7 |
+| `native-manifest-counterexample.sh` | 底座件清单生成器的判红能力 | 5 |
+| `alias-symlink-proof.js` | 一件多命令时，只有本名能调用的形态 | 7 |
+| `sysroot-include-proof.js` | `$PREFIX/include` 软链（含「升级后跟着换」） | 10 |
+| `pty-argv-proof.js` | PTY 协议两侧 argv 传递（真字节往返） | 14 |
+| `pty-winsize-endian.js` | winsize 字节序（大端会把 24 读成 6144） | 9 |
+| `terminal-screen-algorithm.js` | 终端仿真的三条关键性质（CJK 双列/分片/LF 不回列） | 18 |
+| `terminal-covers-real-pty.js` | 真实 PTY 输出里出现的序列是否都会被处理 | — |
+| `pack-extract-proof.js` | 从固化包取件（`entry` vs `libName` 的角色） | 4 |
+| `entry-link-proof.js` | 「装了但调不到」这个形态 | — |
+| `runpath-branch-cover.sh` | 补判据 5 那一支的反例 | 2 |
+
+最后改动时全部重跑过一遍（约 74 项断言全过）—— 说明那些缺陷是真被修掉的，
+不是被绕过去的。**改了这批代码的任何一处，就该重跑它们**。
