@@ -12,6 +12,7 @@ const FILES = {
   pkg: P('container/app/src/main/java/lobos/quickapp/QuickAppPackage.kt'),
   schema: P('container/app/src/main/java/lobos/os/ManifestSchema.kt'),
   installer: P('container/app/src/main/java/lobos/ota/ProgramInstaller.kt'),
+  app: P('container/app/src/main/java/lobos/OsApplication.kt'),
   doc: P('docs/DIMINA-SPEC.md'),
 };
 
@@ -49,6 +50,12 @@ if (!/resolve\(id \+ "\.zip"\)/.test(s.host)) {
 if (!/entry: String/.test(s.host)) add('install 没有入口页参数');
 if (!/withEntry\(packageDir, entry\)/.test(s.host)) add('install 没有把入口写进 config.json');
 if (!/uiEntryOf/.test(s.installer)) add('安装器没有从清单读 ui.entry 传给 install');
+
+if (!/setVirtualFilePrefix/.test(s.app)) {
+  add('Dimina.init 没有 setVirtualFilePrefix：官方文档写明「必须在 SDK 初始化时设置，' +
+    '原生路径解析与逻辑层会使用同一前缀」；不设则视图层 WebView 解析不了路径、' +
+    '渲染进程压根不起（真机实测：逻辑层 appShow/pageShow 正常，就是灰屏）');
+}
 
 for (const must of ['入口路径', '与 appId 一致', 'pages_*.js']) {
   if (!s.doc.includes(must)) add('DIMINA-SPEC.md 未记「' + must + '」这条官方约束');
