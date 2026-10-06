@@ -84,16 +84,34 @@ WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
 # `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，只为了从一行输出里
 # sed 出版本号。查表 0.1 秒，下载要几分钟；而这一步只是「该不该编」的判断。
 PINNED_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version llvm 2>/dev/null || true)"
-if [ -n "$WANT_LLVM" ] && [ -n "$PINNED_LLVM" ]; then
-  case "$PINNED_LLVM" in
-    "$WANT_LLVM"|"$WANT_LLVM".*) : ;;
-    *)
-      die "钉的 LLVM 源码与 NDK 内置的不是同一大版本" \
-        "钉的是 $PINNED_LLVM，NDK 内置 $WANT_LLVM。编出来的 clang 会与 sysroot 的头文件假设错位，" \
-        "而且**不报错**。请按 NDK 的版本重钉 scripts/userland-sources.json 的 llvm 键（sha256 需重测）。"
-      ;;
-  esac
+# 对齐检查**不可跳过**。
+#
+# 早先写成 `if [ -n "$WANT_LLVM" ] && [ -n "$PINNED_LLVM" ]`，
+# 于是 llvmVersion 空（还没填）时整段检查被跳过 —— 而「没验」被当成了「通过」。
+# 那是典型的静默降级：编出来的东西与 sysroot 错位，却没有任何提示。
+#
+# 正确形态：**不知道就不许编**。llvmVersion 空时直接判红，并说清怎么填。
+if [ -z "$WANT_LLVM" ]; then
+  die "userland-sources.json 没有 llvmVersion" \
+    "不知道 NDK 内置的是哪个 LLVM，就无法判断钉的源码是否同源 —— 没验过就不该继续编。" \
+    "先跑 scripts/verify-ndk-llvm.sh（需要真 NDK，通常在 CI 上），" \
+    "从报错里读到实际版本号，填进 userland-sources.json 的 llvmVersion。"
 fi
+if [ -z "$PINNED_LLVM" ]; then
+  die "钉值表里没有 sources.llvm" \
+    "拿不到要编的 LLVM 版本。用 scripts/pin-github-release.js 钉一个：" \
+    "  node scripts/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-<版本> --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
+fi
+case "$PINNED_LLVM" in
+  "$WANT_LLVM"|"$WANT_LLVM".*) : ;;
+  *)
+    die "钉的 LLVM 源码与 NDK 内置的不是同一大版本" \
+      "钉的是 $PINNED_LLVM，NDK 内置 $WANT_LLVM。编出来的 clang 会与 sysroot 的头文件假设错位，" \
+      "而且**不报错**。按 NDK 的版本重钉（sha256 由工具取，不必下载）：" \
+      "  node scripts/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_LLVM --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
+    ;;
+esac
+note "版本同源已核对：NDK $WANT_LLVM ←→ 钉的 LLVM $PINNED_LLVM"
 
 # ── 取源码 ──
 WORK="$ROOT_DIR/work/$TOOL"
