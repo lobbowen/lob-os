@@ -33,8 +33,14 @@ console.log('  用小端读它 → ' + readAs(littleEndian, true) + '（对）')
 t('大端读法确实会把 24x80 读成 6144x20480', readAs(littleEndian, false) === '6144x20480',
   '实得 ' + readAs(littleEndian, false));
 
-console.log('\n  本机架构: ' + process.arch + '（原生侧 memcpy 的 struct winsize 主机序 = 小端）');
-t('本机是 aarch64（小端前提成立）', process.arch === 'arm64', '架构 ' + process.arch);
+console.log('\n  本机架构: ' + process.arch);
+const HOST_IS_LE = (() => { const p = Buffer.alloc(4); p.writeUInt16LE(1, 0); return p[0] === 1; })();
+const LE_AS_BE = (() => { const p = Buffer.alloc(4); p.writeInt16BE(24, 0); return p.readInt16LE(0); })();
+t('字节序探针本身可信（小端写 1 读回 1；同法大端写 24 会读成别的值）',
+  HOST_IS_LE === (LE_AS_BE !== 24),
+  '探针自相矛盾：小端写读=' + HOST_IS_LE + ' 大端写后小端读=' + LE_AS_BE);
+t('本机是小端 —— 原生侧 memcpy 的 struct winsize 主机序即小端', HOST_IS_LE,
+  '本机是大端（' + process.arch + '），那个前提不成立，判据要另作处理');
 
 t('C 侧用 memcpy 直拷 struct winsize（主机序）',
   /memcpy\(&ws, payload, sizeof\(ws\)\)/.test(c), 'C 侧不是 memcpy → 主机序前提不成立');
