@@ -64,7 +64,7 @@ class OsApplication : Application() {
             // 原先这里还调 SupplyProvisioner.ensure，等于每次 App 启动就无条件从商店拉
             // node/curl/git/jq/npm/pnpm/sqlite3，既绕过了注册表与控制面板，也让这些件的
             // 落位规则和安装器不一致（node 装在 toolchain/node/bin/，而 libc++_shared.so
-            // 装在 usr/bin/，两者不相关 —— 裸环境启动必然 linker 失败）。
+            // 装在 usr/lib/，两者不相关 —— 裸环境启动必然 linker 失败）。
             runCatching { lobos.os.CatalogClient.refresh(this@OsApplication, false) }
         }.apply { isDaemon = true }.start()
     }

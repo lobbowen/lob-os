@@ -43,106 +43,12 @@ if [ -z "$ANDROID_NDK_ROOT" ]; then
 fi
 echo "[git] NDK root = $ANDROID_NDK_ROOT"
 
-bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin zlib "$ROOT_DIR/work/zlib.tar.gz"
-rm -rf "$ROOT_DIR/work/zlib" && mkdir -p "$ROOT_DIR/work/zlib"
-tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$ROOT_DIR/work/zlib" --strip-components=1
-cd "$ROOT_DIR/work/zlib"
-CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" ./configure --prefix="$DEPS" --static >/dev/null
-make -j2 >/dev/null
-make install >/dev/null
-ZLIB_LIBS=$(ls "$DEPS/lib" | tr "\n" " ")
-echo "[git] zlib 就位：$ZLIB_LIBS"
-
-bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin openssl "$ROOT_DIR/work/openssl.tar.gz"
-rm -rf "$ROOT_DIR/work/openssl" && mkdir -p "$ROOT_DIR/work/openssl"
-tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$ROOT_DIR/work/openssl" --strip-components=1
-cd "$ROOT_DIR/work/openssl"
-export ANDROID_API="$ANDROID_API"
-export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
-CFG_LOG="$ROOT_DIR/work/openssl-configure.log"
-export PATH="$TC_DIR:$PATH"
-export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --time-base)"
-if ! ./Configure android-arm64 -fPIC -D__ANDROID_API__=$ANDROID_API --prefix="$DEPS" --openssldir="$DEPS/ssl" no-shared no-tests no-ui-console > "$CFG_LOG" 2>&1; then
-  echo "::error title=openssl Configure 失败::下面是最后 30 行（真正的致命行在这里）"
-  tail -n 30 "$CFG_LOG" || true
-  exit 1
-fi
-BUILD_LOG="$ROOT_DIR/work/openssl-build.log"
-if ! make -j2 build_libs > "$BUILD_LOG" 2>&1; then
-  echo "::error title=openssl 编译失败::最后 30 行"
-  tail -n 30 "$BUILD_LOG" || true
-  exit 1
-fi
-bash "$ROOT_DIR/scripts/verify-userland-build-date.sh" "$ROOT_DIR/work/openssl"
-make install_sw >/dev/null
-echo "[git] openssl 就位：$(ls "$DEPS/lib" | grep -c "[.]a") 个 .a"
-
-bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin curl "$ROOT_DIR/work/curl.tar.gz"
-rm -rf "$ROOT_DIR/work/curl" && mkdir -p "$ROOT_DIR/work/curl"
-tar xzf "$ROOT_DIR/work/curl.tar.gz" -C "$ROOT_DIR/work/curl" --strip-components=1
-cd "$ROOT_DIR/work/curl"
-export PKG_CONFIG_PATH="$DEPS/lib/pkgconfig"
-export CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN"
-export CPPFLAGS="-I$DEPS/include" LDFLAGS="-L$DEPS/lib"
-if ! ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu --prefix="$DEPS" \
-  --with-openssl="$DEPS" --with-zlib="$DEPS" --with-ca-path=/system/etc/security/cacerts \
-  --disable-shared --enable-static --disable-ldap --without-libssh2 --without-libidn2 \
-  --without-nghttp2 --without-brotli --without-zstd --without-libpsl --disable-manual \
-  --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp \
-  --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-mqtt --disable-rtsp \
-  --enable-http \
-  ac_cv_lib_crypto_HMAC_Update=yes ac_cv_lib_crypto_HMAC_Init_ex=yes \
-  curl_cv_lib_crypto_HMAC_Update=yes curl_cv_lib_crypto_HMAC_Init_ex=yes \
-  ac_cv_lib_ssl_SSL_new=yes ac_cv_lib_ssl_SSL_connect=yes ac_cv_lib_ssl_SSL_get_peer_certificate=yes \
-  curl_cv_openssl_with_ldl=yes curl_cv_openssl_with_ldl_and_lpthread=yes \
-  LIBS="-lssl -lcrypto -lz -ldl" CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" CPPFLAGS="-I$DEPS/include" LDFLAGS="-L$DEPS/lib" > "$ROOT_DIR/work/curl-configure.log" 2>&1; then
-  echo "::error title=curl Configure 失败::下面是真因"
-  echo "==== config.log 里 HMAC_Update 那段（编译/链接命令与报错都在这里）===="
-  grep -n -B 14 -A 8 "HMAC_Update" "$ROOT_DIR/work/curl/config.log" | head -n 90 || true
-  echo "==== config.log 尾 30 行 ===="
-  tail -n 30 "$ROOT_DIR/work/curl/config.log" || true
-  echo "==== config.log 定位 ===="
-  ls -la "$ROOT_DIR/work/curl/config.log" 2>/dev/null || find "$ROOT_DIR/work/curl" -maxdepth 2 -name config.log || true
-  echo "==== configure 输出尾 15 行 ===="
-  tail -n 15 "$ROOT_DIR/work/curl-configure.log" || true
-  exit 1
-else
-  echo "[git] curl Configure 通过"
-fi
-if [ ! -f "$ROOT_DIR/work/curl/Makefile" ]; then
-  echo "::error title=curl 没生成 Makefile::下面是 configure 输出尾 40 行、pwd 与目录内容"
-  echo "==== pwd ===="
-  pwd || true
-  echo "==== configure 输出尾 40 行 ===="
-  tail -n 40 "$ROOT_DIR/work/curl-configure.log" || true
-  echo "==== 目录内容（前 25 项）===="
-  ls -la "$ROOT_DIR/work/curl" | head -n 25 || true
-  echo "==== 找 Makefile* ===="
-  find "$ROOT_DIR/work/curl" -maxdepth 1 -name "Makefile*" || true
-  exit 1
-fi
-echo "[git] curl Makefile 已生成"
-CURL_LOG="$ROOT_DIR/work/curl-build.log"
-if ! make -C lib -j2 > "$CURL_LOG" 2>&1; then
-  echo "::error title=curl 库编译失败::最后 30 行"
-  tail -n 30 "$CURL_LOG" || true
-  exit 1
-fi
-if ! make -C lib install > "$CURL_LOG" 2>&1; then
-  echo "::error title=curl 库安装失败::最后 30 行"
-  tail -n 30 "$CURL_LOG" || true
-  exit 1
-fi
-echo "[git] curl 库已装（跳过命令行工具）"
-mkdir -p "$DEPS/include"
-rm -rf "$DEPS/include/curl"
-cp -r "$ROOT_DIR/work/curl/include/curl" "$DEPS/include/"
-if [ ! -f "$DEPS/include/curl/curl.h" ]; then
-  echo "::error title=curl 头文件没装上::git 会编不过 http.c"
-  exit 1
-fi
-echo "[git] curl 头文件已装"
-echo "[git] curl 就位（静态）"
+# 静态依赖库（zlib + openssl + curl）由 build-shared-deps.sh 编一次，与 curl.sh 共用。
+# 原先本脚本把三段编法整段抄了一份（实测 100 行），openssl 尤其贵 —— 编两遍换不来好处。
+# 本脚本只要**库**（git 链 -lcurl），不要 curl 命令行工具；deps 脚本正是这么编的（只 make -C lib）。
+echo "[git] 编静态依赖库（build-shared-deps.sh）"
+DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/build-shared-deps.sh"
+echo "[git] curl 库就位（静态）"
 
 cd "$ROOT_DIR/work/git-src"
 

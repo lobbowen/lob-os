@@ -231,6 +231,19 @@ echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE}/container/app/src/mai
 
 cd "$ROOT"
 
+echo "== 底座共享库（libz / libssl / libcrypto / libcurl）=="
+# 放在小件 strip 之后：小件 strip 段硬编码了六个文件名，新库不在其中。
+# 库自己的 strip 在 build-base-libs.sh 内做（每件 strip 完立刻自检形态）。
+# 这一段在脚本末尾（清单生成之前）执行，这样：
+#   · 上游任何 exec 到本脚本的回退路径都自动带上它 —— 不用在
+#     ensure-native-capabilities.sh 的五处 exec 里各加一行（那五处迟早漏一处）。
+CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {
+  echo "::error title=底座共享库缺失::libz/libssl/libcrypto/libcurl 是 \$PREFIX 必备（upstream 档，缺件硬红）——"
+  echo "             没有它们，curl/git 改动态链（第 2 阶段）与 busybox 的 gzip/tar（第 5 阶段）都无从谈起。"
+  exit 1
+}
+cd "$ROOT"
+
 [ -f "$CAPS" ] || { echo "[error] 缺少 $CAPS" >&2; exit 1; }
 : > "$MANIFEST"
 N=0; MISS=0

@@ -23,31 +23,11 @@ DEPS="$ROOT_DIR/work/curl-deps"
 mkdir -p "$DEPS"
 echo "[curl] 编译 API=$ANDROID_API  CC=$CC"
 
-bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin zlib "$ROOT_DIR/work/zlib.tar.gz"
-rm -rf "$ROOT_DIR/work/zlib" && mkdir -p "$ROOT_DIR/work/zlib"
-tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$ROOT_DIR/work/zlib" --strip-components=1
-cd "$ROOT_DIR/work/zlib"
-CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" ./configure --prefix="$DEPS" --static >/dev/null
-make -j2 >/dev/null && make install >/dev/null
-echo "[curl] zlib 就位"
-
-bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin openssl "$ROOT_DIR/work/openssl.tar.gz"
-rm -rf "$ROOT_DIR/work/openssl" && mkdir -p "$ROOT_DIR/work/openssl"
-tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$ROOT_DIR/work/openssl" --strip-components=1
-cd "$ROOT_DIR/work/openssl"
-export ANDROID_API
-export ANDROID_NDK_ROOT="${ANDROID_NDK_LATEST_HOME:-}"
-if [ -z "$ANDROID_NDK_ROOT" ]; then ANDROID_NDK_ROOT=$(cd "$TC_DIR/../../../../.." && pwd); fi
-export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
-echo "[curl] NDK root = $ANDROID_NDK_ROOT"
-export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --time-base)"
-if ! ./Configure android-arm64 -fPIC -D__ANDROID_API__=$ANDROID_API --prefix="$DEPS" --openssldir="$DEPS/ssl" no-shared no-tests no-ui-console > "$ROOT_DIR/work/openssl-configure.log" 2>&1; then
-  echo "::error title=openssl Configure 失败::尾 30 行"; tail -n 30 "$ROOT_DIR/work/openssl-configure.log"; exit 1; fi
-if ! make -j2 build_libs > "$ROOT_DIR/work/openssl-build.log" 2>&1; then
-  echo "::error title=openssl 编译失败::尾 30 行"; tail -n 30 "$ROOT_DIR/work/openssl-build.log"; exit 1; fi
-bash "$ROOT_DIR/scripts/verify-userland-build-date.sh" "$ROOT_DIR/work/openssl"
-make install_sw >/dev/null
-echo "[curl] openssl 就位"
+# 静态依赖库（zlib + openssl + curl）由这一个脚本编一次，curl.sh 与 git.sh 共用。
+# 原先两个脚本各编一遍 —— openssl 尤其贵，编两遍换不来任何好处。
+# 参数并集的理由见 build-shared-deps.sh 的文件头。
+echo "[curl] 编静态依赖库（build-shared-deps.sh）"
+DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/build-shared-deps.sh"
 
 bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin curl "$ROOT_DIR/work/curl.tar.gz" \
   --version-file "$ROOT_DIR/$OUT/curl.version"

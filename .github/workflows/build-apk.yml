@@ -68,6 +68,19 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           echo "[ok] SDK 包就绪"
 
+      - name: 编译底座共享库所需的宿主工具（cmake）
+        run: |
+          set -euo pipefail
+          # build-base-libs.sh 用 CMake 交叉编 zlib（zlib 1.3.2 自带 CMakeLists.txt）。
+          # 显式确认一次：缺了就在这里炸，而不是等 zlib 的 cmake 配置失败、
+          # 报错指向一个看不懂的地方（那是「诊断不许指错方向」的判据）。
+          command -v cmake >/dev/null 2>&1 || {
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq cmake >/dev/null
+          }
+          command -v cmake >/dev/null 2>&1 || { echo "::error title=无 cmake::zlib 共享库编不出来"; exit 1; }
+          echo "[ok] cmake $(cmake --version | head -1)"
+
       - name: 放置 C++ 运行期到 jniLibs（APK 基础环境）
         run: |
           set -euo pipefail

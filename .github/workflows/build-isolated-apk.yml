@@ -54,6 +54,17 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           echo "[ok] SDK 包就绪"
 
+      - name: 编译底座共享库所需的宿主工具（cmake）
+        run: |
+          set -euo pipefail
+          # 同 build-apk.yml：zlib 共享库用 CMake 交叉编，缺 cmake 就在这里炸。
+          command -v cmake >/dev/null 2>&1 || {
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq cmake >/dev/null
+          }
+          command -v cmake >/dev/null 2>&1 || { echo "::error title=无 cmake::zlib 共享库编不出来"; exit 1; }
+          echo "[ok] cmake $(cmake --version | head -1)"
+
       - name: 造一把本项目自己的 keystore（不复用任何旧包身份）
         id: ks
         run: |

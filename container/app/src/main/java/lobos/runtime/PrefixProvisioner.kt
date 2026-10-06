@@ -18,12 +18,14 @@ private val BINS = listOf(
     NativeAssetRegistry.libNameOf("ripgrep") to "rg",
 )
 
-// C++ 运行库：无条件必需。
-// 原先它被放在「node 在场才算」的条件里 —— 那是错的：任何 C++ 件都要它，
-// 与 node 无关。node 缺席时它仍必须存在。
-private val DEPS = listOf(
-    NativeAssetRegistry.LIBCXX.libName to NativeAssetRegistry.LIBCXX.libName,
-)
+// 底座库：无条件必需，落 $PREFIX/lib（对齐 Linux 的「库进 /lib」）。
+// 原先这一份被铺到 binDir —— 库因此落在 usr/bin，libDir() 指向空目录，
+// 「库在 usr/lib」这条判据在代码里没有兑现。现在它真的落 usr/lib，
+// 而 RuntimeEnvironment.libSearchPath() 第二项就是这个目录。
+//
+// 清单来自 NativeAssetRegistry.LIBS，不在这里重抄一份（抄一份必然漂移）。
+private val DEPS: List<Pair<String, String>>
+    get() = NativeAssetRegistry.LIBS.map { it.libName to it.libName }
 
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
@@ -38,9 +40,15 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx))) {
+        // (件表, 落位目录, 是否可执行)。可执行位只给 BINS —— 库给执行位无意义，
+        // 而 bionic 加载库不查执行位。这里显式传标志，不用 `items === BINS`
+        // 那种引用比较（DEPS 是 getter，每次新 list，引用比较迟早失效）。
+        val plan = listOf(
+            Triple(BINS, binDir(ctx), true),
+            Triple(DEPS, libDir(ctx), false),
+        )
+        for ((items, dir, executable) in plan) {
             dir.mkdirs()
-            val executable = items === BINS
             for ((libName, name) in items) {
                 val src = File(nativeDir, libName)
                 val dst = File(dir, name)

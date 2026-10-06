@@ -18,5 +18,9 @@ self-c liblobosptyprobe.so ptyprobe
 # --- upstream ---
 upstream libbash.so bash
 upstream liblobosrg.so ripgrep
+upstream libz.so zlib
+upstream libssl.so openssl
+upstream libcrypto.so crypto
+upstream libcurl.so curl
 # --- soft ---
 soft liblobospty.so node-pty
