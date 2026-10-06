@@ -824,3 +824,47 @@ HEAD https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-
 与 release API 报的 `asset.size` **逐字节一致**（158971856），
 version 21.1.0 / sha256 `1672e3ef…878825` 也与 `userland-sources.json` 一致。
 即：**钉值三元组（version / sha256 / url）自洽，且资源真实存在。**
+
+### 十一·二、两个 CI 步骤的「查找失败」写法不一致（本轮修）
+
+对比 `build` job 的「定位 NDK」与 `ndk-llvm` job 的「编 llvmtoolchain」，
+后者**没有任何存在性检查**：
+
+```bash
+# build job（有检查）
+NDK="${ANDROID_NDK_LATEST_HOME:-}"
+[ -d "$NDK" ] || { echo "::error title=无 NDK::…"; exit 1; }
+[ -x "$TC/aarch64-linux-android21-clang" ] || { echo "::error title=无 clang::…"; exit 1; }
+
+# ndk-llvm job（原来没有，直接拿路径用）
+TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+```
+
+后果：路径一旦不对，要一直走到配方里才炸，而配方报的可能是
+「源码树异常」这类**与真实病因无关**的话。三样先查清：
+
+- NDK 目录在不在
+- 交叉编译器 `aarch64-linux-android23-clang` 可不可执行
+- `llvm-ar` 在不在（编 LLVM 的归档工具，NDK 自带）
+
+### 顺带修一个 `set -u` 下的报错难看问题
+
+第一步我写成：
+
+```bash
+[ -d "$ANDROID_NDK_LATEST_HOME" ] || { echo "::error title=无 NDK::…"; exit 1; }
+```
+
+这一步跑在 `set -euo pipefail` 下。**变量没设置时，`-u` 会先杀掉它**，
+报出来的是 bash 自己的 `unbound variable`，而不是我们那句有用的话。实测：
+
+```
+改前： bash: line 2: ANDROID_NDK_LATEST_HOME: unbound variable
+改后： ::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME
+```
+
+所以取法必须与 `build` job 一致：`NDK="${ANDROID_NDK_LATEST_HOME:-}"`，
+**先给空串再判空**。这不是风格问题 —— 前者让人看不出该做什么。
+
+**判据：任何在 `set -u` 下引用可能不存在的环境变量，都要写成 `${VAR:-}`**
+（而 `${VAR:?}` 是「没设置就立刻失败」，适合必填项，但同样不会说人话）。

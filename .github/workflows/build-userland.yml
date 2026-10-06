@@ -290,7 +290,22 @@ jobs:
           # （Termux 级别的工程量，见 build-userland-llvmtoolchain.sh 文件头）。
           # 与 ndk-llvm 同一个 job、同一个 continue-on-error —— 它红了不影响商店件
           # 那条链（llvmtoolchain 不在 manifest 的 needs 里，也不进 build 矩阵）。
-          TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          # 取法与 build job 的「定位 NDK」一致（`${VAR:-}`）——
+          # 这一步跑在 `set -u` 下，直接写 "$ANDROID_NDK_LATEST_HOME" 在变量
+          # 未设置时会先被 u 选项杀掉，报的是 bash 自己的 unbound variable，
+          # 而不是我们那句「runner 上没有 ANDROID_NDK_LATEST_HOME」。
+          # 实测过这个差别：前者看不出该做什么，后者一眼就知道。
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          # 这一步之前**没有**像 build job 那样先查存在性 ——
+          # 路径写错的话要到配方里才炸，而配方报的可能是「源码树异常」之类
+          # 与真实病因无关的话。NDK 目录、交叉编译器、llvm-ar 三样先查清。
+          [ -n "$NDK" ] && [ -d "$NDK" ] \
+            || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
+          [ -x "$TC/aarch64-linux-android23-clang" ] \
+            || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android23-clang（宿主标签写死了 linux-x86_64，runner 若不是 x86_64 要改这里）"; exit 1; }
+          [ -x "$TC/llvm-ar" ] \
+            || { echo "::error title=无 llvm-ar::缺 $TC/llvm-ar —— 编 LLVM 的归档工具，NDK 自带"; exit 1; }
           { echo "CC=$TC/aarch64-linux-android23-clang";
             echo "CXX=$TC/aarch64-linux-android23-clang++";
             echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
