@@ -163,8 +163,13 @@ static int alloc_slot(void) {
  *
  * TIOCSCTTY 必须在 setsid 之后做，且子进程不能是会话首进程的组组长
  *（否则 EPERM）—— 所以这里 setsid 之后不再调 setpgid。
+ *
+ * argv 必须**整串传进来**：早先只把 argv[0] 当路径传、其余参数在调用处丢掉，
+ * 于是 `bash -c "npm install"` 变成裸 bash —— 它读不到命令立刻退出，
+ * 表现为「终端一开就没反应」。参数传递是这层的核心职责，不能半路截断。
  */
-static int session_open(int out_fd, uint8_t sid, const char *slave_path) {
+static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
+  if (!argv || !argv[0]) return -1;
   int master = posix_openpt(O_RDWR | O_NOCTTY);
   if (master < 0) return -1;
   if (grantpt(master) != 0 || unlockpt(master) != 0) {
@@ -197,7 +202,7 @@ static int session_open(int out_fd, uint8_t sid, const char *slave_path) {
     signal(SIGTERM, SIG_DFL);
     signal(SIGPIPE, SIG_DFL);
     signal(SIGHUP, SIG_DFL);
-    execv(slave_path, (char *const[]){(char *)slave_path, NULL});
+    execv(argv[0], argv);
     _exit(127);
   }
 
@@ -310,9 +315,10 @@ int main(void) {
           char **argv = NULL;
           int argc = parse_argv(payload, h.length, &argv);
           if (argc <= 0 || !argv) { free(payload); send_error(out_fd, "OPEN 的 argv 为空"); break; }
-          const char *path = argv[0];
-          if (session_open(out_fd, (uint8_t)slot, path) != 0) {
+          // 整串 argv 传下去（不是只传路径）—— 参数丢了 bash 就没有命令可跑
+          if (session_open(out_fd, (uint8_t)slot, argv) != 0) {
             send_error(out_fd, strerror(errno));
+            for (int i = 0; i < argc; i++) free(argv[i]);
             free(argv);
             break;
           }
