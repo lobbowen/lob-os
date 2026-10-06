@@ -38,7 +38,7 @@ class OsApplication : Application() {
                     .setDebugMode(true)
                     .setShowCapsule(false)
                     .setShowLaunchLoading(false)
-                    .setVirtualFilePrefix("host-file://")
+                    .setEnableMultiTask(false)
                     .build()
             )
         }.onFailure {

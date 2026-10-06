@@ -78,6 +78,40 @@ Dimina.getInstance().startMiniProgram(context, miniProgram)
 
 ---
 
+## 3.5 Android 容器配置（易错）
+
+| 配置 | 官方语义 | 我们的取值 |
+|---|---|---|
+| `setShowCapsule` | 胶囊显隐，SDK 全局启动配置 | `false`（控制面不显示返回箭头） |
+| `setShowLaunchLoading` | 默认启动遮罩；关闭后内容仍需等实际加载完 | `false` |
+| `setEnableMultiTask` | **默认 true = 独立最近任务卡片**；false = 进宿主任务栈 | `false` |
+| `setVirtualFilePrefix` | 「**可选**」——但 Android 视图层走 WebView 域名映射，**设了反而坏事** | **不设** |
+
+### 3.5.1 `setVirtualFilePrefix` 是坑
+
+官方 `android/README.md` 把它列为可选并说「必须在 init 时设置」，
+但《小程序包更新说明》写明：
+
+> Android 端 WebView 通过 `https://appassets.androidplatform.net/jsapp/`
+> 映射到 `${filesDir}/jsapp/`
+
+**视图层根本不走这个前缀。** 我们按 `android/README.md` 的字面加了它，
+结果视图层找不到文件（真机报 `resourceLoaded: module not found`）—— 
+**文档两处对不上时，以描述实际加载机制的那份为准。**
+
+### 3.5.2 `setEnableMultiTask` 必设 false
+
+官方《宿主管理小程序版本与胶囊》：
+
+> 默认 `true` 保持独立任务及页面保活行为。Android 小程序页面进宿主任务栈，
+> 不再创建独立的最近任务卡片。
+
+真机日志里出现过 `Force finishing activity PanelActivity` +
+`TransitionChain: Combining AR.finish-force-crash (CLOSE)`，
+独立任务栈被拆时 WebView 会一起没。
+
+---
+
 ## 4. 编译器的输入规范（实测）
 
 `@dimina/compiler` 的 `DEFAULT_TEMPLATE_EXTS` 只有 `[".wxml", ".ddml"]`：

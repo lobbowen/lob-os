@@ -51,10 +51,15 @@ if (!/entry: String/.test(s.host)) add('install 没有入口页参数');
 if (!/withEntry\(packageDir, entry\)/.test(s.host)) add('install 没有把入口写进 config.json');
 if (!/uiEntryOf/.test(s.installer)) add('安装器没有从清单读 ui.entry 传给 install');
 
-if (!/setVirtualFilePrefix/.test(s.app)) {
-  add('Dimina.init 没有 setVirtualFilePrefix：官方文档写明「必须在 SDK 初始化时设置，' +
-    '原生路径解析与逻辑层会使用同一前缀」；不设则视图层 WebView 解析不了路径、' +
-    '渲染进程压根不起（真机实测：逻辑层 appShow/pageShow 正常，就是灰屏）');
+if (!s.app.includes('setEnableMultiTask(false)')) {
+  add('Dimina.init 没有 setEnableMultiTask(false)：官方文档「宿主管理小程序版本与胶囊」明确' +
+    '「默认 true 会创建独立的最近任务卡片」，Android 容器下小程序页面进独立任务，' +
+    '视图层 WebView 依附的任务栈可能被拆掉（真机日志里有 Force finishing + TransitionChain CLOSE）');
+}
+if (s.app.includes('setVirtualFilePrefix')) {
+  add('Dimina.init 不该设 setVirtualFilePrefix：官方「小程序包更新说明」写明 Android 端' +
+    'WebView 通过 appassets.androidplatform.net/jsapp/ 映射到 filesDir/jsapp/，视图层不走该前缀；' +
+    '动了会让视图层找不到文件（真机报 module not found）');
 }
 
 for (const must of ['入口路径', '与 appId 一致', 'pages_*.js']) {
