@@ -27,7 +27,7 @@
 
 | 件 | 作用 | Android 现状 |
 |---|---|---|
-| `libstdc++.so.6` | C++ 标准库 | ❌ 无（NDK 的 libc++ 才是） |
+| `libstdc++.so.6` | C++ 标准库 | ⚠️ 文件名不同，但 **C++ 运行库已在底座**（`libc++_shared.so`） |
 | `libgcc_s.so.1` | 异常展开、栈保护 | ❌ 无（Bionic 环境一般不需要） |
 | `libc++_shared.so` | NDK 的 C++ 运行库 | ✅ **有**（已随 APK） |
 
@@ -191,7 +191,7 @@ usr/
 
 | 项 | 原因 |
 |---|---|
-| `libstdc++.so.6`、`libgcc_s.so.1` | Android 是 Bionic ABI，glibc 的用不了 |
+| glibc 的 `libstdc++.so.6` | Bionic ABI 不兼容。**C++ 运行库本身已在底座** |
 | 自编 `linker64` | 系统的一部分，不可替换 |
 | `libpthread` | Android 16 起并入 libc |
 | **`/etc/passwd`、`/etc/group`** | **我们是单用户系统**（已核实：无多用户设计，所有程序共享一个 uid、一个 HOME、同一套文件目录）。Linux 上这两个文件的核心语义是"UID ↔ 多用户映射"，我们没有这个概念。**不造。** |
