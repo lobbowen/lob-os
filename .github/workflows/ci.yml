@@ -66,6 +66,36 @@ jobs:
           node scripts/gen-native-assets.js
           git diff --exit-code -- .github/native-assets.txt .github/native-capabilities.txt
 
+      # ── 跨语言契约：PTY 帧 / 终端仿真 / 落位软链 ──
+      #
+      # 这些与本仓其它门禁**不同类**，值得进 CI：
+      #   · 其它门禁判「声明与实物一致」，靠的是文本比对；
+      #   · 这些判**两侧的行为对不对得上**（C 的 execv 参数 ↔ Kotlin 发的字节、
+      #     struct winsize 的字节序 ↔ ByteBuffer 的字节序、真 PTY 输出的序列
+      #     ↔ 状态机处理了哪些），那些缺陷全部是**编译通过、门禁全绿**的状态。
+      #
+      # 依赖只有 node（CI 自带）+ 临时目录 + 仓内文件 —— 零外部依赖，
+      # 不需要 NDK、不需要编译器、不走网络。
+      #
+      # 判据各自在文件头写明了「它能抓什么、不能抓什么」。
+      # 尤其 terminal-screen-algorithm 是 JS 复刻，**它验的是算法规则**，
+      # 不是那段 Kotlin 本身 —— 真机行为仍需 CI 编译 + 设备验收。
+      - name: 跨语言契约 — PTY 帧 / 终端仿真 / 落位软链
+        run: |
+          set -euo pipefail
+          for f in \
+            tools/verify/pty-argv-proof.js \
+            tools/verify/pty-winsize-endian.js \
+            tools/verify/terminal-covers-real-pty.js \
+            tools/verify/terminal-screen-algorithm.js \
+            tools/verify/alias-symlink-proof.js \
+            tools/verify/sysroot-include-proof.js \
+            tools/verify/entry-link-proof.js
+          do
+            echo "── $f"
+            node "$f"
+          done
+
       - name: Android 常量白名单 — AccessibilityEvent.TYPE_* 必须已验证
         run: node tools/check-android-consts.js
 

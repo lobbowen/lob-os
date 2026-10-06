@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+'use strict';
+
+/**
+ * 验证 $PREFIX/include → sysroot 当前版本 的软链行为。
+ *
+ * 用真目录、真软链、真按「位置约定」找头文件的方式验：
+ * 建一个假的 include 链，然后用一个**只按 /usr/include 约定找头文件**的
+ * 编译动作去试（这里用 `echo '#include <stdio.h>' | clang -E -` 的等价物：
+ * 用 shell 的 `[ -f dir/stdio.h ]` 来模拟 configure 的探测）。
+ *
+ * 验的三个点：
+ *   1. 链建好后，按约定能找到头文件（这正是 configure 会做的事）
+ *   2. 升级 sysroot（换版本目录 + 换 CURRENT）后，链要跟着换 ——
+ *      不换就是「升级了但头文件还是旧的」，静默错
+ *   3. sysroot 不在位时不建链、也不假装有（返回空）
+ */
+
+const fs = require('fs');
+const path = require('path');
+const cp = require('node:child_process');
+const os = require('node:os');
+
+const W = fs.mkdtempSync(path.join(os.tmpdir(), 'lobos-inc-'));
+const PREFIX = path.join(W, 'usr');
+const INCLUDE = path.join(PREFIX, 'include');
+const PROGRAMS = path.join(W, 'files', 'programs', 'sysroot');
+
+let PASS = 0, FAIL = 0;
+const t = (name, cond, detail) => {
+  if (cond) { console.log('  [ok]   ' + name); PASS++; }
+  else { console.log('  [FAIL] ' + name + (detail ? '\n         ' + detail : '')); FAIL++; }
+};
+
+// 造一个 sysroot 件：版本目录里有 include/stdio.h
+function makeSysroot(version) {
+  const d = path.join(PROGRAMS, version, 'sysroot', 'include');
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'stdio.h'), `/* sysroot ${version} */\nint marker_${version.replace(/\W/g, '_')};\n`);
+  // CURRENT 指针 —— ProgramDir.currentVersion() 读的就是它
+  fs.writeFileSync(path.join(PROGRAMS, 'CURRENT'), version + '\n');
+  return path.join(PROGRAMS, version, 'sysroot', 'include');
+}
+
+// 复刻 PrefixProvisioner.linkSysrootInclude 的核心逻辑
+function linkSysrootInclude() {
+  const curFile = path.join(PROGRAMS, 'CURRENT');
+  if (!fs.existsSync(curFile)) return null;                       // sysroot 不在位
+  const version = fs.readFileSync(curFile, 'utf8').trim();
+  if (!version) return null;
+  const inc = path.join(PROGRAMS, version, 'sysroot', 'include');
+  if (!fs.existsSync(inc)) return null;                         // 件在但没头文件
+  try {
+    fs.mkdirSync(PREFIX, { recursive: true });
+    const cur = fs.existsSync(INCLUDE) ? fs.realpathSync(INCLUDE) : null;
+    if (cur === fs.realpathSync(inc)) return 'include';          // 已指向对的地方
+    if (fs.existsSync(INCLUDE) && !fs.lstatSync(INCLUDE).isSymbolicLink()) return null; // 有真文件，不覆盖
+    if (fs.existsSync(INCLUDE)) fs.unlinkSync(INCLUDE);
+    fs.symlinkSync(inc, INCLUDE);
+    return 'include';
+  } catch (e) { return null; }
+}
+
+// configure 的探测方式：只按位置约定找，不带任何 -I
+const probe = () => cp.spawnSync('sh', ['-c',
+  'test -f "' + path.join(INCLUDE, 'stdio.h') + '" && echo 有 || echo 无',
+], { encoding: 'utf8' }).stdout.trim();
+
+console.log('== $PREFIX/include 软链行为验证 ==');
+
+fs.rmSync(W, { recursive: true, force: true });
+
+// 1. sysroot 不在位 → 不建链
+let r = linkSysrootInclude();
+t('sysroot 不在位时不建链', r === null && !fs.existsSync(INCLUDE));
+
+// 2. 装上 sysroot → 建链，按约定能找到
+makeSysroot('29.0.14206865');
+r = linkSysrootInclude();
+t('sysroot 在位时建链', r === 'include' && fs.existsSync(INCLUDE));
+t('链是真软链（不是拷贝 —— 升级才跟得上）', fs.lstatSync(INCLUDE).isSymbolicLink());
+t('configure 按 /usr/include 约定能找到 stdio.h', probe() === '有');
+t('找到的是当前版本的头文件',
+  fs.readFileSync(path.join(INCLUDE, 'stdio.h'), 'utf8').includes('29.0.14206865'));
+
+// 3. 升级 sysroot → 链必须跟着换
+makeSysroot('30.0.12345678');   // CURRENT 指到新版本
+r = linkSysrootInclude();
+t('升级后重建链', r === 'include');
+t('链指向新版本（否则升级后头文件还是旧的 → 静默错）',
+  fs.readFileSync(path.join(INCLUDE, 'stdio.h'), 'utf8').includes('30.0.12345678'));
+t('configure 仍能找到（回归）', probe() === '有');
+
+// 4. 重复调用不应反复重建（幂等）
+const before = fs.lstatSync(INCLUDE).ino;
+linkSysrootInclude();
+t('重复 provision 不重建链（省 IO，且避免瞬时不可用）', fs.lstatSync(INCLUDE).ino === before);
+
+// 5. 有真文件在 include 时不覆盖
+fs.unlinkSync(INCLUDE);
+fs.mkdirSync(INCLUDE);
+fs.writeFileSync(path.join(INCLUDE, 'marker'), 'user put this here');
+r = linkSysrootInclude();
+t('include 下有真文件时不覆盖（那可能是用户自己放的）', r === null && fs.existsSync(path.join(INCLUDE, 'marker')));
+
+fs.rmSync(W, { recursive: true, force: true });
+console.log('== 通过 ' + PASS + '，失败 ' + FAIL + ' ==');
+process.exit(FAIL === 0 ? 0 : 1);
