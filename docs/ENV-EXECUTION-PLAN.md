@@ -626,3 +626,61 @@ NDK release notes 说「See `clang_source_info.md` in the toolchain」，
 
 所以「直接抄 NDK 的 clang」这条路不存在，交叉编译是唯一形态，
 与 Termux 的做法一致（它也是在 Android 上自编 clang）。
+
+---
+
+## 九、`llvmVersion` 查到了 —— 用 HTTP Range 从 NDK zip 里只取那 2837 字节
+
+第八节说「公开渠道查不到，只在 NDK zip 里」。本轮发现**不用下载 783 MB**：
+`dl.google.com` 支持 `Accept-Ranges: bytes`，而 zip 的中央目录在**文件末尾**。
+
+### 做法（四步，全部只用 Range 请求）
+
+```
+1. HEAD  → content-length = 783549481, accept-ranges = bytes
+2. Range 取尾 256 KiB → 找 EOCD（PK\x05\x06）
+   → 中央目录 10305 条目，偏移 781785425，大小 1764034
+3. Range 取那 1764034 字节 → 逐条解析中央目录，找目标文件名
+   → android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/clang_source_info.md
+     local header 偏移 341860359, csize 2737
+   → android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/AndroidVersion.txt
+     local header 偏移 355392783, csize 100
+4. Range 取 local header（30 字节定长 + 文件名 + 额外字段）算出数据起点，
+   再 Range 取 csize 字节 → **压缩方法是 8（deflate），要 inflateRaw**
+```
+
+**总下载量约 2 MiB，不是 783 MiB。**
+
+### 拿到的权威内容
+
+`clang_source_info.md` 第一行：
+
+```
+Base revision: [386af4a5c64ab75eaee2448dc38f2e34a40bfed0](https://github.com/llvm/llvm-project/commits/386af4a5c64ab75eaee2448dc38f2e34a40bfed0)
+```
+
+后面是 llvm_android 的 patch 清单（每条都带 commit）。
+
+`AndroidVersion.txt` 也取到了（100 字节）。
+
+### 关键：这个 commit 属于哪条 release 线
+
+用 GitHub compare 逐条问（`ahead`/`behind` 的含义别搞反）：
+
+| 比较 | status | ahead | behind | 读法 |
+|---|---|---|---|---|
+| `release/20.x...SHA` | diverged | 414 | 429 | 既不在 20.x 上 |
+| **`release/21.x...SHA`** | **behind** | **0** | 19254 | **SHA 就是 21.x 上的点** |
+| `release/19.x...SHA` | diverged | 19920 | 458 | 不在 19.x 上 |
+| `SHA...llvmorg-21.1.8` | ahead | 19254 | 0 | SHA 领先于 21.1.8（同一条 21.x 线） |
+
+**结论：NDK r29 的 LLVM 来自 `release/21.x`，不是 20.x。**
+
+### 所以要更正两处
+
+1. **`llvmVersion` 应填 `21`（或 `21.1`）** —— 语义版本的前缀匹配允许短填。
+2. **原先钉的 `sources.llvm.version = 20.1.8` 是错的，差一个大版本。**
+   它是我上一轮**猜**的（当时的理由是「NDK 29 大概配 LLVM 20」），
+   现在有实证推翻了它。**21.x 上该 commit 落在 21.1.0~21.1.8 之后**
+   （对每个 tag 都是 ahead:0/behind>0），所以它是 21.1.x 之后的快照 ——
+   要编源码应按 **21.x 线**取，而不是任取一个 21.1.x tag。
