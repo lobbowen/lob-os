@@ -227,7 +227,7 @@ object ProgramInstallPipeline {
             ?: runCatching {
                 lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("entry", "").orEmpty()
             }.getOrDefault("").ifBlank { "bin/" + spec.programId }
-        if (!linkEntry(dest, entryRel)) {
+        if (!linkEntry(context, dest, entryRel, spec.programId)) {
             // 不假装成功。件已落在盘上（便于排查），但明确报失败。
             return Result(
                 false, safeVer, "entry-link-failed",
@@ -429,7 +429,14 @@ object ProgramInstallPipeline {
         return out
     }
 
-    private fun linkEntry(dest: File, entryRel: String): Boolean {
+    /**
+     * 给一件建入口链（+ 别名链）。
+     *
+     * @param programId 件名。用来排除 bin 里「键 == 件名」的那一条 ——
+     *   发布侧 aliasesOf 也跳过它（它就是本名），不排除就会建一条清单里
+     *   不存在的链，卸载时删不掉，剩个指向已删目录的死链。
+     */
+    private fun linkEntry(context: Context, dest: File, entryRel: String, programId: String): Boolean {
         val target = File(dest, entryRel)
         if (!target.isFile) return false
         runCatching { lobos.runtime.ExecBits.apply(target) }
@@ -443,10 +450,9 @@ object ProgramInstallPipeline {
         // 一个。不建别名链 = 装上了但只调得动其中一个，而「装上了却调不动」
         // 比「没装」更难查。
         //
-        // 卸载侧（PackageInstaller.uninstall）本来就读 aliases 删链 ——
-        // 说明别名链**曾经被建过**，安装侧是漏了。
-        for (a in aliasNames(dest)) {
-            if (a == primary) continue          // 与本名相同的话会把刚建的链删掉
+        // 卸载侧（PackageInstaller.uninstall）按清单的 aliases 删链 ——
+        // 所以这里建的必须与清单里那份一致，见 aliasNames 的说明。
+        for (a in aliasNames(dest, programId, primary)) {
             ok = link(bin, a, target) && ok
         }
         return ok
@@ -456,7 +462,20 @@ object ProgramInstallPipeline {
      * 件内 package.json 的 bin 字段声明的别名（npm 生态约定，清单侧已支持读取）。
      * bin 可以是字符串（此时键即名）或对象（键=名，值=件内相对路径）。
      */
-    private fun aliasNames(dest: File): List<String> {
+    /**
+     * 件内 package.json 的 bin 字段声明的别名。
+     *
+     * **必须与发布侧 `aliasesOf` 的规则一致**，否则装得下、卸不干净：
+     * 发布侧跳过「键 == 件名」的那一条（它就是本名，不是别名），
+     * 写进清单的 aliases 里没有它。若这里不跳过，就会建一条清单里不存在的链 ——
+     * 卸载时按清单删链，那条链就成了指向已删目录的死链。
+     *
+     * 注意「本名」有两种可能：`bin/<件名>`（多数件），或 entry 的末段
+     * （npm 那种 `bin/npm-cli.js`，件名 npm）。两者都要排除，否则总会多建一条。
+     *
+     * bin 可以是字符串（此时键即名）或对象（键=名，值=件内相对路径）。
+     */
+    private fun aliasNames(dest: File, programId: String, primaryName: String): List<String> {
         val out = mutableListOf<String>()
         val pkg = File(dest, "package.json")
         if (!pkg.isFile) return out
@@ -467,7 +486,10 @@ object ProgramInstallPipeline {
                 is String -> out += File(bin).name
             }
         }
-        return out.filter { lobos.os.ProgramIndex.safeSegment(it) != null }.distinct()
+        return out
+            .filter { it != programId && it != primaryName }
+            .filter { lobos.os.ProgramIndex.safeSegment(it) != null }
+            .distinct()
     }
 
     /** 建软链。已存在（真文件或链）时先删 —— 升级要能换掉旧的那条。 */
