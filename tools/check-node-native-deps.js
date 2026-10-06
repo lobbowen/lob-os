@@ -42,6 +42,17 @@ if (!/DT_RUNPATH|DT_RPATH/.test(elf)) {
   problems.push('ElfFacts 不读 DT_RUNPATH/DT_RPATH：不知道依赖该去哪找');
 }
 
+// 判据 1b：必须解析完整 RUNPATH，不能只判布尔
+//
+// 只判「RUNPATH 里有没有 」会把 $ORIGIN/../lib 这类当成「非 $ORIGIN」，
+// 依赖放错目录，链接期才炸 —— 和当初 placeNodeDeps 同一个坑的另一种形态。
+if (!/resolveRunPath/.test(pipeline)) {
+  problems.push('安装器不解析完整 RUNPATH：只判布尔会把 $ORIGIN/../lib 放错目录');
+}
+if (/hasOriginRunPath/.test(elf)) {
+  problems.push('ElfFacts 仍有 hasOriginRunPath 布尔字段：路径本身才是判据，布尔会丢信息');
+}
+
 // 判据 2：安装器按段铺依赖
 if (!/satisfyElfDeps/.test(pipeline)) {
   problems.push('安装器不按 ELF 段铺依赖：装完的件可能起不来');

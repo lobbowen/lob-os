@@ -74,6 +74,7 @@ class PanelActivity : AppCompatActivity() {
 
         root.addView(btn("刷新", exact = true) { refresh() })
         root.addView(btn("端口占用", exact = true) { showPorts() })
+        root.addView(btn("导出运行记录（报障用）", exact = true) { exportLogs() })
 
         val scroll = ScrollView(this)
         listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -245,6 +246,20 @@ class PanelActivity : AppCompatActivity() {
     }
 
     private fun programRootOf(id: String): java.io.File = lobos.os.ProgramManager.stateDirOf(this, id)
+
+    // 导出运行记录：用户报障时把这一份交给我们。走 log/Exporter 的统一出口，
+    // 不在这里自己拼文件 —— 那正是这次要消掉的「每处各拼一套」。
+    private fun exportLogs() {
+        worker.execute {
+            val r = runCatching {
+                val f = lobos.log.Exporter.writeToCache(this)
+                "已导出 ${f.name()}  ${f.length()} 字节"
+            }
+            val text = r.getOrElse { "导出失败：" + (it.message ?: it.javaClass.simpleName) }
+            say(text)
+            handler.post { toast(text) }
+        }
+    }
 
     private fun labelOf(id: String): String {
         val e = lobos.os.ProgramIndex.get(this, id) ?: return id

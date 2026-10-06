@@ -23,9 +23,7 @@ object ElfFacts {
 
     data class Dynamic(
         val needed: List<String>,
-        /** `DT_RUNPATH`（优先）与 `DT_RPATH` 的值；`$ORIGIN` 表示"就在自己所在目录"。 */
         val runPath: String?,
-        val hasOriginRunPath: Boolean,
         val interp: String?,
     )
 
@@ -114,7 +112,7 @@ object ElfFacts {
         val rp = if (runPathV >= 0) cstr(runPathV) else if (rpathV >= 0) cstr(rpathV) else null
         val origin = rp?.contains("\$ORIGIN") == true
 
-        Dynamic(needed, rp, origin, interp)
+        Dynamic(needed, rp, interp)
     }.getOrNull()
 
     private fun vaddrToOffset(

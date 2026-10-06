@@ -307,12 +307,20 @@ object ProgramInstallPipeline {
         if (elfs.isEmpty()) return DepReport(true, "落位目录内没有 ELF 文件，无需铺依赖", 0, emptyList())
 
         val needed = linkedSetOf<String>()
-        val originDirs = linkedSetOf<File>()
+        // 依赖该放到哪：按每个二进制自己的 RUNPATH 解析，逐条展开。
+        //
+        // 之前只判「RUNPATH 里有没有 」（布尔），把路径本身丢了。
+        // 那样 RUNPATH=/../lib 或 :/../lib 的件会被当成
+        // 「非 」，依赖放错目录，链接期才炸 —— 和当初 placeNodeDeps
+        // 一样的坑，只是换了形态。
+        val targets = linkedSetOf<File>()
         for (f in elfs) {
             val d = lobos.os.ElfFacts.read(f) ?: continue
             needed += d.needed
-            if (d.hasOriginRunPath) originDirs += f.parentFile
+            val dirs = resolveRunPath(d.runPath, f.parentFile)
+            if (dirs.isEmpty()) targets += f.parentFile else targets += dirs
         }
+        if (targets.isEmpty()) targets += dest
         // 系统那几个 .so（libc/libm/liblog/libdl）由 linker 自己找，不用管
         val systemProvided = setOf(
             "libc.so", "libm.so", "libdl.so", "liblog.so", "libz.so",
@@ -328,14 +336,13 @@ object ProgramInstallPipeline {
         val stillMissing = mutableListOf<String>()
         for (name in missing) {
             val src = sources[name]
-            // RUNPATH=$ORIGIN 的件，依赖要与它同目录；没有 $ORIGIN 的，放落位目录根部即可
-            val targets = if (originDirs.isEmpty()) listOf(dest) else originDirs.toList()
             var done = false
-            for (t in targets) {
+            for (dir in targets) {
                 if (src == null) break
                 val ok = runCatching {
-                    src.copyTo(File(t, name), overwrite = true)
-                    File(t, name).setExecutable(true, true)
+                    dir.mkdirs()
+                    src.copyTo(File(dir, name), overwrite = true)
+                    File(dir, name).setExecutable(true, true)
                 }.isSuccess
                 if (ok) { done = true; placed += 1; break }
             }
@@ -350,6 +357,32 @@ object ProgramInstallPipeline {
             )
         }
         return DepReport(true, "按 ELF 段铺齐 $placed 个依赖库", placed, emptyList())
+    }
+
+    /**
+     * 展开 DT_RUNPATH / DT_RPATH 的路径列表。
+     *
+     * 规则：$ORIGIN = 该二进制自身所在目录；冒号分隔多段；相对路径按二进制目录解析。
+     * 遇到 $LIB / $PLATFORM 这类本仓不会产生的占位符就跳过 —— 不猜，
+     * 猜错等于把依赖放错目录，链接期才炸。
+     */
+    internal fun resolveRunPath(runPath: String?, originDir: File): List<File> {
+        if (runPath.isNullOrBlank()) return emptyList()
+        val out = LinkedHashMap<String, File>()
+        for (seg in runPath.split(':')) {
+            val s = seg.trim()
+            if (s.isEmpty()) continue
+            if (s.contains("$LIB") || s.contains("$PLATFORM")) continue
+            val dir = when {
+                s == "$ORIGIN" -> originDir
+                s.startsWith("$ORIGIN/") -> File(originDir, s.removePrefix("$ORIGIN").trimStart('/'))
+                s.startsWith("/") -> File(s)
+                else -> File(originDir, s)
+            }
+            val key = runCatching { dir.canonicalPath }.getOrElse { dir.absolutePath }
+            out.putIfAbsent(key, dir)
+        }
+        return out.values.toList()
     }
 
     private fun isElf(f: File): Boolean = runCatching {
