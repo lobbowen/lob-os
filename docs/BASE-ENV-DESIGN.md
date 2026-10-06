@@ -157,4 +157,66 @@ Android：**没有这个机制**，每个进程只能靠自己的 `DT_RUNPATH`�
 - 装完即生效，不探测、不看设备
 - 每件有验证（跑 `--version` 就知道好坏）
 
+---
+
+## 六、最终构成清单
+
+已定三件：**OpenSSL 进底座** / **BusyBox 一件** / **curl·git·jq 改动态链**。
+
+```
+usr/
+├── bin/                    全局入口（PATH 里）
+│   ├── bash                命令解释器          ✅ 已有（自编）
+│   ├── busybox             多命令工具          🆕 已定待编
+│   ├── rg                  快速搜索            ✅ 已有（自编）
+│   └── node → …            程序运行时          ✅ 商店下载
+├── lib/                    共享库（全局库路径里）
+│   ├── libc++_shared.so    C++ 运行库          ✅ 已有
+│   ├── libssl.so           TLS                 🆕 已定待编
+│   ├── libcrypto.so        加密                🆕 已定待编
+│   ├── libz.so             压缩                🆕 进底座（curl+git 重复）
+│   ├── libpcre2-8.so       正则                🆕 进底座（jq 的 oniguruma + BusyBox grep）
+│   ├── libiconv.so         字符编码转换        🆕 进底座（git）
+│   ├── libcurl.so          HTTP 客户端         🆕 进底座（git 依赖）
+│   └── toolchain/…         商店下载的件         ✅ 已有
+├── etc/                    配置
+│   ├── ca-bundle.pem       根证书              ✅ 已有（建议归位到 etc/）
+│   ├── passwd / group      用户与组            ❓待判
+│   └── services            端口↔服务名         ❓待判
+└── share/
+    └── zoneinfo/           时区数据            ❓待判
+```
+
+**明确不进底座**：`libstdc++.so.6` 与 `libgcc_s.so.1` —— Android 是 Bionic ABI，
+glibc 的用不了；自编 `linker64`（系统的一部分）；`libpthread`（Android 16 起并入 libc）。
+
+### 判据（可复用）
+
+> 某个库被**两个以上件**需要，或被**程序运行时**需要 → 进底座。
+> 只被一个件用且那个件可静态链 → 那个件自己带。
+
+按这条：`sqlite3`（amalgamation 单文件）自己带；`libexpat` 当前无人用 → 不进。
+
+### 改动态链的连带工作（发布侧）
+
+| 件 | 去掉静态链 | 改为链接 | 重编 |
+|---|---|---|---|
+| curl | zlib + openssl | `-lz -lssl -lcrypto` | ✅ |
+| git | zlib + openssl + curl | `-lz -lssl -lcrypto -lcurl` | ✅ |
+| jq | oniguruma | `-lpcre2-8` | ✅ |
+
+**依赖顺序**：底座库要先编好落进 APK，商店件才能链 —— 发布流水线要调顺序。
+
+### 待你确认（5 项，我不替你定）
+
+| # | 项 | 我的倾向 |
+|---|---|---|
+| 1 | 时区数据 `zoneinfo` | 进 —— 否则程序处理本地时间没依据 |
+| 2 | locale 定义文件 | 进 —— 否则 `setlocale()` 可能失败 |
+| 3 | `/etc/passwd` `/etc/group` | 给虚拟视图 —— 程序常有读用户名的逻辑 |
+| 4 | `/etc/services` | 进 —— 小文件，端口名查询常用 |
+| 5 | `usr/include/` 头文件 | 看有没有程序要现场编译 C 代码 |
+
+另外**终端（PTY + termios）** 是最早指出、至今零实现的，必须做 —— 它不在上面清单里是因为它不是"件"而是"能力"。
+
 缺什么就**编进去**，而不是装的时候再想办法。
