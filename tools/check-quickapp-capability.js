@@ -15,6 +15,7 @@ const FILES = {
   pkgInstaller: J('lobos/os/PackageInstaller.kt'),
   programDir: J('lobos/ota/ProgramDir.kt'),
   quickReg: J('lobos/quickapp/QuickAppRegistry.kt'),
+  quickHost: J('lobos/quickapp/QuickAppHost.kt'),
   bridge: J('lobos/quickapp/LobosBridge.kt'),
   broker: J('lobos/bridge/CapabilityBroker.kt'),
   apiSpec: J('lobos/bridge/ApiSpec.kt'),
@@ -72,6 +73,14 @@ if ((src.installer.match(/loadIntoDimina\(/g) || []).length < 2) {
 if (!/QuickAppHost\.install/.test(src.installer)) add('loadIntoDimina 没有调 QuickAppHost.install');
 if (!/QuickAppHost\.ready\(\)/.test(src.installer)) {
   add('装入 dimina 前没查运行时是否就绪（未 init 时 install 会静默失败）');
+}
+if (!src.quickHost.includes('installMiniProgram')) add('QuickAppHost 没有调 installMiniProgram');
+if (/installMiniProgram\(id, packageDir\.absolutePath\)/.test(src.quickHost)) {
+  add('installMiniProgram 传了目录路径：dimina 的 installLocalPackage 要求 archive.isFile，' +
+    '传目录会抛「local ZIP package does not exist」（真机装入失败过一次）');
+}
+if (!src.quickHost.includes('zipStore') || !/zip\.absolutePath/.test(src.quickHost)) {
+  add('装入 dimina 前没有把前端目录打成 zip 并传 zip 路径');
 }
 if (!src.quickReg.includes('fun register')) add('QuickAppRegistry.register 未实现');
 if (!src.quickReg.includes('uiName = ui.name')) add('注册表没有落 ui.name');

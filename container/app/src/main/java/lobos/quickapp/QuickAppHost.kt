@@ -53,10 +53,33 @@ object QuickAppHost {
             return
         }
         Log.i(TAG, "前端包校验通过 $id v${checked.versionCode}，后端地址 $endpoint 已注入")
-        dimina.installMiniProgram(id, packageDir.absolutePath) { r ->
+        val zip = packageDir.parentFile?.resolve("quickapp-" + id + ".zip")
+        if (zip == null || !zipStore(packageDir, zip)) {
+            completion(Result.failure(IllegalStateException("前端目录打成 zip 失败: " + packageDir)))
+            return
+        }
+        dimina.installMiniProgram(id, zip.absolutePath) { r ->
             if (r.isSuccess) Log.i(TAG, "快应用已装入 dimina: $id") else Log.e(TAG, "装入失败: $id", r.exceptionOrNull())
+            runCatching { zip.delete() }
             completion(r)
         }
+    }
+
+    private fun zipStore(dir: File, out: File): Boolean {
+        val entries = dir.walkTopDown().filter { it.isFile }.toList()
+        if (entries.isEmpty()) return false
+        out.delete()
+        return runCatching {
+            java.util.zip.ZipOutputStream(out.outputStream().buffered()).use { zos ->
+                for (f in entries) {
+                    val name = f.relativeTo(dir).invariantSeparatorsPath
+                    zos.putNextEntry(java.util.zip.ZipEntry(name))
+                    zos.write(f.readBytes())
+                    zos.closeEntry()
+                }
+            }
+            out.isFile && out.length() > 0L
+        }.getOrDefault(false)
     }
 
     fun open(activity: Activity, id: String) {
