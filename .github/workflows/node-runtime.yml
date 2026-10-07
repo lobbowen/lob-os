@@ -38,11 +38,12 @@ jobs:
       - name: 资产名
         id: asset
         run: |
-          echo "name=node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}.tar.gz" >> "$GITHUB_OUTPUT"
+          NDK="$(bash scripts/fetch-pinned.sh --ndk)"
+          echo "name=node-${{ steps.ver.outputs.tag }}+${{ steps.ver.outputs.abi }}+ndk$NDK+api23.tar.gz" >> "$GITHUB_OUTPUT"
 
-      - name: Release tag（件名，不含版本）
+      - name: Release tag（件名，不含版本，且与其余 userland 件同一套命名）
         id: rel
-        run: echo "tag=node-runtime" >> "$GITHUB_OUTPUT"
+        run: echo "tag=userland-node" >> "$GITHUB_OUTPUT"
 
       - name: 已发布就复用（不重编）
         id: reuse
@@ -104,8 +105,8 @@ jobs:
           TAG="${{ steps.rel.outputs.tag }}"
           if ! gh release view "$TAG" --repo '${{ github.repository }}' >/dev/null 2>&1; then
             gh release create "$TAG" --repo '${{ github.repository }}' \
-              --title "Node runtime 预制品仓（tag 不含版本，版本在资产名里）" \
-              --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。**每个版本是一个独立资产**（node-runtime-<版本>-<abi>.tar.gz），本 release 只维护一个 tag。"
+              --title "userland node — 预制品仓（tag 不含版本，版本在资产名里）" \
+              --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。**每个版本是一个独立资产**（node-runtime-<版本>-<abi>.tar.gz），本 release 只维护一个 tag。命名与其余 userland 件一致（userland-<件>）。"
           fi
           gh release upload "$TAG" \
             'dist/${{ steps.asset.outputs.name }}' \

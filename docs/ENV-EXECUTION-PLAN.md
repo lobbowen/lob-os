@@ -1253,3 +1253,53 @@ permissions:
 只会在跑到那一步时给一个 403 —— 而那一步往往排在最后。node-runtime.yml
 早就需要这个能力（它一直在发 Release），但同样没声明；它没暴露是因为
 那个 workflow 是手动触发、跑得少。
+
+### 预制品仓实测：已经真的建起来了
+
+第一次发布成功那轮（run 37560124603，403 修之前）实际已建出 5 个 release：
+
+```
+userland-sqlite3  资产 3: BUILD.md  sqlite3-sqlite+none+ndk30.0.16248370+api23.tar.gz  +.sha256
+userland-pnpm     资产 3: BUILD.md  pnpm-nodeps+ndk30.0.16248370+api23.tar.gz          +.sha256
+userland-npm      资产 3: BUILD.md  npm-nodeps+ndk30.0.16248370+api23.tar.gz           +.sha256
+userland-jq       资产 3: BUILD.md  jq-jq+1.8.2+ndk30.0.16248370+api23.tar.gz            +.sha256
+userland-curl     资产 3: BUILD.md  curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+…            +.sha256
+```
+
+实测把 jq 那份下回来解开：354136 字节，`bin/jq` + `jq.version` 在里面。
+
+**下载预制品这一步也实测过**（不只是「上传成功」就算数）。
+
+### 下载回来实测出一个缺陷：暂存目录被打进了预制品
+
+解开下回来的 tar，里面有一层：
+
+```
+./
+./jq.version
+./pw/          ← 不该在里面
+./bin/
+./bin/jq
+```
+
+根因：暂存目录放在 `dist/pw`，而 tar 的 `-C dist` 正是 `dist` ——
+**暂存目录在自己的源目录里**，于是被打进去。
+`--exclude 'pw/*'` 挡不住目录**自身**那一项，只挡得住它的内容。
+
+改法：暂存目录放到 `dist` **外面**（`work/pw-<件>`），tar 与 upload 都用它。
+
+**判据：暂存/中间目录不要放在「你要打包的那个目录」里面。**
+这类错不会让打包失败，只会让产物里多一层垃圾 —— 而它会跟着进预制品仓，
+以后每一轮复用都带着它。
+
+### node 的命名也统一了
+
+| | 改前 | 改后 |
+|---|---|---|
+| tag | `node-runtime-24.21.0`（含版本，且与其他件不同套） | **`userland-node`** |
+| 资产名 | `node-runtime-24.21.0-arm64-v8a.tar.gz` | **`node-24.21.0+arm64-v8a+ndk30.0.16248370+api23.tar.gz`** |
+
+与其余件同一套：`<件>-<版本+依赖+ABI+NDK+API>.tar.gz`。
+
+**注意别改错地方**：脚本里的 `dist/node-runtime/` 是**下载解包后的目录名**
+（`build-userland-node.sh` 依赖它），**与 Release tag 无关**，不要一起改。

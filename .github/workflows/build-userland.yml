@@ -285,13 +285,14 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          mkdir -p dist/pw
+          PW="work/pw-${{ matrix.tool }}"
+          rm -rf "$PW" && mkdir -p "$PW"
           if ls dist/userland-${{ matrix.tool }}-*.zip >/dev/null 2>&1; then
-            tar czf "dist/pw/$ASSET" -C dist --exclude 'pw/*' --exclude '*.tar.gz' userland-${{ matrix.tool }}-*.zip
+            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' userland-${{ matrix.tool }}-*.zip
           else
-            tar czf "dist/pw/$ASSET" -C dist --exclude 'pw/*' --exclude '*.tar.gz' .
+            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
           fi
-          ( cd dist/pw && sha256sum "$ASSET" > "$ASSET.sha256" )
+          ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
           {
             echo "预制品：${{ matrix.tool }}"
             echo "Release tag：$TAG"
@@ -310,13 +311,13 @@ jobs:
             echo '```'
             echo "${{ steps.uwkey.outputs.key }}"
             echo '```'
-          } > dist/pw/BUILD.md
+          } > "$PW/BUILD.md"
           if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "${{ github.repository }}" \
               --title "userland ${{ matrix.tool }} — $TAG" \
               --notes "编译一次、长期复用的 ${{ matrix.tool }} 预制品。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
           fi
-          gh release upload "$TAG" dist/pw/* --repo "${{ github.repository }}" --clobber
+          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
           echo "[ok] 已发布 $TAG"
 
       - name: 存回编译中间产物（供下一轮增量编）
