@@ -1,11 +1,10 @@
 --- a/Utilities/cmlibuv/src/unix/internal.h
 +++ b/Utilities/cmlibuv/src/unix/internal.h
-@@ -563,7 +563,8 @@
+@@ -563,7 +563,7 @@
                         unsigned int flags);
  #endif
  
 -#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
-+/* Android（Bionic）没有 cpu_set_t/sched_getaffinity —— 见 patches/ 里同名补丁的说明 */
 +#if (defined(__linux__) && !defined(__ANDROID__)) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
  #define UV__CPU_AFFINITY_SUPPORTED 1
  #else
@@ -21,3 +20,52 @@
    cpu_set_t set;
  
    memset(&set, 0, sizeof(set));
+--- a/Utilities/cmlibuv/src/unix/process.c
++++ b/Utilities/cmlibuv/src/unix/process.c
+@@ -70,7 +70,7 @@
+ #endif
+ 
+ #ifndef CMAKE_BOOTSTRAP
+-#if defined(__linux__)
++#if defined(__linux__) && !defined(__ANDROID__)
+ # define uv__cpu_set_t cpu_set_t
+ #elif defined(__FreeBSD__)
+ # include <sys/param.h>
+@@ -312,7 +312,7 @@
+   int fd;
+   int n;
+ #ifndef CMAKE_BOOTSTRAP
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+   int r;
+   int i;
+   int cpumask_size;
+@@ -426,7 +426,7 @@
+     uv__write_errno(error_fd);
+ 
+ #ifndef CMAKE_BOOTSTRAP
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+   if (options->cpumask != NULL) {
+     cpumask_size = uv_cpumask_size();
+     assert(options->cpumask_size >= (size_t)cpumask_size);
+@@ -1028,7 +1028,7 @@
+ 
+   if (options->cpumask != NULL) {
+ #ifndef CMAKE_BOOTSTRAP
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+     if (options->cpumask_size < (size_t)uv_cpumask_size()) {
+       return UV_EINVAL;
+     }
+--- a/Utilities/cmlibuv/src/unix/thread.c
++++ b/Utilities/cmlibuv/src/unix/thread.c
+@@ -44,7 +44,7 @@
+ #include <gnu/libc-version.h>  /* gnu_get_libc_version() */
+ #endif
+ 
+-#if defined(__linux__)
++#if defined(__linux__) && !defined(__ANDROID__)
+ # include <sched.h>
+ # define uv__cpu_set_t cpu_set_t
+ #elif defined(__FreeBSD__)

@@ -828,3 +828,57 @@ Bionic 的 `<sched.h>` 里 `CPU_SETSIZE` / `cpu_set_t` / `sched_getaffinity`
 `cp` 失败，进而 `ls` 报「文件不存在」，看起来像补丁把文件删了。
 **实际文件一直在** —— 是环境问题被误读成代码问题。
 本会话已记录过这条，改用 `~/.cache` 后不再发生。
+
+---
+
+## 第十八条：改一处不够 —— 把「所有会碰这个东西的地方」一次扫完
+
+### 又一次「只修了报第一处错的代码」
+
+CI 实证：上一版补丁修好了 `core.c`（`core.c` 整份文件不再报错），
+错误换到 `Utilities/cmlibuv/src/unix/process.c:319/434/437/441`。
+
+也就是说：**内嵌 libuv 里有 4 个文件碰 CPU affinity，我只查了 2 个。**
+这是本会话第三次同型错误（前两次：漏 `busybox`、漏 sysroot 探针的顺序）。
+
+### 正确做法：先全扫，再动手
+
+用 GitHub tree API 列出 `Utilities/cmlibuv/src/unix/` 下全部 52 个 `.c`
+加 4 个 `.h`，逐个下载后按 `cpu_set_t|cpuset_t|CPU_ZERO|CPU_SET(|CPU_COUNT|
+sched_getaffinity|pthread_setaffinity_np|uv__cpu_set_t|UV__CPU_AFFINITY`
+grep。结果一次给出 4 个文件：
+
+| 文件 | 守卫形式 | 处数 |
+|---|---|---|
+| `internal.h:566` | `UV__CPU_AFFINITY_SUPPORTED` 的定义 | 1 |
+| `core.c:2064` | 裸 `#ifdef __linux__` | 1 |
+| `process.c:73/315/429/1031` | 裸 `#if defined(__linux__) \|\| defined(__FreeBSD__)` | 4 |
+| `thread.c:47` | 裸 `#if defined(__linux__)` | 1 |
+
+`thread.c:189/277` 用的已经是 `UV__CPU_AFFINITY_SUPPORTED`（我第一版改的宏管得到），
+只需改 47 行的类型定义。
+
+现在 8 个 hunk 一次打完，全在 `patches/cmake-cmlibuv-no-cpumask-on-android.patch`。
+
+### 扫出来的一个佐证
+
+`thread.c:245` 里 libuv **自己**就写了：
+
+```c
+#if defined(__ANDROID__) || defined(__OHOS__)
+  if (sched_getaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset))
+```
+
+说明 libuv 知道 Android 上 `sched_getaffinity` 的形态不同。
+而 `process.c:1035` 的 `#else` 分支已经是 `return UV_ENOTSUP` ——
+所以加 `&& !defined(__ANDROID__)` 会走到**上游本来就写好的正确退路**，
+不是我臆造的行为。
+
+### 判据纪律
+
+1. **修一处之后，先问「还有几处」，别等下一轮 CI。** 下一轮的成本是一次
+   完整的 CI（约 5 分钟 + 排队），而扫一遍源码是本机几秒。
+2. **用 API 列出全部文件再 grep，不要凭印象挑几个看。**
+   我这次先看了 `core.c`、看了 `thread.c` 的部分行，就是没做全扫。
+3. **「改完第一处就提交」在这里是错的节奏。** 前两次丢芝麻（busybox、
+   sysroot 探针顺序）和这次是同一个模式的不同表现。
