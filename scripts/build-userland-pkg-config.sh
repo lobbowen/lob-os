@@ -89,18 +89,11 @@ done
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
 
-SIZE=$(stat -c%s "$OUT/bin/$TOOL")
-[ "$SIZE" -gt 50000 ] || die "产物可疑" "pkg-config 只有 $SIZE 字节 —— 静态编不该这么小"
 INFO=$(file -b "$OUT/bin/$TOOL")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac
 "$LLVM_STRIP" --strip-unneeded "$OUT/bin/$TOOL" 2>/dev/null || true
 
-DYN="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
-[ -z "$DYN" ] || {
-  NEEDED="$("$LLVM_READELF" -W -d "$OUT/bin/$TOOL" 2>/dev/null | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p' | tr '\n' ' ')"
-  die "不是静态产物" "有 PT_DYNAMIC（NEEDED: ${NEEDED:-?}）—— 工具件不该依赖任何共享库。
-链接命令（从构建日志里取）：$(grep -m1 -oE '(aarch64-linux-android[0-9]+-clang|cc) .*' "$WORK/build.log" 2>/dev/null | head -c 400)"
-}
+bash "$ROOT_DIR/scripts/check-elf-deps.sh" "$OUT/bin/$TOOL" "$TOOL"
 
 BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
@@ -112,6 +105,6 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 printf '%s' "$SRC_VER" > "$OUT/$TOOL.version"
-echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（静态、无 PT_DYNAMIC、16KB 对齐、aarch64）"
+echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"
 echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
 echo "[$TOOL] 判据要给它一个 .pc 文件真查一次（起得来不等于能解析 .pc）"

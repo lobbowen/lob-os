@@ -86,17 +86,11 @@ BIN="$INST/bin/cmake"
   find "$INST" -maxdepth 3 -name cmake -type f 2>/dev/null | head -5
   die "没产出 cmake" "$BIN 不存在"
 }
-SIZE=$(stat -c%s "$BIN")
-[ "$SIZE" -gt 500000 ] || die "产物可疑" "cmake 只有 $SIZE 字节 —— 静态编不该这么小"
 INFO=$(file -b "$BIN")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac
 "$LLVM_STRIP" --strip-unneeded "$BIN" 2>/dev/null || true
 
-DYN="$("$LLVM_READELF" -W -l "$BIN" 2>/dev/null | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
-[ -z "$DYN" ] || {
-  NEEDED="$("$LLVM_READELF" -W -d "$BIN" 2>/dev/null | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p' | tr '\n' ' ')"
-  die "不是静态产物" "有 PT_DYNAMIC（NEEDED: ${NEEDED:-?}）—— 工具件不该依赖任何共享库"
-}
+bash "$ROOT_DIR/scripts/check-elf-deps.sh" "$BIN" "$TOOL"
 
 BAD="$("$LLVM_READELF" -W -l "$BIN" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
@@ -122,7 +116,7 @@ rm -rf "$OUT/share" && mkdir -p "$OUT/share"
 cp -a "$MODDIR" "$OUT/share/cmake"
 
 printf '%s' "$CMAKE_VER" > "$OUT/$TOOL.version"
-echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（静态、无 PT_DYNAMIC、16KB 对齐、aarch64）"
+echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"
 echo "[ok] cmake 模块目录 → $OUT/share/cmake（缺它 cmake 就是空壳）"
 echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/"
 echo "[$TOOL] 判据要真跑一次 cmake（起得来不等于能 configure 东西）"

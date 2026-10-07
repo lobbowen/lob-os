@@ -88,16 +88,11 @@ echo "[make] cp 完成：$(ls -la "$OUT/bin/$TOOL" 2>&1 | head -1)"
 chmod 0755 "$OUT/bin/$TOOL" || { echo "::error title=chmod 失败::$OUT/bin/$TOOL"; exit 1; }
 echo "[make] chmod 完成"
 
-SIZE=$(stat -c%s "$OUT/bin/$TOOL")
-[ "$SIZE" -gt 300000 ] || die "产物可疑" "make 只有 $SIZE 字节 —— 静态编不该这么小"
 INFO=$(file -b "$OUT/bin/$TOOL")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac
 "$LLVM_STRIP" --strip-unneeded "$OUT/bin/$TOOL" 2>/dev/null || true
 
-DYN="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
-if [ -n "$DYN" ]; then
-  die "不是静态产物" "有 PT_DYNAMIC —— 底座/工具件不该依赖任何共享库"
-fi
+bash "$ROOT_DIR/scripts/check-elf-deps.sh" "$OUT/bin/$TOOL" "$TOOL"
 
 BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
@@ -109,6 +104,6 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 printf '%s' "$MAKE_VER" > "$OUT/$TOOL.version"
-echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（静态、无 PT_DYNAMIC、16KB 对齐合格、aarch64）"
+echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐合格、aarch64）"
 echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
 echo "[$TOOL] 判据要真跑一条 makefile（起得来不等于能用），由 userland-verify.json 的 criteria.$TOOL 承担"

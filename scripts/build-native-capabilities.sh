@@ -241,6 +241,26 @@ CC="$CC" ABI="$ABI" bash scripts/build-native-busybox.sh || {
   echo "::error title=busybox 缺失::\$PREFIX 的 tar/gzip/grep/sed/ls/cp/mv 等基础命令依赖它（upstream 档，缺件硬红）"
   exit 1
 }
+# 配方把 busybox 落到 dist/bin/（商店件的形状），但这里的消费端是
+# NativeAssetRegistry 的 CAPABILITY —— 它按 libName 从 jniLibs 找库，
+# 不是从 $PREFIX/bin 找可执行件。同段 bash/ripgrep 都是「先在 /tmp 编，再 cp 进
+# $J/lib*.so」；busybox 缺这一步，于是 check_so 查的是一份从来没被写出来的文件。
+# 形状也对得上：静态 busybox 是 aarch64 ELF，installName="busybox"，
+# 探针 busybox --list 期待 tar —— 都能满足。
+BB_STAGED="$ROOT/dist/bin/busybox"
+if [ -f "$BB_STAGED" ]; then
+  mkdir -p "$J"
+  # 不用裸 cp + set -e：cp 失败会被 -e 抢先杀掉脚本，下面这句报错永远轮不到，
+  # 于是只留下 cp 自己的原始信息，看不出「是哪一步搬的、搬去哪」。
+  if ! cp -f "$BB_STAGED" "$J/libbusybox.so"; then
+    echo "::error title=busybox 搬运失败::$BB_STAGED → $J/libbusybox.so（目录不存在或不可写）"
+    exit 1
+  fi
+  echo "[ok] busybox 落位：$BB_STAGED → $J/libbusybox.so（$(stat -c%s "$J/libbusybox.so") 字节）"
+else
+  echo "::error title=busybox 未产出::build-native-busybox.sh 说它编完了，但 $BB_STAGED 不存在 —— 看上面配方的报错"
+  exit 1
+fi
 check_so "$J/libbusybox.so" 500000 || {
   echo "::error title=busybox 产物不合格::静态编体积异常 —— 看上面的形态自检输出"
   exit 1
