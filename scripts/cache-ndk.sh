@@ -39,7 +39,8 @@ fi
 
 echo "[ndk-cache] 缓存未命中，用 $SDKMAN 装 ndk;$NDK_VER …"
 SDK_LOG="$(mktemp)"
-if ! yes 2>/dev/null | "$SDKMAN" --sdk_root="$SDK" "ndk;$NDK_VER" >"$SDK_LOG" 2>&1; then
+"$SDKMAN" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true
+if ! "$SDKMAN" --sdk_root="$SDK" "ndk;$NDK_VER" >"$SDK_LOG" 2>&1; then
   echo "::error title=sdkmanager 装 NDK 失败::下面是它自己的输出（末 30 行）"
   tail -30 "$SDK_LOG" | sed 's/^/::error::/'
   rm -f "$SDK_LOG"
@@ -53,6 +54,7 @@ if [ ! -d "$SDK/ndk/$NDK_VER" ]; then
   exit 1
 fi
 rm -f "$SDK_LOG"
+echo "[ndk-cache] 装好了：$SDK/ndk/$NDK_VER"
 
 mkdir -p "$HOME/.cache/actions-setup-ndk"
 cp -a "$SDK/ndk/$NDK_VER/." "$HOME/.cache/actions-setup-ndk/"

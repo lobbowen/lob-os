@@ -160,6 +160,7 @@ jobs:
   ndk-cache:
     needs: resolve
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -174,7 +175,7 @@ jobs:
         run: bash scripts/cache-ndk.sh
 
   build:
-    needs: [resolve, ndk-cache]
+    needs: resolve
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -188,7 +189,6 @@ jobs:
         with:
           path: ~/.cache/actions-setup-ndk
           key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
-
 
       - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
         run: bash scripts/cache-ndk.sh
@@ -243,7 +243,7 @@ jobs:
           retention-days: 1
 
   ndk-llvm:
-    needs: [resolve, ndk-cache]
+    needs: resolve
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -350,7 +350,7 @@ jobs:
           '
 
   manifest:
-    needs: [resolve, build, node, ndk-cache]
+    needs: [resolve, build, node]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

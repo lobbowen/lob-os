@@ -348,3 +348,55 @@ A && B || C 且 || 右段是命令（仓里 verify-apk-native.sh:173 就是）�
 
 **共同点：三个错的表现都是「rc=1 但看不出为什么」。**
 所以判据类脚本必须满足：**失败时把原因打在 stdout 上**。
+
+---
+
+## 第十一条：优化类步骤失败**不能**挡住在做的事
+
+实测踩出来的（`ndk-cache` 这个 job）：
+
+```
+ndk-cache → failure（装 NDK 时）
+build          → skipped   ← 十三件商店件一个没编
+ndk-llvm       → skipped   ← 编 clang 的那条链
+manifest       → skipped
+```
+
+`ndk-cache` 的作用只是**省一次 700 MiB 下载**。它一红，整条链就断了 ——
+**为省下载，挡住了真正要编的全部**。这正是本文开头说的「从保护网变成路障」。
+
+判据很直接：
+
+| 这个步骤的作用 | 它失败时应该 |
+|---|---|
+| 产出要用的东西 | 挡住下游（否则下游拿到的是坏的） |
+| **只是省时间/省带宽** | **不挡**（挡住没有收益，只有损失） |
+
+所以两条改动：
+
+1. `build` / `ndk-llvm` / `manifest` 的 `needs` 里**去掉** `ndk-cache`；
+2. `ndk-cache` 加 `continue-on-error: true`。
+
+判据要挂在**它保护的东西**上。缓存 job 不保护任何产物 —— 它保护的是
+「下次不用再下」，那是一次性的收益，不该换取「这轮什么都编不出来」。
+
+### 顺带一条：`if ! yes | cmd` 在 `pipefail` 下会误判
+
+实测：`ndk-cache` 的日志停在 `100% Unzipping…android-ndk-r30/sour` 然后
+`exit 1`，**一句原因都没有** —— 而 NDK 其实已经装好了。
+
+原因是那行 `if ! yes 2>/dev/null | sdkmanager …`：
+
+```
+set -o pipefail; if ! true | false; then …   # 判失败
+set -o pipefail; if ! false | true; then …   # 也判失败
+```
+
+`sdkmanager` 装完就关 stdin，`yes` 收到 `SIGPIPE` 退非 0，
+`pipefail` 把管道整体判成失败。**判据测的是「管道整体」，不是「sdkmanager」**。
+
+两个同类教训合起来是同一句：**判据必须测你要测的那个东西**。
+`if ! A | B` 测的是管道；`if ! B` 测的才是 B。
+
+改法：不用管道，改用 sdkmanager 自己的 `--licenses` 预接受，
+并在装成功后明确打一行「装好了：<路径>」，让成功/失败一眼可分。
