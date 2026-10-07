@@ -1095,3 +1095,26 @@ llvmtoolchain 的 `TB_LIST=$(ls …)`、以及这一处）。
 上次是**目录不存在时静默通过**，这次是**显式报错但报的路径是错的**。
 两者的共同点：**没验证 ROOT 算出来是什么，就相信它算对了**。
 现在这类扫描器都会把 `ROOT` 打出来并在目录不存在时硬红。
+
+### 补记：`ld.lld: undefined symbol: cmCPackAppImageGenerator()`
+
+libarchive 补上 `android_lf.h` 之后，编译一路走到 1015 行才失败：
+
+```
+ld.lld: error: undefined symbol: cmCPackAppImageGenerator::cmCPackAppImageGenerator()
+gmake[2]: *** [Source/CMakeFiles/cpack.dir/build.make:117: bin/cpack] Error 1
+```
+
+`cpack` 是打包工具，`userland-verify.json` 对 cmake 的判据只要求
+`bin/cmake` 起得来且能真 configure + build 一个项目（`entry: bin/cmake`）。
+它失败的原因（构造器定义缺失）不在本仓责任范围内，也不该由我去查 CMake 内部。
+
+**做法：`cmake --build … --target cmake`。**
+`cmake --install` 不受 `--target` 限制，`share/cmake/Modules` 照常安装，
+判据要求的模块目录不会少（配方第 169-181 行还会单独拷一份进 `dist/share/cmake`）。
+
+试过但**放弃**的路：`-DBUILD_CPACK_GENERATOR=AppImage`。
+想关掉 AppImage generator，但 `Source/CPack/CMakeLists.txt` 我用三种方式都取不到
+（raw.githubusercontent 404、API 也返回 404，tree API 里只有
+`Source/CPack/cmCPackAppImageGenerator.cxx`），**没法确认那个变量名是否存在**。
+不凭记忆写一个可能无效的开关 —— 直接不编那个目标更确定。

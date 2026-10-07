@@ -109,7 +109,7 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
          echo "--- CMake 认定的编译器与 sysroot（从 CMakeCache.txt 取，不看日志措辞）---"
          grep -E '^CMAKE_(C|CXX)_COMPILER:|^CMAKE_SYSROOT:|^CMAKE_CXX_FLAGS' "$BUILD/CMakeCache.txt" 2>/dev/null | head -8 || echo "  （CMakeCache.txt 还不存在，说明失败在 cache 生成之前）"
          exit 1; }
-  cmake --build "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
+  cmake --build "$BUILD" -j"$JOBS" --target cmake > "$WORK/build.log" 2>&1 \
     || { echo "=== cmake 编译失败取证 ==="
          echo "--- error 行 ---"
          grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true
