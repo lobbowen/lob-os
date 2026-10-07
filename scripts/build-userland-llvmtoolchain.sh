@@ -97,9 +97,17 @@ mkdir -p "$BUILD"
 
 HOST_TB="$WORK/host-tblgen"
 rm -rf "$HOST_TB"
-note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。宿主那份不设 toolchain 文件，就是宿主构建。"
-cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
+note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。"
+note "  注意：不能只靠「不设 toolchain 文件」—— locate-ndk.sh 注入的 CC/CXX 在环境里，CMake 会直接采用它们，于是宿主构建也编成 aarch64（实测 host-tblgen/bin/llvm-min-tblgen: Exec format error）。要显式覆盖。"
+command -v cc >/dev/null 2>&1 || die "缺宿主 cc" \
+  "编宿主 tblgen 需要宿主编译器；runner 自带 /usr/bin/cc。缺了请 apt-get install build-essential"
+command -v c++ >/dev/null 2>&1 || die "缺宿主 c++" "同上"
+env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
+  cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER="$(command -v cc)" \
+  -DCMAKE_CXX_COMPILER="$(command -v c++)" \
+  -DCMAKE_ASM_COMPILER="$(command -v cc)" \
   -DLLVM_TARGETS_TO_BUILD=AArch64 \
   -DLLVM_ENABLE_PROJECTS="$PROJECTS" \
   -DLLVM_INCLUDE_TESTS=OFF \
@@ -112,7 +120,14 @@ cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
   -DLLVM_ENABLE_ZSTD=OFF \
   > "$WORK/host-configure.log" 2>&1 \
   || { echo "=== 宿主 tblgen 配置失败（末 40 行）==="; tail -40 "$WORK/host-configure.log"; exit 1; }
-cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen \
+HOST_CC_USED="$(awk -F= '/^CMAKE_C_COMPILER:FILEPATH=/ {print $2; exit}' "$HOST_TB/CMakeCache.txt" 2>/dev/null || true)"
+case "$HOST_CC_USED" in
+  ""|*aarch64*|*android*) die "宿主构建仍用了交叉编译器" \
+    "CMakeCache.txt 里 CMAKE_C_COMPILER=$HOST_CC_USED —— 它必须是宿主 cc。CC/CXX 环境变量会被 CMake 采用（locate-ndk.sh 注入了它们），所以要么用 -DCMAKE_C_COMPILER 覆盖，要么清掉环境变量。";;
+esac
+note "宿主编译器确认：${HOST_CC_USED:-（读不到 cache，用下面的 file 兜底）} · 产物架构：$(file -b "$HOST_TB/bin/llvm-tblgen" 2>/dev/null | head -c 60 || echo 待编)"
+env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
+  cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen \
   -j"$JOBS" > "$WORK/host-build.log" 2>&1 \
   || { echo "=== 宿主 tblgen 编译失败（error 行 + 末 40 行）==="; \
        grep -nE 'error:|Error [0-9]+$' "$WORK/host-build.log" | head -20 || true; \

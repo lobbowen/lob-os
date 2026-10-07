@@ -1118,3 +1118,40 @@ gmake[2]: *** [Source/CMakeFiles/cpack.dir/build.make:117: bin/cpack] Error 1
 （raw.githubusercontent 404、API 也返回 404，tree API 里只有
 `Source/CPack/cmCPackAppImageGenerator.cxx`），**没法确认那个变量名是否存在**。
 不凭记忆写一个可能无效的开关 —— 直接不编那个目标更确定。
+
+### 补记：「不设 toolchain 文件」不等于「宿主构建」
+
+上轮加了宿主 tblgen 那一段，本轮 CI 报：
+
+```
+FAILED: [code=126] include/llvm/CodeGen/GenVT.inc
+  …/work/llvmtoolchain/host-tblgen/bin/llvm-min-tblgen: Exec format error
+```
+
+**`host-tblgen/` 目录里的 tblgen 也是 aarch64。** 宿主构建被我写成了交叉构建。
+
+原因：`locate-ndk.sh:84` 把 `CC=$TC/aarch64-linux-android35-clang` 注入
+`GITHUB_ENV`，那个环境变量在整个 job 里都在。CMake 的编译器选择里
+**环境变量 `CC` 的优先级高于自动检测**，所以「不设 `CMAKE_TOOLCHAIN_FILE`」
+根本挡不住它。
+
+修法两层：
+
+1. `env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME`
+   包住 configure 与 build 两步 —— configure 也要清，否则 `CMakeCache.txt`
+   一开始就被写脏
+2. configure 之后读 `CMakeCache.txt` 的 `CMAKE_C_COMPILER`，**若它含
+   `aarch64` / `android` 就判红**；同时把产物架构打出来
+
+判据的三个取值都验过：空串判红、`/usr/bin/cc` 通过、
+`…/aarch64-linux-android35-clang` 判红。
+
+### 判据纪律
+
+**「没设某个东西」不等于「那件事不会发生」。**
+`CC` 环境变量让「宿主构建」这个意图失效，而它在 CI 日志里完全看不出来 ——
+配置阶段一切正常，只有跑到执行 tblgen 时才 `Exec format error`。
+
+所以凡是要「明确用宿主工具」的步骤，光靠「不给交叉配置」是不够，
+必须**显式给正面的值**（`-DCMAKE_C_COMPILER=…`）+ **清掉反向的来源**（`env -u CC`）
++ **事后核对**（读 cache / 看产物架构）。
