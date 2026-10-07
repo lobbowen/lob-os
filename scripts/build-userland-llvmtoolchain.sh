@@ -120,12 +120,12 @@ env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   -DLLVM_ENABLE_ZSTD=OFF \
   > "$WORK/host-configure.log" 2>&1 \
   || { echo "=== 宿主 tblgen 配置失败（末 40 行）==="; tail -40 "$WORK/host-configure.log"; exit 1; }
-HOST_CC_USED="$(awk -F= '/^CMAKE_C_COMPILER:FILEPATH=/ {print $2; exit}' "$HOST_TB/CMakeCache.txt" 2>/dev/null || true)"
+HOST_CC_USED="$(awk -F= '/^CMAKE_C_COMPILER:[A-Z]+=/ {print $2; exit}' "$HOST_TB/CMakeCache.txt" 2>/dev/null | tr -d '"' || true)"
 case "$HOST_CC_USED" in
-  ""|*aarch64*|*android*) die "宿主构建仍用了交叉编译器" \
-    "CMakeCache.txt 里 CMAKE_C_COMPILER=$HOST_CC_USED —— 它必须是宿主 cc。CC/CXX 环境变量会被 CMake 采用（locate-ndk.sh 注入了它们），所以要么用 -DCMAKE_C_COMPILER 覆盖，要么清掉环境变量。";;
+  ""|*aarch64*|*android*) die "宿主构建仍用了交叉编译器（或读不出编译器）" \
+    "CMakeCache.txt 里没读到可用的 CMAKE_C_COMPILER（读到='$HOST_CC_USED'）。它必须是宿主 cc —— CC/CXX 环境变量会被 CMake 采用（locate-ndk.sh 注入了它们），configure 那一步已用 env -u 清掉。若为空，先看 $WORK/host-configure.log 里 CMake 实际选了哪个编译器。";;
 esac
-note "宿主编译器确认：${HOST_CC_USED:-（读不到 cache，用下面的 file 兜底）} · 产物架构：$(file -b "$HOST_TB/bin/llvm-tblgen" 2>/dev/null | head -c 60 || echo 待编)"
+note "宿主编译器确认：$HOST_CC_USED"
 env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen \
   -j"$JOBS" > "$WORK/host-build.log" 2>&1 \
