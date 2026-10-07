@@ -1,16 +1,23 @@
 --- a/Utilities/cmlibuv/src/unix/internal.h
 +++ b/Utilities/cmlibuv/src/unix/internal.h
-@@ -563,7 +563,12 @@
+@@ -563,7 +563,8 @@
                         unsigned int flags);
  #endif
  
 -#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
-+/* clang 的 Android target 预定义 __linux__（$CC -dM -E 实测：__linux__ 1 /
-+   __ANDROID__ 1 / __BIONIC__ 1），但 Bionic 的 <sched.h> 不提供 cpu_set_t /
-+   CPU_SETSIZE / sched_getaffinity —— Bionic 是严格 POSIX 的 libc。
-+   于是 libuv 会编进 uv_cpumask_size() 里的 CPU_SETSIZE，随后必然编不过
-+   （实测报错在 core.c:1683）。改法与 Termux 的 libuv 补丁同构。 */
++/* Android（Bionic）没有 cpu_set_t/sched_getaffinity —— 见 patches/ 里同名补丁的说明 */
 +#if (defined(__linux__) && !defined(__ANDROID__)) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
  #define UV__CPU_AFFINITY_SUPPORTED 1
  #else
  #define UV__CPU_AFFINITY_SUPPORTED 0
+--- a/Utilities/cmlibuv/src/unix/core.c
++++ b/Utilities/cmlibuv/src/unix/core.c
+@@ -2061,7 +2061,7 @@
+ unsigned int uv_available_parallelism(void) {
+   long rc = -1;
+ 
+-#ifdef __linux__
++#if defined(__linux__) && !defined(__ANDROID__)
+   cpu_set_t set;
+ 
+   memset(&set, 0, sizeof(set));
