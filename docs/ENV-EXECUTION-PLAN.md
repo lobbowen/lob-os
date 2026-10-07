@@ -1335,3 +1335,102 @@ userland-curl     资产 3: BUILD.md  curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+�
 
 **注意别改错地方**：脚本里的 `dist/node-runtime/` 是**下载解包后的目录名**
 （`build-userland-node.sh` 依赖它），**与 Release tag 无关**，不要一起改。
+
+---
+
+## 十七、API 级别从 23 提到 35（以及「API 37」是我拍脑袋的）
+
+### 触发这件事的报错与它的根因
+
+三个件报「函数未声明」，形态一致：
+
+| 件 | 报错 |
+|---|---|
+| `pkg-config` | `nl_langinfo` 未声明 |
+| `make` | `posix_spawnattr_init` / `confstr` / `_CS_PATH` 未声明 |
+| `python3` | `preadv` / `pwritev` 未声明 |
+
+**我原以为三件同源（configure 交叉编译误判），查完发现是两回事。**
+
+#### `pkg-config`：API 级别不够（真根因）
+
+从 NDK r30 的 sysroot 里实际取出 `langinfo.h`（Range 请求，没下738 MB）：
+
+```c
+char* nl_langinfo(nl_item __item) __INTRODUCED_IN(26);
+                                       ^^^^^^^^^^^^^^^^^^^^^^
+```
+
+**API 26 才引入。** 我们用 API 23 编译 → 声明被条件编译排掉 → 未声明。
+
+#### `make`：configure 交叉编译误判
+
+`configure.ac:382-388`（上游源码）：
+
+```m4
+AC_ARG_ENABLE([posix-spawn], …)
+AS_CASE([/$ac_cv_header_spawn/$ac_cv_func_posix_spawn/], [*/no/*], [make_cv_posix_spawn=no])
+```
+
+交叉编译下 `AC_CHECK_HEADERS(spawn.h)` 只做链接测试，而 `spawn.h` 在 NDK 里能编过
+→ 判「有」→ 定义 `USE_POSIX_SPAWN` → `job.c` 走那段代码 → 但那段没 include
+`<spawn.h>` → 未声明。
+
+**修法用上游自带的 `--disable-posix-spawn`**（已核实 `configure.ac:382-383` 真有这个
+flag，语义是「改走 fork+exec 而非 posix_spawn」，在 Bionic 上是安全的选择）。
+
+### 真正的系统性问题：我们一直在编 API 23，而 APK 只支持 API 26+
+
+```
+container/app/build.gradle.kts:23   minSdk = 26      ← 只支持 Android 8+
+scripts/build-userland-*.sh        ANDROID_API:-23  ← 却在编 API 23 的件
+```
+
+**自相矛盾**：APK 装不到API 23 的设备上，编 API 23 的件毫无意义。
+
+而API 23 这个数字的来历：早先为了 `stderr`（API 23 才引入）提上来，**提完就停了**。
+后面每一个 `__INTRODUCED_IN(26/28/30/…)` 都是同一类坑，
+一个个函数打补丁治不好 —— 所以一次跨过去。
+
+### 提到 35的依据（AOSP 源码，非记忆）
+
+`frameworks/base/core/java/android/os/Build.java` 的 `VERSION_CODES`：
+
+```
+TIRAMISU            = 33   Android 13
+UPSIDE_DOWN_CAKE    = 34   Android 14
+VANILLA_ICE_CREAM   = 35   Android 15   ← master 分支里最高的真实常量
+```
+
+**没有 36 / 37。**
+
+### 「提到 API 37」是我拍脑袋的 —— 撤回
+
+我上一轮说「按能用最新就用最新，提到 API 37」。那是**从「NDK r30 里有
+`aarch64-linux-android36/37-clang` 驱动」倒推的**，但：
+
+- 有那个驱动**只说明 NDK 预备了那些目标**，不等于该 API 级别已发布；
+- AOSP 侧**没有**对应的 `VERSION_CODES` 常量；
+- 用它编出的件**没有任何真机可以验证**。
+
+（同一轮里我还说了一些「API ↔ Android 版本」的对照，那是从记忆里说的 ——
+`developer.android.com/tools/releases/platforms` 那个页面是JS 渲染的，
+我**抓不到内容**，所以那些对照**不作为依据**。唯一可信的是 AOSP 源码里的常量。）
+
+### 改动清单（15 个文件）
+
+- 6 个配方的 `ANDROID_API` 默认值 + `build-base-libs.sh` / `build-native-busybox.sh` /
+  `build-shared-deps.sh` / `cache-key.sh` / `locate-ndk.sh` 里的同一处
+- 编译器驱动名 `aarch64-linux-android23-clang` → `…android35-clang`（含两个 workflow）
+- `build-userland-make.sh` 加 `--disable-posix-spawn`
+
+**缓存 key 随之变化**（`…+api23+…` → `…+api35+…`），所以**所有件会重编一次** ——
+这是对的：API 变了，旧的 `.o` 与新 API 的 ABI 不一致。
+
+### 踩的坑（记下来）
+
+批量改这类「同一个值散在十几个文件」时，我第一版正则**漏了带引号的写法**
+（`API="${ANDROID_API:-23}"`），改完一复核才发现 9 处没改到。
+
+**判据：批量替换之后必须独立复核，不能相信「脚本报告成功」。**
+我这轮已经是第三次犯「以为改了其实没改到」—— 前两次是 YAML 块插错 job。

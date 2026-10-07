@@ -7,7 +7,7 @@ cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
 ABI="${ABI:-arm64-v8a}"
-API="${ANDROID_API:-23}"
+API="${ANDROID_API:-35}"
 TOOL="busybox"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac

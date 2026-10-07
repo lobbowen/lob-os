@@ -9,7 +9,7 @@ ROOT_DIR="$(pwd)"
 ABI="${ABI:-arm64-v8a}"
 J="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"
 WORK="$ROOT_DIR/work/baselibs"
-ANDROID_API="${ANDROID_API:-23}"
+ANDROID_API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
 
 die() {

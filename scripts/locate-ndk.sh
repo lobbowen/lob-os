@@ -46,7 +46,7 @@ else
 fi
 
 TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-CC="$TC/aarch64-linux-android23-clang"
+CC="$TC/aarch64-linux-android35-clang"
 [ -f "$CC" ] || die "无 clang" \
   "缺 $CC" \
   "宿主标签在脚本里写死了 linux-x86_64；runner 若不是 x86_64 要改这里。"
@@ -82,7 +82,7 @@ echo "[ndk] 目录=$NDK 版本=$GOT_NDK"
 echo "[ndk] clang: $CLANG_VER"
 [ -n "$TRIPLE" ] && echo "[ndk] 目标三元组: $TRIPLE"
 { echo "CC=$CC"
-  echo "CXX=$TC/aarch64-linux-android23-clang++"
+  echo "CXX=$TC/aarch64-linux-android35-clang++"
   echo "LLVM_AR=$TC/llvm-ar"
   echo "LLVM_RANLIB=$TC/llvm-ranlib"
   echo "LLVM_STRIP=$TC/llvm-strip"

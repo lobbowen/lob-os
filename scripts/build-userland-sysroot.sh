@@ -9,7 +9,7 @@ ROOT_DIR="$(pwd)"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 TOOL="sysroot"
-ANDROID_API="${ANDROID_API:-23}"
+ANDROID_API="${ANDROID_API:-35}"
 ABI="${ABI:-aarch64-v8a}"
 
 die() {

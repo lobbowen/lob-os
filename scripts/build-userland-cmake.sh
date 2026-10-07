@@ -7,7 +7,7 @@ cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
 ABI="${ABI:-arm64-v8a}"
-API="${ANDROID_API:-23}"
+API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
 TOOL="cmake"
 OUT="${OUT:-dist}"

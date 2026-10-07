@@ -440,12 +440,12 @@ jobs:
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           [ -n "$NDK" ] && [ -d "$NDK" ] \
             || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
-          [ -x "$TC/aarch64-linux-android23-clang" ] \
-            || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android23-clang（宿主标签写死了 linux-x86_64，runner 若不是 x86_64 要改这里）"; exit 1; }
+          [ -x "$TC/aarch64-linux-android35-clang" ] \
+            || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android35-clang（宿主标签写死了 linux-x86_64，runner 若不是 x86_64 要改这里）"; exit 1; }
           [ -x "$TC/llvm-ar" ] \
             || { echo "::error title=无 llvm-ar::缺 $TC/llvm-ar —— 编 LLVM 的归档工具，NDK 自带"; exit 1; }
-          { echo "CC=$TC/aarch64-linux-android23-clang";
-            echo "CXX=$TC/aarch64-linux-android23-clang++";
+          { echo "CC=$TC/aarch64-linux-android35-clang";
+            echo "CXX=$TC/aarch64-linux-android35-clang++";
             echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
           if ! command -v cmake >/dev/null 2>&1; then
             sudo apt-get update -qq

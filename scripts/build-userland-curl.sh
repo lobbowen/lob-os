@@ -5,8 +5,7 @@ HERE=$(dirname "$0")
 cd "$HERE/.."
 ROOT_DIR=$(pwd)
 
-ANDROID_API=23
-
+ANDROID_API=35
 if [ -z "${CC:-}" ]; then echo "::error title=缺 CC::需要 NDK 的 clang"; exit 1; fi
 OUT="${OUT:-dist}"
 mkdir -p "$ROOT_DIR/$OUT/bin" "$ROOT_DIR/work"

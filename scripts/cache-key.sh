@@ -79,8 +79,7 @@ if [ "$TOOL" = "git" ]; then
 fi
 
 NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk 2>/dev/null || echo unknown)"
-API=23
-
+API=35
 RUN_OS="${RUN_OS:-Linux}"
 RUN_ARCH="${RUN_ARCH:-X64}"
 

@@ -7,7 +7,7 @@ cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
 DEPS="${DEPS:-$ROOT_DIR/work/deps}"
-ANDROID_API="${ANDROID_API:-23}"
+ANDROID_API="${ANDROID_API:-35}"
 JOBS="${JOBS:-2}"
 
 die() {

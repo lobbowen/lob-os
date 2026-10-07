@@ -28,7 +28,7 @@ echo "[git] 源码树就位"
 DEPS="$ROOT_DIR/work/deps"
 mkdir -p "$DEPS"
 TC_DIR=$(dirname "$CC")
-ANDROID_API=23
+ANDROID_API=35
 if [ ! -x "$TC_DIR/aarch64-linux-android$ANDROID_API-clang" ]; then
   echo "::error title=缺 API$ANDROID_API 的 clang::NDK 里没有 aarch64-linux-android$ANDROID_API-clang"
   exit 1
@@ -44,11 +44,11 @@ echo "[git] NDK root = $ANDROID_NDK_ROOT"
 
 echo "[git] 诊断：TC=$TC_DIR"
 echo "[git] 诊断：PATH 含 TC ? $(case ":$PATH:" in *":$TC_DIR:"*) echo 是;; *) echo 否;; esac)"
-if command -v aarch64-linux-android23-clang >/dev/null 2>&1; then
-  echo "[git] 诊断：裸名可解析 → $(command -v aarch64-linux-android23-clang)"
+if command -v aarch64-linux-android35-clang >/dev/null 2>&1; then
+  echo "[git] 诊断：裸名可解析 → $(command -v aarch64-linux-android35-clang)"
 else
   echo "[git] 诊断：裸名**不可解析** → 报错 127 就是这个原因"
-  ls "$TC_DIR"/aarch64-linux-android23-clang 2>&1 | sed "s/^/[git] 诊断：  /"
+  ls "$TC_DIR"/aarch64-linux-android35-clang 2>&1 | sed "s/^/[git] 诊断：  /"
 fi
 echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
 grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true

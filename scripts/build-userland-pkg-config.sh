@@ -6,7 +6,7 @@ HERE="$(dirname "$0")"
 cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
-API="${ANDROID_API:-23}"
+API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
 SRC_KEY="pkgconf"
 TOOL="pkg-config"

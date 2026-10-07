@@ -7,7 +7,7 @@ cd "$HERE/.."
 ROOT_DIR="$(pwd)"
 
 ABI="${ABI:-arm64-v8a}"
-API="${ANDROID_API:-23}"
+API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
 TOOL="make"
 OUT="${OUT:-dist}"
@@ -64,6 +64,7 @@ rm -rf "$BUILD" "$WORK/_inst" && mkdir -p "$BUILD" "$WORK/_inst"
     --prefix="$WORK/_inst" \
     --disable-shared --enable-static \
     --without-guile \
+    --disable-posix-spawn \
     CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
     CFLAGS="-O2 -D__ANDROID_API__=$API" \
     LDFLAGS="-static" \

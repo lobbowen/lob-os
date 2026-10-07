@@ -9,7 +9,7 @@ ROOT_DIR="$(pwd)"
 OUT="${OUT:-dist}"
 TOOL="llvmtoolchain"
 ABI="${ABI:-arm64-v8a}"
-API="${ANDROID_API:-23}"
+API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
 PROJECTS="clang;lld"
 
