@@ -151,8 +151,9 @@ for b in clang ld.lld llvm-ar llvm-strip; do
   case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) BAD="$BAD $b(架构:$INFO)" ;; esac
   al="$("$LLVM_READELF" -W -l "$f" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
         | while read -r a; do case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac; \
-            d=$(( a )); [ "$d" -eq 0 ] && continue; [ $(( d % 16384 )) -ne 0 ] && printf ' '; done)"
-  [ -n "$al" ] && BAD="$BAD $b(16KB对齐不合格)"
+            d=$(( a )); if [ "$d" -eq 0 ]; then continue; fi; \
+            if [ $(( d % 16384 )) -ne 0 ]; then printf ' '; fi; done)"
+  if [ -n "$al" ]; then BAD="$BAD $b(16KB对齐不合格)"; fi
   printf '[ok] %-16s %s 字节\n' "$b" "$s"
 done
 [ -z "$BAD" ] || die "形态不合格" "$BAD"

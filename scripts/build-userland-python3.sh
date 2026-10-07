@@ -137,8 +137,9 @@ note "NEEDED: ${NEEDED:-（无）}"
 BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
           case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
-          d=$(( a )); [ "$d" -eq 0 ] && continue
-          [ $(( d % 16384 )) -ne 0 ] && printf ' %s' "$a"
+          d=$((a))
+          if [ "$d" -eq 0 ]; then continue; fi
+          if [ $(( d % 16384 )) -ne 0 ]; then printf ' %s' "$a"; fi
         done)"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 

@@ -69,8 +69,9 @@ check_lib() {
   bad="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*LOAD/{print $NF}' \
         | while read -r al; do
             case "$al" in 0x[0-9a-fA-F]*) ;; *) printf ' %s(取数取错列)' "$al"; continue ;; esac
-            d=$(( al )); [ "$d" -eq 0 ] && continue
-            [ $(( d % 16384 )) -ne 0 ] && printf ' %s' "$al"
+            d=$((al))
+            if [ "$d" -eq 0 ]; then continue; fi
+            if [ $(( d % 16384 )) -ne 0 ]; then printf ' %s' "$al"; fi
           done)"
   if [ -n "$bad" ]; then
     printf '  %s 的 LOAD 段：\n' "$(basename "$f")" | sed 's/^/         /'
