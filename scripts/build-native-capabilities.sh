@@ -174,6 +174,7 @@ ls -la "$J"
 
 cd "$ROOT"
 
+(
 set -uo pipefail
 PTY_VER="1.2.0-beta.15"
 NDK=""
@@ -226,8 +227,8 @@ fi
 cp -f "$SO" "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so"
 echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so") 字节"
 
-CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API:-35}-clang"
-echo "[pty] 恢复 CC 给后续步骤（pty 段 export 过 API ${PTY_API:-24} 的编译器，不恢复会让 base-libs 拿到错的那个）"
+)
+cd "$ROOT"
 
 echo "== 底座共享库（libz / libssl / libcrypto / libcurl）=="
 CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {
