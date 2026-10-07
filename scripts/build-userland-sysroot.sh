@@ -133,12 +133,26 @@ double probe_fdiv(double a, double b) { return a / b; }
 PROBE_C
 if "$CC" --sysroot="$STAGE/sysroot" -c "$PROBE/probe.c" -o "$PROBE/probe.o" 2>"$PROBE/err.log"; then
   echo "[ok] clang --sysroot 指到本件后，能编出 .o（内建函数已解决）"
-  if "$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -q 'AArch64'; then
-    echo "[ok] 产物是 AArch64（不是宿主 x86_64）"
+  MACH="unknown"
+  if [ -f "$PROBE/probe.o" ]; then
+    HEX="$(od -An -tx1 -j 18 -N 2 "$PROBE/probe.o" 2>/dev/null | tr -d ' \n')"
+    case "$HEX" in
+      b700|00b7) MACH="AArch64" ;;
+      3e00|003e) MACH="x86_64" ;;
+      2800|0028) MACH="ARM" ;;
+      *) MACH="e_machine=0x$HEX" ;;
+    esac
+  else
+    MACH="（.o 不存在）"
+  fi
+  if [ "$MACH" = "AArch64" ]; then
+    echo "[ok] 产物是 AArch64（e_machine=0xB7，不是宿主 x86_64）"
     [ "$RT_MISSING" -eq 1 ] && echo "[ok] 且 libclang_rt 不在 sysroot 内也能编 —— 确认它不是硬依赖"
   else
-    echo "::error title=探针产物不是 AArch64::$("$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -i machine | head -1)"
-    echo "  clang 编成了宿主架构 —— 交叉配置没生效（toolchain 文件不对？）"
+    echo "::error title=探针产物架构不对::$MACH"
+    echo "  期望 AArch64（e_machine=0xB7）。clang 编成了别的架构 —— 交叉配置没生效。"
+    echo "  这里读 ELF 头字节而不是 grep llvm-readelf 的输出：上一轮同一份产物的 grep -q AArch64 判了假、而 grep -i machine 却是 AArch64，判据抓错了东西，成因未查明。"
+    echo "  llvm-readelf 的说法：$("$LLVM_READELF" -h "$PROBE/probe.o" 2>&1 | grep -i machine | head -1)"
     exit 1
   fi
 else

@@ -695,3 +695,65 @@ PREFIX="/w/_inst"
 改 `SAFE` 让 `-` 保留会破坏另外七件（前面已实测）。改发布侧产出 `+` 版则
 存量资产取不到、必须重编。**两个都不选**：候选名并列，取到即用 ——
 候选 1 是新规范名，候选 2 是存量名。
+
+---
+
+## 第十六条：判据自己报错时，先确认判据错了还是对象错了
+
+### 起因
+
+sysroot 的探针编出了 `.o`，日志是：
+
+```
+[ok] clang --sysroot 指到本件后，能编出 .o（内建函数已解决）
+::error  Machine:                           AArch64
+ clang 编成了宿主架构 —— 交叉配置没生效（toolchain 文件不对？）
+```
+
+`Machine: AArch64` 和「编成了宿主架构」**在同一份日志里同时出现**。
+判据说的是「不是 AArch64」，而它自己打印出来的就是 `AArch64`。
+
+那行 `Machine:` 来自失败分支里的
+`"$LLVM_READELF" -h ... | grep -i machine` —— 也就是说
+**同一条命令加 `-i` 抓到了，不加 `-i` 的 `grep -q 'AArch64'` 却返回假**。
+
+### 处置：不追成因，换判据
+
+成因我没查清（NDK 的 `llvm-readelf` 是不是 wrapper、输出走哪个流、
+LLVM 21 的机器名确切拼写），文档也没写。**没查清就是没查清，不编理由。**
+
+改成直接读 ELF 头的字节：`e_machine` 在偏移 18、2 字节小端，`0xB7` = AArch64。
+不依赖任何工具的输出措辞。反例两个方向都验过（`b700` → AArch64、
+`3e00` → x86_64）。
+
+**教训**：判据抓错了东西时，先怀疑判据。上游文档没写清楚的东西，
+我不该用「大概是 wrapper」去解释一个已经能绕开的问题。
+
+### 同一轮的 cmake：根因未查明，如实说
+
+NDK toolchain 那处改对了 —— configure 通过、编到 21%，此前的
+`std::unique_ptr` 消失（漏 `CMAKE_SYSROOT` 就是那个原因）。
+现在卡在 libuv：
+
+```
+core.c:1683: error: use of undeclared identifier 'CPU_SETSIZE'
+core.c:2065: error: use of undeclared identifier 'cpu_set_t'
+core.c:2073: error: call to undeclared function 'sched_getaffinity'
+```
+
+查过的（都不是原因，记下来省下重复劳动）：
+- Bionic `libc/include/sched.h`：`CPU_SETSIZE` / `cpu_set_t` **无条件定义**，
+  `sched_getaffinity` 没有 `__INTRODUCED_IN` → **不是 API 门控**
+- Bionic `sys/cdefs.h`：只测 `__USE_GNU` / `__USE_BSD`（`_GNU_SOURCE` / `_BSD_SOURCE`），
+  **没有 `__USE_MISC`**（那是 glibc 的）→ 删掉 `-D__ANDROID_API__` 无害
+- Bionic 门控宏是 `__ANDROID_MIN_SDK_VERSION__`（`android/versioning.h:58`），
+  由 clang `--target=aarch64-linux-android35` 自动内建 → 宏不缺
+- libuv `v1.x` 的 `CMakeLists.txt` 里**没有** affinity/sched 检测
+  → `UV__CPU_AFFINITY_SUPPORTED` 由 CMake 主工程定义
+
+**没查到的**：`UV__CPU_AFFINITY_SUPPORTED` 在 CMake 4.4.4 主工程里怎么定的、
+它当时取了什么值。所以不猜，改为让构建自己报：编译失败时打印
+`configure.log` 与 `CMakeCache.txt` 里 `CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE`
+的实际值，以及真正编译 `core.c` 的那条命令行。
+
+**判据要能在下一次失败时把答案送到眼前**，这比现在猜一个说法有用。

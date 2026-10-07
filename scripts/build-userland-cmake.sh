@@ -92,9 +92,18 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
          grep -E '^CMAKE_(C|CXX)_COMPILER:|^CMAKE_SYSROOT:|^CMAKE_CXX_FLAGS' "$BUILD/CMakeCache.txt" 2>/dev/null | head -8 || echo "  （CMakeCache.txt 还不存在，说明失败在 cache 生成之前）"
          exit 1; }
   cmake --build "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
-    || { echo "=== cmake 编译失败取证（error 行 + 末 50 行）==="; \
-         grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
-         tail -50 "$WORK/build.log"; exit 1; }
+    || { echo "=== cmake 编译失败取证 ==="
+         echo "--- error 行 ---"
+         grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true
+         echo "--- build.log 末 40 行 ---"; tail -40 "$WORK/build.log"
+         echo "--- CMake 检出的关键变量（决定条件编译分支的依据）---"
+         grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$WORK/configure.log" 2>/dev/null | head -12 \
+           || echo "  configure.log 里没有这些 —— 它们可能由 CMakeLists 直接写入 cache"
+         grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$BUILD/CMakeCache.txt" 2>/dev/null | head -12 \
+           || echo "  CMakeCache.txt 里也没有"
+         echo "--- 实际用的编译命令（取 core.c 那一条）---"
+         grep -m1 -oE '(/usr[^ ]*)?clang[^ ]* .*core\.c[^ ]*' "$WORK/build.log" 2>/dev/null | head -c 500
+         exit 1; }
   cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
     || { echo "=== cmake install 失败取证（末 40 行）==="; tail -40 "$WORK/install.log"; exit 1; }
 )
