@@ -1598,3 +1598,33 @@ pkg-config        --disable-shared+static    -static         ✘ 静态被判红
 **教训**：形状门判红时，先问「**是不是被测对象真的错了**」。
 我连续三轮的默认假设都是「判据错了、对象是对的」，而这次相反 —— 对象真错了。
 判据本身有道理（LD_PRELOAD 语义层确实只对动态件生效）。
+
+---
+
+## §2.3.2 三筐与构建路径的对应（分类落在哪、谁编它）
+
+分类的唯一真相是 `scripts/cache-key.sh` 的 `bucket_for()`，它同时决定
+Release tag 前缀（`base-` / `rt-` / `tool-`）。门禁：
+`tools/verify/three-buckets.js`（挂在 `ci.yml`）会核对
+矩阵里的每一件都有筐，并把 §2.3.1 的对应行打出来。
+
+| 筐 | 件（16 件） | 谁编 | 落位 |
+|---|---|---|---|
+| **base** 基础环境 | `llvmtoolchain` · `sysroot` · `make` · `cmake` · `pkg-config` | `ndk-llvm` job + `build` 矩阵 5 件 | `usr/lib/toolchain/` |
+| **base** 基础命令 | `bash` · `rg` · `busybox`（原生件）· `jq` · `curl` | `build-apk.yml` 3 件 + `build` 矩阵 2 件 | `usr/bin/` |
+| **rt** 运行时 | `node` · `python3` | `node` job + `build` 矩阵 1 件 | `usr/lib/toolchain/` |
+| **tool** 工具 | `git` · `sqlite3` · `npm` · `pnpm` | `build` 矩阵 4 件 | `usr/lib/toolchain/` |
+
+**为什么一条 workflow 编三个筐的件**：它们共用同一套
+（NDK 定位 → 缓存键 → 复用已发布预制品 → 形状校验 → 发布），
+拆成三条 workflow 只会让这套逻辑复制三份、漂移三份。
+**筐是分类维度，job 是执行维度，两者不是一回事。**
+
+`jq` 与 `curl` 曾在商店件筐里，后按 §2.3.1「底座 = 系统必备的基础能力」
+升入 base —— 它们现在是 `usr/bin/` 里的基础命令，不是商店件。
+
+### 一条纪律：分类调整不得回退已产出的构建物
+
+改筐只改 `bucket_for()` 的分类与 tag 前缀，**不碰已发布的 Release 资产**。
+`base-jq` 那些 tag 与资产已经在 Release 里，改分类时它们仍是可复用的预制品；
+把对应的构建 job 删掉等于作废已成功的工作。
