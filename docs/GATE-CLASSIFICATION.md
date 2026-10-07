@@ -1155,3 +1155,47 @@ FAILED: [code=126] include/llvm/CodeGen/GenVT.inc
 所以凡是要「明确用宿主工具」的步骤，光靠「不给交叉配置」是不够，
 必须**显式给正面的值**（`-DCMAKE_C_COMPILER=…`）+ **清掉反向的来源**（`env -u CC`）
 + **事后核对**（读 cache / 看产物架构）。
+
+---
+
+## 第二十一条：`export` 会跨步骤污染，`CC` 尤其
+
+### Build APK 的 build job 红了（商店件全绿时它是唯一的红灯）
+
+```
+[pty] ldflags 已加 -Wl,--enable-new-dtags 与 $ORIGIN RUNPATH
+[ok] liblobospty.so 100504 字节
+== 底座共享库（libz / libssl / libcrypto / libcurl）==
+[base-libs] ABI=arm64-v8a API=35 JOBS=4
+[base-libs] CC=…/bin/aarch64-linux-android24-clang      ← 与上面那句 API=35 矛盾
+##[error]libz/libssl/libcrypto/libcurl 是 $PREFIX 必备（upstream 档，缺件硬红）
+```
+
+`API=35` 与 `CC` 指向 24 同时出现 —— 这行矛盾就是线索。
+
+`build-native-capabilities.sh` 的 node-pty 段需要 `export CC/CXX/AR/LINK`
+（`npx node-gyp` 靠环境变量拿编译器），而它导出的是 **API 24** 的 clang。
+同一个 shell 里，后面的 `CC="$CC" bash scripts/build-base-libs.sh`
+（第 232 行）拿到的就是那个被污染的值。
+
+修三处：
+
+1. node-pty 段的 clang 名改成 `${PTY_API:-24}`（pty 本来就该用较低 API ——
+   它是可选档位，降级语义与上游件不同）
+2. **pty 段结束后显式恢复 `CC`**，恢复语句自带原因说明
+3. 脚本开头与第二段的两处 `android21-clang` 改成 `${ANDROID_API:-35}`
+   —— 全局 API 是 35，硬编码 21 是历史遗留
+
+顺带把 `build-userland-{git,jq,sqlite3}.sh` 的报错消息里
+「需要 CC（aarch64-linux-android21-clang）」改成中性描述 ——
+那三个件实际早就用 35 了，消息会让人以为该导 API 21 的编译器。
+
+### 判据纪律
+
+**「某一步 export 的东西」在同 shell 的后续步骤里都还在。**
+排查时看到 `[脚本] API=35` 与 `[另一个脚本] CC=…android24` 并列出现，
+先假设变量被污染，而不是「两个脚本各有一套配置」。
+
+这一条与第十五条（诊断要排在所有失败点之前）配套：
+若当初 `build-base-libs.sh` 打印自己**从环境拿到的 `CC` 与 `ANDROID_API`
+并做一致性判断**，这一处当场就会红，而不是走到 openssl 编不过才报「缺件」。

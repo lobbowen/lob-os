@@ -21,7 +21,7 @@ if [ -z "$NDK" ]; then
 fi
 [ -n "$NDK" ] && [ -d "$NDK" ] || { echo "[error] runner 上找不到 NDK"; exit 1; }
 echo "NDK=$NDK"
-CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API:-35}-clang"
 [ -x "$CC" ] || { echo "[error] 找不到 clang: $CC"; exit 1; }
 
 curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-headers.tar.xz" \
@@ -62,7 +62,7 @@ if [ -z "$NDK" ]; then
 fi
 [ -n "$NDK" ] && [ -d "$NDK" ] || { echo "[error] runner 上找不到 NDK"; exit 1; }
 TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-CC="$TC/aarch64-linux-android21-clang"
+CC="$TC/aarch64-linux-android${ANDROID_API:-35}-clang"
 LLVM_AR="$TC/llvm-ar"
 [ -x "$CC" ] || { echo "[error] 找不到 clang: $CC"; exit 1; }
 J="container/app/src/main/jniLibs/${ABI}"
@@ -183,10 +183,10 @@ done
 if [ -z "$NDK" ]; then NDK=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1 || true); fi
 [ -n "$NDK" ] && [ -d "$NDK" ] || { echo "::warning title=能力件缺失::找不到 NDK，跳过 node-pty"; exit 0; }
 TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-export CC="$TC/aarch64-linux-android24-clang"
-export CXX="$TC/aarch64-linux-android24-clang++"
-export AR="$TC/llvm-ar" LINK="$CXX"
-[ -x "$CC" ] || { echo "::warning title=能力件缺失::找不到 clang: $CC"; exit 0; }
+PTY_CC="$TC/aarch64-linux-android${PTY_API:-24}-clang"
+PTY_CXX="$TC/aarch64-linux-android${PTY_API:-24}-clang++"
+export CC="$PTY_CC" CXX="$PTY_CXX" AR="$TC/llvm-ar" LINK="$PTY_CXX"
+[ -x "$PTY_CC" ] || { echo "::warning title=能力件缺失::找不到 clang: $PTY_CC"; exit 0; }
 rm -rf /tmp/ptybuild && mkdir -p /tmp/ptybuild && cd /tmp/ptybuild
 npm pack "node-pty@${PTY_VER}" >/dev/null 2>&1 || { echo "::warning title=能力件缺失::拉取 node-pty 源码失败"; exit 0; }
 tar -xzf node-pty-*.tgz && cd package
@@ -226,7 +226,8 @@ fi
 cp -f "$SO" "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so"
 echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so") 字节"
 
-cd "$ROOT"
+CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API:-35}-clang"
+echo "[pty] 恢复 CC 给后续步骤（pty 段 export 过 API ${PTY_API:-24} 的编译器，不恢复会让 base-libs 拿到错的那个）"
 
 echo "== 底座共享库（libz / libssl / libcrypto / libcurl）=="
 CC="$CC" ABI="$ABI" bash scripts/build-base-libs.sh || {

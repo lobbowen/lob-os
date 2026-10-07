@@ -6,7 +6,7 @@ cd "$HERE/.."
 ROOT_DIR=$(pwd)
 
 if [ -z "${CC:-}" ]; then
-  echo "::error title=缺 CC::需要 CC（aarch64-linux-android21-clang）"
+  echo "::error title=缺 CC::需要 CC（NDK 的 clang（CI 里 locate-ndk.sh 注入，形如 …/bin/aarch64-linux-android35-clang））"
   exit 1
 fi
 
