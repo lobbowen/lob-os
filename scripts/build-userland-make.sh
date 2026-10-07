@@ -80,6 +80,8 @@ make -C "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
        grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
        tail -40 "$WORK/build.log"; exit 1; }
 
+note "编译完成；产物：$(ls -la "$BUILD/make" 2>&1 | head -1)"
+
 BIN="$BUILD/make"
 [ -x "$BIN" ] || die "没产出 make" "$BIN 不存在或不可执行"
 cp -f "$BIN" "$OUT/bin/$TOOL"

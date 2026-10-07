@@ -1434,3 +1434,27 @@ VANILLA_ICE_CREAM   = 35   Android 15   ← master 分支里最高的真实常�
 
 **判据：批量替换之后必须独立复核，不能相信「脚本报告成功」。**
 我这轮已经是第三次犯「以为改了其实没改到」—— 前两次是 YAML 块插错 job。
+
+---
+
+## 十八、复用链修好之后，各件的真实错误（本轮实测）
+
+`npm`/`pnpm` 的 `work/` 问题修掉后，**11 件里 5 件成功**：
+
+```
+✔ base-jq  base-curl  tool-sqlite3  tool-npm  tool-pnpm
+```
+
+剩下 6 件的真实错误（从日志逐件取出，不是猜的）：
+
+| 件 | 错误 | 状态 |
+|---|---|---|
+| `make` | **configure 通过、编译也过了**，但之后某步裸退（日志只有 `exit code 1`，连 `die` 的标题都没有） | 正在加诊断 |
+| `python3` | `fatal error: 'zstd.h' file not found`（CPython 3.14 内建了 zstd 模块） | 待处理 |
+| `git` | `legacy-dso-legacyprov.o` Error 127（编译器不在 PATH） | 待处理 |
+| `cmake` `sysroot` `pkg-config` | 「产出」步骤里**没有 error 行** —— 与 `work/` 那次同类，疑似又是别的原因 | 待查 |
+
+**`make` 这一件值得单独记**：`--disable-posix-spawn` 生效了
+（`configure 通过` → 编译完成），说明上一轮那个根因判断是对的。
+但它现在卡在一个**说不出原因**的地方 —— 这已经是我这轮第四次遇到
+「失败报不出病因」，所以做法统一了：不猜，先让配方把关键事实打出来。
