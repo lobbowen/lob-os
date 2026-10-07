@@ -223,8 +223,8 @@ file "$SO" | grep -q 'ELF 64-bit.*ARM aarch64' || { echo '::warning title=能力
 if ! readelf -d "$SO" 2>/dev/null | grep -q 'RUNPATH.*\$ORIGIN'; then
   echo '::warning title=pty 依赖会 CANNOT LINK::pty.node 依赖 libc++_shared.so 却没有含 $ORIGIN 的 DT_RUNPATH —— bionic 不查 nativeLibraryDir。终端 PTY 本轮降级。'
 fi
-cp -f "$SO" "${GITHUB_WORKSPACE}/container/app/src/main/jniLibs/${ABI}/liblobospty.so"
-echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE}/container/app/src/main/jniLibs/${ABI}/liblobospty.so") 字节"
+cp -f "$SO" "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so"
+echo "[ok] liblobospty.so $(stat -c%s "${GITHUB_WORKSPACE:-$ROOT}/container/app/src/main/jniLibs/${ABI}/liblobospty.so") 字节"
 
 cd "$ROOT"
 

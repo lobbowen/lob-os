@@ -40,6 +40,9 @@ jobs:
       - name: 规范 — 不许上注释
         run: node scripts/comment-gate.js
 
+      - name: 规范 — 双引号里不许有裸 ${VAR}（set -u 会杀掉脚本）
+        run: node tools/verify/bare-vars-in-strings.js
+
       - name: 规范 — DO 跑不通：不许启用设备所有者
         run: node scripts/do-gate.js
 

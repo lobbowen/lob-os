@@ -1048,3 +1048,50 @@ contrib/android/include/android_lf.h     （libarchive/libarchive master）
    改判断（像 libuv 那样）是最后手段，因为语义可能变。
 3. **vendored 文件进 `patches/`，同时把它加进 `SKIP_DIRS`，
    完整性交给 sha256 而不是注释门禁。**
+
+---
+
+## 第二十条：把注释搬进报错消息时，`\${VAR}` 的转义会失效
+
+### 起因（CI 用 38 秒就失败，日志里只有两行）
+
+```
+[cmake] libuv 补丁已打（Android 上关掉 CPU affinity）
+scripts/build-userland-cmake.sh: line 77: PROJECT_SOURCE_DIR: unbound variable
+##[error]Process completed with exit code 1.
+```
+
+上一轮我把 `# 注释` 搬进 `note "…"`（注释门禁不允许代码里留解释性注释）。
+注释里写的是 `include_directories(${PROJECT_SOURCE_DIR}/…)` —— **在注释里
+`${}` 不会被 shell 解释**，所以读起来完全正常；搬进双引号后它就成了真变量。
+
+这是本会话**第六次** `set -u` 未定义变量（诊断块用 `$TC`、node 报错信息引用
+已删变量、python3 的 `PREFIX` 顺序、sysroot 探针、cmake 失败分支的裸 grep、
+llvmtoolchain 的 `TB_LIST=$(ls …)`、以及这一处）。
+
+**前几次是「写代码时用了没定义的变量」，这一类是「搬动已有文本时丢掉了转义」。**
+后者更隐蔽：原文是对的，日志里读起来也对，只有在 `set -u` 下执行才炸。
+
+### 固化：`tools/verify/bare-vars-in-strings.js`
+
+扫 `scripts/*.sh`：双引号里出现**没有默认值**的 `${VAR}`（即不是 `${VAR:-…}`）
+且该变量在本文件内从未赋值 —— 这种在 `set -u` 下必然杀掉脚本。
+
+- 45 个脚本，当前 0 处
+- 反例验证：把 `${PROJECT_SOURCE_DIR}` 塞进 `build-userland-make.sh` 的
+  `note` 里，立刻被抓到 —— 用的正是今天真实发生过的那一个变量名
+- 顺带修一处真缺陷：`build-native-capabilities.sh:226/227` 的
+  `${GITHUB_WORKSPACE}` 是裸的，Actions 里必然存在所以 CI 没报，
+  但本机跑会死 → 改成 `${GITHUB_WORKSPACE:-$ROOT}`
+
+已挂进 `ci.yml`，紧邻注释门禁那一步。
+
+### 写这个扫描器时我又犯了同一个错
+
+`ROOT = path.resolve(__dirname, '..')` —— 从 `tools/verify/` 往上**一层**
+是 `tools/`，不是仓库根。扫描器因此报「扫描目录不存在」并退出 2。
+
+这与我早先那次（写完后「什么都没扫却报 PASS」）是同一个错误的两个方向：
+上次是**目录不存在时静默通过**，这次是**显式报错但报的路径是错的**。
+两者的共同点：**没验证 ROOT 算出来是什么，就相信它算对了**。
+现在这类扫描器都会把 `ROOT` 打出来并在目录不存在时硬红。
