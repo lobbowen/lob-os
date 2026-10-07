@@ -757,3 +757,74 @@ core.c:2073: error: call to undeclared function 'sched_getaffinity'
 的实际值，以及真正编译 `core.c` 的那条命令行。
 
 **判据要能在下一次失败时把答案送到眼前**，这比现在猜一个说法有用。
+
+---
+
+## 第十七条：上游宏与目标 libc 不一致时，打补丁改判断条件而不是取消宏
+
+### 诊断定案（靠上一轮加的诊断，不靠猜）
+
+`$CC -dM -E` 的实测输出：
+
+```
+#define __ANDROID__ 1
+#define __BIONIC__ 1
+#define __linux__ 1              ← 关键
+#define __ANDROID_MIN_SDK_VERSION__ 35
+总宏数：699
+```
+
+libuv `src/unix/internal.h:566`：
+
+```c
+#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1301000)
+#define UV__CPU_AFFINITY_SUPPORTED 1
+```
+
+Bionic 的 `<sched.h>` 里 `CPU_SETSIZE` / `cpu_set_t` / `sched_getaffinity`
+无条件定义、无 `__INTRODUCED_IN`（前一轮已查），所以不是 API 门控问题，
+而是**编译器说「这是 Linux」、libc 说「我不是 Linux」**。
+
+三个事实凑齐才定案：
+1. libuv 的判断只看编译器宏，不看 CMake 检测（`uv_defines` 只有 `_GNU_SOURCE`）
+2. Bionic 不提供那三个符号，且无 API 门控
+3. clang 的 Android target 预定义 `__linux__`
+
+### 两条候选改法，选了打补丁
+
+| 改法 | 代价 |
+|---|---|
+| `-U__linux__` 全局取消 | 一行，但 libcurl / zstd / c-ares 等都可能依赖它 |
+| 改 `internal.h` 的判断条件 | 只影响 libuv 一处 |
+
+选后者，**与 Termux 的 `packages/libuv/src-unix-fs.c.patch` 完全同构**
+（那里把 `#ifdef __linux__` 改成 `#if defined(__linux__) && !defined(__ANDROID__)`，
+理由也写了：Android 上 seccomp 禁掉了 statx）。
+
+补丁放 `patches/` 入库而不是从 Termux 拉 —— Termux 没有这个补丁，
+自己维护的东西自己存，版本升级时由配方里的「打不上就判红」兜住。
+
+### 补丁本身要验过，不能只看 `patch` 打印了什么
+
+第一次测补丁时，`patch -p1` 打印 `patching file` 且退出码 0，**但文件没变**。
+原因是我复用了已经打过补丁的目录。改用干净目录重测才确认补丁是好的。
+
+四个用例都验过：
+
+| 用例 | 期望 | 实得 |
+|---|---|---|
+| 干净目录打补丁 | 生效（`__ANDROID__` 出现） | ✔ |
+| `patch -d $SRC`（配方里的写法） | 生效 | ✔ |
+| 重复打一次 | 非 0 + 明确原因 | ✔ |
+| 文件内容不匹配 | 非 0 | ✔ |
+| 文件不存在 | 非 0 | ✔ |
+
+**「patch 报成功」不等于补丁生效** —— 这条要单独记，
+因为它和 `set -e` 吞诊断是同一类：工具说了不算，要看结果。
+
+### 一处自我更正
+
+`patch -d` 的第一次测试里我用了 `/tmp` 存备份，本机 `/tmp` 不稳定导致
+`cp` 失败，进而 `ls` 报「文件不存在」，看起来像补丁把文件删了。
+**实际文件一直在** —— 是环境问题被误读成代码问题。
+本会话已记录过这条，改用 `~/.cache` 后不再发生。

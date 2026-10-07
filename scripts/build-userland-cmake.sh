@@ -58,6 +58,13 @@ GOT_VER="$(awk -F'[ ()]' '
   "钉的是 $CMAKE_VER，Source/CMakeVersion.cmake 三段拼出 $GOT_VER（钉值写错或源站给了别的版本）"
 note "源码 $GOT_VER 就位"
 
+PATCH_FILE="$ROOT_DIR/patches/cmake-cmlibuv-no-cpumask-on-android.patch"
+[ -f "$PATCH_FILE" ] || die "缺 libuv 补丁" "$PATCH_FILE 不存在 —— 没有它 cmake 会编不过（core.c:1683 CPU_SETSIZE）"
+if ! patch -p1 -d "$SRC" -i "$PATCH_FILE"; then
+  die "libuv 补丁打不上" "为什么需要它：clang 的 Android target 预定义 __linux__（实测 __linux__/__ANDROID__/__BIONIC__ 都是 1），Bionic 的 <sched.h> 不提供 cpu_set_t/CPU_SETSIZE/sched_getaffinity，libuv 只看 __linux__ 于是编不过（core.c:1683）。改法同 Termux 的 libuv 补丁。不选 -U__linux__ 是因为那全局生效，libcurl/zstd/c-ares 也可能依赖它。CMake $GOT_VER 的 Utilities/cmlibuv/src/unix/internal.h 与补丁不匹配 —— 补丁是按 $CMAKE_VER 写的。换 CMake 版本时要一起更新 patches/ 下这个文件。"
+fi
+note "libuv 补丁已打（Android 上关掉 CPU affinity）"
+
 BUILD="$WORK/build"
 INST="$WORK/_inst"
 rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
