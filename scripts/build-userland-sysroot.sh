@@ -49,9 +49,14 @@ done
 echo "[sysroot] sysroot=$SYSROOT"
 
 INC="$SYSROOT/usr/include"
-LIBDIR="$SYSROOT/usr/lib/$ABI"
+TRIPLE="aarch64-linux-android"
+case "$ABI" in
+  arm64-v8a|aarch64-linux-android) : ;;
+  *) die "ABI 与目标不对应" "ABI=$ABI，sysroot 的目标库目录按 target triple 命名，本仓只认 arm64-v8a（jniLibs 的 ABI 名）→ aarch64-linux-android（NDK triple 名）。两者不是一回事：$SYSROOT/usr/lib 下根本没有 $ABI。" ;;
+esac
+LIBDIR="$SYSROOT/usr/lib/$TRIPLE"
 [ -d "$INC" ] || die "sysroot 缺头文件" "$INC 不存在"
-[ -d "$LIBDIR" ] || die "sysroot 缺目标库目录" "$LIBDIR 不存在 —— ABI 写法对吗（$ABI）"
+[ -d "$LIBDIR" ] || die "sysroot 缺目标库目录" "$LIBDIR 不存在（triple=$TRIPLE，sysroot/usr/lib 下现有：$(ls "$SYSROOT/usr/lib" 2>/dev/null | tr '\n' ' ')）"
 
 N_HDRS=$(find "$INC" -maxdepth 1 -name '*.h' | wc -l)
 [ "$N_HDRS" -gt 0 ] || die "头文件是空的" "$INC 下没有 .h —— NDK 结构变了？"

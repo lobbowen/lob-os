@@ -85,7 +85,7 @@ GOT_VER="$(awk '
 note "源码 $GOT_VER 就位（patchlevel.h 核实）"
 
 BUILD="$WORK/build"
-rm -rf "$BUILD" && mkdir -p "$BUILD"
+rm -rf "$BUILD" && mkdir -p "$BUILD/_no_pc"
 
 (
   set -e
@@ -97,6 +97,8 @@ rm -rf "$BUILD" && mkdir -p "$BUILD"
     ac_cv_file__dev_ptmx=no \
     ac_cv_file__dev_ptc=no \
     ac_cv_file__dev_tty=no \
+    PKG_CONFIG_LIBDIR="$BUILD/_no_pc" \
+    PKG_CONFIG_PATH= \
     CPPFLAGS="-D__ANDROID_API__=$API" \
     CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
     CFLAGS="-O2" \
@@ -104,6 +106,13 @@ rm -rf "$BUILD" && mkdir -p "$BUILD"
     || { echo "=== configure 失败取证（末 50 行）==="; tail -50 "$WORK/configure.log"; exit 1; }
 )
 note "configure 通过"
+
+for m in libzstd libbz2 liblzma zlib openssl sqlite3; do
+  if grep -qE "checking for $m.*\.\.\. no" "$WORK/configure.log" 2>/dev/null; then
+    note "模块 $m：宿主 pkg-config 已被隔离，判为不可用 → 相关扩展会跳过"
+  fi
+done
+grep -E '^checking for (libzstd|libbz2|liblzma|openssl|sqlite3)' "$WORK/configure.log" 2>/dev/null | sed 's/^/[py] /' || true
 
 grep -q 'cross_compiling *= *yes' "$WORK/configure.log" 2>/dev/null \
   || grep -q 'cross_compiling:.*yes' "$WORK/configure.log" 2>/dev/null \

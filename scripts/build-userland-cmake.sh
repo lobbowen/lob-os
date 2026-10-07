@@ -73,9 +73,11 @@ rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
     CFLAGS="-O2 -D__ANDROID_API__=$API" \
     CXXFLAGS="-O2 -D__ANDROID_API__=$API -static" \
     > "$WORK/bootstrap.log" 2>&1 \
-    || { echo "=== bootstrap 失败取证（error 行 + 末 50 行）==="; \
-         grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)|CMake Error" "$WORK/bootstrap.log" | head -25 || true; \
-         tail -50 "$WORK/bootstrap/bootstrap.log" 2>/dev/null | tail -40 || tail -50 "$WORK/bootstrap.log"; \
+    || { echo "=== bootstrap 失败取证 ==="
+         for f in "$WORK/bootstrap.log" "$BUILD/Bootstrap.cmk/cmake_bootstrap.log" "$WORK/bootstrap/bootstrap.log"; do
+           if [ -f "$f" ]; then echo "--- $f（末 40 行）---"; tail -40 "$f"; fi
+         done
+         echo "CC=$CC"; echo "CXX=${CXX:-（空）}"; echo "CFLAGS=${CFLAGS:-（空）}"; echo "CXXFLAGS=${CXXFLAGS:-（空）}"
          exit 1; }
 )
 note "bootstrap 完成"
