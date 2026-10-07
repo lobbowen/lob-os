@@ -85,13 +85,15 @@ GOT_VER="$(awk '
 note "源码 $GOT_VER 就位（patchlevel.h 核实）"
 
 BUILD="$WORK/build"
-rm -rf "$BUILD" && mkdir -p "$BUILD/_no_pc"
+PREFIX="$WORK/_inst"
+rm -rf "$BUILD" "$PREFIX" && mkdir -p "$BUILD/_no_pc" "$PREFIX"
 
 (
   set -e
   cd "$BUILD"
   "$SRC/configure" \
     --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+    --prefix="$PREFIX" \
     --with-build-python="$HOST_PY" \
     --without-ensurepip \
     ac_cv_file__dev_ptmx=no \
@@ -161,9 +163,9 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
         done)"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
-PREFIX="$WORK/_inst"
 make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
-  || { echo "=== install 失败（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
+  || { echo "=== install 失败（末 30 行）==="; \
+       echo "  PREFIX=$PREFIX"; tail -30 "$WORK/install.log"; exit 1; }
 
 PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
 [ -d "$PYDIR" ] || {

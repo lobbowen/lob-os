@@ -88,13 +88,15 @@ jobs:
           set -euo pipefail
           TAG="$(bash scripts/cache-key.sh tag node)"
           NAME="$(bash scripts/cache-key.sh asset node)"
-          LEGACY_TAG="node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}"
-          LEGACY_TAG2="node-runtime-${{ steps.ver.outputs.tag }}"
+          NAME_DASH="${NAME/+arm64+v8a/+arm64-v8a}"
+          NVER="${{ steps.ver.outputs.tag }}"
+          NABI="${{ steps.ver.outputs.abi }}"
+          LEGACY_ASSET="node-runtime-${NVER}-${NABI}.tar.gz"
           mkdir -p dist
           for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
-            for T in "$TAG" "$LEGACY_TAG" "$LEGACY_TAG2"; do
-              N="$NAME"
-              [ "$T" = "$TAG" ] || N="$T.tar.gz"
+            for PAIR in "$TAG|$NAME" "$TAG|$NAME_DASH" "node-runtime-${NVER}-${NABI}|$LEGACY_ASSET" "node-runtime-${NVER}|$LEGACY_ASSET"; do
+              T="${PAIR%%|*}"
+              N="${PAIR#*|}"
               if gh release download "$T" --repo "$R" --pattern "$N" --dir dist 2>/dev/null; then
                 echo "[ok] 取到 tar 制品：$R / $T / $N"
                 if [ -f "dist/$N.sha256" ]; then
@@ -127,7 +129,7 @@ jobs:
           done
           ls -la dist/
           [ -f dist/libnode.so ] \
-            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的三种 tag（$TAG / $LEGACY_TAG / $LEGACY_TAG2）都取不到，需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
+            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 tag（$TAG / node-runtime-${NVER}-${NABI} / node-runtime-${NVER}）都取不到 tar 形态，也没有裸资产形态；需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
           echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
 
       - name: 落成 userland 件

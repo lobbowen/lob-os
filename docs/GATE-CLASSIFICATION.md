@@ -612,3 +612,86 @@ curl -s -H "Authorization: Bearer $TOK" \
 1. **发布侧与消费侧必须共用同一入口算名字**，不能各写一份公式。
 2. **查权威源（release 实际资产），不要读代码里的公式** —— 公式可能三份都错。
 3. **改共享工具要逐件回归**，并把期望值从权威源取，不是从代码推。
+
+---
+
+## 第十五条：一次只推进一层，别把「修好一个」当成「整件好了」
+
+### 起因
+
+三件连续三轮，每轮都是**同一件的新一层**：
+
+| 件 | 轮次 | 报的是什么 |
+|---|---|---|
+| cmake | 1 | `Cannot find appropriate C compiler`（取证路径错，真因没进日志） |
+| cmake | 2 | `Exec format error`（bootstrap 执行交叉产物） |
+| cmake | 3 | `The C++ compiler does not support C++11 (std::unique_ptr)`（工具链跑起来了） |
+| python3 | 1 | `zstd.h file not found` |
+| python3 | 2 | 编译成功、产物找到，`install` 装到 `/usr/local` 撞 Permission denied |
+| python3 | 3 | （待下一轮） |
+| sysroot | 1 | `usr/lib/aarch64-v8a 不存在` |
+| sysroot | 2 | `目标库层=…/aarch64-linux-android/35` 正确，`libclang_rt*.a` 缺 |
+
+**每一层的报错都不一样，而且前一层修好才会露出后一层。**
+如果第一次看到 cmake 报「找不到编译器」就去猜「CC 没透传」，就会永远停在错误的方向上。
+
+### 关键转折：日志措辞骗人
+
+cmake 第 2 轮的日志是：
+
+```
+-- Check for working C compiler: .../bin/clang - skipped     ← 编译器变成了裸 clang
+...
+CMake Error at CMakeLists.txt:204 (message):
+  The C++ compiler does not support C++11 (e.g.  std::unique_ptr).
+```
+
+第一反应是「CMake 忽略了我设的 `CMAKE_C_COMPILER`」。
+去查 `Platform/Android-Determine-CXX.cmake`，第一行是
+`if(CMAKE_CXX_COMPILER) return()` —— 我明明设了，它应该生效。
+再查 `Platform/Android-Determine.cmake`，发现
+`include(${CMAKE_ANDROID_NDK}/build/cmake/hooks/pre/Android-Determine.cmake OPTIONAL)`。
+去下那个 hook，解码后发现**它是空的**（只有版权头和一行 `echo`）。
+
+**结论：不是 hook 干的。** 于是不再猜，改成让 CMake 自己报：
+configure 失败时打印 toolchain 文件全文 + `CMakeCache.txt` 里
+`CMAKE_(C|CXX)_COMPILER` 与 `CMAKE_CXX_FLAGS` 的实际值。
+
+**判据要取事实，不要读措辞。** `Check for working C compiler ... - skipped`
+与「编译器不支持 C++11」在日志里并列，但两者不是同一件事。
+
+### 同一个错，今天犯了三次
+
+**未定义变量被 `set -u` 杀掉**，而且三次都是在校验阶段才发现：
+1. 诊断块里用 `$TC` 而实际变量叫 `$TC_DIR`
+2. `python3` 加 `--prefix="$PREFIX"` 时，`PREFIX` 定义在 70 行之后
+3. node 报错信息里引用了两个刚被我删掉的变量（`$LEGACY_TAG` / `$LEGACY_TAG2`）
+
+第 3 次尤其该警惕：**报错信息本身触发 `set -u`**，于是「取不到制品」的真实原因
+被换成「unbound variable」，日志里再也看不到原来的问题。
+
+现在收工前固定跑一遍扫描：抽出每个 `run:` 块里的 `$VAR`，
+与「本块内赋值 + workflow `env:` + 已知 runner 变量」比对，列出疑似未定义项。
+
+### 造反例的价值又一次体现
+
+第 3 次是靠扫变量发现的，但第 2 次（`PREFIX` 顺序）是我**主动造反例**才确认的：
+
+```sh
+set -euo pipefail
+echo "  即将用 PREFIX=$PREFIX"   # → PREFIX: unbound variable
+PREFIX="/w/_inst"
+```
+
+只读代码时，`PREFIX=` 出现在 165 行、`--prefix=` 在 95 行，
+看起来像「反正脚本里定义了」。`set -u` 不管顺序，只管用的时候有没有。
+
+### node 的资产名：两个候选并列，不强行统一
+
+`cache-key.sh` 的 `SAFE` 用 `tr -c 'A-Za-z0-9._' '+'`，会把 `-` 变成 `+`，
+所以它算出 `node-24.21.0+arm64+v8a+…`；而 release 上的**存量资产**是
+`node-24.21.0+arm64-v8a+…`。
+
+改 `SAFE` 让 `-` 保留会破坏另外七件（前面已实测）。改发布侧产出 `+` 版则
+存量资产取不到、必须重编。**两个都不选**：候选名并列，取到即用 ——
+候选 1 是新规范名，候选 2 是存量名。

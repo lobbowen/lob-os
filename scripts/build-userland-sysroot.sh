@@ -89,7 +89,7 @@ cp -a "$INC" "$STAGE/sysroot/include"
 echo "[sysroot] 拷目标库"
 mkdir -p "$STAGE/sysroot/lib"
 cp -a "$APILIB"/. "$STAGE/sysroot/lib/" 2>/dev/null || true
-for extra in "$LIBDIR"/libclang_rt*.a "$LIBDIR"/libclang_rt*.so; do
+for extra in "$LIBDIR"/libclang_rt*.a "$LIBDIR"/libclang_rt*.so "$APILIB"/libclang_rt*.a "$APILIB"/libclang_rt*.so; do
   [ -e "$extra" ] && cp -a "$extra" "$STAGE/sysroot/lib/" && continue
   :
 done
@@ -113,7 +113,13 @@ if [ ! -e "$STAGE/sysroot/lib/libc.so" ]; then
   echo "[miss] lib/libc.so —— 链接任何程序都会失败（'cannot find -lc'）"; fail=1
 fi
 if ! ls "$STAGE/sysroot"/lib/libclang_rt*.a >/dev/null 2>&1; then
-  echo "[miss] lib/libclang_rt*.a —— 编任何东西都要它（内建函数如 __aeabi_uldivmod）"; fail=1
+  echo "[miss] lib/libclang_rt*.a —— 编任何东西都要它（内建函数如 __aeabi_uldivmod）"
+  echo "== NDK 里 libclang_rt 到底在哪 =="
+  echo "  API 层 $APILIB：$(ls "$APILIB" 2>/dev/null | grep -c clang_rt) 个匹配"
+  echo "  triple 层 $LIBDIR：$(ls "$LIBDIR" 2>/dev/null | grep -c clang_rt) 个匹配"
+  echo "  NDK 根 $NDK：$(find "$NDK" -name 'libclang_rt*' -type f 2>/dev/null | head -5 | tr '\n' ' ')"
+  echo "  说明：NDK 从 r23 起把 libclang_rt.builtins 拆到 sysroot 之外；具体落位随版本变，别凭印象填路径。"
+  fail=1
 fi
 [ "$fail" -eq 0 ] || die "sysroot 不完整" "上面 miss 的几件是编译的硬依赖，产出半个 sysroot 比不产出更坏"
 

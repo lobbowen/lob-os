@@ -80,7 +80,7 @@ fi
 
 if [ "$TOOL" = "node" ]; then
   NVER="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" default)"
-  NABI="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" abi | tr -c 'A-Za-z0-9._' '+')"
+  NABI="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" abi | tr -c 'A-Za-z0-9._-' '+')"
   VER="${NVER}+${NABI}"
 fi
 
