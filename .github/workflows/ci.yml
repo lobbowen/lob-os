@@ -46,6 +46,9 @@ jobs:
       - name: 结构 — 三筐分类自洽（base / rt / tool 与矩阵、计划文档一致）
         run: node tools/verify/three-buckets.js
 
+      - name: 结构 — base 筐产出源齐全（随 APK 打包的基础环境不得有件无产出）
+        run: node tools/verify/base-environment.js
+
       - name: 规范 — DO 跑不通：不许启用设备所有者
         run: node scripts/do-gate.js
 

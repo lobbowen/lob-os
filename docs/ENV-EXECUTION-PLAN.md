@@ -1628,3 +1628,39 @@ Release tag 前缀（`base-` / `rt-` / `tool-`）。门禁：
 改筐只改 `bucket_for()` 的分类与 tag 前缀，**不碰已发布的 Release 资产**。
 `base-jq` 那些 tag 与资产已经在 Release 里，改分类时它们仍是可复用的预制品；
 把对应的构建 job 删掉等于作废已成功的工作。
+
+### §2.3.3 base 筐复审（2026-10-07）
+
+复审方式：门禁 `tools/verify/base-environment.js`（挂 `ci.yml`）逐件核对
+「分类 → 产出源 → 清单登记 → 计划文档」四处是否一致。
+
+| base 件 | 产出源 | CAPABILITY 登记 |
+|---|---|---|
+| `bash` | `build-native-capabilities.sh` 现编 | `libbash.so` |
+| `rg` | 同上，cargo 编 ripgrep 14.1.1 | `liblobosrg.so` |
+| `busybox` | `build-native-busybox.sh`（`CONFIG_STATIC=y`） | `libbusybox.so` |
+| `sysroot` · `make` · `cmake` · `pkg-config` | `build-userland.yml` → Release `base-*` | — |
+| `jq` · `curl` | 同上（已由商店件升入底座基础命令） | — |
+| `llvmtoolchain` | `ndk-llvm` job | — |
+
+四个基础库另计（§2.3.1 第 110 行），产出与登记都在：
+
+- `libz.so` `libssl.so` `libcrypto.so` `libcurl.so` —— `build-base-libs.sh` 写 jniLibs，
+  且都在 `native-capabilities.txt` 里（否则 `PrefixProvisioner` 不会铺到 `$PREFIX/lib`）
+- `libc++_shared.so` —— `build-apk.yml` 直接从 NDK 拷，**有意不入 CAPABILITY**：
+  它由 dlopen 按需加载，不需要被铺到 `$PREFIX`
+
+**复审结论：10 件全部有产出源，没有丢件、没有件无产出。**
+
+唯一尚未落地的是 `llvmtoolchain`（`ndk-llvm` job，本仓的「阶段1c」，
+编完整 clang + lld，以小时计）。
+
+#### 复审过程中纠正的两个误判
+
+1. `libc++_shared.so` 不在 `native-capabilities.txt` —— 初看像丢件，实为有意设计。
+2. `libssl.so` / `libcrypto.so` 用 `grep libssl` 查不到 —— 实际是
+   `for base in ssl crypto` 循环里 `cp "$so" "$J/lib$base.so"`。**工具查询方式
+   不对 ≠ 产物缺失**，这类误判在复审里最危险。
+
+（第二点也促使门禁的正则收紧成 `/for base in ssl crypto\s*;/` ——
+原先 `/for base in ssl crypto/` 在 `ssl cryptoo` 时仍会匹配，反例测不出来。）
