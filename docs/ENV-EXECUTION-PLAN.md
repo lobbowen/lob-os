@@ -1029,3 +1029,77 @@ CI 日志（`build (git)/7_产出 git 件`，run 37557196126）：
 **「加诊断」不等于「拿到信息」。** 诊断必须满足三条：
 排在所有可能失败点**之前**、引用**确实存在**的变量、测的是**失败那一刻**的状态。
 三条我第一轮一条都没满足。
+
+---
+
+## 十五、编译产物的留存与复用（本轮补）
+
+### 之前的状态（实测）
+
+```
+build job 末尾：
+  uses: actions/upload-artifact@v4
+  with:
+    name: userland-${{ matrix.tool }}
+    path: dist/userland-${{ matrix.tool }}-*.zip
+    retention-days: 1          ← 只留1 天
+```
+
+而**全仓只有 NDK 一处缓存**（`~/.cache/actions-setup-ndk`）。
+`work/`（编译中间产物）与 `dist/`（已打的件）**都没有缓存**。
+
+实测 run 37557196126 有 5 个制品（npm/pnpm/sqlite3/jq/curl），
+但 `retention-days: 1` 意味着**明天就消失，且无法跨 run 复用** ——
+每轮 CI 都在把这 5 件从零重编一遍。
+
+### 补了两件事
+
+**① 制品留存 1 天 → 30 天**（两处 upload-artifact 都改了）。
+
+**② 编译中间产物按件缓存**，命中则增量编（不重跑 Configure）。
+
+key 由 `scripts/cache-key.sh` 算，**含本件真正依赖的源码钉值 + NDK 版本 + API + runner**：
+
+```
+uw-curl-curl-8.22.0openssl-3.6.3zlib-1.3.2-ndk30.0.16248370-api23-Linux-X64
+uw-make-make-4.4.1-ndk30.0.16248370-api23-Linux-X64
+uw-git-git-2.55.0openssl-3.6.3zlib-1.3.2curl-8.22.0|patch:…-ndk30.0.16248370-api23-Linux-X64
+```
+
+**为什么 key 必须含源码版本**：work/ 里是 Configure 过的 `.o` 与 `config.status`。
+换了源码却复用旧中间产物 = **拿旧对象拼新库**，症状是链接期符号错，
+更糟的是编过了但行为是旧的。实测：把 openssl 改成 3.6.4 → curl 的 key 立刻变；
+改回 3.6.3 → key 复原。
+
+**git 的 key 还含 7 个 Termux 补丁的 sha**（补丁变了就该重编）。
+
+### 这里踩的坑，值得单列
+
+**第一版我把目录写成 `work/${{ matrix.tool }}-work`** —— 那是**猜的**。
+对着每个 recipe grep 它实际 write 的路径后发现：
+
+```
+curl        work/curl-src  work/curl-deps
+jq          work/jq
+sqlite3     work/sqlite
+pkg-config  work/$SRC_KEY（=work/pkgconf）
+make        work/$TOOL（=work/make）
+```
+
+**`work/<tool>-work` 一个都不对。** 缓存命中也是空的 ——
+而且**它不会报错**，只是「缓存没起作用」，很容易被当成「缓存没命中」继续查错方向。
+
+**判据：缓存/归档的路径必须对着「谁真的往那儿写」核，不能按命名直觉列。**
+这与「门禁的路径要对着实际落位核」是同一条。
+
+### 规范（从这一串修里总结出来的）
+
+1. **产物留存的时长要匹配用途**。1 天只够「这一轮有没有出东西」；
+   要能复查、要能跨轮比对，就得给到 30 天以上。
+2. **缓存 key 必须包含它依赖的一切外部事实**：源码版本、工具链版本、
+   补丁 sha、runner 平台。少一样就会出现「拿旧东西拼新东西」。
+3. **缓存路径要对着实际 write 路径核**。写错不报错，只是白存。
+4. **不同件用不同 key**，共用目录（work/deps、work/openssl）也要各自隔离 ——
+   否则 git 与 curl 的中间产物会互相污染。
+5. **key 计算脚本要对未知件名判红**（`cache-key.sh` 现在会），
+   否则新加的件会静默拿到一个不含它依赖的 key。

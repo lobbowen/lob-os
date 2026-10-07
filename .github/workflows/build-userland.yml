@@ -209,11 +209,72 @@ jobs:
           done
           echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
 
+      - name: 算缓存 key（本件依赖的源码钉值 + NDK + API → 源码变了缓存就失效）
+        id: uwkey
+        run: echo "key=$(bash scripts/cache-key.sh ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
+
+      - name: 恢复本件的编译中间产物（命中则增量编，不重跑 Configure）
+        uses: actions/cache@v4
+        with:
+          path: |
+            work/make
+            work/cmake
+            work/python
+            work/pkgconf
+            work/curl-src
+            work/curl-deps
+            work/jq
+            work/sqlite
+            work/git-src
+            work/deps
+            work/deps-curl
+            work/openssl
+            work/zlib
+            dist/userland-make-*.zip
+            dist/userland-cmake-*.zip
+            dist/userland-python3-*.zip
+            dist/userland-pkg-config-*.zip
+            dist/userland-curl-*.zip
+            dist/userland-git-*.zip
+            dist/userland-jq-*.zip
+            dist/userland-sqlite3-*.zip
+            dist/userland-sysroot-*.zip
+          key: ${{ steps.uwkey.outputs.key }}
+
       - name: 产出 ${{ matrix.tool }} 件
         run: bash scripts/build-userland-${{ matrix.tool }}.sh
 
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
         run: bash scripts/verify-userland-artifact.sh ${{ matrix.tool }}
+
+      - name: 存回编译中间产物（供下一轮增量编）
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            work/make
+            work/cmake
+            work/python
+            work/pkgconf
+            work/curl-src
+            work/curl-deps
+            work/jq
+            work/sqlite
+            work/git-src
+            work/deps
+            work/deps-curl
+            work/openssl
+            work/zlib
+            dist/userland-make-*.zip
+            dist/userland-cmake-*.zip
+            dist/userland-python3-*.zip
+            dist/userland-pkg-config-*.zip
+            dist/userland-curl-*.zip
+            dist/userland-git-*.zip
+            dist/userland-jq-*.zip
+            dist/userland-sqlite3-*.zip
+            dist/userland-sysroot-*.zip
+          key: ${{ steps.uwkey.outputs.key }}
 
       - name: 打包 + sha256
         run: bash scripts/package-userland.sh ${{ matrix.tool }}
@@ -240,7 +301,7 @@ jobs:
         with:
           name: userland-${{ matrix.tool }}
           path: dist/userland-${{ matrix.tool }}-*.zip
-          retention-days: 1
+          retention-days: 30
 
   ndk-llvm:
     needs: resolve
