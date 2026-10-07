@@ -42,6 +42,17 @@ ANDROID_NDK_ROOT="$(cd "$TC_DIR/../../../../.." && pwd)"
 export ANDROID_NDK_ROOT
 echo "[git] NDK root = $ANDROID_NDK_ROOT"
 
+echo "[git] 诊断：TC=$TC"
+echo "[git] 诊断：PATH 含 TC ? $(case ":$PATH:" in *":$TC:"*) echo 是;; *) echo 否;; esac)"
+if command -v aarch64-linux-android23-clang >/dev/null 2>&1; then
+  echo "[git] 诊断：裸名可解析 → $(command -v aarch64-linux-android23-clang)"
+else
+  echo "[git] 诊断：裸名**不可解析** → 报错 127 就是这个原因"
+  ls "$TC"/aarch64-linux-android23-clang 2>&1 | sed "s/^/[git] 诊断：  /"
+fi
+echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
+grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
+grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
 echo "[git] 编静态依赖库（build-shared-deps.sh）"
 DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/build-shared-deps.sh"
 echo "[git] curl 库就位（静态）"
@@ -75,17 +86,6 @@ fi
 export RANLIB="$TC/llvm-ranlib"
 
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$ROOT_DIR/work/deps OPENSSLDIR=$ROOT_DIR/work/deps uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
-echo "[git] 诊断：TC=$TC"
-echo "[git] 诊断：PATH 含 TC ? $(case ":$PATH:" in *":$TC:"*) echo 是;; *) echo 否;; esac)"
-if command -v aarch64-linux-android23-clang >/dev/null 2>&1; then
-  echo "[git] 诊断：裸名可解析 → $(command -v aarch64-linux-android23-clang)"
-else
-  echo "[git] 诊断：裸名**不可解析** → 报错 127 就是这个原因"
-  ls "$TC"/aarch64-linux-android23-clang 2>&1 | sed "s/^/[git] 诊断：  /"
-fi
-echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
-grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
-grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$ROOT_DIR/work/deps/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$ROOT_DIR/work/deps/include" LDFLAGS="-L$ROOT_DIR/work/deps/lib" all; then
   echo "::error title=make 失败::见上"
