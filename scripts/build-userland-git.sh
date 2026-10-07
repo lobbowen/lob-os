@@ -37,10 +37,9 @@ export CC="$TC_DIR/aarch64-linux-android$ANDROID_API-clang"
 echo "[git] 编译 API = $ANDROID_API（$CC）"
 AR_BIN=${AR_BIN:-$TC_DIR/llvm-ar}
 RANLIB_BIN=${RANLIB_BIN:-$TC_DIR/llvm-ranlib}
-export ANDROID_NDK_ROOT="${ANDROID_NDK_LATEST_HOME:-}"
-if [ -z "$ANDROID_NDK_ROOT" ]; then
-  ANDROID_NDK_ROOT=$(cd "$TC_DIR/../../../../.." && pwd)
-fi
+ANDROID_NDK_ROOT="$(cd "$TC_DIR/../../../../.." && pwd)"
+[ -d "$ANDROID_NDK_ROOT" ] || { echo "[git] 从 CC 反推 NDK root 失败：$ANDROID_NDK_ROOT 不是目录"; exit 1; }
+export ANDROID_NDK_ROOT
 echo "[git] NDK root = $ANDROID_NDK_ROOT"
 
 echo "[git] 编静态依赖库（build-shared-deps.sh）"

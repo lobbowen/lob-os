@@ -47,7 +47,10 @@ bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin openssl "$ROOT_DIR/work/openssl.t
 rm -rf "$ROOT_DIR/work/openssl" && mkdir -p "$ROOT_DIR/work/openssl"
 tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$ROOT_DIR/work/openssl" --strip-components=1
 export ANDROID_API
-NDK_ROOT="${ANDROID_NDK_ROOT:-${ANDROID_NDK_HOME:-$(cd "$TC/../../../../.." && pwd)}}"
+NDK_ROOT="$(cd "$TC/../../../../.." && pwd)"
+[ -d "$NDK_ROOT" ] || die "定位 NDK 失败" \
+  "从 CC 反推：$TC/../../../../.. 得到 '$NDK_ROOT'，它不是目录" \
+  "CC=$CC —— 它由 CI 的 scripts/locate-ndk.sh 注入。"
 export ANDROID_NDK_HOME="$NDK_ROOT" ANDROID_NDK_ROOT="$NDK_ROOT"
 export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --time-base)"
 (
