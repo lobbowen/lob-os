@@ -155,7 +155,7 @@ export CC_aarch64_linux_android="$CC" CXX_aarch64_linux_android="$CC" AR_aarch64
 if cargo install --locked --version 14.1.1 ripgrep --target aarch64-linux-android --root /tmp/rgbin --no-track > /tmp/rg-build.log 2>&1; then
   cp -f /tmp/rgbin/bin/rg "$J/liblobosrg.so"
 else
-  tail -30 /tmp/rg-build.log
+  [ -f /tmp/rg-build.log ] && tail -30 /tmp/rg-build.log || echo "  （/tmp/rg-build.log 不存在）"
 fi
 if ! check_so "$J/liblobosrg.so" 300000; then
   echo "::error title=必需件缺失::liblobosrg.so 未产出 —— glob/grep 依赖 $PREFIX/bin/rg，无回退路径"

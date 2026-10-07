@@ -97,12 +97,21 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
          grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true
          echo "--- build.log 末 40 行 ---"; tail -40 "$WORK/build.log"
          echo "--- CMake 检出的关键变量（决定条件编译分支的依据）---"
-         grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$WORK/configure.log" 2>/dev/null | head -12 \
-           || echo "  configure.log 里没有这些 —— 它们可能由 CMakeLists 直接写入 cache"
-         grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$BUILD/CMakeCache.txt" 2>/dev/null | head -12 \
-           || echo "  CMakeCache.txt 里也没有"
+         for f in "$WORK/configure.log" "$BUILD/CMakeCache.txt"; do
+           if [ -f "$f" ]; then
+             HIT="$(grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$f" 2>/dev/null | head -12 || true)"
+             if [ -n "$HIT" ]; then
+               echo "  [$f]"; echo "$HIT" | sed 's/^/    /'
+             else
+               echo "  [$f] 里没有这些 —— 它们可能由 CMakeLists 直接写入 cache，或由检测结果推导"
+             fi
+           else
+             echo "  [$f] 不存在"
+           fi
+         done
          echo "--- 实际用的编译命令（取 core.c 那一条）---"
-         grep -m1 -oE '(/usr[^ ]*)?clang[^ ]* .*core\.c[^ ]*' "$WORK/build.log" 2>/dev/null | head -c 500
+         CMD="$(grep -m1 -oE '[^ ]*clang[^ ]* .*core\.c[^ ]*' "$WORK/build.log" 2>/dev/null | head -c 500 || true)"
+         if [ -n "$CMD" ]; then echo "$CMD"; else echo "  build.log 里没有 core.c 的命令行（gmake 默认不打完整命令，加 VERBOSE=1 再看）"; fi
          exit 1; }
   cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
     || { echo "=== cmake install 失败取证（末 40 行）==="; tail -40 "$WORK/install.log"; exit 1; }

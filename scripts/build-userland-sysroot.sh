@@ -157,7 +157,7 @@ if "$CC" --sysroot="$STAGE/sysroot" -c "$PROBE/probe.c" -o "$PROBE/probe.o" 2>"$
   fi
 else
   echo "::error title=sysroot 编不出东西::clang --sysroot=$STAGE/sysroot 编译失败（末 20 行）："
-  tail -20 "$PROBE/err.log"
+  if [ -f "$PROBE/err.log" ]; then tail -20 "$PROBE/err.log"; else echo "  （$PROBE/err.log 不存在）"; fi
   echo "  CC=$CC"
   if [ "$RT_MISSING" -eq 1 ]; then
     echo "  若报 __aeabi_* / 找不到内建函数：libclang_rt 没进 sysroot，且 clang 也没在自己的 runtime 目录里找到它。"

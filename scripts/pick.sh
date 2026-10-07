@@ -61,7 +61,7 @@ if [ "$ambiguity" = last ] || [ "${count:-1}" -gt 1 ]; then
       {
         echo "::error title=pick($label)::多命中且内容不同（$count 条里至少 2 个摘要），无法判定该取哪个"
         echo "  cmd: find ${args[*]}"
-        head -10 "$sumfile"
+        head -10 "$sumfile" 2>/dev/null || echo "  （$sumfile 读不出来）"
       } >&2
       exit 1
     fi
