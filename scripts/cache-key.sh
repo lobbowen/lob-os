@@ -37,12 +37,23 @@ deps_for() {
     sysroot)     echo "" ;;
     node|npm|pnpm) echo "" ;;
     llvmtoolchain) echo "llvm" ;;
+    bash|rg|busybox) echo "build-apk-only" ;;
+    *) die ;;
+  esac
+}
+
+bucket_for() {
+  case "$1" in
+    llvmtoolchain|sysroot|make|cmake|pkg-config) echo "base" ;;
+    bash|rg|busybox|jq|curl)                     echo "base" ;;
+    node|python3)                                echo "rt" ;;
+    git|sqlite3|npm|pnpm)                        echo "tool" ;;
     *) die ;;
   esac
 }
 
 die() {
-  echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补一条 deps_for，否则缓存 key 算不准"
+  echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补 deps_for 与 bucket_for"
   exit 1
 }
 
@@ -73,11 +84,18 @@ API=23
 RUN_OS="${RUN_OS:-Linux}"
 RUN_ARCH="${RUN_ARCH:-X64}"
 
+if [ "$DEPS" = "build-apk-only" ]; then
+  echo "::error title=该件不在这条链上::$TOOL 由 build-apk.yml 编（APK 内置 + OTA 补丁），"
+  echo "::error::不在 build-userland 矩阵里 —— 要给它算预制品 key 得先在 build-apk 那边接上。"
+  exit 1
+fi
+
 DEPS_STR="$VER-ndk$NDK-api$API"
+BUCKET="$(bucket_for "$TOOL")"
 
 case "$KIND" in
   tag)
-    echo "userland-$TOOL"
+    echo "$BUCKET-$TOOL"
     ;;
   asset)
     SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"

@@ -1,17 +1,32 @@
-# userland —— L1/L2 工具链件
+# userland —— 分发链上的件
 
-程序自己用的工具。当前 6 件，全部已上架 CDN。
+程序自己用的东西。**哪些件走商店、哪些是底座，以
+`docs/ENV-EXECUTION-PLAN.md` 的「2.3.1 三筐总表」为准**（分类的唯一真相）。
+本文件只描述每一件**怎么编、怎么发**。
 
 ## 当前清单
 
-| 件 | 版本 | 入口 | 上游 |
-|---|---|---|---|
-| curl | 8.22.0 | `bin/curl` | curl.se（链 zlib 1.3.2 + openssl 3.6.3） |
-| git | 2.55.0 | `bin/git` | kernel.org（链 zlib + openssl + curl） |
-| jq | 1.8.2 | `bin/jq` | jqlang/jq（oniguruma 已静态链入） |
-| sqlite3 | 3530400 | `bin/sqlite3` | sqlite.org amalgamation |
-| npm | 11.19.0 | `bin/npm-cli.js` | 需 node（**声明 `requires: ["node"]`**） |
-| pnpm | 12.7.0 | `bin/pnpm` | 需 node（同上） |
+| 件 | 版本 | 入口 | 上游 | 筐 |
+|---|---|---|---|---|
+| node | 24.21.0 | `bin/node` | nodejs.org | 运行时 |
+| python3 | 3.14.8 | `bin/python3` | python.org | 运行时 |
+| git | 2.55.0 | `bin/git` | kernel.org（链 zlib + openssl + curl） | 工具 |
+| sqlite3 | 3530400 | `bin/sqlite3` | sqlite.org amalgamation | 工具 |
+| npm | 11.19.0 | `bin/npm-cli.js` | 需 node | 工具 |
+| pnpm | 12.7.0 | `bin/pnpm` | 需 node | 工具 |
+| llvmtoolchain | 21.1.0 | `bin/clang` | 交叉编译 LLVM | 底座·基础环境 |
+| make | 4.4.1 | `bin/make` | GNU | 底座·基础环境 |
+| cmake | 4.4.4 | `bin/cmake` | cmake.org | 底座·基础环境 |
+| pkg-config | 3.0.7 | `bin/pkg-config` | freedesktop | 底座·基础环境 |
+| sysroot | — | `bin/sysroot` | NDK 自带 | 底座·基础环境 |
+| jq | 1.8.2 | `bin/jq` | jqlang/jq（oniguruma 静态链入） | 底座·基础命令 |
+| curl | 8.22.0 | `bin/curl` | curl.se（链 zlib 1.3.2 + openssl 3.6.3） | 底座·基础命令 |
+
+底座的 `libssl`/`libcrypto`/`libz`/`libcurl` 由 `build-base-libs.sh` 编成 `.so`，
+不作为独立件进商店清单。
+
+**底座那批目前仍在 `build-userland.yml` 里编**，尚未迁到 APK 内置 + OTA 链 ——
+那是**链路归属**问题，与分类无关，另议。
 
 ## 版本真相
 

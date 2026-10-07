@@ -41,24 +41,28 @@
 
 ### 2.1 底座件（`usr/bin`）
 
+**底座 = 系统必备的基础能力**，不管用户选不选都得有；**且不能依赖运行时**
+（依赖运行时的进不了底座 —— 进底座意味着硬装，而它需要的运行时可能还没装）。
+
 | 件 | 现状 | 动作 |
 |---|---|---|
 | `bash` | ✅ 自编 `libbash.so` | 保持 |
 | `rg` | ✅ 自编 `liblobosrg.so` | 保持 |
 | `busybox` | ❌ | **新增**（依赖 `libz`） |
-| `jq` | ✅ 商店件（判据、sha256、升级路径齐备） | **保持商店**（原写「升入底座」，核实后撤回，见下） |
-| `node` `npm` `npx` `pnpm` `curl` `git` `sqlite3` | ✅ 商店 | 保持（改动态链） |
+| `jq` | ✅ 商店件 | **升入底座**（见下） |
+| `curl` | ✅ 商店 | **升入底座**（见下） |
 
-**关于 jq 曾写「升入底座」——撤回。** 逐条核实三条判据，全部不成立：
+**jq 与 curl 升入底座 —— 这一条推翻了本计划早先的判断。**
 
-1. 「几乎每个程序都会碰」？不是。只有处理 JSON 的程序才碰它。
-2. 「缺了会静默出错」？不会。缺 jq 会明确报 `command not found`。
-3. 「用户能自己装」？能，且商店通道已经把它做成一件完整件
-   （`userland-verify.json` 里有判据、清单里有 sha256、能独立升级）。
+早先写过「jq 保持商店」，理由是「缺了会响亮地报错、不算基础设施」。
+那条判断是**按「缺了会不会静默出错」**推的，而正确的判据不是这个 ——
+底座的判据是「**它是不是这个系统必备的基础能力**」，jq 与 curl 都在
+整个工作流里长期使用，不是「用户有需求才装」的选项。
 
-底座的判据是「基础设施——缺了**静默**出错」。jq 缺了是**响亮**地缺。
-把可响亮失败的能力塞进底座，是拿「完整」当借口扩大底座 —— 那会让底座
-越来越难更新、每一件都变成「不能动」。
+（工具类是另一回事：`git`、`sqlite3` 属于「用户有需求装、没有就不装」，
+所以留在商店。）
+
+**本节早先把 curl 列为商店件，一并更正为底座。**
 
 ### 2.2 底座库（`usr/lib`）
 
@@ -75,12 +79,40 @@
 不进：`libstdc++.so.6`（Bionic ABI）· 自编 `linker64` · `libpthread`
 · `libonig`（jq 的 vendored oniguruma 静态进去即可）
 
+**openssl（`libssl` + `libcrypto`）进底座** —— 它是 curl/git/jq 长期用的基础能力，
+且不依赖任何运行时。注意它**不是独立商店件**：`build-base-libs.sh` 一轮编出
+这批 `.so`（zlib / openssl / curl 同一批），随 APK 内置、走 OTA 补丁，
+不进商店清单。
+
 ### 2.3 开发环境（`usr/lib/toolchain`）
 
 必备：clang · lld · binutils（`as` `ld` `ar` `nm` `strip` `objdump` `readelf`）·
-make · cmake · **sysroot**（头文件 + 静态库）· python3 · pkg-config
+make · cmake · **sysroot**（头文件 + 静态库）· pkg-config
 
 `usr/include/` → sysroot 软链
+
+**python3 不在开发环境里 —— 它是运行时**（见 2.3.1）。
+它早先被列在这里，是因为「编 python3 要用宿主 python 跑构建脚本」；
+但那是**构建期借用宿主工具**，不是件之间的关系。
+
+### 2.3.1 三筐总表（分类的唯一真相）
+
+判据只有两条：
+
+1. **底座 = 系统必备的基础能力**，不管用户选不选都得有
+2. **底座的件不能依赖运行时** —— 依赖运行时的进不了底座
+   （进底座意味着硬装，而它需要的运行时可能还没装）
+
+| 筐 | 件 |
+|---|---|
+| **底座 · 基础环境**<br>`usr/lib/toolchain` | `llvmtoolchain`（clang · lld · binutils）· `sysroot` · `make` · `cmake` · `pkg-config` |
+| **底座 · 基础命令**<br>`usr/bin` | `bash` · `rg` · `busybox` · `jq` · `curl` |
+| **底座 · 基础库**<br>`usr/lib` | `libc++_shared` · `libssl` + `libcrypto`（openssl）· `libz` · `libcurl` |
+| **运行时**（本身是环境，商店分发） | `node` · `python3` |
+| **工具**（用户可选装，商店分发） | `git` · `sqlite3` · `npm`（依赖 node）· `pnpm`（依赖 node） |
+
+**依赖关系只用来判「能不能进底座」，不用来决定安装顺序。**
+安装顺序是另一件事（按依赖执行），但**打包始终是分开的一个件一个包**。
 
 ### 2.4 数据
 
@@ -217,7 +249,7 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
               ↓
 第 5 阶段  busybox 进底座（依赖第 0 阶段的 libz）
               ↓
-第 6 阶段  ~~jq 升入底座~~ → **取消**（核实后判定 jq 是商店件，见 2.1）
+第 6 阶段  jq 升入底座 → **已定**（jq 是必备基础能力，见 2.1）
               ↓
 第 7 阶段  数据：zoneinfo / locale
               │  状态：**已撤回**（核实后判定是假需求）——
@@ -260,7 +292,7 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
 | 3 | — | `isatty()` 为真、行编辑、窗口大小 |
 | 4 | — | **不配对 ADB 也能执行命令** |
 | 5 | `tar gzip grep sed awk ls cp mv vi` | 找得到基础命令 |
-| 6 | ~~`jq` 全局可用~~ → 取消（商店件，用户自己装） | — |
+| 6 | `jq` 全局可用 | 底座必备，不用用户装 |
 | 7 | 时间与 locale 正确 | 本地时间正确、locale 不静默降级 |
 | 8 | 底座件能打补丁，不换 APK | — |
 | 9 | **在设备上有终端** | — |
@@ -460,7 +492,7 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 | 3 PTY | ✅ | `11fcf8d` |
 | 4 shell.exec 改本地 | ✅ | `11fcf8d` |
 | 5 busybox | ✅ | `c78fa1d` |
-| 6 jq 升底座 | ↩️ 撤回 | — |
+| 6 jq 升底座 | ✅ 已定（curl 一并升入） | 本轮 |
 | 7 zoneinfo/locale | ↩️ 撤回，改记 TZ 缺口 | `af8e4f3` |
 | 8 底座件版本化+OTA+回滚 | ✅ | `dc64173` |
 | 9 内置终端窗口 | ✅ | `d1ac5b1` |

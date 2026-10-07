@@ -43,7 +43,7 @@ jobs:
 
       - name: Release tag（件名，不含版本，且与其余 userland 件同一套命名）
         id: rel
-        run: echo "tag=userland-node" >> "$GITHUB_OUTPUT"
+        run: echo "tag=$(bash scripts/cache-key.sh tag node)" >> "$GITHUB_OUTPUT"
 
       - name: 已发布就复用（不重编）
         id: reuse
