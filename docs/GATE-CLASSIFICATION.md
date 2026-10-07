@@ -974,3 +974,77 @@ TB_LIST=$(ls "$NATIVE_DIR" 2>/dev/null | tr '\n' ' ')   # ls 失败 → 返回 1
 cmake 失败分支里的裸 grep），而我是在自己新写的这一行上犯的。
 所以凡是「失败分支里要打印东西」的代码，写完必须单独验一次
 「所有输入都缺失时还能不能打出来」。
+
+### 补记：`patches/` 下的 vendored 文件不该被剥注释
+
+`comment-gate` 的 `SKIP_DIRS` 里加了 `patches`：
+
+```js
+const SKIP_DIRS = new Set(['node_modules', '.git', '.gradle', 'build',
+                           'dist', '.cache', 'docs', 'patches']);
+```
+
+理由：`patches/cmake-cmlibarchive-contrib/android_lf.h` 是**从 libarchive
+上游原样取来**的（sha256 记在同目录 `SHA256`），注释是上游的一部分，
+剥掉就等于篡改了 vendored 内容。门禁的纪律是「我们写的代码不许留解释性注释」，
+不适用于「原样引用的第三方文件」。
+
+这类文件靠 `SHA256` 管住完整性 —— 配方里 `sha256sum -c` 校验不过就判红，
+所以「原样」这件事有机制保证，不靠注释门禁。
+
+---
+
+## 第十九条：CMake 内嵌的第三方子工程，上游有的东西它不一定带
+
+### 现象与根因
+
+libuv 的四处修好后，错误换到 `cmlibarchive`：
+
+```
+Utilities/cmlibarchive/libarchive/archive.h:121:10: fatal error:
+  'android_lf.h' file not found
+```
+
+`archive.h:120-122`：
+
+```c
+#if defined(__LIBARCHIVE_BUILD) && defined(__ANDROID__)
+#include "android_lf.h"
+#endif
+```
+
+而 `Utilities/cmlibarchive/CMakeLists.txt:8-10`（**原样搬自 libarchive 上游**）：
+
+```cmake
+PROJECT(libarchive C)          # ← 第 7 行，于是 PROJECT_SOURCE_DIR = Utilities/cmlibarchive
+if (ANDROID)
+  include_directories(${PROJECT_SOURCE_DIR}/contrib/android/include)
+endif()
+```
+
+**CMake 只搬了 `cmlibarchive/libarchive/` 这一个子目录，没带 `contrib/`。**
+用 GitHub tree API 查 CMake v4.4.4 全树确认：树里没有任何 `contrib/android/*`。
+
+而 `android_lf.h` 在 libarchive 上游是有的：
+
+```
+contrib/android/include/android_lf.h     （libarchive/libarchive master）
+```
+
+### 修法
+
+把上游那个文件放进 `patches/cmake-cmlibarchive-contrib/`，带 `SHA256`，
+配方里 `sha256sum -c` 校验后拷到
+`$SRC/Utilities/cmlibarchive/contrib/android/include/`，
+那行 `include_directories` 就自然成立 —— **不改 CMakeLists，不打补丁**。
+
+三个分支验过：文件缺（报错退出）、sha256 不符（报错退出）、正常（拷贝并继续）。
+
+### 判据纪律
+
+1. **上游的 `contrib/` / `extra/` 这类附加目录，vendor 时常被漏掉。**
+   内嵌子工程的 CMakeLists 仍按上游的路径去找文件，找不到就是硬失败。
+2. **先查上游有没有那个文件**（tree API），再决定是补文件还是改判断 ——
+   改判断（像 libuv 那样）是最后手段，因为语义可能变。
+3. **vendored 文件进 `patches/`，同时把它加进 `SKIP_DIRS`，
+   完整性交给 sha256 而不是注释门禁。**

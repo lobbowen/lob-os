@@ -65,6 +65,17 @@ if ! patch -p1 -d "$SRC" -i "$PATCH_FILE"; then
 fi
 note "libuv 补丁已打（Android 上关掉 CPU affinity）"
 
+LF_SRC="$ROOT_DIR/patches/cmake-cmlibarchive-contrib"
+[ -f "$LF_SRC/android_lf.h" ] || die "缺 android_lf.h" \
+  "$LF_SRC/android_lf.h 不存在 —— 没有它 cmake 会编不过（libarchive/archive.h:121）。该文件取自 libarchive 上游 contrib/android/include/，sha256 见同目录 SHA256"
+if command -v sha256sum >/dev/null 2>&1; then
+  ( cd "$LF_SRC" && sha256sum -c SHA256 >/dev/null 2>&1 ) \
+    || die "android_lf.h 校验失败" "$LF_SRC/SHA256 与实际内容不符 —— 改了补丁目录里的文件就要更新 SHA256"
+fi
+mkdir -p "$SRC/Utilities/cmlibarchive/contrib/android/include"
+cp -f "$LF_SRC/android_lf.h" "$SRC/Utilities/cmlibarchive/contrib/android/include/android_lf.h"
+note "android_lf.h 已就位 —— CMake 只搬了 cmlibarchive/libarchive 子目录、没带 contrib/，但它 CMakeLists（原样搬自 libarchive 上游）第 8-10 行写着 include_directories(${PROJECT_SOURCE_DIR}/contrib/android/include)，而 archive.h:121 在 __ANDROID__ 时要 include 它。补上那行 include 才成立。"
+
 BUILD="$WORK/build"
 INST="$WORK/_inst"
 rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"

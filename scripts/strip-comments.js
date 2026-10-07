@@ -5,7 +5,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 
-const SKIP_DIRS = new Set(['node_modules', '.git', '.gradle', 'build', 'dist', '.cache', 'docs']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.gradle', 'build', 'dist', '.cache', 'docs', 'patches']);
 const SKIP_FILES = new Set(['gradlew', 'gradlew.bat', 'package-lock.json']);
 const NAME_LANGS = { '.gitignore': 'gitignore', file_contexts: 'hash' };
 const GENERATED_REPORTS = new Set(['brand-scan-report.txt', 'debt-gate-report.txt']);
