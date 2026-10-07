@@ -20,11 +20,15 @@ die() {
 
 WANT_NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk)"
 
-NDK=""
-if [ -n "${CC:-}" ]; then
-  TC="$(dirname "$CC")"
-  NDK="$(cd "$TC/../../../../.." && pwd 2>/dev/null || true)"
-fi
+[ -n "${CC:-}" ] || die "缺 CC" \
+  "需要 NDK 的 clang 来编探针、验证这个 sysroot 真能编东西。CC 由 CI 的 locate-ndk.sh 注入；本机跑请先 export CC=<.../bin/aarch64-linux-android35-clang>"
+TC="$(dirname "$CC")"
+NDK="$(cd "$TC/../../../../.." && pwd 2>/dev/null || true)"
+LLVM_READELF="${LLVM_READELF:-$TC/llvm-readelf}"
+[ -f "$LLVM_READELF" ] || die "缺 llvm-readelf" \
+  "$LLVM_READELF 不存在 —— 它由 CI 的 locate-ndk.sh 注入，本机跑请一并 export"
+WORK="$ROOT_DIR/work/$TOOL"
+mkdir -p "$WORK"
 if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   die "拿不到 NDK" \
     "本脚本从 CC 反推 NDK 根目录（<ndk>/toolchains/llvm/prebuilt/<host>/bin 往上 5 层）。" \
@@ -113,15 +117,34 @@ if [ ! -e "$STAGE/sysroot/lib/libc.so" ]; then
   echo "[miss] lib/libc.so —— 链接任何程序都会失败（'cannot find -lc'）"; fail=1
 fi
 if ! ls "$STAGE/sysroot"/lib/libclang_rt*.a >/dev/null 2>&1; then
-  echo "[miss] lib/libclang_rt*.a —— 编任何东西都要它（内建函数如 __aeabi_uldivmod）"
-  echo "== NDK 里 libclang_rt 到底在哪 =="
-  echo "  API 层 $APILIB：$(ls "$APILIB" 2>/dev/null | grep -c clang_rt) 个匹配"
-  echo "  triple 层 $LIBDIR：$(ls "$LIBDIR" 2>/dev/null | grep -c clang_rt) 个匹配"
-  echo "  NDK 根 $NDK：$(find "$NDK" -name 'libclang_rt*' -type f 2>/dev/null | head -5 | tr '\n' ' ')"
-  echo "  说明：NDK 从 r23 起把 libclang_rt.builtins 拆到 sysroot 之外；具体落位随版本变，别凭印象填路径。"
+  echo "[miss] lib/libclang_rt*.a —— 内建函数（__aeabi_uldivmod 等）由它提供"
+  echo "  NDK 里它的真实落位：$(find "$NDK" -name 'libclang_rt.builtins*' -type f 2>/dev/null | head -2 | tr '\n' ' ')"
+  echo "  clang 的 runtime 目录：$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux 2>/dev/null | head -1)"
   fail=1
 fi
 [ "$fail" -eq 0 ] || die "sysroot 不完整" "上面 miss 的几件是编译的硬依赖，产出半个 sysroot 比不产出更坏"
+
+echo "[sysroot] 真编一次（判据要测行为，不查文件在不在）"
+PROBE="$WORK/probe"
+mkdir -p "$PROBE"
+cat > "$PROBE/probe.c" <<'PROBE_C'
+unsigned long long probe_div(unsigned long long a, unsigned long long b) { return a / b; }
+double probe_fdiv(double a, double b) { return a / b; }
+PROBE_C
+if "$CC" --sysroot="$STAGE/sysroot" -c "$PROBE/probe.c" -o "$PROBE/probe.o" 2>"$PROBE/err.log"; then
+  echo "[ok] clang --sysroot 指到本件后，能编出 .o（内建函数已解决）"
+  if "$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -q 'AArch64'; then
+    echo "[ok] 产物是 AArch64（不是宿主 x86_64）"
+  else
+    echo "[miss] 产物不是 AArch64：$("$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -i machine | head -1)"
+    exit 1
+  fi
+else
+  echo "::error title=sysroot 编不出东西::clang --sysroot=$STAGE/sysroot 编译失败（末 20 行）："
+  tail -20 "$PROBE/err.log"
+  echo "  CC=$CC"
+  exit 1
+fi
 
 TREE_KB=$(du -sk "$STAGE/sysroot" | cut -f1)
 N_FILES=$(find "$STAGE/sysroot" -type f | wc -l)
