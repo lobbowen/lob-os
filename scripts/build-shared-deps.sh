@@ -102,6 +102,7 @@ export LIBS="-lssl -lcrypto -lz -ldl"
   make -j"$JOBS" -C lib > "$ROOT_DIR/work/deps-curl-build.log" 2>&1 \
     || { echo "=== curl 编译失败取证（末 30 行）==="; tail -30 "$ROOT_DIR/work/deps-curl-build.log"; exit 1; }
   make -C lib install >/dev/null
+  make -C include install >/dev/null
 )
 [ -f "$DEPS/lib/libcurl.a" ] || die "curl 没产出 libcurl.a" "$DEPS/lib 下没有它"
 [ -f "$DEPS/include/curl/curl.h" ] || die "curl 头文件没装上" "git 会编不过 http.c"

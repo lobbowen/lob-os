@@ -62,6 +62,7 @@ done
 export CC
 TC=$(dirname "$CC")
 export AR="$TC/llvm-ar"
+export PATH="$TC:$PATH"
 
 IMAP_LINES=$(grep -c '^PROGRAM_OBJS += imap-send[.]o' Makefile || true)
 if [ "$IMAP_LINES" != "0" ]; then
