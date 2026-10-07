@@ -69,3 +69,27 @@
  # include <sched.h>
  # define uv__cpu_set_t cpu_set_t
  #elif defined(__FreeBSD__)
+--- a/Utilities/cmlibuv/CMakeLists.txt
++++ b/Utilities/cmlibuv/CMakeLists.txt
+@@ -199,6 +199,21 @@
+     )
+ endif()
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "Android")
++  list(APPEND uv_libraries dl)
++  list(APPEND uv_headers
++    include/uv/linux.h
++    )
++  list(APPEND uv_defines _GNU_SOURCE)
++  list(APPEND uv_sources
++    src/unix/linux.c
++    src/unix/procfs-exepath.c
++    src/unix/proctitle.c
++    src/unix/sysinfo-loadavg.c
++    src/unix/sysinfo-memory.c
++    )
++endif()
++
+ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+   list(APPEND uv_libraries dl rt)
+   list(APPEND uv_headers

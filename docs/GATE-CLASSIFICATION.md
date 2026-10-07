@@ -882,3 +882,44 @@ grep。结果一次给出 4 个文件：
    我这次先看了 `core.c`、看了 `thread.c` 的部分行，就是没做全扫。
 3. **「改完第一处就提交」在这里是错的节奏。** 前两次丢芝麻（busybox、
    sysroot 探针顺序）和这次是同一个模式的不同表现。
+
+### 补记：修完 8 处后又冒出第四类问题，且根因在上游 CMakeLists
+
+8 处 affinity 全修好后，`thread.c:969: error: call to undeclared function
+'pthread_getname_np'`。这一条与 affinity 无关，是**另一个原因**。
+
+Bionic 的声明是有条件的：
+
+```c
+#if defined(__USE_GNU) && __BIONIC_AVAILABILITY_GUARD(26)
+int pthread_getname_np(pthread_t, char*, size_t) __INTRODUCED_IN(26);
+#endif
+```
+
+API 35 满足后半条，缺的是 `__USE_GNU`，即 `_GNU_SOURCE`。
+
+而 CMake 4.4.4 内嵌的 `Utilities/cmlibuv/CMakeLists.txt`（343 行）里：
+
+```cmake
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")     ← 严格等于，Android 不匹配
+  list(APPEND uv_defines _GNU_SOURCE)
+  list(APPEND uv_sources src/unix/linux.c ...)
+endif()
+```
+
+**没有 Android 分支。** 于是 Android 上这个分支不进：`_GNU_SOURCE` 没加、
+`src/unix/linux.c` 没进编译。
+
+对比两份文件就一目了然：
+
+| 文件 | 行数 | Android 分支 |
+|---|---|---|
+| CMake 4.4.4 内嵌 `Utilities/cmlibuv/CMakeLists.txt` | 343 | **无** |
+| libuv 上游 v1.x `CMakeLists.txt` | 920 | 有 |
+
+**我一开始读错了文件** —— 前面查「Android 分支在第 273 行」时读的是
+libuv 上游那份，不是 CMake 内嵌的裁剪版。两份同名不同内容，
+这是本次的真实陷阱。
+
+现在补丁覆盖 5 个文件 8 个 hunk（4 个源文件 7 处 + CMakeLists 1 处，
+新增的 Android 分支照上游 v1.x 的写法，含 `_GNU_SOURCE` 与 `linux.c`/`linux.h`）。
