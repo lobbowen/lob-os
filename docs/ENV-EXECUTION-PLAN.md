@@ -1552,3 +1552,49 @@ VANILLA_ICE_CREAM   = 35   Android 15   ← master 分支里最高的真实常�
 本来正确的 5 件的周边逻辑。
 
 **唯一奏效的动作是同一个：让失败把原因说出来。**
+
+---
+
+## 二十、静态化是错的（方向性更正）
+
+`make` 编出来之后卡在形状门：
+
+```
+[make] 入口 ELF 64-bit LSB executable, ARM aarch64, statically linked, stripped
+::error 产物是静态件 —— 容器 Linux 语义层（LD_PRELOAD）对静态件失效
+```
+
+我第一反应是「形状门的动态要求不适用于工具件」，即**想把门改掉**。
+这是错的 —— **该改的是静态化**。
+
+### 为什么静态化不对（用户指出，展开成可判据的三点）
+
+1. **静态件不能被 dlopen**。工具件「全局可用」意味着程序可能按需加载它；
+   静态化就断了这条路。
+2. **静态化把依赖烧进产物**。升级 `libz` / `openssl` 时，静态件**不会**跟着更新 ——
+   而动态件只要换 `.so` 就生效。**底座件走 OTA 更新，这一点直接相关**：
+   静态化会让「更新一个库」变成「重新编译并重新分发所有依赖它的工具」。
+3. **标准发行版都是动态的**。Debian / Fedora 的 make、cmake、python3 无一例外。
+
+### 核实：只有两个配方真的静态
+
+```
+配方              configure 开关              LDFLAGS          形状门
+jq                --disable-shared+static    （无）          ✔ 动态通过
+make              --disable-shared+static    -static         ✘ 静态被判红
+pkg-config        --disable-shared+static    -static         ✘ 静态被判红
+其余 7 件          （未传 LDFLAGS）              （无）
+```
+
+`--disable-shared --enable-static` 只决定「编不编 `libmake.so`」这类**库产物**，
+与可执行文件是否静态链接无关 —— 那是 `LDFLAGS=-static` 干的。
+
+**所以 `make` / `pkg-config` 的 configure 开关本来就与 jq 相同，差别只在多传了一个
+`LDFLAGS=-static`。** 去掉那两个 `LDFLAGS`，两件就与 jq 完全一致。
+
+（`pkg-config` 的 `--disable-dlopen-self-static` 保留 —— 那是「不要自 dlopen 静态版」
+的开关，与链接方式无关。）
+
+**教训**：形状门判红时，先问「**是不是被测对象真的错了**」。
+我连续三轮的默认假设都是「判据错了、对象是对的」，而这次相反 —— 对象真错了。
+判据本身有道理（LD_PRELOAD 语义层确实只对动态件生效）。

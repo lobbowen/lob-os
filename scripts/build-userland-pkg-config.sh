@@ -66,7 +66,6 @@ rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
     --disable-dlopen --disable-dlopen-self --disable-dlopen-self-static \
     CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
     CFLAGS="-O2 -D__ANDROID_API__=$API" \
-    LDFLAGS="-static" \
     > "$WORK/configure.log" 2>&1 \
     || { echo "=== configure 失败取证（末 40 行）==="; tail -40 "$WORK/configure.log"; exit 1; }
 )
