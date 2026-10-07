@@ -19,6 +19,7 @@ on:
       - 'scripts/userland-verify.json'
       - 'scripts/node-versions.json'
       - 'scripts/read-node-versions.sh'
+      - 'patches/**'
       - 'components/userland/COMPONENT.md'
       - 'components/runtime/COMPONENT.md'
     tags:
@@ -30,6 +31,7 @@ on:
       - 'scripts/publish-native-manifest.js'
       - 'scripts/userland-sources.json'
       - 'scripts/userland-verify.json'
+      - 'patches/**'
   workflow_dispatch: {}
 
 concurrency:
