@@ -18,20 +18,26 @@ die() {
   exit 1
 }
 
-NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
-if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
-  NDK=$(ls -d "${ANDROID_HOME:-/nonexistent}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
-fi
-[ -n "$NDK" ] && [ -d "$NDK" ] || die "无 NDK" \
-  "要 sysroot 就得有 NDK（它就是 sysroot 的来源）。设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。"
-
 WANT_NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk)"
+
+NDK=""
+if [ -n "${CC:-}" ]; then
+  TC="$(dirname "$CC")"
+  NDK="$(cd "$TC/../../../../.." && pwd 2>/dev/null || true)"
+fi
+if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
+  die "拿不到 NDK" \
+    "本脚本从 CC 反推 NDK 根目录（<ndk>/toolchains/llvm/prebuilt/<host>/bin 往上 5 层）。" \
+    "CC=$CC —— 它由 CI 的 scripts/locate-ndk.sh 注入。本机跑请先 export CC=<那个 clang 的路径>。"
+fi
+
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
 if [ -z "$GOT_NDK" ]; then
   die "读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision —— 无法确认与 clang 同源"
 fi
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
-  die "NDK 版本与钉值不符" "要 $WANT_NDK（userland-sources.json 钉的，clang 件按它编），实际 $GOT_NDK"
+  die "NDK 版本与钉值不符" "要 $WANT_NDK（userland-sources.json 钉的，clang 件按它编），实际 $GOT_NDK（$NDK）" \
+    "它是从 CC=$CC 反推的 —— 若 CC 指向的不是钉值那一版，那是上游注入错了。"
 fi
 echo "[sysroot] NDK=$NDK 版本=$GOT_NDK（与钉值一致）"
 
