@@ -229,12 +229,11 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
              && gh release download "$TAG" --repo "${{ github.repository }}" \
-                  --pattern "$ASSET*" --dir dist >/dev/null 2>&1; then
+                  --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
+             && [ -f "dist/$ASSET" ]; then
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
-            if [ -f "dist/$ASSET" ]; then
-              mv "dist/$ASSET" "dist/userland-${{ matrix.tool }}.zip"
-              [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/userland-${{ matrix.tool }}.zip.sha256" || true
-            fi
+            mv "dist/$ASSET" "dist/userland-${{ matrix.tool }}.zip"
+            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/userland-${{ matrix.tool }}.zip.sha256" || true
             ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
