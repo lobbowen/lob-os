@@ -209,9 +209,29 @@ jobs:
           done
           echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
 
-      - name: 算缓存 key（本件依赖的源码钉值 + NDK + API → 源码变了缓存就失效）
+      - name: 算本件的「编译一次」标识
         id: uwkey
-        run: echo "key=$(bash scripts/cache-key.sh ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "key=$(bash scripts/cache-key.sh ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/cache-key.sh tag ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
+
+      - name: 已发布就复用（不重编）
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+             && gh release download "$TAG" --repo "${{ github.repository }}" \
+                  --pattern 'userland-*.tar.gz*' --dir dist >/dev/null 2>&1; then
+            echo "[ok] 预制品已存在，直接复用（tag=$TAG）"
+            ls -la dist/*.tar.gz* 2>/dev/null | sed 's/^/  /' || true
+            echo "hit=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[miss] 无可复用预制品（tag=$TAG）→ 本轮编译"
+            echo "hit=no" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: 恢复本件的编译中间产物（命中则增量编，不重跑 Configure）
         uses: actions/cache@v4
@@ -241,11 +261,54 @@ jobs:
             dist/userland-sysroot-*.zip
           key: ${{ steps.uwkey.outputs.key }}
 
-      - name: 产出 ${{ matrix.tool }} 件
+      - name: 产出 ${{ matrix.tool }} 件（仅在需要编时）
+        if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/build-userland-${{ matrix.tool }}.sh
 
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
         run: bash scripts/verify-userland-artifact.sh ${{ matrix.tool }}
+
+      - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="userland-${{ matrix.tool }}.tar.gz"
+          mkdir -p dist/pw
+          if ls dist/userland-${{ matrix.tool }}-*.zip >/dev/null 2>&1; then
+            tar czf "dist/pw/$ASSET" -C dist --exclude 'pw/*' --exclude '*.tar.gz' userland-${{ matrix.tool }}-*.zip
+          else
+            tar czf "dist/pw/$ASSET" -C dist --exclude 'pw/*' --exclude '*.tar.gz' .
+          fi
+          ( cd dist/pw && sha256sum "$ASSET" > "$ASSET.sha256" )
+          {
+            echo "预制品：${{ matrix.tool }}"
+            echo "Release tag：$TAG"
+            echo "NDK：$(bash scripts/fetch-pinned.sh --ndk)"
+            echo "NDK 内置 LLVM：$(bash scripts/fetch-pinned.sh --llvm)"
+            echo "API 级别：23"
+            echo "缓存 key：${{ steps.uwkey.outputs.key }}"
+            echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "## 这份预制品的编译依据"
+            echo ""
+            echo "下面这串是 cache-key.sh 算出来的，**含本件依赖的全部源码钉值**："
+            echo "改动其中任一版本（或补丁 sha）都会换 tag，从而自动重新编译一次；"
+            echo "没改动就直接复用本预制品。"
+            echo ""
+            echo '```'
+            echo "${{ steps.uwkey.outputs.key }}"
+            echo '```'
+          } > dist/pw/BUILD.md
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" \
+              --title "userland ${{ matrix.tool }} — $TAG" \
+              --notes "编译一次、长期复用的 ${{ matrix.tool }} 预制品。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
+          fi
+          gh release upload "$TAG" dist/pw/* --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已发布 $TAG"
 
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()

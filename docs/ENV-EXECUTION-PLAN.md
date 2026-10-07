@@ -1103,3 +1103,67 @@ make        work/$TOOL（=work/make）
    否则 git 与 curl 的中间产物会互相污染。
 5. **key 计算脚本要对未知件名判红**（`cache-key.sh` 现在会），
    否则新加的件会静默拿到一个不含它依赖的 key。
+
+---
+
+## 十六、预制品仓库：编过的件不再重编（照 node 已有的做法）
+
+### node 早就在这么做了，本轮才把同样的做法铺到其余各件
+
+`.github/workflows/node-runtime.yml` 里 node 运行时制品的做法是：
+
+```
+「已发布就复用（不重编）」：gh release view <tag> → 命中就 gh release download
+「发布制品到 Release」：  编译后 gh release upload --clobber
+```
+
+**这不是新发明，是把已验证可用的做法复制到其余 9 件上。**
+之前只有 node 有预制品仓，其余每轮都从零编。
+
+### 现在的 build job 流程
+
+```
+1. 算「编译一次」标识（key + tag）
+     tag = 本件依赖的源码钉值 + NDK + API + runner（字符受限，gh release 拒绝空格/分号）
+2. 已发布就复用（不重编）
+     gh release view <tag> 命中 → download 回来 → 跳过第 9 步
+3. （未命中）产出本件
+4. 件形态校验          ← 先验形态，再存
+5. 发布预制品到 Release ← 形态过了才存，不合格的不会被当成「可复用」
+6. 存回编译中间产物 / 打包 / 发布到对象存储
+```
+
+**tag 由依赖算出，所以升级语义是自动的**：
+升了任一依赖的源码版本（或 git 的补丁 sha）→ tag 变 → 自动重编一次；
+没升 → 直接复用。**不需要人去判断「这个件要不要重编」。**
+
+### 每份预制品都带一份 BUILD.md（这是「编译规范文档」的落点）
+
+存进 Release 的 `BUILD.md` 记录：
+
+```
+预制品：curl
+Release tag：uw-curl-curl-8.22.0openssl-3.6.3zlib-1.3.2-ndk30.0.16248370-api23-Linux-X64
+NDK：30.0.16248370
+NDK 内置 LLVM：21.0.0
+API 级别：23
+缓存 key：…
+构建 run：https://github.com/lobbowen/lob-os/actions/runs/<run_id>
+## 这份预制品的编译依据
+（那串含全部依赖版本的 key）
+```
+
+**下次升级时不必重新推断**「这份东西当初是怎么编的、用了哪个 NDK、
+哪些源码版本」—— 它随预制品一起被存下来了。
+
+### 这里踩的坑
+
+用脚本批量改 YAML 时，我两次把块插到了**错的 job** 里
+（`String.replace` 只替第一处，而「打包 + sha256」「产出 X 件」
+在node/build/ndk-llvm 三个 job 里各有一处）。
+
+**症状**：脚本报告「已插入」，但 `grep` 找不到 / 出现在别的 job 里。
+
+**判据**：改多 job 的 YAML，按**行号 + job 边界**定位，不要靠字符串首匹配；
+每次改完立刻 `grep -c` 复核落点。这与「缓存路径要对着实际 write 路径核」
+是同一条 —— **按命名/首匹配推断出来的位置，要复核**。
