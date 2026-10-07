@@ -11,7 +11,7 @@ object NativeAssetUpdater {
 
     private const val TAG = "NativeAssetUpdater"
     private const val MANIFEST_NAME = "native-manifest.json"
-    private const val PUB_PEM_ASSET = "supply/userland-public.pem"
+    private const val PUB_PEM_ASSET = "supply/component-public.pem"
     private const val MAX_MANIFEST_BYTES = SupplyProvisioner.MAX_MANIFEST_BYTES
 
     data class State(

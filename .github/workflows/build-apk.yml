@@ -99,7 +99,7 @@ jobs:
             ls -la "$J/libnode.so"
             exit 1
           fi
-          echo "[ok] jniLibs 无 libnode.so（node 由商店件供给）"
+          echo "[ok] jniLibs 无 libnode.so（node 由组件供给）"
 
       - name: 小件原生件（命中固化则取用，否则现场编译）
         run: |

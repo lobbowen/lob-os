@@ -5,7 +5,7 @@ die() { echo "::error title=源码钉值不合::$*" >&2; exit 2; }
 
 HERE=$(dirname "$0")
 ROOT_DIR=$(cd "$HERE/.." && pwd)
-TABLE="$ROOT_DIR/scripts/userland-sources.json"
+TABLE="$ROOT_DIR/scripts/component-sources.json"
 
 OUT=""
 WANT=""
@@ -56,7 +56,7 @@ elif [ "${1:-}" = "--time-base" ]; then
   exit 0
 elif [ "${1:-}" = "--ndk" ]; then
   # 交叉编译用的 NDK 版本也住这张表，表的读者仍然只有本脚本（⑦ 那条判据）。
-  # 这里**只取不判**：NDK 不是下载来的源码，「实际用的那版等不等于钉值」由 build-userland 的
+  # 这里**只取不判**：NDK 不是下载来的源码，「实际用的那版等不等于钉值」由 build-component 的
   # 「定位 NDK」步在 runner 上判（那里才有两侧读数可比）。
   if ! ND="$(node -e '
     const path = require("node:path");
@@ -111,7 +111,7 @@ elif [ "${1:-}" = "--llvm" ]; then
 elif [ "${1:-}" = "--src-version" ]; then
   # 读某个 sources 键的**版本号**，不下载。
   #
-  # 为什么需要这一档：build-userland-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
+  # 为什么需要这一档：build-component-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
   # 跑的是 `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，
   # 只为了从一行输出里 sed 出版本号。而「这个件该编哪个版本」是纯查表的事。
   #

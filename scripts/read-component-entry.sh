@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-F="$HERE/userland-verify.json"
-key="${1:?usage: read-userland-entry.sh <tool>}"
+F="$HERE/component-verify.json"
+key="${1:?usage: read-component-entry.sh <tool>}"
 
 if command -v node >/dev/null 2>&1; then
   node -e '

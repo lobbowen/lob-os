@@ -57,7 +57,7 @@
 
 **静态编、不链底座 `libz`**：gzip/gunzip 的 zlib 编进去，代价 ~100-200KB，
 换来 busybox 完全自足。底座件之间不互相依赖到「少一件就起不来」的程度。
-（阶段0 的 `libz.so` 是给**商店件**改动态链用的。）
+（阶段0 的 `libz.so` 是给 base 筐里 jq/curl 改动态链用的。）
 
 **两个下载源的压缩格式与目录名都不同**（实测）：`busybox.net` 给
 `busybox-1.36.1.tar.bz2` → `busybox-1.36.1/`；github mirror 给
@@ -247,7 +247,7 @@ winsize 用 `ByteBuffer`（默认大端）——后者就会踩默认值。所�
 `version` 为空串的语义是「随 APK、不单独更新」，那些件**不进 OTA 清单** ——
 让它们出现在清单里会让人以为能更新。当前有版本的五件：
 bash 5.2.15 · busybox 1.36.1 · zlib 1.3.2 · openssl 3.6.3 · curl 8.22.0
-（版本值一律照抄构建脚本常量或 `userland-sources.json` 钉值表，不凭记忆）。
+（版本值一律照抄构建脚本常量或 `component-sources.json` 钉值表，不凭记忆）。
 
 ### 三个必须知道的事实
 
@@ -263,7 +263,7 @@ bash 5.2.15 · busybox 1.36.1 · zlib 1.3.2 · openssl 3.6.3 · curl 8.22.0
 但复用它的**验签与下载**（`SupplyProvisioner`）。
 
 **三、不新增签名体系。** 底座件清单与商店清单用**同一把 Ed25519 公钥**
-（`assets/supply/userland-public.pem`）。两套信任根意味着两处要轮换、
+（`assets/supply/component-public.pem`）。两套信任根意味着两处要轮换、
 两处可能只更新一处。
 
 ### 桥接方法（系统作用域）

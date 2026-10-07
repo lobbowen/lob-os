@@ -98,8 +98,8 @@ object CatalogClient {
             ?: return fail(ctx, "通道锚没有 manifestName")
         val sigName = SupplyProvisioner.anchorName(ctx, "sigName") ?: (name + ".sig")
         val pubPem = runCatching {
-            ctx.assets.open("supply/userland-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
-        }.getOrNull() ?: return fail(ctx, "信任根读不到：assets/supply/userland-public.pem")
+            ctx.assets.open("supply/component-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull() ?: return fail(ctx, "信任根读不到：assets/supply/component-public.pem")
         val body = runCatching {
             SupplyProvisioner.httpGet(SupplyProvisioner.uncached(base + "/" + name), SupplyProvisioner.MAX_MANIFEST_BYTES)
         }.getOrNull()

@@ -20,7 +20,7 @@ die() {
 }
 note() { echo "[$TOOL] $*"; }
 
-[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-userland.yml 的「定位 NDK」步会注入）"
+[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-component.yml 的「定位 NDK」步会注入）"
 TC="$(dirname "$CC")"
 LLVM_AR="$TC/llvm-ar"
 LLVM_RANLIB="$TC/llvm-ranlib"
@@ -41,7 +41,7 @@ SRC="$WORK/$SRC_KEY-src"
 if [ ! -d "$SRC" ]; then
   TGZ="$WORK/$SRC_KEY.tar.gz"
   note "取 $SRC_KEY $SRC_VER 源码（仓内唯一入口，sha256 逐字节校验）"
-  bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin $SRC_KEY "$TGZ" || die "取源码失败" "钉值见 userland-sources.json"
+  bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin $SRC_KEY "$TGZ" || die "取源码失败" "钉值见 component-sources.json"
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 || die "解包失败" "$TGZ"
 fi

@@ -18,11 +18,11 @@ p('══ 自签供给验证：' + (fs.existsSync(iso) ? '装后' : '装前') + 
 p('');
 
 try {
-  const m = JSON.parse(fs.readFileSync(BUNDLE + '/userland-manifest-2.json', 'utf8'));
+  const m = JSON.parse(fs.readFileSync(BUNDLE + '/component-manifest-2.json', 'utf8'));
   p('① 供给清单（预签，7 件）:');
   p('   revision=' + m.revision + '  tools=' + m.tools.length + '  过期=' +
     new Date(Number(m.expiresEpochMs)).toISOString().slice(0, 10));
-  p('   baseUrl=' + ((m.tools[0] || {}).url || '').replace(/\/userland\/.*/, ''));
+  p('   baseUrl=' + ((m.tools[0] || {}).url || '').replace(/\/component\/.*/, ''));
   p('   件: ' + m.tools.map((t) => t.name + '@' + t.version).join(' '));
   record('清单.revision', m.revision);
   record('清单.件', m.tools.map((x) => x.name).sort().join(' '));

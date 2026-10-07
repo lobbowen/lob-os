@@ -135,7 +135,7 @@ echo
 echo "--- npm 归口（必须为空）---"
 if has_prefix 'assets/npm/'; then
   if [ "$REPORT" = "1" ]; then
-    echo "  [FAIL] 含 assets/npm —— npm 只由 C 层清单投放（scripts/build-userland-npm.sh）"
+    echo "  [FAIL] 含 assets/npm —— npm 只由 C 层清单投放（scripts/build-component-npm.sh）"
     zipinfo -1 "$APK" 2>/dev/null | { grep '^assets/npm' || true; } | sed 's/^/    /'
   else
     echo "::error title=APK 里留着 npm::assets/npm 在包内 —— npm 应与 git/curl 同级走 C 层签名清单，随包那份是不随清单更新的第二事实源。"

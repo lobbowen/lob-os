@@ -8,7 +8,7 @@ STAGE_DIR="$ROOT/dist/node"
 SRC="$STAGE_DIR/bin/node"
 [ -f "$SRC" ] || {
   echo "缺少 node 件: $SRC"
-  echo "先跑 scripts/build-userland-node.sh（它从 Release 取已编译的 libnode.so 落成商店件）"
+  echo "先跑 scripts/build-component-node.sh（它从 Release 取已编译的 libnode.so 落成商店件）"
   exit 1
 }
 
@@ -24,13 +24,13 @@ cat <<'TXT'
 下一步（商店通道，三步）：
 
 1. 打包成内容寻址的件包：
-     bash scripts/package-userland.sh node
-   产出 dist/userland-node-<版本>-<sha12>-android-arm64.zip
+     bash scripts/package-component.sh node
+   产出 dist/component-node-<版本>-<sha12>-android-arm64.zip
    （包名带 sha12 前缀，同版本重建不会覆盖旧键）
 
 2. 投到商店并重发清单（清单会带 node 条目）：
-     node scripts/publish-userland-manifest.js dist          # 签名，需 keys/ota-private.pem
-     node scripts/upload-qiniu.js dist/userland-node-*.zip userland/<同名 zip>
+     node scripts/publish-component-manifest.js dist          # 签名，需 keys/ota-private.pem
+     node scripts/upload-qiniu.js dist/component-node-*.zip component/<同名 zip>
 
 3. 设备端：os.catalog action=refresh 刷新清单 → 装 node
    落点 files/usr/lib/toolchain/node/，usr/bin/node 由 SupplyProvisioner 建链

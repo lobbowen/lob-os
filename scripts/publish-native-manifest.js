@@ -14,7 +14,7 @@ const KEY = POS[2] || 'keys/ota-private.pem';
 const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.NATIVE_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.NATIVE_PUBKEY
-  || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'userland-public.pem');
+  || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
 const REGISTRY = path.join(ROOT, 'container', 'app', 'src', 'main', 'java', 'lobos', 'native', 'NativeAssetRegistry.kt');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
 const PIN = path.join(ROOT, '.github', 'native-capabilities-pin.json');
@@ -102,9 +102,9 @@ function versionString() {
 }
 
 function revisionForManifest() {
-  const raw = process.env.LOBOS_USERLAND_REVISION || '';
+  const raw = process.env.LOBOS_COMPONENT_REVISION || '';
   if (!/^[1-9][0-9]*$/.test(raw)) {
-    throw new Error('LOBOS_USERLAND_REVISION 必须是正整数（来自发布 tag userland-<channel>-<revision>），读到: ' + (raw || '空'));
+    throw new Error('LOBOS_COMPONENT_REVISION 必须是正整数（来自发布 tag component-<channel>-<revision>），读到: ' + (raw || '空'));
   }
   return Number(raw);
 }

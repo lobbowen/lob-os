@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const WF = path.join(ROOT, '.github/workflows/build-userland.yml');
+const WF = path.join(ROOT, '.github/workflows/build-component.yml');
 const KEY = path.join(ROOT, 'scripts/cache-key.sh');
 const PLAN = path.join(ROOT, 'docs/ENV-EXECUTION-PLAN.md');
 
@@ -44,7 +44,7 @@ const mm = /^\s*tool:\s*\[([^\]]*)\]/m.exec(wf);
 let bad = 0;
 
 if (!mm) {
-  console.error('FAIL build-userland.yml 里找不到矩阵 tool: [...]');
+  console.error('FAIL build-component.yml 里找不到矩阵 tool: [...]');
   process.exit(2);
 }
 const matrix = mm[1].split(',').map((s) => s.trim()).filter(Boolean);
@@ -67,7 +67,7 @@ for (const b of ['base', 'rt', 'tool']) {
   console.log(`  ${b} 筐 · ${BUCKET_DESC[b] || ''}`);
   console.log(`    全部 ${items.length} 件：${items.join(' · ')}`);
   const inWf = (bucketsInMatrix[b] || []).sort();
-  console.log(`    build-userland.yml 矩阵里 ${inWf.length} 件：${inWf.join(' · ') || '（无）'}`);
+  console.log(`    build-component.yml 矩阵里 ${inWf.length} 件：${inWf.join(' · ') || '（无）'}`);
 }
 
 const notBuilt = [];

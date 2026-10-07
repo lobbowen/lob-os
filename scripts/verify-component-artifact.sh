@@ -3,7 +3,7 @@ set -euo pipefail
 
 TOOL="${1:?需要工具名}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ENTRY=$(bash "$ROOT/scripts/read-userland-entry.sh" "$TOOL")
+ENTRY=$(bash "$ROOT/scripts/read-component-entry.sh" "$TOOL")
 
 judge_shape() {
   local rel="$1" label="$2"

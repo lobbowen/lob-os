@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const cp = require('node:child_process');
 
-const VERIFY = path.join(__dirname, '..', 'scripts', 'userland-verify.json');
+const VERIFY = path.join(__dirname, '..', 'scripts', 'component-verify.json');
 const EXEC = process.argv.includes('--exec');
 const ONLY = (() => {
   const i = process.argv.indexOf('--only');

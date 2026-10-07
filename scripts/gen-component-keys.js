@@ -6,13 +6,13 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const ROOT = path.resolve(__dirname, '..');
-const PUB_SUPPLY = path.join(ROOT, 'container/app/src/main/assets/supply/userland-public.pem');
+const PUB_SUPPLY = path.join(ROOT, 'container/app/src/main/assets/supply/component-public.pem');
 const PUB_OTA = path.join(ROOT, 'container/app/src/main/assets/ota-public.pem');
 const ARGS = process.argv.slice(2);
 const FORCE = ARGS.includes('--force');
 const DIR_ARG = ARGS.find((a) => !a.startsWith('--'));
 const OUT_DIR = DIR_ARG || path.join(ROOT, '..', '_secrets');
-const OUT_KEY = path.join(OUT_DIR, 'userland-ed25519-private.pem');
+const OUT_KEY = path.join(OUT_DIR, 'component-ed25519-private.pem');
 
 if (!fs.existsSync(OUT_DIR)) {
   console.error('[genkeys] 私钥输出目录不存在: ' + OUT_DIR);
@@ -62,11 +62,11 @@ fs.chmodSync(OUT_KEY, 0o600);
 const fp = crypto.createHash('sha256').update(publicKey.export({ type: 'spki', format: 'der' })).digest('hex');
 console.log('[genkeys] 已生成 ed25519 密钥对');
 console.log('          公钥（已提交进仓，APK 内置为信任根）:');
-console.log('            container/app/src/main/assets/supply/userland-public.pem');
+console.log('            container/app/src/main/assets/supply/component-public.pem');
 console.log('            container/app/src/main/assets/ota-public.pem');
 console.log('          私钥（不入库）: ' + OUT_KEY);
 console.log('          公钥指纹 sha256(SPKI DER) = ' + fp);
 console.log();
-console.log('下一步：签清单用 publish-userland-manifest.js 的第三个位置参数（私钥路径）。');
+console.log('下一步：签清单用 publish-component-manifest.js 的第三个位置参数（私钥路径）。');
 console.log('        它签完会立刻用仓内公钥自验是否配对，不配对就拒绝发布。');
-console.log('        revision 必须由 tag 决定（LOBOS_USERLAND_REVISION），线上已到 6，下一个至少 7。');
+console.log('        revision 必须由 tag 决定（LOBOS_COMPONENT_REVISION），线上已到 6，下一个至少 7。');

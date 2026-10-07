@@ -94,7 +94,7 @@
 「判据挂在哪」是两个问题，后者更容易被忽略。
 
 我把 `verify-ndk-llvm.sh`（核对 NDK 内置 LLVM 与钉值是否同源）放进了
-`build-userland.yml` 的**商店件构建矩阵**里。那一步当时必然红
+`build-component.yml` 的**商店件构建矩阵**里。那一步当时必然红
 （`llvmVersion` 还没填 —— 填它需要真 NDK，而本机读不到）。后果：
 
 ```
@@ -119,7 +119,7 @@ llvmVersion 空 → 判红 → build job 的 8 件全部不产出
 报错里带的是 `NDK 29.0.14206865 内置 LLVM 20.0.1`，正是填 `llvmVersion`
 需要的真值。所以「红」在这一轮不是路障，是**取答案的途径**。
 
-等 `scripts/build-userland-llvmtoolchain.sh` 真上线（那时它才与商店件
+等 `scripts/build-component-llvmtoolchain.sh` 真上线（那时它才与商店件
 在同一轮里跑），再去掉 `continue-on-error` —— 那才是硬判据的位置。
 
 ---
@@ -255,7 +255,7 @@ const KT_SEG = path.resolve(__dirname, '../../container/app/src/main/java/lobos/
 ### 顺带一个更值钱的发现：两侧规则分叉
 
 升格过程中对照了**装侧**（`ProgramInstallPipeline.aliasNames`）与
-**发侧**（`publish-userland-manifest.js` 的 `aliasesOf`）。两边注释都写着
+**发侧**（`publish-component-manifest.js` 的 `aliasesOf`）。两边注释都写着
 「必须与对方一致」，但实际规则不同：
 
 | | 跳过的「本名」 |
@@ -289,7 +289,7 @@ llvmtoolchain 正好命中（件名 `llvmtoolchain`、entry `bin/clang`）：
 
 ## 第十条：合法但语义相反的写法，只有按解析语义判才看得见
 
-本仓踩过的真缺陷（`build-userland.yml`）：
+本仓踩过的真缺陷（`build-component.yml`）：
 
 ```bash
 command -v cmake >/dev/null 2>&1 || sudo apt-get update -qq && sudo apt-get install -y -qq cmake
@@ -410,7 +410,7 @@ set -o pipefail; if ! false | true; then …   # 也判失败
 底座件走 OTA 更新，而**静态化会把依赖烧进产物**：升 libz/openssl 时静态件
 不跟着更新，换 `.so` 就生效。标准发行版（Debian/Fedora）的 make/cmake/python3
 也无一例外是动态。仓库里另有一处直接矛盾 ——
-`verify-userland-artifact.sh` 本来就要求产物必须动态
+`verify-component-artifact.sh` 本来就要求产物必须动态
 （LD_PRELOAD 容器对静态件失效），配方里再判静态是自相矛盾。
 
 ### 换掉的三条断言
@@ -458,7 +458,7 @@ set -o pipefail; if ! false | true; then …   # 也判失败
 
 ### 判据挂在哪一层
 
-挂 `verify-userland-artifact.sh`，三个调用点（node / build 矩阵 / llvmtoolchain）
+挂 `verify-component-artifact.sh`，三个调用点（node / build 矩阵 / llvmtoolchain）
 统一在一层，而不是散在各配方里 —— 与第十条「门禁要挂在与它相关的链上」一致。
 
 `node` job 不跑 `locate-ndk.sh`、完全不碰 NDK，拿不到 `LLVM_READELF`。
@@ -1057,7 +1057,7 @@ contrib/android/include/android_lf.h     （libarchive/libarchive master）
 
 ```
 [cmake] libuv 补丁已打（Android 上关掉 CPU affinity）
-scripts/build-userland-cmake.sh: line 77: PROJECT_SOURCE_DIR: unbound variable
+scripts/build-component-cmake.sh: line 77: PROJECT_SOURCE_DIR: unbound variable
 ##[error]Process completed with exit code 1.
 ```
 
@@ -1078,7 +1078,7 @@ llvmtoolchain 的 `TB_LIST=$(ls …)`、以及这一处）。
 且该变量在本文件内从未赋值 —— 这种在 `set -u` 下必然杀掉脚本。
 
 - 45 个脚本，当前 0 处
-- 反例验证：把 `${PROJECT_SOURCE_DIR}` 塞进 `build-userland-make.sh` 的
+- 反例验证：把 `${PROJECT_SOURCE_DIR}` 塞进 `build-component-make.sh` 的
   `note` 里，立刻被抓到 —— 用的正是今天真实发生过的那一个变量名
 - 顺带修一处真缺陷：`build-native-capabilities.sh:226/227` 的
   `${GITHUB_WORKSPACE}` 是裸的，Actions 里必然存在所以 CI 没报，
@@ -1105,7 +1105,7 @@ ld.lld: error: undefined symbol: cmCPackAppImageGenerator::cmCPackAppImageGenera
 gmake[2]: *** [Source/CMakeFiles/cpack.dir/build.make:117: bin/cpack] Error 1
 ```
 
-`cpack` 是打包工具，`userland-verify.json` 对 cmake 的判据只要求
+`cpack` 是打包工具，`component-verify.json` 对 cmake 的判据只要求
 `bin/cmake` 起得来且能真 configure + build 一个项目（`entry: bin/cmake`）。
 它失败的原因（构造器定义缺失）不在本仓责任范围内，也不该由我去查 CMake 内部。
 
@@ -1186,7 +1186,7 @@ FAILED: [code=126] include/llvm/CodeGen/GenVT.inc
 3. 脚本开头与第二段的两处 `android21-clang` 改成 `${ANDROID_API:-35}`
    —— 全局 API 是 35，硬编码 21 是历史遗留
 
-顺带把 `build-userland-{git,jq,sqlite3}.sh` 的报错消息里
+顺带把 `build-component-{git,jq,sqlite3}.sh` 的报错消息里
 「需要 CC（aarch64-linux-android21-clang）」改成中性描述 ——
 那三个件实际早就用 35 了，消息会让人以为该导 API 21 的编译器。
 

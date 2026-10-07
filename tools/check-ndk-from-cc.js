@@ -40,7 +40,7 @@ for (const f of files) {
       t(f + ':' + (i + 1) + ' 不用「挑版本号最大的那个」当 NDK',
         false,
         '  ' + line.trim().slice(0, 100) +
-        '\n         那是**猜**不是钉值；runner 上装了几版就选哪版，与 userland-sources.json 无关。');
+        '\n         那是**猜**不是钉值；runner 上装了几版就选哪版，与 component-sources.json 无关。');
     }
   });
 }

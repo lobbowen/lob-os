@@ -7,8 +7,8 @@ cd "$(cd "$(dirname "$0")/.." && pwd)"
   echo scripts/build-native-capabilities.sh
   echo scripts/build-base-libs.sh
   echo scripts/bionic-compat.c
-  echo scripts/verify-userland-build-date.sh
-  echo scripts/userland-sources.json
+  echo scripts/verify-component-build-date.sh
+  echo scripts/component-sources.json
 } | while read -r f; do
   if [ ! -f "$f" ]; then
     echo "[error] 指纹输入缺失: $f —— 该文件被删/改名会让固化悄悄沿用旧产物。" >&2

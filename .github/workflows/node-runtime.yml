@@ -39,7 +39,7 @@ jobs:
         id: asset
         run: echo "name=$(bash scripts/cache-key.sh asset node)" >> "$GITHUB_OUTPUT"
 
-      - name: Release tag（件名，不含版本，且与其余 userland 件同一套命名）
+      - name: Release tag（件名，不含版本，且与其余 component 件同一套命名）
         id: rel
         run: echo "tag=$(bash scripts/cache-key.sh tag node)" >> "$GITHUB_OUTPUT"
 
@@ -103,8 +103,8 @@ jobs:
           TAG="${{ steps.rel.outputs.tag }}"
           if ! gh release view "$TAG" --repo '${{ github.repository }}' >/dev/null 2>&1; then
             gh release create "$TAG" --repo '${{ github.repository }}' \
-              --title "userland node — 预制品仓（tag 不含版本，版本在资产名里）" \
-              --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。**每个版本是一个独立资产**（node-runtime-<版本>-<abi>.tar.gz），本 release 只维护一个 tag。命名与其余 userland 件一致（userland-<件>）。"
+              --title "component node — 预制品仓（tag 不含版本，版本在资产名里）" \
+              --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。**每个版本是一个独立资产**（node-runtime-<版本>-<abi>.tar.gz），本 release 只维护一个 tag。命名与其余 component 件一致（component-<件>）。"
           fi
           gh release upload "$TAG" \
             'dist/${{ steps.asset.outputs.name }}' \

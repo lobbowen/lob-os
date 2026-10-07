@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const COMPONENTS = path.join(ROOT, 'components');
-const VERIFY = path.join(ROOT, 'scripts', 'userland-verify.json');
+const VERIFY = path.join(ROOT, 'scripts', 'component-verify.json');
 const NATIVE_ASSETS = path.join(ROOT, '.github', 'native-assets.txt');
 const NATIVE_CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
 const SCRIPTS = path.join(ROOT, 'scripts');
@@ -19,7 +19,7 @@ function readJson(p) {
 }
 
 if (!fs.existsSync(COMPONENTS)) {
-  bad('components/ 不存在 —— 三分区（userland / runtime / native）是构建物的唯一类目索引');
+  bad('components/ 不存在 —— 三分区（component / runtime / native）是构建物的唯一类目索引');
   report();
 }
 
@@ -27,7 +27,7 @@ const dirs = fs.readdirSync(COMPONENTS, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name)
   .sort();
-const want = ['native', 'runtime', 'userland'];
+const want = ['native', 'runtime', 'component'];
 for (const w of want) if (!dirs.includes(w)) bad('components/' + w + '/ 不在（三个类目缺一不可）');
 const docs = [path.join(COMPONENTS, 'README.md')];
 for (const d of dirs) {
@@ -37,7 +37,7 @@ for (const d of dirs) {
   else docs.push(doc);
 }
 for (const extra of ['PUBLISH.md', 'REHEARSE.md']) {
-  const p = path.join(COMPONENTS, 'userland', extra);
+  const p = path.join(COMPONENTS, 'component', extra);
   if (fs.existsSync(p)) docs.push(p);
 }
 
@@ -90,17 +90,17 @@ for (const p of pieces) {
 }
 
 const scripts = fs.readdirSync(SCRIPTS);
-const userlandBuilds = scripts.filter((s) => /^build-userland-[a-z0-9-]+\.sh$/.test(s))
-  .map((s) => s.replace(/^build-userland-/, '').replace(/\.sh$/, ''))
+const componentBuilds = scripts.filter((s) => /^build-component-[a-z0-9-]+\.sh$/.test(s))
+  .map((s) => s.replace(/^build-component-/, '').replace(/\.sh$/, ''))
   .sort();
-for (const p of userlandBuilds) {
+for (const p of componentBuilds) {
   if (!pieces.includes(p)) {
-    bad('scripts/build-userland-' + p + '.sh 产出一颗件，但 scripts/userland-verify.json 里没有它的能力判据 —— 不许发布无判据的件');
+    bad('scripts/build-component-' + p + '.sh 产出一颗件，但 scripts/component-verify.json 里没有它的能力判据 —— 不许发布无判据的件');
   }
 }
 for (const p of pieces) {
-  const has = scripts.includes('build-userland-' + p + '.sh') || scripts.includes('build-' + p + '.sh');
-  if (!has) bad('件 ' + p + ' 在通道上声明了，但没有对应的构建脚本（build-userland-' + p + '.sh 或 build-' + p + '.sh）');
+  const has = scripts.includes('build-component-' + p + '.sh') || scripts.includes('build-' + p + '.sh');
+  if (!has) bad('件 ' + p + ' 在通道上声明了，但没有对应的构建脚本（build-component-' + p + '.sh 或 build-' + p + '.sh）');
 }
 
 const nodeInApk = path.join(ROOT, 'container', 'app', 'src', 'main', 'jniLibs', 'arm64-v8a', 'libnode.so');
@@ -137,7 +137,7 @@ const nodeBuild = path.join(SCRIPTS, 'build-node-android.sh');
 if (fs.existsSync(nodeBuild)) {
   const src = fs.readFileSync(nodeBuild, 'utf8');
   const m = /^\s*cp\s+.*out\/Release\/node\s+"?\$?\{?OUT_DIR\}?"?\s*$/m.exec(src);
-  if (m) bad('build-node-android.sh 把 node 产物 cp 进 OUT_DIR（jniLibs）—— 它必须落 dist/，再由 build-userland-node.sh 落成商店件');
+  if (m) bad('build-node-android.sh 把 node 产物 cp 进 OUT_DIR（jniLibs）—— 它必须落 dist/，再由 build-component-node.sh 落成商店件');
 }
 
 report();

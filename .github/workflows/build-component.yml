@@ -1,41 +1,41 @@
-name: Build Userland (商店件)
+name: Build Component (商店件)
 
 on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-userland.yml'
-      - 'scripts/build-userland-*.sh'
+      - '.github/workflows/build-component.yml'
+      - 'scripts/build-component-*.sh'
       - 'scripts/locate-ndk.sh'
       - 'scripts/cache-ndk.sh'
-      - 'scripts/verify-userland-build-date.sh'
-      - 'scripts/package-userland.sh'
-      - 'scripts/publish-userland-manifest.js'
+      - 'scripts/verify-component-build-date.sh'
+      - 'scripts/package-component.sh'
+      - 'scripts/publish-component-manifest.js'
       - 'scripts/publish-native-manifest.js'
       - 'scripts/upload-qiniu.js'
-      - 'scripts/read-userland-entry.sh'
-      - 'scripts/userland-sources.json'
+      - 'scripts/read-component-entry.sh'
+      - 'scripts/component-sources.json'
       - 'scripts/fetch-pinned.sh'
-      - 'scripts/userland-verify.json'
+      - 'scripts/component-verify.json'
       - 'scripts/node-versions.json'
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
-      - 'components/userland/COMPONENT.md'
+      - 'components/component/COMPONENT.md'
       - 'components/runtime/COMPONENT.md'
     tags:
-      - 'userland-*'
+      - 'component-*'
   pull_request:
     paths:
-      - 'scripts/build-userland-*.sh'
-      - 'scripts/publish-userland-manifest.js'
+      - 'scripts/build-component-*.sh'
+      - 'scripts/publish-component-manifest.js'
       - 'scripts/publish-native-manifest.js'
-      - 'scripts/userland-sources.json'
-      - 'scripts/userland-verify.json'
+      - 'scripts/component-sources.json'
+      - 'scripts/component-verify.json'
       - 'patches/**'
   workflow_dispatch: {}
 
 concurrency:
-  group: build-userland-${{ github.ref }}
+  group: build-component-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -54,11 +54,11 @@ jobs:
         id: ref
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF_NAME}" =~ ^userland-(canary|stable)-([1-9][0-9]*)$ ]]; then
+          if [[ "${GITHUB_REF_NAME}" =~ ^component-(canary|stable)-([1-9][0-9]*)$ ]]; then
             echo "发布轮：ref=${GITHUB_REF_NAME} → 通道 ${BASH_REMATCH[1]}，清单 revision ${BASH_REMATCH[2]}"
             { echo "channel=${BASH_REMATCH[1]}"; echo "revision=${BASH_REMATCH[2]}"; echo "publish=true"; } >> "$GITHUB_OUTPUT"
-          elif [[ "${GITHUB_REF}" == refs/tags/userland-* ]]; then
-            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 userland-<channel>-<revision>，channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是商店唯一的单调判据）。本次不投递。"
+          elif [[ "${GITHUB_REF}" == refs/tags/component-* ]]; then
+            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 component-<channel>-<revision>，channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是商店唯一的单调判据）。本次不投递。"
             exit 1
           else
             echo "channel=canary" >> "$GITHUB_OUTPUT"
@@ -134,18 +134,18 @@ jobs:
             || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 tag（$TAG / node-runtime-${NVER}-${NABI} / node-runtime-${NVER}）都取不到 tar 形态，也没有裸资产形态；需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
           echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
 
-      - name: 落成 userland 件
+      - name: 落成 component 件
         env:
           NODE_VERSION: ${{ steps.ver.outputs.tag }}
         run: |
           set -euo pipefail
-          bash scripts/build-userland-node.sh
+          bash scripts/build-component-node.sh
 
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify-userland-artifact.sh node
+        run: bash scripts/verify-component-artifact.sh node
 
       - name: 打包 + sha256
-        run: bash scripts/package-userland.sh node
+        run: bash scripts/package-component.sh node
 
       - name: 发布 node 件到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}
@@ -159,16 +159,16 @@ jobs:
             echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET；设备只从对象存储取件"
             exit 1
           fi
-          for f in dist/userland-node-*.zip; do
+          for f in dist/component-node-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有 node 件可发::$f 不在，先看前面的构建步"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/upload-qiniu.js "$f" "userland/$(basename "$f")" --cache-control=31536000
+              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: userland-node
-          path: dist/userland-node-*.zip
+          name: component-node
+          path: dist/component-node-*.zip
           retention-days: 30
 
   ndk-cache:
@@ -254,9 +254,9 @@ jobs:
                   --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
              && [ -f "dist/$ASSET" ]; then
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
-            mv "dist/$ASSET" "dist/userland-${{ matrix.tool }}.zip"
-            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/userland-${{ matrix.tool }}.zip.sha256" || true
-            tar xzf "dist/userland-${{ matrix.tool }}.zip" -C dist
+            mv "dist/$ASSET" "dist/component-${{ matrix.tool }}.zip"
+            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-${{ matrix.tool }}.zip.sha256" || true
+            tar xzf "dist/component-${{ matrix.tool }}.zip" -C dist
             ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
@@ -281,23 +281,23 @@ jobs:
             work/deps-curl
             work/openssl
             work/zlib
-            dist/userland-make-*.zip
-            dist/userland-cmake-*.zip
-            dist/userland-python3-*.zip
-            dist/userland-pkg-config-*.zip
-            dist/userland-curl-*.zip
-            dist/userland-git-*.zip
-            dist/userland-jq-*.zip
-            dist/userland-sqlite3-*.zip
-            dist/userland-sysroot-*.zip
+            dist/component-make-*.zip
+            dist/component-cmake-*.zip
+            dist/component-python3-*.zip
+            dist/component-pkg-config-*.zip
+            dist/component-curl-*.zip
+            dist/component-git-*.zip
+            dist/component-jq-*.zip
+            dist/component-sqlite3-*.zip
+            dist/component-sysroot-*.zip
           key: ${{ steps.uwkey.outputs.key }}
 
       - name: 产出 ${{ matrix.tool }} 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
-        run: bash scripts/build-userland-${{ matrix.tool }}.sh
+        run: bash scripts/build-component-${{ matrix.tool }}.sh
 
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify-userland-artifact.sh ${{ matrix.tool }}
+        run: bash scripts/verify-component-artifact.sh ${{ matrix.tool }}
 
       - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
         if: steps.reuse.outputs.hit != 'yes'
@@ -309,8 +309,8 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           PW="work/pw-${{ matrix.tool }}"
           rm -rf "$PW" && mkdir -p "$PW"
-          if ls dist/userland-${{ matrix.tool }}-*.zip >/dev/null 2>&1; then
-            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' userland-${{ matrix.tool }}-*.zip
+          if ls dist/component-${{ matrix.tool }}-*.zip >/dev/null 2>&1; then
+            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' component-${{ matrix.tool }}-*.zip
           else
             tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
           fi
@@ -336,7 +336,7 @@ jobs:
           } > "$PW/BUILD.md"
           if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "${{ github.repository }}" \
-              --title "userland ${{ matrix.tool }} — $TAG" \
+              --title "component ${{ matrix.tool }} — $TAG" \
               --notes "编译一次、长期复用的 ${{ matrix.tool }} 预制品。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
           fi
           gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
@@ -360,19 +360,19 @@ jobs:
             work/deps-curl
             work/openssl
             work/zlib
-            dist/userland-make-*.zip
-            dist/userland-cmake-*.zip
-            dist/userland-python3-*.zip
-            dist/userland-pkg-config-*.zip
-            dist/userland-curl-*.zip
-            dist/userland-git-*.zip
-            dist/userland-jq-*.zip
-            dist/userland-sqlite3-*.zip
-            dist/userland-sysroot-*.zip
+            dist/component-make-*.zip
+            dist/component-cmake-*.zip
+            dist/component-python3-*.zip
+            dist/component-pkg-config-*.zip
+            dist/component-curl-*.zip
+            dist/component-git-*.zip
+            dist/component-jq-*.zip
+            dist/component-sqlite3-*.zip
+            dist/component-sysroot-*.zip
           key: ${{ steps.uwkey.outputs.key }}
 
       - name: 打包 + sha256
-        run: bash scripts/package-userland.sh ${{ matrix.tool }}
+        run: bash scripts/package-component.sh ${{ matrix.tool }}
 
       - name: 发布 ${{ matrix.tool }} 件到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}
@@ -386,16 +386,16 @@ jobs:
             echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
             exit 1
           fi
-          for f in dist/userland-${{ matrix.tool }}-*.zip; do
+          for f in dist/component-${{ matrix.tool }}-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/upload-qiniu.js "$f" "userland/$(basename "$f")" --cache-control=31536000
+              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: userland-${{ matrix.tool }}
-          path: dist/userland-${{ matrix.tool }}-*.zip
+          name: component-${{ matrix.tool }}
+          path: dist/component-${{ matrix.tool }}-*.zip
           retention-days: 30
 
   ndk-llvm:
@@ -429,7 +429,7 @@ jobs:
             "$CLANG" --version 2>/dev/null | head -3
             "$CLANG" --version 2>/dev/null \
               | sed -n 's/.*clang version \([0-9][0-9.]*\).*/实测 LLVM 版本 = \1/p'
-            { echo "### NDK/LLVM 版本（填进 scripts/userland-sources.json 的 llvmVersion）"; echo '```'; \
+            { echo "### NDK/LLVM 版本（填进 scripts/component-sources.json 的 llvmVersion）"; echo '```'; \
               "$CLANG" --version 2>/dev/null | head -3; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -473,13 +473,13 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq cmake
           fi
-          bash scripts/build-userland-llvmtoolchain.sh
+          bash scripts/build-component-llvmtoolchain.sh
 
       - name: 件形态校验（aarch64 动态件 / 别名工具各自形状）
-        run: bash scripts/verify-userland-artifact.sh llvmtoolchain
+        run: bash scripts/verify-component-artifact.sh llvmtoolchain
 
       - name: 打包 + sha256
-        run: bash scripts/package-userland.sh llvmtoolchain
+        run: bash scripts/package-component.sh llvmtoolchain
 
       - name: 别名映射须与件内 package.json 一致
         run: |
@@ -520,7 +520,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p work
-          node scripts/publish-userland-manifest.js dist --project > work/declared.json
+          node scripts/publish-component-manifest.js dist --project > work/declared.json
           node -p "'[declared] ' + require('./work/declared.json').map(t => t.name + '@' + t.version + ' 入口 ' + t.entry + ' 别名 ' + (t.aliases||[]).map(a=>a.name).join('+')).join(' | ')"
 
       - name: 底座件清单投影（与商店清单分流，同一把钥匙）
@@ -533,7 +533,7 @@ jobs:
         if: ${{ needs.resolve.outputs.publish == 'true' }}
         env:
           OTA_PRIVATE_KEY_PEM: ${{ secrets.OTA_PRIVATE_KEY_PEM }}
-          LOBOS_USERLAND_REVISION: ${{ needs.resolve.outputs.revision }}
+          LOBOS_COMPONENT_REVISION: ${{ needs.resolve.outputs.revision }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
@@ -543,14 +543,14 @@ jobs:
           fi
           mkdir -p keys release
           printf '%s\n' "$OTA_PRIVATE_KEY_PEM" > keys/ota-private.pem
-          node scripts/publish-userland-manifest.js dist release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
+          node scripts/publish-component-manifest.js dist release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
           echo "[manifest] 已签名并用 APK 公钥自检通过"
 
       - name: 发布闸门 —— revision 必须单调，同 name@version 不许换字节
         if: ${{ needs.resolve.outputs.publish == 'true' }}
         run: |
           set -euo pipefail
-          node scripts/check-userland-manifest-drift.js --immutable release/userland-manifest.json "${{ needs.resolve.outputs.channel }}"
+          node scripts/check-component-manifest-drift.js --immutable release/component-manifest.json "${{ needs.resolve.outputs.channel }}"
 
       - name: 发布清单到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}
@@ -569,6 +569,6 @@ jobs:
           SIG=$(node -p "require('./$ANCHOR').sigName")
           CH=$(node -p "require('./$ANCHOR').channel")
           export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
-          node scripts/upload-qiniu.js release/userland-manifest.json "$CH/$MAN" --cache-control=60
-          node scripts/upload-qiniu.js release/userland-manifest.json.sig "$CH/$SIG" --cache-control=60
+          node scripts/upload-qiniu.js release/component-manifest.json "$CH/$MAN" --cache-control=60
+          node scripts/upload-qiniu.js release/component-manifest.json.sig "$CH/$SIG" --cache-control=60
           echo "[manifest] 已发布 $CH/$MAN"

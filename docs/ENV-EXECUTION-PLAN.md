@@ -31,7 +31,8 @@
 四条规矩（贯穿全部）：
 
 1. **底座件原生打包进 APK**，不随商店分发
-2. **商店件（node/npm/curl/git…）走商店安装**，代码不单独认识它
+2. **商店件（node/python3/git/sqlite3/npm/pnpm）走商店安装**，代码不单独认识它；
+   base 筐那几件（make/cmake/pkg-config/sysroot/jq/curl）随 APK 打包，不走商店
 3. **开发环境必备**，无"选装"概念
 4. **底座件有版本、走 OTA 更新、原件保留可回滚**
 
@@ -49,7 +50,7 @@
 | `bash` | ✅ 自编 `libbash.so` | 保持 |
 | `rg` | ✅ 自编 `liblobosrg.so` | 保持 |
 | `busybox` | ❌ | **新增**（依赖 `libz`） |
-| `jq` | ✅ 商店件 | **升入底座**（见下） |
+| `jq` | ✅ 商店件 | **升入底座**（见下）—— 已在 base 筐 |
 | `curl` | ✅ 商店 | **升入底座**（见下） |
 
 **jq 与 curl 升入底座 —— 这一条推翻了本计划早先的判断。**
@@ -80,7 +81,7 @@
 · `libonig`（jq 的 vendored oniguruma 静态进去即可）
 
 **openssl（`libssl` + `libcrypto`）进底座** —— 它是 curl/git/jq 长期用的基础能力，
-且不依赖任何运行时。注意它**不是独立商店件**：`build-base-libs.sh` 一轮编出
+且不依赖任何运行时。注意它**不是独立组件**：`build-base-libs.sh` 一轮编出
 这批 `.so`（zlib / openssl / curl 同一批），随 APK 内置、走 OTA 补丁，
 不进商店清单。
 
@@ -156,7 +157,7 @@ Bionic 不认。这类「看起来该设、其实没用」的环境变量不能�
 
 - 底座件**版本 + OTA 更新**，原件保留作回退基线
 - `curl` `git` **改动态链**
-- 商店件八件**硬编码已清零**（19 道门禁钉住）
+- 商店件（rt + tool 两筐，6 件）**硬编码已清零**（19 道门禁钉住）
 
 ### 2.6 时区：`TZ` 不生效 —— 但那是 node 的行为，不是我们的缺口（更正）
 
@@ -199,7 +200,7 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
               │  新增 scripts/build-base-libs.sh：编一次、编成共享
               │  libz / libssl+libcrypto / libcurl 三件
               │  顺手改对 PrefixProvisioner：DEPS 落 usr/lib（今天落错了）
-              │  指纹纳入 userland-sources.json + 新脚本
+              │  指纹纳入 component-sources.json + 新脚本
               ↓
 第 1 阶段  开发环境本体
               │  clang / lld / binutils / cmake / make / pkg-config / sysroot / python3
@@ -209,10 +210,10 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
               │    sysroot（1a）· make · cmake · pkg-config · python3
               │  已完成的配套：
               │    $PREFIX/include 软链 · 别名软链（多命令件装完在 PATH 里可见）
-              │  待 CI：llvmVersion → 按它重钉 LLVM → 跑 build-userland-llvmtoolchain.sh
+              │  待 CI：llvmVersion → 按它重钉 LLVM → 跑 build-component-llvmtoolchain.sh
               │  详见下面「阶段1c 的三步解锁链」
               ↓
-第 2 阶段  商店件改动态链
+第 2 阶段  商店件改动态链（rt + tool 两筐）
               │  curl  → -lz -lssl -lcrypto
               │  git   → -lz -lssl -lcrypto -lcurl
               │  jq    → 保持 oniguruma 静态（无消费者不换）
@@ -220,18 +221,19 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
               │
               │  状态：**原方式已撤回**（核实后判定它与当前架构冲突）。
               │  核实到的结构性事实（2026-10-07）：
-              │    · 商店件在 build-userland.yml 编，底座 .so 在 build-apk.yml 编
-              │    · 两个 workflow **独立**，商店件构建时拿不到底座那批 .so
+              │    · 组件在 build-component.yml 编（base + rt + tool 三筐），
+│    · 底座原生 .so 在 build-apk.yml 编
+              │    · 两个 workflow **独立**，组件构建时拿不到底座那批 .so
               │    · 若让两边各编一份，字节可能不同 —— 那与阶段8 的
               │      「底座件有版本、单一事实源、可回滚」直接冲突
-              │    （即：商店件链的那份 libssl.so 与设备上跑的那份不是同一个）
+              │    （即：组件链的那份 libssl.so 与设备上跑的那份不是同一个）
               │
               │  对齐 Linux 的真实形态：**发行版不重编已装的包**。
               │    apt 装 curl 链的是 libssl.so.1.1；后来升级 openssl，
               │    curl 不被重编，靠**同名替换**继续工作 —— 这正是 SONAME 的意义。
               │    我们的阶段8（原件保留 + 软链切换）提供的正是这个替换能力。
               │
-              │  所以底座那四件 .so 的**真实消费者**不是既有商店件，而是：
+              │  所以底座那四件 .so 的**真实消费者**不是既有组件，而是：
               │    ① 程序自己编出来的原生模块（node-gyp 编译 .node 时 -I/-L）
               │    ② 用户在设备上跑 ./configure，探测 libssl/libz 后链上
               │  两者都只需要「设备上有 .so」，而那已经成立：
@@ -312,7 +314,7 @@ $ TZ=Asia/Tokyo node -e 'new Date("2026-10-07T00:00:00Z").getHours()'
 | 步 | 做什么 | 现在能做吗 |
 |---|---|---|
 | 1 | 跑 `scripts/verify-ndk-llvm.sh`，从报错里读到真值 | ✅ **已做** —— 不用 CI，见第九节（Range 请求取 2837 字节） |
-| 2 | 把真值填进 `userland-sources.json` 的 `llvmVersion` | ✅ **已做** —— 填 `21.0.0` |
+| 2 | 把真值填进 `component-sources.json` 的 `llvmVersion` | ✅ **已做** —— 填 `21.0.0` |
 | 3 | **按该版本重钉 LLVM 源码**（版本 + sha256） | ✅ **已做** —— 钉 `21.1.0`，sha256 与 API 对账一致 |
 
 **第 3 步不需要下载 171 MiB。** GitHub 的 release API 在每个资产上给
@@ -340,9 +342,9 @@ GET https://api.github.com/repos/llvm/llvm-project/releases/tags/llvmorg-<版本
 （本会话早前为 23.1.3 算 sha256 是**下载 171 MiB 后实测**的；那时没先查
 API 有没有 `digest`。下次先查字段，再决定要不要下载。）
 
-`build-userland.yml` 里有独立的 `ndk-llvm` job 专门跑第 1 步，并且：
+`build-component.yml` 里有独立的 `ndk-llvm` job 专门跑第 1 步，并且：
 
-- **不进 `manifest` 的 needs** —— 它红不断商店件那条链（那 8 件与 llvmVersion 无关）
+- **不进 `manifest` 的 needs** —— 它红不断组件那条链（与 llvmVersion 无关）
 - `continue-on-error` —— 这一步**当前的产出就是报错里的真值**，红是取答案的途径
 - 额外把实测版本写进 step summary —— CI 一跑答案就在摘要里
 
@@ -386,20 +388,20 @@ API 有没有 `digest`。下次先查字段，再决定要不要下载。）
 
 | 库 | 现在怎么编的 | 有没有消费者 |
 |---|---|---|
-| `libz` | `build-userland-curl.sh` / `-git.sh` 各自编**静态** `.a` | **有** —— curl 与 git 都链它 |
+| `libz` | `build-component-curl.sh` / `-git.sh` 各自编**静态** `.a` | **有** —— curl 与 git 都链它 |
 | `libssl` `libcrypto` | 同上，`./Configure ... no-shared` 编**静态** | **有** —— 同上 |
 | `libcurl` | 同上，`--disable-shared --enable-static` 编**静态** | **有** —— git 链 `-lcurl` |
 | `libpcre2-8` | **无配方**（钉值表无此键） | **无** —— rg 以默认 features 编（脚本无 `--features`，rg 默认不含 pcre2）；jq 用的是 vendored oniguruma，不用 pcre2 |
 | `libiconv` | **无配方** | **无** —— git 的构建参数写着 `NO_ICONV=1` |
 
-「静态链重复」是真的：openssl 在 `build-userland-curl.sh` 和 `build-userland-git.sh` 里
+「静态链重复」是真的：openssl 在 `build-component-curl.sh` 和 `build-component-git.sh` 里
 **各编了一遍**，两个不同的 `work/` 目录，最后各自静态进各自的二进制。
 第 0 阶段做的就是：编一次、编成共享、放底座 `usr/lib`，三处共用。
 
 `libpcre2-8` 与 `libiconv` 改为**条件件**：等 rg 真的以 `--features pcre2` 编、
 或 git 真的开 `NO_ICONV=0` 时再进底座，且进底座前要先有门禁钉住那个条件。
 
-### 6.2 配方不在 `build-native-capabilities.sh`，在 `build-userland-*.sh`
+### 6.2 配方不在 `build-native-capabilities.sh`，在 `build-component-*.sh`
 
 `scripts/build-native-capabilities.sh`（249 行）实测只支持两类：
 
@@ -408,9 +410,9 @@ API 有没有 `digest`。下次先查字段，再决定要不要下载。）
 | **self-c** | `"$CC" -shared -fPIC -O2 <自有 .c>` | flock / posix / ptyprobe |
 | **upstream 配方** | 下载 tarball → 补 bionic 桩 → `configure --host=aarch64-linux-android` → `make` | bash |
 
-而 zlib / openssl / curl 的配方**已经存在**，在 `build-userland-curl.sh` 与
-`build-userland-git.sh` 里，源、版本、校验全走 `scripts/fetch-pinned.sh` +
-`scripts/userland-sources.json`（zlib 1.3.2 / openssl 3.6.3 / curl 8.22.0 / git 2.55.0）。
+而 zlib / openssl / curl 的配方**已经存在**，在 `build-component-curl.sh` 与
+`build-component-git.sh` 里，源、版本、校验全走 `scripts/fetch-pinned.sh` +
+`scripts/component-sources.json`（zlib 1.3.2 / openssl 3.6.3 / curl 8.22.0 / git 2.55.0）。
 
 所以第 0 阶段**不是新增第三类配方**，是三件事：
 
@@ -421,7 +423,7 @@ API 有没有 `digest`。下次先查字段，再决定要不要下载。）
 | 3 | 三处 `--disable-shared --enable-static` / `no-shared` 改成编共享 + `-Wl,-soname` | 见 6.4 的 RUNPATH 判据 |
 
 静态库也要留 —— git 静态链 curl 是为了单文件自足；改动态链是**第 2 阶段**的事，
-第 0 阶段只保证底座共享库编得出来、装得对，不动商店件的链接方式。
+第 0 阶段只保证底座共享库编得出来、装得对，不动组件的链接方式。
 
 ### 6.3 一个已存在的实质缺陷：库没落 `usr/lib`
 
@@ -458,7 +460,7 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 上游配方（bash 的 `BASH_VER`、curl.sh/openssl 的编译开关）**都不在指纹里**。
 所以今天改 `BASH_VER` 不会触发重固化，CI 会继续用旧的固化产物；
 新加的 `build-base-libs.sh` 更不会被计入。第 0 阶段要把
-`scripts/userland-sources.json` 与 `build-base-libs.sh` 纳入指纹。
+`scripts/component-sources.json` 与 `build-base-libs.sh` 纳入指纹。
 
 ### 6.6 其余发布侧事项
 
@@ -504,7 +506,7 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 
 1. `verify-ndk-llvm.sh` 判红，**报错里带实测值** ✅
    → `::error title=钉值表没有 llvmVersion::NDK 29.0.14206865 内置 LLVM 20.1.8。…`
-2. 填进 `userland-sources.json` 后转绿 ✅
+2. 填进 `component-sources.json` 后转绿 ✅
 3. 版本不符时判红（实测 19.0.2 / 20.0.0 对钉 20.1.8 均判红）✅
 
 第 2 步之后还需按该版本用 `pin-github-release.js` 重钉 LLVM 源码
@@ -767,7 +769,7 @@ llvmorg-21-init, llvmorg-21.1.0, 21.1.1, 21.1.2 … 21.1.8
 
 ## 十、本轮补上：`llvmtoolchain` 的「产出之后」三步
 
-11 件商店件每件都走四步：
+组件每件都走四步（base / rt / tool 三筐共 12 件）：
 
 ```
 产出 → 件形态校验 → 打包+sha256 → 发布到对象存储
@@ -779,20 +781,20 @@ llvmorg-21-init, llvmorg-21.1.0, 21.1.1, 21.1.2 … 21.1.8
 > manifest 收不到它、控制面板看不到它、用户装不到它，
 > 而 **job 全程绿**。「编成功了但没人拿得到」。
 
-（`check-userland-manifest-drift.js` 也拦不住：它比的是**已发布清单**之间的漂移，
+（`check-component-manifest-drift.js` 也拦不住：它比的是**已发布清单**之间的漂移，
 一件从没被打包过的件根本不在比对范围内。）
 
 所以补上三步，与其余 11 件对齐：
 
 | 步 | 做什么 | 为什么 |
 |---|---|---|
-| 件形态校验 | `verify-userland-artifact.sh llvmtoolchain` | 逐个别名验 aarch64 ELF / 解释器形状 |
-| 打包 + sha256 | `package-userland.sh llvmtoolchain` | 没有它就没有可分发的件 |
+| 件形态校验 | `verify-component-artifact.sh llvmtoolchain` | 逐个别名验 aarch64 ELF / 解释器形状 |
+| 打包 + sha256 | `package-component.sh llvmtoolchain` | 没有它就没有可分发的件 |
 | 别名映射核对 | 对着真产物验 `package.json` 的 8 个别名 | 装侧建链与发侧写清单读同一份 |
 
 ### 这三步的判据都实测过（不是照抄 11 件那条）
 
-**`verify-userland-artifact.sh` 对 `llvmtoolchain` 的行为**（实测三种件）：
+**`verify-component-artifact.sh` 对 `llvmtoolchain` 的行为**（实测三种件）：
 
 | 造的件 | 结果 |
 |---|---|
@@ -842,7 +844,7 @@ ANDROID_NDK_ROOT        = 27.3.13750724
 ```
 
 三个里两个是 27.x。配方与 `verify-ndk-llvm.sh` 都优先读 `ANDROID_NDK_LATEST_HOME`
-（`build-userland.yml` 的「定位 NDK」步也显式校验那一条），
+（`build-component.yml` 的「定位 NDK」步也显式校验那一条），
 所以不会误用 27.x —— 但这正说明**「哪一条变量」必须写死，不能靠 fallback 顺序碰运气**。
 
 ### 顺带核实了钉值本身（不用下载 158 MiB）
@@ -854,7 +856,7 @@ HEAD https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-
 ```
 
 与 release API 报的 `asset.size` **逐字节一致**（158971856），
-version 21.1.0 / sha256 `1672e3ef…878825` 也与 `userland-sources.json` 一致。
+version 21.1.0 / sha256 `1672e3ef…878825` 也与 `component-sources.json` 一致。
 即：**钉值三元组（version / sha256 / url）自洽，且资源真实存在。**
 
 ### 十一·二、两个 CI 步骤的「查找失败」写法不一致（本轮修）
@@ -912,7 +914,7 @@ TC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 | `usr/lib/toolchain/<id>/<version>/` 落位 | ✅ | `PrefixProvisioner` 已实现，`usr/bin/<name>` 是指向它的软链 |
 | `usr/include` → sysroot 软链 | ✅ | `linkSysrootInclude`，`tools/verify/sysroot-include-proof.js` 验行为 |
 | clang · lld · binutils(as/ld/ar/nm/strip/objdump/readelf) | ✅ 配方+判据 | `NEED_BIN` 八个逐个查存在；判据真编 aarch64 `.so` 并验 `e_machine=0xB7` |
-| make · cmake · pkg-config · python3 | ✅ 配方+判据 | 四件各有 recipe + `userland-verify.json` 判据（136~186 字） |
+| make · cmake · pkg-config · python3 | ✅ 配方+判据 | 四件各有 recipe + `component-verify.json` 判据（136~186 字） |
 | sysroot（头文件+静态库） | ✅ | 阶段1a `14815ad` |
 | 别名映射（8 个工具都能调） | ✅ | 上一轮修好两侧分叉与 `clang++` 白名单 |
 | 分发链（形态校验/打包/别名核对） | ✅ | 上一轮补上，判据都实测过 |
@@ -1072,8 +1074,8 @@ CI 日志（`build (git)/7_产出 git 件`，run 37557196126）：
 build job 末尾：
   uses: actions/upload-artifact@v4
   with:
-    name: userland-${{ matrix.tool }}
-    path: dist/userland-${{ matrix.tool }}-*.zip
+    name: component-${{ matrix.tool }}
+    path: dist/component-${{ matrix.tool }}-*.zip
     retention-days: 1          ← 只留1 天
 ```
 
@@ -1203,7 +1205,7 @@ API 级别：23
 ### 预制品仓的最终形态：**一个件一个 tag，版本在资产名里**
 
 ```
-userland-curl                      ← tag 只含件名，长期稳定
+component-curl                      ← tag 只含件名，长期稳定
   ├── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.tar.gz
   ├── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.tar.gz.sha256
   └── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.targz.BUILD.md
@@ -1212,7 +1214,7 @@ userland-curl                      ← tag 只含件名，长期稳定
 **为什么这样切**（这一条是用户定的，我先前想错了）：
 
 - **件必须分开** —— 七牛那条链是
-  `for f in dist/userland-<件>-*.zip; do upload-qiniu …`，
+  `for f in dist/component-<件>-*.zip; do upload-qiniu …`，
   逐件匹配上传。若把 9 件打成一个资产，这行就匹配不到，发布链直接断。
 - **tag 不含版本** —— 版本进 tag 之后，每升一次依赖就多一个 tag，
   Release 列表会随迭代膨胀。版本本来就在资产名里，把 tag 让给「件」，
@@ -1222,7 +1224,7 @@ userland-curl                      ← tag 只含件名，长期稳定
 「这个 tag 下有没有**这一版**的资产」，不是「这个 tag 在不在」：
 
 ```
-tag   = userland-curl                       ← 升 openssl 也不变
+tag   = component-curl                       ← 升 openssl 也不变
 asset = curl-…+openssl-3.6.3+…             ← 升 openssl 就变 → 找不到 → 正确重编
 ```
 
@@ -1236,7 +1238,7 @@ asset = curl-…+openssl-3.6.3+…             ← 升 openssl 就变 → 找不
 | 用途 | 形态 | 例 |
 |---|---|---|
 | actions/cache 的 key | `uw-<件>-<依赖…>-<ndk>-<api>-<os>-<arch>` | `uw-jq-jq-1.8.2-ndk30.0.16248370-api23-Linux-X64` |
-| Release 的 tag | `userland-<件>` | `userland-curl` |
+| Release 的 tag | `component-<件>` | `component-curl` |
 | Release 的资产名 | `<件>-<依赖…>.tar.gz` | `curl-curl+8.22.0openssl+3.6.3….tar.gz` |
 
 `cache-key.sh <件名>` / `tag <件名>` / `asset <件名>` 三种模式；
@@ -1291,11 +1293,11 @@ permissions:
 第一次发布成功那轮（run 37560124603，403 修之前）实际已建出 5 个 release：
 
 ```
-userland-sqlite3  资产 3: BUILD.md  sqlite3-sqlite+none+ndk30.0.16248370+api23.tar.gz  +.sha256
-userland-pnpm     资产 3: BUILD.md  pnpm-nodeps+ndk30.0.16248370+api23.tar.gz          +.sha256
-userland-npm      资产 3: BUILD.md  npm-nodeps+ndk30.0.16248370+api23.tar.gz           +.sha256
-userland-jq       资产 3: BUILD.md  jq-jq+1.8.2+ndk30.0.16248370+api23.tar.gz            +.sha256
-userland-curl     资产 3: BUILD.md  curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+…            +.sha256
+component-sqlite3  资产 3: BUILD.md  sqlite3-sqlite+none+ndk30.0.16248370+api23.tar.gz  +.sha256
+component-pnpm     资产 3: BUILD.md  pnpm-nodeps+ndk30.0.16248370+api23.tar.gz          +.sha256
+component-npm      资产 3: BUILD.md  npm-nodeps+ndk30.0.16248370+api23.tar.gz           +.sha256
+component-jq       资产 3: BUILD.md  jq-jq+1.8.2+ndk30.0.16248370+api23.tar.gz            +.sha256
+component-curl     资产 3: BUILD.md  curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+…            +.sha256
 ```
 
 实测把 jq 那份下回来解开：354136 字节，`bin/jq` + `jq.version` 在里面。
@@ -1328,13 +1330,13 @@ userland-curl     资产 3: BUILD.md  curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+�
 
 | | 改前 | 改后 |
 |---|---|---|
-| tag | `node-runtime-24.21.0`（含版本，且与其他件不同套） | **`userland-node`** |
+| tag | `node-runtime-24.21.0`（含版本，且与其他件不同套） | **`component-node`** |
 | 资产名 | `node-runtime-24.21.0-arm64-v8a.tar.gz` | **`node-24.21.0+arm64-v8a+ndk30.0.16248370+api23.tar.gz`** |
 
 与其余件同一套：`<件>-<版本+依赖+ABI+NDK+API>.tar.gz`。
 
 **注意别改错地方**：脚本里的 `dist/node-runtime/` 是**下载解包后的目录名**
-（`build-userland-node.sh` 依赖它），**与 Release tag 无关**，不要一起改。
+（`build-component-node.sh` 依赖它），**与 Release tag 无关**，不要一起改。
 
 ---
 
@@ -1383,7 +1385,7 @@ flag，语义是「改走 fork+exec 而非 posix_spawn」，在 Bionic 上是安
 
 ```
 container/app/build.gradle.kts:23   minSdk = 26      ← 只支持 Android 8+
-scripts/build-userland-*.sh        ANDROID_API:-23  ← 却在编 API 23 的件
+scripts/build-component-*.sh        ANDROID_API:-23  ← 却在编 API 23 的件
 ```
 
 **自相矛盾**：APK 装不到API 23 的设备上，编 API 23 的件毫无意义。
@@ -1422,7 +1424,7 @@ VANILLA_ICE_CREAM   = 35   Android 15   ← master 分支里最高的真实常�
 - 6 个配方的 `ANDROID_API` 默认值 + `build-base-libs.sh` / `build-native-busybox.sh` /
   `build-shared-deps.sh` / `cache-key.sh` / `locate-ndk.sh` 里的同一处
 - 编译器驱动名 `aarch64-linux-android23-clang` → `…android35-clang`（含两个 workflow）
-- `build-userland-make.sh` 加 `--disable-posix-spawn`
+- `build-component-make.sh` 加 `--disable-posix-spawn`
 
 **缓存 key 随之变化**（`…+api23+…` → `…+api35+…`），所以**所有件会重编一次** ——
 这是对的：API 变了，旧的 `.o` 与新 API 的 ABI 不一致。
@@ -1465,7 +1467,7 @@ VANILLA_ICE_CREAM   = 35   Android 15   ← master 分支里最高的真实常�
 `set -e` 会杀掉脚本，而日志上只剩 `::error Process completed with exit code 1`
 —— 连 `die` 的标题都没有，看不出是哪一条失败。
 
-我写了一道门禁扫它，报出 **10 个配方 30+ 处**（`build-userland-cmake.sh`、
+我写了一道门禁扫它，报出 **10 个配方 30+ 处**（`build-component-cmake.sh`、
 `sysroot.sh`、`pkg-config.sh`、`python3.sh`、`llvmtoolchain.sh`、`jq.sh`、
 `node.sh`、`npm.sh`、`pnpm.sh`、`curl.sh`）。
 
@@ -1639,8 +1641,8 @@ Release tag 前缀（`base-` / `rt-` / `tool-`）。门禁：
 | `bash` | `build-native-capabilities.sh` 现编 | `libbash.so` |
 | `rg` | 同上，cargo 编 ripgrep 14.1.1 | `liblobosrg.so` |
 | `busybox` | `build-native-busybox.sh`（`CONFIG_STATIC=y`） | `libbusybox.so` |
-| `sysroot` · `make` · `cmake` · `pkg-config` | `build-userland.yml` → Release `base-*` | — |
-| `jq` · `curl` | 同上（已由商店件升入底座基础命令） | — |
+| `sysroot` · `make` · `cmake` · `pkg-config` | `build-component.yml` → Release `base-*` | — |
+| `jq` · `curl` | 同上（已由商店升入 base 筐基础命令） | — |
 | `llvmtoolchain` | `ndk-llvm` job | — |
 
 四个基础库另计（§2.3.1 第 110 行），产出与登记都在：

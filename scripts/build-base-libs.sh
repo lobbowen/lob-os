@@ -19,7 +19,7 @@ die() {
 }
 note() { echo "[note] $*"; }
 
-[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-apk.yml / build-userland.yml 的「定位 NDK」步会注入）"
+[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-apk.yml / build-component.yml 的「定位 NDK」步会注入）"
 TC="$(dirname "$CC")"
 LLVM_AR="$TC/llvm-ar"
 LLVM_RANLIB="$TC/llvm-ranlib"
@@ -193,7 +193,7 @@ build_openssl() {
            grep -nE "error:|Error [0-9]+$|undefined symbol" "$WORK/openssl-build.log" | head -20 || true; \
            tail -30 "$WORK/openssl-build.log"; exit 1; }
   )
-  bash "$ROOT_DIR/scripts/verify-userland-build-date.sh" "$src" \
+  bash "$ROOT_DIR/scripts/verify-component-build-date.sh" "$src" \
     || die "openssl 构建时间基准不合格" "上条命令已打印原因"
 
   local base so

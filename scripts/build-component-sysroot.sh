@@ -40,7 +40,7 @@ if [ -z "$GOT_NDK" ]; then
   die "读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision —— 无法确认与 clang 同源"
 fi
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
-  die "NDK 版本与钉值不符" "要 $WANT_NDK（userland-sources.json 钉的，clang 件按它编），实际 $GOT_NDK（$NDK）" \
+  die "NDK 版本与钉值不符" "要 $WANT_NDK（component-sources.json 钉的，clang 件按它编），实际 $GOT_NDK（$NDK）" \
     "它是从 CC=$CC 反推的 —— 若 CC 指向的不是钉值那一版，那是上游注入错了。"
 fi
 echo "[sysroot] NDK=$NDK 版本=$GOT_NDK（与钉值一致）"

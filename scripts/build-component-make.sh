@@ -20,7 +20,7 @@ die() {
 }
 note() { echo "[$TOOL] $*"; }
 
-[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-userland.yml 的「定位 NDK」步会注入）"
+[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang（build-component.yml 的「定位 NDK」步会注入）"
 TC="$(dirname "$CC")"
 LLVM_AR="$TC/llvm-ar"
 LLVM_RANLIB="$TC/llvm-ranlib"
@@ -41,7 +41,7 @@ SRC="$WORK/$TOOL-src"
 if [ ! -d "$SRC" ]; then
   TGZ="$WORK/$TOOL.tar.gz"
   note "取 $TOOL $MAKE_VER 源码（走仓内唯一入口，sha256 逐字节校验）"
-  bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin $TOOL "$TGZ" || die "取源码失败" "钉值见 userland-sources.json 的 $TOOL 键"
+  bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin $TOOL "$TGZ" || die "取源码失败" "钉值见 component-sources.json 的 $TOOL 键"
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 \
     || die "解包失败" "$TGZ —— 格式是否与 .tar.gz 相符？"
@@ -106,4 +106,4 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
 printf '%s' "$MAKE_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐合格、aarch64）"
 echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
-echo "[$TOOL] 判据要真跑一条 makefile（起得来不等于能用），由 userland-verify.json 的 criteria.$TOOL 承担"
+echo "[$TOOL] 判据要真跑一条 makefile（起得来不等于能用），由 component-verify.json 的 criteria.$TOOL 承担"

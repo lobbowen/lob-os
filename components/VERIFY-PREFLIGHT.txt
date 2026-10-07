@@ -2,7 +2,7 @@
 
 [服务]
   pid 20906  ppid 1（已跑 8h+，不受会话影响）
-  http://127.0.0.1:8120/userland-canary/userland-manifest-2.json → 200 / 12619 字节
+  http://127.0.0.1:8120/component-canary/component-manifest-2.json → 200 / 12619 字节
   件 7 个，node 35MB 拉取速度 521 MB/s（loopback，非瓶颈）
 
 [包 —— 已放到设备上，不需要 adb]
@@ -10,7 +10,7 @@
   sha256 前 24 位 e3c1fc2f611cad7417cef5dd（与构建产出逐字一致）
   applicationId = lobos.app.verify（与开发包 lobos.app 不同 ⇒ 并存）
   assets/supply/channel.json.baseUrl = http://127.0.0.1:8120（CI 构建时替换）
-  assets/supply/userland-public.pem = 自签公钥（≠ 真公钥，已核对）
+  assets/supply/component-public.pem = 自签公钥（≠ 真公钥，已核对）
   jniLibs/libc++_shared.so 在，libnode.so 不在
 
 [为什么走「文件管理器装」而不是 adb install]

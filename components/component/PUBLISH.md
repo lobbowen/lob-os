@@ -2,7 +2,7 @@
 
 链路已在 CI 里验证到「只差凭据」这一步：run `e6e7a372` 的九个 job 全绿，
 其中 `node` job 从 dsh-mobile 的 Release 取到已编译件、校验 sha256、落成
-`userland-node-24.21.0-75695f75a08d-android-arm64.zip`（35MB，内含
+`component-node-24.21.0-75695f75a08d-android-arm64.zip`（35MB，内含
 `bin/node` 116,846,080 字节，sha256 `e94c5669…` 与源 Release 逐字节相同）；
 `manifest` job 把 7 件投影成清单并校验了每件的 entry 与能力判据。
 
@@ -22,7 +22,7 @@
 1. 取 7 个件的 artifact（6 件工具链 + node；取不到即报错，不静默产出 0 件的清单）
 2. 生成一对 ed25519 **测试**密钥
 3. 用测试私钥签一份含 node 的清单（发布器用测试公钥自检）
-4. 把包里的 `userland-public.pem` / `ota-public.pem` / `channel.json.baseUrl` 换成自签那套
+4. 把包里的 `component-public.pem` / `ota-public.pem` / `channel.json.baseUrl` 换成自签那套
 
 产出的包装到真机上，新代码就会**自己**从那个 HTTP 装出 7 件 —— 验签、sha256、
 解包、落位、建链、对账整条路都跑，node 也在内。
@@ -46,7 +46,7 @@
 |---|---|---|
 | `QINIU_AK` / `QINIU_SK` | 七牛 access key / secret key | 七牛控制台「密钥管理」 |
 | `QINIU_BUCKET` | 存储空间名 | 发布用的那个空间 |
-| `OTA_PRIVATE_KEY_PEM` | ed25519 私钥（PEM 全文） | 与 APK 里 `container/app/src/main/assets/supply/userland-public.pem` 配对的那一把 |
+| `OTA_PRIVATE_KEY_PEM` | ed25519 私钥（PEM 全文） | 与 APK 里 `container/app/src/main/assets/supply/component-public.pem` 配对的那一把 |
 
 ## 顺带：APK 签名需要的 secret（与商店件无关，但同一批发布要用）
 
@@ -85,8 +85,8 @@ gh secret set ANDROID_KEY_PASSWORD --repo lobbowen/lob-os
 ## 私钥格式与配对自检
 
 `OTA_PRIVATE_KEY_PEM` 放的是 **ed25519 私钥的 PEM 全文**
-（`-----BEGIN PRIVATE KEY-----` 开头）。`publish-userland-manifest.js` 签完会
-**立刻用 APK 里焊死的 `userland-public.pem` 验一遍**，不配对就
+（`-----BEGIN PRIVATE KEY-----` 开头）。`publish-component-manifest.js` 签完会
+**立刻用 APK 里焊死的 `component-public.pem` 验一遍**，不配对就
 `::error title=签名不配对::` 并退出 1 —— 所以**私钥格式不对或不是同一把，
 会在 CI 里当场红，不会把设备验不过的清单推上线**。
 
@@ -118,7 +118,7 @@ ed25519 私钥目前只存在于 `dsh-mobile` 仓的 secret `OTA_PRIVATE_KEY_PEM
 
 ## 私钥必须是**现有这把**
 
-设备端验签用的是 APK 焊死的 `userland-public.pem`。换一把钥匙 = 设备端
+设备端验签用的是 APK 焊死的 `component-public.pem`。换一把钥匙 = 设备端
 全部验不过，等于全量重新配对。所以：
 
 - 配好后先用**线上清单**自检一次（下面那条命令），确认新签的能被旧公钥验过；
@@ -129,11 +129,11 @@ ed25519 私钥目前只存在于 `dsh-mobile` 仓的 secret `OTA_PRIVATE_KEY_PEM
 线上清单的签名是现成的，可以直接验 —— 这一步不需要私钥，只需要公钥：
 
 ```bash
-curl -fsS https://lobcdn.zll.ink/userland-canary/userland-manifest-2.json -o /tmp/man.json
-curl -fsS https://lobcdn.zll.ink/userland-canary/userland-manifest-2.json.sig -o /tmp/man.sig
+curl -fsS https://lobcdn.zll.ink/component-canary/component-manifest-2.json -o /tmp/man.json
+curl -fsS https://lobcdn.zll.ink/component-canary/component-manifest-2.json.sig -o /tmp/man.sig
 node -e '
 const fs = require("fs"), crypto = require("crypto");
-const pub = fs.readFileSync("container/app/src/main/assets/supply/userland-public.pem", "utf8");
+const pub = fs.readFileSync("container/app/src/main/assets/supply/component-public.pem", "utf8");
 const sig = Buffer.from(fs.readFileSync("/tmp/man.sig", "utf8").trim(), "base64");
 console.log(crypto.verify(null, fs.readFileSync("/tmp/man.json"), pub, sig) ? "通过" : "失败");
 '
@@ -147,8 +147,8 @@ console.log(crypto.verify(null, fs.readFileSync("/tmp/man.json"), pub, sig) ? "�
 配齐 secret 后打 tag 就是一次发布：
 
 ```bash
-git tag userland-canary-7     # revision 必须正整数，且严格单调（线上现为 6）
-git push origin userland-canary-7
+git tag component-canary-7     # revision 必须正整数，且严格单调（线上现为 6）
+git push origin component-canary-7
 ```
 
 `resolve` job 会从 tag 解出 `channel=canary` / `revision=7` / `publish=true`，

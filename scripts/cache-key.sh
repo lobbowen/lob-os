@@ -22,7 +22,7 @@ for a in "$@"; do
   esac
 done
 [ -n "$TOOL" ] || { echo "用法: $0 <件名> | $0 tag <件名>" >&2; exit 2; }
-TABLE="$ROOT_DIR/scripts/userland-sources.json"
+TABLE="$ROOT_DIR/scripts/component-sources.json"
 
 deps_for() {
   case "$1" in
@@ -91,7 +91,7 @@ RUN_ARCH="${RUN_ARCH:-X64}"
 
 if [ "$DEPS" = "build-apk-only" ]; then
   echo "::error title=该件不在这条链上::$TOOL 由 build-apk.yml 编（APK 内置 + OTA 补丁），"
-  echo "::error::不在 build-userland 矩阵里 —— 要给它算预制品 key 得先在 build-apk 那边接上。"
+  echo "::error::不在 build-component 矩阵里 —— 要给它算预制品 key 得先在 build-apk 那边接上。"
   exit 1
 fi
 

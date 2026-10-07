@@ -52,10 +52,10 @@ bash "$ROOT_DIR/scripts/verify-ndk-llvm.sh" || exit 1
 WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
 PINNED_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version llvm 2>/dev/null || true)"
 if [ -z "$WANT_LLVM" ]; then
-  die "userland-sources.json 没有 llvmVersion" \
+  die "component-sources.json 没有 llvmVersion" \
     "不知道 NDK 内置的是哪个 LLVM，就无法判断钉的源码是否同源 —— 没验过就不该继续编。" \
     "先跑 scripts/verify-ndk-llvm.sh（需要真 NDK，通常在 CI 上），" \
-    "从报错里读到实际版本号，填进 userland-sources.json 的 llvmVersion。"
+    "从报错里读到实际版本号，填进 component-sources.json 的 llvmVersion。"
 fi
 if [ -z "$PINNED_LLVM" ]; then
   die "钉值表里没有 sources.llvm" \
@@ -81,7 +81,7 @@ if [ ! -d "$SRC/llvm" ]; then
   TGZ="$WORK/llvm.src.tar.xz"
   note "取 LLVM 源码（走仓内唯一入口，sha256 逐字节校验）"
   bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin llvm "$TGZ" \
-    || die "取 LLVM 源码失败" "钉值/来源见 scripts/userland-sources.json 的 llvm 键"
+    || die "取 LLVM 源码失败" "钉值/来源见 scripts/component-sources.json 的 llvm 键"
   command -v xz >/dev/null 2>&1 || command -v unxz >/dev/null 2>&1 || die "无 xz" \
     "LLVM 官方只发 .tar.xz。请 sudo apt-get install -y xz-utils"
   rm -rf "$SRC" && mkdir -p "$SRC"

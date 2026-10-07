@@ -88,7 +88,7 @@ jobs:
         if: ${{ inputs.self_signed != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USERLAND_BASE_URL: ${{ inputs.self_signed }}
+          COMPONENT_BASE_URL: ${{ inputs.self_signed }}
           E2E_PRIVATE_KEY_PEM: ${{ secrets.E2E_PRIVATE_KEY_PEM }}
           E2E_PUBLIC_KEY_PEM: ${{ secrets.E2E_PUBLIC_KEY_PEM }}
         run: |
@@ -96,15 +96,15 @@ jobs:
           echo "── 取 7 个件的 artifact ──"
           mkdir -p dist
           for t in curl git jq npm pnpm sqlite3 node; do
-            ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=userland-$t&per_page=1" \
+            ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=component-$t&per_page=1" \
                   --jq '.artifacts[0].id // empty')
             if [ -z "$ID" ]; then
-              echo "::error title=没有 userland-$t 的 artifact::先跑 Build Userland（node 那颗需要 Node Runtime 的制品）"
+              echo "::error title=没有 component-$t 的 artifact::先跑 Build Component（node 那颗需要 Node Runtime 的制品）"
               exit 1
             fi
             gh api "repos/${{ github.repository }}/actions/artifacts/$ID/zip" > "art-$t.zip"
             ( cd dist && unzip -o -q "../art-$t.zip" )
-            echo "  $t: $(ls dist | grep "userland-$t" | head -1)"
+            echo "  $t: $(ls dist | grep "component-$t" | head -1)"
           done
           N=$(ls dist/*.zip 2>/dev/null | wc -l)
           [ "$N" -ge 7 ] || { echo "::error title=件不够::期望 7 个（6 件工具链 + node），实到 $N"; exit 1; }
@@ -127,19 +127,19 @@ jobs:
           fi
 
           echo "── 签清单（7 件全投影，含 node）──"
-          LOBOS_USERLAND_REVISION=1 USERLAND_PUBKEY=keys/e2e-public.pem \
-            node scripts/publish-userland-manifest.js dist release keys/ota-private.pem canary
-          node -p "'  投影: ' + require('./release/userland-manifest.json').tools.map(t=>t.name+'@'+t.version+' '+t.entry).join(' | ')"
+          LOBOS_COMPONENT_REVISION=1 COMPONENT_PUBKEY=keys/e2e-public.pem \
+            node scripts/publish-component-manifest.js dist release keys/ota-private.pem canary
+          node -p "'  投影: ' + require('./release/component-manifest.json').tools.map(t=>t.name+'@'+t.version+' '+t.entry).join(' | ')"
 
           echo "── 把信任根与通道锚换成自签那套 ──"
           A=container/app/src/main/assets
-          cp -f keys/e2e-public.pem "$A/supply/userland-public.pem"
+          cp -f keys/e2e-public.pem "$A/supply/component-public.pem"
           cp -f keys/e2e-public.pem "$A/ota-public.pem"
           node -e '
             const fs = require("fs");
             const p = "container/app/src/main/assets/supply/channel.json";
             const j = JSON.parse(fs.readFileSync(p, "utf8"));
-            j.baseUrl = process.env.USERLAND_BASE_URL;
+            j.baseUrl = process.env.COMPONENT_BASE_URL;
             fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
             console.log("[ok] channel.json.baseUrl =", j.baseUrl);
           '
@@ -218,14 +218,14 @@ jobs:
             echo "::warning title=没有 APK 可自检::跳过（本步在 Build 之后、此时应有产物）"
             exit 0
           fi
-          PUB=container/app/src/main/assets/supply/userland-public.pem
+          PUB=container/app/src/main/assets/supply/component-public.pem
           node -e '
             const fs=require("fs"), c=require("crypto");
             const pub=fs.readFileSync(process.argv[1],"utf8");
-            const body=fs.readFileSync("release/userland-manifest.json");
-            const sig=Buffer.from(fs.readFileSync("release/userland-manifest.json.sig","utf8").trim(),"base64");
+            const body=fs.readFileSync("release/component-manifest.json");
+            const sig=Buffer.from(fs.readFileSync("release/component-manifest.json.sig","utf8").trim(),"base64");
             if (!c.verify(null, body, pub, sig)) {
-              console.error("::error title=包与清单不配套::包里的 userland-public.pem 验不过本轮签出的清单 —— 装上去会一件都装不上（验签失败）");
+              console.error("::error title=包与清单不配套::包里的 component-public.pem 验不过本轮签出的清单 —— 装上去会一件都装不上（验签失败）");
               process.exit(1);
             }
             console.log("[ok] 包里的信任根能验本轮清单（配套成立）");

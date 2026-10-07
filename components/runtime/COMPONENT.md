@@ -8,7 +8,7 @@
 |---|---|
 | 版本 | `24.21.0` |
 | ABI | `arm64-v8a` |
-| 商店包名 | `userland-node-<version>-<sha12>-android-arm64.zip` |
+| 商店包名 | `component-node-<version>-<sha12>-android-arm64.zip` |
 | 落盘 | `files/usr/lib/toolchain/node/`（与 6 件工具链同构；一次只有一个版本生效） |
 | 依赖 | `libc++_shared.so`（由 `LD_LIBRARY_PATH` 指向 APK 的 `nativeLibraryDir` 供给） |
 | 验收 | `node -v` 打印三段版本，且真跑一段 JS + 起一个 http 服务 |
@@ -47,7 +47,7 @@ jniLibs —— 于是 116 MB 每次换版本都要重发 APK。
 - 脚本：`scripts/build-node-android.sh`
 - 产物落 `dist/libnode.so`（**编译工作区**，不进 jniLibs）；`libc++_shared.so` 落 jniLibs
   （它是 APK 原生件，在 `native-assets.txt` 里）
-- 编译一次，制品发到 Release `node-runtime-<version>-<abi>`，`build-userland.yml` 取它落件
+- 编译一次，制品发到 Release `node-runtime-<version>-<abi>`，`build-component.yml` 取它落件
 
 ### 为什么脚本里有这些硬失败判据
 
@@ -111,10 +111,10 @@ API 24。`memalign()` 自 API 1 可用，此处等价（对齐是页大小=2 的
 
 ## 上架
 
-node 与 6 件工具链走**同一条商店通道**（见 `components/userland/COMPONENT.md` 的发布段）：
-`build-userland.yml` 的 `node` job 取已编译件（从本仓或 dsh-mobile 的
+node 与 6 件工具链走**同一条商店通道**（见 `components/component/COMPONENT.md` 的发布段）：
+`build-component.yml` 的 `node` job 取已编译件（从本仓或 dsh-mobile 的
 `node-runtime-<version>-<abi>` Release，两种发布形态都认）→ 落成
-`dist/bin/node` → `package-userland.sh node` → 投递 → 签进清单。
+`dist/bin/node` → `package-component.sh node` → 投递 → 签进清单。
 
 清单里 node 的条目已实测投影正确（CI run 37140173937 的 manifest job 输出
 `node@24.21.0 入口 bin/node`），7 件齐全。

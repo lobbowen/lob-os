@@ -11,7 +11,7 @@
       ]
     },
     "投递与归档": {
-      "why": "attach-and-publish / read-archived-shell-version / verify-apk-release-form 处理的是「壳 APK 归档 + 发布形态核对」，依赖发布回执台账与 dsh 的 docs/adr/0011（发布连归一决策）。本仓的发布形态是商店件（components/userland/PUBLISH.md），不是壳 APK 归档，形态不同则判据不同。",
+      "why": "attach-and-publish / read-archived-shell-version / verify-apk-release-form 处理的是「壳 APK 归档 + 发布形态核对」，依赖发布回执台账与 dsh 的 docs/adr/0011（发布连归一决策）。本仓的发布形态是商店件（components/component/PUBLISH.md），不是壳 APK 归档，形态不同则判据不同。",
       "files": [
         "scripts/attach-and-publish.sh",
         "scripts/read-archived-shell-version.sh",

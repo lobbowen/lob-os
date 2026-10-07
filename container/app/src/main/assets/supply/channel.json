@@ -2,6 +2,6 @@
   "schema": 1,
   "baseUrl": "https://lobcdn.zll.ink",
   "channel": "canary",
-  "manifestName": "userland-manifest-2.json",
-  "sigName": "userland-manifest-2.json.sig"
+  "manifestName": "component-manifest-2.json",
+  "sigName": "component-manifest-2.json.sig"
 }

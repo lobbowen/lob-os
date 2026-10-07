@@ -6,7 +6,7 @@ const https = require('https');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const TABLE = path.join(ROOT, 'scripts', 'userland-sources.json');
+const TABLE = path.join(ROOT, 'scripts', 'component-sources.json');
 
 function die(m) {
   console.error('::error title=' + (m.title || '钉值失败') + '::' + (m.msg || ''));
@@ -101,7 +101,7 @@ async function main() {
   console.log('  sha256   : ' + sha + '   ← 取自 API 的 digest 字段，未下载');
   console.log('  url      : ' + asset.browser_download_url);
   console.log('');
-  console.log('== 将写入 scripts/userland-sources.json 的 sources.' + key + ' ==');
+  console.log('== 将写入 scripts/component-sources.json 的 sources.' + key + ' ==');
   console.log(JSON.stringify(out, null, 2));
 
   if (dry) {

@@ -41,7 +41,7 @@ if [ "$SRC" != "$RAW_DIR/libnode.so" ]; then
   mv -f "$SRC" "$RAW_DIR/libnode.so"
   rm -rf "$ROOT_DIR/dist/node-runtime" "$ROOT_DIR/dist/node" 2>/dev/null || true
   SRC="$RAW_DIR/libnode.so"
-  echo "[node] 原始件挪出 $OUT/（留在里面会被 package-userland.sh 连同 bin/node 一起打进 zip，包体积翻倍）"
+  echo "[node] 原始件挪出 $OUT/（留在里面会被 package-component.sh 连同 bin/node 一起打进 zip，包体积翻倍）"
 fi
 echo "[node] 取已编译运行时：$SRC"
 

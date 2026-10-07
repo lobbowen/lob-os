@@ -11,12 +11,12 @@ tools/rehearse-supply.js 取清单 → 逐件 sha256 → 解包 → 落位 → �
 ## 用法
 
 ```bash
-# 1. 起供给（需要一个装了 userland-*.zip 的 dist/）
+# 1. 起供给（需要一个装了 component-*.zip 的 dist/）
 node tools/serve-supply.js dist 8099 --channel canary
 
 # 2. 另一个 shell 里演练安装
 node tools/rehearse-supply.js \
-  http://127.0.0.1:8099/userland-canary/userland-manifest-2.json \
+  http://127.0.0.1:8099/component-canary/component-manifest-2.json \
   "$PWD/rehearse/lib/toolchain"
 ```
 
@@ -57,8 +57,8 @@ retired 删除
 同时给出 `installedSha` / `installedVersion` / `upgradable`，UI 两个都能看到。
 
 顺带一条实测结论：**构建可复现**。两次不同 CI run 产出的
-`userland-curl-8.22.0-*.zip` sha 完全相同（`7aa794caebc5`）—— 这正是
-`userland-sources.json` 钉 `buildTimeEpoch` 与 `ndkVersion` 的目的
+`component-curl-8.22.0-*.zip` sha 完全相同（`7aa794caebc5`）—— 这正是
+`component-sources.json` 钉 `buildTimeEpoch` 与 `ndkVersion` 的目的
 （openssl 会把构建时刻写进件字节；墙钟进字节则同版本每次重建 sha 全变，
 内容寻址的键会堆积、设备全体重下）。
 
@@ -68,7 +68,7 @@ retired 删除
 
 | 环节 | 怎么验的 |
 |---|---|
-| 清单形状 | 件名/版本/入口/别名从 `scripts/userland-verify.json` 投影，缺声明即拒供 |
+| 清单形状 | 件名/版本/入口/别名从 `scripts/component-verify.json` 投影，缺声明即拒供 |
 | 内容寻址自洽 | 件名里的 sha12 与实际 sha256 前 12 位不符即拒供 |
 | 逐件校验 | sha256 不符不落位，点名到件 |
 | 解包 | 目录穿越（`..` 越出落点）直接抛 |
@@ -82,8 +82,8 @@ retired 删除
 **没验**（验不了，别当端到端）：
 
 - **ed25519 验签** —— 演练器不签清单（没有私钥），设备侧会因验签不过拒装。
-  验签本身由两处覆盖：CI 的 `publish-userland-manifest.js` 用 APK 焊死的公钥自检，
-  以及 `components/userland/PUBLISH.md` 里那条不依赖私钥的自检命令。
+  验签本身由两处覆盖：CI 的 `publish-component-manifest.js` 用 APK 焊死的公钥自检，
+  以及 `components/component/PUBLISH.md` 里那条不依赖私钥的自检命令。
 - **Android 的 `Os.symlink`** —— 演练用 `fs.symlinkSync`，语义相同但走的不是系统调用。
 - **Android 的 `ContentResolver` / `assets`** —— 演练器不读 APK 资产，信任根那一步被跳过。
 
@@ -144,14 +144,14 @@ SupplyProvisioner.ensure 的步骤真装**（校验 sha → 暂存 → 原子 re
 `.node.ok` → 建 `usr/bin/node` 链）：
 
 ```
-件包 userland-node-24.21.0-75695f75a08d-android-arm64.zip
+件包 component-node-24.21.0-75695f75a08d-android-arm64.zip
   实际 sha256 75695f75a08d298d6fa1c82d045f08af7ec5c136de364cbc9ad3deee073ee0b8（与包名一致）
 落位 usr/lib/toolchain/node/bin/node  116,846,080 字节
 marker .node.ok
 真名链 usr/bin/node -> usr/lib/toolchain/node/bin/node
 ```
 
-跑出来的（正是 userland-verify.json 里 node 那条判据）：
+跑出来的（正是 component-verify.json 里 node 那条判据）：
 
 | 判据 | 结果 |
 |---|---|

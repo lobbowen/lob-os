@@ -29,7 +29,7 @@ object SupplyProvisioner {
         val o = channelAnchor(ctx) ?: return null
         val base = o.optString("baseUrl", "").trimEnd('/')
         if (base.isEmpty()) return null
-        return base + "/userland-" + o.optString("channel", "canary")
+        return base + "/component-" + o.optString("channel", "canary")
     }
 
     internal fun uncached(url: String): String =

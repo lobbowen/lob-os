@@ -252,7 +252,7 @@ quickapp 落位），属 `os` 域，却住在 `lobos/ota/` 包。
 
 ### 问题
 
-商店目录（`CatalogClient` 读的 `userland-*.json`）里只有 `tools[]`
+商店目录（`CatalogClient` 读的 `component-*.json`）里只有 `tools[]`
 （node/curl/git/jq/npm/pnpm/sqlite3），**没有 `packages[]`**。
 
 所以应用程序（我们的快应用）走的是 `program-feed.json` 那条单通道 OTA。

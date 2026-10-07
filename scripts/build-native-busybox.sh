@@ -49,7 +49,7 @@ TGZ="$WORK/busybox.tar.bz2"
 note "取源码 $BUSYBOX_VER（sha256 由钉值表逐字节校验）"
 if ! bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin busybox "$TGZ"; then
   die "取源码失败或 sha256 不符" \
-    "钉值与来源见 scripts/userland-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
+    "钉值与来源见 scripts/component-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
 fi
 if ! tar xjf "$TGZ" -C "$WORK"; then
   die "解包失败" "$TGZ —— sha256 是对的但 tar xjf 解不开，看上面 tar 的报错"

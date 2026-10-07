@@ -551,10 +551,10 @@ echo "    [ok] 产物与清单一致（$(ls "$OUT_DIR"/*.so | wc -l) 项）"
 echo "==> 产物形态门禁（scripts/verify-runtime-elf.sh）"
 bash "$ROOT/scripts/verify-runtime-elf.sh" "$OUT_DIR"
 bash "$ROOT/scripts/verify-runtime-elf.sh" "$NODE_OUT_DIR" 2>/dev/null \
-  || echo "==> [note] dist/ 单独过一次形态门禁未通过（该脚本按 jniLibs 形态写的，不覆盖商店件）"
+  || echo "==> [note] dist/ 单独过一次形态门禁未通过（该脚本按 jniLibs 形态写的，不覆盖组件）"
 
 echo "==> 完成。"
 echo "    node 本体: $NODE_OUT_DIR/$OUT_NAME（编译工作区产物，不进 APK）"
 echo "    libc++_shared.so: $OUT_DIR/libc++_shared.so（APK 原生件，随 APK 交付）"
-echo "    下一步: bash scripts/build-userland-node.sh 落成商店件 →"
+echo "    下一步: bash scripts/build-component-node.sh 落成组件 →"
 echo "            bash scripts/make-release.sh ${NODE_VERSION} 发布。"

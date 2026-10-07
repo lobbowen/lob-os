@@ -64,7 +64,7 @@ export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --time-base
   make -j"$JOBS" build_libs > "$ROOT_DIR/work/deps-openssl-build.log" 2>&1 \
     || { echo "=== openssl 编译失败取证（末 30 行）==="; tail -30 "$ROOT_DIR/work/deps-openssl-build.log"; exit 1; }
 )
-bash "$ROOT_DIR/scripts/verify-userland-build-date.sh" "$ROOT_DIR/work/openssl" \
+bash "$ROOT_DIR/scripts/verify-component-build-date.sh" "$ROOT_DIR/work/openssl" \
   || die "openssl 构建时间基准不合格" "上条命令已打印原因"
 if ! make -C "$ROOT_DIR/work/openssl" install_sw PATH="$TC:$PATH" > "$ROOT_DIR/work/deps-openssl-install.log" 2>&1; then
   echo "=== openssl install_sw 失败取证（末 30 行）==="

@@ -19,17 +19,17 @@ echo "══ 1. 供给服务在吗 ══"
 BASEURL=$(node -e '
   const fs=require("fs");
   try {
-    const j=JSON.parse(fs.readFileSync((process.env.LOBO_BUNDLE_MANIFEST || "/data/user/0/lobos.app/files/work/ss-bundle/dist/userland-manifest-2.json"),"utf8"));
+    const j=JSON.parse(fs.readFileSync((process.env.LOBO_BUNDLE_MANIFEST || "/data/user/0/lobos.app/files/work/ss-bundle/dist/component-manifest-2.json"),"utf8"));
     process.stdout.write(((j.tools||[])[0]||{}).url||"" );
   } catch (e) { process.stdout.write(""); }
 ' 2>/dev/null)
 HOSTPORT=$(printf '%s' "$BASEURL" | sed -n 's|^[a-z]*://\([^/]*\)/.*$|\1|p')
 [ -n "$HOSTPORT" ] || { echo "  [fail] 读不到自签清单的 baseUrl"; exit 1; }
-if curl -s -o /dev/null --max-time 8 "http://$HOSTPORT/userland-canary/userland-manifest-2.json"; then
+if curl -s -o /dev/null --max-time 8 "http://$HOSTPORT/component-canary/component-manifest-2.json"; then
   echo "  [ok] http://$HOSTPORT 回 200"
 else
   echo "  [fail] http://$HOSTPORT 不通 —— 供给服务没起？"
-  echo "         node tools/serve-supply.js ../ss-bundle/dist 8120 --channel canary --presigned ../ss-bundle/dist/userland-manifest-2.json"
+  echo "         node tools/serve-supply.js ../ss-bundle/dist 8120 --channel canary --presigned ../ss-bundle/dist/component-manifest-2.json"
   exit 1
 fi
 

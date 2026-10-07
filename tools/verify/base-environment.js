@@ -108,7 +108,7 @@ console.log('== base 筐（随 APK 打包的基础环境）逐件复审 ==');
 for (const t of baseAll) {
   let how;
   if (NATIVE_VIA_APK.includes(t)) how = '随 APK 原生件（jniLibs）';
-  else if (PUBLISHED_VIA_RELEASE.includes(t)) how = 'build-userland.yml → Release base-*';
+  else if (PUBLISHED_VIA_RELEASE.includes(t)) how = 'build-component.yml → Release base-*';
   else if (NOT_YET.includes(t)) how = 'ndk-llvm job（尚无发布资产）';
   else how = '？未归类';
   console.log(`  ${t.padEnd(14)} ${how}`);

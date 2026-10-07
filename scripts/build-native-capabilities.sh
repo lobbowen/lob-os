@@ -95,7 +95,7 @@ fi
 echo "[bash] 取源码 $BASH_VER（sha256 由钉值表校验）"
 bash_tarball="bash-${BASH_VER}.tar.gz"
 if ! bash scripts/fetch-pinned.sh --pin bash "/tmp/bash.tar.gz"; then
-  echo "::error title=bash 源码取不到或 sha256 不符::钉值与来源见 scripts/userland-sources.json 的 sources.bash"
+  echo "::error title=bash 源码取不到或 sha256 不符::钉值与来源见 scripts/component-sources.json 的 sources.bash"
   echo "             —— 所有镜像都试过了仍失败；**不要**改成不校验的下载。"
   exit 1
 fi

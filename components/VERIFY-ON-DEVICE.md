@@ -116,7 +116,7 @@ adb shell cat /data/user/0/lobos.app.verify/files/os/journal/events.jsonl | grep
 ```json
 {"at":1791042370975,"stage":"supply","level":"OK",
  "message":"C 层供给对账：声明 6 件，全部按真名可用",
- "detail":"https://lobcdn.zll.ink/userland-canary"}
+ "detail":"https://lobcdn.zll.ink/component-canary"}
 ```
 
 若 `run-as` 不可用，就在应用内的诊断面板看同样的内容。
@@ -184,7 +184,7 @@ adb uninstall lobos.app.verify
 ① supply 对账
    stage=supply  level=OK
    message=商店供给对账：声明 7 件，全部按真名可用
-   detail=http://127.0.0.1:8120/userland-canary
+   detail=http://127.0.0.1:8120/component-canary
 
 ② 装出来的件（7 个，含 node）
    curl git jq node npm pnpm sqlite3
@@ -201,13 +201,13 @@ adb uninstall lobos.app.verify
    message=商店供给对账：声明 6 件，全部按真名可用
 ② 装出来的件：curl git jq npm pnpm sqlite3（不含 node —— 清单里没有）
 ③ node：诊断说「Node 运行时未就位」；usr/bin/node 指向 APK 的 libnode.so
-   （正式凭据到位并发布 userland-canary-7 之后，这里会变成 7 件 + node 从商店装）
+   （正式凭据到位并发布 component-canary-7 之后，这里会变成 7 件 + node 从商店装）
 ```
 
 ## 能力探针：验「商店装出来的那份」
 
 诊断与目录只能证明「件在那儿、能按真名调到」，不能证明「它真能用」。真能用要看
-能力探针（`scripts/userland-verify.json` 里每颗件一条：起进程、跑一段功能、读回结果）。
+能力探针（`scripts/component-verify.json` 里每颗件一条：起进程、跑一段功能、读回结果）。
 
 装完隔离包后跑：
 

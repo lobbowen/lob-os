@@ -28,21 +28,21 @@
 
 ### 2. 在设备可达的那台机器上供起来
 
-**先改清单文件名**。bundle 里的是 `userland-manifest.json`（发布器的输出名），而
-设备的 `channel.json` 声明的是 `manifestName: userland-manifest-2.json` ——
+**先改清单文件名**。bundle 里的是 `component-manifest.json`（发布器的输出名），而
+设备的 `channel.json` 声明的是 `manifestName: component-manifest-2.json` ——
 **名字对不上，设备会 404**：
 
 ```bash
 cd <bundle>/dist
-cp userland-manifest.json       userland-manifest-2.json
-cp userland-manifest.json.sig   userland-manifest-2.json.sig
+cp component-manifest.json       component-manifest-2.json
+cp component-manifest.json.sig   component-manifest-2.json.sig
 ```
 
 然后起服务：
 
 ```bash
 node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
-  --presigned <bundle>/dist/userland-manifest-2.json
+  --presigned <bundle>/dist/component-manifest-2.json
 ```
 
 `--presigned` 是关键：直接供那份**已签好的**字节（连 `.sig` 一起）。不带这个参数时
@@ -52,7 +52,7 @@ node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
 启动后核对这几行（**要看内容，别只看 URL 通不通**）：
 
 ```
-[serve] 用已签好的清单: .../userland-manifest-2.json
+[serve] 用已签好的清单: .../component-manifest-2.json
 [serve]   revision=1 tools=7 baseUrl=http://127.0.0.1:8120
 [serve] 监听 http://127.0.0.1:8120
 ```
@@ -83,21 +83,21 @@ CI 现在有「配套自检」步会替你验一遍（用包里的公钥验本�
 
 ```bash
 # 从 APK 里取出公钥，与 bundle 的签名对一遍
-unzip -p <apk> assets/supply/userland-public.pem > /tmp/apk-pub.pem
+unzip -p <apk> assets/supply/component-public.pem > /tmp/apk-pub.pem
 node -e '
   const fs=require("fs"), c=require("crypto");
   const pub=fs.readFileSync("/tmp/apk-pub.pem","utf8");
   const body=fs.readFileSync(process.argv[1]);
   const sig=Buffer.from(fs.readFileSync(process.argv[1].replace(/\.json$/,".json.sig"),"utf8").trim(),"base64");
   console.log(c.verify(null, body, pub, sig) ? "配套 ✓ 可以起服务" : "不配套 ✘ 换同一轮的 bundle");
-' <bundle>/dist/userland-manifest-2.json
+' <bundle>/dist/component-manifest-2.json
 ```
 
 让它活过你的 shell（否则会话一收服务就没了）：
 
 ```bash
 setsid nohup node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
-  --presigned <bundle>/dist/userland-manifest-2.json < /dev/null > /tmp/serve.log 2>&1 &
+  --presigned <bundle>/dist/component-manifest-2.json < /dev/null > /tmp/serve.log 2>&1 &
 ps -ef | grep serve-supply        # ppid 应为 1 = 已脱离
 ```
 

@@ -30,7 +30,7 @@ GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}
 WANT_NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
   die "NDK 版本与钉值不符" \
-    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 userland-sources.json 的 ndkVersion"
+    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion"
 fi
 
 CLANG=""
@@ -93,7 +93,7 @@ fi
 WANT_LLVM="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --llvm)"
 if [ -z "$WANT_LLVM" ]; then
   die "钉值表没有 llvmVersion" \
-    "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/userland-sources.json ——" \
+    "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \
     "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
     "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"

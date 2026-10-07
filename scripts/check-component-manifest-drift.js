@@ -64,9 +64,9 @@ if (!Array.isArray(localTools) || localTools.length === 0) {
 const anchor = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'container/app/src/main/assets/supply/channel.json'), 'utf8'),
 );
-const onlinePath = process.env.USERLAND_ONLINE_FILE;
-const onlineFrom = onlinePath || 'userland-' + CHANNEL + '/' + anchor.manifestName;
-const onlineUrl = anchor.baseUrl.replace(/\/+$/, '') + '/userland-' + CHANNEL + '/' + anchor.manifestName
+const onlinePath = process.env.COMPONENT_ONLINE_FILE;
+const onlineFrom = onlinePath || 'component-' + CHANNEL + '/' + anchor.manifestName;
+const onlineUrl = anchor.baseUrl.replace(/\/+$/, '') + '/component-' + CHANNEL + '/' + anchor.manifestName
   + '?t=' + Date.now();
 
 function fetchOnline() {
@@ -161,7 +161,7 @@ fetchOnline().then(({ buf, missing }) => {
   for (const name of byName.keys()) if (!localNames.has(name)) diffs.push(name + ': 线上有而仓内不声明（谁投的？）');
   if (diffs.length) {
     for (const d of diffs) console.log('[drift] ' + d);
-    return fail(diffs.length + ' 格不一致 —— 推 `userland-' + CHANNEL + '-<revision>` tag 重发清单，或改回仓内声明');
+    return fail(diffs.length + ' 格不一致 —— 推 `component-' + CHANNEL + '-<revision>` tag 重发清单，或改回仓内声明');
   }
   console.log('[drift] 逐格一致：' + localTools.length + ' 颗件的版本/哈希/入口/别名/判据都在线上');
 }).catch((e) => fail('取不到线上清单：' + e.message + '（看不清 ≠ 没有漂移，也 ≠ 可以发）'));

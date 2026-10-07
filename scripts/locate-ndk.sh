@@ -40,7 +40,7 @@ else
       "$ANDROID_NDK_LATEST_HOME/source.properties" 2>/dev/null || true)"
   die "没有 $WANT_NDK 的 NDK" \
     "钉值表要 $WANT_NDK，但这里找不到它（runner 自带的是 ${HAVE:-（读不出）}）。" \
-    "两个选择：(a) 把 userland-sources.json 的 ndkVersion 改成 $HAVE 并按它重取钉值；" \
+    "两个选择：(a) 把 component-sources.json 的 ndkVersion 改成 $HAVE 并按它重取钉值；" \
     "(b) 让 CI 装 $WANT_NDK —— 设 INSTALL_NDK=1（CI 侧同时要开 NDK 的 actions/cache，否则每次都下 700 MiB）。" \
     "**不要**只改钉值了事 —— 不真的装上，所有编造 job 仍然会用 runner 自带的那版。"
 fi

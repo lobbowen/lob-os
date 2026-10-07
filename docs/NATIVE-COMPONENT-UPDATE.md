@@ -80,7 +80,7 @@ class NativeExecutable(
 )
 ```
 
-版本号由构建时钉死（同 `userland` 的 `buildTimeEpoch` 做法），
+版本号由构建时钉死（同 `component` 的 `buildTimeEpoch` 做法），
 不进 APK 的就留空——留空表示"不参与 OTA，只用 APK 那份"。
 
 ### 4.2 原生件清单走 OTA

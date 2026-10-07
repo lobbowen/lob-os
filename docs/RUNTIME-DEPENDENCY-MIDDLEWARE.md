@@ -128,7 +128,7 @@ ProgramIndex（注册表）+ $PREFIX 入口
 `runpathOrigin` / `sharedLibs` / `provides` 这些字段加在**商店目录项**里，
 由发布方（我们自己的发布脚本）填。
 
-要确认的是：**发布侧现在发的那份 `userland-manifest-2.json` 里，
+要确认的是：**发布侧现在发的那份 `component-manifest-2.json` 里，
 node 那一项要不要现在就把这些字段补上？** 补了之后，
 `PrefixProvisioner.placeNodeDeps` 这个后门就能删掉。
 
