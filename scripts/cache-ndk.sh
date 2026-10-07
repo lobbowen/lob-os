@@ -23,12 +23,21 @@ if [ -d "$HOME/.cache/actions-setup-ndk" ]; then
 fi
 
 echo "[ndk-cache] 缓存未命中，装 ndk;$NDK_VER …"
-yes 2>/dev/null | sdkmanager --sdk_root="$SDK" "ndk;$NDK_VER" >/dev/null 2>&1 || true
-if [ ! -d "$SDK/ndk/$NDK_VER" ]; then
-  echo "::error title=装 NDK 失败::sdkmanager 没能装出 ndk;$NDK_VER"
-  echo "::error::先确认它在源里：https://dl.google.com/android/repository/repository2-3.xml"
+SDK_LOG="$(mktemp)"
+if ! yes 2>/dev/null | sdkmanager --sdk_root="$SDK" "ndk;$NDK_VER" >"$SDK_LOG" 2>&1; then
+  echo "::error title=sdkmanager 装 NDK 失败::exit=$? 下面是它自己的输出（末 30 行）"
+  tail -30 "$SDK_LOG" | sed 's/^/::error::/'
+  rm -f "$SDK_LOG"
   exit 1
 fi
+if [ ! -d "$SDK/ndk/$NDK_VER" ]; then
+  echo "::error title=装 NDK 失败::sdkmanager 退出码是 0，但 $SDK/ndk/$NDK_VER 不在"
+  tail -20 "$SDK_LOG" | sed 's/^/::error::/'
+  echo "::error::确认它在源里：https://dl.google.com/android/repository/repository2-3.xml"
+  rm -f "$SDK_LOG"
+  exit 1
+fi
+rm -f "$SDK_LOG"
 
 mkdir -p "$HOME/.cache/actions-setup-ndk"
 cp -a "$SDK/ndk/$NDK_VER/." "$HOME/.cache/actions-setup-ndk/"

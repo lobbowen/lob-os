@@ -25,10 +25,14 @@ elif [ -n "$SDK" ] && [ -d "${ANDROID_NDK_LATEST_HOME:-}" ] \
   echo "[ndk] 用 $NDK"
 elif [ -n "${INSTALL_NDK:-}" ] && [ -n "$SDK" ] && command -v sdkmanager >/dev/null 2>&1; then
   echo "[ndk] 装 ndk;$WANT_NDK …"
-  yes 2>/dev/null | sdkmanager --sdk_root="$SDK" "ndk;$WANT_NDK" >/dev/null 2>&1 || true
-  [ -d "$SDK/ndk/$WANT_NDK" ] || die "装 NDK 失败" \
-    "sdkmanager 没能装出 ndk;$WANT_NDK" \
-    "先确认它在源里：https://dl.google.com/android/repository/repository2-3.xml"
+  LOG="$(mktemp)"
+  yes 2>/dev/null | sdkmanager --sdk_root="$SDK" "ndk;$WANT_NDK" >"$LOG" 2>&1 || true
+  if [ ! -d "$SDK/ndk/$WANT_NDK" ]; then
+    die "装 NDK 失败" \
+      "sdkmanager 没能装出 ndk;$WANT_NDK；它自己的输出（末 30 行）：" \
+      "$(tail -30 "$LOG")"
+  fi
+  rm -f "$LOG"
   NDK="$SDK/ndk/$WANT_NDK"
 else
   HAVE=""
