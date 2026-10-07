@@ -8,6 +8,7 @@ ROOT_DIR=$(pwd)
 TOOL="${1:?需要工具名}"
 VER=$(cat "dist/${TOOL}.version" 2>/dev/null || echo unknown)
 RAW="work/.userland-${TOOL}-raw.zip"
+mkdir -p "$(dirname "$RAW")"
 ENTRY=$(bash "$ROOT_DIR/scripts/read-userland-entry.sh" "$TOOL")
 [ -f "dist/$ENTRY" ] || { echo "::error title=缺件::dist/$ENTRY 不在（清单入口声明=$ENTRY），先构建"; exit 1; }
 STAGE=$(mktemp -d)
