@@ -569,6 +569,6 @@ jobs:
           SIG=$(node -p "require('./$ANCHOR').sigName")
           CH=$(node -p "require('./$ANCHOR').channel")
           export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
-          node scripts/upload-qiniu.js release/component-manifest.json "$CH/$MAN" --cache-control=60
-          node scripts/upload-qiniu.js release/component-manifest.json.sig "$CH/$SIG" --cache-control=60
-          echo "[manifest] 已发布 $CH/$MAN"
+          node scripts/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
+          node scripts/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60
+          echo "[manifest] 已发布 component-$CH/$MAN"
