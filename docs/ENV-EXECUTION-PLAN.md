@@ -968,3 +968,64 @@ CC 才是真正决定编译目标的那个（配方里的 `API` 变量在 config
 
 **教训**：「配方里的默认值」与「CI 注入的环境变量」可以各说各话而没人发现 ——
 只有真跑一次才暴露。CI 注入的每个值都应该与配方默认值一致。
+
+---
+
+## 十四、git 那条链：查到了确凿事实，但根因仍未定（不猜）
+
+### 已确凿的部分
+
+CI 日志（`build (git)/7_产出 git 件`，run 37557196126）：
+
+```
+[git] 诊断：PATH 含 TC_DIR ? 否
+[git] 诊断：裸名**不可解析** → 报错 127 就是这个原因
+[git] 诊断：  …/linux-x86_64/bin/aarch64-linux-android23-clang   ← 文件确实在
+[git] 编静态依赖库（build-shared-deps.sh）
+  [deps] openssl … install_sw 成功（install exporters/*.pc、cmake 都装了）
+  "make" depend && "make" _build_modules
+  make[1]: Entering directory '…/work/openssl'
+  aarch64-linux-android23-clang  -Iinclude -Iproviders/implementations/include … -fPIC -pthread
+  make[1]: aarch64-linux-android23-clang: No such file or directory
+  make[1]: *** [Makefile:14961: providers/legacy-dso-legacyprov.o] Error 127
+```
+
+**三处交叉核实过的事实：**
+
+1. `aarch64-linux-android23-clang` **确实在** `$TC_DIR` 下
+   （用 Range 读 NDK r30 的 zip 中央目录精确匹配到该路径）。
+2. openssl 3.6.3 的 `Makefile` 里**没有** `providers/implementations`、
+   `legacy-dso-legacyprov`、`_build_modules` 这三个串（实测 raw.githubusercontent）。
+   **这三个都是 git 的** —— 所以执行编译规则的 Makefile 是 **git 的**。
+3. git 配方用 `work/git-src`，shared-deps 用 `work/openssl`，
+   两者路径不同，且 `build-shared-deps.sh` 把 openssl 那段包在子 shell 里
+   （`( set -e; cd …/openssl; … )`），不会把 cwd 留给调用方。
+
+### 仍未定的部分（**不下结论**）
+
+事实 2 与 3 合起来与「make 在 `work/openssl` 里读 git 的 Makefile」不自洽 ——
+我没能解释清楚为什么这两个目录会串。当前**唯一已排除**的解释是
+「PATH 里没有编译器」（诊断已明说它在 `export PATH` 之前，如实报告）。
+
+**所以我没有再改配方。** 理由：前几轮我已经因为「照报错猜」改错了三次
+（CC 层级、NDK 环境变量、诊断变量名）。现在缺的是**能区分的解释性数据**，
+不是又一个猜测。
+
+要拿到它，需要能回答「这个 make 进程的 cwd 与它读的 Makefile 各是什么」。
+可用的手段：在 git 自己的 make 之前打 `pwd` 与 `head -3 Makefile`，
+确认它到底在哪个目录、读的是哪个 Makefile。
+
+### 这一路的教训（比根因更值钱）
+
+我为这一处失败花了**四轮**，四次都是「加诊断 → 诊断没执行/没输出 →
+再猜」。真正的失败不是根因难找，是：
+
+| 轮次 | 诊断为什么没用 |
+|---|---|
+| 1 | 排在 `deps` 之后，`deps` 失败会因 `set -e` 直接吃掉它 |
+| 2 | 自己用了不存在的变量 `$TC`（本脚本叫 `$TC_DIR`），`-u` 让它自己炸掉 |
+| 3 | 跑起来了，但它报的是**执行前**的状态（`export PATH` 在它后面） |
+
+**「加诊断」不等于「拿到信息」。** 诊断必须满足三条：
+排在所有可能失败点**之前**、引用**确实存在**的变量、测的是**失败那一刻**的状态。
+三条我第一轮一条都没满足。
