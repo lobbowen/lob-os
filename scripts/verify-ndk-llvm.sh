@@ -12,19 +12,25 @@ die() {
   exit 1
 }
 
-NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
+NDK=""
+if [ -n "${CC:-}" ] && [ -f "$CC" ]; then
+  NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd 2>/dev/null || true)"
+fi
+if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
+  NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
+fi
 if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   NDK=$(ls -d "${ANDROID_HOME:-/nonexistent}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
 fi
 [ -n "$NDK" ] && [ -d "$NDK" ] || die "无 NDK" \
-  "要核实版本就得有 NDK。设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。"
+  "要核实版本就得有 NDK。locate-ndk.sh 会注入 CC，从它反推即可；否则设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。"
 
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
 [ -n "$GOT_NDK" ] || die "读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision"
 WANT_NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
   die "NDK 版本与钉值不符" \
-    "钉值表要 $WANT_NDK，runner 上是 $GOT_NDK —— 换 NDK 要同时改 userland-sources.json 的 ndkVersion"
+    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 userland-sources.json 的 ndkVersion"
 fi
 
 CLANG=""

@@ -78,6 +78,12 @@ if [ "$TOOL" = "git" ]; then
   VER="$VER|patch:$P"
 fi
 
+if [ "$TOOL" = "node" ]; then
+  NVER="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" default)"
+  NABI="$(bash "$ROOT_DIR/scripts/read-node-versions.sh" abi | tr -c 'A-Za-z0-9._' '+')"
+  VER="${NVER}+${NABI}"
+fi
+
 NDK="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --ndk 2>/dev/null || echo unknown)"
 API=35
 RUN_OS="${RUN_OS:-Linux}"

@@ -552,3 +552,63 @@ ${COMPILER} ${FLAGS} "${TESTFILE}" -o "${TMPFILE}"   # 930 行之前：编
 
 顺带记一条：**这已经是本轮第二次被 `comment-gate` 拦下**，第一次是
 `check-elf-deps.sh` 的 25 条。解释性注释一律不进代码，判据依据落本文档。
+
+---
+
+## 第十四条：同一个东西只能有一套命名，且发布与消费必须共用
+
+### 起因
+
+`node` job 红了，报「两个仓都取不到 `node-runtime-24.21.0-arm64-v8a`」。
+查 release，实际资产是存在的 —— 在**三个不同的 tag** 下：
+
+| tag | 资产名 |
+|---|---|
+| `rt-node` | `node-24.21.0+arm64-v8a+ndk…+api35.tar.gz` |
+| `node-runtime-24.21.0` | `node-runtime-24.21.0-arm64-v8a.tar.gz` |
+| `node-runtime-24.21.0-arm64-v8a` | `node-runtime-24.21.0-arm64-v8a.tar.gz` |
+| `rt-node`（另） | 同上 |
+
+消费侧找的是第三种，发布侧写死第一种，其余件用 `rt-node` + `cache-key.sh`。
+**三套命名并存，且互不知道对方存在。**
+
+### 定位手段：查 release 实际资产，不看代码里的公式
+
+代码里三处公式各说各话，靠读代码分不清谁对谁是权威。直接列 API：
+
+```js
+curl -s -H "Authorization: Bearer $TOK" \
+  "https://api.github.com/repos/lobbowen/lob-os/releases/tags/rt-node"
+// → assets: node-24.21.0+arm64-v8a+ndk30.0.16248370+api35.tar.gz
+```
+
+`rt-node` 是与其余件一致的命名（`base-jq` / `rt-node` / `tool-npm`），
+所以它是当前体系，另两个是历史遗留。
+
+### 修法
+
+1. `cache-key.sh` 补 node 的 `VER`（原本落到通用分支 → `nodeps`，丢了版本与 ABI）
+2. `node-runtime.yml` 的资产名不再手写公式，改调 `cache-key.sh asset node`
+3. 消费侧 job 主用 `cache-key.sh tag node`，旧两个 tag 列为回退
+
+### 这里我连犯两次错，都被回归抓到
+
+**错一：给 `SAFE` 的 `tr -c` 字符集加 `-`。** 想法是保住 ABI 里的连字符。
+结果 `+` 和 `-` 在 `tr -c` 里互斥 —— 保了 `-` 就丢了 `.`→`+` 的转换，
+**七件资产名同时变错**。逐件与 release 实际名字对照才发现。
+
+**错二：随后又想「让 ABI 在进 `DEPS_STR` 前就替换掉连字符」。**
+方向对了（不动 `SAFE`，在源头处理），但第一版把 `$(bash … default)` 的
+右括号漏了，`bash -n` 报 `unexpected EOF while looking for matching ')'`。
+二分法定位到行 —— `head -n 82 | bash -n` 报括号未闭合。
+
+**教训**：
+- 改共享工具（`cache-key.sh`、`tr` 字符集）前，**先把所有调用者的输出存档**，
+  改完逐件对照。本次是九件全对才算过。
+- 「读代码看着对」和「多行 `$( )` 嵌套是对的」都是错觉，要用 `bash -n` 和实际输出验。
+
+### 判据纪律
+
+1. **发布侧与消费侧必须共用同一入口算名字**，不能各写一份公式。
+2. **查权威源（release 实际资产），不要读代码里的公式** —— 公式可能三份都错。
+3. **改共享工具要逐件回归**，并把期望值从权威源取，不是从代码推。

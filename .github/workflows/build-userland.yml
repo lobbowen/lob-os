@@ -86,22 +86,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}"
-          NAME="$TAG.tar.gz"
+          TAG="$(bash scripts/cache-key.sh tag node)"
+          NAME="$(bash scripts/cache-key.sh asset node)"
+          LEGACY_TAG="node-runtime-${{ steps.ver.outputs.tag }}-${{ steps.ver.outputs.abi }}"
+          LEGACY_TAG2="node-runtime-${{ steps.ver.outputs.tag }}"
           mkdir -p dist
           for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
-            if gh release download "$TAG" --repo "$R" --pattern "$NAME" --dir dist 2>/dev/null; then
-              echo "[ok] 取到 tar 制品：$R / $NAME"
-              if [ -f "dist/$NAME.sha256" ]; then
-                ( cd dist && sha256sum -c "$NAME.sha256" ) \
-                  || { echo "::error title=node 制品 sha256 不符::$R/$NAME"; exit 1; }
-                echo "[ok] sha256 校验通过"
+            for T in "$TAG" "$LEGACY_TAG" "$LEGACY_TAG2"; do
+              N="$NAME"
+              [ "$T" = "$TAG" ] || N="$T.tar.gz"
+              if gh release download "$T" --repo "$R" --pattern "$N" --dir dist 2>/dev/null; then
+                echo "[ok] 取到 tar 制品：$R / $T / $N"
+                if [ -f "dist/$N.sha256" ]; then
+                  ( cd dist && sha256sum -c "$N.sha256" ) \
+                    || { echo "::error title=node 制品 sha256 不符::$R/$N"; exit 1; }
+                  echo "[ok] sha256 校验通过"
+                fi
+                tar -C dist -xzf "dist/$N"
+                rm -f "dist/$N" "dist/$N.sha256"
+                break 2
               fi
-              tar -C dist -xzf "dist/$NAME"
-              rm -f "dist/$NAME" "dist/$NAME.sha256"
-              break
-            fi
-            echo "[skip] $R 没有 $NAME（试裸资产形态：libnode.so 与 SHA256SUMS 必须一起下，--pattern 只能给一个模式）"
+              echo "[skip] $R / $T 没有 $N"
+            done
+            echo "[skip] $R 三种 tag 都没有 tar 形态（试裸资产形态：libnode.so 与 SHA256SUMS 必须一起下，--pattern 只能给一个模式）"
             if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null \
                && gh release download "$TAG" --repo "$R" --pattern 'SHA256SUMS' --dir dist 2>/dev/null; then
               echo "[ok] 取到裸资产：$R / $TAG"
@@ -120,7 +127,7 @@ jobs:
           done
           ls -la dist/
           [ -f dist/libnode.so ] \
-            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 $TAG 都取不到（两种形态都试过），需先跑 Node Runtime 编译"; exit 1; }
+            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的三种 tag（$TAG / $LEGACY_TAG / $LEGACY_TAG2）都取不到，需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
           echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
 
       - name: 落成 userland 件

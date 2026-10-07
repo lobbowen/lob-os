@@ -37,9 +37,7 @@ jobs:
 
       - name: 资产名
         id: asset
-        run: |
-          NDK="$(bash scripts/fetch-pinned.sh --ndk)"
-          echo "name=node-${{ steps.ver.outputs.tag }}+${{ steps.ver.outputs.abi }}+ndk$NDK+api35.tar.gz" >> "$GITHUB_OUTPUT"
+        run: echo "name=$(bash scripts/cache-key.sh asset node)" >> "$GITHUB_OUTPUT"
 
       - name: Release tag（件名，不含版本，且与其余 userland 件同一套命名）
         id: rel
