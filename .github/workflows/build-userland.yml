@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-userland.yml'
       - 'scripts/build-userland-*.sh'
       - 'scripts/locate-ndk.sh'
+      - 'scripts/cache-ndk.sh'
       - 'scripts/verify-userland-build-date.sh'
       - 'scripts/package-userland.sh'
       - 'scripts/publish-userland-manifest.js'
@@ -166,6 +167,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 缓存 NDK $NDK_VER（key 只按版本算 → 版本不变就命中，不再下 700 MiB）
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
+      - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
+        run: bash scripts/cache-ndk.sh
       - name: 定位 NDK（比对钉值；不比对的话改 ndkVersion 对 11 件毫无影响）
         run: bash scripts/locate-ndk.sh
 
@@ -223,6 +232,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 缓存 NDK $NDK_VER（key 只按版本算 → 版本不变就命中，不再下 700 MiB）
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
+      - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
+        run: bash scripts/cache-ndk.sh
       - name: 定位 NDK（与 build job 共用同一份：比对钉值 + 验证 clang 真能跑）
         run: bash scripts/locate-ndk.sh
 
