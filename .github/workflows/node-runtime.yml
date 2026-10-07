@@ -12,6 +12,9 @@ concurrency:
   group: node-runtime-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
 
   runtime:

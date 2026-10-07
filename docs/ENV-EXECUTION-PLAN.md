@@ -1214,3 +1214,42 @@ asset = curl-…+openssl-3.6.3+…             ← 升 openssl 就变 → 找不
 
 1. `die()` 定义在参数解析**之后**，而解析里就调它 → `die: command not found`。
 2. 同一处 `printf %s` 丢了引号（应为 `printf '%s'`）—— 拼版本串时会被当格式串。
+
+### 踩坑：发布预制品要 `contents: write`，否则 403
+
+第一次跑带预制品发布的 CI，**5 件都编出来了，但 job 红了**：
+
+```
+build (jq)      → failure ✘ 发布本件预制品到 Release
+build (curl)    → failure ✘ 发布本件预制品到 Release
+build (sqlite3) → failure ✘ 发布本件预制品到 Release
+build (npm)     → failure ✘ 发布本件预制品到 Release
+build (pnpm)    → failure ✘ 发布本件预制品到 Release
+```
+
+日志：
+
+```
+HTTP 403: Resource not accessible by integration
+(https://api.github.com/repos/lobbowen/lob-os/releases)
+```
+
+根因：workflow 没写 `permissions`，而默认 token 权限是**只读**的 ——
+`gh release create` 要写权限。
+
+**现象极具误导性**：编译成功、形态校验也过了，红在最后一步。
+容易误判成「预制品打包有问题」或「这 5 件其实没编出来」。
+实际上 `dist/` 里那 5 个 zip 是好的，只是存不进去。
+
+修法（两个 workflow 都加，`permissions` 必须在**顶层**、不能放 job 里）：
+
+```yaml
+permissions:
+  contents: write
+```
+
+**判据：任何要写 GitHub 侧状态（Release / issue / PR）的 workflow，
+都要显式声明 `permissions`。** 默认值是只读，缺了不会在语法层面报错，
+只会在跑到那一步时给一个 403 —— 而那一步往往排在最后。node-runtime.yml
+早就需要这个能力（它一直在发 Release），但同样没声明；它没暴露是因为
+那个 workflow 是手动触发、跑得少。

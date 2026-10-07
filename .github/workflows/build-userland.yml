@@ -36,6 +36,9 @@ concurrency:
   group: build-userland-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
 
   resolve:
