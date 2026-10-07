@@ -84,8 +84,10 @@ note "编译完成；产物：$(ls -la "$BUILD/make" 2>&1 | head -1)"
 
 BIN="$BUILD/make"
 [ -x "$BIN" ] || die "没产出 make" "$BIN 不存在或不可执行"
-cp -f "$BIN" "$OUT/bin/$TOOL"
-chmod 0755 "$OUT/bin/$TOOL"
+cp -f "$BIN" "$OUT/bin/$TOOL" || { echo "::error title=cp 失败::源=$BIN  目标=$OUT/bin/$TOOL"; exit 1; }
+echo "[make] cp 完成：$(ls -la "$OUT/bin/$TOOL" 2>&1 | head -1)"
+chmod 0755 "$OUT/bin/$TOOL" || { echo "::error title=chmod 失败::$OUT/bin/$TOOL"; exit 1; }
+echo "[make] chmod 完成"
 
 SIZE=$(stat -c%s "$OUT/bin/$TOOL")
 [ "$SIZE" -gt 300000 ] || die "产物可疑" "make 只有 $SIZE 字节 —— 静态编不该这么小"
