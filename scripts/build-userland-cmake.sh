@@ -112,6 +112,15 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
          echo "--- 实际用的编译命令（取 core.c 那一条）---"
          CMD="$(grep -m1 -oE '[^ ]*clang[^ ]* .*core\.c[^ ]*' "$WORK/build.log" 2>/dev/null | head -c 500 || true)"
          if [ -n "$CMD" ]; then echo "$CMD"; else echo "  build.log 里没有 core.c 的命令行（gmake 默认不打完整命令，加 VERBOSE=1 再看）"; fi
+         echo "--- 编译器预定义宏里有没有 __linux__（libuv 的 UV__CPU_AFFINITY_SUPPORTED 靠它，Bionic 不提供 cpu_set_t）---"
+         printf '#include <stdio.h>\nint main(void){return 0;}\n' > "$WORK/macro.c"
+         if "$CC" -dM -E "$WORK/macro.c" 2>/dev/null > "$WORK/macros.txt"; then
+           HIT="$(grep -E '^#define (__linux__|__ANDROID__|__BIONIC__|ANDROID|__ANDROID_API__|__ANDROID_MIN_SDK_VERSION__)' "$WORK/macros.txt" || true)"
+           if [ -n "$HIT" ]; then echo "$HIT" | sed 's/^/    /'; else echo "    没有 __linux__ / __ANDROID__ / ANDROID 这几个"; fi
+           echo "    总宏数：$(wc -l < "$WORK/macros.txt")"
+         else
+           echo "    取预定义宏失败"
+         fi
          exit 1; }
   cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
     || { echo "=== cmake install 失败取证（末 40 行）==="; tail -40 "$WORK/install.log"; exit 1; }
