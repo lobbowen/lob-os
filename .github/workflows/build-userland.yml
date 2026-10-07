@@ -214,6 +214,7 @@ jobs:
         run: |
           echo "key=$(bash scripts/cache-key.sh ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
           echo "tag=$(bash scripts/cache-key.sh tag ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
+          echo "asset=$(bash scripts/cache-key.sh asset ${{ matrix.tool }})" >> "$GITHUB_OUTPUT"
 
       - name: 已发布就复用（不重编）
         id: reuse
@@ -222,14 +223,19 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
           if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
              && gh release download "$TAG" --repo "${{ github.repository }}" \
-                  --pattern 'userland-*.tar.gz*' --dir dist >/dev/null 2>&1; then
-            echo "[ok] 预制品已存在，直接复用（tag=$TAG）"
-            ls -la dist/*.tar.gz* 2>/dev/null | sed 's/^/  /' || true
+                  --pattern "$ASSET*" --dir dist >/dev/null 2>&1; then
+            echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
+            if [ -f "dist/$ASSET" ]; then
+              mv "dist/$ASSET" "dist/userland-${{ matrix.tool }}.zip"
+              [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/userland-${{ matrix.tool }}.zip.sha256" || true
+            fi
+            ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
-            echo "[miss] 无可复用预制品（tag=$TAG）→ 本轮编译"
+            echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
 
@@ -275,7 +281,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
-          ASSET="userland-${{ matrix.tool }}.tar.gz"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
           mkdir -p dist/pw
           if ls dist/userland-${{ matrix.tool }}-*.zip >/dev/null 2>&1; then
             tar czf "dist/pw/$ASSET" -C dist --exclude 'pw/*' --exclude '*.tar.gz' userland-${{ matrix.tool }}-*.zip

@@ -11,7 +11,14 @@ for a in "$@"; do
   case "$a" in
     tag) KIND="tag" ;;
     key) KIND="key" ;;
-    *) [ -n "$TOOL" ] && die "只能给一个件名（收到 $a 与 $TOOL）"; TOOL="$a" ;;
+    asset) KIND="asset" ;;
+    *)
+      if [ -n "$TOOL" ]; then
+        echo "只能给一个件名（收到 $a 与 $TOOL）" >&2
+        exit 2
+      fi
+      TOOL="$a"
+      ;;
   esac
 done
 [ -n "$TOOL" ] || { echo "用法: $0 <件名> | $0 tag <件名>" >&2; exit 2; }
@@ -34,8 +41,10 @@ deps_for() {
   esac
 }
 
-die() { echo "::error title=未知件名::$TOOL 不在已知列表里" \
-             "—— 加新件时要在这里补一条 deps_for，否则缓存 key 算不准"; exit 1; }
+die() {
+  echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补一条 deps_for，否则缓存 key 算不准"
+  exit 1
+}
 
 DEPS="$(deps_for "$TOOL")"
 VER=""
@@ -64,12 +73,17 @@ API=23
 RUN_OS="${RUN_OS:-Linux}"
 RUN_ARCH="${RUN_ARCH:-X64}"
 
-if [ "$KIND" = "tag" ]; then
-  SAFE="$(printf '%s' "uw-$TOOL-$VER-ndk$NDK-api$API" \
-    | tr -c 'A-Za-z0-9._-' '-' \
-    | tr -s '-' '-' \
-    | sed 's/^[-.]*//; s/[-.]*$//')"
-  echo "${SAFE}-${RUN_OS}-${RUN_ARCH}"
-else
-  echo "uw-$TOOL-$VER-ndk$NDK-api$API-$RUN_OS-$RUN_ARCH"
-fi
+DEPS_STR="$VER-ndk$NDK-api$API"
+
+case "$KIND" in
+  tag)
+    echo "userland-$TOOL"
+    ;;
+  asset)
+    SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
+    echo "$TOOL-$SAFE.tar.gz"
+    ;;
+  *)
+    echo "uw-$TOOL-$DEPS_STR-$RUN_OS-$RUN_ARCH"
+    ;;
+esac

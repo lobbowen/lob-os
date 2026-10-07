@@ -1167,3 +1167,50 @@ API 级别：23
 **判据**：改多 job 的 YAML，按**行号 + job 边界**定位，不要靠字符串首匹配；
 每次改完立刻 `grep -c` 复核落点。这与「缓存路径要对着实际 write 路径核」
 是同一条 —— **按命名/首匹配推断出来的位置，要复核**。
+
+### 预制品仓的最终形态：**一个件一个 tag，版本在资产名里**
+
+```
+userland-curl                      ← tag 只含件名，长期稳定
+  ├── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.tar.gz
+  ├── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.tar.gz.sha256
+  └── curl-curl+8.22.0openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api23.targz.BUILD.md
+```
+
+**为什么这样切**（这一条是用户定的，我先前想错了）：
+
+- **件必须分开** —— 七牛那条链是
+  `for f in dist/userland-<件>-*.zip; do upload-qiniu …`，
+  逐件匹配上传。若把 9 件打成一个资产，这行就匹配不到，发布链直接断。
+- **tag 不含版本** —— 版本进 tag 之后，每升一次依赖就多一个 tag，
+  Release 列表会随迭代膨胀。版本本来就在资产名里，把 tag 让给「件」，
+  列表就是稳定的 9 个。
+
+**tag 不含版本，会不会削弱复用判据？不会**，因为判据问的是
+「这个 tag 下有没有**这一版**的资产」，不是「这个 tag 在不在」：
+
+```
+tag   = userland-curl                       ← 升 openssl 也不变
+asset = curl-…+openssl-3.6.3+…             ← 升 openssl 就变 → 找不到 → 正确重编
+```
+
+实测（改 openssl 3.6.3 → 3.6.4）：tag 不变、asset 变 → 复用落空 → 重编。✔
+
+**node 也统一到这个形态**（原来它的 tag 是 `node-runtime-24.21.0`，含版本）。
+它的复用逻辑本来就是「tag 在 → 再按资产名 download」，所以只改 tag 那一处即可。
+
+### 命名规范（三处统一用 cache-key.sh 算，不各自拼）
+
+| 用途 | 形态 | 例 |
+|---|---|---|
+| actions/cache 的 key | `uw-<件>-<依赖…>-<ndk>-<api>-<os>-<arch>` | `uw-jq-jq-1.8.2-ndk30.0.16248370-api23-Linux-X64` |
+| Release 的 tag | `userland-<件>` | `userland-curl` |
+| Release 的资产名 | `<件>-<依赖…>.tar.gz` | `curl-curl+8.22.0openssl+3.6.3….tar.gz` |
+
+`cache-key.sh <件名>` / `tag <件名>` / `asset <件名>` 三种模式；
+未知件名判红（否则新加的件会静默拿到不含它依赖的 key/tag）。
+
+### 顺带修的两处自身缺陷
+
+1. `die()` 定义在参数解析**之后**，而解析里就调它 → `die: command not found`。
+2. 同一处 `printf %s` 丢了引号（应为 `printf '%s'`）—— 拼版本串时会被当格式串。
