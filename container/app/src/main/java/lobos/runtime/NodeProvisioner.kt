@@ -50,7 +50,7 @@ object NodeProvisioner {
     }
 
     fun ensureOtaPublicKey(context: Context): File {
-        return ensureAssetCopied(context, "ota-public.pem", File(context.filesDir, "ota-public.pem"))
+        return ensureAssetCopied(context, "supply/component-public.pem", File(context.filesDir, "supply/component-public.pem"))
     }
 
     fun ensureEnvShim(context: Context): File? {

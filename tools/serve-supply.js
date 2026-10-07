@@ -93,7 +93,7 @@ const PRESIGNED = process.argv.includes('--presigned')
   ? process.argv[process.argv.indexOf('--presigned') + 1]
   : null;
 
-const MANIFEST_PATH = '/component-' + CHANNEL + '/component-manifest-2.json';
+const MANIFEST_PATH = '/component-' + CHANNEL + '/component-manifest.json';
 const routes = {};
 if (PRESIGNED) {
   const man = fs.readFileSync(PRESIGNED, 'utf8');
@@ -144,7 +144,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('[serve] 监听 ' + BASE);
-  console.log('[serve] 清单路由: ' + BASE + '/component-' + CHANNEL + '/component-manifest-2.json');
+  console.log('[serve] 清单路由: ' + BASE + '/component-' + CHANNEL + '/component-manifest.json');
   console.log('[serve] 件 ' + tools.length + ' 颗: ' + tools.map((t) => t.name + '@' + t.version).join(', '));
   for (const t of tools) {
     console.log('[serve]   ' + t.name + ' → ' + t.entry + '  sha ' + t.sha256.slice(0, 12) + (t.aliases.length ? '  别名 ' + t.aliases.map((a) => a.name).join('+') : ''));

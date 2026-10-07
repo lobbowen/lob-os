@@ -134,7 +134,7 @@ jobs:
           echo "── 把信任根与通道锚换成自签那套 ──"
           A=container/app/src/main/assets
           cp -f keys/e2e-public.pem "$A/supply/component-public.pem"
-          cp -f keys/e2e-public.pem "$A/ota-public.pem"
+          cp -f keys/e2e-public.pem "$A/supply/component-public.pem"
           node -e '
             const fs = require("fs");
             const p = "container/app/src/main/assets/supply/channel.json";

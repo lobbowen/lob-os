@@ -23,24 +23,25 @@
 
 ## 二、必须一致的七项
 
-### 1. 签名：独立 `.sig` 文件，不内嵌
+### 1. 签名：ed25519，覆盖清单的规范化形式
 
-```
-<manifest-url>
-<manifest-url>.sig          ← base64 的 ed25519 签名，覆盖清单正文
-```
+三条链都做 ed25519 验签，用同一把公钥。差别只在**签名的载体**：
 
-验签：`SupplyProvisioner.verifyEd25519(pubPem, manifestBody, sig)`。
+| 通道 | 载体 | 验签对象 | 状态 |
+|---|---|---|---|
+| 2、3 | 独立 `.sig` 文件 | 清单正文（原字节） | 已符合 |
+| 1 | 清单内的 `signature` 字段 | `canonical(manifest)` —— **去掉 signature 字段后的规范化 JSON** | 已符合 |
 
-**现状**
-- 通道 2、3：已符合
-- 通道 1：**违反** —— 签名内嵌在清单的 `signature` 字段里
-  （`ProgramOtaUpdater.kt:138` 读 `manifest.optString("signature")`）
+**通道 1 的形态是安全的**：`ProgramPackageVerifier.kt:61` 验的是
+`canonical(manifest)`，签名不覆盖 `signature` 自身。攻击者替换版本号或包 URL
+后无法重算签名（没有私钥），验签必然失败。
 
-**为什么内嵌不行**：签名与被签内容在同一个文件里，能同时被改。
-攻击者替换版本号与包 URL 后自行签名，设备端无从察觉。
-独立 `.sig` 让签名文件成为「唯一可信根之外的第二道输入」——
-改清单就必然验不过。
+> 早先我判断「内嵌签名等于没签」是**错的** —— 没有细看 `canonical()` 的语义。
+> 两种形态都成立，差别只是可读性：独立 `.sig` 能在不解析 JSON 的情况下核对签名。
+
+**要统一的是**：都用 `SupplyProvisioner.verifyEd25519`（现已如此），
+都用同一把公钥（见第 2 项）。载体形态可以保持现状 —— 若要改成独立 `.sig`，
+需同步改 `ProgramPackageVerifier`、`sign-program-manifest.js` 与七牛上的存量文件。
 
 ### 2. 信任根：同一个文件
 
@@ -51,7 +52,7 @@ assets/supply/component-public.pem
 三条链读同一把公钥。
 
 **现状**：已核实是同一把（sha256 前 16 位 `c1699cdb002480ba`），但**挂了两个文件名**：
-`assets/ota-public.pem`（通道 1 的三个类在读）与 `assets/supply/component-public.pem`
+`assets/supply/component-public.pem`（通道 1 的三个类在读）与 `assets/supply/component-public.pem`
 （通道 2、3 在读）。收敛成一个。
 
 ### 3. 通道锚点：一份配置，含三条通道

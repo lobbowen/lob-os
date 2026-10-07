@@ -68,7 +68,7 @@ NativeAssetUpdater 读锚点          通道 3 配置 —— 复用 SupplyProvis
 ### 两个信任根并存
 
 ```
-assets/ota-public.pem              ProgramPackageVerifier / ProgramInstaller / NodeProvisioner 读它
+assets/supply/component-public.pem              ProgramPackageVerifier / ProgramInstaller / NodeProvisioner 读它
 assets/supply/component-public.pem CatalogClient / NativeAssetUpdater 读它
 ```
 
@@ -76,8 +76,7 @@ assets/supply/component-public.pem CatalogClient / NativeAssetUpdater 读它
 是同一把公钥的两个文件名，信任根没有分叉。
 
 所以这里只是「同一把钥匙挂了两个名字」，不是安全问题。
-但仍应收敛到一个文件：通道 1 读 `ota-public.pem`、通道 2/3 读 `component-public.pem`，
-一旦换钥匙就要改两处。
+**已收敛为一个文件** `supply/component-public.pem`，六个引用点（CatalogClient / NativeAssetUpdater / ProgramPackageVerifier / ProgramInstaller / NodeProvisioner）全部指向它，换钥匙只改一处。
 
 ---
 

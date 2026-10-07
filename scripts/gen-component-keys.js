@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUB_SUPPLY = path.join(ROOT, 'container/app/src/main/assets/supply/component-public.pem');
-const PUB_OTA = path.join(ROOT, 'container/app/src/main/assets/ota-public.pem');
+const PUB_OTA = path.join(ROOT, 'container/app/src/main/assets/supply/component-public.pem');
 const ARGS = process.argv.slice(2);
 const FORCE = ARGS.includes('--force');
 const DIR_ARG = ARGS.find((a) => !a.startsWith('--'));
@@ -63,7 +63,7 @@ const fp = crypto.createHash('sha256').update(publicKey.export({ type: 'spki', f
 console.log('[genkeys] 已生成 ed25519 密钥对');
 console.log('          公钥（已提交进仓，APK 内置为信任根）:');
 console.log('            container/app/src/main/assets/supply/component-public.pem');
-console.log('            container/app/src/main/assets/ota-public.pem');
+console.log('            container/app/src/main/assets/supply/component-public.pem');
 console.log('          私钥（不入库）: ' + OUT_KEY);
 console.log('          公钥指纹 sha256(SPKI DER) = ' + fp);
 console.log();

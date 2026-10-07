@@ -167,6 +167,6 @@ object ProgramPackageVerifier {
         )
 
     fun publicKeyPem(context: Context): String? = runCatching {
-        context.assets.open("ota-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
+        context.assets.open("supply/component-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
     }.getOrNull()
 }

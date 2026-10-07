@@ -3,7 +3,7 @@ set -euo pipefail
 export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ANCHOR="$SCRIPT_DIR/../container/app/src/main/assets/ota-public.pem"
+ANCHOR="$SCRIPT_DIR/../container/app/src/main/assets/supply/component-public.pem"
 PRIVATE=""
 
 while [ $# -gt 0 ]; do

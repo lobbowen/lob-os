@@ -33,7 +33,7 @@ jobs:
         env:
           OTA_PUBLIC_KEY: ${{ secrets.OTA_PUBLIC_KEY }}
         run: |
-          ANCHOR="container/app/src/main/assets/ota-public.pem"
+          ANCHOR="container/app/src/main/assets/supply/component-public.pem"
           if [ -n "$OTA_PUBLIC_KEY" ]; then
             printf '%s' "$OTA_PUBLIC_KEY" > "$ANCHOR"
             echo "anchor written from OTA_PUBLIC_KEY secret"

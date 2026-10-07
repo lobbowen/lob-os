@@ -22,7 +22,7 @@
 1. 取 7 个件的 artifact（6 件工具链 + node；取不到即报错，不静默产出 0 件的清单）
 2. 生成一对 ed25519 **测试**密钥
 3. 用测试私钥签一份含 node 的清单（发布器用测试公钥自检）
-4. 把包里的 `component-public.pem` / `ota-public.pem` / `channel.json.baseUrl` 换成自签那套
+4. 把包里的 `supply/component-public.pem` / `channel.json.baseUrl` 换成自签那套
 
 产出的包装到真机上，新代码就会**自己**从那个 HTTP 装出 7 件 —— 验签、sha256、
 解包、落位、建链、对账整条路都跑，node 也在内。

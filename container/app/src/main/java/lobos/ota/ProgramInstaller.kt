@@ -60,7 +60,7 @@ object ProgramInstaller {
         if (pubPem.isNullOrBlank()) {
             return InstallResult(
                 false, null, source, "public-key-missing",
-                "公钥锚点不可用：assets/ota-public.pem 读不出",
+                "公钥锚点不可用：assets/supply/component-public.pem 读不出",
             )
         }
         val verify = lobos.os.ProgramPackageVerifier.verify(
