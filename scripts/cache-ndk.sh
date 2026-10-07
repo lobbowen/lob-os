@@ -14,18 +14,33 @@ if [ -d "$SDK/ndk/$NDK_VER" ]; then
   exit 0
 fi
 
-if [ -d "$HOME/.cache/actions-setup-ndk" ]; then
+if [ -d "$HOME/.cache/actions-setup-ndk/toolchains" ]; then
   echo "[ndk-cache] 缓存命中 → $HOME/.cache/actions-setup-ndk"
   mkdir -p "$SDK/ndk"
+  rm -rf "$SDK/ndk/$NDK_VER"
   cp -a "$HOME/.cache/actions-setup-ndk" "$SDK/ndk/$NDK_VER"
   echo "[ndk-cache] 已还原到 $SDK/ndk/$NDK_VER"
   exit 0
 fi
 
-echo "[ndk-cache] 缓存未命中，装 ndk;$NDK_VER …"
+SDKMAN=""
+for c in "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+         "$SDK/cmdline-tools/bin/sdkmanager" \
+         "$(command -v sdkmanager 2>/dev/null || true)"; do
+  [ -n "$c" ] && [ -x "$c" ] && { SDKMAN="$c"; break; }
+done
+if [ -z "$SDKMAN" ]; then
+  echo "::error title=找不到 sdkmanager::要装 ndk;$NDK_VER 但这台 runner 上没有 sdkmanager"
+  ls -d "$SDK"/cmdline-tools/*/bin 2>/dev/null | sed 's/^/::error::  候选目录 /'
+  echo "::error::它通常在 \$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/，不在 PATH 里。"
+  echo "::error::修法：在这一步之前跑 android-actions/setup-android（它会装 cmdline-tools）。"
+  exit 1
+fi
+
+echo "[ndk-cache] 缓存未命中，用 $SDKMAN 装 ndk;$NDK_VER …"
 SDK_LOG="$(mktemp)"
-if ! yes 2>/dev/null | sdkmanager --sdk_root="$SDK" "ndk;$NDK_VER" >"$SDK_LOG" 2>&1; then
-  echo "::error title=sdkmanager 装 NDK 失败::exit=$? 下面是它自己的输出（末 30 行）"
+if ! yes 2>/dev/null | "$SDKMAN" --sdk_root="$SDK" "ndk;$NDK_VER" >"$SDK_LOG" 2>&1; then
+  echo "::error title=sdkmanager 装 NDK 失败::下面是它自己的输出（末 30 行）"
   tail -30 "$SDK_LOG" | sed 's/^/::error::/'
   rm -f "$SDK_LOG"
   exit 1

@@ -157,8 +157,24 @@ jobs:
           path: dist/userland-node-*.zip
           retention-days: 30
 
-  build:
+  ndk-cache:
     needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 恢复 NDK 缓存
+        id: ndkcache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
+      - name: 装 NDK 并写回缓存（本 job 只做这一件事，所以它几乎总是成功 → 缓存落地）
+        run: bash scripts/cache-ndk.sh
+
+  build:
+    needs: [resolve, ndk-cache]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -167,11 +183,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 缓存 NDK $NDK_VER（key 只按版本算 → 版本不变就命中，不再下 700 MiB）
+      - name: 恢复 NDK 缓存（由 ndk-cache job 备好；这里只取）
         uses: actions/cache@v4
         with:
           path: ~/.cache/actions-setup-ndk
           key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
 
       - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
         run: bash scripts/cache-ndk.sh
@@ -226,13 +243,13 @@ jobs:
           retention-days: 1
 
   ndk-llvm:
-    needs: resolve
+    needs: [resolve, ndk-cache]
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
-      - name: 缓存 NDK $NDK_VER（key 只按版本算 → 版本不变就命中，不再下 700 MiB）
+      - name: 恢复 NDK 缓存（由 ndk-cache job 备好；这里只取）
         uses: actions/cache@v4
         with:
           path: ~/.cache/actions-setup-ndk
@@ -333,7 +350,7 @@ jobs:
           '
 
   manifest:
-    needs: [resolve, build, node]
+    needs: [resolve, build, node, ndk-cache]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
