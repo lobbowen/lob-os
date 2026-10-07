@@ -103,7 +103,7 @@ function _readEocd(buf) {
   const count = buf.readUInt16LE(eocdOff + 10);
   const cdOffset = buf.readUInt32LE(eocdOff + 16);
   if (count === 0xFFFF || cdOffset === 0xFFFFFFFF) {
-    throw new Error('不支持 zip64 格式的内核包（条目数或中央目录偏移溢出 32 位）');
+    throw new Error('不支持 zip64 格式的程序包（条目数或中央目录偏移溢出 32 位）');
   }
   return { cdOffset, count };
 }

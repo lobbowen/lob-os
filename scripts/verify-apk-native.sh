@@ -90,7 +90,7 @@ elif ! has_prefix 'lib/'; then
 fi
 
 echo
-echo "--- legacy 内核资产（必须为空）---"
+echo "--- legacy 程序资产（必须为空）---"
 if has_prefix 'assets/kernel'; then
   if [ "$REPORT" = "1" ]; then
     echo "  [FAIL] 含 assets/kernel —— ADR-0005 规定 Program 不随 APK 分发"
@@ -101,7 +101,7 @@ if has_prefix 'assets/kernel'; then
     exit 1
   fi
 else
-  echo "[ok] APK 不含 legacy 内核资产（Program 经 OTA 安装）"
+  echo "[ok] APK 不含 legacy 程序资产（Program 经 OTA 安装）"
 fi
 
 echo

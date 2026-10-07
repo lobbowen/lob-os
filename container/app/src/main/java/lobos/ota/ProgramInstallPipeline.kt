@@ -30,7 +30,7 @@ object ProgramInstallPipeline {
         if (spec.programId.isBlank()) {
             return Result(
                 false, null, "manifest-id-missing",
-                "包清单未声明 id/name：内核不猜安装目标",
+                "包清单未声明 id/name：宿主不猜安装目标",
             )
         }
         if (!spec.zip.isFile) {

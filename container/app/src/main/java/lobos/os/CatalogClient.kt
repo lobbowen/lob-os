@@ -94,9 +94,9 @@ object CatalogClient {
         }
         val base = SupplyProvisioner.manifestDir(ctx)
             ?: return fail(ctx, "通道锚读不到：assets/supply/channel.json")
-        val name = SupplyProvisioner.anchorName(ctx, "manifestName")
-            ?: return fail(ctx, "通道锚没有 manifestName")
-        val sigName = SupplyProvisioner.anchorName(ctx, "sigName") ?: (name + ".sig")
+        val name = SupplyProvisioner.manifestNameOf(ctx, "component")
+            ?: return fail(ctx, "通道锚没有 manifests.component.name")
+        val sigName = SupplyProvisioner.manifestSigNameOf(ctx, "component") ?: (name + ".sig")
         val pubPem = runCatching {
             ctx.assets.open("supply/component-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
         }.getOrNull() ?: return fail(ctx, "信任根读不到：assets/supply/component-public.pem")

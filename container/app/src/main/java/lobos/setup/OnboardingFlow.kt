@@ -106,5 +106,5 @@ object OnboardingFlow {
         capId?.let { CapabilityCatalog.byId(it) }?.acquirer?.invoke(e)?.firstOrNull()
 
     private const val WHY_PAIR = "点一下就现场核对开发者环境并跳到无线调试页；端口只在册时才算数"
-    private const val WHY_ENTER = "通道+控制面+内核包就绪就进面板，其余权限不挡门；通道每次现问 mDNS"
+    private const val WHY_ENTER = "通道+控制面+程序包就绪就进面板，其余权限不挡门；通道每次现问 mDNS"
 }

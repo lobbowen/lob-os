@@ -110,7 +110,7 @@ class OtaEngine {
     }
     fs.rmSync(tmp, { recursive: true, force: true });
     this._setPointer(version);
-    this.log('ota: 已切换到内核 ' + version);
+    this.log('ota: 已切换到程序 ' + version);
     return dest;
   }
 

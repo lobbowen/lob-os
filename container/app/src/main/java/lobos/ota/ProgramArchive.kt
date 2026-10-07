@@ -13,7 +13,7 @@ object ProgramArchive {
                 val name = entry.name
                 val out = File(dest, name).canonicalFile
                 if (!out.path.startsWith(destRoot.path + File.separator) && out.path != destRoot.path) {
-                    throw IllegalStateException("内核包条目路径越界（疑似目录穿越）: " + name)
+                    throw IllegalStateException("程序包条目路径越界（疑似目录穿越）: " + name)
                 }
                 if (entry.isDirectory) {
                     out.mkdirs()
@@ -25,7 +25,7 @@ object ProgramArchive {
                 zis.closeEntry()
                 entry = zis.nextEntry
             }
-            if (count == 0) throw IllegalStateException("内核包内没有任何文件条目")
+            if (count == 0) throw IllegalStateException("程序包内没有任何文件条目")
         }
     }
 

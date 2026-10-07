@@ -32,6 +32,22 @@ object SupplyProvisioner {
         return base + "/component-" + o.optString("channel", "canary")
     }
 
+    internal fun manifestNameOf(ctx: Context, channel: String): String? {
+        val o = channelAnchor(ctx) ?: return null
+        val m = o.optJSONObject("manifests")?.optJSONObject(channel)
+        if (m != null) return m.optString("name", "").ifBlank { null }
+        if (channel == "component") return o.optString("manifestName", "").ifBlank { null }
+        return null
+    }
+
+    internal fun manifestSigNameOf(ctx: Context, channel: String): String? {
+        val o = channelAnchor(ctx) ?: return null
+        val m = o.optJSONObject("manifests")?.optJSONObject(channel)
+        if (m != null) return m.optString("sigName", "").ifBlank { null }
+        if (channel == "component") return o.optString("sigName", "").ifBlank { null }
+        return null
+    }
+
     internal fun uncached(url: String): String =
         url + (if (url.indexOf('?') >= 0) "&" else "?") + "t=" + System.currentTimeMillis()
 

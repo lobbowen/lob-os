@@ -25,8 +25,8 @@ object ProgramInstaller {
         val nodeVerifyOutput: String = "",
     ) {
         fun toDiagnosticLine(): String = when {
-            ok -> "内核安装成功 v=$version（来源=${source.label}）"
-            else -> "内核安装未生效（来源=${source.label}）原因=$reason；$detail"
+            ok -> "程序安装成功 v=$version（来源=${source.label}）"
+            else -> "程序安装未生效（来源=${source.label}）原因=$reason；$detail"
         }
     }
 
@@ -40,7 +40,7 @@ object ProgramInstaller {
         storeRoot: java.io.File? = null,
     ): InstallResult {
         if (programId.isBlank()) {
-            return InstallResult(false, null, source, "manifest-id-missing", "包清单未声明 id/name：内核不猜安装目标")
+            return InstallResult(false, null, source, "manifest-id-missing", "包清单未声明 id/name：宿主不猜安装目标")
         }
         if (!zip.isFile) {
             return InstallResult(false, null, source, "zip-missing", "候选包不存在: ${zip.absolutePath}")

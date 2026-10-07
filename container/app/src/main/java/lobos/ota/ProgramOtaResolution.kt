@@ -22,7 +22,7 @@ object ProgramOtaResolution {
                 state = State.ABSENT,
                 version = null,
                 ok = false,
-                title = "尚无内核包（OTA 尚未安装成功）",
+                title = "尚无程序包（OTA 尚未安装成功）",
                 detail = "任一程序的 CURRENT 指针都缺失；程序需经 OTA 安装，本次不启动运行时。" +
                     "随包 assets/node/server.js 只是探针，不在启动链上（只由诊断页显式驱动）。",
             )
@@ -32,7 +32,7 @@ object ProgramOtaResolution {
                 state = State.INCOMPLETE,
                 version = v,
                 ok = false,
-                title = "内核不完整（CURRENT=" + v + "，但入口缺失）",
+                title = "程序不完整（CURRENT=" + v + "，但入口缺失）",
                 detail = "CURRENT 已指向 " + v + "，却找不到入口" +
                     (entryPath?.let { "（" + it + "）" } ?: "") +
                     "；本次不启动运行时。**归因提示**：说明安装确实发生过，" +
@@ -43,7 +43,7 @@ object ProgramOtaResolution {
             state = State.READY,
             version = v,
             ok = true,
-            title = "内核版本=" + v,
+            title = "程序版本=" + v,
             detail = "入口=" + (entryPath ?: "(未知)"),
         )
     }

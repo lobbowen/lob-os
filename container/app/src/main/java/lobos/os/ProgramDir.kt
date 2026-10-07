@@ -17,7 +17,7 @@ class ProgramDir(
 
     init {
         if (programId.isBlank()) {
-            throw IllegalArgumentException("ProgramDir 需要显式程序 id：内核没有\"主程序\"概念")
+            throw IllegalArgumentException("ProgramDir 需要显式程序 id：宿主没有\"主程序\"概念")
         }
     }
 
@@ -116,8 +116,8 @@ class ProgramDir(
         val entry = entryPath(version).canonicalFile
         val filesRoot = context.filesDir.canonicalFile
         check(entry.startsWith(filesRoot)) {
-            "内核入口应位于 filesDir（app_data_file，W^X 禁 exec）内，但它跑到了 ${entry.parent}。" +
-                "此断言失败意味着内核 OTA 的落盘布局被破坏 —— " +
+            "控制面板入口应位于 filesDir（app_data_file，W^X 禁 exec）内，但它跑到了 ${entry.parent}。" +
+                "此断言失败意味着 OTA 的落盘布局被破坏 —— " +
                 "若入口需要被 exec，它必须改走 jniLibs/nativeLibraryDir（exec_type）通道。"
         }
     }

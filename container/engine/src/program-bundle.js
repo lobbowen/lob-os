@@ -102,13 +102,13 @@ function packBundle(o) {
     if (!manifestJson.args) manifestJson.args = [];
   } else {
     if (!manifestJson.id) {
-      throw new Error('程序清单缺少 id/name（<程序源目录>/manifest.json）；内核不猜程序身份');
+      throw new Error('程序清单缺少 id/name（<程序源目录>/manifest.json）；宿主不猜程序身份');
     }
     if (!manifestJson.entry) {
-      throw new Error('程序清单缺少 entry（' + o.srcDir + '/manifest.json）；内核不再替应用猜入口');
+      throw new Error('程序清单缺少 entry（' + o.srcDir + '/manifest.json）；宿主不再替应用猜入口');
     }
     if (!manifestJson.args) {
-      throw new Error('程序清单缺少 args（可为空数组，' + o.srcDir + '/manifest.json）；内核不再替应用猜启动参数');
+      throw new Error('程序清单缺少 args（可为空数组，' + o.srcDir + '/manifest.json）；宿主不再替应用猜启动参数');
     }
   }
 
@@ -126,14 +126,14 @@ function packBundle(o) {
   const WARN_LIMIT = 2 * 1024 * 1024;
   if (zipBuf.length > HARD_LIMIT) {
     throw new Error(
-      '内核包体积 ' + (zipBuf.length / 1048576).toFixed(1) + ' MB 超过硬上限 ' +
+      '程序包体积 ' + (zipBuf.length / 1048576).toFixed(1) + ' MB 超过硬上限 ' +
       (HARD_LIMIT / 1048576) + ' MB。最可能的原因：EXCLUDED_SEGMENTS 漏了某个目录。' +
-      '（本包收录 ' + files.size + ' 个文件，请检查内核源码目录里是否有 node_modules / 构建缓存）'
+      '（本包收录 ' + files.size + ' 个文件，请检查程序源码目录里是否有 node_modules / 构建缓存）'
     );
   }
   if (zipBuf.length > WARN_LIMIT) {
     process.stderr.write(
-      '[program-bundle] 警告：内核包 ' + (zipBuf.length / 1048576).toFixed(1) +
+      '[program-bundle] 警告：程序包 ' + (zipBuf.length / 1048576).toFixed(1) +
       ' MB 偏大（软阈值 ' + (WARN_LIMIT / 1048576) + ' MB，收录 ' + files.size + ' 个文件）\n'
     );
   }

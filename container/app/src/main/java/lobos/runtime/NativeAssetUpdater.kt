@@ -70,13 +70,13 @@ object NativeAssetUpdater {
         dryRun: Boolean = false,
     ): JSONObject {
         val res = JSONObject()
-        val anchor = SupplyProvisioner.channelAnchor(ctx)
-        val base = anchor?.optString("baseUrl", "")?.trimEnd('/').orEmpty()
-        if (base.isBlank()) {
+        val nativeName = SupplyProvisioner.manifestNameOf(ctx, "native") ?: MANIFEST_NAME
+        val dir = SupplyProvisioner.manifestDir(ctx)
+        if (dir == null) {
             res.put("ok", false); res.put("detail", "锚点里没有 baseUrl —— 不知道去哪取原生件清单")
             return res
         }
-        val url = if (manifestUrl.startsWith("http")) manifestUrl else "$base/$MANIFEST_NAME"
+        val url = if (manifestUrl.startsWith("http")) manifestUrl else "$dir/$nativeName"
 
         val pubPem = runCatching {
             ctx.assets.open(PUB_PEM_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }

@@ -90,7 +90,7 @@ object ProgramOtaSelfCheck {
             out += SelfCheckReport.Item(
                 "local-state",
                 true,
-                "本地内核状态",
+                "本地程序状态",
                 "CURRENT=" + (cur ?: "(无)") + "   FLOOR=" + (floor ?: "(无)") + "   PENDING=" + (pend?.version ?: "(无)"),
             )
         } else {

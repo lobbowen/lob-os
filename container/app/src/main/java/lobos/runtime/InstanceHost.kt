@@ -168,7 +168,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
                     "窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms 内 " + restartWindow.size +
-                        " 次（上限 " + SupervisorPolicy.MAX_RESTARTS_IN_WINDOW + "）；等待内核重置",
+                        " 次（上限 " + SupervisorPolicy.MAX_RESTARTS_IN_WINDOW + "）；等待宿主重置",
                 )
                 quarantineReset = false
                 var quarantinePolls = 0
@@ -186,7 +186,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 if (!keepRunning) break
                 restartCount = 0
                 restartWindow.clear()
-                RuntimeDiagnostics.append(this, "supervisor", true, "隔离已解除（内核重置）", "重新开始监督")
+                RuntimeDiagnostics.append(this, "supervisor", true, "隔离已解除（宿主重置）", "重新开始监督")
                 continue
             }
             val spec = currentSpec
@@ -225,7 +225,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun bootProgramOnce(): SupervisorPolicy.BootOutcome {
         try {
             RuntimeDiagnostics.append(
-                this, "init", null, "InstanceHost 启动内核 (进程 runtime)",
+                this, "init", null, "InstanceHost 启动程序进程",
                 "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), filesDir=${filesDir.absolutePath}"
             )
 
@@ -265,13 +265,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     if (ota.checked) {
                         RuntimeDiagnostics.append(
                             this, "program-ota", ota.updated || ota.upToDate,
-                            if (ota.updated) "启动自动升级内核到 ${ota.remote}" else "启动内核检查完成（无更新）",
+                            if (ota.updated) "启动自动升级控制面板到 ${ota.remote}" else "启动控制面板检查完成（无更新）",
                             ota.detail
                         )
                     }
                 } catch (e: Throwable) {
                     RuntimeDiagnostics.append(
-                        this, "program-ota", false, "启动内核检查异常",
+                        this, "program-ota", false, "启动控制面板检查异常",
                         "${e::class.java.simpleName}: ${e.message}"
                     )
                 }
@@ -287,14 +287,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val overrideSafe = lobos.os.RuntimeEnvironment.withoutReserved(envOverride)
             if (declaredSafe.second.isNotEmpty() || overrideSafe.second.isNotEmpty()) {
                 lobos.log.Journal.note(
-                    this, "settings", false, "保留环境变量被拒（程序不得改写内核注入面）",
+                    this, "settings", false, "保留环境变量被拒（程序不得改写宿主注入面）",
                     "id=" + programId + " 清单丢弃=" + declaredSafe.second.joinToString(",") +
                         " 设置丢弃=" + overrideSafe.second.joinToString(","),
                 )
             }
             if (argsOverride != null || envOverride.isNotEmpty()) {
                 lobos.log.Journal.note(
-                    this, "settings", null, "程序设置生效（内核在 spawn 时叠加）",
+                    this, "settings", null, "程序设置生效（宿主在 spawn 时叠加）",
                     "id=" + programId + " args=" + (argsOverride?.joinToString(" ") ?: "(按清单)") +
                         " env键=" + envOverride.keys.joinToString(","),
                 )
@@ -316,14 +316,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 try {
                     km.assertNotDirectlyExecutable(kVersion)
                 } catch (e: IllegalStateException) {
-                    RuntimeDiagnostics.append(this, "program", false, "内核入口布局异常", err(e))
+                    RuntimeDiagnostics.append(this, "program", false, "程序入口布局异常", err(e))
                     return SupervisorPolicy.BootOutcome.FAILED
                 }
             }
             val integrity = km.integrityChecks()
             if (integrity.isNotEmpty()) {
                 RuntimeDiagnostics.append(
-                    this, "program-integrity", false, "内核布局不自洽", integrity.joinToString("; ")
+                    this, "program-integrity", false, "程序布局不自洽", integrity.joinToString("; ")
                 )
             }
             RuntimeDiagnostics.append(this, "program", res.ok, res.title, res.detail)
@@ -418,7 +418,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     this, "process", false, "无法从 /proc 确认自建子进程（身份不可证）",
                     "按 spawn 失败处理：杀掉进程、不写账本、交监督环退避重试",
                 )
-                reapProgramTree("内核回收进程树")
+                reapProgramTree("宿主回收进程树")
                 return SupervisorPolicy.BootOutcome.FAILED
             }
             val recorded = lobos.os.ProcessLedger.begin(this, programId, currentGeneration, launchedPid)
@@ -436,7 +436,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             healthPath = spec?.http?.health ?: "/status"
             val healthDesc = if (healthPort > 0) healthPort.toString() + healthPath else "(清单未声明健康端点)"
             RuntimeDiagnostics.append(
-                this, "exec", true, "内核进程已启动",
+                this, "exec", true, "程序进程已启动",
                 "pid=${currentPid(nodeProcess)}, program=${spec?.id ?: "?"}, 健康判据 127.0.0.1:${healthDesc}"
             )
 
@@ -456,7 +456,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             return if (healthUp) SupervisorPolicy.BootOutcome.RUNNING else SupervisorPolicy.BootOutcome.FAILED
         } catch (e: Throwable) {
             RuntimeDiagnostics.append(this, "fatal", false, "启动流程异常", err(e))
-            Log.e(TAG, "启动 Node/内核失败", e)
+            Log.e(TAG, "启动程序进程失败", e)
             return SupervisorPolicy.BootOutcome.FAILED
         }
     }
@@ -507,7 +507,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun reapOrphanKernel() {
-        reapProgramTree("内核回收进程树")
+        reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
         val owned = lobos.os.ProcessLedger.liveOwned(this)
         val reused = lobos.os.ProcessLedger.pidReused(this)
@@ -663,7 +663,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             lobos.os.ProcessLedger.end(this, watchedPid)
             if (!keepRunning) return@Thread
             val readyNote = SupervisorPolicy.exitNote(healthUp)
-            RuntimeDiagnostics.append(this, "process", false, "内核/node 进程已退出", "exitCode=$code$readyNote")
+            RuntimeDiagnostics.append(this, "process", false, "程序进程已退出", "exitCode=$code$readyNote")
 
             var err = RuntimeDiagnostics.readNodeStderr(this)
             var waited = 0
@@ -693,7 +693,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 RuntimeDiagnostics.append(
                     this, "health", true,
                     "程序健康就绪 (127.0.0.1:" + healthPort + healthPath + ")",
-                    "内核原生运行成功 ✓"
+                    "程序原生运行成功 ✓"
                 )
                 return
             }
@@ -704,9 +704,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         lobos.os.ProgramStatusHub.publishHealth(programId, false, "控制面未在预算内就绪")
         RuntimeDiagnostics.append(
             this, "health", false,
-            if (procDiedEarly) "内核进程已退出，控制面不会就绪（等待 ${waitedMs}ms 提前收轮）"
+            if (procDiedEarly) "程序进程已退出，控制面不会就绪（等待 ${waitedMs}ms 提前收轮）"
             else "控制面在 ${HEALTH_POLL_BUDGET_MS}ms 内未就绪",
-            "可能原因：node/内核崩溃 / 端口被占用 / 二进制不兼容当前 ROM（如非 16KB 页对齐）。\n" +
+            "可能原因：程序进程崩溃 / 端口被占用 / 二进制不兼容当前 ROM（如非 16KB 页对齐）。\n" +
                 "查看上方 [FAIL] process 与 node-stderr。"
         )
     }
@@ -724,7 +724,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             km.clearPending()
             RuntimeDiagnostics.append(
                 this, "program-commit", true,
-                "内核 " + pend.version + " 已提交（版本下限提升）",
+                "程序 " + pend.version + " 已提交（版本下限提升）",
                 "from=" + (pend.from ?: "(无)") + "；floor=" + (km.floorVersion() ?: "(未设)")
             )
         } catch (e: Throwable) {
@@ -744,7 +744,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (km.rollbackTo(from)) {
                 RuntimeDiagnostics.append(
                     this, "program-rollback", false,
-                    "内核 " + pend.version + " 未通过健康检查，已回滚到 " + from,
+                    "程序 " + pend.version + " 未通过健康检查，已回滚到 " + from,
                     "版本下限保持 " + (km.floorVersion() ?: "(未设)") + " 不变（防止回退后再被更旧的包覆盖）"
                 )
             }

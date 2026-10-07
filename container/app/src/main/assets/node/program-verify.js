@@ -258,11 +258,11 @@ function main() {
   const shellProto = Number(args.shellProtocol || 0);
   if (reqProto > 0 && shellProto === 0) {
     fail('shell-protocol-missing',
-      '内核声明 requiresProtocol=' + reqProto + '，但校验器未收到 --shell-protocol（调用方必须传入壳实现的协议版本）');
+      '程序声明 requiresProtocol=' + reqProto + '，但校验器未收到 --shell-protocol（调用方必须传入壳实现的协议版本）');
   }
   if (reqProto > shellProto) {
     fail('protocol-unsatisfied',
-      '内核要求桥协议 v' + reqProto + '，本壳实现 v' + shellProto + ' —— 该内核包与本壳不兼容');
+      '程序要求桥协议 v' + reqProto + '，本壳实现 v' + shellProto + ' —— 该程序包与本宿主不兼容');
   }
   if (reqProto > 0) info('桥协议兼容：requires v' + reqProto + ' <= shell v' + shellProto);
 

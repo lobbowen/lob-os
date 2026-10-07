@@ -19,7 +19,7 @@ function main() {
     process.exit(2);
   }
   if (!fs.existsSync(srcDir)) {
-    console.error('内核源码目录不存在: ' + srcDir);
+    console.error('程序源码目录不存在: ' + srcDir);
     process.exit(1);
   }
 
@@ -48,7 +48,7 @@ function main() {
   const manifestPath = path.join(outDir, 'program-manifest.json');
   fs.writeFileSync(manifestPath, JSON.stringify(manifestOut, null, 2));
 
-  console.log('内核包: ' + zipPath + ' (' + zipBuf.length + ' bytes)');
+  console.log('程序包: ' + zipPath + ' (' + zipBuf.length + ' bytes)');
   console.log('清单  : ' + manifestPath);
   console.log('sha256: ' + actualSha);
   console.log('签名  : ' + manifest.signature.slice(0, 32) + '…');

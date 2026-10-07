@@ -1,7 +1,7 @@
 # native —— APK 原生件
 
-被内核自身 `dlopen` / `LD_PRELOAD` / 链接器依赖的构建物。**随 APK 交付，不走商店**
-——它们是内核自身的零件，不是程序可调用的工具。
+被宿主自身 `dlopen` / `LD_PRELOAD` / 链接器依赖的构建物。**随 APK 交付，不走商店**
+——它们是宿主自身的零件，不是程序可调用的工具。
 
 ## 当前清单
 
@@ -143,7 +143,7 @@ winsize 用 `ByteBuffer`（默认大端）——后者就会踩默认值。所�
 - `posix` 靠 `LD_PRELOAD` 注入，**必须在进程启动前就位**，商店件来不及。
 - `libc++_shared.so` 是 APK 内其它原生件的运行期依赖，必须与它们同在
   `nativeLibraryDir`。
-- 这批件没有「版本号 + 升级」的用户语义 —— 它们随内核版本走。
+- 这批件没有「版本号 + 升级」的用户语义 —— 它们随宿主版本走。
 
 ## 构建与发放
 
@@ -257,7 +257,7 @@ bash 5.2.15 · busybox 1.36.1 · zlib 1.3.2 · openssl 3.6.3 · curl 8.22.0
 以文件系统的实际形态为准，比查清单可靠（清单可能没刷新而软链已经切过去了）。
 
 **二、落位规则与商店件不同，所以是两个安装点。**
-`ProgramDir.assertNotDirectlyExecutable` 明确断言「内核入口不该在 filesDir 里
+`ProgramDir.assertNotDirectlyExecutable` 明确断言「控制面板入口不该在 filesDir 里
 直接 exec」，而底座件**必须**能在 filesDir 里 exec（本机实测：chmod +x 的脚本
 输出 `EXEC_OK`）。所以不复用 `ProgramInstallPipeline` 的落位，
 但复用它的**验签与下载**（`SupplyProvisioner`）。

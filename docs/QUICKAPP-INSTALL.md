@@ -101,7 +101,7 @@ programs/<id>/quickapp/     ← frontend/ 的内容（前端，dimina 直接用�
    ├─ 1. 验签：zip 整体过 Ed25519（程序包，不拆）
    │
    ├─ 2. 读 program-manifest.json 拿 id
-   │      拿不到 → 拒装（"内核不猜安装目标"，沿用现有判据）
+   │      拿不到 → 拒装（"宿主不猜安装目标"，沿用现有判据）
    │
    ├─ 3. 查 id 是不是系统件（tools/lib 那些）→ 是则走另一条路，不进本流程
    │

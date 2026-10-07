@@ -53,7 +53,7 @@ if (jsVer && ktMin !== null && Number(jsVer[1]) !== ktMin) {
 }
 if (jsVer && shellProto !== null && Number(jsVer[1]) !== shellProto) {
   bad('引擎 PROTOCOL_VERSION=' + jsVer[1] + ' ≠ version.json 的 shell.bridgeProtocol=' + shellProto +
-    ' —— BuildConfig.BRIDGE_PROTOCOL 来自 version.json，program-verify.js 拿它比 requiresProtocol，漂移即内核包装不上');
+    ' —— BuildConfig.BRIDGE_PROTOCOL 来自 version.json，program-verify.js 拿它比 requiresProtocol，漂移即程序包装不上');
 }
 if (ktMin !== null && shellProto !== null && ktMin > shellProto) {
   bad('壳侧下界 ' + ktMin + ' > 上界 ' + shellProto + ' —— 区间为空，所有客户端都会被拒');

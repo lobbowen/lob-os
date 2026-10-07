@@ -166,7 +166,7 @@ object AdbChannelComponent {
         val s = snapshot
         snapshot = s.copy(state = State.UNPAIRED, attempts = 0, nextAttemptAt = 0L, updatedAt = System.currentTimeMillis())
         persist(ctx)
-        lobos.log.Journal.note(ctx, "adb-channel", null, "通道监督重置（内核动作）", why)
+        lobos.log.Journal.note(ctx, "adb-channel", null, "通道监督重置（宿主动作）", why)
     }
 
     @Synchronized
@@ -218,7 +218,7 @@ object AdbChannelComponent {
     private fun selfHeal(ctx: Context, detail: String) {
         attempts += 1
         if (attempts > MAX_ATTEMPTS) {
-            set(ctx, State.QUARANTINED, "重连达上限（" + attempts + "）：停止打通道，等待内核重置或重新配对", lastPort)
+            set(ctx, State.QUARANTINED, "重连达上限（" + attempts + "）：停止打通道，等待宿主重置或重新配对", lastPort)
             lobos.log.Journal.note(
                 ctx, "adb-channel", false, "通道自愈放弃（转隔离）",
                 "attempts=" + attempts + " detail=" + detail,

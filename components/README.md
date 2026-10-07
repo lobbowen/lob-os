@@ -16,7 +16,7 @@
 
 ```
 构建物需要被「程序」用裸名调用（node/curl/git/...）  → component 或 runtime
-构建物被内核自身 dlopen / LD_PRELOAD / 链接器依赖    → native
+构建物被宿主自身 dlopen / LD_PRELOAD / 链接器依赖    → native
 ```
 
 `runtime` 与 `component` 共用商店通道，区别只在 L1/L2 分层：
@@ -99,7 +99,7 @@ keystore + 换一个 id，产出与设备上现有开发包并存的第二个应
   `CapabilityBroker` 的 `PROTOCOL_MIN`、`version.json` 的
   `shell.bridgeProtocol`（→ `BuildConfig.BRIDGE_PROTOCOL`）。
   三个消费方各读一处：引擎握手答自己的、壳按下界收客户端、
-  `program-verify.js` 拿 `BuildConfig` 比内核的 `requiresProtocol`。
+  `program-verify.js` 拿 `BuildConfig` 比程序的 `requiresProtocol`。
   漂移的后果是**握手在真机上失败、而仓内全绿**。
 
 ## 守护这些不变量的门禁

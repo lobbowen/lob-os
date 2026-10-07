@@ -471,7 +471,7 @@ for ((items, dir) in listOf(BINS to binDir(ctx), DEPS to binDir(ctx)))
 | curl/git/jq 改动态链 | **第 2 阶段**，不在第 0 阶段 |
 | 流水线调顺序 | 库 → 工具；PTY → `shell.exec` |
 
-`components/native` 的定位是「小体积内核零件」，开发环境体积是它的十倍量级，
+`components/native` 的定位是「小体积宿主零件」，开发环境体积是它的十倍量级，
 **不能塞进同一个类目**，要另立。
 
 ---

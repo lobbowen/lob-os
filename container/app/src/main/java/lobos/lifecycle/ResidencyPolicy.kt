@@ -34,7 +34,7 @@ object ResidencyPolicy {
                 REASON_ANCHOR -> out.add("无障碍未开启：UI 自动化不可用（保活不依赖它）")
                 REASON_ADB -> out.add("重连 ADB 通道（可选组件，不影响系统存活）")
                 REASON_NO_PROGRAM -> out.add("安装程序包（OTA 或本地包）")
-                REASON_NONE_RUNNING -> out.add("经内核重启该程序；检查 CURRENT 与清单入口是否存在")
+                REASON_NONE_RUNNING -> out.add("经宿主重启该程序；检查 CURRENT 与清单入口是否存在")
                 else -> out.add("查看 os.journal.read 定位原因")
             }
         }

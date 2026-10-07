@@ -11,7 +11,7 @@ import org.json.JSONObject
 object ProgramOtaUpdater {
 
     private const val TAG = "ProgramOtaUpdater"
-    private const val CONFIG_ASSET = "program-feed.json"
+    private const val CONFIG_ASSET = "supply/channel.json"
     private const val CONNECT_TIMEOUT_MS = 5_000
     private const val READ_TIMEOUT_MS = 20_000
     private const val MAX_MANIFEST_BYTES = 64 * 1024
@@ -45,7 +45,7 @@ object ProgramOtaUpdater {
         if (devCfg.isFile) {
             val fromDevice = parseConfig(readTextOrNull(devCfg))
             if (fromDevice != null) {
-                Log.i(TAG, "program-feed.json 取自设备侧覆盖：$devCfg（可随时暂停/改通道，无需重装 APK）")
+                Log.i(TAG, "channel.json 取自设备侧覆盖：$devCfg（可随时暂停/改通道，无需重装 APK）")
                 return fromDevice
             }
             Log.w(TAG, "设备侧 $CONFIG_ASSET 不可用/非法 —— 回退 APK 内 asset（绝不静默关掉 OTA）")
@@ -54,7 +54,7 @@ object ProgramOtaUpdater {
             try {
                 context.assets.open(CONFIG_ASSET).bufferedReader().use { it.readText() }
             } catch (e: Throwable) {
-                Log.w(TAG, "program-feed.json 不可用: ${e.message}")
+                Log.w(TAG, "channel.json 不可用: ${e.message}")
                 null
             }
         )
@@ -68,11 +68,13 @@ object ProgramOtaUpdater {
             val o = JSONObject(text)
             val base = o.optString("baseUrl", "").trim().trimEnd('/')
             val channel = o.optString("channel", "stable").trim().ifBlank { "stable" }
-            val override = o.optString("releaseTag", "").trim()
+            val mc = o.optJSONObject("manifests")?.optJSONObject("program")
+            val override = (mc?.optString("releaseTag", "") ?: o.optString("releaseTag", "")).trim()
             val tag = if (override.isNotBlank()) override else "program-" + channel
-            val name = o.optString("manifestName", "").trim().ifBlank { ProgramDir.MANIFEST_NAME }
-            val auto = o.optBoolean("autoCheck", true)
-            val budget = o.optLong("startupBudgetMs", 12000L)
+            val name = mc?.optString("name", "")?.trim()?.ifBlank { null }
+                ?: o.optString("manifestName", "").trim().ifBlank { ProgramDir.MANIFEST_NAME }
+            val auto = mc?.optBoolean("autoCheck", true) ?: o.optBoolean("autoCheck", true)
+            val budget = mc?.optLong("startupBudgetMs", 12000L) ?: o.optLong("startupBudgetMs", 12000L)
             run {
                   val allowDowngrade = o.optBoolean("allowDowngrade", false)
                   if (!base.startsWith("https://")) null
@@ -104,7 +106,7 @@ object ProgramOtaUpdater {
         val deadline = if (budgetMs > 0L) System.currentTimeMillis() + budgetMs else 0L
         fun left(): Long = if (deadline == 0L) Long.MAX_VALUE else deadline - System.currentTimeMillis()
         val cfg = loadConfig(context)
-            ?: return Outcome(false, false, false, km.currentVersion(), null, "未配置 program-feed.json（远端 OTA 关闭）")
+            ?: return Outcome(false, false, false, km.currentVersion(), null, "未配置 supply/channel.json（远端 OTA 关闭）")
 
         val current = km.currentVersion()
         val manifestText = try {
@@ -148,7 +150,7 @@ object ProgramOtaUpdater {
             is OtaPolicy.Verdict.Holdback -> return Outcome(true, true, false, current, remote, verdict.message)
             is OtaPolicy.Verdict.Downgrade -> lobos.log.Journal.note(
                 context, "ota", null, "按显式策略降级（审计）",
-                "允许降级：" + current + " → " + remote + "；策略=program-feed.json allowDowngrade=true",
+                "允许降级：" + current + " → " + remote + "；策略=supply/channel.json manifests.program.allowDowngrade=true",
             )
             OtaPolicy.Verdict.Install -> Unit
         }

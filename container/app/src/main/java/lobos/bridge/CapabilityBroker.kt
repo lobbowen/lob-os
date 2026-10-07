@@ -290,7 +290,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             audit("bridge.handshake", params, false, "协议不兼容: client=" + clientProtocol, null)
             return error(
                 id, CODE_PROTOCOL_UNSUPPORTED,
-                "桥协议不兼容：内核支持 [" + PROTOCOL_MIN + "," + BuildConfig.BRIDGE_PROTOCOL + "]；客户端=" + clientProtocol,
+                "桥协议不兼容：宿主支持 [" + PROTOCOL_MIN + "," + BuildConfig.BRIDGE_PROTOCOL + "]；客户端=" + clientProtocol,
             )
         }
         val negotiated = if (clientProtocol > BuildConfig.BRIDGE_PROTOCOL) BuildConfig.BRIDGE_PROTOCOL else clientProtocol
@@ -298,8 +298,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val hint = params.optString("program", "").takeIf { it.isNotBlank() }
         val session = sessionOfSocket(holder.socketName)
         if (session == null) {
-            audit("bridge.handshake", params, false, "无有效内核会话", null)
-            return error(id, CODE_SESSION_MISSING, "无有效内核会话：内核未签发或会话已失效")
+            audit("bridge.handshake", params, false, "无有效宿主会话", null)
+            return error(id, CODE_SESSION_MISSING, "无有效宿主会话：宿主未签发或会话已失效")
         }
         val provided = params.optString("token", "").trim()
         if (provided.isBlank()) {
@@ -308,7 +308,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
         if (provided != session.token) {
             audit("bridge.handshake", params, false, "会话令牌不符", session)
-            return error(id, CODE_SESSION_MISSING, "会话令牌不符：令牌必须来自内核注入的 LOBOS_SESSION_TOKEN")
+            return error(id, CODE_SESSION_MISSING, "会话令牌不符：令牌必须来自宿主注入的 LOBOS_SESSION_TOKEN")
         }
         if (holder.session != null) {
             audit("bridge.handshake", params, false, "该连接已激活会话（不允许重复握手）", session)
@@ -496,7 +496,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     private fun startProgramJob(kind: String, target: String): JSONObject {
         if (target.isBlank()) {
-            throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
+            throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
         }
         val id = TaskRegistry.start(this@CapabilityBroker, kind)
         Thread {
@@ -521,7 +521,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val id = TaskRegistry.start(this@CapabilityBroker, "uninstall")
         Thread {
             try {
-                if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
+                if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
                 val km = ProgramDir(this@CapabilityBroker, target)
                 val cur = km.currentVersion()
                 val removable = km.installedVersions().filter { it != cur }
@@ -692,7 +692,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.instances.get" to MethodDef(listOf("base"), false) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) {
-                throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（内核没有\"主程序\"概念）")
+                throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（宿主没有「主程序」概念）")
             }
             val e = ProgramIndex.byLevel(this@CapabilityBroker, Level.APPLICATION).firstOrNull { it.id == id }
                 ?: throw BridgeError(CODE_METHOD_NOT_FOUND, "无此实例: " + id)
@@ -706,10 +706,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val action = p.optString("action", "")
             if (action == "stop") {
                 Journal.note(
-                    this@CapabilityBroker, "instance", false, "实例动作被拒：停止是内核保留动作",
-                    "id=" + id + "（内核尚未具备按程序独立停止的能力）",
+                    this@CapabilityBroker, "instance", false, "实例动作被拒：停止是宿主保留动作",
+                    "id=" + id + "（宿主尚未具备按程序独立停止的能力）",
                 )
-                throw BridgeError(CODE_POLICY_DENIED, "停止是内核保留动作，应用只能请求启动/重启")
+                throw BridgeError(CODE_POLICY_DENIED, "停止是宿主保留动作，应用只能请求启动/重启")
             }
             val running = when (action) {
                 "start" -> { toHost(InstanceHost.ACTION_START_RUNTIME); true }
@@ -733,10 +733,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "os.session.stop" to MethodDef(listOf("base"), true) { _, _programId ->
             Journal.note(
-                this@CapabilityBroker, "session", false, "会话停止被拒：停用运行时是内核保留动作",
-                "应用无权请求宿主停机；宿主停机只能经内核内部路径",
+                this@CapabilityBroker, "session", false, "会话停止被拒：停用运行时是宿主保留动作",
+                "应用无权请求宿主停机；宿主停机只能经宿主内部路径",
             )
-            throw BridgeError(CODE_POLICY_DENIED, "停用运行时是内核保留动作，应用无权调用")
+            throw BridgeError(CODE_POLICY_DENIED, "停用运行时是宿主保留动作，应用无权调用")
         },
         "os.programs.overview" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
@@ -757,7 +757,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.programs.settings" to MethodDef(listOf("base"), true) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) {
-                throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（内核没有\"主程序\"概念）")
+                throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（宿主没有「主程序」概念）")
             }
             val patch = JSONObject(p.toString())
             patch.remove("id")
@@ -776,7 +776,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.appmgr.uninstall" to MethodDef(listOf("base"), true) { p, _programId -> startUninstallJob(p.optString("id", "")) },
         "os.appmgr.checkUpdate" to MethodDef(listOf("base"), false) { p, _programId ->
             val target = p.optString("id", "")
-            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
+            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
             val out = ProgramOtaUpdater.checkAndUpdate(this@CapabilityBroker, ProgramDir(this@CapabilityBroker, target), checkOnly = true)
             JSONObject().apply {
                 put("updateAvailable", out.available)
@@ -1501,7 +1501,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "build.programInstall" to MethodDef(listOf("program_update"), true) { p, _programId ->
             val checkOnly = p.optBoolean("checkOnly", false)
             val target = p.optString("id", "")
-            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：内核不接受\"默认程序\"")
+            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
             val ota = ProgramOtaUpdater.checkAndUpdate(this, ProgramDir(this, target), checkOnly)
             JSONObject().apply {
                 put("ok", if (checkOnly) ota.checked else ota.updated)
@@ -1530,7 +1530,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 CODE_INVALID_PARAM,
                 "build.apk 已废弃：内置构建链经实测不可行（Google Maven 无 aarch64 版 aapt2，" +
                     "interp/架构/libc 三关装机后无法补救）。请改用 build.programInstall —— " +
-                    "设备安装已签名内核，无需编译。"
+                    "设备安装已签名宿主，无需编译。"
             )
         },
         "build.status" to MethodDef(listOf("program_update"), false) { _, _programId ->

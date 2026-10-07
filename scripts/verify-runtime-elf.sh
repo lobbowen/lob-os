@@ -198,7 +198,7 @@ for f in "$DIR"/*.so; do
   if [ "$is_exec" = 1 ]; then
     if [ -z "$interp" ]; then
       echo "  $tag —— 清单说它是要被 exec 的可执行资产，却没有 PT_INTERP。"
-      echo "         带 DT_NEEDED 又没有解释器的 ELF，内核起不来（没人替它映射 libc）。"
+      echo "         带 DT_NEEDED 又没有解释器的 ELF，宿主起不来（没人替它映射 libc）。"
       echo "         解法：确认它是静态链接（那就把它从可执行资产里摘掉并核对探针），"
       echo "         或核对 android-configure / 交叉链接参数是否用了 NDK 工具链。"
       note_fail

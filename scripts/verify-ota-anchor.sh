@@ -20,7 +20,7 @@ command -v "$OPENSSL" >/dev/null 2>&1 || { echo "[error] 找不到 openssl —�
 
 if [ ! -s "$ANCHOR" ]; then
   echo "[error] OTA 公钥锚点缺失或为空：$ANCHOR"
-  echo "        设备端 program-verify.js 拿它验签；没有它，任何内核包都装不上。"
+  echo "        设备端 program-verify.js 拿它验签；没有它，任何程序包都装不上。"
   echo "        请先 commit 该文件，或用 secrets.OTA_PUBLIC_KEY 覆盖写入。"
   exit 1
 fi
@@ -44,7 +44,7 @@ case "$algo_head" in
   *ED25519*|*Ed25519*|*ed25519*) : ;;
   *)
     echo "[error] 锚点算法不是 Ed25519：${algo_head:-读不出算法名}"
-    echo "        设备端验签用 ed25519；焊一把 RSA 进去，所有内核包都 signature-invalid。"
+    echo "        设备端验签用 ed25519；焊一把 RSA 进去，所有程序包都 signature-invalid。"
     echo "        「openssl pkey -pubin 退码 0」只证明它是**某把**公钥，不证明这把能用。"
     exit 1
     ;;
@@ -78,7 +78,7 @@ if [ -n "$PRIVATE" ]; then
   [ -n "$priv_fp" ] || { echo "[error] 私钥派生公钥的指纹取不出来 —— 无从核验即不放行。"; exit 2; }
   if [ "$derived" != "$ANCHOR_PEM" ]; then
     echo "[error] 私钥与 APK 锚点**不配对**：私钥 $PRIVATE 派生的公钥指纹 $priv_fp ≠ 锚点指纹 $anchor_fp"
-    echo "        后果：这一步签出的内核包，所有设备都会判 signature-invalid —— OTA 静默死亡，"
+    echo "        后果：这一步签出的程序包，所有设备都会判 signature-invalid —— OTA 静默死亡，"
     echo "        而 CI 全绿。要么把新公钥重焊进 $ANCHOR 并重发 APK，要么换回配对的私钥 secret。"
     echo "        （比对在两边都规范化为 SPKI PEM 之后进行，所以与空白/行尾/是否 secret 写入无关。）"
     exit 1

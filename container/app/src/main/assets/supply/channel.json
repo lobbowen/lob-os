@@ -1,7 +1,23 @@
 {
-  "schema": 1,
+  "schema": 2,
   "baseUrl": "https://lobcdn.zll.ink",
   "channel": "canary",
-  "manifestName": "component-manifest.json",
-  "sigName": "component-manifest.json.sig"
+  "manifests": {
+    "program": {
+      "name": "program-manifest.json",
+      "sigName": "program-manifest.json.sig",
+      "releaseTag": "program-canary",
+      "autoCheck": true,
+      "startupBudgetMs": 12000,
+      "allowDowngrade": false
+    },
+    "component": {
+      "name": "component-manifest.json",
+      "sigName": "component-manifest.json.sig"
+    },
+    "native": {
+      "name": "native-manifest.json",
+      "sigName": "native-manifest.json.sig"
+    }
+  }
 }

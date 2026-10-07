@@ -39,7 +39,7 @@ object PipelineProjection {
         S0 to "系统能力（可选）",
         S1 to "能力与权限集",
         S2 to "状态与权限",
-        S3 to "运行时+内核",
+        S3 to "运行时+程序",
         CapabilityCatalog.OX to "可选组件（ADB）",
     )
 

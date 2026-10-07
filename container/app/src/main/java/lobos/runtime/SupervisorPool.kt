@@ -22,7 +22,7 @@ class SupervisorPool(private val host: Service) {
 
     @Synchronized
     fun onHostStart(intent: Intent?) {
-    runCatching { resetComponents("内核动作：" + (intent?.action ?: "无")) }
+    runCatching { resetComponents("宿主动作：" + (intent?.action ?: "无")) }
         val target = intent?.getStringExtra("programId")?.takeIf { it.isNotBlank() }
         val targets = if (target != null) listOf(target) else supervisors.keys.toList()
         for (t in targets) runCatching { supervisors[t]?.onHostStart(intent) }

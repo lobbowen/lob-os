@@ -114,9 +114,29 @@ lastSequence / rolloutPercent / allowDowngrade`，输出
 | 2 | 面板 |
 | 3 | 面板（`lobos.sys.native.update` / `rollback` / `status` 已就位） |
 
-**现状**：通道 1 的自动检查挂在 `InstanceHost.kt:262-274` —— 每次宿主进程启动跑一次
-（`startupBudgetMs` 默认 12000）。**违反**，要摘掉；桥接方法 `os.appmgr.checkUpdate`
-已经在了，只需换触发方。
+**控制面板的自更新走这里，保留不动。**
+
+`InstanceHost.kt:262-274` 的自动检查是控制面板自更新的那条路 ——
+日志文案写的是「启动自动升级控制面板」，更新的就是控制面板这个系统内置程序。
+控制面板现在是 APK 里的 Activity，它要更新自己，只能在宿主进程启动时做。
+**这一条不是缺陷。**
+
+要核实的只有一点：它是否只更新控制面板。当前实现是**对每个被监督的程序都跑一遍**：
+
+```
+SupervisorPool.wantedPrograms()   ← 优先 RUNNING 的 APPLICATION 程序，
+                                    都没有时取第一个可启动程序
+  └─ InstanceHost(host, id)
+       └─ ProgramOtaUpdater.checkAndUpdate(…)   ← 每个实例一次
+```
+
+也就是说：控制面板与其他 APPLICATION 程序**共用**这条自动检查。
+若将来要「只有控制面板自动更新、其他由面板按需触发」，
+需在 `wantedPrograms()` 或 `InstanceHost` 里按程序身份区分 ——
+**不是摘掉这条检查。**
+
+> 早先我把它记成「程序不该在启动时自动更新，应改由面板触发」—— **错了**，
+> 因为控制面板此刻就是被自动更新的那一个。
 
 ---
 
