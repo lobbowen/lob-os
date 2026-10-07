@@ -212,6 +212,17 @@ jobs:
           done
           echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
 
+      - name: 装宿主 cmake（仅 cmake 件真正需要）
+        run: |
+          set -uo pipefail
+          if command -v cmake >/dev/null 2>&1; then
+            echo "[cmake] 宿主已有：$(cmake --version | head -1)"
+            exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake
+          echo "[cmake] 已装宿主 cmake：$(cmake --version | head -1)"
+
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |

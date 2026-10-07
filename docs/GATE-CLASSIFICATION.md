@@ -486,3 +486,69 @@ set -o pipefail; if ! false | true; then …   # 也判失败
 
 处理：注释删掉，「为什么」落到本文档。**代码里的解释性注释会腐坏**，
 而门禁要判的正是这件事 —— 这次它判对了，是我没按规矩写。
+
+---
+
+## 第十三条：报「找不到编译器」时，先看它到底报的是什么
+
+### 起因
+
+`cmake` 件红了，报 `Cannot find appropriate C compiler on this system`。
+而 CI 明明注入了 `CC`。第一反应是「CC 没透传」——**错的**。
+
+取证路径当时写的是 `$WORK/bootstrap/bootstrap.log`，
+bootstrap 实际写到 `build/Bootstrap.cmk/cmake_bootstrap.log`，两个路径都不对，
+所以真因根本没进日志。改成遍历三个路径全打，才看到真相：
+
+```
+Checking whether '.../aarch64-linux-android35-clang ... -std=gnu89 ' works.
+...cmake_bootstrap_2292_test.c -o cmake_bootstrap_22        ← 编成功（只有一条宏重复 warning）
+bootstrap: 930: ./cmake_bootstrap_2292_test: Exec format error
+Test produced non-zero return code
+```
+
+编译器没问题，**是 bootstrap 把编出来的 aarch64 程序在 x86_64 宿主上执行了**。
+
+### 根因：CMake 的 bootstrap 根本没有交叉模式
+
+`bootstrap` 是 2111 行纯 shell。它的 `cmake_try_run()`（第 911 行起）流程是：
+
+```sh
+${COMPILER} ${FLAGS} "${TESTFILE}" -o "${TMPFILE}"   # 930 行之前：编
+./${TMPFILE}                                          # 930 行：必定执行
+```
+
+交叉编译场景下这一步必然 `Exec format error`。grep 整个 `bootstrap` 也没有
+`CMAKE_SYSTEM_NAME` / `CMAKE_CROSSCOMPILING` / `CMAKE_TOOLCHAIN_FILE` 的处理。
+
+**不是配错参数，是工具用错了。** 正解是 CMake 官方支持的交叉编译：
+用宿主 cmake + `-DCMAKE_TOOLCHAIN_FILE`。
+
+### 判据纪律
+
+1. **「找不到 X」要先确认真的是找不到 X。** 这条的报错措辞把「跑不起来」
+   说成了「找不到编译器」，指向完全不同的方向。
+2. **取证路径要覆盖真实写入位置。** 猜路径猜错时，日志里就什么都没有 ——
+   而「什么都没有」最容易被误读成「问题很简单」。
+3. **工具的能力边界要查源码，不要凭印象。** 我一直以为 CMake 的 bootstrap
+   至少能配 `CMAKE_SYSTEM_NAME`（配方注释里就是这么写的），实际没有。
+
+### 同一轮里另两件
+
+**sysroot**：`aarch64-v8a` 是 jniLibs（APK）的 ABI 名，NDK sysroot 的库目录
+按 target triple 命名。修法不是维护一张 ABI 白名单，而是**从 CC 的文件名推导**
+（`aarch64-linux-android35-clang` → `aarch64-linux-android`）——CC 才是权威来源。
+四个分支都造了反例：CI 的 `aarch64-v8a`、`build-native-*` 的 `arm64-v8a`、
+从 CC 推导、以及非 aarch64 判红。
+
+**python3**：`PKG_CONFIG_LIBDIR` 隔离**生效了**（日志实证
+`checking for libzstd >= 1.4.5... no`、`sqlite3... no`），zstd 问题解决。
+但暴露出下一层：产物叫 `python` 而不是 `python3.*` ——
+交叉编译时 CPython 的 `LDVERSION` 为空（`Makefile.pre.in:165`
+`EXENAME=$(BINDIR)/python$(LDVERSION)$(EXE)`），这是既定形态不是编坏了。
+探测放宽成 `python3.*` 与 `python` 两个候选，并加 ELF 魔数校验
+（不用 `[ -x ]`：本机某些宿主对它返回假），失败时把 Makefile 的
+`EXENAME`/`BUILDPYTHON` 打出来。
+
+顺带记一条：**这已经是本轮第二次被 `comment-gate` 拦下**，第一次是
+`check-elf-deps.sh` 的 25 条。解释性注释一律不进代码，判据依据落本文档。

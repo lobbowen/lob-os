@@ -49,11 +49,19 @@ done
 echo "[sysroot] sysroot=$SYSROOT"
 
 INC="$SYSROOT/usr/include"
-TRIPLE="aarch64-linux-android"
-case "$ABI" in
-  arm64-v8a|aarch64-linux-android) : ;;
-  *) die "ABI 与目标不对应" "ABI=$ABI，sysroot 的目标库目录按 target triple 命名，本仓只认 arm64-v8a（jniLibs 的 ABI 名）→ aarch64-linux-android（NDK triple 名）。两者不是一回事：$SYSROOT/usr/lib 下根本没有 $ABI。" ;;
-esac
+TRIPLE=""
+if [ -n "${CC:-}" ]; then
+  BASE_C="$(basename "$CC")"
+  case "$BASE_C" in
+    aarch64-linux-android[0-9]*-clang) TRIPLE="aarch64-linux-android" ;;
+  esac
+fi
+if [ -z "$TRIPLE" ]; then
+  case "$ABI" in
+    arm64-v8a|aarch64-v8a|aarch64-linux-android) TRIPLE="aarch64-linux-android" ;;
+    *) die "ABI 与目标不对应" "ABI=$ABI 且 CC=${CC:-（未注入）} 认不出 triple。本仓只编 aarch64：CC 文件名形如 aarch64-linux-android35-clang，或 ABI 写 arm64-v8a / aarch64-v8a。两者不是一回事 —— $SYSROOT/usr/lib 下没有 $ABI。" ;;
+  esac
+fi
 LIBDIR="$SYSROOT/usr/lib/$TRIPLE"
 [ -d "$INC" ] || die "sysroot 缺头文件" "$INC 不存在"
 [ -d "$LIBDIR" ] || die "sysroot 缺目标库目录" "$LIBDIR 不存在（triple=$TRIPLE，sysroot/usr/lib 下现有：$(ls "$SYSROOT/usr/lib" 2>/dev/null | tr '\n' ' ')）"

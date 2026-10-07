@@ -25,8 +25,9 @@ TC="$(dirname "$CC")"
 CXX="${CXX:-$TC/aarch64-linux-android${API}-clang++}"
 LLVM_STRIP="${LLVM_STRIP:-$TC/llvm-strip}"
 LLVM_READELF="${LLVM_READELF:-$TC/llvm-readelf}"
-[ -x "$CXX" ] || die "缺 C++ 编译器" "$CXX 不存在 —— bootstrap 编的是 C++ 源码，只有 clang 不够"
-command -v make >/dev/null 2>&1 || die "缺 make" "bootstrap 靠 make 驱动编译（runner 自带；缺了请 apt-get install make）"
+NDK_ROOT="$(cd "$TC/../../../../.." && pwd)"
+[ -d "$NDK_ROOT" ] || die "定位 NDK 失败" "从 clang 路径反推得到 '$NDK_ROOT'，它不是目录（CC=$CC）"
+[ -x "$CXX" ] || die "缺 C++ 编译器" "$CXX 不存在 —— cmake 是 C++ 程序，只有 clang 不够"
 for t in "$LLVM_STRIP" "$LLVM_READELF"; do
   [ -x "$t" ] || die "缺工具" "$t 不存在"
 done
@@ -44,8 +45,8 @@ if [ ! -d "$SRC" ]; then
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 || die "解包失败" "$TGZ"
 fi
-[ -x "$SRC/bootstrap" ] || die "源码树异常" \
-  "缺 bootstrap —— CMake 的发布包自带它（2111 行 /bin/sh，直接用编译器编源码）。没有它就得靠宿主 cmake。"
+[ -f "$SRC/Source/CMakeVersion.cmake" ] || die "源码树异常" \
+  "缺 Source/CMakeVersion.cmake —— 版本核对与交叉编都要用它，缺了说明解包不对。"
 GOT_VER="$(awk -F'[ ()]' '
   /^set\(CMake_VERSION_MAJOR/ {maj=$3}
   /^set\(CMake_VERSION_MINOR/ {min=$3}
@@ -55,32 +56,46 @@ GOT_VER="$(awk -F'[ ()]' '
 ' "$SRC/Source/CMakeVersion.cmake")"
 [ "$GOT_VER" = "$CMAKE_VER" ] || die "版本不符" \
   "钉的是 $CMAKE_VER，Source/CMakeVersion.cmake 三段拼出 $GOT_VER（钉值写错或源站给了别的版本）"
-note "源码 $GOT_VER 就位（自带 bootstrap，无需宿主 cmake）"
+note "源码 $GOT_VER 就位"
 
 BUILD="$WORK/build"
 INST="$WORK/_inst"
 rm -rf "$BUILD" "$INST" && mkdir -p "$BUILD" "$INST"
 
+command -v cmake >/dev/null 2>&1 || die "缺宿主 cmake" \
+  "CMake 的 bootstrap 编完测试程序必定 ./\$TMPFILE 执行它（cmake_try_run()），交叉编出的是 aarch64，在 x86_64 宿主上必然 Exec format error —— bootstrap 没有交叉模式。所以必须用宿主 cmake 交叉编：build job 需要 apt-get install cmake。"
+HOST_CMAKE_VER="$(cmake --version | head -1)"
+
+cat > "$WORK/toolchain.cmake" <<EOF
+set(CMAKE_SYSTEM_NAME Android)
+set(CMAKE_SYSTEM_VERSION 21)
+set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+set(CMAKE_ANDROID_NDK $NDK_ROOT)
+set(CMAKE_C_COMPILER   $CC)
+set(CMAKE_CXX_COMPILER $CXX)
+set(CMAKE_C_FLAGS   "-O2 -D__ANDROID_API__=$API")
+set(CMAKE_CXX_FLAGS "-O2 -D__ANDROID_API__=$API")
+EOF
+note "宿主 cmake：$HOST_CMAKE_VER；交叉编（toolchain 文件 → $WORK/toolchain.cmake）"
+
 (
   set -e
   cd "$BUILD"
-  PATH="$TC:$PATH" \
-  "$SRC/bootstrap" \
-    --prefix="$INST" \
-    --parallel="$(nproc 2>/dev/null || echo 4)" \
-    CC="$CC" \
-    CXX="$CXX" \
-    CFLAGS="-O2 -D__ANDROID_API__=$API" \
-    CXXFLAGS="-O2 -D__ANDROID_API__=$API -static" \
-    > "$WORK/bootstrap.log" 2>&1 \
-    || { echo "=== bootstrap 失败取证 ==="
-         for f in "$WORK/bootstrap.log" "$BUILD/Bootstrap.cmk/cmake_bootstrap.log" "$WORK/bootstrap/bootstrap.log"; do
-           if [ -f "$f" ]; then echo "--- $f（末 40 行）---"; tail -40 "$f"; fi
-         done
-         echo "CC=$CC"; echo "CXX=${CXX:-（空）}"; echo "CFLAGS=${CFLAGS:-（空）}"; echo "CXXFLAGS=${CXXFLAGS:-（空）}"
-         exit 1; }
+  cmake -S "$SRC" -B "$BUILD" \
+    -DCMAKE_TOOLCHAIN_FILE="$WORK/toolchain.cmake" \
+    -DCMAKE_INSTALL_PREFIX="$INST" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTING=OFF \
+    > "$WORK/configure.log" 2>&1 \
+    || { echo "=== cmake configure 失败取证（末 50 行）==="; tail -50 "$WORK/configure.log"; exit 1; }
+  cmake --build "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
+    || { echo "=== cmake 编译失败取证（error 行 + 末 50 行）==="; \
+         grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
+         tail -50 "$WORK/build.log"; exit 1; }
+  cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
+    || { echo "=== cmake install 失败取证（末 40 行）==="; tail -40 "$WORK/install.log"; exit 1; }
 )
-note "bootstrap 完成"
+note "cmake 交叉编完成"
 
 BIN="$INST/bin/cmake"
 [ -x "$BIN" ] || {
