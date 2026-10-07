@@ -95,8 +95,40 @@ BUILD="$WORK/build"
 rm -rf "$BUILD"
 mkdir -p "$BUILD"
 
+HOST_TB="$WORK/host-tblgen"
+rm -rf "$HOST_TB"
+note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。宿主那份不设 toolchain 文件，就是宿主构建。"
+cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLVM_TARGETS_TO_BUILD=AArch64 \
+  -DLLVM_ENABLE_PROJECTS="$PROJECTS" \
+  -DLLVM_INCLUDE_TESTS=OFF \
+  -DLLVM_INCLUDE_BENCHMARKS=OFF \
+  -DLLVM_INCLUDE_EXAMPLES=OFF \
+  -DLLVM_INCLUDE_DOCS=OFF \
+  -DLLVM_ENABLE_TERMINFO=OFF \
+  -DLLVM_ENABLE_LIBXML2=OFF \
+  -DLLVM_ENABLE_LIBEDIT=OFF \
+  -DLLVM_ENABLE_ZSTD=OFF \
+  > "$WORK/host-configure.log" 2>&1 \
+  || { echo "=== 宿主 tblgen 配置失败（末 40 行）==="; tail -40 "$WORK/host-configure.log"; exit 1; }
+cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen \
+  -j"$JOBS" > "$WORK/host-build.log" 2>&1 \
+  || { echo "=== 宿主 tblgen 编译失败（error 行 + 末 40 行）==="; \
+       grep -nE 'error:|Error [0-9]+$' "$WORK/host-build.log" | head -20 || true; \
+       tail -40 "$WORK/host-build.log"; exit 1; }
+NATIVE_DIR="$WORK/native-tools"
+mkdir -p "$NATIVE_DIR"
+for t in llvm-tblgen llvm-min-tblgen clang-tblgen; do
+  [ -x "$HOST_TB/bin/$t" ] || die "宿主 tblgen 没产出" "$HOST_TB/bin/$t 不存在 —— 交叉构建需要它来生成 .inc 文件"
+  cp -f "$HOST_TB/bin/$t" "$NATIVE_DIR/$t"
+done
+note "宿主 tblgen 就位：$NATIVE_DIR（$(ls "$NATIVE_DIR" | tr '\n' ' ')）"
+
 cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" \
+  -DLLVM_NATIVE_TOOL_DIR="$NATIVE_DIR" \
+  -DLLVM_TABLEGEN="$NATIVE_DIR/llvm-tblgen" \
   -DANDROID_ABI="$ABI" -DANDROID_PLATFORM="android-$API" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$STAGE/prefix" \
@@ -125,9 +157,11 @@ note "开始编（$JOBS 作业）—— 这一步在 CI 上要几十分钟到数
 cmake --build "$BUILD" -j"$JOBS" \
   > "$WORK/build.log" 2>&1 \
   || { echo "=== LLVM 编译失败取证 ==="; \
-       echo "（error 行）"; grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -30 || true; \
+       echo "（error 行）"; grep -nE 'error:|Error [0-9]+$|undefined (symbol|reference)' "$WORK/build.log" | head -30 || true; \ head -30 || true; \
        echo "（末 60 行）"; tail -60 "$WORK/build.log"; \
        echo; echo "== 交叉编译需要的宿主工具（LLVM 文档给的开关是 LLVM_NATIVE_TOOL_DIR / LLVM_TABLEGEN）=="; \
+       TB_LIST=$(ls "$NATIVE_DIR" 2>/dev/null | tr '\n' ' ' || true); \
+       echo "  我们自己编的宿主 tblgen：${TB_LIST:-（没编成功）}"; \
        echo "  NDK bin 里的 *-tblgen：$(ls "$TC"/*-tblgen 2>/dev/null | tr '\n' ' ' || true)"; \
        echo "  PATH 里的 llvm-tblgen：$(command -v llvm-tblgen 2>/dev/null || echo '（无）')"; \
        echo "  宿主 cc/c++：$(command -v cc 2>/dev/null || echo '（无）') $(command -v c++ 2>/dev/null || echo '（无）')"; \
