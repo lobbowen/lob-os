@@ -1,23 +1,4 @@
 #!/usr/bin/env bash
-# ELF 依赖闭包判据 —— 动态件时代的「不许有 PT_DYNAMIC」替代物。
-#
-# 为什么不再判静态：
-#   底座件走 OTA 更新，静态化会把依赖烧进产物 —— 升 libz/openssl 时静态件不跟着更新，
-#   换 .so 就生效。Debian/Fedora 的 make/cmake/python3 也无一例外是动态。
-#   另：verify-userland-artifact.sh 已经要求产物必须动态（LD_PRELOAD 容器对静态件失效），
-#   配方里再判静态是自相矛盾。
-#
-# 那么动态化之后该固化什么？该固化「闭包可解析」——这是静态化时代那条断言
-# 真正想拦的东西（怕件带着找不到的依赖出门），只是判法要跟着链接方式换：
-#   1) 每个 DT_NEEDED 要么是 bionic 自带（native-deps.txt 白名单）
-#   2) 要么是 APK 全局铺到 $PREFIX/lib 的基础库
-#   3) 要么就在件自己的 lib/ 里
-#   4) 用到 3) 的必须有含 $ORIGIN 的 DT_RUNPATH（bionic 忽略 DT_RPATH，
-#      载荷 run_code 起子进程时环境是空的）
-#
-# 用法：check-elf-deps.sh <elf 文件> <标签>
-# 依赖：LLVM_READELF 指向 NDK 的 llvm-readelf；无则从 CC 反推。
-
 set -euo pipefail
 export LC_ALL=C
 
@@ -37,8 +18,6 @@ READELF="${LLVM_READELF:-}"
 if [ -z "$READELF" ] && [ -n "${CC:-}" ]; then
   READELF="$(dirname "$CC")/llvm-readelf"
 fi
-# 没注入就自己在 PATH 与常见 NDK 落位里找。门禁纪律第 4 条：判据要挂在能真正
-# 拿到信息的链上，不能因为「这条 job 不编 C」就让它静默失效。
 if [ -z "$READELF" ] || [ ! -f "$READELF" ]; then
   CAND="$(command -v llvm-readelf 2>/dev/null || command -v readelf 2>/dev/null || true)"
   if [ -z "$CAND" ]; then
@@ -52,8 +31,6 @@ if [ -z "$READELF" ] || [ ! -f "$READELF" ]; then
   fi
   READELF="$CAND"
 fi
-# 不用 [ -x ] 判可用性：某些宿主（Android filesDir 下的 755 文件）对它返回假，
-# 会把「工具存在」误报成「工具不存在」。判据是「存在」+ 后面真跑出输出。
 [ -n "$READELF" ] && [ -f "$READELF" ] \
   || die "缺 readelf" "LLVM_READELF/CC 都没给，PATH 与 ANDROID_NDK* 下也找不到 readelf —— 没有它就分不清系统库与缺失库，判据无依据（真机上会 cannot locate symbol）"
 
@@ -62,8 +39,6 @@ DEPS_FILE="$HERE/native-deps.txt"
 SYSTEM_LIBS=" $( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
 [ -n "${SYSTEM_LIBS// /}" ] || die "系统库白名单是空的" "$DEPS_FILE 被清空了 —— 那会把所有系统库都当成缺失依赖"
 
-# APK 全局铺到 $PREFIX/lib 的基础库（base- 筐，走 jniLibs 随 APK 交付）：
-# 对商店件是常驻的，算「已提供」。来源见 build-base-libs.sh 的产出清单。
 APK_LIBS=" libc++_shared.so libz.so libssl.so libcrypto.so libcurl.so liblobosflock.so "
 
 DYN="$("$READELF" -W -d "$FILE" 2>/dev/null || true)"
@@ -81,7 +56,6 @@ if [ -z "${NEEDED// /}" ]; then
   exit 0
 fi
 
-# 件自己 lib/ 下的库（$ORIGIN 相对）
 LIBDIR="$(cd "$(dirname "$FILE")" && pwd)/lib"
 LOCAL_LIBS=""
 [ -d "$LIBDIR" ] && LOCAL_LIBS=" $(ls "$LIBDIR" 2>/dev/null | tr '\n' ' ') "

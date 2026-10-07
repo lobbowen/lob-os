@@ -400,3 +400,89 @@ set -o pipefail; if ! false | true; then …   # 也判失败
 
 改法：不用管道，改用 sdkmanager 自己的 `--licenses` 预接受，
 并在装成功后明确打一行「装好了：<路径>」，让成功/失败一眼可分。
+
+---
+
+## 第十二条：前提变了就换判据，不是删判据
+
+### 起因
+
+底座件走 OTA 更新，而**静态化会把依赖烧进产物**：升 libz/openssl 时静态件
+不跟着更新，换 `.so` 就生效。标准发行版（Debian/Fedora）的 make/cmake/python3
+也无一例外是动态。仓库里另有一处直接矛盾 ——
+`verify-userland-artifact.sh` 本来就要求产物必须动态
+（LD_PRELOAD 容器对静态件失效），配方里再判静态是自相矛盾。
+
+### 换掉的三条断言
+
+`make` / `cmake` / `pkg-config` 各有两条，理由都是「静态编才如何」：
+
+```sh
+[ "$SIZE" -gt N ] || die "产物可疑" "只有 $SIZE 字节 —— 静态编不该这么小"
+[ -z "$DYN" ]   || die "不是静态产物" "有 PT_DYNAMIC —— 不该依赖任何共享库"
+```
+
+这两条**真正想拦的是「件带着找不到的依赖出门」**。静态化时它用
+「有 PT_DYNAMIC 就红」来近似，动态化之后这个近似失效了：
+动态件一定有 PT_DYNAMIC。判法必须跟着链接方式换。
+
+### 换成什么：依赖闭包可解析
+
+`scripts/check-elf-deps.sh`。每个 `DT_NEEDED` 必须满足其一：
+
+1. bionic 自带（`scripts/native-deps.txt` 白名单）
+2. APK 基础库（`libc++_shared` / `libz` / `libssl` / `libcrypto` / `libcurl` / `liblobosflock`）
+3. 件自己的 `lib/` 下
+4. 用到 3) 的必须有含 `$ORIGIN` 的 `DT_RUNPATH`
+   （bionic 忽略 `DT_RPATH`；载荷 `run_code` 起子进程时环境是空的）
+
+第 4 条与第 1~3 条不同级：前三是「有没有」，第 4 是「找不找得到」。
+
+### 八个反例，四个是先写出来才发现判据漏了
+
+判据自己也要被反例验证（第十条）。八个分支全部实测：
+
+| 分支 | 期望 | 实得 |
+|---|---|---|
+| 只依赖系统白名单内的库 | 过 | ✔ |
+| 依赖不在白名单的库（libselinux.so） | 红 | ✔ |
+| 依赖 APK 基础库（libcurl/libz/libc++_shared） | 过 | ✔ |
+| 依赖同目录库 + 含 `$ORIGIN` 的 RUNPATH | 过 | ✔ |
+| 依赖同目录库但无 RUNPATH | 红 | ✔ |
+| 依赖同目录库但只有 `DT_RPATH` | 红 | ✔ |
+| 依赖同目录库但 `lib/` 下没那个文件 | 红 | ✔ |
+| 静态产物（无 `.dynamic`）不误报 | 过 | ✔ |
+
+其中**「只有 `DT_RPATH`」与「库里没那个文件」两条，是先写反例才发现判据漏的**
+—— 原判据只看 `DT_RUNPATH`，不查 `DT_RPATH`，也不验文件真的存在。
+
+### 判据挂在哪一层
+
+挂 `verify-userland-artifact.sh`，三个调用点（node / build 矩阵 / llvmtoolchain）
+统一在一层，而不是散在各配方里 —— 与第十条「门禁要挂在与它相关的链上」一致。
+
+`node` job 不跑 `locate-ndk.sh`、完全不碰 NDK，拿不到 `LLVM_READELF`。
+处理方式不是给它加 NDK，也不是让它静默跳过，而是让 `check-elf-deps.sh`
+在没注入时自己去 `PATH` 与 `ANDROID_NDK*` 下找；找不到才报错并说明「判据无依据」。
+
+### 附：busybox 为什么**不**跟着改
+
+`build-native-busybox.sh` 里有同类断言，但这一件核实后不改：
+
+- 静态化形式是 `CONFIG_STATIC=y`（busybox 固有语义），不是链接 flag
+- 消费端是 `NativeAssetRegistry` 的 CAPABILITY，按 `libName` 从 jniLibs 找库，
+  不是从 `$PREFIX/bin` 找可执行件
+- `NativeAssetRegistry.kt:88` 明写「静态编、不链底座 libz：
+  底座件之间不互相依赖」—— 若改动态就依赖 `libz`（upstream 档硬依赖），
+  违反 `ENV-EXECUTION-PLAN.md` §2.3.1 三筐判据第二条
+
+**判据相同不等于结论相同。** 前三件是「断言写错了」，busybox 是「断言对」。
+
+### 附：`comment-gate` 撞过一次，是我自己引进的
+
+换判据时为了说明「为什么」，在新脚本与搬运处写了 25 + 8 条解释性注释，
+正好撞上「不许上注释」门禁，把构建卡住了。注释门禁只允许 shebang 与
+工具指令类（见 `scripts/strip-comments.js` 的 `ALLOW`）。
+
+处理：注释删掉，「为什么」落到本文档。**代码里的解释性注释会腐坏**，
+而门禁要判的正是这件事 —— 这次它判对了，是我没按规矩写。

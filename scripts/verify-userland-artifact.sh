@@ -26,8 +26,6 @@ judge_shape() {
       *"dynamically linked"*|*"shared object"*) : ;;
       *) echo "::error title=产物是静态件::$INFO —— 容器 Linux 语义层（LD_PRELOAD）对静态件失效"; exit 1 ;;
     esac
-    # 动态件之后该固化的是「依赖闭包可解析」，不是「不许有 PT_DYNAMIC」。
-    # 静态化时代那条断言真正想拦的是「件带着找不到的依赖出门」，判法跟着换。
     if [ -n "${LLVM_READELF:-}" ] && [ -f "$LLVM_READELF" ]; then
       bash "$ROOT/scripts/check-elf-deps.sh" "$BIN" "$TOOL/$label"
     else
