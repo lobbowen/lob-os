@@ -66,33 +66,30 @@ command -v cmake >/dev/null 2>&1 || die "缺宿主 cmake" \
   "CMake 的 bootstrap 编完测试程序必定 ./\$TMPFILE 执行它（cmake_try_run()），交叉编出的是 aarch64，在 x86_64 宿主上必然 Exec format error —— bootstrap 没有交叉模式。所以必须用宿主 cmake 交叉编：build job 需要 apt-get install cmake。"
 HOST_CMAKE_VER="$(cmake --version | head -1)"
 
-cat > "$WORK/toolchain.cmake" <<EOF
-set(CMAKE_SYSTEM_NAME Android)
-set(CMAKE_SYSTEM_PROCESSOR aarch64)
-set(CMAKE_SYSTEM_VERSION $API)
-set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
-set(CMAKE_ANDROID_NDK $NDK_ROOT)
-set(CMAKE_C_COMPILER   $CC)
-set(CMAKE_CXX_COMPILER $CXX)
-set(CMAKE_C_FLAGS   "-O2 -D__ANDROID_API__=$API")
-set(CMAKE_CXX_FLAGS "-O2 -D__ANDROID_API__=$API")
-EOF
-note "宿主 cmake：$HOST_CMAKE_VER；交叉编（toolchain 文件 → $WORK/toolchain.cmake）"
+ANDROID_TOOLCHAIN="$NDK_ROOT/build/cmake/android.toolchain.cmake"
+[ -f "$ANDROID_TOOLCHAIN" ] || die "NDK 缺 android.toolchain.cmake" \
+  "路径 '$ANDROID_TOOLCHAIN' 不存在 —— CMake 交叉编 Android 必需它（llvmtoolchain 件用的是同一个文件）。不要自造 toolchain 文件：漏掉 CMAKE_SYSROOT 时 configure 会报 'The C++ compiler does not support C++11 (e.g. std::unique_ptr)'，因为空程序只靠 -std 能编过、要 <memory> 的就编不过 —— 那是找不到 Bionic 头文件，不是编译器不支持 C++11。NDK 的 android.toolchain.cmake 末尾设了 CMAKE_SYSROOT，注释写着它让 CMake 自动传 --sysroot。"
+SYSROOT_DIR="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1)"
+note "宿主 cmake：$HOST_CMAKE_VER；toolchain=$ANDROID_TOOLCHAIN；sysroot=${SYSROOT_DIR:-（未找到）}"
+note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
 
 (
   set -e
   cd "$BUILD"
   cmake -S "$SRC" -B "$BUILD" \
-    -DCMAKE_TOOLCHAIN_FILE="$WORK/toolchain.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" \
+    -DANDROID_NDK="$NDK_ROOT" \
+    -DANDROID_ABI="arm64-v8a" \
+    -DANDROID_PLATFORM="android-$API" \
     -DCMAKE_INSTALL_PREFIX="$INST" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTING=OFF \
     > "$WORK/configure.log" 2>&1 \
     || { echo "=== cmake configure 失败取证 ==="
-         echo "--- toolchain 文件 ---"; cat "$WORK/toolchain.cmake"
+         echo "--- toolchain=$ANDROID_TOOLCHAIN sysroot=${SYSROOT_DIR:-（无）} ---"
          echo "--- configure.log 末 50 行 ---"; tail -50 "$WORK/configure.log"
-         echo "--- CMake 认定的编译器（从 CMakeCache.txt 取，不看日志措辞）---"
-         grep -E '^CMAKE_(C|CXX)_COMPILER:|^CMAKE_CXX_FLAGS' "$BUILD/CMakeCache.txt" 2>/dev/null | head -8 || echo "  （CMakeCache.txt 还不存在，说明失败在 cache 生成之前）"
+         echo "--- CMake 认定的编译器与 sysroot（从 CMakeCache.txt 取，不看日志措辞）---"
+         grep -E '^CMAKE_(C|CXX)_COMPILER:|^CMAKE_SYSROOT:|^CMAKE_CXX_FLAGS' "$BUILD/CMakeCache.txt" 2>/dev/null | head -8 || echo "  （CMakeCache.txt 还不存在，说明失败在 cache 生成之前）"
          exit 1; }
   cmake --build "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
     || { echo "=== cmake 编译失败取证（error 行 + 末 50 行）==="; \

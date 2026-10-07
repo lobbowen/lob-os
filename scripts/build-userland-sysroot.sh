@@ -116,13 +116,13 @@ chk "sysroot/lib 存在"     "$STAGE/sysroot/lib"
 if [ ! -e "$STAGE/sysroot/lib/libc.so" ]; then
   echo "[miss] lib/libc.so —— 链接任何程序都会失败（'cannot find -lc'）"; fail=1
 fi
+RT_MISSING=0
 if ! ls "$STAGE/sysroot"/lib/libclang_rt*.a >/dev/null 2>&1; then
-  echo "[miss] lib/libclang_rt*.a —— 内建函数（__aeabi_uldivmod 等）由它提供"
-  echo "  NDK 里它的真实落位：$(find "$NDK" -name 'libclang_rt.builtins*' -type f 2>/dev/null | head -2 | tr '\n' ' ')"
-  echo "  clang 的 runtime 目录：$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux 2>/dev/null | head -1)"
-  fail=1
+  RT_MISSING=1
+  echo "[info] sysroot 内没有 libclang_rt*.a —— 它在 clang 的 runtime 目录里："
+  echo "       $(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux 2>/dev/null | head -1)"
+  echo "       clang 编 .o 时从那里取，不必在 sysroot 内。下面的真编探针会验证这一点。"
 fi
-[ "$fail" -eq 0 ] || die "sysroot 不完整" "上面 miss 的几件是编译的硬依赖，产出半个 sysroot 比不产出更坏"
 
 echo "[sysroot] 真编一次（判据要测行为，不查文件在不在）"
 PROBE="$WORK/probe"
@@ -135,16 +135,23 @@ if "$CC" --sysroot="$STAGE/sysroot" -c "$PROBE/probe.c" -o "$PROBE/probe.o" 2>"$
   echo "[ok] clang --sysroot 指到本件后，能编出 .o（内建函数已解决）"
   if "$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -q 'AArch64'; then
     echo "[ok] 产物是 AArch64（不是宿主 x86_64）"
+    [ "$RT_MISSING" -eq 1 ] && echo "[ok] 且 libclang_rt 不在 sysroot 内也能编 —— 确认它不是硬依赖"
   else
-    echo "[miss] 产物不是 AArch64：$("$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -i machine | head -1)"
+    echo "::error title=探针产物不是 AArch64::$("$LLVM_READELF" -h "$PROBE/probe.o" 2>/dev/null | grep -i machine | head -1)"
+    echo "  clang 编成了宿主架构 —— 交叉配置没生效（toolchain 文件不对？）"
     exit 1
   fi
 else
   echo "::error title=sysroot 编不出东西::clang --sysroot=$STAGE/sysroot 编译失败（末 20 行）："
   tail -20 "$PROBE/err.log"
   echo "  CC=$CC"
+  if [ "$RT_MISSING" -eq 1 ]; then
+    echo "  若报 __aeabi_* / 找不到内建函数：libclang_rt 没进 sysroot，且 clang 也没在自己的 runtime 目录里找到它。"
+    echo "  探针的真实报错在上面，先按它定位，别直接归因到 libclang_rt。"
+  fi
   exit 1
 fi
+[ "$fail" -eq 0 ] || die "sysroot 不完整" "上面 miss 的几件是编译的硬依赖，产出半个 sysroot 比不产出更坏"
 
 TREE_KB=$(du -sk "$STAGE/sysroot" | cut -f1)
 N_FILES=$(find "$STAGE/sysroot" -type f | wc -l)
