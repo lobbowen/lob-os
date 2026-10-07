@@ -234,6 +234,7 @@ jobs:
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
             mv "dist/$ASSET" "dist/userland-${{ matrix.tool }}.zip"
             [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/userland-${{ matrix.tool }}.zip.sha256" || true
+            tar xzf "dist/userland-${{ matrix.tool }}.zip" -C dist
             ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
