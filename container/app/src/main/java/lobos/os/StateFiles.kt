@@ -47,7 +47,7 @@ object StateFiles {
 
     private fun note(detail: String) {
         runCatching {
-            val f = File(File(LEDGER_DIR, ""), FAILED_FILE)
+            val f = File(SystemDirs.log(ctx), FAILED_FILE)
             f.parentFile?.mkdirs()
             val prev = if (f.isFile) f.readText() else ""
             val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }

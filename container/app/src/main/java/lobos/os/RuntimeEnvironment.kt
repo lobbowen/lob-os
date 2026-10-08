@@ -68,7 +68,7 @@ object RuntimeEnvironment {
         )
         root.posixShim?.let {
             put("LD_PRELOAD", it.absolutePath)
-            put("LOBOS_COMPAT_LOG", File(root.home, "os/compat-degrade.log").absolutePath)
+            put("LOBOS_COMPAT_LOG", lobos.native.DriverRegistry.degradeLog(ctx).absolutePath)
         }
         val caDirs = listOf(
             "/apex/com.android.conscrypt/cacerts",

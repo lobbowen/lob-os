@@ -20,7 +20,7 @@ object ProgramOtaSelfCheck {
             "feed-config",
             cfg != null,
             "OTA 源配置",
-            if (cfg == null) "读不到 assets/program-feed.json，或 baseUrl 非 https"
+            if (cfg == null) "读不到 assets/supply/channel.json，或 baseUrl 非 https"
             else cfg.baseUrl + "   tag=" + cfg.releaseTag + "   autoCheck=" + cfg.autoCheck,
         )
         if (cfg == null) return out

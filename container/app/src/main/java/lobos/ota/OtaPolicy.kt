@@ -69,7 +69,7 @@ object OtaPolicy {
                 return Verdict.Reject(
                     "downgrade-not-allowed",
                     "远端 " + i.remoteVersion + " 低于本地 " + i.currentVersion +
-                        " —— 降级需显式策略（program-feed.json 的 allowDowngrade=true），已拒绝并留审计",
+                        " —— 降级需显式策略（supply/channel.json manifests.program.allowDowngrade=true），已拒绝并留审计",
                 )
             }
             if (checkOnly) {
