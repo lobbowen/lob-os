@@ -33,7 +33,6 @@ import lobos.lifecycle.AccessibilityServiceState
 import lobos.lifecycle.OsAccessibilityService
 import lobos.lifecycle.OsHostService
 import lobos.log.Journal
-import lobos.pieces.PieceRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.pieces.PrepareReport
 import lobos.os.CatalogClient
@@ -1157,9 +1156,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val report = if (walkAll) {
                 PieceProvisioner.prepare(this)
             } else {
-                PrepareReport(PieceRegistry.PIECES.map { exe -> exe to PieceProvisioner.verify(this, exe) })
-            }
-            report.toJson().apply {
+            // 报告扫落位出来的那批（每件自带说明），不从表拿
+            PrepareReport(lobos.os.PieceScan.scan(this).map { f ->
+                f to PieceProvisioner.verifyAt(this, f.dir, f.entry, f.meta)
+            }),
                 put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
                 put("libSearchPath", PieceProvisioner.libSearchPath(this@CapabilityBroker))
             }

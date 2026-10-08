@@ -13,25 +13,25 @@ import org.json.JSONObject
 sealed class AssetStatus {
 
     data class Ready(
-        val exe: Piece,
+        val exe: lobos.os.PieceScan.Found,
         val path: String,
     ) : AssetStatus()
 
     data class MissingFromLib(
-        val exe: Piece,
+        val exe: lobos.os.PieceScan.Found,
         val path: String,
         val inApk: Boolean,
         val libListing: String,
     ) : AssetStatus()
 
     data class MissingDependency(
-        val exe: Piece,
+        val exe: lobos.os.PieceScan.Found,
         val dep: String,
         val libListing: String,
     ) : AssetStatus()
 
     data class NotExecutable(
-        val exe: Piece,
+        val exe: lobos.os.PieceScan.Found,
         val path: String,
         val errnoHint: Int?,
         val raw: String,
@@ -39,19 +39,19 @@ sealed class AssetStatus {
     /** 编译期已保证正确，装上去却不能用 —— 与 Linux 一致：系统不验，运行时自己会报错 */
     data class Unusable(
 
-        val exe: Piece,
+        val exe: lobos.os.PieceScan.Found,
         val path: String,
         val exit: Int,
         val output: String,
     ) : AssetStatus()
 }
 
-data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
+data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetStatus>>) {
 
     val allRequiredReady: Boolean
         get() = entries.filter { it.first.required }.all { it.second is AssetStatus.Ready }
 
-    val failedRequired: List<Pair<Piece, AssetStatus>>
+    val failedRequired: List<Pair<lobos.os.PieceScan.Found, AssetStatus>>
         get() = entries.filter { it.first.required && it.second !is AssetStatus.Ready }
 
     fun toJson(): JSONObject {
@@ -59,7 +59,7 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
         for ((exe, st) in entries) {
             val o = JSONObject()
             o.put("id", exe.id)
-            o.put("libName", exe.libName)
+            o.put("libName", exe.entry.substringAfterLast("/", ""))
             o.put("required", exe.required)
             when (st) {
                 is AssetStatus.Ready -> {
@@ -106,17 +106,17 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
         val tag = if (exe.required) "[必需]" else "[可选]"
         when (st) {
             is AssetStatus.Ready ->
-                "$tag ${exe.libName} —— 就位" +
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— 就位" +
             is AssetStatus.MissingFromLib ->
-                "$tag ${exe.libName} —— ✗ 不在 nativeLibraryDir。" +
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 不在 nativeLibraryDir。" +
                     if (st.inApk) "APK 内有该条目 → 安装期未解压（查 extractNativeLibs / useLegacyPackaging）"
                     else "APK 内也没有该条目 → 打包期就丢了（查构建脚本与 keepDebugSymbols）"
             is AssetStatus.MissingDependency ->
-                "$tag ${exe.libName} —— ✗ 缺少依赖 ${st.dep}（它必须先于本体补齐，否则会被误判为 SELinux 拒 exec）"
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 缺少依赖 ${st.dep}（它必须先于本体补齐，否则会被误判为 SELinux 拒 exec）"
             is AssetStatus.NotExecutable ->
-                "$tag ${exe.libName} —— ✗ 无法 exec（依赖已确认完好，errno=${st.errnoHint ?: "?"}）"
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 无法 exec（依赖已确认完好，errno=${st.errnoHint ?: "?"}）"
             is AssetStatus.Unusable ->
-                "$tag ${exe.libName} —— ✗ 起不来 exit=${st.exit}，输出: ${st.output.ifBlank { "(空)" }}"
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 起不来 exit=${st.exit}，输出: ${st.output.ifBlank { "(空)" }}"
         }
     }
 }
@@ -136,8 +136,9 @@ object PieceProvisioner {
             emptySet()
         }
 
-        val entries = PieceRegistry.PIECES.map { exe ->
-            exe to verifyInternal(ctx, exe, libDir, listing, apkLibNames)
+        // 扫落位：有哪些件、什么形态、说明是什么，都由落位形状与件自带的说明决定
+        val entries = lobos.os.PieceScan.scan(ctx).map { f ->
+            f to verifyInternal(ctx, f, libDir, listing, apkLibNames)
         }
         val report = PrepareReport(entries)
 
@@ -155,6 +156,24 @@ object PieceProvisioner {
         return report
     }
 
+    /**
+     * 校验一个**落位处** —— 扫落位得到的每一项都这样验，不查表。
+     */
+    fun verifyAt(
+        ctx: Context,
+        dir: File,
+        entryRel: String,
+        meta: org.json.JSONObject?,
+    ): AssetStatus {
+        val f = File(dir, entryRel)
+        val st = object {}
+        return if (f.isFile) AssetStatus.Ready(Verified(dir.name, entryRel), f.absolutePath, "就位")
+        else AssetStatus.MissingFromLib(Verified(dir.name, entryRel), f.absolutePath, false, "")
+    }
+
+    /** 报告里用的最小标识 —— 不再是 Piece（那张表没了） */
+    data class Verified(val id: String, val entry: String)
+
     fun verify(ctx: Context, exe: Piece): AssetStatus {
         val libDir = File(ctx.applicationInfo.nativeLibraryDir)
         val apkNames = try {
@@ -169,15 +188,15 @@ object PieceProvisioner {
 
     private fun verifyInternal(
         ctx: Context,
-        exe: Piece,
+        exe: lobos.os.PieceScan.Found,
         libDir: File,
         listing: String,
         apkLibNames: Set<String>,
     ): AssetStatus {
-        val f = File(libDir, exe.libName)
+        val f = File(libDir, exe.entry.substringAfterLast("/", ""))
 
         if (!f.exists()) {
-            val inApk = apkLibNames.contains(exe.libName)
+            val inApk = apkLibNames.contains(exe.entry.substringAfterLast("/", ""))
             return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
         }
 

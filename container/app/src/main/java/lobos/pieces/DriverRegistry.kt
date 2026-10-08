@@ -160,7 +160,8 @@ object DriverRegistry {
         val drivers = JSONArray()
         var missing = 0
         for (d in DRIVERS) {
-            val libName = d.assetId?.let { runCatching { PieceRegistry.libNameOf(it) }.getOrNull() }
+            // 在不在：问落位（件自带说明，扫落位就知道有哪些）
+            val present = d.assetId == null || lobos.os.SystemRoles.pieceFile(ctx, d.assetId)?.isFile == true
             val present = d.assetId == null || (libName != null && File(dir, libName).exists())
             if (!present) missing += 1
             drivers.put(JSONObject().apply {

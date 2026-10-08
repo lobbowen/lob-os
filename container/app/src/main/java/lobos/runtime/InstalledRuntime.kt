@@ -18,7 +18,10 @@ object InstalledRuntime {
 
     fun versionOf(ctx: Context, id: String): String {
         val bin = binOf(ctx, id) ?: return ""
-        val args = lobos.pieces.PieceRegistry.of(id)?.versionArgs ?: emptyList()
+        // 「跑什么参数能问出这件的版本」是件自己声明的（component-meta.json）
+        val args = lobos.os.SystemRoles.pieceMeta(ctx, id)?.optJSONArray("versionArgs")?.let { a ->
+            (0 until a.length()).map { a.optString(it) }
+        } ?: emptyList()
         if (args.isEmpty()) return recordedVersion(ctx, id)
         val out = runCatching {
             val pb = ProcessBuilder(bin.absolutePath, *args.toTypedArray())

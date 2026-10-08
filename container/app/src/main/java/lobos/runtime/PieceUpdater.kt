@@ -2,8 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import lobos.RuntimeDiagnostics
-import lobos.pieces.PieceRegistry
-import lobos.pieces.Piece
 import org.json.JSONObject
 import java.io.File
 
@@ -30,21 +28,17 @@ object PieceUpdater {
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (e in PieceRegistry.PIECES) {
-            // 落位形状决定形态：有 bin/ 是命令，只有 .so 是库 —— 不查 BINS/LIBS 集合
-            val isEntry = lobos.os.SystemRoles.isEntry(e)
-            val ver = e.version.ifBlank { lobos.runtime.Fingerprint.of(File(ctx.applicationInfo.nativeLibraryDir, e.libName)) }
-            if (ver.isBlank()) continue
-            val f = if (isEntry)
-                File(lobos.os.SystemDirs.pieceDir(ctx, e.id, ver), "bin/${e.installedAs}")
-            else File(lobos.os.SystemDirs.pieceDir(ctx, e.id, ver), "lib/${e.libName}")
-            val apkFile = File(nativeDir, e.libName)
-            val source: File? = apkFile.takeIf { it.isFile }
+        // 扫落位：系统知道有哪些件，靠的是它们铺成的样子，不是任何一张表
+        for (f in lobos.os.PieceScan.scan(ctx)) {
+            val ver = f.version
+            val installed = File(f.dir, f.entry)
             out += State(
-                e.id,
-                InstalledRuntime.versionOf(ctx, e.id).ifBlank { null },
-                source?.let { runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull() },
-                source,
+                f.id,
+                ver.ifBlank { null },
+                installed.takeIf { it.isFile }?.let {
+                    runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
+                },
+                installed.takeIf { it.isFile },
                 false,
             )
         }
@@ -104,8 +98,11 @@ object PieceUpdater {
         val arr = parsed.optJSONArray("components") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
-        val pending = mutableListOf<Triple<Piece, String, JSONObject>>()
-        val byId = PieceRegistry.PIECES.associateBy { it.id }
+        val pending = mutableListOf<Triple<lobos.os.PieceScan.Found, String, JSONObject>>()
+        // 每件的说明从落位处读（件自带），不从表拿
+        val byId = lobos.os.PieceScan.scan(ctx).mapNotNull { f ->
+            f.meta?.let { m -> (m.optString("id", f.id)) to f }
+        }.toMap()
 
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
@@ -177,7 +174,7 @@ object PieceUpdater {
         ctx: Context,
         url: String,
         wantSha: String,
-        items: List<Triple<Piece, String, JSONObject>>,
+        items: List<Triple<lobos.os.PieceScan.Found, String, JSONObject>>,
     ): Map<String, Pair<Boolean, String?>> {
         val out = LinkedHashMap<String, Pair<Boolean, String?>>()
         if (url.isBlank() || wantSha.isBlank()) {
@@ -226,7 +223,7 @@ object PieceUpdater {
         }
     }
 
-    private fun place(ctx: Context, e: Piece, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+    private fun place(ctx: Context, e: lobos.os.PieceScan.Found, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
         try {
             val dir = versionDir(ctx, e.id, version)
             runCatching { dir.deleteRecursively() }
@@ -252,7 +249,7 @@ object PieceUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    private fun pointEntryAt(ctx: Context, e: Piece, version: String, dest: File): Boolean = try {
+    private fun pointEntryAt(ctx: Context, e: lobos.os.PieceScan.Found, version: String, dest: File: Boolean = try {
         val link = if (lobos.os.SystemRoles.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
@@ -275,7 +272,7 @@ object PieceUpdater {
     }
 
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
-        val e = PieceRegistry.PIECES.firstOrNull { it.id == id }
+        val e = lobos.os.PieceScan.scan(ctx).firstOrNull { it.id == id }
             ?: return false to "注册表里没有 id=$id"
         val link = if (lobos.os.SystemRoles.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)

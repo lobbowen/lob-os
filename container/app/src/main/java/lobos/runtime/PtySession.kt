@@ -2,7 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import android.util.Log
-import lobos.pieces.PieceRegistry
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.EOFException
@@ -282,17 +281,20 @@ object PtySession {
         }
     }
 
+    /**
+     * 找 PTY 会话宿主 —— **问落位**，不查表也不去猜 .so 文件名。
+     *
+     * 落位形状是 usr/lib/<id>/<版本>/bin/<名字>，扫到就是它。
+     * 找不到就明说找不到（终端与 shell.exec 都依赖它，不静默退化）。
+     */
     private fun locateBin(ctx: Context): File {
-        val candidates = listOf(
-            File(PrefixProvisioner.binDir(ctx), "pty-session"),
-            File(ctx.applicationInfo.nativeLibraryDir, PieceRegistry.libNameOf("ptysession")),
+        val found = lobos.os.SystemRoles.pieceFile(ctx, PTY_HOST_ID)
+        if (found != null && found.isFile) return found
+        val dir = lobos.os.SystemRoles.pieceDir(ctx, PTY_HOST_ID)
+        throw IllegalStateException(
+            "PTY 会话宿主不在位（找过 " + (dir?.absolutePath ?: "usr/lib/$PTY_HOST_ID") +
+            "）—— shell.exec 与终端都依赖它。底座不完整，别静默退化。"
         )
-        return candidates.firstOrNull { it.isFile }
-            ?: throw IllegalStateException(
-                "PTY 会话宿主不在位（找过：" +
-                    candidates.joinToString(", ") { it.absolutePath } + "）—— " +
-                    "shell.exec 与终端都依赖它。底座不完整，别静默退化。"
-            )
     }
 
     /**

@@ -2,7 +2,6 @@ package lobos.os
 
 import android.content.Context
 import lobos.RuntimeDiagnostics
-import lobos.pieces.PieceRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.runtime.InstalledRuntime
 import lobos.runtime.PrefixProvisioner

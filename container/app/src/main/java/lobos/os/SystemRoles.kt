@@ -4,14 +4,17 @@ import android.content.Context
 import java.io.File
 
 /**
- * 角色 —— 内核用它回答「我要一个能执行命令的东西」，而不是代码里写死 shellBin()。
+ * 角色 —— 内核用它回答「我要一个能执行命令的东西」，而不是代码里写死 `shellBin()`。
  *
- * 此前内核里有 shellBin() / multiCommandBin() / SYSROOT_ID / BUSYBOX_APPLETS 这些常量表 ——
- * 换一件命令解释器就得改内核代码。现在这些是数据（每件声明自己的 role），
- * 内核只提供「按角色找」这一个机制。
+ * **内核不预置任何一件的清单**（照抄 ldconfig：只扫目录；deb-control(5)：
+ * 每个包自带说明）。角色是**落位形状**决定的：
  *
- * SHELL 命令解释器 · MULTI_COMMAND 一个二进制提供多个命令 ·
- * HEADERS 头文件集 · LIBRARY 共享库 · EXEC 普通命令
+ *   usr/lib/<id>/<版本>/bin/<名字>    命令
+ *   usr/lib/<id>/<版本>/lib<名字>.so  库
+ *   usr/lib/<id>/include/头文件集
+ *
+ * 而「一个二进制提供多个命令」（multi-command）推不出来 —— **件自己在
+ * component-meta.json 里声明**，这里读它。
  */
 object SystemRoles {
     const val SHELL = "shell"
@@ -20,72 +23,52 @@ object SystemRoles {
     const val LIBRARY = "library"
     const val EXEC = "exec"
 
-    private fun all(ctx: Context) = lobos.pieces.PieceRegistry.PIECES
+    /**
+     * 这个件是可执行入口还是库 —— **只看落位形状**，不看任何字段声明。
+     * 有 bin/ 是命令，只有 .so 是库。
+     */
+    fun isEntry(meta: org.json.JSONObject): Boolean =
+        meta.optString("form", "") == EXEC ||
+            meta.optString("form", "") == SHELL ||
+            meta.optString("form", "") == MULTI_COMMAND
 
-    private fun byRole(ctx: Context, role: String) = all(ctx).filter { it.role == role }
-
-    fun shellBin(ctx: Context): File? {
-        val e = byRole(ctx, SHELL).firstOrNull() ?: return null
-        return File(SystemDirs.bin(ctx), e.installedAs).takeIf { it.isFile }
-    }
-
-    fun multiCommandBin(ctx: Context): File? {
-        val e = byRole(ctx, MULTI_COMMAND).firstOrNull() ?: return null
-        return File(SystemDirs.bin(ctx), e.installedAs).takeIf { it.isFile }
-    }
-
-    fun headersPieceDir(ctx: Context): File? {
-        byRole(ctx, HEADERS).firstOrNull()?.let {
-            return SystemDirs.pieceDir(ctx, it.id).takeIf { d -> d.isDirectory }
-        }
-        for (e in ProgramIndex.all(ctx)) {
-            if (e.stateDir.isBlank()) continue
-            val dir = File(e.stateDir)
-            if (File(dir, "include").isDirectory) return dir
+    /** 某个 id 现在落位在哪 —— 扫落位找，不查表 */
+    fun pieceDir(ctx: Context, id: String): File? {
+        for (f in PieceScan.scan(ctx)) {
+            if (f.id == id) return f.dir
         }
         return null
     }
 
-    fun executableNames(ctx: Context): List<String> =
-        all(ctx)
-            .filter { it.role == SHELL || it.role == EXEC || it.role == MULTI_COMMAND }
-            .map { it.installedAs }
-            .sorted()
-
-    fun libraryNames(ctx: Context): List<String> =
-        byRole(ctx, LIBRARY).map { it.libName }.sorted()
-
-    fun capabilities(ctx: Context): List<String> =
-        all(ctx).flatMap { it.provides }.distinct().sorted()
-
-    /** 这个件是可执行入口（落 `$PREFIX/bin`）还是库（落 `$PREFIX/lib`）—— 判据是 role，不是名字 */
-    fun isEntry(e: lobos.pieces.Piece): Boolean =
-        e.role == SHELL || e.role == EXEC || e.role == MULTI_COMMAND
-
-    /**
-     * 这个 id 是不是一件（系统文件），它落在哪 —— 不是则返回 null。
-     *
-     * 「是不是件」由它自己的 role 决定（注册表声明），不靠包外清单的 kind字符串：
-     * 换一份清单不该改变「它落哪」。
-     */
-    /**
-     * 某个件的**可执行件/库文件本身**在落位的哪 ——
-     * 落位在 usr/lib/<id>/（库）或 usr/bin/（入口）下，按件自己声明的 role 与名字找。
-     *
-     * 内核要用某件时问这里，不要在数据结构里存「那个件的路径」——
-     * 存一份就等于把「某一件」写进了机制。
-     */
+    /** 某个 id 的入口文件（命令）或库文件 —— 扫落位找 */
     fun pieceFile(ctx: Context, id: String): File? {
-        val e = lobos.pieces.PieceRegistry.of(id) ?: return null
-        val name = e.landingName
-        val f = if (isEntry(e)) File(SystemDirs.bin(ctx), name)
-                else File(SystemDirs.pieceDir(ctx, id), name)
-        return f.takeIf { it.isFile }
+        for (f in PieceScan.scan(ctx)) {
+            if (f.id == id) return File(f.dir, f.entry)
+        }
+        return null
     }
 
-    fun pieceDirFor(ctx: Context, id: String): File? {
-        val e = lobos.pieces.PieceRegistry.of(id) ?: return null
-        val dir = if (isEntry(e)) SystemDirs.bin(ctx).parentFile else SystemDirs.pieceDir(ctx, id)
-        return dir.takeIf { it.isDirectory }
+    /** 某个 id 落位的那一件的说明 —— 扫落位读它自带的 */
+    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? =
+        PieceScan.scan(ctx).firstOrNull { it.id == id }?.meta
+
+    /** 命令解释器（SHELL 角色）—— 由件自己声明，不按名字找 */
+    fun shellBin(ctx: Context): File? {
+        val f = PieceScan.scan(ctx).firstOrNull {
+            it.meta?.optString("form", "") == SHELL
+        } ?: return null
+        return File(f.dir, f.entry).takeIf { it.isFile }
     }
+
+    /** 一个二进制提供多个命令的那件 */
+    fun multiCommandBin(ctx: Context): File? {
+        val f = PieceScan.scan(ctx).firstOrNull {
+            it.meta?.optString("form", "") == MULTI_COMMAND
+        } ?: return null
+        return File(f.dir, f.entry).takeIf { it.isFile }
+    }
+
+    /** 这个系统对外提供哪些具名能力 —— 从各件自带的说明里汇总 */
+    fun capabilities(ctx: Context): List<String> =
+        PieceScan.scan(ctx).flatMap { it.provides }.distinct().sorted()
 }

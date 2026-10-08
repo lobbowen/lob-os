@@ -15,7 +15,6 @@ import java.util.concurrent.Executors
 import lobos.RuntimeDiagnostics
 import lobos.lifecycle.OsHostService
 import lobos.pieces.AssetStatus
-import lobos.pieces.PieceRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.os.ProgramDir
 import lobos.ota.ProgramOtaResolution
@@ -374,7 +373,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
-                    flockSo = File(nativeDir, PieceRegistry.libNameOf("flock")),
+                    flockSo = lobos.os.SystemRoles.pieceFile(this, FLOCK_ID),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
                     httpPort = resolvedPort,
