@@ -55,12 +55,12 @@ object RuntimeEnvironment {
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
         put("LD_LIBRARY_PATH", root.nativeLibDir)
-        InstalledRuntime.binOf(ctx, "node")?.let { put("NODE_BIN", it.absolutePath) }
+        InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)?.let { put("NODE_BIN", it.absolutePath) }
         put(
             "PATH",
             joinPath(
                 root.prefixBin.absolutePath,
-                InstalledRuntime.binOf(ctx, "node")?.parentFile?.absolutePath,
+                InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)?.parentFile?.absolutePath,
                 inheritedPath,
             )
         )

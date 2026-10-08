@@ -829,14 +829,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply { put("ok", true) }
         },
         "os.runtime.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            val node = lobos.runtime.InstalledRuntime.binOf(this@CapabilityBroker, "node")
+            val rt = lobos.runtime.InstalledRuntime.programRuntime(this@CapabilityBroker)
             val res = lobos.os.ResidencyStatus.snapshot()
             JSONObject().apply {
-                put("name", "node")
-                put("version", lobos.runtime.InstalledRuntime.versionOf(this@CapabilityBroker, "node"))
-                put("path", node?.absolutePath ?: JSONObject.NULL)
-                put("ok", node != null)
-                put("detail", if (node == null) lobos.runtime.InstalledRuntime.notInstalledHint(this@CapabilityBroker, "node") else JSONObject.NULL)
+                put("name", rt.id)
+                put("version", rt.version)
+                put("path", rt.path?.absolutePath ?: JSONObject.NULL)
+                put("ok", rt.path != null)
+                put("detail", if (rt.path == null) lobos.runtime.InstalledRuntime.notInstalledHint(this@CapabilityBroker, rt.id) else JSONObject.NULL)
                 put("degraded", res.optBoolean("degraded", false))
                 put("degradedReasons", res.optJSONArray("degradedReasons") ?: JSONArray())
                 put("actions", res.optJSONArray("actions") ?: JSONArray())
@@ -858,13 +858,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
 
         "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _, _programId ->
-            val cur = lobos.runtime.InstalledRuntime.versionOf(this@CapabilityBroker, "node")
+            val rt = lobos.runtime.InstalledRuntime.programRuntime(this@CapabilityBroker)
+              val cur = lobos.runtime.InstalledRuntime.versionOf(this@CapabilityBroker, rt.id)
             val latest = runCatching {
                 val arr = CatalogClient.entries(this@CapabilityBroker)
                 var v = ""
                 for (i in 0 until arr.length()) {
                     val t = arr.optJSONObject(i) ?: continue
-                    if (t.optString("name", "") == "node") {
+                    if (t.optString("name", "") == rt.id) {
                         v = t.optString("version", "")
                     }
                 }

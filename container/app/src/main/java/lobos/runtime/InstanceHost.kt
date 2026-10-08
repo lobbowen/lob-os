@@ -326,12 +326,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
             RuntimeDiagnostics.append(this, "program", res.ok, res.title, res.detail)
 
-            val nodeBinForVersion = lobos.runtime.InstalledRuntime.binOf(this, "node")
+            val nodeBinForVersion = lobos.runtime.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)
             RuntimeDiagnostics.append(
                 this, "version", nodeBinForVersion != null,
-                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.runtime.InstalledRuntime.versionOf(this, "node")
+                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.runtime.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id)
                 else "Node 运行时缺失",
-                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.runtime.InstalledRuntime.notInstalledHint(this, "node")),
+                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.runtime.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id)),
             )
 
             val assets = PieceProvisioner.prepare(this)
@@ -344,11 +344,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, "node") ?: run {
+            val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id) ?: run {
                 RuntimeDiagnostics.append(
                     this, "runtime", false,
                     "node 运行时未就位，本次不启动程序（会按退避重试）",
-                    lobos.runtime.InstalledRuntime.notInstalledHint(this, "node") +
+                    lobos.runtime.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) +
                         "；商店件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
                         "装好后下一次重试即自动起来 —— 首次开机可能需要等一个退避周期",
                 )
@@ -365,7 +365,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 nodePath = nodeBin.absolutePath,
                 nodeBinDir = nodeBin.parentFile!!.absolutePath,
                 prefix = PrefixProvisioner.root(this).absolutePath,
-                minNode = lobos.runtime.InstalledRuntime.versionOf(this, "node"),
+                minNode = lobos.runtime.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id),
                 envSnapshot = treeEnv,
             )
             RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 3，含实际 env 快照）", "home=${filesDir.absolutePath}")
@@ -380,9 +380,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
                     root = lobos.os.RuntimeEnvironment.treeRootFor(this, env),
-                    nodeBin = requireNotNull(lobos.runtime.InstalledRuntime.binOf(this, "node")) {
+                    nodeBin = requireNotNull(lobos.runtime.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)) {
                         "node 运行时未安装 —— 程序要用它起（" +
-                            lobos.runtime.InstalledRuntime.notInstalledHint(this, "node") + "）"
+                            lobos.runtime.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) + "）"
                     },
                     programDir = kernelDir,
                     programEntry = kernelEntry,

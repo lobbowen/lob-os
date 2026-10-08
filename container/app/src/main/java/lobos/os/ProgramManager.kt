@@ -183,7 +183,7 @@ object ProgramManager {
     fun currentVersion(ctx: Context, id: String): String? =
         runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
-fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, "node")
+fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)
 
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }

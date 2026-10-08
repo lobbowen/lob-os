@@ -23,13 +23,13 @@ object ProgramVerifier {
         context: Context,
         zip: File,
         manifest: JSONObject?,
-        nodeBin: File? = lobos.runtime.InstalledRuntime.binOf(context, "node"),
+        nodeBin: File? = lobos.runtime.InstalledRuntime.binOf(context, InstalledRuntime.programRuntime(context).id),
         manifestFile: File? = null,
     ): VerifyOutcome {
         if (nodeBin == null) {
             return VerifyOutcome(
                 false, null, "runtime-missing",
-                lobos.runtime.InstalledRuntime.notInstalledHint(context, "node"), "", null,
+                lobos.runtime.InstalledRuntime.notInstalledHint(context, InstalledRuntime.programRuntime(context).id), "", null,
             )
         }
         val script = try {

@@ -193,8 +193,8 @@ object AdbClientRunner {
             lastStartError = "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）"
             return null
         }
-        val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, "node") ?: run {
-            lastStartError = lobos.runtime.InstalledRuntime.notInstalledHint(context, "node")
+        val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, InstalledRuntime.programRuntime(context).id) ?: run {
+            lastStartError = lobos.runtime.InstalledRuntime.notInstalledHint(context, InstalledRuntime.programRuntime(context).id)
             return null
         }
         val adbDir = File(lobos.os.SystemDirs.libvar(context), "adb").apply { if (!exists()) mkdirs() }
@@ -234,7 +234,7 @@ object AdbClientRunner {
         val scriptDir: File = run {
             return AdbOutcome(false, null, "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）", "", -1)
         }
-            ?: return AdbOutcome(false, null, lobos.runtime.InstalledRuntime.notInstalledHint(context, "node"), "", -1)
+            ?: return AdbOutcome(false, null, lobos.runtime.InstalledRuntime.notInstalledHint(context, InstalledRuntime.programRuntime(context).id), "", -1)
         val adbDir = File(lobos.os.SystemDirs.libvar(context), "adb").apply { if (!exists()) mkdirs() }
 
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath)
