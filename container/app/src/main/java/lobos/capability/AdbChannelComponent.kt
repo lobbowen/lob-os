@@ -47,51 +47,51 @@ object AdbChannelComponent {
     private const val RETRY_COOLDOWN_MS = 5_000L
     private const val REPROBE_MS = 60_000L
 
-    @Volatile private var probeCache: ChannelProbe = ChannelProbe(ProbeOutcome.NEVER_RUN)
+    @Volatile private var channelCache: ChannelStatus = ChannelStatus(ChannelState.NEVER_RUN)
     @Volatile private var lastVerifyMs = 0L
 
-    private fun invalidateProbe() {
-        probeCache = ChannelProbe(ProbeOutcome.NEVER_RUN)
+    private fun resetChannelCache() {
+        channelCache = ChannelStatus(ChannelState.NEVER_RUN)
         lastVerifyMs = 0L
     }
 
     @Synchronized
-    private fun probeNow(ctx: Context, nowMs: Long): ChannelProbe {
-        val prev = probeCache
+    private fun readChannel(ctx: Context, nowMs: Long): ChannelStatus {
+        val prev = channelCache
         val age = nowMs - prev.atMs
-        if (prev.outcome == ProbeOutcome.DEAD && age >= 0 && age < RETRY_COOLDOWN_MS) return prev
+        if (prev.outcome == ChannelState.DEAD && age >= 0 && age < RETRY_COOLDOWN_MS) return prev
         if (CapabilityCriteria.credentialsState(ctx) != CredentialsState.PAIRED) {
-            return ChannelProbe(ProbeOutcome.NEVER_RUN, nowMs, "凭据未在册")
+            return ChannelStatus(ChannelState.NEVER_RUN, nowMs, "凭据未在册")
         }
         val channel = AdbClientRunner.channel(ctx, CHANNEL_TIMEOUT_MS)
         val ready = channel.json?.optBoolean("ready", false) == true
         val verifyAge = nowMs - lastVerifyMs
-        if (prev.outcome == ProbeOutcome.LIVE && lastVerifyMs > 0 && verifyAge >= 0 && verifyAge < REPROBE_MS) {
+        if (prev.outcome == ChannelState.LIVE && lastVerifyMs > 0 && verifyAge >= 0 && verifyAge < REPROBE_MS) {
             val refreshed = if (ready) {
                 val h = channel.json?.optString("host", "") ?: ""
                 val p = channel.json?.optInt("port", 0) ?: 0
-                ChannelProbe(
-                    ProbeOutcome.LIVE, nowMs,
+                ChannelStatus(
+                    ChannelState.LIVE, nowMs,
                     if (h.isNotBlank() && p > 0) "常驻通道在线 @" + h + ":" + p else "常驻通道在线",
                 )
             } else {
-                ChannelProbe(ProbeOutcome.DEAD, nowMs, "常驻通道已断开")
+                ChannelStatus(ChannelState.DEAD, nowMs, "常驻通道已断开")
             }
-            probeCache = refreshed
+            channelCache = refreshed
             return refreshed
         }
         val outcome = AdbClientRunner.shell(ctx, PROBE_CMD, null, null, SHELL_TIMEOUT_MS)
         val stdout = outcome.json?.optString("out", "") ?: ""
-        val probed = when {
+        val read = when {
             outcome.ok && PROBE_MARK in stdout -> {
                 lastVerifyMs = nowMs
-                ChannelProbe(ProbeOutcome.LIVE, nowMs, "shell 在线（" + PROBE_MARK + " 已验）")
+                ChannelStatus(ChannelState.LIVE, nowMs, "shell 在线（" + PROBE_MARK + " 已验）")
             }
-            outcome.ok -> ChannelProbe(ProbeOutcome.DEAD, nowMs, "已连通但拿不到 shell uid：" + stdout.take(80))
-            else -> ChannelProbe(ProbeOutcome.DEAD, nowMs, outcome.error ?: ("shell 失败 exit=" + outcome.exitCode))
+            outcome.ok -> ChannelStatus(ChannelState.DEAD, nowMs, "已连通但拿不到 shell uid：" + stdout.take(80))
+            else -> ChannelStatus(ChannelState.DEAD, nowMs, outcome.error ?: ("shell 失败 exit=" + outcome.exitCode))
         }
-        probeCache = probed
-        return probed
+        channelCache = read
+        return read
     }
     fun state(): Snapshot = snapshot
 
@@ -99,20 +99,20 @@ object AdbChannelComponent {
 
     fun stateName(): String = snapshot.state.name.lowercase(Locale.US)
 
-    fun asChannelProbe(): ChannelProbe {
+    fun asChannelStatus(): ChannelStatus {
         val s = snapshot
-        return ChannelProbe(probeOutcome(), if (s.updatedAt > 0L) s.updatedAt else 0L, s.detail)
+        return ChannelStatus(channelState(), if (s.updatedAt > 0L) s.updatedAt else 0L, s.detail)
     }
 
-    fun refreshNow(ctx: Context): ChannelProbe {
+    fun refreshNow(ctx: Context): ChannelStatus {
         tick(ctx)
-        return asChannelProbe()
+        return asChannelStatus()
     }
 
-    fun probeOutcome(): ProbeOutcome = when (snapshot.state) {
-        State.ONLINE -> ProbeOutcome.LIVE
-        State.UNPAIRED -> ProbeOutcome.NEVER_RUN
-        State.BACKOFF, State.QUARANTINED -> ProbeOutcome.DEAD
+    fun channelState(): ChannelState = when (snapshot.state) {
+        State.ONLINE -> ChannelState.LIVE
+        State.UNPAIRED -> ChannelState.NEVER_RUN
+        State.BACKOFF, State.QUARANTINED -> ChannelState.DEAD
     }
 
     private fun file(ctx: Context): File {
@@ -160,7 +160,7 @@ object AdbChannelComponent {
 
     @Synchronized
     fun reset(ctx: Context, why: String) {
-        invalidateProbe()
+        resetChannelCache()
         attempts = 0
         nextAttemptAt = 0L
         val s = snapshot
@@ -189,9 +189,9 @@ object AdbChannelComponent {
         val now = SystemClock.elapsedRealtime()
         if (nextAttemptAt > 0L && now < nextAttemptAt) return
         runCatching { lobos.bridge.ConnectEndpointResolver.invalidateStale(nowMs, ENDPOINT_TTL_MS) }
-        val probe = probeNow(ctx, nowMs)
-        when (probe.outcome) {
-            ProbeOutcome.LIVE -> {
+        val ch = readChannel(ctx, nowMs)
+        when (ch.outcome) {
+            ChannelState.LIVE -> {
                 val channel = runCatching { AdbClientRunner.channel(ctx, 2_000L) }.getOrNull()
                 val port = channel?.json?.optInt("port", 0) ?: 0
                 val host = channel?.json?.optString("host", "") ?: ""
@@ -206,11 +206,11 @@ object AdbChannelComponent {
                     lobos.log.Journal.note(ctx, "adb-channel", null, "通道端口变化，已重挂", "port=" + port)
                 }
             }
-            ProbeOutcome.DEAD -> selfHeal(ctx, probe.detail.ifBlank { "通道断开" })
-            ProbeOutcome.NEVER_RUN -> {
+            ChannelState.DEAD -> selfHeal(ctx, ch.detail.ifBlank { "通道断开" })
+            ChannelState.NEVER_RUN -> {
                 attempts = 0
                 nextAttemptAt = 0L
-                set(ctx, State.UNPAIRED, probe.detail.ifBlank { "通道未就绪" }, lastPort)
+                set(ctx, State.UNPAIRED, ch.detail.ifBlank { "通道未就绪" }, lastPort)
             }
         }
     }

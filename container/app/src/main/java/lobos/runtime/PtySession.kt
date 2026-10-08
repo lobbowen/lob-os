@@ -14,6 +14,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object PtySession {
 
+    /** 提供 PTY 会话的那一件的 id —— 它落位了就有 PTY */
+    const val PTY_HOST_ID = "ptysession"
+
+
     private const val TAG = "PtySession"
 
     private const val F_OPEN = 1
@@ -291,15 +295,14 @@ object PtySession {
             )
     }
 
-    fun probe(ctx: Context): Boolean = try {
-        val h = host(ctx)
-        val s = h.start(listOf("/system/bin/sh", "-c", "exit 0"), timeoutMs = 3_000)
-        s.close()
-        true
-    } catch (e: Throwable) {
-        Log.w(TAG, "PTY 探针失败", e)
-        false
-    }
+    /**
+     * PTY 宿主件在不在 —— **查表**，不靠「起一个再退出」去试。
+     *
+     * 此前是 fun probe(ctx) =起一个 PTY 跑 `exit 0` 看成不成：
+     * 每问一次就起一次进程。落位即事实 —— 装了就有，没装就没有。
+     */
+    fun available(ctx: Context): Boolean =
+        SystemRoles.pieceFile(ctx, PTY_HOST_ID)?.isFile == true
 
     fun runToCompletion(
         ctx: Context,

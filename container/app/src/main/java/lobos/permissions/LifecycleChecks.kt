@@ -26,7 +26,7 @@ object LifecycleChecks {
                 phantom == null -> "非 Android 12+，无此机制"
                 phantom == 0 -> "监控已关闭（settings_enable_phantom_process_monitoring=0）—— 子进程不会被批量杀"
                 else -> "监控开启（=$phantom）：系统对 App 派生进程设上限并 SIGKILL；本设计不借 ADB 解除该限制，" +
-                    "改为收敛派生进程数量（每程序一个 node 进程，探针用完即收）"
+                    "改为收敛派生进程数量（每程序一个 node 进程，查完即收）"
             },
         )
 

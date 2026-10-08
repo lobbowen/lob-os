@@ -24,7 +24,7 @@ object ProgramOtaResolution {
                 ok = false,
                 title = "尚无程序包（OTA 尚未安装成功）",
                 detail = "任一程序的 CURRENT 指针都缺失；程序需经 OTA 安装，本次不启动运行时。" +
-                    "随包 assets/node/server.js 只是探针，不在启动链上（只由诊断页显式驱动）。",
+                    "随包 assets/node/ 已随 APK 移除（用 node 写件逻辑是错的）。",
             )
         }
         if (!entryExists) {

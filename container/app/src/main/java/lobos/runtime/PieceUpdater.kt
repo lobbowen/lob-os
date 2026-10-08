@@ -264,8 +264,8 @@ object PieceUpdater {
             tmp.renameTo(link)
         }
         if (ok) {
-            val probed = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
-            SupplyProvisioner.selectVersion(ctx, e.id, probed)
+            val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
+            SupplyProvisioner.selectVersion(ctx, e.id, detected)
         }
         ok
     } catch (_: Throwable) {

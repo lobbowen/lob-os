@@ -12,7 +12,6 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
-import lobos.ProvisioningProbe
 import lobos.RuntimeDiagnostics
 import lobos.lifecycle.OsHostService
 import lobos.pieces.AssetStatus
@@ -30,7 +29,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private val bootExec = Executors.newSingleThreadExecutor()
     @Volatile private var bootLoopActive = false
     @Volatile private var keepRunning = true
-    @Volatile private var probesDone = false
 
     @Volatile private var stagingSwept = false
     @Volatile private var quarantineReset = false
@@ -40,7 +38,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var healthPath = "/status"
     private var currentGeneration = 0L
 
-    @Volatile private var probeRunning = false
 
     private val libSearchPath: String get() = PieceProvisioner.libSearchPath(this)
 
@@ -49,7 +46,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     fun onHostStart(intent: Intent?) {
-        if (intent?.action == ACTION_PROBE) {
+        if (intent?.action == ACTION_CHECK) {
             return
         }
         when (intent?.action) {
@@ -118,14 +115,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             var failStreak = 0
             if (bootOk) {
                 bornAt = SystemClock.elapsedRealtime()
-                var lastProbe = 0L
+                var lastCheck = 0L
                 while (keepRunning && nodeProcess?.isAlive == true && healthUp) {
                     sleepQuiet(1000L)
                     if (!keepRunning) break
                     if (healthPort <= 0) continue
                     val now = SystemClock.elapsedRealtime()
-                    if (lastProbe != 0L && now - lastProbe < SupervisorPolicy.PROBE_INTERVAL_MS) continue
-                    lastProbe = now
+                    if (lastCheck != 0L && now - lastCheck < SupervisorPolicy.CHECK_INTERVAL_MS) continue
+                    lastCheck = now
                     if (isStatusUp()) {
                         if (failStreak > 0) {
                             RuntimeDiagnostics.append(this, "health", true, "稳态探活恢复", "此前连续失败=" + failStreak)
@@ -139,7 +136,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                             "连续=" + failStreak + "/" + SupervisorPolicy.HEALTH_FAIL_THRESHOLD,
                         )
                         lobos.os.ProgramStatusHub.publishHealth(programId, false, "探活失败×" + failStreak)
-                        if (!SupervisorPolicy.healthyProbe(failStreak)) {
+                        if (!SupervisorPolicy.healthyByStreak(failStreak)) {
                             healthUp = false
                             break
                         }
@@ -227,16 +224,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), filesDir=${filesDir.absolutePath}"
             )
 
-            if (!probesDone) {
-                probesDone = true
-                try {
-                    ProvisioningProbe.run(this)
-                } catch (e: Throwable) {
-                    RuntimeDiagnostics.append(this, "probe", false, "预置体检异常", "${e::class.java.simpleName}: ${e.message}")
-                }
-                probeFilesystemWrites()
-                runPtyProbe()
-            }
             OsHostService.ensureRunning(this)
 
             val km = ProgramDir(this, programId)
@@ -472,8 +459,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             "缺少依赖 ${st.dep}（linker 不查 nativeLibraryDir，须随包放同目录）"
         is AssetStatus.NotExecutable ->
             "无法 exec（依赖已确认完好 → SELinux 拒 exec，查该文件是否真在 nativeLibraryDir）"
-        is AssetStatus.ProbeFailed ->
-            "探针失败 exit=${st.exit}，输出=${st.output.ifBlank { "(空)" }}"
+        is AssetStatus.Unusable ->
+            "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)" }}"
     }
 
     private fun currentPid(p: Process?): String {
@@ -561,57 +548,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }.getOrDefault(-1)
     }
 
-    private fun runPtyProbe() {
-        val bin = File(libSearchPath.substringBefore(File.pathSeparatorChar), PieceRegistry.libNameOf("ptyprobe"))
-        if (!bin.isFile) {
-            RuntimeDiagnostics.append(this, "ptyprobe", null, "PTY 探针未随包（跳过）", bin.absolutePath)
-            return
-        }
-        val r = try {
-            val p = ProcessSupervisor.spawn(
-                command = listOf(bin.absolutePath),
-                envMode = ProcessSupervisor.ENV_INHERIT,
-                redirectErrorStream = true,
-                owner = ProcessSupervisor.OWNER_PROBE,
-            ).process
-            val out = p.inputStream.bufferedReader().readText()
-            if (!p.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) { p.destroy(); "timeout" } else out.trim()
-        } catch (e: Throwable) {
-            "${e::class.java.simpleName}: ${e.message}"
-        }
-        RuntimeDiagnostics.append(this, "ptyprobe", null, "PTY 探针结果", r.toString())
-    }
 
-    private fun probeFilesystemWrites() {
-        fun probe(label: String, f: File) {
-            val r = try {
-                f.parentFile?.mkdirs()
-                f.writeText("probe")
-                val okRead = f.readText() == "probe"
-                f.delete()
-                if (okRead) null else "写成功但读回不符"
-            } catch (e: Throwable) {
-                "${e::class.java.simpleName}: ${e.message}"
-            }
-            if (r == null) {
-                RuntimeDiagnostics.append(this, "probe", true, "写探针 $label", "写读删 OK ${f.absolutePath}")
-            } else {
-                RuntimeDiagnostics.append(this, "probe", false, "写探针 $label 失败", "$r ${f.absolutePath}")
-            }
-        }
-        val targets = linkedMapOf(
-            "files" to File(filesDir, ".lobos-write-probe"),
-            "cache" to File(cacheDir, ".lobos-write-probe"),
-            "lobos-home" to File(File(filesDir, ".lobos"), ".write-probe")
-        )
-        for ((label, f) in targets) probe(label, f)
-        val ext = try { getExternalFilesDir(null) } catch (_: Throwable) { null }
-        if (ext == null) {
-            RuntimeDiagnostics.append(this, "probe", null, "写探针 external", "本机未提供外部私有目录，无法判定")
-        } else {
-            probe("external", File(ext, ".lobos-write-probe"))
-        }
-    }
 
     private fun forward(stream: InputStream, tag: String) {
         val t = Thread {
@@ -814,7 +751,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         const val ACTION_STOP_RUNTIME = "lobos.action.STOP_RUNTIME"
         const val ACTION_START_RUNTIME = "lobos.action.START_RUNTIME"
 
-        const val ACTION_PROBE = "lobos.action.PROBE_NODE"
+        const val ACTION_CHECK = "lobos.action.PROBE_NODE"
         const val HEALTH_POLL_BUDGET_MS = 30_000
         const val STDERR_SCREEN_LINES = 60
         const val CHILD_STDERR_SCREEN_LINES = 400

@@ -7,7 +7,7 @@ object ProcessSupervisor {
     const val OWNER_PROGRAM = "program"
     const val OWNER_ADB_CLIENT = "adb-client"
     const val OWNER_VERIFIER = "verifier"
-    const val OWNER_PROBE = "probe"
+    const val OWNER_CHECK = "check"
 
     const val ENV_INHERIT = "inherit"
     const val ENV_CLEAR = "clear"

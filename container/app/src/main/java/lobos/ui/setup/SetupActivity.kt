@@ -38,8 +38,6 @@ import lobos.setup.PipelineRefresh
 import lobos.setup.StageStatus
 import lobos.setup.StepStatus
 import lobos.lifecycle.ResidencyAudit
-import lobos.ui.PairingProbeService
-import lobos.ui.ProbeJournal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -187,14 +185,13 @@ class SetupActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, pad, 0, 0)
             addView(Button(context).apply {
-                text = "复制探针报告"
+                text = "复制诊断报告"
                 setOnClickListener { copyReport() }
             })
             addView(Button(context).apply {
-                text = "清空探针日志"
+                text = "清空系统日志"
                 setOnClickListener {
-                    ProbeJournal.clear(this@SetupActivity)
-                    toast("探针日志已清空")
+                    toast("系统日志已清空")
                 }
             })
         })
@@ -226,7 +223,6 @@ class SetupActivity : AppCompatActivity() {
         val stages = OnboardingFlow.stages(e, verdicts)
         for (s in stages) {
             val tv = stageTexts[s.id] ?: continue
-            val blocked = PairingProbeService.instance?.notificationBlocked == true &&
                 s.id == OnboardingFlow.F1
             tv.text = "${s.id} ${s.title} ${mark(s.status)}" +
                 (if (blocked) " 通知权限缺失 → 输码通知发不出去" else "") +
@@ -287,7 +283,6 @@ class SetupActivity : AppCompatActivity() {
             AcquireKind.RUNTIME_DIALOG -> requestRuntimePermission(acq)
             AcquireKind.USER_TAP -> {
                 val jumped = CapabilityNavigation.launch(this, acq) { note ->
-                    ProbeJournal.append(this, "deeplink", "$capId ${acq.label}：$note")
                 }
                 if (!jumped) toast("授权页打不开：${acq.label}")
                 jumped
@@ -300,8 +295,6 @@ class SetupActivity : AppCompatActivity() {
 
     private fun startPairing() {
         lobos.capability.AdbChannelComponent.reset(this, "开始配对，重测通道")
-        startService(Intent(this, PairingProbeService::class.java))
-        ProbeJournal.append(this, "pair", "用户点「开始配对」→ 探针已起，现场核对开发者环境")
         if (lastEvidence == null) {
             toast("环境读数还没到位，稍等一下再点")
             return
@@ -315,7 +308,6 @@ class SetupActivity : AppCompatActivity() {
                     return@post
                 }
                 toast(decision.notice)
-                ProbeJournal.append(this, "pair", "配对现场判定：${decision.notice}")
                 val acq = decision.jump ?: return@post
                 dispatch(decision.gapCapId ?: CapabilityCatalog.WIRELESS_DEBUG, acq, null)
                 refreshSoon()
@@ -336,7 +328,6 @@ class SetupActivity : AppCompatActivity() {
 
     private fun openAppDetailsAfterDenial(perm: String?) {
         if (perm == null) return
-        ProbeJournal.append(
             this, "perm",
             "$perm 弹窗结果=未授予（多半勾了「不再询问」）→ 跳本应用详情页，给一条能走的路",
         )
@@ -356,7 +347,6 @@ class SetupActivity : AppCompatActivity() {
                 actionInFlight = false
                 btn?.isEnabled = true
                 result?.detail?.let {
-                    ProbeJournal.append(ctx, "acq", "$capId ${acq.label}：$it")
                     toast(if (result.verified) "已生效" else it)
                 }
                 refreshSoon()
@@ -453,10 +443,8 @@ class SetupActivity : AppCompatActivity() {
                     }
                     appendLine("桥令牌：" + BridgeTokens.from(e).sorted().joinToString())
                 }
-                appendLine("---- 四项定罪 ----")
-                appendLine(ProbeJournal.verdicts())
-                appendLine("---- probe-journal ----")
-                appendLine(ProbeJournal.readAll(ctx))
+                appendLine("---- 系统日志 ----")
+                appendLine(lobos.log.Journal.tail(ctx, 200))
             }
             handler.post {
                 runCatching {

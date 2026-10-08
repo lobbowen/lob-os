@@ -20,7 +20,7 @@ object SupervisorPolicy {
 
     const val NO_PROGRAM_BACKOFF_MS = 60_000L
 
-    const val PROBE_INTERVAL_MS = 15_000L
+    const val CHECK_INTERVAL_MS = 15_000L
 
     const val HEALTH_FAIL_THRESHOLD = 3
 
@@ -46,7 +46,7 @@ object SupervisorPolicy {
     fun shouldQuarantine(restartsWithinWindow: Int): Boolean =
         restartsWithinWindow >= MAX_RESTARTS_IN_WINDOW
 
-    fun healthyProbe(failStreak: Int): Boolean = failStreak < HEALTH_FAIL_THRESHOLD
+    fun healthyByStreak(failStreak: Int): Boolean = failStreak < HEALTH_FAIL_THRESHOLD
 
     fun pruneRestartWindow(window: MutableList<Long>, now: Long) {
         while (window.isNotEmpty() && now - window.first() > RESTART_WINDOW_MS) {

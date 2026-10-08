@@ -106,7 +106,7 @@ class PanelActivity : AppCompatActivity() {
     }
 
     private fun openTerminal() {
-        if (!lobos.runtime.PtySession.probe(this)) {
+        if (!lobos.runtime.PtySession.available(this)) {
             say("终端起不来：底座 PTY 会话宿主不在位（librivospty.so 未随包，或没铺到 \$PREFIX/bin）")
             return
         }

@@ -4,7 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.pm.PackageManager
 
-object DeviceOwnerProbe {
+object DeviceOwnerState {
 
     data class Result(
         val isDeviceOwner: Boolean,

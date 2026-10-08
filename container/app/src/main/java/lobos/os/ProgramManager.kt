@@ -106,31 +106,11 @@ object ProgramManager {
         return SystemDirs.REL_OPT + "/" + id
     }
 
-    fun probe(ctx: Context, e: IndexEntry): Reality {
-        if (SystemRoles.pieceDirFor(ctx, e.id) != null) {
-            val src = infraSourceFile(ctx, e)
-            return Reality(e.id, e.level, src.isFile, "", src.absolutePath)
-        }
-        val d = stateDirOf(ctx, e.id)
-        val version = if (e.stateDir.isNotBlank()) {
-            runCatching { ProgramDir(ctx, e.id, d).currentVersion() }.getOrNull().orEmpty()
-        } else {
-            ""
-        }
-        val versionDir = version.takeIf { it.isNotBlank() }?.let { File(d, it) }
-        return Reality(
-            id = e.id,
-            level = e.level,
-            installed = versionDir?.isDirectory == true,
-            version = version.ifBlank { e.version },
-            evidence = versionDir?.absolutePath ?: d.absolutePath,
-        )
-    }
 
     @Synchronized
     fun snapshot(ctx: Context): Snapshot {
         val entries = ProgramIndex.all(ctx)
-        val realities = entries.associate { it.id to probe(ctx, it) }
+        val realities = entries.associate { it.id to realityOf(ctx, it) }
         return Snapshot(System.currentTimeMillis(), entries, realities)
     }
 

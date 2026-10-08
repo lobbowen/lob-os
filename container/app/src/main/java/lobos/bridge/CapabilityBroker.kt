@@ -24,7 +24,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 import lobos.BuildConfig
-import lobos.ProvisioningProbe
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.capability.BridgeTokens
@@ -800,14 +799,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "os.registry.refresh" to MethodDef(listOf("base"), true) { _, _programId ->
             val cur = RegistryStore.info(this@CapabilityBroker).optString("origin", "")
             if (cur.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "尚未设置镜像源（先 os.registry.set）")
-            RegistryStore.setOrigin(this@CapabilityBroker, cur, RegistryStore.probe(cur))
-        },
-        "os.registry.probe" to MethodDef(listOf("base"), false) { p, _programId ->
-            val origin = p.optString("origin", "").trim().ifBlank {
-                RegistryStore.info(this@CapabilityBroker).optString("origin", "")
-            }
-            if (origin.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "未提供 origin 且尚未设置镜像源")
-            RegistryStore.probe(origin)
+            RegistryStore.setOrigin(this@CapabilityBroker, cur)
         },
         "os.ports.list" to MethodDef(listOf("base"), false) { _, _programId ->
             val leases = PortBroker.list(this@CapabilityBroker)
@@ -886,7 +878,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val caps = BridgeTokens.from(ev)
             val verdicts = CapabilityCatalog.evaluate(ev)
             val tier = lobos.capability.CapabilityTier.fromEvidence(
-                ev, lobos.capability.DeviceOwnerProbe.measure(this@CapabilityBroker),
+                ev, lobos.capability.DeviceOwnerState.measure(this@CapabilityBroker),
             )
             JSONObject().apply {
                 put("platform", "android")
@@ -998,7 +990,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "os.provisioning.get" to MethodDef(listOf("base"), false) { _, _programId ->
-            val snap = ProvisioningProbe.snapshot(this@CapabilityBroker)
             JSONObject().apply {
                 put("present", snap != null)
                 put("snapshot", snap ?: JSONObject.NULL)
@@ -1162,8 +1153,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
-            val walkProbes = p.optBoolean("walkProbes", true)
-            val report = if (walkProbes) {
+            val walkAll = p.optBoolean("walkAll", true)
+            val report = if (walkAll) {
                 PieceProvisioner.prepare(this)
             } else {
                 PrepareReport(PieceRegistry.ALL.map { exe -> exe to PieceProvisioner.verify(this, exe) })

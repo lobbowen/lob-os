@@ -154,7 +154,7 @@ object ProgramStatusHub {
             put("installed", list.size)
             put("running", running)
             put("unhealthy", unhealthy)
-            put("runtimeUp", CapabilityRuntimeProbe.controlPlaneUp())
+            put("runtimeUp", CapabilityRuntimeState.controlPlaneUp())
             put("programs", JSONArray().apply { for (p in list) put(p.toJson()) })
         }
     }
@@ -176,7 +176,7 @@ object ProgramStatusHub {
     }
 }
 
-object CapabilityRuntimeProbe {
+object CapabilityRuntimeState {
     fun controlPlaneUp(): Boolean = runCatching {
         val snap = ResidencyStatus.snapshot()
         val at = snap.optLong("updatedAt", 0L)

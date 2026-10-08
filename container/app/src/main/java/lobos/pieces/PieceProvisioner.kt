@@ -15,7 +15,6 @@ sealed class AssetStatus {
     data class Ready(
         val exe: Piece,
         val path: String,
-        val probeOutput: String,
     ) : AssetStatus()
 
     data class MissingFromLib(
@@ -37,8 +36,9 @@ sealed class AssetStatus {
         val errnoHint: Int?,
         val raw: String,
     ) : AssetStatus()
+    /** 编译期已保证正确，装上去却不能用 —— 与 Linux 一致：系统不验，运行时自己会报错 */
+    data class Unusable(
 
-    data class ProbeFailed(
         val exe: Piece,
         val path: String,
         val exit: Int,
@@ -68,7 +68,6 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
                 is AssetStatus.Ready -> {
                     o.put("status", "ready")
                     o.put("path", st.path)
-                    o.put("probeOutput", st.probeOutput)
                 }
                 is AssetStatus.MissingFromLib -> {
                     o.put("status", "missing_from_lib")
@@ -92,8 +91,7 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
                     o.put("raw", st.raw)
                     o.put("hint", "依赖已确认完好，errno=13 可确定归因到 SELinux W^X 拒 exec")
                 }
-                is AssetStatus.ProbeFailed -> {
-                    o.put("status", "probe_failed")
+                is AssetStatus.Unusable -> {
                     o.put("path", st.path)
                     o.put("exit", st.exit)
                     o.put("output", st.output)
@@ -112,17 +110,16 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
         when (st) {
             is AssetStatus.Ready ->
                 "$tag ${exe.libName} —— 就位（${exe.humanName}）" +
-                    if (exe.probeArgs.isNotEmpty()) "，探针输出: ${st.probeOutput.ifBlank { "(空)" }}" else ""
             is AssetStatus.MissingFromLib ->
                 "$tag ${exe.libName} —— ✗ 不在 nativeLibraryDir。" +
                     if (st.inApk) "APK 内有该条目 → 安装期未解压（查 extractNativeLibs / useLegacyPackaging）"
                     else "APK 内也没有该条目 → 打包期就丢了（查构建脚本与 keepDebugSymbols）"
             is AssetStatus.MissingDependency ->
-                "$tag ${exe.libName} —— ✗ 缺少依赖 ${st.dep}（它必须先于 exec-probe 补齐，否则会被误判为 SELinux 拒 exec）"
+                "$tag ${exe.libName} —— ✗ 缺少依赖 ${st.dep}（它必须先于本体补齐，否则会被误判为 SELinux 拒 exec）"
             is AssetStatus.NotExecutable ->
                 "$tag ${exe.libName} —— ✗ 无法 exec（依赖已确认完好，errno=${st.errnoHint ?: "?"}）"
-            is AssetStatus.ProbeFailed ->
-                "$tag ${exe.libName} —— ✗ 探针失败 exit=${st.exit}，输出: ${st.output.ifBlank { "(空)" }}"
+            is AssetStatus.Unusable ->
+                "$tag ${exe.libName} —— ✗ 起不来 exit=${st.exit}，输出: ${st.output.ifBlank { "(空)" }}"
         }
     }
 }
@@ -152,7 +149,7 @@ object PieceProvisioner {
             if (report.allRequiredReady) "系统件全部就位（${entries.size} 项）"
             else "系统件校验失败：${report.failedRequired.joinToString(", ") { it.first.libName }}",
             "nativeLibraryDir=${libDir.absolutePath}\n" +
-                "依赖解析方式=二进制自带 \$ORIGIN RUNPATH；探针裸环境跑，不设 LD_LIBRARY_PATH\n" +
+                "依赖解析方式=二进制自带 \$ORIGIN RUNPATH（照抄 ldconfig "checks the header"）\n" +
                 "lib 目录内容（${listing.lines().size - 3} 项）:\n" +
                 listing.lineSequence().drop(2).joinToString("\n") { "  $it" } + "\n" +
                 report.toDiagnosticLines().joinToString("\n"),
@@ -202,41 +199,16 @@ object PieceProvisioner {
             if (!File(libDir, dep).exists()) {
                 return AssetStatus.MissingDependency(exe, dep, listing)
             }
-        }
 
-        if (exe.probeArgs.isEmpty() && exe.probeExpect == null) {
             return if (f.canRead() || f.length() > 0) {
-                AssetStatus.Ready(exe, f.absolutePath, "数据资产：${f.length()} 字节（不做 exec-probe）")
+                AssetStatus.Ready(exe, f.absolutePath, "数据资产：${f.length()} 字节（不是拿来执行的probe）")
             } else {
                 AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读且长度为 0")
             }
         }
 
-        return probe(exe, f)
     }
 
-    private fun probe(exe: Piece, f: File): AssetStatus {
-        try {
-            val cmd = mutableListOf(f.absolutePath).apply { addAll(exe.probeArgs) }
-            val p = ProcessSupervisor.spawn(
-                command = cmd,
-                envMode = ProcessSupervisor.ENV_CLEAR,
-                redirectErrorStream = true,
-                owner = ProcessSupervisor.OWNER_PROBE,
-            ).process
-            val out = p.inputStream.bufferedReader().readText().trim()
-            val exit = p.waitFor()
-
-            if (exit != 0) return AssetStatus.ProbeFailed(exe, f.absolutePath, exit, out)
-            val expect = exe.probeExpect
-            if (expect != null && !out.contains(expect)) {
-                return AssetStatus.ProbeFailed(exe, f.absolutePath, exit, out)
-            }
-            return AssetStatus.Ready(exe, f.absolutePath, out)
-        } catch (e: IOException) {
-            return AssetStatus.NotExecutable(exe, f.absolutePath, parseErrno(e.message), err(e))
-        }
-    }
 
     private fun parseErrno(msg: String?): Int? {
         if (msg == null) return null

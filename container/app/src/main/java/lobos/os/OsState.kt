@@ -1,6 +1,6 @@
 package lobos.os
 
-import lobos.capability.ProbeOutcome
+import lobos.capability.ChannelState
 import lobos.lifecycle.ResidencyPolicy
 
 enum class OsPhase {
@@ -24,7 +24,7 @@ enum class OsPhase {
 data class OsFacts(
     val readingsCollected: Boolean = false,
     val controlPlaneUp: Boolean = false,
-    val channel: ProbeOutcome = ProbeOutcome.NEVER_RUN,
+    val channel: ChannelState = ChannelState.NEVER_RUN,
 )
 
 data class OsSnapshot(

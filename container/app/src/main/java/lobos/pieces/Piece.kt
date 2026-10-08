@@ -7,9 +7,7 @@ data class Piece(
 
     val humanName: String,
 
-    val probeArgs: List<String>,
 
-    val probeExpect: String?,
 
     val requiredDeps: List<String>,
 
@@ -43,7 +41,6 @@ data class Piece(
 ) {
     val installedAs: String get() = installName.ifBlank { libName }
 
-    val reportsVersion: Boolean get() = versionArgs.isNotEmpty()
 
     /** 落位后叫什么 —— 库用 libName，可执行件用 installName（`rg` 而非 `ripgrep`） */
     val landingName: String get() = if (role == SystemRoles.LIBRARY) libName else installedAs

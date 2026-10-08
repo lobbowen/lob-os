@@ -53,15 +53,15 @@ object CapabilityTier {
         return Verdict(Tier.APK, basis, unproven, silentGrantVerified, false)
     }
 
-    fun fromEvidence(ev: Evidence, owner: DeviceOwnerProbe.Result): Verdict {
+    fun fromEvidence(ev: Evidence, owner: DeviceOwnerState.Result): Verdict {
         val notes = mutableListOf<String>()
         val live = ev.channelLive()
         val silent = ev.permissionAttempts.values.any { it.outcome == AttemptOutcome.SILENT_OK }
         if (!live) {
             when (ev.channel.outcome) {
-                ProbeOutcome.NEVER_RUN -> notes.add("ADB 通道从未实测（never_run）⇒ 不计入 adb 档")
-                ProbeOutcome.DEAD -> notes.add("ADB 通道实测为死：" + ev.channel.detail)
-                ProbeOutcome.LIVE -> notes.add("ADB 通道探针已过期（TTL " + ev.channelTtlMs + "ms）⇒ 需重测才算数")
+                ChannelState.NEVER_RUN -> notes.add("ADB 通道从未实测（never_run）⇒ 不计入 adb 档")
+                ChannelState.DEAD -> notes.add("ADB 通道实测为死：" + ev.channel.detail)
+                ChannelState.LIVE -> notes.add("ADB 通道状态已过期（TTL " + ev.channelTtlMs + "ms）⇒ 需重测才算数")
             }
             if (ev.wirelessDebugOn) notes.add("无线调试开关是开的，但未实测到在线通道 ⇒ 不计入 adb 档（配置不等于能力）")
             if (ev.credentials == CredentialsState.PAIRED) notes.add("已有配对凭据，但未实测到在线通道 ⇒ 不计入 adb 档")

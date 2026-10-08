@@ -7,7 +7,7 @@ object ResidencyPolicy {
 
     const val FREEZE_GAP_MS = 5 * 60_000L
 
-    const val OWNER_PROBE_TTL_MS = 30 * 60_000L
+    const val OWNER_CHECK_TTL_MS = 30 * 60_000L
 
 
     const val WAKE_BACKSTOP_MS = 15 * 60_000L

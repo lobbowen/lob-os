@@ -151,10 +151,10 @@ class OsHostService : Service() {
                     "armed=" + armed + "（看门狗每拍校验布防）",
                 )
             }
-            if (now - ownerSampledAt > ResidencyPolicy.OWNER_PROBE_TTL_MS) {
+            if (now - ownerSampledAt > ResidencyPolicy.OWNER_CHECK_TTL_MS) {
                 ownerSampledAt = now
                 deviceOwnerMeasured = runCatching {
-                    lobos.capability.DeviceOwnerProbe.measure(this).isDeviceOwner
+                    lobos.capability.DeviceOwnerState.measure(this).isDeviceOwner
                 }.getOrDefault(false)
             }
         } catch (e: Throwable) {
@@ -171,7 +171,7 @@ class OsHostService : Service() {
         val facts = OsFacts(
             readingsCollected = true,
             controlPlaneUp = runCatching { CapabilityEvidenceCollector.controlPlaneUp() }.getOrDefault(false),
-            channel = lobos.capability.AdbChannelComponent.probeOutcome(),
+            channel = lobos.capability.AdbChannelComponent.channelState(),
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption(this))
         runCatching {
@@ -283,7 +283,7 @@ class OsHostService : Service() {
         val ready = runCatching {
             val evidence = lobos.capability.Evidence(
                 nowMs = System.currentTimeMillis(),
-                channel = lobos.capability.AdbChannelComponent.asChannelProbe(),
+                channel = lobos.capability.AdbChannelComponent.asChannelStatus(),
             )
             val verdicts = lobos.capability.CapabilityCatalog.evaluate(evidence)
             lobos.setup.OnboardingFlow.readyToEnter(verdicts)

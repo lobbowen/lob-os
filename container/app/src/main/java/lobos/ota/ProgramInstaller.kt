@@ -222,7 +222,6 @@ object ProgramInstaller {
         km.setCurrentVersion(version)
         tmp.deleteRecursively()
         lobos.quickapp.QuickAppBinder.bindIfQuickApp(context, programId, km.quickAppDir())
-        lobos.ProvisioningProbe.refreshProgramOtaVersions(context)
         return InstallResult(
             ok = true, version = version, source = source, reason = null,
             detail = "已落盘并切换指针（待健康检查通过后提交）: " + dest.absolutePath,

@@ -1,13 +1,13 @@
 package lobos.capability
 
-enum class ProbeOutcome {
+enum class ChannelState {
     LIVE,
     DEAD,
     NEVER_RUN,
 }
 
-data class ChannelProbe(
-    val outcome: ProbeOutcome,
+data class ChannelStatus(
+    val outcome: ChannelState,
     val atMs: Long = 0L,
     val detail: String = "",
 )
@@ -54,7 +54,7 @@ data class Evidence(
     val devOptionsOn: Boolean = false,
     val wirelessDebugOn: Boolean = false,
     val credentials: CredentialsState = CredentialsState.NO_KEY,
-    val channel: ChannelProbe = ChannelProbe(ProbeOutcome.NEVER_RUN),
+    val channel: ChannelStatus = ChannelStatus(ChannelState.NEVER_RUN),
     val grants: Set<String> = emptySet(),
     val permissionAttempts: Map<String, SilentAttempt> = emptyMap(),
     val controlPlaneUp: Boolean = false,
@@ -74,7 +74,7 @@ data class Evidence(
     fun attemptOutcome(id: String): AttemptOutcome? = permissionAttempts[id]?.outcome
 
     fun channelLive(): Boolean {
-        if (channel.outcome != ProbeOutcome.LIVE) return false
+        if (channel.outcome != ChannelState.LIVE) return false
         val age = nowMs - channel.atMs
         return age >= 0 && age < channelTtlMs
     }

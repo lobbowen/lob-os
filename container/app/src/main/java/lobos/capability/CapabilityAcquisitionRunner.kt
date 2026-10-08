@@ -24,7 +24,7 @@ object CapabilityAcquisitionRunner {
         CapabilityCatalog.EXEC_BATTERY_WHITELIST -> whitelistBattery(ctx, timeoutMs)
         CapabilityCatalog.EXEC_APPOPS_ALLOW -> setAppOps(ctx, capId, timeoutMs)
         CapabilityCatalog.EXEC_PM_GRANT -> grantRuntimePerm(ctx, capId, timeoutMs)
-        CapabilityCatalog.EXEC_REPROBE -> reprobeChannel(ctx)
+        CapabilityCatalog.EXEC_RECHECK -> recheckChannel(ctx)
         CapabilityCatalog.EXEC_RERUN_SELFCHECK -> rerunSelfCheck(ctx)
         CapabilityCatalog.EXEC_OEM_CONFIRM -> confirmOemGuards(ctx)
         else -> AcquisitionResult(false, false, "未知执行器：" + executor)
@@ -41,12 +41,12 @@ object CapabilityAcquisitionRunner {
     }
 
     @Synchronized
-    private fun reprobeChannel(ctx: Context): AcquisitionResult {
+    private fun recheckChannel(ctx: Context): AcquisitionResult {
         AdbChannelComponent.reset(ctx, "能力获取流程要求重测通道")
         val p = AdbChannelComponent.refreshNow(ctx)
         return AcquisitionResult(
-            ok = p.outcome == ProbeOutcome.LIVE,
-            verified = p.outcome == ProbeOutcome.LIVE,
+            ok = p.outcome == ChannelState.LIVE,
+            verified = p.outcome == ChannelState.LIVE,
             detail = p.detail.ifBlank { p.outcome.name },
         )
     }

@@ -229,8 +229,8 @@ class MainActivity : AppCompatActivity() {
         channelBarRefreshInFlight = true
         Thread {
             val now = System.currentTimeMillis()
-            val probe = runCatching { lobos.capability.AdbChannelComponent.refreshNow(applicationContext) }.getOrNull()
-            val live = probe != null && Evidence(nowMs = now, channel = probe).channelLive()
+            val ch = runCatching { lobos.capability.AdbChannelComponent.refreshNow(applicationContext) }.getOrNull()
+            val live = ch != null && Evidence(nowMs = now, channel = ch).channelLive()
             channelBarRefreshInFlight = false
             handler.post {
                 channelBar?.visibility = if (live) View.GONE else View.VISIBLE
@@ -256,7 +256,7 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val acq = CapabilityCatalog.byId(CapabilityCatalog.ADB_CHANNEL)
                 ?.acquirer?.invoke(
-                    Evidence(nowMs = System.currentTimeMillis(), channel = lobos.capability.AdbChannelComponent.asChannelProbe())
+                    Evidence(nowMs = System.currentTimeMillis(), channel = lobos.capability.AdbChannelComponent.asChannelStatus())
                 )
                 ?.firstOrNull()
             val result = acq?.let {

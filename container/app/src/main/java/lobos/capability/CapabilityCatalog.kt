@@ -30,7 +30,7 @@ object CapabilityCatalog {
 
     enum class PermTierClass { APPOP, RUNTIME, SECURE_SETTINGS, IN_APP }
 
-    const val EXEC_REPROBE = "adb-channel-reprobe"
+    const val EXEC_RECHECK = "adb-channel-recheck"
     const val EXEC_RERUN_SELFCHECK = "program-selfcheck-rerun"
     const val EXEC_NOTIFICATION_LISTENER = "settings-put-notification-listener"
     const val EXEC_ACCESSIBILITY = "settings-put-accessibility-service"
@@ -83,9 +83,9 @@ object CapabilityCatalog {
                 val age = e.nowMs - e.channel.atMs
                 when {
                     e.channelLive() -> CapVerdict(CapStatus.GRANTED, e.channel.detail)
-                    e.channel.outcome == ProbeOutcome.NEVER_RUN ->
-                        CapVerdict(CapStatus.ACTION, "通道未校验（探针待跑）")
-                    e.channel.outcome == ProbeOutcome.DEAD ->
+                    e.channel.outcome == ChannelState.NEVER_RUN ->
+                        CapVerdict(CapStatus.ACTION, "通道状态未读")
+                    e.channel.outcome == ChannelState.DEAD ->
                         CapVerdict(CapStatus.FAILED, "通道不通：" + e.channel.detail)
                     else -> CapVerdict(
                         CapStatus.FAILED,
@@ -93,7 +93,7 @@ object CapabilityCatalog {
                     )
                 }
             },
-            acquirer = { listOf(Acquisition(AcquireKind.AUTO, "重测通道", EXEC_REPROBE)) },
+            acquirer = { listOf(Acquisition(AcquireKind.AUTO, "重测通道", EXEC_RECHECK)) },
         ),
         perm(
             PermissionCatalog.MANAGE_EXTERNAL_STORAGE, "全部文件访问", PermTierClass.APPOP,
