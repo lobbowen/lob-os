@@ -114,7 +114,7 @@ object RuntimeEnvironment {
     fun ensure(ctx: Context): Snapshot {
         cached?.takeIf { it.complete }?.let { s ->
             RuntimeDiagnostics.append(
-                ctx, "prefix", true, "\$PREFIX 能力件全就位（本进程已装配）",
+                ctx, "prefix", true, "\$PREFIX 件全部就位（本进程已装配）",
                 PrefixProvisioner.root(ctx).absolutePath + " 已有=" + s.prefixReady.joinToString()
             )
             return s
@@ -129,7 +129,7 @@ object RuntimeEnvironment {
         val missing = PrefixProvisioner.expected(ctx) - ready.toSet()
         RuntimeDiagnostics.append(
             ctx, "prefix", missing.isEmpty(),
-            if (missing.isEmpty()) "\$PREFIX 能力件全就位" else "\$PREFIX 缺件：${missing.joinToString()}",
+            if (missing.isEmpty()) "\$PREFIX 件全部就位" else "\$PREFIX 缺件：${missing.joinToString()}",
             PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
         )
 

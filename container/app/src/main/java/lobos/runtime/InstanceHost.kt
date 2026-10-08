@@ -45,9 +45,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     fun onHostStart(intent: Intent?) {
-        if (intent?.action == ACTION_CHECK) {
-            return
-        }
         when (intent?.action) {
             ACTION_RESTART -> requestRestart()
             ACTION_STOP_RUNTIME -> requestStop()
@@ -335,7 +332,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     this, "runtime", false,
                     "node 运行时未就位，本次不启动程序（会按退避重试）",
                     lobos.runtime.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) +
-                        "；商店件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
+                        "；件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
                         "装好后下一次重试即自动起来 —— 首次开机可能需要等一个退避周期",
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
@@ -750,8 +747,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         const val ACTION_STOP_RUNTIME = "lobos.action.STOP_RUNTIME"
         const val ACTION_START_RUNTIME = "lobos.action.START_RUNTIME"
 
-        const val ACTION_CHECK = "lobos.action.PROBE_NODE"
-        const val HEALTH_POLL_BUDGET_MS = 30_000
         const val STDERR_SCREEN_LINES = 60
         const val CHILD_STDERR_SCREEN_LINES = 400
     }

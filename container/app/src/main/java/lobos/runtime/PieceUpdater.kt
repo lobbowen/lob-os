@@ -296,7 +296,7 @@ object PieceUpdater {
             SupplyProvisioner.selectVersion(ctx, id, "")
             RuntimeDiagnostics.append(
                 ctx, "piece-ota", rebuilt,
-                "底座件已回滚到 APK 原件：" + id,
+                "件已回滚到 APK 原件：" + id,
                 "软链已删，provision " + if (rebuilt) "已重建原件" else "重建未成功（下次启动会再试）",
             )
             rebuilt to null

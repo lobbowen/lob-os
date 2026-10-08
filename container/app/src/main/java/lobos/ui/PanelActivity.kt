@@ -76,7 +76,7 @@ class PanelActivity : AppCompatActivity() {
         root.addView(btn("端口占用", exact = true) { showPorts() })
         root.addView(btn("导出运行记录（报障用）", exact = true) { exportLogs() })
         root.addView(btn("终端", exact = true) { openTerminal() })
-        root.addView(btn("底座件状态", exact = true) { showPieces() })
+        root.addView(btn("件状态", exact = true) { showPieces() })
 
         val scroll = ScrollView(this)
         listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -117,14 +117,14 @@ class PanelActivity : AppCompatActivity() {
     private fun showPieces() {
         try {
             val rows = lobos.runtime.PieceUpdater.states(this)
-            say("底座件 " + rows.size + " 件：")
+            say("件 " + rows.size + " 件：")
             for (s in rows) {
                 say("  " + s.id.padEnd(10) + " 已装=" + (s.installedVersion ?: "随包原件")
                     + if (s.updated) "（已 OTA 更新）" else "")
             }
             say("  回滚某件：桥接 lobos.sys.native.rollback {id}")
         } catch (e: Throwable) {
-            say("读底座件状态失败：" + (e.message ?: e.javaClass.simpleName))
+            say("读件状态失败：" + (e.message ?: e.javaClass.simpleName))
         }
     }
 
