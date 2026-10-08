@@ -175,25 +175,54 @@ NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE"
   die "找不到 NDK 的 sysroot include" "要找的是 $NDK_INC（按 clang 名去掉 API 号推的）"
 }
 
-MISSING_APPLES="$($SCAN "$SRC" "$NDK_INC")" || {
-  echo "=== 缺头的 .c 有，但认不出对应的配置项（取证）==="
-  $SCAN "$SRC" "$NDK_INC" --list | sed -n '1,40p'
-  die "认不出该关哪个 applet" "上面这些 .c 无条件 include 了 NDK 没有的头，但源码里没有 //config: / applet 标记 —— 判据与这版源码对不上，按取证补"
-}
 MISSING_FILES="$($SCAN "$SRC" "$NDK_INC" --list | wc -l)"
 MISSING_HDRS="$($SCAN "$SRC" "$NDK_INC" --headers)"
+MISSING_ALL="$($SCAN "$SRC" "$NDK_INC")"
 echo "[busybox] $MISSING_FILES 个源文件无条件 include 了 NDK 没有的头"
 echo "[busybox] 缺的头：$MISSING_HDRS"
+
+# ── 我们要的 applet 优先，关 applet 不能牺牲它们 ──────────────────
+# APPLETS 那一串是我们**要的能力**，不是「顺手开的」。判据扫出来的
+# 关闭名单里可能含我们要的项（上一轮 DF 就是：df.c 要 sys/statvfs.h，
+# 而那个头 NDK 其实有，但我们那份「按 NDK 布局造的」判据把它算成了缺）。
+# 直接照单关掉 = 为了编过而丢能力，那不是我们要的。
+#
+# 所以分两级：
+#   ① 命中我们要的 applet（或它的子选项）→ 不关，报出缺哪个头，
+#      让编译自己说话。真编不过再按报错处理 —— 那时有确切的文件行号。
+#   ② 其余的 → 关掉，它们本编不过，保留只会让整件失败。
+KEEP=""
+for a in $APPLETS; do KEEP="$KEEP $a"; done
+MISSING_APPLES=""
+BLOCKED=""
+for k in $MISSING_ALL; do
+  hit=""
+  for a in $APPLETS; do
+    # 顶层项本身，或以它为前缀的子选项（FEATURE_DF_FANCY 之于 DF）
+    case "$k" in "$a"|"$a"_*|"FEATURE_$a"|"FEATURE_$a"_*) hit="$a"; break ;; esac
+  done
+  if [ -n "$hit" ]; then
+    BLOCKED="$BLOCKED $k"
+  else
+    MISSING_APPLES="$MISSING_APPLES $k"
+  fi
+done
+if [ -n "$BLOCKED" ]; then
+  echo "[busybox] 命中我们要的 applet，**不关**（关了就丢能力）：$BLOCKED"
+  echo "[busybox]   它们缺的头在上一行的清单里；NDK 其实大多有，"
+  echo "[busybox]   真编不过会报出确切的文件行号，届时按报错处理。"
+fi
 echo "[busybox] 关掉的配置项（$(echo "$MISSING_APPLES" | wc -w) 个）：$MISSING_APPLES"
 for k in $MISSING_APPLES; do set_conf "$k" n; done
 
 # libbb / libpwdgrp 是**所有 applet 共享**的基础设施，它们缺的头不由 applet
 # 开关决定（关 applet 也不改 libbb 的 .o），所以上面没有据此关任何东西。
-# 这里单独报出来 —— 那些头要么 busybox 自带（ENABLE_SELINUX 之类条件下才用），
-# 要么编译时会走到，届时按报错处理。
+# 这里单独报出来 —— 那些头要么 busybox 自带，要么编译时会走到，届时按报错处理。
 LIBBB="$($SCAN "$SRC" "$NDK_INC" --libbb)"
-[ -n "$LIBBB" ] && echo "[busybox] 共享基础设施里的无条件缺头（不由 applet 开关决定，单列）：" \
-                 && printf '  %s\n' $LIBBB
+if [ -n "$LIBBB" ]; then
+  echo "[busybox] 共享基础设施里的无条件缺头（不由 applet 开关决定，单列）："
+  printf '  %s\n' "$LIBBB"
+fi
 
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
