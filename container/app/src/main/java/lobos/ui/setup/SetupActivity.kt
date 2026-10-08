@@ -236,7 +236,7 @@ class SetupActivity : AppCompatActivity() {
         }
         val live = e.channelLive()
         channelBar?.visibility = if (live) View.GONE else View.VISIBLE
-        channelBar?.text = ChannelStatusText.DOWN
+        channelBar?.text = ChannelStatusText.of(e.channel)
 
         renderDebts(verdicts)
 
