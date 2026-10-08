@@ -171,6 +171,7 @@ object ProgramInstallPipeline {
         val base = reg ?: lobos.os.ProgramIndex.empty(
             spec.programId, lobos.os.ProgramManager.levelOf(context, spec.programId),
         )
+        val meta = pieceMetaOf(dir, safeVer)
         val upserted = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
@@ -178,6 +179,11 @@ object ProgramInstallPipeline {
                     version = version,
                     enabled = true,
                     asApplication = spec.from.asApplication,
+                    // 形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单
+                    libName = meta.libNameOrEmpty(),
+                    assetEntry = meta.entry(),
+                    role = meta.roleOrEmpty(),
+                    requires = meta.requires(),
                     stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
                 ),
             )
@@ -212,6 +218,43 @@ object ProgramInstallPipeline {
             ok -> "安装成功 v=$version"
             else -> "安装未生效 原因=$reason；$detail"
         }
+    }
+
+    /**
+     * 件自带的元信息 —— **只从包内读**。
+     *
+     * 之前这个件的一切（它是什么、落哪、依赖谁）都从包外的发布清单取，
+     * 于是「它是什么」由一份可被替换的外部文件决定。现在包里带
+     * component-meta.json，装完只信包。
+     *
+     * 读不到不阻断 —— 返回空值让登记退回现有字段，而不是让安装失败。
+     */
+    private class PieceMeta(private val o: JSONObject?) {
+        fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
+        fun roleOrEmpty(): String = when (o?.optString("form", "")?.trim()) {
+            "lib" -> "library"
+            "exec" -> "exec"
+            else -> ""
+        }
+        fun libNameOrEmpty(): String = entry().substringAfterLast("/", "")
+        fun requires(): List<String> {
+            val arr = o?.optJSONArray("requires") ?: return emptyList()
+            val out = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                val v = arr.optString(i, "").trim()
+                if (v.isNotEmpty()) out += v
+            }
+            return out
+        }
+    }
+
+    private fun pieceMetaOf(dir: File, version: String): PieceMeta {
+        val f = File(File(dir, version), "component-meta.json")
+        val o = runCatching { JSONObject(f.readText()) }.getOrNull()
+        if (o == null) {
+            RuntimeDiagnostics.append(context, "ota", false, "件缺 component-meta.json", f.name + "（登记退回现有字段）")
+        }
+        return PieceMeta(o)
     }
 
     private fun depsOf(context: Context, programId: String): List<String> {
