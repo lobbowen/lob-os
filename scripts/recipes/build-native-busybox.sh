@@ -149,7 +149,10 @@ make -j"$JOBS" > "$WORK/build.log" 2>&1 \
   mkdir -p "$JNI"
   cp -f "$SRC/busybox" "$JNI/libbusybox.so"
   chmod 0755 "$JNI/libbusybox.so"
-  node scripts/recipes/gen-component-meta.js busybox "$JNI/libbusybox.so.meta.json"
+  # ★ 用绝对路径 —— 这一段已经 cd 进 busybox 源码树了，
+  #   相对路径 scripts/recipes/… 在那里不存在
+  #   （报「Cannot find module .../busybox-1.36.1/scripts/recipes/…」就是这个）
+  node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" busybox "$JNI/libbusybox.so.meta.json"
 
   # applet 软链随件一起落：busybox 官方机制 —— make install 自己知道编了哪些
   # applet，那些软链是它建的。applet 名不在我们任何表里。

@@ -50,7 +50,17 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
       || die "zlib 的 Makefile 里改不动 SRCDIR" "$(grep -n '^SRCDIR' Makefile | head -3)"
   fi
 
-  make -j"$JOBS" > "$WORK/build.log" 2>&1 \
+  # ★ SRCDIR=shared 时 zlib 的 Makefile 会连带编 sharedtest/example.c，
+  #   而那个目录在官方 tarball 里不存在（tarball 只有 zlib*.c 与 contrib/）。
+  #   所以只编库本身的目标，不跑默认目标。
+  #   ★ 目标名里带版本号（libz.so.1.3.2）—— **不能写死**，
+  #   换版本就换名。正解：从 Makefile 里读出那个 .so 的真名。
+  LIB_TARGET="$(grep -oE "^LIBZ = .*" Makefile | head -1 | sed "s/^LIBZ = //")"
+  case "$LIB_TARGET" in
+    *.so|*.so.*) ;;
+    *) die "从 Makefile 里读不出库名" "LIBZ 那行现在是：$(grep -n "^LIBZ" Makefile | head -3)" ;;
+  esac
+  make -j"$JOBS" "$LIB_TARGET" > "$WORK/build.log" 2>&1 \
     || { echo "=== zlib 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
   make install > "$WORK/install.log" 2>&1 \
     || { echo "=== zlib install 失败取证（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }

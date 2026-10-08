@@ -41,7 +41,16 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
 )
 
 SO="$OUT_DIR/bin/jq"
-[ -f "$SO" ] || die "jq 没产出" "$SO 不存在"
+if [ ! -f "$SO" ]; then
+  # 失败时给线索 —— 之前只说「jq 不存在」，看不出 make 到底做了什么
+  echo "=== jq 源码树（make 之后）==="
+  ls -la "$WORK/src" 2>/dev/null | head -20
+  echo "=== jq 的构建日志 ==="
+  [ -f "$WORK/build.log" ] && tail -30 "$WORK/build.log" || echo "（没有 build.log —— make 可能压根没跑）"
+  echo "=== configure 日志末尾 ==="
+  [ -f "$WORK/configure.log" ] && tail -20 "$WORK/configure.log" || echo "（没有 configure.log）"
+  die "jq 没产出" "$SO 不存在（上面是取证输出）"
+fi
 mkdir -p "$OUT_DIR/lib"
 cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"
 chmod +x "$OUT_DIR/lib/liblobosjq.so"

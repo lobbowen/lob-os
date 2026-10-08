@@ -36,9 +36,9 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
     || { echo "=== openssl install_sw 失败取证（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
 )
 
-// ★ 此前这里校验 buildinf.h（构建时间基准）——
-//   OpenSSL 3.x 不再生成那个文件（那个判据是 1.x 时代的），所以它成了空尺子。
-//   判据改成「构建产物里要有版本头」：openssl/version.h 或 include/openssl/opensslv.h
+# ★ 此前这里校验 buildinf.h（构建时间基准）——
+#   OpenSSL 3.x 不再生成那个文件（那个判据是 1.x 时代的），所以它成了空尺子。
+#   判据改成「构建产物里要有版本头」：openssl/version.h 或 include/openssl/opensslv.h
 [ -f "$OUT_DIR/include/openssl/opensslv.h" ] || [ -f "$WORK/src/include/openssl/opensslv.h" ] \
   || die "openssl 没产出版本头" "opensslv.h 应该在（找不到说明 Configure 或 make 失败）"
 echo "[openssl] 版本头在位"
