@@ -91,55 +91,54 @@ for a in $APPLETS; do set_conf "$a" y; done
 
 set_conf STATIC y
 set_conf PIE n
-set_conf DESKTOP n
-set_conf CROSS_COMPILER_PREFIX n
 
-# ── 编译器必须显式指定，否则它会用宿主 gcc ──────────────────
-# 编出 x86-64 的原因：defconfig 跑在宿主环境，
-# 它没有「交叉编」这个概念，于是用 $CC（宿主 gcc）。
-# busybox 的 .config 里这两项才决定用哪个编译器：
-#   CONFIG_CROSS_COMPILER_PREFIX  三元组前缀（aarch64-linux-android-）
-#   CONFIG_EXTRA_CFLAGS         额外 C 编译参数
-TRIPLE="$(basename "$CC" | sed "s/^aarch64-linux-android[0-9]*-clang$//" | tr -d /)"
-[ -n "$TRIPLE" ] || TRIPLE="aarch64-linux-android-"
-sed -i "/^CONFIG_CROSS_COMPILER_PREFIX=/d" "$SRC/.config"
-echo "CONFIG_CROSS_COMPILER_PREFIX=\\"$TRIPLE\\"" >> "$SRC/.config"
-echo "  [busybox] 编译器前缀 = $TRIPLE"
-echo "  [busybox] CC = $CC"
+# ── 编译器：官方只有「前缀」这一条路，没有 clang 变体 ──────────
+# busybox 的 Makefile 第 292~298 行写死了：
+#     CC = $(CROSS_COMPILE)gcc      LD = $(CC) -nostdlib
+#     AR = $(CROSS_COMPILE)ar      NM = $(CROSS_COMPILE)nm ...
+# 它拼的是 `aarch64-linux-android-gcc`，而 NDK 里的编译器叫
+# `aarch64-linux-android35-clang` —— 那个 `gcc` 不存在。
+#
+# 而 CROSS_COMPILER_PREFIX 是 .config 里的一个 **string** 项，
+# `make oldconfig` 会就它提问（Config.in 第 470 行）；不给输入它读到 EOF
+# 就退 1（此前那轮就是这样失败的，日志停在
+# 「Cross compiler prefix (CROSS_COMPILER_PREFIX) [] (NEW) make[1]: *** Error 1」）。
+#
+# 所以编译器不走 .config，走 make 命令行 —— 它优先级高于 .config，
+# 且不需要 oldconfig 过问。
+echo "  [busybox] CC = $CC（make 命令行给，不经 .config）"
+echo "  [busybox] 不设 CROSS_COMPILE：它拼出来的 gcc 在 NDK 里不存在"
+
+# 交叉编时 kconfig 还会问一堆只有交叉编才有的项；一次性喂默认答案。
+# 不能只给空输入（读到 EOF 就退 1），也不要用 `yes ""`（管道提前关闭会 Broken pipe）。
+# 这里自己产出一批空行 —— kconfig 逐个取走，剩下的正常收尾。
+answers() {
+  local n=0
+  while [ "$n" -lt 400 ]; do printf '\n'; n=$((n + 1)); done
+}
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 # ── 关掉需要内核专有头的 applet ──────────────────────────────
   # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，NDK 的 sysroot 里没有
   #   （那是 Linux 内核头，不是 NDK 提供的 libc 头）。
-  # 报错形如：networking/tc.c:236:27: error: 'TCA_CBQ_MAX' undeclared。
+  #   报错形如：networking/tc.c:236:27: error: 'TCA_CBQ_MAX' undeclared。
   # 我们不需要 tc —— 关掉它（busybox 的 applet 可选，本来就不该编我们用不上的）。
-  echo "CONFIG_TC=n"
-  echo "CONFIG_IFCONFIG=n"
+  # ★ 必须真的改 .config —— 此前那两行只是 echo 到控制台，.config 里没动，
+  #   于是 CONFIG_TC 仍是 y，编译时照样撞 TCA_CBQ_MAX。
+  set_conf TC n
+  set_conf IFCONFIG n
 
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
 
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
-#   yes "" 让它对每个提问取默认（新增项默认 n，保守）。
-make oldconfig < /dev/null > "$WORK/oldconfig.log" 2>&1 \
+#   yes "" 会让每个提问取默认，但 yes 会被提前关闭的管道打断（Broken pipe），
+#   所以改成自己产出一批空行。
+make oldconfig < <(answers) > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
-  # ── 关掉需要内核专有头的 applet ──────────────────────────────
-  # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，
-  #   那是 Linux 内核的头，NDK 的 sysroot 不提供（NDK 只给 libc 头）。
-  #   报错形如：networking/tc.c:236: error: TCA_CBQ_MAX undeclared
-  # busybox 的 applet 可选，我们不需要它 —— 关掉。
-  if grep -q "^CONFIG_TC=y" "$SRC/.config"; then
-    sed -i "s/^CONFIG_TC=y/# CONFIG_TC is not set/" "$SRC/.config"
-    # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
-    #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
-    #   yes "" 让它对每个提问取默认（新增项默认 n，保守）。
-    make oldconfig < /dev/null > "$WORK/oldconfig-tc.log" 2>&1 \
-      || { echo "=== 关掉 CONFIG_TC 后的 oldconfig 失败（末 20 行）===";
-           tail -20 "$WORK/oldconfig-tc.log"; exit 1; }
-  fi
   grep -q "^CONFIG_TC=y" "$SRC/.config" \
-    && die "CONFIG_TC 仍开着" "sed 没生效（.config 里那行格式可能不同）"
+    && die "CONFIG_TC 仍开着" "set_conf 没生效（.config 里那行格式可能不同）"
   echo "[busybox] CONFIG_TC 已关（它要内核 uapi 头）"
 
 MISSING=""
@@ -150,7 +149,22 @@ done
   "这些 applet 没进 .config：$MISSING —— 配置项名与本版本对不上（别凭记忆写）"
 note "applet 配置项全部生效（$(echo $APPLETS | wc -w) 项）"
 
-make -j"$JOBS" > "$WORK/build.log" 2>&1 \
+# ★ 编译器只能从这里给 —— 命令行赋值优先级高于 .config 与 Makefile 里的
+#   `CC = $(CROSS_COMPILE)gcc`（命令行赋值不会被 Makefile 里的赋值覆盖）。
+#   AR/NM/STRIP 在它的 Makefile 里是 $(CROSS_COMPILE)ar/nm/strip，同样得给，
+#   否则交叉编时会去找宿主 x86-64 的 ar/nm —— 产物就废了。
+#   LD 不给：它默认是 `$(CC) -nostdlib`，而 Makefile 里没有任何规则真的用 $(LD)
+#   链接（链接全走 $(CC)），给它反而会因为值里带空格被命令行拆成两项。
+MAKE_ARGS=(CC="$CC"
+           AR="$AR_BIN"
+           NM="$TC/llvm-nm"
+           STRIP="$LLVM_STRIP"
+           OBJCOPY="$TC/llvm-objcopy")
+for p in "$CC" "$AR_BIN" "$TC/llvm-nm" "$LLVM_STRIP" "$TC/llvm-objcopy"; do
+  [ -x "$p" ] || die "缺工具" "$p 不存在（应从 $CC 所在目录 $TC 里找）"
+done
+
+make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
   || { echo "=== busybox 编译失败取证（error 行 + 末 40 行）==="; \
        grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
        tail -40 "$WORK/build.log"; exit 1; }
@@ -160,7 +174,7 @@ make -j"$JOBS" > "$WORK/build.log" 2>&1 \
   # 连带把全部软链建好（同目录相对软链，指向 busybox 本体）。
   # 我们不列applet 名：那是它的编译结果，不是我们的数据。
   rm -rf "$WORK/install"
-  make CONFIG_PREFIX="$WORK/install" install > "$WORK/install.log" 2>&1 \
+  make "${MAKE_ARGS[@]}" CONFIG_PREFIX="$WORK/install" install > "$WORK/install.log" 2>&1 \
     || { echo "=== make install 失败取证 ==="; tail -30 "$WORK/install.log"; exit 1; }
   [ -x "$WORK/install/bin/busybox" ] || die "make install 没产出 busybox" "$WORK/install/bin/busybox 不存在"
 

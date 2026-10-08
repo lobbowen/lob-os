@@ -22,55 +22,47 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
 (
   set -e
   cd "$WORK/src"
-  # ★ zlib 的 configure 是手写的（不是 autoconf）：
-  #   · 它只认 --prefix 与 --static；--shared 是autoconf 的选项，它**不认**（静默忽略）
-  #   · 共享还是静态由它自己那次探测决定：用 $CC -shared 试链一个 .so，
-  #     失败就静默退回静态（SHARED_MODE=0）
-  #   交叉编 Android 时那次探测会失败 —— 所以显式给它 LDFLAGS="-shared"，
-  # 让探测通过。（失败过一次：传 --shared，它当没看见，只产出 libz.a。）
-  # 交叉编 Android 时 zlib 的 configure 有两处会选错：
+  # ★ 交叉编 Android 时 zlib 的 configure 有两处会选错：
   #   · 它用 uname 猜宿主 → 设 uname=Linux-host 走交叉分支
-  #   · 它探测共享库时链一个 .so → 交叉编时探测失败就静默退回静态，
-  #     所以必须显式给它 -fPIC 与 -shared
+  #     （该分支给出 LDSHARED="$cc -shared -Wl,-soname,libz.so.1,--version-script,${SRCDIR}zlib.map"）
+  #   · 它用 $shared 变量决定编不编共享库，默认 1；探测方式是拿 LDSHARED
+  #     链一个 .so。NDK 的 clang 能链出来，所以**不必**去改它的判断。
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
-  # ★ zlib 的 configure 自己决定编静态还是共享：
-  #   它试着用 $CC -shared 链一个 .so，链不出来就**静默退回静态**
-  #   （交叉编 Android 时那次探测必然失败）。
-  #   它把结果写进 Makefile 的 SRCDIR（空 = 静态，shared = 共享）。
-  #   传 LDFLAGS=-shared 没用 —— 那样会替换掉默认 LDFLAGS，
-  #   探测时要链 libc，缺了默认路径照样链不出来。
-  #   正解：configure 之后直接把 SRCDIR 改成 shared。
-  if ! grep -q "^SRCDIR=shared\$" Makefile; then
-    sed -i 's|^SRCDIR=.*$|SRCDIR=shared|' Makefile
-    grep -q "^SRCDIR=shared\$" Makefile \
-      || die "zlib 的 Makefile 里改不动 SRCDIR" "$(grep -n '^SRCDIR' Makefile | head -3)"
-  fi
 
-  # ★ SRCDIR=shared 时 zlib 的 Makefile 会连带编 sharedtest/example.c，
-  #   而那个目录在官方 tarball 里不存在（tarball 只有 zlib*.c 与 contrib/）。
-  #   所以只编库本身的目标，不跑默认目标。
-  #   ★ 目标名里带版本号（libz.so.1.3.2）—— **不能写死**，
-  #   换版本就换名。正解：从 Makefile 里读出那个 .so 的真名。
-  LIB_TARGET="$(grep -oE "^LIBZ = .*" Makefile | head -1 | sed "s/^LIBZ = //")"
-  case "$LIB_TARGET" in
-    *.so|*.so.*) ;;
-    *) die "从 Makefile 里读不出库名" "LIBZ 那行现在是：$(grep -n "^LIBZ" Makefile | head -3)" ;;
+  # ── 我此前做错的三处，都记在这里免得再犯 ──────────────────
+  #   1. Makefile.in 里**没有** LIBZ 这个变量 —— 库名是 SHAREDLIBV
+  #      （configure 第 444 行：SHAREDLIBV=${SHAREDLIBV-"libz$shared_ext.$VER"}）。
+  #      grep '^LIBZ = ' 永远空，此前据此 die 却因为 set -e + pipefail
+  #      让整个子 shell 一句取证都没打出来。
+  #   2. SRCDIR 不是「静态/共享」开关 —— 它是源码子目录前缀
+  #      （configure 第 22 行 SRCDIR=`dirname $0`，官方用来支持 out-of-tree 构建）。
+  #      改它等于改源码搜索路径，改错了会把 $(SRCDIR)test/example.c 指到别处。
+  #   3. shared 目标依赖 examplesh/minigzipsh，它们在官方 tarball 里**存在**
+  #      （此前我以为 sharedtest/ 缺失，那是我编的目录名）。
+  #
+  # 真判据：读 configure 自己写进 Makefile 的 SHAREDLIBV，空则说明退回静态了。
+  LIB_SO="$(sed -n 's/^SHAREDLIBV[[:space:]]*=[[:space:]]*//p' Makefile | sed -n '1p')"
+  case "$LIB_SO" in
+    *.so|*.so.*) : ;;
+    *) echo "=== Makefile 里的库名与目标取证 ==="
+       sed -n '/^STATICLIB[[:space:]]*=/p;/^SHAREDLIB/p' Makefile | sed -n '1,6p'
+       echo "--- configure.log 里共享库那一段 ---"
+       sed -n '/shared library/Ip' "$WORK/configure.log" | sed -n '1,10p'
+       die "zlib 退回静态了" "Makefile 里 SHAREDLIBV 是空的：'$LIB_SO' —— 交叉编时那次 .so 探测没通过"
   esac
-  make -j"$JOBS" "$LIB_TARGET" > "$WORK/build.log" 2>&1 \
+  echo "[zlib] 共享库目标 = $LIB_SO"
+
+  make -j"$JOBS" "$LIB_SO" > "$WORK/build.log" 2>&1 \
     || { echo "=== zlib 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
-  # ★ 不用 make install —— zlib 的 install 目标在 shared 模式下
-  #   依赖 SRCDIR 与 LDSHARED，configure 生成的 Makefile 里那几项
-  #   与我们改的 SRCDIR 不同步，于是 install 静默什么都不装
-  #   （表现：out/lib 目录压根不存在）。
-  #   正解：编出来的 .so 就在源码树里（libz.so.1.3.2 + 三个软链），
-  #   直接按 Makefile 里的 LIBZ 名字拷过去 —— 那才是它真正的产物名。
-  # 不猜名字 —— 照源码树里真实存在的 libz* 全拷过去。
-  #   zlib 的产物是一整条链：libz.so.1.3.2（实体）+ libz.so.1 · libz.so（软链）
-  #   linker 运行时找的是带 SONAME 的那个（libz.so.1）。
+
+  # 不用 make install —— install 目标还会装 example/minigzip 这些宿主可执行件，
+  # 我们只要库和头文件，按 Makefile 里那几个变量名自己落位。
+  # 产物是一整条链：libz.so.1.3.2（实体）+ libz.so.1 · libz.so（软链）。
+  # linker 运行时找的是带 SONAME 的那个（libz.so.1）。
   mkdir -p "$OUT_DIR/lib" "$OUT_DIR/include"
   SO_N=0
   for f in "$WORK/src"/libz.so*; do
@@ -79,28 +71,23 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
     SO_N=$((SO_N + 1))
   done
   [ "$SO_N" -gt 0 ] || {
-    echo "=== zlib 源码树里没有 libz.so*的取证 ==="
+    echo "=== zlib 源码树里没有 libz.so* 的取证 ==="
     ls -la "$WORK/src"/libz* 2>/dev/null || echo "（没有 libz*）"
     echo "--- build.log 末尾 ---"; tail -20 "$WORK/build.log" 2>/dev/null
-    die "zlib 没编出共享库" "源码树里没有 libz.so*（改了 SRCDIR 也没用？）"
+    die "zlib 没编出共享库" "源码树里没有 libz.so*（改了 Makefile 也没用？）"
   }
-  echo "[zlib] 拷了 $SO_N 个 libz.so* 到$OUT_DIR/lib"
-  [ -f "$WORK/src/zlib.h" ] && cp -f "$WORK/src/zlib.h" "$OUT_DIR/include/"
-  [ -f "$WORK/src/zconf.h" ] && cp -f "$WORK/src/zconf.h" "$OUT_DIR/include/"
-  # 装完要真的有 lib 目录（此前 out/lib 整个不存在 → install 静默没生效）
-  [ -d "$OUT_DIR/lib" ] \
-    || { echo "=== zlib install 之后没有 lib 目录===";
-         ls -la "$OUT_DIR" 2>/dev/null || true;
-         echo "--- install.log 末尾 ---"; tail -15 "$WORK/install.log"; exit 1; }
+  echo "[zlib] 拷了 $SO_N 个 libz.so* 到 $OUT_DIR/lib"
+  cp -f "$WORK/src/zlib.h" "$OUT_DIR/include/"
+  cp -f "$WORK/src/zconf.h" "$OUT_DIR/include/"
 )
 
-SO="$(ls "$OUT_DIR"/lib/libz.so 2>/dev/null | head -1)"
-[ -n "$SO" ] || {
+SO="$OUT_DIR/lib/libz.so"
+[ -f "$SO" ] || {
   ls -la "$OUT_DIR/lib" >&2 || true
-  die "zlib 没产出共享库" "$OUT_DIR/lib 下没有 libz.so（只有 .a 就说明 SHARED_MODE 没生效）"
+  die "zlib 没产出共享库" "$OUT_DIR/lib 下没有 libz.so"
 }
 # 共享库要有 SONAME 层（libz.so.1）—— linker 运行时找的是它
-ls "$OUT_DIR"/lib/libz.so.1 >/dev/null 2>&1 \
+[ -f "$OUT_DIR/lib/libz.so.1" ] \
   || die "zlib 共享库缺 SONAME 层" "$OUT_DIR/lib 下只有 libz.so，没有 libz.so.1"
 
 # 落位：库 → usr/lib/<id>/<版本>/lib/，并建 usr/lib/libz.so 全局软链

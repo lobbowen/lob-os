@@ -214,6 +214,14 @@
         "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.gz"
       ]
     },
+    "nodeHeaders": {
+      "version": "24.21.0",
+      "note": "flock.c 是 node addon，编它要 node 的头文件。node 官方单独发 -headers.tar.gz —— 用它，不解源码树：源码树的 include/node 由 configure 跑生成器才产出，tarball 里根本没有。sha256 已在官方 SHASUMS256.txt 与本地实测双向核对。",
+      "sha256": "57c6bee2e30bbbee5bd51d6cc343eb992e174b56a2a1d0eab7a7510771c20ea2",
+      "urls": [
+        "https://nodejs.org/dist/v24.21.0/node-v24.21.0-headers.tar.gz"
+      ]
+    },
     "npm": {
       "version": "11.x",
       "urls": [],
