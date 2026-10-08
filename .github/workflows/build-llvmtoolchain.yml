@@ -125,7 +125,6 @@ jobs:
           console.log("[ok] 别名 " + names.length + " 个，逐个指向件内真实文件");
           '
 
-
       - name: 发布本件预制品到 Release（编一次，长期复用）
         if: always()
         env:
@@ -154,8 +153,6 @@ jobs:
           gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
           echo "[ok] 已发布 $TAG"
 
-      # 汇总链（build-component.yml）靠这一个 artifact 收本件的 zip。
-      # 名字必须与 scripts/fetch-component-artifacts.sh 里的 component-<件> 对得上。
       - uses: actions/upload-artifact@v4
         with:
           name: component-llvmtoolchain

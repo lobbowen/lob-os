@@ -13,9 +13,6 @@ if (!fs.existsSync(WF) || !fs.existsSync(KEY)) {
   process.exit(2);
 }
 
-// 分类的解析复用 scripts/list-bucket-components.js（唯一读 bucket_for 的那份实现）。
-// 这里曾经自己抄了一遍正则，两个版本对「分支怎么排版」的处理不一样 ——
-// 结果就是改排版能让这个门禁报出与真实分类无关的错。
 const CLASS = {};
 for (const line of execFileSync(process.execPath,
   [path.join(ROOT, 'scripts/list-bucket-components.js'), '--buckets'],

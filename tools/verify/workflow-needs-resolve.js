@@ -1,19 +1,4 @@
 'use strict';
-// workflow 的 needs 引用必须指向本文件里真实存在的 job。
-//
-// 判的是行为事实：某一步的 if 条件读 needs.<job>.outputs.<x>，
-// 而 <job> 在同一个 workflow 里没有定义 → 那个条件永远求不出 true，
-// 于是「编好了但发不出去」，而且**不报错**（GitHub 不校验 needs 里的名字）。
-//
-// 这不是代码形状门禁：它对应的是一次真实发生过的静默失效
-// （拆链时把 resolve 留在汇编 workflow，11 条链的发件步从此永不触发）。
-//
-// 反例（这个门禁必须能抓到）：
-//   jobs:
-//     build:
-//       steps:
-//         - if: ${{ needs.resolve.outputs.publish == 'true' }}
-//   —— 没有 resolve job。
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -26,8 +11,6 @@ if (!fs.existsSync(DIR)) {
   process.exit(2);
 }
 
-// 这个门禁自己失效过一次（第一版把 needs 里的名字读漏了，空引用等于通过）。
-// 所以拿一份已知有病的事实当反例，不看「读出来几个」而看「该抓的抓到没」。
 const SELF_TEST = [
   {
     name: 'has-resolve',
@@ -69,12 +52,10 @@ function jobsOf(src) {
 function missingNeeds(src) {
   const jobs = jobsOf(src);
   const refs = new Set();
-  // needs: x  /  needs: [x, y]
   for (const m of src.matchAll(/^[ \t]*needs:\s*\[([^\]]*)\]/gm)) {
     for (const t of m[1].split(',')) { const n = t.trim(); if (n) refs.add(n); }
   }
   for (const m of src.matchAll(/^[ \t]*needs:\s*([A-Za-z0-9_-]+)\s*$/gm)) refs.add(m[1]);
-  // 无论写成 needs: 还是 needs: [...]，步骤里的 needs.<job>.outputs.<x> 也算引用
   for (const m of src.matchAll(/needs\.([A-Za-z0-9_-]+)\.outputs\./g)) refs.add(m[1]);
   return [...refs].filter((r) => !jobs.has(r)).sort();
 }

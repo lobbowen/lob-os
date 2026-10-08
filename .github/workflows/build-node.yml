@@ -69,8 +69,6 @@ jobs:
           echo "tag=$(bash scripts/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
           echo "abi=$(bash scripts/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
 
-      # node 是本仓唯一「不自己编译」的件：编译要 3~4 小时，走 Node Runtime 链一次，
-      # 产物发到 Release。这里取的是**已发布的那一份**，所以它有 sha256 可校验。
       - name: 取已编译的 node 运行时制品（Release 是真相源）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -153,8 +151,6 @@ jobs:
               node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
 
-      # 清单汇总链（build-component.yml）靠这一个 artifact 收 node 的 zip。
-      # 名字必须与 scripts/fetch-component-artifacts.sh 里的 component-<件> 对得上。
       - uses: actions/upload-artifact@v4
         with:
           name: component-node

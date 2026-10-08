@@ -24,7 +24,6 @@ for (const f of [PLAN, CAPS, KEY, BASE_LIBS, BUSYBOX, CAPS_SH, APK_WF]) {
 const problems = [];
 const notes = [];
 
-// 分类解析复用 scripts/list-bucket-components.js（仓内唯一读 bucket_for 的那份实现）
 const CLASS = {};
 for (const line of execFileSync(process.execPath,
   [P('scripts/list-bucket-components.js'), '--buckets'],
@@ -99,14 +98,10 @@ for (const t of baseAll) {
   }
 }
 
-// 每件 base 筐的产出源，是「它自己那条独立构建链在不在」这个事实，不是名单。
-// 名单会在拆链后过时（曾把 6 件都写成 build-component.yml，而那条链早就不编它们了）——
-// 名单过时不会让件坏，但会让人以为这些件还归那条链管。
 const WFDIR = P('.github/workflows');
 function chainOf(t) {
   return fs.existsSync(path.join(WFDIR, `build-${t}.yml`)) ? `build-${t}.yml` : null;
 }
-// tag 名由 cache-key.sh 算（唯一真相），门禁不自己拼一份
 function bucketTagOf(t) {
   try {
     return execFileSync('bash', [KEY, 'tag', t], { encoding: 'utf8' }).trim();
@@ -114,7 +109,6 @@ function bucketTagOf(t) {
     return `（cache-key.sh tag ${t} 算不出来：${String(e.message).slice(0, 60)}）`;
   }
 }
-// 随 APK 打包的原生件：它们没有独立链（产物在 build-apk 的 jniLibs 里）
 const NATIVE_VIA_APK = ['bash', 'rg', 'busybox'];
 
 console.log('== base 筐（随 APK 打包的基础环境）逐件复审 ==');

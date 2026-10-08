@@ -1,9 +1,5 @@
 name: Component Manifest · 汇总各件产物成清单
 
-# 这条链不再构建任何件。各件各有自己的独立构建链（build-<件>.yml），
-# 它只做一件事：把那些链的产物收齐 → 投影 → 签名 → 投递到对象存储。
-# 所以触发路径只留「汇总口径」相关的文件，不留任何件的构建配方 ——
-# 改一个件的配方不该重跑汇总（那会牵连全部件的清单口径）。
 on:
   push:
     branches: [main]
@@ -77,12 +73,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 各件已拆成独立构建链，产物留在**各自 run 的 artifact** 里，不在同一个 run 里，
-      # 所以不能再用不带 run-id 的 actions/download-artifact（它只认同一个 run，
-      # 拆链后取不到任何件）。这里逐件查最近一次「产物还活着」的成功 run 再取。
-      #
-      # 真相源是 GitHub：各件独立链的 run 与其 Release 预制品。
-      # 七牛只在最后一步「发布清单到对象存储」出现，那是设备端分发目标，不是取件来源。
       - name: 逐件取最近成功 run 的产物（GitHub 是真相源）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

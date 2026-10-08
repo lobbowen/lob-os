@@ -1,18 +1,4 @@
 'use strict';
-// workflow 里每一段 run: 的 shell 脚本都必须是合法 bash。
-//
-// 判的是行为事实：GitHub 把 run: 的内容原样交给 /usr/bin/bash -e。
-// 语法错（比如 if 少了 fi）要到那一刻才炸 —— run 挂在第一步、后面全跳过，
-// 而且报错只是一行 "line 13: syntax error"，看不出是哪个 workflow 的哪一步。
-//
-// 这不是代码形状门禁：它对应一次真实发生过的失败
-// （build-node.yml 的 resolve 步漏了 fi，整条链第一步就死）。
-//
-// 反例（这个门禁必须能抓到）：
-//   run: |
-//     if [[ x ]]; then
-//       echo hi
-//     ← 少了 fi
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -22,14 +8,13 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 const DIR = path.join(ROOT, '.github', 'workflows');
 
-// 每段 run: 的位置（人可读的门禁信息）
 function runsOf(src) {
   const L = src.split('\n');
   const out = [];
   for (let i = 0; i < L.length; i++) {
     const m = /^(\s*)run:\s*\|\s*$/.exec(L[i]);
     if (!m) continue;
-    const ind = m[1].length + 2; // run: 的内容比 run: 多缩进
+    const ind = m[1].length + 2;
     const body = [];
     let j = i + 1;
     for (; j < L.length; j++) {
@@ -52,7 +37,6 @@ function nameOf(L, at) {
   return '(无名步)';
 }
 
-// 门禁自身先过已知反例
 const SELF = [
   {
     name: '缺 fi',
@@ -79,7 +63,7 @@ function bashN(src) {
       ? null
       : String(spawnSync('bash', ['-n', tmp], { encoding: 'utf8' }).stderr || '').split('\n').find((l) => /error/.test(l)) || '语法错';
   } finally {
-    try { fs.unlinkSync(tmp); } catch (e) { /* 临时文件删不掉不影响判定 */ }
+    try { fs.unlinkSync(tmp); } catch (e) {   }
   }
 }
 

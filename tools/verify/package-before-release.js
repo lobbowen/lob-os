@@ -1,17 +1,4 @@
 'use strict';
-// 产 zip 的那一步，必须排在「发 Release」与「存回缓存」之前。
-//
-// 判的是行为事实，不判代码形状：顺序反了之后，
-//   · 发 Release 那个 tar 里装的是**松散文件**而不是 zip
-//     （实测 base-jq 的 tar 只有 ./jq.version 与 ./bin/jq），
-//     于是「编过就复用」这条路复用的是一份没有 zip 的预制品；
-//   · 存回缓存存的是**上一轮**的旧 zip，下一轮「增量编」拿到的是过期的件。
-//
-// 两处都不报错 —— run 是绿的，坏的是下一轮。所以必须当门禁。
-//
-// 反例（这个门禁必须能抓到）：
-//   - name: 发布本件预制品到 Release      ← 排在打包之前
-//   - name: 打包 + sha256
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -33,7 +20,6 @@ function findStep(L, name) {
   return L.findIndex((l) => new RegExp(`^ {6}- name: ${name}`).test(l));
 }
 
-// 门禁自身先过一遍已知反例（纪律 6/10）
 const SELF_TEST = [
   {
     name: 'release-before-package',
@@ -98,7 +84,7 @@ let checked = 0;
 for (const f of files) {
   const L = steps(fs.readFileSync(path.join(DIR, f), 'utf8'));
   const pkg = pkgLine(L);
-  if (pkg < 0) continue; // 不打包件的链（build-apk / build-component / node）
+  if (pkg < 0) continue;
   checked++;
   for (const what of ['发布本件预制品到 Release', '存回编译中间产物']) {
     const at = findStep(L, what);

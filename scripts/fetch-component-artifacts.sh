@@ -1,16 +1,4 @@
 #!/usr/bin/env bash
-# 把每一件最近一次「产物还在」的构建 run 的 zip 收进 dist/，供清单汇总投影。
-#
-# 为什么要逐件查 run：
-#   各件已拆成独立构建链（build-<件>.yml），产物留在**各自 run 的 artifact** 里。
-#   actions/download-artifact 不带 run-id 时只认同一个 run，拆链后取不到任何件。
-#
-# 为什么不用 Release 资产：
-#   Release 步跑在 package-component.sh **之前**（tar 里装的是松散文件，不是 zip），
-#   而清单按内容寻址命名 sha256，逐字节对不上就会把设备指向一批下不着的字节。
-#   artifact 里是真 zip，且就是那次 run 实际发到七牛的同一批字节。
-#
-# 真相源是 GitHub（各件独立链的 run 与其 Release 预制品），七牛只在最后一步作为发布目标。
 set -euo pipefail
 export LC_ALL=C
 
@@ -32,11 +20,9 @@ fi
 
 mkdir -p "$DIST"
 
-# 三筐的件名，以 scripts/cache-key.sh 的 bucket_for 为唯一真相
 COMPONENTS="$(node scripts/list-bucket-components.js)"
 [ -n "${COMPONENTS// /}" ] || { echo "::error title=件清单为空::bucket_for 没解析出任何件"; exit 1; }
 
-# 随 APK 打包的原生件不走商店分发（产物在 build-apk 的 jniLibs 里）
 NATIVE="bash rg busybox"
 
 got=0; missed=0; skipped=0
@@ -48,11 +34,9 @@ for t in $COMPONENTS; do
   WF="build-$t.yml"
   ART="component-$t"
 
-  # 往回找几轮：最近那次成功 run 的 artifact 可能已过保留期（默认 30 天）
   picked=""
   for rid in $(gh run list --repo "$REPO" --workflow "$WF" --status success \
                --limit 5 --json databaseId --jq '.[].databaseId'); do
-    # 该 run 里这个件的 artifact 还在吗（未过期）
     live="$(gh api "repos/$REPO/actions/runs/$rid/artifacts?per_page=100" \
             --jq "[.artifacts[] | select(.name == \"$ART\" and .expired_at == null)][0].name" 2>/dev/null || true)"
     if [ "$live" = "$ART" ]; then picked="$rid"; break; fi
@@ -72,14 +56,10 @@ for t in $COMPONENTS; do
     continue
   fi
 
-  # 一次 run 只能给出这个件的一颗 zip。出现多颗说明那份 artifact 里混了别的东西
-  # （旧缓存的 zip 没清干净是最常见的一种），下游会把它当成两颗件投进清单。
   mapfile -t zips < <(compgen -G "$DIST/component-$t-*-android-arm64.zip" || true)
   if [ "${#zips[@]}" -eq 0 ]; then
     echo "::warning title=$t 产物不合契约::run $picked 的 $ART 里没有 component-$t-<版>-<哈希>-android-arm64.zip"
     echo -e "$t\tmissing\tartifact 里没有符合命名契约的 zip"
-    # 收下来的不合契约文件必须清掉：投影脚本会扫整个 dist/，
-    # 留在这里就等于把一个会被当成件的脏文件递给下游。
     rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
     missed=$((missed+1))
     continue

@@ -1,15 +1,4 @@
 'use strict';
-// workflow 的 on: 块必须能被 GitHub 解析。
-//
-// 具体修的是「tags 挂错层」：tags 是 push: 的子键，写成 on: 的同级键时
-// 整个文件解析失败 —— GitHub 直接拒绝这个 workflow（dispatch 返回 422
-// "Unexpected value 'tags'"），它连 push 触发都不会跑，而且**不报 run 失败**。
-//
-// 这不是排版洁癖：一份解析不过的 workflow 在 Actions 列表里是静默的，
-// 人只会看到「怎么不触发」，查不到原因。
-//
-// 判据：on: 下每个键都必须是被 GitHub 承认的触发事件名，
-//     而 tags/branches/paths 只能出现在某个触发事件**下面**。
 'use strict';
 
 const fs = require('node:fs');
@@ -18,14 +7,12 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const DIR = path.join(ROOT, '.github', 'workflows');
 
-// GitHub 承认的触发事件（子键：它们各自能带哪些过滤条件）
 const EVENTS = new Set([
   'push', 'pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch',
   'workflow_call', 'workflow_run', 'repository_dispatch', 'release', 'deployment',
   'deployment_status', 'page_build', 'status', 'check_run', 'check_suite', 'issue_comment',
   'merge_group', 'branch_protection_rule', 'create', 'delete', 'fork',
 ]);
-// 只在某个事件下才合法的过滤键
 const FILTERS = new Set(['branches', 'branches-ignore', 'paths', 'paths-ignore', 'tags', 'tags-ignore']);
 
 function parseOn(src) {
@@ -33,9 +20,6 @@ function parseOn(src) {
   const at = L.findIndex((l) => /^on:\s*$/.test(l) || /^on:\s*\{/.test(l));
   if (at < 0) return null;
   if (/^on:\s*\{/.test(L[at])) return { inline: true };
-  // on: 块的范围：从 on: 之后到下一个**顶层**键（缩进 0 的非空行）。
-  // 不能靠「缩进 <= 2 就停」来判边界 —— push: / tags: 这些直接子键本身就是缩进 2，
-  // 那样会把 concurrency / permissions / jobs 全算进 on: 块（第一版就是这么错的）。
   let end = L.length;
   for (let i = at + 1; i < L.length; i++) {
     if (!L[i].trim()) continue;
@@ -51,7 +35,6 @@ function parseOn(src) {
   return { keys };
 }
 
-// 门禁自身先过已知反例
 const SELF = [
   {
     name: 'tags-挂在-on-层',
@@ -80,9 +63,7 @@ for (const t of SELF) {
     console.error(`FAIL 门禁自身失效：反例 ${t.name} 期望 [${want}]，实际 [${have}]`);
     selfBad++;
   }
-  // 另一侧：未知的事件名也要抓到
   if (t.name === 'tags-挂在-on-层' && p.keys.some((k) => !EVENTS.has(k.name) && !FILTERS.has(k.name))) {
-    // tags 是已知的错法，交给上面的 FILTERS 检查
   }
 }
 if (selfBad) {
@@ -90,12 +71,6 @@ if (selfBad) {
   process.exit(2);
 }
 
-// 另一类解析失败：未加引号的标量里带 "键: " 形状。
-//   - name: 结构 — on: 块须能被 GitHub 解析（…）
-// 这个值不是引号包起来的，GitHub 会把它当成一个映射，于是整个文件解析失败 ——
-// 同样不产生 run 失败，只表现为「dispatch 422 + 没有 job」。
-//
-// 判据：一个标量值里出现了 "标识符 + 冒号 + 空格"，而这个值没有被引号包住。
 const SCALARS = /^(\s*- (?:name|run|uses|id|if|shell):\s*)(\S.*)$/;
 
 function unquotedMapKeys(src) {
@@ -105,7 +80,6 @@ function unquotedMapKeys(src) {
     const m = SCALARS.exec(L[i]);
     if (!m) continue;
     const v = m[2];
-    // 已加引号的、放管道/重定向/开头的块标量（| > { [）都不是这个问题
     if (/^["\x27|>{[]/.test(v)) continue;
     const c = /([A-Za-z_][A-Za-z0-9_-]*):(\s|$)/.exec(v);
     if (c) out.push({ line: i + 1, key: c[1], value: v });
@@ -113,7 +87,6 @@ function unquotedMapKeys(src) {
   return out;
 }
 
-// 门禁自身先过已知反例
 const SCALAR_SELF = [
   { name: 'name 里带 on:', src: 'jobs:\n  a:\n    steps:\n      - name: 结构 — on: 块\n        run: x\n', bad: true },
   { name: 'name 里带 paths 冒号加空格', src: 'jobs:\n  a:\n    steps:\n      - name: 结构 — paths: 那个键\n        run: x\n', bad: true },
