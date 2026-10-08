@@ -829,14 +829,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply { put("ok", true) }
         },
         "os.runtime.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            val node = lobos.os.NodeRuntime.path(this@CapabilityBroker)
+            val node = lobos.runtime.InstalledRuntime.binOf(this@CapabilityBroker, "node")
             val res = lobos.os.ResidencyStatus.snapshot()
             JSONObject().apply {
                 put("name", "node")
-                put("version", lobos.os.NodeRuntime.version(this@CapabilityBroker))
+                put("version", lobos.runtime.InstalledRuntime.versionOf(this@CapabilityBroker, "node"))
                 put("path", node?.absolutePath ?: JSONObject.NULL)
                 put("ok", node != null)
-                put("detail", if (node == null) lobos.os.NodeRuntime.missing(this@CapabilityBroker) else JSONObject.NULL)
+                put("detail", if (node == null) lobos.runtime.InstalledRuntime.notInstalledHint(this@CapabilityBroker, "node") else JSONObject.NULL)
                 put("degraded", res.optBoolean("degraded", false))
                 put("degradedReasons", res.optJSONArray("degradedReasons") ?: JSONArray())
                 put("actions", res.optJSONArray("actions") ?: JSONArray())
@@ -858,13 +858,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
 
         "os.runtime.nodeLts" to MethodDef(listOf("base"), false) { _, _programId ->
-            val cur = lobos.os.NodeRuntime.version(this@CapabilityBroker)
+            val cur = lobos.runtime.InstalledRuntime.versionOf(this@CapabilityBroker, "node")
             val latest = runCatching {
                 val arr = CatalogClient.entries(this@CapabilityBroker)
                 var v = ""
                 for (i in 0 until arr.length()) {
                     val t = arr.optJSONObject(i) ?: continue
-                    if (t.optString("name", "") == lobos.os.NodeRuntime.NAME) {
+                    if (t.optString("name", "") == "node") {
                         v = t.optString("version", "")
                     }
                 }

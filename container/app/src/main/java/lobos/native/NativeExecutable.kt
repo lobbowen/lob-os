@@ -22,6 +22,10 @@ data class NativeExecutable(
     val version: String = "",
 
     val installName: String = "",
+
+    val versionArgs: List<String> = emptyList(),
 ) {
     val installedAs: String get() = installName.ifBlank { libName }
+
+    val reportsVersion: Boolean get() = versionArgs.isNotEmpty()
 }

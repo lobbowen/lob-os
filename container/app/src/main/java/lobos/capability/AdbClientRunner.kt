@@ -191,8 +191,8 @@ object AdbClientRunner {
 
     private fun startProcess(context: Context): ServeProcess? {
         val scriptDir = NodeProvisioner.ensureAdbClientScripts(context)
-        val nodeBin = lobos.os.NodeRuntime.path(context) ?: run {
-            lastStartError = lobos.os.NodeRuntime.missing(context)
+        val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, "node") ?: run {
+            lastStartError = lobos.runtime.InstalledRuntime.notInstalledHint(context, "node")
             return null
         }
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
@@ -235,8 +235,8 @@ object AdbClientRunner {
         } catch (e: Throwable) {
             return AdbOutcome(false, null, "adb-client-script-missing: " + e.message, "", -1)
         }
-        val nodeBin = lobos.os.NodeRuntime.path(context)
-            ?: return AdbOutcome(false, null, lobos.os.NodeRuntime.missing(context), "", -1)
+        val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, "node")
+            ?: return AdbOutcome(false, null, lobos.runtime.InstalledRuntime.notInstalledHint(context, "node"), "", -1)
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
 
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath)

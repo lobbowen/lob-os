@@ -7,6 +7,7 @@ import org.json.JSONObject
 
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramOtaUpdater
+import lobos.runtime.InstalledRuntime
 
 object ProgramManager {
 
@@ -170,7 +171,7 @@ object ProgramManager {
     fun currentVersion(ctx: Context, id: String): String? =
         runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
-fun nodeBin(ctx: Context): File? = NodeRuntime.path(ctx)
+fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, "node")
 
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }

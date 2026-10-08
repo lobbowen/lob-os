@@ -23,6 +23,7 @@ object NativeAssetRegistry {
             probeArgs = listOf("-c", "exit 0"), probeExpect = null,
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
             installName = "bash",
+            versionArgs = listOf("--version"),
             note = "jniLibs 路径；P2 起 bash 改由前缀目录提供",
         ),
         NativeExecutable(
@@ -30,6 +31,7 @@ object NativeAssetRegistry {
             probeArgs = listOf("--version"), probeExpect = "ripgrep",
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
             installName = "rg",
+            versionArgs = listOf("--version"),
             note = "缺件时 glob/grep 报 SEARCH_FAILED",
         ),
         NativeExecutable(
@@ -67,10 +69,14 @@ object NativeAssetRegistry {
             probeArgs = listOf("--list"), probeExpect = "tar",
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
             installName = "busybox",
+            versionArgs = listOf("--help"),
             note = "多调用二进制：用户敲 tar/grep/ls（软链由 PrefixProvisioner 建），" +
                 "不是 busybox tar。探针用 --list 并期待 tar —— 比看二进制在不在强，" +
                 "证明 applet 真编进去了（配置项名写错时 busybox 会静默少编）。" +
-                "静态编、不链底座 libz：底座件之间不互相依赖到「少一件就起不来」",
+                "静态编、不链底座 libz：底座件之间不互相依赖到「少一件就起不来」。" +
+                "**versionArgs=--help 是待实测项**：busybox 没有 --version，" +
+                "版本在 --help 首行（形如 BusyBox v1.36.1 ...）。仓里没有编好的 busybox 可验，" +
+                "所以这一格要真机确认；不成立时 versionOf 取不到会回退到装件记录的版本（不算错，只是拿不到实测值）",
         ),
 
         NativeExecutable(
@@ -110,9 +116,12 @@ object NativeAssetRegistry {
 
     val BIN_IDS: Set<String> = setOf("bash", "ripgrep", "ptysession", "busybox")
 
-    val ALL: List<NativeExecutable> get() = listOf(LIBCXX)
+    val ALL: List<NativeExecutable> get() = listOf(LIBCXX) + CAPABILITY
+
+    fun of(id: String): NativeExecutable? = ALL.firstOrNull { it.id == id }
+
     fun libNameOf(id: String): String =
-        (ALL + CAPABILITY).firstOrNull { it.id == id }?.libName
+        of(id)?.libName
             ?: error("NativeAssetRegistry 里没有 id=" + id + " 的资产 —— 拼错的 id 必须当场炸。")
 
     fun resolve(ctx: Context, e: NativeExecutable): File =

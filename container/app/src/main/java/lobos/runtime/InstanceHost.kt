@@ -328,12 +328,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
             RuntimeDiagnostics.append(this, "program", res.ok, res.title, res.detail)
 
-            val nodeBinForVersion = lobos.os.NodeRuntime.path(this)
+            val nodeBinForVersion = lobos.runtime.InstalledRuntime.binOf(this, "node")
             RuntimeDiagnostics.append(
                 this, "version", nodeBinForVersion != null,
-                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.os.NodeRuntime.version(this)
+                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.runtime.InstalledRuntime.versionOf(this, "node")
                 else "Node 运行时缺失",
-                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.os.NodeRuntime.missing(this)),
+                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.runtime.InstalledRuntime.notInstalledHint(this, "node")),
             )
 
             val assets = NativePreparer.prepare(this)
@@ -346,11 +346,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val nodeBin = lobos.os.NodeRuntime.path(this) ?: run {
+            val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, "node") ?: run {
                 RuntimeDiagnostics.append(
                     this, "runtime", false,
                     "node 运行时未就位，本次不启动程序（会按退避重试）",
-                    lobos.os.NodeRuntime.missing(this) +
+                    lobos.runtime.InstalledRuntime.notInstalledHint(this, "node") +
                         "；商店件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
                         "装好后下一次重试即自动起来 —— 首次开机可能需要等一个退避周期",
                 )
@@ -367,7 +367,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 nodePath = nodeBin.absolutePath,
                 nodeBinDir = nodeBin.parentFile!!.absolutePath,
                 prefix = PrefixProvisioner.root(this).absolutePath,
-                minNode = lobos.os.NodeRuntime.version(this),
+                minNode = lobos.runtime.InstalledRuntime.versionOf(this, "node"),
                 envSnapshot = treeEnv,
             )
             RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 3，含实际 env 快照）", "home=${filesDir.absolutePath}")
@@ -677,7 +677,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 this, "node-stderr", err.isNotBlank(), "node 标准错误(完整)",
                 if (err.isNotBlank()) err
                 else "(node 确实没有 stderr 输出；已等待 ${waited}ms 让转发线程收敛。\n" +
-                    " stdout 已逐行写入 logcat，可用 adb logcat -s NodeRuntime:*)"
+                    " stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
             )
         }.start()
     }
@@ -804,10 +804,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun runNativeProbe() {
-        val nodeBin = lobos.os.NodeRuntime.path(this)
+        val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, "node")
         if (nodeBin == null) {
             RuntimeDiagnostics.append(
-                this, "nodeprobe", false, "探针未起跑：node 运行时未安装", lobos.os.NodeRuntime.missing(this)
+                this, "nodeprobe", false, "探针未起跑：node 运行时未安装", lobos.runtime.InstalledRuntime.notInstalledHint(this, "node")
             )
             return
         }

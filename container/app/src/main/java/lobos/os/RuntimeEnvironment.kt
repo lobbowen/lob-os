@@ -4,6 +4,7 @@ import android.content.Context
 import lobos.RuntimeDiagnostics
 import lobos.native.NativeAssetRegistry
 import lobos.native.NativePreparer
+import lobos.runtime.InstalledRuntime
 import lobos.runtime.NodeProvisioner
 import lobos.runtime.PrefixProvisioner
 import java.io.File
@@ -97,7 +98,7 @@ object RuntimeEnvironment {
     fun treeRootFor(ctx: Context, s: Snapshot): TreeRoot = TreeRoot(
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
-        nodeBin = NodeRuntime.path(ctx) ?: s.nodeBin,
+        nodeBin = InstalledRuntime.binOf(ctx, "node") ?: s.nodeBin,
         nativeLibDir = libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
@@ -166,7 +167,7 @@ object RuntimeEnvironment {
             )
         }
 
-        val nodeBin = NodeRuntime.path(ctx)
+        val nodeBin = InstalledRuntime.binOf(ctx, "node")
         return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
     }
 }
