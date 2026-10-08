@@ -169,6 +169,14 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   || { echo "=== LLVM cmake 配置失败取证（末 40 行）==="; tail -40 "$WORK/cmake.log"; exit 1; }
 note "cmake 配置通过"
 
+note "CMake 认定的tblgen（若这里仍是裸名 llvm-min-tblgen，说明 LLVM_USE_HOST_TOOLS 或 LLVM_NATIVE_TOOL_DIR 没生效，它会自建 NATIVE/bin 并执行交叉产物）"
+TB="$(grep -E '^(LLVM_TABLEGEN|LLVM_NATIVE_TOOL_DIR|LLVM_USE_HOST_TOOLS|LLVM_TABLEGEN_EXE)' "$BUILD/CMakeCache.txt" 2>/dev/null | tr '\n' ' ' || true)"
+echo "  ${TB:-（CMakeCache.txt 里没有这些键）}"
+for f in "$BUILD"/CMakeFiles/TblGen* "$BUILD"/utils/TableGen/*.cmake; do
+  [ -f "$f" ] && grep -hoE 'set\(LLVM_TABLEGEN[A-Z_]* "?[^")]+' "$f" 2>/dev/null | head -4
+done | sort -u | sed 's/^/    /'
+ls -la "$BUILD/NATIVE/bin" 2>/dev/null | head -4 | sed 's/^/    /' || echo "    （NATIVE/bin 还没建）"
+
 note "开始编（$JOBS 作业）—— 这一步在 CI 上要几十分钟到数小时"
 cmake --build "$BUILD" -j"$JOBS" \
   > "$WORK/build.log" 2>&1 \
