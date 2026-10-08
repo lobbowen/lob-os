@@ -62,7 +62,7 @@ object RuntimeEnvironment {
             joinPath(
                 root.prefixBin.absolutePath,
                 root.nodeBin?.parentFile?.absolutePath,
-                NodeProvisioner.globalBin(root.home).absolutePath,
+                NodeProvisioner.globalBin(ctx).absolutePath,
                 inheritedPath,
             )
         )

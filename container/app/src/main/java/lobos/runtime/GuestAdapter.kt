@@ -45,7 +45,7 @@ object GuestAdapter {
                 "NODE_PATH",
                 listOf(
                     File(i.programDir, "node_modules"),
-                    NodeProvisioner.globalNodeModules(i.root.home),
+                    NodeProvisioner.globalNodeModules(i.root.ctx),
                 ).joinToString(File.pathSeparator) { it.absolutePath }
             )
             put("LOBOS_ANDROID", "1")
