@@ -4,8 +4,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname, '..');
-const SRC = path.join(ROOT, 'scripts', 'cache-key.sh');
+const ROOT = path.resolve(__dirname, '..', '..');
+const SRC = path.join(ROOT, 'scripts', 'toolchain', 'cache-key.sh');
 
 let src;
 try {
@@ -25,13 +25,13 @@ const branches = body[0].split(';;');
 
 const out = [];
 for (const br of branches) {
-  const m = /([a-z0-9_|-]+)\)\s*echo\s+"(base|rt|tool)"\s*$/.exec(br.trim());
+  const m = /([a-z0-9_|-]+)\)\s*echo\s+"(base|rt|tool|lib)"\s*$/.exec(br.trim());
   if (m) { out.push({ name: m[1], bucket: m[2] }); continue; }
 
   const bad = /([a-z0-9_|-]+)\)\s*echo\s+"([^"]*)"\s*$/.exec(br.trim());
   if (bad) {
-    console.error('::error title=筐名不在三筐里::bucket_for() 的 ' + bad[1] + ' 落到了筐 "'
-      + bad[2] + '" —— 三筐只有 base / rt / tool');
+    console.error('::error title=筐名不在四筐里::bucket_for() 的 ' + bad[1] + ' 落到了筐 "'
+      + bad[2] + '" —— 四筐只有 base / rt / tool / lib');
     process.exit(1);
   }
 }

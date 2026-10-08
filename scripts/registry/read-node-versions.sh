@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-F="$HERE/node-versions.json"
+F="$HERE/../node-versions.json"
 key="${1:?usage: read-node-versions.sh <key>}"
 
 if command -v node >/dev/null 2>&1; then

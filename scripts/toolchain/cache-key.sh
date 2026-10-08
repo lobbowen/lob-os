@@ -38,10 +38,26 @@ deps_for() {
     node|npm|pnpm) echo "" ;;
     llvmtoolchain) echo "llvm" ;;
     bash|rg|busybox) echo "build-apk-only" ;;
+    # 库自身：编它要的东西就是它自己与工具链
+    zlib)        echo "zlib" ;;
+    openssl)     echo "openssl" ;;
+    crypto)      echo "openssl" ;;
+    libcxx)      echo "" ;;
+    # deps 是「那三个库一起编」的产物名（build-shared-deps.sh 的输出）
+    deps)        echo "openssl zlib curl" ;;
     *) die ;;
   esac
 }
 
+# 四个筐：
+#   base 基础环境件 —— 系统运转离不开的
+#   rt   运行时—— 程序靠它跑
+#   tool 工具       —— 人用的命令行工具
+#   lib  库         —— 静态/动态库，给上面那些件编的时候链进去
+#
+# 库这一筐是新加的：zlib / openssl(crypto) / curl / libcxx 以前只是
+#「编某件时的中间产物」，每次编git 都要重编一遍 zlib+openssl+curl。
+# 它们本身就是基础件，且未来会不断增加 —— 与环境件不同类，单独立筐。
 bucket_for() {
   case "$1" in
     sysroot)                                       echo "base" ;;
@@ -49,6 +65,7 @@ bucket_for() {
     node|python3)                                  echo "rt" ;;
     git|sqlite3|npm|pnpm|llvmtoolchain)            echo "tool" ;;
     make|cmake|pkg-config)                         echo "tool" ;;
+    zlib|openssl|crypto|libcxx|deps)               echo "lib" ;;
     *) die ;;
   esac
 }
