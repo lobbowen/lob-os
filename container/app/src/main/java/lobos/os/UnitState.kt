@@ -39,7 +39,7 @@ object UnitState {
         /** BAD_SETTING —— 定义读了但某个必填设置解不开（对应我们的 invalid 非空） */
         BAD_SETTING("bad-setting"),
 
-        /** ERROR —— 装载过程出错 */
+        /** ERROR —— 装载过程出错（读定义时抛异常那一类） */
         ERROR("error"),
 
         /** MASKED —— 被配置文件 mask 掉（`/dev/null -> unit`） */
@@ -192,19 +192,4 @@ object UnitState {
      * is active」。
      */
     fun isActive(active: Active): Boolean = active == Active.ACTIVE
-
-    /** is-failed 的判据 —— systemctl(1)：「is in the "failed" state」 */
-    fun isFailed(active: Active): Boolean = active == Active.FAILED
-
-    /**
-     * 三列合成一行 —— systemctl list-units 的输出形状。
-     * 供面板显示，一个入口给全部三列（不是分别查三处）。
-     */
-    fun rowOf(entry: UnitEntry?, processAlive: Boolean, healthy: Boolean): Triple<Load, Active, Sub> {
-        val load = loadOf(entry)
-        if (load == Load.NOT_FOUND) return Triple(Load.NOT_FOUND, Active.INACTIVE, Sub.DEAD)
-        val e = entry!!
-        val active = activeOf(e, processAlive)
-        return Triple(load, active, subOf(e, processAlive, healthy))
-    }
 }

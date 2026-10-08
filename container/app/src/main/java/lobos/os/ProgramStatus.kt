@@ -112,16 +112,20 @@ object ProgramStatusHub {
     }
 
     fun statusOf(ctx: Context, id: String): ProgramStatus {
-        val entry = ProgramIndex.all(ctx).firstOrNull { it.id == id && it.level == Level.PROGRAM }
+        val entry = ProgramIndex.get(ctx, id)?.takeIf { it.level == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
-        val running = runningIds.contains(id)
+        // 「进程在不在」问**账本**，不读SupervisorPool 的内存集合 ——
+        // systemd 的 ActiveState 由 cgroup（内核的账）算出，不是某个守护者的记忆。
+        // 账本带 starttime，能防 pid 复用（Linux 自己也这么做）。
+        val running = entry != null && entry.pid > 0 &&
+            ProcessLedger.isOwnedAlive(entry.pid, entry.starttime)
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null
         val prev = lastState[id]
         // 三列的判据全是事实：注册表那一条 + 进程账本 + 探活结果
         //（systemd 的 ActiveState 也是这么算的，不额外存一个状态）
-        val unit = ProgramIndex.get(ctx, id)
+        val unit = entry
         val healthy = running && !detail.startsWith("!")
         val load = UnitState.loadOf(unit ?: if (installed) ProgramIndex.empty(id, false) else null)
         val active = UnitState.activeOf(

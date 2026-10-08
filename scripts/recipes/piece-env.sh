@@ -36,8 +36,26 @@ die() {
 if [ -z "${CC:-}" ]; then
   [ -f "$ROOT_DIR/scripts/toolchain/locate-ndk.sh" ] \
     || die "缺 CC" "环境里没有 CC，也没有 scripts/toolchain/locate-ndk.sh"
-  # shellcheck disable=SC1091
-  source "$ROOT_DIR/scripts/toolchain/locate-ndk.sh"
+  # ★ 用子进程跑，不 source ——
+  #   locate-ndk.sh 里有 exit 1 与 set -euo pipefail；
+  #   source 它会终止父进程并污染 set 选项（实测过）。
+  #
+  #   它把 CC/NDK 等写进 $GITHUB_ENV（不是 stdout），所以跑完从那个文件读回来。
+  #   GitHub Actions 会把该文件的内容注入后续步骤的环境 —— 我们手动做同一件事。
+  _GHE="$(mktemp)"
+  GITHUB_ENV="$_GHE" bash "$ROOT_DIR/scripts/toolchain/locate-ndk.sh" \
+    || die "定位 NDK 失败" "locate-ndk.sh 没跑通（见上面的输出）"
+  # 只取我们需要的几个键
+  local _k _v
+  while IFS="=" read -r _k _v; do
+    case "$_k" in
+      CC|CXX|NDK|LLVM_AR|LLVM_RANLIB|LLVM_STRIP|LLVM_READELF|TRIPLE)
+        printf -v "$_k" "%s" "$_v"
+        export "$_k"
+        ;;
+    esac
+  done < "$_GHE"
+  rm -f "$_GHE"
 fi
 [ -n "${CC:-}" ] || die "定位不到 NDK 的 clang" "CC 为空"
 

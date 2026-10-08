@@ -141,9 +141,6 @@ object ProcessLedger {
         }
         0
     }.getOrDefault(0)
-
-    fun exists(pid: Int): Boolean = statFields(pid) != null
-
     fun isOwnedAlive(pid: Int, starttime: Long): Boolean {
         if (pid <= 0 || starttime <= 0) return false
         return starttimeOf(pid) == starttime
@@ -217,8 +214,6 @@ object ProcessLedger {
     }
 
     @Synchronized
-    fun clear(ctx: Context) = persist(ctx, emptyList())
-
     fun liveOwned(ctx: Context): List<Entry> =
         list(ctx).filter { isOwnedAlive(it.pid, it.starttime) }
 

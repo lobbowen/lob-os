@@ -50,15 +50,6 @@ object QuickAppRegistry {
         return true
     }
 
-    fun unregister(ctx: Context, id: String) {
-        ProgramIndex.mutate(ctx, id) { e ->
-            e.edited(
-                uiPackage = "", uiName = "", uiIcon = "", onUiClosed = "",
-                httpPort = 0, httpHealth = "",
-            )
-        }
-    }
-
     fun listed(ctx: Context): List<UnitEntry> =
         ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.PROGRAM && it.uiPackage.isNotBlank() }
 
