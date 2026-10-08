@@ -197,7 +197,6 @@ object AdbClientRunner {
         }
         val adbDir = File(context.filesDir, "adb").apply { if (!exists()) mkdirs() }
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath, "serve")
-        args += listOf("--migrate-from", File(context.filesDir, "supervisor/adb").absolutePath)
         val spawned = ProcessSupervisor.spawn(
             command = args,
             cwd = context.filesDir,
@@ -241,7 +240,6 @@ object AdbClientRunner {
 
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath)
         args += subArgs
-        args += listOf("--migrate-from", File(context.filesDir, "supervisor/adb").absolutePath)
 
         return try {
             val p = ProcessSupervisor.spawn(

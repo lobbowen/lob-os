@@ -263,16 +263,6 @@ object ProgramOtaUpdater {
             if (f.isFile) JSONObject(f.readText()) else null
         } catch (_: Throwable) { null }
         if (scoped != null) return scoped
-        val legacy = legacyStateFile(context)
-        val old = try {
-            if (legacy.isFile) JSONObject(legacy.readText()) else null
-        } catch (_: Throwable) { null } ?: return JSONObject()
-        val moved = JSONObject().apply {
-            old.optLong("lastSequence", 0L).takeIf { it > 0L }?.let { put("lastSequence", it) }
-            old.optLong("pendingSequence", 0L).takeIf { it > 0L }?.let { put("pendingSequence", it) }
-        }
-        if (moved.length() > 0) saveState(context, cfg, programId, moved)
-        return moved
     }
 
     private fun saveState(context: Context, cfg: Config, programId: String, o: JSONObject) {
@@ -281,10 +271,9 @@ object ProgramOtaUpdater {
         } catch (_: Throwable) { }
     }
 
-    private fun legacyStateFile(context: Context) = File(context.filesDir, "program-feed-state.json")
 
     private fun installId(context: Context): String {
-        val f = File(context.filesDir, "program-feed-install.json")
+        val f = File(SystemDirs.etc(context), "install-id.json")
         val st = try {
             if (f.isFile) JSONObject(f.readText()) else JSONObject()
         } catch (_: Throwable) { JSONObject() }

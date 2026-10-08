@@ -7,7 +7,6 @@ import lobos.os.Desired
 import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
-import lobos.os.ProgramMigration
 
 object BootReconciler {
 
@@ -42,7 +41,6 @@ object BootReconciler {
     }
 
     fun run(ctx: Context): Report {
-        ProgramMigration.run(ctx)
         val temps = StateFiles.cleanTemps(ctx, TMP_MIN_AGE_MS)
         val parts = StateFiles.cleanParts(ctx, PART_MAX_AGE_MS)
         val abandoned = TaskRegistry.abandonRunning(ctx, "boot-reconcile")

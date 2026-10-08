@@ -107,9 +107,8 @@ object ProgramOtaSelfCheck {
             val selfCheckSlug = (cfg.channel + "-" + selfCheckTarget)
                 .replace(Regex("[^A-Za-z0-9._-]"), "_")
             val scoped = File(ctx.filesDir, "program-feed-state-" + selfCheckSlug + ".json")
-            val legacy = File(ctx.filesDir, "program-feed-state.json")
             val st = try {
-                val f = if (scoped.isFile) scoped else legacy
+                val f = scoped
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val installSt = try {
