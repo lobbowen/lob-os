@@ -36,5 +36,5 @@ SO="$(ls "$OUT_DIR"/lib/libz.so* 2>/dev/null | head -1)"
 [ -n "$SO" ] || die "zlib 没产出共享库" "$OUT_DIR/lib 下没有 libz.so*"
 
 # 落位：库 → usr/lib/<id>/<版本>/lib/，并建 usr/lib/libz.so 全局软链
-land_piece zlib "$(basename "$SO")" 1000
+land_piece zlib "$SO" 1000
 echo "[ok] zlib 是共享库（不是静态链进别的二进制）"

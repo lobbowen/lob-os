@@ -106,14 +106,36 @@ gen_meta() {
 # 落位一件：拷进 jniLibs + 说明同落。
 #   land_piece <件名> <.so 文件名> [最低字节数]
 # 产物与说明同名成对 —— 内核扫到 *.meta.json 就知道该铺什么。
+# land_piece <件名> <产物文件名|完整路径> [最小字节]
+  # 产物可以是 $WORK 下的（自写 C 那几件直接编在那儿），
+  # 也可以给完整路径（autotools 那几件 make install 装到 $OUT_DIR/lib/ 下）。
 land_piece() {
   local id="$1" so="$2" min="${3:-1000}"
-  local built="$WORK/$so"
-  [ -f "$built" ] || die "产物不存在" "$built"
+  local built="$so"
+  [ -f "$built" ] || built="$WORK/$so"
+  [ -f "$built" ] || die "产物不存在" "$so（也不在 $WORK/ 下）"
   check_so "$built" "$min" || die "产物不可用" "$built（不是 aarch64 ELF，或小于 $min 字节）"
-  cp -f "$built" "$JNI/$so"
+
+  # ★ 共享库有三层链：libz.so → libz.so.1 → libz.so.1.3.2
+  #   linker 运行时找的是**带 SONAME 的那个**（libz.so.1），
+  #   而 ls | head -1 只会拿到无版本的那个（libz.so）。
+  #   所以要把**同目录下整条链**都拷过去，只拷一个会运行时找不到。
+  #   依据：ldconfig(8) 对 libfoo.so → libfoo.so.1 → libfoo.so.1.12 建链。
+  local dir base
+  dir="$(dirname "$built")"; base="$(basename "$built")"
+  if [ -L "$built" ] || ls "$dir/$base".* >/dev/null 2>&1; then
+    local f
+    for f in "$dir/$base" "$dir/$base".*; do
+      [ -e "$f" ] || continue
+      cp -f "$f" "$JNI/$(basename "$f")" 2>/dev/null \
+        || cp -Pf "$f" "$JNI/$(basename "$f")" 2>/dev/null || true
+    done
+    echo "  （共享库整条链："$(ls "$dir/$base" "$dir/$base".* 2>/dev/null | wc -l)"个文件 → $JNI/）"
+  else
+    cp -f "$built" "$JNI/$base"
+  fi
   gen_meta "$id" > /dev/null
-  cp -f "$WORK/component-meta.json" "$JNI/$so$META_SUFFIX" \
+  cp -f "$WORK/component-meta.json" "$JNI/$(basename "$built")$META_SUFFIX" \
     || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
   echo "[ok] $id → $JNI/$so（+ 说明）"
 }

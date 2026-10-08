@@ -35,5 +35,5 @@ mkdir -p "$OUT_DIR/lib"
 cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"
 chmod +x "$OUT_DIR/lib/liblobosjq.so"
 
-land_piece jq liblobosjq.so 300000
+land_piece jq "$OUT_DIR/lib/liblobosjq.so" 300000
 echo "[ok] jq 落位（可执行件，落usr/lib/jq/<版本>/bin/）"
