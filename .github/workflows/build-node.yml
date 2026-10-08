@@ -51,6 +51,7 @@ jobs:
             echo "revision=0" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "[resolve] 校验轮（ref=${GITHUB_REF}）：只构建与对账，不投递"
+          fi
 
   build:
     needs: resolve
