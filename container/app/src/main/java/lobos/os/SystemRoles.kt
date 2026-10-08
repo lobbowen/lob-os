@@ -73,6 +73,21 @@ object SystemRoles {
      * 「是不是件」由它自己的 role 决定（注册表声明），不靠包外清单的 kind字符串：
      * 换一份清单不该改变「它落哪」。
      */
+    /**
+     * 某个件的**可执行件/库文件本身**在落位的哪 ——
+     * 落位在 usr/lib/<id>/（库）或 usr/bin/（入口）下，按件自己声明的 role 与名字找。
+     *
+     * 内核要用某件时问这里，不要在数据结构里存「那个件的路径」——
+     * 存一份就等于把「某一件」写进了机制。
+     */
+    fun pieceFile(ctx: Context, id: String): File? {
+        val e = lobos.pieces.PieceRegistry.of(id) ?: return null
+        val name = e.landingName
+        val f = if (isEntry(e)) File(SystemDirs.bin(ctx), name)
+                else File(SystemDirs.pieceDir(ctx, id), name)
+        return f.takeIf { it.isFile }
+    }
+
     fun pieceDirFor(ctx: Context, id: String): File? {
         val e = lobos.pieces.PieceRegistry.of(id) ?: return null
         val dir = if (isEntry(e)) SystemDirs.bin(ctx).parentFile else SystemDirs.pieceDir(ctx, id)

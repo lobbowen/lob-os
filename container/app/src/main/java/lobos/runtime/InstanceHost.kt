@@ -380,6 +380,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
                     root = lobos.os.RuntimeEnvironment.treeRootFor(this, env),
+                    nodeBin = requireNotNull(lobos.runtime.InstalledRuntime.binOf(this, "node")) {
+                        "node 运行时未安装 —— 程序要用它起（" +
+                            lobos.runtime.InstalledRuntime.notInstalledHint(this, "node") + "）"
+                    },
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),

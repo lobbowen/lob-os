@@ -7,6 +7,8 @@ object GuestAdapter {
 
     data class ProgramInputs(
         val root: RuntimeEnvironment.TreeRoot,
+        /** node 这个件的可执行件在哪 —— 构造它的调用方按需给出 */
+        val nodeBin: File,
         val programDir: File,
         val programEntry: File,
         val uiDir: File,
@@ -29,7 +31,7 @@ object GuestAdapter {
     const val BRIDGE_SOCKET = "lobos_hostbridge"
 
     fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan = BootPlan(
-        command = listOf(requireNotNull(i.root.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args,
+        command = listOf(requireNotNull(i.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args,
         cwd = i.programDir,
         env = buildMap {
             put("LOBOS_BRIDGE_SOCKET", socket)

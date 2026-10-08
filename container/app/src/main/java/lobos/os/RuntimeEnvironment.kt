@@ -11,7 +11,6 @@ import java.io.File
 object RuntimeEnvironment {
 
     data class Snapshot(
-        val nodeBin: File?,
         val prefixReady: List<String>,
         val prefixMissing: List<String>,
     ) {
@@ -22,15 +21,19 @@ object RuntimeEnvironment {
     @Volatile private var lastSupplyAt = 0L
     private val supplyThrottleMs = 10 * 60 * 1000L
 
+    /**
+     * 进程环境 —— **只含系统面，不含任何具体的件**。
+     *
+     * 此前这里有 nodeBin / shellBin / posixShim 三个字段，那是把「某一件」
+     * 写进了环境数据结构：换一件命令解释器或运行时就得改这个 data class。
+     * 现在它们由 [SystemRoles] 按角色提供 —— 要用就问它，别在环境里存一份。
+     */
     data class TreeRoot(
         val home: File,
         val tmpDir: File,
-        val nodeBin: File?,
         val nativeLibDir: String,
         val prefixRoot: File,
         val prefixBin: File,
-        val shellBin: File?,
-        val posixShim: File? = null,
     )
 
     val RESERVED_ENV: Set<String> = setOf(
@@ -52,16 +55,16 @@ object RuntimeEnvironment {
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
         put("LD_LIBRARY_PATH", root.nativeLibDir)
-        root.nodeBin?.let { put("NODE_BIN", it.absolutePath) }
+        InstalledRuntime.binOf(ctx, "node")?.let { put("NODE_BIN", it.absolutePath) }
         put(
             "PATH",
             joinPath(
                 root.prefixBin.absolutePath,
-                root.nodeBin?.parentFile?.absolutePath,
+                InstalledRuntime.binOf(ctx, "node")?.parentFile?.absolutePath,
                 inheritedPath,
             )
         )
-        root.posixShim?.let {
+        SystemRoles.pieceFile(ctx, "posix")?.let {
             put("LD_PRELOAD", it.absolutePath)
             put("LOBOS_COMPAT_LOG", lobos.pieces.DriverRegistry.degradeLog(ctx).absolutePath)
         }
@@ -77,7 +80,7 @@ object RuntimeEnvironment {
             put("CURL_CA_BUNDLE", caBundle.absolutePath)
             put("GIT_SSL_CAINFO", caBundle.absolutePath)
         }
-        put("SHELL", root.shellBin?.absolutePath ?: "/system/bin/sh")
+        put("SHELL", SystemRoles.shellBin(ctx)?.absolutePath ?: "/system/bin/sh")
     }
 
     fun joinPath(vararg parts: String?): String =
@@ -87,18 +90,13 @@ object RuntimeEnvironment {
             .distinct()
             .joinToString(File.pathSeparator)
 
-    fun treeRootFor(ctx: Context): TreeRoot = treeRootFor(ctx, ensure(ctx))
 
-    fun treeRootFor(ctx: Context, s: Snapshot): TreeRoot = TreeRoot(
+    fun treeRootFor(ctx: Context): TreeRoot = TreeRoot(
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
-        nodeBin = InstalledRuntime.binOf(ctx, "node") ?: s.nodeBin,
         nativeLibDir = libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
-        shellBin = SystemRoles.shellBin(ctx),
-        posixShim = File(ctx.applicationInfo.nativeLibraryDir, PieceRegistry.libNameOf("posix"))
-            .takeIf { it.isFile },
     )
 
     fun libSearchPath(ctx: Context): String {
@@ -149,6 +147,5 @@ object RuntimeEnvironment {
             )
         }
 
-        val nodeBin = InstalledRuntime.binOf(ctx, "node")
     }
 }
