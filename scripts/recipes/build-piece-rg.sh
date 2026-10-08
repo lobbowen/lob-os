@@ -8,7 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" rg
 
 if ! command -v cargo >/dev/null 2>&1; then
   echo "[rg] runner 无 cargo，装最小 rustup"
-  curl -fsSf https://sh.rustup.rs -o /tmp/rustup.sh && sh /tmp/rustup.sh -y --profile minimal >/dev/null 2>&1
+  curl -fsSf https://sh.rustup.rs -o $WORK/rustup.sh && sh $WORK/rustup.sh -y --profile minimal >/dev/null 2>&1
   export PATH="$HOME/.cargo/bin:$PATH"
 fi
 rustup target add aarch64-linux-android >/dev/null 2>&1 \
@@ -30,12 +30,12 @@ RG_VER="$(node -e '
   process.stdout.write(String(s.version));
 ' "$ROOT_DIR/scripts/component-sources.json")" || die "取不到 ripgrep 版本" "看 scripts/component-sources.json 的 sources.ripgrep"
 
-rm -rf /tmp/rgbin
-cargo install --locked --version "$RG_VER" ripgrep --target aarch64-linux-android --root /tmp/rgbin \
-  > /tmp/rg-build.log 2>&1 \
-  || { tail -30 /tmp/rg-build.log >&2; die "ripgrep 编译失败" "日志 /tmp/rg-build.log"; }
+rm -rf $WORK/rgbin
+cargo install --locked --version "$RG_VER" ripgrep --target aarch64-linux-android --root $WORK/rgbin \
+  > $WORK/rg-build.log 2>&1 \
+  || { tail -30 $WORK/rg-build.log >&2; die "ripgrep 编译失败" "日志 $WORK/rg-build.log"; }
 
-cp -f /tmp/rgbin/bin/rg "$WORK/liblobosrg.so"
+cp -f $WORK/rgbin/bin/rg "$WORK/liblobosrg.so"
 [ -x "$WORK/liblobosrg.so" ] || die "rg 产物不可执行" "\$PREFIX/bin/rg 无回退路径"
 land_piece ripgrep liblobosrg.so 300000
 
