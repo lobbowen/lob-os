@@ -106,13 +106,13 @@ object ProgramOtaSelfCheck {
             val selfCheckTarget = km?.programId ?: ids.firstOrNull().orEmpty()
             val selfCheckSlug = (cfg.channel + "-" + selfCheckTarget)
                 .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            val scoped = File(ctx.filesDir, "program-feed-state-" + selfCheckSlug + ".json")
+            val scoped = File(lobos.os.SystemDirs.run(ctx), "ota-state-" + selfCheckSlug + ".json")
             val st = try {
                 val f = scoped
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val installSt = try {
-                val f = File(ctx.filesDir, "program-feed-install.json")
+                val f = File(lobos.os.SystemDirs.etc(ctx), "install-id.json")
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val v = OtaPolicy.evaluate(

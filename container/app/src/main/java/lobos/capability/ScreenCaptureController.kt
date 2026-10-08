@@ -186,7 +186,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
                     put("intentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
                     put("savedAt", System.currentTimeMillis())
                 }
-                lobos.os.StateFiles.writeAtomic(File(ctx.filesDir, GRANT_FILE), obj.toString())
+                lobos.os.StateFiles.writeAtomic(File(lobos.os.SystemDirs.libvar(ctx), GRANT_FILE), obj.toString())
             } catch (e: Throwable) {
                 Log.w(TAG, "保存截屏授权失败", e)
             }
@@ -194,7 +194,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
 
         fun loadGrant(ctx: Context): Pair<Int, Intent>? {
             return try {
-                val f = File(ctx.filesDir, GRANT_FILE)
+                val f = File(lobos.os.SystemDirs.libvar(ctx), GRANT_FILE)
                 if (!f.exists()) return null
                 val obj = org.json.JSONObject(f.readText())
                 val bytes = android.util.Base64.decode(obj.getString("intentBase64"), android.util.Base64.DEFAULT)

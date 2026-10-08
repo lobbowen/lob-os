@@ -78,7 +78,7 @@ object DriverRegistry {
         return File(d, "compat-degradations.json")
     }
 
-    fun degradeLog(ctx: Context): File = File(ctx.filesDir, "os/compat-degrade.log")
+    fun degradeLog(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), "compat-degrade.log")
 
     fun degradations(ctx: Context): List<Entry> {
         val root = StateFiles.readJson(ledgerFile(ctx)) ?: return emptyList()

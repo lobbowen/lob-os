@@ -41,7 +41,7 @@ object ProgramOtaUpdater {
     )
 
     fun loadConfig(context: Context): Config? {
-        val devCfg = File(context.filesDir, CONFIG_ASSET)
+        val devCfg = File(lobos.os.SystemDirs.etc(context), "channel.json")
         if (devCfg.isFile) {
             val fromDevice = parseConfig(readTextOrNull(devCfg))
             if (fromDevice != null) {
@@ -228,7 +228,7 @@ object ProgramOtaUpdater {
 
     private fun stateFile(context: Context, cfg: Config, programId: String): File {
         val slug = (cfg.channel + "-" + programId).replace(Regex("[^A-Za-z0-9._-]"), "_")
-        return File(context.filesDir, "program-feed-state-" + slug + ".json")
+        return File(lobos.os.SystemDirs.run(context), "ota-state-" + slug + ".json")
     }
 
     fun promotePendingSequence(context: Context, cfg: Config, programId: String) {

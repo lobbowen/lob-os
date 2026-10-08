@@ -18,7 +18,7 @@ object ProvisioningProbe {
 
     const val SNAPSHOT = "provisioning.json"
 
-    fun snapshotFile(ctx: Context): File = File(ctx.filesDir, SNAPSHOT)
+    fun snapshotFile(ctx: Context): File = File(lobos.os.SystemDirs.libvar(ctx), SNAPSHOT)
 
     fun snapshot(ctx: Context): JSONObject? = runCatching {
         val f = snapshotFile(ctx)

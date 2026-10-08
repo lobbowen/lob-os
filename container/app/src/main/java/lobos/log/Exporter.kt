@@ -72,6 +72,6 @@ object Exporter {
     }
 
     private fun nodeErrText(ctx: Context): String = runCatching {
-        File(ctx.filesDir, lobos.RuntimeDiagnostics.NODE_ERR_FILE).readText()
+        lobos.RuntimeDiagnostics.nodeErrFile(ctx).readText()
     }.getOrDefault("")
 }

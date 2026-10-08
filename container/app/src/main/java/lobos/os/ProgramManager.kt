@@ -88,7 +88,7 @@ object ProgramManager {
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
     fun relStateDir(id: String, kind: String): String =
-        if (kind.trim().uppercase() == "INFRA") "" else ProgramRegistry.PROGRAMS_DIR + "/" + id
+        if (kind.trim().uppercase() == "INFRA") "" else SystemDirs.REL_OPT + "/" + id
 
     fun probe(ctx: Context, e: IndexEntry): Reality {
         if (e.level == Level.INFRA) {

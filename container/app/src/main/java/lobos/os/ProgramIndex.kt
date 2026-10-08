@@ -76,7 +76,7 @@ object ProgramIndex {
         return File(d, FILE)
     }
 
-    fun root(ctx: Context): File = File(ctx.filesDir, "sys")
+    fun root(ctx: Context): File = SystemDirs.libvar(ctx)
 
     fun safeSegment(raw: String): String? {
         val v = raw.trim()

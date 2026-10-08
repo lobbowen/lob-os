@@ -99,11 +99,11 @@ object KillAudit {
         r.atMs > cursor.first || (r.atMs == cursor.first && r.pid > cursor.second)
 
     private fun readCursor(ctx: Context): Pair<Long, Int> = runCatching {
-        val parts = File(ctx.filesDir, CURSOR_FILE).readText().trim().split(" ")
+        val parts = File(lobos.os.SystemDirs.run(ctx), CURSOR_FILE).readText().trim().split(" ")
         (parts.getOrNull(0)?.toLongOrNull() ?: 0L) to (parts.getOrNull(1)?.toIntOrNull() ?: 0)
     }.getOrDefault(0L to 0)
 
     private fun writeCursor(ctx: Context, newest: ExitRecord) {
-        runCatching { StateFiles.writeAtomic(File(ctx.filesDir, CURSOR_FILE), "${newest.atMs} ${newest.pid}") }
+        runCatching { StateFiles.writeAtomic(File(lobos.os.SystemDirs.run(ctx), CURSOR_FILE), "${newest.atMs} ${newest.pid}") }
     }
 }

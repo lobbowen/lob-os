@@ -12,11 +12,11 @@ object PathGuard {
         SystemDirs.run(ctx),
         SystemDirs.opt(ctx),
         ProgramRegistry.programRoot(ctx),
-        File(ctx.filesDir, "sys"),
-        File(ctx.filesDir, "adb"),
-        File(ctx.filesDir, ".npmrc"),
-        File(ctx.filesDir, "program-verify.js"),
-        File(ctx.filesDir, "runtime.json"),
+        SystemDirs.libvar(ctx),
+        File(SystemDirs.libvar(ctx), "adb"),
+        File(SystemDirs.etc(ctx), "npmrc"),
+        File(SystemDirs.etc(ctx), "program-verify.js"),
+        File(SystemDirs.etc(ctx), "runtime.json"),
     )
 
     fun rejection(ctx: Context, path: String?): String? {

@@ -24,6 +24,12 @@ import java.io.File
  */
 object SystemDirs {
 
+    /**
+     * 相对 `filesDir` 的可执行件目录名 —— 注册表里 `stateDir` 存的是相对值
+     * （换存储位置时不用重写整张表），所以这个常量要与 [opt] 保持一致。
+     */
+    const val REL_OPT = "opt"
+
     fun etc(ctx: Context): File = File(ctx.filesDir, "etc")
 
     fun usr(ctx: Context): File = File(ctx.filesDir, "usr")
@@ -37,7 +43,7 @@ object SystemDirs {
 
     fun run(ctx: Context): File = File(ctx.filesDir, "run")
 
-    fun opt(ctx: Context): File = File(ctx.filesDir, "opt")
+    fun opt(ctx: Context): File = File(ctx.filesDir, REL_OPT)
 
     /** 库的落位：`lib/<id>/`（件的内含物在 `<版本>/` 下面） */
     fun pieceDir(ctx: Context, id: String): File = File(lib(ctx), id)

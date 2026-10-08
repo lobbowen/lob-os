@@ -58,7 +58,7 @@ object StateFiles {
 
     fun writeFailures(ctx: android.content.Context): List<String> =
         runCatching {
-            val f = File(File(ctx.filesDir, LEDGER_DIR), FAILED_FILE)
+            val f = File(SystemDirs.log(ctx), FAILED_FILE)
             if (!f.isFile) emptyList() else f.readText().split("\n").filter { it.isNotBlank() }
         }.getOrDefault(emptyList())
 

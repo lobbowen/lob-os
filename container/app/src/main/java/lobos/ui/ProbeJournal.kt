@@ -18,7 +18,7 @@ object ProbeJournal {
     @Volatile var codeReceivedAt: Long = 0L
     @Volatile var deepLinkEmittedAt: Long = 0L
 
-    fun file(ctx: Context): File = File(ctx.filesDir, FILE)
+    fun file(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), FILE)
 
     @Synchronized
     fun append(ctx: Context, tag: String, message: String) {

@@ -9,7 +9,7 @@ import java.io.File
 object CapabilityCriteria {
 
     fun credentialsState(ctx: Context): CredentialsState {
-        val dir = File(ctx.filesDir, "adb")
+        val dir = File(lobos.os.SystemDirs.libvar(ctx), "adb")
         val paired = File(dir, "state.json").isFile && File(dir, "adbkey.pem").isFile
         return if (paired) CredentialsState.PAIRED else CredentialsState.NO_KEY
     }
