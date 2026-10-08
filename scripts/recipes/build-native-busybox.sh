@@ -119,16 +119,25 @@ answers() {
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
-# ── 关掉「include 了 NDK 没有的头」的 applet ──────────────────────
+# ── 关掉「无条件 include 了 NDK 没有的头」的 applet ────────────────
 # busybox 有一批 applet 直接 include 内核 uapi 头（<sys/kd.h> <linux/fs.h>
 # <linux/pkt_sched.h> …）。NDK 只提供 libc 头，内核 uapi 头在 Linux 内核
 # 源码树的 include/uapi 里，NDK 不提供，于是编不过：
 #   console-tools/loadfont.c:59:10: fatal error: 'sys/kd.h' file not found
 #   networking/tc.c:…: fatal error: 'linux/pkt_sched.h' file not found
 #
-# 判据是「**NDK sysroot 里到底有没有这个头**」，不是按 sys//linux 前缀分 ——
-# NDK 的 libc 头本来就是 sys/*.h 布局，两者都有例外。逐个问 sysroot 最可靠，
-# 判据也跟着 NDK 版本走。
+# 判据一：问「**NDK sysroot 里到底有没有这个头**」，不按 sys//linux 前缀分 ——
+#   NDK 的 libc 头本来就是 sys/*.h 布局，两者都有例外。逐个问 sysroot
+#   最可靠，判据也跟着 NDK 版本走。
+#
+# 判据二：只看**无条件**的 include（这一步是上一轮踩坑补上的）——
+#   busybox 把依赖 applet 的 include 包在条件编译里：
+#     libbb/xconnect.c:14   #if ENABLE_IFPLUGD || ENABLE_UEVENT
+#     libbb/xconnect.c:15   #include <linux/netlink.h>
+#   关掉那个 applet，这段 include 根本不编。不看这一层就会从 libbb
+#   （**所有 applet 共享**的基础设施）身上扒出一堆配置项，
+#   把一大票 applet 连带关掉 —— 上一轮就把 DF/PS 关了，
+#   它们只是恰好在 libbb 的条件依赖里，自己并不缺头。
 #
 # 为什么用脚本算而不是手写名单：
 #   名单会随 busybox 版本漂移 —— 漏一个就编不过，多关一个是我们白丢能力。
@@ -169,14 +178,22 @@ NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE"
 MISSING_APPLES="$($SCAN "$SRC" "$NDK_INC")" || {
   echo "=== 缺头的 .c 有，但认不出对应的配置项（取证）==="
   $SCAN "$SRC" "$NDK_INC" --list | sed -n '1,40p'
-  die "认不出该关哪个 applet" "上面这些 .c include 了 NDK 没有的头，但源码里没有 //config: / applet 标记 —— 判据与这版源码对不上，按取证补"
+  die "认不出该关哪个 applet" "上面这些 .c 无条件 include 了 NDK 没有的头，但源码里没有 //config: / applet 标记 —— 判据与这版源码对不上，按取证补"
 }
 MISSING_FILES="$($SCAN "$SRC" "$NDK_INC" --list | wc -l)"
 MISSING_HDRS="$($SCAN "$SRC" "$NDK_INC" --headers)"
-echo "[busybox] $MISSING_FILES 个源文件 include 了 NDK 没有的头"
+echo "[busybox] $MISSING_FILES 个源文件无条件 include 了 NDK 没有的头"
 echo "[busybox] 缺的头：$MISSING_HDRS"
-echo "[busybox] 对应配置项：$MISSING_APPLES"
+echo "[busybox] 关掉的配置项（$(echo "$MISSING_APPLES" | wc -w) 个）：$MISSING_APPLES"
 for k in $MISSING_APPLES; do set_conf "$k" n; done
+
+# libbb / libpwdgrp 是**所有 applet 共享**的基础设施，它们缺的头不由 applet
+# 开关决定（关 applet 也不改 libbb 的 .o），所以上面没有据此关任何东西。
+# 这里单独报出来 —— 那些头要么 busybox 自带（ENABLE_SELINUX 之类条件下才用），
+# 要么编译时会走到，届时按报错处理。
+LIBBB="$($SCAN "$SRC" "$NDK_INC" --libbb)"
+[ -n "$LIBBB" ] && echo "[busybox] 共享基础设施里的无条件缺头（不由 applet 开关决定，单列）：" \
+                 && printf '  %s\n' $LIBBB
 
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
