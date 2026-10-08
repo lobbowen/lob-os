@@ -7,14 +7,11 @@ set -uo pipefail
 # shellcheck disable=SC1091
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" posix
 
-SO="$JNI/liblobosposix.so"
 "$CC" -shared -fPIC -O2 \
-  -o "$SO" \
+  -o "$WORK/liblobosposix.so" \
   container/native/d1/link-interpose.c \
   container/native/d1/open-fallback.c \
   container/native/d1/tmp-paths.c \
   container/native/d1/exec-path.c \
-  -ldl \
-  || die "posix 编译失败" "四个源文件见 container/native/d1/"
-check_so "$SO" 500 || die "posix 产物不可用" "$SO"
-echo "[ok] posix → $SO $(wc -c < "$SO") 字节"
+  -ldl || die "posix 编译失败" "四个源文件见 container/native/d1/"
+land_piece posix liblobosposix.so 500

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # 编 flock —— 我们自己写的 C，编成 liblobosflock.so 给程序用。
 #
-# 此前它在 build-native-capabilities.sh 里（一个脚本编 7 个件），
-# 于是 APK 链只能整体调用那个脚本 —— 现场编译。现在每件一个脚本。
-#
+# 依赖 node 头文件（flock.c 是 node addon，用 node_api.h）
 # 依赖 node 头文件（flock.c 是 node addon，用 node_api.h）
 set -uo pipefail
 # shellcheck disable=SC1091
@@ -20,8 +18,6 @@ tar -xJf /tmp/node-headers.tar.xz -C /tmp/node-headers --strip-components=1
 INC=/tmp/node-headers/include/node
 [ -f "$INC/node_api.h" ] || die "头文件异常" "缺 $INC/node_api.h"
 
-SO="$JNI/liblobosflock.so"
-"$CC" -shared -fPIC -O2 -DNAPI_VERSION=9 -I "$INC" -o "$SO" container/native/d2/flock.c \
-  || die "flock 编译失败" "源码 container/native/d2/flock.c"
-check_so "$SO" 1000 || die "flock 产物不可用" "$SO"
-echo "[ok] flock → $SO $(wc -c < "$SO") 字节"
+"$CC" -shared -fPIC -O2 -DNAPI_VERSION=9 -I "$INC" -o "$WORK/liblobosflock.so" \
+  container/native/d2/flock.c || die "flock 编译失败" "源码 container/native/d2/flock.c"
+land_piece flock liblobosflock.so 1000

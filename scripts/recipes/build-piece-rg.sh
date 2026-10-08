@@ -35,12 +35,12 @@ cargo install --locked --version "$RG_VER" ripgrep --target aarch64-linux-androi
   > /tmp/rg-build.log 2>&1 \
   || { tail -30 /tmp/rg-build.log >&2; die "ripgrep 编译失败" "日志 /tmp/rg-build.log"; }
 
-SO="$JNI/liblobosrg.so"
-cp -f /tmp/rgbin/bin/rg "$SO"
-check_so "$SO" 300000 || die "必需件缺失" "liblobosrg.so 未产出 —— glob/grep 依赖 \$PREFIX/bin/rg，无回退路径"
+cp -f /tmp/rgbin/bin/rg "$WORK/liblobosrg.so"
+[ -x "$WORK/liblobosrg.so" ] || die "rg 产物不可执行" "\$PREFIX/bin/rg 无回退路径"
+land_piece ripgrep liblobosrg.so 300000
 
 # 字节身份与钉值表比对（钉表里记的是 crates.io 发布物的 sha256）
-RG_GOT="$(sha256sum "$SO" | cut -d' ' -f1)"
+RG_GOT="$(sha256sum "$WORK/liblobosrg.so" | cut -d' ' -f1)"
 RG_WANT="$(node -e '
   const t = require(process.argv[1]);
   process.stdout.write(String((((t.sources || {}).ripgrep) || {}).sha256 || ""));
@@ -51,4 +51,3 @@ else
   [ "$RG_GOT" = "$RG_WANT" ] || die "ripgrep 字节与钉值表不符" "表里 $RG_WANT / 实际 $RG_GOT"
   echo "[ok] ripgrep 字节与钉值表一致"
 fi
-echo "[ok] rg → $SO $(wc -c < "$SO") 字节"

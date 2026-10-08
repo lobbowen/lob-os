@@ -60,7 +60,6 @@ STUB
   }
 ) || die "bash 编译失败" "日志在 /tmp/bash-configure.log 与 /tmp/bash-make.log"
 
-SO="$JNI/libbash.so"
-cp -f "/tmp/bash-$BASH_VER/bash" "$SO"
-check_so "$SO" 300000 || die "必需件缺失" "libbash.so 未产出 —— \$PREFIX/bin/bash 无回退路径"
-echo "[ok] bash → $SO $(wc -c < "$SO") 字节"
+cp -f "/tmp/bash-$BASH_VER/bash" "$WORK/libbash.so"
+[ -x "$WORK/libbash.so" ] || die "bash 产物不可执行" "\$PREFIX/bin/bash 无回退路径"
+land_piece bash libbash.so 300000

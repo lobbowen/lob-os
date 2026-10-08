@@ -6,20 +6,13 @@ HERE="$(dirname "$0")"
 cd "$HERE/../.."
 ROOT_DIR="$(pwd)"
 
-ABI="${ABI:-arm64-v8a}"
 API="${ANDROID_API:-35}"
 TOOL="busybox"
-OUT="${OUT:-dist}"
-case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
-JOBS="${JOBS:-4}"
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" busybox
 
 BUSYBOX_VER="${BUSYBOX_VER:-1.36.1}"
 
-die() {
-  local title="$1"; shift
-  echo "::error title=$title::$(printf '%s\n' "$@")"
-  exit 1
-}
 note() { echo "[$TOOL] $*"; }
 
 [ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang"
@@ -129,21 +122,22 @@ make -j"$JOBS" > "$WORK/build.log" 2>&1 \
     || { echo "=== make install 失败取证 ==="; tail -30 "$WORK/install.log"; exit 1; }
   [ -x "$WORK/install/bin/busybox" ] || die "make install 没产出 busybox" "$WORK/install/bin/busybox 不存在"
 
-  mkdir -p "$OUT/bin"
-  cp -f "$SRC/busybox" "$OUT/bin/$TOOL"
-  chmod 0755 "$OUT/bin/$TOOL"
+  # 产物与说明成对落进 jniLibs —— 内核扫 *.meta.json 决定铺什么。
+  mkdir -p "$JNI"
+  cp -f "$SRC/busybox" "$JNI/libbusybox.so"
+  chmod 0755 "$JNI/libbusybox.so"
+  node scripts/recipes/gen-component-meta.js busybox "$JNI/libbusybox.so.meta.json"
 
-  # 软链随件一起进 dist/bin/ —— landOne 会把它们铺到
-  # usr/lib/<id>/<版本>/bin/（与本体同目录），再由 usr/bin/<applet> 软链指过来。
-  # 全局入口只有一份，applet 名是 busybox 自己的编译结果，不在我们任何表里。
+  # applet 软链随件一起落：busybox 官方机制 —— make install 自己知道编了哪些
+  # applet，那些软链是它建的。applet 名不在我们任何表里。
+  NAPP=0
   for l in "$WORK/install/bin/"*; do
     [ -L "$l" ] || continue
-    ln -sf busybox "$OUT/bin/$(basename "$l")"
+    ln -sf busybox "$JNI/$(basename "$l")"
+    NAPP=$((NAPP+1))
   done
-  NL=0
-  for l in "$OUT/bin/"*; do [ -L "$l" ] && NL=$((NL+1)); done
-  echo "[$TOOL] 本体 + $NL 个 applet 软链进 dist/bin/（applet 名由 busybox 自己报）"
-BB="$OUT/bin/$TOOL"
+  echo "[$TOOL] 本体 + $NAPP 个 applet 软链进 jniLibs（applet 名由 busybox 自己报）"
+  BB="$JNI/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
 [ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
 "$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true

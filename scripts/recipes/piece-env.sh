@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# 编译单件的公共前置：定位 NDK、准备输出目录、给出校验函数。
+# 编译单件的公共前置：定位 NDK、落位产物、**并把这一件自己的说明一起打进 jniLibs**。
 #
-# 此前这些散在 build-native-capabilities.sh 里，那个脚本一次编 7 个件 ——
-# 于是「加一件」要改一个 300 行脚本的中心段，且 APK 链只能整体调用它
-# （现场编译）。现在每件一个脚本，各自调这里拿前置。
+# 为什么说明要打进 APK：
+#   照抄 deb-control(5)——「Each Debian binary package contains a control file in its
+#   control member」。每个包自带说明，安装器与内核只读落位，不预置任何一件的清单。
+#   内核侧 PrefixProvisioner 扫 jniLibs 里的 *.meta.json 决定铺什么、铺成什么形状。
 #
-# 用法：source scripts/recipes/piece-env.sh <件名>
+# 用法：source scripts/recipes/piece-env.sh <件名>，然后调用 land_piece
 set -uo pipefail
 
 PIECE_NAME="${1:?用法: source piece-env.sh <件名>}"
@@ -17,8 +18,13 @@ cd "$ROOT_DIR"
 
 ABI="${ABI:-arm64-v8a}"
 OUT="${OUT:-dist}"
+case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 JNI="container/app/src/main/jniLibs/$ABI"
-mkdir -p "$ROOT_DIR/$OUT/bin" "$ROOT_DIR/$JNI" "$ROOT_DIR/work"
+WORK="$ROOT_DIR/work/$PIECE_NAME"
+mkdir -p "$OUT/bin" "$ROOT_DIR/$JNI" "$WORK"
+
+# 说明文件名 —— jniLibs 里与件同名，PrefixProvisioner 按 *.meta.json 扫
+META_SUFFIX=".meta.json"
 
 die() {
   local title="$1"; shift
@@ -36,8 +42,6 @@ fi
 [ -n "${CC:-}" ] || die "定位不到 NDK 的 clang" "CC 为空"
 
 TC_DIR="$(dirname "$CC")"
-
-# 静态编译用的工具（同 NDK 那套 llvm-*）
 LLVM_AR="$TC_DIR/llvm-ar"
 LLVM_RANLIB="$TC_DIR/llvm-ranlib"
 LLVM_STRIP="$TC_DIR/llvm-strip"
@@ -61,4 +65,25 @@ check_exe() {
   local f="$1" min="${2:-1000}"
   check_so "$f" "$min" || return 1
   [ -x "$f" ]
+}
+
+# 生成这一件的说明 —— 数据全来自构建期表（component-sources.json / component-verify.json），
+# 这里不硬编码任何一件的信息；数据不齐就报错，不产出半截的说明。
+gen_meta() {
+  node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$1" "$WORK/component-meta.json"
+}
+
+# 落位一件：拷进 jniLibs + 说明同落。
+#   land_piece <件名> <.so 文件名> [最低字节数]
+# 产物与说明同名成对 —— 内核扫到 *.meta.json 就知道该铺什么。
+land_piece() {
+  local id="$1" so="$2" min="${3:-1000}"
+  local built="$WORK/$so"
+  [ -f "$built" ] || die "产物不存在" "$built"
+  check_so "$built" "$min" || die "产物不可用" "$built（不是 aarch64 ELF，或小于 $min 字节）"
+  cp -f "$built" "$JNI/$so"
+  gen_meta "$id" > /dev/null
+  cp -f "$WORK/component-meta.json" "$JNI/$so$META_SUFFIX" \
+    || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
+  echo "[ok] $id → $JNI/$so（+ 说明）"
 }
