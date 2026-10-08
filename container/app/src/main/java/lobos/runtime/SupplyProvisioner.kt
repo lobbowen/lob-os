@@ -23,7 +23,29 @@ object SupplyProvisioner {
 
     fun toolchainDir(ctx: Context): File = File(PrefixProvisioner.libDir(ctx), "toolchain")
 
+    fun versionDir(ctx: Context, id: String, version: String): File =
+        File(File(toolchainDir(ctx), id), version)
+
     fun entryLink(ctx: Context, name: String): File = File(PrefixProvisioner.binDir(ctx), name)
+
+    private fun selectedFile(ctx: Context): File = File(ctx.filesDir, "toolchain-selected.json")
+
+    fun selectedVersion(ctx: Context, id: String, fallback: String = ""): String {
+        val f = selectedFile(ctx)
+        if (!f.isFile) return fallback
+        return runCatching {
+            JSONObject(f.readText()).optString(id, "")
+        }.getOrNull().orEmpty().ifBlank { fallback }
+    }
+
+    fun selectVersion(ctx: Context, id: String, version: String) {
+        val cur = runCatching {
+            val f = selectedFile(ctx)
+            if (f.isFile) JSONObject(f.readText()) else JSONObject()
+        }.getOrNull() ?: JSONObject()
+        cur.put(id, version)
+        selectedFile(ctx).writeText(cur.toString())
+    }
 
     internal fun manifestDir(ctx: Context): String? {
         val o = channelAnchor(ctx) ?: return null

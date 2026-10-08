@@ -13,6 +13,12 @@ SRC_KEY="python"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 
+PY_SLOT="${PY_SLOT:-}"
+if [ -n "$PY_SLOT" ]; then
+  SRC_KEY="python-$PY_SLOT"
+  [ -n "${PY_VERSION:-}" ] || die "缺 PY_VERSION" "给了 PY_SLOT=$PY_SLOT 就必须同时给 PY_VERSION（钉值表的 key 是 $SRC_KEY）"
+fi
+
 die() {
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
@@ -62,6 +68,7 @@ note "宿主 python: $HOST_PY（$HOST_PY_VER，要 $PY_WANT）"
 
 mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$SRC_KEY"
+if [ -n "$PY_SLOT" ]; then WORK="$WORK-$PY_SLOT"; fi
 mkdir -p "$WORK"
 
 SRC_VER="$(bash "$ROOT_DIR/scripts/fetch-pinned.sh" --src-version $SRC_KEY)"
@@ -168,6 +175,8 @@ make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
        echo "  PREFIX=$PREFIX"; tail -30 "$WORK/install.log"; exit 1; }
 
 PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
+LIBROOT="lib"
+if [ -n "$PY_SLOT" ]; then LIBROOT="lib/$PY_SLOT"; fi
 [ -d "$PYDIR" ] || {
   echo "=== $PREFIX/lib 下有什么 ==="; ls -d "$PREFIX"/lib/* 2>/dev/null | head -5
   die "找不到安装后的标准库目录" \
@@ -176,15 +185,15 @@ PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
 [ -f "$PYDIR/os.py" ] || die "标准库目录里没有 os.py" "$PYDIR —— 目录在但内容不对（构建没跑完？）"
 
 rm -rf "$OUT/lib"
-mkdir -p "$OUT/lib"
-cp -a "$PYDIR" "$OUT/lib/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
+mkdir -p "$OUT/$LIBROOT"
+cp -a "$PYDIR" "$OUT/$LIBROOT/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
 
-N_LIB=$(find "$OUT/lib/python${SRC_VER%.*}" -type f | wc -l)
-N_EXT=$(find "$OUT/lib/python${SRC_VER%.*}" -name '*.so' 2>/dev/null | wc -l)
-note "标准库随件: lib/python${SRC_VER%.*}/（$N_LIB 个文件，含 $N_EXT 个扩展模块）"
+N_LIB=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -type f | wc -l)
+N_EXT=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -name '*.so' 2>/dev/null | wc -l)
+note "标准库随件: $LIBROOT/python${SRC_VER%.*}/（$N_LIB 个文件，含 $N_EXT 个扩展模块）"
 [ "$N_EXT" -gt 0 ] || note "提示：扩展模块 0 个 —— 解释器能用，但 _socket/_ssl/ctypes 等不可用"
 
-[ -d "$OUT/lib/python${SRC_VER%.*}/lib-dynload" ] \
+[ -d "$OUT/$LIBROOT/python${SRC_VER%.*}/lib-dynload" ] \
   && note "lib-dynload 在标准库内（形态正确）" \
   || note "提示：lib-dynload 不在标准库内 —— 扩展模块的顶层入口可能找不到"
 

@@ -6,11 +6,13 @@ import org.json.JSONObject
 
 object ManifestSchema {
 
-    const val SCHEMA = 3
+    const val SCHEMA = 4
     const val SOURCE_NAME = "manifest.json"
 
     const val SC_ID = "id"
     const val SC_VERSION = "version"
+  const val SC_VERSIONS = "versions"
+  const val SC_DEFAULT = "default"
     const val SC_ENTRY = "entry"
     const val SC_ARGS = "args"
     const val SC_ENV = "env"

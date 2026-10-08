@@ -64,6 +64,16 @@ object CatalogClient {
     private fun normalize(e: JSONObject): JSONObject {
         if (e.optString("kind", "").isBlank()) e.put("kind", "component")
         if (e.optString("name", "").isBlank()) e.put("name", e.optString("id", ""))
+        if (!e.has("versions")) {
+            val one = JSONObject()
+            val v = e.optString("version", "")
+            if (v.isNotBlank()) one.put("version", v)
+            one.put("url", e.optString("url", ""))
+            one.put("sha256", e.optString("sha256", ""))
+            one.put("entry", e.optString("entry", ""))
+            one.put("default", true)
+            e.put("versions", JSONArray().put(one))
+        }
         return e
     }
 
