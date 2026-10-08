@@ -67,9 +67,8 @@ object ProgramInstallPipeline {
 
         val dir = lobos.os.ProgramManager.stateDirOf(context, spec.programId)
         val reg = lobos.os.ProgramIndex.get(context, spec.programId)
-        val kind = kindOf(context, spec.programId)
         val baseEntry = reg ?: lobos.os.ProgramIndex.empty(
-            spec.programId, lobos.os.ProgramManager.levelOfKind(kind),
+            spec.programId, lobos.os.ProgramManager.levelOf(context, spec.programId),
         )
         val declared = runCatching {
             lobos.os.ProgramRegistry.spec(context, spec.programId)
@@ -85,8 +84,7 @@ object ProgramInstallPipeline {
                     tier = runCatching {
                         lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("tier", "").orEmpty()
                     }.getOrDefault("").ifBlank { baseEntry.tier },
-                    stateDir = if (baseEntry.level == lobos.os.Level.INFRA) ""
-                    else baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(spec.programId, kind) },
+                    stateDir = baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
                     role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
                     resident = declared?.resident ?: baseEntry.resident,
                     desired = when {
@@ -171,7 +169,7 @@ object ProgramInstallPipeline {
         }
         val reg = lobos.os.ProgramIndex.get(context, spec.programId)
         val base = reg ?: lobos.os.ProgramIndex.empty(
-            spec.programId, lobos.os.ProgramManager.levelOfKind(kindOf(context, spec.programId)),
+            spec.programId, lobos.os.ProgramManager.levelOf(context, spec.programId),
         )
         val upserted = runCatching {
             lobos.os.ProgramIndex.upsert(
@@ -180,10 +178,7 @@ object ProgramInstallPipeline {
                     version = version,
                     enabled = true,
                     asApplication = spec.from.asApplication,
-                    stateDir = if (base.level == lobos.os.Level.INFRA) ""
-                    else base.stateDir.ifBlank {
-                        lobos.os.ProgramManager.relStateDir(spec.programId, kindOf(context, spec.programId))
-                    },
+                    stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
                 ),
             )
         }
@@ -370,11 +365,6 @@ object ProgramInstallPipeline {
             true
         }.getOrDefault(false)
     }
-
-    private fun kindOf(context: Context, programId: String): String =
-        runCatching {
-            lobos.os.CatalogClient.entryFor(context, programId)?.optString("kind", "")?.trim().orEmpty()
-        }.getOrDefault("").ifBlank { "APPLICATION" }
 
     private fun writeManifestFile(context: Context, programId: String, text: String): File? {
         val f = File(context.cacheDir, "install-manifest-" + programId.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".json")

@@ -5,16 +5,13 @@ import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class Level { INFRA, CAPABILITY, CHANNEL, APPLICATION }
-
-enum class Category { RUNTIME, TOOLCHAIN, LIBRARY, APPLICATION, NONE }
+enum class Level { INFRA, CAPABILITY, APPLICATION }
 
 enum class Desired { RUNNING, STOPPED, FROZEN }
 
 data class IndexEntry(
     val id: String,
     val level: Level,
-    val category: Category,
     val asApplication: Boolean,
     val version: String,
     val enabled: Boolean,
@@ -58,16 +55,7 @@ object ProgramIndex {
     fun levelOf(raw: String): Level = when (raw.trim().uppercase()) {
         "INFRA" -> Level.INFRA
         "RUNTIME", "COMPONENT", "CAPABILITY" -> Level.CAPABILITY
-        "CHANNEL" -> Level.CHANNEL
         else -> Level.APPLICATION
-    }
-
-    fun categoryOf(raw: String): Category = when (raw.trim().uppercase()) {
-        "RUNTIME" -> Category.RUNTIME
-        "TOOLCHAIN", "COMPONENT" -> Category.TOOLCHAIN
-        "LIBRARY" -> Category.LIBRARY
-        "APPLICATION" -> Category.APPLICATION
-        else -> Category.NONE
     }
 
     fun file(ctx: Context): File {
@@ -90,7 +78,6 @@ object ProgramIndex {
     fun empty(id: String, level: Level): IndexEntry = IndexEntry(
         id = id,
         level = level,
-        category = if (level == Level.APPLICATION) Category.APPLICATION else Category.NONE,
         asApplication = level == Level.APPLICATION,
         version = "",
         enabled = true,

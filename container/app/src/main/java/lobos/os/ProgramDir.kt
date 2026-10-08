@@ -1,7 +1,6 @@
 package lobos.os
 import android.content.Context
 import java.io.File
-import lobos.os.Category
 import lobos.os.Desired
 import lobos.os.Level
 import lobos.os.ProgramIndex

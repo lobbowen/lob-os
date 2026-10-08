@@ -66,4 +66,16 @@ object SystemRoles {
         e.role == SHELL || e.role == EXEC || e.role == MULTI_COMMAND
 
     fun isEntryBin(e: lobos.native.NativeExecutable): Boolean = isEntry(e)
+
+    /**
+     * 这个 id 是不是一件（系统文件），它落在哪 —— 不是则返回 null。
+     *
+     * 「是不是件」由它自己的 role 决定（注册表声明），不靠包外清单的 kind字符串：
+     * 换一份清单不该改变「它落哪」。
+     */
+    fun pieceDirFor(ctx: Context, id: String): File? {
+        val e = lobos.native.NativeAssetRegistry.of(id) ?: return null
+        val dir = if (isEntry(e)) SystemDirs.bin(ctx).parentFile else SystemDirs.pieceDir(ctx, id)
+        return dir.takeIf { it.isDirectory }
+    }
 }

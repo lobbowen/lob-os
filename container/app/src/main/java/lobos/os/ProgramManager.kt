@@ -69,7 +69,7 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (e.level == Level.INFRA) return infraSourceFile(ctx, e)
+            if (SystemRoles.pieceDirFor(ctx, e.id) != null) return infraSourceFile(ctx, e)
             if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
         return File(ProgramRegistry.programRoot(ctx), id)
@@ -78,20 +78,36 @@ object ProgramManager {
     fun infraSourceFile(ctx: Context, e: IndexEntry): File =
         if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
         else SystemDirs.usr(ctx).let { File(it, e.assetEntry.ifBlank { e.id }) }
-    fun levelOfKind(kind: String): Level = when (kind) {
-        "INFRA" -> Level.INFRA
-        "RUNTIME", "COMPONENT" -> Level.CAPABILITY
-        "CHANNEL" -> Level.CHANNEL
-        else -> Level.CAPABILITY
-    }
+    /**
+     * 这个 id 是什么 —— **判据是它自己的 role**（注册表里声明），不读包外清单的 kind。
+     *
+     * 此前是 levelOfKind(kind: String) 把 "INFRA"/"RUNTIME"/"CHANNEL" 映射过来，
+     * 于是「它是什么」由一份可被替换的外部清单决定 —— 换清单就换分类。
+     *
+     * 只有两类：系统文件（件）与应用程序。件按 role 细分落位，不进 opt/。
+     */
+    fun levelOf(ctx: Context, id: String): Level =
+        if (SystemRoles.pieceDirFor(ctx, id) != null) Level.INFRA else Level.APPLICATION
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
-    fun relStateDir(id: String, kind: String): String =
-        if (kind.trim().uppercase() == "INFRA") "" else SystemDirs.REL_OPT + "/" + id
+    /**
+     * 落位规则 —— **判据是件自己的 role，不是包外清单里的 kind 字符串**。
+     *
+     * 此前这里比的是 `kind == "INFRA"`，而 kind 来自包外清单（可被换掉），
+     * 于是「装哪」由外部声明决定 —— 与「包里说它是什么就是什么」相反。
+     *
+     * 件（role=library/exec/shell/multi-command/headers）落usr/lib/<id>/<版本>/，
+     * 已经在 NativeAssetUpdater 与 Provisioner 里铺好了，不占 opt/；
+     * 程序（走安装链的 zip）落 opt/<id>/。
+     */
+    fun relStateDir(ctx: Context, id: String): String {
+        if (SystemRoles.pieceDirFor(ctx, id) != null) return ""
+        return SystemDirs.REL_OPT + "/" + id
+    }
 
     fun probe(ctx: Context, e: IndexEntry): Reality {
-        if (e.level == Level.INFRA) {
+        if (SystemRoles.pieceDirFor(ctx, e.id) != null) {
             val src = infraSourceFile(ctx, e)
             return Reality(e.id, e.level, src.isFile, "", src.absolutePath)
         }
@@ -159,10 +175,8 @@ object ProgramManager {
         }
     }
 
-    private fun levelFor(ctx: Context, e: IndexEntry): Level? = when {
-        e.asApplication -> Level.APPLICATION
-        else -> levelOfKind(CatalogClient.entryFor(ctx, e.id)?.optString("kind", "").orEmpty())
-    }
+    /** 层级与实物对齐：它是件就INFRA，否则 APPLICATION —— 判据是 role */
+    private fun levelFor(ctx: Context, e: IndexEntry): Level = levelOf(ctx, e.id)
 
     fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id, stateDirOf(ctx, id))
 
@@ -182,7 +196,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, "node")
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (e.level == Level.INFRA) continue
+            if (SystemRoles.pieceDirFor(ctx, e.id) != null) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue
