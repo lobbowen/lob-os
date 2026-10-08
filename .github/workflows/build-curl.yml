@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-curl.yml'
+    tags:
+      - '*curl'
   workflow_dispatch: {}
-  tags:
-    - '*curl'
 
 concurrency:
   group: curl-${{ github.ref }}

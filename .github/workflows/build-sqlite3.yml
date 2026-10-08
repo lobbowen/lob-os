@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-sqlite3.yml'
+    tags:
+      - '*sqlite3'
   workflow_dispatch: {}
-  tags:
-    - '*sqlite3'
 
 concurrency:
   group: sqlite3-${{ github.ref }}

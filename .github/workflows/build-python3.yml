@@ -17,9 +17,9 @@ on:
       - 'scripts/component-verify.json'
       - 'components/runtime/COMPONENT.md'
       - '.github/workflows/build-python3.yml'
+    tags:
+      - 'rt-python3'
   workflow_dispatch: {}
-  tags:
-    - 'rt-python3'
 
 concurrency:
   group: python3-${{ github.ref }}

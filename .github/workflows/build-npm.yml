@@ -21,9 +21,9 @@ on:
       - 'patches/**'
       - 'scripts/node-versions.json'
       - '.github/workflows/build-npm.yml'
+    tags:
+      - '*npm'
   workflow_dispatch: {}
-  tags:
-    - '*npm'
 
 concurrency:
   group: npm-${{ github.ref }}

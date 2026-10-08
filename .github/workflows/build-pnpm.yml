@@ -21,9 +21,9 @@ on:
       - 'patches/**'
       - 'scripts/node-versions.json'
       - '.github/workflows/build-pnpm.yml'
+    tags:
+      - '*pnpm'
   workflow_dispatch: {}
-  tags:
-    - '*pnpm'
 
 concurrency:
   group: pnpm-${{ github.ref }}

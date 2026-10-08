@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-pkg-config.yml'
+    tags:
+      - '*pkg-config'
   workflow_dispatch: {}
-  tags:
-    - '*pkg-config'
 
 concurrency:
   group: pkg-config-${{ github.ref }}

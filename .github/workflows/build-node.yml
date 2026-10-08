@@ -16,9 +16,9 @@ on:
       - 'scripts/component-verify.json'
       - 'patches/**'
       - '.github/workflows/build-node.yml'
+    tags:
+      - 'rt-node'
   workflow_dispatch: {}
-  tags:
-    - 'rt-node'
 
 concurrency:
   group: node-${{ github.ref }}

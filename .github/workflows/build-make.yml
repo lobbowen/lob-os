@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-make.yml'
+    tags:
+      - '*make'
   workflow_dispatch: {}
-  tags:
-    - '*make'
 
 concurrency:
   group: make-${{ github.ref }}

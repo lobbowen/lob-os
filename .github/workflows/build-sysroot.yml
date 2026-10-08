@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-sysroot.yml'
+    tags:
+      - '*sysroot'
   workflow_dispatch: {}
-  tags:
-    - '*sysroot'
 
 concurrency:
   group: sysroot-${{ github.ref }}

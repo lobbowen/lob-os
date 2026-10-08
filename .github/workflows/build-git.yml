@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-git.yml'
+    tags:
+      - '*git'
   workflow_dispatch: {}
-  tags:
-    - '*git'
 
 concurrency:
   group: git-${{ github.ref }}

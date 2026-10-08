@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-jq.yml'
+    tags:
+      - '*jq'
   workflow_dispatch: {}
-  tags:
-    - '*jq'
 
 concurrency:
   group: jq-${{ github.ref }}

@@ -20,9 +20,9 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-cmake.yml'
+    tags:
+      - '*cmake'
   workflow_dispatch: {}
-  tags:
-    - '*cmake'
 
 concurrency:
   group: cmake-${{ github.ref }}
