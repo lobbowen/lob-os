@@ -51,12 +51,15 @@
       ]
     },
     "curl": {
-      "entry": "bin/curl",
+      "entry": "lib/libcurl.so",
       "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）",
       "node": "const cp = require('node:child_process'); const url = 'https://lobcdn.zll.ink/component-canary/component-manifest.json'; const r = cp.spawnSync('curl', ['-fsS', '--max-time', '25', url], { encoding: 'utf8' }); if (r.error) { console.error('curl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 失败 rc=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 200)); process.exit(1); } let ok = false; try { const j = JSON.parse(r.stdout); ok = Array.isArray(j.tools) && j.tools.length > 0; } catch (e) { ok = false; } if (!ok) { console.error('响应不是预期 JSON（TLS 或许过了，内容不对）: ' + String(r.stdout || '').slice(0, 120)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 可用（HTTPS 取回清单 ' + String(r.stdout).length + ' 字节）');",
       "versionArgs": [
         "--version"
-      ]
+      ],
+      "form": "lib",
+      "required": true,
+      "version": "8.22.0"
     },
     "sysroot": {
       "criterion": "sysroot 装好后**真能回答「头文件在哪」**（入口 bin/sysroot 自问自答打印路径，不是看目录在不在）；**并且**读到的 include 树下确有 stdio.h/stdlib.h/string.h 且非空；**并且**目标库层齐备（libc.so 与 libclang_rt*.a 都在）—— 缺任一项，编译/链接会在第一次用时才炸，那是「装好了、跑起来了、直到编译才崩」的最坏形态。",
@@ -106,34 +109,49 @@
     },
     "libcxx": {
       "required": true,
-      "form": "lib"
+      "form": "lib",
+      "version": "30.0.16248370",
+      "entry": "lib/libc++_shared.so",
+      "form_note": "随 NDK"
     },
     "bash": {
       "installName": "bash",
       "required": false,
-      "form": "exec"
+      "form": "shell",
+      "entry": "bin/bash",
+      "version": "5.2.15"
     },
     "ripgrep": {
       "installName": "rg",
       "required": false,
-      "form": "exec"
+      "form": "exec",
+      "entry": "bin/rg",
+      "version": "14.1.1"
     },
     "flock": {
       "required": false,
-      "form": "exec"
+      "form": "lib",
+      "version": "1.0.0",
+      "entry": "lib/liblobosflock.so"
     },
     "posix": {
       "required": false,
-      "form": "exec"
+      "form": "lib",
+      "version": "1.0.0",
+      "entry": "lib/liblobosposix.so"
     },
     "ptyprobe": {
       "required": false,
-      "form": "exec"
+      "form": "exec",
+      "version": "1.0.0",
+      "entry": "lib/liblobosptyprobe.so"
     },
     "ptysession": {
       "installName": "pty-session",
       "required": false,
-      "form": "exec"
+      "form": "exec",
+      "version": "1.0.0",
+      "entry": "bin/pty-session"
     },
     "busybox": {
       "installName": "busybox",
@@ -158,19 +176,27 @@
         "true",
         "false"
       ],
-      "form": "exec"
+      "form": "multi-command",
+      "entry": "bin/busybox",
+      "version": "1.36.1"
     },
     "zlib": {
       "required": true,
-      "form": "lib"
+      "form": "lib",
+      "entry": "lib/libz.so",
+      "version": "1.3.2"
     },
     "openssl": {
       "required": true,
-      "form": "lib"
+      "form": "lib",
+      "entry": "lib/libssl.so",
+      "version": "3.6.3"
     },
     "crypto": {
       "required": true,
-      "form": "lib"
+      "form": "lib",
+      "entry": "lib/libcrypto.so",
+      "version": "3.6.3"
     }
   }
 }

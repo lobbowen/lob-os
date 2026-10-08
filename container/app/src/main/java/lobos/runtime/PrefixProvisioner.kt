@@ -2,7 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import android.system.Os
-import lobos.pieces.PieceRegistry
 import java.io.File
 import lobos.os.ProgramManager
 
@@ -24,37 +23,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
-
-    /**
-     * 铺一件 —— **落位形状照抄 Linux**。
-     *
-     *   usr/lib/<id>/<版本>/bin/<名字>   命令本体（同一件的多个版本各占一个目录）
-     *   usr/lib/<id>/<版本>/lib<名字>.so  库本体
-     *   usr/bin/<名字>                 → 软链到上面那个（PATH 里的全局入口）
-     *
-     * 为什么要多一层 `<版本>/`：同一件可以并存多个版本，切换只改/usr/bin 那个软链 ——
-     * 这正是 `ldconfig` 对 `libfoo.so → .so.1 → .so.1.12` 做的事。
-     *
-     * 落位形状自带身份：`PieceScan` 扫目录就知道有什么件、什么版本、入口在哪、
-     * 什么形态（有 bin/ 是命令 · 只有 .so 是库）—— 不需要任何一张表。
-     */
-    /**
-     * 这一件自己的说明 —— 从构建期数据来，不从内核的表来。
-     *
-     * 那份数据（.so 文件名 · 入口改名 · 是否必需 · 能力）本该在构建时写进产物；
-     * 现在内核从 [lobos.pieces.PieceRegistry] 取值转成 meta 落位 ——
-     * 落位形状与说明都在件旁边，系统不预置任何一件的清单。
-     */
-    private fun metaOf(p: lobos.pieces.Piece): org.json.JSONObject = org.json.JSONObject().apply {
-        put("schema", 1)
-        put("id", p.id)
-        put("version", p.version)
-        put("entry", if (lobos.os.SystemRoles.isEntry(p)) "bin/${p.installedAs}" else "lib/${p.libName}")
-        put("form", if (lobos.os.SystemRoles.isEntry(p)) "exec" else "lib")
-        put("required", p.required)
-        put("provides", org.json.JSONArray(p.provides))
-        put("applets", org.json.JSONArray(emptyList<String>()))
-    }
 
     private fun landOne(
         ctx: Context,
@@ -106,17 +74,40 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         return dst.absolutePath
     }
 
+    /**
+     * 扫 APK 里的说明 —— jniLibs 下与件同名的 .meta.json 是唯一的数据源。
+     *
+     * 内核不预置任何一件的清单（那是这块设计的第一条）：它只认落位。
+     * 目录里没有说明的 .so 不铺 —— 说不清自己是什么的东西不该进系统。
+     */
+    private fun scanMeta(nativeDir: File): List<org.json.JSONObject> {
+        val out = mutableListOf<org.json.JSONObject>()
+        val kids = nativeDir.listFiles() ?: return out
+        for (f in kids) {
+            if (!f.name.endsWith(".meta.json")) continue
+            runCatching { out += org.json.JSONObject(f.readText()) }
+        }
+        return out.sortedBy { it.optString("id", "") }
+    }
+
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (p in PieceRegistry.PIECES) {
-            // 版本以它自己声明的为准；没声明的用 jniLibs 文件的内容指纹兜底 ——
-            // 落位目录名就是版本，PieceScan 靠它识别
-            val v = p.version.ifBlank { Fingerprint.of(File(nativeDir, p.libName)) }
-            if (v.isBlank()) continue
+        // 说明随件打进APK 的 jniLibs —— 它是唯一的数据源（deb-control(5) 的做法：
+        // 每个包自带 control，内核不预置任何一件的清单）。
+        // 扫 jniLibs 里带说明的条目，铺成 usr/lib/<id>/<版本>/ 的形状。
+        val metas = scanMeta(nativeDir)
+        for (m in metas) {
+            val id = m.optString("id", "")
+            val version = m.optString("version", "")
+            val entry = m.optString("entry", "")
+            val libName = entry.substringAfterLast("/", "")
+            if (id.isBlank() || version.isBlank() || entry.isBlank()) continue
+            if (!File(nativeDir, libName).isFile) continue
             val landed = landOne(
-                ctx, p.id, v, p.libName, p.installedAs,
-                lobos.os.SystemRoles.isEntry(p), metaOf(p), File(nativeDir),
+                ctx, id, version, libName,
+                m.optString("installName", libName),
+                entry.startsWith("bin/"), m, File(nativeDir),
             ) ?: continue
             ready += landed
         }
@@ -124,7 +115,9 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         val caDst = caBundle(ctx)
         try {
             caDst.parentFile?.mkdirs()
-            ctx.assets.open(CA_BUNDLE_ASSET).use { input -> caDst.outputStream().use { out -> input.copyTo(out) } }
+            ctx.assets.open(CA_BUNDLE_ASSET).use { input ->
+                caDst.outputStream().use { out -> input.copyTo(out) }
+            }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
         registerProvisioned(ctx)
