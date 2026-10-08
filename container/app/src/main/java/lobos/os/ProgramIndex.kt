@@ -36,9 +36,24 @@ data class PieceEntry(
     val requires: List<String>,
     /** 是不是系统必需的；不是必需的可被程序覆盖 */
     val required: Boolean,
+
+    /**
+     * 这一件铺了哪些文件 + 每个文件的校验值 —— dpkg 的 `db-fsys:Files` 与 `.deb` 的 `md5sums`。
+     *
+     * 没有它就答不出两件事：
+     *   · 删这个件该删哪些文件
+     *   · 某个文件被换过没有（`dpkg -V` 拿的就是这份与实际文件比对）
+     *
+     * 路径相对件目录（`usr/lib/<id>/<版本>/`），换存储位置不用重记。
+     */
+    val files: List<FileRec> = emptyList(),
+
     /** 校验没过的原因（装机阶段的结论，不是运行时状态） */
     val invalid: String?,
-)
+) {
+    /** 一个文件：相对件目录的路径 + sha256 */
+    data class FileRec(val path: String, val sha256: String)
+}
 
 /** 一个程序 —— 装在 opt/，由内核起进程托管。 */
 data class ProgramEntry(
@@ -120,6 +135,7 @@ data class IndexEntry(
         role: String? = null,
         requires: List<String>? = null,
         required: Boolean? = null,
+        files: List<FileRec>? = null,
         resident: Boolean? = null,
         restart: Restart? = null,
         maxRestarts: Int? = null,
@@ -154,6 +170,7 @@ data class IndexEntry(
                     role ?: p.role,
                     requires ?: p.requires,
                     required ?: p.required,
+                    files ?: p.files,
                     invalid ?: p.invalid,
                 ),
                 null,
@@ -244,6 +261,14 @@ object ProgramIndex {
             put("role", p.role)
             put("requires", JSONArray(p.requires))
             put("required", p.required)
+        put("files", org.json.JSONArray().apply {
+            p.files.forEach { fr ->
+                put(org.json.JSONObject().apply {
+                    put("path", fr.path)
+                    put("sha256", fr.sha256)
+                })
+            }
+        })
             p.invalid?.let { put("invalid", it) }
         }
         val q = e.program!!
@@ -293,6 +318,14 @@ object ProgramIndex {
                     role = o.optString("role", ""),
                     requires = strArray("requires"),
                     required = o.optBoolean("required", false),
+            files = o.optJSONArray("files")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    val it = a.optJSONObject(i) ?: return@mapNotNull null
+                    val path = it.optString("path", "")
+                    if (path.isEmpty()) null
+                    else FileRec(path, it.optString("sha256", ""))
+                }
+            } ?: emptyList(),
                     invalid = inv,
                 ),
                 program = null,

@@ -57,20 +57,19 @@ object PieceScan {
         val role: String,
         val sha256: String,
         val meta: JSONObject? = null,
+        /**
+         * 这一件铺了哪些文件 + 每个文件的校验值 —— dpkg 的 db-fsys:Files 与 .deb 的 md5sums。
+         *
+         * dpkg -V 拿的就是这份与实际文件比对（"comparing information from the files
+         * installed by a package with the files metadata information stored in the dpkg
+         * database"）。没有它就答不出：删这个件该删哪些文件 · 某个文件被换过没有。
+         * 路径相对件目录（usr/lib/<id>/<版本>/），换存储位置不用重记。
+         */
+        val files: List<FileRec> = emptyList(),
     ) {
-        val required: Boolean get() = meta?.optBoolean("required", false) ?: false
+        /** 一个文件：相对件目录的路径 + sha256 */
+        data class FileRec(val path: String, val sha256: String)
     }
-
-// 读与件同目录的说明
-private fun metaOf(verDir: File): JSONObject? =
-    runCatching { JSONObject(File(verDir, "component-meta.json").readText()) }.getOrNull()
-
-    /**
-     * 扫 `usr/lib/<id>/<版本>/` —— 与 `ldconfig` 扫 trusted 目录同构。
-     *
-     * 形态由**落位位置**决定（照抄 Linux：形态由位置与文件名决定，不由字段声明）：
-     *   `usr/lib/<id>/<版本>/lib<name>.so` → 库（role=library）
-     *   `usr/lib/<id>/<版本>/bin/<name>`   → 命令（role=exec）
      * 若目录里两者都有，以 `bin/` 为准（它是全局入口，`$PREFIX/bin` 在 PATH 里）。
      */
     fun scan(ctx: Context): List<Found> {
@@ -82,22 +81,25 @@ private fun metaOf(verDir: File): JSONObject? =
             val id = pieceDir.name
             // 头文件集那件不是「可执行/库」，它提供 include/ —— 形态是 headers
             if (File(pieceDir, "include").isDirectory) {
-                out += Found(id, "from-layout", pieceDir, "include", HEADERS, "",
-                    metaOf(pieceDir))
+                val hf = filesOf(pieceDir)
+                out += Found(id, "from-layout", pieceDir, "include", HEADERS,
+                    sha256Of(pieceDir, hf), metaOf(pieceDir), hf)
                 continue
             }
             for (verDir in pieceDir.listFiles() ?: emptyArray()) {
                 if (!verDir.isDirectory) continue
                 val version = verDir.name
                 val entry = entryOf(verDir) ?: continue
+                val files = filesOf(verDir)
                 out += Found(
                     id = id,
                     version = version,
                     dir = verDir,
                     entry = entry,
                     role = roleOf(verDir),
-                    sha256 = sha256Of(verDir),
+                    sha256 = sha256Of(verDir, files),
                     meta = metaOf(verDir),
+                    files = files,
                 )
             }
         }
@@ -122,9 +124,43 @@ private fun metaOf(verDir: File): JSONObject? =
     }
 
     /** 字节身份：对入口文件实算（与 ldconfig "checks the header" 同理，看真实内容） */
-    private fun sha256Of(verDir: File): String {
-        val f = verDir.walkTopDown().firstOrNull { it.isFile && it.name.endsWith(".so") } ?: return ""
-        return SupplySha.sha256(f)
+    /**
+     * 这一件铺了哪些文件 —— dpkg 的 db-fsys:Files。
+     *
+     * 收件目录下的普通文件；软链不收（软链指向同目录的另一个文件，
+     * 记它等于记两遍）。说明文件自己不算「铺出来的内容」——
+     * 它是元数据，不是件的一部分。
+     */
+    private fun filesOf(verDir: File): List<FileRec> {
+        val base = verDir.absolutePath
+        val out = mutableListOf<FileRec>()
+        verDir.walkTopDown().forEach { f ->
+            if (!f.isFile) return@forEach
+            if (f.name == "component-meta.json") return@forEach
+            val rel = f.absolutePath.removePrefix(base).trimStart('/')
+            if (rel.isEmpty()) return@forEach
+            out += FileRec(rel, SupplySha.sha256(f))
+        }
+        return out.sortedBy { it.path }
+    }
+
+    /**
+     * 整件的字节身份 —— 覆盖它铺出的全部文件。
+     *
+     * 原来只算第一个 .so：一件里有 5 个文件、被换了一个，那个值不变，
+     * 查不出来（dpkg 用 md5sums 逐文件正是为了这个）。
+     * 现在把所有文件的校验值按路径序串起来再哈希 —— 任何一个变了，整件的值就变。
+     */
+    private fun sha256Of(verDir: File, files: List<FileRec>): String {
+        if (files.isEmpty()) return ""
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        for (fr in files) {
+            md.update(fr.path.toByteArray(Charsets.UTF_8))
+            md.update(0)
+            md.update(fr.sha256.toByteArray(Charsets.UTF_8))
+            md.update(10)
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
     }
 
     /**
@@ -143,15 +179,16 @@ private fun metaOf(verDir: File): JSONObject? =
         var changed = 0
         for (f in found) {
             val prev = cur[f.id]
-            val entry = (prev ?: ProgramIndex.empty(
-                f.id,
-                if (f.role == HEADERS) Level.PIECE else Level.PIECE,
-            )).copy(
+            val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(
                 version = f.version,
                 stateDir = f.dir.absolutePath,
                 assetEntry = f.entry,
                 role = f.role,
                 sha256 = f.sha256,
+                required = f.meta?.optBoolean("essential", false) ?: false,
+                files = f.files.map { fr ->
+                    ProgramIndex.PieceEntry.FileRec(fr.path, fr.sha256)
+                },
             )
             if (prev != entry) {
                 ProgramIndex.upsert(ctx, entry)
