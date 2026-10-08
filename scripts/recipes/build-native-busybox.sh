@@ -139,7 +139,11 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 # 配置项名读 busybox 自己的 `//config:` 注释 —— 依据 scripts/gen_build_files.sh
 # 第 117~120 行：各子目录的 Config.in 由它生成，所以官方 tarball 里那些
 # Config.in 根本不存在，配置项的真身就在 .c 注释里。
-SCAN="node $ROOT_DIR/scripts/recipes/verify-busybox-missing-headers.js"
+SCAN="node $ROOT_DIR/scripts/verify/verify-busybox-missing-headers.js"
+# 引用之前先确认它在 —— 路径写错时报的是 node 的 MODULE_NOT_FOUND，
+# 那句堆栈完全看不出是「脚本被移走了」，很难一眼定位。
+SCAN_JS="${SCAN#node }"
+[ -f "$SCAN_JS" ] || die "扫描脚本不存在" "$SCAN_JS"
 # NDK 的 sysroot 按目标架构命名：
 #   <ndk>/sysroot/usr/include/<架构>-linux-android/   ← 目标平台的头（linux/*.h 等）
 #   <ndk>/sysroot/usr/include/                        ← libc 头（sys/*.h、stdio.h 等）

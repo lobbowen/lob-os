@@ -1,0 +1,36 @@
+# bionic 系统库白名单 —— 判「DT_NEEDED 里的这个库是不是系统自带的」。
+#
+# 用途：check-elf-deps.sh 拿它把 ELF 的依赖闭包分成三类
+#   · 系统自带（这份名单）—— 真机上 bionic linker 直接就能找到
+#   · APK 基础库（jniLibs 目录实测）—— 我们的件
+#   · 件自己 lib/ 下的库 —— 靠 DT_RUNPATH=$ORIGIN 自解析
+# 剩下的才是「断掉的闭包」：编译期看不出来，装到真机上才报
+# cannot locate symbol。
+#
+# 名单怎么来的：**本机实测**，不是照抄文档。
+# 逐个查这台设备的 /system/lib64/<名字> 是否真的存在，不存在的不写进来。
+# 机型差异会造成个别库缺席（libneuralnetworks.so 本机就没有），
+# 所以只收「NDK 保证存在的那批」。
+#
+# 为什么 libz.so 不在这里：zlib 现在是我们的件（base 筐，落到 jniLibs），
+# 与 bionic 自带的 libz.so 同名。运行时会先找到 APK 里那份，
+# 所以它归「APK 基础库」那类 —— 由 jniLibs 目录实测得出，不该在这里出现。
+# （曾有一段时间两份名单都写 libz.so，那是同一事实两个来源。）
+libc.so
+libm.so
+libdl.so
+liblog.so
+libandroid.so
+libEGL.so
+libGLESv1_CM.so
+libGLESv2.so
+libGLESv3.so
+libOpenSLES.so
+libOpenMAXAL.so
+libvulkan.so
+libaaudio.so
+libcamera2ndk.so
+libmediandk.so
+libnativewindow.so
+libstdc++.so
+libc++.so
