@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APK="${1:-}"
 ABI="${2:-${ABI:-}}"
 MODE="${3:-}"
@@ -106,7 +106,7 @@ fi
 
 echo
 echo "--- 小体积原生件 ---"
-CAPS="$(cd "$(dirname "$0")/.." && pwd)/.github/native-capabilities.txt"
+CAPS="$(cd "$(dirname "$0")/../.." && pwd)/.github/native-capabilities.txt"
 [ -f "$CAPS" ] || { echo "[error] 缺少 $CAPS —— 小件清单是派生物，不能没有它。"; exit 1; }
 CAP_N=0
 while read -r TIER LIB _ID; do

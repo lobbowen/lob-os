@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TOOL="${1:?需要工具名}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ENTRY=$(bash "$ROOT/scripts/registry/read-component-entry.sh" "$TOOL")
 
 judge_shape() {

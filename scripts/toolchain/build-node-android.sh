@@ -6,7 +6,7 @@ export ANDROID_NDK="${ANDROID_NDK:?请先设置 ANDROID_NDK 指向 NDK 根目录
 ANDROID_API="${ANDROID_API:-24}"
 ARCH="arm64"
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT_DIR="$ROOT/container/app/src/main/jniLibs/arm64-v8a"
 OUT_NAME="libnode.so"
 mkdir -p "$OUT_DIR"

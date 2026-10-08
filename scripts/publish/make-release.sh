@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VER="${1:?用法: ./scripts/publish/make-release.sh <node-version>}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGE_DIR="$ROOT/dist/node"
 
 SRC="$STAGE_DIR/bin/node"

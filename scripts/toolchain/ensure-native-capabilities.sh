@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
-cd "$(cd "$(dirname "$0")/.." && pwd)"
+cd "$(cd "$(dirname "$0")/../.." && pwd)"
 ABI="${ABI:-arm64-v8a}"
 PIN=".github/native-capabilities-pin.json"
 CAPS=".github/native-capabilities.txt"
