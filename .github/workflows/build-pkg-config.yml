@@ -1,0 +1,163 @@
+name: Build Component · pkg-config
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-component-pkg-config.sh'
+      - 'scripts/locate-ndk.sh'
+      - 'scripts/cache-ndk.sh'
+      - 'scripts/fetch-pinned.sh'
+      - 'scripts/cache-key.sh'
+      - 'scripts/read-component-entry.sh'
+      - 'scripts/verify-component-artifact.sh'
+      - 'scripts/verify-component-build-date.sh'
+      - 'scripts/package-component.sh'
+      - 'scripts/publish-component-manifest.js'
+      - 'scripts/upload-qiniu.js'
+      - 'scripts/component-sources.json'
+      - 'scripts/component-verify.json'
+      - 'scripts/read-node-versions.sh'
+      - 'patches/**'
+      - '.github/workflows/build-pkg-config.yml'
+  workflow_dispatch: {}
+  tags:
+    - '*pkg-config'
+
+concurrency:
+  group: pkg-config-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: 恢复 NDK 缓存（由 ndk-cache job 备好；这里只取）
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+      - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
+        run: bash scripts/cache-ndk.sh
+      - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
+        run: bash scripts/locate-ndk.sh
+      - name: 算本件的「编译一次」标识
+        id: uwkey
+        run: |
+          echo "key=$(bash scripts/cache-key.sh pkg-config)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/cache-key.sh tag pkg-config)" >> "$GITHUB_OUTPUT"
+          echo "asset=$(bash scripts/cache-key.sh asset pkg-config)" >> "$GITHUB_OUTPUT"
+      - name: 已发布就复用（不重编）
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+             && gh release download "$TAG" --repo "${{ github.repository }}" \
+                  --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
+             && [ -f "dist/$ASSET" ]; then
+            echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
+            mv "dist/$ASSET" "dist/component-pkg-config.zip"
+            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-pkg-config.zip.sha256" || true
+            tar xzf "dist/component-pkg-config.zip" -C dist
+            ls -la dist/ | sed 's/^/  /'
+            echo "hit=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
+            echo "hit=no" >> "$GITHUB_OUTPUT"
+          fi
+      - name: 恢复本件的编译中间产物（命中则增量编，不重跑 Configure）
+        uses: actions/cache@v4
+        with:
+          path: |
+            work/pkgconf
+            dist/component-pkg-config-*.zip
+          key: ${{ steps.uwkey.outputs.key }}
+      - name: 产出 pkg-config 件（仅在需要编时）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: bash scripts/build-component-pkg-config.sh
+      - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
+        run: bash scripts/verify-component-artifact.sh pkg-config
+      - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          PW="work/pw-pkg-config"
+          rm -rf "$PW" && mkdir -p "$PW"
+          if ls dist/component-pkg-config-*.zip >/dev/null 2>&1; then
+            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' component-pkg-config-*.zip
+          else
+            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
+          fi
+          ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
+          {
+            echo "预制品：pkg-config"
+            echo "Release tag：$TAG"
+            echo "NDK：$(bash scripts/fetch-pinned.sh --ndk)"
+            echo "NDK 内置 LLVM：$(bash scripts/fetch-pinned.sh --llvm)"
+            echo "API 级别：23"
+            echo "缓存 key：${{ steps.uwkey.outputs.key }}"
+            echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "## 这份预制品的编译依据"
+            echo ""
+            echo "下面这串是 cache-key.sh 算出来的，**含本件依赖的全部源码钉值**："
+            echo "改动其中任一版本（或补丁 sha）都会换 tag，从而自动重新编译一次；"
+            echo "没改动就直接复用本预制品。"
+            echo ""
+            echo '```'
+            echo "${{ steps.uwkey.outputs.key }}"
+            echo '```'
+          } > "$PW/BUILD.md"
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" \
+              --title "component pkg-config — $TAG" \
+              --notes "编译一次、长期复用的 pkg-config 预制品。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
+          fi
+          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已发布 $TAG"
+      - name: 存回编译中间产物（供下一轮增量编）
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            work/pkgconf
+            dist/component-pkg-config-*.zip
+          key: ${{ steps.uwkey.outputs.key }}
+      - name: 打包 + sha256
+        run: bash scripts/package-component.sh pkg-config
+      - name: 发布 pkg-config 件到对象存储
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
+            exit 1
+          fi
+          for f in dist/component-pkg-config-*.zip; do
+            [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
+            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
+              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-pkg-config
+          path: dist/component-pkg-config-*.zip
+          retention-days: 30

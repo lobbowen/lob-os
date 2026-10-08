@@ -40,18 +40,18 @@ for (const [t, b] of Object.entries(CLASS)) {
 }
 
 const wf = fs.readFileSync(WF, 'utf8');
-const mm = /^\s*tool:\s*\[([^\]]*)\]/m.exec(wf);
+const WFDIR = path.join(ROOT, '.github/workflows');
+const chains = fs.readdirSync(WFDIR)
+  .filter((f) => /^build-[a-z0-9-]+\.yml$/.test(f))
+  .map((f) => f.replace(/^build-/, '').replace(/\.yml$/, ''))
+  .filter((t) => t !== 'apk' && t !== 'component' && t !== 'isolated-apk');
+
 let bad = 0;
 
-if (!mm) {
-  console.error('FAIL build-component.yml 里找不到矩阵 tool: [...]');
-  process.exit(2);
-}
-const matrix = mm[1].split(',').map((s) => s.trim()).filter(Boolean);
-
+const matrix = chains;
 const unknown = matrix.filter((t) => !CLASS[t]);
 if (unknown.length) {
-  for (const t of unknown) console.log(`[筐外] ${t} —— 矩阵里有，但 bucket_for 没给它分类`);
+  for (const t of unknown) console.log(`[筐外] ${t} —— 有独立链，但 bucket_for 没给它分类`);
   bad += unknown.length;
 }
 
@@ -67,7 +67,7 @@ for (const b of ['base', 'rt', 'tool']) {
   console.log(`  ${b} 筐 · ${BUCKET_DESC[b] || ''}`);
   console.log(`    全部 ${items.length} 件：${items.join(' · ')}`);
   const inWf = (bucketsInMatrix[b] || []).sort();
-  console.log(`    build-component.yml 矩阵里 ${inWf.length} 件：${inWf.join(' · ') || '（无）'}`);
+  console.log(`    独立构建链里 ${inWf.length} 件：${inWf.join(' · ') || '（无）'}`);
 }
 
 const notBuilt = [];
@@ -75,7 +75,8 @@ for (const b of ['base', 'rt', 'tool']) {
   for (const t of byBucket[b] || []) {
     const ownChain = fs.existsSync(path.join(ROOT, '.github/workflows', 'build-' + t + '.yml'));
     const isNative = ['bash', 'rg', 'busybox'].includes(t);
-    if (!matrix.includes(t) && !ownChain && !isNative) {
+    const inNodeJob = t === 'node';
+    if (!matrix.includes(t) && !ownChain && !isNative && !inNodeJob) {
       notBuilt.push(`${b}/${t}`);
     }
   }
@@ -109,4 +110,4 @@ if (bad) {
   process.exit(1);
 }
 console.log('');
-console.log(`PASS 三筐分类：矩阵 ${matrix.length} 件全部有筐，与 bucket_for 一致`);
+console.log(`PASS 三筐分类：${matrix.length} 条独立链的件全部有筐，与 bucket_for 一致`);
