@@ -37,7 +37,15 @@ function main() {
   });
 
   const actualSha = sha256(zipBuf);
-  const manifestOut = Object.assign({}, manifest, { sha256: actualSha });
+
+  const manifestOut = {
+    id: manifest.id,
+    name: manifest.name,
+    version: manifest.version,
+    url: manifest.url,
+    sha256: actualSha,
+    signature: manifest.signature,
+  };
 
   const outDir = process.env.LOBOS_BUNDLE_OUT_DIR
     ? path.resolve(process.env.LOBOS_BUNDLE_OUT_DIR)
