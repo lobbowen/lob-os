@@ -329,3 +329,68 @@ object ProgramIndex {
         })
     }
 }
+
+/**
+ * 改字段 —— 参数全为 null 表示「不改」。
+ *
+ * 改完返回新的 [UnitEntry]。落盘由调用方做（ProgramIndex.mutate）。
+ */
+fun UnitEntry.edited(
+    enabled: Boolean? = null,
+    version: String? = null,
+    stateDir: String? = null,
+    sha256: String? = null,
+    libName: String? = null,
+    assetEntry: String? = null,
+    role: String? = null,
+    requires: List<String>? = null,
+    after: List<String>? = null,
+    conflicts: List<String>? = null,
+    required: Boolean? = null,
+    files: List<UnitEntry.FileRec>? = null,
+    resident: Boolean? = null,
+    restart: Restart? = null,
+    maxRestarts: Int? = null,
+    backoffMs: List<Long>? = null,
+    httpPort: Int? = null,
+    httpHealth: String? = null,
+    capabilities: List<String>? = null,
+    env: Map<String, String>? = null,
+    desired: Desired? = null,
+    invalid: String? = null,
+    pid: Int? = null,
+    starttime: Long? = null,
+    exitCode: Int? = null,
+    exitedAt: Long? = null,
+    restarts: Int? = null,
+    lastFailure: String? = null,
+): UnitEntry = copy(
+    enabled = enabled ?: this.enabled,
+    version = version ?: this.version,
+    stateDir = stateDir ?: this.stateDir,
+    sha256 = sha256 ?: this.sha256,
+    libName = libName ?: this.libName,
+    assetEntry = assetEntry ?: this.assetEntry,
+    role = role ?: this.role,
+    requires = requires ?: this.requires,
+    after = after ?: this.after,
+    conflicts = conflicts ?: this.conflicts,
+    required = required ?: this.required,
+    files = files ?: this.files,
+    resident = resident ?: this.resident,
+    restart = restart ?: this.restart,
+    maxRestarts = maxRestarts ?: this.maxRestarts,
+    backoffMs = backoffMs ?: this.backoffMs,
+    httpPort = httpPort ?: this.httpPort,
+    httpHealth = httpHealth ?: this.httpHealth,
+    capabilities = capabilities ?: this.capabilities,
+    env = env ?: this.env,
+    desired = desired ?: this.desired,
+    invalid = if (invalid != null) invalid else this.invalid,
+    pid = pid ?: this.pid,
+    starttime = starttime ?: this.starttime,
+    exitCode = if (exitCode != null) exitCode else this.exitCode,
+    exitedAt = exitedAt ?: this.exitedAt,
+    restarts = restarts ?: this.restarts,
+    lastFailure = lastFailure ?: this.lastFailure,
+)

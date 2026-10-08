@@ -100,9 +100,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }
     }
 
+        // 重启计数在注册表里（NRestarts 是持久属性，不是内存计数）——
+        // systemctl(1)：「expose RUNTIME STATE IN ADDITION TO CONFIGURATION」
+        val restartCount: Int get() =
+            lobos.os.ProgramIndex.get(this, programId)?.restarts ?: 0
     private fun bootLoop() {
-        var restartCount = 0
-        val restartWindow = mutableListOf<Long>()
         while (keepRunning) {
             acquireBriefWakeLock(60_000L)
             val outcome = try { bootProgramOnce() } finally { releaseWakeLock() }
@@ -148,18 +150,31 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 sleepQuiet(SupervisorPolicy.NO_PROGRAM_BACKOFF_MS)
                 continue
             }
-            restartCount = SupervisorPolicy.nextRestartCount(
+            // 重启计数落注册表（NRestarts 是持久属性）—— systemctl(1)：
+            // 「expose RUNTIME STATE IN ADDITION TO CONFIGURATION」
+            val aliveMs = SystemClock.elapsedRealtime() - bornAt
+            if (bootOk && aliveMs >= SupervisorPolicy.STABLE_MS) {
+                runCatching {
+                    lobos.os.ProgramIndex.mutate(this@InstanceHost, programId) {
+                        it.edited(restarts = 0)
+                    }
+                }
+            } else {
+                SupervisorPolicy.noteRestart(this@InstanceHost, programId, SystemClock.elapsedRealtime())
+            }
                 restartCount, bootOk, SystemClock.elapsedRealtime() - bornAt,
             )
             val now = SystemClock.elapsedRealtime()
-            restartWindow.add(now)
-            SupervisorPolicy.pruneRestartWindow(restartWindow, now)
-            if (SupervisorPolicy.shouldQuarantine(restartWindow.size)) {
+            val windowNow: Int =
+                lobos.os.ProgramIndex.get(this@InstanceHost, programId)?.restarts ?: 0
+            val maxNow: Int =
+                lobos.os.ProgramIndex.get(this@InstanceHost, programId)?.maxRestarts
+                    ?.takeIf { it > 0 } ?: Int.MAX_VALUE
+            if (windowNow >= maxNow) {
                 lobos.os.ProgramStatusHub.publishQuarantined(programId, true)
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
-                    "窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms 内 " + restartWindow.size +
-                        " 次（上限 " + SupervisorPolicy.MAX_RESTARTS_IN_WINDOW + "）；等待宿主重置",
+                    "窗口内重启 " + windowNow + " 次（上限 " + maxNow + "）· " + SupervisorPolicy.RESTART_WINDOW_MS + "ms 窗口" +
                 )
                 quarantineReset = false
                 var quarantinePolls = 0
@@ -175,8 +190,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     }
                 }
                 if (!keepRunning) break
-                restartCount = 0
-                restartWindow.clear()
+                runCatching {
+                    lobos.os.ProgramIndex.mutate(this@InstanceHost, programId) {
+                        it.edited(restarts = 0)
+                    }
+                }
                 RuntimeDiagnostics.append(this, "supervisor", true, "隔离已解除（宿主重置）", "重新开始监督")
                 continue
             }
@@ -194,8 +212,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     this, "supervisor", false, "清单 maxRestarts 已达上限：转入隔离",
                     "id=" + spec.id + " maxRestarts=" + spec.maxRestarts + " attempt=" + restartCount,
                 )
-                restartWindow.clear()
-                repeat(SupervisorPolicy.MAX_RESTARTS_IN_WINDOW) { restartWindow.add(now) }
+                runCatching {
+                    lobos.os.ProgramIndex.mutate(this@InstanceHost, programId) {
+                        it.edited(restarts = it.maxRestarts)
+                    }
+                }
             }
             val declaredBackoff = spec?.backoffMs?.takeIf { it.isNotEmpty() }
                 ?.let { list -> list[minOf(restartCount, list.size - 1)] }
