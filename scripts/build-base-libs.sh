@@ -129,10 +129,17 @@ check_lib() {
 fetch() { bash "$ROOT_DIR/scripts/fetch-pinned.sh" --pin "$1" "$2"; }
 
 pick_so() {
-  local pre="$1" name="$2" cand
-  cand="$(ls "$pre"/lib/"$name".so "$pre"/lib/"$name".so.* 2>/dev/null | head -1 || true)"
-  [ -n "$cand" ] || die "前缀里没有 $name" "ls $pre/lib/ 看实际产出了什么：$(ls "$pre/lib" 2>/dev/null | tr '\n' ' ')"
-  printf '%s' "$cand"
+  local dir="$1" base="$2" cand d
+  base="${base%.so}"
+  for d in "$dir/lib" "$dir/lib/.libs" "$dir/.libs" "$dir"; do
+    cand="$(ls "$d"/"$base".so "$d"/"$base".so.* 2>/dev/null | head -1 || true)"
+    if [ -n "$cand" ]; then
+      printf '%s' "$cand"
+      return 0
+    fi
+  done
+  echo "::error title=找不到 $base.so::在 $dir 及其 lib/ lib/.libs/ .libs/ 下都没有。实际内容：$(ls "$dir/lib" "$dir/lib/.libs" "$dir/.libs" "$dir" 2>/dev/null | tr '\n' ' ')" >&2
+  return 1
 }
 
 build_zlib() {
@@ -162,7 +169,9 @@ build_zlib() {
       || { echo "=== zlib 安装失败取证（末 40 行）==="; tail -40 "$WORK/zlib-cmake.log"; exit 1; }
   )
 
-  local so; so="$(pick_so "$pre" libz.so)"
+  local so
+  so="$(pick_so "$pre" libz.so)" || exit 1
+  [ -n "$so" ] || { echo "::error title=pick_so 返回了空::zlib 的 pick_so 既没给路径也没失败 —— 那说明它被别的东西吞了"; exit 1; }
   cp -f "$so" "$J/libz.so"
   "$LLVM_STRIP" --strip-unneeded "$J/libz.so" 2>/dev/null || true
   check_lib "$J/libz.so" 100000
@@ -198,7 +207,8 @@ build_openssl() {
 
   local base so
   for base in ssl crypto; do
-    so="$(pick_so "$src" "lib$base.so")"
+    so="$(pick_so "$src" "lib$base.so")" || exit 1
+    [ -n "$so" ] || { echo "::error title=pick_so 返回了空::openssl 的 lib$base.so 没取到路径"; exit 1; }
     cp -f "$so" "$J/lib$base.so"
     "$LLVM_STRIP" --strip-unneeded "$J/lib$base.so" 2>/dev/null || true
     check_lib "$J/lib$base.so" 500000
@@ -241,7 +251,9 @@ build_curl() {
       || { echo "=== curl 编译失败取证（末 30 行）==="; tail -30 "$WORK/curl-build.log"; exit 1; }
   )
 
-  local so; so="$(pick_so "$src/lib/.libs" libcurl.so)"
+  local so
+  so="$(pick_so "$src/lib/.libs" libcurl.so)" || exit 1
+  [ -n "$so" ] || { echo "::error title=pick_so 返回了空::curl 的 libcurl.so 没取到路径"; exit 1; }
   cp -f "$so" "$J/libcurl.so"
   "$LLVM_STRIP" --strip-unneeded "$J/libcurl.so" 2>/dev/null || true
   check_lib "$J/libcurl.so" 200000
