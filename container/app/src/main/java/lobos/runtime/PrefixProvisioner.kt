@@ -24,21 +24,27 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
 
+    /**
+     * 铺一件 —— 落位的形状就是身份，说明与件同目录。
+     *
+     *   usr/lib/<id>/<版本>/bin/<名字>    命令（usr/bin 建软链，PATH 里有）
+     *   usr/lib/<id>/<版本>/lib<名字>.so  库（usr/lib 已在库搜索路径里）
+     *
+     * 形态由调用方从文件本身判断（可执行件还是共享库）—— 说明里不声明形态，
+     * 照抄 ldconfig："checks the header and filenames"。
+     */
     private fun landOne(
         ctx: Context,
         id: String,
         version: String,
-        libName: String,
-        installedAs: String,
+        soName: String,
+        src: File,
         isEntry: Boolean,
         meta: org.json.JSONObject?,
-        nativeDir: File,
     ): String? {
         val verDir = lobos.os.SystemDirs.pieceDir(ctx, id, version)
         verDir.mkdirs()
-        val fileName = if (isEntry) "bin/$installedAs" else "lib/$libName"
-        val dst = File(verDir, fileName)
-        val src = File(nativeDir, libName)
+        val dst = File(verDir, if (isEntry) "bin/$soName" else "lib/$soName")
         if (!src.isFile) return null
         if (!dst.isFile || dst.length() != src.length()) {
             dst.parentFile?.mkdirs()
@@ -50,8 +56,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                 return null
             }
         }
-        // 说明随件同落 —— 系统靠它知道「这件是什么、能干什么」。
-        // 照抄 deb-control(5)：每个包自带 control，内核不预置清单。
+        // 说明随件同落 —— 内核靠它知道「这件是什么」
         if (meta != null) {
             runCatching {
                 lobos.os.StateFiles.writeAtomic(
@@ -59,17 +64,13 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                 )
             }
         }
-
         // 全局入口：命令在 usr/bin 建软链；库不用（usr/lib 已在库搜索路径里）
         if (isEntry) {
-            val link = lobos.os.SystemDirs.bin(ctx).let { File(it, installedAs) }
+            val link = lobos.os.SystemDirs.bin(ctx).let { File(it, soName) }
             link.parentFile?.mkdirs()
             if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
             java.nio.file.Files.deleteIfExists(link.toPath())
-            java.nio.file.Files.createSymbolicLink(
-                link.toPath(),
-                dst.toPath().toAbsolutePath().normalize(),
-            )
+            java.nio.file.Files.createSymbolicLink(link.toPath(), dst.toPath().toAbsolutePath().normalize())
         }
         return dst.absolutePath
     }
@@ -84,11 +85,25 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         val out = mutableListOf<org.json.JSONObject>()
         val kids = nativeDir.listFiles() ?: return out
         for (f in kids) {
-            if (!f.name.endsWith(".meta.json")) continue
-            runCatching { out += org.json.JSONObject(f.readText()) }
+            if (!f.name.endsWith(META_SUFFIX)) continue
+            runCatching {
+                val m = org.json.JSONObject(f.readText())
+                // 说明自己的文件名就是那件的 .so 名（内核不预置名字）
+                m.put("file", f.name)
+                out += m
+            }
         }
         return out.sortedBy { it.optString("id", "") }
     }
+
+    /**
+     * 说明的文件名去掉 .meta.json → 那件的 .so 名。
+     *
+     * 内核不预置任何一件的名字（照抄 ldconfig：只认文件名模式）；
+     * 名字就在落位处那份说明的文件名里。
+     */
+    private fun fileNameOf(meta: org.json.JSONObject): String =
+        meta.optString("file", "").removeSuffix(META_SUFFIX)
 
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
@@ -96,19 +111,17 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // 说明随件打进APK 的 jniLibs —— 它是唯一的数据源（deb-control(5) 的做法：
         // 每个包自带 control，内核不预置任何一件的清单）。
         // 扫 jniLibs 里带说明的条目，铺成 usr/lib/<id>/<版本>/ 的形状。
-        val metas = scanMeta(nativeDir)
-        for (m in metas) {
+        for (m in scanMeta(nativeDir)) {
             val id = m.optString("id", "")
             val version = m.optString("version", "")
-            val entry = m.optString("entry", "")
-            val libName = entry.substringAfterLast("/", "")
-            if (id.isBlank() || version.isBlank() || entry.isBlank()) continue
-            if (!File(nativeDir, libName).isFile) continue
-            val landed = landOne(
-                ctx, id, version, libName,
-                m.optString("installName", libName),
-                entry.startsWith("bin/"), m, File(nativeDir),
-            ) ?: continue
+            if (id.isBlank() || version.isBlank()) continue
+            // .so 的名字就是说明的文件名去掉 .meta.json（内核不预置任何一件的名字）
+            val soName = fileNameOf(m)
+            val src = File(nativeDir, soName)
+            if (!src.isFile) continue
+            // 形态看文件本身：ELF 里有没有 PT_INTERP / 是不是 ET_EXEC
+            val isEntry = ExecBits.isRunnable(src)
+            val landed = landOne(ctx, id, version, soName, src, isEntry, m) ?: continue
             ready += landed
         }
         linkHeadersInclude(ctx)?.let { ready += it }

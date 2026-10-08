@@ -55,10 +55,6 @@ object PieceScan {
         val meta: JSONObject? = null,
     ) {
         val required: Boolean get() = meta?.optBoolean("required", false) ?: false
-        val provides: List<String>
-            get() = meta?.optJSONArray("provides")?.let { a ->
-                (0 until a.length()).map { a.optString(it) }
-            } ?: emptyList()
     }
 
 // 读与件同目录的说明
