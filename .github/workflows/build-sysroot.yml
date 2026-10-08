@@ -134,11 +134,7 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           PW="work/pw-sysroot"
           rm -rf "$PW" && mkdir -p "$PW"
-          if ls dist/component-sysroot-*.zip >/dev/null 2>&1; then
-            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' component-sysroot-*.zip
-          else
-            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
-          fi
+          tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' --exclude '*.version' --exclude 'SHA256SUMS' .
           ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
           {
             echo "预制品：sysroot"

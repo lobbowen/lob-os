@@ -17,19 +17,6 @@ object NativeAssetRegistry {
         note = "必须随 APK：APK 内 C++ 原生件（node-pty 等）的运行期依赖",
     )
 
-    val NODE = NativeExecutable(
-        id = "node",
-        libName = "libnode.so",
-        humanName = "Node 运行时",
-        probeArgs = listOf("-v"),
-        probeExpect = "v",
-        requiredDeps = listOf("libc++_shared.so"),
-        required = false,
-        note = "APK 内不该有这份（build-apk.yml 有断言）。正常形态是**商店件**，" +
-            "落位由 ProgramManager.stateDirOf 决定（代码不单独认识它在哪）；" +
-            "这一条只留作兜底认 APK 里已存在的 libnode.so，required=false",
-    )
-
     val CAPABILITY: List<NativeExecutable> get() = listOf(
         NativeExecutable(
             id = "bash", libName = "libbash.so", humanName = "bash 执行器",

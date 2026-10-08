@@ -160,11 +160,7 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           PW="work/pw-python3"
           rm -rf "$PW" && mkdir -p "$PW"
-          if ls dist/component-python3-*.zip >/dev/null 2>&1; then
-            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' component-python3-*.zip
-          else
-            tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
-          fi
+          tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' --exclude '*.version' --exclude 'SHA256SUMS' .
           ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
           {
             echo "预制品：python3"

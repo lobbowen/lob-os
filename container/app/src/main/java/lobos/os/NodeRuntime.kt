@@ -2,7 +2,6 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
-import lobos.native.NativeAssetRegistry
 
 object NodeRuntime {
 
@@ -11,7 +10,6 @@ object NodeRuntime {
     fun path(ctx: Context): File? =
         resolveStoreBin(ctx, NAME)
             ?: lobos.runtime.SupplyProvisioner.entryLink(ctx, NAME).takeIf { it.isFile }
-            ?: NativeAssetRegistry.resolve(ctx, NativeAssetRegistry.NODE).takeIf { it.isFile }
 
     internal fun resolveStoreBin(ctx: Context, id: String): File? {
         val entry = ProgramIndex.get(ctx, id)?.let { e ->
