@@ -38,6 +38,11 @@ deps_for() {
     node|npm|pnpm) echo "" ;;
     llvmtoolchain) echo "llvm" ;;
     bash|rg|busybox) echo "build-apk-only" ;;
+    # 我们自己写的 C：只随 APK 走，不依赖任何源码包
+    flock)      echo "" ;;
+    posix)      echo "" ;;
+    ptyprobe)   echo "" ;;
+    ptysession) echo "" ;;
     # 库自身：编它要的东西就是它自己与工具链
     zlib)        echo "zlib" ;;
     openssl)     echo "openssl" ;;
@@ -66,6 +71,7 @@ bucket_for() {
     git|sqlite3|npm|pnpm|llvmtoolchain)            echo "tool" ;;
     make|cmake|pkg-config)                         echo "tool" ;;
     zlib|openssl|crypto|libcxx|deps)               echo "lib" ;;
+    flock|posix|ptyprobe|ptysession)                echo "base" ;;
     *) die ;;
   esac
 }
