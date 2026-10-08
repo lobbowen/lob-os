@@ -8,7 +8,6 @@ on:
       - 'container/**'
       - 'scripts/build-native-*.sh'
       - 'scripts/toolchain/build-base-libs.sh'
-      - 'scripts/recipes/build-shared-deps.sh'
       - 'scripts/toolchain/ensure-native-capabilities.sh'
       - 'scripts/verify/native-capabilities-fingerprint.sh'
       - 'scripts/verify/verify-runtime-elf.sh'

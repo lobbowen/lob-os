@@ -30,9 +30,14 @@ build_each() {
   do
     # crypto 不在此列 —— 它与 libssl.so 一并编出（OpenSSL 的一部分，见
     # component-sources.json的 crypto.sameAs），由 build-piece-openssl.sh 落位。
-    echo "── $s"
-    if ! bash "scripts/recipes/$s"; then
-      echo "[caps] ★ $s 失败"
+    # 逐件发通知 —— 失败时在 GitHub 界面上一眼看到是哪一件，
+    # 不用去翻被截断的日志（那 11 个脚本串在一起，日志会被截）
+    printf "::notice title=逐件::%s " "$s"
+    if bash "scripts/recipes/$s"; then
+      echo "ok"
+    else
+      echo "FAILED"
+      echo "[caps] ★ $s 失败 —— 上面那条通知标了是哪一件"
       failed=1
     fi
   done
