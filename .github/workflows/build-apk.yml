@@ -68,6 +68,12 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
           echo "[ok] SDK 包就绪"
 
+      - name: 取 NDK（命中缓存则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
+        run: bash scripts/cache-ndk.sh
+
+      - name: 定位 NDK（比对钉值 + 验证 clang 真能跑；与商店链同一份）
+        run: bash scripts/locate-ndk.sh
+
       - name: 编译底座共享库所需的宿主工具（cmake）
         run: |
           set -euo pipefail
@@ -83,7 +89,8 @@ jobs:
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$J"
-          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          echo "[libc++] NDK=$NDK（由 locate-ndk.sh 注入的 CC 反推，与商店链同一份）"
           SRC="$(ls "$NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
           [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载；NDK=$NDK"; exit 1; }
           cp -f "$SRC" "$J/libc++_shared.so"
@@ -104,14 +111,14 @@ jobs:
       - name: 小件原生件（命中固化则取用，否则现场编译）
         run: |
           set -euo pipefail
-          export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          bash scripts/locate-ndk.sh
           bash scripts/ensure-native-capabilities.sh
           ls -la container/app/src/main/jniLibs/arm64-v8a/
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
           set -euo pipefail
-          export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
+          bash scripts/locate-ndk.sh
           bash scripts/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
 
       - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）

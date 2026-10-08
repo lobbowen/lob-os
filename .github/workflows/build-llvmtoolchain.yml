@@ -1,0 +1,154 @@
+name: LLVM Toolchain（固定资产，编译一次长期复用）
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-component-llvmtoolchain.sh'
+      - 'scripts/locate-ndk.sh'
+      - 'scripts/cache-ndk.sh'
+      - 'scripts/verify-ndk-llvm.sh'
+      - 'scripts/verify-component-artifact.sh'
+      - 'scripts/package-component.sh'
+      - 'scripts/cache-key.sh'
+      - 'scripts/component-sources.json'
+      - 'patches/**'
+      - '.github/workflows/build-llvmtoolchain.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: llvmtoolchain-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+
+  llvmtoolchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+      - uses: actions/checkout@v4
+
+      - name: 取 NDK（命中缓存则 0 下载；未命中才装一次并写回缓存）
+        run: bash scripts/cache-ndk.sh
+      - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
+        run: bash scripts/locate-ndk.sh
+
+      - name: 问 NDK 它的 LLVM 版本（并与钉值核对）
+        run: bash scripts/verify-ndk-llvm.sh
+
+      - name: 把实测到的 LLVM 版本写进摘要（供填 llvmVersion 用）
+        if: always()
+        run: |
+          set -uo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          CLANG="$(ls "$NDK"/toolchains/llvm/prebuilt/*/bin/clang 2>/dev/null | head -1 || true)"
+          if [ -n "$CLANG" ]; then
+            "$CLANG" --version 2>/dev/null | head -3
+            "$CLANG" --version 2>/dev/null \
+              | sed -n 's/.*clang version \([0-9][0-9.]*\).*/实测 LLVM 版本 = \1/p'
+            { echo "### NDK/LLVM 版本（填进 scripts/component-sources.json 的 llvmVersion）"; echo '```'; \
+              "$CLANG" --version 2>/dev/null | head -3; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: 读出 clang_source_info.md（NDK 内置 LLVM 的真实来源）
+        if: always()
+        run: |
+          set -uo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          SI="$(ls "$NDK"/toolchains/llvm/prebuilt/*/clang_source_info.md "$NDK"/clang_source_info.md 2>/dev/null | head -1 || true)"
+          {
+            echo "### clang_source_info.md"
+            if [ -n "$SI" ]; then
+              echo "路径：\`$SI\`"
+              echo '```'
+              cat "$SI"
+              echo '```'
+              echo "**llvmVersion 要按这份文件填**（它给的是 llvmorg- 对应的语义版本）。"
+            else
+              echo "**没找到 clang_source_info.md** —— 这一版 clang 的 LLVM 语义版本未知。"
+              echo "此时 \`clang --version\` 里的 \`20.0.0git\` **不足以**作为同源依据"
+              echo "（verify-ndk-llvm.sh 会 exit 2 并说明）。需要人工确认后再填。"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 编 llvmtoolchain（llvmVersion 已填，首次真编）
+        if: success()
+        run: |
+          set -euo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          [ -n "$NDK" ] && [ -d "$NDK" ] \
+            || { echo "::error title=无 NDK::runner 上没有 ANDROID_NDK_LATEST_HOME"; exit 1; }
+          [ -x "$TC/aarch64-linux-android35-clang" ] \
+            || { echo "::error title=无 clang::缺 $TC/aarch64-linux-android35-clang（宿主标签写死了 linux-x86_64，runner 若不是 x86_64 要改这里）"; exit 1; }
+          [ -x "$TC/llvm-ar" ] \
+            || { echo "::error title=无 llvm-ar::缺 $TC/llvm-ar —— 编 LLVM 的归档工具，NDK 自带"; exit 1; }
+          { echo "CC=$TC/aarch64-linux-android35-clang";
+            echo "CXX=$TC/aarch64-linux-android35-clang++";
+            echo "LLVM_STRIP=$TC/llvm-strip"; } >> "$GITHUB_ENV"
+          if ! command -v cmake >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq cmake
+          fi
+          bash scripts/build-component-llvmtoolchain.sh
+
+      - name: 件形态校验（aarch64 动态件 / 别名工具各自形状）
+        run: bash scripts/verify-component-artifact.sh llvmtoolchain
+
+      - name: 打包 + sha256
+        run: bash scripts/package-component.sh llvmtoolchain
+
+      - name: 别名映射须与件内 package.json 一致
+        run: |
+          set -euo pipefail
+          test -f dist/llvmtoolchain/package.json \
+            || { echo "::error title=缺别名映射::dist/llvmtoolchain/package.json 没产出 —— 八个工具里只有入口能用"; exit 1; }
+          node -e '
+          const fs = require("node:fs");
+          const pkg = JSON.parse(fs.readFileSync("dist/llvmtoolchain/package.json", "utf8"));
+          const names = Object.keys(pkg.bin || {});
+          const need = ["clang", "clang++", "ld.lld", "llvm-ar", "llvm-nm", "llvm-strip", "llvm-objdump", "llvm-readobj"];
+          const missing = need.filter((n) => !names.includes(n));
+          if (missing.length) {
+            console.error("::error title=别名不全::package.json 的 bin 缺 " + missing.join(",") + "（声明了 " + names.length + " 个）");
+            process.exit(1);
+          }
+          for (const [k, v] of Object.entries(pkg.bin)) {
+            if (!fs.existsSync("dist/llvmtoolchain/" + v)) {
+              console.error("::error title=别名指向不存在的文件::" + k + " → " + v);
+              process.exit(1);
+            }
+          }
+          console.log("[ok] 别名 " + names.length + " 个，逐个指向件内真实文件");
+          '
+
+
+      - name: 发布本件预制品到 Release（编一次，长期复用）
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -d dist/llvmtoolchain ] || { echo "::warning title=没产出 llvmtoolchain::跳过发布"; exit 0; }
+          TAG="$(bash scripts/cache-key.sh tag llvmtoolchain)"
+          ASSET="$(bash scripts/cache-key.sh asset llvmtoolchain)"
+          PW="work/pw-llvmtoolchain"
+          rm -rf "$PW" && mkdir -p "$PW"
+          tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
+          ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
+          {
+            echo "预制品：llvmtoolchain（clang / lld / binutils）"
+            echo "Release tag：$TAG"
+            echo "NDK：$(bash scripts/fetch-pinned.sh --ndk)"
+            echo "LLVM 源码钉值：$(bash scripts/fetch-pinned.sh --src-version llvm)"
+            echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > "$PW/BUILD.md"
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" \
+              --title "llvmtoolchain（基础环境）— $TAG" \
+              --notes "编译一次、长期复用的工具链预制品。base 筐的底座之底座。BUILD.md 记录编译依据。"
+          fi
+          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已发布 $TAG"
