@@ -11,7 +11,9 @@ for a in "$@"; do
   case "$a" in
     tag) KIND="tag" ;;
     key) KIND="key" ;;
-    asset) KIND="asset" ;;
+    asset)      KIND="asset" ;;
+    deps)       KIND="deps" ;;
+    source)     KIND="source" ;;
     *)
       if [ -n "$TOOL" ]; then
         echo "只能给一个件名（收到 $a 与 $TOOL）" >&2
@@ -21,38 +23,59 @@ for a in "$@"; do
       ;;
   esac
 done
-[ -n "$TOOL" ] || { echo "用法: $0 <件名> | $0 tag <件名>" >&2; exit 2; }
+[ -n "$TOOL" ] || {
+  echo "用法: $0 <子命令> <件名>" >&2
+  echo "  子命令: key · tag · deps · source · asset" >&2
+  exit 2
+}
 TABLE="$ROOT_DIR/scripts/component-sources.json"
 
 deps_for() {
-  case "$1" in
-    make)        echo "make" ;;
-    cmake)       echo "cmake" ;;
-    python3)     echo "python openssl zlib" ;;
-    pkg-config)  echo "pkgconf" ;;
-    curl)        echo "curl openssl zlib" ;;
-    git)         echo "git openssl zlib curl" ;;
-    jq)          echo "jq" ;;
-    sqlite3)     echo "sqlite" ;;
-    sysroot)     echo "" ;;
-    node|npm|pnpm) echo "" ;;
-    llvmtoolchain) echo "llvm" ;;
-    bash|rg|busybox) echo "build-apk-only" ;;
-    # 我们自己写的 C：只随 APK 走，不依赖任何源码包
-    flock)      echo "" ;;
-    posix)      echo "" ;;
-    ptyprobe)   echo "" ;;
-    ptysession) echo "" ;;
-    # 库自身：编它要的东西就是它自己与工具链
-    zlib)        echo "zlib" ;;
-    openssl)     echo "openssl" ;;
-    crypto)      echo "openssl" ;;
-    libcxx)      echo "" ;;
-    # deps 是「那三个库一起编」的产物名（build-shared-deps.sh 的输出）
-    deps)        echo "openssl zlib curl" ;;
-    *) die ;;
-  esac
-}
+      case "$1" in
+      # ── 依赖哪些件（照 dpkg 的 Depends=）──────────────────────
+      # 只有「真的缺了它就编不出来/跑不起来」的才算
+      curl)       echo "openssl zlib" ;;
+      openssl)    echo "zlib" ;;
+      crypto)     echo "openssl" ;;
+      git)        echo "curl openssl zlib" ;;
+      python)     echo "openssl zlib" ;;
+      node)       echo "" ;;
+      # ── 自己就是自己（编它要它自己的源码）────────────────────
+      bash|ripgrep|busybox|jq|sqlite|npm|pnpm|llvm|make|cmake|pkgconf) echo "" ;;
+      flock|posix|ptyprobe|ptysession)                             echo "" ;;
+      zlib)      echo "" ;;
+      # ── 不是件
+      libcxx|sysroot)                                               echo "" ;;
+      *) die ;;
+      esac
+    }
+
+    # 要下哪个源码包 —— 构建期的事，与「依赖哪些件」是两回事
+    source_for() {
+      case "$1" in
+      bash)         echo "bash" ;;
+      ripgrep)echo "ripgrep" ;;
+      busybox)      echo "busybox" ;;
+      jq)           echo "jq" ;;
+      curl)         echo "curl" ;;
+      zlib)         echo "zlib" ;;
+      openssl)      echo "openssl" ;;
+      crypto)       echo "openssl" ;;
+      flock|posix|ptyprobe|ptysession) echo "" ;;   # 自写 C，无上游
+      node)         echo "node" ;;
+      python)       echo "python" ;;
+      git)          echo "git" ;;
+      sqlite)       echo "sqlite" ;;
+      npm)          echo "npm" ;;
+      pnpm)         echo "pnpm" ;;
+      llvm)         echo "llvm" ;;
+      make)         echo "make" ;;
+      cmake)        echo "cmake" ;;
+      pkgconf)      echo "pkgconf" ;;
+      libcxx|sysroot) echo "" ;;                    # 不是件，从 NDK 取
+      *) die ;;
+      esac
+    }
 
 # 四个筐：
 #   base 基础环境件 —— 系统运转离不开的
@@ -64,17 +87,23 @@ deps_for() {
 #「编某件时的中间产物」，每次编git 都要重编一遍 zlib+openssl+curl。
 # 它们本身就是基础件，且未来会不断增加 —— 与环境件不同类，单独立筐。
 bucket_for() {
-  case "$1" in
-    sysroot)                                       echo "base" ;;
-    bash|rg|busybox|jq|curl)                       echo "base" ;;
-    node|python3)                                  echo "rt" ;;
-    git|sqlite3|npm|pnpm|llvmtoolchain)            echo "tool" ;;
-    make|cmake|pkg-config)                         echo "tool" ;;
-    zlib|openssl|crypto|libcxx|deps)               echo "lib" ;;
-    flock|posix|ptyprobe|ptysession)                echo "base" ;;
-    *) die ;;
-  esac
-}
+      case "$1" in
+      # ── base 基础环境件：随 APK 走 ──────────────────────────────
+      # 命令与库都在这里 —— Linux 不区分它们（ldconfig 扫的是目录，
+      # libz.so 与 libcurl.so 是同一类东西：/usr/lib 下的共享库）
+      bash|ripgrep|busybox|jq|ptyprobe|ptysession)      echo "base" ;;
+      curl|zlib|openssl|crypto|flock|posix)               echo "base" ;;
+      # ── rt 运行时：zip 件，用户自己装 ──────────────────────────
+      node|python)echo "rt" ;;
+      # ── tool 工具：zip 件，用户自己装 ─────────────────────────
+      git|sqlite|npm|pnpm|llvm|make|cmake|pkgconf)        echo "tool" ;;
+      # ── 不是件，但随 APK 走 ──────────────────────────────────
+      # libcxx  NDK 给的共享库，直接进 jniLibs（不是我们编的件）
+      # sysroot 编译期的头文件与库目录（Linux 里对应 gcc 包的 include/）
+      libcxx|sysroot)                                   echo "apkonly" ;;
+      *) die ;;
+      esac
+    }
 
 die() {
   echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补 deps_for 与 bucket_for"
