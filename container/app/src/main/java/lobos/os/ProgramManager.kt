@@ -40,7 +40,7 @@ object ProgramManager {
                         put("id", e.id)
                         put("level", e.level.name)
                         put("category", e.category.name)
-                        put("origin", e.origin)
+                        put("asApplication", e.asApplication)
                         put("enabled", e.enabled)
                         put("declaredVersion", e.version)
                         put("currentVersion", r?.version ?: "")
@@ -49,7 +49,7 @@ object ProgramManager {
                         put("deps", JSONArray(e.deps))
                         put("stateDir", e.stateDir)
                         put("tier", e.tier)
-                        put("source", e.origin)
+                        put("asApplication", e.asApplication)
                         put("evidence", r?.evidence ?: "")
                         if (e.level == Level.APPLICATION) {
                             put("role", e.role)
@@ -149,21 +149,19 @@ object ProgramManager {
     private fun alignLevels(ctx: Context) {
         val fixed = mutableListOf<String>()
         for (e in ProgramIndex.all(ctx)) {
-            val want = levelFromOrigin(ctx, e) ?: continue
+            val want = levelFor(ctx, e) ?: continue
             if (e.level == want) continue
             ProgramIndex.upsert(ctx, e.copy(level = want))
             fixed += e.id + "→" + want.name
         }
         if (fixed.isNotEmpty()) {
-            Journal.note(ctx, "index", null, "层级与来源不一致，已按实物纠正", "改=" + fixed.joinToString(","))
+            Journal.note(ctx, "index", null, "层级与实物不一致，已纠正", "改=" + fixed.joinToString(","))
         }
     }
 
-    private fun levelFromOrigin(ctx: Context, e: IndexEntry): Level? = when (e.origin) {
-        "apk" -> Level.INFRA
-        "store" -> Level.APPLICATION
-        "ota" -> levelOfKind(CatalogClient.entryFor(ctx, e.id)?.optString("kind", "").orEmpty())
-        else -> null
+    private fun levelFor(ctx: Context, e: IndexEntry): Level? = when {
+        e.asApplication -> Level.APPLICATION
+        else -> levelOfKind(CatalogClient.entryFor(ctx, e.id)?.optString("kind", "").orEmpty())
     }
 
     fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id, stateDirOf(ctx, id))

@@ -15,7 +15,7 @@ data class IndexEntry(
     val id: String,
     val level: Level,
     val category: Category,
-    val origin: String,
+    val asApplication: Boolean,
     val version: String,
     val enabled: Boolean,
     val stateDir: String,
@@ -91,7 +91,7 @@ object ProgramIndex {
         id = id,
         level = level,
         category = if (level == Level.APPLICATION) Category.APPLICATION else Category.NONE,
-        origin = "unknown",
+        asApplication = level == Level.APPLICATION,
         version = "",
         enabled = true,
         stateDir = "",
@@ -122,7 +122,7 @@ object ProgramIndex {
         put("id", e.id)
         put("level", e.level.name)
         put("category", e.category.name)
-        put("origin", e.origin)
+        put("asApplication", e.asApplication)
         put("version", e.version)
         put("enabled", e.enabled)
         put("stateDir", e.stateDir)
@@ -167,7 +167,7 @@ object ProgramIndex {
             id = id,
             level = level,
             category = categoryOf(o.optString("category", "NONE")),
-            origin = o.optString("origin", "unknown"),
+            asApplication = o.optBoolean("asApplication", level == Level.APPLICATION),
             version = o.optString("version", ""),
             enabled = o.optBoolean("enabled", true),
             stateDir = o.optString("stateDir", ""),

@@ -32,7 +32,7 @@ object PackageInstaller {
         val r = lobos.ota.ProgramInstallPipeline.install(
             ctx,
             lobos.ota.ProgramInstallPipeline.Spec(
-                from = lobos.ota.ProgramInstallPipeline.From.STORE,
+                from = lobos.ota.ProgramInstallPipeline.From.APP,
                 programId = name,
                 zip = zipTmp,
                 shape = if (isApplication) lobos.ota.ProgramInstallPipeline.Shape.APPLICATION

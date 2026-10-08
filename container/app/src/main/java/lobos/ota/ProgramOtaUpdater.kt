@@ -189,7 +189,7 @@ object ProgramOtaUpdater {
             val r = ProgramInstallPipeline.install(
                 context,
                 ProgramInstallPipeline.Spec(
-                    from = ProgramInstallPipeline.From.BUILTIN,
+                    from = ProgramInstallPipeline.From.COMPONENT,
                     programId = installId,
                     zip = tmp,
                     manifestText = manifestText,

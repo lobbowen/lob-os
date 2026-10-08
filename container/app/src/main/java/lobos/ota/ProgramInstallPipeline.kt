@@ -7,9 +7,9 @@ import java.io.File
 
 object ProgramInstallPipeline {
 
-    enum class From(val label: String, val origin: String) {
-        STORE("应用商店", "store"),
-        BUILTIN("内置件 OTA", "ota"),
+    enum class From(val label: String, val asApplication: Boolean) {
+        APP("应用（快应用机制）", true),
+        COMPONENT("系统件（内核机制）", false),
     }
 
     data class Spec(
@@ -81,7 +81,7 @@ object ProgramInstallPipeline {
                     version = version,
                     enabled = true,
                     deps = depsOf(context, spec.programId).ifEmpty { baseEntry.deps },
-                    origin = spec.from.origin,
+                    asApplication = spec.from.asApplication,
                     tier = runCatching {
                         lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("tier", "").orEmpty()
                     }.getOrDefault("").ifBlank { baseEntry.tier },
@@ -109,7 +109,7 @@ object ProgramInstallPipeline {
         lobos.log.Journal.note(
             context, "package", true, "包已安装",
             "id=" + spec.programId + " version=" + version +
-                " 来源=" + spec.from.label + " origin=" + spec.from.origin +
+                " 来源=" + spec.from.label +
                 " dir=" + dir.absolutePath,
         )
         return Result(true, version, null, "已登记 " + spec.programId + "@" + version, base.nodeVerifyOutput)
@@ -179,7 +179,7 @@ object ProgramInstallPipeline {
                 base.copy(
                     version = version,
                     enabled = true,
-                    origin = spec.from.origin,
+                    asApplication = spec.from.asApplication,
                     stateDir = if (base.level == lobos.os.Level.INFRA) ""
                     else base.stateDir.ifBlank {
                         lobos.os.ProgramManager.relStateDir(spec.programId, kindOf(context, spec.programId))

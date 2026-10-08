@@ -87,7 +87,7 @@ object ProgramMigration {
             }
             out[name] = ProgramIndex.empty(name, level).copy(
                 category = category,
-                origin = e.optString("source", "apk").ifBlank { "apk" },
+                asApplication = e.optBoolean("asApplication", false),
                 version = e.optString("version", ""),
                 enabled = e.optBoolean("enabled", true),
                 stateDir = if (level == Level.INFRA) "" else ProgramManager.relStateDir(name, kindRaw),
@@ -107,7 +107,7 @@ object ProgramMigration {
         for (spec in ProgramRegistry.list(ctx)) {
             out[spec.id] = ProgramIndex.empty(spec.id, Level.APPLICATION).copy(
                 category = Category.APPLICATION,
-                origin = "store",
+                asApplication = true,
                 version = spec.version,
                 enabled = true,
                 stateDir = ProgramManager.relStateDir(spec.id, "APP"),

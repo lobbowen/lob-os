@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "pieces": [
+    {
+      "id": "bash",
+      "form": "exec",
+      "version": "5.2.15",
+      "entry": "bin/bash",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.bash"
+    },
+    {
+      "id": "busybox",
+      "form": "exec",
+      "version": "1.36.1",
+      "entry": "bin/busybox",
+      "versionArgs": [
+        "--help"
+      ],
+      "note": "来自 component-sources.json 的 sources.busybox"
+    },
+    {
+      "id": "cmake",
+      "form": "exec",
+      "version": "4.4.4",
+      "entry": "bin/cmake",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.cmake"
+    },
+    {
+      "id": "crypto",
+      "form": "lib",
+      "version": "3.6.3",
+      "entry": "lib/libcrypto.so",
+      "versionArgs": [],
+      "note": "来自 component-sources.json 的 sources.openssl"
+    },
+    {
+      "id": "curl",
+      "form": "exec",
+      "version": "8.22.0",
+      "entry": "bin/curl",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.curl"
+    },
+    {
+      "id": "git",
+      "form": "exec",
+      "version": "2.55.0",
+      "entry": "bin/git",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.git"
+    },
+    {
+      "id": "jq",
+      "form": "exec",
+      "version": "1.8.2",
+      "entry": "bin/jq",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.jq"
+    },
+    {
+      "id": "llvmtoolchain",
+      "form": "exec",
+      "version": "21.1.0",
+      "entry": "bin/llvmtoolchain",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.llvm"
+    },
+    {
+      "id": "make",
+      "form": "exec",
+      "version": "4.4.1",
+      "entry": "bin/make",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.make"
+    },
+    {
+      "id": "node",
+      "form": "exec",
+      "version": "24.21.0",
+      "entry": "bin/node",
+      "versionArgs": [
+        "-p",
+        "process.versions.node"
+      ],
+      "note": "来自 node-versions.json 的 default"
+    },
+    {
+      "id": "npm",
+      "form": "exec",
+      "version": "11.19.0",
+      "entry": "bin/npm",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 node-versions.json 的 npm"
+    },
+    {
+      "id": "openssl",
+      "form": "lib",
+      "version": "3.6.3",
+      "entry": "lib/libssl.so",
+      "versionArgs": [],
+      "note": "来自 component-sources.json 的 sources.openssl"
+    },
+    {
+      "id": "pkg-config",
+      "form": "exec",
+      "version": "3.0.7",
+      "entry": "bin/pkg-config",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.pkgconf"
+    },
+    {
+      "id": "pnpm",
+      "form": "exec",
+      "version": "12.7.0",
+      "entry": "bin/pnpm",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "钉在 build-component-pnpm.sh 第一行（与其 sha 放在一起）"
+    },
+    {
+      "id": "python3",
+      "form": "exec",
+      "version": "3.14.8",
+      "entry": "bin/python3",
+      "versionArgs": [
+        "-V"
+      ],
+      "note": "来自 component-sources.json 的 sources.python"
+    },
+    {
+      "id": "ripgrep",
+      "form": "exec",
+      "version": "14.1.1",
+      "entry": "bin/ripgrep",
+      "versionArgs": [
+        "--version"
+      ],
+      "note": "来自 component-sources.json 的 sources.ripgrep"
+    },
+    {
+      "id": "sqlite3",
+      "form": "exec",
+      "version": "3530400",
+      "entry": "bin/sqlite3",
+      "versionArgs": [
+        "-version"
+      ],
+      "note": "来自 component-sources.json 的 sources.sqlite3"
+    },
+    {
+      "id": "sysroot",
+      "form": "data",
+      "version": "30.0.16248370",
+      "entry": "bin/sysroot",
+      "versionArgs": [],
+      "note": "版本随 NDK（component-sources.json 的 ndkVersion）"
+    },
+    {
+      "id": "zlib",
+      "form": "lib",
+      "version": "1.3.2",
+      "entry": "lib/libz.so",
+      "versionArgs": [],
+      "note": "来自 component-sources.json 的 sources.zlib"
+    }
+  ]
+}
