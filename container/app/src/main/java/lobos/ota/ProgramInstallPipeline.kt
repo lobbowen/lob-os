@@ -299,6 +299,28 @@ object ProgramInstallPipeline {
 
     private data class DepReport(val ok: Boolean, val detail: String, val placed: Int, val missing: List<String>)
 
+    /**
+     * linker 能不能找到这个库 —— **问事实，不问名单**。
+     *
+     * 照抄 ld.so(8) 的搜索顺序：DT_RPATH → LD_LIBRARY_PATH → DT_RUNPATH
+     * → ld.so.cache → 系统默认路径。我们查其中我们能查的那些位置。
+     *
+     * @param name NEEDED 里的库名（如 `libssl.so`）
+     */
+    private fun linkerCanFind(context: Context, name: String): Boolean {
+        // ① 系统的库目录 —— Android 平台自己给我们的运行期
+        for (d in SYSTEM_LIB_DIRS) {
+            if (File(d, name).exists()) return true
+        }
+        // ② APK 里的 —— NDK 的运行期随APK 进来（libc++_shared.so 走这条）
+        val jni = context.applicationInfo.nativeLibraryDir
+        if (jni != null && File(jni, name).exists()) return true
+        // ③ 我们的 usr/lib —— 全局软链都在那儿
+        val usrLib = SystemDirs.lib(context)
+        if (usrLib != null && File(usrLib, name).exists()) return true
+        return false
+    }
+
     private fun satisfyElfDeps(context: Context, dest: File): DepReport {
         val elfs = dest.walkTopDown().filter { it.isFile && isElf(it) }.toList()
         if (elfs.isEmpty()) return DepReport(true, "落位目录内没有 ELF 文件，无需铺依赖", 0, emptyList())
@@ -312,11 +334,25 @@ object ProgramInstallPipeline {
             if (dirs.isEmpty()) targets += f.parentFile else targets += dirs
         }
         if (targets.isEmpty()) targets += dest
-        val systemProvided = setOf(
-            "libc.so", "libm.so", "libdl.so", "liblog.so", "libz.so",
-            "libstdc++.so", "libgnustl_shared.so", "libc++_shared.so",
-        )
-        var missing = needed.filter { !systemProvided.contains(it) && File(dest, it).isFile }
+        // ★ 不用一张写死的 .so 名单 —— 那些是安卓平台/NDK 的运行期，
+        //   不是我们系统里的件；写死在「装程序」这个文件里，平台加了我们也不知道。
+        //   判据换成事实：**linker 能不能在它的搜索顺序里找到它**。
+        val systemProvided = linkedSetOf<String>()
+        // ★ 原来这里是 && File(dest, it).isFile —— 那只会把「已经存在的」算进 missing，
+        // 于是下一行 isEmpty() 恒真，下面整段铺依赖的逻辑（17 行）永不执行。
+        //   语义应该是：既不是系统提供的，落位目录里也还没有的。
+        // linker 的搜索顺序（ld.so(8)）：DT_RPATH → LD_LIBRARY_PATH
+        // → DT_RUNPATH（含 $ORIGIN）→ ld.so.cache → 系统默认路径
+        for (name in needed) {
+            if (File(dest, name).isFile) continue
+            if (linkerCanFind(context, name)) systemProvided.add(name)
+        }
+        var missing = needed.filter {
+            // linker 找得到 → 不用我们铺
+            !systemProvided.contains(it) &&
+                // 落位目录里已经有了 → 不用铺
+                !File(dest, it).isFile
+        }
         if (missing.isEmpty()) {
             return DepReport(true, "ELF 段要求的依赖已齐（或由系统提供）", 0, emptyList())
         }
@@ -441,4 +477,12 @@ object ProgramInstallPipeline {
         val f = File(context.cacheDir, "install-manifest-" + programId.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".json")
         return runCatching { f.writeText(text) }.let { if (it.isSuccess) f else null }
     }
+    /**
+     * Android 平台给应用进程的库目录 —— linker 的最后兜底位置。
+     *（ld.so(8) 的搜索顺序末尾：系统默认路径）
+     *
+     * 这些路径是**平台的事实**，不是我们配的；换个 ROM 可能不同，
+     * 所以判据是「这些目录里有没有那个文件」，不是「名字在不在名单里」。
+     */
+    private val SYSTEM_LIB_DIRS = listOf("/system/lib64", "/system/lib", "/apex/com.android.runtime/lib64/bionic")
 }

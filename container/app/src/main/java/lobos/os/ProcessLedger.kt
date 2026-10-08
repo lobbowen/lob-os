@@ -19,9 +19,6 @@ object ProcessLedger {
         val generation: Long,
         val pid: Int,
         val starttime: Long,
-        val pgid: Int,
-        val startedAt: Long,
-        val ownsGroup: Boolean = false,
     )
 
     private fun file(ctx: Context): File {
@@ -157,9 +154,7 @@ object ProcessLedger {
                 generation = o.optLong("generation", 0L),
                 pid = o.optInt("pid", 0),
                 starttime = o.optLong("starttime", -1L),
-                pgid = o.optInt("pgid", -1),
                 startedAt = o.optLong("startedAt", 0L),
-                ownsGroup = o.optBoolean("ownsGroup", false),
             )
         }
     }
@@ -173,9 +168,7 @@ object ProcessLedger {
                 put("generation", e.generation)
                 put("pid", e.pid)
                 put("starttime", e.starttime)
-                put("pgid", e.pgid)
                 put("startedAt", e.startedAt)
-                put("ownsGroup", e.ownsGroup)
             })
         }
         write(ctx, read(ctx).put("entries", arr))
@@ -187,19 +180,15 @@ object ProcessLedger {
         return max + 1
     }
 
-    fun pgidOf(pid: Int): Int = runCatching {
-        val rest = java.io.File("/proc/" + pid + "/stat").readText().substringAfterLast(") ")
-        rest.split(" ").getOrNull(2)?.toIntOrNull() ?: -1
-    }.getOrDefault(-1)
 
     @Synchronized
     fun begin(ctx: Context, programId: String, generation: Long, pid: Int): Entry? {
         val st = starttimeOf(pid)
-        if (pid <= 0 || st <= 0) return null
-        val pgid = pgidOf(pid)
-        val owns = pgid == pid && pgid != pgidOf(android.os.Process.myPid())
         val e = Entry(
-            programId, generation, pid, st, pgid, System.currentTimeMillis(), owns,
+            programId = programId,
+            generation = generation,
+            pid = pid,
+            starttime = st,
         )
         persist(ctx, list(ctx).filterNot { it.pid == pid } + e)
         return e
