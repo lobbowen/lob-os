@@ -1,40 +1,45 @@
-name: Build Component (商店件)
+name: Component Manifest · 汇总各件产物成清单
 
+# 这条链不再构建任何件。各件各有自己的独立构建链（build-<件>.yml），
+# 它只做一件事：把那些链的产物收齐 → 投影 → 签名 → 投递到对象存储。
+# 所以触发路径只留「汇总口径」相关的文件，不留任何件的构建配方 ——
+# 改一个件的配方不该重跑汇总（那会牵连全部件的清单口径）。
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/build-component.yml'
-      - 'scripts/build-component-*.sh'
-      - 'scripts/locate-ndk.sh'
-      - 'scripts/cache-ndk.sh'
-      - 'scripts/verify-component-build-date.sh'
-      - 'scripts/package-component.sh'
+      - 'scripts/cache-key.sh'
+      - 'scripts/list-bucket-components.js'
+      - 'scripts/fetch-component-artifacts.sh'
       - 'scripts/publish-component-manifest.js'
       - 'scripts/publish-native-manifest.js'
+      - 'scripts/check-component-manifest-drift.js'
       - 'scripts/upload-qiniu.js'
       - 'scripts/read-component-entry.sh'
-      - 'scripts/component-sources.json'
-      - 'scripts/fetch-pinned.sh'
+      - 'scripts/gen-native-assets.js'
       - 'scripts/component-verify.json'
-      - 'scripts/node-versions.json'
-      - 'scripts/read-node-versions.sh'
-      - 'patches/**'
-      - 'components/component/COMPONENT.md'
+      - 'container/app/src/main/assets/supply/channel.json'
+      - 'container/app/src/main/assets/supply/component-public.pem'
+      - 'container/app/src/main/java/lobos/native/NativeAssetRegistry.kt'
+      - '.github/native-capabilities.txt'
+      - '.github/native-capabilities-pin.json'
+      - 'version.json'
     tags:
       - 'component-*'
   pull_request:
     paths:
-      - 'scripts/build-component-*.sh'
+      - 'scripts/cache-key.sh'
+      - 'scripts/list-bucket-components.js'
+      - 'scripts/fetch-component-artifacts.sh'
       - 'scripts/publish-component-manifest.js'
       - 'scripts/publish-native-manifest.js'
-      - 'scripts/component-sources.json'
+      - 'scripts/check-component-manifest-drift.js'
       - 'scripts/component-verify.json'
-      - 'patches/**'
   workflow_dispatch: {}
 
 concurrency:
-  group: build-component-${{ github.ref }}
+  group: component-manifest-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -66,137 +71,27 @@ jobs:
             echo "[resolve] 校验轮（ref=${GITHUB_REF}）：只构建与对账，不投递"
           fi
 
-  node:
+  manifest:
     needs: resolve
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: 解析 node 版本与 ABI
-        id: ver
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq python3 file >/dev/null
-          echo "tag=$(bash scripts/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
-          echo "abi=$(bash scripts/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
-
-      - name: 取已编译的 node 运行时制品
+      # 各件已拆成独立构建链，产物留在**各自 run 的 artifact** 里，不在同一个 run 里，
+      # 所以不能再用不带 run-id 的 actions/download-artifact（它只认同一个 run，
+      # 拆链后取不到任何件）。这里逐件查最近一次「产物还活着」的成功 run 再取。
+      #
+      # 真相源是 GitHub：各件独立链的 run 与其 Release 预制品。
+      # 七牛只在最后一步「发布清单到对象存储」出现，那是设备端分发目标，不是取件来源。
+      - name: 逐件取最近成功 run 的产物（GitHub 是真相源）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="$(bash scripts/cache-key.sh tag node)"
-          NAME="$(bash scripts/cache-key.sh asset node)"
-          NAME_DASH="${NAME/+arm64+v8a/+arm64-v8a}"
-          NVER="${{ steps.ver.outputs.tag }}"
-          NABI="${{ steps.ver.outputs.abi }}"
-          LEGACY_ASSET="node-runtime-${NVER}-${NABI}.tar.gz"
-          mkdir -p dist
-          for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
-            for PAIR in "$TAG|$NAME" "$TAG|$NAME_DASH" "node-runtime-${NVER}-${NABI}|$LEGACY_ASSET" "node-runtime-${NVER}|$LEGACY_ASSET"; do
-              T="${PAIR%%|*}"
-              N="${PAIR#*|}"
-              if gh release download "$T" --repo "$R" --pattern "$N" --dir dist 2>/dev/null; then
-                echo "[ok] 取到 tar 制品：$R / $T / $N"
-                if [ -f "dist/$N.sha256" ]; then
-                  ( cd dist && sha256sum -c "$N.sha256" ) \
-                    || { echo "::error title=node 制品 sha256 不符::$R/$N"; exit 1; }
-                  echo "[ok] sha256 校验通过"
-                fi
-                tar -C dist -xzf "dist/$N"
-                rm -f "dist/$N" "dist/$N.sha256"
-                break 2
-              fi
-              echo "[skip] $R / $T 没有 $N"
-            done
-            echo "[skip] $R 三种 tag 都没有 tar 形态（试裸资产形态：libnode.so 与 SHA256SUMS 必须一起下，--pattern 只能给一个模式）"
-            if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null \
-               && gh release download "$TAG" --repo "$R" --pattern 'SHA256SUMS' --dir dist 2>/dev/null; then
-              echo "[ok] 取到裸资产：$R / $TAG"
-              if [ -f dist/SHA256SUMS ]; then
-                ( cd dist && grep -E '[[:space:]]libnode\.so$' SHA256SUMS | sha256sum -c - ) \
-                  || { echo "::error title=libnode.so 的 SHA256SUMS 校验失败::$R"; exit 1; }
-                echo "[ok] sha256 校验通过（按 release 自带的 SHA256SUMS）"
-              else
-                echo "::error title=裸资产形态没有 SHA256SUMS::拒绝用未校验的 node"
-                exit 1
-              fi
-              break
-            fi
-            rm -f dist/libnode.so dist/SHA256SUMS
-            echo "[skip] $R 两种形态都没有"
-          done
-          ls -la dist/
-          [ -f dist/libnode.so ] \
-            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 tag（$TAG / node-runtime-${NVER}-${NABI} / node-runtime-${NVER}）都取不到 tar 形态，也没有裸资产形态；需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
-          echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
-
-      - name: 落成 component 件
-        env:
-          NODE_VERSION: ${{ steps.ver.outputs.tag }}
-        run: |
-          set -euo pipefail
-          bash scripts/build-component-node.sh
-
-      - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify-component-artifact.sh node
-
-      - name: 打包 + sha256
-        run: bash scripts/package-component.sh node
-
-      - name: 发布 node 件到对象存储
-        if: ${{ needs.resolve.outputs.publish == 'true' }}
-        env:
-          QINIU_AK: ${{ secrets.QINIU_AK }}
-          QINIU_SK: ${{ secrets.QINIU_SK }}
-          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
-        run: |
-          set -euo pipefail
-          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
-            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET；设备只从对象存储取件"
-            exit 1
-          fi
-          for f in dist/component-node-*.zip; do
-            [ -f "$f" ] || { echo "::error title=没有 node 件可发::$f 不在，先看前面的构建步"; exit 1; }
-            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
-          done
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: component-node
-          path: dist/component-node-*.zip
-          retention-days: 30
-
-  ndk-cache:
-    needs: resolve
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 恢复 NDK 缓存
-        id: ndkcache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/actions-setup-ndk
-          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
-
-      - name: 装 NDK 并写回缓存（本 job 只做这一件事，所以它几乎总是成功 → 缓存落地）
-        run: bash scripts/cache-ndk.sh
-
-  manifest:
-    needs: [resolve, build, node]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+          mkdir -p dist work
+          bash scripts/fetch-component-artifacts.sh | tee work/fetch.tsv
+          echo "[fetch] 上面这份是本轮取件口径：缺件只在 warning 里显式出现，不会静默从清单里消失"
+          node -p "'[fetch] dist 里 ' + require('fs').readdirSync('dist').filter(f => f.endsWith('.zip')).length + ' 颗 zip'"
 
       - name: 清单投影（--project：不签名、不读私钥）
         run: |

@@ -1,0 +1,161 @@
+name: Build Component · node
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-component-node.sh'
+      - 'scripts/read-node-versions.sh'
+      - 'scripts/node-versions.json'
+      - 'scripts/cache-key.sh'
+      - 'scripts/fetch-pinned.sh'
+      - 'scripts/read-component-entry.sh'
+      - 'scripts/verify-component-artifact.sh'
+      - 'scripts/package-component.sh'
+      - 'scripts/upload-qiniu.js'
+      - 'scripts/component-verify.json'
+      - 'patches/**'
+      - '.github/workflows/build-node.yml'
+  workflow_dispatch: {}
+  tags:
+    - 'rt-node'
+
+concurrency:
+  group: node-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.ref.outputs.channel }}
+      revision: ${{ steps.ref.outputs.revision }}
+      publish: ${{ steps.ref.outputs.publish }}
+    steps:
+      - name: 解出本轮的通道与清单版本号
+        id: ref
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" =~ ^component-(canary|stable)-([1-9][0-9]*)$ ]]; then
+            echo "发布轮：ref=${GITHUB_REF_NAME} → 通道 ${BASH_REMATCH[1]}，清单 revision ${BASH_REMATCH[2]}"
+            { echo "channel=${BASH_REMATCH[1]}"; echo "revision=${BASH_REMATCH[2]}"; echo "publish=true"; } >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/component-* ]]; then
+            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 component-<channel>-<revision>，channel 取 canary|stable，revision 取正整数。本次不投递。"
+            exit 1
+          else
+            echo "channel=canary" >> "$GITHUB_OUTPUT"
+            echo "revision=0" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "[resolve] 校验轮（ref=${GITHUB_REF}）：只构建与对账，不投递"
+
+  build:
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析 node 版本与 ABI
+        id: ver
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3 file >/dev/null
+          echo "tag=$(bash scripts/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
+          echo "abi=$(bash scripts/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
+
+      # node 是本仓唯一「不自己编译」的件：编译要 3~4 小时，走 Node Runtime 链一次，
+      # 产物发到 Release。这里取的是**已发布的那一份**，所以它有 sha256 可校验。
+      - name: 取已编译的 node 运行时制品（Release 是真相源）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="$(bash scripts/cache-key.sh tag node)"
+          NAME="$(bash scripts/cache-key.sh asset node)"
+          NAME_DASH="${NAME/+arm64+v8a/+arm64-v8a}"
+          NVER="${{ steps.ver.outputs.tag }}"
+          NABI="${{ steps.ver.outputs.abi }}"
+          LEGACY_ASSET="node-runtime-${NVER}-${NABI}.tar.gz"
+          mkdir -p dist
+          for R in '${{ github.repository }}' 'lobbowen/dsh-mobile'; do
+            for PAIR in "$TAG|$NAME" "$TAG|$NAME_DASH" "node-runtime-${NVER}-${NABI}|$LEGACY_ASSET" "node-runtime-${NVER}|$LEGACY_ASSET"; do
+              T="${PAIR%%|*}"
+              N="${PAIR#*|}"
+              if gh release download "$T" --repo "$R" --pattern "$N" --dir dist 2>/dev/null; then
+                echo "[ok] 取到 tar 制品：$R / $T / $N"
+                if [ -f "dist/$N.sha256" ]; then
+                  ( cd dist && sha256sum -c "$N.sha256" ) \
+                    || { echo "::error title=node 制品 sha256 不符::$R/$N"; exit 1; }
+                  echo "[ok] sha256 校验通过"
+                fi
+                tar -C dist -xzf "dist/$N"
+                rm -f "dist/$N" "dist/$N.sha256"
+                break 2
+              fi
+              echo "[skip] $R / $T 没有 $N"
+            done
+            echo "[skip] $R 三种 tag 都没有 tar 形态（试裸资产形态：libnode.so 与 SHA256SUMS 必须一起下，--pattern 只能给一个模式）"
+            if gh release download "$TAG" --repo "$R" --pattern 'libnode.so' --dir dist 2>/dev/null \
+               && gh release download "$TAG" --repo "$R" --pattern 'SHA256SUMS' --dir dist 2>/dev/null; then
+              echo "[ok] 取到裸资产：$R / $TAG"
+              if [ -f dist/SHA256SUMS ]; then
+                ( cd dist && grep -E '[[:space:]]libnode\.so$' SHA256SUMS | sha256sum -c - ) \
+                  || { echo "::error title=libnode.so 的 SHA256SUMS 校验失败::$R"; exit 1; }
+                echo "[ok] sha256 校验通过（按 release 自带的 SHA256SUMS）"
+              else
+                echo "::error title=裸资产形态没有 SHA256SUMS::拒绝用未校验的 node"
+                exit 1
+              fi
+              break
+            fi
+            rm -f dist/libnode.so dist/SHA256SUMS
+            echo "[skip] $R 两种形态都没有"
+          done
+          ls -la dist/
+          [ -f dist/libnode.so ] \
+            || { echo "::error title=没有取到 libnode.so::本仓与 dsh-mobile 的 tag（$TAG / node-runtime-${NVER}-${NABI} / node-runtime-${NVER}）都取不到 tar 形态，也没有裸资产形态；需先跑 Node Runtime 编译（workflow_dispatch）"; exit 1; }
+          echo "[ok] node 运行时制品就位：$(stat -c%s dist/libnode.so) 字节"
+
+      - name: 落成 component 件
+        env:
+          NODE_VERSION: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          bash scripts/build-component-node.sh
+
+      - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
+        run: bash scripts/verify-component-artifact.sh node
+
+      - name: 打包 + sha256
+        run: bash scripts/package-component.sh node
+
+      - name: 发布 node 件到对象存储
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET；设备只从对象存储取件"
+            exit 1
+          fi
+          for f in dist/component-node-*.zip; do
+            [ -f "$f" ] || { echo "::error title=没有 node 件可发::$f 不在，先看前面的构建步"; exit 1; }
+            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
+              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+          done
+
+      # 清单汇总链（build-component.yml）靠这一个 artifact 收 node 的 zip。
+      # 名字必须与 scripts/fetch-component-artifacts.sh 里的 component-<件> 对得上。
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-node
+          path: dist/component-node-*.zip
+          retention-days: 90

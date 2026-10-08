@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const WF = path.join(ROOT, '.github/workflows/build-component.yml');
@@ -12,16 +13,16 @@ if (!fs.existsSync(WF) || !fs.existsSync(KEY)) {
   process.exit(2);
 }
 
-const keySrc = fs.readFileSync(KEY, 'utf8');
-const m = keySrc.match(/bucket_for\(\)\s*\{[\s\S]*?\n\}/);
-if (!m) {
-  console.error('FAIL cache-key.sh 里找不到 bucket_for()');
-  process.exit(2);
-}
+// 分类的解析复用 scripts/list-bucket-components.js（唯一读 bucket_for 的那份实现）。
+// 这里曾经自己抄了一遍正则，两个版本对「分支怎么排版」的处理不一样 ——
+// 结果就是改排版能让这个门禁报出与真实分类无关的错。
 const CLASS = {};
-for (const line of m[0].split('\n')) {
-  const g = /^\s*([a-z|0-9_-]+)\)\s+echo "(\w+)"/.exec(line);
-  if (g) for (const t of g[1].split('|')) CLASS[t] = g[2];
+for (const line of execFileSync(process.execPath,
+  [path.join(ROOT, 'scripts/list-bucket-components.js'), '--buckets'],
+  { encoding: 'utf8' }).split('\n')) {
+  if (!line.trim()) continue;
+  const [n, b] = line.split('\t');
+  CLASS[n.trim()] = (b || '').trim();
 }
 if (Object.keys(CLASS).length < 10) {
   console.error(`FAIL bucket_for 只解析出 ${Object.keys(CLASS).length} 件，正则没匹配上`);
@@ -75,8 +76,7 @@ for (const b of ['base', 'rt', 'tool']) {
   for (const t of byBucket[b] || []) {
     const ownChain = fs.existsSync(path.join(ROOT, '.github/workflows', 'build-' + t + '.yml'));
     const isNative = ['bash', 'rg', 'busybox'].includes(t);
-    const inNodeJob = t === 'node';
-    if (!matrix.includes(t) && !ownChain && !isNative && !inNodeJob) {
+    if (!matrix.includes(t) && !ownChain && !isNative) {
       notBuilt.push(`${b}/${t}`);
     }
   }

@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const P = (p) => path.join(ROOT, p);
@@ -23,16 +24,14 @@ for (const f of [PLAN, CAPS, KEY, BASE_LIBS, BUSYBOX, CAPS_SH, APK_WF]) {
 const problems = [];
 const notes = [];
 
-const keySrc = fs.readFileSync(KEY, 'utf8');
-const bm = keySrc.match(/bucket_for\(\)\s*\{[\s\S]*?\n\}/);
-if (!bm) {
-  console.error('FAIL cache-key.sh 里没有 bucket_for()');
-  process.exit(2);
-}
+// 分类解析复用 scripts/list-bucket-components.js（仓内唯一读 bucket_for 的那份实现）
 const CLASS = {};
-for (const line of bm[0].split('\n')) {
-  const g = /^\s*([a-z|0-9_-]+)\)\s+echo "(\w+)"/.exec(line);
-  if (g) for (const t of g[1].split('|')) CLASS[t] = g[2];
+for (const line of execFileSync(process.execPath,
+  [P('scripts/list-bucket-components.js'), '--buckets'],
+  { encoding: 'utf8' }).split('\n')) {
+  if (!line.trim()) continue;
+  const [n, b] = line.split('\t');
+  CLASS[n.trim()] = (b || '').trim();
 }
 
 const baseAll = Object.keys(CLASS).filter((t) => CLASS[t] === 'base').sort();
@@ -100,17 +99,38 @@ for (const t of baseAll) {
   }
 }
 
-const PUBLISHED_VIA_RELEASE = ['sysroot', 'make', 'cmake', 'pkg-config', 'jq', 'curl'];
+// 每件 base 筐的产出源，是「它自己那条独立构建链在不在」这个事实，不是名单。
+// 名单会在拆链后过时（曾把 6 件都写成 build-component.yml，而那条链早就不编它们了）——
+// 名单过时不会让件坏，但会让人以为这些件还归那条链管。
+const WFDIR = P('.github/workflows');
+function chainOf(t) {
+  return fs.existsSync(path.join(WFDIR, `build-${t}.yml`)) ? `build-${t}.yml` : null;
+}
+// tag 名由 cache-key.sh 算（唯一真相），门禁不自己拼一份
+function bucketTagOf(t) {
+  try {
+    return execFileSync('bash', [KEY, 'tag', t], { encoding: 'utf8' }).trim();
+  } catch (e) {
+    return `（cache-key.sh tag ${t} 算不出来：${String(e.message).slice(0, 60)}）`;
+  }
+}
+// 随 APK 打包的原生件：它们没有独立链（产物在 build-apk 的 jniLibs 里）
 const NATIVE_VIA_APK = ['bash', 'rg', 'busybox'];
-const NOT_YET = ['llvmtoolchain'];
 
 console.log('== base 筐（随 APK 打包的基础环境）逐件复审 ==');
 for (const t of baseAll) {
   let how;
-  if (NATIVE_VIA_APK.includes(t)) how = '随 APK 原生件（jniLibs）';
-  else if (PUBLISHED_VIA_RELEASE.includes(t)) how = 'build-component.yml → Release base-*';
-  else if (NOT_YET.includes(t)) how = 'ndk-llvm job（尚无发布资产）';
-  else how = '？未归类';
+  if (NATIVE_VIA_APK.includes(t)) {
+    how = '随 APK 原生件（jniLibs）';
+  } else {
+    const wf = chainOf(t);
+    if (wf) {
+      how = `${wf} → Release ${bucketTagOf(t)}`;
+    } else {
+      how = '？没有产出它的独立链';
+      problems.push(`[无产出] base 筐的 ${t} 既不是随 APK 的原生件，也没有 build-${t}.yml —— 没人编它`);
+    }
+  }
   console.log(`  ${t.padEnd(14)} ${how}`);
 }
 
