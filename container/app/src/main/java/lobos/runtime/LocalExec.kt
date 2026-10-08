@@ -99,13 +99,13 @@ object LocalExec {
         preferPty: Boolean = true,
     ): Outcome {
         if (command.isBlank()) return Outcome(false, -1, "", "", Via.PLAIN, "命令为空")
-        val bash = PrefixProvisioner.bashBin(ctx)
+        val shell = PrefixProvisioner.shellBin(ctx)
             ?: return Outcome(
                 false, -1, "", "", Via.PLAIN,
-                "底座没有 bash —— 不能静默落到 /system/bin/sh（那会让命令在另一套语义下跑）。" +
+                "底座没有命令解释器 —— 不能静默落到 /system/bin/sh（那会让命令在另一套语义下跑）。" +
                     "底座不完整。",
             )
-        return run(ctx, listOf(bash.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
+        return run(ctx, listOf(shell.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
     }
 
     fun viaAdb(

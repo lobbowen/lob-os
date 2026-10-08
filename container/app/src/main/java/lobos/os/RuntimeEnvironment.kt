@@ -32,7 +32,7 @@ object RuntimeEnvironment {
         val nativeLibDir: String,
         val prefixRoot: File,
         val prefixBin: File,
-        val bashBin: File?,
+        val shellBin: File?,
         val posixShim: File? = null,
         val envShim: File? = null,
     )
@@ -82,7 +82,7 @@ object RuntimeEnvironment {
             put("CURL_CA_BUNDLE", caBundle.absolutePath)
             put("GIT_SSL_CAINFO", caBundle.absolutePath)
         }
-        put("SHELL", root.bashBin?.absolutePath ?: "/system/bin/sh")
+        put("SHELL", root.shellBin?.absolutePath ?: "/system/bin/sh")
         root.envShim?.let { put("NODE_OPTIONS", "--require " + it.absolutePath) }
     }
 
@@ -102,7 +102,7 @@ object RuntimeEnvironment {
         nativeLibDir = libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
-        bashBin = PrefixProvisioner.bashBin(ctx),
+        shellBin = SystemRoles.shellBin(ctx),
         posixShim = File(ctx.applicationInfo.nativeLibraryDir, NativeAssetRegistry.libNameOf("posix"))
             .takeIf { it.isFile },
         envShim = s.envShim,

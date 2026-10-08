@@ -11,10 +11,6 @@ object PrefixProvisioner {
 private val BINS: List<Pair<String, String>>
     get() = NativeAssetRegistry.BINS.map { it.libName to it.installedAs }
 
-private val BUSYBOX_APPLETS = listOf(
-    "tar", "gzip", "gunzip", "grep", "sed", "awk", "ls", "cp", "mv",
-    "cat", "mkdir", "rm", "ln", "vi", "df", "ps", "true", "false",
-)
 
 private val DEPS: List<Pair<String, String>>
     get() = NativeAssetRegistry.LIBS.map { it.libName to it.libName }
@@ -22,7 +18,6 @@ private val DEPS: List<Pair<String, String>>
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
-private const val SYSROOT_ID = "sysroot"
 
     fun root(ctx: Context): File = lobos.os.SystemDirs.usr(ctx)
     fun binDir(ctx: Context): File = lobos.os.SystemDirs.bin(ctx)
@@ -60,8 +55,8 @@ private const val SYSROOT_ID = "sysroot"
                 ready += name
             }
         }
-        linkBusyboxApplets(ctx)?.let { ready += it }
-        linkSysrootInclude(ctx)?.let { ready += it }
+        linkAppletCommands(ctx)?.let { ready += it }
+        linkHeadersInclude(ctx)?.let { ready += it }
         val caDst = caBundle(ctx)
         try {
             caDst.parentFile?.mkdirs()
@@ -100,7 +95,7 @@ private const val SYSROOT_ID = "sysroot"
                     ctx,
                     (prev ?: lobos.os.ProgramIndex.empty(
                         e.id,
-                        if (e.id in NativeAssetRegistry.BIN_IDS) lobos.os.Level.CAPABILITY else lobos.os.Level.INFRA,
+                        if (lobos.os.SystemRoles.isEntry(e)) lobos.os.Level.CAPABILITY else lobos.os.Level.INFRA,
                     )).copy(
                         version = version,
                         sha256 = sha,
@@ -124,22 +119,22 @@ private const val SYSROOT_ID = "sysroot"
         false
     }
 
-    fun bashBin(ctx: Context): File? = File(binDir(ctx), "bash").takeIf { it.isFile }
+    fun shellBin(ctx: Context): File? = lobos.os.SystemRoles.shellBin(ctx)
 
-    private fun linkSysrootInclude(ctx: Context): List<String> {
-        val sysrootRoot = sysrootIncludeDir(ctx) ?: return emptyList()
+    private fun linkHeadersInclude(ctx: Context): List<String> {
+        val headersRoot = headersIncludeDir(ctx) ?: return emptyList()
         val link = includeDir(ctx)
         return try {
             link.parentFile?.mkdirs()
             val cur = runCatching { link.toPath().toRealPath() }.getOrNull()
-            if (cur != null && cur == runCatching { sysrootRoot.toPath().toRealPath() }.getOrNull()) {
+            if (cur != null && cur == runCatching { headersRoot.toPath().toRealPath() }.getOrNull()) {
                 return listOf("include")
             }
             if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) {
                 return emptyList()
             }
             runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
-            java.nio.file.Files.createSymbolicLink(link.toPath(), sysrootRoot.toPath())
+            java.nio.file.Files.createSymbolicLink(link.toPath(), headersRoot.toPath())
             listOf("include")
         } catch (_: Exception) {
             runCatching { link.delete() }
@@ -147,23 +142,21 @@ private const val SYSROOT_ID = "sysroot"
         }
     }
 
-    fun sysrootIncludeDir(ctx: Context): File? {
+    fun headersIncludeDir(ctx: Context): File? {
         return try {
-            val dir = lobos.os.ProgramDir(ctx, SYSROOT_ID).currentVersion()?.let {
-                File(lobos.os.ProgramManager.stateDirOf(ctx, SYSROOT_ID), it)
-            } ?: return null
-            val inc = File(File(dir, "sysroot"), "include")
+            val dir = SystemRoles.headersPieceDir(ctx) ?: return null
+            val inc = File(dir, "include")
             if (inc.isDirectory) inc else null
         } catch (_: Throwable) {
             null
         }
     }
 
-    private fun linkBusyboxApplets(ctx: Context): List<String> {
-        val bb = File(binDir(ctx), "busybox")
+    private fun linkAppletCommands(ctx: Context): List<String> {
+        val bb = lobos.os.SystemRoles.multiCommandBin(ctx) ?: return emptyList()
         if (!bb.isFile) return emptyList()
         val made = mutableListOf<String>()
-        for (applet in BUSYBOX_APPLETS) {
+        for (applet in lobos.os.SystemRoles.appletsOf(ctx)) {
             val link = File(binDir(ctx), applet)
             try {
                 if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) continue
@@ -176,7 +169,7 @@ private const val SYSROOT_ID = "sysroot"
         return made
     }
 
-    fun busyboxBin(ctx: Context): File? = File(binDir(ctx), "busybox").takeIf { it.isFile }
+    fun multiCommandBin(ctx: Context): File? = lobos.os.SystemRoles.multiCommandBin(ctx)
 
     fun expected(ctx: Context): List<String> =
         BINS.map { it.second } + DEPS.map { it.second } + CA_BUNDLE_NAME

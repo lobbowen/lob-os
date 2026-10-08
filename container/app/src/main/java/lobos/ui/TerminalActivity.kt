@@ -18,6 +18,9 @@ class TerminalActivity : AppCompatActivity() {
     private companion object {
         const val TAG = "TerminalActivity"
         const val EXTRA_SHELL = "shell"
+
+    /** 系统里没有命令解释器时的回落 —— Android 自带的 sh，不是我们的件 */
+    private const val DEFAULT_SHELL_FALLBACK = "/system/bin/sh"
     }
 
     private lateinit var term: TerminalView
@@ -94,11 +97,13 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun startSession() {
-        val want = intent.getStringExtra(EXTRA_SHELL) ?: "bash"
-        val bash = lobos.runtime.PrefixProvisioner.bashBin(this)
+        val shellBin = lobos.os.SystemRoles.shellBin(this)
+        val want = intent.getStringExtra(EXTRA_SHELL)
+            ?: shellBin?.name
+            ?: DEFAULT_SHELL_FALLBACK
         val argv = when {
-            want == "bash" && bash != null -> listOf(bash.absolutePath)
-            want == "bash" -> listOf("/system/bin/sh")
+            want.isBlank() -> listOf(shellBin?.absolutePath ?: DEFAULT_SHELL_FALLBACK)
+            else -> listOf(want)
             else -> listOf(want)
         }
         try {
@@ -141,7 +146,7 @@ class TerminalActivity : AppCompatActivity() {
     companion object {
         fun intentFor(ctx: android.content.Context, shell: String? = null) =
             android.content.Intent(ctx, TerminalActivity::class.java).apply {
-                putExtra(EXTRA_SHELL, shell ?: "bash")
+                putExtra(EXTRA_SHELL, shell ?: "")
                 addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
     }

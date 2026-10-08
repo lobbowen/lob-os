@@ -251,7 +251,7 @@ object NativeAssetUpdater {
         (root.list()?.sorted() ?: emptyList()).take(8)
 
     private fun pointEntryAt(ctx: Context, e: NativeExecutable, version: String, dest: File): Boolean = try {
-        val link = if (e.id in NativeAssetRegistry.BIN_IDS) {
+        val link = if (isEntryBin(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)
@@ -275,7 +275,7 @@ object NativeAssetUpdater {
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
         val e = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).firstOrNull { it.id == id }
             ?: return false to "注册表里没有 id=$id"
-        val link = if (id in NativeAssetRegistry.BIN_IDS) {
+        val link = if (isEntryBin(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)
