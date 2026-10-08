@@ -1,22 +1,37 @@
 # 注册表最终结构
 
-> 这是**待你确认的形态**，不是已实现的东西。
-> 每一层都标了「哪些字段归它、依据是什么」。
-> 核实依据在 `docs/REGISTRY-DESIGN.md`。
+> 本文只写**核实到的事实**与**要改成什么**，不写实现。
+> 每条结论都能追到 `文件:行号`。核实日期 2026-10-08。
+> 配套：`docs/REGISTRY-DESIGN.md`（为什么这么改）
 
 ## 一、注册表是什么
 
-**装进系统的每一个东西，运行时会用到的全部信息。**
+**装进系统的每一个东西，运行时会用到的、装的时候定下来的信息。**
 
 - 装一个 → 登记一条（`ProgramIndex.upsert`）
 - 运行时 → 从这里读（不硬编码、不问包、不猜）
 - 卸载/回滚 → 改这里
 
-不是「件的清单」（那是包的事），是**「装了什么、它怎么跑、现在什么状态」**。
+不是「件的清单」（那是包的事），是**「装了什么、它怎么跑、装的时候定了什么」**。
+
+## 二、判据：什么该进，什么不该进
+
+| 该进 | 不该进 |
+|---|---|
+| **装的时候定下来、之后不变** | **跑起来之后才变的** |
+
+跑起来才变的（**已在 `ProgramStatus` 里，不进注册表**）：
+
+| 字段 | 是什么 |
+|---|---|
+| `state` | 进程真的在跑还是没跑（`ProgramStateMachine.Run`） |
+| `supervised` | 有没有被托管 |
+| `startedAtMs` / `aliveMs` | 起了多久 |
+| `restarts` | 重启了几次 |
 
 ---
 
-## 二、结构
+## 三、结构
 
 ```
 IndexEntry
@@ -41,130 +56,112 @@ IndexEntry
 │  deps                  它连带装了哪些（实际拉下来的）
 │  capabilities          它向系统提供什么
 │
-├─ 期望 ──────────────────────────────────────────────
-│  desired               RUNNING / STOPPED / FROZEN（用户/系统想要的状态）
-│  invalid               为什么不健康（不是状态，是诊断）
-│
-├─ 守护 ─────────────���────────────────────────────────
+├─ 恢复策略 ──────────────────────────────────────────
 │  resident              是不是常驻
 │  restart               挂了怎么起：on-failure / never / always
 │  maxRestarts           最多起几次
 │  backoffMs             退避间隔序列
 │
-└─ ui{} ──────────���────────────────────────────────────  ← 只有 level=APPLICATION 有
-   │  uiPackage          桌面图标点开走哪个快应用
-   │  uiName             桌面图标显示的名字
-   │  uiIcon             桌面图标资源
-   │  onUiClosed         窗口关掉时：keep-alive / stop-with-ui / on-demand
-   │
-   └─ http{} ─────────────────────────────────────────  ← 只有 level=APPLICATION 有
-      │  httpPort         健康检查打在哪个端口（0 = 系统分配）
-      │  httpHealth       健康路径
+├─ 控制意图 ──────────────────────────────────────────
+│  desired               用户/系统想要的状态：RUNNING / STOPPED / FROZEN
+│
+├─ 校验 ──────────────────────────────────────────────
+│  invalid               这一条为什么不合法（装的时候校验出来的）
+│
+├─ ui{} ──────────────────────────────────────────────  ← 只有 level=APPLICATION 有
+│  uiPackage             桌面图标点开走哪个快应用
+│  uiName                桌面图标显示的名字
+│  uiIcon                桌面图标资源
+│  onUiClosed            窗口关掉时：keep-alive / stop-with-ui / on-demand
+│
+└─ http{} ────────────────────────────────────────────  ← 只有 level=APPLICATION 有
+   httpPort              健康检查打在哪个端口（0 = 系统分配）
+   httpHealth            健康路径
 ```
 
 ---
 
-## 三、`level` 的三个值 —— 唯一的判别
+## 四、`level` 的三个值 —— 唯一的判别
 
 | 值 | 是什么 | 装哪、怎么跑 |
 |---|---|---|
-| **`INFRA`** | 内核件：库、原生桥、PTY | 落 `$PREFIX/lib` 与 `$PREFIX/bin`，被 `dlopen` / `exec`；不守护 |
-| **`CAPABILITY`** | 能力件：命令、工具、运行时 | 落 `$PREFIX/bin`，被 `exec`；不守护 |
-| **`APPLICATION`** | 应用（快应用） | 落 `stateDir`，被进程托管；常驻 + 重启策略 + 桌面图标 |
+| **`INFRA`** | 内核件：库、原生桥、PTY | 落 `$PREFIX/lib` 与 `$PREFIX/bin`，被 `dlopen` / `exec`；不托管 |
+| **`CAPABILITY`** | 能力件：命令、工具、运行时 | 落 `$PREFIX/bin`，被 `exec`；不托管 |
+| **`APPLICATION`** | 应用（快应用） | 落 `stateDir`，被进程托管；有恢复策略与桌面图标 |
 
 ```
 判别方法：看 ui{} 有没有值 —— 有就是 APPLICATION，没有就是内核件。
 ```
 
+**唯一的判别字段**：`managed = (level == APPLICATION)`（`ProgramIndex.kt:44`，已在代码里）。
+
 ---
 
-## 四、删掉的字段（连同理由）
+## 五、`desired` 是什么（更正我上一轮的说法）
+
+我上一轮说它是「期望」并想改名 —— **那是错的**。
+
+`CapabilityBroker.kt:718`：
+
+```kotlin
+val desired = if (running) Desired.RUNNING else Desired.STOPPED
+```
+
+它与「实际跑着没」有确定关系。三个值**都在用**：
+
+| 值 | 使用处 | 核实 |
+|---|---|---|
+| `RUNNING` | 8 处 | `CapabilityBroker` `ProgramStatus` |
+| `STOPPED` | 10 处 | 含 `BootReconciler.kt:101`（版本对不上时强制停） |
+| `FROZEN` | 3 处 | `ProgramStateMachine.kt:34,53,54` 拿它判状态迁移：「冻结意图不该进入隔离 / 不该处于活跃态」 |
+
+**所以它是一个合法状态枚举，不该改名，也不该删。** 分层上它属「控制意图」
+（用户能改）而不是「身份」或「契约」。
+
+---
+
+## 六、删掉的字段（连同理由）
 
 | 删什么 | 为什么 |
 |---|---|
-| `category` | 纯冗余：只有 2 处赋值，都是 `if (level == APPLICATION) …`。而 `RUNTIME`/`TOOLCHAIN`/`LIBRARY` 三个值**从未被赋值** |
-| `asApplication` | 纯冗余：等于 `level == APPLICATION`，而 `managed` 已经是这个判断 |
-| `Level.CHANNEL` | 迁移遗留：只在 `ProgramMigration` 出现（统计「通道=几件」），运行时代码无处判 |
+| `category` | 纯冗余：只有 2 处赋值，且都是 `if (level == APPLICATION) …`。而 `RUNTIME`/`TOOLCHAIN`/`LIBRARY` 三个值**从未被赋值**，只在解析函数里出现 |
+| `asApplication` | 纯冗余：等于 `level == APPLICATION`，而 `managed` 已经是这个判断。它是我上一轮为删 `origin` 引入的，等于把 `origin` 换名重写 |
+| `Level.CHANNEL` | 迁移遗留：只在 `ProgramMigration` 出现（迁移时统计「通道=几件」），运行时代码无处判 |
+
+**保留** `invalid`：它是装的时候校验包得出的（`ProgramStatus.kt:115` 判
+`spec.invalid == null` 得出 `manifestValid`），属「装的时候定的」，该进表。
+
+**保留** `Desired.FROZEN`：它在 `ProgramStateMachine` 里真在用
+（判状态迁移），不是死值。
 
 ---
 
-## 五、每层的判据
+## 七、每层的填写时机
 
-### 身份层
-
-| 字段 | 谁填 | 什么时候 |
+| 层 | 谁填 | 什么时候 |
 |---|---|---|
-| `id` | 安装时 | 包的身份 |
-| `level` | 安装时 | 从包的身份判（是不是快应用） |
-| `version` | 装完 | **问它自己**（`InstalledRuntime.versionOf`），不是包声明的 |
-| `sha256` | 装完 | 对落位文件实算 |
-| `stateDir` | 安装时 | 系统分配 |
-| `tier` | 安装时 | 从包的能力档位 |
-
-### 运行契约层
-
-装的时候从**包内清单**读进注册表（`entry`/`args`/`env`/`libName`…），
-运行时从注册表读。**这是现在已有的机制**（`ProgramInstallPipeline:78-95`
-已经在做），不是新增。
-
-### 依赖层
-
-- `requires` —— 包自己声明的要什么
-- `deps` —— 实际拉下来的（`depsOf()` 算出来的）
-- `capabilities` —— 包自己声明它提供什么
-
-### 期望层
-
-`desired` 是**期望**（用户要它跑着/停着），不是实际状态。
-实际状态在哪？**现在没有** —— 这是现状，我这次不动它（要先定「状态」怎么记）。
-
-### 守护层
-
-只对 `APPLICATION` 有意义；内核件不守护。
-
-### ui{} / http{}
-
-只对 `APPLICATION` 有。内核件的这些字段恒为空。
+| 身份 | 安装流程 | 装的时候（`version`/`sha256` 是**装完**对落位文件实算/实问） |
+| 运行契约 | 安装流程 | 从**包内清单**读进表 |
+| 依赖 | 安装流程 | `requires` 包声明；`deps` 实际拉下来的 |
+| 恢复策略 | 安装流程 | 从包内清单读 |
+| 控制意图 | 用户 / 系统 | 装了之后可改（`ProgramManager.setDesired`） |
+| 校验 | 安装流程 | 装的时候校验包得出 |
+| ui{} / http{} | 安装流程 | 从包内清单读（`QuickAppRegistry.kt:36-45` 已在做） |
 
 ---
 
-## 六、两处我没在这一版里解决的
+## 八、回到你之前问的两个问题
 
-### ① 「现在什么状态」没有地方放
+> 「期望和守护是什么玩意？」
 
-现在表里只有 `desired`（期望）和 `invalid`（为什么不健康），
-**没有「实际跑着没/健康吗」**。
+- 「守护」是我硬套 systemd 的词 → 它是**恢复策略**（挂了怎么起），已改名。
+- 「期望」是我硬套 systemd 的词 → 它是 `desired`（RUNNING/STOPPED/FROZEN），
+  真在用，不改名，只是分层上归到「控制意图」。
 
-`SupervisorPool` / `ProgramStatus` 维护着这些，但**没进表**。
-要不要进？我不知道该叫什么、也不确定它算「注册表」还是「运行时状态」。
-**这一版先不动，等你定。**
+> 「件的逻辑还要单独每个件写一堆文件」
 
-### ② `restart` / `backoffMs` 这些是「应用」的策略
-
-内核件不需要。但它们平铺在顶层，理论上内核件也能填。
-**要不要也归到 `application{}` 里？** 我这次先不动 —— 因为
-`SupervisorPool` 读它们时可能不判 `level`（我没逐个核实）。
-
----
-
-## 七、这个形态满足你之前说的哪些
-
-| 你说过 | 怎么满足 |
-|---|---|
-| 装一个就进注册表 | `ProgramIndex.upsert`（已是现状） |
-| 注册表管整个运行逻辑 | 运行契约 + 依赖 + 期望 + 守护，全在表里；内核只读表 |
-| 分得清谁是应用谁是系统件 | `level` 唯一判别；且「有没有 `ui{}`」直接看出来 |
-| 版本是装完才知道 | `version` 由 `versionOf()` 问出来，不是包声明 |
-| 别有字段平铺分不清 | 快应用字段归 `ui{}`/`http{}`，内核字段留在顶层 |
-
----
-
-## 八、回到你上一个问题
-
-> 件的逻辑还要单独每个件写一堆文件
-
-按这个形态，**不需要**。一件只需要：
+按这个形态**不需要**。一件只需要：
 - 装的时候被登记（一条记录）
-- 想被问版本时提供 `--version` 参数（这是它自己的事）
+- 想被问版本时提供 `--version` 之类的参数（它自己的事）
 
 内核不写任何「某件特有」的逻辑。
