@@ -299,7 +299,17 @@ jobs:
           mkdir -p /tmp/diag
           cp -f /tmp/gradle-build.log /tmp/diag/ 2>/dev/null || true
           cp -f /tmp/node-build.log /tmp/diag/ 2>/dev/null || true
-          ls -la /tmp/diag/ || true
+          mkdir -p /tmp/diag/baselibs
+          for f in work/baselibs/*.log; do
+            [ -f "$f" ] && cp -f "$f" /tmp/diag/baselibs/ || true
+          done
+          for f in work/baselibs/prefix/lib work/baselibs/openssl/lib work/baselibs/curl/lib/.libs; do
+            [ -d "$f" ] && ls -la "$f" > "/tmp/diag/baselibs/$(echo "$f" | tr '/' '_').txt" 2>/dev/null || true
+          done
+          find work -maxdepth 2 -name '*.log' 2>/dev/null | head -20 | while read -r f; do
+            cp -f "$f" /tmp/diag/ 2>/dev/null || true
+          done
+          ls -laR /tmp/diag/ || true
 
       - name: Upload failure diagnostics artifact (backup)
         if: failure()

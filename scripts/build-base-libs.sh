@@ -119,7 +119,7 @@ check_lib() {
       if [ -n "$rpath" ]; then
         die "只有 DT_RPATH" "$base 有 RPATH=[$rpath] 但 bionic 忽略它 —— 依赖同目录库$non_sys须加 -Wl,--enable-new-dtags"
       fi
-      die "RUNPATH 不含 \$ORIGIN" "$base 依赖同目录库$non_sys但 RUNPATH='${runpath:-（无）}' —— 换个落位目录就 CANNOT LINK"
+      die "RUNPATH 不含 \$ORIGIN" "$base 依赖同目录库$non_sys但 RUNPATH='${runpath:-（无）}' —— 换个落位目录就 CANNOT LINK。原始字节：$(printf '%s' "${runpath:-（空）}" | od -c | head -3 | tr '\n' ' ')"
       ;;
   esac
 
