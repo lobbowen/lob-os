@@ -1,125 +1,115 @@
 package lobos.pieces
 
-import android.content.Context
-import lobos.runtime.InstanceHost
-import java.io.File
-
+/**
+ * 12 件内置件 —— 只有**推导不出来**的那些属性。
+ *
+ * id / version / entry / role(命令还是库) / requiredDeps / sha256
+ * 全部由落位形状与 [lobos.os.ElfFacts] 推导，不需要在这里声明。
+ *
+ * 这份数据对应的构建期来源是 scripts/component-sources.json（版本与源码校验值）
+ * 与 scripts/component-verify.json（是否必需）。改了那些要重新生成这里，
+ * 不该手改。
+ */
 object PieceRegistry {
 
     val LIBCXX = Piece(
-        id = "libcxx",
         libName = "libc++_shared.so",
-        humanName = "C++ 运行期",
-        requiredDeps = emptyList(),
         required = true,
-        note = "必须随 APK：APK 内 C/C++ 编译件的运行期依赖（node-pty 等）",
-        role = "library"
+        role = "library",
+        provides = listOf("cxx-runtime"),
     )
 
     val CAPABILITY: List<Piece> get() = listOf(
         Piece(
-            id = "bash", libName = "libbash.so", humanName = "bash 执行器",
-            requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            libName = "libc++_shared.so",
+            required = true,
+            provides = listOf("cxx-runtime"),
+        ),
+        Piece(
+            libName = "libbash.so",
+            version = "5.2.15",
             installName = "bash",
-            versionArgs = listOf("--version"),
+            required = false,
             role = "shell",
             provides = listOf("shell", "exec"),
-            note = "jniLibs 路径；P2 起 bash 改由前缀目录提供",
-            role = "library"
         ),
         Piece(
-            id = "ripgrep", libName = "liblobosrg.so", humanName = "ripgrep（glob/grep）",
-            requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            libName = "liblobosrg.so",
+            version = "14.1.1",
             installName = "rg",
-            versionArgs = listOf("--version"),
+            required = false,
             role = "exec",
             provides = listOf("glob", "grep"),
-            note = "缺件时 glob/grep 报 SEARCH_FAILED"
         ),
         Piece(
-            id = "flock", libName = "liblobosflock.so", humanName = "flock(2) 系统调用",
-            requiredDeps = emptyList(), required = false, buildTier = "self-c",
-            note = "dlopen 依赖；缺件回退 vendor 实现",
-            role = "exec"
+            libName = "liblobosflock.so",
+            required = false,
+            provides = listOf("file-lock"),
         ),
         Piece(
-            id = "posix", libName = "liblobosposix.so", humanName = "link/linkat 用户态替代",
-            requiredDeps = emptyList(), required = false, buildTier = "self-c",
-            note = "经 LD_PRELOAD 注入；缺件会让会话落盘失败",
-            role = "exec"
+            libName = "liblobosposix.so",
+            required = false,
+            provides = listOf("posix-shim"),
         ),
         Piece(
-            id = "ptyprobe", libName = "liblobosptyprobe.so", humanName = "PTY 探针",
-            requiredDeps = emptyList(), required = false, buildTier = "self-c",
-            note = "落位即事实；用不用得了由使用者自己知道",
-            role = "exec"
-        ),
-        Piece(
-            id = "ptysession", libName = "librivospty.so", humanName = "PTY 会话宿主",
-            requiredDeps = emptyList(), required = false, buildTier = "self-c",
+            libName = "librivospty.so",
             installName = "pty-session",
-            note = "常驻可执行件（非库）：分配 PTY + setsid + TIOCSCTTY 后 execve。" +
-                "ProcessBuilder 不给 PTY，所以要它；走「可执行件 + 帧协议」而不是 JNI —— " +
-                "仓内已有两种编译件范式（LD_PRELOAD 注入 / 可执行件），本件属后者，" +
-                "避开 System.loadLibrary 的装载路径与被误当共享库加载的问题。" +
-                "不是可执行件 → 走「数据资产」分支（它不是拿来执行的，" +
-                "真正的可用性判据是 PtySession 自己探 isatty/窗口大小）",
+            required = false,
             role = "exec",
-            provides = listOf("terminal")
+            provides = listOf("pty-session"),
         ),
         Piece(
-            id = "busybox", libName = "libbusybox.so", humanName = "busybox 基础命令集",
-            requiredDeps = emptyList(), required = false, buildTier = "upstream",
+            libName = "liblobosptyprobe.so",
+            required = false,
+            role = "exec",
+            provides = listOf("pty-probe"),
+        ),
+        Piece(
+            libName = "libbusybox.so",
+            version = "1.36.1",
             installName = "busybox",
-            versionArgs = listOf("--help"),
+            required = false,
             role = "multi-command",
-        ),
-
-        Piece(
-            id = "zlib", libName = "libz.so", humanName = "zlib 压缩库",
-            requiredDeps = emptyList(), required = true, buildTier = "upstream",
-            note = "busybox 的 gzip/tar 与 curl 都要它；原先两个商店脚本各静态编一遍",
-            role = "library"
+            provides = listOf("coreutils"),
         ),
         Piece(
-            id = "openssl", libName = "libssl.so", humanName = "OpenSSL 传输层",
-            requiredDeps = listOf("libcrypto.so"), required = true, buildTier = "upstream",
-            note = "libcurl 的 DT_NEEDED 含它 —— 同目录，解析靠链接期 -Wl,-rpath,\$ORIGIN",
-            role = "library"
+            libName = "libz.so",
+            version = "1.3.2",
+            required = true,
+            provides = listOf("compress"),
         ),
         Piece(
-            id = "crypto", libName = "libcrypto.so", humanName = "OpenSSL 加密原语",
-            requiredDeps = emptyList(), required = true, buildTier = "upstream",
-            note = "与 libssl 一并编出；不带版本号 soname —— bionic 按 DT_NEEDED 的文件名找库",
-            role = "library"
+            libName = "libssl.so",
+            version = "3.6.3",
+            required = true,
+            provides = listOf("tls"),
         ),
         Piece(
-            id = "curl", libName = "libcurl.so", humanName = "curl 传输库",
-            requiredDeps = listOf("libssl.so", "libcrypto.so", "libz.so"),
-            required = true, buildTier = "upstream",
-            note = "git 链它；商店件另有 curl 可执行二进制（那是商店件，不是底座库）",
-            role = "library"
-        )
+            libName = "libcrypto.so",
+            required = true,
+            provides = listOf("crypto"),
+        ),
+        Piece(
+            libName = "libcurl.so",
+            version = "8.22.0",
+            required = true,
+            provides = listOf("http"),
+        ),
     )
 
-    val LIBS: List<Piece>
-        get() = ALL.filter { it.role == "library" }
+    val LIBS: List<Piece> get() = CAPABILITY.filter { it.role == lobos.os.SystemRoles.LIBRARY }
 
-    
-
-    val BINS: List<Piece>
-        get() = ALL.filter { it.role == "shell" || it.role == "exec" || it.role == "multi-command" }
-
+    val BINS: List<Piece> get() = CAPABILITY.filter {
+        lobos.os.SystemRoles.isEntry(it) || it.role == lobos.os.SystemRoles.MULTI_COMMAND
+    }
 
     val ALL: List<Piece> get() = listOf(LIBCXX) + CAPABILITY
 
     fun of(id: String): Piece? = ALL.firstOrNull { it.id == id }
 
-    fun libNameOf(id: String): String =
-        of(id)?.libName
-            ?: error("PieceRegistry 里没有 id=" + id + " 的资产 —— 拼错的 id 必须当场炸。")
+    /** 落位后叫什么（`rg` 而非 `ripgrep`） */
+    fun installedAs(e: Piece): String = e.installedAs
 
-    fun resolve(ctx: Context, e: Piece): File =
-        File(ctx.applicationInfo.nativeLibraryDir, e.libName)
-
+    fun resolve(ctx: android.content.Context, e: Piece): java.io.File =
+        lobos.os.SystemDirs.bin(ctx).let { java.io.File(it, e.installedAs) }
 }

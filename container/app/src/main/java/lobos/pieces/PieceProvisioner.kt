@@ -60,10 +60,7 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
             val o = JSONObject()
             o.put("id", exe.id)
             o.put("libName", exe.libName)
-            o.put("humanName", exe.humanName)
             o.put("required", exe.required)
-            o.put("note", exe.note)
-            o.put("requiredDeps", JSONArray(exe.requiredDeps))
             when (st) {
                 is AssetStatus.Ready -> {
                     o.put("status", "ready")
@@ -109,7 +106,7 @@ data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
         val tag = if (exe.required) "[必需]" else "[可选]"
         when (st) {
             is AssetStatus.Ready ->
-                "$tag ${exe.libName} —— 就位（${exe.humanName}）" +
+                "$tag ${exe.libName} —— 就位" +
             is AssetStatus.MissingFromLib ->
                 "$tag ${exe.libName} —— ✗ 不在 nativeLibraryDir。" +
                     if (st.inApk) "APK 内有该条目 → 安装期未解压（查 extractNativeLibs / useLegacyPackaging）"
@@ -195,7 +192,7 @@ object PieceProvisioner {
             return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
         }
 
-        for (dep in exe.requiredDeps) {
+        for (dep in lobos.os.ElfFacts.read(f)?.needed.orEmpty()) {
             if (!File(libDir, dep).exists()) {
                 return AssetStatus.MissingDependency(exe, dep, listing)
             }
