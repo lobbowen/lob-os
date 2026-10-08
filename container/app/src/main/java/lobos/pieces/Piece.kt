@@ -33,9 +33,6 @@ data class Piece(
      */
     val role: String = "",
 
-    /** multiCommand 角色：它提供的那多个命令名 */
-    val applets: List<String> = emptyList(),
-
     /** 这个件对外提供的具名能力，供控制面板与依赖查询（空列表 = 不提供具名能力） */
     val provides: List<String> = emptyList(),
 ) {

@@ -30,12 +30,14 @@ object PieceUpdater {
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (e in PieceRegistry.BINS + PieceRegistry.LIBS) {
-            val entry = if (e in PieceRegistry.BINS) {
-                File(PrefixProvisioner.binDir(ctx), e.installedAs)
-            } else {
-                File(PrefixProvisioner.libDir(ctx), e.installedAs)
-            }
+        for (e in PieceRegistry.ALL) {
+            // 落位形状决定形态：有 bin/ 是命令，只有 .so 是库 —— 不查 BINS/LIBS 集合
+            val isEntry = lobos.os.SystemRoles.isEntry(e)
+            val ver = e.version.ifBlank { lobos.runtime.Fingerprint.of(File(ctx.applicationInfo.nativeLibraryDir, e.libName)) }
+            if (ver.isBlank()) continue
+            val f = if (isEntry)
+                File(lobos.os.SystemDirs.pieceDir(ctx, e.id, ver), "bin/${e.installedAs}")
+            else File(lobos.os.SystemDirs.pieceDir(ctx, e.id, ver), "lib/${e.libName}")
             val apkFile = File(nativeDir, e.libName)
             val source: File? = apkFile.takeIf { it.isFile }
             out += State(
@@ -103,7 +105,7 @@ object PieceUpdater {
         val applied = JSONArray()
         val skipped = JSONArray()
         val pending = mutableListOf<Triple<Piece, String, JSONObject>>()
-        val byId = (PieceRegistry.BINS + PieceRegistry.LIBS).associateBy { it.id }
+        val byId = PieceRegistry.ALL.associateBy { it.id }
 
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
@@ -251,7 +253,7 @@ object PieceUpdater {
         (root.list()?.sorted() ?: emptyList()).take(8)
 
     private fun pointEntryAt(ctx: Context, e: Piece, version: String, dest: File): Boolean = try {
-        val link = if (isEntryBin(e)) {
+        val link = if (lobos.os.SystemRoles.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)
@@ -273,9 +275,9 @@ object PieceUpdater {
     }
 
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
-        val e = (PieceRegistry.BINS + PieceRegistry.LIBS).firstOrNull { it.id == id }
+        val e = PieceRegistry.ALL.firstOrNull { it.id == id }
             ?: return false to "注册表里没有 id=$id"
-        val link = if (isEntryBin(e)) {
+        val link = if (lobos.os.SystemRoles.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)

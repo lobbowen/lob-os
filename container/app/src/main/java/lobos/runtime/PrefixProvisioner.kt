@@ -88,7 +88,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             ) ?: continue
             ready += landed
         }
-        linkAppletCommands(ctx)?.let { ready += it }
         linkHeadersInclude(ctx)?.let { ready += it }
         val caDst = caBundle(ctx)
         try {
@@ -175,22 +174,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         }
     }
 
-    private fun linkAppletCommands(ctx: Context): List<String> {
-        val bb = lobos.os.SystemRoles.multiCommandBin(ctx) ?: return emptyList()
-        if (!bb.isFile) return emptyList()
-        val made = mutableListOf<String>()
-        for (applet in lobos.os.SystemRoles.appletsOf(ctx)) {
-            val link = File(binDir(ctx), applet)
-            try {
-                if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) continue
-                java.nio.file.Files.deleteIfExists(link.toPath())
-                java.nio.file.Files.createSymbolicLink(link.toPath(), bb.toPath())
-                made += applet
-            } catch (_: Exception) {
-            }
-        }
-        return made
-    }
 
     fun multiCommandBin(ctx: Context): File? = lobos.os.SystemRoles.multiCommandBin(ctx)
 

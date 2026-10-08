@@ -121,9 +121,28 @@ make -j"$JOBS" > "$WORK/build.log" 2>&1 \
        tail -40 "$WORK/build.log"; exit 1; }
 
 [ -f "$SRC/busybox" ] || die "没产出 busybox" "$SRC/busybox 不存在"
-cp -f "$SRC/busybox" "$OUT/bin/$TOOL"
-chmod 0755 "$OUT/bin/$TOOL"
+  # make install：busybox 官方机制 —— 构建系统自己知道编了哪些 applet，
+  # 连带把全部软链建好（同目录相对软链，指向 busybox 本体）。
+  # 我们不列applet 名：那是它的编译结果，不是我们的数据。
+  rm -rf "$WORK/install"
+  make CONFIG_PREFIX="$WORK/install" install > "$WORK/install.log" 2>&1 \
+    || { echo "=== make install 失败取证 ==="; tail -30 "$WORK/install.log"; exit 1; }
+  [ -x "$WORK/install/bin/busybox" ] || die "make install 没产出 busybox" "$WORK/install/bin/busybox 不存在"
 
+  mkdir -p "$OUT/bin"
+  cp -f "$SRC/busybox" "$OUT/bin/$TOOL"
+  chmod 0755 "$OUT/bin/$TOOL"
+
+  # 软链随件一起进 dist/bin/ —— landOne 会把它们铺到
+  # usr/lib/<id>/<版本>/bin/（与本体同目录），再由 usr/bin/<applet> 软链指过来。
+  # 全局入口只有一份，applet 名是 busybox 自己的编译结果，不在我们任何表里。
+  for l in "$WORK/install/bin/"*; do
+    [ -L "$l" ] || continue
+    ln -sf busybox "$OUT/bin/$(basename "$l")"
+  done
+  NL=0
+  for l in "$OUT/bin/"*; do [ -L "$l" ] && NL=$((NL+1)); done
+  echo "[$TOOL] 本体 + $NL 个 applet 软链进 dist/bin/（applet 名由 busybox 自己报）"
 BB="$OUT/bin/$TOOL"
 SIZE=$(stat -c%s "$BB")
 [ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
@@ -152,6 +171,6 @@ BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 echo "[ok] $BB $(stat -c%s "$BB") 字节（静态，无 PT_DYNAMIC，16KB 对齐合格）"
-echo "[$TOOL] 软链由 PrefixProvisioner 建（$APPLETS 逐个软到 \$PREFIX/bin/）"
+echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"

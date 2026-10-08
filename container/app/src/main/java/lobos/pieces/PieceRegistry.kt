@@ -73,17 +73,6 @@ object PieceRegistry {
             installName = "busybox",
             versionArgs = listOf("--help"),
             role = "multi-command",
-            applets = listOf(
-                "tar", "gzip", "gunzip", "grep", "sed", "awk", "ls", "cp", "mv",
-                "cat", "mkdir", "rm", "ln", "vi", "df", "ps", "true", "false"
-            ),
-            note = "多调用二进制：用户敲 tar/grep/ls（软链由 PrefixProvisioner 建），" +
-                "不是 busybox tar ——" +
-                "证明 applet 真编进去了（配置项名写错时 busybox 会静默少编）。" +
-                "静态编、不链底座 libz：底座件之间不互相依赖到「少一件就起不来」。" +
-                "**versionArgs=--help 是待实测项**：busybox 没有 --version，" +
-                "版本在 --help 首行（形如 BusyBox v1.36.1 ...）。仓里没有编好的 busybox 可验，" +
-                "所以这一格要真机确认；不成立时 versionOf 取不到会回退到装件记录的版本（不算错，只是拿不到实测值）"
         ),
 
         Piece(
