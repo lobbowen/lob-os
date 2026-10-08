@@ -252,9 +252,9 @@ if [ -n "${ONLY:-}" ]; then
   : "${RECIPE[$ONLY]:?ONLY 的取值只能是 zlib|openssl|curl（现有：${!RECIPE[*]}）}"
   "${RECIPE[$ONLY]}"
 else
-  build_zlib
-  build_openssl
-  build_curl
+  build_zlib || die "zlib 编译失败" "上面 build_zlib 已打出 cmake 的末 40 行 —— 那是真病因。别只看后面的「底座共享库缺失」，那是后果不是病因。"
+  build_openssl || die "openssl 编译失败" "上面 build_openssl 已打出 configure/make 的末 40 行。"
+  build_curl || die "curl 编译失败" "上面 build_curl 已打出 configure/make 的末 40 行。"
 fi
 
 echo

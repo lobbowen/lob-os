@@ -47,6 +47,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
+      RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/os-release-') && github.ref_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -152,7 +155,6 @@ jobs:
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KS_KEYPASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
         run: |
           set -uo pipefail
           rc=0
@@ -167,30 +169,37 @@ jobs:
           fi
           exit "$rc"
 
-      - name: Build debug APK（第一次真正编译宿主 Kotlin）
+      - name: Build APK（发布轮出 release 变体，校验轮出 debug）
         id: gradlebuild
         env:
           LOBOS_KEYSTORE_PASSWORD: ${{ env.LOBOS_KEYSTORE_PASSWORD }}
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          if [ "${RELEASE_ROUND}" = "true" ]; then
+            VARIANT=release
+          else
+            VARIANT=debug
+          fi
+          echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
+          gradle "assemble$VARIANT" --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
+          echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
+          ls -la "container/app/build/outputs/apk/$VARIANT/"
 
       - name: 产物形态校验（APK 条目 vs 三份声明表）
         run: |
           set -uo pipefail
-          APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
+          APK="$(ls container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk 2>/dev/null | head -1)"
           if [ -z "$APK" ]; then
-            echo "::error title=没有 APK 可审::构建步应当已产出 APK"
+            echo "::error title=没有 APK 可审::构建步应当已在 apk/${{ steps.gradlebuild.outputs.variant }}/ 下产出 APK"
             exit 1
           fi
+          echo "[verify] 审这一份：$APK"
           bash scripts/verify-apk-native.sh "$APK" arm64-v8a
 
       - name: 验签（发布轮要求稳定身份；校验轮只查签名一致性）
-        env:
-          RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
         run: |
           set -uo pipefail
-          APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
+          APK="$(ls container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk 2>/dev/null | head -1)"
           if [ -z "$APK" ]; then
             echo "::error title=没有 APK 可验::构建步应当已产出 APK"
             exit 1
@@ -207,28 +216,34 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: apk-debug
-          path: container/app/build/outputs/apk/debug/*.apk
+          name: apk-${{ steps.gradlebuild.outputs.variant }}
+          path: container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 30
 
-      - name: 发布为 release 资产（下载链接一步可得）
+      - name: 校验轮：发验证包（每次构建一份，下载链接一步可得）
         if: success() && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
           TAG: verify-${{ github.sha }}
         run: |
           set -euo pipefail
-          APK="$(ls container/app/build/outputs/apk/debug/*.apk | head -1)"
+          APK="$(ls container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk | head -1)"
           [ -f "$APK" ] || { echo "::error::没有 APK 可发布"; exit 1; }
-          NAME="lobos-os-$(jq -r '.shell.versionName' version.json).apk"
+          NAME="lobos-os-$(jq -r '.shell.versionName' version.json)-verify.$(jq -r '.shell.versionCode' version.json).apk"
           if [ -z "${GH_TOKEN:-}" ]; then
             echo "::notice::未配置 APK_PUBLISH_TOKEN，跳过自动发布（构建本身是成功的）"
             exit 0
           fi
+          {
+            echo "commit ${GITHUB_SHA}"
+            echo ""
+            echo "这是**校验轮**产物，不是发布版。"
+            echo "发布版走 os-release-VERSION tag；版本号规范见 docs/VERSIONING.md。"
+          } > /tmp/verify-notes.md
           gh release create "$TAG" "$APK#$NAME" \
             --title "验证包 $(jq -r '.shell.versionName' version.json) · ${GITHUB_SHA:0:9}" \
-            --notes "commit ${GITHUB_SHA}" \
+            --notes-file /tmp/verify-notes.md \
             --prerelease --target "$GITHUB_SHA" || {
               echo "::notice::同名 release 已存在，补传资产"
               gh release upload "$TAG" "$APK#$NAME" --clobber
@@ -236,6 +251,47 @@ jobs:
           echo ""
           echo "下载地址："
           gh release view "$TAG" --json assets --jq '.assets[0].url'
+
+      - name: 发布轮：发正式版到 os-release-<versionName>
+        if: success() && env.RELEASE_ROUND == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          NAME_VER="$(jq -r '.shell.versionName' version.json)"
+          CODE="$(jq -r '.shell.versionCode' version.json)"
+          if [ "$RELEASE_TAG" != "os-release-$NAME_VER" ]; then
+            echo "::error title=tag 与 version.json 对不上::tag 是 $RELEASE_TAG，version.json 是 $NAME_VER —— 要打 os-release-$NAME_VER"
+            exit 1
+          fi
+          APK="$(ls container/app/build/outputs/apk/release/*.apk | head -1)"
+          [ -f "$APK" ] || { echo "::error::没有 release 变体的 APK：$APK"; exit 1; }
+          SHA="$(sha256sum "$APK" | cut -c1-64)"
+          ASSET="lobos-os-$NAME_VER.apk"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error title=发布轮缺令牌::os-release-* 这一轮要发正式版，需要 secrets APK_PUBLISH_TOKEN"
+            exit 1
+          fi
+          {
+            echo "commit ${GITHUB_SHA}"
+            echo ""
+            echo "- versionName：$NAME_VER"
+            echo "- versionCode：$CODE"
+            echo "- sha256：$SHA"
+            echo ""
+            echo "版本号规范见 docs/VERSIONING.md。"
+          } > /tmp/notes.md
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error title=同版本号已发布过::$RELEASE_TAG 已存在。同号只能配同一批字节；变了就提 versionCode 再打新 tag。字节没变而只是重跑，那说明这次构建不是必要的。"
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" "$APK#$ASSET" \
+            --title "lob-os $NAME_VER" \
+            --notes-file /tmp/notes.md \
+            --target "$GITHUB_SHA"
+          echo ""
+          echo "发布完成："
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[0].url'
 
       - name: Collect failure diagnostics
         if: failure()
