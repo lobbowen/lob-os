@@ -2,8 +2,8 @@ package lobos.os
 
 import android.content.Context
 import lobos.RuntimeDiagnostics
-import lobos.native.NativeAssetRegistry
-import lobos.native.NativePreparer
+import lobos.pieces.PieceRegistry
+import lobos.pieces.PieceProvisioner
 import lobos.runtime.InstalledRuntime
 import lobos.runtime.NodeProvisioner
 import lobos.runtime.PrefixProvisioner
@@ -43,7 +43,7 @@ object RuntimeEnvironment {
         "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "LOBOS_COMPAT_LOG", "LOBOS_BRIDGE_SOCKET",
         "LOBOS_SESSION_TOKEN", "LOBOS_PROGRAM_ID", "LOBOS_PROGRAM_GENERATION",
         "LOBOS_ANDROID", "LOBOS_PLATFORM", "LOBOS_SUPERVISOR_HOME", "LOBOS_UI_DIR",
-        "LOBOS_PERMISSION_MODE", "LOBOS_FLOCK_NATIVE", "LOBOS_OWN_SESSION",
+        "LOBOS_PERMISSION_MODE", "LOBOS_FLOCK_SO", "LOBOS_OWN_SESSION",
     )
 
     fun withoutReserved(declared: Map<String, String>): Pair<Map<String, String>, List<String>> {
@@ -68,7 +68,7 @@ object RuntimeEnvironment {
         )
         root.posixShim?.let {
             put("LD_PRELOAD", it.absolutePath)
-            put("LOBOS_COMPAT_LOG", lobos.native.DriverRegistry.degradeLog(ctx).absolutePath)
+            put("LOBOS_COMPAT_LOG", lobos.pieces.DriverRegistry.degradeLog(ctx).absolutePath)
         }
         val caDirs = listOf(
             "/apex/com.android.conscrypt/cacerts",
@@ -103,14 +103,14 @@ object RuntimeEnvironment {
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
         shellBin = SystemRoles.shellBin(ctx),
-        posixShim = File(ctx.applicationInfo.nativeLibraryDir, NativeAssetRegistry.libNameOf("posix"))
+        posixShim = File(ctx.applicationInfo.nativeLibraryDir, PieceRegistry.libNameOf("posix"))
             .takeIf { it.isFile },
         envShim = s.envShim,
     )
 
     fun libSearchPath(ctx: Context): String {
         val dirs = LinkedHashSet<String>()
-        dirs.add(NativePreparer.libSearchPath(ctx))
+        dirs.add(PieceProvisioner.libSearchPath(ctx))
         dirs.add(PrefixProvisioner.libDir(ctx).absolutePath)
         runCatching {
             ProgramRegistry.listIds(ctx).forEach { id ->

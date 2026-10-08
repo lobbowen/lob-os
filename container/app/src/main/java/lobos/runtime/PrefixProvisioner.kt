@@ -2,18 +2,18 @@ package lobos.runtime
 
 import android.content.Context
 import android.system.Os
-import lobos.native.NativeAssetRegistry
+import lobos.pieces.PieceRegistry
 import java.io.File
 import lobos.os.ProgramManager
 
 object PrefixProvisioner {
 
 private val BINS: List<Pair<String, String>>
-    get() = NativeAssetRegistry.BINS.map { it.libName to it.installedAs }
+    get() = PieceRegistry.BINS.map { it.libName to it.installedAs }
 
 
 private val DEPS: List<Pair<String, String>>
-    get() = NativeAssetRegistry.LIBS.map { it.libName to it.libName }
+    get() = PieceRegistry.LIBS.map { it.libName to it.libName }
 
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
@@ -81,7 +81,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         plan: List<Triple<List<Pair<String, String>>, File, Boolean>>,
     ) {
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        val byLibName = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).associateBy { it.libName }
+        val byLibName = (PieceRegistry.BINS + PieceRegistry.LIBS).associateBy { it.libName }
         for ((items, dir, _) in plan) {
             for ((libName, name) in items) {
                 val dst = File(dir, name)

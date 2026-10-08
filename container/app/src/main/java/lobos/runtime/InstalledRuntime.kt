@@ -18,14 +18,14 @@ object InstalledRuntime {
 
     fun versionOf(ctx: Context, id: String): String {
         val bin = binOf(ctx, id) ?: return ""
-        val args = lobos.native.NativeAssetRegistry.of(id)?.versionArgs ?: emptyList()
+        val args = lobos.pieces.PieceRegistry.of(id)?.versionArgs ?: emptyList()
         if (args.isEmpty()) return recordedVersion(ctx, id)
         val out = runCatching {
             val pb = ProcessBuilder(bin.absolutePath, *args.toTypedArray())
                 .redirectErrorStream(true)
             val prior = pb.environment()["LD_LIBRARY_PATH"].orEmpty()
             pb.environment()["LD_LIBRARY_PATH"] =
-                listOf(prior, lobos.native.NativePreparer.libSearchPath(ctx))
+                listOf(prior, lobos.pieces.PieceProvisioner.libSearchPath(ctx))
                     .filter { it.isNotBlank() }
                     .joinToString(File.pathSeparator)
             val p = pb.start()

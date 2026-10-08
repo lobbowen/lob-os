@@ -1,4 +1,4 @@
-package lobos.native
+package lobos.pieces
 
 import android.content.Context
 import java.io.File
@@ -51,7 +51,7 @@ object DriverRegistry {
             id = "d2.flock",
             assetId = "flock",
             provides = "flock()",
-            substitution = "无原生 flock 时按文件锁语义模拟（跨进程互斥由 JS 侧兜底）",
+            substitution = "无 flock 编译件时按文件锁语义模拟（跨进程互斥由 JS 侧兜底）",
             degradeMode = "ON_ERROR",
         ),
         Driver(
@@ -160,7 +160,7 @@ object DriverRegistry {
         val drivers = JSONArray()
         var missing = 0
         for (d in DRIVERS) {
-            val libName = d.assetId?.let { runCatching { NativeAssetRegistry.libNameOf(it) }.getOrNull() }
+            val libName = d.assetId?.let { runCatching { PieceRegistry.libNameOf(it) }.getOrNull() }
             val present = d.assetId == null || (libName != null && File(dir, libName).exists())
             if (!present) missing += 1
             drivers.put(JSONObject().apply {

@@ -20,7 +20,7 @@ object SystemRoles {
     const val LIBRARY = "library"
     const val EXEC = "exec"
 
-    private fun all(ctx: Context) = lobos.native.NativeAssetRegistry.ALL
+    private fun all(ctx: Context) = lobos.pieces.PieceRegistry.ALL
 
     private fun byRole(ctx: Context, role: String) = all(ctx).filter { it.role == role }
 
@@ -62,10 +62,10 @@ object SystemRoles {
         all(ctx).flatMap { it.provides }.distinct().sorted()
 
     /** 这个件是可执行入口（落 `$PREFIX/bin`）还是库（落 `$PREFIX/lib`）—— 判据是 role，不是名字 */
-    fun isEntry(e: lobos.native.NativeExecutable): Boolean =
+    fun isEntry(e: lobos.pieces.Piece): Boolean =
         e.role == SHELL || e.role == EXEC || e.role == MULTI_COMMAND
 
-    fun isEntryBin(e: lobos.native.NativeExecutable): Boolean = isEntry(e)
+    fun isEntryBin(e: lobos.pieces.Piece): Boolean = isEntry(e)
 
     /**
      * 这个 id 是不是一件（系统文件），它落在哪 —— 不是则返回 null。
@@ -74,7 +74,7 @@ object SystemRoles {
      * 换一份清单不该改变「它落哪」。
      */
     fun pieceDirFor(ctx: Context, id: String): File? {
-        val e = lobos.native.NativeAssetRegistry.of(id) ?: return null
+        val e = lobos.pieces.PieceRegistry.of(id) ?: return null
         val dir = if (isEntry(e)) SystemDirs.bin(ctx).parentFile else SystemDirs.pieceDir(ctx, id)
         return dir.takeIf { it.isDirectory }
     }

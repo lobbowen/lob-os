@@ -98,7 +98,7 @@ object ProgramManager {
      * 于是「装哪」由外部声明决定 —— 与「包里说它是什么就是什么」相反。
      *
      * 件（role=library/exec/shell/multi-command/headers）落usr/lib/<id>/<版本>/，
-     * 已经在 NativeAssetUpdater 与 Provisioner 里铺好了，不占 opt/；
+     * 已经在 PieceUpdater 与 Provisioner 里铺好了，不占 opt/；
      * 程序（走安装链的 zip）落 opt/<id>/。
      */
     fun relStateDir(ctx: Context, id: String): String {

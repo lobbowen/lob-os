@@ -72,7 +72,7 @@ object BootReconciler {
         cleared.addAll(reconciledPending)
         ProgramManager.reconcile(ctx)
         ProgramManager.assemble(ctx)
-        lobos.native.CompatSemantics.write(ctx)
+        lobos.pieces.CompatSemantics.write(ctx)
         val repaired = repairMissingEntry(ctx)
 
         return Report(

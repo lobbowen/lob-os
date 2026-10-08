@@ -1,6 +1,6 @@
-package lobos.native
+package lobos.pieces
 
-data class NativeExecutable(
+data class Piece(
     val id: String,
 
     val libName: String,

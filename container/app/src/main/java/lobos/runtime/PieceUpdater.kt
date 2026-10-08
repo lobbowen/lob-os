@@ -2,14 +2,14 @@ package lobos.runtime
 
 import android.content.Context
 import lobos.RuntimeDiagnostics
-import lobos.native.NativeAssetRegistry
-import lobos.native.NativeExecutable
+import lobos.pieces.PieceRegistry
+import lobos.pieces.Piece
 import org.json.JSONObject
 import java.io.File
 
-object NativeAssetUpdater {
+object PieceUpdater {
 
-    private const val TAG = "NativeAssetUpdater"
+    private const val TAG = "PieceUpdater"
     private const val MANIFEST_NAME = "native-manifest.json"
     private const val PUB_PEM_ASSET = "supply/component-public.pem"
     private const val MAX_MANIFEST_BYTES = SupplyProvisioner.MAX_MANIFEST_BYTES
@@ -30,8 +30,8 @@ object NativeAssetUpdater {
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (e in NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS) {
-            val entry = if (e in NativeAssetRegistry.BINS) {
+        for (e in PieceRegistry.BINS + PieceRegistry.LIBS) {
+            val entry = if (e in PieceRegistry.BINS) {
                 File(PrefixProvisioner.binDir(ctx), e.installedAs)
             } else {
                 File(PrefixProvisioner.libDir(ctx), e.installedAs)
@@ -58,7 +58,7 @@ object NativeAssetUpdater {
         val nativeName = SupplyProvisioner.manifestNameOf(ctx, "native") ?: MANIFEST_NAME
         val dir = SupplyProvisioner.manifestDir(ctx)
         if (dir == null) {
-            res.put("ok", false); res.put("detail", "锚点里没有 baseUrl —— 不知道去哪取原生件清单")
+            res.put("ok", false); res.put("detail", "锚点里没有 baseUrl —— 不知道去哪取系统件清单")
             return res
         }
         val url = if (manifestUrl.startsWith("http")) manifestUrl else "$dir/$nativeName"
@@ -85,7 +85,7 @@ object NativeAssetUpdater {
         }.getOrNull()
         if (sig == null) { res.put("ok", false); res.put("detail", "签名下载失败：$sigUrl"); return res }
         if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) {
-            RuntimeDiagnostics.append(ctx, "native-ota", false, "原生件清单验签不通过（拒用）", url)
+            RuntimeDiagnostics.append(ctx, "piece-ota", false, "系统件清单验签不通过（拒用）", url)
             res.put("ok", false); res.put("detail", "清单验签不通过（拒用）")
             return res
         }
@@ -102,8 +102,8 @@ object NativeAssetUpdater {
         val arr = parsed.optJSONArray("components") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
-        val pending = mutableListOf<Triple<NativeExecutable, String, JSONObject>>()
-        val byId = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).associateBy { it.id }
+        val pending = mutableListOf<Triple<Piece, String, JSONObject>>()
+        val byId = (PieceRegistry.BINS + PieceRegistry.LIBS).associateBy { it.id }
 
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
@@ -164,8 +164,8 @@ object NativeAssetUpdater {
         res.put("skipped", skipped)
         res.put("dryRun", dryRun)
         RuntimeDiagnostics.append(
-            ctx, "native-ota", true,
-            "原生件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
+            ctx, "piece-ota", true,
+            "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
             "清单=$url 过期于=$expires",
         )
         return res
@@ -175,7 +175,7 @@ object NativeAssetUpdater {
         ctx: Context,
         url: String,
         wantSha: String,
-        items: List<Triple<NativeExecutable, String, JSONObject>>,
+        items: List<Triple<Piece, String, JSONObject>>,
     ): Map<String, Pair<Boolean, String?>> {
         val out = LinkedHashMap<String, Pair<Boolean, String?>>()
         if (url.isBlank() || wantSha.isBlank()) {
@@ -224,7 +224,7 @@ object NativeAssetUpdater {
         }
     }
 
-    private fun place(ctx: Context, e: NativeExecutable, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+    private fun place(ctx: Context, e: Piece, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
         try {
             val dir = versionDir(ctx, e.id, version)
             runCatching { dir.deleteRecursively() }
@@ -250,7 +250,7 @@ object NativeAssetUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    private fun pointEntryAt(ctx: Context, e: NativeExecutable, version: String, dest: File): Boolean = try {
+    private fun pointEntryAt(ctx: Context, e: Piece, version: String, dest: File): Boolean = try {
         val link = if (isEntryBin(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
@@ -273,7 +273,7 @@ object NativeAssetUpdater {
     }
 
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
-        val e = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).firstOrNull { it.id == id }
+        val e = (PieceRegistry.BINS + PieceRegistry.LIBS).firstOrNull { it.id == id }
             ?: return false to "注册表里没有 id=$id"
         val link = if (isEntryBin(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
@@ -288,7 +288,7 @@ object NativeAssetUpdater {
             val rebuilt = PrefixProvisioner.provision(ctx).contains(e.installedAs)
             SupplyProvisioner.selectVersion(ctx, id, "")
             RuntimeDiagnostics.append(
-                ctx, "native-ota", rebuilt,
+                ctx, "piece-ota", rebuilt,
                 "底座件已回滚到 APK 原件：" + id,
                 "软链已删，provision " + if (rebuilt) "已重建原件" else "重建未成功（下次启动会再试）",
             )

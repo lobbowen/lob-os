@@ -1,4 +1,4 @@
-package lobos.native
+package lobos.pieces
 
 import lobos.runtime.ProcessSupervisor
 import android.content.Context
@@ -13,45 +13,45 @@ import org.json.JSONObject
 sealed class AssetStatus {
 
     data class Ready(
-        val exe: NativeExecutable,
+        val exe: Piece,
         val path: String,
         val probeOutput: String,
     ) : AssetStatus()
 
     data class MissingFromLib(
-        val exe: NativeExecutable,
+        val exe: Piece,
         val path: String,
         val inApk: Boolean,
         val libListing: String,
     ) : AssetStatus()
 
     data class MissingDependency(
-        val exe: NativeExecutable,
+        val exe: Piece,
         val dep: String,
         val libListing: String,
     ) : AssetStatus()
 
     data class NotExecutable(
-        val exe: NativeExecutable,
+        val exe: Piece,
         val path: String,
         val errnoHint: Int?,
         val raw: String,
     ) : AssetStatus()
 
     data class ProbeFailed(
-        val exe: NativeExecutable,
+        val exe: Piece,
         val path: String,
         val exit: Int,
         val output: String,
     ) : AssetStatus()
 }
 
-data class PrepareReport(val entries: List<Pair<NativeExecutable, AssetStatus>>) {
+data class PrepareReport(val entries: List<Pair<Piece, AssetStatus>>) {
 
     val allRequiredReady: Boolean
         get() = entries.filter { it.first.required }.all { it.second is AssetStatus.Ready }
 
-    val failedRequired: List<Pair<NativeExecutable, AssetStatus>>
+    val failedRequired: List<Pair<Piece, AssetStatus>>
         get() = entries.filter { it.first.required && it.second !is AssetStatus.Ready }
 
     fun toJson(): JSONObject {
@@ -127,9 +127,9 @@ data class PrepareReport(val entries: List<Pair<NativeExecutable, AssetStatus>>)
     }
 }
 
-object NativePreparer {
+object PieceProvisioner {
 
-    private const val TAG = "NativePreparer"
+    private const val TAG = "PieceProvisioner"
 
     fun prepare(ctx: Context): PrepareReport {
         val libDir = File(ctx.applicationInfo.nativeLibraryDir)
@@ -142,15 +142,15 @@ object NativePreparer {
             emptySet()
         }
 
-        val entries = NativeAssetRegistry.ALL.map { exe ->
+        val entries = PieceRegistry.ALL.map { exe ->
             exe to verifyInternal(ctx, exe, libDir, listing, apkLibNames)
         }
         val report = PrepareReport(entries)
 
         RuntimeDiagnostics.append(
             ctx, "native-assets", report.allRequiredReady,
-            if (report.allRequiredReady) "原生资产全部就位（${entries.size} 项）"
-            else "原生资产校验失败：${report.failedRequired.joinToString(", ") { it.first.libName }}",
+            if (report.allRequiredReady) "系统件全部就位（${entries.size} 项）"
+            else "系统件校验失败：${report.failedRequired.joinToString(", ") { it.first.libName }}",
             "nativeLibraryDir=${libDir.absolutePath}\n" +
                 "依赖解析方式=二进制自带 \$ORIGIN RUNPATH；探针裸环境跑，不设 LD_LIBRARY_PATH\n" +
                 "lib 目录内容（${listing.lines().size - 3} 项）:\n" +
@@ -158,7 +158,7 @@ object NativePreparer {
                 report.toDiagnosticLines().joinToString("\n"),
             data = report.toJson(),
         )
-        val capEntries = NativeAssetRegistry.CAPABILITY.map { exe ->
+        val capEntries = PieceRegistry.CAPABILITY.map { exe ->
             exe to verifyInternal(ctx, exe, libDir, listing, apkLibNames)
         }
         val capReport = PrepareReport(capEntries)
@@ -172,7 +172,7 @@ object NativePreparer {
         return report
     }
 
-    fun verify(ctx: Context, exe: NativeExecutable): AssetStatus {
+    fun verify(ctx: Context, exe: Piece): AssetStatus {
         val libDir = File(ctx.applicationInfo.nativeLibraryDir)
         val apkNames = try {
             readApkLibEntries(ctx)
@@ -186,7 +186,7 @@ object NativePreparer {
 
     private fun verifyInternal(
         ctx: Context,
-        exe: NativeExecutable,
+        exe: Piece,
         libDir: File,
         listing: String,
         apkLibNames: Set<String>,
@@ -215,7 +215,7 @@ object NativePreparer {
         return probe(exe, f)
     }
 
-    private fun probe(exe: NativeExecutable, f: File): AssetStatus {
+    private fun probe(exe: Piece, f: File): AssetStatus {
         try {
             val cmd = mutableListOf(f.absolutePath).apply { addAll(exe.probeArgs) }
             val p = ProcessSupervisor.spawn(

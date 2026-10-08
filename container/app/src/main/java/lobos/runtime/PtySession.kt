@@ -2,7 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import android.util.Log
-import lobos.native.NativeAssetRegistry
+import lobos.pieces.PieceRegistry
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.EOFException
@@ -188,7 +188,7 @@ object PtySession {
                             lastError = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("ERROR: ").append(lastError).append('\n') }
                             ctx?.let {
-                                RuntimeDiagnostics.append(it, "pty", false, "PTY 原生侧报错", lastError)
+                                RuntimeDiagnostics.append(it, "pty", false, "PTY 的C 侧报错", lastError)
                             }
                         }
                         else -> Log.d(TAG, "忽略未知帧 kind=$kind sid=$sid len=$len")
@@ -281,7 +281,7 @@ object PtySession {
     private fun locateBin(ctx: Context): File {
         val candidates = listOf(
             File(PrefixProvisioner.binDir(ctx), "pty-session"),
-            File(ctx.applicationInfo.nativeLibraryDir, NativeAssetRegistry.libNameOf("ptysession")),
+            File(ctx.applicationInfo.nativeLibraryDir, PieceRegistry.libNameOf("ptysession")),
         )
         return candidates.firstOrNull { it.isFile }
             ?: throw IllegalStateException(

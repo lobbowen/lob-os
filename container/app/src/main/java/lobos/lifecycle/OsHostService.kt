@@ -142,7 +142,7 @@ class OsHostService : Service() {
             refreshStatusNotice(now, a11y)
             runCatching { pool?.sync() }
             sampleAdb(now)
-            runCatching { lobos.native.DriverRegistry.ingest(this) }
+            runCatching { lobos.pieces.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
             if (!lobos.os.DozeBackstop.armedRecently(nowWall)) {
                 val armed = lobos.os.DozeBackstop.schedule(this)

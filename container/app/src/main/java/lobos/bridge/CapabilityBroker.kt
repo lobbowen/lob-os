@@ -34,9 +34,9 @@ import lobos.lifecycle.AccessibilityServiceState
 import lobos.lifecycle.OsAccessibilityService
 import lobos.lifecycle.OsHostService
 import lobos.log.Journal
-import lobos.native.NativeAssetRegistry
-import lobos.native.NativePreparer
-import lobos.native.PrepareReport
+import lobos.pieces.PieceRegistry
+import lobos.pieces.PieceProvisioner
+import lobos.pieces.PrepareReport
 import lobos.os.CatalogClient
 import lobos.os.Desired
 import lobos.os.IndexEntry
@@ -558,7 +558,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
         "lobos.sys.native.status" to MethodDef(listOf("base"), true) { _, _programId ->
             val arr = JSONArray()
-            for (s in lobos.runtime.NativeAssetUpdater.states(this@CapabilityBroker)) {
+            for (s in lobos.runtime.PieceUpdater.states(this@CapabilityBroker)) {
                 arr.put(JSONObject().apply {
                     put("id", s.id)
                     put("installedVersion", s.installedVersion ?: JSONObject.NULL)
@@ -574,7 +574,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "lobos.sys.native.update" to MethodDef(listOf("base"), true) { p, _programId ->
             val dry = p.optBoolean("dryRun", true)
-            lobos.runtime.NativeAssetUpdater.checkAndUpdate(
+            lobos.runtime.PieceUpdater.checkAndUpdate(
                 this@CapabilityBroker,
                 p.optString("manifestUrl", ""),
                 dryRun = dry,
@@ -583,7 +583,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "lobos.sys.native.rollback" to MethodDef(listOf("base"), true) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "id 为空")
-            val (ok, why) = lobos.runtime.NativeAssetUpdater.rollback(this@CapabilityBroker, id)
+            val (ok, why) = lobos.runtime.PieceUpdater.rollback(this@CapabilityBroker, id)
             JSONObject().apply {
                 put("ok", ok)
                 put("id", id)
@@ -877,7 +877,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "os.compat.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            lobos.native.DriverRegistry.report(this@CapabilityBroker)
+            lobos.pieces.DriverRegistry.report(this@CapabilityBroker)
         },
 
         "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
@@ -1163,13 +1163,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
             val walkProbes = p.optBoolean("walkProbes", true)
             val report = if (walkProbes) {
-                NativePreparer.prepare(this)
+                PieceProvisioner.prepare(this)
             } else {
-                PrepareReport(NativeAssetRegistry.ALL.map { exe -> exe to NativePreparer.verify(this, exe) })
+                PrepareReport(PieceRegistry.ALL.map { exe -> exe to PieceProvisioner.verify(this, exe) })
             }
             report.toJson().apply {
                 put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
-                put("libSearchPath", NativePreparer.libSearchPath(this@CapabilityBroker))
+                put("libSearchPath", PieceProvisioner.libSearchPath(this@CapabilityBroker))
             }
         },
         "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->

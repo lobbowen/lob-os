@@ -15,9 +15,9 @@ import java.util.concurrent.Executors
 import lobos.ProvisioningProbe
 import lobos.RuntimeDiagnostics
 import lobos.lifecycle.OsHostService
-import lobos.native.AssetStatus
-import lobos.native.NativeAssetRegistry
-import lobos.native.NativePreparer
+import lobos.pieces.AssetStatus
+import lobos.pieces.PieceRegistry
+import lobos.pieces.PieceProvisioner
 import lobos.os.ProgramDir
 import lobos.ota.ProgramOtaResolution
 import lobos.ota.ProgramOtaUpdater
@@ -43,7 +43,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     @Volatile private var probeProcess: Process? = null
     @Volatile private var probeRunning = false
 
-    private val libSearchPath: String get() = NativePreparer.libSearchPath(this)
+    private val libSearchPath: String get() = PieceProvisioner.libSearchPath(this)
 
     fun start() {
         scheduleBootLoop()
@@ -51,7 +51,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     fun onHostStart(intent: Intent?) {
         if (intent?.action == ACTION_PROBE) {
-            scheduleNativeProbe()
+            schedulePieceProbe()
             return
         }
         when (intent?.action) {
@@ -336,13 +336,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.runtime.InstalledRuntime.notInstalledHint(this, "node")),
             )
 
-            val assets = NativePreparer.prepare(this)
+            val assets = PieceProvisioner.prepare(this)
             if (!assets.allRequiredReady) {
                 val what = assets.failedRequired.joinToString("; ") { (e, st) ->
                     "${e.libName}（${describeStatus(st)}）"
                 }
                 RuntimeDiagnostics.append(
-                    this, "provision", false, "原生资产校验未通过，中止启动", what
+                    this, "provision", false, "系统件校验未通过，中止启动", what
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
             }
@@ -385,7 +385,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
-                    flockNative = File(nativeDir, NativeAssetRegistry.libNameOf("flock")),
+                    flockSo = File(nativeDir, PieceRegistry.libNameOf("flock")),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
                     httpPort = resolvedPort,
@@ -560,7 +560,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun runPtyProbe() {
-        val bin = File(libSearchPath.substringBefore(File.pathSeparatorChar), NativeAssetRegistry.libNameOf("ptyprobe"))
+        val bin = File(libSearchPath.substringBefore(File.pathSeparatorChar), PieceRegistry.libNameOf("ptyprobe"))
         if (!bin.isFile) {
             RuntimeDiagnostics.append(this, "ptyprobe", null, "PTY 探针未随包（跳过）", bin.absolutePath)
             return
@@ -693,7 +693,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 RuntimeDiagnostics.append(
                     this, "health", true,
                     "程序健康就绪 (127.0.0.1:" + healthPort + healthPath + ")",
-                    "程序原生运行成功 ✓"
+                    "程序运行成功 ✓"
                 )
                 return
             }
@@ -784,7 +784,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         return null
     }
 
-    private fun scheduleNativeProbe() {
+    private fun schedulePieceProbe() {
         if (probeRunning) {
             RuntimeDiagnostics.append(this, "nodeprobe", null, "探针（非运行时）已在跑，忽略这次重复驱动")
             return
@@ -792,7 +792,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         probeRunning = true
         Thread {
             try {
-                runNativeProbe()
+                runPieceProbe()
             } catch (e: Throwable) {
                 RuntimeDiagnostics.append(this, "nodeprobe", false, "探针（非运行时）异常", err(e))
             } finally {
@@ -803,7 +803,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }.apply { name = "nodeprobe"; isDaemon = true }.start()
     }
 
-    private fun runNativeProbe() {
+    private fun runPieceProbe() {
         val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, "node")
         if (nodeBin == null) {
             RuntimeDiagnostics.append(
@@ -849,7 +849,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         } else {
             RuntimeDiagnostics.append(
                 this, "nodeprobe", true,
-                "探针（非运行时）通了：Node 原生 exec + listen 可用。**这不等于运行时在线**（控制面未验）",
+                "探针（非运行时）通了：Node 直接 exec + listen 可用。**这不等于运行时在线**（控制面未验）",
                 report
             )
         }
