@@ -7,26 +7,26 @@ on:
     paths:
       - 'container/**'
       - 'scripts/build-native-*.sh'
-      - 'scripts/build-base-libs.sh'
-      - 'scripts/build-shared-deps.sh'
-      - 'scripts/ensure-native-capabilities.sh'
-      - 'scripts/native-capabilities-fingerprint.sh'
-      - 'scripts/verify-runtime-elf.sh'
-      - 'scripts/verify-apk-native.sh'
-      - 'scripts/verify-apk-signing.sh'
-      - 'scripts/inject-apk-keystore.sh'
-      - 'scripts/keygen.sh'
-      - 'scripts/keygen-android-keystore.sh'
-      - 'scripts/locate-ndk.sh'
-      - 'scripts/cache-ndk.sh'
-      - 'scripts/verify-ota-anchor.sh'
-      - 'scripts/gen-native-assets.js'
-      - 'scripts/gen-component-keys.js'
-      - 'scripts/publish-native-manifest.js'
-      - 'scripts/fetch-pinned.sh'
+      - 'scripts/toolchain/build-base-libs.sh'
+      - 'scripts/recipes/build-shared-deps.sh'
+      - 'scripts/toolchain/ensure-native-capabilities.sh'
+      - 'scripts/verify/native-capabilities-fingerprint.sh'
+      - 'scripts/verify/verify-runtime-elf.sh'
+      - 'scripts/verify/verify-apk-native.sh'
+      - 'scripts/verify/verify-apk-signing.sh'
+      - 'scripts/publish/inject-apk-keystore.sh'
+      - 'scripts/publish/keygen.sh'
+      - 'scripts/publish/keygen-android-keystore.sh'
+      - 'scripts/toolchain/locate-ndk.sh'
+      - 'scripts/toolchain/cache-ndk.sh'
+      - 'scripts/verify/verify-ota-anchor.sh'
+      - 'scripts/registry/gen-native-assets.js'
+      - 'scripts/registry/gen-component-keys.js'
+      - 'scripts/publish/publish-native-manifest.js'
+      - 'scripts/toolchain/fetch-pinned.sh'
       - 'scripts/native-deps.txt'
       - 'scripts/node-versions.json'
-      - 'scripts/make-release.sh'
+      - 'scripts/publish/make-release.sh'
       - 'tools/**'
       - 'components/**'
       - '.github/native-assets.txt'
@@ -93,10 +93,10 @@ jobs:
           echo "[ok] SDK 包就绪"
 
       - name: 取 NDK（命中缓存则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
-        run: bash scripts/cache-ndk.sh
+        run: bash scripts/toolchain/cache-ndk.sh
 
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑；与商店链同一份）
-        run: bash scripts/locate-ndk.sh
+        run: bash scripts/toolchain/locate-ndk.sh
 
       - name: 编译底座共享库所需的宿主工具（cmake）
         run: |
@@ -135,18 +135,18 @@ jobs:
       - name: 小件原生件（命中固化则取用，否则现场编译）
         run: |
           set -euo pipefail
-          bash scripts/locate-ndk.sh
-          bash scripts/ensure-native-capabilities.sh
+          bash scripts/toolchain/locate-ndk.sh
+          bash scripts/toolchain/ensure-native-capabilities.sh
           ls -la container/app/src/main/jniLibs/arm64-v8a/
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
           set -euo pipefail
-          bash scripts/locate-ndk.sh
-          bash scripts/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
+          bash scripts/toolchain/locate-ndk.sh
+          bash scripts/verify/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
 
       - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）
-        run: bash scripts/verify-ota-anchor.sh
+        run: bash scripts/verify/verify-ota-anchor.sh
 
       - name: 注入发布签名（缺密钥时校验轮放行，发布轮判红）
         id: signing
@@ -158,7 +158,7 @@ jobs:
         run: |
           set -uo pipefail
           rc=0
-          bash scripts/inject-apk-keystore.sh keys || rc=$?
+          bash scripts/publish/inject-apk-keystore.sh keys || rc=$?
           if [ "$rc" -eq 10 ]; then
             if [ "${RELEASE_ROUND}" = "true" ]; then
               echo "::error title=发布轮缺签名密钥::os-release-* 这一轮必须签发布包 —— 指纹每次不同的 debug 包装到已装设备上会 INSTALL_FAILED_UPDATE_INCOMPATIBLE。需要 secrets ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD"
@@ -194,7 +194,7 @@ jobs:
             exit 1
           fi
           echo "[verify] 审这一份：$APK"
-          bash scripts/verify-apk-native.sh "$APK" arm64-v8a
+          bash scripts/verify/verify-apk-native.sh "$APK" arm64-v8a
 
       - name: 验签（发布轮要求稳定身份；校验轮只查签名一致性）
         run: |
@@ -207,9 +207,9 @@ jobs:
           CERT_ARG=""
           if [ -s keys/release.cert ]; then CERT_ARG="--cert keys/release.cert"; fi
           if [ "${RELEASE_ROUND}" = "true" ]; then
-            bash scripts/verify-apk-signing.sh "$APK" $CERT_ARG --require-stable
+            bash scripts/verify/verify-apk-signing.sh "$APK" $CERT_ARG --require-stable
           else
-            bash scripts/verify-apk-signing.sh "$APK" $CERT_ARG
+            bash scripts/verify/verify-apk-signing.sh "$APK" $CERT_ARG
           fi
 
       - name: Upload APK

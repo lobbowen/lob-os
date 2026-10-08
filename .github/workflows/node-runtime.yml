@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'scripts/build-node-android.sh'
+      - 'scripts/toolchain/build-node-android.sh'
       - 'scripts/node-versions.json'
       - '.github/workflows/node-runtime.yml'
 
@@ -29,19 +29,19 @@ jobs:
         id: ver
         run: |
           set -euo pipefail
-          ABI="$(bash scripts/read-node-versions.sh abi)"
-          TAG="$(bash scripts/read-node-versions.sh default)"
+          ABI="$(bash scripts/registry/read-node-versions.sh abi)"
+          TAG="$(bash scripts/registry/read-node-versions.sh default)"
           echo "abi=$ABI" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "[ver] node=$TAG abi=$ABI"
 
       - name: 资产名
         id: asset
-        run: echo "name=$(bash scripts/cache-key.sh asset node)" >> "$GITHUB_OUTPUT"
+        run: echo "name=$(bash scripts/toolchain/cache-key.sh asset node)" >> "$GITHUB_OUTPUT"
 
       - name: Release tag（件名，不含版本，且与其余 component 件同一套命名）
         id: rel
-        run: echo "tag=$(bash scripts/cache-key.sh tag node)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=$(bash scripts/toolchain/cache-key.sh tag node)" >> "$GITHUB_OUTPUT"
 
       - name: 已发布就复用（不重编）
         id: reuse
@@ -77,8 +77,8 @@ jobs:
           ANDROID_API: "24"
         run: |
           set -o pipefail
-          chmod +x scripts/build-node-android.sh
-          ./scripts/build-node-android.sh ${{ steps.ver.outputs.tag }} 2>&1 | tee /tmp/node-build.log
+          chmod +x scripts/toolchain/build-node-android.sh
+          ./scripts/toolchain/build-node-android.sh ${{ steps.ver.outputs.tag }} 2>&1 | tee /tmp/node-build.log
 
       - name: 打包制品
         if: steps.reuse.outputs.hit != 'yes'

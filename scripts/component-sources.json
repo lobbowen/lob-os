@@ -1,7 +1,7 @@
 {
-  "$comment-buildTimeEpoch": "件里嵌的构建时间基准（epoch 秒）。为什么要钉（2026-10-01 定罪，债表 ENV-32）：静态链进 curl/git 的 openssl 把构建时刻写进件字节 —— 上游 util/mkbuildinf.pl:19 是 gmtime($ENV{SOURCE_DATE_EPOCH} // time())，经 crypto/build.info:118 的 GENERATE[buildinf.h] 落成 #define DATE。墙钟进字节 ⇒ 同一版本号每次重建 sha 全变 ⇒ 内容寻址的键堆积、设备全体重下、drift 第 ② 格永无宁日。取一个**过去的**整点：2026-01-01T00:00:00Z。读取口是钉值表唯一的读者 scripts/fetch-pinned.sh --time-base（⑦ 那条判据），判据宿主唯一 scripts/verify-component-build-date.sh。",
+  "$comment-buildTimeEpoch": "件里嵌的构建时间基准（epoch 秒）。为什么要钉（2026-10-01 定罪，债表 ENV-32）：静态链进 curl/git 的 openssl 把构建时刻写进件字节 —— 上游 util/mkbuildinf.pl:19 是 gmtime($ENV{SOURCE_DATE_EPOCH} // time())，经 crypto/build.info:118 的 GENERATE[buildinf.h] 落成 #define DATE。墙钟进字节 ⇒ 同一版本号每次重建 sha 全变 ⇒ 内容寻址的键堆积、设备全体重下、drift 第 ② 格永无宁日。取一个**过去的**整点：2026-01-01T00:00:00Z。读取口是钉值表唯一的读者 scripts/toolchain/fetch-pinned.sh --time-base（⑦ 那条判据），判据宿主唯一 scripts/verify/verify-component-build-date.sh。",
   "buildTimeEpoch": 1767225600,
-  "$comment-ndkVersion": "四颗交叉编译件用的 NDK 版本（债表 ENV-30）。为什么也要住这张表：件的身份 = 源码批次 × 构建时刻 × 工具链，前两格已各自钉住，第三格此前由 runner 镜像决定（build-component.yml 取 ANDROID_NDK_LATEST_HOME，只判目录在不在），仓内没有任何声明可比 ⇒ 镜像换一版 NDK，六颗件的 sha 全变而 CI 不会红。这一格**不由下载得到**，所以 scripts/fetch-pinned.sh 只把它读出来（--ndk），判点在 build-component.yml 的「定位 NDK」步：那里同时打「钉值/实测/本镜像现有」三个读数，不等就红。值 29.0.14206865 的出处（2026-10-01 现读，不是推的）：同一 commit 的两次独立校验轮 run 36777332724 与 36777975369，六颗 job 落在两颗镜像（Version 20260920.314.1 与 20260927.320.1）上，日志里真正使用的 clang 路径同为 .../sdk/ndk/29.0.14206865/...，且这两轮的六颗件 sha 逐颗全等。runner 上 NDK 版本目录全集与 source.properties 的 Revision 由那一步自己打印，改钉值前必须先拿到那两个读数。",
+  "$comment-ndkVersion": "四颗交叉编译件用的 NDK 版本（债表 ENV-30）。为什么也要住这张表：件的身份 = 源码批次 × 构建时刻 × 工具链，前两格已各自钉住，第三格此前由 runner 镜像决定（build-component.yml 取 ANDROID_NDK_LATEST_HOME，只判目录在不在），仓内没有任何声明可比 ⇒ 镜像换一版 NDK，六颗件的 sha 全变而 CI 不会红。这一格**不由下载得到**，所以 scripts/toolchain/fetch-pinned.sh 只把它读出来（--ndk），判点在 build-component.yml 的「定位 NDK」步：那里同时打「钉值/实测/本镜像现有」三个读数，不等就红。值 29.0.14206865 的出处（2026-10-01 现读，不是推的）：同一 commit 的两次独立校验轮 run 36777332724 与 36777975369，六颗 job 落在两颗镜像（Version 20260920.314.1 与 20260927.320.1）上，日志里真正使用的 clang 路径同为 .../sdk/ndk/29.0.14206865/...，且这两轮的六颗件 sha 逐颗全等。runner 上 NDK 版本目录全集与 source.properties 的 Revision 由那一步自己打印，改钉值前必须先拿到那两个读数。",
   "ndkVersion": "30.0.16248370",
   "llvmVersion": "21.0.0",
   "sources": {
@@ -161,7 +161,7 @@
     },
     "ripgrep": {
       "$comment-shape": "**这一项的形状与其余 20 项不同：没有 urls，因为没有可下载的 tarball。** 其余件是「下载源码 tar.gz → 逐字节校验 sha256 → configure/make 编译」；ripgrep 是 Rust 件，走 `cargo install --locked --version 14.1.1`（crates.io），源码由 cargo 自己按 lock 文件取，我们不经手 tarball，所以拿不到「源码包」的 sha256。",
-      "$comment-hash": "**这里的 sha256 是编出来的二进制（liblobosrg.so）的哈希，不是源码包的哈希** —— 两者不是一回事，写混了会让「校验源码」这个动作变成校验自己的产物。它由 scripts/build-native-capabilities.sh 在 cargo install 成功之后算出：先比对表里的值，一致则判绿（说明这一版编出来的东西与上一次逐字节相同）；不一致时**把实测值写进表并打印提示**，下一轮就以它为基线。首次运行时表里为空 → 记为「首轮建立基线」并写入。",
+      "$comment-hash": "**这里的 sha256 是编出来的二进制（liblobosrg.so）的哈希，不是源码包的哈希** —— 两者不是一回事，写混了会让「校验源码」这个动作变成校验自己的产物。它由 scripts/recipes/build-native-capabilities.sh 在 cargo install 成功之后算出：先比对表里的值，一致则判绿（说明这一版编出来的东西与上一次逐字节相同）；不一致时**把实测值写进表并打印提示**，下一轮就以它为基线。首次运行时表里为空 → 记为「首轮建立基线」并写入。",
       "$comment-verify": "与 NDK 版本同理（见 $comment-ndkVersion）：cargo 的 `--locked` 锁的是依赖图，不锁 crates.io 上那个 .crate 包本身。要真正锁住「拿到的是同一份源码」，得比对 crates.io 的校验值 —— 但那要另做一次下载+计算，而 crates.io 的 .crate 哈希与最终 .so 哈希无从互推。所以这里的保证是：**同一 NDK + 同一版本 ⇒ 同一产物**（cargo install 的输入与 NDK clang 都钉住了）。要更强保证需另设判据，本项不声称。",
       "version": "14.1.1",
       "builtFrom": {
@@ -174,5 +174,5 @@
       "productName": "liblobosrg.so"
     }
   },
-  "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"
+  "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"
 }

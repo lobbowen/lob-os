@@ -5,15 +5,15 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build-component.yml'
-      - 'scripts/cache-key.sh'
-      - 'scripts/list-bucket-components.js'
-      - 'scripts/fetch-component-artifacts.sh'
-      - 'scripts/publish-component-manifest.js'
-      - 'scripts/publish-native-manifest.js'
-      - 'scripts/check-component-manifest-drift.js'
-      - 'scripts/upload-qiniu.js'
-      - 'scripts/read-component-entry.sh'
-      - 'scripts/gen-native-assets.js'
+      - 'scripts/toolchain/cache-key.sh'
+      - 'scripts/registry/list-bucket-components.js'
+      - 'scripts/fetch/fetch-component-artifacts.sh'
+      - 'scripts/publish/publish-component-manifest.js'
+      - 'scripts/publish/publish-native-manifest.js'
+      - 'scripts/verify/check-component-manifest-drift.js'
+      - 'scripts/publish/upload-qiniu.js'
+      - 'scripts/registry/read-component-entry.sh'
+      - 'scripts/registry/gen-native-assets.js'
       - 'scripts/component-verify.json'
       - 'container/app/src/main/assets/supply/channel.json'
       - 'container/app/src/main/assets/supply/component-public.pem'
@@ -25,12 +25,12 @@ on:
       - 'component-*'
   pull_request:
     paths:
-      - 'scripts/cache-key.sh'
-      - 'scripts/list-bucket-components.js'
-      - 'scripts/fetch-component-artifacts.sh'
-      - 'scripts/publish-component-manifest.js'
-      - 'scripts/publish-native-manifest.js'
-      - 'scripts/check-component-manifest-drift.js'
+      - 'scripts/toolchain/cache-key.sh'
+      - 'scripts/registry/list-bucket-components.js'
+      - 'scripts/fetch/fetch-component-artifacts.sh'
+      - 'scripts/publish/publish-component-manifest.js'
+      - 'scripts/publish/publish-native-manifest.js'
+      - 'scripts/verify/check-component-manifest-drift.js'
       - 'scripts/component-verify.json'
   workflow_dispatch: {}
 
@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist work
-          bash scripts/fetch-component-artifacts.sh | tee work/fetch.tsv
+          bash scripts/fetch/fetch-component-artifacts.sh | tee work/fetch.tsv
           echo "[fetch] 上面这份是本轮取件口径：缺件只在 warning 里显式出现，不会静默从清单里消失"
           node -p "'[fetch] dist 里 ' + require('fs').readdirSync('dist').filter(f => f.endsWith('.zip')).length + ' 颗 zip'"
 
@@ -87,13 +87,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p work
-          node scripts/publish-component-manifest.js dist --project > work/declared.json
+          node scripts/publish/publish-component-manifest.js dist --project > work/declared.json
           node -p "'[declared] ' + require('./work/declared.json').map(t => t.name + '@' + t.version + ' 入口 ' + t.entry + ' 别名 ' + (t.aliases||[]).map(a=>a.name).join('+')).join(' | ')"
 
       - name: 底座件清单投影（与商店清单分流，同一把钥匙）
         run: |
           set -euo pipefail
-          node scripts/publish-native-manifest.js --project > work/native-declared.json
+          node scripts/publish/publish-native-manifest.js --project > work/native-declared.json
           node -p "'[native] ' + require('./work/native-declared.json').map(c => c.id + '@' + c.version + ' 来源 ' + c.source).join(' | ')"
 
       - name: 原生清单签名（系统更新通道 —— 随 APK 打进来的底座件）
@@ -110,7 +110,7 @@ jobs:
           fi
           mkdir -p keys release
           printf '%s\n' "$OTA_PRIVATE_KEY_PEM" > keys/ota-private.pem
-          node scripts/publish-native-manifest.js "" release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
+          node scripts/publish/publish-native-manifest.js "" release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
           echo "[native] 原生清单已签名（系统更新通道）"
 
       - name: 组装并签名清单（用 APK 焊死的公钥自检）
@@ -127,14 +127,14 @@ jobs:
           fi
           mkdir -p keys release
           printf '%s\n' "$OTA_PRIVATE_KEY_PEM" > keys/ota-private.pem
-          node scripts/publish-component-manifest.js dist release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
+          node scripts/publish/publish-component-manifest.js dist release keys/ota-private.pem "${{ needs.resolve.outputs.channel }}"
           echo "[manifest] 已签名并用 APK 公钥自检通过"
 
       - name: 发布闸门 —— revision 必须单调，同 name@version 不许换字节
         if: ${{ needs.resolve.outputs.publish == 'true' }}
         run: |
           set -euo pipefail
-          node scripts/check-component-manifest-drift.js --immutable release/component-manifest.json "${{ needs.resolve.outputs.channel }}"
+          node scripts/verify/check-component-manifest-drift.js --immutable release/component-manifest.json "${{ needs.resolve.outputs.channel }}"
 
       - name: 发布清单到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}
@@ -153,9 +153,9 @@ jobs:
           SIG=$(node -p "require('./$ANCHOR').sigName")
           CH=$(node -p "require('./$ANCHOR').channel")
           export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
-          node scripts/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
-          node scripts/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60
+          node scripts/publish/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
+          node scripts/publish/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60
           echo "[manifest] 已发布 component-$CH/$MAN"
-          node scripts/upload-qiniu.js release/native-manifest.json "component-$CH/native-manifest.json" --cache-control=600
-          node scripts/upload-qiniu.js release/native-manifest.json.sig "component-$CH/native-manifest.json.sig" --cache-control=600
+          node scripts/publish/upload-qiniu.js release/native-manifest.json "component-$CH/native-manifest.json" --cache-control=600
+          node scripts/publish/upload-qiniu.js release/native-manifest.json.sig "component-$CH/native-manifest.json.sig" --cache-control=600
           echo "[native] 已发布 component-$CH/native-manifest.json"

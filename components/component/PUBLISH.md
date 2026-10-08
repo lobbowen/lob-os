@@ -59,7 +59,7 @@
 
 不接签名链的后果：每次出的都是 AGP 现场生成的 debug 签名，指纹每次不同 ——
 新包装到已装设备上会 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。
-判据在 `scripts/verify-apk-signing.sh`（校验轮只查签名配置生效，发布轮
+判据在 `scripts/verify/verify-apk-signing.sh`（校验轮只查签名配置生效，发布轮
 `--require-stable` 把 debug 身份判红）。
 
 设置（GitHub 网页或 CLI）：
@@ -77,7 +77,7 @@ gh secret set ANDROID_KEY_ALIAS --repo lobbowen/lob-os
 gh secret set ANDROID_KEY_PASSWORD --repo lobbowen/lob-os
 ```
 
-`release.keystore` 用 `bash scripts/keygen-android-keystore.sh [别名] [天数]`
+`release.keystore` 用 `bash scripts/publish/keygen-android-keystore.sh [别名] [天数]`
 生成，落 `keys/release.keystore`（本机需要 `keytool`）。
 若沿用 `dsh-mobile` 仓里那把 key，设备端覆盖安装才能继续 ——
 换 key 等于换身份，Android 没有"换回旧签名"的机制。

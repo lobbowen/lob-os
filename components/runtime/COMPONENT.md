@@ -44,7 +44,7 @@ jniLibs —— 于是 116 MB 每次换版本都要重发 APK。
 
 ## 编译
 
-- 脚本：`scripts/build-node-android.sh`
+- 脚本：`scripts/toolchain/build-node-android.sh`
 - 产物落 `dist/libnode.so`（**编译工作区**，不进 jniLibs）；`libc++_shared.so` 落 jniLibs
   （它是 APK 原生件，在 `native-assets.txt` 里）
 - 编译一次，制品发到 Release `node-runtime-<version>-<abi>`，`build-component.yml` 取它落件

@@ -147,16 +147,16 @@ winsize 用 `ByteBuffer`（默认大端）——后者就会踩默认值。所�
 
 ## 构建与发放
 
-- 构建：`scripts/build-native-capabilities.sh`（NDK r29 交叉编译）
+- 构建：`scripts/recipes/build-native-capabilities.sh`（NDK r29 交叉编译）
 - 依赖声明：`scripts/native-deps.txt`
 - 资产清单：`.github/native-assets.txt`（**APK 必须含哪些 .so 的唯一真相**）
-- 生成/校验：`scripts/gen-native-assets.js`（幂等，CI 校验不漂移）
-- 指纹：`scripts/native-capabilities-fingerprint.sh`
-- 兜底复用：`scripts/ensure-native-capabilities.sh`
-- 产物形态校验：`scripts/verify-apk-native.sh`（APK 条目 vs 三份声明表）
-- 原生件 ELF 形态与依赖闭环：`scripts/verify-runtime-elf.sh`（架构 / 对齐 /
+- 生成/校验：`scripts/registry/gen-native-assets.js`（幂等，CI 校验不漂移）
+- 指纹：`scripts/verify/native-capabilities-fingerprint.sh`
+- 兜底复用：`scripts/toolchain/ensure-native-capabilities.sh`
+- 产物形态校验：`scripts/verify/verify-apk-native.sh`（APK 条目 vs 三份声明表）
+- 原生件 ELF 形态与依赖闭环：`scripts/verify/verify-runtime-elf.sh`（架构 / 对齐 /
   解释器 / DT_NEEDED 闭环 / DT_RUNPATH）
-- OTA 锚点判据：`scripts/verify-ota-anchor.sh`（Ed25519 公钥可解析；
+- OTA 锚点判据：`scripts/verify/verify-ota-anchor.sh`（Ed25519 公钥可解析；
   配 `--private` 时额外判私钥与锚点是否同对）
 - 分发形态：Release `native-cap-<sha256>-arm64-v8a.zip` + `manifest.txt`
   （每行 `来源 lib名 sha256`，来源取 `self-c` / `upstream` / `soft`）

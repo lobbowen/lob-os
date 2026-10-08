@@ -74,7 +74,7 @@ android {
             "[lobos-signing] ⚠ 未找到 ${releaseKeystore.path} —— 本次产物将使用 AGP 自动生成的 " +
                 "debug 签名。后果：签名指纹每次都不同，新包无法覆盖安装到旧包上" +
                 "（INSTALL_FAILED_UPDATE_INCOMPATIBLE）。若这是发布构建，请配置密钥。" +
-                "本地可用 ./scripts/keygen-android-keystore.sh 生成。"
+                "本地可用 ./scripts/publish/keygen-android-keystore.sh 生成。"
         )
     } else {
         logger.lifecycle("[lobos-signing] 使用稳定签名: ${releaseKeystore.path}")

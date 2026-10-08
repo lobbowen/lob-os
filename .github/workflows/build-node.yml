@@ -4,15 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/build-component-node.sh'
-      - 'scripts/read-node-versions.sh'
+      - 'scripts/recipes/build-component-node.sh'
+      - 'scripts/registry/read-node-versions.sh'
       - 'scripts/node-versions.json'
-      - 'scripts/cache-key.sh'
-      - 'scripts/fetch-pinned.sh'
-      - 'scripts/read-component-entry.sh'
-      - 'scripts/verify-component-artifact.sh'
-      - 'scripts/package-component.sh'
-      - 'scripts/upload-qiniu.js'
+      - 'scripts/toolchain/cache-key.sh'
+      - 'scripts/toolchain/fetch-pinned.sh'
+      - 'scripts/registry/read-component-entry.sh'
+      - 'scripts/verify/verify-component-artifact.sh'
+      - 'scripts/package/package-component.sh'
+      - 'scripts/publish/upload-qiniu.js'
       - 'scripts/component-verify.json'
       - 'patches/**'
       - '.github/workflows/build-node.yml'
@@ -66,16 +66,16 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3 file >/dev/null
-          echo "tag=$(bash scripts/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
-          echo "abi=$(bash scripts/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/registry/read-node-versions.sh default)" >> "$GITHUB_OUTPUT"
+          echo "abi=$(bash scripts/registry/read-node-versions.sh abi)" >> "$GITHUB_OUTPUT"
 
       - name: 取已编译的 node 运行时制品（Release 是真相源）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="$(bash scripts/cache-key.sh tag node)"
-          NAME="$(bash scripts/cache-key.sh asset node)"
+          TAG="$(bash scripts/toolchain/cache-key.sh tag node)"
+          NAME="$(bash scripts/toolchain/cache-key.sh asset node)"
           NAME_DASH="${NAME/+arm64+v8a/+arm64-v8a}"
           NVER="${{ steps.ver.outputs.tag }}"
           NABI="${{ steps.ver.outputs.abi }}"
@@ -125,13 +125,13 @@ jobs:
           NODE_VERSION: ${{ steps.ver.outputs.tag }}
         run: |
           set -euo pipefail
-          bash scripts/build-component-node.sh
+          bash scripts/recipes/build-component-node.sh
 
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify-component-artifact.sh node
+        run: bash scripts/verify/verify-component-artifact.sh node
 
       - name: 打包 + sha256
-        run: bash scripts/package-component.sh node
+        run: bash scripts/package/package-component.sh node
 
       - name: 发布 node 件到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}
@@ -148,7 +148,7 @@ jobs:
           for f in dist/component-node-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有 node 件可发::$f 不在，先看前面的构建步"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+              node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
 
       - uses: actions/upload-artifact@v4

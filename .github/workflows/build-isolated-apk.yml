@@ -128,7 +128,7 @@ jobs:
 
           echo "── 签清单（7 件全投影，含 node）──"
           LOBOS_COMPONENT_REVISION=1 COMPONENT_PUBKEY=keys/e2e-public.pem \
-            node scripts/publish-component-manifest.js dist release keys/ota-private.pem canary
+            node scripts/publish/publish-component-manifest.js dist release keys/ota-private.pem canary
           node -p "'  投影: ' + require('./release/component-manifest.json').tools.map(t=>t.name+'@'+t.version+' '+t.entry).join(' | ')"
 
           echo "── 把信任根与通道锚换成自签那套 ──"
@@ -181,17 +181,17 @@ jobs:
         run: |
           set -euo pipefail
           export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
-          bash scripts/ensure-native-capabilities.sh
+          bash scripts/toolchain/ensure-native-capabilities.sh
           ls -la container/app/src/main/jniLibs/arm64-v8a/
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
           set -euo pipefail
           export ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-}}"
-          bash scripts/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
+          bash scripts/verify/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
 
       - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）
-        run: bash scripts/verify-ota-anchor.sh
+        run: bash scripts/verify/verify-ota-anchor.sh
 
       - name: Build（独立 applicationId + 独立 keystore）
         id: gradlebuild
@@ -236,14 +236,14 @@ jobs:
           set -uo pipefail
           APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
           if [ -z "$APK" ]; then echo "::error title=没有 APK 可审"; exit 1; fi
-          bash scripts/verify-apk-native.sh "$APK" arm64-v8a
+          bash scripts/verify/verify-apk-native.sh "$APK" arm64-v8a
 
       - name: 验签（确认签的是并存那把，不是开发包的）
         run: |
           set -uo pipefail
           APK="$(ls container/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1)"
           if [ -z "$APK" ]; then echo "::error title=没有 APK 可验"; exit 1; fi
-          bash scripts/verify-apk-signing.sh "$APK" --cert keys/lobos-os.cert
+          bash scripts/verify/verify-apk-signing.sh "$APK" --cert keys/lobos-os.cert
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           APKSIGNER="$(ls "$SDK"/build-tools/*/apksigner 2>/dev/null | head -1)"
           if [ -n "$APKSIGNER" ]; then

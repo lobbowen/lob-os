@@ -4,20 +4,20 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/build-component-cmake.sh'
-      - 'scripts/locate-ndk.sh'
-      - 'scripts/cache-ndk.sh'
-      - 'scripts/fetch-pinned.sh'
-      - 'scripts/cache-key.sh'
-      - 'scripts/read-component-entry.sh'
-      - 'scripts/verify-component-artifact.sh'
-      - 'scripts/verify-component-build-date.sh'
-      - 'scripts/package-component.sh'
-      - 'scripts/publish-component-manifest.js'
-      - 'scripts/upload-qiniu.js'
+      - 'scripts/recipes/build-component-cmake.sh'
+      - 'scripts/toolchain/locate-ndk.sh'
+      - 'scripts/toolchain/cache-ndk.sh'
+      - 'scripts/toolchain/fetch-pinned.sh'
+      - 'scripts/toolchain/cache-key.sh'
+      - 'scripts/registry/read-component-entry.sh'
+      - 'scripts/verify/verify-component-artifact.sh'
+      - 'scripts/verify/verify-component-build-date.sh'
+      - 'scripts/package/package-component.sh'
+      - 'scripts/publish/publish-component-manifest.js'
+      - 'scripts/publish/upload-qiniu.js'
       - 'scripts/component-sources.json'
       - 'scripts/component-verify.json'
-      - 'scripts/read-node-versions.sh'
+      - 'scripts/registry/read-node-versions.sh'
       - 'patches/**'
       - '.github/workflows/build-cmake.yml'
     tags:
@@ -81,15 +81,15 @@ jobs:
           path: ~/.cache/actions-setup-ndk
           key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
       - name: 取 NDK（命中则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
-        run: bash scripts/cache-ndk.sh
+        run: bash scripts/toolchain/cache-ndk.sh
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
-        run: bash scripts/locate-ndk.sh
+        run: bash scripts/toolchain/locate-ndk.sh
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |
-          echo "key=$(bash scripts/cache-key.sh cmake)" >> "$GITHUB_OUTPUT"
-          echo "tag=$(bash scripts/cache-key.sh tag cmake)" >> "$GITHUB_OUTPUT"
-          echo "asset=$(bash scripts/cache-key.sh asset cmake)" >> "$GITHUB_OUTPUT"
+          echo "key=$(bash scripts/toolchain/cache-key.sh cmake)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/toolchain/cache-key.sh tag cmake)" >> "$GITHUB_OUTPUT"
+          echo "asset=$(bash scripts/toolchain/cache-key.sh asset cmake)" >> "$GITHUB_OUTPUT"
       - name: 已发布就复用（不重编）
         id: reuse
         env:
@@ -121,11 +121,11 @@ jobs:
           key: ${{ steps.uwkey.outputs.key }}
       - name: 产出 cmake 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
-        run: bash scripts/build-component-cmake.sh
+        run: bash scripts/recipes/build-component-cmake.sh
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify-component-artifact.sh cmake
+        run: bash scripts/verify/verify-component-artifact.sh cmake
       - name: 打包 + sha256
-        run: bash scripts/package-component.sh cmake
+        run: bash scripts/package/package-component.sh cmake
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
         uses: actions/cache/save@v4
@@ -150,8 +150,8 @@ jobs:
           {
             echo "预制品：cmake"
             echo "Release tag：$TAG"
-            echo "NDK：$(bash scripts/fetch-pinned.sh --ndk)"
-            echo "NDK 内置 LLVM：$(bash scripts/fetch-pinned.sh --llvm)"
+            echo "NDK：$(bash scripts/toolchain/fetch-pinned.sh --ndk)"
+            echo "NDK 内置 LLVM：$(bash scripts/toolchain/fetch-pinned.sh --llvm)"
             echo "API 级别：23"
             echo "缓存 key：${{ steps.uwkey.outputs.key }}"
             echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -189,7 +189,7 @@ jobs:
           for f in dist/component-cmake-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+              node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
       - uses: actions/upload-artifact@v4
         with:

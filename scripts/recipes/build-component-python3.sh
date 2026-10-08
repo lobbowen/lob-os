@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C
+
+HERE="$(dirname "$0")"
+cd "$HERE/../.."
+ROOT_DIR="$(pwd)"
+
+API="${ANDROID_API:-35}"
+JOBS="${JOBS:-4}"
+TOOL="python3"
+SRC_KEY="python"
+OUT="${OUT:-dist}"
+case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
+
+PY_SLOT="${PY_SLOT:-}"
+if [ -n "$PY_SLOT" ]; then
+  SRC_KEY="python-$PY_SLOT"
+  [ -n "${PY_VERSION:-}" ] || die "缺 PY_VERSION" "给了 PY_SLOT=$PY_SLOT 就必须同时给 PY_VERSION（钉值表的 key 是 $SRC_KEY）"
+fi
+
+die() {
+  local title="$1"; shift
+  echo "::error title=$title::$(printf '%s\n' "$@")"
+  exit 1
+}
+note() { echo "[$TOOL] $*"; }
+
+[ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang"
+TC="$(dirname "$CC")"
+LLVM_AR="$TC/llvm-ar"
+LLVM_RANLIB="$TC/llvm-ranlib"
+LLVM_STRIP="${LLVM_STRIP:-$TC/llvm-strip}"
+LLVM_READELF="${LLVM_READELF:-$TC/llvm-readelf}"
+for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
+  [ -x "$t" ] || die "缺工具" "$t 不存在"
+done
+command -v make >/dev/null 2>&1 || die "缺 make" "CPython 的构建靠 make 驱动（缺了请 apt-get install make）"
+
+CPY_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version python 2>/dev/null || true)"
+[ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.python.version"
+PY_WANT="${CPY_VER%.*}"
+
+HOST_PY="${BUILD_PYTHON:-}"
+if [ -n "$HOST_PY" ]; then
+  [ -x "$HOST_PY" ] || [ -f "$HOST_PY" ] || HOST_PY=""
+fi
+if [ -z "$HOST_PY" ]; then
+  for c in "python$PY_WANT" python3 python; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    cand="$(command -v "$c")"
+    cand_mm="$("$cand" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || true)"
+    [ "$cand_mm" = "$PY_WANT" ] && { HOST_PY="$cand"; break; }
+  done
+fi
+if [ -n "$HOST_PY" ]; then
+  HOST_PY_VER="$("$HOST_PY" -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])')"
+else
+  HOST_PY_VER="（没找到 $PY_WANT）"
+fi
+[ -n "$HOST_PY" ] || die "找不到 $PY_WANT 的宿主 python" \
+  "要编 CPython $CPY_VER，它的构建脚本必须由**同 major.minor 的** $PY_WANT 跑" \
+  "（CPython 的 configure 要求两者相等，不是「≥下限」）。" \
+  "runner 自带 $PY_WANT 但它在 Cached Tools 里、通常不在 PATH。先查它在哪：" \
+  "  ls -d /opt/hostedtoolcache/Python/$PY_WANT.*/x64/bin/ 2>/dev/null" \
+  "然后 either 把它加进 PATH，或显式传 BUILD_PYTHON=<那个 python>。"
+note "宿主 python: $HOST_PY（$HOST_PY_VER，要 $PY_WANT）"
+
+mkdir -p "$OUT/bin"
+WORK="$ROOT_DIR/work/$SRC_KEY"
+if [ -n "$PY_SLOT" ]; then WORK="$WORK-$PY_SLOT"; fi
+mkdir -p "$WORK"
+
+SRC_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version $SRC_KEY)"
+SRC="$WORK/$SRC_KEY-src"
+if [ ! -d "$SRC" ]; then
+  TGZ="$WORK/$SRC_KEY.tgz"
+  note "取 CPython $SRC_VER 源码（仓内唯一入口，sha256 逐字节校验）"
+  bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin $SRC_KEY "$TGZ" || die "取源码失败" "钉值见 component-sources.json"
+  rm -rf "$SRC" && mkdir -p "$SRC"
+  tar xzf "$TGZ" -C "$SRC" --strip-components=1 || die "解包失败" "$TGZ"
+fi
+[ -x "$SRC/configure" ] || die "源码树异常" "缺 configure（CPython 的发布包自带）"
+GOT_VER="$(awk '
+  /#define PY_MAJOR_VERSION/ {a=$3}
+  /#define PY_MINOR_VERSION/ {b=$3}
+  /#define PY_MICRO_VERSION/ {c=$3}
+  END {gsub(/[ \t]/,"",a); gsub(/[ \t]/,"",b); gsub(/[ \t]/,"",c); print a"."b"."c}
+' "$SRC/Include/patchlevel.h")"
+[ "$GOT_VER" = "$SRC_VER" ] || die "版本不符" \
+  "钉的是 $SRC_VER，Include/patchlevel.h 三段拼出 $GOT_VER"
+note "源码 $GOT_VER 就位（patchlevel.h 核实）"
+
+BUILD="$WORK/build"
+PREFIX="$WORK/_inst"
+rm -rf "$BUILD" "$PREFIX" && mkdir -p "$BUILD/_no_pc" "$PREFIX"
+
+(
+  set -e
+  cd "$BUILD"
+  "$SRC/configure" \
+    --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+    --prefix="$PREFIX" \
+    --with-build-python="$HOST_PY" \
+    --without-ensurepip \
+    ac_cv_file__dev_ptmx=no \
+    ac_cv_file__dev_ptc=no \
+    ac_cv_file__dev_tty=no \
+    PKG_CONFIG_LIBDIR="$BUILD/_no_pc" \
+    PKG_CONFIG_PATH= \
+    CPPFLAGS="-D__ANDROID_API__=$API" \
+    CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
+    CFLAGS="-O2" \
+    > "$WORK/configure.log" 2>&1 \
+    || { echo "=== configure 失败取证（末 50 行）==="; tail -50 "$WORK/configure.log"; exit 1; }
+)
+note "configure 通过"
+
+for m in libzstd libbz2 liblzma zlib openssl sqlite3; do
+  if grep -qE "checking for $m.*\.\.\. no" "$WORK/configure.log" 2>/dev/null; then
+    note "模块 $m：宿主 pkg-config 已被隔离，判为不可用 → 相关扩展会跳过"
+  fi
+done
+grep -E '^checking for (libzstd|libbz2|liblzma|openssl|sqlite3)' "$WORK/configure.log" 2>/dev/null | sed 's/^/[py] /' || true
+
+grep -q 'cross_compiling *= *yes' "$WORK/configure.log" 2>/dev/null \
+  || grep -q 'cross_compiling:.*yes' "$WORK/configure.log" 2>/dev/null \
+  || note "注意：configure.log 里没直接看到 cross_compiling 的判定（格式随版本变）；下面的产物架构自检会兜住"
+
+make -C "$BUILD" -j"$JOBS" > "$WORK/build.log" 2>&1 \
+  || { echo "=== 编译失败取证（error 行 + 末 50 行）==="; \
+       grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true; \
+       tail -50 "$WORK/build.log"; exit 1; }
+
+BIN=""
+for cand in "$BUILD"/python3.* "$BUILD"/python; do
+  [ -f "$cand" ] || continue
+  head -c 4 "$cand" | od -An -tx1 | tr -d ' \n' | grep -q '^7f454c46$' || continue
+  BIN="$cand"; break
+done
+[ -n "$BIN" ] || {
+  echo "=== build 下的候选（找 ^python）==="
+  ls -la "$BUILD" 2>/dev/null | grep -E 'python' | head -8 || echo "  build 目录读不出来"
+  echo "=== Makefile 里的产物名 ==="
+  grep -E '^(EXENAME|BUILDPYTHON)' "$BUILD/Makefile" 2>/dev/null | head -4
+  die "没产出解释器" "既没有 python3.* 也没有 python（都必须是 ELF）。交叉编译时 CPython 的 LDVERSION 为空，产物就叫 python —— 这是既定形态，不是编坏了。"
+}
+note "解释器产物：$BIN"
+cp -f "$BIN" "$OUT/bin/$TOOL"
+chmod 0755 "$OUT/bin/$TOOL"
+
+SIZE=$(stat -c%s "$OUT/bin/$TOOL")
+[ "$SIZE" -gt 1000000 ] || die "产物可疑" "python3 只有 $SIZE 字节 —— 正常应在数 MB 量级"
+INFO=$(file -b "$OUT/bin/$TOOL")
+case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO —— configure 可能按宿主 x86_64 配了"; esac
+
+NEEDED="$("$LLVM_READELF" -W -d "$OUT/bin/$TOOL" 2>/dev/null | sed -n 's/.*NEEDED.*\[\(.*\)\].*/\1/p' | tr '\n' ' ')"
+case "$NEEDED" in
+  *libc.so.6*|*libstdc++.so.6*|*libpthread.so.0*)
+    die "依赖 glibc 的库" "NEEDED: $NEEDED —— 这是 glibc 构建，Bionic 上跑不了（libc.so.6 / libstdc++.so.6 在 Bionic 上不存在）" ;;
+esac
+note "NEEDED: ${NEEDED:-（无）}"
+
+BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
+      | while read -r a; do
+          case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
+          d=$((a))
+          if [ "$d" -eq 0 ]; then continue; fi
+          if [ $(( d % 16384 )) -ne 0 ]; then printf ' %s' "$a"; fi
+        done)"
+[ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
+
+make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
+  || { echo "=== install 失败（末 30 行）==="; \
+       echo "  PREFIX=$PREFIX"; tail -30 "$WORK/install.log"; exit 1; }
+
+PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
+LIBROOT="lib"
+if [ -n "$PY_SLOT" ]; then LIBROOT="lib/$PY_SLOT"; fi
+[ -d "$PYDIR" ] || {
+  echo "=== $PREFIX/lib 下有什么 ==="; ls -d "$PREFIX"/lib/* 2>/dev/null | head -5
+  die "找不到安装后的标准库目录" \
+    "按 CPython 的安装规则应在 $PREFIX/lib/python${SRC_VER%.*}/；缺了它解释器起得来但 import 就死"
+}
+[ -f "$PYDIR/os.py" ] || die "标准库目录里没有 os.py" "$PYDIR —— 目录在但内容不对（构建没跑完？）"
+
+rm -rf "$OUT/lib"
+mkdir -p "$OUT/$LIBROOT"
+cp -a "$PYDIR" "$OUT/$LIBROOT/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
+
+N_LIB=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -type f | wc -l)
+N_EXT=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -name '*.so' 2>/dev/null | wc -l)
+note "标准库随件: $LIBROOT/python${SRC_VER%.*}/（$N_LIB 个文件，含 $N_EXT 个扩展模块）"
+[ "$N_EXT" -gt 0 ] || note "提示：扩展模块 0 个 —— 解释器能用，但 _socket/_ssl/ctypes 等不可用"
+
+[ -d "$OUT/$LIBROOT/python${SRC_VER%.*}/lib-dynload" ] \
+  && note "lib-dynload 在标准库内（形态正确）" \
+  || note "提示：lib-dynload 不在标准库内 —— 扩展模块的顶层入口可能找不到"
+
+printf '%s' "$SRC_VER" > "$OUT/$TOOL.version"
+echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（aarch64、16KB 对齐合格、无 glibc 依赖）"
+echo "[$TOOL] 标准库与扩展模块随件走 → 商店 COMPONENT 通道"
+echo "[$TOOL] 判据要真跑一段 Python 并 import 标准库（起得来 ≠ 能用）"
