@@ -26,37 +26,12 @@ object GuestAdapter {
         val env: Map<String, String>,
     )
 
-    const val PROBE_PORT = 3080
-
     const val BRIDGE_SOCKET = "lobos_hostbridge"
-
-    fun probePlan(root: RuntimeEnvironment.TreeRoot, script: File, inheritedPath: String?): BootPlan = BootPlan(
-        command = listOf(requireNotNull(root.nodeBin).absolutePath, script.absolutePath, "--port", PROBE_PORT.toString()),
-        cwd = root.home,
-        env = RuntimeEnvironment.treeRootEnv(root, inheritedPath),
-    )
 
     fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan = BootPlan(
         command = listOf(requireNotNull(i.root.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args,
         cwd = i.programDir,
         env = buildMap {
-            putAll(RuntimeEnvironment.treeRootEnv(i.root, inheritedPath))
-            put(
-                "NODE_PATH",
-                listOf(
-                    File(i.programDir, "node_modules"),
-                    NodeProvisioner.globalNodeModules(i.root.ctx),
-                ).joinToString(File.pathSeparator) { it.absolutePath }
-            )
-            put("LOBOS_ANDROID", "1")
-            put("LOBOS_PLATFORM", "android")
-            put("LOBOS_SUPERVISOR_HOME", i.root.home.absolutePath)
-            put("LOBOS_UI_DIR", i.uiDir.absolutePath)
-            val socket = if (i.sessionToken.isNullOrBlank()) {
-                BRIDGE_SOCKET
-            } else {
-                lobos.os.SessionRegistry.socketName(i.sessionToken)
-            }
             put("LOBOS_BRIDGE_SOCKET", socket)
             if (!i.sessionToken.isNullOrBlank()) put("LOBOS_SESSION_TOKEN", i.sessionToken)
             put("LOBOS_PERMISSION_MODE", "danger-full-access")

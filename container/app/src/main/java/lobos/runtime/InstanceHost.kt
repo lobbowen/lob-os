@@ -40,7 +40,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var healthPath = "/status"
     private var currentGeneration = 0L
 
-    @Volatile private var probeProcess: Process? = null
     @Volatile private var probeRunning = false
 
     private val libSearchPath: String get() = PieceProvisioner.libSearchPath(this)
@@ -51,7 +50,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     fun onHostStart(intent: Intent?) {
         if (intent?.action == ACTION_PROBE) {
-            schedulePieceProbe()
             return
         }
         when (intent?.action) {
@@ -765,95 +763,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }
     }
 
-    private fun pollProbeReport(p: Process): String? {
-        var waitedMs = 0
-        while (waitedMs < PROBE_POLL_BUDGET_MS) {
-            if (!p.isAlive) return null
-            try {
-                val c = URL("http://127.0.0.1:${GuestAdapter.PROBE_PORT}/api/version")
-                    .openConnection() as HttpURLConnection
-                c.connectTimeout = 300
-                c.readTimeout = 1500
-                c.requestMethod = "GET"
-                if (c.responseCode == 200) return c.inputStream.bufferedReader().use { it.readText() }
-            } catch (_: Throwable) {
-            }
-            try { Thread.sleep(300) } catch (_: InterruptedException) { }
-            waitedMs += 300
-        }
-        return null
-    }
 
-    private fun schedulePieceProbe() {
-        if (probeRunning) {
-            RuntimeDiagnostics.append(this, "nodeprobe", null, "探针（非运行时）已在跑，忽略这次重复驱动")
-            return
-        }
-        probeRunning = true
-        Thread {
-            try {
-                runPieceProbe()
-            } catch (e: Throwable) {
-                RuntimeDiagnostics.append(this, "nodeprobe", false, "探针（非运行时）异常", err(e))
-            } finally {
-                try { probeProcess?.destroy() } catch (_: Throwable) { }
-                probeProcess = null
-                probeRunning = false
-            }
-        }.apply { name = "nodeprobe"; isDaemon = true }.start()
-    }
 
-    private fun runPieceProbe() {
-        val nodeBin = lobos.runtime.InstalledRuntime.binOf(this, "node")
-        if (nodeBin == null) {
-            RuntimeDiagnostics.append(
-                this, "nodeprobe", false, "探针未起跑：node 运行时未安装", lobos.runtime.InstalledRuntime.notInstalledHint(this, "node")
-            )
-            return
-        }
-        val script = NodeProvisioner.ensureServerScript(this)
-        val plan = GuestAdapter.probePlan(
-            lobos.os.RuntimeEnvironment.treeRootFor(this).copy(posixShim = null, envShim = null),
-            script, getenv("PATH"),
-        )
-        RuntimeDiagnostics.append(
-            this, "nodeprobe", null, "探针（非运行时）开始：只验 exec + listen，不代表运行时在线",
-            "端口 ${GuestAdapter.PROBE_PORT}（不碰程序控制面，仅验 exec + listen）"
-        )
-        val lines = java.util.concurrent.ConcurrentLinkedQueue<String>()
-        val p = ProcessSupervisor.spawn(
-            command = plan.command,
-            cwd = plan.cwd,
-            envMode = ProcessSupervisor.ENV_INHERIT,
-            redirectErrorStream = true,
-            owner = ProcessSupervisor.OWNER_PROBE,
-        ).process
-        probeProcess = p
-        val pump = Thread {
-            try {
-                p.inputStream.bufferedReader().forEachLine {
-                    if (lines.size < PROBE_OUTPUT_LINES) lines.add(it)
-                }
-            } catch (_: Throwable) {
-            }
-        }
-        pump.isDaemon = true
-        pump.start()
-        val report = pollProbeReport(p)
-        if (report == null) {
-            RuntimeDiagnostics.append(
-                this, "nodeprobe", false,
-                "探针（非运行时）${PROBE_POLL_BUDGET_MS}ms 内没有应答 —— node 起不来或 listen 失败",
-                "进程存活=" + p.isAlive + "；探针输出：\n" + lines.joinToString("\n")
-            )
-        } else {
-            RuntimeDiagnostics.append(
-                this, "nodeprobe", true,
-                "探针（非运行时）通了：Node 直接 exec + listen 可用。**这不等于运行时在线**（控制面未验）",
-                report
-            )
-        }
-    }
 
     private fun getenv(k: String): String? = System.getenv(k)
 
@@ -888,8 +799,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         keepRunning = false
         reapProgramTree("宿主关停")
         nodeProcess = null
-        try { probeProcess?.destroy() } catch (_: Throwable) { }
-        probeProcess = null
         bootExec.shutdownNow()
         releaseWakeLock()
     }
@@ -903,8 +812,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
         const val ACTION_PROBE = "lobos.action.PROBE_NODE"
         const val HEALTH_POLL_BUDGET_MS = 30_000
-        const val PROBE_POLL_BUDGET_MS = 10_000
-        const val PROBE_OUTPUT_LINES = 60
         const val STDERR_SCREEN_LINES = 60
         const val CHILD_STDERR_SCREEN_LINES = 400
     }

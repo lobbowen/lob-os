@@ -6,9 +6,6 @@ import java.io.File
 
 object NodeProvisioner {
 
-    fun ensureServerScript(context: Context): File =
-        lobos.os.AssetInstaller.install(context, "node/server.js", File(lobos.os.SystemDirs.etc(context), "server.js"))
-
     /**
      * npm 全局前缀 —— **不写死目录名**。
      *
@@ -39,31 +36,8 @@ object NodeProvisioner {
         }
     }
 
-    fun ensureAdbClientScripts(context: Context): File {
-        val names = listOf(
-            "cli.js", "index.js", "pairing.js", "transport.js",
-            "spake2.js", "ed25519.js", "x509.js", "adbkey.js",
-        )
-        val dir = File(lobos.os.SystemDirs.etc(context), "adb-client")
-        dir.mkdirs()
-        for (name in names) {
-            lobos.os.AssetInstaller.install(context, "node/adb-client/$name", File(dir, name))
-        }
-        return dir
-    }
-
-    fun ensureKernelVerifyScript(context: Context): File =
-        lobos.os.AssetInstaller.install(
-            context, "node/program-verify.js", File(lobos.os.SystemDirs.etc(context), "program-verify.js")
-        )
-
     fun ensureOtaPublicKey(context: Context): File =
         lobos.os.AssetInstaller.install(
             context, "supply/component-public.pem", File(lobos.os.SystemDirs.etc(context), "component-public.pem")
         )
-
-    fun ensureEnvShim(context: Context): File? =
-        lobos.os.AssetInstaller.installOrNull(
-            context, "node/android-env-shim.cjs", File(lobos.os.SystemDirs.etc(context), "env-shim.cjs")
-        ).also { if (it == null) Log.w("NodeProvisioner", "安卓语义垫片落地失败（不阻断启动）") }
 }

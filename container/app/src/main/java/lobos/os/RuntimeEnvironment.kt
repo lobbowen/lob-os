@@ -143,7 +143,6 @@ object RuntimeEnvironment {
             PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
         )
 
-        val envShim = NodeProvisioner.ensureEnvShim(ctx)
         RuntimeDiagnostics.append(
             ctx, "env-shim", envShim != null,
             if (envShim != null) "安卓语义垫片就位（os.cpus 等）" else "安卓语义垫片未就位（不阻断；os.cpus() 仍返回 0）",

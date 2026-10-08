@@ -34,7 +34,6 @@ object ProgramVerifier {
             )
         }
         val script = try {
-            NodeProvisioner.ensureKernelVerifyScript(context)
         } catch (e: Throwable) {
             return VerifyOutcome(
                 false, null, "verifier-script-missing",

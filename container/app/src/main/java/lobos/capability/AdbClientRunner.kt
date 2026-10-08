@@ -190,7 +190,10 @@ object AdbClientRunner {
             mapOf("LOBOS_ADB_DIR" to adbDir.absolutePath)
 
     private fun startProcess(context: Context): ServeProcess? {
-        val scriptDir = NodeProvisioner.ensureAdbClientScripts(context)
+        val scriptDir: File = run {
+            lastStartError = "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）"
+            return null
+        }
         val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, "node") ?: run {
             lastStartError = lobos.runtime.InstalledRuntime.notInstalledHint(context, "node")
             return null
@@ -229,12 +232,9 @@ object AdbClientRunner {
     private fun drainLogs(): String = proc?.logsText() ?: ""
 
     private fun runOnce(context: Context, subArgs: List<String>, procTimeoutMs: Long): AdbOutcome {
-        val scriptDir = try {
-            NodeProvisioner.ensureAdbClientScripts(context)
-        } catch (e: Throwable) {
-            return AdbOutcome(false, null, "adb-client-script-missing: " + e.message, "", -1)
+        val scriptDir: File = run {
+            return AdbOutcome(false, null, "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）", "", -1)
         }
-        val nodeBin = lobos.runtime.InstalledRuntime.binOf(context, "node")
             ?: return AdbOutcome(false, null, lobos.runtime.InstalledRuntime.notInstalledHint(context, "node"), "", -1)
         val adbDir = File(lobos.os.SystemDirs.libvar(context), "adb").apply { if (!exists()) mkdirs() }
 

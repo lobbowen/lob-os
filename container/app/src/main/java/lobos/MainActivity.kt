@@ -30,7 +30,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var retryBtn: Button
     private lateinit var captureBtn: Button
     private lateinit var copyBtn: Button
-    private lateinit var probeBtn: Button
     private lateinit var panelBtn: Button
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var selfCheckText: String = ""
@@ -71,13 +70,11 @@ class MainActivity : AppCompatActivity() {
         retryBtn = findViewById(R.id.retryBtn)
         captureBtn = findViewById(R.id.captureBtn)
         copyBtn = findViewById(R.id.copyBtn)
-        probeBtn = findViewById(R.id.probeBtn)
         panelBtn = findViewById(R.id.panelBtn)
 
         retryBtn.setOnClickListener { restartRuntime() }
         captureBtn.setOnClickListener { requestScreenCapture() }
         copyBtn.setOnClickListener { copySelfCheck() }
-        probeBtn.setOnClickListener { runPieceProbeOnce() }
         panelBtn.setOnClickListener {
             startActivity(android.content.Intent(this, lobos.ui.PanelActivity::class.java))
         }
@@ -190,11 +187,6 @@ class MainActivity : AppCompatActivity() {
         RuntimeDiagnostics.append(this, "runtime", null, "已请求宿主重读 CURRENT", "单进程模型：经宿主 intent 转发 ACTION_RESTART")
     }
 
-    private fun runPieceProbeOnce() {
-        probeBtn.isEnabled = false
-        startRuntime(InstanceHost.ACTION_PROBE)
-        handler.postDelayed({ probeBtn.isEnabled = true }, InstanceHost.PROBE_POLL_BUDGET_MS + 2000L)
-    }
 
     private fun startPolling() {
         handler.post(object : Runnable {
