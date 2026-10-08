@@ -207,15 +207,12 @@
     },
     "node": {
       "version": "24.21.0",
-      "urls": [
-        "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.xz"
-      ],
       "prebuilt": true,
-      "note": "node 本身是预编的（不编译，见 build-component-node.sh）。但 flock.c 是 node addon，需要它的头文件 —— 所以只取头文件（headersOnly），不取二进制。sha256 由 fetch-pinned 在下载后校验（见 scripts/component-sources.json）。",
-      "url": [
+      "note": "node 本身是预编的（不编译；由 node-runtime 链产出，见 .github/workflows/node-runtime.yml）。但 flock.c 是 node addon，编它要 node 的头文件 —— 所以这一格的作用是「按官方 sha256 校验后取头文件」。",
+      "sha256": "622424efb5dc0c26c93fbb619ff10737ee289c605b837c88778e186925d82777",
+      "urls": [
         "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.gz"
-      ],
-      "headersOnly": true
+      ]
     },
     "npm": {
       "version": "11.x",

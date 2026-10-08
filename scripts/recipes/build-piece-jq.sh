@@ -41,9 +41,20 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
     || { echo "=== jq 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
 )
 
-# jq 是 libtool 工程：编译产物在 .libs/jq，make install 才搬到 $OUT_DIR/bin/jq
-make install > "$WORK/install.log" 2>&1 \
-  || { echo "=== jq install 失败（末 20 行）==="; tail -20 "$WORK/install.log"; exit 1; }
+# jq 是 libtool 工程：
+#   · 编译产物在 .libs/jq（libtool 放那儿，剥掉 libtool 那层包装）
+#   · make install 目标在它的 Makefile 里**不存在**（报 No rule to make target install）
+# 正解：直接从 .libs/ 取、自己搬到 out/bin/。
+mkdir -p "$OUT_DIR/bin"
+if [ -f "$WORK/src/.libs/jq" ]; then
+  cp -f "$WORK/src/.libs/jq" "$OUT_DIR/bin/jq"
+elif [ -f "$OUT_DIR/bin/jq" ]; then
+  :   # 某些配置下 make 直接把 jq 装到了 prefix
+else
+  echo "=== jq 产物查找的取证 ==="
+  ls -la "$WORK/src/.libs" 2>/dev/null | head -15 || echo "（没有 .libs/）"
+  find "$WORK/src" -maxdepth 2 -name jq -type f 2>/dev/null | head -5
+fi
 
 SO="$OUT_DIR/bin/jq"
 if [ ! -f "$SO" ]; then

@@ -19,7 +19,12 @@ bash scripts/toolchain/fetch-pinned.sh --pin bash $WORK/bash.tar.gz \
 echo "[bash] 命中钉值来源，sha256 校验通过"
 
 rm -rf "$WORK/bash-$BASH_VER"
-tar -xzf $WORK/bash.tar.gz -C /tmp || die "bash 解包失败" "sha256 是对的但tar 解不开"
+# ★ 解到 $WORK（不是 /tmp）—— 解到 /tmp 的话下面 cd "$WORK/bash-$BASH_VER"
+#   会进到一个空目录（那是我上一轮漏改的一处）
+mkdir -p "$WORK"
+tar -xzf "$WORK/bash.tar.gz" -C "$WORK" || die "bash 解包失败" "sha256 是对的但 tar 解不开"
+[ -d "$WORK/bash-$BASH_VER" ] || die "bash 源码目录名不符" \
+  "期望 $WORK/bash-$BASH_VER，实际解出：$(ls -d "$WORK"/bash-* 2>/dev/null | tr "\n" " ")"
 
 # bionic 无termcap：readline 美化路径的 no-op 桩（载荷只走非交互 bash -c）
 cat > $WORK/termcap_stub.c <<'STUB'
