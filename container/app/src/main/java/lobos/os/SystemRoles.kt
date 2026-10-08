@@ -20,7 +20,7 @@ object SystemRoles {
     const val LIBRARY = "library"
     const val EXEC = "exec"
 
-    private fun all(ctx: Context) = lobos.pieces.PieceRegistry.ALL
+    private fun all(ctx: Context) = lobos.pieces.PieceRegistry.PIECES
 
     private fun byRole(ctx: Context, role: String) = all(ctx).filter { it.role == role }
 

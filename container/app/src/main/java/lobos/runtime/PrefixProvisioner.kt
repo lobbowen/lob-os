@@ -77,7 +77,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (p in PieceRegistry.ALL) {
+        for (p in PieceRegistry.PIECES) {
             // 版本以它自己声明的为准；没声明的用 jniLibs 文件的内容指纹兜底 ——
             // 落位目录名就是版本，PieceScan 靠它识别
             val v = p.version.ifBlank { Fingerprint.of(File(nativeDir, p.libName)) }

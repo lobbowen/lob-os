@@ -1,115 +1,104 @@
 package lobos.pieces
 
 /**
- * 12 件内置件 —— 只有**推导不出来**的那些属性。
+ * 预装的件 —— 12 件，全部一样，没有类别。
  *
- * id / version / entry / role(命令还是库) / requiredDeps / sha256
- * 全部由落位形状与 [lobos.os.ElfFacts] 推导，不需要在这里声明。
+ * **没有「内置件」这种东西**。件就是件，来源只是「预装」还是「后装」——
+ * 这个区别属于分发，不属于件本身。所以这里是一份平铺的清单，
+ * 没有 LIBCXX / CAPABILITY 那种把预装的单拎出来的分类。
+ * （此前 LIBCXX 与 CAPABILITY[0] 都声明了 libc++_shared.so，
+ *   ALL = LIBCXX + CAPABILITY 会产生两条重复的 —— 那正是「分出两类」的病根。）
  *
- * 这份数据对应的构建期来源是 scripts/component-sources.json（版本与源码校验值）
- * 与 scripts/component-verify.json（是否必需）。改了那些要重新生成这里，
- * 不该手改。
+ * 这里只留**推导不出来**的：.so 文件名、入口改名、版本、是否必需、
+ * multi-command 形态、对外能力。
+ * id / entry / 依赖 / sha256 由落位形状与 [lobos.os.ElfFacts] 推导。
+ *
+ * 对应 Linux：这些内容本该在每个包自己的 control 里（deb-control(5)：
+ * "Each Debian binary package contains a control file in its control member"），
+ * 内核一个都不知道。这里之所以还在，是因为内置链的落位还没把那份说明带下来。
  */
 object PieceRegistry {
 
-    val LIBCXX = Piece(
-        libName = "libc++_shared.so",
-        required = true,
-        role = "library",
-        provides = listOf("cxx-runtime"),
-    )
-
-    val CAPABILITY: List<Piece> get() = listOf(
+    /** 预装件清单 —— 平铺，无分类 */
+    val PIECES: List<Piece> get() = listOf(
         Piece(
-            libName = "libc++_shared.so",
+            libName = "libc++_shared.so"
             required = true,
             provides = listOf("cxx-runtime"),
         ),
         Piece(
-            libName = "libbash.so",
-            version = "5.2.15",
-            installName = "bash",
+            libName = "libbash.so"
+            version = "5.2.15"
+            installName = "bash"
             required = false,
             role = "shell",
             provides = listOf("shell", "exec"),
         ),
         Piece(
-            libName = "liblobosrg.so",
-            version = "14.1.1",
-            installName = "rg",
+            libName = "liblobosrg.so"
+            version = "14.1.1"
+            installName = "rg"
             required = false,
             role = "exec",
             provides = listOf("glob", "grep"),
         ),
         Piece(
-            libName = "liblobosflock.so",
+            libName = "liblobosflock.so"
             required = false,
             provides = listOf("file-lock"),
         ),
         Piece(
-            libName = "liblobosposix.so",
+            libName = "liblobosposix.so"
             required = false,
             provides = listOf("posix-shim"),
         ),
         Piece(
-            libName = "librivospty.so",
-            installName = "pty-session",
+            libName = "librivospty.so"
+            installName = "pty-session"
             required = false,
             role = "exec",
             provides = listOf("pty-session"),
         ),
         Piece(
-            libName = "liblobosptyprobe.so",
+            libName = "liblobosptyprobe.so"
             required = false,
             role = "exec",
             provides = listOf("pty-probe"),
         ),
         Piece(
-            libName = "libbusybox.so",
-            version = "1.36.1",
-            installName = "busybox",
+            libName = "libbusybox.so"
+            version = "1.36.1"
+            installName = "busybox"
             required = false,
             role = "multi-command",
             provides = listOf("coreutils"),
         ),
         Piece(
-            libName = "libz.so",
-            version = "1.3.2",
+            libName = "libz.so"
+            version = "1.3.2"
             required = true,
             provides = listOf("compress"),
         ),
         Piece(
-            libName = "libssl.so",
-            version = "3.6.3",
+            libName = "libssl.so"
+            version = "3.6.3"
             required = true,
             provides = listOf("tls"),
         ),
         Piece(
-            libName = "libcrypto.so",
+            libName = "libcrypto.so"
             required = true,
             provides = listOf("crypto"),
         ),
         Piece(
-            libName = "libcurl.so",
-            version = "8.22.0",
+            libName = "libcurl.so"
+            version = "8.22.0"
             required = true,
             provides = listOf("http"),
         ),
     )
 
-    val LIBS: List<Piece> get() = CAPABILITY.filter { it.role == lobos.os.SystemRoles.LIBRARY }
+    fun of(id: String): Piece? = PIECES.firstOrNull { it.id == id }
 
-    val BINS: List<Piece> get() = CAPABILITY.filter {
-        lobos.os.SystemRoles.isEntry(it) || it.role == lobos.os.SystemRoles.MULTI_COMMAND
-    }
-
-    val ALL: List<Piece> get() = listOf(LIBCXX) + CAPABILITY
-
-    fun of(id: String): Piece? = ALL.firstOrNull { it.id == id }
-
-    /** 落位后叫什么（`rg` 而非 `ripgrep`） */
     fun installedAs(e: Piece): String = e.installedAs
-
-    fun resolve(ctx: android.content.Context, e: Piece): java.io.File =
-        lobos.os.SystemDirs.bin(ctx).let { java.io.File(it, e.installedAs) }
 }

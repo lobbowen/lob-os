@@ -1157,7 +1157,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val report = if (walkAll) {
                 PieceProvisioner.prepare(this)
             } else {
-                PrepareReport(PieceRegistry.ALL.map { exe -> exe to PieceProvisioner.verify(this, exe) })
+                PrepareReport(PieceRegistry.PIECES.map { exe -> exe to PieceProvisioner.verify(this, exe) })
             }
             report.toJson().apply {
                 put("nativeLibraryDir", applicationInfo.nativeLibraryDir)

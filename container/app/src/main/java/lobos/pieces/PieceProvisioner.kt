@@ -136,7 +136,7 @@ object PieceProvisioner {
             emptySet()
         }
 
-        val entries = PieceRegistry.ALL.map { exe ->
+        val entries = PieceRegistry.PIECES.map { exe ->
             exe to verifyInternal(ctx, exe, libDir, listing, apkLibNames)
         }
         val report = PrepareReport(entries)
@@ -151,17 +151,6 @@ object PieceProvisioner {
                 listing.lineSequence().drop(2).joinToString("\n") { "  $it" } + "\n" +
                 report.toDiagnosticLines().joinToString("\n"),
             data = report.toJson(),
-        )
-        val capEntries = PieceRegistry.CAPABILITY.map { exe ->
-            exe to verifyInternal(ctx, exe, libDir, listing, apkLibNames)
-        }
-        val capReport = PrepareReport(capEntries)
-        val capReady = capEntries.count { it.second is AssetStatus.Ready }
-        RuntimeDiagnostics.append(
-            ctx, "capability-assets", capReady == capEntries.size,
-            "能力件 $capReady/${capEntries.size} 就位",
-            capReport.toDiagnosticLines().joinToString("\n"),
-            data = capReport.toJson(),
         )
         return report
     }
