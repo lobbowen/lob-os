@@ -68,7 +68,52 @@ private const val SYSROOT_ID = "sysroot"
             ctx.assets.open(CA_BUNDLE_ASSET).use { input -> caDst.outputStream().use { out -> input.copyTo(out) } }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
+        registerProvisioned(ctx, plan)
         return ready
+    }
+
+    /**
+     * 铺完之后登记 —— 与应用走同一条路（装完 upsert），只是源不同。
+     *
+     * 此前这些件只被「拷到 $PREFIX」就结束了，不进注册表。后果是系统答不出
+     * 「装了什么、什么版本、哪些文件是它铺的」—— 内核只能到处硬编码它们的名字。
+     *
+     * **登记的位置就是落位的位置**：`usr/bin/<name>` 或 `usr/lib/<name>`，
+     * 不另设 stateDir —— 注册表说的与磁盘上的必须是同一处。
+     */
+    private fun registerProvisioned(
+        ctx: Context,
+        plan: List<Triple<List<Pair<String, String>>, File, Boolean>>,
+    ) {
+        val nativeDir = ctx.applicationInfo.nativeLibraryDir
+        val byLibName = (NativeAssetRegistry.BINS + NativeAssetRegistry.LIBS).associateBy { it.libName }
+        for ((items, dir, _) in plan) {
+            for ((libName, name) in items) {
+                val dst = File(dir, name)
+                if (!dst.isFile) continue
+                val e = byLibName[libName] ?: continue
+                val sha = runCatching { SupplyProvisioner.sha256HexFile(dst) }.getOrNull().orEmpty()
+                val version = runCatching { InstalledRuntime.versionOf(ctx, e.id) }.getOrNull().orEmpty()
+                val prev = lobos.os.ProgramIndex.get(ctx, e.id)
+                if (prev != null && prev.sha256 == sha && prev.version == version) continue
+                lobos.os.ProgramIndex.upsert(
+                    ctx,
+                    (prev ?: lobos.os.ProgramIndex.empty(
+                        e.id,
+                        if (e.id in NativeAssetRegistry.BIN_IDS) lobos.os.Level.CAPABILITY else lobos.os.Level.INFRA,
+                    )).copy(
+                        version = version,
+                        sha256 = sha,
+                        libName = libName,
+                        assetEntry = name,
+                        enabled = true,
+                        tier = e.buildTier,
+                        stateDir = dst.parentFile?.absolutePath.orEmpty(),
+                        desired = prev?.desired ?: lobos.os.Desired.RUNNING,
+                    ),
+                )
+            }
+        }
     }
 
     private fun isManagedByUpdate(ctx: Context, dst: File): Boolean = try {
