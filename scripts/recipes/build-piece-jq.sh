@@ -36,9 +36,14 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
       --with-oniguruma=builtin \
       > "$WORK/configure.log" 2>&1 \
     || { echo "=== jq configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
+  # jq 的二进制在 .libs/ 下（libtool 产物），make install 才把它搬到 bin/
   make -j"$JOBS" LDFLAGS="-static" > "$WORK/build.log" 2>&1 \
     || { echo "=== jq 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
 )
+
+# jq 是 libtool 工程：编译产物在 .libs/jq，make install 才搬到 $OUT_DIR/bin/jq
+make install > "$WORK/install.log" 2>&1 \
+  || { echo "=== jq install 失败（末 20 行）==="; tail -20 "$WORK/install.log"; exit 1; }
 
 SO="$OUT_DIR/bin/jq"
 if [ ! -f "$SO" ]; then

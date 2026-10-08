@@ -62,8 +62,14 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   esac
   make -j"$JOBS" "$LIB_TARGET" > "$WORK/build.log" 2>&1 \
     || { echo "=== zlib 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
+  # zlib 的 install 目标依赖 SRCDIR（shared 时装 .so，静态时装 .a）
   make install > "$WORK/install.log" 2>&1 \
     || { echo "=== zlib install 失败取证（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
+  # 装完要真的有 lib 目录（此前 out/lib 整个不存在 → install 静默没生效）
+  [ -d "$OUT_DIR/lib" ] \
+    || { echo "=== zlib install 之后没有 lib 目录===";
+         ls -la "$OUT_DIR" 2>/dev/null || true;
+         echo "--- install.log 末尾 ---"; tail -15 "$WORK/install.log"; exit 1; }
 )
 
 SO="$(ls "$OUT_DIR"/lib/libz.so 2>/dev/null | head -1)"

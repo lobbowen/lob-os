@@ -94,6 +94,19 @@ set_conf PIE n
 set_conf DESKTOP n
 set_conf CROSS_COMPILER_PREFIX n
 
+# ── 编译器必须显式指定，否则它会用宿主 gcc ──────────────────
+# 编出 x86-64 的原因：defconfig 跑在宿主环境，
+# 它没有「交叉编」这个概念，于是用 $CC（宿主 gcc）。
+# busybox 的 .config 里这两项才决定用哪个编译器：
+#   CONFIG_CROSS_COMPILER_PREFIX  三元组前缀（aarch64-linux-android-）
+#   CONFIG_EXTRA_CFLAGS         额外 C 编译参数
+TRIPLE="$(basename "$CC" | sed "s/^aarch64-linux-android[0-9]*-clang$//" | tr -d /)"
+[ -n "$TRIPLE" ] || TRIPLE="aarch64-linux-android-"
+sed -i "/^CONFIG_CROSS_COMPILER_PREFIX=/d" "$SRC/.config"
+echo "CONFIG_CROSS_COMPILER_PREFIX=\\"$TRIPLE\\"" >> "$SRC/.config"
+echo "  [busybox] 编译器前缀 = $TRIPLE"
+echo "  [busybox] CC = $CC"
+
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 # ── 关掉需要内核专有头的 applet ──────────────────────────────
   # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，NDK 的 sysroot 里没有
