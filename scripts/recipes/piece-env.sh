@@ -137,5 +137,5 @@ land_piece() {
   gen_meta "$id" > /dev/null
   cp -f "$WORK/component-meta.json" "$JNI/$(basename "$built")$META_SUFFIX" \
     || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
-  echo "[ok] $id → $JNI/$so（+ 说明）"
+  echo "[ok] $id → $JNI/$base（+ 说明）"
 }
