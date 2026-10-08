@@ -64,6 +64,9 @@ object OsInit {
         val stalled = snapshot(ctx).phase
         interruptedThisLife = interrupted
         SystemDirs.ensureAll(ctx)
+        // 索引从落位推导（等价 ldconfig 扫目录建缓存）——
+        // 「系统里有什么」由文件系统说了算，不由安装器是否记得写登记说了算
+        val scanned = PieceScan.rebuild(ctx)
         // Linux 的 /run 是 tmpfs，重启即失由内核保证；我们在普通文件系统上，
         // 所以「本次启动的状态不继承上世」要在这里自己保证。
         // 不清的话：上世的 pid 占着端口、上世的会话以为还活着。
@@ -74,6 +77,9 @@ object OsInit {
             ctx, "os-phase", null,
             "宿主出生：本世从 BOOTING 起算（上世停在 " + stalled.name + "，那份读数不继承）",
         )
+        if (scanned > 0) {
+            Journal.append(ctx, "os-run", null, "索引已从落位重建：$scanned 项")
+        }
         if (swept > 0) {
             Journal.append(ctx, "os-run", null, "已清 /run：$swept 项（本次启动不继承上世运行态）")
         }
