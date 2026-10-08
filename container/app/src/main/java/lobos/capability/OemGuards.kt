@@ -18,7 +18,7 @@ object OemGuards {
 
     val KEYS = listOf(CARD_LOCK, FULL_BACKGROUND, FREEZE_WHITELIST, STARTUP_MANAGER)
 
-    private fun file(ctx: Context) = File(File(ctx.filesDir, "os"), "oem-guards.json")
+    private fun file(ctx: Context) = File(SystemDirs.libvar(ctx), "oem-guards.json")
 
     fun vendor(): String = (Build.MANUFACTURER + "/" + Build.BRAND).trim()
 

@@ -24,11 +24,11 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
 private const val SYSROOT_ID = "sysroot"
 
-    fun root(ctx: Context): File = File(ctx.filesDir, "usr")
-    fun binDir(ctx: Context): File = File(root(ctx), "bin")
-    fun libDir(ctx: Context): File = File(root(ctx), "lib")
+    fun root(ctx: Context): File = lobos.os.SystemDirs.usr(ctx)
+    fun binDir(ctx: Context): File = lobos.os.SystemDirs.bin(ctx)
+    fun libDir(ctx: Context): File = lobos.os.SystemDirs.lib(ctx)
 
-    fun includeDir(ctx: Context): File = File(root(ctx), "include")
+    fun includeDir(ctx: Context): File = lobos.os.SystemDirs.include(ctx)
 
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 

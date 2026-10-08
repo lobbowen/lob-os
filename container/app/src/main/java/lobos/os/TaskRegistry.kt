@@ -20,7 +20,7 @@ object TaskRegistry {
 
     private const val CAP = 50
 
-    private fun file(ctx: Context) = File(File(ctx.filesDir, "os"), "tasks.json")
+    private fun file(ctx: Context) = File(SystemDirs.run(ctx), "tasks.json")
 
     @Synchronized
     private fun load(ctx: Context): JSONArray = runCatching {

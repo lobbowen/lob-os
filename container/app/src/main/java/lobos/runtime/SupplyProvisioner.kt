@@ -21,14 +21,14 @@ object SupplyProvisioner {
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
-    fun etcDir(ctx: Context): File = File(ctx.filesDir, "etc")
+    fun etcDir(ctx: Context): File = lobos.os.SystemDirs.etc(ctx)
 
     fun versionDir(ctx: Context, id: String, version: String): File =
         File(pieceDir(ctx, id), version)
 
-    fun pieceDir(ctx: Context, id: String): File = File(PrefixProvisioner.libDir(ctx), id)
+    fun pieceDir(ctx: Context, id: String): File = lobos.os.SystemDirs.pieceDir(ctx, id)
 
-    fun entryLink(ctx: Context, name: String): File = File(PrefixProvisioner.binDir(ctx), name)
+    fun entryLink(ctx: Context, name: String): File = lobos.os.SystemDirs.bin(ctx).let { File(it, name) }
 
     private fun selectedFile(ctx: Context): File = File(etcDir(ctx), "installed.json")
 

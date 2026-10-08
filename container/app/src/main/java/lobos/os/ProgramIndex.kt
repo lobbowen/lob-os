@@ -47,7 +47,7 @@ data class IndexEntry(
 
 object ProgramIndex {
 
-    private const val DIR = "os"
+    private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
     private const val FILE = "program-index.json"
     private const val SCHEMA = 1
 
@@ -71,7 +71,7 @@ object ProgramIndex {
     }
 
     fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = dir(ctx)
         d.mkdirs()
         return File(d, FILE)
     }

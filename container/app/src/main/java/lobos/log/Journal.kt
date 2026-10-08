@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 object Journal {
 
-    private const val DIR = "os/journal"
+    private val DIR = "journal"
     private const val FILE = "events.jsonl"
     private const val MAX_BYTES = 512 * 1024L
     private const val KEEP_LINES = 500
@@ -83,7 +83,7 @@ object Journal {
     @Volatile private var seq = 0L
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = File(lobos.os.SystemDirs.log(ctx), DIR)
         d.mkdirs()
         return File(d, FILE)
     }

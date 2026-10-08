@@ -9,7 +9,7 @@ import org.json.JSONObject
 object StateFiles {
 
     const val SCHEMA_KEY = "schema"
-    private const val LEDGER_DIR = "os"
+    private const val LEDGER_DIR = "run"
     private const val FAILED_FILE = "write-failures.log"
 
     fun writeAtomic(file: File, text: String): Boolean {
@@ -110,9 +110,11 @@ object StateFiles {
                 if (f.delete()) out.add(f.absolutePath)
             }
         }
-        sweep(File(ctx.filesDir, "os"))
-        sweep(File(ctx.filesDir, "os/journal"))
-        sweep(File(ctx.filesDir, "supervisor"))
+        sweep(SystemDirs.libvar(ctx))
+        sweep(SystemDirs.log(ctx))
+        sweep(SystemDirs.run(ctx))
+        sweep(SystemDirs.etc(ctx))
+        sweep(SystemDirs.opt(ctx))
         sweep(ProgramRegistry.programRoot(ctx))
         sweep(ctx.filesDir)
         return out

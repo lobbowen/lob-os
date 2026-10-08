@@ -8,7 +8,7 @@ import java.net.URL
 
 object RegistryStore {
 
-    private fun file(ctx: Context) = File(File(ctx.filesDir, "os"), "registry.json")
+    private fun file(ctx: Context) = File(SystemDirs.libvar(ctx), "registry.json")
 
     @Synchronized
     private fun read(ctx: Context): JSONObject = runCatching {

@@ -6,11 +6,13 @@ import java.io.File
 object PathGuard {
 
     fun integrityRoots(ctx: Context): List<File> = listOf(
-        File(ctx.filesDir, "os"),
-        File(ctx.filesDir, "sys"),
+        SystemDirs.etc(ctx),
+        SystemDirs.usr(ctx),
+        SystemDirs.var(ctx),
+        SystemDirs.run(ctx),
+        SystemDirs.opt(ctx),
         ProgramRegistry.programRoot(ctx),
-        File(ctx.filesDir, "usr"),
-        File(ctx.filesDir, "supervisor"),
+        File(ctx.filesDir, "sys"),
         File(ctx.filesDir, "adb"),
         File(ctx.filesDir, ".npmrc"),
         File(ctx.filesDir, "program-verify.js"),

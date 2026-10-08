@@ -73,7 +73,7 @@ object DriverRegistry {
     )
 
     private fun ledgerFile(ctx: Context): File {
-        val d = File(ctx.filesDir, "os")
+        val d = SystemDirs.libvar(ctx)
         d.mkdirs()
         return File(d, "compat-degradations.json")
     }

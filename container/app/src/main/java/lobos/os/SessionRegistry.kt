@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 object SessionRegistry {
 
-    private const val DIR = "os"
+    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
     private const val FILE = "sessions.json"
     private const val SCHEMA = 1
     private const val GRACE_MS = 20_000L
@@ -28,7 +28,7 @@ object SessionRegistry {
     private val rng = SecureRandom()
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = dir(ctx)
         d.mkdirs()
         return File(d, FILE)
     }

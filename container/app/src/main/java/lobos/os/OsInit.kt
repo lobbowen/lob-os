@@ -7,14 +7,14 @@ import org.json.JSONObject
 
 object OsInit {
 
-    private const val DIR = "os"
+    private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
     private const val FILE = "state.json"
 
     @Volatile
     private var interruptedThisLife: String? = null
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = dir(ctx)
         d.mkdirs()
         return File(d, FILE)
     }
@@ -63,12 +63,20 @@ object OsInit {
     fun beginLife(ctx: Context, interrupted: String?): OsSnapshot {
         val stalled = snapshot(ctx).phase
         interruptedThisLife = interrupted
+        SystemDirs.ensureAll(ctx)
+        // Linux 的 /run 是 tmpfs，重启即失由内核保证；我们在普通文件系统上，
+        // 所以「本次启动的状态不继承上世」要在这里自己保证。
+        // 不清的话：上世的 pid 占着端口、上世的会话以为还活着。
+        val swept = SystemDirs.clearRun(ctx)
         val snap = OsSnapshot(OsPhase.BOOTING, OsFacts(), interrupted, System.currentTimeMillis())
         write(ctx, snap, OsPhase.BOOTING, null)
         Journal.append(
             ctx, "os-phase", null,
             "宿主出生：本世从 BOOTING 起算（上世停在 " + stalled.name + "，那份读数不继承）",
         )
+        if (swept > 0) {
+            Journal.append(ctx, "os-run", null, "已清 /run：$swept 项（本次启动不继承上世运行态）")
+        }
         return snap
     }
 

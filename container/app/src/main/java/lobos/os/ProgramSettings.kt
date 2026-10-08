@@ -6,7 +6,7 @@ import java.io.File
 
 object ProgramSettings {
 
-    private fun file(ctx: Context) = File(File(ctx.filesDir, "os"), "program-settings.json")
+    private fun file(ctx: Context) = File(SystemDirs.libvar(ctx), "program-settings.json")
 
     @Synchronized
     fun read(ctx: Context): JSONObject = runCatching {

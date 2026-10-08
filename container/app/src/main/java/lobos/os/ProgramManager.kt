@@ -77,7 +77,7 @@ object ProgramManager {
 
     fun infraSourceFile(ctx: Context, e: IndexEntry): File =
         if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
-        else File(File(ctx.filesDir, "usr"), e.assetEntry.ifBlank { e.id })
+        else SystemDirs.usr(ctx).let { File(it, e.assetEntry.ifBlank { e.id }) }
     fun levelOfKind(kind: String): Level = when (kind) {
         "INFRA" -> Level.INFRA
         "RUNTIME", "COMPONENT" -> Level.CAPABILITY
@@ -125,7 +125,7 @@ object ProgramManager {
     fun reconcile(ctx: Context) {
         alignLevels(ctx)
         val snap = snapshot(ctx)
-        val stateFile = File(ProgramIndex.file(ctx).parentFile ?: File(ctx.filesDir, "os"), "program-state.json")
+        val stateFile = File(ProgramIndex.file(ctx).parentFile ?: SystemDirs.libvar(ctx), "program-state.json")
         StateFiles.writeJson(
             stateFile,
             JSONObject().apply {
@@ -173,7 +173,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, "node")
 
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }
-        val usr = File(ctx.filesDir, "usr")
+        val usr = SystemDirs.usr(ctx)
         usr.mkdirs()
         StateFiles.writeJson(File(usr, "facilities.json"), JSONObject().apply {
             put("updatedAt", System.currentTimeMillis())

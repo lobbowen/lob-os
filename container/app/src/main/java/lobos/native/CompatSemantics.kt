@@ -42,6 +42,6 @@ object CompatSemantics {
             put("pending", ITEMS.count { it.status != "done" })
             put("items", arr)
         }
-        lobos.os.StateFiles.writeJson(File(File(ctx.filesDir, "os"), "compat-semantics.json"), o)
+        lobos.os.StateFiles.writeJson(File(SystemDirs.libvar(ctx), "compat-semantics.json"), o)
     }
 }

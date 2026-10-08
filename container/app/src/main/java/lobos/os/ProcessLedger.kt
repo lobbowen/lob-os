@@ -10,7 +10,7 @@ object ProcessLedger {
 
     private const val SIGTERM = 15
 
-    private const val DIR = "os"
+    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
     private const val FILE = "process-ledger.json"
     private const val SCHEMA = 2
 
@@ -25,7 +25,7 @@ object ProcessLedger {
     )
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = dir(ctx)
         d.mkdirs()
         return File(d, FILE)
     }

@@ -13,7 +13,7 @@ object CatalogClient {
     const val CACHE_NAME = "catalog.json"
     const val TTL_MS = 6 * 60 * 60 * 1000L
 
-    fun cacheFile(ctx: Context): File = File(File(ctx.filesDir, "os"), CACHE_NAME)
+    fun cacheFile(ctx: Context): File = File(SystemDirs.libvar(ctx), CACHE_NAME)
 
     @Synchronized
     fun cached(ctx: Context): JSONObject? = runCatching {

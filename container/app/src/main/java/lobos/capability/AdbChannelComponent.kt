@@ -116,7 +116,7 @@ object AdbChannelComponent {
     }
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, "os")
+        val d = SystemDirs.libvar(ctx)
         d.mkdirs()
         return File(d, "adb-channel.json")
     }

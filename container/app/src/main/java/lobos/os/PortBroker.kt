@@ -6,7 +6,7 @@ import org.json.JSONObject
 
 object PortBroker {
 
-    private const val DIR = "os"
+    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
     private const val FILE = "ports.json"
     const val RANGE_START = 41000
     const val RANGE_END = 50999
@@ -14,7 +14,7 @@ object PortBroker {
     data class Lease(val port: Int, val owner: String)
 
     private fun file(ctx: Context): File {
-        val d = File(ctx.filesDir, DIR)
+        val d = dir(ctx)
         d.mkdirs()
         return File(d, FILE)
     }
