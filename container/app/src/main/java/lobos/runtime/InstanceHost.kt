@@ -449,12 +449,16 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun describeStatus(st: AssetStatus): String = when (st) {
         is AssetStatus.Ready -> "就位"
         is AssetStatus.MissingFromLib ->
-            if (st.inApk) "APK 内有但未解压到 nativeLibraryDir（查 extractNativeLibs / useLegacyPackaging）"
-            else "APK 内就没有（打包期丢失：查构建脚本产物与 keepDebugSymbols）"
+            if (st.inApk)
+                "APK 里有但没解压出来（查 jniLibs 与 extractNativeLibs）"
+            else
+                "APK 里就没有（打包期丢失：查构建脚本产物）"
         is AssetStatus.MissingDependency ->
-            "缺少依赖 ${st.dep}（linker 不查 nativeLibraryDir，须随包放同目录）"
+            "缺少依赖 ${st.dep} —— 依赖要随本体同目录，或本体自带含 \\$ORIGIN 的 DT_RUNPATH"
+        is AssetStatus.Mismatched ->
+            "与登记不符：${st.mismatched.joinToString(", ")} —— 跑 verify 看差在哪，重新铺一次"
         is AssetStatus.NotExecutable ->
-            "无法 exec（依赖已确认完好 → SELinux 拒 exec，查该文件是否真在 nativeLibraryDir）"
+            "无法 exec（依赖已确认完好 → SELinux 拒 exec，查那个文件是否真在可执行位置）"
         is AssetStatus.Unusable ->
             "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)" }}"
     }

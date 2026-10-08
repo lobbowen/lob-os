@@ -98,18 +98,28 @@ object RuntimeEnvironment {
         prefixBin = PrefixProvisioner.binDir(ctx),
     )
 
-    fun libSearchPath(ctx: Context): String {
-        val dirs = LinkedHashSet<String>()
-        dirs.add(PieceProvisioner.libSearchPath(ctx))
-        dirs.add(PrefixProvisioner.libDir(ctx).absolutePath)
-        runCatching {
-            ProgramRegistry.listIds(ctx).forEach { id ->
-                val root = ProgramManager.stateDirOf(ctx, id)
-                dirs.add(File(root, "lib").absolutePath)
-            }
-        }
-        return dirs.filter { File(it).isDirectory }.joinToString(":")
-    }
+      /**
+       * 库的搜索路径 —— 全局共享的一份，**不给每个程序单独配**。
+       *
+       * · usr/lib                    件的全局软链都在那儿（每件一条）
+       * · 各程序的 opt/<id>/<版本>/lib  程序自带的依赖
+       *
+       * ★ 不含 nativeLibraryDir：实测那目录不可写（属主 system，我们是应用 uid），
+       *   「把系统建在 APK 目录下」这条路走不通 —— 已堵死，别再走。
+       * ★ 更好的做法是链接期给 DT_RUNPATH=\\$ORIGIN：那样库跟着文件走，
+       *   连这个环境变量都不必依赖。这里的路径是兜底（给没有 RUNPATH 的件）。
+       */
+      fun libSearchPath(ctx: Context): String {
+          val dirs = LinkedHashSet<String>()
+          dirs.add(PieceProvisioner.libSearchPath(ctx))
+          runCatching {
+              ProgramRegistry.listIds(ctx).forEach { id ->
+                  val root = ProgramManager.stateDirOf(ctx, id)
+                  dirs.add(File(root, "lib").absolutePath)
+              }
+          }
+          return dirs.filter { File(it).isDirectory }.joinToString(":")
+      }
 
     fun ensure(ctx: Context): Snapshot {
         cached?.takeIf { it.complete }?.let { s ->

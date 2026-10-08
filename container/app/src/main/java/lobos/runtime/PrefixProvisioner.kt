@@ -28,7 +28,10 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
      * 铺一件 —— 落位的形状就是身份，说明与件同目录。
      *
      *   usr/lib/<id>/<版本>/bin/<名字>    命令（usr/bin 建软链，PATH 里有）
-     *   usr/lib/<id>/<版本>/lib<名字>.so  库（usr/lib 已在库搜索路径里）
+     *   usr/lib/<id>/<版本>/lib/<名字>.so  库
+ *
+ * 命令与库都建全局软链（usr/bin/<名字> 与 usr/lib/<库文件名>）——
+ * 「切换版本」就是改那一条软链，所有程序立刻生效。
      *
      * 形态由调用方从文件本身判断（可执行件还是共享库）—— 说明里不声明形态，
      * 照抄 ldconfig："checks the header and filenames"。
@@ -64,14 +67,27 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                 )
             }
         }
-        // 全局入口：命令在 usr/bin 建软链；库不用（usr/lib 已在库搜索路径里）
-        if (isEntry) {
-            val link = lobos.os.SystemDirs.bin(ctx).let { File(it, soName) }
-            link.parentFile?.mkdirs()
-            if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
-            java.nio.file.Files.deleteIfExists(link.toPath())
-            java.nio.file.Files.createSymbolicLink(link.toPath(), dst.toPath().toAbsolutePath().normalize())
+        // 全局入口 —— 命令与库**都**建软链，同一件事：
+        //   命令  usr/bin/<名字>              → usr/lib/<id>/<版本>/bin/<名字>
+        //   库usr/lib/<库文件名>   → usr/lib/<id>/<版本>/lib/<库文件名>
+        //
+        // 「切换版本」就是改这一条软链，所有程序立刻生效 ——
+        // **不给每个程序单独配**：程序只管用，用的是全局那份。
+        // 这正是 ldconfig 对 libfoo.so → .so.1 → .so.1.12 做的事
+        // （ldconfig(8)：「checks the header and filenames when determining
+        //  which versions should have their links updated」）。
+        val link = if (isEntry) {
+            lobos.os.SystemDirs.bin(ctx).let { File(it, soName) }
+        } else {
+            lobos.os.SystemDirs.lib(ctx).let { File(it, soName) }
         }
+        link.parentFile?.mkdirs()
+        if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
+        java.nio.file.Files.deleteIfExists(link.toPath())
+        java.nio.file.Files.createSymbolicLink(
+            link.toPath(),
+            dst.toPath().toAbsolutePath().normalize(),
+        )
         return dst.absolutePath
     }
 

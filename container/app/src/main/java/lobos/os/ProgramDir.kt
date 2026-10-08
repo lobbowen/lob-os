@@ -117,7 +117,7 @@ class ProgramDir(
         check(entry.startsWith(filesRoot)) {
             "控制面板入口应位于 filesDir（app_data_file，W^X 禁 exec）内，但它跑到了 ${entry.parent}。" +
                 "此断言失败意味着 OTA 的落盘布局被破坏 —— " +
-                "若入口需要被 exec，它必须改走 jniLibs/nativeLibraryDir（exec_type）通道。"
+                "若入口需要被 exec，它必须走我们自己落位的形状（usr/lib/<id>/<版本>/bin/，usr/bin 建软链）。jniLibs/nativeLibraryDir 只是取源，那两个目录不可写（实测属主是 system）。"
         }
     }
     fun rawManifest(version: String): JSONObject? {

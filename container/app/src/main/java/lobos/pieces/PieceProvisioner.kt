@@ -89,7 +89,7 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     o.put("missingDep", st.dep)
                     o.put("libListing", st.libListing)
                     o.put("hint", "依赖必须与本体同目录，且本体要自带含 \$ORIGIN 的 DT_RUNPATH：" +
-                        "linker 不查 nativeLibraryDir，LD_LIBRARY_PATH 只在进程环境里才有效")
+                        "依赖必须与本体同目录，且本体要自带含 \\$ORIGIN 的 DT_RUNPATH —— 那样跟着文件走，不依赖任何环境变量")
                 }
                 is AssetStatus.NotExecutable -> {
                     o.put("status", "not_executable")
@@ -206,7 +206,16 @@ object PieceProvisioner {
         return verifyInternal(ctx, exe, libDir, listLibDir(libDir), apkNames)
     }
 
-    fun libSearchPath(ctx: Context): String = ctx.applicationInfo.nativeLibraryDir
+    /**
+     * 程序的库搜索路径 —— **只指我们自己的面**。
+     *
+     * ★ 不含 nativeLibraryDir：实测那个目录不可写（属主 system，我们是应用 uid），
+     *   所以「把系统建在 APK 目录下」这条路走不通 —— 已堵死，别再走。
+     *
+     * nativeLibraryDir 只作**取源**：APK 里的 .so 从那里取出来，
+     * 落到 usr/lib/<id>/<版本>/lib/ 之后就用我们自己的面。
+     */
+    fun libSearchPath(ctx: Context): String = lobos.os.SystemDirs.lib(ctx).absolutePath
 
     private fun verifyInternal(
         ctx: Context,
