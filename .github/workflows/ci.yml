@@ -49,6 +49,9 @@ jobs:
       - name: 结构 — base 筐产出源齐全（随 APK 打包的基础环境不得有件无产出）
         run: node tools/verify/base-environment.js
 
+      - name: 规范 — 源码里不许有控制字符（bash -n 查不出，但会让 CI 取证整段失效）
+        run: node tools/verify/no-control-chars.js
+
       - name: 规范 — DO 跑不通：不许启用设备所有者
         run: node scripts/do-gate.js
 

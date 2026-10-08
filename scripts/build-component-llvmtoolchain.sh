@@ -188,7 +188,7 @@ note "开始编（$JOBS 作业）—— 这一步在 CI 上要几十分钟到数
 cmake --build "$BUILD" -j"$JOBS" \
   > "$WORK/build.log" 2>&1 \
   || { echo "=== LLVM 编译失败取证 ==="; \
-       echo "（error 行）"; grep -nE 'error:|Error [0-9]+$|undefined (symbol|reference)' "$WORK/build.log" | head -30 || true; \ue; \ head -30 || true; \
+       echo "（error 行）"; grep -nE 'error:|Error [0-9]+$|undefined (symbol|reference)' "$WORK/build.log" | head -30 || true; \
        echo "（末 60 行）"; tail -60 "$WORK/build.log"; \
        echo; echo "== 交叉编译需要的宿主工具（LLVM 文档给的开关是 LLVM_NATIVE_TOOL_DIR / LLVM_TABLEGEN）=="; \
        TB_LIST=$(ls "$NATIVE_DIR" 2>/dev/null | tr '\n' ' ' || true); \
