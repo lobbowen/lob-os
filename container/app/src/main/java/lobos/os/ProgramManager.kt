@@ -191,9 +191,38 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         return PortBroker.claim(ctx, id)
     }
 
-    fun setDesired(ctx: Context, id: String, d: Desired): Boolean {
-        if (!ProgramIndex.mutate(ctx, id) { it.edited(desired = d) }) return false
-        Journal.append(ctx, "registry", null, "upsert " + id + " desired=" + d.name)
-        return true
+    /**
+     * 改期望状态 —— **排一个作业，不是直接改字段**。
+     *
+     * 照抄 systemd(1)：「these requests are ENCAPSULATED AS JOBS and maintained
+     * in a job queue … their execution is ORDERED BASED ON THE ORDERING
+     * DEPENDENCIES of the units they have been scheduled for」。
+     *
+     * 直接改的后果有三个：请求还没执行状态就已经变了 · 依赖顺序没保证 ·
+     * 循环依赖检测不到。现在先入队（[UnitJobs.enqueue] 会做事务校验），
+     * 由 [UnitJobs.takeReady] 按after 依赖出队执行。
+     *
+     * @return 拒绝理由（null = 已入队）
+     */
+    fun requestDesired(ctx: Context, id: String, d: Desired, reason: String = ""): String? {
+        val cur = ProgramIndex.get(ctx, id)?.desired
+        if (cur == d) return null                      // 已经是这个期望，不排
+        return when (val v = UnitJobs.enqueue(
+            ctx,
+            UnitJobs.Job(id, d, reason.ifBlank { "requested " + d.name }),
+        )) {
+            is UnitJobs.Verdict.Ok -> {
+                Journal.append(ctx, "job", true, "入队 " + id + " → " + d.name, reason)
+                null
+            }
+            is UnitJobs.Verdict.Reject -> {
+                Journal.append(ctx, "job", false, "拒绝 " + id + " → " + d.name, v.why)
+                v.why
+            }
+        }
     }
+
+    /** 旧接口保留一层转发 —— 新代码用 requestDesired（语义是「排队」不是「改」） */
+    fun setDesired(ctx: Context, id: String, d: Desired): Boolean =
+        requestDesired(ctx, id, d) == null
 }
