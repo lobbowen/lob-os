@@ -436,7 +436,7 @@ class SetupActivity : AppCompatActivity() {
                     (CapabilityCatalog.ALL + CapabilityCatalog.OEM_GUARDS).forEach { c ->
                         val v = verdicts[c.id]
                         appendLine(
-                            "${c.segment} ${c.id}${if (c.optional) "*" else ""} " +
+                            "${c.id}${if (c.optional) "*" else ""} " +
                                 "${v?.status} ${v?.detail}｜取法 " +
                                 c.acquirer(e).joinToString(">") { it.label }
                         )

@@ -179,7 +179,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         false
     }
 
-    fun shellBin(ctx: Context): File? = lobos.os.SystemRoles.shellBin(ctx)
+    fun shellBin(ctx: Context): File? = lobos.os.PieceScan.shellBin(ctx)
 
     private fun linkHeadersInclude(ctx: Context): List<String> {
         val headersRoot = headersIncludeDir(ctx) ?: return emptyList()
@@ -204,16 +204,16 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
     fun headersIncludeDir(ctx: Context): File? {
         return try {
-            val dir = SystemRoles.headersPieceDir(ctx) ?: return null
-            val inc = File(dir, "include")
-            if (inc.isDirectory) inc else null
+        // 头文件集那件 = 落位里有 include/ 的那一个（扫落位找，不查表）
+        val dir = lobos.os.PieceScan.scan(ctx)
+            .firstOrNull { File(it.dir, "include").isDirectory }?.dir ?: return null
         } catch (_: Throwable) {
             null
         }
     }
 
 
-    fun multiCommandBin(ctx: Context): File? = lobos.os.SystemRoles.multiCommandBin(ctx)
+    fun multiCommandBin(ctx: Context): File? = lobos.os.PieceScan.multiCommandBin(ctx)
 
     fun expected(ctx: Context): List<String> =
         BINS.map { it.second } + DEPS.map { it.second } + CA_BUNDLE_NAME

@@ -373,7 +373,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
-                    flockSo = lobos.os.SystemRoles.pieceFile(this, FLOCK_ID),
+                    flockSo = lobos.os.PieceScan.pieceFile(this, FLOCK_ID),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
                     httpPort = resolvedPort,

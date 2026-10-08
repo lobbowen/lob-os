@@ -288,9 +288,9 @@ object PtySession {
      * 找不到就明说找不到（终端与 shell.exec 都依赖它，不静默退化）。
      */
     private fun locateBin(ctx: Context): File {
-        val found = lobos.os.SystemRoles.pieceFile(ctx, PTY_HOST_ID)
+        val found = lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)
         if (found != null && found.isFile) return found
-        val dir = lobos.os.SystemRoles.pieceDir(ctx, PTY_HOST_ID)
+        val dir = lobos.os.PieceScan.pieceDir(ctx, PTY_HOST_ID)
         throw IllegalStateException(
             "PTY 会话宿主不在位（找过 " + (dir?.absolutePath ?: "usr/lib/$PTY_HOST_ID") +
             "）—— shell.exec 与终端都依赖它。底座不完整，别静默退化。"
@@ -304,7 +304,7 @@ object PtySession {
      * 每问一次就起一次进程。落位即事实 —— 装了就有，没装就没有。
      */
     fun available(ctx: Context): Boolean =
-        SystemRoles.pieceFile(ctx, PTY_HOST_ID)?.isFile == true
+        lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)?.isFile == true
 
     fun runToCompletion(
         ctx: Context,

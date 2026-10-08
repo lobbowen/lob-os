@@ -1,10 +1,5 @@
 package lobos.setup
 
-import lobos.capability.CapabilityCatalog.S0
-import lobos.capability.CapabilityCatalog.S1
-import lobos.capability.CapabilityCatalog.S2
-import lobos.capability.CapabilityCatalog.S3
-import lobos.capability.CapabilityCatalog.OX
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapStatus
 import lobos.capability.CapVerdict
@@ -35,13 +30,6 @@ object PipelineProjection {
     fun workbenchReady(verdicts: Map<String, CapVerdict>): Boolean =
         GATING.all { verdicts[it]?.status == CapStatus.GRANTED }
 
-    private val TITLES = mapOf(
-        S0 to "系统能力（可选）",
-        S1 to "能力与权限集",
-        S2 to "状态与权限",
-        S3 to "运行时+程序",
-        CapabilityCatalog.OX to "可选组件（ADB）",
-    )
 
     private fun rank(s: CapStatus): Int = when (s) {
         CapStatus.FAILED -> 0
@@ -57,21 +45,24 @@ object PipelineProjection {
         CapStatus.FAILED -> StepStatus.FAILED
     }
 
-    fun project(e: Evidence, verdicts: Map<String, CapVerdict>): List<PipelineStep> {
-        val rows = listOf(S0, S1, S2, S3).map { seg ->
-            val caps = CapabilityCatalog.ALL.filter { it.segment == seg }
-            val scoped = if (seg == S1) caps else caps.filter { !it.optional }
-            val ranked = scoped.map { it to verdicts[it.id] }
-                .filter { it.second != null }
-                .map { it.first to it.second!! }
-            if (ranked.isEmpty()) PipelineStep(seg, TITLES.getValue(seg), StepStatus.DONE, "本段无待办")
-            else worstOf(seg, TITLES.getValue(seg), ranked, e)
-        }
-        return rows + workbenchRow(e, verdicts)
-    }
+      /**
+       * 投影成步骤列表 —— **逐项列出，按真实状态排序**。
+       *
+       * 此前按 S0~S3/OX 分档、每档出一条（档位那套是我加的，Linux 没有：
+       * 那里只有「有没有成」，没有「这项属于第几档」）。现在每项能力一条，
+       * 顺序由状态决定（失败 → 待办 → 等待 → 已就位）。
+       */
+      fun project(e: Evidence, verdicts: Map<String, CapVerdict>): List<PipelineStep> {
+          val rows = CapabilityCatalog.ALL
+              .filter { verdicts[it.id] != null }
+              .sortedBy { rank(verdicts[it.id]!!.status) }
+              .map { c ->
+                  val v = verdicts[c.id]!!
+                  PipelineStep(c.id, c.title, toStep(v.status), v.status.name, v.detail)
+              }
+          return rows + workbenchRow(e, verdicts)
+      }
 
-    private fun worstOf(
-        seg: String,
         title: String,
         ranked: List<Pair<Capability, CapVerdict>>,
         e: Evidence,

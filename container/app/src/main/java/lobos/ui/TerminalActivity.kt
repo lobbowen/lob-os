@@ -97,7 +97,7 @@ class TerminalActivity : AppCompatActivity() {
     }
 
     private fun startSession() {
-        val shellBin = lobos.os.SystemRoles.shellBin(this)
+        val shellBin = lobos.os.PieceScan.shellBin(this)
         val want = intent.getStringExtra(EXTRA_SHELL)
             ?: shellBin?.name
             ?: DEFAULT_SHELL_FALLBACK

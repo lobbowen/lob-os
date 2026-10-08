@@ -36,6 +36,10 @@ import org.json.JSONObject
  * `desired` / `restart` / `env` / `httpPort` 这些字段的事，
  * 由 `ProgramManager` 维护。`ldconfig` 只管「装了什么」。
  */
+    /** 落位形状决定的形态 —— 照抄 ldconfig "checks the header and filenames" */
+    const val EXEC = "exec"
+    const val LIBRARY = "library"
+    const val HEADERS = "headers"
 object PieceScan {
 
     /** 扫出来的结果：这件是什么、什么版本、落在哪 */
@@ -78,7 +82,7 @@ private fun metaOf(verDir: File): JSONObject? =
             val id = pieceDir.name
             // 头文件集那件不是「可执行/库」，它提供 include/ —— 形态是 headers
             if (File(pieceDir, "include").isDirectory) {
-                out += Found(id, "from-layout", pieceDir, "include", SystemRoles.HEADERS, "",
+                out += Found(id, "from-layout", pieceDir, "include", HEADERS, "",
                     metaOf(pieceDir))
                 continue
             }
@@ -113,8 +117,8 @@ private fun metaOf(verDir: File): JSONObject? =
 
     /** 形态：只看落位形状，不看字段声明（照抄 ldconfig "checks the header and filenames"） */
     private fun roleOf(verDir: File): String {
-        if (File(verDir, "bin").isDirectory) return SystemRoles.EXEC
-        return SystemRoles.LIBRARY
+        if (File(verDir, "bin").isDirectory) return EXEC
+        return LIBRARY
     }
 
     /** 字节身份：对入口文件实算（与 ldconfig "checks the header" 同理，看真实内容） */
@@ -141,7 +145,7 @@ private fun metaOf(verDir: File): JSONObject? =
             val prev = cur[f.id]
             val entry = (prev ?: ProgramIndex.empty(
                 f.id,
-                if (f.role == SystemRoles.HEADERS) Level.PIECE else Level.PIECE,
+                if (f.role == HEADERS) Level.PIECE else Level.PIECE,
             )).copy(
                 version = f.version,
                 stateDir = f.dir.absolutePath,
@@ -172,4 +176,38 @@ internal object SupplySha {
         }
         md.digest().joinToString("") { "%02x".format(it) }
     }.getOrDefault("")
-}
+
+    /** 某个 id 落位在哪 —— 扫落位找，不查表 */
+    fun pieceDir(ctx: Context, id: String): File? =
+        scan(ctx).firstOrNull { it.id == id }?.dir
+
+    /** 某个 id 的入口文件（命令）或库文件 */
+    fun pieceFile(ctx: Context, id: String): File? {
+        for (f in scan(ctx)) {
+            if (f.id == id) return File(f.dir, f.entry)
+        }
+        return null
+    }
+
+    /** 某个 id 落位那一件的说明（件自带，deb-control 的做法） */
+    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? =
+        scan(ctx).firstOrNull { it.id == id }?.meta
+
+    /** 命令解释器 —— 第一个命令形态的入口（有 bin/ 的那个） */
+    fun shellBin(ctx: Context): File? {
+        for (f in scan(ctx)) {
+            if (f.role == EXEC) return File(f.dir, f.entry).takeIf { it.isFile }
+        }
+        return null
+    }
+
+    /** 一个二进制提供多个命令的那件：bin/ 下不止一个入口就是它的形状 */
+    fun multiCommandBin(ctx: Context): File? {
+        for (f in scan(ctx)) {
+            if (f.role != EXEC) continue
+            val bin = File(f.dir, "bin")
+            val n = bin.listFiles()?.count { it.isFile || it.isSymbolicLink } ?: 0
+            if (n > 1) return File(f.dir, f.entry).takeIf { it.isFile }
+        }
+        return null
+    }}

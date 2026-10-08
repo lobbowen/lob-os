@@ -4,12 +4,6 @@ import lobos.permissions.PermissionCatalog
 
 object CapabilityCatalog {
 
-    const val S0 = "S0"
-    const val OX = "OX"
-    const val S1 = "S1"
-    const val S2 = "S2"
-    const val S3 = "S3"
-
     const val DEV_OPTIONS = "dev-options"
     const val WIRELESS_DEBUG = "wireless-debug"
     const val ADB_CREDENTIALS = "adb-credentials"
@@ -42,7 +36,7 @@ object CapabilityCatalog {
 
     val ALL: List<Capability> = listOf(
         Capability(
-            id = DEV_OPTIONS, title = "开发者选项", segment = OX,
+            id = DEV_OPTIONS, title = "开发者选项"
             judge = { e ->
                 if (e.devOptionsOn) CapVerdict(CapStatus.GRANTED, "已开启")
                 else CapVerdict(CapStatus.ACTION, "未开启：顶部总开关先打开")
@@ -50,7 +44,7 @@ object CapabilityCatalog {
             acquirer = { listOf(Acquisition(AcquireKind.USER_TAP, "去开发者选项页", NAV_DEV_OPTIONS)) },
         ),
         Capability(
-            id = WIRELESS_DEBUG, title = "无线调试", segment = OX, requires = setOf(DEV_OPTIONS),
+            id = WIRELESS_DEBUG, title = "无线调试", requires = setOf(DEV_OPTIONS),
             judge = { e ->
                 if (e.wirelessDebugOn) CapVerdict(CapStatus.GRANTED, "已开启")
                 else CapVerdict(CapStatus.ACTION, "未开启：同一页里的「无线调试」开关")
@@ -59,10 +53,9 @@ object CapabilityCatalog {
         ),
         perm(
             PermissionCatalog.POST_NOTIFICATIONS, "通知发送", PermTierClass.RUNTIME,
-            segment = S0,
         ),
         Capability(
-            id = ADB_CREDENTIALS, title = "ADB 配对凭据", segment = OX,
+            id = ADB_CREDENTIALS, title = "ADB 配对凭据"
             requires = setOf(DEV_OPTIONS, WIRELESS_DEBUG),
             judge = { e ->
                 when {
@@ -77,7 +70,7 @@ object CapabilityCatalog {
             bridgeToken = "adb_shell",
         ),
         Capability(
-            id = ADB_CHANNEL, title = "ADB 通道", segment = OX, requires = setOf(ADB_CREDENTIALS),
+            id = ADB_CHANNEL, title = "ADB 通道", requires = setOf(ADB_CREDENTIALS),
             optional = true,
             judge = { e ->
                 val age = e.nowMs - e.channel.atMs
@@ -115,7 +108,7 @@ object CapabilityCatalog {
             note = "只作 UI 自动化执行体，不承担保活；保活靠前台服务与闹钟",
         ),
         Capability(
-            id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）", segment = OX,
+            id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）"
             optional = true, bridgeToken = "accessibility",
             judge = { e ->
                 val svc = e.granted(PermissionCatalog.ACCESSIBILITY)
@@ -137,7 +130,7 @@ object CapabilityCatalog {
             bridgeToken = "mediaprojection",
         ),
         Capability(
-            id = RUNTIME, title = "运行时", segment = S3,
+            id = RUNTIME, title = "运行时"
             judge = { e ->
                 if (e.controlPlaneUp) CapVerdict(CapStatus.GRANTED, "控制面在线")
                 else CapVerdict(CapStatus.ACTION, "控制面未响应")
@@ -145,7 +138,7 @@ object CapabilityCatalog {
             acquirer = { listOf(Acquisition(AcquireKind.USER_TAP, "看运行时启动日志", NAV_DIAGNOSTICS)) },
         ),
         Capability(
-            id = PROGRAM_BUNDLE, title = "Program 包", segment = S3, requires = setOf(RUNTIME),
+            id = PROGRAM_BUNDLE, title = "Program 包", requires = setOf(RUNTIME),
             judge = { e ->
                 val failed = e.programChecks.filter { it.ok == false }.map { it.id }
                 val unknown = e.programChecks.filter { it.ok == null }.map { it.id}
@@ -164,14 +157,13 @@ object CapabilityCatalog {
         id: String,
         title: String,
         tier: PermTierClass,
-        segment: String = S2,
         optional: Boolean = false,
         note: String = "",
         bridgeToken: String? = null,
     ): Capability {
         require(PermissionCatalog.byId(id) != null) { "$id 不在 PermissionCatalog.ALL 里，判据无从取数" }
         return Capability(
-            id = id, title = title, segment = segment, optional = optional,
+            id = id, title = title, optional = optional,
             bridgeToken = bridgeToken,
             judge = { e ->
                 if (e.granted(id)) CapVerdict(CapStatus.GRANTED, "已授权")
@@ -243,7 +235,7 @@ object CapabilityCatalog {
 
     val OEM_GUARDS: List<Capability> = listOf(
         Capability(
-            id = OemGuards.STARTUP_MANAGER, title = "自启动管理", segment = S3,
+            id = OemGuards.STARTUP_MANAGER, title = "自启动管理"
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.STARTUP_MANAGER)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -254,7 +246,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.CARD_LOCK, title = "卡片锁/后台弹窗", segment = S3,
+            id = OemGuards.CARD_LOCK, title = "卡片锁/后台弹窗"
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.CARD_LOCK)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -265,7 +257,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.FULL_BACKGROUND, title = "完全后台运行", segment = S3,
+            id = OemGuards.FULL_BACKGROUND, title = "完全后台运行"
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.FULL_BACKGROUND)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -276,7 +268,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.FREEZE_WHITELIST, title = "速冻白名单", segment = S3,
+            id = OemGuards.FREEZE_WHITELIST, title = "速冻白名单"
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.FREEZE_WHITELIST)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")

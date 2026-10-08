@@ -250,7 +250,7 @@ object PieceUpdater {
         (root.list()?.sorted() ?: emptyList()).take(8)
 
     private fun pointEntryAt(ctx: Context, e: lobos.os.PieceScan.Found, version: String, dest: File: Boolean = try {
-        val link = if (lobos.os.SystemRoles.isEntry(e)) {
+        val link = if (lobos.os.PieceScan.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)
@@ -274,7 +274,7 @@ object PieceUpdater {
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
         val e = lobos.os.PieceScan.scan(ctx).firstOrNull { it.id == id }
             ?: return false to "注册表里没有 id=$id"
-        val link = if (lobos.os.SystemRoles.isEntry(e)) {
+        val link = if (lobos.os.PieceScan.isEntry(e)) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
             File(PrefixProvisioner.libDir(ctx), e.installedAs)

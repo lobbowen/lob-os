@@ -26,7 +26,6 @@ data class CapVerdict(val status: CapStatus, val detail: String = "")
 data class Capability(
     val id: String,
     val title: String,
-    val segment: String,
     val optional: Boolean = false,
     val requires: Set<String> = emptySet(),
     val judge: (Evidence) -> CapVerdict,

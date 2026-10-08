@@ -66,7 +66,7 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (SystemRoles.pieceDirFor(ctx, e.id) != null) return infraSourceFile(ctx, e)
+            if (lobos.os.PieceScan.pieceDir(ctx, e.id) != null) return infraSourceFile(ctx, e)
             if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
         return File(ProgramRegistry.programRoot(ctx), id)
@@ -84,7 +84,7 @@ object ProgramManager {
      * 只有两类：系统文件（件）与应用程序。件按 role 细分落位，不进 opt/。
      */
     fun levelOf(ctx: Context, id: String): Level =
-        if (SystemRoles.pieceDirFor(ctx, id) != null) Level.PIECE else Level.PROGRAM
+        if (lobos.os.PieceScan.pieceDir(ctx, id) != null) Level.PIECE else Level.PROGRAM
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
@@ -99,7 +99,7 @@ object ProgramManager {
      * 程序（走安装链的 zip）落 opt/<id>/。
      */
     fun relStateDir(ctx: Context, id: String): String {
-        if (SystemRoles.pieceDirFor(ctx, id) != null) return ""
+        if (lobos.os.PieceScan.pieceDir(ctx, id) != null) return ""
         return SystemDirs.REL_OPT + "/" + id
     }
 
@@ -154,7 +154,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (SystemRoles.pieceDirFor(ctx, e.id) != null) continue
+            if (lobos.os.PieceScan.pieceDir(ctx, e.id) != null) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue

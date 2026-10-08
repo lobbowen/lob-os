@@ -25,7 +25,7 @@ object RuntimeEnvironment {
      *
      * 此前这里有 nodeBin / shellBin / posixShim 三个字段，那是把「某一件」
      * 写进了环境数据结构：换一件命令解释器或运行时就得改这个 data class。
-     * 现在它们由 [SystemRoles] 按角色提供 —— 要用就问它，别在环境里存一份。
+     * 现在它们由 [PieceScan] 按角色提供 —— 要用就问它，别在环境里存一份。
      */
     data class TreeRoot(
         val home: File,
@@ -63,7 +63,7 @@ object RuntimeEnvironment {
                 inheritedPath,
             )
         )
-        SystemRoles.pieceFile(ctx, "posix")?.let {
+        lobos.os.PieceScan.pieceFile(ctx, "posix")?.let {
             put("LD_PRELOAD", it.absolutePath)
             put("LOBOS_COMPAT_LOG", lobos.pieces.DriverRegistry.degradeLog(ctx).absolutePath)
         }
@@ -79,7 +79,7 @@ object RuntimeEnvironment {
             put("CURL_CA_BUNDLE", caBundle.absolutePath)
             put("GIT_SSL_CAINFO", caBundle.absolutePath)
         }
-        put("SHELL", SystemRoles.shellBin(ctx)?.absolutePath ?: "/system/bin/sh")
+        put("SHELL", lobos.os.PieceScan.shellBin(ctx)?.absolutePath ?: "/system/bin/sh")
     }
 
     fun joinPath(vararg parts: String?): String =
