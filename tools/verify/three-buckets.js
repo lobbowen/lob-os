@@ -73,9 +73,9 @@ for (const b of ['base', 'rt', 'tool']) {
 const notBuilt = [];
 for (const b of ['base', 'rt', 'tool']) {
   for (const t of byBucket[b] || []) {
-    const hasJob = t === 'llvmtoolchain' || t === 'node';
+    const ownChain = fs.existsSync(path.join(ROOT, '.github/workflows', 'build-' + t + '.yml'));
     const isNative = ['bash', 'rg', 'busybox'].includes(t);
-    if (!matrix.includes(t) && !hasJob && !isNative) {
+    if (!matrix.includes(t) && !ownChain && !isNative) {
       notBuilt.push(`${b}/${t}`);
     }
   }

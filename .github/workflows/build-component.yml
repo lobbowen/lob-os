@@ -21,7 +21,6 @@ on:
       - 'scripts/read-node-versions.sh'
       - 'patches/**'
       - 'components/component/COMPONENT.md'
-      - 'components/runtime/COMPONENT.md'
     tags:
       - 'component-*'
   pull_request:
@@ -194,7 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tool: [sqlite3, jq, git, curl, pnpm, npm, sysroot, make, cmake, pkg-config, python3]
+        tool: [sqlite3, jq, git, curl, pnpm, npm, sysroot, make, cmake, pkg-config]
     steps:
       - uses: actions/checkout@v4
 
