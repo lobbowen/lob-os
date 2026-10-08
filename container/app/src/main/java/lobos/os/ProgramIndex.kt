@@ -108,7 +108,6 @@ object ProgramIndex {
     fun encode(e: IndexEntry): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("level", e.level.name)
-        put("category", e.category.name)
         put("asApplication", e.asApplication)
         put("version", e.version)
         put("enabled", e.enabled)
@@ -153,7 +152,6 @@ object ProgramIndex {
         return IndexEntry(
             id = id,
             level = level,
-            category = categoryOf(o.optString("category", "NONE")),
             asApplication = o.optBoolean("asApplication", level == Level.APPLICATION),
             version = o.optString("version", ""),
             enabled = o.optBoolean("enabled", true),
