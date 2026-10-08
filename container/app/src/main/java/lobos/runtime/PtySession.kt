@@ -288,23 +288,34 @@ object PtySession {
      * 找不到就明说找不到（终端与 shell.exec 都依赖它，不静默退化）。
      */
     private fun locateBin(ctx: Context): File {
-        val found = lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)
-        if (found != null && found.isFile) return found
-        val dir = lobos.os.PieceScan.pieceDir(ctx, PTY_HOST_ID)
-        throw IllegalStateException(
-            "PTY 会话宿主不在位（找过 " + (dir?.absolutePath ?: "usr/lib/$PTY_HOST_ID") +
-            "）—— shell.exec 与终端都依赖它。底座不完整，别静默退化。"
-        )
+        val f = lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)
+            ?: throw IllegalStateException(
+                "PTY 会话宿主没装（注册表里没有 $PTY_HOST_ID）—— " +
+                "shell.exec 与终端都依赖它。底座不完整，别静默退化。"
+            )
+        // 登记里有但文件被删了 —— 那是 PieceScan.verify() 报的问题，不是「没装」
+        // （dpkg -s 照样说 installed，问题由 dpkg -V 报出来）
+        if (!f.isFile) {
+            throw IllegalStateException(
+                "PTY 会话宿主登记在册但文件不在：" + f.absolutePath +
+                " —— 跑 PieceScan.verify(\"$PTY_HOST_ID\") 看差在哪（dpkg -V），" +
+                "重新铺一次即可修复"
+            )
+        }
+        return f
     }
 
     /**
-     * PTY 宿主件在不在 —— **查表**，不靠「起一个再退出」去试。
+     * PTY 宿主件**装没装** —— 查注册表里有没有这一条。
      *
-     * 此前是 fun probe(ctx) =起一个 PTY 跑 `exit 0` 看成不成：
-     * 每问一次就起一次进程。落位即事实 —— 装了就有，没装就没有。
+     * 此前是 fun probe(ctx) = 起一个 PTY 跑 `exit 0` 看成不成（每问一次起一次进程）；
+     * 后来写成「问文件在不在」—— 那把两件事混了：
+     *   · 装没装      → 问注册表（登记的事实）
+     *   · 文件还在不在  → 那是 verify() 的事（登记与磁盘比）
+     * 终端能不能起取决于前者。要确认后者用 PieceScan.verify。
      */
     fun available(ctx: Context): Boolean =
-        lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)?.isFile == true
+        lobos.os.ProgramIndex.get(ctx, PTY_HOST_ID)?.piece != null
 
     fun runToCompletion(
         ctx: Context,

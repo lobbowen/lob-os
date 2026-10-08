@@ -213,7 +213,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     }
 
 
-    fun multiCommandBin(ctx: Context): File? = lobos.os.PieceScan.multiCommandBin(ctx)
 
     fun expected(ctx: Context): List<String> =
         BINS.map { it.second } + DEPS.map { it.second } + CA_BUNDLE_NAME

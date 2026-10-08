@@ -156,13 +156,14 @@ object DriverRegistry {
     }
 
     fun report(ctx: Context): JSONObject {
-        val dir = File(ctx.applicationInfo.nativeLibraryDir)
         val drivers = JSONArray()
         var missing = 0
         for (d in DRIVERS) {
-            // 在不在：问落位（件自带说明，扫落位就知道有哪些）
-            val present = d.assetId == null || lobos.os.PieceScan.pieceFile(ctx, d.assetId)?.isFile == true
-            val present = d.assetId == null || (libName != null && File(dir, libName).exists())
+            // 装没装 —— 查注册表有没有这一条（dpkg -s 的判据）。
+            // 不问「文件在不在」：那是 verify() 的事；混问会把「登记在册但文件被删」
+            // 误报成「没装」，而 dpkg -s 在那种情况下照样说 installed。
+            val present = d.assetId == null ||
+                lobos.os.ProgramIndex.get(ctx, d.assetId)?.piece != null
             if (!present) missing += 1
             drivers.put(JSONObject().apply {
                 put("id", d.id)

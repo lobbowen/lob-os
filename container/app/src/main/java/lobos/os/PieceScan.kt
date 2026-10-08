@@ -297,15 +297,6 @@ internal object SupplySha {
             .firstOrNull { it.role == SHELL }
             ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
                     else File(File(it.stateDir), it.assetEntry) }
-
-    /**
-     * 一个二进制提供多个命令的那件 —— 注册表里 role=multi-command 的那一件。
-     *
-     * 判据是**它自己声明的形态**，不是数 bin/ 下有几个文件
-     * （applet 软链是 busybox 官方 make install 建的，我们不靠数它来推断）。
-     */
-    fun multiCommandBin(ctx: Context): File? =
-        ProgramIndex.all(ctx)
             .mapNotNull { it.piece }
             .firstOrNull { it.role == MULTI_COMMAND }
             ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null

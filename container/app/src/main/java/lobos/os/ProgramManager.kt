@@ -66,7 +66,7 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (lobos.os.PieceScan.pieceDir(ctx, e.id) != null) return infraSourceFile(ctx, e)
+            if (e.piece != null) return infraSourceFile(ctx, e)
             if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
         return File(ProgramRegistry.programRoot(ctx), id)
@@ -83,8 +83,14 @@ object ProgramManager {
      *
      * 只有两类：系统文件（件）与应用程序。件按 role 细分落位，不进 opt/。
      */
+    /**
+     * 这是件还是程序 —— **看注册表条目的形状**，不去问盘。
+     *
+     * 注册表里分[PieceEntry] 与 [ProgramEntry] 两种条目，`piece != null` 就是答案。
+     * 用 pieceDir 判等于「去磁盘确认它在不在」，那是 verify() 的事。
+     */
     fun levelOf(ctx: Context, id: String): Level =
-        if (lobos.os.PieceScan.pieceDir(ctx, id) != null) Level.PIECE else Level.PROGRAM
+        if (ProgramIndex.get(ctx, id)?.piece != null) Level.PIECE else Level.PROGRAM
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
@@ -98,8 +104,9 @@ object ProgramManager {
      * 已经在 PieceUpdater 与 Provisioner 里铺好了，不占 opt/；
      * 程序（走安装链的 zip）落 opt/<id>/。
      */
+    /** 件不占 opt/（它落在 usr/lib/<id>/<版本>/）；程序占 —— 判据是注册表条目的形状 */
     fun relStateDir(ctx: Context, id: String): String {
-        if (lobos.os.PieceScan.pieceDir(ctx, id) != null) return ""
+        if (ProgramIndex.get(ctx, id)?.piece != null) return ""
         return SystemDirs.REL_OPT + "/" + id
     }
 
@@ -154,7 +161,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (lobos.os.PieceScan.pieceDir(ctx, e.id) != null) continue
+            if (e.piece != null) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue
