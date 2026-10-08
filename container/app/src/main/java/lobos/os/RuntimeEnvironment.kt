@@ -5,7 +5,6 @@ import lobos.RuntimeDiagnostics
 import lobos.pieces.PieceRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.runtime.InstalledRuntime
-import lobos.runtime.NodeProvisioner
 import lobos.runtime.PrefixProvisioner
 import java.io.File
 
@@ -15,8 +14,6 @@ object RuntimeEnvironment {
         val nodeBin: File?,
         val prefixReady: List<String>,
         val prefixMissing: List<String>,
-        val envShim: File?,
-        val npmrc: File?,
     ) {
         val complete: Boolean get() = prefixMissing.isEmpty()
     }
@@ -34,7 +31,6 @@ object RuntimeEnvironment {
         val prefixBin: File,
         val shellBin: File?,
         val posixShim: File? = null,
-        val envShim: File? = null,
     )
 
     val RESERVED_ENV: Set<String> = setOf(
@@ -62,7 +58,6 @@ object RuntimeEnvironment {
             joinPath(
                 root.prefixBin.absolutePath,
                 root.nodeBin?.parentFile?.absolutePath,
-                NodeProvisioner.globalBin(ctx).absolutePath,
                 inheritedPath,
             )
         )
@@ -83,7 +78,6 @@ object RuntimeEnvironment {
             put("GIT_SSL_CAINFO", caBundle.absolutePath)
         }
         put("SHELL", root.shellBin?.absolutePath ?: "/system/bin/sh")
-        root.envShim?.let { put("NODE_OPTIONS", "--require " + it.absolutePath) }
     }
 
     fun joinPath(vararg parts: String?): String =
@@ -105,7 +99,6 @@ object RuntimeEnvironment {
         shellBin = SystemRoles.shellBin(ctx),
         posixShim = File(ctx.applicationInfo.nativeLibraryDir, PieceRegistry.libNameOf("posix"))
             .takeIf { it.isFile },
-        envShim = s.envShim,
     )
 
     fun libSearchPath(ctx: Context): String {
@@ -144,16 +137,6 @@ object RuntimeEnvironment {
         )
 
         RuntimeDiagnostics.append(
-            ctx, "env-shim", envShim != null,
-            if (envShim != null) "安卓语义垫片就位（os.cpus 等）" else "安卓语义垫片未就位（不阻断；os.cpus() 仍返回 0）",
-            envShim?.absolutePath ?: "assets/node/android-env-shim.cjs 落地失败"
-        )
-
-        val npmrc = NodeProvisioner.ensureNpmPrefixRc(ctx)
-        RuntimeDiagnostics.append(
-            ctx, "npmrc", npmrc != null,
-            if (npmrc != null) ".npmrc 前缀在册" else ".npmrc 未能写入（guest 侧 npm -g 会失败）",
-            npmrc?.absolutePath ?: "写入失败（无路径可报）"
         )
 
         val nowSupply = System.currentTimeMillis()
@@ -167,6 +150,5 @@ object RuntimeEnvironment {
         }
 
         val nodeBin = InstalledRuntime.binOf(ctx, "node")
-        return Snapshot(nodeBin, ready, missing.toList(), envShim, npmrc)
     }
 }

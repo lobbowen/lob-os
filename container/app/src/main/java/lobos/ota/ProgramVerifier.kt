@@ -5,7 +5,6 @@ import android.system.Os
 import java.io.File
 import lobos.BuildConfig
 import lobos.os.RuntimeEnvironment
-import lobos.runtime.NodeProvisioner
 import lobos.runtime.ProcessSupervisor
 import org.json.JSONObject
 
@@ -42,7 +41,7 @@ object ProgramVerifier {
         }
 
         val pubKeyPath = try {
-            NodeProvisioner.ensureOtaPublicKey(context).absolutePath
+            lobos.os.AssetInstaller.install(context, "supply/component-public.pem", File(lobos.os.SystemDirs.etc(context), "component-public.pem")).absolutePath
         } catch (e: Throwable) {
             return VerifyOutcome(
                 false, null, "public-key-missing",

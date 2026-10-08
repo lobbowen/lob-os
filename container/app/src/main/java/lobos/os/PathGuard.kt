@@ -12,7 +12,6 @@ object PathGuard {
         SystemDirs.run(ctx),
         SystemDirs.opt(ctx),
         File(ctx.filesDir, "adb"),
-        File(ctx.filesDir, ".npmrc"),
         File(ctx.filesDir, "program-verify.js"),
         File(ctx.filesDir, "runtime.json"),
     )
