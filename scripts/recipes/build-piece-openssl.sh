@@ -26,7 +26,7 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   set -e
   cd "$WORK/src"
   # shared（原来 no-shared）· -fPIC 供动态链接 · 去掉 no-tests/no-ui-console
-  ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$ANDROID_API \
+  ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }

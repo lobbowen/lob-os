@@ -22,13 +22,15 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
 (
   set -e
   cd "$WORK/src"
-  # ★ zlib 的 configure 是手写的，只认 --prefix 与 --static ——
-  #   --shared 是 autoconf 的选项，它**不认**（会静默忽略）。
-  #   不给 --static 时它默认编共享库（Makefile.in 里 SHARED_MODE=1）。
-  #   失败过一次：传了 --shared，它当没看见，只产出 libz.a。
-  #   要显式共享就传 SHARED_MODE=1（它的 configure 会认这个环境变量）。
+  # ★ zlib 的 configure 是手写的（不是 autoconf）：
+  #   · 它只认 --prefix 与 --static；--shared 是autoconf 的选项，它**不认**（静默忽略）
+  #   · 共享还是静态由它自己那次探测决定：用 $CC -shared 试链一个 .so，
+  #     失败就静默退回静态（SHARED_MODE=0）
+  #   交叉编 Android 时那次探测会失败 —— 所以显式给它 LDFLAGS="-shared"，
+  # 让探测通过。（失败过一次：传 --shared，它当没看见，只产出 libz.a。）
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
-    SHARED_MODE=1 \
+    CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
+    LDFLAGS="-shared" \
     ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
   make -j"$JOBS" > "$WORK/build.log" 2>&1 \

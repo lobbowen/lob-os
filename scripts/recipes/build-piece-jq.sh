@@ -20,7 +20,12 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
   set -e
   cd "$WORK/src"
   # 交叉编 Android —— configure 的 jq 配方认 aarch64-linux-android
+  # jq 的 configure 会跑一个编出来的小程序来探测 —— 交叉编时它跑不了，
+  # 所以要告诉它「不交叉」（ac_cv_prog_cc_cross=yes），
+  # 否则报 cannot run C compiled programs。
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
+  ac_cv_prog_cc_cross=yes \
+  ac_cv_func_malloc_0_nonnull=yes \
     ./configure --prefix="$OUT_DIR" --disable-maintainer-mode \
       --with-oniguruma=builtin \
       > "$WORK/configure.log" 2>&1 \

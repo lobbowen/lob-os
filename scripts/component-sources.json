@@ -211,7 +211,11 @@
         "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.xz"
       ],
       "prebuilt": true,
-      "note": "本系统不编译 node（要 3~4 小时）—— 取已编好的运行时。node 自带 openssl/zlib/uv/cares 等实现，那些是它的内部实现，不是我们的件。"
+      "note": "node 本身是预编的（不编译，见 build-component-node.sh）。但 flock.c 是 node addon，需要它的头文件 —— 所以只取头文件（headersOnly），不取二进制。sha256 由 fetch-pinned 在下载后校验（见 scripts/component-sources.json）。",
+      "url": [
+        "https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.gz"
+      ],
+      "headersOnly": true
     },
     "npm": {
       "version": "11.x",
