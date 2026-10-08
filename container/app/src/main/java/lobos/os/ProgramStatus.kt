@@ -9,7 +9,15 @@ data class ProgramStatus(
     val version: String?,
     val role: String,
     val desired: Desired,
-    val state: ProgramStateMachine.Run,
+    /**
+     * 状态三列 —— 照抄 systemctl list-units 的 LOAD/ACTIVE/SUB。
+     *
+     * 此前是一个自造的 Run 枚举（8 个值里有 4 个 systemd 没有）。
+     * 现在是官方三列：**状态是算出来的，不是记下来的**。
+     */
+    val load: UnitState.Load,
+    val active: UnitState.Active,
+    val sub: UnitState.Sub,
     val supervised: Boolean,
     val detail: String,
     val startedAtMs: Long,
@@ -51,7 +59,9 @@ object ProgramStatusHub {
     private var startRequested: Set<String> = emptySet()
 
     @Volatile
-    private var lastState: Map<String, ProgramStateMachine.Run> = emptyMap()
+    /** 上一次的三列（只为记变化，不作为状态的来源） */
+    private var lastState: Map<String, Triple<UnitState.Load, UnitState.Active, UnitState.Sub>> =
+        emptyMap()
 
     fun publishRunning(ids: Set<String>) {
         runningIds = ids
@@ -109,24 +119,28 @@ object ProgramStatusHub {
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null
         val prev = lastState[id]
-        val state = ProgramStateMachine.resolve(
-            desired = desired,
-            installed = installed,
-            manifestValid = spec == null || spec.invalid == null,
+        // 三列的判据全是事实：注册表那一条 + 进程账本 + 探活结果
+        //（systemd 的 ActiveState 也是这么算的，不额外存一个状态）
+        val unit = ProgramIndex.get(ctx, id)
+        val healthy = running && !detail.startsWith("!")
+        val load = UnitState.loadOf(unit ?: if (installed) ProgramIndex.empty(id, false) else null)
+        val active = UnitState.activeOf(
+            entry = unit,
             processAlive = running,
-            healthy = running && !detail.startsWith("!"),
-            quarantined = quarantined.contains(id),
             startRequested = startRequested.contains(id),
+            stopRequested = stopRequested.contains(id),
         )
+        val sub = UnitState.subOf(unit, running, healthy)
+        val prev = lastState[id]
+        val state = Triple(load, active, sub)
         if (prev != null && prev != state) {
-            val why = ProgramStateMachine.transition(
-                prev, state, desired, installed, spec == null || spec.invalid == null,
-            )
             lastState = lastState + (id to state)
-            if (why != null) {
-                val msg = "非法状态转换：" + prev + " -> " + state
-                Journal.note(ctx, "state", false, msg, "id=" + id + " " + why)
-            }
+            Journal.note(
+                ctx, "state", true,
+                "状态变化：" + prev.second.label + " -> " + active.label,
+                "id=" + id + " load=" + load.label + " sub=" + sub.label +
+                    (active == UnitState.Active.FAILED ? " 退出码=" + (unit?.exitCode ?: -1) : ""),
+            )
         } else if (prev == null) {
             lastState = lastState + (id to state)
         }
@@ -137,7 +151,9 @@ object ProgramStatusHub {
             role = spec?.role ?: entry?.role ?: "app",
             desired = desired,
             state = state,
-            supervised = ProgramStateMachine.supervised(state, desired),
+            // 「要不要被监管」= 想跑 且 现在没在跑到该跑的态
+            supervised = desired == Desired.RUNNING &&
+                active != UnitState.Active.FAILED,
             detail = detail.removePrefix("!"),
             startedAtMs = at,
             aliveMs = if (at > 0L) System.currentTimeMillis() - at else 0L,
@@ -147,8 +163,8 @@ object ProgramStatusHub {
 
     fun toJson(ctx: Context): JSONObject {
         val list = snapshot(ctx)
-        val running = list.count { it.state == ProgramStateMachine.Run.RUNNING }
-        val unhealthy = list.count { it.state == ProgramStateMachine.Run.UNHEALTHY }
+        val running = list.count { it.active == UnitState.Active.ACTIVE }
+        val unhealthy = list.count { it.sub == UnitState.Sub.DEGRADED }
         return JSONObject().apply {
             put("phase", OsInit.current(ctx).name)
             put("installed", list.size)
@@ -161,8 +177,8 @@ object ProgramStatusHub {
 
     fun summaryLine(ctx: Context): String {
         val list = snapshot(ctx)
-        val running = list.count { it.state == ProgramStateMachine.Run.RUNNING }
-        val unhealthy = list.count { it.state == ProgramStateMachine.Run.UNHEALTHY }
+        val running = list.count { it.active == UnitState.Active.ACTIVE }
+        val unhealthy = list.count { it.sub == UnitState.Sub.DEGRADED }
         val phase = OsInit.current(ctx).label
         return buildString {
             append(phase)
