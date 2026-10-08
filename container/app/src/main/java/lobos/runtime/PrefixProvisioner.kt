@@ -8,6 +8,9 @@ import lobos.os.ProgramManager
 
 object PrefixProvisioner {
 
+    /** 件自带的说明 —— 与件同目录，系统靠它知道这件是什么 */
+    const val META_NAME = "component-meta.json"
+
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
@@ -35,6 +38,24 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
      * 落位形状自带身份：`PieceScan` 扫目录就知道有什么件、什么版本、入口在哪、
      * 什么形态（有 bin/ 是命令 · 只有 .so 是库）—— 不需要任何一张表。
      */
+    /**
+     * 这一件自己的说明 —— 从构建期数据来，不从内核的表来。
+     *
+     * 那份数据（.so 文件名 · 入口改名 · 是否必需 · 能力）本该在构建时写进产物；
+     * 现在内核从 [lobos.pieces.PieceRegistry] 取值转成 meta 落位 ——
+     * 落位形状与说明都在件旁边，系统不预置任何一件的清单。
+     */
+    private fun metaOf(p: lobos.pieces.Piece): org.json.JSONObject = org.json.JSONObject().apply {
+        put("schema", 1)
+        put("id", p.id)
+        put("version", p.version)
+        put("entry", if (lobos.os.SystemRoles.isEntry(p)) "bin/${p.installedAs}" else "lib/${p.libName}")
+        put("form", if (lobos.os.SystemRoles.isEntry(p)) "exec" else "lib")
+        put("required", p.required)
+        put("provides", org.json.JSONArray(p.provides))
+        put("applets", org.json.JSONArray(emptyList<String>()))
+    }
+
     private fun landOne(
         ctx: Context,
         id: String,
@@ -42,6 +63,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         libName: String,
         installedAs: String,
         isEntry: Boolean,
+        meta: org.json.JSONObject?,
         nativeDir: File,
     ): String? {
         val verDir = lobos.os.SystemDirs.pieceDir(ctx, id, version)
@@ -60,6 +82,16 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                 return null
             }
         }
+        // 说明随件同落 —— 系统靠它知道「这件是什么、能干什么」。
+        // 照抄 deb-control(5)：每个包自带 control，内核不预置清单。
+        if (meta != null) {
+            runCatching {
+                lobos.os.StateFiles.writeAtomic(
+                    File(verDir, META_NAME), meta.toString(1) + "\n",
+                )
+            }
+        }
+
         // 全局入口：命令在 usr/bin 建软链；库不用（usr/lib 已在库搜索路径里）
         if (isEntry) {
             val link = lobos.os.SystemDirs.bin(ctx).let { File(it, installedAs) }
@@ -84,7 +116,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             if (v.isBlank()) continue
             val landed = landOne(
                 ctx, p.id, v, p.libName, p.installedAs,
-                lobos.os.SystemRoles.isEntry(p), File(nativeDir),
+                lobos.os.SystemRoles.isEntry(p), metaOf(p), File(nativeDir),
             ) ?: continue
             ready += landed
         }

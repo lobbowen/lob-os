@@ -2,6 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
+import org.json.JSONObject
 
 /**
  * 从落位推导索引 —— 等价于 Linux 的 `ldconfig(8)`。
@@ -38,6 +39,12 @@ import java.io.File
 object PieceScan {
 
     /** 扫出来的结果：这件是什么、什么版本、落在哪 */
+    /**
+     * 扫到的一件 —— 字段来自**落位形状 + 件自带的说明**。
+     *
+     * meta 是与件同目录的 component-meta.json（照抄 deb-control(5)：
+     * 每个包自带 control）。内核不预置任何一件的清单，它只读落位。
+     */
     data class Found(
         val id: String,
         val version: String,
@@ -45,7 +52,18 @@ object PieceScan {
         val entry: String,
         val role: String,
         val sha256: String,
-    )
+        val meta: JSONObject? = null,
+    ) {
+        val required: Boolean get() = meta?.optBoolean("required", false) ?: false
+        val provides: List<String>
+            get() = meta?.optJSONArray("provides")?.let { a ->
+                (0 until a.length()).map { a.optString(it) }
+            } ?: emptyList()
+    }
+
+// 读与件同目录的说明
+private fun metaOf(verDir: File): JSONObject? =
+    runCatching { JSONObject(File(verDir, "component-meta.json").readText()) }.getOrNull()
 
     /**
      * 扫 `usr/lib/<id>/<版本>/` —— 与 `ldconfig` 扫 trusted 目录同构。
@@ -64,7 +82,8 @@ object PieceScan {
             val id = pieceDir.name
             // 头文件集那件不是「可执行/库」，它提供 include/ —— 形态是 headers
             if (File(pieceDir, "include").isDirectory) {
-                out += Found(id, "from-layout", pieceDir, "include", SystemRoles.HEADERS, "")
+                out += Found(id, "from-layout", pieceDir, "include", SystemRoles.HEADERS, "",
+                    metaOf(pieceDir))
                 continue
             }
             for (verDir in pieceDir.listFiles() ?: emptyArray()) {
@@ -78,6 +97,7 @@ object PieceScan {
                     entry = entry,
                     role = roleOf(verDir),
                     sha256 = sha256Of(verDir),
+                    meta = metaOf(verDir),
                 )
             }
         }
