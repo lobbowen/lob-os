@@ -52,7 +52,7 @@ jobs:
       - name: 结构 — 打包须排在存缓存与发 Release 之前（顺序反了 run 还是绿的）
         run: node tools/verify/package-before-release.js
 
-      - name: 结构 — on: 块须能被 GitHub 解析（tags 挂错层则整个文件静默失效）
+      - name: 结构 — 触发块须能被 GitHub 解析（tags 挂错层则整个文件静默失效）
         run: node tools/verify/workflow-triggers-parse.js
 
       - name: 结构 — 每段 run 块都须是合法 bash（GitHub 到运行时才炸，且后面全跳过）

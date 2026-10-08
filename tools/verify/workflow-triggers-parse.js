@@ -90,6 +90,51 @@ if (selfBad) {
   process.exit(2);
 }
 
+// 另一类解析失败：未加引号的标量里带 "键: " 形状。
+//   - name: 结构 — on: 块须能被 GitHub 解析（…）
+// 这个值不是引号包起来的，GitHub 会把它当成一个映射，于是整个文件解析失败 ——
+// 同样不产生 run 失败，只表现为「dispatch 422 + 没有 job」。
+//
+// 判据：一个标量值里出现了 "标识符 + 冒号 + 空格"，而这个值没有被引号包住。
+const SCALARS = /^(\s*- (?:name|run|uses|id|if|shell):\s*)(\S.*)$/;
+
+function unquotedMapKeys(src) {
+  const out = [];
+  const L = src.split('\n');
+  for (let i = 0; i < L.length; i++) {
+    const m = SCALARS.exec(L[i]);
+    if (!m) continue;
+    const v = m[2];
+    // 已加引号的、放管道/重定向/开头的块标量（| > { [）都不是这个问题
+    if (/^["\x27|>{[]/.test(v)) continue;
+    const c = /([A-Za-z_][A-Za-z0-9_-]*):(\s|$)/.exec(v);
+    if (c) out.push({ line: i + 1, key: c[1], value: v });
+  }
+  return out;
+}
+
+// 门禁自身先过已知反例
+const SCALAR_SELF = [
+  { name: 'name 里带 on:', src: 'jobs:\n  a:\n    steps:\n      - name: 结构 — on: 块\n        run: x\n', bad: true },
+  { name: 'name 里带 paths 冒号加空格', src: 'jobs:\n  a:\n    steps:\n      - name: 结构 — paths: 那个键\n        run: x\n', bad: true },
+  { name: '正常中文 name', src: 'jobs:\n  a:\n    steps:\n      - name: 结构 — 三筐分类自洽\n        run: x\n', bad: false },
+  { name: '加引号的带冒号', src: 'jobs:\n  a:\n    steps:\n      - name: "结构 — on: 块"\n        run: x\n', bad: false },
+  { name: 'run 里的 shell 赋值', src: 'jobs:\n  a:\n    steps:\n      - name: x\n        run: FOO=1 bash -n a.sh\n', bad: false },
+];
+
+let scalarBad = 0;
+for (const t of SCALAR_SELF) {
+  const got = unquotedMapKeys(t.src).length > 0;
+  if (got !== t.bad) {
+    console.error(`FAIL 门禁自身失效：反例 ${t.name} 期望 ${t.bad ? '抓到' : '放过'}，实际${got ? '抓到了' : '放过了'}`);
+    scalarBad++;
+  }
+}
+if (scalarBad) {
+  console.error('门禁自己的反例没过 —— 下面这些结果不可信，先修门禁');
+  process.exit(2);
+}
+
 const files = fs.readdirSync(DIR).filter((f) => /\.ya?ml$/.test(f)).sort();
 let red = 0;
 for (const f of files) {
@@ -108,11 +153,20 @@ for (const f of files) {
     red++;
     console.log(`FAIL ${f}  第${k.line}行的 "${k.name}" 既不是 GitHub 的触发事件，也不是它下面的过滤键`);
   }
+  for (const s of unquotedMapKeys(src)) {
+    red++;
+    console.log(`FAIL ${f}  第 ${s.line} 行的标量里带 "${s.key}: " —— 没加引号，GitHub 会当成映射：`);
+    console.log(`     ${s.value.slice(0, 72)}`);
+    console.log('     同样表现为 dispatch 422 + 0 个 job，不产生 run 失败。');
+  }
 }
 
 if (red) {
   console.log('');
-  console.log(`FAIL on: 块：${red} 处。tags / branches / paths 必须缩进到某个事件（push: 等）下面`);
+  console.log(`FAIL workflow 可解析性：${red} 处。`);
+  console.log('     这两类错都会让 GitHub 拒绝解析**整个文件**：dispatch 422、0 个 job、');
+  console.log('     push 静默不触发，而且不产生 run 失败 —— 只表现为「怎么不触发」。');
+  console.log('     修法：tags/branches/paths 缩进到某个事件下面；带 "键: " 的标量加引号。');
   process.exit(1);
 }
-console.log(`PASS on: 块：${files.length} 个 workflow 的触发事件与过滤键都在合法层上`);
+console.log(`PASS workflow 可解析性：${files.length} 个 workflow 的触发块与标量都在合法形状上`);
