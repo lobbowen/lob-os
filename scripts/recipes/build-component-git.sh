@@ -53,9 +53,17 @@ fi
 echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
 grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
 grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
-echo "[git] 编静态依赖库（build-shared-deps.sh）"
-DEPS="$DEPS" CC="$CC" ANDROID_API="$ANDROID_API" bash "$ROOT_DIR/scripts/recipes/build-shared-deps.sh"
-echo "[git] curl 库就位（静态）"
+# curl / openssl / zlib 现在是**预装件**（base 筐，见 component-verify.json），
+# 落位在 usr/lib/<id>/<版本>/lib/ 并建了全局软链 —— 
+#   git 只记 DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局那份找。
+#
+#   此前这里编静态库然后 -lcurl -lssl -lcrypto -lz 全链进去 ——
+#   那正是一个二进制里装了几个件（Linux 里 git 链的是 .so，不是 .a）。
+#
+# 所以：不再调 build-shared-deps.sh（那个一次编三份静态库的脚本已删）。
+# 依赖从落位处取（prefix 在编译期就能算出来）。
+DEPS_PREFIX="$ROOT_DIR/work/deps-prefix"
+echo "[git] 依赖用预装件（usr/lib 下的全局软链），不再静态链入"
 
 cd "$ROOT_DIR/work/git-src"
 

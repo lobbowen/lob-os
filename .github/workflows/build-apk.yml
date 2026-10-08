@@ -132,6 +132,27 @@ jobs:
           fi
           echo "[ok] jniLibs 无 libnode.so（node 由组件供给）"
 
+      - name: 放置 sysroot 到 assets（编译期材料 · 不是件）
+        run: |
+          set -euo pipefail
+          # sysroot 是**编译期**的头文件与库目录（include/ + lib/），
+          # 不是可运行的能力 —— 所以进 APK 但不成为件：
+          #   · 不产 component-meta.json（不是 usr/lib/<id>/<版本>/ 那个形状）
+          #   · 不落位（内核不认识它）
+          # Linux 的对应物：gcc 包的 include/ 与 libc6-dev 包 —— 都是编译材料。
+          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          SRC="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1)"
+          [ -n "$SRC" ] || { echo "::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）"; exit 1; }
+          DST=container/app/src/main/assets/sysroot
+          rm -rf "$DST"
+          mkdir -p "$DST"
+          cp -a "$SRC/usr/include" "$DST/include"
+          mkdir -p "$DST/lib"
+          cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/lib/" 2>/dev/null || true
+          [ -f "$DST/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
+          echo "[sysroot] 就位 $DST（include $(ls "$DST/include" | wc -l) 项 · lib $(ls "$DST/lib" | wc -l) 项）"
+          du -sh "$DST"
+
       - name: 小件原生件（命中固化则取用，否则现场编译）
         run: |
           set -euo pipefail

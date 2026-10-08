@@ -64,6 +64,18 @@ LLVM_AR="$TC_DIR/llvm-ar"
 LLVM_RANLIB="$TC_DIR/llvm-ranlib"
 LLVM_STRIP="$TC_DIR/llvm-strip"
 LLVM_READELF="$TC_DIR/llvm-readelf"
+# autotools 要的 AR/RANLIB（名字与 autotools 的约定一致）
+AR_BIN="$LLVM_AR"
+RANLIB_BIN="$LLVM_RANLIB"
+
+# NDK 根 —— openssl 的 Configure 要它认android-arm64
+NDK_ROOT="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+
+# Android API 级别（NDK 的 clang 三元组里带着它）
+API="${ANDROID_API:-35}"
+
+# 并行度
+JOBS="${JOBS:-2}"
 
 # 校验产出的 .so：必须是 aarch64 的 ELF，且不太小（太小说明编坏了）
 check_so() {

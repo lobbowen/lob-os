@@ -20,10 +20,16 @@ build_each() {
       build-piece-posix.sh \
       build-piece-ptyprobe.sh \
       build-piece-ptysession.sh \
+      build-piece-zlib.sh \
+      build-piece-openssl.sh \
+      build-piece-curl.sh \
+      build-piece-jq.sh \
       build-piece-bash.sh \
       build-piece-rg.sh \
       build-native-busybox.sh
   do
+    # crypto 不在此列 —— 它与 libssl.so 一并编出（OpenSSL 的一部分，见
+    # component-sources.json的 crypto.sameAs），由 build-piece-openssl.sh 落位。
     echo "── $s"
     if ! bash "scripts/recipes/$s"; then
       echo "[caps] ★ $s 失败"
