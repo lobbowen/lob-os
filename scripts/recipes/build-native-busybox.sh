@@ -108,6 +108,21 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 make oldconfig > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
+  # ── 关掉需要内核专有头的 applet ──────────────────────────────
+  # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，
+  #   那是 Linux 内核的头，NDK 的 sysroot 不提供（NDK 只给 libc 头）。
+  #   报错形如：networking/tc.c:236: error: TCA_CBQ_MAX undeclared
+  # busybox 的 applet 可选，我们不需要它 —— 关掉。
+  if grep -q "^CONFIG_TC=y" "$SRC/.config"; then
+    sed -i "s/^CONFIG_TC=y/# CONFIG_TC is not set/" "$SRC/.config"
+    make oldconfig > "$WORK/oldconfig-tc.log" 2>&1 \
+      || { echo "=== 关掉 CONFIG_TC 后的 oldconfig 失败（末 20 行）===";
+           tail -20 "$WORK/oldconfig-tc.log"; exit 1; }
+  fi
+  grep -q "^CONFIG_TC=y" "$SRC/.config" \
+    && die "CONFIG_TC 仍开着" "sed 没生效（.config 里那行格式可能不同）"
+  echo "[busybox] CONFIG_TC 已关（它要内核 uapi 头）"
+
 MISSING=""
 for a in $APPLETS; do
   grep -q "^CONFIG_${a}=y" "$SRC/.config" || MISSING="$MISSING $a"

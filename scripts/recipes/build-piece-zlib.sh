@@ -35,9 +35,21 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
-  LDFLAGS="-shared" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
+  # ★ zlib 的 configure 自己决定编静态还是共享：
+  #   它试着用 $CC -shared 链一个 .so，链不出来就**静默退回静态**
+  #   （交叉编 Android 时那次探测必然失败）。
+  #   它把结果写进 Makefile 的 SRCDIR（空 = 静态，shared = 共享）。
+  #   传 LDFLAGS=-shared 没用 —— 那样会替换掉默认 LDFLAGS，
+  #   探测时要链 libc，缺了默认路径照样链不出来。
+  #   正解：configure 之后直接把 SRCDIR 改成 shared。
+  if ! grep -q "^SRCDIR=shared\$" Makefile; then
+    sed -i 's|^SRCDIR=.*$|SRCDIR=shared|' Makefile
+    grep -q "^SRCDIR=shared\$" Makefile \
+      || die "zlib 的 Makefile 里改不动 SRCDIR" "$(grep -n '^SRCDIR' Makefile | head -3)"
+  fi
+
   make -j"$JOBS" > "$WORK/build.log" 2>&1 \
     || { echo "=== zlib 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
   make install > "$WORK/install.log" 2>&1 \
