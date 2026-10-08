@@ -28,17 +28,20 @@ object PieceUpdater {
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        // 扫落位：系统知道有哪些件，靠的是它们铺成的样子，不是任何一张表
-        for (f in lobos.os.PieceScan.scan(ctx)) {
-            val ver = f.version
-            val installed = File(f.dir, f.entry)
+        // 读注册表（dpkg -s「just displays the entry in the installed package
+        // status database」）—— 查状态不扫磁盘，扫盘是 verify() 的事。
+        for (e0 in lobos.os.ProgramIndex.all(ctx)) {
+            val pe = e0.piece ?: continue
+            val ver = pe.version
+            val installed = if (pe.stateDir.isBlank() || pe.assetEntry.isBlank()) null
+                else File(File(pe.stateDir), pe.assetEntry)
             out += State(
-                f.id,
+                pe.id,
                 ver.ifBlank { null },
-                installed.takeIf { it.isFile }?.let {
+                installed?.takeIf { it.isFile }?.let {
                     runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
                 },
-                installed.takeIf { it.isFile },
+                installed?.takeIf { it.isFile },
                 false,
             )
         }
@@ -98,10 +101,13 @@ object PieceUpdater {
         val arr = parsed.optJSONArray("components") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
-        val pending = mutableListOf<Triple<lobos.os.PieceScan.Found, String, JSONObject>>()
-        // 每件的说明从落位处读（件自带），不从表拿
-        val byId = lobos.os.PieceScan.scan(ctx).mapNotNull { f ->
-            f.meta?.let { m -> (m.optString("id", f.id)) to f }
+        val pending = mutableListOf<Triple<lobos.os.ProgramIndex.PieceEntry, String, JSONObject>>()
+        // 每件的说明：注册表里有 stateDir，从那儿读件自带的（deb-control 的做法）
+        val byId = lobos.os.ProgramIndex.all(ctx).mapNotNull { e0 ->
+            val pe = e0.piece ?: return@mapNotNull null
+            if (pe.stateDir.isBlank()) return@mapNotNull null
+            val m = lobos.os.PieceScan.pieceMeta(ctx, pe.id) ?: return@mapNotNull null
+            pe.id to m
         }.toMap()
 
         for (i in 0 until arr.length()) {
@@ -174,7 +180,7 @@ object PieceUpdater {
         ctx: Context,
         url: String,
         wantSha: String,
-        items: List<Triple<lobos.os.PieceScan.Found, String, JSONObject>>,
+        items: List<Triple<lobos.os.ProgramIndex.PieceEntry, String, JSONObject>>,
     ): Map<String, Pair<Boolean, String?>> {
         val out = LinkedHashMap<String, Pair<Boolean, String?>>()
         if (url.isBlank() || wantSha.isBlank()) {
@@ -209,7 +215,7 @@ object PieceUpdater {
                     false to ("包里没有 $inPackage（包内实际有：" +
                         listPackTop(unpacked).take(8).joinToString(", ") + "）")
                 } else {
-                    place(ctx, e, ver, c.optString("entry", e.installedAs), picked)
+                    place(ctx, pe, ver, c.optString("entry", ""), picked)
                 }
             }
             out
@@ -223,7 +229,7 @@ object PieceUpdater {
         }
     }
 
-    private fun place(ctx: Context, e: lobos.os.PieceScan.Found, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+    private fun place(ctx: Context, e: lobos.os.ProgramIndex.PieceEntry, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
         try {
             val dir = versionDir(ctx, e.id, version)
             runCatching { dir.deleteRecursively() }
@@ -249,12 +255,12 @@ object PieceUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    private fun pointEntryAt(ctx: Context, e: lobos.os.PieceScan.Found, version: String, dest: File: Boolean = try {
-        val link = if (lobos.os.PieceScan.isEntry(e)) {
-            File(PrefixProvisioner.binDir(ctx), e.installedAs)
-        } else {
-            File(PrefixProvisioner.libDir(ctx), e.installedAs)
+    private fun pointEntryAt(ctx: Context, e: lobos.os.ProgramIndex.PieceEntry, dest: File): Boolean = try {
+        val entryName = e.assetEntry.substringAfterLast("/")
+        val link = if (e.assetEntry.startsWith("bin/")) {
+            File(PrefixProvisioner.binDir(ctx), entryName)
         }
+            File(PrefixProvisioner.libDir(ctx), entryName)
         val tmp = File(link.parentFile, "." + link.name + ".newlink")
         runCatching { java.nio.file.Files.deleteIfExists(tmp.toPath()) }
         java.nio.file.Files.createSymbolicLink(tmp.toPath(), dest.toPath())
@@ -272,19 +278,21 @@ object PieceUpdater {
     }
 
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
-        val e = lobos.os.PieceScan.scan(ctx).firstOrNull { it.id == id }
+        val pe = lobos.os.ProgramIndex.get(ctx, id)?.piece
             ?: return false to "注册表里没有 id=$id"
-        val link = if (lobos.os.PieceScan.isEntry(e)) {
-            File(PrefixProvisioner.binDir(ctx), e.installedAs)
+        // 入口名就是落位时的文件名（落位形状自带，不另存一个 installName）
+        val entryName = pe.assetEntry.substringAfterLast("/")
+        val link = if (pe.assetEntry.startsWith("bin/")) {
+            File(PrefixProvisioner.binDir(ctx), entryName)
         } else {
-            File(PrefixProvisioner.libDir(ctx), e.installedAs)
+            File(PrefixProvisioner.libDir(ctx), entryName)
         }
         return try {
             if (!java.nio.file.Files.isSymbolicLink(link.toPath())) {
                 return false to "这一件没被更新接管（入口不是软链），无可回滚"
             }
             java.nio.file.Files.deleteIfExists(link.toPath())
-            val rebuilt = PrefixProvisioner.provision(ctx).contains(e.installedAs)
+            val rebuilt = PrefixProvisioner.provision(ctx).contains(pe.assetEntry.substringAfterLast("/"))
             SupplyProvisioner.selectVersion(ctx, id, "")
             RuntimeDiagnostics.append(
                 ctx, "piece-ota", rebuilt,

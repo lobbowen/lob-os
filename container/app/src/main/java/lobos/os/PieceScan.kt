@@ -38,6 +38,9 @@ import org.json.JSONObject
  */
     /** 落位形状决定的形态 —— 照抄 ldconfig "checks the header and filenames" */
     const val EXEC = "exec"
+
+    /** multi-command：一个二进制提供多个命令（它自己在说明里声明） */
+    const val MULTI_COMMAND = "multi-command"
     const val LIBRARY = "library"
     const val HEADERS = "headers"
 object PieceScan {
@@ -214,37 +217,96 @@ internal object SupplySha {
         md.digest().joinToString("") { "%02x".format(it) }
     }.getOrDefault("")
 
-    /** 某个 id 落位在哪 —— 扫落位找，不查表 */
-    fun pieceDir(ctx: Context, id: String): File? =
-        scan(ctx).firstOrNull { it.id == id }?.dir
+    //
+    // 下面的查询一律**读注册表**，不扫落位 ——
+    // 照抄 dpkg-query(1)：「-s, --status … This just displays the entry in the
+    // installed package status database」。查状态是读库，不是看磁盘。
+    //
+    // 扫落位只有两个时机：
+    //   ① provision()  铺完之后 —— 那时要算出「铺了哪些文件」写进注册表
+    //   ② verify()     校验时 —— 拿注册表里记的与实际文件比（dpkg -V）
+    //
 
-    /** 某个 id 的入口文件（命令）或库文件 */
-    fun pieceFile(ctx: Context, id: String): File? {
-        for (f in scan(ctx)) {
-            if (f.id == id) return File(f.dir, f.entry)
+    /**
+     * 一件的结果：哪些文件与登记不符。
+     *
+     * 照抄 dpkg -V 的返回形状（一个不合格项一行）。
+     */
+    data class Verdict(val ok: Boolean, val checked: Int, val mismatched: List<String>)
+
+    /**
+     * 校验：**拿注册表里记的与磁盘上实际的比** —— dpkg -V。
+     *
+     * 与 [rebuild] 的区别：rebuild 是「扫落位、写进注册表」（装完之后做一次）；
+     * verify 是「读注册表、与磁盘比」（任何时候都能做，查有没有被换过）。
+     *
+     * 比对依据是 files 里那份清单（相对件目录的路径 + sha256）。
+     * 落在件目录之外的文件不在清单里 —— 那是别人的事。
+     */
+    fun verify(ctx: Context, id: String): Verdict {
+        val e = ProgramIndex.get(ctx, id)?.piece ?: return Verdict(false, 0, emptyList())
+        if (e.stateDir.isBlank()) return Verdict(false, 0, emptyList())
+        if (e.files.isEmpty()) return Verdict(false, 0, emptyList())
+        val base = File(e.stateDir)
+        val bad = mutableListOf<String>()
+        for (fr in e.files) {
+            val f = File(base, fr.path)
+            when {
+                !f.isFile -> bad += "缺：${fr.path}"
+                SupplySha.sha256(f) != fr.sha256 -> bad += "被换过：${fr.path}"
+            }
         }
-        return null
+        // 登记里有、现在没有的（被人删了）
+        return Verdict(bad.isEmpty(), e.files.size, bad)
+    }
+
+    /** 全仓校验 —— 返回不合格的件 id 列表（dpkg -C 的形状） */
+    fun verifyAll(ctx: Context): Map<String, Verdict> {
+        val out = linkedMapOf<String, Verdict>()
+        for (e in ProgramIndex.all(ctx)) {
+            val pe = e.piece ?: continue
+            out[pe.id] = verify(ctx, pe.id)
+        }
+        return out
+    }
+    /** 某个 id 落位在哪 —— 读注册表（dpkg -s） */
+    fun pieceDir(ctx: Context, id: String): File? {
+        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        if (e.stateDir.isBlank()) return null
+        return File(e.stateDir)
+    }
+
+    /** 某个 id 的入口文件（命令）或库文件 —— 读注册表 */
+    fun pieceFile(ctx: Context, id: String): File? {
+        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        if (e.stateDir.isBlank() || e.assetEntry.isBlank()) return null
+        return File(File(e.stateDir), e.assetEntry)
     }
 
     /** 某个 id 落位那一件的说明（件自带，deb-control 的做法） */
-    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? =
-        scan(ctx).firstOrNull { it.id == id }?.meta
-
-    /** 命令解释器 —— 第一个命令形态的入口（有 bin/ 的那个） */
-    fun shellBin(ctx: Context): File? {
-        for (f in scan(ctx)) {
-            if (f.role == EXEC) return File(f.dir, f.entry).takeIf { it.isFile }
-        }
-        return null
+    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? {
+        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        if (e.stateDir.isBlank()) return null
+        return metaOf(File(e.stateDir))
     }
 
-    /** 一个二进制提供多个命令的那件：bin/ 下不止一个入口就是它的形状 */
-    fun multiCommandBin(ctx: Context): File? {
-        for (f in scan(ctx)) {
-            if (f.role != EXEC) continue
-            val bin = File(f.dir, "bin")
-            val n = bin.listFiles()?.count { it.isFile || it.isSymbolicLink } ?: 0
-            if (n > 1) return File(f.dir, f.entry).takeIf { it.isFile }
-        }
-        return null
-    }}
+    /** 命令解释器 —— 注册表里 role=shell 的那一件 */
+    fun shellBin(ctx: Context): File? =
+        ProgramIndex.all(ctx)
+            .mapNotNull { it.piece }
+            .firstOrNull { it.role == SHELL }
+            ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
+                    else File(File(it.stateDir), it.assetEntry) }
+
+    /**
+     * 一个二进制提供多个命令的那件 —— 注册表里 role=multi-command 的那一件。
+     *
+     * 判据是**它自己声明的形态**，不是数 bin/ 下有几个文件
+     * （applet 软链是 busybox 官方 make install 建的，我们不靠数它来推断）。
+     */
+    fun multiCommandBin(ctx: Context): File? =
+        ProgramIndex.all(ctx)
+            .mapNotNull { it.piece }
+            .firstOrNull { it.role == MULTI_COMMAND }
+            ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
+                    else File(File(it.stateDir), it.assetEntry) }}

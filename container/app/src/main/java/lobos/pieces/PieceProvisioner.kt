@@ -12,6 +12,16 @@ import org.json.JSONObject
 
 sealed class AssetStatus {
 
+    /**
+     * 铺出来了，但与**登记**不符 —— 文件被换过或被删了。
+     * 照抄 dpkg -V：拿数据库里记的比，不是看磁盘就下结论。
+     */
+    data class Mismatched(
+        val id: String,
+        val path: String,
+        val mismatched: List<String>,
+    ) : AssetStatus()
+
     data class Ready(
         val exe: lobos.os.PieceScan.Found,
         val path: String,
@@ -88,7 +98,16 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     o.put("raw", st.raw)
                     o.put("hint", "依赖已确认完好，errno=13 可确定归因到 SELinux W^X 拒 exec")
                 }
-                is AssetStatus.Unusable -> {
+                is AssetStatus.Mismatched -> {
+                    o.put("status", "mismatched")
+                    o.put("path", st.path)
+                    o.put("mismatched", JSONArray(st.mismatched))
+                    o.put("hint", "登记的文件与磁盘上的不符（dpkg -V：comparing the files installed
+                        with the files metadata stored in the database）—— 重新铺一次即可修复")
+                }
+                is AssetStatus.Mismatched ->
+                "$tag ${st.exe.path} —— ✗ 与登记不符：${st.mismatched.joinToString(", ")}"
+            is AssetStatus.Unusable -> {
                     o.put("path", st.path)
                     o.put("exit", st.exit)
                     o.put("output", st.output)
@@ -136,9 +155,18 @@ object PieceProvisioner {
             emptySet()
         }
 
-        // 扫落位：有哪些件、什么形态、说明是什么，都由落位形状与件自带的说明决定
+        // 校验两件事（照抄 dpkg -V 的形状）：
+        //   ① 这个件铺全了没有      —— verifyInternal
+        //   ② 铺出来的文件与登记符不符没有 —— PieceScan.verify
+        // 少了 ②，被换过一个文件也发现不了。
         val entries = lobos.os.PieceScan.scan(ctx).map { f ->
-            f to verifyInternal(ctx, f, libDir, listing, apkLibNames)
+            val st = verifyInternal(ctx, f, libDir, listing, apkLibNames)
+            if (st is AssetStatus.Ready) {
+                val v = lobos.os.PieceScan.verify(ctx, f.id)
+                if (!v.ok) {
+                    AssetStatus.Mismatched(f.id, f.entry, v.mismatched)
+                } else st
+            } else st
         }
         val report = PrepareReport(entries)
 
@@ -155,12 +183,6 @@ object PieceProvisioner {
         )
         return report
     }
-
-    /**
-     * 校验一个**落位处** —— 扫落位得到的每一项都这样验，不查表。
-     */
-    fun verifyAt(
-        ctx: Context,
         dir: File,
         entryRel: String,
         meta: org.json.JSONObject?,

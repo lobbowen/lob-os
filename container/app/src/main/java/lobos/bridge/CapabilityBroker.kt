@@ -1151,19 +1151,17 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
-            val walkAll = p.optBoolean("walkAll", true)
-            val report = if (walkAll) {
-                PieceProvisioner.prepare(this)
-            } else {
-            // 报告扫落位出来的那批（每件自带说明），不从表拿
-            PrepareReport(lobos.os.PieceScan.scan(this).map { f ->
-                f to PieceProvisioner.verifyAt(this, f.dir, f.entry, f.meta)
-            }),
-                put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
-                put("libSearchPath", PieceProvisioner.libSearchPath(this@CapabilityBroker))
-            }
-        },
+          "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
+              // 校验只有一套：prepare() —— 它既看铺全了没有，也与登记逐文件比（dpkg -V）
+              val report = PieceProvisioner.prepare(this)
+              JSONObject().apply {
+                  put("allRequiredReady", report.allRequiredReady)
+                  put("assets", report.toJson().optJSONArray("assets") ?: JSONArray())
+                  put("failedRequired", JSONArray(report.failedRequired.map { it.first.id }))
+                  put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
+                  put("libSearchPath", PieceProvisioner.libSearchPath(this@CapabilityBroker))
+              }
+          },
         "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->
             val ch = "hostbridge_notif"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
