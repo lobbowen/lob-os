@@ -14,7 +14,19 @@ class QuickAppLaunchActivity : AppCompatActivity() {
             finish()
             return
         }
-        QuickAppHost.open(this, id)
+        // 打开前端之前先确保后端在跑 ——
+        // 一个完整程序是「前端 + 后端」，不该出现只有界面的空壳
+        // （systemd 的 unit 启动时进程与依赖是一起 activate 的）
+        val why = lobos.quickapp.ProgramGroup.ensureBackendRunning(this, id)
+        val err = QuickAppHost.open(this, id)
+        if (err.isNotEmpty()) {
+            // 打开失败要有反馈 —— 此前直接 finish()，用户点了图标什么也没发生
+            android.widget.Toast.makeText(
+                this,
+                if (why != null) "$id：$why" else "$id：$err",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
         finish()
     }
 

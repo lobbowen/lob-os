@@ -122,6 +122,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     if (lastCheck != 0L && now - lastCheck < SupervisorPolicy.CHECK_INTERVAL_MS) continue
                     lastCheck = now
                     if (isStatusUp()) {
+                    // 跑起来了 —— 稳定够久就把重启计数清零
+                    // （systemd 的 NRestarts 语义：StartLimitIntervalSec 内没反复挂就不算）
+                    runCatching {
+                        SupervisorPolicy.clearIfStable(
+                            this@InstanceHost, programId,
+                            SystemClock.elapsedRealtime() - bornAt,
+                        )
+                    }
                         if (failStreak > 0) {
                             RuntimeDiagnostics.append(this, "health", true, "稳态探活恢复", "此前连续失败=" + failStreak)
                         }
@@ -437,6 +445,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     "program=" + recorded.programId + " gen=" + recorded.generation + " pid=" + recorded.pid +
                         " starttime=" + recorded.starttime + " pgid=" + recorded.pgid
                 } else "pid 无法取得，账本未记录"
+
+                    // MainPID 落注册表（systemctl show 查得到那个属性）——
+                    // 此前只有账本里有，注册的 UnitEntry.pid 是空的
+                    runCatching {
+                        SupervisorPolicy.noteStarted(
+                            this@InstanceHost, programId, recorded.pid, recorded.starttime,
+                        )
+                    }
             )
             healthPort = resolvedPort
             healthPath = spec?.http?.health ?: "/status"
@@ -620,7 +636,25 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         val watchedPid = pidOf(p)
         Thread {
             val code = runCatching { p.waitFor() }.getOrDefault(-1)
+
+                    // ExecMainStatus 落注册表 —— 退出后仍查得到为什么挂
+                    // （systemd 的 ExecMainStatus 就是这个用途）
+                    runCatching {
+                        SupervisorPolicy.noteExit(
+                            this@InstanceHost, programId, code,
+                            SystemClock.elapsedRealtime(),
+                            if (code == 0) "" else "退出码 " + code,
+                        )
+                    }
             lobos.os.ProcessLedger.end(this, watchedPid)
+
+                    // 反向的那条路：后端死了，前端要收掉
+                    // —— 否则它留在 dimina 里，用户看到的是点得开但连不上的僵尸界面
+                    runCatching {
+                        lobos.quickapp.ProgramGroup.onBackendExit(
+                            this@InstanceHost, programId, code,
+                        )
+                    }
             if (!keepRunning) return@Thread
             val readyNote = SupervisorPolicy.exitNote(healthUp)
             RuntimeDiagnostics.append(this, "process", false, "程序进程已退出", "exitCode=$code$readyNote")

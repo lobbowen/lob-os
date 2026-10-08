@@ -133,6 +133,15 @@ enum class Desired { RUNNING, STOPPED, FROZEN }
 
         /** 是件还是程序 —— 由落位形状决定，不由字段决定 */
         val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
+
+        /**
+         * 这是件还是程序 —— [isPiece] 的枚举形态。
+         *
+         * 此前它在 IndexEntry 上（那个转发属性里），第 1 层合成 UnitEntry 时漏了搬过来，
+         * 波及 8 处调用点（ProgramManager / ProgramStatus / SupervisorPool /
+         * QuickAppRegistry / PackageInstaller / ProgramIndex.byLevel）。
+         */
+        val level: Level get() = if (isPiece) Level.PIECE else Level.PROGRAM
     }
 
 object ProgramIndex {

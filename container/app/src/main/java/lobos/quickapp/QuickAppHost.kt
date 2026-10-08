@@ -92,6 +92,8 @@ object QuickAppHost {
     }
 
     fun open(activity: Activity, id: String): String {
+        // 一个完整程序 = 前端 + 后端 —— 打开前端时若后端没排队就排上
+        ProgramGroup.ensureBackendRunning(activity, id)
         val dimina = runCatching { Dimina.getInstance() }.getOrElse {
             Log.e(TAG, "快应用运行时未初始化，无法打开 $id", it)
             return "快应用运行时未初始化"
