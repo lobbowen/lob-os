@@ -95,7 +95,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                     ctx,
                     (prev ?: lobos.os.ProgramIndex.empty(
                         e.id,
-                        if (lobos.os.SystemRoles.isEntry(e)) lobos.os.Level.CAPABILITY else lobos.os.Level.INFRA,
+                        if (lobos.os.SystemRoles.isEntry(e)) lobos.os.Level.PIECE else lobos.os.Level.PIECE,
                     )).copy(
                         version = version,
                         sha256 = sha,

@@ -163,10 +163,10 @@ class ProgramDir(
             val role = spec?.role?.takeIf { it.isNotBlank() } ?: "app"
             val resident = spec?.resident == true
             val existing = lobos.os.ProgramIndex.get(context, programId)
-            val base = existing ?: lobos.os.ProgramIndex.empty(programId, lobos.os.Level.APPLICATION)
+            val base = existing ?: lobos.os.ProgramIndex.empty(programId, lobos.os.Level.PROGRAM)
             lobos.os.ProgramIndex.upsert(
                 context,
-                base.copy(
+                base.edited(
                     version = version,
                     enabled = true,
                     desired = if (existing == null) lobos.os.Desired.RUNNING else base.desired,

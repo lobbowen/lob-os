@@ -60,7 +60,7 @@ class SupervisorPool(private val host: Service) {
     }
 
     private fun wantedPrograms(): List<String> {
-        val records = ProgramIndex.all(host).filter { it.level == Level.APPLICATION }
+        val records = ProgramIndex.all(host).filter { it.level == Level.PROGRAM }
         val desired = records.filter { it.desired == Desired.RUNNING }.map { it.id }
         val installed = ProgramRegistry.list(host).filter { it.startable }.map { it.id }
         val out = desired.filter { installed.contains(it) }

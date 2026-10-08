@@ -34,7 +34,7 @@ object QuickAppRegistry {
         val ui = uiOf(ctx, id)
         val frontend = ProgramManager.stateDirOf(ctx, id).let { File(it, "quickapp") }
         ProgramIndex.mutate(ctx, id) { e ->
-            e.copy(
+            e.edited(
                 uiPackage = ui.pkg,
                 uiName = ui.name,
                 uiIcon = ui.icon,
@@ -52,7 +52,7 @@ object QuickAppRegistry {
 
     fun unregister(ctx: Context, id: String) {
         ProgramIndex.mutate(ctx, id) { e ->
-            e.copy(
+            e.edited(
                 uiPackage = "", uiName = "", uiIcon = "", onUiClosed = "",
                 httpPort = 0, httpHealth = "",
             )
@@ -60,7 +60,7 @@ object QuickAppRegistry {
     }
 
     fun listed(ctx: Context): List<IndexEntry> =
-        ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.APPLICATION && it.uiPackage.isNotBlank() }
+        ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.PROGRAM && it.uiPackage.isNotBlank() }
 
     private fun uiOf(ctx: Context, id: String): Ui {
         val root = ProgramManager.stateDirOf(ctx, id)

@@ -39,19 +39,16 @@ object ProgramManager {
                     put(JSONObject().apply {
                         put("id", e.id)
                         put("level", e.level.name)
-                        put("category", e.category.name)
-                        put("asApplication", e.asApplication)
                         put("enabled", e.enabled)
                         put("declaredVersion", e.version)
                         put("currentVersion", r?.version ?: "")
                         put("installed", r?.installed ?: false)
                         put("desired", e.desired.name)
-                        put("deps", JSONArray(e.deps))
+                        put("requires", JSONArray(e.requires))
                         put("stateDir", e.stateDir)
-                        put("tier", e.tier)
-                        put("asApplication", e.asApplication)
+                        put("required", e.required)
                         put("evidence", r?.evidence ?: "")
-                        if (e.level == Level.APPLICATION) {
+                        if (e.level == Level.PROGRAM) {
                             put("role", e.role)
                             put("resident", e.resident)
                             put("restart", e.restart.name)
@@ -87,7 +84,7 @@ object ProgramManager {
      * 只有两类：系统文件（件）与应用程序。件按 role 细分落位，不进 opt/。
      */
     fun levelOf(ctx: Context, id: String): Level =
-        if (SystemRoles.pieceDirFor(ctx, id) != null) Level.INFRA else Level.APPLICATION
+        if (SystemRoles.pieceDirFor(ctx, id) != null) Level.PIECE else Level.PROGRAM
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
@@ -119,7 +116,6 @@ object ProgramManager {
 
     @Synchronized
     fun reconcile(ctx: Context) {
-        alignLevels(ctx)
         val snap = snapshot(ctx)
         val stateFile = File(ProgramIndex.file(ctx).parentFile ?: SystemDirs.libvar(ctx), "program-state.json")
         StateFiles.writeJson(
@@ -142,26 +138,8 @@ object ProgramManager {
 
     private fun Snapshot.realityOf(e: IndexEntry): Reality? = realities[e.id]
 
-    private fun alignLevels(ctx: Context) {
-        val fixed = mutableListOf<String>()
-        for (e in ProgramIndex.all(ctx)) {
-            val want = levelFor(ctx, e) ?: continue
-            if (e.level == want) continue
-            ProgramIndex.upsert(ctx, e.copy(level = want))
-            fixed += e.id + "→" + want.name
-        }
-        if (fixed.isNotEmpty()) {
-            Journal.note(ctx, "index", null, "层级与实物不一致，已纠正", "改=" + fixed.joinToString(","))
-        }
-    }
 
     /** 层级与实物对齐：它是件就INFRA，否则 APPLICATION —— 判据是 role */
-    private fun levelFor(ctx: Context, e: IndexEntry): Level = levelOf(ctx, e.id)
-
-    fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id, stateDirOf(ctx, id))
-
-    fun currentVersion(ctx: Context, id: String): String? =
-        runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
 fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)
 
@@ -191,7 +169,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
 
     @Synchronized
     fun setEnabled(ctx: Context, id: String, enabled: Boolean): Boolean {
-        if (!ProgramIndex.mutate(ctx, id) { it.copy(enabled = enabled) }) return false
+        if (!ProgramIndex.mutate(ctx, id) { it.edited(enabled = enabled) }) return false
         Journal.note(ctx, "program", null, if (enabled) "启用设施" else "停用设施", "name=" + id)
         reconcile(ctx)
         return true
@@ -204,7 +182,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
     }
 
     fun setDesired(ctx: Context, id: String, d: Desired): Boolean {
-        if (!ProgramIndex.mutate(ctx, id) { it.copy(desired = d) }) return false
+        if (!ProgramIndex.mutate(ctx, id) { it.edited(desired = d) }) return false
         Journal.append(ctx, "registry", null, "upsert " + id + " desired=" + d.name)
         return true
     }

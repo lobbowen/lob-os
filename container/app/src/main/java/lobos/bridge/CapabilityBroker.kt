@@ -458,7 +458,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private fun programsJson(): JSONArray = JSONArray().apply {
-        ProgramIndex.byLevel(this@CapabilityBroker, Level.APPLICATION).forEach { put(programJson(it)) }
+        ProgramIndex.byLevel(this@CapabilityBroker, Level.PROGRAM).forEach { put(programJson(it)) }
     }
 
     private fun journalJson(e: Journal.Event): JSONObject = JSONObject().apply {
@@ -678,7 +678,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "os.instances.list" to MethodDef(listOf("base"), false) { _, _programId ->
             val mods = JSONArray()
-            ProgramIndex.byLevel(this@CapabilityBroker, Level.APPLICATION).forEach { e ->
+            ProgramIndex.byLevel(this@CapabilityBroker, Level.PROGRAM).forEach { e ->
                 val ph = e.desired.name.lowercase(Locale.US)
                 mods.put(JSONObject().apply {
                     put("id", e.id); put("kind", "program"); put("name", e.id)
@@ -692,7 +692,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             if (id.isBlank()) {
                 throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id（宿主没有「主程序」概念）")
             }
-            val e = ProgramIndex.byLevel(this@CapabilityBroker, Level.APPLICATION).firstOrNull { it.id == id }
+            val e = ProgramIndex.byLevel(this@CapabilityBroker, Level.PROGRAM).firstOrNull { it.id == id }
                 ?: throw BridgeError(CODE_METHOD_NOT_FOUND, "无此实例: " + id)
             instanceJson(e)
         },
@@ -738,7 +738,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "os.programs.overview" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
-                put("installed", ProgramIndex.byLevel(this@CapabilityBroker, Level.APPLICATION).size)
+                put("installed", ProgramIndex.byLevel(this@CapabilityBroker, Level.PROGRAM).size)
                 put("programs", programsJson())
                 put("versionInfo", JSONObject().apply {
                     val ids = lobos.os.ProgramRegistry.listIds(this@CapabilityBroker)

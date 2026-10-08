@@ -102,7 +102,7 @@ object ProgramStatusHub {
     }
 
     fun statusOf(ctx: Context, id: String): ProgramStatus {
-        val entry = ProgramIndex.all(ctx).firstOrNull { it.id == id && it.level == Level.APPLICATION }
+        val entry = ProgramIndex.all(ctx).firstOrNull { it.id == id && it.level == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
         val running = runningIds.contains(id)
         val detail = healthDetail[id] ?: ""

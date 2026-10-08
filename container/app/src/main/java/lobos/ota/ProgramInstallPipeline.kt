@@ -7,9 +7,17 @@ import java.io.File
 
 object ProgramInstallPipeline {
 
-    enum class From(val label: String, val asApplication: Boolean) {
-        APP("应用（快应用机制）", true),
-        COMPONENT("系统件（内核机制）", false),
+    /**
+     * 装的是「程序」还是「件」。
+     *
+     * 此前这两值叫「应用（快应用机制）」与「系统件（内核机制）」——
+     * 那是把「程序/件」说成「两种运行机制」：所有件都是独立的，
+     * 走同一套机制，只有「要不要落进 opt/ 由程序起」这一条不同。
+     * 判据落位就够，不需要另立机制名。
+     */
+    enum class From(val label: String) {
+        APP("程序"),
+        COMPONENT("件"),
     }
 
     data class Spec(
@@ -76,23 +84,39 @@ object ProgramInstallPipeline {
         val writeIndex = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
-                baseEntry.copy(
-                    version = version,
-                    enabled = true,
-                    deps = depsOf(context, spec.programId).ifEmpty { baseEntry.deps },
-                    asApplication = spec.from.asApplication,
-                    tier = runCatching {
-                        lobos.os.CatalogClient.entryFor(context, spec.programId)?.optString("tier", "").orEmpty()
-                    }.getOrDefault("").ifBlank { baseEntry.tier },
-                    stateDir = baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
-                    role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
-                    resident = declared?.resident ?: baseEntry.resident,
-                    desired = when {
-                        baseEntry.desired == lobos.os.Desired.STOPPED && declared?.resident == true ->
-                            lobos.os.Desired.RUNNING
-                        reg == null -> lobos.os.Desired.RUNNING
-                        else -> baseEntry.desired
-                    },
+                // 程序 = ProgramEntry；形态与需求从**包内**的 manifest 读，不问清单
+                lobos.os.IndexEntry(
+                    piece = null,
+                    program = lobos.os.ProgramEntry(
+                        id = spec.programId,
+                        version = version,
+                        enabled = true,
+                        stateDir = baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
+                        sha256 = baseEntry.sha256,
+                        assetEntry = declared?.entry ?: baseEntry.assetEntry,
+                        role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
+                        resident = declared?.resident ?: true,
+                        restart = declared?.restart ?: lobos.os.Restart.ON_FAILURE,
+                        maxRestarts = declared?.maxRestarts ?: 5,
+                        backoffMs = declared?.backoffMs?.takeIf { it.isNotEmpty() }
+                            ?: lobos.os.ProgramIndex.DEFAULT_BACKOFF,
+                        capabilities = declared?.capabilities ?: emptyList(),
+                        requires = declared?.requires ?: emptyList(),
+                        env = declared?.env ?: emptyMap(),
+                        httpPort = declared?.http?.port ?: 0,
+                        httpHealth = declared?.http?.health ?: "",
+                        desired = when {
+                            baseEntry.desired == lobos.os.Desired.STOPPED && declared?.resident == true ->
+                                lobos.os.Desired.RUNNING
+                            reg == null -> lobos.os.Desired.RUNNING
+                            else -> baseEntry.desired
+                        },
+                        uiPackage = "",
+                        uiName = "",
+                        uiIcon = "",
+                        onUiClosed = "",
+                        invalid = declared?.invalid ?: baseEntry.invalid,
+                    ),
                 ),
             )
         }
@@ -175,16 +199,22 @@ object ProgramInstallPipeline {
         val upserted = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
-                base.copy(
-                    version = version,
-                    enabled = true,
-                    asApplication = spec.from.asApplication,
-                    // 形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单
-                    libName = meta.libNameOrEmpty(),
-                    assetEntry = meta.entry(),
-                    role = meta.roleOrEmpty(),
-                    requires = meta.requires(),
-                    stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
+                // 件 = PieceEntry；形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单
+                lobos.os.IndexEntry(
+                    piece = lobos.os.PieceEntry(
+                        id = spec.programId,
+                        version = version,
+                        enabled = true,
+                        stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
+                        sha256 = base.sha256,
+                        libName = meta.libNameOrEmpty(),
+                        assetEntry = meta.entry(),
+                        role = meta.roleOrEmpty(),
+                        requires = meta.requires(),
+                        required = meta.requiredOr(false),
+                        invalid = base.invalid,
+                    ),
+                    program = null,
                 ),
             )
         }
@@ -237,6 +267,10 @@ object ProgramInstallPipeline {
             else -> ""
         }
         fun libNameOrEmpty(): String = entry().substringAfterLast("/", "")
+        /** 件是不是系统必需的 —— 包里没说就按「非必需」 */
+        fun requiredOr(def: Boolean): Boolean =
+            o?.optBoolean("required", def) ?: def
+
         fun requires(): List<String> {
             val arr = o?.optJSONArray("requires") ?: return emptyList()
             val out = mutableListOf<String>()

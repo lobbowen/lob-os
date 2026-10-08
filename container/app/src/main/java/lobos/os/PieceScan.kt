@@ -125,7 +125,7 @@ object PieceScan {
             val prev = cur[f.id]
             val entry = (prev ?: ProgramIndex.empty(
                 f.id,
-                if (f.role == SystemRoles.HEADERS) Level.INFRA else Level.CAPABILITY,
+                if (f.role == SystemRoles.HEADERS) Level.PIECE else Level.PIECE,
             )).copy(
                 version = f.version,
                 stateDir = f.dir.absolutePath,
