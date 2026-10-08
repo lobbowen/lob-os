@@ -164,7 +164,7 @@ object CatalogClient {
             val name = e.optString("name", "")
             if (name.isBlank()) continue
             val wantSha = e.optString("sha256", "")
-            val marker = File(SupplyProvisioner.toolchainDir(ctx), "." + name + ".ok")
+            val marker = File(SupplyProvisioner.etcDir(ctx), "." + name + ".ok")
             val haveSha = if (marker.isFile) {
                 runCatching { marker.readText().trim() }.getOrDefault("")
             } else {

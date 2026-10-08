@@ -24,11 +24,8 @@ object NativeAssetUpdater {
         val sourceSha256: String? get() = installedSha256
     }
 
-    fun toolchainDir(ctx: Context, id: String): File =
-        File(SupplyProvisioner.toolchainDir(ctx), id).also { it.mkdirs() }
-
     fun versionDir(ctx: Context, id: String, version: String): File =
-        File(toolchainDir(ctx, id), version)
+        SupplyProvisioner.versionDir(ctx, id, version).also { it.parentFile?.mkdirs() }
 
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
@@ -302,7 +299,7 @@ object NativeAssetUpdater {
     }
 
     fun prune(ctx: Context, id: String, keep: Int = 1): Pair<List<String>, Long> {
-        val root = File(SupplyProvisioner.toolchainDir(ctx), id)
+        val root = SupplyProvisioner.pieceDir(ctx, id)
         if (!root.isDirectory) return emptyList<String>() to 0L
         val now = states(ctx).firstOrNull { it.id == id }?.installedVersion
         val versions = root.list()?.filter { it.isNotBlank() }?.sorted().orEmpty()
