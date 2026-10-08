@@ -2,7 +2,7 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
-import lobos.os.IndexEntry
+import lobos.os.UnitEntry
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
@@ -59,7 +59,7 @@ object QuickAppRegistry {
         }
     }
 
-    fun listed(ctx: Context): List<IndexEntry> =
+    fun listed(ctx: Context): List<UnitEntry> =
         ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.PROGRAM && it.uiPackage.isNotBlank() }
 
     private fun uiOf(ctx: Context, id: String): Ui {

@@ -84,39 +84,36 @@ object ProgramInstallPipeline {
         val writeIndex = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
-                // 程序 = ProgramEntry；形态与需求从**包内**的 manifest 读，不问清单
-                lobos.os.IndexEntry(
-                    piece = null,
-                    program = lobos.os.ProgramEntry(
-                        id = spec.programId,
-                        version = version,
-                        enabled = true,
-                        stateDir = baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
-                        sha256 = baseEntry.sha256,
-                        assetEntry = declared?.entry ?: baseEntry.assetEntry,
-                        role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
-                        resident = declared?.resident ?: true,
-                        restart = declared?.restart ?: lobos.os.Restart.ON_FAILURE,
-                        maxRestarts = declared?.maxRestarts ?: 5,
-                        backoffMs = declared?.backoffMs?.takeIf { it.isNotEmpty() }
-                            ?: lobos.os.ProgramIndex.DEFAULT_BACKOFF,
-                        capabilities = declared?.capabilities ?: emptyList(),
-                        requires = declared?.requires ?: emptyList(),
-                        env = declared?.env ?: emptyMap(),
-                        httpPort = declared?.http?.port ?: 0,
-                        httpHealth = declared?.http?.health ?: "",
-                        desired = when {
-                            baseEntry.desired == lobos.os.Desired.STOPPED && declared?.resident == true ->
-                                lobos.os.Desired.RUNNING
-                            reg == null -> lobos.os.Desired.RUNNING
-                            else -> baseEntry.desired
-                        },
-                        uiPackage = "",
-                        uiName = "",
-                        uiIcon = "",
-                        onUiClosed = "",
-                        invalid = declared?.invalid ?: baseEntry.invalid,
-                    ),
+                // 程序：形态与需求从**包内**的 manifest 读，不问清单（role=app）
+                lobos.os.UnitEntry(
+                  id = spec.programId,
+                      version = version,
+                      enabled = true,
+                      stateDir = baseEntry.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
+                      sha256 = baseEntry.sha256,
+                      assetEntry = declared?.entry ?: baseEntry.assetEntry,
+                      role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
+                      resident = declared?.resident ?: true,
+                      restart = declared?.restart ?: lobos.os.Restart.ON_FAILURE,
+                      maxRestarts = declared?.maxRestarts ?: 5,
+                      backoffMs = declared?.backoffMs?.takeIf { it.isNotEmpty() }
+                          ?: lobos.os.ProgramIndex.DEFAULT_BACKOFF,
+                      capabilities = declared?.capabilities ?: emptyList(),
+                      requires = declared?.requires ?: emptyList(),
+                      env = declared?.env ?: emptyMap(),
+                      httpPort = declared?.http?.port ?: 0,
+                      httpHealth = declared?.http?.health ?: "",
+                      desired = when {
+                          baseEntry.desired == lobos.os.Desired.STOPPED && declared?.resident == true ->
+                              lobos.os.Desired.RUNNING
+                          reg == null -> lobos.os.Desired.RUNNING
+                          else -> baseEntry.desired
+                      },
+                      uiPackage = "",
+                      uiName = "",
+                      uiIcon = "",
+                      onUiClosed = "",
+                      invalid = declared?.invalid ?: baseEntry.invalid,
                 ),
             )
         }
@@ -199,22 +196,19 @@ object ProgramInstallPipeline {
         val upserted = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
-                // 件 = PieceEntry；形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单
-                lobos.os.IndexEntry(
-                    piece = lobos.os.PieceEntry(
-                        id = spec.programId,
-                        version = version,
-                        enabled = true,
-                        stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
-                        sha256 = base.sha256,
-                        libName = meta.libNameOrEmpty(),
-                        assetEntry = meta.entry(),
-                        role = meta.roleOrEmpty(),
-                        requires = meta.requires(),
-                        required = meta.requiredOr(false),
-                        invalid = base.invalid,
-                    ),
-                    program = null,
+                // 件：形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单单
+                lobos.os.UnitEntry(
+                  id = spec.programId,
+                      version = version,
+                      enabled = true,
+                      stateDir = base.stateDir.ifBlank { lobos.os.ProgramManager.relStateDir(context, spec.programId) },
+                      sha256 = base.sha256,
+                      libName = meta.libNameOrEmpty(),
+                      assetEntry = meta.entry(),
+                      role = meta.roleOrEmpty(),
+                      requires = meta.requires(),
+                      required = meta.requiredOr(false),
+                      invalid = base.invalid,
                 ),
             )
         }

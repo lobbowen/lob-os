@@ -32,7 +32,7 @@ import org.json.JSONObject
  *
  * **它不管什么**
  *
- * 「要不要跑」「怎么跑」不是推导出来的 —— 那是 `IndexEntry` 里
+ * 「要不要跑」「怎么跑」不是推导出来的 —— 那是 `UnitEntry` 里
  * `desired` / `restart` / `env` / `httpPort` 这些字段的事，
  * 由 `ProgramManager` 维护。`ldconfig` 只管「装了什么」。
  */
@@ -190,7 +190,7 @@ object PieceScan {
                 sha256 = f.sha256,
                 required = f.meta?.optBoolean("essential", false) ?: false,
                 files = f.files.map { fr ->
-                    ProgramIndex.PieceEntry.FileRec(fr.path, fr.sha256)
+                    ProgramIndex.UnitEntry.FileRec(fr.path, fr.sha256)
                 },
             )
             if (prev != entry) {
@@ -244,7 +244,7 @@ internal object SupplySha {
      * 落在件目录之外的文件不在清单里 —— 那是别人的事。
      */
     fun verify(ctx: Context, id: String): Verdict {
-        val e = ProgramIndex.get(ctx, id)?.piece ?: return Verdict(false, 0, emptyList())
+        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return Verdict(false, 0, emptyList())
         if (e.stateDir.isBlank()) return Verdict(false, 0, emptyList())
         if (e.files.isEmpty()) return Verdict(false, 0, emptyList())
         val base = File(e.stateDir)
@@ -264,28 +264,28 @@ internal object SupplySha {
     fun verifyAll(ctx: Context): Map<String, Verdict> {
         val out = linkedMapOf<String, Verdict>()
         for (e in ProgramIndex.all(ctx)) {
-            val pe = e.piece ?: continue
+            pe = e
             out[pe.id] = verify(ctx, pe.id)
         }
         return out
     }
     /** 某个 id 落位在哪 —— 读注册表（dpkg -s） */
     fun pieceDir(ctx: Context, id: String): File? {
-        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
         if (e.stateDir.isBlank()) return null
         return File(e.stateDir)
     }
 
     /** 某个 id 的入口文件（命令）或库文件 —— 读注册表 */
     fun pieceFile(ctx: Context, id: String): File? {
-        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
         if (e.stateDir.isBlank() || e.assetEntry.isBlank()) return null
         return File(File(e.stateDir), e.assetEntry)
     }
 
     /** 某个 id 落位那一件的说明（件自带，deb-control 的做法） */
     fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? {
-        val e = ProgramIndex.get(ctx, id)?.piece ?: return null
+        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
         if (e.stateDir.isBlank()) return null
         return metaOf(File(e.stateDir))
     }
@@ -293,11 +293,11 @@ internal object SupplySha {
     /** 命令解释器 —— 注册表里 role=shell 的那一件 */
     fun shellBin(ctx: Context): File? =
         ProgramIndex.all(ctx)
-            .mapNotNull { it.piece }
+            .filter { ProgramIndex.isPiece(it) }
             .firstOrNull { it.role == SHELL }
             ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
                     else File(File(it.stateDir), it.assetEntry) }
-            .mapNotNull { it.piece }
+            .filter { ProgramIndex.isPiece(it) }
             .firstOrNull { it.role == MULTI_COMMAND }
             ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
                     else File(File(it.stateDir), it.assetEntry) }}

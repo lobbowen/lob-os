@@ -91,7 +91,7 @@ object BootReconciler {
         val out = mutableListOf<String>()
         for (e in ProgramIndex.all(ctx)) {
             if (e.desired != Desired.RUNNING) continue
-            if (e.piece != null) continue
+            if (ProgramIndex.isPiece(e)) continue
             val cur = runCatching { ProgramManager.stateDirOf(ctx, e.id).let { d ->
                 ProgramDir(ctx, e.id, d).currentVersion()
             } }.getOrNull().orEmpty()

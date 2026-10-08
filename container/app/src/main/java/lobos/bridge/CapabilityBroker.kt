@@ -37,7 +37,7 @@ import lobos.pieces.PieceProvisioner
 import lobos.pieces.PrepareReport
 import lobos.os.CatalogClient
 import lobos.os.Desired
-import lobos.os.IndexEntry
+import lobos.os.UnitEntry
 import lobos.os.Level
 import lobos.os.OsInit
 import lobos.os.OsPhase
@@ -448,7 +448,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         OsAccessibilityService.instance
             ?: throw BridgeError(CODE_CAPABILITY_MISSING, "无障碍服务未连接（请在系统设置中开启 Lob OS 无障碍服务）")
 
-    private fun programJson(e: IndexEntry): JSONObject = JSONObject().apply {
+    private fun programJson(e: UnitEntry): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("name", e.id)
         put("version", e.version.ifBlank { JSONObject.NULL })
@@ -474,7 +474,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         startService(i)
     }
 
-    private fun instanceJson(e: IndexEntry): JSONObject = JSONObject().apply {
+    private fun instanceJson(e: UnitEntry): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("kind", "program")
         put("name", e.id)

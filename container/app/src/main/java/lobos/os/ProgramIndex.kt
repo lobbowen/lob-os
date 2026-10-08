@@ -17,198 +17,123 @@ enum class Level { PIECE, PROGRAM }
 enum class Desired { RUNNING, STOPPED, FROZEN }
 
 /**
- * 一件 —— 系统文件。「装了什么」全部由落位推导（见 [PieceScan]），
- * 这里只存推导不出但运行时要用的那几样。
- */
-data class PieceEntry(
-    val id: String,
-    val version: String,
-    val enabled: Boolean,
-    val stateDir: String,
-    val sha256: String,
-    /** 库的落位文件名（`libssl.so`），命令为空 */
-    val libName: String,
-    /** 可执行入口的相对路径（`bin/jq`） */
-    val assetEntry: String,
-    /** 形态：library · exec · shell · multi-command · headers（件自己声明，见 component-meta.json） */
-    val role: String,
-    /** 它依赖哪些我们提供的库（声明式；ELF 的 DT_NEEDED 由安装时解） */
-    val requires: List<String>,
-    /** 是不是系统必需的；不是必需的可被程序覆盖 */
-    val required: Boolean,
-
     /**
-     * 这一件铺了哪些文件 + 每个文件的校验值 —— dpkg 的 `db-fsys:Files` 与 `.deb` 的 `md5sums`。
+     * 一个单元 —— 件与程序是同一种东西，只是配置不同。
      *
-     * 没有它就答不出两件事：
-     *   · 删这个件该删哪些文件
-     *   · 某个文件被换过没有（`dpkg -V` 拿的就是这份与实际文件比对）
+     * 照抄 systemd.unit(5)：「Units are named as their configuration files」——
+     * unit 是一种实体，`*.service` 与 `*.mount` 只是配置不同。
+     * 此前我们分成 [PieceEntry] 与 [ProgramEntry] 两段，字段重复了 10 个
+     *（id/version/enabled/stateDir/sha256/assetEntry/role/requires/invalid），
+     * 于是每处读都要先判「这是件还是程序」。
      *
-     * 路径相对件目录（`usr/lib/<id>/<版本>/`），换存储位置不用重记。
+     * 现在一种记录。字段按 systemd.service(5) 的分类排列：
+     *   身份 · 依赖 · 进程 · 健康 · 环境 · UI · 开关与标记
      */
-    val files: List<FileRec> = emptyList(),
+    data class UnitEntry(
+        // ── 身份 ────────────────────────────────────────────
+        /** id 就是落位的目录名/程序目录名 —— 与配置文件同名，不另编 */
+        val id: String,
+        val version: String,
+        /** 落位根：件是 `usr/lib/<id>/<版本>/` · 程序是 `opt/<id>/<版本>/` */
+        val stateDir: String,
+        /** 整件字节身份（覆盖 files 全部内容的哈希） */
+        val sha256: String,
+        /** 入口相对路径：`bin/jq` · `lib/libssl.so` */
+        val assetEntry: String,
+        /** 库的落位文件名（`libssl.so`），非库为空 */
+        val libName: String = "",
+        /**
+         * 这一件铺了哪些文件 + 每个文件的校验值
+         * —— dpkg 的 `db-fsys:Files` 与 `.deb` 的 `md5sums`。
+         * 没有它就答不出：删这个件该删哪些文件 · 某个文件被换过没有
+         * （`dpkg -V` 拿的就是这份与实际文件比对）。
+         * 路径相对落位根，换存储位置不用重记。
+         */
+        val files: List<FileRec> = emptyList(),
 
-    /** 校验没过的原因（装机阶段的结论，不是运行时状态） */
-    val invalid: String?,
-) {
-    /** 一个文件：相对件目录的路径 + sha256 */
-    data class FileRec(val path: String, val sha256: String)
-}
+        // ── 依赖 ────────────────────────────────────────────
+        /**
+         * `Requires=` —— 需求依赖：这些单元必须同时就位。
+         *
+         * systemd.unit(5)：「ordering and requirement dependencies are ORTHOGONAL」
+         * —— 排序（After=/Before=）与需求（Requires=/Conflicts=）是两类，
+         * 混在一个字段里就分不清「启动顺序」与「缺了就不行」。
+         * 排序那一半见 [after]。
+         */
+        val requires: List<String> = emptyList(),
+        /** `After=` —— 排序依赖：这些单元先就位，本单元才起 */
+        val after: List<String> = emptyList(),
+        /** `Conflicts=` —— 互斥：这些单元在位时本单元必须停 */
+        val conflicts: List<String> = emptyList(),
 
-/** 一个程序 —— 装在 opt/，由内核起进程托管。 */
-data class ProgramEntry(
-    val id: String,
-    val version: String,
-    val enabled: Boolean,
-    val stateDir: String,
-    val sha256: String,
-    val assetEntry: String,
-    val role: String,
-    /** 常驻（进程退出即重启） */
-    val resident: Boolean,
-    val restart: Restart,
-    val maxRestarts: Int,
-    val backoffMs: List<Long>,
-    val capabilities: List<String>,
-    val requires: List<String>,
-    val env: Map<String, String>,
-    val httpPort: Int,
-    val httpHealth: String,
-    val desired: Desired,
-    val uiPackage: String,
-    val uiName: String,
-    val uiIcon: String,
-    val onUiClosed: String,
-    val invalid: String?,
-)
+        // ── 进程（systemd.service 的 Type= 与 ExecStart=）────────
+        /** `Type=simple` 恒有进程 · `Type=oneshot` 跑完就完 —— 件没有进程 */
+        val resident: Boolean = false,
+        /** `Restart=` —— no · on-failure · always */
+        val restart: Restart = Restart.ON_FAILURE,
+        /** `StartLimitBurst=` —— 窗口内最多重启几次 */
+        val maxRestarts: Int = 5,
+        /** `RestartSec=` 的步进 */
+        val backoffMs: List<Long> = emptyList(),
 
-/**
- * 索引条目 —— 「一件」或「一个程序」，**按形状分开，不是一张平表**。
- *
- * 此前是 27 个平铺字段的 data class，encode() 里还要判
- * 「如果是 APPLICATION 才写那 17 个字段」—— 两类东西挤在一张表里，
- * 于是每处读都要先判一次（`level == APPLICATION` 出现 9 处），
- * 加一种新形态的件还要改这个 data class。
- *
- * 现在：[piece] 与 [program] 各有各的字段，
- * `piece != null` 就是件、否则是程序 —— 一处判据，不用到处比枚举。
- */
-data class IndexEntry(
-    val piece: PieceEntry?,
-    val program: ProgramEntry?,
-) {
-    val id: String get() = piece?.id ?: program!!.id
-    val level: Level get() = if (piece != null) Level.PIECE else Level.PROGRAM
-    val version: String get() = piece?.version ?: program!!.version
-    val enabled: Boolean get() = piece?.enabled ?: program!!.enabled
-    val stateDir: String get() = piece?.stateDir ?: program!!.stateDir
-    val sha256: String get() = piece?.sha256 ?: program!!.sha256
-    val assetEntry: String get() = piece?.assetEntry ?: program!!.assetEntry
-    val role: String get() = piece?.role ?: program!!.role
-    val requires: List<String> get() = piece?.requires ?: program!!.requires
-    val invalid: String? get() = piece?.invalid ?: program!!.invalid
+        // ── 健康（WatchdogSec=）────────────────────────────
+        /** `WatchdogSec=` 的探测端口，0 = 不探测 */
+        val httpPort: Int = 0,
+        val httpHealth: String = "",
+        /** 对外提供的具名能力（systemd 无此字段 —— 快应用特有） */
+        val capabilities: List<String> = emptyList(),
 
-    // 程序专有字段（件没有这些，调用方要能一眼看出）
-    val desired: Desired get() = program?.desired ?: Desired.STOPPED
-    val resident: Boolean get() = program?.resident ?: false
-    val libName: String get() = piece?.libName ?: ""
-    val required: Boolean get() = piece?.required ?: false
+        // ── 环境（Environment=）────────────────────────────
+        /** `Environment=` */
+        val env: Map<String, String> = emptyMap(),
 
-    /** 件由系统提供，程序可以被卸 —— 与 Level 无关，由形状决定 */
-    val removable: Boolean get() = program != null
-    val managed: Boolean get() = program != null
+        // ── UI（快应用特有）────────────────────────────────
+        val uiPackage: String = "",
+        val uiName: String = "",
+        val uiIcon: String = "",
+        val onUiClosed: String = "",
 
-    /**
-     * 改字段 —— 委托给对应那一种条目，调用点不必先判「这是件还是程序」。
-     *
-     * 参数全为 null 表示「不改」，于是每个调用点只写自己要改的那几个。
-     * 改不属于当前形状的字段（比如给件设 desired）**抛错**，不静默丢掉 ——
-     * 静默丢会让人以为改上了，那比报错难查得多。
-     */
-    fun edited(
-        enabled: Boolean? = null,
-        version: String? = null,
-        stateDir: String? = null,
-        sha256: String? = null,
-        libName: String? = null,
-        assetEntry: String? = null,
-        role: String? = null,
-        requires: List<String>? = null,
-        required: Boolean? = null,
-        files: List<FileRec>? = null,
-        resident: Boolean? = null,
-        restart: Restart? = null,
-        maxRestarts: Int? = null,
-        backoffMs: List<Long>? = null,
-        capabilities: List<String>? = null,
-        env: Map<String, String>? = null,
-        httpPort: Int? = null,
-        httpHealth: String? = null,
-        desired: Desired? = null,
-        uiPackage: String? = null,
-        uiName: String? = null,
-        uiIcon: String? = null,
-        onUiClosed: String? = null,
-        invalid: String? = null,
-    ): IndexEntry {
-        val p = piece
-        if (p != null) {
-            require(resident == null && restart == null && maxRestarts == null &&
-                backoffMs == null && capabilities == null && env == null &&
-                httpPort == null && httpHealth == null && desired == null &&
-                uiPackage == null && uiName == null && uiIcon == null && onUiClosed == null
-            ) { "这是件（${p.id}），程序专有字段不该设给它 —— 那是补丁，不是机制" }
-            return IndexEntry(
-                PieceEntry(
-                    p.id,
-                    version ?: p.version,
-                    enabled ?: p.enabled,
-                    stateDir ?: p.stateDir,
-                    sha256 ?: p.sha256,
-                    libName ?: p.libName,
-                    assetEntry ?: p.assetEntry,
-                    role ?: p.role,
-                    requires ?: p.requires,
-                    required ?: p.required,
-                    files ?: p.files,
-                    invalid ?: p.invalid,
-                ),
-                null,
-            )
-        }
-        val q = program!!
-        require(libName == null && required == null) {
-            "这是程序（${q.id}），件专有字段不该设给它"
-        }
-        return IndexEntry(
-            null,
-            ProgramEntry(
-                q.id,
-                version ?: q.version,
-                enabled ?: q.enabled,
-                stateDir ?: q.stateDir,
-                sha256 ?: q.sha256,
-                assetEntry ?: q.assetEntry,
-                role ?: q.role,
-                resident ?: q.resident,
-                restart ?: q.restart,
-                maxRestarts ?: q.maxRestarts,
-                backoffMs ?: q.backoffMs,
-                capabilities ?: q.capabilities,
-                requires ?: q.requires,
-                env ?: q.env,
-                httpPort ?: q.httpPort,
-                httpHealth ?: q.httpHealth,
-                desired ?: q.desired,
-                uiPackage ?: q.uiPackage,
-                uiName ?: q.uiName,
-                uiIcon ?: q.uiIcon,
-                onUiClosed ?: q.onUiClosed,
-                invalid ?: q.invalid,
-            ),
-        )
+        // ── 开关与标记 ─────────────────────────────────────
+        val enabled: Boolean = true,
+        /** 形态：library · exec · shell · multi-command · headers · app（落位形状决定） */
+        val role: String = "",
+        /** `Essential=yes` —— 系统必需的，缺了系统起不来 */
+        val required: Boolean = false,
+        /** 校验没过的原因（装机阶段的结论，不是运行时状态） */
+        val invalid: String? = null,
+
+        // ── 运行态（systemctl show 的MainPID 那一类）────────────
+        /**
+         * 运行态与配置在**同一个属性空间**——
+         * systemctl(1)：「the properties shown by the command are generally
+         * more low-level, normalized versions of the original configuration
+         * settings AND EXPOSE RUNTIME STATE IN ADDITION TO CONFIGURATION.
+         * For example, properties shown for service units include the
+         * service's current main process identifier as "MainPID"」。
+         *
+         * ★ 这一段以前不存在 —— pid 在 ProcessLedger、退出码没记、
+         *   重启计数是局部变量（进程重启即归零）。现在都在这儿。
+         */
+        val pid: Int = 0,
+        /** /proc/<pid>/stat 的 starttime —— 防 pid 复用（Linux 也这么做） */
+        val starttime: Long = 0L,
+        /** `ExecMainStatus=` —— 上一次退出的码 */
+        val exitCode: Int? = null,
+        /** 上一次退出的时刻 */
+        val exitedAt: Long = 0L,
+        /** `NRestarts=` —— 累计重启次数（systemd 是持久的，我们以前是局部变量） */
+        val restarts: Int = 0,
+        /** `Result=` —— 最后一次为什么挂 */
+        lastFailure: String = "",
+        /** `DesiredState=` —— 想怎么对它（RUNNING/STOPPED/FROZEN） */
+        val desired: Desired = Desired.STOPPED,
+    ) {
+        /** 一个文件：相对落位根的路径 + sha256 */
+        data class FileRec(val path: String, val sha256: String)
+
+        /** 是件还是程序 —— 由落位形状决定，不由字段决定 */
+        val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
     }
-}
 
 object ProgramIndex {
 
@@ -225,153 +150,125 @@ object ProgramIndex {
         if (raw.trim().uppercase() == "PIECE") Level.PIECE else Level.PROGRAM
 
     /** 一个空条目 —— 按形状给对应那一种，不存在「27 个字段都填一遍」 */
-    fun empty(id: String, level: Level): IndexEntry =
-        if (level == Level.PIECE) {
-            piece = PieceEntry(
-                id = id, version = "", enabled = true, stateDir = "",
-                sha256 = "", libName = "", assetEntry = "", role = "",
-                requires = emptyList(), required = false, invalid = null,
-            ),
-            program = null
-        } else {
-            piece = null
-            program = ProgramEntry(
-                id = id, version = "", enabled = true, stateDir = "",
-                sha256 = "", assetEntry = "", role = "app",
-                resident = true, restart = Restart.ON_FAILURE, maxRestarts = 5,
-                backoffMs = DEFAULT_BACKOFF, capabilities = emptyList(),
-                requires = emptyList(), env = emptyMap(), httpPort = 0,
-                httpHealth = "", desired = Desired.STOPPED,
-                uiPackage = "", uiName = "", uiIcon = "", onUiClosed = "",
-                invalid = null,
-            ),
-        }
+    /** 一个空条目 —— 只有 id 有值，其余等落位或装完再填 */
+    fun empty(id: String, isPiece: Boolean): UnitEntry =
+        UnitEntry(id = id, role = if (isPiece) "" else "app")
 
-    fun encode(e: IndexEntry): JSONObject {
-        val p = e.piece
-        if (p != null) return JSONObject().apply {
-            put("kind", "piece")
-            put("id", p.id)
-            put("version", p.version)
-            put("enabled", p.enabled)
-            put("stateDir", p.stateDir)
-            put("sha256", p.sha256)
-            put("libName", p.libName)
-            put("assetEntry", p.assetEntry)
-            put("role", p.role)
-            put("requires", JSONArray(p.requires))
-            put("required", p.required)
-        put("files", org.json.JSONArray().apply {
-            p.files.forEach { fr ->
-                put(org.json.JSONObject().apply {
-                    put("path", fr.path)
-                    put("sha256", fr.sha256)
-                })
+    /**
+     * 编码 —— 一种 unit 一种形状。
+     *
+     * systemd 也只有一种 unit 文件：Type= 那一行区分 service/mount，
+     * 不是一个文件一种 schema。我们此前的 "kind" 字段是那层间接的产物。
+     *
+     * `role` 就是那个区分字段：library · exec · shell · headers · app。
+     */
+    fun encode(e: UnitEntry): JSONObject = JSONObject().apply {
+        put("schema", SCHEMA)
+        put("id", e.id)
+        put("version", e.version)
+        put("stateDir", e.stateDir)
+        put("sha256", e.sha256)
+        put("assetEntry", e.assetEntry)
+        put("libName", e.libName)
+        put("role", e.role)
+        put("enabled", e.enabled)
+        put("required", e.required)
+        e.invalid?.let { put("invalid", it) }
+
+        put("files", JSONArray().apply {
+            e.files.forEach { fr ->
+                put(JSONObject().apply { put("path", fr.path); put("sha256", fr.sha256) })
             }
         })
-            p.invalid?.let { put("invalid", it) }
-        }
-        val q = e.program!!
-        return JSONObject().apply {
-            put("kind", "program")
-            put("id", q.id)
-            put("version", q.version)
-            put("enabled", q.enabled)
-            put("stateDir", q.stateDir)
-            put("sha256", q.sha256)
-            put("assetEntry", q.assetEntry)
-            put("role", q.role)
-            put("resident", q.resident)
-            put("restart", q.restart.name)
-            put("maxRestarts", q.maxRestarts)
-            put("backoffMs", JSONArray(q.backoffMs))
-            put("capabilities", JSONArray(q.capabilities))
-            put("requires", JSONArray(q.requires))
-            put("env", JSONObject(q.env))
-            put("httpPort", q.httpPort)
-            put("httpHealth", q.httpHealth)
-            put("desired", q.desired.name)
-            put("uiPackage", q.uiPackage)
-            put("uiName", q.uiName)
-            put("uiIcon", q.uiIcon)
-            put("onUiClosed", q.onUiClosed)
-            q.invalid?.let { put("invalid", it) }
-        }
+
+        put("requires", JSONArray(e.requires))
+        put("after", JSONArray(e.after))
+        put("conflicts", JSONArray(e.conflicts))
+
+        put("resident", e.resident)
+        put("restart", e.restart.name)
+        put("maxRestarts", e.maxRestarts)
+        put("backoffMs", JSONArray(e.backoffMs))
+
+        put("httpPort", e.httpPort)
+        put("httpHealth", e.httpHealth)
+        put("capabilities", JSONArray(e.capabilities))
+        put("env", JSONObject(e.env.toMap()).toString())
+
+        put("uiPackage", e.uiPackage)
+        put("uiName", e.uiName)
+        put("uiIcon", e.uiIcon)
+        put("onUiClosed", e.onUiClosed)
+
+        put("desired", e.desired.name)
+        put("pid", e.pid)
+        put("starttime", e.starttime)
+        e.exitCode?.let { put("exitCode", it) }
+        put("exitedAt", e.exitedAt)
+        put("restarts", e.restarts)
+        put("lastFailure", e.lastFailure)
     }
 
-    fun decode(o: JSONObject): IndexEntry? {
-        val id = o.optString("id", "")
-        if (id.isBlank()) return null
+    /** 解码 —— encode 的逆运算。字段与 encode 一一对应，没有第二种形状 */
+    fun decode(o: JSONObject): UnitEntry {
         fun strArray(k: String): List<String> =
-            o.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
-        val inv = o.optString("invalid").takeIf { it.isNotBlank() }
-        // kind 决定用哪个形状读；缺省按 program（与旧格式的默认一致）
-        if (o.optString("kind", "program") == "piece") {
-            return IndexEntry(
-                piece = PieceEntry(
-                    id = id, version = o.optString("version", ""),
-                    enabled = o.optBoolean("enabled", true),
-                    stateDir = o.optString("stateDir", ""),
-                    sha256 = o.optString("sha256", ""),
-                    libName = o.optString("libName", ""),
-                    assetEntry = o.optString("assetEntry", ""),
-                    role = o.optString("role", ""),
-                    requires = strArray("requires"),
-                    required = o.optBoolean("required", false),
+            o.optJSONArray(k)?.let { a ->
+                (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+            } ?: emptyList()
+        fun longs(k: String): List<Long> =
+            o.optJSONArray(k)?.let { a ->
+                (0 until a.length()).map { a.optLong(it) }
+            } ?: emptyList()
+        return UnitEntry(
+            id = o.optString("id", ""),
+            version = o.optString("version", ""),
+            stateDir = o.optString("stateDir", ""),
+            sha256 = o.optString("sha256", ""),
+            assetEntry = o.optString("assetEntry", ""),
+            libName = o.optString("libName", ""),
+            role = o.optString("role", ""),
+            enabled = o.optBoolean("enabled", true),
+            required = o.optBoolean("required", false),
+            invalid = if (o.has("invalid")) o.optString("invalid", "") else null,
             files = o.optJSONArray("files")?.let { a ->
                 (0 until a.length()).mapNotNull { i ->
                     val it = a.optJSONObject(i) ?: return@mapNotNull null
                     val path = it.optString("path", "")
                     if (path.isEmpty()) null
-                    else FileRec(path, it.optString("sha256", ""))
+                    else UnitEntry.FileRec(path, it.optString("sha256", ""))
                 }
             } ?: emptyList(),
-                    invalid = inv,
-                ),
-                program = null,
-            )
-        }
-        val envObj = o.optJSONObject("env")
-        val env: Map<String, String> = if (envObj == null) emptyMap() else buildMap {
-            val names = envObj.names() ?: return@buildMap
-            for (i in 0 until names.length()) {
-                put(names.optString(i), envObj.optString(names.optString(i)))
-            }
-        }
-        return IndexEntry(
-            piece = null,
-            program = ProgramEntry(
-                id = id, version = o.optString("version", ""),
-                enabled = o.optBoolean("enabled", true),
-                stateDir = o.optString("stateDir", ""),
-                sha256 = o.optString("sha256", ""),
-                assetEntry = o.optString("assetEntry", ""),
-                role = o.optString("role", "app"),
-                resident = o.optBoolean("resident", true),
-                restart = when (o.optString("restart", "ON_FAILURE")) {
-                    "ALWAYS" -> Restart.ALWAYS
-                    "NEVER" -> Restart.NEVER
-                    else -> Restart.ON_FAILURE
-                },
-                maxRestarts = o.optInt("maxRestarts", 5),
-                backoffMs = o.optJSONArray("backoffMs")?.let { a -> (0 until a.length()).map { a.optLong(it) } }
-                    ?.filter { it > 0 }?.takeIf { it.isNotEmpty() } ?: DEFAULT_BACKOFF,
-                capabilities = strArray("capabilities"),
-                requires = strArray("requires"),
-                env = env, httpPort = o.optInt("httpPort", 0),
-                httpHealth = o.optString("httpHealth", ""),
-                desired = runCatching { Desired.valueOf(o.optString("desired", "STOPPED")) }.getOrDefault(Desired.STOPPED),
-                uiPackage = o.optString("uiPackage", ""),
-                uiName = o.optString("uiName", ""),
-                uiIcon = o.optString("uiIcon", ""),
-                onUiClosed = o.optString("onUiClosed", ""),
-                invalid = inv,
-            ),
+            requires = strArray("requires"),
+            after = strArray("after"),
+            conflicts = strArray("conflicts"),
+            resident = o.optBoolean("resident", false),
+            restart = runCatching { Restart.valueOf(o.optString("restart", "ON_FAILURE")) }
+                .getOrDefault(Restart.ON_FAILURE),
+            maxRestarts = o.optInt("maxRestarts", 5),
+            backoffMs = longs("backoffMs"),
+            httpPort = o.optInt("httpPort", 0),
+            httpHealth = o.optString("httpHealth", ""),
+            capabilities = strArray("capabilities"),
+            env = o.optJSONObject("env")?.let { m ->
+                (0 until m.length()).associate { i -> m.names()[i] to m.optString(m.names()[i], "") }
+            } ?: emptyMap(),
+            uiPackage = o.optString("uiPackage", ""),
+            uiName = o.optString("uiName", ""),
+            uiIcon = o.optString("uiIcon", ""),
+            onUiClosed = o.optString("onUiClosed", ""),
+            desired = runCatching { Desired.valueOf(o.optString("desired", "STOPPED")) }
+                .getOrDefault(Desired.STOPPED),
+            pid = o.optInt("pid", 0),
+            starttime = o.optLong("starttime", 0L),
+            exitCode = if (o.has("exitCode")) o.optInt("exitCode", 0) else null,
+            exitedAt = o.optLong("exitedAt", 0L),
+            restarts = o.optInt("restarts", 0),
+            lastFailure = o.optString("lastFailure", ""),
         )
     }
 
     @Synchronized
-    fun all(ctx: Context): List<IndexEntry> {
+    fun all(ctx: Context): List<UnitEntry> {
         val f = file(ctx)
         if (!f.isFile) return emptyList()
         val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return emptyList()
@@ -381,13 +278,26 @@ object ProgramIndex {
     }
 
     @Synchronized
-    fun get(ctx: Context, id: String): IndexEntry? = all(ctx).firstOrNull { it.id == id }
+    /**
+     * 这是不是一件 —— **看落位形状决定出来的 role**，不看它在记录的哪一段。
+     *
+     * 此前判据是「条目里 piece 字段非空」，那是我们有两种记录时的产物；
+     * systemd 只有一种 unit，Type= 那一行就区分了 service/mount
+     * （我们对应的是 role：library · exec · shell · headers · app）。
+     */
+    fun isPiece(e: UnitEntry): Boolean = e.role.isNotEmpty() && e.role != "app"
+
+    /** 某个 id 是不是一件 —— 查注册表，不扫盘 */
+    fun isPiece(ctx: Context, id: String): Boolean =
+        get(ctx, id)?.let { isPiece(it) } ?: false
+
+    fun get(ctx: Context, id: String): UnitEntry? = all(ctx).firstOrNull { it.id == id }
 
     @Synchronized
-    fun byLevel(ctx: Context, level: Level): List<IndexEntry> = all(ctx).filter { it.level == level }
+    fun byLevel(ctx: Context, level: Level): List<UnitEntry> = all(ctx).filter { it.level == level }
 
     @Synchronized
-    fun upsert(ctx: Context, entry: IndexEntry) {
+    fun upsert(ctx: Context, entry: UnitEntry) {
         persist(ctx, all(ctx).filterNot { it.id == entry.id } + entry)
     }
 
@@ -401,16 +311,16 @@ object ProgramIndex {
     }
 
     @Synchronized
-    fun mutate(ctx: Context, id: String, block: (IndexEntry) -> IndexEntry): Boolean {
+    fun mutate(ctx: Context, id: String, block: (UnitEntry) -> UnitEntry): Boolean {
         val cur = get(ctx, id) ?: return false
         upsert(ctx, block(cur))
         return true
     }
 
     @Synchronized
-    fun replaceAll(ctx: Context, entries: List<IndexEntry>) = persist(ctx, entries)
+    fun replaceAll(ctx: Context, entries: List<UnitEntry>) = persist(ctx, entries)
 
-    private fun persist(ctx: Context, entries: List<IndexEntry>) {
+    private fun persist(ctx: Context, entries: List<UnitEntry>) {
         val arr = JSONArray()
         entries.sortedBy { it.id }.forEach { arr.put(encode(it)) }
         StateFiles.writeJson(file(ctx), JSONObject().apply {

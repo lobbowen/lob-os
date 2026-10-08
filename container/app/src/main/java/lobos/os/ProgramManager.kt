@@ -21,7 +21,7 @@ object ProgramManager {
 
     data class Snapshot(
         val updatedAt: Long,
-        val entries: List<IndexEntry>,
+        val entries: List<UnitEntry>,
         val realities: Map<String, Reality>,
     ) {
         val installedCount: Int get() = realities.values.count { it.installed }
@@ -66,13 +66,13 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (e.piece != null) return infraSourceFile(ctx, e)
+            if (ProgramIndex.isPiece(e)) return infraSourceFile(ctx, e)
             if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
         return File(ProgramRegistry.programRoot(ctx), id)
     }
 
-    fun infraSourceFile(ctx: Context, e: IndexEntry): File =
+    fun infraSourceFile(ctx: Context, e: UnitEntry): File =
         if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
         else SystemDirs.usr(ctx).let { File(it, e.assetEntry.ifBlank { e.id }) }
     /**
@@ -90,7 +90,7 @@ object ProgramManager {
      * 用 pieceDir 判等于「去磁盘确认它在不在」，那是 verify() 的事。
      */
     fun levelOf(ctx: Context, id: String): Level =
-        if (ProgramIndex.get(ctx, id)?.piece != null) Level.PIECE else Level.PROGRAM
+        if (ProgramIndex.isPiece(ctx, id)) Level.PIECE else Level.PROGRAM
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
@@ -143,7 +143,7 @@ object ProgramManager {
         }
     }
 
-    private fun Snapshot.realityOf(e: IndexEntry): Reality? = realities[e.id]
+    private fun Snapshot.realityOf(e: UnitEntry): Reality? = realities[e.id]
 
 
         /**
@@ -164,7 +164,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (e.piece != null) continue
+            if (ProgramIndex.isPiece(e)) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue

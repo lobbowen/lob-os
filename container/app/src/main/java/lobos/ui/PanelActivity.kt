@@ -139,7 +139,7 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
-    private fun entry(e: lobos.os.IndexEntry): String = buildString {
+    private fun entry(e: lobos.os.UnitEntry): String = buildString {
         append(e.id)
         append("  v").append(e.version.ifBlank { "?" })
         append("  端口=").append(if (e.httpPort > 0) e.httpPort.toString() else "未分配")

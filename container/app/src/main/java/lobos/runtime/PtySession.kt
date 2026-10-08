@@ -315,7 +315,7 @@ object PtySession {
      * 终端能不能起取决于前者。要确认后者用 PieceScan.verify。
      */
     fun available(ctx: Context): Boolean =
-        lobos.os.ProgramIndex.get(ctx, PTY_HOST_ID)?.piece != null
+        lobos.os.ProgramIndex.isPiece(ctx, PTY_HOST_ID)
 
     fun runToCompletion(
         ctx: Context,
