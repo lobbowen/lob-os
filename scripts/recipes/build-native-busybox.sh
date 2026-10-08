@@ -139,22 +139,27 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 # 配置项名读 busybox 自己的 `//config:` 注释 —— 依据 scripts/gen_build_files.sh
 # 第 117~120 行：各子目录的 Config.in 由它生成，所以官方 tarball 里那些
 # Config.in 根本不存在，配置项的真身就在 .c 注释里。
-SCAN="node $ROOT_DIR/scripts/verify/verify-busybox-missing-headers.js"
-# NDK 的 sysroot 按目标三元组命名：
-#   <ndk>/sysroot/usr/include/<三元组>/android/   ← 目标平台的头（linux/*.h 等）
-#   <ndk>/sysroot/usr/include/                    ← libc 头（sys/*.h、stdio.h 等）
-# 三元组从 CC 的文件名读，不写死版本号 ——
-# clang 三元组里带 API 级别（aarch64-linux-android35-clang → aarch64-linux-android35）。
+SCAN="node $ROOT_DIR/scripts/recipes/verify-busybox-missing-headers.js"
+# NDK 的 sysroot 按目标架构命名：
+#   <ndk>/sysroot/usr/include/<架构>-linux-android/   ← 目标平台的头（linux/*.h 等）
+#   <ndk>/sysroot/usr/include/                        ← libc 头（sys/*.h、stdio.h 等）
+#
+# 目录名**不带 API 级别** —— clang 的文件名带（aarch64-linux-android35-clang），
+# 但 sysroot 里的目录是 aarch64-linux-android。上一轮实测取证：
+#   sysroot/usr/include/aarch64-linux-android    ← 是这个
+#   sysroot/usr/include/aarch64-linux-android35  ← 我推出来的那个，不存在
+# 所以拼之前去掉结尾的 API 号。
 TARGET_TRIPLE="$(basename "$CC")"
 TARGET_TRIPLE="${TARGET_TRIPLE%-clang}"
 TARGET_TRIPLE="${TARGET_TRIPLE%-clang++}"
-NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE/android"
+TARGET_TRIPLE="$(printf '%s' "$TARGET_TRIPLE" | sed 's/-linux-android[0-9]*$/-linux-android/')"
+NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE"
 [ -d "$NDK_INC" ] || {
   echo "=== NDK sysroot include 目录取证 ==="
-  echo "从 $CC 推出的三元组 = $TARGET_TRIPLE"
+  echo "从 $CC 推出的目录名 = $TARGET_TRIPLE"
   echo "--- sysroot/usr/include 下有什么 ---"
-  ls -d "$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/"* 2>/dev/null | sed -n '1,10p'
-  die "找不到 NDK 的 sysroot include" "要找的是 $NDK_INC（按 clang 三元组推的）"
+  ls -d "$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/"* 2>/dev/null | sed -n '1,20p'
+  die "找不到 NDK 的 sysroot include" "要找的是 $NDK_INC（按 clang 名去掉 API 号推的）"
 }
 
 MISSING_APPLES="$($SCAN "$SRC" "$NDK_INC")" || {

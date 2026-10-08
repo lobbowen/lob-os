@@ -84,8 +84,14 @@ check_so() {
   local sz
   sz="$(wc -c < "$f")"
   [ "$sz" -ge "$min" ] || return 1
+  # ★ file 要 -L（跟随软链）——
+  #   共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2，
+  #   libz.so 与 libz.so.1 都是软链。不跟随时 file 报的是
+  #   「symbolic link to libz.so.1.3.2」而不是 ELF 形态，
+  #   于是这三层里唯二的两个软链都被判成「不是 aarch64 ELF」而报错。
+  #   （wc -c 本来就跟随软链，所以只有 file 这步需要显式 -L。）
   if command -v file >/dev/null 2>&1; then
-    file -b "$f" 2>/dev/null | grep -q "ELF 64-bit.*ARM aarch64" || return 1
+    file -bL "$f" 2>/dev/null | grep -q "ELF 64-bit.*ARM aarch64" || return 1
   fi
   return 0
 }
