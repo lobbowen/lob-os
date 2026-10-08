@@ -68,10 +68,23 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   #   （表现：out/lib 目录压根不存在）。
   #   正解：编出来的 .so 就在源码树里（libz.so.1.3.2 + 三个软链），
   #   直接按 Makefile 里的 LIBZ 名字拷过去 —— 那才是它真正的产物名。
+  # 不猜名字 —— 照源码树里真实存在的 libz* 全拷过去。
+  #   zlib 的产物是一整条链：libz.so.1.3.2（实体）+ libz.so.1 · libz.so（软链）
+  #   linker 运行时找的是带 SONAME 的那个（libz.so.1）。
   mkdir -p "$OUT_DIR/lib" "$OUT_DIR/include"
-  cp -f "$WORK/src/$LIB_TARGET" "$OUT_DIR/lib/$LIB_TARGET"
-  [ -f "$WORK/src/libz.so" ] && cp -f "$WORK/src/libz.so" "$OUT_DIR/lib/libz.so"
-  [ -f "$WORK/src/libz.so.1" ] && cp -f "$WORK/src/libz.so.1" "$OUT_DIR/lib/libz.so.1"
+  SO_N=0
+  for f in "$WORK/src"/libz.so*; do
+    [ -e "$f" ] || continue
+    cp -Pf "$f" "$OUT_DIR/lib/" 2>/dev/null || cp -f "$f" "$OUT_DIR/lib/"
+    SO_N=$((SO_N + 1))
+  done
+  [ "$SO_N" -gt 0 ] || {
+    echo "=== zlib 源码树里没有 libz.so*的取证 ==="
+    ls -la "$WORK/src"/libz* 2>/dev/null || echo "（没有 libz*）"
+    echo "--- build.log 末尾 ---"; tail -20 "$WORK/build.log" 2>/dev/null
+    die "zlib 没编出共享库" "源码树里没有 libz.so*（改了 SRCDIR 也没用？）"
+  }
+  echo "[zlib] 拷了 $SO_N 个 libz.so* 到$OUT_DIR/lib"
   [ -f "$WORK/src/zlib.h" ] && cp -f "$WORK/src/zlib.h" "$OUT_DIR/include/"
   [ -f "$WORK/src/zconf.h" ] && cp -f "$WORK/src/zconf.h" "$OUT_DIR/include/"
   # 装完要真的有 lib 目录（此前 out/lib 整个不存在 → install 静默没生效）

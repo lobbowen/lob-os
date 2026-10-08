@@ -46,7 +46,10 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
 #   · make install 目标在它的 Makefile 里**不存在**（报 No rule to make target install）
 # 正解：直接从 .libs/ 取、自己搬到 out/bin/。
 mkdir -p "$OUT_DIR/bin"
-if [ -f "$WORK/src/.libs/jq" ]; then
+if [ -f "$WORK/src/jq" ]; then
+  # 取证显示：.libs/ 里只有 libjq.a（静态库），可执行文件在 src/jq
+  cp -f "$WORK/src/jq" "$OUT_DIR/bin/jq"
+elif [ -f "$WORK/src/.libs/jq" ]; then
   cp -f "$WORK/src/.libs/jq" "$OUT_DIR/bin/jq"
 elif [ -f "$OUT_DIR/bin/jq" ]; then
   :   # 某些配置下 make 直接把 jq 装到了 prefix

@@ -121,7 +121,7 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
 #   yes "" 让它对每个提问取默认（新增项默认 n，保守）。
-yes "" | make oldconfig > "$WORK/oldconfig.log" 2>&1 \
+make oldconfig < /dev/null > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
   # ── 关掉需要内核专有头的 applet ──────────────────────────────
@@ -134,7 +134,7 @@ yes "" | make oldconfig > "$WORK/oldconfig.log" 2>&1 \
     # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
     #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
     #   yes "" 让它对每个提问取默认（新增项默认 n，保守）。
-    yes "" | make oldconfig > "$WORK/oldconfig-tc.log" 2>&1 \
+    make oldconfig < /dev/null > "$WORK/oldconfig-tc.log" 2>&1 \
       || { echo "=== 关掉 CONFIG_TC 后的 oldconfig 失败（末 20 行）===";
            tail -20 "$WORK/oldconfig-tc.log"; exit 1; }
   fi

@@ -28,7 +28,10 @@ if ! bash scripts/toolchain/fetch-pinned.sh --pin node "$WORK/node-headers.tar.x
   die "node 源码取不到" "sha256 见 scripts/component-sources.json（上面是取证）"
 fi
 mkdir -p "$WORK/node-headers"
-tar -xJf "$WORK/node-headers.tar.xz" -C "$WORK/node-headers" --strip-components=1
+# ★ 用 -xzf 不用 -xJf —— node 官方发的是 .tar.gz（xz 的 flag 解不了它）
+#   fetch-pinned 落的文件名带 .tar.xz 但内容是 .tar.gz（那是脚本自己定的名字），
+#   按内容走：-z 管 gzip、-J 管 xz，这里是 gzip。
+tar -xzf "$WORK/node-headers.tar.xz" -C "$WORK/node-headers" --strip-components=1
 INC="$WORK/node-headers/include/node"
 [ -f "$INC/node_api.h" ] || {
   echo "=== node 头文件解包后的取证 ==="
