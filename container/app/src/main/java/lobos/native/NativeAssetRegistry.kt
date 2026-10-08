@@ -23,7 +23,6 @@ object NativeAssetRegistry {
             probeArgs = listOf("-c", "exit 0"), probeExpect = null,
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
             installName = "bash",
-            version = "5.2.15",
             note = "jniLibs 路径；P2 起 bash 改由前缀目录提供",
         ),
         NativeExecutable(
@@ -68,7 +67,6 @@ object NativeAssetRegistry {
             probeArgs = listOf("--list"), probeExpect = "tar",
             requiredDeps = emptyList(), required = false, buildTier = "upstream",
             installName = "busybox",
-            version = "1.36.1",
             note = "多调用二进制：用户敲 tar/grep/ls（软链由 PrefixProvisioner 建），" +
                 "不是 busybox tar。探针用 --list 并期待 tar —— 比看二进制在不在强，" +
                 "证明 applet 真编进去了（配置项名写错时 busybox 会静默少编）。" +
@@ -79,14 +77,12 @@ object NativeAssetRegistry {
             id = "zlib", libName = "libz.so", humanName = "zlib 压缩库",
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = emptyList(), required = true, buildTier = "upstream",
-            version = "1.3.2",
             note = "busybox 的 gzip/tar 与 curl 都要它；原先两个商店脚本各静态编一遍",
         ),
         NativeExecutable(
             id = "openssl", libName = "libssl.so", humanName = "OpenSSL 传输层",
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = listOf("libcrypto.so"), required = true, buildTier = "upstream",
-            version = "3.6.3",
             note = "libcurl 的 DT_NEEDED 含它 —— 同目录，解析靠链接期 -Wl,-rpath,\$ORIGIN",
         ),
         NativeExecutable(
@@ -100,7 +96,6 @@ object NativeAssetRegistry {
             probeArgs = emptyList(), probeExpect = null,
             requiredDeps = listOf("libssl.so", "libcrypto.so", "libz.so"),
             required = true, buildTier = "upstream",
-            version = "8.22.0",
             note = "git 链它；商店件另有 curl 可执行二进制（那是商店件，不是底座库）",
         ),
     )

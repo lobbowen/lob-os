@@ -16,7 +16,6 @@ object NativeAssetUpdater {
 
     data class State(
         val id: String,
-        val apkVersion: String,
         val installedVersion: String?,
         val source: File?,
         val updated: Boolean,
@@ -38,28 +37,13 @@ object NativeAssetUpdater {
                 File(PrefixProvisioner.libDir(ctx), e.installedAs)
             }
             val apkFile = File(nativeDir, e.libName)
-            var installedVer: String? = null
-            var source: File? = apkFile.takeIf { it.isFile }
-            try {
-                if (java.nio.file.Files.isSymbolicLink(entry.toPath())) {
-                    val real = entry.toPath().toRealPath()
-                    val seg = runCatching {
-                        SupplyProvisioner.toolchainDir(ctx).toPath().toAbsolutePath()
-                            .relativize(real)
-                            .toString()
-                            .split(File.separatorChar).filter { it.isNotBlank() }
-                    }.getOrDefault(emptyList())
-                    if (seg.size >= 2) {
-                        installedVer = seg[1]
-                        source = real.toFile()
-                    }
-                } else if (entry.isFile) {
-                    installedVer = null
-                    source = entry
-                }
-            } catch (_: Throwable) {
-            }
-            out += State(e.id, e.version, installedVer, source, installedVer != null)
+            val source: File? = apkFile.takeIf { it.isFile }
+            out += State(
+                e.id,
+                SupplyProvisioner.selectedVersion(ctx, e.id).ifBlank { null },
+                source,
+                false,
+            )
         }
         return out
     }
@@ -134,25 +118,20 @@ object NativeAssetUpdater {
                 skipped.put(JSONObject().put("id", id).put("why", "清单未声明版本"))
                 continue
             }
-            if (e.version.isNotBlank() && ver == e.version) {
-                skipped.put(JSONObject().put("id", id).put("why", "APK 原件已是 $ver"))
-                continue
-            }
             val cur = states(ctx).firstOrNull { it.id == id }
             if (cur?.installedVersion == ver) {
                 skipped.put(JSONObject().put("id", id).put("why", "已是 $ver（无需重复装）"))
                 continue
             }
             val installed = cur?.installedVersion
-            val baseline = installed ?: e.version.takeIf { it.isNotBlank() }
-            if (baseline != null && lobos.ota.ProgramOtaVersions.compare(ver, baseline) < 0) {
+            if (installed != null && lobos.ota.ProgramOtaVersions.compare(ver, installed) < 0) {
                 skipped.put(
-                    JSONObject().put("id", id).put("why", "远端 $ver 低于本机 $baseline —— 拒绝降级")
+                    JSONObject().put("id", id).put("why", "远端 $ver 低于本机 $installed —— 拒绝降级")
                 )
                 RuntimeDiagnostics.append(
                     ctx, "native-ota", false,
                     "拒绝把底座件降级：" + id,
-                    "远端 $ver < 本机 $baseline；降级会让 bash/openssl 回到有漏洞的旧版本",
+                    "远端 $ver < 本机 $installed；降级会让 bash/openssl 回到有漏洞的旧版本",
                 )
                 continue
             }
@@ -160,7 +139,7 @@ object NativeAssetUpdater {
             if (src != "ota") {
                 skipped.put(
                     JSONObject().put("id", id).put("why", "清单标 source=$src（没有可下载的更新）；" +
-                        "本机是 ${cur?.installedVersion ?: "APK 原件 " + e.version.ifBlank { "（版本未声明）" }}")
+                        "本机是 ${cur?.installedVersion ?: "随包原件（版本未记录）"}")
                 )
                 continue
             }
@@ -258,7 +237,7 @@ object NativeAssetUpdater {
             picked.copyTo(dest, overwrite = true)
             if (!dest.isFile || dest.length() != picked.length()) return false to "落盘后长度不符"
             ExecBits.apply(dest)
-            if (!pointEntryAt(ctx, e, dest)) return false to "入口软链切换失败"
+            if (!pointEntryAt(ctx, e, version, dest)) return false to "入口软链切换失败"
             true to null
         } catch (ex: Throwable) {
             false to (ex.message ?: ex.javaClass.simpleName)
@@ -274,7 +253,7 @@ object NativeAssetUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    private fun pointEntryAt(ctx: Context, e: NativeExecutable, dest: File): Boolean = try {
+    private fun pointEntryAt(ctx: Context, e: NativeExecutable, version: String, dest: File): Boolean = try {
         val link = if (e.id in NativeAssetRegistry.BIN_IDS) {
             File(PrefixProvisioner.binDir(ctx), e.installedAs)
         } else {
@@ -286,6 +265,9 @@ object NativeAssetUpdater {
         val ok = tmp.renameTo(link) || run {
             java.nio.file.Files.deleteIfExists(link.toPath())
             tmp.renameTo(link)
+        }
+        if (ok) {
+            SupplyProvisioner.selectVersion(ctx, e.id, version)
         }
         ok
     } catch (_: Throwable) {
@@ -306,6 +288,7 @@ object NativeAssetUpdater {
             }
             java.nio.file.Files.deleteIfExists(link.toPath())
             val rebuilt = PrefixProvisioner.provision(ctx).contains(e.installedAs)
+            SupplyProvisioner.selectVersion(ctx, id, "")
             RuntimeDiagnostics.append(
                 ctx, "native-ota", rebuilt,
                 "底座件已回滚到 APK 原件：" + id,

@@ -119,8 +119,7 @@ class PanelActivity : AppCompatActivity() {
             val rows = lobos.runtime.NativeAssetUpdater.states(this)
             say("底座件 " + rows.size + " 件：")
             for (s in rows) {
-                say("  " + s.id.padEnd(10) + " APK=" + (s.apkVersion.ifBlank { "随包" })
-                    + "  在用=" + (s.installedVersion ?: "原件")
+                say("  " + s.id.padEnd(10) + " 已装=" + (s.installedVersion ?: "随包原件")
                     + if (s.updated) "（已 OTA 更新）" else "")
             }
             say("  回滚某件：桥接 lobos.sys.native.rollback {id}")

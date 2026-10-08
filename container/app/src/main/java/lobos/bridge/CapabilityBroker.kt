@@ -561,7 +561,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             for (s in lobos.runtime.NativeAssetUpdater.states(this@CapabilityBroker)) {
                 arr.put(JSONObject().apply {
                     put("id", s.id)
-                    put("apkVersion", s.apkVersion)
                     put("installedVersion", s.installedVersion ?: JSONObject.NULL)
                     put("updated", s.updated)
                     put("path", s.source?.absolutePath ?: JSONObject.NULL)

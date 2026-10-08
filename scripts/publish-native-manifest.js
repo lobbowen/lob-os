@@ -16,6 +16,7 @@ const BASE = (process.env.NATIVE_BASE_URL || 'https://lobcdn.zll.ink').replace(/
 const PUBKEY = process.env.NATIVE_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
 const REGISTRY = path.join(ROOT, 'container', 'app', 'src', 'main', 'java', 'lobos', 'native', 'NativeAssetRegistry.kt');
+const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
 const PIN = path.join(ROOT, '.github', 'native-capabilities-pin.json');
 const ABI = process.env.ABI || 'arm64-v8a';
@@ -109,25 +110,62 @@ function revisionForManifest() {
   return Number(raw);
 }
 
+const PIN_KEY = {
+  bash: 'bash',
+  busybox: 'busybox',
+  zlib: 'zlib',
+  openssl: 'openssl',
+  crypto: 'openssl',
+  curl: 'curl',
+  ripgrep: 'ripgrep',
+  jq: 'jq',
+  libcxx: '@ndkVersion',
+};
+
+function versionOf(id) {
+  const key = PIN_KEY[id];
+  if (!key) return null;
+  let tab;
+  try {
+    tab = JSON.parse(fs.readFileSync(SOURCES, 'utf8'));
+  } catch (e) {
+    bad('钉值表读不出（' + SOURCES + '）：' + e.message);
+    return null;
+  }
+  if (key === '@ndkVersion') return (tab.ndkVersion || '').trim() || null;
+  const v = ((tab.sources || {})[key] || {}).version;
+  return v && String(v).trim() ? String(v).trim() : null;
+}
+
 function main() {
   const reg = parseRegistry();
   const byId = capsIndex();
   const pin = pinEntry();
 
-  const withVersion = reg.filter((e) => e.version && e.version.trim());
-  if (!withVersion.length) {
-    bad('注册表里没有一件声明了 version —— 底座件清单会是空的（空清单等于「都不可更新」且看不出来）');
+  const versioned = [];
+  const noVersion = [];
+  for (const e of reg) {
+    const v = versionOf(e.id);
+    if (v) versioned.push({ e, version: v });
+    else noVersion.push(e.id);
+  }
+  if (!versioned.length) {
+    bad('钉值表里一件版本都取不到 —— 清单会是空的（空清单等于「都不可更新」且看不出来）。' +
+      '检查 PIN_KEY 的映射与 ' + SOURCES);
+  }
+  for (const id of noVersion) {
+    console.error('  [bundled-only] ' + id + ' 钉值表里没有它的版本 → 不进 OTA 清单，只随 APK 打包');
   }
 
   const components = [];
-  for (const e of withVersion) {
+  for (const { e, version } of versioned) {
     const capsId = byId.get(e.libName);
     if (capsId && capsId !== e.id) {
       bad('注册表 id=' + e.id + ' 与档位表 id=' + capsId + ' 对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
     }
     const c = {
       id: e.id,
-      version: e.version,
+      version,
       entry: e.installName || e.libName,
       libName: e.libName,
       source: 'apk',
