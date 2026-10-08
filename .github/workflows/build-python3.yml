@@ -83,10 +83,6 @@ jobs:
             exit 0
           done
           echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
-        run: |
-          set -uo pipefail
-            exit 0
-          fi
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |
