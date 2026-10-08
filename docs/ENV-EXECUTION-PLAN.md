@@ -106,11 +106,21 @@ make · cmake · **sysroot**（头文件 + 静态库）· pkg-config
 
 | 筐 | 件 |
 |---|---|
-| **底座 · 基础环境**<br>`usr/lib/toolchain` | `llvmtoolchain`（clang · lld · binutils）· `sysroot` · `make` · `cmake` · `pkg-config` |
+| **底座 · 基础环境**<br>`usr/lib/toolchain` | `sysroot` · `make` · `cmake` · `pkg-config` |
 | **底座 · 基础命令**<br>`usr/bin` | `bash` · `rg` · `busybox` · `jq` · `curl` |
 | **底座 · 基础库**<br>`usr/lib` | `libc++_shared` · `libssl` + `libcrypto`（openssl）· `libz` · `libcurl` |
 | **运行时**（本身是环境，商店分发） | `node` · `python3` |
-| **工具**（用户可选装，商店分发） | `git` · `sqlite3` · `npm`（依赖 node）· `pnpm`（依赖 node） |
+| **工具**（用户可选装，商店分发） | `llvmtoolchain`（clang · lld · binutils）· `git` · `sqlite3` · `npm`（依赖 node）· `pnpm`（依赖 node） |
+
+`llvmtoolchain` 原在 base 筐，理由是「它是编其它件的工具」。但 base 筐的判据是
+「底座的件不能依赖运行时 + 随系统必备」—— 而它有两处不成立：
+
+- NDK 自带的 clang 是**构建期工具**（跑在 CI 上，不进 APK），编完 12 件就丢进 zip 了；
+  设备上的用户要编自己的 `.so` 才需要它，那已经是「用户可选装」。
+- 设备端零处调用 clang（`container/` 全量扫过），底座里放一件没有消费端的件，
+  代价是 APK 体积与一条常年要维护的构建链。
+
+所以它归到 tool 筐，走商店分发。判据与结论都记在这里，改筐位时先看这一段。
 
 **依赖关系只用来判「能不能进底座」，不用来决定安装顺序。**
 安装顺序是另一件事（按依赖执行），但**打包始终是分开的一个件一个包**。
@@ -1612,10 +1622,12 @@ Release tag 前缀（`base-` / `rt-` / `tool-`）。门禁：
 
 | 筐 | 件（16 件） | 谁编 | 落位 |
 |---|---|---|---|
-| **base** 基础环境 | `llvmtoolchain` · `sysroot` · `make` · `cmake` · `pkg-config` | `ndk-llvm` job + `build` 矩阵 5 件 | `usr/lib/toolchain/` |
-| **base** 基础命令 | `bash` · `rg` · `busybox`（原生件）· `jq` · `curl` | `build-apk.yml` 3 件 + `build` 矩阵 2 件 | `usr/bin/` |
-| **rt** 运行时 | `node` · `python3` | `node` job + `build` 矩阵 1 件 | `usr/lib/toolchain/` |
-| **tool** 工具 | `git` · `sqlite3` · `npm` · `pnpm` | `build` 矩阵 4 件 | `usr/lib/toolchain/` |
+| **base** 基础环境 | `sysroot` · `make` · `cmake` · `pkg-config` | 各自的独立链 | `usr/lib/toolchain/` |
+| **base** 基础命令 | `bash` · `rg` · `busybox`（原生件）· `jq` · `curl` | `build-apk.yml` 3 件 + 各自的独立链 2 件 | `usr/bin/` |
+| **rt** 运行时 | `node` · `python3` | `build-node.yml` + `build-python3.yml` | `usr/lib/toolchain/` |
+| **tool** 工具 | `llvmtoolchain` · `git` · `sqlite3` · `npm` · `pnpm` | 各自的独立链 | `usr/lib/toolchain/` |
+
+拆链之后没有矩阵了：每一件一条 `build-<件>.yml`，改一件的配方只跑那一条。
 
 **为什么一条 workflow 编三个筐的件**：它们共用同一套
 （NDK 定位 → 缓存键 → 复用已发布预制品 → 形状校验 → 发布），

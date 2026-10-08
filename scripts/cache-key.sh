@@ -44,10 +44,10 @@ deps_for() {
 
 bucket_for() {
   case "$1" in
-    llvmtoolchain|sysroot|make|cmake|pkg-config) echo "base" ;;
+    sysroot|make|cmake|pkg-config)                echo "base" ;;
     bash|rg|busybox|jq|curl)                     echo "base" ;;
     node|python3)                                echo "rt" ;;
-    git|sqlite3|npm|pnpm)                        echo "tool" ;;
+    git|sqlite3|npm|pnpm|llvmtoolchain)          echo "tool" ;;
     *) die ;;
   esac
 }

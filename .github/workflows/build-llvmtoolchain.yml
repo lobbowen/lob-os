@@ -1,4 +1,4 @@
-name: LLVM Toolchain（固定资产，编译一次长期复用）
+name: Build Component · llvmtoolchain
 
 on:
   push:
@@ -8,12 +8,19 @@ on:
       - 'scripts/locate-ndk.sh'
       - 'scripts/cache-ndk.sh'
       - 'scripts/verify-ndk-llvm.sh'
+      - 'scripts/fetch-pinned.sh'
+      - 'scripts/read-component-entry.sh'
       - 'scripts/verify-component-artifact.sh'
       - 'scripts/package-component.sh'
+      - 'scripts/publish-component-manifest.js'
+      - 'scripts/upload-qiniu.js'
       - 'scripts/cache-key.sh'
       - 'scripts/component-sources.json'
+      - 'scripts/component-verify.json'
       - 'patches/**'
       - '.github/workflows/build-llvmtoolchain.yml'
+    tags:
+      - 'tool-llvmtoolchain'
   workflow_dispatch: {}
 
 concurrency:
@@ -25,7 +32,34 @@ permissions:
 
 jobs:
 
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.ref.outputs.channel }}
+      revision: ${{ steps.ref.outputs.revision }}
+      publish: ${{ steps.ref.outputs.publish }}
+    steps:
+      - name: 解出本轮的通道与清单版本号
+        id: ref
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" =~ ^component-(canary|stable)-([1-9][0-9]*)$ ]]; then
+            echo "发布轮：ref=${GITHUB_REF_NAME} → 通道 ${BASH_REMATCH[1]}，清单 revision ${BASH_REMATCH[2]}"
+            { echo "channel=${BASH_REMATCH[1]}"; echo "revision=${BASH_REMATCH[2]}"; echo "publish=true"; } >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/component-* ]]; then
+            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 component-<channel>-<revision>，channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是商店唯一的单调判据）。本次不投递。"
+            exit 1
+          else
+            echo "channel=canary" >> "$GITHUB_OUTPUT"
+            echo "revision=0" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "[resolve] 校验轮（ref=${GITHUB_REF}）：只构建与对账，不投递"
+          fi
+
+
+
   llvmtoolchain:
+    needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -147,11 +181,29 @@ jobs:
           } > "$PW/BUILD.md"
           if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "${{ github.repository }}" \
-              --title "llvmtoolchain（基础环境）— $TAG" \
-              --notes "编译一次、长期复用的工具链预制品。base 筐的底座之底座。BUILD.md 记录编译依据。"
+              --title "llvmtoolchain（工具筐）— $TAG" \
+              --notes "编译一次、长期复用的工具链预制品（clang / lld / binutils）。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
           fi
           gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
           echo "[ok] 已发布 $TAG"
+
+      - name: 发布 llvmtoolchain 件到对象存储
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
+            exit 1
+          fi
+          for f in dist/component-llvmtoolchain-*.zip; do
+            [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
+            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
+              node scripts/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+          done
 
       - uses: actions/upload-artifact@v4
         with:
