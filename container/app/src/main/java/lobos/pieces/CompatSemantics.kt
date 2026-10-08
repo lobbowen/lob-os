@@ -16,6 +16,7 @@ import org.json.JSONObject
  *   partial   机制对，但有已知缺口
  *   differ    用别的机制达成相近效果（不是 Linux 那个）
  *   decided   我们决定不做 —— **形态决定的取舍，不是待办**
+ *   absent    Linux 有，我们没有，且还没决定要不要做 —— **真缺口**
  */
 object CompatSemantics {
 
@@ -26,6 +27,8 @@ object CompatSemantics {
         val carrier: String,
     ) {
         val aligned: Boolean get() = status == "aligned"
+        /** Linux 有、我们没有，且还没决定要不要做 —— 真缺口 */
+        val absent: Boolean get() = status == "absent"
         val decided: Boolean get() = status == "decided"
     }
 
@@ -84,8 +87,11 @@ object CompatSemantics {
             "decided",
             "形态决定：不做多用户。理由——我们是在安卓上模拟出来的一套系统，"
                 + "不是安卓本身。"
-                + "① 文件系统在应用私有目录 filesDir 下自成一套（etc/usr/var/run/opt），"
-                + "不与安卓的 / 分权；核实全仓 /data/data 与 su 均零出现。"
+                + "① 文件系统在应用私有目录 filesDir 下自成一套（etc/usr/var/run/opt）。"
+                + "★ 但要说清：这只在**逻辑上**自成一套 —— 物理上它们仍在安卓的 / 之下，"
+                + "程序里的绝对路径会落到安卓的真实位置（见 isolation 那一项）。"
+                + "我们代码里 /data/data 与 su 零出现，那只说明**我们自己没写这些路径**，"
+                + "不等于系统碰不到。"
                 + "② 程序都是我们拉起的普通子进程，与控制面同 uid（APK 的 uid），"
                 + "彼此权限完全一样 —— 系统内不存在「这个程序能、那个不能」的权限差。"
                 + "③ 与 Linux 的差别在根本处：Linux 的前后端一体，权限是内核里的事；"
@@ -97,14 +103,25 @@ object CompatSemantics {
                 + "这是形态的差别，不是没做完 —— 所以状态是 decided 不是 absent",
         ),
         Item(
-            "isolation", "与安卓系统的边界",
-            "aligned",
-            "出向只有三个组件：lobos/capability 包里的"
-                + "无障碍服务 · MediaProjection · ADB 通道。"
-                + "系统自身不直碰安卓：/data/data 读取、su 执行、Settings 写入、"
-                + "装别的 APK —— 核实均为零。"
-                + "要安卓权限，由那三个组件代取，取不回来就是取不回来"
-                + "（走不通就走不通，不静默退化、不留后门）。",
+            // ★ 这一项此前错标成 aligned —— 核实后发现不成立
+            "isolation", "与安卓系统的文件系统边界",
+            "absent",
+            "【现状】我们的系统根在物理上是 filesDir（/data/user/0/<包>/files），"
+                + "usr/opt/var/etc 都在安卓真实的 / 之下 —— 是**嵌套**，不是隔离。"
+                + "我们的 / 只在逻辑上存在：没有任何一层把 \"/data/data\" 变成查无此目录。"
+                + "核实 chroot / unshare / pivot_root / CLONE_NEWNS 全仓零出现。"
+                + "现有四个 LD_PRELOAD hook（exec-path 查解释器 · open-fallback "
+                + "EACCES 回退 HOME · link-interpose 拦 link/linkat · tmp-paths 改 /tmp）"
+                + "都不是路径重映射。"
+                + "【后果】程序里任何绝对路径都落到安卓的真实位置 —— "
+                + "它 open(\"/data/data/…\") 读到的是安卓的目录。"
+                + "【Linux 的机制】chroot(2)/pivot_root(2)/unshare(CLONE_NEWNS) —— "
+                + "给进程一个自己的 /，namespace 外看不见。我们一个都没有。"
+                + "【为什么难】通用 APK 无 CAP_SYS_CHROOT，SELinux 下 mount namespace "
+                + "基本不可得；ADB 通道能拿但那是单独启用的组件，不是常态。"
+                + "所以这一项是**真缺口**，不是形态决定的取舍 —— "
+                + "单用户那套逻辑成立（程序之间不互相隔离是形态决定），"
+                + "但与安卓之间的边界没建立起来",
         ),
         Item(
             "signal", "信号与退出码透传",
@@ -137,6 +154,7 @@ object CompatSemantics {
             put("partial", ITEMS.count { it.status == "partial" })
             put("differ", ITEMS.count { it.status == "differ" })
             put("decided", ITEMS.count { it.status == "decided" })
+        put("absent", ITEMS.count { it.absent })
             put("items", arr)
         }
         lobos.os.StateFiles.writeJson(File(SystemDirs.libvar(ctx), "compat-semantics.json"), o)
