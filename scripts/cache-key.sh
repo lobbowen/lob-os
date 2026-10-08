@@ -44,10 +44,11 @@ deps_for() {
 
 bucket_for() {
   case "$1" in
-    sysroot|make|cmake|pkg-config)                echo "base" ;;
-    bash|rg|busybox|jq|curl)                     echo "base" ;;
-    node|python3)                                echo "rt" ;;
-    git|sqlite3|npm|pnpm|llvmtoolchain)          echo "tool" ;;
+    sysroot)                                       echo "base" ;;
+    bash|rg|busybox|jq|curl)                       echo "base" ;;
+    node|python3)                                  echo "rt" ;;
+    git|sqlite3|npm|pnpm|llvmtoolchain)            echo "tool" ;;
+    make|cmake|pkg-config)                         echo "tool" ;;
     *) die ;;
   esac
 }

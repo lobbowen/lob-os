@@ -34,6 +34,12 @@
 | `libcurl.so` | HTTP 客户端 | **8.22.0** | ✅ `:112` |
 | `libpcre2-8.so` | 正则（jq / grep 系） | — | ❌ **没有**，现静态链进 jq |
 | `libiconv.so` | 字符编码转换（git） | — | ❌ **没有**，现静态链进 git |
+| `sysroot` | **C/C++ 头文件**（`stdio.h` 等） | NDK 30.0.16248370 | ✅ `PrefixProvisioner.kt:84` 已在铺 `$PREFIX/include` 软链 |
+
+> `sysroot` 是**数据不是工具** —— 它提供头文件，任何编 C/C++ 的程序都要它，
+> 与 clang/pkg-config/make/cmake 那类「编译工具」不同类。它走件安装路径
+> （`ProgramManager.stateDirOf(ctx,"sysroot")` + `currentVersion()`），
+> 实现形态已经是全局基础件该有的样子。
 
 ### 数据
 
@@ -53,10 +59,49 @@
 | `node` / `python3` | rt 筐（运行时） | 三筐分类 |
 | `git` / `sqlite3` / `npm` / `pnpm` | tool 筐（工具） | 三筐分类 |
 
-**构建工具链的其余四件**（`sysroot` · `make` 4.4.1 · `cmake` 4.4.4 · `pkg-config` 3.0.7）
-仍在 base 筐。它们是「编 C/C++ 需要的东西」，按旧 `INVENTORY.md` 属必备 ——
-但旧文档已列明「构建环境」是与「运行时底座」**分开的一层**，是否算「基础环境件」
-在旧文档里从未定论。本文不替它们下判断，只记录现状。
+### 构建工具链 —— 已定：编译工具归 tool 筐，sysroot 留base 筐
+
+**判据（已定）**：是不是「编译工具」。
+
+- **是编译工具** → 与 `llvmtoolchain` 同类，归 `tool` 筐
+- **是服务全局的数据/能力** → 基础环境件
+
+逐件核实结论：
+
+| 件 | 是编译工具吗 | 判定 | 依据 |
+|---|---|---|---|
+| `llvmtoolchain` 21.1.0 | ✅ 编译器本体 | tool | 已落地 |
+| `pkg-config` 3.0.7 | ✅ 编译参数查询 | **tool** | 见下 |
+| `make` 4.4.1 | ✅ 构建自动化 | **tool** | 设备端零消费者 |
+| `cmake` 4.4.4 | ✅ 构建系统 | **tool** | 设备端零消费者 |
+| **`sysroot`** | ❌ **不是工具，是头文件数据** | **base** | `PrefixProvisioner.kt:84linkSysrootInclude` 已在铺 `$PREFIX/include` 软链，且走件安装路径（`ProgramManager.stateDirOf`）—— 已是全局基础件的形态 |
+
+**为什么 pkg-config 是编译工具**（逐段拆解编译命令）：
+
+```
+clang  main.c  -o  main  -I$PREFIX/include  -L$PREFIX/lib  -lz  -lssl  -lcrypto
+ │      │                │              │        │      │      │
+ │      │                │              │        └──────┴──────┘
+ │      │                │              └ 库路径 -L
+ │      │                └ 头文件路径 -I
+ │      └ 编译器本体（llvmtoolchain）
+ └ 源码
+```
+
+`pkg-config` **不在这条命令的任何一环里**，它只是「帮你算出 `-I`/`-L`/`-l`」的查询器。
+去掉它，上面那条命令完全照样能跑：
+`clang main.c -I$PREFIX/include -L$PREFIX/lib -lz -o main`
+
+**它为什么在 Linux 上重要，在我们这儿不重要**：Linux 的库散落在
+`/usr/lib/x86_64-linux-gnu`、`/usr/local/lib`、`/opt/...`（路径不统一）才需要查表，
+且 `.pc` 文件在 **-dev 包**里（`zlib1g-dev`，不是 `zlib1g` 运行时包）。
+**我们是统一前缀 `$PREFIX`，路径本来就一处** —— pkg-config 解决的是我们没有的问题。
+
+它唯一的实际用途：用户编译**内部调用 pkg-config 的第三方库源码**（autotools 的
+`./configure` 会硬调它，查不到就报错退出）。这是「编译别人的库」，不是「编自己的程序」。
+
+**筐变更影响**：`make` / `cmake` / `pkg-config` 的 Release tag 从
+`base-*` 变成 `tool-*`，旧预制品作废需重编。缓存 key 不含筐名，增量编的缓存仍命中。
 
 ---
 
