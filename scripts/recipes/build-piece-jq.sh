@@ -23,10 +23,16 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
   # jq 的 configure 会跑一个编出来的小程序来探测 —— 交叉编时它跑不了，
   # 所以要告诉它「不交叉」（ac_cv_prog_cc_cross=yes），
   # 否则报 cannot run C compiled programs。
+  # jq 的 configure 会跑一个编出来的小程序做探测，交叉编时跑不了。
+  # 要让它同时知道两件事：
+  #   ac_cv_prog_cc_cross=yes  「不运行编出来的程序」（探测改用编译期检查）
+  #   --host=aarch64-linux-android  「这是交叉编」（否则它仍想在本机跑）
+  # 少任一个都会报cannot run C compiled programs。
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   ac_cv_prog_cc_cross=yes \
   ac_cv_func_malloc_0_nonnull=yes \
-    ./configure --prefix="$OUT_DIR" --disable-maintainer-mode \
+    ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+      --prefix="$OUT_DIR" --disable-maintainer-mode \
       --with-oniguruma=builtin \
       > "$WORK/configure.log" 2>&1 \
     || { echo "=== jq configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }

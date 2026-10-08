@@ -95,7 +95,15 @@ set_conf DESKTOP n
 set_conf CROSS_COMPILER_PREFIX n
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
-echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
+# ── 关掉需要内核专有头的 applet ──────────────────────────────
+  # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，NDK 的 sysroot 里没有
+  #   （那是 Linux 内核头，不是 NDK 提供的 libc 头）。
+  # 报错形如：networking/tc.c:236:27: error: 'TCA_CBQ_MAX' undeclared。
+  # 我们不需要 tc —— 关掉它（busybox 的 applet 可选，本来就不该编我们用不上的）。
+  echo "CONFIG_TC=n"
+  echo "CONFIG_IFCONFIG=n"
+
+  echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
 
 make oldconfig > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }

@@ -28,10 +28,15 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   #     失败就静默退回静态（SHARED_MODE=0）
   #   交叉编 Android 时那次探测会失败 —— 所以显式给它 LDFLAGS="-shared"，
   # 让探测通过。（失败过一次：传 --shared，它当没看见，只产出 libz.a。）
+  # 交叉编 Android 时 zlib 的 configure 有两处会选错：
+  #   · 它用 uname 猜宿主 → 设 uname=Linux-host 走交叉分支
+  #   · 它探测共享库时链一个 .so → 交叉编时探测失败就静默退回静态，
+  #     所以必须显式给它 -fPIC 与 -shared
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
-    CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
-    LDFLAGS="-shared" \
-    ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
+  uname=Linux-host \
+  CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
+  LDFLAGS="-shared" \
+  ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
   make -j"$JOBS" > "$WORK/build.log" 2>&1 \
     || { echo "=== zlib 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
