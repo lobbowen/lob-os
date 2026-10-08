@@ -39,6 +39,20 @@ const meta = {
   entry: entry,
   form: entry.indexOf('lib/') === 0 ? 'lib' : 'exec',
   requires: Array.isArray(v.requires) ? v.requires : [],
+
+  /** 落位后的入口文件名 —— 构建期定，运行期不猜 */
+  installName: v.installName || id,
+
+  /**
+   * 一个二进制提供多个命令时列出它们（busybox 那种）。
+   * 来自 component-verify.json 的 criteria.<件>.applets。
+   * 运行期照这份建软链 —— APK 内的 Kotlin 不再列命令名。
+   */
+  applets: Array.isArray(v.applets) ? v.applets : [],
+
+  /** 这件是不是系统必需的（缺了系统起不来） */
+  required: v.required === true,
+
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',
 };

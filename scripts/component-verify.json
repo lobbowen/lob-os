@@ -103,6 +103,74 @@
       "versionArgs": [
         "--version"
       ]
+    },
+    "libcxx": {
+      "required": true,
+      "form": "lib"
+    },
+    "bash": {
+      "installName": "bash",
+      "required": false,
+      "form": "exec"
+    },
+    "ripgrep": {
+      "installName": "rg",
+      "required": false,
+      "form": "exec"
+    },
+    "flock": {
+      "required": false,
+      "form": "exec"
+    },
+    "posix": {
+      "required": false,
+      "form": "exec"
+    },
+    "ptyprobe": {
+      "required": false,
+      "form": "exec"
+    },
+    "ptysession": {
+      "installName": "pty-session",
+      "required": false,
+      "form": "exec"
+    },
+    "busybox": {
+      "installName": "busybox",
+      "required": false,
+      "applets": [
+        "tar",
+        "gzip",
+        "gunzip",
+        "grep",
+        "sed",
+        "awk",
+        "ls",
+        "cp",
+        "mv",
+        "cat",
+        "mkdir",
+        "rm",
+        "ln",
+        "vi",
+        "df",
+        "ps",
+        "true",
+        "false"
+      ],
+      "form": "exec"
+    },
+    "zlib": {
+      "required": true,
+      "form": "lib"
+    },
+    "openssl": {
+      "required": true,
+      "form": "lib"
+    },
+    "crypto": {
+      "required": true,
+      "form": "lib"
     }
   }
 }
