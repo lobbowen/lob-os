@@ -101,7 +101,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         val out = mutableListOf<org.json.JSONObject>()
         val kids = nativeDir.listFiles() ?: return out
         for (f in kids) {
-            if (!f.name.endsWith(META_SUFFIX)) continue
+            if (!f.name.endsWith(META_NAME)) continue
             runCatching {
                 val m = org.json.JSONObject(f.readText())
                 // 说明自己的文件名就是那件的 .so 名（内核不预置名字）
@@ -119,7 +119,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
      * 名字就在落位处那份说明的文件名里。
      */
     private fun fileNameOf(meta: org.json.JSONObject): String =
-        meta.optString("file", "").removeSuffix(META_SUFFIX)
+        meta.optString("file", "").removeSuffix(META_NAME)
 
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
@@ -227,9 +227,4 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             null
         }
     }
-
-
-
-    fun expected(ctx: Context): List<String> =
-        BINS.map { it.second } + DEPS.map { it.second } + CA_BUNDLE_NAME
 }

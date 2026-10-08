@@ -168,7 +168,7 @@ object DriverRegistry {
             drivers.put(JSONObject().apply {
                 put("id", d.id)
                 put("assetId", d.assetId ?: JSONObject.NULL)
-                put("asset", libName ?: JSONObject.NULL)
+                put("asset", entryOf(ctx, d.assetId))
                 put("present", present)
                 put("provides", d.provides)
                 put("substitution", d.substitution)
@@ -201,5 +201,17 @@ object DriverRegistry {
         val degs = degradations(ctx)
         return DRIVERS.size.toString() + " 个驱动；已观测降级 " + degs.size + " 类" +
             (if (degs.isEmpty()) "" else "：" + degs.joinToString("、") { it.driver + "×" + it.count })
+    }
+    /**
+     * 这个件落位后的入口文件名 —— 问注册表，不预置任何名字。
+     *
+     * 驱动表里存的是 id（`flock` / `ptyprobe`），不是文件名；
+     * 文件名由落位形状决定（有 bin/ 是命令 · 只有 .so 是库）。
+     */
+    private fun entryOf(ctx: Context, id: String?): String {
+        if (id.isNullOrBlank()) return ""
+        val e = lobos.os.ProgramIndex.get(ctx, id) ?: return ""
+        val n = e.assetEntry.substringAfterLast("/")
+        return if (e.assetEntry.startsWith("bin/")) n else ""
     }
 }

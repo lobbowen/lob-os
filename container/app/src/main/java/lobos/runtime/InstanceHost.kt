@@ -391,7 +391,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
-                    flockSo = lobos.os.PieceScan.pieceFile(this, FLOCK_ID),
+                    flockSo = lobos.os.PieceScan.pieceFile(this, "flock"),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
                     httpPort = resolvedPort,
@@ -766,6 +766,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     companion object {
+        /** 健康探测的预算 —— 探活多久算失败 */
+        const val HEALTH_POLL_BUDGET_MS = 30_000L
+
         const val TAG = "InstanceHost"
         const val ACTION_RESTART = "lobos.action.RESTART_RUNTIME"
 

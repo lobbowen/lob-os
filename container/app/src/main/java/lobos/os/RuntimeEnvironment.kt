@@ -136,7 +136,13 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val ready = PrefixProvisioner.provision(ctx)
-        val missing = PrefixProvisioner.expected(ctx) - ready.toSet()
+        // 该有的全局入口 = 落位里有 bin/ 的那些（扫落位，不问内核预置的清单）
+        val expected = lobos.os.PieceScan.scan(ctx)
+            .filter { File(it.dir, "bin").isDirectory }
+            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile || f.isSymbolicLink }?.map { f -> f.name }.orEmpty() }
+            .flatten()
+            .toSet()
+        val missing = expected - ready.toSet()
         RuntimeDiagnostics.append(
             ctx, "prefix", missing.isEmpty(),
             if (missing.isEmpty()) "\$PREFIX 件全部就位" else "\$PREFIX 缺件：${missing.joinToString()}",
