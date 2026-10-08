@@ -152,14 +152,55 @@ rustup target add aarch64-linux-android > /dev/null 2>&1 || echo "[warn] rustup 
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=-Wl,-rpath,\$ORIGIN"
 export CC_aarch64_linux_android="$CC" CXX_aarch64_linux_android="$CC" AR_aarch64_linux_android="$LLVM_AR"
-if cargo install --locked --version 14.1.1 ripgrep --target aarch64-linux-android --root /tmp/rgbin --no-track > /tmp/rg-build.log 2>&1; then
+RG_VER="$(node -e '
+const t = require(process.argv[1]);
+const s = (t.sources || {}).ripgrep;
+if (!s) { console.error("钉值表里没有 ripgrep 这一项"); process.exit(1); }
+if (!s.version) { console.error("钉值表里的 ripgrep 没有 version"); process.exit(1); }
+if (s.urls) { console.error("钉值表里的 ripgrep 不该有 urls —— 它走 cargo，没有可下载的 tarball"); process.exit(1); }
+process.stdout.write(String(s.version));
+' "$ROOT_DIR/scripts/component-sources.json")" || exit 1
+
+if cargo install --locked --version "$RG_VER" ripgrep --target aarch64-linux-android --root /tmp/rgbin --no-track > /tmp/rg-build.log 2>&1; then
   cp -f /tmp/rgbin/bin/rg "$J/liblobosrg.so"
 else
   [ -f /tmp/rg-build.log ] && tail -30 /tmp/rg-build.log || echo "  （/tmp/rg-build.log 不存在）"
 fi
 if ! check_so "$J/liblobosrg.so" 300000; then
-  echo "::error title=必需件缺失::liblobosrg.so 未产出 —— glob/grep 依赖 $PREFIX/bin/rg，无回退路径"
+  echo "::error title=必需件缺失::liblobosrg.so 未产出 —— glob/grep 依赖 \$PREFIX/bin/rg，无回退路径"
   exit 1
+fi
+
+RG_GOT="$(sha256sum "$J/liblobosrg.so" | cut -d' ' -f1)"
+RG_WANT="$(node -e '
+const t = require(process.argv[1]);
+process.stdout.write(String(((t.sources || {}).ripgrep || {}).sha256 || ""));
+' "$ROOT_DIR/scripts/component-sources.json")"
+if [ -z "$RG_WANT" ]; then
+  node -e '
+const fs = require("fs");
+const p = process.argv[1];
+let t;
+try { t = JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { console.error("钉值表读不出: " + e.message); process.exit(1); }
+if (!t.sources || !t.sources.ripgrep) { console.error("钉值表里没有 ripgrep 这一项"); process.exit(1); }
+if (!/^[0-9a-f]{64}$/.test(String(process.argv[2]))) { console.error("实测哈希不是 64 位小写十六进制: " + process.argv[2]); process.exit(1); }
+t.sources.ripgrep.sha256 = process.argv[2];
+fs.writeFileSync(p, JSON.stringify(t, null, 2) + "\n");
+console.log("[ripgrep] 首轮建立基线，已写入钉值表：sha256=" + process.argv[2]);
+' "$ROOT_DIR/scripts/component-sources.json" "$RG_GOT"
+elif [ "$RG_GOT" = "$RG_WANT" ]; then
+  echo "[ripgrep] 产物哈希与钉值表一致：$RG_GOT（版本 $RG_VER）"
+else
+  echo "::notice title=ripgrep 产物哈希变了::钉值表=$RG_WANT 本次=$RG_GOT。已把实测值写回钉值表（下一轮起以它为基线）。"
+  echo "::notice::这不是构建坏了 —— 是同一版本的产物字节变了（NDK 或 cargo 输入变了）。若字节本不该变，查 NDK 版本与 lock 文件。"
+  node -e '
+const fs = require("fs");
+const p = process.argv[1];
+const t = JSON.parse(fs.readFileSync(p, "utf8"));
+t.sources.ripgrep.sha256 = process.argv[2];
+fs.writeFileSync(p, JSON.stringify(t, null, 2) + "\n");
+console.log("[ripgrep] 已写回钉值表：sha256=" + process.argv[2]);
+' "$ROOT_DIR/scripts/component-sources.json" "$RG_GOT"
 fi
 
 for f in libbash.so liblobosrg.so liblobosptyprobe.so librivospty.so libbusybox.so liblobosflock.so liblobosposix.so liblobospty.so; do
