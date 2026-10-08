@@ -26,6 +26,5 @@ keystore.properties
 .env
 .env.*
 
-tools/quickapp-fixture-second/node_modules
 
 _scripts/

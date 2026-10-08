@@ -1,5 +1,0 @@
-<view class="page">
-  <text class="title">{{who}}</text>
-  <text class="body">{{count}}</text>
-  <button bind:tap="onTap">点我 {{count}}</button>
-</view>

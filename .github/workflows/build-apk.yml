@@ -239,7 +239,7 @@ jobs:
             echo "commit ${GITHUB_SHA}"
             echo ""
             echo "这是**校验轮**产物，不是发布版。"
-            echo "发布版走 os-release-VERSION tag；版本号规范见 docs/VERSIONING.md。"
+            echo "发布版走 os-release-VERSION tag。"
           } > /tmp/verify-notes.md
           gh release create "$TAG" "$APK#$NAME" \
             --title "验证包 $(jq -r '.shell.versionName' version.json) · ${GITHUB_SHA:0:9}" \
@@ -279,7 +279,6 @@ jobs:
             echo "- versionCode：$CODE"
             echo "- sha256：$SHA"
             echo ""
-            echo "版本号规范见 docs/VERSIONING.md。"
           } > /tmp/notes.md
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "::error title=同版本号已发布过::$RELEASE_TAG 已存在。同号只能配同一批字节；变了就提 versionCode 再打新 tag。字节没变而只是重跑，那说明这次构建不是必要的。"

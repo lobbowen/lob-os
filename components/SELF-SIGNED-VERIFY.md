@@ -41,7 +41,6 @@ cp component-manifest.json.sig   component-manifest-2.json.sig
 然后起服务：
 
 ```bash
-node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
   --presigned <bundle>/dist/component-manifest-2.json
 ```
 
@@ -96,7 +95,6 @@ node -e '
 让它活过你的 shell（否则会话一收服务就没了）：
 
 ```bash
-setsid nohup node tools/serve-supply.js <bundle>/dist 8120 --channel canary \
   --presigned <bundle>/dist/component-manifest-2.json < /dev/null > /tmp/serve.log 2>&1 &
 ps -ef | grep serve-supply        # ppid 应为 1 = 已脱离
 ```

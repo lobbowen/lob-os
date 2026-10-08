@@ -4,18 +4,14 @@ CDN 投放要七牛凭据，但「设备能不能把件装起来」这件事不�
 这两个工具把商店通道的**除验签外每一环**在本地跑一遍：
 
 ```
-tools/serve-supply.js   把 dist/ 的件按通道形态供出去（清单 + 件）
-tools/rehearse-supply.js 取清单 → 逐件 sha256 → 解包 → 落位 → 建真名链 → 复验
 ```
 
 ## 用法
 
 ```bash
 # 1. 起供给（需要一个装了 component-*.zip 的 dist/）
-node tools/serve-supply.js dist 8099 --channel canary
 
 # 2. 另一个 shell 里演练安装
-node tools/rehearse-supply.js \
   http://127.0.0.1:8099/component-canary/component-manifest-2.json \
   "$PWD/rehearse/lib/toolchain"
 ```

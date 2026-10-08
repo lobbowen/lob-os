@@ -118,7 +118,7 @@ async function main() {
   tab.sources[key] = { version: out.version, sha256: out.sha256, urls: out.urls };
   fs.writeFileSync(TABLE, JSON.stringify(tab, null, 2) + '\n');
   console.log('\n[ok] 已写入 ' + path.relative(ROOT, TABLE) + ' 的 sources.' + key);
-  console.log('     校验：node scripts/gen-native-assets.js && node tools/check-components.js');
+  console.log('     校验：node scripts/gen-native-assets.js ');
 }
 
 main().catch((e) => die({ msg: e && e.message ? e.message : String(e) }));

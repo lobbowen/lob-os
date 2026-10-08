@@ -212,7 +212,6 @@ adb uninstall lobos.app.verify
 装完隔离包后跑：
 
 ```bash
-node tools/run-verify-probes.js --exec --prefix /data/user/0/lobos.app.verify/files/usr/bin
 ```
 
 `--prefix` 是关键：探针按设计用**裸名**调用（`spawnSync('jq', ...)`），而设备上

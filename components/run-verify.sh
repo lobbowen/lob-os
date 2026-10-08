@@ -29,7 +29,6 @@ if curl -s -o /dev/null --max-time 8 "http://$HOSTPORT/component-canary/componen
   echo "  [ok] http://$HOSTPORT 回 200"
 else
   echo "  [fail] http://$HOSTPORT 不通 —— 供给服务没起？"
-  echo "         node tools/serve-supply.js ../ss-bundle/dist 8120 --channel canary --presigned ../ss-bundle/dist/component-manifest.json"
   exit 1
 fi
 

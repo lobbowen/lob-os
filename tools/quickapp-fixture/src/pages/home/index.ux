@@ -1,9 +1,0 @@
-<template>
-  <div class="page">
-    <text class="title">{{ title }}</text>
-    <text class="body">{{ message }}</text>
-    <input class="input" type="text" placeholder="点我输入" />
-    <button class="btn" onclick="onTap">计数 {{ count }}</button>
-    <text class="backend">后端地址：{{ endpoint }}</text>
-  </div>
-</template>

@@ -31,7 +31,7 @@ for (const br of branches) {
   const bad = /([a-z0-9_|-]+)\)\s*echo\s+"([^"]*)"\s*$/.exec(br.trim());
   if (bad) {
     console.error('::error title=筐名不在三筐里::bucket_for() 的 ' + bad[1] + ' 落到了筐 "'
-      + bad[2] + '" —— 三筐只有 base / rt / tool（见 docs/ENV-EXECUTION-PLAN.md）');
+      + bad[2] + '" —— 三筐只有 base / rt / tool');
     process.exit(1);
   }
 }
