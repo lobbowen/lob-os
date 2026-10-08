@@ -17,9 +17,12 @@ object NativeAssetUpdater {
     data class State(
         val id: String,
         val installedVersion: String?,
+        val installedSha256: String?,
         val source: File?,
         val updated: Boolean,
-    )
+    ) {
+        val sourceSha256: String? get() = installedSha256
+    }
 
     fun toolchainDir(ctx: Context, id: String): File =
         File(SupplyProvisioner.toolchainDir(ctx), id).also { it.mkdirs() }
@@ -40,7 +43,8 @@ object NativeAssetUpdater {
             val source: File? = apkFile.takeIf { it.isFile }
             out += State(
                 e.id,
-                SupplyProvisioner.selectedVersion(ctx, e.id).ifBlank { null },
+                InstalledRuntime.versionOf(ctx, e.id).ifBlank { null },
+                source?.let { runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull() },
                 source,
                 false,
             )
@@ -113,41 +117,32 @@ object NativeAssetUpdater {
                 skipped.put(JSONObject().put("id", id).put("why", "注册表里没有这一件（清单不能凭空加件）"))
                 continue
             }
-            val ver = c.optString("version", "")
-            if (ver.isBlank()) {
-                skipped.put(JSONObject().put("id", id).put("why", "清单未声明版本"))
-                continue
-            }
             val cur = states(ctx).firstOrNull { it.id == id }
-            if (cur?.installedVersion == ver) {
-                skipped.put(JSONObject().put("id", id).put("why", "已是 $ver（无需重复装）"))
-                continue
-            }
-            val installed = cur?.installedVersion
-            if (installed != null && lobos.ota.ProgramOtaVersions.compare(ver, installed) < 0) {
-                skipped.put(
-                    JSONObject().put("id", id).put("why", "远端 $ver 低于本机 $installed —— 拒绝降级")
-                )
-                RuntimeDiagnostics.append(
-                    ctx, "native-ota", false,
-                    "拒绝把底座件降级：" + id,
-                    "远端 $ver < 本机 $installed；降级会让 bash/openssl 回到有漏洞的旧版本",
-                )
-                continue
-            }
             val src = c.optString("source", "")
             if (src != "ota") {
                 skipped.put(
                     JSONObject().put("id", id).put("why", "清单标 source=$src（没有可下载的更新）；" +
-                        "本机是 ${cur?.installedVersion ?: "随包原件（版本未记录）"}")
+                        "本机是 ${cur?.installedVersion ?: "随包原件"}")
+                )
+                continue
+            }
+            val sha = c.optString("sha256", "")
+            if (sha.isBlank()) {
+                skipped.put(JSONObject().put("id", id).put("why", "清单没有 sha256 —— 无从判断该不该装"))
+                continue
+            }
+            if (cur?.sourceSha256 == sha) {
+                skipped.put(
+                    JSONObject().put("id", id)
+                        .put("why", "本机已是这批字节（sha256 相同），无需重复装")
                 )
                 continue
             }
             if (dryRun) {
-                applied.put(JSONObject().put("id", id).put("version", ver).put("wouldInstall", true))
+                applied.put(JSONObject().put("id", id).put("sha256", sha).put("wouldInstall", true))
                 continue
             }
-            pending.add(Triple(e, ver, c))
+            pending.add(Triple(e, sha, c))
         }
 
         for ((group, groupKey) in pending.groupBy { it.third.optString("url", "") + "-" + it.third.optString("sha256", "") }) {
@@ -155,10 +150,15 @@ object NativeAssetUpdater {
             val url = first.optString("url", "")
             val sha = first.optString("sha256", "")
             val results = installGroup(ctx, url, sha, group)
-            for ((e, ver, _) in group) {
+            for ((e, _, _) in group) {
                 val r = results[e.id] ?: (false to "未处理")
-                if (r.first) applied.put(JSONObject().put("id", e.id).put("version", ver))
-                else skipped.put(JSONObject().put("id", e.id).put("why", r.second ?: "未知原因"))
+                if (r.first) {
+                    applied.put(JSONObject()
+                        .put("id", e.id)
+                        .put("version", InstalledRuntime.versionOf(ctx, e.id)))
+                } else {
+                    skipped.put(JSONObject().put("id", e.id).put("why", r.second ?: "未知原因"))
+                }
             }
         }
 
@@ -267,7 +267,8 @@ object NativeAssetUpdater {
             tmp.renameTo(link)
         }
         if (ok) {
-            SupplyProvisioner.selectVersion(ctx, e.id, version)
+            val probed = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
+            SupplyProvisioner.selectVersion(ctx, e.id, probed)
         }
         ok
     } catch (_: Throwable) {
