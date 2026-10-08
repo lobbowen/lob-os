@@ -17,7 +17,6 @@ feed/
 .DS_Store
 
 keys/*
-!keys/README.md
 
 .secrets/
 *.token
@@ -25,6 +24,3 @@ keys/*
 keystore.properties
 .env
 .env.*
-
-
-_scripts/

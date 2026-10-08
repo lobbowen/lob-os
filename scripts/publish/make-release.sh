@@ -24,7 +24,7 @@ cat <<'TXT'
 下一步（商店通道，三步）：
 
 1. 打包成内容寻址的件包：
-     bash scripts/package/package-component.sh node
+     bash scripts/recipes/package-component.sh node
    产出 dist/component-node-<版本>-<sha12>-android-arm64.zip
    （包名带 sha12 前缀，同版本重建不会覆盖旧键）
 

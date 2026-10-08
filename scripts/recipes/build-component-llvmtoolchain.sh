@@ -59,8 +59,8 @@ if [ -z "$WANT_LLVM" ]; then
 fi
 if [ -z "$PINNED_LLVM" ]; then
   die "钉值表里没有 sources.llvm" \
-    "拿不到要编的 LLVM 版本。用 scripts/pin/pin-github-release.js 钉一个：" \
-    "  node scripts/pin/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-<版本> --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
+    "拿不到要编的 LLVM 版本。用 scripts/registry/pin-github-release.js 钉一个：" \
+    "  node scripts/registry/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-<版本> --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
 fi
 WANT_MAJOR="${WANT_LLVM%%.*}"
 PIN_MAJOR="${PINNED_LLVM%%.*}"
@@ -71,7 +71,7 @@ else
     "钉的是 $PINNED_LLVM（$PIN_MAJOR.x 线），NDK 内置 $WANT_LLVM（$WANT_MAJOR.x 线）。" \
     "编出来的 clang 会与 sysroot 的头文件假设错位，而且**不报错**。" \
     "按 NDK 的那条线重钉（sha256 由工具取，不必下载）：" \
-    "  node scripts/pin/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_MAJOR.1.0 --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
+    "  node scripts/registry/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_MAJOR.1.0 --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
 fi
 
 WORK="$ROOT_DIR/work/$TOOL"

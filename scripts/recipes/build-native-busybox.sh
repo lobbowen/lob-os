@@ -39,7 +39,7 @@ SRC=""
 BS_VER_TABLE="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version busybox 2>/dev/null || true)"
 if [ -z "$BS_VER_TABLE" ]; then
   die "钉值表里没有 sources.busybox" \
-    "没有 sha256 就不该下载底座件的源码 —— 那等于不校验。补上（scripts/pin/pin-github-release.js 不适用，busybox 不在 GitHub Releases）"
+    "没有 sha256 就不该下载底座件的源码 —— 那等于不校验。补上（scripts/registry/pin-github-release.js 不适用，busybox 不在 GitHub Releases）"
 fi
 if [ "$BS_VER_TABLE" != "$BUSYBOX_VER" ]; then
   die "busybox 版本不一致" \

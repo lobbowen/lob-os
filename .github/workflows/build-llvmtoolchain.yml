@@ -11,7 +11,7 @@ on:
       - 'scripts/toolchain/fetch-pinned.sh'
       - 'scripts/registry/read-component-entry.sh'
       - 'scripts/verify/verify-component-artifact.sh'
-      - 'scripts/package/package-component.sh'
+      - 'scripts/recipes/package-component.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/upload-qiniu.js'
       - 'scripts/toolchain/cache-key.sh'
@@ -133,7 +133,7 @@ jobs:
         run: bash scripts/verify/verify-component-artifact.sh llvmtoolchain
 
       - name: 打包 + sha256
-        run: bash scripts/package/package-component.sh llvmtoolchain
+        run: bash scripts/recipes/package-component.sh llvmtoolchain
 
       - name: 别名映射须与件内 package.json 一致
         run: |

@@ -12,7 +12,7 @@ on:
       - 'scripts/registry/read-component-entry.sh'
       - 'scripts/verify/verify-component-artifact.sh'
       - 'scripts/verify/verify-component-build-date.sh'
-      - 'scripts/package/package-component.sh'
+      - 'scripts/recipes/package-component.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/upload-qiniu.js'
       - 'scripts/component-sources.json'
@@ -120,7 +120,7 @@ jobs:
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
         run: bash scripts/verify/verify-component-artifact.sh git
       - name: 打包 + sha256
-        run: bash scripts/package/package-component.sh git
+        run: bash scripts/recipes/package-component.sh git
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
         uses: actions/cache/save@v4

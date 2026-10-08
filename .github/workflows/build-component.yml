@@ -7,7 +7,7 @@ on:
       - '.github/workflows/build-component.yml'
       - 'scripts/toolchain/cache-key.sh'
       - 'scripts/registry/list-bucket-components.js'
-      - 'scripts/fetch/fetch-component-artifacts.sh'
+      - 'scripts/toolchain/fetch-component-artifacts.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/publish-native-manifest.js'
       - 'scripts/verify/check-component-manifest-drift.js'
@@ -27,7 +27,7 @@ on:
     paths:
       - 'scripts/toolchain/cache-key.sh'
       - 'scripts/registry/list-bucket-components.js'
-      - 'scripts/fetch/fetch-component-artifacts.sh'
+      - 'scripts/toolchain/fetch-component-artifacts.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/publish-native-manifest.js'
       - 'scripts/verify/check-component-manifest-drift.js'
@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist work
-          bash scripts/fetch/fetch-component-artifacts.sh | tee work/fetch.tsv
+          bash scripts/toolchain/fetch-component-artifacts.sh | tee work/fetch.tsv
           echo "[fetch] 上面这份是本轮取件口径：缺件只在 warning 里显式出现，不会静默从清单里消失"
           node -p "'[fetch] dist 里 ' + require('fs').readdirSync('dist').filter(f => f.endsWith('.zip')).length + ' 颗 zip'"
 

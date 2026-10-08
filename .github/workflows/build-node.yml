@@ -11,7 +11,7 @@ on:
       - 'scripts/toolchain/fetch-pinned.sh'
       - 'scripts/registry/read-component-entry.sh'
       - 'scripts/verify/verify-component-artifact.sh'
-      - 'scripts/package/package-component.sh'
+      - 'scripts/recipes/package-component.sh'
       - 'scripts/publish/upload-qiniu.js'
       - 'scripts/component-verify.json'
       - 'patches/**'
@@ -131,7 +131,7 @@ jobs:
         run: bash scripts/verify/verify-component-artifact.sh node
 
       - name: 打包 + sha256
-        run: bash scripts/package/package-component.sh node
+        run: bash scripts/recipes/package-component.sh node
 
       - name: 发布 node 件到对象存储
         if: ${{ needs.resolve.outputs.publish == 'true' }}

@@ -19,7 +19,7 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 #字段来自 component-verify.json（构建期钉值），不手写。
 META_SRC="$ROOT_DIR/scripts/component-verify.json"
 [ -f "$META_SRC" ] || { echo "::error title=缺元信息表::$META_SRC 不在"; exit 1; }
-node "$ROOT_DIR/scripts/package/gen-component-meta.js" "$TOOL" "$VER" "$ENTRY" "$META_SRC" "$STAGE/component-meta.json"
+node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$TOOL" "$VER" "$ENTRY" "$META_SRC" "$STAGE/component-meta.json"
 
 find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 echo "[package] 打包（zip）：component-meta.json + bin + 其它 prefix 目录"
