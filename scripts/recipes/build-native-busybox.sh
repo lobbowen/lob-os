@@ -118,17 +118,56 @@ answers() {
 }
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
-# ── 关掉需要内核专有头的 applet ──────────────────────────────
-  # tc（traffic control）要用内核 uapi 的 TCA_CBQ_*，NDK 的 sysroot 里没有
-  #   （那是 Linux 内核头，不是 NDK 提供的 libc 头）。
-  #   报错形如：networking/tc.c:236:27: error: 'TCA_CBQ_MAX' undeclared。
-  # 我们不需要 tc —— 关掉它（busybox 的 applet 可选，本来就不该编我们用不上的）。
-  # ★ 必须真的改 .config —— 此前那两行只是 echo 到控制台，.config 里没动，
-  #   于是 CONFIG_TC 仍是 y，编译时照样撞 TCA_CBQ_MAX。
-  set_conf TC n
-  set_conf IFCONFIG n
-
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
+# ── 关掉「include 了 NDK 没有的头」的 applet ──────────────────────
+# busybox 有一批 applet 直接 include 内核 uapi 头（<sys/kd.h> <linux/fs.h>
+# <linux/pkt_sched.h> …）。NDK 只提供 libc 头，内核 uapi 头在 Linux 内核
+# 源码树的 include/uapi 里，NDK 不提供，于是编不过：
+#   console-tools/loadfont.c:59:10: fatal error: 'sys/kd.h' file not found
+#   networking/tc.c:…: fatal error: 'linux/pkt_sched.h' file not found
+#
+# 判据是「**NDK sysroot 里到底有没有这个头**」，不是按 sys//linux 前缀分 ——
+# NDK 的 libc 头本来就是 sys/*.h 布局，两者都有例外。逐个问 sysroot 最可靠，
+# 判据也跟着 NDK 版本走。
+#
+# 为什么用脚本算而不是手写名单：
+#   名单会随 busybox 版本漂移 —— 漏一个就编不过，多关一个是我们白丢能力。
+#   判据本身稳定，所以在构建时从源码树现算。
+#   这与 busybox 官方 android_ndk_defconfig 的做法一致（它也是靠关 applet
+#   避开这些头），只是我们让它跟着源码树与 NDK 自动算。
+#
+# 配置项名读 busybox 自己的 `//config:` 注释 —— 依据 scripts/gen_build_files.sh
+# 第 117~120 行：各子目录的 Config.in 由它生成，所以官方 tarball 里那些
+# Config.in 根本不存在，配置项的真身就在 .c 注释里。
+SCAN="node $ROOT_DIR/scripts/verify/verify-busybox-missing-headers.js"
+# NDK 的 sysroot 按目标三元组命名：
+#   <ndk>/sysroot/usr/include/<三元组>/android/   ← 目标平台的头（linux/*.h 等）
+#   <ndk>/sysroot/usr/include/                    ← libc 头（sys/*.h、stdio.h 等）
+# 三元组从 CC 的文件名读，不写死版本号 ——
+# clang 三元组里带 API 级别（aarch64-linux-android35-clang → aarch64-linux-android35）。
+TARGET_TRIPLE="$(basename "$CC")"
+TARGET_TRIPLE="${TARGET_TRIPLE%-clang}"
+TARGET_TRIPLE="${TARGET_TRIPLE%-clang++}"
+NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE/android"
+[ -d "$NDK_INC" ] || {
+  echo "=== NDK sysroot include 目录取证 ==="
+  echo "从 $CC 推出的三元组 = $TARGET_TRIPLE"
+  echo "--- sysroot/usr/include 下有什么 ---"
+  ls -d "$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/"* 2>/dev/null | sed -n '1,10p'
+  die "找不到 NDK 的 sysroot include" "要找的是 $NDK_INC（按 clang 三元组推的）"
+}
+
+MISSING_APPLES="$($SCAN "$SRC" "$NDK_INC")" || {
+  echo "=== 缺头的 .c 有，但认不出对应的配置项（取证）==="
+  $SCAN "$SRC" "$NDK_INC" --list | sed -n '1,40p'
+  die "认不出该关哪个 applet" "上面这些 .c include 了 NDK 没有的头，但源码里没有 //config: / applet 标记 —— 判据与这版源码对不上，按取证补"
+}
+MISSING_FILES="$($SCAN "$SRC" "$NDK_INC" --list | wc -l)"
+MISSING_HDRS="$($SCAN "$SRC" "$NDK_INC" --headers)"
+echo "[busybox] $MISSING_FILES 个源文件 include 了 NDK 没有的头"
+echo "[busybox] 缺的头：$MISSING_HDRS"
+echo "[busybox] 对应配置项：$MISSING_APPLES"
+for k in $MISSING_APPLES; do set_conf "$k" n; done
 
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
@@ -137,9 +176,13 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 make oldconfig < <(answers) > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
-  grep -q "^CONFIG_TC=y" "$SRC/.config" \
-    && die "CONFIG_TC 仍开着" "set_conf 没生效（.config 里那行格式可能不同）"
-  echo "[busybox] CONFIG_TC 已关（它要内核 uapi 头）"
+  # 关掉之后复核：还有哪个 applet 的源文件要内核 uapi 头？
+  STILL="$(
+    for a in $APPLETS; do
+      grep -q "^CONFIG_${a}=y" "$SRC/.config" && printf '%s\n' "$a"
+    done | tr '\n' ' '
+  )"
+  echo "[busybox] 关完内核 uapi 头那批之后，仍开启的 applet：${STILL:-（无）}"
 
 MISSING=""
 for a in $APPLETS; do

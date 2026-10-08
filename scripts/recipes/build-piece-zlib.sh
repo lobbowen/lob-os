@@ -22,37 +22,51 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
 (
   set -e
   cd "$WORK/src"
-  # ★ 交叉编 Android 时 zlib 的 configure 有两处会选错：
-  #   · 它用 uname 猜宿主 → 设 uname=Linux-host 走交叉分支
-  #     （该分支给出 LDSHARED="$cc -shared -Wl,-soname,libz.so.1,--version-script,${SRCDIR}zlib.map"）
-  #   · 它用 $shared 变量决定编不编共享库，默认 1；探测方式是拿 LDSHARED
-  #     链一个 .so。NDK 的 clang 能链出来，所以**不必**去改它的判断。
+  # ── 静态还是共享由 configure 的 shared 变量决定（第 83 行 shared=1）──
+  #   它靠一次 .so 探测（第 517~529 行）来判定，失败就**静默退回静态**
+  #   （Makefile 里 SHAREDLIB/SHAREDLIBV 全空，只剩 libz.a）。
+  #   交叉编 Android 时那次探测没通过。
+  #
+  #   正解：**显式给 LDSHARED 与三个库名**，绕开探测。
+  #   这是 configure 官方给的入口 —— 它全部写成 ${VAR-默认} 形态
+  #   （第 297/443/444/445 行），外部已设的值就保留，
+  #   且第 1018~1034 行的 sed 会把这些值原样写进 Makefile。
+  #   库名**从 zlib 自己的 zlib.h 里读版本号拼出来**（不改名、不写死）：
+  #     VER = 1.3.2（zlib.h 的 ZLIB_VERSION）· VER1 = 1
+  #     SHAREDLIB=libz.so · SHAREDLIBV=libz.so.$VER · SHAREDLIBM=libz.so.$VER1
+  #     这与 configure 第 327~329、443~445 行的算法逐字一致。
+  ZVER="$(sed -n 's/.*#define ZLIB_VERSION "\([^"]*\)".*/\1/p' zlib.h | sed -n '1p')"
+  ZVER1="${ZVER%%.*}"
+  [ -n "$ZVER" ] || { echo "=== zlib.h 取证 ==="; sed -n '1,12p' zlib.h; exit 1; }
+  Z_SHLIB="libz.so"
+  Z_SHLIBV="libz.so.$ZVER"
+  Z_SHLIBM="libz.so.$ZVER1"
+  echo "[zlib] 库名取自 zlib.h：$Z_SHLIBV（SONAME 层 $Z_SHLIBM）"
+
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
+  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM" \
+  SHAREDLIB="$Z_SHLIB" SHAREDLIBV="$Z_SHLIBV" SHAREDLIBM="$Z_SHLIBM" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
 
-  # ── 我此前做错的三处，都记在这里免得再犯 ──────────────────
+  # ── 我此前做错的几处，都记在这里免得再犯 ──────────────────
   #   1. Makefile.in 里**没有** LIBZ 这个变量 —— 库名是 SHAREDLIBV
-  #      （configure 第 444 行：SHAREDLIBV=${SHAREDLIBV-"libz$shared_ext.$VER"}）。
-  #      grep '^LIBZ = ' 永远空，此前据此 die 却因为 set -e + pipefail
-  #      让整个子 shell 一句取证都没打出来。
+  #      （configure 第 444 行）。grep '^LIBZ = ' 永远空。
   #   2. SRCDIR 不是「静态/共享」开关 —— 它是源码子目录前缀
   #      （configure 第 22 行 SRCDIR=`dirname $0`，官方用来支持 out-of-tree 构建）。
-  #      改它等于改源码搜索路径，改错了会把 $(SRCDIR)test/example.c 指到别处。
-  #   3. shared 目标依赖 examplesh/minigzipsh，它们在官方 tarball 里**存在**
-  #      （此前我以为 sharedtest/ 缺失，那是我编的目录名）。
+  #      改它等于改源码搜索路径。
+  #   3. shared 目标依赖 examplesh/minigzipsh，它们在官方 tarball 里**存在**。
   #
   # 真判据：读 configure 自己写进 Makefile 的 SHAREDLIBV，空则说明退回静态了。
   LIB_SO="$(sed -n 's/^SHAREDLIBV[[:space:]]*=[[:space:]]*//p' Makefile | sed -n '1p')"
   case "$LIB_SO" in
     *.so|*.so.*) : ;;
-    *) echo "=== Makefile 里的库名与目标取证 ==="
+    *) echo "=== Makefile 里的库名取证 ==="
        sed -n '/^STATICLIB[[:space:]]*=/p;/^SHAREDLIB/p' Makefile | sed -n '1,6p'
-       echo "--- configure.log 里共享库那一段 ---"
-       sed -n '/shared library/Ip' "$WORK/configure.log" | sed -n '1,10p'
-       die "zlib 退回静态了" "Makefile 里 SHAREDLIBV 是空的：'$LIB_SO' —— 交叉编时那次 .so 探测没通过"
+       echo "--- configure.log 末尾 ---"; tail -15 "$WORK/configure.log"
+       die "zlib 退回静态了" "Makefile 里 SHAREDLIBV 是空的：'$LIB_SO'（传了 LDSHARED 仍失败，看上面 configure.log）"
   esac
   echo "[zlib] 共享库目标 = $LIB_SO"
 
