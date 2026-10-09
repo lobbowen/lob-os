@@ -1,0 +1,45 @@
+# 一次性：生成首套发布签名密钥，并以 artifact 形式交回。
+#
+# 为什么必须走 CI：Android 的 keystore 是 PKCS12/JKS 格式，只有 keytool
+# （或 openssl）能导出 —— node 的 crypto 只能出 PEM。本机没有 JDK/openssl。
+#
+# 这个 workflow 只应该跑一次。密钥一旦配成 secret，它就是发布签名，
+# **永不更换** —— 换了就再也无法给已装设备发覆盖安装的版本
+# （Android 会报 INSTALL_FAILED_UPDATE_INCOMPATIBLE）。
+#
+# scripts/publish/keygen-android-keystore.sh 本身硬性拒绝覆盖已存在的
+# keystore（第 13-16 行：「覆盖一个已用于发布的 keystore，等于放弃给已装
+# 设备升级的能力」）。那道闸门保留，这里不动它。
+name: Bootstrap signing key (一次性)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17（keytool 在里面）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 生成发布密钥
+        run: |
+          set -euo pipefail
+          bash scripts/publish/keygen-android-keystore.sh lobos 10000
+
+      - name: 交回密钥与属性文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-signing-key
+          path: keys/
+          retention-days: 7
+          if-no-files-found: error
