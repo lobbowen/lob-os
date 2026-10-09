@@ -122,7 +122,7 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
         val tag = if (exe.required) "[必需]" else "[可选]"
         when (st) {
             is AssetStatus.Ready ->
-                "$tag ${exe.entry.substringAfterLast("/", "")} —— 就位" +
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— 就位"
             is AssetStatus.MissingFromLib ->
                 "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 不在 nativeLibraryDir。" +
                     if (st.inApk) "APK 内有该条目 → 安装期未解压（查 extractNativeLibs / useLegacyPackaging）"
@@ -182,27 +182,47 @@ object PieceProvisioner {
         )
         return report
     }
-        dir: File,
-        entryRel: String,
-        meta: org.json.JSONObject?,
+    /**
+     * 一件就位没有 —— 照 dpkg 的判据形状逐条问：
+     *   ① nativeLibraryDir（= 件的落位处）里有没有它
+     *      没有 → MissingFromLib，并说清是「APK 里有但没解压」还是「APK 里就没有」
+     *   ② 它的 ELF 依赖（DT_NEEDED）在同目录能不能找到
+     *      找不到 → MissingDependency（libcurl 依赖 libz.so.1 那类）
+     *   ③ 在但读不了 → NotExecutable
+     * 全部通过 → Ready
+     *
+     * 形状取自 PieceScan.verify（登记与磁盘比对），那是 dpkg -V 那一层；
+     * 这里判的是「能不能用」，两者分工不同。
+     */
+    private fun verifyInternal(
+        ctx: Context,
+        exe: lobos.os.PieceScan.Found,
+        libDir: File,
+        listing: String,
+        apkLibNames: Set<String>,
     ): AssetStatus {
-        val f = File(dir, entryRel)
-        val st = object {}
-        return if (f.isFile) AssetStatus.Ready(Verified(dir.name, entryRel), f.absolutePath, "就位")
-        else AssetStatus.MissingFromLib(Verified(dir.name, entryRel), f.absolutePath, false, "")
-    }
+        val name = exe.entry.substringAfterLast("/", "")
+        val f = File(libDir, name)
 
-    /** 报告里用的最小标识 —— 不再是 Piece（那张表没了） */
-    data class Verified(val id: String, val entry: String)
-
-    fun verify(ctx: Context, exe: Piece): AssetStatus {
-        val libDir = File(ctx.applicationInfo.nativeLibraryDir)
-        val apkNames = try {
-            readApkLibEntries(ctx)
-        } catch (e: Exception) {
-            emptySet()
+        if (!f.exists()) {
+            val inApk = apkLibNames.contains(name)
+            return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
         }
-        return verifyInternal(ctx, exe, libDir, listLibDir(libDir), apkNames)
+
+        // ② 依赖闭包：同目录能不能解析（ELF 读不出来就跳过这一问，
+        //    读不出不等于没问题 —— 那由 PieceScan.verify 那层负责）
+        val needed = lobos.os.ElfFacts.read(f)?.needed.orEmpty()
+        for (dep in needed) {
+            if (!File(libDir, dep).exists()) {
+                return AssetStatus.MissingDependency(exe, dep, listing)
+            }
+        }
+
+        // ③ 在位但不可用
+        if (!f.canRead() || f.length() == 0L) {
+            return AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读或长度为 0")
+        }
+        return AssetStatus.Ready(exe, f.absolutePath, "就位")
     }
 
     /**
@@ -215,34 +235,6 @@ object PieceProvisioner {
      * 落到 usr/lib/<id>/<版本>/lib/ 之后就用我们自己的面。
      */
     fun libSearchPath(ctx: Context): String = lobos.os.SystemDirs.lib(ctx).absolutePath
-
-    private fun verifyInternal(
-        ctx: Context,
-        exe: lobos.os.PieceScan.Found,
-        libDir: File,
-        listing: String,
-        apkLibNames: Set<String>,
-    ): AssetStatus {
-        val f = File(libDir, exe.entry.substringAfterLast("/", ""))
-
-        if (!f.exists()) {
-            val inApk = apkLibNames.contains(exe.entry.substringAfterLast("/", ""))
-            return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
-        }
-
-        for (dep in lobos.os.ElfFacts.read(f)?.needed.orEmpty()) {
-            if (!File(libDir, dep).exists()) {
-                return AssetStatus.MissingDependency(exe, dep, listing)
-            }
-
-            return if (f.canRead() || f.length() > 0) {
-                AssetStatus.Ready(exe, f.absolutePath, "数据资产：${f.length()} 字节（不是拿来执行的probe）")
-            } else {
-                AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读且长度为 0")
-            }
-        }
-
-    }
 
 
     private fun parseErrno(msg: String?): Int? {
