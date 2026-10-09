@@ -17,19 +17,18 @@ enum class Level { PIECE, PROGRAM }
 enum class Desired { RUNNING, STOPPED, FROZEN }
 
 /**
-    /**
-     * 一个单元 —— 件与程序是同一种东西，只是配置不同。
-     *
-     * 照抄 systemd.unit(5)：「Units are named as their configuration files」——
-     * unit 是一种实体，`*.service` 与 `*.mount` 只是配置不同。
-     * 此前我们分成 [PieceEntry] 与 [ProgramEntry] 两段，字段重复了 10 个
-     *（id/version/enabled/stateDir/sha256/assetEntry/role/requires/invalid），
-     * 于是每处读都要先判「这是件还是程序」。
-     *
-     * 现在一种记录。字段按 systemd.service(5) 的分类排列：
-     *   身份 · 依赖 · 进程 · 健康 · 环境 · UI · 开关与标记
-     */
-    data class UnitEntry(
+ * 一个单元 —— 件与程序是同一种东西，只是配置不同。
+ *
+ * 照抄 systemd.unit(5)：「Units are named as their configuration files」——
+ * unit 是一种实体，`*.service` 与 `*.mount` 只是配置不同。
+ * 此前我们分成 [PieceEntry] 与 [ProgramEntry] 两段，字段重复了 10 个
+ *（id/version/enabled/stateDir/sha256/assetEntry/role/requires/invalid），
+ * 于是每处读都要先判「这是件还是程序」。
+ *
+ * 现在一种记录。字段按 systemd.service(5) 的分类排列：
+ *   身份 · 依赖 · 进程 · 健康 · 环境 · UI · 开关与标记
+ */
+data class UnitEntry(
         // ── 身份 ────────────────────────────────────────────
         /** id 就是落位的目录名/程序目录名 —— 与配置文件同名，不另编 */
         val id: String,
