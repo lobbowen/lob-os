@@ -7,6 +7,7 @@ import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.os.UnitEntry
+import lobos.os.edited
 import org.json.JSONObject
 
 object QuickAppRegistry {

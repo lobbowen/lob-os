@@ -29,6 +29,7 @@ import lobos.os.Restart
 import lobos.os.RuntimeEnvironment
 import lobos.os.SessionRegistry
 import lobos.os.StateFiles
+import lobos.os.edited
 import lobos.ota.ProgramOtaResolution
 import lobos.ota.ProgramOtaUpdater
 import lobos.pieces.AssetStatus
@@ -195,9 +196,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 lobos.os.ProgramStatusHub.publishQuarantined(programId, true)
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
-                    "窗口内重启 " + windowNow + " 次（上限 " + maxNow + "）· " + SupervisorPolicy.RESTART_WINDOW_MS + "ms 窗口" +
+                    "窗口内重启 " + windowNow + " 次（上限 " + maxNow + "）· 窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms"
                 )
-                quarantineReset = false
                 var quarantinePolls = 0
                 while (keepRunning && !quarantineReset) {
                     sleepQuiet(SupervisorPolicy.QUARANTINE_POLL_MS)
