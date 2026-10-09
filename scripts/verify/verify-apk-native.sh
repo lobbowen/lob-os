@@ -198,39 +198,41 @@ if [ "$SRC_N" != "$APK_N" ]; then
 fi
 
 echo
-echo "--- 件的说明（.meta.json）在 APK 里的位置 ---"
-# ★ 这一段当前判红 —— 它照出的不是 APK 缺东西，是**架构上的一处断裂**，
-#   记录在此等处理，不要当成「校验写错了」绕过去。
+echo "--- 件的说明（assets/supply/meta/）· 运行时铺位的唯一数据源 ---"
+# PrefixProvisioner.scanMeta() 从 assets/supply/meta/ 读它（prefix provisioner 的
+# scanMeta 注释写明了为什么不能走 jniLibs：AGP 的 jniLibs 打包只取 *.so，
+# .meta.json 进不了 APK）。缺一份 = 运行时那一件铺不出来，而构建期看不出来。
 #
-# 事实：构建期 jniLibs/arm64-v8a/ 里确实有 libbash.so.meta.json 等说明
-#     （build-piece-*.sh 的 land_piece 写的，见构建日志的目录清单）；
-#     但 APK 里没有 —— AGP 的 jniLibs 打包只取 *.so
-#     （JniLibsPackaging 只有 excludes/pickFirsts/keepDebugSymbols，
-#       没有「把非 .so 也打进去」的开关）。
-# 而运行时 PrefixProvisioner.scanMeta() 正是在 nativeLibraryDir 里找
-#     *.meta.json（PrefixProvisioner.kt:105-118），找不到就整目录跳过
-#     ——「目录里没有说明的 .so 不铺」。
-# 两者一对：APK 里的每一件，运行时都铺不出来。
-#
-# 所以这条先不判红（否则挡住所有构建），但如实列出缺口：
-#   说明要么随 assets 走（运行时改从 assets 读），
-#   要么 jniLibs 之外另找放法。两者都还没定。
-META_WANT=0
-META_HAVE=0
-for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
-  base="$(basename "$so")"
-  case "$base" in
-    # AndroidX 与 NDK 的运行期不是我们的件，没有说明是应该的
-    libandroidx.*|libc++_*) continue ;;
-  esac
-  META_WANT=$((META_WANT + 1))
-  if has_exact "lib/${ABI}/${base}.meta.json"; then META_HAVE=$((META_HAVE + 1)); fi
+# 必填字段照 deb-control(5)：Package / Version / Architecture
+#（scripts/recipes/gen-component-meta.js 就只把这三个标 required）。
+META_BAD=0
+TMPA="$(mktemp)"
+META_N=0
+for meta in $(printf '%s\n' "${LIST[@]}" | grep "^assets/supply/meta/.*\.meta\.json$"); do
+  META_N=$((META_N + 1))
+  base="$(basename "$meta")"
+  unzip -p "$APK" "$meta" > "$TMPA" 2>/dev/null || : > "$TMPA"
+  for field in id version arch; do
+    if ! node "$ROOT/scripts/verify/meta-field.js" "$TMPA" "$field" | grep -q .; then
+      echo "[error] $meta 缺必填字段 $field（deb-control(5)：Package/Version/Architecture 是 required）"
+      META_BAD=$((META_BAD + 1))
+    fi
+  done
+  # essential 是布尔，且它经 PieceScan.Found.required 决定「缺了系统起不启得来」
+  if ! grep -qE '"essential"[[:space:]]*:[[:space:]]*(true|false)' "$TMPA"; then
+    echo "[error] $meta 的 essential 不是布尔 —— Found.required 靠它判系统起不启得来"
+    META_BAD=$((META_BAD + 1))
+  fi
+  # 每份说明对应的 .so 必须在包里 —— 否则说明指向一件不存在的件
+  so="lib/${ABI}/${base%.meta.json}"
+  if ! has_exact "$so"; then
+    echo "[error] $meta 指向的 $so 不在包里"
+    META_BAD=$((META_BAD + 1))
+  fi
 done
-echo "  我们的件在 APK 里带说明：$META_HAVE / $META_WANT"
-if [ "$META_HAVE" -lt "$META_WANT" ]; then
-  echo "  [未解决] $((META_WANT - META_HAVE)) 件的说明没进 APK —— 而运行时只铺带说明的条目"
-  echo "            这几件到了真机上铺不出来（PrefixProvisioner.kt:103）。"
-fi
+rm -f "$TMPA"
+echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
+[ "$META_BAD" = "0" ] || MISSING="$MISSING meta-invalid($META_BAD)"
 
 echo
 echo "--- 压缩方式（Stored=未压缩 / Defl=压缩）---"

@@ -18,6 +18,9 @@ object PrefixProvisioner {
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
+    /** 件说明在 assets 里的目录 —— 与 scripts/recipes/piece-env.sh 的 META_ASSETS 同一个 */
+    private const val META_ASSET_DIR = "supply/meta"
+
 
     fun root(ctx: Context): File = lobos.os.SystemDirs.usr(ctx)
     fun binDir(ctx: Context): File = lobos.os.SystemDirs.bin(ctx)
@@ -97,20 +100,35 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     }
 
     /**
-     * 扫 APK 里的说明 —— jniLibs 下与件同名的 .meta.json 是唯一的数据源。
+     * 扫 APK 里的说明 —— assets/supply/meta/ 下与件同名的 .meta.json。
      *
      * 内核不预置任何一件的清单（那是这块设计的第一条）：它只认落位。
      * 目录里没有说明的 .so 不铺 —— 说不清自己是什么的东西不该进系统。
+     *
+     * ★ 为什么走 assets 而不是 nativeLibraryDir：
+     *   jniLibs 目录里的 .meta.json **进不了 APK** —— AGP 的 jniLibs 打包
+     *   只取 *.so（JniLibsPackaging 只有 excludes / pickFirsts /
+     *   keepDebugSymbols，没有「非 .so 也打进去」的开关）。
+     *   此前这里扫 nativeLibraryDir，永远扫不到任何东西，于是 provision()
+     *   静默返回空列表 —— APK 里的每一件都铺不出来，而构建期全绿。
+     *   assets 放得下任意文件（同 CA_BUNDLE_ASSET 与 supply/channel.json
+     *   的既有做法），所以说明随 assets 走。
      */
-    private fun scanMeta(nativeDir: File): List<org.json.JSONObject> {
+    private fun scanMeta(ctx: Context): List<org.json.JSONObject> {
         val out = mutableListOf<org.json.JSONObject>()
-        val kids = nativeDir.listFiles() ?: return out
-        for (f in kids) {
-            if (!f.name.endsWith(META_NAME)) continue
+        val names = try {
+            ctx.assets.list(META_ASSET_DIR)?.toList() ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        for (name in names) {
+            if (!name.endsWith(META_NAME)) continue
             runCatching {
-                val m = org.json.JSONObject(f.readText())
+                val m = org.json.JSONObject(
+                    ctx.assets.open("$META_ASSET_DIR/$name").use { it.readBytes().toString(Charsets.UTF_8) }
+                )
                 // 说明自己的文件名就是那件的 .so 名（内核不预置名字）
-                m.put("file", f.name)
+                m.put("file", name)
                 out += m
             }
         }
@@ -129,10 +147,10 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
         val nativeDir = File(ctx.applicationInfo.nativeLibraryDir)
-        // 说明随件打进APK 的 jniLibs —— 它是唯一的数据源（deb-control(5) 的做法：
-        // 每个包自带 control，内核不预置任何一件的清单）。
-        // 扫 jniLibs 里带说明的条目，铺成 usr/lib/<id>/<版本>/ 的形状。
-        for (m in scanMeta(nativeDir)) {
+        // 件本体在 nativeLibraryDir（AGP 只把 *.so 打进 APK），
+        // 说明在 assets/supply/meta/ —— 两者配套，见 scanMeta 的注释。
+        // 铺成 usr/lib/<id>/<版本>/ 的形状。
+        for (m in scanMeta(ctx)) {
             val id = m.optString("id", "")
             val version = m.optString("version", "")
             if (id.isBlank() || version.isBlank()) continue

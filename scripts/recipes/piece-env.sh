@@ -20,8 +20,14 @@ ABI="${ABI:-arm64-v8a}"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 JNI="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"   # 绝对路径：调用方可能已 cd 走（busybox 就进了源码树）
+# 件说明随 assets 走 —— **这是运行时唯一读得到的那一份**。
+# jniLibs 里那份进不了 APK：AGP 的 jniLibs 打包只取 *.so（JniLibsPackaging
+# 只有 excludes/pickFirsts/keepDebugSymbols，没有「非 .so 也打进去」的开关），
+# 而 PrefixProvisioner.scanMeta() 正是在 nativeLibraryDir 里找 *.meta.json ——
+# 找不到就整目录跳过（PrefixProvisioner.kt:103「目录里没有说明的 .so 不铺」）。
+META_ASSETS="$ROOT_DIR/container/app/src/main/assets/supply/meta"
 WORK="$ROOT_DIR/work/$PIECE_NAME"
-mkdir -p "$OUT/bin" "$JNI" "$WORK"
+mkdir -p "$OUT/bin" "$JNI" "$META_ASSETS" "$WORK"
 
 # 说明文件名 —— jniLibs 里与件同名，PrefixProvisioner 按 *.meta.json 扫
 META_SUFFIX=".meta.json"
@@ -151,9 +157,12 @@ land_piece() {
       [ -e "$f" ] || continue
       cp -f "$f" "$JNI/$(basename "$f")" 2>/dev/null \
         || cp -Pf "$f" "$JNI/$(basename "$f")" 2>/dev/null || continue
-      # 每一层都落说明 —— 少了它，运行时就不铺这一层
+      # 每一层都落说明 —— 少了它，运行时就不铺这一层。
+      # 两处都写：jniLibs 那份给人看（本机构建产物），assets 那份才进 APK。
       cp -f "$WORK/component-meta.json" "$JNI/$(basename "$f")$META_SUFFIX" \
         || die "说明没落位" "$(basename "$f")$META_SUFFIX"
+      cp -f "$WORK/component-meta.json" "$META_ASSETS/$(basename "$f")$META_SUFFIX" \
+        || die "说明没落到 assets" "$(basename "$f")$META_SUFFIX"
       landed=$((landed + 1))
     done
     echo "  （共享库整条链：$landed 个文件各带说明 → $JNI/）"
@@ -161,6 +170,8 @@ land_piece() {
     cp -f "$built" "$JNI/$base"
     cp -f "$WORK/component-meta.json" "$JNI/$base$META_SUFFIX" \
       || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
+    cp -f "$WORK/component-meta.json" "$META_ASSETS/$base$META_SUFFIX" \
+      || die "说明没落到 assets" "gen-component-meta.js 没产出 $WORK/component-meta.json"
   fi
   echo "[ok] $id → $JNI/$base（+ 说明）"
 }
