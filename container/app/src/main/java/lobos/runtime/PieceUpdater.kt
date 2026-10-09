@@ -148,7 +148,7 @@ object PieceUpdater {
             pending.add(Triple(e, sha, c))
         }
 
-        for ((group, groupKey) in pending.groupBy { it.third.optString("url", "") + "-" + it.third.optString("sha256", "") }) {
+        for ((_, group) in pending.groupBy { it.third.optString("url", "") + "-" + it.third.optString("sha256", "") }) {
             val first = group.first().third
             val url = first.optString("url", "")
             val sha = first.optString("sha256", "")
@@ -256,7 +256,15 @@ object PieceUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    private fun pointEntryAt(ctx: Context, e: lobos.os.ProgramIndex.UnitEntry, dest: File): Boolean = try {
+    // version 是形参：下面第 273 行用它兜底（InstalledRuntime 读不到时）。
+    // 此前定义里漏了这个参数，函数体却引用它 —— 而调用点按 4 参传，
+    // 编译报 "Too many arguments for pointEntryAt"。
+    private fun pointEntryAt(
+        ctx: Context,
+        e: lobos.os.ProgramIndex.UnitEntry,
+        version: String,
+        dest: File,
+    ): Boolean = try {
         val entryName = e.assetEntry.substringAfterLast("/")
         val link = if (e.assetEntry.startsWith("bin/")) {
             File(PrefixProvisioner.binDir(ctx), entryName)
