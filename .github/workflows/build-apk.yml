@@ -66,6 +66,16 @@ jobs:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
+          # jq 在本 workflow 里第一次被用到就是这里（此前那 7 处都在发布轮末尾，
+          # 校验轮从没跑过那段）—— 所以「jq 可用」此前从未被验证过。
+          # 缺它时 set -e 会在第一条 echo 之前就杀掉脚本，报错原因一个字都看不到。
+          for t in jq gh; do
+            command -v $t >/dev/null 2>&1 || {
+              echo "::error title=发布前置::缺 $t —— runner 上没有，前置校验跑不起来"
+              exit 1
+            }
+          done
+
           FAIL=0
           SUMMARY="$GITHUB_STEP_SUMMARY"
           say() {
@@ -77,6 +87,7 @@ jobs:
           echo '## 发布轮前置校验' >> "$SUMMARY"
 
           # (1) tag 与 version.json 必须逐字一致 —— 否则要编完 APK 才报
+          [ -f version.json ] || { echo "::error title=发布前置::工作区里没有 version.json"; exit 1; }
           NAME_VER="$(jq -r '.shell.versionName' version.json)"
           CODE="$(jq -r '.shell.versionCode' version.json)"
           if [ "$RELEASE_TAG" != "os-release-$NAME_VER" ]; then
