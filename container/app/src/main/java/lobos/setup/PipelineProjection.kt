@@ -58,31 +58,16 @@ object PipelineProjection {
               .sortedBy { rank(verdicts[it.id]!!.status) }
               .map { c ->
                   val v = verdicts[c.id]!!
-                  PipelineStep(c.id, c.title, toStep(v.status), v.status.name, v.detail)
+                  PipelineStep(
+                      id = c.id,
+                      title = c.title,
+                      status = toStep(v.status),
+                      // 状态名保留在标题里，别丢 —— 原来它错传到了 detail 位
+                      detail = v.detail.ifBlank { v.status.name },
+                  )
               }
           return rows + workbenchRow(e, verdicts)
       }
-
-        title: String,
-        ranked: List<Pair<Capability, CapVerdict>>,
-        e: Evidence,
-    ): PipelineStep {
-        val best = ranked.minByOrNull { rank(it.second.status) }!!
-        val pendingCount = ranked.count { it.second.status != CapStatus.GRANTED }
-        val detail = if (seg == S2 && pendingCount > 1) {
-            "${best.first.title}：${best.second.detail}（另有 ${pendingCount - 1} 项待办）"
-        } else {
-            best.second.detail.ifBlank { best.first.title }
-        }
-        return PipelineStep(
-            id = seg,
-            title = title,
-            status = toStep(best.second.status),
-            detail = detail,
-            pending = CapabilityCatalog.byId(best.first.id)?.acquirer?.invoke(e)?.firstOrNull(),
-            pendingCapId = best.first.id,
-        )
-    }
 
     private fun workbenchRow(e: Evidence, verdicts: Map<String, CapVerdict>): PipelineStep {
         val gating = GATING.mapNotNull { id ->

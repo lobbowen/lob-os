@@ -2,6 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import lobos.RuntimeDiagnostics
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
@@ -31,7 +32,7 @@ object PieceUpdater {
         // 读注册表（dpkg -s「just displays the entry in the installed package
         // status database」）—— 查状态不扫磁盘，扫盘是 verify() 的事。
         for (e0 in lobos.os.ProgramIndex.all(ctx)) {
-            pe = e0
+            val pe = e0
             val ver = pe.version
             val installed = if (pe.stateDir.isBlank() || pe.assetEntry.isBlank()) null
                 else File(File(pe.stateDir), pe.assetEntry)
@@ -104,7 +105,7 @@ object PieceUpdater {
         val pending = mutableListOf<Triple<lobos.os.ProgramIndex.UnitEntry, String, JSONObject>>()
         // 每件的说明：注册表里有 stateDir，从那儿读件自带的（deb-control 的做法）
         val byId = lobos.os.ProgramIndex.all(ctx).mapNotNull { e0 ->
-            pe = e0
+            val pe = e0
             if (pe.stateDir.isBlank()) return@mapNotNull null
             val m = lobos.os.PieceScan.pieceMeta(ctx, pe.id) ?: return@mapNotNull null
             pe.id to m
