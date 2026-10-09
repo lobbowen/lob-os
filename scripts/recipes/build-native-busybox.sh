@@ -87,7 +87,33 @@ set_conf() {
     sed -i "s/^CONFIG_${k}=y/# CONFIG_${k} is not set/" "$SRC/.config"
   fi
 }
+
+# ── 白名单：只留 APPLETS 那些，其余全关 ────────────────────────
+# 此前是「defconfig 全开，再逐个关掉有问题的」——
+#   defconfig 开了 512 项（含 HOSTID 这种我们要的 18 个之外的）。
+#   靠「缺头就关」「bionic 缺函数就关」一层层筛，问题是**会一直漏**：
+#   HOSTID 用 gethostid()，而 bionic 没有那个函数 ——
+#   头文件在，所以按「NDK 有没有这个头」扫**抓不到**；
+#   又是个 286 字节的小 applet，不值得为它加一类新判据。
+#
+# 改成白名单：defconfig 之后把 .config 里所有 CONFIG_XXX=y 关掉，
+#   再只开 APPLETS 里的那些。缺头的 applet、bionic 缺函数的 applet、
+#   将来才暴露的别的 —— 它们**根本不会进编译**，不必一个个去筛。
+#
+# 与上游的一致性：busybox 自带 configs/android_ndk_defconfig（也是 512 项，
+#   给 Android NDK 用），我们要的 18 个里 17 个它也开着 —— 唯一例外是 DF
+#   （它要 sys/statvfs.h，那轮实测 NDK 其实有，但我们自己的判据把它算成了缺）。
+#   所以白名单与官方配置不冲突，只是更严。
+grep -o '^CONFIG_[A-Z0-9_]*=y' "$SRC/.config" | sed 's/^CONFIG_//; s/=y$//' > "$WORK/all-on.txt"
+N_ON=0
+while read -r k; do
+  [ -n "$k" ] || continue
+  set_conf "$k" n
+  N_ON=$((N_ON + 1))
+done < "$WORK/all-on.txt"
+echo "[busybox] defconfig 开了 $N_ON 项，已全部关掉（白名单式）"
 for a in $APPLETS; do set_conf "$a" y; done
+echo "[busybox] 白名单开启：$APPLETS"
 
 set_conf STATIC y
 set_conf PIE n
@@ -119,110 +145,6 @@ answers() {
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
-# ── 关掉「无条件 include 了 NDK 没有的头」的 applet ────────────────
-# busybox 有一批 applet 直接 include 内核 uapi 头（<sys/kd.h> <linux/fs.h>
-# <linux/pkt_sched.h> …）。NDK 只提供 libc 头，内核 uapi 头在 Linux 内核
-# 源码树的 include/uapi 里，NDK 不提供，于是编不过：
-#   console-tools/loadfont.c:59:10: fatal error: 'sys/kd.h' file not found
-#   networking/tc.c:…: fatal error: 'linux/pkt_sched.h' file not found
-#
-# 判据一：问「**NDK sysroot 里到底有没有这个头**」，不按 sys//linux 前缀分 ——
-#   NDK 的 libc 头本来就是 sys/*.h 布局，两者都有例外。逐个问 sysroot
-#   最可靠，判据也跟着 NDK 版本走。
-#
-# 判据二：只看**无条件**的 include（这一步是上一轮踩坑补上的）——
-#   busybox 把依赖 applet 的 include 包在条件编译里：
-#     libbb/xconnect.c:14   #if ENABLE_IFPLUGD || ENABLE_UEVENT
-#     libbb/xconnect.c:15   #include <linux/netlink.h>
-#   关掉那个 applet，这段 include 根本不编。不看这一层就会从 libbb
-#   （**所有 applet 共享**的基础设施）身上扒出一堆配置项，
-#   把一大票 applet 连带关掉 —— 上一轮就把 DF/PS 关了，
-#   它们只是恰好在 libbb 的条件依赖里，自己并不缺头。
-#
-# 为什么用脚本算而不是手写名单：
-#   名单会随 busybox 版本漂移 —— 漏一个就编不过，多关一个是我们白丢能力。
-#   判据本身稳定，所以在构建时从源码树现算。
-#   这与 busybox 官方 android_ndk_defconfig 的做法一致（它也是靠关 applet
-#   避开这些头），只是我们让它跟着源码树与 NDK 自动算。
-#
-# 配置项名读 busybox 自己的 `//config:` 注释 —— 依据 scripts/gen_build_files.sh
-# 第 117~120 行：各子目录的 Config.in 由它生成，所以官方 tarball 里那些
-# Config.in 根本不存在，配置项的真身就在 .c 注释里。
-SCAN="node $ROOT_DIR/scripts/verify/verify-busybox-missing-headers.js"
-# 引用之前先确认它在 —— 路径写错时报的是 node 的 MODULE_NOT_FOUND，
-# 那句堆栈完全看不出是「脚本被移走了」，很难一眼定位。
-SCAN_JS="${SCAN#node }"
-[ -f "$SCAN_JS" ] || die "扫描脚本不存在" "$SCAN_JS"
-# NDK 的 sysroot 按目标架构命名：
-#   <ndk>/sysroot/usr/include/<架构>-linux-android/   ← 目标平台的头（linux/*.h 等）
-#   <ndk>/sysroot/usr/include/                        ← libc 头（sys/*.h、stdio.h 等）
-#
-# 目录名**不带 API 级别** —— clang 的文件名带（aarch64-linux-android35-clang），
-# 但 sysroot 里的目录是 aarch64-linux-android。上一轮实测取证：
-#   sysroot/usr/include/aarch64-linux-android    ← 是这个
-#   sysroot/usr/include/aarch64-linux-android35  ← 我推出来的那个，不存在
-# 所以拼之前去掉结尾的 API 号。
-TARGET_TRIPLE="$(basename "$CC")"
-TARGET_TRIPLE="${TARGET_TRIPLE%-clang}"
-TARGET_TRIPLE="${TARGET_TRIPLE%-clang++}"
-TARGET_TRIPLE="$(printf '%s' "$TARGET_TRIPLE" | sed 's/-linux-android[0-9]*$/-linux-android/')"
-NDK_INC="$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/$TARGET_TRIPLE"
-[ -d "$NDK_INC" ] || {
-  echo "=== NDK sysroot include 目录取证 ==="
-  echo "从 $CC 推出的目录名 = $TARGET_TRIPLE"
-  echo "--- sysroot/usr/include 下有什么 ---"
-  ls -d "$(cd "$TC_DIR/.." && pwd)/sysroot/usr/include/"* 2>/dev/null | sed -n '1,20p'
-  die "找不到 NDK 的 sysroot include" "要找的是 $NDK_INC（按 clang 名去掉 API 号推的）"
-}
-
-MISSING_FILES="$($SCAN "$SRC" "$NDK_INC" --list | wc -l)"
-MISSING_HDRS="$($SCAN "$SRC" "$NDK_INC" --headers)"
-MISSING_ALL="$($SCAN "$SRC" "$NDK_INC")"
-echo "[busybox] $MISSING_FILES 个源文件无条件 include 了 NDK 没有的头"
-echo "[busybox] 缺的头：$MISSING_HDRS"
-
-# ── 我们要的 applet 优先，关 applet 不能牺牲它们 ──────────────────
-# APPLETS 那一串是我们**要的能力**，不是「顺手开的」。判据扫出来的
-# 关闭名单里可能含我们要的项（上一轮 DF 就是：df.c 要 sys/statvfs.h，
-# 而那个头 NDK 其实有，但我们那份「按 NDK 布局造的」判据把它算成了缺）。
-# 直接照单关掉 = 为了编过而丢能力，那不是我们要的。
-#
-# 所以分两级：
-#   ① 命中我们要的 applet（或它的子选项）→ 不关，报出缺哪个头，
-#      让编译自己说话。真编不过再按报错处理 —— 那时有确切的文件行号。
-#   ② 其余的 → 关掉，它们本编不过，保留只会让整件失败。
-KEEP=""
-for a in $APPLETS; do KEEP="$KEEP $a"; done
-MISSING_APPLES=""
-BLOCKED=""
-for k in $MISSING_ALL; do
-  hit=""
-  for a in $APPLETS; do
-    # 顶层项本身，或以它为前缀的子选项（FEATURE_DF_FANCY 之于 DF）
-    case "$k" in "$a"|"$a"_*|"FEATURE_$a"|"FEATURE_$a"_*) hit="$a"; break ;; esac
-  done
-  if [ -n "$hit" ]; then
-    BLOCKED="$BLOCKED $k"
-  else
-    MISSING_APPLES="$MISSING_APPLES $k"
-  fi
-done
-if [ -n "$BLOCKED" ]; then
-  echo "[busybox] 命中我们要的 applet，**不关**（关了就丢能力）：$BLOCKED"
-  echo "[busybox]   它们缺的头在上一行的清单里；NDK 其实大多有，"
-  echo "[busybox]   真编不过会报出确切的文件行号，届时按报错处理。"
-fi
-echo "[busybox] 关掉的配置项（$(echo "$MISSING_APPLES" | wc -w) 个）：$MISSING_APPLES"
-for k in $MISSING_APPLES; do set_conf "$k" n; done
-
-# libbb / libpwdgrp 是**所有 applet 共享**的基础设施，它们缺的头不由 applet
-# 开关决定（关 applet 也不改 libbb 的 .o），所以上面没有据此关任何东西。
-# 这里单独报出来 —— 那些头要么 busybox 自带，要么编译时会走到，届时按报错处理。
-LIBBB="$($SCAN "$SRC" "$NDK_INC" --libbb)"
-if [ -n "$LIBBB" ]; then
-  echo "[busybox] 共享基础设施里的无条件缺头（不由 applet 开关决定，单列）："
-  printf '  %s\n' "$LIBBB"
-fi
 
 # ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
