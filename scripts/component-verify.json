@@ -69,7 +69,7 @@
       "version": "8.22.0"
     },
     "sysroot": {
-      "criterion": "assets/sysroot/{include,lib}/ 在 APK 里，且 include 下确有目标平台的头（stddef.h 等）、lib 下有目标架构的库（*.so 带 aarch64 机器值）。判据是**形状与架构**而非「能跑」—— 它是编译材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。",
+      "criterion": "assets/sysroot/include/ 与 assets/sysroot/lib/ 在 APK 里，且 include 下确有 stdio.h（build-apk.yml 第 147 步硬判：缺了编译任何 C 程序都会失败）。判据是**材料在位**而非「能跑」—— 它是编译期材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。【未自动验】lib/ 下那些库的架构没有判据；实际拷的是 NDK sysroot 里 usr/lib/aarch64-linux-android/ 的内容，架构随 NDK 的目标而定。",
       "entry": "",
       "form": "headers",
       "version": "",
@@ -101,7 +101,7 @@
       "required": false
     },
     "libcxx": {
-      "criterion": "jniLibs/arm64-v8a/libc++_shared.so 在包里，且是 aarch64 ELF、带 DT_SONAME（linker 运行时按它找，不是按文件名）。起得来不适用 —— 它是 NDK 直接给的，我们要验的是「落位对、架构对」，不是「它能不能自己跑」。",
+      "criterion": "jniLibs/arm64-v8a/libc++_shared.so 在 APK 里（build-apk.yml 第 114 步硬判：NDK 里没有它就 exit 1 —— APK 内 C++ 原生件将无法加载）。起得来不适用 —— 它是 NDK 直接给的；我们要验的是「落位对」。【未自动验】它的架构与 DT_SONAME 没有判据（实际来自 NDK 的 sysroot，架构随 NDK 目标而定）。",
       "entry": "libc++_shared.so",
       "form": "lib",
       "version": "30.0.16248370",
@@ -127,28 +127,28 @@
       "version": "14.1.1"
     },
     "flock": {
-      "criterion": "liblobosflock.so 在 jniLibs 里、符号表导出 tryLock（node_api.h 的那个入口），且文件本身能被 node require 起来。判据是**导出的符号**而不是「文件在」—— 编出来但没导出 tryLock 的 .so 在运行时才报 undefined function。",
+      "criterion": "liblobosflock.so 在 jniLibs 里，且能被 **node require 起来**并调它的 tryLock(fd, cb)—— 真去锁一个 fd、把回调的返回值读回来（它返回 0 或 errno）。判据是**调得通**而非「文件在」：它是 node addon（用 node_api.h），导出靠 NAPI_MODULE_INIT 注册，不在普通动态符号表里，所以 nm/符号表查不出它 —— 只能真 require 一次。编出来但注册失败的话，真机上 require 即抛异常。",
       "required": false,
       "form": "lib",
       "version": "1.0.0",
       "entry": "lib/liblobosflock.so"
     },
     "posix": {
-      "criterion": "liblobosposix.so 在 jniLibs 里、符号表有我们声明的那几个入口，且能被加载（readelf 的 NEEDED/SONAME 自洽）。判据是**符号与依赖自洽**，文件在位但 NEEDED 指向一个不存在的库，真机上照样加载失败。",
+      "criterion": "liblobosposix.so 在 jniLibs 里，且**导出那四个 LD_PRELOAD hook**：execve/execvp（查解释器 · d1/exec-path.c）· open/openat（EACCES 回退 HOME · d1/open-fallback.c）· link/linkat（拦 link · d1/link-interpose.c）· mkdir/unlink/rename/stat（改 /tmp · d1/tmp-paths.c）。判据是**这些符号真在动态符号表里**且 NEEDED 自洽 —— 它是被 LD_PRELOAD 注入子进程的（RuntimeEnvironment.kt 第 66 行），链接器按导出名解析 hook；符号没导出不会报错，只会**静默不生效**（Linux 语义层那部分形同虚设），所以必须在构建期验。",
       "required": false,
       "form": "lib",
       "version": "1.0.0",
       "entry": "lib/liblobosposix.so"
     },
     "ptyprobe": {
-      "criterion": "liblobosptyprobe.so 在 jniLibs 里、导出探测入口。判据是**符号表里有那个入口** —— PTY 能不能用取决于探针问得出来，而探针在 .so 里，符号没导出就等于没有。",
+      "criterion": "liblobosptyprobe.so 起得来（-static 编的可执行件，form=exec），并且**真跑一次**、把它的输出读回来：它逐项打印 PTMX_OPEN / GRANTPT / UNLOCKPT / PTSNAME 各自的 OK/FAIL，末尾有 SUMMARY。判据覆盖「跑过」而非只看 --version —— 这探针的用处就是问出「PTY 在这台设备上能不能用」，答案在它的输出里，不在它能否启动。",
       "required": false,
       "form": "exec",
       "version": "1.0.0",
       "entry": "lib/liblobosptyprobe.so"
     },
     "ptysession": {
-      "criterion": "librivospty.so 在 jniLibs 里、导出建立/读写会话那几个入口。判据是**符号表**（与 ptyprobe 同理：文件在位而符号没导出，真机上调用即失败）。",
+      "criterion": "bin/pty-session 起得来（-static 编的可执行件，form=exec），并且能**建立一次会话并读回**：给它一条命令与一个 pty，把它的输出读回来。判据覆盖「会话真的建成了」—— 建会话要 open /dev/ptmx、grantpt、unlockpt 一步步走，任一步在这个系统上不通，就停在半路。",
       "installName": "pty-session",
       "required": false,
       "form": "exec",
