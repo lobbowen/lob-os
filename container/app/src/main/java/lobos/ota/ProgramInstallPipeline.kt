@@ -418,7 +418,7 @@ object ProgramInstallPipeline {
             if (s.contains(LIB_TOKEN) || s.contains(PLATFORM_TOKEN)) continue
             val dir = when {
                 s == "\$ORIGIN" -> originDir
-                s.startsWith("\$ORIGIN/") -> File(originDir, s.removePrefix("\$ORIGIN").trimStart("/"))
+                s.startsWith("\$ORIGIN/") -> File(originDir, s.removePrefix("\$ORIGIN").trimStart('/'))
                 s.startsWith("/") -> File(s)
                 else -> File(originDir, s)
             }
@@ -441,10 +441,10 @@ object ProgramInstallPipeline {
         val out = HashMap<String, File>()
         val dirs = buildList {
             add(File(context.applicationInfo.nativeLibraryDir))
-            add(File(lobos.runtime.PrefixProvisioner.libDir(context)))
+            add(lobos.runtime.PrefixProvisioner.libDir(context))
             runCatching {
                 lobos.os.ProgramRegistry.listIds(context).forEach { id ->
-                    runCatching { add(File(lobos.os.ProgramManager.stateDirOf(context, id))) }
+                    runCatching { add(lobos.os.ProgramManager.stateDirOf(context, id)) }
                 }
             }
         }
