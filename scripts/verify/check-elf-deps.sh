@@ -94,13 +94,48 @@ LIBDIR="$(cd "$(dirname "$FILE")" && pwd)/lib"
 LOCAL_LIBS=""
 [ -d "$LIBDIR" ] && LOCAL_LIBS=" $(ls "$LIBDIR" 2>/dev/null | tr '\n' ' ') "
 
+# 共享库是一条链：libz.so → libz.so.1 → libz.so.1.3.2，三层是**同一份字节的
+# 多个名字**（land_piece 用 cp -f 解开了软链，见 piece-env.sh）。而：
+#   · APK 的 jniLibs 只打包 *.so，版本化命名那两层进不去；
+#   · linker 运行时按 DT_NEEDED 的名字找，那正是带版本号的那个。
+# 所以比对时把 NEEDED 归到链首再认 —— 与 PrefixProvisioner.provision()
+# 「拿同 id 那份顶上」是同一个做法（两处必须一致）。
+chain_head() {
+  case "$1" in
+    *.so.[0-9]*) printf '%s' "${1%%.so.[0-9]*}.so" ;;
+    *)            printf '%s' "$1" ;;
+  esac
+}
+
 MISSING=""
 SELF_DEPS=""
+NO_JUDGE=""
 for lib in $NEEDED; do
   [ "$lib" = "$(basename "$FILE")" ] && continue
+  ch="$(chain_head "$lib")"
   case "$SYSTEM_LIBS" in *" $lib "*) continue ;; esac
-  case "$APK_LIBS"     in *" $lib "*) continue ;; esac
-  case "$LOCAL_LIBS"  in *" $lib "*) SELF_DEPS="$SELF_DEPS $lib"; continue ;; esac
+  # APK 基础库与件自己的 lib/：认链首，也认原名
+  if [ -n "${APK_LIBS// /}" ]; then
+    case " $APK_LIBS " in *" $ch "*) continue ;; esac
+    case " $APK_LIBS " in *" $lib "*) continue ;; esac
+  fi
+  if [ -n "${LOCAL_LIBS// /}" ]; then
+    case " $LOCAL_LIBS " in *" $ch "*) SELF_DEPS="$SELF_DEPS $lib"; continue ;; esac
+    case " $LOCAL_LIBS " in *" $lib "*) SELF_DEPS="$SELF_DEPS $lib"; continue ;; esac
+  fi
+  # 版本化命名（libfoo.so.N）而链首在 APK 基础库与件自己的 lib/ 里都没有：
+  # 这一类此刻无从判断 —— tool 筐那几个 workflow 不编 base 件，那份依赖是靠
+  # **运行时** usr/lib 的全局软链满足的（见 build-component-git.sh 的注释）。
+  # 构建期看不到那个软链，所以判红等于为了一条此刻无从判断的判据拦住构建。
+  # 如实说明少判了什么，但不判红。
+  case "$lib" in
+    *.so.[0-9]*)
+      if [ -z "${APK_LIBS// /}" ] && [ -z "${LOCAL_LIBS// /}" ]; then
+        NO_JUDGE="$NO_JUDGE $lib"
+        continue
+      fi
+      ;;
+  esac
   MISSING="$MISSING $lib"
 done
 
@@ -136,4 +171,10 @@ for lib in $NEEDED; do
   case "$APK_LIBS"     in *" $lib "*) N_APK=$((N_APK+1)); continue ;; esac
   N_LOCAL=$((N_LOCAL+1))
 done
+if [ -n "$NO_JUDGE" ]; then
+  echo "[$LABEL] 以下依赖此刻判不了（非阻断）：${NO_JUDGE# }"
+  echo "         理由：版本化命名，链首不在 APK 基础库也不在件自己的 lib/ 里；"
+  echo "         而 tool 筐的 workflow 不编 base 件 —— 那份依赖靠运行时"
+  echo "         usr/lib 的全局软链满足，构建期看不到它。"
+fi
 echo "[ok] $LABEL 依赖闭环：$(printf '%s' "$NEEDED" | wc -w) 项 NEEDED —— 系统 $N_SYS · APK基础库 $N_APK · 同目录 $N_LOCAL"
