@@ -112,6 +112,10 @@ object ProgramStatusHub {
         return out.sortedBy { it.id }
     }
 
+    /** 退出时才补一句退出码 —— 单独抽出来，避免多行实参里裸跟一个括号 */
+    private fun exitHint(active: UnitState.Active, unit: lobos.os.UnitEntry?): String =
+        if (active == UnitState.Active.FAILED) " 退出码=" + (unit?.exitCode ?: -1) else ""
+
     fun statusOf(ctx: Context, id: String): ProgramStatus {
         val entry = ProgramIndex.get(ctx, id)?.takeIf { it.level == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
@@ -146,8 +150,7 @@ object ProgramStatusHub {
             Journal.note(
                 ctx, "state", true,
                 "状态变化：" + prev.second.label + " -> " + active.label,
-                "id=" + id + " load=" + load.label + " sub=" + sub.label +
-                    (active == UnitState.Active.FAILED ? " 退出码=" + (unit?.exitCode ?: -1) : ""),
+                "id=" + id + " load=" + load.label + " sub=" + sub.label + exitHint(active, unit),
             )
         } else if (prev == null) {
             lastState = lastState + (id to state)

@@ -430,7 +430,7 @@ class SetupActivity : AppCompatActivity() {
                 appendLine("${Build.MANUFACTURER} ${Build.MODEL} · API ${Build.VERSION.SDK_INT} · " +
                     "APK ${BuildConfig.VERSION_NAME}#${BuildConfig.VERSION_CODE}")
                 appendLine("---- 常驻定罪 ----")
-                appendLine(ResidencyAudit.interruption(this) ?: "上次收尾是正常退出（或本机首次装），无可定罪的中断")
+                appendLine(ResidencyAudit.interruption(ctx) ?: "上次收尾是正常退出（或本机首次装），无可定罪的中断")
                 if (e != null) {
                     val verdicts = CapabilityCatalog.evaluate(e)
                     appendLine("---- 流程阶段 ----")

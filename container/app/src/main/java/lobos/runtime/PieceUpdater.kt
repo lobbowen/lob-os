@@ -105,13 +105,14 @@ object PieceUpdater {
         val applied = JSONArray()
         val skipped = JSONArray()
         val pending = mutableListOf<Triple<lobos.os.UnitEntry, String, JSONObject>>()
-        // 每件的说明：注册表里有 stateDir，从那儿读件自带的（deb-control 的做法）
-        val byId = lobos.os.ProgramIndex.all(ctx).mapNotNull { e0 ->
-            val pe = e0
-            if (pe.stateDir.isBlank()) return@mapNotNull null
-            val m = lobos.os.PieceScan.pieceMeta(ctx, pe.id) ?: return@mapNotNull null
-            pe.id to m
-        }.toMap()
+        // 按 id 索引注册表条目 —— pending 要的是条目本身（id/libName/assetEntry）。
+        // 「这件有没有随落说明」单独判，不把 JSONObject 塞进来：
+        // 此前 byId 的值是 pieceMeta 的返回，下游按 UnitEntry 用就编不过。
+        val byId = lobos.os.ProgramIndex.all(ctx)
+            .filter { it.stateDir.isNotBlank() }
+            // 没有随落说明的件不进这一轮：清单说更新它，我们却无从确认版本
+            .filter { lobos.os.PieceScan.pieceMeta(ctx, it.id) != null }
+            .associateBy { it.id }
 
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue

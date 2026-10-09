@@ -2,6 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import android.util.Log
+import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.EOFException
@@ -12,7 +13,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import lobos.RuntimeDiagnostics
 import lobos.os.PieceScan
-import lobos.os.ProgramIndex
 
 object PtySession {
 
@@ -144,8 +144,9 @@ object PtySession {
             throw IllegalStateException("会话数已满（256）")
         }
 
+        // Session 会直接调它（同 object 内的兄弟类），不能是 private
         @Synchronized
-        private fun send(kind: Int, sid: Int, payload: ByteArray) {
+        internal fun send(kind: Int, sid: Int, payload: ByteArray) {
             try {
                 val h = ByteArray(8)
                 h[0] = kind.toByte(); h[1] = sid.toByte()

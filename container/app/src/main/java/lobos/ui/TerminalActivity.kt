@@ -118,11 +118,15 @@ class TerminalActivity : AppCompatActivity() {
             term.connected = true
             // View.post 返回 Boolean，回调要的是 Unit —— 补一个 Unit 收尾
             s.onData = { data -> term.post { term.appendOutput(data) }; Unit }
-            s.onExit = {
+            s.onExit = { code, sig ->
                 term.post {
                     term.connected = false
-                    status.text = "会话已结束（pid 已退出）"
-                    RuntimeDiagnostics.append(this@TerminalActivity, "terminal", null, "终端会话结束", argv.joinToString(" "))
+                    val why = if (sig > 0) "被信号 $sig 结束" else "退出码 $code"
+                    status.text = "会话已结束（$why）"
+                    RuntimeDiagnostics.append(
+                        this@TerminalActivity, "terminal", null,
+                        "终端会话结束：$why", argv.joinToString(" ")
+                    )
                 }
             }
             status.text = "$want · ${term.screen.cols}×${term.screen.rows} · sid=${s.sid}"

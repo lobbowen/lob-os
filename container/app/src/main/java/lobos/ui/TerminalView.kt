@@ -192,10 +192,10 @@ class TerminalView @JvmOverloads constructor(
     }
 
     private fun ESC_ARROW(f: String): ByteArray =
-        byteArrayOf(0x1b, '[', f.code.toByte())
+        byteArrayOf(0x1b, '['.code.toByte(), f[0].code.toByte())
 
     private fun ESC_TILDE(n: String): ByteArray =
-        byteArrayOf(0x1b, '[', n.code.toByte(), '~'.code.toByte())
+        byteArrayOf(0x1b, '['.code.toByte(), n[0].code.toByte(), '~'.code.toByte())
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
