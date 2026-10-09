@@ -2,6 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
+import lobos.log.Journal
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -101,6 +102,31 @@ object ProgramManager {
     fun levelOf(ctx: Context, id: String): Level =
         if (ProgramIndex.isPiece(ctx, id)) Level.PIECE else Level.PROGRAM
 
+    /**
+     * 注册表条目 ↔ 盘上实物 —— 「声明了什么」与「实际是什么」的差。
+     *
+     * Reality 的每个字段都从既有的事实源取，不另存副本：
+     * 层级取注册表条目的形状（levelOf 的同一判据），版本取 CURRENT 指针，
+     * 就位与否看落位目录在不在，evidence 是把两者拼成一句人话。
+     */
+    private fun realityOf(ctx: Context, e: UnitEntry): Reality? {
+        val dir = stateDirOf(ctx, e.id)
+        val landed = when {
+            ProgramIndex.isPiece(e) -> infraSourceFile(ctx, e).exists()
+            else -> dir.isDirectory
+        }
+        val version = if (landed) {
+            runCatching { dirOf(ctx, e.id).currentVersion() }.getOrNull().orEmpty()
+        } else ""
+        return Reality(
+            id = e.id,
+            level = e.level,
+            installed = landed,
+            version = version,
+            evidence = if (landed) "落位=" + dir.absolutePath else "落位缺失=" + dir.absolutePath,
+        )
+    }
+
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
     /**
@@ -123,7 +149,7 @@ object ProgramManager {
     @Synchronized
     fun snapshot(ctx: Context): Snapshot {
         val entries = ProgramIndex.all(ctx)
-        val realities = entries.associate { it.id to realityOf(ctx, it) }
+        val realities = entries.mapNotNull { e -> realityOf(ctx, e)?.let { e.id to it } }.toMap()
         return Snapshot(System.currentTimeMillis(), entries, realities)
     }
 
@@ -174,7 +200,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         cur.mkdirs()
         for (e in enabled) {
             if (ProgramIndex.isPiece(e)) continue
-            val version = currentVersion(ctx, e.id) ?: continue
+            val version = runCatching { dirOf(ctx, e.id).currentVersion() }.getOrNull() ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue
             val link = File(cur, e.id)

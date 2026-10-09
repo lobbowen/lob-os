@@ -164,6 +164,12 @@ object ProgramIndex {
      * 挡 . 与 ..、限长 64、限字符集（字母数字与 . _ - +）。
      * 不合格返回 null，调用方据此拒绝这个 id/版本。
      */
+    /** 注册表根目录 —— 程序/件的状态都落在这下面 */
+    fun root(ctx: Context): File = dir(ctx)
+
+    /** 注册表文件本身。改动它就是改数据源，不该有别处 */
+    fun file(ctx: Context): File = File(dir(ctx), FILE)
+
     fun safeSegment(raw: String): String? {
         val v = raw.trim()
         if (v.isEmpty() || v.length > 64) return null

@@ -40,6 +40,9 @@ object PieceScan {
     /** 落位形状决定的形态 —— 照抄 ldconfig "checks the header and filenames" */
     const val EXEC = "exec"
 
+    /** 命令解释器那件（bash）。不是形态 —— bash 落位里有 bin/，role 就是 exec */
+    const val SHELL = "shell"
+
     /** multi-command：一个二进制提供多个命令（它自己在说明里声明） */
     const val MULTI_COMMAND = "multi-command"
     const val LIBRARY = "library"
@@ -68,10 +71,8 @@ object PieceScan {
          * database"）。没有它就答不出：删这个件该删哪些文件 · 某个文件被换过没有。
          * 路径相对件目录（usr/lib/<id>/<版本>/），换存储位置不用重记。
          */
-        val files: List<FileRec> = emptyList(),
+        val files: List<UnitEntry.FileRec> = emptyList(),
     ) {
-        /** 一个文件：相对件目录的路径 + sha256 */
-        data class FileRec(val path: String, val sha256: String)
 
         /**
          * 是不是**必需**的件（缺了系统起不来）—— 照 deb-control(5) 的 Essential: yes/no。
@@ -175,15 +176,15 @@ object PieceScan {
     }
 
 
-    private fun filesOf(verDir: File): List<FileRec> {
+    private fun filesOf(verDir: File): List<UnitEntry.FileRec> {
         val base = verDir.absolutePath
-        val out = mutableListOf<FileRec>()
+        val out = mutableListOf<UnitEntry.FileRec>()
         verDir.walkTopDown().forEach { f ->
             if (!f.isFile) return@forEach
             if (f.name == "component-meta.json") return@forEach
             val rel = f.absolutePath.removePrefix(base).trimStart('/')
             if (rel.isEmpty()) return@forEach
-            out += FileRec(rel, SupplySha.sha256(f))
+            out += UnitEntry.FileRec(rel, SupplySha.sha256(f))
         }
         return out.sortedBy { it.path }
     }
@@ -195,7 +196,7 @@ object PieceScan {
      * 查不出来（dpkg 用 md5sums 逐文件正是为了这个）。
      * 现在把所有文件的校验值按路径序串起来再哈希 —— 任何一个变了，整件的值就变。
      */
-    private fun sha256Of(verDir: File, files: List<FileRec>): String {
+    private fun sha256Of(verDir: File, files: List<UnitEntry.FileRec>): String {
         if (files.isEmpty()) return ""
         val md = java.security.MessageDigest.getInstance("SHA-256")
         for (fr in files) {
@@ -230,9 +231,7 @@ object PieceScan {
                 role = f.role,
                 sha256 = f.sha256,
                 required = f.meta?.optBoolean("essential", false) ?: false,
-                files = f.files.map { fr ->
-                    UnitEntry.FileRec(fr.path, fr.sha256)
-                },
+                files = f.files,
             )
             if (prev != entry) {
                 ProgramIndex.upsert(ctx, entry)
@@ -314,21 +313,25 @@ object PieceScan {
         return metaOf(File(e.stateDir))
     }
 
-    /** 命令解释器 —— 注册表里 role=shell 的那一件 */
+    /**
+     * 命令解释器 —— 落位里能当 sh 用的那个可执行体。
+     *
+     * 判据是**落位形状**：bin/ 下有可执行、且不是库的那个。role 只有两个值
+     * （exec / library，由 roleOf 从 bin/ 与否推出），此前这里按 role == "shell"
+     * 和 role == "multi-command" 找——那两个值 roleOf 从不产出，两条链恒空。
+     *
+     * 优先件自己的说明里声明了命令解释器的那一件（bash），没有再退到
+     * multi-command 件（busybox）—— 前者语义专一，后者是万金油。
+     */
     fun shellBin(ctx: Context): File? {
-        // 两条独立的查找链：先 role=shell 的件，没有再退到 role=multi-command 的。
-        // 此前它们被硬拼成一条（第一条链结束后又 .filter，而 File? 上没有 filter）——
-        // 编译报 "Unresolved reference 'filter' on receiver of type 'File?'"。
+        // 两条独立的查找链：先命令解释器那件，没有再退到 multi-command 的。
         fun landOf(e: lobos.os.UnitEntry): File? =
             if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null
-            else File(File(e.stateDir), e.assetEntry)
-        val shell = ProgramIndex.all(ctx)
-            .filter { ProgramIndex.isPiece(it) }
-            .firstOrNull { it.role == SHELL }
+            else File(File(e.stateDir), e.assetEntry).takeIf { it.isFile }
+        val pieces = ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(it) }
+        val shell = pieces.firstOrNull { it.role == SHELL || it.id == "bash" }
         if (shell != null) return landOf(shell)
-        val multi = ProgramIndex.all(ctx)
-            .filter { ProgramIndex.isPiece(it) }
-            .firstOrNull { it.role == MULTI_COMMAND }
+        val multi = pieces.firstOrNull { it.role == MULTI_COMMAND || it.id == "busybox" }
         return multi?.let { landOf(it) }
     }
 
