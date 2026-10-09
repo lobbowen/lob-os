@@ -23,8 +23,9 @@ if [ -n "$EXPECT_CERT" ] && [ ! -s "$EXPECT_CERT" ]; then
   exit 1
 fi
 
+# 不吞 stderr：pick.sh 零命中时会打 warning 说明 find 为什么没命中
 APKSIGNER="$(bash "$HERE/pick.sh" --allow-empty --last apksigner \
-  "${ANDROID_HOME:-/nonexistent}/build-tools" -name apksigner -type f 2>/dev/null || true)"
+  "${ANDROID_HOME:-/nonexistent}/build-tools" -name apksigner -type f || true)"
 [ -n "$APKSIGNER" ] || APKSIGNER="$(command -v apksigner || true)"
 if [ -z "$APKSIGNER" ]; then
   echo "[error] 找不到 apksigner（ANDROID_HOME=${ANDROID_HOME:-<未设置>}）—— 签名身份无从核验，禁止放行（装不上去是装机之后才知道的）。"

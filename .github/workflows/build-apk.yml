@@ -85,8 +85,19 @@ jobs:
           SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           [ -n "$SDK" ] || { echo "::error title=无 Android SDK"; exit 1; }
           yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
-          echo "[ok] SDK 包就绪"
+          if ! "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null; then
+            echo "::error title=SDK 包安装失败::platform-tools / platforms;android-35 / build-tools;35.0.0 至少一个没装上"
+            ls -1 "$SDK" 2>/dev/null || true
+            exit 1
+          fi
+          # 后面 verify-apk-signing.sh 要在这里找 apksigner —— 先确认它真的在，
+          # 免得几十行之后才报「找不到 apksigner」，看不出是哪一步没装成
+          if ! find "$SDK/build-tools" -name apksigner 2>/dev/null | head -1 | grep -q .; then
+            echo "::error title=build-tools 里没有 apksigner::签名核验依赖它"
+            ls -1 "$SDK/build-tools" 2>/dev/null || echo "  （build-tools 目录不存在）"
+            exit 1
+          fi
+          echo "[ok] SDK 包就绪（含 apksigner）"
 
       - name: 取 NDK（命中缓存则 0 下载；未命中才 sdkmanager 装一次并写回缓存）
         run: bash scripts/toolchain/cache-ndk.sh
