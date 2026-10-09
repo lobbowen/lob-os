@@ -89,6 +89,54 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
           echo "ANDROID_NDK_LATEST_HOME=${ANDROID_NDK_LATEST_HOME:-<unset>}"
 
+      # 发布轮的前置校验 —— 放在所有耗时步骤之前。
+      #
+      # 为什么必须提前：发布轮的三个专属判据（tag 与 version.json 一致、
+      # 签名密钥在位、发布令牌在位）原本排在第 30 步之后，也就是**编完
+      # 13 个原生件 + 整个 APK 之后**才判。tag 打错一个字符、secret 没配，
+      # 都要等十几分钟才报错。校验轮不会碰到这些，所以这个洞一直没人踩到。
+      #
+      # 这一步只读，不改任何东西 —— 它要保证「发布轮往下走之前一定不会白跑」。
+      - name: 发布轮前置校验（tag / 密钥 / 令牌 / 版本闸门）
+        if: env.RELEASE_ROUND == "true"
+        env:
+          GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          FAIL=0
+          say() { echo "::error title=发布前置::$1"; FAIL=1; }
+
+          # (1) tag 与 version.json 必须逐字一致 —— 否则第 30 步才报
+          NAME_VER="$(jq -r '.shell.versionName' version.json)"
+          CODE="$(jq -r '.shell.versionCode' version.json)"
+          if [ "$RELEASE_TAG" != "os-release-$NAME_VER" ]; then
+            say "tag 与 version.json 对不上：tag=$RELEASE_TAG，而 version.json 的 versionName=$NAME_VER"
+            echo "         要么改 tag 成 os-release-$NAME_VER，要么先提 version.json 的 versionName。"
+            echo "         当前 versionName=$NAME_VER versionCode=$CODE"
+          else
+            echo "[preflight] tag 与 version.json 一致：$RELEASE_TAG（versionCode=$CODE）"
+          fi
+
+          # (2) 四件签名密钥必须齐 —— 缺一个就退回一次性 debug 签名，
+          #     装到设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
+          for v in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [ -n "${!v:-}" ] || say "缺少签名密钥的 $v —— 发布包不能用一次性 debug 签名"
+          done
+          [ "$FAIL" = "0" ] && echo "[preflight] 签名密钥四件齐备"
+
+          # (3) 发布令牌
+          [ -n "${GH_TOKEN:-}" ] || say "缺少 secrets.APK_PUBLISH_TOKEN —— 发不了 release"
+
+          # (4) 同版本号只允许配同一批字节
+          if [ -n "${GH_TOKEN:-}" ] && gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            say "同版本号已发布过：$RELEASE_TAG 已存在。同号只能配同一批字节；要重发先提 versionCode 再打新 tag。"
+          fi
+
+          if [ "$FAIL" != "0" ]; then
+            echo "::error title=发布前置校验未通过::上面几条都要先解决 —— 它们原本排在编译之后，白跑十几分钟"
+            exit 1
+          fi
+          echo "[preflight] 发布前置校验全过"
       - name: Install SDK packages (platform-tools / platform / build-tools)
         run: |
           set -euo pipefail
