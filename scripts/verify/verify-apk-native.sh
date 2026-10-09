@@ -267,11 +267,6 @@ for id in $META_MISSING_ID; do
 done
 rm -f "$TMPA"
 echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
-if [ "$META_CHAIN_GAP" -gt 0 ]; then
-  echo "  ⚠ $META_CHAIN_GAP 份说明指向版本化命名的 .so（libfoo.so.1 等），AGP 的 jniLibs 打包进不去。"
-  echo "    linker 运行时按 DT_NEEDED 的名字找，那几层的全局软链在真机上建不出来 ——"
-  echo "    依赖它们的件会加载失败。怎么修还没定，先记着。"
-fi
 [ "$META_BAD" = "0" ] || MISSING="$MISSING meta-invalid($META_BAD)"
 
 echo
