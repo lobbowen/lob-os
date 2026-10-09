@@ -60,10 +60,28 @@ note "源码 $GOT_VER 就位"
 
 PATCH_FILE="$ROOT_DIR/patches/cmake-cmlibuv-no-cpumask-on-android.patch"
 [ -f "$PATCH_FILE" ] || die "缺 libuv 补丁" "$PATCH_FILE 不存在 —— 没有它 cmake 会编不过（core.c:1683 CPU_SETSIZE）"
-if ! patch -p1 -d "$SRC" -i "$PATCH_FILE"; then
+# patch 遇到「补丁已经打过」会**交互式询问**：
+#   Reversed (or previously applied) patch detected! Assume -R? [n]
+# CI 上没有 tty，它读到 EOF 就跳过补丁并返回非零 ——
+# 于是「早就打过了」与「真打不上」被混为一谈，都判红。
+#
+# 而 work/cmake 在缓存路径里（build-cmake.yml 第 123 行），打过补丁的源码树
+# 会被下一轮直接复用 —— 「already applied」是常态，不是异常。
+#
+# 先用 --dry-run 分三种情况（只用两个实现都有的选项）：
+#   能干净应用        → 真打
+#   反向能干净应用    → 说明已经是打过补丁的状态，视为成功
+#   两者都不行        → 才是真打不上
+if patch -p1 -d "$SRC" -i "$PATCH_FILE" --dry-run >/dev/null 2>&1; then
+  patch -p1 -d "$SRC" -i "$PATCH_FILE" >/dev/null 2>&1 \
+    || die "libuv 补丁应用失败" "dry-run 说能打上、真打却失败 —— 源码树状态与补丁不一致"
+  note "libuv 补丁已打（Android 上关掉 CPU affinity）"
+elif patch -R -p1 -d "$SRC" -i "$PATCH_FILE" --dry-run >/dev/null 2>&1; then
+  # 反向能打上 = 当前内容就是打过补丁的那份（缓存复用）。那正是我们要的状态。
+  note "libuv 补丁已在此源码树里（缓存复用，不重复打）"
+else
   die "libuv 补丁打不上" "为什么需要它：clang 的 Android target 预定义 __linux__（实测 __linux__/__ANDROID__/__BIONIC__ 都是 1），Bionic 的 <sched.h> 不提供 cpu_set_t/CPU_SETSIZE/sched_getaffinity，libuv 只看 __linux__ 于是编不过（core.c:1683）。改法同 Termux 的 libuv 补丁。不选 -U__linux__ 是因为那全局生效，libcurl/zstd/c-ares 也可能依赖它。CMake $GOT_VER 的 Utilities/cmlibuv/src/unix/internal.h 与补丁不匹配 —— 补丁是按 $CMAKE_VER 写的。换 CMake 版本时要一起更新 patches/ 下这个文件。"
 fi
-note "libuv 补丁已打（Android 上关掉 CPU affinity）"
 
 LF_SRC="$ROOT_DIR/patches/cmake-cmlibarchive-contrib"
 [ -f "$LF_SRC/android_lf.h" ] || die "缺 android_lf.h" \
