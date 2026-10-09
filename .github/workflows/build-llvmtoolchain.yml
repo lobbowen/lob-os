@@ -134,7 +134,7 @@ jobs:
           bash scripts/recipes/build-component-llvmtoolchain.sh
 
       - name: 件形态校验（aarch64 动态件 / 别名工具各自形状）
-        run: bash scripts/verify/verify-component-artifact.sh llvmtoolchain
+        run: bash scripts/verify/verify-component-artifact.sh llvm
 
       - name: 打包 + sha256
         run: bash scripts/recipes/package-component.sh llvmtoolchain
