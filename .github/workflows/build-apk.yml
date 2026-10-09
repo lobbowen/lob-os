@@ -6,8 +6,9 @@ on:
     branches: [main]
     paths:
       - 'container/**'
-      - 'scripts/build-native-*.sh'
       - 'scripts/toolchain/ensure-native-capabilities.sh'
+      - 'scripts/recipes/build-*.sh'
+      - 'scripts/recipes/piece-env.sh'
       - 'scripts/verify/verify-runtime-elf.sh'
       - 'scripts/verify/verify-apk-native.sh'
       - 'scripts/verify/verify-apk-signing.sh'
