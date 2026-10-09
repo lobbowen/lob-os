@@ -6,6 +6,15 @@ on:
     paths:
       - 'scripts/recipes/build-component-git.sh'
       - 'scripts/toolchain/locate-ndk.sh'
+      # git 依赖 base 筐的 zlib / openssl / curl 三件（本 workflow 会先编它们），
+      # 改这些件脚本也必须触发 git 重建 —— 否则改了依赖却拿不到新产物
+      - 'scripts/toolchain/ensure-native-capabilities.sh'
+      - 'scripts/recipes/build-piece-*.sh'
+      - 'scripts/recipes/piece-env.sh'
+      - 'scripts/recipes/build-native-busybox.sh'
+      - 'scripts/recipes/gen-component-meta.js'
+      - 'scripts/verify/native-deps.txt'
+      - 'scripts/verify/pick.sh'
       - 'scripts/toolchain/cache-ndk.sh'
       - 'scripts/toolchain/fetch-pinned.sh'
       - 'scripts/toolchain/cache-key.sh'
