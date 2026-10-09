@@ -48,11 +48,18 @@ object SystemDirs {
 
     fun opt(ctx: Context): File = File(ctx.filesDir, REL_OPT)
 
-    /** 库的落位：`lib/<id>/`（件的内含物在 `<版本>/` 下面） */
     /**
-     * 一件的落位目录：`usr/lib/<id>/<版本>/`
+     * 一件的落位根：`usr/lib/<id>/`（各版本并存于其下）
      *
-     * 同一件可以并存多个版本（各占一个目录），切换靠改/usr/bin 那个软链 ——
+     * 三参那个是它加一层版本目录。此前三参版直接调两参同名函数，
+     * 而两参版从未定义 —— 编译器报"No value passed for parameter 'version'"。
+     */
+    fun pieceDir(ctx: Context, id: String): File = File(lib(ctx), id)
+
+    /**
+     * 一件的某个版本：`usr/lib/<id>/<版本>/`
+     *
+     * 同一件可以并存多个版本（各占一个目录），切换靠改 /usr/bin 那个软链 ——
      * 与 `ldconfig` 对 `libfoo.so → .so.1 → .so.1.12` 做的是同一件事。
      * 落位形状自带身份：扫目录就知道有什么件、什么版本、入口在哪。
      */

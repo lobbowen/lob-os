@@ -15,8 +15,9 @@ import lobos.runtime.PtySession
 
 class TerminalActivity : AppCompatActivity() {
 
-    private companion object {
-        const val TAG = "TerminalActivity"
+    // intentFor 要给 PanelActivity 用 —— companion 不能是 private
+    companion object {
+        private const val TAG = "TerminalActivity"
         const val EXTRA_SHELL = "shell"
 
         /** 系统里没有命令解释器时的回落 —— Android 自带的 sh，不是我们的件 */
@@ -115,7 +116,8 @@ class TerminalActivity : AppCompatActivity() {
             val s = PtySession.openSession(this, argv, term.screen.rows, term.screen.cols)
             session = s
             term.connected = true
-            s.onData = { data -> term.post { term.appendOutput(data) } }
+            // View.post 返回 Boolean，回调要的是 Unit —— 补一个 Unit 收尾
+            s.onData = { data -> term.post { term.appendOutput(data) }; Unit }
             s.onExit = {
                 term.post {
                     term.connected = false

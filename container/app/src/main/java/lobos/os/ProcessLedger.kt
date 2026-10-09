@@ -18,7 +18,19 @@ object ProcessLedger {
         val programId: String,
         val generation: Long,
         val pid: Int,
+        /**
+         * 内核给的进程启动时刻（/proc/<pid>/stat 第 22 场那个数）。
+         *
+         * 防 pid 复用：pid 会回卷，光看 pid 认不出是同一个进程。
+         */
         val starttime: Long,
+        /**
+         * 记进账本的时刻 —— 与 starttime 两回事：
+         * starttime 是内核的事实，startedAt 是「我们什么时候开始管它」。
+         * 序列化/反序列化都按这个字段名，此前 Entry 上并没有它，
+         * 编译报"No parameter with name 'startedAt' found"。
+         */
+        val startedAt: Long = 0L,
     )
 
     private fun file(ctx: Context): File {
@@ -189,6 +201,7 @@ object ProcessLedger {
             generation = generation,
             pid = pid,
             starttime = st,
+            startedAt = System.currentTimeMillis(),
         )
         persist(ctx, list(ctx).filterNot { it.pid == pid } + e)
         return e

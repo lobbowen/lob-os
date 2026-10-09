@@ -332,7 +332,9 @@ class SetupActivity : AppCompatActivity() {
 
     private fun openAppDetailsAfterDenial(perm: String?) {
         if (perm == null) return
-            this, "perm",
+        // 补上了缺失的 stage / ok / message 三参 —— 此前只剩 detail 和右括号
+        RuntimeDiagnostics.append(
+            this, "perm", true, "权限被拒后跳本应用详情页",
             "$perm 弹窗结果=未授予（多半勾了「不再询问」）→ 跳本应用详情页，给一条能走的路",
         )
         val jumped = runCatching { startActivity(CapabilityNavigation.appDetailsIntent(this)) }.isSuccess

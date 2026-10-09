@@ -327,7 +327,8 @@ class OsHostService : Service() {
         val summary = androidx.core.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
         val items = mutableListOf<String>()
         for (n in lobos.os.ProgramStatusHub.snapshot(this).take(6)) {
-            items += n.id + " · " + n.state.name.lowercase() +
+            // 状态是 systemctl 的三列，不是一个自造的 state —— 取 active 那列
+            items += n.id + " · " + n.active.name.lowercase() +
                 if (n.aliveMs > 0) " · " + (n.aliveMs / 3600000) + "h" + ((n.aliveMs / 60000) % 60) + "m" else ""
         }
         val notices = lobos.os.ProgramNotificationHub.list()
