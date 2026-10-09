@@ -75,6 +75,11 @@ note_missing() {
   fi
   MISSING="$MISSING $1"
 }
+# 能力尚未实现（不是 APK 少了东西）—— 记录但不计缺
+note_degraded() {
+  if [ "$REPORT" = "1" ]; then echo "  [未实现] $1 —— $2"; else echo "  [未实现] $1 —— $2"; fi
+  DEGRADED="$DEGRADED $1"
+}
 
 echo "== APK: $APK ($(stat -c%s "$APK") 字节, ABI=$ABI) =="
 echo "--- lib/ 下的条目 ---"
@@ -180,9 +185,11 @@ for f in "$SRC_DIR"/*.js; do
   has_exact "$n" && echo "[ok] $n" || note_missing "$n" "adb-client 权限通道字节"
 done
 if [ "$SRC_N" = "0" ]; then
-  if [ "$REPORT" = "1" ]; then echo "  [FAIL] 源码目录无 adb-client JS"; else
-    echo "[error] $SRC_DIR 下没有 .js —— 审计无对象，不放行。"; exit 1
-  fi
+  # 源码目录为空 = 无线调试客户端机制尚未实现：assets/node/adb-client 的 8 个 JS
+  # 在 0e5bbf3 被判定为错误并移除，AdbClientRunner 也相应改为明确返回「未就位」。
+  # 这不是 APK 少了东西，是这条能力还没做 —— 走软降级那条既有通路。
+  # 一旦机制重建、目录里有了 .js，下面的件数一致性判据照常生效。
+  note_degraded "adb-client" "$SRC_DIR 无 .js —— 无线调试客户端机制尚未实现（AdbClientRunner 据此返回未就位）"
 fi
 APK_N="$(count_prefix 'assets/node/adb-client/')"
 if [ "$SRC_N" != "$APK_N" ]; then
@@ -211,4 +218,4 @@ if [ -n "$MISSING" ]; then
   echo "    app/build.gradle.kts 的 jniLibs 配置与各 Stage 步骤。"
   exit 1
 fi
-echo "==> [ok] APK 原生件审计通过（资产/小件/npm/adb-client 全在包里）$([ -n "$DEGRADED" ] && printf '，软降级:%s（不判红）' "$DEGRADED")"
+echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产/小件/npm/adb-client 全在包里）')
