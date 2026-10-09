@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import lobos.capability.ScreenCaptureController
 import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
+import lobos.capability.ChannelState
 import lobos.capability.Evidence
 import lobos.ota.ProgramOtaSelfCheck
 import lobos.lifecycle.OsHostService
@@ -206,7 +207,9 @@ class MainActivity : AppCompatActivity() {
         scrollBaseTopPadding = scroll.paddingTop
         val pad = (8f * resources.displayMetrics.density).toInt()
         val bar = TextView(this).apply {
-            text = ChannelStatusText.DOWN
+            // 初始按「通道未建立」派生；每次 refreshChannelBar 会按真实状态更新。
+            // 不用写死的常量 —— 那是把状态抄成第二份，两份会漂。
+            text = ChannelStatusText.of(lobos.capability.ChannelStatus(ChannelState.NEVER_RUN))
             textSize = 13f
             gravity = Gravity.CENTER_VERTICAL
             setPadding(pad * 2, pad, pad * 2, pad)
@@ -233,7 +236,17 @@ class MainActivity : AppCompatActivity() {
             val live = ch != null && Evidence(nowMs = now, channel = ch).channelLive()
             channelBarRefreshInFlight = false
             handler.post {
-                channelBar?.visibility = if (live) View.GONE else View.VISIBLE
+                // 三种不通的原因要分开说（从没试过 / 断了）—— 与 SetupActivity 同一套
+                channelBar?.let { bar ->
+                    if (!live) {
+                        bar.text = if (ch != null) {
+                            ChannelStatusText.of(ch)
+                        } else {
+                            ChannelStatusText.of(lobos.capability.ChannelStatus(ChannelState.NEVER_RUN))
+                        }
+                    }
+                    bar.visibility = if (live) View.GONE else View.VISIBLE
+                }
                 reserveChannelBarSpace(!live)
             }
         }.apply { isDaemon = true }.start()
@@ -281,7 +294,3 @@ class MainActivity : AppCompatActivity() {
 }
 
 private const val CHANNEL_BAR_HEIGHT_DP = 36
-
-internal object ChannelStatusText {
-    const val DOWN = "ADB 通道已断开 · 点此重连"
-}
