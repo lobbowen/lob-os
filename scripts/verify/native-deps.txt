@@ -8,14 +8,18 @@
 # cannot locate symbol。
 #
 # 名单怎么来的：**本机实测**，不是照抄文档。
-# 逐个查这台设备的 /system/lib64/<名字> 是否真的存在，不存在的不写进来。
+# 逐个查这台设备的 /system/lib64/<名字> 是否真的存在 —— 下面 19 项全部实测存在。
 # 机型差异会造成个别库缺席（libneuralnetworks.so 本机就没有），
-# 所以只收「NDK 保证存在的那批」。
+# 所以只收「实测在的那批」。
 #
-# 为什么 libz.so 不在这里：zlib 现在是我们的件（base 筐，落到 jniLibs），
-# 与 bionic 自带的 libz.so 同名。运行时会先找到 APK 里那份，
-# 所以它归「APK 基础库」那类 —— 由 jniLibs 目录实测得出，不该在这里出现。
-# （曾有一段时间两份名单都写 libz.so，那是同一事实两个来源。）
+# ★ 这一份是**唯一一份**：scripts/verify/check-elf-deps.sh 与
+#   scripts/verify/verify-runtime-elf.sh 共用它。
+#   此前 scripts/ 下还立着一份同名的（12 项），两边已经漂了 ——
+#   旧那份含 libz.so，而 zlib 现在是我们的件（base 筐，落到 jniLibs），
+#   该由 jniLibs 实测得出，不该算「系统自带」。旧的那份已删。
+#
+# 为什么 libz.so 不在这里：它与 bionic 自带的同名，但运行时会先找到
+# APK 里我们编的那份 —— 所以它归「APK 基础库」那类，由 jniLibs 实测得出。
 libc.so
 libm.so
 libdl.so
@@ -33,4 +37,5 @@ libcamera2ndk.so
 libmediandk.so
 libnativewindow.so
 libstdc++.so
+libsync.so
 libc++.so

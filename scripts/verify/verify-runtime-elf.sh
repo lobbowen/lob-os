@@ -3,7 +3,11 @@ set -euo pipefail
 export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPS_FILE="$SCRIPT_DIR/../native-deps.txt"
+# 白名单与 check-elf-deps.sh 共用同一份 —— 同一事实只能有一个来源。
+# 此前这里指向上级目录 scripts/native-deps.txt，而 scripts/verify/ 下还有一份，
+# 两份内容已经漂了：旧那份 12 项（含 libz.so —— 而 zlib 现在是我们的件，
+# 在 base 筐里，该由 jniLibs 实测得出，不该进系统库白名单）。旧的那份已删。
+DEPS_FILE="$SCRIPT_DIR/native-deps.txt"
 MANIFEST_FILE="$SCRIPT_DIR/../../.github/native-assets.txt"
 CAPS_FILE="$SCRIPT_DIR/../../.github/native-capabilities.txt"
 
@@ -77,9 +81,16 @@ echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
 echo "   可执行资产: $EXEC_SET"
 
-SO_LIST="$(cd "$DIR" && ls *.so 2>/dev/null || true)"
+# ★ 要列**全部共享库形态**的文件，不只是 `*.so` ——
+#   共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2。
+#   `ls *.so` 只匹配到第一个（以 .so 结尾的那个），
+#   而 ELF 的 DT_NEEDED 写的是**带 SONAME 的那个**（libz.so.1）。
+#   于是它既不在系统白名单、也不在随包名单里 → 被判「依赖闭包断了」。
+#   （实测就栽在这：libcurl.so 的 NEEDED 是 libz.so.1。）
+#   .meta.json 是说明不是库，用 \.so 锚定已排除。
+SO_LIST="$(cd "$DIR" && ls | sed -n '/\.so\(\.[0-9][0-9.]*\)\{0,1\}$/p')"
 if [ -z "$SO_LIST" ]; then
-  echo "[error] $DIR 下没有任何 .so，没有可校验的东西（多半是下载/拷贝没落到位）。"
+  echo "[error] $DIR 下没有任何共享库（多半是下载/拷贝没落到位）。"
   exit 2
 fi
 BUNDLED=" $(printf '%s\n' "$SO_LIST" | tr '\n' ' ') "

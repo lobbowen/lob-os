@@ -21,7 +21,7 @@ on:
       - 'scripts/registry/gen-component-keys.js'
       - 'scripts/publish/publish-native-manifest.js'
       - 'scripts/toolchain/fetch-pinned.sh'
-      - 'scripts/native-deps.txt'
+      - 'scripts/verify/native-deps.txt'
       - 'scripts/node-versions.json'
       - 'scripts/publish/make-release.sh'
       - 'tools/**'
