@@ -19,9 +19,9 @@ cd "$ROOT_DIR"
 ABI="${ABI:-arm64-v8a}"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
-JNI="container/app/src/main/jniLibs/$ABI"
+JNI="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"   # 绝对路径：调用方可能已 cd 走（busybox 就进了源码树）
 WORK="$ROOT_DIR/work/$PIECE_NAME"
-mkdir -p "$OUT/bin" "$ROOT_DIR/$JNI" "$WORK"
+mkdir -p "$OUT/bin" "$JNI" "$WORK"
 
 # 说明文件名 —— jniLibs 里与件同名，PrefixProvisioner 按 *.meta.json 扫
 META_SUFFIX=".meta.json"
