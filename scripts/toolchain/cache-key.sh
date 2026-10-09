@@ -78,8 +78,19 @@ bucket_for() {
       esac
     }
 
+# 本脚本认的件名 —— 从 deps_for 与 bucket_for 的 case 里抄出来的，
+# 免得「不在已知列表」这句提示不给出可抄的清单。
+KNOWN_TOOLS="bash ripgrep busybox jq ptyprobe ptysession curl zlib openssl crypto
+            flock posix node python git sqlite npm pnpm llvm make cmake pkgconf
+            libcxx sysroot"
+
 die() {
-  echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补 deps_for 与 bucket_for"
+  # 走 stderr：die 是在命令替换里被调的（DEPS="$(deps_for …)"），
+  # 报错若走 stdout 会被那个变量吞掉，终端上什么都看不到 ——
+  # 表现为「件名写错了，但脚本一声不响」。
+  echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补 deps_for 与 bucket_for" >&2
+  echo "         本脚本认的件名（注意是 python 不是 python3、是 ripgrep 不是 rg）：" >&2
+  echo "         $KNOWN_TOOLS" >&2
   exit 1
 }
 

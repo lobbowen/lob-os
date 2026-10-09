@@ -90,7 +90,7 @@ jobs:
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |
-          echo "key=$(bash scripts/toolchain/cache-key.sh python3)" >> "$GITHUB_OUTPUT"
+          echo "key=$(bash scripts/toolchain/cache-key.sh python)" >> "$GITHUB_OUTPUT"
           echo "tag=$(bash scripts/toolchain/cache-key.sh tag python3)" >> "$GITHUB_OUTPUT"
           echo "asset=$(bash scripts/toolchain/cache-key.sh asset python3)" >> "$GITHUB_OUTPUT"
       - name: 已发布就复用（不重编）
