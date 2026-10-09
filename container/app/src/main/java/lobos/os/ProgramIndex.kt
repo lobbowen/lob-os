@@ -158,8 +158,21 @@ object ProgramIndex {
     fun levelOf(raw: String): Level =
         if (raw.trim().uppercase() == "PIECE") Level.PIECE else Level.PROGRAM
 
-    /** 一个空条目 —— 按形状给对应那一种，不存在「27 个字段都填一遍」 */
-    /** 一个空条目 —— 只有 id 有值，其余等落位或装完再填 */
+    /**
+     * 路径片段消毒 —— 把 raw 变成能安全落进 usr/lib/<id>/ 的那一段。
+     *
+     * 挡 . 与 ..、限长 64、限字符集（字母数字与 . _ - +）。
+     * 不合格返回 null，调用方据此拒绝这个 id/版本。
+     */
+    fun safeSegment(raw: String): String? {
+        val v = raw.trim()
+        if (v.isEmpty() || v.length > 64) return null
+        if (v == "." || v == "..") return null
+        return v.takeIf {
+            it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' || c == '-' || c == '+' }
+        }
+    }
+
     /**
      * 一条「还没登记」的空记录 —— upsert 前的基底。
      *

@@ -27,12 +27,14 @@ import lobos.BuildConfig
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.capability.AdbChannelComponent
+import lobos.capability.AdbClientRunner
 import lobos.capability.BridgeTokens
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.CapabilityTier
 import lobos.capability.DeviceOwnerState
 import lobos.capability.Evidence
+import lobos.capability.ScreenCaptureController
 import lobos.lifecycle.AccessibilityServiceState
 import lobos.lifecycle.OsAccessibilityService
 import lobos.lifecycle.OsHostService
@@ -61,6 +63,7 @@ import lobos.os.TaskRegistry
 import lobos.os.UnitEntry
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramOtaUpdater
+import lobos.permissions.NotificationStore
 import lobos.permissions.PermissionLedger
 import lobos.permissions.PermissionRoles
 import lobos.pieces.DriverRegistry
@@ -407,7 +410,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("ok", ProgramManager.setEnabled(this@CapabilityBroker, name, action == "enable"))
             }
             "uninstall" -> {
-                if ((ProgramIndex.get(this@CapabilityBroker, name)?.tier == "base")) {
+                if (ProgramIndex.isPiece(ProgramIndex.get(this@CapabilityBroker, name))) {
                     throw BridgeError(
                         CODE_POLICY_DENIED,
                         "系统基础环境不可卸载（可升级、可回退到 APK 基线）：" + name,
@@ -416,7 +419,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 JSONObject().apply { put("ok", PackageInstaller.uninstall(this@CapabilityBroker, name)) }
             }
             "rollback" -> {
-                if (!(ProgramIndex.get(this@CapabilityBroker, name)?.tier == "base")) {
+                if (!ProgramIndex.isPiece(ProgramIndex.get(this@CapabilityBroker, name))) {
                     throw BridgeError(CODE_POLICY_DENIED, "只有系统基础环境支持回退到 APK 基线：" + name)
                 }
                 JSONObject().apply { put("ok", PackageInstaller.rollbackToBaseline(this@CapabilityBroker, name)) }
