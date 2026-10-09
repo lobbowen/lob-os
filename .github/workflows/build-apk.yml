@@ -198,6 +198,20 @@ jobs:
             VARIANT=debug
           fi
           echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
+
+          # ★ 清掉上一次构建残留的 packaged_res ——
+          #   Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
+          #   而 packageDebugResources 在已有输出时**不覆盖**，于是
+          #   上一轮那份坏副本会一直留着：
+          #     [Fatal Error] activity_main.xml:61:1: XML document structures
+          #                   must start and end within the same entity.
+          #   —— 报的是 build/intermediates/packaged_res/…/activity_main.xml，
+          #   而 src/res/layout/ 那份是好的。
+          #
+          # 只清这一个 intermediates 子目录，不动依赖缓存
+          #（清整个 build/ 会让每次都全量重编，慢很多）。
+          rm -rf container/app/build/intermediates/packaged_res
+          echo "[gradle] 已清 packaged_res（避免沿用上一轮的残留）"
           gradle "assemble$VARIANT" --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
           ls -la "container/app/build/outputs/apk/$VARIANT/"
