@@ -267,6 +267,33 @@ for id in $META_MISSING_ID; do
 done
 rm -f "$TMPA"
 echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
+
+# ── 反向核对：lib/<ABI>/ 里不该有「没说明的 .so」 ──────────────
+# 上面是从说明出发查字节；这一向是从字节出发查说明 ——
+# 补的是另一头：land_piece 某处漏写说明时，那一行的循环根本看不到它。
+#
+# 排除的三个不是我们的件，理由可核（不是随手写的名单）：
+#   libandroidx.graphics.path.so  androidx 图形库，appcompat 的传递依赖
+#   libdimina.so                  快应用运行时，build.gradle.kts 的
+#                                  implementation("com.github.didi.dimina:dimina:1.7.6")
+#   libmmkv.so                    同上的传递依赖（腾讯 MMKV）
+# 其余 lib/<ABI>/*.so 都是 base 筐的件或 NDK 基础件（libc++_shared），必须有说明。
+FOREIGN_SO="libandroidx.graphics.path.so libdimina.so libmmkv.so"
+META_NOSO=0
+for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
+  base="$(basename "$so")"
+  case " $FOREIGN_SO " in *" $base "*) continue ;; esac
+  if ! has_exact "assets/supply/meta/${base}.meta.json"; then
+    echo "[error] $so 没有说明（assets/supply/meta/${base}.meta.json 不在包里）"
+    echo "        运行时不会铺这一件 —— scanMeta 只铺带说明的条目（PrefixProvisioner.kt:103）"
+    META_NOSO=$((META_NOSO + 1))
+  fi
+done
+if [ "$META_NOSO" != "0" ]; then
+  MISSING="$MISSING meta-absent($META_NOSO)"
+  META_BAD=$((META_BAD + META_NOSO))
+fi
+echo "  反向核对：$META_NOSO 个 .so 没有说明"
 [ "$META_BAD" = "0" ] || MISSING="$MISSING meta-invalid($META_BAD)"
 
 echo
