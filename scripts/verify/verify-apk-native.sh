@@ -206,7 +206,9 @@ echo "--- 件的说明（assets/supply/meta/）· 运行时铺位的唯一数据
 # 必填字段照 deb-control(5)：Package / Version / Architecture
 #（scripts/recipes/gen-component-meta.js 就只把这三个标 required）。
 META_BAD=0
-META_CHAIN_GAP=0
+META_MISSING_ID=""
+META_MISS_SO=""
+META_PRESENT_ID=""
 TMPA="$(mktemp)"
 META_N=0
 for meta in $(printf '%s\n' "${LIST[@]}" | grep "^assets/supply/meta/.*\.meta\.json$"); do
@@ -224,32 +226,37 @@ for meta in $(printf '%s\n' "${LIST[@]}" | grep "^assets/supply/meta/.*\.meta\.j
     echo "[error] $meta 的 essential 不是布尔 —— Found.required 靠它判系统起不启得来"
     META_BAD=$((META_BAD + 1))
   fi
-  # 每份说明对应的 .so 应该在包里。
+  # 每份说明都要能在包里找到它的字节。
   #
-  # ★ 版本化命名（libz.so.1 / libz.so.1.3.2）目前必然缺失，**不判红** ——
-  #   记下来的是既有问题，不是这次说明迁移引入的：上一轮 APK 里同样只有
-  #   libz.so 一层。成因：AGP 的 jniLibs 打包只认 *.so 结尾，
-  #   libz.so.1 这类带版本号的文件名进不了 APK。
-  #   而 linker 运行时按 DT_NEEDED 的名字找 —— libcurl.so 的 NEEDED 写的是
-  #   libz.so.1（第 15 步的依赖闭环判据里能看到）。
-  #   也就是说：usr/lib/libz.so.1 这个全局软链在真机上建不出来，
-  #   依赖 zlib 的件会加载失败。
+  # 版本化命名（libz.so.1 / libz.so.1.3.2）AGP 的 jniLibs 打包装不进去
+  # （只认 *.so 结尾），所以 APK 里只有链首那一份 —— 这不是缺陷：
+  # PrefixProvisioner.provision() 遇到某一层的字节不在包里时，会拿**同 id
+  # 那份在包里的**顶上（链上几层本来就是同一份字节的多个名字，land_piece
+  # 用 cp -f 解开了软链，见 piece-env.sh）。
   #
-  #   怎么修还没定（改落位名 / 走 assets / 让 jniLibs 之外另想办法），
-  #   先如实记着，不挡住构建。
+  # 因此判据是：**同一个 id 至少有一份字节在包里**，而不是每层都在。
+  # 下面按 id 归并核对。
   so="lib/${ABI}/${base%.meta.json}"
-  if ! has_exact "$so"; then
-    case "${base%.meta.json}" in
-      *.so.[0-9]*)
-        echo "  [未解决] $meta 指向的 $so 不在包里（AGP 的 jniLibs 只打包 *.so，版本化命名进不去）"
-        META_CHAIN_GAP=$((META_CHAIN_GAP + 1))
-        ;;
-      *)
-        echo "[error] $meta 指向的 $so 不在包里"
-        META_BAD=$((META_BAD + 1))
-        ;;
-    esac
+  if has_exact "$so"; then
+    META_PRESENT_ID="$META_PRESENT_ID $id"
+  else
+    # 链上另一层可能带字节（AGP 只打包 *.so），记下来最后按 id 归并判
+    META_MISSING_ID="$META_MISSING_ID $id"
+    META_MISS_SO="$META_MISS_SO $base"
   fi
+done
+
+# 按 id 归并：缺字节的那个 id，若它有别的层在包里 → 放过（链的场景）
+for id in $META_MISSING_ID; do
+  case " $META_PRESENT_ID " in
+    *" $id "*)
+      # 同一件有别的层在包里 —— provision() 会拿那份顶上，符合预期
+      ;;
+    *)
+      echo "[error] 件 $id 的字节不在 APK 里（链上各层：$META_MISS_SO）—— 运行时铺不出来"
+      META_BAD=$((META_BAD + 1))
+      ;;
+  esac
 done
 rm -f "$TMPA"
 echo "  （$META_N 份说明已查 · $META_BAD 处问题）"

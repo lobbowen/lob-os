@@ -150,14 +150,32 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // 件本体在 nativeLibraryDir（AGP 只把 *.so 打进 APK），
         // 说明在 assets/supply/meta/ —— 两者配套，见 scanMeta 的注释。
         // 铺成 usr/lib/<id>/<版本>/ 的形状。
-        for (m in scanMeta(ctx)) {
+        val metas = scanMeta(ctx)
+        for (m in metas) {
             val id = m.optString("id", "")
             val version = m.optString("version", "")
             if (id.isBlank() || version.isBlank()) continue
             // .so 的名字就是说明的文件名去掉 .meta.json（内核不预置任何一件的名字）
             val soName = fileNameOf(m)
-            val src = File(nativeDir, soName)
-            if (!src.isFile) continue
+            // 共享库是一整条链（libz.so → libz.so.1 → libz.so.1.3.2），三层是
+            // **同一份字节的三个名字**（land_piece 用 cp -f 解开了软链，见
+            // piece-env.sh）。但 AGP 的 jniLibs 打包只认 *.so 结尾，
+            // 版本化命名那两层进不了 APK —— 于是按 DT_NEEDED 的名字找的
+            // linker 在真机上会找不到 libz.so.1。
+            //
+            // 所以：这一层的字节不在包里时，拿**同 id 那份在包里的**顶上。
+            // 同一个件的几层本来就是同一份字节，不是两份不同的库。
+            val src = File(nativeDir, soName).takeIf { it.isFile }
+                ?: nativeDir.let { d ->
+                    // 同 id 的其它层：说明文件名去掉 .meta.json 后以 .so 开头
+                    metas
+                        .asSequence()
+                        .filter { it.optString("id", "") == id }
+                        .map { fileNameOf(it) }
+                        .firstOrNull { n -> n.endsWith(".so") && File(d, n).isFile }
+                        ?.let { File(d, it) }
+                }
+                ?: continue
             // 形态看文件本身：ELF 里有没有 PT_INTERP / 是不是 ET_EXEC
             val isEntry = ExecBits.isRunnable(src)
             val landed = landOne(ctx, id, version, soName, src, isEntry, m) ?: continue
