@@ -14,8 +14,6 @@ on:
       - 'scripts/verify/verify-apk-signing.sh'
       # verify-apk-signing.sh 调它来定位 apksigner（多命中时按 sha256 摘要判定取哪个）
       - 'scripts/verify/pick.sh'
-      # verify-apk-native.sh 的 meta 校验用它读必填字段
-      - 'scripts/verify/read-meta-field.js'
       - 'scripts/recipes/gen-component-meta.js'
       - 'scripts/recipes/build-native-busybox.sh'
       - 'scripts/publish/inject-apk-keystore.sh'
