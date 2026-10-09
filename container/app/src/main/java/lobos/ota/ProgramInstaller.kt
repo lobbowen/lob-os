@@ -81,14 +81,14 @@ object ProgramInstaller {
             )
         }
         val version = verify.version
-            ?: return InstallResult(false, null, source, "no-version", "校验通过但包内无 version", verify.raw)
+            ?: return InstallResult(false, null, source, "no-version", "校验通过但包内无 version", verify.detail)
 
         val km = ProgramDir(context, programId, storeRoot)
         if (km.isBelowFloor(version)) {
             return InstallResult(
                 ok = false, version = version, source = source, reason = "version-below-floor",
                 detail = "候选 " + version + " 低于版本下限 " + km.floorVersion() + " —— 拒绝安装（防回退）。",
-                nodeVerifyOutput = verify.raw,
+                nodeVerifyOutput = verify.detail,
             )
         }
         val previousVersion = km.currentVersion()
@@ -100,7 +100,7 @@ object ProgramInstaller {
             lobos.quickapp.QuickAppBinder.bindIfQuickApp(context, programId, km.quickAppDir())
             return InstallResult(
                 ok = true, version = version, source = source, reason = "already-installed",
-                detail = "该版本已落盘，直接切指针并重做前后端配对（待健康检查通过后提交）", nodeVerifyOutput = verify.raw,
+                detail = "该版本已落盘，直接切指针并重做前后端配对（待健康检查通过后提交）", nodeVerifyOutput = verify.detail,
             )
         }
 
@@ -114,7 +114,7 @@ object ProgramInstaller {
             val reason = if (e is IllegalStateException) "unsafe-or-empty-zip" else "unzip-failed"
             return InstallResult(
                 false, version, source, reason,
-                "${e::class.java.simpleName}: ${e.message ?: ""}", verify.raw
+                "${e::class.java.simpleName}: ${e.message ?: ""}", verify.detail
             )
         }
 
@@ -124,17 +124,12 @@ object ProgramInstaller {
         if (installedManifest == null) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-manifest-unreadable",
-                "解包后读不到 program-manifest.json —— ZipInputStream 与校验器对包结构理解不一致", verify.raw)
+                "解包后读不到 program-manifest.json —— ZipInputStream 与校验器对包结构理解不一致", verify.detail)
         }
         if (installedManifest.version != version) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-version-mismatch",
-                "校验阶段 version=$version，解包后读到 ${installedManifest.version}", verify.raw)
-        }
-        if (verify.entryOk == false) {
-            tmp.deleteRecursively()
-            return InstallResult(false, version, source, "postcheck-entry-missing",
-                "包内缺少入口 ${installedManifest.entry}", verify.raw)
+                "校验阶段 version=$version，解包后读到 ${installedManifest.version}", verify.detail)
         }
 
         val payloadRoot = File(stageRoot, version)
@@ -142,35 +137,35 @@ object ProgramInstaller {
         if (!frontendDir.isDirectory) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-frontend-missing",
-                "包内没有 $FRONTEND_DIR/ —— 快应用必须有前端", verify.raw)
+                "包内没有 $FRONTEND_DIR/ —— 快应用必须有前端", verify.detail)
         }
         for (req in FRONTEND_REQUIRED) {
             if (!File(frontendDir, req).isFile) {
                 tmp.deleteRecursively()
                 return InstallResult(false, version, source, "postcheck-frontend-incomplete",
-                    "前端缺少 $req（dimina 要求的结构）", verify.raw)
+                    "前端缺少 $req（dimina 要求的结构）", verify.detail)
             }
         }
         if (!File(payloadRoot, BACKEND_DIR).isDirectory) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-backend-missing",
-                "包内没有 $BACKEND_DIR/ —— 一个快应用是一次安装的前后端整体", verify.raw)
+                "包内没有 $BACKEND_DIR/ —— 一个快应用是一次安装的前后端整体", verify.detail)
         }
         val packedEntry = installedManifest.entry.trim()
         if (packedEntry.isEmpty() || !File(payloadRoot, packedEntry).isFile) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-not-in-package",
-                "包内找不到清单声明的入口：" + packedEntry, verify.raw)
+                "包内找不到清单声明的入口：" + packedEntry, verify.detail)
         }
         if (!flattenBackend(File(payloadRoot, BACKEND_DIR), payloadRoot)) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-backend-flatten-failed",
-                "无法把 $BACKEND_DIR/ 的内容平铺到版本目录根部", verify.raw)
+                "无法把 $BACKEND_DIR/ 的内容平铺到版本目录根部", verify.detail)
         }
         if (!rewriteEntry(payloadRoot, packedEntry)) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-rewrite-failed",
-                "后端平铺后无法把清单 entry 改写为落位后的相对路径：" + packedEntry, verify.raw)
+                "后端平铺后无法把清单 entry 改写为落位后的相对路径：" + packedEntry, verify.detail)
         }
         val landedEntry = if (packedEntry.startsWith(BACKEND_DIR + "/")) {
             packedEntry.substring(BACKEND_DIR.length + 1)
@@ -180,7 +175,7 @@ object ProgramInstaller {
         if (!File(payloadRoot, landedEntry).isFile) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "postcheck-entry-not-at-root",
-                "后端平铺后入口仍不存在：" + landedEntry, verify.raw)
+                "后端平铺后入口仍不存在：" + landedEntry, verify.detail)
         }
 
         val aside = if (dest.exists()) {
@@ -189,14 +184,14 @@ object ProgramInstaller {
         if (aside != null && !dest.renameTo(aside)) {
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "swap-aside-failed",
-                "旧版本目录无法让位：不动指针，保持现状", verify.raw)
+                "旧版本目录无法让位：不动指针，保持现状", verify.detail)
         }
         val staged = File(stageRoot, version)
         if (!staged.renameTo(dest)) {
             if (aside != null) aside.renameTo(dest)
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "rename-failed",
-                "无法把 ${staged.absolutePath} 重命名为 ${dest.absolutePath}（旧版本已复位）", verify.raw)
+                "无法把 ${staged.absolutePath} 重命名为 ${dest.absolutePath}（旧版本已复位）", verify.detail)
         }
         if (aside != null) aside.deleteRecursively()
 
@@ -208,7 +203,7 @@ object ProgramInstaller {
             if (aside != null) aside.renameTo(dest)
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "frontend-swap-aside-failed",
-                "前端目录无法让位：不动指针，保持现状", verify.raw)
+                "前端目录无法让位：不动指针，保持现状", verify.detail)
         }
         val stagedFrontend = File(dest, FRONTEND_DIR)
         if (!stagedFrontend.renameTo(frontendTarget)) {
@@ -216,7 +211,7 @@ object ProgramInstaller {
             if (aside != null) aside.renameTo(dest)
             tmp.deleteRecursively()
             return InstallResult(false, version, source, "frontend-rename-failed",
-                "无法把前端重命名到 ${frontendTarget.absolutePath}（后端与前端均已复位）", verify.raw)
+                "无法把前端重命名到 ${frontendTarget.absolutePath}（后端与前端均已复位）", verify.detail)
         }
         if (frontendAside != null) frontendAside.deleteRecursively()
 
@@ -227,7 +222,7 @@ object ProgramInstaller {
         return InstallResult(
             ok = true, version = version, source = source, reason = null,
             detail = "已落盘并切换指针（待健康检查通过后提交）: " + dest.absolutePath,
-            nodeVerifyOutput = verify.raw,
+            nodeVerifyOutput = verify.detail,
         )
     }
 
