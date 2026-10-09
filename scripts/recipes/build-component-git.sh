@@ -62,10 +62,7 @@ grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/
 #
 # 所以：不再调 build-shared-deps.sh（那个一次编三份静态库的脚本已删）。
 # 依赖从落位处取（prefix 在编译期就能算出来）。
-DEPS_PREFIX="$ROOT_DIR/work/deps-prefix"
 echo "[git] 依赖用预装件（usr/lib 下的全局软链），不再静态链入"
-
-cd "$ROOT_DIR/work/git-src"
 
 cd "$ROOT_DIR/work/git-src"
 
@@ -93,6 +90,23 @@ else
 fi
 export RANLIB="$TC_DIR/llvm-ranlib"
 
+# ── 构建前自查：依赖目录还在不在 ──────────────────────────────
+# curl / openssl / zlib 早已不再编到 work/deps（那个一次编三份静态库的
+# build-shared-deps.sh 已删），它们现在是 base 筐的预装件，落到 jniLibs。
+# 但 build-git.yml **不跑** ensure-native-capabilities.sh，所以编 git 那一刻
+# jniLibs 里还没有 libcurl.so/libssl.so/libz.so ——
+# 下面 MAKE_ARGS 里那些 -L work/deps 指向的是**不存在的目录**。
+#
+# 先说清楚，别让它以「make 失败」的形式含糊报出来：
+DEPS_DIR="$ROOT_DIR/work/deps"
+if [ ! -d "$DEPS_DIR" ]; then
+  echo "::error title=依赖目录不存在::$DEPS_DIR 不存在 —— 编不出 curl/openssl/zlib 的那份。"
+  echo "         它们现在是 base 筐的预装件（见 component-verify.json），落位在 jniLibs。"
+  echo "         但 build-git.yml 不跑 ensure-native-capabilities.sh，编 git 时那份还没编。"
+  echo "         要么让本 workflow 先跑逐件编译，要么让 git 不用外部 curl（NO_CURL=1，"
+  echo "         git 官方支持的开关，走内联 HTTP）—— 选哪条要按 git 上游 Makefile 核实后定。"
+  exit 1
+fi
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$ROOT_DIR/work/deps OPENSSLDIR=$ROOT_DIR/work/deps uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$ROOT_DIR/work/deps/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$ROOT_DIR/work/deps/include" LDFLAGS="-L$ROOT_DIR/work/deps/lib" all; then
