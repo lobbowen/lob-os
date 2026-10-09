@@ -104,8 +104,6 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     o.put("mismatched", JSONArray(st.mismatched))
                     o.put("hint", "登记的文件与磁盘上的不符（dpkg -V：comparing the files installed with the files metadata stored in the database）—— 重新铺一次即可修复")
                 }
-                is AssetStatus.Mismatched ->
-                "$tag ${st.exe.path} —— ✗ 与登记不符：${st.mismatched.joinToString(", ")}"
             is AssetStatus.Unusable -> {
                     o.put("path", st.path)
                     o.put("exit", st.exit)
@@ -131,6 +129,8 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     else "APK 内也没有该条目 → 打包期就丢了（查构建脚本与 keepDebugSymbols）"
             is AssetStatus.MissingDependency ->
                 "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 缺少依赖 ${st.dep}（它必须先于本体补齐，否则会被误判为 SELinux 拒 exec）"
+            is AssetStatus.Mismatched ->
+                "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 与登记不符：${st.mismatched.joinToString(", ")}"
             is AssetStatus.NotExecutable ->
                 "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 无法 exec（依赖已确认完好，errno=${st.errnoHint ?: "?"}）"
             is AssetStatus.Unusable ->
