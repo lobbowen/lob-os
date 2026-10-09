@@ -150,6 +150,21 @@ object PieceScan {
      * 记它等于记两遍）。说明文件自己不算「铺出来的内容」——
      * 它是元数据，不是件的一部分。
      */
+    /**
+     * 读一件随落的说明 —— component-meta.json（照抄 deb-control(5)：
+     * 每个包自带 control，内核不预置任何一件的清单）。
+     *
+     * 读法与 ProgramInstallPipeline.pieceMetaOf 一致（同一份文件、同一种解析），
+     * 不另立一套 —— 两处各写一遍就会漂。
+     * 解析不了当没有：meta 是补充信息，缺它不该让整个扫描失败。
+     */
+    private fun metaOf(verDir: File): JSONObject? {
+        val f = File(verDir, "component-meta.json")
+        if (!f.isFile) return null
+        return runCatching { JSONObject(f.readText()) }.getOrNull()
+    }
+
+
     private fun filesOf(verDir: File): List<FileRec> {
         val base = verDir.absolutePath
         val out = mutableListOf<FileRec>()

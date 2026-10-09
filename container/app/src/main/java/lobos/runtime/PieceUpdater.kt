@@ -268,9 +268,9 @@ object PieceUpdater {
         val entryName = e.assetEntry.substringAfterLast("/")
         val link = if (e.assetEntry.startsWith("bin/")) {
             File(PrefixProvisioner.binDir(ctx), entryName)
-        }
+        } else {
             File(PrefixProvisioner.libDir(ctx), entryName)
-        val tmp = File(link.parentFile, "." + link.name + ".newlink")
+        }
         runCatching { java.nio.file.Files.deleteIfExists(tmp.toPath()) }
         java.nio.file.Files.createSymbolicLink(tmp.toPath(), dest.toPath())
         val ok = tmp.renameTo(link) || run {

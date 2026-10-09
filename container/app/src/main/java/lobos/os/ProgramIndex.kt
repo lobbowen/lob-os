@@ -123,7 +123,7 @@ data class UnitEntry(
         /** `NRestarts=` —— 累计重启次数（systemd 是持久的，我们以前是局部变量） */
         val restarts: Int = 0,
         /** `Result=` —— 最后一次为什么挂 */
-        lastFailure: String = "",
+        val lastFailure: String = "",
         /** `DesiredState=` —— 想怎么对它（RUNNING/STOPPED/FROZEN） */
         val desired: Desired = Desired.STOPPED,
     ) {
