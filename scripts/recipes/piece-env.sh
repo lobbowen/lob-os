@@ -126,22 +126,41 @@ land_piece() {
   #   linker 运行时找的是**带 SONAME 的那个**（libz.so.1），
   #   而 ls | head -1 只会拿到无版本的那个（libz.so）。
   #   所以要把**同目录下整条链**都拷过去，只拷一个会运行时找不到。
-  #   依据：ldconfig(8) 对 libfoo.so → libfoo.so.1 → libfoo.so.1.12 建链。
+  #   依据：ldconfig(8) 对 libfoo.so → .so.1 → .so.1.12 建链。
+  #
+  # ★ 每一层都要落一份 .meta.json —— 这是运行时能不能铺它的前提。
+  #   PrefixProvisioner.provision() 只处理「jniLibs 里带说明的条目」
+  #   （container/…/PrefixProvisioner.kt 第 130 行 for (m in scanMeta(nativeDir))），
+  #   没有说明的文件它根本不看。
+  #   而 libcurl.so 的 DT_NEEDED 写的是 **libz.so.1**（SONAME），
+  #   不是 libz.so —— 加载器找的是带版本的那一层。
+  #   只给无版本的那个落说明 ⇒ usr/lib 里只有 libz.so ⇒ 运行时找不到 libz.so.1
+  #   ⇒ 实测报「libcurl.so 无 DT_RUNPATH，却依赖同目录随包库: libz.so.1」。
+  #
+  # 说明内容相同 —— 整条链是**同一件**的三个文件（不同名字，不是三件）。
+  # 照 deb-control(5)：一份 control 随包走，落地时几处同名。
   local dir base
   dir="$(dirname "$built")"; base="$(basename "$built")"
+  gen_meta "$id" > /dev/null
+  [ -f "$WORK/component-meta.json" ] \
+    || die "说明没生成" "gen-component-meta.js 没产出 $WORK/component-meta.json"
+  local landed=0
   if [ -L "$built" ] || ls "$dir/$base".* >/dev/null 2>&1; then
     local f
     for f in "$dir/$base" "$dir/$base".*; do
       [ -e "$f" ] || continue
       cp -f "$f" "$JNI/$(basename "$f")" 2>/dev/null \
-        || cp -Pf "$f" "$JNI/$(basename "$f")" 2>/dev/null || true
+        || cp -Pf "$f" "$JNI/$(basename "$f")" 2>/dev/null || continue
+      # 每一层都落说明 —— 少了它，运行时就不铺这一层
+      cp -f "$WORK/component-meta.json" "$JNI/$(basename "$f")$META_SUFFIX" \
+        || die "说明没落位" "$(basename "$f")$META_SUFFIX"
+      landed=$((landed + 1))
     done
-    echo "  （共享库整条链："$(ls "$dir/$base" "$dir/$base".* 2>/dev/null | wc -l)"个文件 → $JNI/）"
+    echo "  （共享库整条链：$landed 个文件各带说明 → $JNI/）"
   else
     cp -f "$built" "$JNI/$base"
+    cp -f "$WORK/component-meta.json" "$JNI/$base$META_SUFFIX" \
+      || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
   fi
-  gen_meta "$id" > /dev/null
-  cp -f "$WORK/component-meta.json" "$JNI/$(basename "$built")$META_SUFFIX" \
-    || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
   echo "[ok] $id → $JNI/$base（+ 说明）"
 }
