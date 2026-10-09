@@ -198,6 +198,45 @@ if [ "$SRC_N" != "$APK_N" ]; then
 fi
 
 echo
+echo "--- 件的说明（.meta.json）· 运行时铺位的唯一数据源 ---"
+# PrefixProvisioner.provision() 只铺「带说明的条目」——
+#   「目录里没有说明的 .so 不铺 —— 说不清自己是什么的东西不该进系统」。
+# 所以这份缺失在构建期完全看不出来（APK 照样打出来、这一路也全绿），
+# 到了真机上那件就是铺不出来。必查。
+#
+# 必填字段照 deb-control(5)：Package / Version / Architecture
+#（scripts/recipes/gen-component-meta.js 就只把这三个标 required）。
+META_BAD=0
+META_N=0
+RD="$ROOT/scripts/verify/read-meta-field.js"
+TMPA="$(mktemp)"
+for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
+  base="$(basename "$so")"
+  meta="lib/${ABI}/${base}.meta.json"
+  if ! has_exact "$meta"; then
+    echo "[error] $so 没有说明（$meta 不在包里）—— 运行时不会铺这一件"
+    META_BAD=$((META_BAD + 1)); MISSING="$MISSING meta-absent($base)"
+    continue
+  fi
+  unzip -p "$APK" "$meta" > "$TMPA" 2>/dev/null || : > "$TMPA"
+  META_N=$((META_N + 1))
+  for field in id version arch; do
+    if ! node "$RD" "$TMPA" "$field" | grep -q .; then
+      echo "[error] $meta 缺必填字段 $field（deb-control(5)：Package/Version/Architecture 是 required）"
+      META_BAD=$((META_BAD + 1))
+    fi
+  done
+  # essential 是布尔，且它决定「缺了系统起不启得来」（Found.required），类型错了同样致命
+  if ! grep -q '"essential"[[:space:]]*:[[:space:]]*\(true\|false\)' "$TMPA"; then
+    echo "[error] $meta 的 essential 不是布尔 —— PieceScan.Found.required 靠它判系统起不启得来"
+    META_BAD=$((META_BAD + 1))
+  fi
+done
+rm -f "$TMPA"
+echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
+[ "$META_BAD" = "0" ] || MISSING="$MISSING meta-invalid($META_BAD)"
+
+echo
 echo "--- 压缩方式（Stored=未压缩 / Defl=压缩）---"
 unzip -v "$APK" | awk '$NF ~ /lib\// {print "  " $NF "  " $2 "  " $3 "  " $4}' || true
 
