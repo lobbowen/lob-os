@@ -3,6 +3,13 @@
   "shell": {
     "versionName": "0.0.1",
     "versionCode": 1,
-    "bridgeProtocol": 1
+    "bridgeProtocol": 1,
+    "signingKey": {
+      "note": "APK 发布签名。alias=lobos，有效期 10000 天。**永不更换** —— 换了就无法给已装设备发覆盖安装的版本（Android 报 INSTALL_FAILED_UPDATE_INCOMPATIBLE）。首次发布 os-release-0.0.1。",
+      "alias": "lobos",
+      "certificateSha256": "0f80988f167418d9c1325d938b7ac765d7c75b5727857ddcefd6c2d3935c8f43",
+      "subjectDn": "CN=Lob OS, OU=Container, O=LobOS, C=CN",
+      "firstRelease": "os-release-0.0.1"
+    }
   }
 }
