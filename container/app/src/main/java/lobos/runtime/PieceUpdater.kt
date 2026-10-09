@@ -104,7 +104,7 @@ object PieceUpdater {
         val arr = parsed.optJSONArray("components") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
-        val pending = mutableListOf<Triple<lobos.os.ProgramIndex.UnitEntry, String, JSONObject>>()
+        val pending = mutableListOf<Triple<lobos.os.UnitEntry, String, JSONObject>>()
         // 每件的说明：注册表里有 stateDir，从那儿读件自带的（deb-control 的做法）
         val byId = lobos.os.ProgramIndex.all(ctx).mapNotNull { e0 ->
             val pe = e0
@@ -183,7 +183,7 @@ object PieceUpdater {
         ctx: Context,
         url: String,
         wantSha: String,
-        items: List<Triple<lobos.os.ProgramIndex.UnitEntry, String, JSONObject>>,
+        items: List<Triple<lobos.os.UnitEntry, String, JSONObject>>,
     ): Map<String, Pair<Boolean, String?>> {
         val out = LinkedHashMap<String, Pair<Boolean, String?>>()
         if (url.isBlank() || wantSha.isBlank()) {
@@ -232,7 +232,7 @@ object PieceUpdater {
         }
     }
 
-    private fun place(ctx: Context, e: lobos.os.ProgramIndex.UnitEntry, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+    private fun place(ctx: Context, e: lobos.os.UnitEntry, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
         try {
             val dir = versionDir(ctx, e.id, version)
             runCatching { dir.deleteRecursively() }
@@ -263,7 +263,7 @@ object PieceUpdater {
     // 编译报 "Too many arguments for pointEntryAt"。
     private fun pointEntryAt(
         ctx: Context,
-        e: lobos.os.ProgramIndex.UnitEntry,
+        e: lobos.os.UnitEntry,
         version: String,
         dest: File,
     ): Boolean = try {

@@ -36,6 +36,7 @@ import org.json.JSONObject
  * `desired` / `restart` / `env` / `httpPort` 这些字段的事，
  * 由 `ProgramManager` 维护。`ldconfig` 只管「装了什么」。
  */
+object PieceScan {
     /** 落位形状决定的形态 —— 照抄 ldconfig "checks the header and filenames" */
     const val EXEC = "exec"
 
@@ -43,7 +44,6 @@ import org.json.JSONObject
     const val MULTI_COMMAND = "multi-command"
     const val LIBRARY = "library"
     const val HEADERS = "headers"
-object PieceScan {
 
     /** 扫出来的结果：这件是什么、什么版本、落在哪 */
     /**
@@ -221,7 +221,7 @@ object PieceScan {
                 sha256 = f.sha256,
                 required = f.meta?.optBoolean("essential", false) ?: false,
                 files = f.files.map { fr ->
-                    ProgramIndex.UnitEntry.FileRec(fr.path, fr.sha256)
+                    UnitEntry.FileRec(fr.path, fr.sha256)
                 },
             )
             if (prev != entry) {
@@ -231,22 +231,6 @@ object PieceScan {
         }
         return changed
     }
-}
-
-/** sha256 单独放这，避免 PieceScan 直接依赖写文件的模块 */
-internal object SupplySha {
-    fun sha256(f: File): String = runCatching {
-        val md = java.security.MessageDigest.getInstance("SHA-256")
-        f.inputStream().use { ins ->
-            val buf = ByteArray(65536)
-            while (true) {
-                val n = ins.read(buf)
-                if (n <= 0) break
-                md.update(buf, 0, n)
-            }
-        }
-        md.digest().joinToString("") { "%02x".format(it) }
-    }.getOrDefault("")
 
     //
     // 下面的查询一律**读注册表**，不扫落位 ——
@@ -295,8 +279,7 @@ internal object SupplySha {
     fun verifyAll(ctx: Context): Map<String, Verdict> {
         val out = linkedMapOf<String, Verdict>()
         for (e in ProgramIndex.all(ctx)) {
-            pe = e
-            out[pe.id] = verify(ctx, pe.id)
+            out[e.id] = verify(ctx, e.id)
         }
         return out
     }
@@ -322,13 +305,37 @@ internal object SupplySha {
     }
 
     /** 命令解释器 —— 注册表里 role=shell 的那一件 */
-    fun shellBin(ctx: Context): File? =
-        ProgramIndex.all(ctx)
+    fun shellBin(ctx: Context): File? {
+        // 两条独立的查找链：先 role=shell 的件，没有再退到 role=multi-command 的。
+        // 此前它们被硬拼成一条（第一条链结束后又 .filter，而 File? 上没有 filter）——
+        // 编译报 "Unresolved reference 'filter' on receiver of type 'File?'"。
+        fun landOf(e: lobos.os.UnitEntry): File? =
+            if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null
+            else File(File(e.stateDir), e.assetEntry)
+        val shell = ProgramIndex.all(ctx)
             .filter { ProgramIndex.isPiece(it) }
             .firstOrNull { it.role == SHELL }
-            ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
-                    else File(File(it.stateDir), it.assetEntry) }
+        if (shell != null) return landOf(shell)
+        val multi = ProgramIndex.all(ctx)
             .filter { ProgramIndex.isPiece(it) }
             .firstOrNull { it.role == MULTI_COMMAND }
-            ?.let { if (it.stateDir.isBlank() || it.assetEntry.isBlank()) null
-                    else File(File(it.stateDir), it.assetEntry) }}
+        return multi?.let { landOf(it) }
+    }
+
+}
+
+
+internal object SupplySha {
+    fun sha256(f: File): String = runCatching {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(65536)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
+    }.getOrDefault("")
+}
