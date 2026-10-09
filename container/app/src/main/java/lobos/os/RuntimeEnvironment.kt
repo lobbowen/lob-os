@@ -106,7 +106,7 @@ object RuntimeEnvironment {
        *
        * ★ 不含 nativeLibraryDir：实测那目录不可写（属主 system，我们是应用 uid），
        *   「把系统建在 APK 目录下」这条路走不通 —— 已堵死，别再走。
-       * ★ 更好的做法是链接期给 DT_RUNPATH=\\$ORIGIN：那样库跟着文件走，
+       * ★ 更好的做法是链接期给 DT_RUNPATH=\$ORIGIN：那样库跟着文件走，
        *   连这个环境变量都不必依赖。这里的路径是兜底（给没有 RUNPATH 的件）。
        */
       fun libSearchPath(ctx: Context): String {

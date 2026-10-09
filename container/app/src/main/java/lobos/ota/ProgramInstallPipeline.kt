@@ -393,8 +393,8 @@ object ProgramInstallPipeline {
             if (s.isEmpty()) continue
             if (s.contains("$LIB") || s.contains("$PLATFORM")) continue
             val dir = when {
-                s == "$ORIGIN" -> originDir
-                s.startsWith("$ORIGIN/") -> File(originDir, s.removePrefix("$ORIGIN").trimStart('/'))
+                s == "\$ORIGIN" -> originDir
+            s.startsWith("\$ORIGIN/") -> File(originDir, s.removePrefix("\$ORIGIN").trimStart("/"))
                 s.startsWith("/") -> File(s)
                 else -> File(originDir, s)
             }

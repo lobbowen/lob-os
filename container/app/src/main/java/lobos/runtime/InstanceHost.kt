@@ -170,8 +170,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             } else {
                 SupervisorPolicy.noteRestart(this@InstanceHost, programId, SystemClock.elapsedRealtime())
             }
-                restartCount, bootOk, SystemClock.elapsedRealtime() - bornAt,
-            )
             val now = SystemClock.elapsedRealtime()
             val windowNow: Int =
                 lobos.os.ProgramIndex.get(this@InstanceHost, programId)?.restarts ?: 0
@@ -369,8 +367,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
             if (!res.ok) return SupervisorPolicy.BootOutcome.NO_PROGRAM
 
-            val env = lobos.os.RuntimeEnvironment.ensure(this)
-            val tree = lobos.os.RuntimeEnvironment.treeRootFor(this, env)
+            // ensure() 的作用是**装配 $PREFIX**（返回的 Snapshot 这两处都不用）；
+            // treeRootFor 只收 ctx —— 此前把 ensure 的返回值当第二参传了，
+            // 编译报 "Too many arguments for treeRootFor"。
+            lobos.os.RuntimeEnvironment.ensure(this)
+            val tree = lobos.os.RuntimeEnvironment.treeRootFor(this)
             val treeEnv = lobos.os.RuntimeEnvironment.treeRootEnv(tree, getenv("PATH"))
 
             writeRuntimeJson(
@@ -391,7 +392,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val sessionToken = lobos.bridge.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
-                    root = lobos.os.RuntimeEnvironment.treeRootFor(this, env),
+                    root = lobos.os.RuntimeEnvironment.treeRootFor(this),
                     nodeBin = requireNotNull(lobos.runtime.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)) {
                         "node 运行时未安装 —— 程序要用它起（" +
                             lobos.runtime.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) + "）"
@@ -442,8 +443,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
                 if (recorded != null) {
-                    "program=" + recorded.programId + " gen=" + recorded.generation + " pid=" + recorded.pid +
-                        " starttime=" + recorded.starttime + " pgid=" + recorded.pgid
+                    // 账本只有这四个字段（pgid 随 killTree 那轮一起去掉了 ——
+                    // 记它没有用处：kill 走 ProcessLedger 自己的入口，不按进程组杀）
+                    "program=" + recorded.programId + " gen=" + recorded.generation +
+                        " pid=" + recorded.pid + " starttime=" + recorded.starttime
                 } else "pid 无法取得，账本未记录"
 
                     // MainPID 落注册表（systemctl show 查得到那个属性）——
@@ -491,7 +494,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             else
                 "APK 里就没有（打包期丢失：查构建脚本产物）"
         is AssetStatus.MissingDependency ->
-            "缺少依赖 ${st.dep} —— 依赖要随本体同目录，或本体自带含 \\$ORIGIN 的 DT_RUNPATH"
+            "缺少依赖 ${st.dep} —— 依赖要随本体同目录，或本体自带含 \$ORIGIN 的 DT_RUNPATH"
         is AssetStatus.Mismatched ->
             "与登记不符：${st.mismatched.joinToString(", ")} —— 跑 verify 看差在哪，重新铺一次"
         is AssetStatus.NotExecutable ->
