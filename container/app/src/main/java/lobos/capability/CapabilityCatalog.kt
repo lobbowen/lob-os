@@ -36,7 +36,7 @@ object CapabilityCatalog {
 
     val ALL: List<Capability> = listOf(
         Capability(
-            id = DEV_OPTIONS, title = "开发者选项"
+            id = DEV_OPTIONS, title = "开发者选项",
             judge = { e ->
                 if (e.devOptionsOn) CapVerdict(CapStatus.GRANTED, "已开启")
                 else CapVerdict(CapStatus.ACTION, "未开启：顶部总开关先打开")

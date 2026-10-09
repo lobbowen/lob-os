@@ -37,9 +37,12 @@ object SystemDirs {
     fun lib(ctx: Context): File = File(usr(ctx), "lib")
     fun include(ctx: Context): File = File(usr(ctx), "include")
 
-    fun var(ctx: Context): File = File(ctx.filesDir, "var")
-    fun libvar(ctx: Context): File = File(var(ctx), "lib")
-    fun log(ctx: Context): File = File(var(ctx), "log")
+    // 名叫 vardir 而不是 var —— 'var' 是 Kotlin 关键字，不能当函数名
+    // （编译器报 "Expecting function name or receiver type"，并连带
+    //  后面 20+ 条语法错误）。Linux 的对应目录是 /var。
+    fun vardir(ctx: Context): File = File(ctx.filesDir, "var")
+    fun libvar(ctx: Context): File = File(vardir(ctx), "lib")
+    fun log(ctx: Context): File = File(vardir(ctx), "log")
 
     fun run(ctx: Context): File = File(ctx.filesDir, "run")
 
@@ -80,7 +83,7 @@ object SystemDirs {
     fun ensureAll(ctx: Context) {
         for (d in listOf(
             etc(ctx), usr(ctx), bin(ctx), lib(ctx), include(ctx),
-            var(ctx), libvar(ctx), log(ctx), run(ctx), opt(ctx),
+            vardir(ctx), libvar(ctx), log(ctx), run(ctx), opt(ctx),
         )) {
             runCatching { d.mkdirs() }
         }

@@ -8,7 +8,7 @@ object PathGuard {
     fun integrityRoots(ctx: Context): List<File> = listOf(
         SystemDirs.etc(ctx),
         SystemDirs.usr(ctx),
-        SystemDirs.var(ctx),
+        SystemDirs.vardir(ctx),
         SystemDirs.run(ctx),
         SystemDirs.opt(ctx),
         File(ctx.filesDir, "adb"),
