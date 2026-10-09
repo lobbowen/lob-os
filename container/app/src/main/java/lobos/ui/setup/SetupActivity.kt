@@ -23,6 +23,7 @@ import java.util.Locale
 import lobos.BuildConfig
 import lobos.ChannelStatusText
 import lobos.MainActivity
+import lobos.RuntimeDiagnostics
 import lobos.capability.AcquireKind
 import lobos.capability.Acquisition
 import lobos.capability.AdbChannelComponent

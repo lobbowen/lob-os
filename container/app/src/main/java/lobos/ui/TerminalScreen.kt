@@ -7,8 +7,6 @@ class TerminalScreen {
 
         /** BEL = 0x07，终端响铃 */
         const val BEL = 0x07.toChar()
-
-        const val BEL = 0x07.toChar()
     }
 
     class Cell {
@@ -105,7 +103,7 @@ class TerminalScreen {
                 // BEL 是响铃：只影响终端自己的提示，不进字符流
                 ch == BEL -> Unit
                 // DEL（0x7f）= 擦掉光标左边那个字符 —— 它是控制码，不是可打印字符
-                ch.code == 0x7f -> { if (cursorCol > 0) { cursorCol--; put(0x20u.toChar()) } }
+                ch.code == 0x7f -> { if (cursorCol > 0) { cursorCol--; put(' ') } }
                 else -> put(ch)
             }
             St.ESC -> when (ch) {

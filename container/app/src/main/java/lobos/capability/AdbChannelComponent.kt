@@ -9,6 +9,7 @@ import lobos.capability.AdbClientRunner
 import lobos.log.Journal
 import lobos.os.Backoff
 import lobos.os.StateFiles
+import lobos.os.SystemDirs
 import org.json.JSONObject
 object AdbChannelComponent {
 

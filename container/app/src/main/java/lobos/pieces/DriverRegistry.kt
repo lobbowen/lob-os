@@ -166,7 +166,8 @@ object DriverRegistry {
             // 不问「文件在不在」：那是 verify() 的事；混问会把「登记在册但文件被删」
             // 误报成「没装」，而 dpkg -s 在那种情况下照样说 installed。
             val present = d.assetId == null ||
-                lobos.os.ProgramIndex.get(ctx, d.assetId)?.piece != null
+                // isPiece 是注册表里「这是不是件」的唯一判据（PieceEntry 已删）
+                lobos.os.ProgramIndex.isPiece(ctx, d.assetId)
             if (!present) missing += 1
             drivers.put(JSONObject().apply {
                 put("id", d.id)
