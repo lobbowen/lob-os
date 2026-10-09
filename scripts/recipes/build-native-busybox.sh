@@ -115,6 +115,37 @@ echo "[busybox] defconfig 开了 $N_ON 项，已全部关掉（白名单式）"
 for a in $APPLETS; do set_conf "$a" y; done
 echo "[busybox] 白名单开启：$APPLETS"
 
+# ── 补丁：Android 分支里两行过期的 #undef ──────────────────────
+# 症状（实测）：
+#     ld.lld: error: duplicate symbol: strchrnul
+#     clang: error: linker command failed with exit code 1
+# —— libbb/platform.c 按 `#ifndef HAVE_STRCHRNUL` 自己实现了一份，
+#    而 bionic 静态库里已有一份。链接时撞了。
+#
+# 成因：busybox 的 include/platform.h 在 Android 分支里写着
+#     # undef HAVE_MEMPCPY
+#     # undef HAVE_STRCHRNUL
+# 那是给 **Android 8 之前**的 bionic 写的（那时它没有这两个函数）。
+# API 21 之后 bionic 已经提供 —— 依据：本机 readelf 直查
+# /system/lib64/libc.so 的 .dynsym，strchrnul / mempcpy 都在。
+# 所以改成按 __ANDROID_API__ 分级 —— 与这个分支里已有的写法一致
+# （它自己就用 `__ANDROID_API__ < 8` / `< 21` / `>= 21` 处理 dprintf）。
+#
+# ★ 只改 **Android 那一个分支**：platform.h 里有 4 处
+#   "# undef HAVE_STRCHRNUL"，分属 __WATCOMC__ / __dietlibc__ /
+#   __APPLE__ / Android。别人的平台不该动（改了等于替他们做决定）。
+#   而且 Android 分支本身有两处（一处只设两个 SYS_* 宏就结束），
+#   所以区间由 scripts/verify/find-platform-h-android-branch.js 算
+#   ——它按分支头是不是写着 ANDROID 来判，而不是「区间里含 undef」
+#   （后者会抓到最内层的 __dietlibc__ 那个）。
+PLATFORM_H="$SRC/include/platform.h"
+[ -f "$PLATFORM_H" ] || die "找不到 platform.h" "$PLATFORM_H 不存在 —— 上游路径变了，按实际改这里"
+
+# 区间计算与实际修改都在那个脚本里（--patch 模式）。
+# 不用 sed 改多行：s/// 里的换行转义是 GNU sed 扩展，而 Android 上
+# /system/bin/sed 是 toybox（实测），它不认；地址块写法在 toybox 上
+# 又会被当文件名（实测「sed: 529,554: No such file or directory」）。
+node "$ROOT_DIR/scripts/verify/find-platform-h-android-branch.js" "$PLATFORM_H" --patch
 set_conf STATIC y
 set_conf PIE n
 
