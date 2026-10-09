@@ -141,10 +141,18 @@ object RuntimeEnvironment {
      * java.io.File 没有这方法（Kotlin 的扩展只覆盖到 canRead/isDirectory 等），
      * 必须走 lstat —— isFile() 跟随软链，一件共享库建出来的全局软链会被它
      * 算成「普通文件」，那正是我们要单独认出来的那一类。
+     *
+     * 判据是 POSIX 的 S_IFMT/S_IFLNK：st_mode 的高 4 位是文件类型，
+     * 掩掉后等于 S_IFLNK 就是软链。android.system.OsConstants 只有 S_ISLNK
+     * 这个掩码常量，没有对应的判定函数，所以自己算这一位。
      */
     private fun isLink(f: File): Boolean = runCatching {
-        android.system.Os.lstat(f.path).st_mode and android.system.OsConstants.S_ISLNK != 0
+        val mode = android.system.Os.lstat(f.path).st_mode
+        (mode and S_IFMT) == S_IFLNK
     }.getOrDefault(false)
+
+    private const val S_IFMT = 0xF000
+    private const val S_IFLNK = 0xA000
 
     private fun assemble(ctx: Context): Snapshot {
         val ready = PrefixProvisioner.provision(ctx)

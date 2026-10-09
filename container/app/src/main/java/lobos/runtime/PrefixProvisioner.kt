@@ -193,9 +193,9 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     }
 
     private fun isManagedByUpdate(ctx: Context, dst: File): Boolean = try {
-        if (!java.nio.file.Files.isSymbolicLink(dst.toPath())) return@try false
-        val target = dst.toPath().toRealPath()
-        target.startsWith(libDir(ctx).toPath().toAbsolutePath())
+        // 不是软链就不是我们建的 —— 先判形，再看它指向哪
+        if (!java.nio.file.Files.isSymbolicLink(dst.toPath())) false
+        else dst.toPath().toRealPath().startsWith(libDir(ctx).toPath().toAbsolutePath())
     } catch (_: Throwable) {
         false
     }

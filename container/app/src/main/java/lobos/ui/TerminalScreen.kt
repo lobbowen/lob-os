@@ -5,6 +5,9 @@ class TerminalScreen {
     private companion object {
         const val ESC = 0x1b.toChar()
 
+        /** BEL = 0x07，终端响铃 */
+        const val BEL = 0x07.toChar()
+
         const val BEL = 0x07.toChar()
     }
 
@@ -99,10 +102,10 @@ class TerminalScreen {
                     val next = ((cursorCol / 8) + 1) * 8
                     cursorCol = if (next < cols) next else cols - 1
                 }
-                ch == BEL -> {  
-                }
-                ch.code == 0x7f -> {  
-                }
+                // BEL 是响铃：只影响终端自己的提示，不进字符流
+                ch == BEL -> Unit
+                // DEL（0x7f）= 擦掉光标左边那个字符 —— 它是控制码，不是可打印字符
+                ch.code == 0x7f -> { if (cursorCol > 0) { cursorCol--; put(0x20u.toChar()) } }
                 else -> put(ch)
             }
             St.ESC -> when (ch) {
@@ -111,7 +114,7 @@ class TerminalScreen {
                 '7' -> { savedRow = cursorRow; savedCol = cursorCol; savedStyle = cur; st = St.GROUND }
                 '8' -> { cursorRow = savedRow.coerceIn(0, rows - 1); cursorCol = savedCol.coerceIn(0, cols - 1); cur = savedStyle; st = St.GROUND }
                 'M' -> { if (cursorRow > 0) cursorRow--; st = St.GROUND }
-                'D' -> newline(); st = St.GROUND
+                'D' -> { newline(); st = St.GROUND }
                 'E' -> { cursorCol = 0; newline(); st = St.GROUND }
                 'c' -> { reset(); st = St.GROUND }
                 else -> st = St.GROUND
