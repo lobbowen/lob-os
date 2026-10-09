@@ -1,105 +1,181 @@
 package lobos.permissions
 
 import android.content.Context
-import java.io.File
-import lobos.capability.AttemptOutcome
 import lobos.capability.AttemptOutcomeRule
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.SilentAttempt
 import lobos.log.Journal
+import lobos.os.StateFiles
+import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * 静默下发实测账 —— 「我们下发过什么、系统实际答了什么」。
- *
- * 与 dpkg 的 /var/log/dpkg.log 同一件事：把每一次操作与其真实后果记下来，
- * 供判断这台机器到底支持到哪一步。判定只用系统回的话
- * （AttemptOutcomeRule.of），不由我们自己猜。
- *
- * 落在 libvar/permission-ledger.json。OsHostService 与开场报告都从这儿读，
- * 「保活必需项齐不齐」也从这儿答。
- */
+data class GrantRecord(
+    val id: String,
+    val purpose: String,
+    val policy: GrantPolicy,
+    val autoHeal: AutoHeal,
+    val owner: String,
+    val held: Boolean,
+    val detail: String,
+)
+
+data class LedgerSnapshot(
+    val atMs: Long,
+    val records: List<GrantRecord>,
+    val missing: List<GrantRecord>,
+    val undeclared: List<PermissionRole>,
+)
+
 object PermissionLedger {
 
-    private const val FILE = "permission-ledger.json"
-    private const val SCHEMA = 1
+    const val FILE = "permission-ledger.json"
+    const val SCHEMA = 1
+    const val SCHEMA_KEY = "schema"
+    const val ATTEMPTS = "attempts"
 
-    /**
-     * 一次实测快照。
-     *
-     * records 是每一项的下发结果；missing 是「保活必需却没拿到」的项 ——
-     * 保活必需的判据是 PermissionRoles 里的 GrantPolicy.ALWAYS_KEEP，
-     * 不是我们另立的一张表。
-     */
-    data class Snap(
-        val atMs: Long,
-        val records: Map<String, SilentAttempt>,
-        val missing: List<PermissionRole>,
-    )
+    fun file(ctx: Context) = java.io.File(SystemDirs.libvar(ctx), FILE)
 
-    private fun file(ctx: Context): File = File(SystemDirs.libvar(ctx), FILE)
+    fun write(ctx: Context, snap: LedgerSnapshot) {
+        StateFiles.writeJson(file(ctx), JSONObject().apply {
+            put("schema", SCHEMA)
+            put("atMs", snap.atMs)
+            put("records", JSONArray().apply {
+                for (r in snap.records) {
+                    put(JSONObject().apply {
+                        put("id", r.id)
+                        put("purpose", r.purpose)
+                        put("policy", r.policy.name)
+                        put("autoHeal", r.autoHeal.name)
+                        put("owner", r.owner)
+                        put("held", r.held)
+                        put("detail", r.detail)
+                    })
+                }
+            })
+            put(ATTEMPTS, readAttemptsRaw(ctx))
+        })
+    }
 
-    /** 最近一次实测；没有就是 null */
-    fun read(ctx: Context): Snap? = runCatching {
-        val f = file(ctx)
-        if (!f.isFile) null else parse(JSONObject(f.readText()))
-    }.getOrNull()
+    private fun readAttemptsRaw(ctx: Context): JSONArray =
+        StateFiles.readJson(file(ctx))?.optJSONArray(ATTEMPTS) ?: JSONArray()
 
-    fun readAll(ctx: Context): Map<String, SilentAttempt> =
-        read(ctx)?.records ?: emptyMap()
-
-    /**
-     * 实测一遍 —— 只读系统状态，不改任何设置。
-     *
-     * 与 PieceScan.verify 的区别：那是拿登记符与盘上文件比对，这里是问系统
-     * 「你刚那条指令答了什么」。两者不能互相替代。
-     */
-    fun register(ctx: Context): Snap {
-        val ev = runCatching { CapabilityEvidenceCollector.systemReads(ctx) }.getOrNull()
-        val records = ev?.permissionAttempts ?: emptyMap()
-        // 保活必需（ALWAYS_KEEP）里，账上答不出 SILENT_OK 的就是缺
-        val missing = PermissionRoles.declared()
-            .filter { it.policy == GrantPolicy.ALWAYS_KEEP }
-            .filter { records[it.id]?.outcome != AttemptOutcome.SILENT_OK }
-        val snap = Snap(System.currentTimeMillis(), records, missing)
-        runCatching { StateFiles.writeJson(file(ctx), encode(snap)) }
+    fun register(ctx: Context): LedgerSnapshot {
+        val held = heldIds(ctx)
+        val records = PermissionRoles.declared().map { role ->
+            val spec = PermissionCatalog.byId(role.id)
+            GrantRecord(
+                id = role.id,
+                purpose = role.purpose,
+                policy = role.policy,
+                autoHeal = role.autoHeal,
+                owner = role.owner,
+                held = role.id in held,
+                detail = spec?.note ?: "",
+            )
+        }
+        val snap = LedgerSnapshot(
+            atMs = System.currentTimeMillis(),
+            records = records,
+            missing = records.filter { !it.held && it.policy == GrantPolicy.ALWAYS_KEEP },
+            undeclared = PermissionRoles.undeclared(),
+        )
+        write(ctx, snap)
         Journal.note(
-            ctx, "permission-ledger", missing.isEmpty(),
-            "静默下发实测完成",
-            "在册=" + records.size + "；保活必需缺=" + missing.joinToString { it.id },
+            ctx, "permission-ledger", if (snap.missing.isEmpty()) true else null,
+            "权限登记在册：" + records.size + " 项，缺保活必需 " + snap.missing.size + " 项",
+            snap.missing.joinToString { it.id },
         )
         return snap
     }
 
-    private fun encode(s: Snap) = JSONObject().apply {
-        put("schema", SCHEMA)
-        put("at", s.atMs)
-        put("records", JSONObject().apply {
-            s.records.forEach { (id, a) ->
-                put(id, JSONObject().apply {
-                    put("outcome", a.outcome.name)
-                    put("at", a.atMs)
-                    put("detail", a.detail)
+    @Synchronized
+    fun readAll(ctx: Context): Map<String, lobos.capability.SilentAttempt> {
+        val root = StateFiles.readJson(file(ctx)) ?: return emptyMap()
+        val out = LinkedHashMap<String, lobos.capability.SilentAttempt>()
+
+        fun accept(id: String, outcomeName: String, atMs: Long, detail: String) {
+            if (id.isBlank() || PermissionCatalog.byId(id) == null) return
+            val outcome = lobos.capability.AttemptOutcomeRule.from(outcomeName) ?: return
+            val prev = out[id]
+            if (prev == null || atMs >= prev.atMs) {
+                out[id] = lobos.capability.SilentAttempt(outcome, atMs, detail)
+            }
+        }
+
+        val arr = root.optJSONArray(ATTEMPTS)
+        if (arr != null) {
+            for (i in 0 until arr.length()) {
+                val e = arr.optJSONObject(i) ?: continue
+                accept(
+                    e.optString("id", ""),
+                    e.optString("outcome", ""),
+                    e.optLong("atMs", 0L),
+                    e.optString("detail", ""),
+                )
+            }
+        } else {
+            val names = root.names()
+            if (names != null) {
+                for (i in 0 until names.length()) {
+                    val id = names.optString(i)
+                    if (id == SCHEMA_KEY || id == "atMs" || id == "records" || id == ATTEMPTS) continue
+                    val e = root.optJSONObject(id) ?: continue
+                    accept(id, e.optString("outcome", ""), e.optLong("atMs", 0L), e.optString("detail", ""))
+                }
+            }
+        }
+        return out
+    }
+
+    fun heldIds(ctx: Context): Set<String> = try {
+        lobos.capability.CapabilityEvidenceCollector.systemReads(ctx).grants
+    } catch (_: Throwable) {
+        emptySet()
+    }
+
+    fun read(ctx: Context): LedgerSnapshot? {
+        val o = StateFiles.readJson(file(ctx)) ?: return null
+        val arr = o.optJSONArray("records") ?: return null
+        val out = mutableListOf<GrantRecord>()
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i) ?: continue
+            out += GrantRecord(
+                id = e.optString("id", ""),
+                purpose = e.optString("purpose", ""),
+                policy = runCatching { GrantPolicy.valueOf(e.optString("policy", "ON_DEMAND")) }
+                    .getOrDefault(GrantPolicy.ON_DEMAND),
+                autoHeal = runCatching { AutoHeal.valueOf(e.optString("autoHeal", "NO")) }
+                    .getOrDefault(AutoHeal.NO),
+                owner = e.optString("owner", ""),
+                held = e.optBoolean("held", false),
+                detail = e.optString("detail", ""),
+            )
+        }
+        return LedgerSnapshot(
+            atMs = o.optLong("atMs", 0L),
+            records = out,
+            missing = out.filter { !it.held && it.policy == GrantPolicy.ALWAYS_KEEP },
+            undeclared = PermissionRoles.undeclared(),
+        )
+    }
+
+    fun toJson(snap: LedgerSnapshot): JSONObject = JSONObject().apply {
+        put("atMs", snap.atMs)
+        put("count", snap.records.size)
+        put("missingKeepAlive", JSONArray().apply { for (r in snap.missing) put(r.id) })
+        put("undeclared", JSONArray().apply { for (r in snap.undeclared) put(r.id) })
+        put("records", JSONArray().apply {
+            for (r in snap.records) {
+                put(JSONObject().apply {
+                    put("id", r.id)
+                    put("purpose", r.purpose)
+                    put("policy", r.policy.name)
+                    put("autoHeal", r.autoHeal.name)
+                    put("owner", r.owner)
+                    put("held", r.held)
+                    put("detail", r.detail)
                 })
             }
         })
-        put("missing", org.json.JSONArray().apply { s.missing.forEach { put(it.id) } })
-    }
-
-    private fun parse(o: JSONObject): Snap {
-        val records = HashMap<String, SilentAttempt>()
-        o.optJSONObject("records")?.let { m ->
-            m.keys().forEach { id ->
-                val a = m.optJSONObject(id) ?: return@forEach
-                val outcome = AttemptOutcomeRule.from(a.optString("outcome", "")) ?: return@forEach
-                records[id] = SilentAttempt(outcome, a.optLong("at", 0L), a.optString("detail", ""))
-            }
-        }
-        val missing = o.optJSONArray("missing")?.let { arr ->
-            (0 until arr.length()).mapNotNull { i ->
-                arr.optString(i, "").takeIf { it.isNotBlank() }?.let { PermissionRoles.of(it) }
-            }
-        } ?: emptyList()
-        return Snap(o.optLong("at", 0L), records, missing)
     }
 }
