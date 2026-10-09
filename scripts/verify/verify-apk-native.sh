@@ -236,18 +236,25 @@ for meta in $(printf '%s\n' "${LIST[@]}" | grep "^assets/supply/meta/.*\.meta\.j
   #
   # 因此判据是：**同一个 id 至少有一份字节在包里**，而不是每层都在。
   # 下面按 id 归并核对。
+  # 这一份说明属于哪个件 —— 归并判定的键。循环体里没有现成的 id 变量，
+  # 从刚解出的 JSON 取（上面三个必填字段校验已经把它解出来过一次）。
+  pid="$(node "$ROOT/scripts/verify/meta-field.js" "$TMPA" id 2>/dev/null || echo "")"
   so="lib/${ABI}/${base%.meta.json}"
   if has_exact "$so"; then
-    META_PRESENT_ID="$META_PRESENT_ID $id"
+    META_PRESENT_ID="$META_PRESENT_ID $pid"
   else
     # 链上另一层可能带字节（AGP 只打包 *.so），记下来最后按 id 归并判
-    META_MISSING_ID="$META_MISSING_ID $id"
+    META_MISSING_ID="$META_MISSING_ID $pid"
     META_MISS_SO="$META_MISS_SO $base"
   fi
 done
 
 # 按 id 归并：缺字节的那个 id，若它有别的层在包里 → 放过（链的场景）
+META_SEEN_ID=""
 for id in $META_MISSING_ID; do
+  # 同一个件只报一次：链上每层缺一次就会记一次 id
+  case " $META_SEEN_ID " in *" $id "*) continue ;; esac
+  META_SEEN_ID="$META_SEEN_ID $id"
   case " $META_PRESENT_ID " in
     *" $id "*)
       # 同一件有别的层在包里 —— provision() 会拿那份顶上，符合预期
