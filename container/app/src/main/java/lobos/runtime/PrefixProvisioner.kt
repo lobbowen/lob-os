@@ -128,7 +128,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
     fun provision(ctx: Context): List<String> {
         val ready = mutableListOf<String>()
-        val nativeDir = ctx.applicationInfo.nativeLibraryDir
+        val nativeDir = File(ctx.applicationInfo.nativeLibraryDir)
         // 说明随件打进APK 的 jniLibs —— 它是唯一的数据源（deb-control(5) 的做法：
         // 每个包自带 control，内核不预置任何一件的清单）。
         // 扫 jniLibs 里带说明的条目，铺成 usr/lib/<id>/<版本>/ 的形状。
@@ -223,13 +223,12 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         }
     }
 
-    fun headersIncludeDir(ctx: Context): File? {
-        return try {
-        // 头文件集那件 = 落位里有 include/ 的那一个（扫落位找，不查表）
-        val dir = lobos.os.PieceScan.scan(ctx)
-            .firstOrNull { File(it.dir, "include").isDirectory }?.dir ?: return null
+    // 头文件集那件 = 落位里有 include/ 的那一个（扫落位找，不查表）
+    fun headersIncludeDir(ctx: Context): File? =
+        try {
+            lobos.os.PieceScan.scan(ctx)
+                .firstOrNull { File(it.dir, "include").isDirectory }?.dir
         } catch (_: Throwable) {
             null
         }
-    }
 }

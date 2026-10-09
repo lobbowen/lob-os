@@ -3,6 +3,7 @@ package lobos.os
 import android.content.Context
 import java.io.File
 import lobos.RuntimeDiagnostics
+import lobos.log.Journal
 import lobos.ota.ProgramInstallPipeline
 import lobos.quickapp.DesktopIcons
 import lobos.runtime.ExecBits
@@ -67,7 +68,7 @@ object PackageInstaller {
 
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
-        if (reg != null && !reg.removable) {
+        if (reg != null && ProgramIndex.isPiece(reg)) {
             Journal.note(ctx, "package", false, "拒绝回滚基础设施", "name=" + name + "（随 APK 交付，无可回滚基线）")
             return false
         }
@@ -90,7 +91,7 @@ object PackageInstaller {
 
     fun uninstall(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
-        if (reg != null && !reg.removable) {
+        if (reg != null && ProgramIndex.isPiece(reg)) {
             Journal.note(ctx, "package", false, "拒绝卸载基础设施", "name=" + name + "（随 APK 交付，不可卸载）")
             return false
         }
@@ -124,8 +125,6 @@ object PackageInstaller {
         Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed
     }
-
-    private fun safeSegment(raw: String): String? = ProgramIndex.safeSegment(raw)
 
     private fun linkNames(entryRel: String, aliases: JSONArray?): List<String> {
         val out = mutableListOf<String>()
