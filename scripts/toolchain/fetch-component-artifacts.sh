@@ -23,7 +23,17 @@ mkdir -p "$DIST"
 COMPONENTS="$(node scripts/registry/list-bucket-components.js)"
 [ -n "${COMPONENTS// /}" ] || { echo "::error title=件清单为空::bucket_for 没解析出任何件"; exit 1; }
 
-NATIVE="bash rg busybox"
+# base / apkonly 筐的件**随 APK 内置**，不进商店清单 ——
+# 那筐的判据在 cache-key.sh 的 bucket_for 里（唯一真相），这里直接问它，
+# 不另抄一份。之前这里写死三个（bash rg busybox），于是 curl / zlib / openssl /
+# crypto / jq / flock / posix / ptyprobe / ptysession 全被当成商店件，
+# 脚本转头去找 build-curl.yml —— 那个文件根本不存在，于是 404，
+# warning 却写成「没有成功 run」，把「文件名错」说成了「没编出来」。
+# 而且 rg 也不对：件名是 ripgrep。
+NATIVE="$(for t in $(node scripts/registry/list-bucket-components.js); do
+  b="$(bash scripts/toolchain/cache-key.sh tag "$t" 2>/dev/null || true)"
+  case "$b" in base-*|apkonly-*) printf '%s ' "$t" ;; esac
+done)"
 
 got=0; missed=0; skipped=0
 for t in $COMPONENTS; do
@@ -31,7 +41,26 @@ for t in $COMPONENTS; do
     *" $t "*) echo -e "$t\tskipped-native\t随 APK 打包，不进商店清单"; skipped=$((skipped+1)); continue ;;
   esac
 
-  WF="build-$t.yml"
+  # 件名 → workflow 文件名。**不是 build-<件名>.yml 就对不上** ——
+  # 六个件的 workflow 文件另有名字（rg / pkg-config / sqlite3 / python3 /
+  # llvmtoolchain），此前一律按 build-<件名>.yml 拼，于是 gh 收到 404
+  # （workflow not found），warning 说的是「没有成功 run」，把文件名错说成了
+  # 「没编出来」——两回事。
+  case "$t" in
+    ripgrep) WF="build-rg.yml" ;;
+    pkgconf) WF="build-pkg-config.yml" ;;
+    sqlite)  WF="build-sqlite3.yml" ;;
+    python)  WF="build-python3.yml" ;;
+    llvm)    WF="build-llvmtoolchain.yml" ;;
+    jq)      WF="build-jq.yml" ;;
+    *)       WF="build-$t.yml" ;;
+  esac
+  # 拼出来的名字得真的存在 —— 否则又是 404，而 warning 会把它说成「没成功 run」
+  if [ ! -f "$ROOT_DIR/.github/workflows/$WF" ]; then
+    echo "::error title=$t 没有对应的 workflow::.github/workflows/$WF 不存在"
+    echo "         件名与 workflow 文件名不是 build-<件名>.yml 的关系 —— 在上面那张表里补一条。"
+    exit 1
+  fi
   ART="component-$t"
 
   picked=""
