@@ -120,15 +120,7 @@ jobs:
         with:
           path: |
             work/python
-            dist/component-make-*.zip
-            dist/component-cmake-*.zip
             dist/component-python3-*.zip
-            dist/component-pkg-config-*.zip
-            dist/component-curl-*.zip
-            dist/component-git-*.zip
-            dist/component-jq-*.zip
-            dist/component-sqlite3-*.zip
-            dist/component-sysroot-*.zip
           key: ${{ steps.uwkey.outputs.key }}
       - name: 产出 python3 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
@@ -143,15 +135,7 @@ jobs:
         with:
           path: |
             work/python
-            dist/component-make-*.zip
-            dist/component-cmake-*.zip
             dist/component-python3-*.zip
-            dist/component-pkg-config-*.zip
-            dist/component-curl-*.zip
-            dist/component-git-*.zip
-            dist/component-jq-*.zip
-            dist/component-sqlite3-*.zip
-            dist/component-sysroot-*.zip
           key: ${{ steps.uwkey.outputs.key }}
 
       - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
