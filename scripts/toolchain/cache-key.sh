@@ -64,10 +64,7 @@ deps_for() {
       flock|posix|ptyprobe|ptysession) echo "" ;;   # 自写 C，无上游
       node)         echo "node" ;;
       python)       echo "python" ;;
-      # git 链接 base 筐里的 zlib / openssl（含 crypto）/ curl 三件 ——
-      # 依赖变了 tag 就该变，否则复用旧产物。build-component-git.sh 从已删的
-      # work/deps 改到这三件时，tag 一动不动，Release 里的旧预制品被继续复用。
-      git)          echo "git zlib openssl crypto curl" ;;
+      git)          echo "git" ;;
       sqlite)       echo "sqlite" ;;
       npm)          echo "npm" ;;
       pnpm)         echo "pnpm" ;;
