@@ -6,6 +6,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import lobos.os.StateFiles
 import lobos.os.SystemDirs
 
 object KillAudit {
@@ -15,20 +16,6 @@ object KillAudit {
     private const val CATEGORY = "kill-audit"
 
     private const val MAX_RECORDS = 32
-
-    data class ExitRecord(
-        val atMs: Long,
-        val pid: Int,
-        val process: String,
-        val reason: Int,
-        val importance: Int,
-        val description: String?,
-    ) {
-        val verdict: Journal.Reason get() = Journal.Reason.fromExitInfo(reason, description)
-
-        fun detail(): String = "reason=" + reason + " importance=" + importance +
-            " process=" + process + " desc=" + (description?.take(160) ?: "null")
-    }
 
     data class ExitRecord(
         val atMs: Long,
@@ -78,7 +65,7 @@ object KillAudit {
 
     fun attribution(ctx: Context, sinceMs: Long): String {
         val own = ctx.packageName
-        val hits = lobos.Journal.events(ctx, limit = 400)
+        val hits = Journal.events(ctx, limit = 400)
             .filter { it.category == CATEGORY && it.atMs >= sinceMs }
         val ev = hits.firstOrNull { it.detail.contains("process=$own") }
         if (ev == null) {
