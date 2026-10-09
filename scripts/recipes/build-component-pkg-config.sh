@@ -106,5 +106,5 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
 
 printf '%s' "$SRC_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"
-echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
+echo "[$TOOL] 落位：组件通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
 echo "[$TOOL] 判据要给它一个 .pc 文件真查一次（起得来不等于能解析 .pc）"

@@ -173,8 +173,8 @@ object RuntimeEnvironment {
         if (nowSupply - lastSupplyAt > supplyThrottleMs) {
             lastSupplyAt = nowSupply
             RuntimeDiagnostics.append(
-                ctx, "supply", null, "商店供给不再由 App 启动自动安装",
-                "启动只刷商店目录（CatalogClient.refresh）。" +
+                ctx, "supply", null, "组件供给不再由 App 启动自动安装",
+                "启动只刷组件目录（CatalogClient.refresh）。" +
                     "运行时与工具件由「装程序时按该程序 requires 决定」触发，走 os/PackageInstaller。",
             )
         }

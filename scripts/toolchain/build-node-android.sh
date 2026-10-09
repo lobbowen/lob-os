@@ -500,7 +500,7 @@ make "$LDFLAGS_TARGET_OVERRIDE" -j"${JOBS}"
 
 NODE_OUT_DIR="${NODE_OUT_DIR:-$ROOT/dist}"
 mkdir -p "$NODE_OUT_DIR"
-echo "==> 拷贝 node 本体到 $NODE_OUT_DIR/$OUT_NAME（不进 jniLibs：走商店通道）"
+echo "==> 拷贝 node 本体到 $NODE_OUT_DIR/$OUT_NAME（不进 jniLibs：由控制面板下发安装）"
 cp out/Release/node "$NODE_OUT_DIR/$OUT_NAME"
 chmod +x "$NODE_OUT_DIR/$OUT_NAME"
 echo "==> 核对本地产物 sha256（发布时用同一份值）"

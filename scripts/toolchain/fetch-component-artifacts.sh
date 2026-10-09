@@ -23,10 +23,12 @@ mkdir -p "$DIST"
 COMPONENTS="$(node scripts/registry/list-bucket-components.js)"
 [ -n "${COMPONENTS// /}" ] || { echo "::error title=件清单为空::bucket_for 没解析出任何件"; exit 1; }
 
-# base / apkonly 筐的件**随 APK 内置**，不进商店清单 ——
+# base / apkonly 筐的件**随 APK 内置**，控制面板拿不到它们、也不该在清单里
+# 看到它们 —— 清单只列「由 CI 编译、控制面板按它下发安装」的那些件。
+#
 # 那筐的判据在 cache-key.sh 的 bucket_for 里（唯一真相），这里直接问它，
-# 不另抄一份。之前这里写死三个（bash rg busybox），于是 curl / zlib / openssl /
-# crypto / jq / flock / posix / ptyprobe / ptysession 全被当成商店件，
+# 不另抄一份。此前这里写死三个（bash rg busybox），于是 curl / zlib / openssl /
+# crypto / jq / flock / posix / ptyprobe / ptysession 全被当成了待取的件，
 # 脚本转头去找 build-curl.yml —— 那个文件根本不存在，于是 404，
 # warning 却写成「没有成功 run」，把「文件名错」说成了「没编出来」。
 # 而且 rg 也不对：件名是 ripgrep。
@@ -38,7 +40,7 @@ done)"
 got=0; missed=0; skipped=0
 for t in $COMPONENTS; do
   case " $NATIVE " in
-    *" $t "*) echo -e "$t\tskipped-native\t随 APK 打包，不进商店清单"; skipped=$((skipped+1)); continue ;;
+    *" $t "*) echo -e "$t\tskipped-native\t随 APK 内置，不在控制面板清单里"; skipped=$((skipped+1)); continue ;;
   esac
 
   # 件名 → workflow 文件名。**不是 build-<件名>.yml 就对不上** ——

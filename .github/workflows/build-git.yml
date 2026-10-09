@@ -68,7 +68,7 @@ jobs:
             echo "发布轮：ref=${GITHUB_REF_NAME} → 通道 ${BASH_REMATCH[1]}，清单 revision ${BASH_REMATCH[2]}"
             { echo "channel=${BASH_REMATCH[1]}"; echo "revision=${BASH_REMATCH[2]}"; echo "publish=true"; } >> "$GITHUB_OUTPUT"
           elif [[ "${GITHUB_REF}" == refs/tags/component-* ]]; then
-            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 component-<channel>-<revision>，channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是商店唯一的单调判据）。本次不投递。"
+            echo "::error title=发布 tag 的形状非法::${GITHUB_REF_NAME} —— 要形如 component-<channel>-<revision>，channel 取 canary|stable，revision 取正整数（它落进清单的 revision 格，是清单唯一的单调判据）。本次不投递。"
             exit 1
           else
             echo "channel=canary" >> "$GITHUB_OUTPUT"

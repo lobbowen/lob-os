@@ -105,5 +105,5 @@ BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*L
 
 printf '%s' "$MAKE_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐合格、aarch64）"
-echo "[$TOOL] 落位：商店 COMPONENT 通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
+echo "[$TOOL] 落位：组件通道 → files/programs/$TOOL/<版本>/bin/$TOOL"
 echo "[$TOOL] 判据要真跑一条 makefile（起得来不等于能用），由 component-verify.json 的 criteria.$TOOL 承担"

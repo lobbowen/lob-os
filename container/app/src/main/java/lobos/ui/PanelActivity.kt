@@ -65,7 +65,7 @@ class PanelActivity : AppCompatActivity() {
             textSize = 20f
         })
         root.addView(TextView(this).apply {
-            text = "程序（快应用）由商店/OTA 装入，端口由系统分配；桌面图标需你点「装桌面」并在系统弹窗确认。"
+            text = "程序（快应用）由控制面板下发、系统安装；端口由系统分配；桌面图标需你点「装桌面」并在系统弹窗确认。"
             textSize = 12f
             setPadding(0, dp(6), 0, dp(10))
         })

@@ -75,7 +75,7 @@ fi
 [ -n "${DEP_SET// /}${EXEC_SET// /}" ] \
   || { echo "[error] $MANIFEST_FILE 的「依赖库」与「可执行资产本体」两段都是空的 —— 清单被判据 3/4 空转，拒绝校验。"; exit 2; }
 if [ -z "${EXEC_SET// /}" ]; then
-  echo "[note] 清单的「可执行资产本体」段为空（node 走商店通道后 APK 内没有可执行件）—— 只校验依赖库段。"
+  echo "[note] 清单的「可执行资产本体」段为空（node 由控制面板下发，APK 内没有可执行件）—— 只校验依赖库段。"
 fi
 echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"

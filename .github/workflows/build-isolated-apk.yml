@@ -12,7 +12,7 @@ on:
         required: true
         default: 'lobos-os'
       self_signed:
-        description: '自签供给模式：填设备能访问到的供给基址（如 http://127.0.0.1:8121）。留空则用正式商店。填了就签一份自签清单并把包里的信任根换成对应的测试公钥 —— 用来在没有正式凭据时于真机上验完整供给链路'
+        description: '自签供给模式：填设备能访问到的供给基址（如 http://127.0.0.1:8121）。留空则用正式供给源。填了就签一份自签清单并把包里的信任根换成对应的测试公钥 —— 用来在没有正式凭据时于真机上验完整供给链路'
         required: false
         default: ''
 
@@ -172,7 +172,7 @@ jobs:
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
           if [ -e "$J/libnode.so" ]; then
-            echo "::error title=jniLibs 里不该有 libnode.so::node 走商店通道"
+            echo "::error title=jniLibs 里不该有 libnode.so::node 由控制面板下发安装，不随 APK 内置"
             exit 1
           fi
           echo "[ok] jniLibs 无 libnode.so"

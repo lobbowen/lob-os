@@ -52,7 +52,7 @@ object InstalledRuntime {
         val where = if (registered) "已登记但落位缺失" else "尚未安装"
         return "$id 未就位（$where）。它是系统里可安装的一件，" +
             "装完即全局可用（入口在 \$PREFIX/bin，与其余件走同一条路）；" +
-            "去控制面板的系统更新或应用商店装，或在诊断页显式装。"
+            "去控制面板的系统更新里装，或在诊断页显式装。"
     }
 
     private fun extractVersion(raw: String): String? {

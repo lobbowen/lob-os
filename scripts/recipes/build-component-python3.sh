@@ -199,5 +199,5 @@ note "标准库随件: $LIBROOT/python${SRC_VER%.*}/（$N_LIB 个文件，含 $N
 
 printf '%s' "$SRC_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（aarch64、16KB 对齐合格、无 glibc 依赖）"
-echo "[$TOOL] 标准库与扩展模块随件走 → 商店 COMPONENT 通道"
+echo "[$TOOL] 标准库与扩展模块随件走 → 组件通道"
 echo "[$TOOL] 判据要真跑一段 Python 并 import 标准库（起得来 ≠ 能用）"
