@@ -113,12 +113,18 @@ class SupervisorPool(private val host: Service) {
         return installed.take(1)
     }
 
+    /**
+     * 「当前有监管器的程序」。
+     *
+     * 注意这是**监管器在册**，不是「进程在跑」——判活归 ProcessLedger
+     * （systemd(1)：ActiveState 由内核的账算出，不是某个守护者的记忆）。
+     * 此前这个 getter 里还顺手调了 ProgramStatusHub.publishRunning(...)，把这份
+     * 名单抄成第二份状态来源，害得「进程在不在」在两处都有答案，且两边会不一致
+     * （进程自己 daemonize 出去时账本知道、这里不知道；反之亦然）。
+     * getter 不该有副作用，那份状态已改为直接问账本。
+     */
     @Synchronized
-    fun running(): List<String> {
-        val ids = supervisors.keys.toList()
-        lobos.os.ProgramStatusHub.publishRunning(ids.toSet())
-        return ids
-    }
+    fun running(): List<String> = supervisors.keys.toList()
 
     fun tickComponents() {
         runCatching { lobos.capability.AdbChannelComponent.tick(host) }

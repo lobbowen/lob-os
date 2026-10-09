@@ -202,7 +202,14 @@ class OsHostService : Service() {
 
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
         val protectedNow = a11y == ServiceState.BOUND
-        val runningIds = runCatching { pool?.running() ?: emptyList<String>() }.getOrDefault(emptyList())
+        // 「在跑」问**账本**，不读监管池的内存名单 ——
+        // 池子那份是「谁有监管器」，不是「进程在跑」：进程自己 daemonize
+        // 出去时账本知道而池子不知道，反之池子留着 key 但进程早没了也有。
+        // 对外字段名仍叫 runningIds（CapabilityBroker 在读这个键），
+        // 但值必须是真机事实，否则面板会报一个不存在的运行态。
+        val runningIds = runCatching {
+            lobos.os.ProcessLedger.liveOwned(this).map { it.programId }.distinct()
+        }.getOrDefault(emptyList())
         val installed = runCatching {
             lobos.os.ProgramRegistry.list(this).count { it.startable }
         }.getOrDefault(0)

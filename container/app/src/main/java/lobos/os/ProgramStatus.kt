@@ -40,8 +40,6 @@ data class ProgramStatus(
 
 object ProgramStatusHub {
 
-    @Volatile
-    private var runningIds: Set<String> = emptySet()
 
     @Volatile
     private var healthDetail: Map<String, String> = emptyMap()
@@ -63,9 +61,6 @@ object ProgramStatusHub {
     private var lastState: Map<String, Triple<UnitState.Load, UnitState.Active, UnitState.Sub>> =
         emptyMap()
 
-    fun publishRunning(ids: Set<String>) {
-        runningIds = ids
-    }
 
     fun publishHealth(id: String, healthy: Boolean, detail: String) {
         healthDetail = healthDetail.toMutableMap().apply { put(id, if (healthy) detail else "!$detail") }
@@ -86,11 +81,9 @@ object ProgramStatusHub {
         startedAt = startedAt - id
         startRequested = startRequested - id
         lastState = lastState - id
-        runningIds = runningIds - id
     }
 
     fun clear() {
-        runningIds = emptySet()
         healthDetail = emptyMap()
         restarts = emptyMap()
         quarantined = emptySet()
@@ -105,7 +98,16 @@ object ProgramStatusHub {
         for (id in installed) {
             out += statusOf(ctx, id)
         }
-        for (id in runningIds - installed.toSet()) {
+        // 「还有谁在跑」问**账本**，不抄监管池的内存集合。
+        //   账本是内核侧的事实（带 starttime，能防 pid 复用），
+        //   监管池那份只是「谁有监管器」的缓存 —— 两者不是一回事：
+        //   · 进程在跑但监管器已撤（程序自己 daemonize 出去）→ 账本知道，池子不知道
+        //   · 池子还留着 key 但进程早已没了 → 池子以为在跑，账本说没有
+        // 照 systemd(1) 的做法，ActiveState 由内核的账算，不是某个守护者的记忆。
+        // 另外这一条也让「已卸载但进程还在跑」的 id 仍出现在列表里，
+        // 不至于从面板上凭空消失。
+        val liveIds = ProcessLedger.liveOwned(ctx).map { it.programId }.toSet()
+        for (id in liveIds - installed.toSet()) {
             out += statusOf(ctx, id)
         }
         return out.sortedBy { it.id }
@@ -122,7 +124,6 @@ object ProgramStatusHub {
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null
-        val prev = lastState[id]
         // 三列的判据全是事实：注册表那一条 + 进程账本 + 探活结果
         //（systemd 的 ActiveState 也是这么算的，不额外存一个状态）
         val unit = entry
