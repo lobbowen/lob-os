@@ -57,9 +57,23 @@ if [ -z "$JNI_DIR" ]; then
     [ -d "$cand" ] && { JNI_DIR="${cand%/}"; break; }
   done
 fi
-[ -n "$JNI_DIR" ] && [ -d "$JNI_DIR" ] \
-  || die "找不到 APK 的 jniLibs" "要读 $HERE/native-deps.txt 之外的另一半判据（APK 基础库）；可用 APK_JNI_DIR 指定"
-APK_LIBS=" $(ls "$JNI_DIR" 2>/dev/null | sed 's/\.meta\.json$//' | sort -u | tr '\n' ' ') "
+# ── 目录不存在**不算错**，只是少一类判据 ──────────────────────
+# 本脚本也被 tool 筐那几个 workflow 调用（build-make / build-cmake /
+# build-git / build-llvmtoolchain / build-node / build-npm / build-pnpm /
+# build-python3 / build-sqlite3 / build-pkg-config 各自编各自的件），
+# 而那些 workflow 不跑 ensure-native-capabilities.sh —— jniLibs 目录
+# 那时可能根本还没建。
+#
+# 那种情况下把「找不到 jniLibs」判红，等于为了一条此刻无从判断的
+# 判据拦住一次本来能过的构建（门禁不能挡路）。
+# 所以：目录在 → 参与判据；目录不在 → 明确说明少判了哪一类，然后照常判。
+if [ -z "$JNI_DIR" ] || [ ! -d "$JNI_DIR" ]; then
+  APK_LIBS=""
+  echo "[$LABEL] 没有 jniLibs 目录 —— 少判「APK 基础库」这一类（其余照判）"
+  echo "         tool 筐那几个 workflow 不编 APK 基础件，那时它本来就不存在。"
+else
+  APK_LIBS=" $(ls "$JNI_DIR" 2>/dev/null | sed 's/\.meta\.json$//' | sort -u | tr '\n' ' ') "
+fi
 
 DYN="$("$READELF" -W -d "$FILE" 2>/dev/null || true)"
 if ! printf '%s' "$DYN" | grep -q 'Dynamic section'; then
