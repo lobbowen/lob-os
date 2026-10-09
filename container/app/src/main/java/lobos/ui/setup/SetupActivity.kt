@@ -227,9 +227,8 @@ class SetupActivity : AppCompatActivity() {
         val stages = OnboardingFlow.stages(e, verdicts)
         for (s in stages) {
             val tv = stageTexts[s.id] ?: continue
-                s.id == OnboardingFlow.F1
             tv.text = "${s.id} ${s.title} ${mark(s.status)}" +
-                (if (blocked) " 通知权限缺失 → 输码通知发不出去" else "") +
+                (if (s.id == OnboardingFlow.F1 && !notificationsGranted) " 通知权限缺失 → 输码通知发不出去" else "") +
                 (if (s.detail.isBlank()) "" else "｜${s.detail}")
             val acq = s.action
             val btn = stageButtons[s.id] ?: continue
@@ -265,6 +264,17 @@ class SetupActivity : AppCompatActivity() {
         val audit = ResidencyAudit.interruption(this)
         return if (audit == null) recent else "$audit\n$recent"
     }
+
+    /**
+     * 通知能不能发出去 —— 开场第一阶段要靠它提醒输码，缺了就白等。
+     *
+     * 直接问 NotificationManager（API 24+），不另存一份状态。
+     */
+    private val notificationsGranted: Boolean
+        get() = runCatching {
+            val nm = getSystemService(android.app.NotificationManager::class.java)
+            nm != null && nm.areNotificationsEnabled()
+        }.getOrDefault(false)
 
     private fun mark(s: StageStatus): String = when (s) {
         StageStatus.DONE -> "[完成]"

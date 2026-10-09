@@ -283,7 +283,7 @@ class PanelActivity : AppCompatActivity() {
         worker.execute {
             val r = runCatching {
                 val f = lobos.log.Exporter.writeToCache(this)
-                "已导出 ${f.name()}  ${f.length()} 字节"
+                "已导出 ${f.name}  ${f.length()} 字节"
             }
             val text = r.getOrElse { "导出失败：" + (it.message ?: it.javaClass.simpleName) }
             say(text)

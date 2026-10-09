@@ -35,11 +35,17 @@ object QuickAppRegistry {
         }
         val ui = uiOf(ctx, id)
         val frontend = ProgramManager.stateDirOf(ctx, id).let { File(it, "quickapp") }
-        // 注册表只存端口与健康端点。名字/图标/包名/onUiClosed 是 manifest 的 ui 段
-        // 派生出来的，抄一份进来就成了第二个可能与 manifest 不一致的副本 ——
-        // 要读就现读（见 uiOf / listed）。
+        // UI 那几项要抄进注册表：桌面图标与窗口标题是进程外的东西，
+        // 进程起来之后读不到它自己的 manifest，只能看注册表。
         ProgramIndex.mutate(ctx, id) { e ->
-            e.edited(httpPort = port, httpHealth = ui.health)
+            e.edited(
+                uiPackage = ui.pkg,
+                uiName = ui.name,
+                uiIcon = ui.icon,
+                onUiClosed = ui.onClosed,
+                httpPort = port,
+                httpHealth = ui.health,
+            )
         }
         android.util.Log.i(
             TAG,

@@ -153,23 +153,17 @@ object UnitState {
         // 件没有进程 —— 有没有进程就两个态
         !isRunnable(entry) -> Active.ACTIVE
 
-        if (processAlive) {
-            when {
-                reloadRequested -> Active.RELOADING
-                else -> Active.ACTIVE
-            }
-        } else {
-            when {
-                startRequested -> Activity_STARTING
-                stopRequested -> Active.DEACTIVATING
-                entry.exitCode != null && entry.exitCode != 0 -> Active.FAILED
-                maintenance -> Active.MAINTENANCE
-                else -> Active.INACTIVE
-            }
-        }
-    }
+        // 进程还在：正在重载就是 RELOADING，否则就是 ACTIVE
+        processAlive ->
+            if (reloadRequested) Active.RELOADING else Active.ACTIVE
 
-    private val Activity_STARTING = Active.ACTIVATING
+        // 进程不在：按「请求过什么」和上次怎么退的判（Table 1 的 inactive/failed）
+        startRequested -> Active.ACTIVATING
+        stopRequested -> Active.DEACTIVATING
+        entry.exitCode != null && entry.exitCode != 0 -> Active.FAILED
+        maintenance -> Active.MAINTENANCE
+        else -> Active.INACTIVE
+    }
 
     /** 这个 unit 有进程可跑吗 —— 件没有（systemd 的 Type=oneshot 那一类） */
     fun isRunnable(entry: UnitEntry): Boolean = entry.role != "library" && entry.role != "headers"

@@ -293,7 +293,9 @@ object ProgramIndex {
             httpHealth = o.optString("httpHealth", ""),
             capabilities = strArray("capabilities"),
             env = o.optJSONObject("env")?.let { m ->
-                (0 until m.length()).associate { i -> m.names()[i] to m.optString(m.names()[i], "") }
+                // keys() 返回 MutableSet<String>（Kotlin 侧带上了元素类型），
+                // names() 在 Kotlin 眼里是 Array<Any!>，associate 出来就成了 Map<Any!, String!>
+                m.keys().asSequence().associateWith { k -> m.optString(k, "") }
             } ?: emptyMap(),
             uiPackage = o.optString("uiPackage", ""),
             uiName = o.optString("uiName", ""),

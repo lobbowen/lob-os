@@ -1,4 +1,5 @@
 package lobos.capability
+import lobos.bridge.ConnectEndpointResolver
 import android.content.Context
 import android.system.Os
 import java.io.BufferedReader
@@ -192,7 +193,8 @@ object AdbClientRunner {
             mapOf("LOBOS_ADB_DIR" to adbDir.absolutePath)
 
     private fun startProcess(context: Context): ServeProcess? {
-        val scriptDir: File = run {
+        val scriptDir = File(lobos.os.SystemDirs.libvar(context), "adb")
+        if (!File(scriptDir, "cli.js").isFile) {
             lastStartError = "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）"
             return null
         }
@@ -234,11 +236,20 @@ object AdbClientRunner {
     private fun drainLogs(): String = proc?.logsText() ?: ""
 
     private fun runOnce(context: Context, subArgs: List<String>, procTimeoutMs: Long): AdbOutcome {
-        val scriptDir: File = run {
-            return AdbOutcome(false, null, "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）", "", -1)
-        }
-            ?: return AdbOutcome(false, null, lobos.runtime.InstalledRuntime.notInstalledHint(context, InstalledRuntime.programRuntime(context).id), "", -1)
         val adbDir = File(lobos.os.SystemDirs.libvar(context), "adb").apply { if (!exists()) mkdirs() }
+        val scriptDir = adbDir
+        if (!File(scriptDir, "cli.js").isFile) {
+            return AdbOutcome(
+                false, null,
+                "无线调试客户端未就位（那 8 个脚本已随 APK 移除，实现待重建）", "", -1,
+            )
+        }
+        val nodeBin = InstalledRuntime.binOf(context, InstalledRuntime.programRuntime(context).id)
+            ?: return AdbOutcome(
+                false, null,
+                InstalledRuntime.notInstalledHint(context, InstalledRuntime.programRuntime(context).id),
+                "", -1,
+            )
 
         val args = mutableListOf(nodeBin.absolutePath, File(scriptDir, "cli.js").absolutePath)
         args += subArgs
