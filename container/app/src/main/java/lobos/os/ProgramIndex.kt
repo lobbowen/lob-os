@@ -159,8 +159,16 @@ object ProgramIndex {
 
     /** 一个空条目 —— 按形状给对应那一种，不存在「27 个字段都填一遍」 */
     /** 一个空条目 —— 只有 id 有值，其余等落位或装完再填 */
-    fun empty(id: String, isPiece: Boolean): UnitEntry =
-        UnitEntry(id = id, role = if (isPiece) "" else "app")
+    /**
+     * 一条「还没登记」的空记录 —— upsert 前的基底。
+     *
+     * 第二参数用 Level 而不是裸 Boolean：Level 才是仓库里表示
+     * 「这是件还是程序」的那一个（byLevel / level == Level.PIECE 都在用）。
+     * 此前这里签名是 isPiece: Boolean，而 5 个调用点里 5 个传的已经是 Level
+     * —— 两种表示混着，编译报「actual type is Level, but Boolean was expected」。
+     */
+    fun empty(id: String, level: Level): UnitEntry =
+        UnitEntry(id = id, role = if (level == Level.PIECE) "" else "app")
 
     /**
      * 编码 —— 一种 unit 一种形状。

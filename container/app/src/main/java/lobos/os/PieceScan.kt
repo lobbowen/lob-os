@@ -88,6 +88,7 @@ object PieceScan {
          */
         val required: Boolean get() = meta?.optBoolean("essential", false) ?: false
     }
+    /**
      * 若目录里两者都有，以 `bin/` 为准（它是全局入口，`$PREFIX/bin` 在 PATH 里）。
      */
     fun scan(ctx: Context): List<Found> {

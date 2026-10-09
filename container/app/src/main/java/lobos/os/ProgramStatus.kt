@@ -128,7 +128,7 @@ object ProgramStatusHub {
         //（systemd 的 ActiveState 也是这么算的，不额外存一个状态）
         val unit = entry
         val healthy = running && !detail.startsWith("!")
-        val load = UnitState.loadOf(unit ?: if (installed) ProgramIndex.empty(id, false) else null)
+        val load = UnitState.loadOf(unit ?: if (installed) ProgramIndex.empty(id, Level.PROGRAM) else null)
         val active = UnitState.activeOf(
             entry = unit,
             processAlive = running,
