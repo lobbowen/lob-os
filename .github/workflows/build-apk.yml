@@ -66,6 +66,11 @@ jobs:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
+          # 探测：secrets 在本 job 里到底读不读得到（只报长度，不报内容）
+          for v in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD APK_PUBLISH_TOKEN; do
+            eval "val=\${$v:-}"
+            echo "[secret-probe] $v 长度=${#val}"
+          done
           # jq 在本 workflow 里第一次被用到就是这里（此前那 7 处都在发布轮末尾，
           # 校验轮从没跑过那段）—— 所以「jq 可用」此前从未被验证过。
           # 缺它时 set -e 会在第一条 echo 之前就杀掉脚本，报错原因一个字都看不到。
