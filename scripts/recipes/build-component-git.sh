@@ -172,10 +172,15 @@ for f in "$GITCORE"/*; do
   fi
 done
 echo "[git] 链接农场：符号链接 $LINKED、副本瘦身 $SLIMMED、真独立文件 $KEPT"
+# du 看的是**实际占盘**，不是文件大小之和。链接农场把 148 个子命令指向
+# 28 个真文件，体积理应收敛到几 MiB；报出几十 MiB 时要能立刻看出是谁占的，
+# 否则「链接农场没生效？」这句猜测会把人引到错的方向。
 TREE=$(du -sm "$ROOT_DIR/$OUT" | cut -f1)
-echo "[git] 件树体积 ${TREE} MiB"
+echo "[git] 件树体积 ${TREE} MiB（bin/git $BINSIZE 字节 · 链接农场 $LINKED 链 / $KEPT 独立文件）"
 if [ "$TREE" -gt 60 ]; then
-  echo "::error title=件太大::${TREE} MiB —— 链接农场没生效？（bin/git $BINSIZE 字节）"
+  echo "::error title=件太大::${TREE} MiB —— 超过 60 MiB 上限"
+  echo "        占用前十的条目（先看是不是 farm 没收敛）："
+  du -am "$ROOT_DIR/$OUT" 2>/dev/null | sort -rn | head -11 | sed 's/^/  /'
   exit 1
 fi
 SIZE=$(stat -c%s "$ROOT_DIR/$OUT/bin/git")
