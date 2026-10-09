@@ -29,6 +29,7 @@ import lobos.os.Restart
 import lobos.os.RuntimeEnvironment
 import lobos.os.SessionRegistry
 import lobos.os.StateFiles
+import lobos.os.SystemDirs
 import lobos.os.edited
 import lobos.ota.ProgramOtaResolution
 import lobos.ota.ProgramOtaUpdater
@@ -387,7 +388,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             // 编译报 "Too many arguments for treeRootFor"。
             lobos.os.RuntimeEnvironment.ensure(this)
             val tree = lobos.os.RuntimeEnvironment.treeRootFor(this)
-            val treeEnv = lobos.os.RuntimeEnvironment.treeRootEnv(tree, getenv("PATH"))
+            val treeEnv = lobos.os.RuntimeEnvironment.treeRootEnv(this, tree, getenv("PATH"))
 
             writeRuntimeJson(
                 nodePath = nodeBin.absolutePath,
@@ -463,15 +464,16 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     "program=" + recorded.programId + " gen=" + recorded.generation +
                         " pid=" + recorded.pid + " starttime=" + recorded.starttime
                 } else "pid 无法取得，账本未记录"
-
-                    // MainPID 落注册表（systemctl show 查得到那个属性）——
-                    // 此前只有账本里有，注册的 UnitEntry.pid 是空的
-                    runCatching {
-                        SupervisorPolicy.noteStarted(
-                            this@InstanceHost, programId, recorded.pid, recorded.starttime,
-                        )
-                    }
             )
+            // MainPID 落注册表（systemctl show 查得到那个属性）——
+            // 此前只有账本里有，注册的 UnitEntry.pid 是空的
+            if (recorded != null) {
+                runCatching {
+                    SupervisorPolicy.noteStarted(
+                        this@InstanceHost, programId, recorded.pid, recorded.starttime,
+                    )
+                }
+            }
             healthPort = resolvedPort
             healthPath = spec?.http?.health ?: "/status"
             val healthDesc = if (healthPort > 0) healthPort.toString() + healthPath else "(清单未声明健康端点)"
@@ -789,7 +791,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         minNode: String,
         envSnapshot: Map<String, String> = emptyMap(),
     ) {
-        val dir = SystemDirs.run(ctx).let { File(it, "proc") }
+        // InstanceHost 自己就是 ContextWrapper(host)，无需再传 ctx 形参
+        val dir = SystemDirs.run(this).let { File(it, "proc") }
         dir.mkdirs()
         val obj = JSONObject().apply {
             put("schema", 3)

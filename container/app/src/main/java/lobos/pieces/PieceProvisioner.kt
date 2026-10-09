@@ -72,7 +72,7 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
         for ((exe, st) in entries) {
             val o = JSONObject()
             o.put("id", exe.id)
-            o.put("libName", exe.entry.substringAfterLast("/", ""))
+            o.put("libName", exe.libName)
             o.put("required", exe.required)
             when (st) {
                 is AssetStatus.Ready -> {

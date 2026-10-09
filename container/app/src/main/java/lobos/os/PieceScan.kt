@@ -87,6 +87,16 @@ object PieceScan {
          * 就与事实源一致了。
          */
         val required: Boolean get() = meta?.optBoolean("essential", false) ?: false
+
+        /**
+         * 件内入口文件名（如 libfoo.so.1.3.2）—— entry 去掉目录前缀。
+         *
+         * 事实来源是 entry，不另存一份：entry 本就是 component-meta.json 里
+         * 的那一条，与校验用的是同一个字段。PieceProvisioner 有两处自己写
+         * substringAfterLast("/")（一处塞进 JSON 的 libName、一处拼诊断行），
+         * 两处都按它调 Found，却在 Found 上没有这个成员。
+         */
+        val libName: String get() = entry.substringAfterLast('/', "")
     }
     /**
      * 若目录里两者都有，以 `bin/` 为准（它是全局入口，`$PREFIX/bin` 在 PATH 里）。

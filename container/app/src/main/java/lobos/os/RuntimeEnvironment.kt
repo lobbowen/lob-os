@@ -50,7 +50,7 @@ object RuntimeEnvironment {
         return declared.filterKeys { !RESERVED_ENV.contains(it) } to dropped
     }
 
-    fun treeRootEnv(root: TreeRoot, inheritedPath: String?): Map<String, String> = buildMap {
+    fun treeRootEnv(ctx: Context, root: TreeRoot, inheritedPath: String?): Map<String, String> = buildMap {
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
@@ -135,12 +135,23 @@ object RuntimeEnvironment {
         }
     }
 
+    /**
+     * 这个 File 本身是不是软链。
+     *
+     * java.io.File 没有这方法（Kotlin 的扩展只覆盖到 canRead/isDirectory 等），
+     * 必须走 lstat —— isFile() 跟随软链，一件共享库建出来的全局软链会被它
+     * 算成「普通文件」，那正是我们要单独认出来的那一类。
+     */
+    private fun isLink(f: File): Boolean = runCatching {
+        android.system.Os.lstat(f.path).st_mode and android.system.OsConstants.S_ISLNK != 0
+    }.getOrDefault(false)
+
     private fun assemble(ctx: Context): Snapshot {
         val ready = PrefixProvisioner.provision(ctx)
         // 该有的全局入口 = 落位里有 bin/ 的那些（扫落位，不问内核预置的清单）
         val expected = lobos.os.PieceScan.scan(ctx)
             .filter { File(it.dir, "bin").isDirectory }
-            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile || f.isSymbolicLink }?.map { f -> f.name }.orEmpty() }
+            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile || isLink(f) }?.map { f -> f.name }.orEmpty() }
             .flatten()
             .toSet()
         val missing = expected - ready.toSet()
@@ -148,9 +159,6 @@ object RuntimeEnvironment {
             ctx, "prefix", missing.isEmpty(),
             if (missing.isEmpty()) "\$PREFIX 件全部就位" else "\$PREFIX 缺件：${missing.joinToString()}",
             PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
-        )
-
-        RuntimeDiagnostics.append(
         )
 
         val nowSupply = System.currentTimeMillis()
@@ -163,5 +171,6 @@ object RuntimeEnvironment {
             )
         }
 
+        return Snapshot(ready, missing.toList())
     }
 }

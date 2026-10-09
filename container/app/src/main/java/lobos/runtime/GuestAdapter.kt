@@ -12,7 +12,15 @@ object GuestAdapter {
         val programDir: File,
         val programEntry: File,
         val uiDir: File,
-        val flockSo: File,
+        /**
+         * flock 这个件的可执行体在哪 —— 可空。
+         *
+         * flock 是 24 项清单里独立的一件，可能没装；此前这里声明成非空 File，
+         * 而 InstanceHost 传的是 PieceScan.pieceFile()（File?），编译不过。
+         * 没装就不给这个变量：程序自己落 flock 时靠 PATH 找 usr/lib/flock/，
+         * 不该被一个指向不存在文件的变量误导。
+         */
+        val flockSo: File?,
         val programId: String = "",
         val args: List<String> = emptyList(),
         val generation: Long = 0L,
@@ -38,7 +46,7 @@ object GuestAdapter {
             if (!i.sessionToken.isNullOrBlank()) put("LOBOS_SESSION_TOKEN", i.sessionToken)
             put("LOBOS_PERMISSION_MODE", "danger-full-access")
             put("LOBOS_OWN_SESSION", "1")
-            put("LOBOS_FLOCK_SO", i.flockSo.absolutePath)
+            i.flockSo?.let { put("LOBOS_FLOCK_SO", it.absolutePath) }
             put("LOBOS_PROGRAM_ID", i.programId)
             put("LOBOS_PROGRAM_GENERATION", i.generation.toString())
             putAll(i.declaredEnv)

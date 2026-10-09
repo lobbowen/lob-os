@@ -188,7 +188,7 @@ object AdbClientRunner {
         Backoff.exponential(failures - 1, RESTART_BASE_MS, RESTART_MAX_MS)
 
     private fun envFor(context: Context, adbDir: File): Map<String, String> =
-        RuntimeEnvironment.treeRootEnv(RuntimeEnvironment.treeRootFor(context), Os.getenv("PATH")) +
+        RuntimeEnvironment.treeRootEnv(context, RuntimeEnvironment.treeRootFor(context), Os.getenv("PATH")) +
             mapOf("LOBOS_ADB_DIR" to adbDir.absolutePath)
 
     private fun startProcess(context: Context): ServeProcess? {
