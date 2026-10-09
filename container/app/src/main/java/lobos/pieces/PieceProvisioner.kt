@@ -163,12 +163,12 @@ object PieceProvisioner {
         // 少了 ②，被换过一个文件也发现不了。
         val entries = lobos.os.PieceScan.scan(ctx).map { f ->
             val st = verifyInternal(ctx, f, libDir, listing, apkLibNames)
-            if (st is AssetStatus.Ready) {
+            val final = if (st is AssetStatus.Ready) {
                 val v = lobos.os.PieceScan.verify(ctx, f.id)
-                if (!v.ok) {
-                    AssetStatus.Mismatched(f.id, f.entry, v.mismatched)
-                } else st
+                if (!v.ok) AssetStatus.Mismatched(f.id, f.entry, v.mismatched) else st
             } else st
+            // 件与结论成对：PrepareReport 的每一条都要能指出是哪一件
+            f to final
         }
         val report = PrepareReport(entries)
 
@@ -177,7 +177,7 @@ object PieceProvisioner {
             if (report.allRequiredReady) "系统件全部就位（${entries.size} 项）"
             else "系统件校验失败：${report.failedRequired.joinToString(", ") { it.first.libName }}",
             "nativeLibraryDir=${libDir.absolutePath}\n" +
-                "依赖解析方式=二进制自带 \$ORIGIN RUNPATH（照抄 ldconfig "checks the header"）\n" +
+                "依赖解析方式=二进制自带 \$ORIGIN RUNPATH（照抄 ldconfig checks the header）\n" +
                 "lib 目录内容（${listing.lines().size - 3} 项）:\n" +
                 listing.lineSequence().drop(2).joinToString("\n") { "  $it" } + "\n" +
                 report.toDiagnosticLines().joinToString("\n"),
@@ -225,7 +225,7 @@ object PieceProvisioner {
         if (!f.canRead() || f.length() == 0L) {
             return AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读或长度为 0")
         }
-        return AssetStatus.Ready(exe, f.absolutePath, "就位")
+        return AssetStatus.Ready(exe, f.absolutePath)
     }
 
     /**

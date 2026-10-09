@@ -3,7 +3,6 @@ package lobos.ui
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -20,8 +19,14 @@ class TerminalActivity : AppCompatActivity() {
         const val TAG = "TerminalActivity"
         const val EXTRA_SHELL = "shell"
 
-    /** 系统里没有命令解释器时的回落 —— Android 自带的 sh，不是我们的件 */
-    private const val DEFAULT_SHELL_FALLBACK = "/system/bin/sh"
+        /** 系统里没有命令解释器时的回落 —— Android 自带的 sh，不是我们的件 */
+        const val DEFAULT_SHELL_FALLBACK = "/system/bin/sh"
+
+        fun intentFor(ctx: android.content.Context, shell: String? = null) =
+            android.content.Intent(ctx, TerminalActivity::class.java).apply {
+                putExtra(EXTRA_SHELL, shell ?: "")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
     }
 
     private lateinit var term: TerminalView
@@ -105,15 +110,14 @@ class TerminalActivity : AppCompatActivity() {
         val argv = when {
             want.isBlank() -> listOf(shellBin?.absolutePath ?: DEFAULT_SHELL_FALLBACK)
             else -> listOf(want)
-            else -> listOf(want)
         }
         try {
             val s = PtySession.openSession(this, argv, term.screen.rows, term.screen.cols)
             session = s
             term.connected = true
-            s.onData = { data -> view.post { term.appendOutput(data) } }
+            s.onData = { data -> term.post { term.appendOutput(data) } }
             s.onExit = {
-                view.post {
+                term.post {
                     term.connected = false
                     status.text = "会话已结束（pid 已退出）"
                     RuntimeDiagnostics.append(this@TerminalActivity, "terminal", null, "终端会话结束", argv.joinToString(" "))
@@ -142,13 +146,5 @@ class TerminalActivity : AppCompatActivity() {
         session?.close()
         session = null
         super.onDestroy()
-    }
-
-    companion object {
-        fun intentFor(ctx: android.content.Context, shell: String? = null) =
-            android.content.Intent(ctx, TerminalActivity::class.java).apply {
-                putExtra(EXTRA_SHELL, shell ?: "")
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
     }
 }

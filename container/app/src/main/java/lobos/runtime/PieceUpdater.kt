@@ -147,7 +147,9 @@ object PieceUpdater {
                 applied.put(JSONObject().put("id", id).put("sha256", sha).put("wouldInstall", true))
                 continue
             }
-            pending.add(Triple(e, sha, c))
+            // 第二项是**版本号**（要落进 usr/lib/<id>/<版本>/），不是 sha256 ——
+            // installGroup 按 version 拼落位目录，此前这里塞的却是 sha
+            pending.add(Triple(e, c.optString("version", ""), c))
         }
 
         for ((_, group) in pending.groupBy { it.third.optString("url", "") + "-" + it.third.optString("sha256", "") }) {
@@ -190,9 +192,10 @@ object PieceUpdater {
             for ((e, _, _) in items) out[e.id] = false to "清单项缺 url/sha256"
             return out
         }
-        val todo = items.filter { (_, ver, _) ->
-            val ok = ProgramIndex_safeSegment(ver)
-            if (!ok) out[it.first.id] = false to "版本号非法（会越界）：$ver"
+        // 版本号要能安全落进 usr/lib/<id>/<版本>/ —— 判据就是 ProgramIndex 那一个
+        val todo = items.filter { (e, ver, _) ->
+            val ok = lobos.os.ProgramIndex.safeSegment(ver) != null
+            if (!ok) out[e.id] = false to "版本号非法（会越界）：$ver"
             ok
         }
         if (todo.isEmpty()) return out
@@ -218,7 +221,7 @@ object PieceUpdater {
                     false to ("包里没有 $inPackage（包内实际有：" +
                         listPackTop(unpacked).take(8).joinToString(", ") + "）")
                 } else {
-                    place(ctx, pe, ver, c.optString("entry", ""), picked)
+                    place(ctx, e, ver, c.optString("entry", ""), picked)
                 }
             }
             out
@@ -273,11 +276,13 @@ object PieceUpdater {
         } else {
             File(PrefixProvisioner.libDir(ctx), entryName)
         }
-        runCatching { java.nio.file.Files.deleteIfExists(tmp.toPath()) }
-        java.nio.file.Files.createSymbolicLink(tmp.toPath(), dest.toPath())
-        val ok = tmp.renameTo(link) || run {
+        // 先建同目录临时软链再改名：rename 是原子的，直接建会留下半截链接
+        val staging = File(link.parentFile, "." + entryName + ".new")
+        runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
+        java.nio.file.Files.createSymbolicLink(staging.toPath(), dest.toPath())
+        val ok = staging.renameTo(link) || run {
             java.nio.file.Files.deleteIfExists(link.toPath())
-            tmp.renameTo(link)
+            staging.renameTo(link)
         }
         if (ok) {
             val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
