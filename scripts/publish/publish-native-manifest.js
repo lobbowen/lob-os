@@ -5,7 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const ROOT = path.resolve(__dirname, '..');
+// ★ 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
+//   于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
+//   「缺少 …/scripts/.github/native-capabilities.txt」）。那是目录归并时的遗留。
+const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
 const ZIP = POS[0] || '';
@@ -15,7 +18,11 @@ const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.NATIVE_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.NATIVE_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
-const REGISTRY = path.join(ROOT, 'container', 'app', 'src', 'main', 'java', 'lobos', 'native', 'NativeAssetRegistry.kt');
+// 事实源（两个，别再找已删的 NativeAssetRegistry.kt —— 那个文件已随
+// 「内核不预置件清单」那轮清理删掉了）：
+//   CAPS     —— .github/native-capabilities.txt：<档位> <libName> <id>
+//   VERIFY   —— scripts/component-verify.json：每件的 version/entry/form
+const VERIFY = path.join(ROOT, 'scripts', 'component-verify.json');
 const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
 const PIN = path.join(ROOT, '.github', 'native-capabilities-pin.json');
@@ -30,33 +37,33 @@ function stripComments(src) {
 }
 
 function parseRegistry() {
-  if (!fs.existsSync(REGISTRY)) {
-    bad('找不到注册表 ' + REGISTRY + ' —— 底座件清单的唯一事实源没了');
-    return [];
+  // libName 与 id 的对应来自 CAPS（它就是那张清单）；
+  // version/entry 来自 VERIFY。两者都是仓内文件，不需要 Kotlin 注册表。
+  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件清单没了'); return []; }
+  let vtab = {};
+  try {
+    vtab = (JSON.parse(fs.readFileSync(VERIFY, 'utf8')).criteria) || {};
+  } catch (e) {
+    bad('读不了 ' + VERIFY + '：' + e.message);
   }
-  const body = stripComments(fs.readFileSync(REGISTRY, 'utf8'));
   const out = [];
-  const re = /NativeExecutable\(/g;
-  let m;
-  while ((m = re.exec(body)) !== null) {
-    let i = re.lastIndex - 1, depth = 0, end = -1;
-    for (; i < body.length; i++) {
-      if (body[i] === '(') depth++;
-      else if (body[i] === ')') { depth--; if (depth === 0) { end = i; break; } }
-    }
-    if (end < 0) continue;
-    const a = body.slice(re.lastIndex, end);
-    const str = (f) => { const x = new RegExp('\\b' + f + '\\s*=\\s*"([^"]*)"').exec(a); return x ? x[1] : ''; };
-    const id = str('id');
-    if (!id) { re.lastIndex = end; continue; }
+  for (const line of fs.readFileSync(CAPS, 'utf8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const parts = t.split(/\s+/);
+    if (parts.length < 3) continue;
+    const [, libName, id] = parts;
+    const v = vtab[id] || {};
     out.push({
       id,
-      libName: str('libName'),
-      installName: str('installName'),
-      version: str('version'),
+      libName,
+      // installName：落位后的裸名。VERIFY 没有这一格时退回 libName ——
+      // 那是同一件事的两种叫法，不要因此报「缺字段」。
+      installName: v.installName || libName,
+      version: v.version || '',
     });
-    re.lastIndex = end;
   }
+  if (!out.length) bad('从 ' + CAPS + ' 一件也没解析出来 —— 清单格式变了？');
   return out;
 }
 
@@ -123,15 +130,25 @@ const PIN_KEY = {
 };
 
 function versionOf(id) {
-  const key = PIN_KEY[id];
-  if (!key) return null;
-  let tab;
+  let tab = {}, vtab = {};
   try {
     tab = JSON.parse(fs.readFileSync(SOURCES, 'utf8'));
   } catch (e) {
     bad('钉值表读不出（' + SOURCES + '）：' + e.message);
-    return null;
   }
+  try {
+    vtab = JSON.parse(fs.readFileSync(VERIFY, 'utf8')).criteria || {};
+  } catch (e) {
+    bad('判据表读不出（' + VERIFY + '）：' + e.message);
+  }
+  // 自写件（flock/posix/ptyprobe/ptysession）不在 PIN_KEY 里 ——
+  // 那个映射只列「钉值表里查得到上游版本」的那些。它们是我们自己写的 C，
+  // 版本从 1.0.0 起，记在 component-verify.json（gen-component-meta.js 同源）。
+  // 查找顺序照 gen-component-meta.js 第 50 行：先 verify 再 sources。
+  const vv = (vtab[id] || {}).version;
+  if (vv && String(vv).trim()) return String(vv).trim();
+  const key = PIN_KEY[id];
+  if (!key) return null;
   if (key === '@ndkVersion') return (tab.ndkVersion || '').trim() || null;
   const v = ((tab.sources || {})[key] || {}).version;
   return v && String(v).trim() ? String(v).trim() : null;
