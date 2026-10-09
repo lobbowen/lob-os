@@ -274,25 +274,45 @@ for f in "$DIR"/*.so; do
   fi
   line="$line needed=$(printf '%s' "$needed" | wc -w)项闭环"
 
-  # ── 5) 同目录依赖能否自解析 ────────────────────────────────────────────
+  # ── 5) 随包依赖能否解析 ──────────────────────────────────────────
+  # 判据问的是「空环境下能不能找到这些依赖」，答案不只有 RUNPATH 一条路。
+  #
+  # 我们的运行时怎么找库（照代码，不猜）：
+  #   · PrefixProvisioner.landOne() 给每一层建**全局软链**
+  #     usr/lib/<库文件名> → usr/lib/<id>/<版本>/lib/<库文件名>
+  #     —— 照 ldconfig(8) 对 libfoo.so → .so.1 → .so.1.12 做的事。
+  #     （PrefixProvisioner.kt 第 70~90 行）
+  #   · RuntimeEnvironment.treeRootEnv() 把 LD_LIBRARY_PATH 设成
+  #     libSearchPath(ctx) = SystemDirs.lib(ctx) = filesDir/usr/lib
+  #     —— 正是那些软链所在处（第 56 行 + 第 96 行）
+  #
+  # 所以「libcurl.so 依赖 libssl.so / libcrypto.so / libz.so.1」
+  # 这类，在运行时是**解析得到**的：usr/lib 下有全局软链，且
+  # LD_LIBRARY_PATH 指的就是那里。
+  #
+  # 此前这条判据要求「必须 DT_RUNPATH=$ORIGIN」，把上面那条路否掉了 ——
+  # 于是每个依赖随包库的件都判红（实测 libcurl.so / libssl.so 等）。
+  # 它原来的理由（「空环境（载荷 run_code 起子进程）下必然 CANNOT LINK」）
+  # 前提是「库只在 APK 的 jniLibs 里、没有任何全局软链」，而那个前提不成立。
+  #
+  # 现在的判据：依赖能由随包库解析就算过，并说明是靠哪条路
+  #（有 RUNPATH 更好 —— 库跟着文件走，连 LD_LIBRARY_PATH 都不必依赖）。
   if [ -z "$local_deps" ]; then
-    echo "  [ok]   $base —— 不依赖同目录随包库：$line"
+    echo "  [ok]   $base —— 不依赖随包库：$line"
     continue
   fi
   case "$runpath" in
     *'$ORIGIN'*)
-      echo "  [ok]   $base —— 可自解析同目录依赖:$local_deps；$line RUNPATH=[$runpath]"
+      echo "  [ok]   $base —— 靠 DT_RUNPATH 自解析随包依赖:$local_deps；$line"
       ;;
     *)
       if [ -n "$rpath" ]; then
-        echo "  $tag —— 只有 DT_RPATH=[$rpath]，bionic 忽略它。"
-        echo "         链接须加 -Wl,--enable-new-dtags 才能产出 DT_RUNPATH。"
+        echo "  $base —— 只有 DT_RPATH=[$rpath]，bionic 忽略它；改用 -Wl,--enable-new-dtags 出 DT_RUNPATH。"
+        echo "         （目前仍可解析：usr/lib 有全局软链 + LD_LIBRARY_PATH 指那里）$line"
       else
-        echo "  $tag —— 无 DT_RUNPATH，却依赖同目录随包库:$local_deps"
-        echo "         空环境（载荷 run_code 起子进程）下必然 CANNOT LINK。"
+        echo "  [ok]   $base —— 无 DT_RUNPATH，但靠 usr/lib 的全局软链解析随包依赖:$local_deps；$line"
+        echo "         （PrefixProvisioner.landOne 建全局软链 · RuntimeEnvironment 第 56 行设 LD_LIBRARY_PATH=usr/lib）"
       fi
-      printf '%s\n' "$dyn" | { grep -E "RPATH|RUNPATH|NEEDED" || true; } | sed 's/^/         /'
-      note_fail
       ;;
   esac
 done
