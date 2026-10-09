@@ -67,38 +67,62 @@ jobs:
         run: |
           set -euo pipefail
           FAIL=0
-          say() { echo "::error title=发布前置::$1"; FAIL=1; }
+          SUMMARY="$GITHUB_STEP_SUMMARY"
+          say() {
+            echo "::error title=发布前置::$1"
+            echo "- ❌ $1" >> "$SUMMARY"
+            FAIL=1
+          }
+          pass() { echo "- ✅ $1" >> "$SUMMARY"; }
+          echo '## 发布轮前置校验' >> "$SUMMARY"
 
-          # (1) tag 与 version.json 必须逐字一致 —— 否则第 30 步才报
+          # (1) tag 与 version.json 必须逐字一致 —— 否则要编完 APK 才报
           NAME_VER="$(jq -r '.shell.versionName' version.json)"
           CODE="$(jq -r '.shell.versionCode' version.json)"
           if [ "$RELEASE_TAG" != "os-release-$NAME_VER" ]; then
-            say "tag 与 version.json 对不上：tag=$RELEASE_TAG，而 version.json 的 versionName=$NAME_VER"
-            echo "         要么改 tag 成 os-release-$NAME_VER，要么先提 version.json 的 versionName。"
-            echo "         当前 versionName=$NAME_VER versionCode=$CODE"
+            say "tag 与 version.json 对不上：tag=$RELEASE_TAG，而 version.json 的 versionName=$NAME_VER（要么改 tag，要么先提 versionName）"
           else
-            echo "[preflight] tag 与 version.json 一致：$RELEASE_TAG（versionCode=$CODE）"
+            pass "tag 与 version.json 一致：$RELEASE_TAG（versionCode=$CODE）"
           fi
 
           # (2) 四件签名密钥必须齐 —— 缺一个就退回一次性 debug 签名，
-          #     装到设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
+          #     装到已装设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
+          MISSING_KEYS=""
           for v in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
-            [ -n "${!v:-}" ] || say "缺少签名密钥的 $v —— 发布包不能用一次性 debug 签名"
+            [ -n "${!v:-}" ] || MISSING_KEYS="$MISSING_KEYS $v"
           done
-          [ "$FAIL" = "0" ] && echo "[preflight] 签名密钥四件齐备"
+          if [ -n "$MISSING_KEYS" ]; then
+            say "缺少签名密钥：$MISSING_KEYS —— 发布包不能用一次性 debug 签名"
+          else
+            pass "签名密钥四件齐备（alias 由 secrets 提供）"
+          fi
 
           # (3) 发布令牌
-          [ -n "${GH_TOKEN:-}" ] || say "缺少 secrets.APK_PUBLISH_TOKEN —— 发不了 release"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            say "缺少 secrets.APK_PUBLISH_TOKEN —— 发不了 release"
+          else
+            pass "发布令牌在位"
+          fi
 
           # (4) 同版本号只允许配同一批字节
-          if [ -n "${GH_TOKEN:-}" ] && gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "- ⚠️ 跳过「同版本号闸门」（没有令牌查不了）" >> "$SUMMARY"
+          elif gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             say "同版本号已发布过：$RELEASE_TAG 已存在。同号只能配同一批字节；要重发先提 versionCode 再打新 tag。"
+          else
+            pass "版本闸门通过：$RELEASE_TAG 尚未发布过"
           fi
 
           if [ "$FAIL" != "0" ]; then
-            echo "::error title=发布前置校验未通过::上面几条都要先解决 —— 它们原本排在编译之后，白跑十几分钟"
+            echo "" >> "$SUMMARY"
+            echo '**结论：❌ 未通过 —— 下面几条要先解决**' >> "$SUMMARY"
+            echo "" >> "$SUMMARY"
+            echo '这些判据原本排在编译之后，白跑十几分钟才报。' >> "$SUMMARY"
+            echo "::error title=发布前置校验未通过::详见本步的 Job Summary"
             exit 1
           fi
+          echo "" >> "$SUMMARY"
+          echo '**结论：✅ 全过，可以往下走**' >> "$SUMMARY"
           echo "[preflight] 发布前置校验全过"
       - name: Install SDK packages (platform-tools / platform / build-tools)
         run: |
