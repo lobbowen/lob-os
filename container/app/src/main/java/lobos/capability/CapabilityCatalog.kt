@@ -55,7 +55,7 @@ object CapabilityCatalog {
             PermissionCatalog.POST_NOTIFICATIONS, "通知发送", PermTierClass.RUNTIME,
         ),
         Capability(
-            id = ADB_CREDENTIALS, title = "ADB 配对凭据"
+            id = ADB_CREDENTIALS, title = "ADB 配对凭据",
             requires = setOf(DEV_OPTIONS, WIRELESS_DEBUG),
             judge = { e ->
                 when {
@@ -108,7 +108,7 @@ object CapabilityCatalog {
             note = "只作 UI 自动化执行体，不承担保活；保活靠前台服务与闹钟",
         ),
         Capability(
-            id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）"
+            id = ADB_UI_AUTOMATION, title = "UI 自动化（随 ADB 组件）",
             optional = true, bridgeToken = "accessibility",
             judge = { e ->
                 val svc = e.granted(PermissionCatalog.ACCESSIBILITY)
@@ -130,7 +130,7 @@ object CapabilityCatalog {
             bridgeToken = "mediaprojection",
         ),
         Capability(
-            id = RUNTIME, title = "运行时"
+            id = RUNTIME, title = "运行时",
             judge = { e ->
                 if (e.controlPlaneUp) CapVerdict(CapStatus.GRANTED, "控制面在线")
                 else CapVerdict(CapStatus.ACTION, "控制面未响应")
@@ -235,7 +235,7 @@ object CapabilityCatalog {
 
     val OEM_GUARDS: List<Capability> = listOf(
         Capability(
-            id = OemGuards.STARTUP_MANAGER, title = "自启动管理"
+            id = OemGuards.STARTUP_MANAGER, title = "自启动管理",
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.STARTUP_MANAGER)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -246,7 +246,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.CARD_LOCK, title = "卡片锁/后台弹窗"
+            id = OemGuards.CARD_LOCK, title = "卡片锁/后台弹窗",
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.CARD_LOCK)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -257,7 +257,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.FULL_BACKGROUND, title = "完全后台运行"
+            id = OemGuards.FULL_BACKGROUND, title = "完全后台运行",
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.FULL_BACKGROUND)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
@@ -268,7 +268,7 @@ object CapabilityCatalog {
             ) },
             ),
             Capability(
-            id = OemGuards.FREEZE_WHITELIST, title = "速冻白名单"
+            id = OemGuards.FREEZE_WHITELIST, title = "速冻白名单",
             judge = { e ->
             if (e.oemGuards.contains(OemGuards.FREEZE_WHITELIST)) CapVerdict(CapStatus.GRANTED, "已确认")
             else CapVerdict(CapStatus.ACTION, "厂商开关无公开读接口：拨完请点「我已完成」")
