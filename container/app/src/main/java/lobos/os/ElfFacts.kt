@@ -90,8 +90,8 @@ object ElfFacts {
 
         val strtabOff = vaddrToOffset(b, buf, phOff, phEnt, phNum, strtabVaddr) ?: return null
 
-        val cstr = { off: Long ->
-            if (strtabOff + off >= b.size) return@runCatching ""
+        val cstr = label@ { off: Long ->
+            if (strtabOff + off >= b.size) return@label ""
             var e = (strtabOff + off).toInt()
             val s = e
             while (e < b.size && b[e] != 0.toByte()) e += 1

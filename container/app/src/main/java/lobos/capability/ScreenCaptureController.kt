@@ -1,4 +1,6 @@
 package lobos.capability
+
+import lobos.bridge.ScreenCaptureService
 import android.app.Activity
 import android.app.Service
 import android.content.Context

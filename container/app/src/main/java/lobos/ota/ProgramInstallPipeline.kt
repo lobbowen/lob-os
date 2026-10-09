@@ -216,7 +216,7 @@ object ProgramInstallPipeline {
         val base = reg ?: lobos.os.ProgramIndex.empty(
             spec.programId, lobos.os.ProgramManager.levelOf(context, spec.programId),
         )
-        val meta = pieceMetaOf(dir, safeVer)
+        val meta = pieceMetaOf(context, dir, safeVer)
         val upserted = runCatching {
             lobos.os.ProgramIndex.upsert(
                 context,
@@ -300,7 +300,7 @@ object ProgramInstallPipeline {
         }
     }
 
-    private fun pieceMetaOf(dir: File, version: String): PieceMeta {
+    private fun pieceMetaOf(context: Context, dir: File, version: String): PieceMeta {
         val f = File(File(dir, version), "component-meta.json")
         val o = runCatching { JSONObject(f.readText()) }.getOrNull()
         if (o == null) {

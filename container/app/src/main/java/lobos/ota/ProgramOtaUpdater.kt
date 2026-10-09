@@ -265,7 +265,9 @@ object ProgramOtaUpdater {
         val scoped = try {
             if (f.isFile) JSONObject(f.readText()) else null
         } catch (_: Throwable) { null }
-        if (scoped != null) return scoped
+        // 还没有状态、或读不出来 —— 给一个空对象。三个调用方都用
+        // optLong("lastSequence", 0L) 这类带默认值的方式读，空对象即可。
+        return scoped ?: JSONObject()
     }
 
     private fun saveState(context: Context, cfg: Config, programId: String, o: JSONObject) {

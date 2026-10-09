@@ -5,6 +5,7 @@ import java.io.File
 import lobos.os.CatalogClient
 import lobos.os.PieceScan
 import lobos.os.ProgramIndex
+import lobos.os.ProgramManager
 import lobos.pieces.PieceProvisioner
 
 object InstalledRuntime {

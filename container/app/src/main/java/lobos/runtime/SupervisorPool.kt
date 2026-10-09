@@ -7,6 +7,7 @@ import lobos.RuntimeDiagnostics
 import lobos.capability.AdbChannelComponent
 import lobos.log.Journal
 import lobos.os.Desired
+import lobos.os.edited
 import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramRegistry
@@ -58,7 +59,7 @@ class SupervisorPool(private val host: Service) {
             RuntimeDiagnostics.append(
                 host, "supervisor-pool", true, "监督池同步",
                 "在跑=" + supervisors.keys.joinToString(",") + "；停止=" + toStop.joinToString(",") +
-                    "；期望=" + wanted.joinToString(",") +
+                    "；期望=" + wanted.joinToString(",")
             )
         }
     }

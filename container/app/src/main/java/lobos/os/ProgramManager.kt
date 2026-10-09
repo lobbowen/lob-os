@@ -151,7 +151,7 @@ object ProgramManager {
      */
     /** 件不占 opt/（它落在 usr/lib/<id>/<版本>/）；程序占 —— 判据是注册表条目的形状 */
     fun relStateDir(ctx: Context, id: String): String {
-        if (ProgramIndex.get(ctx, id)?.piece != null) return ""
+        if (ProgramIndex.isPiece(ctx, id)) return ""
         return SystemDirs.REL_OPT + "/" + id
     }
 
@@ -257,11 +257,11 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
             UnitJobs.Job(id, d, reason.ifBlank { "requested " + d.name }),
         )) {
             is UnitJobs.Verdict.Ok -> {
-                Journal.append(ctx, "job", true, "入队 " + id + " → " + d.name, reason)
+                Journal.note(ctx, "job", true, "入队 " + id + " → " + d.name, reason)
                 null
             }
             is UnitJobs.Verdict.Reject -> {
-                Journal.append(ctx, "job", false, "拒绝 " + id + " → " + d.name, v.why)
+                Journal.note(ctx, "job", false, "拒绝 " + id + " → " + d.name, v.why)
                 v.why
             }
         }

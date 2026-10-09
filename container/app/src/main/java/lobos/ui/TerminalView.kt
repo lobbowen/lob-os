@@ -184,17 +184,18 @@ class TerminalView @JvmOverloads constructor(
         KeyEvent.KEYCODE_PAGE_DOWN -> ESC_TILDE("6")
         else -> {
             val u = ev.unicodeChar
-            if (u != 0 && Character.isLetterOrDigit(u) || u > 0x7F) {
-                String(u.toInt()).toByteArray(Charsets.UTF_8)
+            // Unicode 码点要变回字符本身：String(u.toInt()) 会写成 "65" 而不是 "A"
+            if ((u != 0 && Character.isLetterOrDigit(u)) || u > 0x7F) {
+                u.toInt().toChar().toString().toByteArray(Charsets.UTF_8)
             } else null
         }
     }
 
     private fun ESC_ARROW(f: String): ByteArray =
-        byteArrayOf(0x1b, '[', f.toByte())
+        byteArrayOf(0x1b, '[', f.code.toByte())
 
     private fun ESC_TILDE(n: String): ByteArray =
-        byteArrayOf(0x1b, '[', n.toByte(), '~'.code.toByte())
+        byteArrayOf(0x1b, '[', n.code.toByte(), '~'.code.toByte())
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {

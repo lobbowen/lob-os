@@ -1,5 +1,7 @@
 package lobos.bridge
 
+import lobos.capability.ScreenCaptureController
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager

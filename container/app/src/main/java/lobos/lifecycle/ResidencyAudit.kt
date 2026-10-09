@@ -67,7 +67,7 @@ object ResidencyAudit {
             lastAliveAt = timeFmt.format(Date(d.lastAliveMs)),
             gapText = humanGap(d.gapMs),
             deviceReboot = d.deviceReboot,
-            attribution = KillAudit.attribution(d.lastAliveMs),
+            attribution = KillAudit.attribution(ctx, d.lastAliveMs),
         )
     }
 

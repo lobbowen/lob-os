@@ -410,7 +410,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("ok", ProgramManager.setEnabled(this@CapabilityBroker, name, action == "enable"))
             }
             "uninstall" -> {
-                if (ProgramIndex.isPiece(ProgramIndex.get(this@CapabilityBroker, name))) {
+                if (ProgramIndex.isPiece(this@CapabilityBroker, name)) {
                     throw BridgeError(
                         CODE_POLICY_DENIED,
                         "系统基础环境不可卸载（可升级、可回退到 APK 基线）：" + name,
@@ -419,7 +419,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 JSONObject().apply { put("ok", PackageInstaller.uninstall(this@CapabilityBroker, name)) }
             }
             "rollback" -> {
-                if (!ProgramIndex.isPiece(ProgramIndex.get(this@CapabilityBroker, name))) {
+                if (!ProgramIndex.isPiece(this@CapabilityBroker, name)) {
                     throw BridgeError(CODE_POLICY_DENIED, "只有系统基础环境支持回退到 APK 基线：" + name)
                 }
                 JSONObject().apply { put("ok", PackageInstaller.rollbackToBaseline(this@CapabilityBroker, name)) }

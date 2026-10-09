@@ -24,7 +24,7 @@ object StateFiles {
             }
             if (!tmp.renameTo(file)) {
                 tmp.delete()
-                note("原子落位失败（rename 失败）: " + file.name)
+                note(dir, "原子落位失败（rename 失败）: " + file.name)
                 false
             } else {
                 fsyncDir(dir)
@@ -32,7 +32,7 @@ object StateFiles {
             }
         } catch (e: Throwable) {
             runCatching { tmp.delete() }
-            note("原子落位异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
+            note(dir, "原子落位异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
             false
         }
     }
@@ -41,18 +41,25 @@ object StateFiles {
         if (!obj.has(SCHEMA_KEY)) obj.put(SCHEMA_KEY, 1)
         writeAtomic(file, obj.toString(2))
     } catch (e: Throwable) {
-        note("JSON 落盘异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
+        note(file.parentFile ?: return false, "JSON 落盘异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
         false
     }
 
-    private fun note(detail: String) {
+    /**
+     * 记一条「落盘失败」—— 与被写的文件同目录，读方从同一个树里读。
+     *
+     * writeAtomic / writeJson 的签名里没有 Context（它们是纯文件操作），
+     * 所以不能走 SystemDirs.log(ctx)；此前的 note() 直接用了不存在的 ctx。
+     */
+    private fun note(dir: File, detail: String) {
         runCatching {
-            val f = File(SystemDirs.log(ctx), FAILED_FILE)
-            f.parentFile?.mkdirs()
+            val f = File(dir, FAILED_FILE)
+            if (!dir.isDirectory) dir.mkdirs()
             val prev = if (f.isFile) f.readText() else ""
             val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }
-            val keep = lines.takeLast(50)
-            writeAtomic(f, keep.joinToString("\n") + "\n")
+            // 直接追加，不走 writeAtomic —— 它失败时又会调 note，那就无限递归了。
+            // 这份失败记录本身不重要，丢了就丢了。
+            FileOutputStream(f, true).use { it.write((lines.takeLast(50).joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)) }
         }
     }
 
