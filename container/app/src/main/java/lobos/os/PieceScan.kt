@@ -72,6 +72,21 @@ object PieceScan {
     ) {
         /** 一个文件：相对件目录的路径 + sha256 */
         data class FileRec(val path: String, val sha256: String)
+
+        /**
+         * 是不是**必需**的件（缺了系统起不来）—— 照 deb-control(5) 的 Essential: yes/no。
+         *
+         * 事实来源只有一个：随件落地的 component-meta.json 里的 essential 字段
+         * （由 scripts/recipes/gen-component-meta.js 从 component-verify.json 的
+         * required 派生写进去）。所以这里是**读出来**，不是另存一份 ——
+         * 另存就多了一个可能与 meta 不一致的副本。
+         *
+         * 此前 PieceProvisioner 直接写 exe.required，而 Found 没有这个字段，
+         * 编译报「Unresolved reference (receiver of type Found)」。加这个派生属性，
+         * 那 4 处（allRequiredReady / failedRequired / toJson / 那行日志 tag）
+         * 就与事实源一致了。
+         */
+        val required: Boolean get() = meta?.optBoolean("essential", false) ?: false
     }
      * 若目录里两者都有，以 `bin/` 为准（它是全局入口，`$PREFIX/bin` 在 PATH 里）。
      */

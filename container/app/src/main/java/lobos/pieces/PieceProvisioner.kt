@@ -88,8 +88,8 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     o.put("status", "missing_dependency")
                     o.put("missingDep", st.dep)
                     o.put("libListing", st.libListing)
-                    o.put("hint", "依赖必须与本体同目录，且本体要自带含 \$ORIGIN 的 DT_RUNPATH：" +
-                        "依赖必须与本体同目录，且本体要自带含 \\$ORIGIN 的 DT_RUNPATH —— 那样跟着文件走，不依赖任何环境变量")
+                    o.put("hint", "依赖必须与本体同目录，且本体要自带含 \$ORIGIN 的 DT_RUNPATH" +
+                        " —— 那样跟着文件走，不依赖任何环境变量")
                 }
                 is AssetStatus.NotExecutable -> {
                     o.put("status", "not_executable")
@@ -102,8 +102,7 @@ data class PrepareReport(val entries: List<Pair<lobos.os.PieceScan.Found, AssetS
                     o.put("status", "mismatched")
                     o.put("path", st.path)
                     o.put("mismatched", JSONArray(st.mismatched))
-                    o.put("hint", "登记的文件与磁盘上的不符（dpkg -V：comparing the files installed
-                        with the files metadata stored in the database）—— 重新铺一次即可修复")
+                    o.put("hint", "登记的文件与磁盘上的不符（dpkg -V：comparing the files installed with the files metadata stored in the database）—— 重新铺一次即可修复")
                 }
                 is AssetStatus.Mismatched ->
                 "$tag ${st.exe.path} —— ✗ 与登记不符：${st.mismatched.joinToString(", ")}"
