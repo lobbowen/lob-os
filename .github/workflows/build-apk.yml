@@ -61,7 +61,7 @@ jobs:
       #
       # 这一步只读，不改任何东西 —— 它要保证「发布轮往下走之前一定不会白跑」。
       - name: 发布轮前置校验（tag / 密钥 / 令牌 / 版本闸门）
-        if: env.RELEASE_ROUND == "true"
+        if: ${{ env.RELEASE_ROUND == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
         run: |
