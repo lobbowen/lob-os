@@ -1,6 +1,7 @@
 package lobos.os
 
 import android.content.Context
+import lobos.log.Journal
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -29,7 +30,10 @@ data class ProgramStatus(
         put("version", version ?: JSONObject.NULL)
         put("role", role)
         put("desired", desired.name)
-        put("state", state.name)
+        // systemctl list-units 的三列，不是一个自造的 state
+        put("load", load.name)
+        put("active", active.name)
+        put("sub", sub.name)
         put("supervised", supervised)
         put("detail", detail)
         put("startedAtMs", startedAtMs)
@@ -54,9 +58,6 @@ object ProgramStatusHub {
     private var startedAt: Map<String, Long> = emptyMap()
 
     @Volatile
-    private var startRequested: Set<String> = emptySet()
-
-    @Volatile
     /** 上一次的三列（只为记变化，不作为状态的来源） */
     private var lastState: Map<String, Triple<UnitState.Load, UnitState.Active, UnitState.Sub>> =
         emptyMap()
@@ -79,7 +80,6 @@ object ProgramStatusHub {
         restarts = restarts - id
         quarantined = quarantined - id
         startedAt = startedAt - id
-        startRequested = startRequested - id
         lastState = lastState - id
     }
 
@@ -88,7 +88,6 @@ object ProgramStatusHub {
         restarts = emptyMap()
         quarantined = emptySet()
         startedAt = emptyMap()
-        startRequested = emptySet()
         lastState = emptyMap()
     }
 
@@ -132,8 +131,12 @@ object ProgramStatusHub {
         val active = UnitState.activeOf(
             entry = unit,
             processAlive = running,
-            startRequested = startRequested.contains(id),
-            stopRequested = stopRequested.contains(id),
+            // 「请求过起/停」不另存一份内存集合 —— 就是注册表里那条 desired。
+            // 此前这里读 startRequested/stopRequested 两个 Set：stopRequested
+            // 从未声明，startRequested 只有 forget/clear 会删、没有任何写入点，
+            // 于是「想跑但没跑起来」与「没想跑」判成同一种。
+            startRequested = desired == Desired.RUNNING,
+            stopRequested = desired == Desired.STOPPED,
         )
         val sub = UnitState.subOf(unit, running, healthy)
         val prev = lastState[id]
@@ -155,7 +158,9 @@ object ProgramStatusHub {
             version = spec?.version ?: entry?.version,
             role = spec?.role ?: entry?.role ?: "app",
             desired = desired,
-            state = state,
+            load = load,
+            active = active,
+            sub = sub,
             // 「要不要被监管」= 想跑 且 现在没在跑到该跑的态
             supervised = desired == Desired.RUNNING &&
                 active != UnitState.Active.FAILED,
