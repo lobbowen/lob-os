@@ -118,7 +118,7 @@ jobs:
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
         run: bash scripts/verify/verify-component-artifact.sh pkgconf
       - name: 打包 + sha256
-        run: bash scripts/recipes/package-component.sh pkg-config
+        run: bash scripts/recipes/package-component.sh pkgconf
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
         uses: actions/cache/save@v4
