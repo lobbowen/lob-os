@@ -64,6 +64,15 @@ jobs:
         if: ${{ env.RELEASE_ROUND == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
+          # ★ 四个签名 secret 必须**显式声明**在 env 里 ——
+          #   GitHub 只把出现在 env/secrets 上下文里的值注入 job，
+          #   step 的 run 块里 ${!v} 直接读环境变量，读不到没声明的 secret。
+          #   上一版只声明了 GH_TOKEN，于是这四个在 run 块里恒为空，
+          #   表现为「secret 明明存在（API 查得到）却报缺少」。
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           # jq 在本 workflow 里第一次被用到就是这里（此前那 7 处都在发布轮末尾，
