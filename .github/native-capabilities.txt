@@ -1,9 +1,16 @@
 # 小体积原生能力件清单 —— 由构建 / 打包审计脚本与测试共同读取
 #
-# ⚠ 本文件由 scripts/gen-native-assets.js 生成，**请勿手改**。
-#   来源：container/app/src/main/java/lobos/native/NativeAssetRegistry.kt
-#        的 CAPABILITY（外加注册表外的 node-pty，见生成器内的说明）。
-#   CI 会运行生成器并 `git diff --exit-code` 校验。
+# ⚠ 原由 scripts/registry/gen-native-assets.js 生成，**那份生成器已删** ——
+#   它指向的 NativeAssetRegistry.kt 早已不存在，于是这个文件事实上靠手维护，
+#   而漂了：jq 漏了（build-piece-jq.sh 真在产它，缺了不会被查出来）、
+#   node-pty 留着但两张表都没有、也没有任何脚本产它。已一并改正。
+#
+# 现在**手动维护**，改这份文件时必须与这三处对齐：
+#   · scripts/toolchain/ensure-native-capabilities.sh 的 build_each 列表（谁在编）
+#   · scripts/component-verify.json 的 criteria（每件的 entry/形式/版本）
+#   · scripts/component-sources.json 的 sources（上游版本与 sha256）
+# 档位只影响「缺件时判红还是降级」（构建期严重程度），
+# 与 component-verify.json 的 required（运行上要不要它，= deb-control 的 Essential）是两件事。
 #
 # 格式：<档位> <libName> <id>；空行与 # 开头的行忽略。
 # 档位 = NativeExecutable.buildTier：
@@ -24,5 +31,6 @@ upstream libz.so zlib
 upstream libssl.so openssl
 upstream libcrypto.so crypto
 upstream libcurl.so curl
+upstream liblobosjq.so jq
 # --- soft ---
-soft liblobospty.so node-pty
+
