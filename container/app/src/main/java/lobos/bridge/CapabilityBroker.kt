@@ -814,7 +814,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             if (origin.isBlank() || !origin.startsWith("https://")) {
                 throw BridgeError(CODE_INVALID_PARAM, "origin 必须是非空 https:// URL（镜像源只走 TLS）")
             }
-            RegistryStore.setOrigin(this@CapabilityBroker, origin, null)
+            RegistryStore.setOrigin(this@CapabilityBroker, origin)
         },
         "os.registry.refresh" to MethodDef(listOf("base"), true) { _, _programId ->
             val cur = RegistryStore.info(this@CapabilityBroker).optString("origin", "")
@@ -1010,9 +1010,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "os.provisioning.get" to MethodDef(listOf("base"), false) { _, _programId ->
+            // 铺位快照 = 此刻 jniLibs 里每件的就位情况。
+            // prepare() 是只读扫描：不铺、不改，只报告 —— 桥的查询语义要的就是这个。
+            val report = runCatching { PieceProvisioner.prepare(this@CapabilityBroker) }.getOrNull()
             JSONObject().apply {
-                put("present", snap != null)
-                put("snapshot", snap ?: JSONObject.NULL)
+                put("present", report != null)
+                put("snapshot", report?.toJson() ?: JSONObject.NULL)
             }
         },
         "capability.invoke" to MethodDef(listOf("base"), true) { p, programId ->

@@ -2,6 +2,7 @@ package lobos.ota
 
 import android.content.Context
 import java.io.File
+import lobos.RuntimeDiagnostics
 import lobos.log.Journal
 import lobos.os.CatalogClient
 import lobos.os.Desired
@@ -11,6 +12,7 @@ import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.os.ProgramRegistry
 import lobos.os.Restart
+import lobos.os.SystemDirs
 import lobos.os.UnitEntry
 import lobos.runtime.ExecBits
 import lobos.runtime.PrefixProvisioner
@@ -18,6 +20,16 @@ import lobos.runtime.SupplyProvisioner
 import org.json.JSONObject
 
 object ProgramInstallPipeline {
+
+    /**
+     * DT_RUNPATH 里的链接期占位符 —— 字面量，不是 Kotlin 插值。
+     *
+     * 写 "$LIB" 会被当成插值表达式去解析某个叫 LIB 的变量（仓里不存在），
+     * 编译不过；就算能编过，运行时也拿不到这个字面串。
+     * \$ORIGIN 同理，仓里统一写成 "\$ORIGIN"。
+     */
+    private const val LIB_TOKEN = "\$LIB"
+    private const val PLATFORM_TOKEN = "\$PLATFORM"
 
     /**
      * 装的是「程序」还是「件」。
@@ -230,7 +242,7 @@ object ProgramInstallPipeline {
                 "组件已落位但注册表写入失败：" + upserted.exceptionOrNull()?.message,
             )
         }
-        val pd = lobos.ProgramDir(context, spec.programId, dir)
+        val pd = ProgramDir(context, spec.programId, dir)
         runCatching { pd.setCurrentVersion(safeVer) }
         if (pd.currentVersion() != safeVer) {
             return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
@@ -403,10 +415,10 @@ object ProgramInstallPipeline {
         for (seg in runPath.split(':')) {
             val s = seg.trim()
             if (s.isEmpty()) continue
-            if (s.contains("$LIB") || s.contains("$PLATFORM")) continue
+            if (s.contains(LIB_TOKEN) || s.contains(PLATFORM_TOKEN)) continue
             val dir = when {
                 s == "\$ORIGIN" -> originDir
-            s.startsWith("\$ORIGIN/") -> File(originDir, s.removePrefix("\$ORIGIN").trimStart("/"))
+                s.startsWith("\$ORIGIN/") -> File(originDir, s.removePrefix("\$ORIGIN").trimStart("/"))
                 s.startsWith("/") -> File(s)
                 else -> File(originDir, s)
             }

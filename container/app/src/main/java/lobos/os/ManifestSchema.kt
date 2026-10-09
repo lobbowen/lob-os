@@ -181,7 +181,7 @@ object ManifestSchema {
 
     fun toJson(o: JSONObject): JSONObject = JSONObject().apply {
         put("name", SOURCE_NAME)
-        put("installedAs", lobos.ProgramDir.MANIFEST_NAME)
+        put("installedAs", ProgramDir.MANIFEST_NAME)
         put("schema", SCHEMA)
         put("valid", validate(o).isEmpty())
         put("errors", JSONArray(validate(o)))

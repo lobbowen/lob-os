@@ -63,6 +63,15 @@ object ProgramManager {
         }
     }
 
+    /**
+     * 程序（或件）的落位目录句柄。
+     *
+     * CapabilityBroker 与 LobosBridge 都要它，此前两处各自转发到一个
+     * 不存在的 ProgramManager.dirOf。放这里是因为「目录从哪来」是
+     * 注册表的职责 —— 与 stateDirOf 同源，不是桥的职责。
+     */
+    fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id)
+
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
