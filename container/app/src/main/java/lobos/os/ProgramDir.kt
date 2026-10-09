@@ -5,6 +5,8 @@ import lobos.os.Desired
 import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramRegistry
+import lobos.ota.ProgramArchive
+import lobos.ota.ProgramOtaStateStore
 import org.json.JSONObject
 
 class ProgramDir(
