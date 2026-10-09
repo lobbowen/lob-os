@@ -10,6 +10,10 @@ on:
       - 'scripts/recipes/build-*.sh'
       - 'scripts/recipes/piece-env.sh'
       - 'scripts/verify/verify-runtime-elf.sh'
+      # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
+      # 改了判据必须触发重建，否则改完看不到效果
+      - 'scripts/verify/check-elf-deps.sh'
+      - 'scripts/verify/verify-component-artifact.sh'
       - 'scripts/verify/verify-apk-native.sh'
       - 'scripts/verify/verify-apk-signing.sh'
       # verify-apk-signing.sh 调它来定位 apksigner（多命中时按 sha256 摘要判定取哪个）
