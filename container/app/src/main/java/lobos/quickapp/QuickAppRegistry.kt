@@ -35,15 +35,11 @@ object QuickAppRegistry {
         }
         val ui = uiOf(ctx, id)
         val frontend = ProgramManager.stateDirOf(ctx, id).let { File(it, "quickapp") }
+        // 注册表只存端口与健康端点。名字/图标/包名/onUiClosed 是 manifest 的 ui 段
+        // 派生出来的，抄一份进来就成了第二个可能与 manifest 不一致的副本 ——
+        // 要读就现读（见 uiOf / listed）。
         ProgramIndex.mutate(ctx, id) { e ->
-            e.edited(
-                uiPackage = ui.pkg,
-                uiName = ui.name,
-                uiIcon = ui.icon,
-                onUiClosed = ui.onClosed,
-                httpPort = port,
-                httpHealth = ui.health,
-            )
+            e.edited(httpPort = port, httpHealth = ui.health)
         }
         android.util.Log.i(
             TAG,
@@ -53,7 +49,7 @@ object QuickAppRegistry {
     }
 
     fun listed(ctx: Context): List<UnitEntry> =
-        ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.PROGRAM && it.uiPackage.isNotBlank() }
+        ProgramIndex.all(ctx).filter { it.level == lobos.os.Level.PROGRAM && isQuickApp(ctx, it.id) }
 
     private fun uiOf(ctx: Context, id: String): Ui {
         val root = ProgramManager.stateDirOf(ctx, id)

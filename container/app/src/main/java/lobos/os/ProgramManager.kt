@@ -73,6 +73,16 @@ object ProgramManager {
      */
     fun dirOf(ctx: Context, id: String): ProgramDir = ProgramDir(ctx, id)
 
+    /**
+     * 当前版本 —— CURRENT 指针指到的那一版，没有则 null。
+     *
+     * CatalogClient / InstalledRuntime / QuickAppBinder / LobosBridge /
+     * QuickAppRegistry 五处都要「这个 id 现在装的是哪一版」，此前各自转发到一个
+     * 不存在的 ProgramManager.currentVersion。放这里，与 dirOf 同源。
+     */
+    fun currentVersion(ctx: Context, id: String): String? =
+        runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
+
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
@@ -200,7 +210,7 @@ fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.
         cur.mkdirs()
         for (e in enabled) {
             if (ProgramIndex.isPiece(e)) continue
-            val version = runCatching { dirOf(ctx, e.id).currentVersion() }.getOrNull() ?: continue
+            val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue
             val link = File(cur, e.id)
