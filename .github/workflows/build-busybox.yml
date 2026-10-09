@@ -50,10 +50,11 @@ jobs:
         id: uwkey
         run: |
           set -euo pipefail
-          echo "tag=$(bash scripts/toolchain/cache-key.sh tag busybox)" >> "$GITHUB_OUTPUT"
-          echo "asset=::error title=该件不在这条链上::busybox 由 build-apk.yml 编（APK 内置 + OTA 补丁），
-::error::不在 build-component 矩阵里 —— 要给它算预制品 key 得先在 build-apk 那边接上。" >> "$GITHUB_OUTPUT"
-
+          # 三件（bash / ripgrep / busybox）同属 base 筐，都在
+          # list-bucket-components.js 的清单里；build-apk.yml 也现场编它们。
+          # asset 名由 cache-key.sh 算（依赖版本 + 补丁摘要 + NDK + API），
+          # 与「已固化就复用」那一步取的是同一个 —— 两处必须同源。
+          echo "asset=$(bash scripts/toolchain/cache-key.sh asset busybox)" >> "$GITHUB_OUTPUT"
       - name: 已固化就复用（不重编）
         id: reuse
         env:
