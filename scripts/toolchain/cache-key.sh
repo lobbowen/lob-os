@@ -13,7 +13,6 @@ for a in "$@"; do
     key) KIND="key" ;;
     asset)      KIND="asset" ;;
     deps)       KIND="deps" ;;
-    source)     KIND="source" ;;
     *)
       if [ -n "$TOOL" ]; then
         echo "只能给一个件名（收到 $a 与 $TOOL）" >&2
@@ -25,7 +24,7 @@ for a in "$@"; do
 done
 [ -n "$TOOL" ] || {
   echo "用法: $0 <子命令> <件名>" >&2
-  echo "  子命令: key · tag · deps · source · asset" >&2
+  echo "  子命令: key · tag · deps · asset" >&2
   exit 2
 }
 TABLE="$ROOT_DIR/scripts/component-sources.json"
@@ -50,32 +49,6 @@ deps_for() {
       esac
     }
 
-    # 要下哪个源码包 —— 构建期的事，与「依赖哪些件」是两回事
-    source_for() {
-      case "$1" in
-      bash)         echo "bash" ;;
-      ripgrep)echo "ripgrep" ;;
-      busybox)      echo "busybox" ;;
-      jq)           echo "jq" ;;
-      curl)         echo "curl" ;;
-      zlib)         echo "zlib" ;;
-      openssl)      echo "openssl" ;;
-      crypto)       echo "openssl" ;;
-      flock|posix|ptyprobe|ptysession) echo "" ;;   # 自写 C，无上游
-      node)         echo "node" ;;
-      python)       echo "python" ;;
-      git)          echo "git" ;;
-      sqlite)       echo "sqlite" ;;
-      npm)          echo "npm" ;;
-      pnpm)         echo "pnpm" ;;
-      llvm)         echo "llvm" ;;
-      make)         echo "make" ;;
-      cmake)        echo "cmake" ;;
-      pkgconf)      echo "pkgconf" ;;
-      libcxx|sysroot) echo "" ;;                    # 不是件，从 NDK 取
-      *) die ;;
-      esac
-    }
 
 # 四个筐：
 #   base 基础环境件 —— 系统运转离不开的
