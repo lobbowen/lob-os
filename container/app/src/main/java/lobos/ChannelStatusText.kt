@@ -1,6 +1,7 @@
 package lobos
 
 import lobos.capability.ChannelState
+import lobos.capability.ChannelStatus
 
 /**
  * 通道不通时界面该显示什么 —— **从状态派生**，不是一张写死的常量表。

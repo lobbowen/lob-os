@@ -7,6 +7,7 @@ import lobos.os.Desired
 import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
+import lobos.pieces.CompatSemantics
 
 object BootReconciler {
 

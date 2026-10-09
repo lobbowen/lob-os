@@ -1,8 +1,10 @@
 package lobos.ota
 
 import android.content.Context
-import lobos.os.ProgramDir
 import java.io.File
+import lobos.os.ProgramDir
+import lobos.os.ProgramPackageVerifier
+import lobos.quickapp.QuickAppBinder
 import org.json.JSONObject
 
 object ProgramInstaller {

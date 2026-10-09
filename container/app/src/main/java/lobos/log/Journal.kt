@@ -5,6 +5,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import lobos.os.SystemDirs
 import org.json.JSONObject
 
 object Journal {

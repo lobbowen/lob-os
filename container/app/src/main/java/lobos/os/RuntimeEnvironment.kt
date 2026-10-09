@@ -1,11 +1,12 @@
 package lobos.os
 
 import android.content.Context
+import java.io.File
 import lobos.RuntimeDiagnostics
+import lobos.pieces.DriverRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.runtime.InstalledRuntime
 import lobos.runtime.PrefixProvisioner
-import java.io.File
 
 object RuntimeEnvironment {
 

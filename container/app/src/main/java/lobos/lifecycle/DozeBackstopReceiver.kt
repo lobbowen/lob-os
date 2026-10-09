@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import lobos.RuntimeDiagnostics
 import lobos.os.DozeBackstop
+import lobos.os.ResidencyStatus
 
 class DozeBackstopReceiver : BroadcastReceiver() {
 

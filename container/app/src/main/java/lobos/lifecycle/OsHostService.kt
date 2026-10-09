@@ -15,14 +15,34 @@ import lobos.OsApplication
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
-import lobos.capability.ScreenCaptureController
+import lobos.capability.AdbChannelComponent
+import lobos.capability.AttemptOutcome
+import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
+import lobos.capability.CapabilityTier
+import lobos.capability.DeviceOwnerState
+import lobos.capability.Evidence
+import lobos.capability.ScreenCaptureController
+import lobos.log.Journal
+import lobos.log.KillAudit
+import lobos.os.DozeBackstop
 import lobos.os.Level
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
+import lobos.os.ProcessLedger
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
+import lobos.os.ProgramNotificationHub
+import lobos.os.ProgramRegistry
+import lobos.os.ProgramStatusHub
+import lobos.os.ResidencyStatus
+import lobos.os.RuntimeEnvironment
+import lobos.permissions.PermissionLedger
+import lobos.pieces.DriverRegistry
+import lobos.runtime.SupervisorPool
+import lobos.setup.OnboardingFlow
+import lobos.ui.PanelActivity
 import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {

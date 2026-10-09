@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import lobos.lifecycle.DozeBackstopReceiver
+import lobos.lifecycle.ResidencyPolicy
 
 object DozeBackstop {
 

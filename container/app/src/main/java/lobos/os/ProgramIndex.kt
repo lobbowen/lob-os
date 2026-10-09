@@ -2,6 +2,7 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
+import lobos.runtime.SupervisorPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -168,7 +169,14 @@ object ProgramIndex {
      * —— 两种表示混着，编译报「actual type is Level, but Boolean was expected」。
      */
     fun empty(id: String, level: Level): UnitEntry =
-        UnitEntry(id = id, role = if (level == Level.PIECE) "" else "app")
+        UnitEntry(
+            id = id,
+            version = "",        // 还没装 —— version 由落位扫描填
+            stateDir = "",        // 同上
+            assetEntry = "",      // 同上
+            sha256 = "",          // 同上
+            role = if (level == Level.PIECE) "" else "app",
+        )
 
     /**
      * 编码 —— 一种 unit 一种形状。

@@ -17,30 +17,34 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import lobos.BuildConfig
 import lobos.ChannelStatusText
 import lobos.MainActivity
 import lobos.capability.AcquireKind
 import lobos.capability.Acquisition
+import lobos.capability.AdbChannelComponent
 import lobos.capability.AttemptStore
 import lobos.capability.BridgeTokens
+import lobos.capability.CapStatus
+import lobos.capability.CapVerdict
 import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
 import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.CapabilityNavigation
-import lobos.capability.CapStatus
-import lobos.capability.CapVerdict
 import lobos.capability.Evidence
-import lobos.setup.OnboardingFlow
 import lobos.capability.PairingGate
+import lobos.lifecycle.ResidencyAudit
+import lobos.log.Journal
+import lobos.permissions.PermissionLedger
+import lobos.setup.OnboardingFlow
 import lobos.setup.PipelineProjection
 import lobos.setup.PipelineRefresh
 import lobos.setup.StageStatus
 import lobos.setup.StepStatus
-import lobos.lifecycle.ResidencyAudit
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import lobos.ui.PanelActivity
 
 class SetupActivity : AppCompatActivity() {
 

@@ -13,16 +13,19 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import lobos.capability.ScreenCaptureController
+import lobos.capability.AdbChannelComponent
 import lobos.capability.CapabilityAcquisitionRunner
 import lobos.capability.CapabilityCatalog
 import lobos.capability.ChannelState
+import lobos.capability.ChannelStatus
 import lobos.capability.Evidence
-import lobos.ota.ProgramOtaSelfCheck
+import lobos.capability.ScreenCaptureController
 import lobos.lifecycle.OsHostService
-import lobos.runtime.InstanceHost
+import lobos.ota.ProgramOtaSelfCheck
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter
+import lobos.runtime.InstanceHost
+import lobos.ui.PanelActivity
 
 class MainActivity : AppCompatActivity() {
 

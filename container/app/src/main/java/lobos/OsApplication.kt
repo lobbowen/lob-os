@@ -8,8 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-
 import lobos.lifecycle.OsHostService
+import lobos.os.CatalogClient
+import lobos.quickapp.Foreground
+import lobos.quickapp.QuickAppHost
 
 class OsApplication : Application() {
 

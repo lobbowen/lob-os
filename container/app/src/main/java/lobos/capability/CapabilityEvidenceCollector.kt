@@ -1,9 +1,11 @@
 package lobos.capability
 
 import android.content.Context
+import lobos.os.ResidencyStatus
 import lobos.ota.ProgramOtaSelfCheck
 import lobos.permissions.PermissionCatalog
 import lobos.permissions.PermissionCenter
+import lobos.permissions.PermissionLedger
 
 object CapabilityEvidenceCollector {
 

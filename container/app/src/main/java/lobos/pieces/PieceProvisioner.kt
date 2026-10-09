@@ -1,12 +1,15 @@
 package lobos.pieces
 
-import lobos.runtime.ProcessSupervisor
 import android.content.Context
 import android.util.Log
-import lobos.RuntimeDiagnostics
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipFile
+import lobos.RuntimeDiagnostics
+import lobos.os.ElfFacts
+import lobos.os.PieceScan
+import lobos.os.SystemDirs
+import lobos.runtime.ProcessSupervisor
 import org.json.JSONArray
 import org.json.JSONObject
 

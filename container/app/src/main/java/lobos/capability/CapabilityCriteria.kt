@@ -2,9 +2,10 @@ package lobos.capability
 
 import android.content.Context
 import android.provider.Settings
+import java.io.File
 import lobos.capability.OsNotificationListenerService
 import lobos.lifecycle.OsAccessibilityService
-import java.io.File
+import lobos.os.SystemDirs
 
 object CapabilityCriteria {
 

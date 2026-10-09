@@ -4,8 +4,11 @@ import android.util.Log
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import lobos.log.Journal
 import lobos.os.PowerLocks
 import lobos.os.ProgramDir
+import lobos.os.StateFiles
+import lobos.os.SystemDirs
 import org.json.JSONObject
 
 object ProgramOtaUpdater {

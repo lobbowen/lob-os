@@ -1,5 +1,6 @@
 package lobos.ota
 import java.io.File
+import lobos.os.StateFiles
 
 class ProgramOtaStateStore(
     private val root: File,

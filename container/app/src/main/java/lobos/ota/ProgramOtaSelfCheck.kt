@@ -1,11 +1,13 @@
 package lobos.ota
 
 import android.content.Context
-import lobos.os.ProgramDir
-import lobos.RuntimeDiagnostics
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import lobos.RuntimeDiagnostics
+import lobos.os.ProgramDir
+import lobos.os.ProgramRegistry
+import lobos.os.SystemDirs
 import org.json.JSONObject
 
 object ProgramOtaSelfCheck {

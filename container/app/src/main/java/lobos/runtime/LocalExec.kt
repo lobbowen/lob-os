@@ -2,6 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import java.io.File
+import lobos.capability.AdbClientRunner
 
 object LocalExec {
 

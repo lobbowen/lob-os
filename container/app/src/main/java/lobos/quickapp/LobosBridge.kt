@@ -2,6 +2,8 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
+import lobos.bridge.ApiSpec
+import lobos.bridge.CapabilityBroker
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager

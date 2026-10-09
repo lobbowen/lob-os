@@ -2,6 +2,10 @@ package lobos.runtime
 
 import android.content.Context
 import java.io.File
+import lobos.os.CatalogClient
+import lobos.os.PieceScan
+import lobos.os.ProgramIndex
+import lobos.pieces.PieceProvisioner
 
 object InstalledRuntime {
 

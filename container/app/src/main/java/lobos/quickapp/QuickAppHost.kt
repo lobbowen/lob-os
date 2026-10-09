@@ -3,11 +3,12 @@ package lobos.quickapp
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import java.io.File
 import com.didi.dimina.Dimina
 import com.didi.dimina.bean.MiniProgram
-import java.io.File
 import lobos.os.PortBroker
 import lobos.os.ProgramIndex
+import lobos.os.ProgramManager
 
 object QuickAppHost {
 

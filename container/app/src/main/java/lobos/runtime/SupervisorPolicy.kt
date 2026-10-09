@@ -1,6 +1,7 @@
 package lobos.runtime
 
 import lobos.os.Backoff
+import lobos.os.ProgramIndex
 
 object SupervisorPolicy {
 

@@ -2,10 +2,11 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
-import lobos.os.UnitEntry
+import lobos.os.Level
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
+import lobos.os.UnitEntry
 import org.json.JSONObject
 
 object QuickAppRegistry {

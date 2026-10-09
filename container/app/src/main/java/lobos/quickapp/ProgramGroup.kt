@@ -2,6 +2,12 @@ package lobos.quickapp
 
 import android.content.Context
 import java.io.File
+import lobos.log.Journal
+import lobos.os.Desired
+import lobos.os.ManifestSchema
+import lobos.os.ProcessLedger
+import lobos.os.ProgramIndex
+import lobos.os.ProgramManager
 
 /**
  * 前后端成组 —— **分体形态下替代 systemd cgroup 的那一层**。

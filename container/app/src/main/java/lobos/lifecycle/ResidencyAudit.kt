@@ -1,13 +1,16 @@
 package lobos.lifecycle
 
 import android.content.Context
-import lobos.log.KillAudit
 import android.os.SystemClock
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import lobos.log.Journal
+import lobos.log.KillAudit
+import lobos.os.StateFiles
+import lobos.os.SystemDirs
 
 object ResidencyAudit {
 

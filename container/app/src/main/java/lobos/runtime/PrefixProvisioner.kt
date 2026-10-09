@@ -3,7 +3,12 @@ package lobos.runtime
 import android.content.Context
 import android.system.Os
 import java.io.File
+import lobos.os.Level
+import lobos.os.PieceScan
+import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
+import lobos.os.StateFiles
+import lobos.os.SystemDirs
 
 object PrefixProvisioner {
 

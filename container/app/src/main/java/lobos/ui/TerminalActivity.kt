@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import lobos.RuntimeDiagnostics
+import lobos.os.PieceScan
 import lobos.runtime.PtySession
 
 class TerminalActivity : AppCompatActivity() {

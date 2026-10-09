@@ -2,8 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import android.system.Os
-import lobos.RuntimeDiagnostics
-import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.net.HttpURLConnection
@@ -13,6 +11,9 @@ import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.zip.ZipInputStream
+import lobos.RuntimeDiagnostics
+import lobos.os.SystemDirs
+import org.json.JSONObject
 
 object SupplyProvisioner {
 

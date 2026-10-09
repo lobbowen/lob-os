@@ -4,11 +4,13 @@ import android.app.Service
 import android.content.Intent
 import android.util.Log
 import lobos.RuntimeDiagnostics
-import lobos.os.Desired
+import lobos.capability.AdbChannelComponent
 import lobos.log.Journal
+import lobos.os.Desired
 import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramRegistry
+import lobos.os.UnitJobs
 
 class SupervisorPool(private val host: Service) {
 

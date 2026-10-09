@@ -20,10 +20,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import lobos.bridge.CapabilityBroker
+import lobos.log.Exporter
 import lobos.os.PortBroker
+import lobos.os.ProgramIndex
+import lobos.os.ProgramManager
+import lobos.os.TaskRegistry
+import lobos.os.UnitEntry
 import lobos.quickapp.DesktopIcons
 import lobos.quickapp.QuickAppHost
 import lobos.quickapp.QuickAppRegistry
+import lobos.runtime.PieceUpdater
+import lobos.runtime.PtySession
 
 class PanelActivity : AppCompatActivity() {
 
