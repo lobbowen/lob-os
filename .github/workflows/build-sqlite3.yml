@@ -80,9 +80,9 @@ jobs:
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |
-          echo "key=$(bash scripts/toolchain/cache-key.sh sqlite3)" >> "$GITHUB_OUTPUT"
-          echo "tag=$(bash scripts/toolchain/cache-key.sh tag sqlite3)" >> "$GITHUB_OUTPUT"
-          echo "asset=$(bash scripts/toolchain/cache-key.sh asset sqlite3)" >> "$GITHUB_OUTPUT"
+          echo "key=$(bash scripts/toolchain/cache-key.sh sqlite)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/toolchain/cache-key.sh tag sqlite)" >> "$GITHUB_OUTPUT"
+          echo "asset=$(bash scripts/toolchain/cache-key.sh asset sqlite)" >> "$GITHUB_OUTPUT"
       - name: 已发布就复用（不重编）
         id: reuse
         env:

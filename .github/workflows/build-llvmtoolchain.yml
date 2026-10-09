@@ -170,8 +170,8 @@ jobs:
         run: |
           set -euo pipefail
           [ -d dist/llvmtoolchain ] || { echo "::warning title=没产出 llvmtoolchain::跳过发布"; exit 0; }
-          TAG="$(bash scripts/toolchain/cache-key.sh tag llvmtoolchain)"
-          ASSET="$(bash scripts/toolchain/cache-key.sh asset llvmtoolchain)"
+          TAG="$(bash scripts/toolchain/cache-key.sh tag llvm)"
+          ASSET="$(bash scripts/toolchain/cache-key.sh asset llvm)"
           PW="work/pw-llvmtoolchain"
           rm -rf "$PW" && mkdir -p "$PW"
           tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .

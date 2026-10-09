@@ -91,8 +91,8 @@ jobs:
         id: uwkey
         run: |
           echo "key=$(bash scripts/toolchain/cache-key.sh python)" >> "$GITHUB_OUTPUT"
-          echo "tag=$(bash scripts/toolchain/cache-key.sh tag python3)" >> "$GITHUB_OUTPUT"
-          echo "asset=$(bash scripts/toolchain/cache-key.sh asset python3)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(bash scripts/toolchain/cache-key.sh tag python)" >> "$GITHUB_OUTPUT"
+          echo "asset=$(bash scripts/toolchain/cache-key.sh asset python)" >> "$GITHUB_OUTPUT"
       - name: 已发布就复用（不重编）
         id: reuse
         env:
