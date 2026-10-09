@@ -25,8 +25,6 @@ fi
 [ -f work/git-src/Makefile ] || { echo "::error title=源码树异常::没有 Makefile"; exit 1; }
 echo "[git] 源码树就位"
 
-DEPS="$ROOT_DIR/work/deps"
-mkdir -p "$DEPS"
 TC_DIR=$(dirname "$CC")
 ANDROID_API=35
 if [ ! -x "$TC_DIR/aarch64-linux-android$ANDROID_API-clang" ]; then
@@ -90,31 +88,38 @@ else
 fi
 export RANLIB="$TC_DIR/llvm-ranlib"
 
-# ── 构建前自查：依赖目录还在不在 ──────────────────────────────
+# ── 依赖从哪来：base 筐三个预装件的构建输出 ──────────────────
 # curl / openssl / zlib 早已不再编到 work/deps（那个一次编三份静态库的
-# build-shared-deps.sh 已删），它们现在是 base 筐的预装件，落到 jniLibs。
-# 但 build-git.yml **不跑** ensure-native-capabilities.sh，所以编 git 那一刻
-# jniLibs 里还没有 libcurl.so/libssl.so/libz.so ——
-# 下面 MAKE_ARGS 里那些 -L work/deps 指向的是**不存在的目录**。
+# build-shared-deps.sh 已删）。它们现在是独立的件，各自由自己的脚本编，
+# 构建输出留在 work/<件名>/out/{include,lib}/ —— 那正是 configure 想要的前缀形状
+# （build-piece-curl.sh 对 openssl/zlib 就是这么找的）。
 #
-# 先说清楚，别让它以「make 失败」的形式含糊报出来：
-DEPS_DIR="$ROOT_DIR/work/deps"
-if [ ! -d "$DEPS_DIR" ]; then
-  echo "::error title=依赖目录不存在::$DEPS_DIR 不存在 —— 编不出 curl/openssl/zlib 的那份。"
-  echo "         它们现在是 base 筐的预装件（见 component-verify.json），落位在 jniLibs。"
-  echo "         但 build-git.yml 不跑 ensure-native-capabilities.sh，编 git 时那份还没编。"
-  echo "         要么让本 workflow 先跑逐件编译，要么让 git 不用外部 curl（NO_CURL=1，"
-  echo "         git 官方支持的开关，走内联 HTTP）—— 选哪条要按 git 上游 Makefile 核实后定。"
-  exit 1
-fi
-MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$ROOT_DIR/work/deps OPENSSLDIR=$ROOT_DIR/work/deps uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
+# 这里链的是**共享库**，不是一个二进制里静态塞几份 .a —— git 只记
+# DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局落位那份找。
+# 这与脚本原有的设计意图一致（见上面那段注释），只是当时没跟上脚本的删除。
+ZLIB_PREFIX="$ROOT_DIR/work/zlib/out"
+OPENSSL_PREFIX="$ROOT_DIR/work/openssl/out"
+CURL_PREFIX="$ROOT_DIR/work/curl/out"
+for p in "$ZLIB_PREFIX" "$OPENSSL_PREFIX" "$CURL_PREFIX"; do
+  [ -d "$p/lib" ] || {
+    echo "::error title=依赖件没编出来::$p/lib 不存在 —— git 依赖 base 筐里的"
+    echo "         zlib / openssl / curl 三个件。要么让本 workflow 先跑"
+    echo "         ensure-native-capabilities.sh（build-apk.yml 就在跑它），"
+    echo "         要么 git 不带 https（NO_CURL=1）—— 但那条路与"
+    echo "         component-verify.json 的判据冲突（它要求 git ls-remote https 能用）。"
+    exit 1
+  }
+done
+echo "[git] 依赖三件就位：zlib / openssl / curl"
+
+MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
-if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$ROOT_DIR/work/deps/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$ROOT_DIR/work/deps/include" LDFLAGS="-L$ROOT_DIR/work/deps/lib" all; then
+if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then
   echo "::error title=make 失败::见上"
   exit 1
 fi
 echo "[git] make install"
-if ! make $MAKE_ARGS CURL_LIBCURL="-L$ROOT_DIR/work/deps/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$ROOT_DIR/work/deps/include" LDFLAGS="-L$ROOT_DIR/work/deps/lib" install; then
+if ! make $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" install; then
   echo "::error title=install 失败::见上"
   exit 1
 fi

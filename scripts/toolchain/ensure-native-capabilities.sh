@@ -21,6 +21,19 @@ set -uo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 ABI="${ABI:-arm64-v8a}"
 
+# 只编指定的几件（默认全量）。件名不带 .sh，可多次给：
+#   ensure-native-capabilities.sh --only=zlib --only=openssl --only=curl
+# build-git.yml 只要 git 的 DT_NEEDED 那三件；编齐 11 件既慢，
+# 又把无关件的失败带进来。
+ONLY=""
+for a in "$@"; do
+  case "$a" in
+    --only=*) ONLY="$ONLY ${a#--only=}" ;;
+    *) echo "::error title=认不得的参数::$a —— 只支持 --only=<件名>（可多次）"; exit 2 ;;
+  esac
+done
+ONLY="${ONLY# }"
+
 # 逐件编译 —— **一件一个脚本**，各自产 component-meta.json + 落到 usr/lib/<id>/<版本>/。
 #
 # 此前这里是 exec build-native-capabilities.sh：一个脚本编 11 件，
@@ -29,6 +42,22 @@ ABI="${ABI:-arm64-v8a}"
 # 现在按件走，与 ldconfig 扫目录一样，一件一件来。
 build_each() {
   local failed=0
+  if [ -n "$ONLY" ]; then
+    local n
+    for n in $ONLY; do
+      printf "::notice title=逐件::build-piece-%s.sh " "$n"
+      if bash "scripts/recipes/build-piece-$n.sh"; then
+        echo "ok"
+      else
+        echo "FAILED"
+        echo "[caps] ★ build-piece-$n.sh 失败"
+        failed=1
+      fi
+    done
+    [ "$failed" = 0 ] || { echo "::error title=有件编不出来::见上方各脚本的取证输出"; exit 1; }
+    echo "[caps] 指定件编译完成：$ONLY"
+    return 0
+  fi
   for s in \
       build-piece-flock.sh \
       build-piece-posix.sh \
@@ -59,5 +88,9 @@ build_each() {
   echo "[caps] 逐件编译完成"
 }
 
-echo "[caps] 逐件编译（11 个脚本，各产 component-meta.json 并落位）"
+if [ -n "$ONLY" ]; then
+  echo "[caps] 只编指定件：$ONLY"
+else
+  echo "[caps] 逐件编译（11 个脚本，各产 component-meta.json 并落位）"
+fi
 build_each

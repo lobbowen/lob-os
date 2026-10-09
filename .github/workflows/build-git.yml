@@ -106,14 +106,24 @@ jobs:
         with:
           path: |
             work/git-src
-            work/curl-src
-            work/curl-deps
-            work/openssl
-            work/zlib
-            work/deps
-            work/deps-curl
+            # git 依赖 base 筐里的 zlib / openssl / curl 三个件（链它们的 .so，不静态塞 .a），
+            # 下面是这三件的构建输出目录 —— build-shared-deps.sh 已删，
+            # work/deps 与 work/deps-curl 都不会再被生成
+            work/zlib/out
+            work/openssl/out
+            work/curl/out
             dist/component-git-*.zip
           key: ${{ steps.uwkey.outputs.key }}
+      - name: 编 base 筐的预装件（git 依赖其中的 zlib / openssl / curl）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          # git 的 DT_NEEDED 只有 libcurl.so / libssl.so / libcrypto.so / libz.so ——
+          # 也就是 base 筐里的 curl / openssl / zlib 三件。只编这三件，
+          # 不必编齐 11 件（那既慢，又把无关件的失败带进来）。
+          # 依赖从 work/<件名>/out 取 —— 那是 configure 想要的前缀形状
+          # （build-piece-curl.sh 找 openssl/zlib 就是这么找的）。
+          bash scripts/toolchain/ensure-native-capabilities.sh --only=zlib --only=openssl --only=curl
       - name: 产出 git 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-component-git.sh
@@ -127,12 +137,9 @@ jobs:
         with:
           path: |
             work/git-src
-            work/curl-src
-            work/curl-deps
-            work/openssl
-            work/zlib
-            work/deps
-            work/deps-curl
+            work/zlib/out
+            work/openssl/out
+            work/curl/out
             dist/component-git-*.zip
           key: ${{ steps.uwkey.outputs.key }}
 
