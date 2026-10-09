@@ -69,6 +69,7 @@
       "version": "8.22.0"
     },
     "sysroot": {
+      "criterion": "assets/sysroot/{include,lib}/ 在 APK 里，且 include 下确有目标平台的头（stddef.h 等）、lib 下有目标架构的库（*.so 带 aarch64 机器值）。判据是**形状与架构**而非「能跑」—— 它是编译材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。",
       "entry": "",
       "form": "headers",
       "version": "",
@@ -100,6 +101,7 @@
       "required": false
     },
     "libcxx": {
+      "criterion": "jniLibs/arm64-v8a/libc++_shared.so 在包里，且是 aarch64 ELF、带 DT_SONAME（linker 运行时按它找，不是按文件名）。起得来不适用 —— 它是 NDK 直接给的，我们要验的是「落位对、架构对」，不是「它能不能自己跑」。",
       "entry": "libc++_shared.so",
       "form": "lib",
       "version": "30.0.16248370",
@@ -109,6 +111,7 @@
       "note": "NDK 给的共享库，直接进 jniLibs/arm64-v8a/ —— 不产 component-meta.json、不落位。 Linux 的对应物是系统里的 libstdc++.so.6（发行版自带，不是一个包）。"
     },
     "bash": {
+      "criterion": "bash 起得来，并且**真跑一段脚本**：管道、变量展开、退出码各验一次（不是只看 --version）。起得来不等于能用：bash 自己坏的方式是「起得来但语法/退出码不对」，那会让程序里所有 #!/usr/bin/env bash 的快应用脚本一起失效。",
       "installName": "bash",
       "required": false,
       "form": "shell",
@@ -116,6 +119,7 @@
       "version": "5.2.15"
     },
     "ripgrep": {
+      "criterion": "rg 起得来，并且**真搜一次**并在结果里读回命中的行号与文件名（不是只看 --version）。rg 起得来但搜不出东西，与起不来对程序没有区别。",
       "installName": "rg",
       "required": false,
       "form": "exec",
@@ -123,24 +127,28 @@
       "version": "14.1.1"
     },
     "flock": {
+      "criterion": "liblobosflock.so 在 jniLibs 里、符号表导出 tryLock（node_api.h 的那个入口），且文件本身能被 node require 起来。判据是**导出的符号**而不是「文件在」—— 编出来但没导出 tryLock 的 .so 在运行时才报 undefined function。",
       "required": false,
       "form": "lib",
       "version": "1.0.0",
       "entry": "lib/liblobosflock.so"
     },
     "posix": {
+      "criterion": "liblobosposix.so 在 jniLibs 里、符号表有我们声明的那几个入口，且能被加载（readelf 的 NEEDED/SONAME 自洽）。判据是**符号与依赖自洽**，文件在位但 NEEDED 指向一个不存在的库，真机上照样加载失败。",
       "required": false,
       "form": "lib",
       "version": "1.0.0",
       "entry": "lib/liblobosposix.so"
     },
     "ptyprobe": {
+      "criterion": "liblobosptyprobe.so 在 jniLibs 里、导出探测入口。判据是**符号表里有那个入口** —— PTY 能不能用取决于探针问得出来，而探针在 .so 里，符号没导出就等于没有。",
       "required": false,
       "form": "exec",
       "version": "1.0.0",
       "entry": "lib/liblobosptyprobe.so"
     },
     "ptysession": {
+      "criterion": "librivospty.so 在 jniLibs 里、导出建立/读写会话那几个入口。判据是**符号表**（与 ptyprobe 同理：文件在位而符号没导出，真机上调用即失败）。",
       "installName": "pty-session",
       "required": false,
       "form": "exec",
@@ -148,6 +156,7 @@
       "entry": "bin/pty-session"
     },
     "busybox": {
+      "criterion": "busybox 本体在 jniLibs 里、**applet 软链随件一起在**（至少 ls/cat/cp/mkdir/rm），且 ELF 里没有 PT_DYNAMIC（静态产物，不依赖任何共享库）、LOAD 段 16KB 对齐。判据覆盖形状而不只是「文件在」：带 PT_DYNAMIC 的 busybox 真机上会因找不到它依赖的库而起不来，那时「文件在」看着是对的；未 16KB 对齐的在 Android 15+ 上会直接加载失败。（这两项形状检查由 build-native-busybox.sh 的构建期判据承担。）",
       "installName": "busybox",
       "required": false,
       "applets": [
@@ -175,18 +184,21 @@
       "version": "1.36.1"
     },
     "zlib": {
+      "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。",
       "required": true,
       "form": "lib",
       "entry": "lib/libz.so",
       "version": "1.3.2"
     },
     "openssl": {
+      "criterion": "libssl.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**（DT_NEEDED 有 libc/libm，而自身没有把 zlib 静态链进去）。openssl 静态链 zlib 是最常见的坏法 —— 那等于一个二进制里装了两个件。",
       "required": true,
       "form": "lib",
       "entry": "lib/libssl.so",
       "version": "3.6.3"
     },
     "crypto": {
+      "criterion": "libcrypto.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**。与 openssl 同一条判据的另一半：两者必须各自独立成 .so，不能是同一个二进制或一个静态链了另一个。",
       "required": true,
       "form": "lib",
       "entry": "lib/libcrypto.so",
@@ -226,10 +238,28 @@
       "required": false
     },
     "pkgconf": {
+      "criterion": "pkg-config 起得来，并且**真查一个 .pc 文件**并读回 --cflags/--libs（不是只看 --version）。起得来但查不出 flags 的 pkg-config 等于没有 —— 它的用处就是那两行输出。",
       "entry": "bin/pkg-config",
       "form": "exec",
       "version": "3.0.7",
       "required": false
     }
+  },
+  "$criterionStatus": {
+    "note": "criterion 这一列是「这件怎么算成了」的判据文本（人读）。**它不是自动执行的检查** —— 由谁执行取决于该件的形态：form=exec/lib 的可运行判据在真机上由 InstalledRuntime 按 entry 跑；形状类判据（ELF 架构/SONAME/整条版本链/16KB 对齐）目前由构建期脚本（build-*.sh / check-elf-deps.sh / check_so）承担；apkOnly 的两件（sysroot/libcxx）由 build-apk.yml 的放置步骤与 verify-apk-native.sh 的在位检查承担。",
+    "没有自动检查的项": [
+      "sysroot",
+      "libcxx",
+      "bash",
+      "ripgrep",
+      "flock",
+      "posix",
+      "ptyprobe",
+      "ptysession",
+      "openssl",
+      "crypto",
+      "pkgconf"
+    ],
+    "说明": "这几项的形状/行为判据已写清，但仓里**没有一个脚本在 APK 落地后逐条执行**；它们目前靠构建期判据（check_so / check-elf-deps.sh / 构建脚本自身的断言）与真机运行暴露问题。补齐自动检查属于新增门禁，不在本次改动范围内。"
   }
 }
