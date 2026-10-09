@@ -170,8 +170,10 @@ class TerminalView @JvmOverloads constructor(
     private fun translateKey(keyCode: Int, ev: KeyEvent): ByteArray? = when (keyCode) {
         KeyEvent.KEYCODE_ENTER -> "\r".toByteArray(Charsets.UTF_8)
         KeyEvent.KEYCODE_TAB -> "\t".toByteArray(Charsets.UTF_8)
-        KeyEvent.KEYCODE_BACKSPACE -> {
-            if (ev.isShiftPressed) "\b".toByteArray(Charsets.UTF_8)
+        // Android 里键码 67 叫 KEYCODE_DEL，没有 KEYCODE_BACKSPACE
+        KeyEvent.KEYCODE_DEL -> {
+            // Shift+Del 是整字擦除，其余是擦一个
+            if (ev.isShiftPressed) "\u001b[3~".toByteArray(Charsets.UTF_8)
             else byteArrayOf(0x7f)
         }
         KeyEvent.KEYCODE_DPAD_UP -> ESC_ARROW("A")
@@ -179,7 +181,8 @@ class TerminalView @JvmOverloads constructor(
         KeyEvent.KEYCODE_DPAD_RIGHT -> ESC_ARROW("C")
         KeyEvent.KEYCODE_DPAD_LEFT -> ESC_ARROW("D")
         KeyEvent.KEYCODE_HOME -> ESC_TILDE("H")
-        KeyEvent.KEYCODE_END -> ESC_TILDE("F")
+        // 行尾是 MOVE_END；KEYCODE_END 不存在（KEYCODE_ENDCALL 是挂断键）
+        KeyEvent.KEYCODE_MOVE_END -> ESC_TILDE("F")
         KeyEvent.KEYCODE_PAGE_UP -> ESC_TILDE("5")
         KeyEvent.KEYCODE_PAGE_DOWN -> ESC_TILDE("6")
         else -> {
