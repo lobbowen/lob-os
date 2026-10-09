@@ -6,6 +6,11 @@ local.properties
 .idea/
 
 container/app/src/main/jniLibs/
+# 件的说明（component-meta.json）也是构建产物 —— build-piece-*.sh 与
+# build-native-busybox.sh 的 land_piece 每次编都会重新生成一份。
+# 它必须放这里（不进 jniLibs：AGP 只把 *.so 打进 APK，见
+# build.gradle.kts），但同样是生成物，不该进仓。
+container/app/src/main/assets/supply/meta/
 
 release/
 
