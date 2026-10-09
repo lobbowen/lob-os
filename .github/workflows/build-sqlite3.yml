@@ -186,6 +186,6 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: component-sqlite3
+          name: component-sqlite
           path: dist/component-sqlite3-*.zip
           retention-days: 30

@@ -196,6 +196,6 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: component-python3
+          name: component-python
           path: dist/component-python3-*.zip
           retention-days: 30

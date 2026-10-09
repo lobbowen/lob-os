@@ -186,6 +186,6 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: component-pkg-config
+          name: component-pkgconf
           path: dist/component-pkg-config-*.zip
           retention-days: 30
