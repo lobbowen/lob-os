@@ -115,11 +115,18 @@ while read -r TIER LIB _ID; do
   if has_exact "lib/${ABI}/$LIB"; then
     echo "[ok] lib/${ABI}/$LIB"
   elif [ "$TIER" = "soft" ]; then
+    # soft 档 = 缺了只降级、不判红，也不陪葬别的能力。
+    # 当前清单里没有 soft 项（node-pty 删了），这一档暂时走不到 ——
+    # 保留是因为 .txt 的格式支持它，且「有件编不踏实、缺了只降级」
+    # 是真实存在的一类情形，将来有件落进来就是它。
+    # 文案里不写死「终端 PTY」—— 那是 node-pty 留下的（那一行已从清单里
+    # 删掉：两张表都没有它，也没有任何脚本产它）。soft 档将来若另有其人，
+    # 这段会照常工作。
     DEGRADED="$DEGRADED lib/${ABI}/$LIB"
     if [ "$REPORT" = "1" ]; then
-      echo "  [soft-absent] lib/${ABI}/$LIB —— 终端 PTY 降级"
+      echo "  [soft-absent] lib/${ABI}/$LIB —— 缺件只降级"
     else
-      echo "::warning title=能力降级::lib/${ABI}/$LIB 不在 APK —— 终端 PTY 不可用"
+      echo "::warning title=能力降级::lib/${ABI}/$LIB 不在 APK —— 该能力不可用（soft 档，不判红）"
     fi
   else
     case "$TIER" in

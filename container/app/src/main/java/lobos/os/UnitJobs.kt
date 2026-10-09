@@ -171,7 +171,7 @@ object UnitJobs {
      * 执行队列里**下一个可以执行**的作业 —— 按 ordering 依赖。
      *
      * systemd 的 job queue 是有序的：作业的执行顺序由它自己那条 ordering
-     * dependencies 决定。这里同��：只有 `after` 里列的单元都已就位，
+     * dependencies 决定。这里同理：只有 `after` 里列的单元都已就位，
      * 这个作业才能出队。
      */
     fun takeReady(ctx: Context): Job? {

@@ -64,7 +64,7 @@ class SupervisorPool(private val host: Service) {
     /**
      * 监督谁 —— **读的是「执行后的期望」，不是 desired 字段本身**。
      *
-     * systemd 的分工：请求排成 job（UnitJobs.enqueue）→ 队��按 ordering 出队
+     * systemd 的分工：请求排成 job（UnitJobs.enqueue）→ 队列按 ordering 出队
      *（UnitJobs.takeReady）→ 执行完才知道实际该跑谁。
      * 此前这里直接读 desired 字段，把队列绕过了 —— 于是「想跑」与「在跑」
      * 混成一件，第 3 层等于没接上。
