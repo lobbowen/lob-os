@@ -237,6 +237,12 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
   #   相对路径 scripts/recipes/… 在那里不存在
   #   （报「Cannot find module .../busybox-1.36.1/scripts/recipes/…」就是这个）
   node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" busybox "$JNI/libbusybox.so.meta.json"
+  # ★ 这件不走 land_piece（它自己管落位），所以 assets 那份得自己写 ——
+  #   jniLibs 里的 .meta.json 进不了 APK（AGP 只打包 *.so），
+  #   运行时 scanMeta 读的是 assets/supply/meta/，不写这份就等于没说明。
+  mkdir -p "$META_ASSETS"
+  cp -f "$JNI/libbusybox.so.meta.json" "$META_ASSETS/libbusybox.so.meta.json" \
+    || die "busybox 的说明没落到 assets" "assets/supply/meta/libbusybox.so.meta.json"
 
   # applet 软链随件一起落：busybox 官方机制 —— make install 自己知道编了哪些
   # applet，那些软链是它建的。applet 名不在我们任何表里。

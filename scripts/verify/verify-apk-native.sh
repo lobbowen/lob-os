@@ -272,13 +272,19 @@ echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
 # 上面是从说明出发查字节；这一向是从字节出发查说明 ——
 # 补的是另一头：land_piece 某处漏写说明时，那一行的循环根本看不到它。
 #
-# 排除的三个不是我们的件，理由可核（不是随手写的名单）：
+# 排除的都是**不需要被铺位**的 .so，理由可核（不是随手写的名单）：
 #   libandroidx.graphics.path.so  androidx 图形库，appcompat 的传递依赖
 #   libdimina.so                  快应用运行时，build.gradle.kts 的
 #                                  implementation("com.github.didi.dimina:dimina:1.7.6")
 #   libmmkv.so                    同上的传递依赖（腾讯 MMKV）
-# 其余 lib/<ABI>/*.so 都是 base 筐的件或 NDK 基础件（libc++_shared），必须有说明。
-FOREIGN_SO="libandroidx.graphics.path.so libdimina.so libmmkv.so"
+#   libc++_shared.so              NDK 直接给的，component-verify.json 里
+#                                  libcxx 标了 notAPiece/apkOnly。它本来就在
+#                                  APK 的 lib/<ABI>/ 下，安装后落在
+#                                  nativeLibraryDir，linker 直接找得到 ——
+#                                  不经 PrefixProvisioner 铺位，也就无需说明。
+#                                  它的判据是 build-apk.yml 第 11 步那份硬判。
+# 其余 lib/<ABI>/*.so 都是 base 筐的件，必须有说明。
+FOREIGN_SO="libandroidx.graphics.path.so libdimina.so libmmkv.so libc++_shared.so"
 META_NOSO=0
 for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
   base="$(basename "$so")"
