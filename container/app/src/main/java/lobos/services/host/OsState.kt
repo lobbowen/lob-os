@@ -1,6 +1,5 @@
 package lobos.services.host
 
-import lobos.services.host.ResidencyPolicy
 import lobos.services.reg.ResidencyStatus
 
 enum class OsPhase {

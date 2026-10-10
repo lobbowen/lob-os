@@ -8,7 +8,6 @@ import java.util.Locale
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
-import lobos.services.reg.Level
 
 object Journal {
 

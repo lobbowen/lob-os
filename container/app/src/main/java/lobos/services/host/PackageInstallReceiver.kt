@@ -7,7 +7,6 @@ import android.content.pm.PackageInstaller
 import android.util.Log
 import lobos.services.log.RuntimeDiagnostics
 import lobos.api.CapabilityBroker
-import lobos.services.supply.PackageInstaller
 
 class PackageInstallReceiver : BroadcastReceiver() {
 

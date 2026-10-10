@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
-import lobos.kernel.device.OsAccessibilityService
 
 /**
  * 设备权限现状的实测口。

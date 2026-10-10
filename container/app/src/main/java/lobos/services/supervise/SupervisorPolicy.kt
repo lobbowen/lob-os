@@ -1,6 +1,5 @@
 package lobos.services.supervise
 
-import lobos.services.supervise.Backoff
 import lobos.services.reg.edited
 
 object SupervisorPolicy {

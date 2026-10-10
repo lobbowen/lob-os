@@ -10,8 +10,8 @@ import lobos.services.supply.ProgramInstaller
 import lobos.services.supply.ProgramOtaUpdater
 import lobos.kernel.layout.SystemDirs
 import lobos.kernel.fs.StateFiles
-import nodeBin
 import lobos.services.supply.ProgramDir
+import lobos.services.supervise.UnitJobs
 
 object ProgramManager {
 

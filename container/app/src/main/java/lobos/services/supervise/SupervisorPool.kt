@@ -10,7 +10,6 @@ import lobos.services.reg.edited
 import lobos.services.reg.Level
 import lobos.services.reg.ProgramIndex
 import lobos.services.reg.ProgramRegistry
-import lobos.services.supervise.UnitJobs
 
 class SupervisorPool(private val host: Service) {
 

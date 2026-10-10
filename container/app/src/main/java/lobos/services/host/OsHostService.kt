@@ -11,7 +11,6 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import lobos.services.host.OsApplication
 import lobos.R
 import lobos.services.log.RuntimeDiagnostics
 import lobos.api.CapabilityBroker
@@ -22,15 +21,11 @@ import lobos.services.log.KillAudit
 import lobos.kernel.proc.ProcessLedger
 import lobos.kernel.power.DozeBackstop
 import lobos.kernel.power.PowerHostHooks
-import lobos.services.host.OsFacts
-import lobos.services.host.OsInit
-import lobos.services.host.OsPhase
 import lobos.services.supply.ProgramDir
 import lobos.services.reg.ResidencyStatus
 import lobos.services.perm.PermissionLedger
 import lobos.services.app.DriverRegistry
 import lobos.services.supervise.SupervisorPool
-import lobos.services.host.AccessibilityServiceState
 import lobos.kernel.device.AccessibilityServiceState
 import lobos.kernel.device.ServiceState
 

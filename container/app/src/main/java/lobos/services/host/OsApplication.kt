@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import lobos.services.host.OsHostService
 import lobos.services.supply.CatalogClient
 import lobos.services.app.Foreground
 import lobos.services.app.QuickAppHost
