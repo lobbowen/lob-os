@@ -875,12 +875,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
 
         "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            // 原本这里报的是「APK 侧判据的结果」：tier（apk/apk+adb/apk+do）与
-            // catalog（14 条判据逐条的 verdict）。判据体系已清空 ——
+            // 原本这里报的是「APK 侧判据的结果」：tier（apk/apk+adb/apk+do）
+            // 与 catalog（14 条判据逐条的 verdict）。判据体系已清空 ——
             // 「系统允许什么」是权限服务的职责，控制面板经 os.permissions.* 去问。
             //
-            // 这里只报事实：平台、API 级别、以及本机是不是设备所有者
-            //（那一条是实测，不是判据 —— 它决定系统能额外给多少后台权限）。
+            // 这里只报事实：平台、API 级别、是否设备所有者（那一条是实测，
+            // 不是判据 —— 它决定系统能额外给多少后台权限）。
             val owner = runCatching {
                 lobos.capability.DeviceOwnerState.measure(this@CapabilityBroker)
             }.getOrNull()
@@ -993,6 +993,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("snapshot", report?.toJson() ?: JSONObject.NULL)
             }
         },
+    )
     private val METHODS: Map<String, MethodDef> = mapOf(
         "sys.info" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
@@ -1300,3 +1301,332 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 intervalMs = p.optLong("intervalMs", 250L)
             )
         },
+        "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
+            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireReadableFile(p.optString("path", ""))
+            val maxBytes = p.optLong("maxBytes", DEFAULT_FS_MAX_BYTES).coerceIn(1L, MAX_FS_BYTES)
+            if (f.length() > maxBytes) {
+                throw BridgeError(
+                    CODE_INVALID_PARAM,
+                    "文件 ${f.length()} 字节超过上限 $maxBytes；用 maxBytes 显式放大（硬顶 ${MAX_FS_BYTES}）"
+                )
+            }
+            val bytes = f.readBytes()
+            val encoding = p.optString("encoding", "auto")
+            if (encoding == "base64") {
+                JSONObject().apply {
+                    put("path", f.absolutePath)
+                    put("bytes", bytes.size)
+                    put("encoding", "base64")
+                    put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                }
+            } else {
+                val text = String(bytes, Charsets.UTF_8)
+                val lossless = text.toByteArray(Charsets.UTF_8).contentEquals(bytes)
+                JSONObject().apply {
+                    put("path", f.absolutePath)
+                    put("bytes", bytes.size)
+                    if (lossless) {
+                        put("encoding", "utf8")
+                        put("content", text)
+                    } else {
+                        put("encoding", "base64")
+                        put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                        put("note", "内容非合法 UTF-8，已自动以 base64 返回（避免损坏二进制）")
+                    }
+                }
+            }
+        },
+        "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
+            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireWritableFile(p.optString("path", ""))
+            val encoding = p.optString("encoding", "utf8")
+            val content = p.optString("content", "")
+            val bytes = if (encoding == "base64") {
+                android.util.Base64.decode(content, android.util.Base64.DEFAULT)
+            } else {
+                content.toByteArray(Charsets.UTF_8)
+            }
+            val append = p.optBoolean("append", false)
+            f.parentFile?.mkdirs()
+            if (append) f.appendBytes(bytes) else f.writeBytes(bytes)
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("bytes", bytes.size)
+                put("appended", append)
+                auditPathHint(f.absolutePath)?.let { put("hint", it) }
+            }
+        },
+        "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
+            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val path = p.optString("path", "")
+            val f = when {
+                path.isBlank() -> File(Environment.getExternalStorageDirectory().absolutePath)
+                else -> File(path)
+            }
+            if (!f.exists()) throw BridgeError(CODE_INVALID_PARAM, "路径不存在: ${f.absolutePath}")
+            val recursive = p.optBoolean("recursive", false)
+            val maxEntries = p.optInt("maxEntries", 1000).coerceIn(1, 10000)
+            val arr = JSONArray()
+            var truncated = false
+            if (f.isDirectory) {
+                if (recursive) f.walkTopDown().forEach { c ->
+                    if (arr.length() >= maxEntries) { truncated = true; return@forEach }
+                    if (c.absolutePath != f.absolutePath) arr.put(fileToJson(c))
+                } else {
+                    val kids = f.listFiles() ?: emptyArray()
+                    for (c in kids) {
+                        if (arr.length() >= maxEntries) { truncated = true; break }
+                        arr.put(fileToJson(c))
+                    }
+                }
+            }
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("isDirectory", f.isDirectory)
+                put("entries", arr)
+                put("count", arr.length())
+                put("truncated", truncated)
+            }
+        },
+        "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
+            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireWritableFile(p.optString("path", ""))
+            val ok = if (f.exists()) f.isDirectory else f.mkdirs()
+            if (!ok) throw BridgeError(CODE_INTERNAL, "创建目录失败: ${f.absolutePath}")
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("existed", f.exists())
+            }
+        },
+        "build.programInstall" to MethodDef(listOf("program_update"), true) { p, _programId ->
+            val checkOnly = p.optBoolean("checkOnly", false)
+            val target = p.optString("id", "")
+            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
+            val ota = ProgramOtaUpdater.checkAndUpdate(this, ProgramDir(this, target), checkOnly)
+            JSONObject().apply {
+                put("ok", if (checkOnly) ota.checked else ota.updated)
+                put("checked", ota.checked)
+                put("available", ota.available)
+                put("updated", ota.updated)
+                put("current", ota.current ?: JSONObject.NULL)
+                put("version", ota.remote ?: JSONObject.NULL)
+                put("source", ProgramInstaller.Source.OTA.label)
+                put("detail", ota.detail)
+                put("restartRequired", ota.updated)
+            }
+        },
+        "build.programStatus" to MethodDef(listOf("program_update"), false) { _, _programId ->
+            val ids = lobos.os.ProgramRegistry.listIds(this)
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
+            JSONObject().apply {
+                put("current", single?.currentVersion() ?: JSONObject.NULL)
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
+                put("integrity", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).integrityChecks() }))
+            }
+        },
+        "build.apk" to MethodDef(listOf("program_update"), true) { p, _programId ->
+            throw BridgeError(
+                CODE_INVALID_PARAM,
+                "build.apk 已废弃：内置构建链经实测不可行（Google Maven 无 aarch64 版 aapt2，" +
+                    "interp/架构/libc 三关装机后无法补救）。请改用 build.programInstall —— " +
+                    "设备安装已签名宿主，无需编译。"
+            )
+        },
+        "build.status" to MethodDef(listOf("program_update"), false) { _, _programId ->
+            val ids = lobos.os.ProgramRegistry.listIds(this)
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
+            JSONObject().apply {
+                put("current", single?.currentVersion() ?: JSONObject.NULL)
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
+            }
+        }
+    )
+
+    private fun fileToJson(f: File): JSONObject = JSONObject().apply {
+        put("name", f.name)
+        put("path", f.absolutePath)
+        put("directory", f.isDirectory)
+        put("size", if (f.isDirectory) 0L else f.length())
+        put("modified", f.lastModified())
+        put("readable", f.canRead())
+        put("writable", f.canWrite())
+    }
+
+    private fun requireReadableFile(path: String): File {
+        if (path.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "path 为空")
+        val f = File(path)
+        if (!f.exists()) throw BridgeError(CODE_INVALID_PARAM, "文件不存在: $path")
+        if (f.isDirectory) throw BridgeError(CODE_INVALID_PARAM, "是目录而非文件: $path")
+        if (!f.canRead()) throw BridgeError(CODE_INVALID_PARAM, "无读权限: $path")
+        return f
+    }
+
+    private fun requireWritableFile(path: String): File {
+        if (path.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "path 为空")
+        val f = File(path)
+        if (f.exists() && f.isDirectory) throw BridgeError(CODE_INVALID_PARAM, "是目录而非文件: $path")
+        val parent = f.parentFile
+        if (parent != null && !parent.exists()) {
+            if (!parent.mkdirs() && !parent.exists()) {
+                throw BridgeError(CODE_INVALID_PARAM, "无法创建父目录: ${parent.absolutePath}")
+            }
+        }
+        if (parent != null && !parent.canWrite()) {
+            throw BridgeError(CODE_INVALID_PARAM, "父目录不可写: ${parent.absolutePath}")
+        }
+        return f
+    }
+
+    private fun auditPathHint(path: String): String? {
+        val p = path.trim()
+        return when {
+            p.startsWith("/dev/") || p == "/dev" ->
+                "⚠ 写入 /dev 下的块设备/字符设备可能立即损坏设备数据"
+            p.startsWith("/proc/") || p.startsWith("/sys/") ->
+                "⚠ /proc 与 /sys 是内核接口，写入可能使系统立即不稳定或崩溃"
+            p.startsWith("/system") || p.startsWith("/vendor") || p.startsWith("/boot") ->
+                "⚠ 系统分区受 verified boot 保护，写入通常失败；强行修改可能导致设备无法启动"
+            p == "/" -> "⚠ 根目录写入：请确认目标路径"
+            else -> null
+        }
+    }
+
+    fun shutdown() {
+        running = false
+        for ((_, s) in servers) runCatching { s.close() }
+        servers.clear()
+        live = null
+    }
+
+    fun invokeLocal(programId: String, method: String, params: JSONObject): JSONObject {
+        if (live == null) return localFail("宿主桥未启动：快应用能力面此刻不可用")
+        val id = programId.trim()
+        if (id.isBlank()) return localFail("缺少 programId")
+        if (id != INSTALLER_ID && !lobos.os.ProgramRegistry.listIds(this).contains(id)) {
+            return localFail("程序不在册，不得发起能力调用: $id")
+        }
+        val token = lobos.os.SessionRegistry.issue(this, id, 0L)
+        val session = lobos.os.SessionRegistry.list(this).firstOrNull { it.token == token }
+            ?: return localFail("会话签发后读不回来: $id")
+        val holder = SessionHolder(lobos.os.SessionRegistry.socketName(token))
+        holder.session = session
+        holder.granted = serverGranted(session).toSet()
+        holder.system = holder.granted.contains(ApiSpec.GROUP_SYS)
+        val req = JSONObject().apply {
+            put("id", 0)
+            put("method", method)
+            put("params", params ?: JSONObject())
+        }
+        val res = dispatch(req, holder) ?: return localFail("宿主桥无响应")
+        val err = res.optJSONObject("error")
+        if (err != null) {
+            return JSONObject().apply {
+                put("ok", false)
+                put("code", err.optInt("code", CODE_INTERNAL))
+                put("error", err.optString("message", ""))
+            }
+        }
+        return res.optJSONObject("result")?.apply { if (!has("ok")) put("ok", true) }
+            ?: JSONObject().apply { put("ok", true) }
+    }
+
+    private fun localFail(message: String): JSONObject =
+        JSONObject().apply { put("ok", false); put("code", CODE_SESSION_MISSING); put("error", message) }
+
+    companion object {
+        const val TAG = "CapabilityBroker"
+        const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
+        const val INSTALLER_ID = "lobos.installer"
+        const val INSTALLER_GENERATION = 1L
+        const val MAX_FRAME_CHARS = 256 * 1024
+        const val MAX_CONNECTIONS = 16
+
+        @Volatile private var live: CapabilityBroker? = null
+
+        fun live(): CapabilityBroker? = live
+
+        fun prepareSession(ctx: Context, programId: String, generation: Long): String {
+            val b = live
+            return if (b != null) b.beginSession(programId, generation)
+            else lobos.os.SessionRegistry.issue(ctx, programId, generation)
+        }
+        const val CODE_CAPABILITY_MISSING = -32001
+        const val CODE_INVALID_PARAM = -32602
+        const val CODE_METHOD_NOT_FOUND = -32601
+        const val CODE_NOT_IMPLEMENTED = -32002
+        const val CODE_SESSION_MISSING = -32004
+        const val CODE_PROTOCOL_UNSUPPORTED = -32006
+        const val PROTOCOL_MIN = 1
+        const val CODE_POLICY_DENIED = -32005
+        const val CODE_INTERNAL = -32603
+
+        const val EXTRA_PKG = "lobos_target"
+
+        const val MAX_SHELL_OUTPUT = 256 * 1024
+
+        const val DEFAULT_FS_MAX_BYTES = 8L * 1024 * 1024
+        const val MAX_FS_BYTES = 64L * 1024 * 1024
+
+    }
+}
+
+data class MethodDef(
+    val caps: List<String>,
+    val audit: Boolean,
+    val handle: (JSONObject, String) -> JSONObject
+)
+
+class BridgeError(val code: Int, message: String) : Exception(message)
+
+private fun JSONArray.toList(): List<String> {
+    val out = mutableListOf<String>()
+    for (i in 0 until length()) out.add(getString(i))
+    return out
+}
+
+private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObject().apply {
+    put("ok", r.ok)
+    put(
+        "stdout",
+        if (r.stdout.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+            r.stdout.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+        } else r.stdout,
+    )
+    if (r.stderr.isNotEmpty()) {
+        put(
+            "stderr",
+            if (r.stderr.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+                r.stderr.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+            } else r.stderr,
+        )
+    }
+    put("exitCode", r.exitCode)
+    put("via", r.via.name)
+    put("tty", r.via == lobos.runtime.LocalExec.Via.PTY)
+    put(
+        "note",
+        when (r.via) {
+            lobos.runtime.LocalExec.Via.PTY ->
+                "底座 PTY 本地执行（不依赖无线调试）；进程得到真终端：isatty 为真、可交互、能读窗口大小。"
+            lobos.runtime.LocalExec.Via.PLAIN ->
+                "本地执行但无 PTY（不依赖无线调试）；isatty 为假，进不了交互模式。" +
+                    (r.error ?: "")
+            lobos.runtime.LocalExec.Via.ADB ->
+                "经无线调试执行（本地通路不可用）—— 关掉无线调试就没有这条路了。" + (r.error ?: "")
+        },
+    )
+    if (r.error != null) put("detail", r.error)
+}
+
+private fun adbAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = execAsJson(r)
