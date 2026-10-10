@@ -19,12 +19,11 @@ import android.content.Context
 object KernelHooks {
 
     @Volatile
-    @Volatile
     private var ensurer: ((Context) -> Unit)? = null
 
+    @Volatile
     private var reporter: ((Context, String, Boolean?, String, String?) -> Unit)? = null
 
-    /** 由服务层注册（OsApplication.onCreate 里）。 */
     /** 由服务层注册：被请求拉起宿主。 */
     fun setEnsurer(block: (Context) -> Unit) {
         ensurer = block
