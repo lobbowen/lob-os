@@ -85,6 +85,7 @@ object RuntimeDiagnostics {
         }
         runCatching { lobos.kernel.fs.StateFiles.appendBounded(file(ctx), line) }
         runCatching { lobos.kernel.fs.StateFiles.appendBounded(structFile(ctx), ev.toJson().toString()) }
+        Mirror.append(ctx, "diagnostics.txt", line)
         runCatching {
             Journal.append(
                 ctx, "diag:" + ev.stage,

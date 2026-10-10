@@ -172,6 +172,21 @@ object RuntimeEnvironment {
             PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
         )
 
+        // 验收快照 —— 真机上「件铺开没有」只能从这里看到。
+        // 私有目录 shell 读不到，所以镜像到应用外部目录。
+        runCatching {
+            lobos.services.log.Mirror.snapshot(ctx, listOf(
+                "prefixRoot" to PrefixProvisioner.root(ctx).absolutePath,
+                "piecesProvisioned" to ready.size.toString(),
+                "piecesExpected" to PieceScan.scan(ctx).size.toString(),
+                "missing" to if (missing.isEmpty()) "（无）" else missing.join(","),
+                "binEntries" to PieceScan.scan(ctx)
+                    .filter { File(it.dir, "bin").isDirectory }
+                    .flatMap { File(it.dir, "bin").listFiles()?.toList() ?: emptyList() }
+                    .map { it.name }.sorted().join(","),
+            ))
+        }
+
         val nowSupply = System.currentTimeMillis()
         if (nowSupply - lastSupplyAt > supplyThrottleMs) {
             lastSupplyAt = nowSupply
