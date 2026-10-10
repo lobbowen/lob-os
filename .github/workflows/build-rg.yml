@@ -55,7 +55,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          # 判的是「**那个资产**在不在」，不是「Release 在不在」。
+          # 只判 Release 的话，旧命名的僵尸资产会让这里永远 hit=yes：
+          # 既不重编也不产出新名字的产物，而取件按 cache-key 算的名字去取 —— 取不到。
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+          && gh release download "$TAG" --repo "${{ github.repository }}" \
+             --pattern "$ASSET" --dir /tmp/probe >/dev/null 2>&1 \
+          && [ -s "/tmp/probe/$ASSET" ]; then
+            echo "[ok] 固化产物已存在，直接复用：$ASSET"
             echo "[ok] 固化产物已存在（tag=$TAG）"
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
