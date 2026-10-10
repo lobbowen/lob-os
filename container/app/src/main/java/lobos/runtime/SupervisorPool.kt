@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Intent
 import android.util.Log
 import lobos.RuntimeDiagnostics
-import lobos.capability.AdbChannelComponent
 import lobos.log.Journal
 import lobos.os.Desired
 import lobos.os.edited
@@ -25,7 +24,6 @@ class SupervisorPool(private val host: Service) {
 
     @Synchronized
     fun onHostStart(intent: Intent?) {
-    runCatching { resetComponents("宿主动作：" + (intent?.action ?: "无")) }
         val target = intent?.getStringExtra("programId")?.takeIf { it.isNotBlank() }
         val targets = if (target != null) listOf(target) else supervisors.keys.toList()
         for (t in targets) runCatching { supervisors[t]?.onHostStart(intent) }
@@ -129,17 +127,8 @@ class SupervisorPool(private val host: Service) {
     @Synchronized
     fun running(): List<String> = supervisors.keys.toList()
 
-    fun tickComponents() {
-        runCatching { lobos.capability.AdbChannelComponent.tick(host) }
-    }
-
-    fun resetComponents(why: String) {
-        runCatching { lobos.capability.AdbChannelComponent.reset(host, why) }
-    }
-
     @Synchronized
     fun shutdown() {
-    runCatching { lobos.capability.AdbChannelComponent.stop(host) }
         for ((_, s) in supervisors) {
             try { s.shutdown() } catch (_: Throwable) {}
         }

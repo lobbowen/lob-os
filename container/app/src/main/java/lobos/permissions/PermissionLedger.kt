@@ -2,7 +2,6 @@ package lobos.permissions
 
 import android.content.Context
 import lobos.capability.AttemptOutcomeRule
-import lobos.capability.CapabilityEvidenceCollector
 import lobos.capability.SilentAttempt
 import lobos.log.Journal
 import lobos.os.StateFiles
@@ -128,8 +127,15 @@ object PermissionLedger {
         return out
     }
 
+    /**
+     * 当前真正持有的权限 id 集合。
+     *
+     * 原本绕经 CapabilityEvidenceCollector.systemReads().grants —— 那是判据体系
+     * 的中间产物。判据已随「APK 侧自己判权限、自己取权」那套设计一并清空。
+     * 现在直接问 PermissionCenter：那才是权限状态的来源。
+     */
     fun heldIds(ctx: Context): Set<String> = try {
-        lobos.capability.CapabilityEvidenceCollector.systemReads(ctx).grants
+        PermissionCatalog.ALL.filter { PermissionCenter.isGranted(it) }.map { it.id }.toSet()
     } catch (_: Throwable) {
         emptySet()
     }

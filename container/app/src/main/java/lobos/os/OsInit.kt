@@ -2,7 +2,6 @@ package lobos.os
 
 import android.content.Context
 import java.io.File
-import lobos.capability.ChannelState
 import lobos.log.Journal
 import lobos.quickapp.ProgramGroup
 import org.json.JSONObject
@@ -33,8 +32,6 @@ object OsInit {
         val facts = if (f == null) OsFacts() else OsFacts(
             readingsCollected = f.optBoolean("readingsCollected"),
             controlPlaneUp = f.optBoolean("controlPlaneUp"),
-            channel = ChannelState.values().firstOrNull { it.name == f.optString("channel") }
-                ?: ChannelState.NEVER_RUN,
         )
         return OsSnapshot(
             phase = phase,

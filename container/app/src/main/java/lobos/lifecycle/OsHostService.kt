@@ -15,13 +15,8 @@ import lobos.OsApplication
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
-import lobos.capability.AdbChannelComponent
 import lobos.capability.AttemptOutcome
-import lobos.capability.CapabilityCatalog
-import lobos.capability.CapabilityEvidenceCollector
-import lobos.capability.CapabilityTier
 import lobos.capability.DeviceOwnerState
-import lobos.capability.Evidence
 import lobos.capability.ScreenCaptureController
 import lobos.log.Journal
 import lobos.log.KillAudit
@@ -41,9 +36,6 @@ import lobos.os.RuntimeEnvironment
 import lobos.permissions.PermissionLedger
 import lobos.pieces.DriverRegistry
 import lobos.runtime.SupervisorPool
-import lobos.setup.OnboardingFlow
-import lobos.ui.PanelActivity
-import lobos.ui.setup.SetupActivity
 
 class OsHostService : Service() {
 
@@ -57,12 +49,9 @@ class OsHostService : Service() {
 
     private var lastTickMs = 0L
     private var startedAtMs = 0L
-    private var adbReady = false
     private var degradedLast: List<String> = emptyList()
-    private var silentGrantVerified = false
     private var deviceOwnerMeasured = false
     private var ownerSampledAt = 0L
-    private var tierLast = ""
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -161,7 +150,6 @@ class OsHostService : Service() {
             publishResidency(gap, a11y)
             refreshStatusNotice(now, a11y)
             runCatching { pool?.sync() }
-            sampleAdb(now)
             runCatching { lobos.pieces.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
             if (!lobos.os.DozeBackstop.armedRecently(nowWall)) {
@@ -190,8 +178,14 @@ class OsHostService : Service() {
         ResidencyAudit.heartbeat(this)
         val facts = OsFacts(
             readingsCollected = true,
-            controlPlaneUp = runCatching { CapabilityEvidenceCollector.controlPlaneUp() }.getOrDefault(false),
-            channel = lobos.capability.AdbChannelComponent.channelState(),
+            // 控制面在不在：直接问 ResidencyStatus 的心跳新鲜度（60 秒内更新过）。
+            // 原本经 CapabilityEvidenceCollector —— 判据体系已清空，而
+            // 「控制面是否在线」本来就是宿主自己的心跳事实，不该绕道判据。
+            controlPlaneUp = runCatching {
+                val snap = lobos.os.ResidencyStatus.snapshot()
+                val at = snap.optLong("updatedAt", 0L)
+                at > 0L && System.currentTimeMillis() - at < 60_000L
+            }.getOrDefault(false),
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption(this))
         runCatching {
@@ -209,17 +203,6 @@ class OsHostService : Service() {
         runCatching { lobos.permissions.PermissionLedger.register(this) }
     }
 
-    private fun sampleAdb(now: Long) {
-        pool?.tickComponents()
-        adbReady = lobos.capability.AdbChannelComponent.isOnline()
-        if (adbReady && !silentGrantVerified) {
-            silentGrantVerified = runCatching {
-                lobos.permissions.PermissionLedger.readAll(this).values
-                    .any { it.outcome == lobos.capability.AttemptOutcome.SILENT_OK }
-            }.getOrDefault(false)
-        }
-    }
-
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
         val protectedNow = a11y == ServiceState.BOUND
         // 「在跑」问**账本**，不读监管池的内存名单 ——
@@ -235,30 +218,12 @@ class OsHostService : Service() {
         }.getOrDefault(0)
         val reasons = ResidencyPolicy.degradedReasons(
             accessibilityReady = protectedNow,
-            adbReady = adbReady,
             programsRunning = runningIds.size,
             installedPrograms = installed,
         )
         val acts = ResidencyPolicy.actions(reasons)
-        val tier = lobos.capability.CapabilityTier.of(
-            channelLive = adbReady,
-            deviceOwner = deviceOwnerMeasured,
-            silentGrantVerified = silentGrantVerified,
-            notes = emptyList(),
-        )
-        if (tier.tier.name != tierLast) {
-            tierLast = tier.tier.name
-            RuntimeDiagnostics.append(
-                this, "capability", true, "能力档位：" + tier.tier.label,
-                "依据=" + tier.basis.joinToString("；") +
-                    (if (tier.unproven.isEmpty()) "" else "；未证=" + tier.unproven.joinToString("；")),
-            )
-            lobos.log.Journal.note(this, "capability", null, "能力档位判定", tier.tier.name.lowercase())
-        }
-        lobos.os.ResidencyStatus.record(
             lobos.os.ResidencyStatus.Snapshot(
                 accessibilityReady = protectedNow,
-                adbReady = adbReady,
                 programsRunning = runningIds.size,
                 installedPrograms = installed,
                 runningIds = runningIds,
@@ -267,10 +232,6 @@ class OsHostService : Service() {
                 tickGapMs = gapMs,
                 frozen = ResidencyPolicy.frozen(gapMs),
                 startedAtMs = startedAtMs,
-                tier = tier.tier.name.lowercase(),
-                tierBasis = tier.basis,
-                adbState = lobos.capability.AdbChannelComponent.stateName(),
-                adbAttempts = lobos.capability.AdbChannelComponent.state().attempts,
             ),
         )
         lobos.os.ResidencyStatus.persist(this)
@@ -306,17 +267,16 @@ class OsHostService : Service() {
         return buildNotification(text)
     }
 
-    private fun entryActivity(): Class<*> {
-        val ready = runCatching {
-            val evidence = lobos.capability.Evidence(
-                nowMs = System.currentTimeMillis(),
-                channel = lobos.capability.AdbChannelComponent.asChannelStatus(),
-            )
-            val verdicts = lobos.capability.CapabilityCatalog.evaluate(evidence)
-            lobos.setup.OnboardingFlow.readyToEnter(verdicts)
-        }.getOrDefault(false)
-        return if (ready) lobos.ui.PanelActivity::class.java else SetupActivity::class.java
-    }
+    /**
+     * 通知点开后去哪儿。
+     *
+     * 原本是「判据全过就去 PanelActivity，没过就去 SetupActivity」——
+     * 那是「APK 侧自己判权限、自己取权、自己引导」的旧设计。UI 随那一并清空了，
+     * 这里统一走启动入口（QuickAppLaunchActivity），由它拉起对应的 Program
+     * （控制面板就是其中之一）。
+     */
+    private fun entryActivity(): Class<*> =
+        lobos.quickapp.QuickAppLaunchActivity::class.java
 
     private fun buildNotification(text: String): Notification {
         val pi = PendingIntent.getActivity(

@@ -2,7 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import java.io.File
-import lobos.capability.AdbClientRunner
 
 object LocalExec {
 
@@ -10,8 +9,6 @@ object LocalExec {
         PTY,
 
         PLAIN,
-
-        ADB,
     }
 
     data class Outcome(
@@ -107,26 +104,5 @@ object LocalExec {
                     "底座不完整。",
             )
         return run(ctx, listOf(shell.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
-    }
-
-    fun viaAdb(
-        ctx: Context,
-        command: String,
-        timeoutMs: Long,
-    ): Outcome {
-        return try {
-            val r = lobos.capability.AdbClientRunner.shell(ctx, command, null, null, timeoutMs)
-            if (r.ok) {
-                Outcome(
-                    true, 0, r.json?.optString("out", "") ?: r.raw, "", Via.ADB,
-                    "注意：本条经无线调试执行（本地 PTY 与无 PTY 通路都不可用）。" +
-                        "关掉无线调试就没有这条路了。",
-                )
-            } else {
-                Outcome(false, -1, "", "", Via.ADB, "ADB 也失败：${r.error ?: r.raw.take(200)}")
-            }
-        } catch (e: Throwable) {
-            Outcome(false, -1, "", "", Via.ADB, "ADB 不可用：${e.message ?: e.javaClass.simpleName}")
-        }
     }
 }

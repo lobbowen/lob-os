@@ -7,7 +7,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import lobos.RuntimeDiagnostics
-import lobos.capability.CapabilityCriteria
 import lobos.permissions.PermissionCatalog
 
 enum class ServiceState { BOUND, UNBOUND, UNKNOWN }
@@ -22,8 +21,15 @@ data class ToggleOutcome(
 object AccessibilityServiceState {
     private const val TAG = "AccessibilityServiceState"
 
+    /**
+     * 本包无障碍服务的组件全名。
+     *
+     * 原本经 CapabilityCriteria.names(ctx) —— 那是判据体系的一部分，已随
+     * 「APK 侧自己判权限、自己取权」那套设计一并清空。
+     * 组件名是本包的事实（Manifest 里声明的那个），直接写出来即可。
+     */
     private fun componentString(ctx: Context): String =
-        CapabilityCriteria.names(ctx).accessibilityComponent
+        "${ctx.packageName}/${ctx.packageName}.lifecycle.OsAccessibilityService"
 
     private fun component(ctx: Context): ComponentName? = ComponentName.unflattenFromString(componentString(ctx))
 

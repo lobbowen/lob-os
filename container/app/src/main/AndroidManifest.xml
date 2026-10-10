@@ -93,32 +93,6 @@
         </service>
 
 
-        <activity
-            android:name=".ui.setup.SetupActivity"
-            android:exported="true"
-            android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".ui.PanelActivity"
-            android:exported="false"
-            android:label="@string/app_name" />
-
-        <activity
-            android:name=".ui.TerminalActivity"
-            android:exported="false"
-            android:label="@string/app_name"
-            android:configChanges="keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density" />
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name" />
-
         <receiver
             android:name=".lifecycle.DozeBackstopReceiver"
             android:exported="false" />
@@ -128,11 +102,27 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <!--
+            启动入口。
+
+            原本是 .ui.setup.SetupActivity（引导页 + 权限申请 + adb 配对 + 自检清单）。
+            那一套属于「APK 侧自己判权限、自己取权、自己引导」的旧设计，已随 UI 一并清空 ——
+            取权归常驻的权限服务，状态经 API 暴露给控制面板，入口也归控制面板。
+
+            这里由 QuickAppLaunchActivity 承接：桌面图标 → 拉起对应的 Program
+            （控制面板就是其中之一）。没有可用 Program 时它自己报「无可用程序」。
+        -->
         <activity
             android:name=".quickapp.QuickAppLaunchActivity"
-            android:exported="false"
+            android:exported="true"
+            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:taskAffinity="lobos.quickapp"
-            android:excludeFromRecents="false" />
+            android:excludeFromRecents="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

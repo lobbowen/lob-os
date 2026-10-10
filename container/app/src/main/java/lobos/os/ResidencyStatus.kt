@@ -8,7 +8,6 @@ object ResidencyStatus {
 
     data class Snapshot(
         val accessibilityReady: Boolean,
-        val adbReady: Boolean,
         val programsRunning: Int,
         val installedPrograms: Int,
         val runningIds: List<String>,
@@ -17,10 +16,6 @@ object ResidencyStatus {
         val tickGapMs: Long,
         val frozen: Boolean,
             val startedAtMs: Long,
-        val tier: String,
-        val tierBasis: List<String>,
-        val adbState: String,
-        val adbAttempts: Int,
     )
 
     @Volatile private var last: JSONObject = JSONObject()
@@ -29,7 +24,6 @@ object ResidencyStatus {
         last = JSONObject().apply {
             put("updatedAt", System.currentTimeMillis())
             put("accessibilityReady", s.accessibilityReady)
-            put("adbReady", s.adbReady)
             put("programsRunning", s.programsRunning)
             put("installedPrograms", s.installedPrograms)
             put("runningIds", JSONArray(s.runningIds))
@@ -40,10 +34,6 @@ object ResidencyStatus {
             put("frozen", s.frozen)
             put("startedAtMs", s.startedAtMs)
             put("uptimeMs", if (s.startedAtMs > 0) System.currentTimeMillis() - s.startedAtMs else 0L)
-            put("tier", s.tier)
-            put("tierBasis", JSONArray(s.tierBasis))
-            put("adbState", s.adbState)
-            put("adbAttempts", s.adbAttempts)
         }
     }
 
@@ -77,7 +67,6 @@ object ResidencyStatus {
             " 降级=" + (0 until reasons.length()).joinToString(",") { reasons.optString(it) }
         }
         "无障碍=" + (if (s.optBoolean("accessibilityReady")) "已连" else "未连") +
-            " ADB=" + s.optString("adbState", if (s.optBoolean("adbReady")) "online" else "?") +
             " 程序在跑=" + s.optInt("programsRunning") + "/" + s.optInt("installedPrograms") +
             " 档位=" + s.optString("tier", "?") +
             " 节拍间隔=" + s.optLong("tickGapMs") + "ms" + names
