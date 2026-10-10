@@ -4,6 +4,18 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # 只有「影响 APK 的东西」变了才构建。改文档、改 version.json、改脚本注释
+    # 都不该占用 runner —— 一次完整构建约 8 分钟。
+    paths:
+      - 'container/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'components/**'
+      - '.github/workflows/build-apk.yml'
+      - '.github/workflows/build-isolated-apk.yml'
+      - 'gradle.properties'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
     tags:
       - 'os-release-*'
 
@@ -328,36 +340,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: 校验轮：发验证包（每次构建一份，下载链接一步可得）
-        if: success() && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
-          TAG: verify-${{ github.sha }}
-        run: |
-          set -euo pipefail
-          APK="$(ls container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk | head -1)"
-          [ -f "$APK" ] || { echo "::error::没有 APK 可发布"; exit 1; }
-          NAME="lobos-os-$(jq -r '.shell.versionName' version.json)-verify.$(jq -r '.shell.versionCode' version.json).apk"
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::notice::未配置 APK_PUBLISH_TOKEN，跳过自动发布（构建本身是成功的）"
-            exit 0
-          fi
-          {
-            echo "commit ${GITHUB_SHA}"
-            echo ""
-            echo "这是**校验轮**产物，不是发布版。"
-            echo "发布版走 os-release-VERSION tag。"
-          } > /tmp/verify-notes.md
-          gh release create "$TAG" "$APK#$NAME" \
-            --title "验证包 $(jq -r '.shell.versionName' version.json) · ${GITHUB_SHA:0:9}" \
-            --notes-file /tmp/verify-notes.md \
-            --prerelease --target "$GITHUB_SHA" || {
-              echo "::notice::同名 release 已存在，补传资产"
-              gh release upload "$TAG" "$APK#$NAME" --clobber
-            }
-          echo ""
-          echo "下载地址："
-          gh release view "$TAG" --json assets --jq '.assets[0].url'
+      # 校验轮**不发 Release**。
+      #
+      # 此前这一步每次 push main 都建一个 `verify-<sha>` release，到今天堆了 18 个，
+      # 全是 0 下载的垃圾，把真正的 `os-release-*` 埋在里面。
+      # 验证包的用途只是「跑完能下载装一下」，而那正是 CI artifact 的本职 ——
+      # 它保留 30 天，不需要永久留档。
+      #
+      # 要拿验证包：Actions 页面 → 本次 run → Artifacts → apk-debug。
+      # release 里只应该有两类东西：正式版 os-release-VERSION，和件 <筐>-<件名>。
 
       - name: 发布轮：发正式版到 os-release-<versionName>
         if: success() && env.RELEASE_ROUND == 'true'
