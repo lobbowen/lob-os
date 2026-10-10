@@ -29,7 +29,7 @@ import lobos.os.Restart
 import lobos.os.RuntimeEnvironment
 import lobos.os.SessionRegistry
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import lobos.os.edited
 import lobos.ota.ProgramOtaResolution
 import lobos.ota.ProgramOtaUpdater

@@ -6,7 +6,7 @@ import lobos.RuntimeDiagnostics
 import lobos.pieces.DriverRegistry
 import lobos.pieces.PieceProvisioner
 import lobos.runtime.InstalledRuntime
-import lobos.runtime.PrefixProvisioner
+import lobos.kernel.layout.PrefixProvisioner
 
 object RuntimeEnvironment {
 

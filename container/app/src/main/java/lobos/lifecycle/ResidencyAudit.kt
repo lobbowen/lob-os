@@ -10,7 +10,7 @@ import kotlin.math.abs
 import lobos.log.Journal
 import lobos.log.KillAudit
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 
 object ResidencyAudit {
 
@@ -25,7 +25,7 @@ object ResidencyAudit {
 
     private val timeFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
 
-    private fun file(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), FILE)
+    private fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), FILE)
 
     private fun bootBasisMs(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
 

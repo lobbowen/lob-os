@@ -12,7 +12,7 @@ import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.zip.ZipInputStream
 import lobos.RuntimeDiagnostics
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
 object SupplyProvisioner {
@@ -22,14 +22,14 @@ object SupplyProvisioner {
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
-    fun etcDir(ctx: Context): File = lobos.os.SystemDirs.etc(ctx)
+    fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc(ctx)
 
     fun versionDir(ctx: Context, id: String, version: String): File =
         File(pieceDir(ctx, id), version)
 
-    fun pieceDir(ctx: Context, id: String): File = lobos.os.SystemDirs.pieceDir(ctx, id)
+    fun pieceDir(ctx: Context, id: String): File = lobos.kernel.layout.SystemDirs.pieceDir(ctx, id)
 
-    fun entryLink(ctx: Context, name: String): File = lobos.os.SystemDirs.bin(ctx).let { File(it, name) }
+    fun entryLink(ctx: Context, name: String): File = lobos.kernel.layout.SystemDirs.bin(ctx).let { File(it, name) }
 
     private fun selectedFile(ctx: Context): File = File(etcDir(ctx), "installed.json")
 

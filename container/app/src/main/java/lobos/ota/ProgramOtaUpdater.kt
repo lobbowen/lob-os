@@ -8,7 +8,7 @@ import lobos.log.Journal
 import lobos.os.PowerLocks
 import lobos.os.ProgramDir
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
 object ProgramOtaUpdater {
@@ -44,7 +44,7 @@ object ProgramOtaUpdater {
     )
 
     fun loadConfig(context: Context): Config? {
-        val devCfg = File(lobos.os.SystemDirs.etc(context), "channel.json")
+        val devCfg = File(lobos.kernel.layout.SystemDirs.etc(context), "channel.json")
         if (devCfg.isFile) {
             val fromDevice = parseConfig(readTextOrNull(devCfg))
             if (fromDevice != null) {
@@ -231,7 +231,7 @@ object ProgramOtaUpdater {
 
     private fun stateFile(context: Context, cfg: Config, programId: String): File {
         val slug = (cfg.channel + "-" + programId).replace(Regex("[^A-Za-z0-9._-]"), "_")
-        return File(lobos.os.SystemDirs.run(context), "ota-state-" + slug + ".json")
+        return File(lobos.kernel.layout.SystemDirs.run(context), "ota-state-" + slug + ".json")
     }
 
     fun promotePendingSequence(context: Context, cfg: Config, programId: String) {

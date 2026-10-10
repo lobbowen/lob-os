@@ -7,7 +7,7 @@ import java.net.URL
 import lobos.RuntimeDiagnostics
 import lobos.os.ProgramDir
 import lobos.os.ProgramRegistry
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
 object ProgramOtaSelfCheck {
@@ -108,13 +108,13 @@ object ProgramOtaSelfCheck {
             val selfCheckTarget = km?.programId ?: ids.firstOrNull().orEmpty()
             val selfCheckSlug = (cfg.channel + "-" + selfCheckTarget)
                 .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            val scoped = File(lobos.os.SystemDirs.run(ctx), "ota-state-" + selfCheckSlug + ".json")
+            val scoped = File(lobos.kernel.layout.SystemDirs.run(ctx), "ota-state-" + selfCheckSlug + ".json")
             val st = try {
                 val f = scoped
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val installSt = try {
-                val f = File(lobos.os.SystemDirs.etc(ctx), "install-id.json")
+                val f = File(lobos.kernel.layout.SystemDirs.etc(ctx), "install-id.json")
                 if (f.isFile) JSONObject(f.readText()) else JSONObject()
             } catch (_: Throwable) { JSONObject() }
             val v = OtaPolicy.evaluate(

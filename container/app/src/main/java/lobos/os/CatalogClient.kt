@@ -3,7 +3,7 @@ package lobos.os
 import android.content.Context
 import lobos.RuntimeDiagnostics
 import lobos.log.Journal
-import lobos.runtime.PrefixProvisioner
+import lobos.kernel.layout.PrefixProvisioner
 import lobos.runtime.SupplyProvisioner
 import java.io.File
 import org.json.JSONArray

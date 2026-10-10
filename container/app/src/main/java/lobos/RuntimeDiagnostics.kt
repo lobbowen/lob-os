@@ -7,7 +7,7 @@ import java.util.Date
 import java.util.Locale
 import lobos.log.Journal
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
 object RuntimeDiagnostics {
@@ -38,10 +38,10 @@ object RuntimeDiagnostics {
 
     private val tsFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
-    fun file(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), FILE)
-    fun nodeErrFile(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), NODE_ERR_FILE)
+    fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), FILE)
+    fun nodeErrFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), NODE_ERR_FILE)
     private fun structFile(ctx: Context): File {
-        val d = lobos.os.SystemDirs.log(ctx)
+        val d = lobos.kernel.layout.SystemDirs.log(ctx)
         d.mkdirs()
         return File(d, STRUCT_FILE)
     }

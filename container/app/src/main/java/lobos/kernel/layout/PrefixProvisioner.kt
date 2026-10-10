@@ -1,14 +1,8 @@
-package lobos.runtime
+package lobos.kernel.layout
 
 import android.content.Context
 import android.system.Os
 import java.io.File
-import lobos.os.Level
-import lobos.os.PieceScan
-import lobos.os.ProgramIndex
-import lobos.os.ProgramManager
-import lobos.os.StateFiles
-import lobos.os.SystemDirs
 
 object PrefixProvisioner {
 
@@ -22,11 +16,11 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     private const val META_ASSET_DIR = "supply/meta"
 
 
-    fun root(ctx: Context): File = lobos.os.SystemDirs.usr(ctx)
-    fun binDir(ctx: Context): File = lobos.os.SystemDirs.bin(ctx)
-    fun libDir(ctx: Context): File = lobos.os.SystemDirs.lib(ctx)
+    fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr(ctx)
+    fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin(ctx)
+    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
 
-    fun includeDir(ctx: Context): File = lobos.os.SystemDirs.include(ctx)
+    fun includeDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.include(ctx)
 
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 
@@ -53,7 +47,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         isEntry: Boolean,
         meta: org.json.JSONObject?,
     ): String? {
-        val verDir = lobos.os.SystemDirs.pieceDir(ctx, id, version)
+        val verDir = lobos.kernel.layout.SystemDirs.pieceDir(ctx, id, version)
         verDir.mkdirs()
         val dst = File(verDir, if (isEntry) "bin/$soName" else "lib/$soName")
         if (!src.isFile) return null
@@ -85,9 +79,9 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // （ldconfig(8)：「checks the header and filenames when determining
         //  which versions should have their links updated」）。
         val link = if (isEntry) {
-            lobos.os.SystemDirs.bin(ctx).let { File(it, soName) }
+            lobos.kernel.layout.SystemDirs.bin(ctx).let { File(it, soName) }
         } else {
-            lobos.os.SystemDirs.lib(ctx).let { File(it, soName) }
+            lobos.kernel.layout.SystemDirs.lib(ctx).let { File(it, soName) }
         }
         link.parentFile?.mkdirs()
         if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()

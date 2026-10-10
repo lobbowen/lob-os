@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
 object Journal {
@@ -85,7 +85,7 @@ object Journal {
     @Volatile private var seq = 0L
 
     private fun file(ctx: Context): File {
-        val d = File(lobos.os.SystemDirs.log(ctx), DIR)
+        val d = File(lobos.kernel.layout.SystemDirs.log(ctx), DIR)
         d.mkdirs()
         return File(d, FILE)
     }

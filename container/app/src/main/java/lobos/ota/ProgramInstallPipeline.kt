@@ -12,10 +12,10 @@ import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.os.ProgramRegistry
 import lobos.os.Restart
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import lobos.os.UnitEntry
 import lobos.runtime.ExecBits
-import lobos.runtime.PrefixProvisioner
+import lobos.kernel.layout.PrefixProvisioner
 import lobos.runtime.SupplyProvisioner
 import org.json.JSONObject
 
@@ -207,7 +207,7 @@ object ProgramInstallPipeline {
             return Result(
                 false, safeVer, "entry-link-failed",
                 "件已落位但入口软链建不起来（" +
-                    lobos.runtime.PrefixProvisioner.binDir(context).absolutePath + "/" +
+                    lobos.kernel.layout.PrefixProvisioner.binDir(context).absolutePath + "/" +
                     entryRel.substringAfterLast("/") + "）—— 装了个没人调得动的件；" +
                     "看 SELinux 是否允许该目录建链，或落位目录是否可写",
             )
@@ -441,7 +441,7 @@ object ProgramInstallPipeline {
         val out = HashMap<String, File>()
         val dirs = buildList {
             add(File(context.applicationInfo.nativeLibraryDir))
-            add(lobos.runtime.PrefixProvisioner.libDir(context))
+            add(lobos.kernel.layout.PrefixProvisioner.libDir(context))
             runCatching {
                 lobos.os.ProgramRegistry.listIds(context).forEach { id ->
                     runCatching { add(lobos.os.ProgramManager.stateDirOf(context, id)) }
@@ -461,7 +461,7 @@ object ProgramInstallPipeline {
         val target = File(dest, entryRel)
         if (!target.isFile) return false
         runCatching { lobos.runtime.ExecBits.apply(target) }
-        val bin = lobos.runtime.PrefixProvisioner.binDir(context)
+        val bin = lobos.kernel.layout.PrefixProvisioner.binDir(context)
         val primary = entryRel.substringAfterLast("/")
         var ok = link(bin, primary, target)
         for (a in aliasNames(dest, programId, primary)) {

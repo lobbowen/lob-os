@@ -5,7 +5,7 @@ import java.io.File
 import lobos.log.Journal
 import lobos.os.ProgramIndex
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -81,7 +81,7 @@ object DriverRegistry {
         return File(d, "compat-degradations.json")
     }
 
-    fun degradeLog(ctx: Context): File = File(lobos.os.SystemDirs.log(ctx), "compat-degrade.log")
+    fun degradeLog(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), "compat-degrade.log")
 
     fun degradations(ctx: Context): List<Entry> {
         val root = StateFiles.readJson(ledgerFile(ctx)) ?: return emptyList()

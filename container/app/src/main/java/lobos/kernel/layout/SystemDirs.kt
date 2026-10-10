@@ -1,4 +1,4 @@
-package lobos.os
+package lobos.kernel.layout
 
 import android.content.Context
 import java.io.File

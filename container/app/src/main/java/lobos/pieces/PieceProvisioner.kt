@@ -8,7 +8,7 @@ import java.util.zip.ZipFile
 import lobos.RuntimeDiagnostics
 import lobos.os.ElfFacts
 import lobos.os.PieceScan
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import lobos.runtime.ProcessSupervisor
 import org.json.JSONArray
 import org.json.JSONObject
@@ -237,7 +237,7 @@ object PieceProvisioner {
      * nativeLibraryDir 只作**取源**：APK 里的 .so 从那里取出来，
      * 落到 usr/lib/<id>/<版本>/lib/ 之后就用我们自己的面。
      */
-    fun libSearchPath(ctx: Context): String = lobos.os.SystemDirs.lib(ctx).absolutePath
+    fun libSearchPath(ctx: Context): String = lobos.kernel.layout.SystemDirs.lib(ctx).absolutePath
 
 
     private fun parseErrno(msg: String?): Int? {

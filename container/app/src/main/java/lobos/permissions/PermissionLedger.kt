@@ -3,7 +3,7 @@ package lobos.permissions
 import android.content.Context
 import lobos.log.Journal
 import lobos.os.StateFiles
-import lobos.os.SystemDirs
+import lobos.kernel.layout.SystemDirs
 import org.json.JSONArray
 import org.json.JSONObject
 
