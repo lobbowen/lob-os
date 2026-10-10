@@ -20,14 +20,14 @@ object PieceRegistrar {
      * 已一致的跳过 —— 每次宿主 tick 都调，不该反复写盘。
      */
     fun register(ctx: Context) {
-        for (f in lobos.os.PieceScan.scan(ctx)) {
-            val prev = lobos.os.ProgramIndex.get(ctx, f.id)
+        for (f in PieceScan.scan(ctx)) {
+            val prev = lobos.services.reg.ProgramIndex.get(ctx, f.id)
             if (prev != null && prev.version == f.version && prev.stateDir == f.dir.absolutePath) {
                 continue
             }
-            lobos.os.ProgramIndex.upsert(
+            lobos.services.reg.ProgramIndex.upsert(
                 ctx,
-                (prev ?: lobos.os.ProgramIndex.empty(f.id, lobos.os.Level.PIECE)).copy(
+                (prev ?: lobos.services.reg.ProgramIndex.empty(f.id, lobos.services.reg.Level.PIECE)).copy(
                     version = f.version,
                     stateDir = f.dir.absolutePath,
                     assetEntry = f.entry,

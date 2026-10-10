@@ -29,7 +29,7 @@ class PermissionCenter(private val ctx: Context) {
 
     /** 无障碍服务实例是否已连上 —— 唯一可信的判据 */
     fun accessibilityReady(): Boolean =
-        runCatching { lobos.lifecycle.OsAccessibilityService.isReady() }.getOrDefault(false)
+        runCatching { lobos.kernel.device.OsAccessibilityService.isReady() }.getOrDefault(false)
 
     /** 通知监听器是否已绑定 */
     fun notificationListenerBound(): Boolean = NotificationStore.connected

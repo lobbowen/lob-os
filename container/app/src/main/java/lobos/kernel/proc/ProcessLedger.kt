@@ -47,11 +47,11 @@ object ProcessLedger {
         return try {
             JSONObject(f.readText())
         } catch (e: Throwable) {
-            lobos.RuntimeDiagnostics.append(
+            lobos.kernel.KernelHooks.report(
                 ctx, "ledger", false,
                 "进程账本不可解析：按无进程处理（已失去全部归属信息）",
-                f.absolutePath + " " + e::class.java.simpleName + ": " + (e.message ?: ""),
-            )
+                f.absolutePath + " " + e::class.java.simpleName + ": " + (e.message ?: "")
+                )
             JSONObject()
         }
     }

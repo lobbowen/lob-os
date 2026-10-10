@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import lobos.RuntimeDiagnostics
+import lobos.kernel.KernelHooks
 
 object PtySession {
 
@@ -194,7 +194,7 @@ object PtySession {
                             lastError = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("ERROR: ").append(lastError).append('\n') }
                             ctx?.let {
-                                RuntimeDiagnostics.append(it, "pty", false, "PTY 的C 侧报错", lastError)
+                                KernelHooks.report(it, "pty", false, "PTY 的C 侧报错", lastError)
                             }
                         }
                         else -> Log.d(TAG, "忽略未知帧 kind=$kind sid=$sid len=$len")
@@ -277,10 +277,8 @@ object PtySession {
             val checked = locateBin(bin)
             val h = Host(ProcessBuilder(checked.absolutePath), ctx)
             host = h
-            RuntimeDiagnostics.append(
-                ctx, "pty", true, "PTY 会话宿主就位",
-                bin.absolutePath + " （常驻；shell.exec 与终端共用）",
-            )
+            KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
+            bin.absolutePath + " （常驻；shell.exec 与终端共用）")
             return h
         }
     }
