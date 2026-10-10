@@ -179,11 +179,11 @@ object RuntimeEnvironment {
                 "prefixRoot" to PrefixProvisioner.root(ctx).absolutePath,
                 "piecesProvisioned" to ready.size.toString(),
                 "piecesExpected" to PieceScan.scan(ctx).size.toString(),
-                "missing" to if (missing.isEmpty()) "（无）" else missing.join(","),
+                "missing" to if (missing.isEmpty()) "（无）" else missing.joinToString(","),
                 "binEntries" to PieceScan.scan(ctx)
                     .filter { File(it.dir, "bin").isDirectory }
                     .flatMap { File(it.dir, "bin").listFiles()?.toList() ?: emptyList() }
-                    .map { it.name }.sorted().join(","),
+                    .map { it.name }.sorted().joinToString(","),
             ))
         }
 
