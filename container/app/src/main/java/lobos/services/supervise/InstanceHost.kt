@@ -34,6 +34,7 @@ import lobos.kernel.layout.PrefixProvisioner
 import lobos.kernel.proc.ProcessSupervisor
 import lobos.services.reg.InstalledRuntime
 import lobos.services.supply.PackageInstaller
+import lobos.kernel.mm.LibPath
 
 class InstanceHost(private val host: Service, val programId: String) : ContextWrapper(host) {
 
@@ -52,7 +53,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var currentGeneration = 0L
 
 
-    private val libSearchPath: String get() = PieceProvisioner.libSearchPath(this)
+    private val libSearchPath: String get() = LibPath.searchPath(this)
 
     fun start() {
         scheduleBootLoop()

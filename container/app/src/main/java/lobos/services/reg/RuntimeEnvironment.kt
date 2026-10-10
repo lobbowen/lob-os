@@ -9,6 +9,7 @@ import lobos.kernel.layout.PrefixProvisioner
 import lobos.services.supply.CatalogClient
 import lobos.services.supply.PackageInstaller
 import lobos.services.supply.PieceScan
+import lobos.kernel.mm.LibPath
 
 object RuntimeEnvironment {
 
@@ -114,7 +115,7 @@ object RuntimeEnvironment {
        */
       fun libSearchPath(ctx: Context): String {
           val dirs = LinkedHashSet<String>()
-          dirs.add(PieceProvisioner.libSearchPath(ctx))
+          dirs.add(LibPath.searchPath(ctx))
           runCatching {
               ProgramRegistry.listIds(ctx).forEach { id ->
                   val root = ProgramManager.stateDirOf(ctx, id)

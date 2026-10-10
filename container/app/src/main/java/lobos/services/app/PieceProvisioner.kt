@@ -228,17 +228,6 @@ object PieceProvisioner {
         return AssetStatus.Ready(exe, f.absolutePath)
     }
 
-    /**
-     * 程序的库搜索路径 —— **只指我们自己的面**。
-     *
-     * ★ 不含 nativeLibraryDir：实测那个目录不可写（属主 system，我们是应用 uid），
-     *   所以「把系统建在 APK 目录下」这条路走不通 —— 已堵死，别再走。
-     *
-     * nativeLibraryDir 只作**取源**：APK 里的 .so 从那里取出来，
-     * 落到 usr/lib/<id>/<版本>/lib/ 之后就用我们自己的面。
-     */
-    fun libSearchPath(ctx: Context): String = lobos.kernel.layout.SystemDirs.lib(ctx).absolutePath
-
 
     private fun parseErrno(msg: String?): Int? {
         if (msg == null) return null

@@ -32,7 +32,7 @@ object InstalledRuntime {
                 .redirectErrorStream(true)
             val prior = pb.environment()["LD_LIBRARY_PATH"].orEmpty()
             pb.environment()["LD_LIBRARY_PATH"] =
-                listOf(prior, lobos.services.app.PieceProvisioner.libSearchPath(ctx))
+                listOf(prior, lobos.kernel.mm.LibPath.searchPath(ctx))
                     .filter { it.isNotBlank() }
                     .joinToString(File.pathSeparator)
             val p = pb.start()

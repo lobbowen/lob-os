@@ -63,6 +63,7 @@ import lobos.kernel.ipc.LocalExec
 import lobos.services.supply.PieceUpdater
 import org.json.JSONArray
 import org.json.JSONObject
+import lobos.kernel.mm.LibPath
 
 class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
@@ -1118,7 +1119,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                   put("assets", report.toJson().optJSONArray("assets") ?: JSONArray())
                   put("failedRequired", JSONArray(report.failedRequired.map { it.first.id }))
                   put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
-                  put("libSearchPath", PieceProvisioner.libSearchPath(this@CapabilityBroker))
+                  put("libSearchPath", LibPath.searchPath(this@CapabilityBroker))
               }
           },
         "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->
