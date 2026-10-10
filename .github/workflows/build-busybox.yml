@@ -41,14 +41,13 @@ jobs:
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
         run: bash scripts/toolchain/locate-ndk.sh
 
-      - name: 算本件的固化标识
+      - name: 算本件的固化标识（key / tag / asset）
         id: uwkey
         run: |
-          set -euo pipefail
-          # 三件（bash / ripgrep / busybox）同属 base 筐，都在
-          # list-bucket-components.js 的清单里；build-apk.yml 也现场编它们。
-          # asset 名由 cache-key.sh 算（依赖版本 + 补丁摘要 + NDK + API），
-          # 与「已固化就复用」那一步取的是同一个 —— 两处必须同源。
+          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 11 个 workflow 都调它，
+          # 免得各自留一份空壳（此前 11 个的这段是空的，tag/asset 为空串，
+          # 「已固化就复用」从未命中过）。
+          bash scripts/toolchain/piece-key.sh busybox
       - name: 已固化就复用（不重编）
         id: reuse
         env:

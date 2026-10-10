@@ -1,0 +1,101 @@
+name: Build openssl + crypto
+
+# 编 openssl 3.6.3 —— 连带产出 libcrypto.so（crypto 是 openssl 的一部分，
+# 见 component-sources.json 里 crypto.sameAs=openssl）。两件一起固化。
+on:
+  # 只手动：「我现在要构建这一件」。
+  # 件是独立的 —— 不由 push 触发。详见 RELEASE-POLICY.md。
+  workflow_dispatch: {}
+
+concurrency:
+  group: openssl-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 恢复 NDK 缓存
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
+      - name: 取 NDK（命中则 0 下载）
+        run: bash scripts/toolchain/cache-ndk.sh
+
+      - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
+        run: bash scripts/toolchain/locate-ndk.sh
+
+      - name: 算本件的固化标识（key / tag / asset）
+        id: uwkey
+        run: |
+          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 各 workflow 都调它。
+          bash scripts/toolchain/piece-key.sh openssl
+
+      - name: 已固化就复用（不重编）
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+          && gh release download "$TAG" --repo "${{ github.repository }}" \
+             --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
+          && [ -f "dist/$ASSET" ]; then
+            echo "[ok] 固化产物已存在，直接复用：$ASSET（tag=$TAG）"
+            mkdir -p container/app/src/main/jniLibs/arm64-v8a
+            tar xzf "dist/$ASSET" -C container/app/src/main/jniLibs/arm64-v8a
+            echo "hit=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
+            echo "hit=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 编 openssl（连带 crypto）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: bash scripts/recipes/build-piece-openssl.sh
+
+      - name: 固化到 Release 预制品
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          STAGE="dist/.cap-${{ github.run_id }}"
+          mkdir -p "$STAGE"
+          for f in container/app/src/main/jniLibs/arm64-v8a/*; do
+            [ -f "$f" ] && cp -f "$f" "$STAGE/"
+          done
+          ( cd "$STAGE" && find . -type f -exec touch -h -t 198001010000.00 {} + )
+          ( cd "$STAGE" && tar czf "../$ASSET" . )
+          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
+          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "openssl 固化产物（连带 crypto）" --notes "编一次，后续轮次直接取用"
+          gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已固化 $ASSET 到 $TAG"
+
+          # crypto 是 openssl 的一部分，但它在 24 项清单里是独立一件 ——
+          # 控制面板按清单取，所以它也得有一份自己的固化产物。
+          CTAG="$(bash scripts/toolchain/cache-key.sh tag crypto)"
+          CASSET="$(bash scripts/toolchain/cache-key.sh asset crypto)"
+          mkdir -p "dist/.ccap-${{ github.run_id }}"
+          for f in container/app/src/main/jniLibs/arm64-v8a/libcrypto.so*; do
+            [ -f "$f" ] && cp -f "$f" "dist/.ccap-${{ github.run_id }}/"
+          done
+          ( cd "dist/.ccap-${{ github.run_id }}" && find . -type f -exec touch -h -t 198001010000.00 {} + )
+          ( cd "dist/.ccap-${{ github.run_id }}" && tar czf "../$CASSET" . )
+          sha256sum "dist/$CASSET" | cut -d' ' -f1 > "dist/$CASSET.sha256"
+          gh release view "$CTAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$CTAG" --repo "${{ github.repository }}"                  --title "crypto 固化产物（openssl 的一部分）" --notes "由 build-openssl 连带产出"
+          gh release upload "$CTAG" "dist/$CASSET" "dist/$CASSET.sha256"             --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已固化 $CASSET 到 $CTAG"

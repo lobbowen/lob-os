@@ -63,9 +63,13 @@ jobs:
         run: bash scripts/toolchain/cache-ndk.sh
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
         run: bash scripts/toolchain/locate-ndk.sh
-      - name: 算本件的「编译一次」标识
+      - name: 算本件的固化标识（key / tag / asset）
         id: uwkey
         run: |
+          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 11 个 workflow 都调它，
+          # 免得各自留一份空壳（此前 11 个的这段是空的，tag/asset 为空串，
+          # 「已固化就复用」从未命中过）。
+          bash scripts/toolchain/piece-key.sh sqlite
       - name: 已发布就复用（不重编）
         id: reuse
         env:
