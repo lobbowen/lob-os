@@ -14,7 +14,6 @@ import lobos.services.app.QuickAppHost
 import lobos.services.log.RuntimeDiagnostics
 import lobos.kernel.KernelHooks
 import lobos.kernel.power.PowerHostHooks
-import lobos.services.log.RuntimeDiagnostics
 import lobos.services.reg.ResidencyStatus
 
 class OsApplication : Application() {
@@ -35,7 +34,7 @@ class OsApplication : Application() {
         // 钩子已经没了，「请拉起宿主」这个请求就落空。
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         KernelHooks.setReporter { ctx, stage, ok, message, detail ->
-            RuntimeDiagnostics.append(ctx, stage, ok, message, detail)
+            RuntimeDiagnostics.append(ctx, stage, ok, message, detail ?: "")
         }
         PowerHostHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         PowerHostHooks.setWakeObserver { nowMs ->
