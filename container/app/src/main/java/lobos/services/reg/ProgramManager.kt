@@ -193,14 +193,6 @@ object ProgramManager {
 
     private fun Snapshot.realityOf(e: UnitEntry): Reality? = realities[e.id]
 
-
-        /**
-     * 层级与实物对齐：它在注册表里是 PieceEntry 就是件，否则是程序。
-     * 判据是**注册表条目的形状**，不是任何字段里的名字。
-     */
-
-fun nodeBin(ctx: Context): File? = InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)
-
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }
         val usr = SystemDirs.usr(ctx)

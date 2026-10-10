@@ -7,6 +7,7 @@ import lobos.kernel.layout.SystemDirs
 import lobos.services.reg.ProgramIndex
 import lobos.services.reg.UnitEntry
 import lobos.services.reg.Level
+import lobos.services.reg.edited
 
 /**
  * 从落位推导索引 —— 等价于 Linux 的 `ldconfig(8)`。

@@ -32,7 +32,6 @@ import lobos.services.app.ProgramGroup
 import org.json.JSONObject
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.kernel.proc.ProcessSupervisor
-import lobos.services.reg.nodeBin
 import lobos.services.reg.InstalledRuntime
 import lobos.services.supply.PackageInstaller
 

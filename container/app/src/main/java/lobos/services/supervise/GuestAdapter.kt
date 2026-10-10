@@ -2,7 +2,6 @@ package lobos.services.supervise
 
 import lobos.services.reg.RuntimeEnvironment
 import java.io.File
-import lobos.services.reg.nodeBin
 
 object GuestAdapter {
 

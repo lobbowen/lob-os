@@ -4,6 +4,7 @@ import java.io.File
 import lobos.services.log.Journal
 import lobos.services.reg.ProgramRegistry
 import org.json.JSONObject
+import lobos.services.reg.edited
 
 class ProgramDir(
     private val context: Context,

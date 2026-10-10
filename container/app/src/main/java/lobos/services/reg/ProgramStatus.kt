@@ -5,6 +5,7 @@ import lobos.services.log.Journal
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.proc.ProcessLedger
+import lobos.services.host.OsInit
 
 data class ProgramStatus(
     val id: String,
