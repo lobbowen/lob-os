@@ -362,9 +362,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
      * 系统是否真的允许，是权限服务的事 —— 桥接不替它做主。
      */
     private fun serverGranted(session: lobos.os.SessionRegistry.Session): Set<String> {
-        if (session.programId.trim() == INSTALLER_ID) return setOf(ApiSpec.GROUP_BASE)
-        if (!isProgramSession(session)) return setOf(ApiSpec.GROUP_BASE) + ApiSpec.GROUP_SYS
-        return setOf(ApiSpec.GROUP_BASE) + declaredCapabilities(session.programId)
+        if (session.programId.trim() == INSTALLER_ID) return setOf(BRIDGE_BASE)
+        if (!isProgramSession(session)) return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
+        return setOf(BRIDGE_BASE) + declaredCapabilities(session.programId)
     }
 
     private fun declaredCapabilities(programId: String): Set<String> {
@@ -418,7 +418,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
     }
 
-    private fun deviceCapabilities(): Set<String> = setOf(ApiSpec.GROUP_BASE)
+    private fun deviceCapabilities(): Set<String> = setOf(BRIDGE_BASE)
 
     private fun audit(
         method: String,
@@ -608,7 +608,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("facts", JSONObject().apply {
                     put("readingsCollected", s.facts.readingsCollected)
                     put("controlPlaneUp", s.facts.controlPlaneUp)
-                    put("channel", s.facts.channel.name.lowercase(Locale.US))
                 })
                 put("programs", programsJson())
             }
@@ -887,7 +886,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply {
                 put("platform", "android")
                 put("apiLevel", Build.VERSION.SDK_INT)
-                put("deviceOwner", owner?.owner == true)
+                put("deviceOwner", owner?.isDeviceOwner == true)
             }
         },
         "os.env.programs" to MethodDef(listOf("base"), false) { _, _programId ->
@@ -1547,6 +1546,22 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     companion object {
         const val TAG = "CapabilityBroker"
         const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
+        /**
+
+         * 每个会话都有的基础桥接令牌。
+
+         *
+
+         * 原本由 BridgeTokens.BASE 提供，随判据体系一并清空 ——
+
+         * 那个文件把「判据结果」翻译成令牌，现在判据没了，
+
+         * 剩下的就只有这条恒在的基础令牌。
+
+         */
+
+        const val BRIDGE_BASE = "base"
+
         const val INSTALLER_ID = "lobos.installer"
         const val INSTALLER_GENERATION = 1L
         const val MAX_FRAME_CHARS = 256 * 1024
@@ -1622,11 +1637,8 @@ private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObj
             lobos.runtime.LocalExec.Via.PLAIN ->
                 "本地执行但无 PTY（不依赖无线调试）；isatty 为假，进不了交互模式。" +
                     (r.error ?: "")
-            lobos.runtime.LocalExec.Via.ADB ->
-                "经无线调试执行（本地通路不可用）—— 关掉无线调试就没有这条路了。" + (r.error ?: "")
         },
     )
     if (r.error != null) put("detail", r.error)
 }
 
-private fun adbAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = execAsJson(r)

@@ -15,7 +15,6 @@ import lobos.OsApplication
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
-import lobos.capability.AttemptOutcome
 import lobos.capability.DeviceOwnerState
 import lobos.capability.ScreenCaptureController
 import lobos.log.Journal
@@ -204,7 +203,10 @@ class OsHostService : Service() {
     }
 
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
-        val protectedNow = a11y == ServiceState.BOUND
+        // 变量名刻意不叫「protected」：无障碍是 UI 自动化的执行体，
+        // 不是托住后台的锚（托住后台的是前台服务 + Doze 兜底闹钟）。
+        // 这里只如实记录「服务当前是否已连」，供权限服务与控制面板查询。
+        val a11yConnected = a11y == ServiceState.BOUND
         // 「在跑」问**账本**，不读监管池的内存名单 ——
         // 池子那份是「谁有监管器」，不是「进程在跑」：进程自己 daemonize
         // 出去时账本知道而池子不知道，反之池子留着 key 但进程早没了也有。
@@ -217,13 +219,13 @@ class OsHostService : Service() {
             lobos.os.ProgramRegistry.list(this).count { it.startable }
         }.getOrDefault(0)
         val reasons = ResidencyPolicy.degradedReasons(
-            accessibilityReady = protectedNow,
             programsRunning = runningIds.size,
             installedPrograms = installed,
         )
         val acts = ResidencyPolicy.actions(reasons)
+        lobos.os.ResidencyStatus.record(
             lobos.os.ResidencyStatus.Snapshot(
-                accessibilityReady = protectedNow,
+                accessibilityReady = a11yConnected,
                 programsRunning = runningIds.size,
                 installedPrograms = installed,
                 runningIds = runningIds,

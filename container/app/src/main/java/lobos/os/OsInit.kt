@@ -51,7 +51,6 @@ object OsInit {
             put("facts", JSONObject().apply {
                 put("readingsCollected", snap.facts.readingsCollected)
                 put("controlPlaneUp", snap.facts.controlPlaneUp)
-                put("channel", snap.facts.channel.name)
             })
             snap.interrupted?.let { put("interrupted", it) }
         }

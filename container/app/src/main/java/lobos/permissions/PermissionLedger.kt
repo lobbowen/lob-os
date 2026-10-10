@@ -1,8 +1,6 @@
 package lobos.permissions
 
 import android.content.Context
-import lobos.capability.AttemptOutcomeRule
-import lobos.capability.SilentAttempt
 import lobos.log.Journal
 import lobos.os.StateFiles
 import lobos.os.SystemDirs
@@ -88,44 +86,6 @@ object PermissionLedger {
         return snap
     }
 
-    @Synchronized
-    fun readAll(ctx: Context): Map<String, lobos.capability.SilentAttempt> {
-        val root = StateFiles.readJson(file(ctx)) ?: return emptyMap()
-        val out = LinkedHashMap<String, lobos.capability.SilentAttempt>()
-
-        fun accept(id: String, outcomeName: String, atMs: Long, detail: String) {
-            if (id.isBlank() || PermissionCatalog.byId(id) == null) return
-            val outcome = lobos.capability.AttemptOutcomeRule.from(outcomeName) ?: return
-            val prev = out[id]
-            if (prev == null || atMs >= prev.atMs) {
-                out[id] = lobos.capability.SilentAttempt(outcome, atMs, detail)
-            }
-        }
-
-        val arr = root.optJSONArray(ATTEMPTS)
-        if (arr != null) {
-            for (i in 0 until arr.length()) {
-                val e = arr.optJSONObject(i) ?: continue
-                accept(
-                    e.optString("id", ""),
-                    e.optString("outcome", ""),
-                    e.optLong("atMs", 0L),
-                    e.optString("detail", ""),
-                )
-            }
-        } else {
-            val names = root.names()
-            if (names != null) {
-                for (i in 0 until names.length()) {
-                    val id = names.optString(i)
-                    if (id == SCHEMA_KEY || id == "atMs" || id == "records" || id == ATTEMPTS) continue
-                    val e = root.optJSONObject(id) ?: continue
-                    accept(id, e.optString("outcome", ""), e.optLong("atMs", 0L), e.optString("detail", ""))
-                }
-            }
-        }
-        return out
-    }
 
     /**
      * 当前真正持有的权限 id 集合。
