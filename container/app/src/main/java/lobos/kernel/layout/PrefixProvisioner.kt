@@ -16,7 +16,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     /** 件说明在 assets 里的目录 —— 与 scripts/recipes/piece-env.sh 的 META_ASSETS 同一个 */
     private const val META_ASSET_DIR = "supply/meta"
 
-
     fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr(ctx)
     fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin(ctx)
     fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
@@ -65,7 +64,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // 说明随件同落 —— 内核靠它知道「这件是什么」
         if (meta != null) {
             runCatching {
-                lobos.os.StateFiles.writeAtomic(
+                lobos.kernel.fs.StateFiles.writeAtomic(
                     File(verDir, META_NAME), meta.toString(1) + "\n",
                 )
             }
@@ -185,7 +184,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
             }
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
-        registerProvisioned(ctx)
         return ready
     }
 
@@ -199,39 +197,11 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
      * 不另设 stateDir —— 注册表说的与磁盘上的必须是同一处。
      */
     /**
-     * 铺完之后登记 —— 数据来自**扫落位**（[lobos.os.PieceScan]），不来自任何表。
+     * 铺完之后登记交给 services/supply 的 PieceRegistrar —— 内核不碰在册表。
      *
      * 铺位的形态就是身份：有bin/ 是命令 · 只有 .so 是库 · 有 include/ 是头文件集；
      * 目录名是版本。扫一遍就得到注册表要的全部字段。
      */
-    private fun registerProvisioned(ctx: Context) {
-        for (f in lobos.os.PieceScan.scan(ctx)) {
-            val prev = lobos.os.ProgramIndex.get(ctx, f.id)
-            if (prev != null && prev.version == f.version && prev.stateDir == f.dir.absolutePath) {
-                continue
-            }
-            lobos.os.ProgramIndex.upsert(
-                ctx,
-                (prev ?: lobos.os.ProgramIndex.empty(f.id, lobos.os.Level.PIECE)).copy(
-                    version = f.version,
-                    stateDir = f.dir.absolutePath,
-                    assetEntry = f.entry,
-                    role = f.role,
-                    sha256 = f.sha256,
-                ),
-            )
-        }
-    }
-
-    private fun isManagedByUpdate(ctx: Context, dst: File): Boolean = try {
-        // 不是软链就不是我们建的 —— 先判形，再看它指向哪
-        if (!java.nio.file.Files.isSymbolicLink(dst.toPath())) false
-        else dst.toPath().toRealPath().startsWith(libDir(ctx).toPath().toAbsolutePath())
-    } catch (_: Throwable) {
-        false
-    }
-
-    fun shellBin(ctx: Context): File? = lobos.os.PieceScan.shellBin(ctx)
 
     private fun linkHeadersInclude(ctx: Context): List<String> {
         val headersRoot = headersIncludeDir(ctx) ?: return emptyList()
@@ -254,12 +224,20 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         }
     }
 
-    // 头文件集那件 = 落位里有 include/ 的那一个（扫落位找，不查表）
-    fun headersIncludeDir(ctx: Context): File? =
-        try {
-            lobos.os.PieceScan.scan(ctx)
-                .firstOrNull { File(it.dir, "include").isDirectory }?.dir
-        } catch (_: Throwable) {
-            null
-        }
+    /**
+     * 头文件集那件 = 落位里有 include/ 的那一个。
+     *
+     * 原本经 PieceScan.scan 找 —— 但那是服务层的「从落位反推在册表」，
+     * 而这里问的是「形状」：usr/lib 下哪个件带 include/。
+     * 内核自己扫落位即可，不必绕到服务层再回来。
+     */
+    fun headersIncludeDir(ctx: Context): File? = try {
+        libDir(ctx).listFiles()?.asSequence()
+            ?.filter { it.isDirectory }
+            ?.firstOrNull { version ->
+                File(version, "include").isDirectory
+            }
+    } catch (_: Throwable) {
+        null
+    }
 }

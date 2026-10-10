@@ -1,4 +1,4 @@
-package lobos.os
+package lobos.kernel.fs
 
 import android.system.Os
 import android.system.OsConstants

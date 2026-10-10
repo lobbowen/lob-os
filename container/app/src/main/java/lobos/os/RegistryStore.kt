@@ -35,7 +35,7 @@ object RegistryStore {
         runCatching {
             val f = file(ctx)
             f.parentFile?.mkdirs()
-            lobos.os.StateFiles.writeAtomic(f, o.toString())
+            lobos.kernel.fs.StateFiles.writeAtomic(f, o.toString())
         }
         return info(ctx)
     }

@@ -9,7 +9,7 @@ import java.util.Locale
 import kotlin.math.abs
 import lobos.log.Journal
 import lobos.log.KillAudit
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 
 object ResidencyAudit {
@@ -57,7 +57,7 @@ object ResidencyAudit {
     @Synchronized
     fun heartbeat(ctx: Context) {
         val text = "${System.currentTimeMillis()}\n${bootBasisMs()}"
-        runCatching { lobos.os.StateFiles.writeAtomic(file(ctx), text) }
+        runCatching { lobos.kernel.fs.StateFiles.writeAtomic(file(ctx), text) }
     }
 
     @Synchronized

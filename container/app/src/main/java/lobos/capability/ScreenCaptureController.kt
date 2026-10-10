@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import lobos.RuntimeDiagnostics
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 
 class ScreenCaptureController(private val host: Service) : ContextWrapper(host) {
@@ -190,7 +190,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
                     put("intentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
                     put("savedAt", System.currentTimeMillis())
                 }
-                lobos.os.StateFiles.writeAtomic(File(lobos.kernel.layout.SystemDirs.libvar(ctx), GRANT_FILE), obj.toString())
+                lobos.kernel.fs.StateFiles.writeAtomic(File(lobos.kernel.layout.SystemDirs.libvar(ctx), GRANT_FILE), obj.toString())
             } catch (e: Throwable) {
                 Log.w(TAG, "保存截屏授权失败", e)
             }

@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import lobos.log.Journal
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
@@ -83,8 +83,8 @@ object RuntimeDiagnostics {
                 append("\n      " + ev.detail.replace("\n", "\n      "))
             }
         }
-        runCatching { lobos.os.StateFiles.appendBounded(file(ctx), line) }
-        runCatching { lobos.os.StateFiles.appendBounded(structFile(ctx), ev.toJson().toString()) }
+        runCatching { lobos.kernel.fs.StateFiles.appendBounded(file(ctx), line) }
+        runCatching { lobos.kernel.fs.StateFiles.appendBounded(structFile(ctx), ev.toJson().toString()) }
         runCatching {
             Journal.append(
                 ctx, "diag:" + ev.stage,
@@ -133,7 +133,7 @@ object RuntimeDiagnostics {
 
     @Synchronized
     fun recordNodeStderr(ctx: Context, text: String) {
-        if (text.isNotBlank()) lobos.os.StateFiles.appendBounded(nodeErrFile(ctx), text)
+        if (text.isNotBlank()) lobos.kernel.fs.StateFiles.appendBounded(nodeErrFile(ctx), text)
     }
 
     @Synchronized

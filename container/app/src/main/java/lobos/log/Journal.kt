@@ -5,7 +5,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 

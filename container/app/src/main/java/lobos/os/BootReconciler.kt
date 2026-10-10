@@ -9,6 +9,7 @@ import lobos.os.Level
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 import lobos.pieces.CompatSemantics
+import lobos.kernel.fs.StateFiles
 
 object BootReconciler {
 

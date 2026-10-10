@@ -6,7 +6,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 
 object KillAudit {

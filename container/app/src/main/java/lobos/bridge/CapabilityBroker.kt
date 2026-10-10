@@ -51,7 +51,7 @@ import lobos.os.ProgramStatusHub
 import lobos.os.RegistryStore
 import lobos.os.ResidencyStatus
 import lobos.os.SessionRegistry
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.os.TaskRegistry
 import lobos.os.UnitEntry
 import lobos.ota.ProgramInstaller
@@ -438,7 +438,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
             val line = ts + " " + who + " method=" + method + " ok=" + ok + " params=" + summary +
                 (if (err != null) " err=" + err else "") + "\n"
-            lobos.os.StateFiles.appendBounded(File(filesDir, "bridge-audit.log"), line)
+            lobos.kernel.fs.StateFiles.appendBounded(File(filesDir, "bridge-audit.log"), line)
         } catch (_: Throwable) {}
     }
 
@@ -1066,7 +1066,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             lobos.os.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
                 put("notices", lobos.os.ProgramNotificationHub.listJson())
                 put("noticeGroups", lobos.os.ProgramNotificationHub.groupsJson())
-                put("writeFailures", lobos.os.StateFiles.writeFailureCount(this@CapabilityBroker))
+                put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount(this@CapabilityBroker))
             }
         },
         "os.accessibility.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->

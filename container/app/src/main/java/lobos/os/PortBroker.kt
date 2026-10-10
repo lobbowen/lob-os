@@ -27,7 +27,7 @@ object PortBroker {
 
     @Synchronized
     private fun persist(ctx: Context, obj: JSONObject) {
-        runCatching { lobos.os.StateFiles.writeAtomic(file(ctx), obj.toString(2)) }
+        runCatching { lobos.kernel.fs.StateFiles.writeAtomic(file(ctx), obj.toString(2)) }
     }
 
     @Synchronized

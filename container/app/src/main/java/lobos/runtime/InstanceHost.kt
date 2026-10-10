@@ -28,7 +28,7 @@ import lobos.os.ProgramStatusHub
 import lobos.os.Restart
 import lobos.os.RuntimeEnvironment
 import lobos.os.SessionRegistry
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import lobos.os.edited
 import lobos.ota.ProgramOtaResolution
@@ -806,7 +806,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 put("env", JSONObject(envSnapshot.toMap()).toString())
             }
         }
-        lobos.os.StateFiles.writeAtomic(File(dir, "runtime.json"), obj.toString(2))
+        lobos.kernel.fs.StateFiles.writeAtomic(File(dir, "runtime.json"), obj.toString(2))
     }
 
     private fun err(e: Throwable): String =

@@ -6,6 +6,7 @@ import java.security.SecureRandom
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.layout.SystemDirs
+import lobos.kernel.fs.StateFiles
 
 object SessionRegistry {
 

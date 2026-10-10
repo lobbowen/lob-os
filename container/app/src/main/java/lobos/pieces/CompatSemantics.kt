@@ -2,7 +2,7 @@ package lobos.pieces
 
 import android.content.Context
 import java.io.File
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONArray
 import org.json.JSONObject
@@ -159,6 +159,6 @@ object CompatSemantics {
         put("absent", ITEMS.count { it.absent })
             put("items", arr)
         }
-        lobos.os.StateFiles.writeJson(File(SystemDirs.libvar(ctx), "compat-semantics.json"), o)
+        lobos.kernel.fs.StateFiles.writeJson(File(SystemDirs.libvar(ctx), "compat-semantics.json"), o)
     }
 }

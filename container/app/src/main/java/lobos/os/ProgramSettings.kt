@@ -41,7 +41,7 @@ object ProgramSettings {
         val wrote = runCatching {
             val f = file(ctx)
             f.parentFile?.mkdirs()
-            lobos.os.StateFiles.writeAtomic(f, all.toString())
+            lobos.kernel.fs.StateFiles.writeAtomic(f, all.toString())
         }.isSuccess
         if (!wrote) {
             lobos.log.Journal.note(ctx, "settings", false, "程序设置落盘失败", "id=" + id)

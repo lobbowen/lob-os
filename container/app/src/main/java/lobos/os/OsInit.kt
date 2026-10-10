@@ -55,7 +55,7 @@ object OsInit {
             })
             snap.interrupted?.let { put("interrupted", it) }
         }
-        runCatching { lobos.os.StateFiles.writeAtomic(file(ctx), obj.toString(2)) }
+        runCatching { lobos.kernel.fs.StateFiles.writeAtomic(file(ctx), obj.toString(2)) }
     }
 
     @Synchronized

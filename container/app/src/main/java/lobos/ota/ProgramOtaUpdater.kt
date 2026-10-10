@@ -7,7 +7,7 @@ import java.net.URL
 import lobos.log.Journal
 import lobos.os.PowerLocks
 import lobos.os.ProgramDir
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
 
@@ -166,7 +166,7 @@ object ProgramOtaUpdater {
         val part = File(context.cacheDir, tmp.name + ResumableDownloader.PART_SUFFIX)
         val manifestFile = File(context.cacheDir, "program-manifest-ota.json")
         val manifestStaged = runCatching {
-            lobos.os.StateFiles.writeAtomic(manifestFile, manifestText)
+            lobos.kernel.fs.StateFiles.writeAtomic(manifestFile, manifestText)
         }.isSuccess
         if (!manifestStaged) {
             return Outcome(
@@ -272,7 +272,7 @@ object ProgramOtaUpdater {
 
     private fun saveState(context: Context, cfg: Config, programId: String, o: JSONObject) {
         try {
-            lobos.os.StateFiles.writeAtomic(stateFile(context, cfg, programId), o.toString())
+            lobos.kernel.fs.StateFiles.writeAtomic(stateFile(context, cfg, programId), o.toString())
         } catch (_: Throwable) { }
     }
 
@@ -286,7 +286,7 @@ object ProgramOtaUpdater {
         if (id.isNotBlank()) return id
         val gen = java.util.UUID.randomUUID().toString()
         st.put("installId", gen)
-        try { lobos.os.StateFiles.writeAtomic(f, st.toString()) } catch (_: Throwable) { }
+        try { lobos.kernel.fs.StateFiles.writeAtomic(f, st.toString()) } catch (_: Throwable) { }
         return gen
     }
 

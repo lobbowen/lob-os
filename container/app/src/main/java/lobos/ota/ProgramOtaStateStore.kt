@@ -1,6 +1,6 @@
 package lobos.ota
 import java.io.File
-import lobos.os.StateFiles
+import lobos.kernel.fs.StateFiles
 
 class ProgramOtaStateStore(
     private val root: File,
@@ -18,7 +18,7 @@ class ProgramOtaStateStore(
 
     fun setCurrentVersion(version: String) {
         root.mkdirs()
-        lobos.os.StateFiles.writeAtomic(currentPointer, version)
+        lobos.kernel.fs.StateFiles.writeAtomic(currentPointer, version)
         onCurrentChanged?.invoke(version)
     }
 
@@ -30,14 +30,14 @@ class ProgramOtaStateStore(
         val cur = floorVersion()
         if (cur != null && ProgramOtaVersions.compare(version, cur) <= 0) return
         root.mkdirs()
-        lobos.os.StateFiles.writeAtomic(floorFile, version)
+        lobos.kernel.fs.StateFiles.writeAtomic(floorFile, version)
     }
 
     fun isBelowFloor(version: String): Boolean = ProgramOtaVersions.isBelowFloor(version, floorVersion())
 
     fun markPending(version: String, from: String?) {
         root.mkdirs()
-        lobos.os.StateFiles.writeAtomic(pendingFile, version + "\n" + (from ?: ""))
+        lobos.kernel.fs.StateFiles.writeAtomic(pendingFile, version + "\n" + (from ?: ""))
     }
 
     fun pending(): Pending? = try {

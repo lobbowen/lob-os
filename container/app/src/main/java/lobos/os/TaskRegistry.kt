@@ -34,7 +34,7 @@ object TaskRegistry {
         runCatching {
             val f = file(ctx)
             f.parentFile?.mkdirs()
-            lobos.os.StateFiles.writeAtomic(f, arr.toString())
+            lobos.kernel.fs.StateFiles.writeAtomic(f, arr.toString())
         }
     }
 

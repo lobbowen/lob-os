@@ -10,6 +10,7 @@ import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramOtaUpdater
 import lobos.runtime.InstalledRuntime
 import lobos.kernel.layout.SystemDirs
+import lobos.kernel.fs.StateFiles
 
 object ProgramManager {
 

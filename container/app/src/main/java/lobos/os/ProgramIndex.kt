@@ -6,6 +6,7 @@ import lobos.runtime.SupervisorPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.layout.SystemDirs
+import lobos.kernel.fs.StateFiles
 
 /**
  * 装好了的东西在系统里的状态 —— 只有两个值：
