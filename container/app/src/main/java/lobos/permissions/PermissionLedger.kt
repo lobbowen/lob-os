@@ -95,7 +95,8 @@ object PermissionLedger {
      * 现在直接问 PermissionCenter：那才是权限状态的来源。
      */
     fun heldIds(ctx: Context): Set<String> = try {
-        PermissionCatalog.ALL.filter { PermissionCenter.isGranted(it) }.map { it.id }.toSet()
+        val center = PermissionCenter(ctx)
+        PermissionCatalog.ALL.filter { center.isGranted(it) }.map { it.id }.toSet()
     } catch (_: Throwable) {
         emptySet()
     }
