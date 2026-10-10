@@ -211,6 +211,6 @@ object CapabilityRuntimeState {
     fun controlPlaneUp(): Boolean = runCatching {
         val snap = ResidencyStatus.snapshot()
         val at = snap.optLong("updatedAt", 0L)
-        at > 0L && System.currentTimeMillis() - at < 60_000L
+        lobos.kernel.time.Heartbeat.fresh(at, System.currentTimeMillis())
     }.getOrDefault(false)
 }

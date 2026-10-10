@@ -48,14 +48,6 @@ class OsHostService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        PowerHostHooks.setEnsurer { ctx -> ensureRunning(ctx) }
-        PowerHostHooks.setWakeObserver { nowMs ->
-            ResidencyStatus.recordWake()
-            RuntimeDiagnostics.append(
-                this, "doze", null, "兜底投递：确保 OS 宿主在",
-                "自唤醒间隔=" + DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）",
-            )
-        }
         runCatching { lobos.services.log.KillAudit.auditOnce(this) }
             .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         ResidencyAudit.auditPreviousExit(this)
@@ -184,7 +176,7 @@ class OsHostService : Service() {
             controlPlaneUp = runCatching {
                 val snap = lobos.services.reg.ResidencyStatus.snapshot()
                 val at = snap.optLong("updatedAt", 0L)
-                at > 0L && System.currentTimeMillis() - at < 60_000L
+                lobos.kernel.time.Heartbeat.fresh(at, System.currentTimeMillis())
             }.getOrDefault(false),
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption(this))

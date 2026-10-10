@@ -1,174 +1,169 @@
-# 文件归属建议表
+# 代码结构
 
-93 个 Kotlin 文件 → 目标层。**这是建议，未动任何代码。**
+迁移后的实际结构（不是建议）。共 99 个文件。
 
-## 分层结果
+## 三层
 
-| `services/supply` | 22 |
-| `services/app` | 9 |
-| `services/reg` | 9 |
-| `services/host` | 8 |
-| `services/log` | 8 |
-| `services/supervise` | 7 |
-| `kernel/device` | 5 |
-| `kernel/ipc` | 4 |
-| `api/bridge` | 3 |
-| `kernel/power` | 3 |
-| `kernel/proc` | 3 |
-| `services/perm` | 3 |
-| `kernel/crypto` | 2 |
-| `kernel/elf` | 2 |
-| `kernel/layout` | 2 |
-| `api/` | 1 |
-| `kernel/fs` | 1 |
-| `kernel/security` | 1 |
+| 层 | 目录数 | 文件数 | 依赖方向 |
+|---|---|---|---|
+| `api/` 调用面 | 1 | 3 | → services → kernel |
+| `services/` 服务层 | 6 | 68 | → kernel |
+| `kernel/` 内核 | 11 | 28 | 只向下，不认识业务词汇 |
 
 ## 明细
 
-### `api/`  (1 个)
+### `api`  (3)
 
-- `ui/StatusTileService.kt`
+- `api/ApiSpec`
+- `api/CapabilityBroker`
+- `api/StatusTileService`
 
-### `api/bridge`  (3 个)
+### `kernel/KernelHooks.kt`  (1)
 
-- `bridge/ApiSpec.kt`
-- `bridge/CapabilityBroker.kt`
-- `bridge/ScreenCaptureService.kt`
+- `kernel/KernelHooks`
 
-### `kernel/crypto`  (2 个)
+### `kernel/crypto`  (2)
 
-- `kernel/crypto/ProgramPackageVerifier.kt`
-- `runtime/SupplyProvisioner.kt`
+- `kernel/crypto/Crypto`
+- `kernel/crypto/ProgramPackageVerifier`
 
-### `kernel/device`  (5 个)
+### `kernel/device`  (8)
 
-- `capability/DeviceOwnerProbe.kt`
-- `capability/OsNotificationListenerService.kt`
-- `capability/ScreenCaptureController.kt`
-- `permissions/NotificationStore.kt`
-- `permissions/PermissionCenter.kt`
+- `kernel/device/AccessibilityServiceState`
+- `kernel/device/DeviceOwnerProbe`
+- `kernel/device/NotificationStore`
+- `kernel/device/OsAccessibilityService`
+- `kernel/device/OsNotificationListenerService`
+- `kernel/device/PermissionCenter`
+- `kernel/device/ScreenCaptureController`
+- `kernel/device/ScreenCaptureService`
 
-### `kernel/elf`  (2 个)
+### `kernel/elf`  (2)
 
-- `os/ElfFacts.kt`
-- `runtime/ExecBits.kt`
+- `kernel/elf/ElfFacts`
+- `kernel/elf/ExecBits`
 
-### `kernel/fs`  (1 个)
+### `kernel/fs`  (1)
 
-- `os/StateFiles.kt`
+- `kernel/fs/StateFiles`
 
-### `kernel/ipc`  (4 个)
+### `kernel/ipc`  (2)
 
-- `lifecycle/AccessibilityServiceState.kt`
-- `lifecycle/OsAccessibilityService.kt`
-- `runtime/LocalExec.kt`
-- `runtime/PtySession.kt`
+- `kernel/ipc/LocalExec`
+- `kernel/ipc/PtySession`
 
-### `kernel/layout`  (2 个)
+### `kernel/layout`  (3)
 
-- `os/SystemDirs.kt`
-- `runtime/PrefixProvisioner.kt`
+- `kernel/layout/Landed`
+- `kernel/layout/PrefixProvisioner`
+- `kernel/layout/SystemDirs`
 
-### `kernel/power`  (3 个)
+### `kernel/power`  (4)
 
-- `kernel/power/DozeBackstopReceiver.kt`
-- `kernel/power/DozeBackstop.kt`
-- `kernel/power/PowerLocks.kt`
-- `kernel/power/PowerHostHooks.kt`
+- `kernel/power/DozeBackstop`
+- `kernel/power/DozeBackstopReceiver`
+- `kernel/power/PowerHostHooks`
+- `kernel/power/PowerLocks`
 
-### `kernel/proc`  (3 个)
+### `kernel/proc`  (3)
 
-- `os/ProcessLedger.kt`
-- `os/SessionRegistry.kt`
-- `runtime/ProcessSupervisor.kt`
+- `kernel/proc/ProcessLedger`
+- `kernel/proc/ProcessSupervisor`
+- `kernel/proc/SessionRegistry`
 
-### `kernel/security`  (1 个)
+### `kernel/security`  (1)
 
-- `os/PathGuard.kt`
+- `kernel/security/PathGuard`
 
-### `services/app`  (9 个)
+### `kernel/time`  (1)
 
-- `quickapp/DesktopIcons.kt`
-- `quickapp/Foreground.kt`
-- `quickapp/LobosBridge.kt`
-- `quickapp/ProgramGroup.kt`
-- `quickapp/QuickAppBinder.kt`
-- `quickapp/QuickAppHost.kt`
-- `quickapp/QuickAppLaunchActivity.kt`
-- `quickapp/QuickAppPackage.kt`
-- `quickapp/QuickAppRegistry.kt`
+- `kernel/time/Heartbeat`
 
-### `services/host`  (8 个)
+### `services/app`  (12)
 
-- `lifecycle/BootReceiver.kt`
-- `lifecycle/OsHostService.kt`
-- `lifecycle/ResidencyPolicy.kt`
-- `os/BootReconciler.kt`
-- `os/OsInit.kt`
-- `os/OsState.kt`
-- `os/ResidencyStatus.kt`
-- `OsApplication.kt`
+- `services/app/CompatSemantics`
+- `services/app/DesktopIcons`
+- `services/app/DriverRegistry`
+- `services/app/Foreground`
+- `services/app/LobosBridge`
+- `services/app/PieceProvisioner`
+- `services/app/ProgramGroup`
+- `services/app/QuickAppBinder`
+- `services/app/QuickAppHost`
+- `services/app/QuickAppLaunchActivity`
+- `services/app/QuickAppPackage`
+- `services/app/QuickAppRegistry`
 
-### `services/log`  (8 个)
+### `services/host`  (9)
 
-- `lifecycle/ResidencyAudit.kt`
-- `log/Exporter.kt`
-- `log/Journal.kt`
-- `log/KillAudit.kt`
-- `log/Level.kt`
-- `os/ProgramNotification.kt`
-- `os/TaskRegistry.kt`
-- `RuntimeDiagnostics.kt`
+- `services/host/BootReceiver`
+- `services/host/BootReconciler`
+- `services/host/OsApplication`
+- `services/host/OsHostService`
+- `services/host/OsInit`
+- `services/host/OsState`
+- `services/host/PackageInstallReceiver`
+- `services/host/ResidencyAudit`
+- `services/host/ResidencyPolicy`
 
-### `services/perm`  (3 个)
+### `services/log`  (5)
 
-- `permissions/PermissionCatalog.kt`
-- `permissions/PermissionLedger.kt`
-- `permissions/PermissionRoles.kt`
+- `services/log/Exporter`
+- `services/log/Journal`
+- `services/log/KillAudit`
+- `services/log/Level`
+- `services/log/RuntimeDiagnostics`
 
-### `services/reg`  (9 个)
+### `services/perm`  (3)
 
-- `os/ManifestSchema.kt`
-- `os/PortBroker.kt`
-- `os/ProgramIndex.kt`
-- `os/ProgramManager.kt`
-- `os/ProgramRegistry.kt`
-- `os/ProgramStatus.kt`
-- `os/RuntimeEnvironment.kt`
-- `os/UnitState.kt`
-- `runtime/InstalledRuntime.kt`
+- `services/perm/PermissionCatalog`
+- `services/perm/PermissionLedger`
+- `services/perm/PermissionRoles`
 
-### `services/supervise`  (7 个)
+### `services/reg`  (12)
 
-- `os/Backoff.kt`
-- `os/ProgramSettings.kt`
-- `os/UnitJobs.kt`
-- `runtime/GuestAdapter.kt`
-- `runtime/InstanceHost.kt`
-- `runtime/SupervisorPolicy.kt`
-- `runtime/SupervisorPool.kt`
+- `services/reg/InstalledRuntime`
+- `services/reg/ManifestSchema`
+- `services/reg/PortBroker`
+- `services/reg/ProgramIndex`
+- `services/reg/ProgramManager`
+- `services/reg/ProgramNotification`
+- `services/reg/ProgramRegistry`
+- `services/reg/ProgramSettings`
+- `services/reg/ProgramStatus`
+- `services/reg/ResidencyStatus`
+- `services/reg/RuntimeEnvironment`
+- `services/reg/UnitState`
 
-### `services/supply`  (22 个)
+### `services/supervise`  (7)
 
-- `lifecycle/PackageInstallReceiver.kt`
-- `os/CatalogClient.kt`
-- `os/PackageInstaller.kt`
-- `os/PieceScan.kt`
-- `os/ProgramDir.kt`
-- `os/RegistryStore.kt`
-- `os/VersionRange.kt`
-- `ota/OtaPolicy.kt`
-- `ota/ProgramArchive.kt`
-- `ota/ProgramInstaller.kt`
-- `ota/ProgramInstallPipeline.kt`
-- `ota/ProgramOtaResolution.kt`
-- `ota/ProgramOtaSelfCheck.kt`
-- `ota/ProgramOtaStateStore.kt`
-- `ota/ProgramOtaUpdater.kt`
-- `ota/ProgramOtaVersions.kt`
-- `ota/ResumableDownloader.kt`
-- `ota/SelfCheckReport.kt`
-- `pieces/CompatSemantics.kt`
-- `pieces/DriverRegistry.kt`
-- `pieces/PieceProvisioner.kt`
-- `runtime/PieceUpdater.kt`
+- `services/supervise/Backoff`
+- `services/supervise/GuestAdapter`
+- `services/supervise/InstanceHost`
+- `services/supervise/SupervisorPolicy`
+- `services/supervise/SupervisorPool`
+- `services/supervise/TaskRegistry`
+- `services/supervise/UnitJobs`
+
+### `services/supply`  (20)
+
+- `services/supply/CatalogClient`
+- `services/supply/OtaPolicy`
+- `services/supply/PackageInstaller`
+- `services/supply/PieceRegistrar`
+- `services/supply/PieceScan`
+- `services/supply/PieceUpdater`
+- `services/supply/ProgramArchive`
+- `services/supply/ProgramDir`
+- `services/supply/ProgramInstallPipeline`
+- `services/supply/ProgramInstaller`
+- `services/supply/ProgramOtaResolution`
+- `services/supply/ProgramOtaSelfCheck`
+- `services/supply/ProgramOtaStateStore`
+- `services/supply/ProgramOtaUpdater`
+- `services/supply/ProgramOtaVersions`
+- `services/supply/RegistryStore`
+- `services/supply/ResumableDownloader`
+- `services/supply/SelfCheckReport`
+- `services/supply/SupplyProvisioner`
+- `services/supply/VersionRange`

@@ -12,6 +12,10 @@ import lobos.services.supply.CatalogClient
 import lobos.services.app.Foreground
 import lobos.services.app.QuickAppHost
 import lobos.services.log.RuntimeDiagnostics
+import lobos.kernel.KernelHooks
+import lobos.kernel.power.PowerHostHooks
+import lobos.services.log.RuntimeDiagnostics
+import lobos.services.reg.ResidencyStatus
 
 class OsApplication : Application() {
 
@@ -24,7 +28,24 @@ class OsApplication : Application() {
         createChannels()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
-        OsHostService.ensureRunning(this)
+        // 内核的两个注入钩子在这里注册 —— onCreate 是进程级入口，早于任何组件。
+        //
+        // 注册在 OsHostService.onStartCommand 里是不够的：宿主被杀后钩子随进程
+        // 一起消失，而无障碍服务与 Doze 兜底闹钟都会被系统单独拉起 —— 那时
+        // 钩子已经没了，「请拉起宿主」这个请求就落空。
+        KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
+        KernelHooks.setReporter { ctx, stage, ok, message, detail ->
+            RuntimeDiagnostics.append(ctx, stage, ok, message, detail)
+        }
+        PowerHostHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
+        PowerHostHooks.setWakeObserver { nowMs ->
+            ResidencyStatus.recordWake()
+            RuntimeDiagnostics.append(
+                this, "doze", null, "兜底投递：确保 OS 宿主在",
+                "自唤醒间隔=" + lobos.kernel.power.DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）"
+            )
+        }
+                OsHostService.ensureRunning(this)
         registerWakeupEdges()
         supplyOnStartup()
     }
