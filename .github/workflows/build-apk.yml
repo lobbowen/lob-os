@@ -237,12 +237,35 @@ jobs:
           echo "[sysroot] 就位 $DST（include $(ls "$DST/include" | wc -l) 项 · lib $(ls "$DST/lib" | wc -l) 项）"
           du -sh "$DST"
 
-      - name: 小件原生件（命中固化则取用，否则现场编译）
+      # APK 是**取件模式**：预装件是现成的，编一次固化到 Release，之后一直取用。
+      # 这里不再编译任何件 —— 取不到就报错退出，明说缺哪个、该去跑
+      # 「workflow_dispatch build-<id>」（见 RELEASE-POLICY.md）。
+      #
+      # 回退去编译正是「APK 又开始编件」的由来，而且会把「某个件没固化」
+      # 这个事实藏起来 —— 构建变慢、变脆，还说不清为什么。
+      - name: 取件（从 Release 取 base 筐的固化产物）
+        run: |
+          set -euo pipefail
+          bash scripts/toolchain/fetch-prebuilt-pieces.sh
+
+      # 内核的兼容性垫片（posix · flock · ptyprobe · ptysession）是
+      # container/native 下我们自己写的 C，随 APK 而来 —— 它们不是件、
+      # 不走 Release、不进清单、不可 OTA 替换。所以这里仍然要编，
+      # 但编的是内核的一部分，不是「取件」。
+      - name: 编内核的兼容性垫片（内核的一部分，不是件）
         run: |
           set -euo pipefail
           bash scripts/toolchain/locate-ndk.sh
-          bash scripts/toolchain/ensure-native-capabilities.sh
+          bash scripts/toolchain/build-kernel-compat.sh
+
+      - name: 核对取到的件
+        run: |
+          set -euo pipefail
+          echo "jniLibs/arm64-v8a："
           ls -la container/app/src/main/jniLibs/arm64-v8a/
+          echo ""
+          echo "assets/supply/meta（PrefixProvisioner 扫这里）："
+          ls container/app/src/main/assets/supply/meta/ | head -40
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
