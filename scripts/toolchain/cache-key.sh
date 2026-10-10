@@ -129,6 +129,8 @@ if [ "$DEPS" = "build-apk-only" ]; then
   exit 1
 fi
 
+# VER 里已经含各依赖的版本（第 94-100 行那个循环），所以它变了名字就变 ——
+# 依赖一变就该重新固化，这一层不用再加东西。
 DEPS_STR="$VER-ndk$NDK-api$API"
 BUCKET="$(bucket_for "$TOOL")"
 
