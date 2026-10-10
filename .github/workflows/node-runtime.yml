@@ -37,11 +37,9 @@ jobs:
 
       - name: 资产名
         id: asset
-        run: echo "name=$(bash scripts/toolchain/cache-key.sh asset node)" >> "$GITHUB_OUTPUT"
 
       - name: Release tag（件名，不含版本，且与其余 component 件同一套命名）
         id: rel
-        run: echo "tag=$(bash scripts/toolchain/cache-key.sh tag node)" >> "$GITHUB_OUTPUT"
 
       - name: 已发布就复用（不重编）
         id: reuse

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-F="$HERE/../component-verify.json"
+F="$HERE/../component-sources.json"
 key="${1:?usage: read-component-entry.sh <tool>}"
 
 if command -v node >/dev/null 2>&1; then
@@ -10,7 +10,7 @@ if command -v node >/dev/null 2>&1; then
     const [path, tool] = process.argv.slice(1);
     let entry = null;
     try {
-      const crit = (JSON.parse(fs.readFileSync(path, "utf8")).criteria) || {};
+      const crit = (JSON.parse(fs.readFileSync(path, "utf8")).sources) || {};
       entry = (crit[tool] || {}).entry || null;
     } catch (e) {
       console.error("[FAIL] " + path + " 读 " + JSON.stringify(tool) + ": " + e.message);

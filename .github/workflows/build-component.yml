@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build-component.yml'
-      - 'scripts/toolchain/cache-key.sh'
       # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
       # 改了判据必须触发重建，否则改完看不到效果
       - 'scripts/verify/check-elf-deps.sh'
@@ -27,7 +26,6 @@ on:
       - 'component-*'
   pull_request:
     paths:
-      - 'scripts/toolchain/cache-key.sh'
       - 'scripts/registry/list-bucket-components.js'
       - 'scripts/toolchain/fetch-component-artifacts.sh'
       - 'scripts/publish/publish-component-manifest.js'

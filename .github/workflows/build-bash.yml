@@ -10,7 +10,6 @@ on:
       - 'scripts/toolchain/locate-ndk.sh'
       - 'scripts/toolchain/cache-ndk.sh'
       - 'scripts/toolchain/fetch-pinned.sh'
-      - 'scripts/toolchain/cache-key.sh'
       # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
       # 改了判据必须触发重建，否则改完看不到效果
       - 'scripts/verify/check-elf-deps.sh'
@@ -58,7 +57,6 @@ jobs:
           # list-bucket-components.js 的清单里；build-apk.yml 也现场编它们。
           # asset 名由 cache-key.sh 算（依赖版本 + 补丁摘要 + NDK + API），
           # 与「已固化就复用」那一步取的是同一个 —— 两处必须同源。
-          echo "asset=$(bash scripts/toolchain/cache-key.sh asset bash)" >> "$GITHUB_OUTPUT"
       - name: 已固化就复用（不重编）
         id: reuse
         env:

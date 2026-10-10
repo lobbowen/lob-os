@@ -14,7 +14,6 @@ on:
       - 'scripts/recipes/package-component.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/upload-qiniu.js'
-      - 'scripts/toolchain/cache-key.sh'
       # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
       # 改了判据必须触发重建，否则改完看不到效果
       - 'scripts/verify/check-elf-deps.sh'
@@ -170,8 +169,6 @@ jobs:
         run: |
           set -euo pipefail
           [ -d dist/llvmtoolchain ] || { echo "::warning title=没产出 llvmtoolchain::跳过发布"; exit 0; }
-          TAG="$(bash scripts/toolchain/cache-key.sh tag llvm)"
-          ASSET="$(bash scripts/toolchain/cache-key.sh asset llvm)"
           PW="work/pw-llvmtoolchain"
           rm -rf "$PW" && mkdir -p "$PW"
           tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .

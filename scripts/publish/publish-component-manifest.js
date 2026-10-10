@@ -16,7 +16,7 @@ const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.COMPONENT_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.COMPONENT_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply/component-public.pem');
-const VERIFY = path.join(__dirname, 'component-verify.json');
+const VERIFY = path.join(__dirname, 'component-sources.json');
 const TTL_MS = 30 * 86400_000;
 
 function entryOf(name) {
@@ -149,7 +149,7 @@ function revisionForManifest() {
 
 function criteria() {
   const j = JSON.parse(fs.readFileSync(VERIFY, 'utf8'));
-  return j.criteria || {};
+  return j.sources || {};
 }
 
 function main() {
@@ -159,7 +159,7 @@ function main() {
   for (const t of tools) {
     const v = crit[t.name];
     if (!v || typeof v.node !== 'string' || v.node.length < 20) {
-      throw new Error('件没有能力判据，不许发布: ' + t.name + '（在 scripts/component-verify.json 里补）');
+      throw new Error('件没有能力判据，不许发布: ' + t.name + '（在 scripts/component-sources.json 里补）');
     }
     t.verify = { criterion: v.criterion, node: v.node };
     t.kind = t.kind || 'component';

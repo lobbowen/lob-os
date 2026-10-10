@@ -21,8 +21,8 @@ const PUBKEY = process.env.NATIVE_PUBKEY
 // 事实源（两个，别再找已删的 NativeAssetRegistry.kt —— 那个文件已随
 // 「内核不预置件清单」那轮清理删掉了）：
 //   CAPS     —— .github/native-capabilities.txt：<档位> <libName> <id>
-//   VERIFY   —— scripts/component-verify.json：每件的 version/entry/form
-const VERIFY = path.join(ROOT, 'scripts', 'component-verify.json');
+//   VERIFY   —— scripts/component-sources.json：每件的 version/entry/form
+const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
 const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
 const PIN = path.join(ROOT, '.github', 'native-capabilities-pin.json');
@@ -42,7 +42,7 @@ function parseRegistry() {
   if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件清单没了'); return []; }
   let vtab = {};
   try {
-    vtab = (JSON.parse(fs.readFileSync(VERIFY, 'utf8')).criteria) || {};
+    vtab = (JSON.parse(fs.readFileSync(VERIFY, 'utf8')).sources) || {};
   } catch (e) {
     bad('读不了 ' + VERIFY + '：' + e.message);
   }
@@ -137,7 +137,7 @@ function versionOf(id) {
     bad('钉值表读不出（' + SOURCES + '）：' + e.message);
   }
   try {
-    vtab = JSON.parse(fs.readFileSync(VERIFY, 'utf8')).criteria || {};
+    vtab = JSON.parse(fs.readFileSync(VERIFY, 'utf8')).sources || {};
   } catch (e) {
     bad('判据表读不出（' + VERIFY + '）：' + e.message);
   }

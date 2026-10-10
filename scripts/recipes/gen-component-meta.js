@@ -34,11 +34,8 @@ if (!id || !outPath) {
 }
 
 const sources = readJson(path.join(ROOT, 'scripts/component-sources.json')).sources || {};
-const verify = readJson(path.join(ROOT, 'scripts/component-verify.json')).criteria || {};
 
-// 版本：verify 里写了就用（自写件从 1.0.0 起），否则从钉值表的上游版本
 const src = sources[id] || {};
-const v = verify[id] || {};
 
 // Architecture：Debian 要求必填。我们从 ABI 推（arm64-v8a → arm64）
 const ABI = process.env.ABI || 'arm64-v8a';
@@ -47,9 +44,9 @@ const arch = ABI.split('-')[0];
 const meta = {
   schema: 1,
   id: id,
-  version: v.version || src.version || '',
+  version: src.version || '',
   arch: arch,
-  essential: v.required === true,
+  essential: src.essential === true,
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',
 };
@@ -57,7 +54,7 @@ const meta = {
 if (!meta.version) {
   console.error('::error title=' + id + ' 缺版本::'
     + ' deb-control(5) 把 Version 标为 required —— '
-    + '见 scripts/component-sources.json 与 scripts/component-verify.json');
+    + '见 scripts/component-sources.json');
   process.exit(1);
 }
 

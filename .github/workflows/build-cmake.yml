@@ -8,7 +8,6 @@ on:
       - 'scripts/toolchain/locate-ndk.sh'
       - 'scripts/toolchain/cache-ndk.sh'
       - 'scripts/toolchain/fetch-pinned.sh'
-      - 'scripts/toolchain/cache-key.sh'
       # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
       # 改了判据必须触发重建，否则改完看不到效果
       - 'scripts/verify/check-elf-deps.sh'
@@ -91,9 +90,6 @@ jobs:
       - name: 算本件的「编译一次」标识
         id: uwkey
         run: |
-          echo "key=$(bash scripts/toolchain/cache-key.sh cmake)" >> "$GITHUB_OUTPUT"
-          echo "tag=$(bash scripts/toolchain/cache-key.sh tag cmake)" >> "$GITHUB_OUTPUT"
-          echo "asset=$(bash scripts/toolchain/cache-key.sh asset cmake)" >> "$GITHUB_OUTPUT"
       - name: 已发布就复用（不重编）
         id: reuse
         env:

@@ -1,0 +1,128 @@
+{
+  "node": {
+    "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）",
+    "node": "const cp = require('node:child_process'); const v = cp.spawnSync('node', ['-v'], { encoding: 'utf8', timeout: 90000 }); if (v.error) { console.error('node 起不来: ' + v.error.message); process.exit(1); } if (v.status !== 0) { console.error('node 非零退出 rc=' + v.status + ' err=' + String(v.stderr || '').slice(0, 160)); process.exit(1); } const ver = String(v.stdout || '').trim(); if (ver.charAt(0) !== 'v' || ver.split('.').length < 3) { console.error('node 版本号不对: ' + JSON.stringify(ver)); process.exit(1); } const e = cp.spawnSync('node', ['-e', 'console.log(6*7)'], { encoding: 'utf8', timeout: 90000 }); if (e.status !== 0) { console.error('node 跑不了代码: rc=' + e.status + ' err=' + String(e.stderr || '').slice(0, 200)); process.exit(1); } if (String(e.stdout || '').trim() !== '42') { console.error('node 计算结果不对: ' + JSON.stringify(String(e.stdout || '').slice(0, 40))); process.exit(1); } const s = cp.spawnSync('node', ['-e', 'require(\"http\").createServer((q,r)=>r.end(\"ok\")).listen(0,\"127.0.0.1\",function(){console.log(this.address().port);this.close()})'], { encoding: 'utf8', timeout: 90000 }); if (s.status !== 0) { console.error('node 起不了 http 服务: rc=' + s.status + ' err=' + String(s.stderr || '').slice(0, 200)); process.exit(1); } const port = String(s.stdout || '').trim(); if (!/^[0-9]+$/.test(port) || Number(port) <= 0) { console.error('node 报的监听端口不对: ' + JSON.stringify(String(s.stdout || '').slice(0, 60))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS node=' + ver + ' 代码执行 6*7=42 起服端口 ' + port);",
+    "versionArgs": [
+      "-p",
+      "process.versions.node"
+    ],
+    "required": false
+  },
+  "npm": {
+    "criterion": "按裸名解析的 npm 真能跑起来并打印三段版本；**并且**它报出的全局前缀在可写 HOME 下 —— 文件在不算数，装东西装到只读目录也不算数。**同一颗件还按裸名提供 npx**（ENV-26）：npx 也要三段版本，且它的 --help 必须说 exec 的语义 —— 只看版本号分辨不了「别名共享本件入口」那种把 npx 链到 npm-cli.js 的错法，两者打印逐字相同",
+    "node": "const cp = require('node:child_process'), os = require('node:os'); const r = cp.spawnSync('npm', ['--version'], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('npm 起不来: ' + r.error.message); process.exit(1); } const v = String(r.stdout || '').trim(); if (r.status !== 0 || v.split('.').length < 3) { console.error('npm 不可用: rc=' + r.status + ' out=' + v.slice(0, 60) + ' err=' + String(r.stderr || '').slice(0, 80)); process.exit(1); } const p = cp.spawnSync('npm', ['config', 'get', 'prefix'], { encoding: 'utf8', timeout: 90000 }); const prefix = String(p.stdout || '').trim(); const home = process.env.HOME || os.homedir(); if (p.status !== 0 || !prefix || prefix.indexOf(home) !== 0) { console.error('npm 的全局前缀不在可写 HOME 下: rc=' + p.status + ' prefix=' + prefix.slice(0, 120) + ' home=' + home + ' err=' + String(p.stderr || '').slice(0, 80)); process.exit(1); } const x = cp.spawnSync('npx', ['--version'], { encoding: 'utf8', timeout: 90000 }); if (x.error) { console.error('npx 起不来（这颗件只兑现了 npm 一颗真名）: ' + x.error.message); process.exit(1); } const xv = String(x.stdout || '').trim(); if (x.status !== 0 || xv.split('.').length < 3) { console.error('npx 不可用: rc=' + x.status + ' out=' + xv.slice(0, 60) + ' err=' + String(x.stderr || '').slice(0, 80)); process.exit(1); } const h = cp.spawnSync('npx', ['--help'], { encoding: 'utf8', timeout: 90000 }); const hs = String(h.stdout || ''); if (h.status !== 0 || hs.indexOf('Run a command from a local or remote npm package') < 0) { console.error('npx 调到了但不是 npx 的真身（--help 打头的不是 exec 语义）: rc=' + h.status + ' out=' + hs.slice(0, 80)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS npm=' + v + ' prefix=' + prefix + ' npx=' + xv);",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "pnpm": {
+    "criterion": "按裸名解析的 pnpm 真能跑起来并打印三段版本 —— 文件在不算数",
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('pnpm', ['--version'], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('pnpm 起不来: ' + r.error.message); process.exit(1); } const v = String(r.stdout || '').trim(); if (r.status !== 0 || v.split('.').length < 3) { console.error('pnpm 不可用: rc=' + r.status + ' out=' + v.slice(0, 60) + ' err=' + String(r.stderr || '').slice(0, 80)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS pnpm=' + v);",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "jq": {
+    "criterion": "jq 起得来、真解析一段 JSON 并把结果读回来（不是只看 --version）",
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('jq', ['-c', '.a'], { input: '{\"a\":42}', encoding: 'utf8' }); if (r.error) { console.error('jq 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('jq 非零退出 rc=' + r.status + ' err=' + String(r.stderr || '').slice(0, 160)); process.exit(1); } const got = String(r.stdout || '').trim(); if (got !== '42') { console.error('jq 读回不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS jq 可用（.a => 42）');",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "git": {
+    "criterion": "git 起得来、真做一次 init→add→commit→log 并读回提交；**并且** https 通路可用（不是只看 --version）",
+    "node": "const cp = require('node:child_process'), fs = require('node:fs'), os = require('node:os'), path = require('node:path'); const d = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'lobos-git-')); const env = Object.assign({}, process.env, { GIT_AUTHOR_NAME: 'lobos', GIT_AUTHOR_EMAIL: 'lobos@local', GIT_COMMITTER_NAME: 'lobos', GIT_COMMITTER_EMAIL: 'lobos@local' }); const run = (args) => cp.spawnSync('git', args, { cwd: d, encoding: 'utf8', env }); const r0 = run(['init', '-q']); if (r0.error) { console.error('git 起不来: ' + r0.error.message); process.exit(1); } fs.writeFileSync(path.join(d, 'a.txt'), 'hello'); run(['add', 'a.txt']); const r1 = run(['commit', '-q', '-m', 'first']); if (r1.status !== 0) { console.error('commit 失败: ' + String(r1.stderr || '').slice(0, 160)); process.exit(1); } const r2 = run(['log', '--oneline']); if (r2.status !== 0 || String(r2.stdout || '').indexOf('first') < 0) { console.error('log 读不到提交: ' + JSON.stringify(String(r2.stdout || '').slice(0, 120))); process.exit(1); } const r3 = run(['ls-remote', 'https://lobcdn.zll.ink/component-canary/component-manifest.json']); const e3 = String(r3.stderr || '') + String(r3.stdout || ''); if (/remote-http|not supported|is not a git command|could not find remote helper/i.test(e3)) { console.error('git 不含 https 支持: ' + e3.slice(0, 200)); process.exit(1); } if (/(SSL|TLS|certificate|cert verify|CAfile)/i.test(e3)) { console.error('https 握手/证书失败: ' + e3.slice(0, 200)); process.exit(1); } const offline = /(Could not resolve host|Network is unreachable|Connection timed out|Couldn't connect|Failed to connect)/i.test(e3); process.stdout.write('LOBOS_PROBE_PASS git 可用（init/add/commit/log 真跑通；https ' + (offline ? '本机离线，仅证到「非 no-curl 构建」' : '经 TLS 拿到 HTTP 层响应') + '）');",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "curl": {
+    "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）",
+    "node": "const cp = require('node:child_process'); const url = 'https://lobcdn.zll.ink/component-canary/component-manifest.json'; const r = cp.spawnSync('curl', ['-fsS', '--max-time', '25', url], { encoding: 'utf8' }); if (r.error) { console.error('curl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 失败 rc=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 200)); process.exit(1); } let ok = false; try { const j = JSON.parse(r.stdout); ok = Array.isArray(j.tools) && j.tools.length > 0; } catch (e) { ok = false; } if (!ok) { console.error('响应不是预期 JSON（TLS 或许过了，内容不对）: ' + String(r.stdout || '').slice(0, 120)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 可用（HTTPS 取回清单 ' + String(r.stdout).length + ' 字节）');",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": true
+  },
+  "sysroot": {
+    "criterion": "assets/sysroot/include/ 与 assets/sysroot/lib/ 在 APK 里，且 include 下确有 stdio.h（build-apk.yml 第 147 步硬判：缺了编译任何 C 程序都会失败）。判据是**材料在位**而非「能跑」—— 它是编译期材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。【未自动验】lib/ 下那些库的架构没有判据；实际拷的是 NDK sysroot 里 usr/lib/aarch64-linux-android/ 的内容，架构随 NDK 的目标而定。",
+    "required": true
+  },
+  "make": {
+    "criterion": "make 起得来，并且**真编译一条 makefile 到可执行文件再 clean 掉** ——起得来不等于能用：make 自己就是构建系统，它坏的方式是「跑起来了但不建东西」。所以判据覆盖变量展开、命令行目标、隐式规则（%.o: %.c）与 clean，缺一都不算通过。",
+    "node": "const cp = require(\"node:child_process\"), fs = require(\"node:fs\"), os = require(\"node:os\"), path = require(\"node:path\");\nconst r = cp.spawnSync(\"make\", [\"--version\"], { encoding: \"utf8\", timeout: 30000 });\nif (r.status !== 0) throw new Error(\"make 起不来: status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n\n// 编译器：环境里有就用（真编译 C），没有就退回 make 内建的 echo 规则。\n// 后者仍能验「makefile 机制通不通」，只是不验 C 编译。\nconst CC = process.env.CC || null;\nconst D = fs.mkdtempSync(path.join(os.tmpdir(), \"lobos-make-\"));\ntry {\n  fs.writeFileSync(path.join(D, \"a.c\"), \"int main(void){return 0;}\\n\");\n  // makefile 用数组逐行写 —— 变量前加 D（\"$\"）以避开 JS 字符串插值\n  const mf = [\n    \"NAME = demo\",\n    \"all: \" + D + \"(BINDIR)/\" + D + \"(NAME)\",\n    \"\",\n    D + \"(BINDIR)/\" + D + \"(NAME): \" + D + \"(NAME).o\",\n    \"\\t@mkdir -p \" + D + \"(BINDIR)\",\n    \"\\t\" + (CC ? D + \"(CC) -o \" + D + \"@ \" + D + \"<\" : \"echo built > \" + D + \"@\"),\n    \"\",\n    \"%.o: %.c\",\n    \"\\t\" + (CC ? D + \"(CC) -c -o \" + D + \"@ \" + D + \"<\" : \"echo obj > \" + D + \"@\"),\n    \"\",\n    \"clean:\",\n    \"\\trm -rf \" + D + \"(BINDIR) *.o\",\n    \"\",\n  ].join(\"\\n\");\n  fs.writeFileSync(path.join(D, \"Makefile\"), mf);\n  const mk = (t) => cp.spawnSync(\"make\", t, { cwd: D, encoding: \"utf8\", timeout: 120000,\n    env: Object.assign({}, process.env, { BINDIR: \"out\" }, CC ? { CC } : {}) });\n\n  const b1 = mk([]);\n  if (b1.status !== 0) throw new Error(\"make 跑第一条就失败: \" + ((b1.stderr || b1.stdout) || \"\").slice(0, 400));\n  const exe = path.join(D, \"out\", \"demo\");\n  if (!fs.existsSync(exe)) throw new Error(\"make 报成功但没产出 out/demo —— 它没真建东西（起得来 ≠ 能用）\");\n\n  const b2 = mk([\"clean\"]);\n  if (b2.status !== 0) throw new Error(\"make clean 失败: \" + (b2.stderr || \"\").slice(0, 200));\n  if (fs.existsSync(exe)) throw new Error(\"make clean 跑完但产物还在 —— clean 目标没生效\");\n\n  console.log(\"make ok: \" + (CC ? \"真编译\" : \"用内建规则\") + \"跑通了一条 makefile（含隐式规则），并 clean 干净\");\n} finally {\n  fs.rmSync(D, { recursive: true, force: true });\n}",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "cmake": {
+    "criterion": "cmake 起得来，并且**真 configure + build 一个最小 CMake 项目** ——只验「起得来」不够：cmake 的模块（Modules/ 等）不在旁边时它是空壳，起得来但任何 configure 都失败。所以判据跑到产出自定义目标那一步。",
+    "node": "const cp = require(\"node:child_process\"), fs = require(\"node:fs\"), os = require(\"node:os\"), path = require(\"node:path\");\nconst r = cp.spawnSync(\"cmake\", [\"--version\"], { encoding: \"utf8\", timeout: 30000 });\nif (r.status !== 0) throw new Error(\"cmake 起不来: status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\nconst D = fs.mkdtempSync(path.join(os.tmpdir(), \"lobos-cmake-\"));\ntry {\n  const CML = [\n    \"cmake_minimum_required(VERSION 3.13)\",\n    \"project(lobos_cmake_probe LANGUAGES NONE)\",\n    \"add_custom_command(OUTPUT probe.ok\",\n    \"  COMMAND ${CMAKE_COMMAND} -E touch probe.ok)\",\n    \"add_custom_target(probe ALL DEPENDS probe.ok)\",\n  ].join(\"\\n\");\n  fs.writeFileSync(path.join(D, \"CMakeLists.txt\"), CML);\n  const c = cp.spawnSync(\"cmake\", [\"-S\", \".\", \"-B\", \"build\"], { cwd: D, encoding: \"utf8\", timeout: 120000 });\n  if (c.status !== 0) {\n    throw new Error(\"cmake configure 失败（这通常就是模块目录不在旁边 —— 空壳 cmake 的典型症状）: \"\n      + ((c.stderr || c.stdout || \"\").slice(0, 400)));\n  }\n  if (!fs.existsSync(path.join(D, \"build\", \"CMakeCache.txt\")))\n    throw new Error(\"cmake 报成功但没生成 build/CMakeCache.txt —— 它没真 configure\");\n  const b = cp.spawnSync(\"cmake\", [\"--build\", \"build\"], { cwd: D, encoding: \"utf8\", timeout: 120000 });\n  if (b.status !== 0) throw new Error(\"cmake --build 失败: \" + ((b.stderr||b.stdout||\"\").slice(0,300)));\n  if (!fs.existsSync(path.join(D, \"probe.ok\")))\n    throw new Error(\"build 报成功但 probe.ok 不在 —— add_custom_command 没生效\");\n  console.log(\"cmake ok: configure + build 一个真实项目并产出了自定义目标\");\n} finally {\n  fs.rmSync(D, { recursive: true, force: true });\n}",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "libcxx": {
+    "criterion": "jniLibs/arm64-v8a/libc++_shared.so 在 APK 里（build-apk.yml 第 114 步硬判：NDK 里没有它就 exit 1 —— APK 内 C++ 原生件将无法加载）。起得来不适用 —— 它是 NDK 直接给的；我们要验的是「落位对」。【未自动验】它的架构与 DT_SONAME 没有判据（实际来自 NDK 的 sysroot，架构随 NDK 目标而定）。",
+    "required": true
+  },
+  "bash": {
+    "criterion": "bash 起得来，并且**真跑一段脚本**：管道、变量展开、退出码各验一次（不是只看 --version）。起得来不等于能用：bash 自己坏的方式是「起得来但语法/退出码不对」，那会让程序里所有 #!/usr/bin/env bash 的快应用脚本一起失效。",
+    "required": false
+  },
+  "ripgrep": {
+    "criterion": "rg 起得来，并且**真搜一次**并在结果里读回命中的行号与文件名（不是只看 --version）。rg 起得来但搜不出东西，与起不来对程序没有区别。",
+    "required": false
+  },
+  "busybox": {
+    "criterion": "busybox 本体在 jniLibs 里、**applet 软链随件一起在**（至少 ls/cat/cp/mkdir/rm），且 ELF 里没有 PT_DYNAMIC（静态产物，不依赖任何共享库）、LOAD 段 16KB 对齐。判据覆盖形状而不只是「文件在」：带 PT_DYNAMIC 的 busybox 真机上会因找不到它依赖的库而起不来，那时「文件在」看着是对的；未 16KB 对齐的在 Android 15+ 上会直接加载失败。（这两项形状检查由 build-native-busybox.sh 的构建期判据承担。）",
+    "required": false
+  },
+  "zlib": {
+    "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。",
+    "required": true
+  },
+  "openssl": {
+    "criterion": "libssl.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**（DT_NEEDED 有 libc/libm，而自身没有把 zlib 静态链进去）。openssl 静态链 zlib 是最常见的坏法 —— 那等于一个二进制里装了两个件。",
+    "required": true
+  },
+  "crypto": {
+    "criterion": "libcrypto.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**。与 openssl 同一条判据的另一半：两者必须各自独立成 .so，不能是同一个二进制或一个静态链了另一个。",
+    "required": true
+  },
+  "sqlite": {
+    "criterion": "sqlite3 CLI 起得来、能算一条 SQL 并把结果读回来（不是只看 --version）",
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('sqlite3', [':memory:', 'select 1+1;'], { encoding: 'utf8' }); if (r.error) { console.error('sqlite3 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('sqlite3 非零退出 rc=' + r.status + ' err=' + String(r.stderr || '').slice(0, 160)); process.exit(1); } const got = String(r.stdout || '').trim(); if (got !== '2') { console.error('sqlite3 回读不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS sqlite3 CLI 可用（select 1+1 => 2）');",
+    "versionArgs": [
+      "-version"
+    ],
+    "required": false
+  },
+  "python": {
+    "criterion": "python3 起得来，并且**真跑一段 Python**：算术、import 标准库（json/collections/os/re）、文件读写、f-string。只验 --version 的话，一个只会打印版本号的假解释器也能过；更关键的是「起得来但没有标准库」—— 那时 import 一行就死，而这正是标准库没随件走时的典型症状，所以判据第一件事就是 import。",
+    "node": "const cp = require(\"node:child_process\"), fs = require(\"node:fs\"), os = require(\"node:os\"), path = require(\"node:path\");\nconst r = cp.spawnSync(\"python3\", [\"--version\"], { encoding: \"utf8\", timeout: 30000 });\nif (r.status !== 0) throw new Error(\"python3 起不来: status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n\nconst D = fs.mkdtempSync(path.join(os.tmpdir(), \"lobos-py-\"));\ntry {\n  const PY = \"import json, collections, os, re, sys\\n\\n# 算术与内建\\nassert 2 ** 10 == 1024\\nassert sum([1, 2, 3]) == 6\\nassert isinstance(sys.version_info, tuple)\\n\\n# 标准库：import 成功 ≠ 能用，各调用一次\\nassert json.loads('{\\\"k\\\": [1, 2]}')[\\\"k\\\"] == [1, 2]\\nassert list(collections.OrderedDict([(\\\"a\\\", 1)]).keys()) == [\\\"a\\\"]\\nassert re.match(r\\\"^a+$\\\", \\\"aaa\\\") is not None\\nassert os.path.isdir(os.path.dirname(os.path.abspath(__file__))) or True\\n\\n# 文件读写\\np = os.path.join(os.path.dirname(os.path.abspath(__file__)), \\\"t.txt\\\")\\nwith open(p, \\\"w\\\") as f: f.write(\\\"hi \\\" + sys.version.split()[0])\\nwith open(p) as f: assert f.read().startswith(\\\"hi \\\")\\nos.unlink(p)\\n\\n# 格式化（f-string 要求 3.6+）\\nn = 42\\nassert f\\\"{n:03d}\\\" == \\\"042\\\"\\n\\nprint(\\\"py-ok\\\", sys.version.split()[0])\";\n  fs.writeFileSync(path.join(D, \"probe.py\"), PY);\n  const p = cp.spawnSync(\"python3\", [\"probe.py\"], { cwd: D, encoding: \"utf8\", timeout: 60000 });\n  if (p.status !== 0) {\n    throw new Error(\"跑脚本失败（最可能是标准库没随件走 —— 那时 import 就死，现象是「起得来但一用就崩」）: \"\n      + ((p.stderr || p.stdout || \"\").slice(0, 400)));\n  }\n  const out = (p.stdout || \"\").trim();\n  if (out.indexOf(\"py-ok\") !== 0) throw new Error(\"没看到 py-ok 输出，实得: \" + JSON.stringify(out));\n  console.log(out);\n} finally {\n  fs.rmSync(D, { recursive: true, force: true });\n}",
+    "versionArgs": [
+      "-V"
+    ],
+    "required": false
+  },
+  "llvm": {
+    "criterion": "clang 起得来（且是**我们编的那个**，不是宿主的 x86_64 clang），并**真编译一次**：拿 --sysroot 指向 sysroot 件编一个 .so，产物是 aarch64 ELF。三层各自会独立地坏：找得到 sysroot 的头文件 / 链得出 ELF / ABI 是对的 —— 只验 --version 的话三层都验不到。未覆盖：「产物能被 dlopen」——那要真机（ProgramInstallPipeline 会读 ELF 段铺依赖）。",
+    "node": "const cp = require('node:child_process'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');\n\n// ① 版本：确认是设备上这个 clang，而不是宿主 PATH 里的同名命令\nconst r = cp.spawnSync(\"clang\", [\"--version\"], { encoding: \"utf8\", timeout: 30000 });\nif (r.status !== 0) throw new Error(\"clang 起不来: status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\nconst ver = (r.stdout || \"\").trim();\nif (ver.indexOf(\"clang version\") < 0) throw new Error(\"clang --version 的输出不像 clang: \" + ver.slice(0,120));\n\n// ② sysroot：从入口拿路径（sysroot 件提供 bin/sysroot，自问自答）\nconst s = cp.spawnSync(\"sysroot\", [], { encoding: \"utf8\", timeout: 30000 });\nif (s.status !== 0) throw new Error(\"sysroot 入口起不来 —— 没有它就没法验 clang 能否找头文件\");\nconst SR = (s.stdout || \"\").trim();\nif (!SR || !fs.existsSync(SR)) throw new Error(\"sysroot 入口打印的路径不存在: \" + JSON.stringify(SR));\nconst inc = path.join(SR, \"include\");\nif (!fs.existsSync(path.join(inc, \"stdio.h\"))) {\n  throw new Error(\"sysroot 里没有 include/stdio.h —— 拿到的是不完整的 sysroot，clang 一定编不了\");\n}\n\n// ③ 真编一次 .so：这一条同时覆盖「找头文件」「链得出」「ABI 对」三层\nconst D = fs.mkdtempSync(path.join(os.tmpdir(), \"lobos-clang-\"));\ntry {\n  fs.writeFileSync(path.join(D, \"probe.c\"),\n    \"int probe(void){ return 42; }\\n\");\n  const so = path.join(D, \"libprobe.so\");\n  const c = cp.spawnSync(\"clang\", [\"--sysroot=\" + SR, \"-shared\", \"-fPIC\", \"-O2\",\n                             \"-o\", so, path.join(D, \"probe.c\")],\n    { encoding: \"utf8\", timeout: 120000 });\n  if (c.status !== 0) {\n    throw new Error(\"clang 编译失败（它可能找到了 clang 但找不到 sysroot，或工具链不全）: \"\n      + ((c.stderr || c.stdout || \"\").slice(0, 500)));\n  }\n  if (!fs.existsSync(so) || fs.statSync(so).size < 100) {\n    throw new Error(\"clang 报成功但没产出 libprobe.so（或产物过小）\");\n  }\n  // 产物必须是 aarch64 ELF —— 编成宿主 x86_64 是最容易错也最难发现的一处\n  const head = Buffer.alloc(20);\n  const fd = fs.openSync(so, \"r\");\n  fs.readSync(fd, head, 0, 20, 0); fs.closeSync(fd);\n  if (!(head[0] === 0x7f && head[1] === 0x45 && head[2] === 0x4c && head[3] === 0x46))\n    throw new Error(\"产物不是 ELF（前四字节不是 \\\\x7fELF）\");\n  const is64 = head[4] === 2;\n  if (!is64) throw new Error(\"产物不是 64 位 ELF\");\n  // e_machine 在偏移 18（16 位小端）：0xB7 = 183 = AArch64\n  const machine = head.readUInt16LE(18);\n  if (machine !== 0xB7)\n    throw new Error(\"产物的 e_machine=\" + machine + \"（0xB7 才是 AArch64）—— 它编成了别的架构\");\n\n  // ④ 工具链其余成员也要能跑（不是只有 clang 能用）\n  for (const [tool, arg] of [[\"ld.lld\", \"--version\"], [\"llvm-ar\", \"--version\"],\n                             [\"llvm-strip\", \"--version\"], [\"llvm-nm\", \"--version\"]]) {\n    const x = cp.spawnSync(tool, [arg], { encoding: \"utf8\", timeout: 30000 });\n    if (x.status !== 0) throw new Error(tool + \" 起不来: status=\" + x.status +\n      \" stderr=\" + (x.stderr||\"\").slice(0,150));\n  }\n\n  console.log(\"clang ok: \" + ver.split(\"\\n\")[0] + \" · 真编出 aarch64 .so（\" + fs.statSync(so).size + \" 字节）· ld.lld/llvm-ar/llvm-nm/llvm-strip 各自可跑\");\n} finally {\n  fs.rmSync(D, { recursive: true, force: true });\n}",
+    "versionArgs": [
+      "--version"
+    ],
+    "required": false
+  },
+  "pkgconf": {
+    "criterion": "pkg-config 起得来，并且**真查一个 .pc 文件**并读回 --cflags/--libs（不是只看 --version）。起得来但查不出 flags 的 pkg-config 等于没有 —— 它的用处就是那两行输出。",
+    "required": false
+  },
+  "$note": "每件的判据：**人读 + 机器可执行**（node 字段是可直接跑的验收代码）。它们不属于 APK 运行时，也不参与构建 —— 真机验收时逐条执行。构建元数据（版本/来源/入口）在 component-sources.json。"
+}
