@@ -2,7 +2,6 @@ package lobos.runtime
 
 import android.content.Context
 import java.io.File
-import lobos.kernel.layout.PrefixProvisioner
 
 object LocalExec {
 
@@ -98,7 +97,7 @@ object LocalExec {
         preferPty: Boolean = true,
     ): Outcome {
         if (command.isBlank()) return Outcome(false, -1, "", "", Via.PLAIN, "命令为空")
-        val shell = PrefixProvisioner.shellBin(ctx)
+        val shell = lobos.os.PieceScan.shellBin(ctx)
             ?: return Outcome(
                 false, -1, "", "", Via.PLAIN,
                 "底座没有命令解释器 —— 不能静默落到 /system/bin/sh（那会让命令在另一套语义下跑）。" +

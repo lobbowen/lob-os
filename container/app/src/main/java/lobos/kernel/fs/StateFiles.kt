@@ -123,7 +123,6 @@ object StateFiles {
         sweep(SystemDirs.run(ctx))
         sweep(SystemDirs.etc(ctx))
         sweep(SystemDirs.opt(ctx))
-        sweep(ProgramRegistry.programRoot(ctx))
         sweep(ctx.filesDir)
         return out
     }
