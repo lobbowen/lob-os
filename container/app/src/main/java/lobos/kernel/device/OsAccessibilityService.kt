@@ -150,7 +150,7 @@ class OsAccessibilityService : AccessibilityService() {
             "服务已连接：UI 自动化（tap/swipe/inputText/getUiTree/waitFor）可执行",
             "无障碍在本系统里只作自动化执行体，不承担保活职责",
         )
-        OsHostService.ensureRunning(this)
+        lobos.kernel.KernelHooks.ensureHost(this)
     }
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {

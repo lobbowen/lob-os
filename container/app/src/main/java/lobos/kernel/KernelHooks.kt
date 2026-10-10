@@ -19,14 +19,23 @@ import android.content.Context
 object KernelHooks {
 
     @Volatile
+    @Volatile
+    private var ensurer: ((Context) -> Unit)? = null
+
     private var reporter: ((Context, String, Boolean?, String, String?) -> Unit)? = null
 
     /** 由服务层注册（OsApplication.onCreate 里）。 */
+    /** 由服务层注册：被请求拉起宿主。 */
+    fun setEnsurer(block: (Context) -> Unit) {
+        ensurer = block
+    }
+
     fun setReporter(block: (Context, String, Boolean?, String, String?) -> Unit) {
         reporter = block
     }
 
     fun clear() {
+        ensurer = null
         reporter = null
     }
 
@@ -36,6 +45,17 @@ object KernelHooks {
      * @param stage   阶段名，供上层分组
      * @param ok      true=可用 / false=出错 / null=仅记录
      */
+    /**
+     * 请求把宿主拉起。
+     *
+     * 无障碍服务连上后要反向拉起宿主（否则宿主没起、自动化无从谈起）。
+     * 「怎么拉起」是服务层的事，内核只发出这个请求。
+     */
+    fun ensureHost(ctx: Context) {
+        val r = ensurer ?: return
+        runCatching { r(ctx.applicationContext) }
+    }
+
     fun report(
         ctx: Context,
         stage: String,

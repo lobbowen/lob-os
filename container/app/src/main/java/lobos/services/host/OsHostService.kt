@@ -31,6 +31,8 @@ import lobos.services.perm.PermissionLedger
 import lobos.services.app.DriverRegistry
 import lobos.services.supervise.SupervisorPool
 import lobos.services.host.AccessibilityServiceState
+import lobos.kernel.device.AccessibilityServiceState
+import lobos.kernel.device.ServiceState
 
 class OsHostService : Service() {
 

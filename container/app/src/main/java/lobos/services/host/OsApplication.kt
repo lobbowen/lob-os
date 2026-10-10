@@ -12,6 +12,7 @@ import lobos.services.host.OsHostService
 import lobos.services.supply.CatalogClient
 import lobos.services.app.Foreground
 import lobos.services.app.QuickAppHost
+import lobos.services.log.RuntimeDiagnostics
 
 class OsApplication : Application() {
 
