@@ -65,7 +65,7 @@ import lobos.pieces.PrepareReport
 import lobos.runtime.GuestAdapter
 import lobos.runtime.InstalledRuntime
 import lobos.runtime.InstanceHost
-import lobos.runtime.LocalExec
+import lobos.kernel.ipc.LocalExec
 import lobos.runtime.PieceUpdater
 import org.json.JSONArray
 import org.json.JSONObject
@@ -1610,7 +1610,7 @@ private fun JSONArray.toList(): List<String> {
     return out
 }
 
-private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObject().apply {
+private fun execAsJson(r: lobos.kernel.ipc.LocalExec.Outcome): JSONObject = JSONObject().apply {
     put("ok", r.ok)
     put(
         "stdout",
@@ -1628,13 +1628,13 @@ private fun execAsJson(r: lobos.runtime.LocalExec.Outcome): JSONObject = JSONObj
     }
     put("exitCode", r.exitCode)
     put("via", r.via.name)
-    put("tty", r.via == lobos.runtime.LocalExec.Via.PTY)
+    put("tty", r.via == lobos.kernel.ipc.LocalExec.Via.PTY)
     put(
         "note",
         when (r.via) {
-            lobos.runtime.LocalExec.Via.PTY ->
+            lobos.kernel.ipc.LocalExec.Via.PTY ->
                 "底座 PTY 本地执行（不依赖无线调试）；进程得到真终端：isatty 为真、可交互、能读窗口大小。"
-            lobos.runtime.LocalExec.Via.PLAIN ->
+            lobos.kernel.ipc.LocalExec.Via.PLAIN ->
                 "本地执行但无 PTY（不依赖无线调试）；isatty 为假，进不了交互模式。" +
                     (r.error ?: "")
         },

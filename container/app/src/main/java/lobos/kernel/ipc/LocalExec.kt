@@ -1,4 +1,4 @@
-package lobos.runtime
+package lobos.kernel.ipc
 
 import android.content.Context
 import java.io.File
@@ -24,6 +24,7 @@ object LocalExec {
     fun run(
         ctx: Context,
         argv: List<String>,
+        ptyBin: java.io.File?,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
         timeoutMs: Long = 10_000,
@@ -31,8 +32,9 @@ object LocalExec {
     ): Outcome {
         if (argv.isEmpty()) return Outcome(false, -1, "", "", Via.PLAIN, "argv 为空")
 
-        if (preferPty) {
-            val r = PtySession.runToCompletion(ctx, argv, env, cwd, timeoutMs)
+        // PTY 宿主可不可用由调用方答（内核不知道它在哪件里）。给不出就不走 PTY。
+        if (preferPty && ptyBin != null) {
+            val r = PtySession.runToCompletion(ctx, ptyBin, argv, env, cwd, timeoutMs)
             if (r.completed) {
                 return Outcome(
                     ok = r.ok,
@@ -89,21 +91,31 @@ object LocalExec {
         }
     }
 
+    /**
+     * 用底座的命令解释器跑一条命令。
+     *
+     * shellBin 由调用方给 —— 「底座用哪个解释器」取决于有哪些件、哪一件在册，
+     * 那是服务层的事。内核只负责「拿着这个路径把命令跑起来」，
+     * 以及在它不在时**明说底座不完整**（不静默落到 /system/bin/sh ——
+     * 那会让命令在另一套语义下跑）。
+     */
     fun runShell(
         ctx: Context,
         command: String,
+        shellBin: File,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
         timeoutMs: Long = 10_000,
         preferPty: Boolean = true,
     ): Outcome {
         if (command.isBlank()) return Outcome(false, -1, "", "", Via.PLAIN, "命令为空")
-        val shell = lobos.os.PieceScan.shellBin(ctx)
-            ?: return Outcome(
+        if (!shellBin.isFile) {
+            return Outcome(
                 false, -1, "", "", Via.PLAIN,
-                "底座没有命令解释器 —— 不能静默落到 /system/bin/sh（那会让命令在另一套语义下跑）。" +
-                    "底座不完整。",
+                "底座没有命令解释器（" + shellBin.path + "）—— 不能静默落到 /system/bin/sh" +
+                    "（那会让命令在另一套语义下跑）。底座不完整。",
             )
-        return run(ctx, listOf(shell.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
+        }
+        return run(ctx, listOf(shellBin.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
     }
 }

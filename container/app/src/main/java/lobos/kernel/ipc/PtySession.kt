@@ -1,4 +1,4 @@
-package lobos.runtime
+package lobos.kernel.ipc
 
 import android.content.Context
 import android.util.Log
@@ -12,7 +12,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import lobos.RuntimeDiagnostics
-import lobos.os.PieceScan
 
 object PtySession {
 
@@ -264,18 +263,19 @@ object PtySession {
 
     fun openSession(
         ctx: Context,
+        bin: java.io.File,
         argv: List<String>,
         rows: Int = DEFAULT_ROWS,
         cols: Int = DEFAULT_COLS,
         timeoutMs: Long = 5_000,
-    ): Session = host(ctx).start(argv, rows, cols, timeoutMs)
+    ): Session = host(ctx, bin).start(argv, rows, cols, timeoutMs)
 
-    private fun host(ctx: Context): Host {
+    private fun host(ctx: Context, bin: java.io.File): Host {
         host?.let { return it }
         synchronized(hostLock) {
             host?.let { return it }
-            val bin = locateBin(ctx)
-            val h = Host(ProcessBuilder(bin.absolutePath), ctx)
+            val checked = locateBin(bin)
+            val h = Host(ProcessBuilder(checked.absolutePath), ctx)
             host = h
             RuntimeDiagnostics.append(
                 ctx, "pty", true, "PTY 会话宿主就位",
@@ -287,42 +287,36 @@ object PtySession {
 
     /**
      * 找 PTY 会话宿主 —— **问落位**，不查表也不去猜 .so 文件名。
+     * 定位 PTY 宿主的可执行文件。
      *
-     * 落位形状是 usr/lib/<id>/<版本>/bin/<名字>，扫到就是它。
-     * 找不到就明说找不到（终端与 shell.exec 都依赖它，不静默退化）。
+     * bin 由调用方给 —— 「PTY 宿主是哪一件、装没装、在哪」都要查在册表，
+     * 那是服务层的事。内核只负责「拿到这个路径后按帧协议驱动它」，
+     * 以及在它不在时**明说底座不完整**（不静默退化）。
      */
-    private fun locateBin(ctx: Context): File {
-        val f = lobos.os.PieceScan.pieceFile(ctx, PTY_HOST_ID)
-            ?: throw IllegalStateException(
-                "PTY 会话宿主没装（注册表里没有 $PTY_HOST_ID）—— " +
-                "shell.exec 与终端都依赖它。底座不完整，别静默退化。"
-            )
-        // 登记里有但文件被删了 —— 那是 PieceScan.verify() 报的问题，不是「没装」
-        // （dpkg -s 照样说 installed，问题由 dpkg -V 报出来）
-        if (!f.isFile) {
+    private fun locateBin(bin: java.io.File): java.io.File {
+        if (!bin.isFile) {
             throw IllegalStateException(
-                "PTY 会话宿主登记在册但文件不在：" + f.absolutePath +
-                " —— 跑 PieceScan.verify(\"$PTY_HOST_ID\") 看差在哪（dpkg -V），" +
-                "重新铺一次即可修复"
+                "PTY 会话宿主不可用：" + bin.absolutePath +
+                    " —— 底座不完整，别静默退化。" +
+                    "登记在册但文件不在的，查 dpkg -V 那条路（登记与磁盘比），重新铺一次即可修复"
             )
         }
-        return f
+        return bin
     }
-
     /**
-     * PTY 宿主件**装没装** —— 查注册表里有没有这一条。
+     * PTY 宿主件**装没装** —— 由调用方答（它要查在册表，内核不知道件的名字）。
      *
      * 此前是 fun probe(ctx) = 起一个 PTY 跑 `exit 0` 看成不成（每问一次起一次进程）；
      * 后来写成「问文件在不在」—— 那把两件事混了：
-     *   · 装没装      → 问注册表（登记的事实）
-     *   · 文件还在不在  → 那是 verify() 的事（登记与磁盘比）
-     * 终端能不能起取决于前者。要确认后者用 PieceScan.verify。
+     *   · 装没装      → 问在册表（登记的事实，服务层的事）
+     *   · 文件还在不在  → 那是登记与磁盘比，也是服务层的事
+     * 内核两样都不问：它只管「给我路径，我驱动它」。
      */
-    fun available(ctx: Context): Boolean =
-        lobos.os.ProgramIndex.isPiece(ctx, PTY_HOST_ID)
+    fun isUsable(bin: java.io.File): Boolean = bin.isFile
 
     fun runToCompletion(
         ctx: Context,
+        bin: java.io.File,
         argv: List<String>,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
@@ -330,7 +324,7 @@ object PtySession {
     ): Result {
         if (argv.isEmpty()) return Result(false, -1, "", "argv 为空", completed = false)
         val h = try {
-            if (env.isEmpty() && cwd == null) host(ctx) else dedicatedHost(ctx, env, cwd)
+            if (env.isEmpty() && cwd == null) host(ctx, bin) else dedicatedHost(ctx, bin, env, cwd)
         } catch (e: Throwable) {
             return Result(false, -1, "", e.message ?: e.javaClass.simpleName, completed = false)
         }
@@ -376,9 +370,9 @@ object PtySession {
         val completed: Boolean = ok || exitCode != -1,
     )
 
-    private fun dedicatedHost(ctx: Context, env: Map<String, String>, cwd: File?): Host {
-        val bin = locateBin(ctx)
-        val pb = ProcessBuilder(bin.absolutePath)
+    private fun dedicatedHost(ctx: Context, bin: java.io.File, env: Map<String, String>, cwd: File?): Host {
+        val checked = locateBin(bin)
+        val pb = ProcessBuilder(checked.absolutePath)
         if (cwd != null) pb.directory(cwd)
         if (env.isNotEmpty()) pb.environment().putAll(env)
         return Host(pb, ctx)
