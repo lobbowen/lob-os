@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.File
 
 import org.json.JSONObject
+import lobos.kernel.layout.SystemDirs
 
 enum class Restart { ON_FAILURE, ALWAYS, NEVER }
 

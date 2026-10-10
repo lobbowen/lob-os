@@ -14,6 +14,7 @@ import java.util.zip.ZipInputStream
 import lobos.RuntimeDiagnostics
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject
+import lobos.kernel.elf.ExecBits
 
 object SupplyProvisioner {
 

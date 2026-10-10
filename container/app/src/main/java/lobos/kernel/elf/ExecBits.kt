@@ -1,4 +1,4 @@
-package lobos.runtime
+package lobos.kernel.elf
 
 import java.io.File
 import java.nio.ByteBuffer

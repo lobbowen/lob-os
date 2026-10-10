@@ -9,6 +9,7 @@ import org.json.JSONObject
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramOtaUpdater
 import lobos.runtime.InstalledRuntime
+import lobos.kernel.layout.SystemDirs
 
 object ProgramManager {
 

@@ -3,6 +3,7 @@ package lobos.kernel.layout
 import android.content.Context
 import android.system.Os
 import java.io.File
+import lobos.kernel.elf.ExecBits
 
 object PrefixProvisioner {
 

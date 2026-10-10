@@ -6,7 +6,7 @@ import lobos.RuntimeDiagnostics
 import lobos.log.Journal
 import lobos.ota.ProgramInstallPipeline
 import lobos.quickapp.DesktopIcons
-import lobos.runtime.ExecBits
+import lobos.kernel.elf.ExecBits
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.runtime.SupplyProvisioner
 import org.json.JSONArray

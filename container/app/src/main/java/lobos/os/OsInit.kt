@@ -5,6 +5,7 @@ import java.io.File
 import lobos.log.Journal
 import lobos.quickapp.ProgramGroup
 import org.json.JSONObject
+import lobos.kernel.layout.SystemDirs
 
 object OsInit {
 

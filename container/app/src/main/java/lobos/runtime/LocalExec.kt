@@ -2,6 +2,7 @@ package lobos.runtime
 
 import android.content.Context
 import java.io.File
+import lobos.kernel.layout.PrefixProvisioner
 
 object LocalExec {
 

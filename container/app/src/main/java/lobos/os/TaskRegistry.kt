@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import lobos.kernel.layout.SystemDirs
 
 object TaskRegistry {
 

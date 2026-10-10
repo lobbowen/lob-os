@@ -5,6 +5,7 @@ import android.system.OsConstants
 import java.io.File
 import java.io.FileOutputStream
 import org.json.JSONObject
+import lobos.kernel.layout.SystemDirs
 
 object StateFiles {
 

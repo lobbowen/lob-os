@@ -37,6 +37,7 @@ import lobos.pieces.AssetStatus
 import lobos.pieces.PieceProvisioner
 import lobos.quickapp.ProgramGroup
 import org.json.JSONObject
+import lobos.kernel.layout.PrefixProvisioner
 
 class InstanceHost(private val host: Service, val programId: String) : ContextWrapper(host) {
 

@@ -14,7 +14,7 @@ import lobos.os.ProgramRegistry
 import lobos.os.Restart
 import lobos.kernel.layout.SystemDirs
 import lobos.os.UnitEntry
-import lobos.runtime.ExecBits
+import lobos.kernel.elf.ExecBits
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.runtime.SupplyProvisioner
 import org.json.JSONObject
@@ -460,7 +460,7 @@ object ProgramInstallPipeline {
     private fun linkEntry(context: Context, dest: File, entryRel: String, programId: String): Boolean {
         val target = File(dest, entryRel)
         if (!target.isFile) return false
-        runCatching { lobos.runtime.ExecBits.apply(target) }
+        runCatching { lobos.kernel.elf.ExecBits.apply(target) }
         val bin = lobos.kernel.layout.PrefixProvisioner.binDir(context)
         val primary = entryRel.substringAfterLast("/")
         var ok = link(bin, primary, target)

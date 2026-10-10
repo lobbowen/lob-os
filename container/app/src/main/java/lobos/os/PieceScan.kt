@@ -3,6 +3,7 @@ package lobos.os
 import android.content.Context
 import java.io.File
 import org.json.JSONObject
+import lobos.kernel.layout.SystemDirs
 
 /**
  * 从落位推导索引 —— 等价于 Linux 的 `ldconfig(8)`。

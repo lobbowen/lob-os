@@ -7,6 +7,8 @@ import lobos.os.PieceScan
 import lobos.os.ProgramIndex
 import org.json.JSONArray
 import org.json.JSONObject
+import lobos.kernel.layout.PrefixProvisioner
+import lobos.kernel.elf.ExecBits
 
 object PieceUpdater {
 
