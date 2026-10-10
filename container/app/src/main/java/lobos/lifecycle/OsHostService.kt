@@ -24,7 +24,7 @@ import lobos.os.Level
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
-import lobos.os.ProcessLedger
+import lobos.kernel.proc.ProcessLedger
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramNotificationHub
@@ -213,7 +213,7 @@ class OsHostService : Service() {
         // 对外字段名仍叫 runningIds（CapabilityBroker 在读这个键），
         // 但值必须是真机事实，否则面板会报一个不存在的运行态。
         val runningIds = runCatching {
-            lobos.os.ProcessLedger.liveOwned(this).map { it.programId }.distinct()
+            lobos.kernel.proc.ProcessLedger.liveOwned(this).map { it.programId }.distinct()
         }.getOrDefault(emptyList())
         val installed = runCatching {
             lobos.os.ProgramRegistry.list(this).count { it.startable }

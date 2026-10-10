@@ -7,6 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.layout.SystemDirs
 import lobos.kernel.fs.StateFiles
+import lobos.kernel.proc.ProcessLedger
 
 object SessionRegistry {
 

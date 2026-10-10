@@ -18,7 +18,7 @@ import lobos.lifecycle.OsHostService
 import lobos.log.Journal
 import lobos.os.BootReconciler
 import lobos.os.PieceScan
-import lobos.os.ProcessLedger
+import lobos.kernel.proc.ProcessLedger
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
@@ -38,6 +38,7 @@ import lobos.pieces.PieceProvisioner
 import lobos.quickapp.ProgramGroup
 import org.json.JSONObject
 import lobos.kernel.layout.PrefixProvisioner
+import lobos.kernel.proc.ProcessSupervisor
 
 class InstanceHost(private val host: Service, val programId: String) : ContextWrapper(host) {
 
@@ -405,7 +406,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val kernelDir = programDir!!
             val kernelEntry = entry!!
             val nativeDir = nodeBin.parentFile!!
-            currentGeneration = lobos.os.ProcessLedger.nextGeneration(this, spec?.id ?: "")
+            currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
             val sessionToken = lobos.bridge.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
@@ -441,7 +442,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (launchedPid <= 0) {
                 val pidDeadline = SystemClock.elapsedRealtime() + 3_000L
                 while (launchedPid <= 0 && SystemClock.elapsedRealtime() < pidDeadline) {
-                    launchedPid = lobos.os.ProcessLedger.scanChildPid(entry.absolutePath)
+                    launchedPid = lobos.kernel.proc.ProcessLedger.scanChildPid(entry.absolutePath)
                     if (launchedPid <= 0) sleepQuiet(100L)
                 }
             }
@@ -453,7 +454,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 reapProgramTree("宿主回收进程树")
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val recorded = lobos.os.ProcessLedger.begin(this, programId, currentGeneration, launchedPid)
+            val recorded = lobos.kernel.proc.ProcessLedger.begin(this, programId, currentGeneration, launchedPid)
             if (launchedPid > 0 && !sessionToken.isNullOrBlank()) {
                 lobos.os.SessionRegistry.bindPid(this, sessionToken, launchedPid)
             }
@@ -530,13 +531,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private fun reapProgramTree(reason: String) {
         val e = runCatching {
-            lobos.os.ProcessLedger.list(this)
+            lobos.kernel.proc.ProcessLedger.list(this)
                 .firstOrNull { it.programId == programId && it.generation == currentGeneration }
         }.getOrNull()
         val pid = e?.pid ?: -1
-        val descendants = if (e != null) lobos.os.ProcessLedger.descendantsOf(pid) else emptyList()
+        val descendants = if (e != null) lobos.kernel.proc.ProcessLedger.descendantsOf(pid) else emptyList()
         if (e != null) {
-            val n = lobos.os.ProcessLedger.killTree(e)
+            val n = lobos.kernel.proc.ProcessLedger.killTree(e)
             RuntimeDiagnostics.append(
                 this, "supervisor", n > 0,
                 "按账本回收进程树（pid + 后代）",
@@ -550,32 +551,32 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             )
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
-        if (pid > 0) runCatching { lobos.os.ProcessLedger.end(this, pid) }
+        if (pid > 0) runCatching { lobos.kernel.proc.ProcessLedger.end(this, pid) }
     }
 
     private fun reapOrphanKernel() {
         reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
-        val owned = lobos.os.ProcessLedger.liveOwned(this)
-        val reused = lobos.os.ProcessLedger.pidReused(this)
-        val gone = lobos.os.ProcessLedger.gone(this)
+        val owned = lobos.kernel.proc.ProcessLedger.liveOwned(this)
+        val reused = lobos.kernel.proc.ProcessLedger.pidReused(this)
+        val gone = lobos.kernel.proc.ProcessLedger.gone(this)
         for (e in owned) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "回收上世遗留进程",
                 "pid=" + e.pid + " starttime=" + e.starttime + " program=" + e.programId + " gen=" + e.generation
             )
             stopProcessTree(e.pid)
-            lobos.os.ProcessLedger.end(this, e.pid)
+            lobos.kernel.proc.ProcessLedger.end(this, e.pid)
         }
         for (e in reused) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "账本 pid 已被复用：不杀",
-                "pid=" + e.pid + " ledgerStart=" + e.starttime + " nowStart=" + lobos.os.ProcessLedger.starttimeOf(e.pid)
+                "pid=" + e.pid + " ledgerStart=" + e.starttime + " nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
             )
-            lobos.os.ProcessLedger.end(this, e.pid)
+            lobos.kernel.proc.ProcessLedger.end(this, e.pid)
         }
         if (gone.isNotEmpty()) {
-            gone.forEach { lobos.os.ProcessLedger.end(this, it.pid) }
+            gone.forEach { lobos.kernel.proc.ProcessLedger.end(this, it.pid) }
             RuntimeDiagnostics.append(this, "reap", null, "账本清理已消失进程", gone.joinToString(",") { it.pid.toString() })
         }
     }
@@ -589,11 +590,11 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }
         try { android.os.Process.sendSignal(pid, 15) } catch (_: Throwable) {}
         var waited = 0
-        while (waited < 3000 && lobos.os.ProcessLedger.starttimeOf(pid) > 0) {
+        while (waited < 3000 && lobos.kernel.proc.ProcessLedger.starttimeOf(pid) > 0) {
             try { Thread.sleep(200) } catch (_: InterruptedException) { }
             waited += 200
         }
-        if (lobos.os.ProcessLedger.starttimeOf(pid) > 0) {
+        if (lobos.kernel.proc.ProcessLedger.starttimeOf(pid) > 0) {
             try { android.os.Process.killProcess(pid) } catch (_: Throwable) {}
             try { Thread.sleep(200) } catch (_: InterruptedException) { }
         }
@@ -667,7 +668,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                             if (code == 0) "" else "退出码 " + code,
                         )
                     }
-            lobos.os.ProcessLedger.end(this, watchedPid)
+            lobos.kernel.proc.ProcessLedger.end(this, watchedPid)
 
                     // 反向的那条路：后端死了，前端要收掉
                     // —— 否则它留在 dimina 里，用户看到的是点得开但连不上的僵尸界面

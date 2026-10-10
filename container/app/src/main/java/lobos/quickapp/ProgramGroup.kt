@@ -5,7 +5,7 @@ import java.io.File
 import lobos.log.Journal
 import lobos.os.Desired
 import lobos.os.ManifestSchema
-import lobos.os.ProcessLedger
+import lobos.kernel.proc.ProcessLedger
 import lobos.os.ProgramIndex
 import lobos.os.ProgramManager
 
@@ -17,7 +17,7 @@ import lobos.os.ProgramManager
  *
  * 我们的形态与它不同：后端是普通进程（我们拉起的），前端是快应用
  * （dimina 承载，与宿主同进程）。**没有 cgroup 可用** —— 通用 APK 拿不到
- * `setpgid` / `setcgroup`（见 [lobos.os.ProcessLedger] 的注释）。
+ * `setpgid` / `setcgroup`（见 [lobos.kernel.proc.ProcessLedger] 的注释）。
  *
  * 所以要有自己的成组关系：**把「前端 ↔ 后端」这个绑定显式记下来**，
  * 并在两端任一消失时把另一端收掉。
@@ -47,7 +47,7 @@ object ProgramGroup {
         val e = lobos.os.ProgramIndex.get(ctx, unit)
             ?: return "注册表里没有 " + unit
         // 后端已经在跑 —— 什么都不用做
-        if (e.pid > 0 && lobos.os.ProcessLedger.isOwnedAlive(e.pid, e.starttime)) return null
+        if (e.pid > 0 && lobos.kernel.proc.ProcessLedger.isOwnedAlive(e.pid, e.starttime)) return null
         // 本来就不该跑（用户显式停过）—— 不擅自拉起
         if (e.desired == lobos.os.Desired.STOPPED) return null
         // 排一个启动作业

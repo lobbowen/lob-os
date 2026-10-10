@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.File
 import lobos.kernel.layout.SystemDirs
 import lobos.kernel.fs.StateFiles
+import lobos.kernel.proc.ProcessLedger
 
 /**
  * 作业队列 —— 照抄 systemd 的 job queue 与最小事务系统。

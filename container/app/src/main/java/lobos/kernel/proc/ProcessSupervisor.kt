@@ -1,4 +1,4 @@
-package lobos.runtime
+package lobos.kernel.proc
 
 import java.io.File
 

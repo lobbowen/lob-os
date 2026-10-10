@@ -9,7 +9,7 @@ import lobos.RuntimeDiagnostics
 import lobos.os.ElfFacts
 import lobos.os.PieceScan
 import lobos.kernel.layout.SystemDirs
-import lobos.runtime.ProcessSupervisor
+import lobos.kernel.proc.ProcessSupervisor
 import org.json.JSONArray
 import org.json.JSONObject
 

@@ -1,4 +1,4 @@
-package lobos.os
+package lobos.kernel.proc
 
 import android.content.Context
 

@@ -39,7 +39,7 @@ import lobos.os.ManifestSchema
 import lobos.os.OsInit
 import lobos.os.OsPhase
 import lobos.os.PackageInstaller
-import lobos.os.PathGuard
+import lobos.kernel.security.PathGuard
 import lobos.os.PortBroker
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
@@ -1301,7 +1301,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
         },
         "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
-            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireReadableFile(p.optString("path", ""))
@@ -1339,7 +1339,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
-            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireWritableFile(p.optString("path", ""))
@@ -1361,7 +1361,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
-            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val path = p.optString("path", "")
@@ -1395,7 +1395,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
-            lobos.os.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireWritableFile(p.optString("path", ""))
