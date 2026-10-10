@@ -15,8 +15,6 @@ import lobos.kernel.KernelHooks
 
 object PtySession {
 
-    /** 提供 PTY 会话的那一件的 id —— 它落位了就有 PTY */
-    const val PTY_HOST_ID = "ptysession"
 
 
     private const val TAG = "PtySession"

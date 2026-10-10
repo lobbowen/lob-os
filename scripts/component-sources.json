@@ -181,30 +181,6 @@
       "sameAs": "openssl",
       "note": "libcrypto.so 与 libssl.so 一并编出（OpenSSL 的一部分），不是独立的上游项目 —— 版本与 openssl 同步。"
     },
-    "flock": {
-      "version": "1.0.0",
-      "urls": [],
-      "selfC": true,
-      "note": "自写 C，无上游 —— flock(2) 的用户态实现，源码在 container/native/d2/flock.c"
-    },
-    "posix": {
-      "version": "1.0.0",
-      "urls": [],
-      "selfC": true,
-      "note": "自写 C，无上游 —— LD_PRELOAD 那组（链接期补全 · open 回退 · /tmp 重定向 · exec 路径修正），源码在 container/native/d1/"
-    },
-    "ptyprobe": {
-      "version": "1.0.0",
-      "urls": [],
-      "selfC": true,
-      "note": "自写 C，无上游 —— 伪终端探测，源码在 container/native/d2/pty-probe.c"
-    },
-    "ptysession": {
-      "version": "1.0.0",
-      "urls": [],
-      "selfC": true,
-      "note": "自写 C，无上游 —— PTY 会话宿主，源码在 container/native/d3/pty-session.c"
-    },
     "node": {
       "version": "24.21.0",
       "prebuilt": true,

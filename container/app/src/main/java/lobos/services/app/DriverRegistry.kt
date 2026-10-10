@@ -23,42 +23,42 @@ object DriverRegistry {
     val DRIVERS: List<Driver> = listOf(
         Driver(
             id = "d1.link-interpose",
-            assetId = "posix",
+            assetId = lobos.kernel.compat.Compat.LIB_POSIX,
             provides = "link() / linkat()",
             substitution = "link → copy：硬链接写成独立副本，共享 inode 语义丢失",
             degradeMode = "ALWAYS",
         ),
         Driver(
             id = "d1.tmp-paths",
-            assetId = "posix",
+            assetId = lobos.kernel.compat.Compat.LIB_POSIX,
             provides = "/tmp 路径（约 20 个路径类系统调用）",
             substitution = "/tmp/** → \$TMPDIR/**",
             degradeMode = "ALWAYS",
         ),
         Driver(
             id = "d1.open-fallback",
-            assetId = "posix",
+            assetId = lobos.kernel.compat.Compat.LIB_POSIX,
             provides = "open() / openat()",
             substitution = "EACCES → \$HOME 目录 fd：越权定位被降级为可读目录 fd",
             degradeMode = "ON_ERROR",
         ),
         Driver(
             id = "d1.exec-path",
-            assetId = "posix",
+            assetId = lobos.kernel.compat.Compat.LIB_POSIX,
             provides = "execve() shebang 解释器",
             substitution = "/usr/bin/x、/bin/x 与 env 解释器 → 在 PATH 中重新解析",
             degradeMode = "ON_ERROR",
         ),
         Driver(
             id = "d2.flock",
-            assetId = "flock",
+            assetId = lobos.kernel.compat.Compat.LIB_FLOCK,
             provides = "flock()",
             substitution = "无 flock 编译件时按文件锁语义模拟（跨进程互斥由 JS 侧兜底）",
             degradeMode = "ON_ERROR",
         ),
         Driver(
             id = "d2.pty-probe",
-            assetId = "ptyprobe",
+            assetId = lobos.kernel.compat.Compat.LIB_PTYPROBE,
             provides = "PTY 探测工具",
             substitution = "不做替换：自带自证工具（打印 name:OK / name:FAIL）",
             degradeMode = "NONE",
@@ -164,9 +164,10 @@ object DriverRegistry {
             // 装没装 —— 查注册表有没有这一条（dpkg -s 的判据）。
             // 不问「文件在不在」：那是 verify() 的事；混问会把「登记在册但文件被删」
             // 误报成「没装」，而 dpkg -s 在那种情况下照样说 installed。
+            // 驱动依赖的是**内核的兼容性垫片**，不是件 ——
+            // posix/flock/ptyprobe 随 APK 而来，判定问 kernel/compat 那一层。
             val present = d.assetId == null ||
-                // isPiece 是注册表里「这是不是件」的唯一判据（PieceEntry 已删）
-                lobos.services.reg.ProgramIndex.isPiece(ctx, d.assetId)
+                lobos.kernel.compat.Compat.lib(ctx, d.assetId) != null
             if (!present) missing += 1
             drivers.put(JSONObject().apply {
                 put("id", d.id)
@@ -211,10 +212,9 @@ object DriverRegistry {
      * 驱动表里存的是 id（`flock` / `ptyprobe`），不是文件名；
      * 文件名由落位形状决定（有 bin/ 是命令 · 只有 .so 是库）。
      */
-    private fun entryOf(ctx: Context, id: String?): String {
-        if (id.isNullOrBlank()) return ""
-        val e = lobos.services.reg.ProgramIndex.get(ctx, id) ?: return ""
-        val n = e.assetEntry.substringAfterLast("/")
-        return if (e.assetEntry.startsWith("bin/")) n else ""
+    private fun entryOf(ctx: Context, libName: String?): String {
+        if (libName.isNullOrBlank()) return ""
+        // 垫片是共享库，不建全局软链、不进 PATH —— 可执行名对它没有意义。
+        return if (lobos.kernel.compat.Compat.lib(ctx, libName) != null) "" else "缺失"
     }
 }

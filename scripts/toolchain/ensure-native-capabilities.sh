@@ -59,10 +59,6 @@ build_each() {
     return 0
   fi
   for s in \
-      build-piece-flock.sh \
-      build-piece-posix.sh \
-      build-piece-ptyprobe.sh \
-      build-piece-ptysession.sh \
       build-piece-zlib.sh \
       build-piece-openssl.sh \
       build-piece-curl.sh \
@@ -91,6 +87,11 @@ build_each() {
 if [ -n "$ONLY" ]; then
   echo "[caps] 只编指定件：$ONLY"
 else
+[caps] 先编内核的兼容性垫片（posix · ptyprobe · ptysession · flock）
+  这四个是 container/native 下我们自己的 C，随 APK 而来 —— 不是件、
+  不铺位、不进清单、不可 OTA 替换。
+bash scripts/toolchain/build-kernel-compat.sh || die "垫片编不出来" "内核缺了兼容层，程序跑不出 Linux 语义"
+
   echo "[caps] 逐件编译（11 个脚本，各产 component-meta.json 并落位）"
 fi
 build_each

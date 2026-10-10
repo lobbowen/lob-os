@@ -126,35 +126,6 @@
       "entry": "bin/rg",
       "version": "14.1.1"
     },
-    "flock": {
-      "criterion": "liblobosflock.so 在 jniLibs 里，且能被 **node require 起来**并调它的 tryLock(fd, cb)—— 真去锁一个 fd、把回调的返回值读回来（它返回 0 或 errno）。判据是**调得通**而非「文件在」：它是 node addon（用 node_api.h），导出靠 NAPI_MODULE_INIT 注册，不在普通动态符号表里，所以 nm/符号表查不出它 —— 只能真 require 一次。编出来但注册失败的话，真机上 require 即抛异常。",
-      "required": false,
-      "form": "lib",
-      "version": "1.0.0",
-      "entry": "lib/liblobosflock.so"
-    },
-    "posix": {
-      "criterion": "liblobosposix.so 在 jniLibs 里，且**导出那四个 LD_PRELOAD hook**：execve/execvp（查解释器 · d1/exec-path.c）· open/openat（EACCES 回退 HOME · d1/open-fallback.c）· link/linkat（拦 link · d1/link-interpose.c）· mkdir/unlink/rename/stat（改 /tmp · d1/tmp-paths.c）。判据是**这些符号真在动态符号表里**且 NEEDED 自洽 —— 它是被 LD_PRELOAD 注入子进程的（RuntimeEnvironment.kt 第 66 行），链接器按导出名解析 hook；符号没导出不会报错，只会**静默不生效**（Linux 语义层那部分形同虚设），所以必须在构建期验。",
-      "required": false,
-      "form": "lib",
-      "version": "1.0.0",
-      "entry": "lib/liblobosposix.so"
-    },
-    "ptyprobe": {
-      "criterion": "liblobosptyprobe.so 起得来（-static 编的可执行件，form=exec），并且**真跑一次**、把它的输出读回来：它逐项打印 PTMX_OPEN / GRANTPT / UNLOCKPT / PTSNAME 各自的 OK/FAIL，末尾有 SUMMARY。判据覆盖「跑过」而非只看 --version —— 这探针的用处就是问出「PTY 在这台设备上能不能用」，答案在它的输出里，不在它能否启动。",
-      "required": false,
-      "form": "exec",
-      "version": "1.0.0",
-      "entry": "lib/liblobosptyprobe.so"
-    },
-    "ptysession": {
-      "criterion": "bin/pty-session 起得来（-static 编的可执行件，form=exec），并且能**建立一次会话并读回**：给它一条命令与一个 pty，把它的输出读回来。判据覆盖「会话真的建成了」—— 建会话要 open /dev/ptmx、grantpt、unlockpt 一步步走，任一步在这个系统上不通，就停在半路。",
-      "installName": "pty-session",
-      "required": false,
-      "form": "exec",
-      "version": "1.0.0",
-      "entry": "bin/pty-session"
-    },
     "busybox": {
       "criterion": "busybox 本体在 jniLibs 里、**applet 软链随件一起在**（至少 ls/cat/cp/mkdir/rm），且 ELF 里没有 PT_DYNAMIC（静态产物，不依赖任何共享库）、LOAD 段 16KB 对齐。判据覆盖形状而不只是「文件在」：带 PT_DYNAMIC 的 busybox 真机上会因找不到它依赖的库而起不来，那时「文件在」看着是对的；未 16KB 对齐的在 Android 15+ 上会直接加载失败。（这两项形状检查由 build-native-busybox.sh 的构建期判据承担。）",
       "installName": "busybox",
@@ -252,10 +223,6 @@
       "libcxx",
       "bash",
       "ripgrep",
-      "flock",
-      "posix",
-      "ptyprobe",
-      "ptysession",
       "openssl",
       "crypto",
       "pkgconf"

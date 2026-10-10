@@ -141,9 +141,10 @@ function versionOf(id) {
   } catch (e) {
     bad('判据表读不出（' + VERIFY + '）：' + e.message);
   }
-  // 自写件（flock/posix/ptyprobe/ptysession）不在 PIN_KEY 里 ——
-  // 那个映射只列「钉值表里查得到上游版本」的那些。它们是我们自己写的 C，
-  // 版本从 1.0.0 起，记在 component-verify.json（gen-component-meta.js 同源）。
+  // 内核的兼容性垫片（posix/flock/ptyprobe/ptysession）不再是件：它们是
+  // container/native 下我们自己写的 C，随 APK 而来、只有一个版本、不走 OTA，
+  // 编译进 jniLibs 由 kernel/compat/Compat.kt 定位，不在此列。
+  // 这里的映射只列「钉值表里查得到上游版本」的那些。
   // 查找顺序照 gen-component-meta.js 第 50 行：先 verify 再 sources。
   const vv = (vtab[id] || {}).version;
   if (vv && String(vv).trim()) return String(vv).trim();

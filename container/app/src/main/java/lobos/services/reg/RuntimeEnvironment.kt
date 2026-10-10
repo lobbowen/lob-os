@@ -67,8 +67,10 @@ object RuntimeEnvironment {
                 inheritedPath,
             )
         )
-        PieceScan.pieceFile(ctx, "posix")?.let {
-            put("LD_PRELOAD", it.absolutePath)
+        // 兼容性垫片走内核的 compat 层，不再按「件」去找 —— 它们不是件。
+        val preload = lobos.kernel.compat.Compat.preload(ctx)
+        if (preload.isNotBlank()) {
+            put("LD_PRELOAD", preload)
             put("LOBOS_COMPAT_LOG", lobos.services.app.DriverRegistry.degradeLog(ctx).absolutePath)
         }
         val caDirs = listOf(

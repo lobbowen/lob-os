@@ -24,7 +24,6 @@ object LocalExec {
     fun run(
         ctx: Context,
         argv: List<String>,
-        ptyBin: java.io.File?,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
         timeoutMs: Long = 10_000,
@@ -32,7 +31,8 @@ object LocalExec {
     ): Outcome {
         if (argv.isEmpty()) return Outcome(false, -1, "", "", Via.PLAIN, "argv 为空")
 
-        // PTY 宿主可不可用由调用方答（内核不知道它在哪件里）。给不出就不走 PTY。
+        // PTY 宿主是内核 compat 的一部分（随 APK 而来，不是件）。
+        val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
         if (preferPty && ptyBin != null) {
             val r = PtySession.runToCompletion(ctx, ptyBin, argv, env, cwd, timeoutMs)
             if (r.completed) {
@@ -116,6 +116,6 @@ object LocalExec {
                     "（那会让命令在另一套语义下跑）。底座不完整。",
             )
         }
-        return run(ctx, listOf(shellBin.absolutePath, "-c", command), null, env, cwd, timeoutMs, preferPty)
+        return run(ctx, listOf(shellBin.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
     }
 }

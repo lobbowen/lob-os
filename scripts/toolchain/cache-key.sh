@@ -41,7 +41,6 @@ deps_for() {
       node)       echo "" ;;
       # ── 自己就是自己（编它要它自己的源码）────────────────────
       bash|ripgrep|busybox|jq|sqlite|npm|pnpm|llvm|make|cmake|pkgconf) echo "" ;;
-      flock|posix|ptyprobe|ptysession)                             echo "" ;;
       zlib)      echo "" ;;
       # ── 不是件
       libcxx|sysroot)                                               echo "" ;;
@@ -64,8 +63,8 @@ bucket_for() {
       # ── base 基础环境件：随 APK 走 ──────────────────────────────
       # 命令与库都在这里 —— Linux 不区分它们（ldconfig 扫的是目录，
       # libz.so 与 libcurl.so 是同一类东西：/usr/lib 下的共享库）
-      bash|ripgrep|busybox|jq|ptyprobe|ptysession)      echo "base" ;;
-      curl|zlib|openssl|crypto|flock|posix)               echo "base" ;;
+      bash|ripgrep|busybox|jq)                             echo "base" ;;
+      curl|zlib|openssl|crypto)                            echo "base" ;;
       # ── rt 运行时：zip 件，用户自己装 ──────────────────────────
       node|python)echo "rt" ;;
       # ── tool 工具：zip 件，用户自己装 ─────────────────────────
@@ -80,9 +79,7 @@ bucket_for() {
 
 # 本脚本认的件名 —— 从 deps_for 与 bucket_for 的 case 里抄出来的，
 # 免得「不在已知列表」这句提示不给出可抄的清单。
-KNOWN_TOOLS="bash ripgrep busybox jq ptyprobe ptysession curl zlib openssl crypto
-            flock posix node python git sqlite npm pnpm llvm make cmake pkgconf
-            libcxx sysroot"
+KNOWN_TOOLS="bash ripgrep busybox jq curl zlib openssl crypto"
 
 die() {
   # 走 stderr：die 是在命令替换里被调的（DEPS="$(deps_for …)"），
