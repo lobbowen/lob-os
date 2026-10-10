@@ -61,6 +61,14 @@ jobs:
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
 
+      # curl 的 configure 要 openssl 与 zlib 的头文件（--with-openssl/--with-zlib
+      # 指向 work/<id>/out）。这两个是它的**编译期**依赖：在这里现编，
+      # 固化的是 curl 自己。
+      - name: 先编编译期依赖（zlib · openssl）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          bash scripts/recipes/build-piece-zlib.sh
+          bash scripts/recipes/build-piece-openssl.sh
       - name: 编 curl
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-piece-curl.sh
