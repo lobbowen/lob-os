@@ -16,10 +16,8 @@ on:
       - 'scripts/verify/check-component-manifest-drift.js'
       - 'scripts/publish/upload-qiniu.js'
       - 'scripts/registry/read-component-entry.sh'
-      - 'scripts/component-verify.json'
       - 'container/app/src/main/assets/supply/channel.json'
       - 'container/app/src/main/assets/supply/component-public.pem'
-      - 'container/app/src/main/java/lobos/native/NativeAssetRegistry.kt'
       - '.github/native-capabilities.txt'
       - 'version.json'
     tags:
@@ -31,7 +29,6 @@ on:
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/publish-native-manifest.js'
       - 'scripts/verify/check-component-manifest-drift.js'
-      - 'scripts/component-verify.json'
   workflow_dispatch: {}
 
 concurrency:

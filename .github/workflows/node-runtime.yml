@@ -2,11 +2,16 @@ name: Node Runtime (编译一次，制品复用)
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'scripts/toolchain/build-node-android.sh'
-      - 'scripts/node-versions.json'
-      - '.github/workflows/node-runtime.yml'
+  # ── 触发方式 ──
+  #
+  # 只有两种：
+  #   workflow_dispatch  手动 —— 「我现在要构建这一件」
+  #   tag                发布轮（os-release-*）
+  #
+  # 不再由 push 触发。件是独立的：改一份文档、改另一个件的钉值，
+  # 都不该重建这一件；反过来真的要重建时，dispatch 这一条就够了。
+  # 之前靠 paths 白名单过滤，结果是「改一个共享脚本触发 16 个」——
+  # 白名单只能防漏，不能防多，而且漏与多都是错。
 
 concurrency:
   group: node-runtime-${{ github.ref }}

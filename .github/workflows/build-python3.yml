@@ -1,27 +1,16 @@
 name: Build Component · python3（运行时筐）
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/recipes/build-component-python3.sh'
-      - 'scripts/toolchain/locate-ndk.sh'
-      - 'scripts/toolchain/cache-ndk.sh'
-      - 'scripts/toolchain/fetch-pinned.sh'
-      # 件形态/依赖闭环的判据（verify-component-artifact.sh 内部调它）——
-      # 改了判据必须触发重建，否则改完看不到效果
-      - 'scripts/verify/check-elf-deps.sh'
-      - 'scripts/verify/verify-component-artifact.sh'
-      - 'scripts/registry/read-component-entry.sh'
-      - 'scripts/verify/verify-component-artifact.sh'
-      - 'scripts/verify/verify-component-build-date.sh'
-      - 'scripts/recipes/package-component.sh'
-      - 'scripts/component-sources.json'
-      - 'scripts/component-verify.json'
-      - 'components/runtime/COMPONENT.md'
-      - '.github/workflows/build-python3.yml'
-    tags:
-      - 'rt-python3'
+  # ── 触发方式 ──
+  #
+  # 只有两种：
+  #   workflow_dispatch  手动 —— 「我现在要构建这一件」
+  #   tag                发布轮（os-release-*）
+  #
+  # 不再由 push 触发。件是独立的：改一份文档、改另一个件的钉值，
+  # 都不该重建这一件；反过来真的要重建时，dispatch 这一条就够了。
+  # 之前靠 paths 白名单过滤，结果是「改一个共享脚本触发 16 个」——
+  # 白名单只能防漏，不能防多，而且漏与多都是错。
   workflow_dispatch: {}
 
 concurrency:
