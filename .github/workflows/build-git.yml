@@ -61,6 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 恢复 NDK 缓存（由 ndk-cache job 备好；这里只取）
+        continue-on-error: true
         uses: actions/cache@v4
         with:
           path: ~/.cache/actions-setup-ndk
@@ -100,6 +101,7 @@ jobs:
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
       - name: 恢复本件的编译中间产物（命中则增量编，不重跑 Configure）
+        continue-on-error: true
         uses: actions/cache@v4
         with:
           path: |
