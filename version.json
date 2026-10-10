@@ -1,8 +1,8 @@
 {
   "schema": 2,
   "shell": {
-    "versionName": "0.0.1",
-    "versionCode": 1,
+    "versionName": "0.0.2",
+    "versionCode": 2,
     "bridgeProtocol": 1,
     "signingKey": {
       "note": "APK 发布签名。alias=lobos，有效期 10000 天。**永不更换** —— 换了就无法给已装设备发覆盖安装的版本（Android 报 INSTALL_FAILED_UPDATE_INCOMPATIBLE）。首次发布 os-release-0.0.1。",
