@@ -116,6 +116,6 @@ object LocalExec {
                     "（那会让命令在另一套语义下跑）。底座不完整。",
             )
         }
-        return run(ctx, listOf(shellBin.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
+        return run(ctx, listOf(shellBin.absolutePath, "-c", command), null, env, cwd, timeoutMs, preferPty)
     }
 }
