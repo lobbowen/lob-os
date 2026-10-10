@@ -40,11 +40,14 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "[ver] node=$TAG abi=$ABI"
 
-      - name: 资产名
-        id: asset
+      - name: 算本件的固化标识（tag / asset）
+        id: key
+        run: |
+          # 与其余件同源：piece-key.sh 一处算出 tag 与 asset。
+          # 此前这里是两个空 step（只有 id 没有 run），tag/asset 为空串，
+          # 「已发布就复用」从未命中过 —— 与那 11 个 workflow 同一个毛病。
+          bash scripts/toolchain/piece-key.sh node
 
-      - name: Release tag（件名，不含版本，且与其余 component 件同一套命名）
-        id: rel
 
       - name: 已发布就复用（不重编）
         id: reuse
@@ -52,10 +55,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view '${{ steps.rel.outputs.tag }}' --repo '${{ github.repository }}' >/dev/null 2>&1; then
-            if gh release download '${{ steps.rel.outputs.tag }}' --repo '${{ github.repository }}' \
-                 --pattern '${{ steps.asset.outputs.name }}' --dir dist >/dev/null 2>&1; then
-              echo "[ok] 制品已存在，直接复用：${{ steps.asset.outputs.name }}"
+          if gh release view '${{ steps.key.outputs.tag }}' --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            if gh release download '${{ steps.key.outputs.tag }}' --repo '${{ github.repository }}' \
+                 --pattern '${{ steps.key.outputs.asset }}' --dir dist >/dev/null 2>&1; then
+              echo "[ok] 制品已存在，直接复用：${{ steps.key.outputs.asset }}"
               echo "hit=yes" >> "$GITHUB_OUTPUT"
               ls -la dist/
               exit 0
@@ -92,10 +95,10 @@ jobs:
           cp -f container/app/src/main/jniLibs/arm64-v8a/libc++_shared.so dist/rt/ 2>/dev/null \
             || echo "[note] 本次没编出 libc++_shared.so（复用既有件），不影响 libnode"
           ls -la dist/rt/
-          tar -C dist/rt -czf '${{ steps.asset.outputs.name }}' .
-          sha256sum '${{ steps.asset.outputs.name }}' | tee '${{ steps.asset.outputs.name }}.sha256'
+          tar -C dist/rt -czf '${{ steps.key.outputs.asset }}' .
+          sha256sum '${{ steps.key.outputs.asset }}' | tee '${{ steps.key.outputs.asset }}.sha256'
           rm -rf dist/rt
-          mv '${{ steps.asset.outputs.name }}' '${{ steps.asset.outputs.name }}.sha256' dist/
+          mv '${{ steps.key.outputs.asset }}' '${{ steps.key.outputs.asset }}.sha256' dist/
 
       - name: 发布制品到 Release（供所有构建复用）
         if: steps.reuse.outputs.hit != 'yes'
@@ -103,15 +106,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="${{ steps.rel.outputs.tag }}"
+          TAG="${{ steps.key.outputs.tag }}"
           if ! gh release view "$TAG" --repo '${{ github.repository }}' >/dev/null 2>&1; then
             gh release create "$TAG" --repo '${{ github.repository }}' \
               --title "component node — 预制品仓（tag 不含版本，版本在资产名里）" \
               --notes "编译一次、长期复用的 Node 运行时制品（含 libnode.so 与 libc++_shared.so）。构建链优先复用本制品，不再重复交叉编译。**每个版本是一个独立资产**（node-runtime-<版本>-<abi>.tar.gz），本 release 只维护一个 tag。命名与其余 component 件一致（component-<件>）。"
           fi
           gh release upload "$TAG" \
-            'dist/${{ steps.asset.outputs.name }}' \
-            'dist/${{ steps.asset.outputs.name }}.sha256' \
+            'dist/${{ steps.key.outputs.asset }}' \
+            'dist/${{ steps.key.outputs.asset }}.sha256' \
             --repo '${{ github.repository }}' --clobber
           echo "[ok] 已发布 $TAG"
 
@@ -120,4 +123,4 @@ jobs:
           echo "### Node runtime" >> "$GITHUB_STEP_SUMMARY"
           echo "- 版本：\`${{ steps.ver.outputs.tag }}\` (${{ steps.ver.outputs.abi }})" >> "$GITHUB_STEP_SUMMARY"
           echo "- 复用制品：\`${{ steps.reuse.outputs.hit }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- 资产：\`${{ steps.asset.outputs.name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 资产：\`${{ steps.key.outputs.asset }}\`" >> "$GITHUB_STEP_SUMMARY"
