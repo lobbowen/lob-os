@@ -95,6 +95,7 @@ for id in "${PIECES[@]}"; do
       *.meta.json) cp -f "$f" "$META/$b" ;;
       *.so|*.so.*) cp -f "$f" "$JNI/$b"; nso=$((nso+1)) ;;
       *.a)         : ;;                      # 静态库不随包带
+      *.tar.gz)    : ;;                      # 下载下来的原包，解完就没用了
       *)           cp -f "$f" "$JNI/$b" ;;
     esac
   done < <(find "$STAGE/$id" -maxdepth 1 -type f)
@@ -113,6 +114,10 @@ if [ "$missing" -gt 0 ]; then
   echo "[fetch] 已取到 $ok 个。缺的那几个要单独构建，别在 APK 里编 —— 见 RELEASE-POLICY.md"
   exit 1
 fi
+
+# AGP 会把 jniLibs 下的东西原样打进 APK，权限得自己定 —— 不能指望 runner 的 umask。
+find "$JNI" -maxdepth 1 -type f -exec chmod 644 {} + 2>/dev/null || true
+find "$META" -maxdepth 1 -type f -exec chmod 644 {} + 2>/dev/null || true
 
 echo "[fetch] ${#PIECES[@]} 个件全部取自 Release，APK 不再编译任何件"
 echo "[fetch] .so → $JNI"
