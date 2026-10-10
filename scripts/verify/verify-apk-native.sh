@@ -284,7 +284,14 @@ echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
 #                                  不经 PrefixProvisioner 铺位，也就无需说明。
 #                                  它的判据是 build-apk.yml 第 11 步那份硬判。
 # 其余 lib/<ABI>/*.so 都是 base 筐的件，必须有说明。
+# 内核的兼容性垫片：container/native 下我们自己写的 C，随 APK 而来。
+#   liblobosposix.so      LD_PRELOAD 垫片
+#   liblobosptyprobe.so   PTY 探测
+#   librivospty.so        PTY 宿主
+# 它们不是件、不铺位、不进清单、不可 OTA 替换（由 kernel/compat/Compat.kt 定位）。
+# 判据可核：component-sources.json 里查不到它们，而 base 筐的件都在。
 FOREIGN_SO="libandroidx.graphics.path.so libdimina.so libmmkv.so libc++_shared.so"
+            liblobosposix.so liblobosptyprobe.so librivospty.so
 META_NOSO=0
 for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
   base="$(basename "$so")"
