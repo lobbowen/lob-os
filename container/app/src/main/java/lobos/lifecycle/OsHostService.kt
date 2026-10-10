@@ -15,16 +15,17 @@ import lobos.OsApplication
 import lobos.R
 import lobos.RuntimeDiagnostics
 import lobos.bridge.CapabilityBroker
-import lobos.capability.DeviceOwnerState
-import lobos.capability.ScreenCaptureController
+import lobos.kernel.device.DeviceOwnerState
+import lobos.kernel.device.ScreenCaptureController
 import lobos.log.Journal
 import lobos.log.KillAudit
-import lobos.os.DozeBackstop
+import lobos.kernel.proc.ProcessLedger
+import lobos.kernel.power.DozeBackstop
+import lobos.kernel.power.PowerHostHooks
 import lobos.os.Level
 import lobos.os.OsFacts
 import lobos.os.OsInit
 import lobos.os.OsPhase
-import lobos.kernel.proc.ProcessLedger
 import lobos.os.ProgramDir
 import lobos.os.ProgramIndex
 import lobos.os.ProgramNotificationHub
@@ -55,6 +56,14 @@ class OsHostService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        PowerHostHooks.setEnsurer { ctx -> ensureRunning(ctx) }
+        PowerHostHooks.setWakeObserver { nowMs ->
+            ResidencyStatus.recordWake()
+            RuntimeDiagnostics.append(
+                this, "doze", null, "兜底投递：确保 OS 宿主在",
+                "自唤醒间隔=" + DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）",
+            )
+        }
         runCatching { lobos.log.KillAudit.auditOnce(this) }
             .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         ResidencyAudit.auditPreviousExit(this)
@@ -81,7 +90,7 @@ class OsHostService : Service() {
                         "；已登记程序数=" + lobos.os.ProgramIndex.all(this).count { it.level == lobos.os.Level.PROGRAM },
                 )
             }
-            lobos.os.DozeBackstop.schedule(this)
+            lobos.kernel.power.DozeBackstop.schedule(this)
             RuntimeDiagnostics.append(
                 this, "host", true, "Lob OS 宿主就位（单进程 / 单前台服务）",
                 "组件：SupervisorPool + CapabilityBroker + ScreenCaptureController；节拍 " + TICK_MS + "ms",
@@ -151,8 +160,8 @@ class OsHostService : Service() {
             runCatching { pool?.sync() }
             runCatching { lobos.pieces.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
-            if (!lobos.os.DozeBackstop.armedRecently(nowWall)) {
-                val armed = lobos.os.DozeBackstop.schedule(this)
+            if (!lobos.kernel.power.DozeBackstop.armedRecently(nowWall)) {
+                val armed = lobos.kernel.power.DozeBackstop.schedule(this)
                 lobos.log.Journal.note(
                     this, "doze", armed, "兜底闹钟未按期投递：已重挂",
                     "armed=" + armed + "（看门狗每拍校验布防）",
@@ -161,7 +170,7 @@ class OsHostService : Service() {
             if (now - ownerSampledAt > ResidencyPolicy.OWNER_CHECK_TTL_MS) {
                 ownerSampledAt = now
                 deviceOwnerMeasured = runCatching {
-                    lobos.capability.DeviceOwnerState.measure(this).isDeviceOwner
+                    lobos.kernel.device.DeviceOwnerState.measure(this).isDeviceOwner
                 }.getOrDefault(false)
             }
         } catch (e: Throwable) {

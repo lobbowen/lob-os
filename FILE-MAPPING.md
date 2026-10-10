@@ -37,7 +37,7 @@
 
 ### `kernel/crypto`  (2 个)
 
-- `os/ProgramPackageVerifier.kt`
+- `kernel/crypto/ProgramPackageVerifier.kt`
 - `runtime/SupplyProvisioner.kt`
 
 ### `kernel/device`  (5 个)
@@ -71,9 +71,10 @@
 
 ### `kernel/power`  (3 个)
 
-- `lifecycle/DozeBackstopReceiver.kt`
-- `os/DozeBackstop.kt`
-- `os/PowerLocks.kt`
+- `kernel/power/DozeBackstopReceiver.kt`
+- `kernel/power/DozeBackstop.kt`
+- `kernel/power/PowerLocks.kt`
+- `kernel/power/PowerHostHooks.kt`
 
 ### `kernel/proc`  (3 个)
 

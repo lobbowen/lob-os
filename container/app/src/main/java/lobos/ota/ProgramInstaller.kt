@@ -3,7 +3,7 @@ package lobos.ota
 import android.content.Context
 import java.io.File
 import lobos.os.ProgramDir
-import lobos.os.ProgramPackageVerifier
+import lobos.kernel.crypto.ProgramPackageVerifier
 import lobos.quickapp.QuickAppBinder
 import org.json.JSONObject
 
@@ -58,14 +58,14 @@ object ProgramInstaller {
             )
         }
 
-        val pubPem = lobos.os.ProgramPackageVerifier.publicKeyPem(context)
+        val pubPem = ProgramPackageVerifier.publicKeyPem(context)
         if (pubPem.isNullOrBlank()) {
             return InstallResult(
                 false, null, source, "public-key-missing",
                 "公钥锚点不可用：assets/supply/component-public.pem 读不出",
             )
         }
-        val verify = lobos.os.ProgramPackageVerifier.verify(
+        val verify = ProgramPackageVerifier.verify(
             context = context,
             zip = zip,
             expectedSha256 = manifest?.optString("sha256", "")?.ifBlank { null },

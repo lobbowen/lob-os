@@ -1,6 +1,7 @@
 package lobos.permissions
 
 import android.content.Context
+import lobos.kernel.device.PermissionCenter
 import lobos.log.Journal
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
@@ -92,13 +93,26 @@ object PermissionLedger {
      *
      * 原本绕经 CapabilityEvidenceCollector.systemReads().grants —— 那是判据体系
      * 的中间产物。判据已随「APK 侧自己判权限、自己取权」那套设计一并清空。
-     * 现在直接问 PermissionCenter：那才是权限状态的来源。
+     * 现在直接问内核的 PermissionCenter：那才是权限状态的来源。
      */
     fun heldIds(ctx: Context): Set<String> = try {
         val center = PermissionCenter(ctx)
-        PermissionCatalog.ALL.filter { center.isGranted(it) }.map { it.id }.toSet()
+        PermissionCatalog.ALL.filter { spec -> isHeld(center, spec) }.map { it.id }.toSet()
     } catch (_: Throwable) {
         emptySet()
+    }
+
+    /** 业务 id → 内核机制实测。台账只做这层映射，不自己判权限。 */
+    private fun isHeld(center: PermissionCenter, spec: PermissionSpec): Boolean = when (spec.id) {
+        PermissionCatalog.MANAGE_EXTERNAL_STORAGE -> center.externalStorageManager()
+        PermissionCatalog.ACCESSIBILITY -> center.accessibilityReady()
+        PermissionCatalog.NOTIFICATION_ACCESS -> center.notificationListenerBound()
+        PermissionCatalog.POST_NOTIFICATIONS -> center.postNotificationsGranted()
+        PermissionCatalog.REQUEST_INSTALL_PACKAGES -> center.canRequestPackageInstalls()
+        PermissionCatalog.SYSTEM_ALERT_WINDOW -> center.canDrawOverlays()
+        PermissionCatalog.BATTERY_OPTIMIZATION -> center.batteryExempt()
+        PermissionCatalog.MEDIAPROJECTION -> center.screenCaptureReady()
+        else -> spec.permission?.let { center.runtimePermissionGranted(it) } ?: false
     }
 
     fun read(ctx: Context): LedgerSnapshot? {

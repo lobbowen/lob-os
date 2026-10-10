@@ -1,12 +1,10 @@
-package lobos.os
+package lobos.kernel.crypto
 
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.security.MessageDigest
 import java.util.zip.ZipFile
-import lobos.runtime.SupplyProvisioner
 
 object ProgramPackageVerifier {
 
@@ -33,7 +31,7 @@ object ProgramPackageVerifier {
             return Outcome(false, null, "zip-too-large", "候选包 ${zip.length()} 字节，超上限 $MAX_UNZIP", "")
         }
 
-        val sha = runCatching { sha256HexFile(zip) }.getOrElse {
+        val sha = runCatching { Crypto.sha256HexFile(zip) }.getOrElse {
             return Outcome(false, null, "hash-failed", "算 sha256 失败：${it.message}", "")
         }
         if (!expectedSha256.isNullOrBlank() && !sha.equals(expectedSha256.trim(), ignoreCase = true)) {
@@ -148,21 +146,10 @@ object ProgramPackageVerifier {
         }
     }.getOrNull()
 
-    fun sha256HexFile(f: File): String {
-        val d = MessageDigest.getInstance("SHA-256")
-        f.inputStream().buffered(64 * 1024).use { ins ->
-            val buf = ByteArray(64 * 1024)
-            while (true) {
-                val n = ins.read(buf)
-                if (n <= 0) break
-                d.update(buf, 0, n)
-            }
-        }
-        return d.digest().joinToString("") { "%02x".format(it) }
-    }
+    fun sha256HexFile(f: File): String = Crypto.sha256HexFile(f)
 
     private fun verifyEd25519(pubPem: String, data: ByteArray, sigB64: String): Boolean =
-        SupplyProvisioner.verifyEd25519(
+        Crypto.verifyEd25519(
             pubPem, data, runCatching { android.util.Base64.decode(sigB64, android.util.Base64.DEFAULT) }.getOrElse { return false },
         )
 

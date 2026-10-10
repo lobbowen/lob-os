@@ -26,8 +26,8 @@ import java.util.concurrent.Executors
 import lobos.BuildConfig
 import lobos.R
 import lobos.RuntimeDiagnostics
-import lobos.capability.DeviceOwnerState
-import lobos.capability.ScreenCaptureController
+import lobos.kernel.device.DeviceOwnerState
+import lobos.kernel.device.ScreenCaptureController
 import lobos.lifecycle.AccessibilityServiceState
 import lobos.lifecycle.OsAccessibilityService
 import lobos.lifecycle.OsHostService
@@ -56,7 +56,7 @@ import lobos.os.TaskRegistry
 import lobos.os.UnitEntry
 import lobos.ota.ProgramInstaller
 import lobos.ota.ProgramOtaUpdater
-import lobos.permissions.NotificationStore
+import lobos.kernel.device.NotificationStore
 import lobos.permissions.PermissionLedger
 import lobos.permissions.PermissionRoles
 import lobos.pieces.DriverRegistry
@@ -881,7 +881,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             // 这里只报事实：平台、API 级别、是否设备所有者（那一条是实测，
             // 不是判据 —— 它决定系统能额外给多少后台权限）。
             val owner = runCatching {
-                lobos.capability.DeviceOwnerState.measure(this@CapabilityBroker)
+                lobos.kernel.device.DeviceOwnerState.measure(this@CapabilityBroker)
             }.getOrNull()
             JSONObject().apply {
                 put("platform", "android")

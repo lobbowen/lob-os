@@ -1,18 +1,23 @@
-package lobos.os
+package lobos.kernel.power
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
-import lobos.lifecycle.DozeBackstopReceiver
-import lobos.lifecycle.ResidencyPolicy
 
+/**
+ * 内核机制：兜底自唤醒定时器。
+ * 不认识任何业务词汇，只负责按时把广播投递出去（见 DozeBackstopReceiver）。
+ */
 object DozeBackstop {
 
     const val ACTION = "lobos.action.DOZE_BACKSTOP"
 
-    private const val INTERVAL_MS = lobos.lifecycle.ResidencyPolicy.WAKE_BACKSTOP_MS
+    /** 兜底自唤醒间隔（ms）。 */
+    const val WAKE_BACKSTOP_MS = 15 * 60_000L
+
+    private const val INTERVAL_MS = WAKE_BACKSTOP_MS
 
     @Volatile private var lastArmedAt = 0L
 

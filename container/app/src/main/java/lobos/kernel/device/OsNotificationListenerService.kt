@@ -1,8 +1,7 @@
-package lobos.capability
+package lobos.kernel.device
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import lobos.permissions.NotificationStore
 
 class OsNotificationListenerService : NotificationListenerService() {
 

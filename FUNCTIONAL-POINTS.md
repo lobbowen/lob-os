@@ -74,7 +74,7 @@
 - **成熟度**：完整可用（版本问不出时退回 `etc/installed.json`）。**注意**：`RUNTIME="runtime"` 这个 role 没有任何代码写入，实际靠 `PieceScan.roleOf` 产出的 `exec` 走兜底链
 
 ### 10. 给下载/长任务期间保持 WiFi 高性能不睡
-- **实现**：`lobos/os/PowerLocks.kt` — `wifi`
+- **实现**：`lobos/kernel/power/PowerLocks.kt` — `wifi`
 - **数据**：读 `WifiManager`；写 acquire 一个 `WIFI_MODE_FULL_HIGH_PERF`、非引用计数的 `WifiLock`
 - **依赖**：OTA 下载链路
 - **成熟度**：完整可用，但全 `runCatching` 静默：拿不到 `WifiManager` 时静默降级为「不加锁」。批内记「无调用点 — 待确认」
@@ -288,7 +288,7 @@
 - **成熟度**：完整可用。版本范围支持 `>= <= > < =` 组合，解析失败即拒；另一批记「仅支持空格分隔的 AND，不支持 `||`」
 
 ### 43. 验包——sha256、包内 `program-manifest.json`、ed25519 双向签、外部清单签
-- **实现**：`lobos/os/ProgramPackageVerifier.kt` — `verify`/`canonical`/`sha256HexFile`/`publicKeyPem`；`lobos/ota/ProgramInstaller.kt`（安装前的 fail-closed 检查）
+- **实现**：`lobos/kernel/crypto/ProgramPackageVerifier.kt` — `verify`/`canonical`/`sha256HexFile`/`publicKeyPem`；`lobos/ota/ProgramInstaller.kt`（安装前的 fail-closed 检查）
 - **数据**：读候选 zip、`assets/supply/component-public.pem`、外部清单文件；不写
 - **依赖**：`ProgramInstaller.install`、`ProgramOtaUpdater`
 - **成熟度**：**有缺口**——一处批内记「只做了一半：本批内无调用方」，另一批记「完整可用，上限 64MB，清单无 signature 直接拒」。**待确认**
@@ -480,7 +480,7 @@
 - **成熟度**：完整可用（`START_STICKY` + 15s 节拍 `ResidencyPolicy.FAST_TICK_MS`）
 
 ### 73. 在 Doze 抑制期之外按闹钟把自己叫醒，保证节拍不丢
-- **实现**：`lobos/os/DozeBackstop.kt` — `schedule`/`armedRecently`/`ACTION`；接收方 `lobos/lifecycle/DozeBackstopReceiver.kt`
+- **实现**：`lobos/kernel/power/DozeBackstop.kt` — `schedule`/`armedRecently`/`ACTION`；接收方 `lobos/kernel/power/DozeBackstopReceiver.kt`
 - **数据**：读写内存 `lastArmedAt`；写 `AlarmManager.setAndAllowWhileIdle` 一条 ELAPSED_REALTIME_WAKEUP 广播（15min）
 - **依赖**：宿主节拍每拍校验「兜底闹钟是否按期布防」
 - **成熟度**：完整可用。`armedRecently` 判据是 2×INTERVAL_MS；失败静默返回 false
@@ -818,7 +818,7 @@ service   .lifecycle.OsAccessibilityService         permission=BIND_ACCESSIBILIT
 service   .bridge.ScreenCaptureService             foregroundServiceType=mediaProjection
 receiver  .lifecycle.BootReceiver
 receiver  .lifecycle.PackageInstallReceiver
-receiver  .lifecycle.DozeBackstopReceiver
+receiver  .kernel.power.DozeBackstopReceiver
 activity  .quickapp.QuickAppLaunchActivity         ★ LAUNCHER
 application .OsApplication
 ```

@@ -1,6 +1,4 @@
-package lobos.capability
-
-import lobos.bridge.ScreenCaptureService
+package lobos.kernel.device
 import android.app.Activity
 import android.app.Service
 import android.content.Context
@@ -22,7 +20,6 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import lobos.RuntimeDiagnostics
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 
@@ -46,7 +43,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
             if (code == Activity.RESULT_OK && data != null) {
                 ScreenCaptureService.start(this, code, data)
             } else {
-                RuntimeDiagnostics.append(this, "screenshot", false, "截屏授权被取消", "resultCode=$code")
+                Log.w(TAG, "截屏授权被取消 resultCode=$code")
             }
         }
     }
@@ -56,7 +53,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
         try {
             val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val p = mpm.getMediaProjection(resultCode, data) ?: run {
-                RuntimeDiagnostics.append(this, "screenshot", false, "getMediaProjection 返回 null", "授权数据可能已失效")
+                Log.w(TAG, "getMediaProjection 返回 null，授权数据可能已失效")
                 return
             }
             p.registerCallback(object : MediaProjection.Callback() {
@@ -68,9 +65,8 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
 
             projection = p
             instance = this
-            RuntimeDiagnostics.append(this, "screenshot", true, "MediaProjection 已就绪", "截屏授权生效")
         } catch (e: Throwable) {
-            RuntimeDiagnostics.append(this, "screenshot", false, "启动 MediaProjection 失败", errText(e))
+            Log.w(TAG, "启动 MediaProjection 失败: ${errText(e)}")
         }
     }
 
@@ -101,7 +97,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
                 Log.w(TAG, "截屏超时（8s 内未收到帧）")
             }
         } catch (e: Throwable) {
-            RuntimeDiagnostics.append(this, "screenshot", false, "截屏失败", errText(e))
+            Log.w(TAG, "截屏失败: ${errText(e)}")
         }
         return holder.get()
     }
@@ -190,7 +186,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
                     put("intentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
                     put("savedAt", System.currentTimeMillis())
                 }
-                lobos.kernel.fs.StateFiles.writeAtomic(File(lobos.kernel.layout.SystemDirs.libvar(ctx), GRANT_FILE), obj.toString())
+                StateFiles.writeAtomic(File(SystemDirs.libvar(ctx), GRANT_FILE), obj.toString())
             } catch (e: Throwable) {
                 Log.w(TAG, "保存截屏授权失败", e)
             }
@@ -198,7 +194,7 @@ class ScreenCaptureController(private val host: Service) : ContextWrapper(host) 
 
         fun loadGrant(ctx: Context): Pair<Int, Intent>? {
             return try {
-                val f = File(lobos.kernel.layout.SystemDirs.libvar(ctx), GRANT_FILE)
+                val f = File(SystemDirs.libvar(ctx), GRANT_FILE)
                 if (!f.exists()) return null
                 val obj = org.json.JSONObject(f.readText())
                 val bytes = android.util.Base64.decode(obj.getString("intentBase64"), android.util.Base64.DEFAULT)

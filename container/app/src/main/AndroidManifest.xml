@@ -72,7 +72,7 @@
             android:exported="false" />
 
         <service
-            android:name=".capability.OsNotificationListenerService"
+            android:name=".kernel.device.OsNotificationListenerService"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -94,11 +94,11 @@
 
 
         <receiver
-            android:name=".lifecycle.DozeBackstopReceiver"
+            android:name=".kernel.power.DozeBackstopReceiver"
             android:exported="false" />
 
         <service
-            android:name=".bridge.ScreenCaptureService"
+            android:name=".kernel.device.ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
