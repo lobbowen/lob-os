@@ -79,14 +79,15 @@ jobs:
           echo "[ok] 已固化 $ASSET → $TAG"
 
       - name: 失败现场（Job Summary，不裁剪）
-        if: failure()
+        if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh crypto
 
-      - name: 上传失败现场
-        if: failure()
+      - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: piece-diag
           path: |
             ${{ runner.temp }}/piece-diag-*.md
+            work/*/*.log
           if-no-files-found: ignore

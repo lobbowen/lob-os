@@ -68,20 +68,6 @@ jobs:
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
-      - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: piece-diag
-          path: |
-            ${{ runner.temp }}/piece-diag-*.md
-            work/*/*.log
-          if-no-files-found: ignore
-
-      - name: 失败现场（Job Summary，不裁剪）
-        if: failure()
-        run: bash scripts/toolchain/collect-piece-diag.sh busybox
-
       - name: 编 busybox
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-native-busybox.sh
@@ -105,3 +91,16 @@ jobs:
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "busybox 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
+      - name: 失败现场（Job Summary，不裁剪）
+        if: always()
+        run: bash scripts/toolchain/collect-piece-diag.sh busybox
+
+      - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: piece-diag
+          path: |
+            ${{ runner.temp }}/piece-diag-*.md
+            work/*/*.log
+          if-no-files-found: ignore
