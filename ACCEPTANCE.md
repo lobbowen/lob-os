@@ -234,3 +234,53 @@ UI 清空后 `SetupActivity` 被删、`QuickAppLaunchActivity` 顶替成 LAUNCHE
 - LAUNCHER 无 id 时的行为：列程序 / 开控制面板 / 明确提示
 - 控制面板怎么进 APK（现在没有实现）
 - 13 个基础件的铺位结果如何对外可观测
+
+## 取件链的三条判据（2026-10-11 定）
+
+这一段在「8 个件从零到铺进 APK」上绕了几轮，绕的根子是同一个错：
+**拿观察当结论**。留下的三条规矩：
+
+### ① 改数据就要有对照测量
+
+```
+件包在 APK 里的字节数 ≠ 源包字节数
+  ≠ aapt2 拆包
+  可能是取件脚本自己 gunzip 过
+
+Build APK 的 failure-diagnostics 现在固定记两份：
+  src-bytes.txt         src/main/assets 下每个文件的字节数
+  apk-pieces-bytes.txt  APK 里对应条目的字节数
+两份一对，才知道哪些条目被动过。
+```
+
+### ② 观测到异常，先审自己的代码
+
+```
+字节变大、条目消失、解包失败 —— 第一反应应该是「我改的那步是不是本来就这样」，
+不是「框架/工具对我做了什么」。
+本轮真因是校验器 unzip 后少写了一层 assets/ 目录，
+我却先后怀疑了 aapt2、noCompress、.pkg 后缀、zip、res/raw 五个方向。
+```
+
+### ③ 断言「X 可行」之前，先量一个字节或找一个来源
+
+```
+不能靠推断。本轮三次断言（noCompress 有效 / .pkg 有效 / aapt2 拆 tar）全错，
+三次都没有先量一个字节。
+
+已知事实（来源 elizaOS/eliza commit b5424ec 的注释）：
+  aapt2 对 *.tar.gz 会在打包时剥掉 .gz 后缀，noCompress 管不到那一层。
+  它的 noCompress 只控制 ZIP 层的压缩。
+  —— 这条是真的，但与本轮失败无关（本轮根本没走到那一步）。
+```
+
+### 三条链必须分开
+
+```
+发布链   .github/workflows/*        —— 不碰
+监测链   obs.js status / steps      —— 不碰
+报告链   obs.js diag                —— 不碰
+之前我把三者耦在一起：改一次下载方式就重写查询与下载，
+同一个坑踩了六遍（302 死循环、TLS 抖动、缺 Authorization 头…）。
+脚本固定在 .tmpwork/obs.js，三个子命令，重试内建，不再各处重写。
+```
