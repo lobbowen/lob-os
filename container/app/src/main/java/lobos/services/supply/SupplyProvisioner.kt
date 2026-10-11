@@ -166,7 +166,7 @@ object SupplyProvisioner {
                     out.mkdirs()
                 } else {
                     out.parentFile?.mkdirs()
-                    tin.copyTo(out)
+                    out.outputStream().use { os -> tin.copyTo(os) }
                     ExecBits.apply(out)
                 }
             }
