@@ -38,6 +38,17 @@ class OsApplication : Application() {
                 "自唤醒间隔=" + lobos.kernel.power.DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）"
             )
         }
+
+        Thread {
+            runCatching { lobos.services.app.PreinstalledPieces.installAll(this@OsApplication) }
+                .onFailure {
+                    RuntimeDiagnostics.append(
+                        this@OsApplication, "prefix", false,
+                        "预装件装置过程中出错",
+                        it::class.java.simpleName + ": " + it.message,
+                    )
+                }
+        }.apply { isDaemon = true }.start()
                 OsHostService.ensureRunning(this)
         registerWakeupEdges()
     }
