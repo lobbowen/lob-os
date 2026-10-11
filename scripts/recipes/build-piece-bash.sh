@@ -65,6 +65,7 @@ STUB
   }
 ) || die "bash 编译失败" "日志在 $WORK/bash-configure.log 与 $WORK/bash-make.log"
 
-cp -f "$WORK/bash-$BASH_VER/bash" "$WORK/libbash.so"
-[ -x "$WORK/libbash.so" ] || die "bash 产物不可执行" "\$PREFIX/bin/bash 无回退路径"
+mkdir -p "$OUT_DIR/bin"
+cp -f "$WORK/bash-$BASH_VER/bash" "$OUT_DIR/bin/bash"
+[ -x "$OUT_DIR/bin/bash" ] || die "bash 产物不可执行" "\$PREFIX/bin/bash 无回退路径"
 emit_piece bash "$OUT_DIR" bin/bash 300000
