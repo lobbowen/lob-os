@@ -38,20 +38,25 @@ object PreinstalledPieces {
         return done
     }
 
+    private fun fail(ctx: Context, id: String, why: String): Boolean {
+        RuntimeDiagnostics.append(ctx, "prefix", false, "预装件 $id", why)
+        return false
+    }
+
     private fun installOne(ctx: Context, id: String): Boolean {
-        val pkg = extract(ctx, id) ?: return false
+        val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.pkg")
 
         val meta = runCatching {
             val f = File(pkg, "component-meta.json")
-            if (!f.isFile) return false
+            if (!f.isFile) return fail(ctx, id, "包里没有 component-meta.json")
             org.json.JSONObject(f.readText())
-        }.getOrNull() ?: return false
+        }.getOrNull() ?: return fail(ctx, id, "component-meta.json 解析失败")
 
-        val version = meta.optString("version", "").ifBlank { return false }
-        val entry = meta.optString("entry", "").ifBlank { return false }
-        if (!File(pkg, entry).isFile) return false
+        val version = meta.optString("version", "").ifBlank { return fail(ctx, id, "说明里没有 version") }
+        val entry = meta.optString("entry", "").ifBlank { return fail(ctx, id, "说明里没有 entry") }
+        if (!File(pkg, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
 
-        val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return false)
+        val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
         if (verDir.isDirectory && File(verDir, entry).isFile) {
             runCatching { pkg.deleteRecursively() }
             register(ctx, id, version, verDir.absolutePath, entry, meta)
