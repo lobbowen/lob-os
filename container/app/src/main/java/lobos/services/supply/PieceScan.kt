@@ -34,7 +34,7 @@ object PieceScan {
         val libName: String get() = entry.substringAfterLast('/', "")
     }
     fun scan(ctx: Context): List<Found> {
-        val lib = SystemDirs.lib(ctx)
+        val lib = SystemDirs.opt(ctx)
         val kids = lib.listFiles() ?: return emptyList()
         val out = mutableListOf<Found>()
         for (pieceDir in kids) {
@@ -163,21 +163,17 @@ object PieceScan {
     }
     fun landedId(path: String): String? {
         val p = path.replace(Regex("/+"), "/")
-        val m = Regex("^usr/lib/([^/]+)/").find(p) ?: return null
-        return m.groupValues[1].ifBlank { null }
+        val m = Regex("^(usr/)?opt/([^/]+)/").find(p) ?: return null
+        return m.groupValues[2].ifBlank { null }
     }
 
     fun packagedIds(ctx: Context): Set<String> {
-        val dir = "supply/meta"
+        val dir = "pieces"
         val names = runCatching { ctx.assets.list(dir)?.toList() ?: emptyList() }.getOrDefault(emptyList())
-        val out = mutableSetOf<String>()
-        names.filter { it.endsWith(".meta.json") }.forEach { n ->
-            runCatching {
-                val m = org.json.JSONObject(ctx.assets.open("$dir/$n").use { it.readBytes().toString(Charsets.UTF_8) })
-                m.optString("id", "").takeIf { it.isNotBlank() }?.let { out += it }
-            }
-        }
-        return out
+        return names.mapNotNull { n ->
+            val b = n.substringBeforeLast('.')
+            b.takeIf { it.isNotBlank() && it != n }
+        }.toSet()
     }
 
     fun pieceDir(ctx: Context, id: String): File? {
