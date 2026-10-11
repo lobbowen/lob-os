@@ -2,7 +2,6 @@ package lobos.services.host
 
 import android.content.ContentProvider
 import android.content.ContentValues
-import android.content.res.AssetFileDescriptor
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -127,9 +126,6 @@ class SystemFilesProvider : ContentProvider() {
         return ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
-    override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor? =
-        // 不用 AssetFileDescriptor(FileDescriptor, long, String) —— 那个构造器已移除。
-        openFile(uri, mode)?.let { AssetFileDescriptor(it, 0L, MIME_GUESS) }
 
     override fun getType(uri: Uri): String? {
         val (kind, _) = split(uri) ?: return null
