@@ -10,6 +10,7 @@ object ElfFacts {
         val needed: List<String>,
         val runPath: String?,
         val interp: String?,
+        val soname: String?,
     )
 
     private const val DT_NEEDED = 1
@@ -17,6 +18,7 @@ object ElfFacts {
     private const val DT_STRSZ = 10
     private const val DT_RPATH = 15
     private const val DT_RUNPATH = 29
+    private const val DT_SONAME = 14
     private const val PT_INTERP = 3
 
     fun read(file: File): Dynamic? = try {
@@ -61,6 +63,7 @@ object ElfFacts {
         var strsz = 0L
         val neededV = mutableListOf<Long>()
         var runPathV = -1L
+        var sonameV = -1L
         var rpathV = -1L
 
         var p = dynFileOff
@@ -75,6 +78,7 @@ object ElfFacts {
                 DT_STRTAB.toLong() -> strtabVaddr = dval
                 DT_STRSZ.toLong() -> strsz = dval
                 DT_RUNPATH.toLong() -> runPathV = dval
+                DT_SONAME.toLong() -> sonameV = dval
                 DT_RPATH.toLong() -> rpathV = dval
             }
             p += 16
@@ -95,7 +99,7 @@ object ElfFacts {
         val rp = if (runPathV >= 0) cstr(runPathV) else if (rpathV >= 0) cstr(rpathV) else null
         val origin = rp?.contains("\$ORIGIN") == true
 
-        Dynamic(needed, rp, interp)
+        Dynamic(needed, rp, interp, if (sonameV >= 0) cstr(sonameV).ifBlank { null } else null)
     } catch (_: Throwable) {
         null
     }

@@ -35,6 +35,15 @@ object PreinstalledPieces {
             "已装=" + done.joinToString(",") +
                 if (failed > 0) "  失败=" + failed else "",
         )
+        runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
+            .onFailure {
+                RuntimeDiagnostics.append(
+                    ctx, "ldconfig", false,
+                    "ldconfig 失败",
+                    it::class.java.simpleName + ": " + it.message,
+                )
+            }
+
         return done
     }
 
