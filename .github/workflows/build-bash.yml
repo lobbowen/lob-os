@@ -62,7 +62,7 @@ jobs:
           #   被当成新的继续用，CI 报 success 而包是空的。
           #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET"; then
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" "bin/bash"; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
