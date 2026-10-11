@@ -21,8 +21,6 @@ object RuntimeEnvironment {
     }
 
     @Volatile private var cached: Snapshot? = null
-    @Volatile private var lastSupplyAt = 0L
-    private val supplyThrottleMs = 10 * 60 * 1000L
 
     /**
      * 进程环境 —— **只含系统面，不含任何具体的件**。
@@ -189,15 +187,6 @@ object RuntimeEnvironment {
             ))
         }
 
-        val nowSupply = System.currentTimeMillis()
-        if (nowSupply - lastSupplyAt > supplyThrottleMs) {
-            lastSupplyAt = nowSupply
-            RuntimeDiagnostics.append(
-                ctx, "supply", null, "组件供给不再由 App 启动自动安装",
-                "启动只刷组件目录（CatalogClient.refresh）。" +
-                    "运行时与工具件由「装程序时按该程序 requires 决定」触发，走 os/PackageInstaller。",
-            )
-        }
 
         return Snapshot(ready, missing.toList())
     }

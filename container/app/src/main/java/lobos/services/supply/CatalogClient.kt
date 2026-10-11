@@ -1,5 +1,20 @@
 package lobos.services.supply
 
+// OTA 的定位（改这块之前先读这段）：
+//
+//   OTA **只是下载器**。它不自己找地址、不自己拉清单、不在启动时自动铺件。
+//   它等控制面板在第二阶段给到**具体的拉取动作指令和地址**，才去下载。
+//
+//   因此：程序启动路径上**不允许**出现 refresh() 之类的自动调用。
+//   曾经有一处 supplyOnStartup() 在 onCreate 里起守护线程去下清单 ——
+//   那既违背这个定位，又把真因盖住了：真因是 provision 返回空，
+//   而那条「清单下载失败」的日志让人误以为是供给的问题。
+//
+//   桥方法侧的入口保留（控制面板显式调用才触发）：
+//     os.catalog.list      refresh 默认 false —— 只读本地
+//     os.catalog.refresh   显式刷
+
+
 import android.content.Context
 import lobos.services.log.RuntimeDiagnostics
 import lobos.services.log.Journal

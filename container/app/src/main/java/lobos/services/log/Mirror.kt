@@ -3,6 +3,7 @@ package lobos.services.log
 import android.content.Context
 import android.util.Log
 import java.io.File
+import java.io.FileOutputStream
 
 /**
  * 诊断的外部镜像 —— **为真机验收而存在**。
@@ -59,8 +60,11 @@ object Mirror {
             val d = dir(ctx) ?: return
             val f = File(d, name)
             val body = (line.trimEnd() + "\n").toByteArray()
-            // 直接追加：诊断量不大，且要保证崩溃前写进去的那几条不丢
-            f.outputStream().use { it.write(body) }
+            // ★ 必须用 FileOutputStream(f, true)。File.outputStream() 默认是
+            //   **truncate** —— 每写一行就把前面写的全清掉。实测后果：
+            //   state.txt 里只剩最后一行（binEntries=），前面几个字段全丢，
+            //   看起来像「快照没写全」，其实是每次都覆盖。
+            FileOutputStream(f, true).use { it.write(body) }
             // 限长，避免无限增长
             if (f.length() > 512 * 1024L) {
                 val keep = f.readBytes().let { it.copyOfRange(it.size - 256 * 1024, it.size) }
