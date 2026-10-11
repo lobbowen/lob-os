@@ -50,5 +50,7 @@ echo "[openssl] 版本头在位"
 # crypto 由 build-crypto.yml 从本件的固化包里取。
 SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
 [ -n "$SSL" ] || die "openssl 没产出 libssl.so" "$OUT_DIR/lib 下没有 libssl.so*"
-emit_piece openssl "$OUT_DIR" lib/libssl.so 1000
-echo "[ok] openssl 与 crypto 是共享库（不是静态链进别的二进制）"
+  # OPENSSL_LIBS=1：包要同时带 libssl.so 与 libcrypto.so ——
+  # crypto 是清单里的独立一件（crypto.sameAs=openssl），
+  # 由 build-crypto.yml 从本件的包里拆出去。
+  OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl.so 1000

@@ -60,11 +60,23 @@ mkdir -p "$STAGE/$(dirname "$ENTRY")"
 cp -Pf "$OUT/$ENTRY" "$STAGE/$ENTRY" 2>/dev/null || cp -f "$OUT/$ENTRY" "$STAGE/$ENTRY"
 eb="$(basename "$ENTRY")"
 ed="$(dirname "$ENTRY")"
-for extra in "$OUT/$ed/$eb".*; do
-  [ -f "$extra" ] || continue
-  xb="$(basename "$extra")"
-  case "$xb" in *.so|*.so.*) cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb" ;; esac
-done
+# OPENSSL_LIBS=1 时把同目录下所有 .so 都带上。
+# openssl 一次编译产出 libssl.so 与 libcrypto.so，而 crypto 是清单里的独立一件
+#（component-sources.json 里 crypto.sameAs=openssl），由 build-crypto.yml 从
+# 本件的包里拆出去。只带 entry 指的那个，拆包时就无货可拆。
+if [ "${OPENSSL_LIBS:-0}" = "1" ]; then
+  for extra in "$OUT/$ed/"*.so "$OUT/$ed/"*.so.*; do
+    [ -f "$extra" ] || continue
+    xb="$(basename "$extra")"
+    cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb"
+  done
+else
+  for extra in "$OUT/$ed/$eb".*; do
+    [ -f "$extra" ] || continue
+    xb="$(basename "$extra")"
+    case "$xb" in *.so|*.so.*) cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb" ;; esac
+  done
+fi
 
 node "$ROOT/scripts/recipes/gen-component-meta.js" \
   "$ID" "$VER" "$ENTRY" "$STAGE/component-meta.json" \
