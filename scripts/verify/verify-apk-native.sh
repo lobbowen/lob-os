@@ -198,115 +198,73 @@ if [ "$SRC_N" != "$APK_N" ]; then
 fi
 
 echo
-echo "--- 件的说明（assets/supply/meta/）· 运行时铺位的唯一数据源 ---"
-# PrefixProvisioner.scanMeta() 从 assets/supply/meta/ 读它（prefix provisioner 的
-# scanMeta 注释写明了为什么不能走 jniLibs：AGP 的 jniLibs 打包只取 *.so，
-# .meta.json 进不了 APK）。缺一份 = 运行时那一件铺不出来，而构建期看不出来。
-#
-# 必填字段照 deb-control(5)：Package / Version / Architecture
-#（scripts/recipes/gen-component-meta.js 就只把这三个标 required）。
-META_BAD=0
-META_MISSING_ID=""
-META_MISS_SO=""
-META_PRESENT_ID=""
-TMPA="$(mktemp)"
-META_N=0
-for meta in $(printf '%s\n' "${LIST[@]}" | grep "^assets/supply/meta/.*\.meta\.json$"); do
-  META_N=$((META_N + 1))
-  base="$(basename "$meta")"
-  unzip -p "$APK" "$meta" > "$TMPA" 2>/dev/null || : > "$TMPA"
-  for field in id version arch; do
-    if ! node "$ROOT/scripts/verify/meta-field.js" "$TMPA" "$field" | grep -q .; then
-      echo "[error] $meta 缺必填字段 $field（deb-control(5)：Package/Version/Architecture 是 required）"
-      META_BAD=$((META_BAD + 1))
-    fi
-  done
-  # essential 是布尔，且它经 PieceScan.Found.required 决定「缺了系统起不启得来」
-  if ! grep -qE '"essential"[[:space:]]*:[[:space:]]*(true|false)' "$TMPA"; then
-    echo "[error] $meta 的 essential 不是布尔 —— Found.required 靠它判系统起不启得来"
-    META_BAD=$((META_BAD + 1))
+echo "--- 预装件包（assets/pieces/<id>.tar.gz）· 装配器只读包 ---"
+# 件随 APK 打包为标准包，启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装上
+# （与 OTA 装件同一条路）。装配器读包里的 component-meta.json（照抄 .deb 的 control），
+# 所以「包里有没有、说明对不对、那个文件在不在」三件事都要在这里验 ——
+# 缺任何一样，真机上那一件就装不上，而构建期看不出来。
+PIECE_BAD=0
+PIECE_N=0
+W="$(mktemp -d)"
+trap 'rm -rf "$W"' EXIT
+for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.tar\.gz$'); do
+  name="$(basename "$p")"
+  id="${name%%.tar.gz}"
+  PIECE_N=$((PIECE_N + 1))
+
+  if ! has_exact "$p"; then
+    echo "[error] 清单里有 $p 但 APK 里没有"
+    PIECE_BAD=$((PIECE_BAD + 1)); continue
   fi
-  # 每份说明都要能在包里找到它的字节。
-  #
-  # 版本化命名（libz.so.1 / libz.so.1.3.2）AGP 的 jniLibs 打包装不进去
-  # （只认 *.so 结尾），所以 APK 里只有链首那一份 —— 这不是缺陷：
-  # PrefixProvisioner.provision() 遇到某一层的字节不在包里时，会拿**同 id
-  # 那份在包里的**顶上（链上几层本来就是同一份字节的多个名字，land_piece
-  # 用 cp -f 解开了软链，见 piece-env.sh）。
-  #
-  # 因此判据是：**同一个 id 至少有一份字节在包里**，而不是每层都在。
-  # 下面按 id 归并核对。
-  # 这一份说明属于哪个件 —— 归并判定的键。循环体里没有现成的 id 变量，
-  # 从刚解出的 JSON 取（上面三个必填字段校验已经把它解出来过一次）。
-  pid="$(node "$ROOT/scripts/verify/meta-field.js" "$TMPA" id 2>/dev/null || echo "")"
-  so="lib/${ABI}/${base%.meta.json}"
-  if has_exact "$so"; then
-    META_PRESENT_ID="$META_PRESENT_ID $pid"
-  else
-    # 链上另一层可能带字节（AGP 只打包 *.so），记下来最后按 id 归并判
-    META_MISSING_ID="$META_MISSING_ID $pid"
-    META_MISS_SO="$META_MISS_SO $base"
+
+  rm -rf "${W:?}/x"; mkdir -p "$W/x"
+  unzip -qq -o "$APK" "$p" -d "$W" 2>/dev/null
+  pkg="$W/${p#assets/}"
+  [ -f "$pkg" ] || pkg="$W/x/$(basename "$p")"
+  if ! tar xzf "$pkg" -C "$W/x" 2>/dev/null; then
+    echo "[error] $id 的包解不开"
+    PIECE_BAD=$((PIECE_BAD + 1)); continue
   fi
+
+  if [ ! -f "$W/x/component-meta.json" ]; then
+    echo "[error] $id 的包里没有 component-meta.json（装配器靠它认这件是什么）"
+    PIECE_BAD=$((PIECE_BAD + 1)); continue
+  fi
+
+  mid="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})' < "$W/x/component-meta.json")"
+  mver="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})' < "$W/x/component-meta.json")"
+  ment="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$W/x/component-meta.json")"
+
+  [ "$mid" = "$id" ] || { echo "[error] $id 的说明里 id=$mid 对不上"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
+  [ -n "$mver" ] || { echo "[error] $id 的说明里没有 version"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
+  [ -n "$ment" ] || { echo "[error] $id 的说明里没有 entry"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
+
+  # 钉值表里声明的 entry 必须一致 —— 两处对不上，装配器按说明找会找不到文件
+  want="$(bash "$ROOT/scripts/registry/read-component-entry.sh" "$id" 2>/dev/null || echo '')"
+  if [ -n "$want" ] && [ "$want" != "$ment" ]; then
+    echo "[error] $id 的 entry 说明是 $ment，钉值表里是 $want"
+    PIECE_BAD=$((PIECE_BAD + 1)); continue
+  fi
+
+  if [ ! -f "$W/x/$ment" ] && [ ! -L "$W/x/$ment" ]; then
+    echo "[error] $id 的包里没有 entry 指的文件 $ment"
+    PIECE_BAD=$((PIECE_BAD + 1)); continue
+  fi
+
+  printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
 done
 
-# 按 id 归并：缺字节的那个 id，若它有别的层在包里 → 放过（链的场景）
-META_SEEN_ID=""
-for id in $META_MISSING_ID; do
-  # 同一个件只报一次：链上每层缺一次就会记一次 id
-  case " $META_SEEN_ID " in *" $id "*) continue ;; esac
-  META_SEEN_ID="$META_SEEN_ID $id"
-  case " $META_PRESENT_ID " in
-    *" $id "*)
-      # 同一件有别的层在包里 —— provision() 会拿那份顶上，符合预期
-      ;;
-    *)
-      echo "[error] 件 $id 的字节不在 APK 里（链上各层：$META_MISS_SO）—— 运行时铺不出来"
-      META_BAD=$((META_BAD + 1))
-      ;;
-  esac
-done
-rm -f "$TMPA"
-echo "  （$META_N 份说明已查 · $META_BAD 处问题）"
-
-# ── 反向核对：lib/<ABI>/ 里不该有「没说明的 .so」 ──────────────
-# 上面是从说明出发查字节；这一向是从字节出发查说明 ——
-# 补的是另一头：land_piece 某处漏写说明时，那一行的循环根本看不到它。
-#
-# 排除的都是**不需要被铺位**的 .so，理由可核（不是随手写的名单）：
-#   libandroidx.graphics.path.so  androidx 图形库，appcompat 的传递依赖
-#   libdimina.so                  快应用运行时，build.gradle.kts 的
-#                                  implementation("com.github.didi.dimina:dimina:1.7.6")
-#   libmmkv.so                    同上的传递依赖（腾讯 MMKV）
-#   libc++_shared.so              NDK 直接给的，component-verify.json 里
-#                                  libcxx 标了 notAPiece/apkOnly。它本来就在
-#                                  APK 的 lib/<ABI>/ 下，安装后落在
-#                                  nativeLibraryDir，linker 直接找得到 ——
-#                                  不经 PrefixProvisioner 铺位，也就无需说明。
-#                                  它的判据是 build-apk.yml 第 11 步那份硬判。
-# 其余 lib/<ABI>/*.so 都是 base 筐的件，必须有说明。
-# 内核的兼容性垫片：container/native 下我们自己写的 C，随 APK 而来。
-#   liblobosposix.so      LD_PRELOAD 垫片
-#   liblobosptyprobe.so   PTY 探测
-#   librivospty.so        PTY 宿主
-# 它们不是件、不铺位、不进清单、不可 OTA 替换（由 kernel/compat/Compat.kt 定位）。
-# 判据可核：component-sources.json 里查不到它们，而 base 筐的件都在。
-FOREIGN_SO="libandroidx.graphics.path.so libdimina.so libmmkv.so libc++_shared.so liblobosposix.so liblobosptyprobe.so librivospty.so"
-META_NOSO=0
-for so in $(printf '%s\n' "${LIST[@]}" | grep "^lib/${ABI}/.*\.so$"); do
-  base="$(basename "$so")"
-  case " $FOREIGN_SO " in *" $base "*) continue ;; esac
-  if ! has_exact "assets/supply/meta/${base}.meta.json"; then
-    echo "[error] $so 没有说明（assets/supply/meta/${base}.meta.json 不在包里）"
-    echo "        运行时不会铺这一件 —— scanMeta 只铺带说明的条目（PrefixProvisioner.kt:103）"
-    META_NOSO=$((META_NOSO + 1))
-  fi
-done
-if [ "$META_NOSO" != "0" ]; then
-  MISSING="$MISSING meta-absent($META_NOSO)"
-  META_BAD=$((META_BAD + META_NOSO))
+WANT_N="$(node -e '
+  const s=require(process.argv[1]).sources||{};
+  const ids=["zlib","openssl","crypto","curl","jq","bash","ripgrep","busybox"];
+  process.stdout.write(String(ids.filter(i=>s[i]).length));
+' "$ROOT/scripts/component-sources.json" 2>/dev/null || echo 8)"
+if [ "$PIECE_N" != "$WANT_N" ]; then
+  echo "[error] 预装件包 $PIECE_N 个，钉值表里有 $WANT_N 个"
+  PIECE_BAD=$((PIECE_BAD + 1))
 fi
-echo "  反向核对：$META_NOSO 个 .so 没有说明"
-[ "$META_BAD" = "0" ] || MISSING="$MISSING meta-invalid($META_BAD)"
+echo "  预装件包 $PIECE_N 个，钉值表 $WANT_N 个"
+[ "$PIECE_BAD" = "0" ] || MISSING="$MISSING piece-pack($PIECE_BAD)"
 
 echo
 echo "--- 压缩方式（Stored=未压缩 / Defl=压缩）---"
