@@ -24,7 +24,8 @@ fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url
   local hdr=()
   [ -n "${GITHUB_TOKEN:-}" ] && hdr=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  url="$(curl -fsSL "${hdr[@]}" -H "Accept: application/vnd.github+json" \
+  # curl 到 api.github.com 偶发 TLS 断（unexpected eof while reading）—— 重试三次。
+  url="$(curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
           "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null \
         | node -e '
             let d = "";
@@ -37,7 +38,7 @@ fetch_asset() {
             });
           ' -- "$asset" 2>/dev/null)"
   [ -n "$url" ] || return 1
-  curl -fsSL -o "$dir/$asset" "$url" 2>/dev/null || return 1
+  curl -fsSL --retry 3 --retry-delay 2 -o "$dir/$asset" "$url" 2>/dev/null || return 1
   [ -s "$dir/$asset" ]
 }
 
