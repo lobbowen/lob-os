@@ -70,6 +70,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
           # 标准包由 build-piece-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.tar.gz），
           # 里面带 component-meta.json —— 装配器只读包，不查外部清单。
