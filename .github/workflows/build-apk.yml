@@ -420,20 +420,49 @@ jobs:
       - name: Collect failure diagnostics
         if: failure()
         run: |
-          mkdir -p /tmp/diag
-          cp -f /tmp/gradle-build.log /tmp/diag/ 2>/dev/null || true
-          cp -f /tmp/node-build.log /tmp/diag/ 2>/dev/null || true
-          mkdir -p /tmp/diag/baselibs
-          for f in work/baselibs/*.log; do
-            [ -f "$f" ] && cp -f "$f" /tmp/diag/baselibs/ || true
+          set -uo pipefail
+          D=/tmp/diag
+          rm -rf "$D"; mkdir -p "$D"
+
+          # Gradle 的 HTML 报告里有完整的编译错误（含文件名/行号/消息），
+          # 而 logs API 取回来会被裁剪 —— 这份落到 artifact 才拿得到。
+          for r in container/app/build/reports/problems/problems-report.html \
+                   container/app/build/reports/tests; do
+            [ -e "$r" ] && cp -rf "$r" "$D/" 2>/dev/null || true
           done
-          for f in work/baselibs/prefix/lib work/baselibs/openssl/lib work/baselibs/curl/lib/.libs; do
-            [ -d "$f" ] && ls -la "$f" > "/tmp/diag/baselibs/$(echo "$f" | tr '/' '_').txt" 2>/dev/null || true
-          done
-          find work -maxdepth 2 -name '*.log' 2>/dev/null | head -20 | while read -r f; do
-            cp -f "$f" /tmp/diag/ 2>/dev/null || true
-          done
-          ls -laR /tmp/diag/ || true
+
+          # 把错误行单独摘成一份纯文本，省得下整个 HTML
+          {
+            echo "## 编译错误（从 Gradle 输出里摘的）"
+            echo
+            grep -aE "^e: file:|^w: file:.*(error|warning)" /tmp/gradle-build.log 2>/dev/null \
+              | sed 's|file:///home/runner/work/lob-os/lob-os/||' | sort -u | head -40
+            echo
+            echo "## FAILURE 段"
+            echo
+            grep -aA 20 "^FAILURE:" /tmp/gradle-build.log 2>/dev/null | head -30
+            echo
+            echo "## 报错文件清单（从 problems-report 里挑）"
+            grep -aoE "container/[^<]+\.(kt|java|xml)" \
+              container/app/build/reports/problems/problems-report.html 2>/dev/null | sort -u | head -20
+          } > "$D/compile-errors.txt" 2>/dev/null || true
+
+          # 取件与固化相关的现场
+          cp -f /tmp/gradle-build.log "$D/" 2>/dev/null || true
+          ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true
+          ls -la container/app/src/main/jniLibs/arm64-v8a/ > "$D/jniLibs.txt" 2>/dev/null || true
+          ls -la dist/ > "$D/dist.txt" 2>/dev/null || true
+
+          echo "## Job 环境" > "$D/env.txt"
+          echo "" >> "$D/env.txt"
+          echo "- HEAD: $(git rev-parse --short HEAD 2>/dev/null)" >> "$D/env.txt"
+          echo "- JDK: $(java -version 2>&1 | head -1)" >> "$D/env.txt"
+          echo "- node: $(node --version 2>/dev/null)" >> "$D/env.txt"
+          echo "- CC: ${CC:-（空）}" >> "$D/env.txt"
+          echo "- 取件到的件包:" >> "$D/env.txt"
+          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/    /' >> "$D/env.txt"
+
+          ls -laR "$D" 2>/dev/null | head -40
 
       - name: Upload failure diagnostics artifact (backup)
         if: failure()
