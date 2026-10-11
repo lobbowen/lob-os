@@ -21,9 +21,9 @@ set -uo pipefail
 
 PROBE_DIR=""
 if [ "${1:-}" = "--probe-dir" ]; then
-  PROBE_DIR="$2"; ASSET="$3"; WANT_ENTRY="${4:-}"
+  PROBE_DIR="$2"; ASSET="$3"; WANT_ENTRY="${4:-}"; EXTRA_FILES="${5:-}"
 else
-  TAG="${1:?需要 tag}"; ASSET="${2:?需要资产名}"; WANT_ENTRY="${3:-}"
+  TAG="${1:?需要 tag}"; ASSET="${2:?需要资产名}"; WANT_ENTRY="${3:-}"; EXTRA_FILES="${4:-}"
 fi
 
 read_meta_entry() {
@@ -32,7 +32,7 @@ read_meta_entry() {
 }
 
 verify_local() {
-  local f="$1" listing vl
+  local f="$1" listing vl entry want
   [ -s "$f" ] || return 1
 
   case "$f" in
@@ -42,13 +42,10 @@ verify_local() {
   esac
   [ -n "$listing" ] || return 1
 
-  # 1. 有 component-meta.json
   printf '%s\n' "$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
 
   [ -n "$WANT_ENTRY" ] || return 0
 
-  # 2. meta 里的 entry 与期望一致
-  local entry
   entry="$(read_meta_entry "$f" | node -e '
     let d = "";
     process.stdin.on("data", c => d += c).on("end", () => {
@@ -57,18 +54,22 @@ verify_local() {
   ' 2>/dev/null)"
   [ "$entry" = "$WANT_ENTRY" ] || return 1
 
-  # 3. 包里真有那个路径（文件或软链都算）
-  #    tar -tzvf 的路径恒在第 6 字段；软链行末是链接目标不是路径，不能用 $NF。
-  #    首字符区分类型：'-' 常规文件 / 'l' 软链。
   vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t" "p}')"
+
   if [ -n "$vl" ]; then
-    printf '%s\n' "$vl" | awk -v w="$WANT_ENTRY" '
-      { t=$1; p=$2;
-        if ((substr(t,1,1)=="-" || substr(t,1,1)=="l") && p==w) { print "hit"; exit } }
-    ' | grep -q hit && return 0
+    for want in $WANT_ENTRY $EXTRA_FILES; do
+      printf '%s\n' "$vl" | awk -v w="$want" '
+        { t=$1; p=$2;
+          if ((substr(t,1,1)=="-" || substr(t,1,1)=="l") && p==w) { print "hit"; exit } }
+      ' | grep -q hit || return 1
+    done
+    return 0
   fi
-  printf '%s\n' "$listing" | sed 's#^\./##' | grep -qx "$WANT_ENTRY" && return 0
-  return 1
+
+  for want in $WANT_ENTRY $EXTRA_FILES; do
+    printf '%s\n' "$listing" | sed 's#^\./##' | grep -qx "$want" || return 1
+  done
+  return 0
 }
 
 if [ -n "$PROBE_DIR" ]; then
