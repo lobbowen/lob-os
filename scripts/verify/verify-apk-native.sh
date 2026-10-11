@@ -110,38 +110,16 @@ else
 fi
 
 echo
-echo "--- 小体积原生件 ---"
-CAPS="$(cd "$(dirname "$0")/../.." && pwd)/.github/native-capabilities.txt"
-[ -f "$CAPS" ] || { echo "[error] 缺少 $CAPS —— 小件清单是派生物，不能没有它。"; exit 1; }
-CAP_N=0
-while read -r TIER LIB _ID; do
-  case "$TIER" in ''|'#'*) continue ;; esac
-  CAP_N=$((CAP_N + 1))
-  if has_exact "lib/${ABI}/$LIB"; then
-    echo "[ok] lib/${ABI}/$LIB"
-  elif [ "$TIER" = "soft" ]; then
-    # soft 档 = 缺了只降级、不判红，也不陪葬别的能力。
-    # 当前清单里没有 soft 项（node-pty 删了），这一档暂时走不到 ——
-    # 保留是因为 .txt 的格式支持它，且「有件编不踏实、缺了只降级」
-    # 是真实存在的一类情形，将来有件落进来就是它。
-    # 文案里不写死「终端 PTY」—— 那是 node-pty 留下的（那一行已从清单里
-    # 删掉：两张表都没有它，也没有任何脚本产它）。soft 档将来若另有其人，
-    # 这段会照常工作。
-    DEGRADED="$DEGRADED lib/${ABI}/$LIB"
-    if [ "$REPORT" = "1" ]; then
-      echo "  [soft-absent] lib/${ABI}/$LIB —— 缺件只降级"
-    else
-      echo "::warning title=能力降级::lib/${ABI}/$LIB 不在 APK —— 该能力不可用（soft 档，不判红）"
-    fi
-  else
-    case "$TIER" in
-      self-c)   note_missing "lib/${ABI}/$LIB" "自有 C，必产（编译失败即环境问题）" ;;
-      upstream) note_missing "lib/${ABI}/$LIB" "\$PREFIX 依赖它，无回退路径" ;;
-      *)        note_missing "lib/${ABI}/$LIB" "未知档位「$TIER」—— 清单或本脚本坏了" ;;
-    esac
-  fi
-done < "$CAPS"
-[ "$CAP_N" -gt 0 ] || { echo "[error] $CAPS 里一条小件都没有 —— 循环会什么都不检查就放行。"; exit 1; }
+echo "--- 小体积原生件（已退役：改走标准件包）---"
+# 这一段原来查「件有没有躺在 APK 的 lib/<ABI>/ 里」，清单是
+# .github/native-capabilities.txt（8 个件）。
+# 那条通道已经删了：件现在是自描述的标准包，放 assets/pieces/<id>.tar.gz，
+# 启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装上（与 OTA 件同一条路）。
+# 件不进 lib/ —— 预装件与用户装的件必须同构，不能一条走特权、一条走标准。
+# 清单 .github/native-capabilities.txt 随之退役（component-sources.json 是唯一来源）。
+echo "  （本段已退役，见下方 assets/pieces/ 那一节）"
+echo
+
 
 echo
 echo "--- npm 归口（必须为空）---"
@@ -287,4 +265,4 @@ if [ -n "$MISSING" ]; then
   echo "    app/build.gradle.kts 的 jniLibs 配置与各 Stage 步骤。"
   exit 1
 fi
-echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产/小件/npm/adb-client 全在包里）')
+echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产/npm/adb-client 全在包里，件走 assets/pieces/）')
