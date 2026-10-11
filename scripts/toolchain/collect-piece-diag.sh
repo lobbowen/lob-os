@@ -69,7 +69,7 @@ mkdir -p "$(dirname "$FILE")"
   echo "### 已产出的件包（若有）"
   echo ""
   echo '```'
-  for p in dist/component-*.tar.gz; do
+  for p in dist/component-*.zip; do
     [ -f "$p" ] || continue
     echo "$p  $(stat -c%s "$p" 2>/dev/null) 字节"
     tar -tzf "$p" 2>/dev/null | head -15

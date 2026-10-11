@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 取件：把已固化的件包取进 APK，**不编译**。
 #
-# 取的是**标准件包**（component-<id>-<版本>.tar.gz，里面有 component-meta.json）——
+# 取的是**标准件包**（component-<id>-<版本>.zip，里面有 component-meta.json）——
 # 与 OTA 装件拿到的是同一种东西。装配器只读包，不查外部清单（照抄 .deb）。
 #
 # 为什么不铺 jniLibs：那是「预装件的私有通道」，装配器读不了，
@@ -69,13 +69,12 @@ for id in "${PIECES[@]}"; do
 
   # 整包放进 assets/pieces/ —— 启动时由装配器解包安装，与 OTA 装件同路
   # 整包放进 assets/pieces/ —— 启动时由装配器解包安装，与 OTA 装件同路。
-  # aapt2 会把 assets 下的 .tar.gz 解开并剥掉 .gz：进了 APK 之后它已经不是 gzip 流。
-  # 跟它对抗不划算（androidResources.noCompress 在 AGP 9.4 下对 assets 无效，
-  # 实测字节数与不改时一模一样），顺着它更省事 —— 这里解开 gzip，落成 .pkg，
-  # 装配器解 tar（commons-compress 的 TarArchiveInputStream），字节就是原始 tar。
-  gunzip -c "$STAGE/$id/$asset" > "$ASSETS/$id.pkg"
+  # 落名 .zip：件包就用 zip（照抄 .deb 的 ar 换成 Android 原生就有的 zip），
+  # 装配器 java.util.zip 直接解，不需要任何第三方库。
+  # 别用 .tar.gz —— aapt2 会把 assets 下的 .tar.gz 解开并剥掉 .gz 后缀。
+  cp -f "$STAGE/$id/$asset" "$ASSETS/$id.zip"
   rm -f "$STAGE/$id/$asset" "$STAGE/$id/$asset.sha256"
-  printf "  ✓ %-9s %s → %s.pkg\n" "$id" "$asset" "$id"
+  printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
 
 done
 if [ "$missing" -gt 0 ]; then
@@ -86,5 +85,5 @@ if [ "$missing" -gt 0 ]; then
 fi
 
 echo ""
-echo "[fetch] ${#PIECES[@]} 个件包全部取自 Release → $ASSETS/<id>.pkg"
+echo "[fetch] ${#PIECES[@]} 个件包全部取自 Release → $ASSETS/<id>.zip"
 echo "[fetch] 启动时装它们（与 OTA 装件同一条路），APK 不再编译任何件"

@@ -261,7 +261,7 @@ jobs:
       - name: 核对取到的件
         run: |
           set -euo pipefail
-          N=$(ls container/app/src/main/assets/pieces/*.pkg 2>/dev/null | wc -l)
+          N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
           [ "$N" = "8" ] || { echo "::error title=取件数不对::要 8 个，实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/

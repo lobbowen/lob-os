@@ -142,6 +142,7 @@ object SupplyProvisioner {
         val n = pkg.name.lowercase()
         when {
             n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
+        n.endsWith(".zip") -> unzip(pkg, dest)
             else -> unzip(pkg, dest)
         }
     }

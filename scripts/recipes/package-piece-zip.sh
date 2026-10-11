@@ -2,7 +2,7 @@
 # 打标准件归档 —— 一件一个包，装配器只读包。
 #
 # 形态（照抄 .deb：包里自带全部信息，装的时候不查外部清单）：
-#   component-<id>-<版本>-<sha12>.tar.gz
+#   component-<id>-<版本>-<sha12>.zip
 #     ├── component-meta.json    自描述：id / version / entry / form / requires
 #     ├── bin/<名>               命令（entry=bin/… 时）
 #     └── lib/<名>.so            库（entry=lib/… 时）
@@ -86,12 +86,12 @@ find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 
 DIST="$ROOT/dist"
 mkdir -p "$DIST"
-TMP_PKG="$DIST/.component-${ID}-${VER}.tar.gz"
+TMP_PKG="$DIST/.component-${ID}-${VER}.zip"
 
-tar -czf "$TMP_PKG" -C "$STAGE" . || { echo "::error title=$ID 打包失败"; exit 1; }
+( cd "$STAGE" && zip -q -r -X "$TMP_PKG" . ) || { echo "::error title=$ID 打包失败"; exit 1; }
 
 SHA="$(sha256sum "$TMP_PKG" | cut -c1-12)"
-NAME="component-${ID}-${VER}-${SHA}-android-arm64.tar.gz"
+NAME="component-${ID}-${VER}-${SHA}-android-arm64.zip"
 mv -f "$TMP_PKG" "$DIST/$NAME"
 sha256sum "$DIST/$NAME" | cut -d' ' -f1 > "$DIST/$NAME.sha256"
 

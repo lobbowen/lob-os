@@ -22,7 +22,7 @@ object PreinstalledPieces {
         var failed = 0
 
         for (n in names) {
-        if (!n.endsWith(".pkg")) continue
+        if (!n.endsWith(".zip")) continue
             val id = n.substringBeforeLast('.')
             val r = installOne(ctx, id)
             if (r) done += id else failed++
@@ -44,7 +44,7 @@ object PreinstalledPieces {
     }
 
     private fun installOne(ctx: Context, id: String): Boolean {
-        val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.pkg")
+        val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.zip")
 
         val meta = runCatching {
             val f = File(pkg, "component-meta.json")
@@ -86,9 +86,9 @@ object PreinstalledPieces {
     }
 
     private fun extract(ctx: Context, id: String): File? = runCatching {
-        val dst = File(ctx.cacheDir, "preinst/$id.pkg")
+        val dst = File(ctx.cacheDir, "preinst/$id.zip")
         dst.parentFile?.mkdirs()
-        ctx.assets.open("$ASSET_DIR/$id.pkg").use { ins ->
+        ctx.assets.open("$ASSET_DIR/$id.zip").use { ins ->
             dst.outputStream().use { ins.copyTo(it) }
         }
         dst.takeIf { it.length() > 0 }

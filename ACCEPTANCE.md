@@ -284,3 +284,50 @@ Build APK 的 failure-diagnostics 现在固定记两份：
 同一个坑踩了六遍（302 死循环、TLS 抖动、缺 Authorization 头…）。
 脚本固定在 .tmpwork/obs.js，三个子命令，重试内建，不再各处重写。
 ```
+
+## 真机验收的传文件办法（2026-10-11 定）
+
+**不要用分块 base64 把 APK 推给设备。** 66.8 MB 推了两轮都断（E2BIG、
+超时），而且慢得没法用。
+
+按可用性排序：
+
+```
+① 设备自己从国内镜像下（最快）
+   gh 代理：https://ghproxy.net/https://github.com/<owner>/<repo>/releases/download/<tag>/<file>
+   设备 curl -sL -o /data/local/tmp/x.apk "<那个地址>"
+   下完 sha256sum 对一遍。
+   探测镜像是否可用：curl -r 0-1023 -o /dev/null -w '%{http_code}' → 206 就是能用
+
+② 本机起 HTTP，设备直接 wget/curl
+   node .tmpwork/http.js <根目录> 8899
+   绑 0.0.0.0，用**设备同网段的那个地址**（本机有多张网卡：
+   vgate0 是 172.30.x.x，wlan0 才是 192.168.88.239 —— 用错那张设备访问不到）
+   同样要 sha256sum 对一遍
+
+③ 从 CI artifact 下（要 token，且本机 TLS 时断时续）
+   https://api.github.com/repos/<o>/<r>/actions/artifacts/<id>/zip
+   跟随 302 时**必须去掉 Authorization 头**（blob 不认 GitHub 的头）
+
+**每次传完都要 sha256sum 对一遍。** 传了 66 MB 不知道对不对，
+后面验的所有东西都不可信。
+
+## 设备执行器
+
+本机（Android 侧）自带一套完整的 adb 客户端：
+
+    NODE=/data/data/lobos.app/files/usr/bin/node
+    CLI=/data/data/lobos.app/files/adb-client/cli.js
+    LOBOS_ADB_DIR=/data/data/lobos.app/files/adb   ← 必须有这个，否则报「未注入」
+    $NODE $CLI shell --host 192.168.88.122 --connect-port <端口> \
+      --cmd "<命令>" --timeout-ms 60000
+
+它把 TLS 也做了（Android 11+ 无线调试走 TLS 配对证书，adbkey 走不通）。
+封装在 .tmpwork/dev.js 里。
+
+**connect-port 每次重连都变** —— 手机「无线调试」页面上「IP 地址和端口」
+那一行的端口才是它。配对端口只用来交换配对码，几秒后关闭。
+
+**不要自己重写 adb 协议** —— 我为了绕开它写了几轮，全错：
+banner 结尾要是 NUL 不是 \n、认证要走 TLS 证书、还要处理 shell_v2 分帧。
+本机上早就有一套能用的。

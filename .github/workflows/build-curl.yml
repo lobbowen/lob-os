@@ -77,10 +77,10 @@ jobs:
           set -euo pipefail
           ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
-          # 标准包由 build-piece-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.tar.gz），
+          # 标准包由 build-piece-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.zip），
           # 里面带 component-meta.json —— 装配器只读包，不查外部清单。
-          PKG="$(ls dist/component-*.tar.gz 2>/dev/null | head -1 || true)"
-          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.tar.gz"; ls -la dist/ | head; exit 1; }
+          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; ls -la dist/ | head; exit 1; }
           # 上传名用 cache-key.sh 给的那个 —— 复用判据与取件都按它，两处必须同源。
           # 之前这里用包名、判据那里用 deps 名，对不上，于是每轮都判为「未固化」。
           cp -f "$PKG" "dist/$ASSET"
