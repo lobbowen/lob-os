@@ -145,10 +145,14 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // 说明在 assets/supply/meta/ —— 两者配套，见 scanMeta 的注释。
         // 铺成 usr/lib/<id>/<版本>/ 的形状。
         val metas = scanMeta(ctx)
+        // 铺位诊断 —— 真机上「件铺开没有」只能从这里看到。
+        // 每一步都记，否则真机上只能看到「什么都没铺」，无从判断卡在哪一环。
+        lobos.services.log.Mirror.append(ctx, "provision.txt", "nativeDir=${nativeDir.absolutePath} exists=${nativeDir.isDirectory}")
+        lobos.services.log.Mirror.append(ctx, "provision.txt", "metaCount=${metas.size} names=${metas.map { fileNameOf(it) }.join(",")}")
         for (m in metas) {
             val id = m.optString("id", "")
             val version = m.optString("version", "")
-            if (id.isBlank() || version.isBlank()) continue
+            if (id.isBlank() || version.isBlank()) { Mirror.append(ctx, "provision.txt", "跳过：id 或 version 空 —— " + it.optString("file","?")); continue }
             // .so 的名字就是说明的文件名去掉 .meta.json（内核不预置任何一件的名字）
             val soName = fileNameOf(m)
             // 共享库是一整条链（libz.so → libz.so.1 → libz.so.1.3.2），三层是
@@ -169,6 +173,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
                         .firstOrNull { n -> n.endsWith(".so") && File(d, n).isFile }
                         ?.let { File(d, it) }
                 }
+                lobos.services.log.Mirror.append(ctx, "provision.txt", "跳过 id=$id ver=$version so=$soName —— src 找不到")
                 ?: continue
             // 形态看文件本身：ELF 里有没有 PT_INTERP / 是不是 ET_EXEC
             val isEntry = ExecBits.isRunnable(src)
