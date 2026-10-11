@@ -25,6 +25,7 @@ JNI="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"   # 绝对路径：调用方
 # 只有 excludes/pickFirsts/keepDebugSymbols，没有「非 .so 也打进去」的开关），
 # 而 PrefixProvisioner.scanMeta() 正是在 nativeLibraryDir 里找 *.meta.json ——
 # 找不到就整目录跳过（PrefixProvisioner.kt:103「目录里没有说明的 .so 不铺」）。
+OUT_DIR="$WORK/out"
 WORK="$ROOT_DIR/work/$PIECE_NAME"
 mkdir -p "$OUT/bin" "$JNI" "$WORK"
 
