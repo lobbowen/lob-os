@@ -138,7 +138,42 @@ object SupplyProvisioner {
 
     internal fun sha256HexFile(f: File): String = lobos.kernel.crypto.Crypto.sha256HexFile(f)
 
-    internal fun unzipFromFile(zip: File, dest: File) {
+    internal fun unzipFromFile(pkg: File, dest: File) {
+        val n = pkg.name.lowercase()
+        when {
+            n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
+            else -> unzip(pkg, dest)
+        }
+    }
+
+    private fun untarFromFile(pkg: File, dest: File) {
+        dest.mkdirs()
+        val destRoot = dest.canonicalFile
+        org.apache.commons.compress.archivers.tar.TarArchiveInputStream(
+            org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream(
+                pkg.inputStream().buffered()
+            )
+        ).use { tin ->
+            while (true) {
+                val e = tin.nextEntry ?: break
+                val name = e.name
+                if (name == "./" || name.isEmpty()) continue
+                val out = File(dest, name).canonicalFile
+                if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
+                    throw IllegalArgumentException("包条目路径越界（疑似目录穿越）: " + name)
+                }
+                if (e.isDirectory) {
+                    out.mkdirs()
+                } else {
+                    out.parentFile?.mkdirs()
+                    tin.copyTo(out)
+                    ExecBits.apply(out)
+                }
+            }
+        }
+    }
+
+    private fun unzip(zip: File, dest: File) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
         java.util.zip.ZipFile(zip).use { zf ->
