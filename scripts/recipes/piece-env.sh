@@ -111,11 +111,11 @@ check_exe() {
 # 这里不硬编码任何一件的信息；数据不齐就报错，不产出半截的说明。
 # 件的版本 —— 取自钉值表（构建期唯一真相源）
 version_of() {
-  node -e "
-    const s=require(process.argv[1]).sources||{};
-    const v=(s[process.argv[2]]||{}).version;
-    process.stdout.write(v||"");
-  " "$ROOT_DIR/scripts/component-sources.json" "$1"
+  node -e '
+    const s = require(process.argv[1]).sources || {};
+    const v = (s[process.argv[2]] || {}).version;
+    if (v) process.stdout.write(String(v));
+  ' "$ROOT_DIR/scripts/component-sources.json" "$1"
 }
 
 # 打标准件包 —— 校验产物 + 产出装配器只读的那个 tar.gz。
