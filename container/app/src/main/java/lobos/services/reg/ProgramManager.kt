@@ -82,8 +82,7 @@ object ProgramManager {
     }
 
     fun infraSourceFile(ctx: Context, e: UnitEntry): File =
-        if (e.libName.isNotBlank()) File(ctx.applicationInfo.nativeLibraryDir, e.libName)
-        else SystemDirs.usr(ctx).let { File(it, e.assetEntry.ifBlank { e.id }) }
+        SystemDirs.opt(ctx).let { File(it, e.id) }
     fun levelOf(ctx: Context, id: String): Level =
         if (ProgramIndex.isPiece(ctx, id)) Level.PIECE else Level.PROGRAM
 
