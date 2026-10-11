@@ -197,8 +197,7 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.pkg$'); do
 
   rm -rf "${W:?}/x"; mkdir -p "$W/x"
   unzip -qq -o "$APK" "$p" -d "$W" 2>/dev/null
-  pkg="$W/${p#assets/}"
-  [ -f "$pkg" ] || pkg="$W/x/$(basename "$p")"
+  pkg="$W/$p"
   if ! tar xf "$pkg" -C "$W/x" 2>/dev/null; then
     echo "[error] $id 的包解不开"
     PIECE_BAD=$((PIECE_BAD + 1)); continue
