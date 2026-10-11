@@ -105,5 +105,5 @@ SO="$OUT_DIR/lib/libz.so"
   || die "zlib 共享库缺 SONAME 层" "$OUT_DIR/lib 下只有 libz.so，没有 libz.so.1"
 
 # 落位：库 → usr/lib/<id>/<版本>/lib/，并建 usr/lib/libz.so 全局软链
-land_piece zlib "$SO" 1000
+emit_piece zlib "$OUT_DIR" lib/libz.so 1000
 echo "[ok] zlib 是共享库（不是静态链进别的二进制）"

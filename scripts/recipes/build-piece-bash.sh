@@ -67,4 +67,4 @@ STUB
 
 cp -f "$WORK/bash-$BASH_VER/bash" "$WORK/libbash.so"
 [ -x "$WORK/libbash.so" ] || die "bash 产物不可执行" "\$PREFIX/bin/bash 无回退路径"
-land_piece bash libbash.so 300000
+emit_piece bash "$OUT_DIR" bin/bash 300000

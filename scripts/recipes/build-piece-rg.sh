@@ -37,7 +37,7 @@ cargo install --locked --version "$RG_VER" ripgrep --target aarch64-linux-androi
 
 cp -f $WORK/rgbin/bin/rg "$WORK/liblobosrg.so"
 [ -x "$WORK/liblobosrg.so" ] || die "rg 产物不可执行" "\$PREFIX/bin/rg 无回退路径"
-land_piece ripgrep liblobosrg.so 300000
+emit_piece ripgrep "$OUT_DIR" bin/liblobosrg.so 300000
 
 # 字节身份与钉值表比对（钉表里记的是 crates.io 发布物的 sha256）
 RG_GOT="$(sha256sum "$WORK/liblobosrg.so" | cut -d' ' -f1)"

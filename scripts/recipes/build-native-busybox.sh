@@ -229,31 +229,22 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
     || { echo "=== make install 失败取证 ==="; tail -30 "$WORK/install.log"; exit 1; }
   [ -x "$WORK/install/bin/busybox" ] || die "make install 没产出 busybox" "$WORK/install/bin/busybox 不存在"
 
-  # 产物与说明成对落进 jniLibs —— 内核扫 *.meta.json 决定铺什么。
-  mkdir -p "$JNI"
-  cp -f "$SRC/busybox" "$JNI/libbusybox.so"
-  chmod 0755 "$JNI/libbusybox.so"
-  # ★ 用绝对路径 —— 这一段已经 cd 进 busybox 源码树了，
-  #   相对路径 scripts/recipes/… 在那里不存在
-  #   （报「Cannot find module .../busybox-1.36.1/scripts/recipes/…」就是这个）
-  node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" busybox "$JNI/libbusybox.so.meta.json"
-  # ★ 这件不走 land_piece（它自己管落位），所以 assets 那份得自己写 ——
-  #   jniLibs 里的 .meta.json 进不了 APK（AGP 只打包 *.so），
-  #   运行时 scanMeta 读的是 assets/supply/meta/，不写这份就等于没说明。
-  mkdir -p "$META_ASSETS"
-  cp -f "$JNI/libbusybox.so.meta.json" "$META_ASSETS/libbusybox.so.meta.json" \
-    || die "busybox 的说明没落到 assets" "assets/supply/meta/libbusybox.so.meta.json"
+OUT_DIR="$WORK/out"
+mkdir -p "$OUT_DIR/lib"
+cp -f "$SRC/busybox" "$OUT_DIR/lib/libbusybox.so"
+chmod 0755 "$OUT_DIR/lib/libbusybox.so"
 
-  # applet 软链随件一起落：busybox 官方机制 —— make install 自己知道编了哪些
-  # applet，那些软链是它建的。applet 名不在我们任何表里。
-  NAPP=0
-  for l in "$WORK/install/bin/"*; do
-    [ -L "$l" ] || continue
-    ln -sf busybox "$JNI/$(basename "$l")"
-    NAPP=$((NAPP+1))
-  done
-  echo "[$TOOL] 本体 + $NAPP 个 applet 软链进 jniLibs（applet 名由 busybox 自己报）"
-  BB="$JNI/libbusybox.so"
+NAPP=0
+for l in "$WORK/install/bin/"*; do
+  [ -L "$l" ] || continue
+  b="$(basename "$l")"
+  [ "$b" = busybox ] && continue
+  ln -sf libbusybox.so "$OUT_DIR/lib/$b"
+  NAPP=$((NAPP+1))
+done
+echo "[$TOOL] 本体 + $NAPP 个 applet 软链进包"
+
+BB="$OUT_DIR/lib/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
 [ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
 "$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true
@@ -284,3 +275,5 @@ echo "[ok] $BB $(stat -c%s "$BB") 字节（静态，无 PT_DYNAMIC，16KB 对齐
 echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
+
+emit_piece "$TOOL" "$OUT_DIR" lib/libbusybox.so 500000

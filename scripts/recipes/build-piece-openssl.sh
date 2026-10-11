@@ -48,6 +48,6 @@ for pair in "openssl:libssl.so" "crypto:libcrypto.so"; do
   id="${pair%%:*}"; so="${pair##*:}"
   SO="$(ls "$OUT_DIR"/lib/$so* 2>/dev/null | head -1)"
   [ -n "$SO" ] || die "$id 没产出共享库" "$OUT_DIR/lib 下没有 $so*"
-  land_piece "$id" "$SO" 1000
+  emit_piece "$id" "$OUT_DIR" "lib/$so" 1000
 done
 echo "[ok] openssl 与 crypto 是共享库（不是静态链进别的二进制）"

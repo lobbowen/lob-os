@@ -6,7 +6,7 @@
 #   control member」。每个包自带说明，安装器与内核只读落位，不预置任何一件的清单。
 #   内核侧 PrefixProvisioner 扫 jniLibs 里的 *.meta.json 决定铺什么、铺成什么形状。
 #
-# 用法：source scripts/recipes/piece-env.sh <件名>，然后调用 land_piece
+# 用法：source scripts/recipes/piece-env.sh <件名>，然后调用 emit_piece
 set -uo pipefail
 
 PIECE_NAME="${1:?用法: source piece-env.sh <件名>}"
@@ -25,12 +25,10 @@ JNI="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"   # 绝对路径：调用方
 # 只有 excludes/pickFirsts/keepDebugSymbols，没有「非 .so 也打进去」的开关），
 # 而 PrefixProvisioner.scanMeta() 正是在 nativeLibraryDir 里找 *.meta.json ——
 # 找不到就整目录跳过（PrefixProvisioner.kt:103「目录里没有说明的 .so 不铺」）。
-META_ASSETS="$ROOT_DIR/container/app/src/main/assets/supply/meta"
 WORK="$ROOT_DIR/work/$PIECE_NAME"
-mkdir -p "$OUT/bin" "$JNI" "$META_ASSETS" "$WORK"
+mkdir -p "$OUT/bin" "$JNI" "$WORK"
 
 # 说明文件名 —— jniLibs 里与件同名，PrefixProvisioner 按 *.meta.json 扫
-META_SUFFIX=".meta.json"
 
 die() {
   local title="$1"; shift
@@ -111,67 +109,42 @@ check_exe() {
 
 # 生成这一件的说明 —— 数据全来自构建期表（component-sources.json / component-verify.json），
 # 这里不硬编码任何一件的信息；数据不齐就报错，不产出半截的说明。
-gen_meta() {
-  node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$1" "$WORK/component-meta.json"
+# 件的版本 —— 取自钉值表（构建期唯一真相源）
+version_of() {
+  node -e "
+    const s=require(process.argv[1]).sources||{};
+    const v=(s[process.argv[2]]||{}).version;
+    process.stdout.write(v||"");
+  " "$ROOT_DIR/scripts/component-sources.json" "$1"
 }
 
-# 落位一件：拷进 jniLibs + 说明同落。
-#   land_piece <件名> <.so 文件名> [最低字节数]
-# 产物与说明同名成对 —— 内核扫到 *.meta.json 就知道该铺什么。
-# land_piece <件名> <产物文件名|完整路径> [最小字节]
-  # 产物可以是 $WORK 下的（自写 C 那几件直接编在那儿），
-  # 也可以给完整路径（autotools 那几件 make install 装到 $OUT_DIR/lib/ 下）。
-land_piece() {
-  local id="$1" so="$2" min="${3:-1000}"
-  local built="$so"
-  [ -f "$built" ] || built="$WORK/$so"
-  [ -f "$built" ] || die "产物不存在" "$so（也不在 $WORK/ 下）"
-  check_so "$built" "$min" || die "产物不可用" "$built（不是 aarch64 ELF，或小于 $min 字节）"
-
-  # ★ 共享库有三层链：libz.so → libz.so.1 → libz.so.1.3.2
-  #   linker 运行时找的是**带 SONAME 的那个**（libz.so.1），
-  #   而 ls | head -1 只会拿到无版本的那个（libz.so）。
-  #   所以要把**同目录下整条链**都拷过去，只拷一个会运行时找不到。
-  #   依据：ldconfig(8) 对 libfoo.so → .so.1 → .so.1.12 建链。
-  #
-  # ★ 每一层都要落一份 .meta.json —— 这是运行时能不能铺它的前提。
-  #   PrefixProvisioner.provision() 只处理「jniLibs 里带说明的条目」
-  #   （container/…/PrefixProvisioner.kt 第 130 行 for (m in scanMeta(nativeDir))），
-  #   没有说明的文件它根本不看。
-  #   而 libcurl.so 的 DT_NEEDED 写的是 **libz.so.1**（SONAME），
-  #   不是 libz.so —— 加载器找的是带版本的那一层。
-  #   只给无版本的那个落说明 ⇒ usr/lib 里只有 libz.so ⇒ 运行时找不到 libz.so.1
-  #   ⇒ 实测报「libcurl.so 无 DT_RUNPATH，却依赖同目录随包库: libz.so.1」。
-  #
-  # 说明内容相同 —— 整条链是**同一件**的三个文件（不同名字，不是三件）。
-  # 照 deb-control(5)：一份 control 随包走，落地时几处同名。
-  local dir base
-  dir="$(dirname "$built")"; base="$(basename "$built")"
-  gen_meta "$id" > /dev/null
-  [ -f "$WORK/component-meta.json" ] \
-    || die "说明没生成" "gen-component-meta.js 没产出 $WORK/component-meta.json"
-  local landed=0
-  if [ -L "$built" ] || ls "$dir/$base".* >/dev/null 2>&1; then
-    local f
+# 打标准件包 —— 校验产物 + 产出装配器只读的那个 tar.gz。
+#
+# 取代原来的 gen_meta / land_piece：那两个把字节铺进 jniLibs 与
+# assets/supply/meta —— 那是预装件的私有通道，装配器读不了，也与 OTA 装件
+#（走 ProgramInstallPipeline，读包里的 component-meta.json）不同构。
+# 现在统一产出标准包，两条路同形。
+#
+# 用法：emit_piece <件名> <OUT_DIR> <入口相对路径> [最小字节]
+emit_piece() {
+  local id="$1" out="$2" entry="$3" min="${4:-1000}"
+  local so base dir f b ver
+  ver="$(version_of "$id")"
+  [ -n "$ver" ] || die "${id} 没有版本" "scripts/component-sources.json 里查不到"
+  so="$out/$entry"
+  [ -f "$so" ] || die "${id} 没产出" "$so 不存在"
+  base="$(basename "$so")"
+  dir="$(dirname "$so")"
+  check_so "$so" "$min" || die "${id} 产物不可用" "$so 不是 aarch64 ELF 或小于 $min 字节"
+  # 共享库整条链（libz.so → .so.1 → .so.1.3.2）一起进包 ——
+  # 它们是同一份字节的三个名字，linker 按 DT_NEEDED 找的是带版本的那一层
+  if ls "$dir/$base".* >/dev/null 2>&1; then
     for f in "$dir/$base" "$dir/$base".*; do
       [ -e "$f" ] || continue
-      cp -f "$f" "$JNI/$(basename "$f")" 2>/dev/null \
-        || cp -Pf "$f" "$JNI/$(basename "$f")" 2>/dev/null || continue
-      # 每一层都落说明 —— 少了它，运行时就不铺这一层。
-      # 两处都写：jniLibs 那份给人看（本机构建产物），assets 那份才进 APK。
-      cp -f "$WORK/component-meta.json" "$JNI/$(basename "$f")$META_SUFFIX" \
-        || die "说明没落位" "$(basename "$f")$META_SUFFIX"
-      cp -f "$WORK/component-meta.json" "$META_ASSETS/$(basename "$f")$META_SUFFIX" \
-        || die "说明没落到 assets" "$(basename "$f")$META_SUFFIX"
-      landed=$((landed + 1))
+      b="$(basename "$f")"
+      case "$b" in *.so|*.so.*) cp -Pf "$f" "$out/" 2>/dev/null || cp -f "$f" "$out/" ;; esac
     done
-    echo "  （共享库整条链：$landed 个文件各带说明 → $JNI/）"
-  else
-    cp -f "$built" "$JNI/$base"
-    cp -f "$WORK/component-meta.json" "$JNI/$base$META_SUFFIX" \
-      || die "说明没落位" "gen-component-meta.js 没产出 $WORK/component-meta.json"
-    cp -f "$WORK/component-meta.json" "$META_ASSETS/$base$META_SUFFIX" \
-      || die "说明没落到 assets" "gen-component-meta.js 没产出 $WORK/component-meta.json"
+    echo "  （共享库整条链一起进包）"
   fi
-  echo "[ok] $id → $JNI/$base（+ 说明）"
+  bash "$ROOT_DIR/scripts/recipes/package-piece-zip.sh" "$id" "$out" "$ver" "$entry"
 }
