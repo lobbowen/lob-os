@@ -7,19 +7,6 @@ import lobos.kernel.layout.SystemDirs
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * 兼容语义 —— 与 Linux 的逐项对照，**如实标注**。
- *
- * 此前十项全标 "done"。核实之后发现其中四项名不副实：
- * 「我们决定不做」和「我们做到了 Linux 的语义」是两件事，不能都写成 done。
- *
- * 四档：
- *   aligned   机制与 Linux 相同
- *   partial   机制对，但有已知缺口
- *   differ    用别的机制达成相近效果（不是 Linux 那个）
- *   decided   我们决定不做 —— **形态决定的取舍，不是待办**
- *   absent    Linux 有，我们没有，且还没决定要不要做 —— **真缺口**
- */
 object CompatSemantics {
 
     data class Item(
@@ -29,7 +16,6 @@ object CompatSemantics {
         val carrier: String,
     ) {
         val aligned: Boolean get() = status == "aligned"
-        /** Linux 有、我们没有，且还没决定要不要做 —— 真缺口 */
         val absent: Boolean get() = status == "absent"
         val decided: Boolean get() = status == "decided"
     }
@@ -84,7 +70,6 @@ object CompatSemantics {
             "ext4/f2fs 本身大小写敏感；本系统不做任何不敏感化处理",
         ),
         Item(
-            // 单用户是**形态决定**，不是待办
             "uid-model", "uid 身份与权限边界",
             "decided",
             "形态决定：不做多用户。理由——我们是在安卓上模拟出来的一套系统，"
@@ -105,7 +90,6 @@ object CompatSemantics {
                 + "这是形态的差别，不是没做完 —— 所以状态是 decided 不是 absent",
         ),
         Item(
-            // ★ 这一项此前错标成 aligned —— 核实后发现不成立
             "isolation", "与安卓系统的文件系统边界",
             "absent",
             "【现状】我们的系统根在物理上是 filesDir（/data/user/0/<包>/files），"

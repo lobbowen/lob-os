@@ -161,11 +161,6 @@ object DriverRegistry {
         val drivers = JSONArray()
         var missing = 0
         for (d in DRIVERS) {
-            // 装没装 —— 查注册表有没有这一条（dpkg -s 的判据）。
-            // 不问「文件在不在」：那是 verify() 的事；混问会把「登记在册但文件被删」
-            // 误报成「没装」，而 dpkg -s 在那种情况下照样说 installed。
-            // 驱动依赖的是**内核的兼容性垫片**，不是件 ——
-            // posix/flock/ptyprobe 随 APK 而来，判定问 kernel/compat 那一层。
             val present = d.assetId == null ||
                 lobos.kernel.compat.Compat.lib(ctx, d.assetId) != null
             if (!present) missing += 1
@@ -206,15 +201,8 @@ object DriverRegistry {
         return DRIVERS.size.toString() + " 个驱动；已观测降级 " + degs.size + " 类" +
             (if (degs.isEmpty()) "" else "：" + degs.joinToString("、") { it.driver + "×" + it.count })
     }
-    /**
-     * 这个件落位后的入口文件名 —— 问注册表，不预置任何名字。
-     *
-     * 驱动表里存的是 id（`flock` / `ptyprobe`），不是文件名；
-     * 文件名由落位形状决定（有 bin/ 是命令 · 只有 .so 是库）。
-     */
     private fun entryOf(ctx: Context, libName: String?): String {
         if (libName.isNullOrBlank()) return ""
-        // 垫片是共享库，不建全局软链、不进 PATH —— 可执行名对它没有意义。
         return if (lobos.kernel.compat.Compat.lib(ctx, libName) != null) "" else "缺失"
     }
 }

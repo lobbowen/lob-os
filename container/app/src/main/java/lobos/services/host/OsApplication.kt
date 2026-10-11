@@ -26,11 +26,6 @@ class OsApplication : Application() {
         createChannels()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
-        // 内核的两个注入钩子在这里注册 —— onCreate 是进程级入口，早于任何组件。
-        //
-        // 注册在 OsHostService.onStartCommand 里是不够的：宿主被杀后钩子随进程
-        // 一起消失，而无障碍服务与 Doze 兜底闹钟都会被系统单独拉起 —— 那时
-        // 钩子已经没了，「请拉起宿主」这个请求就落空。
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         KernelHooks.setReporter { ctx, stage, ok, message, detail ->
             RuntimeDiagnostics.append(ctx, stage, ok, message, detail ?: "")
@@ -72,7 +67,6 @@ class OsApplication : Application() {
             RuntimeDiagnostics.append(this, "quickapp", true, "快应用运行时已就绪", "dimina 初始化完成；能力桥 extBridge(module=lobos)")
         }
     }
-
 
     private fun registerWakeupEdges() {
         val receiver = object : BroadcastReceiver() {

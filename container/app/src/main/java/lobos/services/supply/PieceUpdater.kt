@@ -32,8 +32,6 @@ object PieceUpdater {
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
         val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        // 读注册表（dpkg -s「just displays the entry in the installed package
-        // status database」）—— 查状态不扫磁盘，扫盘是 verify() 的事。
         for (e0 in lobos.services.reg.ProgramIndex.all(ctx)) {
             val pe = e0
             val ver = pe.version
@@ -106,12 +104,8 @@ object PieceUpdater {
         val applied = JSONArray()
         val skipped = JSONArray()
         val pending = mutableListOf<Triple<lobos.services.reg.UnitEntry, String, JSONObject>>()
-        // 按 id 索引注册表条目 —— pending 要的是条目本身（id/libName/assetEntry）。
-        // 「这件有没有随落说明」单独判，不把 JSONObject 塞进来：
-        // 此前 byId 的值是 pieceMeta 的返回，下游按 UnitEntry 用就编不过。
         val byId = lobos.services.reg.ProgramIndex.all(ctx)
             .filter { it.stateDir.isNotBlank() }
-            // 没有随落说明的件不进这一轮：清单说更新它，我们却无从确认版本
             .filter { PieceScan.pieceMeta(ctx, it.id) != null }
             .associateBy { it.id }
 
@@ -149,8 +143,6 @@ object PieceUpdater {
                 applied.put(JSONObject().put("id", id).put("sha256", sha).put("wouldInstall", true))
                 continue
             }
-            // 第二项是**版本号**（要落进 usr/lib/<id>/<版本>/），不是 sha256 ——
-            // installGroup 按 version 拼落位目录，此前这里塞的却是 sha
             pending.add(Triple(e, c.optString("version", ""), c))
         }
 
@@ -194,7 +186,6 @@ object PieceUpdater {
             for ((e, _, _) in items) out[e.id] = false to "清单项缺 url/sha256"
             return out
         }
-        // 版本号要能安全落进 usr/lib/<id>/<版本>/ —— 判据就是 ProgramIndex 那一个
         val todo = items.filter { (e, ver, _) ->
             val ok = lobos.services.reg.ProgramIndex.safeSegment(ver) != null
             if (!ok) out[e.id] = false to "版本号非法（会越界）：$ver"
@@ -263,9 +254,6 @@ object PieceUpdater {
     private fun listPackTop(root: File): List<String> =
         (root.list()?.sorted() ?: emptyList()).take(8)
 
-    // version 是形参：下面第 273 行用它兜底（InstalledRuntime 读不到时）。
-    // 此前定义里漏了这个参数，函数体却引用它 —— 而调用点按 4 参传，
-    // 编译报 "Too many arguments for pointEntryAt"。
     private fun pointEntryAt(
         ctx: Context,
         e: lobos.services.reg.UnitEntry,
@@ -278,7 +266,6 @@ object PieceUpdater {
         } else {
             File(PrefixProvisioner.libDir(ctx), entryName)
         }
-        // 先建同目录临时软链再改名：rename 是原子的，直接建会留下半截链接
         val staging = File(link.parentFile, "." + entryName + ".new")
         runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
         java.nio.file.Files.createSymbolicLink(staging.toPath(), dest.toPath())
@@ -298,7 +285,6 @@ object PieceUpdater {
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
         val pe = lobos.services.reg.ProgramIndex.get(ctx, id).takeIf { lobos.services.reg.ProgramIndex.isPiece(ctx, id) }
             ?: return false to "注册表里没有 id=$id"
-        // 入口名就是落位时的文件名（落位形状自带，不另存一个 installName）
         val entryName = pe.assetEntry.substringAfterLast("/")
         val link = if (pe.assetEntry.startsWith("bin/")) {
             File(PrefixProvisioner.binDir(ctx), entryName)

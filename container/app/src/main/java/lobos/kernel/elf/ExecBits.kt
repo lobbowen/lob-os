@@ -4,26 +4,12 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * ELF 头的事实 —— 照抄 `ldconfig(8)`：「checks the **header** and filenames … when
- * determining which versions should have their links updated」。
- *
- * 它读文件头一次，不执行任何代码；据此知道这个二进制是命令还是库、
- * 它要哪些库（`DT_NEEDED`）。系统对每一件的认识都来自这里。
- */
 object ExecBits {
 
-    /** 加执行位（ELF 或 shebang 脚本都算可执行） */
     fun apply(file: File) {
         if (isRunnable(file)) file.setExecutable(true, false)
     }
 
-    /**
-     * 这个文件能不能**当命令直接跑** —— 读 ELF 头的 `e_type`：
-     *   ET_EXEC(2) / ET_DYN(3) 且带 `PT_INTERP` → 有解释器，是程序
-     *   ET_DYN(3) 且无 `PT_INTERP`           → 共享库
-     *   `#!` 开头的脚本                        → 程序
-     */
     fun isRunnable(file: File): Boolean {
         val head = ByteArray(64)
         val read = try {
@@ -45,7 +31,6 @@ object ExecBits {
         return hasInterpreter(file)
     }
 
-    /** 程序段里有没有 PT_INTERP（3）—— 有就是要有解释器才能跑，那就是程序 */
     private fun hasInterpreter(file: File): Boolean = runCatching {
         val b = file.readBytes()
         if (b.size < 64) return@runCatching false

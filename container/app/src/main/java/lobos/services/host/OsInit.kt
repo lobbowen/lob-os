@@ -66,16 +66,9 @@ object OsInit {
         val stalled = snapshot(ctx).phase
         interruptedThisLife = interrupted
         SystemDirs.ensureAll(ctx)
-        // 索引从落位推导（等价 ldconfig 扫目录建缓存）——
-        // 「系统里有什么」由文件系统说了算，不由安装器是否记得写登记说了算
         val scanned = PieceScan.rebuild(ctx)
 
-  // 前后端成组对账—— systemd 的 daemon-reload 是重新读 unit 文件，
-  // 我们是重新对一遍「登记的 UI 绑定」与「实际装进 dimina 的」
   runCatching { lobos.services.app.ProgramGroup.reconcile(ctx) }
-        // Linux 的 /run 是 tmpfs，重启即失由内核保证；我们在普通文件系统上，
-        // 所以「本次启动的状态不继承上世」要在这里自己保证。
-        // 不清的话：上世的 pid 占着端口、上世的会话以为还活着。
         val swept = SystemDirs.clearRun(ctx)
         val snap = OsSnapshot(OsPhase.BOOTING, OsFacts(), interrupted, System.currentTimeMillis())
         write(ctx, snap, OsPhase.BOOTING, null)

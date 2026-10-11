@@ -34,8 +34,6 @@ object QuickAppRegistry {
         }
         val ui = uiOf(ctx, id)
         val frontend = ProgramManager.stateDirOf(ctx, id).let { File(it, "quickapp") }
-        // UI 那几项要抄进注册表：桌面图标与窗口标题是进程外的东西，
-        // 进程起来之后读不到它自己的 manifest，只能看注册表。
         ProgramIndex.mutate(ctx, id) { e ->
             e.edited(
                 uiPackage = ui.pkg,

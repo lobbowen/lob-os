@@ -6,13 +6,8 @@ import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 
-/**
- * 内核只提供两种事实：一份字节的摘要，以及一份签名的真假。
- * 它不知道被摘要的是什么、被签的是哪份清单 —— 那是上层的事。
- */
 object Crypto {
 
-    /** 文件的 SHA-256，小写十六进制。流式读，不把整个文件装进内存。 */
     fun sha256HexFile(f: File): String {
         val md = MessageDigest.getInstance("SHA-256")
         f.inputStream().buffered().use { ins ->
@@ -26,7 +21,6 @@ object Crypto {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** PEM 公钥验 Ed25519 签名。密钥格式、算法不支持或签名不符，一律 false。 */
     fun verifyEd25519(pubPem: String, data: ByteArray, sig: ByteArray): Boolean = try {
         val key = KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(pemToDer(pubPem)))
         val v = Signature.getInstance("Ed25519")

@@ -31,7 +31,6 @@ object LocalExec {
     ): Outcome {
         if (argv.isEmpty()) return Outcome(false, -1, "", "", Via.PLAIN, "argv 为空")
 
-        // PTY 宿主是内核 compat 的一部分（随 APK 而来，不是件）。
         val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
         if (preferPty && ptyBin != null) {
             val r = PtySession.runToCompletion(ctx, ptyBin, argv, env, cwd, timeoutMs)
@@ -91,14 +90,6 @@ object LocalExec {
         }
     }
 
-    /**
-     * 用底座的命令解释器跑一条命令。
-     *
-     * shellBin 由调用方给 —— 「底座用哪个解释器」取决于有哪些件、哪一件在册，
-     * 那是服务层的事。内核只负责「拿着这个路径把命令跑起来」，
-     * 以及在它不在时**明说底座不完整**（不静默落到 /system/bin/sh ——
-     * 那会让命令在另一套语义下跑）。
-     */
     fun runShell(
         ctx: Context,
         command: String,

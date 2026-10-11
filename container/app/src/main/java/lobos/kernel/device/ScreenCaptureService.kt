@@ -70,7 +70,6 @@ class ScreenCaptureService : Service() {
         const val TAG = "ScreenCaptureService"
         const val NOTIF_ID = 1005
 
-        /** 前台服务通知渠道 id（自持，避免依赖宿主常量）。 */
         const val CHANNEL_ID = "lobos_screen_capture"
         const val CHANNEL_NAME = "Lob OS 截屏"
 

@@ -52,7 +52,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var healthPath = "/status"
     private var currentGeneration = 0L
 
-
     private val libSearchPath: String get() = LibPath.searchPath(this)
 
     fun start() {
@@ -115,8 +114,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }
     }
 
-        // 重启计数在注册表里（NRestarts 是持久属性，不是内存计数）——
-        // systemctl(1)：「expose RUNTIME STATE IN ADDITION TO CONFIGURATION」
         val restartCount: Int get() =
             lobos.services.reg.ProgramIndex.get(this, programId)?.restarts ?: 0
     private fun bootLoop() {
@@ -137,8 +134,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     if (lastCheck != 0L && now - lastCheck < SupervisorPolicy.CHECK_INTERVAL_MS) continue
                     lastCheck = now
                     if (isStatusUp()) {
-                    // 跑起来了 —— 稳定够久就把重启计数清零
-                    // （systemd 的 NRestarts 语义：StartLimitIntervalSec 内没反复挂就不算）
                     runCatching {
                         SupervisorPolicy.clearIfStable(
                             this@InstanceHost, programId,
@@ -173,8 +168,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 sleepQuiet(SupervisorPolicy.NO_PROGRAM_BACKOFF_MS)
                 continue
             }
-            // 重启计数落注册表（NRestarts 是持久属性）—— systemctl(1)：
-            // 「expose RUNTIME STATE IN ADDITION TO CONFIGURATION」
             val aliveMs = SystemClock.elapsedRealtime() - bornAt
             if (bootOk && aliveMs >= SupervisorPolicy.STABLE_MS) {
                 runCatching {
@@ -381,9 +374,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
             if (!res.ok) return SupervisorPolicy.BootOutcome.NO_PROGRAM
 
-            // ensure() 的作用是**装配 $PREFIX**（返回的 Snapshot 这两处都不用）；
-            // treeRootFor 只收 ctx —— 此前把 ensure 的返回值当第二参传了，
-            // 编译报 "Too many arguments for treeRootFor"。
             lobos.services.reg.RuntimeEnvironment.ensure(this)
             val tree = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
             val treeEnv = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, tree, getenv("PATH"))
@@ -457,14 +447,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
                 if (recorded != null) {
-                    // 账本只有这四个字段（pgid 随 killTree 那轮一起去掉了 ——
-                    // 记它没有用处：kill 走 ProcessLedger 自己的入口，不按进程组杀）
                     "program=" + recorded.programId + " gen=" + recorded.generation +
                         " pid=" + recorded.pid + " starttime=" + recorded.starttime
                 } else "pid 无法取得，账本未记录"
             )
-            // MainPID 落注册表（systemctl show 查得到那个属性）——
-            // 此前只有账本里有，注册的 UnitEntry.pid 是空的
             if (recorded != null) {
                 runCatching {
                     SupervisorPolicy.noteStarted(
@@ -603,8 +589,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }.getOrDefault(-1)
     }
 
-
-
     private fun forward(stream: InputStream, tag: String) {
         val t = Thread {
             try {
@@ -655,8 +639,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         Thread {
             val code = runCatching { p.waitFor() }.getOrDefault(-1)
 
-                    // ExecMainStatus 落注册表 —— 退出后仍查得到为什么挂
-                    // （systemd 的 ExecMainStatus 就是这个用途）
                     runCatching {
                         SupervisorPolicy.noteExit(
                             this@InstanceHost, programId, code,
@@ -666,8 +648,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     }
             lobos.kernel.proc.ProcessLedger.end(this, watchedPid)
 
-                    // 反向的那条路：后端死了，前端要收掉
-                    // —— 否则它留在 dimina 里，用户看到的是点得开但连不上的僵尸界面
                     runCatching {
                         lobos.services.app.ProgramGroup.onBackendExit(
                             this@InstanceHost, programId, code,
@@ -777,9 +757,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }
     }
 
-
-
-
     private fun getenv(k: String): String? = System.getenv(k)
 
     private fun writeRuntimeJson(
@@ -789,7 +766,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         minNode: String,
         envSnapshot: Map<String, String> = emptyMap(),
     ) {
-        // InstanceHost 自己就是 ContextWrapper(host)，无需再传 ctx 形参
         val dir = SystemDirs.run(this).let { File(it, "proc") }
         dir.mkdirs()
         val obj = JSONObject().apply {
@@ -819,7 +795,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     companion object {
-        /** 健康探测的预算 —— 探活多久算失败 */
         const val HEALTH_POLL_BUDGET_MS = 30_000L
 
         const val TAG = "InstanceHost"

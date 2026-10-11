@@ -12,24 +12,9 @@ import org.json.JSONObject
 
 object ProgramInstallPipeline {
 
-    /**
-     * DT_RUNPATH 里的链接期占位符 —— 字面量，不是 Kotlin 插值。
-     *
-     * 写 "$LIB" 会被当成插值表达式去解析某个叫 LIB 的变量（仓里不存在），
-     * 编译不过；就算能编过，运行时也拿不到这个字面串。
-     * \$ORIGIN 同理，仓里统一写成 "\$ORIGIN"。
-     */
     private const val LIB_TOKEN = "\$LIB"
     private const val PLATFORM_TOKEN = "\$PLATFORM"
 
-    /**
-     * 装的是「程序」还是「件」。
-     *
-     * 此前这两值叫「应用（快应用机制）」与「系统件（内核机制）」——
-     * 那是把「程序/件」说成「两种运行机制」：所有件都是独立的，
-     * 走同一套机制，只有「要不要落进 opt/ 由程序起」这一条不同。
-     * 判据落位就够，不需要另立机制名。
-     */
     enum class From(val label: String) {
         APP("程序"),
         COMPONENT("件"),
@@ -99,7 +84,6 @@ object ProgramInstallPipeline {
         val writeIndex = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 context,
-                // 程序：形态与需求从**包内**的 manifest 读，不问清单（role=app）
                 lobos.services.reg.UnitEntry(
                   id = spec.programId,
                       version = version,
@@ -211,7 +195,6 @@ object ProgramInstallPipeline {
         val upserted = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 context,
-                // 件：形态与需求从**包内**的 component-meta.json 读 —— 件自带信息，不问清单单
                 lobos.services.reg.UnitEntry(
                   id = spec.programId,
                       version = version,
@@ -259,15 +242,6 @@ object ProgramInstallPipeline {
         }
     }
 
-    /**
-     * 件自带的元信息 —— **只从包内读**。
-     *
-     * 之前这个件的一切（它是什么、落哪、依赖谁）都从包外的发布清单取，
-     * 于是「它是什么」由一份可被替换的外部文件决定。现在包里带
-     * component-meta.json，装完只信包。
-     *
-     * 读不到不阻断 —— 返回空值让登记退回现有字段，而不是让安装失败。
-     */
     private class PieceMeta(private val o: JSONObject?) {
         fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
         fun roleOrEmpty(): String = when (o?.optString("form", "")?.trim()) {
@@ -276,7 +250,6 @@ object ProgramInstallPipeline {
             else -> ""
         }
         fun libNameOrEmpty(): String = entry().substringAfterLast("/", "")
-        /** 件是不是系统必需的 —— 包里没说就按「非必需」 */
         fun requiredOr(def: Boolean): Boolean =
             o?.optBoolean("required", def) ?: def
 
@@ -314,23 +287,12 @@ object ProgramInstallPipeline {
 
     private data class DepReport(val ok: Boolean, val detail: String, val placed: Int, val missing: List<String>)
 
-    /**
-     * linker 能不能找到这个库 —— **问事实，不问名单**。
-     *
-     * 照抄 ld.so(8) 的搜索顺序：DT_RPATH → LD_LIBRARY_PATH → DT_RUNPATH
-     * → ld.so.cache → 系统默认路径。我们查其中我们能查的那些位置。
-     *
-     * @param name NEEDED 里的库名（如 `libssl.so`）
-     */
     private fun linkerCanFind(context: Context, name: String): Boolean {
-        // ① 系统的库目录 —— Android 平台自己给我们的运行期
         for (d in SYSTEM_LIB_DIRS) {
             if (File(d, name).exists()) return true
         }
-        // ② APK 里的 —— NDK 的运行期随APK 进来（libc++_shared.so 走这条）
         val jni = context.applicationInfo.nativeLibraryDir
         if (jni != null && File(jni, name).exists()) return true
-        // ③ 我们的 usr/lib —— 全局软链都在那儿
         val usrLib = SystemDirs.lib(context)
         if (usrLib != null && File(usrLib, name).exists()) return true
         return false
@@ -349,23 +311,13 @@ object ProgramInstallPipeline {
             if (dirs.isEmpty()) targets += f.parentFile else targets += dirs
         }
         if (targets.isEmpty()) targets += dest
-        // ★ 不用一张写死的 .so 名单 —— 那些是安卓平台/NDK 的运行期，
-        //   不是我们系统里的件；写死在「装程序」这个文件里，平台加了我们也不知道。
-        //   判据换成事实：**linker 能不能在它的搜索顺序里找到它**。
         val systemProvided = linkedSetOf<String>()
-        // ★ 原来这里是 && File(dest, it).isFile —— 那只会把「已经存在的」算进 missing，
-        // 于是下一行 isEmpty() 恒真，下面整段铺依赖的逻辑（17 行）永不执行。
-        //   语义应该是：既不是系统提供的，落位目录里也还没有的。
-        // linker 的搜索顺序（ld.so(8)）：DT_RPATH → LD_LIBRARY_PATH
-        // → DT_RUNPATH（含 $ORIGIN）→ ld.so.cache → 系统默认路径
         for (name in needed) {
             if (File(dest, name).isFile) continue
             if (linkerCanFind(context, name)) systemProvided.add(name)
         }
         var missing = needed.filter {
-            // linker 找得到 → 不用我们铺
             !systemProvided.contains(it) &&
-                // 落位目录里已经有了 → 不用铺
                 !File(dest, it).isFile
         }
         if (missing.isEmpty()) {
@@ -492,12 +444,5 @@ object ProgramInstallPipeline {
         val f = File(context.cacheDir, "install-manifest-" + programId.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".json")
         return runCatching { f.writeText(text) }.let { if (it.isSuccess) f else null }
     }
-    /**
-     * Android 平台给应用进程的库目录 —— linker 的最后兜底位置。
-     *（ld.so(8) 的搜索顺序末尾：系统默认路径）
-     *
-     * 这些路径是**平台的事实**，不是我们配的；换个 ROM 可能不同，
-     * 所以判据是「这些目录里有没有那个文件」，不是「名字在不在名单里」。
-     */
     private val SYSTEM_LIB_DIRS = listOf("/system/lib64", "/system/lib", "/apex/com.android.runtime/lib64/bionic")
 }

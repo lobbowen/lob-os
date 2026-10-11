@@ -346,16 +346,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         })
     }
 
-    /**
-     * 这个会话能拿到哪些令牌。
-     *
-     * 原本这里是一整套「APK 侧判据 → 派生令牌」的推导：CapabilityEvidenceCollector
-     * 读系统状态、BridgeTokens 把判据结果翻译成令牌、CapabilityCatalog 决定哪些
-     * 令牌敏感。那是「APK 侧自己判权限、自己发权限」的旧设计，已清空。
-     *
-     * 现在只有一条规则：**Program 清单里声明了什么，就发什么**。
-     * 系统是否真的允许，是权限服务的事 —— 桥接不替它做主。
-     */
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
         if (session.programId.trim() == INSTALLER_ID) return setOf(BRIDGE_BASE)
         if (!isProgramSession(session)) return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
@@ -869,12 +859,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
 
         "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            // 原本这里报的是「APK 侧判据的结果」：tier（apk/apk+adb/apk+do）
-            // 与 catalog（14 条判据逐条的 verdict）。判据体系已清空 ——
-            // 「系统允许什么」是权限服务的职责，控制面板经 os.permissions.* 去问。
-            //
-            // 这里只报事实：平台、API 级别、是否设备所有者（那一条是实测，
-            // 不是判据 —— 它决定系统能额外给多少后台权限）。
             val owner = runCatching {
                 lobos.kernel.device.DeviceOwnerState.measure(this@CapabilityBroker)
             }.getOrNull()
@@ -979,8 +963,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "os.provisioning.get" to MethodDef(listOf("base"), false) { _, _programId ->
-            // 铺位快照 = 此刻 jniLibs 里每件的就位情况。
-            // prepare() 是只读扫描：不铺、不改，只报告 —— 桥的查询语义要的就是这个。
             val report = runCatching { PieceProvisioner.prepare(this@CapabilityBroker) }.getOrNull()
             JSONObject().apply {
                 put("present", report != null)
@@ -1112,7 +1094,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
           "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
-              // 校验只有一套：prepare() —— 它既看铺全了没有，也与登记逐文件比（dpkg -V）
               val report = PieceProvisioner.prepare(this)
               JSONObject().apply {
                   put("allRequiredReady", report.allRequiredReady)
@@ -1541,19 +1522,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     companion object {
         const val TAG = "CapabilityBroker"
         const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
-        /**
-
-         * 每个会话都有的基础桥接令牌。
-
-         *
-
-         * 原本由 BridgeTokens.BASE 提供，随判据体系一并清空 ——
-
-         * 那个文件把「判据结果」翻译成令牌，现在判据没了，
-
-         * 剩下的就只有这条恒在的基础令牌。
-
-         */
 
         const val BRIDGE_BASE = "base"
 
@@ -1636,4 +1604,3 @@ private fun execAsJson(r: lobos.kernel.ipc.LocalExec.Outcome): JSONObject = JSON
     )
     if (r.error != null) put("detail", r.error)
 }
-

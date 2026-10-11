@@ -19,24 +19,11 @@ data class ToggleOutcome(
 
 object AccessibilityServiceState {
 
-    /**
-     * Android 侧固定的两个 Secure 设置键 —— 无障碍服务列表与总开关。
-     *
-     * 原本从 services/perm/PermissionCatalog 取常量，那是服务层的权限定义。
-     * 但这两个键是 Android 平台约定、与我们的权限台账无关，内核自己持有。
-     */
     const val KEY_ACCESSIBILITY_SERVICES = "enabled_accessibility_services"
 
     const val KEY_ACCESSIBILITY_ENABLED = "accessibility_enabled"
     private const val TAG = "AccessibilityServiceState"
 
-    /**
-     * 本包无障碍服务的组件全名。
-     *
-     * 原本经 CapabilityCriteria.names(ctx) —— 那是判据体系的一部分，已随
-     * 「APK 侧自己判权限、自己取权」那套设计一并清空。
-     * 组件名是本包的事实（Manifest 里声明的那个），直接写出来即可。
-     */
     private fun componentString(ctx: Context): String =
         "${ctx.packageName}/${ctx.packageName}.lifecycle.OsAccessibilityService"
 

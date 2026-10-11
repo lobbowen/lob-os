@@ -7,19 +7,10 @@ object GuestAdapter {
 
     data class ProgramInputs(
         val root: RuntimeEnvironment.TreeRoot,
-        /** node 这个件的可执行件在哪 —— 构造它的调用方按需给出 */
         val nodeBin: File,
         val programDir: File,
         val programEntry: File,
         val uiDir: File,
-        /**
-         * flock 这个件的可执行体在哪 —— 可空。
-         *
-         * flock 是 24 项清单里独立的一件，可能没装；此前这里声明成非空 File，
-         * 而 InstanceHost 传的是 PieceScan.pieceFile()（File?），编译不过。
-         * 没装就不给这个变量：程序自己落 flock 时靠 PATH 找 usr/lib/flock/，
-         * 不该被一个指向不存在文件的变量误导。
-         */
         val flockSo: File?,
         val programId: String = "",
         val args: List<String> = emptyList(),

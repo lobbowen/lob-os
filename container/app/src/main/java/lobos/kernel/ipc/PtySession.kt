@@ -15,8 +15,6 @@ import lobos.kernel.KernelHooks
 
 object PtySession {
 
-
-
     private const val TAG = "PtySession"
 
     private const val F_OPEN = 1
@@ -141,7 +139,6 @@ object PtySession {
             throw IllegalStateException("会话数已满（256）")
         }
 
-        // Session 会直接调它（同 object 内的兄弟类），不能是 private
         @Synchronized
         internal fun send(kind: Int, sid: Int, payload: ByteArray) {
             try {
@@ -281,14 +278,6 @@ object PtySession {
         }
     }
 
-    /**
-     * 找 PTY 会话宿主 —— **问落位**，不查表也不去猜 .so 文件名。
-     * 定位 PTY 宿主的可执行文件。
-     *
-     * bin 由调用方给 —— 「PTY 宿主是哪一件、装没装、在哪」都要查在册表，
-     * 那是服务层的事。内核只负责「拿到这个路径后按帧协议驱动它」，
-     * 以及在它不在时**明说底座不完整**（不静默退化）。
-     */
     private fun locateBin(bin: java.io.File): java.io.File {
         if (!bin.isFile) {
             throw IllegalStateException(
@@ -299,15 +288,6 @@ object PtySession {
         }
         return bin
     }
-    /**
-     * PTY 宿主件**装没装** —— 由调用方答（它要查在册表，内核不知道件的名字）。
-     *
-     * 此前是 fun probe(ctx) = 起一个 PTY 跑 `exit 0` 看成不成（每问一次起一次进程）；
-     * 后来写成「问文件在不在」—— 那把两件事混了：
-     *   · 装没装      → 问在册表（登记的事实，服务层的事）
-     *   · 文件还在不在  → 那是登记与磁盘比，也是服务层的事
-     * 内核两样都不问：它只管「给我路径，我驱动它」。
-     */
     fun isUsable(bin: java.io.File): Boolean = bin.isFile
 
     fun runToCompletion(

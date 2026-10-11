@@ -15,10 +15,6 @@ import org.json.JSONObject
 
 sealed class AssetStatus {
 
-    /**
-     * 铺出来了，但与**登记**不符 —— 文件被换过或被删了。
-     * 照抄 dpkg -V：拿数据库里记的比，不是看磁盘就下结论。
-     */
     data class Mismatched(
         val id: String,
         val path: String,
@@ -49,7 +45,6 @@ sealed class AssetStatus {
         val errnoHint: Int?,
         val raw: String,
     ) : AssetStatus()
-    /** 编译期已保证正确，装上去却不能用 —— 与 Linux 一致：系统不验，运行时自己会报错 */
     data class Unusable(
 
         val exe: PieceScan.Found,
@@ -157,17 +152,12 @@ object PieceProvisioner {
             emptySet()
         }
 
-        // 校验两件事（照抄 dpkg -V 的形状）：
-        //   ① 这个件铺全了没有      —— verifyInternal
-        //   ② 铺出来的文件与登记符不符没有 —— PieceScan.verify
-        // 少了 ②，被换过一个文件也发现不了。
         val entries = PieceScan.scan(ctx).map { f ->
             val st = verifyInternal(ctx, f, libDir, listing, apkLibNames)
             val final = if (st is AssetStatus.Ready) {
                 val v = PieceScan.verify(ctx, f.id)
                 if (!v.ok) AssetStatus.Mismatched(f.id, f.entry, v.mismatched) else st
             } else st
-            // 件与结论成对：PrepareReport 的每一条都要能指出是哪一件
             f to final
         }
         val report = PrepareReport(entries)
@@ -185,18 +175,6 @@ object PieceProvisioner {
         )
         return report
     }
-    /**
-     * 一件就位没有 —— 照 dpkg 的判据形状逐条问：
-     *   ① nativeLibraryDir（= 件的落位处）里有没有它
-     *      没有 → MissingFromLib，并说清是「APK 里有但没解压」还是「APK 里就没有」
-     *   ② 它的 ELF 依赖（DT_NEEDED）在同目录能不能找到
-     *      找不到 → MissingDependency（libcurl 依赖 libz.so.1 那类）
-     *   ③ 在但读不了 → NotExecutable
-     * 全部通过 → Ready
-     *
-     * 形状取自 PieceScan.verify（登记与磁盘比对），那是 dpkg -V 那一层；
-     * 这里判的是「能不能用」，两者分工不同。
-     */
     private fun verifyInternal(
         ctx: Context,
         exe: PieceScan.Found,
@@ -212,8 +190,6 @@ object PieceProvisioner {
             return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
         }
 
-        // ② 依赖闭包：同目录能不能解析（ELF 读不出来就跳过这一问，
-        //    读不出不等于没问题 —— 那由 PieceScan.verify 那层负责）
         val needed = lobos.kernel.elf.ElfFacts.read(f)?.needed.orEmpty()
         for (dep in needed) {
             if (!File(libDir, dep).exists()) {
@@ -221,13 +197,11 @@ object PieceProvisioner {
             }
         }
 
-        // ③ 在位但不可用
         if (!f.canRead() || f.length() == 0L) {
             return AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读或长度为 0")
         }
         return AssetStatus.Ready(exe, f.absolutePath)
     }
-
 
     private fun parseErrno(msg: String?): Int? {
         if (msg == null) return null

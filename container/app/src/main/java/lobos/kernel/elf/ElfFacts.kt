@@ -19,15 +19,9 @@ object ElfFacts {
     private const val DT_RUNPATH = 29
     private const val PT_INTERP = 3
 
-    // 用 try/catch 而不是 runCatching { … }：lambda 里的 `return null` 是**非局部返回**，
-    // 编译器无法据此推断 lambda 的返回类型（报 "Return type mismatch: expected
-    // \"ElfFacts.Dynamic?\", actual \"Any?\""）。这里有 7 处 `return null`。
-    // 语义与 runCatching 相同（吞掉异常、返回 null），但类型是明确的。
     fun read(file: File): Dynamic? = try {
         val b = file.readBytes()
         if (b.size < 64) return null
-        // b[] 是 Byte、字面量是 Int —— Kotlin 不允许直接比（报
-        // "Operator != cannot be applied to Byte and Int"），两边都转成 Int 比。
         fun magic(i: Int): Int = b[i].toInt() and 0xff
         if (magic(0) != 0x7f || magic(1) != 'E'.code || magic(2) != 'L'.code || magic(3) != 'F'.code) return null
         if (magic(4) != 2) return null
@@ -74,7 +68,6 @@ object ElfFacts {
         while (p + 16 <= dynEnd && p + 16 <= b.size) {
             buf.position(p.toInt())
             val tag = buf.getLong()
-            // 原本写成 `val val` —— val 是 Kotlin 关键字，不能当变量名
             val dval = buf.getLong()
             if (tag == 0L) break
             when (tag) {

@@ -264,8 +264,6 @@ object ProgramOtaUpdater {
         val scoped = try {
             if (f.isFile) JSONObject(f.readText()) else null
         } catch (_: Throwable) { null }
-        // 还没有状态、或读不出来 —— 给一个空对象。三个调用方都用
-        // optLong("lastSequence", 0L) 这类带默认值的方式读，空对象即可。
         return scoped ?: JSONObject()
     }
 
@@ -274,7 +272,6 @@ object ProgramOtaUpdater {
             lobos.kernel.fs.StateFiles.writeAtomic(stateFile(context, cfg, programId), o.toString())
         } catch (_: Throwable) { }
     }
-
 
     private fun installId(context: Context): String {
         val f = File(SystemDirs.etc(context), "install-id.json")

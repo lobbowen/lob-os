@@ -46,20 +46,12 @@ object StateFiles {
         false
     }
 
-    /**
-     * 记一条「落盘失败」—— 与被写的文件同目录，读方从同一个树里读。
-     *
-     * writeAtomic / writeJson 的签名里没有 Context（它们是纯文件操作），
-     * 所以不能走 SystemDirs.log(ctx)；此前的 note() 直接用了不存在的 ctx。
-     */
     private fun note(dir: File, detail: String) {
         runCatching {
             val f = File(dir, FAILED_FILE)
             if (!dir.isDirectory) dir.mkdirs()
             val prev = if (f.isFile) f.readText() else ""
             val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }
-            // 直接追加，不走 writeAtomic —— 它失败时又会调 note，那就无限递归了。
-            // 这份失败记录本身不重要，丢了就丢了。
             FileOutputStream(f, true).use { it.write((lines.takeLast(50).joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)) }
         }
     }

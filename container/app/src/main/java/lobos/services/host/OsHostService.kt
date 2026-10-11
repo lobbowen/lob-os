@@ -170,9 +170,6 @@ class OsHostService : Service() {
         ResidencyAudit.heartbeat(this)
         val facts = OsFacts(
             readingsCollected = true,
-            // 控制面在不在：直接问 ResidencyStatus 的心跳新鲜度（60 秒内更新过）。
-            // 原本经 CapabilityEvidenceCollector —— 判据体系已清空，而
-            // 「控制面是否在线」本来就是宿主自己的心跳事实，不该绕道判据。
             controlPlaneUp = runCatching {
                 val snap = lobos.services.reg.ResidencyStatus.snapshot()
                 val at = snap.optLong("updatedAt", 0L)
@@ -196,15 +193,7 @@ class OsHostService : Service() {
     }
 
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
-        // 变量名刻意不叫「protected」：无障碍是 UI 自动化的执行体，
-        // 不是托住后台的锚（托住后台的是前台服务 + Doze 兜底闹钟）。
-        // 这里只如实记录「服务当前是否已连」，供权限服务与控制面板查询。
         val a11yConnected = a11y == ServiceState.BOUND
-        // 「在跑」问**账本**，不读监管池的内存名单 ——
-        // 池子那份是「谁有监管器」，不是「进程在跑」：进程自己 daemonize
-        // 出去时账本知道而池子不知道，反之池子留着 key 但进程早没了也有。
-        // 对外字段名仍叫 runningIds（CapabilityBroker 在读这个键），
-        // 但值必须是真机事实，否则面板会报一个不存在的运行态。
         val runningIds = runCatching {
             lobos.kernel.proc.ProcessLedger.liveOwned(this).map { it.programId }.distinct()
         }.getOrDefault(emptyList())
@@ -262,14 +251,6 @@ class OsHostService : Service() {
         return buildNotification(text)
     }
 
-    /**
-     * 通知点开后去哪儿。
-     *
-     * 原本是「判据全过就去 PanelActivity，没过就去 SetupActivity」——
-     * 那是「APK 侧自己判权限、自己取权、自己引导」的旧设计。UI 随那一并清空了，
-     * 这里统一走启动入口（QuickAppLaunchActivity），由它拉起对应的 Program
-     * （控制面板就是其中之一）。
-     */
     private fun entryActivity(): Class<*> =
         lobos.services.app.QuickAppLaunchActivity::class.java
 
@@ -282,7 +263,6 @@ class OsHostService : Service() {
         val summary = androidx.core.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
         val items = mutableListOf<String>()
         for (n in lobos.services.reg.ProgramStatusHub.snapshot(this).take(6)) {
-            // 状态是 systemctl 的三列，不是一个自造的 state —— 取 active 那列
             items += n.id + " · " + n.active.name.lowercase() +
                 if (n.aliveMs > 0) " · " + (n.aliveMs / 3600000) + "h" + ((n.aliveMs / 60000) % 60) + "m" else ""
         }

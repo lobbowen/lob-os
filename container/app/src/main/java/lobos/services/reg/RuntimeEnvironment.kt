@@ -22,13 +22,6 @@ object RuntimeEnvironment {
 
     @Volatile private var cached: Snapshot? = null
 
-    /**
-     * 进程环境 —— **只含系统面，不含任何具体的件**。
-     *
-     * 此前这里有 nodeBin / shellBin / posixShim 三个字段，那是把「某一件」
-     * 写进了环境数据结构：换一件命令解释器或运行时就得改这个 data class。
-     * 现在它们由 [PieceScan] 按角色提供 —— 要用就问它，别在环境里存一份。
-     */
     data class TreeRoot(
         val home: File,
         val tmpDir: File,
@@ -65,7 +58,6 @@ object RuntimeEnvironment {
                 inheritedPath,
             )
         )
-        // 兼容性垫片走内核的 compat 层，不再按「件」去找 —— 它们不是件。
         val preload = lobos.kernel.compat.Compat.preload(ctx)
         if (preload.isNotBlank()) {
             put("LD_PRELOAD", preload)
@@ -93,7 +85,6 @@ object RuntimeEnvironment {
             .distinct()
             .joinToString(File.pathSeparator)
 
-
     fun treeRootFor(ctx: Context): TreeRoot = TreeRoot(
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
@@ -102,17 +93,6 @@ object RuntimeEnvironment {
         prefixBin = PrefixProvisioner.binDir(ctx),
     )
 
-      /**
-       * 库的搜索路径 —— 全局共享的一份，**不给每个程序单独配**。
-       *
-       * · usr/lib                    件的全局软链都在那儿（每件一条）
-       * · 各程序的 opt/<id>/<版本>/lib  程序自带的依赖
-       *
-       * ★ 不含 nativeLibraryDir：实测那目录不可写（属主 system，我们是应用 uid），
-       *   「把系统建在 APK 目录下」这条路走不通 —— 已堵死，别再走。
-       * ★ 更好的做法是链接期给 DT_RUNPATH=\$ORIGIN：那样库跟着文件走，
-       *   连这个环境变量都不必依赖。这里的路径是兜底（给没有 RUNPATH 的件）。
-       */
       fun libSearchPath(ctx: Context): String {
           val dirs = LinkedHashSet<String>()
           dirs.add(LibPath.searchPath(ctx))
@@ -132,17 +112,6 @@ object RuntimeEnvironment {
         }
     }
 
-    /**
-     * 这个 File 本身是不是软链。
-     *
-     * java.io.File 没有这方法（Kotlin 的扩展只覆盖到 canRead/isDirectory 等），
-     * 必须走 lstat —— isFile() 跟随软链，一件共享库建出来的全局软链会被它
-     * 算成「普通文件」，那正是我们要单独认出来的那一类。
-     *
-     * 判据是 POSIX 的 S_IFMT/S_IFLNK：st_mode 的高 4 位是文件类型，
-     * 掩掉后等于 S_IFLNK 就是软链。android.system.OsConstants 只有 S_ISLNK
-     * 这个掩码常量，没有对应的判定函数，所以自己算这一位。
-     */
     private fun isLink(f: File): Boolean = runCatching {
         val mode = android.system.Os.lstat(f.path).st_mode
         (mode and S_IFMT) == S_IFLNK
@@ -153,18 +122,12 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val ready = PrefixProvisioner.provision(ctx)
-        // 该有的全局入口 = 落位里有 bin/ 的那些（扫落位，不问内核预置的清单）
         val expected = PieceScan.scan(ctx)
             .filter { File(it.dir, "bin").isDirectory }
             .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile || isLink(f) }?.map { f -> f.name }.orEmpty() }
             .flatten()
             .toSet()
         val missing = expected - ready.toSet()
-        //
-        // ★ 「缺件」必须对照**包里有什么**，不能只对照「已铺的缺不缺」。
-        //   原算法 expected = 落位里有 bin/ 的东西 —— 什么都没铺时它是空集，
-        //   missing 也空，于是报「件全部就位」。真机实测就是这么误报的：
-        //   usr/lib 与 usr/bin 全空，却说全部就位。
         val landedIds = ready.mapNotNull { PieceScan.landedId(it) }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds
@@ -176,7 +139,6 @@ object RuntimeEnvironment {
                 "  已铺=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
                 "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）"
         )
-
 
         return Snapshot(ready, missing.toList())
     }

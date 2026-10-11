@@ -267,6 +267,11 @@ jobs:
           echo "assets/supply/meta（PrefixProvisioner 扫这里）："
           ls container/app/src/main/assets/supply/meta/ | head -40
 
+      - name: 代码里不许有注释
+        run: |
+          set -euo pipefail
+          bash scripts/verify/check-no-comments.sh
+
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
           set -euo pipefail
