@@ -340,7 +340,7 @@ jobs:
             exit 1
           fi
           echo "[verify] 审这一份：$APK"
-          bash scripts/verify/verify-apk-native.sh "$APK" arm64-v8a
+          bash scripts/verify/verify-apk-native.sh "$APK" arm64-v8a 2>&1 | tee /tmp/verify.log; exit ${PIPESTATUS[0]}
 
       - name: 验签（发布轮要求稳定身份；校验轮只查签名一致性）
         run: |
