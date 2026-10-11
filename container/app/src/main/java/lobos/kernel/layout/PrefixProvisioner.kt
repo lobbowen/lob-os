@@ -24,6 +24,20 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 
     fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
+    fun provision(ctx: Context): List<String> {
+        val ready = mutableListOf<String>()
+        linkHeadersInclude(ctx)?.let { ready += it }
+        val caDst = caBundle(ctx)
+        try {
+            caDst.parentFile?.mkdirs()
+            ctx.assets.open(CA_BUNDLE_ASSET).use { input ->
+                caDst.outputStream().use { out -> input.copyTo(out) }
+            }
+            ready += CA_BUNDLE_NAME
+        } catch (_: Exception) { caDst.delete() }
+        return ready
+    }
+
 
 
 
