@@ -455,7 +455,7 @@ jobs:
           find container/app/build/intermediates/assets -type f 2>/dev/null | sort | head -40 > "$D/assets-merged.txt" || true
           ls -la container/app/src/main/assets/pieces/ >> "$D/assets-tree.txt" 2>/dev/null || true
             APKX=$(ls container/app/build/outputs/apk/*/*.apk 2>/dev/null | head -1)
-            if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; fi
+            if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; zipinfo -l "$APKX" 2>/dev/null | grep "assets/pieces" > "$D/apk-pieces-bytes.txt" || true; fi
           ls -la container/app/src/main/jniLibs/arm64-v8a/ > "$D/jniLibs.txt" 2>/dev/null || true
           ls -la dist/ > "$D/dist.txt" 2>/dev/null || true
 
