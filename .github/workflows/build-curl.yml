@@ -48,22 +48,18 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
-          && gh release download "$TAG" --repo "${{ github.repository }}" \
-             --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
-          && [ -f "dist/$ASSET" ]; then
-            echo "[ok] 固化产物已存在，直接复用：$ASSET（tag=$TAG）"
-            mkdir -p container/app/src/main/jniLibs/arm64-v8a
-            tar xzf "dist/$ASSET" -C container/app/src/main/jniLibs/arm64-v8a
+          # ★ 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
+          #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
+          #   被当成新的继续用，CI 报 success 而包是空的。
+          #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
+          #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET"; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
-
-      # curl 的 configure 要 openssl 与 zlib 的头文件（--with-openssl/--with-zlib
-      # 指向 work/<id>/out）。这两个是它的**编译期**依赖：在这里现编，
-      # 固化的是 curl 自己。
       - name: 先编编译期依赖（zlib · openssl）
         if: steps.reuse.outputs.hit != 'yes'
         run: |

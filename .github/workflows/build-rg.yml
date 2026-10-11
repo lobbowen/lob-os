@@ -56,20 +56,18 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          # 判的是「**那个资产**在不在」，不是「Release 在不在」。
-          # 只判 Release 的话，旧命名的僵尸资产会让这里永远 hit=yes：
-          # 既不重编也不产出新名字的产物，而取件按 cache-key 算的名字去取 —— 取不到。
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
-          && gh release download "$TAG" --repo "${{ github.repository }}" \
-             --pattern "$ASSET" --dir /tmp/probe >/dev/null 2>&1 \
-          && [ -s "/tmp/probe/$ASSET" ]; then
-            echo "[ok] 固化产物已存在，直接复用：$ASSET"
-            echo "[ok] 固化产物已存在（tag=$TAG）"
+          # ★ 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
+          #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
+          #   被当成新的继续用，CI 报 success 而包是空的。
+          #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
+          #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET"; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
+            echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
-
       - name: 编 rg
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-piece-rg.sh
