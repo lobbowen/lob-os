@@ -1,0 +1,92 @@
+name: Build crypto
+
+# 编 libcrypto.so —— 它是 openssl 的一部分，但清单里是独立的一件
+# （component-sources.json 里 crypto.sameAs=openssl），
+# 控制面板按清单取，所以它也得有自己的固化产物。
+#
+# 为什么不是编出来的：openssl 要编 10 分钟以上，crypto 只是它的一个 .so。
+# 这里从 openssl 的固化包里取 —— openssl 那件编一次，这里复用。
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: crypto-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 算本件的固化标识（key / tag / asset）
+        id: uwkey
+        run: |
+          set -euo pipefail
+          bash scripts/toolchain/piece-key.sh crypto
+
+      - name: 取 openssl 的固化包（libcrypto.so 在里面）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          echo "[crypto] 这一件的依赖是 openssl，先取它"
+          OTAG="$(bash scripts/toolchain/cache-key.sh tag openssl)"
+          OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
+          mkdir -p dist
+          if ! bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET" "lib/libssl.so"; then
+            echo "::error title=openssl 还没有可复用的固化包::先构建 openssl："
+            echo "::error::  gh workflow run build-openssl.yml"
+            exit 1
+          fi
+          gh release download "$OTAG" --repo "${{ github.repository }}" \
+            --pattern "$OASSET" --dir dist >/dev/null
+          rm -rf .openssl-pkg && mkdir -p .openssl-pkg
+          tar xzf "dist/$OASSET" -C .openssl-pkg
+          [ -f .openssl-pkg/lib/libcrypto.so ] || {
+            echo "::error title=openssl 包里没有 libcrypto.so::路径不对？"
+            find .openssl-pkg -type f | head -20
+            exit 1
+          }
+
+      - name: 打包 crypto（自描述）
+        run: |
+          set -euo pipefail
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          rm -rf .crypto-out && mkdir -p .crypto-out/lib
+          cp -Pf .openssl-pkg/lib/libcrypto.so .crypto-out/lib/
+          bash scripts/recipes/package-piece-zip.sh crypto .crypto-out 3.6.3 lib/libcrypto.so
+
+      - name: 固化标准件包到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          PKG="$(ls dist/component-crypto-*.tar.gz 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::"; ls -la dist/; exit 1; }
+          cp -f "$PKG" "dist/$ASSET"
+          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
+          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "crypto 固化产物（openssl 的一部分）" --notes "从 base-openssl 的固化包里取 libcrypto.so 重新打包"
+          gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已固化 $ASSET → $TAG"
+
+      - name: 失败现场（Job Summary，不裁剪）
+        if: failure()
+        run: bash scripts/toolchain/collect-piece-diag.sh crypto
+
+      - name: 上传失败现场
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: piece-diag
+          path: |
+            ${{ runner.temp }}/piece-diag-*.md
+          if-no-files-found: ignore

@@ -43,11 +43,12 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   || die "openssl 没产出版本头" "opensslv.h 应该在（找不到说明 Configure 或 make 失败）"
 echo "[openssl] 版本头在位"
 
-# libssl.so 与 libcrypto.so 是两件 —— 分别落位、分别建全局软链
-for pair in "openssl:libssl.so" "crypto:libcrypto.so"; do
-  id="${pair%%:*}"; so="${pair##*:}"
-  SO="$(ls "$OUT_DIR"/lib/$so* 2>/dev/null | head -1)"
-  [ -n "$SO" ] || die "$id 没产出共享库" "$OUT_DIR/lib 下没有 $so*"
-  emit_piece "$id" "$OUT_DIR" "lib/$so" 1000
-done
+# 只打 openssl 这一件。crypto 虽然是 openssl 的一部分
+#（component-sources.json 里 crypto.sameAs=openssl），但它在清单里是独立的
+# 一件，有自己的 tag 与 asset —— 打包上传必须一件对一个 tag，
+# 否则两者会互相「复用」对方的包（base-openssl 上装的是 libcrypto.so）。
+# crypto 由 build-crypto.yml 从本件的固化包里取。
+SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
+[ -n "$SSL" ] || die "openssl 没产出 libssl.so" "$OUT_DIR/lib 下没有 libssl.so*"
+emit_piece openssl "$OUT_DIR" lib/libssl.so 1000
 echo "[ok] openssl 与 crypto 是共享库（不是静态链进别的二进制）"

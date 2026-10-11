@@ -1,4 +1,4 @@
-name: Build openssl + crypto
+name: Build openssl
 
 # 编 openssl 3.6.3 —— 连带产出 libcrypto.so（crypto 是 openssl 的一部分，
 # 见 component-sources.json 里 crypto.sameAs=openssl）。两件一起固化。
