@@ -40,7 +40,7 @@ mkdir -p "$(dirname "$FILE")"
   echo "| 期望 tag | $(bash scripts/toolchain/cache-key.sh tag "$ID" 2>&1 | head -1) |"
   echo ""
 
-  echo "### work/\$ID 下有什么"
+  echo "### work/$ID 下有什么"
   echo ""
   echo '```'
   ls -la "work/$ID" 2>/dev/null | head -25 || echo "（目录不存在 —— 脚本可能在 source piece-env.sh 那步就挂了）"
