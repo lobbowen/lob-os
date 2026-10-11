@@ -12,6 +12,7 @@ for a in "$@"; do
     tag) KIND="tag" ;;
     key) KIND="key" ;;
     asset)      KIND="asset" ;;
+    deps-list)  KIND="deps-list" ;;
     deps)       KIND="deps" ;;
     *)
       if [ -n "$TOOL" ]; then
@@ -24,7 +25,7 @@ for a in "$@"; do
 done
 [ -n "$TOOL" ] || {
   echo "用法: $0 <子命令> <件名>" >&2
-  echo "  子命令: key · tag · deps · asset" >&2
+  echo "  子命令: key · tag · deps · deps-list · asset" >&2
   exit 2
 }
 TABLE="$ROOT_DIR/scripts/component-sources.json"
@@ -137,6 +138,10 @@ BUCKET="$(bucket_for "$TOOL")"
 case "$KIND" in
   tag)
     echo "$BUCKET-$TOOL"
+    ;;
+  deps-list)
+    # 依赖的**件名**（不是缓存键）—— 打件包时要写进 component-meta.json 的 requires
+    deps_for "$TOOL"
     ;;
   asset)
     SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
