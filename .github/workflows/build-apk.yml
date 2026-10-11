@@ -449,6 +449,7 @@ jobs:
 
           # 取件与固化相关的现场
           cp -f /tmp/gradle-build.log "$D/" 2>/dev/null || true
+          cp -f /tmp/verify.log "$D/" 2>/dev/null || true
           ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true
           ls -la container/app/src/main/jniLibs/arm64-v8a/ > "$D/jniLibs.txt" 2>/dev/null || true
           ls -la dist/ > "$D/dist.txt" 2>/dev/null || true
