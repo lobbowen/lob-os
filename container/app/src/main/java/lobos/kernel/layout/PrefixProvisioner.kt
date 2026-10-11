@@ -150,6 +150,7 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         // 铺位诊断 —— 真机上「件铺开没有」只能从这里看到。
         // 每一步都记，否则真机上只能看到「什么都没铺」，无从判断卡在哪一环。
         KernelHooks.report(ctx, "provision", null, "nativeDir=${nativeDir.absolutePath} exists=${nativeDir.isDirectory}")
+        KernelHooks.report(ctx, "provision", null, "metaCount=${metas.size} names=${metas.joinToString(",") { it.optString("id", "") }}")
         for (m in metas) {
             val id = m.optString("id", "")
             val version = m.optString("version", "")
