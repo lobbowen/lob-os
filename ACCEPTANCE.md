@@ -67,6 +67,31 @@ PLP120（更早） | Android 17 / SDK 37 | 未记录 | 35271 | 装过 `lobos.app
 本轮用 1000 步长扫 37000-46000 完全没扫到 46888，差点判成
 「无线调试关了」。**要逐个扫，不要稀疏采样。**
 
+### 用 debug 版验收，不要往程序里加诊断工具
+
+验收一律用 **debug 版 + `run-as`**：
+
+```
+run-as lobos.os cat files/var/log/diagnostics.txt
+run-as lobos.os ls -la files/usr/lib/
+run-as lobos.os cat files/var/log/<任何文件>
+```
+
+**不要为了「让外部看得见」往程序里加镜像/导出类的诊断代码。**
+
+曾经加过一个 `Mirror`（把诊断镜像到应用外部目录，理由是「shell 读不到私有目录」）——
+那是在还没用 debug 版验收时的权宜之计。有了 `run-as` 之后它**零价值**，
+而且是真工程债：
+
+| 代价 | 表现 |
+|---|---|
+每次写诊断要多一次 IO | 拖慢主流程 |
+写入语义容易错 | 曾用 `outputStream()`（truncate）冒充追加，把快照覆盖到只剩最后一行 |
+多一个要维护的通道 | 坏了不报错，只是「看起来数据不全」—— 比没有更坏 |
+代码里混入「为了被看到」的东西 | 偏离「程序自己知道自己怎么了」 |
+
+**验收工具应该在程序外面（adb + run-as），不该长在程序里。**
+
 ### 用 serve，不要用一次性 shell
 
 adb-client 本来就有常驻连接服务（`node cli.js serve`，JSON-RPC over stdio），

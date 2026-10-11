@@ -116,12 +116,6 @@ object RuntimeEnvironment {
       fun libSearchPath(ctx: Context): String {
           val dirs = LinkedHashSet<String>()
           dirs.add(LibPath.searchPath(ctx))
-          runCatching {
-              ProgramRegistry.listIds(ctx).forEach { id ->
-                  val root = ProgramManager.stateDirOf(ctx, id)
-                  dirs.add(File(root, "lib").absolutePath)
-              }
-          }
           return dirs.filter { File(it).isDirectory }.joinToString(":")
       }
 
@@ -166,26 +160,22 @@ object RuntimeEnvironment {
             .flatten()
             .toSet()
         val missing = expected - ready.toSet()
+        //
+        // ★ 「缺件」必须对照**包里有什么**，不能只对照「已铺的缺不缺」。
+        //   原算法 expected = 落位里有 bin/ 的东西 —— 什么都没铺时它是空集，
+        //   missing 也空，于是报「件全部就位」。真机实测就是这么误报的：
+        //   usr/lib 与 usr/bin 全空，却说全部就位。
+        val landedIds = ready.mapNotNull { PieceScan.landedId(it) }.toSet()
+        val packagedIds = PieceScan.packagedIds(ctx)
+        val absent = packagedIds - landedIds
         RuntimeDiagnostics.append(
-            ctx, "prefix", missing.isEmpty(),
-            if (missing.isEmpty()) "\$PREFIX 件全部就位" else "\$PREFIX 缺件：${missing.joinToString()}",
-            PrefixProvisioner.root(ctx).absolutePath + " 已有=" + ready.joinToString()
+            ctx, "prefix", absent.isEmpty(),
+            if (absent.isEmpty()) "\$PREFIX 件全部就位（" + packagedIds.size + " 件）"
+            else "\$PREFIX 缺件：" + absent.joinToString(","),
+            "落位根=" + PrefixProvisioner.root(ctx).absolutePath +
+                "  已铺=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
+                "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）"
         )
-
-        // 验收快照 —— 真机上「件铺开没有」只能从这里看到。
-        // 私有目录 shell 读不到，所以镜像到应用外部目录。
-        runCatching {
-            lobos.services.log.Mirror.snapshot(ctx, listOf(
-                "prefixRoot" to PrefixProvisioner.root(ctx).absolutePath,
-                "piecesProvisioned" to ready.size.toString(),
-                "piecesExpected" to PieceScan.scan(ctx).size.toString(),
-                "missing" to if (missing.isEmpty()) "（无）" else missing.joinToString(","),
-                "binEntries" to PieceScan.scan(ctx)
-                    .filter { File(it.dir, "bin").isDirectory }
-                    .flatMap { File(it.dir, "bin").listFiles()?.toList() ?: emptyList() }
-                    .map { it.name }.sorted().joinToString(","),
-            ))
-        }
 
 
         return Snapshot(ready, missing.toList())

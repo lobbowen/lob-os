@@ -298,6 +298,37 @@ object PieceScan {
         return out
     }
     /** 某个 id 落位在哪 —— 读注册表（dpkg -s） */
+    /**
+     * 从 provision 的返回值里取出件 id。
+     *
+     * provision 返回的是落位根下的相对路径（形如 usr/lib/<id>/<版本>），
+     * 取第二段就是 id。取不出返回 null —— 不猜。
+     */
+    fun landedId(path: String): String? {
+        val p = path.replace(Regex("/+"), "/")
+        val m = Regex("^usr/lib/([^/]+)/").find(p) ?: return null
+        return m.groupValues[1].ifBlank { null }
+    }
+
+    /**
+     * APK 里带了说明（assets/supply/meta）的那些件的 id。
+     *
+     * 这是「包里应该有什么」的权威来源 —— 落位诊断要对照它，
+     * 否则什么都没铺时两边都是空集，会误报成「件全部就位」。
+     */
+    fun packagedIds(ctx: Context): Set<String> {
+        val dir = "supply/meta"
+        val names = runCatching { ctx.assets.list(dir)?.toList() ?: emptyList() }.getOrDefault(emptyList())
+        val out = mutableSetOf<String>()
+        names.filter { it.endsWith(".meta.json") }.forEach { n ->
+            runCatching {
+                val m = org.json.JSONObject(ctx.assets.open("$dir/$n").use { it.readBytes().toString(Charsets.UTF_8) })
+                m.optString("id", "").takeIf { it.isNotBlank() }?.let { out += it }
+            }
+        }
+        return out
+    }
+
     fun pieceDir(ctx: Context, id: String): File? {
         val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
         if (e.stateDir.isBlank()) return null
