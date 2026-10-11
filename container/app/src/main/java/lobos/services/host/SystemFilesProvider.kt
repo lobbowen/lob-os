@@ -128,7 +128,8 @@ class SystemFilesProvider : ContentProvider() {
     }
 
     override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor? =
-        openFile(uri, mode)?.let { AssetFileDescriptor(it, 0, MIME_GUESS) }
+        // 不用 AssetFileDescriptor(FileDescriptor, long, String) —— 那个构造器已移除。
+        openFile(uri, mode)?.let { AssetFileDescriptor(it, 0L, MIME_GUESS) }
 
     override fun getType(uri: Uri): String? {
         val (kind, _) = split(uri) ?: return null
