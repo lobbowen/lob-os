@@ -46,19 +46,24 @@ object PreinstalledPieces {
     private fun installOne(ctx: Context, id: String): Boolean {
         val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.zip")
 
+        val unpacked = File(ctx.cacheDir, "preinst/u/$id").also { it.deleteRecursively(); it.mkdirs() }
+        runCatching { lobos.services.supply.SupplyProvisioner.unzipFromFile(pkg, unpacked) }
+            .onFailure { return fail(ctx, id, "解包失败: " + it.message) }
+
         val meta = runCatching {
-            val f = File(pkg, "component-meta.json")
-            if (!f.isFile) return fail(ctx, id, "包里没有 component-meta.json")
+            val f = File(unpacked, "component-meta.json")
+            if (!f.isFile) return fail(ctx, id, "包里没有 component-meta.json（解包后）")
             org.json.JSONObject(f.readText())
         }.getOrNull() ?: return fail(ctx, id, "component-meta.json 解析失败")
 
         val version = meta.optString("version", "").ifBlank { return fail(ctx, id, "说明里没有 version") }
         val entry = meta.optString("entry", "").ifBlank { return fail(ctx, id, "说明里没有 entry") }
-        if (!File(pkg, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
+        if (!File(unpacked, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
 
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
         if (verDir.isDirectory && File(verDir, entry).isFile) {
             runCatching { pkg.deleteRecursively() }
+        runCatching { unpacked.deleteRecursively() }
             register(ctx, id, version, verDir.absolutePath, entry, meta)
             return true
         }
@@ -75,6 +80,7 @@ object PreinstalledPieces {
             ),
         )
         runCatching { pkg.deleteRecursively() }
+        runCatching { unpacked.deleteRecursively() }
         if (!r.ok) {
             RuntimeDiagnostics.append(
                 ctx, "prefix", false, "预装件 $id 装不上",
