@@ -261,11 +261,10 @@ jobs:
       - name: 核对取到的件
         run: |
           set -euo pipefail
-          echo "jniLibs/arm64-v8a："
-          ls -la container/app/src/main/jniLibs/arm64-v8a/
-          echo ""
-          echo "assets/supply/meta（PrefixProvisioner 扫这里）："
-          ls container/app/src/main/assets/supply/meta/ | head -40
+          N=$(ls container/app/src/main/assets/pieces/*.tar.gz 2>/dev/null | wc -l)
+          [ "$N" = "8" ] || { echo "::error title=取件数不对::要 8 个，实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
+          echo "件包（assets/pieces/，启动时装配器解包安装）："
+          ls -la container/app/src/main/assets/pieces/
 
       - name: 代码里不许有注释
         run: |
