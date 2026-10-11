@@ -13,6 +13,12 @@ android {
     val appVersionCode = (shellVer["versionCode"] as Number).toInt()
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
+    packaging {
+        resources {
+            noCompress += listOf("gz")
+        }
+    }
+
     defaultConfig {
         val resolvedAppId = System.getenv("LOBOS_APP_ID") ?: "lobos.os"
         require(resolvedAppId != "lobos.app") {
