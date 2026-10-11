@@ -48,8 +48,22 @@ esac
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-for d in bin lib; do
-  [ -d "$OUT/$d" ] && cp -a "$OUT/$d" "$STAGE/"
+# 只取 entry 指的那个文件，外加与它同名的版本链 —— **不整个目录搬**。
+#
+# openssl 的构建产物目录里还有 libcrypto.a、cmake/、engines-3/、ossl-modules/
+# 这些不是这个件的运行时所需（openssl 的包实测 7.6MB，而它只该有
+# libssl.so 与 libcrypto.so 两个文件）。整个搬进来等于把构建残留也装进系统。
+#
+# 版本链指共享库的 soname 一族（libz.so → libz.so.1 → libz.so.1.3.2）：
+# 它们是同一份字节的三个名字，而 linker 按 DT_NEEDED 找的是带版本的那一层。
+mkdir -p "$STAGE/$(dirname "$ENTRY")"
+cp -Pf "$OUT/$ENTRY" "$STAGE/$ENTRY" 2>/dev/null || cp -f "$OUT/$ENTRY" "$STAGE/$ENTRY"
+eb="$(basename "$ENTRY")"
+ed="$(dirname "$ENTRY")"
+for extra in "$OUT/$ed/$eb".*; do
+  [ -f "$extra" ] || continue
+  xb="$(basename "$extra")"
+  case "$xb" in *.so|*.so.*) cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb" ;; esac
 done
 
 node "$ROOT/scripts/recipes/gen-component-meta.js" \
