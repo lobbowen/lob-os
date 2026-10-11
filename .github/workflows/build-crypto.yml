@@ -47,7 +47,7 @@ jobs:
           gh release download "$OTAG" --repo "${{ github.repository }}" \
             --pattern "$OASSET" --dir dist >/dev/null
           rm -rf .openssl-pkg && mkdir -p .openssl-pkg
-          tar xzf "dist/$OASSET" -C .openssl-pkg
+          unzip -qq -o "dist/$OASSET" -d .openssl-pkg
           [ -f .openssl-pkg/lib/libcrypto.so ] || {
             echo "::error title=openssl 包里没有 libcrypto.so::路径不对？"
             find .openssl-pkg -type f | head -20
