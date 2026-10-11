@@ -34,14 +34,14 @@ object LdConfig {
                 val soname = runCatching { ElfFacts.read(so)?.soname }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: so.name
                 val dst = File(usrLib, soname)
-                if (linkTo(so, dst, soname)) linked++
+                if (linkTo(so, dst)) linked++
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
                 if (!exe.isFile) return@forEach
                 if (!lobos.kernel.elf.ExecBits.isRunnable(exe)) return@forEach
                 val dst = File(usrBin, exe.name)
-                if (linkTo(exe, dst, exe.name)) linked++
+                if (linkTo(exe, dst)) linked++
             }
         }
 
@@ -60,15 +60,15 @@ object LdConfig {
         return linked
     }
 
-    private fun linkTo(target: File, link: File, name: String): Boolean {
-        return runCatching {
-            if (link.isSymbolicLink) {
-                val cur = runCatching { File(link.parentFile, runCatching { java.nio.file.Files.readSymbolicLink(link.toPath()).toString() }.getOrDefault("")).canonicalFile }.getOrNull()
-                if (cur == target.canonicalFile) return true
+    private fun linkTo(target: File, link: File): Boolean = runCatching {
+        if (java.nio.file.Files.isSymbolicLink(link.toPath())) {
+            val cur = File(link.parentFile, java.nio.file.Files.readSymbolicLink(link.toPath()).toString())
+            if (runCatching { cur.canonicalFile }.getOrNull() == runCatching { target.canonicalFile }.getOrNull()) {
+                return@runCatching true
             }
-            if (link.exists() && !link.delete()) return false
-            java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
-            true
-        }.getOrDefault(false)
-    }
+        }
+        if (link.exists() && !link.delete()) return@runCatching false
+        java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
+        true
+    }.getOrDefault(false)
 }
