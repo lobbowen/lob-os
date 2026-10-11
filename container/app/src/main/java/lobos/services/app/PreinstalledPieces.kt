@@ -73,7 +73,7 @@ object PreinstalledPieces {
         if (!r.ok) {
             RuntimeDiagnostics.append(
                 ctx, "prefix", false, "预装件 $id 装不上",
-                r.error ?: "（无详情）",
+                (r.reason ?: "") + " — " + r.detail,
             )
             return false
         }
@@ -101,7 +101,7 @@ object PreinstalledPieces {
         runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 ctx,
-                (prev ?: lobos.services.reg.ProgramIndex.empty(id, lobos.services.reg.ProgramIndex.Level.PIECE)).copy(
+                (prev ?: lobos.services.reg.ProgramIndex.empty(id, lobos.services.reg.Level.PIECE)).copy(
                     id = id,
                     version = version,
                     stateDir = stateDir,
