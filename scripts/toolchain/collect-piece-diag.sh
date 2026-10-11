@@ -12,7 +12,10 @@ cd "$(cd "$(dirname "$0")/../.." && pwd)"
 
 ID="${1:?需要件名}"
 OUT="${GITHUB_STEP_SUMMARY:-}"
-[ -n "$OUT" ] || exit 0
+# 总是先落一个文件：Summary 在 Actions API 上不好取回，
+# 而 artifact 我这边能直接下载 —— 两条路都得有。
+FILE="${RUNNER_TEMP:-/tmp}/piece-diag-$ID.md"
+mkdir -p "$(dirname "$FILE")"
 
 {
   echo ""
@@ -72,6 +75,6 @@ OUT="${GITHUB_STEP_SUMMARY:-}"
     tar -tzf "$p" 2>/dev/null | head -15
   done
   echo '```'
-} >> "$OUT" 2>/dev/null || true
+} | tee "$FILE" >> "$OUT" 2>/dev/null || true
 
 echo "[diag] 现场已写入 Job Summary（$ID）"

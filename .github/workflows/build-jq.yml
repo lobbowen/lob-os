@@ -60,6 +60,16 @@ jobs:
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
+      - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: piece-diag
+          path: |
+            ${{ runner.temp }}/piece-diag-*.md
+            work/*/*.log
+          if-no-files-found: ignore
+
       - name: 失败现场（Job Summary，不裁剪）
         if: failure()
         run: bash scripts/toolchain/collect-piece-diag.sh jq
