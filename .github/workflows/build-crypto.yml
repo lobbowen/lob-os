@@ -44,8 +44,7 @@ jobs:
             echo "::error::  gh workflow run build-openssl.yml"
             exit 1
           fi
-          gh release download "$OTAG" --repo "${{ github.repository }}" \
-            --pattern "$OASSET" --dir dist >/dev/null
+          bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
           rm -rf .openssl-pkg && mkdir -p .openssl-pkg
           unzip -qq -o "dist/$OASSET" -d .openssl-pkg
           [ -f .openssl-pkg/lib/libcrypto.so ] || {

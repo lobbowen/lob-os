@@ -26,8 +26,11 @@ else
   TAG="${1:?需要 tag}"; ASSET="${2:?需要资产名}"; WANT_ENTRY="${3:-}"; EXTRA_FILES="${4:-}"
 fi
 
+FMT_SH="$(cd "$(dirname "$0")" && pwd)/fmt.sh"
+[ -f "$FMT_SH" ] && . "$FMT_SH" || true
+
 read_meta_entry() {
-  case "${1##*.}" in
+  case "$(fmt_of "$1")" in
     zip) unzip -p "$1" "component-meta.json" 2>/dev/null ;;
     *)   tar -xzf "$1" -O ./component-meta.json 2>/dev/null ;;
   esac
@@ -37,9 +40,9 @@ verify_local() {
   local f="$1" listing vl entry want
   [ -s "$f" ] || return 1
 
-  case "$f" in
-    *.tar.gz|*.tgz) listing="$(tar -tzf "$f" 2>/dev/null)" ;;
-    *.zip)          listing="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print $4}')" ;;
+  case "$(fmt_of "$f")" in
+    gzip|tar.gz)  listing="$(tar -tzf "$f" 2>/dev/null)" ;;
+    zip)          listing="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print $4}')" ;;
     *)              listing="$(grep -ao 'component-meta\.json' "$f" 2>/dev/null)" ;;
   esac
   [ -n "$listing" ] || return 1
@@ -56,7 +59,7 @@ verify_local() {
   ' 2>/dev/null)"
   [ "$entry" = "$WANT_ENTRY" ] || return 1
 
-  if [ "${f##*.}" = "zip" ]; then
+  if [ "$(fmt_of "$f")" = "zip" ]; then
     vl="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print "- " $4}' | sed 's#^./##')"
   else
     vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t" "p}')"
@@ -82,8 +85,6 @@ if [ -n "$PROBE_DIR" ]; then
   verify_local "$PROBE_DIR/$ASSET"
   exit $?
 fi
-
-command -v gh >/dev/null 2>&1 || { echo "::error title=缺 gh::判重用资产需要 gh" >&2; exit 2; }
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
