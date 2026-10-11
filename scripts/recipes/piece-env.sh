@@ -50,7 +50,6 @@ if [ -z "${CC:-}" ]; then
   GITHUB_ENV="$_GHE" bash "$ROOT_DIR/scripts/toolchain/locate-ndk.sh" \
     || die "定位 NDK 失败" "locate-ndk.sh 没跑通（见上面的输出）"
   # 只取我们需要的几个键
-  local _k _v
   while IFS="=" read -r _k _v; do
     case "$_k" in
       CC|CXX|NDK|LLVM_AR|LLVM_RANLIB|LLVM_STRIP|LLVM_READELF|TRIPLE)
