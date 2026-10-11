@@ -65,6 +65,10 @@ jobs:
         run: |
           bash scripts/recipes/build-piece-zlib.sh
           bash scripts/recipes/build-piece-openssl.sh
+      - name: 失败现场（Job Summary，不裁剪）
+        if: failure()
+        run: bash scripts/toolchain/collect-piece-diag.sh curl
+
       - name: 编 curl
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-piece-curl.sh

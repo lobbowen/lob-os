@@ -60,6 +60,10 @@ jobs:
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
             echo "hit=no" >> "$GITHUB_OUTPUT"
           fi
+      - name: 失败现场（Job Summary，不裁剪）
+        if: failure()
+        run: bash scripts/toolchain/collect-piece-diag.sh zlib
+
       - name: 编 zlib
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-piece-zlib.sh
