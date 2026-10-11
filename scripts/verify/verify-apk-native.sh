@@ -176,7 +176,7 @@ if [ "$SRC_N" != "$APK_N" ]; then
 fi
 
 echo
-echo "--- 预装件包（assets/pieces/<id>.tar.gz）· 装配器只读包 ---"
+echo "--- 预装件包（assets/pieces/<id>.pkg）· 装配器只读包 ---"
 # 件随 APK 打包为标准包，启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装上
 # （与 OTA 装件同一条路）。装配器读包里的 component-meta.json（照抄 .deb 的 control），
 # 所以「包里有没有、说明对不对、那个文件在不在」三件事都要在这里验 ——
@@ -185,9 +185,9 @@ PIECE_BAD=0
 PIECE_N=0
 W="$(mktemp -d)"
 trap 'rm -rf "$W"' EXIT
-for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.tar\.gz$'); do
+for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.pkg$'); do
   name="$(basename "$p")"
-  id="${name%%.tar.gz}"
+  id="${name%%.pkg}"
   PIECE_N=$((PIECE_N + 1))
 
   if ! has_exact "$p"; then
@@ -199,7 +199,7 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.tar\.gz$'); do
   unzip -qq -o "$APK" "$p" -d "$W" 2>/dev/null
   pkg="$W/${p#assets/}"
   [ -f "$pkg" ] || pkg="$W/x/$(basename "$p")"
-  if ! tar xzf "$pkg" -C "$W/x" 2>/dev/null; then
+  if ! tar xf "$pkg" -C "$W/x" 2>/dev/null; then
     echo "[error] $id 的包解不开"
     PIECE_BAD=$((PIECE_BAD + 1)); continue
   fi

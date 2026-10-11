@@ -22,7 +22,7 @@ object PreinstalledPieces {
         var failed = 0
 
         for (n in names) {
-            if (!n.endsWith(".tar.gz") && !n.endsWith(".tgz")) continue
+        if (!n.endsWith(".pkg")) continue
             val id = n.substringBeforeLast('.')
             val r = installOne(ctx, id)
             if (r) done += id else failed++
@@ -81,9 +81,9 @@ object PreinstalledPieces {
     }
 
     private fun extract(ctx: Context, id: String): File? = runCatching {
-        val dst = File(ctx.cacheDir, "preinst/$id.tar.gz")
+        val dst = File(ctx.cacheDir, "preinst/$id.pkg")
         dst.parentFile?.mkdirs()
-        ctx.assets.open("$ASSET_DIR/$id.tar.gz").use { ins ->
+        ctx.assets.open("$ASSET_DIR/$id.pkg").use { ins ->
             dst.outputStream().use { ins.copyTo(it) }
         }
         dst.takeIf { it.length() > 0 }
