@@ -27,8 +27,10 @@ else
 fi
 
 read_meta_entry() {
-  tar -xzf "$1" -O ./component-meta.json 2>/dev/null \
-    || unzip -p "$1" '*/component-meta.json' 2>/dev/null | head -1
+  case "${1##*.}" in
+    zip) unzip -p "$1" "component-meta.json" 2>/dev/null ;;
+    *)   tar -xzf "$1" -O ./component-meta.json 2>/dev/null ;;
+  esac
 }
 
 verify_local() {
@@ -37,7 +39,7 @@ verify_local() {
 
   case "$f" in
     *.tar.gz|*.tgz) listing="$(tar -tzf "$f" 2>/dev/null)" ;;
-    *.zip)          listing="$(unzip -Z1 "$f" 2>/dev/null)" ;;
+    *.zip)          listing="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print $4}')" ;;
     *)              listing="$(grep -ao 'component-meta\.json' "$f" 2>/dev/null)" ;;
   esac
   [ -n "$listing" ] || return 1
@@ -54,7 +56,11 @@ verify_local() {
   ' 2>/dev/null)"
   [ "$entry" = "$WANT_ENTRY" ] || return 1
 
-  vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t" "p}')"
+  if [ "${f##*.}" = "zip" ]; then
+    vl="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print "- " $4}' | sed 's#^./##')"
+  else
+    vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t" "p}')"
+  fi
 
   if [ -n "$vl" ]; then
     for want in $WANT_ENTRY $EXTRA_FILES; do
