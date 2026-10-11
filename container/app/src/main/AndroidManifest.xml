@@ -124,5 +124,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
+    
+        <!-- 私有目录的只读出口 —— 见 SystemFilesProvider 的类注释。
+             exported 是为了让用户与任意应用能取系统数据（content://lobos.os.files/…）。
+             只读：files/ 下有系统自己的状态，写权限放开等于让外部改系统。 -->
+        <provider
+            android:name=".services.host.SystemFilesProvider"
+            android:authorities="lobos.os.files"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+</application>
 </manifest>
