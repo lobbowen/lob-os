@@ -13,10 +13,8 @@ android {
     val appVersionCode = (shellVer["versionCode"] as Number).toInt()
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
-    packaging {
-        resources {
-            noCompress += listOf("gz")
-        }
+    androidResources {
+        noCompress += listOf("gz", "tar", "tar.gz")
     }
 
     defaultConfig {
