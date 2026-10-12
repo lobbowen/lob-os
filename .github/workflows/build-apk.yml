@@ -258,6 +258,17 @@ jobs:
           bash scripts/toolchain/locate-ndk.sh
           bash scripts/toolchain/build-kernel-compat.sh
 
+      - name: 编 namespace 探针（临时验证 linker namespace）
+        env:
+          BUILD_NS_PROBE: "1"
+        run: |
+          set -uo pipefail
+          bash scripts/toolchain/locate-ndk.sh
+          BUILD_NS_PROBE=1 bash scripts/toolchain/build-kernel-compat.sh 2>&1 | tail -6
+          P=work/kernel-compat/nsprobe
+          [ -x "$P" ] || { echo "::warning title=探针没编出来::"; exit 0; }
+          cp -f "$P" container/app/src/main/assets/pieces/nsprobe.bin
+          echo "[ok] 探针已放进 assets/pieces/nsprobe.bin"
       - name: 核对取到的件
         run: |
           set -euo pipefail
