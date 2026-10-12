@@ -350,8 +350,9 @@ jobs:
             echo "::error title=没有 APK 可验::构建步应当已产出 APK"
             exit 1
           fi
+          CERT_SHA="$(jq -r '.shell.signingKey.certificateSha256 // empty' version.json)"
           CERT_ARG=""
-          if [ -s keys/release.cert ]; then CERT_ARG="--cert keys/release.cert"; fi
+          [ -n "$CERT_SHA" ] && CERT_ARG="--cert-sha $CERT_SHA"
           if [ "${RELEASE_ROUND}" = "true" ]; then
             bash scripts/verify/verify-apk-signing.sh "$APK" $CERT_ARG --require-stable
           else

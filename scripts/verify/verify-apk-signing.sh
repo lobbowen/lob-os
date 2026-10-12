@@ -5,10 +5,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APK="${1:-}"
 shift || true
 EXPECT_CERT=""
+EXPECT_CERT_SHA=""
 REQUIRE_STABLE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --cert) EXPECT_CERT="${2:-}"; shift 2 ;;
+    --cert-sha) EXPECT_CERT_SHA="${2:-}"; shift 2 ;;
     --require-stable) REQUIRE_STABLE=1; shift ;;
     *) echo "[error] 未知参数 '$1'"; exit 2 ;;
   esac
