@@ -367,28 +367,6 @@ jobs:
           path: container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk
           if-no-files-found: warn
           retention-days: 30
-      - name: CI 产物也发 Release（设备从国内镜像下）
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
-          APK_VARIANT: ${{ steps.gradlebuild.outputs.variant }}
-        run: |
-          set -uo pipefail
-          command -v gh >/dev/null 2>&1 || { echo "::warning::无 gh，跳过"; exit 0; }
-          APK="$(ls container/app/build/outputs/apk/"$APK_VARIANT"/*.apk 2>/dev/null | head -1)"
-          echo "[rel] APK=$APK  VARIANT=$APK_VARIANT"
-          if [ -z "$APK" ]; then echo "::warning title=没有 APK::产物不在预期位置"; exit 0; fi
-          if [ "$APK_VARIANT" = "debug" ]; then
-            TAG="os-debug-${GITHUB_SHA:0:7}"
-          else
-            TAG="${GITHUB_REF_NAME}"
-          fi
-          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
-            || gh release create "$TAG" --repo "${{ github.repository }}" --title "$TAG" --notes "CI 产物"
-          gh release upload "$TAG" "$APK" --repo "${{ github.repository }}" --clobber \
-            || echo "::warning title=上传失败::设备可改从 artifact 取"
-          echo "[ok] 已发到 $TAG"
-
 
       # 校验轮**不发 Release**。
       #
