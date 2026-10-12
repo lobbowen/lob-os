@@ -1,5 +1,5 @@
-#include <android/log.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,32 +45,32 @@ static void lobos_init_namespace(void) {
 
     read_prefix();
     if (g_prefix_lib[0] == '\0') {
-        __android_log_print(ANDROID_LOG_WARN, "lobosns",
+        fprintf(stderr,
                             "LOBOS_PREFIX 未设，跳过 namespace 注册");
         return;
     }
 
     void *libdl = dlopen("libdl.so", RTLD_NOW);
     if (libdl == NULL) {
-        __android_log_print(ANDROID_LOG_WARN, "lobosns", "取不到 libdl: %s", dlerror());
+        fprintf(stderr, "取不到 libdl: %s", dlerror());
         return;
     }
 
     typedef void *(*init_ns_fn)(const char *, size_t, const char *);
     init_ns_fn init_ns = (init_ns_fn)dlsym(libdl, "android_init_anonymous_namespace");
     if (init_ns == NULL) {
-        __android_log_print(ANDROID_LOG_WARN, "lobosns",
+        fprintf(stderr,
                             "链接器没有 android_init_anonymous_namespace（需 API 29+）");
         return;
     }
 
     void *ns = init_ns(g_prefix_lib, strlen(g_prefix_lib), g_prefix_lib);
     if (ns == NULL) {
-        __android_log_print(ANDROID_LOG_WARN, "lobosns",
+        fprintf(stderr,
                             "namespace 注册失败: %s/%s", g_prefix_lib, dlerror());
         return;
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "lobosns",
+    fprintf(stderr,
                         "namespace 已就绪: %s", g_prefix_lib);
 }
