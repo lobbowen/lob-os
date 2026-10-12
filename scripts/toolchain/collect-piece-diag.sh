@@ -56,7 +56,7 @@ mkdir -p "$(dirname "$FILE")"
 
   echo "### 编译日志末尾"
   echo ""
-  for lg in work/"$ID"/*.log; do
+  for lg in "$ROOT/work/kernel-compat/"cc-*.log work/"$ID"/*.log; do
     [ -f "$lg" ] || continue
     echo "**$lg**"
     echo ""

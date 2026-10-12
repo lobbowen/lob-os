@@ -1,4 +1,3 @@
-#include <android/dlext_namespaces.h>
 #include <android/log.h>
 #include <dlfcn.h>
 #include <limits.h>
