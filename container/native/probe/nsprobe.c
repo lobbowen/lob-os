@@ -41,17 +41,12 @@ int main(int argc, char **argv) {
         if (p && !anon) anon = p;
     }
 
-    typedef void *(*anon_fn)(const char *, size_t, const char *);
-    void *ns = NULL;
+    typedef void *(*anon_fn)(const char *, const char *, const char *);
     if (anon) {
-        ns = ((anon_fn)anon)(path, strlen(path), path);
-        printf("PROBE anon_ns=%p\n", ns);
-        fflush(stdout);
+        printf("PROBE calling with 3-arg form (may abort)...\n"); fflush(stdout);
+        void *ns = ((anon_fn)anon)(path, path, path);
+        printf("PROBE anon_ns=%p\n", ns); fflush(stdout);
     }
-
-    snprintf(lib, sizeof(lib), "%s/libz.so.1", path);
-    snprintf(so, sizeof(so), "%s/libz.so.1", path);
-
     printf("PROBE exec self with ns...\n"); fflush(stdout);
     pid_t pid = fork();
     if (pid == 0) {
