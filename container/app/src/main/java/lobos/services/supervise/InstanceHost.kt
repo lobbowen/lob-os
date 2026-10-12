@@ -396,6 +396,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
+                    ctx = host,
                     root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this),
                     nodeBin = requireNotNull(lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)) {
                         "node 运行时未安装 —— 程序要用它起（" +

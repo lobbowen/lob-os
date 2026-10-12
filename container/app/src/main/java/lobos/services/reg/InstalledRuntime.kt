@@ -29,11 +29,10 @@ object InstalledRuntime {
         val out = runCatching {
             val pb = ProcessBuilder(bin.absolutePath, *args.toTypedArray())
                 .redirectErrorStream(true)
-            val prior = pb.environment()["LD_LIBRARY_PATH"].orEmpty()
-            pb.environment()["LD_LIBRARY_PATH"] =
-                listOf(prior, lobos.kernel.mm.LibPath.searchPath(ctx))
-                    .filter { it.isNotBlank() }
-                    .joinToString(File.pathSeparator)
+            val root = RuntimeEnvironment.treeRootFor(ctx)
+            RuntimeEnvironment.treeRootEnv(ctx, root, null).forEach { (k, v) ->
+                pb.environment()[k] = v
+            }
             val p = pb.start()
             val text = p.inputStream.bufferedReader().use { it.readText() }
             p.waitFor()
