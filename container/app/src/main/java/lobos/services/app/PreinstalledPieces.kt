@@ -36,6 +36,15 @@ object PreinstalledPieces {
                 if (failed > 0) "  失败=" + failed else "",
         )
         runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
+
+        runCatching { envProbe(ctx) }
+            .onFailure {
+                RuntimeDiagnostics.append(
+                    ctx, "envprobe", false, "环境探针失败",
+                    it::class.java.simpleName + ": " + it.message,
+                )
+            }
+
             .onFailure {
                 RuntimeDiagnostics.append(
                     ctx, "ldconfig", false,
@@ -45,6 +54,37 @@ object PreinstalledPieces {
             }
 
         return done
+    }
+
+    private fun envProbe(ctx: Context) {
+        val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
+        val env = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
+            ctx, root, System.getenv("PATH"), null,
+        )
+        val lines = mutableListOf<String>()
+        var bad = 0
+        fun chk(name: String, ok: Boolean, detail: String) {
+            if (!ok) bad++
+            lines += (if (ok) "  ✓ " else "  ✗ ") + name + (if (detail.isBlank()) "" else "  " + detail)
+        }
+        val pathV = env["PATH"] ?: ""
+        val ldV = env["LD_LIBRARY_PATH"] ?: ""
+        chk("PATH 含 usr/bin", pathV.contains(root.prefixBin.absolutePath), "")
+        chk("LD_LIBRARY_PATH 含 usr/lib", ldV.contains(root.prefixLib.absolutePath), ldV)
+        root.prefixBin.listFiles()?.sortedBy { it.name }?.forEach { f ->
+            val real = runCatching { java.nio.file.Files.readSymbolicLink(f.toPath()).toString() }.getOrNull()
+            chk("命令 " + f.name, runCatching { f.canExecute() }.getOrDefault(false),
+                real?.let { "→ " + File(f.parentFile, it).name } ?: "")
+        }
+        root.prefixLib.listFiles()?.sortedBy { it.name }?.forEach { f ->
+            val real = runCatching { java.nio.file.Files.readSymbolicLink(f.toPath()).toString() }.getOrNull()
+            chk("库 " + f.name, f.isFile, real?.let { "→ " + File(f.parentFile, it).name } ?: "")
+        }
+        RuntimeDiagnostics.append(
+            ctx, "envprobe", bad == 0,
+            if (bad == 0) "系统视图正常（" + lines.size + " 项全过）" else "系统视图 " + bad + " 项不对",
+            lines.joinToString("\n"),
+        )
     }
 
     private fun fail(ctx: Context, id: String, why: String): Boolean {

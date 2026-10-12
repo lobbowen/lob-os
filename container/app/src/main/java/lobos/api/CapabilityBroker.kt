@@ -545,33 +545,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return JSONObject().apply { put("ok", true); put("accepted", true); put("taskId", id) }
     }
 
-    private val OS_METHODS: Map<String, MethodDef> = mapOf(
-        "lobos.sys.env.probe" to MethodDef(listOf("base"), true) { _, _ ->
-            val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this@CapabilityBroker)
-            val env = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
-                this@CapabilityBroker, root, null, null)
-            val checks = JSONArray()
-            fun add(name: String, ok: Boolean, detail: String) {
-                checks.put(JSONObject().apply { put("name", name); put("ok", ok); put("detail", detail) })
-            }
-            val pathV = env["PATH"] ?: ""
-            val ldV = env["LD_LIBRARY_PATH"] ?: ""
-            add("path-has-usr-bin", pathV.contains(root.prefixBin.absolutePath), pathV)
-            add("ld-has-usr-lib", ldV.contains(root.prefixLib.absolutePath), ldV)
-            root.prefixBin.listFiles()?.sortedBy { it.name }?.forEach { f ->
-                runCatching { f.canExecute() }.let {
-                    add("exec:" + f.name, it.getOrDefault(false), f.absolutePath)
-                }
-            }
-            root.prefixLib.listFiles()?.sortedBy { it.name }?.forEach { f ->
-                add("lib:" + f.name, f.isFile, f.absolutePath)
-            }
-            JSONObject().apply {
-                put("ok", true)
-                put("checks", checks)
-                put("prefixRoot", root.prefixRoot.absolutePath)
-            }
-        },
         "lobos.sys.native.status" to MethodDef(listOf("base"), true) { _, _programId ->
             val arr = JSONArray()
             for (s in PieceUpdater.states(this@CapabilityBroker)) {
