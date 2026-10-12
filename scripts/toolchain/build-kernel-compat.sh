@@ -61,7 +61,6 @@ CFLAGS="-O2 -fPIC"
   container/native/d1/link-interpose.c \
   container/native/d1/open-fallback.c \
   container/native/d1/tmp-paths.c \
-  container/native/d1/link-namespace.c \
   container/native/d1/exec-path.c \
   -ldl \
   -o "$WORK/liblobosposix.so" 2>"$WORK/cc-posix.log" \

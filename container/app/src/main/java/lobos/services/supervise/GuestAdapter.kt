@@ -40,6 +40,15 @@ object GuestAdapter {
             i.flockSo?.let { put("LOBOS_FLOCK_SO", it.absolutePath) }
             put("LOBOS_PROGRAM_ID", i.programId)
             put("LOBOS_PROGRAM_GENERATION", i.generation.toString())
+        put("PATH", lobos.services.reg.RuntimeEnvironment.joinPath(
+            i.root.prefixBin.absolutePath,
+            i.nodeBin.parentFile?.absolutePath,
+            inheritedPath,
+        ))
+        put("LD_LIBRARY_PATH", lobos.services.reg.RuntimeEnvironment.joinPath(
+            i.root.nativeLibDir,
+            i.root.prefixLib.absolutePath,
+        ))
             putAll(i.declaredEnv)
             val envName = i.httpEnv
             val port = i.httpPort
