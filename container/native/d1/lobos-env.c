@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
+extern char **environ;
+
 static char *dup_entry(const char *k, const char *v) {
     size_t kl = strlen(k), vl = strlen(v);
     char *e = (char *)malloc(kl + vl + 2);
