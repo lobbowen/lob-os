@@ -58,7 +58,7 @@ object LdConfig {
             ctx, "ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）",
             "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
-                "\n" + log.joinToString("\n")
+                "\n" + log.joinToString("\n") +
                 if (unresolved.isEmpty()) "" else "  未解析=" + unresolved.joinToString(","),
         )
         return linked
