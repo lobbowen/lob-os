@@ -1,4 +1,3 @@
-    }
 package lobos.services.supervise
 
 import lobos.services.reg.RuntimeEnvironment
@@ -30,11 +29,9 @@ object GuestAdapter {
 
     const val BRIDGE_SOCKET = "lobos_hostbridge"
 
-    fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan {
-        val resolved = lobos.kernel.proc.ExecEntry.argv(i.programEntry, i.args)
-            ?: listOf(requireNotNull(i.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args
-        return BootPlan(
-        command = resolved,
+    fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan = BootPlan(
+        command = lobos.kernel.proc.ExecEntry.argv(i.programEntry, i.args)
+            ?: listOf(requireNotNull(i.nodeBin).absolutePath, i.programEntry.absolutePath) + i.args,
         cwd = i.programDir,
         env = buildMap {
             put("LOBOS_BRIDGE_SOCKET", BRIDGE_SOCKET)
