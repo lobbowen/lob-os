@@ -24,8 +24,8 @@ android {
                 "而它正稳定运行着、我们不能破坏它。本项目自己的包名是 lobos.os。"
         }
         applicationId = resolvedAppId
-        minSdk = 26
-        targetSdk = 28
+        minSdk = 29
+        targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("int", "BRIDGE_PROTOCOL", appBridgeProtocol.toString())
