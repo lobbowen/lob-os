@@ -6,12 +6,13 @@ object LobosEnv {
 
     private fun bind(): Boolean {
         if (ok) return true
-        return try {
+        ok = try {
             System.loadLibrary("lobosposix")
-            ok = true
+            true
         } catch (_: Throwable) {
-            ok = false
+            false
         }
+        return ok
     }
 
     fun set(key: String, value: String): Boolean {
