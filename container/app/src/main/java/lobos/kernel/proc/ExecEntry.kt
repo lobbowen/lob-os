@@ -7,11 +7,7 @@ object ExecEntry {
 
     sealed class Shape {
         object Elf : Shape()
-
         data class Shebang(val interp: String, val flags: String?) : Shape()
-
-        object ShellLike : Shape()
-
         object Unknown : Shape()
     }
 
@@ -29,21 +25,15 @@ object ExecEntry {
         }.getOrNull() ?: return Shape.Unknown
 
         if (head.startsWith("\u007fELF")) return Shape.Elf
+        if (!head.startsWith("#!")) return Shape.Unknown
 
-        if (head.startsWith("#!")) {
-            val line = head.substring(2).lineSequence().firstOrNull { it.isNotBlank() } ?: return Shape.Unknown
-            val t = line.trim()
-            if (t.isEmpty()) return Shape.Unknown
-            val sp = t.indexOf(' ')
-            return if (sp < 0) Shape.Shebang(t, null)
-            else Shape.Shebang(t.substring(0, sp), t.substring(sp + 1).trim().ifBlank { null })
-        }
-
-        val firstCmd = head.lines().firstOrNull { it.isNotBlank() }?.trim() ?: return Shape.Unknown
-        val looksShell = listOf("sh ", "bash ", "echo ", "exit ", "export ", "cd ")
-            .any { firstCmd.startsWith(it) }
-        return if (looksShell) Shape.ShellLike else Shape.Unknown
-
+        val line = head.substring(2).lineSequence().firstOrNull { it.isNotBlank() }
+            ?: return Shape.Unknown
+        val t = line.trim()
+        if (t.isEmpty()) return Shape.Unknown
+        val sp = t.indexOf(' ')
+        return if (sp < 0) Shape.Shebang(t, null)
+        else Shape.Shebang(t.substring(0, sp), t.substring(sp + 1).trim().ifBlank { null })
     }
 
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
@@ -51,15 +41,14 @@ object ExecEntry {
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
-        is Shape.ShellLike -> listOf(shellPath(), entry.absolutePath) + args
         is Shape.Unknown -> null
     }
 
-    private fun shellPath(): String {
-        val busy = runCatching {
-            val dir = java.io.File("/data/data/lobos.app/files/usr/bin")
-            File(dir, "busybox").takeIf { it.exists() }?.absolutePath
-        }.getOrNull()
-        return busy ?: "/system/bin/sh"
+    fun describe(entry: File): String = when (val s = detect(entry)) {
+        is Shape.Elf -> "ELF 可执行文件，直接 exec"
+        is Shape.Shebang -> "#! " + s.interp + (s.flags?.let { " $it" } ?: "") + " —— 用它跑"
+        is Shape.Unknown ->
+            "既不是 ELF 也没有 #! —— 内核会回 ENOEXEC（这个入口无法执行）。" +
+                "要用解释器跑，请在文件头加一行 #!<解释器路径>"
     }
 }
