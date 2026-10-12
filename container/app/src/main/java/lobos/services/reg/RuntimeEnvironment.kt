@@ -62,6 +62,7 @@ object RuntimeEnvironment {
         val preload = lobos.kernel.compat.Compat.preload(ctx)
         if (preload.isNotBlank()) {
             put("LD_PRELOAD", preload)
+        put("LOBOS_PREFIX", root.prefixRoot.absolutePath)
             put("LOBOS_COMPAT_LOG", lobos.services.app.DriverRegistry.degradeLog(ctx).absolutePath)
         }
         val caDirs = listOf(
