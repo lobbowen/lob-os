@@ -331,3 +331,132 @@ Build APK 的 failure-diagnostics 现在固定记两份：
 **不要自己重写 adb 协议** —— 我为了绕开它写了几轮，全错：
 banner 结尾要是 NUL 不是 \n、认证要走 TLS 证书、还要处理 shell_v2 分帧。
 本机上早就有一套能用的。
+
+## 真机验收：8 个预装件（2026-10-12 定）
+
+### 结论
+
+```
+真机 PGU110 / Android 16 / API 36，装 os-release-0.0.4 debug
+  ✓ 8 个件全部装上
+  ✓ 落位 opt/<件>/<版本>/，层级与版本链完整
+  ✓ usr/lib 有 ldconfig 建的 SONAME 软链（libz.so → .so.1 → .so.1.3.2）
+  ✓ usr/bin 有 8 条命令软链
+  ✓ ld.so.conf 与 ld.so.cache 已写
+  ✓ 跨件依赖全部解析：
+      libcurl.so → libssl.so → opt/openssl/3.6.3/
+                → libcrypto.so → opt/crypto/3.6.3/
+                → libz.so.1 → opt/zlib/1.3.2/
+  ✓ 命令类件零配置可跑（rg --version / bash -c）
+```
+
+### 「装上了」不等于「能工作」
+
+这是本段最重要的一条。分三次才验到位：
+
+```
+第一轮  8 个都装上了，但 ls files/usr/lib 是空的 → 我判「落位路径错了」
+        真因：件本来就在 opt/，usr/lib 空是对的；我在拿错误的预期当判据
+
+第二轮  手工 export PATH 后 bash 能跑 → 我以为成了
+        真因：那是我自己设的环境变量，不是「系统给的」
+
+第三轮  linker64 --list libcurl.so  → 三级依赖全部解析到 opt/ 下的件
+        这才是「正常工作」的证据
+```
+
+**验证「能工作」问的不是「装上了吗」，是「它在真实场景里能做事吗」。**
+
+### 按 Linux 的分工，缺的是 ldconfig 那一侧
+
+```
+dpkg 那一侧      PreinstalledPieces / ProgramInstallPipeline   装件
+ldconfig 那一侧  LdConfig                                       链接
+```
+
+之前我把两件耦在一起（装件时顺手建软链），所以：
+- 没有 cache
+- 任何进程都无据可依
+- 只能靠给每个程序写环境 —— 那正是「装一个程序要告诉它系统有什么」
+
+现在拆开：`LdConfig.run()` 扫 `opt/<件>/CURRENT` 指向的版本，
+读每个 `.so` 的 ELF `DT_SONAME`，在 `usr/lib/` 建 SONAME 软链，
+写 `etc/ld.so.conf` 与 `etc/ld.so.cache`。
+
+`usr/lib` 里放软链而不是件本体 —— Linux 就是这样
+（`/usr/lib/x86_64-linux-gnu/libz.so.1 → libz.so.1.2.11`），
+每件保留自己的版本目录，`usr/lib` 只是「当前可见的那一份」。
+
+### 但 Android 上有一条 Linux 没有的约束
+
+```
+$ ls /system/etc/ld.so.conf
+  系统里没有
+```
+
+**Android 的链接器不读 `ld.so.cache`，只认 `LD_LIBRARY_PATH`。**
+
+所以 `etc/ld.so.conf` 与 `etc/ld.so.cache` 是「按 Linux 形态做的记录」
+（对人可读、有诊断价值），**不是链接器的输入**。
+可用性靠把 `usr/lib` 放进程序的 `LD_LIBRARY_PATH`。
+
+**这不是照抄 Linux，是「先照抄看清哪里不成立，再按目标平台改」。**
+
+### 还没做完的（下一段）
+
+```
+程序的库搜索路径目前靠 LD_LIBRARY_PATH 逐个下发。
+用户的要求是「装一个程序不用告诉它这个环境」，那套不成立。
+
+正解是 linker namespace（API 29+，minSdk 已提到 29）：
+  在 bionic-compat.so 里加 constructor，进程启动时把 usr/lib
+  注册进自己的 namespace，之后 dlopen 自动在那里找。
+
+加完之后 RuntimeEnvironment 那套「给每个程序写 env」应该删掉 ——
+机制与补丁并存就是又一层耦合。
+
+（未做。minSdk 29 与 targetSdk 35 已先落地，为它铺路。）
+```
+
+### 这段踩的坑（都已修，记下来）
+
+```
+① package-piece-zip.sh 名字叫 zip，第 91 行打的是 tar -czf
+   —— 「标准件包」从一开始用的就不是 zip。我绕了 6 轮才承认这点。
+
+② Release 上的资产名是 <id>-<deps>+…tar.gz，里面装的是 zip
+   → 判据不能看扩展名，要看 magic 字节（scripts/toolchain/fmt.sh）
+
+③ PreinstalledPieces 把 .zip 当目录读 component-meta.json
+   —— 以为 assets 里的包已经摊开了
+
+④ infraSourceFile 把件落进 nativeLibraryDir（还把 libName 当目录名）
+   —— 8 个件里 6 个落错，只有 libName 为空的 2 个侥幸对了
+   —— 且这不是预装件特有的：stateDirOf 对所有件都走它，OTA 件也会落错
+
+⑤ PrefixProvisioner 扫 assets/supply/meta（那个目录早删了）
+   → 永远返回空 → 诊断报「件全部就位（0 件）」，而真相是 8 件已装
+   —— 这就是「你这边搞好了，我那边还是老样子」
+
+⑥ File.isSymbolicLink 是 Java 17 API，Android 没有
+⑦ treeRootEnv 改签名换行时把行尾的 `= buildMap {` 一起吃掉了
+   —— 改完要数括号
+
+⑧ installOne 里 7 处 return false 不记原因
+   → 真机上只看到「失败=8」，不知道卡在哪一步
+   —— 现在每处都有具体原因
+```
+
+### 这段的判据演进
+
+判据加了四次，每次都是「只验形式、不验内容」的同一个病：
+
+```
+① 只判 Release 存在          → 旧格式包被当新的用
+② 只判包里有没有 meta       → entry 错配的包照样命中
+③ 只验 entry 那个文件       → 不完整但看起来对的包照样命中
+④ 加验「还需要的文件」      → 这才够
+⑤ 改成按内容判格式          → 扩展名在骗人时也够
+```
+
+**判据被绕了 4 轮才完备，而每次都是真机上炸出来才改的，不是推理出来的。**
