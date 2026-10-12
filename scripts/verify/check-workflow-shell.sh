@@ -25,7 +25,7 @@ const out = [];
 for (const f of fs.readdirSync(".github/workflows").filter(x => x.endsWith(".yml")).sort()) {
   let d;
   try { d = yaml.load(fs.readFileSync(path.join(".github/workflows", f), "utf8")); }
-  catch (e) { console.log("BADYAML\t" + f + "\t-\t-"); continue; }
+  catch (e) { console.log(["BADYAML", f, "-", "-", ""].join("\t")); continue; }
   const jobs = d.jobs || {};
   for (const jn of Object.keys(jobs)) {
     (jobs[jn].steps || []).forEach((s, i) => {
