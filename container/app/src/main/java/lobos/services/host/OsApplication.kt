@@ -24,6 +24,7 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        installSystemView()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
@@ -51,6 +52,27 @@ class OsApplication : Application() {
         }.apply { isDaemon = true }.start()
                 OsHostService.ensureRunning(this)
         registerWakeupEdges()
+    }
+
+    private fun installSystemView() {
+        runCatching {
+            val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
+            val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, root, null)
+            var n = 0
+            for ((k, v) in view) {
+                if (lobos.kernel.compat.LobosEnv.set(k, v)) n++
+            }
+            RuntimeDiagnostics.append(
+                this, "sysview", n > 0,
+                "系统视图已写入宿主进程环境（" + n + "/" + view.size + " 项）",
+                view.entries.joinToString("\n") { it.key + "=" + it.value.take(70) },
+            )
+        }.onFailure {
+            RuntimeDiagnostics.append(
+                this, "sysview", false, "系统视图写入失败",
+                it.javaClass.name + ": " + (it.message ?: ""),
+            )
+        }
     }
 
     private fun initQuickAppRuntime() {

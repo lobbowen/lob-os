@@ -18,6 +18,58 @@ static void bind_real(void) {
   if (!real_access) real_access = (int (*)(const char *, int))dlsym(RTLD_NEXT, "access");
 }
 
+// ── 系统视图注入 ──────────────────────────────────────────────
+// 宿主（OsHostService）把自己的环境设成系统视图。
+// 每个 Lob OS 起的进程都从 execve 出去，所以在这里合并一次，
+// 而不是让每个调用方（程序宿主 / shell.exec / 终端）各自拼一遍。
+//
+// 契约：envp 里缺、但 environ 里有且属于系统视图的键，补进 envp。
+// envp 里显式给了的，不覆盖 —— 显式优先。
+
+static const char *const SYS_KEYS[] = {
+    "HOME", "TMPDIR", "PATH", "LANG", "SHELL",
+    "LD_LIBRARY_PATH", "SSL_CERT_DIR", "SSL_CERT_FILE",
+    "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "NODE_PATH",
+    "LD_PRELOAD", "LOBOS_COMPAT_LOG",
+    0
+};
+
+static int env_has(char *const envp[], const char *k) {
+    size_t n = strlen(k);
+    for (int i = 0; envp && envp[i]; i++)
+        if (!strncmp(envp[i], k, n) && envp[i][n] == '=') return 1;
+    return 0;
+}
+
+static char **env_merge_sys(char *const envp[]) {
+    int extra = 0;
+    for (int s = 0; SYS_KEYS[s]; s++)
+        if (!env_has(envp, SYS_KEYS[s])) {
+            const char *v = getenv(SYS_KEYS[s]);
+            if (v && *v) extra++;
+        }
+    if (!extra) return (char **)envp;
+    int n = 0;
+    while (envp && envp[n]) n++;
+    char **out = (char **)malloc((n + extra + 1) * sizeof(char *));
+    if (!out) { errno = ENOMEM; return 0; }
+    int k = 0;
+    for (int i = 0; i < n; i++) out[k++] = envp[i];
+    for (int s = 0; SYS_KEYS[s]; s++) {
+        if (env_has(envp, SYS_KEYS[s])) continue;
+        const char *v = getenv(SYS_KEYS[s]);
+        if (!v || !*v) continue;
+        size_t kl = strlen(SYS_KEYS[s]), vl = strlen(v);
+        char *e = (char *)malloc(kl + vl + 2);
+        if (!e) break;
+        memcpy(e, SYS_KEYS[s], kl); e[kl] = '=';
+        memcpy(e + kl + 1, v, vl + 1);
+        out[k++] = e;
+    }
+    out[k] = 0;
+    return out;
+}
+
 static int x_ok(const char *p) {
   if (real_access) return real_access(p, X_OK) == 0;
   return access(p, X_OK) == 0;
@@ -101,6 +153,13 @@ static int exec_with(const char *exe, const char *script, char *const argv[], ch
 }
 
 int execve(const char *path, char *const argv[], char *const envp[]) {
+  // 系统视图合并：一次，所有走 execve 的进程都拿到。
+  // envp 为 NULL（execv 用 environ）时直接用 environ —— 那已含宿主环境。
+  if (envp) {
+    char **merged = env_merge_sys(envp);
+    if (!merged) return -1;
+    envp = merged;
+  }
   char buf[512]; char *tok[8]; int ntok = 0;
   char resolved[1024];
   bind_real();
