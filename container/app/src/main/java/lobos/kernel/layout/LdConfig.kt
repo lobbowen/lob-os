@@ -19,6 +19,7 @@ object LdConfig {
 
         val pieces = opt.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
         var linked = 0
+        val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
 
         for (p in pieces) {
@@ -35,6 +36,7 @@ object LdConfig {
                     ?.takeIf { it.isNotBlank() } ?: so.name
                 val dst = File(usrLib, soname)
                 if (linkTo(so, dst)) linked++
+                log += "lib  " + so.name + " → " + dst.name + "   " + so.absolutePath
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
@@ -42,6 +44,7 @@ object LdConfig {
                 if (!lobos.kernel.elf.ExecBits.isRunnable(exe)) return@forEach
                 val dst = File(usrBin, exe.name)
                 if (linkTo(exe, dst)) linked++
+                log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
             }
         }
 
@@ -55,6 +58,7 @@ object LdConfig {
             ctx, "ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）",
             "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
+                "\n" + log.joinToString("\n")
                 if (unresolved.isEmpty()) "" else "  未解析=" + unresolved.joinToString(","),
         )
         return linked
