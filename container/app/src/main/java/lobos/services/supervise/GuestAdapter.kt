@@ -29,11 +29,11 @@ object GuestAdapter {
 
     const val BRIDGE_SOCKET = "lobos_hostbridge"
 
-    fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan = BootPlan(
-        val entryArgv = lobos.kernel.proc.ExecEntry.argv(i.programEntry, i.args)
-        requireNotNull(entryArgv) {
+    fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan {
+        val entryArgv = requireNotNull(lobos.kernel.proc.ExecEntry.argv(i.programEntry, i.args)) {
             lobos.kernel.proc.ExecEntry.describe(i.programEntry)
         }
+        return BootPlan(
         command = entryArgv,
         cwd = i.programDir,
         env = buildMap {
@@ -61,4 +61,5 @@ object GuestAdapter {
             }
         },
     )
+    }
 }
