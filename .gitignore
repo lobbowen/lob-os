@@ -38,3 +38,14 @@ keystore.properties
 # jniLibs 里只该有内核垫片（liblobosposix / liblobosptyprobe / librivospty）
 # 与第三方库。历史残留曾在这里堆了 43 MB 的件。
 container/app/src/main/jniLibs/**/*.so
+
+# 构建与临时产物（不入仓）
+.tmpwork/
+.tmpw/
+dist/
+work/
+keys/
+
+# 文档不入工程仓 —— 工程源码与文档分开（见 ../docs/）
+*.md
+!container/app/src/main/java/lobos/**/README.md
