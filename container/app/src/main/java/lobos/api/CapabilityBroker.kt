@@ -546,7 +546,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
-        "lobos.sys.env.probe" to MethodDef(listOf("base"), true) {
+        "lobos.sys.env.probe" to MethodDef(listOf("base"), true) { _, _ ->
             val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this@CapabilityBroker)
             val env = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
                 this@CapabilityBroker, root, null, null)
