@@ -71,10 +71,13 @@ object PreinstalledPieces {
         val ldV = env["LD_LIBRARY_PATH"] ?: ""
         chk("PATH 含 usr/bin", pathV.contains(root.prefixBin.absolutePath), "")
         chk("LD_LIBRARY_PATH 含 usr/lib", ldV.contains(root.prefixLib.absolutePath), ldV)
-        root.prefixBin.listFiles()?.sortedBy { it.name }?.forEach { f ->
+        root.prefixBin.listFiles()?.sortedBy { it.name }?.filter { !it.name.endsWith(".so") }?.forEach { f ->
             val real = runCatching { java.nio.file.Files.readSymbolicLink(f.toPath()).toString() }.getOrNull()
             chk("命令 " + f.name, runCatching { f.canExecute() }.getOrDefault(false),
                 real?.let { "→ " + File(f.parentFile, it).name } ?: "")
+        }
+        root.prefixBin.listFiles()?.sortedBy { it.name }?.filter { it.name.endsWith(".so") }?.forEach { f ->
+            chk("bin/库 " + f.name, f.isFile, "")
         }
         root.prefixLib.listFiles()?.sortedBy { it.name }?.forEach { f ->
             val real = runCatching { java.nio.file.Files.readSymbolicLink(f.toPath()).toString() }.getOrNull()
