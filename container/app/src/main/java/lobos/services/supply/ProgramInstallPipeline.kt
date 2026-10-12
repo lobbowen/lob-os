@@ -403,13 +403,25 @@ object ProgramInstallPipeline {
     private fun linkEntry(context: Context, dest: File, entryRel: String, programId: String): Boolean {
         val target = File(dest, entryRel)
         if (!target.isFile) return false
-        runCatching { lobos.kernel.elf.ExecBits.apply(target) }
-        val bin = lobos.kernel.layout.PrefixProvisioner.binDir(context)
-        val primary = entryRel.substringAfterLast("/")
-        var ok = link(bin, primary, target)
-        for (a in aliasNames(dest, programId, primary)) {
-            ok = link(bin, a, target) && ok
+        if (entryRel.startsWith("bin/")) {
+            runCatching { lobos.kernel.elf.ExecBits.apply(target) }
         }
+        val primary = entryRel.substringAfterLast("/")
+        val dir = if (entryRel.startsWith("lib/")) {
+            lobos.kernel.layout.PrefixProvisioner.libDir(context)
+        } else {
+            lobos.kernel.layout.PrefixProvisioner.binDir(context)
+        }
+        var ok = link(dir, primary, target)
+        for (a in aliasNames(dest, programId, primary)) {
+            ok = link(dir, a, target) && ok
+        }
+        RuntimeDiagnostics.append(
+            context, "linkEntry", ok,
+            (if (ok) "入口软链已建 " else "入口软链建不起来 ") + programId,
+            "entry=" + entryRel + "  dest=" + dest.absolutePath +
+                "  target=" + target.absolutePath + "  dir=" + dir.absolutePath,
+        )
         return ok
     }
 

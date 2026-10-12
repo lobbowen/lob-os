@@ -49,3 +49,7 @@ keys/
 # 文档不入工程仓 —— 工程源码与文档分开（见 ../docs/）
 *.md
 !container/app/src/main/java/lobos/**/README.md
+
+# 本地下载的产物
+.dlg/
+.diag/
