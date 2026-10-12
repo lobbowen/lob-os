@@ -145,7 +145,9 @@ case "$KIND" in
     ;;
   asset)
     SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
-    echo "$TOOL-$SAFE.tar.gz"
+    # 扩展名跟内容走：件包已经是 zip（package-piece-zip.sh 打的是 zip），
+    # 名字叫 .tar.gz 而内容是 zip 会让「看名字判断版本」的人被骗 —— 判据按 magic 字节认，名字也该一致。
+    echo "$TOOL-$SAFE.zip"
     ;;
   *)
     echo "uw-$TOOL-$DEPS_STR-$RUN_OS-$RUN_ARCH"
