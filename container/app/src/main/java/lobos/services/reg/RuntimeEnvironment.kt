@@ -45,7 +45,7 @@ object RuntimeEnvironment {
         return declared.filterKeys { !RESERVED_ENV.contains(it) } to dropped
     }
 
-    fun treeRootEnv(ctx: Context, root: TreeRoot, inheritedPath: String?, inheritedLd: String? = null)
+    fun treeRootEnv(ctx: Context, root: TreeRoot, inheritedPath: String?, inheritedLd: String? = null): Map<String, String> = buildMap {
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
