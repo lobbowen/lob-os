@@ -50,14 +50,8 @@ static void lobos_init_namespace(void) {
         return;
     }
 
-    void *libdl = dlopen("libdl.so", RTLD_NOW);
-    if (libdl == NULL) {
-        fprintf(stderr, "取不到 libdl: %s", dlerror());
-        return;
-    }
-
     typedef void *(*init_ns_fn)(const char *, size_t, const char *);
-    init_ns_fn init_ns = (init_ns_fn)dlsym(libdl, "android_init_anonymous_namespace");
+    init_ns_fn init_ns = (init_ns_fn)dlsym(RTLD_DEFAULT, "android_init_anonymous_namespace");
     if (init_ns == NULL) {
         fprintf(stderr,
                             "链接器没有 android_init_anonymous_namespace（需 API 29+）");
