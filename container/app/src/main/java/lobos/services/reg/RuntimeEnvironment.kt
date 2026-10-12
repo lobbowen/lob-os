@@ -28,6 +28,7 @@ object RuntimeEnvironment {
         val nativeLibDir: String,
         val prefixRoot: File,
         val prefixBin: File,
+    val prefixLib: File,
     )
 
     val RESERVED_ENV: Set<String> = setOf(
@@ -44,11 +45,11 @@ object RuntimeEnvironment {
         return declared.filterKeys { !RESERVED_ENV.contains(it) } to dropped
     }
 
-    fun treeRootEnv(ctx: Context, root: TreeRoot, inheritedPath: String?): Map<String, String> = buildMap {
+    fun treeRootEnv(ctx: Context, root: TreeRoot, inheritedPath: String?, inheritedLd: String? = null)
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
-        put("LD_LIBRARY_PATH", root.nativeLibDir)
+    put("LD_LIBRARY_PATH", joinPath(root.nativeLibDir, root.prefixLib.absolutePath, inheritedLd))
         InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)?.let { put("NODE_BIN", it.absolutePath) }
         put(
             "PATH",
@@ -91,12 +92,13 @@ object RuntimeEnvironment {
         nativeLibDir = libSearchPath(ctx),
         prefixRoot = PrefixProvisioner.root(ctx),
         prefixBin = PrefixProvisioner.binDir(ctx),
+        prefixLib = PrefixProvisioner.libDir(ctx),
     )
 
-      fun libSearchPath(ctx: Context): String {
-          val dirs = LinkedHashSet<String>()
-          dirs.add(LibPath.searchPath(ctx))
-          return dirs.filter { File(it).isDirectory }.joinToString(":")
+    fun libSearchPath(ctx: Context): String {
+        val dirs = LinkedHashSet<String>()
+        dirs.add(LibPath.searchPath(ctx))
+        return dirs.filter { File(it).isDirectory }.joinToString(":")
       }
 
     fun ensure(ctx: Context): Snapshot {
