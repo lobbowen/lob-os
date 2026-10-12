@@ -42,7 +42,6 @@ class OsApplication : Application() {
 
         Thread {
             runCatching { lobos.services.app.PreinstalledPieces.installAll(this@OsApplication) }
-            android.util.Log.i("LobosSysView", "写完，n=" + n + "/" + view.size)
                 .onFailure {
                     RuntimeDiagnostics.append(
                         this@OsApplication, "prefix", false,
