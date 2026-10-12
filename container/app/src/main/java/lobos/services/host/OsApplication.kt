@@ -55,6 +55,11 @@ class OsApplication : Application() {
     }
 
     private fun installSystemView() {
+        android.util.Log.i("LobosSysView", "installSystemView 进入")
+        android.util.Log.i("LobosSysView", "loadLibrary 前")
+        val bind = runCatching { lobos.kernel.compat.LobosEnv.get("PATH") }
+        android.util.Log.i("LobosSysView", "loadLibrary 后，PATH=" + bind)
+        android.util.Log.i("LobosSysView", "view 项数=" + runCatching { lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, lobos.services.reg.RuntimeEnvironment.treeRootFor(this), null).size }.getOrDefault(-1))
         runCatching {
             val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
             val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, root, null)
