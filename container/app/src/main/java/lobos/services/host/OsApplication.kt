@@ -42,6 +42,7 @@ class OsApplication : Application() {
 
         Thread {
             runCatching { lobos.services.app.PreinstalledPieces.installAll(this@OsApplication) }
+            android.util.Log.i("LobosSysView", "写完，n=" + n + "/" + view.size)
                 .onFailure {
                     RuntimeDiagnostics.append(
                         this@OsApplication, "prefix", false,
@@ -60,13 +61,16 @@ class OsApplication : Application() {
         val bind = runCatching { lobos.kernel.compat.LobosEnv.get("PATH") }
         android.util.Log.i("LobosSysView", "loadLibrary 后，PATH=" + bind)
         android.util.Log.i("LobosSysView", "view 项数=" + runCatching { lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, lobos.services.reg.RuntimeEnvironment.treeRootFor(this), null).size }.getOrDefault(-1))
+        android.util.Log.i("LobosSysView", "开始写 environ")
         runCatching {
             val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
             val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, root, null)
             var n = 0
             for ((k, v) in view) {
                 if (lobos.kernel.compat.LobosEnv.set(k, v)) n++
+                android.util.Log.i("LobosSysView", "set " + k + " -> " + lobos.kernel.compat.LobosEnv.set(k, v))
             }
+            android.util.Log.i("LobosSysView", "写完，n=" + n + "/" + view.size)
             RuntimeDiagnostics.append(
                 this, "sysview", n > 0,
                 "系统视图已写入宿主进程环境（" + n + "/" + view.size + " 项）",
