@@ -376,7 +376,8 @@ jobs:
           set -uo pipefail
           command -v gh >/dev/null 2>&1 || { echo "::warning::无 gh，跳过"; exit 0; }
           APK="$(ls container/app/build/outputs/apk/"$APK_VARIANT"/*.apk 2>/dev/null | head -1)"
-          echo "[rel] APK=$APK  VARIANT=$APK_VARIANT  dir=$(ls -d container/app/build/outputs/apk/* 2>/dev/null | tr "\n" " ")"
+          echo "[rel] APK=  VARIANT=  dir=$(ls -d container/app/build/outputs/apk/* 2>/dev/null | tr "
+" " ")"
           if [ -z "$APK" ]; then echo "::warning title=没有 APK::产物不在预期位置"; exit 0; fi
           if [ "$APK_VARIANT" = "debug" ]; then
             TAG="os-debug-${GITHUB_SHA:0:7}"
