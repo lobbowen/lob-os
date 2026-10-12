@@ -44,6 +44,7 @@ object ExecEntry {
             .any { firstCmd.startsWith(it) }
         return if (looksShell) Shape.ShellLike else Shape.Unknown
 
+    }
 
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
         is Shape.Elf -> listOf(entry.absolutePath) + args
