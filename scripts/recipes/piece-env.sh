@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# 编译单件的公共前置：定位 NDK、落位产物、**并把这一件自己的说明一起打进 jniLibs**。
 #
 # 为什么说明要打进 APK：
 #   照抄 deb-control(5)——「Each Debian binary package contains a control file in its
 #   control member」。每个包自带说明，安装器与内核只读落位，不预置任何一件的清单。
-#   内核侧 PrefixProvisioner 扫 jniLibs 里的 *.meta.json 决定铺什么、铺成什么形状。
 #
 # 用法：source scripts/recipes/piece-env.sh <件名>，然后调用 emit_piece
 set -uo pipefail
@@ -19,17 +17,11 @@ cd "$ROOT_DIR"
 ABI="${ABI:-arm64-v8a}"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
-JNI="$ROOT_DIR/container/app/src/main/jniLibs/$ABI"   # 绝对路径：调用方可能已 cd 走（busybox 就进了源码树）
 # 件说明随 assets 走 —— **这是运行时唯一读得到的那一份**。
-# jniLibs 里那份进不了 APK：AGP 的 jniLibs 打包只取 *.so（JniLibsPackaging
 # 只有 excludes/pickFirsts/keepDebugSymbols，没有「非 .so 也打进去」的开关），
-# 而 PrefixProvisioner.scanMeta() 正是在 nativeLibraryDir 里找 *.meta.json ——
-# 找不到就整目录跳过（PrefixProvisioner.kt:103「目录里没有说明的 .so 不铺」）。
 WORK="$ROOT_DIR/work/$PIECE_NAME"
 OUT_DIR="$WORK/out"
-mkdir -p "$OUT/bin" "$JNI" "$WORK"
-
-# 说明文件名 —— jniLibs 里与件同名，PrefixProvisioner 按 *.meta.json 扫
+mkdir -p "$OUT/bin" "$WORK"
 
 die() {
   local title="$1"; shift
@@ -120,7 +112,6 @@ version_of() {
 
 # 打标准件包 —— 校验产物 + 产出装配器只读的那个 tar.gz。
 #
-# 取代原来的 gen_meta / land_piece：那两个把字节铺进 jniLibs 与
 # assets/supply/meta —— 那是预装件的私有通道，装配器读不了，也与 OTA 装件
 #（走 ProgramInstallPipeline，读包里的 component-meta.json）不同构。
 # 现在统一产出标准包，两条路同形。

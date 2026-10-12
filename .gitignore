@@ -32,3 +32,9 @@ keys/*
 keystore.properties
 .env
 .env.*
+
+# 件的 .so 不进 jniLibs —— 件是自描述的标准包（assets/pieces/<id>.zip），
+# 启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装到 opt/<件>/<版本>/。
+# jniLibs 里只该有内核垫片（liblobosposix / liblobosptyprobe / librivospty）
+# 与第三方库。历史残留曾在这里堆了 43 MB 的件。
+container/app/src/main/jniLibs/**/*.so
