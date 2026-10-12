@@ -545,6 +545,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return JSONObject().apply { put("ok", true); put("accepted", true); put("taskId", id) }
     }
 
+    private val OS_METHODS: Map<String, MethodDef> = mapOf(
         "lobos.sys.native.status" to MethodDef(listOf("base"), true) { _, _programId ->
             val arr = JSONArray()
             for (s in PieceUpdater.states(this@CapabilityBroker)) {
