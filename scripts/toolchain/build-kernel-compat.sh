@@ -65,14 +65,6 @@ CFLAGS="-O2 -fPIC"
   -ldl \
   -o "$WORK/liblobosposix.so" 2>"$WORK/cc-posix.log" \
   || { echo "!! posix 编不出来" >&2; tail -20 "$WORK/cc-posix.log" >&2; exit 1; }
-# ── 探针：验 linker namespace 能不能建、子进程继承不继承 ──────────────
-# 只在临时验证时用；验完这一段就删掉。
-if [ "${BUILD_NS_PROBE:-0}" = "1" ]; then
-  "$CC" -O2 container/native/probe/nsprobe.c -o "$WORK/nsprobe" \
-    -llog -ldl 2>"$WORK/cc-probe.log" \
-    && echo "  ✓ 探针 → $WORK/nsprobe" \
-    || { echo "!! 探针编不出来" >&2; tail -10 "$WORK/cc-probe.log" >&2; }
-fi
 
 so_ok "$WORK/liblobosposix.so" 500
 cp -f "$WORK/liblobosposix.so" "$OUT/liblobosposix.so"
