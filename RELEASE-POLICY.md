@@ -163,3 +163,61 @@ https://github.com/lobbowen/lob-os/releases/download/os-release-<版本>/app-rel
 同一个标识算法在多处各写一遍 | 已造成 11 个空壳；单点定义（如 `piece-key.sh`） |
 让 cache 恢复失败杀死 job | 缓存是优化不是正确性，要 `continue-on-error` |
 改 Release 里的东西不更新清单 | 清单是唯一真相源 |
+## 借 Android 的能力 vs 内化（Lob OS 自己的机制）
+
+Android 是**硬件**（电源、内存、调度、内核、Zygote、链接器、binder、SELinux 沙箱）。
+Lob OS 是**装在这台硬件上的系统**。
+
+判据：**这件事该由谁负责**。硬件层的借，系统层的自己做。
+
+### 借得对（别自己造）
+
+```
+生命周期组件（Activity/Service/Application）   进程保活、电源管理、通知
+Binder IPC                                  内核提供的 IPC，重复造轮子
+ProcessBuilder                              fork/exec，Unix 原语的封装
+```
+
+### 借但内化不了（已知地基债）
+
+```
+LD_PRELOAD       kernel/proc 下 4 个垫片（exec-path / link-interpose /
+                 open-fallback / tmp-paths）必须在进程启动前生效，
+                 Android 没有别的机制。
+
+LD_LIBRARY_PATH  Android 的链接器不读 ld.so.cache（实测 /system/etc/ld.so.conf
+                 不存在）。试过 linker namespace（API 29+）：
+                   $ strings /apex/…/linker64 | grep namespace
+                     __loader_android_init_anonymous_namespace
+                   $ strings /apex/…/libdl.so | grep namespace
+                     （空）
+                 那些入口全在 linker 内部带 __loader_ 前缀，
+                 应用侧拿不到它的句柄，dlsym 取不到。
+                 **这是 Android 的硬限制，不是设计选择。**
+                 所以「程序认我们装的库」靠程序的环境，不靠 cache。
+```
+
+### 不该借（已改/已清）
+
+```
+nativeLibraryDir 塞件     那是旧实现残留（曾堆了 43 MB 在 jniLibs 里），
+                          现在只有 3 个内核垫片。已清 + .gitignore 防再犯。
+
+getenv("PATH") 当系统环境  程序的 PATH 属于系统视图；宿主 PATH 只是 fallback。
+                          已改为 joinPath(prefixBin, nodeBin, inheritedPath)。
+```
+
+### 系统视图 = 一套 env，程序继承它
+
+```
+GuestAdapter.programPlan 给每个程序：
+  PATH             prefixBin : nodeBin : inheritedPath
+  LD_LIBRARY_PATH  nativeLibDir : prefixLib
+  HOME / TMPDIR / LANG
+  LD_PRELOAD / LOBOS_FLOCK_SO / LOBOS_BRIDGE_SOCKET / …
+
+程序内部再起子进程（bash 跑 curl、node spawn）自动继承 ——
+那是 Unix 语义，我们不用做任何事。
+
+真机验收：探针 18 项全过（见 ACCEPTANCE.md「系统视图与透传」）。
+```

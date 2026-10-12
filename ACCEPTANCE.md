@@ -460,3 +460,98 @@ $ ls /system/etc/ld.so.conf
 ```
 
 **判据被绕了 4 轮才完备，而每次都是真机上炸出来才改的，不是推理出来的。**
+
+## 系统视图与透传（2026-10-12 定）
+
+### 结论
+
+```
+真机探针（启动时自动跑，验完已删）：
+
+  [OK] envprobe: 系统视图正常（18 项全过）
+        ✓ PATH 含 usr/bin
+        ✓ LD_LIBRARY_PATH 含 usr/lib
+        ✓ 命令 bash / rg
+        ✓ bin/库 6 条
+        ✓ 库 9 条（含 zlib 三层版本链 libz.so → .so.1 → .so.1.3.2）
+```
+
+配合此前实测：
+
+```
+$ env -i PATH=<usr/bin> LD_LIBRARY_PATH=<nativeLibDir>:<usr/lib> \
+    linker64 --list opt/curl/8.22.0/lib/libcurl.so
+    libssl.so    => opt/openssl/3.6.3/lib/libssl.so      ┐
+    libcrypto.so => opt/crypto/3.6.3/lib/libcrypto.so     ├ 跨件依赖
+    libz.so.1    => opt/zlib/1.3.2/lib/libz.so.1          ┘ 全解析
+```
+
+### 「装一个程序不用告诉它系统有什么环境」
+
+之前我给每个程序写一份 `LD_LIBRARY_PATH` + `PATH`，把这件事当成了设计。
+用户的原话：
+
+> 「装一个程序，我还要给这个程序把这些环境变量都要再写一遍，
+>   告诉这个程序里面这个系统有什么环境，这怎么可能」
+
+看完代码才明白**那不是「给每个程序塞环境」，而是「没有系统视图」**：
+
+```
+ProcessSupervisor.spawn(envMode = ENV_CLEAR)
+  → clear() 之后放我们给的 env
+  → 我们完全控制程序看到什么 —— 机制一直在
+
+GuestAdapter.programPlan(i, inheritedPath) 的 env 里只有：
+  LOBOS_BRIDGE_SOCKET / SESSION_TOKEN / … / 程序自己声明的 env
+而 inheritedPath（宿主 PATH）传进来了，从头到尾没被用过
+```
+
+**缺的就是「把系统装了什么组装成那份 env」这一步。** 补上之后：
+
+```
+① 我们给程序这份 env              ← 补的
+② 程序里 bash 跑 curl             ← bash 继承自己的环境（Unix 语义）
+③ node 里 spawn 子进程            ← 同上
+```
+
+②③ 我们不用做任何事。**这才是容器**：不是逐个给程序塞，是我们有一套系统环境，
+程序从我们这里继承它。
+
+### Android 的定位：它是硬件，不是系统
+
+```
+Android = 电源、内存、CPU 调度、内核、Zygote、链接器、SELinux 沙箱、binder
+Lob OS  = 装在这台硬件上的系统：装什么、跑什么、怎么透传、怎么编排、怎么授权
+```
+
+按这个定位逐条推导「借 Android 的能力」：
+
+| | 结论 | 依据 |
+|---|---|---|
+| 生命周期组件 / Binder IPC / ProcessBuilder | **借得对** | 硬件/内核层，自己造是重复造轮子 |
+| `LD_PRELOAD` | **借，但内化不了** | 4 个垫片必须在进程启动前生效，Android 无别的机制 |
+| `LD_LIBRARY_PATH` | **借，但内化不了** | linker namespace 试过：符号全在 `linker64` 内部带 `__loader_` 前缀，应用侧拿不到句柄 |
+| `nativeLibraryDir` 塞件 | **不该借** | 那是旧实现残留（43 MB），不是「借用」 |
+| `getenv("PATH")` 当系统环境 | **不该借** | 程序的 PATH 属于系统视图，宿主 PATH 只是 fallback |
+
+**后两条已改/已清。前两条是已知地基债**，写在 `RELEASE-POLICY.md`。
+
+### 传递 APK 的固定做法（省时间的规矩）
+
+```
+CI 出 debug APK → build-apk 自动发到 os-debug-<sha7> 这个 Release
+              → 设备从镜像或直连下
+              → 装机
+```
+
+**为什么**：从 CI artifact 直下（`api.github.com` → 302 → Azure blob）
+在这台机器上 3.9 秒一个请求、76 MB 反复超时，试了四五轮没成。
+
+实测设备侧速度（都是 8 MB 采样）：
+```
+直连 GitHub   813 KB/s
+ghfast.top    967 KB/s
+ghproxy.net   （0.0.4 那轮一次就成）
+```
+
+**设备走 Release 比走 artifact 快且稳。以后统一走 Release。**
