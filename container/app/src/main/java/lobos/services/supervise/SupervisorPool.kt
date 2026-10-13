@@ -88,6 +88,7 @@ class SupervisorPool(private val host: Service) {
         )
     }
 
+    @Synchronized
     fun sync() {
         syncServices()
             drainJobs()
