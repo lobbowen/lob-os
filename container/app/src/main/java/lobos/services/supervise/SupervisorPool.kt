@@ -1,26 +1,3 @@
-        val alive = services.keys.toMutableSet()
-        for (d in lobos.services.supervise.ServiceRegistry.ready(host, alive)) {
-            if (services.containsKey(d.id)) continue
-            val box = arrayOfNulls<() -> Unit>(1)
-            runCatching { d.start(host) }
-                .onSuccess { box[0] = { } }
-                .onFailure {
-                    Log.w(TAG, "内置服务启动失败: " + d.id, it)
-                    RuntimeDiagnostics.append(
-                        host, "service", false, "内置服务启动失败 " + d.id,
-                        it.javaClass.name + ": " + (it.message ?: ""),
-                    )
-                    continue
-                }
-            services[d.id] = box[0]!!
-            alive.add(d.id)
-        }
-        val wantedSvc = alive.toSet()
-        for (id in services.keys.toList()) {
-            if (id in wantedSvc) continue
-            services.remove(id)?.invoke()
-            Journal.note(host, "service", null, "停止内置服务", "id=" + id)
-        }
 package lobos.services.supervise
 
 import android.app.Service
@@ -88,7 +65,6 @@ class SupervisorPool(private val host: Service) {
         )
     }
 
-    @Synchronized
     fun sync() {
         syncServices()
             drainJobs()
