@@ -99,6 +99,19 @@ object ServiceRegistry {
         return out
     }
 
+    fun dump(ctx: Context, alive: Set<String>): String {
+        val all = decls()
+        val sb = StringBuilder()
+        sb.append("声明 ").append(all.size).append(" 个：")
+        for (d in all) {
+            sb.append(" ").append(d.id)
+            sb.append("[after=").append(d.after.joinToString("+"))
+            sb.append(" 就绪=").append(ready(ctx, alive).any { it.id == d.id })
+            sb.append(" 在活=").append(alive.contains(d.id))
+            sb.append("]")
+        }
+        return sb.toString()
+    }
     fun ready(ctx: Context, alive: Set<String>): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
         for (d in decls()) {

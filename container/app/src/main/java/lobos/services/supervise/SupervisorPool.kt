@@ -59,6 +59,7 @@ class SupervisorPool(private val host: Service) {
                 Journal.note(host, "service", null, "注销内置服务", "id=" + id)
             }
         }
+        Journal.note(host, "svc-decls", null, ServiceRegistry.dump(host, alive))
         RuntimeDiagnostics.append(
             host, "service", true,
             "内置服务 " + services.size + "/" + ServiceRegistry.decls().size,
