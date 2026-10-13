@@ -1,3 +1,26 @@
+        val alive = services.keys.toMutableSet()
+        for (d in lobos.services.supervise.ServiceRegistry.ready(host, alive)) {
+            if (services.containsKey(d.id)) continue
+            val box = arrayOfNulls<() -> Unit>(1)
+            runCatching { d.start(host) }
+                .onSuccess { box[0] = { } }
+                .onFailure {
+                    Log.w(TAG, "内置服务启动失败: " + d.id, it)
+                    RuntimeDiagnostics.append(
+                        host, "service", false, "内置服务启动失败 " + d.id,
+                        it.javaClass.name + ": " + (it.message ?: ""),
+                    )
+                    continue
+                }
+            services[d.id] = box[0]!!
+            alive.add(d.id)
+        }
+        val wantedSvc = alive.toSet()
+        for (id in services.keys.toList()) {
+            if (id in wantedSvc) continue
+            services.remove(id)?.invoke()
+            Journal.note(host, "service", null, "停止内置服务", "id=" + id)
+        }
 package lobos.services.supervise
 
 import android.app.Service
@@ -14,6 +37,7 @@ import lobos.services.reg.ProgramRegistry
 class SupervisorPool(private val host: Service) {
 
     private val supervisors = LinkedHashMap<String, InstanceHost>()
+    private val services = LinkedHashMap<String, () -> Unit>()
 
     @Synchronized
     fun start() {
@@ -30,7 +54,42 @@ class SupervisorPool(private val host: Service) {
     }
 
     @Synchronized
+    private fun syncServices() {
+        val alive = services.keys.toMutableSet()
+        for (d in ServiceRegistry.ready(host, alive)) {
+            if (services.containsKey(d.id)) continue
+            val stop = arrayOfNulls<() -> Unit>(1)
+            val ok = runCatching {
+                stop[0] = d.start(host)
+                true
+            }.getOrElse { e ->
+                Log.w(TAG, "内置服务启动失败: " + d.id, e)
+                RuntimeDiagnostics.append(
+                    host, "service", false, "内置服务启动失败 " + d.id,
+                    e.javaClass.name + ": " + (e.message ?: ""),
+                )
+                false
+            }
+            if (!ok) continue
+            services[d.id] = { stop[0]?.invoke() }
+            alive.add(d.id)
+            Journal.note(host, "service", null, "起内置服务", "id=" + d.id)
+        }
+        for (id in services.keys.toList()) {
+            if (ServiceRegistry.decls().none { it.id == id }) {
+                services.remove(id)?.invoke()
+                Journal.note(host, "service", null, "注销内置服务", "id=" + id)
+            }
+        }
+        RuntimeDiagnostics.append(
+            host, "service", true,
+            "内置服务 " + services.size + "/" + ServiceRegistry.decls().size,
+            ServiceRegistry.state(host, services.keys),
+        )
+    }
+
     fun sync() {
+        syncServices()
             drainJobs()
         val wanted = wantedPrograms()
         val toStop = supervisors.keys.filter { it !in wanted }
