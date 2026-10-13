@@ -55,10 +55,8 @@ object ServiceRegistry {
         id: String,
         after: List<String>,
         body: (Context) -> Unit,
-    ): Decl = Decl(id, after) { ctx ->
-        body(ctx)
-        { }
-    }
+        stop: () -> Unit = {},
+    ): Decl = Decl(id, after, stop) { ctx -> { body(ctx); stop } }
 
     fun ready(ctx: Context, alive: Set<String>): List<Decl> =
         decls().filter { d -> d.after.all { it in alive } }
