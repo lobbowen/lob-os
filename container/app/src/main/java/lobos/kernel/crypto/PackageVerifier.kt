@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.zip.ZipFile
 
-object ProgramPackageVerifier {
+object PackageVerifier {
 
     data class Outcome(
         val ok: Boolean,

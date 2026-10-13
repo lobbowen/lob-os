@@ -266,6 +266,10 @@ jobs:
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 
+      - name: 分层边界（D5/D6/D7）
+        run: |
+          set -uo pipefail
+          bash scripts/verify/check-layer-boundary.sh
       - name: 代码里不许有注释
         run: |
           set -euo pipefail
