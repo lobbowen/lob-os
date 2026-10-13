@@ -110,7 +110,7 @@ class OsApplication : Application() {
             }
         }
         RuntimeDiagnostics.append(
-            this, "pb-probe", rep.toString().contains("FROM-PB-OK"),
+            ctx, "pb-probe", rep.toString().contains("FROM-PB-OK"),
             "宿主用 ProcessBuilder 起解释器", rep.toString(),
         )
     }
