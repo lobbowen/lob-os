@@ -25,6 +25,7 @@ class OsApplication : Application() {
         super.onCreate()
         createChannels()
         installSystemView()
+        terminalSelfCheck()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
@@ -72,6 +73,32 @@ class OsApplication : Application() {
             this, "sysview", wrote > 0,
             "系统视图写入宿主进程环境 " + wrote + "/" + total,
             "写入方式：JNI 改本进程 environ；子进程由 execve 层的 env_merge_sys 继承",
+        )
+    }
+
+    private fun terminalSelfCheck() {
+        val sh = java.io.File("/system/bin/sh")
+        val r = runCatching {
+            lobos.kernel.ipc.PtySession.runToCompletion(
+                this, sh,
+                listOf("-c", "echo __LD__=\$LD_LIBRARY_PATH; echo __PATH__=\$PATH; echo __BINS__=\$(ls /data/user/0/lobos.os/files/usr/bin | tr '\\n' ' ')"),
+                timeoutMs = 8_000,
+            )
+        }.getOrNull()
+        val out = r?.output.orEmpty()
+        val ld = out.lineSequence().firstOrNull { it.startsWith("__LD__=") }?.removePrefix("__LD__=").orEmpty()
+        val path = out.lineSequence().firstOrNull { it.startsWith("__PATH__=") }?.removePrefix("__PATH__=").orEmpty()
+        val bins = out.lineSequence().firstOrNull { it.startsWith("__BINS__=") }?.removePrefix("__BINS__=").orEmpty()
+        val libOk = ld.contains("usr/lib")
+        val binOk = path.contains("usr/bin")
+        RuntimeDiagnostics.append(
+            this, "terminal", libOk && binOk,
+            "终端自检（经 PTY 服务跑一条命令）",
+            "LD_LIBRARY_PATH 含 usr/lib：$libOk" +
+                "\nPATH 含 usr/bin：$binOk" +
+                "\nusr/bin 里有什么：$bins" +
+                "\nLD=$ld" +
+                "\n错误：${r?.error ?: "无"}",
         )
     }
 
