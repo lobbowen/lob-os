@@ -981,9 +981,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "sys.tty.list" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
-        lobos.kernel.ipc.PtySession.activeSessions(this@CapabilityBroker)
-            .map { o -> JSONObject().put("sid", it.sid).put("slave", it.slavePath) }
-            .let { JSONArray(it) }
+        val arr = JSONArray()
+        for (one in lobos.kernel.ipc.PtySession.activeSessions(this@CapabilityBroker)) {
+            arr.put(JSONObject().put("sid", one.sid).put("slave", one.slavePath))
+        }
+        arr
     },
     "sys.tty.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, programId ->
         val cmd = p.optString("cmd", "")
