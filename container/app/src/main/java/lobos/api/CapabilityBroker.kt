@@ -980,7 +980,34 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("bridge", SOCKET_NAME)
             }
         },
-        "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
+        "sys.tty.list" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+        lobos.kernel.ipc.PtySession.activeSessions(this@CapabilityBroker)
+            .map { o -> JSONObject().put("sid", it.sid).put("slave", it.slavePath) }
+            .let { JSONArray(it) }
+    },
+    "sys.tty.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, programId ->
+        val cmd = p.optString("cmd", "")
+        if (cmd.isBlank()) {
+            throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
+        }
+        val r = runCatching {
+            lobos.kernel.ipc.PtySession.runToCompletion(
+                this@CapabilityBroker,
+                java.io.File("/system/bin/sh"),
+                listOf("-c", cmd),
+                timeoutMs = p.optLong("timeoutMs", 10_000L),
+            )
+        }.getOrElse { e ->
+            throw BridgeError(CODE_INTERNAL, "PTY 执行失败：" + (e.message ?: e.javaClass.simpleName))
+        }
+        JSONObject().apply {
+            put("ok", r.ok)
+            put("exitCode", r.exitCode)
+            put("output", r.output)
+            if (r.error != null) put("error", r.error)
+        }
+    },
+    "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
             val snap = lobos.services.perm.PermissionLedger.register(this@CapabilityBroker)
             lobos.services.perm.PermissionLedger.toJson(snap)
         },

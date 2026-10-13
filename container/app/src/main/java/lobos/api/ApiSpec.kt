@@ -44,6 +44,8 @@ object ApiSpec {
         "lobos.sys.manifest.validate" to READONLY,
         "lobos.sys.permissions.ledger" to READONLY,
         "lobos.sys.permissions.roles" to READONLY,
+    "lobos.sys.tty.list" to READONLY,
+    "lobos.sys.tty.exec" to IDEMPOTENT,
     )
 
     val SCOPES = mapOf(
