@@ -62,10 +62,10 @@ object ServiceRegistry {
         after: List<String>,
         body: (Context) -> Unit,
     ): Decl = Decl(id, after) { ctx ->
-        mark(ctx, "svc-entry")
-        body(ctx)
-        mark(ctx, "body-done")
-        { }
+            lobos.services.log.Journal.note(ctx, "svc-probe", null, id + " svc-entry")
+            body(ctx)
+            lobos.services.log.Journal.note(ctx, "svc-probe", null, id + " body-done")
+            { }
     }
 
     fun ready(ctx: Context, alive: Set<String>): List<Decl> =
