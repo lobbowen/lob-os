@@ -241,8 +241,6 @@ object PtySession {
             catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }
 
-        @Synchronized
-    fun activeSessions(): List<Session> = sessions.values.toList()
     fun diagnostics(): String = synchronized(diag) { diag.toString() }
 
         override fun close() {
@@ -290,6 +288,9 @@ object PtySession {
         }
         return bin
     }
+    @Synchronized
+    fun activeSessions(): List<Session> = sessions.values.toList()
+
     fun isUsable(bin: java.io.File): Boolean = bin.isFile
 
     fun runToCompletion(

@@ -46,7 +46,7 @@ object SysDev {
                 runCatching {
                     java.nio.file.Files.createSymbolicLink(
                         File(d, "path").toPath(),
-                        File(s.slavePath).toPath()
+                        java.nio.file.Paths.get(s.slavePath)
                     )
                 }
             }
