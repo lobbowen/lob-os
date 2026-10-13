@@ -46,8 +46,15 @@ dist/
 work/
 keys/
 
-# 文档不入工程仓 —— 工程源码与文档分开（见 ../docs/）
+# 文档默认不入工程仓 —— 流程与发布那几份在仓外的 work/docs/
 *.md
+
+# 例外：随代码才有意义的那几份必须进仓。
+# 判据：被代码或 CI 引用（门禁的报错会直接指向 DECISIONS.md，
+#       路径写错就成了死链），或者它们本身就是代码的真相。
+!docs/architecture/DECISIONS.md
+!docs/architecture/LIBRARY-PATH.md
+!docs/ENGINEERING.md
 !container/app/src/main/java/lobos/**/README.md
 
 # 本地下载的产物
