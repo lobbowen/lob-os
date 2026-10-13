@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName

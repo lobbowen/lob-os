@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 import android.app.Activity
 import android.app.Service
 import android.content.Context

@@ -1,7 +1,7 @@
 package lobos.services.perm
 
 import android.content.Context
-import lobos.kernel.device.PermissionCenter
+import lobos.device.PermissionCenter
 import lobos.services.log.Journal
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs

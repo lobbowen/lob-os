@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.Manifest
 import android.content.Context
@@ -16,7 +16,7 @@ class PermissionCenter(private val ctx: Context) {
         } else false
 
     fun accessibilityReady(): Boolean =
-        runCatching { lobos.kernel.device.OsAccessibilityService.isReady() }.getOrDefault(false)
+        runCatching { lobos.device.OsAccessibilityService.isReady() }.getOrDefault(false)
 
     fun notificationListenerBound(): Boolean = NotificationStore.connected
 

@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification

@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

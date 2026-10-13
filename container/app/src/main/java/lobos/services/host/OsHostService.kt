@@ -14,8 +14,8 @@ import androidx.core.app.NotificationCompat
 import lobos.R
 import lobos.services.log.RuntimeDiagnostics
 import lobos.api.CapabilityBroker
-import lobos.kernel.device.DeviceOwnerState
-import lobos.kernel.device.ScreenCaptureController
+import lobos.device.DeviceOwnerState
+import lobos.device.ScreenCaptureController
 import lobos.services.log.Journal
 import lobos.services.log.KillAudit
 import lobos.kernel.proc.ProcessLedger
@@ -26,8 +26,8 @@ import lobos.services.reg.ResidencyStatus
 import lobos.services.perm.PermissionLedger
 import lobos.services.app.DriverRegistry
 import lobos.services.supervise.SupervisorPool
-import lobos.kernel.device.AccessibilityServiceState
-import lobos.kernel.device.ServiceState
+import lobos.device.AccessibilityServiceState
+import lobos.device.ServiceState
 
 class OsHostService : Service() {
 
@@ -154,7 +154,7 @@ class OsHostService : Service() {
             if (now - ownerSampledAt > ResidencyPolicy.OWNER_CHECK_TTL_MS) {
                 ownerSampledAt = now
                 deviceOwnerMeasured = runCatching {
-                    lobos.kernel.device.DeviceOwnerState.measure(this).isDeviceOwner
+                    lobos.device.DeviceOwnerState.measure(this).isDeviceOwner
                 }.getOrDefault(false)
             }
         } catch (e: Throwable) {

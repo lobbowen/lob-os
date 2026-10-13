@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.app.Notification
 import android.app.NotificationChannel

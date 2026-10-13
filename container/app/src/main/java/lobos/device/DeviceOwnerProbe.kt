@@ -1,4 +1,4 @@
-package lobos.kernel.device
+package lobos.device
 
 import android.app.admin.DevicePolicyManager
 import android.content.Context
