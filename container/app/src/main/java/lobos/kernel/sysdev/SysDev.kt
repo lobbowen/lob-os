@@ -30,7 +30,7 @@ object SysDev {
     private fun ttyDir(ctx: Context, r: File) {
         val pts = File(r, "tty/pts").apply { mkdirs() }
         val rows = JSONArray()
-        for (s in PtySession.activeSessions()) {
+        for (s in PtySession.activeSessions(ctx)) {
             val n = String.format("%03d", s.sid)
             val f = File(pts, n)
             f.writeText(
@@ -68,7 +68,7 @@ object SysDev {
     private fun indexJson(ctx: Context, r: File) {
         val o = JSONObject()
         val tty = JSONArray()
-        for (s in PtySession.activeSessions()) {
+        for (s in PtySession.activeSessions(ctx)) {
             tty.put(JSONObject().put("sid", s.sid).put("slave", s.slavePath))
         }
         o.put("tty", tty)
