@@ -61,6 +61,31 @@ object ServiceRegistry {
             }
         )
         out.add(
+            decl("termselftest", listOf("view")) { ctx ->
+                val sh = java.io.File("/system/bin/sh")
+                val r = runCatching {
+                    lobos.kernel.ipc.PtySession.runToCompletion(
+                        ctx, sh,
+                        listOf("-c", "echo __LD__=\$LD_LIBRARY_PATH; echo __PATH__=\$PATH; ls /data/user/0/lobos.os/files/usr/bin"),
+                        timeoutMs = 8_000L,
+                    )
+                }.getOrNull()
+                val outTxt = r?.output.orEmpty()
+                val ld = outTxt.lineSequence().firstOrNull { it.startsWith("__LD__=") }?.removePrefix("__LD__=").orEmpty()
+                val pathV = outTxt.lineSequence().firstOrNull { it.startsWith("__PATH__=") }?.removePrefix("__PATH__=").orEmpty()
+                val libOk = ld.contains("usr/lib")
+                val binOk = pathV.contains("usr/bin")
+                RuntimeDiagnostics.append(
+                    ctx, "terminal", libOk && binOk,
+                    "终端自检（Lob OS 自己的 PTY 跑一条命令）",
+                    "LD_LIBRARY_PATH 含 usr/lib：$libOk" +
+                        "\nPATH 含 usr/bin：$binOk" +
+                        "\n输出=" + outTxt.replace('\n', '|').take(300) +
+                        (if (r?.error != null) "\n错误=" + r.error else "")
+                )
+            }
+        )
+        out.add(
             decl("sysdev", listOf("view")) { ctx ->
                 runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
                     .onFailure { e ->
