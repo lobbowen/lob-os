@@ -75,7 +75,7 @@ class SupervisorPool(private val host: Service) {
             Journal.note(host, "supervisor-pool", null, "超出并发上限，已截断",
                 "期望 " + all.size + " 条，只起 " + wanted.size + " 条：上限 " + MAX_RUNNING +
                     "（Android 每个应用最多 32 个子进程，本系统还要留余量给件与探针）" +
-                    " 落下：" + all.drop(MAX_RUNNING).join(","))
+                    " 落下：" + all.drop(MAX_RUNNING).joinToString(","))
         }
         val toStop = supervisors.keys.filter { it !in wanted }
         for (id in toStop) {
