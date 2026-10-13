@@ -1,79 +1,104 @@
 package lobos.services.supervise
 
 import android.content.Context
+import lobos.services.log.Journal
 import lobos.services.log.RuntimeDiagnostics
+
+class SvcDecl(
+    val id: String,
+    val after: List<String>,
+    val act: (Context) -> Unit,
+)
 
 object ServiceRegistry {
 
-    class Decl(
-        val id: String,
-        val after: List<String>,
-        val start: (Context) -> () -> Unit,
-    ) {
-        private val tag: String = "decl/" + id
+    private fun noop() { }
 
-        fun mark(ctx: Context, where: String) {
-            lobos.services.log.Journal.note(ctx, "svc-probe", null, "$tag $where")
+    private fun actOf(id: String, f: (Context) -> Unit): (Context) -> Unit = { ctx ->
+        Journal.note(ctx, "svc-probe", null, id + " enter")
+        f(ctx)
+        Journal.note(ctx, "svc-probe", null, id + " done")
+    }
+
+    private fun decl(id: String, after: List<String>, f: (Context) -> Unit): SvcDecl {
+        val a: (Context) -> Unit = actOf(id, f)
+        return SvcDecl(id, after, a)
+    }
+
+    fun decls(): List<SvcDecl> {
+        val out = ArrayList<SvcDecl>()
+        out.add(
+            decl("prefix", ArrayList<String>()) { ctx ->
+                runCatching { lobos.services.app.PreinstalledPieces.installAll(ctx) }
+                    .onFailure { e ->
+                        RuntimeDiagnostics.append(
+                            ctx, "prefix", false, "预装件装置过程中出错",
+                            e.javaClass.name + ": " + (e.message ?: ""),
+                        )
+                    }
+            }
+        )
+        out.add(
+            decl("view", listOf("prefix")) { ctx ->
+                runCatching { lobos.services.reg.RuntimeEnvironment.ensure(ctx) }
+                    .onFailure { e ->
+                        RuntimeDiagnostics.append(
+                            ctx, "view", false, "算系统视图失败",
+                            e.javaClass.name + ": " + (e.message ?: ""),
+                        )
+                    }
+            }
+        )
+        out.add(
+            decl("pty", listOf("view")) { ctx ->
+                runCatching { lobos.kernel.ipc.PtySession.activeSessions(ctx) }
+                    .onFailure { e ->
+                        RuntimeDiagnostics.append(
+                            ctx, "service", false, "PTY 宿主就位失败",
+                            e.javaClass.name + ": " + (e.message ?: ""),
+                        )
+                    }
+            }
+        )
+        out.add(
+            decl("sysdev", listOf("view")) { ctx ->
+                runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
+                    .onFailure { e ->
+                        RuntimeDiagnostics.append(
+                            ctx, "sysdev", false, "渲染 files/dev 失败",
+                            e.javaClass.name + ": " + (e.message ?: ""),
+                        )
+                    }
+            }
+        )
+        return out
+    }
+
+    fun ready(ctx: Context, alive: Set<String>): List<SvcDecl> {
+        val out = ArrayList<SvcDecl>()
+        for (d in decls()) {
+            var ok = true
+            for (a in d.after) {
+                if (!alive.contains(a)) { ok = false }
+            }
+            if (ok) out.add(d)
         }
+        return out
     }
 
-
-    fun decls(): List<Decl> = listOf(
-        svc("prefix", emptyList()) { ctx ->
-            runCatching { lobos.services.app.PreinstalledPieces.installAll(ctx) }
-                .onFailure { ex ->
-                    RuntimeDiagnostics.append(
-                        ctx, "prefix", false, "预装件装置过程中出错",
-                        ex.javaClass.name + ": " + (ex.message ?: ""),
-                    )
-                }
-        },
-        svc("view", listOf("prefix")) { ctx ->
-            runCatching { lobos.services.reg.RuntimeEnvironment.ensure(ctx) }
-                .onFailure { ex ->
-                    RuntimeDiagnostics.append(
-                        ctx, "view", false, "算系统视图失败",
-                        ex.javaClass.name + ": " + (ex.message ?: ""),
-                    )
-                }
-        },
-        svc("pty", listOf("view")) { ctx ->
-            runCatching { lobos.kernel.ipc.PtySession.activeSessions(ctx) }
-                .onFailure { ex ->
-                    RuntimeDiagnostics.append(
-                        ctx, "service", false, "PTY 宿主就位失败",
-                        ex.javaClass.name + ": " + (ex.message ?: ""),
-                    )
-                }
-        },
-        svc("sysdev", listOf("view")) { ctx ->
-            runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
-                .onFailure { ex ->
-                    RuntimeDiagnostics.append(
-                        ctx, "sysdev", false, "渲染 files/dev 失败",
-                        ex.javaClass.name + ": " + (ex.message ?: ""),
-                    )
-                }
-        },
-    )
-
-    private fun svc(
-        id: String,
-        after: List<String>,
-        body: (Context) -> Unit,
-    ): Decl = Decl(id, after) { ctx ->
-            lobos.services.log.Journal.note(ctx, "svc-probe", null, id + " svc-entry")
-            body(ctx)
-            lobos.services.log.Journal.note(ctx, "svc-probe", null, id + " body-done")
-            { }
+    fun state(ctx: Context, alive: Set<String>): String {
+        if (decls().isEmpty()) return "（无内置服务）"
+        val sb = StringBuilder()
+        for (d in decls()) {
+            if (sb.length > 0) sb.append("; ")
+            sb.append(d.id)
+            if (alive.contains(d.id)) {
+                sb.append("=起")
+            } else {
+                sb.append("=等")
+                if (d.after.isNotEmpty()) sb.append("(").append(d.after.joinToString(",")).append(")")
+            }
+        }
+        return sb.toString()
     }
-
-    fun ready(ctx: Context, alive: Set<String>): List<Decl> =
-        decls().filter { d -> d.after.all { it in alive } }
-
-    fun state(ctx: Context, alive: Set<String>): String =
-        decls().joinToString("; ") { d ->
-            d.id + (if (d.id in alive) "=起" else "=等" +
-                (if (d.after.isEmpty()) "" else "(" + d.after.joinToString(",") + ")"))
-        }.ifBlank { "（无内置服务）" }
 }

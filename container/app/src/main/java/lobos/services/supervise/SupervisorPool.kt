@@ -31,14 +31,14 @@ class SupervisorPool(private val host: Service) {
     }
 
     @Synchronized
+    private fun noopUnit() { }
+
     private fun syncServices() {
         val alive = services.keys.toMutableSet()
         for (d in ServiceRegistry.ready(host, alive)) {
             if (services.containsKey(d.id)) continue
-            val stop = arrayOfNulls<() -> Unit>(1)
-            d.mark(host, "pool-before-start")
             val ok = runCatching {
-                stop[0] = d.start(host)
+                d.act(host)
                 true
             }.getOrElse { e ->
                 Log.w(TAG, "内置服务启动失败: " + d.id, e)
@@ -49,7 +49,7 @@ class SupervisorPool(private val host: Service) {
                 false
             }
             if (!ok) continue
-            services[d.id] = { stop[0]?.invoke() }
+            services[d.id] = { noopUnit() }
             alive.add(d.id)
             Journal.note(host, "service", null, "起内置服务", "id=" + d.id)
         }
