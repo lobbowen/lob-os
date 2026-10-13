@@ -55,39 +55,38 @@ class OsApplication : Application() {
     }
 
     private fun installSystemView() {
-        android.util.Log.i("LobosSysView", "installSystemView 进入")
-        android.util.Log.i("LobosSysView", "loadLibrary 前")
+        val tag = "LobosSysView"
+        android.util.Log.i(tag, "进入")
         val bind = runCatching { lobos.kernel.compat.LobosEnv.get("PATH") }
-        android.util.Log.i("LobosSysView", "loadLibrary 后，PATH=" + bind)
-        android.util.Log.i("LobosSysView", "view 项数=" + runCatching { lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, lobos.services.reg.RuntimeEnvironment.treeRootFor(this), null).size }.getOrDefault(-1))
-        android.util.Log.i("LobosSysView", "开始写 environ")
+        android.util.Log.i(tag, "loadLibrary 后 PATH=" + bind)
+        android.util.Log.i(tag, "开始写 environ")
+        var wrote = 0
+        var total = 0
         runCatching {
             val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
             val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, root, null)
-            var n = 0
+            total = view.size
             for ((k, v) in view) {
-                if (lobos.kernel.compat.LobosEnv.set(k, v)) n++
-                android.util.Log.i("LobosSysView", "set " + k + " -> " + lobos.kernel.compat.LobosEnv.set(k, v))
+                if (lobos.kernel.compat.LobosEnv.set(k, v)) wrote++
             }
-            android.util.Log.i("LobosSysView", "写完，n=" + n + "/" + view.size)
-
-        val probe = runCatching {
-            lobos.kernel.compat.LobosEnv.spawnProbe("echo LD=$LD_LIBRARY_PATH; echo P=$PATH; /data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1")
-        }.getOrDefault("threw: " + it.javaClass.simpleName)
-        android.util.Log.i("LobosSysView", "spawn 探针 → " + probe.replace(Char(10), Char(32)))
-        android.util.Log.i("LobosSysView", "sysview PATH=" + (probe.lineSequence().firstOrNull { it.startsWith("P=") } ?: "?"))
-        android.util.Log.i("LobosSysView", "sysview LD=" + (probe.lineSequence().firstOrNull { it.startsWith("LD=") } ?: "?"))
-            RuntimeDiagnostics.append(
-                this, "sysview", n > 0,
-                "系统视图已写入宿主进程环境（" + n + "/" + view.size + " 项）",
-                view.entries.joinToString("\n") { it.key + "=" + it.value.take(70) },
-            )
         }.onFailure {
-            RuntimeDiagnostics.append(
-                this, "sysview", false, "系统视图写入失败",
-                it.javaClass.name + ": " + (it.message ?: ""),
-            )
+            android.util.Log.e(tag, "写 environ 抛了", it)
         }
+        android.util.Log.i(tag, "写完 " + wrote + "/" + total)
+        val probe = runCatching {
+            val sh = "/system/bin/sh"
+            val cmd = StringBuilder()
+            cmd.append("echo LD=").append("\$LD_LIBRARY_PATH").append("; ")
+            cmd.append("echo P=").append("\$PATH").append("; ")
+            cmd.append("/data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1")
+            lobos.kernel.compat.LobosEnv.spawnProbe(sh + " -c '" + cmd + "'")
+        }.getOrElse { "threw " + it.javaClass.simpleName }
+        android.util.Log.i(tag, "探针 " + probe.replace('\n', ' '))
+        RuntimeDiagnostics.append(
+            this, "sysview", wrote > 0,
+            "系统视图写入宿主进程环境 " + wrote + "/" + total,
+            probe.replace('\n', ' ').take(400),
+        )
     }
 
     private fun initQuickAppRuntime() {
