@@ -11,7 +11,7 @@ object PreinstalledPieces {
     private const val ASSET_DIR = "pieces"
 
     private fun trace(ctx: Context, stage: String, detail: String) {
-        RuntimeDiagnostics.append(ctx, "prefix-trace", null, stage, detail)
+        lobos.services.log.Journal.note(ctx, "prefix-trace", null, stage, detail)
     }
 
     fun installAll(ctx: Context): List<String> {
