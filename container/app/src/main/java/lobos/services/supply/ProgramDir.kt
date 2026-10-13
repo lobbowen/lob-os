@@ -158,8 +158,17 @@ class ProgramDir(
 
     private fun registerCurrent(version: String) {
         runCatching {
-            val spec = ProgramRegistry.spec(context, programId)
-            val role = spec?.role?.takeIf { it.isNotBlank() } ?: "app"
+            val landed = PieceScan.isLandedPiece(context, programId)
+            val meta = if (landed) PieceScan.pieceMeta(context, programId) else null
+            val spec = if (landed) null else ProgramRegistry.spec(context, programId)
+            val role = if (landed) {
+                when (meta?.optString("form", "")?.trim()) {
+                    "lib" -> PieceScan.LIBRARY
+                    else -> PieceScan.EXEC
+                }
+            } else {
+                spec?.role?.takeIf { it.isNotBlank() } ?: "app"
+            }
             val resident = spec?.resident == true
             val existing = lobos.services.reg.ProgramIndex.get(context, programId)
             val base = existing ?: lobos.services.reg.ProgramIndex.empty(programId, lobos.services.reg.Level.PROGRAM)
@@ -179,7 +188,7 @@ class ProgramDir(
                     env = spec?.env ?: base.env,
                     httpPort = spec?.http?.port ?: base.httpPort,
                     httpHealth = spec?.http?.health ?: base.httpHealth,
-                    invalid = spec?.invalid,
+                    invalid = if (landed) null else spec?.invalid,
                 ),
             )
             lobos.services.log.Journal.note(

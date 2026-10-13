@@ -176,23 +176,26 @@ object PieceScan {
         }.toSet()
     }
 
-    fun pieceDir(ctx: Context, id: String): File? {
-        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
-        if (e.stateDir.isBlank()) return null
-        return File(e.stateDir)
+    fun landedPieceDir(ctx: Context, id: String): File? {
+        val seg = id.replace("/", "")
+        if (seg.isBlank()) return null
+        val base = SystemDirs.opt(ctx).resolve(seg)
+        if (!base.isDirectory) return null
+        val vers = base.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }
+            ?: return null
+        for (v in vers) {
+            if (File(v, "component-meta.json").isFile) return v
+        }
+        return null
     }
 
-    fun pieceFile(ctx: Context, id: String): File? {
-        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
-        if (e.stateDir.isBlank() || e.assetEntry.isBlank()) return null
-        return File(File(e.stateDir), e.assetEntry)
-    }
+    fun isLandedPiece(ctx: Context, id: String): Boolean =
+        landedPieceDir(ctx, id) != null
 
-    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? {
-        val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return null
-        if (e.stateDir.isBlank()) return null
-        return metaOf(File(e.stateDir))
-    }
+    fun pieceDir(ctx: Context, id: String): File? = landedPieceDir(ctx, id)
+
+    fun pieceMeta(ctx: Context, id: String): org.json.JSONObject? =
+        landedPieceDir(ctx, id)?.let { metaOf(it) }
 }
 
 internal object SupplySha {
