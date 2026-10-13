@@ -125,25 +125,25 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val provisioned = PrefixProvisioner.provision(ctx)
-        val landed = PieceScan.scan(ctx).filter { PieceScan.landedId(it) != null }
-        val landedIds = landed.mapNotNull { PieceScan.landedId(it) }.toSet()
+        val found = PieceScan.scan(ctx).filter { f -> PieceScan.landedId(f.dir.absolutePath) != null }
+        val landedIds = found.map { f -> f.id }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds
-        val expectedExe = PieceScan.scan(ctx)
+        val exeFiles = found
             .filter { File(it.dir, "bin").isDirectory }
-            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile } ?: emptyList() }
-            .flatten()
+            .flatMap { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile } ?: emptyList() }
             .toSet()
-        val missing = expectedExe.filter { File(it.parentFile.parentFile, "CURRENT").isFile }
+        val missing = exeFiles.filter { f -> !f.canExecute() }.map { it.name }
         RuntimeDiagnostics.append(
-            ctx, "prefix", absent.isEmpty(),
-            if (absent.isEmpty()) "\$PREFIX 件全部就位（" + packagedIds.size + " 件）"
-            else "\$PREFIX 缺件：" + absent.joinToString(","),
-            "落位根=" + SystemDirs.opt(ctx).absolutePath +
+            ctx, "prefix", absent.isEmpty() && missing.isEmpty(),
+            if (absent.isEmpty() && missing.isEmpty())
+                "\$PREFIX 件全部就位（" + packagedIds.size + " 件）"
+            else "\$PREFIX 缺件：" + (absent + missing).joinToString(","),
+            "落位根=" + lobos.kernel.layout.SystemDirs.opt(ctx).absolutePath +
                 "  已落位=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
                 "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）" +
                 "  provision=" + provisioned.joinToString(",")
         )
-        return Snapshot(landed, absent.toList())
+        return Snapshot(landedIds.toList(), absent.toList() + missing)
     }
 }
