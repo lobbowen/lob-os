@@ -19,8 +19,8 @@ import lobos.device.ScreenCaptureController
 import lobos.services.log.Journal
 import lobos.services.log.KillAudit
 import lobos.kernel.proc.ProcessLedger
-import lobos.kernel.power.DozeBackstop
-import lobos.kernel.power.PowerHostHooks
+import lobos.services.power.DozeBackstop
+import lobos.services.power.PowerHostHooks
 import lobos.services.supply.ProgramDir
 import lobos.services.reg.ResidencyStatus
 import lobos.services.perm.PermissionLedger
@@ -74,7 +74,7 @@ class OsHostService : Service() {
                         "；已登记程序数=" + lobos.services.reg.ProgramIndex.all(this).count { it.level == lobos.services.reg.Level.PROGRAM },
                 )
             }
-            lobos.kernel.power.DozeBackstop.schedule(this)
+            lobos.services.power.DozeBackstop.schedule(this)
             RuntimeDiagnostics.append(
                 this, "host", true, "Lob OS 宿主就位（单进程 / 单前台服务）",
                 "组件：SupervisorPool + CapabilityBroker + ScreenCaptureController；节拍 " + TICK_MS + "ms",
@@ -144,8 +144,8 @@ class OsHostService : Service() {
             runCatching { pool?.sync() }
             runCatching { lobos.services.app.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
-            if (!lobos.kernel.power.DozeBackstop.armedRecently(nowWall)) {
-                val armed = lobos.kernel.power.DozeBackstop.schedule(this)
+            if (!lobos.services.power.DozeBackstop.armedRecently(nowWall)) {
+                val armed = lobos.services.power.DozeBackstop.schedule(this)
                 lobos.services.log.Journal.note(
                     this, "doze", armed, "兜底闹钟未按期投递：已重挂",
                     "armed=" + armed + "（看门狗每拍校验布防）",

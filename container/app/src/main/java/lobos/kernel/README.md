@@ -6,38 +6,38 @@
 
 ## 内核里不许出现的词汇
 
-`program` `catalog` `ota` `piece` `permission` `manifest` `quickapp` `install` `package` `tier`
+`program` `catalog` `ota` `piece` `permission` `manifest` `quickapp` `install`
 
 这些是业务词。内核不认识它们，也不该认识。
 
 内核只提供**形状**——比如「可执行文件住在 `usr/lib/<id>/<版本>/bin/`，
 全局入口软链到 `usr/bin/`」。至于「有哪些件、什么版本、要不要更新」，
-是 `services/` 的事。
+那是 services 的事。
 
-## 目录
+## 这条规则的适用边界
 
-| 目录 | 对应 Linux | 职责 |
-|---|---|---|
-`fs/` | `fs/` | 命名空间（`$PREFIX`）、原子写、符号链接、临时空间 |
-`proc/` | `sched/` `signal/` | 进程身份、进程树、创建、终止、**进程组** |
-`mm/` | `mm/` | 库搜索路径、依赖可满足性、`LD_PRELOAD` 注入点 |
-`ipc/` | `ipc/` | unix socket、PTY、帧协议、stdin/stdout |
-`power/` | `power/` | 前台保活、Doze 兜底、冻结判定 |
-`security/` | `security/` | 路径完整性、能力边界 |
-`time/` | `timer/` | 心跳、超时判定 |
-`crypto/` | `crypto/` | 验签、摘要 |
-`elf/` | *（Linux 无）* | ELF 读取、执行位、依赖闭包 —— Android 场景特有 |
-`device/` | *（Linux 无）* | 授权实测、随机数、时钟、空设备 |
-`layout/` | *（Linux 无）* | 落位形状的唯一出处 |
+指的是**内核的类型名、字段名、接口名**不带业务味。
 
-`elf/` `device/` `layout/` 三个 Linux 没有，但 Android 场景确实需要：
-ELF 装载是 Android 的现实、设备授权必须问 Android、落位形状是我们自定的约定。
-思路对齐 Linux 的 `arch/`——处理本场景特有的差异。
+**不指磁盘上的契约文件名。** 那些由打包方定义，是跨层接口，不受此限。
 
-## 依赖方向
+例：`program-manifest.json` 是件包内的清单文件名，
+内核读它、services 写它、api 也读它——它是跨层契约，
+改名要重打所有已发布的包，收益只是让一行 grep 好看。
 
-```
-api/  →  services/  →  kernel/
-```
+判据是「这一层要不要回答这个问题」，不是「这个词出现在哪个目录」。
+systemd 也是如此：内核有 module，userspace 有 package manager。
 
-**只能向下。** `kernel/` 不 import `services/` 或 `api/`。
+## 分层
+
+| 目录 | 回答 |
+|---|---|
+| `proc/` `ipc/` `fs/` `elf/` `mm/` `security/` `time/` | 内核机制 |
+| `compat/` | 内核的一部分（垫片），不是件 |
+| `layout/` | 包与链接的形状（dpkg + ldconfig 的翻译） |
+| `crypto/` | 加密原语与包签名校验 |
+
+不在内核的：
+
+- **设备授权与能力** → `device/` 层
+- **电源策略与保活** → `services/power/`
+- **决策（装不装、跑不跑、用哪个）** → `services/`

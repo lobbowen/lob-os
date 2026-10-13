@@ -5,7 +5,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import lobos.services.log.Journal
-import lobos.kernel.power.PowerLocks
+import lobos.services.power.PowerLocks
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import org.json.JSONObject

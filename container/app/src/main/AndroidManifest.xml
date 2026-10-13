@@ -94,7 +94,7 @@
 
 
         <receiver
-            android:name=".kernel.power.DozeBackstopReceiver"
+            android:name=".services.power.DozeBackstopReceiver"
             android:exported="false" />
 
         <service

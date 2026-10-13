@@ -1,4 +1,4 @@
-package lobos.kernel.power
+package lobos.services.power
 
 import android.content.BroadcastReceiver
 import android.content.Context

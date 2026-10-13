@@ -1,4 +1,4 @@
-package lobos.kernel.power
+package lobos.services.power
 
 import android.app.AlarmManager
 import android.app.PendingIntent

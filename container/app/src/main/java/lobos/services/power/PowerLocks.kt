@@ -1,4 +1,4 @@
-package lobos.kernel.power
+package lobos.services.power
 
 import android.content.Context
 import android.net.wifi.WifiManager
