@@ -191,6 +191,7 @@ class ProgramDir(
                     invalid = if (landed) null else spec?.invalid,
                 ),
             )
+            if (landed) lobos.services.reg.ProgramIndex.clearInvalid(context, programId)
             lobos.services.log.Journal.note(
                 context, "registry", null, "指针切换即登记（不改动 desired，启停意图由安装与用户决定）",
                 "id=" + programId + " version=" + version + " role=" + role + " resident=" + resident,

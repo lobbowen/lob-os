@@ -244,6 +244,12 @@ object ProgramIndex {
         return true
     }
 
+    fun clearInvalid(ctx: Context, id: String): Boolean {
+        val cur = get(ctx, id) ?: return false
+        if (cur.invalid == null) return false
+        upsert(ctx, cur.copy(invalid = null))
+        return true
+    }
     @Synchronized
     fun replaceAll(ctx: Context, entries: List<UnitEntry>) = persist(ctx, entries)
 
