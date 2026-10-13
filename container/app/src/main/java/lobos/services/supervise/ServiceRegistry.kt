@@ -9,7 +9,13 @@ object ServiceRegistry {
         val id: String,
         val after: List<String>,
         val start: (Context) -> () -> Unit,
-    )
+    ) {
+        private val tag: String = "decl/" + id
+
+        fun mark(ctx: Context, where: String) {
+            lobos.services.log.Journal.note(ctx, "svc-probe", null, "$tag $where")
+        }
+    }
 
 
     fun decls(): List<Decl> = listOf(
@@ -55,7 +61,12 @@ object ServiceRegistry {
         id: String,
         after: List<String>,
         body: (Context) -> Unit,
-    ): Decl = Decl(id, after) { ctx -> { body(ctx) } }
+    ): Decl = Decl(id, after) { ctx ->
+        mark(ctx, "svc-entry")
+        body(ctx)
+        mark(ctx, "body-done")
+        { }
+    }
 
     fun ready(ctx: Context, alive: Set<String>): List<Decl> =
         decls().filter { d -> d.after.all { it in alive } }

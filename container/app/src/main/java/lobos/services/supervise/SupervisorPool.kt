@@ -36,6 +36,7 @@ class SupervisorPool(private val host: Service) {
         for (d in ServiceRegistry.ready(host, alive)) {
             if (services.containsKey(d.id)) continue
             val stop = arrayOfNulls<() -> Unit>(1)
+            d.mark(host, "pool-before-start")
             val ok = runCatching {
                 stop[0] = d.start(host)
                 true
