@@ -56,10 +56,6 @@ class OsApplication : Application() {
 
     private fun installSystemView() {
         val tag = "LobosSysView"
-        android.util.Log.i(tag, "进入")
-        val bind = runCatching { lobos.kernel.compat.LobosEnv.get("PATH") }
-        android.util.Log.i(tag, "loadLibrary 后 PATH=" + bind)
-        android.util.Log.i(tag, "开始写 environ")
         var wrote = 0
         var total = 0
         runCatching {
@@ -72,25 +68,10 @@ class OsApplication : Application() {
         }.onFailure {
             android.util.Log.e(tag, "写 environ 抛了", it)
         }
-        android.util.Log.i(tag, "写完 " + wrote + "/" + total)
-        val probe = runCatching {
-            val dir = java.io.File(filesDir, "var/run")
-            dir.mkdirs()
-            val f = java.io.File(dir, "sysview-probe.sh")
-            val body = StringBuilder()
-            body.append("echo LD=\$LD_LIBRARY_PATH").append('\n')
-            body.append("echo P=\$PATH").append('\n')
-            body.append("/data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1").append('\n')
-            f.writeText(body.toString())
-            val out = lobos.kernel.compat.LobosEnv.spawnProbe("/system/bin/sh " + f.absolutePath)
-            f.delete()
-            out
-        }.getOrElse { "threw " + it.javaClass.simpleName }
-        android.util.Log.i(tag, "探针 " + probe.replace('\n', '|'))
         RuntimeDiagnostics.append(
             this, "sysview", wrote > 0,
             "系统视图写入宿主进程环境 " + wrote + "/" + total,
-            probe.replace('\n', ' ').take(400),
+            "写入方式：JNI 改本进程 environ；子进程由 execve 层的 env_merge_sys 继承",
         )
     }
 

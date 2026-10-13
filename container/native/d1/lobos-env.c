@@ -57,21 +57,3 @@ Java_lobos_kernel_compat_LobosEnv_nativeGetenv(JNIEnv *env, jclass cls, jstring 
     return r;
 }
 
-JNIEXPORT jstring JNICALL
-Java_lobos_kernel_compat_LobosEnv_nativeSpawnProbe(JNIEnv *env, jclass cls, jstring script) {
-    (void)cls;
-    const char *cs = (*env)->GetStringUTFChars(env, script, 0);
-    char out[16384];
-    size_t used = 0;
-    FILE *f = popen(cs, "r");
-    if (f) {
-        size_t n;
-        while (used + 1 < sizeof(out) && (n = fread(out + used, 1, sizeof(out) - used - 1, f)) > 0) used += n;
-        fclose(f);
-    } else {
-        used = (size_t)snprintf(out, sizeof(out), "popen failed");
-    }
-    out[used] = 0;
-    (*env)->ReleaseStringUTFChars(env, script, cs);
-    return (*env)->NewStringUTF(env, out);
-}

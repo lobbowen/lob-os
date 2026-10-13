@@ -29,8 +29,4 @@ object LobosEnv {
 
     private external fun nativeGetenv(key: String): String?
 
-    fun spawnProbe(script: String): String =
-        if (!bind()) "loadLibrary failed" else runCatching { nativeSpawnProbe(script) }.getOrDefault("threw")
-
-    private external fun nativeSpawnProbe(script: String): String
 }
