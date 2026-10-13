@@ -8,7 +8,7 @@ import lobos.services.app.PieceProvisioner
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.services.supply.CatalogClient
 import lobos.services.supply.PackageInstaller
-import lobos.services.supply.PieceScan
+import lobos.services.supply.ShellEntry
 import lobos.kernel.mm.LibPath
 
 object RuntimeEnvironment {
@@ -76,7 +76,7 @@ object RuntimeEnvironment {
             put("CURL_CA_BUNDLE", caBundle.absolutePath)
             put("GIT_SSL_CAINFO", caBundle.absolutePath)
         }
-        put("SHELL", PieceScan.shellBin(ctx)?.absolutePath ?: "/system/bin/sh")
+        ShellEntry.resolve(ctx)?.let { put("SHELL", it.absolutePath) }
     }
 
     fun joinPath(vararg parts: String?): String =

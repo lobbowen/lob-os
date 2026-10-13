@@ -293,7 +293,9 @@ object PtySession {
 
     fun isUsable(bin: java.io.File): Boolean = bin.isFile
     fun activeSessions(ctx: Context): List<Session> =
-        runCatching { host(ctx, java.io.File("/system/bin/sh")).activeSessions() }
+        runCatching {
+            host(ctx, lobos.services.supply.ShellEntry.require(ctx)).activeSessions()
+        }
             .getOrDefault(emptyList())
 
 

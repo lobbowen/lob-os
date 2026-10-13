@@ -995,7 +995,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val r = runCatching {
             lobos.kernel.ipc.PtySession.runToCompletion(
                 this@CapabilityBroker,
-                java.io.File("/system/bin/sh"),
+                lobos.services.supply.ShellEntry.require(this@CapabilityBroker),
                 listOf("-c", cmd),
                 timeoutMs = p.optLong("timeoutMs", 10_000L),
             )

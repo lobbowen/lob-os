@@ -3,7 +3,6 @@ package lobos.kernel.layout
 import android.content.Context
 import java.io.File
 import java.nio.file.Files
-import lobos.services.log.RuntimeDiagnostics
 
 object EntryLinks {
 
@@ -29,21 +28,5 @@ object EntryLinks {
             }
         }
         return n
-    }
-
-    fun record(dest: File, links: List<String>) {
-        if (links.isEmpty()) return
-        val f = File(dest.parentFile, "." + dest.name + ".links")
-        runCatching { f.writeText(links.joinToString("\n") + "\n") }
-    }
-
-    fun previous(dest: File): List<String> {
-        val f = File(dest.parentFile, "." + dest.name + ".links")
-        if (!f.isFile) return emptyList()
-        return runCatching { f.readText().lines().filter { it.isNotBlank() } }.getOrDefault(emptyList())
-    }
-
-    fun drop(dest: File) {
-        runCatching { File(dest.parentFile, "." + dest.name + ".links").delete() }
     }
 }

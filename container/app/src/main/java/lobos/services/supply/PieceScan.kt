@@ -193,18 +193,6 @@ object PieceScan {
         if (e.stateDir.isBlank()) return null
         return metaOf(File(e.stateDir))
     }
-
-    fun shellBin(ctx: Context): File? {
-        fun landOf(e: lobos.services.reg.UnitEntry): File? =
-            if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null
-            else File(File(e.stateDir), e.assetEntry).takeIf { it.isFile }
-        val pieces = ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(it) }
-        val shell = pieces.firstOrNull { it.role == SHELL || it.id == "bash" }
-        if (shell != null) return landOf(shell)
-        val multi = pieces.firstOrNull { it.role == MULTI_COMMAND || it.id == "busybox" }
-        return multi?.let { landOf(it) }
-    }
-
 }
 
 internal object SupplySha {

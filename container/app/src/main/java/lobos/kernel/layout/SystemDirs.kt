@@ -41,6 +41,16 @@ object SystemDirs {
         return n
     }
 
+    fun clearRunVolatile(ctx: Context): Int {
+        val root = run(ctx)
+        if (!root.isDirectory) return 0
+        var n = 0
+        for (k in listOf("tmp", "staging", "install.lock")) {
+            val f = File(root, k)
+            if (runCatching { f.deleteRecursively() }.getOrDefault(false)) n++
+        }
+        return n
+    }
     fun ensureAll(ctx: Context) {
         for (d in listOf(
             etc(ctx), usr(ctx), bin(ctx), lib(ctx), include(ctx),

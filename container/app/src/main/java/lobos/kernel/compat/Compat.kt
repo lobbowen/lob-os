@@ -10,7 +10,7 @@ object Compat {
     const val LIB_PTYSESSION = "librivospty.so"
     const val LIB_FLOCK = "liblobosflock.so"
 
-    val PRELOAD_ORDER: List<String> = listOf(LIB_POSIX, LIB_PTYPROBE)
+    val PRELOAD_ORDER: List<String> = listOf(LIB_POSIX)
 
     fun libDir(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
 

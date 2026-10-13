@@ -35,7 +35,7 @@ object LdConfig {
                 val soname = runCatching { ElfFacts.read(so)?.soname }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: so.name
                 val dst = File(usrLib, soname)
-                if (linkTo(so, dst)) linked++
+                if (linkTo(so, dst)) linked++ else unresolved += so.absolutePath + " → " + dst.absolutePath
                 log += "lib  " + so.name + " → " + dst.name + "   " + so.absolutePath
             }
 
@@ -43,7 +43,7 @@ object LdConfig {
                 if (!exe.isFile) return@forEach
                 if (!lobos.kernel.elf.ExecBits.isRunnable(exe)) return@forEach
                 val dst = File(usrBin, exe.name)
-                if (linkTo(exe, dst)) linked++
+                if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
             }
         }
@@ -56,10 +56,12 @@ object LdConfig {
 
         RuntimeDiagnostics.append(
             ctx, "ldconfig", unresolved.isEmpty(),
-            "ldconfig：建了 $linked 条软链（${pieces.size} 个件）",
+            "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +
+                if (unresolved.isEmpty()) "" else "；${unresolved.size} 条建链失败",
             "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
                 "\n" + log.joinToString("\n") +
-                if (unresolved.isEmpty()) "" else "  未解析=" + unresolved.joinToString(","),
+                if (unresolved.isEmpty()) ""
+                else "\n建链失败=" + unresolved.joinToString("  |  "),
         )
         return linked
     }

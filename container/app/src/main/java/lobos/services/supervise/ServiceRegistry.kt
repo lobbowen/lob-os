@@ -1,7 +1,6 @@
 package lobos.services.supervise
 
 import android.content.Context
-import lobos.services.log.Journal
 import lobos.services.log.RuntimeDiagnostics
 
 class SvcDecl(
@@ -12,18 +11,8 @@ class SvcDecl(
 
 object ServiceRegistry {
 
-    private fun noop() { }
-
-    private fun actOf(id: String, f: (Context) -> Unit): (Context) -> Unit = { ctx ->
-        Journal.note(ctx, "svc-probe", null, id + " enter")
-        f(ctx)
-        Journal.note(ctx, "svc-probe", null, id + " done")
-    }
-
-    private fun decl(id: String, after: List<String>, f: (Context) -> Unit): SvcDecl {
-        val a: (Context) -> Unit = actOf(id, f)
-        return SvcDecl(id, after, a)
-    }
+    private fun decl(id: String, after: List<String>, f: (Context) -> Unit): SvcDecl =
+        SvcDecl(id, after, f)
 
     fun decls(): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
@@ -75,7 +64,7 @@ object ServiceRegistry {
         )
         out.add(
             decl("termselftest", listOf("view")) { ctx ->
-                val sh = java.io.File("/system/bin/sh")
+                val sh = lobos.services.supply.ShellEntry.require(ctx)
                 val r = runCatching {
                     lobos.kernel.ipc.PtySession.runToCompletion(
                         ctx, sh,
@@ -112,19 +101,6 @@ object ServiceRegistry {
         return out
     }
 
-    fun dump(ctx: Context, alive: Set<String>): String {
-        val all = decls()
-        val sb = StringBuilder()
-        sb.append("声明 ").append(all.size).append(" 个：")
-        for (d in all) {
-            sb.append(" ").append(d.id)
-            sb.append("[after=").append(d.after.joinToString("+"))
-            sb.append(" 就绪=").append(ready(ctx, alive).any { it.id == d.id })
-            sb.append(" 在活=").append(alive.contains(d.id))
-            sb.append("]")
-        }
-        return sb.toString()
-    }
     fun ready(ctx: Context, alive: Set<String>): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
         for (d in decls()) {

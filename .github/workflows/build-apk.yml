@@ -275,6 +275,11 @@ jobs:
           set -euo pipefail
           bash scripts/verify/check-no-comments.sh
 
+      - name: 不许借用宿主 /system/bin（LAYERS §1.5）
+        run: |
+          set -euo pipefail
+          bash scripts/verify/check-no-system-bin.sh
+
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
           set -euo pipefail

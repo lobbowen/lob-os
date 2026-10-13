@@ -512,6 +512,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         }.getOrNull() ?: "n/a"
     }
 
+    private fun reapAfterExit(reason: String) {
+        runCatching { reapProgramTree(reason) }
+    }
+
     private fun reapProgramTree(reason: String) {
         val e = runCatching {
             lobos.kernel.proc.ProcessLedger.list(this)
@@ -648,6 +652,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                         )
                     }
             lobos.kernel.proc.ProcessLedger.end(this, watchedPid)
+        reapAfterExit("程序退出后清理后代")
 
                     runCatching {
                         lobos.services.app.ProgramGroup.onBackendExit(

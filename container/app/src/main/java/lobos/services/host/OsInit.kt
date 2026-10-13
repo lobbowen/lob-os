@@ -69,7 +69,7 @@ object OsInit {
         val scanned = PieceScan.rebuild(ctx)
 
   runCatching { lobos.services.app.ProgramGroup.reconcile(ctx) }
-        val swept = SystemDirs.clearRun(ctx)
+        val swept = SystemDirs.clearRunVolatile(ctx)
         val snap = OsSnapshot(OsPhase.BOOTING, OsFacts(), interrupted, System.currentTimeMillis())
         write(ctx, snap, OsPhase.BOOTING, null)
         Journal.append(

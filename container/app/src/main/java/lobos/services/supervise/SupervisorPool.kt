@@ -59,7 +59,6 @@ class SupervisorPool(private val host: Service) {
                 Journal.note(host, "service", null, "注销内置服务", "id=" + id)
             }
         }
-        Journal.note(host, "svc-decls", null, ServiceRegistry.dump(host, alive))
         RuntimeDiagnostics.append(
             host, "service", true,
             "内置服务 " + services.size + "/" + ServiceRegistry.decls().size,
@@ -70,7 +69,14 @@ class SupervisorPool(private val host: Service) {
     fun sync() {
         syncServices()
             drainJobs()
-        val wanted = wantedPrograms()
+        val all = wantedPrograms()
+        val wanted = if (all.size <= MAX_RUNNING) all else all.take(MAX_RUNNING)
+        if (all.size > MAX_RUNNING) {
+            Journal.note(host, "supervisor-pool", null, "超出并发上限，已截断",
+                "期望 " + all.size + " 条，只起 " + wanted.size + " 条：上限 " + MAX_RUNNING +
+                    "（Android 每个应用最多 32 个子进程，本系统还要留余量给件与探针）" +
+                    " 落下：" + all.drop(MAX_RUNNING).join(","))
+        }
         val toStop = supervisors.keys.filter { it !in wanted }
         for (id in toStop) {
             val s = supervisors.remove(id)
@@ -143,6 +149,8 @@ class SupervisorPool(private val host: Service) {
     }
 
     companion object {
+        const val MAX_RUNNING = 12
+
         const val TAG = "SupervisorPool"
     }
 }

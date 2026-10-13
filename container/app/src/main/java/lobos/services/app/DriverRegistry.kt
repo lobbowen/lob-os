@@ -56,13 +56,6 @@ object DriverRegistry {
             substitution = "无 flock 编译件时按文件锁语义模拟（跨进程互斥由 JS 侧兜底）",
             degradeMode = "ON_ERROR",
         ),
-        Driver(
-            id = "d2.pty-probe",
-            assetId = lobos.kernel.compat.Compat.LIB_PTYPROBE,
-            provides = "PTY 探测工具",
-            substitution = "不做替换：自带自证工具（打印 name:OK / name:FAIL）",
-            degradeMode = "NONE",
-        ),
     )
 
     data class Entry(
