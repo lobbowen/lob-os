@@ -1,6 +1,7 @@
 package lobos.services.host
 
 import android.app.Application
+import lobos.services.supply.ShellEntry
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -24,6 +25,7 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        probeProcessBuilder(this)
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
@@ -93,3 +95,23 @@ class OsApplication : Application() {
         )
     }
 }
+    private fun probeProcessBuilder(ctx: Context) {
+        val b = ShellEntry.resolve(ctx)
+        val rep = StringBuilder()
+        rep.append("bin=").append(b?.absolutePath ?: "解析不到").append('\n')
+        if (b != null && b.isFile) {
+            runCatching {
+                val p = ProcessBuilder(b.absolutePath, "-c", "echo FROM-PB-OK").redirectErrorStream(true).start()
+                val txt = p.inputStream.bufferedReader().use { it.readText() }
+                p.waitFor()
+                rep.append("pb输出=").append(txt.replace('\n', '|')).append(" rc=").append(p.exitValue())
+            }.onFailure { e ->
+                rep.append("pb失败=").append(e.javaClass.name).append(": ").append(e.message)
+            }
+        }
+        RuntimeDiagnostics.append(
+            this, "pb-probe", rep.toString().contains("FROM-PB-OK"),
+            "宿主用 ProcessBuilder 起解释器", rep.toString(),
+        )
+    }
+
