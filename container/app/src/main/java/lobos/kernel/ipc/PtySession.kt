@@ -241,7 +241,9 @@ object PtySession {
             catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }
 
-        fun diagnostics(): String = synchronized(diag) { diag.toString() }
+        @Synchronized
+    fun activeSessions(): List<Session> = sessions.values.toList()
+    fun diagnostics(): String = synchronized(diag) { diag.toString() }
 
         override fun close() {
             runCatching { send(F_EXIT, 0, ByteArray(0)) }

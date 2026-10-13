@@ -24,6 +24,7 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        renderSysDev()
         installSystemView()
         terminalSelfCheck()
         lobos.services.app.Foreground.attach(this)
@@ -76,6 +77,15 @@ class OsApplication : Application() {
         )
     }
 
+    private fun renderSysDev() {
+        runCatching { lobos.kernel.sysdev.SysDev.render(this) }
+            .onFailure {
+                RuntimeDiagnostics.append(
+                    this, "sysdev", false, "渲染 files/dev 失败",
+                    it.javaClass.name + ": " + (it.message ?: ""),
+                )
+            }
+    }
     private fun terminalSelfCheck() {
         val sh = java.io.File("/system/bin/sh")
         val r = runCatching {
