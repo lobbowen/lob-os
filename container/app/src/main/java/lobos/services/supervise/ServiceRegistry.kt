@@ -41,6 +41,19 @@ object ServiceRegistry {
         out.add(
             decl("view", listOf("prefix")) { ctx ->
                 runCatching { lobos.services.reg.RuntimeEnvironment.ensure(ctx) }
+                    .onSuccess { snap ->
+                        val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
+                        val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
+                        var wrote = 0
+                        for ((k, v) in view) {
+                            if (lobos.kernel.compat.LobosEnv.set(k, v)) wrote++
+                        }
+                        RuntimeDiagnostics.append(
+                            ctx, "sysview", wrote > 0,
+                            "系统视图写入宿主进程环境 " + wrote + "/" + view.size + " 项",
+                            view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) },
+                        )
+                    }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(
                             ctx, "view", false, "算系统视图失败",
