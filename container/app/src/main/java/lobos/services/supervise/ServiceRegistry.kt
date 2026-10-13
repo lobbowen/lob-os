@@ -2,6 +2,7 @@ package lobos.services.supervise
 
 import android.content.Context
 import lobos.services.log.RuntimeDiagnostics
+import lobos.services.supply.ShellEntry
 
 class SvcDecl(
     val id: String,

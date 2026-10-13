@@ -61,6 +61,7 @@ import lobos.services.supervise.GuestAdapter
 import lobos.services.supervise.InstanceHost
 import lobos.kernel.ipc.LocalExec
 import lobos.services.supply.PieceUpdater
+import lobos.services.supply.ShellEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.mm.LibPath

@@ -8,6 +8,7 @@ import lobos.services.app.PieceProvisioner
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.services.supply.CatalogClient
 import lobos.services.supply.PackageInstaller
+import lobos.services.supply.PieceScan
 import lobos.services.supply.ShellEntry
 import lobos.kernel.mm.LibPath
 
