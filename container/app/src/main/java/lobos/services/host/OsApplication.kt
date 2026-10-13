@@ -72,13 +72,9 @@ class OsApplication : Application() {
             android.util.Log.i("LobosSysView", "写完，n=" + n + "/" + view.size)
 
         val probe = runCatching {
-            val r = runCatching { lobos.services.reg.RuntimeEnvironment.treeRootFor(this) }.getOrNull()
-            val p = if (r != null) lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, r, null)["PATH"] else null
-            val l = if (r != null) lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, r, null)["LD_LIBRARY_PATH"] else null
             lobos.kernel.compat.LobosEnv.spawnProbe("echo LD=$LD_LIBRARY_PATH; echo P=$PATH; /data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1")
         }.getOrDefault("threw: " + it.javaClass.simpleName)
-        android.util.Log.i("LobosSysView", "spawn 探针 →
-" + probe)
+        android.util.Log.i("LobosSysView", "spawn 探针 → " + probe.replace(Char(10), Char(32)))
         android.util.Log.i("LobosSysView", "sysview PATH=" + (probe.lineSequence().firstOrNull { it.startsWith("P=") } ?: "?"))
         android.util.Log.i("LobosSysView", "sysview LD=" + (probe.lineSequence().firstOrNull { it.startsWith("LD=") } ?: "?"))
             RuntimeDiagnostics.append(
