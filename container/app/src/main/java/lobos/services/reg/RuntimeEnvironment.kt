@@ -110,7 +110,8 @@ object RuntimeEnvironment {
             return s
         }
         return synchronized(this) {
-            cached?.takeIf { it.complete } ?: assemble(ctx).also { cached = it }
+            cached?.takeIf { it.complete }?.let { return it }
+            assemble(ctx).also { if (it.complete) cached = it }
         }
     }
 
@@ -123,25 +124,26 @@ object RuntimeEnvironment {
     private const val S_IFLNK = 0xA000
 
     private fun assemble(ctx: Context): Snapshot {
-        val ready = PrefixProvisioner.provision(ctx)
-        val expected = PieceScan.scan(ctx)
-            .filter { File(it.dir, "bin").isDirectory }
-            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile || isLink(f) }?.map { f -> f.name }.orEmpty() }
-            .flatten()
-            .toSet()
-        val missing = expected - ready.toSet()
-        val landedIds = ready.mapNotNull { PieceScan.landedId(it) }.toSet()
+        val provisioned = PrefixProvisioner.provision(ctx)
+        val landed = PieceScan.scan(ctx).filter { PieceScan.landedId(it) != null }
+        val landedIds = landed.mapNotNull { PieceScan.landedId(it) }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds
+        val expectedExe = PieceScan.scan(ctx)
+            .filter { File(it.dir, "bin").isDirectory }
+            .map { File(it.dir, "bin").listFiles()?.filter { f -> f.isFile } ?: emptyList() }
+            .flatten()
+            .toSet()
+        val missing = expectedExe.filter { File(it.parentFile.parentFile, "CURRENT").isFile }
         RuntimeDiagnostics.append(
             ctx, "prefix", absent.isEmpty(),
             if (absent.isEmpty()) "\$PREFIX 件全部就位（" + packagedIds.size + " 件）"
             else "\$PREFIX 缺件：" + absent.joinToString(","),
-            "落位根=" + PrefixProvisioner.root(ctx).absolutePath +
-                "  已铺=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
-                "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）"
+            "落位根=" + SystemDirs.opt(ctx).absolutePath +
+                "  已落位=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
+                "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）" +
+                "  provision=" + provisioned.joinToString(",")
         )
-
-        return Snapshot(ready, missing.toList())
+        return Snapshot(landed, absent.toList())
     }
 }
