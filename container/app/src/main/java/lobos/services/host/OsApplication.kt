@@ -24,8 +24,6 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
-        renderSysDev()
-        installSystemView()
         terminalSelfCheck()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
@@ -42,50 +40,10 @@ class OsApplication : Application() {
             )
         }
 
-        Thread {
-            runCatching { lobos.services.app.PreinstalledPieces.installAll(this@OsApplication) }
-                .onFailure {
-                    RuntimeDiagnostics.append(
-                        this@OsApplication, "prefix", false,
-                        "预装件装置过程中出错",
-                        it::class.java.simpleName + ": " + it.message,
-                    )
-                }
-        }.apply { isDaemon = true }.start()
                 OsHostService.ensureRunning(this)
         registerWakeupEdges()
     }
 
-    private fun installSystemView() {
-        val tag = "LobosSysView"
-        var wrote = 0
-        var total = 0
-        runCatching {
-            val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this)
-            val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, root, null)
-            total = view.size
-            for ((k, v) in view) {
-                if (lobos.kernel.compat.LobosEnv.set(k, v)) wrote++
-            }
-        }.onFailure {
-            android.util.Log.e(tag, "写 environ 抛了", it)
-        }
-        RuntimeDiagnostics.append(
-            this, "sysview", wrote > 0,
-            "系统视图写入宿主进程环境 " + wrote + "/" + total,
-            "写入方式：JNI 改本进程 environ；子进程由 execve 层的 env_merge_sys 继承",
-        )
-    }
-
-    private fun renderSysDev() {
-        runCatching { lobos.kernel.sysdev.SysDev.render(this) }
-            .onFailure {
-                RuntimeDiagnostics.append(
-                    this, "sysdev", false, "渲染 files/dev 失败",
-                    it.javaClass.name + ": " + (it.message ?: ""),
-                )
-            }
-    }
     private fun terminalSelfCheck() {
         val sh = java.io.File("/system/bin/sh")
         val r = runCatching {
