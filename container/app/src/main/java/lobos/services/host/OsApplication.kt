@@ -74,14 +74,19 @@ class OsApplication : Application() {
         }
         android.util.Log.i(tag, "写完 " + wrote + "/" + total)
         val probe = runCatching {
-            val sh = "/system/bin/sh"
-            val cmd = StringBuilder()
-            cmd.append("echo LD=").append("\$LD_LIBRARY_PATH").append("; ")
-            cmd.append("echo P=").append("\$PATH").append("; ")
-            cmd.append("/data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1")
-            lobos.kernel.compat.LobosEnv.spawnProbe(sh + " -c '" + cmd + "'")
+            val dir = java.io.File(filesDir, "var/run")
+            dir.mkdirs()
+            val f = java.io.File(dir, "sysview-probe.sh")
+            val body = StringBuilder()
+            body.append("echo LD=\$LD_LIBRARY_PATH").append('\n')
+            body.append("echo P=\$PATH").append('\n')
+            body.append("/data/user/0/lobos.os/files/usr/bin/rg --version 2>&1 | head -1").append('\n')
+            f.writeText(body.toString())
+            val out = lobos.kernel.compat.LobosEnv.spawnProbe("/system/bin/sh " + f.absolutePath)
+            f.delete()
+            out
         }.getOrElse { "threw " + it.javaClass.simpleName }
-        android.util.Log.i(tag, "探针 " + probe.replace('\n', ' '))
+        android.util.Log.i(tag, "探针 " + probe.replace('\n', '|'))
         RuntimeDiagnostics.append(
             this, "sysview", wrote > 0,
             "系统视图写入宿主进程环境 " + wrote + "/" + total,
