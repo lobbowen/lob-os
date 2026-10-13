@@ -125,7 +125,7 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val provisioned = PrefixProvisioner.provision(ctx)
-        val found = PieceScan.scan(ctx).filter { f -> PieceScan.landedId(f.dir.absolutePath) != null }
+        val found = PieceScan.scan(ctx).filter { it.role != PieceScan.HEADERS }
         val landedIds = found.map { f -> f.id }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds
