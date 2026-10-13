@@ -985,7 +985,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         for (one in lobos.kernel.ipc.PtySession.activeSessions(this@CapabilityBroker)) {
             arr.put(JSONObject().put("sid", one.sid).put("slave", one.slavePath))
         }
-        arr
+        JSONObject().put("sessions", arr).put("count", arr.length())
     },
     "sys.tty.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, programId ->
         val cmd = p.optString("cmd", "")
