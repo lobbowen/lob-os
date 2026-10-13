@@ -10,9 +10,16 @@ object PreinstalledPieces {
 
     private const val ASSET_DIR = "pieces"
 
+    private fun trace(ctx: Context, stage: String, detail: String) {
+        RuntimeDiagnostics.append(ctx, "prefix-trace", null, stage, detail)
+    }
+
     fun installAll(ctx: Context): List<String> {
+        trace(ctx, "进入", "thread=" + Thread.currentThread().name)
         val names = runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
+            .also { trace(ctx, "assets.list", "结果 " + (it.getOrNull()?.size ?: -1) + " 项，异常=" + (it.exceptionOrNull()?.javaClass?.simpleName ?: "无")) }
             .getOrDefault(emptyList())
+        trace(ctx, "assets 列表", names.joinToString(",").take(300))
         if (names.isEmpty()) {
             RuntimeDiagnostics.append(ctx, "prefix", true, "APK 里没有预装件")
             return emptyList()
@@ -22,9 +29,16 @@ object PreinstalledPieces {
         var failed = 0
 
         for (n in names) {
-        if (!n.endsWith(".zip")) continue
+            if (!n.endsWith(".zip")) continue
             val id = n.substringBeforeLast('.')
-            val r = installOne(ctx, id)
+            trace(ctx, "装 " + id, "开始")
+            val r = try {
+                installOne(ctx, id)
+            } catch (e: Throwable) {
+                trace(ctx, "装 " + id, "抛了 " + e.javaClass.name + ": " + (e.message ?: ""))
+                false
+            }
+            trace(ctx, "装 " + id, if (r) "成" else "败")
             if (r) done += id else failed++
         }
 
@@ -42,15 +56,6 @@ object PreinstalledPieces {
                     it::class.java.simpleName + ": " + it.message,
                 )
             }
-
-            .onFailure {
-                RuntimeDiagnostics.append(
-                    ctx, "ldconfig", false,
-                    "ldconfig 失败",
-                    it::class.java.simpleName + ": " + it.message,
-                )
-            }
-
         return done
     }
 
