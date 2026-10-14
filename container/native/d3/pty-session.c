@@ -251,7 +251,7 @@ int main(void) {
   signal(SIGINT, on_signal);
   signal(SIGTERM, on_signal);
 
-  int in_fd = STDIN_FILENO;
+  int in_fd = STDOUT_FILENO;
   int out_fd = STDOUT_FILENO;
 
   g_diag_fd = out_fd;
