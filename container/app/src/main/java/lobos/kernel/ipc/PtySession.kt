@@ -288,6 +288,7 @@ object PtySession {
                 null,
             )
             for ((k0, v0) in view0) pb0.environment()[k0] = v0
+            pb0.environment().remove("LD_PRELOAD")
             val seen = pb0.environment().filterKeys {
                 it == "LD_LIBRARY_PATH" || it == "LD_PRELOAD" || it == "PATH"
             }.entries.joinToString("|") { it.key + "=" + it.value.take(90) }
@@ -378,6 +379,7 @@ object PtySession {
         val checked = locateBin(bin)
         val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
         val pb = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
+        pb.environment().remove("LD_PRELOAD")
         if (cwd != null) pb.directory(cwd)
         if (env.isNotEmpty()) pb.environment().putAll(env)
         return Host(pb, ctx)

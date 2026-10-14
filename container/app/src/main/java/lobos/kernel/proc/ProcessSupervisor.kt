@@ -41,6 +41,7 @@ object ProcessSupervisor {
         )
         if (envMode != ENV_INHERIT) pb.environment().clear()
         for ((k, v) in view) pb.environment()[k] = v
+        pb.environment().remove("LD_PRELOAD")
         if (env != null) pb.environment().putAll(env)
         if (redirectErrorStream) pb.redirectErrorStream(true)
 
