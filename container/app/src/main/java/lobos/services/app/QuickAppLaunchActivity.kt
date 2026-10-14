@@ -13,20 +13,23 @@ class QuickAppLaunchActivity : AppCompatActivity() {
         val id = intent?.getStringExtra(EXTRA_ID)
         val probe = intent?.getStringExtra(EXTRA_EXEC)
         if (!probe.isNullOrBlank()) {
-            val cmd = intent.getStringExtra(EXTRA_EXEC_CMD).orEmpty()
-            val r = lobos.api.CapabilityBroker.live()?.invokeLocal(
-                lobos.api.CapabilityBroker.INSTALLER_ID,
-                "sys.tty.exec",
-                org.json.JSONObject().apply { put("cmd", cmd) },
-            )
+            val cmd = intent?.getStringExtra(EXTRA_EXEC_CMD).orEmpty()
+            val r = runCatching {
+                lobos.api.CapabilityBroker.live()?.invokeLocal(
+                    lobos.api.CapabilityBroker.INSTALLER_ID,
+                    "sys.tty.exec",
+                    org.json.JSONObject().apply { put("cmd", cmd) },
+                )
+            }.getOrNull()
             RuntimeDiagnostics.append(
                 this, "shell-exec", r?.optBoolean("ok") == true,
                 "在 Lob OS 的终端里执行了一条命令",
-                "经由=" + r?.optString("via") +
+                "命令=" + cmd +
+                    "\n经由=" + r?.optString("via") +
                     " tty=" + r?.optBoolean("tty") +
                     "\n退出码=" + r?.optInt("exitCode") +
                     "\n输出=" + r?.optString("stdout") +
-                    (r?.optString("detail")?.let { "\n原因=" + it } ?: ""),
+                    "\n原始=" + r?.toString(),
             )
             finish()
             return
