@@ -123,8 +123,10 @@ static void child_fail(int out_fd, int line, const char *what) {
 
 static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
   if (!argv || !argv[0]) { send_error(out_fd, "OPEN 没有可执行文件路径"); return -1; }
+  diag_raw("step1 posix_openpt");
   int master = posix_openpt(O_RDWR | O_NOCTTY);
   if (master < 0) { int e0 = errno; send_error(out_fd, "posix_openpt 失败"); errno = e0; return -1; }
+  diag_raw("step2 grantpt");
   if (grantpt(master) != 0 || unlockpt(master) != 0) {
     int e1 = errno;
     send_error(out_fd, "grantpt/unlockpt 失败");
@@ -137,6 +139,7 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
        所以这里自己数：从 0 起试 open("/dev/pts/<n>")，第一个能打开的就是它。 */
     static char g_pts_path[64];
     static int g_pts_next = 0;
+  diag_raw("step3 ptsname");
     const char *sn = ptsname(master);
     if (!sn) {
         sn = 0;
@@ -156,6 +159,7 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
     snprintf(g_pts_path, sizeof g_pts_path, "%s", sn);
     sn = g_pts_path;
 
+  diag_raw("step4 fork");
   pid_t pid = fork();
   if (pid < 0) {
     close(master);
