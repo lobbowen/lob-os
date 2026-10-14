@@ -251,7 +251,7 @@ int main(void) {
   signal(SIGINT, on_signal);
   signal(SIGTERM, on_signal);
 
-  int in_fd = STDOUT_FILENO;
+  int in_fd = STDIN_FILENO;
   int out_fd = STDOUT_FILENO;
 
   g_diag_fd = out_fd;
@@ -282,6 +282,9 @@ int main(void) {
     if (fds[0].revents & (POLLIN | POLLHUP)) {
       frame_hdr h;
       int got = read_full(in_fd, &h, sizeof(h));
+      { char m[64];
+        snprintf(m, sizeof m, "帧到 got=%d kind=%u", got, (unsigned)h.kind);
+        diag_raw(m); }
       if (got == 0) break;                  
       if (got < 0) { if (errno == EINTR) continue; break; }
       if (h.length > FRAME_MAX) {
