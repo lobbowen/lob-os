@@ -81,7 +81,7 @@ cp -f "$WORK/liblobosptyprobe.so" "$OUT/liblobosptyprobe.so"
 echo "  ✓ ptyprobe   → liblobosptyprobe.so"
 
 # ── ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）────────────
-"$CC" -static -O2 \
+"$CC" -static-pie -O2 \
   -o "$WORK/librivospty.so" \
   container/native/d3/pty-session.c 2>"$WORK/cc-ptysession.log" \
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
