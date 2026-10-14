@@ -27,7 +27,9 @@ object InstalledRuntime {
         } ?: emptyList()
         if (args.isEmpty()) return recordedVersion(ctx, id)
         val out = runCatching {
-            val pb = ProcessBuilder(bin.absolutePath, *args.toTypedArray())
+            val cmd = listOf(bin.absolutePath) + args
+            val real = lobos.kernel.proc.ExecEntry.argv(bin, cmd)
+            val pb = ProcessBuilder(if (real != null) real else cmd)
                 .redirectErrorStream(true)
             val root = RuntimeEnvironment.treeRootFor(ctx)
             RuntimeEnvironment.treeRootEnv(ctx, root, null).forEach { (k, v) ->

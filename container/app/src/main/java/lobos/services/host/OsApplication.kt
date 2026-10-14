@@ -1,7 +1,6 @@
 package lobos.services.host
 
 import android.app.Application
-import lobos.services.supply.ShellEntry
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -25,7 +24,6 @@ class OsApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
-        probeProcessBuilder(this)
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
@@ -95,46 +93,4 @@ class OsApplication : Application() {
         )
     }
 }
-    private fun probeProcessBuilder(ctx: Context) {
-        val b = ShellEntry.resolve(ctx)
-        val rep = StringBuilder()
-        rep.append("bin=").append(b?.absolutePath ?: "解析不到").append('\n')
-        if (b == null || !b.isFile) {
-            RuntimeDiagnostics.append(ctx, "pb-probe", false, "宿主用 ProcessBuilder 起解释器", rep.toString())
-            return
-        }
-        runCatching {
-            val p = ProcessBuilder(b.absolutePath, "-c", "echo FROM-PB-OK").redirectErrorStream(true).start()
-            val txt = p.inputStream.bufferedReader().use { it.readText() }
-            p.waitFor()
-            rep.append("A_继承环境=").append(txt.replace('\n', '|')).append(" rc=").append(p.exitValue())
-        }.onFailure { e ->
-            rep.append("A_继承环境=失败 ").append(e.javaClass.name).append(": ").append(e.message)
-        }
-        runCatching {
-            val p2 = ProcessBuilder(b.absolutePath, "-c", "echo FROM-PB2-OK")
-                .redirectErrorStream(true)
-            p2.environment().clear()
-            val pr = p2.start()
-            val txt = pr.inputStream.bufferedReader().use { it.readText() }
-            pr.waitFor()
-            rep.append('\n').append("B_清空环境=").append(txt.replace('\n', '|')).append(" rc=").append(pr.exitValue())
-        }.onFailure { e ->
-            rep.append('\n').append("B_清空环境=失败 ").append(e.javaClass.name).append(": ").append(e.message)
-        }
-        runCatching {
-            val linker = java.io.File("/system/bin/linker64")
-            val args = mutableListOf(linker.absolutePath, b.absolutePath, "-c", "echo FROM-PB3-OK")
-            val p3 = ProcessBuilder(args).redirectErrorStream(true).start()
-            val txt = p3.inputStream.bufferedReader().use { it.readText() }
-            p3.waitFor()
-            rep.append('\n').append("C_经linker64=").append(txt.replace('\n', '|')).append(" rc=").append(p3.exitValue())
-        }.onFailure { e ->
-            rep.append('\n').append("C_经linker64=失败 ").append(e.javaClass.name).append(": ").append(e.message)
-        }
-        RuntimeDiagnostics.append(
-            ctx, "pb-probe", rep.toString().contains("FROM-PB-OK"),
-            "宿主用 ProcessBuilder 起解释器", rep.toString(),
-        )
-    }
 

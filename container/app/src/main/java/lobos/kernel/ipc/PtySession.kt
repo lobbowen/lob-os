@@ -273,7 +273,8 @@ object PtySession {
         synchronized(hostLock) {
             host?.let { return it }
             val checked = locateBin(bin)
-            val h = Host(ProcessBuilder(checked.absolutePath), ctx)
+            val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
+            val h = Host(ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath)), ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
             bin.absolutePath + " （常驻；shell.exec 与终端共用）")
@@ -358,7 +359,8 @@ object PtySession {
 
     private fun dedicatedHost(ctx: Context, bin: java.io.File, env: Map<String, String>, cwd: File?): Host {
         val checked = locateBin(bin)
-        val pb = ProcessBuilder(checked.absolutePath)
+        val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
+        val pb = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
         if (cwd != null) pb.directory(cwd)
         if (env.isNotEmpty()) pb.environment().putAll(env)
         return Host(pb, ctx)

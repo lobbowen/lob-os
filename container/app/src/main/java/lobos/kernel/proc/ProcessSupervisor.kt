@@ -29,7 +29,8 @@ object ProcessSupervisor {
         owner: String,
         programId: String? = null,
     ): Spawned {
-        val pb = ProcessBuilder(command)
+        val real = ExecEntry.argv(java.io.File(command[0]), command)
+        val pb = ProcessBuilder(if (real != null) real else command)
         if (cwd != null) pb.directory(cwd)
         if (envMode != ENV_INHERIT) pb.environment().clear()
         if (env != null) pb.environment().putAll(env)

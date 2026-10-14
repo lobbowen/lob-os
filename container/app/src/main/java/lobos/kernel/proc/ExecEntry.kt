@@ -5,6 +5,8 @@ import java.nio.file.Files
 
 object ExecEntry {
 
+    const val SYSTEM_LINKER = "/system/bin/linker64"
+
     sealed class Shape {
         object Elf : Shape()
         data class Shebang(val interp: String, val flags: String?) : Shape()
@@ -37,7 +39,7 @@ object ExecEntry {
     }
 
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
-        is Shape.Elf -> listOf(entry.absolutePath) + args
+        is Shape.Elf -> listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
