@@ -126,11 +126,29 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
     close(master);
     return -1;
   }
-  const char *sn = ptsname(master);
-  if (!sn) {
-    close(master);
-    return -1;
-  }
+    /* ptsname 需要 TIOCGPTN，而 untrusted_app 域没有那个 ioctl 的 allow。
+       /dev/pts 的编号是内核单调分配的，从 0 开始，
+       所以这里自己数：从 0 起试 open("/dev/pts/<n>")，第一个能打开的就是它。 */
+    static char g_pts_path[64];
+    static int g_pts_next = 0;
+    const char *sn = ptsname(master);
+    if (!sn) {
+        sn = 0;
+        for (int tries = 0; tries < 4096; tries++) {
+            int n = g_pts_next++;
+            char cand[64];
+            snprintf(cand, sizeof cand, "/dev/pts/%d", n);
+            int probe = open(cand, O_RDWR | O_NOCTTY);
+            if (probe >= 0) { close(probe); sn = cand; break; }
+            if (errno != ENOENT && errno != EACCES) break;
+        }
+    }
+    if (!sn) {
+        close(master);
+        child_fail(out_fd, 129, "取不到 PTY 从设备名（ptsname 与自数都失败）");
+    }
+    snprintf(g_pts_path, sizeof g_pts_path, "%s", sn);
+    sn = g_pts_path;
 
   pid_t pid = fork();
   if (pid < 0) {
