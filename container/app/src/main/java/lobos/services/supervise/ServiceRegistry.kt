@@ -57,7 +57,7 @@ object ServiceRegistry {
         )
         out.add(
             decl("pty", listOf("view")) { ctx ->
-                runCatching { lobos.kernel.ipc.PtySession.activeSessions(ctx) }
+                runCatching { lobos.kernel.ipc.PtySession.ensureHost(ctx) }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(
                             ctx, "service", false, "PTY 宿主就位失败",
