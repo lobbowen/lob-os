@@ -122,6 +122,16 @@ class OsApplication : Application() {
         }.onFailure { e ->
             rep.append('\n').append("B_清空环境=失败 ").append(e.javaClass.name).append(": ").append(e.message)
         }
+        runCatching {
+            val linker = java.io.File("/system/bin/linker64")
+            val args = mutableListOf(linker.absolutePath, b.absolutePath, "-c", "echo FROM-PB3-OK")
+            val p3 = ProcessBuilder(args).redirectErrorStream(true).start()
+            val txt = p3.inputStream.bufferedReader().use { it.readText() }
+            p3.waitFor()
+            rep.append('\n').append("C_经linker64=").append(txt.replace('\n', '|')).append(" rc=").append(p3.exitValue())
+        }.onFailure { e ->
+            rep.append('\n').append("C_经linker64=失败 ").append(e.javaClass.name).append(": ").append(e.message)
+        }
         RuntimeDiagnostics.append(
             ctx, "pb-probe", rep.toString().contains("FROM-PB-OK"),
             "宿主用 ProcessBuilder 起解释器", rep.toString(),
