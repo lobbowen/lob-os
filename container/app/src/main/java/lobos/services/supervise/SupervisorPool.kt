@@ -33,6 +33,7 @@ class SupervisorPool(private val host: Service) {
     @Synchronized
     private fun noopUnit() { }
 
+    @Synchronized
     private fun syncServices() {
         val alive = services.keys.toMutableSet()
         for (d in ServiceRegistry.ready(host, alive)) {
