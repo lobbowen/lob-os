@@ -119,11 +119,14 @@ static void child_fail(int out_fd, int line, const char *what) {
 }
 
 static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
-  if (!argv || !argv[0]) return -1;
+  if (!argv || !argv[0]) { send_error(out_fd, "OPEN 没有可执行文件路径"); return -1; }
   int master = posix_openpt(O_RDWR | O_NOCTTY);
-  if (master < 0) return -1;
+  if (master < 0) { int e0 = errno; send_error(out_fd, "posix_openpt 失败"); errno = e0; return -1; }
   if (grantpt(master) != 0 || unlockpt(master) != 0) {
+    int e1 = errno;
+    send_error(out_fd, "grantpt/unlockpt 失败");
     close(master);
+    errno = e1;
     return -1;
   }
     /* ptsname 需要 TIOCGPTN，而 untrusted_app 域没有那个 ioctl 的 allow。
