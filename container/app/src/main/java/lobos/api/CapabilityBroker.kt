@@ -247,8 +247,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
 
         val params = msg.optJSONObject("params") ?: JSONObject()
-        val canonical = if (method == "notify.post") "notif.post" else method
-        val def = METHODS[canonical] ?: OS_METHODS[canonical]
+        val canonical = ApiSpec.canonical(method)
+        val short = ApiSpec.shortOf(method)
+        val def = METHODS[method] ?: OS_METHODS[method]
+            ?: METHODS[short] ?: OS_METHODS[short]
         if (def == null) {
             val alias = ApiSpec.deprecatedInFavorOf(method)
             if (alias != null && (METHODS[alias] != null || OS_METHODS[alias] != null)) {

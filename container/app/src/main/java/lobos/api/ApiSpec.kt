@@ -31,7 +31,7 @@ object ApiSpec {
     )
 
     val SYS_NAMESPACES = listOf(
-        "capability", "permissions", "accessibility", "adb", "automation",
+        "capability", "permissions", "accessibility", "automation",
         "notifications", "screenshot", "power", "shell", "fs", "ui", "device",
     )
 
@@ -45,12 +45,11 @@ object ApiSpec {
         "lobos.sys.permissions.ledger" to READONLY,
         "lobos.sys.permissions.roles" to READONLY,
     "lobos.sys.tty.list" to READONLY,
-    "lobos.sys.tty.exec" to IDEMPOTENT,
+    "lobos.sys.shell.exec" to MUTATING,
     )
 
     val SCOPES = mapOf(
         "lobos.sys.api" to SCOPE_SYSTEM,
-        "lobos.sys.capability.invoke" to SCOPE_SYSTEM,
         "lobos.sys.shell.exec" to SCOPE_SYSTEM,
         "lobos.sys.fs.write" to SCOPE_SYSTEM,
         "lobos.sys.device.listInstalled" to SCOPE_SYSTEM,
@@ -83,10 +82,8 @@ object ApiSpec {
         "ui.globalAction" to "lobos.sys.ui.globalAction",
         "ui.events" to "lobos.sys.ui.events",
         "ui.dropEvents" to "lobos.sys.ui.dropEvents",
-        "shell.status" to "lobos.sys.adb.status",
-        "shell.pair" to "lobos.sys.adb.pair",
-        "shell.forget" to "lobos.sys.adb.forget",
-        "shell.exec" to "lobos.sys.shell.exec",
+        "sys.tty.exec" to "lobos.sys.shell.exec",
+        "sys.tty.list" to "lobos.sys.tty.list",
         "fs.read" to "lobos.sys.fs.read",
         "fs.write" to "lobos.sys.fs.write",
         "fs.list" to "lobos.sys.fs.list",
@@ -95,7 +92,6 @@ object ApiSpec {
         "build.programStatus" to "lobos.dev.packages.status",
         "build.apk" to "lobos.dev.programs.apk",
         "build.status" to "lobos.dev.programs.status",
-        "capability.invoke" to "lobos.sys.capability.invoke",
         "sys.info" to "lobos.sys.info",
         "sys.api" to "lobos.sys.api",
         "os.manifest.spec" to "lobos.sys.manifest.spec",
@@ -114,6 +110,11 @@ object ApiSpec {
     )
 
     fun canonical(method: String): String = CANONICAL[method] ?: method
+
+    fun shortOf(method: String): String = REVERSE[method] ?: method
+
+    private val REVERSE: Map<String, String> = CANONICAL.entries
+        .associate { (short, long) -> long to short }
 
     fun tierOf(method: String): String =
         if (canonical(method).startsWith(NAMESPACE_SYS + ".")) TIER_SYS else TIER_DEV
