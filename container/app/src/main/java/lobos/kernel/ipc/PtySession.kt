@@ -295,9 +295,6 @@ object PtySession {
             )
             for ((k0, v0) in view0) pb0.environment()[k0] = v0
             pb0.environment().remove("LD_PRELOAD")
-            val seen = pb0.environment().filterKeys {
-                it == "LD_LIBRARY_PATH" || it == "LD_PRELOAD" || it == "PATH"
-            }.entries.joinToString("|") { it.key + "=" + it.value.take(90) }
             val h = Host(pb0, ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",

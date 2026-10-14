@@ -71,14 +71,6 @@ so_ok "$WORK/liblobosposix.so" 500
 cp -f "$WORK/liblobosposix.so" "$OUT/liblobosposix.so"
 echo "  ✓ posix      → liblobosposix.so"
 
-# ── ptyprobe：PTY 能力探测（-static 与原脚本一致，别改成 -shared）──────
-"$CC" -static -O2 \
-  -o "$WORK/liblobosptyprobe.so" \
-  container/native/d2/pty-probe.c 2>"$WORK/cc-ptyprobe.log" \
-  || { echo "!! ptyprobe 编不出来" >&2; tail -20 "$WORK/cc-ptyprobe.log" >&2; exit 1; }
-so_ok "$WORK/liblobosptyprobe.so" 1000
-cp -f "$WORK/liblobosptyprobe.so" "$OUT/liblobosptyprobe.so"
-echo "  ✓ ptyprobe   → liblobosptyprobe.so"
 
 # ── ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）────────────
 "$CC" -static -O2 \
@@ -106,5 +98,5 @@ find "$OUT" -maxdepth 1 -type f \( -name 'liblobos*.so' -o -name 'librivospty.so
 
 echo ""
 echo "[compat] 垫片已落 $OUT"
-ls -la "$OUT"/liblobosposix.so "$OUT"/liblobosptyprobe.so "$OUT"/librivospty.so 2>/dev/null \
+ls -la "$OUT"/liblobosposix.so "$OUT"/librivospty.so 2>/dev/null \
   || echo "[compat] 有产物缺失"

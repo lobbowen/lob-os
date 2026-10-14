@@ -67,32 +67,6 @@ object ServiceRegistry {
             }
         )
         out.add(
-            decl("termselftest", listOf("view")) { ctx ->
-                val sh = lobos.services.supply.ShellEntry.require(ctx)
-                val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
-                val r = runCatching {
-                    lobos.kernel.ipc.PtySession.runToCompletion(
-                        ctx, requireNotNull(ptyBin) { "PTY 宿主不在（内核构件缺失）" },
-                        listOf(sh.absolutePath, "-c", "echo __LD__=\$LD_LIBRARY_PATH; echo __PATH__=\$PATH"),
-                        timeoutMs = 8_000L,
-                    )
-                }.getOrNull()
-                val outTxt = r?.output.orEmpty()
-                val ld = outTxt.lineSequence().firstOrNull { it.startsWith("__LD__=") }?.removePrefix("__LD__=").orEmpty()
-                val pathV = outTxt.lineSequence().firstOrNull { it.startsWith("__PATH__=") }?.removePrefix("__PATH__=").orEmpty()
-                val libOk = ld.contains("usr/lib")
-                val binOk = pathV.contains("usr/bin")
-                RuntimeDiagnostics.append(
-                    ctx, "terminal", libOk && binOk,
-                    "终端自检（Lob OS 自己的 PTY 跑一条命令）",
-                    "LD_LIBRARY_PATH 含 usr/lib：$libOk" +
-                        "\nPATH 含 usr/bin：$binOk" +
-                        "\n输出=" + outTxt.replace('\n', '|').take(300) +
-                        (if (r?.error != null) "\n错误=" + r.error else "")
-                )
-            }
-        )
-        out.add(
             decl("sysdev", listOf("view")) { ctx ->
                 runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
                     .onFailure { e ->
