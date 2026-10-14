@@ -43,7 +43,7 @@ object ServiceRegistry {
                         }
                         RuntimeDiagnostics.append(
                             ctx, "sysview", wrote > 0,
-                            "系统视图写入宿主进程环境 " + wrote + "/" + view.size + " 项；内核垫片入系统库 " + linked + " 个；没写进去=" + failed.join(" | "),
+                            "系统视图写入宿主进程环境 " + wrote + "/" + view.size + " 项；内核垫片入系统库 " + linked + " 个；没写进去=" + failed.joinToString(" | "),
                             view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) },
                         )
                     }
