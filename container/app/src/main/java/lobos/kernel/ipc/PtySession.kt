@@ -274,10 +274,14 @@ object PtySession {
             host?.let { return it }
             val checked = locateBin(bin)
             val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
-            val h = Host(ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath)), ctx)
+            val pb0 = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
+            val seen = pb0.environment().filterKeys {
+                it == "LD_LIBRARY_PATH" || it == "LD_PRELOAD" || it == "PATH"
+            }.entries.joinToString("|") { it.key + "=" + it.value.take(90) }
+            val h = Host(pb0, ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
-            bin.absolutePath + " （常驻；shell.exec 与终端共用）")
+            bin.absolutePath + " （常驻；shell.exec 与终端共用） 启动时环境=" + seen
             return h
         }
     }
