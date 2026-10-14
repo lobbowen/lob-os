@@ -257,6 +257,7 @@ jobs:
           set -euo pipefail
           bash scripts/toolchain/locate-ndk.sh
           bash scripts/toolchain/build-kernel-compat.sh
+          echo "::warning title=垫片编译::build-kernel-compat.sh 返回非零，日志已留在 work/kernel-compat/cc-*.log"
 
       - name: 核对取到的件
         run: |
@@ -450,6 +451,8 @@ jobs:
           set -uo pipefail
           D=/tmp/diag
           rm -rf "$D"; mkdir -p "$D"
+
+          { for f in work/kernel-compat/cc-*.log; do [ -e "$f" ] && { echo "===== $(basename "$f") ====="; tail -40 "$f"; }; done; } > "$D/native-logs.txt" 2>&1 || true
 
           # Gradle 的 HTML 报告里有完整的编译错误（含文件名/行号/消息），
           # 而 logs API 取回来会被裁剪 —— 这份落到 artifact 才拿得到。
