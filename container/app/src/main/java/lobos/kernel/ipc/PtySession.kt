@@ -320,13 +320,13 @@ object PtySession {
     fun isUsable(bin: java.io.File): Boolean = bin.isFile
     fun activeSessions(ctx: Context): List<Session> {
         val h = host
-        return if (h == null) emptyList() else h.activeSessions(ctx)
+        return if (h == null) emptyList() else h.activeSessions()
     }
 
     fun ensureHost(ctx: Context): Boolean {
         val bin = lobos.kernel.compat.Compat.ptyHost(ctx)
         if (bin == null) {
-            RuntimeDiagnostics.append(
+            lobos.services.log.RuntimeDiagnostics.append(
                 ctx, "pty", false, "PTY 宿主就位失败", "内核构件缺失（librivospty 不在系统库）",
             )
             return false
