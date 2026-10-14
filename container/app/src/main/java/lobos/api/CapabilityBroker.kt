@@ -994,10 +994,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
         }
         val r = runCatching {
+            val ptyHost = requireNotNull(lobos.kernel.compat.Compat.ptyHost(this@CapabilityBroker)) {
+                "PTY 宿主不在（内核构件缺失）"
+            }
+            val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
             lobos.kernel.ipc.PtySession.runToCompletion(
-                this@CapabilityBroker,
-                lobos.services.supply.ShellEntry.require(this@CapabilityBroker),
-                listOf("-c", cmd),
+                this@CapabilityBroker, ptyHost,
+                listOf(sh.absolutePath, "-c", cmd),
                 timeoutMs = p.optLong("timeoutMs", 10_000L),
             )
         }.getOrElse { e ->
