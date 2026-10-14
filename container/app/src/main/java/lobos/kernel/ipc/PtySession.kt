@@ -160,11 +160,18 @@ object PtySession {
             }
         }
 
+        private fun note(msg: String) {
+            lastError = msg
+            synchronized(diag) {
+                diag.append(msg).append(10.toChar())
+                if (diag.length > 8192) diag.setLength(0)
+            }
+        }
         private fun pump() {
             try {
                 while (true) {
                     val kind = fromHost.read()
-                    if (kind < 0) break
+                    if (kind < 0) { note("宿主进程已退出（读到 EOF），会话不会就绪"); break }
                     val sid = fromHost.read()
                     val f1 = fromHost.read()
                     val f2 = fromHost.read()

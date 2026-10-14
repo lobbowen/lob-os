@@ -137,22 +137,24 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
     close(master);
     return -1;
   }
-  if (pid == 0) {
-        if (setsid() < 0) child_fail(out_fd, 126, "setsid 失败");
-    int slave = open(sn, O_RDWR);
-        if (slave < 0) child_fail(out_fd, 136, "open 从设备失败");
-        if (ioctl(slave, TIOCSCTTY, 0) < 0) child_fail(out_fd, 137, "TIOCSCTTY 失败");
-        if (dup2(slave, 0) < 0 || dup2(slave, 1) < 0 || dup2(slave, 2) < 0) child_fail(out_fd, 138, "dup2 到从设备失败");
-    if (slave > 2) close(slave);
-    close(master);
-    signal(SIGINT, SIG_DFL);
-    signal(SIGTERM, SIG_DFL);
-    signal(SIGPIPE, SIG_DFL);
-    signal(SIGHUP, SIG_DFL);
-    execv(argv[0], argv);
-        child_fail(out_fd, 146, "execv 失败");
+    if (pid == 0) {
+        if (setsid() < 0) child_fail(out_fd, 141, "setsid 失败");
+        int ctl = fcntl(out_fd, F_DUPFD_CLOEXEC, 10);
+        if (ctl < 0) ctl = out_fd;
+        int slave = open(sn, O_RDWR);
+        if (slave < 0) child_fail(ctl, 145, "open 从设备失败");
+        if (ioctl(slave, TIOCSCTTY, 0) < 0) child_fail(ctl, 146, "TIOCSCTTY 失败");
+        if (dup2(slave, 0) < 0 || dup2(slave, 1) < 0 || dup2(slave, 2) < 0) child_fail(ctl, 147, "dup2 到从设备失败");
+        if (slave > 2) close(slave);
+        close(master);
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+        signal(SIGPIPE, SIG_DFL);
+        signal(SIGHUP, SIG_DFL);
+        execv(argv[0], argv);
+        child_fail(ctl, 155, "execv 失败");
         close(out_fd);
-  }
+    }
 
   g_sessions[sid].master = master;
   g_sessions[sid].pid = pid;
