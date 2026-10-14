@@ -102,18 +102,8 @@ static void diag_raw(const char *text) {
   if (g_diag_fd < 0) { fprintf(stderr, "[diag] 无通道 %s\n", buf); fflush(stderr); return; }
   if (n > 0 && send_frame(g_diag_fd, FRAME_ERROR, 0, buf, (uint32_t)n + 1) != 0)
     fprintf(stderr, "[diag] 通道断了 %s\n", buf);
-  fprintf(stderr, "%s
-", buf);
+  fprintf(stderr, "%s\n", buf);
   fflush(stderr);
-}
-
-static void diagf(const char *fmt, ...) {
-  char buf[512];
-  va_list ap;
-  va_start(ap, fmt);
-  vsnprintf(buf, sizeof buf, fmt, ap);
-  va_end(ap);
-  diag_raw(buf);
 }
 
 static int alloc_slot(void) {
@@ -262,7 +252,7 @@ int main(void) {
 
   g_diag_fd = out_fd;
 
-  diag("librivospty ready");
+  diag_raw("librivospty ready");
 
   while (!g_stop) {
     struct pollfd fds[1 + MAX_SESSIONS];
@@ -387,6 +377,6 @@ int main(void) {
 
 done:
   for (int i = 0; i < MAX_SESSIONS; i++) session_close(i);
-  diag("librivospty bye");
+  diag_raw("librivospty bye");
   return 0;
 }
