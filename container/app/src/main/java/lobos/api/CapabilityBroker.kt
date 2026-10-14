@@ -995,25 +995,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (cmd.isBlank()) {
             throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
         }
-        val r = runCatching {
-            val ptyHost = requireNotNull(lobos.kernel.compat.Compat.ptyHost(this@CapabilityBroker)) {
-                "PTY 宿主不在（内核构件缺失）"
-            }
-            val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
-            lobos.kernel.ipc.PtySession.runToCompletion(
-                this@CapabilityBroker, ptyHost,
-                listOf(sh.absolutePath, "-c", cmd),
-                timeoutMs = p.optLong("timeoutMs", 10_000L),
-            )
-        }.getOrElse { e ->
-            throw BridgeError(CODE_INTERNAL, "PTY 执行失败：" + (e.message ?: e.javaClass.simpleName))
-        }
-        JSONObject().apply {
-            put("ok", r.ok)
-            put("exitCode", r.exitCode)
-            put("output", r.output)
-            if (r.error != null) put("error", r.error)
-        }
+        val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
+        val r = lobos.kernel.ipc.LocalExec.run(
+            this@CapabilityBroker,
+            listOf(sh.absolutePath, "-c", cmd),
+            timeoutMs = p.optLong("timeoutMs", 10_000L),
+        )
+        execAsJson(r)
     },
     "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
             val snap = lobos.services.perm.PermissionLedger.register(this@CapabilityBroker)
