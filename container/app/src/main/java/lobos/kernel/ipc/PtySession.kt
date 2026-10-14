@@ -275,6 +275,12 @@ object PtySession {
             val checked = locateBin(bin)
             val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
             val pb0 = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
+            val view0 = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
+                ctx,
+                lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
+                null,
+            )
+            for ((k0, v0) in view0) pb0.environment()[k0] = v0
             val seen = pb0.environment().filterKeys {
                 it == "LD_LIBRARY_PATH" || it == "LD_PRELOAD" || it == "PATH"
             }.entries.joinToString("|") { it.key + "=" + it.value.take(90) }

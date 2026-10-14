@@ -1,5 +1,6 @@
 package lobos.kernel.proc
 
+import android.content.Context
 import java.io.File
 
 object ProcessSupervisor {
@@ -21,6 +22,7 @@ object ProcessSupervisor {
     )
 
     fun spawn(
+        ctx: Context,
         command: List<String>,
         cwd: File? = null,
         env: Map<String, String>? = null,
@@ -32,7 +34,13 @@ object ProcessSupervisor {
         val real = ExecEntry.argv(java.io.File(command[0]), command)
         val pb = ProcessBuilder(if (real != null) real else command)
         if (cwd != null) pb.directory(cwd)
+        val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
+            ctx,
+            lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
+            null,
+        )
         if (envMode != ENV_INHERIT) pb.environment().clear()
+        for ((k, v) in view) pb.environment()[k] = v
         if (env != null) pb.environment().putAll(env)
         if (redirectErrorStream) pb.redirectErrorStream(true)
 

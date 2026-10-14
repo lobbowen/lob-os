@@ -416,6 +416,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 getenv("PATH"),
             )
             val spawned = ProcessSupervisor.spawn(
+                this,
                 command = plan.command,
                 cwd = plan.cwd,
                 env = plan.env,
