@@ -350,7 +350,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
-        if (session.programId.trim() == INSTALLER_ID) return setOf(BRIDGE_BASE)
+        if (session.programId.trim() == INSTALLER_ID) {
+            return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
+        }
         if (!isProgramSession(session)) return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
         return setOf(BRIDGE_BASE) + declaredCapabilities(session.programId)
     }
