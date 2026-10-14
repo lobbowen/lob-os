@@ -172,6 +172,15 @@ object PieceUpdater {
             "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
             "清单=$url 过期于=$expires",
         )
+        if (applied.length() > 0) {
+            runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
+                .onFailure {
+                    RuntimeDiagnostics.append(
+                        ctx, "piece-ota", false, "升件后刷新库链失败",
+                        it.javaClass.simpleName + ": " + it.message,
+                    )
+                }
+        }
         return res
     }
 
