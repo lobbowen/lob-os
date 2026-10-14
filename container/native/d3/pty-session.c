@@ -359,9 +359,13 @@ int main(void) {
         send_frame(out_fd, FRAME_EXITED, (uint8_t)sid, info, 8);
         close(g_sessions[sid].master);
         memset(&g_sessions[sid], 0, sizeof(session));
-      } else if (errno != EINTR && errno != EAGAIN) {
-        send_error(out_fd, strerror(errno));
-        session_close(sid);
+      } else if (errno == EIO) { /* 对端已退出：PTY master 读不到数据，不是错误 */
+        uint8_t zi[8]; memset(zi, 0, 8); send_frame(out_fd, FRAME_EXITED, (uint8_t)sid, zi, 8);
+        /* 对端已退出 —— 不能走 session_close（它会 kill 一个可能已被回收复用的 pid） */
+        pid_t dead = g_sessions[sid].pid;
+        int st2 = 0; if (dead > 0) waitpid(dead, &st2, WNOHANG);
+        close(g_sessions[sid].master);
+        memset(&g_sessions[sid], 0, sizeof(session));
       }
     }
   }
