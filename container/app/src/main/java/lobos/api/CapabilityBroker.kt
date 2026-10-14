@@ -351,27 +351,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
         val id = session.programId.trim()
-        val out = when {
-            id == INSTALLER_ID -> setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
-            !isProgramSession(session) -> setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
-            else -> setOf(BRIDGE_BASE) + declaredCapabilities(id)
+        if (id == INSTALLER_ID || !isProgramSession(session)) {
+            return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
         }
-        lobos.services.log.RuntimeDiagnostics.append(
-            this, "grant", null,
-            "serverGranted 算出来的集合",
-            "programId=" + id +
-                " generation=" + session.generation +
-                " token8=" + session.token.take(8) +
-                "\n分支=" + when {
-                    id == INSTALLER_ID -> "INSTALLER"
-                    !isProgramSession(session) -> "非程序会话"
-                    else -> "程序"
-                } +
-                "\ngranted=" + out.joinToString(",") +
-                "\nGROUP_SYS=" + ApiSpec.GROUP_SYS +
-                " 命中=" + out.contains(ApiSpec.GROUP_SYS),
-        )
-        return out
+        return setOf(BRIDGE_BASE) + declaredCapabilities(id)
     }
 
     private fun declaredCapabilities(programId: String): Set<String> {
