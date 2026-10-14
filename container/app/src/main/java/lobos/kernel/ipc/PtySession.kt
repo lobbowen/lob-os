@@ -298,7 +298,7 @@ object PtySession {
             val h = Host(pb0, ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
-            bin.absolutePath + " （常驻；shell.exec 与终端共用） 启动时环境=" + seen)
+            bin.absolutePath + " （常驻；shell.exec 与终端共用）")
             return h
         }
     }
