@@ -118,7 +118,7 @@ static void child_fail(int out_fd, int line, const char *what) {
     _exit(127);
 }
 
-static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
+static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
   if (!argv || !argv[0]) { send_error(out_fd, "OPEN 没有可执行文件路径"); return -1; }
   int master = posix_openpt(O_RDWR | O_NOCTTY);
   if (master < 0) { int e0 = errno; send_error(out_fd, "posix_openpt 失败"); errno = e0; return -1; }
@@ -294,7 +294,7 @@ int main(void) {
           char **argv = NULL;
           int argc = parse_argv(payload, h.length, &argv);
           if (argc <= 0 || !argv) { free(payload); send_error(out_fd, "OPEN 的 argv 为空"); break; }
-          if (session_open(out_fd, (uint8_t)slot, argv) != 0) {
+          if (session_open(out_fd, (uint8_t)slot, argv, argc) != 0) {
             send_error(out_fd, strerror(errno));
             for (int i = 0; i < argc; i++) free(argv[i]);
             free(argv);
