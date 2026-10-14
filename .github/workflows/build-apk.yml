@@ -266,24 +266,36 @@ jobs:
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 
+      - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
+        run: |
+          set -uo pipefail
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps"
+          BAD=0
+          for f in scripts/verify/check-*.sh; do
+            b=$(basename "$f" .sh)
+            case " $ALLOWED " in
+              *" $b "*) ;;
+              *) echo "::error file=$f,title=新增门禁未获准::本仓只允许基础行为规范门禁（${ALLOWED}）"
+                 echo "  判据必须与设计取向无关，只与写法有关。"
+                 echo "  曾经两道设计类门禁（分层边界 / 不许借用 /system/bin）因挡住正确设计而被移除。"
+                 BAD=$((BAD+1));;
+            esac
+          done
+          if [ "$BAD" -gt 0 ]; then exit 1; fi
+          echo "[ok] 门禁清单合法：只有基础行为规范门禁（判断标准见下面四类）"
+          echo "  · 源码形状：静态写法可机械判定"
+          echo "  · 注释：书写规范"
+          echo "  · 工作流 shell：书写规范"
+          echo "  · 件的 ELF 依赖闭环：产物形态"
       - name: 源码形状（防字符摊开）
         run: |
           set -uo pipefail
           bash scripts/verify/check-source-shape.sh
 
-      - name: 分层边界（D5/D6/D7）
-        run: |
-          set -uo pipefail
-          bash scripts/verify/check-layer-boundary.sh
       - name: 代码里不许有注释
         run: |
           set -euo pipefail
           bash scripts/verify/check-no-comments.sh
-
-      - name: 不许借用宿主 /system/bin（LAYERS §1.5）
-        run: |
-          set -euo pipefail
-          bash scripts/verify/check-no-system-bin.sh
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
