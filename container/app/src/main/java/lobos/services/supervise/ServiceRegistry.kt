@@ -69,10 +69,11 @@ object ServiceRegistry {
         out.add(
             decl("termselftest", listOf("view")) { ctx ->
                 val sh = lobos.services.supply.ShellEntry.require(ctx)
+                val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
                 val r = runCatching {
                     lobos.kernel.ipc.PtySession.runToCompletion(
-                        ctx, sh,
-                        listOf("-c", "echo __LD__=\$LD_LIBRARY_PATH; echo __PATH__=\$PATH; ls /data/user/0/lobos.os/files/usr/bin"),
+                        ctx, requireNotNull(ptyBin) { "PTY 宿主不在（内核构件缺失）" },
+                        listOf(sh.absolutePath, "-c", "echo __LD__=\$LD_LIBRARY_PATH; echo __PATH__=\$PATH"),
                         timeoutMs = 8_000L,
                     )
                 }.getOrNull()
