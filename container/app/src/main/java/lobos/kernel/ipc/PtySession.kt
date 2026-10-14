@@ -27,6 +27,7 @@ object PtySession {
     private const val F_EXITED = 7
     private const val F_EXIT = 8
     private const val F_ERROR = 9
+    private const val F_NOTE = 10
 
     private const val DEFAULT_ROWS = 24
     private const val DEFAULT_COLS = 80
@@ -198,6 +199,15 @@ object PtySession {
                             synchronized(diag) { diag.append("ERROR: ").append(lastError).append('\n') }
                             ctx?.let {
                                 KernelHooks.report(it, "pty", false, "PTY 的C 侧报错", lastError)
+                            }
+                        }
+                        F_NOTE -> {
+                            var n = payload.size
+                            while (n > 0 && payload[n - 1] == 0.toByte()) n--
+                            val note = String(payload, 0, n, Charsets.UTF_8)
+                            synchronized(diag) { diag.append("NOTE: ").append(note).append(10.toChar()) }
+                            ctx?.let {
+                                KernelHooks.report(it, "pty", true, "PTY 宿主自述", note)
                             }
                         }
                         else -> Log.d(TAG, "忽略未知帧 kind=$kind sid=$sid len=$len")

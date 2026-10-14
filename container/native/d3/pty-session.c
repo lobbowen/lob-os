@@ -28,6 +28,7 @@ enum {
   FRAME_EXITED = 7,
   FRAME_EXIT = 8,
   FRAME_ERROR = 9,
+  FRAME_NOTE = 10,
 };
 
 typedef struct {
@@ -96,15 +97,23 @@ static void send_error(int fd, const char *msg) {
 
 static int g_diag_fd = -1;
 
-static void diag_raw(const char *text) {
+static void diag_to(int kind, const char *text) {
   char buf[512];
   int n = snprintf(buf, sizeof buf, "%s", text);
-  if (g_diag_fd < 0) { fprintf(stderr, "[diag] 无通道 %s\n", buf); fflush(stderr); return; }
-  if (n > 0 && send_frame(g_diag_fd, FRAME_ERROR, 0, buf, (uint32_t)n + 1) != 0)
+  if (g_diag_fd < 0) {
+    fprintf(stderr, "[diag] 无通道 %s\n", buf);
+    fflush(stderr);
+    return;
+  }
+  if (n > 0 && send_frame(g_diag_fd, (uint8_t)kind, 0, buf, (uint32_t)n + 1) != 0)
     fprintf(stderr, "[diag] 通道断了 %s\n", buf);
   fprintf(stderr, "%s\n", buf);
   fflush(stderr);
 }
+
+static void diag_raw(const char *text) { diag_to(FRAME_ERROR, text); }
+
+static void note_raw(const char *text) { diag_to(FRAME_NOTE, text); }
 
 static int alloc_slot(void) {
   for (int i = 0; i < MAX_SESSIONS; i++) {
@@ -123,10 +132,8 @@ static void child_fail(int out_fd, int line, const char *what) {
 
 static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
   if (!argv || !argv[0]) { send_error(out_fd, "OPEN 没有可执行文件路径"); return -1; }
-  diag_raw("step1 posix_openpt");
   int master = posix_openpt(O_RDWR | O_NOCTTY);
   if (master < 0) { int e0 = errno; send_error(out_fd, "posix_openpt 失败"); errno = e0; return -1; }
-  diag_raw("step2 grantpt");
   if (grantpt(master) != 0 || unlockpt(master) != 0) {
     int e1 = errno;
     send_error(out_fd, "grantpt/unlockpt 失败");
@@ -139,7 +146,6 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
        所以这里自己数：从 0 起试 open("/dev/pts/<n>")，第一个能打开的就是它。 */
     static char g_pts_path[64];
     static int g_pts_next = 0;
-  diag_raw("step3 ptsname");
     const char *sn = ptsname(master);
     if (!sn) {
         sn = 0;
@@ -159,7 +165,6 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
     snprintf(g_pts_path, sizeof g_pts_path, "%s", sn);
     sn = g_pts_path;
 
-  diag_raw("step4 fork");
   pid_t pid = fork();
   if (pid < 0) {
     close(master);
@@ -256,7 +261,7 @@ int main(void) {
 
   g_diag_fd = out_fd;
 
-  diag_raw("librivospty ready");
+  note_raw("librivospty ready");
 
   while (!g_stop) {
     struct pollfd fds[1 + MAX_SESSIONS];
@@ -276,17 +281,19 @@ int main(void) {
     int r = poll(fds, (nfds_t)nfds, 200);
     if (r < 0) {
       if (errno == EINTR) continue;
+      diag_raw("poll 控制通道失败");
       break;
     }
 
     if (fds[0].revents & (POLLIN | POLLHUP)) {
       frame_hdr h;
       int got = read_full(in_fd, &h, sizeof(h));
-      { char m[64];
-        snprintf(m, sizeof m, "帧到 got=%d kind=%u", got, (unsigned)h.kind);
-        diag_raw(m); }
-      if (got == 0) break;                  
-      if (got < 0) { if (errno == EINTR) continue; break; }
+      if (got == 0) { diag_raw("控制通道已关闭（父侧退出）"); break; }
+      if (got < 0) {
+        if (errno == EINTR) continue;
+        diag_raw("读控制通道失败");
+        break;
+      }
       if (h.length > FRAME_MAX) {
         send_error(out_fd, "frame payload 超上限");
         continue;
@@ -295,6 +302,7 @@ int main(void) {
       if (!payload) { send_error(out_fd, "内存不足"); break; }
       if (h.length > 0 && read_full(in_fd, payload, h.length) <= 0) {
         free(payload);
+        diag_raw("读帧体中断");
         break;
       }
       payload[h.length] = '\0';
@@ -320,6 +328,10 @@ int main(void) {
           memcpy(reply, g_sessions[slot].slave, n);
           memcpy(reply + n, &ws, sizeof(ws));
           send_frame(out_fd, FRAME_READY, (uint8_t)slot, reply, n + (uint32_t)sizeof(ws));
+          { char m[96];
+            snprintf(m, sizeof m, "会话 %u 就绪 从设备=%s",
+                     (unsigned)slot, g_sessions[slot].slave);
+            note_raw(m); }
           for (int i = 0; i < argc; i++) free(argv[i]);
           free(argv);
           break;
@@ -384,6 +396,6 @@ int main(void) {
 
 done:
   for (int i = 0; i < MAX_SESSIONS; i++) session_close(i);
-  diag_raw("librivospty bye");
+  note_raw("librivospty bye");
   return 0;
 }
