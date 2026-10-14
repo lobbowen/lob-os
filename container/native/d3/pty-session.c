@@ -172,8 +172,22 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[]) {
         signal(SIGTERM, SIG_DFL);
         signal(SIGPIPE, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
-        execv(argv[0], argv);
-        child_fail(ctl, 155, "execv 失败");
+        {
+            const char *lp = getenv("LOBOS_SYSTEM_LINKER");
+            int under = strstr(argv[0], "/files/opt/") != NULL;
+            if (lp && *lp && under) {
+                char **na = (char **)calloc((size_t)argc + 2, sizeof(char *));
+                if (!na) _exit(127);
+                na[0] = (char *)lp;
+                na[1] = argv[0];
+                for (int i = 1; i < argc; i++) na[i + 1] = argv[i];
+                execv(lp, na);
+                free(na);
+            } else {
+                execv(argv[0], argv);
+            }
+        }
+        child_fail(ctl, 190, "execv 失败");
         close(out_fd);
     }
 
