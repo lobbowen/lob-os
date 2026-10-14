@@ -104,9 +104,8 @@ object ApiSpec {
         "os.accessibility.disable" to "lobos.sys.accessibility.disable",
         "os.accessibility.actions" to "lobos.sys.accessibility.actions",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
-        "os.nativeAssets.status" to "lobos.sys.device.nativeAssets",
+        "os.nativeAssets.status" to "lobos.sys.device.nativeAssetsStatus",
         
-        "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
     )
 
     fun canonical(method: String): String = CANONICAL[method] ?: method

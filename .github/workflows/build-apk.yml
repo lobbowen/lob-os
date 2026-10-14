@@ -270,7 +270,7 @@ jobs:
       - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
         run: |
           set -uo pipefail
-          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps"
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface"
           BAD=0
           for f in scripts/verify/check-*.sh; do
             b=$(basename "$f" .sh)
@@ -288,10 +288,16 @@ jobs:
           echo "  · 注释：书写规范"
           echo "  · 工作流 shell：书写规范"
           echo "  · 件的 ELF 依赖闭环：产物形态"
+          echo "  · 能力面：声明表与实现表一致"
       - name: 源码形状（防字符摊开）
         run: |
           set -uo pipefail
           bash scripts/verify/check-source-shape.sh
+
+      - name: 能力面判据（声明表与实现表必须对得上）
+        run: |
+          set -uo pipefail
+          bash scripts/verify/check-api-surface.sh
 
       - name: 代码里不许有注释
         run: |

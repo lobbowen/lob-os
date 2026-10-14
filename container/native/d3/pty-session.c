@@ -94,13 +94,26 @@ static void send_error(int fd, const char *msg) {
   send_frame(fd, FRAME_ERROR, 0, msg, (uint32_t)strlen(msg) + 1);
 }
 
-static void diag(const char *fmt, ...) {
+static int g_diag_fd = -1;
+
+static void diag_raw(const char *text) {
+  char buf[512];
+  int n = snprintf(buf, sizeof buf, "%s", text);
+  if (g_diag_fd < 0) { fprintf(stderr, "[diag] 无通道 %s\n", buf); fflush(stderr); return; }
+  if (n > 0 && send_frame(g_diag_fd, FRAME_ERROR, 0, buf, (uint32_t)n + 1) != 0)
+    fprintf(stderr, "[diag] 通道断了 %s\n", buf);
+  fprintf(stderr, "%s
+", buf);
+  fflush(stderr);
+}
+
+static void diagf(const char *fmt, ...) {
+  char buf[512];
   va_list ap;
   va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
+  vsnprintf(buf, sizeof buf, fmt, ap);
   va_end(ap);
-  fputc('\n', stderr);
-  fflush(stderr);
+  diag_raw(buf);
 }
 
 static int alloc_slot(void) {
@@ -246,6 +259,8 @@ int main(void) {
 
   int in_fd = STDIN_FILENO;
   int out_fd = STDOUT_FILENO;
+
+  g_diag_fd = out_fd;
 
   diag("librivospty ready");
 
