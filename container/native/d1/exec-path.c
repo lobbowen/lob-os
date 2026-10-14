@@ -30,7 +30,7 @@ static const char *const SYS_KEYS[] = {
     "HOME", "TMPDIR", "PATH", "LANG", "SHELL",
     "LD_LIBRARY_PATH", "SSL_CERT_DIR", "SSL_CERT_FILE",
     "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "NODE_PATH",
-    "LD_PRELOAD", "LOBOS_COMPAT_LOG",
+    "LOBOS_COMPAT_LOG",
     0
 };
 
