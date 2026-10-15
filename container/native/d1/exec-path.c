@@ -49,20 +49,30 @@ static const char *const *lobos_sysenv(void) {
     if (!out) { close(fd); static const char *const none[] = { 0 }; return none; }
     for (;;) {
         char line[128];
-        ssize_t r = read(fd, line, sizeof line - 1);
-        char *nl;
-        if (r <= 0) break;
-        line[r] = 0;
-        nl = strchr(line, 10);
-        if (nl) *nl = 0;
-        if (line[0] == 0 || line[0] == 35) continue;
-        if (n + 1 >= cap) {
-            char **bigger = (char **)realloc(out, (size_t)cap * 2 * sizeof(char *));
-            if (!bigger) break;
-            out = bigger;
-            cap *= 2;
+        size_t li = 0;
+        int done = 0;
+        for (;;) {
+            char c;
+            ssize_t r = read(fd, &c, 1);
+            if (r <= 0) { done = 1; break; }
+            if (c == '\n') { done = 1; break; }
+            if (li + 1 < sizeof line) line[li++] = c;
         }
-        out[n++] = strdup(line);
+        line[li] = 0;
+        if (li > 0 && line[0] != 35) {
+            if (n + 1 >= cap) {
+                char **bigger = (char **)realloc(out, (size_t)cap * 2 * sizeof(char *));
+                if (!bigger) break;
+                out = bigger;
+                cap *= 2;
+            }
+            out[n++] = strdup(line);
+        }
+        if (done && li == 0) break;
+    }
+    if (n == 0) {
+        out[n] = 0;
+        lobos_sysenv_cache = (char *)out;
     }
     close(fd);
     out[n] = 0;
