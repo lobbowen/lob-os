@@ -29,6 +29,7 @@ static int replace_env(char *const envp[], const char *entry) {
             if (!rep) { free(out); return -1; }
             out[i] = rep;
             out[n] = 0;
+            out[n + 1] = 0;
             environ = out;
             return 1;
         }
