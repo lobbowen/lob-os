@@ -304,8 +304,6 @@ object PtySession {
                     script.append("export ").append(k0).append("=")
                         .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
                 }
-                val d = 36.toChar()
-                script.append("printf %s \"").append(d).append("LD_PRELOAD\" >&2\n")
                 script.append("exec ").append(hostArgv.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" })
                 listOf(
                     lobos.kernel.proc.ExecEntry.SYSTEM_LINKER,

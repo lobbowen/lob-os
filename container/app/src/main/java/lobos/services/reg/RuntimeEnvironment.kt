@@ -63,7 +63,6 @@ object RuntimeEnvironment {
         val preload = lobos.kernel.compat.Compat.preload(ctx)
         if (preload.isNotBlank()) {
             put("LOBOS_HOST_PRELOAD", preload)
-            put("LD_PRELOAD", preload)
             put("LOBOS_SYSTEM_LINKER", "/system/bin/linker64")
             put("LOBOS_COMPAT_LOG", lobos.services.app.DriverRegistry.degradeLog(ctx).absolutePath)
         }
