@@ -242,7 +242,17 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
             snprintf(out, cap, "no-DT_STRTAB parsed=0 escaped=0 dropped=0");
             return -1;
         }
-        if (strsz == 0) strsz = dynsz;
+        /* DT_STRSZ 缺失或为 0 时**判错，不兜底**。
+         * 兜底不是安全的代名词：曾用 strsz=dynsz 兜底，那等于「用一个错的窗口大小放行越界」——
+         * 没有兜底时 val>=strsz 会因 strsz=0 而全部跳过（安全但无用），
+         * 有兜底反而读到 .dynstr 之外，正是本次崩溃的同一个形态。
+         * 实测（本机 719 个带 PT_DYNAMIC 的 .so）：无一缺 STRSZ，故此路为纵深防御；
+         * 但读不可信输入时不能假设它守规范。停下来说明「读不出」比用错的边界继续读诚实。 */
+        if (strsz == 0) {
+            close(fd);
+            snprintf(out, cap, "no-DT_STRSZ parsed=0 escaped=0 dropped=0");
+            return -1;
+        }
         for (o = 0; o + 16 <= dynsz; o += 16) {
             unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
                 | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
