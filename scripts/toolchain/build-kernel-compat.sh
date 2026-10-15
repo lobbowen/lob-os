@@ -78,9 +78,17 @@ echo "  ✓ posix      → liblobosposix.so"
 #   LD_PRELOAD 那套 execve 覆盖对它无效 → env_merge_sys 从来没被调过。
 #   而 linker64 只驱动 ET_DYN，去掉 -static 之后它才成 ET_DYN。
 #   ExecEntry.kt:51 判 e_type，ET_DYN 走 /system/bin/linker64。
+# -Wl,--no-as-needed -llobosposix：
+#   bionic 的 LD_PRELOAD 库进的是「依赖链」而不是「PLT 查找顺序」
+#   —— linker.cpp:1455 find_library_internal 遍历依赖链上已加载的 soinfo
+#   → 符号覆盖只对「从它 dlopen」有效，对 pty-session.c 的 execv 无效
+#   → env_merge_sys 从来没被调过
+#   写进 DT_NEEDED 之后链接器就一定会加载它，那本来就该用链接器做
 "$CC" -O2 -fPIE -pie \
   -o "$WORK/librivospty.so" \
-  container/native/d3/pty-session.c 2>"$WORK/cc-ptysession.log" \
+  container/native/d3/pty-session.c \
+  -Wl,--no-as-needed -L"$WORK" -llobosposix \
+  2>"$WORK/cc-ptysession.log" \
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
 so_ok "$WORK/librivospty.so" 1000
 cp -f "$WORK/librivospty.so" "$OUT/librivospty.so"
