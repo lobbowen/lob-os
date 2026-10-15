@@ -119,10 +119,10 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
     unsigned long long dynsz = 0;
     if (cap < 2) return -1;
     fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) { snprintf(out, cap, "打不开=%s", strerror(errno)); return -1; }
-    if (read(fd, hdr, 64) != 64) { close(fd); snprintf(out, cap, "头读不满"); return -1; }
+    if (fd < 0) { snprintf(out, cap, "open-errno=%d", errno); return -1; }
+    if (read(fd, hdr, 64) != 64) { close(fd); snprintf(out, cap, "hdr-short"); return -1; }
     if (hdr[0] != 0x7f || hdr[1] != 0x45 || hdr[2] != 0x4c || hdr[3] != 0x46 || hdr[4] != 2) {
-        close(fd); snprintf(out, cap, "不是 ELF64"); return -1;
+        close(fd); snprintf(out, cap, "not-elf64"); return -1;
     }
     phoff = (unsigned long long)hdr[32] | ((unsigned long long)hdr[33] << 8)
           | ((unsigned long long)hdr[34] << 16) | ((unsigned long long)hdr[35] << 24)
@@ -130,7 +130,7 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
           | ((unsigned long long)hdr[38] << 48) | ((unsigned long long)hdr[39] << 56);
     phnum = (unsigned short)(hdr[56] | (hdr[57] << 8));
     phentsize = (unsigned short)(hdr[54] | (hdr[55] << 8));
-    if (phentsize != 56) { close(fd); snprintf(out, cap, "phentsize=%u", phentsize); return -1; }
+    if (phentsize != 56) { close(fd); snprintf(out, cap, "phentsize=%d", phentsize); return -1; }
     for (i = 0; i < phnum; i++) {
         if (lseek(fd, (off_t)(phoff + (unsigned long long)i * 56), SEEK_SET) < 0) break;
         if (read(fd, ph, 56) != 56) break;
@@ -146,10 +146,10 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
         found = 1;
         break;
     }
-    if (!found || dynsz == 0) { close(fd); snprintf(out, cap, "无 PT_DYNAMIC"); return -1; }
+    if (!found || dynsz == 0) { close(fd); snprintf(out, cap, "no-PT_DYNAMIC"); return -1; }
     if (dynsz > sizeof dyn) dynsz = sizeof dyn;
     if (lseek(fd, dynoff, SEEK_SET) < 0 || (unsigned long long)read(fd, dyn, (size_t)dynsz) != dynsz) {
-        close(fd); snprintf(out, cap, "动态段读不出"); return -1;
+        close(fd); snprintf(out, cap, "dyn-unreadable"); return -1;
     }
     close(fd);
     {
