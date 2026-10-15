@@ -35,15 +35,10 @@ object ServiceRegistry {
                         val linked = lobos.kernel.compat.Compat.linkInto(ctx)
                         val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
                         val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
-                        var wrote = 0
-                        val failed = mutableListOf<String>()
-                        for ((k, v) in view) {
-                            if (lobos.kernel.compat.LobosEnv.set(k, v)) wrote++
-                            else failed.add(k + "=" + v.take(60))
-                        }
                         RuntimeDiagnostics.append(
-                            ctx, "sysview", wrote > 0,
-                            "系统视图写入宿主进程环境 " + wrote + "/" + view.size + " 项；内核垫片入系统库 " + linked + " 个；没写进去=" + failed.joinToString(" | "),
+                            ctx, "sysview", view.isNotEmpty(),
+                            "系统视图算出来 " + view.size + " 项；内核垫片入系统库 " + linked +
+                                " 个；交给 execve 那条路合并，不改宿主 environ",
                             view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) },
                         )
                     }
