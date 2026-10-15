@@ -291,12 +291,7 @@ object PtySession {
             host?.let { return it }
             val checked = locateBin(bin)
             val raw = listOf(checked.absolutePath)
-            val optRoot = lobos.kernel.layout.SystemDirs.opt(ctx).absolutePath
-            val underOpt = checked.absolutePath.startsWith(optRoot + "/")
-            val hostArgv = if (underOpt) {
-                val a = lobos.kernel.proc.ExecEntry.argv(checked, raw)
-                if (a != null) a else raw
-            } else raw
+            val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, raw) ?: raw
             val view0 = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
                 ctx,
                 lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
