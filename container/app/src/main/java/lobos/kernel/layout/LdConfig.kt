@@ -53,6 +53,7 @@ object LdConfig {
             append("# lobos ld.so.cache — 扫到的件\n")
             usrLib.listFiles()?.sortedBy { it.name }?.forEach { append(it.name).append('\t').append(it.absolutePath).append('\n') }
         })
+        val sysenv = SysEnv.write(ctx)
 
         RuntimeDiagnostics.append(
             ctx, "ldconfig", unresolved.isEmpty(),

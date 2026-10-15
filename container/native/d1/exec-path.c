@@ -27,13 +27,48 @@ static void bind_real(void) {
 // 契约：envp 里缺、但 environ 里有且属于系统视图的键，补进 envp。
 // envp 里显式给了的，不覆盖 —— 显式优先。
 
-static const char *const SYS_KEYS[] = {
-    "HOME", "TMPDIR", "PATH", "LANG", "SHELL",
-    "LD_LIBRARY_PATH", "SSL_CERT_DIR", "SSL_CERT_FILE",
-    "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "NODE_PATH",
-    "LOBOS_COMPAT_LOG",
-    0
-};
+static char *lobos_sysenv_cache = 0;
+
+static const char *lobos_sysenv_path(void) {
+    const char *p = getenv("LOBOS_SYSENV");
+    if (p != 0 && p[0] == 47) return p;
+    return "/data/user/0/lobos.os/files/etc/lobos-sysenv";
+}
+
+static const char *const *lobos_sysenv(void) {
+    if (lobos_sysenv_cache) return (const char *const *)lobos_sysenv_cache;
+    int fd = open(lobos_sysenv_path(), O_RDONLY | O_CLOEXEC);
+    int cap = 16, n = 0;
+    char **out;
+    if (fd < 0) {
+        static const char *const none[] = { 0 };
+        lobos_sysenv_cache = (char *)none;
+        return none;
+    }
+    out = (char **)malloc((size_t)cap * sizeof(char *));
+    if (!out) { close(fd); static const char *const none[] = { 0 }; return none; }
+    for (;;) {
+        char line[128];
+        ssize_t r = read(fd, line, sizeof line - 1);
+        char *nl;
+        if (r <= 0) break;
+        line[r] = 0;
+        nl = strchr(line, 10);
+        if (nl) *nl = 0;
+        if (line[0] == 0 || line[0] == 35) continue;
+        if (n + 1 >= cap) {
+            char **bigger = (char **)realloc(out, (size_t)cap * 2 * sizeof(char *));
+            if (!bigger) break;
+            out = bigger;
+            cap *= 2;
+        }
+        out[n++] = strdup(line);
+    }
+    close(fd);
+    out[n] = 0;
+    lobos_sysenv_cache = (char *)out;
+    return (const char *const *)out;
+}
 
 static int env_has(char *const envp[], const char *k) {
     size_t n = strlen(k);
@@ -44,9 +79,10 @@ static int env_has(char *const envp[], const char *k) {
 
 static char **env_merge_sys(char *const envp[]) {
     int extra = 0;
-    for (int s = 0; SYS_KEYS[s]; s++)
-        if (!env_has(envp, SYS_KEYS[s])) {
-            const char *v = getenv(SYS_KEYS[s]);
+    const char *const *SK = lobos_sysenv();
+    for (int s = 0; SK[s]; s++)
+        if (!env_has(envp, SK[s])) {
+            const char *v = getenv(SK[s]);
             if (v && *v) extra++;
         }
     if (!extra) return (char **)envp;
@@ -56,14 +92,14 @@ static char **env_merge_sys(char *const envp[]) {
     if (!out) { errno = ENOMEM; return 0; }
     int k = 0;
     for (int i = 0; i < n; i++) out[k++] = envp[i];
-    for (int s = 0; SYS_KEYS[s]; s++) {
-        if (env_has(envp, SYS_KEYS[s])) continue;
-        const char *v = getenv(SYS_KEYS[s]);
+    for (int s = 0; SK[s]; s++) {
+        if (env_has(envp, SK[s])) continue;
+        const char *v = getenv(SK[s]);
         if (!v || !*v) continue;
-        size_t kl = strlen(SYS_KEYS[s]), vl = strlen(v);
+        size_t kl = strlen(SK[s]), vl = strlen(v);
         char *e = (char *)malloc(kl + vl + 2);
         if (!e) break;
-        memcpy(e, SYS_KEYS[s], kl); e[kl] = '=';
+        memcpy(e, SK[s], kl); e[kl] = '=';
         memcpy(e + kl + 1, v, vl + 1);
         out[k++] = e;
     }

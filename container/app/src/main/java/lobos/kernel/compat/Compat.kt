@@ -10,8 +10,6 @@ object Compat {
     const val LIB_PTYSESSION = "librivospty.so"
     const val LIB_FLOCK = "liblobosflock.so"
 
-    val PRELOAD_ORDER: List<String> = listOf(LIB_POSIX)
-
     fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
 
     private fun apkLibDir(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
@@ -40,8 +38,6 @@ object Compat {
         }
         return n
     }
-    fun preload(ctx: Context): String =
-        PRELOAD_ORDER.mapNotNull { name -> lib(ctx, name)?.name }.joinToString(":")
 
     fun ptyHost(ctx: Context): File? = lib(ctx, LIB_PTYSESSION)
 
