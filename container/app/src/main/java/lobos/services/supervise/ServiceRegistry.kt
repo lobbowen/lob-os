@@ -35,11 +35,14 @@ object ServiceRegistry {
                         val linked = lobos.kernel.compat.Compat.linkInto(ctx)
                         val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
                         val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
+                        val needs = listOf("libcurl.so", "libssl.so", "libcrypto.so", "libz.so.1")
+                            .map { it + "->[" + lobos.kernel.compat.PieceInspect.needed(ctx, it) + "]" }
                         RuntimeDiagnostics.append(
                             ctx, "sysview", view.isNotEmpty(),
                             "系统视图算出来 " + view.size + " 项；内核垫片入系统库 " + linked +
                                 " 个；交给 execve 那条路合并，不改宿主 environ",
-                            view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) },
+                            view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) } +
+                                "\n件内依赖=" + needs.joinToString(" | "),
                         )
                     }
                     .onFailure { e ->

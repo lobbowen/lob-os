@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <jni.h>
 #include "compat-report.h"
 
 extern char **environ;
@@ -87,6 +88,75 @@ static int read_etype(const char *path, int *type) {
     if (b[0] != 0x7f || b[1] != 'E' || b[2] != 'L' || b[3] != 'F') return 0;
     *type = (int)(b[16] | ((int)b[17] << 8));
     return 1;
+}
+
+static int lobos_needed(const char *path, char *out, size_t cap) {
+    unsigned char hdr[64];
+    unsigned char ph[56];
+    char dyn[4096];
+    unsigned long long phoff;
+    unsigned short phnum, phentsize, i;
+    int fd, found = 0, n = 0;
+    off_t dynoff = 0;
+    unsigned long long dynsz = 0;
+    if (cap < 2) return -1;
+    fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) { snprintf(out, cap, "打不开=%s", strerror(errno)); return -1; }
+    if (read(fd, hdr, 64) != 64) { close(fd); snprintf(out, cap, "头读不满"); return -1; }
+    if (hdr[0] != 0x7f || hdr[1] != 0x45 || hdr[2] != 0x4c || hdr[3] != 0x46 || hdr[4] != 2) {
+        close(fd); snprintf(out, cap, "不是 ELF64"); return -1;
+    }
+    phoff = (unsigned long long)hdr[32] | ((unsigned long long)hdr[33] << 8)
+          | ((unsigned long long)hdr[34] << 16) | ((unsigned long long)hdr[35] << 24)
+          | ((unsigned long long)hdr[36] << 32) | ((unsigned long long)hdr[37] << 40)
+          | ((unsigned long long)hdr[38] << 48) | ((unsigned long long)hdr[39] << 56);
+    phnum = (unsigned short)(hdr[56] | (hdr[57] << 8));
+    phentsize = (unsigned short)(hdr[54] | (hdr[55] << 8));
+    if (phentsize != 56) { close(fd); snprintf(out, cap, "phentsize=%u", phentsize); return -1; }
+    for (i = 0; i < phnum; i++) {
+        if (lseek(fd, (off_t)(phoff + (unsigned long long)i * 56), SEEK_SET) < 0) break;
+        if (read(fd, ph, 56) != 56) break;
+        if (ph[0] != 2) continue;
+        dynoff = (off_t)((unsigned long long)ph[8] | ((unsigned long long)ph[9] << 8)
+            | ((unsigned long long)ph[10] << 16) | ((unsigned long long)ph[11] << 24)
+            | ((unsigned long long)ph[12] << 32) | ((unsigned long long)ph[13] << 40)
+            | ((unsigned long long)ph[14] << 48) | ((unsigned long long)ph[15] << 56));
+        dynsz = (unsigned long long)ph[32] | ((unsigned long long)ph[33] << 8)
+            | ((unsigned long long)ph[34] << 16) | ((unsigned long long)ph[35] << 24)
+            | ((unsigned long long)ph[36] << 32) | ((unsigned long long)ph[37] << 40)
+            | ((unsigned long long)ph[38] << 48) | ((unsigned long long)ph[39] << 56);
+        found = 1;
+        break;
+    }
+    if (!found || dynsz == 0) { close(fd); snprintf(out, cap, "无 PT_DYNAMIC"); return -1; }
+    if (dynsz > sizeof dyn) dynsz = sizeof dyn;
+    if (lseek(fd, dynoff, SEEK_SET) < 0 || (unsigned long long)read(fd, dyn, (size_t)dynsz) != dynsz) {
+        close(fd); snprintf(out, cap, "动态段读不出"); return -1;
+    }
+    close(fd);
+    {
+        unsigned long long o;
+        for (o = 0; o + 16 <= dynsz; o += 16) {
+            unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
+                | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
+                | ((unsigned long long)dyn[o+4] << 32) | ((unsigned long long)dyn[o+5] << 40)
+                | ((unsigned long long)dyn[o+6] << 48) | ((unsigned long long)dyn[o+7] << 56);
+            unsigned long long val = (unsigned long long)dyn[o+8] | ((unsigned long long)dyn[o+9] << 8)
+                | ((unsigned long long)dyn[o+10] << 16) | ((unsigned long long)dyn[o+11] << 24)
+                | ((unsigned long long)dyn[o+12] << 32) | ((unsigned long long)dyn[o+13] << 40)
+                | ((unsigned long long)dyn[o+14] << 48) | ((unsigned long long)dyn[o+15] << 56);
+            const char *s;
+            if (tag == 0) break;
+            if (tag != 1) continue;
+            if (val >= dynsz) continue;
+            s = (const char *)(dyn + val);
+            if ((unsigned long long)(s - (const char *)dyn) > dynsz) continue;
+            if (n > 0) n += snprintf(out + n, cap - (size_t)n, " %s", s);
+            else n = snprintf(out, cap, "%s", s);
+            if (n < 0 || (size_t)n >= cap) break;
+        }
+    }
+    return n > 0 ? 0 : -1;
 }
 
 static int is_std_abs(const char *p) {
@@ -276,3 +346,16 @@ int execle(const char *path, const char *arg0, ...) {
   va_end(ap);
   return r;
 }
+JNIEXPORT jstring JNICALL
+Java_lobos_kernel_compat_PieceInspect_nativeNeeded(JNIEnv *env, jclass cls, jstring path) {
+    (void)cls;
+    const char *p = (*env)->GetStringUTFChars(env, path, 0);
+    char buf[2048];
+    int r = lobos_needed(p, buf, sizeof buf);
+    jstring out;
+    if (r < 0 && buf[0] == 0) snprintf(buf, sizeof buf, "读不出动态段");
+    out = (*env)->NewStringUTF(env, buf);
+    (*env)->ReleaseStringUTFChars(env, path, p);
+    return out;
+}
+
