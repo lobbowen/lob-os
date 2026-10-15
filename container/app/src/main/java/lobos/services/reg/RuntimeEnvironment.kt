@@ -66,14 +66,6 @@ object RuntimeEnvironment {
             put("LOBOS_SYSTEM_LINKER", "/system/bin/linker64")
             put("LOBOS_COMPAT_LOG", lobos.services.app.DriverRegistry.degradeLog(ctx).absolutePath)
         }
-        val declared = lobos.kernel.layout.SysEnv.KEYS.filter { !containsKey(it) }
-        for (k in declared) {
-            val v = when (k) {
-                "NODE_BIN" -> InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx)) ?: ""
-                else -> ""
-            }
-            if (v.isNotEmpty()) put(k, v)
-        }
         val caDirs = listOf(
             "/apex/com.android.conscrypt/cacerts",
             "/system/etc/security/cacerts",
