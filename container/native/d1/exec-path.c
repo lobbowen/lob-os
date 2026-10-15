@@ -75,6 +75,20 @@ static int x_ok(const char *p) {
   return access(p, X_OK) == 0;
 }
 
+#define LOBOS_SYSTEM_LINKER "/system/bin/linker64"
+
+static int read_etype(const char *path, int *type) {
+    unsigned char b[18];
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    ssize_t n = read(fd, b, sizeof b);
+    close(fd);
+    if (n < (ssize_t)sizeof b) return 0;
+    if (b[0] != 0x7f || b[1] != 'E' || b[2] != 'L' || b[3] != 'F') return 0;
+    *type = (int)(b[16] | ((int)b[17] << 8));
+    return 1;
+}
+
 static int is_std_abs(const char *p) {
   if (!p) return 0;
   return strncmp(p, "/usr/bin/", 9) == 0 || strncmp(p, "/bin/", 5) == 0;
@@ -194,6 +208,23 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
   if (is_std_abs(path)) {
     const char *bn = base_name(path);
     if (resolve_interp(bn, resolved, sizeof resolved)) return real_execve(resolved, argv, envp);
+  }
+  {
+      int et = 0;
+      int ac = 0;
+      while (argv && argv[ac]) ac++;
+      if (read_etype(path, &et) && et == 3) {
+          char **na = (char **)malloc((ac + 3) * sizeof(char *));
+          if (!na) { errno = ENOMEM; return -1; }
+          na[0] = (char *)LOBOS_SYSTEM_LINKER;
+          na[1] = (char *)path;
+          for (int k2 = 0; k2 < ac; k2++) na[2 + k2] = argv[k2];
+          na[2 + ac] = 0;
+          lobos_compat_report("d1.exec-path", "ET_DYN->linker64", path);
+          real_execve(LOBOS_SYSTEM_LINKER, na, envp);
+          { int e = errno; free(na); errno = e; }
+          return -1;
+      }
   }
   return real_execve(path, argv, envp);
 }
