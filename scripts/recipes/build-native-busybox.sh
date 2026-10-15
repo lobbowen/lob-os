@@ -230,19 +230,27 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
   [ -x "$WORK/install/bin/busybox" ] || die "make install 没产出 busybox" "$WORK/install/bin/busybox 不存在"
 
 OUT_DIR="$WORK/out"
-mkdir -p "$OUT_DIR/lib"
+mkdir -p "$OUT_DIR/lib" "$OUT_DIR/bin"
 cp -f "$SRC/busybox" "$OUT_DIR/lib/libbusybox.so"
 chmod 0755 "$OUT_DIR/lib/libbusybox.so"
 
+# applet 落 bin/ 而不是 lib/：
+#   LdConfig 的 bin 扫描只 File(root,"bin") + ExecBits.isRunnable(exe)（LdConfig.kt:45-48），
+#   而 lib/ 里的 applet 永远进不了 usr/bin ⇒ 整个 busybox 工具族消失。
+#   本体仍留在 lib/（它是库，LdConfig 按 SONAME 建 usr/lib 软链），
+#   applet 名不是 SONAME，只走 bin 这条路 —— 两者不冲突。
+# 链接目标必须是 ../lib/libbusybox.so：LdConfig 是照软链建的且用 absolutePath（LdConfig.kt:48），
+#   所以会变成 usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls -> ../lib/libbusybox.so 两跳；
+#   写成 libbusybox.so 会断链，而断链会让整个工具族在真机上继续消失而 CI 全绿。
 NAPP=0
 for l in "$WORK/install/bin/"*; do
   [ -L "$l" ] || continue
   b="$(basename "$l")"
   [ "$b" = busybox ] && continue
-  ln -sf libbusybox.so "$OUT_DIR/lib/$b"
+  ln -sf ../lib/libbusybox.so "$OUT_DIR/bin/$b"
   NAPP=$((NAPP+1))
 done
-echo "[$TOOL] 本体 + $NAPP 个 applet 软链进包"
+echo "[$TOOL] 本体(lib) + $NAPP 个 applet 软链(bin) 进包"
 
 BB="$OUT_DIR/lib/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
