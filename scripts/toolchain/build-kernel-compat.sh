@@ -78,7 +78,11 @@ echo "  ✓ posix      → liblobosposix.so"
 #   LD_PRELOAD 那套 execve 覆盖对它无效 → env_merge_sys 从来没被调过。
 #   而 linker64 只驱动 ET_DYN，去掉 -static 之后它才成 ET_DYN。
 #   ExecEntry.kt:51 判 e_type，ET_DYN 走 /system/bin/linker64。
-"$CC" -O2 -fPIE -pie \
+# -fno-builtin-execve：
+#   execve/execv 是 clang 的 builtin，-O2 下它会把 pty-session.c:196/199
+#   直接改写成对 __execve 的内部调用，不查符号表 → LD_PRELOAD 那套 execve
+#   覆盖被编译器绕过去。显式关掉那个内建。
+"$CC" -O2 -fPIE -pie -fno-builtin-execve \
   -o "$WORK/librivospty.so" \
   container/native/d3/pty-session.c 2>"$WORK/cc-ptysession.log" \
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
