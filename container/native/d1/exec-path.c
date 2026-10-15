@@ -42,6 +42,11 @@ static int env_has(char *const envp[], const char *k) {
 }
 
 static char **env_merge_sys(char *const envp[]) {
+    {
+        const char *pv = getenv("PATH");
+        fprintf(stderr, "[envmerge] PATH=%s\n", pv ? pv : "(null)");
+        fprintf(stderr, "[envmerge] envp_has_PATH=%d\n", env_has(envp, "PATH"));
+    }
     int extra = 0;
     for (int s = 0; SYS_KEYS[s]; s++)
         if (!env_has(envp, SYS_KEYS[s])) {
