@@ -90,6 +90,8 @@ static int env_has(char *const envp[], const char *k) {
 static char **env_merge_sys(char *const envp[]) {
     int extra = 0;
     const char *const *SK = lobos_sysenv();
+    int kk = 0;
+    while (SK[kk]) kk++;
     for (int s = 0; SK[s]; s++)
         if (!env_has(envp, SK[s])) {
             const char *v = getenv(SK[s]);
