@@ -315,6 +315,15 @@ object PtySession {
                 ProcessBuilder(hostArgv)
             }
             pb0.environment().remove("LD_PRELOAD")
+            KernelHooks.report(
+                ctx, "pty", true,
+                "宿主启动形态",
+                "shell=" + (sh?.absolutePath ?: "无") +
+                    "\nbin=" + checked.absolutePath +
+                    "\nhostArgv=" + hostArgv.joinToString(" | ") +
+                    "\nview=" + view0.keys.joinToString(",") +
+                    "\nscript=" + (if (sh != null) pb0.command()[2] else "未走 shell"),
+            )
             val h = Host(pb0, ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
