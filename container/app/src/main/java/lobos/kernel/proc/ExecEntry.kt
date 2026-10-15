@@ -38,9 +38,6 @@ object ExecEntry {
                 val t = elfType(b, n)
                 if (t == ELF_ET_EXEC) return Shape.Exec
                 if (t == ELF_ET_DYN) return Shape.Elf
-                if (n >= 2 && (b[0].toInt() and 0xFF) == '#' && (b[1].toInt() and 0xFF) == '!') {
-                    return Shape.Unknown
-                }
                 String(b, 0, n, Charsets.ISO_8859_1)
             }
         }.getOrNull() ?: return Shape.Unknown
