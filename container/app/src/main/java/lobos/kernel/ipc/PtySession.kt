@@ -297,13 +297,23 @@ object PtySession {
                 val a = lobos.kernel.proc.ExecEntry.argv(checked, raw)
                 if (a != null) a else raw
             } else raw
-            val pb0 = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
             val view0 = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
                 ctx,
                 lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
                 null,
             )
-            for ((k0, v0) in view0) pb0.environment()[k0] = v0
+            val sh = runCatching { lobos.services.supply.ShellEntry.require(ctx) }.getOrNull()
+            val pb0 = if (sh != null) {
+                val script = StringBuilder()
+                for ((k0, v0) in view0) {
+                    script.append("export ").append(k0).append("=")
+                        .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
+                }
+                script.append("exec ").append(hostArgv.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" })
+                ProcessBuilder(listOf(sh.absolutePath, "-c", script.toString()))
+            } else {
+                ProcessBuilder(hostArgv)
+            }
             pb0.environment().remove("LD_PRELOAD")
             val h = Host(pb0, ctx)
             host = h
