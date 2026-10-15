@@ -215,6 +215,34 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
     {
         unsigned long long o;
         unsigned long long strtab_off = 0;
+        unsigned long long strsz = 0;
+        unsigned long long parsed = 0, escaped = 0, dropped = 0;
+        /* 两遍，不依赖排列顺序。
+         * 单遍顺序扫描曾假设「DT_STRTAB 排在 DT_NEEDED 之前」—— 真实 .dynamic 里
+         * STRTAB 常在最后（readelf -d libcurl.so：NEEDED 在 line 4-8，STRTAB 在 line 24）。
+         * 那一版于是：合法依赖一条都读不出（strtab_off 还是 0 就被 continue），
+         * 却继续把 STRTAB 之后的非动态数据当 tag/val 解释，拿其中的字节当「偏移」
+         * 去 dynstr_at 读 .dynstr 之外的 255 字节 → 任意二进制 → NewStringUTF abort。
+         * 判据：修好后 libcurl.so 必须读出 libssl/libcrypto/libz/libdl/libc 五条。 */
+        for (o = 0; o + 16 <= dynsz; o += 16) {
+            unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
+                | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
+                | ((unsigned long long)dyn[o+4] << 32) | ((unsigned long long)dyn[o+5] << 40)
+                | ((unsigned long long)dyn[o+6] << 48) | ((unsigned long long)dyn[o+7] << 56);
+            unsigned long long val = (unsigned long long)dyn[o+8] | ((unsigned long long)dyn[o+9] << 8)
+                | ((unsigned long long)dyn[o+10] << 16) | ((unsigned long long)dyn[o+11] << 24)
+                | ((unsigned long long)dyn[o+12] << 32) | ((unsigned long long)dyn[o+13] << 40)
+                | ((unsigned long long)dyn[o+14] << 48) | ((unsigned long long)dyn[o+15] << 56);
+            if (tag == 0) break;
+            if (tag == 5) strtab_off = val;
+            else if (tag == 10) strsz = val;
+        }
+        if (strtab_off == 0) {
+            close(fd);
+            snprintf(out, cap, "no-DT_STRTAB parsed=0 escaped=0 dropped=0");
+            return -1;
+        }
+        if (strsz == 0) strsz = dynsz;
         for (o = 0; o + 16 <= dynsz; o += 16) {
             unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
                 | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
@@ -226,15 +254,26 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
                 | ((unsigned long long)dyn[o+14] << 48) | ((unsigned long long)dyn[o+15] << 56);
             const char *s;
             if (tag == 0) break;
-            if (tag == 5) { strtab_off = val; continue; }
             if (tag != 1) continue;
-            if (strtab_off == 0) continue;
-            if (val >= 65536) continue;
+            /* 夹在 DT_STRSZ 里：越界即丢弃，绝不去读 .dynstr 之外的字节。 */
+            if (val >= strsz) { dropped++; continue; }
             s = dynstr_at(path, strtab_off + val);
-            if (s == 0) continue;
+            if (s == 0) { dropped++; continue; }
+            parsed++;
             if (n > 0) n += snprintf(out + n, cap - (size_t)n, " %s", s);
             else n = snprintf(out, cap, "%s", s);
             if (n < 0 || (size_t)n >= cap) break;
+        }
+        {
+            int m = snprintf(out + (n > 0 ? n : 0), cap - (size_t)(n > 0 ? n : 0),
+                " [parsed=%llu escaped=%llu dropped=%llu]",
+                parsed, escaped, dropped);
+            if (m > 0) n += m;
+        }
+        if (parsed == 0) {
+            snprintf(out, cap, "parsed=0 escaped=%llu dropped=%llu reason=读不出任何依赖名",
+                escaped, dropped);
+            return -1;
         }
     }
     return n > 0 ? 0 : -1;
