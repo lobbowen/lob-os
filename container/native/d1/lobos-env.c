@@ -21,12 +21,19 @@ static int replace_env(char *const envp[], const char *entry) {
     size_t kl = (size_t)(eq - entry);
     int n = 0;
     while (envp && envp[n]) n++;
-    for (int i = 0; i < n; i++) {
-        if (!strncmp(envp[i], entry, kl) && envp[i][kl] == '=') return 0;
-    }
     char **out = (char **)malloc((n + 2) * sizeof(char *));
     if (!out) return -1;
-    for (int i = 0; i < n; i++) out[i] = envp[i];
+    for (int i = 0; i < n; i++) {
+        if (!strncmp(envp[i], entry, kl) && envp[i][kl] == '=') {
+            char *rep = dup_entry(entry, eq + 1);
+            if (!rep) { free(out); return -1; }
+            out[i] = rep;
+            out[n] = 0;
+            environ = out;
+            return 1;
+        }
+        out[i] = envp[i];
+    }
     out[n] = dup_entry(entry, eq + 1);
     if (!out[n]) { free(out); return -1; }
     out[n + 1] = 0;
