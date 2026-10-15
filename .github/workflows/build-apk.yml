@@ -270,7 +270,7 @@ jobs:
       - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
         run: |
           set -uo pipefail
-          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface"
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics"
           BAD=0
           for f in scripts/verify/check-*.sh; do
             b=$(basename "$f" .sh)
@@ -279,6 +279,16 @@ jobs:
               *) echo "::error file=$f,title=新增门禁未获准::本仓只允许基础行为规范门禁（${ALLOWED}）"
                  echo "  判据必须与设计取向无关，只与写法有关。"
                  echo "  曾经两道设计类门禁（分层边界 / 不许借用 /system/bin）因挡住正确设计而被移除。"
+                 echo "  —— 判别线（2026-10-15 追加）：「声明-实现一致性类」= 只断言声明文本的机械事实"
+                 echo "  （某项在场、某字段值等于某字面量、某计数不为零），不要求任何特定实现存在、"
+                 echo "  不禁止任何人改动架构；「设计取向类」= 断言某类写法或某个实现不得出现，因而会缩小设计空间。"
+                 echo "  已按「声明-实现一致性类」放行的例外：check-compat-semantics（它只要求这条已知缺口不许被静默抹掉）。"
+                 echo "  ★ check-compat-semantics 的解封条件（不是永久豁免）：一旦宿主形态变为 root / device-owner 可建命名空间，"
+                 echo "    即 chroot / pivot_root / unshare(CLONE_NEWNS) 真的可用、isolation 被真正实现，"
+                 echo "    该判据必须同步删除或翻转。它写死 status==absent 的那天起就绑在「隔离未实现」这个前提上；"
+                 echo "    前提变了而判据不变，它就从「保护缺口」变成「阻止正确设计」。"
+                 echo "  追加新门禁时须在方案记录里附正例与负例的实测输出（本仓只要求记录存在，不要求把负例做成常驻 CI 用例 ——"
+                 echo "    负例常驻会因他人改动正确文案而长期红 CI）。记录留在团队 JOURNAL 即可。"
                  BAD=$((BAD+1));;
             esac
           done
@@ -289,6 +299,7 @@ jobs:
           echo "  · 工作流 shell：书写规范"
           echo "  · 件的 ELF 依赖闭环：产物形态"
           echo "  · 能力面：声明表与实现表一致"
+          echo "  · 兼容语义：不得静默抹掉已声明的缺口（声明-实现一致性类）"
       - name: 源码形状（防字符摊开）
         run: |
           set -uo pipefail
@@ -298,6 +309,16 @@ jobs:
         run: |
           set -uo pipefail
           bash scripts/verify/check-api-surface.sh
+
+      - name: 兼容语义判据（不得宣称未实现的隔离）
+        run: |
+          set -uo pipefail
+          bash scripts/verify/check-compat-semantics.sh
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error title=兼容语义判据未通过::exit=$rc"
+          fi
+          exit $rc
 
       - name: 代码里不许有注释
         run: |
@@ -392,13 +413,42 @@ jobs:
             bash scripts/verify/verify-apk-signing.sh "$APK" $CERT_ARG
           fi
 
+      - name: 记录本次产物的构建身份（装机后据此归因）
+        run: |
+          set -euo pipefail
+          APK="$(ls container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk 2>/dev/null | head -1)"
+          if [ -z "$APK" ]; then
+            echo "::error title=没有 APK 可标身份::装机后无法归因，不放行"
+            exit 1
+          fi
+          # 取件口径三条（规范 I-33）：
+          #   1) head_sha 必须等于本地 HEAD —— 不等说明产物与当前源码脱钩
+          #   2) 同一 head_sha 取 run 号最大者
+          #   3) 记下 run 号 —— 没有它，同一 commit 的两次验证拿到不同字节也无人察觉
+          SHA="${GITHUB_SHA}"
+          if [ "$SHA" != "$(git rev-parse HEAD)" ]; then
+            echo "::error title=产物 sha 与本地 HEAD 不符::${SHA} vs $(git rev-parse HEAD)"
+            exit 1
+          fi
+          mkdir -p work
+          printf 'gitSha=%s\nrunId=%s\nrunNumber=%s\nvariant=%s\napk=%s\n' \
+            "$SHA" "${GITHUB_RUN_ID}" "${GITHUB_RUN_NUMBER}" \
+            "${{ steps.gradlebuild.outputs.variant }}" "$(basename "$APK")" \
+            > work/build-identity.txt
+          cat work/build-identity.txt
+
       - name: Upload APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ steps.gradlebuild.outputs.variant }}
-          path: container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk
-          if-no-files-found: warn
+          path: |
+            container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk
+            work/build-identity.txt
+          # 必须 error 而非 warn：build-identity.txt 是「防读到旧版本」的唯一凭据。
+          # 若它生成失败而此处只 warn，流水线照样绿、产物照样缺它、无人报错 ——
+          # 用来防错的东西自己静默失效。（test-engineer 2026-10-15 提出）
+          if-no-files-found: error
           retention-days: 30
 
       # 校验轮**不发 Release**。

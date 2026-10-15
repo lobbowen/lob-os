@@ -782,6 +782,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             put("prefix", prefix)
             put("minNode", minNode)
             put("writtenBy", "lobos-os")
+            put("gitSha", lobos.BuildConfig.GIT_SHA)
+            put("runId", lobos.BuildConfig.RUN_ID)
+            put("builtIdentifiable", lobos.BuildConfig.GIT_SHA != "unknown")
             if (envSnapshot.isNotEmpty()) {
                 put("env", JSONObject(envSnapshot.toMap()).toString())
             }

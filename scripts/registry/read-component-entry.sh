@@ -35,7 +35,7 @@ import json, sys
 path, tool = sys.argv[1], sys.argv[2]
 try:
     j = json.load(open(path))
-    crit = j.get('criteria') or {}
+    crit = j.get('sources') or {}
     entry = (crit.get(tool) or {}).get('entry')
 except Exception as e:
     print('[FAIL] %s 读 %r: %s' % (path, tool, e), file=sys.stderr)

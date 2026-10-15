@@ -29,6 +29,10 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("int", "BRIDGE_PROTOCOL", appBridgeProtocol.toString())
+        // 构建身份：装机后设备必须能自报「我是哪次构建」，否则每一轮真机读数都不可归因。
+        // 占位值必须是 unknown 而不是任何形似 sha 的串 —— 否则 CI 注入失败会被占位掩盖。
+        buildConfigField("String", "GIT_SHA", quoted(System.getenv("GITHUB_SHA") ?: "unknown"))
+        buildConfigField("String", "RUN_ID", quoted(System.getenv("GITHUB_RUN_ID") ?: "unknown"))
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -106,6 +110,10 @@ android {
         }
     }
 }
+
+// buildConfigField("String", …) 的实参必须是 Java 源码字面量，故自带引号。
+// 不加引号会生成裸词 → 编译期报「expecting an element」。
+fun quoted(v: String): String = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 fun nativeAssetNames(): List<String> {
     val f = rootProject.file(".github/native-assets.txt")

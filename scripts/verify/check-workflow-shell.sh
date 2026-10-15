@@ -20,7 +20,13 @@ trap 'rm -rf "$WORK"' EXIT
 
 node -e '
 const fs = require("fs"), path = require("path");
-const yaml = require("js-yaml");
+let yaml;
+try { yaml = require("js-yaml"); }
+catch (e) {
+  console.error("[FAIL] 缺少依赖 js-yaml：本门禁无法解析 workflow，**未检查任何 run 块**。");
+  console.error("        它跑在 work 根的 node_modules 上；装它：cd work && npm i js-yaml");
+  process.exit(2);
+}
 const out = [];
 for (const f of fs.readdirSync(".github/workflows").filter(x => x.endsWith(".yml")).sort()) {
   let d;
@@ -44,6 +50,11 @@ for (const f of fs.readdirSync(".github/workflows").filter(x => x.endsWith(".yml
 TOTAL=0
 BAD=0
 
+# 「检查了 0 个 run 块」必须判红，不许判绿。
+# 判据的有效性不依赖它发现了什么，而依赖它确实在检查；
+# 一个检查了 0 个对象的判据报绿，等于把「它绿了」与「它没在跑」压成同一个信号。
+BAD=0
+
 while IFS=$'\t' read -r key file tag quote; do
   [ -z "$key" ] && continue
   TOTAL=$((TOTAL+1))
@@ -60,6 +71,12 @@ while IFS=$'\t' read -r key file tag quote; do
 done < "$WORK/list.tsv"
 
 echo "[wf] 检查了 $TOTAL 个 run: 块"
+if [ "$TOTAL" = "0" ]; then
+  echo "::error title=一个 run 块都没检查到::本门禁未检查任何对象，不能报绿。"
+  echo "        两种成因：(a) 依赖缺失（js-yaml 装了吗）；(b) .github/workflows 下没有可解析的 yml。"
+  echo "        两者都意味着「它绿了」与「它没在跑」被压成同一个信号 —— 不可接受。"
+  exit 1
+fi
 if [ "$BAD" != "0" ]; then
   echo "::error title=workflow run 块语法错::$BAD 处"
   exit 1
