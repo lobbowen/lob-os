@@ -96,6 +96,18 @@ static char **env_merge_sys(char *const envp[]) {
             if (v && *v) extra++;
         }
     if (!extra) return (char **)envp;
+      {
+          char msg[256];
+          int m = snprintf(msg, sizeof msg, "env_merge envp=%s nkeys=%d extra=%d ",
+              envp ? "nonnull" : "NULL", kk, extra);
+          for (int s = 0; s < kk; s++) {
+              const char *v = getenv(SK[s]);
+              m += snprintf(msg + m, sizeof msg - (size_t)m, "%s%s=%s",
+                  s ? "," : "", SK[s], (v && *v) ? v : "(none)");
+              if (m < 0 || (size_t)m >= sizeof msg) break;
+          }
+          lobos_compat_report("d1.env-merge", "merged", msg);
+      }
     int n = 0;
     while (envp && envp[n]) n++;
     char **out = (char **)malloc((n + extra + 1) * sizeof(char *));
