@@ -63,6 +63,7 @@ int linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath,
 #include <unistd.h>
 
 __attribute__((constructor)) static void lobos_own_session(void) {
+    lobos_compat_report("preload", "loaded", "liblobosposix 已被注入本进程");
     const char *v = getenv("LOBOS_OWN_SESSION");
     if (v != 0 && v[0] == 0x31) {
         setsid();
