@@ -90,6 +90,24 @@ static int read_etype(const char *path, int *type) {
     return 1;
 }
 
+static const char *dynstr_at(const char *path, unsigned long long off) {
+    static __thread char buf[256];
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    if (lseek(fd, (off_t)off, SEEK_SET) < 0) { close(fd); return 0; }
+    ssize_t n = read(fd, buf, sizeof buf - 1);
+    close(fd);
+    if (n <= 0) return 0;
+    buf[n] = 0;
+    {
+        int k;
+        for (k = 0; k < n; k++) {
+            unsigned char c = (unsigned char)buf[k];
+            if (c < 0x20 || c > 0x7e) { buf[k] = 0; break; }
+        }
+    }
+    return buf;
+}
 static int lobos_needed(const char *path, char *out, size_t cap) {
     unsigned char hdr[64];
     unsigned char ph[56];
@@ -136,6 +154,7 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
     close(fd);
     {
         unsigned long long o;
+        unsigned long long strtab_off = 0;
         for (o = 0; o + 16 <= dynsz; o += 16) {
             unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
                 | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
@@ -147,10 +166,12 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
                 | ((unsigned long long)dyn[o+14] << 48) | ((unsigned long long)dyn[o+15] << 56);
             const char *s;
             if (tag == 0) break;
+            if (tag == 5) { strtab_off = val; continue; }
             if (tag != 1) continue;
-            if (val >= dynsz) continue;
-            s = (const char *)(dyn + val);
-            if ((unsigned long long)(s - (const char *)dyn) > dynsz) continue;
+            if (strtab_off == 0) continue;
+            if (val >= 65536) continue;
+            s = dynstr_at(path, strtab_off + val);
+            if (s == 0) continue;
             if (n > 0) n += snprintf(out + n, cap - (size_t)n, " %s", s);
             else n = snprintf(out, cap, "%s", s);
             if (n < 0 || (size_t)n >= cap) break;
