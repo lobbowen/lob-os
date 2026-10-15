@@ -17,14 +17,17 @@ object LdConfig {
         val etc = SystemDirs.etc(ctx)
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
-        val pieces = opt.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
+        val idx = lobos.services.reg.ProgramIndex.all(ctx)
+            .filter { lobos.services.reg.ProgramIndex.isPiece(it) }
+            .sortedBy { it.id }
+        val pieces = idx.map { File(opt, it.id) }
         var linked = 0
         val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
 
-        for (p in pieces) {
-            val cur = File(p, "CURRENT").takeIf { it.isFile }?.readText()?.trim()
-            val ver = cur?.takeIf { it.isNotBlank() }
+        for (e in idx) {
+            val p = File(opt, e.id)
+            val ver = e.version.takeIf { it.isNotBlank() }
                 ?: p.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }?.name
                 ?: continue
             val root = File(p, ver)
