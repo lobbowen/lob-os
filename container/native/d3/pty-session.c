@@ -71,6 +71,71 @@ static char **lobos_child_env(void) {
 #include <termios.h>
 #include <unistd.h>
 
+extern char **environ;
+
+static const char *const lobos_sysenv_path(void) {
+    const char *p = getenv("LOBOS_SYSENV");
+    if (p != 0 && p[0] == 47) return p;
+    return "/data/user/0/lobos.os/files/etc/lobos-sysenv";
+}
+
+static char **lobos_child_env(void) {
+    int cap = 24, n = 0;
+    char **out = (char **)malloc((size_t)cap * sizeof(char *));
+    if (!out) return environ;
+    for (int i = 0; environ && environ[i]; i++) {
+        if (n + 2 >= cap) {
+            char **b = (char **)realloc(out, (size_t)cap * 2 * sizeof(char *));
+            if (!b) { free(out); return environ; }
+            out = b; cap *= 2;
+        }
+        out[n++] = environ[i];
+    }
+    {
+        int fd = open(lobos_sysenv_path(), O_RDONLY | O_CLOEXEC);
+        if (fd >= 0) {
+            char line[160];
+            size_t li = 0;
+            for (;;) {
+                char c;
+                ssize_t r = read(fd, &c, 1);
+                if (r <= 0 || c == (char)10) {
+                    if (li > 0 && line[0] != 35) {
+                        char *eq = strchr(line, 61);
+                        size_t kl = eq ? (size_t)(eq - line) : li;
+                        if (kl < sizeof line && kl > 0) {
+                            char key[160];
+                            memcpy(key, line, kl); key[kl] = 0;
+                            const char *v = getenv(key);
+                            if (v != 0 && *v) {
+                                if (n + 2 >= cap) {
+                                    char **b = (char **)realloc(out, (size_t)cap * 2 * sizeof(char *));
+                                    if (!b) { close(fd); free(out); return environ; }
+                                    out = b; cap *= 2;
+                                }
+                                char *e = (char *)malloc(kl + strlen(v) + 2);
+                                if (e) {
+                                    memcpy(e, line, kl);
+                                    e[kl] = 61;
+                                    memcpy(e + kl + 1, v, strlen(v) + 1);
+                                    out[n++] = e;
+                                }
+                            }
+                        }
+                    }
+                    li = 0;
+                    if (r <= 0) { close(fd); break; }
+                    continue;
+                }
+                if (li + 1 < sizeof line) line[li++] = c;
+            }
+            close(fd);
+        }
+    }
+    out[n] = 0;
+    return out;
+}
+
 #define FRAME_MAX (64 * 1024)
 #define MAX_SESSIONS 8
 
@@ -241,6 +306,7 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         signal(SIGPIPE, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
         {
+            char **ce = lobos_child_env();
             char **ce = lobos_child_env();
             const char *lp = getenv("LOBOS_SYSTEM_LINKER");
             int under = strstr(argv[0], "/files/opt/") != NULL;
