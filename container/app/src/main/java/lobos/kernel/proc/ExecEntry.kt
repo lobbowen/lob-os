@@ -22,9 +22,9 @@ object ExecEntry {
     private fun elfType(b: ByteArray, n: Int): Int {
         if (n < 18) return -1
         if ((b[0].toInt() and 0xFF) != ELF_MAGIC) return -1
-        if ((b[1].toInt() and 0xFF) != 'E'.code ||
-            (b[2].toInt() and 0xFF) != 'L'.code ||
-            (b[3].toInt() and 0xFF) != 'F'.code) return -1
+        if ((b[1].toInt() and 0xFF) != 0x45 ||
+            (b[2].toInt() and 0xFF) != 0x4C ||
+            (b[3].toInt() and 0xFF) != 0x46) return -1
         return (b[16].toInt() and 0xFF) or ((b[17].toInt() and 0xFF) shl 8)
     }
 
