@@ -73,7 +73,12 @@ echo "  ✓ posix      → liblobosposix.so"
 
 
 # ── ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）────────────
-"$CC" -static -O2 \
+# 动态链接，不带 -static：
+#   静态链接时 libc 整份链进去，fork 之后的 execv 不走 PLT、不查符号表，
+#   LD_PRELOAD 那套 execve 覆盖对它无效 → env_merge_sys 从来没被调过。
+#   而 linker64 只驱动 ET_DYN，去掉 -static 之后它才成 ET_DYN。
+#   ExecEntry.kt:51 判 e_type，ET_DYN 走 /system/bin/linker64。
+"$CC" -O2 -fPIE -pie \
   -o "$WORK/librivospty.so" \
   container/native/d3/pty-session.c 2>"$WORK/cc-ptysession.log" \
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
