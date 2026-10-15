@@ -59,3 +59,5 @@ keys/
 # 从 APK 里解出来的 dex —— 验证用的落点，属构建产物
 .ck/
 .ck2/
+.lobos-tools/
+.dl/
