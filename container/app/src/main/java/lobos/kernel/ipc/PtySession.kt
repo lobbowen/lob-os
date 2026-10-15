@@ -305,21 +305,28 @@ object PtySession {
                         .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
                 }
                 script.append("exec ").append(hostArgv.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" })
-                ProcessBuilder(listOf(sh.absolutePath, "-c", script.toString()))
+                listOf(
+                    lobos.kernel.proc.ExecEntry.SYSTEM_LINKER,
+                    sh.absolutePath,
+                    "-c",
+                    script.toString(),
+                )
             } else {
-                ProcessBuilder(hostArgv)
+                hostArgv
             }
-            pb0.environment().remove("LD_PRELOAD")
+            val pb1 = ProcessBuilder(pb0)
+            pb1.environment().remove("LD_PRELOAD")
             KernelHooks.report(
                 ctx, "pty", true,
                 "宿主启动形态",
                 "shell=" + (sh?.absolutePath ?: "无") +
                     "\nbin=" + checked.absolutePath +
                     "\nhostArgv=" + hostArgv.joinToString(" | ") +
+                    "\nlaunch=" + pb1.command().joinToString(" | ") +
                     "\nview=" + view0.keys.joinToString(",") +
-                    "\nscript=" + (if (sh != null) pb0.command()[2] else "未走 shell"),
+                    "\nscript=" + (if (sh != null) pb0[3] else "未走 shell")
             )
-            val h = Host(pb0, ctx)
+            val h = Host(pb1, ctx)
             host = h
             KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
             bin.absolutePath + " （常驻；shell.exec 与终端共用）")
