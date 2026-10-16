@@ -499,6 +499,23 @@ jobs:
           echo "发布完成："
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[0].url'
 
+      - name: 步骤执行状态（skipped 与 failed 分开读 · C-12）
+        if: always()
+        run: |
+          set -uo pipefail
+          S="$GITHUB_STEP_SUMMARY"
+          echo "## 步骤执行状态" >> "$S"
+          echo "" >> "$S"
+          echo "| 步骤 | 结论 |" >> "$S"
+          echo "|---|---|" >> "$S"
+          echo "| 取件（从 Release 取 base 筐的固化产物） | 由上游决定 |" >> "$S"
+          echo "| 产物形态校验（APK 条目 vs 三份声明表） | 需要 APK 存在 |" >> "$S"
+          echo "| 记录本次产物的构建身份 | 需要 APK 存在 |" >> "$S"
+          echo "| Upload APK | always()，但产物要存在 |" >> "$S"
+          echo "" >> "$S"
+          echo "★ **上面三条若显示「未执行」，它们不构成任何证据** —— 那是上游断点，" >> "$S"
+          echo "而「未执行」在 GitHub 的颜色里与「通过」一样绿。判别形式：它跑了没有？" >> "$S"
+
       - name: Collect failure diagnostics
         if: failure()
         run: |

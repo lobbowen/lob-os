@@ -95,9 +95,11 @@ object ProgramOtaUpdater {
                 continue
             }
             val cur = lobos.kernel.compat.Compat.lib(ctx, name)
-            val desc = name + ":随 APK（today=" + (item?.today ?: "?") +
-                " intended=" + (item?.intended ?: "?") +
-                (cur?.isFile == true ? "，已就位" : "，**缺**") + "）"
+            val todayV = item?.today ?: "-"
+            val intendedV = item?.intended ?: "-"
+            val presentV = if (cur?.isFile == true) "已就位" else "缺"
+            val desc = name + ":随 APK（today=" + todayV +
+                " intended=" + intendedV + " " + presentV + "）"
             out.add(desc)
         }
         return out
