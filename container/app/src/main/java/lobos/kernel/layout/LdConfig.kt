@@ -81,8 +81,7 @@ object LdConfig {
         )
         val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
-        val selfCheck = lobos.services.supply.SelfCheckReport.format(
-            listOf(
+        val items = listOf(
                 lobos.services.supply.SelfCheckReport.Item(
                     "usr-bin-entries",
                     missingBins.isEmpty(),
@@ -91,11 +90,13 @@ object LdConfig {
                     else "声明了但没建出：" + missingBins.joinToString(", ") +
                         " —— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
                 ),
-            ),
         )
+        val selfCheck = lobos.services.supply.SelfCheckReport.format(items)
         RuntimeDiagnostics.append(ctx, "selfcheck", missingBins.isEmpty(), selfCheck)
-        if (missingBins.isNotEmpty()) {
-            Log.w(TAG, "自检未通过：" + missingBins.joinToString(", ") + " 声明了但 usr/bin 里没有")
+        if (missingBins.isEmpty()) {
+            Log.i(TAG, "selfcheck 通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
+        } else {
+            Log.w(TAG, "selfcheck 未通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
         }
         if (unresolved.isNotEmpty()) {
             Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
