@@ -304,10 +304,10 @@ object ProgramIndex {
         }
         val identity = lobos.services.reg.BuildIdentity.read(ctx)
         val apkSha = identity?.optString("gitSha", "") ?: ""
-        val comps = listOf(
-            Triple(lobos.kernel.compat.Compat.LIB_POSIX, false),
-            Triple(lobos.kernel.compat.Compat.LIB_PTYSESSION, true),
-            Triple(lobos.kernel.compat.Compat.LIB_FLOCK, true),
+        val comps: List<Pair<String, Boolean>> = listOf(
+            lobos.kernel.compat.Compat.LIB_POSIX to false,
+            lobos.kernel.compat.Compat.LIB_PTYSESSION to true,
+            lobos.kernel.compat.Compat.LIB_FLOCK to true,
         )
         for ((name, opt) in comps) {
             val present = lobos.kernel.compat.Compat.lib(ctx, name)?.isFile == true
