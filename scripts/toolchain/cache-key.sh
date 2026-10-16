@@ -162,6 +162,16 @@ case "$TOOL" in
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
   *)       SRC_FILES="" ;;
 esac
+
+# 决定「包里有什么」的两个机制，不产字节但改产物内容：
+#   gen-component-meta.js  决定 meta 的字段（roles 就是它加的）
+#   package-piece-zip.sh   决定哪些文件进包、怎么命名
+# 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 ⇒
+# 方案甲本该拦住却没拦住。判别形式不是「它是不是源码」，而是
+# 「我改了这个文件，包里会不会变」。
+PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-piece-zip.sh"
+SRC_FILES="$SRC_FILES $PKG_MECH"
+
 # 必须只用 commit 里的内容（git show HEAD:<path>），不能用 sha256sum 读工作区文件。
 # 那样会让「同一 commit + 不同未提交改动」算出不同值，于是 dispatch 时算出的名字与
 # CI 取件时算出的不一致，重固化完了还是取不到。
