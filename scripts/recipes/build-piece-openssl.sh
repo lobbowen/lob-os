@@ -30,7 +30,7 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
-  make -j"$JOBS" build_libs > "$WORK/build.log" 2>&1 \
+  make -j"$JOBS" build_libs build_inst_programs > "$WORK/build.log" 2>&1 \
     || { echo "=== openssl 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
   make install_sw > "$WORK/install.log" 2>&1 \
     || { echo "=== openssl install_sw 失败取证（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
@@ -53,4 +53,9 @@ SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
   # OPENSSL_LIBS=1：包要同时带 libssl.so 与 libcrypto.so ——
   # crypto 是清单里的独立一件（crypto.sameAs=openssl），
   # 由 build-crypto.yml 从本件的包里拆出去。
-  OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl.so 1000
+  # 第五个参数：openssl 这个件要在 usr/bin 出现的命令名。
+  # 少了它，打包只搬 entry（lib/libssl.so），bin/openssl 不会进包 ——
+  # 那样系统里就永远没有「openssl 这个命令」，只有库。
+  OPENSSL_BINS=""
+  [ -e "$OUT_DIR/bin/openssl" ] && OPENSSL_BINS="openssl"
+  OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl.so 1000 "$OPENSSL_BINS"

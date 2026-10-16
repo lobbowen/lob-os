@@ -63,13 +63,17 @@ data class UnitEntry(
 
     data class BaseItem(
         val id: String,
-        val kind: String,
+        val kinds: List<String>,
         val version: String,
         val sha256: String,
         val today: String,
         val intended: String,
         val optional: Boolean,
-    )
+    ) {
+        val kind: String get() = kinds.joinToString("+")
+
+        fun hasKind(k: String): Boolean = kinds.contains(k)
+    }
     }
 
 
@@ -276,7 +280,7 @@ object ProgramIndex {
 
     private fun encodeBase(i: UnitEntry.BaseItem): JSONObject = JSONObject().apply {
         put("id", i.id)
-        put("kind", i.kind)
+        put("kinds", JSONArray().also { a -> i.kinds.forEach { a.put(it) } })
         put("version", i.version)
         put("sha256", i.sha256)
         put("today", i.today)
@@ -289,12 +293,14 @@ object ProgramIndex {
         for (e in all(ctx).sortedBy { it.id }) {
             if (!isPiece(e)) continue
             val declaredBins = lobos.kernel.layout.LdConfig.declaredBins(ctx, e.id)
-            val isLibOnly = e.assetEntry.startsWith("lib/") && declaredBins.isEmpty()
+            val mainKind = if (e.assetEntry.startsWith("lib/")) "运行库" else "命令"
+            val kinds = if (declaredBins.isEmpty()) listOf(mainKind)
+            else listOf(mainKind) + listOf("命令").filter { it != mainKind }
             out.add(
                 encodeBase(
                     UnitEntry.BaseItem(
                         id = e.id,
-                        kind = if (isLibOnly) "运行库" else "命令",
+                        kinds = kinds,
                         version = e.version,
                         sha256 = e.sha256,
                         today = "ota",
@@ -308,7 +314,7 @@ object ProgramIndex {
                     encodeBase(
                         UnitEntry.BaseItem(
                             id = "${e.id}/${b}",
-                            kind = "命令",
+                            kinds = listOf("命令"),
                             version = e.version,
                             sha256 = e.sha256,
                             today = "ota",
@@ -332,7 +338,7 @@ object ProgramIndex {
                 encodeBase(
                     UnitEntry.BaseItem(
                         id = name,
-                        kind = "组件",
+                        kinds = listOf("组件"),
                         version = "随 APK",
                         sha256 = apkSha,
                         today = "apk",
@@ -362,7 +368,7 @@ object ProgramIndex {
 
     private fun decodeBase(b: JSONObject): UnitEntry.BaseItem = UnitEntry.BaseItem(
         id = b.optString("id", ""),
-        kind = b.optString("kind", ""),
+        kinds = b.optJSONArray("kinds")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: listOf(b.optString("kind", "")),
         version = b.optString("version", ""),
         sha256 = b.optString("sha256", ""),
         today = b.optString("today", ""),
