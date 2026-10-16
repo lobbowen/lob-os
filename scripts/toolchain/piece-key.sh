@@ -11,6 +11,12 @@
 # 单点定义，11 处引用，不会再各自漂移。
 set -euo pipefail
 
+# ★ dispatch 依赖顺序（2026-10-16 记，因为同一条原因已经让 crypto 红了两次）：
+#   crypto 必须等 openssl —— build-crypto.yml:47-49 是 fetch openssl 的 asset 再 unzip
+#   取里面的 libcrypto.so；openssl 还没编完时那个 asset 不存在，crypto 必然失败。
+#   其余七件互不依赖，可以并行 dispatch。
+#   ⇒ 顺序：先并行 dispatch 其余七件 → 等 openssl 绿 → 再 dispatch crypto。
+
 id="${1:?usage: piece-key.sh <件名>  （component-sources.json 里的 id）}"
 work="${2:-$(pwd)}"
 

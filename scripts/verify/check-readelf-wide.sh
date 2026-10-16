@@ -19,6 +19,7 @@ cd "$ROOT"
 # nm 的等价开关是 -D（动态符号）或不加（全部）—— 它默认就不截断，所以不强制。
 TOTAL=0
 BAD=0
+NM_MISSING=0
 
 while read -r fl; do
   f="${fl%%:*}"
@@ -28,14 +29,21 @@ while read -r fl; do
   case "$line" in
     *"#"*) continue ;;
     *READELF*|*readelf*) ;;
+    *nm*|*NM*|*Nm*) ;;
     *) continue ;;
   esac
   case "$line" in
-    *" -W"*|*"--wide"*) TOTAL=$((TOTAL+1)); continue ;;
-    *) TOTAL=$((TOTAL+1)) ;;
+    *nm*|*NM*|*Nm*)
+      case "$line" in
+        *" -D"*|*"--dynamic"*) TOTAL=$((TOTAL+1)); continue ;;
+        *) TOTAL=$((TOTAL+1)); BAD=$((BAD+1)); echo "::error title=nm 未带 -D::$f:$ln  加载器只看 .dynsym，不带 -D 的 nm 会把 .symtab 的也算进来"; echo "::error::  实测 libcrypto.so：nm 见 20263、nm -D 见 5895，差 15727 个是加载器看不到的" ;;
+      esac
+      continue ;;
   esac
-  BAD=$((BAD+1))
-  echo "::error title=readelf 未带 -W::$f:$ln  这行若用于「某符号是否存在」的结论，其「0 处」不可信（列宽会截断）"
+  case "$line" in
+    *" -W"*|*"--wide"*) TOTAL=$((TOTAL+1)); continue ;;
+  esac
+  TOTAL=$((TOTAL+1)); BAD=$((BAD+1))  echo "::error title=readelf 未带 -W::$f:$ln  这行若用于「某符号是否存在」的结论，其「0 处」不可信（列宽会截断）"
   echo "::error::  加 -W，或改用 nm -D —— 而「查不到」与「查不到的方式不可靠」必须分开报告"
 done < <(grep -rnE "READELF|llvm-readelf|readelf" scripts/ 2>/dev/null | grep -E "\-d |\-s |--dyn-syms|\-l |\-h |\-V " | grep -v "check-readelf-wide" | head -200)
 
