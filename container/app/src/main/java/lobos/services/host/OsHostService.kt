@@ -58,6 +58,7 @@ class OsHostService : Service() {
         }
         promoteToForeground()
         ensureComponents(intent)
+        runCatching { lobos.services.reg.BuildIdentity.write(this) }
         if (born) {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
