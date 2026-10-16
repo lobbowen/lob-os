@@ -62,6 +62,16 @@ data class UnitEntry(
         val level: Level get() = if (isPiece) Level.PIECE else Level.PROGRAM
     }
 
+    data class BaseItem(
+        val id: String,
+        val kind: String,
+        val version: String,
+        val sha256: String,
+        val today: String,
+        val intended: String,
+        val optional: Boolean,
+    )
+
 object ProgramIndex {
 
     private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
@@ -259,7 +269,85 @@ object ProgramIndex {
         StateFiles.writeJson(file(ctx), JSONObject().apply {
             put("schema", SCHEMA)
             put("entries", arr)
+            put("base", JSONArray().also { a -> baseOf(ctx).forEach { a.put(it) } })
         })
+    }
+
+    private fun encodeBase(i: UnitEntry.BaseItem): JSONObject = JSONObject().apply {
+        put("id", i.id)
+        put("kind", i.kind)
+        put("version", i.version)
+        put("sha256", i.sha256)
+        put("today", i.today)
+        put("intended", i.intended)
+        put("optional", i.optional)
+    }
+
+    fun baseOf(ctx: Context): List<JSONObject> {
+        val out = mutableListOf<JSONObject>()
+        for (e in all(ctx).sortedBy { it.id }) {
+            if (!isPiece(e)) continue
+            out.add(
+                encodeBase(
+                    UnitEntry.BaseItem(
+                        id = e.id,
+                        kind = "命令",
+                        version = e.version,
+                        sha256 = e.sha256,
+                        today = "ota",
+                        intended = "ota",
+                        optional = false,
+                    ),
+                ),
+            )
+        }
+        val identity = lobos.services.reg.BuildIdentity.read(ctx)
+        val apkSha = identity?.optString("gitSha", "") ?: ""
+        val comps = listOf(
+            Triple(lobos.kernel.compat.Compat.LIB_POSIX, false),
+            Triple(lobos.kernel.compat.Compat.LIB_PTYSESSION, true),
+            Triple(lobos.kernel.compat.Compat.LIB_FLOCK, true),
+        )
+        for ((name, opt) in comps) {
+            val present = lobos.kernel.compat.Compat.lib(ctx, name)?.isFile == true
+            out.add(
+                encodeBase(
+                    UnitEntry.BaseItem(
+                        id = name,
+                        kind = "组件",
+                        version = "随 APK",
+                        sha256 = apkSha,
+                        today = "apk",
+                        intended = "ota",
+                        optional = opt,
+                    ),
+                ),
+            )
+            if (!present) {
+                out.last().put("present", false)
+            }
+        }
+        return out
+    }
+
+    fun base(ctx: Context): List<UnitEntry.BaseItem> {
+        val f = file(ctx)
+        if (!f.isFile) return emptyList()
+        val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return emptyList()
+        val arr = o.optJSONArray("base") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.let { b ->
+                UnitEntry.BaseItem(
+                    id = b.optString("id", ""),
+                    kind = b.optString("kind", ""),
+                    version = b.optString("version", ""),
+                    sha256 = b.optString("sha256", ""),
+                    today = b.optString("today", ""),
+                    intended = b.optString("intended", ""),
+                    optional = b.optBoolean("optional", false),
+                )
+            }
+        }
     }
 }
 
