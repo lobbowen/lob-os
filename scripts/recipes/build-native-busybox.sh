@@ -262,20 +262,25 @@ for l in "$WORK/install/bin/"*; do
 done
 echo "[$TOOL] 本体(lib) + $NAPP 个 applet 软链(bin) 进包"
 
-# 声明数 vs 实际落包数，必须相等。
+# 声明集 ⊆ 落包集（单向包含）。
 #
-# 两项来自**两个独立机制**才有意义：
+# 为什么比集合而不是比个数：
 #   声明侧 = $APPLETS（我们写下的常量）；
-#   执行侧 = NAPP（make install 实际建出来的软链数）。
-# 若两项都取自同一份常量，这条比对恒真 —— 那就是「恒定名字」在判据层的形态。
+#   落包侧 = $OUT_DIR/bin/ 的实际内容（make install 产出的），**不是 NAPP**。
+#   NAPP 数的是 install/bin/ 里的软链总数，它**不是声明的落地数** ——
+#   2026-10-16 实测：去掉 AWK 后声明 17、而 NAPP 反而是 18（落包集含我们没声明的派生 applet）。
+#   比计数会在「集合包含而计数不同」时误判失败 —— 那正是那次误判。
 #
-# 2026-10-16 实测：$APPLETS 有 18 项（含 AWK），NAPP 只有 17 ——
-# 上面的「applet 配置项全部生效（18 项）」是绿的（它只验 .config 里写没写），
-# 而 awk 根本没被编出来。两条判据问的是两件事，只有这条同时看两边。
-N_DECL=$(printf '%s\n' $APPLETS | wc -w)
-[ "$NAPP" = "$N_DECL" ] || die "applet 数对不上" \
-  "声明 $N_DECL 个（$APPLETS），实际落包 $NAPP 个 —— 差的那个没被编出来（多半是它的依赖 CONFIG_* 被白名单关了）。别去追 make install，先看该 applet 的依赖项。"
-echo "[$TOOL] 声明 $N_DECL 个 = 实际落包 $NAPP 个 ✓"
+# 为什么是单向而不是双向：落包集可能比我们声明的多（派生 applet），那是正常的；
+# 而「我们声明了却没有」是断链 —— 本会话三段断链的共同形态。
+MISSING_BIN=""
+for a in $APPLETS; do
+  lo=$(printf '%s' "$a" | tr 'A-Z' 'a-z')
+  [ -e "$OUT_DIR/bin/$lo" ] || MISSING_BIN="$MISSING_BIN $lo"
+done
+[ -z "$MISSING_BIN" ] || die "声明了但没产出" \
+  "$MISSING_BIN 在 $OUT_DIR/bin 下不存在 —— 上面的「配置项全部生效」只验 .config 里写没写，验不到 applet 到底编没编出来。看它依赖的 CONFIG_* 是不是被白名单关了。"
+echo "[$TOOL] 声明的 $(printf '%s\n' $APPLETS | wc -w) 个 applet 全部在落包里 ✓（落包共 $NAPP 个，多出的是未声明的派生 applet）"
 
 BB="$OUT_DIR/lib/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
