@@ -75,7 +75,12 @@ make defconfig > "$WORK/defconfig.log" 2>&1 \
   || { echo "=== make defconfig 失败取证（末 30 行）==="; tail -30 "$WORK/defconfig.log"; exit 1; }
 [ -f "$SRC/.config" ] || die "defconfig 没产出 .config" "看 $WORK/defconfig.log"
 
-APPLETS="TAR GZIP GUNZIP GREP SED AWK LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE"
+# AWK 不在清单里，尽管上游 android_ndk_defconfig 默认开着它 ——
+# 白名单把除 $APPLETS 以外全关了，awk 依赖的 CONFIG_DESKTOP /
+# CONFIG_FEATURE_* 一起被关掉，于是 `CONFIG_AWK=y` 单独存在不足以让它被编，
+# `make install` 不给它建软链。
+# 2026-10-16 实测：CI 判红「bin/awk 声明了但没产出」，而本行原先写着 AWK。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE"
 
 set_conf() {
   local k="$1" v="$2"
@@ -100,10 +105,11 @@ set_conf() {
 #   再只开 APPLETS 里的那些。缺头的 applet、bionic 缺函数的 applet、
 #   将来才暴露的别的 —— 它们**根本不会进编译**，不必一个个去筛。
 #
-# 与上游的一致性：busybox 自带 configs/android_ndk_defconfig（也是 512 项，
-#   给 Android NDK 用），我们要的 18 个里 17 个它也开着 —— 唯一例外是 DF
-#   （它要 sys/statvfs.h，那轮实测 NDK 其实有，但我们自己的判据把它算成了缺）。
-#   所以白名单与官方配置不冲突，只是更严。
+# 与上游的一致性：busybox 自带 configs/android_ndk_defconfig（512 项，给 Android NDK 用）。
+#   白名单比它严：凡不在 $APPLETS 的一律关掉，因此「上游开着」不代表「我们开着」。
+#   上游开着而我们没列的，会因为依赖的 CONFIG_* 一起被关掉而编不出来
+#   —— AWK 就是这样：上游开着，但我们不列它，它就没被编出来。
+#   所以「上游 defconfig 开着的项」不能直接当清单用，必须实测落包数（见下面那段比对）。
 grep -o '^CONFIG_[A-Z0-9_]*=y' "$SRC/.config" | sed 's/^CONFIG_//; s/=y$//' > "$WORK/all-on.txt"
 N_ON=0
 while read -r k; do
@@ -255,6 +261,21 @@ for l in "$WORK/install/bin/"*; do
   NAPP=$((NAPP+1))
 done
 echo "[$TOOL] 本体(lib) + $NAPP 个 applet 软链(bin) 进包"
+
+# 声明数 vs 实际落包数，必须相等。
+#
+# 两项来自**两个独立机制**才有意义：
+#   声明侧 = $APPLETS（我们写下的常量）；
+#   执行侧 = NAPP（make install 实际建出来的软链数）。
+# 若两项都取自同一份常量，这条比对恒真 —— 那就是「恒定名字」在判据层的形态。
+#
+# 2026-10-16 实测：$APPLETS 有 18 项（含 AWK），NAPP 只有 17 ——
+# 上面的「applet 配置项全部生效（18 项）」是绿的（它只验 .config 里写没写），
+# 而 awk 根本没被编出来。两条判据问的是两件事，只有这条同时看两边。
+N_DECL=$(printf '%s\n' $APPLETS | wc -w)
+[ "$NAPP" = "$N_DECL" ] || die "applet 数对不上" \
+  "声明 $N_DECL 个（$APPLETS），实际落包 $NAPP 个 —— 差的那个没被编出来（多半是它的依赖 CONFIG_* 被白名单关了）。别去追 make install，先看该 applet 的依赖项。"
+echo "[$TOOL] 声明 $N_DECL 个 = 实际落包 $NAPP 个 ✓"
 
 BB="$OUT_DIR/lib/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
