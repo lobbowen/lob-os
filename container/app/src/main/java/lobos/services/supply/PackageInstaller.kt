@@ -51,7 +51,9 @@ object PackageInstaller {
         runCatching { zipTmp.delete() }
         if (!r.ok) return fail(ctx, name, "原因=${r.reason}；${r.detail}")
 
-        val dest = File(ProgramManager.stateDirOf(ctx, name), r.version.orEmpty())
+        val ver = r.version?.takeIf { it.isNotBlank() }
+        if (ver == null) return fail(ctx, name, "原因=version-missing；清单里没有 version —— 不用空版本落位，否则目录形状与正常的 <根>/<版本> 不同，之后会被读成「未安装」")
+        val dest = File(ProgramManager.stateDirOf(ctx, name), ver)
         return JSONObject().apply {
             put("ok", true)
             put("name", name)

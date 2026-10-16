@@ -34,7 +34,7 @@ object RuntimeEnvironment {
 
     val RESERVED_ENV: Set<String> = setOf(
         "HOME", "TMPDIR", "PATH", "LANG", "SHELL", "LD_LIBRARY_PATH", "LD_PRELOAD",
-        "NODE_BIN", "NODE_PATH", "NODE_OPTIONS", "SSL_CERT_DIR", "SSL_CERT_FILE",
+        "SSL_CERT_DIR", "SSL_CERT_FILE",
         "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "LOBOS_COMPAT_LOG", "LOBOS_BRIDGE_SOCKET",
         "LOBOS_SESSION_TOKEN", "LOBOS_PROGRAM_ID", "LOBOS_PROGRAM_GENERATION",
         "LOBOS_ANDROID", "LOBOS_PLATFORM", "LOBOS_SUPERVISOR_HOME", "LOBOS_UI_DIR",
@@ -51,7 +51,6 @@ object RuntimeEnvironment {
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
     put("LD_LIBRARY_PATH", joinPath(root.nativeLibDir, root.prefixLib.absolutePath, inheritedLd))
-        InstalledRuntime.binOf(ctx, InstalledRuntime.programRuntime(ctx).id)?.let { put("NODE_BIN", it.absolutePath) }
         put(
             "PATH",
             joinPath(

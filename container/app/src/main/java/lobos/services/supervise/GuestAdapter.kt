@@ -8,7 +8,7 @@ object GuestAdapter {
     data class ProgramInputs(
         val ctx: android.content.Context,
         val root: RuntimeEnvironment.TreeRoot,
-        val nodeBin: File,
+        val nodeBin: File?,
         val programDir: File,
         val programEntry: File,
         val uiDir: File,

@@ -738,8 +738,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("versionInfo", JSONObject().apply {
                     val ids = lobos.services.reg.ProgramRegistry.listIds(this@CapabilityBroker)
                     val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it).currentVersion() }
-                    put("current", single ?: "")
-                    put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                    put("current", single ?: JSONObject.NULL)
+                    put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: JSONObject.NULL }))
                 })
                 put("upgrade", JSONObject().apply { put("updateAvailable", false) })
             }
@@ -1429,7 +1429,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
             JSONObject().apply {
                 put("current", single?.currentVersion() ?: JSONObject.NULL)
-                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: JSONObject.NULL }))
                 put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
                 put("integrity", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).integrityChecks() }))
             }
@@ -1447,7 +1447,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
             JSONObject().apply {
                 put("current", single?.currentVersion() ?: JSONObject.NULL)
-                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: "" }))
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: JSONObject.NULL }))
                 put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
             }
         }

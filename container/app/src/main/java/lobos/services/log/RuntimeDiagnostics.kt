@@ -33,13 +33,13 @@ object RuntimeDiagnostics {
     }
 
     private const val FILE = "diagnostics.txt"
-    const val NODE_ERR_FILE = "node-stderr.log"
+    const val STDERR_FILE = "program-stderr.log"
     private const val STRUCT_FILE = "diag.jsonl"
 
     private val tsFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), FILE)
-    fun nodeErrFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), NODE_ERR_FILE)
+    fun stderrFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), STDERR_FILE)
     private fun structFile(ctx: Context): File {
         val d = lobos.kernel.layout.SystemDirs.log(ctx)
         d.mkdirs()
@@ -133,14 +133,14 @@ object RuntimeDiagnostics {
 
     @Synchronized
     fun recordNodeStderr(ctx: Context, text: String) {
-        if (text.isNotBlank()) lobos.kernel.fs.StateFiles.appendBounded(nodeErrFile(ctx), text)
+        if (text.isNotBlank()) lobos.kernel.fs.StateFiles.appendBounded(stderrFile(ctx), text)
     }
 
     @Synchronized
     fun clearNodeStderr(ctx: Context) {
-        if (nodeErrFile(ctx).exists()) nodeErrFile(ctx).delete()
+        if (stderrFile(ctx).exists()) stderrFile(ctx).delete()
     }
 
     fun readNodeStderr(ctx: Context): String =
-        if (nodeErrFile(ctx).exists()) nodeErrFile(ctx).readText() else ""
+        if (stderrFile(ctx).exists()) stderrFile(ctx).readText() else ""
 }

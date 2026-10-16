@@ -343,12 +343,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
             RuntimeDiagnostics.append(this, "program", res.ok, res.title, res.detail)
 
-            val nodeBinForVersion = lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)
+            val optRuntime = lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)
             RuntimeDiagnostics.append(
-                this, "version", nodeBinForVersion != null,
-                if (nodeBinForVersion != null) "Node 运行时版本=" + lobos.services.reg.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id)
-                else "Node 运行时缺失",
-                "路径=" + (nodeBinForVersion?.absolutePath ?: lobos.services.reg.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id)),
+                this, "version", null,
+                if (optRuntime != null) "可选运行时 node 已安装，版本=" + lobos.services.reg.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id)
+                else "未安装可选运行时 node（系统不依赖它；需要它的程序请在安装时声明 requires）",
+                "路径=" + (optRuntime?.absolutePath ?: "（未安装）"),
             )
 
             val assets = PieceProvisioner.prepare(this)
@@ -361,16 +361,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 )
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val nodeBin = lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id) ?: run {
-                RuntimeDiagnostics.append(
-                    this, "runtime", false,
-                    "node 运行时未就位，本次不启动程序（会按退避重试）",
-                    lobos.services.reg.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) +
-                        "；件由「装程序时按该程序 requires 决定」安装（走 os/PackageInstaller），" +
-                        "装好后下一次重试即自动起来 —— 首次开机可能需要等一个退避周期",
-                )
-                return SupervisorPolicy.BootOutcome.FAILED
-            }
+            val nodeBin = lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)
 
             if (!res.ok) return SupervisorPolicy.BootOutcome.NO_PROGRAM
 
@@ -379,10 +370,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val treeEnv = lobos.services.reg.RuntimeEnvironment.treeRootEnv(this, tree, getenv("PATH"))
 
             writeRuntimeJson(
-                nodePath = nodeBin.absolutePath,
-                nodeBinDir = nodeBin.parentFile!!.absolutePath,
+                nodePath = nodeBin?.absolutePath ?: "",
+                nodeBinDir = nodeBin?.parentFile?.absolutePath ?: "",
                 prefix = PrefixProvisioner.root(this).absolutePath,
-                minNode = lobos.services.reg.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id),
+                minNode = nodeBin?.let { lobos.services.reg.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id) } ?: "",
                 envSnapshot = treeEnv,
             )
             RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 3，含实际 env 快照）", "home=${filesDir.absolutePath}")
@@ -391,17 +382,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
             val kernelDir = programDir!!
             val kernelEntry = entry!!
-            val nativeDir = nodeBin.parentFile!!
             currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
             val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
                     ctx = host,
                     root = lobos.services.reg.RuntimeEnvironment.treeRootFor(this),
-                    nodeBin = requireNotNull(lobos.services.reg.InstalledRuntime.binOf(this, InstalledRuntime.programRuntime(this).id)) {
-                        "node 运行时未安装 —— 程序要用它起（" +
-                            lobos.services.reg.InstalledRuntime.notInstalledHint(this, InstalledRuntime.programRuntime(this).id) + "）"
-                    },
+                    nodeBin = nodeBin,
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
@@ -611,14 +598,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                                     RuntimeDiagnostics.append(this, "program-stderr", null, line)
                                     childShown++
                                     if (childShown == CHILD_STDERR_SCREEN_LINES) {
-                                        RuntimeDiagnostics.append(this, "program-stderr", null, "……(子进程 stderr 上屏截断，完整见 node-stderr.log)")
+                                        RuntimeDiagnostics.append(this, "program-stderr", null, "……(子进程 stderr 上屏截断，完整见 program-stderr.log)")
                                     }
                                 }
                             } else if (shown < STDERR_SCREEN_LINES) {
                                 RuntimeDiagnostics.append(this, "program-stderr", null, line)
                                 shown++
                                 if (shown == STDERR_SCREEN_LINES) {
-                                    RuntimeDiagnostics.append(this, "program-stderr", null, "……(stderr 上屏截断，完整见 node-stderr.log)")
+                                    RuntimeDiagnostics.append(this, "program-stderr", null, "……(stderr 上屏截断，完整见 program-stderr.log)")
                                 }
                             }
                         } else {
@@ -673,7 +660,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
 
             RuntimeDiagnostics.append(
-                this, "node-stderr", err.isNotBlank(), "node 标准错误(完整)",
+                this, "program-stderr", err.isNotBlank(), "子进程标准错误(完整)",
                 if (err.isNotBlank()) err
                 else "(node 确实没有 stderr 输出；已等待 ${waited}ms 让转发线程收敛。\n" +
                     " stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
@@ -706,7 +693,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (procDiedEarly) "程序进程已退出，控制面不会就绪（等待 ${waitedMs}ms 提前收轮）"
             else "控制面在 ${HEALTH_POLL_BUDGET_MS}ms 内未就绪",
             "可能原因：程序进程崩溃 / 端口被占用 / 二进制不兼容当前 ROM（如非 16KB 页对齐）。\n" +
-                "查看上方 [FAIL] process 与 node-stderr。"
+                "查看上方 [FAIL] process 与 program-stderr.log。"
         )
     }
 

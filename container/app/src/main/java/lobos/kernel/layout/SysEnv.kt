@@ -15,7 +15,6 @@ object SysEnv {
         "PATH",
         "LD_LIBRARY_PATH",
         "LD_PRELOAD",
-        "NODE_BIN",
         "SSL_CERT_DIR",
         "SSL_CERT_FILE",
         "CURL_CA_BUNDLE",
