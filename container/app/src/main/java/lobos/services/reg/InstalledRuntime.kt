@@ -63,9 +63,8 @@ object InstalledRuntime {
     data class ProgramRuntime(val id: String, val path: File?, val version: String)
 
     fun programRuntime(ctx: Context): ProgramRuntime {
-        val id = ProgramIndex.declaredRoles(ctx, RUNTIME).firstOrNull { id ->
-            ProgramIndex.all(ctx).firstOrNull { it.id == id && it.enabled }?.id
-        } ?: ""
+        val enabled = ProgramIndex.all(ctx).filter { it.enabled }.map { it.id }.toSet()
+        val id = ProgramIndex.declaredRoles(ctx, RUNTIME).firstOrNull { enabled.contains(it) } ?: ""
         if (id.isBlank()) return ProgramRuntime("", null, "")
         return ProgramRuntime(id, binOf(ctx, id), versionOf(ctx, id))
     }
