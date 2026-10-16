@@ -116,6 +116,29 @@ object LdConfig {
         java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
         true
     }.getOrDefault(false)
+    fun landedIds(ctx: Context): List<String> {
+        val out = sortedSetOf<String>()
+        SystemDirs.lib(ctx).listFiles()?.forEach { out += it.name }
+        SystemDirs.bin(ctx).listFiles()?.forEach { out += it.name }
+        return out.toList()
+    }
+
+    fun entryLinkOwners(ctx: Context): Map<String, List<String>> {
+        val out = mutableMapOf<String, MutableList<String>>()
+        val roots = listOf(SystemDirs.lib(ctx), SystemDirs.bin(ctx))
+        for (r in roots) {
+            r.listFiles()?.forEach { l ->
+                val t = runCatching { l.canonicalPath }.getOrNull() ?: return@forEach
+                val seg = t.split(File.separatorChar)
+                val i = seg.indexOf("opt")
+                if (i >= 0 && i + 2 < seg.size) {
+                    val owner = seg[i + 1]
+                    out.getOrPut(owner) { mutableListOf() } += l.name
+                }
+            }
+        }
+        return out
+    }
     fun declaredBins(ctx: Context, pieceId: String): List<String> {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
