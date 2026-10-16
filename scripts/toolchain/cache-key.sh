@@ -160,9 +160,12 @@ case "$TOOL" in
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
   *)       SRC_FILES="" ;;
 esac
+# 必须只用 commit 里的内容（git show HEAD:<path>），不能用 sha256sum 读工作区文件。
+# 那样会让「同一 commit + 不同未提交改动」算出不同值，于是 dispatch 时算出的名字与
+# CI 取件时算出的不一致，重固化完了还是取不到。
+# 2026-10-16 实测（修之前）：本地 e43e07288faf、CI a1f1d75df276、Release 里 85bd6ce121b3。
 if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
-  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files -z $SRC_FILES 2>/dev/null | \
-    xargs -0 -r sha256sum 2>/dev/null | sha256sum | cut -c1-12)"
+  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files $SRC_FILES 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
   [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
 fi
 [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
