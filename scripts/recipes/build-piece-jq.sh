@@ -74,5 +74,8 @@ mkdir -p "$OUT_DIR/lib"
 cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"
 chmod +x "$OUT_DIR/lib/liblobosjq.so"
 
-emit_piece jq "$OUT_DIR" lib/liblobosjq.so 300000
+# bins：jq 的可执行入口是 bin/jq（:48-53 搬的），而 entry 指向 .so。
+# 不显式声明它，打包那一步只搬 entry ⇒ bin/jq 不会被带进包 ⇒ 真机上没有 usr/bin/jq。
+# （2026-10-15 实测：07 按 .so 文件直接 exec 能跑，掩盖了「没有入口」这件事。）
+emit_piece jq "$OUT_DIR" lib/liblobosjq.so 300000 "jq"
 echo "[ok] jq 落位（可执行件，落usr/lib/jq/<版本>/bin/）"

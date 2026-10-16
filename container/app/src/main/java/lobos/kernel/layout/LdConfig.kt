@@ -1,6 +1,7 @@
 package lobos.kernel.layout
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import lobos.kernel.elf.ElfFacts
 import lobos.services.log.RuntimeDiagnostics
@@ -9,6 +10,7 @@ object LdConfig {
 
     private const val CONF = "ld.so.conf"
     private const val CACHE = "ld.so.cache"
+    private const val TAG = "lobos.ldconfig"
 
     fun run(ctx: Context): Int {
         val opt = SystemDirs.opt(ctx)
@@ -24,6 +26,7 @@ object LdConfig {
         var linked = 0
         val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
+        val claimed = mutableMapOf<String, String>()
 
         for (e in idx) {
             val p = File(opt, e.id)
@@ -46,6 +49,13 @@ object LdConfig {
                 if (!exe.isFile) return@forEach
                 if (!lobos.kernel.elf.ExecBits.isRunnable(exe)) return@forEach
                 val dst = File(usrBin, exe.name)
+                val prev = claimed[exe.name]
+                if (prev != null) {
+                    unresolved += "bin/" + exe.name + " 被两处声明：已有 " + prev + "，忽略 " + exe.absolutePath
+                    log += "bin  " + exe.name + "   冲突，保留 " + prev
+                    return@forEach
+                }
+                claimed[exe.name] = exe.absolutePath
                 if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
             }
@@ -67,6 +77,10 @@ object LdConfig {
                 if (unresolved.isEmpty()) ""
                 else "\n建链失败=" + unresolved.joinToString("  |  "),
         )
+        if (unresolved.isNotEmpty()) {
+            Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
+            for (u in unresolved) Log.w(TAG, "  " + u)
+        }
         return linked
     }
 
