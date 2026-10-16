@@ -222,8 +222,12 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
 
 [ -f "$SRC/busybox" ] || die "没产出 busybox" "$SRC/busybox 不存在"
   # make install：busybox 官方机制 —— 构建系统自己知道编了哪些 applet，
-  # 连带把全部软链建好（同目录相对软链，指向 busybox 本体）。
-  # 我们不列applet 名：那是它的编译结果，不是我们的数据。
+  # 连带把全部软链建好（**同目录相对软链**，指向 busybox 本体）。
+  # **限定**：这句话只说 install/bin/ 里那批**同目录**软链不用我们列。
+  # 它**不**否定上面 $APPLETS（第 78 行）—— 那是「**要开哪些 applet**」的构建配置，
+  # 是我们自己的数据，必须列。
+  # （原措辞没带「同目录」这个限定，会被读成「applet 名都不用列」，
+  #   而 :78 恰好列了 18 个 —— 于是这两行读起来自相矛盾。2026-10-15 修正措辞。）
   rm -rf "$WORK/install"
   make "${MAKE_ARGS[@]}" CONFIG_PREFIX="$WORK/install" install > "$WORK/install.log" 2>&1 \
     || { echo "=== make install 失败取证 ==="; tail -30 "$WORK/install.log"; exit 1; }
@@ -284,4 +288,8 @@ echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建�
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 
-emit_piece "$TOOL" "$OUT_DIR" lib/libbusybox.so 500000
+# 第五个参数是「这个件要在 usr/bin 出现的命令名」——
+# **从上面既有的 $APPLETS 转小写派生，不另写一份名单**
+# （两份名单必然漂移；2026-10-15 实测 18 个 applet 一个都没进包就是因为没带）。
+BB_BINS="$(printf '%s\n' $APPLETS | tr 'A-Z' 'a-z' | tr '\n' ' ')"
+emit_piece "$TOOL" "$OUT_DIR" lib/libbusybox.so 500000 "$BB_BINS"

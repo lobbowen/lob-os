@@ -116,9 +116,18 @@ version_of() {
 #（走 ProgramInstallPipeline，读包里的 component-meta.json）不同构。
 # 现在统一产出标准包，两条路同形。
 #
-# 用法：emit_piece <件名> <OUT_DIR> <入口相对路径> [最小字节]
+# 用法：emit_piece <件名> <OUT_DIR> <入口相对路径> [最小字节] [命令名 空格分隔]
+#
+# 第 5 个参数是「这个件要在 usr/bin 出现的命令名」清单 —— 空格分隔。
+# 它**必须由调用方从自己既有的变量派生**（如 build-native-busybox.sh 从 $APPLETS 转小写），
+# **不要在这里或那里再写一份字面量** —— 两份名单必然漂移，而漂移的后果是
+# 「声明了但没带上」（2026-10-16 实测：busybox 的 18 个 applet 一个都没进包）。
+#
+# 为什么需要它：entry 只能指一个文件，而一个件可能有多个命令入口
+#（busybox 有 18 个 applet）。package-piece-zip.sh 只搬 entry 与其同名版本链，
+# 所以 bin/ 下其余的可执行件必须由这个清单显式带进去。
 emit_piece() {
-  local id="$1" out="$2" entry="$3" min="${4:-1000}"
+  local id="$1" out="$2" entry="$3" min="${4:-1000}" bins="${5:-}"
   local so base dir f b ver
   ver="$(version_of "$id")"
   [ -n "$ver" ] || die "${id} 没有版本" "scripts/component-sources.json 里查不到"
@@ -137,5 +146,5 @@ emit_piece() {
     done
     echo "  （共享库整条链一起进包）"
   fi
-  bash "$ROOT_DIR/scripts/recipes/package-piece-zip.sh" "$id" "$out" "$ver" "$entry"
+  bash "$ROOT_DIR/scripts/recipes/package-piece-zip.sh" "$id" "$out" "$ver" "$entry" "$bins"
 }

@@ -17,6 +17,10 @@ ID="${1:?需要件名}"
 OUT="${2:?需要 OUT_DIR}"
 VER="${3:?需要版本}"
 ENTRY="${4:-}"
+# 第 5 个参数：这个件要在 usr/bin 出现的命令名，空格分隔。
+# 由调用方从自己既有的变量派生后传入（如 busybox 从 $APPLETS 转小写）——
+# 不在本脚本里另写一份名单，否则两份名单会各自漂移。
+BINS="${5:-}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 mkdir -p "$OUT"
@@ -77,6 +81,28 @@ else
     case "$xb" in *.so|*.so.*) cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb" ;; esac
   done
 fi
+
+# 带上该件声明的命令入口。
+#
+# 为什么必须显式列：entry 只能指一个文件，而一个件可能有多个命令入口
+#（busybox 有 18 个 applet 软链）。上面那段只搬 entry 与其同名版本链，
+# 所以 bin/ 下其余的可执行件若无此步就会**全部丢失**，而包仍然是「合法」的
+# —— 2026-10-16 实测：构建日志说「18 个 applet 软链进包」，而 unzip 出来 0 个。
+#
+# 这里逐个查存在性：**清单里写了而盘上没有 ⇒ 直接判红**，
+# 因为那意味着「声明了但没产出」，而它正是本轮那类静默失效。
+N_BINS=0
+for bn in $BINS; do
+  if [ -e "$OUT/bin/$bn" ]; then
+    mkdir -p "$STAGE/bin"
+    cp -Pf "$OUT/bin/$bn" "$STAGE/bin/$bn" 2>/dev/null || cp -f "$OUT/bin/$bn" "$STAGE/bin/$bn"
+    N_BINS=$((N_BINS+1))
+  else
+    echo "::error title=$ID 清单里的命令入口不存在::bin/$bn 在 $OUT 下没有 —— 声明了但没产出"
+    exit 1
+  fi
+done
+[ "$N_BINS" -gt 0 ] && echo "[zip] $ID 另带 $N_BINS 个命令入口：$(echo $BINS)"
 
 node "$ROOT/scripts/recipes/gen-component-meta.js" \
   "$ID" "$VER" "$ENTRY" "$STAGE/component-meta.json" \
