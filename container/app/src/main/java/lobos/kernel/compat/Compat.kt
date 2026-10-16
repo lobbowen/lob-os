@@ -29,11 +29,14 @@ object Compat {
             if (!src.isFile) continue
             val link = dst.resolve(name)
             runCatching {
-                if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) {
+                if (!link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) {
+                    java.nio.file.Files.createSymbolicLink(link.toPath(), src.toPath())
+                    n++
+                } else if (java.nio.file.Files.isSymbolicLink(link.toPath())) {
                     java.nio.file.Files.deleteIfExists(link.toPath())
+                    java.nio.file.Files.createSymbolicLink(link.toPath(), src.toPath())
+                    n++
                 }
-                java.nio.file.Files.createSymbolicLink(link.toPath(), src.toPath())
-                n++
             }
         }
         return n
