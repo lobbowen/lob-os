@@ -300,30 +300,28 @@ jobs:
           echo "  · 件的 ELF 依赖闭环：产物形态"
           echo "  · 能力面：声明表与实现表一致"
           echo "  · 兼容语义：不得静默抹掉已声明的缺口（声明-实现一致性类）"
-      - name: 源码形状（防字符摊开）
+      - name: 判据执行（区分「失败」与「未验证」）
         run: |
           set -uo pipefail
-          bash scripts/verify/check-source-shape.sh
-
-      - name: 能力面判据（声明表与实现表必须对得上）
-        run: |
-          set -uo pipefail
-          bash scripts/verify/check-api-surface.sh
-
-      - name: 兼容语义判据（不得宣称未实现的隔离）
-        run: |
-          set -uo pipefail
-          bash scripts/verify/check-compat-semantics.sh
-          rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "::error title=兼容语义判据未通过::exit=$rc"
+          FAILED=""; UNVERIFIED=""
+          for g in check-source-shape check-api-surface check-compat-semantics check-no-comments check-src-fingerprints check-no-hardcoded-id; do
+            bash "scripts/verify/$g.sh"; rc=$?
+            case "$rc" in
+              0) ;;
+              1) FAILED="$FAILED $g" ;;
+              2) UNVERIFIED="$UNVERIFIED $g" ;;
+              *) FAILED="$FAILED $g(exit=$rc)" ;;
+            esac
+          done
+          if [ -n "$UNVERIFIED" ]; then
+            echo "::warning title=判据未验证（不是失败）::$UNVERIFIED —— 它们检查了 0 个对象或缺少工具。"
+            echo "::warning:: **未验证 ≠ 通过**：这些判据本次没有产生任何证据，不要当成「没问题」。"
           fi
-          exit $rc
-
-      - name: 代码里不许有注释
-        run: |
-          set -euo pipefail
-          bash scripts/verify/check-no-comments.sh
+          if [ -n "$FAILED" ]; then
+            echo "::error title=判据失败::$FAILED —— 这次是真的不通过（不是未验证）。"
+          fi
+          if [ -n "$FAILED" ]; then exit 1; fi
+          if [ -n "$UNVERIFIED" ]; then exit 1; fi
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
