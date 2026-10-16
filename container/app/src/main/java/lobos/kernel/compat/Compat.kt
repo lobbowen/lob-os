@@ -20,6 +20,35 @@ object Compat {
         return apkLibDir(ctx).resolve(name).takeIf { it.isFile }
     }
 
+    fun installOta(ctx: Context, name: String, bytes: ByteArray, expectedSha256: String): Boolean {
+        val dst = libDir(ctx)
+        if (!dst.isDirectory && !dst.mkdirs()) return false
+        val tmp = dst.resolve(name + ".new")
+        val got = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(bytes).joinToString("") { b -> "%02x".format(b) }
+        if (!expectedSha256.isBlank() && got != expectedSha256) {
+            runCatching { tmp.delete() }
+            return false
+        }
+        if (!runCatching {
+                java.nio.file.Files.write(tmp.toPath(), bytes)
+                java.nio.file.Files.move(
+                    tmp.toPath(), dst.resolve(name).toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE
+                )
+            }.isSuccess) {
+            runCatching { tmp.delete() }
+            return false
+        }
+        return true
+    }
+
+    fun otaInstalled(ctx: Context, name: String): Boolean {
+        val f = libDir(ctx).resolve(name)
+        return f.isFile && !java.nio.file.Files.isSymbolicLink(f.toPath())
+    }
+
     fun linkInto(ctx: Context): Int {
         val dst = libDir(ctx)
         if (!dst.isDirectory && !dst.mkdirs()) return 0

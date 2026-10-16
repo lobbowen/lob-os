@@ -66,7 +66,7 @@ fi
 check_elf() {
   local f="$1" what="$2"
   if [ -n "$READELF_BIN" ]; then
-    "$READELF_BIN" -h "$f" >/dev/null 2>&1 && return 0
+    "$READELF_BIN" -W -h "$f" >/dev/null 2>&1 && return 0
   fi
   if command -v file >/dev/null 2>&1; then
     file -b "$f" 2>/dev/null | grep -qE 'ELF .*64-bit LSB .*(arm64|ARM aarch64|AArch64)' && return 0
@@ -79,12 +79,12 @@ check_elf "$STAGE/bin/node" "node 产物" || exit 1
 
 MACHINE=""
 if [ -n "$READELF_BIN" ]; then
-  MACHINE="$("$READELF_BIN" -h "$STAGE/bin/node" 2>/dev/null | sed -n 's/^ *Machine: *//p' | head -1)"
+  MACHINE="$("$READELF_BIN" -W -h "$STAGE/bin/node" 2>/dev/null | sed -n 's/^ *Machine: *//p' | head -1)"
 fi
 echo "[node] ELF Machine: ${MACHINE:-未知}"
 
 if [ -n "$READELF_BIN" ]; then
-  INTERP="$("$READELF_BIN" -l "$STAGE/bin/node" 2>/dev/null | sed -n 's/.*\[Requesting program interpreter: \([^]]*\)\].*/\1/p' | head -1)"
+  INTERP="$("$READELF_BIN" -W -l "$STAGE/bin/node" 2>/dev/null | sed -n 's/.*\[Requesting program interpreter: \([^]]*\)\].*/\1/p' | head -1)"
   if [ -n "$INTERP" ]; then
     case "$INTERP" in
       */linker64|*/linker|*/dynlink*) echo "[node] 解释器 $INTERP（Android linker，符合要求）" ;;
@@ -93,7 +93,7 @@ if [ -n "$READELF_BIN" ]; then
   else
     echo "::note::静态链接（无解释器段），也可在设备上直接跑"
   fi
-  NEEDED="$("$READELF_BIN" -d "$STAGE/bin/node" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | tr '\n' ' ')"
+  NEEDED="$("$READELF_BIN" -W -d "$STAGE/bin/node" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | tr '\n' ' ')"
   echo "[node] 外部依赖: ${NEEDED:-（无）}"
   case "$NEEDED" in
     *libc++_shared.so*)
