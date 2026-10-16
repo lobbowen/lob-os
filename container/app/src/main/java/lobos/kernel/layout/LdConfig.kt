@@ -79,12 +79,7 @@ object LdConfig {
                 if (unresolved.isEmpty()) ""
                 else "\n建链失败=" + unresolved.joinToString("  |  "),
         )
-        val declaredBins = lobos.services.reg.ProgramIndex.base(ctx)
-            .filter { it.kind == "命令" }
-            .map { lobos.services.reg.ProgramIndex.get(ctx, it.id)?.assetEntry?.substringAfterLast('/', "") ?: "" }
-            .filter { it.isNotBlank() }
-            .map { it.substringBefore('.') }
-            .distinct()
+        val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
         val selfCheck = lobos.services.supply.SelfCheckReport.format(
             listOf(
@@ -120,4 +115,18 @@ object LdConfig {
         java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
         true
     }.getOrDefault(false)
+    fun declaredBins(ctx: Context, pieceId: String): List<String> {
+        if (pieceId.isBlank()) {
+            val out = mutableListOf<String>()
+            for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
+                if (!lobos.services.reg.ProgramIndex.isPiece(e)) continue
+                out += declaredBins(ctx, e.id)
+            }
+            return out.distinct()
+        }
+        val opt = lobos.kernel.layout.SystemDirs.opt(ctx)
+        val base = File(opt, pieceId)
+        val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
+        return File(verDir, "bin").listFiles()?.map { it.name }?.sorted() ?: emptyList()
+    }
 }

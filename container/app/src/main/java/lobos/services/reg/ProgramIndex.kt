@@ -288,11 +288,13 @@ object ProgramIndex {
         val out = mutableListOf<JSONObject>()
         for (e in all(ctx).sortedBy { it.id }) {
             if (!isPiece(e)) continue
+            val declaredBins = lobos.kernel.layout.LdConfig.declaredBins(ctx, e.id)
+            val isLibOnly = e.assetEntry.startsWith("lib/") && declaredBins.isEmpty()
             out.add(
                 encodeBase(
                     UnitEntry.BaseItem(
                         id = e.id,
-                        kind = "命令",
+                        kind = if (isLibOnly) "运行库" else "命令",
                         version = e.version,
                         sha256 = e.sha256,
                         today = "ota",
@@ -301,6 +303,21 @@ object ProgramIndex {
                     ),
                 ),
             )
+            for (b in declaredBins) {
+                out.add(
+                    encodeBase(
+                        UnitEntry.BaseItem(
+                            id = "${e.id}/${b}",
+                            kind = "命令",
+                            version = e.version,
+                            sha256 = e.sha256,
+                            today = "ota",
+                            intended = "ota",
+                            optional = false,
+                        ),
+                    ),
+                )
+            }
         }
         val identity = lobos.services.reg.BuildIdentity.read(ctx)
         val apkSha = identity?.optString("gitSha", "") ?: ""
