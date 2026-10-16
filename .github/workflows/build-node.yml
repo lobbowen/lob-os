@@ -67,6 +67,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # TAG 与 NAME 都由 piece-key.sh 单点算出 —— 与 node-runtime.yml:49 同一个源。
+          # 此前这两个变量在本文件里从未赋值，set -u 下第一行就 NAME: unbound variable（2026-10-16 实测）。
+          KEYOUT="$(GITHUB_OUTPUT=/dev/null bash scripts/toolchain/piece-key.sh node 2>/dev/null || true)"
+          TAG="$(printf '%s\n' "$KEYOUT" | sed -n 's/^tag=//p')"
+          NAME="$(printf '%s\n' "$KEYOUT" | sed -n 's/^asset=//p')"
+          [ -n "$TAG" ] && [ -n "$NAME" ] || { echo "::error title=算不出 node 的固化标识::piece-key.sh node 无输出"; exit 1; }
           NAME_DASH="${NAME/+arm64+v8a/+arm64-v8a}"
           NVER="${{ steps.ver.outputs.tag }}"
           NABI="${{ steps.ver.outputs.abi }}"
