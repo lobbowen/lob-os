@@ -131,8 +131,43 @@ if [ "$DEPS" = "build-apk-only" ]; then
 fi
 
 # VER 里已经含各依赖的版本（第 94-100 行那个循环），所以它变了名字就变 ——
-# 依赖一变就该重新固化，这一层不用再加东西。
+# 依赖一变就该重新固化。
 DEPS_STR="$VER-ndk$NDK-api$API"
+
+# 源码指纹：这一格是 2026-10-16 加的。
+# 起因（实测，run 38837094692）：改 busybox 的落位逻辑后，asset 名不变
+#（DEPS_STR 只含依赖版本/NDK/API），而 reusable-asset.sh 的内容闸只验
+#「meta 在 + entry 一致 + entry 路径存在」—— 对「改 flag / 改链接顺序」
+# 这类 entry 与包结构都不变的改动完全看不见，于是 dispatch 会复用旧包、
+# 源码改了却什么都没编。
+#
+# 为什么用「本件相关的源码文件哈希」而不是整仓 sha：
+#   整仓 sha 会让「改了一个无关件」也触发全部件重新固化；
+#   而只算本件的 recipe + 钉值条目，改别的件不会影响它。
+SRC_HASH=""
+case "$TOOL" in
+  busybox) SRC_FILES="scripts/recipes/build-native-busybox.sh" ;;
+  bash)    SRC_FILES="scripts/recipes/build-piece-bash.sh" ;;
+  ripgrep) SRC_FILES="scripts/recipes/build-piece-rg.sh" ;;
+  jq)      SRC_FILES="scripts/recipes/build-piece-jq.sh" ;;
+  curl)    SRC_FILES="scripts/recipes/build-piece-curl.sh" ;;
+  zlib)    SRC_FILES="scripts/recipes/build-piece-zlib.sh" ;;
+  openssl) SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
+  crypto)  SRC_FILES="scripts/recipes/build-component-crypto.sh" ;;
+  git)     SRC_FILES="scripts/recipes/build-piece-git.sh scripts/patches" ;;
+  node)    SRC_FILES="scripts/toolchain/build-node-android.sh" ;;
+  python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
+  sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
+  *)       SRC_FILES="" ;;
+esac
+if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
+  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files -z $SRC_FILES 2>/dev/null | \
+    xargs -0 -r sha256sum 2>/dev/null | sha256sum | cut -c1-12)"
+  [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
+fi
+[ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
+DEPS_STR="$DEPS_STR-src$SRC_HASH"
+
 BUCKET="$(bucket_for "$TOOL")"
 
 case "$KIND" in
