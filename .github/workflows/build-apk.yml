@@ -270,7 +270,7 @@ jobs:
       - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
         run: |
           set -uo pipefail
-          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics"
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics check-src-fingerprints"
           BAD=0
           for f in scripts/verify/check-*.sh; do
             b=$(basename "$f" .sh)

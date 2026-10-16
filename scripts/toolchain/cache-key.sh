@@ -153,7 +153,7 @@ case "$TOOL" in
   curl)    SRC_FILES="scripts/recipes/build-piece-curl.sh" ;;
   zlib)    SRC_FILES="scripts/recipes/build-piece-zlib.sh" ;;
   openssl) SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
-  crypto)  SRC_FILES="" ;;
+  crypto)  SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches" ;;
   node)    SRC_FILES="scripts/recipes/build-component-node.sh scripts/toolchain/build-node-android.sh" ;;
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
