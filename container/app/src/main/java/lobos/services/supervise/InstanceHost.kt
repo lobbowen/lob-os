@@ -728,10 +728,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val pend = km.pending() ?: return
             val from = pend.from ?: return
             if (km.rollbackTo(from)) {
+                val lowered = km.lowerFloor(from)
                 RuntimeDiagnostics.append(
                     this, "program-rollback", false,
                     "程序 " + pend.version + " 未通过健康检查，已回滚到 " + from,
-                    "版本下限保持 " + (km.floorVersion() ?: "(未设)") + " 不变（防止回退后再被更旧的包覆盖）"
+                    "版本下限 " + (if (lowered) "已同步下调到 " + from else "保持 " + (km.floorVersion() ?: "(未设)")) +
+                        " —— 不下调会把自己锁死：floor 高于当前版本时，任何不高于它的包都会被 version-below-floor 拒掉"
                 )
             }
             km.clearPending()

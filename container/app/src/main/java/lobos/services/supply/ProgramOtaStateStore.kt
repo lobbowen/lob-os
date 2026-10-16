@@ -33,6 +33,15 @@ class ProgramOtaStateStore(
         lobos.kernel.fs.StateFiles.writeAtomic(floorFile, version)
     }
 
+    fun lowerFloor(version: String): Boolean {
+        val cur = floorVersion()
+        if (cur == null) return false
+        if (ProgramOtaVersions.compare(version, cur) >= 0) return false
+        root.mkdirs()
+        lobos.kernel.fs.StateFiles.writeAtomic(floorFile, version)
+        return true
+    }
+
     fun isBelowFloor(version: String): Boolean = ProgramOtaVersions.isBelowFloor(version, floorVersion())
 
     fun markPending(version: String, from: String?) {

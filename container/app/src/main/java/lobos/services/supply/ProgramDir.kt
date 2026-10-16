@@ -201,6 +201,8 @@ class ProgramDir(
 
     fun floorVersion(): String? = store.floorVersion()
     fun setFloor(version: String) = store.setFloor(version)
+
+    fun lowerFloor(version: String): Boolean = store.lowerFloor(version)
     fun isBelowFloor(version: String): Boolean = store.isBelowFloor(version)
 
     data class Pending(val version: String, val from: String?)

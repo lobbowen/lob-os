@@ -62,6 +62,7 @@ const meta = {
   entry: entry,
   form: form,
   requires: deps,
+  roles: Array.isArray(src.roles) ? src.roles.filter(function (r) { return typeof r === "string" && r !== ""; }) : [],
   essential: src.essential === true,
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',

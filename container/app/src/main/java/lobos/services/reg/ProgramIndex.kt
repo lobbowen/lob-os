@@ -64,6 +64,7 @@ data class UnitEntry(
     data class BaseItem(
         val id: String,
         val kinds: List<String>,
+        val roles: List<String> = emptyList(),
         val version: String,
         val sha256: String,
         val today: String,
@@ -281,11 +282,18 @@ object ProgramIndex {
     private fun encodeBase(i: UnitEntry.BaseItem): JSONObject = JSONObject().apply {
         put("id", i.id)
         put("kinds", JSONArray().also { a -> i.kinds.forEach { a.put(it) } })
+        put("roles", JSONArray().also { a -> i.roles.forEach { a.put(it) } })
         put("version", i.version)
         put("sha256", i.sha256)
         put("today", i.today)
         put("intended", i.intended)
         put("optional", i.optional)
+    }
+
+    fun declaredRoles(ctx: Context, id: String): List<String> {
+        val m = lobos.services.supply.PieceScan.pieceMeta(ctx, id) ?: return emptyList()
+        val a = m.optJSONArray("roles") ?: return emptyList()
+        return (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
     }
 
     fun baseOf(ctx: Context): List<JSONObject> {
@@ -303,6 +311,7 @@ object ProgramIndex {
                         kinds = kinds,
                         version = e.version,
                         sha256 = e.sha256,
+                        roles = declaredRoles(ctx, e.id),
                         today = "ota",
                         intended = "ota",
                         optional = false,
@@ -369,6 +378,7 @@ object ProgramIndex {
     private fun decodeBase(b: JSONObject): UnitEntry.BaseItem = UnitEntry.BaseItem(
         id = b.optString("id", ""),
         kinds = b.optJSONArray("kinds")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: listOf(b.optString("kind", "")),
+        roles = b.optJSONArray("roles")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),
         version = b.optString("version", ""),
         sha256 = b.optString("sha256", ""),
         today = b.optString("today", ""),
