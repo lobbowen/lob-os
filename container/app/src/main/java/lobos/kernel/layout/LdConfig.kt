@@ -27,6 +27,7 @@ object LdConfig {
         val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
         val claimed = mutableMapOf<String, String>()
+        val binInstalled = mutableListOf<String>()
 
         for (e in idx) {
             val p = File(opt, e.id)
@@ -56,6 +57,7 @@ object LdConfig {
                     return@forEach
                 }
                 claimed[exe.name] = exe.absolutePath
+                binInstalled += exe.name
                 if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
             }
@@ -77,6 +79,29 @@ object LdConfig {
                 if (unresolved.isEmpty()) ""
                 else "\n建链失败=" + unresolved.joinToString("  |  "),
         )
+        val declaredBins = lobos.services.reg.ProgramIndex.base(ctx)
+            .filter { it.kind == "命令" }
+            .map { lobos.services.reg.ProgramIndex.get(ctx, it.id)?.assetEntry?.substringAfterLast('/', "") ?: "" }
+            .filter { it.isNotBlank() }
+            .map { it.substringBefore('.') }
+            .distinct()
+        val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
+        val selfCheck = lobos.services.supply.SelfCheckReport.format(
+            listOf(
+                lobos.services.supply.SelfCheckReport.Item(
+                    "usr-bin-entries",
+                    missingBins.isEmpty(),
+                    "usr/bin 里的命令入口（声明 ${declaredBins.size} · 已建 ${binInstalled.size}）",
+                    if (missingBins.isEmpty()) "声明的命令全部建出"
+                    else "声明了但没建出：" + missingBins.joinToString(", ") +
+                        " —— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
+                ),
+            ),
+        )
+        RuntimeDiagnostics.append(ctx, "selfcheck", missingBins.isEmpty(), selfCheck)
+        if (missingBins.isNotEmpty()) {
+            Log.w(TAG, "自检未通过：" + missingBins.joinToString(", ") + " 声明了但 usr/bin 里没有")
+        }
         if (unresolved.isNotEmpty()) {
             Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
             for (u in unresolved) Log.w(TAG, "  " + u)

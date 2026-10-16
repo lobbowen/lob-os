@@ -332,24 +332,26 @@ object ProgramIndex {
     }
 
     fun base(ctx: Context): List<UnitEntry.BaseItem> {
-        val f = file(ctx)
-        if (!f.isFile) return emptyList()
-        val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return emptyList()
-        val arr = o.optJSONArray("base") ?: return emptyList()
-        return (0 until arr.length()).mapNotNull { i ->
-            arr.optJSONObject(i)?.let { b ->
-                UnitEntry.BaseItem(
-                    id = b.optString("id", ""),
-                    kind = b.optString("kind", ""),
-                    version = b.optString("version", ""),
-                    sha256 = b.optString("sha256", ""),
-                    today = b.optString("today", ""),
-                    intended = b.optString("intended", ""),
-                    optional = b.optBoolean("optional", false),
-                )
+        val stored = file(ctx).takeIf { it.isFile }
+            ?.let { runCatching { JSONObject(it.readText()) }.getOrNull() }
+            ?.optJSONArray("base")
+        if (stored != null && stored.length() > 0) {
+            return (0 until stored.length()).mapNotNull { i ->
+                stored.optJSONObject(i)?.let { b -> decodeBase(b) }
             }
         }
+        return baseOf(ctx).mapNotNull { decodeBase(it) }
     }
+
+    private fun decodeBase(b: JSONObject): UnitEntry.BaseItem = UnitEntry.BaseItem(
+        id = b.optString("id", ""),
+        kind = b.optString("kind", ""),
+        version = b.optString("version", ""),
+        sha256 = b.optString("sha256", ""),
+        today = b.optString("today", ""),
+        intended = b.optString("intended", ""),
+        optional = b.optBoolean("optional", false),
+    )
 }
 
 fun UnitEntry.edited(
