@@ -81,6 +81,22 @@ object PieceScan {
         return LIBRARY
     }
 
+    fun roleFromDisk(ctx: Context, id: String): String {
+        val dir = landedPieceDir(ctx, id) ?: return EXEC
+        val entry = runCatching {
+            val m = metaOf(dir)
+            m?.optString("entry", "") ?: ""
+        }.getOrDefault("")
+        val target = if (entry.isNotBlank()) File(dir, entry) else null
+        if (target != null && target.isFile) {
+            val facts = runCatching { lobos.kernel.elf.ElfFacts.read(target) }.getOrNull()
+            if (facts != null && !facts.soname.isNullOrBlank()) {
+                return LIBRARY
+            }
+        }
+        return roleOf(dir)
+    }
+
     private fun metaOf(verDir: File): JSONObject? {
         val f = File(verDir, "component-meta.json")
         if (!f.isFile) return null

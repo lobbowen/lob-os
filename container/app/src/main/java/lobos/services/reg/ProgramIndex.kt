@@ -63,7 +63,6 @@ data class UnitEntry(
 
     data class BaseItem(
         val id: String,
-        val kinds: List<String>,
         val roles: List<String> = emptyList(),
         val version: String,
         val sha256: String,
@@ -71,9 +70,6 @@ data class UnitEntry(
         val intended: String,
         val optional: Boolean,
     ) {
-        val kind: String get() = kinds.joinToString("+")
-
-        fun hasKind(k: String): Boolean = kinds.contains(k)
     }
     }
 
@@ -281,7 +277,6 @@ object ProgramIndex {
 
     private fun encodeBase(i: UnitEntry.BaseItem): JSONObject = JSONObject().apply {
         put("id", i.id)
-        put("kinds", JSONArray().also { a -> i.kinds.forEach { a.put(it) } })
         put("roles", JSONArray().also { a -> i.roles.forEach { a.put(it) } })
         put("version", i.version)
         put("sha256", i.sha256)
@@ -300,15 +295,10 @@ object ProgramIndex {
         val out = mutableListOf<JSONObject>()
         for (e in all(ctx).sortedBy { it.id }) {
             if (!isPiece(e)) continue
-            val declaredBins = lobos.kernel.layout.LdConfig.declaredBins(ctx, e.id)
-            val mainKind = if (e.assetEntry.startsWith("lib/")) "运行库" else "命令"
-            val kinds = if (declaredBins.isEmpty()) listOf(mainKind)
-            else listOf(mainKind) + listOf("命令").filter { it != mainKind }
             out.add(
                 encodeBase(
                     UnitEntry.BaseItem(
                         id = e.id,
-                        kinds = kinds,
                         version = e.version,
                         sha256 = e.sha256,
                         roles = declaredRoles(ctx, e.id),
@@ -318,21 +308,6 @@ object ProgramIndex {
                     ),
                 ),
             )
-            for (b in declaredBins) {
-                out.add(
-                    encodeBase(
-                        UnitEntry.BaseItem(
-                            id = "${e.id}/${b}",
-                            kinds = listOf("命令"),
-                            version = e.version,
-                            sha256 = e.sha256,
-                            today = "ota",
-                            intended = "ota",
-                            optional = false,
-                        ),
-                    ),
-                )
-            }
         }
         val identity = lobos.services.reg.BuildIdentity.read(ctx)
         val apkSha = identity?.optString("gitSha", "") ?: ""
@@ -347,7 +322,6 @@ object ProgramIndex {
                 encodeBase(
                     UnitEntry.BaseItem(
                         id = name,
-                        kinds = listOf("组件"),
                         version = "随 APK",
                         sha256 = apkSha,
                         today = "apk",
@@ -377,7 +351,6 @@ object ProgramIndex {
 
     private fun decodeBase(b: JSONObject): UnitEntry.BaseItem = UnitEntry.BaseItem(
         id = b.optString("id", ""),
-        kinds = b.optJSONArray("kinds")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: listOf(b.optString("kind", "")),
         roles = b.optJSONArray("roles")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),
         version = b.optString("version", ""),
         sha256 = b.optString("sha256", ""),

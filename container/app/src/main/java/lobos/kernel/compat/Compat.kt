@@ -44,6 +44,8 @@ object Compat {
         return true
     }
 
+    fun managedComponents(): List<String> = listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK)
+
     fun otaInstalled(ctx: Context, name: String): Boolean {
         val f = libDir(ctx).resolve(name)
         return f.isFile && !java.nio.file.Files.isSymbolicLink(f.toPath())
@@ -53,7 +55,7 @@ object Compat {
         val dst = libDir(ctx)
         if (!dst.isDirectory && !dst.mkdirs()) return 0
         var n = 0
-        for (name in listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK)) {
+        for (name in managedComponents()) {
             val src = apkLibDir(ctx).resolve(name)
             if (!src.isFile) continue
             val link = dst.resolve(name)

@@ -87,17 +87,17 @@ object ProgramOtaUpdater {
 
     fun updateComponents(ctx: Context, checkOnly: Boolean = false): List<String> {
         val out = mutableListOf<String>()
-        val items = lobos.services.reg.ProgramIndex.base(ctx)
-            .filter { it.hasKind("组件") || it.hasKind("数据") }
-        for (it in items) {
-            val name = it.id.substringAfterLast('/')
-            val cur = lobos.kernel.compat.Compat.lib(ctx, name)
-            val installedByOta = lobos.kernel.compat.Compat.otaInstalled(ctx, name)
-            if (installedByOta) {
+        val comps = lobos.kernel.compat.Compat.managedComponents()
+        for (name in comps) {
+            val item = lobos.services.reg.ProgramIndex.base(ctx).firstOrNull { it.id == name }
+            if (lobos.kernel.compat.Compat.otaInstalled(ctx, name)) {
                 out += name + ":已由 OTA 替换（保留，不回拉 APK）"
                 continue
             }
-            out += name + ":随 APK（today=" + it.today + " intended=" + it.intended + (cur?.isFile == true ? "，已就位" : "，**缺**") + "）"
+            val cur = lobos.kernel.compat.Compat.lib(ctx, name)
+            out += name + ":随 APK（today=" + (item?.today ?: "?") +
+                " intended=" + (item?.intended ?: "?") +
+                (cur?.isFile == true ? "，已就位" : "，**缺**") + "）"
         }
         return out
     }

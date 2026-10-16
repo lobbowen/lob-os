@@ -162,10 +162,7 @@ class ProgramDir(
             val meta = if (landed) PieceScan.pieceMeta(context, programId) else null
             val spec = if (landed) null else ProgramRegistry.spec(context, programId)
             val role = if (landed) {
-                when (meta?.optString("form", "")?.trim()) {
-                    "lib" -> PieceScan.LIBRARY
-                    else -> PieceScan.EXEC
-                }
+                PieceScan.roleFromDisk(context, programId)
             } else {
                 spec?.role?.takeIf { it.isNotBlank() } ?: "app"
             }
