@@ -155,7 +155,9 @@ case "$TOOL" in
   openssl) SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
   crypto)  SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches" ;;
-  node)    SRC_FILES="scripts/recipes/build-component-node.sh scripts/toolchain/build-node-android.sh" ;;
+  # node 不在本轮范围（用户 2026-10-16：「node 不要修，node 是不能修的，是后期要用来验证的」）
+  # ⇒ 不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。
+  node)    SRC_FILES="" ;;
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
   *)       SRC_FILES="" ;;

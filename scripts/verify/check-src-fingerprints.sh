@@ -17,7 +17,10 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-TOOLS=(zlib openssl crypto curl jq bash ripgrep busybox git node python sqlite)
+# 本轮八件 + git/python/sqlite；node 不在其中。
+# node 不在本轮范围（用户 2026-10-16：「node 不要修，是后期要用来验证的」）
+# —— 而它若被纳入，它的指纹会落成 nosrc/空输入哈希，从而把这条判据变成恒红。
+TOOLS=(zlib openssl crypto curl jq bash ripgrep busybox git python sqlite)
 
 # 字节同源的件：它们**应当**同指纹。
 # crypto 的 libcrypto.so 是从 openssl 的包里拆出来的（build-crypto.yml:49 unzip dist/$OASSET），
