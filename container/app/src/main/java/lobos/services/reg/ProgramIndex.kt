@@ -60,7 +60,6 @@ data class UnitEntry(
         val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
 
         val level: Level get() = if (isPiece) Level.PIECE else Level.PROGRAM
-    }
 
     data class BaseItem(
         val id: String,
@@ -71,6 +70,8 @@ data class UnitEntry(
         val intended: String,
         val optional: Boolean,
     )
+    }
+
 
 object ProgramIndex {
 
