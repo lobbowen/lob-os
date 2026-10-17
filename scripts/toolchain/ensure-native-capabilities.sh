@@ -45,12 +45,12 @@ build_each() {
   if [ -n "$ONLY" ]; then
     local n
     for n in $ONLY; do
-      printf "::notice title=逐件::build-piece-%s.sh " "$n"
-      if bash "scripts/recipes/build-piece-$n.sh"; then
+      printf "::notice title=逐件::build-bundle-%s.sh " "$n"
+      if bash "scripts/recipes/build-bundle-$n.sh"; then
         echo "ok"
       else
         echo "FAILED"
-        echo "[caps] ★ build-piece-$n.sh 失败"
+        echo "[caps] ★ build-bundle-$n.sh 失败"
         failed=1
       fi
     done
@@ -59,16 +59,16 @@ build_each() {
     return 0
   fi
   for s in \
-      build-piece-zlib.sh \
-      build-piece-openssl.sh \
-      build-piece-curl.sh \
-      build-piece-jq.sh \
-      build-piece-bash.sh \
-      build-piece-rg.sh \
+      build-bundle-zlib.sh \
+      build-bundle-openssl.sh \
+      build-bundle-curl.sh \
+      build-bundle-jq.sh \
+      build-bundle-bash.sh \
+      build-bundle-rg.sh \
       build-native-busybox.sh
   do
     # crypto 不在此列 —— 它与 libssl.so 一并编出（OpenSSL 的一部分，见
-    # component-sources.json 的 crypto.sameAs），由 build-piece-openssl.sh 落位。
+    # component-sources.json 的 crypto.sameAs），由 build-bundle-openssl.sh 落位。
     # 逐件发通知 —— 失败时在 GitHub 界面上一眼看到是哪一件，
     # 不用去翻被截断的日志（11 个脚本串在一起，日志会被截）
     printf "::notice title=逐件::%s " "$s"

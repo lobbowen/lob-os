@@ -3,7 +3,7 @@
 #
 # 为什么不能看文件名：
 #   Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz，
-#   而里面的内容已经是 zip（package-piece-zip.sh 改成了 zip）。
+#   而里面的内容已经是 zip（package-bundle-zip.sh 改成了 zip）。
 #   按扩展名分派会对 zip 内容走 tar 分支，解不开，判据一律拒绝。
 #   —— 这个问题我踩过一次：资产名与内容格式不一致时，扩展名是骗人的。
 #

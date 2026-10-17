@@ -92,7 +92,7 @@ export RANLIB="$TC_DIR/llvm-ranlib"
 # curl / openssl / zlib 早已不再编到 work/deps（那个一次编三份静态库的
 # build-shared-deps.sh 已删）。它们现在是独立的件，各自由自己的脚本编，
 # 构建输出留在 work/<件名>/out/{include,lib}/ —— 那正是 configure 想要的前缀形状
-# （build-piece-curl.sh 对 openssl/zlib 就是这么找的）。
+# （build-bundle-curl.sh 对 openssl/zlib 就是这么找的）。
 #
 # 这里链的是**共享库**，不是一个二进制里静态塞几份 .a —— git 只记
 # DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局落位那份找。

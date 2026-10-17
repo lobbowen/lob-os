@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 编内核的兼容性垫片 —— 四个我们自己的 C，随源码走、随 APK 走。
 #
-# 与「件」的区别（这是为什么它们不再走 build-piece-*.sh）：
+# 与「件」的区别（这是为什么它们不再走 build-bundle-*.sh）：
 #   · 不生成 component-meta.json
 #   · 不铺位到 usr/lib/<id>/<版本>/、不建全局软链、不进件清单
 #   · 只有一个版本，永不 OTA 替换 —— 它们是内核的一部分，不是可替换的外部软件
@@ -9,10 +9,10 @@
 # 产物直接进 container/app/src/main/jniLibs/arm64-v8a/，由
 # kernel/compat/Compat.kt 按名字定位。
 #
-# ★ 不要 source scripts/recipes/piece-env.sh：
+# ★ 不要 source scripts/recipes/bundle-env.sh：
 #   那个是**给件准备的** —— 它要求传件名、会 cd 到仓根、定义 land_piece/gen_meta
 #   并按件的形状落位。垫片三样都不要；而且它开头 `${1:?用法: source
-#   piece-env.sh <件名>}` 在没传参时直接 exit 1 —— 曾经让 APK 构建在这里挂掉
+#   bundle-env.sh <件名>}` 在没传参时直接 exit 1 —— 曾经让 APK 构建在这里挂掉
 #   （而 CC 其实由 CI 注入，压根用不着它）。
 #
 #   垫片需要的只有编译器。CC 由 CI 注入；本地没有就跑 locate-ndk.sh。

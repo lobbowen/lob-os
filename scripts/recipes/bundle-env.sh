@@ -4,10 +4,10 @@
 #   照抄 deb-control(5)——「Each Debian binary package contains a control file in its
 #   control member」。每个包自带说明，安装器与内核只读落位，不预置任何一件的清单。
 #
-# 用法：source scripts/recipes/piece-env.sh <件名>，然后调用 emit_piece
+# 用法：source scripts/recipes/bundle-env.sh <件名>，然后调用 emit_piece
 set -uo pipefail
 
-PIECE_NAME="${1:?用法: source piece-env.sh <件名>}"
+PIECE_NAME="${1:?用法: source bundle-env.sh <件名>}"
 
 # 仓根（本文件在 scripts/recipes/）
 PIECE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

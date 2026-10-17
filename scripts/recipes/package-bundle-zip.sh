@@ -10,7 +10,7 @@
 # package-component.sh 已转发到这里（单一入口，避免两套打包逻辑漂移）。
 # 这个从 OUT_DIR 读、用 tar —— 本机与 CI 都有 tar，zip 不在 base 镜像里。
 #
-# 用法：package-piece-zip.sh <件名> <OUT_DIR> <版本> [entry]
+# 用法：package-bundle-zip.sh <件名> <OUT_DIR> <版本> [entry]
 set -euo pipefail
 
 ID="${1:?需要件名}"

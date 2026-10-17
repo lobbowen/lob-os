@@ -9,7 +9,7 @@
 # 不靠猜—— 保留必要的 ac_cv_* 交叉编探测。
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" curl
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" curl
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR"

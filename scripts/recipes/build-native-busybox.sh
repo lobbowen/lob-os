@@ -9,7 +9,7 @@ ROOT_DIR="$(pwd)"
 API="${ANDROID_API:-35}"
 TOOL="busybox"
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" busybox
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" busybox
 
 BUSYBOX_VER="${BUSYBOX_VER:-1.36.1}"
 

@@ -126,7 +126,7 @@ jobs:
           # 也就是 base 筐里的 curl / openssl / zlib 三件。只编这三件，
           # 不必编齐 11 件（那既慢，又把无关件的失败带进来）。
           # 依赖从 work/<件名>/out 取 —— 那是 configure 想要的前缀形状
-          # （build-piece-curl.sh 找 openssl/zlib 就是这么找的）。
+          # （build-bundle-curl.sh 找 openssl/zlib 就是这么找的）。
           bash scripts/toolchain/ensure-native-capabilities.sh --only=zlib --only=openssl --only=curl
       - name: 产出 git 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'

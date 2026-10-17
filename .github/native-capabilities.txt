@@ -7,7 +7,7 @@
 #
 # ⚠ 原由 scripts/registry/gen-native-assets.js 生成，**那份生成器已删** ——
 #   它指向的 NativeAssetRegistry.kt 早已不存在，于是这个文件事实上靠手维护，
-#   而漂了：jq 漏了（build-piece-jq.sh 真在产它，缺了不会被查出来）、
+#   而漂了：jq 漏了（build-bundle-jq.sh 真在产它，缺了不会被查出来）、
 #   node-pty 留着但两张表都没有、也没有任何脚本产它。已一并改正。
 #
 # 现在**手动维护**，改这份文件时必须与这三处对齐：

@@ -9,7 +9,7 @@
 #       versions should have their links updated」
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" zlib
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" zlib
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR"

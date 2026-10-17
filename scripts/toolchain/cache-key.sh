@@ -167,7 +167,7 @@ esac
 
 # 决定「包里有什么」的两个机制，不产字节但改产物内容：
 #   gen-component-meta.js  决定 meta 的字段（roles 就是它加的）
-#   package-piece-zip.sh   决定哪些文件进包、怎么命名
+#   package-bundle-zip.sh   决定哪些文件进包、怎么命名
 # 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 ⇒
 # 方案甲本该拦住却没拦住。判别形式不是「它是不是源码」，而是
 # 「我改了这个文件，包里会不会变」。
@@ -197,7 +197,7 @@ case "$KIND" in
     ;;
   asset)
     SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
-    # 扩展名跟内容走：件包已经是 zip（package-piece-zip.sh 打的是 zip），
+    # 扩展名跟内容走：件包已经是 zip（package-bundle-zip.sh 打的是 zip），
     # 名字叫 .tar.gz 而内容是 zip 会让「看名字判断版本」的人被骗 —— 判据按 magic 字节认，名字也该一致。
     echo "$TOOL-$SAFE.zip"
     ;;

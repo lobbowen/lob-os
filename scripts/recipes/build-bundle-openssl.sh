@@ -8,7 +8,7 @@
 # 依赖它的件把依赖静态链了进去。现在产出共享库，只记 DT_NEEDED。
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" openssl
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" openssl
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR"

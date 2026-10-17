@@ -4,7 +4,7 @@
 # 它走 cargo（Rust），不是 tarball —— 所以钉值表里那一项没有 urls，只有 version。
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" rg
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" rg
 
 if ! command -v cargo >/dev/null 2>&1; then
   echo "[rg] runner 无 cargo，装最小 rustup"

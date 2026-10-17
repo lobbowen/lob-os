@@ -70,7 +70,7 @@ jobs:
           fi
       - name: 编 bash
         if: steps.reuse.outputs.hit != 'yes'
-        run: bash scripts/recipes/build-piece-bash.sh
+        run: bash scripts/recipes/build-bundle-bash.sh
 
       - name: 固化标准件包到 Release
         if: steps.reuse.outputs.hit != 'yes'
@@ -80,7 +80,7 @@ jobs:
           set -euo pipefail
           ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
-          # 标准包由 build-piece-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.zip），
+          # 标准包由 build-bundle-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.zip），
           # 里面带 component-meta.json —— 装配器只读包，不查外部清单。
           PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
           [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; ls -la dist/ | head; exit 1; }

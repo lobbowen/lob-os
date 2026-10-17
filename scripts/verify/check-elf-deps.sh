@@ -95,7 +95,7 @@ LOCAL_LIBS=""
 [ -d "$LIBDIR" ] && LOCAL_LIBS=" $(ls "$LIBDIR" 2>/dev/null | tr '\n' ' ') "
 
 # 共享库是一条链：libz.so → libz.so.1 → libz.so.1.3.2，三层是**同一份字节的
-# 多个名字**（land_piece 用 cp -f 解开了软链，见 piece-env.sh）。而：
+# 多个名字**（land_piece 用 cp -f 解开了软链，见 bundle-env.sh）。而：
 #   · APK 的 jniLibs 只打包 *.so，版本化命名那两层进不去；
 #   · linker 运行时按 DT_NEEDED 的名字找，那正是带版本号的那个。
 # 所以比对时把 NEEDED 归到链首再认 —— 与 PrefixProvisioner.provision()

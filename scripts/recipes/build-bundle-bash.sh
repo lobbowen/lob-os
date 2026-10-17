@@ -5,7 +5,7 @@
 # 于是 APK 链只能整体调它 —— 现场编译。现在每件一个脚本，编完固化，APK 只取用。
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" bash
 
 # 版本以钉值表为准，脚本里不再写一份（此前两处各写一遍，不一致时才发现）
 BASH_VER="$(bash scripts/toolchain/fetch-pinned.sh --src-version bash 2>/dev/null || true)"

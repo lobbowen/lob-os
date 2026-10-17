@@ -6,7 +6,7 @@
 # 若它 NEEDED 了系统库那属于系统提供，不是件。
 set -uo pipefail
 # shellcheck disable=SC1091
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/piece-env.sh" jq
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" jq
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR"
