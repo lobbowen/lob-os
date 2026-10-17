@@ -18,7 +18,7 @@ ASSETS="container/app/src/main/assets/pieces"
 STAGE="dist/.fetch"
 REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 
-PIECES=(zlib openssl crypto curl jq bash ripgrep busybox hello)
+PIECES=(zlib openssl crypto curl jq bash ripgrep busybox)
 
 fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url
