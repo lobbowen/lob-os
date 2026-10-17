@@ -121,6 +121,13 @@ object PreinstalledPieces {
         dst.takeIf { it.length() > 0 }
     }.getOrNull()
 
+    private fun levelOf(meta: org.json.JSONObject): lobos.services.reg.Level {
+        if (meta.optString("kind", "").equals("program", true)) {
+            return lobos.services.reg.Level.PROGRAM
+        }
+        return lobos.services.reg.Level.PIECE
+    }
+
     private fun register(
         ctx: Context,
         id: String,
@@ -133,7 +140,7 @@ object PreinstalledPieces {
         runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 ctx,
-                (prev ?: lobos.services.reg.ProgramIndex.empty(id, lobos.services.reg.Level.PIECE)).copy(
+                (prev ?: lobos.services.reg.ProgramIndex.empty(id, levelOf(meta))).copy(
                     id = id,
                     version = version,
                     stateDir = stateDir,
