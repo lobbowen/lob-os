@@ -25,7 +25,7 @@ CSRC
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR/bin"
 
-"$CC" -static -O2 -o "$OUT_DIR/bin/hello" "$WORK/hello.c" -llog 2>"$WORK/build.log" \
+"$CC" -static -O2 -o "$OUT_DIR/bin/hello" "$WORK/hello.c" 2>"$WORK/build.log" \
   || { echo "=== hello 编译失败 ==="; cat "$WORK/build.log"; die "hello 没编出来" "见上面的 clang 输出"; }
 
 chmod +x "$OUT_DIR/bin/hello"
