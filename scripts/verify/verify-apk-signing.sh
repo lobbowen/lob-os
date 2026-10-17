@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ===== 2026-10-17 降级为报告（Lead 裁定）=====
+# 原为判红门禁。现降级：真防线是安装器 ——
+# 装不上时安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE，
+# 而「证书指纹是否等于锚点」只是【配置是否生效】的旁证。
+# C-22b：报错必须分清「已坏」与「证据不足」。
+#   本脚本只对【已坏】判红；【证据不足】一律 warning + exit 0。
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APK="${1:-}"
 shift || true
@@ -30,13 +37,15 @@ APKSIGNER="$(bash "$HERE/pick.sh" --allow-empty --last apksigner \
   "${ANDROID_HOME:-/nonexistent}/build-tools" -name apksigner -type f || true)"
 [ -n "$APKSIGNER" ] || APKSIGNER="$(command -v apksigner || true)"
 if [ -z "$APKSIGNER" ]; then
-  echo "[error] 找不到 apksigner（ANDROID_HOME=${ANDROID_HOME:-<未设置>}）—— 签名身份无从核验，禁止放行（装不上去是装机之后才知道的）。"
-  exit 1
+  echo "::warning title=证据不足：找不到 apksigner::本层无法核验签名身份。
+  坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"
+  exit 0
 fi
 
 if ! PC="$( "$APKSIGNER" verify --print-certs "$APK" 2>/dev/null )"; then
-  echo "[error] apksigner 读不出 $APK 的证书（未签名？损坏？）—— 无从核验即不放行。"
-  exit 1
+  echo "::warning title=证据不足：读不出证书::未签名或损坏，但本层判不出结论。
+  坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"
+  exit 0
 fi
 
 HEX64='^[0-9a-f]{64}$'
@@ -62,8 +71,9 @@ while IFS= read -r line; do
 done <<<"$PC"
 FP="$(fp_from "$PC")"
 if [ -z "$DN" ]; then
-  echo "[error] apksigner 输出里没有 certificate DN 行 —— 解析不到签名身份，不放行。"
-  exit 1
+  echo "::warning title=证据不足：解析不到 DN::apksigner 输出格式与预期不符。
+  坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"
+  exit 0
 fi
 
 echo "[lobos-signing] apksigner: $APKSIGNER"
@@ -83,10 +93,10 @@ if [ -n "$EXPECT_CERT" ]; then
   if [ -z "$CT" ] && command -v openssl >/dev/null 2>&1; then
     CT="$(openssl x509 -noout -fingerprint -sha256 -in "$EXPECT_CERT" 2>/dev/null || true)"
   fi
-  [ -n "$CT" ] || { echo "[error] 锚点 $EXPECT_CERT 读不出证书内容（keytool/openssl 都不可用，或它不是证书）—— 无从核验即不放行。"; exit 1; }
+  [ -n "$CT" ] || { echo "::warning title=证据不足：锚点读不出证书::锚点 $EXPECT_CERT 无法解析。坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"; exit 0; }
   CERT_FP="$(fp_from "$CT")"
-  [ -n "$CERT_FP" ] || { echo "[error] 锚点输出里没有 SHA-256 指纹 —— 无从核验即不放行。"; exit 1; }
-  [ -n "$FP" ] || { echo "[error] APK 侧读不出 SHA-256 指纹，无法与锚点比对 —— 不放行。"; exit 1; }
+  [ -n "$CERT_FP" ] || { echo "::warning title=证据不足：锚点无指纹::无法与 APK 侧比对。坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"; exit 0; }
+  [ -n "$FP" ] || { echo "::warning title=证据不足：APK 侧无指纹::无法与锚点比对。坏在哪：无法判定是否同源；真机装不上时由安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE 兜住，不在此处判红。"; exit 0; }
   if [ "$FP" != "$CERT_FP" ]; then
     echo "::error title=签名身份不符::APK 内证书指纹 $FP ≠ 本次注入 keystore 的指纹 $CERT_FP —— 签名配置指错了 key（换过 keystore / 别名取错），装到既有设备上必失败。"
     exit 1
