@@ -240,13 +240,30 @@ object PieceUpdater {
     private fun place(ctx: Context, e: lobos.services.reg.UnitEntry, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
         try {
             val dir = versionDir(ctx, e.id, version)
-            runCatching { dir.deleteRecursively() }
-            dir.mkdirs()
+            val staged = File(dir.parentFile, "." + dir.name + ".staging")
+            runCatching { staged.deleteRecursively() }
+            val stagedDest = File(staged, entryRel)
+            stagedDest.parentFile?.mkdirs()
+            picked.copyTo(stagedDest, overwrite = true)
+            if (!stagedDest.isFile || stagedDest.length() != picked.length()) {
+                runCatching { staged.deleteRecursively() }
+                return false to "落盘后长度不符"
+            }
+            ExecBits.apply(stagedDest)
+            val aside = if (dir.isDirectory) {
+                File(dir.parentFile, dir.name + ".replaced-" + System.currentTimeMillis())
+            } else null
+            if (aside != null && !dir.renameTo(aside)) {
+                runCatching { staged.deleteRecursively() }
+                return false to "旧版本目录无法让位：不动指针，保持现状"
+            }
+            if (!staged.renameTo(dir)) {
+                if (aside != null) aside.renameTo(dir)
+                runCatching { staged.deleteRecursively() }
+                return false to "无法把新版本换进去（旧版本已复位）"
+            }
+            if (aside != null) aside.deleteRecursively()
             val dest = File(dir, entryRel)
-            dest.parentFile?.mkdirs()
-            picked.copyTo(dest, overwrite = true)
-            if (!dest.isFile || dest.length() != picked.length()) return false to "落盘后长度不符"
-            ExecBits.apply(dest)
             if (!pointEntryAt(ctx, e, version, dest)) return false to "入口软链切换失败"
             true to null
         } catch (ex: Throwable) {
