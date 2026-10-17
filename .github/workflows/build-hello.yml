@@ -1,0 +1,98 @@
+name: Build hello
+
+# 编 hello 1.8.2 —— JSON 处理器，控制面板与诊断脚本常用。
+# 基础件：随 APK 内置，但由本 workflow 编一次、固化到 Release，APK 只取不编。
+on:
+  # 只手动：「我现在要构建这一件」。
+  # 件是独立的 —— 不由 push 触发。详见 RELEASE-POLICY.md。
+  workflow_dispatch: {}
+
+concurrency:
+  group: hello-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 恢复 NDK 缓存
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/actions-setup-ndk
+          key: ndk-30.0.16248370-${{ runner.os }}-${{ runner.arch }}
+
+      - name: 取 NDK（命中则 0 下载）
+        run: bash scripts/toolchain/cache-ndk.sh
+
+      - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
+        run: bash scripts/toolchain/locate-ndk.sh
+
+      - name: 算本件的固化标识（key / tag / asset）
+        id: uwkey
+        run: |
+          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 各 workflow 都调它。
+          bash scripts/toolchain/piece-key.sh hello
+
+      - name: 已固化就复用（不重编）
+        id: reuse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          # ★ 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
+          #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
+          #   被当成新的继续用，CI 报 success 而包是空的。
+          #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
+          #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" "bin/hello"; then
+            echo "hit=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
+            echo "hit=no" >> "$GITHUB_OUTPUT"
+          fi
+      - name: 编 hello
+        if: steps.reuse.outputs.hit != 'yes'
+        run: bash scripts/recipes/build-bundle-hello.sh
+
+      - name: 固化标准件包到 Release
+        if: steps.reuse.outputs.hit != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          TAG="${{ steps.uwkey.outputs.tag }}"
+          # 标准包由 build-piece-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.zip），
+          # 里面带 component-meta.json —— 装配器只读包，不查外部清单。
+          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; ls -la dist/ | head; exit 1; }
+          # 上传名用 cache-key.sh 给的那个 —— 复用判据与取件都按它，两处必须同源。
+          # 之前这里用包名、判据那里用 deps 名，对不上，于是每轮都判为「未固化」。
+          cp -f "$PKG" "dist/$ASSET"
+          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
+          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "hello 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
+          gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
+          echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
+      - name: 失败现场（Job Summary，不裁剪）
+        if: always()
+        run: bash scripts/toolchain/collect-piece-diag.sh hello
+
+      - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: piece-diag
+          path: |
+            ${{ runner.temp }}/piece-diag-*.md
+            work/*/*.log
+          if-no-files-found: ignore
