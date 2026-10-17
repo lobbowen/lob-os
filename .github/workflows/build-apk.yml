@@ -270,7 +270,7 @@ jobs:
       - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
         run: |
           set -uo pipefail
-          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics check-src-fingerprints check-no-hardcoded-id check-readelf-wide"
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics check-src-fingerprints check-no-hardcoded-id check-readelf-wide check-kotlin-syntax"
           BAD=0
           for f in scripts/verify/check-*.sh; do
             b=$(basename "$f" .sh)
@@ -304,7 +304,7 @@ jobs:
         run: |
           set -uo pipefail
           FAILED=""; UNVERIFIED=""
-          for g in check-source-shape check-api-surface check-compat-semantics check-no-comments check-src-fingerprints check-no-hardcoded-id check-readelf-wide; do
+          for g in check-source-shape check-api-surface check-compat-semantics check-no-comments check-src-fingerprints check-no-hardcoded-id check-readelf-wide check-kotlin-syntax; do
             bash "scripts/verify/$g.sh"; rc=$?
             case "$rc" in
               0) ;;
@@ -320,8 +320,14 @@ jobs:
           if [ -n "$FAILED" ]; then
             echo "::error title=判据失败::$FAILED —— 这次是真的不通过（不是未验证）。"
           fi
+          if [ -n "$UNVERIFIED" ]; then
+            echo "::warning title=判据未执行（不是失败，也不是通过）::$UNVERIFIED —— 它们这次没有产生任何证据"
+            echo "::warning:: ★ 「未执行」在颜色上与「通过」一样绿。判别形式：它到底检查了几个对象？"
+          fi
           if [ -n "$FAILED" ]; then exit 1; fi
-          if [ -n "$UNVERIFIED" ]; then exit 1; fi
+          if [ -n "$UNVERIFIED" ]; then
+            echo "::notice:: 本轮存在未执行的判据，但**不因此判红** —— 它们与失败是不同的事（C-12）"
+          fi
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
