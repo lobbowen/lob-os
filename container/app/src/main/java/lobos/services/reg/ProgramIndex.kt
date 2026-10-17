@@ -57,9 +57,23 @@ data class UnitEntry(
     ) {
         data class FileRec(val path: String, val sha256: String)
 
+        fun levelOf(ctx: Context): Level {
+            val r = lobos.services.supply.PieceScan.runnableOnDisk(ctx, id)
+            val d = role == "app"
+            if (r != d) {
+                RuntimeDiagnostics.append(
+                    ctx, "program-level", null, "磁盘与声明不一致",
+                    id + " 磁盘说 " + (if (r) "可执行" else "不可执行") +
+                        " 声明说 " + (if (d) "程序" else "模块") +
+                        " role=" + role + " entry=" + assetEntry
+                )
+            }
+            return if (r) Level.PROGRAM else Level.PIECE
+        }
+
         val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
 
-        val level: Level get() = if (isPiece) Level.PIECE else Level.PROGRAM
+        val level: Level get() = Level.PIECE        val level: Level get() = if (isRunnable) Level.PROGRAM else Level.PIECE
 
 }
 
@@ -233,6 +247,19 @@ object ProgramIndex {
         get(ctx, id)?.let { isPiece(it) } ?: false
 
     fun get(ctx: Context, id: String): UnitEntry? = all(ctx).firstOrNull { it.id == id }
+
+    data class Installed(
+        val id: String,
+        val version: String,
+        val sha256: String,
+        val stateDir: String,
+    )
+
+    fun installed(ctx: Context): List<Installed> =
+        all(ctx).map { Installed(it.id, it.version, it.sha256, it.stateDir) }
+
+    fun installedAt(ctx: Context, level: Level): List<Installed> =
+        all(ctx).filter { it.level == level }.map { Installed(it.id, it.version, it.sha256, it.stateDir) }
 
     @Synchronized
     fun byLevel(ctx: Context, level: Level): List<UnitEntry> = all(ctx).filter { it.level == level }

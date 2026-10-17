@@ -127,16 +127,18 @@ class SupervisorPool(private val host: Service) {
     }
 
     private fun wantedPrograms(): List<String> {
-        val records = ProgramIndex.all(host).filter { it.level == Level.PROGRAM }
         val installed = ProgramRegistry.list(host).filter { it.startable }.map { it.id }
-        val desired = records
-            .filter { it.desired == Desired.RUNNING }
+        val programs = ProgramIndex.installedAt(host, Level.PROGRAM).map { it.id }
+        val desired = ProgramIndex.all(host)
+            .filter { it.level == Level.PROGRAM && it.desired == Desired.RUNNING }
             .map { it.id }
             .filter { installed.contains(it) }
         if (desired.isNotEmpty()) return desired
-        if (records.isNotEmpty()) return emptyList()
-        return installed.take(1)
+        return programs.filter { installed.contains(it) }
     }
+
+    fun installedPrograms(): List<ProgramIndex.Installed> =
+        ProgramIndex.installedAt(host, Level.PROGRAM)
 
     @Synchronized
     fun running(): List<String> = supervisors.keys.toList()
