@@ -147,13 +147,13 @@ DEPS_STR="$VER-ndk$NDK-api$API"
 SRC_HASH=""
 case "$TOOL" in
   busybox) SRC_FILES="scripts/recipes/build-native-busybox.sh" ;;
-  bash)    SRC_FILES="scripts/recipes/build-piece-bash.sh" ;;
-  ripgrep) SRC_FILES="scripts/recipes/build-piece-rg.sh" ;;
-  jq)      SRC_FILES="scripts/recipes/build-piece-jq.sh" ;;
-  curl)    SRC_FILES="scripts/recipes/build-piece-curl.sh" ;;
-  zlib)    SRC_FILES="scripts/recipes/build-piece-zlib.sh" ;;
-  openssl) SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
-  crypto)  SRC_FILES="scripts/recipes/build-piece-openssl.sh" ;;
+  bash)    SRC_FILES="scripts/recipes/build-bundle-bash.sh" ;;
+  ripgrep) SRC_FILES="scripts/recipes/build-bundle-rg.sh" ;;
+  jq)      SRC_FILES="scripts/recipes/build-bundle-jq.sh" ;;
+  curl)    SRC_FILES="scripts/recipes/build-bundle-curl.sh" ;;
+  zlib)    SRC_FILES="scripts/recipes/build-bundle-zlib.sh" ;;
+  openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh" ;;
+  crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches" ;;
   # node 不在本轮范围（用户 2026-10-16：「node 不要修，node 是不能修的，是后期要用来验证的」）
   # ⇒ 不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。
@@ -169,7 +169,7 @@ esac
 # 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 ⇒
 # 方案甲本该拦住却没拦住。判别形式不是「它是不是源码」，而是
 # 「我改了这个文件，包里会不会变」。
-PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-piece-zip.sh"
+PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-bundle-zip.sh"
 SRC_FILES="$SRC_FILES $PKG_MECH"
 
 # 必须只用 commit 里的内容（git show HEAD:<path>），不能用 sha256sum 读工作区文件。
