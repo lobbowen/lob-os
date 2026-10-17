@@ -828,7 +828,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("degradedReasons", res.optJSONArray("degradedReasons") ?: JSONArray())
                 put("actions", res.optJSONArray("actions") ?: JSONArray())
                 put("accessibilityReady", res.optBoolean("accessibilityReady", false))
-                put("adbReady", res.optBoolean("adbReady", false))
                 put("programsRunning", res.optInt("programsRunning", 0))
                 put("installedPrograms", res.optInt("installedPrograms", 0))
                 put("runningIds", res.optJSONArray("runningIds") ?: JSONArray())

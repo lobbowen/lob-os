@@ -52,17 +52,6 @@ has_prefix() {
   done
   return 1
 }
-count_prefix() {
-  local e n=0 pat="${2:-*.js}"
-  for e in "${LIST[@]}"; do
-    case "$e" in
-      (*/) ;;
-      ("$1"*) case "$e" in ($pat) n=$((n + 1)) ;; esac ;;
-    esac
-  done
-  printf '%s\n' "$n"
-  return 0
-}
 
 MISSING=""
 DEGRADED=""
@@ -152,28 +141,6 @@ for a in $ASSETS; do
     || note_missing "lib/${ABI}/$a" "清单来源: .github/native-assets.txt（NativeAssetRegistry 的投影）"
 done
 
-echo
-echo "--- adb-client 资产 ---"
-SRC_DIR="$ROOT/container/app/src/main/assets/node/adb-client"
-SRC_N=0
-for f in "$SRC_DIR"/*.js; do
-  [ -e "$f" ] || continue
-  SRC_N=$((SRC_N + 1))
-  n="assets/node/adb-client/$(basename "$f")"
-  has_exact "$n" && echo "[ok] $n" || note_missing "$n" "adb-client 权限通道字节"
-done
-if [ "$SRC_N" = "0" ]; then
-  # 源码目录为空 = 无线调试客户端机制尚未实现：assets/node/adb-client 的 8 个 JS
-  # 在 0e5bbf3 被判定为错误并移除，AdbClientRunner 也相应改为明确返回「未就位」。
-  # 这不是 APK 少了东西，是这条能力还没做 —— 走软降级那条既有通路。
-  # 一旦机制重建、目录里有了 .js，下面的件数一致性判据照常生效。
-  note_degraded "adb-client" "$SRC_DIR 无 .js —— 无线调试客户端机制尚未实现（AdbClientRunner 据此返回未就位）"
-fi
-APK_N="$(count_prefix 'assets/node/adb-client/')"
-if [ "$SRC_N" != "$APK_N" ]; then
-  echo "[error] adb-client 件数不一致：源码 $SRC_N vs APK $APK_N"
-  MISSING="$MISSING adb-client-count($SRC_N!=$APK_N)"
-fi
 
 echo
 echo "--- 预装件包（assets/pieces/<id>.zip）· 装配器只读包 ---"
@@ -264,4 +231,4 @@ if [ -n "$MISSING" ]; then
   echo "    app/build.gradle.kts 的 jniLibs 配置与各 Stage 步骤。"
   exit 1
 fi
-echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产/npm/adb-client 全在包里，件走 assets/pieces/）')
+echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产与 npm 全在包里，件走 assets/pieces/）')

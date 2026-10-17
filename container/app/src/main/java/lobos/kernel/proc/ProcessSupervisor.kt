@@ -6,7 +6,6 @@ import java.io.File
 object ProcessSupervisor {
 
     const val OWNER_PROGRAM = "program"
-    const val OWNER_ADB_CLIENT = "adb-client"
     const val OWNER_VERIFIER = "verifier"
     const val OWNER_CHECK = "check"
 
