@@ -61,17 +61,7 @@ data class UnitEntry(
 
         val level: Level get() = if (isPiece) Level.PIECE else Level.PROGRAM
 
-    data class BaseItem(
-        val id: String,
-        val roles: List<String> = emptyList(),
-        val version: String,
-        val sha256: String,
-        val today: String,
-        val intended: String,
-        val optional: Boolean,
-    ) {
-    }
-    }
+}
 
 
 object ProgramIndex {
@@ -215,6 +205,18 @@ object ProgramIndex {
     }
 
     @Synchronized
+    fun declaresRole(ctx: Context, id: String, role: String): Boolean {
+        val f = File(dir(ctx), id)
+        if (!f.isDirectory) return false
+        for (v in f.listFiles() ?: return false) {
+            val m = File(v, "component-meta.json")
+            if (!m.isFile) continue
+            val a = runCatching { JSONObject(m.readText()).optJSONArray("roles") }.getOrNull() ?: continue
+            for (i in 0 until a.length()) if (a.optString(i) == role) return true
+        }
+        return false
+    }
+
     fun all(ctx: Context): List<UnitEntry> {
         val f = file(ctx)
         if (!f.isFile) return emptyList()
@@ -271,93 +273,10 @@ object ProgramIndex {
         StateFiles.writeJson(file(ctx), JSONObject().apply {
             put("schema", SCHEMA)
             put("entries", arr)
-            put("base", JSONArray().also { a -> baseOf(ctx).forEach { a.put(it) } })
         })
     }
 
-    private fun encodeBase(i: UnitEntry.BaseItem): JSONObject = JSONObject().apply {
-        put("id", i.id)
-        put("roles", JSONArray().also { a -> i.roles.forEach { a.put(it) } })
-        put("version", i.version)
-        put("sha256", i.sha256)
-        put("today", i.today)
-        put("intended", i.intended)
-        put("optional", i.optional)
-    }
 
-    fun declaredRoles(ctx: Context, id: String): List<String> {
-        val m = lobos.services.supply.PieceScan.pieceMeta(ctx, id) ?: return emptyList()
-        val a = m.optJSONArray("roles") ?: return emptyList()
-        return (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
-    }
-
-    fun baseOf(ctx: Context): List<JSONObject> {
-        val out = mutableListOf<JSONObject>()
-        for (e in all(ctx).sortedBy { it.id }) {
-            if (!isPiece(e)) continue
-            out.add(
-                encodeBase(
-                    UnitEntry.BaseItem(
-                        id = e.id,
-                        version = e.version,
-                        sha256 = e.sha256,
-                        roles = declaredRoles(ctx, e.id),
-                        today = "ota",
-                        intended = "ota",
-                        optional = false,
-                    ),
-                ),
-            )
-        }
-        val identity = lobos.services.reg.BuildIdentity.read(ctx)
-        val apkSha = identity?.optString("gitSha", "") ?: ""
-        val comps: List<Pair<String, Boolean>> = listOf(
-            lobos.kernel.compat.Compat.LIB_POSIX to false,
-            lobos.kernel.compat.Compat.LIB_PTYSESSION to true,
-            lobos.kernel.compat.Compat.LIB_FLOCK to true,
-        )
-        for ((name, opt) in comps) {
-            val present = lobos.kernel.compat.Compat.lib(ctx, name)?.isFile == true
-            out.add(
-                encodeBase(
-                    UnitEntry.BaseItem(
-                        id = name,
-                        version = "随 APK",
-                        sha256 = apkSha,
-                        today = "apk",
-                        intended = "ota",
-                        optional = opt,
-                    ),
-                ),
-            )
-            if (!present) {
-                out.last().put("present", false)
-            }
-        }
-        return out
-    }
-
-    fun base(ctx: Context): List<UnitEntry.BaseItem> {
-        val stored = file(ctx).takeIf { it.isFile }
-            ?.let { runCatching { JSONObject(it.readText()) }.getOrNull() }
-            ?.optJSONArray("base")
-        if (stored != null && stored.length() > 0) {
-            return (0 until stored.length()).mapNotNull { i ->
-                stored.optJSONObject(i)?.let { b -> decodeBase(b) }
-            }
-        }
-        return baseOf(ctx).mapNotNull { decodeBase(it) }
-    }
-
-    private fun decodeBase(b: JSONObject): UnitEntry.BaseItem = UnitEntry.BaseItem(
-        id = b.optString("id", ""),
-        roles = b.optJSONArray("roles")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),
-        version = b.optString("version", ""),
-        sha256 = b.optString("sha256", ""),
-        today = b.optString("today", ""),
-        intended = b.optString("intended", ""),
-        optional = b.optBoolean("optional", false),
-    )
 }
 
 fun UnitEntry.edited(

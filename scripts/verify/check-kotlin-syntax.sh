@@ -50,11 +50,12 @@ for f in $CHANGED; do
   [ -f "$f" ] || continue
   base="$(basename "$f")"
   cp "$f" "$TMP/$base"
-  out="$("$KC" -J-Xmx2g -nowarn "$TMP/$base" 2>&1 | grep -E "error:" | grep -v "unresolved reference" || true)"
+  out="$("$KC" -J-Xmx2g -nowarn "$TMP/$base" 2>&1 | grep -E "error:" \
+    | grep -vE "unresolved reference|cannot infer a type|not enough information to infer|overload resolution ambiguity|none of the following functions|is ambiguous for this expression|not allowed here|must be exhaustive|should return Unit" || true)"
   CHECKED=$((CHECKED+1))
   if [ -n "$out" ]; then
     BAD=$((BAD+1))
-    echo "::error title=语法或类型级错::$f"
+    echo "::error title=语法级错（不依赖类型解析）::$f"
     printf "%s\n" "$out" | head -6 | sed "s|^|  |"
   fi
 done

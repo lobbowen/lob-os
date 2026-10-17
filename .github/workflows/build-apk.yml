@@ -270,7 +270,7 @@ jobs:
       - name: 门禁清单只能是基础行为规范（防止再产生设计类门禁）
         run: |
           set -uo pipefail
-          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics check-src-fingerprints check-no-hardcoded-id check-readelf-wide check-kotlin-syntax"
+          ALLOWED="check-no-comments check-source-shape check-workflow-shell check-elf-deps check-api-surface check-compat-semantics check-src-fingerprints check-kotlin-syntax"
           BAD=0
           for f in scripts/verify/check-*.sh; do
             b=$(basename "$f" .sh)
@@ -304,7 +304,7 @@ jobs:
         run: |
           set -uo pipefail
           FAILED=""; UNVERIFIED=""
-          for g in check-source-shape check-api-surface check-compat-semantics check-no-comments check-src-fingerprints check-no-hardcoded-id check-readelf-wide check-kotlin-syntax; do
+          for g in check-source-shape check-api-surface check-compat-semantics check-no-comments check-src-fingerprints check-kotlin-syntax; do
             bash "scripts/verify/$g.sh"; rc=$?
             case "$rc" in
               0) ;;

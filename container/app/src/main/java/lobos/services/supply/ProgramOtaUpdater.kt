@@ -89,17 +89,13 @@ object ProgramOtaUpdater {
         val out = mutableListOf<String>()
         val comps = lobos.kernel.compat.Compat.managedComponents()
         for (name in comps) {
-            val item = lobos.services.reg.ProgramIndex.base(ctx).firstOrNull { it.id == name }
             if (lobos.kernel.compat.Compat.otaInstalled(ctx, name)) {
                 out += name + ":已由 OTA 替换（保留，不回拉 APK）"
                 continue
             }
             val cur = lobos.kernel.compat.Compat.lib(ctx, name)
-            val todayV = item?.today ?: "-"
-            val intendedV = item?.intended ?: "-"
             val presentV = if (cur?.isFile == true) "已就位" else "缺"
-            val desc = name + ":随 APK（today=" + todayV +
-                " intended=" + intendedV + " " + presentV + "）"
+            val desc = name + ":随 APK（" + presentV + "）"
             out.add(desc)
         }
         return out
