@@ -54,6 +54,8 @@ const arch = ABI.split('-')[0];
 
 const form = entry.indexOf('lib/') === 0 ? 'lib' : 'exec';
 
+const kind = (process.env.PIECE_KIND || '').trim();
+
 const meta = {
   schema: 1,
   id: id,
@@ -67,6 +69,7 @@ const meta = {
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',
 };
+if (kind) meta.kind = kind;
 if (src.sameAs) meta.sameAs = src.sameAs;
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });

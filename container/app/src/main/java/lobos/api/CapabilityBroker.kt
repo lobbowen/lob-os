@@ -282,7 +282,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
         try {
             val result = def.handle(params, holder.session?.programId ?: "")
-            if (def.audit) audit(method, params, true, null, session)
+            if (def.audit) audit(method, params, true, null, session, result)
             return ok(id, result)
         } catch (e: BridgeError) {
             if (def.audit) audit(method, params, false, e.message, session)
@@ -416,6 +416,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         ok: Boolean,
         err: String?,
         session: lobos.kernel.proc.SessionRegistry.Session?,
+        result: JSONObject? = null,
     ) {
         try {
             val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
@@ -426,8 +427,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 "session=" + session.id + " program=" + session.programId +
                     " generation=" + session.generation + " identity=os-session"
             }
+            val out = result?.let { r ->
+                val s = r.toString()
+                if (s.length > 400) s.take(400) + "…" else s
+            } ?: ""
             val line = ts + " " + who + " method=" + method + " ok=" + ok + " params=" + summary +
-                (if (err != null) " err=" + err else "") + "\n"
+                (if (err != null) " err=" + err else "") +
+                (if (out.isNotEmpty()) " result=" + out else "") + "\n"
             lobos.kernel.fs.StateFiles.appendBounded(File(filesDir, "bridge-audit.log"), line)
         } catch (_: Throwable) {}
     }

@@ -20,8 +20,27 @@ object Compat {
         return apkLibDir(ctx).resolve(name).takeIf { it.isFile }
     }
 
-    fun installOta(ctx: Context, name: String, bytes: ByteArray, expectedSha256: String): Boolean {
+    private fun permOf(ctx: Context, name: String, mode: String?): String {
+        if (mode != null && mode.isNotBlank()) return mode
+        val cur = libDir(ctx).resolve(name)
+        val curPerm = runCatching {
+            java.nio.file.Files.getPosixFilePermissions(cur.toPath())
+        }.getOrNull()
+        if (curPerm != null) {
+            val s = java.nio.file.attribute.PosixFilePermissions.toString(curPerm)
+            return if (s.contains("x")) s else s + "rwxr-xr-x".take(3)
+        }
+        val ap = apkLibDir(ctx).resolve(name)
+        val apPerm = runCatching {
+            java.nio.file.Files.getPosixFilePermissions(ap.toPath())
+        }.getOrNull()
+        if (apPerm != null) return java.nio.file.attribute.PosixFilePermissions.toString(apPerm)
+        return "rw-r--r--"
+    }
+
+    fun installOta(ctx: Context, name: String, bytes: ByteArray, expectedSha256: String, mode: String? = null): Boolean {
         val dst = libDir(ctx)
+        val expectedPerm = permOf(ctx, name, mode)
         if (!dst.isDirectory && !dst.mkdirs()) return false
         val tmp = dst.resolve(name + ".new")
         val got = java.security.MessageDigest.getInstance("SHA-256")
@@ -32,6 +51,10 @@ object Compat {
         }
         if (!runCatching {
                 java.nio.file.Files.write(tmp.toPath(), bytes)
+                java.nio.file.Files.setPosixFilePermissions(
+                    tmp.toPath(),
+                    java.nio.file.attribute.PosixFilePermissions.fromString(expectedPerm),
+                )
                 java.nio.file.Files.move(
                     tmp.toPath(), dst.resolve(name).toPath(),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING,
@@ -66,7 +89,7 @@ object Compat {
                 .digest(bytes).joinToString("") { b -> "%02x".format(b) }
             if (isLink || !link.exists()) {
                 runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
-                if (installOta(ctx, name, bytes, sha)) n++
+                if (installOta(ctx, name, bytes, sha, null)) n++
             }
         }
         return n

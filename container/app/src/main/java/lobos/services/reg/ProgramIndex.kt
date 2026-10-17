@@ -73,7 +73,7 @@ data class UnitEntry(
 
         val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
 
-        val level: Level get() = Level.PIECE        val level: Level get() = if (isRunnable) Level.PROGRAM else Level.PIECE
+        val level: Level get() = Level.PIECE
 
 }
 
@@ -241,10 +241,10 @@ object ProgramIndex {
     }
 
     @Synchronized
-    fun isPiece(e: UnitEntry): Boolean = e.role.isNotEmpty() && e.role != "app"
+    fun isPiece(e: UnitEntry): Boolean = e.level == Level.PIECE
 
     fun isPiece(ctx: Context, id: String): Boolean =
-        get(ctx, id)?.let { isPiece(it) } ?: false
+        get(ctx, id)?.levelOf(ctx)?.let { it == Level.PIECE } ?: false
 
     fun get(ctx: Context, id: String): UnitEntry? = all(ctx).firstOrNull { it.id == id }
 
