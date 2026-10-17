@@ -60,7 +60,7 @@ jobs:
           TAG="${{ steps.uwkey.outputs.tag }}"
           rm -rf .crypto-out && mkdir -p .crypto-out/lib
           cp -Pf .openssl-pkg/lib/libcrypto.so .crypto-out/lib/
-          bash scripts/recipes/package-piece-zip.sh crypto .crypto-out 3.6.3 lib/libcrypto.so
+          bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 lib/libcrypto.so
 
       - name: 固化标准件包到 Release
         env:

@@ -124,7 +124,7 @@ version_of() {
 # 「声明了但没带上」（2026-10-16 实测：busybox 的 18 个 applet 一个都没进包）。
 #
 # 为什么需要它：entry 只能指一个文件，而一个件可能有多个命令入口
-#（busybox 有 18 个 applet）。package-piece-zip.sh 只搬 entry 与其同名版本链，
+#（busybox 有 18 个 applet）。package-bundle-zip.sh 只搬 entry 与其同名版本链，
 # 所以 bin/ 下其余的可执行件必须由这个清单显式带进去。
 emit_piece() {
   local id="$1" out="$2" entry="$3" min="${4:-1000}" bins="${5:-}"
@@ -146,5 +146,5 @@ emit_piece() {
     done
     echo "  （共享库整条链一起进包）"
   fi
-  bash "$ROOT_DIR/scripts/recipes/package-piece-zip.sh" "$id" "$out" "$ver" "$entry" "$bins"
+  bash "$ROOT_DIR/scripts/recipes/package-bundle-zip.sh" "$id" "$out" "$ver" "$entry" "$bins"
 }
