@@ -181,6 +181,11 @@ object ProgramInstallPipeline {
         }
         dir.mkdirs()
 
+        val binDir = File(dest, "bin")
+        binDir.listFiles()?.forEach { f ->
+            if (f.isFile) runCatching { ExecBits.apply(f) }
+        }
+
         val depReport = satisfyElfDeps(context, dest)
         if (!depReport.ok) {
             return Result(false, safeVer, "elf-deps-unresolved", depReport.detail)
