@@ -132,13 +132,20 @@ for f in "$DIR"/*.so; do
   }
   hdr="$("$READELF" -W -h "$f" 2>/dev/null || true)"
   if [ -z "$hdr" ]; then
-    echo "readelf 读不出 ELF 文件头，不是合法 ELF？"
+    echo "  ${tag:-?} —— readelf -W -h 读不出 ELF 文件头。"
+    echo "         坏在哪：装到真机上 exec 直接失败（不是合法可执行文件）；"
+    echo "         也可能是产物没落到位或已被截断，先确认 dist 下这个文件完整。"
+    echo "         证据强度：【未验证】。我只试了 readelf -W -h 一种形态；"
+    echo "         也可能是这台机器的 readelf 读不了这种产物 —— 请先手工 file 核一遍再判它坏。"
     note_fail
     continue
   fi
   phdrs="$("$READELF" -W -l "$f" 2>/dev/null || true)"
   if [ -z "$phdrs" ]; then
-    echo "readelf 读不出 Program Headers，形态判据全部无从进行。"
+    echo "readelf -W -l 读不出 Program Headers —— **形态判据全部无从进行**。"
+    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 ⇒ exec 或 dlopen 会在装载期失败。"
+    echo "         证据强度：【未验证】。我只试了 readelf -W -l 这一种形态；"
+    echo "         它也可能是我这个判据的读法不对，而不是产物坏了 —— 请先用 file 与 readelf -h 手工核一遍。"
     note_fail
     continue
   fi

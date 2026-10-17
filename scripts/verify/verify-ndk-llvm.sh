@@ -22,24 +22,24 @@ fi
 if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   NDK=$(ls -d "${ANDROID_HOME:-/nonexistent}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
 fi
-[ -n "$NDK" ] && [ -d "$NDK" ] || die "无 NDK" \
+[ -n "$NDK" ] && [ -d "$NDK" ] || die "证据不足：拿不到 NDK" \
   "要核实版本就得有 NDK。locate-ndk.sh 会注入 CC，从它反推即可；否则设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。"
 
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
-[ -n "$GOT_NDK" ] || die "读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision"
+[ -n "$GOT_NDK" ] || die "证据不足：读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision"
 WANT_NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
-  die "NDK 版本与钉值不符" \
-    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion"
+  die "已坏：NDK 版本与钉值不符" \
+    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion。坏在哪：用这个 NDK 编出来的 .so 依赖的是另一套 sysroot ⇒ 真机装载期报缺符号，而症状与「符号写错了」一模一样"
 fi
 
 CLANG=""
 for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang; do
   [ -f "$c" ] && CLANG="$c" && break
 done
-[ -n "$CLANG" ] || die "NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到"
+[ -n "$CLANG" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到"
 if ! "$CLANG" --version >/dev/null 2>&1; then
-  die "NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行"
+  die "证据不足：NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行"
 fi
 
 VER_OUT="$("$CLANG" --version 2>&1 | head -3)"
@@ -92,7 +92,7 @@ fi
 
 WANT_LLVM="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --llvm)"
 if [ -z "$WANT_LLVM" ]; then
-  die "钉值表没有 llvmVersion" \
+  die "证据不足：钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \
     "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
@@ -103,9 +103,9 @@ GOT_MAJOR="${GOT_LLVM%%.*}"
 if [ "$WANT_MAJOR" = "$GOT_MAJOR" ]; then
   :
 else
-  die "NDK 的 LLVM 与钉值不是同一条 release 线" \
+  die "已坏：NDK 的 LLVM 与钉值不是同一条 release 线" \
     "钉值表要 $WANT_LLVM（$WANT_MAJOR.x 线），NDK $GOT_NDK 里是 $GOT_LLVM（$GOT_MAJOR.x 线）。" \
-    "改 NDK 就要同时改 llvmVersion —— 否则编出来的 clang 与 sysroot 不同源。"
+    "改 NDK 就要同时改 llvmVersion —— 否则编出来的 clang 与 sysroot 不同源。坏在哪：编出来的 clang 与 sysroot 版本不匹配，真机上编 C/C++ 会报大量与代码无关的头文件/内建错误"
 fi
 
 DEGRADED=0
