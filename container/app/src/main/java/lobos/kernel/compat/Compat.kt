@@ -59,15 +59,14 @@ object Compat {
             val src = apkLibDir(ctx).resolve(name)
             if (!src.isFile) continue
             val link = dst.resolve(name)
-            runCatching {
-                if (!link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) {
-                    java.nio.file.Files.createSymbolicLink(link.toPath(), src.toPath())
-                    n++
-                } else if (java.nio.file.Files.isSymbolicLink(link.toPath())) {
-                    java.nio.file.Files.deleteIfExists(link.toPath())
-                    java.nio.file.Files.createSymbolicLink(link.toPath(), src.toPath())
-                    n++
-                }
+            val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
+            if (!isLink && link.isFile) continue
+            val bytes = runCatching { src.readBytes() }.getOrNull() ?: continue
+            val sha = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(bytes).joinToString("") { b -> "%02x".format(b) }
+            if (isLink || !link.exists()) {
+                runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
+                if (installOta(ctx, name, bytes, sha)) n++
             }
         }
         return n

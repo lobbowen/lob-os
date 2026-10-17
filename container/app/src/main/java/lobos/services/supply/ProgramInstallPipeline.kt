@@ -157,15 +157,27 @@ object ProgramInstallPipeline {
             staging.deleteRecursively()
             return Result(false, null, "landing-out-of-bound", "落位越界，已拒绝：" + dest.canonicalFile.path)
         }
-        runCatching { dest.deleteRecursively() }
         if (!staging.renameTo(dest)) {
+            val incoming = File(dir, "." + safeVer + ".incoming")
+            runCatching { incoming.deleteRecursively() }
             val copied = runCatching {
-                staging.copyRecursively(dest, overwrite = true)
-                staging.deleteRecursively()
+                staging.copyRecursively(incoming, overwrite = true)
             }
             if (copied.isFailure) {
+                runCatching { incoming.deleteRecursively() }
                 return Result(false, null, "landing-failed", "落位失败：" + copied.exceptionOrNull()?.message)
             }
+            val old = File(dir, "." + safeVer + ".previous")
+            runCatching { old.deleteRecursively() }
+            val hadOld = dest.isDirectory
+            if (hadOld) runCatching { dest.renameTo(old) }
+            if (!incoming.renameTo(dest)) {
+                runCatching { incoming.deleteRecursively() }
+                if (hadOld) runCatching { old.renameTo(dest) }
+                return Result(false, null, "landing-failed", "落位失败：新目录换不进去，已回退到原版本")
+            }
+            runCatching { old.deleteRecursively() }
+            runCatching { staging.deleteRecursively() }
         }
         dir.mkdirs()
 
