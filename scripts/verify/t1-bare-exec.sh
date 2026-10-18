@@ -55,7 +55,12 @@ for name in "$@"; do
   code=0
   SPLIT=0
   ERRF=""
-  if [ -z "${T1_NOPY:-}" ] && command -v python3 >/dev/null 2>&1; then
+  if [ -z "${T1_NOPY:-}" ] && [ -z "${T1_NOSHELL:-}" ]; then
+    so=$("$ent" --version 2>/dev/null | head -3 | tr '\n' '|')
+    se=$("$ent" --version 2>&1 1>/dev/null | head -3 | tr '\n' '|')
+    code=$("$ent" --version >/dev/null 2>&1; echo $?)
+    SPLIT=2
+  elif [ -z "${T1_NOPY:-}" ] && command -v python3 >/dev/null 2>&1; then
     marked="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('SO:'+p.stdout.decode(errors='replace')[:400]+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n'+'RC:'+str(p.returncode)+'\n')" "$ent" 2>/dev/null)"
     if printf "%s" "$marked" | grep -q "^RC:"; then
       so="$(printf "%s" "$marked" | sed -n "s/^SO://p" | head -3 | tr "\n" "|")"
@@ -71,9 +76,11 @@ for name in "$@"; do
     se="★★ 两个流不可分（无 python3 捕获）★★ —— 这一支只判退出码，"
     se="$se 不可用它判「它说了什么」"
   fi
-  echo "  捕获方式：$( [ "$SPLIT" = 1 ] && echo "两个流分开（内存）" || echo "**合并流，只判退出码**" )"
+  if [ "$SPLIT" = "1" ]; then CAP="两个流分开（内存·python3）"; elif [ "$SPLIT" = "2" ]; then CAP="两个流分开（三次纯 shell 执行）"; else CAP="**合并流，只判退出码**"; fi
+  echo "  捕获方式：$CAP"
   code2=-1
   se2=""
+  if [ "$SPLIT" = "2" ]; then code2=$("$ent" --version >/dev/null 2>&1; echo $?); se2="x"; fi
   if [ "$SPLIT" = "1" ]; then
     marked2="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('RC:'+str(p.returncode)+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n')" "$ent" 2>/dev/null)"
     if printf "%s" "$marked2" | grep -q "^RC:"; then
@@ -84,7 +91,7 @@ for name in "$@"; do
   if [ "$code2" -ge 0 ] 2>/dev/null; then
     echo "  第二次执行退出码=$code2（第一次=$code）"
     if [ "$code2" = "$code" ]; then
-      echo "  第二信号：两次退出码一致 — 由两次独立的 python 进程各读一次"
+      echo "  第二信号：两次退出码一致 — 由两次独立的执行各读一次"
       echo "  问二 能不能跑起来：$( [ "$code" -eq 0 ] && echo 能 || echo 不能 ) —— ★ ★ 且两次一致"
       if [ "$code" -eq 0 ]; then echo "  [绿]"; else echo "  [红] 落位在，而它跑不起来（两次一致）"; fi
       continue
