@@ -128,6 +128,13 @@ version_of() {
 # 所以 bin/ 下其余的可执行件必须由这个清单显式带进去。
 emit_piece() {
   local id="$1" out="$2" entry="$3" min="${4:-1000}" bins="${5:-}"
+  local declared
+  declared="$(bash "$ROOT_DIR/scripts/registry/read-component-entry.sh" "$id" 2>/dev/null || echo "")"
+  if [ -n "$declared" ] && [ "$declared" != "$entry" ]; then
+    echo "::error title=$id 的 entry 两处不一致::recipe 传 $entry，component-sources.json 声明 $declared" >&2
+    echo "::error:: 两处必须字面一致 —— 而构建后才比对的话，错的包已经打出来了" >&2
+    return 1
+  fi
   local so base dir f b ver
   ver="$(version_of "$id")"
   [ -n "$ver" ] || die "${id} 没有版本" "scripts/component-sources.json 里查不到"
