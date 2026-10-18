@@ -85,6 +85,10 @@ object PreinstalledPieces {
         if (verDir.isDirectory && File(verDir, entry).isFile) {
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
+            runCatching {
+                File(verDir, lobos.services.supply.ProgramDir.MANIFEST_NAME)
+                    .writeText(meta.toString())
+            }
             register(ctx, id, version, verDir.absolutePath, entry, meta)
             return true
         }
