@@ -39,11 +39,23 @@ jobs:
           OTAG="$(bash scripts/toolchain/cache-key.sh tag openssl)"
           OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
           mkdir -p dist
-          if ! bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET" "lib/libssl.so"; then
-            echo "::error title=openssl 还没有可复用的固化包::先构建 openssl："
-            echo "::error::  gh workflow run build-openssl.yml"
-            exit 1
-          fi
+          WAIT_S=900
+          WAITED=0
+          while true; do
+            if bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET" "lib/libssl.so"; then
+              echo "[crypto] openssl 到位（等了 ${WAITED}s）"
+              break
+            fi
+            if [ "$WAITED" -ge "$WAIT_S" ]; then
+              echo "::error title=等了 ${WAIT_S}s 还没有 openssl 的固化包::等的是什么：tag=$OTAG asset=$OASSET"
+              echo "::error:: 缺的是什么：那个 Release tag 上还没有这个 asset（openssl 那一件还没固化完，或指纹变了要重固化）"
+              echo "::error:: 该等的不是这一件自己编 —— crypto 取的是 openssl 里的 libcrypto.so，它编不出来"
+              exit 1
+            fi
+            echo "[crypto] openssl 还没就位，等 30s（已等 ${WAITED}s / 上限 ${WAIT_S}s）"
+            sleep 30
+            WAITED=$((WAITED + 30))
+          done
           bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
           rm -rf .openssl-pkg && mkdir -p .openssl-pkg
           unzip -qq -o "dist/$OASSET" -d .openssl-pkg
