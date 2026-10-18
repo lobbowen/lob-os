@@ -72,7 +72,7 @@ object PackageInstaller {
 
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
-        if (reg != null && ProgramIndex.isPiece(reg)) {
+        if (reg != null && ProgramIndex.isPiece(ctx, reg)) {
             Journal.note(ctx, "package", false, "拒绝回滚基础设施", "name=" + name + "（随 APK 交付，无可回滚基线）")
             return false
         }
@@ -95,7 +95,7 @@ object PackageInstaller {
 
     fun uninstall(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
-        if (reg != null && ProgramIndex.isPiece(reg)) {
+        if (reg != null && ProgramIndex.isPiece(ctx, reg)) {
             Journal.note(ctx, "package", false, "拒绝卸载基础设施", "name=" + name + "（随 APK 交付，不可卸载）")
             return false
         }
@@ -149,7 +149,7 @@ object PackageInstaller {
         if (runtime.isBlank()) return null
         val range = req.optString("range", "").trim()
         val installed = ProgramIndex.all(ctx)
-            .firstOrNull { it.id == runtime && it.level == Level.PIECE }
+            .firstOrNull { it.id == runtime && it.levelOf(ctx) == Level.PIECE }
             ?.let { installedVersion(ctx, runtime) ?: it.version }
             ?.takeIf { it.isNotBlank() }
         if (installed == null) {

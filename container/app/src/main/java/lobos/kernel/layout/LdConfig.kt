@@ -20,7 +20,7 @@ object LdConfig {
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
         val idx = lobos.services.reg.ProgramIndex.all(ctx)
-            .filter { lobos.services.reg.ProgramIndex.isPiece(it) }
+            .filter { lobos.services.reg.ProgramIndex.isPiece(ctx, it) }
             .sortedBy { it.id }
         val pieces = idx.map { File(opt, it.id) }
         var linked = 0
@@ -143,7 +143,7 @@ object LdConfig {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
             for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
-                if (!lobos.services.reg.ProgramIndex.isPiece(e)) continue
+                if (!lobos.services.reg.ProgramIndex.isPiece(ctx, e)) continue
                 out += declaredBins(ctx, e.id)
             }
             return out.distinct()

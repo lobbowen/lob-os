@@ -20,7 +20,7 @@ object ShellEntry {
     }
 
     fun resolve(ctx: Context): File? {
-        val pieces = ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(it) }
+        val pieces = ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(ctx, it) }
 
         val shell = pieces.firstOrNull { it.role == PieceScan.SHELL || it.id == "bash" }
         if (shell != null) {

@@ -75,7 +75,6 @@ data class UnitEntry(
 
         val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
 
-        val level: Level get() = Level.PIECE
 
 }
 
@@ -243,7 +242,7 @@ object ProgramIndex {
     }
 
     @Synchronized
-    fun isPiece(e: UnitEntry): Boolean = e.level == Level.PIECE
+    fun isPiece(ctx: Context, e: UnitEntry): Boolean = e.levelOf(ctx) == Level.PIECE
 
     fun isPiece(ctx: Context, id: String): Boolean =
         get(ctx, id)?.levelOf(ctx)?.let { it == Level.PIECE } ?: false
@@ -261,10 +260,10 @@ object ProgramIndex {
         all(ctx).map { Installed(it.id, it.version, it.sha256, it.stateDir) }
 
     fun installedAt(ctx: Context, level: Level): List<Installed> =
-        all(ctx).filter { it.level == level }.map { Installed(it.id, it.version, it.sha256, it.stateDir) }
+        all(ctx).filter { it.levelOf(ctx) == level }.map { Installed(it.id, it.version, it.sha256, it.stateDir) }
 
     @Synchronized
-    fun byLevel(ctx: Context, level: Level): List<UnitEntry> = all(ctx).filter { it.level == level }
+    fun byLevel(ctx: Context, level: Level): List<UnitEntry> = all(ctx).filter { it.levelOf(ctx) == level }
 
     @Synchronized
     fun upsert(ctx: Context, entry: UnitEntry) {

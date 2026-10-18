@@ -100,7 +100,7 @@ object ProgramStatusHub {
         if (active == UnitState.Active.FAILED) " 退出码=" + (unit?.exitCode ?: -1) else ""
 
     fun statusOf(ctx: Context, id: String): ProgramStatus {
-        val entry = ProgramIndex.get(ctx, id)?.takeIf { it.level == Level.PROGRAM }
+        val entry = ProgramIndex.get(ctx, id)?.takeIf { it.levelOf(ctx) == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
         val running = entry != null && entry.pid > 0 &&
             ProcessLedger.isOwnedAlive(entry.pid, entry.starttime)

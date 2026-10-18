@@ -52,7 +52,7 @@ object QuickAppRegistry {
     }
 
     fun listed(ctx: Context): List<UnitEntry> =
-        ProgramIndex.all(ctx).filter { it.level == lobos.services.reg.Level.PROGRAM && isQuickApp(ctx, it.id) }
+        ProgramIndex.all(ctx).filter { it.levelOf(ctx) == lobos.services.reg.Level.PROGRAM && isQuickApp(ctx, it.id) }
 
     private fun uiOf(ctx: Context, id: String): Ui {
         val root = ProgramManager.stateDirOf(ctx, id)

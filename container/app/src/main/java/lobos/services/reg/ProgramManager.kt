@@ -75,7 +75,7 @@ object ProgramManager {
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
-            if (ProgramIndex.isPiece(e)) return infraSourceFile(ctx, e)
+            if (ProgramIndex.isPiece(ctx, e)) return infraSourceFile(ctx, e)
             if (e.stateDir.isNotBlank()) return File(ctx.filesDir, e.stateDir)
         }
         return File(ProgramRegistry.programRoot(ctx), id)
@@ -89,7 +89,7 @@ object ProgramManager {
     private fun realityOf(ctx: Context, e: UnitEntry): Reality? {
         val dir = stateDirOf(ctx, e.id)
         val landed = when {
-            ProgramIndex.isPiece(e) -> infraSourceFile(ctx, e).exists()
+            ProgramIndex.isPiece(ctx, e) -> infraSourceFile(ctx, e).exists()
             else -> dir.isDirectory
         }
         val version = if (landed) {
@@ -97,7 +97,7 @@ object ProgramManager {
         } else ""
         return Reality(
             id = e.id,
-            level = e.level,
+            level = e.levelOf(ctx),
             installed = landed,
             version = version,
             evidence = if (landed) "落位=" + dir.absolutePath else "落位缺失=" + dir.absolutePath,
@@ -156,7 +156,7 @@ object ProgramManager {
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (ProgramIndex.isPiece(e)) continue
+            if (ProgramIndex.isPiece(ctx, e)) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue

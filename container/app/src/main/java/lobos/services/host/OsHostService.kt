@@ -72,7 +72,7 @@ class OsHostService : Service() {
                 RuntimeDiagnostics.append(
                     this, "host", true, "宿主不替任何应用决定生死（I1）",
                     "程序表由宿主程序存储拥有；此处只观测：current=" + (ver ?: "无") +
-                        "；已登记程序数=" + lobos.services.reg.ProgramIndex.all(this).count { it.level == lobos.services.reg.Level.PROGRAM },
+                        "；已登记程序数=" + lobos.services.reg.ProgramIndex.all(this).count { it.levelOf(this) == lobos.services.reg.Level.PROGRAM },
                 )
             }
             lobos.services.power.DozeBackstop.schedule(this)
