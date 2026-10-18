@@ -146,7 +146,7 @@ object PreinstalledPieces {
                     stateDir = stateDir,
                     enabled = true,
                     assetEntry = entry,
-                    role = meta.optString("form", "exec"),
+                    role = meta.optString("form", ""),
                     required = meta.optBoolean("essential", false),
                     capabilities = emptyList(),
                     requires = (meta.optJSONArray("requires") ?: org.json.JSONArray()).let { arr ->
