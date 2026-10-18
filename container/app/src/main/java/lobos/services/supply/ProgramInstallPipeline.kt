@@ -181,6 +181,11 @@ object ProgramInstallPipeline {
         }
         dir.mkdirs()
 
+        val landedMeta = pieceMetaOf(context, dir, safeVer)
+        runCatching {
+            File(dest, lobos.services.supply.ProgramDir.MANIFEST_NAME)
+                .writeText(landedMeta.raw())
+        }
         val binDir = File(dest, "bin")
         binDir.listFiles()?.forEach { f ->
             if (f.isFile) runCatching { ExecBits.apply(f) }
@@ -260,6 +265,7 @@ object ProgramInstallPipeline {
     }
 
     private class PieceMeta(private val o: JSONObject?) {
+        fun raw(): String = o?.toString() ?: "{}"
         fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
         fun roleOrEmpty(): String = when (o?.optString("form", "")?.trim()) {
             "lib" -> "library"
