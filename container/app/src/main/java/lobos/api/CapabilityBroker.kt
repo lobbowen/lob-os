@@ -976,7 +976,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val report = runCatching { PieceProvisioner.prepare(this@CapabilityBroker) }.getOrNull()
             JSONObject().apply {
                 put("present", report != null)
-                put("snapshot", report?.toJson() ?: JSONObject.NULL)
+                put("snapshot", report?.toJson(this@CapabilityBroker) ?: JSONObject.NULL)
             }
         },
     )

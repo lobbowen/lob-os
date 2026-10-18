@@ -30,19 +30,19 @@ object ProgramManager {
     ) {
         val installedCount: Int get() = realities.values.count { it.installed }
 
-        fun toJson(): JSONObject = JSONObject().apply {
+        fun toJson(ctx: Context): JSONObject = JSONObject().apply {
             put("updatedAt", updatedAt)
             put("total", entries.size)
             put("installedCount", installedCount)
             put("byLevel", JSONObject().apply {
-                for (l in Level.entries) put(l.name, entries.count { it.level == l })
+                for (l in Level.entries) put(l.name, entries.count { it.levelOf(ctx) == l })
             })
             put("entries", JSONArray().apply {
                 for (e in entries.sortedBy { it.id }) {
                     val r = realities[e.id]
                     put(JSONObject().apply {
                         put("id", e.id)
-                        put("level", e.level.name)
+                        put("level", e.levelOf(ctx).name)
                         put("enabled", e.enabled)
                         put("declaredVersion", e.version)
                         put("currentVersion", r?.version ?: "")
@@ -52,7 +52,7 @@ object ProgramManager {
                         put("stateDir", e.stateDir)
                         put("required", e.required)
                         put("evidence", r?.evidence ?: "")
-                        if (e.level == Level.PROGRAM) {
+                        if (e.levelOf(ctx) == Level.PROGRAM) {
                             put("role", e.role)
                             put("resident", e.resident)
                             put("restart", e.restart.name)
@@ -119,7 +119,7 @@ object ProgramManager {
     }
 
     @Synchronized
-    fun status(ctx: Context): JSONArray = snapshot(ctx).toJson().optJSONArray("entries") ?: JSONArray()
+    fun status(ctx: Context): JSONArray = snapshot(ctx).toJson(ctx).optJSONArray("entries") ?: JSONArray()
 
     @Synchronized
     fun reconcile(ctx: Context) {
@@ -131,7 +131,7 @@ object ProgramManager {
                 put("updatedAt", snap.updatedAt)
                 put("total", snap.entries.size)
                 put("installedCount", snap.installedCount)
-                put("entries", snap.toJson().optJSONArray("entries") ?: JSONArray())
+                put("entries", snap.toJson(ctx).optJSONArray("entries") ?: JSONArray())
             },
         )
         val missing = snap.entries.filter { snap.realityOf(it)?.installed == false }
