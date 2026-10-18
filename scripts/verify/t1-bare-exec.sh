@@ -50,26 +50,28 @@ for name in "$@"; do
        rc_all=1; continue ;;
   esac
   need="$("$READELF" -W -d "$ent" 2>/dev/null | sed -n "s/.*NEEDED.*\[\(.*\)\]/\1/p" | tr "\n" " ")"
-  ERRF="${TMPDIR:-/tmp}/t1.$$.$$.err"
   so=""
   se=""
   code=0
-  if [ -n "${T1_MEMCAP:-}" ]; then
-    so="$("$ent" --version 2>&1)"
-    code=$?
-    se="（两个流合并：T1_MEMCAP=1）"
-  elif command -v python3 >/dev/null 2>&1; then
+  SPLIT=0
+  ERRF=""
+  if [ -z "${T1_NOPY:-}" ] && command -v python3 >/dev/null 2>&1; then
     marked="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('SO:'+p.stdout.decode(errors='replace')[:400]+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n'+'RC:'+str(p.returncode)+'\n')" "$ent" 2>/dev/null)"
     if printf "%s" "$marked" | grep -q "^RC:"; then
       so="$(printf "%s" "$marked" | sed -n "s/^SO://p" | head -3 | tr "\n" "|")"
       se="$(printf "%s" "$marked" | sed -n "s/^SE://p" | head -3 | tr "\n" "|")"
       code="$(printf "%s" "$marked" | sed -n "s/^RC://p" | head -1)"
-    else
-      so="$("$ent" --version 2>"$ERRF")"
-      code=$?
-      se="$(cat "$ERRF" 2>/dev/null | head -3 | tr "\n" "|")"
-      rm -f "$ERRF" 2>/dev/null
-    fi  fi
+      SPLIT=1
+    fi
+  fi
+  if [ "$SPLIT" = "0" ]; then
+    both="$("$ent" --version 2>&1)"
+    code=$?
+    so="$both"
+    se="★★ 两个流不可分（无 python3 捕获）★★ —— 这一支只判退出码，"
+    se="$se 不可用它判「它说了什么」"
+  fi
+  echo "  捕获方式：$( [ "$SPLIT" = 1 ] && echo "两个流分开（内存）" || echo "**合并流，只判退出码**" )"
   echo "  运行期 --version 退出码=$code"
   echo "  stdout：$(printf "%s" "$so" | head -2 | tr "\n" "|")"
   echo "  stderr：${se:-（空）}"
