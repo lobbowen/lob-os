@@ -205,6 +205,15 @@ object PieceScan {
         return null
     }
 
+    fun runnableOnDisk(ctx: Context, id: String): Boolean {
+        val dir = landedPieceDir(ctx, id) ?: return false
+        val bin = File(dir, "bin")
+        if (!bin.isDirectory) return false
+        return bin.listFiles()?.any { f ->
+            f.isFile && lobos.kernel.elf.ExecBits.isRunnable(f)
+        } == true
+    }
+
     fun isLandedPiece(ctx: Context, id: String): Boolean =
         landedPieceDir(ctx, id) != null
 

@@ -8,6 +8,8 @@ import org.json.JSONObject
 import lobos.kernel.layout.SystemDirs
 import lobos.kernel.fs.StateFiles
 import lobos.services.supervise.Backoff
+import lobos.services.log.RuntimeDiagnostics
+import lobos.services.supply.PieceScan
 
 enum class Level { PIECE, PROGRAM }
 
