@@ -425,7 +425,16 @@ object ProgramInstallPipeline {
                 "dest=" + dest.absolutePath,
             )
         }
+        val rootCanon = runCatching { dest.canonicalFile.path }.getOrDefault(dest.absolutePath)
         val target = File(dest, entryRel)
+        val tCanon = runCatching { target.canonicalFile.path }.getOrDefault(target.absolutePath)
+        if (tCanon != rootCanon && !tCanon.startsWith(rootCanon + File.separator)) {
+            RuntimeDiagnostics.append(
+                context, "linkEntry", false, "entry 越出落位目录，已拒绝",
+                "entry=" + entryRel + "  target=" + tCanon + "  root=" + rootCanon,
+            )
+            return false
+        }
         if (!target.isFile) return false
         if (entryRel.startsWith("bin/")) {
             runCatching { lobos.kernel.elf.ExecBits.apply(target) }

@@ -29,7 +29,7 @@ function readJson(p) {
 const sources = readJson(path.join(ROOT, 'scripts/component-sources.json')).sources || {};
 const src = sources[id] || {};
 
-if (!/^(bin|lib)\//.test(entry)) {
+if (!/^(bin|lib)\//.test(entry) || entry.includes('..') || entry.includes('\\\\')) {
   console.error('::error title=' + id + ' entry 形状不对::' + entry + ' —— 应为 bin/<名> 或 lib/<名>.so');
   process.exit(1);
 }
