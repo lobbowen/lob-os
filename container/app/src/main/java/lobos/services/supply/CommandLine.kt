@@ -2,7 +2,6 @@ package lobos.services.supply
 
 import android.content.Context
 import java.io.File
-import lobos.kernel.ipc.PtySession
 
 object CommandLine {
 
@@ -24,23 +23,17 @@ object CommandLine {
         return null
     }
 
-    fun run(ctx: Context, line: String, timeoutMs: Long = 10_000): String {
-        val hit = resolve(ctx, line) ?: return ""
-        val pty = lobos.kernel.compat.Compat.ptyHost(ctx) ?: return ""
-        val s = PtySession.openSession(
-            ctx,
-            pty,
-            listOf(lobos.services.supply.ShellEntry.require(ctx).absolutePath, "-i"),
-            timeoutMs = 5_000,
+    fun run(ctx: Context, line: String, timeoutMs: Long = 10_000): lobos.kernel.ipc.LocalExec.Outcome {
+        val hit = resolve(ctx, line) ?: return lobos.kernel.ipc.LocalExec.Outcome(
+            false, -1, "", "", lobos.kernel.ipc.LocalExec.Via.PLAIN, "usr/bin 下没有这个名字",
         )
-        val out = StringBuilder()
-        s.onData = { d -> synchronized(out) { out.append(String(d, Charsets.UTF_8)) } }
-        s.write(hit.name + "\n")
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline && !s.isClosed) {
-            Thread.sleep(60)
-        }
-        s.close()
-        synchronized(out) { return out.toString() }
+        return lobos.kernel.ipc.LocalExec.run(
+            ctx,
+            listOf(hit.path, "--version"),
+            emptyMap(),
+            null,
+            timeoutMs,
+            true,
+        )
     }
 }
