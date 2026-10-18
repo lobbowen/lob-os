@@ -72,6 +72,31 @@ for name in "$@"; do
     se="$se 不可用它判「它说了什么」"
   fi
   echo "  捕获方式：$( [ "$SPLIT" = 1 ] && echo "两个流分开（内存）" || echo "**合并流，只判退出码**" )"
+  code2=-1
+  se2=""
+  if [ "$SPLIT" = "1" ]; then
+    marked2="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('RC:'+str(p.returncode)+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n')" "$ent" 2>/dev/null)"
+    if printf "%s" "$marked2" | grep -q "^RC:"; then
+      code2="$(printf "%s" "$marked2" | sed -n "s/^RC://p" | head -1)"
+      se2="$(printf "%s" "$marked2" | sed -n "s/^SE://p" | head -3 | tr "\n" "|")"
+    fi
+  fi
+  if [ "$code2" -ge 0 ] 2>/dev/null; then
+    echo "  第二次执行退出码=$code2（第一次=$code）"
+    if [ "$code2" = "$code" ]; then
+      echo "  第二信号：两次退出码一致 — 由两次独立的 python 进程各读一次"
+      echo "  问二 能不能跑起来：$( [ "$code" -eq 0 ] && echo 能 || echo 不能 ) —— ★ ★ 且两次一致"
+      if [ "$code" -eq 0 ]; then echo "  [绿]"; else echo "  [红] 落位在，而它跑不起来（两次一致）"; fi
+      continue
+    else
+      echo "  [红] 两次退出码不一致：$code 与 $code2 —— 而判据自己的执行不确定，结论不可采信"
+      rc_all=2; continue
+    fi
+  else
+    echo "  第二信号：拿不到（未分开捕获）—— ★ ★ 而这一格只能记「未验」"
+    echo "  问二 能不能跑起来：未验（无独立第二信号）"
+    rc_all=2; continue
+  fi
   echo "  运行期 --version 退出码=$code"
   echo "  stdout：$(printf "%s" "$so" | head -2 | tr "\n" "|")"
   echo "  stderr：${se:-（空）}"
