@@ -18,7 +18,7 @@ object CommandLine {
         val t = token.trim()
         if (t.isEmpty()) return null
         val first = t.split(Regex("\\s+"))[0]
-        if (first.isEmpty() || first.indexOf(39) == 39) return null
+        if (first.isEmpty() || first.contains('\'')) return null
         val f = File(binDir(ctx), first)
         if (f.isFile) return Hit(first, f.absolutePath, true)
         return null
