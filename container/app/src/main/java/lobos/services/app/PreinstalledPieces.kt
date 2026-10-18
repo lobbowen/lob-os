@@ -145,6 +145,7 @@ object PreinstalledPieces {
                     version = version,
                     stateDir = stateDir,
                     enabled = true,
+                    desired = lobos.services.reg.Desired.RUNNING,
                     assetEntry = entry,
                     role = meta.optString("form", ""),
                     required = meta.optBoolean("essential", false),
