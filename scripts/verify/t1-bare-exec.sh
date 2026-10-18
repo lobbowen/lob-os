@@ -50,19 +50,26 @@ for name in "$@"; do
        rc_all=1; continue ;;
   esac
   need="$("$READELF" -W -d "$ent" 2>/dev/null | sed -n "s/.*NEEDED.*\[\(.*\)\]/\1/p" | tr "\n" " ")"
-  ERRF="${TMPDIR:-/tmp}/t1.$$.err"
-  if ! ( : > "$ERRF" ) 2>/dev/null; then
-    echo "  [判据缺陷] stderr 捕获失败：$ERRF 不可写"
-    echo "       事实：该路径创建失败 —— 而这不是被测对象的问题"
-    echo "       设一个可写的 TMPDIR 再跑"
-    echo "  问一 落位在不在：是在"
-    echo "  问二 能不能跑起来：未验（判据自己跑不起来）"
-    rc_all=2; continue
-  fi
-  so="$("$ent" --version 2>"$ERRF")"
-  code=$?
-  se="$(cat "$ERRF" 2>/dev/null | head -3 | tr "\n" "|")"
-  rm -f "$ERRF" 2>/dev/null
+  ERRF="${TMPDIR:-/tmp}/t1.$$.$$.err"
+  so=""
+  se=""
+  code=0
+  if [ -n "${T1_MEMCAP:-}" ]; then
+    so="$("$ent" --version 2>&1)"
+    code=$?
+    se="（两个流合并：T1_MEMCAP=1）"
+  elif command -v python3 >/dev/null 2>&1; then
+    marked="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('SO:'+p.stdout.decode(errors='replace')[:400]+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n'+'RC:'+str(p.returncode)+'\n')" "$ent" 2>/dev/null)"
+    if printf "%s" "$marked" | grep -q "^RC:"; then
+      so="$(printf "%s" "$marked" | sed -n "s/^SO://p" | head -3 | tr "\n" "|")"
+      se="$(printf "%s" "$marked" | sed -n "s/^SE://p" | head -3 | tr "\n" "|")"
+      code="$(printf "%s" "$marked" | sed -n "s/^RC://p" | head -1)"
+    else
+      so="$("$ent" --version 2>"$ERRF")"
+      code=$?
+      se="$(cat "$ERRF" 2>/dev/null | head -3 | tr "\n" "|")"
+      rm -f "$ERRF" 2>/dev/null
+    fi  fi
   echo "  运行期 --version 退出码=$code"
   echo "  stdout：$(printf "%s" "$so" | head -2 | tr "\n" "|")"
   echo "  stderr：${se:-（空）}"
