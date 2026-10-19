@@ -17,6 +17,8 @@ object ManifestSchema {
     const val SC_ENTRY = "entry"
     const val SC_ARGS = "args"
     const val SC_ENV = "env"
+    const val SC_ESSENTIAL = "essential"
+    const val SC_ROLE = "role"
     const val SC_LIFECYCLE = "lifecycle"
     const val SC_HTTP = "http"
     const val SC_REQUIRES = "requires"
@@ -77,6 +79,14 @@ object ManifestSchema {
         val entry = m.optString(SC_ENTRY, "").trim()
         if (entry.isBlank()) errs += "缺 $SC_ENTRY"
         else if (entry.startsWith("/") || entry.contains("..")) errs += "$SC_ENTRY 必须是相对路径且不得含 .."
+
+        if (m.has(SC_ESSENTIAL) && m.opt(SC_ESSENTIAL) !is Boolean) {
+            errs += "$SC_ESSENTIAL 必须是布尔（true/false）"
+        }
+        if (m.has(SC_ESSENTIAL) && !m.optBoolean(SC_ESSENTIAL, false) &&
+            m.optString(SC_ROLE, "").isBlank()) {
+            errs += "$SC_ESSENTIAL=false 时必须写 $SC_ROLE —— 说清「缺了会怎样」"
+        }
 
         m.optJSONArray(SC_ARGS)?.let { a ->
             for (i in 0 until a.length()) if (a.isNull(i)) errs += "$SC_ARGS 第 $i 项为 null"
