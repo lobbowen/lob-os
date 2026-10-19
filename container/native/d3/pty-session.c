@@ -172,28 +172,36 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
     return -1;
   }
     if (pid == 0) {
+        // 逐步留痕：崩溃在哪一步之后一目了然。走 note_raw（diag_to 双路：全局诊断 fd + stderr），
+        // 不走裸 send_frame(out_fd, …) —— 那个 fd 只有 native 宿主在读，宿主不看就等于没写。
+        note_raw("child: fork 已做");
         if (setsid() < 0) child_fail(out_fd, 141, "setsid 失败");
+        note_raw("child: setsid 已做");
         int ctl = fcntl(out_fd, F_DUPFD_CLOEXEC, 10);
         if (ctl < 0) ctl = out_fd;
+        note_raw("child: fcntl 控制口已留");
         int slave = open(sn, O_RDWR);
         if (slave < 0) child_fail(ctl, 145, "open 从设备失败");
+        note_raw("child: open 从设备已做");
         if (ioctl(slave, TIOCSCTTY, 0) < 0) child_fail(ctl, 146, "TIOCSCTTY 失败");
+        note_raw("child: TIOCSCTTY 已做");
         if (dup2(slave, 0) < 0 || dup2(slave, 1) < 0 || dup2(slave, 2) < 0) child_fail(ctl, 147, "dup2 到从设备失败");
+        note_raw("child: dup2 到从设备已做");
         if (slave > 2) close(slave);
         close(master);
         {
             char tb[512];
             int tn = snprintf(tb, sizeof tb,
-                "exec 前 argv[0]=%s argv[1]=%s slave=%s argc=%d",
+                "child: exec 即将做 argv[0]=%s argv[1]=%s slave=%s argc=%d",
                 argc > 0 ? argv[0] : "(无)", argc > 1 ? argv[1] : "(无)",
                 sn, argc);
-            if (tn > 0) send_frame(out_fd, FRAME_NOTE, 0, tb, (uint32_t)tn + 1);
-            diag_raw(tb);
+            if (tn > 0) note_raw(tb);
         }
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGPIPE, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
+        note_raw("child: signal 已做");
         // ET_DYN 要经 linker64 驱动 —— 唯一真相源是宿主侧 ExecEntry.argv（它读文件头定形态）。
         // 原来这里也做一次替换，判据问 argv[0] 里有没有 "/files/opt/"，而那时 argv[0]
         // 已经是 linker64 自己（宿主先替过），于是 under 恒 0 —— 同一件事两套逻辑、
