@@ -6,10 +6,16 @@ cd "$HERE/../.."
 ROOT_DIR=$(pwd)
 
 TOOL="${1:?需要工具名}"
-VER=$(cat "dist/${TOOL}.version" 2>/dev/null || echo unknown)
+# 版本号读不到就报缺，不编一个值（那个值会一路进文件名与 meta，
+# 让「本轮编的」与「上一次留下的」分不出来）。范式照 :13 与 :21。
+VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
+[ -n "$VER" ] || { echo "::error title=缺版本号::dist/${TOOL}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
 RAW="work/.component-${TOOL}-raw.zip"
 mkdir -p "$(dirname "$RAW")"
 ENTRY=$(bash "$ROOT_DIR/scripts/registry/read-component-entry.sh" "$TOOL")
+# 两处版本号来源：钉值表（声明）与本产物那份（事实）。不一致就是发布出了问题。
+PINNED=$(node -e 'const t=require(process.argv[1]);const s=(t.sources||{})[process.argv[2]]||{};process.stdout.write(String(s.version||""))' "$ROOT_DIR/scripts/component-sources.json" "$TOOL")
+[ -z "$PINNED" ] || [ "$PINNED" = "$VER" ] || { echo "::error title=版本号两处不一致::钉值表 component-sources.json 写的是 $PINNED，而本产物那份写的是 $VER"; exit 1; }
 [ -f "dist/$ENTRY" ] || { echo "::error title=缺件::dist/$ENTRY 不在（清单入口声明=$ENTRY），先构建"; exit 1; }
 STAGE=$(mktemp -d)
 cp -a dist/. "$STAGE/"
