@@ -127,6 +127,7 @@ static void child_fail(int out_fd, int line, const char *what) {
     int e = errno;
     int n = snprintf(buf, sizeof(buf), "line %d %s：%s(%d)", line, what, strerror(e), e);
     if (n > 0) send_frame(out_fd, FRAME_ERROR, 0, buf, (uint32_t)n);
+    diag_raw(buf);
     _exit(127);
 }
 
@@ -180,6 +181,15 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         if (dup2(slave, 0) < 0 || dup2(slave, 1) < 0 || dup2(slave, 2) < 0) child_fail(ctl, 147, "dup2 到从设备失败");
         if (slave > 2) close(slave);
         close(master);
+        {
+            char tb[512];
+            int tn = snprintf(tb, sizeof tb,
+                "exec 前 argv[0]=%s argv[1]=%s slave=%s argc=%d",
+                argc > 0 ? argv[0] : "(无)", argc > 1 ? argv[1] : "(无)",
+                sn, argc);
+            if (tn > 0) send_frame(out_fd, FRAME_NOTE, 0, tb, (uint32_t)tn + 1);
+            diag_raw(tb);
+        }
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGPIPE, SIG_DFL);
