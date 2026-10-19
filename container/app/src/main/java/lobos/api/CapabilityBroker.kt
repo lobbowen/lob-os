@@ -997,6 +997,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
         JSONObject().put("sessions", arr).put("count", arr.length())
     },
+    // preferPty=false 走无 PTY 通路（LocalExec.runPlain）。今天用它做判别：
+    // 同一条命令在 PTY 与非 PTY 下各跑一次，退出码与 stderr 一起回 ——
+    // 只在 PTY 下崩（exit 139）就把范围收在 PTY 那侧，不在 argv 替换那一侧。
     "sys.tty.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, programId ->
         val cmd = p.optString("cmd", "")
         if (cmd.isBlank()) {
@@ -1007,6 +1010,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             this@CapabilityBroker,
             listOf(sh.absolutePath, "-c", cmd),
             timeoutMs = p.optLong("timeoutMs", 10_000L),
+            preferPty = !p.optBoolean("noPty", false),
         )
         execAsJson(r)
     },
