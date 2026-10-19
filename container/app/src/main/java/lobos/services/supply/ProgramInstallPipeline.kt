@@ -442,9 +442,11 @@ object ProgramInstallPipeline {
             return false
         }
         if (!target.isFile) return false
-        if (entryRel.startsWith("bin/")) {
-            runCatching { lobos.kernel.elf.ExecBits.apply(target) }
-        }
+        // entry 指的那个文件要能跑：清单说它是入口，系统就按它启动。真机读数——
+        // bash/rg 的 entry 是 bin/ 下的（-rwx--x--x），其余六件是 lib/ 下的 .so（-rw------），
+        // 而原来只给 bin/ 补执行位 ⇒ 那六件 spawn 得 error=13。
+        // 只补 entry 指向的那一个文件，不是同目录下所有 .so（.so 保持 600 不改）。
+        runCatching { lobos.kernel.elf.ExecBits.apply(target) }
         val primary = entryRel.substringAfterLast("/")
         val dir = if (entryRel.startsWith("lib/")) {
             lobos.kernel.layout.PrefixProvisioner.libDir(context)
