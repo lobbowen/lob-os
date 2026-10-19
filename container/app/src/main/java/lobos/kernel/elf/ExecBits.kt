@@ -47,12 +47,19 @@ object ExecBits {
         }
     }
 
-    /** 按 01 今天的判别式：**这一份字节能被当程序调起吗？**
-     *  形态（ET_EXEC 或 ET_DYN+PT_INTERP）**且** owner 有执行位。
-     *  ★ 而 `formOf` 单独回答形态那一问，`canExecute` 单独回答权限那一问 ——
-     *  两把尺分开，谁也不替谁答（§10.1:136 错的是「一个字段回答两个问题」）。 */
+    /** 按 01 今天的判别式（§10.1:119）：**这一份字节能被当程序调起吗？**
+     *  ★ 只问形态：ET_EXEC，或 ET_DYN **且**有 PT_INTERP。
+     *
+     *  ★ **缺陷名（C-102）把执行位混进了形态那一问**（上一版这里还写了 `&& file.canExecute()`）：
+     *    · linker64 是**我们显式当入口调**的（`ExecEntry.kt:59` 把 SYSTEM_LINKER 放进 argv[0]；
+     *      `PtySession.kt:307-313` 连 PTY 宿主自己也是经它起的）⇒ 那份字节是被**映射**的，
+     *      映射的权限由链接器决定，不是那个文件的权限位。
+     *    · 真机读数（07）：jq 那件入口指向 `lib/liblobosjq.so`（-rw-------）而 **exit=0 能调起**。
+     *    · 另一侧：crypto/curl/openssl/zlib 四件 **PT_INTERP 全无**（本机 readelf 四件均 0），
+     *      backtrace 是 `trying to execute non-executable memory` —— 那不是权限位造成的。
+     *  ⇒ 执行位与形态是**两把尺**；形态这把只读 ELF（§10.1:119「不看文件名、不看目录名」）。 */
     fun isRunnableByForm(file: File): Boolean = when (formOf(file)) {
-        Form.Exec, Form.DynInterp -> file.canExecute()
+        Form.Exec, Form.DynInterp -> true
         else -> false
     }
 }

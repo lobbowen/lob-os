@@ -115,10 +115,18 @@ object ProgramRegistry {
             schemaErrors.isNotEmpty() -> schemaErrors.first()
             !entryFile.exists() -> "入口不存在：" + entryFile.absolutePath
             // 存在不等于可执行：真机上 busybox 的 entry 是 lib/libbusybox.so，
-            // 那个文件在，但 spawn 它得到 error=13。判据与 PieceScan.roleOf 用同一把。
-            !lobos.kernel.elf.ExecBits.isRunnable(entryFile) ->
-                "入口不可执行：" + entryFile.absolutePath +
-                    "（entry 指向一个不可执行的文件 —— 它是库还是程序由落位形态决定，不由清单的 entry 决定）"
+            // 那个文件在，但 spawn 它得到 error=13。
+            //
+            // ★ **缺陷名（C-102）两把尺并存**：这一处原来用 `ExecBits.isRunnable`（含 owner 执行位），
+            //   而 PieceScan 用 `isRunnableByForm`（只问 ELF 形态）⇒ 同一个问题两处不同答案。
+            //   真机读数（07）：jq 那件 entry 指向 `lib/liblobosjq.so`（-rw-------）而 **exit=0 能调起** ——
+            //   linker64 是我们显式当入口调的（ExecEntry.kt:59 把 SYSTEM_LINKER 放进 argv[0]），
+            //   那份字节是被**映射**的，映射权限由链接器定，不由文件权限位定。
+            //   ⇒ 这一处与 PieceScan 统一用形态那一把（§10.1:119 只读 ELF，不看文件名/目录名/form）。
+            !lobos.kernel.elf.ExecBits.isRunnableByForm(entryFile) ->
+                "入口不是程序形态：" + entryFile.absolutePath +
+                    "（这份字节能不能当程序跑由它自己的 ELF 头回答：ET_EXEC 或 ET_DYN+PT_INTERP；" +
+                    "不看文件名、不看目录名、不看清单声明 —— 见 §10.1:119）"
             else -> null
         }
         val note = if (args == null) "清单未声明 args：按空参数启动（需要子命令的程序会打印用法并退出，请安装携带 args 的新包）" else null

@@ -250,13 +250,14 @@ object PieceScan {
         return null
     }
 
+    /** 这一件在盘上**有没有可执行形态的那份字节**（`UnitEntry.levelOf` 读的就是它）。
+     *  ★ 与 [roleOf] 同一把尺（形态），同一处扫描（任何一层，不只 `bin/`）——
+     *    缺陷名（C-102）同一问题两处读法：`levelOf` 走这一条、`roleOf` 走 roleOf，
+     *    而这一条原来只看 `bin/` 且用的是含执行位的那把。
+     *  ★ 找不到落位目录时答 false（没有字节就没有答案），不猜。 */
     fun runnableOnDisk(ctx: Context, id: String): Boolean {
         val dir = landedPieceDir(ctx, id) ?: return false
-        val bin = File(dir, "bin")
-        if (!bin.isDirectory) return false
-        return bin.listFiles()?.any { f ->
-            f.isFile && lobos.kernel.elf.ExecBits.isRunnable(f)
-        } == true
+        return runnableEntryOf(dir) != null
     }
 
     fun isLandedPiece(ctx: Context, id: String): Boolean =
