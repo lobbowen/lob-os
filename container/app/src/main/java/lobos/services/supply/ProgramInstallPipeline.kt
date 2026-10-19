@@ -183,8 +183,7 @@ object ProgramInstallPipeline {
 
         val landedMeta = pieceMetaOf(context, dir, safeVer)
         runCatching {
-            File(dest, lobos.services.supply.ProgramDir.MANIFEST_NAME)
-                .writeText(landedMeta.raw())
+            ManifestWriter.write(dest, landedMeta, safeVer, PieceScan.roleFromDisk(context, spec.programId))
         }
         val binDir = File(dest, "bin")
         binDir.listFiles()?.forEach { f ->
@@ -266,6 +265,7 @@ object ProgramInstallPipeline {
 
     private class PieceMeta(private val o: JSONObject?) {
         fun raw(): String = o?.toString() ?: "{}"
+
         fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
 
         fun libNameOrEmpty(): String = entry().substringAfterLast("/", "")

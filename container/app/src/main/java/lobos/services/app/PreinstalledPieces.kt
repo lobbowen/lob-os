@@ -86,8 +86,9 @@ object PreinstalledPieces {
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
             val manifestWritten = runCatching {
-                File(verDir, lobos.services.supply.ProgramDir.MANIFEST_NAME)
-                    .writeText(meta.toString())
+                lobos.services.supply.ManifestWriter.write(
+                    verDir, meta, version, lobos.services.supply.PieceScan.roleFromDisk(ctx, id)
+                )
             }
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
