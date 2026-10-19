@@ -83,6 +83,21 @@ jobs:
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "openssl 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
+          # ★ crypto 是同一份字节的另一个名字（component-sources.json 里 crypto.sameAs=openssl），
+          #   而这一段只上传 ASSET（openssl 的那个）。于是 build-apk 取 crypto 那颗时
+          #   在 base-crypto 上找不到 —— 「1 / 8 个件取不到」，而 APK 会照旧打出来。
+          #   连带件必须一起固化，否则依赖它的 workflow 永远缺件。
+          for DEP in crypto; do
+            DEPTAG="$(bash scripts/toolchain/cache-key.sh tag "$DEP")"
+            DEPASSET="$(bash scripts/toolchain/cache-key.sh asset "$DEP")"
+            DEPPKG="$(ls dist/component-${DEP}-*.zip 2>/dev/null | head -1 || true)"
+            [ -n "$DEPPKG" ] || { echo "::error title=$DEP 没有产出::dist/component-${DEP}-*.zip 不在"; ls -la dist/ | head; exit 1; }
+            cp -f "$DEPPKG" "dist/$DEPASSET"
+            sha256sum "dist/$DEPASSET" | cut -d' ' -f1 > "dist/$DEPASSET.sha256"
+            gh release view "$DEPTAG" --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create "$DEPTAG" --repo "${{ github.repository }}" --title "$DEP 固化产物" --notes "与 openssl 同源的连带件（crypto.sameAs=openssl）"
+            gh release upload "$DEPTAG" "dist/$DEPASSET" "dist/$DEPASSET.sha256" --repo "${{ github.repository }}" --clobber
+            echo "[ok] 连带件 $DEP 上传名=$DEPASSET → $DEPTAG"
+          done
       - name: 失败现场（Job Summary，不裁剪）
         if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh openssl
