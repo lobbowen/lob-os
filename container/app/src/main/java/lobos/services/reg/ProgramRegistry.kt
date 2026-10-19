@@ -114,6 +114,11 @@ object ProgramRegistry {
         val invalid = when {
             schemaErrors.isNotEmpty() -> schemaErrors.first()
             !entryFile.exists() -> "入口不存在：" + entryFile.absolutePath
+            // 存在不等于可执行：真机上 busybox 的 entry 是 lib/libbusybox.so，
+            // 那个文件在，但 spawn 它得到 error=13。判据与 PieceScan.roleOf 用同一把。
+            !lobos.kernel.elf.ExecBits.isRunnable(entryFile) ->
+                "入口不可执行：" + entryFile.absolutePath +
+                    "（entry 指向一个不可执行的文件 —— 它是库还是程序由落位形态决定，不由清单的 entry 决定）"
             else -> null
         }
         val note = if (args == null) "清单未声明 args：按空参数启动（需要子命令的程序会打印用法并退出，请安装携带 args 的新包）" else null
