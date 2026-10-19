@@ -373,6 +373,12 @@ object PtySession {
         timeoutMs: Long = 10_000,
     ): Result {
         if (argv.isEmpty()) return Result(false, -1, "", "argv 为空", completed = false)
+        // ET_DYN 要经 linker64 驱动 —— 唯一真相源是 ExecEntry.argv，native 侧那份已删（C-87）。
+        // 上游 CommandLine.run 给的是裸绝对路径（CommandLine.kt:32），这里统一过一遍。
+        // Shape.Unknown 时 argv() 返回 null —— 那时保留调用方给的 argv（不置空），
+        // 否则「入口认不出」会表现成「argv 为空」，两种失败混成一种。
+        val first = java.io.File(argv[0])
+        val effArgv = lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
         val h = try {
             if (env.isEmpty() && cwd == null) host(ctx, bin) else dedicatedHost(ctx, bin, env, cwd)
         } catch (e: Throwable) {
@@ -380,7 +386,7 @@ object PtySession {
         }
         val ownHost = env.isNotEmpty() || cwd != null
         return try {
-            val s = h.start(argv, DEFAULT_ROWS, DEFAULT_COLS, timeoutMs.coerceAtLeast(1_000))
+            val s = h.start(effArgv, DEFAULT_ROWS, DEFAULT_COLS, timeoutMs.coerceAtLeast(1_000))
             val buf = java.io.ByteArrayOutputStream()
             val done = CountDownLatch(1)
             s.onData = { d -> synchronized(buf) { buf.write(d) } }

@@ -194,21 +194,11 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         signal(SIGTERM, SIG_DFL);
         signal(SIGPIPE, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
-        {
-            const char *lp = getenv("LOBOS_SYSTEM_LINKER");
-            int under = strstr(argv[0], "/files/opt/") != NULL;
-            if (lp && *lp && under) {
-                char **na = (char **)calloc((size_t)argc + 2, sizeof(char *));
-                if (!na) _exit(127);
-                na[0] = (char *)lp;
-                na[1] = argv[0];
-                for (int i = 1; i < argc; i++) na[i + 1] = argv[i];
-                execv(lp, na);
-                free(na);
-            } else {
-                execv(argv[0], argv);
-            }
-        }
+        // ET_DYN 要经 linker64 驱动 —— 唯一真相源是宿主侧 ExecEntry.argv（它读文件头定形态）。
+        // 原来这里也做一次替换，判据问 argv[0] 里有没有 "/files/opt/"，而那时 argv[0]
+        // 已经是 linker64 自己（宿主先替过），于是 under 恒 0 —— 同一件事两套逻辑、
+        // 且其中一套在自己的目标形态上失效。按 C-87 删掉，native 只做 exec。
+        execv(argv[0], argv);
         child_fail(ctl, 190, "execv 失败");
         close(out_fd);
     }
