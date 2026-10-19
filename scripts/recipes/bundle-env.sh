@@ -99,7 +99,7 @@ check_exe() {
   [ -x "$f" ]
 }
 
-# 生成这一件的说明 —— 数据全来自构建期表（component-sources.json / component-verify.json），
+# 生成这一件的说明 —— 数据全来自构建期表（component-sources.json），
 # 这里不硬编码任何一件的信息；数据不齐就报错，不产出半截的说明。
 # 件的版本 —— 取自钉值表（构建期唯一真相源）
 version_of() {

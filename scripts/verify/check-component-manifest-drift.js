@@ -27,8 +27,6 @@ function project(t) {
     sha256: t.sha256,
     entry: t.entry,
     aliases,
-    判据: t.verify && t.verify.node,
-    判据形状: t.verify && t.verify.criterion,
   };
 }
 

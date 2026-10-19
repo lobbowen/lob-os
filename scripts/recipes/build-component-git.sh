@@ -51,7 +51,7 @@ fi
 echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
 grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
 grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
-# curl / openssl / zlib 现在是**预装件**（base 筐，见 component-verify.json），
+# curl / openssl / zlib 现在是**预装件**（base 筐，见 scripts/component-sources.json），
 # 落位在 usr/lib/<id>/<版本>/lib/ 并建了全局软链 —— 
 #   git 只记 DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局那份找。
 #
@@ -106,7 +106,7 @@ for p in "$ZLIB_PREFIX" "$OPENSSL_PREFIX" "$CURL_PREFIX"; do
     echo "         zlib / openssl / curl 三个件。要么让本 workflow 先跑"
     echo "         ensure-native-capabilities.sh（build-apk.yml 就在跑它），"
     echo "         要么 git 不带 https（NO_CURL=1）—— 但那条路与"
-    echo "         component-verify.json 的判据冲突（它要求 git ls-remote https 能用）。"
+    echo "         另一条路会让 git 不带 https —— 而那不是构建期能判的事。"
     exit 1
   }
 done

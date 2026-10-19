@@ -22,10 +22,8 @@ cp -a dist/. "$STAGE/"
 rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '*.zip') 2>/dev/null || true
 
 # 件自描述：包里带全部信息，安装器只读包，不需要外部清单。
-#字段来自 component-verify.json（构建期钉值），不手写。
-META_SRC="$ROOT_DIR/scripts/component-verify.json"
-[ -f "$META_SRC" ] || { echo "::error title=缺元信息表::$META_SRC 不在"; exit 1; }
-node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$TOOL" "$VER" "$ENTRY" "$META_SRC" "$STAGE/component-meta.json"
+# 字段真源是 scripts/component-sources.json（gen-component-meta.js 自己读），不手写。
+node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$TOOL" "$VER" "$ENTRY" "$STAGE/component-meta.json"
 
 find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 echo "[package] 打包（zip）：component-meta.json + bin + 其它 prefix 目录"

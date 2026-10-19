@@ -38,7 +38,7 @@ judge_shape() {
     #   所以它不享受 Linux 语义层。这是**已知的形态差别**，不是构建错误。
     #
     #   所以：记下来、提示，但不拦。真要判「这个件必须能被语义层覆盖」，
-    #   那是 per-件 的要求，该写进 component-verify.json 那一格，
+    #   那是 per-件 的要求，而 component-verify.json 的判据列已按 C-91 废除（它写的不是自动检查），
     #   而不是对所有件一刀切。
     case "$INFO" in
       *"dynamically linked"*|*"shared object"*) : ;;
