@@ -157,11 +157,16 @@ function main() {
   const tools = toolsFromDist().sort((a, b) => a.name.localeCompare(b.name));
   if (!tools.length) throw new Error('清单为空：dist 下没有一颗按命名契约产出的件');
   for (const t of tools) {
+    // 判据只挂在真正由产物自身证明的字段上（entry 的存在性、必需字段齐全）。
+    // 原来那道门要的是 component-sources.json 里的 node —— 那个字符串在整个仓里不存在，
+    // 而 component-verify.json 自己写着「它不是自动执行的检查」。按 C-91 废除。
     const v = crit[t.name];
-    if (!v || typeof v.node !== 'string' || v.node.length < 20) {
-      throw new Error('件没有能力判据，不许发布: ' + t.name + '（在 scripts/component-sources.json 里补）');
+    if (!v || !v.entry) {
+      throw new Error('钉值表里没有这一件: ' + t.name + '（在 scripts/component-sources.json 里补）');
     }
-    t.verify = { criterion: v.criterion, node: v.node };
+    if (v.entry !== t.entry) {
+      throw new Error('入口两处不一致: 钉值表 ' + v.entry + '，本轮产物 ' + t.entry);
+    }
     t.kind = t.kind || 'component';
     t.layout = t.layout || 'toolset';
     t.abi = t.abi || 'aarch64';
@@ -192,7 +197,7 @@ function main() {
   console.log('[component] channel=' + CHANNEL + ' revision=' + man.revision + ' version=' + man.version + ' sequence=' + man.sequence + ' tools=' + tools.length);
   for (const t of tools) {
     const als = t.aliases.length ? ' 别名 ' + t.aliases.map((a) => a.name + '→' + a.entry).join(',') : '';
-    console.log('  - ' + t.name + '@' + t.version + ' ' + t.provider + ' ' + t.sha256.slice(0, 12) + '… 判据 ' + t.verify.node.length + ' 字 入口 ' + t.entry + als);
+    console.log('  - ' + t.name + '@' + t.version + ' ' + t.provider + ' ' + t.sha256.slice(0, 12) + '… 入口 ' + t.entry + als);
   }
   console.log('[component] 签名自检通过（与 APK 公钥配对）: ' + path.join(OUT, 'component-manifest.json'));
 }
