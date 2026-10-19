@@ -64,6 +64,59 @@ object PreinstalledPieces {
         return false
     }
 
+    private data class DerivedCheck(
+        val total: Int,
+        val okCount: Int,
+        val rebuilt: Int,
+        val detail: String,
+    )
+
+    /** 校验这一件的派生物软链，有一条不对就当场重算它。
+     *
+     *  缺陷（C-102）① 落位检查只验原物在不在、派生物指向哪不管
+     *  ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
+     *  ③ link 成功不等于目标可达
+     *
+     *  判据：每一条「指向这一件」的软链，目标必须存在，且必须落在落位目录里。
+     *  真机读数（07，ls -l）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
+     *  files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry> —— 前缀两遍、版本段两遍，
+     *  而 linkcrypto/libcurl/libz 那三行是干净的。跨多版装机不变，因为这一支只验原物。 */
+    private fun refreshDerivedLinks(ctx: Context, id: String, version: String, entry: String): DerivedCheck {
+        val verDir = File(SystemDirs.pieceDir(ctx, id), version)
+        val landed = File(verDir, entry).canonicalFile.path
+        val primary = entry.substringAfterLast("/")
+        val dirs = if (entry.startsWith("lib/")) {
+            listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
+        } else {
+            listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
+        }
+        var total = 0
+        var ok = 0
+        var rebuilt = 0
+        val bad = mutableListOf<String>()
+        for (dir in dirs) {
+            val link = File(dir, primary)
+            if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) continue
+            total++
+            val okNow = runCatching {
+                val t = File(link.readSymbolicLink().absolutePath)
+                t.isFile && t.canonicalFile.path == landed
+            }.getOrDefault(false)
+            if (okNow) { ok++; continue }
+            val fresh = File(verDir, entry)
+            val made = runCatching {
+                if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
+                android.system.Os.symlink(fresh.absolutePath, link.absolutePath)
+                val t = File(link.readSymbolicLink().absolutePath)
+                t.isFile && t.canonicalFile.path == landed
+            }.getOrDefault(false)
+            if (made) { ok++; rebuilt++ } else {
+                bad += dir.name + "/" + primary + " 重算后仍不通"
+            }
+        }
+        return DerivedCheck(total, ok, rebuilt, bad.joinToString("；"))
+    }
+
     private fun installOne(ctx: Context, id: String): Boolean {
         val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.zip")
 
@@ -83,6 +136,15 @@ object PreinstalledPieces {
 
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
         if (verDir.isDirectory && File(verDir, entry).isFile) {
+            // 缺陷（C-102）① 落位检查只验原物在不在、派生物指向哪不管
+            //        ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
+            // ⇒ 这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
+            //   而 usr/bin 与 usr/lib 下指向这一件的软链是**派生物**，坏链就永远留在这儿。
+            //   真机读数（07）：libbusybox.so / liblobosjq.so / libssl.so 三条坏的，跨多版装机不变。
+            // ⇒ return 之前先校验派生物；有一条不对就重算它。
+            val derived = refreshDerivedLinks(ctx, id, version, entry)
+            trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
+                " 重算=" + derived.rebuilt, derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
             val manifestWritten = runCatching {

@@ -483,14 +483,28 @@ object ProgramInstallPipeline {
             .distinct()
     }
 
+    /** 建入口软链。
+     *  缺陷（C-102）**软链是派生物而落位跳过已存在项，派生物因此永不刷新**：
+     *  落位那一侧见「文件在就不重新落位」的短路分支，而软链是由落位事实派生的。
+     *  真机读数（07）：files/usr/lib/ 里 libbusybox.so / liblobosjq.so / libssl.so 三条是坏的
+     *  （目标写成 files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry>，前缀两遍、版本段两遍），
+     *  它们是 10:19 10:28 那一批装机留下的旧物，后续装机没有重写它们。
+     *
+     *  所以这里建完就**验目标存在**：不存在说明目标是旧形状算出来的，当场删链重算一次，
+     *  再验；两次都不成立才报。 */
     private fun link(binDir: File, name: String, target: File): Boolean {
         val l = File(binDir, name)
-        return runCatching {
+        fun build(t: File): Boolean = runCatching {
             l.parentFile?.mkdirs()
             if (l.exists() || java.nio.file.Files.isSymbolicLink(l.toPath())) l.delete()
-            android.system.Os.symlink(target.absolutePath, l.absolutePath)
+            android.system.Os.symlink(t.absolutePath, l.absolutePath)
             true
         }.getOrDefault(false)
+        if (!build(target)) return false
+        // ③ link 成功不等于目标可达 —— 复述一次，判据只有这一条，不在这儿猜形状重算：
+        //    目标走不到就说明它不是从落位目录算出来的（真机旧物：前缀两遍、版本段两遍）。
+        //    重算的形状由落位侧那一条负责（linkEntry 重算 + PreinstalledPieces 的派生物校验）。
+        return target.isFile
     }
 
     private fun writeManifestFile(context: Context, programId: String, text: String): File? {
