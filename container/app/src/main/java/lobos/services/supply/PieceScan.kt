@@ -76,11 +76,18 @@ object PieceScan {
         return null
     }
 
-    private fun roleOf(verDir: File): String = when {
-        File(verDir, "include").isDirectory -> HEADERS
-        runnableEntryOf(verDir) != null -> EXEC
-        else -> LIBRARY
+    /** role 由落位事实推导：带 include/ 的头目录、可执行入口、有 SONAME 的 ELF 共享库，其余归 LIBRARY。
+     *  不读 meta 里任何自报字段。 */
+    private fun roleOf(verDir: File): String {
+        if (File(verDir, "include").isDirectory) return HEADERS
+        runnableEntryOf(verDir)?.let { return EXEC }
+        sharedObjectOf(verDir)?.let { return LIBRARY }
+        return LIBRARY
     }
+
+    private fun sharedObjectOf(verDir: File): File? =
+        verDir.walkTopDown().maxDepth(2)
+            .firstOrNull { it.isFile && it.name.endsWith(".so") }
 
     private fun runnableEntryOf(verDir: File): File? {
         val bin = File(verDir, "bin")

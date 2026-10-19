@@ -49,20 +49,13 @@ const deps = (() => {
   }
 })();
 
-const ABI = process.env.ABI || 'arm64-v8a';
-const arch = ABI.split('-')[0];
-
-const form = entry.indexOf('lib/') === 0 ? 'lib' : 'exec';
 
 const meta = {
   schema: 1,
   id: id,
   version: version,
-  arch: arch,
   entry: entry,
-  form: form,
   requires: deps,
-  roles: Array.isArray(src.roles) ? src.roles.filter(function (r) { return typeof r === "string" && r !== ""; }) : [],
   essential: src.essential === true,
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',
@@ -73,4 +66,4 @@ fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(meta, null, 1) + '\n');
 console.log('[meta] ' + id + ' → ' + path.relative(ROOT, outPath)
   + '（version=' + meta.version + ' entry=' + meta.entry
-  + ' form=' + meta.form + (deps.length ? ' requires=' + deps.join(',') : '') + '）');
+  + (deps.length ? ' requires=' + deps.join(',') : '') + '）');

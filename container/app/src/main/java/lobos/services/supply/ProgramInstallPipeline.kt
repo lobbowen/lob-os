@@ -225,7 +225,7 @@ object ProgramInstallPipeline {
                       sha256 = base.sha256,
                       libName = meta.libNameOrEmpty(),
                       assetEntry = meta.entry(),
-                      role = meta.roleOrEmpty(),
+                      role = lobos.services.supply.PieceScan.roleFromDisk(context, spec.programId),
                       requires = meta.requires(),
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
@@ -267,11 +267,7 @@ object ProgramInstallPipeline {
     private class PieceMeta(private val o: JSONObject?) {
         fun raw(): String = o?.toString() ?: "{}"
         fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
-        fun roleOrEmpty(): String = when (o?.optString("form", "")?.trim()) {
-            "lib" -> "library"
-            "exec" -> "exec"
-            else -> ""
-        }
+
         fun libNameOrEmpty(): String = entry().substringAfterLast("/", "")
         fun requiredOr(def: Boolean): Boolean =
             o?.optBoolean("required", def) ?: def
