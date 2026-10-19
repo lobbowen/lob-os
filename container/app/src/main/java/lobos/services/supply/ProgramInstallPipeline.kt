@@ -183,7 +183,7 @@ object ProgramInstallPipeline {
 
         val landedMeta = pieceMetaOf(context, dir, safeVer)
         runCatching {
-            ManifestWriter.write(dest, landedMeta, safeVer, PieceScan.roleFromDisk(context, spec.programId))
+            ManifestWriter.write(dest, landedMeta.asJson(), safeVer, PieceScan.roleFromDisk(context, spec.programId))
         }
         val binDir = File(dest, "bin")
         binDir.listFiles()?.forEach { f ->
@@ -265,6 +265,10 @@ object ProgramInstallPipeline {
 
     private class PieceMeta(private val o: JSONObject?) {
         fun raw(): String = o?.toString() ?: "{}"
+
+        /** ManifestWriter.write 的第二参是 JSONObject? —— PieceMeta 持有它而不继承它，
+         *  所以这里显式交出去（compileDebugKotlin 在 :186 报 ARGUMENT_TYPE_MISMATCH 就是缺这一行）。 */
+        fun asJson(): JSONObject? = o
 
         fun entry(): String = o?.optString("entry", "")?.trim().orEmpty()
 
