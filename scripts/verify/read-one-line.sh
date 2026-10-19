@@ -9,7 +9,8 @@
 #   传了上述类参数或位置参数，一律非零退出并打印「本工具不做该操作」。
 #
 # 唯一用途：取 compat-degrade.log 里 d1.env-merge 那一行。
-# 它之所以需要独立成工具，是因为 .lobos-tools/obs.js 只管 CI 侧（GitHub Actions）；
+# 它之所以需要独立成工具，是因为仓外那把取数工具（work/.lobos-tools/obs.js）只管 CI 侧
+# （GitHub Actions），且携带个人凭据 —— 入库脚本不该以仓外文件为参照。
 # 工具一旦什么都能做，后来就没有理由拒绝新增用途。
 #
 # ★ 取数前置（不是取数之后）：取回该行之前先确认 LOBOS_COMPAT_LOG 在子进程 env 中
@@ -21,7 +22,7 @@
 #   而全仓无一处 setenv/PUTENV，父侧 environ 从未被写 → extra=0 → :100 提前 return →
 #   :111 的自述一行都不打。先备尺子，再解环（M0a），尺子才有东西可量。
 #
-# 凭据：只可能用到 adb（USB 直连）；不使用 .lobos-tools/tok。
+# 凭据：只可能用到 adb（USB 直连）；不使用仓外的 tok（那是个人 GitHub 凭据，不在本脚本视野内）。
 set -uo pipefail
 export LC_ALL=C
 
