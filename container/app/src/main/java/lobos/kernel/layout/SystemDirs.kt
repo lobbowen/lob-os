@@ -22,7 +22,7 @@ object SystemDirs {
 
     fun opt(ctx: Context): File = File(ctx.filesDir, REL_OPT)
 
-    fun pieceDir(ctx: Context, id: String): File = File(lib(ctx), id)
+    fun pieceDir(ctx: Context, id: String): File = File(opt(ctx), id)
 
     fun pieceDir(ctx: Context, id: String, version: String): File =
         File(pieceDir(ctx, id), version)
