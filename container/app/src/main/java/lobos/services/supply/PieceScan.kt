@@ -49,7 +49,10 @@ object PieceScan {
             for (verDir in pieceDir.listFiles() ?: emptyArray()) {
                 if (!verDir.isDirectory) continue
                 val version = verDir.name
-                val entry = entryOf(verDir) ?: continue
+                // 入口有效性由那份字节自己回答（§20.2:618）；无效则**报缺**：continue（不登记），
+                // 而**不**兜底到别的目录去猜一个（§20.2:625）。
+                val declared = metaOf(verDir)?.optString("entry", "").orEmpty()
+                val entry = entryOf(verDir, declared) ?: continue
                 val files = filesOf(verDir)
                 out += Found(
                     id = id,
@@ -66,18 +69,20 @@ object PieceScan {
         return out.sortedBy { it.id }
     }
 
-    private fun entryOf(verDir: File): String? {
-        val bin = File(verDir, "bin")
-        if (bin.isDirectory) {
-            bin.listFiles()?.firstOrNull { it.isFile }?.let { return "bin/" + it.name }
-        }
-        verDir.walkTopDown().maxDepth(2).firstOrNull { it.isFile && it.name.endsWith(".so") }
-            ?.let { return it.relativeTo(verDir).path }
-        return null
-    }
+    /** 扫盘时登记的入口。**主语是那份字节**，不是目录名（§20.2:618 / §10.1:128）。
+     *  ★ 而 `declared` 是清单里的 entry 声明；它今天能不能被当程序调起由 [usableEntryOf] 回答。
+     *  ★ 缺陷名（C-102）：原来这里先看 `bin/` 下有没有文件、再看有没有 `.so` —���
+     *    那是「看目录名」，§10.1:128 刚把它判为无效。 */
+    private fun entryOf(verDir: File, declared: String): String? =
+        usableEntryOf(verDir, declared)
 
-    /** role 由落位事实推导：带 include/ 的头目录、可执行入口、有 SONAME 的 ELF 共享库，其余归 LIBRARY。
-     *  不读 meta 里任何自报字段。 */
+    /** role 由**这一份字节**的形态回答（01 今天的措辞，§10.1:119）：
+     *  ET_EXEC 或 ET_DYN+PT_INTERP ⇒ 程序；ET_DYN 无 PT_INTERP ⇒ 库；带 include/ 的头目录 ⇒ 头。
+     *
+     *  ★ **缺陷名（C-102）判据读错了主语**：原来 [runnableEntryOf] 只看 `bin/` 这一个目录，
+     *    而 §10.1:128 自己写着「同一个目录名下两种形态并存」—— 目录名是我们自己起的。
+     *    所以现在**全目录**找那份有可执行形态的字节，不看它在哪一层。
+     *  ★ 而执行位与形态**分成两把尺**：形态答「它是什么」，执行位答「今天能不能调起它」。 */
     private fun roleOf(verDir: File): String {
         if (File(verDir, "include").isDirectory) return HEADERS
         runnableEntryOf(verDir)?.let { return EXEC }
@@ -85,33 +90,56 @@ object PieceScan {
         return LIBRARY
     }
 
+    /** 目录下**任何一层**里有共享库形态（ET_DYN **且**没有 PT_INTERP）的那份字节。
+     *  ★ 与 [runnableEntryOf] 是两把不同的尺：一个看「它是程序」，一个看「它是库」，
+     *    依据都是那份字节自己的 ELF 头，不看文件名后缀、不看目录名（§10.1:128）。 */
     private fun sharedObjectOf(verDir: File): File? =
         verDir.walkTopDown().maxDepth(2)
-            .firstOrNull { it.isFile && it.name.endsWith(".so") }
+            .firstOrNull {
+                it.isFile && lobos.kernel.elf.ExecBits.formOf(it) == lobos.kernel.elf.ExecBits.Form.DynPlain
+            }
 
-    private fun runnableEntryOf(verDir: File): File? {
-        val bin = File(verDir, "bin")
-        if (bin.isDirectory) {
-            bin.listFiles()?.firstOrNull { it.isFile && lobos.kernel.elf.ExecBits.isRunnable(it) }
-                ?.let { return it }
-        }
-        return null
+    /** 目录下**任何一层**里有可执行形态（ET_EXEC / ET_DYN+PT_INTERP）且 owner 有执行位的那份字节。 */
+    private fun runnableEntryOf(verDir: File): File? =
+        verDir.walkTopDown().maxDepth(2)
+            .firstOrNull {
+                it.isFile && lobos.kernel.elf.ExecBits.isRunnableByForm(it)
+            }
+
+    /** 这一件在磁盘上的形态判定。**主语是字节**，不是条目（§10.1:121「一个单元可以同时有
+     *  可执行字节与不可执行字节」）。
+     *
+     *  ★ **缺陷名（C-102）先读声明再判字节**：原来这一段先取 `component-meta.json` 的 entry、
+     *    再看那份有没有 SONAME —— 主语是清单里写着的那一条，而不是盘上那份字节。
+     *    §10.1:138「一个字段若需要同时回答两个问题，拆成两个字段或废掉其中一个」⇒ 这一段不再读 meta。 */
+    fun roleFromDisk(ctx: Context, id: String): String {
+        // 找不到落位目录时**不猜**：按 §10.1:142「这一格的答案能不能从任意一个落位字节的 ELF 头读出来？
+        // 不能 ⇒ 它不是判据，是我们的命名」⇒ 没有字节就没有答案，报缺（§10.1:119 的三态里「不可执行」那一态）。
+        val dir = landedPieceDir(ctx, id)
+            ?: return ENTRY_UNUSABLE
+        return roleOf(dir)
     }
 
-    fun roleFromDisk(ctx: Context, id: String): String {
-        val dir = landedPieceDir(ctx, id) ?: return EXEC
-        val entry = runCatching {
-            val m = metaOf(dir)
-            m?.optString("entry", "") ?: ""
-        }.getOrDefault("")
-        val target = if (entry.isNotBlank()) File(dir, entry) else null
-        if (target != null && target.isFile) {
-            val facts = runCatching { lobos.kernel.elf.ElfFacts.read(target) }.getOrNull()
-            if (facts != null && !facts.soname.isNullOrBlank()) {
-                return LIBRARY
-            }
-        }
-        return roleOf(dir)
+    /** 入口字段无效时返回的 role —— §20.2:619「报缺，而不是兜底到另一个目录去猜一个」。
+     *  ★ 而**判据只有一条**（§20.2:621 的机械形式）：入口指向的那份字节能被当程序调起吗？
+     *    不能 ⇒ 它不是入口 ⇒ 该单元无入口 ⇒ 报缺。
+     *  ★ 「有无人引用」不在这条判据里 —— 07 今天真跑读数：jq 那件入口指向 `lib/liblobosjq.so`（-rw-------）
+     *    而它 **exit=0 能调起**；crypto/curl/openssl/zlib 四件 exit=139。
+     *  ★ 而**不兜底**是这一条的全部要点（§20.2:625）：一旦允许「换个目录猜一个」，
+     *    §10.1:128 刚判为无效的「看目录名」那条读法就从后门回来。 */
+    const val ENTRY_UNUSABLE = "entry-unusable"
+
+    /** entry 字段的有效性：**主语是它指向的那份字节**（§20.2:618「有效性由那份字节自己回答」）。
+     *  @return 有效时返回该 entry（相对 verDir），无效时返回 null —— 调用方据此报缺，不猜。
+     *
+     *  ★ **缺陷名（C-102）拿目录名当入口**：原来 [entryOf] 先看 `bin/` 下有没有文件，再看有没有 `.so`；
+     *    而 §10.1:128 自己写着「同一个目录名下两种形态并存」—— 目录名是我们自己起的。
+     *    现在它只问一件事：清单 entry 指的那份，今天能不能被当程序调起。 */
+    fun usableEntryOf(verDir: File, declaredEntry: String): String? {
+        if (declaredEntry.isBlank()) return null
+        val target = File(verDir, declaredEntry)
+        if (!target.isFile) return null
+        return if (lobos.kernel.elf.ExecBits.isRunnableByForm(target)) declaredEntry else null
     }
 
     private fun metaOf(verDir: File): JSONObject? {

@@ -22,4 +22,37 @@ object ExecBits {
         if (lobos.kernel.proc.ExecEntry.detect(file) == lobos.kernel.proc.ExecEntry.Shape.Unknown) return false
         return file.canExecute()
     }
+
+    /** 这份字节的**形态**（01 今天的三态措辞：只看 ELF，不看文件名/目录名/form）。
+     *  - [Exec]      ET_EXEC —— 直接能 exec
+     *  - [DynInterp] ET_DYN **且** 有 PT_INTERP —— 位置无关可执行，需经 linker64 驱动
+     *  - [DynPlain]  ET_DYN **且** 没有 PT_INTERP —— 共享库，不是程序
+     *  - [Unknown]  不是 ELF 或是 #!（走 [hasExecutableHeader] 那条，不归这里）
+     *
+     *  **缺陷名（C-102）形态被合并判据抹平**：原来只判 `detect() != Unknown`
+     *  ⇒ 一个 ET_DYN 共享库与一个 ET_DYN 的 PIE 程序在这把尺上完全一样，
+     *  而 01 今天要的正���这两者是不同的答案。 */
+    enum class Form { Exec, DynInterp, DynPlain, Unknown }
+
+    fun formOf(file: File): Form {
+        if (!file.isFile) return Form.Unknown
+        return when (lobos.kernel.proc.ExecEntry.detect(file)) {
+            is lobos.kernel.proc.ExecEntry.Shape.Exec -> Form.Exec
+            is lobos.kernel.proc.ExecEntry.Shape.Elf -> {
+                // PT_INTERP 在 ELF 程序头里，ElfFacts.read 已经读它并放进 Dynamic.interp
+                val interp = runCatching { ElfFacts.read(file)?.interp }.getOrNull()
+                if (!interp.isNullOrBlank()) Form.DynInterp else Form.DynPlain
+            }
+            else -> Form.Unknown
+        }
+    }
+
+    /** 按 01 今天的判别式：**这一份字节能被当程序调起吗？**
+     *  形态（ET_EXEC 或 ET_DYN+PT_INTERP）**且** owner 有执行位。
+     *  ★ 而 `formOf` 单独回答形态那一问，`canExecute` 单独回答权限那一问 ——
+     *  两把尺分开，谁也不替谁答（§10.1:136 错的是「一个字段回答两个问题」）。 */
+    fun isRunnableByForm(file: File): Boolean = when (formOf(file)) {
+        Form.Exec, Form.DynInterp -> file.canExecute()
+        else -> false
+    }
 }
