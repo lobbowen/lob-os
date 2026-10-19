@@ -76,9 +76,19 @@ object PieceScan {
         return null
     }
 
-    private fun roleOf(verDir: File): String {
-        if (File(verDir, "bin").isDirectory) return EXEC
-        return LIBRARY
+    private fun roleOf(verDir: File): String = when {
+        File(verDir, "include").isDirectory -> HEADERS
+        runnableEntryOf(verDir) != null -> EXEC
+        else -> LIBRARY
+    }
+
+    private fun runnableEntryOf(verDir: File): File? {
+        val bin = File(verDir, "bin")
+        if (bin.isDirectory) {
+            bin.listFiles()?.firstOrNull { it.isFile && lobos.kernel.elf.ExecBits.isRunnable(it) }
+                ?.let { return it }
+        }
+        return null
     }
 
     fun roleFromDisk(ctx: Context, id: String): String {
