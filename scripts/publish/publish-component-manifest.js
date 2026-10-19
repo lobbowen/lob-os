@@ -16,7 +16,7 @@ const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.COMPONENT_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.COMPONENT_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply/component-public.pem');
-const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
+const VERIFY = path.join(ROOT, 'component-sources.json');
 const TTL_MS = 30 * 86400_000;
 
 function entryOf(name) {
