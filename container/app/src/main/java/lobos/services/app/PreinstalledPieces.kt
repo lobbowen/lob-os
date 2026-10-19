@@ -218,7 +218,13 @@ object PreinstalledPieces {
                     enabled = true,
                     desired = lobos.services.reg.Desired.RUNNING,
                     assetEntry = entry,
-                    role = meta.optString("form", ""),
+                    // ★ **缺陷名（C-102）role 由自报字段填** —— 这一行原来写的是
+                    //   `role = meta.optString("form", "")`：读的是清单里我们自己写的 `form`，
+                    //   而 `form` 今天已经不由清单生成器产出（gen-component-meta.js 不再写它），
+                    //   `optString` 的默认值于是给出空串 —— 真机读数：07 看到 `role=` 后面是空的。
+                    // ★ 而 role 回答的是「它是什么」，答案在字节里（§10.1:119），不在清单里。
+                    // ★ 「它是不是底座解释器」是另一个问题（§10.1:138），由 [ShellEntry] 的判据回答，不靠这个字段。
+                    role = lobos.services.supply.PieceScan.roleFromDisk(ctx, id),
                     required = meta.optBoolean("essential", false),
                     capabilities = emptyList(),
                     requires = (meta.optJSONArray("requires") ?: org.json.JSONArray()).let { arr ->
