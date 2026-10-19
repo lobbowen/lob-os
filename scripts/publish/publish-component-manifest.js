@@ -20,7 +20,7 @@ const VERIFY = path.join(ROOT, 'component-sources.json');
 const TTL_MS = 30 * 86400_000;
 
 function entryOf(name) {
-  return cp.execFileSync('bash', [path.join(ROOT, 'scripts', 'registry', 'read-component-entry.sh'), name], { encoding: 'utf8' }).trim();
+  return cp.execFileSync('bash', [path.join(ROOT, 'registry', 'read-component-entry.sh'), name], { encoding: 'utf8' }).trim();
 }
 
 function pieceText(zipPath, rel) {
