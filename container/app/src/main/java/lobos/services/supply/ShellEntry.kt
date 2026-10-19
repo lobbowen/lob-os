@@ -22,13 +22,13 @@ object ShellEntry {
     fun resolve(ctx: Context): File? {
         val pieces = ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(ctx, it) }
 
-        val shell = pieces.firstOrNull { it.role == PieceScan.SHELL || it.id == "bash" }
+        val shell = pieces.firstOrNull { it.role == PieceScan.SHELL }
         if (shell != null) {
             landOf(shell)?.let { return it }
             linkOf(shell, ctx)?.let { return it }
         }
 
-        val multi = pieces.firstOrNull { it.role == PieceScan.MULTI_COMMAND || it.id == "busybox" }
+        val multi = pieces.firstOrNull { it.role == PieceScan.MULTI_COMMAND }
         if (multi != null) {
             landOf(multi)?.let { return it }
             linkOf(multi, ctx)?.let { return it }
