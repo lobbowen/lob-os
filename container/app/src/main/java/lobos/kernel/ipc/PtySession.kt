@@ -373,12 +373,20 @@ object PtySession {
         timeoutMs: Long = 10_000,
     ): Result {
         if (argv.isEmpty()) return Result(false, -1, "", "argv 为空", completed = false)
-        // ET_DYN 要经 linker64 驱动 —— 唯一真相源是 ExecEntry.argv，native 侧那份已删（C-87）。
-        // 上游 CommandLine.run 给的是裸绝对路径（CommandLine.kt:32），这里统一过一遍。
+        // 缺陷（C-102）**重复替换：已替换过的 argv 又被替换一次**。
+        // 真机读数（07，logcat）：Cmdline = /system/bin/linker64 /system/bin/linker64 …/opt/ripgrep/…/rg
+        // —— linker64 出现两次。多出来的这一次来自本行：上游 CommandLine.run 给的 argv[0]
+        // 已经是 linker64，而 linker64 自己也是 ET_DYN ⇒ ExecEntry.argv 又替一次。
+        // linker64 把自己当程序加载 ⇒ call_constructors → libc 初始化链崩（kill-audit 记 desc=null pointer dereference）。
+        //
+        // ET_DYN 要经 linker64 驱动 —— 唯一真相源是 ExecEntry.argv，native 那份已删（C-87）。
+        // 这里只对**还没有**替过的 argv 替；已是 SYSTEM_LINKER 的直接放行。
         // Shape.Unknown 时 argv() 返回 null —— 那时保留调用方给的 argv（不置空），
         // 否则「入口认不出」会表现成「argv 为空」，两种失败混成一种。
+        val alreadyDriven = argv[0] == lobos.kernel.proc.ExecEntry.SYSTEM_LINKER
         val first = java.io.File(argv[0])
-        val effArgv = lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
+        val effArgv = if (alreadyDriven) argv
+        else lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
         val h = try {
             if (env.isEmpty() && cwd == null) host(ctx, bin) else dedicatedHost(ctx, bin, env, cwd)
         } catch (e: Throwable) {
