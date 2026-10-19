@@ -102,8 +102,10 @@ object ProgramStatusHub {
     fun statusOf(ctx: Context, id: String): ProgramStatus {
         val entry = ProgramIndex.get(ctx, id)?.takeIf { it.levelOf(ctx) == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
-        val running = entry != null && entry.pid > 0 &&
-            ProcessLedger.isOwnedAlive(entry.pid, entry.starttime)
+        // 判「在跑」不只从索引读 pid：索引可能停在 pid=0（回写失败/被吞）而账本有真值。
+        // 先信账本 —— liveOwned 与状态机读的是同一批 pid，两侧不能读出不同的数。
+        val running = ProcessLedger.liveOwned(ctx)
+            .any { it.programId == id && ProcessLedger.isLive(it, ProcessLedger.entryPathOf(ctx, id)) }
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null

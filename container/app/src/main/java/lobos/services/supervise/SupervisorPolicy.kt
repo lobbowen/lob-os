@@ -81,10 +81,26 @@ object SupervisorPolicy {
         pid: Int,
         starttime: Long,
     ) {
-        runCatching {
+        // 失败必须留痕：账本（ProcessLedger.begin）记了真 pid，而索引停在 pid=0，
+        // 两侧没有任何对账 —— 原来这层 runCatching 把失败吞成「无」，谁也看不见。
+        val ok = runCatching {
             lobos.services.reg.ProgramIndex.mutate(ctx, unit) {
                 it.edited(pid = pid, starttime = starttime)
             }
+        }.getOrElse { e ->
+            lobos.services.log.RuntimeDiagnostics.append(
+                ctx, "ledger", false, "回写 program-index 失败",
+                "unit=" + unit + " pid=" + pid + " starttime=" + starttime +
+                    "（账本已记真值而索引未更新，两侧现无对账） 原因=" +
+                    (e::class.java.simpleName + ": " + e.message),
+            )
+            false
+        }
+        if (!ok) {
+            lobos.services.log.RuntimeDiagnostics.append(
+                ctx, "ledger", false, "回写 program-index 未生效",
+                "unit=" + unit + " pid=" + pid + " starttime=" + starttime,
+            )
         }
     }
 
