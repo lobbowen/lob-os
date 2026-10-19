@@ -99,7 +99,8 @@ object PreinstalledPieces {
             if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) continue
             total++
             val okNow = runCatching {
-                val t = File(link.readSymbolicLink().absolutePath)
+                // readSymbolicLink() 在 java.nio.file.Path 上，不在 java.io.File 上。
+                val t = File(java.nio.file.Files.readSymbolicLink(link.toPath()).toString())
                 t.isFile && t.canonicalFile.path == landed
             }.getOrDefault(false)
             if (okNow) { ok++; continue }
@@ -107,7 +108,7 @@ object PreinstalledPieces {
             val made = runCatching {
                 if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
                 android.system.Os.symlink(fresh.absolutePath, link.absolutePath)
-                val t = File(link.readSymbolicLink().absolutePath)
+                val t = File(java.nio.file.Files.readSymbolicLink(link.toPath()).toString())
                 t.isFile && t.canonicalFile.path == landed
             }.getOrDefault(false)
             if (made) { ok++; rebuilt++ } else {
