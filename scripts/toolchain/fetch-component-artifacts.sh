@@ -87,7 +87,9 @@ for t in $COMPONENTS; do
     continue
   fi
 
-  mapfile -t zips < <(compgen -G "$DIST/component-$t-*-android-arm64.zip" || true)
+  # 名字里必须有版本号：component-<件>-<版>-<哈希>-android-arm64.zip
+  # （打包侧在读不到版本时写 unknown，见 recipes/package-component.sh:9 —— 那颗不是本轮编的）
+  mapfile -t zips < <(compgen -G "$DIST/component-$t-*-android-arm64.zip" | grep -v -- "-unknown-" || true)
   if [ "${#zips[@]}" -eq 0 ]; then
     echo "::warning title=$t 产物不合契约::run $picked 的 $ART 里没有 component-$t-<版>-<哈希>-android-arm64.zip"
     echo -e "$t\tmissing\tartifact 里没有符合命名契约的 zip"
