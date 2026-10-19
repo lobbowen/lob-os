@@ -145,7 +145,7 @@ object PreinstalledPieces {
             // ⇒ return 之前先校验派生物；有一条不对就重算它。
             val derived = refreshDerivedLinks(ctx, id, version, entry)
             trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
-                " 重算=" + derived.rebuilt, derived.detail)
+                " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
             val manifestWritten = runCatching {
