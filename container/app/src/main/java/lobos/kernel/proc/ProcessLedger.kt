@@ -142,9 +142,33 @@ object ProcessLedger {
         0
     }.getOrDefault(0)
     fun isOwnedAlive(pid: Int, starttime: Long): Boolean {
-        if (pid <= 0 || starttime <= 0) return false
+        if (pid <= 0) return false
+        if (starttime <= 0) return false
         return starttimeOf(pid) == starttime
     }
+
+    /** 判活的第一条路（不依赖 starttime）：/proc/<pid>/cmdline 里含这个件的 entry 绝对路径。
+     *
+     *  为什么需要它：宿主 JVM 读不到**自己 fork 出来的子进程**的 /proc/<pid>/stat
+     *  （真机读数：进程起来了 pid=30605/30624/30638，账本也记了，而 starttimeOf 返回 -1
+     *  ⇒ begin() 把 -1 原样存下⇒ isOwnedAlive 立刻 false ⇒ programsRunning 恒 0）。
+     *  而 scanChildPid（:128-143）已经在读 /proc/<pid>/cmdline 并与 entry 绝对路径做子串匹配，
+     *  这条路是实测可用的。
+     *
+     *  **它的边界**：cmdline 只回答「这个 pid 现在跑的是不是这个件的入口」，
+     *  **不防 pid 复用** —— starttime 原本正是防复用的那一位，而这一条把它跳过了。
+     *  所以只有 starttime 两边都是 -1（拿不到）时才走它。 */
+    fun isOwnedAliveByCmdline(pid: Int, entryPath: String): Boolean {
+        if (pid <= 0 || entryPath.isBlank()) return false
+        val cmd = runCatching {
+            File("/proc/" + pid + "/cmdline").readBytes().toString(Charsets.UTF_8)
+        }.getOrNull() ?: return false
+        return cmd.contains(entryPath)
+    }
+
+    fun cmdlineOf(pid: Int): String = runCatching {
+        File("/proc/" + pid + "/cmdline").readBytes().toString(Charsets.UTF_8)
+    }.getOrDefault("")
 
     @Synchronized
 
@@ -205,9 +229,27 @@ object ProcessLedger {
         if (kept.size != cur.size) persist(ctx, kept)
     }
 
+    /** 这个 programId 的 entry 绝对路径 —— 三处共用（liveOwned 的调用方都要它），
+     *  ★ 所以收在这里而不是让每个调用方各写一份。 */
+    fun entryPathOf(ctx: Context, programId: String): String? = runCatching {
+        val spec = lobos.services.reg.ProgramRegistry.spec(ctx, programId) ?: return@runCatching null
+        spec.entryFile.takeIf { it.isFile }?.absolutePath
+    }.getOrNull()
+
+    /** 在跑的条目 —— 判据两条，按顺序取：
+     *  ① starttime 可用（账本里 >0 且现在读得到且相等）⇒ 以它为准（防 pid 复用）；
+     *  ② starttime 拿不到（账本里就是 -1）⇒ 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
+     *  ★ 而今天这一格是②：宿主读不到自己子进程的 /proc/<pid>/stat。
+     *  ★ 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
+     *  ★ 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */
     @Synchronized
     fun liveOwned(ctx: Context): List<Entry> =
-        list(ctx).filter { isOwnedAlive(it.pid, it.starttime) }
+        list(ctx).filter { isLive(e = it, entryPath = entryPathOf(ctx, it.programId)) }
+
+    /** 判活的那一条（三处共用）。② 里 cmdline 只回答「这个 pid 是不是这个件的入口」，不防 pid 复用。 */
+    fun isLive(e: Entry, entryPath: String?): Boolean =
+        if (e.starttime > 0) isOwnedAlive(e.pid, e.starttime)
+        else entryPath != null && isOwnedAliveByCmdline(e.pid, entryPath)
 
     fun pidReused(ctx: Context): List<Entry> =
         list(ctx).filter { it.pid > 0 && starttimeOf(it.pid) > 0 && !isOwnedAlive(it.pid, it.starttime) }
