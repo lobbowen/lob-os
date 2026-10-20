@@ -299,28 +299,32 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #   · $ORIGIN 这个值只有在产物里才成立，而落位侧改它 = 改那份字节 => 那要重编，不是重装
 #   · RUNPATH 是那份字节的属性 => 归安装侧就是「在安装期改产物属性」（C-16）
 # 为什么走「事后 objcopy」而不是链期 -Wl：
-#   · 链期那一路在八件上无处可插 —— 八件是第三方 configure 驱动的
+#   [源码] 链期那一路在八件上无处可插 —— 八件是第三方 configure 驱动的
 #     （build-bundle-curl.sh:41 ./configure，:53 只传 CC/AR/RANLIB），
 #     而那个 configure 那一侧今天零 LDFLAGS => 走链期要改每一件的 configure 参数
-#   · 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
+#   [源码] 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
 #     而它只是今天还没有用它写 RUNPATH 的这个用法
+#   [读数] 那两行 configure 的行号是我今天 grep 出来的（可复跑）；
+#     而「零 LDFLAGS」那半句今天也是 grep 出来的（curl 与 openssl 各一次，都是零命中）。
 # 为什么写 RUNPATH 而不是 RPATH：
-#   · curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
+#   [读数] curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
 #     （libssl.so / libcrypto.so / libz.so.1 / libdl.so / libc.so）
-#   · 而 ld.so(8):77-82 的原文（03 今天取到逐字原文）【原文】—— 而**那是 glibc 那一侧的**，
+#     —— 而这一格是我今天 readelf -d 实读出来的（★ ★ 而它答的是「那一件今天有哪几个直接依赖」，★★
+#     ★★ **不是**「RUNPATH 会不会生效」）★★
+#   [原文] ld.so(8):77-82（03 今天取到逐字原文）—— 而**那是 glibc 那一侧的**，
 #     DT_RUNPATH "only to find those objects required by DT_NEEDED entries and
 #     do not apply to those objects' children"
-#     => 【原文 · glibc 那一侧】直接依赖这一问：RUNPATH 就够
+#     => [原文 · glibc 那一侧] 直接依赖这一问：RUNPATH 就够
 #        （  而今天没有需要下传的依赖）
 #      而**这一句不能跨宿主**：
 #        「证据回答的是一个更普遍的问题，而断言的是一个更具体的情况」——
 #         把 glibc 那一项换到 bionic 上，证据就不成立了（04 今天那条判别）
-#          ** 而「在 bionic 上实际生效」那一格今天【未过】**（07 今天去取，
+#          ** 而「在 bionic 上实际生效」那一格今天[未过]**（07 今天去取，
 #           而那是唯一能把强度从「据原文」升到「已验」的那一次运行）。
-#   · 而 bionic 上 DT_RPATH 已知会白编 —— 【转述·未核原文】
+#   [转述·未核原文] 而 bionic 上 DT_RPATH 已知会白编
 #     （仓里 build-node-android.sh:363 的诊断文案这么说，而我今天没找到它的逐字原文）
 #
-# 而这一格今天**只写「同一目录」那一侧**；跨目录那一格【未过】（见提交说明）。
+# 而这一格今天**只写「同一目录」那一侧**；跨目录那一格[未过]（见提交说明）。
 #   · 库形态那几份落在 lib/，而它们的 $ORIGIN 就是 lib/ 自己 => 裸 $ORIGIN
 #   · 程序形态那几份落在 bin/，而它们的 $ORIGIN 是 bin/
 #     => 它要够到同件的 lib/ 就得写 $ORIGIN/../lib 这一类形态
