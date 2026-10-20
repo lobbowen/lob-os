@@ -331,7 +331,18 @@ echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 
 # 第五个参数是「这个件要在 usr/bin 出现的命令名」——
-# **从上面既有的 $APPLETS 转小写派生，不另写一份名单**
-# （两份名单必然漂移；2026-10-15 实测 18 个 applet 一个都没进包就是因为没带）。
+# ★ **取落包集**（make install 连带建的那批软链），**不取 $APPLETS 派生、也不取 .rodata 那张表**。
+#   缺陷名（C-102）**声明集与落包集混用**：
+#     原来这一段写的是「从 $APPLETS 转小写派生」—— 而 $APPLETS 是**白名单**（决定编不编），
+#     而「这份字节实际响应哪些名字」是 **make install 连带建的那批软链**
+#     （man1 INSTALL 段：「If you enabled any applet installation scheme …
+#      these will also be installed in the location pointed to by CONFIG_PREFIX」）。
+#     ⇒ 两者今天**不等**：白名单 17 个（没有 sh），而落包集 18 个（含 sh —— 它不受白名单管，busybox 必带）。
+#     ⇒ 而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
+#     （这一件编译时按白名单关掉了它）⇒ package-bundle-zip.sh 的 BINS 那一支会判红
+#     （「清单里的命令入口不存在：bin/$bn 在 $OUT 下没有 —— 声明了但没产出」）。
+#     ⇒ 三个集合的今天读数：表 19 / 落包集 18 / 白名单 17；
+#       **表 − 落包集 = {awk}**（被白名单关掉的那些）★ 而这与 C-16 同源：
+#       它是唯一能发现「事实与声明开始分家」的那个核对口。
 BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
 emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS"

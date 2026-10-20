@@ -401,11 +401,15 @@ elf_write_shape() {
 #
 # ★ **它不是「这份字节响应哪些名字」** —— 01 今天裁的那一句已被今天的读数更正：
 #   01 说「那份字节的 .rodata 开头就是『我响应哪些名字』那张表」⇒ 读它，不另带名单。
-#   ★ 而今天实测（这一件那份字节）：读出 **19 个**（含 awk 与 sh），
-#     而这一件编译时按白名单**关掉了 awk**（build-native-busybox.sh:78-82：
-#     「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，make install 不给它建软链」）
-#     ⇒ **.rodata 里仍有 awk** ⇒ 那张表是**上游这份源码的 applet 全集**，
+#   ★ 而今天实测（这一件那份字节，01 今天逐字核过）：
+#     表（.rodata）= **19 个**：awk cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi
+#     落包集（make install 实际建出的软链）= **18 个**：cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi
+#     白名单（$APPLETS，我们写下的）= **17 个**：tar gzip gunzip grep sed ls cp mv cat mkdir rm ln vi df ps true false
+#     ⇒ **表 − 落包集 = {awk}** —— 而这一件编译时按白名单**关掉了 awk**
+#       （build-native-busybox.sh:78-82：「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，
+#        make install 不给它建软链」）⇒ **.rodata 里仍有 awk** ⇒ 那张表是**上游这份源码的 applet 全集**，
 #       **不是「这份字节响应哪些名字」**（编译时被关掉的 applet 名字仍在表里）。
+#     ⇒ 而 **落包集 − 白名单 = {sh}** —— sh 不受白名单管（它必带）⇒ 这一条不是「关掉了什么」。
 #   ⇒ 而「这份字节响应哪些名字」的**真源**是 make install 连带建的那批软链
 #     （man1 INSTALL 段：「If you enabled any applet installation scheme …
 #     these will also be installed in the location pointed to by CONFIG_PREFIX」）
