@@ -195,12 +195,22 @@ class OsHostService : Service() {
 
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
         val a11yConnected = a11y == ServiceState.BOUND
-        val runningIds = runCatching {
-            lobos.kernel.proc.ProcessLedger.liveOwned(this).map { it.programId }.distinct()
+        // C-110：程序在跑的个数，是算出来的，不是说的 —— runningIds.size 只留了个数，
+        // 而 ProcessLedger.liveOwned() 明明给的是条目（pid / generation / starttime）。
+        // 今天那两样数据源都已在，只被 .size / .count 吃掉了。
+        val liveEntries = runCatching {
+            lobos.kernel.proc.ProcessLedger.liveOwned(this)
         }.getOrDefault(emptyList())
-        val installed = runCatching {
-            lobos.services.reg.ProgramRegistry.list(this).count { it.startable }
-        }.getOrDefault(0)
+        val runningIds = liveEntries.map { it.programId }.distinct()
+        val ledgerAll = runCatching {
+            lobos.kernel.proc.ProcessLedger.list(this)
+        }.getOrDefault(emptyList())
+        val runningPids = liveEntries.map { it.pid }
+        val installedList = runCatching {
+            lobos.services.reg.ProgramRegistry.list(this).filter { it.startable }
+        }.getOrDefault(emptyList())
+        val installed = installedList.size
+        val installedIds = installedList.map { it.id }
         val reasons = ResidencyPolicy.degradedReasons(
             programsRunning = runningIds.size,
             installedPrograms = installed,
@@ -217,6 +227,15 @@ class OsHostService : Service() {
                 tickGapMs = gapMs,
                 frozen = ResidencyPolicy.frozen(gapMs),
                 startedAtMs = startedAtMs,
+                // C-110 第二格：同一事实有两种形态，一份结论一份原话 ——
+                // 上面三个数（programsRunning / installedPrograms / runningIds）是结论，
+                // 这三样是它们的原话：哪些 pid 现在活着、账本上有哪些条目、在册的是哪些 id。
+                runningPids = runningPids,
+                ledgerEntries = ledgerAll.map {
+                    "pid=" + it.pid + " program=" + it.programId +
+                        " gen=" + it.generation + " starttime=" + it.starttime
+                },
+                installedIds = installedIds,
             ),
         )
         lobos.services.reg.ResidencyStatus.persist(this)

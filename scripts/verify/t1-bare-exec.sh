@@ -18,6 +18,7 @@ READELF="${READELF:-llvm-readelf}"
 command -v "$READELF" >/dev/null 2>&1 || READELF=readelf
 
 BIN="${LO_BIN:-${LO_FILES:-$ROOT/container/app/src/main/assets}/usr/bin}"
+LIB="${LO_LIB:-${LO_FILES:-$ROOT/container/app/src/main/assets}/usr/lib}"
 ENT_PREFIX="${LO_ENT_PREFIX:-}"
 rc_all=0
 
@@ -56,7 +57,11 @@ for name in "$@"; do
   SPLIT=0
   ERRF=""
   if [ -z "${T1_NOPY:-}" ] && [ -z "${T1_NOSHELL:-}" ]; then
-    so=$("$ent" --version 2>/dev/null | head -3 | tr '\n' '|')
+    if [ -n "${T1_SPAWNLIKE:-}" ]; then
+      so="$(LD_LIBRARY_PATH="$LO_LIB" "$ent" --version 2>/dev/null | head -3 | tr '\n' '|')"
+    else
+      so=$("$ent" --version 2>/dev/null | head -3 | tr '\n' '|')
+    fi
     se=$("$ent" --version 2>&1 1>/dev/null | head -3 | tr '\n' '|')
     code=$("$ent" --version >/dev/null 2>&1; echo $?)
     SPLIT=2

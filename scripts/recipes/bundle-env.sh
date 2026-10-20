@@ -14,6 +14,11 @@ PIECE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$PIECE_HERE/../.." && pwd)"
 cd "$ROOT_DIR"
 
+# 形态判据（ET_EXEC / ET_DYN+PT_INTERP / ET_DYN 无 PT_INTERP）——
+# 照 container/app/src/main/java/lobos/kernel/elf/ExecBits.kt:26-30 的形状在 shell 里实现一份。
+# 那一层在构建期算，写进产物；运行期只读产物，不判断、不探测。
+source "$ROOT_DIR/scripts/toolchain/elf-form.sh"
+
 ABI="${ABI:-arm64-v8a}"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
@@ -143,6 +148,33 @@ emit_piece() {
   base="$(basename "$so")"
   dir="$(dirname "$so")"
   check_so "$so" "$min" || die "${id} 产物不可用" "$so 不是 aarch64 ELF 或小于 $min 字节"
+  # ── 形态：构建期算一次 ─────────────────────────────────────
+  #
+  # 缺陷名（C-102）落位只搬字节，不定形态：
+  #   原来「这份字节是库还是程序」这件事在构建期从来没有人算过，
+  #   于是它只能由运行期去猜（看目录、看文件名）或去探测（读 ELF 头）。
+  #   而规则是「构建时就知道」「运行期只读，不判断、不探测」。
+  #   所以形态在**这一环**算：判型、按型定权限、按型补链。
+  #
+  # 判型用的是 ELF 头（readelf -h 的 Type 与 readelf -lW 的 PT_INTERP），
+  # 判据的形状照 container/app/src/main/java/lobos/kernel/elf/ExecBits.kt:26-30。
+  local form role
+  form="$(elf_form "$so")"
+  role="$(elf_role_of_form "$form")"
+  echo "  （形态：$form → $role）"
+  case "$role" in
+    program)
+      # 程序那一件带单入口，且那份字节在构建期就带 owner 执行位。
+      chmod 0755 "$so" ;;
+    library)
+      # 库那一件带三段链（ldconfig(8)）：libfoo.so -> libfoo.so.1 -> libfoo.so.1.12
+      chmod 0644 "$so"
+      local derived
+      derived="$(elf_ensure_chain "$dir" "$ver")"
+      [ -n "$derived" ] && echo "  （补齐三段链：$(echo $derived | tr ' ' ' ')）" ;;
+    unknown)
+      die "${id} 形态判不出来" "$so 不是 ELF —— 形态必须在构建期定下来" ;;
+  esac
   # 共享库整条链（libz.so → .so.1 → .so.1.3.2）一起进包 ——
   # 它们是同一份字节的三个名字，linker 按 DT_NEEDED 找的是带版本的那一层
   if ls "$dir/$base".* >/dev/null 2>&1; then

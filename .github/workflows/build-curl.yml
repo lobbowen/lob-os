@@ -69,6 +69,16 @@ jobs:
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-bundle-curl.sh
 
+      - name: 验形态（包自描述：库还是程序）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
+          # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
+          # 现场用 readelf 复算一遍，两路对账。
+          bash scripts/verify/verify-piece-shape.sh "$PKG" library
+
       - name: 固化标准件包到 Release
         if: steps.reuse.outputs.hit != 'yes'
         env:

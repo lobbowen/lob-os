@@ -6,7 +6,6 @@ import lobos.services.log.RuntimeDiagnostics
 import lobos.services.log.Journal
 import lobos.kernel.elf.ElfFacts
 import lobos.kernel.layout.SystemDirs
-import lobos.kernel.elf.ExecBits
 import lobos.kernel.layout.PrefixProvisioner
 import org.json.JSONObject
 
@@ -14,6 +13,250 @@ object ProgramInstallPipeline {
 
     private const val LIB_TOKEN = "\$LIB"
     private const val PLATFORM_TOKEN = "\$PLATFORM"
+
+    // ── 形态：只从产物读 ─────────────────────────────────────
+    //
+    // 用户 2026-10-20 三行规则：
+    //   一 构建时就知道哪些是库、哪些是程序 —— 生产时就知道的事
+    //   二 库装到库目录，程序装到程序目录
+    //   三 注册表只记「库在哪里」与「程序在哪里」；运行期只读，不判断、不探测
+    //
+    // 形态由构建期算好（scripts/toolchain/elf-form.sh 照 ExecBits.formOf 那把尺），
+    // 写进**产物自带的** piece-shape.json，随包落进落位目录。
+    // 运行期只读那一份：读不到就报缺，不探测那份字节、不猜、不兜底。
+    //
+    // 取值域与构建期那一份一致：
+    //   form ∈ {exec, dyn-interp, dyn-plain, unknown}   逐文件的形态
+    //   role ∈ {program, library, unknown}              逐文件的角色（按 form 判）
+    //   kind ∈ {program, library, mixed, unknown}       件整体
+    const val SHAPE_NAME = "piece-shape.json"
+    const val ROLE_PROGRAM = "program"
+    const val ROLE_LIBRARY = "library"
+
+    /** 产物自带的形态说明 —— 构建期算好（scripts/toolchain/elf-form.sh 照 ExecBits.formOf 那把尺），
+     *  随包落进落位目录。**运行期只读它**：读不到就是读不到（返回 null），调用方报缺，
+     *  不探测那份字节、不判断、不兜底（用户 2026-10-20 三行规则第三条）。
+     *
+     *  ★ 缺陷名（C-102）**运行期拿字节现算形态**：这一段是替代
+     *    [PieceScan.roleFromDisk] 那条路（它 walk 落位目录读 ELF 头）——
+     *    形态是**生产时就知道的事**，产物自带一份，运行期只读。
+     *
+     *  取值域（与构建期那一份一致）：
+     *    form ∈ {exec, dyn-interp, dyn-plain, unknown}   逐文件的形态
+     *    role ∈ {program, library, unknown}              逐文件的角色（按 form 判）
+     *    kind ∈ {program, library, mixed, unknown}       件整体
+     */
+    object PieceShape {
+
+        data class FileShape(
+            val path: String,
+            val dir: String,
+            val role: String,
+            val mode: String,
+            val sha256: String,
+        )
+
+        data class Piece(
+            val kind: String,
+            val entry: String,
+            val files: List<FileShape>,
+        ) {
+            fun roleOf(rel: String): String? = files.firstOrNull { it.path == rel }?.role
+
+            fun byRole(role: String): List<FileShape> = files.filter { it.role == role }
+        }
+
+        /** 读产物自带的形态说明。**读不到就是读不到** —— 返回 null，不去探测那份字节。 */
+        fun read(dir: File): Piece? {
+            val f = File(dir, SHAPE_NAME)
+            if (!f.isFile) return null
+            val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return null
+            val arr = o.optJSONArray("files")
+            val files = mutableListOf<FileShape>()
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val fo = arr.optJSONObject(i) ?: continue
+                    val p = fo.optString("path", "").trim()
+                    if (p.isEmpty()) continue
+                    files.add(
+                        FileShape(
+                            p,
+                            fo.optString("dir", "").trim(),
+                            fo.optString("role", "").trim(),
+                            fo.optString("mode", "").trim(),
+                            fo.optString("sha256", "").trim(),
+                        )
+                    )
+                }
+            }
+            return Piece(
+                kind = o.optString("kind", "").trim(),
+                entry = o.optString("entry", "").trim(),
+                files = files,
+            )
+        }
+
+        /** 形态 ⇒ 落位目录（用户三行规则第二条：库装到库目录，程序装到程序目录）。
+         *  ★ 判据是**形态**，不是原路径的首段目录名 —— 那是「看目录名」（§10.1:128 已判无效）。 */
+        fun dirForRole(role: String): String? = when (role) {
+            ROLE_PROGRAM -> "bin"
+            ROLE_LIBRARY -> "lib"
+            else -> null
+        }
+
+        /** 落位后的件内相对路径 —— **只由形态决定**，是纯函数（两边各自算，结果一致）。
+         *  认不出的形态返回 null（报缺，不猜）。 */
+        fun landedRel(piece: Piece, rel: String): String? {
+            val role = piece.roleOf(rel) ?: return null
+            val dir = dirForRole(role) ?: return null
+            return dir + "/" + rel.substringAfterLast('/')
+        }
+    }
+
+    /** 落位的结果：落位后入口的件内相对路径 + 它的形态 + 整件的形态。 */
+    data class Landed(val entryRel: String, val role: String, val kind: String, val moved: List<String>)
+
+    /** 落位失败的原因（报缺用）。 */
+    data class LandFailure(val reason: String, val detail: String)
+
+    /** 按**产物里带的那一条**落位：形态决定目录（库进库目录、程序进程序目录）。
+     *
+     *  ★ 缺陷名（C-102）**落位按目录名分家，不看形态**：原来落位只是把解包出来的目录
+     *    整个搬过去（bin/ 归 bin/、lib/ 归 lib/），于是「同一件里有程序形态的字节在 lib/ 下」
+     *    这件事被原样保留下来 —— 入口随后按清单的 entry（lib/ 那一份）建链，
+     *    那几件就再也调不起来（今天五件失败的成因）。
+     *  ⇒ 现在**形态**决定落位目录：程序形态的字节进 bin/，库形态的进 lib/。
+     *
+     *  形态从产物自带的 piece-shape.json 读（构建期算好）。**读不到就报缺**，
+     *  不探测那份字节、不猜、不兜底（用户三行规则第三条）。
+     */
+    fun landByShape(dest: File, shape: PieceShape.Piece, declaredEntry: String): Pair<Landed?, LandFailure?> {
+        // ① 目标映射：包内相对路径 -> 落位后相对路径（**只由形态决定**）
+        val map = LinkedHashMap<String, String>()
+        for (fs in shape.files) {
+            val dir = PieceShape.dirForRole(fs.role)
+                ?: return null to LandFailure(
+                    "shape-form-unknown",
+                    "产物声明的 " + fs.path + " 形态是 \"" + fs.role + "\"（认不出）—— 报缺，不猜它该落哪",
+                )
+            val target = dir + "/" + fs.path.substringAfterLast('/')
+            val clash = map.entries.firstOrNull { it.value == target && it.key != fs.path }
+            if (clash != null) {
+                return null to LandFailure(
+                    "shape-landing-clash",
+                    "落位目标重名：" + fs.path + " 与 " + clash.key + " 都要落到 " + target,
+                )
+            }
+            map[fs.path] = target
+        }
+        if (map.isEmpty()) {
+            return null to LandFailure(
+                "shape-empty",
+                "产物自带的形态说明里没有一件落位项 —— 报缺，不猜",
+            )
+        }
+
+        // ② 搬实体（先搬，③ 再改软链，因为软链目标可能也是被搬的那一份）
+        val moved = mutableListOf<String>()
+        for ((src, dst) in map) {
+            val s = File(dest, src)
+            val d = File(dest, dst)
+            if (src == dst) continue
+            if (!existsAsFileOrLink(s)) {
+                // 已经落过位的那一份（幂等）：目标在，就算已落位。
+                if (existsAsFileOrLink(d)) continue
+                return null to LandFailure(
+                    "shape-payload-missing",
+                    "产物声明的落位项在包与盘上都不在：" + src,
+                )
+            }
+            d.parentFile?.mkdirs()
+            if (existsAsFileOrLink(d)) d.delete()
+            if (!s.renameTo(d)) {
+                return null to LandFailure(
+                    "shape-landing-failed",
+                    "落位失败（搬不动）：" + src + " -> " + dst,
+                )
+            }
+            moved.add(src + " -> " + dst)
+        }
+
+        // ③ 软链：目标被搬过就跟着搬（busybox 的 applet 指向本体那份）
+        for ((src, dst) in map) {
+            val d = File(dest, dst)
+            if (!java.nio.file.Files.isSymbolicLink(d.toPath())) continue
+            val raw = runCatching {
+                java.nio.file.Files.readSymbolicLink(d.toPath()).toString()
+            }.getOrNull() ?: continue
+            if (raw.startsWith("/")) continue   // 绝对链：包外的东西，不动
+            val resolved = normalizeRel(src.substringBeforeLast('/', "") + "/" + raw)
+                ?: continue
+            val newTarget = map[resolved] ?: continue
+            val newLink = relativeRel(dst.substringBeforeLast('/', ""), newTarget) ?: continue
+            if (newLink == raw) continue
+            runCatching { d.delete() }
+            runCatching { android.system.Os.symlink(newLink, d.absolutePath) }
+        }
+
+        // ④ 权限按**产物声明的 mode** 落（运行期不判形态、不替产物决定权限）
+        for (fs in shape.files) {
+            if (fs.mode.isBlank()) continue
+            val dst = map[fs.path] ?: continue
+            val f = File(dest, dst)
+            if (!f.isFile) continue
+            val m = runCatching { fs.mode.toInt(8) }.getOrNull() ?: continue
+            runCatching { android.system.Os.chmod(f.absolutePath, m) }
+        }
+
+        // ⑤ 入口：清单声明的那一条 -> 落位后那一条（形态决定它在哪）
+        val entrySrc = declaredEntry.trim()
+        if (entrySrc.isEmpty()) {
+            return null to LandFailure(
+                "entry-missing",
+                "产物没声明入口 —— 报缺，不猜一个",
+            )
+        }
+        val entryDst = map[entrySrc]
+            ?: return null to LandFailure(
+                "entry-not-in-shape",
+                "清单声明的入口 " + entrySrc + " 不在产物声明的落位集合里 —— 报缺，不猜另一个",
+            )
+        val entryRole = shape.roleOf(entrySrc)
+            ?: return null to LandFailure(
+                "entry-form-unknown",
+                "入口 " + entrySrc + " 的形态认不出 —— 报缺，不猜",
+            )
+        return Landed(entryDst, entryRole, shape.kind, moved) to null
+    }
+
+    private fun existsAsFileOrLink(f: File): Boolean =
+        f.isFile || java.nio.file.Files.isSymbolicLink(f.toPath())
+
+    /** 相对路径归一（去掉 . 与 ..，越出根返回 null）。 */
+    private fun normalizeRel(rel: String): String? {
+        val out = mutableListOf<String>()
+        for (seg in rel.split('/')) {
+            when (seg) {
+                "", "." -> continue
+                ".." -> { if (out.isEmpty()) return null; out.removeAt(out.size - 1) }
+                else -> out.add(seg)
+            }
+        }
+        return if (out.isEmpty()) null else out.joinToString("/")
+    }
+
+    /** 从 fromDir 到 toRel 的相对路径。 */
+    private fun relativeRel(fromDir: String, toRel: String): String? {
+        val from = if (fromDir.isEmpty()) emptyList() else fromDir.split('/')
+        val to = toRel.split('/')
+        var i = 0
+        while (i < from.size && i < to.size - 1 && from[i] == to[i]) i++
+        val up = from.size - i
+        val out = mutableListOf<String>()
+        repeat(up) { out.add("..") }
+        for (j in i until to.size) out.add(to[j])
+        return if (out.isEmpty()) null else out.joinToString("/")
+    }
 
     enum class From(val label: String) {
         APP("程序"),
@@ -181,13 +424,61 @@ object ProgramInstallPipeline {
         }
         dir.mkdirs()
 
+        // ── 按产物里带的那一条落位 ───────────────────────────────
+        //
+        // 形态只从**产物自带的** piece-shape.json 读（构建期算好，随包落进来）。
+        // 读不到 ⇒ 报缺，不探测那份字节、不猜、不兜底（用户三行规则第三条）。
         val landedMeta = pieceMetaOf(context, dir, safeVer)
-        runCatching {
-            ManifestWriter.write(dest, landedMeta.asJson(), safeVer, PieceScan.roleFromDisk(context, spec.programId))
+        val shape = PieceShape.read(dest)
+        if (shape == null) {
+            RuntimeDiagnostics.append(
+                context, "ota", false, "件缺形态说明",
+                spec.programId + "：落位目录里没有 " + SHAPE_NAME +
+                    "（产物没带形态）—— 报缺，不探测那份字节",
+            )
+            return Result(
+                false, safeVer, "shape-missing",
+                "产物没带形态说明（" + SHAPE_NAME + "）—— 形态是生产时就知道的事，" +
+                    "运行期只读它；读不到就报缺，不探测字节、不猜",
+            )
         }
-        val binDir = File(dest, "bin")
-        binDir.listFiles()?.forEach { f ->
-            if (f.isFile) runCatching { ExecBits.apply(f) }
+        val declaredEntry = landedMeta.entry().ifBlank { spec.expectedEntryRel.orEmpty() }
+        val (landed, landFail) = landByShape(dest, shape, declaredEntry)
+        if (landFail != null || landed == null) {
+            val f = landFail
+            RuntimeDiagnostics.append(
+                context, "ota", false, "件落位失败（按形态）",
+                spec.programId + "：" + (f?.reason ?: "") + " —— " + (f?.detail ?: ""),
+            )
+            return Result(
+                false, safeVer, f?.reason ?: "shape-landing-failed",
+                (f?.detail ?: "落位失败") +
+                    "（形态是产物带来的那一格：kind=" + shape.kind + "）",
+            )
+        }
+        if (landed.moved.isNotEmpty()) {
+            RuntimeDiagnostics.append(
+                context, "ota", true, "件按形态落位",
+                spec.programId + "：" + landed.moved.joinToString("，") +
+                    "；入口 " + declaredEntry + " -> " + landed.entryRel +
+                    "（角色 " + landed.role + "，整件 " + landed.kind + "）",
+            )
+        }
+
+        val role = landed.role
+        // 落位清单里的 entry 必须是**落位后那一条**（不是包里那一条）——
+        // 运行期按它找入口（ProgramRegistry.spec 的 entryFile = File(dir, entry)）。
+        //  ★ 缺陷名（C-102）**清单里的 entry 是包内路径，落位后已不是那一处**：
+        //    原来写的是 meta 的 entry（如 lib/liblobosjq.so），而按形态落位后那份字节
+        //    已经在 bin/ 下 ⇒ 运行期按清单找入口会「入口不存在」。
+        //  ⇒ 这里把 entry 换成落位后的相对路径再写。
+        val landedMetaJson = runCatching {
+            val j = JSONObject(landedMeta.raw())
+            j.put("entry", landed.entryRel)
+            j
+        }.getOrNull()
+        runCatching {
+            ManifestWriter.write(dest, landedMetaJson, safeVer, role)
         }
 
         val depReport = satisfyElfDeps(context, dest)
@@ -195,15 +486,18 @@ object ProgramInstallPipeline {
             return Result(false, safeVer, "elf-deps-unresolved", depReport.detail)
         }
 
-        val entryRel = spec.expectedEntryRel
-            ?: runCatching {
-                CatalogClient.entryFor(context, spec.programId)?.optString("entry", "").orEmpty()
-            }.getOrDefault("").ifBlank { "bin/" + spec.programId }
-        if (!linkEntry(context, dest, entryRel, spec.programId)) {
+        // 入口软链建在**形态决定的那个目录**里：
+        //   程序形态 ⇒ 程序目录（usr/bin）；库形态 ⇒ 库目录（usr/lib）。
+        //  ★ 缺陷名（C-102）**建链按 entry 的首段目录名分家**：原来那一行是
+        //    if (entryRel.startsWith("lib/")) libDir else binDir —— 那是「看目录名」。
+        //    现在目录由**形态**决定（产物带来的那一格），不是看名字。
+        val entryRel = landed.entryRel
+        if (!linkEntry(context, dest, entryRel, spec.programId, role)) {
             return Result(
                 false, safeVer, "entry-link-failed",
                 "件已落位但入口软链建不起来（" +
-                    lobos.kernel.layout.PrefixProvisioner.binDir(context).absolutePath + "/" +
+                    (if (role == ROLE_LIBRARY) lobos.kernel.layout.PrefixProvisioner.libDir(context).absolutePath
+                     else lobos.kernel.layout.PrefixProvisioner.binDir(context).absolutePath) + "/" +
                     entryRel.substringAfterLast("/") + "）—— 装了个没人调得动的件；" +
                     "看 SELinux 是否允许该目录建链，或落位目录是否可写",
             )
@@ -213,6 +507,14 @@ object ProgramInstallPipeline {
             spec.programId, lobos.services.reg.ProgramManager.levelOf(context, spec.programId),
         )
         val meta = pieceMetaOf(context, dir, safeVer)
+        // 注册表只记「库在哪里」与「程序在哪里」：
+        //   程序形态 ⇒ assetEntry = 落位后那一条（程序目录里的相对路径）
+        //   库形态   ⇒ assetEntry 空（这一件没有程序入口），libName = 库文件名
+        //  ★ 缺陷名（C-102）**注册表把库那份也记成入口**：原来 assetEntry = meta.entry()
+        //    （清单里那一条，不分形态）⇒ lib/ 下那份也成了「入口」，
+        //    于是那几件调起来是那份库字节 —— 今天五件失败的成因。
+        //  ⇒ 现在入口格只对**程序形态**填；库形态那一格空着（= 只有落位目录）。
+        val isProgram = role == ROLE_PROGRAM
         val upserted = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 context,
@@ -220,11 +522,14 @@ object ProgramInstallPipeline {
                   id = spec.programId,
                       version = version,
                       enabled = true,
-                      stateDir = base.stateDir.ifBlank { lobos.services.reg.ProgramManager.relStateDir(context, spec.programId) },
-                      sha256 = base.sha256,
-                      libName = meta.libNameOrEmpty(),
-                      assetEntry = meta.entry(),
-                      role = lobos.services.supply.PieceScan.roleFromDisk(context, spec.programId),
+                      // 落位目录记**相对**路径（opt/<id>）——
+                  // ProgramManager.stateDirOf 拼的是 File(ctx.filesDir, stateDir)，
+                  // 绝对路径会被拼成 filesDir + "/data/..." （那就找不到了）。
+                  stateDir = SystemDirs.REL_OPT + "/" + spec.programId,
+                  sha256 = base.sha256,
+                  libName = entryRel.substringAfterLast("/"),
+                      assetEntry = if (isProgram) entryRel else "",
+                      role = role,
                       requires = meta.requires(),
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
@@ -423,7 +728,22 @@ object ProgramInstallPipeline {
         return out
     }
 
-    private fun linkEntry(context: Context, dest: File, entryRel: String, programId: String): Boolean {
+    /** 建入口软链。**目录由形态决定**，不看 entry 的首段目录名。
+     *
+     *  ★ 缺陷名（C-102）**建链按目录名分家**：原来那一行是
+     *    if (entryRel.startsWith("lib/")) libDir else binDir。
+     *    那是「看目录名」（§10.1:128 判为无效）：库形态的字节可以落在 bin/ 下，
+     *    程序形态的字节也可以落在 lib/ 下（今天那几件就是后者）——
+     *    目录名说什么就是什么，于是「lib/ 下那份」被当成了入口。
+     *  ⇒ 现在目录由**形态**回答（产物带来的那一格）：程序 ⇒ 程序目录，库 ⇒ 库目录。
+     */
+    private fun linkEntry(
+        context: Context,
+        dest: File,
+        entryRel: String,
+        programId: String,
+        role: String,
+    ): Boolean {
         val purged = lobos.kernel.layout.EntryLinks.purge(context, programId, dest)
         if (purged > 0) {
             RuntimeDiagnostics.append(
@@ -442,16 +762,21 @@ object ProgramInstallPipeline {
             return false
         }
         if (!target.isFile) return false
-        // entry 指的那个文件要能跑：清单说它是入口，系统就按它启动。真机读数——
-        // bash/rg 的 entry 是 bin/ 下的（-rwx--x--x），其余六件是 lib/ 下的 .so（-rw------），
-        // 而原来只给 bin/ 补执行位 ⇒ 那六件 spawn 得 error=13。
-        // 只补 entry 指向的那一个文件，不是同目录下所有 .so（.so 保持 600 不改）。
-        runCatching { lobos.kernel.elf.ExecBits.apply(target) }
+        // 执行位**由产物决定**（构建期 elf-form.sh 已按形态定死：程序 0755 / 库 0644，
+        // 落位时已按产物声明的 mode 落过）。这里不再替产物补执行位 ——
+        // 那是运行期判断形态的那条路（今天五件失败的成因之一：
+        // 原来只给 bin/ 补执行位，lib/ 下那份是 -rw------ ⇒ spawn 得 error=13）。
         val primary = entryRel.substringAfterLast("/")
-        val dir = if (entryRel.startsWith("lib/")) {
-            lobos.kernel.layout.PrefixProvisioner.libDir(context)
-        } else {
-            lobos.kernel.layout.PrefixProvisioner.binDir(context)
+        val dir = when (role) {
+            ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(context)
+            ROLE_LIBRARY -> lobos.kernel.layout.PrefixProvisioner.libDir(context)
+            else -> {
+                RuntimeDiagnostics.append(
+                    context, "linkEntry", false, "入口形态认不出，报缺",
+                    "entry=" + entryRel + "  role=" + role + " —— 不猜它该建在哪",
+                )
+                return false
+            }
         }
         var ok = link(dir, primary, target)
         for (a in aliasNames(dest, programId, primary)) {

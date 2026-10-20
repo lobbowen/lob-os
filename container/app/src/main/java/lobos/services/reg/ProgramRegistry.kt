@@ -114,19 +114,20 @@ object ProgramRegistry {
         val invalid = when {
             schemaErrors.isNotEmpty() -> schemaErrors.first()
             !entryFile.exists() -> "入口不存在：" + entryFile.absolutePath
-            // 存在不等于可执行：真机上 busybox 的 entry 是 lib/libbusybox.so，
-            // 那个文件在，但 spawn 它得到 error=13。
+            // ★ **缺陷名（C-102）运行期探测形态**：这一支原来是一段形态判定
+            //   `!lobos.kernel.elf.ExecBits.isRunnableByForm(entryFile) ->`，读那份字节的
+            //   e_type（ET_EXEC / ET_DYN）与 PT_INTERP，由运行期自己算「这是不是程序」。
+            //   它在这里已经经历过三代：① ExecBits.isRunnable（含 owner 执行位）；
+            //   ② 换成 isRunnableByForm（只问形态）以与 PieceScan 对齐；③ 本次整支删除。
+            //   前两代都是为了消解「两把尺并存」这一症状；症状的根因是这一问本身不该在运行期问 ——
+            //   形态是构建期就知道的事（用户第一行规则），落位目录是构建期定的（第二行规则）。
             //
-            // ★ **缺陷名（C-102）两把尺并存**：这一处原来用 `ExecBits.isRunnable`（含 owner 执行位），
-            //   而 PieceScan 用 `isRunnableByForm`（只问 ELF 形态）⇒ 同一个问题两处不同答案。
-            //   真机读数（07）：jq 那件 entry 指向 `lib/liblobosjq.so`（-rw-------）而 **exit=0 能调起** ——
-            //   linker64 是我们显式当入口调的（ExecEntry.kt:59 把 SYSTEM_LINKER 放进 argv[0]），
-            //   那份字节是被**映射**的，映射权限由链接器定，不由文件权限位定。
-            //   ⇒ 这一处与 PieceScan 统一用形态那一把（§10.1:119 只读 ELF，不看文件名/目录名/form）。
-            !lobos.kernel.elf.ExecBits.isRunnableByForm(entryFile) ->
-                "入口不是程序形态：" + entryFile.absolutePath +
-                    "（这份字节能不能当程序跑由它自己的 ELF 头回答：ET_EXEC 或 ET_DYN+PT_INTERP；" +
-                    "不看文件名、不看目录名、不看清单声明 —— 见 §10.1:119）"
+            //   ⇒ 删掉之后这一支的判据回到「清单声明的 entry 与落位结果是否一致」，
+            //     而 entry 本身由 gen-component-meta.js 从落位结果算出（构建期），运行期只读。
+            //
+            //   ★ 后果据实写出（不推断）：一个程序的 entry 若在构建期被算成一个共享库形态的文件，
+            //     这一处今天**不再**能拦住 —— 那个保证已经移到构建期（算错即判红退出）。
+            //     若要保留运行期这一道拦截，就等于把形态探测放回来，与第三行规则冲突。
             else -> null
         }
         val note = if (args == null) "清单未声明 args：按空参数启动（需要子命令的程序会打印用法并退出，请安装携带 args 的新包）" else null

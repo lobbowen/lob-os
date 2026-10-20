@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lobos.os/schemas/component-manifest.schema.json",
+  "title": "LOB-OS 件清单 schema（component-meta.json / component-manifest.json）",
+  "description": "本仓此前没有 JSON Schema 文件（全仓 find '*.schema.json' 零命中；阳性对照：同一次 find 对 '*.json' 命中 scripts/component-sources.json、scripts/node-versions.json、scripts/piece-criteria.json），因此本文件为新建。它约束两层清单：1) 件自描述 component-meta.json（打包产物，随包落进包里，字段真源 scripts/recipes/gen-component-meta.js）；2) 发布清单 component-manifest.json 的 tools[] 条目（字段真源 scripts/publish/publish-component-manifest.js）。两层的 entry 同源同约束。",
+  "definitions": {
+    "entryRel": {
+      "type": "string",
+      "description": "件内相对路径，形如 bin/<名> 或 lib/<名>.so。",
+      "pattern": "^(bin|lib)/[^/\\\\]+$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      }
+    },
+    "entryProvenance": {
+      "type": "string",
+      "const": "gen-component-meta.js:落位结果（构建期算出，非人填）",
+      "description": "entry 的来源标记。唯一允许的来源是构建期的落位结果（安装流程按落位结果写），不许由人手填进任何配置文件或命令行实参。",
+      "readOnly": true
+    },
+    "componentMeta": {
+      "type": "object",
+      "description": "component-meta.json —— 件自描述。",
+      "properties": {
+        "schema": {
+          "type": "integer",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entry": {
+          "$ref": "#/definitions/entryRel",
+          "description": "件内入口。来源唯一：构建期的落位结果 —— 由 scripts/recipes/gen-component-meta.js 从落位目录实际产出的文件算出（lib/ 下唯一主名 .so，否则 bin/ 下唯一文件）。不许由人填进 scripts/component-sources.json，不许作为命令行实参传入，不许由任何其它配置文件提供。"
+        },
+        "entryProvenance": {
+          "$ref": "#/definitions/entryProvenance"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "essential": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string"
+        },
+        "sourceSha256": {
+          "type": "string"
+        },
+        "sameAs": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "id",
+        "version",
+        "entry",
+        "entryProvenance"
+      ],
+      "additionalProperties": false
+    },
+    "publishedTool": {
+      "type": "object",
+      "description": "component-manifest.json 的 tools[] 一个条目（注册表条目）。",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/definitions/entryRel",
+          "description": "注册表条目里的「件在哪里」。与 component-meta.json 的 entry 同源：同由 scripts/registry/read-component-entry.sh 读出（该脚本只读 scripts/component-sources.json 的 entry 键）。运行期只读，不判断、不探测。"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "entry": {
+                "$ref": "#/definitions/entryRel"
+              }
+            },
+            "required": [
+              "name",
+              "entry"
+            ]
+          }
+        },
+        "kind": {
+          "type": "string"
+        },
+        "layout": {
+          "type": "string"
+        },
+        "abi": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "sha256",
+        "entry"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/componentMeta"
+    },
+    {
+      "type": "object",
+      "description": "component-manifest.json —— 发布清单（注册表）。",
+      "properties": {
+        "schema": {
+          "type": "integer"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "version": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "expiresEpochMs": {
+          "type": "integer"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/publishedTool"
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "channel",
+        "revision",
+        "version",
+        "tools"
+      ]
+    }
+  ],
+  "x-lobos-rules": {
+    "entry-只能由安装流程按落位结果写": {
+      "规则原文": "清单里那个能手填的 entry 字段，只能由安装流程按落位结果写，不能由人填。",
+      "谁写": "scripts/recipes/gen-component-meta.js（构建期，从落位目录算出）",
+      "谁不许写": [
+        "scripts/component-sources.json 的 entry 键（18 处字面量）",
+        "任何调用方脚本传给 gen-component-meta.js 的 entry 实参",
+        "任何 .yml 工作流里写死的入口路径"
+      ],
+      "违规时的行为": "生成期：gen-component-meta.js 收到 4 个位置参数（旧形态 <件名> <版本> <entry> <输出.json>）即判红退出（exit 1），不写清单；落位结果不唯一（lib/ 下多个主名 .so，或 bin/ 下多个文件）或为空时同样判红退出，不写清单。打包期：package-component.sh:19 按钉值表那一格找文件，找不到即判红。发布期：scripts/verify/verify-apk-native.sh:187-191 逐件比对说明里的 entry 与钉值表里的 entry，两处不一致即计入 PIECE_BAD 判红；scripts/publish/publish-component-manifest.js:167-169 同样比对，不一致即抛错。运行期：清单里的 entry 只读，不判断、不探测（ProgramInstallPipeline.kt:198-207 只按它建软链与判失败）。",
+      "人手填错 entry 的后果": "在落位结果唯一的正常情形下，人手填的 entry 根本进不了清单 —— 清单里的 entry 只由落位结果算出；人填的值只可能出现在与落位结果不一致的旧形态调用上，而那条调用在生成期就被拒（exit 1，包打不出来）。若人改的是 scripts/component-sources.json 里的 entry 键：打包期 package-component.sh:19 与 verify-component-artifact.sh:78 按钉值表那一格找文件，找不到即判红；发布期 verify-apk-native.sh:187-191 与 publish-component-manifest.js:167-169 比对两处 entry，不一致即判红。运行期读到错的 entry 只会表现为「按说明找不到文件」—— PreinstalledPieces.kt:135-137 正是按这一格判「包里没有 entry 指的文件」。"
+    },
+    "运行期只读不探测": {
+      "规则原文": "注册表只记「库在哪里」与「程序在哪里」；运行期只读，不判断、不探测。",
+      "读点": [
+        "container/app/src/main/java/lobos/services/app/PreinstalledPieces.kt:135-137（读 component-meta.json 的 entry，判包里有没有那个文件）",
+        "container/app/src/main/java/lobos/services/supply/ProgramInstallPipeline.kt:198-207（按 entry 建软链，建不起来即判失败）",
+        "container/app/src/main/java/lobos/services/supply/ManifestWriter.kt:22（把 meta 的 entry 抄进 program-manifest.json）"
+      ],
+      "运行期的 entry 改写只有一处且是按落位结果改写": "container/app/src/main/java/lobos/services/supply/ProgramInstaller.kt:238-249（rewriteEntry：快应用后端平铺后把 backend/<x> 改写成落位后的 <x>）—— 这一处是安装流程按落位结果写，符合规则；它不是人填。"
+    }
+  }
+}

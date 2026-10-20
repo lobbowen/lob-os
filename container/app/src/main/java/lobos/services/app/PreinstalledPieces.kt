@@ -80,15 +80,29 @@ object PreinstalledPieces {
      *  判据：每一条「指向这一件」的软链，目标必须存在，且必须落在落位目录里。
      *  真机读数（07，ls -l）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
      *  files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry> —— 前缀两遍、版本段两遍，
-     *  而 linkcrypto/libcurl/libz 那三行是干净的。跨多版装机不变，因为这一支只验原物。 */
-    private fun refreshDerivedLinks(ctx: Context, id: String, version: String, entry: String): DerivedCheck {
+     *  而 linkcrypto/libcurl/libz 那三行是干净的。跨多版装机不变，因为这一支只验原物。
+     *
+     *  ★ 缺陷名（C-102）**派生物校验也按目录名分家**：原来那一行是
+     *    if (entry.startsWith("lib/")) libDir else binDir —— 又是「看目录名」。
+     *  ⇒ 现在目录由**形态**决定（[role] 那一格，产物带来的）。
+     */
+    private fun refreshDerivedLinks(
+        ctx: Context,
+        id: String,
+        version: String,
+        entry: String,
+        role: String,
+    ): DerivedCheck {
         val verDir = File(SystemDirs.pieceDir(ctx, id), version)
         val landed = File(verDir, entry).canonicalFile.path
         val primary = entry.substringAfterLast("/")
-        val dirs = if (entry.startsWith("lib/")) {
-            listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
-        } else {
-            listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
+        val dirs = when (role) {
+            ProgramInstallPipeline.ROLE_PROGRAM -> listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
+            ProgramInstallPipeline.ROLE_LIBRARY -> listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
+            else -> emptyList()
+        }
+        if (dirs.isEmpty()) {
+            return DerivedCheck(0, 0, 0, "入口形态认不出（role=" + role + "）—— 不猜它该建在哪")
         }
         var total = 0
         var ok = 0
@@ -135,28 +149,46 @@ object PreinstalledPieces {
         val entry = meta.optString("entry", "").ifBlank { return fail(ctx, id, "说明里没有 entry") }
         if (!File(unpacked, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
 
+        // 形态只从**产物自带的** piece-shape.json 读。读不到 ⇒ 报缺，
+        // 不探测那份字节、不猜、不兜底（用户 2026-10-20 三行规则第三条）。
+        val shape = ProgramInstallPipeline.PieceShape.read(unpacked)
+            ?: return fail(ctx, id, "包里没有 piece-shape.json（产物没带形态）—— 报缺，不探测字节")
+        val entryRole = shape.roleOf(entry)
+            ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+        // 落位后入口在哪：由形态决定（库进库目录、程序进程序目录），不看目录名。
+        val landedEntry = ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
+            ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
+
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
-        if (verDir.isDirectory && File(verDir, entry).isFile) {
+        if (verDir.isDirectory && File(verDir, landedEntry).isFile) {
             // 缺陷（C-102）① 落位检查只验原物在不在、派生物指向哪不管
             //        ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
             // ⇒ 这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
             //   而 usr/bin 与 usr/lib 下指向这一件的软链是**派生物**，坏链就永远留在这儿。
             //   真机读数（07）：libbusybox.so / liblobosjq.so / libssl.so 三条坏的，跨多版装机不变。
             // ⇒ return 之前先校验派生物；有一条不对就重算它。
-            val derived = refreshDerivedLinks(ctx, id, version, entry)
+            //  ★ 缺陷名（C-102）**短路那一支按目录名验原物**：原来验的是 verDir/<entry>，
+            //    而 entry 是清单里那一条（lib/ 那份）⇒ 这一支的判据是「目录名对不对」，
+            //    不是「形态对不对」。现在验的是**落位后那一条**（形态决定的）。
+            val derived = refreshDerivedLinks(ctx, id, version, landedEntry, entryRole)
             trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
                 " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
+            val landedMeta = runCatching {
+                val j = org.json.JSONObject(meta.toString())
+                j.put("entry", landedEntry)
+                j
+            }.getOrNull()
             val manifestWritten = runCatching {
                 lobos.services.supply.ManifestWriter.write(
-                    verDir, meta, version, lobos.services.supply.PieceScan.roleFromDisk(ctx, id)
+                    verDir, landedMeta, version, entryRole
                 )
             }
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
-            register(ctx, id, version, verDir.absolutePath, entry, meta)
+            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, landedMeta)
             return true
         }
 
@@ -183,6 +215,11 @@ object PreinstalledPieces {
         return true
     }
 
+    /** 落位目录的**相对**路径（opt/<id>）—— 注册表里那一格是相对路径，
+     *  ProgramManager.stateDirOf 拼的是 File(ctx.filesDir, stateDir)。 */
+    private fun relStateDir(id: String): String =
+        lobos.kernel.layout.SystemDirs.REL_OPT + "/" + id
+
     private fun extract(ctx: Context, id: String): File? = runCatching {
         val dst = File(ctx.cacheDir, "preinst/$id.zip")
         dst.parentFile?.mkdirs()
@@ -192,42 +229,57 @@ object PreinstalledPieces {
         dst.takeIf { it.length() > 0 }
     }.getOrNull()
 
-    private fun levelOf(meta: org.json.JSONObject): lobos.services.reg.Level {
-        if (meta.optString("kind", "").equals("program", true)) {
-            return lobos.services.reg.Level.PROGRAM
-        }
-        return lobos.services.reg.Level.PIECE
-    }
+    /** 这一件是程序还是库 —— **只读产物的形态那一格**（[role]），不猜、不探测。
+     *  （原来的这一格读的是 meta 的 `kind` —— 那是清单里我们自己写的字面量，
+     *    而形态的真源是产物自带的 piece-shape.json。） */
+    private fun levelOf(role: String): lobos.services.reg.Level =
+        if (role == ProgramInstallPipeline.ROLE_PROGRAM) lobos.services.reg.Level.PROGRAM
+        else lobos.services.reg.Level.PIECE
 
+    /** 登记这一件。**注册表只记「库在哪里」与「程序在哪里」。**
+     *
+     *  ★ 缺陷名（C-102）**库那份也被记成入口**：原来这一行无条件
+     *    `assetEntry = entry`（清单里那一条，不分形态）⇒ lib/ 下那份也成了「入口」，
+     *    于是「入口格有值」被当成了「这一件是程序」——
+     *    今天五件失败的成因：入口填到了 lib 那一份。
+     *  ⇒ 现在**入口格只对程序形态填**；库形态那一格空着（= 只有落位目录）。
+     *
+     *  ★ 缺陷名（C-102）**role 由运行期现读字节填**：原来这一行是
+     *    `role = PieceScan.roleFromDisk(ctx, id)`（walk 落位目录读 ELF 头）。
+     *    形态是**生产时就知道的事** —— 现在从产物带来的那一格（[role]）读。
+     *
+     *  ★ role 回答的是「它是什么」；「它是不是底座解释器」是另一个问题（§10.1:138），
+     *    由 [ShellEntry] 的判据回答，不靠这个字段。
+     */
     private fun register(
         ctx: Context,
         id: String,
         version: String,
         stateDir: String,
         entry: String,
-        meta: org.json.JSONObject,
+        role: String,
+        meta: org.json.JSONObject?,
     ) {
         val prev = lobos.services.reg.ProgramIndex.get(ctx, id)
+        val isProgram = role == ProgramInstallPipeline.ROLE_PROGRAM
         runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 ctx,
-                (prev ?: lobos.services.reg.ProgramIndex.empty(id, levelOf(meta))).copy(
+                (prev ?: lobos.services.reg.ProgramIndex.empty(id, levelOf(role))).copy(
                     id = id,
                     version = version,
+                    // 落位目录记**相对**路径（opt/<id>）——
+                    // ProgramManager.stateDirOf 拼的是 File(ctx.filesDir, stateDir)，
+                    // 绝对路径会被拼成 filesDir + "/data/..." （那就找不到了）。
                     stateDir = stateDir,
                     enabled = true,
                     desired = lobos.services.reg.Desired.RUNNING,
-                    assetEntry = entry,
-                    // ★ **缺陷名（C-102）role 由自报字段填** —— 这一行原来写的是
-                    //   `role = meta.optString("form", "")`：读的是清单里我们自己写的 `form`，
-                    //   而 `form` 今天已经不由清单生成器产出（gen-component-meta.js 不再写它），
-                    //   `optString` 的默认值于是给出空串 —— 真机读数：07 看到 `role=` 后面是空的。
-                    // ★ 而 role 回答的是「它是什么」，答案在字节里（§10.1:119），不在清单里。
-                    // ★ 「它是不是底座解释器」是另一个问题（§10.1:138），由 [ShellEntry] 的判据回答，不靠这个字段。
-                    role = lobos.services.supply.PieceScan.roleFromDisk(ctx, id),
-                    required = meta.optBoolean("essential", false),
+                    libName = entry.substringAfterLast("/"),
+                    assetEntry = if (isProgram) entry else "",
+                    role = role,
+                    required = meta?.optBoolean("essential", false) ?: false,
                     capabilities = emptyList(),
-                    requires = (meta.optJSONArray("requires") ?: org.json.JSONArray()).let { arr ->
+                    requires = (meta?.optJSONArray("requires") ?: org.json.JSONArray()).let { arr ->
                         (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
                     },
                 ),

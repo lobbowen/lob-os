@@ -8,8 +8,6 @@ import lobos.services.log.RuntimeDiagnostics
 
 object LdConfig {
 
-    private const val CONF = "ld.so.conf"
-    private const val CACHE = "ld.so.cache"
     private const val TAG = "lobos.ldconfig"
 
     fun run(ctx: Context): Int {
@@ -37,13 +35,15 @@ object LdConfig {
             val root = File(p, ver)
             if (!root.isDirectory) continue
 
+            // C-102: 今天这里只建一条「同名软链 -> SONAME 名字」，丢掉了 ldconfig(8) 的三段链形状
+            // （libfoo.so -> libfoo.so.<major> -> libfoo.so.<full>），linker 用的那个名字与
+            // 实体文件之间的中间层都没建出来。改为按 SonameChain 落三段链。
             File(root, "lib").listFiles()?.sortedBy { it.name }?.forEach { so ->
                 if (!so.isFile) return@forEach
-                val soname = runCatching { ElfFacts.read(so)?.soname }.getOrNull()
-                    ?.takeIf { it.isNotBlank() } ?: so.name
-                val dst = File(usrLib, soname)
-                if (linkTo(so, dst)) linked++ else unresolved += so.absolutePath + " → " + dst.absolutePath
-                log += "lib  " + so.name + " → " + dst.name + "   " + so.absolutePath
+                val landed = SonameChain.land(so, usrLib)
+                linked += landed.created
+                if (!landed.ok) unresolved += landed.detail
+                log += landed.log
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
@@ -63,11 +63,9 @@ object LdConfig {
             }
         }
 
-        File(etc, CONF).writeText(usrLib.absolutePath + "\n" + usrBin.absolutePath + "\n")
-        File(etc, CACHE).writeText(buildString {
-            append("# lobos ld.so.cache — 扫到的件\n")
-            usrLib.listFiles()?.sortedBy { it.name }?.forEach { append(it.name).append('\t').append(it.absolutePath).append('\n') }
-        })
+        // C-102: ld.so.conf / ld.so.cache 在本仓零读者（证据见 05-core-developer/env-cell.md），
+        // 真正被 native 读的只有 SysEnv.FILE 一份，故不再生成这两份影子配置。
+        // 链接器的库搜索路径由 RuntimeEnvironment.treeRootEnv 设的 LD_LIBRARY_PATH 承担。
         val sysenv = SysEnv.write(ctx)
 
         RuntimeDiagnostics.append(
@@ -105,17 +103,12 @@ object LdConfig {
         return linked
     }
 
-    private fun linkTo(target: File, link: File): Boolean = runCatching {
-        if (java.nio.file.Files.isSymbolicLink(link.toPath())) {
-            val cur = File(link.parentFile, java.nio.file.Files.readSymbolicLink(link.toPath()).toString())
-            if (runCatching { cur.canonicalFile }.getOrNull() == runCatching { target.canonicalFile }.getOrNull()) {
-                return@runCatching true
-            }
-        }
-        if (link.exists() && !link.delete()) return@runCatching false
-        java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
-        true
-    }.getOrDefault(false)
+    // C-102: 原来这里只判 link.exists()，而 exists() 跟随符号链接：
+    // 断链的旧软链 exists() 为 false，于是跳过 delete 直接 createSymbolicLink，
+    // 在已有同名项的位置上必然失败。改为把「是软链」和「存在」分开判。
+    // 软链的建/查/删统一走 SonameChain.put（1=新建 0=已一致 -1=失败）。
+    private fun linkTo(target: File, link: File): Boolean =
+        SonameChain.put(link, target) >= 0
     fun landedIds(ctx: Context): List<String> {
         val out = sortedSetOf<String>()
         SystemDirs.lib(ctx).listFiles()?.forEach { out += it.name }

@@ -169,7 +169,9 @@ esac
 # 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 ⇒
 # 方案甲本该拦住却没拦住。判别形式不是「它是不是源码」，而是
 # 「我改了这个文件，包里会不会变」。
-PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-bundle-zip.sh"
+# 2026-10-20：形态判定与写形态的那份脚本也进了包里（piece-shape.json），
+#   改它同样会改产物内容 ⇒ 它也要进指纹。
+PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-bundle-zip.sh scripts/toolchain/elf-form.sh"
 SRC_FILES="$SRC_FILES $PKG_MECH"
 
 # 必须只用 commit 里的内容（git show HEAD:<path>），不能用 sha256sum 读工作区文件。

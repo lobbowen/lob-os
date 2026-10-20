@@ -16,13 +16,19 @@ set -euo pipefail
 #   取里面的 libcrypto.so；openssl 还没编完时那个 asset 不存在，crypto 必然失败。
 #   其余七件互不依赖，可以并行 dispatch。
 #   ⇒ 顺序：先并行 dispatch 其余七件 → 等 openssl 绿 → 再 dispatch crypto。
+#
+# ★ 2026-10-20 补锚定：本脚本原先零锚定（无 HERE/ROOT_DIR），第 25 行用 `bash scripts/...`
+#   这种依赖调用者 cwd 的相对路径 —— CI 在仓库根调用它所以当前对，**从仓库根以外调用立刻错**。
+#   现与同族其余脚本及被它调用的 cache-key.sh:5-6 对齐（HERE + ROOT_DIR 跟脚本走）。
+HERE="$(dirname "$0")"
+ROOT_DIR="$(cd "$HERE/../.." && pwd)"
 
 id="${1:?usage: piece-key.sh <件名>  （component-sources.json 里的 id）}"
 work="${2:-$(pwd)}"
 
 run() {
   local k v
-  k="$(bash scripts/toolchain/cache-key.sh "$1" "$id")" || {
+  k="$(bash "$ROOT_DIR/scripts/toolchain/cache-key.sh" "$1" "$id")" || {
     echo "::error title=$id 算不出 $1::cache-key.sh 报：$k"
     exit 1
   }

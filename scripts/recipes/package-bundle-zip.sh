@@ -83,8 +83,38 @@ if [ "${OPENSSL_LIBS:-0}" = "1" ]; then
     xb="$(basename "$extra")"
     case "$xb" in
       *.so)
-        # 主名：只有与 entry 同族的那份才带
-        if [ "$xb" != "$eb" ]; then continue; fi ;;
+        # ★ **主名只有一个** —— 但这条规则管的是「消费者找得到它」，不是「库里带几份」。
+        #   库是三段链 libfoo.so -> libfoo.so.1 -> libfoo.so.1.12，而只有中间那个是 SONAME；
+        #   主名是给消费者找的，不是给库自己带的（Lead 今天定的路甲）。
+        #   ⇒ 本件 entry 同族的那份带主名（libssl.so，computeEntry 靠 lib/ 下唯一的主名算 entry）；
+        #   ⇒ 别的件的那份（libcrypto.so）**带它的版本层**（libcrypto.so.3），
+        #   而**不带它的主名** —— 拆包时由 build-crypto.yml 自己摆成它自己的主名。
+        #   ★ 上一版这一行把 libcrypto.so 整个滤掉了 ⇒ 包里连 libcrypto.so.3 都没有
+        #   ⇒ build-crypto.yml 拆不出那份字节 ⇒ crypto 那一件产不出包。
+        if [ "$xb" != "$eb" ]; then
+          # 别的件的那份：**只带它的版本层**（libcrypto.so.3），不带主名。
+          #   ★ 而主名那条软链是 elf_ensure_chain（构建侧，elf-form.sh）建的开发名
+          #     （libcrypto.so -> libcrypto.so.3）—— 那一条**不搬**：
+          #     搬了它，lib/ 下就有两个主名（libssl.so 与 libcrypto.so）⇒
+          #     computeEntry 判「落位结果不唯一」⇒ 包装不出来。
+          #   ★ 而版本层那一份是实体（libcrypto.so.3），它才是要从这个包里拆出去的那份字节。
+          ver=""
+          for cand in "$OUT/$ed/$xb".*; do
+            [ -f "$cand" ] || continue
+            ver="$(basename "$cand")"
+            break
+          done
+          [ -n "$ver" ] || continue
+          cp -Pf "$OUT/$ed/$ver" "$STAGE/$ed/$ver" 2>/dev/null || cp -f "$OUT/$ed/$ver" "$STAGE/$ed/$ver"
+          continue
+        fi ;;
+    esac
+    # ★ 落到这里的只有两种：① 本件 entry 同族的那份（主名）② 版本层那一份（libcrypto.so.3）
+    #   而**别的件的主名软链**（libcrypto.so -> libcrypto.so.3，elf_ensure_chain 建的开发名）
+    #   也在这个循环里（它以 .so 结尾）⇒ 上面那个 *.so 分支已把它 continue 掉了。
+    #   ⇒ 这里再排一次：凡不是本件 entry 同族的、又以 .so 结尾的（主名），一律不搬。
+    case "$xb" in
+      *.so) if [ "$xb" != "$eb" ]; then continue; fi ;;
     esac
     cp -Pf "$extra" "$STAGE/$ed/$xb" 2>/dev/null || cp -f "$extra" "$STAGE/$ed/$xb"
   done

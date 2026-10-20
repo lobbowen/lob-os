@@ -38,10 +38,12 @@ if [ -z "$READELF" ]; then
 fi
 if [ -z "$READELF" ]; then
   echo "[error] 找不到 readelf / llvm-readelf —— 无法校验就不得放行产物。"
+  echo "        坏在哪：无法判定随包 ELF 的依赖闭包是否完整 —— 真机上会报 cannot locate symbol。"
   exit 2
 fi
 if ! "$READELF" --version >/dev/null 2>&1; then
   echo "[error] 指定的 readelf 无法执行：$READELF"
+  echo "        坏在哪：这是环境问题（不是产物不合格）—— 本层判据一条都不会跑，随包 ELF 的依赖闭包无人核。"
   echo "        这是环境/用法问题（不是产物不合格）—— 取不出数据就一条判据都不会跑，拒绝校验。"
   exit 2
 fi
@@ -49,10 +51,12 @@ echo "[info] 使用 readelf: $READELF"
 
 if [ ! -f "$DEPS_FILE" ]; then
   echo "[error] 找不到系统库白名单: $DEPS_FILE"
+  echo "        坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"
   exit 2
 fi
 SYSTEM_LIBS=" $( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
-[ -n "${SYSTEM_LIBS// /}" ] || { echo "[error] $DEPS_FILE 里没有任何库名（是不是被清空了？）"; exit 2; }
+[ -n "${SYSTEM_LIBS// /}" ] || { echo "[error] $DEPS_FILE 里没有任何库名（是不是被清空了？）"
+  echo "        坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"; exit 2; }
 
 if [ ! -f "$MANIFEST_FILE" ]; then
   echo "[error] 找不到可执行资产清单: $MANIFEST_FILE —— 判据 3 无从进行。"

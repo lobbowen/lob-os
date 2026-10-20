@@ -9,6 +9,10 @@ import org.json.JSONObject
  */
 object ManifestWriter {
 
+    // C-102：本单子里的 role 必须是**生产时声明的**值（构建期写进 meta 的那一格）。
+    // 调用方今天传的是 PieceScan.roleFromDisk(...)（运行期现读 ELF 头），
+    // 那一条已列入「需要别人跟着改的清单」（ProgramInstallPipeline.kt:186、PreinstalledPieces.kt:153）。
+    // 这里只落盘，不再替调用方判断形态。
     fun write(dir: java.io.File, meta: JSONObject?, version: String, role: String): Boolean =
         runCatching {
             java.io.File(dir, lobos.services.supply.ProgramDir.MANIFEST_NAME).writeText(build(meta, version, role))

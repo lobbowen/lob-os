@@ -23,43 +23,20 @@ object ExecBits {
         return file.canExecute()
     }
 
-    /** 这份字节的**形态**（01 今天的三态措辞：只看 ELF，不看文件名/目录名/form）。
-     *  - [Exec]      ET_EXEC —— 直接能 exec
-     *  - [DynInterp] ET_DYN **且** 有 PT_INTERP —— 位置无关可执行，需经 linker64 驱动
-     *  - [DynPlain]  ET_DYN **且** 没有 PT_INTERP —— 共享库，不是程序
-     *  - [Unknown]  不是 ELF 或是 #!（走 [hasExecutableHeader] 那条，不归这里）
+    /** 这一族（运行期读 ELF 头判断形态）已于 2026-10-20 按 04 的九节清单整族删除。
      *
-     *  **缺陷名（C-102）形态被合并判据抹平**：原来只判 `detect() != Unknown`
-     *  ⇒ 一个 ET_DYN 共享库与一个 ET_DYN 的 PIE 程序在这把尺上完全一样，
-     *  而 01 今天要的正���这两者是不同的答案。 */
-    enum class Form { Exec, DynInterp, DynPlain, Unknown }
-
-    fun formOf(file: File): Form {
-        if (!file.isFile) return Form.Unknown
-        return when (lobos.kernel.proc.ExecEntry.detect(file)) {
-            is lobos.kernel.proc.ExecEntry.Shape.Exec -> Form.Exec
-            is lobos.kernel.proc.ExecEntry.Shape.Elf -> {
-                // PT_INTERP 在 ELF 程序头里，ElfFacts.read 已经读它并放进 Dynamic.interp
-                val interp = runCatching { ElfFacts.read(file)?.interp }.getOrNull()
-                if (!interp.isNullOrBlank()) Form.DynInterp else Form.DynPlain
-            }
-            else -> Form.Unknown
-        }
-    }
-
-    /** 按 01 今天的判别式（§10.1:119）：**这一份字节能被当程序调起吗？**
-     *  ★ 只问形态：ET_EXEC，或 ET_DYN **且**有 PT_INTERP。
+     *  **缺陷名（C-102）运行期探测形态**：原来这里有 [Form] 枚举、[formOf]、[isRunnableByForm] 三个
+     *  入口，分别读 `e_type`（ET_EXEC / ET_DYN）与 `PT_INTERP`，由**运行期自己算**「这是库还是程序」。
+     *  这与用户 2026-10-20 定的第三行规则（运行期只读，不判断、不探测）冲突：
+     *  形态是**构建期就知道**的事（一），落位目录是构建期定的（二），注册表运行期只该读那两份写下的东西。
      *
-     *  ★ **缺陷名（C-102）把执行位混进了形态那一问**（上一版这里还写了 `&& file.canExecute()`）：
-     *    · linker64 是**我们显式当入口调**的（`ExecEntry.kt:59` 把 SYSTEM_LINKER 放进 argv[0]；
-     *      `PtySession.kt:307-313` 连 PTY 宿主自己也是经它起的）⇒ 那份字节是被**映射**的，
-     *      映射的权限由链接器决定，不是那个文件的权限位。
-     *    · 真机读数（07）：jq 那件入口指向 `lib/liblobosjq.so`（-rw-------）而 **exit=0 能调起**。
-     *    · 另一侧：crypto/curl/openssl/zlib 四件 **PT_INTERP 全无**（本机 readelf 四件均 0），
-     *      backtrace 是 `trying to execute non-executable memory` —— 那不是权限位造成的。
-     *  ⇒ 执行位与形态是**两把尺**；形态这把只读 ELF（§10.1:119「不看文件名、不看目录名」）。 */
-    fun isRunnableByForm(file: File): Boolean = when (formOf(file)) {
-        Form.Exec, Form.DynInterp -> true
-        else -> false
-    }
+     *  **留着的两把尺不是这一族**（判据见 runtime-deletion-list.md 第 1 节）：
+     *  · [hasExecutableHeader] / [apply]：判据是「能不能加执行位」，读的是文件头存在与否，主语是权限位；
+     *    读者是落位侧（SupplyProvisioner / ProgramInstallPipeline / PieceUpdater）。
+     *  · [isRunnable]：读文件头 + owner 执行位，读者是 LdConfig（bin/ 扫描建链），属位置/链接那一路（§33 / §38），
+     *    不属「运行时判断形态」那一族，故未删。
+     *
+     *  ★ 而形态那一问的答案现在从哪来：**清单里那份构建期写下的字段**，字段缺失时报缺（不猜、不探测）。
+     *    该字段由构建脚本产出，不在本文件的写范围内 —— 见 runtime-deletion-list.md 第 2 节「需要别人跟着改的清单」。
+     */
 }

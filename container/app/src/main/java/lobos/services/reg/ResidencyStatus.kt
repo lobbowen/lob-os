@@ -18,6 +18,11 @@ object ResidencyStatus {
         val tickGapMs: Long,
         val frozen: Boolean,
             val startedAtMs: Long,
+        // C-110 第二格：结论旁边必须带原话。这三样就是 programsRunning /
+        // installedPrograms / runningIds 这三个数各自的原话，不是另一个结论。
+        val runningPids: List<Int> = emptyList(),
+        val ledgerEntries: List<String> = emptyList(),
+        val installedIds: List<String> = emptyList(),
     )
 
     @Volatile private var last: JSONObject = JSONObject()
@@ -33,6 +38,10 @@ object ResidencyStatus {
             put("degradedReasons", JSONArray(s.reasons))
             put("actions", JSONArray(s.actions))
             put("tickGapMs", s.tickGapMs)
+            // C-110：这三个数各自的原话（不是另一个结论）—— 改一处就能换回原文。
+            put("runningPids", JSONArray(s.runningPids))
+            put("ledgerEntries", JSONArray(s.ledgerEntries))
+            put("installedIds", JSONArray(s.installedIds))
             put("frozen", s.frozen)
             put("startedAtMs", s.startedAtMs)
             put("uptimeMs", if (s.startedAtMs > 0) System.currentTimeMillis() - s.startedAtMs else 0L)

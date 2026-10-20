@@ -59,21 +59,18 @@ data class UnitEntry(
     ) {
         data class FileRec(val path: String, val sha256: String)
 
+        /** 形态**只从登记的位置格回答**：有可调起入口 = 程序，只有落位目录 = 库/头。
+         *
+         *  ★ **缺陷名（C-102）运行期拿字节现算形态**：原来这一段调 [PieceScan.runnableOnDisk]
+         *    去 walk 落位目录读 ELF 头，再与自报的 role 比对，不一致就记诊断 ——
+         *    运行期既判断又探测。今天的三条规则里，第三条是：运行期只读，不判断、不探测。
+         *    而形态是**生产时就知道的事**：安装流程已把落位目录与入口写进 stateDir / assetEntry。
+         *    所以现在只读那两格；[ctx] 不再参与判定（保留参数是为了不破坏全部调用点）。
+         *  ★ 缺格就报缺：stateDir 空 ⇒ 落位缺失，答 PIECE 是「没有落位」，不是猜一个形态。 */
         fun levelOf(ctx: Context): Level {
-            val r = lobos.services.supply.PieceScan.runnableOnDisk(ctx, id)
-            val d = role == "app"
-            if (r != d) {
-                RuntimeDiagnostics.append(
-                    ctx, "program-level", null, "磁盘与声明不一致",
-                    id + " 磁盘说 " + (if (r) "可执行" else "不可执行") +
-                        " 声明说 " + (if (d) "程序" else "模块") +
-                        " role=" + role + " entry=" + assetEntry
-                )
-            }
-            return if (r) Level.PROGRAM else Level.PIECE
+            if (stateDir.isBlank()) return Level.PIECE
+            return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM
         }
-
-        val isPiece: Boolean get() = role.isNotEmpty() && role != "app"
 
 
 }
