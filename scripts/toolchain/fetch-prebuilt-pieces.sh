@@ -111,10 +111,54 @@ for id in "${PIECES[@]}"; do
   # 装配器 java.util.zip 直接解，不需要任何第三方库。
   # 别用 .tar.gz —— aapt2 会把 assets 下的 .tar.gz 解开并剥掉 .gz 后缀。
   cp -f "$STAGE/$id/$asset" "$ASSETS/$id.zip"
-  rm -f "$STAGE/$id/$asset" "$STAGE/$id/$asset.sha256"
   printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
 
+  # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
+  #   buildSha  同一 commit 上的多次构建相同  => 它标「同一份代码」
+  #   buildRun 每次流水线都不同            => 它标「哪一次流水线造了它」
+  #   ★★ 而 01 今天裁：这一格保证不了同代（★ 每件各自 dispatch 一条 run ⇒ ★★
+  #   ★★ 八件按构造就不可能同代），★ ★ 而「同代还是不同代」才是有用的那一格 ★★
+  #   ⇒ 不保证，只说出来（取件那一支是唯一一次看见全部八件的地方）。
+  meta_json="$STAGE/$id/peek.json"
+  rm -f "$meta_json"
+  if unzip -p "$ASSETS/$id.zip" component-meta.json > "$meta_json" 2>/dev/null; then
+    g_sha="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$meta_json")"
+    g_run="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$meta_json")"
+  else
+    g_sha=""; g_run=""
+  fi
+  rm -f "$meta_json"
+  GEN_ROWS="${GEN_ROWS}${id}|${g_sha}|${g_run}\n"
+
 done
+
+# 这一格：把这一批的标识列出来去重，并把「同代还是不同代」说出来。
+#   ★★ 而「同代」不是判据，「同代还是不同代」才是（01 今天）。★★
+if [ -n "${GEN_ROWS:-}" ]; then
+  echo ""
+  echo "--- 这一批件的构建标识（buildSha = 同一份代码 / buildRun = 哪一次流水线）---"
+  printf '%s' "$GEN_ROWS" | while IFS='|' read -r gid gsha grun; do
+    printf "  %-9s buildSha=%-42s buildRun=%s\n" "$gid" "${gsha:-(没有)}" "${grun:-(没有)}"
+  done
+  runs="$(printf '%s' "$GEN_ROWS" | cut -d'|' -f3 | sed '/^$/d' | sort -u)"
+  shas="$(printf '%s' "$GEN_ROWS" | cut -d'|' -f2 | sed '/^$/d' | sort -u)"
+  n_run="$(printf '%s\n' "$runs" | grep -c . || true)"
+  n_sha="$(printf '%s\n' "$shas" | grep -c . || true)"
+  n_none="$(printf '%s' "$GEN_ROWS" | grep -c '||$' || true)"
+  echo "  去重后: buildRun $n_run 个 / buildSha $n_sha 个（$n_none 件没带那一格）"
+  if [ "$n_none" -gt 0 ]; then
+    echo "  ::notice title=这一批不完整::有 $n_none 件没带构建标识 ⇒ 「是不是这一代」对它们答不出"
+  fi
+  if [ "$n_run" -gt 1 ]; then
+    echo "  ::notice title=这一批不同代::去重后 buildRun $n_run 个 ⇒ 这一批不是同一次流水线造的"
+    echo "  ::notice:: 而那不是缺陷 —— 每件各自 dispatch 一条 run（01 今天裁定）⇒ 按构造就不可能同代。"
+  else
+    echo "  ::notice title=这一批同代::去重后 buildRun $n_run 个 ⇒ 这一批是同一次流水线造的"
+  fi
+  if [ "$n_sha" -gt 1 ]; then
+    echo "  ::notice title=这一批不止一份代码::去重后 buildSha $n_sha 个 ⇒ 这一批跨了多个 commit"
+  fi
+fi
 if [ "$missing" -gt 0 ]; then
   echo ""
   echo "::error title=取件不全::$missing / ${#PIECES[@]} 个件取不到（缺货 $miss_stock · 旧产物 $miss_stale）"

@@ -272,28 +272,6 @@ object PreinstalledPieces {
         //    而落位目录里没有这一格（它只存在包里那份 component-meta.json 里）
         //    而落位目录那份清单是 installComponent 落位后写的 ——  而它写的时候
         //    有没有把构建标识一起写进去，决定这一格能不能答。
-        val pkgBuild = runCatching {
-            val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
-            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
-        }.getOrDefault("")
-        val landedBuild = runCatching {
-            val f = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
-            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
-        }.getOrDefault("")
-        val sameBuild = pkgBuild.isNotBlank() && pkgBuild == landedBuild
-        if (pkgBuild.isBlank()) {
-            lobos.services.log.Journal.note(
-                ctx, "prefix-trace", null, "无法判定是不是这一代 " + id,
-                "产物没带构建标识 buildSha —— 而「拿不到」不拦住落位（只报）",
-            )
-        } else if (!sameBuild) {
-            lobos.services.log.Journal.note(
-                ctx, "prefix-trace", false, "不是这一次构建的那一份 " + id,
-                "产物 buildSha=" + pkgBuild + "、落位 buildSha=" +
-                    (landedBuild.ifBlank { "(没有)" }) +
-                    " —— 只报，不拦落位（判据：拿不到与不是不可分，而不知道不能拦住落位）",
-            )
-        }
         //  处置：**只报，不拦**（03 今天给的两条我判甲，理由是判据那一层）。
         //   甲 只报：写一条诊断，不动落位。后果是那一件是旧代时系统继续用旧字节跑。
         //   乙 拦住：判它不是这一代就不落。后果是「拿不到」与「不是」在读侧不可分
@@ -326,6 +304,8 @@ object PreinstalledPieces {
                 " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
+
+
             val landedMeta = runCatching {
                 val j = org.json.JSONObject(meta.toString())
                 j.put("entry", landedEntry)
@@ -388,6 +368,53 @@ object PreinstalledPieces {
                 (r.reason ?: "") + " — " + r.detail,
             )
             return false
+        // 格三（是不是我们要的那一代）：比「**install 之后**落位目录那份 vs 产物那份」。
+        //   缺陷名（C-102）**检查跑在 install 之前，读到的是上一次留下的旧文件**：
+        //     原来这一段在 install 调用之前，而 install 在本函数后面
+        //      它读到的落位目录那份**还没被换成包里那一份**
+        //     => 八件全报「不是这一次构建的那一份」。
+        //    真机读数（07，2026-10-21）： 那 8 条全在同一个 prefix-trace 轮次里（ (b) 不成立），
+        //      而 APK 里那个 zip 与 Release 上那一份 cmp 逐字相同（ (a) 也不成立）
+        //       那一格的真根因是**行序**  这一段挪到 install 之后。
+        //    而这一格**不参与**「已落位到最新」那个判断（04 今天第七条：
+        //      构建标识报不一致 = 观察点，不拦；逐项摘要报不一致 = 闸门，拦）
+        //       它在这里只写一条诊断。
+        //    而**三种状态不可互相替代**（01 今天 S53，C-05）：
+        //       那一格写着值 → 可答；  那一格**不存在** → 报缺（ 而它**不是**「= APK 那一代」）；
+        //       写着值而 ≠ APK 那一格 → 不同代。 而**答不出「是」时要答「缺」或「不同」，不许答「是」**。
+        val pkgBuild = runCatching {
+            val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
+            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
+        }.getOrDefault("")
+        val landedBuild = runCatching {
+            val f = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
+            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
+        }.getOrDefault("")
+        // 01 今天 S53：三态不可互相替代（C-05）——而**三态判别要求两处都先确认存在**：
+        //    两处都存在而相等  => 同代
+        //    **有一处不存在**  => 报缺（ 而它**不是**「= APK 那一代」， 也不是「= 未知的那一代」）
+        //    两处都存在而不等  => 不同代
+        //  而「凡那一格参与比较，先确认它在每一件上都存在；有一件缺  那一格整体报缺」
+        when {
+            pkgBuild.isBlank() || landedBuild.isBlank() -> {
+                val missing = listOfNotNull(
+                    "产物那份".takeIf { pkgBuild.isBlank() },
+                    "落位目录那份".takeIf { landedBuild.isBlank() },
+                ).joinToString(" 与 ")
+                lobos.services.log.Journal.note(
+                    ctx, "prefix-trace", null, "报缺：无法判定是不是这一代 " + id,
+                    missing + "没有 buildSha 那一格 —— 而「缺」既不是「= APK 那一代」， 也不是「= 未知的那一代」",
+                )
+            }
+            pkgBuild != landedBuild -> {
+                lobos.services.log.Journal.note(
+                    ctx, "prefix-trace", false, "不同代：不是这一次构建的那一份 " + id,
+                    "产物 buildSha=" + pkgBuild + "、落位 buildSha=" + landedBuild +
+                        " —— 只报，不拦落位（构建标识是观察点，逐项摘要才是闸门）",
+                )
+            }
+        }
+
         }
         return true
     }
