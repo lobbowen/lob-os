@@ -118,7 +118,7 @@ object PreinstalledPieces {
         if (targets.isEmpty()) {
             return DerivedCheck(
                 0, 0, 0,
-                "落位目录里没有形态说明（" + ProgramInstallPipeline.PieceShape.Companion.SHAPE_NAME +
+                "落位目录里没有形态说明（" + ProgramInstallPipeline.PieceShape.SHAPE_NAME +
                     "）—— 派生物该建在哪由产物那一份决定（ 而不按某一支兜底）",
             )
         }
