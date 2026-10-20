@@ -161,7 +161,7 @@ object PreinstalledPieces {
             .onFailure { return fail(ctx, id, "解包失败: " + it.message) }
 
         val meta = runCatching {
-            val f = File(unpacked, "component-meta.json")
+            val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
             if (!f.isFile) return fail(ctx, id, "包里没有 component-meta.json（解包后）")
             org.json.JSONObject(f.readText())
         }.getOrNull() ?: return fail(ctx, id, "component-meta.json 解析失败")
@@ -273,11 +273,11 @@ object PreinstalledPieces {
         //    而落位目录那份清单是 installComponent 落位后写的 ——  而它写的时候
         //    有没有把构建标识一起写进去，决定这一格能不能答。
         val pkgBuild = runCatching {
-            val f = File(unpacked, "component-meta.json")
+            val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
             if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
         }.getOrDefault("")
         val landedBuild = runCatching {
-            val f = File(verDir, "component-meta.json")
+            val f = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
             if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
         }.getOrDefault("")
         val sameBuild = pkgBuild.isNotBlank() && pkgBuild == landedBuild
