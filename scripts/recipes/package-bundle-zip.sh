@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # 打标准件归档 —— 一件一个包，装配器只读包。
 #
+# 归档格式：zip。扩展名跟内容走 —— 名字叫 .tar.gz 而内容是 zip
+# 会让看名字判断版本的人被骗；所以名字必须与内容一致。
+#
 # 形态（照抄 .deb：包里自带全部信息，装的时候不查外部清单）：
 #   component-<id>-<版本>-<sha12>.zip
 #     ├ component-meta.json    自描述：id / version / entry / form / requires
+#     ├ piece-shape.json      形态说明（构建期算的形态与逐项摘要）
 #     ├ bin/<名>               命令（entry=bin/… 时）
 #     └ lib/<名>.so            库（entry=lib/… 时）
 #
-# package-component.sh 已转发到这里（单一入口，避免两套打包逻辑漂移）。
-# 这个从 OUT_DIR 读、用 tar —— 本机与 CI 都有 tar，zip 不在 base 镜像里。
+# 包内结构与包名规则见规范（声明处）：
+#   lob-os-team/02-windows-architect/PACKAGING-SPEC.md
+# 本文件不再复述规范 —— 复述即漂移，规范才是权威。
 #
 # 用法：package-bundle-zip.sh <件名> <OUT_DIR> <版本> [entry]
 set -euo pipefail
@@ -303,20 +308,20 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     （curl 与 openssl 两件各 grep 一次，都是零命中）=> 而 LDFLAGS 那一路无处可插
 #   [源码·今天代码怎么写] 而八件的链接是**第三方 configure 驱动**的
 #     （build-bundle-curl.sh:41 ./configure，:53 只传 CC/AR/RANLIB）
-#     ★★ 而这一行说的是「代码今天怎么写」，★ ★ 而上面那一行才是读数 ★★
+#      而这一行说的是「代码今天怎么写」，  而上面那一行才是读数 
 #   [源码·今天代码怎么写] 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
 #     而它只是今天还没有用它写 RUNPATH 的这个用法
-#     ★★ 而这一格是「代码今天怎么写」，★ ★ **不是**「改了之后那份 .so 的 RUNPATH 生效」★★
-#     ★★ —— 而后者今天【未过】（★ ★ 07 今天取，★★ 而它要的是一次运行）★★
-#     ★★ ⇒ **⇒ 而这两句不可互相顶替**（★ ★ 那是 C-145：★★
-#     ★★ **证据是「代码今天怎么写」，还是「那台机器上的一次运行」**）★★
+#      而这一格是「代码今天怎么写」，  **不是**「改了之后那份 .so 的 RUNPATH 生效」
+#      —— 而后者今天【未过】（  07 今天取， 而它要的是一次运行）
+#       ** 而这两句不可互相顶替**（  那是 C-145：
+#      **证据是「代码今天怎么写」，还是「那台机器上的一次运行」**）
 #   [读数·实测] 那两行 configure 的行号是我今天 grep 出来的（可复跑）；
 #     而「零 LDFLAGS」那半句今天也是 grep 出来的（curl 与 openssl 各一次，都是零命中）。
 # 为什么写 RUNPATH 而不是 RPATH：
 #   [读数·实测] curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
 #     （libssl.so / libcrypto.so / libz.so.1 / libdl.so / libc.so）
-#     —— 而这一格是我今天 readelf -d 实读出来的（★ ★ 而它答的是「那一件今天有哪几个直接依赖」，★★
-#     ★★ **不是**「RUNPATH 会不会生效」）★★
+#     —— 而这一格是我今天 readelf -d 实读出来的（  而它答的是「那一件今天有哪几个直接依赖」，
+#      **不是**「RUNPATH 会不会生效」）
 #   [原文] ld.so(8):77-82（03 今天取到逐字原文）—— 而**那是 glibc 那一侧的**，
 #     DT_RUNPATH "only to find those objects required by DT_NEEDED entries and
 #     do not apply to those objects' children"
@@ -343,7 +348,14 @@ if [ -n "${OBJCOPY_OVERRIDE:-}" ]; then
 elif [ -n "${LLVM_OBJCOPY:-}" ]; then
   OBJCOPY="$LLVM_OBJCOPY"
 else
-  for cand in "$(dirname "$(command -v clang 2>/dev/null || echo /nonexistent/clang)")/llvm-objcopy" llvm-objcopy; do
+  # 缺陷名（C-102）**从 PATH 找 clang 在这七个件的构建环境里找不到**：
+  #   而它们走 bundle-env.sh 传 $CC，  而 $CC 不在 PATH 上 
+  #    而 `command -v clang` 落空  dirname 落在 /nonexistent  判红
+  #    而这一版七件全红（run 39487869167 / 39487887172 / 39487893372 / 39487906070 /
+  #      39487911704 / 39487917527 / 39487924957），  而 openssl 那一件没走到这一步（  它自己那条路）
+  #    **照仓里那个能跑通的先例**：TC="$(dirname "$CC")"（  而那是 build-native-busybox.sh:19）
+  [ -n "${CC:-}" ] && TC="$(dirname "$CC")"
+  for cand in "${TC:-/nonexistent}/llvm-objcopy" llvm-objcopy; do
     if [ -x "$cand" ]; then OBJCOPY="$cand"; break; fi
   done
 fi

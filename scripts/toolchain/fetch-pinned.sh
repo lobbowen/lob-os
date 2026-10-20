@@ -13,6 +13,17 @@ VER=""
 URLS=()
 VERSION_FILE=""
 
+if [ "${1:-}" = "--list-keys" ]; then
+  # N3 规范的唯一权威读法：需要直接看表的下游一律走这里，不许自己读文件。
+  # 判别形式：全仓 grep「把 component-sources.json 赋给变量」应只剩本文件一处。
+  node -e '
+    const t=require(process.argv[1]);
+    const pat=new RegExp(process.argv[2]||".*");
+    process.stdout.write(Object.keys(t.sources||{}).filter(k=>pat.test(k)).join("\n"));
+  ' "$TABLE" "${2:-.*}"
+  exit 0
+fi
+
 if [ "${1:-}" = "--pin" ]; then
   KEY="${2:-}"
   OUT="${3:-}"

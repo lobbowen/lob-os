@@ -28,7 +28,9 @@ done
   echo "  子命令: key · tag · deps · deps-list · asset" >&2
   exit 2
 }
-TABLE="$ROOT_DIR/scripts/component-sources.json"
+# N3（S3b）：表的取值一律走 fetch-pinned.sh，本脚本不自己解释它。
+# 唯一的例外是 git 补丁键名清单（--list-keys 提供）—— 因为要按前缀筛选，
+# 那属于「筛选」不是「解释」。
 
 deps_for() {
       case "$1" in
@@ -103,10 +105,7 @@ done
 
 if [ "$TOOL" = "git" ]; then
   P=""
-  for k in $(node -e '
-    const t=require(process.argv[1]);
-    process.stdout.write(Object.keys(t.sources).filter(x=>/^git-.*\.patch$/.test(x)).join(" "));
-  ' "$TABLE"); do
+  for k in $(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --list-keys '^git-.*\.patch$'); do
     v="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$k" 2>/dev/null || true)"
     P="$P$(echo "$k" | head -c6)-${v:0:8}; "
   done
