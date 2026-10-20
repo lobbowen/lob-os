@@ -49,15 +49,33 @@ verify_local() {
 
   printf '%s\n' "$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
 
-  [ -n "$WANT_ENTRY" ] || return 0
-
-  entry="$(read_meta_entry "$f" | node -e '
+  # ★ **第三参已删**（那一份是人写下的副本，而包里那份 meta 就是真源的产物）——
+  #   01 今天裁的：entry 只有真源一处（gen-component-meta.js 的 computeEntry），
+  #   而门禁比的是「包里的 meta 说 X」与「调用方说 X」，而那两处今天说的都是同一个旧值
+  #   ⇒ 字面一致 ⇒ 门禁放过（crypto 那一件写的是 lib/libssl.so —— 指错了另一个件都没被抓住）。
+  # ⇒ 现在这一格改成：**包里那份 meta 必须与真源同源** ——
+  #   ① 它带的 entry 那一格必须是**按形态算出来**的（entryProvenance 写着「构建期算出，非人填」）；
+  #   ② 纯库件（entry 为空）也合法 —— 按 C-05「没有」就是没有。
+  #   而「第三参」那一格保留着：它仍可用于「我明确知道这一件该有的 entry」的调用方（自检用）。
+  meta_prov="$(read_meta_entry "$f" | node -e '
     let d = "";
     process.stdin.on("data", c => d += c).on("end", () => {
-      try { process.stdout.write((JSON.parse(d).entry) || ""); } catch (e) {}
+      try { const m = JSON.parse(d); process.stdout.write(String(m.entryProvenance || "")); } catch (e) {}
     });
   ' 2>/dev/null)"
-  [ "$entry" = "$WANT_ENTRY" ] || return 1
+  if [ -z "$meta_prov" ]; then
+    # 不是按形态算出来的那一份 ⇒ 判红（那说明它是人写下的旧格式包）
+    [ -n "$WANT_ENTRY" ] && return 1
+  fi
+  if [ -n "$WANT_ENTRY" ]; then
+    entry="$(read_meta_entry "$f" | node -e '
+      let d = "";
+      process.stdin.on("data", c => d += c).on("end", () => {
+        try { process.stdout.write((JSON.parse(d).entry) || ""); } catch (e) {}
+      });
+    ' 2>/dev/null)"
+    [ "$entry" = "$WANT_ENTRY" ] || return 1
+  fi
 
   if [ "$(fmt_of "$f")" = "zip" ]; then
     vl="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print "- " $4}' | sed 's#^./##')"

@@ -133,16 +133,41 @@ version_of() {
 # 所以 bin/ 下其余的可执行件必须由这个清单显式带进去。
 emit_piece() {
   local id="$1" out="$2" entry="$3" min="${4:-1000}" bins="${5:-}"
-  local declared
-  declared="$(bash "$ROOT_DIR/scripts/registry/read-component-entry.sh" "$id" 2>/dev/null || echo "")"
-  if [ -n "$declared" ] && [ "$declared" != "$entry" ]; then
-    echo "::error title=$id 的 entry 两处不一致::recipe 传 $entry，component-sources.json 声明 $declared" >&2
-    echo "::error:: 两处必须字面一致 —— 而构建后才比对的话，错的包已经打出来了" >&2
-    return 1
-  fi
+  # ★ **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
+  #   缺陷名（C-102）entry 散在几处、而那几处是副本：
+  #     原来这一格是「declared（表里那份）!= $entry（recipe 传的那份）⇒ 判红」，
+  #     而今天 entry **按形态算**（下面那段 pick），recipe 传的那份只是声明 ⇒ 两者本就不同。
+  #   ⇒ 现在：entry 只有**真源**一处（按形态算，写进产物那份 meta 与 piece-shape.json）。
+  #     而「那一份该长什么样」由 verify-piece-shape.sh 那两路对账核（产物内部自洽）。
   local so base dir f b ver
   ver="$(version_of "$id")"
   [ -n "$ver" ] || die "${id} 没有版本" "scripts/component-sources.json 里查不到"
+  # ★ **entry 按形态挑**（与 package-bundle-zip.sh 同一把尺）：
+  #   这一件在磁盘上有没有程序那一侧（bin 下有程序形态字节）？
+  #     有 ⇒ 入口是**那一侧**（按形态挑，不按名字顺序）；
+  #     没有 ⇒ 入口是 lib/ 下那一份**库**（纯库件，entry 那一格在清单里留空）。
+  #   缺陷名（C-102）调用方声明的 entry 被当真相：原来这一行是 so="$out/$entry" ——
+  #   而 openssl 那一件声明的是 lib/libssl.so（库形态）⇒ 按形态决定执行位与链的那一段
+  #   作用在**库**上 ⇒ 程序那一份（bin/openssl）没被判型、没带执行位。
+  local pick=""
+  if [ -d "$out/bin" ]; then
+    for f in $(ls -A "$out/bin" 2>/dev/null | LC_ALL=C sort); do
+      p="$out/bin/$f"
+      [ -f "$p" ] || continue
+      ff="$(elf_form "$p" 2>/dev/null)"
+      if elf_form_is_program "$ff"; then pick="bin/$f"; break; fi
+    done
+  fi
+  if [ -z "$pick" ]; then
+    for f in $(ls -A "$out/lib" 2>/dev/null | LC_ALL=C sort); do
+      case "$f" in *.so) pick="lib/$f"; break ;; esac
+    done
+  fi
+  [ -n "$pick" ] || die "${id} 没产出" "bin/ 下无程序形态字节、lib/ 下无主名 .so —— 这一件没有可判形态的字节"
+  if [ -n "$entry" ] && [ "$entry" != "$pick" ]; then
+    echo "  （这一件按形态算出的入口是 $pick，而调用方声明的是 $entry —— 以形态为准）"
+  fi
+  entry="$pick"
   so="$out/$entry"
   [ -f "$so" ] || die "${id} 没产出" "$so 不存在"
   base="$(basename "$so")"

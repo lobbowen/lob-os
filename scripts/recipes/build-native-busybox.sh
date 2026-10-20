@@ -241,26 +241,42 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR/lib" "$OUT_DIR/bin"
-cp -f "$SRC/busybox" "$OUT_DIR/lib/libbusybox.so"
-chmod 0755 "$OUT_DIR/lib/libbusybox.so"
+# ★ **本体落 bin/**（它按形态是程序形态：ET_EXEC、无 PT_INTERP —— 07 今天的 readelf 读数）。
+#   缺陷名（C-102）本体放 lib/ 而它按形态是程序形态：原来这里是 lib/libbusybox.so，
+#   而「形态决定落位目录」⇒ 运行期 dirForRole(program) ⇒ 它会落进 bin/，
+#   ★ ⇒ 而那 17 条软链若指向 ../lib/libbusybox.so ⇒ **断链** ⇒ 整个工具族消失。
+#   ⇒ 现在：本体在 bin/libbusybox.so（与它按形态该落的地方一致），软链指向 ../bin/libbusybox.so。
+cp -f "$SRC/busybox" "$OUT_DIR/bin/libbusybox.so"
+chmod 0755 "$OUT_DIR/bin/libbusybox.so"
 
-# applet 落 bin/ 而不是 lib/：
-#   LdConfig 的 bin 扫描只 File(root,"bin") + ExecBits.isRunnable(exe)（LdConfig.kt:45-48），
-#   而 lib/ 里的 applet 永远进不了 usr/bin ⇒ 整个 busybox 工具族消失。
-#   本体仍留在 lib/（它是库，LdConfig 按 SONAME 建 usr/lib 软链），
-#   applet 名不是 SONAME，只走 bin 这条路 —— 两者不冲突。
-# 链接目标必须是 ../lib/libbusybox.so：LdConfig 是照软链建的且用 absolutePath（LdConfig.kt:48），
-#   所以会变成 usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls -> ../lib/libbusybox.so 两跳；
-#   写成 libbusybox.so 会断链，而断链会让整个工具族在真机上继续消失而 CI 全绿。
+# applet 落 bin/，而软链指向**本体那份字节**（本体也在 bin/）。
+#
+# ★ 缺陷名（C-102）**本体与软链目标不一致**（两段注释自相矛盾）：
+#   上面那段已把本体搬到 bin/libbusybox.so（按形态：ET_EXEC、无 PT_INTERP ⇒ 程序形态 ⇒ 落 bin/），
+#   而这一段原来还写着「本体仍留在 lib/（它是库，LdConfig 按 SONAME 建 usr/lib 软链）」
+#   并且软链指向 ../lib/libbusybox.so ⇒ **那 17 条会全是断链** ⇒ 整个工具族在真机上消失而 CI 全绿。
+#   ⇒ 处置（04 今天的判别形式：不自洽在「位置上」⇒ 改放置它的那一处）：软链目标跟着本体一起搬。
+#
+# ★ 而「它是库」那个判断今天不成立（01 今天裁的 S32，三条读数）：
+#   ① 它**没有 SONAME**（readelf -d 零命中）—— 而「库」在 ELF 里的标志就是 SONAME；
+#   ② **没有任何字节 NEEDED 它**（逐件扫过全部 opt/*/*/lib 与 opt/*/*/bin，零命中）——
+#      而「库」的定义是「被别的字节装载」；
+#   ③ 它自己的 DT_NEEDED **是空的** —— 而「库」是需要别人的东西。
+#   ⇒ 它是一份独立的**程序**字节，而那 17 个名字是它的 argv[0] 派生物。
+#
+# 链接目标必须与本体同目录（../bin/libbusybox.so）：
+#   LdConfig 照软链建链且用 absolutePath ⇒ usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls
+#   -> ../bin/libbusybox.so 两跳；写成 libbusybox.so 会断链，
+#   而断链会让整个工具族在真机上继续消失而 CI 全绿。
 NAPP=0
 for l in "$WORK/install/bin/"*; do
   [ -L "$l" ] || continue
   b="$(basename "$l")"
   [ "$b" = busybox ] && continue
-  ln -sf ../lib/libbusybox.so "$OUT_DIR/bin/$b"
+  ln -sf ../bin/libbusybox.so "$OUT_DIR/bin/$b"
   NAPP=$((NAPP+1))
 done
-echo "[$TOOL] 本体(lib) + $NAPP 个 applet 软链(bin) 进包"
+echo "[$TOOL] 本体(bin/，按形态是程序形态) + $NAPP 个 applet 软链(bin/，指向它) 进包"
 
 # 声明集 ⊆ 落包集（单向包含）。
 #
@@ -282,7 +298,7 @@ done
   "$MISSING_BIN 在 $OUT_DIR/bin 下不存在 —— 上面的「配置项全部生效」只验 .config 里写没写，验不到 applet 到底编没编出来。看它依赖的 CONFIG_* 是不是被白名单关了。"
 echo "[$TOOL] 声明的 $(printf '%s\n' $APPLETS | wc -w) 个 applet 全部在落包里 ✓（落包共 $NAPP 个，多出的是未声明的派生 applet）"
 
-BB="$OUT_DIR/lib/libbusybox.so"
+BB="$OUT_DIR/bin/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
 [ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
 "$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true
@@ -318,4 +334,4 @@ printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 # **从上面既有的 $APPLETS 转小写派生，不另写一份名单**
 # （两份名单必然漂移；2026-10-15 实测 18 个 applet 一个都没进包就是因为没带）。
 BB_BINS="$(printf '%s\n' $APPLETS | tr 'A-Z' 'a-z' | tr '\n' ' ')"
-emit_piece "$TOOL" "$OUT_DIR" lib/libbusybox.so 500000 "$BB_BINS"
+emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS"

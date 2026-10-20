@@ -30,6 +30,10 @@ upstream libz.so zlib
 upstream libssl.so openssl
 upstream libcrypto.so crypto
 upstream libcurl.so curl
-upstream liblobosjq.so jq
+# ★ jq 那一件今天**不再提供 liblobosjq.so** —— 03 今天那一问：
+#   「这一件 lib/ 下那份字节，有谁 NEEDED 它？」jq 的 DT_NEEDED 只有 libm/libdl/libc
+#   ⇒ 零人 NEEDED 它 ⇒ 产物里就不该有它（改包，不是改落位）⇒ 它的入口是 bin/jq。
+#   ⇒ 而这一列是**那一件提供的那个字节名** ⇒ 改成 bin/jq。
+upstream jq jq
 # --- soft ---
 

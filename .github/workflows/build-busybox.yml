@@ -62,7 +62,10 @@ jobs:
           #   被当成新的继续用，CI 报 success 而包是空的。
           #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" "lib/libbusybox.so"; then
+          # ★ 这一格验的是**包里那个入口文件**（busybox 那一件的入口是 bin/ 下那批 applet 之一）。
+          #   07 今天核到：原来这一行写的是 lib/libbusybox.so —— 而今天 entry 按形态算，
+          #   busybox 那一件的程序那一侧是 bin/ 下的 applet 软链（entry=bin/<某个>）。
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"

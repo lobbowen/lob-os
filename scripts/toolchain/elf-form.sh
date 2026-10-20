@@ -305,13 +305,26 @@ elf_write_shape() {
 "
   done
 
-  local files_json="" programs="" libraries=""
+  local files_json="" programs="" libraries="" derived_links=""
   local n_prog=0 n_lib=0 n_bin=0 n_libdir=0
   local mode bytes sha soname chain chain_json entry_form="" entry_role="" dir n
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
-    if [ -L "$stage/$rel" ]; then real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"; else real="$stage/$rel"; fi
-    [ -n "$real" ] && [ -f "$real" ] || continue
+    # ★ **软链不进 files[]**（它是**派生物**，S22：名字是事实、字节只有一份）。
+    #   缺陷名（C-102）同一份字节被列了两次：原来这一支把软链 readlink -f 跟到实体后
+    #   **照实体算一遍**（form/role/sha 全取实体那份）⇒ busybox 那一件：
+    #     bin/cat（软链）与 lib/libbusybox.so（实体）**逐字节相同** ⇒ files[] 两项、
+    #     programs 两项、kind 被算成 program（而它其实只有**一份**字节）。
+    #   ⇒ 现在：**实体**进 files[]（一份字节一项）；软链的名字进 derivedChain（派生物那一格）。
+    if [ -L "$stage/$rel" ]; then
+      target="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
+      [ -n "$target" ] && [ -f "$target" ] || continue
+      rel_dir="${rel%%/*}"
+      derived_links="$derived_links${derived_links:+,}\"$(elf_json_escape "$rel")\""
+      continue
+    fi
+    real="$stage/$rel"
+    [ -f "$real" ] || continue
     form="$(elf_form "$real")"
     role="$(elf_role_of_form "$form")"
     [ "$role" = "unknown" ] && continue
@@ -371,6 +384,7 @@ elf_write_shape() {
     printf '  "programs": [%s],\n' "$programs"
     printf '  "libraries": [%s],\n' "$libraries"
     printf '  "derivedChain": [%s],\n' "$derived"
+    printf '  "derivedLinks": [%s],\n' "$derived_links"
     printf '  "files": [%s]\n' "$files_json"
     printf '}\n'
   } > "$out"

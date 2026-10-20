@@ -74,7 +74,7 @@ fi
 # ★ **不复制出 lib/liblobosjq.so 那一份** ——
 #   缺陷名（C-102）把程序字节复制成一份「库」：原来这里是
 #   `cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"` + chmod +x —— 于是那一件有两份**逐字节相同**的字节，
-#   而 :80 又声明 entry=lib/liblobosjq.so ⇒ 运行期去调起的是那份「库」。
+#   而下面那行 emit_piece 又声明 entry=lib/liblobosjq.so ⇒ 运行期去调起的是那份「库」。
 #   而按 03 今天那一问：「这一件 lib/ 下那份字节，有谁 NEEDED 它？」
 #     jq 的 DT_NEEDED 只有 libm.so / libdl.so / libc.so（07 今天的 readelf 读数）
 #     ⇒ **零人 NEEDED liblobosjq.so** ⇒ lib/ 那一份是**没人要的拷贝**，纯冗余。

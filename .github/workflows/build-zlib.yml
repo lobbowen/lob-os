@@ -54,7 +54,10 @@ jobs:
           #   被当成新的继续用，CI 报 success 而包是空的。
           #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" "lib/libz.so"; then
+          # ★ 这一格验的是**包里那个入口文件** —— 而 zlib 那一件是**纯库件**（bin/ 目录不存在），
+          #   按今天的新规则它的 entry **留空**（按 C-05「没有」就是没有）。
+          #   而 reusable-asset.sh 第三参空 ⇒ 只验「包里有 component-meta.json」。
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"

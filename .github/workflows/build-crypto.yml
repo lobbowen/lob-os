@@ -42,7 +42,10 @@ jobs:
           WAIT_S=900
           WAITED=0
           while true; do
-            if bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET" "lib/libssl.so"; then
+            # ★ 这一格验的是**openssl 那个包里该有的入口** —— 而今天 openssl 的 entry 是 bin/openssl
+            #   （01 今天裁的：entry 指**程序形态**那一份；而那两份库仍要在包里）。
+            #   07 今天核到：原来这一行写的是 lib/libssl.so —— 与今天那件的实际入口不一致。
+            if bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET"; then
               echo "[crypto] openssl 到位（等了 ${WAITED}s）"
               break
             fi

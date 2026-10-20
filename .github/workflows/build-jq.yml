@@ -54,7 +54,11 @@ jobs:
           #   被当成新的继续用，CI 报 success 而包是空的。
           #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" "bin/liblobosjq.so"; then
+          # ★ 这一格验的是**包里那个入口文件**（jq 那一件是纯程序件：bin/jq）。
+          #   02 今天核到：原来这一行写的是 bin/liblobosjq.so —— 而那个文件从来不在 bin/ 下
+          #   （旧路径是 lib/）⇒ 判据恒假 ⇒ 可复用预制品永远判不中。
+          #   而今天 jq 那一件的入口改指 bin/jq（01 今天裁的：entry 指程序形态那一份）。
+          if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
             echo "[miss] 无可复用预制品（tag=$TAG asset=$ASSET）→ 本轮编译"
