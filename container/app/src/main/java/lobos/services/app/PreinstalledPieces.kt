@@ -274,11 +274,11 @@ object PreinstalledPieces {
         //    有没有把构建标识一起写进去，决定这一格能不能答。
         val pkgBuild = runCatching {
             val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
-            if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
+            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
         }.getOrDefault("")
         val landedBuild = runCatching {
             val f = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
-            if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
+            if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
         }.getOrDefault("")
         val sameBuild = pkgBuild.isNotBlank() && pkgBuild == landedBuild
         if (pkgBuild.isBlank()) {
