@@ -421,6 +421,9 @@ if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_RPATH_OPT" = "__UNKNOWN
   echo "::error title=$ID 这个 objcopy 有 rpath 选项但名字不在我的词表里::而我今天写死两个名字， 而那两个不对"
   echo "::error:: 工具: $OBJCOPY"
   echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它不为零， 而那证明输出取到了）"
+  echo "::error:: 工具路径: $OBJCOPY"
+  echo "::error:: 它的 --version："
+  "$OBJCOPY" --version 2>&1 | head -3 | sed 's/^/::error::   /'
   echo "::error:: 而 --help 里所有含 rpath 的行："
   printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
   echo "::error:: 而它的选项名我今天没核到 ——   而这一格不能猜（ 猜了就白编一次）"
@@ -431,6 +434,9 @@ if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ -z "$OBJCOPY_RPATH_OPT" ]; then
   echo "::error title=$ID 这个 objcopy 不支持写 rpath::而那一格要把 DT_RUNPATH 写进产物"
   echo "::error:: 工具: $OBJCOPY"
   echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它为零    那一格是「输出取不到」， 而不是「没有那个选项」）"
+  echo "::error:: 工具路径: $OBJCOPY"
+  echo "::error:: 它的 --version："
+  "$OBJCOPY" --version 2>&1 | head -3 | sed 's/^/::error::   /'
   echo "::error:: 而 --help 里所有含 rpath 的行："
   printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
   echo "::error:: 它既不认 --set-rpath 也不认 --add-runpath（而 GNU binutils 的 objcopy 两个都没有）"
@@ -473,6 +479,20 @@ find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 
 DIST="$ROOT/dist"
 mkdir -p "$DIST"
+#  而这一格：**打包之前先把 dist/ 里不属于这一件的东西清掉** 
+#   缺陷名（C-102）**dist/ 是共用的，  而它跨件累积**：
+#     · CI 上同一个 workspace 复用， 而三个 workflow（zlib/jq/rg）都**没有清 dist/**
+#       （  阳性对照：  三个文件里 `actions/checkout@v4` 命中， 而 `rm -rf` 零命中）
+#     ·   **而 dist/ 里会留着上一批的目录**（  真机读数 07：
+#        jq / ripgrep / zlib 三件的 dist/ 那节**逐字相同**（sha 8a9242fca51699b1），
+#          而三件形态各不相同   **而形态不解释它**   **而它是残留**）
+#     ·  而真机读数：那个 dist/bin 是一个**空目录**（  `total 12` = 目录自身 + . + ..）
+#     ** 而「谁建了它」那一格在 CI workspace 状态里， 而不在仓里**（ 而它今天【未核】）
+#     ** 而这一格要防的是「拿一个反常的东西当线索」**：
+#      **先问「它今天会不会影响判据」** ——  而今天它**不影响**（ 真红点不在那里）
+#    ** 而处置：打包之前把 dist/ 清干净， 而只留这一件要产出的那几个名字** 
+#      ** 而这样「dist/ 里有什么」这一格就永远只反映这一件， 而不用去追残留的来路** 
+rm -rf "$DIST"/* 2>/dev/null || true
 TMP_PKG="$DIST/.component-${ID}-${VER}.zip"
 
 # C-102 **zip 不带 -y  软链被按目标内容写进包** —— 暂存目录里即使还是软链，
