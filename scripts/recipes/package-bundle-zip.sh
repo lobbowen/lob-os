@@ -307,15 +307,15 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 # 为什么写 RUNPATH 而不是 RPATH：
 #   · curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
 #     （libssl.so / libcrypto.so / libz.so.1 / libdl.so / libc.so）
-#   · 而 ld.so(8):77-82 的**原文**（03 今天取到逐字原文）——  而**那是 glibc 那一侧的** 
+#   · 而 ld.so(8):77-82 的原文（03 今天取到逐字原文）【原文】—— 而**那是 glibc 那一侧的**，
 #     DT_RUNPATH "only to find those objects required by DT_NEEDED entries and
 #     do not apply to those objects' children"
-#     => **【机制可用 · 依据 glibc 那一侧的原文】** 直接依赖这一问：RUNPATH 就够
+#     => 【原文 · glibc 那一侧】直接依赖这一问：RUNPATH 就够
 #        （  而今天没有需要下传的依赖）
 #      而**这一句不能跨宿主**：
 #        「证据回答的是一个更普遍的问题，而断言的是一个更具体的情况」——
 #         把 glibc 那一项换到 bionic 上，证据就不成立了（04 今天那条判别）
-#          ** 而「在 bionic 上实际生效」那一格今天【未过】**（  07 今天去取，
+#          ** 而「在 bionic 上实际生效」那一格今天【未过】**（07 今天去取，
 #           而那是唯一能把强度从「据原文」升到「已验」的那一次运行）。
 #   · 而 bionic 上 DT_RPATH 已知会白编 —— 【转述·未核原文】
 #     （仓里 build-node-android.sh:363 的诊断文案这么说，而我今天没找到它的逐字原文）
