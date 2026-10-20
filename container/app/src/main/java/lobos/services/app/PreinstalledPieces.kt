@@ -261,7 +261,33 @@ object PreinstalledPieces {
             if (!real.isFile) return@all false
             sha256Of(real) == fs.sha256
         }
-        val landedUpToDate = landedPresent && sameBytes
+        // 格三（是不是我们要的那一代）：读产物自带的那一格构建标识。
+        //   C-104（加了之后有没有消费者）：而 01 今天核到**今天零个消费者**
+        //   （落位侧只读 component-meta.json 的 version 与 entry 两格）——
+        //   而「加了字段」与「加了读者」必须同一处落地，否则那一问的答案就是「是」。
+        //    而它要答的是：「落位上那份是不是**这一次构建**造出来的那一份」。
+        //    而它与 sameBytes 是两问（04 今天 §1.93 与本节）：
+        //     · sameBytes 答「落位上那份 == 产物里那份」（内容）
+        //     · 这一格答「产物里那份 == 这一次构建的那一份」（代）
+        //    而落位目录里没有这一格（它只存在包里那份 component-meta.json 里）
+        //    而落位目录那份清单是 installComponent 落位后写的 ——  而它写的时候
+        //    有没有把构建标识一起写进去，决定这一格能不能答。
+        val pkgBuild = runCatching {
+            val f = File(unpacked, "component-meta.json")
+            if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
+        }.getOrDefault("")
+        val landedBuild = runCatching {
+            val f = File(verDir, "component-meta.json")
+            if (!f.isFile) "" else JSONObject(f.readText()).optString("buildSha", "").trim()
+        }.getOrDefault("")
+        val sameBuild = pkgBuild.isNotBlank() && pkgBuild == landedBuild
+        if (pkgBuild.isBlank()) {
+            unverifiable += "（产物没带构建标识 buildSha —— 这一格答不出是不是这一代）"
+        } else if (!sameBuild) {
+            unverifiable += "（构建标识不同：产物 " + pkgBuild + "、落位 " +
+                (landedBuild.ifBlank { "(没有)" }) + "）"
+        }
+        val landedUpToDate = landedPresent && sameBytes && sameBuild
         if (unverifiable.isNotEmpty()) {
             lobos.services.log.Journal.note(
                 ctx, "prefix-trace", false, "无法判定是不是那一代 " + id,

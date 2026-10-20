@@ -47,6 +47,9 @@ for (let i = 0; i < argv.length; i++) {
   if (a === '--payload') {
     payloadArg = argv[i + 1] || '';
     i++;
+  } else if (a.startsWith('--build-sha=') || a.startsWith('--build-run=')) {
+    // 格三：构建标识由**调用方**给（打包那一支），而它在这里只是被带进来。
+    // 而这两个 key 在下面 meta 写完之后才被用。
   } else if (a.startsWith('--')) {
     console.error('::error title=未知参数::' + a);
     process.exit(1);
@@ -275,28 +278,25 @@ const meta = {
   sourceSha256: src.sha256 || '',
 };
 
-// 格三（这一件是不是我们要的那一代）：产物自带一个构建标识。
-//   01 今天裁的裁定：该由落位侧答，而要答「是不是这一次构建的」，
-//     必须读一个带构建标识的东西 —— 而件包的两份清单今天都没有（2026-10-20 实读：
-//     component-meta 9 键、shape 12 键，buildId|runId|gitSha 零命中）。
-//   而这一格是「有没有判据」而不是「判据算错了」=> 按 C-05 报缺。
-//   ★★ 而值从**环境变量**取，不是从 BuildConfig 取（C-103 它为什么有两边）：★★
-//     BuildConfig.GIT_SHA / RUN_ID 是 **APK 编译期**的 Kotlin 常量
-//     （container/app/build.gradle.kts:34-35 由 GITHUB_SHA / GITHUB_RUN_ID 生成），
-//     而件包是 shell + node 造的，**拿不到那个编译期常量**；
-//     而它真正的来源是 CI 的环境变量，那在 shell 与 node 里都拿得到。
-//   ★★ 而本地构建时这两个变量不存在 => ★★ **不填兜底值**（C-05 + 04 今天那条：★★
-//     ★★ 「拿不到就答是」把缺证据当成了证据支持）★★
-//     ★★ 而是留空并打印一行说明，★★ 而落位侧读到空就答「无法判定」而不是「是」。★★
-const BUILD_GIT_SHA = process.env.GITHUB_SHA || '';
-const BUILD_RUN_ID = process.env.GITHUB_RUN_ID || '';
-if (BUILD_GIT_SHA) {
-  meta.buildGitSha = BUILD_GIT_SHA;
-  meta.buildRunId = BUILD_RUN_ID;
+// 格三（这一件是不是我们要的那一代）：产物要自带一个构建标识。
+//   01 今天裁的裁定：该由**打包那一支**写进调用这一处，而不是由本脚本自己算
+//     —— 因为**本脚本拿不到**：它的命令行参数只有 id / ver / out / --payload。
+//   而本脚本也不自己从环境变量取，是为了单一来源：值由调用方给。
+//   C-05（缺字段就报缺，不猜填）：调用方没给这两个参数 => 两格不写。
+//     而「不写」与「写一个占位」在读侧是同一件事（读不到）——
+//     所以调用方要自己决定要不要报错（打包那一支今天判红）。
+//   而这两个值与 sourceSha256 **不是同一件事**（01 今天核过）：
+//     buildSha/buildRun = 这一件是哪一次流水线造出来的（跨构建会变）
+//     sourceSha256     = 这一件的源码是哪一份（上游 tarball 的摘要，跨构建不变）
+const BUILD_SHA = (argv.find(a => a.startsWith('--build-sha=')) || '').split('=').slice(1).join('=')
+const BUILD_RUN = (argv.find(a => a.startsWith('--build-run=')) || '').split('=').slice(1).join('=')
+if (BUILD_SHA) {
+  meta.buildSha = BUILD_SHA;
+  meta.buildRun = BUILD_RUN;
 } else {
   console.log('[meta] ' + id
-    + ' 提醒：环境里没有 GITHUB_SHA，所以这份产物不带构建标识（buildGitSha/buildRunId 两格留空）'
-    + ' —— 而运行期读到空会答「无法判定是不是那一代」，不会答「是」');
+    + ' 提醒：调用方没给 --build-sha/--build-run —— 而运行期读到「没有那一格」'
+    + ' 会答「无法判定是不是这一代」，不会答「是」');
 }
 if (src.sameAs) meta.sameAs = src.sameAs;
 

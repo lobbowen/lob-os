@@ -270,8 +270,27 @@ done
 #   · 程序形态的字节带 owner 执行位（0755）；库形态的不带（0644）
 #   · 库形态的字节补齐 ldconfig(8) 的三段链 libfoo.so -> libfoo.so.1 -> libfoo.so.1.12
 # ── 清单：entry 由落位结果算出（gen-component-meta.js 自己算，不是人填的）──
+# 格三（这一件是不是我们要的那一代）：把构建标识传下去。
+#   而它必须区分两件事（01 今天核过）：
+#     buildSha/buildRun = 这一件是哪一次流水线造出来的（跨构建会变）
+#     sourceSha256     = 这一件的源码是哪一份（上游 tarball 的摘要，跨构建不变）
+#     而拿后者答「是不是这一次构建的」必然答「是」—— 而它就在同一份清单里
+#     （而读侧分不清这两格），所以**必须另写两格**。
+#   ★★ 而本地跑时这两个环境变量不存在 ⇒ ★★ 按 C-05 不填兜底值，★★
+#     ★★ 而是**判红**：「这一格缺证据就要说出来」—— ★★
+#     ★★ 而不能让它悄悄变成「永远答是」（04 今天那条判别的最危险那一档）。★★
+#   本地造件时这两个环境变量不存在 => **填一个可识别的占位**，不报缺、不拦住落位。
+#     依据（仓里已有同类先例）：scripts/publish/publish-component-manifest.js:138,143
+#       process.env.GITHUB_RUN_NUMBER || '0'
+#       process.env.LOBOS_COMPONENT_REVISION || ''
+#     而**占位不能是空**（★ 空与「没有」在读侧不可分，★ 而那正是这一族最隐蔽的那一格）。
+#     ★★ 而不填的后果：落位侧读不到就答「是」⇒ ★★ 「本地造的那一份」会被当成
+#     ★★ 「这一次构建的那一份」⇒ ★★ 而那正是今天要治的那一格。★★
+BUILD_SHA="${GITHUB_SHA:-local}"
+BUILD_RUN="${GITHUB_RUN_ID:-local}"
 node "$ROOT/scripts/recipes/gen-component-meta.js" \
   "$ID" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
+  --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" \
   || { echo "::error title=$ID 说明生成失败"; exit 1; }
 
 # 算出来的 entry 与调用方声明的那一份不一致 ⇒ 两处形态说法分叉了。
