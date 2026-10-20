@@ -155,8 +155,35 @@ function computeEntry() {
     };
   }
   if (binProgram.length > 1) {
-    return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
-      + ' 个程序形态字节（' + binProgram.join('、') + '）—— 该件只应有一个入口（其余的请拆成别的件）' };
+    // bin/ 下有多个程序形态字节 —— 那是**多调用二进制**的形状（01 今天裁定）：
+    // 「一份程序字节 + 若干个命令名」，而命令名是**派生物**（man1 INSTALL 段：
+    // make install 自己知道编了哪些 applet，并连带把软链建好）。
+    // 入口指向**那一份字节**（它们全是软链，指向同一份），那批名字不进清单。
+    // ★ 上一版在这里判红「该件只应有一个入口」—— 那个假设对 busybox 是错的
+    //   （CI 实测：落位目录的 bin/ 下有 17 个程序形态字节 ⇒ 说明生成失败 ⇒ 该件产不出包）。
+    const first = path.join(binDir, binProgram[0]);
+    let sameTarget = true;
+    try {
+      const firstReal = fs.realpathSync(first);
+      for (const n of binProgram) {
+        if (fs.realpathSync(path.join(binDir, n)) !== firstReal) { sameTarget = false; break; }
+      }
+    } catch (e) {
+      sameTarget = false;
+    }
+    if (!sameTarget) {
+      return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
+        + ' 个程序形态字节，而它们**不是同一份**（' + binProgram.join('、')
+        + '）—— 那是多个入口，该件只应有一个' };
+    }
+    return {
+      entry: 'bin/' + binProgram[0],
+      by: '落位结果：bin/ 下 ' + binProgram.length + ' 个程序形态字节是同一份的多调用名字（多调用二进制），入口指那一份；那些名字是派生物，不进清单'
+        + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
+      mixed: libPrimary.length > 0,
+      multiCall: binProgram.length,
+      libs: libPrimary,
+    };
   }
   if (binNames.length > 0) {
     return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binNames.length
