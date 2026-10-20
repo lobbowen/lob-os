@@ -25,7 +25,17 @@ ASSETS="container/app/src/main/assets/pieces"
 STAGE="dist/.fetch"
 REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 
-PIECES=(zlib openssl crypto curl jq bash ripgrep busybox)
+#  而 crypto **不再作为独立的一件取**（01 今天裁：  而它就是 openssl 那一件的一部分）
+#   缺陷名（C-102）**那一件被当独立一件固化，于是要拆出一份自己的字节**：
+#     · 而 openssl 那个包里 lib/ 下本来就有 libcrypto.so（打包那一支「lib/ 下有字节全搬」）
+#         **而「认领」那一半已经在位**（openssl 的 files[] 已含它那一份）
+#     ·  而今天缺的是另一半：  登记里还有一条独立的 crypto 
+#         ** 而两处方向一致（一多一少）才叫归成一件**（04 今天落的验收）
+#     ·  而「只少一条而不多处一份  那只是清了表，而东西还在」（04 今天原话）
+#    而**归并不是「从列表里删掉」**：
+#      删掉之后那份字节仍由 openssl 那一件管（  而它本来就在那件的文件里）
+#        而这一条是「不让它再被登记成独立一件」，  不是「丢掉那份字节」
+PIECES=(zlib openssl curl jq bash ripgrep busybox)
 
 fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url
