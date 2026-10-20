@@ -333,5 +333,5 @@ printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 # 第五个参数是「这个件要在 usr/bin 出现的命令名」——
 # **从上面既有的 $APPLETS 转小写派生，不另写一份名单**
 # （两份名单必然漂移；2026-10-15 实测 18 个 applet 一个都没进包就是因为没带）。
-BB_BINS="$(printf '%s\n' $APPLETS | tr 'A-Z' 'a-z' | tr '\n' ' ')"
+BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
 emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS"

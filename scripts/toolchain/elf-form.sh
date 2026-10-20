@@ -399,10 +399,21 @@ elf_write_shape() {
 #   NUL 分隔、连续排列，直到某个不是名字的字符串为止。
 #   它是一份**普通的字符串常量区**，不是 .data.rel.ro 里的指针数组。
 #
-# 为什么要有它：那些名字是**派生物**（01 今天按 man1 INSTALL 段裁定：
-# 「make install 自己知道编了哪些 applet，并连带把软链建好」），
-# 而派生物该由系统建、每次换版本重建，不是被继承的、更不该另带一份名单进包。
-# 而这份字节**自己**就带着那张表 ⇒ 读它，不另带名单。
+# ★ **它不是「这份字节响应哪些名字」** —— 01 今天裁的那一句已被今天的读数更正：
+#   01 说「那份字节的 .rodata 开头就是『我响应哪些名字』那张表」⇒ 读它，不另带名单。
+#   ★ 而今天实测（这一件那份字节）：读出 **19 个**（含 awk 与 sh），
+#     而这一件编译时按白名单**关掉了 awk**（build-native-busybox.sh:78-82：
+#     「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，make install 不给它建软链」）
+#     ⇒ **.rodata 里仍有 awk** ⇒ 那张表是**上游这份源码的 applet 全集**，
+#       **不是「这份字节响应哪些名字」**（编译时被关掉的 applet 名字仍在表里）。
+#   ⇒ 而「这份字节响应哪些名字」的**真源**是 make install 连带建的那批软链
+#     （man1 INSTALL 段：「If you enabled any applet installation scheme …
+#     these will also be installed in the location pointed to by CONFIG_PREFIX」）
+#     —— **构建系统自己知道编了哪些 applet**。
+#   ⇒ 所以这一格今天**没有读者**（构建侧那一处已改成取落包集：
+#     build-native-busybox.sh 的 BB_BINS = $OUT_DIR/bin 下那批软链的名字）。
+#     而它保留着：它是「那份字节里写着哪些 applet 名」这一格的**核**手段
+#     （可与落包集比对：差集 = 被白名单关掉的那些）。
 #
 # 用法：names=$(elf_applet_names <文件>)  —— 一行一个名字
 elf_applet_names() {
