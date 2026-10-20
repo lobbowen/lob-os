@@ -138,12 +138,12 @@ object SupplyProvisioner {
 
     internal fun sha256HexFile(f: File): String = lobos.kernel.crypto.Crypto.sha256HexFile(f)
 
-    internal fun unzipFromFile(pkg: File, dest: File) {
+    internal fun unzipFromFile(pkg: File, dest: File, probeCtx: android.content.Context? = null) {
         val n = pkg.name.lowercase()
         when {
             n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
-        n.endsWith(".zip") -> unzip(pkg, dest)
-            else -> unzip(pkg, dest)
+        n.endsWith(".zip") -> unzip(pkg, dest, probeCtx)
+            else -> unzip(pkg, dest, probeCtx)
         }
     }
 
@@ -174,7 +174,7 @@ object SupplyProvisioner {
         }
     }
 
-    private fun unzip(zip: File, dest: File) {
+    private fun unzip(zip: File, dest: File, probeCtx: android.content.Context? = null) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
         java.util.zip.ZipFile(zip).use { zf ->
@@ -208,6 +208,37 @@ object SupplyProvisioner {
                         out.outputStream().use { it.write(bytes) }
                         ExecBits.apply(out)
                     }
+                    // 读数（诊断用）：这一条解包后是什么、两个判据各自成立与否、建链结果是什么。
+                    // 而这一格今天未过（07 今天探针读到「落位前 19 项全是实体」
+                    //   => 展平发生在**进搬动循环之前** => 落在解包这一支），
+                    //   而两个判据按源码逻辑复现都成立（07 昨天 python 复现；
+                    //   本机今天又核过真实条目名 bin/libbusybox.so 确实在 entryNames 里、
+                    //   且条目名不带 ./ 前缀）=> 而真机上没建成 => 这几条读数是定它的那一格。
+                    if (probeCtx != null && e.name.contains('/') && !e.isDirectory) {
+                        val isElf = bytes.size > 3 && bytes[0] == 0x7f.toByte() &&
+                            bytes[1] == 'E'.code.toByte() && bytes[2] == 'L'.code.toByte() &&
+                            bytes[3] == 'F'.code.toByte()
+                        val text0 = runCatching { String(bytes, Charsets.UTF_8) }.getOrNull()
+                        val dir0 = e.name.substringBeforeLast('/', "")
+                        val resolved0 = runCatching {
+                            java.nio.file.Paths.get(dir0, text0 ?: "").normalize()
+                                .toString().removePrefix("./")
+                        }.getOrNull()
+                        val probeLine = "字节数=" + bytes.size +
+                            " 是ELF=" + isElf +
+                            " 内容=" + (text0?.take(40) ?: "(解不出)") +
+                            " resolved=" + resolved0 +
+                            " 在entryNames=" + (resolved0 != null && entryNames.contains(resolved0)) +
+                            " 判为软链=" + (linkTarget != null)
+                        runCatching {
+                            RuntimeDiagnostics.append(
+                                probeCtx, "unzip-probe", true, "解包 " + e.name,
+                                probeLine + " 落盘后是软链=" + java.nio.file.Files.isSymbolicLink(out.toPath()) +
+                                    " 落盘字节数=" + (if (out.isFile) out.length() else -1),
+                            )
+                        }
+                    }
+
                 }
             }
         }

@@ -157,7 +157,7 @@ object PreinstalledPieces {
         val pkg = extract(ctx, id) ?: return fail(ctx, id, "assets 里取不出 pieces/$id.zip")
 
         val unpacked = File(ctx.cacheDir, "preinst/u/$id").also { it.deleteRecursively(); it.mkdirs() }
-        runCatching { lobos.services.supply.SupplyProvisioner.unzipFromFile(pkg, unpacked) }
+        runCatching { lobos.services.supply.SupplyProvisioner.unzipFromFile(pkg, unpacked, ctx) }
             .onFailure { return fail(ctx, id, "解包失败: " + it.message) }
 
         val meta = runCatching {

@@ -502,7 +502,7 @@ object ProgramInstallPipeline {
         runCatching {
             staging.deleteRecursively()
             staging.mkdirs()
-            SupplyProvisioner.unzipFromFile(spec.zip, staging)
+            SupplyProvisioner.unzipFromFile(spec.zip, staging, context)
         }.onFailure {
             staging.deleteRecursively()
             runCatching { if (dir.isDirectory && dir.list()?.isEmpty() == true) dir.delete() }
