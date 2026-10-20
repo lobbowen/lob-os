@@ -359,16 +359,31 @@ else
     if [ -x "$cand" ]; then OBJCOPY="$cand"; break; fi
   done
 fi
+#  而「找不到 objcopy」这一格**不判红**，而是说清它为什么被跳过：
+#   缺陷名（C-102）**「我查工具的地方」与「我跑那一步的地方」不一定同一个环境**：
+#     · 编译类那七件的 step 里 env 有 CC（NDK 的 clang） TC=dirname($CC) 找得到 
+#     · **而 crypto 这一件根本不编译** —— 它只是从 openssl 的包里拆 libcrypto.so，
+#        而它那一步的 env 里**没有 CC、没有 clang、没有 NDK 工具链** 
+#         而 objcopy 三条路（OBJCOPY_OVERRIDE / LLVM_OBJCOPY / TC）全落空 
+#     ·  而它那一件是**纯库件**（entry 空、lib/ 下只有库字节） 
+#        **RUNPATH 那一格对它本来就不生效**（没有程序形态那一侧要 NEEDED）
+#     所以判红是错的：  它把「这一件不需要那一格」误报成「缺一个工具」
+#    现在：**说清并跳过**；  而真要写 RUNPATH 时可以用 OBJCOPY_OVERRIDE 显式给 
 if [ -z "$OBJCOPY" ] || [ ! -x "$OBJCOPY" ]; then
-  echo "::error title=$ID 找不到 objcopy::这一格要它把 DT_RUNPATH 写进产物，而今天没有它就不写 RUNPATH"
-  echo "::error:: 请给 OBJCOPY_OVERRIDE=<路径到 llvm-objcopy>（NDK toolchain 里那个）"
-  exit 1
+  if [ -n "${OBJCOPY_OVERRIDE:-}" ]; then
+    echo "::error title=$ID OBJCOPY_OVERRIDE 给了但那个路径不可执行::$OBJCOPY_OVERRIDE"
+    exit 1
+  fi
+  echo "  · $ID 这一步没有 NDK 工具链（CC/clang 都不在） 这一格跳过 DT_RUNPATH"
+  echo "    （  而纯库件那一格本来不生效；  要写就用 OBJCOPY_OVERRIDE=<llvm-objcopy 路径>）"
+  OBJCOPY=""
 fi
 
 RUNPATH_APPLIED=0
 if [ -d "$STAGE/lib" ]; then
   for so in "$STAGE"/lib/*.so*; do
     [ -f "$so" ] || continue
+    [ -n "$OBJCOPY" ] || break
     "$OBJCOPY" --enable-new-dtags --add-runpath '$ORIGIN' "$so" 2>/dev/null || continue
     RUNPATH_APPLIED=$((RUNPATH_APPLIED + 1))
   done
