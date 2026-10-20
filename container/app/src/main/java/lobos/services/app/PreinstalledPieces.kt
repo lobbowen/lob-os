@@ -282,12 +282,26 @@ object PreinstalledPieces {
         }.getOrDefault("")
         val sameBuild = pkgBuild.isNotBlank() && pkgBuild == landedBuild
         if (pkgBuild.isBlank()) {
-            unverifiable += "（产物没带构建标识 buildSha —— 这一格答不出是不是这一代）"
+            lobos.services.log.Journal.note(
+                ctx, "prefix-trace", null, "无法判定是不是这一代 " + id,
+                "产物没带构建标识 buildSha —— 而「拿不到」不拦住落位（只报）",
+            )
         } else if (!sameBuild) {
-            unverifiable += "（构建标识不同：产物 " + pkgBuild + "、落位 " +
-                (landedBuild.ifBlank { "(没有)" }) + "）"
+            lobos.services.log.Journal.note(
+                ctx, "prefix-trace", false, "不是这一次构建的那一份 " + id,
+                "产物 buildSha=" + pkgBuild + "、落位 buildSha=" +
+                    (landedBuild.ifBlank { "(没有)" }) +
+                    " —— 只报，不拦落位（判据：拿不到与不是不可分，而不知道不能拦住落位）",
+            )
         }
-        val landedUpToDate = landedPresent && sameBytes && sameBuild
+        //  处置：**只报，不拦**（03 今天给的两条我判甲，理由是判据那一层）。
+        //   甲 只报：写一条诊断，不动落位。后果是那一件是旧代时系统继续用旧字节跑。
+        //   乙 拦住：判它不是这一代就不落。后果是「拿不到」与「不是」在读侧不可分
+        //     —— 而本地件（buildSha=local）与旧件（落位目录里那份没有那一格）
+        //     **都读不到**构建标识  而这一族按「拿不到要答不知道」
+        //     **而「不知道」不能拦住落位**。
+        //    所以：landedUpToDate **只看内容**（sameBytes），构建标识那一格只报。
+        val landedUpToDate = landedPresent && sameBytes
         if (unverifiable.isNotEmpty()) {
             lobos.services.log.Journal.note(
                 ctx, "prefix-trace", false, "无法判定是不是那一代 " + id,
