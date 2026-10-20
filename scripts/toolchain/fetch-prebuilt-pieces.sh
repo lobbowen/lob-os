@@ -12,6 +12,13 @@
 # workflow_dispatch build-<id>，见 RELEASE-POLICY.md。
 set -euo pipefail
 
+# 这一批件的构建标识行（每行 id|buildSha|buildRun），取件循环里累加、循环后去重。
+# 而它必须在顶部初始化：脚本是 set -u，而循环里第一次累加时它还不存在，
+# 于是报 unbound variable，取件在第一件之后就崩。
+# 真机读数（2026-10-21）：那一轮只取到 zlib 一个，而报错原文是
+#   fetch-prebuilt-pieces.sh:131: GEN_ROWS: unbound variable
+GEN_ROWS=""
+
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 
 ASSETS="container/app/src/main/assets/pieces"
@@ -39,14 +46,21 @@ fetch_asset() {
           ' -- "$asset" 2>/dev/null)"
   [ -n "$url" ] || return 1
   curl -fsSL --retry 3 --retry-delay 2 -o "$dir/$asset" "$url" 2>/dev/null || return 1
-  [ -s "$dir/$asset" ]
+  [ -s "$dir/$asset" ] || return 1
+  # 顺手取那份伴随的 .sha256（ 它与 zip 同名同 tag）。
+  #    而不取的后果（ 缺陷名 C-102）：下面那个校验分支的判据是 
+  #    `[ -f "$dir/$asset.sha256" ]`  ——  而它今天恒为假   校验被跳过 
+  #     取到的字节**从没被校验过**（ 而 AGENTS.md 第七节要求：取件必须核字节数与声明一致）
+  sha_url="${url}.sha256"
+  curl -fsSL --retry 3 --retry-delay 2 -o "$dir/$asset.sha256" "$sha_url" 2>/dev/null || true
+  return 0
 }
 
 # 列出某 tag 下现有的 asset 名（每个一行）。取不到时输出空串。
 #
 # 为什么需要它：取件失败有两种完全不同的性质，而在 CI 输出上都是「取不到」——
-#   缺货   ：该 tag 一个 asset 都没有（从没固化 / 被删了）⇒ 处置是 dispatch
-#   旧产物 ：有 asset 但名字对不上（改过 recipe，指纹变了）⇒ **旧产物不能冒充新代码的产物**，
+#   缺货   ：该 tag 一个 asset 都没有（从没固化 / 被删了） 处置是 dispatch
+#   旧产物 ：有 asset 但名字对不上（改过 recipe，指纹变了） **旧产物不能冒充新代码的产物**，
 #           而 dispatch 之前必须让人看见这一点，否则它会「取到旧包、打出 APK、全绿」。
 # 2026-10-16 实测：run 1065 就是后者，而当时的输出与「8/8 件没固化」无法区分。
 list_release_assets() {
@@ -98,11 +112,20 @@ for id in "${PIECES[@]}"; do
     continue
   fi
 
+  # 校验字节与声明一致（AGENTS.md 第七节）。
+  #    而那份 .sha256 的内容是**裸摘要 + 换行**（ 07 今天在 Release 上逐个核过， 65 字节），
+  #    而 sha256sum -c 要的是「摘要␣␣文件名」那种格式   直接喂给它会失败 
+  #    所以这里不喂给它：自己取第一段（摘要）与实算的摘要比。
   if [ -f "$STAGE/$id/$asset.sha256" ]; then
-    ( cd "$STAGE/$id" && sha256sum -c "$asset.sha256" >/dev/null 2>&1 ) || {
-      echo "::error title=$id 校验失败::$asset 的 sha256 对不上 —— Release 里的产物被改过"
+    want="$(tr -d '\r\n ' < "$STAGE/$id/$asset.sha256" | head -c 64)"
+    got="$(sha256sum "$STAGE/$id/$asset" | cut -d' ' -f1)"
+    if [ -z "$want" ] || [ "$want" != "$got" ]; then
+      echo "::error title=$id 校验失败::$asset 的 sha256 对不上（声明 ${want:-空} / 实算 $got）—— Release 里的产物被改过或截断"
       missing=$((missing+1)); continue
-    }
+    fi
+    printf "  · %-9s sha256 已核（%s…）\n" "$id" "${got:0:12}"
+  else
+    echo "::notice title=$id 无伴随摘要::Release 上没有 $asset.sha256 —— 这一件**没被校验过**（ 而取件必须核字节数与声明一致）"
   fi
 
   # 整包放进 assets/pieces/ —— 启动时由装配器解包安装，与 OTA 装件同路
@@ -116,9 +139,9 @@ for id in "${PIECES[@]}"; do
   # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
   #   buildSha  同一 commit 上的多次构建相同  => 它标「同一份代码」
   #   buildRun 每次流水线都不同            => 它标「哪一次流水线造了它」
-  #   ★★ 而 01 今天裁：这一格保证不了同代（★ 每件各自 dispatch 一条 run ⇒ ★★
-  #   ★★ 八件按构造就不可能同代），★ ★ 而「同代还是不同代」才是有用的那一格 ★★
-  #   ⇒ 不保证，只说出来（取件那一支是唯一一次看见全部八件的地方）。
+  #    而 01 今天裁：这一格保证不了同代（ 每件各自 dispatch 一条 run  
+  #    八件按构造就不可能同代），  而「同代还是不同代」才是有用的那一格 
+  #    不保证，只说出来（取件那一支是唯一一次看见全部八件的地方）。
   meta_json="$STAGE/$id/peek.json"
   rm -f "$meta_json"
   if unzip -p "$ASSETS/$id.zip" component-meta.json > "$meta_json" 2>/dev/null; then
@@ -128,12 +151,12 @@ for id in "${PIECES[@]}"; do
     g_sha=""; g_run=""
   fi
   rm -f "$meta_json"
-  GEN_ROWS="${GEN_ROWS}${id}|${g_sha}|${g_run}\n"
+  GEN_ROWS="${GEN_ROWS:-}${id}|${g_sha}|${g_run}\n"
 
 done
 
 # 这一格：把这一批的标识列出来去重，并把「同代还是不同代」说出来。
-#   ★★ 而「同代」不是判据，「同代还是不同代」才是（01 今天）。★★
+#    而「同代」不是判据，「同代还是不同代」才是（01 今天）。
 if [ -n "${GEN_ROWS:-}" ]; then
   echo ""
   echo "--- 这一批件的构建标识（buildSha = 同一份代码 / buildRun = 哪一次流水线）---"
@@ -147,16 +170,16 @@ if [ -n "${GEN_ROWS:-}" ]; then
   n_none="$(printf '%s' "$GEN_ROWS" | grep -c '||$' || true)"
   echo "  去重后: buildRun $n_run 个 / buildSha $n_sha 个（$n_none 件没带那一格）"
   if [ "$n_none" -gt 0 ]; then
-    echo "  ::notice title=这一批不完整::有 $n_none 件没带构建标识 ⇒ 「是不是这一代」对它们答不出"
+    echo "  ::notice title=这一批不完整::有 $n_none 件没带构建标识  「是不是这一代」对它们答不出"
   fi
   if [ "$n_run" -gt 1 ]; then
-    echo "  ::notice title=这一批不同代::去重后 buildRun $n_run 个 ⇒ 这一批不是同一次流水线造的"
-    echo "  ::notice:: 而那不是缺陷 —— 每件各自 dispatch 一条 run（01 今天裁定）⇒ 按构造就不可能同代。"
+    echo "  ::notice title=这一批不同代::去重后 buildRun $n_run 个  这一批不是同一次流水线造的"
+    echo "  ::notice:: 而那不是缺陷 —— 每件各自 dispatch 一条 run（01 今天裁定） 按构造就不可能同代。"
   else
-    echo "  ::notice title=这一批同代::去重后 buildRun $n_run 个 ⇒ 这一批是同一次流水线造的"
+    echo "  ::notice title=这一批同代::去重后 buildRun $n_run 个  这一批是同一次流水线造的"
   fi
   if [ "$n_sha" -gt 1 ]; then
-    echo "  ::notice title=这一批不止一份代码::去重后 buildSha $n_sha 个 ⇒ 这一批跨了多个 commit"
+    echo "  ::notice title=这一批不止一份代码::去重后 buildSha $n_sha 个  这一批跨了多个 commit"
   fi
 fi
 if [ "$missing" -gt 0 ]; then
