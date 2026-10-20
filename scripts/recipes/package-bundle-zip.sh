@@ -421,6 +421,8 @@ if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_RPATH_OPT" = "__UNKNOWN
   echo "::error title=$ID 这个 objcopy 有 rpath 选项但名字不在我的词表里::而我今天写死两个名字， 而那两个不对"
   echo "::error:: 工具: $OBJCOPY"
   echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它不为零， 而那证明输出取到了）"
+  echo "::error:: 而 --help 里所有含 rpath 的行："
+  printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
   echo "::error:: 而它的选项名我今天没核到 ——   而这一格不能猜（ 猜了就白编一次）"
   echo "::error:: 请给 OBJCOPY_OVERRIDE=<另一个支持 rpath 的工具>，  或由 01/04 今天核出那个选项名"
   exit 1
@@ -429,6 +431,8 @@ if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ -z "$OBJCOPY_RPATH_OPT" ]; then
   echo "::error title=$ID 这个 objcopy 不支持写 rpath::而那一格要把 DT_RUNPATH 写进产物"
   echo "::error:: 工具: $OBJCOPY"
   echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它为零    那一格是「输出取不到」， 而不是「没有那个选项」）"
+  echo "::error:: 而 --help 里所有含 rpath 的行："
+  printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
   echo "::error:: 它既不认 --set-rpath 也不认 --add-runpath（而 GNU binutils 的 objcopy 两个都没有）"
   echo "::error:: 要写 rpath 的是 **llvm-objcopy**（而它的选项名是 --set-rpath）"
   echo "::error:: 请给 OBJCOPY_OVERRIDE=<NDK toolchain 里那个 llvm-objcopy 的路径>"
