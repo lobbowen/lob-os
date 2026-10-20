@@ -59,8 +59,18 @@ jobs:
           bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
           rm -rf .openssl-pkg && mkdir -p .openssl-pkg
           unzip -qq -o "dist/$OASSET" -d .openssl-pkg
-          [ -f .openssl-pkg/lib/libcrypto.so ] || {
-            echo "::error title=openssl 包里没有 libcrypto.so::路径不对？"
+          # ★ **缺陷名（C-102）拆包要的那一份不存在** —— 原来这一格找 lib/libcrypto.so（主名），
+          #   而 openssl 那个包里**只有 libssl.so 带主名**（主名是「这个包里哪个是入口」的标记，
+          #   gen-component-meta.js 的 computeEntry 靠 lib/ 下唯一的主名 .so 算 entry；
+          #   两个主名会让它判「落位结果不唯一」⇒ 包装不出来）。
+          #   crypto 那一份在包里是**版本层** libcrypto.so.3 —— 那才是要从它拆出去的那份字节。
+          #   而本件自己的主名由下面那一步摆出来（ln -s libcrypto.so.3 …），不靠包里的。
+          CRYPTO_IN_PKG=""
+          for cand in .openssl-pkg/lib/libcrypto.so.3 .openssl-pkg/lib/libcrypto.so.3.* .openssl-pkg/lib/libcrypto.so; do
+            if [ -f "$cand" ]; then CRYPTO_IN_PKG="$cand"; break; fi
+          done
+          [ -n "$CRYPTO_IN_PKG" ] || {
+            echo "::error title=openssl 包里没有 libcrypto.so::版本层 libcrypto.so.3 也不在？路径不对？"
             find .openssl-pkg -type f | head -20
             exit 1
           }
@@ -71,8 +81,22 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
           rm -rf .crypto-out && mkdir -p .crypto-out/lib
-          cp -Pf .openssl-pkg/lib/libcrypto.so .crypto-out/lib/
+          cp -Pf "$CRYPTO_IN_PKG" .crypto-out/lib/
+          # 本件的主名（libcrypto.so）由本件自己摆出来 ——
+          # openssl 那件的包里只有 libssl.so 带主名（那是 openssl 的入口标记），
+          # 拆出来的这份要重新摆成它自己的主名，否则清单算不出 entry。
+          [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CRYPTO_IN_PKG")" .crypto-out/lib/libcrypto.so
           bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 lib/libcrypto.so
+
+      - name: 验形态（包自描述：库还是程序）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
+          # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
+          # 现场用 readelf 复算一遍，两路对账。
+          bash scripts/verify/verify-piece-shape.sh "$PKG" library
 
       - name: 固化标准件包到 Release
         env:

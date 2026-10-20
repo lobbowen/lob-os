@@ -64,6 +64,16 @@ jobs:
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-bundle-openssl.sh
 
+      - name: 验形态（包自描述：库还是程序）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
+          # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
+          # 现场用 readelf 复算一遍，两路对账。
+          bash scripts/verify/verify-piece-shape.sh "$PKG" library
+
       - name: 固化标准件包到 Release
         if: steps.reuse.outputs.hit != 'yes'
         env:
@@ -83,21 +93,13 @@ jobs:
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "openssl 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
-          # ★ crypto 是同一份字节的另一个名字（component-sources.json 里 crypto.sameAs=openssl），
-          #   而这一段只上传 ASSET（openssl 的那个）。于是 build-apk 取 crypto 那颗时
-          #   在 base-crypto 上找不到 —— 「1 / 8 个件取不到」，而 APK 会照旧打出来。
-          #   连带件必须一起固化，否则依赖它的 workflow 永远缺件。
-          for DEP in crypto; do
-            DEPTAG="$(bash scripts/toolchain/cache-key.sh tag "$DEP")"
-            DEPASSET="$(bash scripts/toolchain/cache-key.sh asset "$DEP")"
-            DEPPKG="$(ls dist/component-${DEP}-*.zip 2>/dev/null | head -1 || true)"
-            [ -n "$DEPPKG" ] || { echo "::error title=$DEP 没有产出::dist/component-${DEP}-*.zip 不在"; ls -la dist/ | head; exit 1; }
-            cp -f "$DEPPKG" "dist/$DEPASSET"
-            sha256sum "dist/$DEPASSET" | cut -d' ' -f1 > "dist/$DEPASSET.sha256"
-            gh release view "$DEPTAG" --repo "${{ github.repository }}" >/dev/null 2>&1 || gh release create "$DEPTAG" --repo "${{ github.repository }}" --title "$DEP 固化产物" --notes "与 openssl 同源的连带件（crypto.sameAs=openssl）"
-            gh release upload "$DEPTAG" "dist/$DEPASSET" "dist/$DEPASSET.sha256" --repo "${{ github.repository }}" --clobber
-            echo "[ok] 连带件 $DEP 上传名=$DEPASSET → $DEPTAG"
-          done
+          # ★ crypto 那一件**由 build-crypto.yml 自己固化上传**（它从本件的包里拆 libcrypto.so，
+          #   摆成自己的主名，打成 crypto 的包，上传到 base-crypto）。
+          #   而这一段原来在这里也上传一遍 crypto —— 它要求 dist/component-crypto-*.zip 存在，
+          #   而本件的构建只产 openssl 的包 ⇒ 那个 zip 不在这里 ⇒ 这一段必红 ⇒
+          #   openssl 固化不完 ⇒ crypto 拆不出包（它要等 openssl 固化）⇒ 互等。
+          #   ★ **缺陷名（C-102）连带件固化两处都要、而其中一处拿不到那份产物**：
+          #   连带件的固化只该有一处 —— 由依赖它的那一件自己的 workflow 做（build-crypto.yml）。
       - name: 失败现场（Job Summary，不裁剪）
         if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh openssl
