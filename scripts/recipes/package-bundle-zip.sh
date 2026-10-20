@@ -293,6 +293,62 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
   --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" \
   || { echo "::error title=$ID 说明生成失败"; exit 1; }
 
+
+# ---- $ORIGIN（归产物那一侧；01 今天裁的）----
+# 为什么在这一支加（不在安装那一侧）：
+#   · $ORIGIN 这个值只有在产物里才成立，而落位侧改它 = 改那份字节 => 那要重编，不是重装
+#   · RUNPATH 是那份字节的属性 => 归安装侧就是「在安装期改产物属性」（C-16）
+# 为什么走「事后 objcopy」而不是链期 -Wl：
+#   · 链期那一路在八件上无处可插 —— 八件是第三方 configure 驱动的
+#     （build-bundle-curl.sh:41 ./configure，:53 只传 CC/AR/RANLIB），
+#     而那个 configure 那一侧今天零 LDFLAGS => 走链期要改每一件的 configure 参数
+#   · 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
+#     而它只是今天还没有用它写 RUNPATH 的这个用法
+# 为什么写 RUNPATH 而不是 RPATH：
+#   · curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
+#     （libssl.so / libcrypto.so / libz.so.1 / libdl.so / libc.so）
+#   · 而 ld.so(8):77-82 的**原文**（03 今天取到逐字原文）：
+#     DT_RUNPATH "only to find those objects required by DT_NEEDED entries and
+#     do not apply to those objects' children"
+#     => 直接依赖这一问：RUNPATH 就够（今天没有需要下传的依赖）
+#   · 而 bionic 上 DT_RPATH 已知会白编 —— 【转述·未核原文】
+#     （仓里 build-node-android.sh:363 的诊断文案这么说，而我今天没找到它的逐字原文）
+#
+# 而这一格今天**只写「同一目录」那一侧**；跨目录那一格【未过】（见提交说明）。
+#   · 库形态那几份落在 lib/，而它们的 $ORIGIN 就是 lib/ 自己 => 裸 $ORIGIN
+#   · 程序形态那几份落在 bin/，而它们的 $ORIGIN 是 bin/
+#     => 它要够到同件的 lib/ 就得写 $ORIGIN/../lib 这一类形态
+#     => **而那一格今天【未过】**（要取的是 NDK 里那个 llvm-objcopy 加 --enable-new-dtags
+#        之后它把 RUNPATH 写成什么形态），**所以今天不写它**
+
+OBJCOPY=""
+if [ -n "${OBJCOPY_OVERRIDE:-}" ]; then
+  OBJCOPY="$OBJCOPY_OVERRIDE"
+elif [ -n "${LLVM_OBJCOPY:-}" ]; then
+  OBJCOPY="$LLVM_OBJCOPY"
+else
+  for cand in "$(dirname "$(command -v clang 2>/dev/null || echo /nonexistent/clang)")/llvm-objcopy" llvm-objcopy; do
+    if [ -x "$cand" ]; then OBJCOPY="$cand"; break; fi
+  done
+fi
+if [ -z "$OBJCOPY" ] || [ ! -x "$OBJCOPY" ]; then
+  echo "::error title=$ID 找不到 objcopy::这一格要它把 DT_RUNPATH 写进产物，而今天没有它就不写 RUNPATH"
+  echo "::error:: 请给 OBJCOPY_OVERRIDE=<路径到 llvm-objcopy>（NDK toolchain 里那个）"
+  exit 1
+fi
+
+RUNPATH_APPLIED=0
+if [ -d "$STAGE/lib" ]; then
+  for so in "$STAGE"/lib/*.so*; do
+    [ -f "$so" ] || continue
+    "$OBJCOPY" --enable-new-dtags --add-runpath '$ORIGIN' "$so" 2>/dev/null || continue
+    RUNPATH_APPLIED=$((RUNPATH_APPLIED + 1))
+  done
+fi
+if [ "$RUNPATH_APPLIED" -gt 0 ]; then
+  printf "  · %s RUNPATH 已写进 lib/ 下 %d 份（$ORIGIN，同目录那一侧）\n" "$ID" "$RUNPATH_APPLIED"
+fi
+
 # 算出来的 entry 与调用方声明的那一份不一致 ⇒ 两处形态说法分叉了。
 # 不改判红（那样会把「算出来的」与「声明的」两个真相源永远锁死），
 # 但要**说出来** —— 哪个是真相由 01/04 裁。
