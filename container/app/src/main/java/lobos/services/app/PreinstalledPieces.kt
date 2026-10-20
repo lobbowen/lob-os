@@ -78,7 +78,7 @@ object PreinstalledPieces {
      *  ③ link 成功不等于目标可达
      *
      *  判据：每一条「指向这一件」的软链，目标必须存在，且必须落在落位目录里。
-     *  真机读数（07，ls -l）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
+     *  真机读数（07，ls -l，**旧版落位那一版**：5a265b1）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
      *  files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry> —— 前缀两遍、版本段两遍，
      *  而 linkcrypto/libcurl/libz 那三行是干净的。跨多版装机不变，因为这一支只验原物。
      *
@@ -168,9 +168,18 @@ object PreinstalledPieces {
 
         // 落位后入口在哪：由形态决定（库进库目录、程序进程序目录），不看目录名。
         // 纯库件没有入口 ⇒ landedEntry 为空 ⇒ 它只落库那一份（dirForRole 那把尺）。
-        val landedEntry = if (entry.isBlank()) "" else {
-            val entryRole = shape.roleOf(entry)
+        // ★ 编译错误（run 39415331935 第21步）：entryRole 原来声明在 if 块里，
+        //   而下面三处（refreshDerivedLinks / ManifestWriter.write / register）要它 ⇒ 提到外层。
+        val entryRole: String = if (entry.isBlank()) {
+            // 纯库件没有入口 —— 而它的 role 是**库**（那一份字节落 lib/）。
+            // ★ 而这一格不能空：refreshDerivedLinks 与 ManifestWriter.write 都要它
+            //   （role 决定派生物建在哪个目录）⇒ 空 role 会让那一支早退（派生物不建）。
+            ProgramInstallPipeline.ROLE_LIBRARY
+        } else {
+            shape.roleOf(entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+        }
+        val landedEntry = if (entry.isBlank()) "" else {
             ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
         }
@@ -190,7 +199,9 @@ object PreinstalledPieces {
             //        ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
             // ⇒ 这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
             //   而 usr/bin 与 usr/lib 下指向这一件的软链是**派生物**，坏链就永远留在这儿。
-            //   真机读数（07）：libbusybox.so / liblobosjq.so / libssl.so 三条坏的，跨多版装机不变。
+            //   真机读数（07，**旧版落位那一版**：5a265b1）：libbusybox.so / liblobosjq.so / libssl.so 三条坏的，跨多版装机不变。
+            //   ★ 而那三条坏链的名字里有 liblobosjq.so —— 而今天 jq 那一件的 lib/ 下不再有那一份
+            //   （03 今天那一问：零人 NEEDED 它 ⇒ 产物里就不该有）⇒ 那一版的名字不再成立。
             // ⇒ return 之前先校验派生物；有一条不对就重算它。
             //  ★ 缺陷名（C-102）**短路那一支按目录名验原物**：原来验的是 verDir/<entry>，
             //    而 entry 是清单里那一条（lib/ 那份）⇒ 这一支的判据是「目录名对不对」，
@@ -213,7 +224,7 @@ object PreinstalledPieces {
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
-            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, landedMeta)
+            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
             return true
         }
 
@@ -294,6 +305,9 @@ object PreinstalledPieces {
         stateDir: String,
         entry: String,
         role: String,
+        // ★ 编译错误（run 39415331935 第21步）：verDir 未定义 —— register 是私有函数，
+        //   而「那份库字节的名字」要从**落位目录**里取（按形态）⇒ 把落位目录传进来。
+        verDir: File,
         meta: org.json.JSONObject?,
     ) {
         val prev = lobos.services.reg.ProgramIndex.get(ctx, id)
