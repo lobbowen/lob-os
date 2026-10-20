@@ -299,6 +299,37 @@ object ProgramInstallPipeline {
         return Landed(entryDst, entryRole, shape.kind, moved, "", probe) to null
     }
 
+    /** 逐项复制一棵树，**保留符号链接**（不跟到目标）。
+     *
+     *  族一（落在哪）：搬动只有这一个实现，rename 与 copy 都走这里。
+     *  而 copyRecursively 那一条不能用于落位：
+     *    它对目录逐项复制，符号链接会被跟到目标 => 一条命令软链变成一份字节副本。
+     *  而 rename 不解引用，所以第一优先走 rename（installComponent 里那一支）。
+     *  这一支是 rename 失败时的兜底，而兜底也必须保留软链。
+     */
+    private fun copyTreePreservingLinks(from: File, to: File) {
+        if (!from.isDirectory) {
+            to.parentFile?.mkdirs()
+            if (java.nio.file.Files.isSymbolicLink(from.toPath())) {
+                val raw = runCatching {
+                    java.nio.file.Files.readSymbolicLink(from.toPath()).toString()
+                }.getOrNull()
+                if (raw != null) {
+                    java.nio.file.Files.deleteIfExists(to.toPath())
+                    java.nio.file.Files.createSymbolicLink(
+                        to.toPath(), java.nio.file.Paths.get(raw),
+                    )
+                    return
+                }
+            }
+            from.copyTo(to, overwrite = true)
+            return
+        }
+        to.mkdirs()
+        val kids = from.listFiles() ?: return
+        for (k in kids) copyTreePreservingLinks(k, File(to, k.name))
+    }
+
     /** 一个文件的 sha256 前 16 位（诊断用）；读不到就空串。 */
     private fun shortShaOf(f: File): String = runCatching {
         val md = java.security.MessageDigest.getInstance("SHA-256")
@@ -523,8 +554,21 @@ object ProgramInstallPipeline {
         if (!staging.renameTo(dest)) {
             val incoming = File(dir, "." + safeVer + ".incoming")
             runCatching { incoming.deleteRecursively() }
+            // 族一（落在哪）的第二处搬动实现：**copy 会解引用软链，rename 不会**。
+            //   缺陷名（C-102）**展平落在这一支**：
+            //     原来这一支是 staging.copyRecursively(incoming, overwrite = true)
+            //       —— 而 File.copyRecursively 对目录逐项复制，符号链接会被跟到目标
+            //       => 那 18 条命令软链变成 18 份字节副本（真机读数 07：bin/ 下 19 个实体）
+            //     而 renameTo(dest) 在 dest 非空时必然失败（整目录换掉的前提就是 dest 已在）
+            //       => **真机上每次都走 copy 这一支**
+            //   真机读数（07，run_id 39465653670）：unzip-probe 那组 31 条里
+            //     ('true','true') 20 条（判为软链且落盘后是软链）=> 解包之后那 18 条在盘上就是软链
+            //     而落位探针说「落位前 19 项全是实体」=> 二者之间那一步就是这一支。
+            //   判别形式：解包与落位之间搬目录的那一步，用的是 rename 还是 copy；
+            //     **copy 会解引用软链，而 rename 不会**。
+            //   => 现在：复制时保留符号链接（逐项自己搬，不让 copyRecursively 跟目标）。
             val copied = runCatching {
-                staging.copyRecursively(incoming, overwrite = true)
+                copyTreePreservingLinks(staging, incoming)
             }
             if (copied.isFailure) {
                 runCatching { incoming.deleteRecursively() }
