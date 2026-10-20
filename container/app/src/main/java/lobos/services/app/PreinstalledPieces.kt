@@ -93,11 +93,11 @@ object PreinstalledPieces {
     ): DerivedCheck {
         val verDir = File(SystemDirs.pieceDir(ctx, id), version)
         // 族二（这一件是程序还是库）：派生物**按产物里实际存在的每一种形态各建各的那一条**。
-        //   ★★ 而这一格**不再按「一个 primary + 一个 role」算**——★★
-        //     ★★ 那样算出来的 `dirs` 由那一个 role 二选一，★★ 而 mixed 那一件两种形态都有，★★
-        //     ★★ 于是另一种形态该建的那一条**永远不在检查范围内**。★★
-        //   ★★ 而**这一格也不接受「按 entry 猜」**：★★ 形态是构建期算好的（04 今天那张表第二行），★★
-        //     ★★ 运行期只读产物那一份（★ 读不到就报缺，★ ★ 不按某一支兜底）。★★
+        //    而这一格**不再按「一个 primary + 一个 role」算**——
+        //      那样算出来的 `dirs` 由那一个 role 二选一， 而 mixed 那一件两种形态都有，
+        //      于是另一种形态该建的那一条**永远不在检查范围内**。
+        //    而**这一格也不接受「按 entry 猜」**： 形态是构建期算好的（04 今天那张表第二行），
+        //      运行期只读产物那一份（ 读不到就报缺，  不按某一支兜底）。
         //   缺陷名（C-102）**mixed 那一件被按单一形态看待**：
         //     原来 primary / landedRel / dirs 三处都只按**一个** role 算，
         //     而 dirs 由那个 role 二选一（ROLE_PROGRAM => 只有 binDir、ROLE_LIBRARY => 只有 libDir）
@@ -305,49 +305,65 @@ object PreinstalledPieces {
             //   缺陷名（C-102）**短路那一支按目录名验原物**：原来验的是 verDir/<entry>，
             //    而 entry 是清单里那一条（lib/ 那份） 这一支的判据是「目录名对不对」，
             //    不是「形态对不对」。现在验的是**落位后那一条**（形态决定的）。
-            val derived = refreshDerivedLinks(ctx, id, version)
+                    // 格一那一族的收尾：**快路径也要刷新落位目录那两份产物自带的清单**。
+        //   缺陷名（C-102）**只刷了其中一份，而建链读的是另一份**：
+        //     · 产物自带两份：component-meta.json（META_NAME）与 piece-shape.json（SHAPE_NAME）
+        //     · 而 refreshDerivedLinks 读的是 **piece-shape.json**（PieceShape.read(verDir)）
+        //     · 而原来这一处只刷 component-meta.json   建链读到的是**上一次重装带过来的**那一份 
+        //     ·  而 62e0c7c 只做了一半 ——  而那一半就是「六件报缺」那一格的原因 
+        //    而真机读数（07，2026-10-21，run 39483058890 / head=fec29ac）：
+        //     八件的 component-meta.json 全部刷新（mtime 03:39/03:40，全部带 buildSha）
+        //     而 piece-shape.json **只有 busybox 与 ripgrep 两件有** —— 
+        //     而那两件正是**今天被重装过**的那两件   ** 这是「那个动作的副作用」，
+        //      而不是「那六件坏了」**（04 今天第二段那条判别）
+        //    现在：两份都刷，**而且这份在 refreshDerivedLinks 之前**（  而顺序是这一格的关键：
+        //      建链读的那一份要在刷新之后才拿得到   顺序要反过来 ）
+        //    而 piece-shape.json **逐字复制产物那一份** —— 
+        //      而它不是登记（  登记是 manifest 与 index， 而它只描述「这一件是什么」）
+        //      而它是**构建期算好的那一格**（C-16：  运行期只读不判断）   所以照抄 
+            val landedMeta = runCatching {
+                val j = org.json.JSONObject(meta.toString())
+                j.put("entry", landedEntry)
+                j
+            }.getOrNull()
+    val manifestWritten = runCatching {
+                lobos.services.supply.ManifestWriter.write(
+                    verDir, landedMeta, version, entryRole
+                )
+            }
+        val shapeRefreshed = runCatching {
+            val src = File(unpacked, ProgramInstallPipeline.SHAPE_NAME)
+            if (!src.isFile) {
+                false
+            } else {
+                val dst = File(verDir, ProgramInstallPipeline.SHAPE_NAME)
+                dst.parentFile?.mkdirs()
+                src.copyTo(dst, overwrite = true)
+                true
+            }
+        }.getOrDefault(false)
+        if (!shapeRefreshed) {
+            trace(ctx, "刷新 " + ProgramInstallPipeline.SHAPE_NAME,
+                id + " 失败（快路径）：产物那一份不在 —— 而建链会报缺，不猜")
+        }
+        val metaRefreshed = runCatching {
+            val j = landedMeta ?: return@runCatching false
+            val dst = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
+            dst.parentFile?.mkdirs()
+            dst.writeText(j.toString(1) + "\n")
+            true
+        }.getOrDefault(false)
+        if (!metaRefreshed) {
+            trace(ctx, "刷新 " + lobos.kernel.layout.PrefixProvisioner.META_NAME,
+                id + " 失败（快路径）：落位目录那份仍是旧的那一份")
+        }
+val derived = refreshDerivedLinks(ctx, id, version)
             trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
                 " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
 
 
-            val landedMeta = runCatching {
-                val j = org.json.JSONObject(meta.toString())
-                j.put("entry", landedEntry)
-                j
-            }.getOrNull()
-            // 格一那一族的收尾：**快路径也要刷新落位目录那份 meta**。
-            //   缺陷名（C-102）**「不重落」等于「不更新它」**：
-            //     component-meta.json 是**产物自带**的那一份（META_NAME），
-            //     而它随整目录换过来（installComponent 的 staging.renameTo(dest)）——
-            //     **只有重装会刷新落位目录里那一份**。
-            //      而快路径的语义是「盘上字节已与产物逐字相同，不重落」
-            //       而那六件走快路径   落位目录那份 meta **永远是上一次重装带过来的** 
-            //       读者比的是「解包目录那份 vs 落位目录那份」，  后者旧 
-            //       八件全写「不是这一次构建的那一份」
-            //     （真机读数 07，2026-10-21：buildSha 在落位清单里 0/8 -> 2/8，
-            //       而八件全写「不是这一次构建的那一份」）
-            //    而判别：走快路径那一支，它有没有把落位目录那份 meta 重写一次 
-            //     —— 而本机核过：META_NAME 在这一支**只被读三次、零次写**  答案「没有」。
-            //    现在：快路径写 program-manifest.json 的同时，也把那份 meta 刷新成
-            //     「产物那份 + 落位后那一条 entry」—— 与 ManifestWriter 用同一个 landedMeta。
-            val metaRefreshed = runCatching {
-                val j = landedMeta ?: return@runCatching false
-                val dst = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
-                dst.parentFile?.mkdirs()
-                dst.writeText(j.toString(1) + "\n")
-                true
-            }.getOrDefault(false)
-            if (!metaRefreshed) {
-                trace(ctx, "刷新 " + lobos.kernel.layout.PrefixProvisioner.META_NAME,
-                    id + " 失败（快路径）：落位目录那份仍是旧的那一份")
-            }
-            val manifestWritten = runCatching {
-                lobos.services.supply.ManifestWriter.write(
-                    verDir, landedMeta, version, entryRole
-                )
-            }
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
