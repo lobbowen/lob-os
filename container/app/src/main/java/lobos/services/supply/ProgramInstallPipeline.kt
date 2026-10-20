@@ -170,7 +170,17 @@ object ProgramInstallPipeline {
         for ((src, dst) in map) {
             val s = File(dest, src)
             val d = File(dest, dst)
-            if (src == dst) continue
+            // ★ **路径相同时也要搬**（覆盖旧的那一份）——
+            //   缺陷名（C-102）**旧字节永远换不掉**：
+            //     原来这一行是 `if (src == dst) continue` —— 而「落位目标 == 包内路径」
+            //     恰恰是**最常见**的情形（role=program ⇒ dir=bin ⇒ 路径同名；
+            //     role=library ⇒ dir=lib ⇒ 也同名）⇒ **每一次落位都跳过** ⇒
+            //     而落位目录是 opt/<id>/<version> —— **版本号没变而内容变了**（指纹变了）⇒
+            //     同一目录 ⇒ 旧字节留着 ⇒ 新的没落下来。
+            //   ★ 真机读数（07，2026-10-20）：真机上八件的落位目录 mtime 全是 2026-10-19 10:28/10:40
+            //     （旧那一批），而 busybox 的 bin/ 下没有 sh（新的落包集有 18 个含 sh），
+            //     而 program-manifest.json 写的仍是旧值 entry=lib/libbusybox.so。
+            //   ⇒ 处置：src == dst 时**照样搬**（delete + renameTo），即覆盖。
             if (!existsAsFileOrLink(s)) {
                 // 已经落过位的那一份（幂等）：目标在，就算已落位。
                 if (existsAsFileOrLink(d)) continue
@@ -358,7 +368,20 @@ object ProgramInstallPipeline {
                       enabled = true,
                       stateDir = baseEntry.stateDir.ifBlank { lobos.services.reg.ProgramManager.relStateDir(context, spec.programId) },
                       sha256 = baseEntry.sha256,
-                      assetEntry = declared?.entry ?: baseEntry.assetEntry,
+                      // ★ **入口格只对程序形态填** —— 缺陷名（C-102）**库件被当程序调起**：
+                      //   原来这一行是 `assetEntry = declared?.entry ?: baseEntry.assetEntry`——
+                      //   而 declared 是**注册表**里那一件（不是清单），baseEntry 也是注册表里那一件
+                      //   ⇒ 两处都是**旧值** ⇒ 而三件纯库件（crypto/curl/zlib）注册表里那一格
+                      //     还留着旧的 lib/<名> ⇒ 运行期按它去调起一份**库** ⇒ exit=139 段错误。
+                      //   ★★ 真机读数（07，2026-10-20）：那三件每件库字节的 NEEDED 都能在 usr/lib
+                      //     或 /system/lib64 里找到（零断链）⇒ **「找不到」那一格不成立**；
+                      //     而 stderr 只有 Segmentation fault、没有任何链接器的抱怨
+                      //     ⇒ **找到了、装载开始了、崩** ⇒ 而它「根本不是程序」。
+                      //   ⇒ 现在：形态是库 ⇒ 入口格**留空**（这一件没有程序入口）；
+                      //     形态是程序 ⇒ 入口格填 declared 的那一格（若空则填 baseEntry 的）。
+                      assetEntry = (declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role).let { r ->
+                          if (r == ROLE_PROGRAM) (declared?.entry?.takeIf { it.isNotBlank() } ?: baseEntry.assetEntry) else ""
+                      },
                       role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
                       resident = declared?.resident ?: true,
                       restart = declared?.restart ?: lobos.services.reg.Restart.ON_FAILURE,
