@@ -395,11 +395,18 @@ object PreinstalledPieces {
         //    **有一处不存在**  => 报缺（ 而它**不是**「= APK 那一代」， 也不是「= 未知的那一代」）
         //    两处都存在而不等  => 不同代
         //  而「凡那一格参与比较，先确认它在每一件上都存在；有一件缺  那一格整体报缺」
+        // ★★ 而「local」那个占位**也要报缺**（04 今天那条总判据）：★★
+        //   它是「本地造的那一份」，而它与「= APK 那一格」在读侧**不可区分** ⇒ ★★
+        //   ★★ 而结论需要一个具体值（「是不是这一次构建的」）⇒ ★★ 那一格必须报缺，不许填 ★★
+        //   ★★ 而它与 APK 那一格都是 40 位时两者逐字相同 ⇒ 「恰好同相」⇒ ★★
+        //   ★★ 换一个输入就不同相了（★ APK 那一格不是 local）★★ ⇒ ★★ 不能拿它判「同代」★★。★★
+        val pkgIsLocal = pkgBuild.equals("local", ignoreCase = true)
+        val landedIsLocal = landedBuild.equals("local", ignoreCase = true)
         when {
-            pkgBuild.isBlank() || landedBuild.isBlank() -> {
+            pkgBuild.isBlank() || landedBuild.isBlank() || pkgIsLocal || landedIsLocal -> {
                 val missing = listOfNotNull(
-                    "产物那份".takeIf { pkgBuild.isBlank() },
-                    "落位目录那份".takeIf { landedBuild.isBlank() },
+                    "产物那份".takeIf { pkgBuild.isBlank() || pkgIsLocal },
+                    "落位目录那份".takeIf { landedBuild.isBlank() || landedIsLocal },
                 ).joinToString(" 与 ")
                 lobos.services.log.Journal.note(
                     ctx, "prefix-trace", null, "报缺：无法判定是不是这一代 " + id,
