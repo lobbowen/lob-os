@@ -188,13 +188,34 @@ object PreinstalledPieces {
         // ★ 纯库件没有入口 ⇒ 这一支的判据不能是「verDir/<entry> 在不在」
         //   （空 entry 时 File(verDir, "") 是目录 ⇒ 恒真 ⇒ 误短路）。
         //   ⇒ 纯库件验的是「它那一份库字节在不在 lib/ 下」——按形态（role=library）判。
+        // ★ **「已落位」的判据是「是不是同一份」，不是「在不在」** ——
+        //   缺陷名（C-102）**旧字节永远换不掉**：
+        //     原来这里判的是「落位目录里那份东西在不在」—— 而「在」只说明**有个东西在那儿**，
+        //     不说明它是**这一份**。而落位目录是 opt/<id>/<version> ——
+        //     **版本号没变而内容变了**（指纹变了）⇒ 同一目录 ⇒ 旧字节留着 ⇒ 新的没落下来。
+        //   ★ 真机读数（01 今天逐件核的，2026-10-20）：
+        //     真机 busybox 那一件的落位目录 mtime = 04:49（唯一旧的一件），
+        //     它的字节 sha = 87e32d67… 而新包那份是 4ce4a418…（我今天核过新包的 files[].sha256）
+        //     ⇒ **同一份吗？不是** ⇒ 那一格今天判「不一致」⇒ 走重装 ⇒ 新字节落下来。
+        //   ⇒ 现在：逐项比对**产物自带的 files[].sha256**与落位目录里那份的 sha256。
+        //     而 piece-shape.json 是产物自带的（构建期算的），落位目录里那份的 sha 现算。
+        // ★ 纯库件（没有入口）那一格也用**同一把尺**（是不是同一份）：
+        //   原来它判的是「lib/ 下有没有文件」—— 而那同样只说明「有个东西在那儿」。
         val landedPresent = if (landedEntry.isBlank()) {
             val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")
             libDir.isDirectory && libDir.listFiles()?.any { it.isFile } == true
         } else {
             File(verDir, landedEntry).isFile
         }
-        if (verDir.isDirectory && landedPresent) {
+        val sameBytes = shape.files.all { fs ->
+            if (fs.sha256.isBlank()) return@all true
+            val dst = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(fs.role) ?: fs.dir)
+                .let { File(it, fs.path.substringAfterLast('/')) }
+            val real = runCatching { dst.canonicalFile }.getOrNull() ?: return@all true
+            !real.isFile || sha256Of(real) == fs.sha256
+        }
+        val landedUpToDate = landedPresent && sameBytes
+        if (verDir.isDirectory && landedUpToDate) {
             // 缺陷（C-102）① 落位检查只验原物在不在、派生物指向哪不管
             //        ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
             // ⇒ 这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
@@ -250,6 +271,20 @@ object PreinstalledPieces {
         }
         return true
     }
+
+    /** 一个文件的 sha256（小写十六进制）；读不到就空串。 */
+    private fun sha256Of(f: File): String = runCatching {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(1 shl 16)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
+    }.getOrDefault("")
 
     /** 纯库件那一份库字节的名字 —— 从落位目录 lib/ 下取（**按形态**：库形态的那一份）。
      *  ★ 库件没有入口（清单里 entry 空）⇒ 「库在哪里」那一格记的就是这个名字。
