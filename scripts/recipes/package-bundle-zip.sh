@@ -30,24 +30,53 @@ cd "$ROOT"
 META_SRC="$ROOT/scripts/component-sources.json"
 [ -f "$META_SRC" ] || { echo "::error title=缺钉值表::$META_SRC 不在"; exit 1; }
 
+# 形态判据（ELF 头：e_type + PT_INTERP）—— 判「有没有程序那一侧」要用它。
+source "$ROOT/scripts/toolchain/elf-form.sh"
+
+# 先判「这一件在磁盘上有没有程序那一侧」—— 判据是**形态**（ELF 头），
+# 不是目录名、不是文件名、也不是「bin/ 下有没有东西」。
+# ★ 缺陷名（C-102）库件也拿到一个 entry —— 原来这一支（entry 为空时）是：
+#   bin/ 下有东西 ⇒ 取 bin/<第一个>；否则 ⇒ 取 lib/<第一个 .so>。
+#   ⇒ 纯库件（crypto/curl/zlib）因此被指了一份**库**当入口 ⇒
+#     运行期按那份 entry 去调起 ⇒ 那五件起不来（07 今天的复算表：
+#     crypto/curl/zlib 复算 role=library 且 bin/ 目录不存在）。
+#   而 openssl 更隐蔽：它 bin/ 下**有** bin/openssl（程序形态），
+#   而 entry 却指向 lib/libssl.so（库形态）⇒ 被当成库起，崩。
+# ⇒ 现在：有程序那一侧 ⇒ entry 指向**那一侧**（按形态挑，不按名字顺序）；
+#   没有 ⇒ **entry 留空**（按 C-05「没有」就是没有，不是「随便挑一个 .so」）。
+#   而「库装库目录」说的是**库字节落在库目录**，那件事由运行期 dirForRole 保证 ——
+#   与「库件没有 entry」（入口）不冲突。
 if [ -z "$ENTRY" ]; then
-  if [ -d "$OUT/bin" ] && [ -n "$(ls -A "$OUT/bin" 2>/dev/null)" ]; then
-    ENTRY="bin/$(ls "$OUT/bin" | head -1)"
+  PROG_ENTRY=""
+  if [ -d "$OUT/bin" ]; then
+    for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
+      p="$OUT/bin/$f"
+      [ -f "$p" ] || continue
+      ff="$(elf_form "$p" 2>/dev/null)"
+      if elf_form_is_program "$ff"; then PROG_ENTRY="bin/$f"; break; fi
+    done
+  fi
+  if [ -n "$PROG_ENTRY" ]; then
+    ENTRY="$PROG_ENTRY"
+    echo "  （这一件有程序那一侧：entry=$ENTRY）"
   else
-    ENTRY="lib/$(ls "$OUT/lib" | grep '\.so$' | head -1)"
+    ENTRY=""
+    echo "  （这一件只有库形态的字节：entry 留空）"
   fi
 fi
 
-case "$ENTRY" in
-  bin/*|lib/*) ;;
-  *) echo "::error title=entry 形状不对::$ENTRY"; exit 1 ;;
+if [ -n "$ENTRY" ]; then
+  case "$ENTRY" in
+    bin/*|lib/*) ;;
+    *) echo "::error title=entry 形状不对::$ENTRY"; exit 1 ;;
 esac
 
-[ -e "$OUT/$ENTRY" ] || {
-  echo "::error title=缺件::$OUT/$ENTRY 不在（entry=$ENTRY）"
-  find "$OUT" -type f 2>/dev/null | head -10 | sed 's/^/::error::    /'
-  exit 1
-}
+  [ -e "$OUT/$ENTRY" ] || {
+    echo "::error title=缺件::$OUT/$ENTRY 不在（entry=$ENTRY）"
+    find "$OUT" -type f 2>/dev/null | head -10 | sed 's/^/::error::    /'
+    exit 1
+  }
+fi
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
@@ -60,10 +89,27 @@ trap 'rm -rf "$STAGE"' EXIT
 #
 # 版本链指共享库的 soname 一族（libz.so → libz.so.1 → libz.so.1.3.2）：
 # 它们是同一份字节的三个名字，而 linker 按 DT_NEEDED 找的是带版本的那一层。
-mkdir -p "$STAGE/$(dirname "$ENTRY")"
-cp -Pf "$OUT/$ENTRY" "$STAGE/$ENTRY" 2>/dev/null || cp -f "$OUT/$ENTRY" "$STAGE/$ENTRY"
-eb="$(basename "$ENTRY")"
-ed="$(dirname "$ENTRY")"
+if [ -n "$ENTRY" ]; then
+  mkdir -p "$STAGE/$(dirname "$ENTRY")"
+  cp -Pf "$OUT/$ENTRY" "$STAGE/$ENTRY" 2>/dev/null || cp -f "$OUT/$ENTRY" "$STAGE/$ENTRY"
+  eb="$(basename "$ENTRY")"
+  ed="$(dirname "$ENTRY")"
+else
+  # ★ 纯库件（这一件没有程序那一侧）⇒ entry 留空 ⇒ **把 lib/ 下的字节全搬进包**。
+  #   库字节落在库目录（lib/）—— 这就是「库装库目录」在产物这一侧的形态。
+  #   而它没有入口 —— 运行期不会被当程序调起（那正是它该有的状态）。
+  #   ★ 而它的主名（libfoo.so）**要带**：主名是「这个包里哪一份是这一件的那一份」的标记，
+  #   而 linker 按 DT_NEEDED 找的是带版本的那一层（libfoo.so.1）。
+  eb=""
+  ed="lib"
+  mkdir -p "$STAGE/lib"
+  if [ -d "$OUT/lib" ]; then
+    for f in $(ls -A "$OUT/lib" 2>/dev/null | LC_ALL=C sort); do
+      case "$f" in *.so|*.so.*) cp -Pf "$OUT/lib/$f" "$STAGE/lib/$f" 2>/dev/null || cp -f "$OUT/lib/$f" "$STAGE/lib/$f" ;; esac
+    done
+  fi
+  echo "  （纯库件：lib/ 下搬了 $(ls -A "$STAGE/lib" 2>/dev/null | wc -l) 个名字）"
+fi
 # OPENSSL_LIBS=1 时把同目录下所有 .so 都带上。
 # openssl 一次编译产出 libssl.so 与 libcrypto.so，而 crypto 是清单里的独立一件
 #（component-sources.json 里 crypto.sameAs=openssl），由 build-crypto.yml 从

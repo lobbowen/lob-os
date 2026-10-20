@@ -94,8 +94,14 @@ object PreinstalledPieces {
         role: String,
     ): DerivedCheck {
         val verDir = File(SystemDirs.pieceDir(ctx, id), version)
-        val landed = File(verDir, entry).canonicalFile.path
-        val primary = entry.substringAfterLast("/")
+        // ★ 纯库件没有入口（entry 空）⇒ 派生物软链的主体是**那份库字节**（按形态取）。
+        //   原来这里两行是 File(verDir, entry) 与 entry.substringAfterLast("/") ——
+        //   而 entry 为空时前者是目录、后者是空串 ⇒ 这一支会炸或建出无名软链。
+        val primary = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir)
+        if (primary.isBlank()) {
+            return DerivedCheck(0, 0, 0, "没有入口也没有库字节 —— 不猜它该建在哪")
+        }
+        val landed = File(verDir, primary).canonicalFile.path
         val dirs = when (role) {
             ProgramInstallPipeline.ROLE_PROGRAM -> listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
             ProgramInstallPipeline.ROLE_LIBRARY -> listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
@@ -146,21 +152,40 @@ object PreinstalledPieces {
         }.getOrNull() ?: return fail(ctx, id, "component-meta.json 解析失败")
 
         val version = meta.optString("version", "").ifBlank { return fail(ctx, id, "说明里没有 version") }
-        val entry = meta.optString("entry", "").ifBlank { return fail(ctx, id, "说明里没有 entry") }
-        if (!File(unpacked, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
+        // entry **允许为空** —— 那是「这一件没有程序那一侧」（纯库件：crypto/curl/zlib）。
+        // ★ 缺陷名（C-102）纯库件被当成「说明里没有 entry」而报缺：
+        //   原来这一行是 ifBlank { return fail(… "说明里没有 entry") }，
+        //   而那把「没有入口」当成了「清单坏了」⇒ 纯库件一步都装不上。
+        //   而按 C-05「没有」就是没有：纯库件**本来就该没有入口**（07 今天的复算表：
+        //   crypto/curl/zlib 复算 role=library 且 bin/ 目录不存在）。
+        val entry = meta.optString("entry", "").trim()
 
         // 形态只从**产物自带的** piece-shape.json 读。读不到 ⇒ 报缺，
         // 不探测那份字节、不猜、不兜底（用户 2026-10-20 三行规则第三条）。
         val shape = ProgramInstallPipeline.PieceShape.read(unpacked)
             ?: return fail(ctx, id, "包里没有 piece-shape.json（产物没带形态）—— 报缺，不探测字节")
-        val entryRole = shape.roleOf(entry)
-            ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+        if (entry.isNotBlank() && !File(unpacked, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
+
         // 落位后入口在哪：由形态决定（库进库目录、程序进程序目录），不看目录名。
-        val landedEntry = ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
-            ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
+        // 纯库件没有入口 ⇒ landedEntry 为空 ⇒ 它只落库那一份（dirForRole 那把尺）。
+        val landedEntry = if (entry.isBlank()) "" else {
+            val entryRole = shape.roleOf(entry)
+                ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+            ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
+                ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
+        }
 
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
-        if (verDir.isDirectory && File(verDir, landedEntry).isFile) {
+        // ★ 纯库件没有入口 ⇒ 这一支的判据不能是「verDir/<entry> 在不在」
+        //   （空 entry 时 File(verDir, "") 是目录 ⇒ 恒真 ⇒ 误短路）。
+        //   ⇒ 纯库件验的是「它那一份库字节在不在 lib/ 下」——按形态（role=library）判。
+        val landedPresent = if (landedEntry.isBlank()) {
+            val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")
+            libDir.isDirectory && libDir.listFiles()?.any { it.isFile } == true
+        } else {
+            File(verDir, landedEntry).isFile
+        }
+        if (verDir.isDirectory && landedPresent) {
             // 缺陷（C-102）① 落位检查只验原物在不在、派生物指向哪不管
             //        ② 软链是派生物而落位跳过已存在项，派生物因此永不刷新
             // ⇒ 这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
@@ -213,6 +238,17 @@ object PreinstalledPieces {
             return false
         }
         return true
+    }
+
+    /** 纯库件那一份库字节的名字 —— 从落位目录 lib/ 下取（**按形态**：库形态的那一份）。
+     *  ★ 库件没有入口（清单里 entry 空）⇒ 「库在哪里」那一格记的就是这个名字。
+     *  ★ 而它不按目录名挑：lib/ 下若有多个 .so，取**主名**那一个（名字恰以 .so 结尾）——
+     *    主名是「这一件的那一份」的标记（与构建侧同一把尺）。 */
+    private fun libFileNameOf(verDir: File): String {
+        val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")
+        val files = libDir.listFiles()?.filter { it.isFile } ?: return ""
+        val primary = files.firstOrNull { it.name.endsWith(".so") }
+        return (primary ?: files.firstOrNull())?.name ?: ""
     }
 
     /** 落位目录的**相对**路径（opt/<id>）—— 注册表里那一格是相对路径，
@@ -274,7 +310,9 @@ object PreinstalledPieces {
                     stateDir = stateDir,
                     enabled = true,
                     desired = lobos.services.reg.Desired.RUNNING,
-                    libName = entry.substringAfterLast("/"),
+                    // ★ 库件没有入口（entry 空）⇒ libName 取**那份库字节**的名字。
+                    //   而那一份从落位目录 lib/ 下按**形态**取（role=library），不按目录名、不按 entry。
+                    libName = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir),
                     assetEntry = if (isProgram) entry else "",
                     role = role,
                     required = meta?.optBoolean("essential", false) ?: false,

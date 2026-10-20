@@ -114,7 +114,16 @@ object ProgramInstallPipeline {
     }
 
     /** 落位的结果：落位后入口的件内相对路径 + 它的形态 + 整件的形态。 */
-    data class Landed(val entryRel: String, val role: String, val kind: String, val moved: List<String>)
+    /** 落位的结果：落位后入口的件内相对路径 + 它的形态 + 整件的形态 + **那一件自己的字节名**。
+     *  ★ 最后一格是纯库件用的：库件**没有入口**，而注册表仍要记「库在哪里」——
+     *    记的是那份库字节的名字（按形态从落位结果里取，不按目录名）。 */
+    data class Landed(
+        val entryRel: String,
+        val role: String,
+        val kind: String,
+        val moved: List<String>,
+        val libName: String = "",
+    )
 
     /** 落位失败的原因（报缺用）。 */
     data class LandFailure(val reason: String, val detail: String)
@@ -211,10 +220,26 @@ object ProgramInstallPipeline {
         // ⑤ 入口：清单声明的那一条 -> 落位后那一条（形态决定它在哪）
         val entrySrc = declaredEntry.trim()
         if (entrySrc.isEmpty()) {
-            return null to LandFailure(
-                "entry-missing",
-                "产物没声明入口 —— 报缺，不猜一个",
-            )
+            // ★ **纯库件没有入口 —— 那不是缺件**。
+            //   缺陷名（C-102）空 entry 被当成「产物没声明入口」而报缺：
+            //   原来这一支是 return LandFailure("entry-missing", "产物没声明入口 —— 报缺，不猜一个")，
+            //   而「这一件只有库形态的字节 ⇒ 它本来就没有入口」（判别：这一件在磁盘上有没有程序那一侧）。
+            //   ⇒ 现在：空 entry ⇒ 库件，落位照上面（按形态逐项）走完，入口留空。
+            //   而「库装库目录」说的是**库字节落在库目录**，那件事由 dirForRole 保证 ——
+            //   与「库件没有入口」（入口）不冲突。
+            val libRole = shape.files.firstOrNull()?.role
+            if (libRole == null) {
+                return null to LandFailure(
+                    "entry-missing",
+                    "产物没声明入口，且形态说明里没有落位项 —— 报缺，不猜一个",
+                )
+            }
+            // ★ 纯库件：注册表仍要记「库在哪里」⇒ 记那份库字节的名字。
+            //   从落位结果里按**形态**（role=library）取第一个 —— 不按目录名、不按 entry。
+            val libFile = shape.files.firstOrNull { it.role == ROLE_LIBRARY }
+                ?: shape.files.firstOrNull { it.role == ROLE_PROGRAM }
+            val libName = libFile?.path?.substringAfterLast('/') ?: ""
+            return Landed("", libRole, shape.kind, moved, libName) to null
         }
         val entryDst = map[entrySrc]
             ?: return null to LandFailure(
@@ -527,7 +552,9 @@ object ProgramInstallPipeline {
                   // 绝对路径会被拼成 filesDir + "/data/..." （那就找不到了）。
                   stateDir = SystemDirs.REL_OPT + "/" + spec.programId,
                   sha256 = base.sha256,
-                  libName = entryRel.substringAfterLast("/"),
+                  // ★ 库件没有入口（entryRel 空）⇒ libName 取**那份库字节**的名字（按形态从落位结果算）。
+                  //   程序件：libName = 落位后那一条的文件名（与原来逐字相同）。
+                  libName = if (entryRel.isNotBlank()) entryRel.substringAfterLast("/") else landed.libName,
                       assetEntry = if (isProgram) entryRel else "",
                       role = role,
                       requires = meta.requires(),

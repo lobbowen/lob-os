@@ -318,6 +318,12 @@ elf_write_shape() {
     dir="${rel%%/*}"
     [ "$dir" = "bin" ] && n_bin=$((n_bin+1))
     [ "$dir" = "lib" ] && n_libdir=$((n_libdir+1))
+    # ★ **kind 该用 role 那把尺（形态），不该用目录名** ——
+    #   缺陷名（C-102）kind 按目录名数：原来 kind 由 n_bin / n_libdir（`${rel%%/*}` 是 bin 还是 lib）决定，
+    #   而「看目录名」按 §10.1:128 已判无效。
+    #   ⇒ 今天两把尺会不一致：role 那把（形态）说 openssl 是 library（libssl.so 是 dyn-plain），
+    #     而 kind 那把（目录名）说它是 mixed（bin/ 与 lib/ 两个目录都在）。
+    #   ⇒ 现在 kind 由 n_prog（程序形态的份数）与 n_lib（库形态的份数）决定 —— 与 role 同一把尺。
     mode="$(stat -c%a "$real" 2>/dev/null || echo '')"
     bytes="$(stat -c%s "$real" 2>/dev/null || echo 0)"
     sha="$(sha256sum "$real" 2>/dev/null | cut -d" " -f1)"
@@ -338,11 +344,18 @@ elf_write_shape() {
     fi
     if [ "$rel" = "$entry" ]; then entry_form="$form"; entry_role="$role"; fi
   done
-  # 件整体的形态：**按落位目录判**（bin 与 lib 都有 ⇒ 混合件）
+  # 件整体的形态：**按形态判**（程序形态的份数与库形态的份数）—— 与 role 同一把尺。
+  # ★ 缺陷名（C-102）kind 按落位目录判：原来这一段是
+  #   「n_bin>0 && n_libdir>0 ⇒ mixed；n_bin>0 ⇒ program；n_libdir>0 ⇒ library」，
+  #   而 n_bin / n_libdir 数的是**目录名**（`${rel%%/*}` 是 bin 还是 lib）——
+  #   「看目录名」按 §10.1:128 已判无效，而 role 那一格已经用形态那把尺了。
+  #   ⇒ 两把尺会不一致：openssl 的 libssl.so 是 dyn-plain（role=library）
+  #     而 bin/openssl 是程序形态 ⇒ role 说它有程序形态的字节、kind 却按目录名说 mixed。
+  #   ⇒ 现在 kind 与 role 同源：n_prog（程序形态的份数）与 n_lib（库形态的份数）。
   local kind="unknown"
-  if [ "$n_bin" -gt 0 ] && [ "$n_libdir" -gt 0 ]; then kind="mixed"
-  elif [ "$n_bin" -gt 0 ]; then kind="program"
-  elif [ "$n_libdir" -gt 0 ]; then kind="library"
+  if [ "$n_prog" -gt 0 ] && [ "$n_lib" -gt 0 ]; then kind="mixed"
+  elif [ "$n_prog" -gt 0 ]; then kind="program"
+  elif [ "$n_lib" -gt 0 ]; then kind="library"
   fi
   [ -n "$entry_form" ] || entry_form="unknown"
   mkdir -p "$(dirname "$out")"

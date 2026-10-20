@@ -190,8 +190,16 @@ function computeEntry() {
       + ' 个文件，但没有一个是程序形态（' + binNames.join('、') + '）—— 那它们不是入口，entry 不该从 bin/ 取' };
   }
 
-  if (libPrimary.length === 1) {
-    return { entry: 'lib/' + libPrimary[0], by: '落位结果：纯库件（bin/ 下无程序形态字节），入口指 lib 那份', mixed: false, libs: libPrimary };
+  // ★ **纯库件 ⇒ entry 留空**（不是「指 lib 那一份」）。
+  //   缺陷名（C-102）库件也被指了一份库当入口：原来这一支是
+  //   「lib/ 下唯一主名 .so ⇒ entry=lib/<它>」—— 而那一份是**库**，被当入口去调起必然崩
+  //   （07 今天的复算表：crypto/curl/zlib 复算 role=library 且 bin/ 目录不存在）。
+  //   判别：这一件在磁盘上有没有程序那一侧（bin 下有程序形态字节）？
+  //     有 ⇒ entry 指向那一侧；没有 ⇒ **entry 那一格是空的**（按 C-05「没有」就是没有）。
+  //   而「库装库目录」说的是**库字节落在库目录**，那件事由运行期 dirForRole 保证 ——
+  //   与「库件没有 entry」（入口）不冲突。
+  if (libPrimary.length >= 1) {
+    return { entry: '', by: '落位结果：纯库件（bin/ 下无程序形态字节）⇒ 没有程序那一侧，entry 留空；库字节落在 lib/（'+libPrimary.length+' 份）', mixed: false, libs: libPrimary };
   }
   if (libPrimary.length > 1) {
     return { error: '落位目录 ' + PAYLOAD + ' 的 lib/ 下有 ' + libPrimary.length
@@ -208,13 +216,16 @@ if (computed.error) {
 }
 const entry = computed.entry;
 
-if (!/^(bin|lib)\//.test(entry) || entry.includes('..') || entry.includes('\\')) {
-  console.error('::error title=' + id + ' entry 形状不对::' + entry + ' —— 应为 bin/<名> 或 lib/<名>.so');
+// entry 允许为空 —— 那是「这一件没有程序那一侧」（纯库件）。
+// 非空时它必须形如 bin/<名> 或 lib/<名>.so，且在落位结果里真的存在。
+if (entry !== '' && (!/^(bin|lib)\//.test(entry) || entry.includes('..') || entry.includes('\\'))) {
+  console.error('::error title=' + id + ' entry 形状不对::' + entry + ' —— 应为 bin/<名> 或 lib/<名>.so，或空（纯库件）');
   process.exit(1);
 }
 
 // 该件落位结果里必须真的有这个文件 —— 算出来的名字指向不存在的东西 = 落位坏了。
-if (!fs.existsSync(path.join(PAYLOAD, entry))) {
+// （entry 为空 = 纯库件，那一件没有入口，不查这一格。）
+if (entry !== '' && !fs.existsSync(path.join(PAYLOAD, entry))) {
   console.error('::error title=' + id + ' 落位结果缺文件::' + path.join(PAYLOAD, entry) + ' 不在');
   process.exit(1);
 }
