@@ -248,13 +248,35 @@ object PieceScan {
         val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return Verdict(false, 0, emptyList())
         if (e.stateDir.isBlank()) return Verdict(false, 0, emptyList())
         if (e.files.isEmpty()) return Verdict(false, 0, emptyList())
-        val base = File(e.stateDir)
+        // 族一（落在哪）：这一处原来自己拼路径，而它把版本段丢了。
+        //   缺陷名（C-102）**verify 拼出来的那条路径不存在**：
+        //     原来这一行是 `val base = File(e.stateDir)`，而 e.stateDir 是**相对**形态
+        //     （opt/bash），而 fr.path 是**件内**相对路径（bin/bash）
+        //     => 拼出来既不相对 filesDir、也**缺版本段**
+        //     => File("opt/bash", "bin/bash") = <cwd>/opt/bash/bin/bash（不存在）
+        //     => 真机读数（07，2026-10-21）：八件**全部**答「坏」，而每一项都因为「不在」
+        //     => 而它答「缺」不是判出了差异，是**每项都没找到**。
+        //   判别形式：它拼出来的那条路径，真机上存不存在。
+        //   => 现在：转调族一的真源（PieceScan.landedPieceDir，根是 SystemDirs.opt），
+        //     而版本段由它自己选（取那个含清单的版本目录）。
+        val base = landedPieceDir(ctx, id)
+            ?: return Verdict(false, 0, listOf("找不到落位目录：" + e.stateDir + "/<版本>"))
         val bad = mutableListOf<String>()
         for (fr in e.files) {
-            val f = File(base, fr.path)
+            //  而登记里那一条（FileRec）**只有 path 与 sha256，没有 role** ——
+            //    而 C-05：缺字段就报缺，不猜。所以这里**不按形态重算目录**（ 那要 role，
+            //    而登记里没有那一格）， 而是直接用登记里那一条的 path：
+            //    它要么已含目录（bin/bash）、 要么是裸名（而那时报缺，不猜它该落在哪）。
+            val raw = fr.path
+            if (!raw.contains('/')) {
+                bad += "登记里的 path 没有目录（无法判定它该落在哪）：" + raw
+                continue
+            }
+            val rel = raw
+            val f = File(base, rel)
             when {
-                !f.isFile -> bad += "缺：${fr.path}"
-                SupplySha.sha256(f) != fr.sha256 -> bad += "被换过：${fr.path}"
+                !f.isFile -> bad += "缺：" + rel
+                SupplySha.sha256(f) != fr.sha256 -> bad += "被换过：" + rel
             }
         }
         return Verdict(bad.isEmpty(), e.files.size, bad)
