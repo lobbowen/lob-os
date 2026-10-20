@@ -87,7 +87,26 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     chain="$(elf_chain_names "$W/lib" "$root")"
     n="$(printf '%s' "$chain" | wc -w)"
     say "lib/$base 的链：$chain（$n 段）"
-    [ "$n" -ge 3 ] || bad "链不足三段" "lib/$base 只有 $n 段：$chain —— 库那一件要带三段链（ldconfig(8)）"
+    # ★ **判据换成「SONAME 与链是否自洽」**（01 今天裁的）——
+    #   原来这一格写死了「段数 >= 3」，而那个 3 是我们自己加的一个数，不是 man 8 ldconfig 的要求：
+    #   man 原文是「expects a certain pattern」（期待某种形状）与「may result in」（可能导致），
+    #   而它那个示例里的「middle file」明确就是**那份字节自己说的 SONAME**。
+    #   ⇒ 判别：这一份字节的 SONAME 与它的开发名同名吗？
+    #      同名（libssl.so / libcrypto.so / libcurl.so）⇒ 按那个形状就是 1 段，**而这不是缺陷**
+    #      不同名（libz.so -> libz.so.1）⇒ 中间那层必须是 SONAME，链里没有就是自相矛盾
+    soname="$(elf_soname "$real")"
+    if [ -z "$soname" ]; then
+      # 读不到 SONAME ⇒ 那份字节没自说它叫什么 ⇒ 按 C-05 报缺，不替它编
+      bad "SONAME 读不到" "lib/$base 那份字节没有 DT_SONAME —— 它自述的 SONAME 是什么读不出来，报缺（不替它编）"
+    elif [ "$soname" = "$root" ]; then
+      say "  SONAME=$soname 与开发名同名 ⇒ 按那个形状就是 $n 段，自洽"
+    else
+      # SONAME 与开发名不同名 ⇒ 链里必须有一层就叫 SONAME
+      case " $chain " in
+        *" $soname "*) say "  SONAME=$soname 在链里，自洽" ;;
+        *) bad "链与 SONAME 不自洽" "lib/$base 自述 SONAME=$soname，而链里没有这一层：$chain" ;;
+      esac
+    fi
   done
 fi
 

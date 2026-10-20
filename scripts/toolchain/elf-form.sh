@@ -142,8 +142,20 @@ elf_ensure_chain() {
     done
     [ -n "$entity" ] || continue
 
-    soname="$(elf_soname "$dirpath/$entity")"
-    [ -n "$soname" ] || soname="$root"
+    # ★ **两问分开**（01 今天指出、03 今天更正其位置）：
+    #   (a) 那份字节**自己说**它的 SONAME 是什么？读不到 ⇒ 按 C-05 报缺，**不替它编**。
+    #   (b) 我们要不要给它建一条链？
+    #   原来这一行 `[ -n "$soname" ] || soname="$root"` 把两问合成了一问：
+    #   「上游没给 SONAME」与「上游给了无版本层的 SONAME」都变成 soname=开发名 ⇒ 不可区分。
+    soname_raw="$(elf_soname "$dirpath/$entity")"
+    if [ -z "$soname_raw" ]; then
+      # (a) 读不到 ⇒ 那份字节没自述 SONAME ⇒ 按 C-05 报缺：不建链、不替它编一个
+      #   （这个文件没有 say()，输出走 out —— 每个名字一行）
+      out="$out${out:+ }（$(basename "$entity") 读不到 DT_SONAME —— 报缺，不建链）"
+      continue
+    fi
+    # (b) 有 SONAME ⇒ 按它自述的名字建链（同名就是同名，1 段也是它的实际形状）
+    soname="$soname_raw"
     major="${soname#$root.}"
     case "$major" in ''|*[!0-9]*) major="" ;; esac
     case "$ver" in ''|*[!0-9.]*) ver="" ;; esac
