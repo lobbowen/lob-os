@@ -64,9 +64,18 @@ if [ "$DIRTY_LINES" -gt 0 ]; then
   echo " 未提交项(最多 12 条):"
   git -C "$ROOT" status --porcelain 2>/dev/null | head -12 | sed 's/^/   /'
   [ "$DIRTY_LINES" -gt 12 ] && echo "   ... (共 $DIRTY_LINES 项, 完整清单用 git status --porcelain)"
+  if [ -n "${LOBOS_RUN_ID:-}" ] || [ -f "$ROOT/work/build-identity.txt" ]; then
+    echo " 判别        : **上面那个 run_id 不说明这一份读数** —— 上面那行 run_id 指的是那一次构建,"
+    echo "              而这一份读数来自工作树, 两者不是同一份代码。"
+    echo "              要让读数与某一次构建对应, 先把工作树提交并让 CI 编那一版, 跑本脚本时传那一版的 run_id。"
+  fi
 else
   echo " 工作树状态  : 干净 (无未提交改动)"
   echo " 判别        : 这一份读数是 HEAD($HEAD_SHORT) 那一提交的"
+  if [ "$RUN_ID_SRC" = "未核" ]; then
+    echo " 判别        : **run_id 未核** —— 仓内没有构建身份文件, 而工作树是干净的。"
+    echo "              这一份读数能说出 head, 但说不出它对应哪一次构建。"
+  fi
 fi
 echo ""
 
