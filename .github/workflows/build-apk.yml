@@ -263,7 +263,23 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          [ "$N" = "8" ] || { echo "::error title=取件数不对::要 8 个，实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
+          # ★★ 而这一格原来硬编码 8 —— ★★ 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算）★★
+          #   ★★ **是两套口径**（★ ★ 而「同一格两处各算一次」那一族）★★
+          #   ★★ 而 crypto 归并进 openssl 之后（01 今天裁：★ ★ 而它就是 openssl 的一部分）★★
+          #   ★★ 件数从八变七 ⇒ ★★ 而这一处还在要 8 ⇒ ★★ 「取件跑过了却判红」★★
+          # ⇒ 现在：**从钉值表算**（★ ★ 与 verify-apk-native.sh 同一把尺）★★
+          # ★★ 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES ★★
+          #   （★ ★ 而它是「哪几件该取」唯一的生成点）★★
+          WANT_N=$(bash -c 'source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null; echo ${#PIECES[@]}' 2>/dev/null || echo "")
+          if [ -z "$WANT_N" ]; then
+            WANT_N=$(grep -o '^PIECES=(.*)' scripts/toolchain/fetch-prebuilt-pieces.sh | head -1 | sed 's/^PIECES=(//; s/)$//' | wc -w)
+          fi
+          if [ -z "$WANT_N" ]; then
+            echo "::error title=读不出钉值表的件数::而这一格不能猜 —— 报缺，不填一个看起来对的值"
+            exit 1
+          fi
+          [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
+          echo "  件数 $N 与钉值表一致（$WANT_N）—— ★ ★ 而它不是硬编码的"
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 

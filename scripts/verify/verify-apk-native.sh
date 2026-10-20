@@ -209,11 +209,15 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
   printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
 done
 
-WANT_N="$(node -e '
-  const s=require(process.argv[1]).sources||{};
-  const ids=["zlib","openssl","crypto","curl","jq","bash","ripgrep","busybox"];
-  process.stdout.write(String(ids.filter(i=>s[i]).length));
-' "$ROOT/scripts/component-sources.json" 2>/dev/null || echo 8)"
+# ★★ 而这一格原来在脚本里**硬编码八个 id**（★ ★ 而那与 PIECES 那一行是两套口径）★★
+#   ★★ ⇒ 而 crypto 归并之后（01 今天裁）★★ 件数变七，★ ★ 而这里还数八个 ★★
+#   ★★ ⇒ 而「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 ★★
+WANT_N="$(grep -o '^PIECES=(.*)' "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" | head -1 \
+          | sed 's/^PIECES=(//; s/)$//' | wc -w)"
+if [ -z "$WANT_N" ]; then
+  echo "[error] 读不出该取几件（PIECES 那一行）—— 而这一格不能猜（§1.55：缺字段报缺，不填看起来对的值）"
+  exit 1
+fi
 if [ "$PIECE_N" != "$WANT_N" ]; then
   echo "[error] 预装件包 $PIECE_N 个，钉值表里有 $WANT_N 个"
   PIECE_BAD=$((PIECE_BAD + 1))
