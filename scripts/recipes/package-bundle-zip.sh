@@ -299,15 +299,15 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #   · $ORIGIN 这个值只有在产物里才成立，而落位侧改它 = 改那份字节 => 那要重编，不是重装
 #   · RUNPATH 是那份字节的属性 => 归安装侧就是「在安装期改产物属性」（C-16）
 # 为什么走「事后 objcopy」而不是链期 -Wl：
-#   [源码] 链期那一路在八件上无处可插 —— 八件是第三方 configure 驱动的
+#   [读数·实测] 链期那一路在八件上无处可插 —— 八件是第三方 configure 驱动的
 #     （build-bundle-curl.sh:41 ./configure，:53 只传 CC/AR/RANLIB），
 #     而那个 configure 那一侧今天零 LDFLAGS => 走链期要改每一件的 configure 参数
-#   [源码] 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
+#   [读数·实测] 而 llvm-objcopy 仓里已有（build-native-busybox.sh:219-220 从 NDK toolchain 取它），
 #     而它只是今天还没有用它写 RUNPATH 的这个用法
-#   [读数] 那两行 configure 的行号是我今天 grep 出来的（可复跑）；
+#   [读数·实测] 那两行 configure 的行号是我今天 grep 出来的（可复跑）；
 #     而「零 LDFLAGS」那半句今天也是 grep 出来的（curl 与 openssl 各一次，都是零命中）。
 # 为什么写 RUNPATH 而不是 RPATH：
-#   [读数] curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
+#   [读数·实测] curl 那份 libcurl.so 的 NEEDED 五条全是**直接依赖**
 #     （libssl.so / libcrypto.so / libz.so.1 / libdl.so / libc.so）
 #     —— 而这一格是我今天 readelf -d 实读出来的（★ ★ 而它答的是「那一件今天有哪几个直接依赖」，★★
 #     ★★ **不是**「RUNPATH 会不会生效」）★★
