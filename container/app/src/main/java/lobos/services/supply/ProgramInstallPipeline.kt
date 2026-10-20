@@ -368,7 +368,15 @@ object ProgramInstallPipeline {
                   id = spec.programId,
                       version = version,
                       enabled = true,
-                      stateDir = baseEntry.stateDir.ifBlank { lobos.services.reg.ProgramManager.relStateDir(context, spec.programId) },
+                      // ★ **落位目录那一格只记 opt/<id>**（★ 版本由目录名承担，不进这一格）。
+                      //   缺陷名（C-102）**落位根多了一层**（版本号出现两次）：
+                      //     原来这一行是 `baseEntry.stateDir.ifBlank { relStateDir(…) }` ——
+                      //     ★★ 而它沿用**注册表里的旧值**（★ 那一格可能带版本号，★ 真机读数是
+                      //       files/busybox/1.36.1/1.36.1/ —— 路径里版本号出现了两次）★★
+                      //     ★★ 而这一处写进注册表的时机在**落位之前** ⇒ 随后 `dir = stateDirOf(…)`
+                      //       读的就是它 ⇒ ★★ **落位根 = 那一格 + <version>** ⇒ ★★ 版本号两次。
+                      //   ⇒ 现在：只写 relStateDir（opt/<id>）—— ★★ 而 :578 那一处（落位后写的）已经是这个形状。
+                      stateDir = lobos.services.reg.ProgramManager.relStateDir(context, spec.programId),
                       sha256 = baseEntry.sha256,
                       // ★ **入口格只对程序形态填** —— 缺陷名（C-102）**库件被当程序调起**：
                       //   原来这一行是 `assetEntry = declared?.entry ?: baseEntry.assetEntry`——
