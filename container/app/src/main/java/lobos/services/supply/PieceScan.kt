@@ -8,6 +8,7 @@ import lobos.services.reg.ProgramIndex
 import lobos.services.reg.UnitEntry
 import lobos.services.reg.Level
 import lobos.services.reg.edited
+import lobos.services.log.RuntimeDiagnostics
 
 object PieceScan {
     const val EXEC = "exec"
@@ -215,6 +216,7 @@ object PieceScan {
         if (found.isEmpty()) return 0
         val cur = ProgramIndex.all(ctx).associateBy { it.id }
         var changed = 0
+        var removed = 0
         for (f in found) {
             val prev = cur[f.id]
             val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(
@@ -239,7 +241,35 @@ object PieceScan {
                 changed++
             }
         }
-        return changed
+        // 族一（这一件在磁盘上落在哪）· 事二：  登记里**不在 found 里**的那些，要删掉。
+        //   缺陷名（C-102）**登记里的行结构性不会消失**：
+        //     · ProgramIndex.upsert(:266-268) 只做「同 id 换掉 + 追加」，**从不删任何一行**
+        //     · 而这一支遍历的是 found，  **cur 里不在 found 里的那些 id，它一个都不碰**
+        //     · 而 ProgramIndex.remove(:271) 存在，  而它唯一的调用者是 PackageInstaller.kt:126，
+        //       **而落位刷新这一支从不调它**
+        //       ** 而「登记里那一行」今天结构性不会消失** 
+        //     （  而 07 今天那句「下一次重装就会消失」不成立 ——   rebuild 仍然不删）
+        //    现在：**按 found 的 id 集合取差，把不在的那些删掉**（  候选甲）
+        //    而「删的判据」**不需要新发明** ——  它就是上面 :215 那一句的同一条：
+        //     「扫不到就不动」（if (found.isEmpty()) return 0）
+        //       扫得到的 = found； 登记里有而 found 里没有 = 该删的 
+        //    而**只删 PIECE 那一档**：
+        //      而这一支是「扫盘上的件」，  它不掌握程序的登记  
+        //      **删一个不是件的条目，会越权**（  而 Level.PROGRAM 那几条是程序， 不是件）
+        //       而那一格删哪一档**要 01/04 今天裁** ——  我今天只删「登记里标着是件的那些」
+        val foundIds = found.map { it.id }.toSet()
+        for (e in ProgramIndex.all(ctx)) {
+            if (e.id in foundIds) continue
+            if (e.levelOf(ctx) != Level.PIECE) continue      //   只动件那一档，  而程序那一档不碰 
+            if (ProgramIndex.remove(ctx, e.id)) {
+                removed++
+                RuntimeDiagnostics.append(
+                    ctx, "scan", true, "登记里删掉（扫不到）" + e.id,
+                    "这一件在落位目录里已经不存在，而登记里还有它那一行（  而 upsert 只换不删）",
+                )
+            }
+        }
+        return changed + removed
     }
 
     data class Verdict(val ok: Boolean, val checked: Int, val mismatched: List<String>)
