@@ -153,9 +153,12 @@ object SonameChain {
         // 走不到 delete，于是 createSymbolicLink 在同一路径上必然 EEXIST 失败。
         // 所以是软链就按软链删，不问 exists()。
         if (isLink) {
-            // ★ 编译错误（run 39415331935 第21步）：`!` 套在 Result 上 ——
-            //   getOrDefault 的类型是 Any（Result<Boolean> 的默认值推断不出来）⇒ 改成 getOrElse。
-            val deleted = runCatching { java.nio.file.Files.delete(link.toPath()) }.getOrElse { false }
+            // ★ 编译错误（run 39416349435 第21步 / 39415331935 第21步）：`!` 套在 Any 上 ——
+            //   Files.delete 返回**平台类型**（Boolean!）⇒ runCatching 的 Result<T> 推不出 T
+            //   ⇒ getOrDefault/getOrElse 的结果类型退化成 Any ⇒ `!` 找不到 not 操作符。
+            //   ⇒ 处置：**显式标注** Result<Boolean>（不做类型推断）。
+            val deleted: Boolean = runCatching { java.nio.file.Files.delete(link.toPath()) }
+                .getOrElse { false }
             if (!deleted) return -1
         } else if (link.exists() && !link.delete()) {
             return -1
