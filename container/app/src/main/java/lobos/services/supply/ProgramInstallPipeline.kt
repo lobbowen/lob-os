@@ -14,7 +14,7 @@ object ProgramInstallPipeline {
     private const val LIB_TOKEN = "\$LIB"
     private const val PLATFORM_TOKEN = "\$PLATFORM"
 
-    // ── 形态：只从产物读 ─────────────────────────────────────
+    //  形态：只从产物读 
     //
     // 用户 2026-10-20 三行规则：
     //   一 构建时就知道哪些是库、哪些是程序 —— 生产时就知道的事
@@ -37,7 +37,7 @@ object ProgramInstallPipeline {
      *  随包落进落位目录。**运行期只读它**：读不到就是读不到（返回 null），调用方报缺，
      *  不探测那份字节、不判断、不兜底（用户 2026-10-20 三行规则第三条）。
      *
-     *  ★ 缺陷名（C-102）**运行期拿字节现算形态**：这一段是替代
+     *   缺陷名（C-102）**运行期拿字节现算形态**：这一段是替代
      *    [PieceScan.roleFromDisk] 那条路（它 walk 落位目录读 ELF 头）——
      *    形态是**生产时就知道的事**，产物自带一份，运行期只读。
      *
@@ -96,8 +96,8 @@ object ProgramInstallPipeline {
             )
         }
 
-        /** 形态 ⇒ 落位目录（用户三行规则第二条：库装到库目录，程序装到程序目录）。
-         *  ★ 判据是**形态**，不是原路径的首段目录名 —— 那是「看目录名」（§10.1:128 已判无效）。 */
+        /** 形态  落位目录（用户三行规则第二条：库装到库目录，程序装到程序目录）。
+         *   判据是**形态**，不是原路径的首段目录名 —— 那是「看目录名」（§10.1:128 已判无效）。 */
         fun dirForRole(role: String): String? = when (role) {
             ROLE_PROGRAM -> "bin"
             ROLE_LIBRARY -> "lib"
@@ -115,7 +115,7 @@ object ProgramInstallPipeline {
 
     /** 落位的结果：落位后入口的件内相对路径 + 它的形态 + 整件的形态。 */
     /** 落位的结果：落位后入口的件内相对路径 + 它的形态 + 整件的形态 + **那一件自己的字节名**。
-     *  ★ 最后一格是纯库件用的：库件**没有入口**，而注册表仍要记「库在哪里」——
+     *   最后一格是纯库件用的：库件**没有入口**，而注册表仍要记「库在哪里」——
      *    记的是那份库字节的名字（按形态从落位结果里取，不按目录名）。 */
     data class Landed(
         val entryRel: String,
@@ -123,6 +123,8 @@ object ProgramInstallPipeline {
         val kind: String,
         val moved: List<String>,
         val libName: String = "",
+        /** 诊断读数： 那一支搬动前后每一项是软链还是实体 + 摘要（ 默认空， 只在 install 那条路填）。 */
+        val probe: String = "",
     )
 
     /** 落位失败的原因（报缺用）。 */
@@ -130,17 +132,17 @@ object ProgramInstallPipeline {
 
     /** 按**产物里带的那一条**落位：形态决定目录（库进库目录、程序进程序目录）。
      *
-     *  ★ 缺陷名（C-102）**落位按目录名分家，不看形态**：原来落位只是把解包出来的目录
+     *   缺陷名（C-102）**落位按目录名分家，不看形态**：原来落位只是把解包出来的目录
      *    整个搬过去（bin/ 归 bin/、lib/ 归 lib/），于是「同一件里有程序形态的字节在 lib/ 下」
      *    这件事被原样保留下来 —— 入口随后按清单的 entry（lib/ 那一份）建链，
      *    那几件就再也调不起来（今天五件失败的成因）。
-     *  ⇒ 现在**形态**决定落位目录：程序形态的字节进 bin/，库形态的进 lib/。
+     *   现在**形态**决定落位目录：程序形态的字节进 bin/，库形态的进 lib/。
      *
      *  形态从产物自带的 piece-shape.json 读（构建期算好）。**读不到就报缺**，
      *  不探测那份字节、不猜、不兜底（用户三行规则第三条）。
      */
-    fun landByShape(dest: File, shape: PieceShape.Piece, declaredEntry: String): Pair<Landed?, LandFailure?> {
-        // ① 目标映射：包内相对路径 -> 落位后相对路径（**只由形态决定**）
+    fun landByShape(dest: File, shape: PieceShape.Piece, declaredEntry: String, diagnostic: Boolean = false): Pair<Landed?, LandFailure?> {
+        //  目标映射：包内相对路径 -> 落位后相对路径（**只由形态决定**）
         val map = LinkedHashMap<String, String>()
         for (fs in shape.files) {
             val dir = PieceShape.dirForRole(fs.role)
@@ -165,23 +167,27 @@ object ProgramInstallPipeline {
             )
         }
 
-        // ② 搬实体（先搬，③ 再改软链，因为软链目标可能也是被搬的那一份）
+        //  搬实体（先搬， 再改软链，因为软链目标可能也是被搬的那一份）
         val moved = mutableListOf<String>()
+        //  诊断读数（ 那一支前后各一条）—— 而它默认关（ 生产路径不产这些），
+        //   只有 install 那条路（ 真机跑的那条）打开。
+        val isDiagnostic = diagnostic
+        val probe = StringBuilder()
         for ((src, dst) in map) {
             val s = File(dest, src)
             val d = File(dest, dst)
-            // ★ **路径相同时不搬**（它是**已经在位**的那一份）。
-            //   ★★ 而这一格今天栽过一次（2026-10-20，run 39431882004 真机）：
+            //  **路径相同时不搬**（它是**已经在位**的那一份）。
+            //    而这一格今天栽过一次（2026-10-20，run 39431882004 真机）：
             //     我把 `if (src == dst) continue` 去掉、改成「照样搬（delete + renameTo）」——
-            //     ★★ 而 s 与 d **是同一个目录**（都是 dest）⇒ ★★ **d.delete() 把它自己删了**
-            //     ⇒ ★★ 接着 s.renameTo(d) 搬一个**已删的** ⇒ 失败
-            //     ⇒ ★★ 「落位失败（搬不动）」⇒ 真机 journal 里「装 busybox；败」。
-            //   ★★ 而「旧字节换不掉」的真因**不在这一支**：
-            //     ★★ 落位目录是 opt/<id>/<version>，而 installComponent 走的是「整目录换掉」
-            //     （旧 dest → .previous，incoming → dest）⇒ ★★ **内容已经是新的**
-            //     ⇒ ★★ 这一支**不需要搬**（src == dst 时它就是那份新的）★★
-            //     ⇒ ★★ 而「判已落位」那一格（PreinstalledPieces）才是那一处：它判「在不在」⇒
-            //       走快路径 ⇒ **不重装** ⇒ 旧字节留着（已由 d38edfa 改成比 sha256）。
+            //      而 s 与 d **是同一个目录**（都是 dest）  **d.delete() 把它自己删了**
+            //       接着 s.renameTo(d) 搬一个**已删的**  失败
+            //       「落位失败（搬不动）」 真机 journal 里「装 busybox；败」。
+            //    而「旧字节换不掉」的真因**不在这一支**：
+            //      落位目录是 opt/<id>/<version>，而 installComponent 走的是「整目录换掉」
+            //     （旧 dest → .previous，incoming → dest）  **内容已经是新的**
+            //       这一支**不需要搬**（src == dst 时它就是那份新的）
+            //       而「判已落位」那一格（PreinstalledPieces）才是那一处：它判「在不在」
+            //       走快路径  **不重装**  旧字节留着（已由 d38edfa 改成比 sha256）。
             if (src == dst) continue
             if (!existsAsFileOrLink(s)) {
                 // 已经落过位的那一份（幂等）：目标在，就算已落位。
@@ -190,6 +196,17 @@ object ProgramInstallPipeline {
                     "shape-payload-missing",
                     "产物声明的落位项在包与盘上都不在：" + src,
                 )
+            }
+            // 读数（诊断用）：这一支搬之前那一项是软链还是实体、它的摘要是多少。
+            // 这一格今天未核（07 今天核到真机落位后那 18 条是实体，
+            //   而本地复现两次都得到软链 => 真机与本机走的不是同一条路，
+            //   而差别在哪一步 —— 这两条读数就是用来定它的那一格。
+            // 判别：搬之前是实体 => 解包那一支就把软链展平了（b）；
+            //   搬之前是软链 => 搬之后某一跳把它解引用了（c）。
+            if (isDiagnostic && !src.startsWith(".")) {
+                val wasLink = java.nio.file.Files.isSymbolicLink(s.toPath())
+                probe += "落位前 " + src + " 是" + (if (wasLink) "软链" else "实体") +
+                    " 摘要=" + shortShaOf(s) + "；"
             }
             d.parentFile?.mkdirs()
             if (existsAsFileOrLink(d)) d.delete()
@@ -200,9 +217,15 @@ object ProgramInstallPipeline {
                 )
             }
             moved.add(src + " -> " + dst)
+            // 读数（诊断用）：搬之后那一条是软链还是实体、它的摘要是多少（与上面那条并列）。
+            if (isDiagnostic && !dst.startsWith(".")) {
+                probe += "落位后 " + dst + " 是" +
+                    (if (java.nio.file.Files.isSymbolicLink(d.toPath())) "软链" else "实体") +
+                    " 摘要=" + shortShaOf(d) + "；"
+            }
         }
 
-        // ③ 软链：目标被搬过就跟着搬（busybox 的 applet 指向本体那份）
+        //  软链：目标被搬过就跟着搬（busybox 的 applet 指向本体那份）
         for ((src, dst) in map) {
             val d = File(dest, dst)
             if (!java.nio.file.Files.isSymbolicLink(d.toPath())) continue
@@ -219,7 +242,7 @@ object ProgramInstallPipeline {
             runCatching { android.system.Os.symlink(newLink, d.absolutePath) }
         }
 
-        // ④ 权限按**产物声明的 mode** 落（运行期不判形态、不替产物决定权限）
+        //  权限按**产物声明的 mode** 落（运行期不判形态、不替产物决定权限）
         for (fs in shape.files) {
             if (fs.mode.isBlank()) continue
             val dst = map[fs.path] ?: continue
@@ -229,14 +252,14 @@ object ProgramInstallPipeline {
             runCatching { android.system.Os.chmod(f.absolutePath, m) }
         }
 
-        // ⑤ 入口：清单声明的那一条 -> 落位后那一条（形态决定它在哪）
+        //  入口：清单声明的那一条 -> 落位后那一条（形态决定它在哪）
         val entrySrc = declaredEntry.trim()
         if (entrySrc.isEmpty()) {
-            // ★ **纯库件没有入口 —— 那不是缺件**。
+            //  **纯库件没有入口 —— 那不是缺件**。
             //   缺陷名（C-102）空 entry 被当成「产物没声明入口」而报缺：
             //   原来这一支是 return LandFailure("entry-missing", "产物没声明入口 —— 报缺，不猜一个")，
-            //   而「这一件只有库形态的字节 ⇒ 它本来就没有入口」（判别：这一件在磁盘上有没有程序那一侧）。
-            //   ⇒ 现在：空 entry ⇒ 库件，落位照上面（按形态逐项）走完，入口留空。
+            //   而「这一件只有库形态的字节  它本来就没有入口」（判别：这一件在磁盘上有没有程序那一侧）。
+            //    现在：空 entry  库件，落位照上面（按形态逐项）走完，入口留空。
             //   而「库装库目录」说的是**库字节落在库目录**，那件事由 dirForRole 保证 ——
             //   与「库件没有入口」（入口）不冲突。
             val libRole = shape.files.firstOrNull()?.role
@@ -246,12 +269,12 @@ object ProgramInstallPipeline {
                     "产物没声明入口，且形态说明里没有落位项 —— 报缺，不猜一个",
                 )
             }
-            // ★ 纯库件：注册表仍要记「库在哪里」⇒ 记那份库字节的名字。
+            //  纯库件：注册表仍要记「库在哪里」 记那份库字节的名字。
             //   从落位结果里按**形态**（role=library）取第一个 —— 不按目录名、不按 entry。
             val libFile = shape.files.firstOrNull { it.role == ROLE_LIBRARY }
                 ?: shape.files.firstOrNull { it.role == ROLE_PROGRAM }
             val libName = libFile?.path?.substringAfterLast('/') ?: ""
-            return Landed("", libRole, shape.kind, moved, libName) to null
+            return Landed("", libRole, shape.kind, moved, libName, probe.toString()) to null
         }
         val entryDst = map[entrySrc]
             ?: return null to LandFailure(
@@ -263,8 +286,22 @@ object ProgramInstallPipeline {
                 "entry-form-unknown",
                 "入口 " + entrySrc + " 的形态认不出 —— 报缺，不猜",
             )
-        return Landed(entryDst, entryRole, shape.kind, moved) to null
+        return Landed(entryDst, entryRole, shape.kind, moved, "", probe.toString()) to null
     }
+
+    /** 一个文件的 sha256 前 16 位（诊断用）；读不到就空串。 */
+    private fun shortShaOf(f: File): String = runCatching {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(1 shl 16)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        md.digest().take(8).joinToString("") { "%02x".format(it) }
+    }.getOrDefault("")
 
     private fun existsAsFileOrLink(f: File): Boolean =
         f.isFile || java.nio.file.Files.isSymbolicLink(f.toPath())
@@ -368,27 +405,27 @@ object ProgramInstallPipeline {
                   id = spec.programId,
                       version = version,
                       enabled = true,
-                      // ★ **落位目录那一格只记 opt/<id>**（★ 版本由目录名承担，不进这一格）。
+                      //  **落位目录那一格只记 opt/<id>**（ 版本由目录名承担，不进这一格）。
                       //   缺陷名（C-102）**落位根多了一层**（版本号出现两次）：
                       //     原来这一行是 `baseEntry.stateDir.ifBlank { relStateDir(…) }` ——
-                      //     ★★ 而它沿用**注册表里的旧值**（★ 那一格可能带版本号，★ 真机读数是
-                      //       files/busybox/1.36.1/1.36.1/ —— 路径里版本号出现了两次）★★
-                      //     ★★ 而这一处写进注册表的时机在**落位之前** ⇒ 随后 `dir = stateDirOf(…)`
-                      //       读的就是它 ⇒ ★★ **落位根 = 那一格 + <version>** ⇒ ★★ 版本号两次。
-                      //   ⇒ 现在：只写 relStateDir（opt/<id>）—— ★★ 而 :578 那一处（落位后写的）已经是这个形状。
+                      //      而它沿用**注册表里的旧值**（ 那一格可能带版本号， 真机读数是
+                      //       files/busybox/1.36.1/1.36.1/ —— 路径里版本号出现了两次）
+                      //      而这一处写进注册表的时机在**落位之前**  随后 `dir = stateDirOf(…)`
+                      //       读的就是它   **落位根 = 那一格 + <version>**   版本号两次。
+                      //    现在：只写 relStateDir（opt/<id>）——  而 :578 那一处（落位后写的）已经是这个形状。
                       stateDir = lobos.services.reg.ProgramManager.relStateDir(context, spec.programId),
                       sha256 = baseEntry.sha256,
-                      // ★ **入口格只对程序形态填** —— 缺陷名（C-102）**库件被当程序调起**：
+                      //  **入口格只对程序形态填** —— 缺陷名（C-102）**库件被当程序调起**：
                       //   原来这一行是 `assetEntry = declared?.entry ?: baseEntry.assetEntry`——
                       //   而 declared 是**注册表**里那一件（不是清单），baseEntry 也是注册表里那一件
-                      //   ⇒ 两处都是**旧值** ⇒ 而三件纯库件（crypto/curl/zlib）注册表里那一格
-                      //     还留着旧的 lib/<名> ⇒ 运行期按它去调起一份**库** ⇒ exit=139 段错误。
-                      //   ★★ 真机读数（07，2026-10-20）：那三件每件库字节的 NEEDED 都能在 usr/lib
-                      //     或 /system/lib64 里找到（零断链）⇒ **「找不到」那一格不成立**；
+                      //    两处都是**旧值**  而三件纯库件（crypto/curl/zlib）注册表里那一格
+                      //     还留着旧的 lib/<名>  运行期按它去调起一份**库**  exit=139 段错误。
+                      //    真机读数（07，2026-10-20）：那三件每件库字节的 NEEDED 都能在 usr/lib
+                      //     或 /system/lib64 里找到（零断链） **「找不到」那一格不成立**；
                       //     而 stderr 只有 Segmentation fault、没有任何链接器的抱怨
-                      //     ⇒ **找到了、装载开始了、崩** ⇒ 而它「根本不是程序」。
-                      //   ⇒ 现在：形态是库 ⇒ 入口格**留空**（这一件没有程序入口）；
-                      //     形态是程序 ⇒ 入口格填 declared 的那一格（若空则填 baseEntry 的）。
+                      //      **找到了、装载开始了、崩**  而它「根本不是程序」。
+                      //    现在：形态是库  入口格**留空**（这一件没有程序入口）；
+                      //     形态是程序  入口格填 declared 的那一格（若空则填 baseEntry 的）。
                       assetEntry = (declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role).let { r ->
                           if (r == ROLE_PROGRAM) (declared?.entry?.takeIf { it.isNotBlank() } ?: baseEntry.assetEntry) else ""
                       },
@@ -482,10 +519,10 @@ object ProgramInstallPipeline {
         }
         dir.mkdirs()
 
-        // ── 按产物里带的那一条落位 ───────────────────────────────
+        //  按产物里带的那一条落位 
         //
         // 形态只从**产物自带的** piece-shape.json 读（构建期算好，随包落进来）。
-        // 读不到 ⇒ 报缺，不探测那份字节、不猜、不兜底（用户三行规则第三条）。
+        // 读不到  报缺，不探测那份字节、不猜、不兜底（用户三行规则第三条）。
         val landedMeta = pieceMetaOf(context, dir, safeVer)
         val shape = PieceShape.read(dest)
         if (shape == null) {
@@ -501,7 +538,7 @@ object ProgramInstallPipeline {
             )
         }
         val declaredEntry = landedMeta.entry().ifBlank { spec.expectedEntryRel.orEmpty() }
-        val (landed, landFail) = landByShape(dest, shape, declaredEntry)
+        val (landed, landFail) = landByShape(dest, shape, declaredEntry, diagnostic = true)
         if (landFail != null || landed == null) {
             val f = landFail
             RuntimeDiagnostics.append(
@@ -522,14 +559,23 @@ object ProgramInstallPipeline {
                     "（角色 " + landed.role + "，整件 " + landed.kind + "）",
             )
         }
+        //  那条诊断读数（ 那一支前后各一条：那一项是软链还是实体、摘要多少）——
+        //    而那一格今天未核（ 07 今天核到真机落位后那 18 条是实体， 而本地复现两次都是软链）
+        //     这一行就是用来定「差别在哪一步」的那一格。
+        if (landed.probe.isNotBlank()) {
+            RuntimeDiagnostics.append(
+                context, "ota-shape-probe", true, "落位搬动读数 " + spec.programId,
+                landed.probe,
+            )
+        }
 
         val role = landed.role
         // 落位清单里的 entry 必须是**落位后那一条**（不是包里那一条）——
         // 运行期按它找入口（ProgramRegistry.spec 的 entryFile = File(dir, entry)）。
-        //  ★ 缺陷名（C-102）**清单里的 entry 是包内路径，落位后已不是那一处**：
+        //   缺陷名（C-102）**清单里的 entry 是包内路径，落位后已不是那一处**：
         //    原来写的是 meta 的 entry（如 lib/liblobosjq.so），而按形态落位后那份字节
-        //    已经在 bin/ 下 ⇒ 运行期按清单找入口会「入口不存在」。
-        //  ⇒ 这里把 entry 换成落位后的相对路径再写。
+        //    已经在 bin/ 下  运行期按清单找入口会「入口不存在」。
+        //   这里把 entry 换成落位后的相对路径再写。
         val landedMetaJson = runCatching {
             val j = JSONObject(landedMeta.raw())
             j.put("entry", landed.entryRel)
@@ -545,8 +591,8 @@ object ProgramInstallPipeline {
         }
 
         // 入口软链建在**形态决定的那个目录**里：
-        //   程序形态 ⇒ 程序目录（usr/bin）；库形态 ⇒ 库目录（usr/lib）。
-        //  ★ 缺陷名（C-102）**建链按 entry 的首段目录名分家**：原来那一行是
+        //   程序形态  程序目录（usr/bin）；库形态  库目录（usr/lib）。
+        //   缺陷名（C-102）**建链按 entry 的首段目录名分家**：原来那一行是
         //    if (entryRel.startsWith("lib/")) libDir else binDir —— 那是「看目录名」。
         //    现在目录由**形态**决定（产物带来的那一格），不是看名字。
         val entryRel = landed.entryRel
@@ -566,12 +612,12 @@ object ProgramInstallPipeline {
         )
         val meta = pieceMetaOf(context, dir, safeVer)
         // 注册表只记「库在哪里」与「程序在哪里」：
-        //   程序形态 ⇒ assetEntry = 落位后那一条（程序目录里的相对路径）
-        //   库形态   ⇒ assetEntry 空（这一件没有程序入口），libName = 库文件名
-        //  ★ 缺陷名（C-102）**注册表把库那份也记成入口**：原来 assetEntry = meta.entry()
-        //    （清单里那一条，不分形态）⇒ lib/ 下那份也成了「入口」，
+        //   程序形态  assetEntry = 落位后那一条（程序目录里的相对路径）
+        //   库形态    assetEntry 空（这一件没有程序入口），libName = 库文件名
+        //   缺陷名（C-102）**注册表把库那份也记成入口**：原来 assetEntry = meta.entry()
+        //    （清单里那一条，不分形态） lib/ 下那份也成了「入口」，
         //    于是那几件调起来是那份库字节 —— 今天五件失败的成因。
-        //  ⇒ 现在入口格只对**程序形态**填；库形态那一格空着（= 只有落位目录）。
+        //   现在入口格只对**程序形态**填；库形态那一格空着（= 只有落位目录）。
         val isProgram = role == ROLE_PROGRAM
         val upserted = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
@@ -585,7 +631,7 @@ object ProgramInstallPipeline {
                   // 绝对路径会被拼成 filesDir + "/data/..." （那就找不到了）。
                   stateDir = SystemDirs.REL_OPT + "/" + spec.programId,
                   sha256 = base.sha256,
-                  // ★ 库件没有入口（entryRel 空）⇒ libName 取**那份库字节**的名字（按形态从落位结果算）。
+                  //  库件没有入口（entryRel 空） libName 取**那份库字节**的名字（按形态从落位结果算）。
                   //   程序件：libName = 落位后那一条的文件名（与原来逐字相同）。
                   libName = if (entryRel.isNotBlank()) entryRel.substringAfterLast("/") else landed.libName,
                       assetEntry = if (isProgram) entryRel else "",
@@ -790,12 +836,12 @@ object ProgramInstallPipeline {
 
     /** 建入口软链。**目录由形态决定**，不看 entry 的首段目录名。
      *
-     *  ★ 缺陷名（C-102）**建链按目录名分家**：原来那一行是
+     *   缺陷名（C-102）**建链按目录名分家**：原来那一行是
      *    if (entryRel.startsWith("lib/")) libDir else binDir。
      *    那是「看目录名」（§10.1:128 判为无效）：库形态的字节可以落在 bin/ 下，
      *    程序形态的字节也可以落在 lib/ 下（今天那几件就是后者）——
      *    目录名说什么就是什么，于是「lib/ 下那份」被当成了入口。
-     *  ⇒ 现在目录由**形态**回答（产物带来的那一格）：程序 ⇒ 程序目录，库 ⇒ 库目录。
+     *   现在目录由**形态**回答（产物带来的那一格）：程序  程序目录，库  库目录。
      */
     private fun linkEntry(
         context: Context,
@@ -825,7 +871,7 @@ object ProgramInstallPipeline {
         // 执行位**由产物决定**（构建期 elf-form.sh 已按形态定死：程序 0755 / 库 0644，
         // 落位时已按产物声明的 mode 落过）。这里不再替产物补执行位 ——
         // 那是运行期判断形态的那条路（今天五件失败的成因之一：
-        // 原来只给 bin/ 补执行位，lib/ 下那份是 -rw------ ⇒ spawn 得 error=13）。
+        // 原来只给 bin/ 补执行位，lib/ 下那份是 -rw------  spawn 得 error=13）。
         val primary = entryRel.substringAfterLast("/")
         val dir = when (role) {
             ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(context)
@@ -886,7 +932,7 @@ object ProgramInstallPipeline {
             true
         }.getOrDefault(false)
         if (!build(target)) return false
-        // ③ link 成功不等于目标可达 —— 复述一次，判据只有这一条，不在这儿猜形状重算：
+        //  link 成功不等于目标可达 —— 复述一次，判据只有这一条，不在这儿猜形状重算：
         //    目标走不到就说明它不是从落位目录算出来的（真机旧物：前缀两遍、版本段两遍）。
         //    重算的形状由落位侧那一条负责（linkEntry 重算 + PreinstalledPieces 的派生物校验）。
         return target.isFile

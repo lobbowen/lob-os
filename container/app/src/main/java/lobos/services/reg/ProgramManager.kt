@@ -72,8 +72,8 @@ object ProgramManager {
     fun currentVersion(ctx: Context, id: String): String? =
         runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
-    /** 位置只从登记的格子读（C-102）：入口格空 ⇒ 它只有落位目录（库/头）；
-     *  入口格有值且 stateDir 有值 ⇒ 那是程序的数据目录。不再问「它是什么形态」。 */
+    /** 位置只从登记的格子读（C-102）：入口格空  它只有落位目录（库/头）；
+     *  入口格有值且 stateDir 有值  那是程序的数据目录。不再问「它是什么形态」。 */
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {

@@ -200,7 +200,7 @@ object SupplyProvisioner {
                         // C-102 **解包时把软链展平成字节副本** —— 原来这一支只按字节拷贝，
                         // 于是「一条命令入口」从软链变成一份独立的字节副本：
                         // 真机读数（07，base-busybox 那一版）：files/opt/busybox/1.36.1/bin/cat 与
-                        // lib/libbusybox.so sha256 相同（87e32d67…b51e0）⇒ 同一份字节出现在 18 个名字下。
+                        // lib/libbusybox.so sha256 相同（87e32d67…b51e0） 同一份字节出现在 18 个名字下。
                         // 处置：重建一条软链，指向包里那个目标（相对路径，与打包时一致）。
                         java.nio.file.Files.deleteIfExists(out.toPath())
                         java.nio.file.Files.createSymbolicLink(out.toPath(), java.nio.file.Paths.get(linkTarget))
@@ -215,7 +215,7 @@ object SupplyProvisioner {
 
     /** 这一条是不是软链条目；是的话返回它的目标（相对路径），不是则返回 null。
      *  判据两个条件缺一不可：内容能解成一条路径，且按它解析出来的目标**在包里存在**。
-     *  ★ 而 1 字节的小文件（今天 dist/ 那三个 "x"）解析出来的目标不在包里 ⇒ 判为普通文件。 */
+     *   而 1 字节的小文件（今天 dist/ 那三个 "x"）解析出来的目标不在包里  判为普通文件。 */
     private fun symlinkTargetOf(entryName: String, bytes: ByteArray, entryNames: Set<String>): String? {
         if (bytes.isEmpty() || bytes.size > 4096) return null
         if (bytes[0] == 0x7f.toByte() && bytes.size > 3 &&
@@ -230,12 +230,12 @@ object SupplyProvisioner {
     }
 
     /** 与 [unzip] 同形，**也要认软链条目** ——
-     *  ★ 缺陷名（C-102）**第二处解包把软链展平成字节副本**：
+     *   缺陷名（C-102）**第二处解包把软链展平成字节副本**：
      *    原来这一支只按字节拷贝（`zin.copyTo(it)`），而 [unzip] 那一支已经会重建软链
-     *    （★ 那是 64d40f0 建的）⇒ **同一件事有两个实现，而只有一个认软链**
-     *    ⇒ **★ 走这一支的那条链**（ProgramInstaller.kt:110）★★ **拿到的是展平后的字节**。
-     *    ★ 而判据仍按「内容能解成一条路径 + 按它解析出来的目标在包里存在」两条件缺一不可。
-     *  ★ 而 ZipInputStream 是**流式**的（拿不到全量条目名）⇒ 先把条目名与内容各读一遍。
+     *    （ 那是 64d40f0 建的） **同一件事有两个实现，而只有一个认软链**
+     *     ** 走这一支的那条链**（ProgramInstaller.kt:110） **拿到的是展平后的字节**。
+     *     而判据仍按「内容能解成一条路径 + 按它解析出来的目标在包里存在」两条件缺一不可。
+     *   而 ZipInputStream 是**流式**的（拿不到全量条目名） 先把条目名与内容各读一遍。
      */
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
