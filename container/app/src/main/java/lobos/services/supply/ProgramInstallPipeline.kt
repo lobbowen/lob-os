@@ -173,6 +173,9 @@ object ProgramInstallPipeline {
         //   只有 install 那条路（ 真机跑的那条）打开。
         val isDiagnostic = diagnostic
         var probe = ""
+        if (isDiagnostic) {
+            probe += "[进入搬动循环] 项数=" + map.size + "；"
+        }
         for ((src, dst) in map) {
             val s = File(dest, src)
             val d = File(dest, dst)
@@ -188,7 +191,25 @@ object ProgramInstallPipeline {
             //       这一支**不需要搬**（src == dst 时它就是那份新的）
             //       而「判已落位」那一格（PreinstalledPieces）才是那一处：它判「在不在」
             //       走快路径  **不重装**  旧字节留着（已由 d38edfa 改成比 sha256）。
-            if (src == dst) continue
+            // 读数（诊断用）：这一项在搬之前是软链还是实体、摘要多少。
+            // 这一条必须在 src == dst 的 continue **之前**：
+            //   而 busybox 那一件 19 项全是 src == dst（role=program 落在 bin/，
+            //   而包内路径本来就是 bin/...）=> 而 continue 在前的话这两条读数一次都不会执行，
+            //   probe 恒为空 => diag 里 0 条。
+            //   而 07 今天带阳性对照测到的那 0 条就是这么来的（run 见提交说明）。
+            if (isDiagnostic && !src.startsWith(".")) {
+                probe += "落位前 " + src + " 是" +
+                    (if (java.nio.file.Files.isSymbolicLink(s.toPath())) "软链" else "实体") +
+                    " 摘要=" + shortShaOf(s) + ";"
+            }
+            if (src == dst) {
+                if (isDiagnostic && !dst.startsWith(".")) {
+                    probe += "落位跳过(同名) " + dst + " 是" +
+                        (if (java.nio.file.Files.isSymbolicLink(d.toPath())) "软链" else "实体") +
+                        " 摘要=" + shortShaOf(d) + ";"
+                }
+                continue
+            }
             if (!existsAsFileOrLink(s)) {
                 // 已经落过位的那一份（幂等）：目标在，就算已落位。
                 if (existsAsFileOrLink(d)) continue
@@ -196,17 +217,6 @@ object ProgramInstallPipeline {
                     "shape-payload-missing",
                     "产物声明的落位项在包与盘上都不在：" + src,
                 )
-            }
-            // 读数（诊断用）：这一支搬之前那一项是软链还是实体、它的摘要是多少。
-            // 这一格今天未核（07 今天核到真机落位后那 18 条是实体，
-            //   而本地复现两次都得到软链 => 真机与本机走的不是同一条路，
-            //   而差别在哪一步 —— 这两条读数就是用来定它的那一格。
-            // 判别：搬之前是实体 => 解包那一支就把软链展平了（b）；
-            //   搬之前是软链 => 搬之后某一跳把它解引用了（c）。
-            if (isDiagnostic && !src.startsWith(".")) {
-                val wasLink = java.nio.file.Files.isSymbolicLink(s.toPath())
-                probe += "落位前 " + src + " 是" + (if (wasLink) "软链" else "实体") +
-                    " 摘要=" + shortShaOf(s) + ";"
             }
             d.parentFile?.mkdirs()
             if (existsAsFileOrLink(d)) d.delete()
