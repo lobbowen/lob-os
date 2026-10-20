@@ -27,6 +27,16 @@ object SystemDirs {
     fun pieceDir(ctx: Context, id: String, version: String): File =
         File(pieceDir(ctx, id), version)
 
+    /** 登记那一格（stateDir）的**唯一形态**：opt/<id>（相对 filesDir）。
+     *
+     *  族一（一个件在磁盘上落在哪）：这一格有四个写侧，今天它们各拼同一串字面量
+     *  （REL_OPT + "/" + id），而读侧只有一种解析方式（File(ctx.filesDir, e.stateDir)）——
+     *  **一旦有一处拼错，跟着读的 20 处全部跟着错**（D 组的正确性依赖 C 组拼对了）。
+     *  => 所以这一格只有一个生成点，就是这里。
+     *  而版本**不进这一格**：版本由目录名承担（落位那一支的 dest = File(dir, safeVer) 自己拼）。
+     */
+    fun relPieceDir(id: String): String = REL_OPT + "/" + id
+
     fun clearRun(ctx: Context): Int {
         val root = run(ctx)
         if (!root.isDirectory) return 0

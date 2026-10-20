@@ -467,10 +467,23 @@ object ProgramInstallPipeline {
                       //      **找到了、装载开始了、崩**  而它「根本不是程序」。
                       //    现在：形态是库  入口格**留空**（这一件没有程序入口）；
                       //     形态是程序  入口格填 declared 的那一格（若空则填 baseEntry 的）。
-                      assetEntry = (declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role).let { r ->
-                          if (r == ROLE_PROGRAM) (declared?.entry?.takeIf { it.isNotBlank() } ?: baseEntry.assetEntry) else ""
-                      },
-                      role = declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role,
+                      // 族二（这一件是程序还是库）：运行期只读**产物那一份**（04 今天那张表第二行）。
+                      //   缺陷名（C-102）**这一格有两套运行期口径**：
+                      //     原来这两行是 `declared?.role?.takeIf { it.isNotBlank() } ?: baseEntry.role`
+                      //     —— 「清单声明优先，缺了才用形态」，而 declared 是**注册表**里那一件
+                      //     （不是产物），baseEntry 也是**注册表**里那一件
+                      //     => **两处都是旧值**，而它们决定入口格填不填
+                      //     => 而真机读数（01 今天核过，2026-10-20）：busybox 新落位那份的清单写
+                      //        entry=bin/libbusybox.so（程序）而 lib/ 空、bin/ 下 19 个实体
+                      //        => 形态与角色在那一份上已经对不上，而没有任何一处会报出来。
+                      //   判别形式：这一格的答案会不会因「谁来问」而不同？会 => 没归一。
+                      //   => 现在：这一处**不写 role**（留空），而 role 与入口格由**落位之后**那次
+                      //     登记按落位算出的那一格写（见本文件后面那次 upsert，它用 landed.role）。
+                      //      而这里留空不是「没有这一格」：stateDir 那格仍照写（族一），
+                      //      而 levelOf 对「stateDir 有值而 assetEntry 空」的读法是 PIECE，
+                      //      而落位之后那次登记会把 assetEntry 按落位结果补上。
+                      assetEntry = "",
+                      role = "",
                       resident = declared?.resident ?: true,
                       restart = declared?.restart ?: lobos.services.reg.Restart.ON_FAILURE,
                       maxRestarts = declared?.maxRestarts ?: 5,
@@ -698,7 +711,7 @@ object ProgramInstallPipeline {
                       // 落位目录记**相对**路径（opt/<id>）——
                   // ProgramManager.stateDirOf 拼的是 File(ctx.filesDir, stateDir)，
                   // 绝对路径会被拼成 filesDir + "/data/..." （那就找不到了）。
-                  stateDir = SystemDirs.REL_OPT + "/" + spec.programId,
+                  stateDir = SystemDirs.relPieceDir(spec.programId),
                   sha256 = base.sha256,
                   //  库件没有入口（entryRel 空） libName 取**那份库字节**的名字（按形态从落位结果算）。
                   //   程序件：libName = 落位后那一条的文件名（与原来逐字相同）。

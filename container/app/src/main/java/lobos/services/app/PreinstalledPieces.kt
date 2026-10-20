@@ -354,7 +354,7 @@ object PreinstalledPieces {
     /** 落位目录的**相对**路径（opt/<id>）—— 注册表里那一格是相对路径，
      *  ProgramManager.stateDirOf 拼的是 File(ctx.filesDir, stateDir)。 */
     private fun relStateDir(id: String): String =
-        lobos.kernel.layout.SystemDirs.REL_OPT + "/" + id
+        lobos.kernel.layout.SystemDirs.relPieceDir(id)
 
     private fun extract(ctx: Context, id: String): File? = runCatching {
         val dst = File(ctx.cacheDir, "preinst/$id.zip")

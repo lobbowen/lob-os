@@ -111,7 +111,7 @@ object ProgramManager {
     fun relStateDir(ctx: Context, id: String): String {
         val e = ProgramIndex.get(ctx, id) ?: return ""
         if (e.assetEntry.isBlank()) return ""
-        return SystemDirs.REL_OPT + "/" + id
+        return SystemDirs.relPieceDir(id)
     }
 
     @Synchronized

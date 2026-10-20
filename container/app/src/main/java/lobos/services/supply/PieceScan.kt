@@ -172,7 +172,7 @@ object PieceScan {
             //   而这一格必须与 ProgramManager.relStateDir（ProgramManager.kt:114）
             //   产出的形状一致：REL_OPT + "/" + id —— 否则两个写侧对同一件产出不同字符串。
             val id = d.substring(optRoot.length + 1).substringBefore(File.separatorChar)
-            if (id.isNotBlank()) return SystemDirs.REL_OPT + "/" + id
+            if (id.isNotBlank()) return SystemDirs.relPieceDir(id)
         }
         if (d.startsWith(filesRoot + File.separator)) {
             return d.substring(filesRoot.length + 1).replace(File.separatorChar, '/')
