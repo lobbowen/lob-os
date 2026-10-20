@@ -78,10 +78,18 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     real="$(readlink -f "$so")"
     [ -f "$real" ] || continue
     # 只对**库形态**（ET_DYN 无 PT_INTERP）的那份要求三段链。
-    # 混合件（busybox/jq）lib/ 下那份是**程序形态**（ET_EXEC 或 ET_DYN+PT_INTERP），
-    # 它不是共享库，没有链可言 —— 判据要分清这两件事。
+    # ★ 缺陷名（C-102）**「程序形态的字节住在 lib/ 下」被当成了合法形态**：
+    #   原来这一支是「形态不是 dyn-plain ⇒ 说一声『程序形态，不要求三段链』然后跳过」——
+    #   而那把**一个落位缺陷**（程序形态的字节该落 bin/，不该落 lib/）说成了「正常的另一种形态」。
+    #   后果（04 今天指出）：第一处改完（本体搬到 bin/）之后，**这一支反而会判红** ——
+    #   因为它还在替一个已经不该存在的形态找理由。
+    #   ⇒ 现在：**程序形态的字节住在 lib/ 下是缺陷**，报出来（不放过）；
+    #     而「它不是共享库」那句事实仍然成立 —— 只是它不再是「合法」的同义词。
     f="$(elf_form "$real")"
-    [ "$f" = "dyn-plain" ] || { say "lib/$(basename "$so") 形态=$f（程序形态，不要求三段链）"; continue; }
+    if [ "$f" != "dyn-plain" ]; then
+      bad "程序形态的字节在库目录下" "lib/$(basename "$so") 的形态是 $f（程序形态）—— 它该落 bin/（形态决定目录），不是 lib/"
+      continue
+    fi
     base="$(basename "$so")"
     root="$(elf_chain_root "$base")"
     chain="$(elf_chain_names "$W/lib" "$root")"

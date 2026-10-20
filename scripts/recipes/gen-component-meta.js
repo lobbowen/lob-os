@@ -161,24 +161,37 @@ function computeEntry() {
     // 入口指向**那一份字节**（它们全是软链，指向同一份），那批名字不进清单。
     // ★ 上一版在这里判红「该件只应有一个入口」—— 那个假设对 busybox 是错的
     //   （CI 实测：落位目录的 bin/ 下有 17 个程序形态字节 ⇒ 说明生成失败 ⇒ 该件产不出包）。
+    // ★ 判「它们是同一份字节」：**按内容**（sha256），不按 realpath。
+    //   缺陷名（C-102）本体那份自己指向自己 ⇒ realpath 不全同：
+    //     busybox 那一件（本体搬到 bin/ 之后）bin/ 下有 18 项：17 条软链指向 ../bin/libbusybox.so
+    //     而**本体那份指向自己** ⇒ 按 realpath 比，18 条里有一项不同 ⇒ 判红
+    //     ⇒ 「落位目录的 bin/ 下有 17 个文件，但没有一个是程序形态」（旧版的 binProgram 名单不含本体时才出现）。
+    //   ⇒ 现在：**本体那份**（它的 realpath 就是它自己）与那 17 条软链**是同一份字节**
+    //     ⇒ 判据改成「这些项的内容是否逐字相同」（sha256）—— 那是「彼此是同一份吗」的可机械核形式。
+    const shaOf = (f) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch (e) { return ''; } };
     const first = path.join(binDir, binProgram[0]);
-    let sameTarget = true;
-    try {
-      const firstReal = fs.realpathSync(first);
+    const firstSha = shaOf(first);
+    let sameTarget = firstSha !== '';
+    if (sameTarget) {
       for (const n of binProgram) {
-        if (fs.realpathSync(path.join(binDir, n)) !== firstReal) { sameTarget = false; break; }
+        if (shaOf(path.join(binDir, n)) !== firstSha) { sameTarget = false; break; }
       }
-    } catch (e) {
-      sameTarget = false;
     }
     if (!sameTarget) {
       return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
         + ' 个程序形态字节，而它们**不是同一份**（' + binProgram.join('、')
         + '）—— 那是多个入口，该件只应有一个' };
     }
+    // 入口指**本体那份**（它不是软链，是那份实体字节）—— 而那 17 条软链是它的名字（派生物）。
+    //   判据：本体那份 = 那一族里 realpath 指向自己的那一个（软链指向别处）。
+    let body = binProgram[0];
+    for (const n of binProgram) {
+      const f = path.join(binDir, n);
+      try { if (fs.realpathSync(f) === path.resolve(f)) { body = n; break; } } catch (e) {}
+    }
     return {
-      entry: 'bin/' + binProgram[0],
-      by: '落位结果：bin/ 下 ' + binProgram.length + ' 个程序形态字节是同一份的多调用名字（多调用二进制），入口指那一份；那些名字是派生物，不进清单'
+      entry: 'bin/' + body,
+      by: '落位结果：bin/ 下 ' + binProgram.length + ' 项是同一份字节的多个名字（多调用二进制），入口指本体那份（bin/' + body + '）；那些名字是派生物，不进清单'
         + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
       mixed: libPrimary.length > 0,
       multiCall: binProgram.length,

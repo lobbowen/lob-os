@@ -264,16 +264,16 @@ chmod 0755 "$OUT_DIR/bin/libbusybox.so"
 #   ③ 它自己的 DT_NEEDED **是空的** —— 而「库」是需要别人的东西。
 #   ⇒ 它是一份独立的**程序**字节，而那 17 个名字是它的 argv[0] 派生物。
 #
-# 链接目标必须与本体同目录（../bin/libbusybox.so）：
+# 链接目标必须与本体同目录（./libbusybox.so —— 同目录相对链接）：
 #   LdConfig 照软链建链且用 absolutePath ⇒ usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls
-#   -> ../bin/libbusybox.so 两跳；写成 libbusybox.so 会断链，
+#   -> ./libbusybox.so 一跳；写成 libbusybox.so（无 ./) 会断链，
 #   而断链会让整个工具族在真机上继续消失而 CI 全绿。
 NAPP=0
 for l in "$WORK/install/bin/"*; do
   [ -L "$l" ] || continue
   b="$(basename "$l")"
   [ "$b" = busybox ] && continue
-  ln -sf ../bin/libbusybox.so "$OUT_DIR/bin/$b"
+  ln -sf ./libbusybox.so "$OUT_DIR/bin/$b"
   NAPP=$((NAPP+1))
 done
 echo "[$TOOL] 本体(bin/，按形态是程序形态) + $NAPP 个 applet 软链(bin/，指向它) 进包"

@@ -118,6 +118,20 @@ if [ -n "$ENTRY" ]; then
     done
     echo "  （混合件：lib/ 下搬了 $(ls -A "$STAGE/lib" 2>/dev/null | wc -l) 个名字）"
   fi
+  # ★ **bin/ 下那批全搬**（不只是 BINS 声明的那几个命令名）。
+  #   缺陷名（C-102）本体那份没进包 ⇒ 那批软链全是断链：
+  #     busybox 那一件（本体搬到 bin/ 之后）bin/ 下有 18 项：本体那份 + 17 条指向它的软链。
+  #     而 BINS 那一支搬的是**命令名**（17 个）—— **本体那份不在 BINS 里** ⇒ 它没被搬
+  #     ⇒ $STAGE/bin/ 下只有 17 条**断链**（目标 ../bin/libbusybox.so 不在 $STAGE 里）
+  #     ⇒ 清单生成器读那些软链读不出实体（unreadable）⇒ 判「没有一个是程序形态」。
+  #   ⇒ 现在：bin/ 下那批（本体 + 软链）全搬 —— 软链用 cp -Pf（不解引用）。
+  if [ -d "$OUT/bin" ]; then
+    mkdir -p "$STAGE/bin"
+    for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
+      cp -Pf "$OUT/bin/$f" "$STAGE/bin/$f" 2>/dev/null || cp -f "$OUT/bin/$f" "$STAGE/bin/$f"
+    done
+    echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字）"
+  fi
 else
   # ★ 纯库件（这一件没有程序那一侧）⇒ entry 留空 ⇒ **把 lib/ 下的字节全搬进包**。
   #   库字节落在库目录（lib/）—— 这就是「库装库目录」在产物这一侧的形态。
