@@ -84,12 +84,26 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
           rm -rf .crypto-out && mkdir -p .crypto-out/lib
+          # ★ **自己再找一次那一格** —— 变量不跨 step（CRYPTO_IN_PKG 是上一步的局部变量，
+          #   而这一步是另一个 shell ⇒ 上一版这里报 "CRYPTO_IN_PKG: unbound variable"）。
+          #   而 .openssl-pkg 还在盘上（同一个 job 的同一个工作目录）。
+          CRYPTO_IN_PKG=""
+          for cand in .openssl-pkg/lib/libcrypto.so.3 .openssl-pkg/lib/libcrypto.so.3.* .openssl-pkg/lib/libcrypto.so; do
+            if [ -f "$cand" ]; then CRYPTO_IN_PKG="$cand"; break; fi
+          done
+          [ -n "$CRYPTO_IN_PKG" ] || {
+            echo "::error title=openssl 包里没有 libcrypto.so::版本层 libcrypto.so.3 也不在？路径不对？"
+            find .openssl-pkg -type f | head -20
+            exit 1
+          }
           cp -Pf "$CRYPTO_IN_PKG" .crypto-out/lib/
           # 本件的主名（libcrypto.so）由本件自己摆出来 ——
           # openssl 那件的包里只有 libssl.so 带主名（那是 openssl 的入口标记），
           # 拆出来的这份要重新摆成它自己的主名，否则清单算不出 entry。
           [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CRYPTO_IN_PKG")" .crypto-out/lib/libcrypto.so
-          bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 lib/libcrypto.so
+          # ★ 这一件是**纯库件**（bin/ 目录不存在）⇒ 按今天的新规则它的 entry **留空**
+          #   （按 C-05「没有」就是没有）—— 而打包侧那一格**总是按形态算**（这一格只是声明）。
+          bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 ""
 
       - name: 验形态（包自描述：库还是程序）
         if: steps.reuse.outputs.hit != 'yes'

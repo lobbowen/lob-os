@@ -76,7 +76,10 @@ jobs:
           [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
           # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
           # 现场用 readelf 复算一遍，两路对账。
-          bash scripts/verify/verify-piece-shape.sh "$PKG" mixed
+          # ★ 期望 **program**（不是 mixed）—— 01 今天裁的 S30 之后 jq 那一件：
+          #   lib/ 下那份 liblobosjq.so 是**没人要的拷贝**（零人 NEEDED 它）⇒ 产物里就不该有它
+          #   ⇒ 这一件只有 bin/jq 那一份程序形态的字节 ⇒ kind=program、libraries=[]
+          bash scripts/verify/verify-piece-shape.sh "$PKG" program
 
       - name: 固化标准件包到 Release
         if: steps.reuse.outputs.hit != 'yes'
