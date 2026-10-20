@@ -90,47 +90,53 @@ object PreinstalledPieces {
         ctx: Context,
         id: String,
         version: String,
-        entry: String,
-        role: String,
     ): DerivedCheck {
         val verDir = File(SystemDirs.pieceDir(ctx, id), version)
-        //  纯库件没有入口（entry 空） 派生物软链的主体是**那份库字节**（按形态取）。
-        //   原来这里两行是 File(verDir, entry) 与 entry.substringAfterLast("/") ——
-        //   而 entry 为空时前者是目录、后者是空串  这一支会炸或建出无名软链。
-        val primary = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir)
-        if (primary.isBlank()) {
-            return DerivedCheck(0, 0, 0, "没有入口也没有库字节 —— 不猜它该建在哪")
+        // 族二（这一件是程序还是库）：派生物**按产物里实际存在的每一种形态各建各的那一条**。
+        //   ★★ 而这一格**不再按「一个 primary + 一个 role」算**——★★
+        //     ★★ 那样算出来的 `dirs` 由那一个 role 二选一，★★ 而 mixed 那一件两种形态都有，★★
+        //     ★★ 于是另一种形态该建的那一条**永远不在检查范围内**。★★
+        //   ★★ 而**这一格也不接受「按 entry 猜」**：★★ 形态是构建期算好的（04 今天那张表第二行），★★
+        //     ★★ 运行期只读产物那一份（★ 读不到就报缺，★ ★ 不按某一支兜底）。★★
+        //   缺陷名（C-102）**mixed 那一件被按单一形态看待**：
+        //     原来 primary / landedRel / dirs 三处都只按**一个** role 算，
+        //     而 dirs 由那个 role 二选一（ROLE_PROGRAM => 只有 binDir、ROLE_LIBRARY => 只有 libDir）
+        val shapeHere = ProgramInstallPipeline.PieceShape.read(verDir)
+        val targets = ArrayList<Pair<String, String>>()   // (落位后那一份的相对路径, 该建的目录)
+        if (shapeHere != null) {
+            for (r in ProgramInstallPipeline.ROLE_LIBRARY, ProgramInstallPipeline.ROLE_PROGRAM) {
+                val items = shapeHere.byRole(r)
+                if (items.isEmpty()) continue
+                val dir = ProgramInstallPipeline.PieceShape.dirForRole(r) ?: continue
+                val name = items.first().path.substringAfterLast('/')
+                targets.add(dir + "/" + name to when (r) {
+                    ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath
+                    else -> lobos.kernel.layout.PrefixProvisioner.libDir(ctx).absolutePath
+                })
+            }
         }
-        //  **落位后那一份的完整相对路径**（ 形态决定目录  它可能不在 entry 那一层）
-        //   缺陷名（C-102）**重建时指向了错的那一份**：
-        //     原来这一支是 File(verDir, primary) 与 File(verDir, entry) ——
-        //      而 primary 是**文件名**（不含目录） File(verDir, primary) 落在 verDir 根下，
-        //       而真正那份在 verDir/<形态决定的目录>/<名>  landed 指向一个**不存在**的路径；
-        //        而 entry 对**纯库件**是空串  File(verDir, "") = **目录** 
-        //         重建出「指向目录」的软链  那一支必然「重算后仍不通」。
-        //    真机读数（07，2026-10-20）：七件每一件都是「共=1 对=0 重算=0 …重算后仍不通」。
-        //    现在：落位后那一份 = verDir/<形态决定的目录>/<名>（按 role 取目录），
-        //     而重建时指向**它**。
-        val landedRel = File(
-            ProgramInstallPipeline.PieceShape.dirForRole(role) ?: "lib",
-            primary,
-        ).path
-        val landed = File(verDir, landedRel).canonicalFile.path
-        val dirs = when (role) {
-            ProgramInstallPipeline.ROLE_PROGRAM -> listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
-            ProgramInstallPipeline.ROLE_LIBRARY -> listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
-            else -> emptyList()
-        }
-        if (dirs.isEmpty()) {
-            return DerivedCheck(0, 0, 0, "入口形态认不出（role=" + role + "）—— 不猜它该建在哪")
+        if (targets.isEmpty()) {
+            return DerivedCheck(
+                0, 0, 0,
+                "落位目录里没有形态说明（" + ProgramInstallPipeline.PieceShape.SHAPE_NAME +
+                    "）—— 派生物该建在哪由产物那一份决定（ 而不按某一支兜底）",
+            )
         }
         var total = 0
         var ok = 0
         var rebuilt = 0
         val bad = mutableListOf<String>()
-        for (dir in dirs) {
-            val link = File(dir, primary)
-            if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) continue
+        for ((landedRel, dirAbs) in targets) {
+            val dir = File(dirAbs)
+            val name = landedRel.substringAfterLast('/')
+            val landed = File(verDir, landedRel).canonicalFile.path
+            val link = File(dir, name)
+            if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) {
+                // 这一条**该有而没有**（ 而 total 只数已存在的，  所以那一格看不见它）
+                //   显式记一条：「派生物缺失」——  而不靠 total=0 让人去猜 
+                bad += dir.name + "/" + name + " 缺失（该有而没有）"
+                continue
+            }
             total++
             val okNow = runCatching {
                 // readSymbolicLink() 在 java.nio.file.Path 上，不在 java.io.File 上。
@@ -147,7 +153,7 @@ object PreinstalledPieces {
                 t.isFile && t.canonicalFile.path == landed
             }.getOrDefault(false)
             if (made) { ok++; rebuilt++ } else {
-                bad += dir.name + "/" + primary + " 重算后仍不通"
+                bad += dir.name + "/" + name + " 重算后仍不通"
             }
         }
         return DerivedCheck(total, ok, rebuilt, bad.joinToString("；"))
@@ -299,7 +305,7 @@ object PreinstalledPieces {
             //   缺陷名（C-102）**短路那一支按目录名验原物**：原来验的是 verDir/<entry>，
             //    而 entry 是清单里那一条（lib/ 那份） 这一支的判据是「目录名对不对」，
             //    不是「形态对不对」。现在验的是**落位后那一条**（形态决定的）。
-            val derived = refreshDerivedLinks(ctx, id, version, landedEntry, entryRole)
+            val derived = refreshDerivedLinks(ctx, id, version)
             trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
                 " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
@@ -395,11 +401,11 @@ object PreinstalledPieces {
         //    **有一处不存在**  => 报缺（ 而它**不是**「= APK 那一代」， 也不是「= 未知的那一代」）
         //    两处都存在而不等  => 不同代
         //  而「凡那一格参与比较，先确认它在每一件上都存在；有一件缺  那一格整体报缺」
-        // ★★ 而「local」那个占位**也要报缺**（04 今天那条总判据）：★★
-        //   它是「本地造的那一份」，而它与「= APK 那一格」在读侧**不可区分** ⇒ ★★
-        //   ★★ 而结论需要一个具体值（「是不是这一次构建的」）⇒ ★★ 那一格必须报缺，不许填 ★★
-        //   ★★ 而它与 APK 那一格都是 40 位时两者逐字相同 ⇒ 「恰好同相」⇒ ★★
-        //   ★★ 换一个输入就不同相了（★ APK 那一格不是 local）★★ ⇒ ★★ 不能拿它判「同代」★★。★★
+        //  而「local」那个占位**也要报缺**（04 今天那条总判据）：
+        //   它是「本地造的那一份」，而它与「= APK 那一格」在读侧**不可区分**
+        //    而结论需要一个具体值（「是不是这一次构建的」）  那一格必须报缺，不许填 
+        //    而它与 APK 那一格都是 40 位时两者逐字相同  「恰好同相」 
+        //    换一个输入就不同相了（ APK 那一格不是 local）   不能拿它判「同代」。
         val pkgIsLocal = pkgBuild.equals("local", ignoreCase = true)
         val landedIsLocal = landedBuild.equals("local", ignoreCase = true)
         when {
