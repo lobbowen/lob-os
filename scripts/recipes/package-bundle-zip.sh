@@ -399,18 +399,36 @@ fi
 #      （  真机读数：run 39507821338， 探测 --add-runpath 判红，
 #        而工具路径是 ndk/…/bin/llvm-objcopy）
 #  现在：**按那个工具实际支持的选项名走** —— 两个都探，用探到的那个。
+#  而探测要**能自证**（  零命中先阳性对照那一族：
+#     「grep 零命中」只证明「我 grep 的那几个词范围内没有」，
+#     **而「--help 的输出本身就是空的」这一种，  只有把它的字节数打出来才分得开**）
 OBJCOPY_RPATH_OPT=""
+OBJCOPY_HELP_BYTES=0
 if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ]; then
   H="$("$OBJCOPY" --help 2>&1 || true)"
+  OBJCOPY_HELP_BYTES=${#H}
   if printf '%s' "$H" | grep -q -- '--set-rpath'; then
     OBJCOPY_RPATH_OPT="--set-rpath"
   elif printf '%s' "$H" | grep -q -- '--add-runpath'; then
     OBJCOPY_RPATH_OPT="--add-runpath"
+  elif printf '%s' "$H" | grep -qiE -- 'rpath|runpath'; then
+    #  而这一支是「有 rpath 相关的选项，  但不是那两个名字」
+    #     **而那说明我的词表不够**，  而不能当成「不支持」
+    OBJCOPY_RPATH_OPT="__UNKNOWN__"
   fi
+fi
+if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_RPATH_OPT" = "__UNKNOWN__" ]; then
+  echo "::error title=$ID 这个 objcopy 有 rpath 选项但名字不在我的词表里::而我今天写死两个名字， 而那两个不对"
+  echo "::error:: 工具: $OBJCOPY"
+  echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它不为零， 而那证明输出取到了）"
+  echo "::error:: 而它的选项名我今天没核到 ——   而这一格不能猜（ 猜了就白编一次）"
+  echo "::error:: 请给 OBJCOPY_OVERRIDE=<另一个支持 rpath 的工具>，  或由 01/04 今天核出那个选项名"
+  exit 1
 fi
 if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ -z "$OBJCOPY_RPATH_OPT" ]; then
   echo "::error title=$ID 这个 objcopy 不支持写 rpath::而那一格要把 DT_RUNPATH 写进产物"
   echo "::error:: 工具: $OBJCOPY"
+  echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它为零    那一格是「输出取不到」， 而不是「没有那个选项」）"
   echo "::error:: 它既不认 --set-rpath 也不认 --add-runpath（而 GNU binutils 的 objcopy 两个都没有）"
   echo "::error:: 要写 rpath 的是 **llvm-objcopy**（而它的选项名是 --set-rpath）"
   echo "::error:: 请给 OBJCOPY_OVERRIDE=<NDK toolchain 里那个 llvm-objcopy 的路径>"
