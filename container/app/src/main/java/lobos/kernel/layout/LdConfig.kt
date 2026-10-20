@@ -25,6 +25,10 @@ object LdConfig {
         val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
         val claimed = mutableMapOf<String, String>()
+        // SONAME -> 提供它的那几处（件 id、那一处、字节摘要）。
+        //    而它必须**先收集全部再决定**（S56）：
+        //    原来这一处是「扫到一个建一个」，  而后建的覆盖先建的   由遍历顺序决定 
+        val sonameCandidates = LinkedHashMap<String, MutableList<Triple<String, File, String>>>()
         val binInstalled = mutableListOf<String>()
 
         for (e in idx) {
@@ -35,15 +39,26 @@ object LdConfig {
             val root = File(p, ver)
             if (!root.isDirectory) continue
 
-            // C-102: 今天这里只建一条「同名软链 -> SONAME 名字」，丢掉了 ldconfig(8) 的三段链形状
-            // （libfoo.so -> libfoo.so.<major> -> libfoo.so.<full>），linker 用的那个名字与
-            // 实体文件之间的中间层都没建出来。改为按 SonameChain 落三段链。
+            // C-102: 原来这里只建一条「同名软链 -> SONAME 名字」，丢掉了 ldconfig(8) 的三段链形状
+            // （libfoo.so -> libfoo.so.<major> -> libfoo.so.<full>），改为按 SonameChain 落三段链。
+            //
+            //  而「两件都提供同一个 SONAME 时链该指向哪一处」这一格（S56 裁定）：
+            //    它不该由「谁先扫到」或「谁后扫到」决定 ——  而那正是原来这一处的行为：
+            //    idx 是 sortedBy { it.id }， 而 lib/ 下逐个建链   **后建的那一条覆盖先建的**  
+            //    而今天 crypto 输给 openssl **只因为 c < o**   改一个件名它就反过来  
+            //    **「字母序」不是一条规则，只是遍历顺序的副产品**（ C-92）。
+            //    而那一格该由「这一份是不是唯一的」决定（01 今天裁的），三种情形三条处置：
+            //     一 只有一件提供那个 SONAME              -> 指向它
+            //     二 多件提供、而字节**逐字相同**        -> 指向任一处，**并记「共 N 处」**
+            //        （ 字节相同  指向哪一处今天无害，  而「无害」不该靠「恰好扫到了哪一个」）
+            //     三 多件提供、而字节**不同**            -> **报歧义、不建链**
+            //        （ 字节不同  链指哪一处会改变程序行为，  而让字母决定程序行为不可接受）
+            //    而实现：**先收集**这一批每一件 lib/ 下每个文件的名字与字节摘要，
+            //     **再按名字分组**， 然后按上面三条分别处置。
             File(root, "lib").listFiles()?.sortedBy { it.name }?.forEach { so ->
                 if (!so.isFile) return@forEach
-                val landed = SonameChain.land(so, usrLib)
-                linked += landed.created
-                if (!landed.ok) unresolved += landed.detail
-                log += landed.log
+                sonameCandidates.computeIfAbsent(so.name) { ArrayList() }
+                    .add(Triple(e.id, so, lobos.services.supply.SupplySha.sha256(so)))
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
@@ -60,7 +75,43 @@ object LdConfig {
                 binInstalled += exe.name
                 if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
+
+
+        // SONAME -> 该指向哪一处（S56 裁定的三情形， 而 C-05：不能确定就报缺）
+        //   一 只有一件提供那个 SONAME        -> 指向它
+        //   二 多件提供、字节**逐字相同**     -> 指向其中一处，**并记「共 N 处」**
+        //   三 多件提供、字节**不同**         -> **报歧义、不建链**
+        //     （ 字节不同 => 链指哪一处会改变程序行为， 而让字母序决定它不可接受）
+        for ((soname, cands) in sonameCandidates) {
+            if (cands.size == 1) {
+                val so = cands[0].second
+                val landed = SonameChain.land(so, usrLib)
+                linked += landed.created
+                if (!landed.ok) unresolved += landed.detail
+                log += landed.log
+                log += "kind1 " + soname + " 只有一件提供（" + cands[0].first + "）=> 指向它"
+                continue
             }
+            val shas = cands.map { it.third }.toSet()
+            if (shas.size > 1) {
+                val who = cands.joinToString(",") { it.first }
+                unresolved += "kind3 歧义 SONAME " + soname + " 由 " + cands.size +
+                    " 件提供而字节不同（" + who + "）—— 报歧义、不建链" +
+                    "（指向哪一处会改变程序行为，而让字母序决定它不可接受）"
+                log += "ambiguous " + soname + "  提供者=" + who
+                continue
+            }
+            val first = cands[0]
+            val landed = SonameChain.land(first.second, usrLib)
+            linked += landed.created
+            if (!landed.ok) unresolved += landed.detail
+            log += landed.log
+            log += "kind2 " + soname + " 共 " + cands.size +
+                " 处提供（字节逐字相同）=> 指向 " + first.first +
+                "；而「无害」不该靠「恰好扫到了哪一个」"
+            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）=> 指向 " +
+                first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
+        }            }
         }
 
         // C-102: ld.so.conf / ld.so.cache 在本仓零读者（证据见 05-core-developer/env-cell.md），
