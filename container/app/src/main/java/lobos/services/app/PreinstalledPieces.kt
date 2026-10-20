@@ -101,7 +101,21 @@ object PreinstalledPieces {
         if (primary.isBlank()) {
             return DerivedCheck(0, 0, 0, "没有入口也没有库字节 —— 不猜它该建在哪")
         }
-        val landed = File(verDir, primary).canonicalFile.path
+        // ★ **落位后那一份的完整相对路径**（★ 形态决定目录 ⇒ 它可能不在 entry 那一层）★
+        //   缺陷名（C-102）**重建时指向了错的那一份**：
+        //     原来这一支是 File(verDir, primary) 与 File(verDir, entry) ——
+        //     ★★ 而 primary 是**文件名**（不含目录）⇒ File(verDir, primary) 落在 verDir 根下，
+        //       而真正那份在 verDir/<形态决定的目录>/<名> ⇒ landed 指向一个**不存在**的路径；
+        //       ★★ 而 entry 对**纯库件**是空串 ⇒ File(verDir, "") = **目录** ⇒
+        //         重建出「指向目录」的软链 ⇒ 那一支必然「重算后仍不通」。
+        //   ★★ 真机读数（07，2026-10-20）：七件每一件都是「共=1 对=0 重算=0 …重算后仍不通」。
+        //   ⇒ 现在：落位后那一份 = verDir/<形态决定的目录>/<名>（按 role 取目录），
+        //     而重建时指向**它**。
+        val landedRel = File(
+            ProgramInstallPipeline.PieceShape.dirForRole(role) ?: "lib",
+            primary,
+        ).path
+        val landed = File(verDir, landedRel).canonicalFile.path
         val dirs = when (role) {
             ProgramInstallPipeline.ROLE_PROGRAM -> listOf(lobos.kernel.layout.PrefixProvisioner.binDir(ctx))
             ProgramInstallPipeline.ROLE_LIBRARY -> listOf(lobos.kernel.layout.PrefixProvisioner.libDir(ctx))
@@ -124,7 +138,8 @@ object PreinstalledPieces {
                 t.isFile && t.canonicalFile.path == landed
             }.getOrDefault(false)
             if (okNow) { ok++; continue }
-            val fresh = File(verDir, entry)
+            // ★ 指向**落位后那一份**（★ 而 entry 是清单里那一条 ⇒ 对纯库件是空 ⇒ 指向目录）★
+            val fresh = File(verDir, landedRel)
             val made = runCatching {
                 if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
                 android.system.Os.symlink(fresh.absolutePath, link.absolutePath)
