@@ -391,16 +391,28 @@ fi
 #         而今天我把它们混成了「跳过」** 
 #  现在：**先探能力**（跑一次 --help 看有没有那个选项）， 有才写；
 #    而没有  **说清是哪一种缺**（  而不能静默跳过）
-OBJCOPY_HAS_RUNPATH=0
+# 而**选项名有两套**（而我今天第一次写成 --add-runpath，那在 CI 上被判红）：
+#   · GNU binutils 的 objcopy：**没有** rpath/runpath 任何选项（  本机实测：
+#     `objcopy --help | grep -icE "rpath|runpath"` -> 0）
+#   · 而 **LLVM objcopy 的选项名是 `--set-rpath`**（ 而不是 --add-runpath）
+#      而 NDK toolchain 里那个是 llvm-objcopy   **它只认 --set-rpath** 
+#      （  真机读数：run 39507821338， 探测 --add-runpath 判红，
+#        而工具路径是 ndk/…/bin/llvm-objcopy）
+#  现在：**按那个工具实际支持的选项名走** —— 两个都探，用探到的那个。
+OBJCOPY_RPATH_OPT=""
 if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ]; then
-  if "$OBJCOPY" --help 2>&1 | grep -q -- '--add-runpath'; then
-    OBJCOPY_HAS_RUNPATH=1
+  H="$("$OBJCOPY" --help 2>&1 || true)"
+  if printf '%s' "$H" | grep -q -- '--set-rpath'; then
+    OBJCOPY_RPATH_OPT="--set-rpath"
+  elif printf '%s' "$H" | grep -q -- '--add-runpath'; then
+    OBJCOPY_RPATH_OPT="--add-runpath"
   fi
 fi
-if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_HAS_RUNPATH" = "0" ]; then
-  echo "::error title=$ID 这个 objcopy 不支持 --add-runpath::而那一格要把 DT_RUNPATH 写进产物"
+if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ -z "$OBJCOPY_RPATH_OPT" ]; then
+  echo "::error title=$ID 这个 objcopy 不支持写 rpath::而那一格要把 DT_RUNPATH 写进产物"
   echo "::error:: 工具: $OBJCOPY"
-  echo "::error:: GNU binutils 的 objcopy 没有 rpath/runpath 选项（  而 --add-runpath 是 LLVM 独有的）"
+  echo "::error:: 它既不认 --set-rpath 也不认 --add-runpath（而 GNU binutils 的 objcopy 两个都没有）"
+  echo "::error:: 要写 rpath 的是 **llvm-objcopy**（而它的选项名是 --set-rpath）"
   echo "::error:: 请给 OBJCOPY_OVERRIDE=<NDK toolchain 里那个 llvm-objcopy 的路径>"
   exit 1
 fi
@@ -410,7 +422,7 @@ if [ -d "$STAGE/lib" ]; then
   for so in "$STAGE"/lib/*.so*; do
     [ -f "$so" ] || continue
     [ -n "$OBJCOPY" ] || break
-    if ! "$OBJCOPY" --enable-new-dtags --add-runpath '$ORIGIN' "$so"; then
+    if ! "$OBJCOPY" --enable-new-dtags "$OBJCOPY_RPATH_OPT" '$ORIGIN' "$so"; then
       echo "::error title=$ID 写 RUNPATH 失败::工具: $OBJCOPY 文件: $so"
       echo "::error:: 而这一格不能静默跳过（  而「跳过」与「写不进去」不可分， 而今天真机上正是这样丢的）"
       exit 1
