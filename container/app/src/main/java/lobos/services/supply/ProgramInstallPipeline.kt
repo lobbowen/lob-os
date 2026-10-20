@@ -172,7 +172,7 @@ object ProgramInstallPipeline {
         //  诊断读数（ 那一支前后各一条）—— 而它默认关（ 生产路径不产这些），
         //   只有 install 那条路（ 真机跑的那条）打开。
         val isDiagnostic = diagnostic
-        val probe = StringBuilder()
+        var probe = ""
         for ((src, dst) in map) {
             val s = File(dest, src)
             val d = File(dest, dst)
@@ -206,7 +206,7 @@ object ProgramInstallPipeline {
             if (isDiagnostic && !src.startsWith(".")) {
                 val wasLink = java.nio.file.Files.isSymbolicLink(s.toPath())
                 probe += "落位前 " + src + " 是" + (if (wasLink) "软链" else "实体") +
-                    " 摘要=" + shortShaOf(s) + "；"
+                    " 摘要=" + shortShaOf(s) + ";"
             }
             d.parentFile?.mkdirs()
             if (existsAsFileOrLink(d)) d.delete()
@@ -221,7 +221,7 @@ object ProgramInstallPipeline {
             if (isDiagnostic && !dst.startsWith(".")) {
                 probe += "落位后 " + dst + " 是" +
                     (if (java.nio.file.Files.isSymbolicLink(d.toPath())) "软链" else "实体") +
-                    " 摘要=" + shortShaOf(d) + "；"
+                    " 摘要=" + shortShaOf(d) + ";"
             }
         }
 
@@ -274,7 +274,7 @@ object ProgramInstallPipeline {
             val libFile = shape.files.firstOrNull { it.role == ROLE_LIBRARY }
                 ?: shape.files.firstOrNull { it.role == ROLE_PROGRAM }
             val libName = libFile?.path?.substringAfterLast('/') ?: ""
-            return Landed("", libRole, shape.kind, moved, libName, probe.toString()) to null
+            return Landed("", libRole, shape.kind, moved, libName, probe) to null
         }
         val entryDst = map[entrySrc]
             ?: return null to LandFailure(
@@ -286,7 +286,7 @@ object ProgramInstallPipeline {
                 "entry-form-unknown",
                 "入口 " + entrySrc + " 的形态认不出 —— 报缺，不猜",
             )
-        return Landed(entryDst, entryRole, shape.kind, moved, "", probe.toString()) to null
+        return Landed(entryDst, entryRole, shape.kind, moved, "", probe) to null
     }
 
     /** 一个文件的 sha256 前 16 位（诊断用）；读不到就空串。 */
