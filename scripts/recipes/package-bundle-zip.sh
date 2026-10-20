@@ -379,12 +379,42 @@ if [ -z "$OBJCOPY" ] || [ ! -x "$OBJCOPY" ]; then
   OBJCOPY=""
 fi
 
+#  而这一格**先核那个工具到底支不支持这个选项**， 而不假设它支持：
+#   缺陷名（C-102）**objcopy 有两套，不是一套**：
+#     · GNU binutils 的 objcopy **没有** rpath/runpath 任何选项（  本机实测：
+#       `objcopy --help | grep -icE "rpath|runpath"` -> 0， 而 `--add-runpath` 实跑报
+#       **「未识别的选项」**（  rc=1））
+#     · 而 `--add-runpath` 是 **LLVM objcopy 独有的** 
+#     ** 而那一支失败时我今天写的是 `|| continue`（静默跳过），
+#      ** 而那正是今天真机读数「包里有 NEEDED 而 RUNPATH 零命中」的成因** 
+#      ** 而「objcopy 找不到」与「objcopy 不支持这个选项」是两件事，
+#         而今天我把它们混成了「跳过」** 
+#  现在：**先探能力**（跑一次 --help 看有没有那个选项）， 有才写；
+#    而没有  **说清是哪一种缺**（  而不能静默跳过）
+OBJCOPY_HAS_RUNPATH=0
+if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ]; then
+  if "$OBJCOPY" --help 2>&1 | grep -q -- '--add-runpath'; then
+    OBJCOPY_HAS_RUNPATH=1
+  fi
+fi
+if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_HAS_RUNPATH" = "0" ]; then
+  echo "::error title=$ID 这个 objcopy 不支持 --add-runpath::而那一格要把 DT_RUNPATH 写进产物"
+  echo "::error:: 工具: $OBJCOPY"
+  echo "::error:: GNU binutils 的 objcopy 没有 rpath/runpath 选项（  而 --add-runpath 是 LLVM 独有的）"
+  echo "::error:: 请给 OBJCOPY_OVERRIDE=<NDK toolchain 里那个 llvm-objcopy 的路径>"
+  exit 1
+fi
+
 RUNPATH_APPLIED=0
 if [ -d "$STAGE/lib" ]; then
   for so in "$STAGE"/lib/*.so*; do
     [ -f "$so" ] || continue
     [ -n "$OBJCOPY" ] || break
-    "$OBJCOPY" --enable-new-dtags --add-runpath '$ORIGIN' "$so" 2>/dev/null || continue
+    if ! "$OBJCOPY" --enable-new-dtags --add-runpath '$ORIGIN' "$so"; then
+      echo "::error title=$ID 写 RUNPATH 失败::工具: $OBJCOPY 文件: $so"
+      echo "::error:: 而这一格不能静默跳过（  而「跳过」与「写不进去」不可分， 而今天真机上正是这样丢的）"
+      exit 1
+    fi
     RUNPATH_APPLIED=$((RUNPATH_APPLIED + 1))
   done
 fi
