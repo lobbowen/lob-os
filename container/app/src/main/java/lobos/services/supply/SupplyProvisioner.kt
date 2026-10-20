@@ -178,6 +178,11 @@ object SupplyProvisioner {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
         java.util.zip.ZipFile(zip).use { zf ->
+            // 包里有哪些条目 —— 判「这条是不是软链」要用它：
+            // 软链条目在 zip 里存的是**目标路径字符串**（实测 bin/cat 的 20 字节 = "../lib/libbusybox.so"），
+            // 而普通文件存的是内容。两个条件缺一不可：内容像一条路径，且按它解析出来的目标**在包里存在**。
+            // （那三个 1 字节的 "x" 因此不会被误判：它解析成 bin/x，而包里没有 bin/x）
+            val entryNames = java.util.Collections.list(zf.entries()).map { it.name }.toSet()
             for (e in java.util.Collections.list(zf.entries())) {
                 val out = File(dest, e.name).canonicalFile
                 if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
@@ -187,13 +192,41 @@ object SupplyProvisioner {
                     out.mkdirs()
                 } else {
                     out.parentFile?.mkdirs()
-                    zf.getInputStream(e).use { ins ->
-                        out.outputStream().use { ins.copyTo(it, 64 * 1024) }
+                    val bytes = zf.getInputStream(e).use { ins ->
+                        ins.readBytes()
                     }
-                    ExecBits.apply(out)
+                    val linkTarget = symlinkTargetOf(e.name, bytes, entryNames)
+                    if (linkTarget != null) {
+                        // C-102 **解包时把软链展平成字节副本** —— 原来这一支只按字节拷贝，
+                        // 于是「一条命令入口」从软链变成一份独立的字节副本：
+                        // 真机读数（07，base-busybox 那一版）：files/opt/busybox/1.36.1/bin/cat 与
+                        // lib/libbusybox.so sha256 相同（87e32d67…b51e0）⇒ 同一份字节出现在 18 个名字下。
+                        // 处置：重建一条软链，指向包里那个目标（相对路径，与打包时一致）。
+                        java.nio.file.Files.deleteIfExists(out.toPath())
+                        java.nio.file.Files.createSymbolicLink(out.toPath(), java.nio.file.Paths.get(linkTarget))
+                    } else {
+                        out.outputStream().use { it.write(bytes) }
+                        ExecBits.apply(out)
+                    }
                 }
             }
         }
+    }
+
+    /** 这一条是不是软链条目；是的话返回它的目标（相对路径），不是则返回 null。
+     *  判据两个条件缺一不可：内容能解成一条路径，且按它解析出来的目标**在包里存在**。
+     *  ★ 而 1 字节的小文件（今天 dist/ 那三个 "x"）解析出来的目标不在包里 ⇒ 判为普通文件。 */
+    private fun symlinkTargetOf(entryName: String, bytes: ByteArray, entryNames: Set<String>): String? {
+        if (bytes.isEmpty() || bytes.size > 4096) return null
+        if (bytes[0] == 0x7f.toByte() && bytes.size > 3 &&
+            bytes[1] == 'E'.code.toByte() && bytes[2] == 'L'.code.toByte() && bytes[3] == 'F'.code.toByte()
+        ) return null
+        val text = runCatching { String(bytes, Charsets.UTF_8) }.getOrNull() ?: return null
+        if (text.isEmpty() || text.any { it == '\u0000' } || text.contains('\n')) return null
+        val dir = entryName.substringBeforeLast('/', "")
+        val resolved = java.nio.file.Paths.get(dir, text).normalize().toString().removePrefix("./")
+        if (!entryNames.contains(resolved)) return null
+        return text
     }
 
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
