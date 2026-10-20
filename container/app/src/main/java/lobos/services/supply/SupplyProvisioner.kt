@@ -229,25 +229,42 @@ object SupplyProvisioner {
         return text
     }
 
+    /** 与 [unzip] 同形，**也要认软链条目** ——
+     *  ★ 缺陷名（C-102）**第二处解包把软链展平成字节副本**：
+     *    原来这一支只按字节拷贝（`zin.copyTo(it)`），而 [unzip] 那一支已经会重建软链
+     *    （★ 那是 64d40f0 建的）⇒ **同一件事有两个实现，而只有一个认软链**
+     *    ⇒ **★ 走这一支的那条链**（ProgramInstaller.kt:110）★★ **拿到的是展平后的字节**。
+     *    ★ 而判据仍按「内容能解成一条路径 + 按它解析出来的目标在包里存在」两条件缺一不可。
+     *  ★ 而 ZipInputStream 是**流式**的（拿不到全量条目名）⇒ 先把条目名与内容各读一遍。
+     */
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
+        // 先读一遍：条目名 + 每一项的内容（ZipInputStream 是流式的，判软链要「全量条目名」）。
+        val names = LinkedHashSet<String>()
+        val bodies = LinkedHashMap<String, ByteArray>()
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zin ->
             var e = zin.nextEntry
             while (e != null) {
-                val out = File(dest, e.name).canonicalFile
-                if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
-                    throw IllegalArgumentException("包条目路径越界（疑似目录穿越）: " + e.name)
-                }
-                if (e.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile?.mkdirs()
-                    out.outputStream().use { zin.copyTo(it) }
-                    ExecBits.apply(out)
-                }
+                if (!e.isDirectory) bodies[e.name] = zin.readBytes()
+                names.add(e.name)
                 zin.closeEntry()
                 e = zin.nextEntry
+            }
+        }
+        for ((name, bytes) in bodies) {
+            val out = File(dest, name).canonicalFile
+            if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
+                throw IllegalArgumentException("包条目路径越界（疑似目录穿越）: " + name)
+            }
+            out.parentFile?.mkdirs()
+            val linkTarget = symlinkTargetOf(name, bytes, names)
+            if (linkTarget != null) {
+                java.nio.file.Files.deleteIfExists(out.toPath())
+                java.nio.file.Files.createSymbolicLink(out.toPath(), java.nio.file.Paths.get(linkTarget))
+            } else {
+                out.outputStream().use { it.write(bytes) }
+                ExecBits.apply(out)
             }
         }
     }
