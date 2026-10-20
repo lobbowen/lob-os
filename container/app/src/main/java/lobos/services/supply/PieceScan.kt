@@ -70,9 +70,9 @@ object PieceScan {
     }
 
     /** 扫盘时登记的入口。**主语是清单里那一格**，不是目录名，也不是那份字节的 ELF 头。
-     *  ★ `declared` 是构建期写下的 entry（gen-component-meta.js 从落位结果算出）；
+     *   `declared` 是构建期写下的 entry（gen-component-meta.js 从落位结果算出）；
      *    它今天在不在，由 [usableEntryOf] 回答。
-     *  ★ 缺陷名（C-102）：这里经过两代 —— 第一代先看 `bin/` 下有没有文件、再看有没有 `.so`
+     *   缺陷名（C-102）：这里经过两代 —— 第一代先看 `bin/` 下有没有文件、再看有没有 `.so`
      *    （那是「看目录名」，§10.1:128 判为无效）；第二代读那份字节的 ET_DYN/PT_INTERP
      *    （那是「运行期探测形态」，第三行规则判为无效）。现在两代都去掉，只剩「在不在」。 */
     private fun entryOf(verDir: File, declared: String): String? =
@@ -81,12 +81,12 @@ object PieceScan {
     /** role **只从清单里读**（2026-10-20 用户第三行规则：运行期只读，不判断、不探测）。
      *  读的是 `component-meta.json` 里那个构建期写下的 role 字段；字段缺失即报缺，不回退到任何探测。
      *
-     *  ★ **缺陷名（C-102）运行期探测形态**：原来这里是
-     *    「有 include/ ⇒ 头；全目录找一份 ET_EXEC / ET_DYN+PT_INTERP ⇒ 程序；
-     *      找不到一份 ET_DYN 无 PT_INTERP ⇒ 库；再找不到 ⇒ 仍是库」——
+     *   **缺陷名（C-102）运行期探测形态**：原来这里是
+     *    「有 include/  头；全目录找一份 ET_EXEC / ET_DYN+PT_INTERP  程序；
+     *      找不到一份 ET_DYN 无 PT_INTERP  库；再找不到  仍是库」——
      *    整个 role 由**运行期自己扫盘读 ELF 头算出来**。而形态是构建期就知道的事（用户第一行规则），
-     *    落位目录也是构建期定的（第二行规则）⇒ 这一问不该在运行期做。
-     *  ★ 它之所以一直没有暴露，是因为 [LIBRARY] 同时是那条链末端的兜底返回（见改前 roleOf 末行），
+     *    落位目录也是构建期定的（第二行规则） 这一问不该在运行期做。
+     *   它之所以一直没有暴露，是因为 [LIBRARY] 同时是那条链末端的兜底返回（见改前 roleOf 末行），
      *    于是「扫不出程序」与「就是库」在结果上无法区分 —— 判据读错了主语（C-102）。 */
     private fun roleOf(verDir: File): String {
         val declared = metaOf(verDir)?.optString(ROLE_KEY, "").orEmpty().trim()
@@ -100,40 +100,40 @@ object PieceScan {
      *  函数名保留原样（读者有四处，见 runtime-deletion-list.md 第 2 节），但主语已从「盘上那份字节」
      *  换成「清单里构建期写下的那一格」。
      *
-     *  ★ **缺陷名（C-102）先读声明再判字节**：原来这一段先取 `component-meta.json` 的 entry、
+     *   **缺陷名（C-102）先读声明再判字节**：原来这一段先取 `component-meta.json` 的 entry、
      *    再走 [roleOf] 扫盘判形态 —— 主语是盘上那份字节，而不是构建期写下的那一格。
-     *    §10.1:138「一个字段若需要同时回答两个问题，拆成两个字段或废掉其中一个」⇒ 现在只读那一格。 */
+     *    §10.1:138「一个字段若需要同时回答两个问题，拆成两个字段或废掉其中一个」 现在只读那一格。 */
     fun roleFromDisk(ctx: Context, id: String): String {
         // 找不到落位目录时**不猜**：按 §10.1:142「这一格的答案能不能从任意一个落位字节的 ELF 头读出来？
-        // 不能 ⇒ 它不是判据，是我们的命名」⇒ 没有字节就没有答案，报缺（§10.1:119 的三态里「不可执行」那一态）。
+        // 不能  它不是判据，是我们的命名」 没有字节就没有答案，报缺（§10.1:119 的三态里「不可执行」那一态）。
         val dir = landedPieceDir(ctx, id)
             ?: return ENTRY_UNUSABLE
         return roleOf(dir)
     }
 
     /** 入口字段无效时返回的 role —— §20.2:619「报缺，而不是兜底到另一个目录去猜一个」。
-     *  ★ 而**判据只有一条**（§20.2:621 的机械形式）：入口指向的那份字节能被当程序调起吗？
-     *    不能 ⇒ 它不是入口 ⇒ 该单元无入口 ⇒ 报缺。
-     *  ★ 「有无人引用」不在这条判据里 —— 07 今天真跑读数（**旧版落位那一版**：5a265b1）：
+     *   而**判据只有一条**（§20.2:621 的机械形式）：入口指向的那份字节能被当程序调起吗？
+     *    不能  它不是入口  该单元无入口  报缺。
+     *   「有无人引用」不在这条判据里 —— 07 今天真跑读数（**旧版落位那一版**：5a265b1）：
      *    jq 那件入口指向 `lib/liblobosjq.so`（-rw-------）
      *    而它 **exit=0 能调起**；crypto/curl/openssl/zlib 四件 exit=139。
-     *    ★ 而那一版之后 entry 改了按形态算（纯库件 entry 留空、混合件 entry 指程序那一份），
+     *     而那一版之后 entry 改了按形态算（纯库件 entry 留空、混合件 entry 指程序那一份），
      *      所以「jq 的入口指向 lib 那份」这个读数**是那一版的形态**，不是现在的。
-     *  ★ 而**不兜底**是这一条的全部要点（§20.2:625）：一旦允许「换个目录猜一个」，
+     *   而**不兜底**是这一条的全部要点（§20.2:625）：一旦允许「换个目录猜一个」，
      *    §10.1:128 刚判为无效的「看目录名」那条读法就从后门回来。 */
     const val ENTRY_UNUSABLE = "entry-unusable"
 
     /** entry 字段的有效性：**只问「清单写的那份在不在」，不读它的 ELF 头**。
      *  @return 有效时返回该 entry（相对 verDir），无效时返回 null —— 调用方据此报缺，不猜。
      *
-     *  ★ **缺陷名（C-102）运行期探测形态**：原来这一行是
+     *   **缺陷名（C-102）运行期探测形态**：原来这一行是
      *    `return if (lobos.kernel.elf.ExecBits.isRunnableByForm(target)) declaredEntry else null`
      *    —— 判据是「那份字节是 ET_EXEC 或 ET_DYN+PT_INTERP」，由运行期读 ELF 头算出。
      *    按第三行规则，运行期只读：entry 是构建期从落位结果算出来的（gen-component-meta.js），
      *    运行期只验**落位结果与清单是否一致**（文件在不在），不去问那份字节是什么形态。
      *    后果是：**一个 entry 指向的字节形态变了，这一处不再能拦住** ——
      *    形态是否正确的保证移到构建期（生成时就算错 entry 即判红退出）。
-     *  ★ 而「有效性由那份字节自己回答」（§20.2:618）这一句今天**已不成立**，
+     *   而「有效性由那份字节自己回答」（§20.2:618）这一句今天**已不成立**，
      *    本次改动把它换成「由清单与落位结果的一致性回答」；这是判据主语的更换（C-102），不是收紧。 */
     fun usableEntryOf(verDir: File, declaredEntry: String): String? {
         if (declaredEntry.isBlank()) return null
@@ -149,8 +149,8 @@ object PieceScan {
     }
 
     /** 落位目录的**相对**形态：opt/<id>（相对 filesDir）。
-     *  ★ 读侧 ProgramManager.stateDirOf:81 按 `File(ctx.filesDir, e.stateDir)` 读，
-     *    而 File(parent, child) 在 child 以 "/" 开头时把它当相对片段接在 parent 之后 ⇒
+     *   读侧 ProgramManager.stateDirOf:81 按 `File(ctx.filesDir, e.stateDir)` 读，
+     *    而 File(parent, child) 在 child 以 "/" 开头时把它当相对片段接在 parent 之后 
      *    写侧必须给相对形态，否则拼出双前缀（真机读数：program-state.json 的 evidence 那一格）。 */
     private fun relativeStateDir(ctx: Context, dir: File): String {
         val opt = SystemDirs.opt(ctx).canonicalFile.path
@@ -158,7 +158,24 @@ object PieceScan {
         if (d.startsWith(opt + File.separator)) {
             return d.substring(opt.length + 1).replace(File.separatorChar, '/')
         }
-        return dir.absolutePath
+        // 缺陷名（C-102）**这一格有两种口径，而读侧只认相对形态**：
+        //   原来这一支是 `return dir.absolutePath` —— 而写侧有四处写 stateDir
+        //   （PreinstalledPieces:317 / ProgramInstallPipeline:416 / :632 与本函数），
+        //   读侧只有一种理解方式：File(ctx.filesDir, e.stateDir)。
+        //   而 File(parent, child) 在 child 以 "/" 开头时把它当**相对片段**接在 parent 之后
+        //   => 绝对形态会被拼成双前缀（真机读数 07：files/busybox/1.36.1/1.36.1/ 就是这样来的）。
+        //   判别（01 今天核过，本机可复跑）：注册表里 stateDir 有几件不是以 opt/ 开头的相对形态。
+        //   真机那一版读数是 0 件 —— 而今天扫描的根（SystemDirs.opt）与 landedPieceDir
+        //   （SystemDirs.opt().resolve(seg)）都在 opt/ 之下，所以这一支今天走不到。
+        //   => 但它是哑弹：只要有人传入 opt/ 之外的目录，它就写进一个读侧不认的值。
+        //   现在：不产出绝对形态。返回空表示「给不出相对形态」，而**不伪造一个值**（C-05）。
+        //    而这一支今天走不到（扫描的根与 landedPieceDir 都在 opt/ 之下），
+        //     所以「今天写进注册表的八件 stateDir 全是相对形态」这一格不受影响。
+        //    而真机上那条双前缀路径是**这一格改好之前**留下的，与这一支无关。
+        //    而空值在读侧是有语义的（stateDir 空 = 这一件没有那个视图，
+        //     见 ProgramIndex.levelOf:71 与 ShellEntry:12），而这一支走不到，
+        //     所以今天不产生「因为这一支而写空」的记录。
+        return ""
     }
 
     private fun filesOf(verDir: File): List<UnitEntry.FileRec> {
@@ -195,13 +212,13 @@ object PieceScan {
             val prev = cur[f.id]
             val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(
                 version = f.version,
-                // ★ **缺陷名（C-102）stateDir 存绝对路径而读取侧按相对片段拼** ——
+                //  **缺陷名（C-102）stateDir 存绝对路径而读取侧按相对片段拼** ——
                 //   原来这里写 f.dir.absolutePath（绝对），而 ProgramManager.stateDirOf:81
                 //   读的是 File(ctx.filesDir, e.stateDir)：File(parent, child) 在 child 以 "/" 开头时
-                //   把它当**相对片段**接在 parent 之后 ⇒ 落位目录被拼成
+                //   把它当**相对片段**接在 parent 之后  落位目录被拼成
                 //   /data/user/0/lobos.os/files/data/user/0/lobos.os/files/opt/<id>/<ver>
                 //   —— 真机读数（07）：program-state.json 里 busybox 的 evidence 那一格就是这个双前缀。
-                //   而装机那条（ProgramInstallPipeline.kt:334）写的是相对形态 relStateDir ⇒ 两套口径并存。
+                //   而装机那条（ProgramInstallPipeline.kt:334）写的是相对形态 relStateDir  两套口径并存。
                 //   处置：写侧统一成相对（opt/<id>），与读侧与装机那侧同一口径。
                 stateDir = relativeStateDir(ctx, f.dir),
                 assetEntry = f.entry,
@@ -273,12 +290,12 @@ object PieceScan {
 
     /** 这一件在盘上**是不是程序**（`UnitEntry.levelOf` 读的就是它）—— **只读清单里那一格**。
      *
-     *  ★ **缺陷名（C-102）运行期探测形态**：原来这一行是 `runnableEntryOf(dir) != null`，
+     *   **缺陷名（C-102）运行期探测形态**：原来这一行是 `runnableEntryOf(dir) != null`，
      *    即「全目录扫两层，找一份 ET_EXEC / ET_DYN+PT_INTERP 的字节」。
      *    同一问题在 [roleOf] 与这里被读了两遍（两处扫盘、两把尺），而两条路对「扫不出程序」的件给出
      *    不同答案：[roleOf] 兜底返回 [LIBRARY]，这里兜底返回 false 而 [UnitEntry.levelOf] 据此判 Level.PIECE。
      *    现在两处读的是同一格（清单 role），这条不一致随之消失。
-     *  ★ 找不到落位目录或清单里没有 role 时答 false（没有那一格就没有答案），不猜。 */
+     *   找不到落位目录或清单里没有 role 时答 false（没有那一格就没有答案），不猜。 */
     fun runnableOnDisk(ctx: Context, id: String): Boolean {
         val dir = landedPieceDir(ctx, id) ?: return false
         val declared = metaOf(dir)?.optString(ROLE_KEY, "").orEmpty().trim()
