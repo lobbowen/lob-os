@@ -170,17 +170,19 @@ object ProgramInstallPipeline {
         for ((src, dst) in map) {
             val s = File(dest, src)
             val d = File(dest, dst)
-            // ★ **路径相同时也要搬**（覆盖旧的那一份）——
-            //   缺陷名（C-102）**旧字节永远换不掉**：
-            //     原来这一行是 `if (src == dst) continue` —— 而「落位目标 == 包内路径」
-            //     恰恰是**最常见**的情形（role=program ⇒ dir=bin ⇒ 路径同名；
-            //     role=library ⇒ dir=lib ⇒ 也同名）⇒ **每一次落位都跳过** ⇒
-            //     而落位目录是 opt/<id>/<version> —— **版本号没变而内容变了**（指纹变了）⇒
-            //     同一目录 ⇒ 旧字节留着 ⇒ 新的没落下来。
-            //   ★ 真机读数（07，2026-10-20）：真机上八件的落位目录 mtime 全是 2026-10-19 10:28/10:40
-            //     （旧那一批），而 busybox 的 bin/ 下没有 sh（新的落包集有 18 个含 sh），
-            //     而 program-manifest.json 写的仍是旧值 entry=lib/libbusybox.so。
-            //   ⇒ 处置：src == dst 时**照样搬**（delete + renameTo），即覆盖。
+            // ★ **路径相同时不搬**（它是**已经在位**的那一份）。
+            //   ★★ 而这一格今天栽过一次（2026-10-20，run 39431882004 真机）：
+            //     我把 `if (src == dst) continue` 去掉、改成「照样搬（delete + renameTo）」——
+            //     ★★ 而 s 与 d **是同一个目录**（都是 dest）⇒ ★★ **d.delete() 把它自己删了**
+            //     ⇒ ★★ 接着 s.renameTo(d) 搬一个**已删的** ⇒ 失败
+            //     ⇒ ★★ 「落位失败（搬不动）」⇒ 真机 journal 里「装 busybox；败」。
+            //   ★★ 而「旧字节换不掉」的真因**不在这一支**：
+            //     ★★ 落位目录是 opt/<id>/<version>，而 installComponent 走的是「整目录换掉」
+            //     （旧 dest → .previous，incoming → dest）⇒ ★★ **内容已经是新的**
+            //     ⇒ ★★ 这一支**不需要搬**（src == dst 时它就是那份新的）★★
+            //     ⇒ ★★ 而「判已落位」那一格（PreinstalledPieces）才是那一处：它判「在不在」⇒
+            //       走快路径 ⇒ **不重装** ⇒ 旧字节留着（已由 d38edfa 改成比 sha256）。
+            if (src == dst) continue
             if (!existsAsFileOrLink(s)) {
                 // 已经落过位的那一份（幂等）：目标在，就算已落位。
                 if (existsAsFileOrLink(d)) continue
