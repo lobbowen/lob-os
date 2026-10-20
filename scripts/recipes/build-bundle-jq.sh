@@ -70,12 +70,17 @@ if [ ! -f "$SO" ]; then
   [ -f "$WORK/configure.log" ] && tail -20 "$WORK/configure.log" || echo "（没有 configure.log）"
   die "jq 没产出" "$SO 不存在（上面是取证输出）"
 fi
-mkdir -p "$OUT_DIR/lib"
-cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"
-chmod +x "$OUT_DIR/lib/liblobosjq.so"
 
-# bins：jq 的可执行入口是 bin/jq（:48-53 搬的），而 entry 指向 .so。
-# 不显式声明它，打包那一步只搬 entry ⇒ bin/jq 不会被带进包 ⇒ 真机上没有 usr/bin/jq。
-# （2026-10-15 实测：07 按 .so 文件直接 exec 能跑，掩盖了「没有入口」这件事。）
-emit_piece jq "$OUT_DIR" lib/liblobosjq.so 300000 "jq"
-echo "[ok] jq 落位（可执行件，落usr/lib/jq/<版本>/bin/）"
+# ★ **不复制出 lib/liblobosjq.so 那一份** ——
+#   缺陷名（C-102）把程序字节复制成一份「库」：原来这里是
+#   `cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"` + chmod +x —— 于是那一件有两份**逐字节相同**的字节，
+#   而 :80 又声明 entry=lib/liblobosjq.so ⇒ 运行期去调起的是那份「库」。
+#   而按 03 今天那一问：「这一件 lib/ 下那份字节，有谁 NEEDED 它？」
+#     jq 的 DT_NEEDED 只有 libm.so / libdl.so / libc.so（07 今天的 readelf 读数）
+#     ⇒ **零人 NEEDED liblobosjq.so** ⇒ lib/ 那一份是**没人要的拷贝**，纯冗余。
+#   ⇒ 而 jq 那个可执行件就是 bin/jq（:48-53 搬的），它自己就是这一件的入口。
+
+# bins：jq 的可执行入口是 bin/jq（:48-53 搬的）—— 它是这一件的程序那一侧。
+# 显式声明它，打包那一步按**形态**会把 bin/ 下那批搬进包。
+emit_piece jq "$OUT_DIR" bin/jq 300000 "jq"
+echo "[ok] jq 落位（可执行件，bin/jq 那一侧；lib/ 下不再复制一份没人要的拷贝）"

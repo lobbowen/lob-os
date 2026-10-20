@@ -46,23 +46,35 @@ source "$ROOT/scripts/toolchain/elf-form.sh"
 #   没有 ⇒ **entry 留空**（按 C-05「没有」就是没有，不是「随便挑一个 .so」）。
 #   而「库装库目录」说的是**库字节落在库目录**，那件事由运行期 dirForRole 保证 ——
 #   与「库件没有 entry」（入口）不冲突。
-if [ -z "$ENTRY" ]; then
-  PROG_ENTRY=""
-  if [ -d "$OUT/bin" ]; then
-    for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
-      p="$OUT/bin/$f"
-      [ -f "$p" ] || continue
-      ff="$(elf_form "$p" 2>/dev/null)"
-      if elf_form_is_program "$ff"; then PROG_ENTRY="bin/$f"; break; fi
-    done
-  fi
-  if [ -n "$PROG_ENTRY" ]; then
-    ENTRY="$PROG_ENTRY"
-    echo "  （这一件有程序那一侧：entry=$ENTRY）"
-  else
-    ENTRY=""
-    echo "  （这一件只有库形态的字节：entry 留空）"
-  fi
+# ★ **entry 总是按形态算** —— 调用方传的那一份降级为「声明」。
+#   缺陷名（C-102）调用方声明的 entry 被当真相：
+#     原来这一支是「if [ -z "$ENTRY" ] 才按形态算」—— 而 openssl 那一件显式传了
+#     lib/libssl.so（库形态）⇒ 按形态算那一支根本不进 ⇒ entry 指了库那一份 ⇒
+#     运行期去 exec 一个库 ⇒ 崩（07 今天的复算表：openssl bin/ 下**有** bin/openssl）。
+#     而更早一版（只搬 entry 那一份）⇒ bin/openssl 根本进不了包。
+#   ⇒ 现在 entry 由形态决定：这一件在磁盘上有没有程序那一侧？
+#       有 ⇒ 指向那一侧（按形态挑，不按名字顺序）；
+#       没有 ⇒ **留空**（按 C-05「没有」就是没有，不是「随便挑一个 .so」）。
+#     而调用方声明的那一份若与算出来的不一致 ⇒ **说出来**（不采纳声明）。
+DECLARED_ENTRY="$ENTRY"
+PROG_ENTRY=""
+if [ -d "$OUT/bin" ]; then
+  for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
+    p="$OUT/bin/$f"
+    [ -f "$p" ] || continue
+    ff="$(elf_form "$p" 2>/dev/null)"
+    if elf_form_is_program "$ff"; then PROG_ENTRY="bin/$f"; break; fi
+  done
+fi
+if [ -n "$PROG_ENTRY" ]; then
+  ENTRY="$PROG_ENTRY"
+  echo "  （这一件有程序那一侧：entry=$ENTRY）"
+else
+  ENTRY=""
+  echo "  （这一件只有库形态的字节：entry 留空）"
+fi
+if [ -n "$DECLARED_ENTRY" ] && [ "$DECLARED_ENTRY" != "$ENTRY" ]; then
+  echo "  （调用方声明的 entry=$DECLARED_ENTRY，而按形态算是 '$ENTRY' —— 以形态为准，声明只记录）"
 fi
 
 if [ -n "$ENTRY" ]; then
@@ -94,6 +106,18 @@ if [ -n "$ENTRY" ]; then
   cp -Pf "$OUT/$ENTRY" "$STAGE/$ENTRY" 2>/dev/null || cp -f "$OUT/$ENTRY" "$STAGE/$ENTRY"
   eb="$(basename "$ENTRY")"
   ed="$(dirname "$ENTRY")"
+  # ★ **混合件（这一件既有程序那一侧又有库那几份）⇒ lib/ 下的库也要进包**。
+  #   缺陷名（C-102）库那几份被丢掉：entry 改成程序那一份之后，上面那一行只搬它一个，
+  #   而 lib/ 下的 libssl.so / libcrypto.so 不在任何一支里 ⇒ 包里没有库 ⇒
+  #   而 bin/openssl NEEDED libssl.so + libcrypto.so ⇒ 那一件起来就找不到依赖。
+  #   ⇒ 现在：这一件 lib/ 下有字节 ⇒ 那些字节**全搬**（库字节落在库目录）。
+  if [ -d "$OUT/lib" ]; then
+    mkdir -p "$STAGE/lib"
+    for f in $(ls -A "$OUT/lib" 2>/dev/null | LC_ALL=C sort); do
+      case "$f" in *.so|*.so.*) cp -Pf "$OUT/lib/$f" "$STAGE/lib/$f" 2>/dev/null || cp -f "$OUT/lib/$f" "$STAGE/lib/$f" ;; esac
+    done
+    echo "  （混合件：lib/ 下搬了 $(ls -A "$STAGE/lib" 2>/dev/null | wc -l) 个名字）"
+  fi
 else
   # ★ 纯库件（这一件没有程序那一侧）⇒ entry 留空 ⇒ **把 lib/ 下的字节全搬进包**。
   #   库字节落在库目录（lib/）—— 这就是「库装库目录」在产物这一侧的形态。
