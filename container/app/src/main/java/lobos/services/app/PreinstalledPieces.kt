@@ -331,6 +331,32 @@ object PreinstalledPieces {
                 j.put("entry", landedEntry)
                 j
             }.getOrNull()
+            // 格一那一族的收尾：**快路径也要刷新落位目录那份 meta**。
+            //   缺陷名（C-102）**「不重落」等于「不更新它」**：
+            //     component-meta.json 是**产物自带**的那一份（META_NAME），
+            //     而它随整目录换过来（installComponent 的 staging.renameTo(dest)）——
+            //     **只有重装会刷新落位目录里那一份**。
+            //      而快路径的语义是「盘上字节已与产物逐字相同，不重落」
+            //       而那六件走快路径   落位目录那份 meta **永远是上一次重装带过来的** 
+            //       读者比的是「解包目录那份 vs 落位目录那份」，  后者旧 
+            //       八件全写「不是这一次构建的那一份」
+            //     （真机读数 07，2026-10-21：buildSha 在落位清单里 0/8 -> 2/8，
+            //       而八件全写「不是这一次构建的那一份」）
+            //    而判别：走快路径那一支，它有没有把落位目录那份 meta 重写一次 
+            //     —— 而本机核过：META_NAME 在这一支**只被读三次、零次写**  答案「没有」。
+            //    现在：快路径写 program-manifest.json 的同时，也把那份 meta 刷新成
+            //     「产物那份 + 落位后那一条 entry」—— 与 ManifestWriter 用同一个 landedMeta。
+            val metaRefreshed = runCatching {
+                val j = landedMeta ?: return@runCatching false
+                val dst = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
+                dst.parentFile?.mkdirs()
+                dst.writeText(j.toString(1) + "\n")
+                true
+            }.getOrDefault(false)
+            if (!metaRefreshed) {
+                trace(ctx, "刷新 " + lobos.kernel.layout.PrefixProvisioner.META_NAME,
+                    id + " 失败（快路径）：落位目录那份仍是旧的那一份")
+            }
             val manifestWritten = runCatching {
                 lobos.services.supply.ManifestWriter.write(
                     verDir, landedMeta, version, entryRole
