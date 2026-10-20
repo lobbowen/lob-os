@@ -153,28 +153,35 @@ object PieceScan {
      *    而 File(parent, child) 在 child 以 "/" 开头时把它当相对片段接在 parent 之后 
      *    写侧必须给相对形态，否则拼出双前缀（真机读数：program-state.json 的 evidence 那一格）。 */
     private fun relativeStateDir(ctx: Context, dir: File): String {
-        val opt = SystemDirs.opt(ctx).canonicalFile.path
+        // 剥掉的是 **filesDir**，不是 opt/：
+        //   读侧 ProgramManager.stateDirOf 的那一支是 File(ctx.filesDir, e.stateDir)
+        //   => 那一格必须相对 filesDir，所以要剥 filesDir。
+        // 缺陷名（C-102）**剥错了那一层**：
+        //   原来这里剥的是 opt/（含 id 段一起剥）=> 对 files/opt/busybox/1.36.1
+        //   它算出 "busybox/1.36.1"，而 relStateDir 写进注册表的是 "opt/busybox"
+        //   => **两个函数对同一件产出的不是同一个字符串**
+        //   => 而读侧按 filesDir 解析 "busybox/1.36.1" => dir = files/busybox/1.36.1
+        //   => dest = files/busybox/1.36.1/1.36.1（版本段两遍）
+        //   => 真机读数（07）：files/busybox/1.36.1/1.36.1/，而注册表说 opt/busybox
+        //   => **注册表说它在哪与它真正在哪不是同一处**
+        val filesRoot = ctx.filesDir.canonicalFile.path
+        val optRoot = SystemDirs.opt(ctx).canonicalFile.path
         val d = runCatching { dir.canonicalFile.path }.getOrDefault(dir.absolutePath)
-        if (d.startsWith(opt + File.separator)) {
-            return d.substring(opt.length + 1).replace(File.separatorChar, '/')
+        if (d.startsWith(optRoot + File.separator)) {
+            // opt/<id>/<ver> => opt/<id>（只到 id，版本由目录名承担，不进这一格）
+            //   而这一格必须与 ProgramManager.relStateDir（ProgramManager.kt:114）
+            //   产出的形状一致：REL_OPT + "/" + id —— 否则两个写侧对同一件产出不同字符串。
+            val id = d.substring(optRoot.length + 1).substringBefore(File.separatorChar)
+            if (id.isNotBlank()) return SystemDirs.REL_OPT + "/" + id
         }
-        // 缺陷名（C-102）**这一格有两种口径，而读侧只认相对形态**：
-        //   原来这一支是 `return dir.absolutePath` —— 而写侧有四处写 stateDir
-        //   （PreinstalledPieces:317 / ProgramInstallPipeline:416 / :632 与本函数），
-        //   读侧只有一种理解方式：File(ctx.filesDir, e.stateDir)。
-        //   而 File(parent, child) 在 child 以 "/" 开头时把它当**相对片段**接在 parent 之后
-        //   => 绝对形态会被拼成双前缀（真机读数 07：files/busybox/1.36.1/1.36.1/ 就是这样来的）。
-        //   判别（01 今天核过，本机可复跑）：注册表里 stateDir 有几件不是以 opt/ 开头的相对形态。
-        //   真机那一版读数是 0 件 —— 而今天扫描的根（SystemDirs.opt）与 landedPieceDir
-        //   （SystemDirs.opt().resolve(seg)）都在 opt/ 之下，所以这一支今天走不到。
-        //   => 但它是哑弹：只要有人传入 opt/ 之外的目录，它就写进一个读侧不认的值。
-        //   现在：不产出绝对形态。返回空表示「给不出相对形态」，而**不伪造一个值**（C-05）。
-        //    而这一支今天走不到（扫描的根与 landedPieceDir 都在 opt/ 之下），
-        //     所以「今天写进注册表的八件 stateDir 全是相对形态」这一格不受影响。
-        //    而真机上那条双前缀路径是**这一格改好之前**留下的，与这一支无关。
-        //    而空值在读侧是有语义的（stateDir 空 = 这一件没有那个视图，
-        //     见 ProgramIndex.levelOf:71 与 ShellEntry:12），而这一支走不到，
-        //     所以今天不产生「因为这一支而写空」的记录。
+        if (d.startsWith(filesRoot + File.separator)) {
+            return d.substring(filesRoot.length + 1).replace(File.separatorChar, '/')
+        }
+        // 兜底：给不出相对形态就返回空，而**不伪造一个值**（C-05）。
+        //   空值在读侧有现成语义（stateDir 空 = 这一件没有那个视图，
+        //   见 ProgramIndex.levelOf:71 与 ShellEntry:12）。
+        //   而这一支今天走不到：扫描的根（SystemDirs.opt）与 landedPieceDir
+        //   （SystemDirs.opt().resolve(seg)）都在 opt/ 之下，落到上面两支。
         return ""
     }
 
