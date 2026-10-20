@@ -116,6 +116,28 @@ object StateFiles {
         sweep(SystemDirs.etc(ctx))
         sweep(SystemDirs.opt(ctx))
         sweep(ctx.filesDir)
+        // 共享区（usr/）下那些**派生物软链**：它们是「某一刻建出来的」，
+        // 而建链那一处**只建不删**（PrefixProvisioner.provision 逐条 linkTo，
+        // 而它没有「这一条不该存在」的分支）=> 而 sweep 的五个根里**没有 usr/**
+        // => 所以一条指向「按形态已经不存在的那一份」的链会永远留着。
+        //  真机读数（07，2026-10-21）：usr/lib/libbusybox.so 还在（mtime 10-20 01:58），
+        //   而 busybox 的 files[] 19 项全是 role=program、lib/ 下 0 条
+        //   => 那一条指向的路径**按形态根本不该存在**，而它是断链。
+        //  而判别（04 今天那条）：清它的那一格扫的是哪棵树；
+        //    而系统里可能落位的那几棵都在它范围内吗 ——  不在  有一类落位结果永远不会被清掉。
+        //  现在：扫 usr/ 下那两处的**符号链接**，删掉**指向不存在目标**的那些
+        //   （ 只删断链， 不碰实体文件、 也不碰指向有效目标的链）。
+        for (sub in arrayOf("usr/lib", "usr/bin")) {
+            val d = File(ctx.filesDir, sub)
+            val links = d.listFiles()?.filter { java.nio.file.Files.isSymbolicLink(it.toPath()) } ?: continue
+            for (l in links) {
+                val alive = runCatching {
+                    val t = File(java.nio.file.Files.readSymbolicLink(l.toPath()).toString())
+                    t.exists()
+                }.getOrDefault(false)
+                if (!alive && l.delete()) out.add("断链 " + l.absolutePath)
+            }
+        }
         return out
     }
 
