@@ -185,15 +185,26 @@ object PreinstalledPieces {
         // 纯库件没有入口  landedEntry 为空  它只落库那一份（dirForRole 那把尺）。
         //  编译错误（run 39415331935 第21步）：entryRole 原来声明在 if 块里，
         //   而下面三处（refreshDerivedLinks / ManifestWriter.write / register）要它  提到外层。
-        val entryRole: String = if (entry.isBlank()) {
-            // 纯库件没有入口 —— 而它的 role 是**库**（那一份字节落 lib/）。
-            //  而这一格不能空：refreshDerivedLinks 与 ManifestWriter.write 都要它
-            //   （role 决定派生物建在哪个目录） 空 role 会让那一支早退（派生物不建）。
-            ProgramInstallPipeline.ROLE_LIBRARY
-        } else {
-            shape.roleOf(entry)
-                ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
-        }
+        // 族二（这一件是程序还是库）：构建期按形态算出，运行期**只读那一格**（04 今天那张表第二行）。
+        //   缺陷名（C-102）**这一格有两把尺**：
+        //     原来空 entry 时这一处**自己答 ROLE_LIBRARY** —— 而那是运行期在猜形态。
+        //     而形态是构建期算好的（scripts/toolchain/elf-form.sh 照那一把尺），随产物落进
+        //     piece-shape.json 的 files[].role —— 运行期只该读它。
+        //   真机读数（01 今天核过，2026-10-20）：busybox 那个落位目录里 lib/ 是空的、
+        //     而 bin/ 下 19 个实体 => **形态与角色在那一份上已经对不上了**。
+        //   => 现在：只从产物那一份取；取不到就报缺（C-05），不自己答一个。
+        val entryRole: String = shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY)
+            .firstOrNull()?.role
+            ?: if (entry.isNotBlank()) {
+                shape.roleOf(entry)
+                    ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+            } else {
+                return fail(
+                    ctx, id,
+                    "产物没有带库形态的落位项，而这一件又没有入口 —— 形态是构建期算好的，" +
+                        "运行期只读那一格；读不到就报缺，不自己答一个",
+                )
+            }
         val landedEntry = if (entry.isBlank()) "" else {
             ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
@@ -222,14 +233,42 @@ object PreinstalledPieces {
         } else {
             File(verDir, landedEntry).isFile
         }
+        // 族三（是不是我们要的那一代）：逐项比「落位上那份字节的 sha256」与「产物 files[].sha256」。
+        //   缺陷名（C-102）**「跳过当成相同」在比代这一格上把「不知道」当成了「是」**：
+        //     原来这一支有两处 `return@all true`：
+        //       · fs.sha256.isBlank()          => 产物没给摘要，而这一格答「相同」
+        //       · dst.canonicalFile 取不到       => 路径算不出来，而这一格也答「相同」
+        //     而 §1.55：缺字段要报缺、不拿缺省当值。
+        //      而后果是可核的：产物少给一条摘要 => 那一项永远被判「相同」=>
+        //        那一项**永远不会被换掉**（ 这就是「旧字节换不掉」那一族里的一格）
+        //   判别形式：那一项缺摘要时，这一格答的是「相同」还是「无法判定」；
+        //     答「相同」=> 这一格把「缺证据」当成了「证据支持」。
+        //   => 现在：缺摘要或路径算不出来都答「无法判定」，而「无法判定」**不判已落位到最新**
+        //     （=> 走重装，而重装会重新落位并重写这一格）。
+        val unverifiable = mutableListOf<String>()
         val sameBytes = shape.files.all { fs ->
-            if (fs.sha256.isBlank()) return@all true
+            if (fs.sha256.isBlank()) {
+                unverifiable += fs.path + "（产物没带摘要）"
+                return@all false
+            }
             val dst = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(fs.role) ?: fs.dir)
                 .let { File(it, fs.path.substringAfterLast('/')) }
-            val real = runCatching { dst.canonicalFile }.getOrNull() ?: return@all true
-            !real.isFile || sha256Of(real) == fs.sha256
+            val real = runCatching { dst.canonicalFile }.getOrNull()
+            if (real == null) {
+                unverifiable += fs.path + "（落位路径算不出来）"
+                return@all false
+            }
+            if (!real.isFile) return@all false
+            sha256Of(real) == fs.sha256
         }
         val landedUpToDate = landedPresent && sameBytes
+        if (unverifiable.isNotEmpty()) {
+            lobos.services.log.Journal.note(
+                ctx, "prefix-trace", false, "无法判定是不是那一代 " + id,
+                unverifiable.joinToString("，") +
+                    "（按 §1.55：缺证据不答「相同」=> 这一格不判已落位到最新 => 走重装）",
+            )
+        }
         if (verDir.isDirectory && landedUpToDate) {
             // 缺陷（C-102） 落位检查只验原物在不在、派生物指向哪不管
             //         软链是派生物而落位跳过已存在项，派生物因此永不刷新
