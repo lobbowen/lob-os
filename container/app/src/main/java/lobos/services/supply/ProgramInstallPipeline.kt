@@ -483,6 +483,21 @@ object ProgramInstallPipeline {
 
     private fun installComponent(context: Context, spec: Spec): Result {
         val dir = lobos.services.reg.ProgramManager.stateDirOf(context, spec.programId)
+        // 读数（诊断用）：这一格今天算出来的落位根是什么、stateDirOf 走的是哪一支、
+        // 而注册表里那一格的原值是什么。
+        // 判别：真机上落位结果落在 files/<id>/<ver>/<ver>/，
+        //   而 stateDirOf 的三支（ProgramManager.kt:80 走 opt/<id>、:81 走 filesDir+stateDir、
+        //   :83 走 programRoot+id 而 programRoot=SystemDirs.opt）**全都落在 opt/ 之下**
+        //   => 当前代码拼不出那个形状 => 那一格是运行时拼的或装进去的
+        //   => 而这三条读数就是定它的那一格。
+        val regNow = lobos.services.reg.ProgramIndex.get(context, spec.programId)
+        RuntimeDiagnostics.append(
+            context, "ota-shape-probe", true, "落位根读数 " + spec.programId,
+            "dir=" + dir.absolutePath +
+                " 注册表stateDir=" + (regNow?.stateDir ?: "(无这一件)") +
+                " 入口格=" + (if (regNow == null) "(无)" else if (regNow.assetEntry.isBlank()) "空(库件那支)" else "有值") +
+                " version=" + (spec.expectedVersion ?: "(空)"),
+        )
         val staging = File(dir, "." + spec.zip.nameWithoutExtension + ".staging")
         runCatching {
             staging.deleteRecursively()
