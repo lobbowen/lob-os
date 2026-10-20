@@ -310,20 +310,21 @@ elf_write_shape() {
   local mode bytes sha soname chain chain_json entry_form="" entry_role="" dir n
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
-    # ★ **软链不进 files[]**（它是**派生物**，S22：名字是事实、字节只有一份）。
-    #   缺陷名（C-102）同一份字节被列了两次：原来这一支把软链 readlink -f 跟到实体后
-    #   **照实体算一遍**（form/role/sha 全取实体那份）⇒ busybox 那一件：
-    #     bin/cat（软链）与 lib/libbusybox.so（实体）**逐字节相同** ⇒ files[] 两项、
-    #     programs 两项、kind 被算成 program（而它其实只有**一份**字节）。
-    #   ⇒ 现在：**实体**进 files[]（一份字节一项）；软链的名字进 derivedChain（派生物那一格）。
+    # ★ 软链**照它指向的实体**算形态（form/role/sha 都取实体那份）—— 而**它仍进 files[]**。
+    #   ★★ 而它**必须**进 files[]（2026-10-20 实测出来的）：
+    #     落位侧 ProgramInstallPipeline.landByShape 的目标映射（map）**是从 files[] 建的**
+    #     ⇒ 而软链不在 files[] 里 ⇒ map 里就没有它 ⇒ **它不会被搬**
+    #     ⇒ 落位后 bin/ 下只有本体那一份、**那 17 条命令软链一条都没有**
+    #     ⇒ 而 usr/bin 下那 17 条命令软链正是从它们建的 ⇒ 那 17 个命令会消失。
+    #   ★ 而 derivedLinks 那一格记的是「哪些是派生物」（它与 files[] 并存，不冲突）。
+    #   ★ 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）⇒ files[] 18 项是对的。
     if [ -L "$stage/$rel" ]; then
-      target="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
-      [ -n "$target" ] && [ -f "$target" ] || continue
-      rel_dir="${rel%%/*}"
+      real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
+      [ -n "$real" ] && [ -f "$real" ] || continue
       derived_links="$derived_links${derived_links:+,}\"$(elf_json_escape "$rel")\""
-      continue
+    else
+      real="$stage/$rel"
     fi
-    real="$stage/$rel"
     [ -f "$real" ] || continue
     form="$(elf_form "$real")"
     role="$(elf_role_of_form "$form")"
