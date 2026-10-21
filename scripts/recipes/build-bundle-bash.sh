@@ -57,7 +57,7 @@ STUB
   #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
   #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
   #       它先定义 DOLLAR='$' 再拼）
-  RPATH_ARG='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'   #   而单引号在这里防住了展开 
+  RPATH_ARG="-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'"
     LDFLAGS="-Wl,--allow-multiple-definition ${RPATH_ARG}" \
     LIBS="$WORK/libtermcap_stub.a $WORK/libbionic_compat.a" \
     bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \

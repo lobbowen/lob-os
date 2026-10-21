@@ -57,7 +57,7 @@ tar xzf "$ROOT_DIR/work/curl.tar.gz" -C "$WORK/src" --strip-components=1
   #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
   #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
   #       它先定义 DOLLAR='$' 再拼）
-  RPATH_ARG='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'   #   而单引号在这里防住了展开 
+  RPATH_ARG="-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'"
     LDFLAGS="${RPATH_ARG}" > "$WORK/configure.log" 2>&1 \
     || { echo "=== curl configure 失败取证（openssl 相关 + 末 20 行）==="; \
          grep -i openssl "$WORK/configure.log" | tail -12 || true; \

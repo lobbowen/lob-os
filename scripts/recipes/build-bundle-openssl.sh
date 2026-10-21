@@ -38,7 +38,7 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
   #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
   #       它先定义 DOLLAR='$' 再拼）
-  RPATH_ARG='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'   #   而单引号在这里防住了展开 
+  RPATH_ARG="-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'"
     ${RPATH_ARG} \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \

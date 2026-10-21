@@ -47,7 +47,7 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
   #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
   #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
   #       它先定义 DOLLAR='$' 再拼）
-  RPATH_ARG='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'   #   而单引号在这里防住了展开 
+  RPATH_ARG="-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'"
   make -j"$JOBS" LDFLAGS="-static ${RPATH_ARG}" > "$WORK/build.log" 2>&1 \
     || { echo "=== jq 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
 )
