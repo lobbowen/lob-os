@@ -51,7 +51,14 @@ tar xzf "$ROOT_DIR/work/curl.tar.gz" -C "$WORK/src" --strip-components=1
     ac_cv_lib_ssl_SSL_new=yes curl_cv_lib_ssl_SSL_connect=yes curl_cv_lib_ssl_SSL_library_init=yes \
     curl_cv_openssl_with_ldl=yes curl_cv_openssl_with_ldl_and_lpthread=yes \
     CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
-    LDFLAGS="-Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" > "$WORK/configure.log" 2>&1 \
+  # 而 $ORIGIN：**单引号在双引号上下文里不防展开** ——   而 $O 被 shell 当变量（空），
+  #     **=> 而 $ORIGIN 变成了 RIGIN**（ 真机读数： run 39531522481，
+  #       产物里 DT_RUNPATH 的值是 [RIGIN] 而不是 [$ORIGIN]）
+  #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
+  #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
+  #       它先定义 DOLLAR='$' 再拼）
+  RPATH_ARG='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'   #   而单引号在这里防住了展开 
+    LDFLAGS="${RPATH_ARG}" > "$WORK/configure.log" 2>&1 \
     || { echo "=== curl configure 失败取证（openssl 相关 + 末 20 行）==="; \
          grep -i openssl "$WORK/configure.log" | tail -12 || true; \
          tail -20 "$WORK/configure.log"; exit 1; }
