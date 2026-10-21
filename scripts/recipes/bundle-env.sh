@@ -38,7 +38,7 @@ die() {
 if [ -z "${CC:-}" ]; then
   [ -f "$ROOT_DIR/scripts/toolchain/locate-ndk.sh" ] \
     || die "缺 CC" "环境里没有 CC，也没有 scripts/toolchain/locate-ndk.sh"
-  # ★ 用子进程跑，不 source ——
+  #  用子进程跑，不 source ——
   #   locate-ndk.sh 里有 exit 1 与 set -euo pipefail；
   #   source 它会终止父进程并污染 set 选项（实测过）。
   #
@@ -85,7 +85,7 @@ check_so() {
   local sz
   sz="$(wc -c < "$f")"
   [ "$sz" -ge "$min" ] || return 1
-  # ★ file 要 -L（跟随软链）——
+  #  file 要 -L（跟随软链）——
   #   共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2，
   #   libz.so 与 libz.so.1 都是软链。不跟随时 file 报的是
   #   「symbolic link to libz.so.1.3.2」而不是 ELF 形态，
@@ -133,22 +133,27 @@ version_of() {
 # 所以 bin/ 下其余的可执行件必须由这个清单显式带进去。
 emit_piece() {
   local id="$1" out="$2" entry="$3" min="${4:-1000}" bins="${5:-}"
-  # ★ **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
+  #  而第 6 个参数是「这一件自己声明的标记文件」（  01 今天裁的候选 (a)）
+  #    **声明在那一件自己那边**， 而打包那一支去问它（ 而不是自己知道八个名字）
+  #    而它的形状：  产物的目录里那个文件的名字，  而打包那一支核它在不在。
+  #    而**没声明就不查**（  而那不是「缺」）
+  local marker="${6:-}"
+  #  **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
   #   缺陷名（C-102）entry 散在几处、而那几处是副本：
-  #     原来这一格是「declared（表里那份）!= $entry（recipe 传的那份）⇒ 判红」，
-  #     而今天 entry **按形态算**（下面那段 pick），recipe 传的那份只是声明 ⇒ 两者本就不同。
-  #   ⇒ 现在：entry 只有**真源**一处（按形态算，写进产物那份 meta 与 piece-shape.json）。
+  #     原来这一格是「declared（表里那份）!= $entry（recipe 传的那份） 判红」，
+  #     而今天 entry **按形态算**（下面那段 pick），recipe 传的那份只是声明  两者本就不同。
+  #    现在：entry 只有**真源**一处（按形态算，写进产物那份 meta 与 piece-shape.json）。
   #     而「那一份该长什么样」由 verify-piece-shape.sh 那两路对账核（产物内部自洽）。
   local so base dir f b ver
   ver="$(version_of "$id")"
   [ -n "$ver" ] || die "${id} 没有版本" "scripts/component-sources.json 里查不到"
-  # ★ **entry 按形态挑**（与 package-bundle-zip.sh 同一把尺）：
+  #  **entry 按形态挑**（与 package-bundle-zip.sh 同一把尺）：
   #   这一件在磁盘上有没有程序那一侧（bin 下有程序形态字节）？
-  #     有 ⇒ 入口是**那一侧**（按形态挑，不按名字顺序）；
-  #     没有 ⇒ 入口是 lib/ 下那一份**库**（纯库件，entry 那一格在清单里留空）。
+  #     有  入口是**那一侧**（按形态挑，不按名字顺序）；
+  #     没有  入口是 lib/ 下那一份**库**（纯库件，entry 那一格在清单里留空）。
   #   缺陷名（C-102）调用方声明的 entry 被当真相：原来这一行是 so="$out/$entry" ——
-  #   而 openssl 那一件声明的是 lib/libssl.so（库形态）⇒ 按形态决定执行位与链的那一段
-  #   作用在**库**上 ⇒ 程序那一份（bin/openssl）没被判型、没带执行位。
+  #   而 openssl 那一件声明的是 lib/libssl.so（库形态） 按形态决定执行位与链的那一段
+  #   作用在**库**上  程序那一份（bin/openssl）没被判型、没带执行位。
   local pick=""
   if [ -d "$out/bin" ]; then
     for f in $(ls -A "$out/bin" 2>/dev/null | LC_ALL=C sort); do
@@ -173,7 +178,7 @@ emit_piece() {
   base="$(basename "$so")"
   dir="$(dirname "$so")"
   check_so "$so" "$min" || die "${id} 产物不可用" "$so 不是 aarch64 ELF 或小于 $min 字节"
-  # ── 形态：构建期算一次 ─────────────────────────────────────
+  #  形态：构建期算一次 
   #
   # 缺陷名（C-102）落位只搬字节，不定形态：
   #   原来「这份字节是库还是程序」这件事在构建期从来没有人算过，
@@ -210,5 +215,5 @@ emit_piece() {
     done
     echo "  （共享库整条链一起进包）"
   fi
-  bash "$ROOT_DIR/scripts/recipes/package-bundle-zip.sh" "$id" "$out" "$ver" "$entry" "$bins"
+  bash "$ROOT_DIR/scripts/recipes/package-bundle-zip.sh" "$id" "$out" "$ver" "$entry" "$bins" "$marker"
 }

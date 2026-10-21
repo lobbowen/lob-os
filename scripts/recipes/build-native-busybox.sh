@@ -93,7 +93,7 @@ set_conf() {
   fi
 }
 
-# ── 白名单：只留 APPLETS 那些，其余全关 ────────────────────────
+#  白名单：只留 APPLETS 那些，其余全关 
 # 此前是「defconfig 全开，再逐个关掉有问题的」——
 #   defconfig 开了 512 项（含 HOSTID 这种我们要的 18 个之外的）。
 #   靠「缺头就关」「bionic 缺函数就关」一层层筛，问题是**会一直漏**：
@@ -121,7 +121,7 @@ echo "[busybox] defconfig 开了 $N_ON 项，已全部关掉（白名单式）"
 for a in $APPLETS; do set_conf "$a" y; done
 echo "[busybox] 白名单开启：$APPLETS"
 
-# ── 补丁：Android 分支里两行过期的 #undef ──────────────────────
+#  补丁：Android 分支里两行过期的 #undef 
 # 症状（实测）：
 #     ld.lld: error: duplicate symbol: strchrnul
 #     clang: error: linker command failed with exit code 1
@@ -137,7 +137,7 @@ echo "[busybox] 白名单开启：$APPLETS"
 # 所以改成按 __ANDROID_API__ 分级 —— 与这个分支里已有的写法一致
 # （它自己就用 `__ANDROID_API__ < 8` / `< 21` / `>= 21` 处理 dprintf）。
 #
-# ★ 只改 **Android 那一个分支**：platform.h 里有 4 处
+#  只改 **Android 那一个分支**：platform.h 里有 4 处
 #   "# undef HAVE_STRCHRNUL"，分属 __WATCOMC__ / __dietlibc__ /
 #   __APPLE__ / Android。别人的平台不该动（改了等于替他们做决定）。
 #   而且 Android 分支本身有两处（一处只设两个 SYS_* 宏就结束），
@@ -155,7 +155,7 @@ node "$ROOT_DIR/scripts/verify/find-platform-h-android-branch.js" "$PLATFORM_H" 
 set_conf STATIC y
 set_conf PIE n
 
-# ── 编译器：官方只有「前缀」这一条路，没有 clang 变体 ──────────
+#  编译器：官方只有「前缀」这一条路，没有 clang 变体 
 # busybox 的 Makefile 第 292~298 行写死了：
 #     CC = $(CROSS_COMPILE)gcc      LD = $(CC) -nostdlib
 #     AR = $(CROSS_COMPILE)ar      NM = $(CROSS_COMPILE)nm ...
@@ -183,7 +183,7 @@ answers() {
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
 
-# ★ 必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
+#  必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
 #   yes "" 会让每个提问取默认，但 yes 会被提前关闭的管道打断（Broken pipe），
 #   所以改成自己产出一批空行。
@@ -206,7 +206,7 @@ done
   "这些 applet 没进 .config：$MISSING —— 配置项名与本版本对不上（别凭记忆写）"
 note "applet 配置项全部生效（$(echo $APPLETS | wc -w) 项）"
 
-# ★ 编译器只能从这里给 —— 命令行赋值优先级高于 .config 与 Makefile 里的
+#  编译器只能从这里给 —— 命令行赋值优先级高于 .config 与 Makefile 里的
 #   `CC = $(CROSS_COMPILE)gcc`（命令行赋值不会被 Makefile 里的赋值覆盖）。
 #   AR/NM/STRIP 在它的 Makefile 里是 $(CROSS_COMPILE)ar/nm/strip，同样得给，
 #   否则交叉编时会去找宿主 x86-64 的 ar/nm —— 产物就废了。
@@ -241,31 +241,31 @@ make -j"$JOBS" "${MAKE_ARGS[@]}" > "$WORK/build.log" 2>&1 \
 
 OUT_DIR="$WORK/out"
 mkdir -p "$OUT_DIR/lib" "$OUT_DIR/bin"
-# ★ **本体落 bin/**（它按形态是程序形态：ET_EXEC、无 PT_INTERP —— 07 今天的 readelf 读数）。
+#  **本体落 bin/**（它按形态是程序形态：ET_EXEC、无 PT_INTERP —— 07 今天的 readelf 读数）。
 #   缺陷名（C-102）本体放 lib/ 而它按形态是程序形态：原来这里是 lib/libbusybox.so，
-#   而「形态决定落位目录」⇒ 运行期 dirForRole(program) ⇒ 它会落进 bin/，
-#   ★ ⇒ 而那 17 条软链若指向 ../lib/libbusybox.so ⇒ **断链** ⇒ 整个工具族消失。
-#   ⇒ 现在：本体在 bin/libbusybox.so（与它按形态该落的地方一致），软链指向 ../bin/libbusybox.so。
+#   而「形态决定落位目录」 运行期 dirForRole(program)  它会落进 bin/，
+#     而那 17 条软链若指向 ../lib/libbusybox.so  **断链**  整个工具族消失。
+#    现在：本体在 bin/libbusybox.so（与它按形态该落的地方一致），软链指向 ../bin/libbusybox.so。
 cp -f "$SRC/busybox" "$OUT_DIR/bin/libbusybox.so"
 chmod 0755 "$OUT_DIR/bin/libbusybox.so"
 
 # applet 落 bin/，而软链指向**本体那份字节**（本体也在 bin/）。
 #
-# ★ 缺陷名（C-102）**本体与软链目标不一致**（两段注释自相矛盾）：
-#   上面那段已把本体搬到 bin/libbusybox.so（按形态：ET_EXEC、无 PT_INTERP ⇒ 程序形态 ⇒ 落 bin/），
+#  缺陷名（C-102）**本体与软链目标不一致**（两段注释自相矛盾）：
+#   上面那段已把本体搬到 bin/libbusybox.so（按形态：ET_EXEC、无 PT_INTERP  程序形态  落 bin/），
 #   而这一段原来还写着「本体仍留在 lib/（它是库，LdConfig 按 SONAME 建 usr/lib 软链）」
-#   并且软链指向 ../lib/libbusybox.so ⇒ **那 17 条会全是断链** ⇒ 整个工具族在真机上消失而 CI 全绿。
-#   ⇒ 处置（04 今天的判别形式：不自洽在「位置上」⇒ 改放置它的那一处）：软链目标跟着本体一起搬。
+#   并且软链指向 ../lib/libbusybox.so  **那 17 条会全是断链**  整个工具族在真机上消失而 CI 全绿。
+#    处置（04 今天的判别形式：不自洽在「位置上」 改放置它的那一处）：软链目标跟着本体一起搬。
 #
-# ★ 而「它是库」那个判断今天不成立（01 今天裁的 S32，三条读数）：
-#   ① 它**没有 SONAME**（readelf -d 零命中）—— 而「库」在 ELF 里的标志就是 SONAME；
-#   ② **没有任何字节 NEEDED 它**（逐件扫过全部 opt/*/*/lib 与 opt/*/*/bin，零命中）——
+#  而「它是库」那个判断今天不成立（01 今天裁的 S32，三条读数）：
+#    它**没有 SONAME**（readelf -d 零命中）—— 而「库」在 ELF 里的标志就是 SONAME；
+#    **没有任何字节 NEEDED 它**（逐件扫过全部 opt/*/*/lib 与 opt/*/*/bin，零命中）——
 #      而「库」的定义是「被别的字节装载」；
-#   ③ 它自己的 DT_NEEDED **是空的** —— 而「库」是需要别人的东西。
-#   ⇒ 它是一份独立的**程序**字节，而那 17 个名字是它的 argv[0] 派生物。
+#    它自己的 DT_NEEDED **是空的** —— 而「库」是需要别人的东西。
+#    它是一份独立的**程序**字节，而那 17 个名字是它的 argv[0] 派生物。
 #
 # 链接目标必须与本体同目录（./libbusybox.so —— 同目录相对链接）：
-#   LdConfig 照软链建链且用 absolutePath ⇒ usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls
+#   LdConfig 照软链建链且用 absolutePath  usr/bin/ls -> <abs>/opt/busybox/<ver>/bin/ls
 #   -> ./libbusybox.so 一跳；写成 libbusybox.so（无 ./) 会断链，
 #   而断链会让整个工具族在真机上继续消失而 CI 全绿。
 NAPP=0
@@ -331,45 +331,45 @@ echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 
 # 第五个参数是「这个件要在 usr/bin 出现的命令名」——
-# ★ **取落包集**（make install 连带建的那批软链），**不取 $APPLETS 派生、也不取 .rodata 那张表**。
+#  **取落包集**（make install 连带建的那批软链），**不取 $APPLETS 派生、也不取 .rodata 那张表**。
 #   缺陷名（C-102）**声明集与落包集混用**：
 #     原来这一段写的是「从 $APPLETS 转小写派生」—— 而 $APPLETS 是**白名单**（决定编不编），
 #     而「这份字节实际响应哪些名字」是 **make install 连带建的那批软链**
 #     （man1 INSTALL 段：「If you enabled any applet installation scheme …
 #      these will also be installed in the location pointed to by CONFIG_PREFIX」）。
-#     ★ **两方的读数各指哪一轮**（2026-10-20 实测，逐个包数过）：
+#      **两方的读数各指哪一轮**（2026-10-20 实测，逐个包数过）：
 #       旧轮（b301f5 之前的那几轮：srcbe72ff17f17e / srccc116ca1a148 / srcec91509e6274）：
-#         **软链 17、无 sh** ⇒ 那几轮 BB_BINS 取 $APPLETS 派生 ⇒ sh 没被声明 ⇒ 没进包
+#         **软链 17、无 sh**  那几轮 BB_BINS 取 $APPLETS 派生  sh 没被声明  没进包
 #       新轮（srcb1a8a6b2b285 / srcbc042d4e8e89 / src52587e94cdde，即 7f72d02 与 9e8338b 之后）：
-#         **软链 18、含 sh** ⇒ BB_BINS 取落包集 ⇒ 落包集里那 18 个（含 sh）全被声明 ⇒ 全进包
-#       ⇒ 而「落包集 18（18 = 17 软链 + 1 本体）」这个数是**错的**：
+#         **软链 18、含 sh**  BB_BINS 取落包集  落包集里那 18 个（含 sh）全被声明  全进包
+#        而「落包集 18（18 = 17 软链 + 1 本体）」这个数是**错的**：
 #         落包集 = **软链的条数**；而「包内 bin/ 的条目数」= 软链 + 本体（今天 = 19）。
-#         ★★ 我 2026-10-19 那一版把这两件事混成了一件 —— 03 今天按 C-100 补了这一条。
-#     ★★ 而**「sh 为什么在落包集里」这一格【未核】**：
+#          我 2026-10-19 那一版把这两件事混成了一件 —— 03 今天按 C-100 补了这一条。
+#      而**「sh 为什么在落包集里」这一格【未核】**：
 #         白名单式配置（:114-121）先关掉 .config 里所有 CONFIG_XXX=y，再只开 $APPLETS 那些；
 #         而 sh 是 ash 的别名 applet（它的开关是 CONFIG_ASH / CONFIG_SH_IS_ASH），
-#         那两项**不在 $APPLETS 里** ⇒ 按这段逻辑该被关掉 ⇒ sh 不该被编 ⇒ 不该有软链。
-#         ★★ 而实测**新轮里 sh 在** ⇒ ★★ **这两条对不上**，而**答它要那一轮的 .config**（本机没有）
-#         ⇒ **这一格按未核记下，不猜**（C-05）；而它不改变「取落包集」这个改法。
-#     ⇒ 而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
-#     （这一件编译时按白名单关掉了它）⇒ package-bundle-zip.sh 的 BINS 那一支会判红
+#         那两项**不在 $APPLETS 里**  按这段逻辑该被关掉  sh 不该被编  不该有软链。
+#          而实测**新轮里 sh 在**   **这两条对不上**，而**答它要那一轮的 .config**（本机没有）
+#          **这一格按未核记下，不猜**（C-05）；而它不改变「取落包集」这个改法。
+#      而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
+#     （这一件编译时按白名单关掉了它） package-bundle-zip.sh 的 BINS 那一支会判红
 #     （「清单里的命令入口不存在：bin/$bn 在 $OUT 下没有 —— 声明了但没产出」）。
-#     ⇒ 三个集合的读数（按轮次分清）：
-#       旧轮：表 19 / 落包集 17 / 白名单 17 ⇒ 表 − 落包集 = {awk, sh}、落包集 − 白名单 = ∅
-#       新轮：表 19 / 落包集 18 / 白名单 17 ⇒ 表 − 落包集 = {awk}、落包集 − 白名单 = {sh}
-#       ★★ 而**差集记的是什么**：它记的是「这一件编译时没编出那个能力」——
+#      三个集合的读数（按轮次分清）：
+#       旧轮：表 19 / 落包集 17 / 白名单 17  表 − 落包集 = {awk, sh}、落包集 − 白名单 = ∅
+#       新轮：表 19 / 落包集 18 / 白名单 17  表 − 落包集 = {awk}、落包集 − 白名单 = {sh}
+#        而**差集记的是什么**：它记的是「这一件编译时没编出那个能力」——
 #         而它**不区分**「我们显式关掉了它」与「它依赖的那些被我们关掉了，于是它编不出来」（01 今天裁的）。
-#       ★★ 而这一格与 C-16 同源：它是唯一能发现「事实与声明开始分家」的那个核对口。
-#       ★ 而这**一个**差集不区分两种成因：
+#        而这一格与 C-16 同源：它是唯一能发现「事实与声明开始分家」的那个核对口。
+#        而这**一个**差集不区分两种成因：
 #         · awk 是**它依赖的那些配置被一起关掉了**，于是它编不出来（**不是「我们不要它」**）；
 #         · sh 是它自己那个配置（CONFIG_ASH / CONFIG_SH_IS_ASH）没开。
-#         ⇒ 两者都是「白名单式配置」的后果，而**白名单是我们写下的（声明）**。
-#       ★ 而**落包集 − 白名单 = 空集**（实测两者相等），所以「落包集里有我们没声明的名字」这句话今天不成立。
-#     ⇒ 而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
-#     （这一件编译时按白名单关掉了它）⇒ package-bundle-zip.sh 的 BINS 那一支会判红
+#          两者都是「白名单式配置」的后果，而**白名单是我们写下的（声明）**。
+#        而**落包集 − 白名单 = 空集**（实测两者相等），所以「落包集里有我们没声明的名字」这句话今天不成立。
+#      而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
+#     （这一件编译时按白名单关掉了它） package-bundle-zip.sh 的 BINS 那一支会判红
 #     （「清单里的命令入口不存在：bin/$bn 在 $OUT 下没有 —— 声明了但没产出」）。
-#     ⇒ 三个集合的今天读数（实测 2026-10-20）：**表 19 / 落包集 17 / 白名单 17**；
-#       **表 − 落包集 = {awk, sh}**（被白名单裁掉的那部分）★ 而这与 C-16 同源：
+#      三个集合的今天读数（实测 2026-10-20）：**表 19 / 落包集 17 / 白名单 17**；
+#       **表 − 落包集 = {awk, sh}**（被白名单裁掉的那部分） 而这与 C-16 同源：
 #       它是唯一能发现「事实与声明开始分家」的那个核对口。
 BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
-emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS"
+emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS" "$TOOL.version"
