@@ -342,125 +342,23 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     => **而那一格今天【未过】**（要取的是 NDK 里那个 llvm-objcopy 加 --enable-new-dtags
 #        之后它把 RUNPATH 写成什么形态），**所以今天不写它**
 
-OBJCOPY=""
-if [ -n "${OBJCOPY_OVERRIDE:-}" ]; then
-  OBJCOPY="$OBJCOPY_OVERRIDE"
-elif [ -n "${LLVM_OBJCOPY:-}" ]; then
-  OBJCOPY="$LLVM_OBJCOPY"
-else
-  # 缺陷名（C-102）**从 PATH 找 clang 在这七个件的构建环境里找不到**：
-  #   而它们走 bundle-env.sh 传 $CC，  而 $CC 不在 PATH 上 
-  #    而 `command -v clang` 落空  dirname 落在 /nonexistent  判红
-  #    而这一版七件全红（run 39487869167 / 39487887172 / 39487893372 / 39487906070 /
-  #      39487911704 / 39487917527 / 39487924957），  而 openssl 那一件没走到这一步（  它自己那条路）
-  #    **照仓里那个能跑通的先例**：TC="$(dirname "$CC")"（  而那是 build-native-busybox.sh:19）
-  [ -n "${CC:-}" ] && TC="$(dirname "$CC")"
-  for cand in "${TC:-/nonexistent}/llvm-objcopy" llvm-objcopy; do
-    if [ -x "$cand" ]; then OBJCOPY="$cand"; break; fi
-  done
-fi
-#  而「找不到 objcopy」这一格**不判红**，而是说清它为什么被跳过：
-#   缺陷名（C-102）**「我查工具的地方」与「我跑那一步的地方」不一定同一个环境**：
-#     · 编译类那七件的 step 里 env 有 CC（NDK 的 clang） TC=dirname($CC) 找得到 
-#     · **而 crypto 这一件根本不编译** —— 它只是从 openssl 的包里拆 libcrypto.so，
-#        而它那一步的 env 里**没有 CC、没有 clang、没有 NDK 工具链** 
-#         而 objcopy 三条路（OBJCOPY_OVERRIDE / LLVM_OBJCOPY / TC）全落空 
-#     ·  而它那一件是**纯库件**（entry 空、lib/ 下只有库字节） 
-#        **RUNPATH 那一格对它本来就不生效**（没有程序形态那一侧要 NEEDED）
-#     所以判红是错的：  它把「这一件不需要那一格」误报成「缺一个工具」
-#    现在：**说清并跳过**；  而真要写 RUNPATH 时可以用 OBJCOPY_OVERRIDE 显式给 
-if [ -z "$OBJCOPY" ] || [ ! -x "$OBJCOPY" ]; then
-  if [ -n "${OBJCOPY_OVERRIDE:-}" ]; then
-    echo "::error title=$ID OBJCOPY_OVERRIDE 给了但那个路径不可执行::$OBJCOPY_OVERRIDE"
-    exit 1
-  fi
-  echo "  · $ID 这一步没有 NDK 工具链（CC/clang 都不在） 这一格跳过 DT_RUNPATH"
-  echo "    （  而纯库件那一格本来不生效；  要写就用 OBJCOPY_OVERRIDE=<llvm-objcopy 路径>）"
-  OBJCOPY=""
-fi
-
-#  而这一格**先核那个工具到底支不支持这个选项**， 而不假设它支持：
-#   缺陷名（C-102）**objcopy 有两套，不是一套**：
-#     · GNU binutils 的 objcopy **没有** rpath/runpath 任何选项（  本机实测：
-#       `objcopy --help | grep -icE "rpath|runpath"` -> 0， 而 `--add-runpath` 实跑报
-#       **「未识别的选项」**（  rc=1））
-#     · 而 `--add-runpath` 是 **LLVM objcopy 独有的** 
-#     ** 而那一支失败时我今天写的是 `|| continue`（静默跳过），
-#      ** 而那正是今天真机读数「包里有 NEEDED 而 RUNPATH 零命中」的成因** 
-#      ** 而「objcopy 找不到」与「objcopy 不支持这个选项」是两件事，
-#         而今天我把它们混成了「跳过」** 
-#  现在：**先探能力**（跑一次 --help 看有没有那个选项）， 有才写；
-#    而没有  **说清是哪一种缺**（  而不能静默跳过）
-# 而**选项名有两套**（而我今天第一次写成 --add-runpath，那在 CI 上被判红）：
-#   · GNU binutils 的 objcopy：**没有** rpath/runpath 任何选项（  本机实测：
-#     `objcopy --help | grep -icE "rpath|runpath"` -> 0）
-#   · 而 **LLVM objcopy 的选项名是 `--set-rpath`**（ 而不是 --add-runpath）
-#      而 NDK toolchain 里那个是 llvm-objcopy   **它只认 --set-rpath** 
-#      （  真机读数：run 39507821338， 探测 --add-runpath 判红，
-#        而工具路径是 ndk/…/bin/llvm-objcopy）
-#  现在：**按那个工具实际支持的选项名走** —— 两个都探，用探到的那个。
-#  而探测要**能自证**（  零命中先阳性对照那一族：
-#     「grep 零命中」只证明「我 grep 的那几个词范围内没有」，
-#     **而「--help 的输出本身就是空的」这一种，  只有把它的字节数打出来才分得开**）
-OBJCOPY_RPATH_OPT=""
-OBJCOPY_HELP_BYTES=0
-if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ]; then
-  H="$("$OBJCOPY" --help 2>&1 || true)"
-  OBJCOPY_HELP_BYTES=${#H}
-  if printf '%s' "$H" | grep -q -- '--set-rpath'; then
-    OBJCOPY_RPATH_OPT="--set-rpath"
-  elif printf '%s' "$H" | grep -q -- '--add-runpath'; then
-    OBJCOPY_RPATH_OPT="--add-runpath"
-  elif printf '%s' "$H" | grep -qiE -- 'rpath|runpath'; then
-    #  而这一支是「有 rpath 相关的选项，  但不是那两个名字」
-    #     **而那说明我的词表不够**，  而不能当成「不支持」
-    OBJCOPY_RPATH_OPT="__UNKNOWN__"
-  fi
-fi
-if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ "$OBJCOPY_RPATH_OPT" = "__UNKNOWN__" ]; then
-  echo "::error title=$ID 这个 objcopy 有 rpath 选项但名字不在我的词表里::而我今天写死两个名字， 而那两个不对"
-  echo "::error:: 工具: $OBJCOPY"
-  echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它不为零， 而那证明输出取到了）"
-  echo "::error:: 工具路径: $OBJCOPY"
-  echo "::error:: 它的 --version："
-  "$OBJCOPY" --version 2>&1 | head -3 | sed 's/^/::error::   /'
-  echo "::error:: 而 --help 里所有含 rpath 的行："
-  printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
-  echo "::error:: 而它的选项名我今天没核到 ——   而这一格不能猜（ 猜了就白编一次）"
-  echo "::error:: 请给 OBJCOPY_OVERRIDE=<另一个支持 rpath 的工具>，  或由 01/04 今天核出那个选项名"
-  exit 1
-fi
-if [ -n "$OBJCOPY" ] && [ -x "$OBJCOPY" ] && [ -z "$OBJCOPY_RPATH_OPT" ]; then
-  echo "::error title=$ID 这个 objcopy 不支持写 rpath::而那一格要把 DT_RUNPATH 写进产物"
-  echo "::error:: 工具: $OBJCOPY"
-  echo "::error:: --help 输出的字节数: $OBJCOPY_HELP_BYTES（  而它为零    那一格是「输出取不到」， 而不是「没有那个选项」）"
-  echo "::error:: 工具路径: $OBJCOPY"
-  echo "::error:: 它的 --version："
-  "$OBJCOPY" --version 2>&1 | head -3 | sed 's/^/::error::   /'
-  echo "::error:: 而 --help 里所有含 rpath 的行："
-  printf '%s\n' "$H" | grep -iE -- 'rpath|runpath' | head -10 | sed 's/^/::error::   /'
-  echo "::error:: 它既不认 --set-rpath 也不认 --add-runpath（而 GNU binutils 的 objcopy 两个都没有）"
-  echo "::error:: 要写 rpath 的是 **llvm-objcopy**（而它的选项名是 --set-rpath）"
-  echo "::error:: 请给 OBJCOPY_OVERRIDE=<NDK toolchain 里那个 llvm-objcopy 的路径>"
-  exit 1
-fi
-
-RUNPATH_APPLIED=0
-if [ -d "$STAGE/lib" ]; then
-  for so in "$STAGE"/lib/*.so*; do
-    [ -f "$so" ] || continue
-    [ -n "$OBJCOPY" ] || break
-    if ! "$OBJCOPY" --enable-new-dtags "$OBJCOPY_RPATH_OPT" '$ORIGIN' "$so"; then
-      echo "::error title=$ID 写 RUNPATH 失败::工具: $OBJCOPY 文件: $so"
-      echo "::error:: 而这一格不能静默跳过（  而「跳过」与「写不进去」不可分， 而今天真机上正是这样丢的）"
-      exit 1
-    fi
-    RUNPATH_APPLIED=$((RUNPATH_APPLIED + 1))
-  done
-fi
-if [ "$RUNPATH_APPLIED" -gt 0 ]; then
-  printf "  · %s RUNPATH 已写进 lib/ 下 %d 份（$ORIGIN，同目录那一侧）\n" "$ID" "$RUNPATH_APPLIED"
-fi
+#  而「写 DT_RUNPATH」那一格，  而今天**整段撤掉**（  而真机读数把它证伪了）：
+#   · CI 读数（run 39509725200，head=1946162）：
+#     --help 输出的字节数: 11864（  而它非零  而那证明输出取到了）
+#     而那 11864 字节里**零个含 rpath 的行**  
+#      **=> 而 NDK 里那个 llvm-objcopy 根本不支持写 rpath** （ 而不是我猜错了那个名字）
+#   ·   **=> 事后 objcopy 写 DT_RUNPATH 这条路从根上走不通** 
+#   ·   而仓里唯一能写出 DT_RUNPATH 的先例是**链期参数**：
+#     scripts/toolchain/build-node-android.sh:299
+#       LDFLAGS_TARGET_OVERRIDE="LDFLAGS.target=-Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'"
+#     （  而另两处也写明「只有 DT_RPATH 不行，要 --enable-new-dtags」：
+#      scripts/verify/verify-runtime-elf.sh:321 与 scripts/verify/check-elf-deps.sh:156）
+#   ·   **=> 而「这一件能不能在链期拿到 DT_RUNPATH」是一个**逐件**的判据**（  八件四种构建系统：
+#      configure 那一族 / openssl Configure / cargo / make+Kconfig）
+#       而那个逐件判据我今天【未核】， 而它要 01/04 今天核（  按 C-126 记未过）
+#   ·   **=> 而今天这一格属「缺一个判据」**（C-105 三类分里的第二类）
+#       而**不能给一个不存在的通用能力加判据**   **=> 而今天整段撤掉** 
+#       （  而撤掉它之后， 七件不再在这一格判红）
 
 # 算出来的 entry 与调用方声明的那一份不一致  两处形态说法分叉了。
 # 不改判红（那样会把「算出来的」与「声明的」两个真相源永远锁死），
