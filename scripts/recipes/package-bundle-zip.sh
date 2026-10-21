@@ -351,11 +351,12 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     => **而那一格今天【未过】**（要取的是 NDK 里那个 llvm-objcopy 加 --enable-new-dtags
 #        之后它把 RUNPATH 写成什么形态），**所以今天不写它**
 
-#  而「写 DT_RUNPATH」那一格，  而今天**整段撤掉**（  而真机读数把它证伪了）：
+#  而「写 DT_RUNPATH」那一格，**整段撤掉** —— 而**已定的结论**：
 #   · CI 读数（run 39509725200，head=1946162）：
 #     --help 输出的字节数: 11864（  而它非零  而那证明输出取到了）
-#     而那 11864 字节里**零个含 rpath 的行**  
-#      **=> 而 NDK 里那个 llvm-objcopy 根本不支持写 rpath** （ 而不是我猜错了那个名字）
+#     而那 11864 字节里**零个含 rpath 的行** =>
+#     **=> 而那份工具没有那个功能**（**不是**「未过」）
+#     **=> 而 NDK 里那个 llvm-objcopy 根本不支持写 rpath**
 #   ·   **=> 事后 objcopy 写 DT_RUNPATH 这条路从根上走不通** 
 #   ·   而仓里唯一能写出 DT_RUNPATH 的先例是**链期参数**：
 #     scripts/toolchain/build-node-android.sh:299
@@ -364,9 +365,12 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #      scripts/verify/verify-runtime-elf.sh:321 与 scripts/verify/check-elf-deps.sh:156）
 #   ·   **=> 而「这一件能不能在链期拿到 DT_RUNPATH」是一个**逐件**的判据**（  八件四种构建系统：
 #      configure 那一族 / openssl Configure / cargo / make+Kconfig）
-#       而那个逐件判据我今天【未核】， 而它要 01/04 今天核（  按 C-126 记未过）
-#   ·   **=> 而今天这一格属「缺一个判据」**（C-105 三类分里的第二类）
-#       而**不能给一个不存在的通用能力加判据**   **=> 而今天整段撤掉** 
+#       而那个逐件判据**今天已核出来**（07 今天的逐件读数 + 我今天逐件改）：
+#         zlib LDSHARED / curl configure / jq make / bash LDFLAGS / openssl Configure
+#         而 ripgrep 那一件**本来就有**（  而 07 今天核到它的产物里 DT_RUNPATH [$ORIGIN]）
+#         而 busybox **静态、无 .so**   而 RUNPATH 那一格对它不适用 
+#   ·   **=> 而那一格今天不再是「缺一个判据」** ——  而**链期**那一路今天通了 
+#       而**不能给一个不存在的通用能力加判据** =>  而今天整段撤掉 
 #       （  而撤掉它之后， 七件不再在这一格判红）
 
 # 算出来的 entry 与调用方声明的那一份不一致  两处形态说法分叉了。
