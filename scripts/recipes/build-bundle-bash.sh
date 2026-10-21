@@ -19,7 +19,7 @@ bash scripts/toolchain/fetch-pinned.sh --pin bash $WORK/bash.tar.gz \
 echo "[bash] 命中钉值来源，sha256 校验通过"
 
 rm -rf "$WORK/bash-$BASH_VER"
-# ★ 解到 $WORK（不是 /tmp）—— 解到 /tmp 的话下面 cd "$WORK/bash-$BASH_VER"
+#  解到 $WORK（不是 /tmp）—— 解到 /tmp 的话下面 cd "$WORK/bash-$BASH_VER"
 #   会进到一个空目录（那是我上一轮漏改的一处）
 mkdir -p "$WORK"
 tar -xzf "$WORK/bash.tar.gz" -C "$WORK" || die "bash 解包失败" "sha256 是对的但 tar 解不开"
@@ -51,7 +51,7 @@ STUB
     --prefix=/native --disable-nls --without-bash-malloc \
     CC="$CC" \
     CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-unused-result" \
-    LDFLAGS="-Wl,--allow-multiple-definition" \
+    LDFLAGS="-Wl,--allow-multiple-definition -Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" \
     LIBS="$WORK/libtermcap_stub.a $WORK/libbionic_compat.a" \
     bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
     bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \

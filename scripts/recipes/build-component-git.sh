@@ -88,7 +88,7 @@ else
 fi
 export RANLIB="$TC_DIR/llvm-ranlib"
 
-# ── 依赖从哪来：base 筐三个预装件的构建输出 ──────────────────
+#  依赖从哪来：base 筐三个预装件的构建输出 
 # curl / openssl / zlib 早已不再编到 work/deps（那个一次编三份静态库的
 # build-shared-deps.sh 已删）。它们现在是独立的件，各自由自己的脚本编，
 # 构建输出留在 work/<件名>/out/{include,lib}/ —— 那正是 configure 想要的前缀形状

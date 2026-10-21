@@ -15,6 +15,11 @@ rustup target add aarch64-linux-android >/dev/null 2>&1 \
   || echo "[warn] rustup target add 失败（可能已装）"
 
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
+# 而这一件**已经**在链期写了 rpath，而它**不用改**：
+#   07 今天的真机读数：产物里 **DT_RUNPATH [$ORIGIN]**（而 NEEDED 命中 2）
+#   => **=> 而裸 -Wl,-rpath（不带 --enable-new-dtags）在这条路上也出 DT_RUNPATH**
+#   => 而那与 verify-runtime-elf.sh:321 / check-elf-deps.sh:156 一致
+#     （「只有 DT_RPATH 不行，bionic 忽略它」）
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=-Wl,-rpath,\$ORIGIN"
 export CC_aarch64_linux_android="$CC"
 export CXX_aarch64_linux_android="$CC"

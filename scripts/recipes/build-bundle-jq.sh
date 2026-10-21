@@ -37,7 +37,11 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
       > "$WORK/configure.log" 2>&1 \
     || { echo "=== jq configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
   # jq 的二进制在 .libs/ 下（libtool 产物），make install 才把它搬到 bin/
-  make -j"$JOBS" LDFLAGS="-static" > "$WORK/build.log" 2>&1 \
+  # 而那两段 -Wl 是给 DT_RUNPATH 的（而这一件是**静态**的：
+  #   它的 NEEDED 只有 libm/libdl/libc（07 今天的 readelf 读数），
+  #   **而静态产物没有同件的库要找** => **RUNPATH 那一格对它不生效**
+  #   => 而这里给上只是统一形状，而它**不改变这一件的形态**
+  make -j"$JOBS" LDFLAGS="-static -Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" > "$WORK/build.log" 2>&1 \
     || { echo "=== jq 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }
 )
 
@@ -71,14 +75,14 @@ if [ ! -f "$SO" ]; then
   die "jq 没产出" "$SO 不存在（上面是取证输出）"
 fi
 
-# ★ **不复制出 lib/liblobosjq.so 那一份** ——
+#  **不复制出 lib/liblobosjq.so 那一份** ——
 #   缺陷名（C-102）把程序字节复制成一份「库」：原来这里是
 #   `cp -f "$SO" "$OUT_DIR/lib/liblobosjq.so"` + chmod +x —— 于是那一件有两份**逐字节相同**的字节，
-#   而下面那行 emit_piece 又声明 entry=lib/liblobosjq.so ⇒ 运行期去调起的是那份「库」。
+#   而下面那行 emit_piece 又声明 entry=lib/liblobosjq.so  运行期去调起的是那份「库」。
 #   而按 03 今天那一问：「这一件 lib/ 下那份字节，有谁 NEEDED 它？」
 #     jq 的 DT_NEEDED 只有 libm.so / libdl.so / libc.so（07 今天的 readelf 读数）
-#     ⇒ **零人 NEEDED liblobosjq.so** ⇒ lib/ 那一份是**没人要的拷贝**，纯冗余。
-#   ⇒ 而 jq 那个可执行件就是 bin/jq（:48-53 搬的），它自己就是这一件的入口。
+#      **零人 NEEDED liblobosjq.so**  lib/ 那一份是**没人要的拷贝**，纯冗余。
+#    而 jq 那个可执行件就是 bin/jq（:48-53 搬的），它自己就是这一件的入口。
 
 # bins：jq 的可执行入口是 bin/jq（:48-53 搬的）—— 它是这一件的程序那一侧。
 # 显式声明它，打包那一步按**形态**会把 bin/ 下那批搬进包。

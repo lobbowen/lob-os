@@ -181,6 +181,12 @@ answers() {
 }
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
+  # 而 CONFIG_EXTRA_LDFLAGS：**这一件今天不加**
+  #   · 07 今天的真机读数：**busybox 那一件是静态的，无 .so** =>
+  #     **=> 而静态产物没有同件的库要找 => => 而 RUNPATH 那一格对它不适用**
+  #   · 而 busybox 的 Kconfig 里有没有 CONFIG_EXTRA_LDFLAGS 那一项，
+  #     **而本机没有 busybox 源码树**（而我今天核过）=> **那一格[未核]**
+  #   => 而**没有** DT_NEEDED 的那一件，加上 RUNPATH 只会让产物多一个无用段
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
 
 #  必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死

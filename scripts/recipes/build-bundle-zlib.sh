@@ -22,7 +22,7 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
 (
   set -e
   cd "$WORK/src"
-  # ── 静态还是共享由 configure 的 shared 变量决定（第 83 行 shared=1）──
+  #  静态还是共享由 configure 的 shared 变量决定（第 83 行 shared=1）
   #   它靠一次 .so 探测（第 517~529 行）来判定，失败就**静默退回静态**
   #   （Makefile 里 SHAREDLIB/SHAREDLIBV 全空，只剩 libz.a）。
   #   交叉编 Android 时那次探测没通过。
@@ -46,12 +46,12 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
-  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM" \
+  LDSHARED="$CC -shared -Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN' -Wl,-soname,$Z_SHLIBM" \
   SHAREDLIB="$Z_SHLIB" SHAREDLIBV="$Z_SHLIBV" SHAREDLIBM="$Z_SHLIBM" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
 
-  # ── 我此前做错的几处，都记在这里免得再犯 ──────────────────
+  #  我此前做错的几处，都记在这里免得再犯 
   #   1. Makefile.in 里**没有** LIBZ 这个变量 —— 库名是 SHAREDLIBV
   #      （configure 第 444 行）。grep '^LIBZ = ' 永远空。
   #   2. SRCDIR 不是「静态/共享」开关 —— 它是源码子目录前缀

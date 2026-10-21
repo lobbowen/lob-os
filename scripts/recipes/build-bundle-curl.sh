@@ -50,7 +50,8 @@ tar xzf "$ROOT_DIR/work/curl.tar.gz" -C "$WORK/src" --strip-components=1
     curl_cv_lib_crypto_HMAC_Update=yes curl_cv_lib_crypto_HMAC_Init_ex=yes \
     ac_cv_lib_ssl_SSL_new=yes curl_cv_lib_ssl_SSL_connect=yes curl_cv_lib_ssl_SSL_library_init=yes \
     curl_cv_openssl_with_ldl=yes curl_cv_openssl_with_ldl_and_lpthread=yes \
-    CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" > "$WORK/configure.log" 2>&1 \
+    CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
+    LDFLAGS="-Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" > "$WORK/configure.log" 2>&1 \
     || { echo "=== curl configure 失败取证（openssl 相关 + 末 20 行）==="; \
          grep -i openssl "$WORK/configure.log" | tail -12 || true; \
          tail -20 "$WORK/configure.log"; exit 1; }

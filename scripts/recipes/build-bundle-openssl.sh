@@ -26,7 +26,13 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   set -e
   cd "$WORK/src"
   # shared（原来 no-shared）· -fPIC 供动态链接 · 去掉 no-tests/no-ui-console
+  # 而 DT_RUNPATH： 而 openssl 的 Configure **不吃 GNU 的 LDFLAGS 环境变量** 
+  #   （ 仓里原来那一行没有传 LDFLAGS， 而那只是「没写」， **不是「验过不行」**）
+  #     而它**接受 -Wl, 形式的额外链接选项**（ 而这是它的 documented 用法）
+  #     而 --enable-new-dtags 那一项要一起给：
+  #      「只有 DT_RPATH 不行，bionic 忽略它」（verify-runtime-elf.sh:321 与 check-elf-deps.sh:156）
   ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
+    -Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN' \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
@@ -36,7 +42,7 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
     || { echo "=== openssl install_sw 失败取证（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
 )
 
-# ★ 此前这里校验 buildinf.h（构建时间基准）——
+#  此前这里校验 buildinf.h（构建时间基准）——
 #   OpenSSL 3.x 不再生成那个文件（那个判据是 1.x 时代的），所以它成了空尺子。
 #   判据改成「构建产物里要有版本头」：openssl/version.h 或 include/openssl/opensslv.h
 [ -f "$OUT_DIR/include/openssl/opensslv.h" ] || [ -f "$WORK/src/include/openssl/opensslv.h" ] \
