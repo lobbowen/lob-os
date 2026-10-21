@@ -152,7 +152,8 @@
       "urls": [
         "https://busybox.net/downloads/busybox-1.36.1.tar.bz2"
       ],
-      "installName": "busybox"
+      "installName": "busybox",
+      "marker": "busybox.version"
     },
     "ripgrep": {
       "$comment-shape": "**这一项的形状与其余 20 项不同：没有 urls，因为没有可下载的 tarball。** 其余件是「下载源码 tar.gz → 逐字节校验 sha256 → configure/make 编译」；ripgrep 是 Rust 件，走 `cargo install --locked --version 14.1.1`（crates.io），源码由 cargo 自己按 lock 文件取，我们不经手 tarball，所以拿不到「源码包」的 sha256。",
