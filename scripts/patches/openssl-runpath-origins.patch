@@ -1,0 +1,11 @@
+--- a/Configurations/unix-Makefile.tmpl	2026-10-24 05:18:45.718708329 +0800
++++ b/Configurations/unix-Makefile.tmpl	2026-10-24 05:18:45.720309553 +0800
+@@ -1909,7 +1909,7 @@
+       }
+       $recipe .= <<"EOF";
+ $full: $fulldeps
+-	\$(CC) \$(LIB_CFLAGS) $linkflags\$(LIB_LDFLAGS)$shared_soname$shared_imp \\
++	\$(CC) \$(LIB_CFLAGS) $linkflags\$(LIB_LDFLAGS) -Wl,-rpath,'$$ORIGIN'$shared_soname$shared_imp \\
+ 		-o $full$shared_def \\
+ 		$fullobjs \\
+ 		$linklibs \$(LIB_EX_LIBS)

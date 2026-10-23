@@ -31,8 +31,20 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   #     而它**接受 -Wl, 形式的额外链接选项**（ 而这是它的 documented 用法）
   #     而 --enable-new-dtags 那一项要一起给：
   #      「只有 DT_RPATH 不行，bionic 忽略它」（verify-runtime-elf.sh:321 与 check-elf-deps.sh:156）
+  # 而这一份补丁是「我们对上游的一份补丁」，而它带着 pin
+  #   （而 git 那些补丁就是这条路：scripts/recipes/build-component-git.sh:67-73）
+  #   而它**跟着上游那一版走** —— 而它的 pin 与今天取的源码树同版（openssl-3.6.3）
+  #   而**打不上就判红退出**（而那正是 git 那一件的做法）
+  PATCH_NAME="openssl-runpath-origins.patch"
+  bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$PATCH_NAME" "$WORK/$PATCH_NAME"
+  if ! patch -p1 -i "$WORK/$PATCH_NAME"; then
+    echo "::error title=补丁打不上::$PATCH_NAME —— 而上游 openssl 版本与这一份补丁不匹配？"
+    exit 1
+  fi
+  echo "[openssl] 补丁已打：$PATCH_NAME"
+
   ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
-    "-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'" \
+    '-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN' \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
