@@ -32,8 +32,7 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   #     而 --enable-new-dtags 那一项要一起给：
   #      「只有 DT_RPATH 不行，bionic 忽略它」（verify-runtime-elf.sh:321 与 check-elf-deps.sh:156）
   ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
-  #       它先定义 DOLLAR='$' 再拼）
-    '-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN'
+    '-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN' \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
