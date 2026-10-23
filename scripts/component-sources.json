@@ -226,7 +226,7 @@
     },
     "openssl-runpath-origins.patch": {
       "version": "openssl-3.6.3",
-      "sha256": "4c608f2cc439168066b01fa069498078d9aa29876bfe9edf2d0c8637ba856a79",
+      "sha256": "1247d5f6dacdf631ad775fe5d1765f27e41f5d14e6741f40df606ed957eabd3c",
       "urls": [
         "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-runpath-origins.patch"
       ]
