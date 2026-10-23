@@ -158,8 +158,8 @@ case "$TOOL" in
   jq)      SRC_FILES="scripts/recipes/build-bundle-jq.sh" ;;
   curl)    SRC_FILES="scripts/recipes/build-bundle-curl.sh" ;;
   zlib)    SRC_FILES="scripts/recipes/build-bundle-zlib.sh" ;;
-  openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh" ;;
-  crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh" ;;
+  openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches" ;;
+  crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches" ;;
   # node 不在本轮范围（用户 2026-10-16：「node 不要修，node 是不能修的，是后期要用来验证的」）
   #  不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。
