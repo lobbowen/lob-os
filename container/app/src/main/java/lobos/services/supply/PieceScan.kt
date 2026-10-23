@@ -258,9 +258,22 @@ object PieceScan {
         //      **删一个不是件的条目，会越权**（  而 Level.PROGRAM 那几条是程序， 不是件）
         //       而那一格删哪一档**要 01/04 今天裁** ——  我今天只删「登记里标着是件的那些」
         val foundIds = found.map { it.id }.toSet()
+        // 「这一件是不是一件」—— 而判据是**落位目录在不在 opt/ 底下**（而不用 levelOf，
+        // 而 01 今天核过：levelOf 判的是 stateDir/assetEntry，**而那两格与「归谁管」不同问**）
+        val optRootIds: Set<String> = runCatching {
+            SystemDirs.opt(ctx).listFiles()
+                ?.filter { it.isDirectory }
+                ?.map { it.name }
+                ?.toSet()
+        }.getOrNull() ?: emptySet()
+        if (optRootIds.isEmpty()) {
+            // 而读不到 opt/ 底下有什么 => **那一格答不出「有没有该删的」**
+            // => **不删**（「拿不到要答不知道」，而不能拿「没有」当答案）
+            return changed
+        }
         for (e in ProgramIndex.all(ctx)) {
             if (e.id in foundIds) continue
-            if (e.levelOf(ctx) != Level.PIECE) continue      //   只动件那一档，  而程序那一档不碰 
+            // 这一格**不按 levelOf 判**—— 而 01 今天指出：levelOf 判的是 stateDir/assetEntry，            // **不是 role 字段** —— 而它答的是「有没有那个入口」，不是「这一件归谁管」：            // 真机读数（01 今天逐行核过，2026-10-21）：登记八行，role 是 4 library / 3 program，            // 而**按 levelOf 算**（assetEntry 空 => PIECE）是 **4 PIECE / 4 PROGRAM**            // **=> 而两把尺对同一行给出的答案不一样 => 用 levelOf 会误删**            // 例：openssl 那一行 role 是 library 而 assetEntry 是空，            // **=> levelOf 判它 PIECE => 那一行会被删** —— 而它是今天**在册**的那一件。            // => 而本支只管「扫件」（01 今天裁：而 scan 枚举的是 opt/ 底下那些，            // **而一个程序的落位目录根本不在 opt/**）=> **=> 判据是「它是不是一件」**            // **=> 而本支能看见的每一件，按定义都该由它管**            // => 而 found 之外的、又在 opt/ 底下的，才是「扫不到该删」            if (!optRootIds.contains(e.id)) continue
             if (ProgramIndex.remove(ctx, e.id)) {
                 removed++
                 RuntimeDiagnostics.append(
