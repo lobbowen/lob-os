@@ -49,7 +49,7 @@ REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 #   ★★ ⇒ ★★ **=> 而它必须仍是可 grep 的字面文本**（★★ 而 verify-apk-native.sh:215 与 ★★
 #   ★★ ★ ★ build-apk.yml:275 **都按文本 grep 它**）★★
 #   ★★ ⇒ ★★ **=> 而改那张表之后要重跑那个生成器，★★ 而这一行要跟着更新** ★★
-PIECES=(zlib openssl curl jq bash ripgrep busybox)
+PIECES=(zlib openssl curl jq bash busybox ripgrep)
 
 fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url

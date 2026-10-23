@@ -34,7 +34,11 @@ const sources = (doc && doc.sources) || {};
 // 而「哪些项是件」那一格今天还没有（★ ★ 而表里那 27 项里只有 8 项是件，★★ 其余是钉值项）★★
 // ⇒ **=> 而这一份「件」的名单今天还是写死的**（★ ★ 而它归 01 那一格：★★
 // ★ ★ **「哪些项是件」那一格今天不在表里**）★★
-const PIECE_IDS = ['zlib', 'openssl', 'curl', 'jq', 'bash', 'ripgrep', 'busybox'];
+// 而「哪些项是件」今天**从表里读**：★★
+//   ★ ★ 而那一格是 `piece`（布尔格，★ ★ 01 今天裁的键名）★★
+//   ★ ★ 而它只落在那八项上（★★ 而其余项不写那一格）★★
+// ★★ 而 formerly 那一行是写死的（★★ 而 01 今天读数二指出那是**第二份**清单）★★
+const PIECE_IDS = Object.keys(sources).filter((id) => sources[id] && sources[id].piece === true);
 
 const out = PIECE_IDS.filter((id) => {
   const e = sources[id] || {};
