@@ -35,6 +35,20 @@ REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 #    而**归并不是「从列表里删掉」**：
 #      删掉之后那份字节仍由 openssl 那一件管（  而它本来就在那件的文件里）
 #        而这一条是「不让它再被登记成独立一件」，  不是「丢掉那份字节」
+# ★★ 而 PIECES 从那份表里算（01 今天裁）：★★
+#   ★ ★ **要取的是 notStandalone 不为 true 的那些**（★ ★ 而列法是「不为 true」，★★
+#   ★ ★ **而不是「为 false」** —— ★★ 而其余项**不写**那一格，★★ 而「没有」不等于「false」）★★
+#   ★★ 而这一行**仍然是那一行文本**（★ ★ 而 verify-apk-native.sh:215 与 build-apk.yml:275 ★★
+#   ★ ★ **都按文本 grep 它**）⇒ ★★ **=> 而它必须还是可 grep 的** ★★
+#   ★★ => ★★ **=> 而 pieces-from-table.js 是那一行的生成者** ★★
+# ★★ 而 PIECES 从那份表里算（01 今天裁）：★★
+#   ★ ★ **要取的是 notStandalone 不为 true 的那些**（★ ★ 而列法是「不为 true」，★★
+#   ★ ★ **而不是「为 false」** —— ★★ 而其余项**不写**那一格，★★ 而「没有」不等于「false」）★★
+#   ★★ 而生成者是 scripts/toolchain/pieces-from-table.js（★ ★ 而它读同一张表）★★
+#   ★★ ⇒ ★★ **=> 而下面这一行是那个生成器今天算出来的结果** ★★
+#   ★★ ⇒ ★★ **=> 而它必须仍是可 grep 的字面文本**（★★ 而 verify-apk-native.sh:215 与 ★★
+#   ★★ ★ ★ build-apk.yml:275 **都按文本 grep 它**）★★
+#   ★★ ⇒ ★★ **=> 而改那张表之后要重跑那个生成器，★★ 而这一行要跟着更新** ★★
 PIECES=(zlib openssl curl jq bash ripgrep busybox)
 
 fetch_asset() {

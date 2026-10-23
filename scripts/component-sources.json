@@ -183,6 +183,7 @@
         "https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz"
       ],
       "sameAs": "openssl",
+      "notStandalone": true,
       "note": "libcrypto.so 与 libssl.so 一并编出（OpenSSL 的一部分），不是独立的上游项目 —— 版本与 openssl 同步。"
     },
     "node": {
