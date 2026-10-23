@@ -43,8 +43,18 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   fi
   echo "[openssl] 补丁已打：$PATCH_NAME"
 
+  # 而 rpath **不再从 Configure 那一行给**：
+  #   而它由那份补丁给（scripts/patches/openssl-runpath-origins.patch）
+  #   => 而两处都给，而链接器会把两个 rpath 用冒号连起来，=> 而值成 RIGIN:RIGIN
+  #   => 而那一处撤掉，而值只剩补丁那一个
+  # 而 --enable-new-dtags **要留着**（★★ 而它决定出 DT_RUNPATH 而不是 DT_RPATH，★★
+  #   而 bionic 忽略 DT_RPATH，★★ 而 verify-runtime-elf.sh:321 查的是 DT_RUNPATH）★★
+  #   而 rpath 那一项**不再从 Configure 那一行给**：
+  #   而它由那份补丁给（scripts/patches/openssl-runpath-origins.patch）
+  #   => 而两处都给，而链接器会把两个 rpath 用冒号连起来，=> 而值成 RIGIN:RIGIN
+  #   => 而那一处撤掉，而值只剩补丁那一个
   ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
-    '-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN' \
+    '-Wl,--enable-new-dtags' \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
     no-tests no-ui-console > "$WORK/configure.log" 2>&1 \
     || { echo "=== openssl Configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
