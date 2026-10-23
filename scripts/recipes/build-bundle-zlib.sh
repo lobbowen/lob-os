@@ -47,7 +47,11 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
   #       它先定义 DOLLAR='$' 再拼）
-  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM" \
+  # 而 rpath 给在**被依赖的那一份**上（★ ★ 而 01 今天 S100 裁的第五格走丙）★★
+  #   ★ ★ **=> 而单引号包住**整个** -Wl,-rpath,$ORIGIN（★ ★ 而那与 OpenSSL 那三档是同一个形态）★★
+  #   ★ ★ **=> 而 zlib 的 configure 原样把 LDSHARED 写进 Makefile（★ ★ 而 Makefile.in:289 是 recipe 行）★★
+  #   ★ ★ **=> 而 $$ 在 make 折一次成一个（★★ 而这里没有 Perl 那一层）★★
+  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM \-Wl,--enable-new-dtags \-rpath,$$ORIGIN'"
   SHAREDLIB="$Z_SHLIB" SHAREDLIBV="$Z_SHLIBV" SHAREDLIBM="$Z_SHLIBM" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
