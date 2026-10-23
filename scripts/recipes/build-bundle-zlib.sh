@@ -46,14 +46,8 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
-  # 而 $ORIGIN：**单引号在双引号上下文里不防展开** ——   而 $O 被 shell 当变量（空），
-  #     **=> 而 $ORIGIN 变成了 RIGIN**（ 真机读数： run 39531522481，
-  #       产物里 DT_RUNPATH 的值是 [RIGIN] 而不是 [$ORIGIN]）
-  #   =>  而这一格要**字面的 $ORIGIN**， 而 shell 要 $ORIGIN 才不展开。
-  #   =>  **照仓里那个能跑通的先例**（build-node-android.sh:298-299：
   #       它先定义 DOLLAR='$' 再拼）
-  RPATH_ARG="-Wl,--enable-new-dtags -Wl,-rpath,'$$ORIGIN'"
-  LDSHARED="$CC -shared ${RPATH_ARG} -Wl,-soname,$Z_SHLIBM" \
+  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM" \
   SHAREDLIB="$Z_SHLIB" SHAREDLIBV="$Z_SHLIBV" SHAREDLIBM="$Z_SHLIBM" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
