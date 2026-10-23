@@ -34,7 +34,7 @@ done
 
 deps_for() {
       case "$1" in
-      # ── 依赖哪些件（照 dpkg 的 Depends=）──────────────────────
+      #  依赖哪些件（照 dpkg 的 Depends=）
       # 只有「真的缺了它就编不出来/跑不起来」的才算
       curl)       echo "openssl zlib" ;;
       openssl)    echo "zlib" ;;
@@ -42,10 +42,10 @@ deps_for() {
       git)        echo "curl openssl zlib" ;;
       python)     echo "openssl zlib" ;;
       node)       echo "" ;;
-      # ── 自己就是自己（编它要它自己的源码）────────────────────
+      #  自己就是自己（编它要它自己的源码）
       bash|ripgrep|busybox|jq|sqlite|npm|pnpm|llvm|make|cmake|pkgconf) echo "" ;;
       zlib)      echo "" ;;
-      # ── 不是件
+      #  不是件
       libcxx|sysroot)                                               echo "" ;;
       *) die ;;
       esac
@@ -63,16 +63,16 @@ deps_for() {
 # 它们本身就是基础件，且未来会不断增加 —— 与环境件不同类，单独立筐。
 bucket_for() {
       case "$1" in
-      # ── base 基础环境件：随 APK 走 ──────────────────────────────
+      #  base 基础环境件：随 APK 走 
       # 命令与库都在这里 —— Linux 不区分它们（ldconfig 扫的是目录，
       # libz.so 与 libcurl.so 是同一类东西：/usr/lib 下的共享库）
       bash|ripgrep|busybox|jq)                             echo "base" ;;
       curl|zlib|openssl|crypto)                            echo "base" ;;
-      # ── rt 运行时：zip 件，用户自己装 ──────────────────────────
+      #  rt 运行时：zip 件，用户自己装 
       node|python)echo "rt" ;;
-      # ── tool 工具：zip 件，用户自己装 ─────────────────────────
+      #  tool 工具：zip 件，用户自己装 
       git|sqlite|npm|pnpm|llvm|make|cmake|pkgconf)        echo "tool" ;;
-      # ── 不是件，但随 APK 走 ──────────────────────────────────
+      #  不是件，但随 APK 走 
       # libcxx  NDK 给的共享库，直接进 jniLibs（不是我们编的件）
       # sysroot 编译期的头文件与库目录（Linux 里对应 gcc 包的 include/）
       libcxx|sysroot)                                   echo "apkonly" ;;
@@ -82,7 +82,14 @@ bucket_for() {
 
 # 本脚本认的件名 —— 从 deps_for 与 bucket_for 的 case 里抄出来的，
 # 免得「不在已知列表」这句提示不给出可抄的清单。
-KNOWN_TOOLS="bash ripgrep busybox jq curl zlib openssl crypto"
+#  而这一份清单**从 bucket_for 的 case 里现算**， 而不写死（ 01 今天 S93 裁的：
+#     ** 那一处删掉， 而它的内容改成从  现算**）
+#    而它原来只是一份**抄本**（ 而 :83-84 那句注释自己写着「从 deps_for 与 
+#    bucket_for 的 case 里抄出来的」）， 而它唯一的读者是下面那句错误文案）
+#    **=> 而它不是第三份真源**（ 04 今天那条： 「算出来的它是上游， 抄出来的它该被删掉并改成现算」）
+#    而**提示里那份清单必须还在**（ 而 :92 那句明写「免得这句提示不给出可抄的清单」）
+#    而取法： base 那一档的分支名 = 「哪些项是件」那八项（ 04 今天给的取法）
+KNOWN_TOOLS="$(bash "$ROOT_DIR/scripts/toolchain/known-tools.sh")"
 
 die() {
   # 走 stderr：die 是在命令替换里被调的（DEPS="$(deps_for …)"），
@@ -155,7 +162,7 @@ case "$TOOL" in
   crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches" ;;
   # node 不在本轮范围（用户 2026-10-16：「node 不要修，node 是不能修的，是后期要用来验证的」）
-  # ⇒ 不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。
+  #  不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。
   node)    SRC_FILES="" ;;
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
@@ -165,11 +172,11 @@ esac
 # 决定「包里有什么」的两个机制，不产字节但改产物内容：
 #   gen-component-meta.js  决定 meta 的字段（roles 就是它加的）
 #   package-bundle-zip.sh   决定哪些文件进包、怎么命名
-# 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 ⇒
+# 2026-10-16：改 gen-component-meta.js 加了 roles，而八件的指纹没变 
 # 方案甲本该拦住却没拦住。判别形式不是「它是不是源码」，而是
 # 「我改了这个文件，包里会不会变」。
 # 2026-10-20：形态判定与写形态的那份脚本也进了包里（piece-shape.json），
-#   改它同样会改产物内容 ⇒ 它也要进指纹。
+#   改它同样会改产物内容  它也要进指纹。
 PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-bundle-zip.sh scripts/toolchain/elf-form.sh"
 SRC_FILES="$SRC_FILES $PKG_MECH"
 
