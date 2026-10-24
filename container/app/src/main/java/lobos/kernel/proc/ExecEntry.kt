@@ -56,7 +56,20 @@ object ExecEntry {
 
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
         is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)
-        is Shape.Elf -> listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
+        // 缺陷（C-102）**重复替换：已替换过的 argv 又被替换一次**。
+        // 真机读数（07，logcat）：Cmdline = /system/bin/linker64 /system/bin/linker64 …/opt/bash/…/bash
+        // —— linker64 出现两次。多出来的这一次来自**第二次调用本函数**（上游已替过）。
+        // 而 linker64 自己也是 ET_DYN（07 那一份：ELF 64-bit LSB shared object）⇒ 本函数会再替一次。
+        // linker64 把自己当程序加载 ⇒ call_constructors → libc 初始化链崩
+        //（kill-audit 记 desc=null pointer dereference）。
+        //
+        // 而这一支**不能删**（ET_DYN 要经 linker64 驱动 —— 唯一真相源是本函数，native 那份已删，C-87），
+        // 而原生那一支（container/native/d1/exec-path.c:430）本来就有这个门：
+        //   etype==ET_DYN **且** path 不是 SYSTEM_LINKER 本身。
+        // ⇒ 而这里补上同一道门，宿主侧与原生侧口径一致。
+        is Shape.Elf ->
+            if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)
+            else listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
