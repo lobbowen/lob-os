@@ -459,4 +459,49 @@ BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f";
 #   那一趟逐字是「##[error]…/out/bin/cat 不是 aarch64 ELF 或小于 500000 字节」）。
 #   => 而而那个下限的作用只是「排除掉编坏了的产物」（=> 而 0 字节或几百字节那种），
 #   => 而而 100000 那一档已经能排除掉那一种（=> 而而上面那个 100000 的尺寸下限同一档）。
-emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version"
+# 缺陷名（C-102）**entry 指到实现而实现不认那个名字** ——
+# 而 busybox 今天已经栽在这上面（=> 而真机读数：=> 而 exit 127，
+# => 而而 stderr 逐字是「libbusybox.so: applet not found」）。
+#
+# 而按 C-103 这一族它为什么有两边：
+#   一边「entry 该指向那个可执行体（本体）」；
+#   另一边「entry 该指向一个用户会叫的名字（applet 软链）」。
+# 而 04 裁的是**后者**：
+#   => 而 entry 那一格的语义是「**用户叫它什么**」，
+#      而本体是**实现**不是名字，
+#      而**本体不认自己的文件名**（=> 而 busybox 按 argv[0] 的 basename 找 applet，
+#         => 而而「libbusybox.so」不在它那 19 个名字里）。
+#   => 而判别形式（机械）：**起它时 argv[0] 的 basename 是不是那个件自己认的名字**。
+#      而 busybox 不是（=> 而 basename 是 libbusybox.so），
+#      而任何多名字的件（=> 而 busybox、coreutils 那一类）都不是，
+#      而单名字的件（=> 而 openssl、node 那一类）是。
+#
+# 而本机核到的那几件事实：
+#   · upstream busybox 1.36.1 `libbb/appletlib.c:914` 逐字是
+#       `applet_name = bb_get_last_path_component_nostrip(argv[0]);`
+#     而 `:993` 到 `:996` 逐字是 "<applet_name>: applet not found" + `exit(127)`；
+#   · 而 busybox 认的那些名字（=> 而 elf-form.sh:406 那一段逐字）是 19 个：
+#     awk cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi；
+#   · 而本体在 bin/ 下叫 libbusybox.so，=> 而那 17（18）个是**软链**
+#     （=> 而本机从 APK 里实读：=> 而 bin/cat 是 15 字节的软链、内容 `./libbusybox.so`）；
+#   · 而 `:331` 那一行**跳过 busybox**（=> 而上游 make install 建的 `busybox` 那个名字不落包），
+#     ⇒ 而「busybox」这个命令名**今天不可用**，⇒ 而而它不能当 entry。
+#
+# ⇒ 而**选 `cat`**：
+#   · 而它在**白名单**里（=> 而 `:83` 那一行 APPLETS 逐字含 CAT），
+#     ⇒ 而而它**保证**被编出来（=> 而白名单式配置只开 $APPLETS 那些）；
+#   · 而它在**落包集**里（=> 而本机从 APK 里实读 bin/cat 存在），
+#   · 而它**不是本体**（=> 而本体是 libbusybox.so），
+#   · 而它是 busybox **自己认的名字**（=> 而 cat 在那 19 个里），
+#     ⇒ 而而 argv[0] 的 basename = cat ⇒ ⇒ 而 linker 找得到 ⇒ ⇒ 而不 exit 127；
+#   · 而它是**最基本**的那一个（=> 而 ls/cp/mv/rm 也都在白名单里，
+#     ⇒ 而而按「用户会叫它什么」这一格，⇒ 而任何白名单里的 applet 都满足，
+#     ⇒ 而而取哪一个是**这一件的形状**问题 ⇒ 而而 cat 是白名单里第一个可执行文件
+#     （=> 而 `:83` 那一行按 TAR GZIP … 排，⇒ 而 cat 在第 9 位；
+#      ⇒ 而而 tar/gzip/… 那些更靠前，⇒ 而而取白名单里第一个更贴「用户叫它什么」），
+#     ⇒ 而而它也是**本机实测**过 exit 0 的那一个（=> 而 07 核到「bin/cat 那一族是 exit 0」）。
+#
+# ⇒ 而**本体仍在包里**（=> 而那是那 18 条软链的**指向目标**），
+#   ⇒ 而而它仍由那 18 条软链引用（=> 而 C-104 那一族：同源两路径），
+#   ⇒ 而而它仍要落位（=> 而它是 lib/ 与 bin/ 下的那一份实体）。
+emit_piece "$TOOL" "$OUT_DIR" bin/cat 100000 "$BB_BINS" "$TOOL.version"
