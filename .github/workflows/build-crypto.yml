@@ -1,11 +1,25 @@
 name: Build crypto
 
-# 编 libcrypto.so —— 它是 openssl 的一部分，但清单里是独立的一件
-# （component-sources.json 里 crypto.sameAs=openssl），
-# 控制面板按清单取，所以它也得有自己的固化产物。
+# crypto 那一件的**固化产物由 build-openssl.yml 那一趟产出** ——
+# 而这一份只是**核**它：它现在不再自己拆包、不再自己打包、不再自己上传。
 #
-# 为什么不是编出来的：openssl 要编 10 分钟以上，crypto 只是它的一个 .so。
-# 这里从 openssl 的固化包里取 —— openssl 那件编一次，这里复用。
+# 缺陷名（C-102）**同一个 libcrypto.so 字节有两条生成路径**：
+#   原来：openssl 那一件一次 make 出 libssl.so 与 libcrypto.so，
+#   而这一份（build-crypto.yml）**从 openssl 的固化包里拆出来**重打一个包并上传到 base-crypto；
+#   而那一拆一打发生在**另一次流水线**（buildRun 不同）——
+#   读数：base-crypto 筐里 crypto-openssl+3.6.3+ndk30.0.16248370+api35+src90fa46a13608.zip
+#   那一份的 component-meta.json 里 buildRun=40030227900，
+#   而 base-openssl 筐里 src90fa46a13608 那一份的 meta 里 buildRun=40030215774 —— 两者不同。
+#   => 而「一份产物里那几件要保证同一次构建」（01 今天 S81/S82 裁的是甲）这一格不成立。
+#   => 而 lead 今天裁：保留 crypto 作为独立一件，改由 openssl 那一趟同源产出。
+#
+# 而这一份的读者 scripts/toolchain/piece-workflow-name.sh:13 已经写着
+#   crypto) echo "build-openssl.yml" ;;   # crypto 由 openssl 连带产出
+#   而它的读者是 fetch-prebuilt-pieces.sh:121 —— 与本件现在做的事是同一件事。
+#
+# 所以这一份做的事：
+#   1. dispatch build-openssl.yml（那一趟会同时产出并上传 crypto 那一件）；
+#   2. 等 base-crypto 筐里那一件到位并**核它的内容**（meta 与形状）。
 on:
   workflow_dispatch: {}
 
@@ -15,11 +29,12 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -29,106 +44,76 @@ jobs:
           set -euo pipefail
           bash scripts/toolchain/piece-key.sh crypto
 
-      - name: 取 openssl 的固化包（libcrypto.so 在里面）
+      - name: 触发 openssl 那一趟（crypto 由它连带产出）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          echo "[crypto] 这一件不再自己编 —— crypto 由 openssl 那一趟同源产出"
+          gh workflow run build-openssl.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}"
+          echo "[crypto] 已 dispatch build-openssl.yml"
+
+      - name: 等 base-crypto 筐里那一件到位，并核它的内容
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          echo "[crypto] 这一件的依赖是 openssl，先取它"
-          OTAG="$(bash scripts/toolchain/cache-key.sh tag openssl)"
-          OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
-          mkdir -p dist
-          WAIT_S=900
+          echo "[crypto] 等 tag=$TAG asset=$ASSET"
+          WAIT_S=3600
           WAITED=0
           while true; do
-            # ★ 这一格验的是**openssl 那个包里该有的入口** —— 而今天 openssl 的 entry 是 bin/openssl
-            #   （01 今天裁的：entry 指**程序形态**那一份；而那两份库仍要在包里）。
-            #   07 今天核到：原来这一行写的是 lib/libssl.so —— 与今天那件的实际入口不一致。
-            if bash scripts/toolchain/reusable-asset.sh "$OTAG" "$OASSET"; then
-              echo "[crypto] openssl 到位（等了 ${WAITED}s）"
+            if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET"; then
+              echo "[crypto] 到位（等了 ${WAITED}s）"
               break
             fi
             if [ "$WAITED" -ge "$WAIT_S" ]; then
-              echo "::error title=等了 ${WAIT_S}s 还没有 openssl 的固化包::等的是什么：tag=$OTAG asset=$OASSET"
-              echo "::error:: 缺的是什么：那个 Release tag 上还没有这个 asset（openssl 那一件还没固化完，或指纹变了要重固化）"
-              echo "::error:: 该等的不是这一件自己编 —— crypto 取的是 openssl 里的 libcrypto.so，它编不出来"
+              echo "::error title=等了 ${WAIT_S}s base-crypto 里还没有那一件::tag=$TAG asset=$ASSET"
               exit 1
             fi
-            echo "[crypto] openssl 还没就位，等 30s（已等 ${WAITED}s / 上限 ${WAIT_S}s）"
+            echo "[crypto] 还没就位，等 30s（已等 ${WAITED}s / 上限 ${WAIT_S}s）"
             sleep 30
             WAITED=$((WAITED + 30))
           done
-          bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
-          rm -rf .openssl-pkg && mkdir -p .openssl-pkg
-          unzip -qq -o "dist/$OASSET" -d .openssl-pkg
-          # ★ **缺陷名（C-102）拆包要的那一份不存在** —— 原来这一格找 lib/libcrypto.so（主名），
-          #   而 openssl 那个包里**只有 libssl.so 带主名**（主名是「这个包里哪个是入口」的标记，
-          #   gen-component-meta.js 的 computeEntry 靠 lib/ 下唯一的主名 .so 算 entry；
-          #   两个主名会让它判「落位结果不唯一」⇒ 包装不出来）。
-          #   crypto 那一份在包里是**版本层** libcrypto.so.3 —— 那才是要从它拆出去的那份字节。
-          #   而本件自己的主名由下面那一步摆出来（ln -s libcrypto.so.3 …），不靠包里的。
-          CRYPTO_IN_PKG=""
-          for cand in .openssl-pkg/lib/libcrypto.so.3 .openssl-pkg/lib/libcrypto.so.3.* .openssl-pkg/lib/libcrypto.so; do
-            if [ -f "$cand" ]; then CRYPTO_IN_PKG="$cand"; break; fi
-          done
-          [ -n "$CRYPTO_IN_PKG" ] || {
-            echo "::error title=openssl 包里没有 libcrypto.so::版本层 libcrypto.so.3 也不在？路径不对？"
-            find .openssl-pkg -type f | head -20
-            exit 1
-          }
 
-      - name: 打包 crypto（自描述）
-        run: |
-          set -euo pipefail
-          ASSET="${{ steps.uwkey.outputs.asset }}"
-          TAG="${{ steps.uwkey.outputs.tag }}"
-          rm -rf .crypto-out && mkdir -p .crypto-out/lib
-          # ★ **自己再找一次那一格** —— 变量不跨 step（CRYPTO_IN_PKG 是上一步的局部变量，
-          #   而这一步是另一个 shell ⇒ 上一版这里报 "CRYPTO_IN_PKG: unbound variable"）。
-          #   而 .openssl-pkg 还在盘上（同一个 job 的同一个工作目录）。
-          CRYPTO_IN_PKG=""
-          for cand in .openssl-pkg/lib/libcrypto.so.3 .openssl-pkg/lib/libcrypto.so.3.* .openssl-pkg/lib/libcrypto.so; do
-            if [ -f "$cand" ]; then CRYPTO_IN_PKG="$cand"; break; fi
-          done
-          [ -n "$CRYPTO_IN_PKG" ] || {
-            echo "::error title=openssl 包里没有 libcrypto.so::版本层 libcrypto.so.3 也不在？路径不对？"
-            find .openssl-pkg -type f | head -20
-            exit 1
-          }
-          cp -Pf "$CRYPTO_IN_PKG" .crypto-out/lib/
-          # 本件的主名（libcrypto.so）由本件自己摆出来 ——
-          # openssl 那件的包里只有 libssl.so 带主名（那是 openssl 的入口标记），
-          # 拆出来的这份要重新摆成它自己的主名，否则清单算不出 entry。
-          [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CRYPTO_IN_PKG")" .crypto-out/lib/libcrypto.so
-          # ★ 这一件是**纯库件**（bin/ 目录不存在）⇒ 按今天的新规则它的 entry **留空**
-          #   （按 C-05「没有」就是没有）—— 而打包侧那一格**总是按形态算**（这一格只是声明）。
-          bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 ""
-
-      - name: 验形态（包自描述：库还是程序）
-        if: steps.reuse.outputs.hit != 'yes'
-        run: |
-          set -euo pipefail
-          PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
-          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
-          # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
-          # 现场用 readelf 复算一遍，两路对账。
-          bash scripts/verify/verify-piece-shape.sh "$PKG" library
-
-      - name: 固化标准件包到 Release
+      - name: 核那一件的内容（形状 + 构建标识与 openssl 那一份同源）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
-          PKG="$(ls dist/component-crypto-*.zip 2>/dev/null | head -1 || true)"
-          [ -n "$PKG" ] || { echo "::error title=没有标准包::"; ls -la dist/; exit 1; }
-          cp -f "$PKG" "dist/$ASSET"
-          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
-          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "crypto 固化产物（openssl 的一部分）" --notes "从 base-openssl 的固化包里取 libcrypto.so 重新打包"
-          gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
-          echo "[ok] 已固化 $ASSET → $TAG"
+          ASSET="${{ steps.uwkey.outputs.asset }}"
+          OTAG="$(bash scripts/toolchain/cache-key.sh tag openssl)"
+          OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
+          mkdir -p dist
+          bash scripts/toolchain/fetch-release-asset.sh "$TAG" "$ASSET" dist
+          bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
+          rm -rf c-pkg o-pkg && mkdir -p c-pkg o-pkg
+          unzip -qq -o "dist/$ASSET" -d c-pkg
+          unzip -qq -o "dist/$OASSET" -d o-pkg
+          # 形状对账（只看包本身）。
+          bash scripts/verify/verify-piece-shape.sh "dist/$ASSET" library
+          # 构建标识：crypto 那一份必须与 openssl 那一份**同一格** ——
+          #   而那正是「同一次构建」那一格要验的（buildSha 与 buildRun 两格都要相等）。
+          for f in c-pkg/component-meta.json o-pkg/component-meta.json; do
+            [ -f "$f" ] || { echo "::error title=包里没有 component-meta.json::$f 不在"; exit 1; }
+          done
+          node -e '
+            const fs=require("fs");
+            const c=JSON.parse(fs.readFileSync("c-pkg/component-meta.json","utf8"));
+            const o=JSON.parse(fs.readFileSync("o-pkg/component-meta.json","utf8"));
+            const keys=["buildSha","buildRun"];
+            let bad=0;
+            for(const k of keys){
+              const cv=String(c[k]||""), ov=String(o[k]||"");
+              const same=cv!=="" && cv===ov;
+              console.log("[crypto] "+k+": crypto="+cv+" openssl="+ov+" => "+(same?"同":"不同"));
+              if(!same) bad=1;
+            }
+            if(bad){console.error("::error title=crypto 与 openssl 不是同一次构建::那两格 buildSha 与 buildRun 必须逐字相同");process.exit(1);}
+          '
+          echo "[ok] crypto 与 openssl 是同一次构建（buildSha 与 buildRun 两格逐字相同）"
 
       - name: 失败现场（Job Summary，不裁剪）
         if: always()

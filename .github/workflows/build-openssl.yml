@@ -107,6 +107,87 @@ jobs:
           #   openssl 固化不完 ⇒ crypto 拆不出包（它要等 openssl 固化）⇒ 互等。
           #   ★ **缺陷名（C-102）连带件固化两处都要、而其中一处拿不到那份产物**：
           #   连带件的固化只该有一处 —— 由依赖它的那一件自己的 workflow 做（build-crypto.yml）。
+      - name: 打 crypto 那一件的包（与 openssl 同一份字节，同一次构建）
+        run: |
+          set -euo pipefail
+          # 缺陷名（C-102）**同一个 libcrypto.so 字节有两条生成路径**：
+          #   原来：openssl 那一件一次 make 出 libssl.so 与 libcrypto.so，
+          #   而 crypto 那一件由 build-crypto.yml **从 openssl 的固化包里拆出来**重打一个包
+          #   —— 那一拆一打发生在**另一次流水线**（buildRun 不同），
+          #   于是「一份产物里那几件要保证同一次构建」这一格不成立。
+          #   而 01 今天 S81/S82 裁的是甲（要保证），而 lead 今天裁的是
+          #   「保留 crypto 作为独立一件，改由 openssl 那一趟同源产出」。
+          #   => 而这条路径就是**唯一**那一条：crypto 的字节取自 openssl 那一份字节。
+          #
+          # 而 crypto 那一件的 meta 由 package-bundle-zip.sh 那一路生成
+          #   （不是 package-component.sh 那一路 —— 后者传四个位置参数，
+          #   而 gen-component-meta.js:61 到 66 已拒收那一形态，exit 1）。
+          #
+          # 而 crypto 那一件的 tag 与 asset 名仍由 cache-key.sh 算（输入不变 ⇒ 指纹不变）。
+          CTAG="$(bash scripts/toolchain/cache-key.sh tag crypto)"
+          CASSET="$(bash scripts/toolchain/cache-key.sh asset crypto)"
+          echo "[crypto] tag=$CTAG asset=$CASSET"
+
+          # 取 openssl 那一份字节 ——
+          #   本轮编的：dist/ 里那个包；本轮复用的：从 Release 取那个 asset。
+          #   两种情况下都**是 openssl 那一件的那份字节**。
+          OTAG="$(bash scripts/toolchain/cache-key.sh tag openssl)"
+          OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
+          OPKG="$(ls dist/component-openssl-*.zip 2>/dev/null | head -1 || true)"
+          if [ -z "$OPKG" ]; then
+            echo "[crypto] 本轮没编 openssl（复用固化产物）⇒ 从 Release 取 $OASSET"
+            bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
+            OPKG="dist/$OASSET"
+          fi
+          [ -f "$OPKG" ] || { echo "::error title=找不到 openssl 那一份包::$OPKG 不在"; ls -la dist/ | head; exit 1; }
+          rm -rf .openssl-pkg && mkdir -p .openssl-pkg
+          unzip -qq -o "$OPKG" -d .openssl-pkg
+
+          # crypto 那一件的字节 = openssl 那一份包里的 libcrypto.so（实体那份，不是软链）。
+          CR=""
+          for cand in .openssl-pkg/lib/libcrypto.so .openssl-pkg/lib/libcrypto.so.* ; do
+            if [ -f "$cand" ] && [ ! -L "$cand" ]; then CR="$cand"; break; fi
+          done
+          [ -n "$CR" ] || { echo "::error title=openssl 包里没有 libcrypto.so::实体那份不在"; find .openssl-pkg -type f | head -20; exit 1; }
+          echo "[crypto] 字节来源（openssl 那一份包）: $CR  （包=$OPKG）"
+
+          # 构建标识**取自 openssl 那一份 meta**（而不是本趟流水线）——
+          #   而那正是「同一次构建」那一格要的那两格（buildSha 与 buildRun）。
+          #   而 package-bundle-zip.sh 那两格是从 GITHUB_SHA / GITHUB_RUN_ID 读的
+          #   （package-bundle-zip.sh:303 到 304），所以这里给成 openssl 那一份的值。
+          OSHA="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < .openssl-pkg/component-meta.json)"
+          ORUN="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < .openssl-pkg/component-meta.json)"
+          [ -n "$OSHA" ] && [ -n "$ORUN" ] || { echo "::error title=openssl 那一份 meta 里没有构建标识::buildSha=$OSHA buildRun=$ORUN"; cat .openssl-pkg/component-meta.json; exit 1; }
+          export GITHUB_SHA="$OSHA"
+          export GITHUB_RUN_ID="$ORUN"
+          echo "[crypto] 构建标识取自 openssl 那一份 meta: buildSha=$OSHA buildRun=$ORUN"
+
+          rm -rf .crypto-out && mkdir -p .crypto-out/lib
+          cp -Pf "$CR" .crypto-out/lib/
+          # 本件自己的主名由本件自己摆出来（openssl 那个包里主名是 libssl.so，
+          # 而 crypto 那一件要算得出 entry 就得自己有主名）。
+          [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CR")" .crypto-out/lib/libcrypto.so
+          # 这一件是**纯库件**（bin/ 目录不存在）⇒ entry 留空（按 C-05「没有」就是没有）。
+          # 而 package-bundle-zip.sh 在打包前会 rm -rf dist/* —— 而那**不能**打在 openssl 固化之前
+          #   （那会把 openssl 那个包删掉，而固化那一步按 ls dist/component-*.zip 取包）。
+          #   => 而这一步排在 openssl 固化**之后**，而它自己产出的包在 dist/ 里已上传完。
+          bash scripts/recipes/package-bundle-zip.sh crypto .crypto-out 3.6.3 ""
+
+          # 形态自述对账（只看包本身）。
+          CPKG="$(ls dist/component-crypto-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$CPKG" ] || { echo "::error title=crypto 没有产出包::dist/ 下没有 component-crypto-*.zip"; ls -la dist/ | head; exit 1; }
+          bash scripts/verify/verify-piece-shape.sh "$CPKG" library
+
+          # 固化到 base-crypto（tag 与 asset 名由 cache-key.sh 算，与 build-crypto.yml 同一处）。
+          cp -f "$CPKG" "dist/$CASSET"
+          sha256sum "dist/$CASSET" | cut -d' ' -f1 > "dist/$CASSET.sha256"
+          gh release view "$CTAG" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create "$CTAG" --repo "${{ github.repository }}" \
+                 --title "crypto 固化产物（openssl 的一部分）" \
+                 --notes "与 openssl 同一份字节（构建标识取自 openssl 那一份 meta）"
+          gh release upload "$CTAG" "dist/$CASSET" "dist/$CASSET.sha256" --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已固化 $CASSET → $CTAG"
+
       - name: 失败现场（Job Summary，不裁剪）
         if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh openssl
