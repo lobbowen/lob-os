@@ -450,4 +450,13 @@ printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
 #       **表 − 落包集 = {awk, sh}**（被白名单裁掉的那部分） 而这与 C-16 同源：
 #       它是唯一能发现「事实与声明开始分家」的那个核对口。
 BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
-emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 500000 "$BB_BINS" "$TOOL.version"
+# 那个最小字节数（=> 而 emit_piece 的第 4 个形参是 min，=> 而 bundle-env.sh:182 那一行用它判
+# 「不是 aarch64 ELF 或小于 $min 字节」）：
+#   改前是 500000，=> 而而那个数是**静态编**那一版的实测值（=> 而而静态编那一份是 547392 字节，
+#   => 而而它落在那个下限之上）。
+#   而这一件改成 PIE（动态）之后它小得多（=> 而 CI 实测：=> 而 out/bin/cat 那一趟是 164328 字节），
+#   **=> 而那个下限会把一个好的产物判红**（=> 而真机读数：=> 而 build-busybox run 40106308483
+#   那一趟逐字是「##[error]…/out/bin/cat 不是 aarch64 ELF 或小于 500000 字节」）。
+#   => 而而那个下限的作用只是「排除掉编坏了的产物」（=> 而 0 字节或几百字节那种），
+#   => 而而 100000 那一档已经能排除掉那一种（=> 而而上面那个 100000 的尺寸下限同一档）。
+emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version"
