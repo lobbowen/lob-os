@@ -138,6 +138,29 @@ function is_program_form(dir, name) {
 // 它的 entry 指向了 lib 那一份，而验收要求「入口指向程序形态那份」。
 // 现在按用户三行规则第二条（库装库目录、程序装程序目录）：
 // 入口只可能落在 bin/ 那一份；纯库件（bin/ 下没有可执行形态那份）才把 entry 指向 lib。
+
+// **作者那一侧给的「入口该取哪一个名字」** —— 那一格落在
+// component-sources.json 的 `sources.<件>.entryName`。
+//
+// 而 01 那一件 S115 第三节落点 ③ 逐字：「**候选集合与每条候选的正当性由那一件的作者那一侧给**
+//（=> 而 busybox 那一族上游自带那一组，=> 而上游知道每个 applet 的定位）」，
+// 而「取哪一个」是**使用期的分布**（=> 而 busybox 认全部那些名字，=> 而它没有「唯一一个更真」的名字）
+// ⇒ 而构建期**不**按文件名字母序挑（=> 而「排序加 break」是实现细节）。
+//
+// 而**没给**（=> 而那是旧格式的产物）⇒ 而**报缺**而不猜（C-05）。
+function readAuthorEntryName(pieceId) {
+  let table = {};
+  try {
+    table = readJson(path.join(ROOT, 'scripts/component-sources.json')).sources || {};
+  } catch (e) {
+    return '';
+  }
+  const e = table[pieceId] || {};
+  const v = e.entryName;
+  return (typeof v === 'string' && v.length > 0) ? v : '';
+}
+
+
 function computeEntry() {
   const libDir = path.join(PAYLOAD, 'lib');
   const binDir = path.join(PAYLOAD, 'bin');
@@ -185,22 +208,87 @@ function computeEntry() {
         + ' 个程序形态字节，而它们**不是同一份**（' + binProgram.join('、')
         + '）—— 那是多个入口，该件只应有一个' };
     }
-    // 入口指**本体那份**（它不是软链，是那份实体字节）—— 而那 17 条软链是它的名字（派生物）。
-    //   判据：本体那份 = 那一族里 realpath 指向自己的那一个（软链指向别处）。
+    // 缺陷名（C-102）**entry 指到实现而实现不认那个名字** ——
+    // 而 busybox 今天已经栽在这上面（=> 而真机读数：=> 而 exit 127，
+    // => 而而 stderr 逐字是「libbusybox.so: applet not found」）。
+    //
+    // 而按 C-103 这一族它为什么有两边：
+    //   一边「entry 该指向那个可执行体（本体）」；
+    //   另一边「entry 该指向一个用户会叫的名字（applet 软链）」。
+    // 而 04 裁的是**后者**（=> 而 01 那一件 S115 把它拆成三问，=> 而而本段按 S115 落）：
+    //
+    // 而 S115 的三问：
+    //   S1 **「这一件是不是多调用二进制」**：=> 而 bin/ 下**程序形态**的项 > 1（binProgram.length > 1）。
+    //      ⇒ 而单调用那一件走上面 `binProgram.length === 1` 那一支。
+    //   S2 **「那些项是不是同一份字节」**：=> 而按**内容**（sha256）逐字相同
+    //      （=> 而上面那一段已核，=> 而不成立就判红「多个入口，该件只应有一个」）。
+    //      ⇒ 而**必须按内容不按 realpath**：=> 而本体搬进 bin/ 之后**本体指向自己**，
+    //         而那 17 条软链指向 ../bin/libbusybox.so，=> 而按 realpath 比那 18 条里有一项不同。
+    //   S3 **「本体那份是哪一个」**：=> 而那一族里 **realpath 指向自己**的那一个是本体。
+    //
+    // 而**「它自己 install 的」那一组名字**（=> 而 R1/R2/R3，=> 而 01 那一件 S115 逐条核过）：
+    //   R1 **只有软链才算**（=> 而 busybox 那一件 build-native-busybox.sh:329 逐字是
+    //       `[ -L "$l" ] || continue`）；
+    //   R2 **那个名字自己不落包**（=> 而 :331 逐字是 `[ "$b" = busybox ] && continue`，
+    //       ⇒ 而「busybox」不认自己）；
+    //   R3 **它自己 install 的是这一族**（=> 而 :332 逐字是
+    //       `ln -sf ./libbusybox.so "$OUT_DIR/bin/$b"`）。
+    // ⇒ 而在**落位结果**里那一组就是**本体之外的每一个软链名**。
+    //
+    // ⇒ 而 04 那句「entry 该取那一族里被那件自己 install 的那个名字」**方向成立**
+    //   （=> 而 01 那一件 S115 更正了它引的那个数：「19 个」是**表一**
+    //   （那份字节 .rodata 开头那张表），而**它自己 install 的是表三**
+    //   （make install 实际建出的软链），=> 而表三按轮次是 17 个无 sh 或 18 个含 sh，
+    //   => 而**两轮都无 awk**）。
+    //
+    // ⇒ 而「组内哪一个」按 C-135 是**构建期答不了**的格（=> 而 01 那一件 S115 第三节）：
+    //   「最常被叫」是**使用期的分布**，=> 而构建期只知道「哪些名字存在」；
+    //   ⇒ 而 busybox **认全部**（appletlib.c:914 逐字
+    //      `applet_name = bb_get_last_path_component_nostrip(argv[0]);`）
+    //   ⇒ 而「用户真的会叫那个名字」对它**全部成立** ⇒ 而它**没有「唯一一个更真」的名字**。
+    //   ⇒ 而按 C-126 那一格今天**未过**（=> 而它不是「未核」—— 而它是一个已裁的格子而它缺的是使用期那条读数）。
+    //
+    // ⇒ 而**候选集合与每条候选的正当性由那一件的作者那一侧给**（=> 而 busybox 那一族上游自带那一组，
+    //   => 而上游知道每个 applet 的定位），=> 而**不在构建期按文件名字母序挑**
+    //   （=> 而「排序加 break」是实现细节，=> 而它今天恰好选中 cat 纯属排序的偶然）。
+    // ⇒ 而**作者那一侧给的那一份**落在 `component-sources.json` 的 `sources.<件>.entryName`（=> 而那是新增格，
+    //   => 而按 C-11「新增数据形状要规范裁」—— => 而那一格归 01/04 裁，=> 而本稿**不新增**）。
+    // ⇒ 而**它没给**（=> 而那是旧格式的产物，=> 而那一格今天**未过**）⇒ 而**报缺**而不猜（C-05）。
     let body = binProgram[0];
     for (const n of binProgram) {
       const f = path.join(binDir, n);
       try { if (fs.realpathSync(f) === path.resolve(f)) { body = n; break; } } catch (e) {}
     }
+    // 那一组「它自己 install 的名字」= 那一族里**不是本体**的那几个软链名（=> 而 R1/R3）。
+    const aliasNames = binProgram.filter((n) => n !== body);
+    // 作者那一侧给的那一份（=> 而 01 那一件 S115 第三节落点 ③）。
+    const declared = readAuthorEntryName(id);
+    if (!declared) {
+      return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
+        + ' 个程序形态字节（多调用二进制），而这一件**没有**声明入口该取它自己 install 的那一组名字里的哪一个'
+        + '（本体那份 bin/' + body + ' 不认自己的文件名；它自己 install 的是 '
+        + (aliasNames.length ? aliasNames.join('、') : '空') + '）'
+        + '—— 而「取哪一个」是**使用期**的分布（=> 而 busybox 认全部那些名字，=> 而它没有「唯一一个更真」的名字）'
+        + '=> 而它要**那一件的作者那一侧**给（=> 而那一份落在 component-sources.json 的 sources.<件>.entryName）' };
+    }
+    if (aliasNames.indexOf(declared) < 0) {
+      return { error: '这一件声明的入口名 ' + declared + ' 不在它自己 install 的那一组里（'
+        + (aliasNames.length ? aliasNames.join('、') : '空') + '）—— 而本体那份 bin/' + body
+        + ' 不认自己的文件名，=> 而那不是一个可用的入口名' };
+    }
     return {
-      entry: 'bin/' + body,
-      by: '落位结果：bin/ 下 ' + binProgram.length + ' 项是同一份字节的多个名字（多调用二进制），入口指本体那份（bin/' + body + '）；那些名字是派生物，不进清单'
+      entry: 'bin/' + declared,
+      by: '落位结果：bin/ 下 ' + binProgram.length + ' 项是同一份字节的多个名字（多调用二进制）；'
+        + '它自己 install 的是 ' + (aliasNames.length ? aliasNames.join('、') : '空')
+        + '（本体那份 bin/' + body + ' 不认自己的文件名）'
+        + '；入口取作者那一侧声明的那一个 bin/' + declared
         + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
       mixed: libPrimary.length > 0,
       multiCall: binProgram.length,
       libs: libPrimary,
     };
   }
+
   if (binNames.length > 0) {
     return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binNames.length
       + ' 个文件，但没有一个是程序形态（' + binNames.join('、') + '）—— 那它们不是入口，entry 不该从 bin/ 取' };

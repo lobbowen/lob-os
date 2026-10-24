@@ -159,6 +159,8 @@
       ],
       "installName": "busybox",
       "marker": "busybox.version",
+      "$comment-entryName": "而这一格是「入口该取它自己 install 的那一组名字里的哪一个」—— => 而那是 01 那一件 S115 第三节落点 ③ 说的「作者那一侧给」那一份。=> 而而为什么是 sh：=> 而这一件自己 install 的是 make install 连带建出的那批软链（=> 而 man1 INSTALL 段：构建系统自己知道编了哪些 applet），=> 而而那不是那份字节 .rodata 开头那张表（=> 而 01 那一件 S115 更正了 04 那一裁引的那个数：「19 个」是表一，而它自己 install 的是表三，=> 而表三按轮次是 17 个无 sh 或 18 个含 sh，=> 而而两轮都无 awk）。=> 而而 sh 是用户真的会叫的那个名字（=> 而 sh 是 POSIX 那一族的标准 shell 名）。=> 而而两个今天不可用的名字：busybox 那个名字自己不落包（=> 而 build-native-busybox.sh:331 那一行跳过它）=> 而它不认自己；而 awk 两轮落包集都没有它。=> 而而为什么构建期不能自己挑：=> 而「最常被叫」是使用期的分布，=> 而构建期只知道哪些名字存在；=> 而 busybox 认全部那些名字（=> 而 upstream busybox 1.36.1 libbb/appletlib.c:914 逐字是 applet_name = bb_get_last_path_component_nostrip(argv[0]);）=> 而它没有「唯一一个更真」的名字。=> 而而为什么不能是本体那份（=> 而 04 那一裁判掉的那一边）：=> 而本体那份在 bin/ 下叫 libbusybox.so，=> 而它不认自己的文件名，=> 而起它时 stderr 逐字是 libbusybox.so: applet not found 而 exit 127。=> 而而这一格今天是不是过了：=> 而「取自哪一组」已核（=> 而 S115 第一节与第二节），=> 而「组内哪一个」按 C-135 是一个使用期的分布（=> 而 01 那一件 S115 第三节说它今天未过）。=> 而而这一格填的是作者那一侧给的答案（=> 而上游知道每个 applet 的定位），=> 而而它要 07 在设备上核（=> 而 busybox 那一件在监督环里的 exitCode 预期从 127 变成 0）。",
+      "entryName": "sh",
       "piece": true
     },
     "ripgrep": {

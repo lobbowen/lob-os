@@ -406,7 +406,31 @@ BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $
 echo "[ok] $BB $(stat -c%s "$BB") 字节（PIE/ET_DYN，有 PT_DYNAMIC 与 PT_INTERP，16KB 对齐合格）"
 echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
-printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
+# 缺陷名（C-102）**写的那一处与核的那一处用的 `$OUT` 不是同一个值** ——
+# 而两处都叫 OUT，⇒ 而同名不同义（按 C-150 那一族）。
+#
+# 真机读数（build-busybox run 40130918388，sha=798a504）：
+#   ##[error]声明: busybox.version（ 而它是这一件自己声明的）
+#   ##[error] 而它在产物的目录里：/home/runner/work/lob-os/lob-os/work/busybox/out/busybox.version
+#   ##[error]Process completed with exit code 1.
+# 而那一句标记检查的出处是 package-bundle-zip.sh:417 逐字 `if [ ! -e "$OUT/$MARKER" ]; then`。
+#
+# 而两个 `$OUT` 的来源逐字不同：
+#   · **写的那一处**（这一行改前）：`$OUT` = bundle-env.sh:23 逐字 `OUT="${OUT:-dist}"`
+#     ⇒ 而那是**仓根的 dist/**（⇒ 而它是「构建工作目录」那一层）；
+#   · **核的那一处**：package-bundle-zip.sh:22 逐字 `OUT="${2:?需要 OUT_DIR}"`
+#     ⇒ 而那第 2 个入参是 bundle-env.sh:238 逐字传的 "$out"
+#     ⇒ 而 "$out" 是 emit_piece 的第 2 个形参（bundle-env.sh:135 逐字 `out="$2"`）
+#     ⇒ 而 busybox 那一件传的是 $OUT_DIR（:298 逐字 `OUT_DIR="$WORK/out"`）
+#     ⇒ 而那是**产物的目录**（⇒ 而打包那一支读的是 `$OUT/bin`、`$OUT/lib`、`$OUT/$ENTRY`，
+#        ⇒ 而那三处都是**内容**那一层 ⇒ 而所以那一支的 OUT 就是内容目录）。
+#
+# ⇒ 而那一个标记文件的语义是「**这一件走到哪一步了**」（⇒ 而 package-bundle-zip.sh:408 那一段逐字），
+#   ⇒ 而它**是产物的一部分**（⇒ 而它要跟产物在同一个目录里），
+#   ⇒ 而**写的那一处该用 $OUT_DIR**（⇒ 而那才是产物目录），⇒ 而核的那一处**不用改**（⇒ 而它已经对着产物目录）。
+# ⇒ 而判别形式：**写标记的那个 `$OUT` 与打包那一支的 `$OUT` 是不是同一个目录**
+#   —— ⇒ 而两处都叫 OUT 而来源不同源，⇒ 而同名不同义就是那一族。
+printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
 
 # 第五个参数是「这个件要在 usr/bin 出现的命令名」——
 #  **取落包集**（make install 连带建的那批软链），**不取 $APPLETS 派生、也不取 .rodata 那张表**。
@@ -504,4 +528,4 @@ BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f";
 # ⇒ 而**本体仍在包里**（=> 而那是那 18 条软链的**指向目标**），
 #   ⇒ 而而它仍由那 18 条软链引用（=> 而 C-104 那一族：同源两路径），
 #   ⇒ 而而它仍要落位（=> 而它是 lib/ 与 bin/ 下的那一份实体）。
-emit_piece "$TOOL" "$OUT_DIR" bin/cat 100000 "$BB_BINS" "$TOOL.version"
+emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version"
