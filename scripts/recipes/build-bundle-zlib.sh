@@ -43,35 +43,40 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   Z_SHLIBM="libz.so.$ZVER1"
   echo "[zlib] 库名取自 zlib.h：$Z_SHLIBV（SONAME 层 $Z_SHLIBM）"
 
+  # 下面这一组环境变量必须**整体**在 ./configure 那条命令的前缀里（一条逻辑行，中间不能有注释）。
+  #
+  # 缺陷名（C-102）**注释行把续行组打断，于是 configure 一个环境变量也没收到**：
+  #   bash 的续行（行尾反斜杠）把下一行接上来，而接上来的那一行若是注释，
+  #   注释吃掉该逻辑行的余下部分并**终止这一条命令**；
+  #   而它终止时那一组赋值**只落在当前 shell**（不是导出给子进程的环境）。
+  #   本机复现（recipe 原文那几行）：
+  #     在同一个 shell 里读到 CHOST=[aarch64-linux-android] CC=[mycc] ...
+  #     而 configure 作为子进程读到的是 CC=<unset> CFLAGS=<unset> CHOST=<unset>
+  #   后果有两条，都要记：
+  #     (1) configure 第 99/100 行 old_cc 与 old_cflags 都空 ⇒ 第 522 行走的是
+  #         "No shared library support."（不带 try without defining 那半句）这一支；
+  #     (2) 更要紧的是 **LDSHARED 没进 configure 的环境** ⇒ configure 第 297 行
+  #         取到的是**默认值**（带 --version-script）；
+  #         而那次探测只链一个空测试对象，zlib.map 里的符号它一个都没有 ⇒
+  #         ld.lld 报 version script assignment of 'ZLIB_1.2.0' to symbol 'compressBound' failed: symbol not defined
+  #         ⇒ 探测失败 ⇒ 第 532-536 行把 SHAREDLIBV 清空 ⇒ 退回静态。
+  #   读数（run 40064205705 的 work/zlib/src/configure.log 第 28 到 32 行原文）：
+  #     <NDK>/aarch64-linux-android35-clang -shared -Wl,-soname,libz.so.1,--version-script,zlib.map -O3 -fPIC -o ztest...so ztest...o
+  #     ld.lld: error: version script assignment of 'ZLIB_1.2.0' to symbol 'compressBound' failed: symbol not defined
+  #   而 artifact 里那份 work/zlib/configure.log 是**stdout 重定向**那份（699 字节 14 行），
+  #   所以那一行探测命令在内部那份 configure.log 里，不在 stdout 那份里。
+  #
+  # 而 rpath 给在**被依赖的那一份**上（01 今天 S100 裁的第五格走丙），
+  # 走 **LDFLAGS**，而它在 Makefile.in:289 那条 recipe 行的末尾
+  #   （$(LDSHARED) $(SFLAGS) -o $@ $(PIC_OBJS) $(LDSHAREDLIBC) $(LDFLAGS)）。
+  # 而 LDFLAGS **只在 make 那一趟给**（不给 configure）—— 因为 configure 的探测那行
+  #   （第 521 行 try $LDSHARED $SFLAGS $LDFLAGS ...）是不带引号展开的，
+  #   而 rpath 那一格的值形态必须带单引号（见下面那一处），两者不能共存于那一行。
+  # 而 LDSHARED 那一格必须**不带引号**：探测那行同样是不带引号展开的。
   CHOST=aarch64-linux-android CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" \
   uname=Linux-host \
   CFLAGS="-O2 -fPIC -D__ANDROID_API__=$API" \
-  #       它先定义 DOLLAR='$' 再拼）
-  # 而 rpath 给在**被依赖的那一份**上（01 今天 S100 裁的第五格走丙）
-  #
-  # 缺陷名（C-102）rpath 放错变量，导致 configure 静默退回静态：
-  #   configure 第 521 行拿 LDSHARED **当命令跑**（try $LDSHARED $SFLAGS $LDFLAGS -o ...），
-  #   而 try 第 458/465 行是**不带引号**的展开 —— 于是 LDSHARED 里那对单引号
-  #   会把探测命令拆坏，探测失败，configure 第 522-524 行打
-  #   "No shared library support; try without defining CC and CFLAGS"，
-  #   然后第 532-536 行把 SHAREDLIBV 清空（退回静态）。
-  #   读数（run 40061957802 第 8 步）：configure.log 第 2-3 行就是那两句，
-  #   而 Makefile 里 SHAREDLIBV 为空、work/zlib/out/lib 不存在。
-  #   而那一行错在形态上：反斜杠紧跟 $Z_SHLIBM、--enable-new-dtags 前也是反斜杠、
-  #   -rpath, 与 $$ORIGIN 之间没有单引号、整行末尾多一个孤立单引号。
-  #
-  # 处置（一次改到位，不逐个补丁形态试）：
-  #   LDSHARED 保持成**一条不带引号的普通命令**（探测要能原样跑起来）；
-  #   rpath 走 **LDFLAGS**，而它在 Makefile.in:289 那条 recipe 行的末尾
-  #   （$(LDSHARED) $(SFLAGS) -o $@ $(PIC_OBJS) $(LDSHAREDLIBC) $(LDFLAGS)）。
-  #   而那一格的值形态与 OpenSSL 那份补丁同源：
-  #     单引号包住**整个** -Wl,-rpath,$ORIGIN；
-  #     $ 用 $$ 写，make 折一次成一个（zlib 没有 Perl 那一层）；
-  #     shell 剥掉单引号后 $ORIGIN 是字面量。
-  #   而 --enable-new-dtags 必须一起给（它决定出 DT_RUNPATH 而不是 DT_RPATH）。
-  #   而 LDFLAGS 只在 make 那一趟给（不给 configure）—— 因为 configure 的探测
-  #   也用 LDFLAGS，而它同样是不带引号展开的。
-  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM"
+  LDSHARED="$CC -shared -Wl,-soname,$Z_SHLIBM" \
   SHAREDLIB="$Z_SHLIB" SHAREDLIBV="$Z_SHLIBV" SHAREDLIBM="$Z_SHLIBM" \
   ./configure --prefix="$OUT_DIR" > "$WORK/configure.log" 2>&1 \
     || { echo "=== zlib configure 失败取证（末 30 行）==="; tail -30 "$WORK/configure.log"; exit 1; }
