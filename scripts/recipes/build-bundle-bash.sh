@@ -51,7 +51,6 @@ STUB
     --prefix=/native --disable-nls --without-bash-malloc \
     CC="$CC" \
     CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-unused-result" \
-  #       它先定义 DOLLAR='$' 再拼）
     LDFLAGS="-Wl,--allow-multiple-definition" \
     LIBS="$WORK/libtermcap_stub.a $WORK/libbionic_compat.a" \
     bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
