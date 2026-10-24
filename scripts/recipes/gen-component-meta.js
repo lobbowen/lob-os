@@ -77,7 +77,13 @@ if (positional.length === 4) {
   process.exit(1);
 }
 
-const [id, version, outPath] = positional;
+// => 而 --print-entry 那一形态把件名与落位目录**放在两个形参里**（=> 而不是位置参数），
+//    => 而所以那一形态下 `id` 是**空的**（=> 而 positional 是空的），
+//    => 而而 `readAuthorEntryName(id)` 要它（=> 而它按表里的键找那一格）。
+const [id0, version0, outPath0] = positional;
+const id = printEntry ? printEntry.id : id0;
+const version = printEntry ? '' : version0;
+const outPath = printEntry ? '' : outPath0;
 if (!printEntry && (!id || !version || !outPath)) {
   console.error('用法: node gen-component-meta.js <件名> <版本> <输出.json> [--payload <落位目录>]');
   process.exit(1);
