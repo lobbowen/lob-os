@@ -145,9 +145,28 @@ function elf_form_of(file) {
   finally { try { fs.closeSync(fd); } catch (e) {} }
 }
 
+// **能不能当入口**（=> 而那是「起它时能不能被调起」那一问）
 function is_program_form(dir, name) {
   const f = elf_form_of(path.join(dir, name));
   return f === 'exec' || f === 'dyn-interp' || f === 'shebang';
+}
+
+// **是不是「多调用二进制」那一族**（=> 而那是「一份字节 + 若干个名字」那一问）
+//   => 而按 C-135 那是**两问**：=> 而「能不能当入口」答的是「它是一个可调起的件」，
+//   => 而「是不是多调用那一族」答的是「bin/ 下那几个是不是**同一份字节的多个名字**」。
+//   => 而**第二问的判据是内容逐字相同**（=> 而 sha256），=> 而那才是这一族的判别形式。
+//   => 而**而**这一族与「能不能当入口」分开之后，=> 而 openssl 那一件的两条路径
+//      （=> 而 bin/openssl 与 bin/c_rehash 是**两份不同的** shebang 脚本）
+//      => 而而它们**不是**多调用那一族（=> 而它们不是同一份字节）。
+function same_bytes(dir, names) {
+  if (names.length === 0) return false;
+  const shaOf = (n) => {
+    try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir, n))).digest('hex'); } catch (e) { return ''; }
+  };
+  const first = shaOf(names[0]);
+  if (!first) return false;
+  for (const n of names) { if (shaOf(n) !== first) return false; }
+  return true;
 }
 
 // entry 唯一的来源：落位结果。
@@ -200,7 +219,62 @@ function computeEntry() {
     };
   }
   if (binProgram.length > 1) {
-    // bin/ 下有多个程序形态字节 —— 那是**多调用二进制**的形状（01 今天裁定）：
+    // bin/ 下有多个程序形态字节 —— 而**那是两件不同的事**（=> 而按 C-135 是两问）：
+    //   一、「它们是不是**同一份字节的多个名字**」（=> 而那是**多调用二进制**那一族）；
+    //   二、「那一件该有**几个**入口」（=> 而那是「这一件是不是多入口」那一问）。
+    //
+    // ★ 缺陷名（C-102）**把这两问当成一问** —— 而 332a82b 那一笔（=> 而加 shebang 那一族）
+    //   就栽在这儿：=> 而 openssl 那一件的 bin/ 下有**两份不同的** shebang 脚本
+    //   （=> 而 bin/openssl 与 bin/c_rehash），=> 而而它们**不是**同一份字节
+    //   => 而而旧的那一支只看「程序形态的项 > 1」⇒ ⇒ 而它把 openssl 那一件
+    //   误判成多调用那一族 ⇒ ⇒ 而而它判红「那是多个入口，该件只应有一个」
+    //   ⇒ ⇒ 而 openssl 与 curl 那一件今天在打包步红（=> 而 CI 逐字：
+    //   「落位目录 … 的 bin/ 下有 2 个程序形态字节，而它们**不是同一份**（c_rehash、openssl）」）。
+    //
+    // ⇒ 而**先判是不是同一份字节**（=> 而那才是多调用那一族的判别形式）：
+    const isMultiCall = same_bytes(binDir, binProgram);
+    if (!isMultiCall) {
+      // 而**不是**多调用那一族 ⇒ 而那是「这一件有多个入口」那一问
+      //   ⇒ 而它要**作者那一侧**给（=> 而与 busybox 那一族同一族：=> 而而那一格是
+      //   component-sources.json 的 sources.<件>.entryName）。
+      const declaredEntry = readAuthorEntryName(id);
+      if (!declaredEntry) {
+        return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
+          + ' 个程序形态字节（' + binProgram.join('、')
+          + '），而它们**不是同一份字节**（=> 而那不是多调用二进制那一族，'
+          + '=> 而那是「这一件有多个入口」那一问）'
+          + '—— 而这一件**没有**声明该取哪一个（=> 而那一格落在'
+          + 'component-sources.json 的 sources.<件>.entryName，=> 而而它要**作者那一侧**给）' };
+      }
+      if (binProgram.indexOf(declaredEntry) < 0) {
+        return { error: '这一件声明的入口名 ' + declaredEntry + ' 不在落位结果那几项里（'
+          + binProgram.join('、') + '）—— 而那不是一个可用的入口名' };
+      }
+      return {
+        entry: 'bin/' + declaredEntry,
+        by: '落位结果：bin/ 下有 ' + binProgram.length + ' 个程序形态字节（'
+          + binProgram.join('、') + '），而它们**不是同一份字节**（=> 而那不是多调用那一族）'
+          + '；入口取作者那一侧声明的那一个 bin/' + declaredEntry
+          + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
+        role: 'program',
+        mixed: libPrimary.length > 0,
+        libs: libPrimary,
+      };
+    }
+    // bin/ 下有多个程序形态字节，而它们**是同一份字节的多个名字** —— 那是**多调用二进制**的形状
+    // （01 今天裁定：「一份程序字节 + 若干个命令名」，而命令名是**派生物**（man1 INSTALL 段：
+    // make install 自己知道编了哪些 applet，并连带把软链建好）。
+    // 入口指向**那一份字节**（它们全是软链，指向同一份），那批名字不进清单。
+    // ★ 上一版在这里判红「该件只应只有一个入口」—— 那个假设对 busybox 是错的
+    //   （CI 实测：落位目录的 bin/ 下有 17 个程序形态字节 ⇒ 说明生成失败 ⇒ 该件产不出包）。
+    // ★ 判「它们是同一份字节」：**按内容**（sha256），不按 realpath。
+    //   缺陷名（C-102）本体那份自己指向自己 ⇒ realpath 不全同：
+    //     busybox 那一件（本体搬到 bin/ 之后）bin/ 下有 18 项：17 条软链指向 ../bin/libbusybox.so
+    //     而**本体那份指向自己** ⇒ 按 realpath 比，18 条里有一项不同 ⇒ 判红
+    //     ⇒ 「落位目录的 bin/ 下有 17 个文件，但没有一个是程序形态」（旧版的 binProgram 名单不含本体时才出现）。
+    //   ⇒ 现在：**本体那份**（它的 realpath 就是它自己）与那 17 条软链**是同一份字节**
+    //     ⇒ 判据改成「这些项的内容是否逐字相同」（sha256）—— 那是「彼此是同一份吗」的可机械核形式。
+    //   ⇒ 而而上面那一段（isMultiCall）已经**按内容**核过这一条了。    // bin/ 下有多个程序形态字节 —— 那是**多调用二进制**的形状（01 今天裁定）：
     // 「一份程序字节 + 若干个命令名」，而命令名是**派生物**（man1 INSTALL 段：
     // make install 自己知道编了哪些 applet，并连带把软链建好）。
     // 入口指向**那一份字节**（它们全是软链，指向同一份），那批名字不进清单。
