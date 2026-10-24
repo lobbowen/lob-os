@@ -231,11 +231,12 @@ answers() {
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
   # 而 CONFIG_EXTRA_LDFLAGS：**这一件今天不加**
-  #   · 07 今天的真机读数：**busybox 那一件是静态的，无 .so** =>
-  #     **=> 而静态产物没有同件的库要找 => => 而 RUNPATH 那一格对它不适用**
   #   · 而 busybox 的 Kconfig 里有没有 CONFIG_EXTRA_LDFLAGS 那一项，
-  #     **而本机没有 busybox 源码树**（而我今天核过）=> **那一格[未核]**
-  #   => 而**没有** DT_NEEDED 的那一件，加上 RUNPATH 只会让产物多一个无用段
+  #     **而本机今天取过 busybox 1.36.1 源码树**（=> 而 upstream Config.in 里逐字有 `config EXTRA_LDFLAGS`）
+  #   · 而**这一件今天改成动态（PIE）之后**，=> 而而它 NEEDED 的只有 libc 那几项系统库
+  #     （=> 而而**不是**同件 lib/ 下那些字节）=> 而而 RUNPATH 那一格对它**不适用**
+  #     （=> 而而加它只会让产物多一个无用段，=> 而而那还是错的那一种无用）
+  #   · 而而「同件 lib/ 下那些字节」那一格今天仍然不适用（=> 而而这一件落 bin/，=> 而而它 lib/ 下没有要找的）
   echo "CONFIG_EXTRA_CFLAGS=\"-O2 -fPIC -D__ANDROID_API__=$API\"" >> "$SRC/.config"
 
 #  必须喂输入：oldconfig 会就新增项提问，CI 上没有 tty 就卡死
@@ -355,7 +356,7 @@ echo "[$TOOL] 声明的 $(printf '%s\n' $APPLETS | wc -w) 个 applet 全部在�
 
 BB="$OUT_DIR/bin/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
-[ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
+[ "$SIZE" -gt 100000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 动态编也不该这么小"
 "$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true
 
 INFO=$(file -b "$BB")
@@ -365,11 +366,33 @@ case "$INFO" in
 esac
 note "$INFO"
 
+# 形态判据（缺陷名 C-102）**这一件现在必须是 PIE（ET_DYN）而不是静态（ET_EXEC）**。
+#   缺陷名（C-102）**「静态」那个前提已经过期了**：
+#     静态编 => 而 Makefile.flags:125 那一支是 `CFLAGS_busybox += -static`
+#             => 而而那一份必然是 ET_EXEC
+#     => 而而 ET_EXEC 在设备上**不可执行**（=> 而那是域的策略：=> 而 app_data_file
+#        在 u:r:untrusted_app 那个域里没有执行许可，=> 而而直接 exec 它就是 error=13）；
+#     => 而而**套 linker64 也绕不过去**（=> 而 AOSP linker_main.cpp:405 那一段：
+#        `if (elf_hdr->e_type != ET_DYN) { __linker_error("...only supports position-independent executables (-fPIE)"); }`）
+#     => 而而所以静态编这一件在设备上**两头都不落**。
+#   而 PIE 那一支（Makefile.flags:131）是 `CFLAGS_busybox += $(ARCH_PIE)` 与 `CFLAGS += $(ARCH_FPIE)`
+#     => 而 ARCH_PIE ?= -pie、ARCH_FPIE ?= -fpie（Makefile.flags:108 到 109）
+#     => 而而那一份是 ET_DYN => 而而它要经 linker64 驱动
+#     => 而而那一路的 execve 目标是 /system/bin/linker64
+#        （=> 而那是 u:object_r:system_linker_exec:s0，=> 而那一域有执行许可）
+#
+# 而「无 PT_DYNAMIC」那个判据是**静态编专属**的（=> 而动态编一定有一个 PT_DYNAMIC），
+# **=> 而它今天必须换成「有 PT_DYNAMIC」**，=> 而而换成「ET_DYN + 有 PT_INTERP」这两格。
+ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
+[ "$ETYPE" = "DYN" ] || die "不是 PIE 产物" "e_type=$ETYPE —— 而这一件必须编成 ET_DYN（PIE），而 ET_EXEC 在设备上不可执行（域的策略），而套 linker64 会被 AOSP linker_main.cpp:405 那一道硬门挡掉"
+
 NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
 DYN=$(printf '%s\n' "$("$LLVM_READELF" -W -l "$BB" 2>/dev/null || true)" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')
-if [ -n "$DYN" ]; then
-  die "不是静态产物" "有 PT_DYNAMIC（NEEDED=$NEEDED 项）—— 底座件不该依赖任何共享库"
-fi
+[ -n "$DYN" ] || die "不是动态产物" "没有 PT_DYNAMIC（NEEDED=$NEEDED 项）—— PIE 那一族一定有它，而缺了它说明链接没走动态那一路"
+
+INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP')
+[ "$INTERP" -ge 1 ] || die "缺 PT_INTERP" "INTERP 行数=$INTERP —— 而这一件要经 linker64 驱动，=> 而那个驱动者由 PT_INTERP 指出来（=> 而设备上是 /system/bin/linker64）"
+echo "[$TOOL] 形态：e_type=$ETYPE、PT_INTERP=$INTERP 行、PT_DYNAMIC 有、NEEDED=$NEEDED 项"
 
 BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
@@ -380,7 +403,7 @@ BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $
         done)
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
-echo "[ok] $BB $(stat -c%s "$BB") 字节（静态，无 PT_DYNAMIC，16KB 对齐合格）"
+echo "[ok] $BB $(stat -c%s "$BB") 字节（PIE/ET_DYN，有 PT_DYNAMIC 与 PT_INTERP，16KB 对齐合格）"
 echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 printf '%s' "$BB_VER" > "$OUT/$TOOL.version"
