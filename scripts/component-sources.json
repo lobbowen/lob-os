@@ -34,6 +34,8 @@
       "piece": true
     },
     "git": {
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 git 那一件：=> 而上游 make install 会把 git 与那一批 git-* 子命令**都**装进 bin/（=> 而它们**各自**是独立的 ELF 程序、=> 而而字节**各不相同**，=> 而而那**不是**同一份字节的多个名字）。而**取哪一个**：=> 而 bin/git 才是这一件**本名**（=> 而那一批 git-* 是子命令，=> 而而它们是这一件的**部件**、=> 而而那一件自己的安装步骤后来把它们搬进 libexec/git-core 那一族，=> 而而那一份另有一格记着哪些是派生物）。",
+      "entryName": "git",
       "version": "2.55.0",
       "sha256": "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357",
       "urls": [
@@ -216,6 +218,8 @@
       ]
     },
     "npm": {
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 npm 那一件：=> 而它的 bin/ 下有三份**不同的** shebang 脚本（=> 而 bin/npm-cli.js、bin/npx-cli.js、bin/npm-prefix.js），=> 而而它们**不是**同一份字节（=> 而而那不是多调用那一族，=> 而而那是「这一件有多个入口」那一问）。而**取哪一个**：=> 而 bin/npm-cli.js 才是这一件**本名**（=> 而而上游 npm 根 package.json 的 bin 键逐字是 npm 对 bin/npm-cli.js、而 npx 对 bin/npx-cli.js），=> 而而那一份**是**上游自己声明的入口，=> 而而这一格就是把它写下来。",
+      "entryName": "npm-cli.js",
       "version": "11.x",
       "urls": [],
       "fromNode": true,

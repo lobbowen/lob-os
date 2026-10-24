@@ -245,7 +245,7 @@ rm -rf "$OUT/$TOOL"
 mkdir -p "$TOOLDIR"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 rm -rf "$STAGE"
-printf '%s' "$PINNED_LLVM" > "$OUT/$TOOL.version"
+printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 
 note "写件内 package.json（别名映射）"
 node -e '

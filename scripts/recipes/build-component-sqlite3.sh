@@ -15,7 +15,7 @@ mkdir -p "$OUT/bin" work
 
 echo "[sqlite3] 取源码（钉值表的 sqlite 那一格）"
 bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin sqlite "$ROOT_DIR/work/sqlite.zip" \
-  --version-file "$ROOT_DIR/$OUT/sqlite3.version"
+  --version-file "$ROOT_DIR/$OUT/sqlite.version"
 echo "[sqlite3] 源码包 $(stat -c%s work/sqlite.zip) 字节"
 rm -rf work/sqlite
 mkdir -p work/sqlite
