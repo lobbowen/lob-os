@@ -12788,6 +12788,11 @@ container/app/src/main/java/lobos/services/reg/ProgramIndex.kt
 | **=> 而「多调用二进制那一族的 entry 该取哪一个软链名」** | **=> 而**已过：04 那一裁与 01 那一版**并列**** | **=> 而 §122.29 那一族（=> 而 04 那一裁是「entry 该取那一族里被那件自己 install 的那个名字」，=> 而而按 C-115 **留档不删**；=> 而而 01 那一版把「挑哪一个」**再分成两问**（=> 而「取自哪一组」= **已核**、=> 而而「组内哪一个」= **未过**且是**使用期**的问）；=> 而而 01 那一版还核出「那 19 个」是**三张表**（=> 而表一 19、=> 而表二 17、=> 而表三按轮次 17 或 18））** |
 | **=> 而「组内哪一个」** | **=> 而**已核：由作者那一侧给定**（=> 而 04 认 05 那一核）** | **=> 而 §122.29 那一族（=> 而按 C-135 那一格拆成三问：=> 而「取自哪一组」**已核**、=> 而而「组内哪一个」**已核**、=> 而而「`entry` 那一格取什么值」**已核**（=> 而 05 本机实读新固化产物与新 APK 逐字是 `"entry": "bin/sh"`）；=> 而而 01 说的「未过」那个理由（=> 而「最常被叫是使用期的分布」）**只在「构建期自己挑」那个前提下才成立**，=> 而而**那个前提已被「作者给一个名字」取代**）** |
 | **=> 而「落点与能不能合」** | **=> 而**已过：能合**** | **=> 而 §122.29 那一族（=> 而合起来是「作者给一个名字，那一格就取它」；=> 而而落点（=> 而 `by` 那一格记为什么是这一个与候选集合）是**给人看的理由**，=> 而而**它按 C-126 今天未过**）** |
+| **=> 而「busybox 那一件在监督环里的 exitCode」** | **=> 而**未过**（=> 而 07 核到它是 **None**、=> 而而**它根本没进监督名单**（=> 而 journal 逐字「监督名单=bash,jq,ripgrep」），=> 而而**「exit 变成 0」那一格不存在**（=> 而**不是 0**））** | **=> 而 §122.29 那一族（=> 而 `entry` 那一族**是通的**：=> 而 `usr/bin/sh` 起得来而 exit=0，=> 而而那 18 个名字逐个起**全是 exit 0**）** |
+| **=> 而「`by` 那一格（01 落点）落进哪一份」** | **=> 而**未过**（=> 而它今天**在落位侧哪儿都没落**）** | **=> 而 §122.29 那一族（=> 而 07 核到 `component-meta.json`、`piece-shape.json` 与 `program-manifest.json` **三份都没有 `by` 键**，=> 而而仓内那个 meta 对象里**也没有 `by`**，=> 而而它**只在控制台那一行**）** |
+| **=> 而「索引里 busybox 那一行的 role」** | **=> 而**已核：是 `entry-unusable`**** | **=> 而 §122.29 那一族（=> 而 07 核到 `PieceScan.kt:92` 到 `:95` 逐字、=> 而而它读 `component-meta.json` 的 `role` 键而那份 meta **没有那个键**；=> 而而落位侧那份 `program-manifest.json` 的 `role` 逐字是 `program`，=> 而而**两处逐字不同**）** |
+| **=> 而「busybox 那一件能不能被监督起来」** | **=> 而**未过**** | **=> 而 §122.29 那一族（=> 而 07 核到 `SupervisorPool.kt:134` 到 `:143` 的 `wantedPrograms()` 逐字、=> 而而 `ProgramRegistry.kt:37` 逐字 `startable = (invalid == null)`、=> 而而 `ProgramRegistry.kt:113` 到 `:132` 那两支**设备侧都不成立**；=> 而而 `desired` 是 `ProgramIndex.kt:58` 逐字 `STOPPED`（=> 而默认））** |
+| **=> 而「落点与能不能合」** | **=> 而**已过：能合**** | **=> 而 §122.29 那一族（=> 而合起来是「作者给一个名字，那一格就取它」；=> 而而落点（=> 而 `by` 那一格记为什么是这一个与候选集合）是**给人看的理由**，=> 而而**它按 C-126 今天未过**）** |
 | **=> 而「那 11 件今天在打包步红」那一格** | **=> 而**未过**（=> 而成因**已定位**，=> 而而**缺的是那一笔改动**）** | **=> 而 §122.29 那一族（=> 而治的是「**判据在产物之前跑**」那一族；=> 而而**归 05 那一族**，=> 而而**不归 02**；=> 而而 05 **没有改它**，=> 而而它**建议另起一笔**）** |
 | **=> 而「S115 那一段「按 realpath 比会判红」」** | **=> 而**已核：设备侧不成立**** | **=> 而 §122.29 那一族（=> 而 07 核到那 18 条软链的指向是 `-> libbusybox.so`（=> 而**不是** `../bin/libbusybox.so`），=> 而而 19 项的 realpath **全部相同**；=> 而而 **S2（按内容 sha256 比）成立** => 而 => 而那一格**不判红**；=> 而而按 C-115 两条**并列不顶替**）** |
 | **=> 而「S3 那一族：那一族里本体是哪一个」** | **=> 而**已核：设备侧分得出来的是「本体是实体而那 18 条是软链」**** | **=> 而 §122.29 那一族（=> 而 07 核到设备侧那 19 项的 realpath **逐字全部相同**，=> 而而**「realpath 指向自己」那一把尺在设备上分不出来**；=> 而而仓内那一把尺已经在用：=> 而 `build-native-busybox.sh:329` 逐字是「`-L "$l"` 后接两个竖线的 `continue`」）** |
@@ -17181,4 +17186,59 @@ bundle-env.sh:195  entry="$pick"
 > **=> 而 07 独立算出来的那八个 src 指纹与 05 本机这八个**逐字相同**（=> 而两处独立，=> 而按 C-113 两处一致）。**
 
 **=> 而而设备侧那一格归 07**（=> 而 lead 已派 07 装 `40134460082` 那一版核 busybox 那一件的新 `entry`、exitCode 与 stderr、那 18 条软链还在不在、`entry` 指向的那个名字能不能起来，=> 而以及 crypto 那一件在不在索引里与 ldconfig 报哪一条）。**
+
+
+
+
+
+
+
+#### 而 07 核完了 `9144b24` 那一版（=> 而 2026-10-25 补正）
+
+**=> 而 07 那一件落盘：`07/runs/GATE-9144B24-VERIFY.md`、=> 而 402 行、=> 而 sha256 `4dc825491e3e34f3a87379f80bef6a15d3f1f5bc73b9a9a53f863f691e418c52`**。**
+
+**=> 而一 · `entry` 那一族是通的（=> 而照录 07）：**
+
+| 那一件 | 而它逐字是什么 |
+|---|---|
+| **=> 而 `component-meta.json`** | **=> 而 `id` 是 `busybox`、=> 而而 `version` 是 `1.36.1`、=> 而而 `entry` 是 `bin/sh`、=> 而而 `entryProvenance` 是 `gen-component-meta.js:落位结果（构建期算出，非人填）`、=> 而而 `buildSha` 是 `9144b24ce7abc3b846487185c1fa5546882cdcef`、=> 而而 `buildRun` 是 `40133452159`** |
+| **=> 而 `piece-shape.json`** | **=> 而 `entry` 是 `bin/sh`、=> 而和 `entryForm` 是 `dyn-interp`、=> 而和 `entryRole` 是 `program`、=> 而和 `kind` 是 `program`、=> 而和 `programs` **19 条**、=> 而和 `libraries` **0 条**、=> 而和 `derivedLinks` **18 条**、=> 而和 `files[]` **19 条**、=> 而和 `by` 是 `None`** |
+| **=> 而落位侧 `program-manifest.json`** | **=> 而 `entry` 是 `bin/sh`、=> 而和 `role` 是 `program`、=> 而和 `essential` 是 `false`** |
+
+> **=> 而 `entry` 指向的那个名字**能起来**：=> 而 run-as 起 `usr/bin/sh` 打印 `SH-OK` 而 **exit=0**；=> 而而那 18 个名字逐个起**全是 exit 0**（=> 而 `false` 返回 1 是它**本来的语义**）；=> 而而**阳性对照**是**本体那份 `libbusybox.so` 仍 exit=127**（=> 而它**不认自己的文件名**，=> 而与 S115 那一族**一致**）。**
+>
+> **=> 而 `usr/bin/` 那一层多了 `sh` 这条软链**（=> 而 mtime 05:37），=> 而而**上一趟核到那一层没有 `sh`**。**
+>
+> **=> 而 04 裁的那一句「entry 该取那一族里被那件自己 install 的那个名字」**在设备侧**逐字对齐了**。**
+
+**=> 而二 · busybox 那一件在监督环里的 exitCode 是 None，=> 而它**根本没进监督名单**：**
+
+> **=> 而 journal 逐字是「监督名单=bash,jq,ripgrep」——=> 而它不在监督名单里，没被启动 => => 而而「**exit 变成 0**」那一格**不存在**（=> 而**不是 0**）=> => 而而按 **C-126** 写「**未过**」。**
+>
+> **=> 而 07 核的机制逐处**：=> 而 `SupervisorPool.kt:134` 到 `:143` 的 `wantedPrograms()` 逐字是 `:135` `installed = ProgramRegistry.list(host).filter { it.startable }` 与 `:140` `.filter { installed.contains(it) }`；=> 而而 `ProgramRegistry.kt:37` 逐字 `startable = (invalid == null)`；=> 而而 `ProgramRegistry.kt:113` 到 `:132` 逐字 `invalid` 的两支是 `ManifestSchema.validate(json)` 与 `!entryFile.exists()`，=> 而而**设备侧逐条核到这两支都不成立**（=> 而 `bin/sh` **存在**、=> 而而落位侧 manifest 有 `role` 是 `program`）。**
+>
+> **=> 而索引里 busybox 那一行的 `role` 逐字是 `entry-unusable`**：=> 而 `PieceScan.kt:92` 到 `:95` 逐字是 `val declared = metaOf(verDir)?.optString(ROLE_KEY, "")`、`:98` 逐字 `ROLE_KEY` 等于 `role`、`:94` 逐字 `return declared.ifBlank { ENTRY_UNUSABLE }`，=> 而而**它读 `component-meta.json` 的 `role` 键，而那份 meta 没有 `role` 键**。=> 而而索引重建那一支是 `ProgramDir.kt:164` 到 `:165` 逐字 `val role = if (landed) PieceScan.roleFromDisk(context, programId)`。=> 而而 `levelOf`（=> 而 `ProgramIndex.kt:70` 到 `:73`）逐字是 **`stateDir` 非空且 `assetEntry` 非空则 `PROGRAM`**，=> 而而**它 level 是 `PROGRAM` 而不是 `PIECE`**。=> 而而 `desired` 是 `ProgramIndex.kt:58` 逐字 `val desired: Desired = Desired.STOPPED`（=> 而默认），=> 而而 journal 逐字「**撤销陈旧 desired=0**」，=> 而所以 `BootReconciler.kt:104` 那一支**没走**。**
+>
+> **=> 而 07 报的一条读数（=> 而按 C-115 两条并列）：=> 而 busybox 那一件的 `role` 在**索引里**是 `entry-unusable`，=> 而而落位侧那份 `program-manifest.json` 的 `role` 逐字是 `program`，=> 而而**两处逐字不同**。=> 而而 `entry-unusable` 那一族是 `PieceScan.kt:125` 逐字 `const val ENTRY_UNUSABLE` 等于 `entry-unusable`。**
+
+**=> 而三 · 01 落点「为什么是这一个」进 `by` 那一格，=> 而那一格今天在落位侧**是空的**：**
+
+> **=> 而 `by` 那一格不在落位侧任何一份里**（=> 而设备侧逐字核到**三份都没有 `by` 键**），=> 而而仓内 `gen-component-meta.js:356` 到 `:367` 那个 meta 对象里**没有 `by`**，=> 而而它**只在 `:395` 那一行打到控制台**（=> 而「依据等于…」），**不落进文件**；=> 而而 07 核到 `gen-component-meta.js:281` 到 `:285` **算出了它**。**
+>
+> **=> 而按 C-135：=> 而那**是**「`entry` 那一格取什么值」**两问** —— => 而而前一格问「**清单里那一格写什么**」，=> 而而后一格问「**为什么是它**」=> => 而而**它们是两份不同的文件里的两格**（=> 而前一格在 `component-meta.json` 与 `piece-shape.json`，=> 而而后一格按今天那一版**哪儿都没落**）。**
+
+**=> 而四 · 另三格照录（=> 而照录 07）：**
+
+| 那一件 | 而它的读数 |
+|---|---|
+| **=> 而 bash** | **=> 而 143/26** |
+| **=> 而 busybox** | **=> 而 **None/0** 而 desired 是 **STOPPED**** |
+| **=> 而 jq** | **=> 而 143/15** |
+| **=> 而 ripgrep** | **=> 而 2/29** |
+
+> **=> 而双层形态总数 **27** 而全部 tombstone **32 份**而最新一份仍是 `DOUBLE tombstone_31` 而 Timestamp 仍是 2026-10-24 20:32:24.511177002+0800，=> 而所以**零新增**。**
+>
+> **=> 而 crypto 那一件在索引里**（=> 而 8 条而 `role` 是 `library` 而 `assetEntry` **空**），=> 而而 **ldconfig 报 kind2**（=> 而与 `82a4765` 那一版**逐字相同**），=> 而而 `usr/lib/libcrypto.so` 指向 **crypto 那一份**（=> 而 mtime 05:37），=> 而而 **selfcheck 那一格与前几版逐字相同**。**
+>
+> **=> 而取件核**：=> 而 APK sha256 `4b87357075522db82cc27004c583dc5b59c5f83e9aeffc389179524f0e9efd92`、=> 而而 build-identity 是 `gitSha` `9144b24ce7abc3b846487185c1fa5546882cdcef` / `runId` `40134460082` / `runNumber` `1349`，=> 而而 **install 之后立刻核读到旧那一版**（=> 而 `82a47657` 与 `40128621341`），=> 而而**启动 app 之后**才是新那一版。**
 
