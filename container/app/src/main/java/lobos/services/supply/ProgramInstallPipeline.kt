@@ -677,8 +677,40 @@ object ProgramInstallPipeline {
         //   缺陷名（C-102）**建链按 entry 的首段目录名分家**：原来那一行是
         //    if (entryRel.startsWith("lib/")) libDir else binDir —— 那是「看目录名」。
         //    现在目录由**形态**决定（产物带来的那一格），不是看名字。
+        //
+        // 缺陷名（C-102）**纯库件被当成有入口的件来建链** —— 而这一格治的是
+        //   「一个**没有**可执行入口的纯库件（entry 空串）被当成有入口的件来装」。
+        //
+        // 真机读数（07，2026-10-25，run 40126378136 / sha=155de80，03:53 那一分钟）：
+        //   [03:53:54] prefix  预装件 crypto 装不上
+        //     entry-link-failed —— 件已落位但入口软链建不起来
+        //     （/data/user/0/lobos.os/files/usr/lib/）—— 装了个没人调得动的件；
+        //     看 SELinux 是否允许该目录建链，或落位目录是否可写
+        //   而那一份 crypto 的形态逐字是：meta 的 entry 是**空串**、
+        //   piece-shape.json 的 files[] 那一行 role 是 **library**、
+        //   而 entryForm 与 entryRole 两格都是 **unknown**。
+        //   ⇒ 而时序逐字是：落位成功 → 建链失败 → 没登记 → ldconfig 报 kind1。
+        //
+        // 而成因（本机逐处核到）：
+        //   · landByShape 对**纯库件**返回的是 `Landed("", libRole, …)`（:287 那一行逐字，
+        //     => 而 entryRel 是**空串**）；
+        //   · 而 :680 那一行逐字是 `val entryRel = landed.entryRel`；
+        //   · 而 linkEntry :943 那一行逐字是 `val target = File(dest, entryRel)`
+        //     => 而空串时 target 就是**落位目录自己**（=> 而那是一个**目录**）；
+        //   · 而 :945 那一关（entry 越出落位目录）它**过**（=> 而 tCanon == rootCanon）；
+        //   · 而 :952 那一行逐字是 `if (!target.isFile) return false`
+        //     => 而 target 是目录不是文件 => **它就是失败的那一处**。
+        //
+        // 而**为什么快路径那几件（curl / zlib，它们同样是纯库件、entry 同样是空串）没事**：
+        //   => 而快路径（PreinstalledPieces.kt:296 那一支）**根本不调 linkEntry**
+        //     （=> 而那一段里 linkEntry 零命中），=> 而它调的是 refreshDerivedLinks
+        //     （=> 而那一支按 `shape.byRole(ROLE_LIBRARY)` 逐形态建链，=> 而**不按 entry 猜**）；
+        //   => 而慢路径这一支按 **entry** 建链 => 而纯库件没有 entry => 而它必然失败。
+        //
+        // ⇒ 而处置：**纯库件不建「入口软链」**（=> 而它没有入口），
+        //   ⇒ 而它**要落位、要登记成件**，⇒ 而而登记那一格（:691 往后的 upsert）**要走到**。
         val entryRel = landed.entryRel
-        if (!linkEntry(context, dest, entryRel, spec.programId, role)) {
+        if (entryRel.isNotBlank() && !linkEntry(context, dest, entryRel, spec.programId, role)) {
             return Result(
                 false, safeVer, "entry-link-failed",
                 "件已落位但入口软链建不起来（" +
