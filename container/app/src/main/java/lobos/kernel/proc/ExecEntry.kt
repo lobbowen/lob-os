@@ -18,9 +18,6 @@ object ExecEntry {
     private const val ELF_MAGIC = 0x7F
     private const val ELF_ET_EXEC = 2
     private const val ELF_ET_DYN = 3
-    private const val ELF_CLASS64 = 2
-    private const val ELF_DATA_LSB = 1
-    private const val PT_INTERP = 3L
 
     private fun elfType(b: ByteArray, n: Int): Int {
         if (n < 18) return -1
@@ -29,54 +26,6 @@ object ExecEntry {
             (b[2].toInt() and 0xFF) != 0x4C ||
             (b[3].toInt() and 0xFF) != 0x46) return -1
         return (b[16].toInt() and 0xFF) or ((b[17].toInt() and 0xFF) shl 8)
-    }
-
-    /** 那个入口自己带不带 PT_INTERP（程序解释器那一行）。
-     *
-     *  **带** => 内核 exec 它时会按 PT_INTERP 套一层解释器（argv = [interp, path, args...]），
-     *  所以 LOB-OS 那一侧**不该再套** —— 而再套就是两层，
-     *  而那两层会让 linker64 把自己当程序加载（真机读数：Cmdline 出现两次 /system/bin/linker64）。
-     *  **不带** => 它是共享库那一类（ET_DYN 而没有 PT_INTERP），直接 exec 会 ENOEXEC，
-     *  所以要显式套 SYSTEM_LINKER。
-     *
-     *  **读法**：读那份字节的 program header 表，找 PT_INTERP(3) 那一行 ——
-     *  而**不读那一行指向的字符串**（判据只问「有没有那一行」）。
-     */
-    fun hasInterp(entry: File): Boolean = try {
-        java.io.RandomAccessFile(entry, "r").use { f ->
-            val eh = ByteArray(64)
-            if (f.read(eh) < 64) return false
-            if ((eh[0].toInt() and 0xFF) != ELF_MAGIC) return false
-            if ((eh[4].toInt() and 0xFF) != ELF_CLASS64) return false
-            if ((eh[5].toInt() and 0xFF) != ELF_DATA_LSB) return false
-
-            fun u16(o: Int): Int = (eh[o].toInt() and 0xFF) or ((eh[o + 1].toInt() and 0xFF) shl 8)
-            fun u64(o: Int): Long {
-                var v = 0L
-                for (i in 7 downTo 0) v = (v shl 8) or (eh[o + i].toLong() and 0xFF)
-                return v
-            }
-
-            val phOff = u64(0x20)
-            val phEnt = u16(0x36)
-            val phNum = u16(0x38)
-            if (phOff <= 0 || phEnt < 56 || phNum <= 0) return false
-
-            f.seek(phOff)
-            val ph = ByteArray(phEnt.toInt() * phNum)
-            if (f.read(ph) < ph.size) return false
-            for (i in 0 until phNum) {
-                val o = i * phEnt
-                val t = (ph[o].toLong() and 0xFF) or
-                    ((ph[o + 1].toLong() and 0xFF) shl 8) or
-                    ((ph[o + 2].toLong() and 0xFF) shl 16) or
-                    ((ph[o + 3].toLong() and 0xFF) shl 24)
-                if (t == PT_INTERP) return true
-            }
-            false
-        }
-    } catch (_: Throwable) {
-        false
     }
 
     fun detect(entry: File): Shape {
@@ -109,33 +58,39 @@ object ExecEntry {
         is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)
         // 缺陷（C-102）**该套解释器的那一层套了两层**。
         // 真机读数（07，logcat）：Cmdline = /system/bin/linker64 /system/bin/linker64 …/opt/bash/…/bash
-        // —— linker64 出现两次；而那三件（bash / jq / ripgrep）自己的入口都带
-        //    PT_INTERP = /system/bin/linker64（逐字相同），而它们自身是 ET_DYN。
+        // —— linker64 出现两次。
         //
-        // **两个来源叠在一起才出那个形态**（C-135：两问，两问都成立）：
-        //  ① LOB-OS 显式套的那一层：这一支无条件加 SYSTEM_LINKER；
-        //  ② 内核按 PT_INTERP 套的那一层：内核 exec 一个带 PT_INTERP 的文件时，
-        //     自己 exec 那条 PT_INTERP（argv = [interp, path, args...]）。
-        // 而 ① 不该有 —— **判据是「那个入口自己带不带 PT_INTERP」**：
-        //   带 => 内核会套一层，LOB-OS 这一侧**不该再套**（套两层 => linker64 把自己当程序加载
-        //        => call_constructors => libc 初始化链崩，AOSP linker_main.cpp:358 那一处注释
-        //        写的正是「the linker attempts to execute itself」）；
-        //   不带 => 它是共享库那一类（ET_DYN 而没有 PT_INTERP），直接 exec 会 ENOEXEC，
-        //        所以要显式套 SYSTEM_LINKER。
+        // **而那一层只能有一层，而那一层必须由这一侧显式给**（07 设备侧 2026-10-24 的读数）：
+        //  · X1（直接起入口）=> argv 里 linker64 出现 **0 次**、exit=0
+        //    => 而那个入口带 PT_INTERP = /system/bin/linker64，
+        //       **而内核 exec 它时并没有把那条解释器加进 argv**
+        //       => 而所以「入口带 PT_INTERP ⇒ 内核会替我们套」这个前提**不成立**
+        //  · X2（argv[0]=linker64, argv[1]=入口）=> exit=0
+        //    => 而那正是**显式**套那一层的形态 => 而而它是跑得通的那一条
+        //  · X3（两层都套）=> `error: linker cannot load itself`、exit=1
+        //
+        // **=> 而所以判据是「有没有已经被替过」**，而**不是**「入口带不带 PT_INTERP」：
+        //   替过了（argv[0] 已是 linker64）=> 不再替
+        //     （=> 而否则两层 => linker64 把自己当程序加载 => call_constructors => libc 初始化链崩；
+        //      AOSP linker_main.cpp:358 那一处注释写的正是「the linker attempts to execute itself」）；
+        //   没替过 => **显式套** SYSTEM_LINKER。
+        //
+        // **而为什么必须显式套**（07 设备侧 2026-10-24 的读数，0e447ef 那一版的回归）：
+        //   那四份入口在设备上是 u:object_r:app_data_file:s0，
+        //   而 app 进程那个域是 u:r:untrusted_app，**那一域对 app_data_file 没有执行许可**
+        //   （=> 而直接 exec 它在加载解释器之前就 EACCES => 而那一格是 error=13）；
+        //   **而 /system/bin/linker64 是 u:object_r:system_linker_exec:s0，那一域有执行许可**
+        //   => 而所以**经由 linker64 去 exec 那个入口**这条路是通的，
+        //      **而「直接 exec 那个入口」那条路在 app 自己那个域里不通**
+        //   （=> 而同一份 bash 字节在 runas_app 那个域里直接 exec 是成的
+        //     => 而而那说明是域的策略，不是文件权限位）。
         //
         // 而这一支**不能删**（ET_DYN 要经 linker64 驱动 —— 唯一真相源是本函数，native 那份已删，C-87）。
         // 而原生那一支（container/native/d1/exec-path.c:429）问的是 etype==ET_DYN ——
-        //   它那一侧**没有** PT_INTERP 那一问，**而那是因为它走的是 LD_PRELOAD 注入的 execve**，
-        //   **而那条路上内核已经按 PT_INTERP 套过了**（execve 的是那个入口，argv 已是 [interp, path…]）。
+        //   而它那一侧 execve 的是 **linker64**（:438）=> 而而那一支与这一支是同一条路。
         is Shape.Elf ->
-            when {
-                // 已经替过的那一次（argv[0] 已是 linker64）—— 不再替。
-                entry.absolutePath == SYSTEM_LINKER -> listOf(entry.absolutePath) + args.drop(1)
-                // 入口自己带 PT_INTERP => 内核会套一层 => 这一侧不套。
-                hasInterp(entry) -> listOf(entry.absolutePath) + args.drop(1)
-                // 共享库那一类（ET_DYN 而没有 PT_INTERP）=> 要显式套。
-                else -> listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
-            }
+            if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)
+            else listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
