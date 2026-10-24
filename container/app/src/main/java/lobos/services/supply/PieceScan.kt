@@ -91,7 +91,47 @@ object PieceScan {
      *    于是「扫不出程序」与「就是库」在结果上无法区分 —— 判据读错了主语（C-102）。 */
     private fun roleOf(verDir: File): String {
         val declared = metaOf(verDir)?.optString(ROLE_KEY, "").orEmpty().trim()
-        return declared.ifBlank { ENTRY_UNUSABLE }
+        if (declared.isNotBlank()) return declared
+        // 缺陷名（C-102）**role 那一格在两份清单里，而这一处读的那一份没有它** ——
+        // 而落位侧**确实**有那一份带 role 的清单（=> 而 ManifestWriter 写它，
+        // => 而那一份是 program-manifest.json，=> 而它的 role 键逐字是 `role`）。
+        //
+        // 真机读数（07，2026-10-25，build-apk 40134460082 / sha=9144b24）：
+        //   索引里 busybox 那一行的 role 逐字是 `entry-unusable`，
+        //   而落位侧那份 program-manifest.json 的 role 逐字是 `program`，=> 而两处逐字不同；
+        //   而后果是 busybox 那一件**没进监督名单**（journal 逐字「监督名单=bash,jq,ripgrep」），
+        //   => 而它没被启动，=> 而「exit 变成 0」那一格**不存在**（=> 而不是 0，=> 而按 C-126 是未过）。
+        //
+        // 而**为什么落位侧那份 component-meta.json 没有 role 键**：
+        //   => 而产物的 component-meta.json 由 gen-component-meta.js 写（=> 而它那个 meta 对象逐字是
+        //      schema / id / version / entry / entryProvenance / requires / essential / source / sourceSha256
+        //      / buildSha / buildRun，=> 而**没有 role**），
+        //   => 而落位侧那一份是**照抄**产物那一份的（=> 而 PreinstalledPieces 那一支只是 copy），
+        //   => 而所以 role 那一格**只**在 program-manifest.json 那一份里。
+        //
+        // 而按 C-103 这一族它为什么有两边：
+        //   一边是「**产物自带的** component-meta.json 的 role」（=> 而它今天不存在，
+        //        => 而加它要改 gen-component-meta.js，=> 而那在 PKG_MECH 里，=> 而而八件要重固化）；
+        //   另一边是「**落位侧写的** program-manifest.json 的 role」（=> 而它**存在**，
+        //        => 而而落位侧那一份是运行期写的，=> 而而它不用重新固化）。
+        //
+        // ⇒ 而这一处改读**后者**（=> 而它存在、=> 而而它与监督环那一支读的是同一份，
+        //   => 而按 C-104「只有一条生成路径」），
+        // ⇒ 而**不动**产物那一份（=> 而那避免八件重固化，=> 而而那是处置成本那一格）。
+        // ⇒ 而若产物那一份以后也带 role（=> 而那一格归 01/04 裁），=> 而这一处会**先**读它
+        //   （=> 而 metaOf 那一支在前），=> 而而那两处会**一致**，=> 而而这一处就退化成兜底。
+        val manifest = manifestOf(verDir)
+        val mRole = manifest?.optString(ROLE_KEY, "").orEmpty().trim()
+        return mRole.ifBlank { ENTRY_UNUSABLE }
+    }
+
+    /** 落位侧那一份清单（program-manifest.json）—— 落位时由 [ManifestWriter] 写。
+     *  而**它与产物自带的 component-meta.json 是两份不同的清单**（=> 而前者由运行期写、
+     *  => 而后者是产物照抄过来的），=> 而 role 那一格**只在**前者里。 */
+    private fun manifestOf(verDir: File): JSONObject? {
+        val f = File(verDir, lobos.services.supply.ProgramDir.MANIFEST_NAME)
+        if (!f.isFile) return null
+        return runCatching { JSONObject(f.readText()) }.getOrNull()
     }
 
     /** 清单里 role 字段的键名。与 [ManifestWriter] 写的那一个同源（C-104：只有一条生成路径）。 */

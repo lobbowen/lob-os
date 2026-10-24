@@ -58,6 +58,15 @@
         },
         "sameAs": {
           "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["program", "library"],
+          "description": "这一件是程序形态还是库形态。来源唯一：构建期的落位结果 —— 由 scripts/recipes/gen-component-meta.js 按 bin/ 与 lib/ 下各形态的份数算出。而它与落位侧 program-manifest.json 的 role 键同源（C-104：只有一条生成路径）：=> 而落位侧那一份由运行期的 ManifestWriter 写，=> 而这一份由构建期写，=> 而两处逐字相同。"
+        },
+        "by": {
+          "type": "string",
+          "description": "「为什么 entry 是这一个」的说明 —— 构建期从落位结果算出来的那一句（01 那一件 S115 第三节落点 ②）。而它机器可读：=> 而读清单的人不必再从控制台日志里捞。"
         }
       },
       "required": [

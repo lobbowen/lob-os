@@ -176,6 +176,7 @@ function computeEntry() {
       entry: 'bin/' + binProgram[0],
       by: '落位结果：bin/ 下唯一程序形态字节（ELF e_type/PT_INTERP）'
         + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份，入口只指程序那份' : ''),
+      role: 'program',
       mixed: libPrimary.length > 0,
       libs: libPrimary,
     };
@@ -283,6 +284,7 @@ function computeEntry() {
         + '（本体那份 bin/' + body + ' 不认自己的文件名）'
         + '；入口取作者那一侧声明的那一个 bin/' + declared
         + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
+      role: 'program',
       mixed: libPrimary.length > 0,
       multiCall: binProgram.length,
       libs: libPrimary,
@@ -303,7 +305,7 @@ function computeEntry() {
   //   而「库装库目录」说的是**库字节落在库目录**，那件事由运行期 dirForRole 保证 ——
   //   与「库件没有 entry」（入口）不冲突。
   if (libPrimary.length >= 1) {
-    return { entry: '', by: '落位结果：纯库件（bin/ 下无程序形态字节）⇒ 没有程序那一侧，entry 留空；库字节落在 lib/（'+libPrimary.length+' 份）', mixed: false, libs: libPrimary };
+    return { entry: '', role: 'library', by: '落位结果：纯库件（bin/ 下无程序形态字节）⇒ 没有程序那一侧，entry 留空；库字节落在 lib/（'+libPrimary.length+' 份）', mixed: false, libs: libPrimary };
   }
   if (libPrimary.length > 1) {
     return { error: '落位目录 ' + PAYLOAD + ' 的 lib/ 下有 ' + libPrimary.length
@@ -360,6 +362,33 @@ const meta = {
   entry: entry,
   // entry 由谁算 —— 写进清单，让读清单的人不必再猜。
   entryProvenance: 'gen-component-meta.js:落位结果（构建期算出，非人填）',
+  // ★ 「**为什么是这一个**」落进清单（01 那一件 S115 第三节落点 ②）。
+  //   而它**原来只打到控制台**（=> 而 `:395` 那一行逐字是「依据=」+ computed.by），
+  //   => 而落位侧那三份（component-meta.json / piece-shape.json / program-manifest.json）
+  //      **都没有 by 键**（=> 而 07 今天逐字核到设备侧那一格是空的）。
+  //   => 而这一格**机器可读**（=> 而读清单的人不必再从控制台日志里捞）。
+  by: computed.by || '',
+  // ★ role 那一格 —— 落进**产物**这一份（01 那一件 S115 第三节落点 ③ 的那一族）。
+  //   而它治的是「**role 那一格在两份清单里，而索引重建那一支读的那一份没有它**」：
+  //     · 落位侧 program-manifest.json **有** role（=> 而 ManifestWriter 写它，=> 而 :27 那一行
+  //       逐字是 `m.put("role", role)`），
+  //     · 而产物自带的 component-meta.json **没有** role（=> 而下面这个 meta 对象里没有它），
+  //     · 而 PieceScan.roleOf 读的是**后者**（=> 而 :93 那一行逐字是
+  //       `metaOf(verDir)?.optString(ROLE_KEY, "")`），
+  //     · => 而索引重建那一支（ProgramDir.kt:164 到 :165 逐字是
+  //       `val role = if (landed) PieceScan.roleFromDisk(context, programId)`）
+  //       拿到的就是 `entry-unusable`，
+  //     · => 而真机读数（07，2026-10-25，build-apk 40134460082 / sha=9144b24）：
+  //       索引里 busybox 那一行的 role 逐字是 `entry-unusable`，
+  //       而落位侧那份 program-manifest.json 的 role 逐字是 `program`，=> 而两处逐字不同；
+  //       => 而后果是 busybox 那一件**没进监督名单**（journal 逐字「监督名单=bash,jq,ripgrep」），
+  //          => 而它没被启动，=> 而「exit 变成 0」那一格**不存在**（=> 而不是 0，=> 而按 C-126 是未过）。
+  //   => 而按 C-103 这一族它为什么有两边：一边是「**产物自带的** component-meta.json 的 role」，
+  //      另一边是「**落位侧写的** program-manifest.json 的 role」，
+  //      而索引重建那一支读的是前者而监督环那一支读的是后者。
+  //   => 而这里把 role **补进产物那一份**（=> 而两份就一致了，=> 而按 C-104「只有一条生成路径」），
+  //      而运行期那一处（PieceScan.roleOf）**先读产物那一份**、=> 而读不到才落到落位侧那一份（=> 而那是兜底）。
+  role: computed.role || '',
   requires: deps,
   essential: src.essential === true,
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
