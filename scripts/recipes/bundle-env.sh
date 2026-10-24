@@ -139,7 +139,25 @@ emit_piece() {
   # => 而它落在 component-sources.json 的 sources 表里（与 installName 同一族）
   # => **而这里读它，那个声明就由产出方给、而不由调用方传**
   # 而**没声明就不查**（而那不是「缺」，C-05）
-  local marker="$(node scripts/toolchain/read-marker.js "$id")"
+  # 缺陷名（C-102）**这一处用的是相对路径，而 cwd 不一定是仓根**。
+  #
+  # 真机读数（build-busybox run 40106308483，sha=3e89949）：
+  #   Error: Cannot find module '/home/runner/work/lob-os/lob-os/work/busybox/busybox-1.36.1/scripts/toolchain/read-marker.js'
+  # 而那一趟的前一句逐字是
+  #   ##[error]…/work/busybox/out/bin/cat 不是 aarch64 ELF 或小于 500000 字节
+  #
+  # 而成因：这一份 bundle-env.sh 在 source 的时候（=> 而第 15 行）cd 回了仓根，
+  # **=> 而那时的 cwd 是对的**；
+  # 而 busybox 那一件在 build-native-busybox.sh:73 那一处 `cd "$SRC"` 进��了源码树，
+  # **=> 而 emit_piece 是第 462 行才被调的，=> 而那时的 cwd 还在源码树里**
+  # => 而那个相对路径就解析到源码树底下去了，=> 而源码树里没有 scripts/toolchain/。
+  #
+  # 而对照：bash 那个 recipe 从不 cd（=> 而 build-bundle-bash.sh:71 直接调 emit_piece），=> 而所以它没事。
+  # 而本文件里其余那几处调仓内脚本的（=> 而 :39、:48、:115、:220）**逐字都是 "$ROOT_DIR/..."**，
+  # **=> 而只有这一处是相对路径**。
+  #
+  # => 而处置：这一处改成绝对路径（=> 而与本文件其余那几处同一口径）。
+  local marker="$(node "$ROOT_DIR/scripts/toolchain/read-marker.js" "$id")"
   #  **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
   #   缺陷名（C-102）entry 散在几处、而那几处是副本：
   #     原来这一格是「declared（表里那份）!= $entry（recipe 传的那份） 判红」，
