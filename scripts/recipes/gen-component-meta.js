@@ -42,11 +42,22 @@ const ROOT = path.resolve(__dirname, '../..');
 const argv = process.argv.slice(2);
 const positional = [];
 let payloadArg = null;
+let printEntry = null;
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--payload') {
     payloadArg = argv[i + 1] || '';
     i++;
+  } else if (a === '--print-entry') {
+    // ★ 只算 entry 并打印（=> 而不写清单）。
+    //   而它治的是「**判据在产物之前跑**」那一族：
+    //     · 判据那一处（verify-component-artifact.sh:6）与打包那一处（package-component.sh:15）
+    //       都要读 entry，=> 而而打包那一支才是产出那份 zip 的那一个，
+    //       => 而判据在打包**之前**跑 ⇒ 而那时 zip 还不存在。
+    //   ⇒ 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而而那一份此刻就在 dist/ 下）。
+    //   ⇒ 而用法：node gen-component-meta.js --print-entry <件名> <落位目录>
+    printEntry = { id: argv[i + 1] || '', payload: argv[i + 2] || '' };
+    i += 2;
   } else if (a.startsWith('--build-sha=') || a.startsWith('--build-run=')) {
     // 格三：构建标识由**调用方**给（打包那一支），而它在这里只是被带进来。
     // 而这两个 key 在下面 meta 写完之后才被用。
@@ -67,7 +78,7 @@ if (positional.length === 4) {
 }
 
 const [id, version, outPath] = positional;
-if (!id || !version || !outPath) {
+if (!printEntry && (!id || !version || !outPath)) {
   console.error('用法: node gen-component-meta.js <件名> <版本> <输出.json> [--payload <落位目录>]');
   process.exit(1);
 }
@@ -77,7 +88,7 @@ function readJson(p) {
 }
 
 // 落位目录：默认是输出文件所在目录（打包脚本把落位结果暂存在那里）。
-const PAYLOAD = payloadArg ? path.resolve(payloadArg) : path.dirname(path.resolve(outPath));
+let PAYLOAD = payloadArg ? path.resolve(payloadArg) : (outPath ? path.dirname(path.resolve(outPath)) : process.cwd());
 
 function listFiles(dir) {
   let names = [];
@@ -106,7 +117,14 @@ function elf_form_of(file) {
     const head = Buffer.alloc(64);
     const n = fs.readSync(fd, head, 0, 64, 0);
     if (n < 18) return 'unreadable';
-    if (head[0] !== 0x7f || head[1] !== 0x45 || head[2] !== 0x4c || head[3] !== 0x46) return 'unreadable';
+    if (head[0] !== 0x7f || head[1] !== 0x45 || head[2] !== 0x4c || head[3] !== 0x46) {
+      // ★ `#!` 脚本（=> 而 npm / pnpm 那两件的入口是 bin/npm-cli.js 与 bin/pnpm）：
+      //   而 elf-form.sh 的取值域里 unknown 逐字是「不是 ELF（或是 #! 脚本）」，
+      //   => 而而它**是**入口（=> 而 verify-component-artifact.sh 那一支逐字认 shebang 形态），
+      //   => 而所以这一处把它单列成一个形态（=> 而而那是 02 核到的那一格）。
+      if (n >= 2 && head[0] === 0x23 && head[1] === 0x21) return 'shebang';
+      return 'unreadable';
+    }
     const etype = head.readUInt16LE(16);
     if (etype === 2) return 'exec';
     if (etype === 3) {
@@ -129,7 +147,7 @@ function elf_form_of(file) {
 
 function is_program_form(dir, name) {
   const f = elf_form_of(path.join(dir, name));
-  return f === 'exec' || f === 'dyn-interp';
+  return f === 'exec' || f === 'dyn-interp' || f === 'shebang';
 }
 
 // entry 唯一的来源：落位结果。
@@ -313,6 +331,27 @@ function computeEntry() {
   }
 
   return { error: '落位目录 ' + PAYLOAD + ' 里没有落位结果（lib/ 下无主名 .so，bin/ 下无文件）—— 清单不写没有落位依据的 entry' };
+}
+
+// ★ 只算 entry 并打印（=> 而不写清单）。
+//   而它治的是「**判据在产物之前跑**」那一族：
+//     · 判据那一处（verify-component-artifact.sh:6）与打包那一处（package-component.sh:15）
+//       都要读 entry，=> 而而打包那一支才是产出那份 zip 的那一个，
+//       => 而判据在打包**之前**跑 ⇒ 而那时 zip 还不存在。
+//   ⇒ 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而而那一份此刻就在 dist/ 下）。
+if (printEntry) {
+  if (!printEntry.id || !printEntry.payload) {
+    console.error('用法: node gen-component-meta.js --print-entry <件名> <落位目录>');
+    process.exit(1);
+  }
+  PAYLOAD = path.resolve(printEntry.payload);
+  const c = computeEntry();
+  if (c.error) {
+    // 算不出来 ⇒ 答「没有」（=> 而 exit 0，=> 而而那与这一格是可选的那一族一致）。
+    process.exit(0);
+  }
+  process.stdout.write(String(c.entry || ''));
+  process.exit(0);
 }
 
 const computed = computeEntry();
