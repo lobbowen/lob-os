@@ -152,8 +152,57 @@ PLATFORM_H="$SRC/include/platform.h"
 # /system/bin/sed 是 toybox（实测），它不认；地址块写法在 toybox 上
 # 又会被当文件名（实测「sed: 529,554: No such file or directory」）。
 node "$ROOT_DIR/scripts/verify/find-platform-h-android-branch.js" "$PLATFORM_H" --patch
-set_conf STATIC y
-set_conf PIE n
+# 缺陷名（C-102）**这一件编成了 ET_EXEC，而 ET_EXEC 在设备上起不来**。
+#
+# 真机读数（07，2026-10-24，装 0c1d9af 那一版之后）：
+#   busybox 那一件仍是 `Cannot run program`（error=13, Permission denied），
+#   而另外三件（bash / jq / rg）起来了。
+#   而 busybox 入口的形态（设备侧取件后本机读）：
+#     字节数 547392  sha256 030023fb6a1ef966cebd535615211df394cf623c90f842cdbe162f7db60c7ef6
+#     Type: EXEC (Executable file)   INTERP 行数: 0
+#     对照（bash 那一份）: Type=DYN  INTERP=1
+#
+# **=> 而成因是这两行配置（=> 而 upstream busybox 1.36.1 的 Config.in:372 那一段逐字）：**
+#     config PIE
+#         bool "Build position independent executable"
+#         default n
+#         depends on !STATIC
+#   而 Makefile.flags:125 那一段（=> 而逐字）：
+#     ifeq ($(CONFIG_STATIC),y)
+#     CFLAGS_busybox += -static
+#   而 Makefile.flags:131 那一段：
+#     ifeq ($(CONFIG_PIE),y)
+#     CFLAGS_busybox += $(ARCH_PIE)   # => 而 ARCH_PIE ?= -pie
+#     CFLAGS += $(ARCH_FPIE)           # => 而 ARCH_FPIE ?= -fpie
+#
+# **=> 而 `STATIC y` => 而 -static => 而而那一份必然是 ET_EXEC；**
+# **=> 而 `PIE` 那一项 `depends on !STATIC` => 而而 STATIC y 时它根本不可选（=> 而 set_conf PIE y 会被 kconfig 丢掉）；**
+# **=> 而所以 `set_conf STATIC y` 与 `set_conf PIE n` 合起来 = 一份 ET_EXEC。**
+#
+# **=> 而 ET_EXEC 在设备上起不来，而那个原因不是「套不套 linker64」：**
+#   · 那一件走 Shape.Exec 那一支（=> 而 ExecEntry.kt:59 逐字 `is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)`），
+#     => 而那是**直接 exec 那个入口本身**；
+#   · 而那个入口在设备上是 u:object_r:app_data_file:s0，
+#     而 app 进程那个域是 u:r:untrusted_app，**那一域对 app_data_file 没有执行许可**
+#     （=> 而而直接 exec 它在加载解释器之前就 EACCES => 而那一格是 error=13）；
+#   · 而**套 linker64 绕不过去** —— 而 AOSP linker_main.cpp:405 那一段逐字：
+#     `if (elf_hdr->e_type != ET_DYN) { __linker_error("error: %s: Android only supports position-independent executables (-fPIE)", ...); }`
+#     => 而那一件是 ET_EXEC => 而而经 linker64 加载它会被那一条挡。
+#
+# **=> 而所以处置是让这一件成为 ET_DYN（=> 而而那一族就有「经由 linker64」那条路可走，=> 而而那一路的 execve 目标是 linker64，
+#     => 而那是 u:object_r:system_linker_exec:s0，=> 而那一域有执行许可，=> 而那个入口是 linker 的参数、=> 而由 linker 自己加载）。**
+#
+# **=> 而做法：=> 而把 STATIC 关掉（=> 而而 CONFIG_PIE 的 `depends on !STATIC` 就允许 PIE），=> 而而 PIE 给 y。**
+# **=> 而「静态」那一族是为「系统救援工具」准备的（=> 而 Config.in:365 那一段 help 逐字：
+#     "If you want to build a static binary, which does not use or require any shared libraries..."），
+# **=> 而而那一件在 LOB-OS 里是**程序**形态（=> 而它落 bin/，=> 而而那 17 条软链是它的 argv[0] 派生物，
+#     => 而而 build-native-busybox.sh:271 那一段逐字：「它是一份独立的**程序**字节，而那 17 个名字是它的 argv[0] 派生物」），
+# **=> 而而它要的是「能起得来」，=> 而而「不依赖动态库」那个好处在设备上换不来「起得来」。**
+#
+# 而这一件在 CI 上产出的形态会变（=> 而 ET_EXEC -> ET_DYN），
+# **=> 而而它落 bin/ 那个位置不变，=> 而而那 17 条软链指向它的方式也不变（=> 而而都是 argv[0] 派生物）。**
+set_conf STATIC n
+set_conf PIE y
 
 #  编译器：官方只有「前缀」这一条路，没有 clang 变体 
 # busybox 的 Makefile 第 292~298 行写死了：
