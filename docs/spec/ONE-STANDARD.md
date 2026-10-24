@@ -11364,3 +11364,3749 @@
 **=> 而第 3 条要点名**：**而本规范今天落的丙，不等于甲被否** —— **而按 §38.3 那一族，「这一条今天最像」与「这一条今天成立」是两格。**
 
 ---
+
+## 一百一十八、而那一段路径的值要过四层，而那一层是「值形态落在哪一条命令上」
+
+而本章今天已落的节有 §118.11 而两个轴与三族 —— 而它问的是「类 P / 类 R / 类 X 与落点 R-1 / R-2 / R-3 这两个轴各管哪一层，而它们的映射是偏函数，而第三族「传递路径」是第三个问句」
+而本章其余各节待重立
+
+### 118.11 而两个轴与三族（2026-10-24）
+
+**=> 而这一节治的是「两个分类轴混用」与「同一个件的机制归属与它的值落点被写成同一件事」。**
+
+**=> 而它的内容照录 01 的 S109、S111、S112 那三份判别形式。**
+
+---
+
+#### 一、两个轴各管一层，不能并成一套
+
+**=> 而按 C-135：而这两族问的不是同一个问题。**
+
+| 轴 | 它问什么 | 它治什么 |
+|---|---|---|
+| **第一轴 · 层**（类 P、类 R、类 X） | **这一件走哪几层**（L-perl / L-make / L-shell / L-link），而每一层**适用不适用** | **折叠**（同一段文本被各折一次，每折一次少一个美元） |
+| **第二轴 · 落点**（R-1、R-2、R-3） | **那一行 `-Wl,-rpath` 落在哪一条命令上** | **落点**（值写在哪儿） |
+
+**=> 而一个件的层数与它的值落点互相独立 —— 而同一个 P 类件，它的值既可能写在模板里（R-3），也可能落在最终那行链接命令上（R-2，若那个模板是静态文本）。**
+
+**=> 而两种「并成一套」的错法都要点名：**
+
+- **把类 P / 类 R / 类 X 当成 R-1 / R-2 / R-3 的子类** —— 而名字首字母都撞（P 与 R-1、R 与 R-2、X 无对应）=> **要写成「类 P / 类 R / 类 X」与「落点 R-1 / R-2 / R-3」**，两处都带限定词；
+- **把 R-1 / R-2 / R-3 当成三个「类」** —— 而它们是三个**落点**；而 **R-1 今天在仓里没有实例**（按 C-116 那一档今天写「未核」），**而一个没有实例的分类不能当轴用**。
+
+---
+
+#### 二、两轴的映射是偏函数，不是函数
+
+| 第一轴 | 它落第二轴的哪一格 |
+|---|---|
+| **类 P** | **R-3**（而 openssl：值写在补丁改的模板里） |
+| **类 R** | **R-2**（而 zlib：值落在最终那行链接命令上） |
+| **类 X** | **第二轴无位置**（而它不给 rpath，没有那一行可落） |
+| **node 那一件** | **R-2，但第一轴无位置**（而它既不是模板也不是自写 recipe 路） |
+| **curl 那一件** | **第二轴无位置**（而它今天不给 rpath；机制上走 R-1 那一路，而值形态今天没有落点） |
+
+**=> 而「无位置」在两轴上都要单列：而类 X 在第二轴无位置，而 node 那一件在第一轴无位置。**
+
+**=> 而 §118.3 那张表今天只有三类，而仓里已经有第四类（node 那一件）—— 而下一个件按那张表判会落不进任何一格，而按 C-116 那一格未核。**
+
+---
+
+#### 三、第三族「传递路径」
+
+**=> 而判别式：这一件的值形态，机制上经由哪一段到达链接命令行？**
+
+| 值 | 它是什么 | 今天有实例的件 |
+|---|---|---|
+| **T-1** | **configure 那一路**（值形态由 configure 生成的 Makefile 承载） | curl、bash |
+| **T-2** | **上游模板那一路**（值形态在上游那份文件里，而改它要打补丁） | openssl |
+| **T-3** | **手写 recipe 那一路**（值形态由仓内 recipe 自己拼） | zlib、node |
+| **T-4** | **cargo 与 rustc 那一路**（值形态经由 cargo 的 `RUSTFLAGS` 到达链接命令行） | **今天无实例**（而 rg 那一件在 8f1a119 那一版上是，3cb6acb 撤了）=> **按 C-116 写「未核」** |
+
+**=> 而第三族与第一轴的边界照录：「无 make 层」是第一轴问题三的答案，而它不是「不属第三族」** —— 而 cargo 那一件在第一轴上「无 make 层」，而在第三族上是 T-4。
+
+**=> 而第三族与层、落点、送达都正交 => 而这四族并列，互不替代。**
+
+---
+
+#### 四、逐件表（六行）
+
+| 件 | 第一轴 | 第二轴（今天这一版） | 第三轴 |
+|---|---|---|---|
+| **zlib** | 类 R | R-2 | T-3 |
+| **openssl** | 类 P | R-3 | T-2 |
+| **node** | **第一轴无位置** | R-2 | T-3 |
+| **curl** | 类 R | **无位置** | T-1 |
+| **rg** | 类 X | **无位置** | T-4 |
+| **bash** | 类 R | **无位置** | T-1 |
+
+---
+
+#### 五、三个「今天无实例、历史上有过」的落点
+
+**=> 而这三个要逐条写（哪一版、哪一行、哪一格、哪次提交撤的、今天那一版是什么），而不写成「curl 那一件是 R-1」：**
+
+| 件 | 历史落点 | 属于哪一格 | 今天那一版 |
+|---|---|---|---|
+| **curl** | **8f1a119**（2026-10-21 10:07）那一版 `scripts/recipes/build-bundle-curl.sh` 第 54 行：`LDFLAGS="-Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" > "$WORK/configure.log" 2>&1 \` | **R-1** | **已撤**（685326e，2026-10-24 02:34）；今天那一版第 53 行是 `CC="$CC" AR="$AR_BIN" RANLIB="$RANLIB_BIN" > "$WORK/configure.log" 2>&1 \`，而**那一行 `rpath` 命中数 0** => **它今天没有落点** |
+| **rg** | **8f1a119**（2026-10-21 10:07）那一版 `scripts/recipes/build-bundle-rg.sh` 第 23 行：`export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=-Wl,-rpath,\$ORIGIN"` | **落在 cargo 那一路**（T-4；它既不是 R-1，也不是 R-2 / R-3） | **已撤**（3cb6acb，2026-10-24 02:41:59）；今天那一版对 `rpath` / `ORIGIN` / `RUSTFLAGS` **零命中** |
+| **bash** | **8f1a119**（2026-10-21 10:07）那一版 `scripts/recipes/build-bundle-bash.sh` 第 54 行：`LDFLAGS="-Wl,--allow-multiple-definition -Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'" \` | **R-1** | **已撤**（685326e，2026-10-24 02:34）；今天那一版对 `rpath` / `ORIGIN` **零命中** |
+
+**=> 而按 C-116：这三处在今天这一版里都没有实例 => 而要写「未核」而不是「它不存在」；而它们在 10-21 到 10-24 那几版里成立过 => 而按 C-115 与历史那一版并列。**
+
+**=> 而两件撤除是两次不同的动作：685326e（2026-10-24 02:34）动 bash、curl、jq、openssl、zlib 五个文件；而 3cb6acb（2026-10-24 02:41:59）动 rg 与 openssl 两个文件。**
+
+---
+
+#### 六、第二轴「无位置」拆两行
+
+| 那一种 | 判法 | 今天的实例 | 今天的状态 |
+|---|---|---|---|
+| **N-1 · 它根本不给那个值** | 那一件今天不给 rpath（而它的产物里没有 RUNPATH/RPATH 行） | **类 X**（jq 静态、rg cargo —— 而 rg 今天也不给）、**curl**、**bash** | **已核**（今天那几件的 recipe 对 `rpath` / `ORIGIN` 零命中） |
+| **N-2 · 它给了而值落在别处** | 那一件给了那个值，而那一行落在第二轴那三格以外 | **今天无实例**（今天「产出」那一路三行的落点全部落在第二轴某一格上） | **未核**（按 C-116；而不写「它不存在」） |
+
+**=> 而那一条边界照录：若它落在第二轴那三格以外（无论是「它根本不给那个值」还是「它给了而值落在别处」），它就在第二轴上无位置。**
+
+---
+
+#### 七、本节边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落三个分类轴与两轴映射与逐件表，而它不下「某一件该给不该给 DT_RUNPATH」的判断 |
+| 2 | 而「类 X」那一类在 §118.3 那张表里与 rg 写在一行，而按第一轴问题一（写在模板里还是仓内 recipe 里）rg 的**写法**归「仓内 recipe 自己拼出来」那一支 —— 而这是第一轴内部的表述问题，不改本节的三个轴 |
+| 3 | 而 R-1 今天在仓里没有实例，而按 C-116 那一格写「未核」 |
+
+---
+
+## 一百一十九、而「那个加载器读不读那份缓存」这一格的读数形状
+
+而本章今天已落的节有 §119 而它问的是「搜索路径里有没有某目录、读不读某个文件、认不认识某个名字，这三格不得互相顶替；而读数要能指向那一次内容被取回的事件，而它分事件级、系统调用级、哨兵级、必要条件级四档，而必要条件级只证否不证实」
+而 §119.1 三格必须分开、§119.2 判别式、§119.3 F1 到 F12 字段表、§119.4 F2 那一格（设备上没有单一 head 与 run_id）、§119.5 三档与每个 0 的出处、§119.6 阳性侧与阴性侧、§119.7 P3 取法通则、§119.8 缺项登记、§119.9 归属与分工、§119.10 边界 —— 而这十小节待重立
+
+*本节由 linux-architect（01）写内容稿；它不碰规范正文（AGENTS.md 第五节：成文规范优先于补丁，而写内容与做手术要分开）。*
+
+### 119 而「那个加载器读不读那份缓存」这一格的读数形状（2026-10-24）
+
+**=> 而这一格问的是：在设备上运行 `/system/bin/linker64` 的一次真实加载里，某个**具体路径的那个文件**，其内容有没有进入 linker 自己的读集合。**
+
+#### 119.1 三格必须分开写
+
+| 格 | 它问什么 | 它归谁 |
+|---|---|---|
+| **G1** | **linker64 的**搜索路径**里有没有 `etc/` 这一层** | **而它对 G2 零信息**（而 07 今天那一趟带 `LD_LIBRARY_PATH` 的对照读数落在这一格） |
+| **G2** | **linker64 读不读 `ld.so.cache` 这个文件** | **而它就是本节这一格** |
+| **G3** | **linker64 认不认识 `ld.so.conf` / `ld.so.cache` 这两个名字** | **而它是 G2 的一条必要条件侧证据** |
+
+**=> 而这三格不得互相顶替（按 C-81 与 C-92）：而「搜索路径里有没有某目录」答不了「读不读那个文件」，而「认不认识那个名字」也答不了「读不读那个文件」。**
+
+#### 119.2 判别式与四档判别
+
+> **那一格要能证明「它读了」，读数必须指向「那一次内容被取回的事件」—— 而它分四档判别，而必要条件级只证否不证实。**
+
+| 档 | 它是什么 | 它的读数形状 |
+|---|---|---|
+| **P1 · 事件级** | linker 自己报出了它读了那个文件 | F6 里出现被测文件的**绝对路径字面量**（或它的 basename 加目录），而同一份 F6 里 F7 阳性对照命中数大于 0 |
+| **P2 · 内容级** | F6 里出现只有读过那个文件才可能出现的内容特征 | 而那个 cache 文件首行 ASCII 串 `# lobos ld.so.cache` 的可打印片段出现在 F6 里 |
+| **P3 · 哨兵级** | 把那个路径的内容换成畸形物，而 linker 的报错消息里带那个路径 | 而换之前与换之后的 `ls -l`（大小、mtime）与 `od -c` 头 64 字节原文都要留 |
+| **P4 · 系统调用级** | 可归因到 linker 那个 pid 的一次 open 加 read | 而设备侧今天不可取（无 gdbserver、无 strace）=> **【不可取】**，而不用别的证据顶替 |
+| **P5 · 必要条件级** | 那个二进制里**根本没有**这个名字的字符串 | 而 F9 里 `ld.so.cache` 与 `ld.so` 计数为 0，而 `ld.config.txt` / `ld-android.so` 计数大于 0（同一份 strings 输出、同一套 grep） |
+
+**=> 而今天这五档各自的状态（逐档）：**
+
+| 档 | 今天的状态 | 而它的读数 |
+|---|---|---|
+| **P1 · 事件级** | **今天没读到** | 而那四趟 `LD_DEBUG=all` 的输出里**没有**那个文件的绝对路径字面量（而 F7 阳性对照 `ld.config.txt` 命中 1 行） |
+| **P2 · 内容级** | **今天没读到** | 而那四趟输出里**没有** `# lobos ld.so.cache` 那一段的任何可打印片段 |
+| **P3 · 哨兵级** | **今天取到了**（而它**不成立**） | 而畸形物在场的那两趟，输出行数与字节数与不带时**完全相同**，而哨兵串 `MALFORMED_SENTINEL_07` 命中 0，归一地址后 diff **只有库的加载顺序**不同，而无一行含那个文件的路径或内容特征 |
+| **P4 · 系统调用级** | **【不可取】** | 而设备侧无 gdbserver、无 strace |
+| **P5 · 必要条件级** | **今天取到了**（而它**只证否不证实**） | 而 F9 里 `ld.so.cache` 与 `ld.so` 计数为 0，而 `ld.config.txt` 3 行、`ld-android.so` 1 行 |
+
+**=> 而按 C-113：而今天**被真实触发过**的是 P3 与 P5 两档；=> 而 P1 与 P2 两档**今天没有被触发过** => 而按 C-113 那一格**是按代码写的**（而它不得与实测读数并列进结论）。**
+
+**=> 而按 C-116：而 P1 与 P2 两档今天未触发这一条，=> 而它**不蕴含**那两档在别的形状下不成立 —— 而要验它要自己造一次那个形状。**
+
+**=> 而 P5 只证否不证实：而它排除「以该字面量打开该文件」，而它不排除「名字被拼出来」或「读了同一份内容的另一个路径」。**
+
+#### 119.3 F1 到 F12 字段表（每一趟必齐，而缺一即按 C-05 报缺）
+
+| 字段 | 内容 | 怎么取 | 谁取 |
+|---|---|---|---|
+| **F1** | 设备序列号 + `adb devices` 原文 | `adb devices` | 07 |
+| **F2** | 设备构建身份 `head=<sha>` + `run_id=<数字>` | 与 07 那两稿同源 | 07 |
+| **F3** | 被测文件绝对路径、大小、mtime、属主 | `adb shell run-as lobos.os ls -l <path>`（LOB-OS 侧）；`adb shell ls -l <path>`（系统侧） | 07 |
+| **F4** | 触发命令原文（含 `LD_DEBUG=`、`LD_LIBRARY_PATH=` 等环境前缀），一字不改 | 记录在案 | 07 |
+| **F5** | 该趟退出码（整数，原文） | `echo $?` 紧跟命令 | 07 |
+| **F6** | 该趟 **stderr 全文**（不 grep、不截断），落盘后按需分段读 | `adb shell ... 2> 文件` | 07 |
+| **F7** | 阳性对照计数：同一份 F6 里 `ld.config.txt`、`ld-android.so`、`/system/bin` 各自的命中行数 | `grep -c` | 07 |
+| **F8** | 目标计数：同一份 F6 里 `ld.so.cache`、`ld.so`、`cache` 三个词各自命中行数 | `grep -c` | 07 |
+| **F9** | 静态探针：`strings /system/bin/linker64` 里 `ld.so.cache` / `ld.so` / `cache` / `ld.config.txt` / `ld-android.so` 各自命中行数，**并贴出命中行原文**（不是只报计数） | `adb pull` 取件到本机后 `strings` | 07 取件，06 核字节数与声明一致 |
+| **F10** | `/proc/<linker pid>/maps` 快照（**仅作背景，不作 G2 判据**） | `adb shell run-as lobos.os cat /proc/<pid>/maps` | 07 |
+| **F11** | 该趟的三档状态标注 | 判定写入案 | 07 |
+| **F12** | 若做 atime 侧证：目标 inode 与一个控制 inode 的 atime/ctime 前后差值，**外加该文件系统的挂载选项原文**（`/proc/mounts` 里那一行） | `stat` + `/proc/mounts` | 07 |
+
+**=> 而 F12 的边界：而 Android 的 `/data` 与 `/system` 常见 `relatime` / `noatime`；而若挂载选项里出现 `noatime` 或 `relatime`，则 atime 不动是预期行为，而 F12 对 G2 **零信息**，而它不得写成阴性证据。**
+
+#### 119.4 三档取数与「每个 0 的出处」
+
+| 档 | 形态 | 而它什么时候落到这一档 |
+|---|---|---|
+| **READ_FAILED** | 服务端没回话，或这一格根本取不到 | `adb` 断连、F5 拿不到、F6 为空、F9 取件失败、`/proc/mounts` 读不到 |
+| **READ_ERROR** | 设备回了，答案是错误 | `ls` / `cat` 返回 `Permission denied` / `No such file or directory`（而今天 `/system/etc/ld.so.*` 就是这一档） |
+| **0** | 设备回了，成功且内容为空 | 而它必须同帖给 PC 侧阳性对照 |
+
+**=> 而每个写下的 0 都要能答「这是服务端说的，还是我算不出来的」（按 C-112）：**
+
+```
+目标计数 = 0
+出处 = 服务端说的 0（同一份输出流内 grep -c 得到；该输出流已按 PC-1 / PC-3 验过有效）
+阳性对照 = <同一份输出流内的阳性词命中 N 行>（同文件同命令）
+若目标计数为 0 而阳性对照也为 0 => 而不写 0，而改写 READ_FAILED
+```
+#### 119.5 阳性对照与阴性对照两侧
+
+**=> 而阳性对照那三条（每一趟必须同帖给）：**
+
+- **PC-1**：同一趟 F6 里 `ld.config.txt` 至少命中 1 行（而今天的读数是那一行 `Reading linker config "/linkerconfig/ld.config.txt"`）=> 而 F6 是一条有效的 linker 输出流；
+- **PC-2**：同一份 strings 输出里 `ld.config.txt` 与 `ld-android.so` 至少各命中 1 行 => 而二进制取到了，而 grep 有效；
+- **PC-3**：F7 与 PC-1、PC-2 至少有一条成立，而否则那一趟的 F8 目标计数按三档记 READ_FAILED（而输出流本身不可用），而不记 0。
+
+**=> 而阴性对照那五条：**
+
+- **N1**：F6 全文里目标串计数 = 0，而 F7 阳性对照大于 0 => 而它**只能**写到「**这一趟的输出里没有它读过那个文件的记录**」，而**不能**写成「它不读」；
+- **N2**：F9 静态探针里目标名计数 = 0，而 PC-2 成立 => 而它**只能**写到「**这个二进制里没有这个名字的字符串**」；
+- **N3**：被测文件在该趟前后 mtime、大小、内容摘要均未变（而未发生 P3 那种换内容），而 F6 与 F9 的目标计数为 0；
+- **N4（不可取）**：若 F5 的退出码非 0，或 F6 是 `LD_DEBUG` 的用法帮助文本（而本机 linker 对非法类别回帮助文本），则该趟对 G2 **零信息** => 而记【未核】，而不记 0；
+- **N5（旁证，不作判据）**：`/proc/<pid>/maps` 零命中、`diag.jsonl` / `events.jsonl` 零命中 => 而这两处即便阳性对照成立，也只说明「那些日志与那张 maps 里没有它」，而 maps 本就不记录「读过一个文件」。
+
+#### 119.6 P3 取法通则与今天那两趟读数
+
+**=> 而 P3 是这一族里唯一能造出「它读了那一份」这个事件的手段，而它的通则是七步：**
+
+1. **动手前先写明顺序**（而写设备的只有 07）；
+2. **换之前**留三样：`ls -l`（大小、mtime、属主、权限位）、`od -c` 头 64 字节、`sha256sum`；
+3. **动**：在设备上留一份字节级备份，而把那个文件换成畸形物（而畸形物要带一个可搜索的哨兵串）；
+4. **换之后立刻核**：同样那三样；
+5. **跑那一趟**（带与不带畸形物各一趟），而把 stderr 全文落盘；
+6. **还原 + 第三次核**：而那一次 `sha256sum` 要与换之前**逐字符相同**；
+7. **收尾**：删掉备份与暂存件，而核那个目录的清单与基线逐行一致。
+
+**=> 而今天那两趟 P3 读数（逐字）：**
+
+| 项 | 读数 |
+|---|---|
+| **畸形物** | 34 字节（`de ad be ef 00 01 02 03` 加哨兵串 `MALFORMED_SENTINEL_07` 加 `00 ff fe 00 99`），而它的 sha256 是 `2fef16c02b406a7b16f74f91587dc4ddb7e1ee005af9c7bb50b6322877d85f01` |
+| **换之前的 sha256** | `997375855d2eea35bef9b2d79cd800ec0ad1395a8125d5f04d4441aa90f06640`（`etc/ld.so.cache`，649 字节） |
+| **换之后的 sha256** | `2fef16c02b406a7b16f74f91587dc4ddb7e1ee005af9c7bb50b6322877d85f01` |
+| **还原之后的 sha256** | `997375855d2eea35bef9b2d79cd800ec0ad1395a8125d5f04d4441aa90f06640` —— 而它与换之前**逐字符一致** |
+| **畸形物在场时那一趟** | 而 F6 行数与字节数与不带时**完全相同**（474 行 27172 字节 / 472 行 26998 字节），而 F8 那四个词计数**全为 0**（含哨兵串 `MALFORMED_SENTINEL_07`） |
+| **归一地址后 diff** | 而**只有库的加载顺序**不同（同一批库、同一批行、行数相同），而**无一行**含该文件的路径或它的内容特征 |
+| **收尾** | 而 `etc/` 最终只剩 4 项，而 `files/tmp/` 条数 0，而 `opt/` `usr/` `var/` 清单与基线逐行一致 |
+
+**=> 而这些读数的落点：07 那份稿（`07/runs/ROUND-report-20261024.md` 第 4 节「P3 哨兵级（设备写入顺序与前后读数）」）与 `07/runs/S101-F1-F12-REGISTER.md`（F1 到 F12 登记表）。**
+
+#### 119.7 源码侧那一层（L-src）：linker 那一族源码里有没有读那两个名字的代码路径
+
+**=> 而这一层的读数（本机实取 AOSP `platform/bionic` 的 `refs/heads/android16-release`）：**
+
+| 项 | 读数 |
+|---|---|
+| **那一支** | 而本机取的是 `refs/heads/android16-release`，而它的头三条 commit 是 `09a271af557444c9a6b3f3146d6d474156fd6cdb`、`c06f9060b285299c109578823611657920409f50`、`436f3f16488a88ed17016e4525eb6ee595301f42` |
+| **全树规模** | 3451 个文件 |
+| **`ld.so.cache` 与 `ld.so.conf` 两个名字** | **全树零命中** |
+| **阳性对照（同一套 grep）** | 而 grep `ld\.so` 命中 **1** 处，而那一处是 `libc/include/bits/elf_common.h:628` 的 `/* ld.so.1 info (private) */` —— 而它是一句注释，与 linker 无关 |
+| **bionic 仓里有没有同名文件或机制** | 而 find 同名文件**零命中**；而 `linker/` 那一族里带 `cache` 的只有 `linker_config.cpp` 第 418 到 427 行与第 451 行那个**进程内的已解析路径缓存**（`resolved_paths_`），而它缓存的是 `ld.config.txt` 那一格里那些路径的解析结果 |
+| **linker 实际读的是哪一份配置** | 而 `linker/linker.cpp` 第 98 行 `kLdConfigArchFilePath`（`/system/etc/ld.config.<ABI>.txt`）、第 100 行 `kLdConfigFilePath`（`/system/etc/ld.config.txt`）、第 101 行 `kLdConfigVndkLiteFilePath`、第 103 行 `kLdGeneratedConfigFilePath`（`/linkerconfig/ld.config.txt`）、第 3644 行那句 `LD_DEBUG(any, "[ Reading linker config "%s" ]", ...)` |
+| **选哪一份的六个顺位** | 而 `linker/linker.cpp` 第 3576 到 3614 行 `get_ld_config_file_path`：`LD_CONFIG_FILE` 环境变量（3580 到 3583 行）→ APEX 生成的那一份（3586 到 3593 行）→ `/system/etc/ld.config.<ABI>.txt`（3595 到 3598 行）→ `/linkerconfig/ld.config.txt`（3600 到 3602 行）→ vndk lite（3609 到 3612 行）→ 兜底返回 `/system/etc/ld.config.txt`（3614 行） |
+| **读配置的那一个入口** | 而 `linker/linker.cpp` 第 3643 到 3648 行：`get_ld_config_file_path` → `Config::read_binary_config` |
+| **设备上那一版读的是哪一份** | 而 **第 4 顺位** `/linkerconfig/ld.config.txt` —— 而 07 那趟 `LD_DEBUG` 里的逐字就是 `[ Reading linker config "/linkerconfig/ld.config.txt" ]` |
+| **而那三件设备的路径** | 而 `/system/etc/ld.so.conf` 与 `/system/etc/ld.so.cache` 都返回 `No such file or directory`（而它不是 `Permission denied`） |
+
+**=> 而这一层的边界（本机读的是上游那一支，而设备上那一版是 OEM 编译的）：而那两者的 BuildId 不同（设备上那一版是 `ed80a6c1a83206dfdde6762ccb144f26`，与 07 那份 tombstone 的 `#01` 帧逐字相同）=> 而按 C-115 两条并列，不互相顶替。**
+
+#### 119.8 这一格整体的状态
+
+| 层 | 问什么 | 状态 |
+|---|---|---|
+| **L-src · 代码路径层** | **linker 那一族里有没有任何一条代码路径会去读 `ld.so.cache` / `ld.so.conf` 这两个文件？** | **已过** —— 而全树零命中（而阳性对照命中 `elf_common.h:628` 那一句注释），而 linker 读配置的唯一入口是 `Config::read_binary_config` 读 `ld.config*.txt` |
+| **L-run · 运行期层** | **在那一次运行里，它读了那个文件没有？** | **部分已核** —— 而能写到的只有 N1 与 N2 那两句，而**写不到「它不读」** |
+| **它实际读的是哪一份配置** | **它读的是哪一份 `ld.config*.txt`？** | **已过** —— 而六个顺位（`linker.cpp:3576` 到 `3614`）与设备上那一版的实测（`/linkerconfig/ld.config.txt`）对上 |
+
+**=> 而按 C-192 那一档，G2 那一格今天的状态是「**部分已核**」—— 而它不是「已过」，而它也不是「未过」。****=> 而那三层的读数状态汇总：而 **L-src（代码路径层）已过**；而 **L-run（运行期层）部分已核**（而能写到的只有 N1 与 N2 那两句，而写不到「它不读」）；而 **它实际读的是哪一份配置已过**。****=> 而那五档里今天**被触发过**的是 P3 与 P5 两档，而 P1 与 P2 两档今天未触发（而按 C-113 那一格是按代码写的）；=> 而 P4 那一档设备侧【不可取】。**
+
+**=> 而按 C-122：源码那一层答的是「它有没有读那个文件的代码路径」，而它答不了「它在那一次运行里读了没有」。**
+
+#### 119.9 缺项登记与归属
+
+| 项 | 状态 |
+|---|---|
+| **F2** | **缺（形态已定）** —— 而设备上**没有一个单一 head/run_id**，而设备上落位侧那两格是**八个件各自的**（5 个不同 buildSha、8 个不同 buildRun），而已装 APK 自身不带这两格 |
+| **F10** | **缺** —— 而那一趟走 `--list`，linker 自己跑完即退，而没有留下常驻 pid；而按本节它只是旁证，不作 G2 判据 |
+| **F12** | **【不可取】** —— 而挂载选项含 `noatime`，而 atime 侧证对 G2 零信息 |
+| **P4** | **【不可取】** —— 而设备上没有 strace |
+
+| 谁 | 他的活 |
+|---|---|
+| **07** | 设备侧取数（F1 到 F8、F10 到 F12） |
+| **07 取件、06 核字节数** | 本机侧静态探针（F9） |
+| **01** | 读数回来后按本节的形状核对，而核「每个 0 的出处」齐不齐 |
+| **03** | 若本节的判别形式需要登记新条文，由 03 登记 |
+| **04** | 本节就是那个条文 |
+| **05** | 本节不产生实现代码改动 |
+
+#### 119.10 本节边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落判别形式与字段表，而**不下「读 / 不读」的判断** |
+| 2 | 而本节不裁定「甲这条路该不该走」—— 而走丙已落 zlib，而它不依赖本节 |
+| 3 | 而 F10 与 F12、P4 三处对 G2 的结论是零信息，而它们不作阴性证据 |
+| 4 | 而 119.7 那一节的源码读数是**上游那一支**的，而设备上那一版是 OEM 编译的 => 而两条并列，不互相顶替 |
+## 一百二十、而第四格那个 139 的读数形状：把「入口之后」切成四段
+
+而本章今天已落的节有 §120.13 段位 —— 而它问的是「那一趟 139 崩在 ELF 入口之后的哪一段，而它分 Z / A / B / C 四段与三道分界，而那一格今天已定（落在 B 段那个位置）而取值来源那一格未过」
+而 §120.14 那三问 —— 而它问的是「按 soname 找 X 这一步用的是谁的那一格 RUNPATH（参与资格）、$ORIGIN 展开成什么目录（展开规则）、那一层目录里真的有 X 吗（落位布局）」
+而 §120.15 那两格 —— 而它问的是「主对象找依赖（格一 M-主）与依赖自己找同目录依赖（格二 M-依）是两格，而走丙治的是格二」
+而 §120.16 软链在位不等于找得到 —— 而它问的是「那一份字节在共享区里，而那一个软链指向它，而主对象按 soname 找它时选中的是不是那一份」
+而本章其余各节待重立
+
+### 120.13 而第四格那个 139 崩在入口之后哪一段：而 Z/A/B/C 四段与三道分界（2026-10-24）
+
+**=> 而这一格问的是：那一趟 139，崩在 ELF 入口之后的**哪一段**？**
+
+#### 120.13.1 四段与三道分界（判别形式）
+
+| 段 | 名字 | 边界（按 linker 自己的次序） | 而它的特征读数 |
+|---|---|---|---|
+| **Z** | **linker 内部** | `__linker_init` 到 `__dl__start`，而尚未跳目标入口 | 而崩溃帧模块是 `linker64`；而 LD_DEBUG 尾部**没有** `Jumping to _start` |
+| **A** | **初始化函数（constructors）** | `call_pre_init_constructors` / `call_constructors`，而它在 `Ready to execute` 与 `Jumping to _start` **之前** | 而 LD_DEBUG 尾部**有** `Ready to execute` 而**没有** `Jumping to _start`；而崩溃帧模块是目标 .so；而 pc 落在该 .so 的 `.init` / `.init_array` 目标内 |
+| **B** | **入口之后的第一条指令** | `Jumping to _start (0x...)` 之后，而目标 `_start` 跑起来的那一段 | 而 LD_DEBUG 尾部**有** `Jumping to _start`；而崩溃帧模块是目标 .so；而 `pc` 减目标 .so 映射基址**约等于** `e_entry` |
+| **C** | **TLS 与自举** | `_start` 之后的 libc 初始化、TLS 分配与自举 | 而 LD_DEBUG 尾部**有** `Jumping to _start`；而崩溃帧模块是 `libc.so` / `ld-android.so`；而 `Cause` 行是 `null pointer dereference` |
+
+**=> 而那三道分界今天各自有没有直接读数（逐道）：**
+
+| 分界 | 今天有没有**直接**读数 | 而今天的读数形态 |
+|---|---|---|
+| **第一道**（LD_DEBUG 尾部有没有 `Jumping to _start`） | **有** | 而 A9 末 5 行第 4 行就是 `[ Jumping to _start (0x77862c7000)... ]`（而 A11 那一行 `Ready to execute` 与 A12 那一行 `RELO STATS` 同侧） |
+| **第二道**（`#00` 帧落在哪个模块） | **间接** | 而今天的读数是**排除那三段**给的：而 A19 那一行 `#00 pc 0000000000004000  .../libssl.so` 与 `#01 ... linker64` 把 Z 段排掉了，而 B2 那 10 个 program header 无 `PT_TLS` 把 C 段排掉了 |
+| **第三道**（`pc` 减映射基址与 `e_entry` 的差） | **不成立** | 而今天那个差是 `0x4000`（而 `e_entry` 是 `0x0`），而它不是一条指令量级 |
+
+**=> 而那三道判别形式的原文在 120.13.1 那一节（而那三道就是上面那张表那三行），而今天它们各自被用到的方式是：**
+
+- **第一道**被**直接读到**（而 A9 那一段）；
+- **第二道**是通过**排除 Z 段与 C 段**用的（而那两条排除各自有读数）；
+- **第三道**在今天**不成立**，=> 而替它回答的是那条**同侧判别字段**（「`e_entry` 为 0 而跳的地址等于第一个 LOAD 起点」，而它由本节 120.13.2 那一段那三条算术给出）。
+
+**=> 而按 C-113：而今天那一趟只直接触发了第一道；而第二道与第三道是经排除与替代字段用上的，而那三道判别形式的原文仍在 120.13.1 那一节。**
+
+#### 120.13.2 今天那一趟的读数（A 组与 B 组、C 组）
+
+**=> 而 A 组 24 项与 B 组 8 项与 C 组 6 项的字段表见本节这一份稿的落点（07 那份 `S102-139-READINGS.md` 逐项给了原文与落点），而今天最要紧的那几条是：**
+
+| 项 | 读数 |
+|---|---|
+| **A6 退出码** | `exit=139` |
+| **A7 stderr 全文** | 18299 行 / 1692997 字节，落盘 |
+| **A8 stdout** | 0 字节 |
+| **A9 末 5 行** | `LINKER TIME: ...: 822523 microseconds` / `RELO STATS: ...: 3933 abs, 1154 rel, 3933 symbol (507 cached)` / `[ Ready to execute ".../libssl.so" @ 0x77862c7000 ]` / `[ Jumping to _start (0x77862c7000)... ]` / `Segmentation fault` |
+| **A15** | `signal 11 (SIGSEGV), code 2 (SEGV_ACCERR), fault addr 0x00000077862c7000` |
+| **A16** | `Cause: trying to execute non-executable memory.` |
+| **A17** | `lr 000000778756c00c  sp 0000007fc8f8a7f0  pc 00000077862c7000  pst 0000000080001400` |
+| **A18** | `2 total frames` |
+| **A19 逐帧** | `#00 pc 0000000000004000  .../tmp/rp-probe/libssl.so` / `#01 pc 0000000000051008  /apex/com.android.runtime/bin/linker64 (__dl__start+8) (BuildId: ed80a6c1a83206dfdde6762ccb144f26)` |
+| **A20** | `NOTE: Unreadable libraries:` 段 |
+| **A21 memory near x0** | 而 fault addr 那一行是 `00000077862c7000 00010102464c457f 0000000000000000  .ELF............` —— 而第二个 64 位字按小端解回 8 个字节是 `7f 45 4c 46 02 01 01 00`，**与本机那份落位字节的文件头前 16 字节逐字节相同** |
+| **A22 memory map** | 而 fault addr 那一行是 `--->00000077'862c7000-00000077'8630cfff r--         0     46000  .../libssl.so (load bias 0x4000)` |
+| **A23** | 而 tombstone 是 `tombstone_21`（**被回收重写**的那一份），基线 34052 字节 2026-10-21 04:52，本趟 22617 字节 2026-10-24 13:48，而内部 Timestamp `2026-10-24 13:48:36.064710775+0800`、Cmdline 与 A5 一致、pid 3492 |
+| **A24** | 而 logcat 三行（`Fatal signal 11 (SIGSEGV), code 2 (SEGV_ACCERR), fault addr 0x77862c7000 in tid 3492 (linker64), pid 3492 (linker64)` / `Process name is ...` / `Cmdline: ...`） |
+| **B4 `e_entry`** | `Entry point address: 0x0` |
+| **B7 四个 LOAD 段** | 而第一个 `LOAD 0x000000 0x0000000000000000 ... 0x045d50 0x045d50 R   0x4000`；而第二个 `LOAD 0x045d50 0x0000000000049d50 ... 0x0982f0 0x0982f0 R E 0x4000` |
+| **B8** | 而 fault addr 所在段权限是 `r--` |
+| **B6 addr2line** | 而 `0x4000` 给 `?? ??:0`；而阳性对照 `0x49d50` 给 `__on_dlclose` |
+
+**=> 而那个同侧判别字段的三条算术（07 自己算，落盘在 `s102-extra-discriminator.txt`）：**
+
+```
+jump  - map 第一段起点 = 0x0
+fault - map 第一段起点 = 0x0
+map 第一段起点 - load bias = 0x77862c3000
+e_entry = 0x0
+跳的地址 - load bias = 0x77862c3000   <= 即映射基址本身
+```
+
+**=> 而 `Jumping to _start` 的地址 == fault addr == `pc` == map 里 libssl.so 第一段（`r--`）的起点，三者同为一个数 `0x77862c7000`；而该段起点减去 load bias `0x4000` 得 `0x77862c3000` = **文件偏移 0**。**
+
+#### 120.13.3 而那一跳的地址怎么算出来的（AOSP 源码与二进制两侧）
+
+**=> 而源码原话（AOSP `platform/bionic`，`refs/heads/android16-release`）：**
+
+```
+linker/linker_main.cpp:502   ElfW(Addr) entry = exe_info.entry_point;
+linker/linker_main.cpp:503   LD_DEBUG(any, "[ Ready to execute \"%s\" @ %p ]", si->get_realpath(), reinterpret_cast<void*>(entry));
+linker/linker_main.cpp:504   return entry;
+linker/linker_phdr.h:69      ElfW(Addr) entry_point() const { return header_.e_entry + load_bias_; }
+linker/linker_phdr.cpp:700   load_bias_ = reinterpret_cast<uint8_t*>(start) - addr;
+linker/linker_main.cpp:270   result.entry_point = elf_reader.entry_point();
+linker/linker_main.cpp:836   start_address = linker_main(args, exe_to_load)
+linker/linker_main.cpp:837   LD_DEBUG(any, "[ Jumping to _start (%p)... ]", start_address)
+```
+
+**=> 而 `addr` 是第一个 LOAD 段的 `p_vaddr`，而 `start` 是它在进程里的映射地址。**
+
+**=> 而二进制侧的交叉核：而 `[ Jumping to _start (%p)... ]` 那个串在 `.rodata` 的文件偏移 `0x152a`，而它被 `__linker_init_post_relocation` @0x16f934 里那一处引用（`adrp x1, 0x1000` / `add x1, x1, #0x52a` / `bl 0xf45cc <__linker_logi>`，地址 0x17064c 到 0x17065c）；而那一行的 `%p` 是 `start_address` = `linker_main(args, exe_to_load)`，而 `linker_main` 的返回值就是 `entry = exe_info.entry_point`。**
+
+**=> 而套到第四格那一趟的算术：而那一趟那份 libssl.so 的 `e_entry = 0x0`（B4 原文），而它的第一个 LOAD 段 `p_vaddr = 0x0`（B2 原文）=> 而 `load_bias_ = start - 0x0 = start` = 映射基址 => 而 `entry_point() = 0x0 + start = start` = **映射基址**；而实测的跳的地址 `0x77862c7000` 与 map 里第一段起点是同一个数，而那正是文件偏移 0 处（ELF 头）。**
+
+#### 120.13.4 段位与取值来源那两格
+
+**=> 而按 C-178：**
+
+| 格 | 它问什么 | 今天的状态 |
+|---|---|---|
+| **段位那一格** | 而那一趟崩在入口之后哪一段 | **已定** —— 而**要写成「落在 B 段那个位置」**，而**不能写成「B 段那一行成立」**（而 B 段第三列 `pc` 减基址约等于 `e_entry` **在本趟不成立**，而差是 `0x4000` 而不是一条指令量级） |
+| **取值来源那一格** | 而那一跳跳到那个地址，那个值是从哪来的 | **已过**（本节 120.13.3 那一段：源码与二进制两侧一致，而那一跳 = `e_entry` + `load_bias`） |
+
+**=> 而两格不互相顶替（按 C-178）：而段位已定**不蕴含**取值来源已定；而取值来源未过**不蕴含**段位未过；而将来取值来源过了，它只**解释**段位那一格的落点，而它**不改**归属。**
+
+**=> 而那三条排除（今天那一趟）：**
+
+| 排除了哪一段 | 读数 |
+|---|---|
+| **A 段** | 而 `Calling DT_INIT_ARRAY (size 2) @ 0x77863b53a8` 与两次 `Calling c-tor function @ 0x77863a6770` 与 `0x77863a6a40` 全部成功并 `Done`（第 18287 到 18294 行），而那之后才是 `LINKER TIME`（18295）、`RELO STATS`（18296）、`Ready to execute`（18297）、`Jumping to _start`（18298） |
+| **Z 段** | 而 `#00` 帧落在 `libssl.so` 自身，而 `linker64` 在 `#01` 帧 |
+| **C 段** | 而那份字节的 10 个 program header 里**没有 `PT_TLS`**（而那 10 个类型是 `PHDR` / `LOAD`×4 / `DYNAMIC` / `GNU_RELRO` / `GNU_EH_FRAME` / `GNU_STACK` / `NOTE`） |
+
+#### 120.13.5 阳性对照与阴性对照两侧
+
+**=> 而阳性对照那六条（每一趟必须同帖给）：**
+
+- **PC-1**：A9 末 5 行里出现 `Jumping to _start`；
+- **PC-2**：同一份 A9 里 `Ready to execute` 与 `RELO STATS` 两行原文都在；
+- **PC-3**：tombstone 里 `N total frames` 大于等于 1 且 `backtrace:` 之后有 `#00` 一行；
+- **PC-4**：logcat 那一趟的 `Cmdline:` 一行与 A5 的触发命令对得上（而 A23 的 mtime 与 tombstone 内部 Timestamp 并排）；
+- **PC-5**：`readelf -hW` 输出里 `Class:` / `Machine:` / `Type:` 三行原文都在；
+- **PC-6**：`which` 那一类试法的**输出原文**都贴了（而空的那两处也贴了 `exit=1` 与空输出本身）。
+
+**=> 而 P-正向那四条（而一趟只落一条）：**
+
+| 编号 | 它问什么 | 今天那一趟 |
+|---|---|---|
+| **P-正向-1** | 而 `Ready to execute` 与 `Jumping to _start` 两行并排，而 tombstone 的 `#00` 帧 pc 与 fault addr 是**同一个地址** | **成立**（而那是本趟**唯一**落的一条） |
+| **P-正向-2** | 而 `pc` 减映射基址与 `e_entry` 的差在一条指令量级内 | **不成立**（而差是 `0x4000`） |
+| **P-正向-3** | 而 `#00` 帧 pc 落在该 .so 的 `.init` / `.init_array` 目标内 | **不成立**（而 `0x4000` 落在只读段，而 `.init_array` 在 `0xee3a8`；而 addr2line 给不出函数名） |
+| **P-正向-4** | 而 `#00` 帧模块是 `libc.so` / `ld-android.so`，而 `Cause` 是 `null pointer dereference` | **不成立** |
+
+**=> 而阴性对照那七条：**
+
+- **N-1**：末 5 行**没有** `Jumping to _start` => 而那一趟**没到** B 段（而候选是 Z 或 A）；**而它只能写到「这一趟的输出里没有 `Jumping to _start` 这一句」**；
+- **N-2**：末 5 行**连 `Ready to execute` 也没有** => 而那一趟没到 A 段；
+- **N-3**：`#00` 帧模块是 `linker64` => 而崩在 Z 段；
+- **N-4**：`Cause` 行是 `trying to execute non-executable memory.`（而 fault addr 所在段 `r--` 与 e_entry 所在段 `R` 相抵）=> 而**它不能直接顶替「哪一段」**，而它要与 B6 与 B8 并排才有段位意义；
+- **N-5**：同一份 A7 里 `library not found` 与 `cannot locate symbol` 计数为 0，而同帖阳性对照三行各 1 行；
+- **N-6（角色对照）**：那同一个字节被当**库**拉进来那一趟（而 exit=0、而 stdout 是那一份自报的版本串）=> 而它的含义只能写到「同一份字节在库角色下那一趟没有崩」，而它证明**同一份字节本身是可加载的**；
+- **N-7（不可取）**：而 A6 拿不到、或 A7 为空、或 tombstone 读不到、或 `which` 试法没有任何输出 => 而那一趟对段位**零信息** => 而记【未核】。
+
+#### 120.13.6 H3 那一格：而那一份 libssl.so 是不是一个可执行对象（E1 到 E8）
+
+**=> 而判别式：而那一份字节的 `e_type` 是什么，而它有没有 `PT_INTERP` 段？**
+
+| 字段 | 读数 |
+|---|---|
+| **E1 `Type`** | `DYN (Shared object file)` |
+| **E2 `PT_INTERP`** | **无** —— 而 `readelf -lW` 的 10 个 program header 里没有 `INTERP` 行（而那 10 个是 `PHDR` / `LOAD`×4 / `DYNAMIC` / `GNU_RELRO` / `GNU_EH_FRAME` / `GNU_STACK` / `NOTE`） |
+| **E3 `e_entry`** | `0x0` |
+| **E4** | 而 e_entry 落在第一个 LOAD 段，而那个段的 `Flg` 列原文是 `R` |
+| **E5** | 而 `Class:` 是 `ELF64`、而 `Machine:` 是 `AArch64`（而设备侧 readelf 写 `arm64`） |
+| **E6 / E8 权限位** | 而 `-rw-r--r--` |
+| **E7** | 而 `INIT` **无**；而 `INIT_ARRAY` **有**（`0xee3a8`，16 字节 = 2 项）；而 `PREINIT_ARRAY` **无** |
+
+**=> 而 E1 与 E2 与 E8 要并排写：**
+
+```
+E1 Type: DYN (Shared object file)
+E2 INTERP: readelf -lW 输出中无 INTERP 行
+E8 ls -l: -rw-r--r-- 1 u0_a214 u0_a214 1139504 2026-10-24 13:48 libssl.so
+```
+
+**=> 而一条并列事实：而既有那份 `ROUND122.md` 记的是 1139472 字节，而本轮那一份是 1139504 字节 => 而两处**未并列** => 而那一行**不当本轮读数**（按 C-115）。**
+
+#### 120.13.7 缺项与边界
+
+| 项 | 状态 |
+|---|---|
+| **A2** | **缺** —— 而设备上没有单一 head/run_id，而八件各自的 buildSha 与 buildRun 互不相同；**而本趟被起的那一份**落在 openssl 那一件（buildSha `db351c3a…`、buildRun `40030215774`） |
+| **B5 符号名** | **缺** —— 而设备上没有 nm 与符号表工具，而取不到函数名 => 而不猜填 |
+| **C-a / C-b / C-e / C-f** | **【不可取】** |
+| **C-d** | **部分可取** —— 而 `LINKER TIME` 有，而逐步骤耗时行不可取 |
+| **N-6** | **未核** —— 而本轮未跑 |
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落判别形式与今天的读数，而它**不下「该走哪条路」**那一格 |
+| 2 | 而那三段的排除与落点是**归属**，而那一跳的取值来源是**成因** —— 而两格不得互相顶替 |
+| 3 | 而段位那一格要写成「落在 B 段那个位置」，而不能写成「B 段那一行成立」 |
+
+#### 而 07 今天核到第四格那一格在今天这一版上仍是 139（=> 而 2026-10-25 补正）
+
+**=> 而落盘 `07/runs/FOURTH-GRID-40107403792.md`，=> 而而那一趟的触发命令原文是：**
+
+```
+run-as lobos.os env -u LD_LIBRARY_PATH LD_DEBUG=all /system/bin/linker64 /data/user/0/lobos.os/files/tmp/rp-probe/libssl.so --version
+```
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **`exit`** | **=> 而 **139** |
+| **stdout** | **=> 而 **0 字节 0 行** |
+| **stderr** | **=> 而 **18299 行 1692998 字节** |
+| **=> 而 stderr 尾部 12 行** | **=> 而 `DT_INIT_ARRAY[0]` 与 `[1]` 各一次 `Calling` 与 `Done c-tor`、=> 而而 `Done calling DT_INIT_ARRAY`、=> 而而 `LINKER TIME 2407924 microseconds`、=> 而而 `RELO STATS 3933 abs, 1154 rel, 3933 symbol (507 cached)`、=> 而而 `Ready to execute @ 0x7ecb208000`、=> 而而 `Jumping to _start (0x7ecb208000)`、=> 而而 `Segmentation fault`** |
+
+**=> 而那个 tombstone（=> 而照录 07，=> 而而它治的是「那一趟到底崩在哪」）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **=> 而 `tombstone_16`** | **=> 而 Timestamp `2026-10-25 00:05:47.401428003+0800`、=> 而 pid **29698** |
+| **=> 而 `Cmdline`** | **=> 而 `/system/bin/linker64 /data/user/0/lobos.os/files/tmp/rp-probe/libssl.so --version`** |
+| **=> 而 signal 与 code** | **=> 而 `11 (SIGSEGV)`、`2 (SEGV_ACCERR)`** |
+| **=> 而 `fault addr`** | **=> 而 `0x0000007ecb208000`** |
+| **=> 而 `Cause`** | **=> 而 `trying to execute non-executable memory.`** |
+| **=> 而 `x0` 与 `pc`** | **=> 而**都是 `0x7ecb208000`**，=> 而而 `pst` 是 `0x80001400`** |
+| **=> 而帧数** | **=> 而 `2 total frames`** |
+| **=> 而 `#00`** | **=> 而 `pc 0000000000004000` `/data/user/0/lobos.os/files/tmp/rp-probe/libssl.so`** |
+| **=> 而 `#01`** | **=> 而 `pc 0000000000051008` `/apex/com.android.runtime/bin/linker64`（=> 而 `__dl__start+8`），=> 而而 BuildId `ed80a6c1a83206dfdde6762ccb144f26`** |
+| **=> 而 `Unreadable libraries` 那一段** | **=> 而写着 `/data/user/0/lobos.os/files/tmp/rp-probe/libssl.so`** |
+| **=> 而 `memory near x0` 那一行** | **=> 而逐字是 `0000007ecb208000 00010102464c457f 0000000000000000 .ELF............`** |
+
+> **=> 而那最后一行是这一趟最硬的一处：=> 而那个跳的地址上放的就是 `7f 45 4c 46`（=> 而 ELF 魔数），=> 而即跳的地址上是**文件偏移 0 处的 ELF 头**。**
+>
+> **=> 而这一条与本节 120.13.3 那一段那三条算术**对得上**：=> 而 `e_entry` 是 0 而第一个 LOAD 的 `p_vaddr` 是 0 => 而而 `load_bias` = 映射基址 => 而而**跳的地址 = 文件偏移 0 处**。**
+
+**=> 而与 20:32 那一趟并排（=> 而按 C-115 多个时点不互相覆盖）：**
+
+| 那一趟 | 而它的 `exit` | 而它的 stdout | 而它的 stderr 行数 | 而它的 `RELO STATS` 那一行 |
+|---|---|---|---|---|
+| **20:32 那一趟** | **=> 而 139** | **=> 而 0** | **=> 而 18299** | **=> 而逐字相同** |
+| **今天这一趟（=> 而 00:05:47）** | **=> 而 139** | **=> 而 0** | **=> 而 18299** | **=> 而逐字相同** |
+
+> **=> 而 exit 同、=> 而 stdout 同、=> 而 stderr 行数同（18299），=> 而而字节数差 1 **是地址里十六进制位数不同**，=> 而而 `RELO STATS` 那一行**逐字相同**。**
+
+**=> 而本规范把这一格今天的状态写成正文（=> 而它治的是「形态没变就仍写未过」）：**
+
+> **=> 而这一格仍写「**未过**」**，=> 而而理由是「**实现那一层还没改到那一格**」—— => 而而今天这一版的三处改动（=> 而 args 那一格、=> 而 busybox 改 PIE、=> 而而 PTY 宿主那一格）**都没有触及这一格这一趟的路**。**
+>
+> **=> 而而 07 交代的那一处要并列（=> 而按 C-115 两条并列不合并）：**
+>
+> **=> 而这一趟的 `Cmdline` 是**一个** linker64，=> 而而「被套两层 linker64」那一族是**两个** linker64 加 `SEGV_MAPERR` 加 **10 帧**加 fault addr `0x0`，=> 而而这一格是**一个** linker64 加 `SEGV_ACCERR` 加 **2 帧**。**
+>
+> **=> 而而按 C-135 那是**两个问句**：=> 而那一族问「**有几层**」，=> 而而这一格问「**跳的那个地址上是不是可执行的**」。**
+
+**=> 而按 C-115：而改前那一版（=> 而「未过」而理由是「缺一个活进程」）**留档不删**。**
+
+### 120.14 而 `$ORIGIN` 那一问：而它要拆成三问（参与资格、展开规则、落位布局）（2026-10-24）
+
+**=> 而这一格问的是：`$ORIGIN` 那个 `RUNPATH`，在 linker 那里到底起什么作用？而那一问要拆成三问，而按次序前一问不答后一问无从谈起。**
+
+#### 120.14.1 三问与它们今天的答
+
+| # | 问法 | 它答什么 | 今天的答 | 状态 |
+|---|---|---|---|---|
+| **Q1** | **按 soname 找 X 这一步，用的是谁的那一格 `RUNPATH`？** | **参与资格** | 而找 `libssl.so` 的是**主对象**（`bin/openssl`），而**主对象自己那一格是空的**（而 `DT_RUNPATH: null`、26 条动态条目、设备侧与本机两边一致） | **已核** |
+| **Q2** | **`$ORIGIN` 展开成什么目录？** | **展开规则** | 而 `$ORIGIN` 展开成**含有那一格 `DT_RUNPATH` 的对象自己**所在目录 | **已核** |
+| **Q3** | **那一层目录里真的有 X 吗？** | **落位布局** | 而就今天这一件：`opt/openssl/3.6.3/lib/` 有那两份，而 `opt/openssl/3.6.3/bin/` 没有 | **已核** |
+
+**=> 而按 C-176：而原来的那一问（「bionic linker 展开 `$ORIGIN` 时取的是主对象所在目录还是那一份库自己所在目录」）把两件事混成了一问（而它还预设了「那一趟里 `$ORIGIN` 参与了查找」）—— 而而它该改成这三问。**
+
+**=> 而按 C-83：而今天的答与那一趟的读数必须分开：而今天那一趟答的是**参与资格**那一侧（主对象那一格是空的），而它**被当成了**展开规则**那一侧的证据 —— 而那是把推出来的写成引用。**
+
+#### 120.14.2 Q2 那一问的答（AOSP 源码原话）
+
+**=> 而原话（AOSP `platform/bionic`，`refs/heads/android16-release`，`linker/linker_soinfo.cpp:219` 到 `239`）：**
+
+```
+void soinfo::set_dt_runpath(const char* path) {
+  if (!is_lp64_or_has_min_version(3)) {
+    return;
+  }
+
+  std::vector<std::string> runpaths;
+
+  split_path(path, ":", &runpaths);
+
+  std::string origin = dirname(get_realpath());
+  // FIXME: add $PLATFORM.
+  std::vector<std::pair<std::string, std::string>> params = {
+    {"ORIGIN", origin},
+    {"LIB", kLibPath},
+  };
+  for (auto&& s : runpaths) {
+    format_string(&s, params);
+  }
+
+  resolve_paths(runpaths, &dt_runpath_);
+}
+```
+
+**=> 而那个 `$ORIGIN` 串是**linker 自己现拼的**（而不在二进制里存一个字面量）：而它的四字节是 `mov w9, #0x524f` 加 `movk w9, #0x4749, lsl #16` 给出 `0x4749524f`（而那是「ORIG」四字节），而那长度为 12 的串是「`$` + `ORIG` + `IN` + NUL」这一类形态。**
+
+**=> 而 `origin` 那一格是 `dirname(get_realpath())`，而 `get_realpath()` 是**这个 soinfo 自己**的路径 => 而 `$ORIGIN` 展开成的是**含有那一格 `DT_RUNPATH` 的对象自己**所在目录。**
+
+**=> 而那三个偏移（反汇编与源码三方交叉核出）：**
+
+| 偏移 | 它是什么 |
+|---|---|
+| **`0x1a0`** | 而 `realpath_` 那一格 `std::string` 的**短串首字节** |
+| **`0x1a1`** | 而那个短串的**数据** |
+| **`0x1b0`** | 而**长串数据指针** |
+
+**=> 而旁证：`AOSP linker/linker_soinfo.h:463` 到 `464` 里 `soname_` 与 `realpath_` **相邻**。**
+
+#### 120.14.3 而 R-2 与 R-3 那两趟读数（设备侧）
+
+**=> 而这两趟答的是「**谁的 `RUNPATH` 参与了查找**」，而它们**各答一格**：**
+
+| 那一趟 | 主对象那一格 | 库自己那一格 | 结果 |
+|---|---|---|---|
+| **R-2（G17）** 而主对象在 `bin/`、库在 `lib/`（**不同层**） | `$ORIGIN` => 指向 `bin/` | 而两份库各带 `$ORIGIN` => 指向 `lib/` | 而 linker 选的是 **`/system/lib64/` 那两份**；而落位那两份路径命中 **0**；而**主对象的 `RUNPATH` 被读到了**（`d_tag=0x1d`、`stringHex=244f524947494e`、长度 7） |
+| **R-3（G18b）** 而三个文件**同一层** | `main_rp` 带 `$ORIGIN` | 而 `libg18b.so` 带 `$ORIGIN` | 而 **`libg18a.so` 被找到**（而它全机只在那一层），而它是被 `libg18b.so` **自己那份** `RUNPATH` 找到的 |
+
+**=> 而 R-2 那一趟的读数（逐条）：而 X1 两个 dirname 逐字并排（`.../g17/bin` 与 `.../g17/lib`）=> **不同层**；而 X2 那一格 `RUNPATH` 的逐字节读数是 `d_tag=29`、`raw16=1d000000000000006b00000000000000`、`string="$ORIGIN"`、长度 7，而阳性对照是四条 `NEEDED` 与 `DT_STRTAB` / `DT_STRSZ`；而 X6 那一段 `Linking` 行逐字是 `[ Linking "/system/lib64/libssl.so" ]` 与 `[ Linking "/system/lib64/libcrypto.so" ]`；而 X8 阳性对照是 `Linking` 行 7、`opening` 行 5；而 X9 阴性对照是落位那两份路径命中 **0**（而按 C-112 那是服务端说的 0）。**
+
+**=> 而 R-3 那一趟的读数：而 `libg18a.so` 命中 6、`libg18b.so` 命中 6，而阳性对照是 `Linking` 行 6、`opening` 行 4；而真跑那一趟 exit=0 而 stdout 是 `G18-OK b=42`。**
+
+**=> 而按 C-158：而这两趟答的是「参与没参与」，而它们**不答** Q2 的展开规则（而 Q2 那一格的答在 120.14.2 那一段源码）。**
+
+#### 120.14.4 判别形式
+
+> **我手上那条读数，是「某一格被读到了」还是「某个目录被展开成了」？**
+
+- **前者** => 而它**不能**答展开规则；
+- **后者** => 而它才是展开规则那一侧的证据。
+
+**=> 而按 C-104：而这一条对**任何**一份带 `DT_RUNPATH` 的字节都成立，而它不只对今天这一件。**
+
+#### 120.14.5 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落三问与它们的答，而它**不裁定「某一处该不该给 `DT_RUNPATH`」** |
+| 2 | 而 120.14.2 那一段读的是**上游那一支**的源码，而设备上那一版是 OEM 编译的 => 而两条并列，不互相顶替 |
+| 3 | 而 R-2 与 R-3 那两趟答的是参与资格那一侧，而它们不答 Q2 |
+
+### 120.15 而主对象那一格与依赖对象那一格是两格：而走丙治的是格二（2026-10-24）
+
+**=> 而这一节问的是：那一趟要找的那个名字，是主对象 `NEEDED` 里的哪一个？而那个 `RUNPATH` 是挂在谁身上的？**
+
+#### 120.15.1 两格的划分
+
+| 格 | 名字 | 谁在找 | 用谁的 `RUNPATH` | 要读哪一份字节的动态段 |
+|---|---|---|---|---|
+| **格一 · M-主** | **主对象找依赖** | **主对象**（`bin/openssl`） | **主对象自己那一格**（`bin/openssl` 的 `DT_RUNPATH`） | **主对象那一份** |
+| **格二 · M-依** | **依赖对象自己找同目录依赖** | **依赖对象**（`libssl.so`） | **依赖对象自己那一格**（`libssl.so` 的 `DT_RUNPATH`） | **依赖那一份** |
+
+**=> 而走丙（「`DT_RUNPATH` 落在**被依赖的那一份**上」）治的是**格二** —— 而那一份的 `RUNPATH` 参与的是「被依赖者再去找它自己的依赖」那一步。**
+
+**=> 而格一用的是主对象自己那一格，而而**主对象是程序，而程序不需要按 soname 找自己**（而按 C-104：而这一条对**任何**一份带 `DT_RUNPATH` 的字节都成立）=> 而主对象那一格**通常是空的**。**
+
+#### 120.15.2 两条判别式
+
+**判别式一（读哪一份字节）**：
+
+> **我要读的是那个主对象的动态段，还是它 `NEEDED` 的那些 `.so` 的动态段？**
+
+**=> 而按 C-81：而这两格**不能互相顶替** —— 而「主对象没有」答不了「被依赖的那一份没有」。**
+
+**判别式二（这一步用的是谁的路径）**：
+
+> **按 soname 找 X 这一步，linker 用的是发起这一步那个对象的 `RUNPATH`，还是被找那个对象的 `RUNPATH`？**
+
+**=> 而格一用主对象那一格，而格二用依赖那一格。**
+
+#### 120.15.3 查找次序那三段（AOSP 源码与二进制两侧）
+
+**=> 而原话（AOSP `platform/bionic`，`refs/heads/android16-release`，`linker/linker.cpp:1050` 到 `1078`，`open_library`）：**
+
+```
+  // LD_LIBRARY_PATH has the highest priority.
+  int fd = open_library_on_paths(zip_archive_cache, name, file_offset, ns->get_ld_library_paths(), realpath);
+
+  // Try the DT_RUNPATH, and verify that the library is accessible.
+  if (fd == -1 && needed_by != nullptr) {
+    fd = open_library_on_paths(zip_archive_cache, name, file_offset, needed_by->get_dt_runpath(), realpath);
+    if (fd != -1 && !ns->is_accessible(*realpath)) {
+      close(fd);
+      fd = -1;
+    }
+  }
+
+  // Finally search the namespace's main search path list.
+  if (fd == -1) {
+    fd = open_library_on_paths(zip_archive_cache, name, file_offset, ns->get_default_library_paths(), realpath);
+  }
+```
+
+| 次序 | 那一段 | 它属于哪一格 |
+|---|---|---|
+| **1** | `ns->get_ld_library_paths()`（**`LD_LIBRARY_PATH`** 那一段） | 而它**优先于**任何一格的 `RUNPATH` |
+| **2** | `needed_by->get_dt_runpath()`（**依赖对象自己那一格**） | **格二** |
+| **3** | `ns->get_default_library_paths()`（**默认搜索路径**那一段，而它含 `/system/lib64`） | 而它是**兜底** |
+
+**=> 而二进制侧的交叉核（`load_library` @0xe1a4c，逐条原文）：**
+
+| 地址 | 原话 | 对应哪一段 |
+|---|---|---|
+| **0xe1adc** | `bl 0xe4714 <__dl__ZL21open_library_on_paths...>` | 而第 1 段：`ns->get_ld_library_paths()` |
+| **0xe1af4** | `bl 0xfd5f4 <__dl__ZNK6soinfo14get_dt_runpathEv>` | 而第 2 段的**取值**（被依赖对象自己那一格） |
+| **0xe1b0c** | `bl 0xe4714 <__dl__ZL21open_library_on_paths...>` | 而第 2 段：**用那一格**去搜 |
+| **0xe1e0c** | `bl 0xf4bd8 <__dl__ZN19android_namespace_t13is_accessibleERKNSt3__112basic_stringIcNS0_11char_traitsIcNS0_9allocatorIcEEEE>` | 而第 2 段那一次的**可达性检查** |
+| **0xe1c4c / 0xe1c68** | `ldr x28, [x27, #0x10]` -> `bl 0xd3f54 <__dl__ZL20open_library_at_path...>` | 而第 3 段之后的那一处（**按名字里带斜杠**走 `open_library_at_path`） |
+
+**=> 而两个路径段的来源：**
+
+| 那一段 | 数据来源 | 出处 |
+|---|---|---|
+| **`ld_library_paths_`** | 而 `parse_LD_LIBRARY_PATH` -> `g_default_namespace.set_ld_library_paths(...)` | `linker.cpp:373` 到 `377` |
+| **`default_library_paths_`** | 而有 `ld.config` 那一支是 `set_default_library_paths(default_ns_config->search_paths())`；而**无配置**那一支是 `set_default_library_paths(std::move(ld_default_paths))`，而**那一支的清单就是 `kDefaultLdPaths`** | `linker.cpp:3668` 与 `3525`；而 `kDefaultLdPaths` 定义在 `linker.cpp:123` 到 `128` = `kSystemLibDir, kOdmLibDir, kVendorLibDir` |
+
+**=> 而那两个成员在 `android_namespace_t` 里的位置：**
+
+```
+linker/linker_namespaces.h:171   std::vector<std::string> ld_library_paths_;
+linker/linker_namespaces.h:172   std::vector<std::string> default_library_paths_;
+```
+
+#### 120.15.4 第四格那一趟为什么落到系统那两份（用那三段次序套）
+
+**=> 而那三个读数：**
+
+- 主对象 `bin/openssl` **自己那一格 `DT_RUNPATH` 是空的**（而本机 readelf -dW 27 条动态条目、零 `RUNPATH`、零 `RPATH`；而设备侧 07 的读取器 `DT_RUNPATH: null` —— 而两边一致）；
+- `env -u LD_LIBRARY_PATH` => 而**第 1 段是空的**；
+- 于是**第 2 段**才是第一次有机会的路径 —— 而**主对象自己那一格是空的**（它不是 `needed_by`），而主对象 `NEEDED` 的 `libssl.so` 那一格的 `$ORIGIN` 指向 `opt/openssl/3.6.3/lib/`，而**那一趟里 libssl.so 本身都没被装载成功**（而 LD_DEBUG 里 `[ opening libssl.so from namespace (default) ]` 之后紧跟 `name /system/lib64/libssl.so`）。
+
+**=> 而它落在**第 3 段**（默认搜索路径那一段，`/system/lib64`）—— 而命中系统那两份 —— 而那两份没有 `OSSL_CMP_ITAV_dup` 那个符号 => 而链接期失败。**
+
+**=> 而这一趟的失败正是**格一**（而走丙给的那两格 `$ORIGIN` 属于**格二**，而在这一趟里没有参与）。**
+
+#### 120.15.5 两格要过的前提
+
+**格二（走丙治的那一格）**：
+
+
+```
+前提一：被依赖的那一份字节里真的有 DT_RUNPATH（逐字节读，见 §122 那一节）
+前提二：那个值是**一个** $ORIGIN（不是 RIGIN:RIGIN、不是空、不是两个）
+前提三：展开规则已核（见 §120.14）—— 而它决定那个 $ORIGIN 展开成哪一层
+前提四：落位布局已核（见 §120.14 的 Q3）—— 展开出来的那一层真的有那几份
+前提五：次序 —— 那一层在系统默认路径之前（见本节 120.15.3）
+=> 格二成立（被依赖者能找到它自己的同目录依赖）
+```
+
+**格一（主对象找依赖）**：
+
+```
+前提六：主对象那一格有 DT_RUNPATH（而程序通常没有）
+  或：LD_LIBRARY_PATH 指向那几份（而今天那一趟的对照就是这一支：exit=0、stdout 是 OpenSSL 3.6.3 9 Jun 2026）
+前提七：次序 —— 那一层在系统默认路径之前
+=> 格一成立（主对象能找到它 NEEDED 的那几份）
+```
+
+**=> 而走丙那一格（格二）过了，**不蕴含**格一过了 —— 而今天这一件正停在格一那一侧（而主对象那一格是空的）。**
+
+#### 120.15.6 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落两格的划分与那三段次序，而它**不裁定「某一处该不该给 `DT_RUNPATH`」** |
+| 2 | 而 120.15.3 那一段读的是**上游那一支**的源码，而设备上那一版是 OEM 编译的 => 而两条并列，不互相顶替 |
+| 3 | 而「今天那一趟落在第 3 段」这一句是**从那三段次序与那三个读数推出来的**，而它不是工具说的 |
+
+### 120.16 而软链在位不蕴含 linker 找得到：而那两条读数并排（2026-10-24）
+
+**=> 而这一族问的是：那一件在共享区里有软链，而 linker 按 soname 找它时，选中的是不是那一份？**
+
+**=> 而答案是不蕴含 —— 而而「在不在」与「找不找得到」是**两件事**（按 C-115：两条读数并列，不合并）。**
+
+#### 120.16.1 软链那一侧的读数
+
+**=> 而 `usr/bin/openssl` 是指向 `opt/openssl/3.6.3/bin/openssl` 的**全局软链**；而 `usr/lib/libssl.so` 与 `usr/lib/libcrypto.so` 是指向 `opt/openssl/3.6.3/lib/` 那两份的**全局软链**。=> 而「在不在」这一层，两份都是靠软链在位的。**
+
+#### 120.16.2 查找那一侧的三条读数
+
+| 那一趟 | 命令 | 读数 |
+|---|---|---|
+| **读数一（不带那一项）** | `run-as lobos.os env -u LD_LIBRARY_PATH .../usr/bin/openssl version -a` | **exit=1**；stdout 空；stderr `CANNOT LINK EXECUTABLE "...usr/bin/openssl": cannot locate symbol "OSSL_CMP_ITAV_dup" referenced by ".../opt/openssl/3.6.3/bin/openssl"` |
+| **读数二（带那一项）** | `run-as lobos.os env LD_LIBRARY_PATH=.../usr/lib LD_PRELOAD=.../usr/lib/liblobosposix.so .../usr/bin/openssl version` | **exit=0**；stdout `OpenSSL 3.6.3 9 Jun 2026` 全段；stderr `LOBOS_DEGRADE preload loaded liblobosposix 已被注入本进程` |
+| **读数三（`--list` 看按 soname 解析到哪一份）** | `run-as lobos.os env LD_LIBRARY_PATH=.../usr/lib /system/bin/linker64 --list .../usr/bin/openssl` | 而 `libssl.so => .../opt/openssl/3.6.3/lib/libssl.so`、而 `libcrypto.so => .../opt/openssl/3.6.3/lib/libcrypto.so` |
+
+**=> 而读数一是**按 soname 找到的是系统那两份**，而于是版本对不上、`cannot locate symbol`、exit=1。**
+
+**=> 而读数三显示：而带那一项时它解析到的是**落位那两份**（而那与读数二的 exit=0 对上）。**
+
+**=> 而那一条落点上的读数：**
+
+- **`/data/user/0/lobos.os/files/usr/lib` 不在系统默认搜索路径里**（而那一条是 07 今天取的）；
+- **而 `usr/bin/openssl` 那一份主对象自己那一格是空的** —— 而设备侧逐字节读：`bin/openssl` 1033576 字节、`DT_RUNPATH: null`、`DT_SONAME: null`、四条 DT_NEEDED、26 条动态条目。=> **它自己那一格不提供任何库搜索路径。**
+
+#### 120.16.3 判别形式
+
+> **那一件在共享区里有软链，而 linker 按 soname 找它时，选中的是不是那一份？**
+
+- **选中那一份** => 而软链在位**蕴含**找得到；
+- **选中别的那一份** => 而软链在位**不蕴含**找得到 —— 而而它要靠**那一项环境**（或**主对象自己那一格 RUNPATH**）。
+
+**=> 而这一格与 §120.15 那一节（格一 M-主：主对象按 soname 找它 NEEDED 的那些库，用主对象自己那一格 RUNPATH）是**同一件事的两侧**：而这一节说「软链那一层不在 linker 的搜索路径里」，而而格一那一节说「主对象那一格通常是空的」。**
+
+#### 120.16.4 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落「软链在位」与「找得到」两件事之别，而它不裁定「那一项该不该设」 |
+| 2 | 而「`usr/lib` 不在系统默认搜索路径里」这一条是读数，而它与「主对象那一格是空的」两条并排 |
+
+## 一百二十一、而落位侧那两格、今天这一族的收口总表与处置方向
+### 121.7 而落位侧那两格：而 `ProgramIndex.kt:175` 是 sha256 而 `:176` 是 assetEntry，而那两格同名不同义（2026-10-24）
+
+**=> 而这一族问的是：落位侧登记里那两格各自填的是什么，而谁写它，而谁读它？**
+
+#### 121.7.1 那两格的原文
+
+```
+container/app/src/main/java/lobos/services/reg/ProgramIndex.kt
+175:            sha256 = o.optString("sha256", ""),
+176:            assetEntry = o.optString("assetEntry", ""),
+```
+
+**=> 而这两行是**同名不同义**那一族的实例：而它们都叫「那一件自己的标识」，而一个说的是**字节的摘要**而另一个说的是**产物里那个文件的名字**。**
+
+#### 121.7.2 两个写者与五个读者（读数）
+
+| 那一格 | 写者 | 读者 |
+|---|---|---|
+| **`sha256`** | 而 `ProgramIndex.kt:175` 把它从落位侧那份登记里读出来（`o.optString("sha256", "")`） | 而它今天**没有填的来源** —— 而产物那份 `component-meta.json` 里**根本没有 sha256 那一格** |
+| **`assetEntry`** | 而 `PieceScan.kt:183` 写 `assetEntry = f.entry`，而 `f.entry` 来自 `PieceScan.kt:55` 的 `entryOf(verDir, declared)` | 而 `ShellEntry.kt:12/13/16` 与 `PieceUpdater.kt:38/39/289/290/314/315` 读它 |
+
+**=> 而 `assetEntry` 那一格的值的来源链（读数）：而 `PieceScan.kt:135` 到 `140` 的 `usableEntryOf` 是**原样返回清单里那一个**，而 `PreinstalledPieces.kt:135` 那一行是 `meta.optString("entry", "")`。**
+
+**=> 而「sha256 那一格今天填的是什么」这一格：**
+
+- **形态**：**空** —— 而产物那份 `component-meta.json` 里没有 sha256 那一格；
+- **算法与清单来源**：而仓内另有 `PieceScan.sha256Of(verDir, files)`，而它算的是**把 path 与每个文件的 sha 串起来再取一次 sha**，而**它不读落位字节**；
+- **=> 而这两者**不是同一格**：而落位侧那一格今天没有来源，而那个函数算的是**清单指纹**。
+
+#### 121.7.3 产物那份 meta 的字段集（读数）
+
+**=> 而产物那份 `component-meta.json` 的字段（逐条）：而 `id`、`version`、`entry`、`entryProvenance`、`requires`、`sameAs`、`sourceSha256` 这些键在，而**没有 sha256**，而**没有 files**。**
+
+**=> 而 `sourceSha256` 是**上游源码摘要**（而那不是产物的摘要）：而 crypto 那一份它写的是 `sourceSha256=""`（而 `entryProvenance` 写的是 `gen-component-meta.js:落位结果（构建期算出，非人填）`）。**
+
+#### 121.7.4 这一节的判别形式
+
+> **落位侧登记里那个「sha256」那一格，今天填的是什么？而它与产物那份 meta 里的那一格是同一个东西吗？**
+
+**=> 而答案分两半：而「产物那份 meta 里有没有 sha256 那一格」这一格是**已核**（没有）；而「落位侧那一格今天填的是什么」这一格是**未核**。**
+
+**=> 而按 C-115：而这一节要写清**同名不同义**——而「落位侧那两格」与「产物那一份 meta 的字段集」是两个来源，而一个字段名在两处都出现时，而它们指的是不同的东西。**
+
+#### 121.7.5 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落那两格的形状与来源，而它不裁定「落位侧那一格今天该填什么」 |
+| 2 | 而 `sha256Of` 那一族（清单指纹）与落位侧那一格（字节摘要）**不得互相顶替** |
+| 3 | 而「产物那份 meta 没有 sha256 也没有 files」这一条是读数，而它不是「那一格坏了」 |
+
+### 121.8 而 zlib 那两格：而构建侧与设备侧分两格，而落位发生在 app 启动时而不是 install 时（2026-10-24）
+
+**=> 而这一族问的是：zlib 那一件的 `DT_RUNPATH` 那一格，要分**构建侧**与**设备侧**两格读，而它们今天的状态不同。**
+
+#### 121.8.1 两格的划分与今天的读数
+
+| 格 | 它问什么 | 今天的读数 | 状态 |
+|---|---|---|---|
+| **构建侧** | **那一份产物里 `DT_RUNPATH` 是什么？** | 而构建侧那一版（head `9bcd6288…`、run_id `40069356916`）的产物 `RUNPATH [$ORIGIN]` 与 `SONAME libz.so.1`，而 `$ORIGIN` 逐字节 `24 4f 52 49 47 49 4e` | **已过** |
+| **设备侧** | **设备上装的那一份 `DT_RUNPATH` 是什么？** | 而设备上那一份是 **107480 字节**、sha256 `9850a43d7929fbefa557ed34e758fc5efa3b0001e99f9cea3c8ca80461b959e8`，而 `DT_RUNPATH` d_tag=29、d_un 指向的字节是 `$ORIGIN` | **已过** |
+
+**=> 而两格必须分开：而构建侧过了不蕴含设备侧过了，而设备侧过了不蕴含构建侧那一版就是设备上那一份。**
+
+#### 121.8.2 落位发生在 app 启动时而不是 install 时（那一族）
+
+**=> 而这一族的形态是「装完立刻核会读到**旧**那一版」—— 而而装那一版之后第 3 步核出来 zlib 那一份**仍是旧那一版**（109720 字节、sha256 `a4712b31f3f1d61db04e1a7c0bb01bcf5a09ad23b1d1da5ba849e166fee6b2d7`），而它的逐字节动态段与基线**完全相同**。**
+
+**=> 而解法是**追加一步启动 app**，而之后那一格才读到新那一版。**
+
+**=> 而判别形式：**
+
+> **我核那一格的那一步，app 起来过没有？**
+
+- **没起** => 而我读到的是**落位侧那一份**，而它可能是**旧**那一版；
+- **起了** => 而我读到的才是**落位之后**那一份。
+
+**=> 而这一格与 §121.6 那一格（空值三种成因）的关系：**
+
+| 那一格 | 问什么 |
+|---|---|
+| **§121.6（空值三种成因）** | 而那一格**为什么是空的** |
+| **本节（落位时机）** | 而我**读到的**那一份**是不是落位之后**那一份 |
+
+**=> 而两格不得互相顶替：而「那一格空」可以是「产物侧没有那个字段」，而「我读到旧那一版」是**时机**问题。**
+
+#### 121.8.3 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落两格的划分与落位时机那一族，而它不裁定「哪一次固化产出的是设备上那一份」 |
+| 2 | 而设备侧那一格的读数要带 buildSha 与 buildRun（而那一格今天带的是 `9bcd6288…` / `40069356916`） |
+
+### 121.9 而 crypto 那一件「同一次构建」：而两份 meta 的 buildSha 与 buildRun 逐字相同，而字节 cmp 逐字节 IDENTICAL（2026-10-24）
+
+**=> 而这一格问的是：crypto 那一件与 openssl 那一件，是不是同一次构建出来的？**
+
+#### 121.9.1 读数（逐条）
+
+| 项 | 读数 |
+|---|---|
+| **crypto 那一份的 meta buildSha** | `db351c3a53534b18f2918c237fc85120a33c67f7` |
+| **openssl 那一份的 meta buildSha** | `db351c3a53534b18f2918c237fc85120a33c67f7` |
+| **crypto 那一份的 meta buildRun** | `40030215774` |
+| **openssl 那一份的 meta buildRun** | `40030215774` |
+| **=> 而那两格** | **逐字相同** |
+| **字节** | 而 `crypto/lib/libcrypto.so` 与 `openssl/lib/libcrypto.so` **cmp 逐字节 IDENTICAL**，sha256 `7adc9320c1e271ba91e6ef6df7f8ec0e439d35fd5d004ad3c0acad29c49fa2c3`，6058832 字节 |
+| **crypto 那一份的 shape** | kind=library、entryForm=unknown、程序 0 份、库 1 份；而 files 里 `lib/libcrypto.so` mode=644、soname=libcrypto.so、chain=[libcrypto.so] |
+| **crypto 那一份 meta 其余** | id=crypto、version=3.6.3、entry=""、entryProvenance=`gen-component-meta.js:落位结果（构建期算出，非人填）`、requires=[openssl]、sameAs=openssl、sourceSha256="" |
+| **改前那一份的 buildRun** | `40030227900`（**与 openssl 的 `40030215774` 不同**）—— 而这正是那一格不成立时的那条读数 |
+
+#### 121.9.2 判别形式
+
+> **这一件的自报构建标识与源那一件逐字相同吗？**
+
+- **相同** => 而它是**同一次构建**产出的；
+- **不同** => 而它是**从另一件已固化的产物里拆出来的**，而而那**不是「它坏了」**，而而是「它不是同一次构建」；
+
+**=> 而这一族的处置在**产出处**修，而不在**落位处**修。**
+
+#### 121.9.3 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落这一格的判别形式与今天的读数，而它不裁定「这一件该不该独立存在」 |
+| 2 | 而「改前那一份的 buildRun 不同」这一条是**读数**，而它是这一格在改动之前的形态 |
+
+### 121.10 而那十一处调用点：而处置是改调用点而不是改脚本，而今天那一格未过（2026-10-24）
+
+**=> 而这一族问的是：脚本改了形态，而调用点没跟上——那么该改哪一边？**
+
+#### 121.10.1 缺陷名与读数
+
+**=> 而 `gen-component-meta.js:61` 到 `66` **拒收四个位置参数**（而 exit 1），而调用点还在传它们。**
+
+**=> 而走**旧形态**那一路的 11 个 workflow（而第 3 个参数是件名），逐处是：**
+
+| workflow | 行号 | 而今天判没判红 |
+|---|---|---|
+| build-pkg-config.yml | 109 | **未核**（而它不在 base 筐里） |
+| build-pnpm.yml | 109 | **未核** |
+| build-cmake.yml | 120 | **未核** |
+| build-llvmtoolchain.yml | 126 | **未核** |
+| build-npm.yml | 109 | **未核** |
+| build-make.yml | 109 | **未核** |
+| build-node.yml | 131 | **未核** |
+| build-git.yml | 137 | **未核** |
+| build-sqlite3.yml | 109 | **未核** |
+| build-python3.yml | 122 | **未核** |
+| scripts/publish/make-release.sh | 27 | **未核** |
+
+
+**=> 而走**新形态**那一路（`package-bundle-zip.sh`）的是：build-bash.yml、build-busybox.yml、build-curl.yml、build-git.yml、build-jq.yml、build-openssl.yml、build-rg.yml、build-zlib.yml、build-crypto.yml。**
+
+**=> 而 `build-apk.yml` 与 `build-component.yml` 两个既不属前者也不属后者（而前者是取件、后者是通用组件那一条）。**
+
+**=> 而全仓 `grep -rn 'gen-component-meta.js'` 的调用点只有三处：`package-bundle-zip.sh:305` 到 `308`（新形态）、`package-component.sh:26`（旧形态）、以及 `gen-component-meta.js` 自身与两处注释引用。**
+
+#### 121.10.2 判别形式
+
+> **这一处的脚本已经改了形态，而调用点还在按旧形态传参——那么该改哪一边？**
+
+**=> 而处置是**改调用点**而不是改脚本** —— 而而理由是那一族：**成文规范优先于补丁**，而脚本那一侧已经改成新形态了（而它拒收旧参数是**有意的**）。**
+
+#### 121.10.3 那一格今天的状态，与它缺的是哪一形态的读数
+
+**=> 而按 C-126：而这一格今天的状态是**未过** —— 而它缺的是**一次读数证明那十一处今天确实判红**。**
+
+**=> 而它缺的那一格读数是什么形态（逐条）：**
+
+| 项 | 它是什么 |
+|---|---|
+| **触发形态** | 而那十一处**各跑一趟**（而它们每一个都是一个 workflow 的一次调用，而那一次调用要走到 `package-component.sh:26` 那一行） |
+| **失败形态** | 而那一趟的日志里要有那一行 `::error title=entry 不再由命令行传入::...`（而 `gen-component-meta.js:61` 到 `66` 那一段打的就是它），而 exit 非 0 |
+| **阳性对照** | 而同一份日志里要有「脚本本身能跑通新形态」的那一条（而 `package-bundle-zip.sh:305` 到 `308` 那一处就是新形态的调用点） |
+| **计数形态** | 而十一处**各一条**（而不能只数其中一条就推其余十条） |
+
+**=> 而这一格今天**没有**那一形态的读数：而 06 今天只核到了**脚本那一侧**（而 `gen-component-meta.js:61` 到 `66` 那一段拒收四个位置参数，而 06 本机实跑 `node scripts/recipes/gen-component-meta.js openssl 3.6.3 bin/openssl /tmp/ak-x.json` 得到 exit=1 与那一条 `::error title=entry 不再由命令行传入`），而而**那十一处 workflow 各自的那一趟**今天没跑（而它们不在 base 筐里）。**
+
+**=> 而按 C-110：而「那一格今天没被判红」与「它今天必然判红」是两件事 —— 而今天后者是**推断**（而它依据的是 06 那一条本机实跑的读数与「那十一处调用的就是那一个脚本」这一条）。**
+
+**=> 而它能不能靠跑一趟过：而能 —— 而那十一处各跑一趟（而它们不在 base 筐里，而与 §121.9 那一格无关）。**
+
+#### 121.10.4 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落判别形式与今天的读数，而它不裁定「那十一处今天改没改」 |
+| 2 | 而「那十一处各跑一趟」是取数那一侧（而 06 跑），而本节不产生实现改动 |
+### 121.11 而「送达」那一列与「字节来源」那一层：而它们是两条不同的路（2026-10-24）
+
+**=> 而这一节问的是两件事，而它们**不得互相顶替**：**「那一组变量有没有真的到达被调用的那个进程」（送达）与「那一件那份字节是从哪一份来的」（字节来源）。**
+
+#### 121.11.1 两者的对象与坏了的形态
+
+| | **送达那一列**（§118.3 第五问） | **字节来源那一层**（§118.8.1） |
+|---|---|---|
+| **对象** | **一组环境变量** | **一份产物字节** |
+| **坏了的形态** | 而被调用的进程**读到 unset**，于是它走默认值那一支 | 而字节**在**，而它的来源是**另一件** |
+| **能修的地方** | 而它在**起进程那一格** | 而它在**产出处** |
+
+**=> 而按 C-104：而这两者是**两条不同的路**，而它们各自有各自的判据。**
+
+**=> 而判别形式：这一件的那个值是**一个进程读到的环境**，还是**一份字节的来源**？=> 环境 => 而它是「送达」那一列；=> 字节 => 而它是「字节来源」那一层。**
+
+#### 121.11.2 openssl 与 curl 两件各一趟（读数）
+
+| 那一件 | **送达**那一列 | **字节来源**那一层 | 而它走的是哪一族 |
+|---|---|---|---|
+| **openssl** | **已核为送达** —— 而 `build-bundle-openssl.sh:56` 到 `:59`，而 `./Configure` 那一组的四行**全是命令的延续**、而**中间没有注释**（而那些注释在 `:48` 到 `:55`，在那一行**之前**） | **已核** —— 而字节是**自己编出来的**（而 `./Configure` 加 `make build_libs` 加 `make install_sw`，而出 `$OUT_DIR/lib/libssl.so*`，见 `:56`、`:61`、`:63`、`:79`） | **R-2**（而值形态写在最终那行 recipe 上，而给 configure 的值不带引号） |
+| **curl** | **未过** —— 而 `build-bundle-curl.sh:53` 到 `:55`，而 `CC=... AR=... RANLIB=...` 后面**紧跟 `:55` 那行注释**，而再往后才是 `LDFLAGS=`；而而**形态与 zlib 那一件同形** | **已核** —— 而字节是**自己编出来的**（而 `./configure --enable-shared` 加 `make -C lib`，而出 `$OUT_DIR/lib/libcurl.so*`，见 `:41`、`:59`、`:66`） | **R-1**（而值形态写在给 configure 的那一行上） |
+
+**=> 而 curl 那一格「送达未过」的状态是**未过**，而而它的形态与 zlib 那一件同形（而一个注释行把一组赋值截断），而而它归 05。**
+
+**=> 而按 C-116：而「送达」那一列与「字节来源」那一层今天**各核过两件**（zlib、openssl、curl），而而**别的件未核**。**
+
+#### 121.11.3 而这一族给 §118.3 那张分类表补了两件（读数）
+
+**=> 而这一族给那张表**补了两件的归属**：而 openssl 是 **R-2**、而 curl 是 **R-1** —— 而而那**不是新的一族**，而而那是那两族**各多了一件**。**
+
+#### 121.11.4 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落两者的对象与形态之别，而它不裁定「某一处该怎么改」 |
+| 2 | 而 curl 那一格「送达未过」按 C-126 写「未过」，而它缺的是一处改动（而 05 那一侧） |
+
+### 121.12 而今天这一族的收口总表（2026-10-24）
+
+**=> 而本节的用处是「下一个会话读它就知道从哪接手」—— 而它有三张表：而表一列今天立了哪些判据形式，而表二列今天过了哪些格，而表三列今天还剩哪些格与每一格的处置方向。**
+
+**=> 而按 C-126：而每一格写「已过 / 未过 / 未核 / 未验」这一类档位，而它与本规范那六档的关系见 §121.13 那一节与 C-194 那一族。**
+
+---
+
+#### 一、表一 · 今天立了哪些判据形式
+
+**=> 而表一今天共 **87 条**（=> 而 C-150 到 C-236 连续编号）。**
+
+| 编号 | 它治什么那一问 |
+|---|---|
+| **C-150** | **改一个已有格子的含义之前，先看它的值域变没变？** |
+| **C-151** | **要加一个字段之前，先看今天谁读它？** |
+| **C-152** | **要取消一个件的独立存在之前，先看它那一条里有没有别的东西在读？** |
+| **C-153** | **凡报一个「读不到」，先答那个读法本身对不对？** |
+| **C-154** | **搜索路径里有没有某目录、读不读某个文件、认不认识某个名字，是三件事；而读数要能指向「那一次内容被取回的事件」，而它分四档判别（事件级、系统调用级、哨兵级、必要条件级），而必要条件级只证否不证实？** |
+| **C-155** | **三档取数与「每个 0 的出处」模板（S101 这一份的）？** |
+| **C-156** | **把一个失败段切成多段、用多道分界定位：入口之后切 Z（linker 内部）、A（constructors）、B（入口后第一条指令）、C（TLS 与自举），而三道分界分别是 LD_DEBUG 尾部有没有 `Jumping to _start`、`#00` 帧落在哪个模块、`pc` 减映射基址与 `e_entry` 的差？** |
+| **C-157** | **三档取数与「每个 0 的出处」模板（S102 这一份的）？** |
+| **C-158** | **一趟读数只能证明这一趟的输出里有什么，不能证明那件事不存在？** |
+| **C-159** | **两种尾部并存：既有那一趟的尾部是 `__dl__start+8` 而本轮那一趟有 `Jumping to _start`，而段位判别表要同时容纳这两种尾部？** |
+| **C-160** | **给一个件，按四问判它走 P（补丁路）／R（自写 recipe 路）／X（不走这三层）哪一类，而每一层该写成什么形态，而三个典型坏值各对应折坏的那一层？** |
+| **C-161** | **给 configure 的那一格值里带引号，而 configure 拿它当命令跑，那一对引号会把探测命令拆坏，探测失败后 configure 静默退回静态 —— 而这一族的正确形态是「给 configure 的那一格值里无引号，单引号写在最终那行 recipe 上，而每段单引号各包一个 -Wl」？** |
+| **C-162** | **四层机制的条文加分类表加逐层适用性表加六档失败反例加验收读数与阳性阴性对照与三档模板？** |
+| **C-163** | **「那个加载器读不读那份缓存」这一格的读数形状：F1 到 F12、P1 到 P5、N1 到 N5、PC-1 到 PC-3、P3 取法通则、F12 不可取的写法？** |
+| **C-164** | **第四格那个 139 的读数形状：Z/A/B/C 四段与三道分界、A 组 24 项、B 组 8 项、C 组 6 项、PC-1 到 PC-6、P-正向-1 到 4、N-1 到 N-7、E1 到 E8？** |
+| **C-165** | **落位侧那两格的形状：`ProgramIndex.kt:175` 是 sha256 而 `:176` 是 assetEntry（同名不同义）、sha256 那格的算法与清单来源、空值三种成因各单列？** |
+| **C-166** | **`DT_RUNPATH` 那一格怎么读：产物形态清单里没有那一格，而取法要纯字节解析器而不 grep、不用 readelf 转述？** |
+| **C-167** | **同一个件的不同固化版本产物内容不同，而读那一格必须带 buildSha 与 buildRun 才成立？** |
+| **C-168** | **一个 0 要同帖给阳性对照才算读数（设备侧那一例：「无 SONAME 条目」不能只写「无 SONAME」）？** |
+| **C-169** | **作者本人发现自己写错并就地更正这一族（可作 C-84 自纠那一族的实例）？** |
+| **C-170** | **作者本人发现自己写错并就地更正，而改前那版仍在案？** |
+| **C-171** | **四层机制那一族的核对与修正：L-perl 对 openssl 那一件成立；六档失败反例与三个典型坏值的对应关系不唯一；分类表要加「送达」一列；分类表要加第四类？** |
+| **C-172** | **规范那一层与判据那一层的边界规则（可执行版）：R-1 两句问的是不是同一件事；R-2 「更具体」按可核对性判；R-3 判据的落点永远在判据源；R-4 冲突时以判据源为准？** |
+| **C-173** | **同一个字节有两条生成路径：判别它是同一次构建出来的、还是从另一件已固化的产物里拆出来的？** |
+| **C-174** | **「字节从哪一份来」这一层：那一件的自报构建标识与源那一件逐字相同吗？而它与「送达」那一列不是同一族？** |
+| **C-175** | **转述与逐字节读数冲突时以逐字节为准？** |
+| **C-176** | **一个问句混了两问：凡一个问句把两件事混成一问（而它还预设了那一趟里那一项参与了），而它该改成三问（Q1 参与资格、Q2 展开规则、Q3 落位布局）？** |
+| **C-177** | **主对象那一格与依赖对象那一格是两格：格一 M-主 = 主对象按 soname 找它 NEEDED 的那些库、用主对象自己那一格 RUNPATH；格二 M-依 = 依赖对象自己找同目录依赖、用依赖自己那一格 RUNPATH；而走丙治的是格二？** |
+| **C-178** | **段位已定与取值来源未过两格不互相顶替：算「段位已定」但要写成「落在 B 段那个位置」而不能写成「B 段那一行成立」？** |
+| **C-179** | **落位发生在 app 启动时而不是 install 时：而这一族的形态是「装完立刻核会读到旧那一版」？** |
+| **C-180** | **zlib 那一件设备侧那一格已过：设备上那一份是 107480 字节、sha256 `9850a43d…`，而 DT_RUNPATH 逐字节读到？** |
+| **C-181** | **同一份字节在不同角色下都装得上、而选中哪一份由查找路径决定？** |
+| **C-182** | **「跑了但形状与之前那一趟相同」这一族？** |
+| **C-183** | **多格共缺同一件东西：而今天有几格缺的不是读数而是同一件东西（linker64 那个二进制的实现：源码或反汇编）？** |
+| **C-184** | **「取件那一格本身报的不是事实」：未转义的 `${X:-默认}` 会求值（那是对的），转义成 `\${X:-默认}` 就不求值（那是缺陷）？** |
+| **C-185** | **「取件核了字节数与声明一致但声明本身只有一处」这一族？** |
+| **C-186** | **「部分已核」这一档：那一格的问句有没有被拆成两问以上、有而只答了其中一问，它就是「部分已核」而不是「已过」也不是「未核」？**（而这一条今天被 C-192 改了措辞，改前那版仍在案） |
+| **C-187** | **「一句结论被多处引用、其中一条前提被发现是错的」：那不只是在引用它的每一处改一句话，还要问「还有哪些地方把那句错话当前提用了」？** |
+| **C-188** | **「有的件带自述构建身份、有的件不带」这一族：而自述构建身份只能按时间对齐推得时，那不是自述？** |
+| **C-189** | **「自述的构建身份与实际那一件对不上」这一族？** |
+| **C-190** | **凡一格要报一个环境变量或带默认值的引用，判别那个 `${...}` 前面有没有一个反斜杠？** |
+| **C-191** | **「校验器查不出什么」这一族：一个校验器只能查它被写成要查的那几样，而它查不出的那一类缺陷不会因为校验器跑绿而消失？**（而这一条今天被 C-193 给了判别形式，改前那版仍在案） |
+| **C-192** | **「部分已核」那一档的判别式：那一格被拆成的那几问（或那几层）里，今天答了几问？答了一部分而没答完 => 部分已核；全答了 => 已过；一问都没答 => 未核？** |
+| **C-193** | **「一个校验器的视野边界」这一族的判别形式（形状是「覆盖面」而不是「跑绿不等于对」）：K1 这一处的结论是从「看」来的还是从「跑一个校验器」来的、K2 那个校验器被写成要查哪几样、K3 这一处要查的那一样在不在那几样之内？** |
+| **C-194** | **今天这一族收口时的六档关系：六档各自的判别问与「蕴含哪一档」，而「已定」蕴含「已过」、「部分已核」蕴含「未过」而不蕴含「已过」、「未过」与「未核」互不蕴含、「未验」与「未核」互不蕴含？** |
+| **C-195** | **G2 那一格能不能由源码答完：它要分两层答（C-122），而 L-src 已过而 L-run 部分已核？** |
+| **C-196** | **「层 / 落点 / 送达」三轴互不替代：P/R/X 与 R-1/R-2/R-3 是两个轴各管一层，而 R-1/R-2/R-3 与「送达」那一列是同一个坐标系，而两轴的映射是偏函数？**（而这一条今天被 C-208 扩充：三轴扩成四族，而扩充出来的那一族是 C-208） |
+| **C-197** | **「grep 命中要按产出 / 判据 / 注释分三路」：G1 逐行是哪一路、G2 产出那一路每一行落在哪条命令上、G3 判据那一路有没有命中 —— 而 G3 不可省？** |
+| **C-198** | **「两条读数说的不是同一趟」这一族？** |
+| **C-199** | **「同一个问题有两个读法而两个读法都答在」这一族：而两个读法指的是不同的东西，而它们今天都答「在」？** |
+| **C-200** | **「替换一段时锚点取错会复制而不是替换」：而那一族的危害是「复制出来的那两份还在案上，而读的人不知道哪一份是准的」？** |
+| **C-201** | **今天这一族现在还剩哪些格没过或未核？** |
+| **C-202** | **「判据立出来时它自己当场被用到」这一族：而它今天就有了一处实例 —— 而那一处实例不是「它被触发过」的证据，而是「它在立起来的那一天就派上用场了」？** |
+| **C-203** | **「规范正文还在动的时候，位置栏怎么处理」：位置栏分两栏写，「节次」那一栏永远指当前那一版的节次，而「行号」那一栏带基线，基线变了就标「行号待重核」而不立刻改？** |
+| **C-204** | **剩余格各缺什么 + 处置方向：那一族加一列「处置方向」，共四类 D-读数 / D-改动 / D-代码 / D-手段？** |
+| **C-205** | **「同一段在文件里出现不该出现的次数」这一族（结果那一层）：四问 D0 / D1 / D2 / D3，而 D2 的判法写死为取前 40 字符数出现次数，而 D3 才是真正治的那一句？** |
+| **C-206** | **「引述方向错」这一族：把「spec 正文里写着的那一句」当成了「别人核到的那一句」？** |
+| **C-207** | **「落点」与「走哪一族路」是两个问句：读法一治落点（可数），而读法二治传递路径，而它在 curl 那一件上今天两者恰好不同？** |
+| **C-208** | **「传递路径」那一族（第三个问句）：判别式是「这一件的值形态，机制上经由哪一段到达链接命令行？」，而 T-1 configure 那一路 / T-2 上游模板那一路 / T-3 手写 recipe 那一路，而它与层、落点、送达都正交？** |
+| **C-209** | **「今天无实例、历史上有过」的那三个落点要逐条写、而不写成「某件是 R-1」？** |
+| **C-210** | **「第三族与第一轴的边界」：而第三族单立 T-4（cargo / rustc 那一路）而不排除 cargo 那一路？** |
+| **C-211** | **「第二轴无位置」拆成两行：N-1 它根本不给那个值（已核）、N-2 它给了而值落在别处（今天无实例 => 按 C-116 写未核）？** |
+| **C-212** | **今天这一族的收口总表这一族：三张表（今天立了哪些判据形式、今天过了哪些格、今天还剩哪些格与处置方向）？** |
+| **C-213** | **「结论下得太早而后来被推翻、而那几处各自留了痕」这一族：而它治的是「被推翻过而看不出来」？** |
+
+**=> 而 03 今天又登记了 C-214 到 C-222 那九条，=> 而按 C-110（=> 而只写编号与位置，=> 而不复述措辞）那九条要补进表一，=> 而而表一因此从 64 条变成 73 条：**
+
+| 编号 | 它治什么那一问 |
+|---|---|
+| **C-214** | **「基线整个没了的时候位置栏怎么办」这一族：=> 而它是 C-203 那一族的一个分支（=> 而 C-203 治「基线动了」而它治「基线整个没了」），=> 而处置是每一栏加一行留痕而不是删或改成「节次待重立」？** |
+| **C-215** | **「那一条命令被套了几层 linker64」这一族：=> 而判别式是机械可数的（=> 而 argv 里 `/system/bin/linker64` 出现几次 = 层数），=> 而而「为什么只多一层」要三条读数并排？** |
+| **C-216** | **「重做那一批节时，每章先落一个章头文件」这一族：=> 而每份一个文件、=> 而标题是 `## 一百NN` 那种章的写法、=> 而而**恰好一个 `##` 标题、零个 `###` 标题**、=> 而而章下面不出现 `###` 标题？** |
+| **C-217** | **「重做那一批节时，每节一份正文稿，而每份一个 `###` 标题、零个 `##` 标题」这一族：=> 而这一族是「一份文件 = 一节，=> 而那一节自带它的判别形式、字段表、阳性与阴性对照、处置方向与边界」，=> 而而它与 C-216 是两层？** |
+| **C-218** | **「§120 那一族的那四份正文稿」这一族：=> 而 §120.13 段位 / §120.14 那三问 / §120.15 那两格 / §120.16 软链在位，=> 而而它是 C-217 在 §120 那一族的落法？** |
+| **C-219** | **「01 自己那份正文稿被指出缺读数之后，逐处补读数、并把『今天缺哪一形态的读数』写成一张表」这一族：=> 而补的不是读数本身，=> 而是**每一格今天的状态 + 缺的是哪一形态的读数 + 为什么今天缺**？** |
+| **C-220** | **「写草稿那一侧与做手术那一侧要分开」这一族：=> 而它的形态是「写草稿时把多行当成一个列表元素写进去，=> 而 splice 之后那一段每个字符被摊成一行」，=> 而而它的机械判法是「写完草稿先看行数与每行不超过 N 字符」？** |
+| **C-221** | **「splice 完除了五层加基线，还要核节号次序与行首标题」这一族：=> 而「这一轮没出事」**不当它安全**（=> 而按 C-113），=> 而而建议加两条（=> 而四、 跑一次「节次 - 章 - 节号」对应表、=> 而而五、 跑「本轮新落的那些节的第一行标题」逐个核）？** |
+| **C-222** | **「核节号次序那张表本身也有基线，=> 而它过期了不会自己报出来」这一族：=> 而它治的是「**用来核的那张表**自己过期了，=> 而而它的过期**不会自己报出来**」？** |
+| **C-223** | **「收口总表的那张表一要跟上今天新立的那几条」这一族：=> 而表一那一条的定义是「今天立了哪些判据形式」，=> 而而今天新立的那几条若不在表一里，=> 而而那表一就漏了今天立的那些；=> 而而补的方式是「照那一栏现有形状，每条写『它治什么那一问』」，=> 而而**不写位置**？** |
+| **C-224** | **「在一件东西的落点没核之前就说它还没落」这一族：=> 而作者自己发现「我上一轮报『那三件还没落』是错的」—— => 而而那三件其实都已落在 spec 里，=> 而而判别形式在那三份稿子里而不在 spec 里；=> 而而它治的是「**用『它在稿子里』当成『它没落』**」这一种？** |
+| **C-225** | **「照录」与「核过」要分开写这一族：=> 而一份稿子里的读数如果是**照录**别处那一份的，=> 而而那一句就要写明「这一条是照录 X 的，=> 而而本件没有上设备跑过，=> 而而那一条的成立与否由 X 负责」？** |
+| **C-226** | **「那一段被改坏而 diff 没显示」这一族：=> 而它今天在 spec 那一侧真出了一次——=> 而而那一段的**旧表述**与**新表述**互相冲突，=> 而而**旧那一套的「层 2」那一行已被改判**，=> 而而按 C-115 留档不删？** |
+| **C-227** | **「要取到一格读数可能要先修好它前面那一格」这一族：=> 而上一版 args 被 `drop(1)` 丢掉所以那一趟等于空参数、立刻 exit 2、活不过几秒、扫 `/proc` 扫了 20000 轮一次都没抓到；=> 而而这一版 args 上了它停住了、=> 而而抓到了？** |
+| **C-228** | **「设备侧读数本身有一个时点」那一族：=> 而落位后**第一次**读 program-index 读到的是 `role=entry-unusable`，=> 而而落位稳定**之后**再读是 `role=program`——=> 而而那两条**两个时点不互相覆盖**？** |
+| **C-229** | **「两种 env 形态」那一族：=> 而 PTY 宿主那一趟 environ 是 46 键 6612 字节（=> 而含宿主进程继承的那一套），=> 而而程序那一趟是 18 键 996 到 1001 字节（=> 而含 `LOBOS_*` 那一套）——=> 而而**两种形态并列在案**？** |
+| **C-230** | **「仓内脚本调仓内工具一律不许用相对路径」那一族：=> 而那一处逐字是相对路径而其余四处逐字都是 `$ROOT_DIR`；=> 而而那一族的**暴露条件**是「那个 recipe 先 cd 进源码树」？** |
+| **C-231** | **「章头与它下面那一节被分离了」那一族：=> 而那一种的形态是「那个章头与那一节被分离了，=> 而而后面那几节挂在了错位的章头下」，=> 而而校验器报出「节号与章不对应」那几条；=> 而而它的处置是「把那个章头连同它那几行**整块移回**那一节之前」？** |
+| **C-232** | **「小节插到了同一章里的相邻小节」而「章与节号」那条检查查不出来那一族：=> 而它与 C-231 的分别是**章**那一层与**节**那一层的错位，=> 而而与 C-221 的分别是「要核哪几道」与**其中一道**的具体形态？** |
+| **C-233** | **「资产名与它的实际格式不一致」那一族：=> 而它与 C-190 与 C-185 是**两问**，=> 而而与 C-112 那一句是**接点**，=> 而而按 C-104 它本质上是「**同名不同义**」那一族 C-150 的一个实例？** |
+| **C-234** | **「一个结论是从别人的读数推出来的，=> 而而那个推法是作者自己的，=> 而而那它就要逐字引出那句原话」这一族的可复用形式那一层：=> 而那三问是 —— 一、=> 而那个结论的来源是**转述**还是**逐字引用**（=> 而转述则不合格，=> 而而要回去把那句原话找出来）；二、=> 而作者自己写的那一句**是不是原话**（=> 而不是原话而是自己的话则不合格）；三、=> 而改前那一版**在不在案**（=> 而不在则改前那一版也要补引原话，=> 而而按 C-115 留档不删）？** |
+| **C-235** | **「一个筐今天还有没有存在的必要」那一族：=> 而那一格问的是「那个筐今天还有没有存在的必要」，=> 而而它的答由**三问合成**（=> 而产出方 / => 而核验者 / => 而取件者），=> 而而**不是**「有没有第二个读者」单独一问；=> 而而**零第二读者不构成撤的理由**——=> 而那个筐今天**承着核验者取到那一件的唯一路径**=> 而而撤它**要先改核验者的取法**=> 而而那一格是「改核验者的取法」，=> 而而**不是**「撤筐」？** |
+| **C-236** | **「设备侧那两份『逐字相同』」那一格的读数形状那一族：=> 而这一问按 C-175 是**逐字节**那一问，=> 而而**不是**「自报 buildRun 相同」那一问；=> 而而字段 **D1 到 D7**（=> 而两份绝对路径 / => 而两份 `ls -l` 原文 / => 而设备侧两条 sha256 / => 而**逐字节比对那一条**——=> 而而 `cmp` 相同时**零输出**，=> 而而那一格要写「零输出」这一行**本身**而**不能**写「没跑」/ => 而阳性对照 / => 而两份自报构建身份 / => 而取法口径）；=> 而而阳性对照 **PC-D1 到 PC-D3**、=> 而而阴性对照 **N-D1 到 N-D4**（=> 而不可取按 C-05 记**缺**不记 **0**）？** |
+
+---
+
+#### 二、表二 · 今天过了哪些格
+
+**=> 而这一表按本规范 §121.12 那张总表逐格核过；每一格写它是什么与今天它是什么状态。**
+
+| 那一格 | 今天的状态 |
+|---|---|
+| **值那一格 · 产物侧** | **已过**（那一份产物 `RUNPATH [$ORIGIN]`，sha256 `9850a43d…`） |
+| **值那一格 · 设备侧** | **已过**（设备上逐字节读到，107480 字节、sha256 `9850a43d…`，带 buildSha `9bcd6288…` 与 buildRun `40069356916`） |
+| **SONAME 那一格** | **已过**（两份库都在且都有 SONAME，而 `bin/openssl` 在而没有 DT_SONAME 条目，而那不是「读不出来」而是阳性对照读到 26 条） |
+| **第五格走丙 · zlib 那一份设备侧 `DT_RUNPATH`** | **已过**（设备上读到 `$ORIGIN`，27 条动态条目） |
+| **crypto 那一件「同一次构建」** | **已过**（两份 meta 的 buildSha 与 buildRun 逐字相同，字节 cmp 逐字节 IDENTICAL） |
+| **N-6（角色对照）** | **已过**（exit=0，stdout 是 LOB-OS 那一份自报的版本串） |
+| **第四格 · 段位** | **已定**（落在 B 段那个位置 —— 而按 C-194，「已定」蕴含「已过」） |
+| **Q1（参与资格）** | **已过**（主对象那一格是空的，本机与设备侧两边一致） |
+| **Q3（落位布局）** | **已过**（就今天这一件：`lib/` 有那两份、`bin/` 没有） |
+| **第四格 · 取值来源** | **已过**（AOSP `linker_phdr.h:69` + `linker_phdr.cpp:700` + `linker_main.cpp:502` 到 `:504`，而那一跳 = `e_entry` 与映射基址相加） |
+| **Q2（`$ORIGIN` 展开规则）** | **已过**（AOSP `linker_soinfo.cpp:219` 到 `:239`，而 `$ORIGIN` 展开成「含有那一格 `DT_RUNPATH` 的对象自己」所在目录） |
+| **主对象与被依赖的那一份「语义不一致」的成因** | **已过**（AOSP `linker.cpp:1050` 到 `:1078`，三段次序：LD_LIBRARY_PATH → 依赖对象自己那一格 DT_RUNPATH → 默认搜索路径） |
+| **collect-piece-diag 那一格** | **已过**（05 今天改了那一行，07 两趟新读数证了） |
+| **node 那一份产物的 `DT_RUNPATH`** | **已过**（02 今天取到，两份 `libnode.so` 的 `DT_RUNPATH` 都是 `$ORIGIN`） |
+| **LD_PRELOAD 那一处** | **已过**（07 今天那一趟读到它进了 environ 且被注入了；仓内那三处 `remove` 是后来引入的，而那不是矛盾） |
+| **LD_LIBRARY_PATH 那一处** | **已过**（=> 而 07 今天在**一个真活进程**上取到 `LD_LIBRARY_PATH=/data/user/0/lobos.os/files/usr/lib`，=> 而而 bash 与 jq 两件**逐字相同**；=> 而而另外那一趟带它 exit=0 而 stdout 是 `N6-MAIN-OK OpenSSL 3.6.3 9 Jun 2026`） |
+| **openssl 送达那一格** | **已过**（`build-bundle-openssl.sh:56` 到 `:59`，而 `./Configure` 那一组的四行全是命令的延续、中间没有注释） |
+| **openssl 与 curl 那两件的字节来源** | **已过**（openssl 是 `./Configure` + `make build_libs` + `make install_sw`；curl 是 `./configure --enable-shared` + `make -C lib`） |
+| **bash 那一件设备侧动态符号表那一格** | **已过**（设备侧逐字节读到了那一格的动态符号表） |
+| **第四格 · 一次运行** | **未过**（=> 而 07 今天在今天这一版上又跑了一趟：=> 而 `run-as lobos.os env -u LD_LIBRARY_PATH LD_DEBUG=all /system/bin/linker64 …/rp-probe/libssl.so --version` => 而而 **exit=139**、=> 而而 stdout 0 字节、=> 而而 stderr 18299 行、=> 而而 tombstone 是 `SEGV_ACCERR` 加 2 帧加 fault addr `0x7ecb208000`；=> 而而**理由是「实现那一层还没改到那一格」**，=> 而而今天那三处改动**都没有触及这一格这一趟的路**）** |
+| **busybox 那一件 `e_type` 与 `PT_INTERP` 行数** | **已过**（=> 而 `02e1905` 那一版落位那一份：=> 而 164328 字节、=> 而 sha256 `59fc2a40…`、=> 而而 `ET_DYN`、=> 而而 `PT_INTERP` 1 行、=> 而而 `PT_INTERP` 逐字 `/system/bin/linker64`） |
+| **args 那一份在不在 argv 里** | **已过**（=> 而 `02e1905` 那一版：=> 而 bash 带着 `…/tmp/hold.sh`、=> 而而 ripgrep 带着 `--regexp x …/tmp/hold.fifo`，=> 而而**args 逐字在**） |
+| **PTY 宿主那一趟** | **已过**（=> 而 `diag.jsonl` 多了一条「PTY 宿主自述 :: librivospty ready」；=> 而而那个宿主进程在设备上：`ps` 是 `10080 u0_a214 linker64 linker64 …/librivospty.so`、=> 而而 environ **46 键 / 6612 字节**而**`LD_PRELOAD` 没有**、=> 而而 cmdline 是 `/system/bin/linker64 …/usr/lib/librivospty.so`、=> 而而 `COUNT_FULLPATH_LINKER64` 1、`STATE S`） |
+| **ripgrep 那一件的 argv** | **已过**（=> 而 `02e1905` 那一版抓到了：=> 而 `COUNT_FULLPATH_LINKER64` 1、=> 而而 EXE 是 `/apex/com.android.runtime/bin/linker64`、=> 而而 STATE `S`、=> 而而 environ 18 键而 1001 字节） |
+
+**=> 而按 C-194：而表二**逐格标档**（那一档是**逐格那一格**的状态），=> 而**表二整体不是一个格** —— => 而它没有档位可写。**
+
+---
+
+#### 三、表三 · 今天还剩哪些格，与每一格的处置方向
+
+**=> 而处置方向共四类（详见 §121.13 那一节）：D-读数是一次运行能给出的读数；D-改动是读完数之后仍然缺的一处改动；D-代码是那一版的源码或反汇编；D-手段是运行期手段。**
+
+| 那一格 | 它缺的是什么 | 处置方向 | 归谁 |
+|---|---|---|---|
+| **第四格 · 一次运行** | **=> 而那个「设备上有一个 LOB-OS 起出来的活进程」这一条件**今天补上了**（=> 而 07 今天在**一个真活进程**上取到了 environ 与 cmdline）；=> 而而这一格**剩下的**是**第四格本身**那一次运行 | **=> 而 D-改动** | 05 |
+| **curl 送达** | 一处构建侧改动（而 `build-bundle-curl.sh:53` 到 `:55`，`CC=... AR=... RANLIB=...` 后面紧跟 `:55` 那行注释，形态与 zlib 那一件同形） | **D-改动** | 05 |
+| **前 11366 行那十处表格** | 一次内容判断（那一列本该叫什么） | **D-改动** | 04（而按 lead 的裁今天只报位置与形态，不动） |
+| **「送达」列在别的件上** | 别的件那一份的读数 | **D-读数** | 05（按 C-116 每一件各一趟） |
+| **「字节来源」层在别的件上** | 别的件那两份 meta 的读数 | **D-读数** | 05 |
+| **那十一处调用点** | 一次读数证明那十一处今天确实判红（而它们不在 base 筐里） | **D-读数** | 06 |
+| **schema 与实际字段是否对得上** | 跑一次那个 schema 校验器（而 06 没找到跑它的脚本） | **D-读数** | 06 |
+| **§118.3 第四类缺口** | 一次读数（而判别式已定：是上游模板还是自写 recipe 路？=> 而都不是 => 而它是第四类） | **D-读数** | 04 落那一格（而判别式已定） |
+| **AOSP 那一支与那个二进制的严格对应** | 一份能严格对上的那一份（而那个二进制 `.comment` 写着 `based on r547379`，而本机取的是 `refs/heads/android16-release`） | **D-代码** | 取件侧 + 04 |
+| **G2** | 运行期手段（而 L-src 已过：那一族源码里没有以 `ld.so.cache` / `ld.so.conf` 这两个名字打开文件的代码路径；L-run 答不了） | **D-手段** | 本机侧准备那一层 |
+| **R-1** | 一次读数（而按 C-116：R-1 今天在仓里**没有实例**，那一格写「未核」而不是「它不存在」） | **D-读数** | 05 |
+| **「起进程那一格把链接器塞进入口」那一族** | **=> 而 `02e1905` 那一版之后**还缺三格**（=> 而按 C-05 照录 07 报的未核）：=> 而一、**busybox 那一件 exit 127 的成因**；=> 而二、**ripgrep 在监督环里 exit 143 的成因**（=> 而「谁发的 143」没取到读数）；=> 而三、**PTY 宿主为什么用宿主那一套 env**（=> 而只报读数不裁定） | **=> 而 D-改动**（=> 而四版已过 CI：=> 而 `6e2ceb0`、=> 而 `0e447ef`、=> 而 `0c1d9af`、=> 而 `02e1905`；=> 而而今天 `head=b3f82d8`）** | **=> 而 05 改代码、=> 而 07 取读数** |
+
+**=> 而按 C-126：而这一族今天没有一格写「待观察」—— 而「未过」与「未核」按 §121.13 那一节那六档写清。**
+
+---
+
+**=> 而 07 今天核完了 `0c1d9af` 那一版之后，=> 而表三那一格与表二那几格要更新（=> 而按 C-115，=> 而改前那一句并列留档不删）：**
+
+> **=> 而改前那一版：=> 而「设备上 `0e447ef` 那一版的读数」=> 而而那一趟**还没回来**（=> 而 07 正在装那一版）。**
+>
+> **=> 而改后（=> 而 07 今天核完了 `0c1d9af` 那一版：=> 而 `build-apk` `run_id=40101193463` success、=> 而 `sha=0c1d9af`）：=> 而那一格的**读数侧已回来**，=> 而而**它给的不是「全绿」，=> 而是三版并列**（=> 而见 §122.29 那一节）。**
+
+| 那一格 | 它缺的是什么 | 处置方向 | 归谁 |
+|---|---|---|---|
+
+**=> 而表二那几格今天的状态（=> 而 07 今天核到的）：**
+
+| 那一格 | 而它今天的状态 |
+|---|---|
+| **那三件在监督环里** | **=> 而 `0c1d9af` 那一版：=> 而 bash **143**、=> 而 jq **143**、=> 而 rg **2**、=> 而而 busybox 那一件**仍是 `Cannot run program`**（=> 而而那一件的成因**未核**）** |
+| **那四件空参数** | **=> 而只有 rg 是 2**（=> 而 `rg: ripgrep requires at least one pattern to execute a search`）；=> 而而 bash **0** 无输出、=> 而 jq **0** 无输出、=> 而 busybox **127**（=> 而 `libbusybox.so: applet not found`）** |
+| **双层形态的 tombstone** | **=> 而**零新增**（=> 而仍是 31 份而最新一份仍是 `2026-10-24 20:32:24`，=> 而而这一版装上是 22:19 之后）；=> 而而这一版的 `diag.jsonl` **187 条**里**没有**「进入隔离（`QUARANTINED`）」那一条，=> 而而 supervisor 那几条**全是**「退避 … 后重启」** |
+| **exitNote 那一格** | **=> 而 stage=`process` 五条，=> 而而 `detail` 逐字是 `exitCode=143` 与 `exitCode=2` 而**后面那半句是空的**（=> 而而 `exitNote` 返回空串、=> 而而 `wasReady` 为 false）；=> 而而**阳性对照在设备侧命中 0 条**（=> 而那半句的原文在 `SupervisorPolicy.kt:46`）** |
+| **LD_PRELOAD 那一处** | **=> 而已过**（=> 而 07 今天在**一个真活进程**上取到 `LD_PRELOAD=/data/user/0/lobos.os/files/usr/lib/liblobosposix.so`，=> 而而 environ 键数 18 而字节数 998（=> 而 bash）=> 而而 996（=> 而 jq）；=> 而而**仓内那三处 `remove` 在哪条路上**是**实现那一格、=> 而而今天未核）** |
+| **LD_LIBRARY_PATH 那一处** | **=> 而已过**（=> 而而它「在实现侧在」，=> 而而**今天那一个活进程补上了**）** |
+| **第四格 · 一次运行** | **=> 而那三件**进程活不过几秒**，=> 而而这一格缺的正是「一个活进程」这个条件；=> 而而**今天 07 取到了那个活进程**（=> 而而那一个条件**补上了**），=> 而而**这一格本身**那一次运行**仍未过** |
+
+> **=> 而按 C-194：而这些格子**逐格标档**，=> 而而**表二整体不是一个格**。**
+>
+> **=> 而按 C-115：而今天这三版**并列在案**，=> 而而不互相顶替（=> 而 `6e2ceb0` 那一版跑得通那三件、=> 而 `0e447ef` 那一版四件全起不来、=> 而 `0c1d9af` 那一版只有 busybox 起不来）。**
+
+**=> 而本规范把表一那条范围说明写成正文（=> 而它治的是「表一的条数与分类数混起来」）：**
+
+> **=> 而表一今天共 **73 条**（=> 而 C-150 到 C-222 连续编号）：=> 而而**新立 71 条**（=> 而 C-150 到 C-213 那 64 条里的 62 条 + C-214 到 C-222 那 9 条）、=> 而而**改过 2 条**（=> 而 C-186 被 C-192 改了措辞、=> 而 C-191 被 C-193 给了判别形式）、=> 而而**扩充 1 条**（=> 而 C-196 三族扩四族，=> 而而扩充出来的那一族是 C-208）。**
+>
+> **=> 而按 C-110：而表一每一行**只写编号与「它治什么那一问」**，=> 而而**不复述措辞**（=> 而那一条是「不要用 01 或 02 的原话复述」），=> 而而各条的**定义处与位置在 CONSTRAINTS.md 那一侧**（=> 而本节不复述它们的位置栏）。**
+>
+> **=> 而而「改过」与「扩充」那几条**在表里看得出**（=> 而它们的「它治什么那一问」那一格写的是**改后**的问），=> 而而**改前那一句在 CONSTRAINTS.md 那一侧留档不删**（=> 而按 C-115）。**
+
+**=> 而本规范把表二那 24 格今天的状态写成正文（=> 而它治的是「表二是收口表，=> 而而它自己会过期」）：**
+
+> **=> 而表二那 24 格今天**逐格标档**（=> 而按 C-194，=> 而而**本表整体不是一个格**），=> 而而截至这一版：=> 而而**已过 22 格**、=> 而而**已定 1 格**（=> 而第四格 · 段位）、=> 而而**未过 1 格**（=> 而第四格 · 一次运行）。**
+>
+> **=> 而那 22 格已过里，=> 而 07 今天核到而 01 补进去的四处是：=> 而**zlib 设备侧 `DT_RUNPATH`**（=> 而已过）、=> 而**bash 设备侧动态符号表**（=> 而已过）、=> 而**LD_PRELOAD 那一处**（=> 而已过，=> 而而它「不是矛盾而是两趟」）、=> 而而**LD_LIBRARY_PATH 那一处**（=> 而已过，=> 而而它「在实现侧在，=> 而而设备侧缺一个活进程」）。**
+>
+> **=> 而按 C-203：而表二与表三**每格都标节次**，=> 而而**行号按基线取**，=> 而而基线变了就标「行号待重核」而不立刻改。**
+
+**=> 而本规范把表三那一族的处置方向写成正文（=> 而照录 05 与 07 今天那一件）：**
+
+| 那一格 | 它缺的是什么 | 处置方向 | 归谁 |
+|---|---|---|---|
+| **「起进程那一格把链接器塞进入口」那一族（=> 而改前那一版）** | **=> 而设备上 `0e447ef` 那一版的读数（=> 而那三件在监督环里还 exit 139 吗、=> 而 exit 143 与 exit 2 的成因、=> 而 argv 里 linker64 出现几次、=> 而双层形态的 tombstone 有没有新增）** | **=> 而 D-改动**（=> 而改前那一版已过 CI：=> 而 `build-apk` `run_id=40098072402` success、=> 而 `head=0e447ef`）** | **=> 而 07 取读数、=> 而 05 改代码** |
+
+> **=> 而按 C-115：而那一族今天**已经有代码那一侧的改动**，=> 而而**设备侧那一趟读数还没回来**（=> 而 07 正在装那一版），=> 而所以那一格今天写**「D-改动」而读数侧未过** —— => 而而**不是**写「已过」。**
+>
+> **=> 而而 07 今天那一趟读数回来之后，=> 而那几格的状态要更新，=> 而那一格归 04 落**（=> 而按 §121.13 那一节那四类，=> 而它属 D-读数那一步）。**
+
+**=> 而本规范把「表三那 20 格」与今天这一族的关系写成正文（=> 而它治的是「表三只记旧的、=> 而新的那一族没进表」）：**
+
+> **=> 而表三今天共 **12 格**（=> 而原来那 11 格 + 今天这一族那一格）。**
+>
+> **=> 而按 C-204：而表三每一格**都带那四类处置方向之一**（=> 而 D-读数 / D-改动 / D-代码 / D-手段），=> 而而**没有一格留空**。**
+>
+> **=> 而按 C-126：而这一族今天没有一格写「待观察」—— => 而「未过」与「未核」按 §121.13 那一节那六档写清。**
+
+**=> 而这一节治的是「以为再跑一趟能过所有格」—— 而每一格缺的东西不一样，而处置方向不一样。**
+
+**=> 而它承接本规范 §121.12 那一节表三（今天还剩哪些格），而本节给的是那四类的定义与分界。**
+
+---
+
+
+#### 四、本节边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落收口总表，而它不下「某一格该怎么走」的判断（而那一格归 05 与 04） |
+| 2 | 而表一那 64 条判据的定义处与位置在 CONSTRAINTS.md 那一侧（而本节不复述它们的位置栏） |
+| 3 | 而表三每一格的缺项与归属按 C-203 的办法写（节次 + 行号 + 基线），而基线变了就标「行号待重核」而不立刻改 |
+
+---
+
+#### 而那 15 栏的内容今天落在哪一节（=> 而 04 今天逐条实读的结果）
+
+**=> 而 03 那一侧已按 C-203 处理完位置栏（=> 而节次那一栏指当前那一版、=> 而行号带基线并标行号待重核），=> 而而这一节是**那 15 栏能重新指准的最后一步** —— => 而它要答的是「**那一条判据的内容今天在哪一节的哪一段**」，=> 而而**不是**「哪一栏引了它」。**
+
+**=> 而本规范把逐条实读的结果写成正文（=> 而按 C-194 那一族，=> 而而「在不在」与「在哪」**是**两格）：**
+
+| 那一编号 | 而它的**内容**今天在不在 | 而它落在哪一节的哪一段 |
+|---|---|---|
+| **C-167** | **=> 而**在**，=> 而而只是**措辞**不同** | **=> 而 §121.8 那一节的 121.8.3 边界那一行（=> 而「设备侧那一格的读数要带 buildSha 与 buildRun」）** |
+| **C-174** | **=> 而**在**，=> 而而只是**措辞**不同** | **=> 而 §121.11 那一节的 121.11.1 两者的对象与坏了的形态那张表（=> 而「送达那一列」与「字节来源那一层」两行）** |
+| **C-175** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-177** | **=> 而**在** | **=> 而 §120.15 那一节（=> 而那整节就是「主对象那一格与依赖对象那一格是两格」那一族，=> 而而 120.15.1 划分与 120.15.2 两条判别式是它的正文）** |
+| **C-178** | **=> 而**在** | **=> 而 §120.13 那一节的 **120.13.4 段位与取值来源那两格**（=> 而那一节开头逐字是「**按 C-178：**」，=> 而而那张表与「两格不互相顶替」那一句是它的正文）** |
+| **C-181** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-183** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-186** | **=> 而**在**，=> 而而它今天落在**别的那一族**上** | **=> 而 §122.29 那一节（=> 而那「部分已核」那一档在那一节里是**成因三格**的读数：=> 而甲未核、=> 而乙已核为不适用、=> 而而丙部分已核）** |
+| **C-187** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-191** | **=> 而**在** | **=> 而 §122.23 那一节（三处，=> 而而「按 C-191」那几句把这一族与「校验器查不出什么」连上）、=> 而而 §122.10.1 那一节、=> 而而 §122.14 那一节各一处** |
+| **C-193** | **=> 而**在**，=> 而而它落成正文的是**判别形式那一层** | **=> 而 §122.10.1 那一节的 12846 行那一句（=> 而「这一句把这一族与 C-191 那一族连上：=> 而 C-191 那一族治的是『用工具代替看』这一类失误（=> 而它的判别式是 K1/K2/K3）」）** |
+| **C-199** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-200** | **=> 而**在** | **=> 而 §122.10.1 那一节（=> 而「三层关系」那张表里的「因 · 动作」那一行）与 §122.23 那一节（=> 而「按 C-200 那一族」那一句）** |
+| **C-203** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+| **C-213** | **=> 而**不在**（=> 而今天那一版**没有**落成正文的那一段）** | **=> 而（=> 而今天没有落点）** |
+
+> **=> 而那 15 条里**8 条在**、=> 而而 **7 条不在**（=> 而 C-175、C-181、C-183、C-187、C-199、C-203、C-213），=> 而而那 7 条今天**只有表一那一行登记**（=> 而 §121.12 那一节，=> 而而它们**没有落成正文的那一段**）。**
+>
+> **=> 而按 C-126：而那 7 条今天的状态是「**未过**」** —— => 而不是「待观察」。**
+>
+> **=> 而按 C-203：而那 7 栏的节次那一栏**今天指不到任何一节**（=> 而因为它们没有落点），=> 而而**按 C-214 那一族**的处置，=> 而而它们**留档**而不删。**
+>
+> **=> 而「在」的那 8 条：=> 而其中 **C-167 与 C-174 只是措辞不同**（=> 而内容落在 §121.8 与 §121.11 那一族，=> 而而判别式**逐字**在），=> 而而 **C-186 落成正文的是「部分已核」那一档**（=> 而它在 §122.29 那一节里是**成因三格**的读数）。**
+>
+> **=> 而而这一节治的是「**那一栏引了它**」与「**它落成正文了没有**」**是**两问** —— => 而而 C-203 那一族治的是前者，=> 而而今天这一节治的是后者（=> 而按 C-135 那是两个问句）。**
+
+
+*本节由 linux-architect（01）写内容稿；它不碰规范正文。*
+
+
+#### 而那 7 条判据今天的内容在不在（=> 而 04 今天逐条实读的更正，=> 而 2026-10-25 补正）
+
+**=> 而 04 上一轮报的是「8 条在、7 条不在」，=> 而而 lead 核过其中六条**内容其实已经在 spec 里**，=> 而而 04 今天**逐条重核**了，=> 而而**结论要更正**：**
+
+| 那一编号 | 而它治什么 | 而它的内容今天在不在 | 而它落在哪一节的哪一段 |
+|---|---|---|---|
+| **C-175** | **=> 而「推出来的写成原话」那一族** | **=> 而**在** | **=> 而 §122.29 那一节（=> 而「而 05 那一次对原生那一支理由的更正」那一小段，=> 而而改前「内核按 PT_INTERP 能解释第二层」与改后「只能解释第一个、解释不了第二个」**并列**）** |
+| **C-181** | **=> 而「落位发生在 app 启动时」那一族** | **=> 而**在** | **=> 而 §121.8 那一节的 **121.8.2 落位发生在 app 启动时而不是 install 时（那一族）**（=> 而「装完立刻核读到的是**旧**那一版」与「**追加一步启动 app**之后才读到新那一版」那两条读数，=> 而而判别形式是「**我核那一格的那一步，app 起来过没有？**」）** |
+| **C-183** | **=> 而「几格缺同一件东西」那一族** | **=> 而**在** | **=> 而 §122.29 那一节（=> 而那三格缺的是**同一件东西**，=> 而而 05 今天把（甲）核到了而（乙）核成不适用）** |
+| **C-187** | **=> 而「一句结论的前提错了要连带改哪些地方」那一族** | **=> 而**在**，=> 而而**分两处** | **=> 而 §122.29 那一节（=> 而那一处读错的更正，=> 而而改前与改后**并列**）与 §121.12 那一节（=> 而那三张表本身就是「各自留了痕」那一句的落点）** |
+| **C-199** | **=> 而「同一个问题有两个读法」那一族** | **=> 而**在** | **=> 而 §122.29 那一节的 **C-103 两读法那一张表**（=> 而读法一「那一件是 `ET_DYN` 则该套」与读法二「内核会不会替我们套则不该套」）** |
+| **C-213** | **=> 而「今天推翻了几处而那几处各自留了痕」那一族** | **=> 而**在** | **=> 而 §121.12 那一节（=> 而那一张收口总表）与 §122.20 那一节（=> 而开头那几处并列的更正）** |
+| **C-203** | **=> 而「位置栏基线变了怎么办」那一族** | **=> 而**不在**（=> 而那是 **03 那一侧**的活，=> 而而 spec 那一侧今天没有落点）** | **=> 而（=> 而今天没有落点）** |
+
+> **=> 而所以 04 上一轮那个「8 条在 7 条不在」**是错的** —— => 而而**那 7 条里有 6 条的内容今天在 spec 里**（=> 而 C-175、C-181、C-183、C-187、C-199、C-213），=> 而而**只剩 C-203 一条**在 spec 那一侧没有落点。**
+>
+> **=> 而而 04 上一轮那个错的成因**：=> 而**我只按「那一段的标题与那一节的标题**字面**匹配」去找**，=> 而而**没有按那一族治什么的**措辞**去找** —— => 而而那 6 条的内容**都是**一族**的**实例**（=> 而不是那一族**本身**），=> 而而它们的措辞**不与表一那一行逐字相同**。**
+>
+> **=> 而按 C-115：而改前那一句「8 条在 7 条不在」**留档不删**。**
+>
+> **=> 而按 C-187：而这一条**本身就是 C-187 那一族的一个实例** —— => 而而**我上一轮那个结论的前提错了**（=> 而而我以为「表一那一行有登记而正文没有措辞」=> 而而**就是**「没有落点」），=> 而而**连带要改的是**：=> 而一、 **那 7 条那一段**（=> 而而今天改成「6 条在、1 条不在」）；=> 而二、 **我给 03 的那一句**（=> 而而「那 7 栏的节次栏今天指不到任何一节」=> 而而**只有 C-203 那一栏**如此）；=> 而三、 **那条判别式**（=> 而而见下面那一段）。**
+
+**=> 而本规范把「怎么找那一族的内容在不在」写成正文（=> 而它治的是「字面匹配查不出」）：**
+
+> **=> 而判别形式：=> 而要找「某一族的内容在不在正文里」，=> 而不能只按那一族**标题里的措辞**字面找** —— => 而而要找**它治的那一问在正文里被**回答**的那个实例**。**
+>
+> **=> 而机械判法：=> 而**先从判据源那一侧**取那一族「它治什么那一问」（=> 而那是**逐字**的），=> 而而**再在 spec 的正文里找那一问的答案长什么样**（=> 而而它**不逐字出现**，=> 而而它以**一个具体实例**出现）。**
+>
+> **=> 而按 C-135：而「这一族在 spec 里有没有落点」与「这一族的内容今天有没有在正文里」**是**两个问句**：=> 而前者问「**有没有一节是它**」（=> 而那是**节次**那一层），=> 而而后者问「**它的内容有没有被写成正文**」（=> 而那是**内容**那一层），=> 而而**今天那 6 条是「有内容、但没有独立的一节」**。**
+>
+> **=> 而而那 6 条的**正确状态**是「**内容在正文里、而没有独立的一节**」，=> 而而**不是**「不在」** —— => 而按 C-126 那一族，=> 而而它们今天**不是「未过」**，=> 而而它们是「**已过**（=> 而以实例形式）」。**
+
+
+#### 而 §122.29 那一节那张清单表与 §121.12 表二那 24 格怎么互指（=> 而 2026-10-25 补正）
+
+**=> 而本规范把这两张表的关系写成正文（=> 而它治的是「两个层面被当成一个」）：**
+
+| | **§122.29 那一节那张清单表** | **§121.12 表二那 24 格** |
+|---|---|---|
+| **=> 而它治什么** | **=> 而「**哪些件落进了起不来那一族**」（=> 而按 `e_type` 与 `PT_INTERP` 逐件读）** | **=> 而「**今天这一族过了哪些格**」（=> 而按那一族那几问逐格标档）** |
+| **=> 而它的对象** | **=> 而**件**（=> 而 12 件 + sqlite 三行）** | **=> 而**格**（=> 而 24 格）** |
+| **=> 而它的读法** | **=> 而**纯字节读 program header 表**（=> 而 `e_type`、`PT_INTERP` 行数、=> 而和那三个阳性对照）** | **=> 而**那一族那几问各自的答**（=> 而而有的格是设备侧读数、=> 而有的是 AOSP 源码）** |
+| **=> 而它的粒度** | **=> 而**每个件两到三格**（=> 而 `e_type` 一格、=> 而 `PT_INTERP` 行数一格、=> 而设备侧起不起得来一格）** | **=> 而**每格一档**（=> 而已过 / 已定 / 未过 / 部分已核 / 未核）** |
+| **=> 而它今天的状态** | **=> 而**已核**（=> 而 12 件全读了）** | **=> 而**22 已过 + 1 已定 + 1 未过** |
+
+> **=> 而那两张表**是**两个层面**：=> 而而清单表那一族治的是「**哪些件落进了起不来那一族**」，=> 而而收口表那一族治的是「**今天这一族过了哪些格**」—— => 而而**它们不是同一件事的两张表**，=> 而而**一张按件、一张按格**。**
+>
+> **=> 而而它们**互指**的方式是「**格** -> **件**」而不是「**行** -> **行**」：=> 而表二里「busybox 那一件 `e_type` 与 `PT_INTERP` 行数」那一格，=> 而而它的读数**就在清单表里那 busybox 那一行**；=> 而表二里「第四格 · 一次运行」那一格，=> 而而它**不进**清单表（=> 而那是**第四格**那一族，=> 而而**不是**某一件的形态）。**
+>
+> **=> 而按 C-135：而「那一件是什么形态」与「那一格今天过没过」**是**两个问句** —— => 而前者问**那份字节**，=> 而而后者问**那一问**；=> 而而**前者过了不蕴含后者过了**（=> 而例如 busybox 那一件 `ET_DYN` 那一格**已过**，=> 而而 busybox 那一件**在监督环里 exit 127** 那一格**仍未过**）。**
+>
+> **=> 而按 C-203：而那张清单表的**每一行**都带基线**，=> 而而基线变了标「行号待重核」而不立刻改。**
+
+**=> 而本规范把「今天这一族的交接物」写成正文（=> 而它治的是「下一个会话读它就知道从哪接手」）：**
+
+| 那一件 | 而它落在哪 |
+|---|---|
+| **=> 而今天过了哪些格** | **=> 而 §121.12 表二那 24 格（=> 而 **22 已过**、=> 而 **1 已定**（=> 而第四格 · 段位）、=> 而 **1 未过**（=> 而第四格 · 一次运行））** |
+| **=> 而今天还剩哪些格** | **=> 而 §121.12 表三那 12 格（=> 而每一格带**四类处置方向之一**与**归谁**）** |
+| **=> 而今天立了哪些判据形式** | **=> 而 §121.12 表一那 **87 条**（=> 而 C-150 到 C-236 连续编号）** |
+| **=> 而今天处理过的手法那一族** | **=> 而 §122.23 那一节（=> 而「用会静默改内容的手法写一大段」与「回滚手段本身也要核」与「小节插到了同一章里的相邻小节」那三段）** |
+| **=> 而今天处理过的起进程那一族** | **=> 而 §122.29 那一节（=> 而 1032 行、=> 而而它含成因三格、=> 而三版并列、=> 而跨件清单表、=> 而那五段更正）** |
+| **=> 而今天处理过的第四格那一族** | **=> 而 §120.13 那一节（=> 而 Z/A/B/C 四段与三道分界、=> 而而今天那一趟仍是 139）** |
+| **=> 而今天那 15 栏怎么重新指准** | **=> 而 §121.12 那一节「那 15 栏的内容今天落在哪一节」那一小段（=> 而 6 条在、=> 而 1 条不在）** |
+| **=> 而今天立的判别形式** | **=> 而 §118.11（=> 而两个轴与三族）、=> 而 §121.13（=> 而处置方向那四类）、=> 而 §122.10.1（=> 而同一段出现不该出现的次数）** |
+| **=> 而还没落点的那一条** | **=> 而 C-203（=> 而位置栏基线变了怎么办，=> 而而那是 **03 那一侧**的活）** |
+
+**=> 而本规范把「今天剩下的未过格与未核格」逐个列一遍（=> 而它治的是「交接时只说总数不说在哪」）：**
+
+| 那一格 | 而它的状态 | 而它在哪 |
+|---|---|---|
+| **第四格 · 一次运行** | **=> 而未过** | **=> 而 §121.12 表二（=> 而 12513 行）** |
+| **=> 而「起进程那一格把链接器塞进入口」那一族那三格** | **=> 而未核** | **=> 而 §121.12 表三（=> 而 12514 行那一格）** |
+| **=> 而 busybox 那一件 exit 127 的成因** | **=> 而未核** | **=> 而 §122.29 那一节那三处未核登记** |
+| **=> 而 ripgrep 在监督环里 exit 143 的成因** | **=> 而未核** | **=> 而同上** |
+| **=> 而 PTY 宿主为什么用宿主那一套 env** | **=> 而未核** | **=> 而同上** |
+| **=> 而 C-203 那一族** | **=> 而在 spec 那一侧没有落点** | **=> 而（=> 而那是 03 那一侧的活）** |
+| **=> 而 ripgrep 那一件的 argv（=> 而上一版那一格）** | **=> 而**已核**（=> 而这一版抓到了）** | **=> 而 §122.29 那一节** |
+| **=> 而 python 与 sqlite 那两件「设备上落位那一份」** | **=> 而未核** | **=> 而 §122.29 那一节那三行** |
+
+
+#### 而「今天这一族的交接物」那一节的完整形态（=> 而 2026-10-25 收口）
+
+**=> 而 lead 今天核过它「够不够作下一个会话的接手点」，=> 而而 04 今天核出**它缺四样**，=> 而而那四样今天补上：**
+
+| 那一样 | 而为什么缺它就接不了手 |
+|---|---|
+| **一 · 基线** | **=> 而下一轮每一个「行号」都要按基线取，=> 而而**没有基线就取不到**，=> 而而按 C-203 那一栏要标「行号待重核」** |
+| **二 · 构建与运行身份** | **=> 而按 C-25（=> 而结论要标它验的是哪一次构建）=> 而而 `head=<sha>` 加 `run_id=<数字>` **缺一不可**——=> 而而今天那些读数**是哪一个版本**的，=> 而而下一轮要接上去就得知道**从哪一版接** |
+| **三 · 判据那一侧的现状** | **=> 而今天新立了 **C-232 与 C-233** 那两条（=> 而它们治的是今天栽的那两次），=> 而而下一轮要查「那一族今天立了什么」**得知道它们在哪** |
+| **四 · 「接手」的具体第一步** | **=> 而按 C-95（=> 而等 ≠ 停）=> 而而下一轮不能只读到一张表，=> 而而它得知道**第一件事做什么**、=> 而而**谁做** |
+
+**=> 而本规范把那四样写成正文（=> 而它治的是「交接物只列了内容、没列了怎么接」）：**
+
+**=> 而一 · 基线（=> 而这一版的四个数）：**
+
+| 那一项 | 而它的值 |
+|---|---|
+| **=> 而 spec 的 sha256** | **=> 而**写这一节时**那一版**是 `c1f61992cd5d78a0de9e75d35453e49e1beef88c61d18766ccdf125151e7cda4`；=> 而而**它每次 splice 完都变**，=> 而而**下一轮要以 `verify-spec.py` 的现算输出为准** |
+| **=> 而 spec 的行数** | **=> 而写这一节时**那一版**是 14846 行；=> 而而同上，=> 而而**以现算输出为准** |
+| **=> 而前 11366 行的 sha256** | **=> 而 `5fe05bf8e5034ad55f9f4a5a8f7b8df13cd13e37ee17915707bd5ca3d7e14a6d`（=> 而那是**原始正文**那一版，=> 而而**它今天没变过**，=> 而而它是**基线中基线**）** |
+| **=> 而判据源那一份** | **=> 而 `lob-os-team/CONSTRAINTS.md`，=> 而而今天 03 已把 C-175、C-181、C-183、C-187、C-199、C-213 那 6 栏改成「**已过（以实例形式）**——=> 而而内容在正文里，=> 而而没有独立的一节」，=> 而而 **C-203 那一栏仍标「今天无落点」** |
+
+**=> 而二 · 构建与运行身份（=> 而按 C-25，=> 而 `head` 加 `run_id` 缺一不可）：**
+
+| 那一项 | 而它的值 |
+|---|---|
+| **=> 而今天那几版** | **=> 而 `6e2ceb0`、=> 而 `0e447ef`、=> 而 `0c1d9af`、=> 而 `02e1905`、=> 而而 `b3f82d8`（=> 而那是 `ac7c021` 之后那一版，=> 而而它把 `read-marker.js` 那个相对路径改成绝对路径）** |
+| **=> 而今天那几趟 build-apk** | **=> 而 `40092969114`（=> 而 head `137d4ad`）、=> 而 `40098072402`（=> 而 head `0e447ef`）、=> 而 `40101193463`（=> 而 head `0c1d9af`）、=> 而 `40107030873`（=> 而 head `02e1905`）** |
+| **=> 而设备侧那几趟读数** | **=> 而 `07/runs/PTY-LIVE-PROCESS-READINGS.md`（=> 而设备 `f0942f56`、=> 而 `run_id=40101193463` success、=> 而 head `0c1d9af`）、=> 而 `07/runs/ETYPE-INTERP-READINGS.md`、=> 而 `07/runs/GATE-02E1905-VERIFICATION.md`（=> 而 head `02e1905`）、=> 而 `07/runs/FOURTH-GRID-40107403792.md`** |
+
+**=> 而三 · 今天新立的那五条判据（=> 而它们治的是今天栽的那两次，=> 而而第三条治的是 05 今天核出的那两句可复用形式，=> 而而后两条是 01 今天裁的那两条）：**
+
+| 那一编号 | 而它治什么 | 而它落在哪 |
+|---|---|---|
+| **C-232** | **=> 而「小节插到了同一章里的相邻小节」而「章与节号」那条检查查不出来**（=> 而而它与 C-231 的分别是**章**那一层与**节**那一层的错位，=> 而而与 C-221 的分别是「要核哪几道」与**其中一道**的具体形态）** | **=> 而 §122.23 那一节** |
+| **C-233** | **=> 而「资产名与它的实际格式不一致」那一族：=> 而它与 C-190 与 C-185 是**两问**，=> 而而与 C-112 那一句是**接点**，=> 而而按 C-104 它本质上是「**同名不同义**」那一族 C-150 的一个实例？** | **=> 而 §122.29 那一节** |
+| **C-234** | **=> 而「一个结论是从别人的读数推出来的，=> 而而那个推法是作者自己的，=> 而而那它就要逐字引出那句原话」那一族的**可复用形式**那一层：=> 而那三问是 —— 一、=> 而那个结论的来源是**转述**还是**逐字引用**（=> 而转述则不合格，=> 而而要回去把那句原话找出来）；二、=> 而作者自己写的那一句**是不是原话**（=> 而不是原话而是自己的话则不合格）；三、=> 而改前那一版**在不在案**（=> 而不在则改前那一版也要补引原话，=> 而而按 C-115 留档不删）** | **=> 而 §121.12 那一节** |
+| **C-235** | **=> 而「一个筐今天还有没有存在的必要」那一族：=> 而那一格问的是「那个筐今天还有没有存在的必要」，=> 而而它的答由**三问合成**（=> 而产出方 / => 而核验者 / => 而取件者），=> 而而**不是**「有没有第二个读者」单独一问；=> 而而**零第二读者不构成撤的理由**——=> 而那个筐今天**承着核验者取到那一件的唯一路径**=> 而而撤它**要先改核验者的取法**=> 而而那一格是「改核验者的取法」，=> 而而**不是**「撤筐」** | **=> 而 §122.29 那一节** |
+| **C-236** | **=> 而「设备侧那两份『逐字相同』」那一格的读数形状那一族：=> 而这一问按 C-175 是**逐字节**那一问，=> 而而**不是**「自报 buildRun 相同」那一问；=> 而而字段 **D1 到 D7**，=> 而而阳性对照 **PC-D1 到 PC-D3**、=> 而而阴性对照 **N-D1 到 N-D4**（=> 而不可取按 C-05 记**缺**不记 **0**）** | **=> 而 §121.12 那一节** |
+
+**=> 而四 · 「接手」的第一件事（=> 而按 C-95，=> 而而它得具体到谁做哪一步）：**
+
+| 那一步 | 而它归谁 | 而它为什么是第一步 |
+|---|---|---|
+| **=> 而把第四格 · 一次运行那一格补上** | **=> 而 05 改代码 + 07 取读数** | **=> 而它是今天**唯一**那格「未过」，=> 而而它的缺的是「**一个活进程**」那个条件，=> 而而今天 07 已经取到了那个活进程（=> 而而 environ 与 cmdline 都读到了），=> 而而**那个条件今天补上了** |
+| **=> 而把起进程那一族那三格读数补上** | **=> 而 07 取读数** | **=> 而 busybox exit 127 的成因、=> 而 ripgrep 监督环 exit 143 的成因、=> 而 PTY 宿主为什么用宿主那一套 env** —— => 而而它们**按 C-05 是未核**，=> 而而**它们不构成阻塞**，=> 而而它们是**今天这一族最后那三格读数** |
+| **=> 而把 C-203 那一族落成 spec 侧的一节** | **=> 而 04 落正文 + 03 登记** | **=> 而它是今天**唯一**一条在 spec 那一侧**没有落点**的，=> 而而**它治的是「位置栏基线变了怎么办」** —— => 而而下一轮**每一轮**都要用它 |
+| **=> 而把那张清单表扩到 rt 与 tool 那 10 件** | **=> 而 02 取读数** | **=> 而今天它只覆盖**随 APK 走**那一路（=> 而 base 筐那 8 件），=> 而而那 10 件走**商店 / OTA 组件通道**，=> 而而**它们的落位时机与位置都不同** |
+| **=> 而把「资产名与格式不一致」那一条落到取件那一侧** | **=> 而 06** | **=> 而今天它治的是「解一个资产之前先读头两个字节」，=> 而而那是**取件**那一侧的动作** |
+| **=> 而把「`base-crypto` 该撤还是该留」那一格裁了** | **=> 而**已过**（=> 而**01 今天裁了「该留」**）** | **=> 而 01 裁的四条**：=> 而那一格**不是「有没有第二个读者」单独一问**，=> 而而**是三问合成**（=> 而产出方 / => 而核验者 / => 而取件者）；=> 而而**该留**（=> 而它**不是零读者**，=> 而而**零第二读者不构成撤的理由**，=> 而而**撤它要先改核验者的取法**）；=> 而而 C-103 那**side A 今天不成立**（=> 而 `build-crypto.yml:52` 逐字「这一件不再自己编 —— crypto 由 openssl 那一趟同源产出」）、=> 而而**side B 成立**；=> 而而**必须并列**的那一条：=> 而两个筐里那两份**buildRun 不同**（=> 而 40030227900 对 40030215774）=> 而而那是**两条生成路径**，=> 而而**归并那一格不能只凭「字节相同」就做**；=> 而而处置 **D-改动**、=> 而而归 **04 与 05** |
+| **=> 而把「设备上 crypto 那一件自己那个 `lib/` 下那一份与 openssl 那一件里那一份逐字相同」那一格核了** | **=> 而**已核**（=> 而**07 今天核到了**）** | **=> 而**答案是**不相同****：=> 而 `opt/crypto/3.6.3/lib/libcrypto.so` 是 6058816 字节 sha256 `314e05fb…`，=> 而而 `opt/openssl/3.6.3/lib/libcrypto.so` 是 6058832 字节 sha256 `7adc9320…`，=> 而而 `cmp` 是 `differ: byte 41, line 1` 而 656316 个字节不同；=> 而而**阳性对照**是设备上自己算的与取件到本机后算的**逐字相同**，=> 而所以那差别是**那两份字节本身**的 |
+
+> **=> 而按 C-95（=> 而等 ≠ 停）：=> 而上面五步**没有一步在等上游**（=> 而而它们要么是今天已就位的条件、=> 而要么是各自那一侧能自己做的），=> 而而**下一轮一上手就并行做**。**
+>
+> **=> 而按 C-122：而这一节的每一个数都带它验的是哪一次构建**（=> 而 `head=<sha>` 加 `run_id=<数字>`），=> 而而**下一轮引用它们时要连基线一起引**。**
+>
+> **=> 而按 C-203：而这一节**自己也是一份带基线的**文档** —— => 而而它今天写的那些行号**属于它写下时那一版**，=> 而而**基线一变它就过期**，=> 而而**下一轮要以 `verify-spec.py` 的现算输出为准**（=> 而它同时打印「节次 - 章 - 节号」与「小节索引」那两张表）。**
+
+
+#### 而那两条「不够」的判据的可复用形式（=> 而 05 今天核出，=> 而 2026-10-25 补正）
+
+**=> 而 05 用 04 今天写的那条判别形式（=> 而「要找『某一族的内容在不在正文里』，=> 而不能只按那一族标题里的措辞字面找 —— => 而要找它治的那一问在正文里被回答的那个实例」）逐条核了那 7 条，=> 而而结论是**够的四条**、=> 而**不够的两条**。**
+
+| 那一编号 | 而它够不够 | 而它落在哪 |
+|---|---|---|
+| **C-181** | **=> 而够** | **=> 而 §121.8 那一节的 121.8.2（=> 而那一段逐字是「我核那一格的那一步，app 起来过没有？」，=> 而而有判别形式与「没起 / 起了」两条分支，=> 而而还与 §121.6 那一格的不互相顶替写清了）** |
+| **C-187** | **=> 而够** | **=> 而 §121.12 那一节（=> 而那一段逐字是「而按 C-187：而这一条本身就是 C-187 那一族的一个实例 —— => 而而我上一轮那个结论的前提错了……=> 而而连带要改的是：=> 而一、那 7 条那一段……」，=> 而而**它自己那一处就写了前提错了要连带改哪几处并逐项列出**）** |
+| **C-199** | **=> 而够** | **=> 而 §122.29 那一节的 C-103 两读法那一张表（=> 而读法一、=> 而读法二、=> 而而逐字「而这两边在今天的代码里是同一行，=> 而而那一行只表达了读法一」）** |
+| **C-213** | **=> 而够** | **=> 而 §121.12 那一节的收口总表与 §122.20 开头那几处并列的更正** |
+| **C-175** | **=> 而**不够** | **=> 而 §122.29 那一节「而 05 那一次对原生那一支理由的更正」那一小段（=> 而改前「内核按 PT_INTERP 能解释第二层」与改后「只能解释第一个」**并列**）** |
+| **C-183** | **=> 而**不够** | **=> 而 §122.29 那一节那一张三格表（=> 而甲已核、=> 而乙已核为不适用、=> 而而丙部分已核）** |
+
+**=> 而本规范把「不够」那两条的可复用形式写成正文（=> 而它治的是「只有一个实例、=> 而没有可复用的形式」）：**
+
+**一 · C-234 那一族（=> 而 03 今天裁的是：那三问**独立成 C-234**，=> 而而原 C-175 那一族治的是「两个读法冲突时以逐字节那个为准」；=> 而按 C-135 那是**两问**，=> 而而它与 C-175 是**接点**）：**
+
+> **=> 而它今天只有「改前与改后**逐字并列**」这一个实例，=> 而而这一族治的「**推出来的要写成原话**」**没有被写成可复用的形式**。**
+>
+> **=> 而可复用的形式是（=> 而 04 今天据那一族治什么给的）：=> 而**凡是一个结论是从别人的读数推出来的，=> 而而那个推法本身是 04 自己的，=> 而而它就要把「那个人说的原话」**逐字引出来**，=> 而而不许用 04 自己的话转述。**
+>
+> **=> 而具体要问的三问（=> 而每一问都可机械判）：**
+>
+> **=> 而一、**那个结论的来源是「**转述**」还是「**逐字引用**」**？=> 而而转述 => 而而**它不合格**，=> 而而要回去把那一句原话找出来。**
+>
+> **=> 而二、**那一族的判别式是「**推出来的要写成原话**」，=> 而而 04 自己写的那一句**是不是原话**？=> 而而**不是原话而是自己的话** => 而而**它不合格**。**
+>
+> **=> 而三、**改前那一版**在不在案**？=> 而而不在 => 而而**改前那一版也要补引原话**，=> 而而**按 C-115 留档不删**。**
+>
+> **=> 而而那三条**合起来**就是这一族可复用的形式**：=> 而而**来源要逐字**、=> 而而**自己写的不是原话就不合格**、=> 而而**改前那一版也要逐字且留档**。**
+>
+> **=> 而而按 C-223（=> 而摘要栏跟着判据源走）：=> 而这三条**独立成 C-234**，=> 而而它的定义处与位置在 CONSTRAINTS.md 那一侧，=> 而而 spec 那一侧只引它。**
+>
+> **=> 而按 C-175：而这一族治的正是「**把推出来的写成原话**」，=> 而而**与「自己写的那一句是不是原话」**是同一问** —— => 而而**推出来的**与**自己写的**都在**同一族**里，=> 而而它们**各自的判法**就是上面那三问。**
+
+**二 · C-183 那一族（=> 而「几格缺的是同一件东西」）：**
+
+> **=> 而可复用的形式是（=> 而 05 今天给的那一句，=> 而04 照录）：**
+>
+> **=> 而我核的这几格，缺的是不是**同一件东西**？=> 而如果是，=> 而而那就不是几个独立的缺项，=> 而而是一件东西缺了，=> 而而**处置方向只有一个**。**
+>
+> **=> 而如果缺的不是同一件东西，=> 而而它们要**分开处置**。**
+>
+> **=> 而这一族治的正是「**把几个缺项当成几件独立的事**」** —— => 而而它的判别式是**一问**：=> 而而**先答「缺的是不是同一件东西」**，=> 而而**答「是」** => 而而**它们合成一个缺项、=> 而处置方向只有一个**；=> 而而**答「不是」** => 而而**它们分开处置**。**
+>
+> **=> 而而按 C-223（=> 而那两句**不该只在 spec 那一侧有**）：=> 而**C-183 那一问**并进 **C-183 那一栏**，=> 而而**C-204 与 C-183「是同一族的两层、顺序不能反」那一句**并进 **C-204 那一栏**（=> 而按 C-135 那是**同一个问题的操作顺序**，=> 而而按 C-223 那是**判据源那一侧该有的内容**）。**
+>
+> *=> 而按 C-204：而这一族与「处置方向那四类」**是同一族的两层** —— => 而而**先判是不是同一件东西**（=> 而那是这一族），=> 而而**再判它属哪一类处置方向**（=> 而那是 §121.13 那一节）；=> 而而**顺序不能反**（=> 而而**先判处置方向会把同一件东西拆成两件**）。**
+>
+> **=> 而今天那一族在 §122.29 那一节的实例是**（=> 而 05 核到）：=> 而而那三格（=> 而第四格取值来源、=> 而 Q2、=> 而主对象语义不一致的成因）缺的是**同一件东西**（=> 而而那是 linker64 那个二进制的实现），=> 而而 05 今天把（甲）核到了而（乙）核成不适用。**
+
+> **=> 而这两条**都写成了可复用的形式**（=> 而不是只留一个实例）—— => 而而按 C-224 那一族，=> 而而**「有一个实例」与「有可复用的形式」是两格**，=> 而而今天那两条**从第一格补到了第二格**。**
+
+
+#### 而 C-234 那一族在 05 那一侧的那一处缺口（=> 而 05 今天补上了，=> 而 2026-10-25 补正）
+
+**=> 而 05 核出那三问在它自己那一侧**成立**，=> 而而**有一处缺口**：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **=> 而 S109 那一稿第四节 4.2 末尾那一段**（=> 而讲 crypto 那一件） | **=> 而是「**改前与改后并列**」写的（=> 而把改前那一版与改后那一版放在**同一段**里，=> 而而**没有删改前那一句**）** |
+| **=> 而所以它符合** | **=> 而 C-115（=> 而改前那一版留档不删）** |
+| **=> 而**缺口** | **=> 而它**没有把 `build-crypto.yml` 那一处代码逐字引出来** —— => 而而「**补引原话**」**那一半没做** |
+
+**=> 而 05 已把那一处补上了（=> 而照录 05，=> 而而我本机核过那几行）：**
+
+> **=> 而它把改前那开头逐字引出来：「而这一份（`build-crypto.yml`）**从 openssl 的固化包里拆出来重打一个包并上传到 base-crypto**；」**
+>
+> **=> 而而按 C-115 两条并列**。**
+>
+> **=> 而我本机核过那一句逐字在仓里（=> 而 `build-crypto.yml:8`）：**=> 而而它逐字是「而这一份（build-crypto.yml）**从 openssl 的固化包里拆出来**重打一个包并上传到 base-crypto；」—— => 而而那**正是** 05 引的那一句。**
+
+> **=> 而按 C-234 那一族：而这一处**正是那三问的第三问与第一问的用处** —— => 而而「**改前那一版在不在案**」**原来在**（=> 而那一版在那一段里），=> 而而「**补引原话**」**原来缺**（=> 而而**代码**没引）；=> 而而今天补上的**就是那缺的一半**。**
+>
+> **=> 而按 C-115：而改前那一版（=> 而「没有把 `build-crypto.yml` 那一处代码逐字引出来」那个状态）**留档不删**。**
+
+**=> 而本规范把「引代码」与「引结论」的区别写成正文（=> 而它治的是「引了结论就以为引全了」）：**
+
+> **=> 而 C-234 那一族的第二问是「作者自己写的那一句**是不是原话**」—— => 而而**「原话」有两层**：=> 而而一层是**别人说的那一句**（=> 而读数、=> 而而工具输出），=> 而而一层是**代码里写着的那一句**（=> 而而那个文件那一行逐字）。**
+>
+> **=> 而今天那一处**两层都该引**，=> 而而**原来只引了结论那一层**（=> 而「它由 build-crypto.yml 从 openssl 的固化包里拆出来重打」），=> 而而**代码那一层**（=> 而而 `build-crypto.yml:8` 那一行逐字）**今天补上了**。**
+>
+> **=> 而按 C-123：而一个结论的**依据**要能**换回原话** —— => 而而「那一行代码」**就是**「那一句话」**的**原话**，=> 而而它**不引**就等于**没有依据**。**
+
+
+#### 而「设备侧那两份逐字相同」那一问的读数形状（=> 而照录 01，=> 而 2026-10-25 补正）
+
+**=> 而 01 判别式按 C-175 定的是：=> 而这一问是「**逐字节**」那一问，=> 而而**不是**「自报 `buildRun` 相同」那一问。**
+
+**=> 而那七个字段（=> 而照录 01）：**
+
+| 那一字段 | 而它是什么 |
+|---|---|
+| **D1** | **=> 而两份的**绝对路径**** |
+| **D2** | **=> 而两份 `ls -l` 的**原文**（=> 而字节数 / mtime / 属主 / 权限位）** |
+| **D3** | **=> 而设备侧那两条 sha256**** |
+| **D4** | **=> 而那**逐字节比对**那一条（=> 而 `cmp` 相同时是**零输出**）** |
+| **D5** | **=> 而**阳性对照**（=> 而故意不同的两份的 `cmp` **必须有 diff 输出**）** |
+| **D6** | **=> 而两份**自报构建身份**** |
+| **D7** | **=> 而**取法口径**** |
+
+> **=> 而 D4 那一格要写「**零输出**」这一行**本身**，=> 而而**不能写「没跑」** —— => 而而**「零输出」与「没跑」是两格**（=> 而按 C-112，=> 而而一个 0 要能答「这是服务端说的还是我算不出来的」）。**
+
+**=> 而那两组对照（=> 而照录 01）：**
+
+| 那一组 | 而它是什么 |
+|---|---|
+| **=> 而阳性对照 PC-D1 到 PC-D3** | **=> 而（=> 而 D5 那一格）** |
+| **=> 而阴性对照 N-D1 到 N-D4** | **=> 而（=> 而**不可取**的那几格，=> 而而按 C-05 记**缺**而不记 **0**）** |
+
+**=> 而本规范把两条边界写成正文（=> 而它治的是「把两格合并成一句」）：**
+
+> **=> 而「设备上那两份逐字相同」**不蕴含**「它们与固化产物里那两份是同一份」** —— => 而而**「逐字节」这一问要在同一处做**，=> 而而**设备上的路径与固化产物里的路径**不是同一处**（=> 而而那是**两格**）=> 而而**两格并列**。**
+>
+> **=> 而而按 C-135：=> 而前两格是**事实**、=> 而而后两格是**处置**（=> 而「是不是同一份」=> 而与「那该怎么处置」**是**两个问句**）。**
+
+
+#### 而 C-234 那一族的**改后形态**（=> 而 01 今天裁了，=> 而 2026-10-25 补正）
+
+**=> 而 01 裁的是：「原话有两层」**并进 C-234**，=> 而**不新立编号**（=> 而按 C-135：=> 而 **C-234 第二问**问「作者自己写的那一句**是不是原话**」，=> 而而 04 今天补的那一条问「**原话在哪一层、要追到哪一层**」=> 而而那是**同一个问句的两层**）：**
+
+> **=> 而按 C-122 / C-123 的关系是**接点不是合并**：=> 而 **C-122** 治「引的那一句**是不是引用**」、=> 而而 **C-123** 治「判定在记下来的时候**可能就不存在**」、=> 而而 **C-234** 治「**怎么把推出来的写成原话**」、=> 而而这一条治「**原话的那一层在哪**」=> 而而**四者互不替代**（=> 而按 C-89）。**
+>
+> **=> 而而按 C-123 那一句：=> 而代码里那一行逐字**就是**「那句话」的**原话**，=> 而而**不引它就等于没有依据**。**
+
+**=> 而本规范把 C-234 那一族的改后形态写成正文（=> 而它治的是「判别形式不完整」）：**
+
+**=> 而那一族问的是「一个结论是从别人的读数推出来的，=> 而而那个推法是作者自己的，=> 而而那它就要逐字引出那句原话」，=> 而而它的判别形式是**三问 + 第二问下面那一小问**：**
+
+| 那一问 | 而它问什么 |
+|---|---|
+| **一** | **=> 而那个结论的来源是**转述**还是**逐字引用**？=> 而而**转述** => 而而**它不合格**，=> 而而要回去把那句原话找出来** |
+| **二** | **=> 而作者自己写的那一句**是不是原话**？=> 而而**不是原话而是自己的话** => 而而**它不合格**** |
+| **二之一** | **=> 而而那一句原话**在哪一层**、=> 而而**要追到哪一层**？=> 而而**「原话」有两层**：=> 而一层是**别人说的那一句**（=> 而读数、=> 而而工具输出），=> 而而一层是**代码里写着的那一句**（=> 而而那个文件那一行逐字）；=> 而而**两层都要引**** |
+| **三** | **=> 而改前那一版**在不在案**？=> 而而**不在** => 而而**改前那一版也要补引原话**，=> 而而**按 C-115 留档不删**** |
+
+**=> 而二之一那一问的机械判法（=> 而照录 01，=> 而而它治的是「追到哪一层」）：**
+
+> **=> 而「代码那一层」是**可机械判**的**（=> 而 grep 得到的一行），=> 而而**「别人说的那一层」**要靠**那个读数出处**指认（=> 而而那要追到**那个文件那一行**）。**
+>
+> **=> 而按 C-123 的后果：=> 而而**只引了别人说的那一层而没引代码那一层** => 而而**那一格的依据不成立** —— => 而而**「它是这么写的」不蕴含「它是这么跑的」**。**
+>
+> **=> 而按 C-191 那一族（=> 而 K2 那一问「那个校验器被写成要查哪几样」）：=> 而「代码那一层」**应该**被加进校验器的覆盖面** —— => 而而**它可机械判**（=> 而 grep 得到的一行），=> 而而**归 04 与 03**。**
+
+**=> 而本规范把「二之一」那一问的来处写成正文（=> 而它治的是「我今天自己补的那一句没登记」）：**
+
+> **=> 而 04 今天补的那一条（=> 而「原话有两层」）**今天并进 C-234 第二问下面**，=> 而而它**不新立编号** —— => 而而按 **C-135** 那是**同一个问句的两层**，=> 而而**新立编号会把同一个问句拆成两条**。**
+>
+> **=> 而按 C-223：=> 而那一条**只在 spec 那一侧**写着，=> 而而它**该并进判据源那一侧的 C-234 那一栏**（=> 而而**摘要栏跟着判据源走**）—— => 而而 03 那一侧已按 01 那一件并进去了。**
+
+### 121.13 而处置方向那四类（2026-10-24）
+
+#### 一、判别式
+
+> **那一格要的东西，是一次运行能**给出**的，还是一次运行**能补上**的？**
+
+**=> 而给出是 D-读数，而补上是 D-改动。**
+
+---
+
+#### 二、四类处置方向
+
+| 类 | 它是什么 | 它能不能靠跑一趟过 | 它归谁 |
+|---|---|---|---|
+| **D-读数** | 那一格要的东西是**一次运行能给出的读数** | **能** | 取数那一侧（07 设备侧、06 产物侧、02 发布侧） |
+| **D-改动** | 那一格要的东西是**读完数之后仍然缺的一处实现或构建侧改动** | **不能**（跑一趟不产生改动） | **05**（唯一改实现代码的人） |
+| **D-代码** | 那一格要的东西是**那一版的代码**（源码或反汇编） | **不能** | 取件侧（07 拉件、06 核字节数）+ 04 落正文 |
+| **D-手段** | 那一格要的东西是**运行期手段**（而那些手段在设备侧不可取） | **不能**（而且源码也补不了） | 本机侧准备那一层 |
+
+---
+
+#### 三、两句不许越的界
+
+**=> 而第一句：「跑一趟试试」不是一个通用处置 —— 而它对 D-改动 与 D-代码 与 D-手段 那一族无效，而用它当处置会让那一格永远停在未过。**
+
+**=> 而第二句：D-读数 与 D-改动 的分界是「给出」与「补上」，而 D-代码 与 D-手段 各自单列，而它们与前两类的差别是「那一格要的东西根本不是一次运行能产出的东西」。**
+
+---
+
+#### 四、归不了前两类的那一格：G2
+
+**=> 而 G2 那一格落在 D-手段，而它归不了 D-读数 与 D-改动，而原因是两条：**
+
+| 问 | 今天的答 | 位置 |
+|---|---|---|
+| **能不能靠跑一趟过？** | **不能** —— 而那一趟要的那些手段在设备侧**不可取**（无 `gdbserver`、无 `strace`） | 07 今天那两趟（`07/runs/ROUND-report-20261024.md` 与 `07/runs/S102-139-READINGS.md` 的 C 组那一栏） |
+| **能不能靠取源码过？** | **不能** —— 而源码答的是「**有没有这条路径**」，而它答不了「**那一次有没有走它**」 | AOSP `platform/bionic` `refs/heads/android16-release` 那一支：全树 `ld.so.cache` / `ld.so.conf` 两个名字零命中（阳性对照：同一套 grep 命中 `libc/include/bits/elf_common.h:628` 那一处 `ld.so.1 info` 注释），而 linker 读配置的唯一入口是 `linker.cpp:3643` 到 `:3648` 的 `Config::read_binary_config` 读 `ld.config*.txt` |
+
+**=> 而它今天能写到的只有两句（按 C-158 与 C-195）：**
+
+- **L-src（代码路径层）= 已过**：那一族源码里没有以 `ld.so.cache` / `ld.so.conf` 这两个名字打开文件的代码路径；
+- **L-run（运行期层）= 部分已核**：那四趟的输出里没有它读过那个文件的记录（N1），而那个二进制里没有那个字面量（N2）；**而它写不到「它不读」**。
+
+**=> 而按 C-192 那一档，G2 那一格今天的状态是「部分已核」** —— 而**不是**「已过」，**也不是**「未过」。
+
+---
+
+#### 五、本节边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只给四类的定义与分界，而它不决定每一格归哪一类（那一格按 §121.12 表三那一行） |
+| 2 | 而 G2 那一格今天的状态是「部分已核」，而它归 D-手段 —— 而这两句不互相顶替（按 C-194：档位与处置方向是两个格） |
+| 3 | 而「D-手段」那一类的归谁，本节只写「本机侧准备那一层」，而具体归谁由 lead 派 |
+
+---
+
+*本节由 linux-architect（01）写内容稿；它不碰规范正文。*
+
+
+### 121.14 而运行期那一层怎么把库搜索路径交给进程：而那一项在实现侧在，而设备上那一趟没有活进程可读（2026-10-24）
+
+**=> 而这一格问的是：运行期那个「库搜索路径」那一项，是怎么交给进程的，而设备上正式起的那一趟进程里它在不在？**
+
+#### 121.14.1 实现侧那三条读数
+
+| 事实 | 出处 | 状态 |
+|---|---|---|
+| **那一项在 `treeRootEnv` 里，而它进到正式起进程的路径**（而入口一是 putAll 整份、入口二是逐项 export） | 05 那份稿的 1.2 到 1.6 那一段 | **已取** |
+| **全仓无一处 remove 那一项** | 05 那份稿的 1.5 那一段 | **已取** |
+| **而 `runtime.json` 的 env 字段里确实有那一项**，而它的值是 `/data/user/0/lobos.os/files/usr/lib` | 07 那份稿 `run/proc/runtime.json` 与 `var/log/diag.jsonl` 两处独立落点 | **已取** |
+
+**=> 而「三个起进程入口各自带不带」这一问的答：而入口一（putAll 整份）带、入口二（逐项 export）带，而第三类「树之外的入口」要逐处看（而 05 那份稿的 1.4 那一段列了）。**
+
+#### 121.14.2 设备侧那一格与它今天取不到的原因
+
+| 项 | 读数 |
+|---|---|
+| **设备上正式起的那一趟进程的 environ** | 而 07 **取不到**（而 `ps` 里 `u0_a214` 只有 `lobos.os`；而 `run/process-ledger.json` 的 `entries` 是 `[]`；而 `run/sessions.json` 里那几个 pid 在 `/proc` 下都不存在） |
+| **按那份 env 起进程，读 `/proc/self/environ`** | 而 `LD_` 命中 1（而不带的那趟命中 0），而阳性对照 `HOME` 两趟都是 1 |
+| **=> 而这一格** | **【未核】**，而它**不是 0** |
+
+**=> 而要过这一格，缺的是一个「设备上有一个 LOB-OS 起出来的活进程」这一条件 —— 而而那不是设备侧能补的读数。**
+
+#### 121.14.3 判别形式
+
+> **那一项在实现侧在吗？而设备上正式起的那一趟进程里，它在不在？**
+
+- **实现侧在**（而按 05 那份稿：它进到 shell 起的每一个进程）
+- **设备侧那一趟**—— 而它是**另一格**，而它今天【未核】
+
+**=> 而按 C-115：而这两格不互相顶替 —— 而「实现侧在」不能推「设备上那一趟在」，而「设备上取不到」也不能推「它不在」。**
+
+#### 121.14.4 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落两格的划分与今天的读数，而它不裁定「那一项该不该设」 |
+| 2 | 而设备侧那一格是【未核】而它缺的是「一个活进程」这个条件，而那不是设备侧能补的读数 |
+
+而本章今天已落的节有 §122.2 而它问的是「仓里唯一能写出 DT_RUNPATH 的先例是哪一个，而它那一份产物有没有 DT_RUNPATH」
+而 §122.3 逐字节读不要 grep —— 而它问的是「这一格的值是从那份字节的动态段里解出来的，还是从某个工具的输出里 grep 出来的」
+而 §122.4 而 07 今天那两份 zlib 产物的读数
+而 §122.5 那一族与 §118、§121 的接点、而 §122.6 本节边界
+而 §122.10 表格分隔符数一致 —— 而它问的是「那一行是不是和其它行列数一样」
+而 §122.10.1 而同一段在文件里出现不该出现的次数 —— 而它问的是「替换之后那一段在文件里出现几次，而那几份是同一处被复制还是几个小节各自该有一份」
+而 §122.12 而那十处表格、而 §122.14 而取件那一趟、而 §122.16 而那 3 格今天真答出来了（反汇编读到原文）、而 §122.18 而转义的 ${X:-默认} 恒为字面量、而 §122.20 而「送达」那一列与「字节来源」那一层在 openssl 与 curl 两件上各一趟、而 §122.22 而那 3 格今天全部已过、而 §122.23 而用会静默改内容的手法写一大段、而 §122.24 而第四格那一趟、而 §122.28 而 G2 那一格分两层答 —— 而这些待重立
+而本章其余各节待重立
+
+
+### 121.15 而 `LD_PRELOAD` 那一处：而那两条读数说的不是同一趟，而那一处 remove 是刻意的（2026-10-24）
+
+**=> 而这一族问的是：手工带 `LD_PRELOAD` 起进程那一趟与仓内那两处 remove，它们矛盾吗？**
+
+**=> 而答案是不矛盾 —— 而而那是**两趟不同的进程**（按 C-89：接点，不是合并）。**
+
+#### 121.15.1 两条并排的读数
+
+| | 读数 | 出处 |
+|---|---|---|
+| **手工那一趟** | 而设备侧手工带 `LD_PRELOAD` 起进程时，那一项**进了 environ**（而 `grep -ac LD_PRELOAD` = 1）**且被注入了**（而 stderr 出现 `LOBOS_DEGRADE preload loaded liblobosposix 已被注入本进程`） | 07 那份稿 `LDLIBRARYPATH-DEVICE.md` 第四节 |
+| **仓内那三处** | 而 `ProcessSupervisor.kt:43` 与 `PtySession.kt:318` 与 `PtySession.kt:441` **都写着把 `LD_PRELOAD` 移除**（而 `pb.environment().remove("LD_PRELOAD")` / `pb1.environment().remove("LD_PRELOAD")` / `pb.environment().remove("LD_PRELOAD")`），而 `treeRootEnv` 里**有**那一项 | 05 那份稿第 2.2 那一段 |
+| **引入那三处 remove 的那一次** | 而 `git log -S 'remove("LD_PRELOAD")'` 给出 **`8cea0629e94599cf05f4acbe3c7cbdda6ea02158`** | 05 那份稿第 2.1 那一段 |
+
+**=> 而按 C-115：而这三处的行号在今天这一版仓内是 43、318、441 —— 而而先前引的 41 与 315 是改前那一版的行号（而第 41 行是 `if (envMode != ENV_INHERIT) pb.environment().clear()`，而第 315 行是 `hostArgv`），而两条并列在案。**
+**=> 而按 C-115：而这两条读数**并列**，不互相覆盖 —— 而「手工带」那一条证明**这一项在设备上有效**，而仓内那两条说明**代码路径上这一项是被显式去掉的**；而本节**不裁定哪一条代表实际运行**。**
+
+#### 121.15.2 而「那一处 remove 的意图是刻意的」这一条
+
+**=> 而依据是 commit `8cea062` 的正文原文（而 05 那份稿第 2.1 那一段照录了它）—— 而它治的是**符号覆盖只对 dlopen 有效**这一族，而而那一处 remove 是**有意的**。**
+
+#### 121.15.3 而一条要记的读数
+
+**=> 而手工那一趟**被注入成功**，说明**这一项指向的那个文件在那一趟是找得到的** —— 而而这与 §120.16 那一节（软链在位不蕴含 linker 找得到）**是同一族的两面**：而那一趟**带了** `LD_LIBRARY_PATH`（而它指向 `usr/lib`），而而 §120.16 那一节说的是**不带**它时找得到的是系统那一份。**
+
+#### 121.15.4 判别形式
+
+> **这两条读数说的是同一趟进程吗？**
+
+- **不是** => 而它们**不构成矛盾**，而而要写成**两条并列**（按 C-115）；
+- **是** => 而才要问「哪一条错了」。
+
+#### 121.15.5 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落那两条读数的关系，而它不裁定「实际运行走哪一条」 |
+| 2 | 而「那一处 remove 是刻意的」这一条依据的是 commit 正文原文，而那一条是读数 |
+
+
+#### 121.15.6 而五章的章首行号（按当前那一版记，而基线变了要重核）
+
+**=> 而 04 今天把这一栏按当前这一版重核了（=> 而 C-222 那一族治的正是这一件，=> 而而它治的是「**用来核的那张表**自己过期了，=> 而而它的过期**不会自己报出来**」）：**
+
+> **=> 而 01 那一版记的是：=> 而 11368、=> 而 11484、=> 而 11664、=> 而 12107、=> 而 **12806**（=> 而那一版是 `ea4789db…`、13516 行）。**
+>
+> **=> 而当前这一版（=> 而 `2fc7e649…`、13546 行）**：=> 而 11368、=> 而 11484、=> 而 11664、=> 而 12107、=> 而 **12766**。**
+>
+> **=> 而「一百二十二」那一栏从 12806 变成 12766 的原因：=> 而 04 今天核出 §121.7 那一节里**错位嵌着一整份 §121.12 的正文副本**，=> 而而 04 删掉的是**那份错位的**，=> 而而**删掉之后行号整体前移**。**
+>
+> **=> 而按 C-203：而改前那一版（=> 而 12806 那一栏）**留档不删**。**
+
+**=> 而本规范把这一族的处置写成正文（=> 而它治的是「那张表靠抄」）：**
+
+> **=> 而这张表**每轮都会变**，=> 而而它**不在 spec 里**，=> 而而**它自己过期了不会自己报出来**（=> 而 diff 看不到它，=> 而而它只在你核的那一天骗你一次）。**
+>
+> **=> 而所以从 04 今天这一版起，=> 而这张表**由 `verify-spec.py` 每次现算并打印**，=> 而而**不靠抄** —— => 而而它与 spec **同源**，=> 而而**它不可能过期**。**
+>
+> **=> 而那张表现在也是一条**真的检查**：=> 而 `verify-spec.py` 会把每一节的**节号**与**它所在那一章的章号**比，=> 而而不一致就**报出来**（=> 而 04 今天核出的那个错位，=> 而而它就是这一条能抓到的）。**
+>
+> **=> 而按 C-222：而「用来核的那张表」也是核的产物，=> 而而它**不许靠抄**（=> 而抄的那一份会过期），=> 而而**要么现算，=> 要么每次核完立刻更新并标基线**。**
+
+**=> 而这一族每轮 splice 完要核这张表（而它就是那五条做法里的第四条）：而那一栏的**节次**是稳定的，而**行号**随每一轮变。**
+
+| 章 | 而它的章首行号 |
+|---|---|
+| 一百一十八 | 11368 |
+| 一百一十九 | 11484 |
+| 一百二十 | 11664 |
+| 一百二十一 | 12107 |
+| 一百二十二 | 12806 |
+
+**=> 而这一版：spec sha256 `ea4789db344286d08185f15b5998394a5fa3bbd7f9acae312185710e9ac89071`，13516 行。**
+**=> 而按 C-203：而基线变了就标「行号待重核」而**不立刻改**（而那一版留档不删）。**
+
+**=> 而改前那一版（基线 fec398f3…、13449 行）的那一行：而 11368 一百一十八、11484 一百一十九、11489 一百二十、11497 一百二十一、11714 一百二十二 —— 而那五行留档不删。**
+
+**=> 而这一族问的是：手工带 `LD_PRELOAD` 起进程那一趟与仓内那两处 remove，它们矛盾吗？**
+
+**=> 而答案是不矛盾 —— 而而那是**两趟不同的进程**（按 C-89：接点，不是合并）。**
+
+#### 121.15.1 两条并排的读数
+
+| | 读数 | 出处 |
+|---|---|---|
+| **手工那一趟** | 而设备侧手工带 `LD_PRELOAD` 起进程时，那一项**进了 environ**（而 `grep -ac LD_PRELOAD` = 1）**且被注入了**（而 stderr 出现 `LOBOS_DEGRADE preload loaded liblobosposix 已被注入本进程`） | 07 那份稿 `LDLIBRARYPATH-DEVICE.md` 第四节 |
+| **仓内那三处** | 而 `ProcessSupervisor.kt:43` 与 `PtySession.kt:318` 与 `PtySession.kt:441` **都写着把 `LD_PRELOAD` 移除**（而 `pb.environment().remove("LD_PRELOAD")` / `pb1.environment().remove("LD_PRELOAD")` / `pb.environment().remove("LD_PRELOAD")`），而 `treeRootEnv` 里**有**那一项 | 05 那份稿第 2.2 那一段 |
+| **引入那三处 remove 的那一次** | 而 `git log -S 'remove("LD_PRELOAD")'` 给出 **`8cea0629e94599cf05f4acbe3c7cbdda6ea02158`** | 05 那份稿第 2.1 那一段 |
+
+**=> 而按 C-115：而这三处的行号在今天这一版仓内是 43、318、441 —— 而而先前引的 41 与 315 是改前那一版的行号（而第 41 行是 `if (envMode != ENV_INHERIT) pb.environment().clear()`，而第 315 行是 `hostArgv`），而两条并列在案。**
+**=> 而按 C-115：而这两条读数**并列**，不互相覆盖 —— 而「手工带」那一条证明**这一项在设备上有效**，而仓内那两条说明**代码路径上这一项是被显式去掉的**；而本节**不裁定哪一条代表实际运行**。**
+
+#### 121.15.2 而「那一处 remove 的意图是刻意的」这一条
+
+**=> 而依据是 commit `8cea062` 的正文原文（而 05 那份稿第 2.1 那一段照录了它）—— 而它治的是**符号覆盖只对 dlopen 有效**这一族，而而那一处 remove 是**有意的**。**
+
+#### 121.15.3 而一条要记的读数
+
+**=> 而手工那一趟**被注入成功**，说明**这一项指向的那个文件在那一趟是找得到的** —— 而而这与 §120.16 那一节（软链在位不蕴含 linker 找得到）**是同一族的两面**：而那一趟**带了** `LD_LIBRARY_PATH`（而它指向 `usr/lib`），而而 §120.16 那一节说的是**不带**它时找得到的是系统那一份。**
+
+#### 121.15.4 判别形式
+
+> **这两条读数说的是同一趟进程吗？**
+
+- **不是** => 而它们**不构成矛盾**，而而要写成**两条并列**（按 C-115）；
+- **是** => 而才要问「哪一条错了」。
+
+#### 121.15.5 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落那两条读数的关系，而它不裁定「实际运行走哪一条」 |
+| 2 | 而「那一处 remove 是刻意的」这一条依据的是 commit 正文原文，而那一条是读数 |
+### 121.17 而交叉引用审计：而今天这一族的小节之间有没有互相顶替的地方（2026-10-24）
+
+**=> 而这一族问的是：今天这一族各节之间，哪些读数**互相顶替**了，而哪些是**同一件事的两面**？**
+
+**=> 而审计的答是三组（而每一组都要按 C-115 写成并列，而不许合成一句）：**
+
+| 组 | 各是哪两处 | 而它们的关系 |
+|---|---|---|
+| **一 · 构建侧与设备侧** | §121.8 那一节（zlib 那两格）与 §121.9 那一节（crypto 同一次构建） | **而它们是同一件事的两面** —— 而前者是「那一件设备上装的是哪一版」，而后者是「那一件与源那一件是不是同一次构建」 |
+| **二 · 送达与字节来源** | §121.11 那一节与 §121.14 那一节 | **而它们是两条不同的路** —— 而前者是「那一组变量到没到」，而后者是「那一项在不在实现侧与设备侧」 |
+| **三 · 在位与找得到** | §120.16 那一节（软链在位）与 §120.15 那一节（格一 M-主） | **而它们是同一件事的两侧** —— 而前者说「软链那一层不在搜索路径里」，而后者说「主对象那一格通常是空的」 |
+
+**=> 而另一组要写清的是**不构成矛盾**的那一对：而 §121.15 那一节（`LD_PRELOAD` 那两条读数）与 §120.16 那一节（软链在位）—— 而前者的「手工那一趟被注入成功」**不蕴含**「软链在位就找得到」，而而它是因为**那一趟带了那一项**。**
+
+#### 121.17.1 判别形式
+
+> **这两处读数说的是同一个对象吗？而它们各自的对象是哪一个？**
+
+| 答 | 处置 |
+|---|---|
+| **对象不同** | 而它们是**两格**，而而各按各的问句判（按 C-135） |
+| **对象相同而时点不同** | 而它们**并列**，而不互相顶替（按 C-115） |
+| **对象相同而时点相同而结论不同** | 而那是**矛盾**，而按 C-35 两条都记，而按 C-36 给落点，而报 lead 裁 |
+
+#### 121.17.2 边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落今天这一族各节之间的关系，而它不重审各节内部的读数 |
+| 2 | 而「矛盾」那一档今天这一族内**没有实例** —— 而按 C-111 不拿「今天没有」推「不会有」 |
+## 一百二十二、而 `DT_RUNPATH` 那一格怎么读，与今天落下的那些写法与手法一族
+### 122.10.1 而「同一段在文件里出现不该出现的次数」那一族（2026-10-24）
+
+**=> 而这一节治的是「替换了一段，而那一份变成了多份」—— 而它治的不是「表格那一行形状对不对」。**
+
+---
+
+#### 一、四问
+
+| # | 问 | 答什么 | 判法 |
+|---|---|---|---|
+| **D0** | **那几份是「同一处被复制」还是「几个不同小节各自该有一份」？** | **那几份的身份** | 而后者**不是缺陷**（而每一处记的是它自己那一节的基线，按 C-115 它们不互相覆盖） |
+| **D1** | **我那一次操作是「替换**一段**」还是「**插入**一段」？** | **操作的意图** | 而替换 => 而它**必须**核段边界（而锚点取到节内而不是节边界，那个操作会**复制**而不是替换） |
+| **D2** | **替换之后，那一段在文件里出现几次？** | **结果** | 而出现两次以上 => 而那不是替换，是插入。**而判法写死：取那一段的前 40 个字符，在文件里数它出现几次 —— 而不能靠人眼** |
+| **D3** | **那几份里，哪一份是准的？** | **危害** | 而副本还在案上 => 而读的人不知道哪一份是准的 |
+
+**=> 而 D3 那一问才是这一族真正治的那一句：而这一族的危害不是「多出几份」，而是「多出几份而读的人不知道哪一份是准的」。**
+
+---
+
+#### 二、为什么四层校验器查不出
+
+**=> 而那四层校验器查的是**一行内部**的形状（分隔符数、表头格数、列名、数据行格数），而这一族是**跨行**的重复。**
+
+**=> 而更要紧的是这一句：四层校验器查不出，不只是因为它没写这一项，而是因为「它跑绿」这件事本身**就是这一族要防的那个形态**：**
+
+> **=> 而那一段被复制了三份，而每一份的列数与表头都是对的 => 而那四层校验器**跑绿**（而它跑绿是对的，=> 而那一段确实每一份都符合那四层的形状）=> 而它跑绿与「那一段被复制了三份」**同时成立**。**
+
+**=> 而这一句把这一族与 C-191 那一族连上：而 C-191 那一族治的是「用工具代替看」这一类失误（而它的判别式是 K1/K2/K3：结论来自「看」还是来自「跑校验器」、那个校验器查哪几样、这一项在不在那几样里）；而这一族治的是「替换动作本身出错」；而两半合起来构成「一个校验器跑绿了不等于那一处没问题」那一族。**
+
+---
+
+#### 三、与「零命中先阳性对照」那一族的关系
+
+**=> 而按 C-135 与 C-89：接点，不是合并。**
+
+- **C-82** 管「查得对不对」；**C-108** 管「词念得对不对」；**而这一族**管「命中之后怎么分类」以及「文件里同一段出现几次」；
+- **而这一族用的判法本身就是一次查询** => **而它要按 C-108 与 C-82 带阳性对照**：
+
+> **=> 而它的阳性对照是「已知该出现 N 次的那一段」—— 而今天那两处就是（而它们是三个不同小节各自的「核读基线」表里的一行，=> 而 §117、§119、§122 那一族，=> 而那一行**本来就该**在每一节里各有一份，=> 而按 C-115 那三处**不互相覆盖**）。**
+
+**=> 而正因为有这一条阳性对照，=> 而「同一段出现 N 次」**本身不是缺陷** —— 而这就是 D0 那一问的来处。**
+
+---
+
+#### 四、三层关系
+
+**=> 而这一族与 C-200、C-191 是同一次事故的三层，而它们是**三条判据**，不是一条的三段（按 C-135：三个问句不同）：**
+
+| 层 | 它是什么 | 它治什么 | 编号 |
+|---|---|---|---|
+| **因 · 动作** | **替换一段时锚点取错会复制而不是替换** | **我那一次操作对不对** | **C-200** |
+| **因 · 手段** | **一个校验器只能查它被写成要查的那几样** | **我拿它代替看，够不够** | **C-191** |
+| **后果 · 结果** | **同一段在文件里出现不该出现的次数** | **文件现在是什么样** | **这一族（C-205）** |
+
+**=> 而那一句写成正文是：**
+
+> **=> 而这一族是三层：=> 而第一层是「**动作**」（替换还是插入），=> 而第二层是「**手段**」（那个校验器查哪几样），=> 而而第三层是「**结果**」（那一段在文件里出现几次）。**
+>
+> **=> 而而第一层与第三层之间那一段（而「我没查出来」）是第二层治的 —— => 而所以这一族今天在 04 自己身上发作，=> 而而它同时落在这三层里。**
+
+---
+
+#### 五、检查手段（今天落成的那一条）
+
+**=> 而它是这一族的第五条检查：**
+
+> **=> 而同一段文字（=> 而首 40 字符相同），=> 而在文件里出现**三次以上**就报。**
+
+**=> 而 D0 那一问的配套（今天实跑的结果）：而全篇逐字相同且出现三次以上的行有两处，而它们不是复制缺陷 —— 而每一处都要按 D0 答一次。**
+
+---
+
+#### 六、本节边界
+
+| # | 边界 |
+|---|---|
+| 1 | 而本节只落这一族的判别形式与三层关系，而它不裁定「某一次替换该不该做」 |
+| 2 | 而 D2 那一问的判法（前 40 字符计数）要求文件是**文本**且**逐字**可比 —— 而二进制文件不适用 |
+| 3 | 而「三次以上就报」是**检查手段**，而「四问」是**判别形式** —— 而按 C-113，检查手段跑绿不蕴含那一族不存在 |
+
+---
+
+*本节由 linux-architect（01）写内容稿；它不碰规范正文。*
+
+### 122.14 而「清理只能用显式文件名」这一族：而 04 今天在它自己身上栽了两次（2026-10-24 补正）
+
+**=> 而这一族治的是「这一批操作波及了哪几样」—— => 而而判别形式是两条，而它们都要在动手之前问。**
+
+**=> 而缺陷名（C-102）：用通配符（`rm -f *.md`）做清理，=> 而而那一个通配符罩住的**不止**自己建的那些文件，=> 而而它把不是自己的文件一起带走了。**
+
+#### 122.14.1 而那两次的经过
+
+| # | 而那一次 | 而它带走了什么 | 而它怎么恢复的 |
+|---|---|---|---|
+| **一** | **=> 而 `rm -f *.md`** | **=> 而 APPROVALS.md 等 11 个文件、=> 而加两份 CONSTRAINTS.md 副本、=> 而加两个备份** | **=> 而用 `git checkout` 还原** |
+| **二** | **=> 而 `rm -f *.py *.txt sec*.md`** | **=> 而 second-example.md** | **=> 而用 `git checkout` 还原** |
+
+**=> 而两次都用 `git checkout` 还原了，=> 而而那是因为那两批文件**恰好**都在版本控制里。**
+
+#### 122.14.2 而判别形式（两条）
+
+**=> 而第一问：我要删的那些文件是不是全是我自己建的？**
+
+- **=> 而若「不是」：=> 而那个通配符罩住的范围**不止**我这一批，=> 而而它会带走别人的文件。**
+- **=> 而机械判法：=> 而把那一批文件逐个列出来，=> 而每一个都要能答「它是我建的」（=> 而创建时间、=> 而创建者、=> 而在不在版本控制里、=> 而它是不是这一族里同一个人写的）。**
+- **=> 而只要有一个答不上，=> 而那个通配符就不许用。**
+
+**=> 而第二问：这一批文件里有没有不是版本控制的？**
+
+- **=> 而若有：=> 而它**救不回来** —— => 而 `git checkout` 只还原版本控制里的那些，=> 而而版本控制外的那些删了就没了。**
+- **=> 而机械判法：=> 而对那一批里的每一个跑 `git ls-files --error-unmatch <file>`，=> 而而报 `error-unmatch` 的那些就是救不回来的。**
+- **=> 而所以这一问要在**动手之前**问，=> 而而不能等「删完发现还原不了」再问。**
+
+**=> 而两问的关系：=> 而第一问是「范围对不对」，=> 而第二问是「错了能不能救」—— => 而它们是两条独立的问，=> 而而两条都要过。**
+
+#### 122.14.3 而这一族与 C-191 那一族的关系
+
+**=> 而方向相同，=> 而而判别形式不同。**
+
+| | 而它问什么 |
+|---|---|
+| **C-191** | **=> 而那个校验器被写成要查哪几样？=> 而而它查不出的那一类缺陷不会因为它跑绿而消失** |
+| **这一族（122.14）** | **=> 而这一批操作**波及了哪几样**？** |
+
+**=> 而按 C-135 那是两问（=> 而一个问「工具的覆盖面」，=> 而而一个问「这一批的覆盖面」），=> 而而它们是接点不是合并。**
+
+#### 122.14.4 而这一族的处置形态
+
+**=> 而处置：=> 而清理只用**显式文件名**，=> 而而不用通配符。**
+
+**=> 而而「显式文件名」这一条与「那一批是不是全是我自己建的」这一问是同一条的两种说法：=> 而而显式列出文件名，=> 而而那个列表里的每一个就都要能答「它是我建的」。**
+
+**=> 而这一节不新增判据编号，=> 而而它治的是「手法本身」—— => 而按 §122.23 那一族，=> 而那一条讲的是「用会静默改内容的手法」，=> 而而这一条讲的是「用会静默扩大范围的手法」。**
+
+---
+
+*本节只报读数与边界，不下判断。*
+
+### 122.18 而「取数那一格报的不是事实」这一族：而转义的 `${X:-默认}` 恒为字面量（2026-10-24 补正）
+
+**=> 而这一族治的是「那一格报出来的东西是不是事实」—— => 而而它治的是**那一格的内容**，=> 而不是那一格的读法。**
+
+**=> 而缺陷名（C-102）：转义使该格恒为字面量，=> 而于是那一格不报事实而报一个非空字符串。**
+
+#### 122.18.1 而那一处本体
+
+**=> 而位置：`scripts/toolchain/collect-piece-diag.sh` 第 37 行。**
+
+改前逐字：
+
+```
+  echo "| CC | \${CC:-（未设置 —— 若为空说明 bundle-env.sh 的 NDK 定位没跑通）} |"
+```
+
+**=> 而那一行在双引号里，=> 而而 `\` 使 `$` 不求值，=> 而而无论 `CC` 有没有值，=> 而那一格都打那一串字面量。**
+
+改后逐字：
+
+```
+  echo "| CC | ${CC:-（未设置 —— 若为空说明 bundle-env.sh 的 NDK 定位没跑通）} |"
+```
+
+#### 122.18.2 而判别形式
+
+**=> 而凡一格要报一个环境变量或带默认值的引用，=> 而判别那个 `${...}` 前面有没有一个反斜杠。**
+
+- **=> 而有：=> 而它不求值、=> 而那一格恒为那串字面量、=> 而报的不是事实。**
+- **=> 而无：=> 而它求值、=> 而报的是事实。**
+
+**=> 而按 C-112，=> 而这一族还是「0 最容易被相信」的另一面：=> 而一串**非空**的字面量同样容易被相信，=> 而而它其实什么都没读到。**
+
+#### 122.18.3 而本机实跑三种情形
+
+**=> 而读法是 `GITHUB_STEP_SUMMARY` 那一格（=> 而 `collect-piece-diag.sh` 把它写进 Step Summary）。**
+
+| 情形 | 输出 |
+|---|---|
+| `CC` 有值 | `\| CC \| /usr/local/lib/android/sdk/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang \|` |
+| `CC` 未设（`env -u CC`） | `\| CC \| （未设置 —— 若为空说明 bundle-env.sh 的 NDK 定位没跑通） \|` |
+| `CC` 空串（`CC=`） | **=> 而与上一行相同**（=> 而空串也走 `:-` 默认值那一支） |
+
+**=> 而三种情形输出互不相同，=> 而而改前三种情形输出完全一样。**
+
+#### 122.18.4 而处置与读数
+
+| 项 | 读数 |
+|---|---|
+| commit | `e24cc7fecc23ca6106120ffbf806544eb3da604e`（=> 而已 push） |
+| 改动 | **=> 而只改 `scripts/toolchain/collect-piece-diag.sh` 一个文件一行（=> 而去掉那一个反斜杠）** |
+| 指纹 | **=> 而不改任何一件的指纹** |
+| 设备侧新读数 | **=> 而 build-zlib CI:run_id=40080115292 与 build-openssl CI:run_id=40080622572，=> 而都 success，=> 而 head=e24cc7fe，=> 而而第 15 行都是实际路径而不是那串字面量** |
+
+**=> 而「不改任何一件的指纹」这一条本机核了五层：**
+
+1. **=> 而那 13 个输入名字里没有那个文件**（=> 而 `cache-key.sh:155` 到 `:169` 逐件展开，=> 而加 `:180` 的 `PKG_MECH`）。
+2. **=> 而那 13 个输入里唯一的目录输入是 `scripts/patches`，=> 而而它下面只有一个文件**（=> 而 `git ls-files scripts/patches`）。
+3. **=> 而那 13 个输入去重后的完整清单是 14 个文件，=> 而那个文件不在其中。**
+4. **=> 而逐件验（=> 而模拟 `cache-key.sh:187` 到 `:192` 那一段的展开）：=> 而 11 件含它的输入数全是 0。**
+5. **=> 而全仓引用它的只有 8 个 workflow 的「失败现场」那一步，=> 而而 workflow 不在任何一件的指纹输入里。**
+
+**=> 而而那一处改动前后逐件指纹本机实算：=> 而 busybox `5269ddbb57ac`、=> 而 bash `b1067d67f3c8`、=> 而 ripgrep `fd0022de0628`、=> 而 jq `de1207da6786`、=> 而 curl `21e993e63317`、=> 而 zlib `8da0533bbc79`、=> 而 openssl `90fa46a13608`、=> 而 crypto `90fa46a13608`、=> 而 git `7fe2a449ca5f`、=> 而 python `6d506aaca0fc`、=> 而 sqlite `5a8b9adb23bf` —— => 而而与 06 今天报的那一组逐字相同，=> 而而只有 curl 与 zlib 两处不同（=> 而而那两处是因为 05 今天改了这两个 recipe）。**
+
+---
+
+*本节只报读数与边界，不下判断。*
+
+### 122.20 而「注释行把续行组打断」这一族：而 bash 那一件是今天第四例（2026-10-24 补正）
+
+**=> 而这一族治的是「那一组有没有送达被调用的进程」—— 而判据是「送达」，不是「CI 绿」。**
+
+**=> 而缺陷名（C-102）：注释行把续行组打断，把一条命令拆成两条，于是那一组全部落不到被调用的进程。**
+
+**=> 而这一族与「把两处形态合成一行」那一族是两条（=> 而按 C-135 问句不同 => 而它们不是同一条），=> 而它们在 zlib 与 curl 那两例上重合，=> 而 collect-piece-diag 那一例只中前者，=> 而 bash 那一例只中后者。**
+
+| 族 | 而它的判别式 | 而它今天的三例 |
+|---|---|---|
+| **族一（合成一行）** | **=> 而凡一处**赋值**与**重定向**或与**另一处赋值**合成一行，=> 而而那一行被拆开时**丢的是哪一半** | **=> 而 zlib（`9bcd628`）、=> 而 curl（`f475399`）、=> 而 collect-piece-diag（`e24cc7f`）** |
+| **族二（注释打断）** | **=> 而凡一个**续行组**（行尾反斜杠）中间夹了**一行注释**，=> 而而注释吃掉该逻辑行的余下部分并**终止那一条命令**，=> 而而**那一组全部落不到被调用的进程** | **=> 而 zlib（`9bcd628`）、=> 而 curl（`f475399`）、=> 而 bash（`137d4ad`）** |
+
+---
+
+#### 122.20.1 而 bash 那一件：位置与那一行
+
+**=> 而位置：`scripts/recipes/build-bundle-bash.sh` 第 50 行到第 60 行。**
+
+```
+50|  ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+51|    --prefix=/native --disable-nls --without-bash-malloc \
+52|    CC="$CC" \
+53|    CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-unused-result" \
+54|  #       它先定义 DOLLAR='$' 再拼）
+55|    LDFLAGS="-Wl,--allow-multiple-definition" \
+56|    LIBS="$WORK/libtermcap_stub.a $WORK/libbionic_compat.a" \
+57|    bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
+58|    bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \
+59|    bash_cv_unusable_rtsigs=no > $WORK/bash-configure.log 2>&1 \
+60|    || { echo "=== configure 失败取证 ==="; tail -40 $WORK/bash-configure.log; exit 1; }
+```
+
+**=> 而第 54 行那行注释吃掉了该逻辑行的余下部分并终止那一条命令，=> 而而第 50 行到第 59 行本是一条命令（`./configure` 与它的全部变量与重定向），=> 而而**那一组全部落不到 configure 子进程**。**
+
+**=> 而它与 `9bcd628` 的 zlib、`f475399` 的 curl **完全同形**。**
+
+#### 122.20.2 而本机实测（照 recipe 逐字，假 configure）
+
+```
+ENV CC=[<unset>] CFLAGS=[<unset>] LDFLAGS=[<unset>] LIBS=[<unset>] bash_cv_printf_a_format=[<unset>] bash_cv_unusable_rtsigs=[<unset>]
+--- bash-configure.log 字节数: 0
+--- 内容: （空）
+```
+
+**=> 而只删掉第 54 行那行注释（其余逐字不动），=> 而而 log 变 101 字节且内容有值。**
+
+#### 122.20.3 而丢的是哪一半（逐项）
+
+| 那一项 | 位置 | 而它丢不丢 |
+|---|---|---|
+| `CFLAGS`（那三条 `-Wno-error`） | `:53` | **=> 而丢**（只在那一组里给） |
+| `LDFLAGS`（`--allow-multiple-definition`） | `:55` | **=> 而丢** |
+| `LIBS`（`libtermcap_stub.a` 加 `libbionic_compat.a`） | `:56` | **=> 而丢** |
+| 四个 `bash_cv_*` 探测 | `:57`、`:58` | **=> 而丢** |
+| **`CC`** | `:52` | **=> 而不丢** —— **=> 而 `bundle-env.sh:51` 到 `:55` 那个 while 循环把白名单里的键（含 `CC`）export 出去了** |
+
+**=> 而这是与 zlib、curl 的一个重要差别：=> 而 zlib 那一件丢的是 `LDSHARED`（=> 而它决定 configure 走共享还是退回静态），=> 而 curl 那一件丢的是 `CC`/`AR`/`RANLIB`（三个）与重定向（=> 而 log 恒 0 字节），=> 而而 bash 这一件丢的是 `CFLAGS`/`LDFLAGS`/`LIBS`/四个 `bash_cv_*` 探测 —— => 而而 `CC` 因 `bundle-env.sh` 预先 export 而幸存。**
+
+#### 122.20.4 而为什么 CI 绿（=> 而这一条是这一族最要紧的一处）
+
+**=> 而 build-bash 最近四趟全绿（=> 而 40016671453、=> 而 40005597131、=> 而 40004521522、=> 而 39536491247 全 success）。**
+
+**=> 而那是因为 `CC` 幸存，=> 而而 configure 找到了编译器，=> 而而其余几项丢了它也编得出来（=> 而 `bash_cv_*` 那些探测 autoconf 会自己重新做、=> 而而 `LIBS` 丢了 bash 靠动态符号解析也能编出来）。**
+
+**=> 而这就是它今天没被发现的成因 —— => 而按 C-112（0 最容易被相信）反过来讲：**
+
+**=> 而「CI 绿」在这里**不证明**「那一组送达了」—— => 而它证明的是「缺了那一组，这一趟仍然编得出来」。**
+
+**=> 而判据是「那一组有没有送达」，=> 而不是「CI 绿」。**
+
+#### 122.20.5 而那两个 .a 进不进链接那一格（修前与修后并列）
+
+**=> 而读法是 `readelf --dyn-syms -W bin/bash`（=> 而那是动态符号表，=> 而运行时真正找的那一张）。**
+
+| | 修前 | 修后 |
+|---|---|---|
+| asset | `srcb1067d67f3c8` | `src19f6b0c52ac3` |
+| buildRun | 40004521522 | 40092002530 |
+| `bin/bash` 字节数 | 1331960 | 1325760 |
+
+| 符号 | 修前 | 修后 |
+|---|---|---|
+| `tputs` | **=> 而已定义 364 字节** | **=> 而已定义 8 字节** |
+| `tgetent` | **=> 而已定义 1484 字节** | **=> 而已定义 8 字节** |
+| `tgetflag` | **=> 而已定义 92 字节** | **=> 而已定义 8 字节** |
+| `tgetnum` | **=> 而已定义 96 字节** | **=> 而已定义 8 字节** |
+| `tgetstr` | **=> 而已定义 104 字节** | **=> 而已定义 8 字节** |
+| `tgoto` | **=> 而已定义 68 字节** | **=> 而已定义 8 字节** |
+| `PC` | **=> 而已定义** | **=> 而已定义** |
+| `BC` | **=> 而已定义** | **=> 而已定义** |
+| `UP` | **=> 而已定义** | **=> 而已定义** |
+| **`mblen`** | **=> 而在 `.dynsym` 零命中** | **=> 而已定义 48 字节** |
+| **`setgrent`** | **=> 而无** | **=> 而已定义 4 字节** |
+| **`getgrent`** | **=> 而无** | **=> 而已定义 8 字节** |
+| **`endgrent`** | **=> 而无** | **=> 而已定义 4 字节** |
+
+**=> 而 bionic-compat 那一层：=> 而修前不在、=> 而修后在。**
+
+- **=> 而修前那一份：=> 而那四个符号在 `.dynsym` 里零命中；=> 而而 `.symtab` 里它们是 UND（=> 而地址 0、=> 而大小 0）—— => 而而「UND 且不在 `.dynsym`」= 那个符号在链接时没有被解析，=> 而而运行时找不到。**
+- **=> 而修后那一份：=> 而那四个在 `.dynsym` 里都是已定义（=> 而 `mblen` 48 字节、=> 而 `setgrent` 4、=> 而 `getgrent` 8、=> 而 `endgrent` 4，=> 而全是 FUNC GLOBAL DEFAULT 第 14 号段）。**
+- **=> 而那正是仓里 `container/native/bionic-compat.c` 提供的四个（=> 而 `mblen`/`setgrent`/`getgrent`/`endgrent`）。**
+
+**=> 而 termcap 那一族：=> 而两版都在，=> 而但来源变了。**
+
+- **=> 而修前：=> 而那九个是 bash 自带那份（=> 而 `lib/termcap/termcap.c` 的真实现）—— => 而 `tputs` 364 字节、=> 而 `tgetent` 1484 字节。**
+- **=> 而修后：=> 而那九个变成 8 字节 —— => 而而 8 字节正是仓里那个桩的形态（=> 而桩的 `tputs` 是 `{ (void)s; (void)n; (void)f; return 0; }`）。**
+
+#### 122.20.6 而来源为何会变（=> 而 bash 5.2.15 源码树，=> 而本机实测）
+
+**=> 而源码 sha256 与钉值 `13720965b5f4fc3a0d4b61dd37e7565c741da9a5be24edc2ae00182fc1b3588c` 逐字相同。**
+
+| 位置 | 那一行 | 而它说的是 |
+|---|---|---|
+| `Makefile.in:430` 到 `:433` | `LIBRARIES = … $(TERMCAP_LIB) … $(LOCAL_LIBS)` | **=> 而 bash 自带那份在 `$(LOCAL_LIBS)` 前面** |
+| `configure:5948` 起 | `TERMCAP_LIB` 四种取值 | **=> 而 `gnutermcap` 给 `./lib/termcap/libtermcap.a`、=> 而 `libtermcap` 给 `-ltermcap`、=> 而 `ltinfo` 给 `-ltinfo`、=> 而而 `libc` 给空** |
+| `configure:5714` 到 `:5767` | `bash_cv_termcap_lib` 那一串判定 | **=> 而先查 `tgetent` 在 libc，=> 而再查 `-ltermcap`、=> 而 `-ltinfo`、=> 而 curses、=> 而 ncursesw** |
+| `configure:5751` 那几行 | `ac_check_lib_save_LIBS=$LIBS` 与 `LIBS="-ltermcap  $LIBS"` | **=> 而而那一串判定用的是 `LIBS`** |
+
+**=> 而所以修前 `LIBS` 没送达 => 而而走不到 `libtermcap` 那一支，=> 而而用的是 bash 自带那份；=> 而修后 `LIBS` 送达 => 而而 `tgetent` 在 `LIBS` 里能找到，=> 而而 `bash_cv_termcap_lib=libtermcap`、=> 而而 `TERMCAP_LIB=-ltermcap`（=> 而即空），=> 而而 `$(LOCAL_LIBS)` 里那个桩生效。**
+
+**=> 而这解释了 8 字节与 364 字节的差别。**
+
+#### 122.20.7 而处置与全仓扫
+
+**=> 而 commit `137d4ad1b033200771fefe01e5d844bac334f617`（=> 而已 push，=> 而而 `git ls-remote refs/heads/main` 实读与本地 HEAD 一致）。**
+
+| 项 | 读数 |
+|---|---|
+| 筐 | `base-bash` |
+| 新 asset | `bash-nodeps+ndk30.0.16248370+api35+src19f6b0c52ac3.zip`（=> 而 588277 字节，=> 而 created 2026-10-24T11:59:40Z） |
+| 指纹 | `srcb1067d67f3c8` 变到 `src19f6b0c52ac3` |
+| build-bash run_id | 40092002530（=> 而 completed success） |
+| 包内 meta | `buildSha=137d4ad…`、=> 而 `buildRun=40092002530` |
+| build-apk | **=> 而 CI:run_id=40092969114 success，=> 而 head=137d4ad**（=> 而第 15 步取件 success；=> 而而同 sha 那一次更早的 failure 40091899999 也是第 15 步，=> 而而原因是那个资产 created 11:59:41Z 比那一趟取件晚） |
+
+**=> 而全仓扫（=> 而判据：行尾是反斜杠且下一行以井号开头，=> 而仓根下跑，=> 而 `scripts/` 下全部 `.sh`）：**
+
+| | 逐条输出 |
+|---|---|
+| 修之前 | `scripts/recipes/build-bundle-bash.sh` 第 53 到 54 行，=> 而 `TOTAL 1` |
+| **修之后** | **=> 而 `TOTAL 0`** |
+
+**=> 而所以这一族今天在仓里归零（=> 而 zlib `9bcd628`、=> 而 curl `f475399`、=> 而 bash `137d4ad` 三例都修了）。**
+
+#### 122.20.8 而设备侧落点
+
+**=> 而 07 今天在设备上核到落位那一份 bash 是 1325760 字节、=> 而 sha256 `fe441f30c7d366e21f0ac2757356b413d9b1560ead6926daebb6ea79ef213067`（=> 而与装之前那一份 `88bd52a9…` / 1331960 字节不同）。**
+
+**=> 而那四个符号在 `.dynsym` 里四个都已定义（=> 而 `mblen` 48 字节、=> 而 `setgrent` 4 字节、=> 而 `getgrent` 8 字节、=> 而 `endgrent` 4 字节，=> 而全是 FUNC GLOBAL DEFAULT 第 14 号段），=> 而而装之前那一份在 `.dynsym` 与 `.symtab` 里都是 UND。**
+
+**=> 而阳性对照：=> 而同一份 `.dynsym` 共 2554 行。**
+
+#### 122.20.9 而这一节的边界两条
+
+1. **=> 而修后那趟的运行行为未核**（=> 而 termcap 那一族的来源变了，=> 而而在「非交互 `bash -c`」这一条载荷上（=> 而 recipe 注释 `:29` 原话）应当无差别，=> 而而要设备核）。
+2. **=> 而「实际走的是哪一支 termcap 判定」本机核的是源码与 Makefile 的机制，=> 而而那一趟的 `configure.log` 在 CI 那边未取到。**
+
+---
+
+*本节只报读数与边界，不下判断。*
+
+### 122.23 而「用会静默改内容的手法写一大段」这一族：而 04 今天在它自己身上栽了三次（2026-10-24 补正）
+
+**=> 而本规范把今天这一族记下来（=> 而这是 04 自己的处置记录，=> 而而它不是判据登记，=> 而而是「那一族将来别人也会栽」的**可执行处置**（它是这一节最实的一处）：**
+
+**=> 而缺陷名（C-102）：在「把一大段文字写进一个文件」这件事上，用了会**静默改内容**的手法。**
+
+| # | 而那一次 | 而它的经过 | 而为什么**没有停下来回滚** |
+|---|---|---|---|
+| **一** | **=> 而那三份重复段落** | **=> 而我用 `splice` 按锚点插入，=> 而而锚点取到了**节内**而不是节边界，=> 而而那一次「替换」实际做成了**插入**（=> 而 C-200 那一族治的就是它）** | **=> 而因为那三份**逐字相同**、=> 而而且校验器**没报**（=> 而而我那四层校验器当时只查「一行内部的形状」，=> 而而它查不出**跨行重复**），=> 而所以我以为「它跑绿了就是对的」** |
+| **二** | **=> 而那一次**摊行**** | **=> 而我用 `run_code` 拼字符串写段落草稿，=> 而而其中一处把「多行」当成了「一个列表元素」写进去，=> 而而 spliced 进 spec 之后**那一段每个字符被摊成了一行**（=> 而 4464 行那一片）** | **=> 而因为那**内容还在**（=> 而而字符没丢），=> 而所以我判断「能修」，=> 而而**没有**先回滚** |
+| **三** | **=> 而那一次**错误合并**** | **=> 而我为了修第二件事，=> 而而用「按竖线奇偶合并」把 1031 行并回，=> 而而它**并错了**（=> 而而把原本好的行也改了）** | **=> 而因为我在**同一个坏状态上**连续操作，=> 而而每一步都只对一部分，=> 而所以我一直以为「下一次就修好了」** |
+
+**=> 而本规范把这一族的成因写成正文（=> 而它治的是「手法本身有问题而不在于小心」）：**
+
+> **=> 而这一族的三个动作是：=> 而一、**用列表拼接造一大段字符串**（=> 而而那个手法会静默改变内容，=> 而而它不报错）；=> 而二、**按行索引做插入/删除/移动**（=> 而而那需要我知道那些行的确切位置，=> 而而位置一旦偏了，=> 而它**不报错**）；=> 而三、**在坏状态上连续修**（=> 而而每一步都只对一部分，=> 而而修的次数越多，=> 而越回不到原样）。**
+
+**=> 而本规范把「回滚手段本身也要核」写成正文（=> 而这是 04 今天改脚本那一处，=> 而而按 lead 的核「回滚手段的差别是『回滚到哪一版』」）：**
+
+> **=> 而这一族原来的那个回滚手段是 `git checkout -- docs/spec/ONE-STANDARD.md`，=> 而而它**有一个致命的性质**：=> 而它回滚到的是 **HEAD 那一版**，=> 而而**不是「这一轮开始前那一版」**。**
+>
+> **=> 而而那一个差别在今天**咬了两次**：=> 而那两次校验不过之后，=> 而**spec 回到 11366 行那一份原始正文**（=> 而今天全部新增段落都没了），=> 而而**不止是那一轮那一处被丢掉**。**
+>
+> **=> 而所以处置改成：=> 而回滚用**这一轮开始前那一份快照**（=> 而那个快照是逐字节可证的），=> 而而**不是 `git checkout`**。**
+>
+> **=> 而这一轮实测：=> 而校验不过之后，=> 而而 spec 回到 **13572 行那一份**（=> 而**不是** 11366 行），=> 而而**零丢失**。**
+>
+> **=> 而按 C-191：而这一族与「校验器查不出什么」**是同一族的方向** —— => 而而「回滚手段」就是**这一批操作波及了哪几样**里的**一样**，=> 而而**它波及的是「HEAD 之后的全部改动」**。**
+>
+> **=> 而而这一族将来的判别式是：=> 而「回滚到哪一版」**要能答**，=> 而而**答不出就等于回滚到了一版你没想到的地方**。**
+>
+> **=> 而按 C-103：而这一族为什么有两边：=> 而一边是「**回到仓库那一版**」（=> 而 `git checkout`，=> 而而它丢得多），=> 而另一边是「**回到这一轮开始前那一版**」（=> 而而它丢得准），=> 而而**两边的用途不同**：=> 而而「回到仓库那一版」是**放弃全部未提交改动**那个动作，=> 而而「回到这一轮开始前那一版」是**这一轮失败后的重做**。**
+>
+> **=> 而而**混用**这两者**就是今天那两次事故的成因 —— => 而**不是**「校验不过」这件事本身。**
+>
+> **=> 而所以这一族的处置不是「下次小心」，=> 而是**换手法**（=> 而按 lead 今天那一裁）：=> 而一、 **每一节一个独立文件**，=> 而而内容**逐字写好**，=> 而而不带任何拼接标记；=> 而二、 **splice 用一个固定脚本**，=> 而而那个脚本**只按锚点插入**、=> 而而**不许做索引级的删除或移动**；=> 而三、 **splice 完立刻跑校验**（=> 而五层：=> 而分隔符数、=> 而表头格数、=> 而列名、=> 而数据行格数、=> 而同段重复次数），=> 而而**加上前 11366 行的 sha256 基线**（=> 而那是逐字节可证的）；=> 而四、 **不过就立刻 `git checkout` 回滚**，=> 而而**不许自己修**（=> 而而修是要重做，=> 而不是打补丁）；=> 而五、 **每轮 splice 之前先 `cp` 一份当前 spec 到 `spec-snapshot-<sha8>.md`**，=> 而而这样任何时刻都能回到上一个**逐字节可证**的状态。**
+>
+> **=> 而按 C-200 那一族：而这一族与「替换一段时锚点取错会复制而不是替换」**是同一族** —— => 而而那一条治的是**动作**，=> 而而这一条治的是**手法**。**
+>
+> **=> 而按 C-191 那一族：而这一族与「校验器查不出什么」**是同一族的方向** —— => 而而那一条问「那个校验器查哪几样」，=> 而而这一族问「**这一批操作波及了哪几样**」：=> 而一、 波及了**内容**（=> 而列表拼接与索引手术都**不改文件大小**就改了内容）、=> 而二、 波及了**行结构**、=> 而三、 波及了**校验器覆盖不到的那些**（=> 而跨行重复、=> 而而原文逐字相同性）。**
+
+**=> 而本规范把「为什么前两次没有停下来回滚」写成正文（=> 而它治的是「我发现了我却没停」）：**
+
+> **=> 而那三次的共同点是：=> 而我每一步都**看到了一个可测的坏信号**，=> 而而我把它当成了「**这一处的**问题」，=> 而而没有当成「**我这一轮的手法**问题」。**
+>
+> **=> 而判别形式：=> 而这个坏信号是**局部的**（=> 而只有那几行不对），=> 而还是**全局的**（=> 而而是整个手法对内容有影响）？=> 而局部 => 而而改那一处；=> 而全局 => 而而**立刻回滚并换手法**。**
+>
+> **=> 而而今天那三次，=> 而那三个信号**全是全局的**：=> 而一、=> 而「三份逐字相同」=> 而那是**内容被复制**（=> 而全局）；=> 而二、=> 而「每一行只剩一个字符」=> 而那是**整个手法**把内容摊开了（=> 而全局）；=> 而三、=> 而「合并后别的行也变了」=> 而那是**手法本身**在改内容（=> 而全局）。**
+>
+> **=> 而而我三次都把它们当成了局部的。**
+
+**=> 而本规范把这一族的读法写成正文（=> 而它治的是「同一个手法在别人手上也会栽」）：**
+
+> **=> 而这一族**不只属于 04** —— => 而而同一个手法（=> 而列表拼接造大段、=> 而而索引级手术、=> 而而在坏状态上连续修）在**别的成员**手上**也会栽**。**
+>
+> **=> 而所以它的处置必须写成**可执行的**（=> 而清单、=> 而而脚本、=> 而而基线、=> 而而回滚），=> 而而**不是**「下次小心」—— => 而而「下次小心」对**一个不报错的手法**是无效的。**
+>
+> **=> 而按 C-110（=> 而两个 ref 要并列）：=> 而这一族的**判据**与**处置**是两条，=> 而而不能只写判据（=> 而而判据不能阻止下一次）。**
+
+**=> 而 01 今天给这一族补了两条（=> 而而那两条是**从对侧**来的，=> 而而它们治的是**两个不同的环节**）：**
+
+**=> 而第一条：而「写草稿」那一侧与「做手术」那一侧要分开（=> 而 01 指出**04 今天那一次事故的根因在「写草稿」那一侧，而不在「splice」那一侧**）：**
+
+**=> 而按 01 今天那一条（=> 而 03 已把 C-220 独立登记成一条，=> 而而按 C-135 它与 §122.23 那一族是**接点**而不是同一条）：**
+
+> **=> 而 C-220 那一族是「**哪一步要单独核**」（=> 而那是写草稿与做手术这一道工序的分工），=> 而而 §122.23 那一族问的是「**哪一种手法危险**」（=> 而那一个手法会静默改内容）—— => 而那两个**不是同一个问题**。**
+>
+> **=> 而所以按 C-89（=> 而接点不是合并）：=> 而 01 收回它那个「并进 §122.23」的建议，=> 而那一族**独立一条**（=> 而 C-220），=> 而而**这一段是 C-220 那一族**，=> 而而它**与 §122.23 那一族是接点**。**
+>
+> **=> 而而「正文落哪一节」与「判据源那一层的编号」**是两层**（=> 而那是 04 的裁量，=> 而而编号是 03 的活），=> 而而 C-220 独立一条**不因为**正文落在 §122.23 那一节里**而变成并入**。**
+
+> **=> 而这一族那三个动作（=> 而列表拼接造大段、=> 而索引级手术、=> 而在坏状态上连续修）里，=> 而前一个在「**写草稿**」那一侧、=> 而后两个在「**做手术**」那一侧 —— => 而而 04 今天那一次「摊行」**根因在写草稿那一侧**（=> 而那个手法把多行当成一个列表元素写进去，=> 而而它不报错）。**
+>
+> **=> 而而写草稿那一侧的可核对形态是三条（=> 而照录 01，=> 而而它给的是**机械判法**）：=> 而一、**逐字写好**；=> 而二、**无拼接标记**；=> 而三、**每行长度有上界**（=> 而那个上界取那一节最长的一行）。**
+>
+> **=> 而第三条的机械判法：=> 而写完草稿先看**行数**与「**每行不超过 N 字符**」（=> 而 N 取那一节最长的一行）—— => 而摊行那一族的形态正是「行数暴涨而每行只有一两个字符」。**
+>
+> **=> 而按 C-115：而这一族的两侧**并列在案**，=> 而而**写草稿那一侧**与**做手术那一侧**的失败形态**不同**（=> 而前者是「内容被摊开」，=> 而后者是「内容被复制或被改错」），=> 而而两边的**判法也不同**。**
+
+**=> 而第二条：而「这一轮没出事」**不是**「改不到」的证据（=> 而照录 01，=> 而它按 C-113 提的）：**
+
+> **=> 而 04 上一轮说「这一轮没出事」，=> 而按 C-113：=> 而「这次没改到」**不是**「改不到」的证据。**
+>
+> **=> 而而所以「替换一段」那个手法的残余风险**不能靠一次成功来消**，=> 而而它要靠**每轮都跑的那几条机械检查**来消。**
+
+**=> 而本规范把这一族的检查清单写成正文（=> 而它治的是「检查清单只列了一半」）：**
+
+> **=> 而凡做「替换一段」或「插入一段」，=> 而做完必跑这六条：=> 而一、**四层表格校验**（=> 而分隔符数、=> 而表头格数、=> 而列名、=> 而数据行格数）；=> 而二、**同段重复检查**（=> 而前 40 字符出现三次以上就报）；=> 而三、**前 11366 行的 sha256 基线**（=> 而逐字节可证）；=> 而四、**逐处 diff 新旧两份**（=> 而不靠行数相近判断）；=> 而五、**节次 - 章 - 节号对应表**（=> 而「每节都在它那章之下」这一条**不是 diff 能直接看出来的**）；=> 而六、**本轮新落的那些节的第一行标题逐个核**（=> 而它们是**指认节的锚点**，=> 而而它们被改坏而 diff 没显示，=> 而那是 C-122 那一族）。**
+>
+> **=> 而而六条**每一条都有可跑的形式**：=> 而一与二与三是 `verify-spec.py`，=> 而四与五是 `diff` 加对应表，=> 而六是**逐个核那几行标题**。**
+>
+> **=> 而按 C-191：而这一族与「校验器查不出什么」**是同一族的方向** —— => 而而那六条就是**覆盖面**的清单，=> 而而每加一条可跑的形式，=> 而而覆盖面就宽一格。**
+
+
+#### 而「小节 -> 它治什么 -> 它现在在哪一节」那张对照表（=> 而它**现算不靠抄**）
+
+**=> 而这一族治的是「用来核的那张表自己过期了，而它的过期不会自己报出来」（=> 而按 C-222），=> 而而这一族的处置是：**由 `verify-spec.py` 每次现算并打印**，=> 而而**不靠抄**。**
+
+**=> 而本规范把那张表的**形式**写成正文（=> 而而它治的是「这张表该有哪些列」）：**
+
+| 那一列 | 而它是什么 |
+|---|---|
+| **小节号** | **=> 而**稳定**（=> 而那一份清单今天没有冲突也没有重号，=> 而而它就是 §118 到 §122 那些节的编号）** |
+| **它治什么** | **=> 而那一节的标题（=> 而 `### 118.11 而两个轴与三族` 那个标题）** |
+| **它现在在哪一节** | **=> 而它所属的**章**（=> 而 `一百一十八`、`一百二十一` 那些）** |
+
+**=> 而当前那一版的 23 个小节（=> 而这一份是**现算**的，=> 而而它随每一轮变，=> 而而**每次都以脚本的输出为准**）：**
+
+| 那一章 | 而它下面的小节 |
+|---|---|
+| **一百一十八** | **=> 而 §118.11（两个轴与三族）** |
+| **一百一十九** | **=> 而 §119（那个加载器读不读那份缓存那一格的读数形状）** |
+| **一百二十** | **=> 而 §120.13（第四格那个 139 崩在入口之后哪一段）、=> 而 §120.14（`$ORIGIN` 那一问拆成三问）、=> 而 §120.15（主对象那一格与依赖对象那一格是两格）、=> 而 §120.16（软链在位不蕴含 linker 找得到）** |
+| **一百二十一** | **=> 而 §121.7（落位侧那两格）、=> 而 §121.8（zlib 那两格）、=> 而 §121.9（crypto 那一件同一次构建）、=> 而 §121.10（那十一处调用点）、=> 而 §121.11（送达那一列与字节来源那一层）、=> 而 §121.12（今天这一族的收口总表）、=> 而 §121.13（处置方向那四类）、=> 而 §121.14（运行期那一层怎么把库搜索路径交给进程）、=> 而 §121.15（`LD_PRELOAD` 那一处）、=> 而 §121.17（交叉引用审计）** |
+| **一百二十二** | **=> 而 §122.10.1（同一段在文件里出现不该出现的次数）、=> 而 §122.14（清理只能用显式文件名）、=> 而 §122.18（取数那一格报的不是事实）、=> 而 §122.20（注释行把续行组打断）、=> 而 §122.23（用会静默改内容的手法写一大段）、=> 而 §122.29（起进程那一格把链接器塞进入口）** |
+
+> **=> 而按 C-222：而这一份**不抄**：=> 而而**每次要用都以 `verify-spec.py` 的输出为准**（=> 而它同时打印「节次 - 章 - 节号」那张表与「小节索引」这一份），=> 而而**它与 spec 同源**，=> 而而**它不可能过期**。**
+>
+> **=> 而而本规范把这一点写成正文（=> 而它治的是「正文里抄了一份会过期的表」）：=> 而**正文里可以引用那份表的形状与读法**，=> 而而**不抄它的行号**—— => 而而**行号一律以脚本的现算输出为准**。**
+>
+> **=> 而按 C-203：而若某一条判据的位置栏要用行号，=> 而而那一栏**带基线**（=> 而而基线变了标「行号待重核」），=> 而而**不由正文那一份抄表**。**
+
+
+
+#### 而「小节插到了同一章里的相邻小节」而「章与节号」那条检查查不出来（=> 而 2026-10-25 补正）
+
+**=> 而这一族治的是「校验器有一条查不出的形态」（=> 而它与 C-191 那一族**同族但更具体**）：**
+
+| 那一处 | 而它是什么 |
+|---|---|
+| **=> 而现象** | **=> 而 04 今天把「python 与 sqlite」那一节插进去时，=> 而它**插到了 §122.23 那一节里**（=> 而 §122.29 是最后一节，=> 而而「插在它之前」就落到了**前一节**）** |
+| **=> 而为什么校验器没报** | **=> 而「节号与章不对应」那条检查**查不出来** —— => 而因为**两者同章**（=> 而 §122.23 与 §122.29 **都在一百二十二那一章里**）** |
+| **=> 而它怎么发现的** | **=> 而**不是**校验器报的，=> 而而是 04 **自己核小节归属**时发现的** |
+
+**=> 而本规范把这一族的判别形式写成正文（=> 而它治的是「检查清单少了一条」）：**
+
+> **=> 而那道检查要加的是：=> 而**每一节的内容里出现的节号，与它自己所在那一节号要一致**。**
+>
+> **=> 而具体说：=> 而把 spec 每一节的**正文**（=> 而**不含**标题那一行、=> 而而**不含**表格里引用别的小节号的地方）**扫一遍**，=> 而而**凡出现「§XXX.YY」而 XXX.YY **不等于**它自己那一节号**的地方 => 而那要么是**引用**（=> 而合法）、=> 而要么是**内容插错了节**（=> 而**要报**）。**
+>
+> **=> 而而这一条**要一条判别形式**才可跑**：=> 而「引用」与「插错」两者的分别**是那一段自己讲的是哪一节** —— => 而**可跑的判法是**：=> 而**按小节逐个核归属**（=> 而即把 spec 按 `### ` 切成段，=> 而而看每一段的**第一个标题**与**它所在那一章**），=> 而而**不靠内容里的节号**（=> 而而内容里的节号**本身合法**，=> 而而那是**引用**）。**
+>
+> **=> 而而这一条**按 C-135 与 C-191 是**两问**：=> 而 C-191 问「**校验器查哪几样**」，=> 而而这一条问「**这一批操作（插入）波及了哪几样**」—— => 而而**两者的解法不同**：=> 而 C-191 要**加检查**，=> 而而这一条要**加核法**。**
+>
+> **=> 而而按 C-191：而「节号与章不对应」那条检查**与这一条是**互补的**：=> 而那一条查「**节号与章**对不对」，=> 而而这一条查「**这一节的内容在不在这一节里**」—— => 而而**两者都过**才说明位置对。**
+
+**=> 而本规范把「今天 04 自己又栽了一次」写成正文（=> 而按 C-115 改前那一版留档不删）：**
+
+> **=> 而改前那一版：=> 而 04 的判断是「按标题插是按内容定位，=> 而而它比 `@LINE` 强」。**
+>
+> **=> 而改后（=> 而 04 今天自己又栽了一次）：=> 而「按标题插」**只保证插到那个标题那一行的前面**，=> 而而**它不保证那个标题前面就是目标那一节的末尾** —— => 而而 §122.29 是**最后一节**，=> 而而「插在它之前」就落到了**前一节**。**
+>
+> **=> 而所以「按标题插」也要配一条**：=> 而**插完必须核小节归属**（=> 而按小节逐个核，=> 而而不靠内容里的节号）。**
+>
+> **=> 而而按 C-113：而「这一轮没出事」**不是**「改不到」的证据** —— => 而而这一条今天第二次**由自己发现**而**不是由校验器发现**。**
+
+### 122.29 而「起进程那一格把链接器塞进入口」这一族：而它与第四格那一格形态不同、成因不同、后果不同（2026-10-24）
+
+#### 而 05 那一次对原生那一支理由的更正（2026-10-24 补正）
+
+**=> 而 05 更正了它自己上一稿给原生那一支的理由（=> 而按 C-115 改前那一句**并列留档不删**）：**
+
+> **=> 而改前那一版（=> 而 05 上一稿）：=> 而「它走 LD_PRELOAD 注入的 execve，内核已按 PT_INTERP 套过了」。**
+>
+> **=> 而改后（=> 而 05 本机复核那句话错了）：=> 而 `container/native/d1/exec-path.c:438` 逐字是 `real_execve(LOBOS_SYSTEM_LINKER, na, envp)`，=> 而而 `na` 是 `:433` 到 `:435` 的 `[linker64, path, args…]`，=> 而所以原生那一支 **execve 的是 linker64 自己**而不是那个入口。=> 而于是内核按 linker64 自己的 `PT_INTERP` 判（=> 而它不带），=> 而而**不会再套一层**。**
+
+**=> 而本规范把原生那一支今天的行为写成正文（照录 05，=> 而它治的是「那道门在今天那些读数上行为对不对」）：**
+
+| 那一趟 | 而 path 是什么 | 而那道门（`:429` 到 `:430`） | 而它 execve 的是什么 | 而层数 | 而结果 |
+|---|---|---|---|---|---|
+| **path 是那个入口** | **=> 而带 `PT_INTERP`** | **=> 而 `et == 3` 真而 `strcmp != 0` 真 => 而门成立 => 而套一层** | **=> 而 `linker64` 带 `[linker64, path, …]`** | **=> 而一层** | **=> 而跑得通** |
+| **path 是 linker64 自己** | **=> 而不带 `PT_INTERP`** | **=> 而 `strcmp == 0` => 而门不成立 => 而不套** | **=> 而 `linker64` 带 argv** | **=> 而一层** | **=> 而跑得通** |
+
+> **=> 而这与 07 核到的 T1 与 T3 两条读数（=> 而都跑得通）**逐项一致** => 而所以原生那一支今天**没有套第二层**，=> 而而它那道门**在今天那些读数上行为正确**。**
+
+**=> 而本规范把「宿主侧与原生侧不是同一件事」写成正文（=> 而它是 `hasInterp` 那个判据的根据）：**
+
+| 那一侧 | 而它 execve 的是什么 | 而最终命令行里 linker64 出现几次 | 而它对带 `PT_INTERP` 的入口该怎么套 |
+|---|---|---|---|
+| **原生那一支** | **=> 而 linker64 自己**（=> 而而 `na = [linker64, path, args…]`）** | **=> 而 1 次** | **=> 而它套一层是对的** |
+| **宿主侧那两处** | **=> 而那个入口本身** | **=> 而**再显式套一层就是 2 次**（=> 而那正是 07 核到的形态）** | **=> 而它是**多余的**（=> 而内核替我们套了）** |
+
+> **=> 而所以宿主侧那一层对带 `PT_INTERP` 的入口是**多余的**（=> 而内核 exec 一个带 `PT_INTERP` 的文件时**自己会套一层**），=> 而而对**不带** `PT_INTERP` 的 `ET_DYN`（=> 而共享库那一类）是**必需的**（=> 而直接 exec 会 `ENOEXEC`）。**
+>
+> **=> 而这就是 `hasInterp` 那个判据的根据。**
+
+**=> 而按 C-103：而这一族有两边（=> 而照录 05）：**
+
+| 那一读法 | 而它是什么 |
+|---|---|
+| **读法一** | **=> 而那一件是 `ET_DYN` 则该套** |
+| **读法二** | **=> 而内核会不会替我们套则不该套** |
+
+> **=> 而这两边在今天的代码里是**同一行**，=> 而而那一行**只表达了读法一**。**
+>
+> **=> 而按 C-103：而那不是「改哪一边」，=> 而而是「它为什么有两边」—— => 而而这一族的答案是：=> 而**两边的判据不同是因为两边 execve 的东西不同**（=> 而原生侧 execve 的是 linker64 自己，=> 而宿主侧 execve 的是那个入口本身），=> 而而**它们对「带 `PT_INTERP` 的入口」的处理**因此**必然不同**。**
+
+**=> 而这一族治的是「那一族崩」与「主对象找依赖那一族」不得混成一族 —— 而这两者是两个问句（按 C-135），而它们各自要读的读数不同。**
+
+#### 一、它与第四格那一格的逐项对照（读数）
+
+| | 第四格那一格 | **这一族** |
+|---|---|---|
+| signal / code | 11 / **2 (SEGV_ACCERR)** | 11 / **1 (SEGV_MAPERR)** |
+| fault addr | `0x00000071aacc3000`（那个地址） | **`0x0000000000000000`** |
+| Cause | `trying to execute non-executable memory.` | **`null pointer dereference`** |
+| 帧数 | **2 帧** | **10 帧** |
+| #00 | `pc 0x4000` libssl.so | `libc.so (getauxval+28)` |
+| #01 | `pc 0x51008` linker64 `__dl__start+8` | libc `__libc_init_vdso` |
+| Cmdline | `/system/bin/linker64 <入口>` | **`/system/bin/linker64 /system/bin/linker64 <入口>`** |
+| 后果 | 那一次跑失败 | **监督环因「窗口内重启 11 次（上限 5）」进 QUARANTINED** |
+
+**=> 而这三行的读数（出处在最后那一节）：而 07 那份稿的对照表、它那两段复现、它那三层逐层拆开、它那一列三环境项矩阵、它那两处成因逐处给出的文件与行号与原文。**
+
+#### 二、判别式：怎么机械地判「那一条命令被套了几层 linker64」
+
+> **那一条命令的 argv 里，`/system/bin/linker64` 出现几次？**
+
+**=> 而那个次数就是层数：而 0 次 = 0 层，而 1 次 = 1 层，而 2 次 = 2 层。**
+
+**=> 而「层数」这个变量要三条读数并排（而它们合起来才答它）：**
+
+| 项 | 读数 |
+|---|---|
+| **那三件入口（bash / jq / rg）自身** | 各自 `DYN (Position-Independent Executable file)`，而**各带 1 行 PT_INTERP = `/system/bin/linker64`**（三件逐字相同） |
+| **`/system/bin/linker64` 自己** | `DYN (Shared object file)`，`e_entry 0x51000`，**INTERP 行数 0** |
+| **宿主侧显式套的那一层** | 而 `ExecEntry.kt` 第 8 行那个常量 `SYSTEM_LINKER = "/system/bin/linker64"`，而第 59 行 `is Shape.Elf -> listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)` |
+
+**=> 而 argv 三形态对照（层数这个变量单独变，而别的都不变 —— 同一份 bash、同一套 env、同一 cwd、同一 PATH）：**
+
+| 那一趟 | argv 形态 | exit | stdout |
+|---|---|---|---|
+| **X1** | 无 linker64（内核按 PT_INTERP 套一层） | **0** | `X1-OK` |
+| **X2** | `argv[0]=linker64, argv[1]=入口`（宿主侧那个形态） | **0** | `X2-OK` |
+| **X3** | `argv[0]=linker64, argv[1]=linker64, argv[2]=入口`（两层都套） | **139** | （空）—— `Segmentation fault` |
+
+**=> 而再把「path 是谁」这一项单独变的两条：**
+
+| 那一趟 | 形态 | exit | stdout |
+|---|---|---|---|
+| **T1** | `path=linker64`，而 `argv[0]=入口` | **0** | `T1-OK` |
+| **T3** | `path=linker64`，`argv[0]=linker64`，`argv[1]=入口` | **0** | `T3-OK` |
+| **X3** | `path=linker64`，`argv[0]=linker64`，`argv[1]=linker64`，`argv[2]=入口` | **139** | （空） |
+
+**=> 而 X2 与 T3 的 argv **都是** `[linker64, 入口]`，而 T1 也是同一个 argv —— 而三者都跑通；=> 而只有 argv 里出现**两个** linker64 时才崩。**
+
+**=> 而这就是「层数」是一个**独立变量**那一条 —— 而它正是本节第四节 PC-L4 那一问要的东西：而若 X1 与 X2 同样崩，那就没有「层数」这个变量。**
+
+**=> 而按 C-115：而改前那一版把「第二层 linker64」归给「内核按 PT_INTERP 再套」，而改后那一版的对照读数把它改判了 —— 而两条并列在案（改前那一句见本节第九节那一行「改前那一版」那一栏）。**
+
+#### 三、层数那一格的读数形状（每一趟必齐，而缺一即按 C-05 报缺）
+
+| 字段 | 内容 | 怎么取 |
+|---|---|---|
+| **L1** | 那一趟的**触发命令原文**（一字不改，含 `env` 那一串环境项） | 记录在案 |
+| **L2** | 那一趟的 **argv 逐字**（而 tombstone 的 `Cmdline:` 那一行是它的落点） | `adb shell cat /data/tombstones/<file>` |
+| **L3** | **argv 里 `/system/bin/linker64` 出现几次**（计数） | 数 |
+| **L4** | **argv 里那个入口路径的绝对路径** | 抄 |
+| **L5** | **那个入口自己的 PT_INTERP 行数**与 `INTERP` 那一行的逐字 | 设备侧 `readelf -lW` |
+| **L6** | **`/system/bin/linker64` 自己的 PT_INTERP 行数**（今天读数是 0） | 同上 |
+| **L7** | 那一趟的**退出码**原文（139 / 1 / 0）与 **stderr 全文** | `echo $?` + 落盘 |
+| **L8** | 那一趟的**环境三项**：`LD_PRELOAD` 有无、`LD_LIBRARY_PATH` 有无、其余 env 逐字 | 从 L1 抄 |
+
+#### 四、阳性对照与阴性对照两侧
+
+**=> 而阳性对照那四条（能证明「这一趟的层数被数对了」）：**
+
+- **PC-L1**：L2 那一行 **Cmdline** 原文在（=> 而那一趟确实被 tombstone 记下来了）；
+- **PC-L2**：L2 那一行里**入口路径的 basename 与 L4 逐字相同**（=> 而那一趟跑的是我们以为的那个入口）；
+- **PC-L3**：L5 那一格 `INTERP` 行数 **大于等于 1**（=> 而那个入口带 PT_INTERP => 而内核**会**再套一层）；
+- **PC-L4**：**X1 与 X2 两趟各自跑通而 X3 崩**（而那三条的 stdout 分别是 `X1-OK`、`X2-OK` 与空 + `Segmentation fault`）=> **而层数是一个独立变量而不是全部都崩**（这一条是这一族的阳性对照：**若三趟都一样崩，那就没有「层数」这个变量**）。
+- **PC-L5（补正后新增）**：**T1 与 T3 两趟也跑通**（而 stdout 是 `T1-OK` 与 `T3-OK`）=> **而「path 是谁」这一项单独变不改变结果**（而 T1 的 path 是 linker64 而 argv 里只有一个 linker64，=> 而它照样跑通）=> **而崩的条件是 argv 里出现两个 linker64，不是 path 那一项**。
+
+**=> 而阴性对照那四条（能支持「这一趟不是这一族」）：**
+
+- **N-L1**：L3 = 0 或 1（=> 而那一趟没有被套两层）=> **而它不是这一族**；
+- **N-L2**：L5 那一格 `INTERP` 行数 = 0（=> 而那个入口不带 PT_INTERP => **内核不会再套一层** => 而那一趟不可能是 argv 里两个 linker64）；
+- **N-L3**：L7 那一趟的 stderr 是 **`error: linker cannot load itself`**（而它 exit 不等于 139）=> **那一趟是干净的诊断，不是崩** => **而它与这一族的区别不在「argv 里有没有两个 linker64」，而在「那一句诊断有没有跑出来」** => **而带上 LD_PRELOAD 时它没能跑出那一句诊断，而直接崩在 libc 的 preinit 里**；
+- **N-L4**：L7 那一趟 exit = 0（=> 而那一趟跑通了）=> 而它不是这一族。
+
+#### 五、崩要三件同时在场（读数）
+
+| 那一趟 | LD_PRELOAD | LD_LIBRARY_PATH | 读数 |
+|---|---|---|---|
+| **M1** | 有 | 有 | **Segmentation fault** |
+| **M2** | 无 | 有 | `error: linker cannot load itself` |
+| **M3** | 无 | 无 | `error: linker cannot load itself` |
+
+**=> 而这一族的判别式是三问（而每一问都可机械判）：**
+
+| # | 问 | 答什么 |
+|---|---|---|
+| **Q-a** | **那一趟的 argv 里 `/system/bin/linker64` 出现几次？** | **层数**（0 / 1 / 2） |
+| **Q-b** | **那一趟的 stderr 是「干净的诊断」还是「崩」？** | **失败形态**（`error: linker cannot load itself` / SIGSEGV / 跑通） |
+| **Q-c** | **`LD_PRELOAD` 与 `LD_LIBRARY_PATH` 在不在？** | **那三件同时在不在场** |
+
+**=> 而 M2 与 M3 那一列是这一族最重要的对照：而双层但不带 LD_PRELOAD 时，linker64 给的是一句**干净的诊断**，而它 exit 不等于 139 => 而**带 LD_PRELOAD 时它没能跑出那一句诊断，而是直接崩在 libc 的 preinit 里**。**
+
+**=> 而这一族崩点的读数（那 10 帧那一份）：`#00 libc.so (getauxval+28)`、`#01 libc __libc_init_vdso`、fault addr `0x0`、Cause `null pointer dereference` => 而它与第四格那一格的 `#00`（`pc 0x4000` 落在那个 .so 自身）是两个不同的落点。**
+
+#### 六、它与「主对象找依赖」那一族是两个问句
+
+| | 这一族（套了几层 linker64） | **「主对象找依赖」那一族**（格一 M-主） |
+|---|---|---|
+| **问什么** | **那一条命令被套了几层 linker64**（而它问的是**起进程那一格怎么构造 argv**） | **主对象按 soname 找它 NEEDED 的那些库时，用的是谁的那一格 RUNPATH**（而它问的是**查找路径的次序**） |
+| **它的对象** | **argv 的形状**（几层） | **动态段的 RUNPATH** |
+| **它今天的状态** | **已核**（成因那两处逐处给了文件与行号；层 1 与层 2 跑通而层 3 崩；M1/M2/M3 那一列） | **已过**（格一用主对象自己那一格，而主对象是程序、它那一格通常是空的） |
+| **它落在哪一节** | **本节** | **§120.15 那两格** |
+
+**=> 而它们的失败形态不同（而处置也分属两侧）：这一族是 `error: linker cannot load itself` 或 SIGSEGV 在 libc 的 preinit（`getauxval+28`、`__libc_init_vdso`）；而格一那一族是 `cannot locate symbol` 或命中系统那两份。**
+
+**=> 而按 C-115 两条读数不互相顶替：这一族的层数读数**不能**证明格一那一格成立或不成立；而格一那一格的 RUNPATH 读数**也不能**解释这一族的层数。**
+
+#### 七、`LOBOS_SYSTEM_LINKER` 零读者（今天被否掉的一个猜）
+
+**=> 而今天被否掉的是「那一项环境变量是成因」这个猜：而 `grep -rn 'LOBOS_SYSTEM_LINKER' container/app/src/main/java/ --include='*.kt'` 只有 RuntimeEnvironment.kt 第 65 行那一处被写的（`put("LOBOS_SYSTEM_LINKER", "/system/bin/linker64")`），而**零处读者**。**
+
+**=> 而真正往入口那一格写 linker64 的是 ExecEntry.kt 第 59 行那一个编译期常量；而而 `runtime.json` 里那一项确实是 `/system/bin/linker64`，而那是**它被写进 env 之后的样子**，而它不是「谁往入口那一格写了 linker64」的来源。**
+
+**=> 而按 C-115：而这一条与「那一项确实是 `/system/bin/linker64`」那一条要并列，而后者不构成因果。**
+
+#### 八、处置方向与归属
+
+**=> 而这一族归 05 处置（它是**起进程那一格**该不该把链接器塞进入口）；而按 §121.13 那一节那四类，它属 **D-改动** —— 而它不属 D-读数（而那一格的读数今天已齐），而它不属 D-代码（而它不需要另一版的源码）。****=> 而「成因已定位」那一句要改成「**成因三格里只定位了一格**」：而甲（宿主侧 `ExecEntry.argv` 被调用第二次而入参已经是 linker64）**未核**，而乙（原生侧 `exec-path.c` 那一支）**未核**，而丙（内核按 PT_INTERP）**部分已核** —— 而它能解释 argv 里**第一个** linker64，而它**解释不了第二个**。****=> 而那一格按 C-05 记【未核】，不猜填。**
+
+**=> 而成因那一格拆成三格（逐格的读数状态）：**
+
+| 候选 | 它是什么 | 读数状态 |
+|---|---|---|
+| **甲** | **宿主侧 `ExecEntry.argv` 被调用第二次**（而第二次的入参已经是 linker64） | **已核** —— 而 05 今天核到那两次调用的落点（=> 而 `GuestAdapter.kt:34` 那一次 `i.programEntry` 是那个入口本身，=> 而而 `ProcessSupervisor.kt:33` 那一次 `command[0]` 已经是 `/system/bin/linker64`）** |
+| **乙** | **原生侧 `exec-path.c` 那一支** | **已核为「不适用」** —— 而 `exec-path.c:438` 逐字是 `real_execve(LOBOS_SYSTEM_LINKER, na, envp)`，=> 而而 execve 的是 linker64，=> 而而它自己不带 `PT_INTERP`，=> 而而所以内核不会再套一层 |
+| **丙** | **内核按 PT_INTERP** | **部分已核** —— 而它能解释 argv 里**第一个** linker64，而它**解释不了第二个**（=> 而第二个 linker64 **正是（甲）那两次调用造成的**，=> 而而第二次调用的入参**就是第一次的产物**）（而这一条由 X2 与 T3 那两条读数给出：而它们的 argv **都是** `[linker64, 入口]`，而两者都跑通） |
+
+**=> 而按 C-115：而改前那一版把「第二层 linker64」归给「内核按 PT_INTERP 再套」，而改后那一版的对照读数把它改判了 —— 而两条并列在案，而改前那一句不删。**
+
+**=> 而那条候选处的原文（供 05 核）：**
+
+| 那一处 | 它是什么 |
+|---|---|
+| **宿主侧那道门之后的样子** | 而 `ExecEntry.kt` 第 70 到 72 行：`is Shape.Elf ->` / `if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)` / `else listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)` |
+| **宿主侧调用点** | 而 `ProcessSupervisor.kt` 第 33 行 `val real = ExecEntry.argv(java.io.File(command[0]), command)`；而第 34 行 `val pb = ProcessBuilder(if (real != null) real else command)` |
+| **原生侧那道门（判的是 path）** | 而 `exec-path.c` 第 429 到 431 行：`if (read_etype(path, &et) && et == 3 && !(path && strcmp(path, LOBOS_SYSTEM_LINKER) == 0)) {` |
+| **原生侧它加的那一层** | 而 `exec-path.c` 第 432 到 439 行：`na[0] = (char *)LOBOS_SYSTEM_LINKER; na[1] = (char *)path; ... real_execve(LOBOS_SYSTEM_LINKER, na, envp);` |
+| **原生侧那一句注释** | 而 `exec-path.c` 第 414 到 428 行，而它写着「缺陷（C-102）**重复替换：已替换过的 argv 又被替换一次**」与「门条件 = etype==ET_DYN **且** path 不是 SYSTEM_LINKER 本身」 |
+
+**=> 而一条与那几趟读数相关的事实：而原生侧那道门判的是 **path**；而宿主侧 `ProcessBuilder(if (real != null) real else command)` 的可执行文件 = `real[0]` = **linker64** => 而进到 `execve` 时 path 就是 linker64 => **原生那道门按 path 判就会挡住**。=> 而 T1 与 T3 那两条读数（path=linker64 而 argv 里只有一个 linker64）**都跑得通**，而那与那道门的行为一致。**
+
+**=> 而 05 那道门（commit 6e2ceb0）在宿主侧的位置是 `ExecEntry.kt` 第 70 到 72 行；而它对应的机器可判判别式就是本节第二节那一问（argv 里 /system/bin/linker64 出现几次 = 层数）；=> 而 07 能对它说的只有三点：**
+
+1. **门的判据形态与原生侧那道门形态一致**（而都是「已经是 SYSTEM_LINKER 就不再加」）—— 而这是一条**仓内读数**；
+2. **门要防的那个形态，07 有独立读数**：而 X3 那一趟（argv 里两个 linker64）=> exit=139；而 X1 与 X2 两趟 => exit=0；
+3. **门加进 APK 之后、设备上那一趟的 argv 里 linker64 出现几次这一格未核** —— 而设备上现在装的是 build-apk 40092969114（head 137d4ad），而 6e2ceb0 是它之后的一个 commit => 而那一格【未核】，不猜填。
+
+#### 九、这一节的读数出处
+
+| 项 | 位置 |
+|---|---|
+| **这一族的设备侧与复现读数** | 07 那份稿（`07/runs/NESTED-LINKER64-139.md`）：第 11 到 24 行（与第四格那一格的逐项对照表）、第 97 到 141 行（复现那两段、三层逐层拆开、三环境项矩阵）、第 143 到 260 行（成因那两处逐处给出的文件与行号与原文、`LOBOS_SYSTEM_LINKER` 零读者、linker64 自己是什么形态） |
+| **argv 三形态与 path 那两条（补正）** | 07 那份补正稿（`07/runs/NESTED-LINKER64-CAUSE-ADDENDUM.md`）：第 12 到 24 行（X1 与 X2 与 X3 三形态对照）、第 26 到 40 行（T1 与 T3 两条 path 对照与「X2 与 T3 的 argv 都是 [linker64, 入口]」）、第 41 到 61 行（成因那一格拆成甲乙丙三格）、第 63 到 141 行（候选处逐处给出的文件与行号与原文、05 那道门那三条） |
+| **改前那一版（并列在案，不删）** | 而 07 上一稿 `07/runs/NESTED-LINKER64-139.md` 第 4 节把第二层 linker64 归给「内核按 PT_INTERP 再套」；=> 而本节按 C-115 把改前改后**两条并列** |
+| **宿主侧显式套的那一层** | 而 `container/app/src/main/java/lobos/kernel/proc/ExecEntry.kt` 第 8 行（常量）、第 40 行（判 ET_DYN）、第 59 行（加前缀那一行）；而 05 那道门之后的样子是第 70 到 72 行 |
+| **宿主侧调用点** | 而 `container/app/src/main/java/lobos/kernel/proc/ProcessSupervisor.kt` 第 33 行与第 34 行；另一条调用点是 `container/app/src/main/java/lobos/services/supervise/GuestAdapter.kt` 第 34 行 |
+| **原生侧** | 而 `container/native/d1/exec-path.c` 第 139 行（常量）、第 414 到 428 行（那句注释）、第 429 到 431 行（那道门，判 path）、第 432 到 439 行（它加的那一层） |
+| **那一项环境变量** | 而 `container/app/src/main/java/lobos/services/reg/RuntimeEnvironment.kt` 第 65 行 |
+| **判别形式那一族** | 而 01 的 S113（`01-linux-architect/S113-NESTED-LINKER64-DEPTH-FORM.md`） |
+
+#### 十、本节边界
+
+| # | 边界 |
+| 1 | 而本节只落这一族的判别形式与读数，而它不裁定「哪一处是缺陷名」与「该怎么改」（而那归 05） |
+| 2 | 而本节与 §120.13 那一格是两格（按 C-135），而与 §122.23 那一族也是两族 |
+| 3 | 而「层数」那一格要那一趟的 argv 逐字，而它取自 tombstone 的 `Cmdline:` 那一行 —— 而若那一趟没有 tombstone（而它 exit 不等于 139），则那一格按 N-L3 与 N-L4 那一支判 |
+| 4 | 而「层数」那个计数**数的是 argv 而不是 Cmdline** —— 而而 argv 里出现两个 linker64 才崩，而 path 是谁不改变结果 |
+| 5 | 而「成因已定位」那一句只能写「成因三格里只定位了一格」—— 而甲与乙**未核**，而丙**部分已核**（而它解释得了第一个而解释不了第二个） |
+
+---
+
+
+#### 而 05 那一次判据更换（2026-10-24 补正）
+
+**=> 而 05 落了 `0e447ef`，=> 而把那一族的判据从「path 是不是 linker64」换成「**那份入口字节带不带 `PT_INTERP`**」，=> 而而 07 今天的对照读数**否掉了前一个判据**（=> 而按 C-115 改前改后并列，=> 而而改前那一句**不删**）：**
+
+> **=> 而改前那一版（=> 而 05 前一稿那道门）：=> 而判据是「`entry.absolutePath == SYSTEM_LINKER` 则不再套」。**
+>
+> **=> 而改后（=> 而 05 那一版）：=> 而判据是「**那份入口字节带不带 `PT_INTERP`**」，=> 而而那三支是：=> 而一、`entry.absolutePath == SYSTEM_LINKER` 则不再套（=> 而已经替过的那一次）；=> 而二、**`hasInterp(entry)` 则不套**（=> 而内核会按 `PT_INTERP` 套一层）；=> 而三、其余（=> 而 `ET_DYN` 而**没有** `PT_INTERP`）才显式套 `SYSTEM_LINKER`。**
+
+**=> 而那六件的 program header 读数（照录 05，=> 而它本机逐字节核的 `PT_INTERP(3)` 那一行）：**
+
+| 那一件 | 而它的 e_type | 而它的 PT_INTERP |
+|---|---|---|
+| **bash** | **=> 而 `ET_DYN`** | **=> 而 `/system/bin/linker64`** |
+| **jq** | **=> 而 `ET_DYN`** | **=> 而 `/system/bin/linker64`** |
+| **rg（ripgrep）** | **=> 而 `ET_DYN`** | **=> 而 `/system/bin/linker64`** |
+| **openssl** | **=> 而 `ET_DYN`** | **=> 而 `/system/bin/linker64`** |
+| **libcurl.so** | **=> 而 `ET_DYN`** | **=> 而（无）** |
+| **linker64** | **=> 而 `ET_DYN`** | **=> 而（无）** |
+
+**=> 而本规范把「hasInterp 那一处」写成正文（=> 而照录 05 —— 而它治的是「判据读了什么」）：**
+
+> **=> 而 `hasInterp` 读那份字节的 **program header 表**、=> 而找 `PT_INTERP(3)` 那一行，=> 而而**不读那一行指向的字符串** —— => 而**判据只问「有没有那一行」**。**
+>
+> **=> 而而那一支**不能删**（=> 而 `ET_DYN` 要经 `linker64` 驱动，=> 而唯一真相源是 `ExecEntry.argv`，=> 而而 native 那一份**已删**，=> 而按 C-87）。**
+
+**=> 而本机验的那三种形态（照录 05，=> 而它治的是「同一个 argv 形态对应哪一格」）：**
+
+| 那一件 | 而它的 PT_INTERP | 而它的 argv 形态 | 而 argv 里 linker64 出现几次 |
+|---|---|---|---|
+| **bash / jq / rg / openssl** | **=> 而带** | **=> 而 `[入口, args]`**（=> 而一层，=> 而内核套） | **=> 而 0 次**（=> 而改前是 1 次）** |
+| **libcurl.so** | **=> 而不带** | **=> 而 `[linker64, 入口, args]`**（=> 而显式套） | **=> 而 1 次** |
+| **linker64 自己** | **=> 而不带** | **=> 而 `[linker64, linker64, args]`** | **=> 而 2 次** |
+
+> **=> 而那三个程序的 argv 里 linker64 出现 **0 次**（=> 而改前是 1 次），=> 而而 07 核到的崩溃形态是出现 **2 次**。**
+
+**=> 而 AOSP 侧那两句是这一族最硬的一处（照录 05，=> 而照录原文）：**
+
+| 那一处 | 而它的原文 | 而它解释了哪一句 |
+|---|---|---|
+| **`linker/linker_main.cpp:358`** | **=> 而 `// This case can happen if the linker attempts to execute itself` 与 `// (e.g. "linker64 /system/bin/linker64")`** | **=> 而它说明**第二层那个 linker64 是什么** |
+| **`linker/linker_main.cpp:797`** | **=> 而那个条件（`AT_ENTRY == &_start`）成立时 `exe_to_load = argv[1]`，=> 而那一份 `argv[1]` 就是 linker64 自己** | **=> 而它说明**linker 把自己当程序加载**（=> 而这一句解释了 07 核到的 **#00 在 `libc.so` `getauxval+28`** 那一帧）** |
+
+**=> 而本规范把「原生那一支的判据不同」写成正文（=> 而它治的是「两边那道门问的不是同一问」）：**
+
+| 那一处 | 而它问什么 | 而它为什么那样问 |
+|---|---|---|
+| **宿主侧 `ExecEntry.kt` 那一支（=> 而 05 改后）** | **=> 而「那份入口字节**带不带 `PT_INTERP`**」** | **=> 而它要决定「LOB-OS 侧**要不要**再套一层」** |
+| **原生侧 `container/native/d1/exec-path.c:429`** | **=> 而「`etype == ET_DYN` 而**没有** `PT_INTERP`」那一问** | **=> 而 05 给的理由是：=> 而它走的是 **LD_PRELOAD 注入的 execve**，=> 而而那条路上**内核已经按 `PT_INTERP` 套过了**（=> 而 execve 的是那个入口，=> 而 argv 已是 `[interp, path…]`）** |
+
+> **=> 而那两边的判据**不同**，=> 而而**问的也不是同一问**（=> 而宿主侧问「要不要套」，=> 而原生侧问「会不会被拦」），=> 而按 C-135 那是**两个问句**。**
+>
+> **=> 而它与 07 核到的那一条（=> 而原生那道门在 `exec-path.c:429` 到 `:431` 判的是 **path**，=> 而 T1 与 T3 两条读数与那道门**行为一致**）**并列**：=> 而 07 那一条说的是**那道门在 path 上拦不拦**（=> 而 T1 与 T3 都跑得通，=> 而说明它**不拦**那两个形态），=> 而而 05 这一条说的是**那道门为什么那样问**（=> 而它走的是内核已套过的那条路）。**
+>
+> **=> 而而这两条**合起来**才是完整的：=> 而 07 那一条给出**行为**，=> 而而 05 这一条给出**理由** —— => 而按 C-115 两条**并列在案**，=> 而而不互相顶替。**
+
+
+#### 而 05 今天把（甲）那一格核到了（2026-10-24 补正）
+
+**=> 而成因那一格今天从「三格里只定位了一格」改成「**甲与乙已核**而**丙部分已核**」（=> 而按 C-115 改前那一句并列留档不删）：**
+
+> **=> 而改前那一版：=> 而「成因三格里只定位了一格」—— => 而甲未核、=> 而乙未核、=> 而丙部分已核。**
+>
+> **=> 而改后：=> 而**甲已核**、=> 而**乙已核为「不适用」**、=> 而**丙部分已核**。**
+
+**=> 而（甲）那一格的读数（照录 05，=> 而它治的是「argv 被调用两次」这一条）：**
+
+| 那一处 | 而它是什么 |
+|---|---|
+| **第一次调用** | **=> 而 `GuestAdapter.kt:34` 的 `val entryArgv = requireNotNull(lobos.kernel.proc.ExecEntry.argv(i.programEntry, i.args))`；=> 而那一次 `i.programEntry` 是**那个入口本身**（=> 而 `InstanceHost.kt:384` 是 `val kernelEntry = entry!!`，=> 而而 `:393` 是 `programEntry = kernelEntry`）** |
+| **第二次调用** | **=> 而 `ProcessSupervisor.kt:33` 的 `val real = ExecEntry.argv(java.io.File(command[0]), command)`；=> 而而 `command` 就是 `plan.command`（=> 而 `InstanceHost.kt:407`），=> 而而 `plan.command` 就是**第一次的 `entryArgv`**（=> 而 `GuestAdapter.kt:38`）** |
+| **=> 而所以** | **=> 而 `command[0]` 在那一次**已经是** `/system/bin/linker64`—— => 而而这正是**第二个 linker64 的来源**。** |
+
+**=> 而（乙）那一格今天不适用（=> 而照录 05，=> 而而它给的是依据而不是结论）：**
+
+> **=> 而 `exec-path.c:438` 逐字是 `real_execve(LOBOS_SYSTEM_LINKER, na, envp)`，=> 而而 execve 的是 **linker64**，=> 而而 linker64 自己**不带 `PT_INTERP`**（=> 而本机逐字节核到那一份 `PT_INTERP` 行数 0），=> 而所以内核 exec linker64 时**不会再套一层**，=> 而而那一支的 `argv[0]` 是 **path** 而不是 interp。**
+>
+> **=> 而所以那一格今天写「**已核为不适用**」而不是「不适用」** —— => 而按 C-194 那一族，=> 而「不适用」是**结论**，=> 而而「已核为不适用」**带上了那一条读数**（=> 而它要能答「我凭什么说它不适用」）。**
+
+**=> 而（丙）那一格为什么只解释得了一个 linker64（=> 而照录 05）：**
+
+> **=> 而第二个 linker64 **正是（甲）那两次调用造成的**，=> 而而第二次调用的入参**就是第一次的产物**。**
+>
+> **=> 而而这一条与（甲）那一格**是同一件事的两面**：=> 而而（甲）解释了**第二个 linker64 从哪来**，=> 而而（丙）解释了**第一个 linker64 从哪来**。**
+
+**=> 而三版的关系成表（=> 而照录 05，=> 而判据是 argv 里 linker64 出现几次）：**
+
+| 那一版 | 而宿主侧 execve 的是什么 | 而最终 linker64 出现几次 | 而对应哪一条读数 |
+|---|---|---|---|
+| **改前原始那一版** | **=> 而 linker64**（=> 而而内核不会再套）** | **=> 而 2 次**（=> 而 GuestAdapter 得出 linker64 入口而 spawn 再替）** | **=> 而 X3 崩 139** |
+| **`6e2ceb0` 那一版** | **=> 而 linker64**（=> 而而内核不会再套）** | **=> 而 1 次**（=> 而门按 path 判，=> 而两处都得出 linker64 入口）** | **=> 而 X2 跑通** |
+| **`0e447ef` 那一版** | **=> 而那个入口本身**（=> 而而内核会套一层）** | **=> 而 1 次**（=> 而门按「入口带不带 `PT_INTERP`」判，=> 而两处都得出入口，=> 而而内核 exec 那个入口时按它的 `PT_INTERP` 套一层）** | **=> 而 X2 跑通** |
+
+> **=> 而这三版在**最终 1 次**上一样**（=> 而改前原始那一版与 `6e2ceb0` 是宿主侧 execve linker64 而内核不再套，=> 而 `0e447ef` 是宿主侧 execve 那个入口而内核会套），=> 而而 07 核到的那一趟（=> 而 **2 次、139**）**对应的是改前原始那一版**。**
+>
+> **=> 而这与 07 核到的 X1、X2、X3 **逐字对上**。**
+
+**=> 而那两套表述的并列（=> 而照录 01 与 05，=> 而按 C-115 改前那一版留档不删）：**
+
+| 那一套 | 而它说什么 | 而它今天的状态 |
+|---|---|---|
+| **改前那一版（=> 而 07 的 `NESTED-LINKER64-139.md` 第 3.3 节）** | **=> 而「层 1 内核按 PT_INTERP 套一层」与「层 2 `/system/bin/linker64` 入口 => LAYER2-OK 正常」** | **=> 而「层 2」那一行的**解释已被改判**—— => 而那是**已被改判的那一句**，=> 而而**留档不删** |
+| **改后那一版** | **=> 而 X2 那一趟 exit 0** | **=> 而这一套是准的** |
+
+> **=> 而两份在**数据上不冲突**，=> 而而冲突在「层 2」那一行的**解释**上。**
+>
+> **=> 而 05 核到 **X2 那一侧对**，=> 而因为宿主侧那一趟 execve 的是 linker64 而不是那个入口，=> 而而内核 exec linker64 时按它自己的 `PT_INTERP` 判而它不带，=> 而而所以**不会再套**。**
+>
+> **=> 而按 C-115：而「层 1 / 层 2 / 层 3」那一套与「X1 / X2 / X3」那一套**并列在案不删**，=> 而而**层数是独立变量**那一条由后者给出，=> 而而前者给不出。**
+
+**=> 而「argv 里 linker64 出现几次 = 层数」那一条判别式的归属（=> 而照录 05，=> 而而它治的是「抄来的那一段谁负责」）：**
+
+> **=> 而 05 说那一条他**没有独立核**，=> 而它是 01 **从 07 那份抄的**。**
+>
+> **=> 而按 C-83：而抄来的那一段**不是核过的那一段**—— => 而而今天它**由 07 那份稿负责**（=> 而 07 是唯一上设备的那一侧），=> 而而 01 那一份按 C-83 写「照录 07 那份补正稿」而不写「我核过了」。**
+>
+> **=> 而本规范今天把它记成：**那条判别式今天**归 07 负责核**，=> 而而 01 与 05 两侧**只引用它**。**
+
+
+#### 而 07 今天核出的一个回归（2026-10-24 补正）
+
+**=> 而 `0e447ef` 那一版装上之后，=> 而那一族从「崩在运行期」变成「**起不来**」（=> 而按 C-115 改前与改后并列，=> 而而改前那一句**不删**）：**
+
+> **=> 而改前那一版：=> 而「始终经由 linker64」=> 而而跑得通。**
+>
+> **=> 而改后那一版：=> 而「按入口带不带 `PT_INTERP` 决定要不要经由 linker64」=> 而而 bash、=> 而 jq、=> 而 ripgrep、=> 而 busybox **四件全部起不来**。**
+
+**=> 而那四件的读数（照录 07，=> 而而它治的是「起不来」与「崩」是两件事）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **那一句** | **=> 而 `IOException: Cannot run program ".../opt/jq/1.8.2/bin/jq" (in directory "..."): error=13, Permission denied`** |
+| **栈** | **=> 而 `java.lang.ProcessBuilder.start(ProcessBuilder.java:1050)` 到 `lobos.kernel.proc.ProcessSupervisor.spawn(ProcessSupervisor.kt:47)`** |
+| **两轮** | **=> 而 21:45:48 与 21:45:56，=> 而而每轮四件都是这一句** |
+| **=> 而而这是** | **=> 而「**起不来**」，=> 而而**早于任何进程运行**（=> 而按 C-194 那一族，=> 而它不是「崩」那一档）** |
+
+**=> 而 07 给的那几条读数（=> 而它治的是「失败的是哪一个域」）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **那四份入口的上下文** | **=> 而全是 `u:object_r:app_data_file:s0:c214,c256,c512,c768`** |
+| **`/system/bin/linker64` 的上下文** | **=> 而 `u:object_r:system_linker_exec:s0`** |
+| **app 进程** | **=> 而 `u:r:untrusted_app`** |
+| **run-as 那一路** | **=> 而 `u:r:runas_app`** |
+| **设备 SELinux** | **=> 而 Enforcing** |
+| **阳性对照** | **=> 而同一份 bash 字节在 `runas_app` 那个域里直接 exec 是成的（DIRECT-OK）**，=> 而所以**失败的是 app 自己那个域** |
+| **logcat** | **=> 而 `avc: denied` **零命中** |
+| **policy 侧** | **=> 而 07 没取到，=> 而那一格按 C-05 **只算部分已核** |
+
+**=> 而 07 另核到 argv 那一格（=> 而而它治的是「X3 那一趟今天给的是哪一句」）：**
+
+| 那一趟 | 而它的 argv | 而 linker64 出现几次 | 而它的结果 |
+|---|---|---|---|
+| **X1** | **=> 而直接起入口** | **=> 而 0 次** | **=> 而 exit=0** |
+| **X2** | **=> 而 argv[0]=linker64、=> 而 argv[1]=入口** | **=> 而 0 次** | **=> 而 exit=0** |
+| **X3** | **=> 而两层** | **=> 而（而那一趟给出的是）** | **=> 而 `error: linker cannot load itself`、=> 而 exit=1** |
+
+**=> 而本规范把这一族的成因写成正文（=> 而按 C-103 答「它为什么有两边」）：**
+
+| 那一读法 | 而它问什么 | 而它漏了什么 |
+|---|---|---|
+| **读法一** | **=> 而「那个入口字节**带不带 `PT_INTERP`**」** | **=> 而那是**那份字节的形状** |
+| **读法二** | **=> 而「在**发起进程的那个域**里，=> 而那个入口文件**可不可执行**」** | **=> 而那是**那个域的策略** |
+
+> **=> 而改后那一版把读法一当成了**唯一判据**，=> 而而漏掉了读法二。**
+>
+> **=> 而设备侧的事实是：=> 而内核替你套那一层的前提是**那个入口文件在那个域里可执行**，=> 而而 `app_data_file` 在 `untrusted_app` 那个域里**没有执行许可**，=> 而于是 `execve` **在加载解释器之前就返回 `EACCES`**。**
+>
+> **=> 而这一条与本节前面那一条（=> 而「宿主侧对带 `PT_INTERP` 的入口是多余的」=> 而那一条）**不矛盾**，=> 而而**它们是同一件事的两面**：=> 而那一条说的是「**内核会替我们套**」，=> 而而这一条说的是「**内核替我们套的那个前提**」，=> 而而**那个前提今天不成立**。**
+>
+> **=> 而按 C-115：而这两条**并列在案**，=> 而而不互相顶替。**
+>
+> **=> 而而这一族的处置方向**仍是 D-改动**（=> 而它仍归 05），=> 而而**但今天这一版的那一格读数侧是「未过」**（=> 而而那四件起不来）。**
+
+
+#### 而 07 今天核到的那三版并列（2026-10-24 补正）
+
+**=> 而 07 核完了 `0c1d9af` 那一版（=> 而 `build-apk` `run_id=40101193463` success、=> 而 `sha=0c1d9af`），=> 而而那三版并列（=> 而按 C-115 改前与改后并列，=> 而而改前那几句**不删**）：**
+
+| 那一版 | 而那四件的读数 |
+|---|---|
+| **`6e2ceb0`** | **=> 而 bash 143、=> 而 jq 143、=> 而 rg 2** |
+| **`0e447ef`** | **=> 而 **四件全部** `error=13` `Permission denied` **起不来** |
+| **`0c1d9af`** | **=> 而 bash 143、=> 而 jq 143、=> 而 rg 2、=> 而而 busybox 那一件**仍是 `Cannot run program`** |
+
+**=> 而本规范把「那一层对哪一族有意义」写成正文（=> 而它治的是「把一个判据套到不该套的那一族上」）：**
+
+| 那一件 | 而它的形态 | 而它的 `INTERP` 行数 | 而「显式套那一层」对它有没有意义 |
+|---|---|---|---|
+| **bash** | **=> 而 `DYN`** | **=> 而 1** | **=> 而**有**（=> 而 `ET_DYN` 要经 linker64 驱动，=> 而按 C-87 唯一真相源是 `ExecEntry.argv`）** |
+| **busybox** | **=> 而 `EXEC`（=> 而 Executable file）** | **=> 而 0** | **=> 而**没有**（=> 而它自己就是可执行文件）** |
+
+> **=> 而所以「显式套那一层」**只对 `ET_DYN` 那一族有意义**，=> 而而对 `ET_EXEC`（=> 而 busybox 那一件）**没有意义** —— => 而它自己就是可执行文件，=> 而而**显式套它**反而套错。**
+>
+> **=> 而这一条与本节前面那一条（=> 而「`hasInterp` 那个判据把 `ET_DYN` 那一族也弄错了」）**是同一族的两个方向**：=> 而那一条是**对 `ET_DYN` 那一族判错了**，=> 而而这一条是**对 `ET_EXEC` 那一族套错了**。**
+>
+> **=> 而按 C-115：而 `0c1d9af` 那一版**把 `ET_DYN` 那一族退回了「显式套」**（=> 而它那三件回到了 143/143/2），=> 而而**busybox 那一件仍然起不来**（=> 而而那一件的成因**未核**，=> 而见下面第七条）。**
+
+**=> 而本规范把「`ET_EXEC` 那一支不套」写成正文（=> 而它照录 05 那一版的代码，=> 而而 04 今天实读过）：**
+
+> **=> 而 `ExecEntry.kt` 那一处今天分两支（=> 而 `Shape.Exec` 与 `Shape.Elf`）：=> 而而 `Shape.Exec`（=> 而 `ET_EXEC`）那一支**不套**，=> 而而 `Shape.Elf`（=> 而 `ET_DYN`）那一支**套**（=> 而除非 `entry.absolutePath == SYSTEM_LINKER`，=> 而而那一支是「已经替过的那一次」）。**
+>
+> **=> 而那一支的形状那一行逐字是：=> 而 `is Shape.Exec -> "ELF 静态可执行文件（ET_EXEC），直接 exec，不经 linker"`。**
+
+**=> 而本规范把 07 那一处计数错落成正文（=> 而它治的是「一个恒为 0 的坏读数与一个真值 0 撞在一起」）：**
+
+| 那一项 | 而它的内容 |
+|---|---|
+| **错法** | **=> 而 `LINKER64_COUNT` 那一行用了 `od -t x1` 加 `tr -d 空格换行`，=> 而而那 12 个字节**跨了 `od` 输出的一行**，=> 而所以那个串**仍被换行隔开** |
+| **=> 而后果** | **=> 而 `grep -o` **永远匹配不到** => 而而那一行是**恒为 0 的坏读数** |
+| **=> 而为什么看不出来** | **=> 而它当时给出的 0 与 X1 的**真值**恰好相同**（=> 而 X1 真的是 0 次），=> 而所以**外面看不出来** |
+| **=> 而正确数法** | **=> 而按文本逐条数** |
+| **=> 而更正的读数** | **=> 而 X2 = **1 次**、=> 而 X1 = **0 次** |
+
+> **=> 而这一族是「一个恒为 0 的坏读数与一个真值 0 撞在一起」那一族** —— => 而它与 **C-112**（=> 而 0 最容易被相信）与 **C-108**（=> 而零命中先阳性对照）**都相关**：=> 而那个 0 **不但可能是真的，=> 而还可能是坏读数**，=> 而而**两者撞在一起时外面看不出来**。**
+>
+> **=> 而机械地判「这个 0 是读数还是坏读数」：=> 而三问。=> 而一、**那一行的输出在同一次运行里变过吗**？=> 而变过 => 而它是读数（=> 而而恒为 0 的坏读数**在同一次运行里也是 0**）；=> 而不变 => 而要再问。=> 而二、**那个 0 的正例在同一次运行里出现过吗**？=> 而没出现 => 而按 **C-108** 那一格是**坏读数**（=> 而零命中先阳性对照）；=> 而而出现了 => 而要再问。=> 而三、**那个取法在这一格上**能自己答出**一个非 0**吗**？=> 而不能 => 而它是坏读数；=> 而而能 => 而它是读数。**
+>
+> **=> 而第三问是今天这一条**最实的一处**：=> 而 `LINKER64_COUNT` 那一行**不能**答出一个非 0（=> 而它恒为 0），=> 而而**改成按文本逐条数**之后**能**答出 X2 = 1，=> 而而所以**同一个格子、两个取法、一个能一个不能** => 而而**那就是坏读数**。**
+
+
+#### 而「argv 里 linker64 出现几次 = 层数」那一条今天被收窄了（2026-10-24 补正）
+
+**=> 而 07 今天取到 X1 那一格的读数，=> 而它**推翻了那个判别式的后半段**（=> 而按 C-115 改前那一句并列留档不删）：**
+
+> **=> 而改前那一版（=> 而 04 今天记的）：=> 而「argv 里 linker64 出现几次 = 层数」。**
+>
+> **=> 而改后（=> 而 07 今天那一条读数）：=> 而那个判别式量的**不是「解释器在不在」**，=> 而而是「**那条命令行是我们自己写的还是内核写的**」。**
+
+**=> 而那几条读数（照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **X1 那一趟的 PID** | **=> 而 18606** |
+| **X1 那一趟的 EXE** | **=> 而**入口本身**（=> 而**不是** linker64）** |
+| **X1 那一趟的 maps 里的 linker64** | **=> 而**有** 4 段（=> 而 `79d7c32000-79d7c83000 r--p`、=> 而 `79d7c83000-79d7db0000 r-xp`、=> 而 `79d7db0000-79d7dbb000 r--p`，=> 而路径是 `/apex/com.android.runtime/bin/linker64`）** |
+| **X2（=> 而阳性对照）的 EXE** | **=> 而**linker64 自己** |
+
+> **=> 而所以：=> 而**解释器在进程里、=> 而不在 argv 里**，=> 而而 `argv[0]` 是**入口本身**。**
+>
+> **=> 而那个判别式**今天仍然成立**（=> 而它仍然是机械可数的），=> 而而**它量的那件事比原来写的窄**：=> 而而它量的是「**那条命令行是我们自己写的还是内核写的**」，=> 而而**不是**「那个解释器有没有被加载」。**
+>
+> **=> 而按 C-115：而这一格归 07 负责核那一层不变，=> 而而 07 今天的读数**正是它负责的那一层**（=> 而设备侧实跑）。**
+
+**=> 而 exitNote 那一格（照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **stage** | **=> 而 `process` 五条** |
+| **detail 逐字** | **=> 而 `exitCode=143` 与 `exitCode=2`，=> 而而**后面那半句是空的** |
+| **=> 而那一格的读法** | **=> 而 `exitNote` **返回空串**、=> 而而 `wasReady` 为 **false** |
+| **阳性对照** | **=> 而那半句的**原文**在 `SupervisorPolicy.kt:46` 逐字是「（曾就绪后退出 —— 排查方向：启动后崩溃/单实例锁冲突，而非拉不起）」，=> 而而**设备侧命中 0 条** |
+| **=> 而仍未核** | **=> 而 exit 143 的「**谁发的**」那一格**未核** |
+
+**=> 而那四件空参数时只有 rg 是 2（=> 而照录 07，=> 而而它否掉了 05 上一稿那一句）：**
+
+| 那一件 | 而它的 exit | 而它的 stderr |
+|---|---|---|
+| **bash** | **=> 而 0** | **=> 而**无输出** |
+| **jq** | **=> 而 0** | **=> 而**无输出** |
+| **rg** | **=> 而 2** | **=> 而 `rg: ripgrep requires at least one pattern to execute a search`** |
+| **busybox** | **=> 而 127** | **=> 而 `libbusybox.so: applet not found`** |
+
+> **=> 而 05 上一稿说「bash、jq、rg 都是没参数就打印用法并退出那类」这一句被 07 的读数**否掉了** —— => 而而 **bash 与 jq 空参数是 exit 0**，=> 而而**不是**「打印用法并退出」那一族。**
+>
+> **=> 而按 C-115：而改前那一句**留档不删**。**
+
+**=> 而双层形态的 tombstone 零新增（照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **tombstone 份数** | **=> 而仍是 **31 份**（=> 而零新增）** |
+| **最新一份** | **=> 而仍是 `2026-10-24 20:32:24`（=> 而而这一版装上是 **22:19 之后**）** |
+| **这一版的 `diag.jsonl`** | **=> 而 **187 条**里**没有**「进入隔离（`QUARANTINED`）」那一条，=> 而而 supervisor 那几条**全是**「退避 … 后重启」** |
+
+**=> 而本规范把 07 报的那几处未核照录（=> 而按 C-05，=> 而缺就写未核、=> 而不猜填）：**
+
+| 那一格 | 而它的状态 |
+|---|---|
+| **LOB-OS 自己起的那几件的 argv 里 linker64 出现几次** | **=> 而**已核**（=> 而 bash、=> 而 jq、=> 而而 ripgrep **三件都是 1 次**、=> 而而形态是 `[linker64, 入口, …args]`、=> 而而 EXE 都是 `/apex/com.android.runtime/bin/linker64`、=> 而而 STATE 都是 `S`）** |
+| **busybox 那一件 `error=13` 的成因** | **=> 而已定位**（=> 而 05 今天核到：=> 而那一件原来是 `ET_EXEC`（=> 而 547392 字节、=> 而 sha256 `030023fb…`、=> 而而 Type `EXEC` 而 `INTERP` 行数 0），=> 而而走 `Shape.Exec` 那一支直接 exec 它，=> 而而它在 `app_data_file` 那个上下文里而 `untrusted_app` 那个域对它**没有执行许可**；=> 而而套 linker64 也绕不过去，=> 而而 AOSP `linker_main.cpp:405` 那个硬门会挡它）** |
+| **exit 143 的「谁发的」** | **=> 而未核**（=> 而 07 明确交代了「没取到读数」）** |
+| **busybox 那一件 exit 127 的成因** | **=> 而未核**（=> 而读数是：=> 而它**起来了**、=> 而而 `error=13` 没有了、=> 而而 `exitCode=127`；=> 而而手工空参数起 `libbusybox.so` **也是 127** 而 stderr 是 `libbusybox.so: applet not found`；=> 而而 `bin/cat` 那一族是 **exit 0**）** |
+| **ripgrep 在监督环里 exit 143 的成因** | **=> 而未核**（=> 而那一趟带 args **不是空参数**，=> 而而「谁发的 143」没取到读数）** |
+| **PTY 宿主为什么用宿主那一套 env** | **=> 而未核**（=> 而 07 明确交代了「只报读数不裁定」）** |
+
+
+#### 而 05 定位到今天这一族最后一个根因（2026-10-24 补正）
+
+**=> 而 05 的 commit `ac7c021`（=> 而标题「busybox 那一件：编成 ET_DYN（PIE），=> 而而 ET_EXEC 在设备上起不来」），=> 而而它把今天这一族那一串**串起来了**：**
+
+**=> 而那两族的读数（照录 05，=> 而而它治的是「同一件在不同形态下后果不同」）：**
+
+| 那一件 | 而它原来是什么 | 而它的字节 |
+|---|---|---|
+| **busybox** | **=> 而 `ET_EXEC`（=> 而 Type `EXEC`、=> 而而 `INTERP` 行数 **0**）** | **=> 而 547392 字节、=> 而 sha256 `030023fb6a1ef966cebd535615211df394cf623c90f842cdbe162f7db60c7ef6`** |
+| **bash** | **=> 而 `ET_DYN`（=> 而而 `INTERP` 行数 **1**）** | **=> 而（=> 而与 busybox 那一件不同形态）** |
+
+**=> 而成因那两行（=> 而照录 05，=> 而它治的是「配置项与机制怎么对上」）：**
+
+| 那一处 | 而它原来是什么 | 而它现在是什么 |
+|---|---|---|
+| **仓内 `scripts/recipes/build-native-busybox.sh`** | **=> 而 `set_conf STATIC y` 加 `set_conf PIE n`** | **=> 而 `set_conf STATIC n` 加 `set_conf PIE y`** |
+| **upstream busybox 1.36.1 `Config.in:372`** | **=> 而 `config PIE` 加 `bool "Build position independent executable"` 加 `default n` 加 `depends on !STATIC`** | **=> 而（=> 而这一行未改）** |
+| **`Makefile.flags:125`** | **=> 而 `ifeq ($(CONFIG_STATIC),y)` 加 `CFLAGS_busybox += -static`** | **=> 而（=> 而这一行未改）** |
+| **`Makefile.flags:131`** | **=> 而 `ifeq ($(CONFIG_PIE),y)` 加 `CFLAGS_busybox += $(ARCH_PIE)`** | **=> 而（=> 而这一行未改）** |
+| **`Makefile.flags:109` 与 `:108`** | **=> 而 `ARCH_PIE ?= -pie` 与 `ARCH_FPIE ?= -fpie`** | **=> 而（=> 而这两行未改）** |
+
+> **=> 而所以那两行合起来就是一份 `ET_EXEC`：=> 而而 `STATIC y` 给出 `-static` 而那份**必然是 `ET_EXEC`**，=> 而而 `PIE` 那一项 `depends on !STATIC` => 而而 `STATIC y` 时它**根本不可选**（=> 而 `set_conf PIE y` 会被 **kconfig 丢掉**）。**
+>
+> **=> 而 05 本机**两层都验了**：=> 而**机制那一层**（=> 而 `gcc -static` 给 `EXEC` 而 `gcc -fPIE -pie` 给 `DYN`）；=> 而而**kconfig 那一层**（=> 而把 `.config` 改成 `# CONFIG_STATIC is not set` 加 `CONFIG_PIE=y`，=> 而而 `make oldconfig` 之后 `.config` 里**仍是那两行**，=> 而而证明 `depends on !STATIC` 那个条件已满足）。**
+
+**=> 而本规范把「`ET_EXEC` 起不来那个原因**不是**套不套 linker64」写成正文（=> 而它治的是「归错因」）：**
+
+> **=> 而那一件走 `Shape.Exec` 那一支（=> 而 `ExecEntry.kt:58` 逐字是 `is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)`），=> 而那是**直接 exec 那个入口本身**。**
+>
+> **=> 而那个入口在设备上是 `u:object_r:app_data_file:s0`，=> 而而 app 进程那个域是 `u:r:untrusted_app`，=> 而而那一域对 `app_data_file` **没有执行许可** => 而而**直接 exec 它在加载解释器之前就 `EACCES`**。**
+>
+> **=> 而而套 linker64 **绕不过去** —— => 而 AOSP `linker/linker_main.cpp:405` 那一段逐字是 `if (elf_hdr->e_type != ET_DYN) { __linker_error("error: %s: Android only supports position-independent executables (-fPIE)", ...); }`，=> 而所以那一件是 `ET_EXEC` 而**经 linker64 加载它会被那一条挡**。**
+
+**=> 而本规范把今天这一族那一串写成正文（=> 而它治的是「三件各挡一边」）：**
+
+| 那一族 | 而它在设备上要什么 | 而今天挡它的是什么 |
+|---|---|---|
+| **`ET_EXEC` 那一族** | **=> 而它**自己就是可执行文件**（=> 而直接 exec 即可，=> 而不经 linker）** | **=> 而**域的策略**：=> 而那一件在 `app_data_file` 那个上下文里，=> 而而 `untrusted_app` 那个域对它**没有执行许可** |
+| **`ET_DYN` 那一族** | **=> 而它**必须经 linker64 驱动**（=> 而按 C-87 唯一真相源是 `ExecEntry.argv`）** | **=> 而**linker64 那一层必须在 `system_linker_exec` 那个上下文里才能 execve 过** |
+| **=> 而 busybox 那一件今天** | **=> 而它原来是 `ET_EXEC`** | **=> 而它**两头都不落**：=> 而走 `Shape.Exec` 那一支被**域的策略**挡（=> 而 `EACCES`），=> 而而走 linker64 那一支被**linker 的硬门**挡（=> 而而 `e_type != ET_DYN`）** |
+
+> **=> 而所以 05 那一句「ET_EXEC 那一族在设备上不可执行（=> 而域的策略），=> 而而 `ET_DYN` 那一族必须经 linker64 驱动（=> 而按 C-87 唯一真相源是 `ExecEntry.argv`），=> 而而 linker64 那一层又必须在 `system_linker_exec` 那个上下文里才能 execve 过」** => 而而三件是 `ET_DYN` 而 busybox 那一件今天编成了 `ET_EXEC`，=> 而于是**它两头都不落**。**
+>
+> **=> 而这一条把今天这一族**串起来**了：=> 而 `0e447ef` 那一版（=> 而按 `PT_INTERP` 判）把 `ET_DYN` 那一族也弄错、=> 而 `0c1d9af` 那一版（=> 而退回「显式套」）让 `ET_DYN` 那一族对了而 `ET_EXEC` 那一族仍然起不来、=> 而而 `ac7c021` 那一版（=> 而 busybox 编成 `ET_DYN`）才让**那一件**也落进可执行的那一族。**
+
+**=> 而那两条 AOSP 原文（=> 而照录 05，=> 而而它们治的是「硬门在哪一层」）：**
+
+| 那一处 | 而它的原文 | 而它治的是哪一件 |
+|---|---|---|
+| **`linker/linker_main.cpp:405`** | **=> 而 `if (elf_hdr->e_type != ET_DYN) { __linker_error("error: %s: Android only supports position-independent executables (-fPIE)", ...); }`** | **=> 而**那道硬门**：=> 而它让 `ET_EXEC` 那一件**经 linker64 加载时被挡**（=> 而而它不是「套不套」的问题）** |
+| **`linker/linker_main.cpp:358`** | **=> 而 `// This case can happen if the linker attempts to execute itself` 与 `// (e.g. "linker64 /system/bin/linker64")`** | **=> 而**第二层那个 linker64 是什么**（=> 而那一件已在本节前面写过）** |
+
+**=> 而这一格今天的状态（=> 而按 C-126 那一族，=> 而而「未过」与「未核」要分清）：**
+
+> **=> 而 busybox 那一件**修好之后要 07 取读数销**，=> 而而**那一格今天写「未过」**（=> 而不是「待观察」）。**
+>
+> **=> 而而「05 那一次改动已过 CI」与「那一格已过」**是**两件**（=> 而按 C-115 与 C-126），=> 而而前者是**代码那一侧**，=> 而后者要**设备侧那一趟读数**。**
+
+
+#### 而「仓里还有哪几件是 `ET_EXEC` 形态」那一格（=> 而它今天是一个**待查**的格，=> 而而它与上面那一族是**接点**）：
+
+**=> 而本规范把这一格的判别形式写成正文（=> 而它治的是「只查了出事那一件」）：**
+
+> **=> 而这一族今天只查了**出事那一件**（=> 而 busybox），=> 而而**别的件是不是也中招，今天还没有读数**。**
+>
+> **=> 而而这一格的**查法是机械的**：=> 而对仓里**每一件**产出可执行文件的件，=> 而读那份字节的 **ELF 头 `e_type` 那一格**（=> 而 `ET_EXEC` = 2、=> 而 `ET_DYN` = 3），=> 而而**再读它的 `INTERP` 行数**（=> 而 0 与 1），=> 而而把两格**并排**列出来。**
+>
+> **=> 而按 C-135：「这一件是 `ET_EXEC` 还是 `ET_DYN`」那一格与「那一族在设备上可不可执行」那一格**是**两个问句**：=> 而第一格问的是**那份字节的形状**，=> 而而第二格问的是**那个域的策略**，=> 而而**它们要分开记**（=> 而按 C-178，=> 而**第一格过了不蕴含第二格过了**）。**
+>
+> **=> 而那三格（=> 而 `e_type`、=> 而 `INTERP` 行数、=> 而设备侧起不起得来）**并排**，=> 而而**第三格缺了的时候前两格照样成立**（=> 而那是 D-读数与 D-读数的关系，=> 而不是 D-改动）。**
+
+**=> 而本规范把这一格该落哪一节写成正文（=> 而它治的是「新立一节还是并进旧的那一族」）：**
+
+> **=> 而它**并进 §122 那一族**（=> 而 §122.29 那一节），=> 而而**不新立一节** —— => 而理由是：=> 而它与 busybox 那一件**是同一个形状的同一族**（=> 而「`ET_EXEC` 那一族在设备上不可执行」），=> 而而**新立一节**会让**同一个族分成两处**。**
+>
+> **=> 而而它与「起进程那一格把链接器塞进入口」那一族是**接点**而不是同一条**：=> 而那一族治的是**起进程那一格该怎么构造 argv**，=> 而而这一格治的是**「哪些件落进了起不来那一族」**（=> 而那是**一件清单**，=> 而不是**一个机制**）。**
+>
+> **=> 而按 C-135 那是两个问句**：=> 而「那一件是什么形态」（=> 而 D-读数或 D-代码，=> 而而读的是那份字节）=> 而与「那一族在设备上可不可执行」（=> 而 D-读数，=> 而而要设备侧那一趟）**是**两格**，=> 而而**今天第一格只查了 busybox 那一件**。**
+
+| 那一件 | 而它的 `e_type` | 而它的 `INTERP` 行数 | 而它在设备上起不起得来 |
+|---|---|---|---|
+| **busybox** | **=> 而 `ET_DYN`（=> 而 3，=> 而而**改后**那一版：=> 而 164328 字节、=> 而 sha256 `59fc2a40…`、=> 而而 `PT_INTERP` 1 行）** | **=> 而 1 行** | **=> 而**起得来**（=> 而而 exit 127，=> 而而**不是** `error=13`）** |
+| **bash** | **=> 而 `ET_DYN`** | **=> 而 1** | **=> 而**起得来**（=> 而而 exit 143）** |
+| **jq** | **=> 而 `ET_DYN`（=> 而 3）** | **=> 而 1 行** | **=> 而**起得来**（=> 而而 exit 143）** |
+| **ripgrep** | **=> 而 `ET_DYN`（=> 而 3）** | **=> 而 1 行** | **=> 而**起得来**（=> 而而这一版 exit 143，=> 而而**上一版**是 exit 2）** |
+| **=> 而仓里其余产出可执行文件的件** | **=> 而**已核**（=> 而 07 今天那 12 件全读了，=> 而而清单见上面那张表）** | **=> 而**已核** | **=> 而**见上面那张表** |
+| **sqlite3（=> 而**固化产物**那一份）** | **=> 而 `ET_DYN`（=> 而 3）** | **=> 而 1 行** | **=> 而**未核**（=> 而它**没落位**到设备上）** |
+| **=> 而 sqlite3 的 `bin/sqlite3`** | **=> 而 1762480 字节、=> 而 sha256 `cef31206…`、=> 而而 `e_entry` 294412** | **=> 而 1 行** | **=> 而（=> 而固化产物那一份已核）** |
+| **python（=> 而**固化产物**那一份）** | **=> 而 `ET_DYN`（=> 而 3）** | **=> 而 1 行** | **=> 而**未核**（=> 而它**没落位**到设备上）** |
+| **crypto** | **=> 而 `ET_DYN`（=> 而 3）** | **=> 而 1 行** | **=> 而**起得来**（=> 而而**这一格适用**，=> 而而那份字节由 openssl 那一件管）** |
+| **=> 而 crypto 自己那一件的固化产物** | **=> 而**不适用**（=> 而而 crypto **归并进 openssl 那一件**，=> 而而它**没有自己那一件的固化产物**）** | **=> 而**不适用** | **=> 而**不适用** |
+| **node** | **=> 而**未核** | **=> 而**未核** | **=> 而**不适用**（=> 而而**没落位**）** |
+| **git** | **=> 而**未核** | **=> 而**未核** | **=> 而**不适用**（=> 而而**没落位**）** |
+
+> **=> 而按 C-05：而「待查」那一栏**不猜填**，=> 而而**它们要各自取读数**。**
+>
+> **=> 而而这一格的**归属是 05**（=> 而那是它今天正在核的那一件），=> 而而**设备侧那一趟**归 07。**
+
+
+#### 121.14.4 而「设备侧要取一个活进程」这一族的方法（=> 而照录 07）
+
+**=> 而这一族治的是「取不到活进程」—— => 而而它治的是**方法**，=> 而不是**某一格**：**
+
+| 那条路 | 而它的读数 |
+|---|---|
+| **`sys.tty.exec`**（=> 而 QuickAppLaunchActivity 那个 exec 入口） | **=> 而失败**：=> 而 `IllegalStateException: 底座没有命令解释器（/usr/bin 下无可用入口）` —— => 而而仓内 `ShellEntry.kt:47` 那一句 |
+| **起一个终端会话**（=> 而 `QuickAppLaunchActivity --es lobos.services.app.id openssl`） | **=> 而起了，但**没有留下可读的长驻进程**** |
+| **`program-settings.json` 给某一件加 `args`** | **=> 而成功** —— => 而 `ProgramSettings.read` 读的就是 `var/lib/program-settings.json`（=> 而 `ProgramSettings.kt:11`），=> 而而 `InstanceHost.kt:299` 取 `settings.optJSONArray("args")` 当 `argsOverride` |
+
+**=> 而哪些 args 会停住（=> 而设备侧实跑，=> 而 `timeout 3` => 而 124 = 停住）：**
+
+| 那一件 | 而它的读数 |
+|---|---|
+| **`bash -c 'read x'`** | **=> 而 exit=1**（=> 而不停）** |
+| **`bash -c 'while read l; do :; done'`** | **=> 而 exit=0**（=> 而不停）** |
+| **`bash --login`** | **=> 而 exit=0**（=> 而不停）** |
+| **=> 而那些「读 stdin」的形态** | **=> 而**都不停**（=> 而而 stdin 关着**立刻 EOF**）** |
+| **=> 而最后用的两个** | **=> 而一个 `hold.sh` 用 `exec 3< <fifo>`（=> 而而 fifo **没有写端**）；=> 而而另一个 `rg --regexp x <fifo>`** |
+| **=> 而那两个形态** | **=> 而**两者手工验都是 124**** |
+
+> **=> 而所以办法是：=> 而给某一件加一个「**会停住的 args**」，=> 而那一件就变成一个**活进程**。**
+>
+> **=> 而而这一族治的是「**取不到**活进程」**，=> 而而不只是「取不到某一格」—— => 而而这一条**反过来**让 §121.14 那一格与 §122.29 那一格**都成了可取的**。**
+>
+> **=> 而按 C-222：而这一族**每轮都会变**（=> 而而那两条路的成败**依赖那一版的仓**），=> 而而它**每次要用都重取**，=> 而而**不抄**。**
+
+
+#### 121.14.3 而 07 今天取到了那个活进程（=> 而这一格今天**已过**）
+
+**=> 而 07 落盘 `07/runs/PTY-LIVE-PROCESS-READINGS.md`（=> 而设备 `f0942f56`、=> 而装的那一版是 `build-apk` `run_id=40101193463` success、=> 而 `head=0c1d9af`）：**
+
+**=> 而 environ 逐字（=> 而 bash 与 jq 两件相同）：**
+
+```
+LD_LIBRARY_PATH=/data/user/0/lobos.os/files/usr/lib
+LOBOS_SYSTEM_LINKER=/system/bin/linker64
+LD_PRELOAD=/data/user/0/lobos.os/files/usr/lib/liblobosposix.so
+```
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **environ 键数** | **=> 而 bash **18 个**、=> 而 jq **18 个**（=> 而**阳性对照**：=> 而键名整列都读到了，=> 而而**不是**读不出来）** |
+| **environ 字节数** | **=> 而 bash **998**、=> 而 jq **996** |
+| **cmdline 逐字（bash）** | **=> 而 `/system/bin/linker64 /data/user/0/lobos.os/files/opt/bash/5.2.15/bin/bash`** |
+| **cmdline 逐字（jq）** | **=> 而 `/system/bin/linker64 /data/user/0/lobos.os/files/opt/jq/1.8.2/bin/jq`** |
+| **`COUNT_FULLPATH_LINKER64`** | **=> 而两件都是 **1** 次** |
+| **EXE** | **=> 而两件都是 `/apex/com.android.runtime/bin/linker64`** |
+| **STATE** | **=> 而 `S`（=> 而即那个进程在睡）** |
+
+> **=> 而这一格今天的状态是：=> 而设备侧**已核**（=> 而 `LD_PRELOAD` **确实在 environ 里**），=> 而而仓内那三处 `remove` **在哪条路上**、=> 而为什么**这一格不受它影响**，=> 而那是**实现那一格**。**
+>
+> **=> 而 07 找到的那个原因：=> 而那三处 `remove` 在 `ProcessSupervisor.spawn` 那条路上（=> 而 `ProcessSupervisor.kt:43`），=> 而而**这一趟那两件是在 `InstanceHost` 那条路上起的**（=> 而 `GuestAdapter.kt:34`）。**
+>
+> **=> 而按 C-115：而今天更早那一趟（=> 而 `runs/LDLIBRARYPATH-DEVICE.md` 第 253 行，=> 而那是**手工带** `LD_PRELOAD` 起进程）与这一趟**两个时点不互相覆盖**，=> 而而**两条读数一致**：=> 而这一格「`LD_PRELOAD` 在 environ 里」**在 LOB-OS 自己起的进程上也是真的**。**
+
+**=> 而 07 另找到 entryArgv 那一段的现成落点（=> 而它在 `diag.jsonl` 里）：**
+
+```
+hostArgv=/system/bin/linker64 | /data/user/0/lobos.os/files/usr/lib/librivospty.so
+```
+
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **`stage=pty` 那一行** | **=> 而 `hostArgv=` 那一项是 `/system/bin/linker64` 加 `/data/user/0/lobos.os/files/usr/lib/librivospty.so`（=> 而那两段以 `｜` 分隔，=> 而而下面那一行照录）** |
+| **=> 而 `launch` 那一项** | **=> 而同样两段** |
+| **=> 而 `view` 那一项** | **=> 而列了 `HOME,TMPDIR,LANG,LD_LIBRARY_PATH,PATH,LD_PRELOAD,LOBOS_SYSTEM_LINKER,LOBOS_COMPAT_LOG,SSL_CERT_DIR,SSL_CERT_FILE,CURL_CA_BUNDLE,GIT_SSL_CAINFO`** |
+| **=> 而 `script`** | **=> 而**未走 shell** |
+| **=> 而 `hostArgv=` 那一行是谁写的** | **=> 而仓内 `PtySession.kt:324`** |
+
+> **=> 而宿主侧那两处确实是 `[linker64, 入口]` 那一形态**（=> 而与上面那两件真活进程**逐字同形**）。**
+>
+> **=> 而而 07 上一稿那个 X1 形态（=> 而 0 次）**是**他手工起的形态**，=> 而而这两条**并列不互相顶替**（=> 而按 C-115）。**
+
+**=> 而本规范把这一格今天的状态写成正文（=> 而按 C-194 那一族）：**
+
+> **=> 而「设备上正式起的那一趟进程的 environ」那一格：=> 而**已过**（=> 而 07 今天在**一个真活进程**上取到了，=> 而而那一项**在**）。**
+>
+> **=> 而「设备上正式起的那一趟进程的 cmdline」那一格：=> 而**已过**（=> 而而 linker64 出现 **1 次**、=> 而而 EXE 是 linker64 自己）。**
+>
+> **=> 而而**「仓内那三处 `remove` 在哪条路上」那一格：=> 而**未核**（=> 而那是**实现那一格**，=> 而而 07 今天只**报读数不裁定**）。**
+
+
+#### 121.14.4 而「设备侧要取一个活进程」这一族的方法（=> 而照录 07）
+
+**=> 而这一族治的是「取不到活进程」—— => 而而它治的是**方法**，=> 而不是**某一格**：**
+
+| 那条路 | 而它的读数 |
+|---|---|
+| **`sys.tty.exec`**（=> 而 QuickAppLaunchActivity 那个 exec 入口） | **=> 而失败**：=> 而 `IllegalStateException: 底座没有命令解释器（/usr/bin 下无可用入口）` —— => 而而仓内 `ShellEntry.kt:47` 那一句 |
+| **起一个终端会话**（=> 而 `QuickAppLaunchActivity --es lobos.services.app.id openssl`） | **=> 而起了，但**没有留下可读的长驻进程**** |
+| **`program-settings.json` 给某一件加 `args`** | **=> 而成功** —— => 而 `ProgramSettings.read` 读的就是 `var/lib/program-settings.json`（=> 而 `ProgramSettings.kt:11`），=> 而而 `InstanceHost.kt:299` 取 `settings.optJSONArray("args")` 当 `argsOverride` |
+
+**=> 而哪些 args 会停住（=> 而设备侧实跑，=> 而 `timeout 3` => 而 124 = 停住）：**
+
+| 那一件 | 而它的读数 |
+|---|---|
+| **`bash -c 'read x'`** | **=> 而 exit=1**（=> 而不停）** |
+| **`bash -c 'while read l; do :; done'`** | **=> 而 exit=0**（=> 而不停）** |
+| **`bash --login`** | **=> 而 exit=0**（=> 而不停）** |
+| **=> 而那些「读 stdin」的形态** | **=> 而**都不停**（=> 而而 stdin 关着**立刻 EOF**）** |
+| **=> 而最后用的两个** | **=> 而一个 `hold.sh` 用 `exec 3< <fifo>`（=> 而而 fifo **没有写端**）；=> 而而另一个 `rg --regexp x <fifo>`** |
+| **=> 而那两个形态** | **=> 而**两者手工验都是 124**** |
+
+> **=> 而所以办法是：=> 而给某一件加一个「**会停住的 args**」，=> 而那一件就变成一个**活进程**。**
+>
+> **=> 而而这一族治的是「**取不到**活进程」**，=> 而而不只是「取不到某一格」—— => 而而这一条**反过来**让 §121.14 那一格与 §122.29 那一格**都成了可取的**。**
+>
+> **=> 而按 C-222：而这一族**每轮都会变**（=> 而而那两条路的成败**依赖那一版的仓**），=> 而而它**每次要用都重取**，=> 而而**不抄**。**
+
+
+#### 而 07 今天核到 argv 里没有那一份 args（2026-10-24 补正）
+
+**=> 而那一条读数（=> 而照录 07，=> 而而它治的是「argv 少了一项」）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **07 给 bash 设的 args** | **=> 而 `[/data/user/0/lobos.os/files/tmp/hold.sh]`** |
+| **=> 而而它 argv 逐字** | **=> 而**只有两项**（=> 而 `/system/bin/linker64` 与那个入口）** |
+| **=> 而而 05 核到的那条链** | **=> 而 `InstanceHost.kt:397` 的 `args` 进 `GuestAdapter.kt:34` 的 `ExecEntry.argv`，=> 而而**两支都是 `+ args.drop(1)`** |
+| **=> 而而 `drop(1)` 做了什么** | **=> 而它把**那一位连同参数一起去掉了**** |
+
+> **=> 而所以：=> 而在真实 LOB-OS 会话里，=> 而那份 args **没有出现在 argv 里**。**
+>
+> **=> 而而这一条与「进程停住了」是**两件事**（=> 而 07 明确写了「**这两条并列，不合并**」）：=> 而这一趟那两件虽然 argv 里没有 args，=> 而而**它们停住了**（=> 而 bash 那一趟 `STATE=S` 且持续被抓到），=> 而而那个停住的机制是 `hold.sh` 那个 fifo。**
+
+**=> 而它与 exit 143 那一格的关系（=> 而照录 07，=> 而而它治的是「一个原因解释了两条读数」）：**
+
+| 那一趟 | 而它的读数 |
+|---|---|
+| **空参数时 bash 与 jq** | **=> 而 exit=0** |
+| **空参数时 rg** | **=> 而 exit=2**，=> 而而 stderr 是 `rg: ripgrep requires at least one pattern to execute a search` |
+| **=> 而监督环里 bash 与 jq** | **=> 而 **143** |
+| **=> 而监督环里 rg** | **=> 而 **2** |
+
+> **=> 而所以 rg 那个 exit=2 **就是「没有 pattern」那一族**（=> 而它与「监督环收它」是两回事），=> 而而 **bash 与 jq 是 143 是监督环收它**。**
+>
+> **=> 而按 C-115：而 exit 143 的「**谁发的**」那一格**仍未核**（=> 而 07 明确报了「只报读数不裁定」），=> 而而**这一格与 args 被 `drop(1)` 丢掉那一格**是两格**（=> 而一个讲 argv 的形状，=> 而而一个讲那个信号是谁发的），=> 而而**它们不互相顶替**。**
+
+**=> 而本规范把这一格该落哪一节写成正文（=> 而它治的是「同一个机制分两处写」）：**
+
+> **=> 而它落进 **§122 那一族**（=> 而 §122.29 那一节），=> 而而**不落 §121 那一族** —— => 而理由是：=> 而它治的是「**`ExecEntry.argv` 那一格怎么构造**」（=> 而那是**起进程那一格**的形状），=> 而而 §121 那一族治的是「**那一项怎么交给进程**」（=> 而那是**环境变量**那一层）。**
+>
+> **=> 而按 C-135：而「argv 里少了一份 args」与「那一项在不在 environ 里」**是**两个问句** —— => 而前者问**命令行**的形状，=> 而而后者问**环境**的形状，=> 而而它们**分属两节**。**
+
+
+#### 而那个 PTY 宿主起不来（=> 而它是 §121 那一族与 §122 那一族各有一面）
+
+**=> 而 07 手工复现的读数（照录 07，=> 而而它治的是「宿主那一趟」）：**
+
+```
+$ run-as lobos.os sh -c 'cd …/usr/lib && timeout 5 /system/bin/linker64 …/usr/lib/librivospty.so'
+CANNOT LINK EXECUTABLE "/data/user/0/lobos.os/files/usr/lib/librivospty.so": library "liblobosposix.so" not found: needed by main executable
+EXIT=1
+$ run-as lobos.os sh -c 'cd …/usr/lib && LD_LIBRARY_PATH=…/usr/lib timeout 5 /system/bin/linker64 …/usr/lib/librivospty.so'
+  …控制通道已关闭（父侧退出）…
+  librivospty bye
+EXIT=0
+```
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **=> 而 `librivospty.so` 的 `NEEDED`** | **=> 而 `liblobosposix.so`、`libdl.so`、`libc.so`** |
+| **=> 而它自己的形态** | **=> 而 `DYN (Position-Independent Executable file)`、=> 而而 `INTERP` 行数 **1** |
+| **=> 而差别** | **=> 而**加上 `LD_LIBRARY_PATH` 那一趟 exit=0**，=> 而而**不加就是 exit=1** |
+
+**=> 而本规范把成因写成正文（=> 而照录 07，=> 而而它治的是「那一项没灌进去」）：**
+
+> **=> 而那个宿主的 env 里**没有 `LD_LIBRARY_PATH`** —— => 而 `PtySession.kt:317` 到 `:318` 那个 `pb1` **只 `remove("LD_PRELOAD")`**，=> 而而**没有把 `view0`（=> 而那份 env）灌进去**（=> 而而 `view0` 只被 `export` 进脚本，=> 而而那一趟 `script=未走 shell`）。**
+>
+> **=> 而而那两处**各写自己那一面**（=> 而按 C-135 那是两个问句）：=> 而**§121 那一族**（=> 而 §121.14）写「**那一项在实现侧在、=> 而在设备上在 environ 里，=> 而而这一条路上它没被灌进去**」—— => 而那是**环境变量**那一层；=> 而而**§122 那一族**（=> 而 §122.29）写「**那一族的 argv 形态是对的**（=> 而而 `hostArgv=/system/bin/linker64 | …/librivospty.so`、=> 而而与那两件真活进程**逐字同形**），=> 而而**起不来是 env 那一侧的事**」—— => 而那是**命令行**那一层。**
+>
+> **=> 而按 C-115：而「argv 形态对」与「起不来」**两条**并列不互相顶替**（=> 而而它们是**两层**）。**
+
+**=> 而那一格的今天状态：=> 而**部分已核**（=> 而照录 07：=> 而「部分已核不裁定」）。**
+
+
+#### 而 07 今天把跨件那一格填满了（=> 而 2026-10-24 补正）
+
+**=> 而 07 落盘 `07/runs/ETYPE-INTERP-READINGS.md`（=> 而工具在 `07/tools/etype-interp.js`，=> 而而**不在仓内**）：**
+
+**=> 而读法是纯字节读 program header 表（=> 而**不 grep**、=> 而**不用 readelf 转述**）：**
+
+| 那一项 | 而它怎么读 |
+|---|---|
+| **`e_type`** | **=> 而 `b[16]` 加 `b[17]<<8`（=> 而 2 = `ET_EXEC`、=> 而 3 = `ET_DYN`）** |
+| **`phoff`** | **=> 而 `b[0x20]` 到 `b[0x27]`（=> 而小端）** |
+| **`phentsize`** | **=> 而 `b[0x36]` 到 `b[0x37]`** |
+| **`phnum`** | **=> 而 `b[0x38]` 到 `b[0x39]`** |
+| **逐条表项** | **=> 而读 `p_type`（=> 而 4 字节小端），=> 而数 `p_type` 等于 **3**（=> 而 `PT_INTERP`）** |
+| **=> 而 `PT_INTERP` 那一项的字符串** | **=> 而从 `p_offset` 起读到第一个 NUL** |
+| **=> 而阳性对照** | **=> 而每件都读到了 `PT_LOAD`、`PT_DYNAMIC`、`PT_TLS` 条数、`e_machine`、`e_entry` 与 sha256** |
+
+**=> 而那张清单表（=> 而照录 07，=> 而而它把 `e_type` 与 `INTERP` 行数**分两格**列）：**
+
+| 那一件 | 而它的字节数 | 而它的 `e_type` | 而它的 `PT_INTERP` 行数 | 而 `PT_INTERP` 那一行逐字 | 而长度 | `PT_LOAD` | `PT_DYNAMIC` | `PT_TLS` |
+|---|---|---|---|---|---|---|---|---|
+| **jq** | **=> 而 2796016** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+| **ripgrep** | **=> 而 31705872** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+| **busybox（=> 而落位那一份 = 改前那一版）** | **=> 而 547392** | **=> 而 2 `ET_EXEC`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 4** | **=> 而 0** | **=> 而 1** |
+| **bash（=> 而对照）** | **=> 而 1325760** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+| **openssl 的 `bin/openssl`** | **=> 而 1033576** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=>而 1** | **=> 而 1** |
+| **liblobosposix.so** | **=> 而 30552** | **=> 而 3 `ET_DYN`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+| **librivospty.so** | **=> 而 16784** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+| **libcurl.so** | **=> 而 739280** | **=> 而 3 `ET_DYN`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 4** | **=> 而 1** | **=> 而 0** |
+| **libz.so（=> 而与 `libz.so.1.3.2` 同一份字节）** | **=> 而 107480** | **=> 而 3 `ET_DYN`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 3** | **=> 而 1** | **=> 而 0** |
+| **libssl.so** | **=> 而 1139504** | **=> 而 3 `ET_DYN`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 4** | **=> 而 1** | **=> 而 0** |
+| **libcrypto.so** | **=> 而 6058832** | **=> 而 3 `ET_DYN`** | **=> 而 0** | **=> 而（无）** | **=> 而 —** | **=> 而 4** | **=> 而 1** | **=> 而 0** |
+| **liblobosjq.so** | **=> 而 2796016** | **=> 而 3 `ET_DYN`** | **=> 而 1** | **=> 而 `/system/bin/linker64`** | **=> 而 20** | **=> 而 4** | **=> 而 1** | **=> 而 1** |
+
+**=> 而本规范把「`e_type` 是 `ET_DYN`」与「`PT_INTERP` 有 1 行」是两件不同的事写成正文（=> 而 07 分开列了，=> 而而它治的是「把两格合成一格」）：**
+
+| 那一组 | 而它包含哪几件 |
+|---|---|
+| **`ET_DYN` 且 1 行 `INTERP`** | **=> 而 jq、=> 而 ripgrep、=> 而 bash、=> 而 openssl 的 `bin/openssl`、=> 而 librivospty.so、=> 而 liblobosjq.so** |
+| **`ET_DYN` 且 0 行 `INTERP`** | **=> 而 liblobosposix.so、=> 而 libcurl.so、=> 而 libz.so 那一族、=> 而 libssl.so、=> 而 libcrypto.so** |
+| **`ET_EXEC` 且 0 行 `INTERP`** | **=> 而 busybox（=> 而落位那一份是**改前**那一版）** |
+
+> **=> 而 busybox 落位那一份是 `ET_EXEC` => 而它套 linker64 也绕不过去**（=> 而 AOSP `linker_main.cpp:405` 那一道硬门**按 `e_type` 判**）=> 而而那正好对上设备侧那一句 `Cannot run program … error=13, Permission denied`。**
+>
+> **=> 而而**对照读数说明这一格是能判的**：=> 而 `librivospty.so` 是 `ET_DYN` 且 1 行，=> 而而 `liblobosposix.so` 是 `ET_DYN` 且 0 行，=> 而而**两格在落位那几件里分得开**。**
+>
+> **=> 而按 C-135：而「`e_type` 是什么」与「`PT_INTERP` 有几行」**是**两格**，=> 而而**它们的用处不同**：=> 而第一格决定**能不能经 linker64 加载**（=> 而那 `linker_main.cpp:405` 那一道硬门看的是它），=> 而而第二格决定**内核会不会替我们套一层**。**
+
+**=> 而那三处要交代的（=> 而照录 07，=> 而按 C-05 不猜填）：**
+
+**一，busybox 那一行是「改前」那一版**：=> 而改后的 PIE 那一版**还没落位到设备上**（=> 而那两版 build-apk 都红在**第 15 步取件**，=> 而而 busybox 那个件的**固化产物也还没出**），=> 而而**「改后那一版 busybox 的两格」未核**（=> 而是**没取到那份字节**，=> 而**不是 0**）。
+
+**二，curl 那一件没有可执行文件**：=> 而 `program-manifest.json` 逐字是 `"entry": ""` 与 `"role": "library"`，=> 而而 `piece-shape.json` 的 `files` **只有一条** `lib/libcurl.so`，=> 而而 `opt/curl/8.22.0/` 下**没有 `bin/` 目录** => 而而它「**可执行文件**」那一格**不适用**；=> 而而它落位的那份 `libcurl.so` **已在上表**（=> 而 `ET_DYN`、=> 而 0 行）。
+
+**三，`usr/lib` 下那几份与 `opt/` 下那几件逐字节相同**：=> 而 `libz.so` 与 `libz.so.1.3.2` 与 `opt/zlib` 那份**相同**；=> 而而 `libssl.so` 与 `opt/openssl` 那份**相同**；=> 而而 `libcurl.so` 与 `opt/curl` 那份**相同**；=> 而而 `liblobosjq.so` 与 `opt/jq/1.8.2/bin/jq` **同一份字节**（=> 而而那一份是 PIE 带 1 行 `INTERP`）。
+
+
+#### 而「判据被放宽之后原来被它挡住的那些缺陷会重新露出来」这一族（=> 而 07 今天查出 busybox 那一件编译红的真根因）
+
+**=> 而缺陷名（C-102）：=> 而 busybox 那一件编译红，=> 而而真根因是**仓里一个相对路径缺陷**而不是 CI 时序。**
+
+**=> 而那三处（=> 而照录 07，=> 而而 04 今天本机实读过那几行，=> 而而三处**逐字**核过）：**
+
+| 那一处 | 而它是什么 |
+|---|---|
+| **`scripts/recipes/build-native-busybox.sh:73`** | **=> 而 `cd "$SRC"`（=> 而 cwd 从此在源码树里）** |
+| **=> 而 `emit_piece` 的调用在** | **=> 而第 **462** 行**（=> 而而它在那次 `cd` 之后）** |
+| **=> 而 `emit_piece` 那一行** | **=> 而 `scripts/recipes/bundle-env.sh:142` 逐字是 `local marker="$(node scripts/toolchain/read-marker.js "$id")"`（=> 而那是**相对路径**）** |
+| **=> 而后果** | **=> 而 cwd 还在源码树里，=> 而而那个相对路径**解析到源码树下去**，=> 而而**找不到**。** |
+| **=> 而为什么 bash 那一件没事** | **=> 而 `build-bundle-bash.sh` **从不 `cd`**（=> 而而 `:71` 直接调 `emit_piece`），=> 而而 cwd 一直是仓根 |
+
+**=> 而为什么今天才暴露（=> 而照录 07，=> 而而它治的是「一个改动引出另一个」）：**
+
+```
+[ "$SIZE" -gt 500000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 静态编不该这么小"
+[ "$SIZE" -gt 100000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 动态编也不该这么小"
+```
+
+
+| 那一处 | 而它是什么 |
+|---|---|
+| **commit `3e89949`** | **=> 而它把那个尺寸下限从 **500000** 改成 **100000** |
+| **=> 而改前那一行** | **=> 而那个 500000 的下限（=> 而逐字见下面那一段）** |
+| **=> 而改后那一行** | **=> 而那个 100000 的下限（=> 而逐字见下面那一段）** |
+| **=> 而那个被放宽的判据挡的是什么** | **=> 而「busybox 只有 **164328** 字节」那一道** |
+| **=> 而后果** | **=> 而原来先撞上那道判据，=> 而而**它不再拦**，=> 而于是走到了**后面那一行**才露出这个相对路径问题。** |
+
+> **=> 而这一族是「**判据被放宽之后，原来被它挡住的那些缺陷会重新露出来**」** —— => 而它治的是「那一处改动**引出了**另一处缺陷」**，=> 而而**与「那一处改动本身对不对」是**两问**（=> 而按 C-135）。**
+>
+> **=> 而按 C-115：而改前那一行（=> 而 500000 那道）与改后那一行（=> 而 100000 那道）**并列在案不删**。**
+>
+> **=> 而按 C-135：而这一族与 §122.10 那一族（=> 而表格与形状那一族）是**接点**而不是同一条**：=> 而 §122.10 那一族治的是「**一个校验器查哪几样**」（=> 而而它的覆盖面），=> 而而这一族治的是「**一道判据被放宽之后，它原来挡住的那些缺陷会怎样**」—— => 而而**两者的共同处是「覆盖面」这个方向**，=> 而而**问的不是一件事**。**
+>
+> **=> 而而这一族该落哪一节：=> 而落进 **§122 那一族**（=> 而 §122.29 那一节），=> 而而**不落 §122.10 那一族** —— => 而理由是：=> 而 §122.29 那一节治的是「**起进程那一族**」，=> 而而 busybox 那一件**编译红**是**构建侧**的事，=> 而而它与「`ET_EXEC` 那一族在设备上起不来」**是同一件的一个前一段**（=> 而而前一段是**它为什么编成 `ET_EXEC`**，=> 而而后一段是**`ET_EXEC` 为什么在设备上起不来**）。**
+>
+> **=> 而而它在 §122.29 那一节里与 §122.10 那一族的接点写清了：=> 而**它们是接点**（=> 而而都属「覆盖面」那个方向），=> 而而**§122.29 那一节治的是构建侧那一段**（=> 而而 `emit_piece` 那个相对路径、=> 而而那两道尺寸判据、=> 而而 `STATIC y` 与 `PIE n` 那两行），=> 而而**§122.10 那一族治的是校验器覆盖面本身**。**
+
+
+#### 而 07 核完了 `02e1905` 那一版（=> 而 2026-10-24 补正）
+
+**=> 而 busybox 那一件从 `ET_EXEC` 变成 `ET_DYN`，=> 而它起来了（=> 而改前那一版按 C-115 并列留档不删）：**
+
+| 那一版 | 而它的字节数 | 而它的 sha256 | 而它的 `e_type` | 而它的 `PT_INTERP` 行数 | 而它的 `PT_DYNAMIC` |
+|---|---|---|---|---|---|
+| **改前（=> 而 `0c1d9af` 那一版落位的那份）** | **=> 而 547392** | **=> 而 `030023fb…`** | **=> 而 2 `ET_EXEC`** | **=> 而 0** | **=> 而 0** |
+| **改后（=> 而 `02e1905` 那一版落位的那份）** | **=> 而 **164328**** | **=> 而 **`59fc2a401e9f3313fbc721c4c4e88f63c2b90b9dfabe59fe88a97cd527a8a02c`** | **=> 而 3 `ET_DYN`** | **=> 而 **1**** | **=> 而 1** |
+
+**=> 而改后那一份的逐字节读数（=> 而照录 07，=> 而它治的是「那一格今天成立」）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **`e_ident`** | **=> 而 `7f 45 4c 46 02 01 01 00…`** |
+| **`e_type`** | **=> 而 3 `ET_DYN`** |
+| **`e_machine`** | **=> 而 AArch64** |
+| **`e_entry`** | **=> 而 33920** |
+| **`phnum` / `phentsize` / `phoff`** | **=> 而 12 / 56 / 64** |
+| **`PT_INTERP` 行数** | **=> 而 1** |
+| **`PT_INTERP` 逐字** | **=> 而 `/system/bin/linker64`，=> 而长度 20，=> 而 hex `2f 73 79 73 74 65 6d 2f 62 69 6e 6b 65 72 36 34`** |
+| **=> 而阳性对照** | **=> 而 `PT_LOAD` 4、=> 而 `PT_DYNAMIC` 1、=> 而 `PT_TLS` 1** |
+| **=> 而逐条 program header 表** | **=> 而 i=0 `PT_PHDR`、=> 而 i=1 `PT_INTERP`（=> 而 `p_offset=736`、`p_filesz=21`）、=> 而 i=2 到 5 `PT_LOAD`、=> 而 i=6 `PT_TLS`、=> 而 i=7 `PT_DYNAMIC`、=> 而 i=8 `PT_GNU_RELRO`、=> 而 i=9 `PT_GNU_EH_FRAME`、=> 而 i=10 `PT_GNU_STACK`、=> 而 i=11 `PT_NOTE`** |
+
+**=> 而落位侧那几份逐字（=> 而照录 07）：**
+
+| 那一份 | 而它的读数 |
+|---|---|
+| **`component-meta.json`** | **=> 而 `entry` 是 `bin/libbusybox.so`、=> 而 `buildSha` 是 `02e19059fbae54547d4bc45b671205695ce83c23`、=> 而 `buildRun` 是 `40107030873`** |
+| **`piece-shape.json`** | **=> 而 `entryForm` 是 `dyn-interp`、=> 而 `entryRole` 是 `program`、=> 而 `kind` 是 `program`** |
+| **`program-manifest.json`** | **=> 而 `role` 是 `program`** |
+| **=> 而那 19 个入口** | **=> 而**全是同一份字节**，=> 而而权限位是 `-rwxr-xr-x`、=> 而而 `u:object_r:app_data_file:…`** |
+| **=> 而 `bin/sh`** | **=> 而**指向 `libbusybox.so` 的软链**** |
+
+> **=> 而这一条把今天这一族**收口**了：=> 而 busybox 那一件从「**两头都不落**」变成了「**落在 `ET_DYN` 那一族**」，=> 而而它**起来了**。**
+>
+> **=> 而按 C-115：而改前那一版（=> 而 547392、`ET_EXEC`、0 行、`PT_DYNAMIC` 0）**留档不删**。**
+
+**=> 而 args 那一格今天有前后两版对照（=> 而按 C-115 并列）：**
+
+| 那一版 | 而它的 argv 逐字 |
+|---|---|
+| **上一稿（=> 而 `0c1d9af` 那一版）** | **=> 而「argv 里那一份 args 逐字**不在**」** |
+| **这一版（=> 而 `02e1905`）** | **=> 而 bash 是 `/system/bin/linker64` 加 `…/opt/bash/5.2.15/bin/bash` 加 `…/tmp/hold.sh`；=> 而而 ripgrep 是 `/system/bin/linker64` 加 `…/opt/ripgrep/14.1.1/bin/rg` 加 `--regexp` 加 `x` 加 `…/tmp/hold.fifo`** |
+
+> **=> 而所以「args 被 `drop(1)` 丢掉」那一格今天**已过**。**
+>
+> **=> 而 05 那一条链的修法也核过：=> 而 `d7eb518` 把 `GuestAdapter.kt:34` 那一处改成 `ExecEntry.argv(i.programEntry, listOf(i.programEntry.absolutePath) + i.args)`—— => 而而那**把 args 补成了 argv 的形状**（=> 而程序名在前）。**
+
+**=> 而 ripgrep 那一件的 argv 今天抓到了（=> 而照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **`CMDLINE_TEXT`** | **=> 而 `/system/bin/linker64 …/opt/ripgrep/14.1.1/bin/rg --regexp x …/tmp/hold.fifo`** |
+| **=> 而那一趟的 `COUNT_FULLPATH_LINKER64`** | **=> 而 **1** 次** |
+| **`EXE`** | **=> 而 `/apex/com.android.runtime/bin/linker64`** |
+| **`STATE`** | **=> 而 `S`** |
+| **=> 而 environ** | **=> 而三项（=> 而 `LD_LIBRARY_PATH`、=> 而 `LOBOS_SYSTEM_LINKER`、=> 而 `LD_PRELOAD`）与 **18 个**键名、=> 而而 `environ_bytes` **1001**** |
+
+**=> 而本规范把「要取到一格读数，可能要先修好它前面那一格」写成正文（=> 而它治的是「取不到就以为那一格取不到」）：**
+
+> **=> 而为什么这一版抓到而上一版抓不到（=> 而那是一个**可核的读数形态**）：=> 而上一版 args 被 `drop(1)` 丢掉了 => 而那一趟**等于空参数** => 而而 rg 立刻 exit 2 => 而而**活不过几秒** => 而而扫 `/proc` 扫了 20000 轮**一次都没抓到**；=> 而而这一版 args 上了 => 而而它带着 `--regexp x <fifo>` 读那个 fifo **停住了** => 而而**抓到了**。**
+>
+> **=> 而所以这一族是「**要取到一格读数，可能要先修好它前面那一格**」** —— => 而它治的是「**取不到就以为那一格取不到**」，=> 而而**上一版那一格不是取不到，是**没让那个进程活得够久**。**
+>
+> **=> 而它落进 **§122 那一族**（=> 而 §122.29 那一节），=> 而而**不新立一节** —— => 而理由是：=> 而它与「起进程那一格」**是同一族**（=> 而而那一条讲 argv 怎么构造，=> 而而这一条讲**那一格取不到时先看它前面那一格**），=> 而而**同族分两节**会让**同一个族分成两处**。**
+>
+> **=> 而按 C-135：而它与「args 被 `drop(1)` 丢掉」那一格是**两问**：=> 而那一格问「**argv 少没少那一项**」，=> 而而这一格问「**为什么这一格取不到**」，=> 而而**它们是同一个族里的两个问句**。**
+
+
+#### 而 PTY 宿主起来了（=> 而 2026-10-24 补正）
+
+**=> 而 `diag.jsonl` 多了一条（=> 而照录 07，=> 而而它治的是「自述就绪」那一格）：**
+
+```
+[23:39:49] 宿主启动形态
+  shell=无 | bin=/data/user/0/lobos.os/files/usr/lib/librivospty.so | hostArgv=/system/bin/linker64 | /data/user/0/lobos.os/files/usr/lib/librivospty.so
+[23:39:49] PTY 会话宿主就位
+  /data/user/0/lobos.os/files/usr/lib/librivospty.so （常驻；shell.exec 与终端共用）
+[23:39:49] PTY 宿主自述
+  librivospty ready
+```
+
+> **=> 而那一条「PTY 宿主自述 :: librivospty ready」是这一版才有的**（=> 而 `0c1d9af` 那一版**没有**）=> 而而**那个宿主进程自己起来了并自述就绪**。**
+
+**=> 而那个宿主进程在设备上的实际读数（=> 而照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **`ps` 那一行** | **=> 而 `10080 u0_a214 linker64 linker64 /data/user/0/lobos.os/files/usr/lib/librivospty.so`** |
+| **`environ` 三项里** | **=> 而 `LD_LIBRARY_PATH=/data/user/0/lobos.os/files/usr/lib` 与 `LOBOS_SYSTEM_LINKER=/system/bin/linker64`，=> 而而 `LD_PRELOAD` **没有**** |
+| **=> 而 environ 键名与字节数** | **=> 而 **46 个**键、=> 而而 **6612** 字节** |
+| **=> 而那 46 个键里含** | **=> 而 `ANDROID_SOCKET_zygote`、=> 而 `BOOTCLASSPATH`、=> 而 `DEX2OATBOOTCLASSPATH`（=> 而**宿主进程继承的那一套**）** |
+| **=> 而 cmdline** | **=> 而 `/system/bin/linker64 …/usr/lib/librivospty.so`** |
+| **=> 而那一趟的 `COUNT_FULLPATH_LINKER64`** | **=> 而 **1** 次** |
+| **`STATE`** | **=> 而 `S`** |
+
+**=> 而那两种 env 形态并列成表（=> 而它治的是「那两趟不是同一形态」）：**
+
+| 那一趟 | 而它的 environ 形态 |
+|---|---|
+| **PTY 宿主那一趟** | **=> 而 **46 键 / 6612 字节**，=> 而而含 `ANDROID_SOCKET_zygote`、`BOOTCLASSPATH`、`DEX2OATBOOTCLASSPATH`（=> 而**宿主进程继承的那一套**），=> 而而 **`LD_PRELOAD` 没有**（=> 而 `PtySession.kt:318` `remove` 的就是它）** |
+| **程序那一趟** | **=> 而 **18 键 / 996 到 1001 字节**，=> 而而含 `LOBOS_PROGRAM_ID`、`LOBOS_BRIDGE_SOCKET`、`LOBOS_SESSION_TOKEN`、`LOBOS_PERMISSION_MODE`、`LOBOS_OWN_SESSION`、`LOBOS_PROGRAM_GENERATION`（=> 而**程序自己那一套**），=> 而而 **`LD_PRELOAD` 有**** |
+
+> **=> 而那两条**并列在案**：=> 而那个宿主的 environ 里**没有 `LD_PRELOAD`**，=> 而而程序那一趟**有**。**
+>
+> **=> 而按 C-115：而这两种形态**两个时点不互相覆盖**，=> 而而**它们并列在案**。**
+>
+> **=> 而按 C-103：而 PTY 宿主为什么用宿主那一套 env 那一格**只报读数不裁定**（=> 而 07 明确交代了），=> 而而**成因仍未核**。**
+
+**=> 而本规范把这一格今天的状态写成正文：=> 而「PTY 宿主起不来」那一格从「部分已核」改成**已过****（=> 而按 C-194）。
+
+**=> 而 05 那一条修法也核过（=> 而 `d7eb518`）：=> 而 `PtySession.kt` 那一处**把 `view0` 灌进 env**了，=> 而而那一句 `remove("LD_PRELOAD")`**照旧**（=> 而 `LD_PRELOAD` 不继承）。**
+
+
+#### 而「设备侧读数本身有一个时点」那一族（=> 而 2026-10-24 补正）
+
+**=> 而那两条读数并列（=> 而照录 07，=> 而它治的是「同一格两个时点两个值」）：**
+
+| 那一趟 | 而它读到的是 |
+|---|---|
+| **落位后**第一次**读 `program-index.json`** | **=> 而 busybox 是 `role=entry-unusable`、=> 而 `exitCode=None`、=> 而 `restarts=0`、=> 而 `lastFailure=''`、=> 而 `exitedAt=0`** |
+| **落位稳定之后**再读 | **=> 而 busybox 是 `role=program`**（=> 而而 `program-state.json` 里**也是** `role=program`、`installed=True`、`evidence=落位=…/opt/busybox`）** |
+
+> **=> 而所以那一格是「**落位进行中**」的一个**时点**读到的**，=> 而而不是那一件坏了。**
+>
+> **=> 而成因在仓内（=> 而照录 07，=> 而而 04 今天核过那几行）：=> 而 `PieceScan.kt:107` 到 `:112` 找不到落位目录就返回 `ENTRY_UNUSABLE`；=> 而而 `landedPieceDir`（=> 而 `PieceScan.kt:350` 到 `:361`）要求那目录下有 `component-meta.json`。**
+>
+> **=> 而按 C-115：而那两条**两个时点不互相覆盖**，=> 而而**并列在案**。**
+
+**=> 而本规范把这一族该落哪一节写成正文：=> 而它落进 **§121.8 那一节**（=> 而 zlib 那两格那一族），=> 而而**理由**是：=> 而它治的是「**同一格在两个时点读到两个值**」，=> 而而 §121.8 那一族治的**正是「构建侧与设备侧分两格」**（=> 而而**设备侧那一格本身就是时点敏感的**），=> 而而**它们是同一族**。**
+>
+> **=> 而按 C-135：而它与「那一件今天起不起来」**是**两个问句**：=> 而那一格问「**落位完成之后**它是什么状态」，=> 而而这一格问「**我在落位过程中读到的是什么**」，=> 而而**读数必须标明是哪个时点**。**
+>
+> **=> 而而这一族将来的判别式：=> 而读设备侧那一格**之前**，=> 而而先答「**落位完成了吗**」（=> 而那一条可机械判：=> 而那目录下有 `component-meta.json` 吗），=> 而而**没完成就不读那一格**。**
+
+**=> 而那四件在监督环里的 `exitCode` 与 `restarts`（=> 而两版并列，=> 而照录 07）：**
+
+| 那一件 | 而 `0c1d9af` 那一版 | 而 `02e1905` 那一版 |
+|---|---|---|
+| **bash** | **=> 而 143 / restarts=4** | **=> 而 143 / restarts=20** |
+| **busybox** | **=> 而 `exitCode=None` / restarts=3，=> 而而 `Cannot run program`（=> 而 `error=13`）** | **=> 而 **127 / restarts=3**，=> 而而**`error=13` 没有了**** |
+| **jq** | **=> 而 143 / restarts=3** | **=> 而 143 / restarts=11** |
+| **ripgrep** | **=> 而 **2** / restarts=4** | **=> 而 **143** / restarts=19** |
+
+> **=> 而 busybox 那一件在 `diag.jsonl` 里 `stage=fatal` **零条**（=> 而上一版是**三条** busybox 的 `Cannot run program`）=> 而而**它起来了然后退出 127**。**
+
+**=> 而「空参数时是不是 exit 2」那一格两栏并列（=> 而照录 07）：**
+
+| 那一件 | 而**手工实跑**空参数 | 而**监督环里**那一趟 |
+|---|---|---|
+| **bash** | **=> 而 0** | **=> 而 143** |
+| **jq** | **=> 而 0** | **=> 而 143** |
+| **ripgrep** | **=> 而 2** | **=> 而 143**（=> 而**不是 2**）** |
+| **busybox** | **=> 而 127** | **=> 而 127** |
+| **=> 而 `bin/cat`** | **=> 而 0** | **=> 而（=> 而不适用）** |
+
+> **=> 而手工实跑**与上一版逐字相同**；=> 而而**监督环里那个数已经不是 2** —— => 而而**因为那一趟带 args 不是空参数**。**
+
+#### 而 python 与 sqlite 那两件（=> 而 2026-10-25 补正）
+
+**=> 而 07 核到那两件**都不在设备上**（=> 而照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **设备上 `opt/` 下那几件** | **=> 而**只有八件**：=> 而 bash、=> 而 busybox、=> 而 crypto、=> 而 curl、=> 而 jq、=> 而 openssl、=> 而 ripgrep、=> 而 zlib** |
+| **=> 而设备上 `catalog.json`** | **=> 而**没有** |
+| **=> 而那两件** | **=> 而 python 与 sqlite **都不在设备上** |
+| **=> 而「设备上落位那一份」那一格对那两件** | **=> 而**未核**（=> 而是**没落位**，=> 而**不是 0**）** |
+
+**=> 而 sqlite 那一件 07 从 Release 的 `tool-sqlite` 筐取到了固化产物（=> 而照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **那个筐里的固化产物** | **=> 而 `sqlite-nodeps+ndk30.0.16248370+api35.tar.gz`、=> 而 1798806 字节、=> 而 sha256 `e8969332a888c6802f4ec952b97989f23207773b5bc6c926a5d957869019cc32`（=> 而与那个 `.sha256` 声明**逐字相同**）** |
+| **=> 而包里 `bin/sqlite3`** | **=> 而 1762480 字节、=> 而 sha256 `cef31206da10006f1b85c214b3244f4c906b15576b59ccca5d99a2cc680658f8`** |
+| **=> 而纯字节读** | **=> 而 `e_type` 3 `ET_DYN`、=> 而 `e_machine` AArch64、=> 而 `e_entry` 294412、=> 而 `phnum` 12、=> 而 `phentsize` 56、=> 而 `phoff` 64** |
+| **=> 而 `PT_INTERP`** | **=> 而 1 行、=> 而逐字 `/system/bin/linker64`、=> 而长度 20、=> 而 `p_offset` 736、=> 而 `p_filesz` 21** |
+| **=> 而阳性对照** | **=> 而 `PT_LOAD` 4、=> 而 `PT_DYNAMIC` 1、=> 而 `PT_TLS` 1** |
+
+**=> 而本规范把「那张清单表要不要加这两件」写成正文（=> 而它治的是「查了设备上落位那一份就等于查了那一件」）：**
+
+> **=> 而**要加**，=> 而而**加在「固化产物那一份」那一栏**，=> 而而**不是**加在「设备上落位那一份」那一栏 —— => 而而**那两栏是**两格**。**
+>
+> **=> 而 sqlite 那一件**：=> 而「**固化产物那一份**」那一格**已核**（=> 而 `ET_DYN` 且 `PT_INTERP` 1 行）；=> 而而「**设备上落位那一份**」那一格**未核**（=> 而它**没落位**）。**
+>
+> **=> 而 python 那一件**：=> 而**两格都未核**（=> 而它**既没落位**，=> 而而**那一筐的固化产物 07 也没取到**）—— => 而按 C-05 那一格**不猜填**。**
+
+**=> 而本规范把「那两格是**两问**」写成正文（=> 而按 C-135，=> 而而这一族今天已经写了「`e_type` 是什么」与「`PT_INTERP` 有几行」是两格、=> 而而第一格过了**不蕴含**第二格过了）：**
+
+| 那一格 | 而它问什么 | 而它缺的是什么 |
+|---|---|---|
+| **「固化产物那一份」** | **=> 而**那份产物**是什么形态**（=> 而它是**构建侧**那份字节）** | **=> 而要把那份字节取到手，=> 而再纯字节读它** |
+| **「设备上落位那一份」** | **=> 而**设备上那个件**是什么形态**（=> 而它是**落位侧**那份字节）** | **=> 而要它**先落位**，=> 而再纯字节读它** |
+
+> **=> 而那两格**各自独立**：=> 而**固化产物那一份**与**设备上落位那一份`**可能不是同一份字节**（=> 而落位那一侧会固化、=> 而而取件那一侧会重取），=> 而而**第一格过了不蕴含第二格过了**。**
+>
+> **=> 而而这与「`e_type` 是什么」与「`PT_INTERP` 有几行」**那两格是**不同的两层**：=> 而那两格问的是**同一份字节的两个字段**，=> 而而这一对问的是**两份字节各自的状态**。**
+>
+> **=> 而按 C-126：而「设备上落位那一份」那两格今天写「**未核**」** —— => 而**不是 0**（=> 而是没落位，=> 而而落位那一侧读出来的是 0 个件）。**
+
+
+#### 而那张清单表的适用面（=> 而 02 今天核到，=> 而 2026-10-25 补正）
+
+**=> 而 02 核到的事实（=> 而它治的是「那张表覆盖哪几件」）：**
+
+| 那一筐 | 而它包含哪几件 | 而它走哪一条路 |
+|---|---|---|
+| **base** | **=> 而 bash、=> 而 ripgrep、=> 而 busybox、=> 而 jq、=> 而 curl、=> 而 zlib、=> 而 openssl、=> 而 crypto** | **=> 而**随 APK 走**（=> 而 `scripts/toolchain/fetch-prebuilt-pieces.sh:52` 那一行 `PIECES=(zlib openssl curl jq bash busybox ripgrep)`，=> 而而 crypto 是 base 筐里**不进那一行**的那一件）** |
+| **rt** | **=> 而 node、=> 而 python** | **=> 而**商店 / OTA 组件通道**（=> 而 `ProgramOtaUpdater.kt:207` 到 `:210` 调 `ProgramInstallPipeline.install(From.COMPONENT)`）** |
+| **tool** | **=> 而 git、=> 而 sqlite、=> 而 npm、=> 而 pnpm、=> 而 llvm、=> 而 make、=> 而 cmake、=> 而 pkgconf** | **=> 而同上** |
+
+> **=> 而那三筐的划分在仓里逐字可查（=> 而 `scripts/toolchain/cache-key.sh:69` 到 `:74`）：=> 而 `bash|ripgrep|busybox|jq` 与 `curl|zlib|openssl|crypto` 是 **base**（=> 而那两行上面逐字写着「base 基础环境件：随 APK 走」）、=> 而而 `node|python` 是 **rt**（=> 而「运行时：zip 件，用户自己装」）、=> 而而 `git|sqlite|npm|pnpm|llvm|make|cmake|pkgconf` 是 **tool**（=> 而「工具：zip 件，用户自己装」）。**
+
+**=> 而本规范把那张表的适用面写成正文（=> 而它治的是「判别形式的范围写得太宽」）：**
+
+> **=> 而那张清单表的判别形式原来写的是「对仓里**每一件**产出可执行文件的件」—— => 而那**按字面**把 tool 与 rt 那 10 件**也包进来了**，=> 而而**实际只列了 base 筐那 8 件**。**
+>
+> **=> 而而它之所以那样，=> 而是因为**那张表是照着「设备上落位那一份」建的** —— => 而**只有 base 筐那 8 件随 APK 走**，=> 而而**它们才会在设备上**。**
+>
+> **=> 而所以那张表的**适用面**要写清**：=> 而它覆盖的是「**随 APK 走那一路**」的件，=> 而而**不是**全部产出可执行文件的件。**
+>
+> **=> 而而那 10 件（=> 而 rt 与 tool）**要另立一格**，=> 而而它们**走的是另一条路**（=> 而商店 / OTA 组件通道），=> 而而**落位时机与落位位置都不同**。**
+
+**=> 而 02 另核到的那两条（=> 而它们治的是「那一格是「无」还是「0」」）：**
+
+| 那一件 | 而它的读数 |
+|---|---|
+| **pnpm 与 node** | **=> 而**都是 `ET_DYN` 加 `PT_INTERP` **1 行**、=> 而而逐字 `/system/bin/linker64`**（=> 而与表里第一组**同形**）** |
+| **npm** | **=> 而那一格是「**无**」而不是 **0**（=> 而整棵树 1943 文件**零 ELF**，=> 而而入口是 **shebang**）** |
+| **=> 而那 10 件里有几件落进 `ET_EXEC` 那一族** | **=> 而**一件也没有** |
+
+> **=> 而「无」与「0」**是**两格**（=> 而按 C-112，=> 而而一个 0 要能答「这是服务端说的还是我算不出来的」）：=> 而**0** 是「读了那一格而它是 0」，=> 而而**无** 是「**那一格不存在**」（=> 而那棵树里根本没有 ELF 文件，=> 而而入口是脚本）。**
+>
+> **=> 而按 C-126：而 npm 那一格今天写「**无**」**，=> 而而**不是**「0」** —— => 而而它**不属** `ET_EXEC` 那一族，=> 而而也**不属** `ET_DYN` 那一族。**
+
+
+#### 而 python 与 sqlite 那两件的固化产物读数（=> 而 07 今天取到了，=> 而 2026-10-25 补正）
+
+**=> 而那两件的固化产物（=> 而照录 07）：**
+
+| 那一件 | 而那个资产 | 而它的字节数 | 而它的 sha256 |
+|---|---|---|---|
+| **sqlite** | **=> 而 `sqlite-nodeps+ndk30.0.16248370+api35.tar.gz`** | **=> 而 1798806** | **=> 而 `e8969332a888c6802f4ec952b97989f23207773b5bc6c926a5d957869019cc32`（=> 而与那个 `.sha256` 声明**逐字相同**）** |
+| **python** | **=> 而那个资产** | **=> 而 182982625** | **=> 而 `e50ac1c8729ba6c8deb28b58349e27d4e889b66d22ce0261c8f8092fd60cdee3`（=> 而与声明**逐字相同**）** |
+
+| 那一件 | 而包里那个入口 | 而它的字节数 | 而它的 sha256 |
+|---|---|---|---|
+| **sqlite** | **=> 而 `bin/sqlite3`** | **=> 而 1762480** | **=> 而 `cef31206da10006f1b85c214b3244f4c906b15576b59ccca5d99a2cc680658f8`** |
+| **python** | **=> 而 `bin/python3`** | **=> 而 25672408** | **=> 而 `63ddbf3e9254dd68f5ca4f86668b3922e006a1b619dfd097cad2c0f24fa219b6`** |
+
+**=> 而纯字节读（=> 而照录 07）：**
+
+| 那一件 | 而它的 `e_type` | 而它的 `e_machine` | 而它的 `e_entry` | 而它的 `PT_INTERP` |
+|---|---|---|---|---|
+| **sqlite3** | **=> 而 3 `ET_DYN`** | **=> 而 AArch64** | **=> 而 294412** | **=> 而 **1 行**、=> 而逐字 `/system/bin/linker64`、=> 而长度 **20**、=> 而 `p_offset` **736**、=> 而 `p_filesz` **21**；=> 而而 `phnum` 12、=> 而 `phentsize` 56、=> 而 `phoff` 64** |
+| **python3** | **=> 而 3 `ET_DYN`** | **=> 而（=> 而 AArch64）** | **=> 而 1655728** | **=> 而 **1 行**（=> 而而逐字 `/system/bin/linker64`）** |
+
+> **=> 而 sqlite3 那一个的**阳性对照**是 `PT_LOAD` 4、=> 而 `PT_DYNAMIC` 1、=> 而 `PT_TLS` 1。**
+>
+> **=> 而那两件「设备上落位那一份」**今天**仍未核**（=> 而它们**没落位**）—— => 而按 C-05 那一格**不猜填**。**
+>
+> **=> 而按 C-115：而「固化产物那一份」与「设备上落位那一份」**是**两格**（=> 而本节前面已经写明），=> 而而**这一段只答前者**。**
+
+**=> 而本规范把「资产名与它的实际格式不一致」那一族写成正文（=> 而照录 07，=> 而而它治的是「取件那一侧读不出来」）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **=> 而那个资产的字节流** | **=> 而是 **gzip**（=> 而魔数 `1f 8b`）** |
+| **=> 而那个资产的文件名** | **=> 而是 `.zip`** |
+| **=> 而 `unzip`** | **=> 而读不出**：=> 而 `End-of-central-directory signature not found`** |
+| **=> 而 Python 的 `zipfile`** | **=> 而读不出**：=> 而 `File is not a zip file`** |
+| **=> 而正确的解法** | **=> 而 `tar xzf`** |
+
+> **=> 而这一族治的是「**按名字的扩展名去解**」** —— => 而而那个扩展名**不反映实际格式**，=> 而而**按扩展名选工具**就必然读不出。**
+>
+> **=> 而按 C-112：而「读不出」**与「**那一件没有**」**是**两格** —— => 而而那两条报错**恰恰是阳性证据**（=> 而而它们证明**那个文件在**，=> 而而只是**用错了工具**）。**
+>
+> **=> 而而这与「零命中先阳性对照」那一族**相关**：=> 而而那两条**报错**就是「**用错工具的阳性对照**」—— => 而而**如果那个文件不在**，=> 而而报错会是**另一种**。**
+>
+> **=> 而而将来的判别形式：=> 而解一个资产之前，=> 而先**读它的头两个字节**（=> 而 `1f 8b` 是 gzip、=> 而 `50 4b` 是 zip、=> 而 `7f 45 4c 46` 是 ELF），=> 而而**按那个选工具**，=> 而而**不按文件名**。**
+>
+> **=> 而而这一条**并进 §122.18 那一族**（=> 而「取数那一格报的不是事实」那一族）—— => 而而它治的是同一件事：**取数那一侧用的那个形态**与**那一件本来的形态**不一致。**
+
+
+#### 而那张表的正确形式与 crypto 那个特例（=> 而 05 今天核出，=> 而 2026-10-25 补正）
+
+**=> 而 05 核到那张表的**正确形式**是：=> 而「对仓里**每一件**产出可执行文件的件，读它**固化产物那一份**的 `e_type` 与 `INTERP` 行数」，=> 而而「**设备上落位那一份**」**那是另一格**，=> 而而它**只对 base 筐那几件适用**。**
+
+**=> 而 crypto 那一件是个特例（=> 而它今天**没变**、=> 而而**仍随 APK 走**），=> 而而那一串读数逐条照录 05，=> 而而我本机也核过那几行：**
+
+| 那一处 | 而它的读数 |
+|---|---|
+| **=> 而 `PIECES` 那一行是**生成的** | **=> 而 `fetch-prebuilt-pieces.sh:48` 逐字是「而下面这一行是那个生成器今天算出来的结果」；=> 而而 05 本机实跑那个生成器，=> 而而输出逐字是 `zlib openssl curl jq bash busybox ripgrep`，=> 而而 **crypto 不在里面**** |
+| **=> 而 `:28` 到 `:37`** | **=> 而逐字写着「而 crypto **不再作为独立的一件取**（=> 而 01 今天裁：=> 而它就是 openssl 那一件的一部分）」与「而**归并不是『从列表里删掉』**：=> 而删掉之后**那份字节仍由 openssl 那一件管**（=> 而它本来就在那件的文件里）」** |
+| **=> 而 `component-sources.json`** | **=> 而 `:192` 是 `"sameAs": "openssl"`、=> 而而 `:193` 是 `"notStandalone": true`**（=> 而我本机核过那两行，=> 而而它在 `scripts/component-sources.json`）** |
+| **=> 而 openssl 那一件的 `piece-shape.json`** | **=> 而 `programs` 是 `bin/openssl`、=> 而而 `libraries` 是 `lib/libcrypto.so` 与 `lib/libssl.so`；=> 而而 `files[]` 里 `lib/libcrypto.so` 那一条是 **6058832 字节 sha256 `7adc9320c1e271ba91e6ef6df7f8ec0e439d35fd5d004ad3c0acad29c49fa2c3`** —— => 而而**与 07 核到设备上落位那一份逐字相同**** |
+| **=> 而 `base-crypto` 那个筐** | **=> 而是**另一条路**（=> 而 `build-crypto.yml` 从 openssl 的固化包里**拆出** crypto 那一份重打，=> 而而它服务于「crypto 能单独升级」那件事）** |
+| **=> 而 `build-bundle-openssl.sh:74` 到 `:78`** | **=> 而逐字写着「而 crypto 由 build-crypto.yml 从本件的固化包里取」；=> 而而 APK 那一条**只取 `PIECES` 那 7 件**** |
+| **=> 而 `build-apk.yml:266` 与 `:270`** | **=> 而 `:266` 逐字是「而这一格原来硬编码 8，=> 而而它与 verify-apk-native.sh 的 WANT_N（=> 而从钉值表算）是两套口径」；=> 而而 `:270` 逐字是「而现在：=> 而**从钉值表算**（=> 而与 verify-apk-native.sh **同一把尺**）」** |
+
+**=> 而本规范把 crypto 那个特例的结论写成正文（=> 而它治的是「归并之后那一格该指哪一份」）：**
+
+> **=> 而所以「设备上落位那一份」那一格对 crypto **是适用的**（=> 而而那份字节由 openssl 那一件管、=> 而而它随 APK 走、=> 而而它在设备上**有**）；=> 而而**不适用**的是「**crypto 自己那一件的固化产物**」**那一格**（=> 而而 crypto **不是独立的一件**，=> 而而它**没有自己那一件的固化产物**）。**
+>
+> **=> 而而这一族治的是「**归并之后那一格该指哪一份**」**：=> 而而归并**只改的是「它不再被登记成独立一件」**，=> 而而**不丢弃那份字节**（=> 而那句话是仓里逐字写着的）—— => 而所以**那一格指的是「那份字节」，=> 而而不是「哪一件」**。**
+>
+> **=> 而按 C-135：而「它是不是独立的一件」与「那份字节是什么形态」**是**两个问句** —— => 而前者问**登记**，=> 而而后者问**字节**；=> 而而 crypto 在前者上是「不是」、=> 而而在后者上**有值**。**
+
+**=> 而本规范把「件数从钉值表算而不硬编码」写成正文（=> 而它治的是「两套口径」）：**
+
+> **=> 而件数今天**从 `PIECES` 那一行算（7）**，=> 而而**不把 crypto 算成一件** —— => 而而理由是 `build-apk.yml:266` 与 `:270` 那两句：=> 而而**原来硬编码 8** 与 `verify-apk-native.sh` 的 `WANT_N`（=> 而**从钉值表算**）**是两套口径**，=> 而而现在**统一成从钉值表算**（=> 而与 `verify-apk-native.sh` **同一把尺**）。**
+>
+> **=> 而而这一条治的是「**两个地方各数一遍而数得不一样**」** —— => 而而那一族的处置是**同一把尺**，=> 而而**不许硬编码**。**
+>
+> **=> 而按 C-223：而那一族（=> 而「收口总表的那张表一要跟上今天新立的那几条」）治的是**摘要栏要跟上**，=> 而而**件数这一栏**是同一件事的另一个面：=> 而而**摘要栏跟着判据源走，=> 而而件数跟着钉值表走** —— => 而而**两处都不许抄**。**
+
+**=> 而本规范把那张表的**适用面那张表**写成正文（=> 而照录 05，=> 而而它治的是「哪几件在哪一格适用」）：**
+
+| 那一组 | 而它有哪些件 | 而**固化产物那一份** | 而**设备上落位那一份** |
+|---|---|---|---|
+| **=> 而 base 筐那 7 件** | **=> 而 bash、=> 而 jq、=> 而 ripgrep、=> 而 busybox、=> 而 curl、=> 而 zlib、=> 而 openssl** | **=> 而**逐字可读**** | **=> 而**适用**** |
+| **=> 而 crypto** | **=> 而它**归并进 openssl 那一件**** | **=> 而**不适用**（=> 而而它没有自己那一件的固化产物）** | **=> 而**适用**（=> 而而那份字节由 openssl 那一件管）** |
+| **=> 而 python 与 sqlite** | **=> 而它们都产出 `bin/` 下的入口（=> 而 `bin/sqlite3` 与 `bin/python3`）** | **=> 而**逐字可读**** | **=> 而**不适用**（=> 而而**没落位**）** |
+| **=> 而 node 与 git** | **=> 而（=> 而 05 给的这一组）** | **=> 而（=> 而今天**未核**）** | **=> 而**不适用**（=> 而而**没落位**）** |
+
+> **=> 而 python 与 sqlite 那两件**都产出 `bin/` 下的入口，=> 而而**都是 `ET_DYN` 加 `PT_INTERP` 1 行**，=> 而而**所以它们要进那张表**。**
+>
+> **=> 而而「设备上落位那一份」那一格**只对 **base 筐那 7 件 + crypto** **适用**（=> 而而那 8 件随 APK 走），=> 而而**其余那几件不适用**（=> 而而它们**没落位**）。**
+>
+> **=> 而按 C-126：而 node 与 git 那两格今天写「**未核**」** —— => 而**不是 0**（=> 而而「没落位」与「那一格不存在」**是**两格**）。**
+>
+> **=> 而而这一族治的是「**那张表的每一格都得先问它适不适用**」** —— => 而而**不适用**与「**未核**」与「**0**」**是三格**，=> 而而**混起来就错了**。**
+
+
+#### 而 `base-crypto` 那个筐今天谁产出、谁核验、而它有没有第二个读者（=> 而 05 今天核出，=> 而 2026-10-25 补正）
+
+**=> 而 05 更正了自己上一稿的一句话（=> 而按 C-115 并列，=> 而而改前那一句**留档不删**）：**
+
+> **=> 而改前那一版（=> 而 05 上一稿写的）：=> 而「五处是 `build-crypto.yml` 自己（=> 而它是那个筐的产出方）」。**
+>
+> **=> 而改后（=> 而 05 本机实读 `ea56d54` 改完之后的 `build-crypto.yml` 逐字）：=> 而「crypto 那一件的固化产物由 `build-openssl.yml` 那一趟产出 —— => 而这一份**只是核它**：=> 而它现在**不再自己拆包、不再自己打包、不再自己上传**。」**
+
+**=> 而那几条读数（=> 而照录 05，=> 而而我本机逐行核过）：**
+
+| 那一处 | 而它的读数 |
+|---|---|
+| **=> 而 `build-openssl.yml:110`** | **=> 而逐字「打 crypto 那一件的包（与 openssl 同一份字节，同一次构建）」** |
+| **=> 而 `build-openssl.yml:103` 到 `:104`** | **=> 而逐字「而 crypto 那一件**由本趟流水线后一步固化上传**（同一次 make 的字节，=> 而而它的字节就取自本件这一份包里的 `libcrypto.so`）」** |
+| **=> 而 `build-crypto.yml:56`** | **=> 而逐字「等 base-crypto 筐里那一件到位，并核它的内容」** |
+| **=> 而 `build-crypto.yml:21` 到 `:22`** | **=> 而逐字「1. dispatch build-openssl.yml（=> 而那一趟会同时产出并上传 crypto 那一件）；2. 等 base-crypto 筐里那一件到位并**核它的内容**（=> 而 meta 与形状）」** |
+
+**=> 而本规范把「谁产出、谁核验」写成正文（=> 而它治的是「读者那一格数错了对象」）：**
+
+| 那一格 | 而它今天是谁 |
+|---|---|
+| **=> 而那个筐（`base-crypto`）的**产出方** | **=> 而 `build-openssl.yml` 那一趟**（=> 而而它 `:110` 逐字是「打 crypto 那一件的包」）** |
+| **=> 而那个筐的**核验者** | **=> 而 `build-crypto.yml` 那一趟**（=> 而而它 `:56` 逐字是「等 base-crypto 筐里那一件到位，并核它的内容」）** |
+| **=> 而设备上现在装的那一份** | **=> 而是**改前**那一版的形态**（=> 而而 07 核到设备上 crypto 那一件落位那一份是 `177f4aa4` 那一版（=> 而 `buildRun` **39470361271**）产出的，=> 而而 05 今天 `ea56d54` 才把 crypto 那一件改成由 openssl 那一趟**同源产出**；=> 而而**成因 07 明确不裁**，=> 而而那**归 05** 查**落位与产出**那一侧）** |
+
+**=> 而「读者那一格」是怎么核的（=> 而照录 05，=> 而而它的方法值得记）：**
+
+> **=> 而全仓扫 `base-crypto` 那个筐名**（=> 而**阳性对照**是 `build-crypto.yml` 那一处，=> 而而它**被扫出来了**，=> 而所以**扫法有效**），=> 而那**六处**逐字看下来**五处**是 `build-crypto.yml` 那一趟自己、=> 而而**第六处**是 `build-openssl.yml:183` 那一行注释（=> 而逐字是「固化到 base-crypto（=> 而 tag 与 asset 名由 `cache-key.sh` 算，=> 而与 `build-crypto.yml` 同一处）」）。**
+>
+> **=> 而所以：=> 而今天去那个筐取件的**只有 `build-crypto.yml` 那一趟自己**（=> 而它是**核验者**），=> 而而**没有任何一条别的流水线去取它**。**
+>
+> **=> 而我本机核过那六处**（=> 而 `build-crypto.yml:8`、`:10`、`:22`、`:56`、`:72` 与 `build-openssl.yml:183`）—— => 而而**五处 + 一处**与 05 说的**逐字一致**。**
+
+> **=> 而按 C-108：而「阳性对照是 `build-crypto.yml` 那一处而它被扫出来了」**这一句是关键** —— => 而而**没有阳性对照**的话，=> 而而「扫到零处」与「扫法不对」**分不开**。**
+
+**=> 而「它今天还有没有存在的必要」（=> 而照录 05，=> 而而这一族的答案）：**
+
+> **=> 而它今天**不是零读者**（=> 而 `build-crypto.yml` 那一趟**核验**它，=> 而而 `build-openssl.yml` 那一趟**产出**它），=> 而而它**没有第二个读者**。**
+
+**=> 而本规范把这一族留一个待裁的位（=> 而按 C-126，=> 而写「未过」而不写「待观察」）：**
+
+| 那一格 | 而它的状态 | 而它的边界 |
+|---|---|---|
+| **=> 而「`base-crypto` 该撤还是该留」** | **=> 而**已过：该留****（=> 而 01 今天裁了，=> 而而那一条是「**该留**」；=> 而而处置 **D-改动**、=> 而而归 **04 与 05**）** | **=> 而 01 裁的四条**：=> 而一、=> 而那一格问的是「那个筐今天还有没有存在的必要」=> 而而答由**三问合成**（=> 而产出方 / => 而核验者 / => 而取件者）；=> 而二、=> 而**该留**（=> 而它**不是零读者**，=> 而而按 C-152 它**有**读者，=> 而而那个读者**就是它的核验者**；=> 而而**零第二读者不构成撤的理由**——=> 而而那个筐今天**承着核验者取到那一件的唯一路径**，=> 而而**撤它要先改核验者的取法**）；=> 而三、=> 而 C-103 那两边：=> 而 **side A「保留一个可单独升级的通道」今天不成立**（=> 而 `build-crypto.yml:52` 逐字「这一件不再自己编 —— crypto 由 openssl 那一趟同源产出」）、=> 而而 **side B「那一份已经由 openssl 那一件带了」成立**（=> 而 `build-openssl.yml:110`）；=> 而四、=> 而**必须并列**：=> 而两个筐里那两份**buildRun 不同**（=> 而 40030227900 对 40030215774）=> 而而那是**两条生成路径**（=> 而 C-173）=> 而而**归并那一格不能只凭「字节相同」就做** |
+| **=> 而「设备上 crypto 那一件自己那个 `lib/` 下那一份与 openssl 那一件里那一份逐字相同」** | **=> 而**已核：答案是**不相同****（=> 而 07 今天核到，=> 而而详见本节下一段）** | **=> 而 07 核到 `opt/crypto/` 那一件**存在**，=> 而而那一份的 sha256 是 `314e05fb…` 而**不是** `7adc9320…`；=> 而而 `sameAs openssl` 那一格是**清单里的声明**，=> 而而那两件的 `buildSha` 与 `buildRun` **不同**（=> 而那是**两次不同的构建**）** |
+
+> **=> 而那两格**都要在下一轮有答案**，=> 而而**按 C-126 它们今天的状态是「未过」** —— => 而而**不是「待观察」**。**
+>
+> **=> 而按 C-135：而「该撤还是该留」与「那一份逐字相同吗」**是**两个问句**：=> 而前者问**处置**，=> 而而后者问**事实**；=> 而而**第一个问句归 01 与 04**，=> 而而**第二个问句归 07**（=> 而它要设备侧那一份字节的读数）。**
+>
+> **=> 而而这与本节前面「归并之后那一格该指哪一份」那一族是**同一族**：=> 而而**那三行（=> 而产出方、=> 而核验者、=> 而读者数）**就是「那一格该指哪一份」的**依据**。**
+
+
+#### 而设备上那两份 crypto 字节**不是**逐字相同（=> 而 07 今天核到了，=> 而 2026-10-25 补正）
+
+**=> 而这一格今天从「**未核**」改成「**已核：答案是不相同**」（=> 而照录 07）：**
+
+| 那一件 | 而它的字节数 | 而它的 sha256 |
+|---|---|---|
+| **=> 而 `opt/crypto/3.6.3/lib/libcrypto.so`** | **=> 而 6058816** | **=> 而 `314e05fb037fd178e4ff41cdf31584616b6b66b52d66d83a740c5b579afb3c7d`** |
+| **=> 而 `opt/openssl/3.6.3/lib/libcrypto.so`** | **=> 而 6058832** | **=> 而 `7adc9320c1e271ba91e6ef6df7f8ec0e439d35fd5d004ad3c0acad29c49fa2c3`** |
+
+**=> 而那几条读数（=> 而照录 07）：**
+
+| 那一项 | 而它的读数 |
+|---|---|
+| **=> 而 `cmp`** | **=> 而 `differ: byte 41, line 1`、=> 而 exit 1** |
+| **=> 而差异字节数** | **=> 而 656316 个字节不同**，=> 而而 md5 也不同** |
+| **=> 而阳性对照** | **=> 而设备上自己算的那两个 sha256 与取件到本机后算的**逐字相同**（=> 而四个都一样）=> 而所以那**两个不同的 sha256 是那两份字节本身的差别**，=> 而而**不是取件坏了**** |
+| **=> 而 section 表的形状** | **=> 而**布局相同而内容不同**：=> 而 `.text` 大小两边都是 `0000000000269660`、=> 而而 `.rodata` 都是 `10f8c3`，=> 而而**第 7、8、9 段的偏移差 8**** |
+| **=> 而那 656316 个差异字节按 section 归类** | **=> 而 `.plt` **644551**、=> 而 `.dynstr` **8702**、=> 而 `.text` **1411**、=> 而 `.comment` **974**、=> 而 `.eh_frame` **423**、=> 而 `.eh_frame_hdr` **255**** |
+| **=> 而 `SONAME`** | **=> 而两份**相同**（=> 而都是 `libcrypto.so`）** |
+| **=> 而那两格** | **=> 而也**相同**：=> 而 `e_type` 3 `ET_DYN`、=> 而 `PT_INTERP` 行数 **0**、=> 而而 `PT_LOAD` 4 与 `PT_DYNAMIC` 1 与 `PT_TLS` 0 **两件逐字相同**** |
+
+> **=> 而所以：=> 而**差的是那一份字节本身**，=> 而而**不是那两格**。**
+
+**=> 而那两条清单逐字（=> 而照录 07）：**
+
+| 那一件 | 而它的清单逐字 |
+|---|---|
+| **=> 而 crypto 那一件** | **=> 而 `id` 是 `crypto`、=> 而 `version` 是 `3.6.3`、=> 而 `entry` **空**、=> 而 `requires` 是 `openssl`、=> 而 `sourceSha256` **空**、=> 而 `buildSha` 是 `177f4aa42deda3ac11edc7a5075a749047fb28f3`、=> 而 `buildRun` 是 `39470361271`、=> 而而 `sameAs` 是 `openssl`** |
+| **=> 而 openssl 那一件** | **=> 而 `id` 是 `openssl`、=> 而 `version` 是 `3.6.3`、=> 而 `entry` 是 `bin/openssl`、=> 而 `requires` 是 `zlib`、=> 而 `sourceSha256` 是 `243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1`、=> 而 `buildSha` 是 `db351c3a53534b18f2918c237fc85120a33c67f7`、=> 而 `buildRun` 是 `40030215774`** |
+
+**=> 而本规范把「两条并排的读数」写成正文（=> 而它治的是「声明与事实混起来」）：**
+
+> **=> 而 crypto 那一件的清单写着 `sameAs openssl`，=> 而而它落位那一份的 sha256 与 openssl 那一件那一份的**不同**；=> 而而两件的 `buildSha` 与 `buildRun` **不同** => 而而**那是两次不同的构建**，=> 而而 `sameAs` 那一格是**清单里的声明**。**
+>
+> **=> 而按 C-135：而「清单声明 `sameAs`」与「落位那两份的字节相同吗」**是**两个问句** —— => 而前者问**清单**，=> 而而后者问**字节**；=> 而而**今天后者答「不相同」**。**
+
+**=> 而本规范把它与 05 那条读数并列（=> 而按 C-115 两个来源不互相顶替）：**
+
+> **=> 而 openssl 那一件落位那一份的 sha256 与 05 核到的那个 `7adc9320…` **逐字相同**（=> 而而字节数 6058832 也**相同**），=> 而而 **crypto 那一件落位那一份是 `314e05fb…`（=> 而 6058816 字节）**。**
+>
+> **=> 而所以：=> 而设备上那两份**不是同一份字节**。**
+
+**=> 而本规范把这一族与 §121.7 那一族的关系写成正文（=> 而它治的是「两条生成路径被当成了同一条」）：**
+
+> **=> 而 §121.7 那一族治的是「**同一个字节有两条生成路径**」** —— => 而而今天这一格是那一族的**一个反例**：=> 而而**清单声明 `sameAs` 相同**，=> 而而**落位那两份的字节不同**。**
+>
+> **=> 而按 C-135：而「**那两条生成路径**」（=> 而 §121.7 那一族）与「**`sameAs` 那个声明**」（=> 而清单那一格）**是**两个问句** —— => 而而前者问**产出过程**，=> 而而后者问**清单写了什么**；=> 而而**今天这一格是后者与前者对不上**的那一处。**
+>
+> **=> 而按 C-104：而 `sameAs` 那一格是「**同名不同义**」那一族（=> 而 C-150）的一个实例** —— => 而而 `sameAs` 那一格**说的是「它由 openssl 那一件带着」**，=> 而而**不是**「它那份字节与 openssl 那一件那份字节逐字相同」。**
+>
+> **=> 而而那两件事的差别就是这一族今天治的**：=> 而而**归并**（=> 而那份字节由 openssl 那一件管）**是清单与产出侧的事**，=> 而而**字节是否相同**是**落位侧的事实**。**
+
+**=> 而这一格牵出的那条新读数（=> 而照录 07，=> 而而它治的是「设备上装的是哪一版」）：**
+
+> **=> 而设备上 crypto 那一件落位那一份是 `177f4aa4` **那一版**（=> 而 `buildRun` **39470361271**）产出的，=> 而而 05 今天 `ea56d54` 把 crypto 那一件改成由 openssl 那一趟**同源产出**。**
+>
+> **=> 而所以设备上现在装的那一份是**改前那一版的形态**。**
+>
+> **=> 而 07 **明确不裁成因**（=> 而那**成因归 05** 查**落位与产出**那一侧）。**
+
+#### 而 `base-crypto` 那个筐的处置（=> 而 01 今天裁了，=> 而 2026-10-25 补正）
+
+**=> 而 01 本件 `S114-BASE-CRYPTO-BASKET-AND-TWO-LAYER-VERBATIM.md`（=> 而 243 行、=> 而 sha256 `c3c0e0ac44949d028dedfbbcf77f8cee5f168f284105c217a1067857756d816a`）裁了那四条，=> 而而我本机逐行核过它引的那几行：**
+
+**=> 而裁定一（=> 而那一格该问什么）：**
+
+> **=> 而它问的是「那个筐今天还有没有存在的必要」，=> 而而答由**三问合成**（=> 而产出方 / => 而核验者 / => 而取件者），=> 而而**不是**「有没有第二个读者」**单独一问**。**
+
+**=> 而裁定二（=> 而答案）：=> 而那个筐**该留**（=> 而它不是零读者；=> 而而**零第二读者不构成撤的理由**）：**
+
+> **=> 而理由一：=> 而它今天**不是零读者**（=> 而产出方 + => 而核验者），=> 而而按 **C-152** 它**有**读者，=> 而而那个读者**就是它的核验者**。**
+>
+> **=> 而理由二：=> 而**零第二读者不构成撤的理由** —— => 而那个筐今天**承着核验者取到那一件的唯一路径**（=> 而 `build-crypto.yml:56` 那一趟就是靠它拿到那一件去核 meta 与形状）=> 而而**撤它要先改核验者的取法** => 而而**那一格是「改核验者的取法」，=> 而而不是「撤筐」**。**
+>
+> **=> 而而我今天写的那一句「它今天**不是零读者**……=> 而而它**没有第二个读者**」**只答了那一半** —— => 而而**那一格该问的是三问合成的那个问**，=> 而而**「没有第二个读者」不是撤的理由**。**
+
+**=> 而裁定三（=> 而 C-103 那两边，=> 而而我今天两边都写了，=> 而今天**一边不成立**）：**
+
+| 那一 side | 而它今天成不成立 | 而它的依据 |
+|---|---|---|
+| **=> 而 side A「保留一个可单独升级的通道」** | **=> 而今天**不成立**** | **=> 而 `build-crypto.yml:52` 那一行逐字是「这一件不再自己编 —— crypto 由 openssl 那一趟同源产出」=> 而而字节来自 openssl 同一趟 make => 而而今天**没有「单独升级」这件事可保留**** |
+| **=> 而 side B「那一份已经由 openssl 那一件带了」** | **=> 而**成立**** | **=> 而 `build-openssl.yml:110` 那一行逐字是「打 crypto 那一件的包（与 openssl 同一份字节，同一次构建）」** |
+
+**=> 而裁定四（=> 而它**必须并列**，=> 而而**不被上面三条覆盖**）：**
+
+> **=> 而 base-crypto 筐里那一份与 base-openssl 筐里那一份**buildRun 不同**（=> 而 40030227900 对 40030215774）=> 而而那是**两条生成路径**（=> 而 C-173）=> 而而**归并那一格不能只凭「字节相同」就做**，=> 而而它要核的是**那两条路径是不是同一次构建**。**
+>
+> **=> 而「字节相同」**不蕴含**「同一次构建」**，=> 而而两条**按 C-115 并列**。**
+
+**=> 而本规范把这一族的处置写成正文（=> 而它治的是「只答了那一问的一半」）：**
+
+| 那一项 | 而它的内容 |
+|---|---|
+| **=> 而那一格的答案** | **=> 而**该留**** |
+| **=> 而处置方向** | **=> 而 **D-改动**（=> 而要动 `build-crypto.yml` 与 `build-openssl.yml` 那两处）** |
+| **=> 而归谁** | **=> 而 **04 与 05**** |
+| **=> 而「归并」那一格的前置** | **=> 而是**产出处那一格**，=> 而而它今天**未过**** |
+| **=> 而「crypto 那一件作为独立件还存不存在」** | **=> 而那是**另一格**，=> 而而 01 **本件不裁**** |
+
+> **=> 而按 C-135：而「那个筐该留还是该撤」与「crypto 那一件作为独立件还存不存在」**是**两个问句** —— => 而而前者问**筐**，=> 而而后者问**件**；=> 而而 01 裁的是前者。**
+>
+> **=> 而而这一族与 §121.7 那一族的关系**：=> 而§121.7 那一族治的是「**同一个字节有两条生成路径**」，=> 而而今天这一格**是那一族的一个实例**（=> 而而**两条路径**与**字节是否相同**是**两问**）。**
+
