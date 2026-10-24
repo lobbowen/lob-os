@@ -12799,7 +12799,8 @@ container/app/src/main/java/lobos/services/reg/ProgramIndex.kt
 | **=> 而「`by` 那一格（01 落点）落进哪一份」** | **=> 而**未过**（=> 而它今天**在落位侧哪儿都没落**）** | **=> 而 §122.29 那一族（=> 而 07 核到 `component-meta.json`、`piece-shape.json` 与 `program-manifest.json` **三份都没有 `by` 键**，=> 而而仓内那个 meta 对象里**也没有 `by`**，=> 而而它**只在控制台那一行**）** |
 | **=> 而「索引里 busybox 那一行的 role」** | **=> 而**已核：是 `program`**** | **=> 而 §122.29 那一族（=> 而 07 在 `82b1e2c` 那一版上核到 `role=program`、`version=1.36.1`、`stateDir=opt/busybox`、`assetEntry` 是 `bin/sh`、`level=None`、`enabled=True`，=> 而而**上一版那一格逐字是 `entry-unusable`**；=> 而而 05 那两笔 `41f3129` 与 `82b1e2c` **生效了**）** |
 | **=> 而「busybox 那一件能不能被监督起来（`desired` 那一格）」** | **=> 而**已核：`desired=RUNNING` 且它**进了监督名单**** | **=> 而 §122.29 那一族（=> 而 `6e76c31` 那一版逐字是 `desired=RUNNING` 而**上一版是 `STOPPED`**；=> 而而监督名单从三件变**四件**，=> 而而 journal 逐字有「状态变化：activating -> active」+「程序进程已启动」加 pid=18590 与 program=busybox；=> 而而**那是第三处改出来的**（=> 而 `6e76c31` 补的是慢路径那一支，=> 而而**声明层那两处在那一版没改**））** |
-| **=> 而「busybox 那一件在监督环里的 exitCode 变成 0」** | **=> 而**已核：跑出来的是 143 而不是 0**（=> 而它**之前**是「未过」）** | **=> 而 §122.29 那一族（=> 而 07 把它造出来了（=> 而 `07/runs/BUSYBOX-EXIT-CELL.md`、=> 而 168 行、=> 而 sha256 `0c12121a…`），=> 而而索引逐字是 `exitCode=143 restarts=2 desired=RUNNING pid=23143 lastFailure=退出码 143`；=> 而而**成因是「回收上世遗留进程」那一格杀的**（=> 而 bash、jq、ripgrep 今天逐字**也全是 143**）；=> 而而**busybox 没有任何 stderr**，=> 而而 `libbusybox.so: applet not found` **不在**）** |
+| **=> 而「busybox 那一件在监督环里的 exitCode 变成 0」** | **=> 而**已核：跑出来的是 143 而不是 0**（=> 而它**之前**是「未过」，=> 而而**连续两版同号**）** | **=> 而 §122.29 那一族（=> 而 `a7af049` 那一版逐字是 `exitCode=143 restarts=1 desired=RUNNING pid=25862`；=> 而而**成因是「回收上世遗留进程」那一格杀的**（=> 而 bash `pid=25829`、=> 而和 jq `pid=25839` **也都是那一格杀的**，=> 而和 ripgrep 逐字 `exitCode=2`）；=> 而而**busybox 没有任何 stderr**，=> 而而 `libbusybox.so: applet not found` **不在**）** |
+| **=> 而「05 那一笔 `a7af049` 有没有改变 busybox 落位形态」** | **=> 而**已核：没有改变**** | **=> 而 §122.29 那一族（=> 而 `entry`、`role`、`by` 与 `lifecycle` 与上一版**逐字相同**；=> 而而「`entry` 指到一条派生的软链、=> 而它能起来、=> 而 stderr 空」那三格在这一版**也成立**；=> 而而 05 那几条逐字**全对上**了设备侧）** |
 | **=> 而「busybox 空参数起来会停多久」** | **=> 而**已核**（=> 而三态逐字 `EXIT=0`）** | **=> 而 §122.29 那一族（=> 而 (a) stdin 从 `/dev/null`（=> 而 EOF）、=> 而而 (b) stdin 是一条**开着但没人写**的管道、=> 而而 (c) stdin **关着**——=> 而而**三态全是 `EXIT=0`**；=> 而而 (b) 那一态的 stdin 就是监督环里 fd 0 逐字那条 `pipe:[11030993]`；=> 而而 **busybox 那个 `sh` 不带参数时是非交互 shell、读完就退**）** |
 | **=> 而「监督环那一趟在 app 解冻后跑出来的是什么」** | **=> 而**已核：143**（=> 而**不是 0**）** | **=> 而 §122.29 那一族（=> 而**成因是「回收上世遗留进程」那一格杀的**；=> 而而**按 C-135 那一格与「exit 变成 0」不是同一问**——=> 而而前者是「**那一次跑出来是什么**」而后者是「**它会不会自己退**」，=> 而而后者**未核**）** |
 | **=> 而「监督环里那一趟自己会不会退」** | **=> 而**未核**** | **=> 而 §122.29 那一族（=> 而读到的那一趟是**被杀**的，=> 而而**没有**它自己退的那一条；=> 而而**07 不预判**）** |
@@ -17956,4 +17957,80 @@ bundle-env.sh:195  entry="$pick"
 > **=> 而 `component-sources.json` 给的是**值**（=> 而 `sources.<件>.entryName`），=> 而而**它不回答「怎么从落位结果算出来」**。**
 >
 > **=> 而 04 核为成立**：=> 而那**正是 C-104 那一族的形状**——=> 而而**同一个「`entry` 那一格」有两条路径**（=> 而而**算**的那一条与**读**的那一条），=> 而而**改一条不动另一条**就会漂=> 而 => 而 而而**它要落两处**（=> 而而**读侧那一处零代价、而算侧那一处要付**）。**
+
+
+
+#### 而 07 核完了 `a7af049` 那一版（=> 而 2026-10-25 补正）
+
+**=> 而 07 那一件落盘：`07/runs/GATE-A7AF049-VERIFY.md`、=> 而 223 行、=> 而 sha256 `52fa08e5364c419e74a25e39b460d98dc1a73d71625e1c04f728dd187719e64e`**。**
+
+**=> 而一 · `opt/busybox/1.36.1/` 那三份逐字（=> 而照录 07）：**
+
+| 那一件 | 而它的逐字 |
+|---|---|
+| **=> 而 `component-meta.json` 的键** | **=> 而 `[schema, id, version, entry, entryProvenance, by, role, requires, essential, source, sourceSha256, buildSha, buildRun]`** |
+| **=> 而 `component-meta.json` 那一行** | **=> 而 `entry` 是 `bin/sh`、=> 而和 `role` 是 `program`、=> 而和 `by` 长度 178、=> 而和 `entryProvenance` 是 `gen-component-meta.js:落位结果（构建期算出，非人填）`、=> 而和 `buildSha` 是 `a7af0494e49b8c451204badce9cb6fdd72a8aa16`、=> 而和 `buildRun` 是 `40142077978`、=> 而和 `essential` 是 `False`** |
+| **=> 而 `piece-shape.json` 那一份** | **=> 而 `entry` 是 `bin/sh`、=> 而和 `kind` 是 `program`、=> 而和 `entryForm` 是 `dyn-interp`、=> 而和 `entryRole` 是 `program`、=> 而和 `programs` **19 条**、=> 而和 `libraries` **0 条**、=> 而和 `derivedChain` **0 条**、=> 而和 `derivedLinks` **18 条**、=> 而和 `files[]` **19 条**** |
+| **=> 而落位侧 `program-manifest.json` 的键** | **=> 而 `[schema, id, version, entry, role, essential, requires, lifecycle, source, sourceSha256]`** |
+| **=> 而落位侧 `program-manifest.json` 那一行** | **=> 而 `entry` 是 `bin/sh`、=> 而和 `role` 是 `program`、=> 而和 `lifecycle` 是 `{resident: True}`、=> 而和 `essential` 是 `False`** |
+
+> **=> 而 05 那几条逐字全对上了**（=> 而 `entry` 是 `bin/sh`、=> 而和 `role` 是 `program`、=> 而和 `by` 存在而长度 178、=> 而和 `buildSha` `a7af0494e49b8c451204badce9cb6fdd72a8aa16`、=> 而和 `buildRun` `40142077978`；=> 而而 `piece-shape` 的 `entry` 是 `bin/sh`、`programs` **19 条**、`derivedLinks` **18 条**）。**
+
+**=> 而二 · busybox 起没起、exit 码与 stderr：**
+
+> **=> 而 journal 逐字（=> 而 07:33 那一趟）七行全落了**：
+>
+> - **=> 而 `[07:33:28.593] 状态变化：active -> activating；id=busybox load=loaded sub=dead (ok)`**
+> - **=> 而 `[07:33:28.665] OK 程序进程已启动 | pid=25832, program=busybox, 健康判据 127.0.0.1:41000/status`**
+> - **=> 而 `[07:33:28.694] 后端退出 -> 前端已收；unit=busybox exitCode=143`**
+> - **=> 而 `[07:33:31.259] OK 程序清单问题：busybox（1.36.1） | 提示：清单未声明 args：按空参数启动（需要子命令的程序会打印用法并退出，请安装携带 args 的新包）`**
+> - **=> 而 `[07:33:31.279] OK 程序版本=1.36.1 | 入口=…/opt/busybox/1.36.1/bin/sh`**
+> - **=> 而 `[07:33:32.134] OK 进程归属已记账 | program=busybox gen=1 pid=25862 starttime=19245911`**
+> - **=> 而 `[07:33:32.178] OK 程序进程已启动 | pid=25862, program=busybox, 健康判据 127.0.0.1:41000/status`**
+>
+> **=> 而它起来了（=> 而两趟：25832 与 25862），=> 而而 exit 码逐字是 143（=> 而与 `689ea85` 那一版**同号**）。**
+>
+> **=> 而那个 143 的成因 07 补核了（=> 而他上一稿留成未核而这一版闭合了）**：`[07:33:28.519] INFO 回收上世遗留进程 | pid=25832 starttime=19245543 program=busybox gen=1` 与 `[07:33:28.694] 后端退出 -> 前端已收；unit=busybox exitCode=143` => 而 => 而与 `689ea85` 那一版**同一格**：=> 而还是「**回收上世遗留进程**」那一格杀的（=> 而那一族另外三件逐字：=> 而 bash `pid=25829`、=> 而和 jq `pid=25839` **也都是那一格杀的**，=> 而和 ripgrep 逐字 `exitCode=2`）。**
+>
+> **=> 而 stderr 那一格**：=> 而 `diag.jsonl` 里 program-stderr 那一族逐字**只有 ripgrep 那一行**（=> 而**阳性对照**）与**一条空串** => 而 => 而而 **busybox 那一件没有任何 stderr**，=> 而而 `libbusybox.so: applet not found` **不在**。**
+
+**=> 而三 · 那 18 条软链还在（=> 而 19 项）而 `usr/bin/sh` 还在：**
+
+> **=> 而 `usr/bin/sh` 逐字是 `-> /data/user/0/lobos.os/files/opt/busybox/1.36.1/bin/sh`，=> 而 mtime 07:33。**
+
+**=> 而四 · ldconfig 与 crypto 那一件：**
+
+> **=> 而 ldconfig 报 **kind2**（=> 而逐字是 `kind2 libcrypto.so 共 2 处提供（字节逐字相同）=> 指向 crypto`；=> 而而「无害」**不该靠「恰好扫到了哪一个」**；=> 而和 kind1 **只剩** libcurl.so 与 libssl.so 那两条）。**
+>
+> **=> 而 `usr/lib/libcrypto.so` 指向 **crypto 那一件**（=> 而 mtime 07:33），=> 而而索引 **8 条**而 crypto **在里面**（=> 而 `role=library`、=> 而而 `assetEntry` **空**）。**
+
+**=> 而五 · 索引里那 8 条逐字（=> 而照录 07）：**
+
+| 那一件 | 而它的逐字 |
+|---|---|
+| **=> 而 bash** | **=> 而 `role=program`、=> 而和 version 5.2.15、=> 而和 `assetEntry` 是 `bin/bash`、=> 而和 `exitCode` 143、=> 而和 `restarts` 3、=> 而和 desired RUNNING** |
+| **=> 而 busybox** | **=> 而 `role=program`、=> 而和 `assetEntry` 是 `bin/sh`、=> 而和 `exitCode` 143、=> 而和 `restarts` 1、=> 而和 desired RUNNING、=> 而和 `pid` 是 25862、=> 而和 `lastFailure` 是「退出码 143」** |
+| **=> 而 crypto** | **=> 而 `role=library`、=> 而和 version 3.6.3、=> 而和 `assetEntry` **空**、=> 而和 `exitCode` None、=> 而和 `restarts` 0、=> 而和 desired RUNNING** |
+| **=> 而 curl** | **=> 而 `role=library`、=> 而和 version 8.22.0、=> 而和 `assetEntry` **空**、=> 而和 `exitCode` None、=> 而和 `restarts` 0、=> 而和 desired RUNNING** |
+| **=> 而 jq** | **=> 而 `role=program`、=> 而和 version 1.8.2、=> 而和 `assetEntry` 是 `bin/jq`、=> 而和 `exitCode` 143、=> 而和 `restarts` 17、=> 而和 desired RUNNING** |
+| **=> 而 openssl** | **=> 而 `role=library`、=> 而和 version 3.6.3、=> 而和 `assetEntry` **空**、=> 而和 `exitCode` None、=> 而和 `restarts` 0、=> 而和 desired RUNNING** |
+| **=> 而 ripgrep** | **=> 而 `role=program`、=> 而和 version 14.1.1、=> 而和 `assetEntry` 是 `bin/rg`、=> 而和 `exitCode` 2、=> 而和 `restarts` 4、=> 而和 desired RUNNING** |
+| **=> 而 zlib** | **=> 而 `role=library`、=> 而和 version 1.3.2、=> 而和 `assetEntry` **空**、=> 而和 `exitCode` None、=> 而和 `restarts` 0、=> 而和 desired RUNNING** |
+
+> **=> 而 tombstone **32 份**（=> 而与前几版**逐字相同**所以**零新增**）而 selfcheck 那一格与前几版**逐字相同**（=> 而 0/1；=> 而 `usr/bin` 里的命令入口（=> 而声明 2 · 已建 1）；=> 而缺 `c_rehash`）。**
+
+**=> 而六 · 取件核：**
+
+> **=> 而 artifact id `12579740731`（=> 而与 05 说的那个**一致**）、=> 而 apk-debug（=> 而 zip 70291025）、=> 而 APK sha256 `57232c8d6b96e0ebb3bd40536889ce357befacf56329fe8e2747adf82f5907f6`；=> 而而 build-identity 是 `a7af0494e49b8c451204badce9cb6fdd72a8aa16` / `40142590653` / `1359`，=> 而而 **install 之后立刻核读到旧那一版**（=> 而 `689ea85` 与 `40139421989`），=> 而而**启动 app 之后**才是 `a7af049` 与 `40142590653`。**
+
+**=> 而七 · 07 报的一处：**
+
+> **=> 而 05 那一笔 `a7af049`（=> 而多调用那一族与多入口那一问分开）**没有改变 busybox 落位形态** —— => 而而 `entry`、`role`、`by` 与 `lifecycle` 与上一版**逐字相同**，=> 而而「`entry` 指到一条派生的软链、=> 而它能起来、=> 而 stderr 空」那三格在这一版**也成立**。**
+>
+> **=> 而「监督环里那一趟自己会不会退」那一格**仍未核（=> 而这两版读到的那一趟**都是被杀**而不是自己退的，=> 而而 **07 不预判**）。**
+
+**=> 而八 · 04 据实记一条（=> 而这一条是今天那一族的第二次同号）：**
+
+> **=> 而那个 143 **连续两版同号**（=> 而 `689ea85` 与 `a7af049` 那一版），=> 而而**成因也连续两版同格**（=> 而都是「回收上世遗留进程」那一格杀的）=> 而 => 而 而而**按 C-115 这两条并列在案**、=> 而而**它们不是同一趟的两处读数**（=> 而而那是两版各自的一趟）。**
+
 
