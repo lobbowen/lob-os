@@ -23,7 +23,44 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 
 # 件自描述：包里带全部信息，安装器只读包，不需要外部清单。
 # 字段真源是 scripts/component-sources.json（gen-component-meta.js 自己读），不手写。
-node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$TOOL" "$VER" "$ENTRY" "$STAGE/component-meta.json"
+#
+# 缺陷名（C-102）**生成器与它的调用方不配套** ——
+#   而具体形态是「生成器从四参改成三参加 --payload 并**拒收**旧形态，
+#   而其中一条调用方没有跟着改」。
+#
+# 真机读数（02，2026-10-25，同一份 payload）：
+#   · 三参形态给出「npm 算不出 entry::bin/ 下 3 个文件但没有一个是程序形态」而 exit 1；
+#   · 四参形态给出「entry 不再由命令行传入」而 exit 1。
+#   ⇒ 而那是**两问**（按 C-135）：读数二在「门」那一格（参数个数），
+#     而读数一在「形态」那一格（entry 能不能从落位结果算出来），
+#     而门先响、形态那一格要把门打开才走得到。
+#
+# 而成因三件叠在一起（逐件有出处）：
+#   · bcfdc21（2026-10-20 16:43:39）把生成器定成三位置参数加 --payload 并明确拒收四参
+#     （=> 而那一份的提交正文照录，=> 而代码是 gen-component-meta.js:61 到 66）；
+#   · package-bundle-zip.sh 那一路在 57d769e（16:11:04，早 32 分钟）就已改成三参加 --payload；
+#   · 而**这一行至今仍是四参**，=> 而那一行的 blame 是 4fe8289（2026-10-19 17:09:03），
+#     而 bcfdc21 的提交里没有 package-component.sh（=> 而 git show bcfdc21 --name-only 命中 0）。
+#
+# ⇒ 而它治「参数个数」那一层，⇒ 而所以那 11 个走这一条路的 workflow
+#   （build-npm.yml:109、build-pnpm.yml:109、build-node.yml:131、build-git.yml:137、
+#     build-python3.yml:122、build-sqlite3.yml:109、build-make.yml:109、build-cmake.yml:120、
+#     build-pkg-config.yml:109、build-llvmtoolchain.yml:126、build-component.yml:87）
+#   今天在打包步就红。
+#
+# ⇒ 而处置：这一处与 package-bundle-zip.sh 那一路**对齐**（=> 而那一路逐字是）：
+#   node "$ROOT/scripts/recipes/gen-component-meta.js" \
+#     "$ID" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
+#     --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN"
+# 而 **entry 不再由命令行传入**（=> 而它由生成器从落位结果算出，=> 而而那正是那一格该有的形态）。
+# 而构建标识那两格照 package-bundle-zip.sh 那一路取（=> 而 GITHUB_SHA / GITHUB_RUN_ID，
+#   => 而本地没有时是 "local"，=> 而而那正是「占位不能是空」那一格）。
+BUILD_SHA="${GITHUB_SHA:-local}"
+BUILD_RUN="${GITHUB_RUN_ID:-local}"
+node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" \
+  "$TOOL" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
+  --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" \
+  || { echo "::error title=$TOOL 说明生成失败"; exit 1; }
 
 find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 echo "[package] 打包（zip）：component-meta.json + bin + 其它 prefix 目录"
