@@ -315,6 +315,29 @@ object PtySession {
                 hostArgv
             }
             val pb1 = ProcessBuilder(pb0)
+            // 缺陷名（C-102）**这一趟的环境从来没有被灌进 view0**。
+            //
+            // 真机读数（07，2026-10-24）：那一趟的 stderr 逐字是
+            //   CANNOT LINK EXECUTABLE "…/usr/lib/librivospty.so": library "liblobosposix.so" not found: needed by main executable
+            // 而 EXIT=1；而带上 LD_LIBRARY_PATH=…/usr/lib 再跑同一趟是 exit=0
+            // （输出「控制通道已关闭（父侧退出）…librivospty bye」）。
+            // 而 diag.jsonl 里 stage=pty 那一条的 script= 未走 shell
+            //   => 而那是**下面那个 else 那一支**（=> 而 sh == null，=> 而 pb0 = hostArgv）。
+            //
+            // 而成因：上面那一支（=> 而 sh != null）把 view0 的每一项 export 进脚本，
+            //   => 而脚本 exec 那个宿主 => 而环境由那个脚本带 => 而那一支是好的；
+            // 而**下面那一支直接 exec 那个宿主本体**，=> 而而 pb1 的环境是**继承宿主进程的**，
+            //   => 而而宿主进程那份环境里没有 LD_LIBRARY_PATH（=> 而 view0 只被 export 进脚本，
+            //      => 而那一支没走脚本，=> 而 view0 从来没被灌进 env）。
+            // 而那个宿主（librivospty.so）的 DT_NEEDED 有 liblobosposix.so，
+            //   而 liblobosposix.so 在 files/usr/lib，=> 而而那不在系统默认搜索路径里，
+            //   => 而所以它要靠 LD_LIBRARY_PATH => 而那一项丢了它就起不来。
+            //
+            // => 而处置：把 view0 灌进 pb1 的环境（=> 而那一份就是 treeRootEnv，
+            //   => 而它含 LD_LIBRARY_PATH），=> 而而下面那一句 remove 照旧（=> 而 LD_PRELOAD 不继承）。
+            for ((k0, v0) in view0) {
+                pb1.environment()[k0] = v0
+            }
             pb1.environment().remove("LD_PRELOAD")
             KernelHooks.report(
                 ctx, "pty", true,
