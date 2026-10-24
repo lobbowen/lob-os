@@ -12790,7 +12790,10 @@ container/app/src/main/java/lobos/services/reg/ProgramIndex.kt
 | **=> 而「落点与能不能合」** | **=> 而**已过：能合**** | **=> 而 §122.29 那一族（=> 而合起来是「作者给一个名字，那一格就取它」；=> 而而落点（=> 而 `by` 那一格记为什么是这一个与候选集合）是**给人看的理由**，=> 而而**它按 C-126 今天未过**）** |
 | **=> 而「busybox 那一件在监督环里的 exitCode」** | **=> 而**未过**（=> 而 07 核到它是 **None**、=> 而而**它根本没进监督名单**（=> 而 journal 逐字「监督名单=bash,jq,ripgrep」），=> 而而**「exit 变成 0」那一格不存在**（=> 而**不是 0**））** | **=> 而 §122.29 那一族（=> 而 `entry` 那一族**是通的**：=> 而 `usr/bin/sh` 起得来而 exit=0，=> 而而那 18 个名字逐个起**全是 exit 0**）** |
 | **=> 而「`by` 那一格（01 落点）落进哪一份」** | **=> 而**未过**（=> 而它今天**在落位侧哪儿都没落**）** | **=> 而 §122.29 那一族（=> 而 07 核到 `component-meta.json`、`piece-shape.json` 与 `program-manifest.json` **三份都没有 `by` 键**，=> 而而仓内那个 meta 对象里**也没有 `by`**，=> 而而它**只在控制台那一行**）** |
-| **=> 而「索引里 busybox 那一行的 role」** | **=> 而**已核：是 `entry-unusable`**** | **=> 而 §122.29 那一族（=> 而 07 核到 `PieceScan.kt:92` 到 `:95` 逐字、=> 而而它读 `component-meta.json` 的 `role` 键而那份 meta **没有那个键**；=> 而而落位侧那份 `program-manifest.json` 的 `role` 逐字是 `program`，=> 而而**两处逐字不同**）** |
+| **=> 而「索引里 busybox 那一行的 role」** | **=> 而**已核：是 `program`**** | **=> 而 §122.29 那一族（=> 而 07 在 `82b1e2c` 那一版上核到 `role=program`、`version=1.36.1`、`stateDir=opt/busybox`、`assetEntry` 是 `bin/sh`、`level=None`、`enabled=True`，=> 而而**上一版那一格逐字是 `entry-unusable`**；=> 而而 05 那两笔 `41f3129` 与 `82b1e2c` **生效了**）** |
+| **=> 而「busybox 那一件能不能被监督起来（`desired` 那一格）」** | **=> 而**未过**** | **=> 而 §122.29 那一族（=> 而 07 核到 `SupervisorPool.kt:138` 逐字要求 `desired == Desired.RUNNING`，=> 而而设备侧终态是 **STOPPED**；=> 而而「`ProgramInstallPipeline.kt:497` 到 `:502` 那两支与 journal 逐字『不改动 desired』之间的关系」**未核**，=> 而而 07 **不裁定**）** |
+| **=> 而「`lifecycle` 那一格该由谁写」** | **=> 而未裁**（=> 而 **04 今天不裁**）** | **=> 而 §122.29 那一族（=> 而 04 记下它**归 01 裁**（=> 而 01 是判别形式的裁定人），=> 而而**按 C-104 那一格该写进落位侧那一份**，=> 而而**它今天缺**）** |
+| **=> 而「`resident` 那一格在两条路径上默认值不同」** | **=> 而**已核：是缺陷**** | **=> 而 §122.29 那一族（=> 而按 C-102 缺陷名「同一件事在两条路径上有两个默认值，而落位那一条取到了 `false` 那个」；=> 而而**归 05 那一族**）** |
 | **=> 而「busybox 那一件能不能被监督起来」** | **=> 而**未过**** | **=> 而 §122.29 那一族（=> 而 07 核到 `SupervisorPool.kt:134` 到 `:143` 的 `wantedPrograms()` 逐字、=> 而而 `ProgramRegistry.kt:37` 逐字 `startable = (invalid == null)`、=> 而而 `ProgramRegistry.kt:113` 到 `:132` 那两支**设备侧都不成立**；=> 而而 `desired` 是 `ProgramIndex.kt:58` 逐字 `STOPPED`（=> 而默认））** |
 | **=> 而「落点与能不能合」** | **=> 而**已过：能合**** | **=> 而 §122.29 那一族（=> 而合起来是「作者给一个名字，那一格就取它」；=> 而而落点（=> 而 `by` 那一格记为什么是这一个与候选集合）是**给人看的理由**，=> 而而**它按 C-126 今天未过**）** |
 | **=> 而「那 11 件今天在打包步红」那一格** | **=> 而**未过**（=> 而成因**已定位**，=> 而而**缺的是那一笔改动**）** | **=> 而 §122.29 那一族（=> 而治的是「**判据在产物之前跑**」那一族；=> 而而**归 05 那一族**，=> 而而**不归 02**；=> 而而 05 **没有改它**，=> 而而它**建议另起一笔**）** |
@@ -17241,4 +17244,75 @@ bundle-env.sh:195  entry="$pick"
 > **=> 而 crypto 那一件在索引里**（=> 而 8 条而 `role` 是 `library` 而 `assetEntry` **空**），=> 而而 **ldconfig 报 kind2**（=> 而与 `82a4765` 那一版**逐字相同**），=> 而而 `usr/lib/libcrypto.so` 指向 **crypto 那一份**（=> 而 mtime 05:37），=> 而而 **selfcheck 那一格与前几版逐字相同**。**
 >
 > **=> 而取件核**：=> 而 APK sha256 `4b87357075522db82cc27004c583dc5b59c5f83e9aeffc389179524f0e9efd92`、=> 而而 build-identity 是 `gitSha` `9144b24ce7abc3b846487185c1fa5546882cdcef` / `runId` `40134460082` / `runNumber` `1349`，=> 而而 **install 之后立刻核读到旧那一版**（=> 而 `82a47657` 与 `40128621341`），=> 而而**启动 app 之后**才是新那一版。**
+
+
+
+#### 而 07 核完了 `82b1e2c` 那一版（=> 而 2026-10-25 补正）
+
+**=> 而 07 那一件落盘：`07/runs/GATE-82B1E2C-VERIFY.md`、=> 而 406 行、=> 而 sha256 `2b08e9d66ca03f87493b76c8a7791eb5d86885e62894fe0ce97ce58a4b4b8255`**。**
+
+**=> 而一 · role 那一格过了：**
+
+> **=> 而索引里 busybox 那一行逐字是 `role=program`、`version=1.36.1`、`stateDir=opt/busybox`、`assetEntry` 是 `bin/sh`、`level=None`、`enabled=True`（=> 而**上一版那一格逐字是 `entry-unusable`**）=> 而 => 而而 05 那两笔 `41f3129` 与 `82b1e2c` **生效了**。**
+
+**=> 而二 · busybox 那一件还是没进监督名单：**
+
+> **=> 而 journal 逐字（=> 而 06:18:20 到 06:18:22）：=> 而「开始监督程序」三条是 `id=bash`（=> 而 06:18:20.203）、`id=jq`（=> 而 `.207`）、`id=ripgrep`（=> 而 `.209`），=> 而而 06:18:20.225、06:18:21.786、06:18:22.072 三条是「OK 监督池同步 | 监督名单=bash,jq,ripgrep；停止=；期望=bash,jq,ripgrep」。**
+>
+> **=> 而索引里 busybox 那一行是 `exitCode=None`、`restarts=0`、`lastFailure` 空、`desired=STOPPED`。**
+>
+> **=> 而 `program-stderr.log` 全文（=> 而 `cat -A`）**只有** `rg: ripgrep requires at least one pattern to execute a search` **一行**，=> 而而**没有** `libbusybox.so: applet not found`（=> 而**因为它没跑**）=> 而 => 而而**这一版仍然没有「exit 变成 0」那个读数**（=> 而那一格**不存在，不是 0**）=> 而 => 而而按 **C-126** 写「**未过**」。**
+>
+> **=> 而 07 核的机制逐处**：=> 而 `SupervisorPool.kt:135` 逐字是 `val installed = ProgramRegistry.list(host).filter { it.startable }.map { it.id }`、`:138` 逐字是 `.filter { it.levelOf(host) == Level.PROGRAM && it.desired == Desired.RUNNING }`、`:140` 逐字是 `.filter { installed.contains(it) }`、`:141` 逐字是 `if (desired.isNotEmpty()) return desired` => 而 => 而而**它的 `desired` 必须是 `RUNNING` 才可能进名单**。**
+>
+> **=> 而 `desired` 那一格**：=> 而 `ProgramInstallPipeline.kt:497` 到 `:502` 逐字是 `:498` 的 `baseEntry.desired == STOPPED && declared?.resident == true -> RUNNING`、`:500` 的 `reg == null -> RUNNING`、`:501` 的 `else -> baseEntry.desired`。**
+>
+> **=> 而 journal 那一行逐字是「[06:18:18.250] 指针切换即登记（不改动 desired，启停意图由安装与用户决定）；id=busybox version=1.36.1 role=program resident=false」=> 而 => 而而 `ProgramDir.kt:169` 逐字是 `val resident = spec?.resident == true`，=> 而而 `:163` 逐字**落位那一支 `spec` 是 `null`** => 而 => 而而**`resident=false`**。**
+>
+> **=> 而这一版那一趟索引重建那一趟逐字是「[06:18:15.160] 索引已从落位重建：5 项」=> 而 => 而而 busybox 是 06:18:17.316 才「装 busybox；开始」的（=> 而**重建那一趟在装它之前**）=> 而 => 而而**重建那一趟扫不到它**。**
+>
+> **=> 而落位侧那次登记那两行逐字是「[06:18:18.250] 指针切换即登记（不改动 desired…）；id=busybox … resident=false」与「[06:18:18.250] 系统组件已安装；id=busybox version=1.36.1 来源=程序 dir=…（ok）」与「[06:18:18.262] 装 busybox；成」。**
+>
+> **=> 而 07 报的三条并列读数（=> 而按 C-115）：=> 而索引里 busybox 那一行的 `role` 是 `program`（=> 而**过了**）、=> 而而索引里 busybox 那一行的 `desired` 是 **STOPPED**、=> 而而落位侧那份 manifest 的 `lifecycle` **没有那一格** => 而 => 而而 `ProgramRegistry.kt:146` 的默认值是 **true**。**
+>
+> **=> 而「`ProgramInstallPipeline` 那两支（=> 而 `:498` 与 `:500`）本该把它设成 `RUNNING`」与「journal 逐字说不改动 `desired`」之间的关系，=> 而 07 **未核不裁定**（=> 而设备侧的事实是**终态 `desired=STOPPED`**）。**
+>
+> **=> 而按 C-135：=> 而 `role` 与 `desired` 是**两问**，=> 而而**`role` 过了而 `desired` 仍 `STOPPED`**。**
+
+**=> 而三 · 这一格治的是什么（=> 而照录 07，=> 而而 04 裁它的处置）：**
+
+> **=> 而这一格治的是：「落位侧那份 manifest 没有 `lifecycle` 那一格，=> 而落位那一支 `spec` 是 `null`，=> 而于是 `resident` 是 `false`，=> 而而那一支把 `desired` 设成 `STOPPED`」这一族。**
+>
+> **=> 而按 C-103 它为什么有两边**：=> 而**一边的 `resident` 由 `spec` 决定**（=> 而 `ProgramDir.kt:169` 逐字是 `spec?.resident == true`，=> 而而落位那一支 `spec` 是 `null`），=> 而而**另一边的 `resident` 由 manifest 的 `lifecycle` 决定**，=> 而而**默认值一个 `true` 一个 `false`**。**
+>
+> **=> 而按 C-102 缺陷名：「同一件事（那一件是不是常驻）在两条路径上有两个默认值，而落位那一条取到了 `false` 那个」** —— => 而而**落位侧那份 manifest 缺了 `lifecycle` 那一格**，=> 而而**缺了它就等于默认否掉「装上来就常驻」这一条**。**
+>
+> **=> 而按 C-104：=> 而那**是**「**同一格有两条生成路径**」那一族 —— => 而而 `component-manifest.json` 与 `program-manifest.json` 与那份 `lifecycle` **是三处**，=> 而而**今天那三处的内容并不一致**。**
+
+**=> 而 04 对这一格怎么处置的裁（三条）：**
+
+> **=> 而一、=> 而那一格**归 05 那一族**（=> 而「唯一改实现代码的人」），=> 而而**不归 07**（=> 而 07 那一侧**只报读数不裁**，=> 而而它报的那一处**已经足够定位**）。**
+>
+> **=> 而二、=> 而「**那一格该由谁写**」这一问，=> 而 04 **不裁**，=> 而而**理由是那一问已经不在 04 那一侧**：=> 而而 01 那一件 S113 与 05 那一件 S126 **讲过「启停意图由安装与用户决定」**（=> 而那是**它那一族的口径**），=> 而而落位侧 manifest 那一格缺了它 => 而 => 而而**「装上来就常驻」这一条默认被否掉**这一条，=> 而而它是**那个口径的一个具体问句**（=> 而「默认常驻」是不是「装上来就常驻」），=> 而而它**该由 01 裁**（=> 而 01 是判别形式的裁定人）=> 而 => 而 而而**04 今天只把这一问写清并记下它是未裁的**。**
+>
+> **=> 而三、=> 而**「装上来就常驻」这一条该由哪一份写**这一问，=> 而按 C-104 那一族，=> 而而**判别形式是「那一格有两条生成路径时，哪一条是那一件该落的那一条」** —— => 而而**落位侧那份 manifest 那一格**与**构建期那份 `component-meta.json`**（=> 而它今天**有** `role` 与 `by`）**不是同一份** => 而 => 而 而而**那一格该写进哪一份**= **落位侧那一份**（=> 而落位侧**才**是设备上读的那一份）=> 而 => 而 而而**它今天缺**。**
+
+**=> 而四 · 另几格照录：**
+
+> **=> 而那 18 条软链还在**（=> 而 19 项）而 `usr/bin/sh` 还在（=> 而 mtime 06:18），=> 而而落位侧建链那一趟 journal 逐字是「[06:18:18.212] OK 入口软链已建 busybox | entry=bin/sh dest=…/opt/busybox/1.36.1 target=…/opt/busybox/1.36.1/bin/sh dir=…/usr/bin」。**
+>
+> **=> 而 `by` 那一格在 `component-meta.json` 里**（=> 而长度 178，而 `piece-shape.json` 与 `program-manifest.json` **都没有 `by` 键**），=> 而而 `by` 那一格逐字是「落位结果：bin/ 下 19 项是同一份字节的多个名字（多调用二进制）；它自己 install 的是 cat、cp、df、false、grep、gunzip、gzip、ln、ls、mkdir、mv、ps、rm、sed、sh、tar、true、vi（本体那份 bin/libbusybox.so 不认自己的文件名）；入口取作者那一侧声明的那一个 bin/sh」。**
+>
+> **=> 而落位侧 `program-manifest.json` 逐字是 `entry` 是 `bin/sh`、`role` 是 `program`、`essential` 是 `false`，=> 而而**没有 `lifecycle` 那一格**；=> 而而 `component-meta.json` 逐字是 `entry` 是 `bin/sh`、`role` 是 `program`、`by` **存在**、`entryProvenance` 是 `gen-component-meta.js:落位结果（构建期算出，非人填）`、`buildSha` 是 `41f31299d3f38ff99704c2ba5579de784900ca57`、`buildRun` 是 `40136803421`。**
+>
+> **=> 而那四件是 bash 143/26、busybox **None/0** 而 desired 是 **STOPPED**、jq 143/15、ripgrep 2/30；=> 而而双层形态 **27 份**而全部 tombstone **32 份**而最新一份仍是 2026-10-24 20:32:24 => 而 => 而而**零新增**。=> 而而 crypto 在索引里（=> 而 8 条而 `role` 是 `library` 而 `assetEntry` **空**）而 ldconfig 报 **kind2** 而 `usr/lib/libcrypto.so` 指向 **crypto 那一份**（=> 而 mtime 06:18）而 selfcheck 那一格与前两版**逐字相同**。**
+>
+> **=> 而取件核是 APK sha256 `1d9e94ffe1b4a5700084d30e411c61c6767c10488cafaed2ccb66d49a319a9c7`、build-identity `82b1e2cad7d26950642260bfaffd42bb0309ea6e` / `40137365135` / `1352`。**
+
+**=> 而 07 报的两处未核照录：**
+
+| 那一格 | 而它的状态 |
+|---|---|
+| **=> 而「busybox 那一件在监督环里 exit 变成 0」** | **=> 而未过**（=> 而那一格**不存在**）** |
+| **=> 而「desired 为什么停在 STOPPED」** | **=> 而部分已核**（=> 而 `SupervisorPool.kt:138` 要求 `RUNNING`，=> 而而 `ProgramInstallPipeline.kt:497` 到 `:502` 那两支与 journal 逐字「不改动 desired」之间的关系**未核**）** |
 
