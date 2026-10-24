@@ -190,8 +190,8 @@
         "https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz"
       ],
       "sameAs": "openssl",
-      "notStandalone": true,
       "note": "libcrypto.so 与 libssl.so 一并编出（OpenSSL 的一部分），不是独立的上游项目 —— 版本与 openssl 同步。",
+      "$comment-notStandalone-removed": "而那一格（notStandalone）今天被删了（2026-10-25）。缺陷名（C-102）：**「归并」与「随不随 APK 走」被当成了同一件事**。而那两个是两个问句（按 C-135）：一、「归并之后 crypto 那一件还存不存在」（而 01 那一件裁的是那一格仍未过，01 本件不裁）；二、「crypto 那一件随不随 APK 走」（而那是**落位**那一格）。而原来这一格 notStandalone: true 把 crypto 排除在 PIECES 之外（=> 而 scripts/toolchain/pieces-from-table.js:46 逐字是 `return e.notStandalone !== true;`），=> 而那**只**回答了问句二、=> 而而它**没有**回答问句一。而今天设备上那两份必须变成同一份（=> 而 lead 派的处置方向是 D-改动，=> 而 01 那一件第六版裁的是「取路 A」），=> 而要做的正是让 crypto 那一件随 APK 走（=> 而它随 APK 走时那一件是 src90fa46a13608 那一版，=> 而而那一份与 openssl 那一件那一份**逐字相同**，=> 而而本机核过 cmp 零输出、exit 0）。而删这一格**不改任何一件的指纹**（=> 而本机核过：=> 而 component-sources.json **不在** SRC_FILES 也不在 PKG_MECH 里，=> 而而 11 件的指纹逐字与改前相同），=> 而而**只有 crypto 那一件多一个 asset 要取**（=> 而那一份今天已经在 base-crypto 筐里）。",
       "piece": true
     },
     "node": {
