@@ -199,18 +199,41 @@ object PreinstalledPieces {
         //   真机读数（01 今天核过，2026-10-20）：busybox 那个落位目录里 lib/ 是空的、
         //     而 bin/ 下 19 个实体 => **形态与角色在那一份上已经对不上了**。
         //   => 现在：只从产物那一份取；取不到就报缺（C-05），不自己答一个。
-        val entryRole: String = shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY)
-            .firstOrNull()?.role
-            ?: if (entry.isNotBlank()) {
-                shape.roleOf(entry)
-                    ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
-            } else {
-                return fail(
+        //
+        // ★ 缺陷名（C-102）**这一格取错了输入** —— 而 04 今天裁的判据方向是：
+        //   「**按 entry 那一项的形态**」，⇒ 而**不是**「先找库形态的落位项」。
+        //
+        // 而改前的形态（⇒ 而本机逐处核到了它怎么把 openssl 那一件判错）：
+        //   val entryRole = shape.byRole(ROLE_LIBRARY).firstOrNull()?.role   （=> 而那**先**找库形态）
+        //   ⇒ 而 openssl 那一件**有** lib/libcrypto.so 与 lib/libssl.so ⇒ ⇒ 而它**找到了**
+        //   ⇒ ⇒ 而 entryRole = **library**（⇒ 而**不是**按 entry 那一项的形态，
+        //   ⇒ 而 entry 那一项逐字是 bin/openssl、⇒ 而它在产物那一份里的 role 逐字是 **program**）
+        //   ⇒ ⇒ 而落位侧那份 program-manifest.json 的 role 逐字就是 library
+        //   ⇒ ⇒ 而 :541 那一行 `assetEntry = if (isProgram) entry else ""` 把它清空
+        //   ⇒ ⇒ 而索引里 openssl 那一行 assetEntry 逐字是空、role 逐字是 library
+        //   ⇒ ⇒ 而 levelOf 判 PIECE ⇒ ⇒ 而它进不了监督名单（SupervisorPool.kt:136 那一道）
+        //   ⇒ ⇒ 而它那一件自己的 bin/openssl 也因此**进不了** usr/bin。
+        //
+        // ⇒ 而那一族的判别形式（可机械判）：「**这一件有没有程序形态的字节**」
+        //   ⇒ 而 openssl **有**（⇒ 而 bin/openssl 在产物那一份的 programs 那一列里）。
+        //
+        // ⇒ 而按 C-103 那一格该问的是「**这一件有没有可调起的入口**」
+        //   ⇒ 而那**正是** entry 那一格（⇒ 而它非空就答它）。
+        //
+        // ⇒ 而「entry 为空」那一支**仍**取库形态那一项
+        //   （⇒ 而那是纯库件那一族：⇒ 而它们**真的**只有库形态的字节，⇒ 而而它们**该**是 library）。
+        val entryRole: String = if (entry.isNotBlank()) {
+            shape.roleOf(entry)
+                ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+        } else {
+            shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY)
+                .firstOrNull()?.role
+                ?: return fail(
                     ctx, id,
                     "产物没有带库形态的落位项，而这一件又没有入口 —— 形态是构建期算好的，" +
                         "运行期只读那一格；读不到就报缺，不自己答一个",
                 )
-            }
+        }
         val landedEntry = if (entry.isBlank()) "" else {
             ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
