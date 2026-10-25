@@ -126,16 +126,31 @@ fetch_asset() {
 list_release_assets() {
   local tag="$1" hdr=()
   [ -n "${GITHUB_TOKEN:-}" ] && hdr=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  local body rc
+  local body rc http
+  #  缺陷名（C-102）**那读失败那一族逐字只带一个 curl 逐字自己的码、=> 而而那 HTTP 那一档逐字要另取**
+  #    —— 而实际上那 rc 逐字**只是** curl 那一族逐字**自己**的退出码（=> 而那 22 逐字是 curl 的「HTTP >= 400」那个码），
+  #    => 而而那 401 与那 404 与那 429 那**几档**逐字**共用**同一个 22、=> 而而它们逐字**分不出来**。
+  #    => 而而那 HTTP 那一档逐字**能**另取（=> 而那 curl 逐字可以用 -w %{http_code} 逐字**带**出来），
+  #    => 而而那**改法**：=> 而那 body 逐字走 stdout、=> 而那 HTTP 那一档逐字走 stderr、=> 而而那 rc 逐字**也**留着。
+  #    => 而而那**调用方**逐字**能**分出那 401 与那 404 那**两**档。
+  #    => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+  http="$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 2 "${hdr[@]}" \
+          -H "Accept: application/vnd.github+json" \
+          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null || true)"
   body="$(curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
           "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null)"
   rc=$?
   if [ "$rc" -ne 0 ] || [ -z "$body" ]; then
     #  那一读逐字**失败**了：=> 而而那**不是**「那筐真的一件 asset 都没有」。
     #  => 而而那逐字**带**一个标记、=> 而而那**调用方**逐字能**分出**那两种。
-    echo "__LRA_READ_FAILED__ rc=$rc" >&2
+    #  => 而而那 HTTP 那一档逐字**也**在标记里、=> 而而那**调用方**逐字**能**分出那 401 与那 404。
+    LRA_HTTP="${http:-none}"
+    LRA_RC="$rc"
+    echo "__LRA_READ_FAILED__ rc=$rc http=${http:-none}" >&2
     return 1
   fi
+  LRA_HTTP="${http:-none}"
+  LRA_RC="$rc"
   printf '%s' "$body" \
     | node -e '
         let d = "";
@@ -173,11 +188,23 @@ for id in "${PIECES[@]}"; do
     #  => 而本机**实测**过：=> 而那**错**的 REPO 那一趟逐字只印出那三个标记、
     #    => 而而那「清单读失败」那一档逐字**没**印出来、=> 而而那一趟逐字**直接退**了。
     #  => 而那**改法**：=> 而而那赋值逐字**带** `|| true`、=> 而而那返回码逐字**另外**收。
-    others="$(list_release_assets "$tag")" && lra_rc=0 || lra_rc=$?
+    #  那一读逐字**只**做一次：=> 而那 stdout 与那 stderr 逐字**分**开取、=> 而而那 HTTP 那一档逐字**在**那 stderr 里。
+    #  => 而而那 stderr 逐字**落**一个临时的档、=> 而而那 HTTP 那一档逐字**从**那档**取**。
+    lra_err="${STAGE}/lra.err"
+    lra_out="$(list_release_assets "$tag" 2>"$lra_err")" && lra_rc=0 || lra_rc=$?
+    others="$lra_out"
+    lra_http="none"
+    if [ -f "$lra_err" ]; then
+      case "$(cat "$lra_err")" in
+        *"http="*) lra_http="$(printf '%s' "$(cat "$lra_err")" | tr ' ' '\n' | sed -n 's/^http=//p' | head -1)" ;;
+      esac
+    fi
     if [ "$lra_rc" -ne 0 ]; then
       #  那一读逐字**失败**了（=> 而而那限流 / 鉴权过期 / 端点变了 / 网络 那一族）：
       #  => 而而那**不是**「那筐真的一件 asset 都没有」、=> 而而那**不**能按「缺货」处置。
+      #  => 而而那 HTTP 那一档逐字**已经**被带出来（=> 而而那 401 与那 404 与那 429 那**几档**逐字**分得开**了）。
       echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（=> 而而那 stdout 逐字是空、=> 而而那**不是**『那筐一个 asset 都没有』）。"
+      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、=> 而而那 curl 逐字自己的码逐字**在**那标记里、=> 而而那**两档**逐字**不是**同一档。*"
       echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），=> 而而那**不是** dispatch 那一件能解决的。*"
       miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then
