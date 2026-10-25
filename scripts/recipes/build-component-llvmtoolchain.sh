@@ -141,14 +141,14 @@ case "$HOST_CC_USED" in
 esac
 note "宿主编译器确认：$HOST_CC_USED"
 env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
-  cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen \
+  cmake --build "$HOST_TB" --target llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config \
   -j"$JOBS" > "$WORK/host-build.log" 2>&1 \
   || { echo "=== 宿主 tblgen 编译失败（error 行 + 末 40 行）==="; \
        grep -nE 'error:|Error [0-9]+$' "$WORK/host-build.log" | head -20 || true; \
        tail -40 "$WORK/host-build.log"; exit 1; }
 NATIVE_DIR="$WORK/native-tools"
 mkdir -p "$NATIVE_DIR"
-for t in llvm-tblgen llvm-min-tblgen clang-tblgen; do
+for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do
   [ -x "$HOST_TB/bin/$t" ] || die "宿主 tblgen 没产出" "$HOST_TB/bin/$t 不存在 —— 交叉构建需要它来生成 .inc 文件"
   cp -f "$HOST_TB/bin/$t" "$NATIVE_DIR/$t"
 done
@@ -182,6 +182,31 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   > "$WORK/cmake.log" 2>&1 \
   || { echo "=== LLVM cmake 配置失败取证（末 40 行）==="; tail -40 "$WORK/cmake.log"; exit 1; }
 note "cmake 配置通过"
+
+# ★ 缺陷名（C-102）**宿主工具被放错了目录** —— 而 LLVM 21.1.0 那一族的 build_native_tool
+#   在**构建期**把自建的宿主工具放进 $BUILD/NATIVE/bin，⇒ 而那一份是**用交叉工具链编的**
+#   （⇒ 而那是 aarch64），⇒ 而它随后在 x86_64 构建机上被执行 ⇒ ⇒ 而逐字是「Exec format error」。
+#   ⇒ 而配置那一期它**没**被建（=> 而 07 那一趟的读数逐字是「NATIVE/bin（尚未创建 —— 好现象）」），
+#      ⇒ 而它是**构建期**才被建的 ⇒ ⇒ 而所以配置期那一格看不出来。
+#   ⇒ 而而 LLVM_NATIVE_TOOL_DIR 那一格只管**配置期**的 TABLEGEN 默认值（=> 而 TableGen.cmake:181 到 :185），
+#      ⇒ 而它**管不到**构建期自建的那一份。
+#   ⇒ 而处置：把**宿主编的那几份**放进 $BUILD/NATIVE/bin（=> 而那正是构建期找它们的地方），
+#      ⇒ 而而构建期自建的那一份（=> 而它是 aarch64）就被**覆盖**成宿主那份。
+#   ⇒ 而那一格**该**由「构建期找哪个路径」决定（=> 而那正是上游那一族的路径形状），⇒ 而不改上游源码。
+if [ -d "$BUILD/NATIVE" ]; then
+  mkdir -p "$BUILD/NATIVE/bin"
+  for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do
+    if [ -x "$NATIVE_DIR/$t" ]; then
+      cp -f "$NATIVE_DIR/$t" "$BUILD/NATIVE/bin/$t"
+    fi
+  done
+  note "宿主工具就位（NATIVE/bin）：$(ls "$BUILD/NATIVE/bin" 2>/dev/null | tr '\n' ' ')"
+  for b in "$BUILD/NATIVE/bin/llvm-min-tblgen" "$BUILD/NATIVE/bin/llvm-config"; do
+    if [ -f "$b" ]; then note "  $(basename "$b") → $(file -b "$b" 2>/dev/null | head -c 70)"; fi
+  done
+else
+  note "NATIVE 目录没被建（=> 而构建期也许不需要自建宿主工具）—— 不动它"
+fi
 
 note "CMake 认定的 tblgen（这里若仍是裸名 llvm-min-tblgen，说明开关没生效，它会自建 NATIVE/bin 并执行交叉产物）"
 TB="$(grep -E '^(LLVM_TABLEGEN|LLVM_NATIVE_TOOL_DIR|LLVM_USE_HOST_TOOLS|LLVM_TABLEGEN_EXE)' "$BUILD/CMakeCache.txt" 2>/dev/null || true)"
