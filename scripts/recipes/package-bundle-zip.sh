@@ -47,6 +47,21 @@ META_SRC="$ROOT/scripts/component-sources.json"
 # 形态判据（ELF 头：e_type + PT_INTERP）—— 判「有没有程序那一侧」要用它。
 source "$ROOT/scripts/toolchain/elf-form.sh"
 
+# 件的**作者声明的入口名** —— 取自 component-sources.json 的 sources.<件>.entryName。
+#
+# ★ 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**，=> 而那**不是**「这一件的入口」。
+#   而「这一件有多个入口时该取哪一个」那一问的答案**本来就存在**（=> 而就是这一格），
+#   => 而而它与「多调用那一族」是两问（=> 而按 C-135）。
+#   => 而这一格与 bundle-env.sh 那一族（=> 而 emit_piece 那一支）**逐字同一句**，
+#      => 而而两处**必须**同源（=> 而不然一处改了另一处盖掉它）。
+author_entry_name_of() {
+  node -e '
+    const s = require(process.argv[1]).sources || {};
+    const v = (s[process.argv[2]] || {}).entryName;
+    if (v) process.stdout.write(String(v));
+  ' "$ROOT/scripts/component-sources.json" "$1"
+}
+
 # 先判「这一件在磁盘上有没有程序那一侧」—— 判据是**形态**（ELF 头），
 # 不是目录名、不是文件名、也不是「bin/ 下有没有东西」。
 #  缺陷名（C-102）库件也拿到一个 entry —— 原来这一支（entry 为空时）是：
@@ -72,7 +87,25 @@ source "$ROOT/scripts/toolchain/elf-form.sh"
 #     而调用方声明的那一份若与算出来的不一致  **说出来**（不采纳声明）。
 DECLARED_ENTRY="$ENTRY"
 PROG_ENTRY=""
-if [ -d "$OUT/bin" ]; then
+# ★ 缺陷名（C-102）**这一格挑的是「第一个程序形态的项」** —— 而那**不是**「这一件的入口」。
+#   而 bin/ 下有**多个**程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
+#   => 而 c_rehash 是 #! 脚本、=> 而按 01 裁的 S117 那一件它**是**入口形态、
+#   => 而它按 LC_ALL=C 排序**在前**），=> 而那一支挑到的是**排序靠前**的那一个，
+#   => 而那**不一定是**作者声明的那一个。
+#   ⇒ 而那**实测**：build-openssl run 40164564474（sha=84df912）逐字是
+#     「（这一件有程序那一侧：entry=bin/c_rehash）」
+#     ⇒ 而而那一件**声明**的 entry 逐字是 bin/openssl（=> 而那是 component-sources.json
+#        的 sources.openssl.entryName），⇒ 而而它**被**那一支跳过了。
+#   ⇒ 而而 bundle-env.sh 那一支（=> 而 emit_piece 那一族）**已经**改成「先取作者声明的那一个」，
+#      ⇒ 而而**这一支**（=> 而打包这一族）**也**要改，⇒ 而而不然它**盖掉**前面那一支。
+#   ⇒ 而处置：先取作者声明的那一个；⇒ 而它**不在** bin/ 下或它不是入口形态时，
+#     **才**退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+WANT_ENTRY="$(author_entry_name_of "$ID")"
+if [ -n "$WANT_ENTRY" ] && [ -f "$OUT/bin/$WANT_ENTRY" ]; then
+  wf="$(elf_form "$OUT/bin/$WANT_ENTRY" 2>/dev/null)"
+  if elf_form_is_program "$wf"; then PROG_ENTRY="bin/$WANT_ENTRY"; fi
+fi
+if [ -z "$PROG_ENTRY" ] && [ -d "$OUT/bin" ]; then
   for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
     p="$OUT/bin/$f"
     [ -f "$p" ] || continue
