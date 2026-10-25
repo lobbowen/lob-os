@@ -225,3 +225,74 @@ jobs:
           name: component-llvm
           path: dist/component-llvmtoolchain-*.zip
           retention-days: 90
+
+      #  缺陷名（C-102）**那一族失败之后逐字没有任何诊断留下、=> 而而那一趟逐字编到哪、为什么停答不出来、
+      #    => 而而那下一趟逐字还会同样没诊断**
+      #    —— 而实际上那 recipe 那一族（build-component-llvmtoolchain.sh）逐字**自己**会留日志：
+      #    :147 那一行 > "$WORK/host-configure.log" 2>&1、:157 那一行 > "$WORK/host-build.log" 2>&1、
+      #    :213 那一行 > "$WORK/cmake.log" 2>&1、:259 那一行 > "$WORK/build.log" 2>&1，
+      #    => 而那些日志逐字**留在 runner 上**、=> 而那 upload-artifact 那一族逐字**只在成功那一路**跑、
+      #    => 而而那一趟逐字**失败**、=> 而而那一步逐字**没跑**、=> 而而那些日志逐字**没被传出来**。
+      #    => 而这一族逐字是「**留了、而没传**」那个形状（=> 而**不是**「没留」那个形状）。
+      #    => 而按 C-103：=> 而那两边逐字是「那一族逐字**要**留诊断」与「那一族逐字**不**留」、=> 而而它们**各**答一件事。
+      #    => 而按 C-104：=> 而那一族逐字是**两个 workflow 那一族**、=> 而而它们**处置不一样**、
+      #       => 而而这一笔只**改** llvm 那一族、=> 而而**不动** build-apk 那一族。
+      #    => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          set -uo pipefail
+          D=/tmp/diag
+          rm -rf "$D"; mkdir -p "$D"
+
+          #  那 recipe 那一族逐字留的那四份 log 逐字**留在 runner 上**、=> 而而它们逐字**没被传出来**、
+          #  => 而这一步逐字把**它们**捞出来落到 artifact。
+          WORK="$GITHUB_WORKSPACE/work/llvmtoolchain"
+          for f in host-configure.log host-build.log cmake.log build.log; do
+            [ -e "$WORK/$f" ] && cp -f "$WORK/$f" "$D/" 2>/dev/null || true
+          done
+
+          #  把错误行单独摘成一份纯文本，省得下整个日志
+          {
+            echo "## 编译错误（从 build.log 里摘的）"
+            echo
+            grep -anE 'error:|Error [0-9]+$|undefined (symbol|reference)' "$WORK/build.log" 2>/dev/null \
+              | tail -60
+            echo
+            echo "## build.log 末 60 行"
+            tail -60 "$WORK/build.log" 2>/dev/null
+            echo
+            echo "## cmake.log 末 40 行"
+            tail -40 "$WORK/cmake.log" 2>/dev/null
+            echo
+            echo "## host-build.log 末 40 行"
+            tail -40 "$WORK/host-build.log" 2>/dev/null
+            echo
+            echo "## host-configure.log 末 40 行"
+            tail -40 "$WORK/host-configure.log" 2>/dev/null
+          } > "$D/compile-errors.txt" 2>/dev/null || true
+
+          #  取件与固化相关的现场
+          ls -la "$WORK" 2>/dev/null | head -40 > "$D/work-listing.txt" || true
+          ls -la dist/ > "$D/dist.txt" 2>/dev/null || true
+
+          {
+            echo "## Job 环境"
+            echo
+            echo "- HEAD: $(git rev-parse --short HEAD 2>/dev/null)"
+            echo "- 现在: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- 那一族的 src 段: $(node scripts/toolchain/cache-key.sh asset llvm 2>/dev/null)"
+            echo "- dist 里的内容:"
+            ls -la dist/ 2>/dev/null | sed 's/^/    /'
+          } > "$D/env.txt" 2>/dev/null || true
+
+          ls -laR "$D" 2>/dev/null | head -40
+
+      - name: Upload failure diagnostics artifact (backup)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: /tmp/diag/
+          if-no-files-found: warn
+          retention-days: 7
