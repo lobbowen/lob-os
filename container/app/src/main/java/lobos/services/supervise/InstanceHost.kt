@@ -378,11 +378,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             )
             RuntimeDiagnostics.append(this, "runtime", true, "runtime.json 已写入（schema 3，含实际 env 快照）", "home=${filesDir.absolutePath}")
 
-            reapOrphanKernel()
-
             val kernelDir = programDir!!
             val kernelEntry = entry!!
             currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
+            //  ★ 缺陷名（C-102）**这一格跑在世代算出来之前** —— ⇒ 而而它**分不出**「上世」与「这一代」。
+            //   而「回收上世遗留进程」那一问**该**由 generation 答，⇒ 而而它**必须**在 currentGeneration
+            //   定下来**之后**跑，⇒ 而否则那一格答的是「活着的条目」而不是「上世的条目」。
+            //   ⇒ 而处置：把这一格挪到 currentGeneration 之后（=> 而而它的其余行为逐字不变）。
+            reapOrphanKernel()
             val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
@@ -532,7 +535,26 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun reapOrphanKernel() {
         reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
+        //  ★ 缺陷名（C-102）**这一格把「活着的」当成了「上世的」** —— ⇒ 而它**没有按世代筛**。
+        //   而这一格问的是「**上一代**遗留的进程还在不在」，⇒ 而而它逐字是「活着的账本条目」那一族
+        //   （=> 而 ProcessLedger.liveOwned 逐字是 list(ctx).filter { isLive(...) }，
+        //    => 而而**它不按 generation 筛**）。
+        //   ⇒ 而真机读数（07，47353ab 那一版，2026-10-25）：
+        //     [13:58:54] OK 进程归属已记账 | program=busybox gen=1 pid=8810 starttime=21558096
+        //     [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
+        //     [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
+        //     [13:58:54] OK 程序进程已启动 | pid=8810, program=busybox, 健康判据 127.0.0.1:41000/status
+        //     [13:58:54] 后端退出 -> 前端已收；unit=busybox exitCode=143
+        //   ⇒ 而那两行逐字是**同一个 pid**、⇒ 而而它是**这一趟刚起的那个**（=> 而 143 = 128+15 = SIGTERM）。
+        //   ⇒ 而成因：这一格在起进程**之前**跑（=> 而本文件 :381 那一行），⇒ 而而账本里**上一趟**留下的
+        //      那一代条目（=> 而 generation 逐字还是 1、=> 而 pid **恰好**被内核复用了）
+        //      ⇒ 而而 isOwnedAlive 逐字是 starttimeOf(pid) == starttime
+        //      ⇒ 而而那一条**看起来还活着** ⇒ ⇒ 而它**被 SIGTERM 了**。
+        //   ⇒ 而「上世」那一问**该**由 generation 答：⇒ 而当前这一代（currentGeneration）
+        //      **不是**上世、⇒ 而而它**不该**被杀。
+        //   ⇒ 而处置：这一格**只**收 generation **小于**当前这一代的那几条。
         val owned = lobos.kernel.proc.ProcessLedger.liveOwned(this)
+            .filter { it.generation < currentGeneration }
         val reused = lobos.kernel.proc.ProcessLedger.pidReused(this)
         val gone = lobos.kernel.proc.ProcessLedger.gone(this)
         for (e in owned) {
