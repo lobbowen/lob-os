@@ -67,6 +67,16 @@ fi
 #
 # ⇒ 而**处置**：用 command（=> 而而那让那个展开落在**参数位置**而不是命令名位置，
 #   => 而而那一档在哪个 bash 版本上都是同一个语义）。
+#
+# ★ 而**空值**那一档也要自己挡（=> 而而那才是 CI 上真正报出来的那一句）：
+#   => 而 `command "$CLANG" --version` 在 CLANG **是空的**时，=> 而而 command 后面跟的是**空串**，
+#      => 而而那个 bash（=> 而 ubuntu-24.04 那一版）按 `set -u` 报「CLANG: unbound variable」；
+#   => 而而那一句该做的是**报缺**（=> 而按 C-05 报缺不猜填），=> 而**不**该让 `set -u` 替它报
+#      （=> 而而那报出来的是「变量没定义」而不是「找不到 clang」）。
+if [ -z "$CLANG" ]; then
+  die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
+  坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
+fi
 if ! command "$CLANG" --version >/dev/null 2>&1; then
   die "证据不足：NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
@@ -125,7 +135,7 @@ if [ -z "$WANT_LLVM" ]; then
   die "证据不足：钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \
     "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
-  坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。" \
+  坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
     "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
 fi
