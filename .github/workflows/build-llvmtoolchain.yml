@@ -60,6 +60,14 @@ jobs:
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
         run: bash scripts/toolchain/locate-ndk.sh
 
+      - name: 算本件的固化标识（key / tag / asset）
+        id: uwkey
+        run: |
+          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 11 个 workflow 都调它，
+          # 免得各自留一份空壳（此前 11 个的这段是空的，tag/asset 为空串，
+          # 「已固化就复用」从未命中过）。
+          bash scripts/toolchain/piece-key.sh llvm
+
       - name: 问 NDK 它的 LLVM 版本（并与钉值核对）
         run: bash scripts/verify/verify-ndk-llvm.sh
 
@@ -153,6 +161,12 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # T 缺陷名（C-102）这一处用了 TAG 与 ASSET，而它们原来没有任何一步定义
+          #   而在 set -euo pipefail 下那两处未定义就展开，=> 而而它发不出去；
+          #   => 而而那正是「llvm 那个 tag 从来没出现过」那一格的成因。
+          #   => 而那两格该由上面「算本件的固化标识」那一步给出。
+          TAG: ${{ steps.uwkey.outputs.tag }}
+          ASSET: ${{ steps.uwkey.outputs.asset }}
         run: |
           set -euo pipefail
           [ -d dist/llvmtoolchain ] || { echo "::warning title=没产出 llvmtoolchain::跳过发布"; exit 0; }
