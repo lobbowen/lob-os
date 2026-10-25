@@ -7,6 +7,7 @@ import lobos.services.log.Journal
 import lobos.kernel.elf.ElfFacts
 import lobos.kernel.layout.SystemDirs
 import lobos.kernel.layout.PrefixProvisioner
+import org.json.JSONArray
 import org.json.JSONObject
 
 object ProgramInstallPipeline {
