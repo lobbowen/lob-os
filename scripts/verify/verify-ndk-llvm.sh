@@ -23,12 +23,12 @@ if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   NDK=$(ls -d "${ANDROID_HOME:-/nonexistent}"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
 fi
 [ -n "$NDK" ] && [ -d "$NDK" ] || die "证据不足：拿不到 NDK" \
-  "要核实版本就得有 NDK。locate-ndk.sh 会注入 CC，从它反推即可；否则设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。 \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
+  "要核实版本就得有 NDK。locate-ndk.sh 会注入 CC，从它反推即可；否则设 ANDROID_NDK_LATEST_HOME 或 ANDROID_HOME。" \
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
 [ -n "$GOT_NDK" ] || die "证据不足：读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision" \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 WANT_NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
   die "已坏：NDK 版本与钉值不符" \
@@ -66,7 +66,7 @@ if [ -z "${CLANG:-}" ]; then
   done
 fi
 [ -n "${CLANG:-}" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 # ★ 缺陷名（C-102）**在**命令名位置**展开变量，=> 而而 `set -u` 在那一档的语义随 bash 版本变**：
 #   => 而而本机 bash 5.3.9 那一档：=> 而一个**设过的空串**在命令名位置**不报** unbound（=> 而而它跑空命令、=> 而而空命令成功）；
 #   => 而而 CI 那个 bash（=> 而 ubuntu-24.04 那一版）**报**「CLANG: unbound variable」。
@@ -83,11 +83,11 @@ fi
 #      （=> 而而那报出来的是「变量没定义」而不是「找不到 clang」）。
 if [ -z "${CLANG:-}" ]; then
   die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
 if ! command "${CLANG:-}" --version >/dev/null 2>&1; then
   die "证据不足：NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行" \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。""
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
 
 VER_OUT="$(command "${CLANG:-}" --version 2>&1 | head -3)"
@@ -143,7 +143,7 @@ if [ -z "$WANT_LLVM" ]; then
   die "证据不足：钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \
     "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
-  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"""
+  "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
     "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
 fi
