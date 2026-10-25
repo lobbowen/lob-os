@@ -94,15 +94,33 @@ class OsHostService : Service() {
         return START_STICKY
     }
 
+    //  缺陷名（C-102）**那一行把「startForeground() 那一族跑过了」与「它抛没抛」记成了两件事** —— 而实际上
+    //    「跑过了」的标记是那**一次调用被走到了**（=> 而 :99 那一行逐字是 startForeground），
+    //    而「抛没抛」的标记是**那一次调用有没有抛**（=> 而而 :102 那一族逐字只在**抛了**时写、
+    //    => 而而它逐字零命中、=> 而而那**只**说明「没抛」）；
+    //    => 而而这一族逐字**只**记了「抛没抛」那**一件**、=> 而而「跑过了」那**一件**逐字**没有**任何痕迹，
+    //    => 而而那一族逐字分不出「压根没走到 :99」与「走到了、而没抛」。
+    //    => 而 04 今天裁的是「合成一格」：=> 而「那一行记的是什么、它什么时候记、它为什么**不**记」那三条**合成**一格，
+    //    => 而「在 :99 前后加一行仓内自己的记录」是那一格**里面**的处置（=> 而按 C-220 那一族是**内容稿**、
+    //    => 而而这一笔是**实现**那一族、=> 而那**只**加一行）。
+    //    => 而这一行逐字用「host」那个 category（=> 而它逐字已经写得出、=> 而而 :102 那一行逐字是同一族）。
     private fun promoteToForeground() {
+        var called = false
+        var threw: String? = null
         try {
+            called = true
             startForeground(NOTIF_ID, buildHostNotification())
         } catch (t: Throwable) {
+            threw = t::class.java.simpleName + ": " + t.message
             RuntimeDiagnostics.append(
                 this, "host", false, "转前台失败",
                 t::class.java.simpleName + ": " + t.message,
             )
         }
+        RuntimeDiagnostics.append(
+            this, "host", threw == null, "转前台那一族跑过了",
+            "已调用 startForeground=" + called + " 抛出=" + (threw ?: "无"),
+        )
     }
 
     private fun ensureComponents(intent: Intent?) {
