@@ -190,7 +190,10 @@ function main() {
     //  入口逐字**不**再看那表里那一格：=> 而而那**真源**逐字是**产物**那一份、=> 而而那表里逐字**零**个 entry。
     //  => 而而那**纯库件**逐字合法地 entry 逐字是空、=> 而而那**不**判红、=> 而而那**只**记下它。
     if (!t.entry) {
-      console.log('  - ' + t.name + ' 纯库件（没有程序那一侧、entry 留空）');
+      //  这一句逐字**必须**写 stderr：=> 而而 --project 那一档逐字把 stdout **重定向**成
+      //  work/declared.json（=> 而那 build-component.yml:87 那一行）、=> 而而那 stdout **只**能是那份 JSON。
+      //  => 而而 console.log 逐字会写 stdout、=> 而而那会把那一份 JSON 逐字**写坏**（=> 而那是 SyntaxError 那一族）。
+      process.stderr.write('  - ' + t.name + ' 纯库件（没有程序那一侧、entry 留空）\n');
     }
     t.kind = t.kind || 'component';
     t.layout = t.layout || 'toolset';
