@@ -169,7 +169,20 @@ jobs:
           ASSET: ${{ steps.uwkey.outputs.asset }}
         run: |
           set -euo pipefail
-          [ -d dist/llvmtoolchain ] || { echo "::warning title=没产出 llvmtoolchain::跳过发布"; exit 0; }
+          #  缺陷名（C-102）**没有产出被当成成功** —— 而而这一族逐字有**两边**：
+          #    一，「那一趟压根没跑」（=> 而而那逐字是**上游**没产出、=> 而而那**不是**本步骤能判的）、
+          #    二，「那一趟跑了、而它没产出」（=> 而而那逐字是**本步骤**能判的）。
+          #    => 而而原来那一句逐字把这两边**混成了一边**、=> 而而它逐字是「跳过发布 -> exit 0」、
+          #    => 而而那一趟逐字**绿**、=> 而而外面逐字只看见「tag 没建」、=> 而而**看不出**「那一趟压根没产出」。
+          #    => 而 04 今天裁的判据那一层是「**没有产出**就是**没有产出**、=> 而而它**不是**成功」。
+          #    => 而按 C-103 先答「它为什么有两边」：=> 而那两边是「那一趟压根没跑」与「那一趟跑了、而它没产出」、
+          #       => 而而它们逐字**处置不同**（=> 而前者逐字是**上游**的事、=> 而后者逐字是**本步骤**的事）。
+          #    => 而这里逐字只判**后者**（=> 而而本步骤逐字只看得见「dist/llvmtoolchain 在不在」），
+          #       => 而而前者逐字由**上游那一步**的成败来表达。
+          if [ ! -d dist/llvmtoolchain ]; then
+            echo "::error title=没产出 llvmtoolchain::本趟没产出，不算成功"
+            exit 1
+          fi
           PW="work/pw-llvmtoolchain"
           rm -rf "$PW" && mkdir -p "$PW"
           tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
