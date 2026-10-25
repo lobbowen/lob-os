@@ -92,13 +92,13 @@ PROG_ENTRY=""
 #   => 而 c_rehash 是 #! 脚本、=> 而按 01 裁的 S117 那一件它**是**入口形态、
 #   => 而它按 LC_ALL=C 排序**在前**），=> 而那一支挑到的是**排序靠前**的那一个，
 #   => 而那**不一定是**作者声明的那一个。
-#   ⇒ 而那**实测**：build-openssl run 40164564474（sha=84df912）逐字是
+#   => 而那**实测**：build-openssl run 40164564474（sha=84df912）逐字是
 #     「（这一件有程序那一侧：entry=bin/c_rehash）」
-#     ⇒ 而而那一件**声明**的 entry 逐字是 bin/openssl（=> 而那是 component-sources.json
-#        的 sources.openssl.entryName），⇒ 而而它**被**那一支跳过了。
-#   ⇒ 而而 bundle-env.sh 那一支（=> 而 emit_piece 那一族）**已经**改成「先取作者声明的那一个」，
-#      ⇒ 而而**这一支**（=> 而打包这一族）**也**要改，⇒ 而而不然它**盖掉**前面那一支。
-#   ⇒ 而处置：先取作者声明的那一个；⇒ 而它**不在** bin/ 下或它不是入口形态时，
+#     => 而而那一件**声明**的 entry 逐字是 bin/openssl（=> 而那是 component-sources.json
+#        的 sources.openssl.entryName），=> 而而它**被**那一支跳过了。
+#   => 而而 bundle-env.sh 那一支（=> 而 emit_piece 那一族）**已经**改成「先取作者声明的那一个」，
+#      => 而而**这一支**（=> 而打包这一族）**也**要改，=> 而而不然它**盖掉**前面那一支。
+#   => 而处置：先取作者声明的那一个；=> 而它**不在** bin/ 下或它不是入口形态时，
 #     **才**退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
 WANT_ENTRY="$(author_entry_name_of "$ID")"
 if [ -n "$WANT_ENTRY" ] && [ -f "$OUT/bin/$WANT_ENTRY" ]; then

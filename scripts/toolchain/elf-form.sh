@@ -39,7 +39,7 @@ elf_type_of() {
   printf '%s\n' "$t"
 }
 
-# 程序头里有没有 PT_INTERP 段（有 ⇒ 这份字节要靠解释器驱动）
+# 程序头里有没有 PT_INTERP 段（有 => 这份字节要靠解释器驱动）
 elf_has_interp() {
   local f="$1" re
   re="$(elf_readelf)" || return 1
@@ -62,7 +62,7 @@ elf_form() {
   #   => 而处置：这一族**先**认 #! 头，=> 而而那一档答 shebang（=> 而而它是入口形态）。
   if [ "$(head -c 2 "$f" 2>/dev/null)" = "#!" ]; then
     #   而那一行空则不是可调起的（=> 而 01 裁的判别形式第 ② 步：=> 而那一行空则不是入口形态）
-    #   ⇒ 而那一行**去掉 #! 之后**为空才算空（=> 而 head -n 1 那一行本身**含** #!，⇒ 而它永远非空）
+    #   => 而那一行**去掉 #! 之后**为空才算空（=> 而 head -n 1 那一行本身**含** #!，=> 而它永远非空）
     if [ -n "$(head -n 1 "$f" 2>/dev/null | cut -c3-)" ]; then
       printf '%s\n' "$ELF_FORM_SHEBANG"; return 0
     fi
@@ -134,9 +134,9 @@ elf_chain_names() {
 # 另外两种上游形状由本函数收拾：
 #
 #   形态甲（openssl/crypto）：libfoo.so 与 libfoo.so.3 两份都是实体字节
-#     ⇒ 挑最具体的那份留作实体，另一份改成软链，补第三段 root.3.6.3。
+#     => 挑最具体的那份留作实体，另一份改成软链，补第三段 root.3.6.3。
 #   形态乙（curl）：只有 libcurl.so.4.8.0 一份实体
-#     ⇒ 补 libcurl.so.4（SONAME）与 libcurl.so（开发名），第三段沿用上游那份。
+#     => 补 libcurl.so.4（SONAME）与 libcurl.so（开发名），第三段沿用上游那份。
 #
 # 用法：elf_ensure_chain <目录> <版本>  → 打印新建/改名的名字（每个一行，没有则空）
 elf_ensure_chain() {
@@ -157,18 +157,18 @@ elf_ensure_chain() {
     [ -n "$entity" ] || continue
 
     # ★ **两问分开**（01 今天指出、03 今天更正其位置）：
-    #   (a) 那份字节**自己说**它的 SONAME 是什么？读不到 ⇒ 按 C-05 报缺，**不替它编**。
+    #   (a) 那份字节**自己说**它的 SONAME 是什么？读不到 => 按 C-05 报缺，**不替它编**。
     #   (b) 我们要不要给它建一条链？
     #   原来这一行 `[ -n "$soname" ] || soname="$root"` 把两问合成了一问：
-    #   「上游没给 SONAME」与「上游给了无版本层的 SONAME」都变成 soname=开发名 ⇒ 不可区分。
+    #   「上游没给 SONAME」与「上游给了无版本层的 SONAME」都变成 soname=开发名 => 不可区分。
     soname_raw="$(elf_soname "$dirpath/$entity")"
     if [ -z "$soname_raw" ]; then
-      # (a) 读不到 ⇒ 那份字节没自述 SONAME ⇒ 按 C-05 报缺：不建链、不替它编一个
+      # (a) 读不到 => 那份字节没自述 SONAME => 按 C-05 报缺：不建链、不替它编一个
       #   （这个文件没有 say()，输出走 out —— 每个名字一行）
       out="$out${out:+ }（$(basename "$entity") 读不到 DT_SONAME —— 报缺，不建链）"
       continue
     fi
-    # (b) 有 SONAME ⇒ 按它自述的名字建链（同名就是同名，1 段也是它的实际形状）
+    # (b) 有 SONAME => 按它自述的名字建链（同名就是同名，1 段也是它的实际形状）
     soname="$soname_raw"
     major="${soname#$root.}"
     case "$major" in ''|*[!0-9]*) major="" ;; esac
@@ -186,8 +186,8 @@ elf_ensure_chain() {
     fi
 
     # ── 第三段的名字 ──────────────────────────────────────────
-    # 实体自己已经带着版本段（如 libcurl.so.4.8.0）⇒ 它就是第三段，不再另造一个。
-    # 实体挂在开发名或 SONAME 层上（如 libssl.so / libcrypto.so.3）⇒ 用件自己的
+    # 实体自己已经带着版本段（如 libcurl.so.4.8.0）=> 它就是第三段，不再另造一个。
+    # 实体挂在开发名或 SONAME 层上（如 libssl.so / libcrypto.so.3）=> 用件自己的
     # 版本号造第三段 root.3.6.3。
     third=""
     if [ "$entity" != "$root" ] && [ "$entity" != "$soname" ]; then
@@ -250,12 +250,12 @@ elf_json_escape() {
 #           ★ shebang 那一档（=> 而 01 裁的 S117 那一件）：
 #             而这一族的取值域按「**能不能被当入口调起**」那一问定，=> 而按文件长什么样不定域；
 #             而 #! 脚本**是**可调起的（=> 而 c_rehash / npm-cli.js / pnpm 那几件都是），
-#             ⇒ 而那一档答 shebang，⇒ 而它的 role 是 program。
+#             => 而那一档答 shebang，=> 而它的 role 是 program。
 #   role  ∈ {program, library, unknown}              逐文件的角色（按 form 判）
 #   kind  ∈ {program, library, mixed, unknown}       件整体：
-#              bin/ 与 lib/ 都有内容            ⇒ mixed（混合件：busybox / jq）
-#              只有 bin/                       ⇒ program（单入口程序件：bash / rg）
-#              只有 lib/                       ⇒ library（三段链库件：zlib / crypto / curl / openssl）
+#              bin/ 与 lib/ 都有内容            => mixed（混合件：busybox / jq）
+#              只有 bin/                       => program（单入口程序件：bash / rg）
+#              只有 lib/                       => library（三段链库件：zlib / crypto / curl / openssl）
 #   mode  ∈ 八进制权限（owner 执行位是「程序」的可见标记）
 #
 # ★ kind 的取值域与运行期 PieceScan 的 role 词汇**不同**（那边是 exec/library/headers/
@@ -331,11 +331,11 @@ elf_write_shape() {
     # ★ 软链**照它指向的实体**算形态（form/role/sha 都取实体那份）—— 而**它仍进 files[]**。
     #   ★★ 而它**必须**进 files[]（2026-10-20 实测出来的）：
     #     落位侧 ProgramInstallPipeline.landByShape 的目标映射（map）**是从 files[] 建的**
-    #     ⇒ 而软链不在 files[] 里 ⇒ map 里就没有它 ⇒ **它不会被搬**
-    #     ⇒ 落位后 bin/ 下只有本体那一份、**那 17 条命令软链一条都没有**
-    #     ⇒ 而 usr/bin 下那 17 条命令软链正是从它们建的 ⇒ 那 17 个命令会消失。
+    #     => 而软链不在 files[] 里 => map 里就没有它 => **它不会被搬**
+    #     => 落位后 bin/ 下只有本体那一份、**那 17 条命令软链一条都没有**
+    #     => 而 usr/bin 下那 17 条命令软链正是从它们建的 => 那 17 个命令会消失。
     #   ★ 而 derivedLinks 那一格记的是「哪些是派生物」（它与 files[] 并存，不冲突）。
-    #   ★ 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）⇒ files[] 18 项是对的。
+    #   ★ 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）=> files[] 18 项是对的。
     if [ -L "$stage/$rel" ]; then
       real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
       [ -n "$real" ] && [ -f "$real" ] || continue
@@ -353,9 +353,9 @@ elf_write_shape() {
     # ★ **kind 该用 role 那把尺（形态），不该用目录名** ——
     #   缺陷名（C-102）kind 按目录名数：原来 kind 由 n_bin / n_libdir（`${rel%%/*}` 是 bin 还是 lib）决定，
     #   而「看目录名」按 §10.1:128 已判无效。
-    #   ⇒ 今天两把尺会不一致：role 那把（形态）说 openssl 是 library（libssl.so 是 dyn-plain），
+    #   => 今天两把尺会不一致：role 那把（形态）说 openssl 是 library（libssl.so 是 dyn-plain），
     #     而 kind 那把（目录名）说它是 mixed（bin/ 与 lib/ 两个目录都在）。
-    #   ⇒ 现在 kind 由 n_prog（程序形态的份数）与 n_lib（库形态的份数）决定 —— 与 role 同一把尺。
+    #   => 现在 kind 由 n_prog（程序形态的份数）与 n_lib（库形态的份数）决定 —— 与 role 同一把尺。
     mode="$(stat -c%a "$real" 2>/dev/null || echo '')"
     bytes="$(stat -c%s "$real" 2>/dev/null || echo 0)"
     sha="$(sha256sum "$real" 2>/dev/null | cut -d" " -f1)"
@@ -378,12 +378,12 @@ elf_write_shape() {
   done
   # 件整体的形态：**按形态判**（程序形态的份数与库形态的份数）—— 与 role 同一把尺。
   # ★ 缺陷名（C-102）kind 按落位目录判：原来这一段是
-  #   「n_bin>0 && n_libdir>0 ⇒ mixed；n_bin>0 ⇒ program；n_libdir>0 ⇒ library」，
+  #   「n_bin>0 && n_libdir>0 => mixed；n_bin>0 => program；n_libdir>0 => library」，
   #   而 n_bin / n_libdir 数的是**目录名**（`${rel%%/*}` 是 bin 还是 lib）——
   #   「看目录名」按 §10.1:128 已判无效，而 role 那一格已经用形态那把尺了。
-  #   ⇒ 两把尺会不一致：openssl 的 libssl.so 是 dyn-plain（role=library）
-  #     而 bin/openssl 是程序形态 ⇒ role 说它有程序形态的字节、kind 却按目录名说 mixed。
-  #   ⇒ 现在 kind 与 role 同源：n_prog（程序形态的份数）与 n_lib（库形态的份数）。
+  #   => 两把尺会不一致：openssl 的 libssl.so 是 dyn-plain（role=library）
+  #     而 bin/openssl 是程序形态 => role 说它有程序形态的字节、kind 却按目录名说 mixed。
+  #   => 现在 kind 与 role 同源：n_prog（程序形态的份数）与 n_lib（库形态的份数）。
   local kind="unknown"
   if [ "$n_prog" -gt 0 ] && [ "$n_lib" -gt 0 ]; then kind="mixed"
   elif [ "$n_prog" -gt 0 ]; then kind="program"
@@ -419,24 +419,24 @@ elf_write_shape() {
 #   它是一份**普通的字符串常量区**，不是 .data.rel.ro 里的指针数组。
 #
 # ★ **它不是「这份字节响应哪些名字」** —— 01 今天裁的那一句已被今天的读数更正：
-#   01 说「那份字节的 .rodata 开头就是『我响应哪些名字』那张表」⇒ 读它，不另带名单。
+#   01 说「那份字节的 .rodata 开头就是『我响应哪些名字』那张表」=> 读它，不另带名单。
 #   ★ 而今天实测（这一件那份字节，01 今天逐字核过）：
 #     表（.rodata）= **19 个**：awk cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi
 #     白名单（$APPLETS，我们写下的）= **17 个**：tar gzip gunzip grep sed ls cp mv cat mkdir rm ln vi df ps true false
 #     落包集（make install 实际建出的软链）= **按轮次分清**（2026-10-20 逐个包数过）：
-#       旧轮（BB_BINS 取 $APPLETS 派生时）= **17 个、无 sh** ⇒ 表 − 落包集 = {awk, sh}
-#       新轮（BB_BINS 取落包集时）= **18 个、含 sh** ⇒ 表 − 落包集 = {awk}
+#       旧轮（BB_BINS 取 $APPLETS 派生时）= **17 个、无 sh** => 表 − 落包集 = {awk, sh}
+#       新轮（BB_BINS 取落包集时）= **18 个、含 sh** => 表 − 落包集 = {awk}
 #     ★★ 而**表 − 落包集 记的是什么**：它记的是「这一件编译时没编出那个能力」——
 #       而它**不区分**「我们显式关掉了它」与「它依赖的那些被我们关掉了，于是它编不出来」（01 今天裁的）。
 #       ★★ 而**「.rodata 里仍有 awk」**这一条已由今天实测坐实（那一件编译时按白名单关掉了 awk：
 #         build-native-busybox.sh:79-82「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，
-#         make install 不给它建软链」）⇒ **那张表是上游这份源码的 applet 全集**，
+#         make install 不给它建软链」）=> **那张表是上游这份源码的 applet 全集**，
 #         **不是「这份字节响应哪些名字」**。
-#   ⇒ 而「这份字节响应哪些名字」的**真源**是 make install 连带建的那批软链
+#   => 而「这份字节响应哪些名字」的**真源**是 make install 连带建的那批软链
 #     （man1 INSTALL 段：「If you enabled any applet installation scheme …
 #     these will also be installed in the location pointed to by CONFIG_PREFIX」）
 #     —— **构建系统自己知道编了哪些 applet**。
-#   ⇒ 所以这一格今天**没有读者**（构建侧那一处已改成取落包集：
+#   => 所以这一格今天**没有读者**（构建侧那一处已改成取落包集：
 #     build-native-busybox.sh 的 BB_BINS = $OUT_DIR/bin 下那批软链的名字）。
 #     而它保留着：它是「那份字节里写着哪些 applet 名」这一格的**核**手段
 #     （可与落包集比对：差集 = 被白名单关掉的那些）。
@@ -455,7 +455,7 @@ elf_applet_names() {
   local off_hex size_hex
   off_hex="$(printf '%s\n' "$line" | awk '{print $6}')"
   size_hex="$(printf '%s\n' "$line" | awk '{print $7}')"
-  # dd 的 skip 是十进制 ⇒ 这里必须转（0x290=656，而 "000290" 当十进制是 290）
+  # dd 的 skip 是十进制 => 这里必须转（0x290=656，而 "000290" 当十进制是 290）
   off="$(printf '%d' "0x$off_hex" 2>/dev/null)"
   size="$(printf '%d' "0x$size_hex" 2>/dev/null)"
   case "$off" in ''|*[!0-9]*) return 1 ;; esac
