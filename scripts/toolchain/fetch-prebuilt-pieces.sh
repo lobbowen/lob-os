@@ -87,19 +87,38 @@ fetch_asset() {
 #   旧产物 ：有 asset 但名字对不上（改过 recipe，指纹变了） **旧产物不能冒充新代码的产物**，
 #           而 dispatch 之前必须让人看见这一点，否则它会「取到旧包、打出 APK、全绿」。
 # 2026-10-16 实测：run 1065 就是后者，而当时的输出与「8/8 件没固化」无法区分。
+#  缺陷名（C-102）**那空逐字同时表示「那筐真的一件 asset 都没有」与「那一读逐字没读到」**、
+#    => 而而那两个逐字混在**同一个**空里、=> 而而那一族逐字**分不出**是哪一种
+#    —— 而实际上那 2>/dev/null 与那 catch (e) {} 逐字把**所有**失败**吞掉**了：
+#    而那 curl 逐字失败（=> 而那 4xx / 5xx / 限流 / 鉴权过期 / 网络）逐字**静默**、
+#    而那 JSON 逐字解析不了逐字**静默**、=> 而而那 stdout 逐字**空**、
+#    => 而而那 stdout **空**逐字与「那筐**真的**一个 asset 都没有」逐字**完全一样**。
+#    => 而本机**实测**过（=> 而那读失败时逐字返回码 = 22、=> 而那输出逐字长度 = 0、=> 而那 stderr 逐字**空**）。
+#    => 而按 C-104：=> 而那 list_release_assets 那一族逐字**只有**一条路（=> 而那 REST 那一族与那 gh api 那一族逐字**不是**两路）。
+#  => 而而那**改法**：=> 而而那 stdout **空**逐字与「那一读逐字没读到」逐字**分开**——
+#    => 而而那一读逐字**失败**时逐字**走**另一条路、=> 而而那 stdout 逐字**带**一个**标记**。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 list_release_assets() {
   local tag="$1" hdr=()
   [ -n "${GITHUB_TOKEN:-}" ] && hdr=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null \
+  local body rc
+  body="$(curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
+          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ] || [ -z "$body" ]; then
+    #  那一读逐字**失败**了：=> 而而那**不是**「那筐真的一件 asset 都没有」。
+    #  => 而而那逐字**带**一个标记、=> 而而那**调用方**逐字能**分出**那两种。
+    echo "__LRA_READ_FAILED__ rc=$rc" >&2
+    return 1
+  fi
+  printf '%s' "$body" \
     | node -e '
         let d = "";
         process.stdin.on("data", c => d += c);
         process.stdin.on("end", () => {
-          try {
-            const j = JSON.parse(d);
-            (j.assets || []).map(x => x.name).filter(n => !/\.sha256$/.test(n)).forEach(n => process.stdout.write(n + "\n"));
-          } catch (e) {}
+          let j;
+          try { j = JSON.parse(d); } catch (e) { process.stderr.write("__LRA_PARSE_FAILED__\\n"); process.exit(3); }
+          (j.assets || []).map(x => x.name).filter(n => !/\.sha256$/.test(n)).forEach(n => process.stdout.write(n + "\n"));
         });
       ' 2>/dev/null
 }
@@ -120,7 +139,14 @@ for id in "${PIECES[@]}"; do
     echo "::error title=$id 没有固化产物::Release $tag 里取不到 $asset —— 先去构建这一件："
     echo "::error::  gh workflow run $(bash scripts/toolchain/piece-workflow-name.sh "$id")   （见 RELEASE-POLICY.md）"
     others="$(list_release_assets "$tag")"
-    if [ -z "$others" ]; then
+    lra_rc=$?
+    if [ "$lra_rc" -ne 0 ]; then
+      #  那一读逐字**失败**了（=> 而而那限流 / 鉴权过期 / 端点变了 / 网络 那一族）：
+      #  => 而而那**不是**「那筐真的一件 asset 都没有」、=> 而而那**不**能按「缺货」处置。
+      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（=> 而而那 stdout 逐字是空、=> 而而那**不是**『那筐一个 asset 都没有』）。"
+      echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），=> 而而那**不是** dispatch 那一件能解决的。*"
+      miss_stock=$((miss_stock+1))
+    elif [ -z "$others" ]; then
       echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
       echo "::notice:: 处置：dispatch 那一件即可。*"
       miss_stock=$((miss_stock+1))
