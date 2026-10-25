@@ -157,75 +157,19 @@ jobs:
           console.log("[ok] 别名 " + names.length + " 个，逐个指向件内真实文件");
           '
 
-      - name: 发布本件预制品到 Release（编一次，长期复用）
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # T 缺陷名（C-102）这一处用了 TAG 与 ASSET，而它们原来没有任何一步定义
-          #   而在 set -euo pipefail 下那两处未定义就展开，=> 而而它发不出去；
-          #   => 而而那正是「llvm 那个 tag 从来没出现过」那一格的成因。
-          #   => 而那两格该由上面「算本件的固化标识」那一步给出。
-          TAG: ${{ steps.uwkey.outputs.tag }}
-          ASSET: ${{ steps.uwkey.outputs.asset }}
-        run: |
-          set -euo pipefail
-          #  缺陷名（C-102）**没有产出被当成成功** —— 而而这一族逐字有**两边**：
-          #    一，「那一趟压根没跑」（=> 而而那逐字是**上游**没产出、=> 而而那**不是**本步骤能判的）、
-          #    二，「那一趟跑了、而它没产出」（=> 而而那逐字是**本步骤**能判的）。
-          #    => 而而原来那一句逐字把这两边**混成了一边**、=> 而而它逐字是「跳过发布 -> exit 0」、
-          #    => 而而那一趟逐字**绿**、=> 而而外面逐字只看见「tag 没建」、=> 而而**看不出**「那一趟压根没产出」。
-          #    => 而 04 今天裁的判据那一层是「**没有产出**就是**没有产出**、=> 而而它**不是**成功」。
-          #    => 而按 C-103 先答「它为什么有两边」：=> 而那两边是「那一趟压根没跑」与「那一趟跑了、而它没产出」、
-          #       => 而而它们逐字**处置不同**（=> 而前者逐字是**上游**的事、=> 而后者逐字是**本步骤**的事）。
-          #    => 而这里逐字只判**后者**（=> 而而本步骤逐字只看得见「dist/llvmtoolchain 在不在」），
-          #       => 而而前者逐字由**上游那一步**的成败来表达。
-          if [ ! -d dist/llvmtoolchain ]; then
-            echo "::error title=没产出 llvmtoolchain::本趟没产出，不算成功"
-            exit 1
-          fi
-          PW="work/pw-llvmtoolchain"
-          rm -rf "$PW" && mkdir -p "$PW"
-          tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
-          ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
-          {
-            echo "预制品：llvmtoolchain（clang / lld / binutils）"
-            echo "Release tag：$TAG"
-            echo "NDK：$(bash scripts/toolchain/fetch-pinned.sh --ndk)"
-            echo "LLVM 源码钉值：$(bash scripts/toolchain/fetch-pinned.sh --src-version llvm)"
-            echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          } > "$PW/BUILD.md"
-          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release create "$TAG" --repo "${{ github.repository }}" \
-              --title "llvmtoolchain（工具筐）— $TAG" \
-              --notes "编译一次、长期复用的工具链预制品（clang / lld / binutils）。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
-          fi
-          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
-          echo "[ok] 已发布 $TAG"
-
-      - name: 发布 llvmtoolchain 件到对象存储
-        if: ${{ needs.resolve.outputs.publish == 'true' }}
-        env:
-          QINIU_AK: ${{ secrets.QINIU_AK }}
-          QINIU_SK: ${{ secrets.QINIU_SK }}
-          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
-        run: |
-          set -euo pipefail
-          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
-            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
-            exit 1
-          fi
-          for f in dist/component-llvmtoolchain-*.zip; do
-            [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
-            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
-          done
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: component-llvm
-          path: dist/component-llvmtoolchain-*.zip
-          retention-days: 90
-
+      #  缺陷名（C-102）**那诊断那两步逐字排在「发布本件预制品到 Release」那一步后面、
+      #    => 而而那发布那一步逐字卡在那网络那一族、=> 而而那两步逐字就永远到不了**
+      #  —— 而实际上那 40231794490 那一趟逐字：第 9 步 failure、第 10 到 12 步 skipped、
+      #    而那第 13 步「发布本件预制品到 Release」**还在跑**、=> 而而那第 16 与 17 步逐字全 **pending**，
+      #    => 而而那 artifact 那一族逐字 = **0**。
+      #  => 而而那**处置**：=> 而而那诊断那两步逐字**搬到**那发布那一步**前面**、
+      #    => 而而那发布那一步逐字**卡住**逐字**不**再**挡**着那两步。
+      #  => 而而那**代价**：=> 而而那诊断那两步逐字**先**跑、=> 而而那**发布成功**那一趟逐字**也**会**多**跑那两步
+      #    （=> 而而那 /tmp/diag 逐字**没有**东西时逐字**只**是一句 warn、=> 而而它逐字**不**判红）。
+      #  => 而按 C-103 那两边：「那诊断逐字要那真红」与「那诊断逐字要那网络先走完」逐字**各**答一件事、
+      #    => 而而这里改的是**后者**（=> 而前者那一格逐字**已核**）。
+      #  => 而按 C-104：=> 而那 `if:` 那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+      #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
       #  缺陷名（C-102）**那一族失败之后逐字没有任何诊断留下、=> 而而那一趟逐字编到哪、为什么停答不出来、
       #    => 而而那下一趟逐字还会同样没诊断**
       #    —— 而实际上那 recipe 那一族（build-component-llvmtoolchain.sh）逐字**自己**会留日志：
@@ -313,3 +257,72 @@ jobs:
           path: /tmp/diag/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: 发布本件预制品到 Release（编一次，长期复用）
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # T 缺陷名（C-102）这一处用了 TAG 与 ASSET，而它们原来没有任何一步定义
+          #   而在 set -euo pipefail 下那两处未定义就展开，=> 而而它发不出去；
+          #   => 而而那正是「llvm 那个 tag 从来没出现过」那一格的成因。
+          #   => 而那两格该由上面「算本件的固化标识」那一步给出。
+          TAG: ${{ steps.uwkey.outputs.tag }}
+          ASSET: ${{ steps.uwkey.outputs.asset }}
+        run: |
+          set -euo pipefail
+          #  缺陷名（C-102）**没有产出被当成成功** —— 而而这一族逐字有**两边**：
+          #    一，「那一趟压根没跑」（=> 而而那逐字是**上游**没产出、=> 而而那**不是**本步骤能判的）、
+          #    二，「那一趟跑了、而它没产出」（=> 而而那逐字是**本步骤**能判的）。
+          #    => 而而原来那一句逐字把这两边**混成了一边**、=> 而而它逐字是「跳过发布 -> exit 0」、
+          #    => 而而那一趟逐字**绿**、=> 而而外面逐字只看见「tag 没建」、=> 而而**看不出**「那一趟压根没产出」。
+          #    => 而 04 今天裁的判据那一层是「**没有产出**就是**没有产出**、=> 而而它**不是**成功」。
+          #    => 而按 C-103 先答「它为什么有两边」：=> 而那两边是「那一趟压根没跑」与「那一趟跑了、而它没产出」、
+          #       => 而而它们逐字**处置不同**（=> 而前者逐字是**上游**的事、=> 而后者逐字是**本步骤**的事）。
+          #    => 而这里逐字只判**后者**（=> 而而本步骤逐字只看得见「dist/llvmtoolchain 在不在」），
+          #       => 而而前者逐字由**上游那一步**的成败来表达。
+          if [ ! -d dist/llvmtoolchain ]; then
+            echo "::error title=没产出 llvmtoolchain::本趟没产出，不算成功"
+            exit 1
+          fi
+          PW="work/pw-llvmtoolchain"
+          rm -rf "$PW" && mkdir -p "$PW"
+          tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' .
+          ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
+          {
+            echo "预制品：llvmtoolchain（clang / lld / binutils）"
+            echo "Release tag：$TAG"
+            echo "NDK：$(bash scripts/toolchain/fetch-pinned.sh --ndk)"
+            echo "LLVM 源码钉值：$(bash scripts/toolchain/fetch-pinned.sh --src-version llvm)"
+            echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > "$PW/BUILD.md"
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" \
+              --title "llvmtoolchain（工具筐）— $TAG" \
+              --notes "编译一次、长期复用的工具链预制品（clang / lld / binutils）。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
+          fi
+          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
+          echo "[ok] 已发布 $TAG"
+
+      - name: 发布 llvmtoolchain 件到对象存储
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
+            exit 1
+          fi
+          for f in dist/component-llvmtoolchain-*.zip; do
+            [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
+            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
+              node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-llvm
+          path: dist/component-llvmtoolchain-*.zip
+          retention-days: 90
