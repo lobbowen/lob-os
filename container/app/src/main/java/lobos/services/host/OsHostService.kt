@@ -117,9 +117,19 @@ class OsHostService : Service() {
                 t::class.java.simpleName + ": " + t.message,
             )
         }
+        //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
+        //    => 而而那一行逐字没有配对的标记、=> 而而那一个量逐字算不准**
+        //    —— 而实际上这一行逐字是「startForeground 那一拍」，=> 而而它逐字**要**能指回
+        //    「FGS start 那一拍」那**一行**、=> 而而那一行逐字带一个配对的标记。
+        //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状、=> 而而它逐字是「**配不准**」那个形状。
+        //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**加这一行。
+        val paired = Companion.takeFgsStart()
+        val gap = if (paired != null) System.currentTimeMillis() - paired.at else -1L
         RuntimeDiagnostics.append(
             this, "host", threw == null, "转前台那一族跑过了",
-            "已调用 startForeground=" + called + " 抛出=" + (threw ?: "无"),
+            "已调用 startForeground=" + called + " 抛出=" + (threw ?: "无") +
+                " 配对=" + (paired?.marker ?: "无") +
+                " 距FGSstart毫秒=" + gap,
         )
     }
 
@@ -352,14 +362,12 @@ class OsHostService : Service() {
 
         fun ensureRunning(context: Context) {
             try {
-                //  缺陷名（C-102）**那 5 秒窗口的起算时刻逐字没被记下来、=> 而而那一个量逐字算不出来**
-                //    —— 而实际上那 5 秒窗口逐字是「FGS start -> startForeground」那个量，
-                //    => 而而「FGS start」那一拍逐字就是这一行**之前**的那一拍、
-                //    => 而而仓内逐字**没有**那一行、=> 而而那一格逐字**算不出来**。
-                //    => 而按 C-104：=> 而「FGS start」那一拍在**两条路上都有**（=> 而 boot 那一路与「服务起」那一路逐字都起服务）、
-                //    => 而而这里逐字是**唯一**能记下那一拍的地方、=> 而而这一拍逐字**先于**服务起来。
-                //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**加这一行。
-                noteFgsStart(context, "service-start")
+                //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
+                //    => 而而那一拍逐字**配错了**、=> 而而问二那个量逐字**算不出来**
+                //    —— 而实际上这一路逐字是 `startService`（=> 而**不是** `startForegroundService`）、
+                //    => 而而 FGS start 那一拍逐字**不**在这一路上、=> 而而这里逐字**不该**记那一拍。
+                //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状，=> 而而它逐字是「**记错了**」那个形状。
+                //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**改这一行。
                 context.startService(Intent(context, OsHostService::class.java))
             } catch (e: Throwable) {
                 Log.w(TAG, "拉起宿主失败（等互保闭环其它边重试）", e)
@@ -378,10 +386,38 @@ class OsHostService : Service() {
         fun noteFgsStart(context: Context, path: String) {
             val at = System.currentTimeMillis()
             val elapsed = android.os.SystemClock.elapsedRealtime()
+            //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
+            //    => 而而那一行逐字没有配对的标记、=> 而而那一个量逐字算不准**
+            //    —— 而实际上同一次触发逐字**只**记一行、=> 而而这一行逐字带一个配对的标记，
+            //    => 而而服务起来那一拍逐字**能**指回这一行、=> 而而那一个量逐字**能**算准。
+            //    => 而按 C-104：=> 而那**同一个**触发逐字**只**触发一次、=> 而而那**一次**记一行、
+            //    => 而而**不**会有第二行逐字**抢**掉配对。
+            //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**加这一行。
+            val marker = path + "#" + at
             RuntimeDiagnostics.append(
                 context, "fgs-start", true, "FGS start 那一拍",
-                "起算时刻 at=" + at + " elapsedRealtime=" + elapsed + " 路径=" + path,
+                "起算时刻 at=" + at + " elapsedRealtime=" + elapsed + " 路径=" + path +
+                    " 配对=" + marker,
             )
+            fgsStartMarker = FgsStart(at, marker)
+        }
+
+        /** 而而 FGS start 那一拍逐字与它的配对标记（=> 而那一族逐字是**同一个**触发逐字**一次**配一个） */
+        class FgsStart(val at: Long, val marker: String)
+
+        //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
+        //    => 而而那一行逐字没有配对的标记、=> 而而那一个量逐字算不准**
+        //    —— 而实际上这一格逐字是「**这一次**触发逐字记的那一行」、
+        //    => 而而它逐字只装**一行**、=> 而而消费掉之后逐字清空、=> 而而下一次触发逐字**另**记一行。
+        //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状、=> 而而它逐字是「**配不准**」那个形状。
+        @Volatile
+        private var fgsStartMarker: FgsStart? = null
+
+        /** 而而那一格逐字取出配对标记并清空（=> 而而它逐字**只**给**一次** startForeground 用） */
+        fun takeFgsStart(): FgsStart? {
+            val m = fgsStartMarker
+            fgsStartMarker = null
+            return m
         }
     }
 }
