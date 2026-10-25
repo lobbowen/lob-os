@@ -19,6 +19,7 @@
 ELF_FORM_EXEC="exec"
 ELF_FORM_DYN_INTERP="dyn-interp"
 ELF_FORM_DYN_PLAIN="dyn-plain"
+ELF_FORM_SHEBANG="shebang"
 ELF_FORM_UNKNOWN="unknown"
 
 # 找 readelf —— 优先 NDK 的 llvm-readelf（构建期一定有），其次系统的。
@@ -53,6 +54,19 @@ elf_has_interp() {
 elf_form() {
   local f="$1" t
   if [ ! -f "$f" ]; then printf '%s\n' "$ELF_FORM_UNKNOWN"; return 0; fi
+  # ★ 缺陷名（C-102）**这一族的取值域按「能不能被当入口调起」那一问定**（=> 而 01 裁的，=> 而 S117）。
+  #   而那判别形式的第 ② 步是「它的头是不是 #!」（=> 而而那一行空则不是可调起的）。
+  #   而原来这一族**只**读 ELF 头（=> 而 elf_type_of 逐字是非 ELF 打印 OTHER），
+  #   => 而而 #! 脚本落到 OTHER => 而而它那一档是 unknown => 而而它被那一列**整个漏掉**。
+  #   => 而那正是「整类漏掉」那一族（=> 而判别形式：那一类的成员在那一列里**一条都没有**）。
+  #   => 而处置：这一族**先**认 #! 头，=> 而而那一档答 shebang（=> 而而它是入口形态）。
+  if [ "$(head -c 2 "$f" 2>/dev/null)" = "#!" ]; then
+    #   而那一行空则不是可调起的（=> 而 01 裁的判别形式第 ② 步：=> 而那一行空则不是入口形态）
+    #   ⇒ 而那一行**去掉 #! 之后**为空才算空（=> 而 head -n 1 那一行本身**含** #!，⇒ 而它永远非空）
+    if [ -n "$(head -n 1 "$f" 2>/dev/null | cut -c3-)" ]; then
+      printf '%s\n' "$ELF_FORM_SHEBANG"; return 0
+    fi
+  fi
   t="$(elf_type_of "$f" 2>/dev/null)" || { printf '%s\n' "$ELF_FORM_UNKNOWN"; return 0; }
   case "$t" in
     EXEC) printf '%s\n' "$ELF_FORM_EXEC" ;;
@@ -69,13 +83,13 @@ elf_form() {
 # 形态 → 角色：program / library / unknown
 elf_role_of_form() {
   case "$1" in
-    "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP") printf 'program\n' ;;
+    "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP"|"$ELF_FORM_SHEBANG") printf 'program\n' ;;
     "$ELF_FORM_DYN_PLAIN") printf 'library\n' ;;
     *) printf 'unknown\n' ;;
   esac
 }
 
-elf_form_is_program() { case "$1" in "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP") return 0 ;; *) return 1 ;; esac; }
+elf_form_is_program() { case "$1" in "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP"|"$ELF_FORM_SHEBANG") return 0 ;; *) return 1 ;; esac; }
 elf_form_is_library() { [ "$1" = "$ELF_FORM_DYN_PLAIN" ]; }
 
 # DT_SONAME（共享库才有；没有就空）
@@ -231,8 +245,12 @@ elf_json_escape() {
 #   所以形态必须在构建期算出来、写进产物。
 #
 # 写出的取值域（运行期照这几个值读，不许认别的）：
-#   form  ∈ {exec, dyn-interp, dyn-plain, unknown}   逐文件的形态
+#   form  ∈ {exec, dyn-interp, dyn-plain, shebang, unknown}   逐文件的形态
 #           （照 ExecBits.kt:26-30 的三态：ET_EXEC / ET_DYN+PT_INTERP / ET_DYN 无 PT_INTERP）
+#           ★ shebang 那一档（=> 而 01 裁的 S117 那一件）：
+#             而这一族的取值域按「**能不能被当入口调起**」那一问定，=> 而按文件长什么样不定域；
+#             而 #! 脚本**是**可调起的（=> 而 c_rehash / npm-cli.js / pnpm 那几件都是），
+#             ⇒ 而那一档答 shebang，⇒ 而它的 role 是 program。
 #   role  ∈ {program, library, unknown}              逐文件的角色（按 form 判）
 #   kind  ∈ {program, library, mixed, unknown}       件整体：
 #              bin/ 与 lib/ 都有内容            ⇒ mixed（混合件：busybox / jq）

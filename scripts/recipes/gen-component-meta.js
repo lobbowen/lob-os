@@ -128,7 +128,16 @@ function elf_form_of(file) {
       //   而 elf-form.sh 的取值域里 unknown 逐字是「不是 ELF（或是 #! 脚本）」，
       //   => 而而它**是**入口（=> 而 verify-component-artifact.sh 那一支逐字认 shebang 形态），
       //   => 而所以这一处把它单列成一个形态（=> 而而那是 02 核到的那一格）。
-      if (n >= 2 && head[0] === 0x23 && head[1] === 0x21) return 'shebang';
+      // ★ 而 01 裁的 S117 那一件把这一族的取值域按「**能不能被当入口调起**」那一问定：
+      //   => 而那判别形式的第 ② 步是「它的头是不是 #!」（=> 而而**那一行去掉 #! 之后**为空，
+      //      => 而则它不是可调起的、=> 而它不是入口形态）。
+      //   => 而 elf-form.sh 那一族（=> 而那是**另一把尺**）已按同一判别形式实现，
+      //      => 而而这一族**也**按同一判别形式（=> 而而两把尺在域里答同一问，=> 而那是 01 裁的第 ② 条）。
+      if (n >= 2 && head[0] === 0x23 && head[1] === 0x21) {
+        // 而那一行去掉 #! 之后为空 ⇒ 而那不是可调起的
+        const line = fs.readFileSync(file, 'utf8').split('\n', 1)[0];
+        if (line.slice(2).trim() !== '') return 'shebang';
+      }
       return 'unreadable';
     }
     const etype = head.readUInt16LE(16);
