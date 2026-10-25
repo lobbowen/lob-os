@@ -36,6 +36,14 @@ if [ "$GOT_NDK" != "$WANT_NDK" ]; then
 fi
 
 CLANG=""
+# ★ 缺陷名（C-102）**这一格在 CI 上答不了** —— 而而那一档随 bash 版本变：
+#   => 而而本机 bash 5.3.9：=> 而一个**设过的空串**在 `[ -z "$X" ]` 与命令名位置上**都正常**；
+#   => 而而 CI 那个 bash（=> 而 ubuntu-24.04 那一版）**报**「CLANG: unbound variable」。
+#   ⇒ 而而那**不是**「CLANG 没被赋值」（=> 而而它**是**设过的、=> 而而它**是空的**），
+#     ⇒ 而而那**不是**「找不到 clang」，=> 而而那报出来的是「变量没定义」——=> 而而那两件事不一样。
+# ⇒ 而**处置**：这一格全部用 \${CLANG:-} 那一档（=> 而而它在**未定义**时也答空、
+#   => 而而在 set -u 下**不报** unbound，=> 而而它在哪个 bash 版本上都是同一个语义）。
+#   ⇒ 而而那一格该做的是**报缺**（=> 而按 C-05 报缺不猜填），=> 而那在下面那一句。
 # 缺陷名（C-102）**找 clang 的那一处与上游那一处用的不是同一个名字** ——
 #   而而这一处逐字是 `for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang`，
 #   => 而那找的是**通用** clang（=> 而叫 `clang`）；
@@ -52,12 +60,12 @@ CLANG=""
 if [ -n "${CC:-}" ] && [ -f "$CC" ]; then
   CLANG="$CC"
 fi
-if [ -z "$CLANG" ]; then
+if [ -z "${CLANG:-}" ]; then
   for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang "$NDK"/toolchains/llvm/prebuilt/*/bin/*-clang; do
     [ -f "$c" ] && CLANG="$c" && break
   done
 fi
-[ -n "$CLANG" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
+[ -n "${CLANG:-}" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 # ★ 缺陷名（C-102）**在**命令名位置**展开变量，=> 而而 `set -u` 在那一档的语义随 bash 版本变**：
 #   => 而而本机 bash 5.3.9 那一档：=> 而一个**设过的空串**在命令名位置**不报** unbound（=> 而而它跑空命令、=> 而而空命令成功）；
@@ -69,20 +77,20 @@ fi
 #   => 而而那一档在哪个 bash 版本上都是同一个语义）。
 #
 # ★ 而**空值**那一档也要自己挡（=> 而而那才是 CI 上真正报出来的那一句）：
-#   => 而 `command "$CLANG" --version` 在 CLANG **是空的**时，=> 而而 command 后面跟的是**空串**，
+#   => 而 `command "${CLANG:-}" --version` 在 CLANG **是空的**时，=> 而而 command 后面跟的是**空串**，
 #      => 而而那个 bash（=> 而 ubuntu-24.04 那一版）按 `set -u` 报「CLANG: unbound variable」；
 #   => 而而那一句该做的是**报缺**（=> 而按 C-05 报缺不猜填），=> 而**不**该让 `set -u` 替它报
 #      （=> 而而那报出来的是「变量没定义」而不是「找不到 clang」）。
-if [ -z "$CLANG" ]; then
+if [ -z "${CLANG:-}" ]; then
   die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
-if ! command "$CLANG" --version >/dev/null 2>&1; then
+if ! command "${CLANG:-}" --version >/dev/null 2>&1; then
   die "证据不足：NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
 
-VER_OUT="$(command "$CLANG" --version 2>&1 | head -3)"
+VER_OUT="$(command "${CLANG:-}" --version 2>&1 | head -3)"
 echo "[ndk-llvm] $VER_OUT"
 
 GOT_REV="$(printf '%s\n' "$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
