@@ -98,6 +98,20 @@ mkdir -p "$BUILD"
 HOST_TB="$WORK/host-tblgen"
 rm -rf "$HOST_TB"
 note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。"
+# ★ 缺陷名（C-102）**这一格取错了对象** —— 而而 LLVM 21.1.0 那一族的 TableGen.cmake 逐字是：
+#     if (LLVM_USE_HOST_TOOLS)                        （=> 而那是第 207 行）
+#       if( ${${project}_TABLEGEN} STREQUAL "${target}" )
+#         build_native_tool(${target} ${project}_TABLEGEN_EXE DEPENDS ${target})
+#   ⇒ 而而那个 if 块**是唯一**把宿主工具装到 ${project}_TABLEGEN_EXE 的地方，
+#   ⇒ 而而它的**外面**没有 else（=> 而而第 226 行就是那个 if 的 endif）。
+#   ⇒ 而所以 LLVM_USE_HOST_TOOLS=OFF 时，⇒ 而那一格**不被宿主那份**接管，
+#   ⇒ 而而 llvm-min-tblgen 走 build_native_tool 自建（=> 而那是**交叉**产物，=> 而那是 aarch64），
+#   ⇒ 而而它在 x86_64 构建机上被执行时逐字是「Exec format error」（=> 而 40154442601 那一趟实测）。
+#   ⇒ 而 LLVM_TABLEGEN 那一格**只**对 llvm-min-tblgen 生效，⇒ 而且它要「不是 llvm-tblgen」才生效（=> 而那一行逐字是
+#     AND NOT "${LLVM_TABLEGEN}" STREQUAL "llvm-tblgen"）—— ⇒ 而我们那一格**正是** llvm-tblgen，
+#   ⇒ 而所以那一格**也**不接管 llvm-min-tblgen。
+#   ⇒ 而**处置**：LLVM_USE_HOST_TOOLS=ON（=> 而而那一格让宿主那份接管，=> 而而 build_native_tool 不再自建）。
+#   ⇒ 而那一处是**上游**的开关，=> 而不改上游源码。
 note "  注意：不能只靠「不设 toolchain 文件」—— locate-ndk.sh 注入的 CC/CXX 在环境里，CMake 会直接采用它们，于是宿主构建也编成 aarch64（实测 host-tblgen/bin/llvm-min-tblgen: Exec format error）。要显式覆盖。"
 command -v cc >/dev/null 2>&1 || die "缺宿主 cc" \
   "编宿主 tblgen 需要宿主编译器；runner 自带 /usr/bin/cc。缺了请 apt-get install build-essential"
@@ -144,7 +158,7 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" \
   -DLLVM_NATIVE_TOOL_DIR="$NATIVE_DIR" \
   -DLLVM_TABLEGEN="$NATIVE_DIR/llvm-tblgen" \
-  -DLLVM_USE_HOST_TOOLS=OFF \
+  -DLLVM_USE_HOST_TOOLS=ON \
   -DANDROID_ABI="$ABI" -DANDROID_PLATFORM="android-$API" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$STAGE/prefix" \
