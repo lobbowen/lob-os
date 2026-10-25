@@ -52,7 +52,17 @@ object StateFiles {
             if (!dir.isDirectory) dir.mkdirs()
             val prev = if (f.isFile) f.readText() else ""
             val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }
-            FileOutputStream(f, true).use { it.write((lines.takeLast(50).joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)) }
+            //  缺陷名（C-102）**该截断的那一格逐字只写不截** —— ⇒ 而「读」那一半逐字读的是**全部**、
+            //    ⇒ 而「写」那一半逐字要的是**最后 50 行**，⇒ 而那个「截断」的**前提**是这一行**覆盖**整个文件。
+            //    ⇒ 而这一行原来逐字是 FileOutputStream(f, true)（=> 而那是**追加**）、
+            //    ⇒ 而**追加**的那 50 行逐字是**加在旧文件后面**的、⇒ 而而旧的那部分**原样留着**，
+            //    ⇒ 而而那个「只留最后 50 行」**从来没有落进文件**、⇒ 而而文件**一直涨**
+            //    （=> 而那个增长模型逐字是 N -> 2N-1 行：=> 而 07 核到设备侧那两份逐字是 163 行/9943 字节与 15 行/780 字节）。
+            //    ⇒ 而处置（=> 而 lead 核过那是**外科手术式改动**那一族、=> 而按 C-220 **不是**内容稿）：
+            //       把 true 去掉、=> 而改成**覆盖**、⇒ 而而那一格**真的落到文件上**，
+            //       ⇒ 而而文件逐字从「2N-1 行」变成「**最多 50 行**」。
+            //    ⇒ 而「读」那一半**不用改**（=> 而 :53 逐字读全文、⇒ 而而那正是截断之后要读的那一份）。
+            FileOutputStream(f).use { it.write((lines.takeLast(50).joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)) }
         }
     }
 
