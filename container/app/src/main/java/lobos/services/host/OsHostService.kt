@@ -268,18 +268,38 @@ class OsHostService : Service() {
     }
 
     override fun onDestroy() {
+        //  缺陷名（C-102）**宿主正在拆、而进程死在拆到一半** —— 而实际上 onDestroy 那一族逐字有**六步**
+        //    （=> 而 :271 到 :276：=> 而那**四行**逐字**没有一行**会抛），=> 而而原来那一句只记了**第一步**
+        //    （=> 而「宿主被销毁」那一行）、=> 而而**后面那几步**逐字**没有**任何痕迹；
+        //    => 而那后果是：=> 而进程死在拆到一半时、=> 而外面逐字只看见「宿主被销毁」那一行、
+        //    => 而而**看不出**它死在哪一步、=> 而那一格逐字**答不了**「为什么那几趟死在拆到一半」。
+        //    => 而按 C-103 先答「它为什么有两边」：=> 而那两边是「仓内那一族**记不着的**」
+        //       （=> 而那逐字是「进程死在哪一步」这一格、=> 而那**要**设备侧那一格）与
+        //       「仓内那一族**记着的**」（=> 而那逐字是那六步逐字各记一行）。
+        //    => 而这里逐字在**每一步之后**记一行、=> 而而它逐字**只**记「走到哪一步了」那一格、
+        //       => 而而「为什么死」那一格逐字**仍**要设备侧那一格。
+        val teardownStep = { step: String ->
+            RuntimeDiagnostics.append(this, "host", true, "宿主拆解进度: " + step, "onDestroy 已走到=" + step)
+        }
         runCatching { OsInit.transition(this, OsPhase.STOPPING, "宿主被销毁", ResidencyAudit.interruption(this)) }
+        teardownStep("已写宿主被销毁")
         handler?.removeCallbacksAndMessages(null)
+        teardownStep("已清回调")
         thread?.quitSafely()
+        teardownStep("已退线程")
         thread = null
         handler = null
         try { pool?.shutdown() } catch (_: Throwable) {}
+        teardownStep("已关监督池")
         try { broker?.shutdown() } catch (_: Throwable) {}
+        teardownStep("已关能力中介")
         try { capture?.shutdown() } catch (_: Throwable) {}
+        teardownStep("已关截屏")
         pool = null
         broker = null
         capture = null
         super.onDestroy()
+        teardownStep("已全部拆完")
     }
 
     private fun buildHostNotification(): Notification {

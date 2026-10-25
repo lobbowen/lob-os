@@ -35,8 +35,34 @@ object StateFiles {
             //       => 而而那**要**设备侧那一格。
             val renamed = tmp.renameTo(file)
             if (!renamed) {
+                //  缺陷名（C-102）**换名那一步为什么不失败** —— 而实际上 renameTo 逐字只返 Boolean、
+                //    => 而而它**不**带 errno、=> 而而那一族逐字**记不下**「为什么失败」那一格。
+                //    => 而按 C-103 先答「它为什么有两边」：=> 而那两边是「仓内那一族**记不着的**」
+                //       （=> 而那逐字是 errno、=> 而那**要**系统那一族）与「仓内那一族**记着的**」
+                //       （=> 而那逐字是「写完了、而没落上」那半句）；
+                //    => 而而原来那一句只记了**后者**、=> 而而**前者**逐字**没有**任何痕迹。
+                //    => 而而 errno 那一格逐字能取自 android.system.Os 那一族（=> 而本文件已 import）。
+                val errno = runCatching { android.system.Os.errno }.getOrDefault(-1)
+                //  缺陷名（C-102）**那一次失败的是哪一种** —— 而实际上设备侧逐字能造出来的失败**只有一种**
+                //    （=> 而那逐字是「目标是非空目录」），=> 而而另两种逐字是「**没失败**」：
+                //      只读文件（chmod 400）=> 而那逐字是「换名逐字改的是**目录项**、=> 而那逐字由**那个目录**的写权限管」；
+                //      悬空软链（ln -s 到不存在的目标）=> 而那逐字是「换名逐字把软链**换掉**了」。
+                //    => 而而原来那一句逐字**分辨不了**这几种、=> 而而它逐字只说了「rename 失败」。
+                //    => 而这里逐字把「目标那一份是什么」记下来、=> 而而它逐字是**能分辨**那几种的那一格。
+                val targetKind = when {
+                    file.isDirectory -> "目标是目录"
+                    file.isFile -> "目标是真文件"
+                    java.nio.file.Files.isSymbolicLink(file.toPath()) -> "目标是软链"
+                    file.exists() -> "目标存在但不是普通文件"
+                    else -> "目标不存在"
+                }
                 tmp.delete()
-                note(dir, "原子落位失败（rename 失败）: " + file.name + "（写完了、而没落上）")
+                note(
+                    dir,
+                    "原子落位失败（rename 失败）: " + file.name + "（写完了、而没落上）" +
+                        " errno=" + errno + " " + errnoName(errno) +
+                        " 目标=" + targetKind
+                )
                 false
             } else {
                 fsyncDir(dir)
@@ -55,6 +81,29 @@ object StateFiles {
     } catch (e: Throwable) {
         note(file.parentFile ?: return false, "JSON 落盘异常: " + file.name + " " + e::class.java.simpleName + ": " + (e.message ?: ""))
         false
+    }
+
+    /**
+     * 缺陷名（C-102）**为什么失败没有 errno** —— 而实际上 errno 那一格逐字是**能**取的
+     * （=> 而 android.system.Os.errno 那一族逐字给的是上一次系统调用留下的 errno），
+     * => 而而原来那一句只记了「写完了、而没落上」那半句、=> 而而**errno 那一格逐字没有**任何痕迹。
+     * => 而按 C-103 那两边是「仓内那一族**记不着的**」与「仓内那一族**记着的**」，
+     * => 而而这一族逐字把**能记的那一边**补上、=> 而而它逐字**不**替 errno 那一族说话
+     * （=> 而 errno 的**含义**逐字要 errnoName 那一族逐字给出）。
+     */
+    private fun errnoName(errno: Int): String = when (errno) {
+        1 -> "EPERM"
+        2 -> "ENOENT"
+        13 -> "EACCES"
+        17 -> "EEXIST"
+        20 -> "ENOTDIR"
+        21 -> "EISDIR"
+        22 -> "EINVAL"
+        28 -> "ENOSPC"
+        30 -> "EROFS"
+        36 -> "ENAMETOOLONG"
+        39 -> "ENOTEMPTY"
+        else -> if (errno < 0) "errno 不可得" else "errno=$errno"
     }
 
     private fun note(dir: File, detail: String) {
