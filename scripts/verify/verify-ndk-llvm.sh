@@ -98,7 +98,7 @@ WANT_LLVM="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --llvm)"
 if [ -z "$WANT_LLVM" ]; then
   die "证据不足：钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \
-    "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。"
+    "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。" \
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
     "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
