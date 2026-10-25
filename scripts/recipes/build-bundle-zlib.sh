@@ -53,13 +53,13 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
   #     在同一个 shell 里读到 CHOST=[aarch64-linux-android] CC=[mycc] ...
   #     而 configure 作为子进程读到的是 CC=<unset> CFLAGS=<unset> CHOST=<unset>
   #   后果有两条，都要记：
-  #     (1) configure 第 99/100 行 old_cc 与 old_cflags 都空 ⇒ 第 522 行走的是
+  #     (1) configure 第 99/100 行 old_cc 与 old_cflags 都空 => 第 522 行走的是
   #         "No shared library support."（不带 try without defining 那半句）这一支；
-  #     (2) 更要紧的是 **LDSHARED 没进 configure 的环境** ⇒ configure 第 297 行
+  #     (2) 更要紧的是 **LDSHARED 没进 configure 的环境** => configure 第 297 行
   #         取到的是**默认值**（带 --version-script）；
-  #         而那次探测只链一个空测试对象，zlib.map 里的符号它一个都没有 ⇒
+  #         而那次探测只链一个空测试对象，zlib.map 里的符号它一个都没有 =>
   #         ld.lld 报 version script assignment of 'ZLIB_1.2.0' to symbol 'compressBound' failed: symbol not defined
-  #         ⇒ 探测失败 ⇒ 第 532-536 行把 SHAREDLIBV 清空 ⇒ 退回静态。
+  #         => 探测失败 => 第 532-536 行把 SHAREDLIBV 清空 => 退回静态。
   #   读数（run 40064205705 的 work/zlib/src/configure.log 第 28 到 32 行原文）：
   #     <NDK>/aarch64-linux-android35-clang -shared -Wl,-soname,libz.so.1,--version-script,zlib.map -O3 -fPIC -o ztest...so ztest...o
   #     ld.lld: error: version script assignment of 'ZLIB_1.2.0' to symbol 'compressBound' failed: symbol not defined
