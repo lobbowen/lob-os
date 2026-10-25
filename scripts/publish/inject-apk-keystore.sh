@@ -7,7 +7,7 @@ CERT="$DEST/release.cert"
 
 if [ -z "${KS_B64:-}" ]; then
   echo "[lobos-signing] 未配置 ANDROID_KEYSTORE_BASE64 —— 本次产物将是 AGP 现场生成的一次性 debug 签名。"
-  echo "[lobos-signing] 后果：指纹每次都不同 ⇒ 新包装到已装设备上会 INSTALL_FAILED_UPDATE_INCOMPATIBLE。"
+  echo "[lobos-signing] 后果：指纹每次都不同 => 新包装到已装设备上会 INSTALL_FAILED_UPDATE_INCOMPATIBLE。"
   echo "[lobos-signing] 发布轮（推 os-release-* tag 的那一轮）据此判红；构建校验轮放行。"
   exit 10
 fi

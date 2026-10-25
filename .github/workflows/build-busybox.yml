@@ -84,8 +84,8 @@ jobs:
           # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
           # 现场用 readelf 复算一遍，两路对账。
           # ★ 期望 **program**（不是 mixed）—— 01 今天裁的 S32/S33 之后 busybox 那一件：
-          #   本体那份字节按形态是程序（ET_EXEC、无 PT_INTERP）⇒ 它落 bin/ ⇒ lib/ 下**没有**库形态的字节
-          #   ⇒ 按 kind 那把尺（程序形态的份数 / 库形态的份数）⇒ kind=program、libraries=[]
+          #   本体那份字节按形态是程序（ET_EXEC、无 PT_INTERP）=> 它落 bin/ => lib/ 下**没有**库形态的字节
+          #   => 按 kind 那把尺（程序形态的份数 / 库形态的份数）=> kind=program、libraries=[]
           #   （那 17 条命令名是它的 argv[0] 派生物，都指向同一份字节。）
           bash scripts/verify/verify-piece-shape.sh "$PKG" program
 

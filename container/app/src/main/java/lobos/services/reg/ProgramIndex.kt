@@ -66,7 +66,7 @@ data class UnitEntry(
          *    运行期既判断又探测。今天的三条规则里，第三条是：运行期只读，不判断、不探测。
          *    而形态是**生产时就知道的事**：安装流程已把落位目录与入口写进 stateDir / assetEntry。
          *    所以现在只读那两格；[ctx] 不再参与判定（保留参数是为了不破坏全部调用点）。
-         *  ★ 缺格就报缺：stateDir 空 ⇒ 落位缺失，答 PIECE 是「没有落位」，不是猜一个形态。 */
+         *  ★ 缺格就报缺：stateDir 空 => 落位缺失，答 PIECE 是「没有落位」，不是猜一个形态。 */
         fun levelOf(ctx: Context): Level {
             if (stateDir.isBlank()) return Level.PIECE
             return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM

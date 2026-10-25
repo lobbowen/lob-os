@@ -102,16 +102,16 @@ note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool �
 #     if (LLVM_USE_HOST_TOOLS)                        （=> 而那是第 207 行）
 #       if( ${${project}_TABLEGEN} STREQUAL "${target}" )
 #         build_native_tool(${target} ${project}_TABLEGEN_EXE DEPENDS ${target})
-#   ⇒ 而而那个 if 块**是唯一**把宿主工具装到 ${project}_TABLEGEN_EXE 的地方，
-#   ⇒ 而而它的**外面**没有 else（=> 而而第 226 行就是那个 if 的 endif）。
-#   ⇒ 而所以 LLVM_USE_HOST_TOOLS=OFF 时，⇒ 而那一格**不被宿主那份**接管，
-#   ⇒ 而而 llvm-min-tblgen 走 build_native_tool 自建（=> 而那是**交叉**产物，=> 而那是 aarch64），
-#   ⇒ 而而它在 x86_64 构建机上被执行时逐字是「Exec format error」（=> 而 40154442601 那一趟实测）。
-#   ⇒ 而 LLVM_TABLEGEN 那一格**只**对 llvm-min-tblgen 生效，⇒ 而且它要「不是 llvm-tblgen」才生效（=> 而那一行逐字是
-#     AND NOT "${LLVM_TABLEGEN}" STREQUAL "llvm-tblgen"）—— ⇒ 而我们那一格**正是** llvm-tblgen，
-#   ⇒ 而所以那一格**也**不接管 llvm-min-tblgen。
-#   ⇒ 而**处置**：LLVM_USE_HOST_TOOLS=ON（=> 而而那一格让宿主那份接管，=> 而而 build_native_tool 不再自建）。
-#   ⇒ 而那一处是**上游**的开关，=> 而不改上游源码。
+#   => 而而那个 if 块**是唯一**把宿主工具装到 ${project}_TABLEGEN_EXE 的地方，
+#   => 而而它的**外面**没有 else（=> 而而第 226 行就是那个 if 的 endif）。
+#   => 而所以 LLVM_USE_HOST_TOOLS=OFF 时，=> 而那一格**不被宿主那份**接管，
+#   => 而而 llvm-min-tblgen 走 build_native_tool 自建（=> 而那是**交叉**产物，=> 而那是 aarch64），
+#   => 而而它在 x86_64 构建机上被执行时逐字是「Exec format error」（=> 而 40154442601 那一趟实测）。
+#   => 而 LLVM_TABLEGEN 那一格**只**对 llvm-min-tblgen 生效，=> 而且它要「不是 llvm-tblgen」才生效（=> 而那一行逐字是
+#     AND NOT "${LLVM_TABLEGEN}" STREQUAL "llvm-tblgen"）—— => 而我们那一格**正是** llvm-tblgen，
+#   => 而所以那一格**也**不接管 llvm-min-tblgen。
+#   => 而**处置**：LLVM_USE_HOST_TOOLS=ON（=> 而而那一格让宿主那份接管，=> 而而 build_native_tool 不再自建）。
+#   => 而那一处是**上游**的开关，=> 而不改上游源码。
 note "  注意：不能只靠「不设 toolchain 文件」—— locate-ndk.sh 注入的 CC/CXX 在环境里，CMake 会直接采用它们，于是宿主构建也编成 aarch64（实测 host-tblgen/bin/llvm-min-tblgen: Exec format error）。要显式覆盖。"
 command -v cc >/dev/null 2>&1 || die "缺宿主 cc" \
   "编宿主 tblgen 需要宿主编译器；runner 自带 /usr/bin/cc。缺了请 apt-get install build-essential"
@@ -123,14 +123,14 @@ env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   -DCMAKE_CXX_COMPILER="$(command -v c++)" \
   -DCMAKE_ASM_COMPILER="$(command -v cc)" \
   -DLLVM_TARGETS_TO_BUILD=AArch64 \
-  #  ★ 缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— ⇒ 而它**只需要** tblgen 那几件。
+  #  ★ 缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— => 而它**只需要** tblgen 那几件。
   #   而 clang 那一族**拉进** legacy pass manager（=> 而 llvm::Pass / llvm::ModulePass /
-  #   llvm::FunctionPass / llvm::PassRegistry 那一族），⇒ 而 LLVM 21 那一版**已经删了**它们
+  #   llvm::FunctionPass / llvm::PassRegistry 那一族），=> 而 LLVM 21 那一版**已经删了**它们
   #   （=> 而 LLVM 17 之后就没有了）。
-  #   ⇒ 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 ⇒ ⇒ 而交叉那一支链接时
+  #   => 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 => => 而交叉那一支链接时
   #      逐字是「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」
   #      （=> 而 40161547449 那一趟逐字 26 条那一种，=> 而它们**逐字全是** legacy pass manager 那一族）。
-  #   ⇒ 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
+  #   => 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
   #      => 而而 lld **不**要、=> 而而它**也不**参与那几件 tblgen）。
   -DLLVM_ENABLE_PROJECTS=clang \
   -DLLVM_INCLUDE_TESTS=OFF \
@@ -193,15 +193,15 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
 note "cmake 配置通过"
 
 # ★ 缺陷名（C-102）**宿主工具被放错了目录** —— 而 LLVM 21.1.0 那一族的 build_native_tool
-#   在**构建期**把自建的宿主工具放进 $BUILD/NATIVE/bin，⇒ 而那一份是**用交叉工具链编的**
-#   （⇒ 而那是 aarch64），⇒ 而它随后在 x86_64 构建机上被执行 ⇒ ⇒ 而逐字是「Exec format error」。
-#   ⇒ 而配置那一期它**没**被建（=> 而 07 那一趟的读数逐字是「NATIVE/bin（尚未创建 —— 好现象）」），
-#      ⇒ 而它是**构建期**才被建的 ⇒ ⇒ 而所以配置期那一格看不出来。
-#   ⇒ 而而 LLVM_NATIVE_TOOL_DIR 那一格只管**配置期**的 TABLEGEN 默认值（=> 而 TableGen.cmake:181 到 :185），
-#      ⇒ 而它**管不到**构建期自建的那一份。
-#   ⇒ 而处置：把**宿主编的那几份**放进 $BUILD/NATIVE/bin（=> 而那正是构建期找它们的地方），
-#      ⇒ 而而构建期自建的那一份（=> 而它是 aarch64）就被**覆盖**成宿主那份。
-#   ⇒ 而那一格**该**由「构建期找哪个路径」决定（=> 而那正是上游那一族的路径形状），⇒ 而不改上游源码。
+#   在**构建期**把自建的宿主工具放进 $BUILD/NATIVE/bin，=> 而那一份是**用交叉工具链编的**
+#   （=> 而那是 aarch64），=> 而它随后在 x86_64 构建机上被执行 => => 而逐字是「Exec format error」。
+#   => 而配置那一期它**没**被建（=> 而 07 那一趟的读数逐字是「NATIVE/bin（尚未创建 —— 好现象）」），
+#      => 而它是**构建期**才被建的 => => 而所以配置期那一格看不出来。
+#   => 而而 LLVM_NATIVE_TOOL_DIR 那一格只管**配置期**的 TABLEGEN 默认值（=> 而 TableGen.cmake:181 到 :185），
+#      => 而它**管不到**构建期自建的那一份。
+#   => 而处置：把**宿主编的那几份**放进 $BUILD/NATIVE/bin（=> 而那正是构建期找它们的地方），
+#      => 而而构建期自建的那一份（=> 而它是 aarch64）就被**覆盖**成宿主那份。
+#   => 而那一格**该**由「构建期找哪个路径」决定（=> 而那正是上游那一族的路径形状），=> 而不改上游源码。
 if [ -d "$BUILD/NATIVE" ]; then
   mkdir -p "$BUILD/NATIVE/bin"
   for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do

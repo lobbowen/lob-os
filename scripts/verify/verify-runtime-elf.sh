@@ -147,7 +147,7 @@ for f in "$DIR"/*.so; do
   phdrs="$("$READELF" -W -l "$f" 2>/dev/null || true)"
   if [ -z "$phdrs" ]; then
     echo "readelf -W -l 读不出 Program Headers —— **形态判据全部无从进行**。"
-    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 ⇒ exec 或 dlopen 会在装载期失败。"
+    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 => exec 或 dlopen 会在装载期失败。"
     echo "         证据强度：【未验证】。我只试了 readelf -W -l 这一种形态；"
     echo "         它也可能是我这个判据的读法不对，而不是产物坏了 —— 请先用 file 与 readelf -h 手工核一遍。"
     note_fail

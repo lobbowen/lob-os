@@ -78,7 +78,7 @@ jobs:
           # ★ 期望值是 **mixed**，不是 library —— 这一件带 1 个命令入口（openssl）与 1 份库（libssl.so）
           #   （构建侧 build-bundle-openssl.sh:61 的 emit_piece 带 "$OPENSSL_BINS"；
           #    CI 实测：[shape] openssl：kind=mixed entryForm=dyn-interp 程序 1 份 · 库 1 份）。
-          #   而这一格原来写的是 library ⇒ 与产物自述的那一格对不上 ⇒ 判红（实测 run 39399845384 第 9 步）。
+          #   而这一格原来写的是 library => 与产物自述的那一格对不上 => 判红（实测 run 39399845384 第 9 步）。
           bash scripts/verify/verify-piece-shape.sh "$PKG" mixed
 
       - name: 固化标准件包到 Release
@@ -103,8 +103,8 @@ jobs:
           # ★ crypto 那一件**由本趟流水线后一步固化上传**（同一次 make 的字节，
           #   而它的字节就取自本件这一份包里的 libcrypto.so）。
           #   而这一段原来在这里也上传一遍 crypto —— 它要求 dist/component-crypto-*.zip 存在，
-          #   而本件的构建只产 openssl 的包 ⇒ 那个 zip 不在这里 ⇒ 这一段必红 ⇒
-          #   openssl 固化不完 ⇒ crypto 拆不出包（它要等 openssl 固化）⇒ 互等。
+          #   而本件的构建只产 openssl 的包 => 那个 zip 不在这里 => 这一段必红 =>
+          #   openssl 固化不完 => crypto 拆不出包（它要等 openssl 固化）=> 互等。
           #   ★ **缺陷名（C-102）连带件固化两处都要、而其中一处拿不到那份产物**：
           #   连带件的固化只该有一处 —— 而那一处就是**本趟流水线**（下一那一步）。
       - name: 打 crypto 那一件的包（与 openssl 同一份字节，同一次构建）
@@ -125,7 +125,7 @@ jobs:
           #   （不是 package-component.sh 那一路 —— 后者传四个位置参数，
           #   而 gen-component-meta.js:61 到 66 已拒收那一形态，exit 1）。
           #
-          # 而 crypto 那一件的 tag 与 asset 名仍由 cache-key.sh 算（输入不变 ⇒ 指纹不变）。
+          # 而 crypto 那一件的 tag 与 asset 名仍由 cache-key.sh 算（输入不变 => 指纹不变）。
           CTAG="$(bash scripts/toolchain/cache-key.sh tag crypto)"
           CASSET="$(bash scripts/toolchain/cache-key.sh asset crypto)"
           echo "[crypto] tag=$CTAG asset=$CASSET"
@@ -137,7 +137,7 @@ jobs:
           OASSET="$(bash scripts/toolchain/cache-key.sh asset openssl)"
           OPKG="$(ls dist/component-openssl-*.zip 2>/dev/null | head -1 || true)"
           if [ -z "$OPKG" ]; then
-            echo "[crypto] 本轮没编 openssl（复用固化产物）⇒ 从 Release 取 $OASSET"
+            echo "[crypto] 本轮没编 openssl（复用固化产物）=> 从 Release 取 $OASSET"
             bash scripts/toolchain/fetch-release-asset.sh "$OTAG" "$OASSET" dist
             OPKG="dist/$OASSET"
           fi
@@ -169,7 +169,7 @@ jobs:
           # 本件自己的主名由本件自己摆出来（openssl 那个包里主名是 libssl.so，
           # 而 crypto 那一件要算得出 entry 就得自己有主名）。
           [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CR")" .crypto-out/lib/libcrypto.so
-          # 这一件是**纯库件**（bin/ 目录不存在）⇒ entry 留空（按 C-05「没有」就是没有）。
+          # 这一件是**纯库件**（bin/ 目录不存在）=> entry 留空（按 C-05「没有」就是没有）。
           # 而 package-bundle-zip.sh 在打包前会 rm -rf dist/* —— 而那**不能**打在 openssl 固化之前
           #   （那会把 openssl 那个包删掉，而固化那一步按 ls dist/component-*.zip 取包）。
           #   => 而这一步排在 openssl 固化**之后**，而它自己产出的包在 dist/ 里已上传完。

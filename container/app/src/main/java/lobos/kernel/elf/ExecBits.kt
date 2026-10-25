@@ -16,7 +16,7 @@ object ExecBits {
 
     /** 文件头看起来可执行**且** owner 有执行位 —— 两者缺一不可。
      *  真机读数：bash/rg 的 entry 是 bin/ 下 -rwx--x--x（过），其余六件是 lib/ 下 -rw------
-     *  （文件头是 ELF，但 owner 没有执行位 ⇒ spawn 得 error=13）。只看文件头会把后者判成可执行。 */
+     *  （文件头是 ELF，但 owner 没有执行位 => spawn 得 error=13）。只看文件头会把后者判成可执行。 */
     fun isRunnable(file: File): Boolean {
         if (!file.isFile) return false
         if (lobos.kernel.proc.ExecEntry.detect(file) == lobos.kernel.proc.ExecEntry.Shape.Unknown) return false

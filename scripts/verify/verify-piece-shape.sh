@@ -7,7 +7,7 @@
 # 判法分两路：
 #   路一（只读产物里的那份形态文件）：piece-shape.json 说它是什么
 #   路二（只读产物里的字节）：现场用 readelf 复算，与形态文件对账
-# 两路一致 ⇒ 这个包自描述成立。
+# 两路一致 => 这个包自描述成立。
 #
 # 用法：verify-piece-shape.sh <件包.zip> [期望的 kind]
 #   期望的 kind 取值域：program / library / mixed
@@ -79,11 +79,11 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     [ -f "$real" ] || continue
     # 只对**库形态**（ET_DYN 无 PT_INTERP）的那份要求三段链。
     # ★ 缺陷名（C-102）**「程序形态的字节住在 lib/ 下」被当成了合法形态**：
-    #   原来这一支是「形态不是 dyn-plain ⇒ 说一声『程序形态，不要求三段链』然后跳过」——
+    #   原来这一支是「形态不是 dyn-plain => 说一声『程序形态，不要求三段链』然后跳过」——
     #   而那把**一个落位缺陷**（程序形态的字节该落 bin/，不该落 lib/）说成了「正常的另一种形态」。
     #   后果（04 今天指出）：第一处改完（本体搬到 bin/）之后，**这一支反而会判红** ——
     #   因为它还在替一个已经不该存在的形态找理由。
-    #   ⇒ 现在：**程序形态的字节住在 lib/ 下是缺陷**，报出来（不放过）；
+    #   => 现在：**程序形态的字节住在 lib/ 下是缺陷**，报出来（不放过）；
     #     而「它不是共享库」那句事实仍然成立 —— 只是它不再是「合法」的同义词。
     f="$(elf_form "$real")"
     if [ "$f" != "dyn-plain" ]; then
@@ -99,17 +99,17 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     #   原来这一格写死了「段数 >= 3」，而那个 3 是我们自己加的一个数，不是 man 8 ldconfig 的要求：
     #   man 原文是「expects a certain pattern」（期待某种形状）与「may result in」（可能导致），
     #   而它那个示例里的「middle file」明确就是**那份字节自己说的 SONAME**。
-    #   ⇒ 判别：这一份字节的 SONAME 与它的开发名同名吗？
-    #      同名（libssl.so / libcrypto.so / libcurl.so）⇒ 按那个形状就是 1 段，**而这不是缺陷**
-    #      不同名（libz.so -> libz.so.1）⇒ 中间那层必须是 SONAME，链里没有就是自相矛盾
+    #   => 判别：这一份字节的 SONAME 与它的开发名同名吗？
+    #      同名（libssl.so / libcrypto.so / libcurl.so）=> 按那个形状就是 1 段，**而这不是缺陷**
+    #      不同名（libz.so -> libz.so.1）=> 中间那层必须是 SONAME，链里没有就是自相矛盾
     soname="$(elf_soname "$real")"
     if [ -z "$soname" ]; then
-      # 读不到 SONAME ⇒ 那份字节没自说它叫什么 ⇒ 按 C-05 报缺，不替它编
+      # 读不到 SONAME => 那份字节没自说它叫什么 => 按 C-05 报缺，不替它编
       bad "SONAME 读不到" "lib/$base 那份字节没有 DT_SONAME —— 它自述的 SONAME 是什么读不出来，报缺（不替它编）"
     elif [ "$soname" = "$root" ]; then
-      say "  SONAME=$soname 与开发名同名 ⇒ 按那个形状就是 $n 段，自洽"
+      say "  SONAME=$soname 与开发名同名 => 按那个形状就是 $n 段，自洽"
     else
-      # SONAME 与开发名不同名 ⇒ 链里必须有一层就叫 SONAME
+      # SONAME 与开发名不同名 => 链里必须有一层就叫 SONAME
       case " $chain " in
         *" $soname "*) say "  SONAME=$soname 在链里，自洽" ;;
         *) bad "链与 SONAME 不自洽" "lib/$base 自述 SONAME=$soname，而链里没有这一层：$chain" ;;

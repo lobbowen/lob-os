@@ -201,27 +201,27 @@ object PreinstalledPieces {
         //   => 现在：只从产物那一份取；取不到就报缺（C-05），不自己答一个。
         //
         // ★ 缺陷名（C-102）**这一格取错了输入** —— 而 04 今天裁的判据方向是：
-        //   「**按 entry 那一项的形态**」，⇒ 而**不是**「先找库形态的落位项」。
+        //   「**按 entry 那一项的形态**」，=> 而**不是**「先找库形态的落位项」。
         //
-        // 而改前的形态（⇒ 而本机逐处核到了它怎么把 openssl 那一件判错）：
+        // 而改前的形态（=> 而本机逐处核到了它怎么把 openssl 那一件判错）：
         //   val entryRole = shape.byRole(ROLE_LIBRARY).firstOrNull()?.role   （=> 而那**先**找库形态）
-        //   ⇒ 而 openssl 那一件**有** lib/libcrypto.so 与 lib/libssl.so ⇒ ⇒ 而它**找到了**
-        //   ⇒ ⇒ 而 entryRole = **library**（⇒ 而**不是**按 entry 那一项的形态，
-        //   ⇒ 而 entry 那一项逐字是 bin/openssl、⇒ 而它在产物那一份里的 role 逐字是 **program**）
-        //   ⇒ ⇒ 而落位侧那份 program-manifest.json 的 role 逐字就是 library
-        //   ⇒ ⇒ 而 :541 那一行 `assetEntry = if (isProgram) entry else ""` 把它清空
-        //   ⇒ ⇒ 而索引里 openssl 那一行 assetEntry 逐字是空、role 逐字是 library
-        //   ⇒ ⇒ 而 levelOf 判 PIECE ⇒ ⇒ 而它进不了监督名单（SupervisorPool.kt:136 那一道）
-        //   ⇒ ⇒ 而它那一件自己的 bin/openssl 也因此**进不了** usr/bin。
+        //   => 而 openssl 那一件**有** lib/libcrypto.so 与 lib/libssl.so => => 而它**找到了**
+        //   => => 而 entryRole = **library**（=> 而**不是**按 entry 那一项的形态，
+        //   => 而 entry 那一项逐字是 bin/openssl、=> 而它在产物那一份里的 role 逐字是 **program**）
+        //   => => 而落位侧那份 program-manifest.json 的 role 逐字就是 library
+        //   => => 而 :541 那一行 `assetEntry = if (isProgram) entry else ""` 把它清空
+        //   => => 而索引里 openssl 那一行 assetEntry 逐字是空、role 逐字是 library
+        //   => => 而 levelOf 判 PIECE => => 而它进不了监督名单（SupervisorPool.kt:136 那一道）
+        //   => => 而它那一件自己的 bin/openssl 也因此**进不了** usr/bin。
         //
-        // ⇒ 而那一族的判别形式（可机械判）：「**这一件有没有程序形态的字节**」
-        //   ⇒ 而 openssl **有**（⇒ 而 bin/openssl 在产物那一份的 programs 那一列里）。
+        // => 而那一族的判别形式（可机械判）：「**这一件有没有程序形态的字节**」
+        //   => 而 openssl **有**（=> 而 bin/openssl 在产物那一份的 programs 那一列里）。
         //
-        // ⇒ 而按 C-103 那一格该问的是「**这一件有没有可调起的入口**」
-        //   ⇒ 而那**正是** entry 那一格（⇒ 而它非空就答它）。
+        // => 而按 C-103 那一格该问的是「**这一件有没有可调起的入口**」
+        //   => 而那**正是** entry 那一格（=> 而它非空就答它）。
         //
-        // ⇒ 而「entry 为空」那一支**仍**取库形态那一项
-        //   （⇒ 而那是纯库件那一族：⇒ 而它们**真的**只有库形态的字节，⇒ 而而它们**该**是 library）。
+        // => 而「entry 为空」那一支**仍**取库形态那一项
+        //   （=> 而那是纯库件那一族：=> 而它们**真的**只有库形态的字节，=> 而而它们**该**是 library）。
         val entryRole: String = if (entry.isNotBlank()) {
             shape.roleOf(entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
@@ -275,23 +275,23 @@ object PreinstalledPieces {
         //   => 现在：缺摘要或路径算不出来都答「无法判定」，而「无法判定」**不判已落位到最新**
         //     （=> 走重装，而重装会重新落位并重写这一格）。
         val unverifiable = mutableListOf<String>()
-        //  ★ 缺陷名（C-102）**这一格只比「产物说有的那几项」** —— ⇒ 而而**产物说没有的那几项**
-        //    **从来没被比过** ⇒ ⇒ 而落位目录里**多出来**的那些项**永远留着**。
-        //    ⇒ 而那正是 07 今天在设备侧核到的那一格：
+        //  ★ 缺陷名（C-102）**这一格只比「产物说有的那几项」** —— => 而而**产物说没有的那几项**
+        //    **从来没被比过** => => 而落位目录里**多出来**的那些项**永远留着**。
+        //    => 而那正是 07 今天在设备侧核到的那一格：
         //      · 6c107c7 那一版产物里**没有** bin/c_rehash（=> 而本机核过产物那一份），
-        //      · 而这一趟 journal 逐字有「OK 解包 bin/openssl」两行、⇒ 而**含 c_rehash 的解包行数 = 0**
+        //      · 而这一趟 journal 逐字有「OK 解包 bin/openssl」两行、=> 而**含 c_rehash 的解包行数 = 0**
         //        （=> 而这一版压根没解包它），
         //      · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**、
         //        而 mtime 逐字是 2026-10-24 06:31（=> 而那是 84df912 那一版落下的遗留物），
         //      · 而这一版**既没再落它、也没删它**。
-        //    ⇒ 而成因：那一段比的是**逐项 sha256**（=> 而它只遍历 shape.files），
-        //      ⇒ 而而**多出来的**那几项**不在** shape.files 里、⇒ 而它们**不被比**、
-        //      ⇒ 而而「同内容不重写」那一短路就**成立**（=> 而 landedUpToDate 为真），
-        //      ⇒ 而而 install **压根没跑** ⇒ ⇒ 而那几项遗留物**永远删不掉**。
-        //    ⇒ 而处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
-        //      ⇒ 而有 ⇒ 而那一格**不**判已落位到最新 ⇒ ⇒ 而走重装 ⇒ ⇒ 而 install 跑
-        //      ⇒ ⇒ 而 install 那一族逐字是「整目录换上去」（=> 而旧那一份被 renameTo 挪走、
-        //         ⇒ 而然后 deleteRecursively）⇒ ⇒ 而那一项**自然**没有���。
+        //    => 而成因：那一段比的是**逐项 sha256**（=> 而它只遍历 shape.files），
+        //      => 而而**多出来的**那几项**不在** shape.files 里、=> 而它们**不被比**、
+        //      => 而而「同内容不重写」那一短路就**成立**（=> 而 landedUpToDate 为真），
+        //      => 而而 install **压根没跑** => => 而那几项遗留物**永远删不掉**。
+        //    => 而处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
+        //      => 而有 => 而那一格**不**判已落位到最新 => => 而走重装 => => 而 install 跑
+        //      => => 而 install 那一族逐字是「整目录换上去」（=> 而旧那一份被 renameTo 挪走、
+        //         => 而然后 deleteRecursively）=> => 而那一项**自然**没有���。
         val staleInLanding = mutableListOf<String>()
         run {
             val declared = shape.files.map { fs ->
@@ -354,7 +354,7 @@ object PreinstalledPieces {
         //     **而「不知道」不能拦住落位**。
         //    所以：landedUpToDate **只看内容**（sameBytes），构建标识那一格只报。
         //  => 而「落位目录里有没有产物说没有的那几项」也要算进去（=> 而那一格见上面那一段）
-        //     => 而有 ⇒ 而那一格**不**判已落位到最新 ⇒ ⇒ 而走重装 ⇒ ⇒ 而 install 跑
+        //     => 而有 => 而那一格**不**判已落位到最新 => => 而走重装 => => 而 install 跑
         val landedUpToDate = landedPresent && sameBytes && staleInLanding.isEmpty()
         if (unverifiable.isNotEmpty()) {
             lobos.services.log.Journal.note(
@@ -403,8 +403,8 @@ object PreinstalledPieces {
         //   => 而那后果是：解包出来的那个字节**带着 zip 里的权限**落下去，
         //      => 而而 zip 里那一项**没有**被执行位时（=> 而 c_rehash 那一项逐字是 -rw-------），
         //      => 而而它在盘上**不可执行**，=> 而而它也**建不出** usr/bin 下的那一条软链。
-        //   ⇒ 而处置：这一支也按**产物声明的 mode** 逐项落（=> 而与慢路径同一把尺、同一句话）。
-        //   ⇒ 而**不**在这里判形态（=> 而形态是构建期算好的、=> 而那一格在 shape.files[].mode 里）。
+        //   => 而处置：这一支也按**产物声明的 mode** 逐项落（=> 而与慢路径同一把尺、同一句话）。
+        //   => 而**不**在这里判形态（=> 而形态是构建期算好的、=> 而那一格在 shape.files[].mode 里）。
         val modesLanded = runCatching {
             var n = 0
             for (fs in shape.files) {

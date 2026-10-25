@@ -63,9 +63,9 @@ object ProgramInstallPipeline {
             val files: List<FileShape>,
             /** 派生物那几项（=> 而构建期逐字是「哪些是派生物」）。
              *  而它是**作者声明**的「这一件在 usr/bin 下该有哪几个命令名」——
-             *  ⇒ 而 busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
-             *  ⇒ 而而**本体那一份**（bin/libbusybox.so）**不在**里面（=> 而它不认自己的文件名）。
-             *  ⇒ 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而而它们各自是命令）。 */
+             *  => 而 busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
+             *  => 而而**本体那一份**（bin/libbusybox.so）**不在**里面（=> 而它不认自己的文件名）。
+             *  => 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而而它们各自是命令）。 */
             val derivedLinks: List<String> = emptyList(),
         ) {
             fun roleOf(rel: String): String? = files.firstOrNull { it.path == rel }?.role
@@ -701,7 +701,7 @@ object ProgramInstallPipeline {
         //   而那一份 crypto 的形态逐字是：meta 的 entry 是**空串**、
         //   piece-shape.json 的 files[] 那一行 role 是 **library**、
         //   而 entryForm 与 entryRole 两格都是 **unknown**。
-        //   ⇒ 而时序逐字是：落位成功 → 建链失败 → 没登记 → ldconfig 报 kind1。
+        //   => 而时序逐字是：落位成功 → 建链失败 → 没登记 → ldconfig 报 kind1。
         //
         // 而成因（本机逐处核到）：
         //   · landByShape 对**纯库件**返回的是 `Landed("", libRole, …)`（:287 那一行逐字，
@@ -719,8 +719,8 @@ object ProgramInstallPipeline {
         //     （=> 而那一支按 `shape.byRole(ROLE_LIBRARY)` 逐形态建链，=> 而**不按 entry 猜**）；
         //   => 而慢路径这一支按 **entry** 建链 => 而纯库件没有 entry => 而它必然失败。
         //
-        // ⇒ 而处置：**纯库件不建「入口软链」**（=> 而它没有入口），
-        //   ⇒ 而它**要落位、要登记成件**，⇒ 而而登记那一格（:691 往后的 upsert）**要走到**。
+        // => 而处置：**纯库件不建「入口软链」**（=> 而它没有入口），
+        //   => 而它**要落位、要登记成件**，=> 而而登记那一格（:691 往后的 upsert）**要走到**。
         val entryRel = landed.entryRel
         if (entryRel.isNotBlank() && !linkEntry(context, dest, entryRel, spec.programId, role)) {
             return Result(
@@ -766,36 +766,36 @@ object ProgramInstallPipeline {
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
                       //  ★ 缺陷名（C-102）**这一支不写 desired，而 UnitEntry 那一行的默认是 STOPPED**
-                      //    ⇒ 而这一件**装上来却不被监督**（⇒ 而 SupervisorPool.kt:138 逐字是
+                      //    => 而这一件**装上来却不被监督**（=> 而 SupervisorPool.kt:138 逐字是
                       //      `.filter { it.levelOf(host) == Level.PROGRAM && it.desired == Desired.RUNNING }`）
-                      //    ⇒ 而监督名单里**没有它**。
+                      //    => 而监督名单里**没有它**。
                       //
                       //  而**为什么快路径那几件没事**（=> 而 bash / jq / ripgrep 都在监督名单里）：
-                      //    ⇒ 而快路径（PreinstalledPieces.kt:537 那一行）逐字是
+                      //    => 而快路径（PreinstalledPieces.kt:537 那一行）逐字是
                       //      `desired = lobos.services.reg.Desired.RUNNING`，
-                      //      ⇒ 而而这一支（慢路径 installComponent）**没写** ⇒ ⇒ 而两处**不同源**。
-                      //    ⇒ 而 busybox 那一件今天走的是**慢路径**（=> 而那一趟的字节变了
-                      //      ⇒ 而「是不是同一份」那一格判不一致 ⇒ 而走重装 ⇒ 而走这一支）。
+                      //      => 而而这一支（慢路径 installComponent）**没写** => => 而两处**不同源**。
+                      //    => 而 busybox 那一件今天走的是**慢路径**（=> 而那一趟的字节变了
+                      //      => 而「是不是同一份」那一格判不一致 => 而走重装 => 而走这一支）。
                       //
-                      //  ⇒ 而**「装上来就常驻」这一格该由谁写**（=> 而 lead 问的那一条）：
-                      //    ⇒ 而落位侧那份 manifest **没有** lifecycle 那一格（=> 而 ManifestWriter.build
+                      //  => 而**「装上来就常驻」这一格该由谁写**（=> 而 lead 问的那一条）：
+                      //    => 而落位侧那份 manifest **没有** lifecycle 那一格（=> 而 ManifestWriter.build
                       //      逐字是 schema / id / version / entry / role / essential / requires / source / sourceSha256
                       //      —— 而**没有 lifecycle**），
-                      //    ⇒ 而 ProgramRegistry.kt:146 那一行逐字是
+                      //    => 而 ProgramRegistry.kt:146 那一行逐字是
                       //      `resident = life?.optBoolean("resident", true) ?: true`
-                      //      ⇒ 而**默认是 true**，⇒ 而而 ProgramDir.kt:169 那一行逐字是
+                      //      => 而**默认是 true**，=> 而而 ProgramDir.kt:169 那一行逐字是
                       //      `val resident = spec?.resident == true`
-                      //      ⇒ 而而落位那一支的 spec 是 **null**（=> 而 :163 逐字 `val spec = if (landed) null else …`）
-                      //      ⇒ 而而**null?.resident == true** 是 false。
-                      //    ⇒ 而那正是 journal 逐字「resident=false」那一条。
+                      //      => 而而落位那一支的 spec 是 **null**（=> 而 :163 逐字 `val spec = if (landed) null else …`）
+                      //      => 而而**null?.resident == true** 是 false。
+                      //    => 而那正是 journal 逐字「resident=false」那一条。
                       //
-                      //  ⇒ 而本机核到的是：**这一格该由落位侧那一份说了算**，
-                      //    ⇒ 而而它今天缺 lifecycle 那一格 ⇒ ⇒ 而默认被否掉了。
-                      //    ⇒ 而这一支**照快路径那一支答**（=> 而那是同一族里另一条生成路径，
-                      //      ⇒ 而按 C-104 「只有一条生成路径」⇒ 而两处该一致）：
-                      //      ⇒ 而「装上来就常驻」= true。
-                      //    ⇒ 而**库件**不受影响（=> 而 SupervisorPool.kt:138 那一支还要求
-                      //      `it.levelOf(host) == Level.PROGRAM`，⇒ 而而库件 assetEntry 空 ⇒ level 是 PIECE）。
+                      //  => 而本机核到的是：**这一格该由落位侧那一份说了算**，
+                      //    => 而而它今天缺 lifecycle 那一格 => => 而默认被否掉了。
+                      //    => 而这一支**照快路径那一支答**（=> 而那是同一族里另一条生成路径，
+                      //      => 而按 C-104 「只有一条生成路径」=> 而两处该一致）：
+                      //      => 而「装上来就常驻」= true。
+                      //    => 而**库件**不受影响（=> 而 SupervisorPool.kt:138 那一支还要求
+                      //      `it.levelOf(host) == Level.PROGRAM`，=> 而而库件 assetEntry 空 => level 是 PIECE）。
                       desired = lobos.services.reg.Desired.RUNNING,
                 ),
             )

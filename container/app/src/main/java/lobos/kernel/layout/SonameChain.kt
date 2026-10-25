@@ -154,11 +154,11 @@ object SonameChain {
         // 所以是软链就按软链删，不问 exists()。
         if (isLink) {
             // ★ 编译错误（run 39416349435 第21步 / 39415331935 第21步）：`!` 套在 Any 上 ——
-            //   Files.delete 返回**平台类型**（Boolean!）⇒ runCatching 的 Result<T> 推不出 T
-            //   ⇒ getOrDefault/getOrElse 的结果类型退化成 Any ⇒ `!` 找不到 not 操作符。
-            //   ⇒ 处置：**显式标注** Result<Boolean>（不做类型推断）。
-            //   ⇒ 处置：改用 **deleteIfExists**（它的返回类型是 **boolean**，不是平台类型）
-            //     ⇒ Result<Boolean> 推得出来，`!` 也有 not 操作符。
+            //   Files.delete 返回**平台类型**（Boolean!）=> runCatching 的 Result<T> 推不出 T
+            //   => getOrDefault/getOrElse 的结果类型退化成 Any => `!` 找不到 not 操作符。
+            //   => 处置：**显式标注** Result<Boolean>（不做类型推断）。
+            //   => 处置：改用 **deleteIfExists**（它的返回类型是 **boolean**，不是平台类型）
+            //     => Result<Boolean> 推得出来，`!` 也有 not 操作符。
             val deleted: Boolean = runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
                 .getOrElse { false }
             if (!deleted) return -1

@@ -151,7 +151,7 @@ object ProcessLedger {
      *
      *  为什么需要它：宿主 JVM 读不到**自己 fork 出来的子进程**的 /proc/<pid>/stat
      *  （真机读数：进程起来了 pid=30605/30624/30638，账本也记了，而 starttimeOf 返回 -1
-     *  ⇒ begin() 把 -1 原样存下⇒ isOwnedAlive 立刻 false ⇒ programsRunning 恒 0）。
+     *  => begin() 把 -1 原样存下=> isOwnedAlive 立刻 false => programsRunning 恒 0）。
      *  而 scanChildPid（:128-143）已经在读 /proc/<pid>/cmdline 并与 entry 绝对路径做子串匹配，
      *  这条路是实测可用的。
      *
@@ -237,8 +237,8 @@ object ProcessLedger {
     }.getOrNull()
 
     /** 在跑的条目 —— 判据两条，按顺序取：
-     *  ① starttime 可用（账本里 >0 且现在读得到且相等）⇒ 以它为准（防 pid 复用）；
-     *  ② starttime 拿不到（账本里就是 -1）⇒ 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
+     *  ① starttime 可用（账本里 >0 且现在读得到且相等）=> 以它为准（防 pid 复用）；
+     *  ② starttime 拿不到（账本里就是 -1）=> 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
      *  ★ 而今天这一格是②：宿主读不到自己子进程的 /proc/<pid>/stat。
      *  ★ 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
      *  ★ 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */

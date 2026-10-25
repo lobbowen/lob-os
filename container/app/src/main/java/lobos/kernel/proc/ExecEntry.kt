@@ -64,7 +64,7 @@ object ExecEntry {
         //  · X1（直接起入口）=> argv 里 linker64 出现 **0 次**、exit=0
         //    => 而那个入口带 PT_INTERP = /system/bin/linker64，
         //       **而内核 exec 它时并没有把那条解释器加进 argv**
-        //       => 而所以「入口带 PT_INTERP ⇒ 内核会替我们套」这个前提**不成立**
+        //       => 而所以「入口带 PT_INTERP => 内核会替我们套」这个前提**不成立**
         //  · X2（argv[0]=linker64, argv[1]=入口）=> exit=0
         //    => 而那正是**显式**套那一层的形态 => 而而它是跑得通的那一条
         //  · X3（两层都套）=> `error: linker cannot load itself`、exit=1

@@ -31,7 +31,7 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 # 真机读数（02，2026-10-25，同一份 payload）：
 #   · 三参形态给出「npm 算不出 entry::bin/ 下 3 个文件但没有一个是程序形态」而 exit 1；
 #   · 四参形态给出「entry 不再由命令行传入」而 exit 1。
-#   ⇒ 而那是**两问**（按 C-135）：读数二在「门」那一格（参数个数），
+#   => 而那是**两问**（按 C-135）：读数二在「门」那一格（参数个数），
 #     而读数一在「形态」那一格（entry 能不能从落位结果算出来），
 #     而门先响、形态那一格要把门打开才走得到。
 #
@@ -42,13 +42,13 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 #   · 而**这一行至今仍是四参**，=> 而那一行的 blame 是 4fe8289（2026-10-19 17:09:03），
 #     而 bcfdc21 的提交里没有 package-component.sh（=> 而 git show bcfdc21 --name-only 命中 0）。
 #
-# ⇒ 而它治「参数个数」那一层，⇒ 而所以那 11 个走这一条路的 workflow
+# => 而它治「参数个数」那一层，=> 而所以那 11 个走这一条路的 workflow
 #   （build-npm.yml:109、build-pnpm.yml:109、build-node.yml:131、build-git.yml:137、
 #     build-python3.yml:122、build-sqlite3.yml:109、build-make.yml:109、build-cmake.yml:120、
 #     build-pkg-config.yml:109、build-llvmtoolchain.yml:126、build-component.yml:87）
 #   今天在打包步就红。
 #
-# ⇒ 而处置：这一处与 package-bundle-zip.sh 那一路**对齐**（=> 而那一路逐字是）：
+# => 而处置：这一处与 package-bundle-zip.sh 那一路**对齐**（=> 而那一路逐字是）：
 #   node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     "$ID" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
 #     --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN"

@@ -56,7 +56,7 @@ jobs:
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
           # ★ 这一格验的是**包里那个入口文件**（jq 那一件是纯程序件：bin/jq）。
           #   02 今天核到：原来这一行写的是 bin/liblobosjq.so —— 而那个文件从来不在 bin/ 下
-          #   （旧路径是 lib/）⇒ 判据恒假 ⇒ 可复用预制品永远判不中。
+          #   （旧路径是 lib/）=> 判据恒假 => 可复用预制品永远判不中。
           #   而今天 jq 那一件的入口改指 bin/jq（01 今天裁的：entry 指程序形态那一份）。
           if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
@@ -77,8 +77,8 @@ jobs:
           # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
           # 现场用 readelf 复算一遍，两路对账。
           # ★ 期望 **program**（不是 mixed）—— 01 今天裁的 S30 之后 jq 那一件：
-          #   lib/ 下那份 liblobosjq.so 是**没人要的拷贝**（零人 NEEDED 它）⇒ 产物里就不该有它
-          #   ⇒ 这一件只有 bin/jq 那一份程序形态的字节 ⇒ kind=program、libraries=[]
+          #   lib/ 下那份 liblobosjq.so 是**没人要的拷贝**（零人 NEEDED 它）=> 产物里就不该有它
+          #   => 这一件只有 bin/jq 那一份程序形态的字节 => kind=program、libraries=[]
           bash scripts/verify/verify-piece-shape.sh "$PKG" program
 
       - name: 固化标准件包到 Release

@@ -15,7 +15,7 @@ set -euo pipefail
 #   crypto 必须等 openssl —— build-crypto.yml:47-49 是 fetch openssl 的 asset 再 unzip
 #   取里面的 libcrypto.so；openssl 还没编完时那个 asset 不存在，crypto 必然失败。
 #   其余七件互不依赖，可以并行 dispatch。
-#   ⇒ 顺序：先并行 dispatch 其余七件 → 等 openssl 绿 → 再 dispatch crypto。
+#   => 顺序：先并行 dispatch 其余七件 → 等 openssl 绿 → 再 dispatch crypto。
 #
 # ★ 2026-10-20 补锚定：本脚本原先零锚定（无 HERE/ROOT_DIR），第 25 行用 `bash scripts/...`
 #   这种依赖调用者 cwd 的相对路径 —— CI 在仓库根调用它所以当前对，**从仓库根以外调用立刻错**。
