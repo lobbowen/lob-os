@@ -59,12 +59,20 @@ if [ -z "$CLANG" ]; then
 fi
 [ -n "$CLANG" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
-if ! "$CLANG" --version >/dev/null 2>&1; then
+# ★ 缺陷名（C-102）**在**命令名位置**展开变量，=> 而而 `set -u` 在那一档的语义随 bash 版本变**：
+#   => 而而本机 bash 5.3.9 那一档：=> 而一个**设过的空串**在命令名位置**不报** unbound（=> 而而它跑空命令、=> 而而空命令成功）；
+#   => 而而 CI 那个 bash（=> 而 ubuntu-24.04 那一版）**报**「CLANG: unbound variable」。
+#   ⇒ 而而那**不是**「CLANG 没被赋值」（=> 而而 :38 逐字是 CLANG="",=> 而而它是设过的），
+#   ⇒ 而而是「**在命令名位置**展开」这一档。
+#
+# ⇒ 而**处置**：用 command（=> 而而那让那个展开落在**参数位置**而不是命令名位置，
+#   => 而而那一档在哪个 bash 版本上都是同一个语义）。
+if ! command "$CLANG" --version >/dev/null 2>&1; then
   die "证据不足：NDK 的 clang 跑不起来" "$CLANG --version 失败 —— 拿不到 LLVM 版本，判据无从进行" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
 
-VER_OUT="$("$CLANG" --version 2>&1 | head -3)"
+VER_OUT="$(command "$CLANG" --version 2>&1 | head -3)"
 echo "[ndk-llvm] $VER_OUT"
 
 GOT_REV="$(printf '%s\n' "$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
