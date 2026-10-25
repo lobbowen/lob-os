@@ -116,6 +116,18 @@ note "  注意：不能只靠「不设 toolchain 文件」—— locate-ndk.sh �
 command -v cc >/dev/null 2>&1 || die "缺宿主 cc" \
   "编宿主 tblgen 需要宿主编译器；runner 自带 /usr/bin/cc。缺了请 apt-get install build-essential"
 command -v c++ >/dev/null 2>&1 || die "缺宿主 c++" "同上"
+#  缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— => 而它**只需要** tblgen 那几件。
+#   而 clang 那一族**拉进** legacy pass manager（=> 而 llvm::Pass / llvm::ModulePass /
+#   llvm::FunctionPass / llvm::PassRegistry 那一族），=> 而 LLVM 21 那一版**已经删了**它们
+#   （=> 而 LLVM 17 之后就没有了）。
+#   => 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 => => 而交叉那一支链接时
+#      逐字是「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」
+#      （=> 而 40161547449 那一趟逐字 26 条那一种，=> 而它们**逐字全是** legacy pass manager 那一族）。
+#   => 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
+#      => 而而 lld **不**要、=> 而而它**也不**参与那几件 tblgen）。
+#   => 而注意：这一段注记**必须**在命令**外面**、=> 而而它**不能**放在反斜杠续行**中间**
+#      （=> 而那会**断掉**续行、=> 而而下一行逐字被当成一条新命令、=> 而那一趟逐字是
+#         「scripts/recipes/build-component-llvmtoolchain.sh: line 136: -DLLVM_ENABLE_PROJECTS=clang: command not found」）。
 env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
@@ -123,15 +135,6 @@ env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   -DCMAKE_CXX_COMPILER="$(command -v c++)" \
   -DCMAKE_ASM_COMPILER="$(command -v cc)" \
   -DLLVM_TARGETS_TO_BUILD=AArch64 \
-  #  ★ 缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— => 而它**只需要** tblgen 那几件。
-  #   而 clang 那一族**拉进** legacy pass manager（=> 而 llvm::Pass / llvm::ModulePass /
-  #   llvm::FunctionPass / llvm::PassRegistry 那一族），=> 而 LLVM 21 那一版**已经删了**它们
-  #   （=> 而 LLVM 17 之后就没有了）。
-  #   => 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 => => 而交叉那一支链接时
-  #      逐字是「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」
-  #      （=> 而 40161547449 那一趟逐字 26 条那一种，=> 而它们**逐字全是** legacy pass manager 那一族）。
-  #   => 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
-  #      => 而而 lld **不**要、=> 而而它**也不**参与那几件 tblgen）。
   -DLLVM_ENABLE_PROJECTS=clang \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_INCLUDE_BENCHMARKS=OFF \
