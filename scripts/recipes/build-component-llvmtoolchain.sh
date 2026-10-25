@@ -290,7 +290,19 @@ BAD=""
 for b in clang ld.lld llvm-ar llvm-strip; do
   f="$STAGE/prefix/bin/$b"
   s=$(stat -c%s "$f")
-  INFO=$(file -b "$f")
+  #  缺陷名（C-102）**那两把尺子逐字都不跟软链、=> 而而这一族逐字没有可跟的那把尺子** ——
+  #    而实际上「量链本身」（=> 而 stat -c%s 那一族）与「量目标」（=> 而 file -b 那一族）
+  #    逐字是**两件不同的事**、=> 而而这一族逐字把两件事**混在一个判据**里：
+  #    而 stat -c%s 逐字量**链本身**的长度、=> 而 file -b（**没有** -L）逐字报**链本身**是软链、
+  #    => 而而它**判不了**目标的架构、=> 而而 :294 那一族逐字于是在软链上**必然不匹配**。
+  #    => 而 04 裁的判据那一层是「**跟到目标**再判架构」。
+  #    => 而那三把尺子逐字是**三条**路径（=> 而 stat -c%s / file -b / readelf）、
+  #       而它们逐字**各答一件事**：
+  #         stat -c%s  答「链本身多长」、=> 而它**不跟**软链、=> 而它答不了架构；
+  #         readlink  答「链指向谁」、=> 而它**不跟**、=> 而它**答不了**架构；
+  #         file -bL  答「目标是什么」、=> 而它**跟**软链、=> 而而它才是**能跟的那把**。
+  #    => 而 stat -c%L 那一族逐字**空**（=> 而它在断链上也空）、=> 而而它**答不了**架构。
+  INFO=$(file -bL "$f")
   case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) BAD="$BAD $b(架构:$INFO)" ;; esac
   al="$("$LLVM_READELF" -W -l "$f" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
         | while read -r a; do case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac; \
