@@ -166,6 +166,27 @@ case "$TOOL" in
   node)    SRC_FILES="" ;;
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
+  # ★ 缺陷名（C-102）**这一格取错了输入** —— 而而那六个件名今天**不在**上面那十二条里，
+  #   => 而而它们全落下面那一条 *) SRC_FILES="" ;;，=> 而而它们的 src 指纹于是**只**由 PKG_MECH
+  #   那三个文件算出来（=> 而那六件的 src 段**逐字相同**，=> 而实测是 src9251ee997f11）。
+  #   => 而后果：**改那六件任何一件的 recipe，它们的指纹一律不变**（=> 而 06 实测：pkgconf 4ca5da205f00、
+  #     make f17560c4d7f8、cmake 3e8234d52937、npm 367b1c85d314、pnpm db3d96d72d0b、llvm cb1f5dce2aef），
+  #   => 而而取件会取到**旧字节**（=> 而 release 上那个名字没变）。
+  #   => 而按 C-104：那一族是「同一件事有两个来源」，而这一格**不是**两个来源，
+  #     => 而而是「**一条路径取错了输入**」（=> 而那个输入是「这一件自己的 recipe」）。
+  #
+  # => 而处置：把这六个件名**各自自己的 recipe** 补进这一族。
+  #   => 而**键名**用 workflow 那一趟传给 package-component.sh 的那个（=> 而那是这一族 case 的键）：
+  #     pkgconf（=> 而 build-component-pkg-config.sh 那一件自己的 TOOL 逐字是 pkg-config，
+  #             => 而而**两个名字指的是同一件**，=> 而而 case 的键必须跟 workflow 那一趟一致）、
+  #     llvm（=> 而 build-component-llvmtoolchain.sh 那一件自己的 TOOL 逐字是 llvmtoolchain，=> 而同理）。
+  #   => 而**不加** scripts/patches：=> 而那六件的 recipe 都不引用它（=> 而本机逐个核过）。
+  pkgconf) SRC_FILES="scripts/recipes/build-component-pkg-config.sh" ;;
+  make)   SRC_FILES="scripts/recipes/build-component-make.sh" ;;
+  cmake)  SRC_FILES="scripts/recipes/build-component-cmake.sh" ;;
+  npm)    SRC_FILES="scripts/recipes/build-component-npm.sh" ;;
+  pnpm)   SRC_FILES="scripts/recipes/build-component-pnpm.sh" ;;
+  llvm)   SRC_FILES="scripts/recipes/build-component-llvmtoolchain.sh" ;;
   *)       SRC_FILES="" ;;
 esac
 
