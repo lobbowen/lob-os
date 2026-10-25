@@ -123,7 +123,16 @@ env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   -DCMAKE_CXX_COMPILER="$(command -v c++)" \
   -DCMAKE_ASM_COMPILER="$(command -v cc)" \
   -DLLVM_TARGETS_TO_BUILD=AArch64 \
-  -DLLVM_ENABLE_PROJECTS="$PROJECTS" \
+  #  ★ 缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— ⇒ 而它**只需要** tblgen 那几件。
+  #   而 clang 那一族**拉进** legacy pass manager（=> 而 llvm::Pass / llvm::ModulePass /
+  #   llvm::FunctionPass / llvm::PassRegistry 那一族），⇒ 而 LLVM 21 那一版**已经删了**它们
+  #   （=> 而 LLVM 17 之后就没有了）。
+  #   ⇒ 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 ⇒ ⇒ 而交叉那一支链接时
+  #      逐字是「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」
+  #      （=> 而 40161547449 那一趟逐字 26 条那一种，=> 而它们**逐字全是** legacy pass manager 那一族）。
+  #   ⇒ 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
+  #      => 而而 lld **不**要、=> 而而它**也不**参与那几件 tblgen）。
+  -DLLVM_ENABLE_PROJECTS=clang \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_INCLUDE_BENCHMARKS=OFF \
   -DLLVM_INCLUDE_EXAMPLES=OFF \
