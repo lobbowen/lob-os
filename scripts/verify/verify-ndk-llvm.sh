@@ -36,9 +36,27 @@ if [ "$GOT_NDK" != "$WANT_NDK" ]; then
 fi
 
 CLANG=""
-for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang; do
-  [ -f "$c" ] && CLANG="$c" && break
-done
+# 缺陷名（C-102）**找 clang 的那一处与上游那一处用的不是同一个名字** ——
+#   而而这一处逐字是 `for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang`，
+#   => 而那找的是**通用** clang（=> 而叫 `clang`）；
+#   => 而而 NDK 里那个叫 `aarch64-linux-android35-clang`（=> 而**带三元组前缀**），
+#   => 而而 locate-ndk.sh:49 逐字是 `CC="$TC/aarch64-linux-android35-clang"`，
+#   => 而而它**找得到**（=> 而 CI 那一趟 step 4 逐字是「[ndk] clang: Android (16134705, …) clang version 21.0.0」）。
+#   ⇒ 而所以这一处的 CLANG **一直是空的** ⇒ ⇒ 而 `set -u` 下一行就炸
+#   ⇒ ⇒ 而报出来的是「CLANG: unbound variable」而不是「NDK 里找不到 clang」。
+#
+# ⇒ 而**处置**：这一处**从 CC 反推**（=> 而 CC 是 locate-ndk.sh 注入的那一个，
+#   => 而而它**就是**那一个真能找到的 clang，=> 而而两处**同源**）。
+#   ⇒ 而 CC 没有时**才**退回那一个 glob（=> 而而那找的是通用 clang，
+#   => 而而有些 NDK 确实有它，=> 而而那不是错的、=> 而那只是**另一条**路）。
+if [ -n "${CC:-}" ] && [ -f "$CC" ]; then
+  CLANG="$CC"
+fi
+if [ -z "$CLANG" ]; then
+  for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang "$NDK"/toolchains/llvm/prebuilt/*/bin/*-clang; do
+    [ -f "$c" ] && CLANG="$c" && break
+  done
+fi
 [ -n "$CLANG" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 if ! "$CLANG" --version >/dev/null 2>&1; then
