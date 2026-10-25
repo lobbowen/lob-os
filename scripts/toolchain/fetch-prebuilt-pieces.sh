@@ -51,6 +51,21 @@ REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 #   ★★ => ★★ **=> 而改那张表之后要重跑那个生成器，★★ 而这一行要跟着更新** ★★
 PIECES=(zlib openssl curl jq bash busybox ripgrep crypto)
 
+#  缺陷名（C-102）**那一读逐字只说「没取到」、=> 而而它不说是哪一种**
+#    —— 而实际上那**三处** return 1 逐字**分不出来**：
+#      :71 那一处 = 那个**名字**逐字**没找到**（=> 而那 url 逐字是空）
+#            —— 而那**可能**是「那名字**不在**那筐里」、也**可能**是「那名字**在**那筐里、
+#            而而那**读**逐字**没读到**（=> 而那 json 逐字解析不了 / 那读逐字失败）
+#      :72 那一处 = **下载**逐字**失败**
+#      :73 那一处 = 下载到**空文件**
+#    => 而而那三处逐字**都**是 return 1、=> 而而那**调用方**逐字**只**看到「没取到」。
+#  => 而而那 40214257950 那一趟逐字就是**第三**个形状：
+#      而那 `others` 那一列逐字**非空**、=> 而那个**名字**逐字**在里面**、
+#      => 而而那**一次**逐字**没取到**、=> 而而那**两条**分支逐字**都不覆盖**它。
+#  => 而按 C-102：=> 而那逐字是「那**空**逐字**同时**表示**两件**不同的事、
+#      => 而而那**第三个**形状**根本**没有分支」那个形状。
+#  => 而那**改法**：=> 而而那**三处**逐字**各**带一个**标记**、=> 而而那**调用方**逐字**分得开**。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url
   local hdr=()
@@ -61,16 +76,26 @@ fetch_asset() {
         | node -e '
             let d = "";
             process.stdin.on("data", c => d += c).on("end", () => {
+              let j;
               try {
-                const j = JSON.parse(d);
-                const a = (j.assets || []).find(x => x.name === process.argv[1]);
-                if (a) process.stdout.write(a.browser_download_url);
-              } catch (e) {}
+                j = JSON.parse(d);
+              } catch (e) {
+                process.stderr.write("__FA_PARSE_FAILED__\\n");
+                process.exit(3);
+              }
+              const a = (j.assets || []).find(x => x.name === process.argv[1]);
+              if (a) process.stdout.write(a.browser_download_url);
             });
           ' -- "$asset" 2>/dev/null)"
-  [ -n "$url" ] || return 1
-  curl -fsSL --retry 3 --retry-delay 2 -o "$dir/$asset" "$url" 2>/dev/null || return 1
-  [ -s "$dir/$asset" ] || return 1
+  if [ -z "$url" ]; then
+    #  那个**名字**逐字**没**被找到：=> 而而那**可能**是「那名字**不在**那筐里」、
+    #  => 而而那**也**可能是「那名字**在**那筐里、而而那**读**逐字**没读到**」。
+    #  => 而而那两种逐字**分不出来**、=> 而而那**调用方**逐字**要**那 `others` 那一列来分。
+    echo "__FA_URL_NOT_FOUND__" >&2
+    return 1
+  fi
+  curl -fsSL --retry 3 --retry-delay 2 -o "$dir/$asset" "$url" 2>/dev/null || { echo "__FA_DOWNLOAD_FAILED__" >&2; return 1; }
+  [ -s "$dir/$asset" ] || { echo "__FA_EMPTY_FILE__" >&2; return 1; }
   # 顺手取那份伴随的 .sha256（ 它与 zip 同名同 tag）。
   #    而不取的后果（ 缺陷名 C-102）：下面那个校验分支的判据是 
   #    `[ -f "$dir/$asset.sha256" ]`  ——  而它今天恒为假   校验被跳过 
@@ -150,6 +175,14 @@ for id in "${PIECES[@]}"; do
       echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
       echo "::notice:: 处置：dispatch 那一件即可。*"
       miss_stock=$((miss_stock+1))
+    elif printf "%s\n" "$others" | grep -qxF "$asset"; then
+      #  ★ **第三**个形状：=> 而那**名字逐字在里面**、=> 而而那**一次**逐字**没取到**。
+      #  => 而而那**两条**分支逐字**都不覆盖**它、=> 而而那旧版逐字把它误判成「旧产物拦住了」。
+      #  => 而而那**真的成因**逐字**在**那 fetch_asset 那一族**里面**（=> 而而那三处 return 1 逐字**分不出来**）。
+      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，=> 而而那**这一次**逐字**没取到**。"
+      echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），=> 而而那**不是**『没固化过』、=> 而也**不是**『旧产物』。*"
+      printf "%s\n" "$others" | sed "s/^/::notice::   /"
+      miss_stale=$((miss_stale+1))
     else
       echo "::notice title=$id 旧产物拦住了::Release $tag 里有 asset，但**没有一个叫 $asset** —— 那说明这一件改过 recipe，"
       echo "::notice:: 而固化产物还是旧的。**旧产物不能冒充新代码的产物**，所以这里必须拦。"
