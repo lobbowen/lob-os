@@ -166,6 +166,24 @@ for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do
 done
 note "宿主 tblgen 就位：$NATIVE_DIR（$(ls "$NATIVE_DIR" | tr '\n' ' ')）"
 
+#  缺陷名（C-102）**这一族多编了一个不需要的 target** —— ⇒ 而而那一族拖进来的那一批符号
+#    逐字是 LLVM 21 那一版**已经删了**的那一族（=> 而 llvm::Pass / llvm::ModulePass /
+#    llvm::FunctionPass / llvm::PassRegistry 那一族、=> 而 llvm::Instruction::eraseFromParent /
+#    llvm::Value::replaceAllUsesWith / llvm::Constant::getNullValue / llvm::Module::getNamedMetadata
+#    那一族逐字是**被**那 4 个测试 pass 的 vtable **拖进来的**间接依赖）。
+#    ⇒ 而那个 target 逐字是 tools/bugpoint-passes（=> 而 LLVM 源码里**给 bugpoint 用的测试 pass**），
+#    ⇒ 而它逐字**不由** LLVM_INCLUDE_TESTS 那一档管（=> 而那逐字是 LLVM_BUILD_TOOLS 那一档：
+#       if( NOT LLVM_BUILD_TOOLS ) set(EXCLUDE_FROM_ALL ON) endif()）。
+#    ⇒ 而 LLVM_INCLUDE_TESTS=OFF 逐字**已经**开着、⇒ 而那个 target 逐字**还是**被编了。
+#    ⇒ 而那个开关名逐字是 LLVM_TOOL_BUGPOINT_PASSES_BUILD=OFF
+#       （=> 而 bugpoint-passes -> BUGPOINT_PASSES 那一步逐字是 canonicalize_tool_name 的
+#          减号变下划线再 TOUPPER、=> 而 llvm_add_implicit_projects 逐字判 ${project}_TOOL_${name}_BUILD）。
+#    ⇒ 而 bugpoint 那个可执行文件逐字**不在** NEED_BIN 那一族里、⇒ 而仓内逐字**零命中**、
+#       ⇒ 而它逐字只是一个**副产品**、⇒ 而那一件逐字不交付它。
+#    ⇒ 而宿主那一支**不用**加这一档（=> 而它逐字只开 clang、=> 而而它**不编** tool 那一族）。
+#    ⇒ 而注意：这一段注记**必须**在命令**外面**、⇒ 而而它**不能**放在反斜杠续行**中间**
+#       （=> 而那会**断掉**续行、=> 而而下一行逐字被当成一条新命令、=> 而那一趟逐字是
+#          「scripts/recipes/build-component-llvmtoolchain.sh: line 136: -DLLVM_ENABLE_PROJECTS=clang: command not found」）。
 cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" \
   -DLLVM_NATIVE_TOOL_DIR="$NATIVE_DIR" \
@@ -177,6 +195,7 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   -DCMAKE_INSTALL_BINDIR=bin \
   -DLLVM_TARGETS_TO_BUILD=AArch64 \
   -DLLVM_ENABLE_PROJECTS="$PROJECTS" \
+  -DLLVM_TOOL_BUGPOINT_PASSES_BUILD=OFF \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_INCLUDE_BENCHMARKS=OFF \
   -DLLVM_INCLUDE_EXAMPLES=OFF \
