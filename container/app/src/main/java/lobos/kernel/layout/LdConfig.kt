@@ -183,11 +183,35 @@ object LdConfig {
         }
         return out
     }
+    /**
+     * 「已声明的命令入口」—— 这一列答的是「**这一件在 usr/bin 下应该有哪几个名字**」。
+     *
+     * ★ 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
+     *   而原来这一支逐字是 `if (!ProgramIndex.isPiece(ctx, e)) continue`，
+     *   ⇒ 而 isPiece 逐字是「assetEntry 空 ⇒ PIECE」，⇒ 而它**只**收 Level.PIECE 那一族。
+     *   ⇒ 而那一族的成员是「**纯库件**」（⇒ 而 crypto / curl / zlib 那一族，
+     *      ⇒ 而它们**真的**只有 lib/ 下的字节、⇒ 而它们**没有** bin/ 目录）。
+     *   ⇒ 而而 openssl 在 0a00489 那一笔之后 assetEntry 逐字是 bin/openssl（⇒ 而它非空），
+     *      ⇒ 而它于是判 PROGRAM、⇒ 而它被 continue **跳过**了。
+     *   ⇒ 而而那个「声明」那一列于是逐字是 0 —— ⇒ 而**那不是**「这一类被声明了 0 个」，
+     *      ⇒ 而是「那一列按 isPiece 选、⇒ 而而选出来的那一族里**没有** bin/ 下的程序形态字节」。
+     *   ⇒ 而那正是 C-112 那一族（「0 最容易被相信」那一族）：⇒ 而那个 0 是个**假零**。
+     *
+     * ⇒ 而处置：这一格**按那一件有没有 bin/ 目录**来选，⇒ 而**不**按 Level 那一族筛。
+     *   ⇒ 而而「这一件有没有 bin/ 下的命令入口」这一问，⇒ 而它**该**由那一件自己回答
+     *      （⇒ 而下面那一支逐字是 File(verDir, "bin").listFiles()）。
+     *   ⇒ 而而「纯库件」那一族**自然**答空（⇒ 而它们没有 bin/ 目录），
+     *      ⇒ 而而「程序形态」那一族答出它 bin/ 下的那些名字。
+     *   ⇒ 而按 C-135：这与「这一件是不是库件」是**两问**（⇒ 而那一问由 Level 那一族答）。
+     */
     fun declaredBins(ctx: Context, pieceId: String): List<String> {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
             for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
-                if (!lobos.services.reg.ProgramIndex.isPiece(ctx, e)) continue
+                //  ★ 而这一处**不**按 Level 那一族筛（=> 而那正是那个假零的成因）。
+                //    而那一件自己答「我有没有 bin/ 下的命令入口」——=> 而下面那一支逐字是
+                //    File(verDir, "bin").listFiles()，=> 而纯库件（=> 而 crypto / curl / zlib 那一族）
+                //    **自然**答空，=> 而程序形态那一族答出它 bin/ 下的那些名字。
                 out += declaredBins(ctx, e.id)
             }
             return out.distinct()
