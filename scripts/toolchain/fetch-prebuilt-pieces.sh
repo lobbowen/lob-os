@@ -152,6 +152,7 @@ mkdir -p "$ASSETS" "$STAGE"
 missing=0
 miss_stock=0
 miss_stale=0
+miss_read=0
 ok=0
 
 for id in "${PIECES[@]}"; do
@@ -163,26 +164,34 @@ for id in "${PIECES[@]}"; do
   if ! fetch_asset "$tag" "$asset" "$STAGE/$id"; then
     echo "::error title=$id 没有固化产物::Release $tag 里取不到 $asset —— 先去构建这一件："
     echo "::error::  gh workflow run $(bash scripts/toolchain/piece-workflow-name.sh "$id")   （见 RELEASE-POLICY.md）"
-    others="$(list_release_assets "$tag")"
-    lra_rc=$?
+    #  缺陷名（C-102）**那赋值在 set -e 下逐字把整趟掐掉**、
+    #    => 而而那**分族**那一支逐字**永远**走不到、=> 而而那一族逐字**永远**没被**验过**
+    #  —— 而实际上那脚本逐字第 13 行是 `set -euo pipefail`，
+    #    => 而而那 `others="$(…)"` 逐字**自己**就是一条简单命令、
+    #    => 而而那被替换进去的那个命令逐字**非零**时、=> 而而那**整趟**逐字**当场退出**、
+    #    => 而而那 `lra_rc=$?` 那一行逐字**根本到不了**。
+    #  => 而本机**实测**过：=> 而那**错**的 REPO 那一趟逐字只印出那三个标记、
+    #    => 而而那「清单读失败」那一档逐字**没**印出来、=> 而而那一趟逐字**直接退**了。
+    #  => 而那**改法**：=> 而而那赋值逐字**带** `|| true`、=> 而而那返回码逐字**另外**收。
+    others="$(list_release_assets "$tag")" && lra_rc=0 || lra_rc=$?
     if [ "$lra_rc" -ne 0 ]; then
       #  那一读逐字**失败**了（=> 而而那限流 / 鉴权过期 / 端点变了 / 网络 那一族）：
       #  => 而而那**不是**「那筐真的一件 asset 都没有」、=> 而而那**不**能按「缺货」处置。
       echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（=> 而而那 stdout 逐字是空、=> 而而那**不是**『那筐一个 asset 都没有』）。"
       echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），=> 而而那**不是** dispatch 那一件能解决的。*"
-      miss_stock=$((miss_stock+1))
+      miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then
       echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
       echo "::notice:: 处置：dispatch 那一件即可。*"
       miss_stock=$((miss_stock+1))
     elif printf "%s\n" "$others" | grep -qxF "$asset"; then
-      #  ★ **第三**个形状：=> 而那**名字逐字在里面**、=> 而而那**一次**逐字**没取到**。
+      #  **第三**个形状：=> 而那**名字逐字在里面**、=> 而而那**一次**逐字**没取到**。
       #  => 而而那**两条**分支逐字**都不覆盖**它、=> 而而那旧版逐字把它误判成「旧产物拦住了」。
       #  => 而而那**真的成因**逐字**在**那 fetch_asset 那一族**里面**（=> 而而那三处 return 1 逐字**分不出来**）。
       echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，=> 而而那**这一次**逐字**没取到**。"
       echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），=> 而而那**不是**『没固化过』、=> 而也**不是**『旧产物』。*"
       printf "%s\n" "$others" | sed "s/^/::notice::   /"
-      miss_stale=$((miss_stale+1))
+      miss_read=$((miss_read+1))
     else
       echo "::notice title=$id 旧产物拦住了::Release $tag 里有 asset，但**没有一个叫 $asset** —— 那说明这一件改过 recipe，"
       echo "::notice:: 而固化产物还是旧的。**旧产物不能冒充新代码的产物**，所以这里必须拦。"
@@ -267,9 +276,12 @@ if [ -n "${GEN_ROWS:-}" ]; then
 fi
 if [ "$missing" -gt 0 ]; then
   echo ""
-  echo "::error title=取件不全::$missing / ${#PIECES[@]} 个件取不到（缺货 $miss_stock · 旧产物 $miss_stale）"
+  echo "::error title=取件不全::$missing / ${#PIECES[@]} 个件取不到（缺货 $miss_stock · 旧产物 $miss_stale · 清单读失败 $miss_read）"
   if [ "$miss_stock" -gt 0 ]; then
     echo "::error::  **缺货**（该 tag 一个 asset 都没有）→ dispatch 那一件即可"
+  fi
+  if [ "$miss_read" -gt 0 ]; then
+    echo "::error::  **清单读失败**（那一份**没读到**）→ 先查那一次读（token / 限流 / 端点），**不是** dispatch 能解决的"
   fi
   if [ "$miss_stale" -gt 0 ]; then
     echo "::error::  **旧产物**（有 asset 但名字对不上 = 改过 recipe 指纹变了）→ 必须 dispatch 重新固化，"
