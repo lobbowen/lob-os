@@ -352,10 +352,36 @@ class OsHostService : Service() {
 
         fun ensureRunning(context: Context) {
             try {
+                //  缺陷名（C-102）**那 5 秒窗口的起算时刻逐字没被记下来、=> 而而那一个量逐字算不出来**
+                //    —— 而实际上那 5 秒窗口逐字是「FGS start -> startForeground」那个量，
+                //    => 而而「FGS start」那一拍逐字就是这一行**之前**的那一拍、
+                //    => 而而仓内逐字**没有**那一行、=> 而而那一格逐字**算不出来**。
+                //    => 而按 C-104：=> 而「FGS start」那一拍在**两条路上都有**（=> 而 boot 那一路与「服务起」那一路逐字都起服务）、
+                //    => 而而这里逐字是**唯一**能记下那一拍的地方、=> 而而这一拍逐字**先于**服务起来。
+                //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**加这一行。
+                noteFgsStart(context, "service-start")
                 context.startService(Intent(context, OsHostService::class.java))
             } catch (e: Throwable) {
                 Log.w(TAG, "拉起宿主失败（等互保闭环其它边重试）", e)
             }
+        }
+
+        /**
+         *  缺陷名（C-102）**那 5 秒窗口的起算时刻逐字没被记下来、=> 而而那一个量逐字算不出来**
+         *  —— 而实际上那 5 秒窗口逐字是「FGS start -> startForeground」那个量，
+         *  => 而而这一族逐字把「FGS start」那一拍记下来、=> 而而那一格逐字**能**算出来。
+         *  => 而按 C-103：=> 而它为什么有两边 => 而那两边逐字是「宿主出生 -> startForeground」与
+         *     「FGS start -> startForeground」那两族、=> 而而它们起算的**时刻不一样**、=> 而而落点是**同一拍**。
+         *  => 而按 C-112：=> 而这一行逐字带**完整 epoch 毫秒**、=> 而而那一格逐字**不是**「我算不出来的」那个形状。
+         *  => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族。
+         */
+        fun noteFgsStart(context: Context, path: String) {
+            val at = System.currentTimeMillis()
+            val elapsed = android.os.SystemClock.elapsedRealtime()
+            RuntimeDiagnostics.append(
+                context, "fgs-start", true, "FGS start 那一拍",
+                "起算时刻 at=" + at + " elapsedRealtime=" + elapsed + " 路径=" + path,
+            )
         }
     }
 }
