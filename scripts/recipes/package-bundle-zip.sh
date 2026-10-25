@@ -132,27 +132,62 @@ if [ -n "$ENTRY" ]; then
     done
     echo "  （混合件：lib/ 下搬了 $(ls -A "$STAGE/lib" 2>/dev/null | wc -l) 个名字）"
   fi
-  #  **bin/ 下那批全搬**（不只是 BINS 声明的那几个命令名）。
-  #   缺陷名（C-102）本体那份没进包  那批软链全是断链：
-  #     busybox 那一件（本体搬到 bin/ 之后）bin/ 下有 18 项：本体那份 + 17 条指向它的软链。
-  #     而 BINS 那一支搬的是**命令名**（17 个）—— **本体那份不在 BINS 里**  它没被搬
-  #      $STAGE/bin/ 下只有 17 条**断链**（目标 ../bin/libbusybox.so 不在 $STAGE 里）
-  #      清单生成器读那些软链读不出实体（unreadable） 判「没有一个是程序形态」。
-  #    现在：bin/ 下那批（本体 + 软链）全搬 —— 软链用 cp -Pf（不解引用）。
+  #  **bin/ 下搬的是「这一件**声明**的那几项」**（=> 而那 = entry + BINS + entry 那一条自己的软链目标）。
+  #
+  #  ★ 缺陷名（C-102）**这一格搬的是「bin/ 下有什么」而不是「这一件承诺提供什么」**
+  #   => 而而上游 `make install_sw` 会把**上游自己那些程序**一并装进来
+  #      （=> 而 openssl 那一件逐字是 bin/c_rehash，=> 而它第一行逐字是 #!/usr/bin/env perl）。
+  #   => 而而 perl 在这台宿主上**不是一件**（=> 而 02 今天核过：仓里 28 个件键无 perl、
+  #      => 而设备上 files/usr/bin 那 24 条无 perl、=> 而设备上 files/opt 那 8 个目录无 perl）；
+  #   => 而而 07 今天在设备侧真跑了一次：退出码 126、=> 而 stderr 逐字是
+  #      「…/files/usr/bin/c_rehash: No such file or directory」
+  #      （=> 而那 126 就是「解释器找不到」，=> 而而 07 加的阳性对照逐字证了
+  #      「同样的调用方式与同样的 shebang 机制走得通、=> 而失败的是解释器找不到」）。
+  #   => 而 02 第十一轮裁了：那一格**不该带**（=> 而按 C-126 已过）。
+  #
+  #   => 而而这一格**该**搬的是「这一件对外承诺要提供的东西」：
+  #      一，entry 那一项（=> 而它可能**不在** bin/ 下，=> 而比如 openssl 那一件逐字是 lib/libssl.so）；
+  #      二，BINS 那一列（=> 而那是作者声明的**命令名**清单）；
+  #      三，而 bin/ 下**那几项软链的指向目标**（=> 而 busybox 那一件逐字是 bin/libbusybox.so，
+  #         => 而它是那 18 条软链的指向目标、=> 而而它**不在** BINS 那一列里、
+  #         => 而而它不搬那 18 条软链就**全**是断链）。
+  #
+  #   => 而而**不**搬「bin/ 下其余那些」（=> 而比如 c_rehash 那一项）。
+  #      （=> 而那正是 02 裁的那一格：=> 而而那个字节所依赖的解释器在这台宿主上**不是一件**。）
+  #
+  #   => 而这一格**不是**「收全了之后该不该收」（=> 而那是 0a00489 那一族），
+  #      => 而它是「**声明**的那几项搬不搬」（=> 而那两族**不顶替**）。
   if [ -d "$OUT/bin" ]; then
     mkdir -p "$STAGE/bin"
-    for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
-      #  **搬不动就判红** —— 原来这一行是 `cp -Pf … || cp -f …`（两个都失败也继续） 静默丢件。
-      #   而 BINS 那一支的校验只覆盖**声明的那几个命令名**（本体那份不在 BINS 里）
-      #    本体那份搬不动时**没有任何一道判据会报**。
-      #    而软链用 cp -Pf（不解引用）—— cp -f 会跟随符号链接，把软链变成实体副本
-      #     （真机读数 07，base-busybox 那一版：bin/cat 与 lib/libbusybox.so sha 相同）。
-      cp -Pf "$OUT/bin/$f" "$STAGE/bin/$f" || {
-        echo "::error title=$ID 命令入口搬运失败::bin/$f 搬不进暂存目录（它是不是断链？先查构建侧那一件）"
-        exit 1
-      }
+    #  一，BINS 那一列（=> 而那逐字是「这个件要在 usr/bin 出现的命令名」）
+    for bn in $BINS; do
+      if [ -e "$OUT/bin/$bn" ]; then
+        cp -Pf "$OUT/bin/$bn" "$STAGE/bin/$bn" || {
+          echo "::error title=$ID 命令入口搬运失败::bin/$bn 搬不进暂存目录（它是不是断链？先查构建侧那一件）"
+          exit 1
+        }
+      fi
     done
-    echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字）"
+    #  二，bin/ 下**那几项软链的指向目标**（=> 而 busybox 那一件逐字是 bin/libbusybox.so）
+    #    => 而那**必须**搬，=> 而不然那几条软链在 $STAGE 里**全是断链**
+    #    （=> 而而 07 核到过：清单生成器读那些软链读不出实体、=> 而它判「没有一个是程序形态」）。
+    for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
+      p="$OUT/bin/$f"
+      [ -L "$p" ] || continue
+      real="$(readlink -f "$p" 2>/dev/null || true)"
+      [ -n "$real" ] && [ -f "$real" ] || continue
+      #  而那目标**相对** $OUT 的路径（=> 而软链逐字是 ./libbusybox.so）
+      rel="${real#$OUT/}"
+      [ "$rel" != "$real" ] || continue
+      if [ ! -e "$STAGE/$rel" ]; then
+        mkdir -p "$(dirname "$STAGE/$rel")"
+        cp -Pf "$OUT/$rel" "$STAGE/$rel" || {
+          echo "::error title=$ID 软链目标搬运失败::bin/$f 指向 $rel，=> 而那一项搬不进暂存目录"
+          exit 1
+        }
+      fi
+    done
+    echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字；=> 而那是 BINS 那一列 + 那几条软链的指向目标）"
   fi
 else
   #  纯库件（这一件没有程序那一侧） entry 留空  **把 lib/ 下的字节全搬进包**。
