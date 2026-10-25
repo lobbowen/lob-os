@@ -79,22 +79,34 @@ API="${ANDROID_API:-35}"
 JOBS="${JOBS:-2}"
 
 # 校验产出的 .so：必须是 aarch64 的 ELF，且不太小（太小说明编坏了）
+#
+# ★ 缺陷名（C-102）**这一格按文件长什么样定** —— 而 01 裁的 S117 那一件把形态那一族的取值域
+#   按「**能不能被当入口调起**」那一问定，=> 而按文件长什么样不定域。
+#   而这一格原来逐字是 `file -bL "$f" | grep -q "ELF 64-bit.*ARM aarch64"`
+#   => 而那是**第四把尺**，=> 而它答的是「这个文件的字节长得像不像 aarch64 的 ELF」。
+#   => 而 #! 脚本（=> 而 c_rehash / npm-cli.js / pnpm 那几件都是）**不是** ELF，
+#   => 而而它们**是**可调起的入口形态（=> 而按那一把尺它们是 shebang + program），
+#   => 而所以这一格**判它们红**，=> 而那一趟逐字是
+#   「##[error]…/work/openssl/out/bin/c_rehash 不是 aarch64 ELF 或小于 1000 字节」。
+#   ⇒ 而处置：这一格改用**形态那一把尺**（=> 而 elf_form 那一族），
+#     而**字节大小**那一条**不变**（=> 而那一条答的是「编坏了没有」，=> 而那不是形态那一问）。
 check_so() {
   local f="$1" min="${2:-1000}"
   [ -f "$f" ] || return 1
   local sz
   sz="$(wc -c < "$f")"
   [ "$sz" -ge "$min" ] || return 1
-  #  file 要 -L（跟随软链）——
-  #   共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2，
-  #   libz.so 与 libz.so.1 都是软链。不跟随时 file 报的是
-  #   「symbolic link to libz.so.1.3.2」而不是 ELF 形态，
-  #   于是这三层里唯二的两个软链都被判成「不是 aarch64 ELF」而报错。
-  #   （wc -c 本来就跟随软链，所以只有 file 这步需要显式 -L。）
-  if command -v file >/dev/null 2>&1; then
-    file -bL "$f" 2>/dev/null | grep -q "ELF 64-bit.*ARM aarch64" || return 1
-  fi
-  return 0
+  # 形态那一把尺（=> 而 elf-form.sh 那一族，=> 而它现在认 shebang 那一档）：
+  #   exec / dyn-interp  => 而那是 aarch64 的 ELF 程序
+  #   dyn-plain          => 而那是 aarch64 的 ELF 库
+  #   shebang            => 而那是 #! 脚本（=> 而它是可调起的入口形态）
+  #   unknown            => 而那不是入口形态、=> 而也不是库形态（=> 而它不该进这一件）
+  local form
+  form="$(elf_form "$f" 2>/dev/null)"
+  case "$form" in
+    "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP"|"$ELF_FORM_DYN_PLAIN"|"$ELF_FORM_SHEBANG") return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # 校验它是可执行文件（比 .so 多一步：要真能跑起来）
@@ -111,6 +123,24 @@ version_of() {
   node -e '
     const s = require(process.argv[1]).sources || {};
     const v = (s[process.argv[2]] || {}).version;
+    if (v) process.stdout.write(String(v));
+  ' "$ROOT_DIR/scripts/component-sources.json" "$1"
+}
+
+# 件的**作者声明的入口名** —— 取自 component-sources.json 的 sources.<件>.entryName。
+#
+# ★ 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**，⇒ 而那**不是**「这一件的入口」。
+#   而 bin/ 下有多个程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
+#   => 而 c_rehash 是 #! 脚本、=> 而它是入口形态、=> 而它按 LC_ALL=C 排序**在前**），
+#   ⇒ 而那一支挑到的是**排序靠前**的那一个，⇒ 而那**不一定是**作者声明的那一个。
+#   ⇒ 而而作者声明的那一格**本来就存在**（=> 而 component-sources.json 的 sources.<件>.entryName），
+#   ⇒ 而而那一格是「**这一件有多个入口时该取哪一个**」那一问的答案（=> 而按 C-135 它与「多调用那一族」是两问）。
+#   ⇒ 而处置：先取作者声明的那一个；⇒ 而它**不在** bin/ 下或它不是入口形态时，
+#     才退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+author_entry_name_of() {
+  node -e '
+    const s = require(process.argv[1]).sources || {};
+    const v = (s[process.argv[2]] || {}).entryName;
     if (v) process.stdout.write(String(v));
   ' "$ROOT_DIR/scripts/component-sources.json" "$1"
 }
@@ -175,7 +205,21 @@ emit_piece() {
   #   而 openssl 那一件声明的是 lib/libssl.so（库形态） 按形态决定执行位与链的那一段
   #   作用在**库**上  程序那一份（bin/openssl）没被判型、没带执行位。
   local pick=""
-  if [ -d "$out/bin" ]; then
+  #  ★ 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」** —— 而那不是「这一件的入口」。
+  #   而 bin/ 下有**多个**程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
+  #   => 而 c_rehash 是 #! 脚本、=> 而按 01 裁的 S117 那一件它**是**入口形态、
+  #   => 而它按 LC_ALL=C 排序**在前**），=> 而那一支挑到的是**排序靠前**的那一个。
+  #   ⇒ 而而作者声明的那一格**本来就存在**（=> 而 component-sources.json 的 sources.<件>.entryName），
+  #   ⇒ 而而那一格是「这一件有多个入口时该取哪一个」那一问的答案（=> 而按 C-135 它与「多调用那一族」是两问）。
+  #   ⇒ 而处置：**先**取作者声明的那一个；
+  #     而它**不在** bin/ 下、或它不是入口形态（=> 而按形态那一把尺）时，
+  #     **才**退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+  local want_entry="$(author_entry_name_of "$id")"
+  if [ -n "$want_entry" ] && [ -f "$out/bin/$want_entry" ]; then
+    local wf="$(elf_form "$out/bin/$want_entry" 2>/dev/null)"
+    if elf_form_is_program "$wf"; then pick="bin/$want_entry"; fi
+  fi
+  if [ -z "$pick" ] && [ -d "$out/bin" ]; then
     for f in $(ls -A "$out/bin" 2>/dev/null | LC_ALL=C sort); do
       p="$out/bin/$f"
       [ -f "$p" ] || continue
