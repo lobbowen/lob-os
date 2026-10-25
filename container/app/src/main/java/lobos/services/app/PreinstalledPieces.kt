@@ -349,6 +349,33 @@ object PreinstalledPieces {
                 j.put("entry", landedEntry)
                 j
             }.getOrNull()
+        //  ★ 缺陷名（C-102）**落位侧按哪一把尺落的权限** —— 而**这一支**没有落权限。
+        //   而慢路径那一支有（=> 而 ProgramInstallPipeline 逐字是「权限按**产物声明的 mode** 落
+        //   （运行期不判形态、不替产物决定权限）」，=> 而它逐项 chmod）。
+        //   而预装件走的是**快路径**（=> 而这一支），=> 而这一支**原来一个 chmod 都没有**。
+        //   => 而那后果是：解包出来的那个字节**带着 zip 里的权限**落下去，
+        //      => 而而 zip 里那一项**没有**被执行位时（=> 而 c_rehash 那一项逐字是 -rw-------），
+        //      => 而而它在盘上**不可执行**，=> 而而它也**建不出** usr/bin 下的那一条软链。
+        //   ⇒ 而处置：这一支也按**产物声明的 mode** 逐项落（=> 而与慢路径同一把尺、同一句话）。
+        //   ⇒ 而**不**在这里判形态（=> 而形态是构建期算好的、=> 而那一格在 shape.files[].mode 里）。
+        val modesLanded = runCatching {
+            var n = 0
+            for (fs in shape.files) {
+                if (fs.mode.isBlank()) continue
+                val dst = File(
+                    verDir,
+                    ProgramInstallPipeline.PieceShape.dirForRole(fs.role) ?: fs.dir,
+                ).let { File(it, fs.path.substringAfterLast('/')) }
+                if (!dst.isFile) continue
+                val m = runCatching { fs.mode.toInt(8) }.getOrNull() ?: continue
+                runCatching { android.system.Os.chmod(dst.absolutePath, m) }
+                n++
+            }
+            n
+        }.getOrDefault(0)
+        if (modesLanded == 0 && shape.files.isNotEmpty()) {
+            trace(ctx, "落权限", id + " 一项也没落（产物没带 mode）—— 而运行期不替产物决定权限")
+        }
     val manifestWritten = runCatching {
                 lobos.services.supply.ManifestWriter.write(
                     verDir, landedMeta, version, entryRole

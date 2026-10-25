@@ -60,6 +60,12 @@ object ProgramInstallPipeline {
             val kind: String,
             val entry: String,
             val files: List<FileShape>,
+            /** 派生物那几项（=> 而构建期逐字是「哪些是派生物」）。
+             *  而它是**作者声明**的「这一件在 usr/bin 下该有哪几个命令名」——
+             *  ⇒ 而 busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
+             *  ⇒ 而而**本体那一份**（bin/libbusybox.so）**不在**里面（=> 而它不认自己的文件名）。
+             *  ⇒ 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而而它们各自是命令）。 */
+            val derivedLinks: List<String> = emptyList(),
         ) {
             fun roleOf(rel: String): String? = files.firstOrNull { it.path == rel }?.role
 
@@ -93,6 +99,11 @@ object ProgramInstallPipeline {
                 kind = o.optString("kind", "").trim(),
                 entry = o.optString("entry", "").trim(),
                 files = files,
+                derivedLinks = (o.optJSONArray("derivedLinks") ?: JSONArray()).let { arr ->
+                    (0 until arr.length()).mapNotNull { i ->
+                        arr.optString(i, "").trim().takeIf { it.isNotEmpty() }
+                    }
+                },
             )
         }
 

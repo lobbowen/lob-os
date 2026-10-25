@@ -17,8 +17,20 @@ object LdConfig {
         val etc = SystemDirs.etc(ctx)
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
+        //  ★ 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
+        //    而原来这一支逐字是 `.filter { ProgramIndex.isPiece(ctx, it) }`，
+        //    ⇒ 而 isPiece 逐字是「assetEntry 空 ⇒ PIECE」，⇒ 而它**只**收**纯库件**那一族
+        //       （⇒ 而 crypto / curl / zlib 那一族）。
+        //    ⇒ 而**程序形态**那一族（⇒ 而 busybox / bash / jq / openssl / ripgrep）**不在**里面，
+        //    ⇒ 而而它们 bin/ 下那些命令入口**从来没被扫过**，
+        //    ⇒ 而而 usr/bin 下的命令入口**一条也没建**
+        //       （⇒ 而 07 今天核到设备侧逐字是「已建 0」，而那**不是**「没有命令入口」，
+        //       ⇒ 而而那是「**这一支**没扫到那些件」）。
+        //    ⇒ 而处置：这一支收**所有在册的件**（⇒ 而不按 Level 筛），
+        //       ⇒ 而「这一件有没有 bin/ 下的命令入口」由**它自己**回答
+        //       （⇒ 而下面那一支逐字是 File(root, "bin").listFiles()）。
+        //    ⇒ 而按 C-135：这与「这一件是不是库件」是**两问**（⇒ 而那一问由 Level 那一族答）。
         val idx = lobos.services.reg.ProgramIndex.all(ctx)
-            .filter { lobos.services.reg.ProgramIndex.isPiece(ctx, it) }
             .sortedBy { it.id }
         val pieces = idx.map { File(opt, it.id) }
         var linked = 0
@@ -219,6 +231,29 @@ object LdConfig {
         val opt = lobos.kernel.layout.SystemDirs.opt(ctx)
         val base = File(opt, pieceId)
         val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
+        //  ★ 缺陷名（C-102）**这一格把「本体那一份」也算成了命令名** —— 而它治的是**对象那一层**。
+        //    而原来这一支逐字是 `File(verDir, "bin").listFiles()?.map { it.name }`，
+        //    ⇒ 而它把 bin/ 下**每一项**都算成「usr/bin 下的命令入口」。
+        //    ⇒ 而 busybox 那一件 bin/ 下有 19 项：本体那一份（bin/libbusybox.so）+ 18 条指向它的软链，
+        //    ⇒ 而而**本体那一份不认自己的文件名**（=> 而 01 核到过），
+        //    ⇒ 而而它**不该**出现在「usr/bin 里的命令入口」那一列里
+        //    ⇒ 而而 07 今天核到设备侧逐字是「声明了但没建出：… libbusybox.so …」（=> 而那是**假零**那一族的反面）。
+        //    ⇒ 而「哪几项是**命令名**」那一格**产物自带**：
+        //       derivedLinks 那一格逐字记的是「哪些是派生物」（=> 而构建期 elf-form.sh 那一处写的），
+        //       ⇒ 而 busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
+        //       ⇒ 而而**本体那一份不在**里面。
+        //    ⇒ 而处置：**先**取产物那一份的 derivedLinks（=> 而那**就是**作者声明的命令名清单）；
+        //       而它**为空**时（=> 而 openssl 那一件：=> 而它那两项都是**实体**、=> 而而它们各自是命令），
+        //       ⇒ 而才退回「bin/ 下那些项」那一支。
+        val shape = lobos.services.supply.ProgramInstallPipeline.PieceShape.read(verDir)
+        if (shape != null && shape.derivedLinks.isNotEmpty()) {
+            return shape.derivedLinks
+                .filter { it.startsWith("bin/") }
+                .map { it.substringAfterLast('/') }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .sorted()
+        }
         return File(verDir, "bin").listFiles()?.map { it.name }?.sorted() ?: emptyList()
     }
 }
