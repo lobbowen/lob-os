@@ -275,6 +275,51 @@ object PreinstalledPieces {
         //   => 现在：缺摘要或路径算不出来都答「无法判定」，而「无法判定」**不判已落位到最新**
         //     （=> 走重装，而重装会重新落位并重写这一格）。
         val unverifiable = mutableListOf<String>()
+        //  ★ 缺陷名（C-102）**这一格只比「产物说有的那几项」** —— ⇒ 而而**产物说没有的那几项**
+        //    **从来没被比过** ⇒ ⇒ 而落位目录里**多出来**的那些项**永远留着**。
+        //    ⇒ 而那正是 07 今天在设备侧核到的那一格：
+        //      · 6c107c7 那一版产物里**没有** bin/c_rehash（=> 而本机核过产物那一份），
+        //      · 而这一趟 journal 逐字有「OK 解包 bin/openssl」两行、⇒ 而**含 c_rehash 的解包行数 = 0**
+        //        （=> 而这一版压根没解包它），
+        //      · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**、
+        //        而 mtime 逐字是 2026-10-24 06:31（=> 而那是 84df912 那一版落下的遗留物），
+        //      · 而这一版**既没再落它、也没删它**。
+        //    ⇒ 而成因：那一段比的是**逐项 sha256**（=> 而它只遍历 shape.files），
+        //      ⇒ 而而**多出来的**那几项**不在** shape.files 里、⇒ 而它们**不被比**、
+        //      ⇒ 而而「同内容不重写」那一短路就**成立**（=> 而 landedUpToDate 为真），
+        //      ⇒ 而而 install **压根没跑** ⇒ ⇒ 而那几项遗留物**永远删不掉**。
+        //    ⇒ 而处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
+        //      ⇒ 而有 ⇒ 而那一格**不**判已落位到最新 ⇒ ⇒ 而走重装 ⇒ ⇒ 而 install 跑
+        //      ⇒ ⇒ 而 install 那一族逐字是「整目录换上去」（=> 而旧那一份被 renameTo 挪走、
+        //         ⇒ 而然后 deleteRecursively）⇒ ⇒ 而那一项**自然**没有���。
+        val staleInLanding = mutableListOf<String>()
+        run {
+            val declared = shape.files.map { fs ->
+                val d = ProgramInstallPipeline.PieceShape.dirForRole(fs.role) ?: fs.dir
+                d + "/" + fs.path.substringAfterLast('/')
+            }.toSet()
+            for (roleDir in listOf(
+                ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_PROGRAM),
+                ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY),
+            )) {
+                val rd = roleDir ?: continue
+                val dir = File(verDir, rd)
+                val kids = dir.listFiles() ?: continue
+                for (k in kids) {
+                    val rel = rd + "/" + k.name
+                    if (!declared.contains(rel)) staleInLanding += rel
+                }
+            }
+        }
+        if (staleInLanding.isNotEmpty()) {
+            lobos.services.log.Journal.note(
+                ctx, "prefix-trace", false,
+                "落位目录里有产物说没有的那几项 " + id,
+                staleInLanding.joinToString("，") +
+                    "（=> 而那一版产物里没有它们，=> 而它们是上一版落下的遗留物，" +
+                    "=> 而按「产物说没有的就不该在」这一条，=> 而走重装把它们换掉）",
+            )
+        }
         val sameBytes = shape.files.all { fs ->
             if (fs.sha256.isBlank()) {
                 unverifiable += fs.path + "（产物没带摘要）"
@@ -308,7 +353,9 @@ object PreinstalledPieces {
         //     **都读不到**构建标识  而这一族按「拿不到要答不知道」
         //     **而「不知道」不能拦住落位**。
         //    所以：landedUpToDate **只看内容**（sameBytes），构建标识那一格只报。
-        val landedUpToDate = landedPresent && sameBytes
+        //  => 而「落位目录里有没有产物说没有的那几项」也要算进去（=> 而那一格见上面那一段）
+        //     => 而有 ⇒ 而那一格**不**判已落位到最新 ⇒ ⇒ 而走重装 ⇒ ⇒ 而 install 跑
+        val landedUpToDate = landedPresent && sameBytes && staleInLanding.isEmpty()
         if (unverifiable.isNotEmpty()) {
             lobos.services.log.Journal.note(
                 ctx, "prefix-trace", false, "无法判定是不是那一代 " + id,

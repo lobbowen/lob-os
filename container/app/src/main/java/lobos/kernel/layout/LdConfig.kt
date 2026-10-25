@@ -254,6 +254,24 @@ object LdConfig {
                 .distinct()
                 .sorted()
         }
+        //  ★ 缺陷名（C-102）**这一支读的是**落位目录**而不是**产物那一份**
+        //    ⇒ 而而落位目录里**可能有**产物说没有的那几项（=> 而那是**遗留物**），
+        //    ⇒ 而而它们**不该**算成「这一件对外承诺的命令名」。
+        //    ⇒ 而真机读数（07，6c107c7 那一版，2026-10-25）：
+        //      · 那一版产物里**没有** bin/c_rehash（=> 而本机核过产物那一份），
+        //      · 而落位侧 piece-shape.json 的 files[] 逐字是 3 项（=> 而 c_rehash **不在**了），
+        //      · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**（=> 而那是遗留物），
+        //      · 而「声明」那一列逐字仍是 23（=> 而就是这一支把它数进去了）。
+        //    ⇒ 而处置：这一支改读**产物那一份**的 files[]（=> 而那是**这一件自己声明的**），
+        //      ⇒ 而而落位目录那份**只**用来判「形态」（=> 而它不判「承诺了什么」）。
+        if (shape != null) {
+            return shape.files
+                .filter { it.role == lobos.services.supply.ProgramInstallPipeline.ROLE_PROGRAM }
+                .map { it.path.substringAfterLast('/') }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .sorted()
+        }
         return File(verDir, "bin").listFiles()?.map { it.name }?.sorted() ?: emptyList()
     }
 }
