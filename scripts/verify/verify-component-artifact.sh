@@ -18,7 +18,16 @@ judge_shape() {
   if [ "$MAGIC4" = "7f454c46" ]; then
     SHAPE=elf
     local INFO
-    INFO=$(file -b "$BIN")
+    #  缺陷名（C-102）**在软链上必判红、=> 而而那把尺子逐字在软链上答不了架构**
+    #    —— 而实际上那 :17 那一行逐字**跟**软链（=> 而而它读到的是**目标**的头 4 字节）、
+    #    => 而而 :18 那一支逐字**进**、=> 而而 :21 那一行逐字**不跟**、=> 而而它逐字给「symbolic link to <目标>」、
+    #    => 而而那四个措辞逐字**全**miss、=> 而而 :25 那一行**必** goes red。
+    #    => 而那 dist/ 那一族逐字是 cp -a 落位上去的（package-component.sh:21 那一行）、
+    #    => 而而那**保留软链**、=> 而而那 11 个 workflow 逐字**都**调这一步、=> 而而它逐字**必**撞上软链。
+    #    => 而而「编」那一步（build-component-llvmtoolchain.sh:305）逐字**已经**用 file -bL 治了那一档、
+    #    => 而而「判据」这一步（**就是这一处**）逐字**还没有**。
+    #    => 而而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+    INFO=$(file -bL "$BIN")
     echo "[$TOOL] $label $INFO"
     case "$INFO" in
       *"ARM aarch64"*|*"aarch64"*|*"arm64"*|*"ARM64"*) : ;;
