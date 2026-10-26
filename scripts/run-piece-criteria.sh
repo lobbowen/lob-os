@@ -118,13 +118,24 @@ def child_ld_path():
         env = j.get('env')
         if isinstance(env, str):
             env = json.loads(env)
-        return str((env or {}).get('LD_LIBRARY_PATH', ''))
+        return str((env or {}).get(key, ''))
     except Exception:
         return ''
 
 
 child_ld = child_env_value('LD_LIBRARY_PATH')
 child_path = child_env_value('PATH')
+#  缺陷名（C-102）**那一族证书那一族逐字没有带过去** ——
+#    => 而那**它**治**的**是「那判据在**那设备**上**能不能**验**那**证书**」。
+#    => 而那**成因**：=> 而那 child_env_value **那一族**逐字**只**导出**那 LD_LIBRARY_PATH** 与**那 PATH**、
+#       => 而而那**它**们**不**含**那 SSL_CERT_FILE** 与那 CURL_CA_BUNDLE** 与那 GIT_SSL_CAINFO**。
+#    => 而那**后果**逐字**是**：=> 而那 git 那一件逐字**报**那「SSL certificate OpenSSL verify result: unable to get local issuer」、
+#       => 而而那**它**逐字**被**读成「那证书不在那设备上」。
+#    => 而那**处置**：=> 而那**运行时**给**孩子**的**那** env **快照**里面**有**的**那些**逐字**都**带**过去**（=> 而那**它**们逐字**是**那**真源**）。
+#    => 而按 C-104：=> 而那**采集层**逐字**只有**一条路（=> 而这一支**就是**它）。
+child_ssl_cert_file = child_env_value('SSL_CERT_FILE')
+child_curl_ca_bundle = child_env_value('CURL_CA_BUNDLE')
+child_git_ssl_cainfo = child_env_value('GIT_SSL_CAINFO')
 if os.environ.get('LOBOS_DEBUG'):
     print('[debug] ld=' + str(len(child_ld)) + ' path=' + str(len(child_path)))
 if os.environ.get('LOBOS_DEBUG'):
@@ -157,6 +168,12 @@ def run_criterion(code, criterion_env=None):
     #  => 而那判据**用**那 os.tmpdir() 逐字**建**那**临时目录**、=> 而而那**它**逐字**要**那 TMPDIR **在**那设备**上**生效**。
     if child_tmpdir:
         env_prefix += 'export TMPDIR=' + child_tmpdir + '; '
+    #  => 而那**证书**那一族逐字**跟着**那**运行时**给**孩子**的**那** env **快照**走**（=> 而那**它**们逐字**是**那**真源**）
+    for _ck, _cv in (('SSL_CERT_FILE', child_ssl_cert_file),
+                     ('CURL_CA_BUNDLE', child_curl_ca_bundle),
+                     ('GIT_SSL_CAINFO', child_git_ssl_cainfo)):
+        if _cv:
+            env_prefix += 'export ' + _ck + '=' + chr(39) + _cv + chr(39) + '; '
     for _k, _v in sorted((criterion_env or {}).items()):
         if _v is None:
             continue
