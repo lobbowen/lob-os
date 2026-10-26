@@ -1,0 +1,305 @@
+{
+  "$note": "那 M0prime 真判据的分母清单。=> 而那判据对象逐字是 (件, entry) 那一对、=> 而那分母逐字分成那两个（按裸名调起 / 按需装载并解析出符号）、=> 而那 sysroot 与那 libcxx 逐字标出来为什么不进。=> 而那清单**不**跟那 docs/m0prime-readings.json 合一（=> 而那分母是一个定义、=> 而而那读数是一个时点的读数）。",
+  "family": "M0prime 真判据的分母（那定义那一件）",
+  "notFamily": "那读数那一件（=> 而那是 docs/m0prime-readings.json、=> 而那读数**不**随**那定义**变、=> 而而那定义**不**随**那读数**变）",
+  "ruledBy": "04 那边逐字给的那清单正文（=> 而那判据归 04 那一族、=> 而那清单归 04 那一族、=> 而那采集归 05 与 07 那一族）",
+  "denominators": [
+    {
+      "key": "bareName",
+      "name": "按裸名调起",
+      "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
+      "count": 15,
+      "set": [
+        "node",
+        "npm",
+        "pnpm",
+        "jq",
+        "git",
+        "curl",
+        "make",
+        "cmake",
+        "bash",
+        "ripgrep",
+        "sqlite",
+        "python",
+        "llvm",
+        "pkgconf",
+        "busybox"
+      ]
+    },
+    {
+      "key": "symbolLoad",
+      "name": "按需装载并解析出符号",
+      "rule": "那库类件（=> 而那 entry 合法地是空）",
+      "count": 3,
+      "set": [
+        "openssl",
+        "crypto",
+        "zlib"
+      ]
+    },
+    {
+      "key": "excluded",
+      "name": "不进那分母",
+      "rule": "那编译期材料逐字不是那用户态模块",
+      "count": 2,
+      "set": [
+        "sysroot",
+        "libcxx"
+      ]
+    }
+  ],
+  "applets": [
+    {
+      "name": "sed",
+      "belongsTo": "busybox",
+      "note": "=> 而那 sed 逐字**不是**那顶层**键**之一、=> 而它逐字**是**那 busybox **的**一个 applet、=> 而而它**算**在**那 busybox **那**一件**里面**、=> 而它**不**是**另**一件**件**"
+    }
+  ],
+  "items": [
+    {
+      "id": "node",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 node 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "npm",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/component-sources.json 的 sources.npm.entryName = npm-cli.js"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "pnpm",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 pnpm 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "jq",
+      "denominator": "bareName",
+      "entry": "bin/jq",
+      "role": "program",
+      "version": "1.8.2",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.jq.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = 'bin/jq'、role = program"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "git",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/component-sources.json 的 sources.git.entryName = git"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "curl",
+      "denominator": "bareName",
+      "entry": "",
+      "role": "library",
+      "version": "8.22.0",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.curl.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = ''、role = library"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "make",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 make 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "cmake",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 cmake 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "bash",
+      "denominator": "bareName",
+      "entry": "bin/bash",
+      "role": "program",
+      "version": "5.2.15",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.bash.installName = bash",
+        "scripts/component-sources.json 的 sources.bash.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = 'bin/bash'、role = program"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "ripgrep",
+      "denominator": "bareName",
+      "entry": "bin/rg",
+      "role": "program",
+      "version": "14.1.1",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.ripgrep.installName = rg",
+        "scripts/component-sources.json 的 sources.ripgrep.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = 'bin/rg'、role = program"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "sqlite",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 sqlite 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "python",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 python 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "llvm",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/component-sources.json 的 sources.llvm.entryName = clang"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "pkgconf",
+      "denominator": "bareName",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 pkgconf 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+      ],
+      "onDeviceNow": false
+    },
+    {
+      "id": "busybox",
+      "denominator": "bareName",
+      "entry": "bin/sh",
+      "role": "program",
+      "version": "1.36.1",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.busybox.entryName = sh",
+        "scripts/component-sources.json 的 sources.busybox.installName = busybox",
+        "scripts/component-sources.json 的 sources.busybox.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = 'bin/sh'、role = program"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "openssl",
+      "denominator": "symbolLoad",
+      "entry": "bin/openssl",
+      "role": "program",
+      "version": "3.6.3",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.openssl.entryName = openssl",
+        "scripts/component-sources.json 的 sources.openssl.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = 'bin/openssl'、role = program"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "crypto",
+      "denominator": "symbolLoad",
+      "entry": "",
+      "role": "library",
+      "version": "3.6.3",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.crypto.sameAs = openssl",
+        "scripts/component-sources.json 的 sources.crypto.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = ''、role = library"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "zlib",
+      "denominator": "symbolLoad",
+      "entry": "",
+      "role": "library",
+      "version": "1.3.2",
+      "provenance": [
+        "scripts/component-sources.json 的 sources.zlib.piece = true",
+        "那设备上那产物自带的 program-manifest.json 的 entry = ''、role = library"
+      ],
+      "onDeviceNow": true
+    },
+    {
+      "id": "sysroot",
+      "denominator": "excluded",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 sysroot 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）",
+        "scripts/piece-criteria.json 的 sysroot 那一档的 criterion 逐字写着「本来就没有可执行行为」/「起得来不适用」"
+      ],
+      "excludedReason": "那编译期材料逐字不是那用户态模块、=> 而它逐字不进那分母",
+      "onDeviceNow": false
+    },
+    {
+      "id": "libcxx",
+      "denominator": "excluded",
+      "entry": null,
+      "role": null,
+      "version": null,
+      "provenance": [
+        "scripts/piece-criteria.json 的 libcxx 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）",
+        "scripts/piece-criteria.json 的 libcxx 那一档的 criterion 逐字写着「本来就没有可执行行为」/「起得来不适用」"
+      ],
+      "excludedReason": "那编译期材料逐字不是那用户态模块、=> 而它逐字不进那分母",
+      "onDeviceNow": false
+    }
+  ],
+  "openItems": [
+    {
+      "id": "pkgconf",
+      "note": "=> 而那 pkgconf 逐字**没有**那 node **字段**、=> 而而它逐字**该**算**进**那分母**、=> 而而那**它**的**那**机器**可执行**的**那一段**逐字**还**没**补**、=> 而按 C-105 报缺"
+    }
+  ]
+}

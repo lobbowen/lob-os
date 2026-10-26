@@ -56,18 +56,20 @@ if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
 fi
 
 #  那 M0prime 那一族逐字**那八**件（=> 而那 ROUND51 :10 到 :17 **逐字**给**的**）
-M0P_SET="bash busybox jq openssl ripgrep"
-LIB_SET="crypto curl zlib"
+#  而那分母逐字**读**那分母清单（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）
+DENOM="$HERE/docs/m0prime-denominator.json"
 
-python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$M0P_SET" "$LIB_SET" "$@" << 'PYEOF'
+python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$DENOM" "$@" << 'PYEOF'
 import io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
 criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
 lib_prefix = os.path.join(os.path.dirname(target_prefix), 'lib')
-m0p_set = sys.argv[8].split()
-lib_set = sys.argv[9].split()
-wanted = sys.argv[10:]
+denom = json.load(io.open(sys.argv[8], encoding='utf-8'))
+_dg = {g['key']: g for g in denom.get('denominators') or []}
+m0p_set = list(_dg.get('bareName', {}).get('set') or [])
+lib_set = list(_dg.get('symbolLoad', {}).get('set') or [])
+wanted = sys.argv[9:]
 d = json.load(io.open(criteria_path, encoding='utf-8'))
 
 pieces = [k for k in sorted(d.keys())
@@ -159,7 +161,7 @@ doc = {
     'pieces': results,
     'M0prime': {
         'set': m0p_set,
-        'setSource': '那设备上那产物自带的 program-manifest.json 的 entry 那一格（=> 而那 entry 逐字是唯一真源）',
+        'setSource': '那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）',
         'rule': '那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）',
         'M': m0p_passed,
         'N': len(m0p_results),

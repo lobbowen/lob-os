@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T14:04:45Z",
+  "takenAt": "2026-10-26T14:10:56Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -132,27 +132,44 @@
   ],
   "M0prime": {
     "set": [
-      "bash",
-      "busybox",
+      "node",
+      "npm",
+      "pnpm",
       "jq",
-      "openssl",
-      "ripgrep"
+      "git",
+      "curl",
+      "make",
+      "cmake",
+      "bash",
+      "ripgrep",
+      "sqlite",
+      "python",
+      "llvm",
+      "pkgconf",
+      "busybox"
     ],
-    "setSource": "那设备上那产物自带的 program-manifest.json 的 entry 那一格（=> 而那 entry 逐字是唯一真源）",
+    "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）",
     "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
-    "M": 4,
-    "N": 5,
-    "failed": 1,
-    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
+    "M": 5,
+    "N": 14,
+    "failed": 9,
+    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）",
+    "notRun": [
+      "pkgconf"
+    ],
+    "notRunReason": "=> 而那 pkgconf 逐字**没有**那 node **字段**（=> 而而那**它**的**那**机器**可执行**的**那一段**逐字**还**没**补**）、=> 而而它逐字**也**不**在**那设备**上**、=> 而按 C-105 **报缺**",
+    "NIsDenominator": true,
+    "NNote": "=> 而那 N 逐字**是**那分母清单**里面**那 bareName **那一族**的件数（= **15**）、=> 而而那 pkgconf 逐字**没**跑、=> 而而那 **N** 逐字**是**那**分母**、=> 而而那**跑**的**只**是那 **14** 件",
+    "ran": 14
   },
   "library": {
     "set": [
+      "openssl",
       "crypto",
-      "curl",
       "zlib"
     ],
     "rule": "那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母",
-    "M": 3,
+    "M": 2,
     "N": 3,
     "note": "那按需装载并解析出符号的那一族"
   },
@@ -162,7 +179,7 @@
     "failed": 10,
     "note": "那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）"
   },
-  "M": 4,
-  "N": 5,
-  "failed": 1
+  "M": 5,
+  "N": 14,
+  "failed": 9
 }
