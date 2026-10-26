@@ -67,6 +67,11 @@ object ProgramInstallPipeline {
              *  => 而而**本体那一份**（bin/libbusybox.so）**不在**里面（=> 而它不认自己的文件名）。
              *  => 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而而它们各自是命令）。 */
             val derivedLinks: List<String> = emptyList(),
+            /** 那件**额外**要的那几层（=> 而那 bin/ 与那 lib/ **那两**层**不**在里面）。
+             *  => 而那 git 那一件逐字要那 **libexec/**（=> 而那子命令目录）、
+             *  => 而那 cmake 那一件逐字要那 **share/**（=> 而那模块目录）。
+             *  => 而它们逐字**是**那**落位事实**、=> 而那**落位侧**逐字**照**它们**搬**。 */
+            val extraDirs: List<String> = emptyList(),
         ) {
             fun roleOf(rel: String): String? = files.firstOrNull { it.path == rel }?.role
 
@@ -102,6 +107,9 @@ object ProgramInstallPipeline {
                 files = files,
                 derivedLinks = (o.optJSONArray("derivedLinks") ?: JSONArray()).let { arr ->
                     (0 until arr.length()).mapNotNull { i ->
+                extraDirs = (o.optJSONArray("extraDirs") ?: JSONArray()).let { arr ->
+                    (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+                },
                         arr.optString(i, "").trim().takeIf { it.isNotEmpty() }
                     }
                 },
@@ -271,6 +279,38 @@ object ProgramInstallPipeline {
         //       而而那**它**逐字**找不到**（=> 而那 git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
         //    => 而那**处置**：=> 而那 link-farm **逐条**逐字**在**那落位目录**上**建**那**软链**（=> 而那**它**逐字**是**那**落位事实**）。
         //    => 而那**它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、=> 而而那**它**逐字**也不是**「那加载器坏了」那个形状。
+        //  缺陷名（C-102）**那件实际要的那几层逐字没有搬**
+        //    => 而那 bin/ 与那 lib/ **那两**层逐字**走**那 files[] **那条路**（=> 而按形态落），
+        //       而而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
+        //       逐字**不**在**那** files[] **里面**、=> 而而那**它们**逐字**要**按**原样**落**。
+        //    => 而那**处置**：=> 而那**额外**的**每一层**逐字**整层**搬**过去**（=> 而那**落位事实**逐字**是**这样**的**）。
+        for (extra in shape.extraDirs) {
+            val srcDir = File(dest, extra)
+            if (!srcDir.isDirectory) continue
+            val dstDir = File(dest, extra)
+            runCatching {
+                srcDir.walkTopDown().forEach { f ->
+                    val rel = f.relativeTo(srcDir).path
+                    val target = File(dstDir, rel)
+                    if (f.isDirectory) {
+                        target.mkdirs()
+                    } else {
+                        target.parentFile?.mkdirs()
+                        if (!target.exists()) {
+                            runCatching {
+                                if (java.nio.file.Files.isSymbolicLink(f.toPath())) {
+                                    val raw = java.nio.file.Files.readSymbolicLink(f.toPath()).toString()
+                                    java.nio.file.Files.createSymbolicLink(target.toPath(), java.nio.file.Paths.get(raw))
+                                } else {
+                                    f.copyTo(target, overwrite = true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            probe += "额外那一层 $extra 搬了；"
+        }
         val farm = File(dest, "link-farm.txt")
         if (farm.isFile) {
             var made = 0

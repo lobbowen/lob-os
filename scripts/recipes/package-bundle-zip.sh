@@ -248,16 +248,27 @@ if [ -n "$ENTRY" ]; then
         cp -f "$OUT/link-farm.txt" "$STAGE/link-farm.txt" 2>/dev/null || true
       fi
     fi
-    #  => 而那 libexec/ **那一层**逐字**要**跟**着**搬（=> 而那 git 的**子命令目录**逐字**在**那**底下**）
-    if [ -d "$OUT/libexec" ]; then
-      mkdir -p "$STAGE/libexec"
-      ( cd "$OUT/libexec" && find . -type d -exec mkdir -p "$STAGE/libexec/{}" \; )
-      ( cd "$OUT/libexec" && find . \( -type f -o -type l \) | while read -r f; do
-          mkdir -p "$STAGE/libexec/$(dirname "$f")"
-          cp -Pf "$OUT/libexec/$f" "$STAGE/libexec/$f" 2>/dev/null || cp -f "$OUT/libexec/$f" "$STAGE/libexec/$f" 2>/dev/null || true
+    #  缺陷名（C-102）**那件实际要的那几层逐字没有搬**
+    #    => 而那 bin/ 与那 lib/ **那两**层逐字**是**那**通用**的（=> 而每件都有），
+    #       而而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
+    #       逐字**是**那**一件自己的**事**、=> 而而那**打包**这一族逐字**只**搬**那两**层**。
+    #    => 而那后果逐字**是**：=> 而那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**找不到）、
+    #       而那 cmake 逐字**是**那**空壳**（=> 而那模块目录不在旁边）。
+    #    => 而那**处置**：=> 而那件根底下**除**那 bin/ 与那 lib/ **之外**的**每一层**逐字**都**搬**（=> 而那**落位事实**逐字**是**这样**的**）。
+    #    => 而那**它**逐字**不是**「那 DT_RUNPATH 要改」那个形状、=> 而而那**它**逐字**也不是**「那加载器坏了」那个形状。
+    for extra in $(cd "$OUT" && ls -A 2>/dev/null | LC_ALL=C sort); do
+      case "$extra" in
+        bin|lib|*.zip|*.tar.gz|*.sha256|component-meta.json|piece-shape.json|program-manifest.json|link-farm.txt|*.version) continue ;;
+      esac
+      [ -d "$OUT/$extra" ] || continue
+      mkdir -p "$STAGE/$extra"
+      ( cd "$OUT/$extra" && find . -type d -exec mkdir -p "$STAGE/$extra/{}" \; )
+      ( cd "$OUT/$extra" && find . \( -type f -o -type l \) | while read -r f; do
+          mkdir -p "$STAGE/$extra/$(dirname "$f")"
+          cp -Pf "$OUT/$extra/$f" "$STAGE/$extra/$f" 2>/dev/null || cp -f "$OUT/$extra/$f" "$STAGE/$extra/$f" 2>/dev/null || true
         done )
-      echo "  （libexec/ 下搬了 $(find "$STAGE/libexec" \( -type f -o -type l \) 2>/dev/null | wc -l) 项）"
-    fi
+      echo "  （额外那一层 $extra/ 搬了 $(find "$STAGE/$extra" \( -type f -o -type l \) 2>/dev/null | wc -l) 项）"
+    done
   fi
 else
   #  纯库件（这一件没有程序那一侧） entry 留空  **把 lib/ 下的字节全搬进包**。
