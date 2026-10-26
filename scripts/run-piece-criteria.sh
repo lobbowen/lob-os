@@ -55,12 +55,17 @@ if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
   exit 2
 fi
 
-python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$@" << 'PYEOF'
+#  那 M0prime 那一族逐字**那八**件（=> 而那 ROUND51 :10 到 :17 **逐字**给**的**）
+M0P_SET="bash ripgrep jq openssl busybox crypto curl zlib"
+
+python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$M0P_SET" "$@" << 'PYEOF'
 import io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
 criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
-wanted = sys.argv[8:]
+lib_prefix = os.path.join(os.path.dirname(target_prefix), 'lib')
+m0p_set = sys.argv[8].split()
+wanted = sys.argv[9:]
 d = json.load(io.open(criteria_path, encoding='utf-8'))
 
 pieces = [k for k in sorted(d.keys())
@@ -116,6 +121,7 @@ def run_criterion(code):
     env['LOBOS_DEV'] = dev
     env['LOBOS_PKG'] = pkg
     env['LOBOS_TARGET_PREFIX'] = target_prefix
+    env['LOBOS_LIB_PREFIX'] = lib_prefix
     script = SHIM + '\n' + code
     rr = subprocess.run(['node', '-e', script], capture_output=True, text=True,
                         env=env, timeout=int(timeout) + 120)
@@ -132,6 +138,11 @@ for k in pieces:
         'criterion': d[k].get('criterion', ''),
     })
 
+#  那**两个**分母逐字**各**答**一件**事**、=> 而按 C-135 逐字**不合并**（=> 而而那 **M/N** 那个数逐字**是**那 M0prime **那一族**的**）
+m0p_results = [r for r in results if r['id'] in m0p_set]
+m0p_passed = sum(1 for r in m0p_results if r['status'] == '过')
+m0p_failed = sum(1 for r in m0p_results if r['status'] == '不过')
+
 passed = sum(1 for r in results if r['status'] == '过')
 failed = sum(1 for r in results if r['status'] == '不过')
 
@@ -144,12 +155,27 @@ doc = {
     'threshold': {'value': None, 'status': '未核',
                   'note': '那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而而那**那一句**逐字**是**那**另一个**阈值**、=> 而**不**是**这**一个**）、=> 而按 C-105 报缺、=> 而而那 M/N **逐字**是**那读数**、=> 而那阈值逐字**不是**那读数'},
     'pieces': results,
-    'M': passed,
-    'N': len(results),
-    'failed': failed,
+    'M0prime': {
+        'set': m0p_set,
+        'setSource': '07 那 ROUND51 :10 到 :17 逐字给的那形态表',
+        'M': m0p_passed,
+        'N': len(m0p_results),
+        'failed': m0p_failed,
+        'note': '那 M0prime 真判据的分母（=> 而那八件里跑起来几个）'
+    },
+    'collected': {
+        'M': passed,
+        'N': len(results),
+        'failed': failed,
+        'note': '那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）'
+    },
+    'M': m0p_passed,
+    'N': len(m0p_results),
+    'failed': m0p_failed,
 }
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
-print('M=%d N=%d（不过 %d）、取数时刻 %s' % (passed, len(results), failed, now))
+print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
+      % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))
 for r in results:
     print('  %-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
 PYEOF

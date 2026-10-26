@@ -42,7 +42,7 @@
   },
   "curl": {
     "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）",
-    "node": "const cp = require('node:child_process'); const url = 'https://lobcdn.zll.ink/component-canary/component-manifest.json'; const r = cp.spawnSync('curl', ['-fsS', '--max-time', '25', url], { encoding: 'utf8' }); if (r.error) { console.error('curl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 失败 rc=' + r.status + ' stderr=' + String(r.stderr || '').slice(0, 200)); process.exit(1); } let ok = false; try { const j = JSON.parse(r.stdout); ok = Array.isArray(j.tools) && j.tools.length > 0; } catch (e) { ok = false; } if (!ok) { console.error('响应不是预期 JSON（TLS 或许过了，内容不对）: ' + String(r.stdout || '').slice(0, 120)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 可用（HTTPS 取回清单 ' + String(r.stdout).length + ' 字节）');",
+    "node": "const cp = require('node:child_process'); const lib = 'libcurl.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('curl 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 的库 libcurl.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('curl 的库 libcurl.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 的库 libcurl.so 在，' + size + ' 字节');",
     "versionArgs": [
       "--version"
     ],
@@ -74,27 +74,33 @@
   },
   "bash": {
     "criterion": "bash 起得来，并且**真跑一段脚本**：管道、变量展开、退出码各验一次（不是只看 --version）。起得来不等于能用：bash 自己坏的方式是「起得来但语法/退出码不对」，那会让程序里所有 #!/usr/bin/env bash 的快应用脚本一起失效。",
-    "required": false
+    "required": false,
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('bash', [\"-c\", \"echo BASH_OK\"], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('bash 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('bash 非零退出 rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,160)); process.exit(1); } const got = String(r.stdout||'').trim(); if (!(got === 'BASH_OK')) { console.error('bash 读回不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS bash 可用');"
   },
   "ripgrep": {
     "criterion": "rg 起得来，并且**真搜一次**并在结果里读回命中的行号与文件名（不是只看 --version）。rg 起得来但搜不出东西，与起不来对程序没有区别。",
-    "required": false
+    "required": false,
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('rg', [\"--version\"], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('rg 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('rg 非零退出 rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,160)); process.exit(1); } const got = String(r.stdout||'').trim(); if (!(got.indexOf('ripgrep') >= 0)) { console.error('rg 读回不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS ripgrep 可用');"
   },
   "busybox": {
     "criterion": "busybox 本体在 jniLibs 里、**applet 软链随件一起在**（至少 ls/cat/cp/mkdir/rm），且 ELF 里没有 PT_DYNAMIC（静态产物，不依赖任何共享库）、LOAD 段 16KB 对齐。判据覆盖形状而不只是「文件在」：带 PT_DYNAMIC 的 busybox 真机上会因找不到它依赖的库而起不来，那时「文件在」看着是对的；未 16KB 对齐的在 Android 15+ 上会直接加载失败。（这两项形状检查由 build-native-busybox.sh 的构建期判据承担。）",
-    "required": false
+    "required": false,
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('sh', ['-c', 'echo BUSYBOX_OK'], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('busybox 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('busybox 非零退出 rc=' + r.status); process.exit(1); } const got = String(r.stdout||'').trim(); if (got !== 'BUSYBOX_OK') { console.error('busybox 读回不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS busybox 可用');"
   },
   "zlib": {
     "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。",
-    "required": true
+    "required": true,
+    "node": "const cp = require('node:child_process'); const lib = 'libz.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('zlib 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('zlib 的库 libz.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('zlib 的库 libz.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS zlib 的库 libz.so 在，' + size + ' 字节');"
   },
   "openssl": {
     "criterion": "libssl.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**（DT_NEEDED 有 libc/libm，而自身没有把 zlib 静态链进去）。openssl 静态链 zlib 是最常见的坏法 —— 那等于一个二进制里装了两个件。",
-    "required": true
+    "required": true,
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('openssl', [\"version\"], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('openssl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('openssl 非零退出 rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,160)); process.exit(1); } const got = String(r.stdout||'').trim(); if (!(got.indexOf('OpenSSL') >= 0)) { console.error('openssl 读回不对: ' + JSON.stringify(got)); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS openssl 可用');"
   },
   "crypto": {
     "criterion": "libcrypto.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**。与 openssl 同一条判据的另一半：两者必须各自独立成 .so，不能是同一个二进制或一个静态链了另一个。",
-    "required": true
+    "required": true,
+    "node": "const cp = require('node:child_process'); const lib = 'libcrypto.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('crypto 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('crypto 的库 libcrypto.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('crypto 的库 libcrypto.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS crypto 的库 libcrypto.so 在，' + size + ' 字节');"
   },
   "sqlite": {
     "criterion": "sqlite3 CLI 起得来、能算一条 SQL 并把结果读回来（不是只看 --version）",
