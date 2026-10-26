@@ -1,13 +1,13 @@
 {
-  "$note": "M0 内核可信起点清单的机器可核对数据。逐条带出处（行号 + 原文）。",
+  "$note": "M0 内核可信起点清单的机器可核对数据。逐条带出处（行号 + 原文）。素材逐字在本仓内 docs/kernel-baseline/。",
   "source": {
     "defconfig": {
-      "path": "gki_defconfig",
+      "path": "docs/kernel-baseline/gki_defconfig",
       "sha256": "8400944b7e3a2c768f76bd6964fae16197fc12642a4155bdc3c13014d213ef5a",
       "lines": 794
     },
     "kconfig": {
-      "path": "kconfig",
+      "path": "docs/kernel-baseline/kconfig",
       "sha256": "e93cb175309d0ccebd7da7d11af418978730796a0a2207af1fba4b5ca4ae0b9b",
       "lines": 2041
     }
@@ -15,8 +15,17 @@
   "kernelVersion": {
     "value": null,
     "status": "未核",
-    "note": "那具体版本号在素材里没有可核对标记、=> 而按 C-105 不猜填、=> 而那取逐字不归 01"
+    "note": "那具体版本号在这两件素材里逐字没有可核对标记（=> 而那 LOCALVERSION 那一行逐字只给出 -4k）、=> 而按 C-105 不猜填、=> 而那取逐字不归 01、=> 而那取逐字归 06"
   },
+  "missingReferences": [
+    {
+      "ref": "init/Kconfig.gki",
+      "from": "kconfig",
+      "line": 2040,
+      "status": "缺失",
+      "note": "那 kconfig 末尾逐字 source 它、=> 而它逐字不在那仓内、=> 而本机独立找那整个 work 底下也是 0 个、=> 而按 C-105 报缺"
+    }
+  ],
   "defconfigEntries": [
     {
       "line": 1,
@@ -4060,16 +4069,72 @@
     "line": 2040,
     "text": "source \"init/Kconfig.gki\""
   },
+  "namedItems": {
+    "androidItems": [
+      {
+        "line": 548,
+        "text": "CONFIG_ANDROID_USB_CONFIGFS_UEVENT=y"
+      },
+      {
+        "line": 558,
+        "text": "CONFIG_ANDROID_USB_F_MIDI_INFO=y"
+      },
+      {
+        "line": 561,
+        "text": "CONFIG_ANDROID_USB_CONFIGFS_F_ACC=y"
+      },
+      {
+        "line": 634,
+        "text": "CONFIG_ANDROID_BINDER_IPC=y"
+      },
+      {
+        "line": 635,
+        "text": "CONFIG_ANDROID_BINDERFS=y"
+      },
+      {
+        "line": 636,
+        "text": "CONFIG_ANDROID_DEBUG_SYMBOLS=y"
+      },
+      {
+        "line": 637,
+        "text": "CONFIG_ANDROID_VENDOR_HOOKS=y"
+      },
+      {
+        "line": 638,
+        "text": "CONFIG_ANDROID_DEBUG_KINFO=y"
+      },
+      {
+        "line": 639,
+        "text": "CONFIG_ANDROID_WRAPFD=y"
+      }
+    ],
+    "sun50iH616Items": [
+      {
+        "line": 455,
+        "text": "# CONFIG_PINCTRL_SUN50I_H616 is not set"
+      },
+      {
+        "line": 456,
+        "text": "# CONFIG_PINCTRL_SUN50I_H616_R is not set"
+      }
+    ],
+    "localVersionItems": [
+      {
+        "line": 2,
+        "text": "CONFIG_LOCALVERSION=\"-4k\""
+      }
+    ]
+  },
   "referenceDocs": [
     {
       "file": "kmi.html",
-      "kind": "Android 官方文档页",
+      "kind": "Google 网页（登录页）",
       "title": "Maintain a stable kernel module interface | Android OS core topic",
       "isKernelData": false
     },
     {
       "file": "lkm.html",
-      "kind": "Android 官方文档页",
+      "kind": "Google 网页（登录页）",
       "title": "Loadable kernel modules | Android OS core topics",
       "isKernelData": false
     }
