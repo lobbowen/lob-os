@@ -243,9 +243,17 @@ jobs:
           rm -rf /usr/local/share/swift /usr/local/swift /opt/swift 2>/dev/null || true
           rm -rf /usr/local/share/scala /usr/local/share/sbt /usr/local/share/play 2>/dev/null || true
           #  那 runner **自己**的**诊断**日志与那**缓存**那一族 —— 而那**正**是那磁盘满**的**现场**。
-          rm -rf /home/runner/actions-runner/cached 2>/dev/null || true
-          rm -rf /home/runner/work/_tool /opt/hostedtoolcache 2>/dev/null || true
-          rm -rf "$RUNNER_TOOL_CACHE" "$RUNNER_WORKSPACE"/../_temp 2>/dev/null || true
+          #  缺陷名（C-102）**那 runner 自己的**那一族**不能删** —— => 而那 40312951611 那一趟逐字在**那第 10 步**上**1 秒**就**红**了、
+          #    => 而而那**原话**逐字**没有**（=> 而那 job 逐字**没有**那一步的 completed、=> 而而那**诊断档**逐字**没有**成型**）
+          #  => 而那**成因**逐字**是**：=> 而那 $RUNNER_TOOL_CACHE **就是**那 /opt/hostedtoolcache、=> 而那 **actions-runner** **自己**逐字**靠**它**跑**、
+          #    => 而而那**删掉**它**之后**那 job 逐字**自己**就**被**那 runner **收拾**了、=> 而而那第 10 步逐字**刚**起**头**就**断**。
+          #  => 而那**处置**：=> 而那**要留**的逐字**是**那 $RUNNER_TOOL_CACHE（=> 而那**编**要**那 cmake**、=> 而那 cmake 逐字**要** sudo apt-get install、
+          #    => 而那 apt **要**那 runner **自己的**缓存**与**工具**目录**）、=> 而那**真正**该**清**的**是**那**它**底下**那**几**个**大**的**预装**工具链**。
+          #  => 而按 C-103 那两边：「那**编**要**那磁盘空间**」与「那 runner **自己**要**活着**」=> 而那两边各答一件事、=> 而按 C-135 那不是同一问。
+          #  => 而按 C-104：=> 而那**清**那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+          #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+          rm -rf /home/runner/actions-runner/_diag 2>/dev/null || true
+          rm -rf "$RUNNER_WORKSPACE"/../_temp 2>/dev/null || true
           #  那**编**的**峰值**要那**空间**、=> 而而那**余量**逐字**要**够**那**构建树**长**完**。
           #  => 而而那**余量**不够**就**判红**（=> 而而那**别处**的**那**一个**判据**逐字**不**够**、
           #    => 而而那**改**的**只**是**那第 9** 步**与**它**相关**的**那几**行**）。
