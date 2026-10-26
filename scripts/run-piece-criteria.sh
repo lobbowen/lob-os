@@ -277,6 +277,30 @@ doc = {
     'N': len(m0p_results),
     'failed': m0p_failed,
 }
+#  缺陷名（C-102）**那读数逐字把**前**一**版**覆盖**了** ——
+#    => 而而它治**的**是「那读数逐字**能不能**换**回**去**」。
+#    => 而那**成因**：=> 而那**现行**的**那**写**法逐字**只**写**那**这一**版、=> 而而那**旧**的**那一版**就**没**了**。
+#    => 而那**后果**逐字**是**：=> 而那**两**个**时点**的**读数**逐字**互相**覆盖**、=> 而而那**它们**逐字**分不**开**。
+#    => 而那**处置**：=> 而那**旧**的**那一版**逐字**并**进**那**历史**那一族**（=> 而那**它**们逐字**并列**）。
+#    => 而按 C-115：=> 而那**两**份**读数**不**同时点**、=> 而而它们**不互相**覆盖**。
+try:
+    _prev = json.load(io.open(out_path, encoding='utf-8'))
+except Exception:
+    _prev = None
+if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != doc.get('takenAt'):
+    _hist = _prev.get('history') or []
+    _hist = [h for h in _hist if h.get('takenAt') != _prev.get('takenAt')]
+    _hist.append({
+        'takenAt': _prev.get('takenAt'),
+        'M': _prev.get('M'),
+        'N': _prev.get('N'),
+        'failed': _prev.get('failed'),
+        'collectedM': (_prev.get('collected') or {}).get('M'),
+        'collectedN': (_prev.get('collected') or {}).get('N'),
+        'notPassed': [p.get('id') for p in (_prev.get('pieces') or []) if p.get('status') != '过'],
+        'note': '那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）',
+    })
+    doc['history'] = _hist
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))
