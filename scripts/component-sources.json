@@ -5,147 +5,6 @@
   "ndkVersion": "30.0.16248370",
   "llvmVersion": "21.0.0",
   "sources": {
-    "zlib": {
-      "version": "1.3.2",
-      "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
-      "urls": [
-        "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
-        "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
-      ],
-      "piece": true
-    },
-    "openssl": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 busybox 那一族：=> 而 bin/ 下那 19 项是**同一份字节的多个名字**（=> 而那是多调用那一族，=> 而而它取的是作者声明的那一个软链名）。而 openssl 那一件：=> 而 bin/ 下有**两份不同的** shebang 脚本（=> 而 bin/openssl 与 bin/c_rehash，=> 而而 c_rehash 是上游 openssl 3.6.3 的 make install_sw 装出来的、=> 而而它不是我们起的名，=> 而而那**不是**同一份字节）=> => 而那是「这一件有多个入口」那一问。而**取哪一个**：=> 而 bin/openssl 才是这一件**本名**（=> 而而 bin/c_rehash 是上游附带的），=> 而而旧表（3a6b8625 那一版 component-verify.json）逐字是 openssl 的 entry = lib/libssl.so，=> 而而那是**库**那一侧（=> 而而今天按形态算出来的是 bin/openssl）。",
-      "entryName": "openssl",
-      "version": "3.6.3",
-      "sha256": "243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1",
-      "urls": [
-        "https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz"
-      ],
-      "piece": true
-    },
-    "curl": {
-      "version": "8.22.0",
-      "sha256": "d54dd598bf05927a726deb38df31c6a255ba83ff1de57c5d1464dac3ed8f44a1",
-      "urls": [
-        "https://curl.se/download/curl-8.22.0.tar.gz",
-        "https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.gz"
-      ],
-      "piece": true
-    },
-    "git": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 git 那一件：=> 而上游 make install 会把 git 与那一批 git-* 子命令**都**装进 bin/（=> 而它们**各自**是独立的 ELF 程序、=> 而而字节**各不相同**，=> 而而那**不是**同一份字节的多个名字）。而**取哪一个**：=> 而 bin/git 才是这一件**本名**（=> 而那一批 git-* 是子命令，=> 而而它们是这一件的**部件**、=> 而而那一件自己的安装步骤后来把它们搬进 libexec/git-core 那一族，=> 而而那一份另有一格记着哪些是派生物）。",
-      "entryName": "git",
-      "version": "2.55.0",
-      "sha256": "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357",
-      "urls": [
-        "https://cdn.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz",
-        "https://mirrors.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
-      ]
-    },
-    "jq": {
-      "version": "1.8.2",
-      "sha256": "71b8d6e8f5fe81f6c6d0d110e3892251f6ce76ed095abd315e26e6e1193af3af",
-      "urls": [
-        "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-1.8.2.tar.gz"
-      ],
-      "piece": true
-    },
-    "git-config.mak.uname.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "c4844a7f15c4a6b913756aa775c71ba7869629ecf7025f4483053c722cdf4c82",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.mak.uname.patch"
-      ]
-    },
-    "git-run-command.c.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "80b0cda09737edbc4cd71df2afdeff10ba6ae006258abd55ba3c9ab407ccec28",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/run-command.c.patch"
-      ]
-    },
-    "git-disable-fdsan.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "e6100956c4a743196f3e5adc1ddf02d9509c7dc71d37fbc91d9422ce3e4d9018",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable-fdsan.patch"
-      ]
-    },
-    "git-disable_daemon_syslog.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "019e5bd7d041a303929507e920e039b5c920e1e42f82b75ab04aaa0d86a9b86f",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable_daemon_syslog.patch"
-      ]
-    },
-    "git-compat-posix.h.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "791f3ee9750102ba780f694887bde486d9a5ee13f112d75a1c3d603d2a6dc109",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/compat-posix.h.patch"
-      ]
-    },
-    "git-config.c.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "6f06347fec4df7220f753ed4c9121fecf11baccb873423528c9e2efac7f6e7c4",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.c.patch"
-      ]
-    },
-    "git-help.c.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "5a8abe7bbdc246ba0ba858fc8e6025c53d1be0d7bac888e984a895a3572c877a",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/help.c.patch"
-      ]
-    },
-    "git-tempfile.c.patch": {
-      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
-      "sha256": "d5f122bf3a95c6d11a8a90b0ada3b44d3e7d6311356048efa3ff1c51bf96c0c5",
-      "urls": [
-        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/tempfile.c.patch"
-      ]
-    },
-    "llvm": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 llvmtoolchain 那一件：=> 而那 bin/ 下有**一百零几**个**各自不同**的程序形态字节（=> 而它们**不是**同一份字节、=> 而那**不是**多调用那一族），=> 而而那**入口**逐字**该**取**那 clang**（=> 而它是那 C++ 前端、=> 而它是那 NEED_BIN 那一族的头一个、=> 而它是这一件的**名字**）。=> 而而它**原来**没有**这一格**、=> 而而那 gen-component-meta.js :255 那一支逐字**因此**算**不出**入口、=> 而而那 read-component-entry.sh 逐字**答**一个**空行**、=> 而而那判据就**拿**那**空**的**去**比**那 dist/ **那一**个**目录**。",
-      "entryName": "clang",
-      "version": "21.1.0",
-      "sha256": "1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825",
-      "urls": [
-        "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-project-21.1.0.src.tar.xz"
-      ]
-    },
-    "make": {
-      "version": "4.4.1",
-      "sha256": "dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3",
-      "urls": [
-        "https://mirrors.aliyun.com/gnu/make/make-4.4.1.tar.gz",
-        "https://mirror.nju.edu.cn/gnu/make/make-4.4.1.tar.gz"
-      ]
-    },
-    "cmake": {
-      "version": "4.4.4",
-      "sha256": "bd24c30d80a7744ae84b845ff080cc8453b06c622ef01066564108e9cefc44cf",
-      "urls": [
-        "https://cmake.org/files/v4.4/cmake-4.4.4.tar.gz",
-        "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4.tar.gz"
-      ]
-    },
-    "pkgconf": {
-      "version": "3.0.7",
-      "sha256": "028889796fd6d556e019d35b8e8d68d321cbb5cf9827d3ea7653625629641345",
-      "urls": [
-        "https://github.com/pkgconf/pkgconf/releases/download/pkgconf-3.0.7/pkgconf-3.0.7.tar.gz"
-      ]
-    },
-    "python": {
-      "version": "3.14.8",
-      "sha256": "a65b20a728f169f4e66ae143f40b1bd3d33c38d770251663f627c9767b79b210",
-      "urls": [
-        "https://www.python.org/ftp/python/3.14.8/Python-3.14.8.tgz"
-      ]
-    },
     "bash": {
       "version": "5.2.15",
       "sha256": "13720965b5f4fc3a0d4b61dd37e7565c741da9a5be24edc2ae00182fc1b3588c",
@@ -169,27 +28,12 @@
       "entryName": "sh",
       "piece": true
     },
-    "ripgrep": {
-      "$comment-shape": "**这一项的形状与其余 20 项不同：没有 urls，因为没有可下载的 tarball。** 其余件是「下载源码 tar.gz → 逐字节校验 sha256 → configure/make 编译」；ripgrep 是 Rust 件，走 `cargo install --locked --version 14.1.1`（crates.io），源码由 cargo 自己按 lock 文件取，我们不经手 tarball，所以拿不到「源码包」的 sha256。",
-      "$comment-hash": "**这里的 sha256 是编出来的二进制（liblobosrg.so）的哈希，不是源码包的哈希** —— 两者不是一回事，写混了会让「校验源码」这个动作变成校验自己的产物。它由 scripts/recipes/build-native-capabilities.sh 在 cargo install 成功之后算出：先比对表里的值，一致则判绿（说明这一版编出来的东西与上一次逐字节相同）；不一致时**把实测值写进表并打印提示**，下一轮就以它为基线。首次运行时表里为空 → 记为「首轮建立基线」并写入。",
-      "$comment-verify": "与 NDK 版本同理（见 $comment-ndkVersion）：cargo 的 `--locked` 锁的是依赖图，不锁 crates.io 上那个 .crate 包本身。要真正锁住「拿到的是同一份源码」，得比对 crates.io 的校验值 —— 但那要另做一次下载+计算，而 crates.io 的 .crate 哈希与最终 .so 哈希无从互推。所以这里的保证是：**同一 NDK + 同一版本 => 同一产物**（cargo install 的输入与 NDK clang 都钉住了）。要更强保证需另设判据，本项不声称。",
-      "version": "14.1.1",
-      "builtFrom": {
-        "tool": "cargo",
-        "command": "cargo install --locked --version 14.1.1 ripgrep --target aarch64-linux-android --root <tmp> --no-track",
-        "registry": "crates.io",
-        "target": "aarch64-linux-android"
-      },
-      "sha256": "",
-      "productName": "liblobosrg.so",
-      "installName": "rg",
-      "piece": true
-    },
-    "sqlite": {
-      "version": "3.53.4",
-      "sha256": "1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d",
+    "cmake": {
+      "version": "4.4.4",
+      "sha256": "bd24c30d80a7744ae84b845ff080cc8453b06c622ef01066564108e9cefc44cf",
       "urls": [
-        "https://www.sqlite.org/2026/sqlite-amalgamation-3530400.zip"
+        "https://cmake.org/files/v4.4/cmake-4.4.4.tar.gz",
+        "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4.tar.gz"
       ]
     },
     "crypto": {
@@ -201,6 +45,115 @@
       "note": "libcrypto.so 与 libssl.so 一并编出（OpenSSL 的一部分），不是独立的上游项目 —— 版本与 openssl 同步。",
       "$comment-notStandalone-removed": "而那一格（notStandalone）今天被删了（2026-10-25）。缺陷名（C-102）：**「归并」与「随不随 APK 走」被当成了同一件事**。而那两个是两个问句（按 C-135）：一、「归并之后 crypto 那一件还存不存在」（而 01 那一件裁的是那一格仍未过，01 本件不裁）；二、「crypto 那一件随不随 APK 走」（而那是**落位**那一格）。而原来这一格 notStandalone: true 把 crypto 排除在 PIECES 之外（=> 而 scripts/toolchain/pieces-from-table.js:46 逐字是 `return e.notStandalone !== true;`），=> 而那**只**回答了问句二、=> 而而它**没有**回答问句一。而今天设备上那两份必须变成同一份（=> 而 lead 派的处置方向是 D-改动，=> 而 01 那一件第六版裁的是「取路 A」），=> 而要做的正是让 crypto 那一件随 APK 走（=> 而它随 APK 走时那一件是 src90fa46a13608 那一版，=> 而而那一份与 openssl 那一件那一份**逐字相同**，=> 而而本机核过 cmp 零输出、exit 0）。而删这一格**不改任何一件的指纹**（=> 而本机核过：=> 而 component-sources.json **不在** SRC_FILES 也不在 PKG_MECH 里，=> 而而 11 件的指纹逐字与改前相同），=> 而而**只有 crypto 那一件多一个 asset 要取**（=> 而那一份今天已经在 base-crypto 筐里）。",
       "piece": true
+    },
+    "curl": {
+      "version": "8.22.0",
+      "sha256": "d54dd598bf05927a726deb38df31c6a255ba83ff1de57c5d1464dac3ed8f44a1",
+      "urls": [
+        "https://curl.se/download/curl-8.22.0.tar.gz",
+        "https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.gz"
+      ],
+      "piece": true
+    },
+    "git": {
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 git 那一件：=> 而上游 make install 会把 git 与那一批 git-* 子命令**都**装进 bin/（=> 而它们**各自**是独立的 ELF 程序、=> 而而字节**各不相同**，=> 而而那**不是**同一份字节的多个名字）。而**取哪一个**：=> 而 bin/git 才是这一件**本名**（=> 而那一批 git-* 是子命令，=> 而而它们是这一件的**部件**、=> 而而那一件自己的安装步骤后来把它们搬进 libexec/git-core 那一族，=> 而而那一份另有一格记着哪些是派生物）。",
+      "entryName": "git",
+      "version": "2.55.0",
+      "sha256": "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357",
+      "urls": [
+        "https://cdn.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz",
+        "https://mirrors.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
+      ]
+    },
+    "git-compat-posix.h.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "791f3ee9750102ba780f694887bde486d9a5ee13f112d75a1c3d603d2a6dc109",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/compat-posix.h.patch"
+      ]
+    },
+    "git-config.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "6f06347fec4df7220f753ed4c9121fecf11baccb873423528c9e2efac7f6e7c4",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.c.patch"
+      ]
+    },
+    "git-config.mak.uname.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "c4844a7f15c4a6b913756aa775c71ba7869629ecf7025f4483053c722cdf4c82",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/config.mak.uname.patch"
+      ]
+    },
+    "git-disable-fdsan.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "e6100956c4a743196f3e5adc1ddf02d9509c7dc71d37fbc91d9422ce3e4d9018",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable-fdsan.patch"
+      ]
+    },
+    "git-disable_daemon_syslog.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "019e5bd7d041a303929507e920e039b5c920e1e42f82b75ab04aaa0d86a9b86f",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/disable_daemon_syslog.patch"
+      ]
+    },
+    "git-help.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "5a8abe7bbdc246ba0ba858fc8e6025c53d1be0d7bac888e984a895a3572c877a",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/help.c.patch"
+      ]
+    },
+    "git-run-command.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "80b0cda09737edbc4cd71df2afdeff10ba6ae006258abd55ba3c9ab407ccec28",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/run-command.c.patch"
+      ]
+    },
+    "git-tempfile.c.patch": {
+      "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
+      "sha256": "d5f122bf3a95c6d11a8a90b0ada3b44d3e7d6311356048efa3ff1c51bf96c0c5",
+      "urls": [
+        "https://raw.githubusercontent.com/termux/termux-packages/a897f5641358fad33d5d6e76c65335695b1da0fc/packages/git/tempfile.c.patch"
+      ]
+    },
+    "jq": {
+      "version": "1.8.2",
+      "sha256": "71b8d6e8f5fe81f6c6d0d110e3892251f6ce76ed095abd315e26e6e1193af3af",
+      "urls": [
+        "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-1.8.2.tar.gz"
+      ],
+      "piece": true
+    },
+    "kernel": {
+      "$comment": "而那内核源码那一族逐字**不**进那仓内、=> 而它逐字**是**那取件那一族、=> 而它逐字**走**那 fetch-pinned.sh 那一条现成的路。=> 而那**版本号**逐字 = 6.6.144、=> 而那**分支**逐字 = android15-6.6、=> 而那 tip 那一个数逐字 = 18e7dadae19bd16a5a027d8bd95663f759af51fa。=> 而那 urls **那一族**逐字**是**那**逐文件**那一族（=> 而那 ?format=TEXT **那一族**），=> 而而那**它**逐字**稳**、=> 而那归档那一族逐字**每次打包都换**那字节。=> 而那 sha256 **那一格**逐字**是**那**四件逐文件**合成**那一个**产物**的那一个（=> 而那**它**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**）。=> 而而那**四件**逐字**跟**那仓内那 docs/kernel-baseline/upstream/ 底下**那四件**逐字**一样**。",
+      "version": "6.6.144",
+      "sha256": "c6f39a13f5d418be4d4f6ca3ce43a47af25b0b9017e92286b7ec0323ef5713e7",
+      "urls": [
+        "https://android.googlesource.com/kernel/common/+archive/18e7dadae19bd16a5a027d8bd95663f759af51fa.tar.gz"
+      ],
+      "piece": false
+    },
+    "llvm": {
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 llvmtoolchain 那一件：=> 而那 bin/ 下有**一百零几**个**各自不同**的程序形态字节（=> 而它们**不是**同一份字节、=> 而那**不是**多调用那一族），=> 而而那**入口**逐字**该**取**那 clang**（=> 而它是那 C++ 前端、=> 而它是那 NEED_BIN 那一族的头一个、=> 而它是这一件的**名字**）。=> 而而它**原来**没有**这一格**、=> 而而那 gen-component-meta.js :255 那一支逐字**因此**算**不出**入口、=> 而而那 read-component-entry.sh 逐字**答**一个**空行**、=> 而而那判据就**拿**那**空**的**去**比**那 dist/ **那一**个**目录**。",
+      "entryName": "clang",
+      "version": "21.1.0",
+      "sha256": "1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825",
+      "urls": [
+        "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-project-21.1.0.src.tar.xz"
+      ]
+    },
+    "make": {
+      "version": "4.4.1",
+      "sha256": "dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3",
+      "urls": [
+        "https://mirrors.aliyun.com/gnu/make/make-4.4.1.tar.gz",
+        "https://mirror.nju.edu.cn/gnu/make/make-4.4.1.tar.gz"
+      ]
     },
     "node": {
       "version": "24.21.0",
@@ -228,6 +181,30 @@
       "fromNode": true,
       "note": "随 Node.js 一起来的包管理器（Node.js 生态，独立分发）。"
     },
+    "openssl": {
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 busybox 那一族：=> 而 bin/ 下那 19 项是**同一份字节的多个名字**（=> 而那是多调用那一族，=> 而而它取的是作者声明的那一个软链名）。而 openssl 那一件：=> 而 bin/ 下有**两份不同的** shebang 脚本（=> 而 bin/openssl 与 bin/c_rehash，=> 而而 c_rehash 是上游 openssl 3.6.3 的 make install_sw 装出来的、=> 而而它不是我们起的名，=> 而而那**不是**同一份字节）=> => 而那是「这一件有多个入口」那一问。而**取哪一个**：=> 而 bin/openssl 才是这一件**本名**（=> 而而 bin/c_rehash 是上游附带的），=> 而而旧表（3a6b8625 那一版 component-verify.json）逐字是 openssl 的 entry = lib/libssl.so，=> 而而那是**库**那一侧（=> 而而今天按形态算出来的是 bin/openssl）。",
+      "entryName": "openssl",
+      "version": "3.6.3",
+      "sha256": "243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1",
+      "urls": [
+        "https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz"
+      ],
+      "piece": true
+    },
+    "openssl-runpath-origins.patch": {
+      "version": "openssl-3.6.3",
+      "sha256": "c3ef8366747a46d63cc89901ff81f34d38a775ca5a5ca004a6f767d1137803c9",
+      "urls": [
+        "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-runpath-origins.patch"
+      ]
+    },
+    "pkgconf": {
+      "version": "3.0.7",
+      "sha256": "028889796fd6d556e019d35b8e8d68d321cbb5cf9827d3ea7653625629641345",
+      "urls": [
+        "https://github.com/pkgconf/pkgconf/releases/download/pkgconf-3.0.7/pkgconf-3.0.7.tar.gz"
+      ]
+    },
     "pnpm": {
       "version": "12.7.0",
       "$comment-version": "而这一格**必须与产物那份逐字相同**（=> 而 package-component.sh:18 那一处逐字是那个等号比较）—— => 而而它原来写的是 10.x（=> 而那是**大版本占位**），=> 而而那一件的真实版本由 build-component-pnpm.sh:8 那一行给出（=> 而逐字是 PNPM_VERSION=12.7.0）。",
@@ -236,12 +213,44 @@
       ],
       "note": "Node.js 生态的包管理器，独立分发。"
     },
-    "openssl-runpath-origins.patch": {
-      "version": "openssl-3.6.3",
-      "sha256": "c3ef8366747a46d63cc89901ff81f34d38a775ca5a5ca004a6f767d1137803c9",
+    "python": {
+      "version": "3.14.8",
+      "sha256": "a65b20a728f169f4e66ae143f40b1bd3d33c38d770251663f627c9767b79b210",
       "urls": [
-        "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-runpath-origins.patch"
+        "https://www.python.org/ftp/python/3.14.8/Python-3.14.8.tgz"
       ]
+    },
+    "ripgrep": {
+      "$comment-shape": "**这一项的形状与其余 20 项不同：没有 urls，因为没有可下载的 tarball。** 其余件是「下载源码 tar.gz → 逐字节校验 sha256 → configure/make 编译」；ripgrep 是 Rust 件，走 `cargo install --locked --version 14.1.1`（crates.io），源码由 cargo 自己按 lock 文件取，我们不经手 tarball，所以拿不到「源码包」的 sha256。",
+      "$comment-hash": "**这里的 sha256 是编出来的二进制（liblobosrg.so）的哈希，不是源码包的哈希** —— 两者不是一回事，写混了会让「校验源码」这个动作变成校验自己的产物。它由 scripts/recipes/build-native-capabilities.sh 在 cargo install 成功之后算出：先比对表里的值，一致则判绿（说明这一版编出来的东西与上一次逐字节相同）；不一致时**把实测值写进表并打印提示**，下一轮就以它为基线。首次运行时表里为空 → 记为「首轮建立基线」并写入。",
+      "$comment-verify": "与 NDK 版本同理（见 $comment-ndkVersion）：cargo 的 `--locked` 锁的是依赖图，不锁 crates.io 上那个 .crate 包本身。要真正锁住「拿到的是同一份源码」，得比对 crates.io 的校验值 —— 但那要另做一次下载+计算，而 crates.io 的 .crate 哈希与最终 .so 哈希无从互推。所以这里的保证是：**同一 NDK + 同一版本 => 同一产物**（cargo install 的输入与 NDK clang 都钉住了）。要更强保证需另设判据，本项不声称。",
+      "version": "14.1.1",
+      "builtFrom": {
+        "tool": "cargo",
+        "command": "cargo install --locked --version 14.1.1 ripgrep --target aarch64-linux-android --root <tmp> --no-track",
+        "registry": "crates.io",
+        "target": "aarch64-linux-android"
+      },
+      "sha256": "",
+      "productName": "liblobosrg.so",
+      "installName": "rg",
+      "piece": true
+    },
+    "sqlite": {
+      "version": "3.53.4",
+      "sha256": "1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d",
+      "urls": [
+        "https://www.sqlite.org/2026/sqlite-amalgamation-3530400.zip"
+      ]
+    },
+    "zlib": {
+      "version": "1.3.2",
+      "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+      "urls": [
+        "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+        "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
+      ],
+      "piece": true
     }
   },
   "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"

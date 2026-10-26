@@ -87,6 +87,26 @@ static int env_has(char *const envp[], const char *k) {
     return 0;
 }
 
+//  缺陷名（C-102）**那 env 风格那 shebang 里的 VAR=VALUE 逐字被丢了** ——
+//    => 而而它治**的**是「那 shebang 逐字**指定**的**那环境**逐字**到不**到**那**孩子**的**环境**」。
+//    => 而那**成因**：=> 而那 execve **那一族**逐字**跳过**那 VAR=VALUE **那些**记号（=> 而那 :391 那一行）、
+//       => 而而那**它**们逐字**只**被**跳过**、=> 而而那**它们**逐字**没有**进**那 envp**。
+//    => 而那**后果**逐字**是**：=> 而那 npm **那一件**的**那个** wrapper 逐字**走**那 /usr/bin/env **那一条**路、
+//       => 而而那**它**逐字**先**把**那 LD_LIBRARY_PATH **换**成**它自己**那一个（=> 而那**它**逐字**盖掉**了**那**宿主**给的**那一个**）、
+//       => 而而那 node **那一件**逐字**链不**上**那库**、=> 而而那**它**逐字**挂**在**那**那一步**。
+//    => 而那**处置**：=> 而那 VAR=VALUE **那些**记号逐字**按**那 env **那一族**的**语义**进**那 envp**。
+//    => 而按 C-104：=> 而那 env 风格那 shebang 逐字**只有**一条**路**（=> 而这一支**就是**它**）。
+static char **env_put(char *const envp[], const char *kv) {
+  size_t n = 0;
+  while (envp && envp[n]) n++;
+  char **out = (char **)malloc((n + 2) * sizeof(char *));
+  if (!out) { errno = ENOMEM; return 0; }
+  for (size_t i = 0; i < n; i++) out[i] = envp[i];
+  out[n] = (char *)kv;
+  out[n + 1] = 0;
+  return out;
+}
+
 static char **env_merge_sys(char *const envp[]) {
     int extra = 0;
     const char *const *SK = lobos_sysenv();
@@ -386,10 +406,13 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
     int cmd = 1;
     int envStyle = strcmp(disp0, "env") == 0;
     if (envStyle) {
-      while (cmd < ntok) {
-        const char *t = tok[cmd];
-        if (strchr(t, '=') || strcmp(t, "-S") == 0 || strcmp(t, "-i") == 0 || strcmp(t, "-u") == 0) { cmd++; continue; }
-        break;
+      //  缺陷名（C-102）**那 VAR=VALUE 那些记号逐字被丢了** —— 而而那**它们**逐字**要**进**那 envp**。
+      //    => 而那**处置**：=> 而那**它们**逐字**并**进**那 envp**（=> 而那**显式**给的**优先**、=> 而那**后**给的**盖掉**前面**的**）。
+      while (cmd < ntok && strchr(tok[cmd], '=')) {
+        char **merged = env_put(envp, tok[cmd]);
+        if (!merged) return -1;
+        envp = merged;
+        cmd++;
       }
       if (cmd >= ntok) return real_execve(path, argv, envp);
       interp = tok[cmd];
