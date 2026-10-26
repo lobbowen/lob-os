@@ -34,7 +34,7 @@ object RuntimeEnvironment {
 
     val RESERVED_ENV: Set<String> = setOf(
         "HOME", "TMPDIR", "PATH", "LANG", "SHELL", "LD_LIBRARY_PATH", "LD_PRELOAD",
-        "SSL_CERT_DIR", "SSL_CERT_FILE",
+        "SSL_CERT_DIR", "SSL_CERT_FILE", "PREFIX",
         "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "LOBOS_COMPAT_LOG", "LOBOS_BRIDGE_SOCKET",
         "LOBOS_SESSION_TOKEN", "LOBOS_PROGRAM_ID", "LOBOS_PROGRAM_GENERATION",
         "LOBOS_ANDROID", "LOBOS_PLATFORM", "LOBOS_SUPERVISOR_HOME", "LOBOS_UI_DIR",
@@ -50,6 +50,15 @@ object RuntimeEnvironment {
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
+        //  缺陷名（C-102）**那 PREFIX 那一族逐字没有给** ——
+        //    => 而而它治**的**是「那**运行时**逐字**告诉**那**目标**它**自己**在**哪**一层**前缀**下面**」。
+        //    => 而那**成因**：=> 而那 cmake **那一件**逐字**读**的**是**那 $ENV{PREFIX}/include/android/api-level.h
+        //       （=> 而那 CMakeDetermineSystem.cmake :40 **那一行**）、=> 而而那**它**逐字**要**那 PREFIX **那一个**变量**。
+        //    => 而那**后果**逐字**是**：=> 而那 cmake configure 逐字**报**那「file failed to open for reading」
+        //       （=> 而那真机读数：=> 而那 CMake Error at …/Modules/CMakeDetermineSystem.cmake:40 (file)）。
+        //    => 而那**处置**：=> 而那 PREFIX 逐字**指向**那**前缀**那一层（=> 而那 root.prefixRoot）。
+        //    => 而按 C-104：=> 而那**运行时**给**孩子**的**那** env **快照**逐字**只有**一条路（=> 而这一支**就是**它**）。
+        put("PREFIX", root.prefixRoot.absolutePath)
         //  缺陷名 缺陷名（C-102）那**库**的**搜索次序**逐字**没**算**那件自己的**那**一层**
         //    => 而而它治**的**是「那**运行时**逐字**加载**的**是**哪**一个** libcrypto / libc++_shared.so」。
         //    => 而而它**不**是「那加载器坏了」、=> 而而它**不**是「那 DT_RUNPATH 要改」。
