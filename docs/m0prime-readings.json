@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T18:39:21Z",
+  "takenAt": "2026-10-26T19:41:24Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -28,7 +28,7 @@
       "id": "cmake",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": " executing cmake::LoadCache(). Aborting.\n\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-863451-962723.js:18:11)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
+      "outputTail": "executing cmake::LoadCache(). Aborting.\n\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-2701857-685757.js:18:11)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
       "criterion": "cmake 起得来，并且**真 configure + build 一个最小 CMake 项目** ——只验「起得来」不够：cmake 的模块（Modules/ 等）不在旁边时它是空壳，起得来但任何 configure 都失败。所以判据跑到产出自定义目标那一步。"
     },
     {
@@ -42,14 +42,14 @@
       "id": "curl",
       "status": "过",
       "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS curl 的库 libcurl.so 在，739280 字节",
-      "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）"
+      "outputTail": "LOBOS_PROBE_PASS crypto 的库 libcurl.so 在，739280 字节",
+      "criterion": "libcurl.so 在那件自己的落位目录里、整条版本链都在、带 SONAME，且是**共享库**（=> 而那**它**逐字**不**是**那**可执行**的**那个**程序**）"
     },
     {
       "id": "git",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "git 不含 https 支持: git: 'remote-https' is not a git command. See 'git --help'.\nfatal: remote helper 'https' aborted session",
+      "outputTail": "https 握手/证书失败: fatal: unable to access 'https://lobcdn.zll.ink/component-canary/component-manifest.json/': SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)",
       "criterion": "git 起得来、真做一次 init→add→commit→log 并读回提交；**并且** https 通路可用（不是只看 --version）"
     },
     {
@@ -63,21 +63,21 @@
       "id": "llvm",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "RROR: Error: clang 起不来: status=null stderr=\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-863451-965393.js:7:27)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
+      "outputTail": "ROR: Error: clang 起不来: status=null stderr=\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-2701857-687219.js:7:27)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
       "criterion": "clang 起得来（且是**我们编的那个**，不是宿主的 x86_64 clang），并**真编译一次**：拿 --sysroot 指向 sysroot 件编一个 .so，产物是 aarch64 ELF。三层各自会独立地坏：找得到 sysroot 的头文件 / 链得出 ELF / ABI 是对的 —— 只验 --version 的话三层都验不到。未覆盖：「产物能被 dlopen」——那要真机（ProgramInstallPipeline 会读 ELF 段铺依赖）。"
     },
     {
       "id": "make",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "os/cache/lobos-make-u9PmZX(NAME)'.  Stop.\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-863451-965868.js:34:30)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
+      "outputTail": "s/cache/lobos-make-lXtVcZ(NAME)'.  Stop.\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-2701857-687466.js:34:30)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
       "criterion": "make 起得来，并且**真编译一条 makefile 到可执行文件再 clean 掉** ——起得来不等于能用：make 自己就是构建系统，它坏的方式是「跑起来了但不建东西」。所以判据覆盖变量展开、命令行目标、隐式规则（%.o: %.c）与 clean，缺一都不算通过。"
     },
     {
       "id": "node",
       "status": "过",
       "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 40325",
+      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 37727",
       "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）"
     },
     {
@@ -144,7 +144,6 @@
       "pnpm",
       "jq",
       "git",
-      "curl",
       "make",
       "cmake",
       "bash",
@@ -157,8 +156,8 @@
     ],
     "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）",
     "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
-    "M": 9,
-    "N": 15,
+    "M": 8,
+    "N": 14,
     "failed": 6,
     "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
   },
@@ -166,11 +165,12 @@
     "set": [
       "openssl",
       "crypto",
-      "zlib"
+      "zlib",
+      "curl"
     ],
     "rule": "那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母",
-    "M": 3,
-    "N": 3,
+    "M": 4,
+    "N": 4,
     "note": "那按需装载并解析出符号的那一族"
   },
   "collected": {
@@ -179,7 +179,7 @@
     "failed": 6,
     "note": "那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）"
   },
-  "M": 9,
-  "N": 15,
+  "M": 8,
+  "N": 14,
   "failed": 6
 }
