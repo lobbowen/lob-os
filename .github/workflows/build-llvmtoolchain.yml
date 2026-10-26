@@ -128,24 +128,40 @@ jobs:
           df -h / 2>/dev/null | tail -1 || true
 
           #  那 Android SDK 那一族：=> 而那**其余**的逐字**这一趟**用**不到**、=> 而而那**要留**的**只有**那 **NDK**。
-          #  => 而那**缺陷名**（C-102）**那删法逐字把 NDK 也删掉了** —— => 而那**头一**版（a54a04f）逐字**用**那
-          #  #    `find ... -name ndk -prune -o -print0 | xargs rm -rf` 那一族、=> 而而那**它**逐字**先**打印**了**那**目录**名**、
-          #  #    => 而那**父**目录**也**在**那**打印**里**、=> 而而那**父**目录**一删**、=> 而那 NDK **那一条**路径**就**断**了**。
-          #  => 而那**第二**版（c407082）逐字**按名字**留**那 `ndk` 那一族、=> 而而那**它**逐字**只**看**那**目录**的**名字**、
-          #  #    => 而而那 NDK 逐字**在**那 **/usr/local/lib/android/sdk/ndk** 那一族**底下**、=> 而而那**那一个** `sdk`
-          #  #    **不是**叫 `ndk`、=> 而而那**它**逐字**被**删**了** => 而那 40261838810 那一趟逐字**又**红**在**同一句**。
-          #  => 而那**处置**：=> 而而那**判据**逐字**改成**「那**要留**的**那一条**路径逐字**先记**下**来**、=> 而而那**删**逐字**不碰**它**」。
-          NDK_KEEP="${ANDROID_NDK_LATEST_HOME:-}"
+          #  => 而那**缺陷名**（C-102）**那留的**那个**目录逐字**不**在**那循环**看**的那**两个**根**底下**
+          #  #  —— => 而那 07 那边逐字**核**到：那 40261838810 那一趟逐字那「NDK 保留：…」那一行**没**出现**、
+          #  #  => 而那**留**的**那个**目录逐字**不**在**那循环**看**的**那**两个**根**底下、=> 而而那 runner 的 env 那一族
+          #  #  逐字**只**印那 CC / CXX / LLVM_AR / LLVM_RANLIB / LLVM_STRIP / LLVM_READELF 那**六**个、
+          #  #  => 而而那 **ANDROID_SDK_ROOT** 与那 **ANDROID_HOME** 逐字**没**有**印**出来**。
+          #  => 而那**根因**逐字**是**：「定位 NDK」那一步（locate-ndk.sh）逐字**只**写**那 CC** 那**一**族**进** GITHUB_ENV、
+          #  #  => 而它逐字**没有**写**那 ANDROID_NDK_LATEST_HOME**、=> 而而那**编译**那一步逐字**只**认**那**一个**变量。
+          #  => 而那**处置**：=> 而而那 NDK 的**根**逐字**从**那 **CC** **反推**（=> 而那 CC 逐字**就是**那 NDK **里**的**那个** clang）、
+          #  #  => 而而那**要留**的**就是**那**整棵** ndk **那一族**、=> 而而那**删**逐字**不碰**它**。
+          if [ -n "${CC:-}" ] && [ -x "$CC" ]; then
+            NDK_KEEP="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          else
+            NDK_KEEP="${ANDROID_NDK_LATEST_HOME:-}"
+          fi
           SDK_KEEP="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
-          for sdkd in "$SDK_KEEP" /usr/local/lib/android /usr/local/share/android-sdk; do
+          #  => 而那**缺陷名**（C-102）**那要删的**那些**根**逐字**不**包括**那 NDK **在**的**那一棵**
+          #  #  —— => 而那 07 那边逐字**核**到：那 **ANDROID_SDK_ROOT** 与那 **ANDROID_HOME** 逐字**没**有**印**出来**、
+          #  #  => 而而那 **SDK_KEEP** 逐字**空**、=> 而而那循环**只**看**那 /usr/local/lib/android **那一个**根、
+          #  #  => 而而那 NDK 逐字**在**那 /usr/local/lib/android/sdk/ndk/… **那一族**底下、=> 而而那 **sdk** **不是**叫 ndk、
+          #  #  => 而而那**它**逐字**被**删**了。=> 而那**处置**：=> 而而那 NDK **在**的**那一棵**逐字**先算**出来**、
+          #  #  => 而而那**删**的**那些**根**把**它**逐字**包**上**。
+          if [ -n "$NDK_KEEP" ]; then
+            SDK_KEEP="$SDK_KEEP $(dirname "$(dirname "$NDK_KEEP")")"
+          fi
+          for sdkd in $SDK_KEEP /usr/local/lib/android /usr/local/share/android-sdk; do
             [ -n "$sdkd" ] && [ -d "$sdkd" ] || continue
             for sub in "$sdkd"/*; do
               [ -e "$sub" ] || continue
               #  那**要留**的**那一条**路径逐字**不碰**（=> 而它逐字**是**那 NDK **指**的**路径**）。
               if [ -n "$NDK_KEEP" ]; then
-                case "$NDK_KEEP" in
-                  "$sub"/*) continue ;;
-                esac
+                #  那**要留**的**那一棵**逐字**是**那 NDK **本**人**或**它**的**祖先**、=> 而而那**两种**都要**留**。
+                #  => 而那**只**判**祖先**的**那一**种**逐字**不够**（=> 而那 $sub 逐字**就是**那 NDK **本**人**时**、
+                #  #    => 而而那 "$sub"/* **那**个**模式**逐字**匹配不上**它**、=> 而而它**就**被**删**了**）。
+                if [ "$sub" = "$NDK_KEEP" ] || [ "$NDK_KEEP" = "$sub"/* ]; then continue; fi
               fi
               case "$(basename "$sub")" in
                 ndk|ndk-bundle) continue ;;
@@ -155,8 +171,9 @@ jobs:
           done
           if [ -n "$NDK_KEEP" ] && [ -d "$NDK_KEEP" ]; then
             echo "NDK 保留：$NDK_KEEP"
+            echo "ANDROID_NDK_LATEST_HOME=$NDK_KEEP" >> "$GITHUB_ENV"
           else
-            echo "::warning title=NDK 没保住::ANDROID_NDK_LATEST_HOME=$NDK_KEEP 不在了 —— 编译那一步会红在这一格"
+            echo "::warning title=NDK 没保住::NDK 根推不出来（CC=$CC / ANDROID_NDK_LATEST_HOME=${ANDROID_NDK_LATEST_HOME:-}）—— 编译那一步会红在这一格"
           fi
           #  那 hostedtoolcache 那一族：=> 而而那**预装**的**工具链**逐字**这一趟**用**不到**
           #  （=> 而而那 cmake 与 ninja 与那 NDK 逐字**都**在**别**处**）。
