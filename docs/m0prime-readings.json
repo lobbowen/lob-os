@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T13:51:18Z",
+  "takenAt": "2026-10-26T14:04:45Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -77,7 +77,7 @@
       "id": "node",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "node 非零退出 rc=127 err=sh: /data/user/0/lobos.os/files/usr/bin/node: inaccessible or not found\n\n",
+      "outputTail": "node 非零退出 rc=1 err=CANNOT LINK EXECUTABLE \"/data/user/0/lobos.os/files/usr/bin/node\": cannot locate symbol \"_ZTVNSt6__ndk119basic_ostringstreamIcNS_11char_traitsIcEENS_9allocatorI\n",
       "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）"
     },
     {
@@ -133,19 +133,28 @@
   "M0prime": {
     "set": [
       "bash",
-      "ripgrep",
+      "busybox",
       "jq",
       "openssl",
-      "busybox",
+      "ripgrep"
+    ],
+    "setSource": "那设备上那产物自带的 program-manifest.json 的 entry 那一格（=> 而那 entry 逐字是唯一真源）",
+    "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
+    "M": 4,
+    "N": 5,
+    "failed": 1,
+    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
+  },
+  "library": {
+    "set": [
       "crypto",
       "curl",
       "zlib"
     ],
-    "setSource": "07 那 ROUND51 :10 到 :17 逐字给的那形态表",
-    "M": 7,
-    "N": 8,
-    "failed": 1,
-    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
+    "rule": "那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母",
+    "M": 3,
+    "N": 3,
+    "note": "那按需装载并解析出符号的那一族"
   },
   "collected": {
     "M": 7,
@@ -153,7 +162,7 @@
     "failed": 10,
     "note": "那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）"
   },
-  "M": 7,
-  "N": 8,
+  "M": 4,
+  "N": 5,
   "failed": 1
 }

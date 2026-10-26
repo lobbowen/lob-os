@@ -13,19 +13,24 @@
     }
   },
   "kernelVersion": {
-    "value": null,
-    "status": "未核",
-    "note": "那具体版本号在这两件素材里逐字没有可核对标记（=> 而那 LOCALVERSION 那一行逐字只给出 -4k）、=> 而按 C-105 不猜填、=> 而那取逐字不归 01、=> 而那取逐字归 06"
-  },
-  "missingReferences": [
-    {
-      "ref": "init/Kconfig.gki",
-      "from": "kconfig",
-      "line": 2040,
-      "status": "缺失",
-      "note": "那 kconfig 末尾逐字 source 它、=> 而它逐字不在那仓内、=> 而本机独立找那整个 work 底下也是 0 个、=> 而按 C-105 报缺"
+    "value": "6.6.144",
+    "status": "已核",
+    "branch": "android15-6.6",
+    "branchSource": "https://android.googlesource.com/kernel/common/+/refs/heads/android15-6.6/",
+    "versionSource": "那上游 Makefile 第 2/3/4 行逐字 VERSION = 6 / PATCHLEVEL = 6 / SUBLEVEL = 144",
+    "makefile": {
+      "path": "docs/kernel-baseline/upstream/Makefile",
+      "sha256": "4ba1d2ca8989e2a5fbdacef507113a65e28a8b4163dab1ce43d2e729150b3856"
+    },
+    "lts": {
+      "line": "6.6 是那 longterm 那一族、released 2023-10-29、EOL Dec 2027、维护者 Greg Kroah-Hartman & Sasha Levin",
+      "source": "https://www.kernel.org/releases.html"
+    },
+    "stableComparison": {
+      "note": "那 linux-6.6.y 的 Makefile 逐字 VERSION=6 / PATCHLEVEL=6 / SUBLEVEL=160"
     }
-  ],
+  },
+  "missingReferences": [],
   "defconfigEntries": [
     {
       "line": 1,
@@ -4137,6 +4142,55 @@
       "kind": "Google 网页（登录页）",
       "title": "Loadable kernel modules | Android OS core topics",
       "isKernelData": false
+    },
+    {
+      "file": "upstream/abi.stg",
+      "kind": "那 KMI 那一族的**真**出处（那 kernel/common 那 gki/aarch64/abi.stg）",
+      "title": "那 KMI 符号清单本体",
+      "isKernelData": true,
+      "status": "未核",
+      "note": "=> 而那 06 那边逐字**取**到**的**那**本体**逐字**是**它、=> 而而那**它**逐字**还**没**进**那仓内、=> 而按 C-105 **报缺**"
+    }
+  ],
+  "upstream": {
+    "note": "那上游的**原件**逐字**在**那仓内、=> 而那**差集**逐字**机械**核过",
+    "initKconfig": {
+      "localPath": "docs/kernel-baseline/kconfig",
+      "upstreamPath": "docs/kernel-baseline/upstream/Kconfig",
+      "upstreamSha256": "e93cb175309d0ccebd7da7d11af418978730796a0a2207af1fba4b5ca4ae0b9b",
+      "diffLines": 0,
+      "note": "那 kconfig 逐字**与**上游那 init/Kconfig **一样**（=> 而那差集 = **0** 行）"
+    },
+    "gkiDefconfig": {
+      "localPath": "docs/kernel-baseline/gki_defconfig",
+      "upstreamPath": "docs/kernel-baseline/upstream/gki_defconfig",
+      "upstreamSha256": "8cd95a18850c5a3565cb1f57721b52806af17dab54a6c59d506dd01c22b3c03e",
+      "diffLines": 1,
+      "diffDetail": [
+        {
+          "line": 639,
+          "text": "CONFIG_ANDROID_WRAPFD=y",
+          "in": "本地那一份",
+          "upstream": "没有这一行",
+          "note": "=> 而那**只**差**这一**行**、=> 而那**本机**多**这一**行"
+        }
+      ],
+      "note": "那 gki_defconfig 逐字**与**上游那一份**逐字只差 1 行**"
+    },
+    "platformNote": "那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、=> 而而它们逐字**都**是「# … is not set」=> 而而那后半**仍然成立**"
+  },
+  "referencedFiles": [
+    {
+      "ref": "init/Kconfig.gki",
+      "from": "kconfig",
+      "line": 2040,
+      "status": "已核",
+      "path": "docs/kernel-baseline/upstream/init-Kconfig.gki",
+      "sha256": "1040d004230a5e97f5f51d227af1876d6361a04898784149fceba87163b9bfd3",
+      "lines": 310,
+      "bytes": 10229,
+      "source": "那上游那 android15-6.6 那分支的 init/Kconfig.gki",
+      "note": "=> 而那 kconfig 第 2040 行逐字 source 它、=> 而第 2039 行是 if 64BIT、第 2041 行是 endif"
     }
   ]
 }

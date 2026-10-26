@@ -56,16 +56,18 @@ if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
 fi
 
 #  那 M0prime 那一族逐字**那八**件（=> 而那 ROUND51 :10 到 :17 **逐字**给**的**）
-M0P_SET="bash ripgrep jq openssl busybox crypto curl zlib"
+M0P_SET="bash busybox jq openssl ripgrep"
+LIB_SET="crypto curl zlib"
 
-python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$M0P_SET" "$@" << 'PYEOF'
+python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$M0P_SET" "$LIB_SET" "$@" << 'PYEOF'
 import io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
 criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
 lib_prefix = os.path.join(os.path.dirname(target_prefix), 'lib')
 m0p_set = sys.argv[8].split()
-wanted = sys.argv[9:]
+lib_set = sys.argv[9].split()
+wanted = sys.argv[10:]
 d = json.load(io.open(criteria_path, encoding='utf-8'))
 
 pieces = [k for k in sorted(d.keys())
@@ -157,11 +159,19 @@ doc = {
     'pieces': results,
     'M0prime': {
         'set': m0p_set,
-        'setSource': '07 那 ROUND51 :10 到 :17 逐字给的那形态表',
+        'setSource': '那设备上那产物自带的 program-manifest.json 的 entry 那一格（=> 而那 entry 逐字是唯一真源）',
+        'rule': '那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）',
         'M': m0p_passed,
         'N': len(m0p_results),
         'failed': m0p_failed,
         'note': '那 M0prime 真判据的分母（=> 而那八件里跑起来几个）'
+    },
+    'library': {
+        'set': lib_set,
+        'rule': '那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母',
+        'M': sum(1 for r in results if r['id'] in lib_set and r['status'] == '过'),
+        'N': len(lib_set),
+        'note': '那按需装载并解析出符号的那一族'
     },
     'collected': {
         'M': passed,

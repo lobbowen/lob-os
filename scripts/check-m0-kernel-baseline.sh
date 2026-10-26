@@ -46,7 +46,7 @@ DEF_SHA="$(sha_of "$DEFCONF")"
 KCFG_SHA="$(sha_of "$KCONFIG")"
 
 python3 - "$DATA" "$DEFCONF" "$KCONFIG" "$DEF_SHA" "$KCFG_SHA" "$KB" << 'PYEOF'
-import io, json, os, sys
+import hashlib, io, json, os, sys
 
 data_path, defc, kcfg, def_sha, kcfg_sha, kb = sys.argv[1:7]
 d = json.load(io.open(data_path, encoding='utf-8'))
@@ -96,19 +96,67 @@ if n < 1 or n > len(kl):
 elif kl[n - 1].rstrip() != t['text']:
     bad.append('kconfigTail :%d 逐字对不上（清单记 %s、实际 %s）' % (n, t['text'], kl[n - 1].rstrip()))
 
-# 那引用的被核对的那文件逐字得在**那仓内**（=> 而那 init/Kconfig.gki 逐字**不**在、=> 而按 C-105 报缺）。
+# 那引用的被核对的那文件逐字得在**那仓内**（=> 而那 init/Kconfig.gki 逐字**已经**在**那仓内**了）。
 for m in d.get('missingReferences') or []:
     p = os.path.join(kb, m['ref'])
     if not os.path.isfile(p):
         missing.append('%s 逐字**不**在**那仓内**（=> 而那 %s 逐字引它、=> 而按 C-105 报缺）' % (m['ref'], m['from']))
 
+# 那引用的那几件逐字**要**在**那仓内**、=> 而而那**出处**逐字**要**能**核**。
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(data_path)))
+for m in d.get('referencedFiles') or []:
+    p = os.path.join(ROOTDIR, m['path'])
+    if not os.path.isfile(p):
+        missing.append('%s 逐字**不**在**那仓内**（=> 而那 %s 逐字引它、=> 而按 C-105 报缺）' % (m['ref'], m['from']))
+        continue
+    got = hashlib.sha256(open(p, 'rb').read()).hexdigest()
+    if m.get('sha256') and got != m['sha256']:
+        bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (m['ref'], m['sha256'][:16], got[:16]))
+
+# 那**上游**那一族：=> 而那**差集**逐字**要**机械**核过**。
+up = d.get('upstream') or {}
+def diff_lines(a, b):
+    la = io.open(a, encoding='utf-8', errors='replace').read().split(chr(10))
+    lb = io.open(b, encoding='utf-8', errors='replace').read().split(chr(10))
+    import difflib
+    n = 0
+    for line in difflib.unified_diff(la, lb, lineterm='', n=0):
+        if line[:1] in ('+', '-') and line[:3] not in ('+++', '---'):
+            n += 1
+    return n
+for key in ('initKconfig', 'gkiDefconfig'):
+    e = up.get(key)
+    if not e:
+        continue
+    la = os.path.join(ROOTDIR, e['localPath'])
+    lb = os.path.join(ROOTDIR, e['upstreamPath'])
+    for f in (la, lb):
+        if not os.path.isfile(f):
+            missing.append('%s 逐字**不**在**那仓内**' % f)
+            break
+    else:
+        got = diff_lines(la, lb)
+        if got != e['diffLines']:
+            bad.append('%s 的差集逐字对不上（清单记 %d、实际 %d）' % (key, e['diffLines'], got))
+
 kv = d.get('kernelVersion') or {}
 if not kv.get('value'):
     missing.append('那内核版本号逐字还没有（=> 而按 C-105 不猜填、=> 而那取逐字不归 01、=> 而那取逐字归 06）')
 
+# 那**网页**那一族（=> 而那 kmi.html 与那 lkm.html）逐字**不**是**那内核**的**配置**、
+# => 而而那**真正**是**那内核**的**数据**的**那一件**（=> 而那 abi.stg）逐字**要**标**缺**（=> 而它**还**没**进**那仓**内**）。
 for r in d.get('referenceDocs') or []:
     if r.get('isKernelData'):
-        bad.append('参考材料 %s 逐字被标成内核数据、=> 而那清单**不**该**算**它' % r['file'])
+        if r.get('status') == '未核':
+            missing.append('%s 逐字**是**那内核的**数据**、=> 而它**还**没**进**那仓**内**、=> 而按 C-105 报缺' % r['file'])
+        else:
+            p2 = os.path.join(ROOTDIR, 'docs/kernel-baseline', r['file'])
+            if not os.path.isfile(p2):
+                missing.append('%s 逐字**不**在**那仓内**' % r['file'])
+    elif r.get('file', '').endswith('.html'):
+        #  那网页那一族逐字**不**是那内核的**配置**、=> 而而那清单**不**把它**算**成**条目**
+        if r.get('isKernelData'):
+            bad.append('网页材料 %s 逐字被标成内核数据' % r['file'])
 
 n_def = len(d['defconfigEntries'])
 n_cfg = len(d['kconfigSections'])
