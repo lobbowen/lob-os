@@ -161,8 +161,23 @@ jobs:
           #  #  => 而而那 NDK 逐字**在**那 /usr/local/lib/android/sdk/ndk/… **那一族**底下、=> 而而那 **sdk** **不是**叫 ndk、
           #  #  => 而而那**它**逐字**被**删**了。=> 而那**处置**：=> 而而那 NDK **在**的**那一棵**逐字**先算**出来**、
           #  #  => 而而那**删**的**那些**根**把**它**逐字**包**上**。
+          #  => 而那**缺陷名**（C-102）**那判据**逐字**在**那删**之后**才判**、=> 而而那**要留**的那**一层**
+          #  #  逐字**在**那删**的**过程**里**被删**了 —— => 而那 30.0.16248370 那一**层**逐字**是**那 **sdk** **底下**的**那**一个**子**目录**、
+          #  #  => 而而它逐字**不**是**那 ndk**、=> 而而它逐字**也**不是**那 NDK_KEEP**、=> 而而那**祖先**判据**不**保**它**。
+          #  => 而那**处置**：=> 而而那**顺序**逐字**改成**「先判、再删」——=> 而而那**判据**逐字**在**那删**之前**就**判**完**。
           if [ -n "$NDK_KEEP" ]; then
             SDK_KEEP="$SDK_KEEP $(dirname "$(dirname "$NDK_KEEP")")"
+          fi
+          #  那**物理**路径逐字**也**算**一份**（=> 而而那 **sdk/ndk** 逐字**可能**是**那软链**、=> 而而那 **30.0.16248370**
+          #  #  那一层逐字**就**是**那**软链**指的**那**一处**、=> 而而那**只**按**逻辑**路径**判**就**漏掉**它**）。
+          NDK_REAL=""
+          if [ -n "$NDK_KEEP" ] && command -v realpath >/dev/null 2>&1; then
+            NDK_REAL="$(realpath -m "$NDK_KEEP" 2>/dev/null || true)"
+          fi
+          #  => 而那**判据**逐字**在**那删**之前**判**（=> 而而那**先**判**完**再删**、=> 而而那**保不住**的**那一档**逐字**就**不删**）。
+          if [ -z "$NDK_KEEP" ] || [ ! -d "$NDK_KEEP" ]; then
+            echo "::warning title=NDK 没保住::NDK 根推不出来（CC=$CC / ANDROID_NDK_LATEST_HOME=${ANDROID_NDK_LATEST_HOME:-}）—— 什么都不删"
+            NDK_KEEP=""
           fi
           for sdkd in $SDK_KEEP /usr/local/lib/android /usr/local/share/android-sdk; do
             [ -n "$sdkd" ] && [ -d "$sdkd" ] || continue
@@ -170,7 +185,7 @@ jobs:
               [ -e "$sub" ] || continue
               #  那**要留**的**那一棵**逐字**是**那 NDK **本**人**或**它**的**祖先**、=> 而而那**两种**都要**留**。
               if [ -n "$NDK_KEEP" ]; then
-                #  => 而那**缺陷名**（C-102）**那方括号**逐字**让** .. 逐字**成了**通配** —— => 而而那 "$sub"/* 那一族
+                #  => 而那**缺陷名**（C-102）**那方括号**逐字**让** .. 逐字**成了通配** —— => 而而那 "$sub"/* 那一族
                 #    逐字**没**被**引号**包**住**、=> 而而它逐字**会**按**那目录**里的**内容**展开**、=> 而而那**展开**出来**不**止**一**个**时**、
                 #    => 而而那 [ 逐字**就**逐字**报**「: too many arguments」（=> 而那 40263922428 那一趟逐字 `:62` 那一行逐字**就是**它**）。
                 #  => 而那**处置**：=> 而而那**判据**逐字**改成**那 case 那一族（=> 而那 case 逐字**不**做**通配**展开**）。
@@ -178,6 +193,16 @@ jobs:
                 case "$NDK_KEEP" in
                   "$sub"/*) continue ;;
                 esac
+                #  那**物理**路径逐字**也**判**一次**（=> 而而那**软链**指**的**那**一处**逐字**在**那**逻辑**路径**之外**）。
+                if [ -n "$NDK_REAL" ] && command -v realpath >/dev/null 2>&1; then
+                  sub_real="$(realpath -m "$sub" 2>/dev/null || true)"
+                  if [ -n "$sub_real" ]; then
+                    if [ "$sub_real" = "$NDK_REAL" ]; then continue; fi
+                    case "$NDK_REAL" in
+                      "$sub_real"/*) continue ;;
+                    esac
+                  fi
+                fi
               fi
               case "$(basename "$sub")" in
                 ndk|ndk-bundle) continue ;;
