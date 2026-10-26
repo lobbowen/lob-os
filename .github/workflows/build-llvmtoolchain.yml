@@ -512,8 +512,9 @@ jobs:
             #  => 而那**处置**：=> 而那**拆**成**几**块**、=> 而那**每一**块逐字**在**那上限**之下**。
             SPLIT_DIR="$PW/parts"
             rm -rf "$SPLIT_DIR" && mkdir -p "$SPLIT_DIR"
-            split -b "$((GH_MAX_ASSET_BYTES - 1024))" -d "$PW/$ASSET" "$SPLIT_DIR/part-"
-            for part in "$SPLIT_DIR"/part-*; do
+            #  => 而那**块**的**名字**逐字**要**带**那**资产**的**名**（=> 而那**它**们逐字**是**那**几个**资产**、=> 而而那**取件**那**一边**逐字**按**那**名字**找**）
+            split -b "$((GH_MAX_ASSET_BYTES - 1024))" -d "$PW/$ASSET" "$SPLIT_DIR/$ASSET.part-"
+            for part in "$SPLIT_DIR"/"$ASSET".part-*; do
               pb="$(stat -c %s "$part")"
               if [ "$pb" -ge "$GH_MAX_ASSET_BYTES" ]; then
                 echo "::error title=预制品超上限::=> 而那**分块**之后**仍然**有**一块**逐字 $pb 字节、=> 而那**它**逐字**还是**超**那上限**"
@@ -521,10 +522,10 @@ jobs:
               fi
               echo "[ok] 那 $(basename "$part") 逐字 $pb 字节、=> 而那**在**那上限**之下**"
             done
-            mv "$SPLIT_DIR"/part-* "$PW/" && rmdir "$SPLIT_DIR"
+            mv "$SPLIT_DIR"/"$ASSET".part-* "$PW/" && rmdir "$SPLIT_DIR"
             #  => 而那**清单**逐字**要**跟**那**分块**一起**走**（=> 而那**取件**那**一边**逐字**靠**它**拼**回来**）。
-            ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" && ls -l part-* > "$ASSET.parts.txt" )
-            echo "[ok] 那 $ASSET 逐字 $PKG_BYTES 字节、=> 而那**已拆**成 $(ls "$PW"/part-* | wc -l) **块**、=> 而那**每一**块逐字**在**那上限**之下**"
+            ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" && ls -l "$ASSET".part-* > "$ASSET.parts.txt" )
+            echo "[ok] 那 $ASSET 逐字 $PKG_BYTES 字节、=> 而那**已拆**成 $(ls "$PW"/"$ASSET".part-* | wc -l) **块**、=> 而那**每一**块逐字**在**那上限**之下**"
           else
             echo "[ok] 那 $ASSET 逐字 $PKG_BYTES 字节、=> 而那**在**那上限**之下**"
             ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
