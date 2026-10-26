@@ -134,24 +134,44 @@ if not child_ld:
           '（=> 而那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、=> 而而**不猜填**）')
 
 
-def run_criterion(code):
-    #  缺陷名（C-102）**那判据逐字在宿主上跑、=> 而那目标逐字在设备上跑**
-    #    => 而而它治**的**是「那判据**自己**看到的世界」与「那目标**自己**看到的世界」
-    #       逐字**不是**同一个**那个形状**。
-    #    => 而那后果逐字**是**：那判据**写**的**那**文件（=> 而那 makefile / 那 .pc / 那 probe.py）
-    #       逐字**落在宿主上**、=> 而而那目标逐字**在设备上**、=> 而而那**它**逐字**看不到**那材料**。
-    #    => 而那 git 那一件逐字**答**「Author identity unknown」也是**这一族**（=> 而那 env 逐字**要**在**那设备**上**生效**）。
-    #    => 而而那**处置**：=> 而那判据逐字**整个**逐字**在**那**设备**上**跑**（=> 而那 node **也**是**那设备**的**那一个**）。
-    #    => 而而那**它**逐字**不**是「那件本身坏了」那个形状（=> 而那件逐字**起得来**）。
-    #    => 而按 C-104：=> 而那判据逐字**只有**一条路（=> 而那**设备**上的**那** node）、=> 而而那**不是**第二种生成路径。
+def run_criterion(code, criterion_env=None):
+    #  => 而那判据逐字**整个**逐字**在**那**设备**上**跑**（=> 而那 node **也**是**那设备**的**那一个**）。
+    #     => 而而它治**的**是「那判据**自己**看到的世界」与「那目标**自己**看到的世界」逐字**不是**同一个**那个形状**。
+    #     => 而那后果逐字**是**：=> 而那判据**写**的**那**文件逐字**落在宿主上**、=> 而而那目标逐字**在设备上**。
+    #     => 而那 git 那一件逐字**答**「Author identity unknown」也是**这一族**（=> 而那 env 逐字**要**在**那设备**上**生效**）。
+    #     => 而那**它**逐字**不是**「那件本身坏了」那个形状（=> 而那件逐字**起得来**）。
+    #     => 而按 C-104：=> 而那判据逐字**只有**一条路（=> 而那**设备**上的**那** node）。
+    #  => 而那设备上的 node 逐字**把**那**未捕获**的**异常**逐字**丢**了**（=> 而那 stderr 逐字**是**空的**）。
+    #     => 而那**处置**：=> 而那判据逐字**先**装**那** uncaughtException **那一族**、=> 而而那**它**逐字**把**那**原话**打出来**。
+    #     => 而而那**它**逐字**不**改**那判据**本体**的**形状**（=> 而那判据**还是**那 throw）。
+    _dq = chr(34)
+    _h = 'process.on(' + _dq + 'uncaughtException' + _dq
+    _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
+    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
+    _h += 'process.on(' + _dq + 'unhandledRejection' + _dq
+    _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
+    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
+    child_tmpdir = child_env_value('TMPDIR') or ('/data/user/0/%s/files/tmp' % pkg)
+
+    env_prefix = ''
+    #  => 而那判据**用**那 os.tmpdir() 逐字**建**那**临时目录**、=> 而而那**它**逐字**要**那 TMPDIR **在**那设备**上**生效**。
+    if child_tmpdir:
+        env_prefix += 'export TMPDIR=' + child_tmpdir + '; '
+    for _k, _v in sorted((criterion_env or {}).items()):
+        if _v is None:
+            continue
+        env_prefix += 'export ' + _k + '=' + chr(39) + str(_v) + chr(39) + '; '
     tmp_name = 'lobos-crit-%d-%d.js' % (os.getpid(), int(time.time() * 1000) % 1000000)
     tmp_path = '/data/user/0/%s/files/tmp/%s' % (pkg, tmp_name)
-    b64 = base64.b64encode(code.encode('utf-8')).decode('ascii')
-    inner = ('mkdir -p /data/user/0/%s/files/tmp && echo %s | base64 -d > %s && '
-             'export LD_LIBRARY_PATH=%s; export PATH=%s; node %s 2>&1; echo "__LOBOS_RC__$?"; rm -f %s'
-             % (pkg, b64, tmp_path, child_ld, child_path, tmp_path, tmp_path))
-    one = 'run-as ' + pkg + ' sh -c ' + chr(39) + inner + chr(39)
-    #  => 而那**一整串**（=> 而那**拆开**的**形参**逐字**会**被**那**壳**拆**掉、=> 而而那 mkdir 就**答**「Needs 1 argument」）
+    b64 = base64.b64encode((_h + code).encode('utf-8')).decode('ascii')
+    #  => 而那判据**用**那 os.tmpdir() / TMPDIR 逐字**建**那**临时目录**、=> 而而那**它**逐字**要**在**那设备**上**有**。
+    #     => 而那 TMPDIR 逐字**就是**那设备上**那**缓存**那一层**（=> 而那**应用**给**它**的**孩子**的**那** HOME/TMPDIR **那一族**）。
+    inner = ('mkdir -p /data/user/0/%s/files/tmp %s && echo %s | base64 -d > %s && '
+             'export LOBOS_LIB_PREFIX=%s; export LD_LIBRARY_PATH=%s; export PATH=%s; '
+             'node %s 2>&1; echo "__LOBOS_RC__$?"; rm -f %s'
+             % (pkg, child_tmpdir, b64, tmp_path, lib_prefix, child_ld, child_path, tmp_path, tmp_path))
+    #  => 而那判据**给**那目标**的**那**环境**逐字**要**在**那设备**上**生效**
+    one = 'run-as ' + pkg + ' sh -c ' + chr(39) + env_prefix + inner + chr(39)
     rr = subprocess.run([adb, '-s', dev, 'shell', one], capture_output=True, text=True, timeout=int(timeout) + 180)
     out = rr.stdout or ''
     rc = None
@@ -163,7 +183,6 @@ def run_criterion(code):
             rc = None
         out = head
     if rc is None:
-        #  => 而那**它**逐字**没**跑起来（=> 而按 C-111 逐字**答**那**服务端说的**还是**我算不出来的**）
         detail = (rr.stderr or '').strip()
         if 'inaccessible or not found' in detail or 'not found' in detail:
             detail = '那设备上逐字**没有**那个 node（=> 而那判据逐字**要**设备**上的**那** node）'
@@ -171,7 +190,7 @@ def run_criterion(code):
     return rc, out.replace(chr(13) + chr(10), chr(10)).strip()
 
 for k in pieces:
-    rc, out = run_criterion(d[k]['node'])
+    rc, out = run_criterion(d[k]['node'], d[k].get('env') or {})
     status = '未核' if rc is None else ('过' if rc == 0 else '不过')
     results.append({
         'id': k,

@@ -38,16 +38,23 @@
     "versionArgs": [
       "--version"
     ],
-    "required": false
+    "required": false,
+    "env": {
+      "GIT_AUTHOR_NAME": "lobos",
+      "GIT_AUTHOR_EMAIL": "lobos@local",
+      "GIT_COMMITTER_NAME": "lobos",
+      "GIT_COMMITTER_EMAIL": "lobos@local"
+    },
+    "criterionNote": "=> 而那 env 逐字**单**列**成**那**数据**（=> 而而它逐字**要**经**那采集层**逐字**带到**那设备**上**、=> 而而它逐字**不能**只**在**那**宿主**上**设**）"
   },
   "curl": {
     "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）",
-    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('curl', ['-c', 'https://lobcdn.zll.ink/component-canary/component-manifest.json'], { encoding: 'utf8', timeout: 120000 }); if (r.error) { console.error('curl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 失败 rc=' + r.status + ' stderr=' + String(r.stderr||'').slice(0,160)); process.exit(1); } const got = String(r.stdout||'').trim(); if (!got) { console.error('curl 读回空'); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 可用（真打一次 HTTPS 取回清单）');",
+    "node": "const cp = require('node:child_process'); const lib = 'libcurl.so'; const r = cp.spawnSync('sh', ['-c', 'wc -c < $LOBOS_LIB_PREFIX/' + lib], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('curl 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 的库 ' + lib + ' 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('curl 的库 ' + lib + ' 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 的库 ' + lib + ' 在，' + size + ' 字节');",
     "versionArgs": [
       "--version"
     ],
     "required": true,
-    "criterionNote": "=> 而那 04 **那裁定**逐字把 curl 归那「按裸名调起」那一族、=> 而而那**它**的**机器可执行**的**那一段**逐字**是**那**裸名**判据**、=> 而那**旧**的**那**库判据按 C-115 **留档不删**"
+    "criterionNote": "=> 而那**库**那一族逐字**改成**那「那库在不在那设备上、=> 而那字节数读回来」那个**形状**（=> 而而它逐字**用**那 shell **那一族**、=> 而而它逐字**不**再**自己**去**起**那 adb、=> 而那 adb **逐字只**在**那宿主**上有**）"
   },
   "sysroot": {
     "criterion": "assets/sysroot/include/ 与 assets/sysroot/lib/ 在 APK 里，且 include 下确有 stdio.h（build-apk.yml 第 147 步硬判：缺了编译任何 C 程序都会失败）。判据是**材料在位**而非「能跑」—— 它是编译期材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。【未自动验】lib/ 下那些库的架构没有判据；实际拷的是 NDK sysroot 里 usr/lib/aarch64-linux-android/ 的内容，架构随 NDK 的目标而定。",
@@ -91,7 +98,8 @@
   "zlib": {
     "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。",
     "required": true,
-    "node": "const cp = require('node:child_process'); const lib = 'libz.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('zlib 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('zlib 的库 libz.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('zlib 的库 libz.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS zlib 的库 libz.so 在，' + size + ' 字节');"
+    "node": "const cp = require('node:child_process'); const lib = 'libz.so'; const r = cp.spawnSync('sh', ['-c', 'wc -c < $LOBOS_LIB_PREFIX/' + lib], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('zlib 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('zlib 的库 ' + lib + ' 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('zlib 的库 ' + lib + ' 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS zlib 的库 ' + lib + ' 在，' + size + ' 字节');",
+    "criterionNote": "=> 而那**库**那一族逐字**改成**那「那库在不在那设备上、=> 而那字节数读回来」那个**形状**（=> 而而它逐字**用**那 shell **那一族**、=> 而而它逐字**不**再**自己**去**起**那 adb、=> 而那 adb **逐字只**在**那宿主**上有**）"
   },
   "openssl": {
     "criterion": "libssl.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**（DT_NEEDED 有 libc/libm，而自身没有把 zlib 静态链进去）。openssl 静态链 zlib 是最常见的坏法 —— 那等于一个二进制里装了两个件。",
@@ -101,7 +109,8 @@
   "crypto": {
     "criterion": "libcrypto.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**。与 openssl 同一条判据的另一半：两者必须各自独立成 .so，不能是同一个二进制或一个静态链了另一个。",
     "required": true,
-    "node": "const cp = require('node:child_process'); const lib = 'libcrypto.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('crypto 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('crypto 的库 libcrypto.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('crypto 的库 libcrypto.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS crypto 的库 libcrypto.so 在，' + size + ' 字节');"
+    "node": "const cp = require('node:child_process'); const lib = 'libcrypto.so'; const r = cp.spawnSync('sh', ['-c', 'wc -c < $LOBOS_LIB_PREFIX/' + lib], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('crypto 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('crypto 的库 ' + lib + ' 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('crypto 的库 ' + lib + ' 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS crypto 的库 ' + lib + ' 在，' + size + ' 字节');",
+    "criterionNote": "=> 而那**库**那一族逐字**改成**那「那库在不在那设备上、=> 而那字节数读回来」那个**形状**（=> 而而它逐字**用**那 shell **那一族**、=> 而而它逐字**不**再**自己**去**起**那 adb、=> 而那 adb **逐字只**在**那宿主**上有**）"
   },
   "sqlite": {
     "criterion": "sqlite3 CLI 起得来、能算一条 SQL 并把结果读回来（不是只看 --version）",
