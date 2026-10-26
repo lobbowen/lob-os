@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T14:14:33Z",
+  "takenAt": "2026-10-26T14:23:31Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -95,6 +95,13 @@
       "criterion": "libssl.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**（DT_NEEDED 有 libc/libm，而自身没有把 zlib 静态链进去）。openssl 静态链 zlib 是最常见的坏法 —— 那等于一个二进制里装了两个件。"
     },
     {
+      "id": "pkgconf",
+      "status": "不过",
+      "exitCode": 1,
+      "outputTail": "pkg-config 非零退出 rc=127 err=sh: /data/user/0/lobos.os/files/usr/bin/pkg-config: inaccessible or not found\n\n",
+      "criterion": "pkg-config 起得来，并且**真查一个 .pc 文件**并读回 --cflags/--libs（不是只看 --version）。起得来但查不出 flags 的 pkg-config 等于没有 —— 它的用处就是那两行输出。"
+    },
+    {
       "id": "pnpm",
       "status": "不过",
       "exitCode": 1,
@@ -151,8 +158,8 @@
     "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）",
     "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
     "M": 4,
-    "N": 14,
-    "failed": 10,
+    "N": 15,
+    "failed": 11,
     "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
   },
   "library": {
@@ -168,11 +175,11 @@
   },
   "collected": {
     "M": 6,
-    "N": 17,
-    "failed": 11,
+    "N": 18,
+    "failed": 12,
     "note": "那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）"
   },
   "M": 4,
-  "N": 14,
-  "failed": 10
+  "N": 15,
+  "failed": 11
 }

@@ -50,7 +50,29 @@ object RuntimeEnvironment {
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
-    put("LD_LIBRARY_PATH", joinPath(root.nativeLibDir, root.prefixLib.absolutePath, inheritedLd))
+        //  缺陷名 缺陷名（C-102）那**库**的**搜索次序**逐字**没**算**那件自己的**那**一层**
+        //    => 而而它治**的**是「那**运行时**逐字**加载**的**是**哪**一个** libcrypto / libc++_shared.so」。
+        //    => 而而它**不**是「那加载器坏了」、=> 而而它**不**是「那 DT_RUNPATH 要改」。
+        //
+        //    而那**两**个**读数**逐字**是**那**同一个**形状**（=> 而那**两者**逐字**不是**那**同一个**符号**）：
+        //      一：那 openssl —— 而那**运行**时逐字**先**找到**那宿主**那**/system/lib64/libcrypto.so，
+        //         而而那**宿主**那一份逐字**没有**那 **OSSL_CMP_ITAV_dup**，
+        //         而而那**我们**的**那两份** libcrypto 逐字**都**有那**符号**。
+        //      二：那 node —— 而那 libnode.so 的 RUNPATH 逐字 = **$ORIGIN**，
+        //         而那 $ORIGIN 逐字**是**那 **bin** **那一**层，
+        //         而而那 libc++_shared.so 逐字**在**那 **lib** **那一**层。
+        //    => 而而那**两**个**成因**逐字**同**一个：
+        //       **那加载器**逐字**只**在**那几条路径**上找、=> 而而那**件自己的**那**一层**逐字**不**在**那几条路径**上**。
+        //    => 而而那**差别**逐字**是**那**库**在哪**那一层**（=> 而那 openssl 的**那一份**在**那 usr/lib**、
+        //       而那 node 的**那一份**在**那件自己的**那 **lib/** **那一层**）。
+        //
+        //    => 而那**处置**逐字**是**：那**树根的库目录**逐字**排**在**那一条路径**的**前面**，
+        //       而且**每一件**自己**那** lib/ **那一层**也**排**在**那一条路径**上（=> 而那**落位事实**逐字**是**这样**的**）。
+        //    => 而那**程序自己声明**的**那一项**逐字**仍然不许生效**（=> 而它归那 RESERVED_ENV **那一族**管、
+        //       => 而而**不**能靠「让程序声明自己那一项」来**修**）。
+        //    => 而按 C-92：而那**具体**的**名字**（LD_LIBRARY_PATH）**删掉**了、
+        //       而这一行逐字**还**剩「那树根的库目录排在那一条路径上」这个**形状**。
+        put("LD_LIBRARY_PATH", joinPath(root.prefixLib.absolutePath, root.nativeLibDir, pieceLibDirs(ctx), inheritedLd))
         put(
             "PATH",
             joinPath(
@@ -101,6 +123,28 @@ object RuntimeEnvironment {
         dirs.add(LibPath.searchPath(ctx))
         return dirs.filter { File(it).isDirectory }.joinToString(":")
       }
+    /** 那一件自己**那** lib/ **那一层**（=> 而那**落位事实**：每件的库**在**它**自己的**那**一层**里**）。
+     *
+     *  => 而那**它**逐字**是**那**库**的**搜索次序**那一族**的**另一半**：
+     *     而那 usr/lib **那一层**逐字**收**的是**那件**的**库**的**软链**，
+     *     而而那**链接器**逐字**只**找**那**软链**指**的**那**一份**、=> 而那**软链**逐字**指**到**那件自己的**那**一层**。
+     *     => 而那 node 那一件逐字**没有**那**软链**（=> 而那 libc++_shared.so 逐字**不**在**那 usr/lib** **底下**），
+     *        所以而它逐字**要**自己**那**一层**逐字**在**那一条路径**上**。
+     *  => 而那**它**逐字**不**管「那件的依赖满不满足」（=> 而那是**那落位侧**的**活**、=> 而那 SYSTEM_LIB_DIRS **不动**）。
+     */
+    fun pieceLibDirs(ctx: Context): String {
+        val opt = File(ctx.filesDir, "opt")
+        val dirs = LinkedHashSet<String>()
+        for (idDir in opt.listFiles()?.sortedBy { it.name } ?: emptyList()) {
+            if (!idDir.isDirectory) continue
+            for (verDir in idDir.listFiles()?.sortedBy { it.name } ?: emptyList()) {
+                if (!verDir.isDirectory) continue
+                val lib = File(verDir, "lib")
+                if (lib.isDirectory) dirs.add(lib.absolutePath)
+            }
+        }
+        return dirs.joinToString(":")
+    }
 
     fun ensure(ctx: Context): Snapshot {
         cached?.takeIf { it.complete }?.let { s ->
