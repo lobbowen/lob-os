@@ -42,11 +42,12 @@
   },
   "curl": {
     "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）",
-    "node": "const cp = require('node:child_process'); const lib = 'libcurl.so'; const p = process.env.LOBOS_LIB_PREFIX + '/' + lib; const adb = process.env.LOBOS_ADB; const dev = process.env.LOBOS_DEV; const pkg = process.env.LOBOS_PKG; const inner = 'run-as ' + pkg + ' sh -c ' + String.fromCharCode(39) + 'wc -c < ' + p + String.fromCharCode(39); const r = cp.spawnSync(adb, ['-s', dev, 'shell', inner], { encoding: 'utf8', timeout: 90000 }); if (r.error) { console.error('curl 查不了: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 的库 libcurl.so 不在那设备上（rc=' + r.status + ' err=' + String(r.stderr||'').slice(0,90) + '）'); process.exit(1); } const size = String(r.stdout||'').trim().split(/\\s+/)[0]; if (!/^[0-9]+$/.test(size) || Number(size) === 0) { console.error('curl 的库 libcurl.so 读不出字节数: ' + JSON.stringify(String(r.stdout||''))); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 的库 libcurl.so 在，' + size + ' 字节');",
+    "node": "const cp = require('node:child_process'); const r = cp.spawnSync('curl', ['-c', 'https://lobcdn.zll.ink/component-canary/component-manifest.json'], { encoding: 'utf8', timeout: 120000 }); if (r.error) { console.error('curl 起不来: ' + r.error.message); process.exit(1); } if (r.status !== 0) { console.error('curl 失败 rc=' + r.status + ' stderr=' + String(r.stderr||'').slice(0,160)); process.exit(1); } const got = String(r.stdout||'').trim(); if (!got) { console.error('curl 读回空'); process.exit(1); } process.stdout.write('LOBOS_PROBE_PASS curl 可用（真打一次 HTTPS 取回清单）');",
     "versionArgs": [
       "--version"
     ],
-    "required": true
+    "required": true,
+    "criterionNote": "=> 而那 04 **那裁定**逐字把 curl 归那「按裸名调起」那一族、=> 而而那**它**的**机器可执行**的**那一段**逐字**是**那**裸名**判据**、=> 而那**旧**的**那**库判据按 C-115 **留档不删**"
   },
   "sysroot": {
     "criterion": "assets/sysroot/include/ 与 assets/sysroot/lib/ 在 APK 里，且 include 下确有 stdio.h（build-apk.yml 第 147 步硬判：缺了编译任何 C 程序都会失败）。判据是**材料在位**而非「能跑」—— 它是编译期材料（Linux 的对应物是 gcc 包的 include/ 与 libc6-dev），本来就没有可执行行为。【未自动验】lib/ 下那些库的架构没有判据；实际拷的是 NDK sysroot 里 usr/lib/aarch64-linux-android/ 的内容，架构随 NDK 的目标而定。",

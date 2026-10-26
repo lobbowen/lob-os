@@ -123,7 +123,13 @@
         "scripts/component-sources.json 的 sources.curl.piece = true",
         "那设备上那产物自带的 program-manifest.json 的 entry = ''、role = library"
       ],
-      "onDeviceNow": true
+      "onDeviceNow": true,
+      "rulingConflict": {
+        "ruledBy": "04 那边逐字把 curl 归那「按裸名调起」那一族（=> 而那 15 件**里面**它**在**）",
+        "observed": "=> 而那**设备**上**它自己的** program-manifest.json 逐字 = 「entry: \"\"、role: \"library」、=> 而那 files/opt/curl/8.22.0/ **底下**逐字**没有**那 bin **那一层**、=> 而那 files/usr/bin/curl 逐字**不**存在、=> 而那 which curl 逐字 = **/system/bin/curl**（=> 而那**它**是**那宿主**那一个**、=> 而**不**是**那我们**的**那一份**）",
+        "status": "未核",
+        "note": "=> 而那**两者**逐字**不**一致、=> 而那**判据**归 **04** 那一族、=> 而本机**照**那裁定**落**的**（=> 而那 curl 逐字**在**那 bareName **那一族**里）、=> 而而那**分歧**逐字**记**在**这**一条**上面**、=> 而按 C-105 **报缺**、=> 而而**不猜填**"
+      }
     },
     {
       "id": "make",
