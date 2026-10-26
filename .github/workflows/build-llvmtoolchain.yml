@@ -226,9 +226,38 @@ jobs:
 
           #  那交换区与那包缓存那一族：=> 而而那**不**是**编**的**输入**。
           rm -rf /var/cache/apt/archives/*.deb 2>/dev/null || true
-          rm -rf /opt/ghc 2>/dev/null || true
-
+          #  那 runner **自带**的**其余**那些大头 —— 而它们逐字**不是**那编的输入。
+          #    => 而那**那几**个逐字**各**占**几 G**、=> 而而那**编**的**峰值**逐字**要**那**空间**。
+          #  => 而那**处置**：=> 而而那**用不到**的**一律**先删、=> 而那**要留**的**只有**那 **NDK**。
+          #  => 而按 C-103 那两边：「那**编**要**那磁盘**空间**」与「那**取件**要**那磁盘**空间**」
+          #    => 而那两边各答一件事、=> 而而处置不一样、=> 而按 C-135 那不是同一问。
+          #  => 而按 C-104：=> 而那**清**那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+          #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+          rm -rf /opt/ghc
+          rm -rf /usr/local/lib/node_modules 2>/dev/null || true
+          rm -rf /usr/local/share/powershell /usr/local/share/chromium /usr/local/share/puppeteer 2>/dev/null || true
+          rm -rf /usr/local/azure-cli /opt/az /usr/local/lib/heroku /usr/share/az 2>/dev/null || true
+          rm -rf /opt/hostedtoolcache/Rust /opt/hostedtoolcache/go /opt/hostedtoolcache/Java_* /opt/hostedtoolcache/Python 2>/dev/null || true
+          rm -rf /usr/local/share/graalvm /usr/lib/jvm /opt/java /opt/gradle 2>/dev/null || true
+          rm -rf "$AGENT_TOOLSDIRECTORY" 2>/dev/null || true
+          rm -rf /usr/local/share/swift /usr/local/swift /opt/swift 2>/dev/null || true
+          rm -rf /usr/local/share/scala /usr/local/share/sbt /usr/local/share/play 2>/dev/null || true
+          #  那 runner **自己**的**诊断**日志与那**缓存**那一族 —— 而那**正**是那磁盘满**的**现场**。
+          rm -rf /home/runner/actions-runner/cached 2>/dev/null || true
+          rm -rf /home/runner/work/_tool /opt/hostedtoolcache 2>/dev/null || true
+          rm -rf "$RUNNER_TOOL_CACHE" "$RUNNER_WORKSPACE"/../_temp 2>/dev/null || true
+          #  那**编**的**峰值**要那**空间**、=> 而而那**余量**逐字**要**够**那**构建树**长**完**。
+          #  => 而而那**余量**不够**就**判红**（=> 而而那**别处**的**那**一个**判据**逐字**不**够**、
+          #    => 而而那**改**的**只**是**那第 9** 步**与**它**相关**的**那几**行**）。
           echo "== 清理后 =="
+          df -h / 2>/dev/null | tail -1 || true
+          AVAIL_KB="$(df -k / 2>/dev/null | tail -1 | awk '{print $4}')"
+          NEED_KB=62914560   #  60G —— 而那**构建树**的**峰值**逐字**要**那**空间**（=> 而那**读数**是那 07 那边逐字**核**的**）
+          if [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt "$NEED_KB" ]; then
+            echo "::error title=磁盘余量不够::清完只剩 $((AVAIL_KB / 1024))G、而那编的峰值要 60G —— 这一趟编不完"
+            exit 1
+          fi
+
           df -h / 2>/dev/null | tail -1 || true
 
       - name: 编 llvmtoolchain（llvmVersion 已填，首次真编）
