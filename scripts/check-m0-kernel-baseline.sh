@@ -150,9 +150,14 @@ for r in d.get('referenceDocs') or []:
         if r.get('status') == '未核':
             missing.append('%s 逐字**是**那内核的**数据**、=> 而它**还**没**进**那仓**内**、=> 而按 C-105 报缺' % r['file'])
         else:
-            p2 = os.path.join(ROOTDIR, 'docs/kernel-baseline', r['file'])
+            #  而那**它**逐字**在**那仓内、=> 而而那 sha256 逐字**要**对得上（=> 而而那**它**逐字**是**那**完整**的**一份**）
+            p2 = os.path.join(ROOTDIR, r.get('path') or ('docs/kernel-baseline/' + r['file']))
             if not os.path.isfile(p2):
                 missing.append('%s 逐字**不**在**那仓内**' % r['file'])
+            else:
+                got2 = hashlib.sha256(open(p2, 'rb').read()).hexdigest()
+                if r.get('sha256') and got2 != r['sha256']:
+                    bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (r['file'], r['sha256'][:16], got2[:16]))
     elif r.get('file', '').endswith('.html'):
         #  那网页那一族逐字**不**是那内核的**配置**、=> 而而那清单**不**把它**算**成**条目**
         if r.get('isKernelData'):

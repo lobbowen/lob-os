@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T14:51:19Z",
+  "takenAt": "2026-10-26T14:54:45Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -77,7 +77,7 @@
       "id": "node",
       "status": "过",
       "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 37695",
+      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 41035",
       "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）"
     },
     {
