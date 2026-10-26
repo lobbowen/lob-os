@@ -96,9 +96,31 @@ __cp.spawnSync = function (cmd, args, opts) {
   if (!isTarget) return __orig.apply(this, arguments);
   const remote = __prefix + '/' + cmd;
   const q = (s) => String(s).replace(/'/g, "'\\\\''");
-  const cmdline = q(remote) + (args && args.length ? ' ' + args.map(q).join(' ') : '');
+  //  而那**内联**的**程序**（=> 而那 **-e** **那一族**）逐字**要**走**那**文件**、
+  //  => 而而它**不**能**内联**在**那**命令行**上**（=> 而那**引号**逐字**会**被**拆**）。
+  let cmdline;
+  const eIdx = args ? args.indexOf('-e') : -1;
+  if (eIdx >= 0 && args && eIdx + 1 < args.length) {
+    //  而那**内联**的**程序**（=> 而那 **-e** **那一族**）逐字**要**走**那**文件**、
+    //  => 而而它**不**能**内联**在**那**命令行**上**（=> 而那**引号**逐字**会**被**拆**）。
+    const prog = args[eIdx + 1];
+    const tmpFile = '/data/user/0/' + __pkg + '/files/tmp/lobos-crit-' + Date.now() + '-' + Math.floor(Math.random() * 100000) + '.js';
+    const rest = args.filter((_, i) => i !== eIdx && i !== eIdx + 1);  //  那 -e 逐字**去**掉（=> 而那**程序**逐字**在**那**文件**里面**）
+    const b64 = Buffer.from(prog, 'utf8').toString('base64');
+    //  => 而那**写**那**文件**逐字**要**在**那** run-as **里面**（=> 而那 app **私有**的**目录**、=> 而**外头**的**壳**逐字**写不**了**）
+    cmdline = 'echo ' + b64 + ' | base64 -d > ' + tmpFile + ' && ' +
+      q(remote) + (rest.length ? ' ' + rest.map(q).join(' ') : '') + ' ' + q(tmpFile) + '; rm -f ' + tmpFile;
+  } else {
+    cmdline = q(remote) + (args && args.length ? ' ' + args.map(q).join(' ') : '');
+  }
   const inner = cmdline;
-  const one = 'run-as ' + __pkg + ' sh -c ' + String.fromCharCode(39) + inner + String.fromCharCode(39);
+  //  那**应用**给**它**的**孩子**的**那**一条**路径**（=> 而那 runtime.json **里面**的**那** env **快照**）
+  //  => 而那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**、=> 而而那**它**逐字**不**是**本脚本**自己**编**的**。
+  const __ld = process.env.LOBOS_CHILD_LD || '';
+  const __path = process.env.LOBOS_CHILD_PATH || '';
+  //  => 而那**变量**逐字**要** **export**（=> 而而它**不**能**只**是**那**前缀**、=> 而那**前缀**逐字**只**管**那**紧跟**的**那一个**命令**）
+  const __envPrefix = (__ld ? 'export LD_LIBRARY_PATH=' + __ld + '; ' : '') + (__path ? 'export PATH=' + __path + '; ' : '');
+  const one = 'run-as ' + __pkg + ' sh -c ' + String.fromCharCode(39) + __envPrefix + inner + String.fromCharCode(39);
   const r = __orig.call(this, __adb, ['-s', __dev, 'shell', one], {
     input: opts.input,
     encoding: 'utf8',
@@ -117,6 +139,51 @@ __cp.spawnSync = function (cmd, args, opts) {
 """
 
 
+def child_env_value(key):
+    #  那**应用**给**它**的**孩子**的**那** env **快照**（=> 而那 runtime.json **里面**的**那**一份**）。
+    p = '/data/user/0/%s/files/run/proc/runtime.json' % pkg
+    rr = subprocess.run([adb, '-s', dev, 'shell', 'run-as', pkg, 'cat', p],
+                        capture_output=True, text=True, timeout=90)
+    txt = (rr.stdout or '').strip()
+    if not txt or 'No such' in txt or 'Not found' in txt or 'Permission denied' in txt:
+        return ''
+    try:
+        j = json.loads(txt)
+        env = j.get('env')
+        if isinstance(env, str):
+            env = json.loads(env)
+        return str((env or {}).get(key, ''))
+    except Exception:
+        return ''
+
+
+def child_ld_path():
+    #  那**应用**给**它**的**孩子**的**那**一条**路径**：=> 而那 runtime.json **里面**的**那** env **快照**。
+    #  => 而那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**（=> 而那**它**逐字**不**是**本脚本**自己**编**的**）。
+    #  => 而而那**取不到**就**报缺**（=> 而按 C-105 **不猜填**）。
+    p = '/data/user/0/%s/files/run/proc/runtime.json' % pkg
+    rr = subprocess.run([adb, '-s', dev, 'shell', 'run-as', pkg, 'cat', p],
+                        capture_output=True, text=True, timeout=90)
+    txt = (rr.stdout or '').strip()
+    if not txt or 'No such' in txt or 'Not found' in txt:
+        return ''
+    try:
+        j = json.loads(txt)
+        env = j.get('env')
+        if isinstance(env, str):
+            env = json.loads(env)
+        return str((env or {}).get('LD_LIBRARY_PATH', ''))
+    except Exception:
+        return ''
+
+
+child_ld = child_env_value('LD_LIBRARY_PATH')
+child_path = child_env_value('PATH')
+if not child_ld:
+    print('报缺：那设备上那 runtime.json **里面**的**那** env **快照**逐字**取不到**'
+          '（=> 而那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、=> 而而**不猜填**）')
+
+
 def run_criterion(code):
     # 那判据逐字**是**那可执行代码、=> 而它逐字**在**那宿主**上**跑、
     # => 而那**目标**逐字**经**adb **在**那设备**上**跑。
@@ -126,6 +193,10 @@ def run_criterion(code):
     env['LOBOS_PKG'] = pkg
     env['LOBOS_TARGET_PREFIX'] = target_prefix
     env['LOBOS_LIB_PREFIX'] = lib_prefix
+    #  那**应用**给**它**的**孩子**的**那**一条**路径**：=> 而那 runtime.json **里面**的**那** env **快照**。
+    #  => 而那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**、=> 而而那**它**逐字**不**是**本脚本**自己**编**的**。
+    env['LOBOS_CHILD_LD'] = child_ld
+    env['LOBOS_CHILD_PATH'] = child_path
     script = SHIM + '\n' + code
     rr = subprocess.run(['node', '-e', script], capture_output=True, text=True,
                         env=env, timeout=int(timeout) + 120)
