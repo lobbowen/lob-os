@@ -473,15 +473,15 @@ jobs:
           #       => 而而它们逐字**处置不同**（=> 而前者逐字是**上游**的事、=> 而后者逐字是**本步骤**的事）。
           #    => 而这里逐字只判**后者**（=> 而而本步骤逐字只看得见「dist/llvmtoolchain 在不在」），
           #       => 而而前者逐字由**上游那一步**的成败来表达。
-          #  缺陷名（C-102）**这一格逐字看的是那**错**的**那一层** ——
+          #  缺陷名（C-102）**这一格逐字找的是那**错**的**那个**名字** ——
           #    => 而而那**它**治**的**是「那一趟跑了、而它没产出」那一边（=> 而和「那一趟压根没跑」那一边**不合并**）。
-          #    => 而那**成因**：=> 而这一件逐字**是**那**平**的**那一个**落位**（=> 而那 build-component-llvmtoolchain.sh
-          #       逐字**写**的是那 $OUT/bin **与**那 $OUT/package.json **那两**个、=> 而那 $OUT 逐字**是**那 dist/），
-          #       => 而而那 dist/llvmtoolchain **那一层**逐字**从来**不**存在**。
-          #    => 而而那**产物**逐字**是**那 dist/component-llvmtoolchain-*.zip（=> 而那第 12 步逐字**产**的**是**它**）。
+          #    => 而那**成因**：=> 而那第 12 步逐字**调**的是那 package-component.sh llvm（=> 而那 TOOL 逐字**是**那 llvm），
+          #       => 而而那**产物**的名字逐字**是**那 component-$TOOL-$VER-$SHA-android-arm64.zip
+          #       （=> 而那 package-component.sh :70 **那一行**）、=> 而而那**它**逐字**是**那 component-llvm-*.zip。
+          #    => 而而这一格逐字**找**的**是**那 component-llvmtoolchain-*.zip（=> 而那**它**逐字**从来**不**存在**）。
           #    => 而那**处置**：=> 而这一格逐字**看**那**真的**那一个**产物**（=> 而那 zip **那一件**）。
           #    => 而按 C-104：=> 而那**发布**那一族逐字**只有**一条路（=> 而那第 17 步逐字**传**的**也**是**它**）。
-          if ! ls dist/component-llvmtoolchain-*.zip >/dev/null 2>&1; then
+          if ! ls dist/component-llvm-*.zip >/dev/null 2>&1; then
             echo "::error title=没产出 llvmtoolchain::本趟没产出，不算成功"
             exit 1
           fi
@@ -542,7 +542,7 @@ jobs:
             echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
             exit 1
           fi
-          for f in dist/component-llvmtoolchain-*.zip; do
+          for f in dist/component-llvm-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
               node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
@@ -551,5 +551,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: component-llvm
-          path: dist/component-llvmtoolchain-*.zip
+          path: dist/component-llvm-*.zip
           retention-days: 90
