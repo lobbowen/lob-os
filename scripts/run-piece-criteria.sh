@@ -5,9 +5,17 @@
 #   run-piece-criteria.sh [件名 ...]
 # 不给件名就逐条跑那表里全部的。
 #
+# ★ 那判据**在宿主**上跑、=> 而那**目标**在**设备**上跑。
+#   => 而那宿主**有**那个 node（=> 而那设备上**没有**）、
+#   => 而那判据**自己**去**spawn**那目标、
+#   => 而那目标**在**那设备**上**、
+#   => 而那**裸名**逐字**怎么**解析**到**那设备**上**那个**文件** = 那 **LOBOS_TARGET_PREFIX**（=> 而那默认值逐字是那设备上**那**usr/bin **那一族**）。
+#   => 而那**spawn**逐字**变成**「那 node 逐字**去**adb **那设备**上**跑**那目标」，
+#   => 而而那**判据**的**那** node 字段**不**用**改**（=> 而它逐字**只**管**spawn**那个**名字**与**读**那退出码**与**那 stderr**）。
+#
 # 它做什么：
 #   一、逐条读那 scripts/piece-criteria.json，把那带 node 字段的判据逐个取出来。
-#   二、逐条把那 node 字段（那可直接跑的验收代码）逐个跑在那设备上。
+#   二、逐条把那 node 字段（那可直接跑的验收代码）逐个跑在那宿主上，=> 而那目标**经**adb **在**那设备**上**跑**。
 #   三、逐条记下：过 / 不过 / 未核，加那退出码、那 stderr 尾部、那取数时刻。
 #   四、把那结果逐条**重算**成 M 与 N，写进那读数的那一件。
 #
@@ -24,7 +32,8 @@ OUT="$HERE/docs/m0prime-readings.json"
 ADB="${LOBOS_ADB:-/home/bowen/runtimes/platform-tools/adb}"
 DEV="${LOBOS_DEV:-f0942f56}"
 PKG="${LOBOS_PKG:-lobos.os}"
-BINDIR="/data/user/0/$PKG/files/usr/bin"
+# 那设备上那**目标**逐字**在**哪（=> 而那判据逐字**按裸名**去**spawn**、=> 而而那**这**个前缀逐字**要**被**换成**那设备上**那**路径**）
+TARGET_PREFIX="${LOBOS_TARGET_PREFIX:-/data/user/0/$PKG/files/usr/bin}"
 TIMEOUT="${LOBOS_CRITERIA_TIMEOUT:-120}"
 
 if [ ! -f "$CRITERIA" ]; then
@@ -32,22 +41,25 @@ if [ ! -f "$CRITERIA" ]; then
   exit 2
 fi
 if [ ! -x "$ADB" ]; then
-  echo "adb 不在那路径: $ADB（=> 而那设备侧逐字**要**那 adb、=> 而那**装**与**跑**都**不**在本脚本**里**）"
+  echo "adb 不在那路径: $ADB"
+  exit 2
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "报缺：那宿主上逐字**没有**那个 node（=> 而那判据逐字**要**它**才**跑得动）"
   exit 2
 fi
 
-# 那**设备**上逐字**没有**那个 node、=> 而那 node 字段逐字**要**它**才**跑得动。
-if ! "$ADB" -s "$DEV" shell "run-as $PKG test -x $BINDIR/node" >/dev/null 2>&1; then
-  echo "报缺：那设备上逐字**没有**那个 node（=> 而那 node 字段逐字**要**它**才**跑得动、=> 而那 node 那一件逐字**不在**那设备**上**）"
-  echo "报缺：那六件（node / npm / pnpm / git / curl / make）逐字**不在**那设备**上**、=> 而它们逐个的 asset 逐字**都**在**那 GitHub 上**、=> 而那**装**是**那设备侧**的**实施**（=> 而本脚本逐字**不**动**那设备**）"
+# 那设备**通不通**——=> 而那**通**是**那设备侧**的**实施**要**保证**的**。
+if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
+  echo "报缺：那设备逐字**不**通（=> 而那**装**与**那**取件**都**是**那设备侧**的**实施**、=> 而本脚本逐字**不**动**那设备**）"
   exit 2
 fi
 
-python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$BINDIR" "$TIMEOUT" "$@" << 'PYEOF'
+python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$@" << 'PYEOF'
 import io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
-criteria_path, out_path, adb, dev, pkg, bindir, timeout = sys.argv[1:8]
+criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
 wanted = sys.argv[8:]
 d = json.load(io.open(criteria_path, encoding='utf-8'))
 
@@ -59,40 +71,59 @@ if wanted:
 now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 results = []
 
-def run_on_device(code):
-    # 那 node 那一段逐字**是**那可执行代码、=> 而它逐字**在**那设备**上**跑**、=> 而那 PATH 逐字**要**带那 usr/bin。
-    tmp = '/data/user/0/%s/files/tmp/criteria-run-%d.js' % (pkg, os.getpid())
-    payload = code
-    # 用 base64 搬过去（=> 而那代码里逐字**有**引号**也**不**会**被**拆**）。
-    import base64
-    b64 = base64.b64encode(payload.encode('utf-8')).decode('ascii')
-    inner = ('mkdir -p /data/user/0/%s/files/tmp && '
-             'echo %s | base64 -d > %s && '
-             'export PATH=$PATH:%s && '
-             'node %s 2>&1; echo "__RC__$?"') % (pkg, b64, tmp, bindir, tmp)
-    rr = subprocess.run([adb, '-s', dev, 'shell', 'run-as', pkg, 'sh', '-c', inner],
-                        capture_output=True, text=True, timeout=int(timeout) + 60)
-    out = rr.stdout or ''
-    rc = None
-    if '__RC__' in out:
-        head, _, tail = out.rpartition('__RC__')
-        try:
-            rc = int(tail.strip().split(chr(10))[0])
-        except ValueError:
-            rc = None
-        out = head
-    subprocess.run([adb, '-s', dev, 'shell', 'run-as', pkg, 'rm', '-f', tmp],
-                   capture_output=True, text=True, timeout=60)
-    return rc, out.strip()
+# 那判据逐字**自己**去**spawn**那目标、=> 而那**目标**逐字**在**那设备**上**。
+# 而那宿主上逐字**没有**那目标、=> 而那 spawnSync 逐字**要**改成**经**adb **去**跑**它**。
+# 而那**改法**逐字**不**动**那判据**的**那** node 字段**（=> 而它逐字**只**管**spawn**那个**名字**与**读**那退出码**与**那 stderr**）。
+SHIM = r"""
+const __cp = require('node:child_process');
+const __adb = process.env.LOBOS_ADB || 'adb';
+const __dev = process.env.LOBOS_DEV || '';
+const __pkg = process.env.LOBOS_PKG || '';
+const __prefix = process.env.LOBOS_TARGET_PREFIX || '';
+const __orig = __cp.spawnSync;
+__cp.spawnSync = function (cmd, args, opts) {
+  opts = opts || {};
+  const isTarget = typeof cmd === 'string' && !cmd.startsWith('/') && cmd !== 'sh' && cmd !== 'bash';
+  if (!isTarget) return __orig.apply(this, arguments);
+  const remote = __prefix + '/' + cmd;
+  const q = (s) => String(s).replace(/'/g, "'\\\\''");
+  const cmdline = q(remote) + (args && args.length ? ' ' + args.map(q).join(' ') : '');
+  const inner = cmdline;
+  const one = 'run-as ' + __pkg + ' sh -c ' + String.fromCharCode(39) + inner + String.fromCharCode(39);
+  const r = __orig.call(this, __adb, ['-s', __dev, 'shell', one], {
+    input: opts.input,
+    encoding: 'utf8',
+    timeout: opts.timeout
+  });
+  if (r.stdout && typeof r.stdout === 'string') {
+    const i = r.stdout.indexOf('__LOBOS_RC__');
+    if (i >= 0) {
+      r.status = parseInt(r.stdout.slice(i + 13).trim().split('\\n')[0], 10);
+      r.stdout = r.stdout.slice(0, i).replace(/\r\n/g, '\n');
+      r.stderr = '';
+    }
+  }
+  return r;
+};
+"""
+
+
+def run_criterion(code):
+    # 那判据逐字**是**那可执行代码、=> 而它逐字**在**那宿主**上**跑、
+    # => 而那**目标**逐字**经**adb **在**那设备**上**跑。
+    env = dict(os.environ)
+    env['LOBOS_ADB'] = adb
+    env['LOBOS_DEV'] = dev
+    env['LOBOS_PKG'] = pkg
+    env['LOBOS_TARGET_PREFIX'] = target_prefix
+    script = SHIM + '\n' + code
+    rr = subprocess.run(['node', '-e', script], capture_output=True, text=True,
+                        env=env, timeout=int(timeout) + 120)
+    return rr.returncode, (rr.stdout or '') + (rr.stderr or '')
 
 for k in pieces:
-    rc, out = run_on_device(d[k]['node'])
-    if rc is None:
-        status = '未核'
-    elif rc == 0:
-        status = '过'
-    else:
-        status = '不过'
+    rc, out = run_criterion(d[k]['node'])
+    status = '过' if rc == 0 else '不过'
     results.append({
         'id': k,
         'status': status,
@@ -103,23 +134,22 @@ for k in pieces:
 
 passed = sum(1 for r in results if r['status'] == '过')
 failed = sum(1 for r in results if r['status'] == '不过')
-unknown = sum(1 for r in results if r['status'] == '未核')
 
 doc = {
-    '$note': 'M0′ 真判据的读数。逐件的过/不过/未核逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。',
+    '$note': 'M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。',
     'family': 'M0′ 真判据（用户态件那一族）',
-    'notFamily': '那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而那两者逐字**不**能合成一件）',
+    'notFamily': '那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）',
     'takenAt': now,
+    'runner': '那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）',
     'threshold': {'value': None, 'status': '未核',
-                  'note': '那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**）、=> 而按 C-105 报缺、=> 而而那 M/N **逐字**是**那读数**、=> 而那阈值逐字**不是**那读数'},
+                  'note': '那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而而那**那一句**逐字**是**那**另一个**阈值**、=> 而**不**是**这**一个**）、=> 而按 C-105 报缺、=> 而而那 M/N **逐字**是**那读数**、=> 而那阈值逐字**不是**那读数'},
     'pieces': results,
     'M': passed,
     'N': len(results),
     'failed': failed,
-    'unknown': unknown,
 }
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
-print('M=%d N=%d（不过 %d、未核 %d）、取数时刻 %s' % (passed, len(results), failed, unknown, now))
+print('M=%d N=%d（不过 %d）、取数时刻 %s' % (passed, len(results), failed, now))
 for r in results:
-    print('  %-10s %s' % (r['id'], r['status']))
+    print('  %-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
 PYEOF
