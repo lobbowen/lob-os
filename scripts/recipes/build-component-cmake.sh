@@ -196,10 +196,23 @@ done
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
 rm -rf "$OUT/share" && mkdir -p "$OUT/share"
-cp -a "$MODDIR" "$OUT/share/cmake"
+    #  缺陷名（C-102）**那一层逐字被**改名**了、=> 而而那 **cmake** **那一件**逐字**找不**到**它**
+    #    => 而而它治**的**是「那模块目录逐字**在不在**那**cmake** **自己**找**的**那个**位置**」。
+    #    => 而那**成因**：=> 而那上游逐字**找**的是那 **/share/cmake-4.4**（=> 而那 cmake **那一件**的**那** strings
+    #       里面逐字**含**那 /share/cmake-4.4、=> 而而那**它**逐字**是**那**版本号**的**前两段**）。
+    #    => 而这一格逐字**把**那 MODDIR **改名**成**那 share/cmake、=> 而而那**它**逐字**不**是**那**上游**找**的**那个**名字**。
+    #    => 而那**后果**逐字**是**：=> 而那 cmake 逐字**报**那「Could not find CMAKE_ROOT !!!」
+    #       （=> 而那真机读数：=> 而那 opt/cmake/4.4.4/share/cmake **那一层**逐字**有**那 Modules、
+    #        => 而那 **cmake --version** 逐字**还**是**那**同一**一句**错**）。
+    #    => 而那**处置**：=> 而那层逐字**用**那**上游**的**那个**名字**（=> 而那 MAJOR.MINOR 逐字**是**那**前两段**、
+    #       => 而**不**是**那完整**的**那个**版本号**）。
+    #    => 而按 C-104：=> 而那产物侧与那打包侧与那落位侧那三条生成路径逐字**都是一条**、=> 而那**它**们**不**在**那三处**。
+    CMAKE_MM="${CMAKE_VER%%.*}.$(printf "%s" "$CMAKE_VER" | cut -d. -f2)"
+    cp -a "$MODDIR" "$OUT/share/cmake-$CMAKE_MM"
+
 
 printf '%s' "$CMAKE_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"
-echo "[ok] cmake 模块目录 → $OUT/share/cmake（缺它 cmake 就是空壳）"
+echo "[ok] cmake 模块目录 → $OUT/share/cmake-$CMAKE_MM（缺它 cmake 就是空壳；=> 而那**名字**逐字**要**是**那上游**找**的**那个**）"
 echo "[$TOOL] 落位：组件通道 → files/programs/$TOOL/<版本>/"
 echo "[$TOOL] 判据要真跑一次 cmake（起得来不等于能 configure 东西）"
