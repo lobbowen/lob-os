@@ -14,7 +14,7 @@ JOBS="${JOBS:-4}"
 PROJECTS="clang;lld"
 
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
-TOOLDIR="$OUT/$TOOL/bin"
+TOOLDIR="$OUT/bin"
 STAGE="$OUT/.$TOOL-stage"
 
 die() {
@@ -367,12 +367,23 @@ for b in clang ld.lld llvm-ar; do
 done
 echo "[ok] 解释器形态正确（/system/bin/linker64）"
 
-rm -rf "$OUT/$TOOL"
+rm -rf "$TOOLDIR"
 mkdir -p "$TOOLDIR"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 rm -rf "$STAGE"
 printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 
+  #  缺陷名（C-102）**这一件逐字落位在别处、=> 而而那判据逐字读的是根那一层** —— => 而而那**产物**逐字**在**那
+  #    $OUT/$TOOL/bin **里面**、=> 而而那 package.json 逐字**落**在**那 $OUT/$TOOL **里面**、=> 而而那**判据**
+  #    （verify-component-artifact.sh:99）逐字**读**的**是**那 $ROOT/dist/package.json、=> 而而那**两**个**路径**逐字**不**是**同一**个**。
+  #  => 而那**为什么**有**两边**：一边是「**那产物**逐字**在**哪**一层**」、另一边是「**那判据**逐字**该**读**哪**一层**」——=> 而那两边各答一件事。
+  #  => 而那**真源**逐字是**那**落位**的**那**一个**（=> 而那**别**的件**全都**是**那**平**的** $OUT/bin **与** $OUT/lib **那一族**、
+  #    => 而而那 gen-component-meta.js 逐字**只**扫**那 $PAYLOAD/bin **与** $PAYLOAD/lib **那两**个**目录**、=> 而而那**装侧**
+  #    （ProgramInstallPipeline.kt）与那**发侧**（publish-component-manifest.js）逐字**都**读**那**根**那一层**的** package.json）。
+  #  => 而那**处置**：=> 而而这一件逐字**改**成**那**平**的**那**一个**落位**（=> 而而那 $OUT/bin **与** $OUT/package.json **那一族**）、
+  #    => 而而那**判据**那一族**不用改**（=> 而而它逐字**已经**读**的是**那**对**的**那一层**）。
+  #  => 而按 C-104：=> 而而那**落位**那一族逐字**只有**一条**路**、=> 而而那**不是**第二种生成路径。
+  #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 note "写件内 package.json（别名映射）"
 node -e '
 const fs = require("node:fs"), path = require("node:path");
@@ -388,9 +399,9 @@ fs.writeFileSync(path.join(dir, "..", "package.json"),
   JSON.stringify({ name: "llvmtoolchain", bin }, null, 2) + "\n");
 console.log("[ok] package.json 声明别名 " + Object.keys(bin).length + " 个");
 ' "$TOOLDIR" "$TOOL"
-[ -f "$OUT/$TOOL/package.json" ] || die "没产出 package.json" \
+[ -f "$OUT/package.json" ] || die "没产出 package.json" \
   "别名映射是装侧建链与发侧写清单的唯一真相 —— 没有它这一件只有入口能用"
 
 echo
-echo "[ok] $OUT/$TOOL/bin （$(ls "$TOOLDIR" | wc -l) 个工具）"
+echo "[ok] $OUT/bin （$(ls "$TOOLDIR" | wc -l) 个工具）"
 echo "[$TOOL] 判据：clang --version 能报版本、ld.lld --version 能报、能在真机编出一个 .so"
