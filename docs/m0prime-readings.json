@@ -2,12 +2,41 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T23:42:05Z",
+  "takenAt": "2026-10-26T23:46:30Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
-    "value": null,
-    "status": "未核",
-    "note": "那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而而那**那一句**逐字**是**那**另一个**阈值**、=> 而**不**是**这**一个**）、=> 而按 C-105 报缺、=> 而而那 M/N **逐字**是**那读数**、=> 而那阈值逐字**不是**那读数"
+    "value": 0.55,
+    "status": "已核",
+    "kind": "M/N 大于等于 0.55",
+    "version": "那仓内那 version.json 逐字 = 那 versionName 0.0.6 / 那 versionCode 6",
+    "reason": "那 M0prime 真判据逐字是那 M/N 比率、=> 而那**它**逐字**是**那**下限**（=> 而那**它**逐字**不**是**那**目标**）、=> 而那**它**逐字**随版本递增**（=> 而那**它**逐字**只**能**往**上**走**不能**往**下**走**）",
+    "baseline": "那取数时刻 = 那 takenAt、=> 而那 M/N 逐字 = 那 M0prime 那一格的 M 与 N（=> 而那**它**逐字**是**那**重算**出来**的**）、=> 而按 C-274 与按 C-203 那一族",
+    "provenance": "那 **0.55** 那一档逐字**是**那**设计选择**那一族**的**选择**、=> 而而那**它**逐字**由**那 lead 与那 04 **一起**定**（=> 而那**它**逐字**不**在**那**上游官方流程**里**）、=> 而而那**它**逐字**不能**冒充**那**上游**的**（=> 而那 C-519 那一族逐字**仍**未过**、=> 而按 C-105 **报缺**）",
+    "note": "那阈值逐字**不**是**那读数**（=> 而而那 M/N **逐字**是**那读数**）、=> 而那**旧**的**那一句**逐字 = 「那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而而那**那一句**逐字**是**那**另一个**阈值**、=> 而**不**是**这**一个**）、=> 而按 C-105 报缺」——=> 而那**旧**的**那一句**按 **留档不删**、=> 而它**在**那**上面**那一句**里面**"
+  },
+  "M0prime": {
+    "set": [
+      "node",
+      "npm",
+      "pnpm",
+      "jq",
+      "git",
+      "make",
+      "cmake",
+      "bash",
+      "ripgrep",
+      "sqlite",
+      "python",
+      "llvm",
+      "pkgconf",
+      "busybox"
+    ],
+    "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而那读数逐字**跟着**它**走**）",
+    "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
+    "M": 12,
+    "N": 14,
+    "failed": 2,
+    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
   },
   "pieces": [
     {
@@ -63,21 +92,21 @@
       "id": "llvm",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "RROR: Error: clang 起不来: status=null stderr=\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-224014-127563.js:7:27)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
+      "outputTail": "RROR: Error: clang 起不来: status=null stderr=\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-373100-392634.js:7:27)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
       "criterion": "clang 起得来（且是**我们编的那个**，不是宿主的 x86_64 clang），并**真编译一次**：拿 --sysroot 指向 sysroot 件编一个 .so，产物是 aarch64 ELF。三层各自会独立地坏：找得到 sysroot 的头文件 / 链得出 ELF / ABI 是对的 —— 只验 --version 的话三层都验不到。未覆盖：「产物能被 dlopen」——那要真机（ProgramInstallPipeline 会读 ELF 段铺依赖）。"
     },
     {
       "id": "make",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "os/cache/lobos-make-TWBYm4(NAME)'.  Stop.\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-224014-127811.js:34:30)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
+      "outputTail": "os/cache/lobos-make-brddxS(NAME)'.  Stop.\n\n    at Object.<anonymous> (/data/user/0/lobos.os/files/tmp/lobos-crit-373100-392867.js:34:30)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47",
       "criterion": "make 起得来，并且**真编译一条 makefile 到可执行文件再 clean 掉** ——起得来不等于能用：make 自己就是构建系统，它坏的方式是「跑起来了但不建东西」。所以判据覆盖变量展开、命令行目标、隐式规则（%.o: %.c）与 clean，缺一都不算通过。"
     },
     {
       "id": "node",
       "status": "过",
       "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 42439",
+      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 37445",
       "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）"
     },
     {
@@ -137,30 +166,6 @@
       "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。"
     }
   ],
-  "M0prime": {
-    "set": [
-      "node",
-      "npm",
-      "pnpm",
-      "jq",
-      "git",
-      "make",
-      "cmake",
-      "bash",
-      "ripgrep",
-      "sqlite",
-      "python",
-      "llvm",
-      "pkgconf",
-      "busybox"
-    ],
-    "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而那读数逐字**跟着**它**走**）",
-    "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
-    "M": 12,
-    "N": 14,
-    "failed": 2,
-    "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
-  },
   "library": {
     "set": [
       "openssl",
@@ -209,6 +214,39 @@
         "llvm",
         "make"
       ],
+      "note": "那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）"
+    },
+    {
+      "takenAt": "2026-10-26T23:42:05Z",
+      "M": 12,
+      "N": 14,
+      "failed": 2,
+      "collectedM": 16,
+      "collectedN": 18,
+      "notPassed": [
+        "llvm",
+        "make"
+      ],
+      "note": "那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）"
+    },
+    {
+      "takenAt": "2026-10-26T23:45:14Z",
+      "M": 1,
+      "N": 1,
+      "failed": 0,
+      "collectedM": 1,
+      "collectedN": 1,
+      "notPassed": [],
+      "note": "那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）"
+    },
+    {
+      "takenAt": "2026-10-26T23:45:31Z",
+      "M": 12,
+      "N": 14,
+      "failed": 2,
+      "collectedM": 16,
+      "collectedN": 18,
+      "notPassed": [],
       "note": "那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）"
     }
   ]
