@@ -367,9 +367,26 @@ for b in clang ld.lld llvm-ar; do
 done
 echo "[ok] 解释器形态正确（/system/bin/linker64）"
 
-rm -rf "$TOOLDIR"
-mkdir -p "$TOOLDIR"
+#  缺陷名（C-102）**那落位逐字只搬那 bin/ 那一族、=> 而而那 lib/ 那一族逐字**没**被搬过来** ——
+#    而实际上 LLVM 的 cmake --install 把 libclang.so 与 libclang-cpp.so **落**在**那 $STAGE/prefix/lib **里面**、
+#    => 而而那 recipe 逐字**只** `cp -a "$STAGE/prefix/bin/."`，=> 而而那 lib/ **那一族**逐字**就**被**丢**了**、
+#    => 而而那判据（check-elf-deps.sh:93）逐字**找**的**是**那「件自己的 lib/」（=> 而它逐字 = 那 <件目录>/lib **那一**族**）
+#    => 而而那 c-index-test 那一件逐字**链**那 libclang.so、=> 而而那**红**的**原话**逐字 = 「依赖这些库，但它们既不在 bionic 白名单、
+#       也不是 APK 基础库、也不在件自己的 lib/ 下： libclang.so」（=> 而那 40281519231 那一趟逐字**就是**那**这一句**）。
+#  => 而那**为什么**有**两边**：一边是「**那产物**逐字**在**哪**一层**」（=> 而那要**看**那 recipe 那一族**落位**那两行**）、
+#    另一边是「**那判据**逐字**找**那**件自己的**库**在**哪**一层**」（=> 而那要**看**那 check-elf-deps.sh 那一族**）
+#    => 而那两边各答一件事、=> 而按 C-135 那不是同一问。
+#  => 而那**处置**：=> 而而那 lib/ **那一族**逐字**要**跟**那 bin/ **那一族****一起**搬（=> 而那**别**的件**也**是**那**平**的** $OUT/lib **那一族**）、
+#    => 而而那**判据**那一族**不用改**（=> 而它逐字**已经**找**的是**那**对**的**那一层**）。
+#  => 而按 C-104：=> 而那**落位**那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+rm -rf "$TOOLDIR" "$OUT/lib"
+mkdir -p "$TOOLDIR" "$OUT/lib"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
+#  而那 lib/ **那一族**（=> 而它逐字**是**那**件自己的**库**：=> 而而那 check-elf-deps 那一族逐字**找**的**就是**它**）
+if [ -d "$STAGE/prefix/lib" ]; then
+  cp -a "$STAGE/prefix/lib/." "$OUT/lib/"
+fi
 rm -rf "$STAGE"
 printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 
