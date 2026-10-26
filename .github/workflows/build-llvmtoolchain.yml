@@ -298,11 +298,21 @@ jobs:
       - name: 别名映射须与件内 package.json 一致
         run: |
           set -euo pipefail
-          test -f dist/llvmtoolchain/package.json \
-            || { echo "::error title=缺别名映射::dist/llvmtoolchain/package.json 没产出 —— 八个工具里只有入口能用"; exit 1; }
+          #  缺陷名（C-102）**这一格逐字读错了那 package.json 那一层** ——
+          #    而那**构建侧**逐字**写**的是那**根**那一层（=> 而那 build-component-llvmtoolchain.sh :430
+          #    逐字**写**的是那 $TOOLDIR 的**上一层**的 package.json、=> 而那 $OUT 逐字**是**那 dist/）。
+          #    => 而那**判据**那一族（=> 而那 verify-component-artifact.sh :101 那一行）逐字**读**的**也**是**那**根**那一层
+          #    （=> 而那**它**逐字是「$ROOT/dist/package.json」）、=> 而而那**它**逐字**过**了。
+          #    => 而这一格逐字**读**的是那 dist/llvmtoolchain/ **那一层**、=> 而那**它**逐字**没有**那个件、
+          #       => 而那**它**逐字**判红**、=> 而那**红**被读成「那八个工具里只有入口能用」。
+          #    => 而而那**成因**逐字**是**那**路径**那一格**的事、=> 而而那**它**逐字**不是**「那别名映射」那个形状
+          #    （=> 而那别名映射那一族逐字**在**那 package.json **里面**、=> 而而它逐字**产出了**）。
+          #    => 而按 C-104：=> 而那**别名映射**那一族逐字**只有**一条生成路径。
+          test -f dist/package.json \
+            || { echo "::error title=缺别名映射::dist/package.json 没产出 —— 八个工具里只有入口能用"; exit 1; }
           node -e '
           const fs = require("node:fs");
-          const pkg = JSON.parse(fs.readFileSync("dist/llvmtoolchain/package.json", "utf8"));
+          const pkg = JSON.parse(fs.readFileSync("dist/package.json", "utf8"));
           const names = Object.keys(pkg.bin || {});
           const need = ["clang", "clang++", "ld.lld", "llvm-ar", "llvm-nm", "llvm-strip", "llvm-objdump", "llvm-readobj"];
           const missing = need.filter((n) => !names.includes(n));
@@ -311,7 +321,7 @@ jobs:
             process.exit(1);
           }
           for (const [k, v] of Object.entries(pkg.bin)) {
-            if (!fs.existsSync("dist/llvmtoolchain/" + v)) {
+            if (!fs.existsSync("dist/" + v)) {
               console.error("::error title=别名指向不存在的文件::" + k + " → " + v);
               process.exit(1);
             }

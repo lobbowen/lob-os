@@ -874,6 +874,11 @@ object ProgramInstallPipeline {
                 "组件已落位但注册表写入失败：" + upserted.exceptionOrNull()?.message,
             )
         }
+        val pd = ProgramDir(context, spec.programId, dir)
+        runCatching { pd.setCurrentVersion(safeVer) }
+        if (pd.currentVersion() != safeVer) {
+            return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
+        }
         //  缺陷名（C-102）**那全局那一层逐字没有跟着那一次换重建**
         //    => 而而它治**的**是「那 usr/bin 与那 usr/lib **那一层**逐字**跟**那**换掉之后**的**那版本**对不对得上**」。
         //    => 而那**成因**：=> 而那一次换版本逐字**只**换**那一件自己的**落位目录**（=> 而那是整目录换掉：
@@ -898,11 +903,6 @@ object ProgramInstallPipeline {
             "件换完之后全局那一层重建",
             spec.programId + "@" + safeVer + " => usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
         )
-        val pd = ProgramDir(context, spec.programId, dir)
-        runCatching { pd.setCurrentVersion(safeVer) }
-        if (pd.currentVersion() != safeVer) {
-            return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
-        }
         lobos.services.log.Journal.note(
             context, "package", true, "系统组件已安装",
             "id=" + spec.programId + " version=" + safeVer +
