@@ -264,6 +264,34 @@ object ProgramInstallPipeline {
             runCatching { android.system.Os.symlink(newLink, d.absolutePath) }
         }
 
+        //  缺陷名（C-102）**那 link-farm 那一族软链逐字没有建**
+        //    => 而那 link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（=> 而那格式逐字是「落位相对路径<TAB>指向目标」），
+        //       而那**它**逐字**跟着**那**件**走**、=> 而而那**落位侧**逐字**要**读**它**才**建得出**那**软链**。
+        //    => 而那后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**不带那 git- 前缀），
+        //       而而那**它**逐字**找不到**（=> 而那 git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
+        //    => 而那**处置**：=> 而那 link-farm **逐条**逐字**在**那落位目录**上**建**那**软链**（=> 而那**它**逐字**是**那**落位事实**）。
+        //    => 而那**它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、=> 而而那**它**逐字**也不是**「那加载器坏了」那个形状。
+        val farm = File(dest, "link-farm.txt")
+        if (farm.isFile) {
+            var made = 0
+            runCatching {
+                farm.readLines().forEach { line ->
+                    val t = line.trimEnd()
+                    if (t.isEmpty()) return@forEach
+                    val parts = t.split("\t")
+                    if (parts.size < 2) return@forEach
+                    val rel = parts[0]
+                    val tgt = parts[1]
+                    if (rel.isEmpty() || tgt.isEmpty()) return@forEach
+                    val link = File(dest, rel)
+                    if (link.exists()) return@forEach
+                    link.parentFile?.mkdirs()
+                    runCatching { android.system.Os.symlink(tgt, link.absolutePath) }
+                    made++
+                }
+            }
+            probe += "link-farm 建了 $made 条软链；"
+        }
         //  权限按**产物声明的 mode** 落（运行期不判形态、不替产物决定权限）
         for (fs in shape.files) {
             if (fs.mode.isBlank()) continue

@@ -221,6 +221,43 @@ if [ -n "$ENTRY" ]; then
       fi
     done
     echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字；=> 而那是 BINS 那一列 + 那几条软链的指向目标）"
+    #  缺陷名（C-102）**那 link-farm 那一族软链逐字没有建**
+    #    => 而那 link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（=> 而那格式逐字是「落位相对路径<TAB>指向目标」），
+    #       而那**它**逐字**在**那**产物**里**、=> 而而那**打包**这一族逐字**没有**读**它**。
+    #    => 而那后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**不带那 git- 前缀），
+    #       而而那**它**逐字**找不到**（=> 而那 git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
+    #    => 而那**处置**：=> 而那 link-farm **逐条**逐字**在**那暂存目录**上**建**那**软链**（=> 而那**它**逐字**是**那**落位事实**）。
+    #    => 而那**它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、=> 而而那**它**逐字**也不是**「那加载器坏了」那个形状。
+    if [ -f "$OUT/link-farm.txt" ]; then
+      N_FARM=0
+      while read -r FLINE; do
+        FPATH="${FLINE%%$'\t'*}
+        FTGT="${FLINE#*$'\t'}
+        [ -n "$FPATH" ] || continue
+        [ -n "$FTGT" ] || continue
+        mkdir -p "$STAGE/$(dirname "$FPATH")"
+        #  => 而那目标**逐字要**先**在**（=> 而那**它**逐字**指**到**那**暂存目录**里**的**那一份**）
+        if [ ! -e "$STAGE/$FPATH" ]; then
+          ln -sf "$FTGT" "$STAGE/$FPATH" 2>/dev/null || true
+        fi
+        N_FARM=$((N_FARM+1))
+      done < "$OUT/link-farm.txt"
+      echo "  （link-farm：建了 $N_FARM 条软链）"
+      #  => 而那 link-farm.txt 逐字**要**跟**着**那**件**走**（=> 而而那**它**逐字**是**那**清单**、=> 而而那**落位侧**逐字**要**读**它**才**建得出**那**软链**）
+      if [ -f "$OUT/link-farm.txt" ]; then
+        cp -f "$OUT/link-farm.txt" "$STAGE/link-farm.txt" 2>/dev/null || true
+      fi
+    fi
+    #  => 而那 libexec/ **那一层**逐字**要**跟**着**搬（=> 而那 git 的**子命令目录**逐字**在**那**底下**）
+    if [ -d "$OUT/libexec" ]; then
+      mkdir -p "$STAGE/libexec"
+      ( cd "$OUT/libexec" && find . -type d -exec mkdir -p "$STAGE/libexec/{}" \; )
+      ( cd "$OUT/libexec" && find . \( -type f -o -type l \) | while read -r f; do
+          mkdir -p "$STAGE/libexec/$(dirname "$f")"
+          cp -Pf "$OUT/libexec/$f" "$STAGE/libexec/$f" 2>/dev/null || cp -f "$OUT/libexec/$f" "$STAGE/libexec/$f" 2>/dev/null || true
+        done )
+      echo "  （libexec/ 下搬了 $(find "$STAGE/libexec" \( -type f -o -type l \) 2>/dev/null | wc -l) 项）"
+    fi
   fi
 else
   #  纯库件（这一件没有程序那一侧） entry 留空  **把 lib/ 下的字节全搬进包**。
