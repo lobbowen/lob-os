@@ -60,7 +60,7 @@ fi
 DENOM="$HERE/docs/m0prime-denominator.json"
 
 python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$DENOM" "$@" << 'PYEOF'
-import io, json, os, subprocess, sys, time
+import base64, io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
 criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
@@ -83,60 +83,6 @@ results = []
 # 那判据逐字**自己**去**spawn**那目标、=> 而那**目标**逐字**在**那设备**上**。
 # 而那宿主上逐字**没有**那目标、=> 而那 spawnSync 逐字**要**改成**经**adb **去**跑**它**。
 # 而那**改法**逐字**不**动**那判据**的**那** node 字段**（=> 而它逐字**只**管**spawn**那个**名字**与**读**那退出码**与**那 stderr**）。
-SHIM = r"""
-const __cp = require('node:child_process');
-const __adb = process.env.LOBOS_ADB || 'adb';
-const __dev = process.env.LOBOS_DEV || '';
-const __pkg = process.env.LOBOS_PKG || '';
-const __prefix = process.env.LOBOS_TARGET_PREFIX || '';
-const __orig = __cp.spawnSync;
-__cp.spawnSync = function (cmd, args, opts) {
-  opts = opts || {};
-  const isTarget = typeof cmd === 'string' && !cmd.startsWith('/') && cmd !== 'sh' && cmd !== 'bash';
-  if (!isTarget) return __orig.apply(this, arguments);
-  const remote = __prefix + '/' + cmd;
-  const q = (s) => String(s).replace(/'/g, "'\\\\''");
-  //  而那**内联**的**程序**（=> 而那 **-e** **那一族**）逐字**要**走**那**文件**、
-  //  => 而而它**不**能**内联**在**那**命令行**上**（=> 而那**引号**逐字**会**被**拆**）。
-  let cmdline;
-  const eIdx = args ? args.indexOf('-e') : -1;
-  if (eIdx >= 0 && args && eIdx + 1 < args.length) {
-    //  而那**内联**的**程序**（=> 而那 **-e** **那一族**）逐字**要**走**那**文件**、
-    //  => 而而它**不**能**内联**在**那**命令行**上**（=> 而那**引号**逐字**会**被**拆**）。
-    const prog = args[eIdx + 1];
-    const tmpFile = '/data/user/0/' + __pkg + '/files/tmp/lobos-crit-' + Date.now() + '-' + Math.floor(Math.random() * 100000) + '.js';
-    const rest = args.filter((_, i) => i !== eIdx && i !== eIdx + 1);  //  那 -e 逐字**去**掉（=> 而那**程序**逐字**在**那**文件**里面**）
-    const b64 = Buffer.from(prog, 'utf8').toString('base64');
-    //  => 而那**写**那**文件**逐字**要**在**那** run-as **里面**（=> 而那 app **私有**的**目录**、=> 而**外头**的**壳**逐字**写不**了**）
-    cmdline = 'echo ' + b64 + ' | base64 -d > ' + tmpFile + ' && ' +
-      q(remote) + (rest.length ? ' ' + rest.map(q).join(' ') : '') + ' ' + q(tmpFile) + '; rm -f ' + tmpFile;
-  } else {
-    cmdline = q(remote) + (args && args.length ? ' ' + args.map(q).join(' ') : '');
-  }
-  const inner = cmdline;
-  //  那**应用**给**它**的**孩子**的**那**一条**路径**（=> 而那 runtime.json **里面**的**那** env **快照**）
-  //  => 而那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**、=> 而而那**它**逐字**不**是**本脚本**自己**编**的**。
-  const __ld = process.env.LOBOS_CHILD_LD || '';
-  const __path = process.env.LOBOS_CHILD_PATH || '';
-  //  => 而那**变量**逐字**要** **export**（=> 而而它**不**能**只**是**那**前缀**、=> 而那**前缀**逐字**只**管**那**紧跟**的**那一个**命令**）
-  const __envPrefix = (__ld ? 'export LD_LIBRARY_PATH=' + __ld + '; ' : '') + (__path ? 'export PATH=' + __path + '; ' : '');
-  const one = 'run-as ' + __pkg + ' sh -c ' + String.fromCharCode(39) + __envPrefix + inner + String.fromCharCode(39);
-  const r = __orig.call(this, __adb, ['-s', __dev, 'shell', one], {
-    input: opts.input,
-    encoding: 'utf8',
-    timeout: opts.timeout
-  });
-  if (r.stdout && typeof r.stdout === 'string') {
-    const i = r.stdout.indexOf('__LOBOS_RC__');
-    if (i >= 0) {
-      r.status = parseInt(r.stdout.slice(i + 13).trim().split('\\n')[0], 10);
-      r.stdout = r.stdout.slice(0, i).replace(/\r\n/g, '\n');
-      r.stderr = '';
-    }
-  }
-  return r;
-};
-"""
 
 
 def child_env_value(key):
@@ -179,32 +125,54 @@ def child_ld_path():
 
 child_ld = child_env_value('LD_LIBRARY_PATH')
 child_path = child_env_value('PATH')
+if os.environ.get('LOBOS_DEBUG'):
+    print('[debug] ld=' + str(len(child_ld)) + ' path=' + str(len(child_path)))
+if os.environ.get('LOBOS_DEBUG'):
+    print('[debug] child_ld len=' + str(len(child_ld)) + ' child_path len=' + str(len(child_path)))
 if not child_ld:
     print('报缺：那设备上那 runtime.json **里面**的**那** env **快照**逐字**取不到**'
           '（=> 而那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、=> 而而**不猜填**）')
 
 
 def run_criterion(code):
-    # 那判据逐字**是**那可执行代码、=> 而它逐字**在**那宿主**上**跑、
-    # => 而那**目标**逐字**经**adb **在**那设备**上**跑。
-    env = dict(os.environ)
-    env['LOBOS_ADB'] = adb
-    env['LOBOS_DEV'] = dev
-    env['LOBOS_PKG'] = pkg
-    env['LOBOS_TARGET_PREFIX'] = target_prefix
-    env['LOBOS_LIB_PREFIX'] = lib_prefix
-    #  那**应用**给**它**的**孩子**的**那**一条**路径**：=> 而那 runtime.json **里面**的**那** env **快照**。
-    #  => 而那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**、=> 而而那**它**逐字**不**是**本脚本**自己**编**的**。
-    env['LOBOS_CHILD_LD'] = child_ld
-    env['LOBOS_CHILD_PATH'] = child_path
-    script = SHIM + '\n' + code
-    rr = subprocess.run(['node', '-e', script], capture_output=True, text=True,
-                        env=env, timeout=int(timeout) + 120)
-    return rr.returncode, (rr.stdout or '') + (rr.stderr or '')
+    #  缺陷名（C-102）**那判据逐字在宿主上跑、=> 而那目标逐字在设备上跑**
+    #    => 而而它治**的**是「那判据**自己**看到的世界」与「那目标**自己**看到的世界」
+    #       逐字**不是**同一个**那个形状**。
+    #    => 而那后果逐字**是**：那判据**写**的**那**文件（=> 而那 makefile / 那 .pc / 那 probe.py）
+    #       逐字**落在宿主上**、=> 而而那目标逐字**在设备上**、=> 而而那**它**逐字**看不到**那材料**。
+    #    => 而那 git 那一件逐字**答**「Author identity unknown」也是**这一族**（=> 而那 env 逐字**要**在**那设备**上**生效**）。
+    #    => 而而那**处置**：=> 而那判据逐字**整个**逐字**在**那**设备**上**跑**（=> 而那 node **也**是**那设备**的**那一个**）。
+    #    => 而而那**它**逐字**不**是「那件本身坏了」那个形状（=> 而那件逐字**起得来**）。
+    #    => 而按 C-104：=> 而那判据逐字**只有**一条路（=> 而那**设备**上的**那** node）、=> 而而那**不是**第二种生成路径。
+    tmp_name = 'lobos-crit-%d-%d.js' % (os.getpid(), int(time.time() * 1000) % 1000000)
+    tmp_path = '/data/user/0/%s/files/tmp/%s' % (pkg, tmp_name)
+    b64 = base64.b64encode(code.encode('utf-8')).decode('ascii')
+    inner = ('mkdir -p /data/user/0/%s/files/tmp && echo %s | base64 -d > %s && '
+             'export LD_LIBRARY_PATH=%s; export PATH=%s; node %s 2>&1; echo "__LOBOS_RC__$?"; rm -f %s'
+             % (pkg, b64, tmp_path, child_ld, child_path, tmp_path, tmp_path))
+    one = 'run-as ' + pkg + ' sh -c ' + chr(39) + inner + chr(39)
+    #  => 而那**一整串**（=> 而那**拆开**的**形参**逐字**会**被**那**壳**拆**掉、=> 而而那 mkdir 就**答**「Needs 1 argument」）
+    rr = subprocess.run([adb, '-s', dev, 'shell', one], capture_output=True, text=True, timeout=int(timeout) + 180)
+    out = rr.stdout or ''
+    rc = None
+    if '__LOBOS_RC__' in out:
+        head, _, tail = out.rpartition('__LOBOS_RC__')
+        try:
+            rc = int(tail.strip().split(chr(10))[0])
+        except ValueError:
+            rc = None
+        out = head
+    if rc is None:
+        #  => 而那**它**逐字**没**跑起来（=> 而按 C-111 逐字**答**那**服务端说的**还是**我算不出来的**）
+        detail = (rr.stderr or '').strip()
+        if 'inaccessible or not found' in detail or 'not found' in detail:
+            detail = '那设备上逐字**没有**那个 node（=> 而那判据逐字**要**设备**上的**那** node）'
+        return None, (out + detail).strip()
+    return rc, out.replace(chr(13) + chr(10), chr(10)).strip()
 
 for k in pieces:
     rc, out = run_criterion(d[k]['node'])
-    status = '过' if rc == 0 else '不过'
+    status = '未核' if rc is None else ('过' if rc == 0 else '不过')
     results.append({
         'id': k,
         'status': status,

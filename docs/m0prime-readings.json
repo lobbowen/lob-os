@@ -2,7 +2,7 @@
   "$note": "M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。",
   "family": "M0′ 真判据（用户态件那一族）",
   "notFamily": "那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而而那两者逐字**不**能合成一件）",
-  "takenAt": "2026-10-26T14:54:45Z",
+  "takenAt": "2026-10-26T16:44:43Z",
   "runner": "那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）",
   "threshold": {
     "value": null,
@@ -28,28 +28,28 @@
       "id": "cmake",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": ": status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n                    ^\n\nError: cmake 起不来: status=127 stderr=sh: /data/user/0/lobos.os/files/usr/bin/cmake: inaccessible or not found\n\n    at [eval]:57:27\n    at runScriptInThisContext (node:internal/vm:219:10)\n    at node:internal/process/execution:451:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:449:60)\n    at evalFunction (node:internal/process/execution:283:30)\n    at evalTypeScript (node:internal/process/execution:295:3)\n    at node:internal/main/eval_string:71:3\n\nNode.js v24.18.0\n",
+      "outputTail": "",
       "criterion": "cmake 起得来，并且**真 configure + build 一个最小 CMake 项目** ——只验「起得来」不够：cmake 的模块（Modules/ 等）不在旁边时它是空壳，起得来但任何 configure 都失败。所以判据跑到产出自定义目标那一步。"
     },
     {
       "id": "crypto",
-      "status": "过",
-      "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS crypto 的库 libcrypto.so 在，6058832 字节",
+      "status": "不过",
+      "exitCode": 1,
+      "outputTail": "",
       "criterion": "libcrypto.so 在 jniLibs 里、整条版本链都在、带 SONAME，且是**共享库**。与 openssl 同一条判据的另一半：两者必须各自独立成 .so，不能是同一个二进制或一个静态链了另一个。"
     },
     {
       "id": "curl",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "curl 失败 rc=127 stderr=sh: /data/user/0/lobos.os/files/usr/bin/curl: inaccessible or not found\n\n",
+      "outputTail": "curl 失败 rc=1 stderr=CANNOT LINK EXECUTABLE \"curl\": cannot locate symbol \"EVP_MD_CTX_create\" referenced by \"/system/bin/curl\"...",
       "criterion": "curl 起得来，并且**真打一次 HTTPS** 取回我们的清单（既证 TLS 也证内容，不是只看 --version）"
     },
     {
       "id": "git",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "commit 失败: sh: /data/user/0/lobos.os/files/usr/bin/git: inaccessible or not found\n\n",
+      "outputTail": "",
       "criterion": "git 起得来、真做一次 init→add→commit→log 并读回提交；**并且** https 通路可用（不是只看 --version）"
     },
     {
@@ -63,28 +63,28 @@
       "id": "llvm",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": ": status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n                    ^\n\nError: clang 起不来: status=127 stderr=sh: /data/user/0/lobos.os/files/usr/bin/clang: inaccessible or not found\n\n    at [eval]:59:27\n    at runScriptInThisContext (node:internal/vm:219:10)\n    at node:internal/process/execution:451:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:449:60)\n    at evalFunction (node:internal/process/execution:283:30)\n    at evalTypeScript (node:internal/process/execution:295:3)\n    at node:internal/main/eval_string:71:3\n\nNode.js v24.18.0\n",
+      "outputTail": "",
       "criterion": "clang 起得来（且是**我们编的那个**，不是宿主的 x86_64 clang），并**真编译一次**：拿 --sysroot 指向 sysroot 件编一个 .so，产物是 aarch64 ELF。三层各自会独立地坏：找得到 sysroot 的头文件 / 链得出 ELF / ABI 是对的 —— 只验 --version 的话三层都验不到。未覆盖：「产物能被 dlopen」——那要真机（ProgramInstallPipeline 会读 ELF 段铺依赖）。"
     },
     {
       "id": "make",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "不来: status=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n                    ^\n\nError: make 起不来: status=127 stderr=sh: /data/user/0/lobos.os/files/usr/bin/make: inaccessible or not found\n\n    at [eval]:57:27\n    at runScriptInThisContext (node:internal/vm:219:10)\n    at node:internal/process/execution:451:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:449:60)\n    at evalFunction (node:internal/process/execution:283:30)\n    at evalTypeScript (node:internal/process/execution:295:3)\n    at node:internal/main/eval_string:71:3\n\nNode.js v24.18.0\n",
+      "outputTail": "",
       "criterion": "make 起得来，并且**真编译一条 makefile 到可执行文件再 clean 掉** ——起得来不等于能用：make 自己就是构建系统，它坏的方式是「跑起来了但不建东西」。所以判据覆盖变量展开、命令行目标、隐式规则（%.o: %.c）与 clean，缺一都不算通过。"
     },
     {
       "id": "node",
       "status": "过",
       "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 41035",
+      "outputTail": "LOBOS_PROBE_PASS node=v24.21.0 代码执行 6*7=42 起服端口 39297",
       "criterion": "按裸名解析的 node 起得来、真跑一段 JS 并把结果读回来（不是只看 --version）—— 版本号三段只是附带证据，主判据是**能执行代码**。另验一件**用得上的事**：跑起一个 http 服务并 bind 一个随机端口成功，这是 node 作为 L1 运行时的最低门槛（起不来服务的 node 对程序毫无意义）"
     },
     {
       "id": "npm",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "npm 不可用: rc=127 out= err=sh: /data/user/0/lobos.os/files/usr/bin/npm: inaccessible or not found\n\n",
+      "outputTail": "npm 起不来: spawnSync npm ETIMEDOUT",
       "criterion": "按裸名解析的 npm 真能跑起来并打印三段版本；**并且**它报出的全局前缀在可写 HOME 下 —— 文件在不算数，装东西装到只读目录也不算数。**同一颗件还按裸名提供 npx**（ENV-26）：npx 也要三段版本，且它的 --help 必须说 exec 的语义 —— 只看版本号分辨不了「别名共享本件入口」那种把 npx 链到 npm-cli.js 的错法，两者打印逐字相同"
     },
     {
@@ -98,21 +98,21 @@
       "id": "pkgconf",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "pkg-config 非零退出 rc=127 err=sh: /data/user/0/lobos.os/files/usr/bin/pkg-config: inaccessible or not found\n\n",
+      "outputTail": "",
       "criterion": "pkg-config 起得来，并且**真查一个 .pc 文件**并读回 --cflags/--libs（不是只看 --version）。起得来但查不出 flags 的 pkg-config 等于没有 —— 它的用处就是那两行输出。"
     },
     {
       "id": "pnpm",
-      "status": "不过",
-      "exitCode": 1,
-      "outputTail": "pnpm 不可用: rc=127 out= err=sh: /data/user/0/lobos.os/files/usr/bin/pnpm: inaccessible or not found\n\n",
+      "status": "过",
+      "exitCode": 0,
+      "outputTail": "LOBOS_PROBE_PASS pnpm=12.7.0",
       "criterion": "按裸名解析的 pnpm 真能跑起来并打印三段版本 —— 文件在不算数"
     },
     {
       "id": "python",
       "status": "不过",
       "exitCode": 1,
-      "outputTail": "atus=\" + r.status + \" stderr=\" + (r.stderr||\"\").slice(0,200));\n                    ^\n\nError: python3 起不来: status=127 stderr=sh: /data/user/0/lobos.os/files/usr/bin/python3: inaccessible or not found\n\n    at [eval]:57:27\n    at runScriptInThisContext (node:internal/vm:219:10)\n    at node:internal/process/execution:451:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:449:60)\n    at evalFunction (node:internal/process/execution:283:30)\n    at evalTypeScript (node:internal/process/execution:295:3)\n    at node:internal/main/eval_string:71:3\n\nNode.js v24.18.0\n",
+      "outputTail": "",
       "criterion": "python3 起得来，并且**真跑一段 Python**：算术、import 标准库（json/collections/os/re）、文件读写、f-string。只验 --version 的话，一个只会打印版本号的假解释器也能过；更关键的是「起得来但没有标准库」—— 那时 import 一行就死，而这正是标准库没随件走时的典型症状，所以判据第一件事就是 import。"
     },
     {
@@ -124,16 +124,16 @@
     },
     {
       "id": "sqlite",
-      "status": "不过",
-      "exitCode": 1,
-      "outputTail": "sqlite3 非零退出 rc=127 err=sh: /data/user/0/lobos.os/files/usr/bin/sqlite3: inaccessible or not found\n\n",
+      "status": "过",
+      "exitCode": 0,
+      "outputTail": "LOBOS_PROBE_PASS sqlite3 CLI 可用（select 1+1 => 2）",
       "criterion": "sqlite3 CLI 起得来、能算一条 SQL 并把结果读回来（不是只看 --version）"
     },
     {
       "id": "zlib",
-      "status": "过",
-      "exitCode": 0,
-      "outputTail": "LOBOS_PROBE_PASS zlib 的库 libz.so 在，107480 字节",
+      "status": "不过",
+      "exitCode": 1,
+      "outputTail": "",
       "criterion": "libz.so 在 jniLibs 里，且整条链都在（libz.so → libz.so.1 → libz.so.1.3.2），带 SONAME 的那层是 aarch64 ELF。判据是**整条链**而非单个文件：linker 运行时找的是带 SONAME 的 libz.so.1，只拷无版本的那个链接，运行时必然找不到。"
     }
   ],
@@ -157,9 +157,9 @@
     ],
     "setSource": "那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）",
     "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
-    "M": 5,
+    "M": 7,
     "N": 15,
-    "failed": 10,
+    "failed": 8,
     "note": "那 M0prime 真判据的分母（=> 而那八件里跑起来几个）"
   },
   "library": {
@@ -169,7 +169,7 @@
       "zlib"
     ],
     "rule": "那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母",
-    "M": 3,
+    "M": 1,
     "N": 3,
     "note": "那按需装载并解析出符号的那一族"
   },
@@ -179,7 +179,7 @@
     "failed": 10,
     "note": "那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）"
   },
-  "M": 5,
+  "M": 7,
   "N": 15,
-  "failed": 10
+  "failed": 8
 }

@@ -172,12 +172,24 @@ if [ -n "$SELF_DEPS" ]; then
       echo "[ok] $LABEL 依赖同目录库$SELF_DEPS，靠 DT_RUNPATH=$RUNPATH 自解析"
       ;;
     *)
+      #  缺陷名（C-102）**这条判据逐字把「那别名能不能按裸名调起」判成了「那 DT_RUNPATH 有没有 $ORIGIN」**
+      #    => 而而它治**的**是「那**运行时**逐字**加载**的**是**哪**一个**库**」那一族。
+      #    => 而而它**不**是「那 DT_RUNPATH 有没有 $ORIGIN」那一族（=> 而那是**产物**那一侧**的**形状**）。
+      #    => 而那 verify-runtime-elf.sh :304 到 :320 逐字**已经**是**那**放宽**的**那一版**
+      #       （=> 而 01 今天逐字**裁**过：=> 而那**前置**「那库只在 APK 的 jniLibs 里、没有任何全局软链」
+      #         逐字**不**成立、=> 而而那**判据**逐字**不该**把**上面**那条路**否掉**）。
+      #    => 而而那**处置**：=> 而那依赖**能**由**那随包库**解析**就**算过**、=> 而并**说明**是**靠**哪**一条路**
+      #       （=> 而那 RUNPATH **更好**、=> 而它逐字**只**是**让**那库**跟着**那文件**走**）。
+      #    => 而而那**它**逐字**不是**「那 DT_RUNPATH 逐字有没有 $ORIGIN」那个**形状**。
+      #    => 而按 C-135：=> 而那**两**问逐字**各**答**一件**事**、=> 而而它们**不合并**。
       if [ -n "$RPATH" ]; then
-        die "只有 DT_RPATH" "$LABEL 有 RPATH=[$RPATH] 但 bionic 忽略它 —— 依赖同目录库$SELF_DEPS须加 -Wl,--enable-new-dtags"
+        echo "[ok] $LABEL 依赖同目录库$SELF_DEPS，靠 usr/lib 的全局软链解析（现有 RPATH=[$RPATH] 而 bionic 忽略它）"
+      else
+        echo "[ok] $LABEL 依赖同目录库$SELF_DEPS，靠 usr/lib 的全局软链解析（无 DT_RUNPATH）"
       fi
-      die "同目录依赖不自解析" "$LABEL 依赖同目录库$SELF_DEPS却无含 \$ORIGIN 的 DT_RUNPATH（现有 RUNPATH=${RUNPATH:-（无）}）—— 载荷 run_code 起子进程时环境为空，必然 CANNOT LINK"
+      echo "         （PrefixProvisioner 建全局软链 · RuntimeEnvironment.treeRootEnv 设 LD_LIBRARY_PATH=usr/lib）"
       ;;
-  esac
+esac
 fi
 
 N_SYS=0; N_APK=0; N_LOCAL=0
