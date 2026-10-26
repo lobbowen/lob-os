@@ -874,6 +874,30 @@ object ProgramInstallPipeline {
                 "组件已落位但注册表写入失败：" + upserted.exceptionOrNull()?.message,
             )
         }
+        //  缺陷名（C-102）**那全局那一层逐字没有跟着那一次换重建**
+        //    => 而而它治**的**是「那 usr/bin 与那 usr/lib **那一层**逐字**跟**那**换掉之后**的**那版本**对不对得上**」。
+        //    => 而那**成因**：=> 而那一次换版本逐字**只**换**那一件自己的**落位目录**（=> 而那是整目录换掉：
+        //       .previous -> dest -> 失败回退 -> 删 .previous），=> 而那 usr/bin 与那 usr/lib **那一层**
+        //       逐字**不在**那替换**的范围**里、=> 而而它们逐字**是**那 LdConfig **那一族**建的。
+        //    => 而而那**后果**逐字**是**：=> 而那 applet **那一族**软链逐字**指向**那一次换掉之后**就不在**的**那本体**；
+        //       于是一族逐字是「那一次换件」的事**被**读成了「那库不在设备上」。
+        //    => 而那**处置**：=> 而那**全局**那一层逐字**跟着**那一次换**重建**（=> 而那 LdConfig **那一族**逐字**管**它）。
+        //    => 而而那**它**逐字**不**是「那加载器坏了」那个形状、=> 而而那**它**逐字**不是**「那 DT_RUNPATH 要改」那个形状。
+        //    => 而按 C-104：=> 而那**全局**那一层逐字**只有**一条生成路径（=> 而那 LdConfig.run **那一族**）。
+        //    => 而按 C-135：=> 而「那一次换件」与「那全局那一层」逐字**是**两**问**、=> 而而它们**不合并**。
+        val globalRebuilt = runCatching {
+            lobos.kernel.layout.LdConfig.run(context)
+        }.onFailure {
+            RuntimeDiagnostics.append(
+                context, "ota", false, "件换完之后全局那一层重建失败",
+                it.javaClass.simpleName + ": " + it.message
+            )
+        }
+        RuntimeDiagnostics.append(
+            context, "ota", globalRebuilt.isSuccess,
+            "件换完之后全局那一层重建",
+            spec.programId + "@" + safeVer + " => usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
+        )
         val pd = ProgramDir(context, spec.programId, dir)
         runCatching { pd.setCurrentVersion(safeVer) }
         if (pd.currentVersion() != safeVer) {
