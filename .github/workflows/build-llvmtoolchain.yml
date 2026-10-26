@@ -295,12 +295,26 @@ jobs:
             echo "LLVM 源码钉值：$(bash scripts/toolchain/fetch-pinned.sh --src-version llvm)"
             echo "构建 run：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } > "$PW/BUILD.md"
-          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release create "$TAG" --repo "${{ github.repository }}" \
+          #  缺陷名（C-102）**那一步逐字没有自己的时限、=> 而而那网络那一族逐字挂了就一直等**
+          #  —— 而实际上那 40231794490 那一趟逐字**卡**在这第 13 步**到最后一刻**（=> 而那 job 那一族
+          #    逐字 timeout-minutes = **360**、=> 而而那一步逐字**一直等**、=> 而而那诊断那两步
+          #    逐字**永远**没被走到、=> 而而那 artifact 那一族逐字**还是** **0**）。
+          #  => 而那**处置**：=> 而而那**三条** gh 逐字**各**带一个**自己的**时限、
+          #    => 而而那网络那一族逐字**挂了**就**判红**、=> 而而那**下一步**逐字**能**走。
+          #  => 而那**时限**逐字**多少**：=> 而而那 5 分钟逐字**足够**那 Release 那一族逐字做完、
+          #    => 而而那**超时**逐字**远小于**那 job 那一族逐字那 6 小时、=> 而而那**诊断**那两步
+          #    逐字**来得及**跑。
+          #  => 而按 C-103 那两边：「那一步逐字**做**的是**什么**」与「那一步逐字**等**的是**什么**」
+          #    => 而那两边逐字**各**答一件事、=> 而而那**处置**不一样、=> 而而它们**不并**。
+          #  => 而按 C-104：=> 而那 gh 那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+          #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+          GH_TIMEOUT=300
+          if ! timeout "$GH_TIMEOUT" gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            timeout "$GH_TIMEOUT" gh release create "$TAG" --repo "${{ github.repository }}" \
               --title "llvmtoolchain（工具筐）— $TAG" \
               --notes "编译一次、长期复用的工具链预制品（clang / lld / binutils）。构建链优先复用本件，不再重复编译。BUILD.md 记录了这份预制品的编译依据。"
           fi
-          gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
+          timeout "$GH_TIMEOUT" gh release upload "$TAG" "$PW"/* --repo "${{ github.repository }}" --clobber
           echo "[ok] 已发布 $TAG"
 
       - name: 发布 llvmtoolchain 件到对象存储
