@@ -303,6 +303,37 @@ elf_write_shape() {
   done
 
   # ── 第二步：定权限（程序形态带 owner 执行位；库形态不带）──────
+  #  缺陷名（C-102）**那额外的那几层逐字没有定权限**
+  #    => 而而它治**的**是「那产物里那些**可执行**的**字节**逐字**带没带**那 owner 执行位**」。
+  #    => 而那 scopes 逐字**只**扫 **那 bin/** 与那 lib/ **那两**层、=> 而而那**别的**层
+  #       （=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
+  #       逐字**没**被**扫**到、=> 而而那**它**们**逐字**没**被**定**权限**。
+  #    => 而那**后果**逐字**是**：=> 而那 git-remote-http 那一件逐字**是**那「-rw-rw-r--」（=> 而**没**执行位）、
+  #       => 而那 git 按那 exec-path 逐字**找**到**它**之后**跑不**起来（=> 而那原话逐字**是**那「can't execute: Permission denied」）、
+  #       => 而那 git 逐字**只**能**报**那「remote-https is not a git command」。
+  #    => 而那**处置**：=> 而那**额外**的**每一层**逐字**也**照**那**形态**定**权限**（=> 而那**它**逐字**是**那**落位事实**）。
+  #    => 而按 C-104：=> 而那**定权限**那一族逐字**只有**一条路（=> 而这一支**就是**它）。
+  local extra_rels=""
+  local ex
+  for ex in $(cd "$stage" && ls -A 2>/dev/null | LC_ALL=C sort); do
+    case "$ex" in
+      bin|lib) continue ;;
+    esac
+    [ -d "$stage/$ex" ] || continue
+    extra_rels="$extra_rels$(cd "$stage/$ex" && find . -mindepth 1 \( -type f -o -type l \) -printf "%P\n" 2>/dev/null)"
+  done
+  for rel in $extra_rels; do
+    [ -e "$stage/$ex/$rel" ] || continue
+    if [ -L "$stage/$ex/$rel" ]; then real="$(readlink -f "$stage/$ex/$rel" 2>/dev/null || true)"; else real="$stage/$ex/$rel"; fi
+    [ -n "$real" ] && [ -f "$real" ] || continue
+    form="$(elf_form "$real")"
+    role="$(elf_role_of_form "$form")"
+    case "$role" in
+      program) chmod 0755 "$real" 2>/dev/null || true ;;
+      library) chmod 0644 "$real" 2>/dev/null || true ;;
+    esac
+  done
+  # ── 第二步：定权限（程序形态带 owner 执行位；库形态不带）──────
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
     if [ -L "$stage/$rel" ]; then real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"; else real="$stage/$rel"; fi
