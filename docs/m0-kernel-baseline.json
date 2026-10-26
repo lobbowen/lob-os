@@ -1,0 +1,4077 @@
+{
+  "$note": "M0 内核可信起点清单的机器可核对数据。逐条带出处（行号 + 原文）。",
+  "source": {
+    "defconfig": {
+      "path": "gki_defconfig",
+      "sha256": "8400944b7e3a2c768f76bd6964fae16197fc12642a4155bdc3c13014d213ef5a",
+      "lines": 794
+    },
+    "kconfig": {
+      "path": "kconfig",
+      "sha256": "e93cb175309d0ccebd7da7d11af418978730796a0a2207af1fba4b5ca4ae0b9b",
+      "lines": 2041
+    }
+  },
+  "kernelVersion": {
+    "value": null,
+    "status": "未核",
+    "note": "那具体版本号在素材里没有可核对标记、=> 而按 C-105 不猜填、=> 而那取逐字不归 01"
+  },
+  "defconfigEntries": [
+    {
+      "line": 1,
+      "text": "CONFIG_UAPI_HEADER_TEST=y"
+    },
+    {
+      "line": 2,
+      "text": "CONFIG_LOCALVERSION=\"-4k\""
+    },
+    {
+      "line": 3,
+      "text": "CONFIG_AUDIT=y"
+    },
+    {
+      "line": 4,
+      "text": "CONFIG_TIME_KUNIT_TEST=m"
+    },
+    {
+      "line": 5,
+      "text": "CONFIG_NO_HZ=y"
+    },
+    {
+      "line": 6,
+      "text": "CONFIG_HIGH_RES_TIMERS=y"
+    },
+    {
+      "line": 7,
+      "text": "CONFIG_BPF_SYSCALL=y"
+    },
+    {
+      "line": 8,
+      "text": "CONFIG_BPF_JIT=y"
+    },
+    {
+      "line": 9,
+      "text": "CONFIG_BPF_JIT_ALWAYS_ON=y"
+    },
+    {
+      "line": 10,
+      "text": "CONFIG_BPF_UNPRIV_DEFAULT_OFF is not set"
+    },
+    {
+      "line": 11,
+      "text": "CONFIG_BPF_LSM=y"
+    },
+    {
+      "line": 12,
+      "text": "CONFIG_PREEMPT=y"
+    },
+    {
+      "line": 13,
+      "text": "CONFIG_IRQ_TIME_ACCOUNTING=y"
+    },
+    {
+      "line": 14,
+      "text": "CONFIG_TASKSTATS=y"
+    },
+    {
+      "line": 15,
+      "text": "CONFIG_TASK_DELAY_ACCT=y"
+    },
+    {
+      "line": 16,
+      "text": "CONFIG_TASK_XACCT=y"
+    },
+    {
+      "line": 17,
+      "text": "CONFIG_TASK_IO_ACCOUNTING=y"
+    },
+    {
+      "line": 18,
+      "text": "CONFIG_PSI=y"
+    },
+    {
+      "line": 19,
+      "text": "CONFIG_RCU_EXPERT=y"
+    },
+    {
+      "line": 20,
+      "text": "CONFIG_RCU_BOOST=y"
+    },
+    {
+      "line": 21,
+      "text": "CONFIG_RCU_NOCB_CPU=y"
+    },
+    {
+      "line": 22,
+      "text": "CONFIG_RCU_LAZY=y"
+    },
+    {
+      "line": 23,
+      "text": "CONFIG_RCU_LAZY_DEFAULT_OFF=y"
+    },
+    {
+      "line": 24,
+      "text": "CONFIG_IKCONFIG=y"
+    },
+    {
+      "line": 25,
+      "text": "CONFIG_IKCONFIG_PROC=y"
+    },
+    {
+      "line": 26,
+      "text": "CONFIG_IKHEADERS=m"
+    },
+    {
+      "line": 27,
+      "text": "CONFIG_UCLAMP_TASK=y"
+    },
+    {
+      "line": 28,
+      "text": "CONFIG_UCLAMP_BUCKETS_COUNT=20"
+    },
+    {
+      "line": 29,
+      "text": "CONFIG_CGROUPS=y"
+    },
+    {
+      "line": 30,
+      "text": "CONFIG_MEMCG=y"
+    },
+    {
+      "line": 31,
+      "text": "CONFIG_BLK_CGROUP=y"
+    },
+    {
+      "line": 32,
+      "text": "CONFIG_CGROUP_SCHED=y"
+    },
+    {
+      "line": 33,
+      "text": "CONFIG_UCLAMP_TASK_GROUP=y"
+    },
+    {
+      "line": 34,
+      "text": "CONFIG_CGROUP_FREEZER=y"
+    },
+    {
+      "line": 35,
+      "text": "CONFIG_CPUSETS=y"
+    },
+    {
+      "line": 36,
+      "text": "CONFIG_CGROUP_CPUACCT=y"
+    },
+    {
+      "line": 37,
+      "text": "CONFIG_CGROUP_BPF=y"
+    },
+    {
+      "line": 38,
+      "text": "CONFIG_NAMESPACES=y"
+    },
+    {
+      "line": 39,
+      "text": "CONFIG_PID_NS is not set"
+    },
+    {
+      "line": 40,
+      "text": "CONFIG_RT_SOFTIRQ_AWARE_SCHED=y"
+    },
+    {
+      "line": 41,
+      "text": "CONFIG_RD_BZIP2 is not set"
+    },
+    {
+      "line": 42,
+      "text": "CONFIG_RD_LZMA is not set"
+    },
+    {
+      "line": 43,
+      "text": "CONFIG_RD_XZ is not set"
+    },
+    {
+      "line": 44,
+      "text": "CONFIG_RD_LZO is not set"
+    },
+    {
+      "line": 45,
+      "text": "CONFIG_BOOT_CONFIG=y"
+    },
+    {
+      "line": 46,
+      "text": "CONFIG_EXPERT=y"
+    },
+    {
+      "line": 47,
+      "text": "CONFIG_SYSFS_SYSCALL is not set"
+    },
+    {
+      "line": 48,
+      "text": "CONFIG_FHANDLE is not set"
+    },
+    {
+      "line": 49,
+      "text": "CONFIG_KALLSYMS_ALL=y"
+    },
+    {
+      "line": 50,
+      "text": "CONFIG_RSEQ is not set"
+    },
+    {
+      "line": 51,
+      "text": "CONFIG_PROFILING=y"
+    },
+    {
+      "line": 52,
+      "text": "CONFIG_ARCH_SUNXI=y"
+    },
+    {
+      "line": 53,
+      "text": "CONFIG_ARCH_HISI=y"
+    },
+    {
+      "line": 54,
+      "text": "CONFIG_ARCH_QCOM=y"
+    },
+    {
+      "line": 55,
+      "text": "CONFIG_ARCH_TEGRA=y"
+    },
+    {
+      "line": 56,
+      "text": "CONFIG_SCHED_MC=y"
+    },
+    {
+      "line": 57,
+      "text": "CONFIG_NR_CPUS=32"
+    },
+    {
+      "line": 58,
+      "text": "CONFIG_PARAVIRT_TIME_ACCOUNTING=y"
+    },
+    {
+      "line": 59,
+      "text": "CONFIG_ARM64_SW_TTBR0_PAN=y"
+    },
+    {
+      "line": 60,
+      "text": "CONFIG_COMPAT=y"
+    },
+    {
+      "line": 61,
+      "text": "CONFIG_ARMV8_DEPRECATED=y"
+    },
+    {
+      "line": 62,
+      "text": "CONFIG_SWP_EMULATION=y"
+    },
+    {
+      "line": 63,
+      "text": "CONFIG_CP15_BARRIER_EMULATION=y"
+    },
+    {
+      "line": 64,
+      "text": "CONFIG_SETEND_EMULATION=y"
+    },
+    {
+      "line": 65,
+      "text": "CONFIG_ARM64_PMEM=y"
+    },
+    {
+      "line": 66,
+      "text": "CONFIG_ARM64_BTI_KERNEL is not set"
+    },
+    {
+      "line": 67,
+      "text": "CONFIG_RANDOMIZE_BASE=y"
+    },
+    {
+      "line": 68,
+      "text": "CONFIG_RANDOMIZE_MODULE_REGION_FULL is not set"
+    },
+    {
+      "line": 69,
+      "text": "CONFIG_UNWIND_PATCH_PAC_INTO_SCS=y"
+    },
+    {
+      "line": 70,
+      "text": "CONFIG_CMDLINE=\"console=ttynull stack_depot_disable=on cgroup_disable=pressure kasan.stacktrace=off kvm-arm.mode=protected bootconfig ioremap_guard\""
+    },
+    {
+      "line": 71,
+      "text": "CONFIG_CMDLINE_EXTEND=y"
+    },
+    {
+      "line": 72,
+      "text": "CONFIG_DMI is not set"
+    },
+    {
+      "line": 73,
+      "text": "CONFIG_HIBERNATION=y"
+    },
+    {
+      "line": 74,
+      "text": "CONFIG_PM_USERSPACE_AUTOSLEEP=y"
+    },
+    {
+      "line": 75,
+      "text": "CONFIG_PM_WAKELOCKS=y"
+    },
+    {
+      "line": 76,
+      "text": "CONFIG_PM_WAKELOCKS_LIMIT=0"
+    },
+    {
+      "line": 77,
+      "text": "CONFIG_PM_WAKELOCKS_GC is not set"
+    },
+    {
+      "line": 78,
+      "text": "CONFIG_PM_DEBUG=y"
+    },
+    {
+      "line": 79,
+      "text": "CONFIG_PM_ADVANCED_DEBUG=y"
+    },
+    {
+      "line": 80,
+      "text": "CONFIG_ENERGY_MODEL=y"
+    },
+    {
+      "line": 81,
+      "text": "CONFIG_CPU_IDLE=y"
+    },
+    {
+      "line": 82,
+      "text": "CONFIG_CPU_IDLE_GOV_MENU=y"
+    },
+    {
+      "line": 83,
+      "text": "CONFIG_CPU_IDLE_GOV_TEO=y"
+    },
+    {
+      "line": 84,
+      "text": "CONFIG_ARM_PSCI_CPUIDLE=y"
+    },
+    {
+      "line": 85,
+      "text": "CONFIG_CPU_FREQ=y"
+    },
+    {
+      "line": 86,
+      "text": "CONFIG_CPU_FREQ_STAT=y"
+    },
+    {
+      "line": 87,
+      "text": "CONFIG_CPU_FREQ_TIMES=y"
+    },
+    {
+      "line": 88,
+      "text": "CONFIG_CPU_FREQ_GOV_POWERSAVE=y"
+    },
+    {
+      "line": 89,
+      "text": "CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y"
+    },
+    {
+      "line": 90,
+      "text": "CONFIG_ARM_SCPI_CPUFREQ=y"
+    },
+    {
+      "line": 91,
+      "text": "CONFIG_ARM_SCMI_CPUFREQ=y"
+    },
+    {
+      "line": 92,
+      "text": "CONFIG_VIRTUALIZATION=y"
+    },
+    {
+      "line": 93,
+      "text": "CONFIG_KVM=y"
+    },
+    {
+      "line": 94,
+      "text": "CONFIG_PTDUMP_STAGE2_DEBUGFS=y"
+    },
+    {
+      "line": 95,
+      "text": "CONFIG_KPROBES=y"
+    },
+    {
+      "line": 96,
+      "text": "CONFIG_JUMP_LABEL=y"
+    },
+    {
+      "line": 97,
+      "text": "CONFIG_SHADOW_CALL_STACK=y"
+    },
+    {
+      "line": 98,
+      "text": "CONFIG_CFI_CLANG=y"
+    },
+    {
+      "line": 99,
+      "text": "CONFIG_MODULES=y"
+    },
+    {
+      "line": 100,
+      "text": "CONFIG_MODULE_UNLOAD=y"
+    },
+    {
+      "line": 101,
+      "text": "CONFIG_MODVERSIONS=y"
+    },
+    {
+      "line": 102,
+      "text": "CONFIG_MODULE_SCMVERSION=y"
+    },
+    {
+      "line": 103,
+      "text": "CONFIG_MODULE_SIG=y"
+    },
+    {
+      "line": 104,
+      "text": "CONFIG_MODULE_SIG_PROTECT=y"
+    },
+    {
+      "line": 105,
+      "text": "CONFIG_MODPROBE_PATH=\"/system/bin/modprobe\""
+    },
+    {
+      "line": 106,
+      "text": "CONFIG_BLK_DEV_ZONED=y"
+    },
+    {
+      "line": 107,
+      "text": "CONFIG_BLK_DEV_THROTTLING=y"
+    },
+    {
+      "line": 108,
+      "text": "CONFIG_BLK_WBT=y"
+    },
+    {
+      "line": 109,
+      "text": "CONFIG_BLK_WBT_MQ is not set"
+    },
+    {
+      "line": 110,
+      "text": "CONFIG_BLK_CGROUP_IOCOST=y"
+    },
+    {
+      "line": 111,
+      "text": "CONFIG_BLK_CGROUP_IOPRIO=y"
+    },
+    {
+      "line": 112,
+      "text": "CONFIG_BLK_INLINE_ENCRYPTION=y"
+    },
+    {
+      "line": 113,
+      "text": "CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK=y"
+    },
+    {
+      "line": 114,
+      "text": "CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX=1024"
+    },
+    {
+      "line": 115,
+      "text": "CONFIG_GKI_HACKS_TO_FIX=y"
+    },
+    {
+      "line": 116,
+      "text": "CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set"
+    },
+    {
+      "line": 117,
+      "text": "CONFIG_BINFMT_MISC=y"
+    },
+    {
+      "line": 118,
+      "text": "CONFIG_SLAB_MERGE_DEFAULT is not set"
+    },
+    {
+      "line": 119,
+      "text": "CONFIG_SLAB_FREELIST_RANDOM=y"
+    },
+    {
+      "line": 120,
+      "text": "CONFIG_SLAB_FREELIST_HARDENED=y"
+    },
+    {
+      "line": 121,
+      "text": "CONFIG_SHUFFLE_PAGE_ALLOCATOR=y"
+    },
+    {
+      "line": 122,
+      "text": "CONFIG_COMPAT_BRK is not set"
+    },
+    {
+      "line": 123,
+      "text": "CONFIG_MEMORY_HOTPLUG=y"
+    },
+    {
+      "line": 124,
+      "text": "CONFIG_MEMORY_HOTREMOVE=y"
+    },
+    {
+      "line": 125,
+      "text": "CONFIG_DEFAULT_MMAP_MIN_ADDR=32768"
+    },
+    {
+      "line": 126,
+      "text": "CONFIG_TRANSPARENT_HUGEPAGE=y"
+    },
+    {
+      "line": 127,
+      "text": "CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=y"
+    },
+    {
+      "line": 128,
+      "text": "CONFIG_CLEANCACHE=y"
+    },
+    {
+      "line": 129,
+      "text": "CONFIG_CMA=y"
+    },
+    {
+      "line": 130,
+      "text": "CONFIG_CMA_DEBUGFS=y"
+    },
+    {
+      "line": 131,
+      "text": "CONFIG_CMA_AREAS=16"
+    },
+    {
+      "line": 132,
+      "text": "CONFIG_ZONE_DMA is not set"
+    },
+    {
+      "line": 133,
+      "text": "CONFIG_ANON_VMA_NAME=y"
+    },
+    {
+      "line": 134,
+      "text": "CONFIG_USERFAULTFD=y"
+    },
+    {
+      "line": 135,
+      "text": "CONFIG_LRU_GEN=y"
+    },
+    {
+      "line": 136,
+      "text": "CONFIG_LRU_GEN_ENABLED=y"
+    },
+    {
+      "line": 137,
+      "text": "CONFIG_DAMON=y"
+    },
+    {
+      "line": 138,
+      "text": "CONFIG_DAMON_VADDR=y"
+    },
+    {
+      "line": 139,
+      "text": "CONFIG_DAMON_SYSFS=y"
+    },
+    {
+      "line": 140,
+      "text": "CONFIG_NET=y"
+    },
+    {
+      "line": 141,
+      "text": "CONFIG_PACKET=y"
+    },
+    {
+      "line": 142,
+      "text": "CONFIG_XFRM_USER=y"
+    },
+    {
+      "line": 143,
+      "text": "CONFIG_XFRM_INTERFACE=y"
+    },
+    {
+      "line": 144,
+      "text": "CONFIG_XFRM_MIGRATE=y"
+    },
+    {
+      "line": 145,
+      "text": "CONFIG_XFRM_STATISTICS=y"
+    },
+    {
+      "line": 146,
+      "text": "CONFIG_NET_KEY=y"
+    },
+    {
+      "line": 147,
+      "text": "CONFIG_XDP_SOCKETS=y"
+    },
+    {
+      "line": 148,
+      "text": "CONFIG_IP_MULTICAST=y"
+    },
+    {
+      "line": 149,
+      "text": "CONFIG_IP_ADVANCED_ROUTER=y"
+    },
+    {
+      "line": 150,
+      "text": "CONFIG_IP_MULTIPLE_TABLES=y"
+    },
+    {
+      "line": 151,
+      "text": "CONFIG_NET_IPIP=y"
+    },
+    {
+      "line": 152,
+      "text": "CONFIG_NET_IPGRE_DEMUX=y"
+    },
+    {
+      "line": 153,
+      "text": "CONFIG_NET_IPGRE=y"
+    },
+    {
+      "line": 154,
+      "text": "CONFIG_NET_IPVTI=y"
+    },
+    {
+      "line": 155,
+      "text": "CONFIG_INET_ESP=y"
+    },
+    {
+      "line": 156,
+      "text": "CONFIG_INET_UDP_DIAG=y"
+    },
+    {
+      "line": 157,
+      "text": "CONFIG_INET_DIAG_DESTROY=y"
+    },
+    {
+      "line": 158,
+      "text": "CONFIG_TCP_CONG_ADVANCED=y"
+    },
+    {
+      "line": 159,
+      "text": "CONFIG_TCP_CONG_BIC is not set"
+    },
+    {
+      "line": 160,
+      "text": "CONFIG_TCP_CONG_WESTWOOD is not set"
+    },
+    {
+      "line": 161,
+      "text": "CONFIG_TCP_CONG_HTCP is not set"
+    },
+    {
+      "line": 162,
+      "text": "CONFIG_TCP_CONG_BBR=y"
+    },
+    {
+      "line": 163,
+      "text": "CONFIG_IPV6_ROUTER_PREF=y"
+    },
+    {
+      "line": 164,
+      "text": "CONFIG_IPV6_ROUTE_INFO=y"
+    },
+    {
+      "line": 165,
+      "text": "CONFIG_IPV6_OPTIMISTIC_DAD=y"
+    },
+    {
+      "line": 166,
+      "text": "CONFIG_INET6_ESP=y"
+    },
+    {
+      "line": 167,
+      "text": "CONFIG_INET6_IPCOMP=y"
+    },
+    {
+      "line": 168,
+      "text": "CONFIG_IPV6_MIP6=y"
+    },
+    {
+      "line": 169,
+      "text": "CONFIG_IPV6_VTI=y"
+    },
+    {
+      "line": 170,
+      "text": "CONFIG_IPV6_GRE=y"
+    },
+    {
+      "line": 171,
+      "text": "CONFIG_IPV6_MULTIPLE_TABLES=y"
+    },
+    {
+      "line": 172,
+      "text": "CONFIG_IPV6_MROUTE=y"
+    },
+    {
+      "line": 173,
+      "text": "CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y"
+    },
+    {
+      "line": 174,
+      "text": "CONFIG_NETFILTER=y"
+    },
+    {
+      "line": 175,
+      "text": "CONFIG_NF_CONNTRACK=y"
+    },
+    {
+      "line": 176,
+      "text": "CONFIG_NF_CONNTRACK_SECMARK=y"
+    },
+    {
+      "line": 177,
+      "text": "CONFIG_NF_CONNTRACK_PROCFS=y"
+    },
+    {
+      "line": 178,
+      "text": "CONFIG_NF_CONNTRACK_EVENTS=y"
+    },
+    {
+      "line": 179,
+      "text": "CONFIG_NF_CONNTRACK_AMANDA=y"
+    },
+    {
+      "line": 180,
+      "text": "CONFIG_NF_CONNTRACK_FTP=y"
+    },
+    {
+      "line": 181,
+      "text": "CONFIG_NF_CONNTRACK_H323=y"
+    },
+    {
+      "line": 182,
+      "text": "CONFIG_NF_CONNTRACK_IRC=y"
+    },
+    {
+      "line": 183,
+      "text": "CONFIG_NF_CONNTRACK_NETBIOS_NS=y"
+    },
+    {
+      "line": 184,
+      "text": "CONFIG_NF_CONNTRACK_PPTP=y"
+    },
+    {
+      "line": 185,
+      "text": "CONFIG_NF_CONNTRACK_SANE=y"
+    },
+    {
+      "line": 186,
+      "text": "CONFIG_NF_CONNTRACK_TFTP=y"
+    },
+    {
+      "line": 187,
+      "text": "CONFIG_NF_CT_NETLINK=y"
+    },
+    {
+      "line": 188,
+      "text": "CONFIG_NETFILTER_XTABLES_COMPAT=y"
+    },
+    {
+      "line": 189,
+      "text": "CONFIG_NETFILTER_XT_TARGET_CLASSIFY=y"
+    },
+    {
+      "line": 190,
+      "text": "CONFIG_NETFILTER_XT_TARGET_CONNMARK=y"
+    },
+    {
+      "line": 191,
+      "text": "CONFIG_NETFILTER_XT_TARGET_CONNSECMARK=y"
+    },
+    {
+      "line": 192,
+      "text": "CONFIG_NETFILTER_XT_TARGET_DSCP=y"
+    },
+    {
+      "line": 193,
+      "text": "CONFIG_NETFILTER_XT_TARGET_IDLETIMER=y"
+    },
+    {
+      "line": 194,
+      "text": "CONFIG_NETFILTER_XT_TARGET_MARK=y"
+    },
+    {
+      "line": 195,
+      "text": "CONFIG_NETFILTER_XT_TARGET_NFLOG=y"
+    },
+    {
+      "line": 196,
+      "text": "CONFIG_NETFILTER_XT_TARGET_NFQUEUE=y"
+    },
+    {
+      "line": 197,
+      "text": "CONFIG_NETFILTER_XT_TARGET_NOTRACK=y"
+    },
+    {
+      "line": 198,
+      "text": "CONFIG_NETFILTER_XT_TARGET_TEE=y"
+    },
+    {
+      "line": 199,
+      "text": "CONFIG_NETFILTER_XT_TARGET_TPROXY=y"
+    },
+    {
+      "line": 200,
+      "text": "CONFIG_NETFILTER_XT_TARGET_TRACE=y"
+    },
+    {
+      "line": 201,
+      "text": "CONFIG_NETFILTER_XT_TARGET_SECMARK=y"
+    },
+    {
+      "line": 202,
+      "text": "CONFIG_NETFILTER_XT_TARGET_TCPMSS=y"
+    },
+    {
+      "line": 203,
+      "text": "CONFIG_NETFILTER_XT_MATCH_BPF=y"
+    },
+    {
+      "line": 204,
+      "text": "CONFIG_NETFILTER_XT_MATCH_COMMENT=y"
+    },
+    {
+      "line": 205,
+      "text": "CONFIG_NETFILTER_XT_MATCH_CONNBYTES=y"
+    },
+    {
+      "line": 206,
+      "text": "CONFIG_NETFILTER_XT_MATCH_CONNLIMIT=y"
+    },
+    {
+      "line": 207,
+      "text": "CONFIG_NETFILTER_XT_MATCH_CONNMARK=y"
+    },
+    {
+      "line": 208,
+      "text": "CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y"
+    },
+    {
+      "line": 209,
+      "text": "CONFIG_NETFILTER_XT_MATCH_DSCP=y"
+    },
+    {
+      "line": 210,
+      "text": "CONFIG_NETFILTER_XT_MATCH_ESP=y"
+    },
+    {
+      "line": 211,
+      "text": "CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y"
+    },
+    {
+      "line": 212,
+      "text": "CONFIG_NETFILTER_XT_MATCH_HELPER=y"
+    },
+    {
+      "line": 213,
+      "text": "CONFIG_NETFILTER_XT_MATCH_IPRANGE=y"
+    },
+    {
+      "line": 214,
+      "text": "CONFIG_NETFILTER_XT_MATCH_L2TP=y"
+    },
+    {
+      "line": 215,
+      "text": "CONFIG_NETFILTER_XT_MATCH_LENGTH=y"
+    },
+    {
+      "line": 216,
+      "text": "CONFIG_NETFILTER_XT_MATCH_LIMIT=y"
+    },
+    {
+      "line": 217,
+      "text": "CONFIG_NETFILTER_XT_MATCH_MAC=y"
+    },
+    {
+      "line": 218,
+      "text": "CONFIG_NETFILTER_XT_MATCH_MARK=y"
+    },
+    {
+      "line": 219,
+      "text": "CONFIG_NETFILTER_XT_MATCH_MULTIPORT=y"
+    },
+    {
+      "line": 220,
+      "text": "CONFIG_NETFILTER_XT_MATCH_OWNER=y"
+    },
+    {
+      "line": 221,
+      "text": "CONFIG_NETFILTER_XT_MATCH_POLICY=y"
+    },
+    {
+      "line": 222,
+      "text": "CONFIG_NETFILTER_XT_MATCH_PKTTYPE=y"
+    },
+    {
+      "line": 223,
+      "text": "CONFIG_NETFILTER_XT_MATCH_QUOTA=y"
+    },
+    {
+      "line": 224,
+      "text": "CONFIG_NETFILTER_XT_MATCH_QUOTA2=y"
+    },
+    {
+      "line": 225,
+      "text": "CONFIG_NETFILTER_XT_MATCH_QUOTA2_LOG=y"
+    },
+    {
+      "line": 226,
+      "text": "CONFIG_NETFILTER_XT_MATCH_SOCKET=y"
+    },
+    {
+      "line": 227,
+      "text": "CONFIG_NETFILTER_XT_MATCH_STATE=y"
+    },
+    {
+      "line": 228,
+      "text": "CONFIG_NETFILTER_XT_MATCH_STATISTIC=y"
+    },
+    {
+      "line": 229,
+      "text": "CONFIG_NETFILTER_XT_MATCH_STRING=y"
+    },
+    {
+      "line": 230,
+      "text": "CONFIG_NETFILTER_XT_MATCH_TIME=y"
+    },
+    {
+      "line": 231,
+      "text": "CONFIG_NETFILTER_XT_MATCH_U32=y"
+    },
+    {
+      "line": 232,
+      "text": "CONFIG_IP_NF_IPTABLES=y"
+    },
+    {
+      "line": 233,
+      "text": "CONFIG_IP_NF_MATCH_ECN=y"
+    },
+    {
+      "line": 234,
+      "text": "CONFIG_IP_NF_MATCH_TTL=y"
+    },
+    {
+      "line": 235,
+      "text": "CONFIG_IP_NF_FILTER=y"
+    },
+    {
+      "line": 236,
+      "text": "CONFIG_IP_NF_TARGET_REJECT=y"
+    },
+    {
+      "line": 237,
+      "text": "CONFIG_IP_NF_NAT=y"
+    },
+    {
+      "line": 238,
+      "text": "CONFIG_IP_NF_TARGET_MASQUERADE=y"
+    },
+    {
+      "line": 239,
+      "text": "CONFIG_IP_NF_TARGET_NETMAP=y"
+    },
+    {
+      "line": 240,
+      "text": "CONFIG_IP_NF_TARGET_REDIRECT=y"
+    },
+    {
+      "line": 241,
+      "text": "CONFIG_IP_NF_MANGLE=y"
+    },
+    {
+      "line": 242,
+      "text": "CONFIG_IP_NF_RAW=y"
+    },
+    {
+      "line": 243,
+      "text": "CONFIG_IP_NF_SECURITY=y"
+    },
+    {
+      "line": 244,
+      "text": "CONFIG_IP_NF_ARPTABLES=y"
+    },
+    {
+      "line": 245,
+      "text": "CONFIG_IP_NF_ARPFILTER=y"
+    },
+    {
+      "line": 246,
+      "text": "CONFIG_IP_NF_ARP_MANGLE=y"
+    },
+    {
+      "line": 247,
+      "text": "CONFIG_IP6_NF_IPTABLES=y"
+    },
+    {
+      "line": 248,
+      "text": "CONFIG_IP6_NF_MATCH_RPFILTER=y"
+    },
+    {
+      "line": 249,
+      "text": "CONFIG_IP6_NF_FILTER=y"
+    },
+    {
+      "line": 250,
+      "text": "CONFIG_IP6_NF_TARGET_REJECT=y"
+    },
+    {
+      "line": 251,
+      "text": "CONFIG_IP6_NF_MANGLE=y"
+    },
+    {
+      "line": 252,
+      "text": "CONFIG_IP6_NF_RAW=y"
+    },
+    {
+      "line": 253,
+      "text": "CONFIG_TIPC=m"
+    },
+    {
+      "line": 254,
+      "text": "CONFIG_L2TP=m"
+    },
+    {
+      "line": 255,
+      "text": "CONFIG_BRIDGE=y"
+    },
+    {
+      "line": 256,
+      "text": "CONFIG_VLAN_8021Q=m"
+    },
+    {
+      "line": 257,
+      "text": "CONFIG_6LOWPAN=m"
+    },
+    {
+      "line": 258,
+      "text": "CONFIG_IEEE802154=m"
+    },
+    {
+      "line": 259,
+      "text": "CONFIG_IEEE802154_6LOWPAN=m"
+    },
+    {
+      "line": 260,
+      "text": "CONFIG_MAC802154=m"
+    },
+    {
+      "line": 261,
+      "text": "CONFIG_NET_SCHED=y"
+    },
+    {
+      "line": 262,
+      "text": "CONFIG_NET_SCH_HTB=y"
+    },
+    {
+      "line": 263,
+      "text": "CONFIG_NET_SCH_PRIO=y"
+    },
+    {
+      "line": 264,
+      "text": "CONFIG_NET_SCH_MULTIQ=y"
+    },
+    {
+      "line": 265,
+      "text": "CONFIG_NET_SCH_SFQ=y"
+    },
+    {
+      "line": 266,
+      "text": "CONFIG_NET_SCH_TBF=y"
+    },
+    {
+      "line": 267,
+      "text": "CONFIG_NET_SCH_NETEM=y"
+    },
+    {
+      "line": 268,
+      "text": "CONFIG_NET_SCH_CODEL=y"
+    },
+    {
+      "line": 269,
+      "text": "CONFIG_NET_SCH_FQ_CODEL=y"
+    },
+    {
+      "line": 270,
+      "text": "CONFIG_NET_SCH_FQ=y"
+    },
+    {
+      "line": 271,
+      "text": "CONFIG_NET_SCH_INGRESS=y"
+    },
+    {
+      "line": 272,
+      "text": "CONFIG_NET_CLS_BASIC=y"
+    },
+    {
+      "line": 273,
+      "text": "CONFIG_NET_CLS_FW=y"
+    },
+    {
+      "line": 274,
+      "text": "CONFIG_NET_CLS_U32=y"
+    },
+    {
+      "line": 275,
+      "text": "CONFIG_CLS_U32_MARK=y"
+    },
+    {
+      "line": 276,
+      "text": "CONFIG_NET_CLS_FLOW=y"
+    },
+    {
+      "line": 277,
+      "text": "CONFIG_NET_CLS_BPF=y"
+    },
+    {
+      "line": 278,
+      "text": "CONFIG_NET_CLS_MATCHALL=y"
+    },
+    {
+      "line": 279,
+      "text": "CONFIG_NET_EMATCH=y"
+    },
+    {
+      "line": 280,
+      "text": "CONFIG_NET_EMATCH_CMP=y"
+    },
+    {
+      "line": 281,
+      "text": "CONFIG_NET_EMATCH_NBYTE=y"
+    },
+    {
+      "line": 282,
+      "text": "CONFIG_NET_EMATCH_U32=y"
+    },
+    {
+      "line": 283,
+      "text": "CONFIG_NET_EMATCH_META=y"
+    },
+    {
+      "line": 284,
+      "text": "CONFIG_NET_EMATCH_TEXT=y"
+    },
+    {
+      "line": 285,
+      "text": "CONFIG_NET_CLS_ACT=y"
+    },
+    {
+      "line": 286,
+      "text": "CONFIG_NET_ACT_POLICE=y"
+    },
+    {
+      "line": 287,
+      "text": "CONFIG_NET_ACT_GACT=y"
+    },
+    {
+      "line": 288,
+      "text": "CONFIG_NET_ACT_MIRRED=y"
+    },
+    {
+      "line": 289,
+      "text": "CONFIG_NET_ACT_SKBEDIT=y"
+    },
+    {
+      "line": 290,
+      "text": "CONFIG_NET_ACT_BPF=y"
+    },
+    {
+      "line": 291,
+      "text": "CONFIG_VSOCKETS=y"
+    },
+    {
+      "line": 292,
+      "text": "CONFIG_VIRTIO_VSOCKETS=m"
+    },
+    {
+      "line": 293,
+      "text": "CONFIG_CGROUP_NET_PRIO=y"
+    },
+    {
+      "line": 294,
+      "text": "CONFIG_CAN=m"
+    },
+    {
+      "line": 295,
+      "text": "CONFIG_BT=m"
+    },
+    {
+      "line": 296,
+      "text": "CONFIG_BT_RFCOMM=m"
+    },
+    {
+      "line": 297,
+      "text": "CONFIG_BT_RFCOMM_TTY=y"
+    },
+    {
+      "line": 298,
+      "text": "CONFIG_BT_HIDP=m"
+    },
+    {
+      "line": 299,
+      "text": "CONFIG_BT_HCIBTSDIO=m"
+    },
+    {
+      "line": 300,
+      "text": "CONFIG_BT_HCIUART=m"
+    },
+    {
+      "line": 301,
+      "text": "CONFIG_BT_HCIUART_LL=y"
+    },
+    {
+      "line": 302,
+      "text": "CONFIG_BT_HCIUART_BCM=y"
+    },
+    {
+      "line": 303,
+      "text": "CONFIG_BT_HCIUART_QCA=y"
+    },
+    {
+      "line": 304,
+      "text": "CONFIG_RFKILL=m"
+    },
+    {
+      "line": 305,
+      "text": "CONFIG_NET_9P=m"
+    },
+    {
+      "line": 306,
+      "text": "CONFIG_NFC=m"
+    },
+    {
+      "line": 307,
+      "text": "CONFIG_NETDEV_ADDR_LIST_TEST=m"
+    },
+    {
+      "line": 308,
+      "text": "CONFIG_PCI=y"
+    },
+    {
+      "line": 309,
+      "text": "CONFIG_PCIEPORTBUS=y"
+    },
+    {
+      "line": 310,
+      "text": "CONFIG_PCIEAER=y"
+    },
+    {
+      "line": 311,
+      "text": "CONFIG_PCI_IOV=y"
+    },
+    {
+      "line": 312,
+      "text": "CONFIG_VGA_ARB is not set"
+    },
+    {
+      "line": 313,
+      "text": "CONFIG_PCI_HOST_GENERIC=y"
+    },
+    {
+      "line": 314,
+      "text": "CONFIG_PCIE_KIRIN=y"
+    },
+    {
+      "line": 315,
+      "text": "CONFIG_PCIE_DW_PLAT_EP=y"
+    },
+    {
+      "line": 316,
+      "text": "CONFIG_PCIE_QCOM=y"
+    },
+    {
+      "line": 317,
+      "text": "CONFIG_PCI_ENDPOINT=y"
+    },
+    {
+      "line": 318,
+      "text": "CONFIG_FW_LOADER_USER_HELPER=y"
+    },
+    {
+      "line": 319,
+      "text": "CONFIG_FW_CACHE is not set"
+    },
+    {
+      "line": 320,
+      "text": "CONFIG_REGMAP_KUNIT=m"
+    },
+    {
+      "line": 321,
+      "text": "CONFIG_SUN50I_DE2_BUS is not set"
+    },
+    {
+      "line": 322,
+      "text": "CONFIG_SUNXI_RSB is not set"
+    },
+    {
+      "line": 323,
+      "text": "CONFIG_CONNECTOR=y"
+    },
+    {
+      "line": 324,
+      "text": "CONFIG_ARM_SCMI_PROTOCOL=y"
+    },
+    {
+      "line": 325,
+      "text": "CONFIG_ARM_SCMI_TRANSPORT_VIRTIO=y"
+    },
+    {
+      "line": 326,
+      "text": "CONFIG_ARM_SCMI_POWER_DOMAIN is not set"
+    },
+    {
+      "line": 327,
+      "text": "CONFIG_ARM_SCPI_PROTOCOL=y"
+    },
+    {
+      "line": 328,
+      "text": "CONFIG_ARM_SCPI_POWER_DOMAIN is not set"
+    },
+    {
+      "line": 329,
+      "text": "CONFIG_EFI_ARMSTUB_DTB_LOADER is not set"
+    },
+    {
+      "line": 330,
+      "text": "CONFIG_GNSS=y"
+    },
+    {
+      "line": 331,
+      "text": "CONFIG_ZRAM=m"
+    },
+    {
+      "line": 332,
+      "text": "CONFIG_ZRAM_WRITEBACK=y"
+    },
+    {
+      "line": 333,
+      "text": "CONFIG_ZRAM_MULTI_COMP=y"
+    },
+    {
+      "line": 334,
+      "text": "CONFIG_BLK_DEV_LOOP=y"
+    },
+    {
+      "line": 335,
+      "text": "CONFIG_BLK_DEV_LOOP_MIN_COUNT=16"
+    },
+    {
+      "line": 336,
+      "text": "CONFIG_BLK_DEV_RAM=y"
+    },
+    {
+      "line": 337,
+      "text": "CONFIG_BLK_DEV_RAM_SIZE=8192"
+    },
+    {
+      "line": 338,
+      "text": "CONFIG_VIRTIO_BLK=m"
+    },
+    {
+      "line": 339,
+      "text": "CONFIG_BLK_DEV_UBLK=y"
+    },
+    {
+      "line": 340,
+      "text": "CONFIG_BLK_DEV_NVME=y"
+    },
+    {
+      "line": 341,
+      "text": "CONFIG_NVME_MULTIPATH=y"
+    },
+    {
+      "line": 342,
+      "text": "CONFIG_SRAM=y"
+    },
+    {
+      "line": 343,
+      "text": "CONFIG_UID_SYS_STATS=y"
+    },
+    {
+      "line": 344,
+      "text": "CONFIG_OPEN_DICE=m"
+    },
+    {
+      "line": 345,
+      "text": "CONFIG_VCPU_STALL_DETECTOR=m"
+    },
+    {
+      "line": 346,
+      "text": "CONFIG_SCSI=y"
+    },
+    {
+      "line": 347,
+      "text": "CONFIG_SCSI_PROC_FS is not set"
+    },
+    {
+      "line": 348,
+      "text": "CONFIG_BLK_DEV_SD=y"
+    },
+    {
+      "line": 349,
+      "text": "CONFIG_SCSI_SCAN_ASYNC=y"
+    },
+    {
+      "line": 350,
+      "text": "CONFIG_MD=y"
+    },
+    {
+      "line": 351,
+      "text": "CONFIG_BLK_DEV_DM=y"
+    },
+    {
+      "line": 352,
+      "text": "CONFIG_DM_CRYPT=y"
+    },
+    {
+      "line": 353,
+      "text": "CONFIG_DM_DEFAULT_KEY=y"
+    },
+    {
+      "line": 354,
+      "text": "CONFIG_DM_SNAPSHOT=y"
+    },
+    {
+      "line": 355,
+      "text": "CONFIG_DM_UEVENT=y"
+    },
+    {
+      "line": 356,
+      "text": "CONFIG_DM_VERITY=y"
+    },
+    {
+      "line": 357,
+      "text": "CONFIG_DM_VERITY_FEC=y"
+    },
+    {
+      "line": 358,
+      "text": "CONFIG_DM_BOW=y"
+    },
+    {
+      "line": 359,
+      "text": "CONFIG_NETDEVICES=y"
+    },
+    {
+      "line": 360,
+      "text": "CONFIG_DUMMY=y"
+    },
+    {
+      "line": 361,
+      "text": "CONFIG_WIREGUARD=y"
+    },
+    {
+      "line": 362,
+      "text": "CONFIG_IFB=y"
+    },
+    {
+      "line": 363,
+      "text": "CONFIG_MACSEC=m"
+    },
+    {
+      "line": 364,
+      "text": "CONFIG_TUN=y"
+    },
+    {
+      "line": 365,
+      "text": "CONFIG_VETH=y"
+    },
+    {
+      "line": 366,
+      "text": "CONFIG_LED_TRIGGER_PHY=y"
+    },
+    {
+      "line": 367,
+      "text": "CONFIG_AX88796B_PHY=y"
+    },
+    {
+      "line": 368,
+      "text": "CONFIG_CAN_VCAN=m"
+    },
+    {
+      "line": 369,
+      "text": "CONFIG_CAN_SLCAN=m"
+    },
+    {
+      "line": 370,
+      "text": "CONFIG_PPP=m"
+    },
+    {
+      "line": 371,
+      "text": "CONFIG_PPP_BSDCOMP=m"
+    },
+    {
+      "line": 372,
+      "text": "CONFIG_PPP_DEFLATE=m"
+    },
+    {
+      "line": 373,
+      "text": "CONFIG_PPP_MPPE=m"
+    },
+    {
+      "line": 374,
+      "text": "CONFIG_PPTP=m"
+    },
+    {
+      "line": 375,
+      "text": "CONFIG_PPPOL2TP=m"
+    },
+    {
+      "line": 376,
+      "text": "CONFIG_USB_NET_DRIVERS=m"
+    },
+    {
+      "line": 377,
+      "text": "CONFIG_USB_RTL8150=m"
+    },
+    {
+      "line": 378,
+      "text": "CONFIG_USB_RTL8152=m"
+    },
+    {
+      "line": 379,
+      "text": "CONFIG_USB_USBNET=m"
+    },
+    {
+      "line": 380,
+      "text": "CONFIG_USB_NET_CDC_EEM=m"
+    },
+    {
+      "line": 381,
+      "text": "CONFIG_USB_NET_NET1080 is not set"
+    },
+    {
+      "line": 382,
+      "text": "CONFIG_USB_NET_CDC_SUBSET is not set"
+    },
+    {
+      "line": 383,
+      "text": "CONFIG_USB_NET_ZAURUS is not set"
+    },
+    {
+      "line": 384,
+      "text": "CONFIG_USB_NET_AQC111=m"
+    },
+    {
+      "line": 385,
+      "text": "CONFIG_WLAN_VENDOR_ADMTEK is not set"
+    },
+    {
+      "line": 386,
+      "text": "CONFIG_WLAN_VENDOR_ATH is not set"
+    },
+    {
+      "line": 387,
+      "text": "CONFIG_WLAN_VENDOR_ATMEL is not set"
+    },
+    {
+      "line": 388,
+      "text": "CONFIG_WLAN_VENDOR_BROADCOM is not set"
+    },
+    {
+      "line": 389,
+      "text": "CONFIG_WLAN_VENDOR_CISCO is not set"
+    },
+    {
+      "line": 390,
+      "text": "CONFIG_WLAN_VENDOR_INTEL is not set"
+    },
+    {
+      "line": 391,
+      "text": "CONFIG_WLAN_VENDOR_INTERSIL is not set"
+    },
+    {
+      "line": 392,
+      "text": "CONFIG_WLAN_VENDOR_MARVELL is not set"
+    },
+    {
+      "line": 393,
+      "text": "CONFIG_WLAN_VENDOR_MEDIATEK is not set"
+    },
+    {
+      "line": 394,
+      "text": "CONFIG_WLAN_VENDOR_RALINK is not set"
+    },
+    {
+      "line": 395,
+      "text": "CONFIG_WLAN_VENDOR_REALTEK is not set"
+    },
+    {
+      "line": 396,
+      "text": "CONFIG_WLAN_VENDOR_RSI is not set"
+    },
+    {
+      "line": 397,
+      "text": "CONFIG_WLAN_VENDOR_ST is not set"
+    },
+    {
+      "line": 398,
+      "text": "CONFIG_WLAN_VENDOR_TI is not set"
+    },
+    {
+      "line": 399,
+      "text": "CONFIG_WLAN_VENDOR_ZYDAS is not set"
+    },
+    {
+      "line": 400,
+      "text": "CONFIG_WLAN_VENDOR_QUANTENNA is not set"
+    },
+    {
+      "line": 401,
+      "text": "CONFIG_WWAN=m"
+    },
+    {
+      "line": 402,
+      "text": "CONFIG_WWAN_DEBUGFS is not set"
+    },
+    {
+      "line": 403,
+      "text": "CONFIG_INPUT_EVDEV=y"
+    },
+    {
+      "line": 404,
+      "text": "CONFIG_INPUT_KUNIT_TEST=m"
+    },
+    {
+      "line": 405,
+      "text": "CONFIG_KEYBOARD_GPIO=y"
+    },
+    {
+      "line": 406,
+      "text": "CONFIG_MOUSE_PS2 is not set"
+    },
+    {
+      "line": 407,
+      "text": "CONFIG_INPUT_JOYSTICK=y"
+    },
+    {
+      "line": 408,
+      "text": "CONFIG_JOYSTICK_XPAD=y"
+    },
+    {
+      "line": 409,
+      "text": "CONFIG_INPUT_TOUCHSCREEN=y"
+    },
+    {
+      "line": 410,
+      "text": "CONFIG_INPUT_MISC=y"
+    },
+    {
+      "line": 411,
+      "text": "CONFIG_INPUT_UINPUT=y"
+    },
+    {
+      "line": 412,
+      "text": "CONFIG_VT is not set"
+    },
+    {
+      "line": 413,
+      "text": "CONFIG_LEGACY_PTYS is not set"
+    },
+    {
+      "line": 414,
+      "text": "CONFIG_SERIAL_8250=y"
+    },
+    {
+      "line": 415,
+      "text": "CONFIG_SERIAL_8250_DEPRECATED_OPTIONS is not set"
+    },
+    {
+      "line": 416,
+      "text": "CONFIG_SERIAL_8250_CONSOLE=y"
+    },
+    {
+      "line": 417,
+      "text": "CONFIG_SERIAL_8250_EXAR is not set"
+    },
+    {
+      "line": 418,
+      "text": "CONFIG_SERIAL_8250_NR_UARTS=32"
+    },
+    {
+      "line": 419,
+      "text": "CONFIG_SERIAL_8250_RUNTIME_UARTS=0"
+    },
+    {
+      "line": 420,
+      "text": "CONFIG_SERIAL_8250_DW=y"
+    },
+    {
+      "line": 421,
+      "text": "CONFIG_SERIAL_OF_PLATFORM=y"
+    },
+    {
+      "line": 422,
+      "text": "CONFIG_SERIAL_AMBA_PL011=y"
+    },
+    {
+      "line": 423,
+      "text": "CONFIG_SERIAL_AMBA_PL011_CONSOLE=y"
+    },
+    {
+      "line": 424,
+      "text": "CONFIG_SERIAL_SAMSUNG=y"
+    },
+    {
+      "line": 425,
+      "text": "CONFIG_SERIAL_SAMSUNG_CONSOLE=y"
+    },
+    {
+      "line": 426,
+      "text": "CONFIG_SERIAL_TEGRA_TCU=y"
+    },
+    {
+      "line": 427,
+      "text": "CONFIG_SERIAL_QCOM_GENI=y"
+    },
+    {
+      "line": 428,
+      "text": "CONFIG_SERIAL_QCOM_GENI_CONSOLE=y"
+    },
+    {
+      "line": 429,
+      "text": "CONFIG_SERIAL_SPRD=y"
+    },
+    {
+      "line": 430,
+      "text": "CONFIG_SERIAL_SPRD_CONSOLE=y"
+    },
+    {
+      "line": 431,
+      "text": "CONFIG_NULL_TTY=y"
+    },
+    {
+      "line": 432,
+      "text": "CONFIG_HVC_DCC=y"
+    },
+    {
+      "line": 433,
+      "text": "CONFIG_SERIAL_DEV_BUS=y"
+    },
+    {
+      "line": 434,
+      "text": "CONFIG_VIRTIO_CONSOLE=m"
+    },
+    {
+      "line": 435,
+      "text": "CONFIG_HW_RANDOM=y"
+    },
+    {
+      "line": 436,
+      "text": "CONFIG_HW_RANDOM_CCTRNG=m"
+    },
+    {
+      "line": 437,
+      "text": "CONFIG_DEVMEM is not set"
+    },
+    {
+      "line": 438,
+      "text": "CONFIG_DEVPORT is not set"
+    },
+    {
+      "line": 439,
+      "text": "CONFIG_I2C_COMPAT is not set"
+    },
+    {
+      "line": 440,
+      "text": "CONFIG_I2C_HELPER_AUTO is not set"
+    },
+    {
+      "line": 441,
+      "text": "CONFIG_I3C=y"
+    },
+    {
+      "line": 442,
+      "text": "CONFIG_SPI=y"
+    },
+    {
+      "line": 443,
+      "text": "CONFIG_SPI_MEM=y"
+    },
+    {
+      "line": 444,
+      "text": "CONFIG_SPI_SLAVE=y"
+    },
+    {
+      "line": 445,
+      "text": "CONFIG_SPMI_MSM_PMIC_ARB is not set"
+    },
+    {
+      "line": 446,
+      "text": "CONFIG_PTP_1588_CLOCK=m"
+    },
+    {
+      "line": 447,
+      "text": "CONFIG_PINCTRL_SUN8I_H3_R is not set"
+    },
+    {
+      "line": 448,
+      "text": "CONFIG_PINCTRL_SUN50I_A64 is not set"
+    },
+    {
+      "line": 449,
+      "text": "CONFIG_PINCTRL_SUN50I_A64_R is not set"
+    },
+    {
+      "line": 450,
+      "text": "CONFIG_PINCTRL_SUN50I_A100 is not set"
+    },
+    {
+      "line": 451,
+      "text": "CONFIG_PINCTRL_SUN50I_A100_R is not set"
+    },
+    {
+      "line": 452,
+      "text": "CONFIG_PINCTRL_SUN50I_H5 is not set"
+    },
+    {
+      "line": 453,
+      "text": "CONFIG_PINCTRL_SUN50I_H6 is not set"
+    },
+    {
+      "line": 454,
+      "text": "CONFIG_PINCTRL_SUN50I_H6_R is not set"
+    },
+    {
+      "line": 455,
+      "text": "CONFIG_PINCTRL_SUN50I_H616 is not set"
+    },
+    {
+      "line": 456,
+      "text": "CONFIG_PINCTRL_SUN50I_H616_R is not set"
+    },
+    {
+      "line": 457,
+      "text": "CONFIG_GPIO_GENERIC_PLATFORM=y"
+    },
+    {
+      "line": 458,
+      "text": "CONFIG_POWER_RESET_HISI=y"
+    },
+    {
+      "line": 459,
+      "text": "CONFIG_POWER_RESET_SYSCON=y"
+    },
+    {
+      "line": 460,
+      "text": "CONFIG_HWMON is not set"
+    },
+    {
+      "line": 461,
+      "text": "CONFIG_THERMAL=y"
+    },
+    {
+      "line": 462,
+      "text": "CONFIG_THERMAL_NETLINK=y"
+    },
+    {
+      "line": 463,
+      "text": "CONFIG_THERMAL_STATISTICS=y"
+    },
+    {
+      "line": 464,
+      "text": "CONFIG_THERMAL_EMERGENCY_POWEROFF_DELAY_MS=100"
+    },
+    {
+      "line": 465,
+      "text": "CONFIG_THERMAL_WRITABLE_TRIPS=y"
+    },
+    {
+      "line": 466,
+      "text": "CONFIG_THERMAL_GOV_BANG_BANG=y"
+    },
+    {
+      "line": 467,
+      "text": "CONFIG_THERMAL_GOV_USER_SPACE=y"
+    },
+    {
+      "line": 468,
+      "text": "CONFIG_THERMAL_GOV_POWER_ALLOCATOR=y"
+    },
+    {
+      "line": 469,
+      "text": "CONFIG_CPU_THERMAL=y"
+    },
+    {
+      "line": 470,
+      "text": "CONFIG_CPU_IDLE_THERMAL=y"
+    },
+    {
+      "line": 471,
+      "text": "CONFIG_DEVFREQ_THERMAL=y"
+    },
+    {
+      "line": 472,
+      "text": "CONFIG_THERMAL_EMULATION=y"
+    },
+    {
+      "line": 473,
+      "text": "CONFIG_WATCHDOG=y"
+    },
+    {
+      "line": 474,
+      "text": "CONFIG_WATCHDOG_CORE=y"
+    },
+    {
+      "line": 475,
+      "text": "CONFIG_MFD_ACT8945A=y"
+    },
+    {
+      "line": 476,
+      "text": "CONFIG_REGULATOR=y"
+    },
+    {
+      "line": 477,
+      "text": "CONFIG_REGULATOR_FIXED_VOLTAGE=y"
+    },
+    {
+      "line": 478,
+      "text": "CONFIG_RC_CORE=y"
+    },
+    {
+      "line": 479,
+      "text": "CONFIG_BPF_LIRC_MODE2=y"
+    },
+    {
+      "line": 480,
+      "text": "CONFIG_LIRC=y"
+    },
+    {
+      "line": 481,
+      "text": "CONFIG_RC_MAP is not set"
+    },
+    {
+      "line": 482,
+      "text": "CONFIG_RC_DECODERS=y"
+    },
+    {
+      "line": 483,
+      "text": "CONFIG_RC_DEVICES=y"
+    },
+    {
+      "line": 484,
+      "text": "CONFIG_MEDIA_ANALOG_TV_SUPPORT is not set"
+    },
+    {
+      "line": 485,
+      "text": "CONFIG_MEDIA_DIGITAL_TV_SUPPORT is not set"
+    },
+    {
+      "line": 486,
+      "text": "CONFIG_MEDIA_RADIO_SUPPORT is not set"
+    },
+    {
+      "line": 487,
+      "text": "CONFIG_MEDIA_SDR_SUPPORT is not set"
+    },
+    {
+      "line": 488,
+      "text": "CONFIG_MEDIA_TEST_SUPPORT is not set"
+    },
+    {
+      "line": 489,
+      "text": "CONFIG_MEDIA_USB_SUPPORT=y"
+    },
+    {
+      "line": 490,
+      "text": "CONFIG_USB_GSPCA=y"
+    },
+    {
+      "line": 491,
+      "text": "CONFIG_USB_VIDEO_CLASS=y"
+    },
+    {
+      "line": 492,
+      "text": "CONFIG_V4L_PLATFORM_DRIVERS=y"
+    },
+    {
+      "line": 493,
+      "text": "CONFIG_V4L_MEM2MEM_DRIVERS=y"
+    },
+    {
+      "line": 494,
+      "text": "CONFIG_DRM=y"
+    },
+    {
+      "line": 495,
+      "text": "CONFIG_BACKLIGHT_CLASS_DEVICE=y"
+    },
+    {
+      "line": 496,
+      "text": "CONFIG_SOUND=y"
+    },
+    {
+      "line": 497,
+      "text": "CONFIG_SND=y"
+    },
+    {
+      "line": 498,
+      "text": "CONFIG_SND_HRTIMER=y"
+    },
+    {
+      "line": 499,
+      "text": "CONFIG_SND_SUPPORT_OLD_API is not set"
+    },
+    {
+      "line": 500,
+      "text": "CONFIG_SND_VERBOSE_PROCFS is not set"
+    },
+    {
+      "line": 501,
+      "text": "CONFIG_SND_DRIVERS is not set"
+    },
+    {
+      "line": 502,
+      "text": "CONFIG_SND_USB_AUDIO=y"
+    },
+    {
+      "line": 503,
+      "text": "CONFIG_SND_SOC=y"
+    },
+    {
+      "line": 504,
+      "text": "CONFIG_SND_SOC_TOPOLOGY_KUNIT_TEST=m"
+    },
+    {
+      "line": 505,
+      "text": "CONFIG_SND_SOC_UTILS_KUNIT_TEST=m"
+    },
+    {
+      "line": 506,
+      "text": "CONFIG_HID_BATTERY_STRENGTH=y"
+    },
+    {
+      "line": 507,
+      "text": "CONFIG_HIDRAW=y"
+    },
+    {
+      "line": 508,
+      "text": "CONFIG_UHID=y"
+    },
+    {
+      "line": 509,
+      "text": "CONFIG_HID_APPLE=y"
+    },
+    {
+      "line": 510,
+      "text": "CONFIG_HID_PRODIKEYS=y"
+    },
+    {
+      "line": 511,
+      "text": "CONFIG_HID_ELECOM=y"
+    },
+    {
+      "line": 512,
+      "text": "CONFIG_HID_UCLOGIC=y"
+    },
+    {
+      "line": 513,
+      "text": "CONFIG_HID_LOGITECH=y"
+    },
+    {
+      "line": 514,
+      "text": "CONFIG_HID_LOGITECH_DJ=y"
+    },
+    {
+      "line": 515,
+      "text": "CONFIG_HID_MAGICMOUSE=y"
+    },
+    {
+      "line": 516,
+      "text": "CONFIG_HID_MICROSOFT=y"
+    },
+    {
+      "line": 517,
+      "text": "CONFIG_HID_MULTITOUCH=y"
+    },
+    {
+      "line": 518,
+      "text": "CONFIG_HID_NINTENDO=y"
+    },
+    {
+      "line": 519,
+      "text": "CONFIG_NINTENDO_FF=y"
+    },
+    {
+      "line": 520,
+      "text": "CONFIG_HID_PICOLCD=y"
+    },
+    {
+      "line": 521,
+      "text": "CONFIG_HID_PLANTRONICS=y"
+    },
+    {
+      "line": 522,
+      "text": "CONFIG_HID_PLAYSTATION=y"
+    },
+    {
+      "line": 523,
+      "text": "CONFIG_PLAYSTATION_FF=y"
+    },
+    {
+      "line": 524,
+      "text": "CONFIG_HID_ROCCAT=y"
+    },
+    {
+      "line": 525,
+      "text": "CONFIG_HID_SONY=y"
+    },
+    {
+      "line": 526,
+      "text": "CONFIG_SONY_FF=y"
+    },
+    {
+      "line": 527,
+      "text": "CONFIG_HID_STEAM=y"
+    },
+    {
+      "line": 528,
+      "text": "CONFIG_HID_WACOM=y"
+    },
+    {
+      "line": 529,
+      "text": "CONFIG_HID_WIIMOTE=y"
+    },
+    {
+      "line": 530,
+      "text": "CONFIG_HID_KUNIT_TEST=m"
+    },
+    {
+      "line": 531,
+      "text": "CONFIG_USB_HIDDEV=y"
+    },
+    {
+      "line": 532,
+      "text": "CONFIG_USB_ANNOUNCE_NEW_DEVICES=y"
+    },
+    {
+      "line": 533,
+      "text": "CONFIG_USB_OTG=y"
+    },
+    {
+      "line": 534,
+      "text": "CONFIG_USB_MON=m"
+    },
+    {
+      "line": 535,
+      "text": "CONFIG_USB_XHCI_HCD=y"
+    },
+    {
+      "line": 536,
+      "text": "CONFIG_USB_XHCI_PCI_RENESAS=m"
+    },
+    {
+      "line": 537,
+      "text": "CONFIG_USB_EHCI_HCD=y"
+    },
+    {
+      "line": 538,
+      "text": "CONFIG_USB_EHCI_ROOT_HUB_TT=y"
+    },
+    {
+      "line": 539,
+      "text": "CONFIG_USB_EHCI_HCD_PLATFORM=y"
+    },
+    {
+      "line": 540,
+      "text": "CONFIG_USB_ACM=m"
+    },
+    {
+      "line": 541,
+      "text": "CONFIG_USB_STORAGE=y"
+    },
+    {
+      "line": 542,
+      "text": "CONFIG_USB_UAS=y"
+    },
+    {
+      "line": 543,
+      "text": "CONFIG_USB_DWC3=y"
+    },
+    {
+      "line": 544,
+      "text": "CONFIG_USB_SERIAL=m"
+    },
+    {
+      "line": 545,
+      "text": "CONFIG_USB_SERIAL_FTDI_SIO=m"
+    },
+    {
+      "line": 546,
+      "text": "CONFIG_USB_GADGET=y"
+    },
+    {
+      "line": 547,
+      "text": "CONFIG_USB_CONFIGFS=y"
+    },
+    {
+      "line": 548,
+      "text": "CONFIG_ANDROID_USB_CONFIGFS_UEVENT=y"
+    },
+    {
+      "line": 549,
+      "text": "CONFIG_USB_CONFIGFS_SERIAL=y"
+    },
+    {
+      "line": 550,
+      "text": "CONFIG_USB_CONFIGFS_ACM=y"
+    },
+    {
+      "line": 551,
+      "text": "CONFIG_USB_CONFIGFS_NCM=y"
+    },
+    {
+      "line": 552,
+      "text": "CONFIG_USB_CONFIGFS_ECM=y"
+    },
+    {
+      "line": 553,
+      "text": "CONFIG_USB_CONFIGFS_EEM=y"
+    },
+    {
+      "line": 554,
+      "text": "CONFIG_USB_CONFIGFS_MASS_STORAGE=y"
+    },
+    {
+      "line": 555,
+      "text": "CONFIG_USB_CONFIGFS_F_FS=y"
+    },
+    {
+      "line": 556,
+      "text": "CONFIG_USB_CONFIGFS_F_UAC2=y"
+    },
+    {
+      "line": 557,
+      "text": "CONFIG_USB_CONFIGFS_F_MIDI=y"
+    },
+    {
+      "line": 558,
+      "text": "CONFIG_ANDROID_USB_F_MIDI_INFO=y"
+    },
+    {
+      "line": 559,
+      "text": "CONFIG_USB_CONFIGFS_F_HID=y"
+    },
+    {
+      "line": 560,
+      "text": "CONFIG_USB_CONFIGFS_F_UVC=y"
+    },
+    {
+      "line": 561,
+      "text": "CONFIG_ANDROID_USB_CONFIGFS_F_ACC=y"
+    },
+    {
+      "line": 562,
+      "text": "CONFIG_TYPEC=y"
+    },
+    {
+      "line": 563,
+      "text": "CONFIG_TYPEC_TCPM=y"
+    },
+    {
+      "line": 564,
+      "text": "CONFIG_TYPEC_TCPCI=y"
+    },
+    {
+      "line": 565,
+      "text": "CONFIG_TYPEC_UCSI=y"
+    },
+    {
+      "line": 566,
+      "text": "CONFIG_TYPEC_DP_ALTMODE=y"
+    },
+    {
+      "line": 567,
+      "text": "CONFIG_MMC=y"
+    },
+    {
+      "line": 568,
+      "text": "CONFIG_PWRSEQ_EMMC is not set"
+    },
+    {
+      "line": 569,
+      "text": "CONFIG_PWRSEQ_SIMPLE is not set"
+    },
+    {
+      "line": 570,
+      "text": "CONFIG_MMC_CRYPTO=y"
+    },
+    {
+      "line": 571,
+      "text": "CONFIG_MMC_SDHCI=y"
+    },
+    {
+      "line": 572,
+      "text": "CONFIG_MMC_SDHCI_PLTFM=y"
+    },
+    {
+      "line": 573,
+      "text": "CONFIG_SCSI_UFSHCD=y"
+    },
+    {
+      "line": 574,
+      "text": "CONFIG_SCSI_UFS_BSG=y"
+    },
+    {
+      "line": 575,
+      "text": "CONFIG_SCSI_UFS_CRYPTO=y"
+    },
+    {
+      "line": 576,
+      "text": "CONFIG_SCSI_UFSHCD_PCI=y"
+    },
+    {
+      "line": 577,
+      "text": "CONFIG_SCSI_UFSHCD_PLATFORM=y"
+    },
+    {
+      "line": 578,
+      "text": "CONFIG_SCSI_UFS_DWC_TC_PLATFORM=y"
+    },
+    {
+      "line": 579,
+      "text": "CONFIG_SCSI_UFS_HISI=y"
+    },
+    {
+      "line": 580,
+      "text": "CONFIG_LEDS_CLASS_FLASH=y"
+    },
+    {
+      "line": 581,
+      "text": "CONFIG_LEDS_CLASS_MULTICOLOR=y"
+    },
+    {
+      "line": 582,
+      "text": "CONFIG_LEDS_TRIGGER_TIMER=y"
+    },
+    {
+      "line": 583,
+      "text": "CONFIG_LEDS_TRIGGER_TRANSIENT=y"
+    },
+    {
+      "line": 584,
+      "text": "CONFIG_EDAC=y"
+    },
+    {
+      "line": 585,
+      "text": "CONFIG_RTC_CLASS=y"
+    },
+    {
+      "line": 586,
+      "text": "CONFIG_RTC_LIB_KUNIT_TEST=m"
+    },
+    {
+      "line": 587,
+      "text": "CONFIG_RTC_DRV_PL030=y"
+    },
+    {
+      "line": 588,
+      "text": "CONFIG_RTC_DRV_PL031=y"
+    },
+    {
+      "line": 589,
+      "text": "CONFIG_UDMABUF=y"
+    },
+    {
+      "line": 590,
+      "text": "CONFIG_DMABUF_HEAPS=y"
+    },
+    {
+      "line": 591,
+      "text": "CONFIG_DMABUF_SYSFS_STATS=y"
+    },
+    {
+      "line": 592,
+      "text": "CONFIG_DMABUF_HEAPS_DEFERRED_FREE=y"
+    },
+    {
+      "line": 593,
+      "text": "CONFIG_DMABUF_HEAPS_PAGE_POOL=y"
+    },
+    {
+      "line": 594,
+      "text": "CONFIG_UIO=y"
+    },
+    {
+      "line": 595,
+      "text": "CONFIG_VIRT_DRIVERS=y"
+    },
+    {
+      "line": 596,
+      "text": "CONFIG_MTK_GZVM=m"
+    },
+    {
+      "line": 597,
+      "text": "CONFIG_GUNYAH=y"
+    },
+    {
+      "line": 598,
+      "text": "CONFIG_GUNYAH_QCOM_PLATFORM is not set"
+    },
+    {
+      "line": 599,
+      "text": "CONFIG_GUNYAH_IRQFD=y"
+    },
+    {
+      "line": 600,
+      "text": "CONFIG_GUNYAH_IOEVENTFD=y"
+    },
+    {
+      "line": 601,
+      "text": "CONFIG_VIRTIO_PCI=m"
+    },
+    {
+      "line": 602,
+      "text": "CONFIG_VIRTIO_BALLOON=m"
+    },
+    {
+      "line": 603,
+      "text": "CONFIG_VHOST_VSOCK=y"
+    },
+    {
+      "line": 604,
+      "text": "CONFIG_STAGING=y"
+    },
+    {
+      "line": 605,
+      "text": "CONFIG_ASHMEM=y"
+    },
+    {
+      "line": 606,
+      "text": "CONFIG_COMMON_CLK_SCPI=y"
+    },
+    {
+      "line": 607,
+      "text": "CONFIG_SUNXI_CCU is not set"
+    },
+    {
+      "line": 608,
+      "text": "CONFIG_CLK_KUNIT_TEST=m"
+    },
+    {
+      "line": 609,
+      "text": "CONFIG_CLK_GATE_KUNIT_TEST=m"
+    },
+    {
+      "line": 610,
+      "text": "CONFIG_HWSPINLOCK=y"
+    },
+    {
+      "line": 611,
+      "text": "CONFIG_SUN50I_ERRATUM_UNKNOWN1 is not set"
+    },
+    {
+      "line": 612,
+      "text": "CONFIG_IOMMU_IO_PGTABLE_ARMV7S=y"
+    },
+    {
+      "line": 613,
+      "text": "CONFIG_REMOTEPROC=y"
+    },
+    {
+      "line": 614,
+      "text": "CONFIG_REMOTEPROC_CDEV=y"
+    },
+    {
+      "line": 615,
+      "text": "CONFIG_RPMSG_CHAR=y"
+    },
+    {
+      "line": 616,
+      "text": "CONFIG_QCOM_GENI_SE=y"
+    },
+    {
+      "line": 617,
+      "text": "CONFIG_ARCH_TEGRA_234_SOC=y"
+    },
+    {
+      "line": 618,
+      "text": "CONFIG_DEVFREQ_GOV_PERFORMANCE=y"
+    },
+    {
+      "line": 619,
+      "text": "CONFIG_DEVFREQ_GOV_POWERSAVE=y"
+    },
+    {
+      "line": 620,
+      "text": "CONFIG_DEVFREQ_GOV_USERSPACE=y"
+    },
+    {
+      "line": 621,
+      "text": "CONFIG_DEVFREQ_GOV_PASSIVE=y"
+    },
+    {
+      "line": 622,
+      "text": "CONFIG_PM_DEVFREQ_EVENT=y"
+    },
+    {
+      "line": 623,
+      "text": "CONFIG_MEMORY=y"
+    },
+    {
+      "line": 624,
+      "text": "CONFIG_IIO=y"
+    },
+    {
+      "line": 625,
+      "text": "CONFIG_IIO_BUFFER=y"
+    },
+    {
+      "line": 626,
+      "text": "CONFIG_IIO_TRIGGER=y"
+    },
+    {
+      "line": 627,
+      "text": "CONFIG_IIO_FORMAT_KUNIT_TEST=m"
+    },
+    {
+      "line": 628,
+      "text": "CONFIG_PWM=y"
+    },
+    {
+      "line": 629,
+      "text": "CONFIG_POWERCAP=y"
+    },
+    {
+      "line": 630,
+      "text": "CONFIG_IDLE_INJECT=y"
+    },
+    {
+      "line": 631,
+      "text": "CONFIG_DTPM=y"
+    },
+    {
+      "line": 632,
+      "text": "CONFIG_DTPM_CPU=y"
+    },
+    {
+      "line": 633,
+      "text": "CONFIG_DTPM_DEVFREQ=y"
+    },
+    {
+      "line": 634,
+      "text": "CONFIG_ANDROID_BINDER_IPC=y"
+    },
+    {
+      "line": 635,
+      "text": "CONFIG_ANDROID_BINDERFS=y"
+    },
+    {
+      "line": 636,
+      "text": "CONFIG_ANDROID_DEBUG_SYMBOLS=y"
+    },
+    {
+      "line": 637,
+      "text": "CONFIG_ANDROID_VENDOR_HOOKS=y"
+    },
+    {
+      "line": 638,
+      "text": "CONFIG_ANDROID_DEBUG_KINFO=y"
+    },
+    {
+      "line": 639,
+      "text": "CONFIG_ANDROID_WRAPFD=y"
+    },
+    {
+      "line": 640,
+      "text": "CONFIG_LIBNVDIMM=y"
+    },
+    {
+      "line": 641,
+      "text": "CONFIG_EXT4_FS=y"
+    },
+    {
+      "line": 642,
+      "text": "CONFIG_EXT4_FS_POSIX_ACL=y"
+    },
+    {
+      "line": 643,
+      "text": "CONFIG_EXT4_FS_SECURITY=y"
+    },
+    {
+      "line": 644,
+      "text": "CONFIG_EXT4_KUNIT_TESTS=m"
+    },
+    {
+      "line": 645,
+      "text": "CONFIG_F2FS_FS=y"
+    },
+    {
+      "line": 646,
+      "text": "CONFIG_F2FS_FS_SECURITY=y"
+    },
+    {
+      "line": 647,
+      "text": "CONFIG_F2FS_FS_COMPRESSION=y"
+    },
+    {
+      "line": 648,
+      "text": "CONFIG_F2FS_UNFAIR_RWSEM=y"
+    },
+    {
+      "line": 649,
+      "text": "CONFIG_FS_ENCRYPTION=y"
+    },
+    {
+      "line": 650,
+      "text": "CONFIG_FS_ENCRYPTION_INLINE_CRYPT=y"
+    },
+    {
+      "line": 651,
+      "text": "CONFIG_FS_VERITY=y"
+    },
+    {
+      "line": 652,
+      "text": "CONFIG_DNOTIFY is not set"
+    },
+    {
+      "line": 653,
+      "text": "CONFIG_QUOTA=y"
+    },
+    {
+      "line": 654,
+      "text": "CONFIG_QFMT_V2=y"
+    },
+    {
+      "line": 655,
+      "text": "CONFIG_FUSE_FS=y"
+    },
+    {
+      "line": 656,
+      "text": "CONFIG_VIRTIO_FS=y"
+    },
+    {
+      "line": 657,
+      "text": "CONFIG_FUSE_BPF=y"
+    },
+    {
+      "line": 658,
+      "text": "CONFIG_OVERLAY_FS=y"
+    },
+    {
+      "line": 659,
+      "text": "CONFIG_INCREMENTAL_FS=y"
+    },
+    {
+      "line": 660,
+      "text": "CONFIG_MSDOS_FS=y"
+    },
+    {
+      "line": 661,
+      "text": "CONFIG_VFAT_FS=y"
+    },
+    {
+      "line": 662,
+      "text": "CONFIG_FAT_KUNIT_TEST=m"
+    },
+    {
+      "line": 663,
+      "text": "CONFIG_EXFAT_FS=y"
+    },
+    {
+      "line": 664,
+      "text": "CONFIG_TMPFS=y"
+    },
+    {
+      "line": 665,
+      "text": "CONFIG_EFIVAR_FS is not set"
+    },
+    {
+      "line": 666,
+      "text": "CONFIG_PSTORE=y"
+    },
+    {
+      "line": 667,
+      "text": "CONFIG_PSTORE_CONSOLE=y"
+    },
+    {
+      "line": 668,
+      "text": "CONFIG_PSTORE_PMSG=y"
+    },
+    {
+      "line": 669,
+      "text": "CONFIG_PSTORE_RAM=y"
+    },
+    {
+      "line": 670,
+      "text": "CONFIG_EROFS_FS=y"
+    },
+    {
+      "line": 671,
+      "text": "CONFIG_EROFS_FS_PCPU_KTHREAD=y"
+    },
+    {
+      "line": 672,
+      "text": "CONFIG_NLS_CODEPAGE_437=y"
+    },
+    {
+      "line": 673,
+      "text": "CONFIG_NLS_CODEPAGE_737=y"
+    },
+    {
+      "line": 674,
+      "text": "CONFIG_NLS_CODEPAGE_775=y"
+    },
+    {
+      "line": 675,
+      "text": "CONFIG_NLS_CODEPAGE_850=y"
+    },
+    {
+      "line": 676,
+      "text": "CONFIG_NLS_CODEPAGE_852=y"
+    },
+    {
+      "line": 677,
+      "text": "CONFIG_NLS_CODEPAGE_855=y"
+    },
+    {
+      "line": 678,
+      "text": "CONFIG_NLS_CODEPAGE_857=y"
+    },
+    {
+      "line": 679,
+      "text": "CONFIG_NLS_CODEPAGE_860=y"
+    },
+    {
+      "line": 680,
+      "text": "CONFIG_NLS_CODEPAGE_861=y"
+    },
+    {
+      "line": 681,
+      "text": "CONFIG_NLS_CODEPAGE_862=y"
+    },
+    {
+      "line": 682,
+      "text": "CONFIG_NLS_CODEPAGE_863=y"
+    },
+    {
+      "line": 683,
+      "text": "CONFIG_NLS_CODEPAGE_864=y"
+    },
+    {
+      "line": 684,
+      "text": "CONFIG_NLS_CODEPAGE_865=y"
+    },
+    {
+      "line": 685,
+      "text": "CONFIG_NLS_CODEPAGE_866=y"
+    },
+    {
+      "line": 686,
+      "text": "CONFIG_NLS_CODEPAGE_869=y"
+    },
+    {
+      "line": 687,
+      "text": "CONFIG_NLS_CODEPAGE_936=y"
+    },
+    {
+      "line": 688,
+      "text": "CONFIG_NLS_CODEPAGE_950=y"
+    },
+    {
+      "line": 689,
+      "text": "CONFIG_NLS_CODEPAGE_932=y"
+    },
+    {
+      "line": 690,
+      "text": "CONFIG_NLS_CODEPAGE_949=y"
+    },
+    {
+      "line": 691,
+      "text": "CONFIG_NLS_CODEPAGE_874=y"
+    },
+    {
+      "line": 692,
+      "text": "CONFIG_NLS_ISO8859_8=y"
+    },
+    {
+      "line": 693,
+      "text": "CONFIG_NLS_CODEPAGE_1250=y"
+    },
+    {
+      "line": 694,
+      "text": "CONFIG_NLS_CODEPAGE_1251=y"
+    },
+    {
+      "line": 695,
+      "text": "CONFIG_NLS_ASCII=y"
+    },
+    {
+      "line": 696,
+      "text": "CONFIG_NLS_ISO8859_1=y"
+    },
+    {
+      "line": 697,
+      "text": "CONFIG_NLS_ISO8859_2=y"
+    },
+    {
+      "line": 698,
+      "text": "CONFIG_NLS_ISO8859_3=y"
+    },
+    {
+      "line": 699,
+      "text": "CONFIG_NLS_ISO8859_4=y"
+    },
+    {
+      "line": 700,
+      "text": "CONFIG_NLS_ISO8859_5=y"
+    },
+    {
+      "line": 701,
+      "text": "CONFIG_NLS_ISO8859_6=y"
+    },
+    {
+      "line": 702,
+      "text": "CONFIG_NLS_ISO8859_7=y"
+    },
+    {
+      "line": 703,
+      "text": "CONFIG_NLS_ISO8859_9=y"
+    },
+    {
+      "line": 704,
+      "text": "CONFIG_NLS_ISO8859_13=y"
+    },
+    {
+      "line": 705,
+      "text": "CONFIG_NLS_ISO8859_14=y"
+    },
+    {
+      "line": 706,
+      "text": "CONFIG_NLS_ISO8859_15=y"
+    },
+    {
+      "line": 707,
+      "text": "CONFIG_NLS_KOI8_R=y"
+    },
+    {
+      "line": 708,
+      "text": "CONFIG_NLS_KOI8_U=y"
+    },
+    {
+      "line": 709,
+      "text": "CONFIG_NLS_MAC_ROMAN=y"
+    },
+    {
+      "line": 710,
+      "text": "CONFIG_NLS_MAC_CELTIC=y"
+    },
+    {
+      "line": 711,
+      "text": "CONFIG_NLS_MAC_CENTEURO=y"
+    },
+    {
+      "line": 712,
+      "text": "CONFIG_NLS_MAC_CROATIAN=y"
+    },
+    {
+      "line": 713,
+      "text": "CONFIG_NLS_MAC_CYRILLIC=y"
+    },
+    {
+      "line": 714,
+      "text": "CONFIG_NLS_MAC_GAELIC=y"
+    },
+    {
+      "line": 715,
+      "text": "CONFIG_NLS_MAC_GREEK=y"
+    },
+    {
+      "line": 716,
+      "text": "CONFIG_NLS_MAC_ICELAND=y"
+    },
+    {
+      "line": 717,
+      "text": "CONFIG_NLS_MAC_INUIT=y"
+    },
+    {
+      "line": 718,
+      "text": "CONFIG_NLS_MAC_ROMANIAN=y"
+    },
+    {
+      "line": 719,
+      "text": "CONFIG_NLS_MAC_TURKISH=y"
+    },
+    {
+      "line": 720,
+      "text": "CONFIG_NLS_UTF8=y"
+    },
+    {
+      "line": 721,
+      "text": "CONFIG_UNICODE=y"
+    },
+    {
+      "line": 722,
+      "text": "CONFIG_SECURITY=y"
+    },
+    {
+      "line": 723,
+      "text": "CONFIG_SECURITY_NETWORK=y"
+    },
+    {
+      "line": 724,
+      "text": "CONFIG_HARDENED_USERCOPY=y"
+    },
+    {
+      "line": 725,
+      "text": "CONFIG_FORTIFY_SOURCE=y"
+    },
+    {
+      "line": 726,
+      "text": "CONFIG_STATIC_USERMODEHELPER=y"
+    },
+    {
+      "line": 727,
+      "text": "CONFIG_STATIC_USERMODEHELPER_PATH=\"\""
+    },
+    {
+      "line": 728,
+      "text": "CONFIG_SECURITY_SELINUX=y"
+    },
+    {
+      "line": 729,
+      "text": "CONFIG_SECURITY_SAFESETID=y"
+    },
+    {
+      "line": 730,
+      "text": "CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y"
+    },
+    {
+      "line": 731,
+      "text": "CONFIG_BUG_ON_DATA_CORRUPTION=y"
+    },
+    {
+      "line": 732,
+      "text": "CONFIG_CRYPTO_ECDH=y"
+    },
+    {
+      "line": 733,
+      "text": "CONFIG_CRYPTO_DES=y"
+    },
+    {
+      "line": 734,
+      "text": "CONFIG_CRYPTO_ADIANTUM=y"
+    },
+    {
+      "line": 735,
+      "text": "CONFIG_CRYPTO_HCTR2=y"
+    },
+    {
+      "line": 736,
+      "text": "CONFIG_CRYPTO_CHACHA20POLY1305=y"
+    },
+    {
+      "line": 737,
+      "text": "CONFIG_CRYPTO_CCM=y"
+    },
+    {
+      "line": 738,
+      "text": "CONFIG_CRYPTO_BLAKE2B=y"
+    },
+    {
+      "line": 739,
+      "text": "CONFIG_CRYPTO_CMAC=y"
+    },
+    {
+      "line": 740,
+      "text": "CONFIG_CRYPTO_MD5=y"
+    },
+    {
+      "line": 741,
+      "text": "CONFIG_CRYPTO_XCBC=y"
+    },
+    {
+      "line": 742,
+      "text": "CONFIG_CRYPTO_LZO=y"
+    },
+    {
+      "line": 743,
+      "text": "CONFIG_CRYPTO_LZ4=y"
+    },
+    {
+      "line": 744,
+      "text": "CONFIG_CRYPTO_ZSTD=y"
+    },
+    {
+      "line": 745,
+      "text": "CONFIG_CRYPTO_ANSI_CPRNG=y"
+    },
+    {
+      "line": 746,
+      "text": "CONFIG_CRYPTO_GHASH_ARM64_CE=y"
+    },
+    {
+      "line": 747,
+      "text": "CONFIG_CRYPTO_SHA1_ARM64_CE=y"
+    },
+    {
+      "line": 748,
+      "text": "CONFIG_CRYPTO_SHA2_ARM64_CE=y"
+    },
+    {
+      "line": 749,
+      "text": "CONFIG_CRYPTO_SHA512_ARM64_CE=y"
+    },
+    {
+      "line": 750,
+      "text": "CONFIG_CRYPTO_POLYVAL_ARM64_CE=y"
+    },
+    {
+      "line": 751,
+      "text": "CONFIG_CRYPTO_AES_ARM64_CE_BLK=y"
+    },
+    {
+      "line": 752,
+      "text": "CONFIG_TRACE_MMIO_ACCESS=y"
+    },
+    {
+      "line": 753,
+      "text": "CONFIG_CRC_CCITT=y"
+    },
+    {
+      "line": 754,
+      "text": "CONFIG_XZ_DEC=y"
+    },
+    {
+      "line": 755,
+      "text": "CONFIG_SWIOTLB_DYNAMIC=y"
+    },
+    {
+      "line": 756,
+      "text": "CONFIG_DMA_RESTRICTED_POOL=y"
+    },
+    {
+      "line": 757,
+      "text": "CONFIG_DMA_CMA=y"
+    },
+    {
+      "line": 758,
+      "text": "CONFIG_PRINTK_TIME=y"
+    },
+    {
+      "line": 759,
+      "text": "CONFIG_PRINTK_CALLER=y"
+    },
+    {
+      "line": 760,
+      "text": "CONFIG_STACKTRACE_BUILD_ID=y"
+    },
+    {
+      "line": 761,
+      "text": "CONFIG_DYNAMIC_DEBUG_CORE=y"
+    },
+    {
+      "line": 762,
+      "text": "CONFIG_DEBUG_INFO_DWARF5=y"
+    },
+    {
+      "line": 763,
+      "text": "CONFIG_DEBUG_INFO_COMPRESSED_ZSTD=y"
+    },
+    {
+      "line": 764,
+      "text": "CONFIG_DEBUG_INFO_BTF=y"
+    },
+    {
+      "line": 765,
+      "text": "CONFIG_MODULE_ALLOW_BTF_MISMATCH=y"
+    },
+    {
+      "line": 766,
+      "text": "CONFIG_HEADERS_INSTALL=y"
+    },
+    {
+      "line": 767,
+      "text": "CONFIG_SECTION_MISMATCH_WARN_ONLY is not set"
+    },
+    {
+      "line": 768,
+      "text": "CONFIG_MAGIC_SYSRQ=y"
+    },
+    {
+      "line": 769,
+      "text": "CONFIG_UBSAN=y"
+    },
+    {
+      "line": 770,
+      "text": "CONFIG_UBSAN_TRAP=y"
+    },
+    {
+      "line": 771,
+      "text": "CONFIG_UBSAN_SHIFT is not set"
+    },
+    {
+      "line": 772,
+      "text": "CONFIG_UBSAN_BOOL is not set"
+    },
+    {
+      "line": 773,
+      "text": "CONFIG_UBSAN_ENUM is not set"
+    },
+    {
+      "line": 774,
+      "text": "CONFIG_PAGE_OWNER=y"
+    },
+    {
+      "line": 775,
+      "text": "CONFIG_PAGE_PINNER=y"
+    },
+    {
+      "line": 776,
+      "text": "CONFIG_DEBUG_MEMORY_INIT=y"
+    },
+    {
+      "line": 777,
+      "text": "CONFIG_KASAN=y"
+    },
+    {
+      "line": 778,
+      "text": "CONFIG_KASAN_HW_TAGS=y"
+    },
+    {
+      "line": 779,
+      "text": "CONFIG_KFENCE=y"
+    },
+    {
+      "line": 780,
+      "text": "CONFIG_KFENCE_SAMPLE_INTERVAL=500"
+    },
+    {
+      "line": 781,
+      "text": "CONFIG_KFENCE_NUM_OBJECTS=63"
+    },
+    {
+      "line": 782,
+      "text": "CONFIG_PANIC_ON_OOPS=y"
+    },
+    {
+      "line": 783,
+      "text": "CONFIG_PANIC_TIMEOUT=-1"
+    },
+    {
+      "line": 784,
+      "text": "CONFIG_SOFTLOCKUP_DETECTOR=y"
+    },
+    {
+      "line": 785,
+      "text": "CONFIG_WQ_WATCHDOG=y"
+    },
+    {
+      "line": 786,
+      "text": "CONFIG_SCHEDSTATS=y"
+    },
+    {
+      "line": 787,
+      "text": "CONFIG_HIST_TRIGGERS=y"
+    },
+    {
+      "line": 788,
+      "text": "CONFIG_PID_IN_CONTEXTIDR=y"
+    },
+    {
+      "line": 789,
+      "text": "CONFIG_KUNIT=m"
+    },
+    {
+      "line": 790,
+      "text": "CONFIG_KUNIT_DEBUGFS=y"
+    },
+    {
+      "line": 791,
+      "text": "CONFIG_KUNIT_TEST=m"
+    },
+    {
+      "line": 792,
+      "text": "CONFIG_KUNIT_EXAMPLE_TEST=m"
+    },
+    {
+      "line": 793,
+      "text": "CONFIG_KUNIT_DEFAULT_ENABLED is not set"
+    },
+    {
+      "line": 794,
+      "text": "CONFIG_RUNTIME_TESTING_MENU is not set"
+    }
+  ],
+  "kconfigSections": [
+    {
+      "line": 2,
+      "text": "config CC_VERSION_TEXT"
+    },
+    {
+      "line": 19,
+      "text": "config CC_IS_GCC"
+    },
+    {
+      "line": 22,
+      "text": "config GCC_VERSION"
+    },
+    {
+      "line": 27,
+      "text": "config CC_IS_CLANG"
+    },
+    {
+      "line": 30,
+      "text": "config CLANG_VERSION"
+    },
+    {
+      "line": 35,
+      "text": "config AS_IS_GNU"
+    },
+    {
+      "line": 38,
+      "text": "config AS_IS_LLVM"
+    },
+    {
+      "line": 41,
+      "text": "config AS_VERSION"
+    },
+    {
+      "line": 47,
+      "text": "config LD_IS_BFD"
+    },
+    {
+      "line": 50,
+      "text": "config LD_VERSION"
+    },
+    {
+      "line": 55,
+      "text": "config LD_IS_LLD"
+    },
+    {
+      "line": 58,
+      "text": "config LLD_VERSION"
+    },
+    {
+      "line": 63,
+      "text": "config RUST_IS_AVAILABLE"
+    },
+    {
+      "line": 74,
+      "text": "config CC_CAN_LINK"
+    },
+    {
+      "line": 79,
+      "text": "config CC_CAN_LINK_STATIC"
+    },
+    {
+      "line": 84,
+      "text": "config CC_HAS_ASM_GOTO_OUTPUT"
+    },
+    {
+      "line": 87,
+      "text": "config CC_HAS_ASM_GOTO_TIED_OUTPUT"
+    },
+    {
+      "line": 92,
+      "text": "config GCC_ASM_GOTO_OUTPUT_WORKAROUND"
+    },
+    {
+      "line": 101,
+      "text": "config TOOLS_SUPPORT_RELR"
+    },
+    {
+      "line": 104,
+      "text": "config CC_HAS_ASM_INLINE"
+    },
+    {
+      "line": 107,
+      "text": "config CC_HAS_NO_PROFILE_FN_ATTR"
+    },
+    {
+      "line": 110,
+      "text": "config CC_HAS_COUNTED_BY"
+    },
+    {
+      "line": 119,
+      "text": "config PAHOLE_VERSION"
+    },
+    {
+      "line": 123,
+      "text": "config CONSTRUCTORS"
+    },
+    {
+      "line": 126,
+      "text": "config IRQ_WORK"
+    },
+    {
+      "line": 129,
+      "text": "config BUILDTIME_TABLE_SORT"
+    },
+    {
+      "line": 132,
+      "text": "config THREAD_INFO_IN_TASK"
+    },
+    {
+      "line": 144,
+      "text": "config BROKEN"
+    },
+    {
+      "line": 147,
+      "text": "config BROKEN_ON_SMP"
+    },
+    {
+      "line": 152,
+      "text": "config INIT_ENV_ARG_LIMIT"
+    },
+    {
+      "line": 160,
+      "text": "config COMPILE_TEST"
+    },
+    {
+      "line": 174,
+      "text": "config WERROR"
+    },
+    {
+      "line": 191,
+      "text": "config UAPI_HEADER_TEST"
+    },
+    {
+      "line": 201,
+      "text": "config LOCALVERSION"
+    },
+    {
+      "line": 211,
+      "text": "config LOCALVERSION_AUTO"
+    },
+    {
+      "line": 232,
+      "text": "config BUILD_SALT"
+    },
+    {
+      "line": 241,
+      "text": "config HAVE_KERNEL_GZIP"
+    },
+    {
+      "line": 244,
+      "text": "config HAVE_KERNEL_BZIP2"
+    },
+    {
+      "line": 247,
+      "text": "config HAVE_KERNEL_LZMA"
+    },
+    {
+      "line": 250,
+      "text": "config HAVE_KERNEL_XZ"
+    },
+    {
+      "line": 253,
+      "text": "config HAVE_KERNEL_LZO"
+    },
+    {
+      "line": 256,
+      "text": "config HAVE_KERNEL_LZ4"
+    },
+    {
+      "line": 259,
+      "text": "config HAVE_KERNEL_ZSTD"
+    },
+    {
+      "line": 262,
+      "text": "config HAVE_KERNEL_UNCOMPRESSED"
+    },
+    {
+      "line": 287,
+      "text": "config KERNEL_GZIP"
+    },
+    {
+      "line": 294,
+      "text": "config KERNEL_BZIP2"
+    },
+    {
+      "line": 304,
+      "text": "config KERNEL_LZMA"
+    },
+    {
+      "line": 312,
+      "text": "config KERNEL_XZ"
+    },
+    {
+      "line": 327,
+      "text": "config KERNEL_LZO"
+    },
+    {
+      "line": 335,
+      "text": "config KERNEL_LZ4"
+    },
+    {
+      "line": 347,
+      "text": "config KERNEL_ZSTD"
+    },
+    {
+      "line": 357,
+      "text": "config KERNEL_UNCOMPRESSED"
+    },
+    {
+      "line": 369,
+      "text": "config DEFAULT_INIT"
+    },
+    {
+      "line": 379,
+      "text": "config DEFAULT_HOSTNAME"
+    },
+    {
+      "line": 388,
+      "text": "config SYSVIPC"
+    },
+    {
+      "line": 403,
+      "text": "config SYSVIPC_SYSCTL"
+    },
+    {
+      "line": 409,
+      "text": "config SYSVIPC_COMPAT"
+    },
+    {
+      "line": 413,
+      "text": "config POSIX_MQUEUE"
+    },
+    {
+      "line": 429,
+      "text": "config POSIX_MQUEUE_SYSCTL"
+    },
+    {
+      "line": 435,
+      "text": "config WATCH_QUEUE"
+    },
+    {
+      "line": 447,
+      "text": "config CROSS_MEMORY_ATTACH"
+    },
+    {
+      "line": 457,
+      "text": "config USELIB"
+    },
+    {
+      "line": 467,
+      "text": "config AUDIT"
+    },
+    {
+      "line": 476,
+      "text": "config HAVE_ARCH_AUDITSYSCALL"
+    },
+    {
+      "line": 479,
+      "text": "config AUDITSYSCALL"
+    },
+    {
+      "line": 491,
+      "text": "config VIRT_CPU_ACCOUNTING"
+    },
+    {
+      "line": 499,
+      "text": "config TICK_CPU_ACCOUNTING"
+    },
+    {
+      "line": 509,
+      "text": "config VIRT_CPU_ACCOUNTING_NATIVE"
+    },
+    {
+      "line": 522,
+      "text": "config VIRT_CPU_ACCOUNTING_GEN"
+    },
+    {
+      "line": 543,
+      "text": "config IRQ_TIME_ACCOUNTING"
+    },
+    {
+      "line": 554,
+      "text": "config HAVE_SCHED_AVG_IRQ"
+    },
+    {
+      "line": 559,
+      "text": "config SCHED_THERMAL_PRESSURE"
+    },
+    {
+      "line": 578,
+      "text": "config BSD_PROCESS_ACCT"
+    },
+    {
+      "line": 592,
+      "text": "config BSD_PROCESS_ACCT_V3"
+    },
+    {
+      "line": 604,
+      "text": "config TASKSTATS"
+    },
+    {
+      "line": 618,
+      "text": "config TASK_DELAY_ACCT"
+    },
+    {
+      "line": 630,
+      "text": "config TASK_XACCT"
+    },
+    {
+      "line": 639,
+      "text": "config TASK_IO_ACCOUNTING"
+    },
+    {
+      "line": 648,
+      "text": "config PSI"
+    },
+    {
+      "line": 668,
+      "text": "config PSI_DEFAULT_DISABLED"
+    },
+    {
+      "line": 690,
+      "text": "config CPU_ISOLATION"
+    },
+    {
+      "line": 704,
+      "text": "config IKCONFIG"
+    },
+    {
+      "line": 716,
+      "text": "config IKCONFIG_PROC"
+    },
+    {
+      "line": 723,
+      "text": "config IKHEADERS"
+    },
+    {
+      "line": 732,
+      "text": "config LOG_BUF_SHIFT"
+    },
+    {
+      "line": 751,
+      "text": "config LOG_CPU_MAX_BUF_SHIFT"
+    },
+    {
+      "line": 787,
+      "text": "config PRINTK_INDEX"
+    },
+    {
+      "line": 804,
+      "text": "config HAVE_UNSTABLE_SCHED_CLOCK"
+    },
+    {
+      "line": 807,
+      "text": "config GENERIC_SCHED_CLOCK"
+    },
+    {
+      "line": 812,
+      "text": "config UCLAMP_TASK"
+    },
+    {
+      "line": 830,
+      "text": "config UCLAMP_BUCKETS_COUNT"
+    },
+    {
+      "line": 867,
+      "text": "config ARCH_SUPPORTS_NUMA_BALANCING"
+    },
+    {
+      "line": 877,
+      "text": "config ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH"
+    },
+    {
+      "line": 880,
+      "text": "config CC_HAS_INT128"
+    },
+    {
+      "line": 883,
+      "text": "config CC_IMPLICIT_FALLTHROUGH"
+    },
+    {
+      "line": 890,
+      "text": "config GCC10_NO_ARRAY_BOUNDS"
+    },
+    {
+      "line": 893,
+      "text": "config CC_NO_ARRAY_BOUNDS"
+    },
+    {
+      "line": 900,
+      "text": "config ARCH_SUPPORTS_INT128"
+    },
+    {
+      "line": 906,
+      "text": "config ARCH_WANT_NUMA_VARIABLE_LOCALITY"
+    },
+    {
+      "line": 909,
+      "text": "config NUMA_BALANCING"
+    },
+    {
+      "line": 921,
+      "text": "config NUMA_BALANCING_DEFAULT_ENABLED"
+    },
+    {
+      "line": 945,
+      "text": "config PAGE_COUNTER"
+    },
+    {
+      "line": 948,
+      "text": "config CGROUP_FAVOR_DYNMODS"
+    },
+    {
+      "line": 958,
+      "text": "config MEMCG"
+    },
+    {
+      "line": 965,
+      "text": "config MEMCG_KMEM"
+    },
+    {
+      "line": 970,
+      "text": "config BLK_CGROUP"
+    },
+    {
+      "line": 992,
+      "text": "config CGROUP_WRITEBACK"
+    },
+    {
+      "line": 1006,
+      "text": "config FAIR_GROUP_SCHED"
+    },
+    {
+      "line": 1011,
+      "text": "config CFS_BANDWIDTH"
+    },
+    {
+      "line": 1022,
+      "text": "config RT_GROUP_SCHED"
+    },
+    {
+      "line": 1035,
+      "text": "config SCHED_MM_CID"
+    },
+    {
+      "line": 1039,
+      "text": "config UCLAMP_TASK_GROUP"
+    },
+    {
+      "line": 1061,
+      "text": "config CGROUP_PIDS"
+    },
+    {
+      "line": 1077,
+      "text": "config CGROUP_RDMA"
+    },
+    {
+      "line": 1087,
+      "text": "config CGROUP_FREEZER"
+    },
+    {
+      "line": 1098,
+      "text": "config CGROUP_HUGETLB"
+    },
+    {
+      "line": 1114,
+      "text": "config CPUSETS"
+    },
+    {
+      "line": 1125,
+      "text": "config PROC_PID_CPUSET"
+    },
+    {
+      "line": 1130,
+      "text": "config CGROUP_DEVICE"
+    },
+    {
+      "line": 1136,
+      "text": "config CGROUP_CPUACCT"
+    },
+    {
+      "line": 1142,
+      "text": "config CGROUP_PERF"
+    },
+    {
+      "line": 1153,
+      "text": "config CGROUP_BPF"
+    },
+    {
+      "line": 1166,
+      "text": "config CGROUP_MISC"
+    },
+    {
+      "line": 1180,
+      "text": "config CGROUP_DEBUG"
+    },
+    {
+      "line": 1192,
+      "text": "config SOCK_CGROUP_DATA"
+    },
+    {
+      "line": 1210,
+      "text": "config UTS_NS"
+    },
+    {
+      "line": 1217,
+      "text": "config TIME_NS"
+    },
+    {
+      "line": 1225,
+      "text": "config IPC_NS"
+    },
+    {
+      "line": 1233,
+      "text": "config USER_NS"
+    },
+    {
+      "line": 1247,
+      "text": "config PID_NS"
+    },
+    {
+      "line": 1255,
+      "text": "config NET_NS"
+    },
+    {
+      "line": 1265,
+      "text": "config CHECKPOINT_RESTORE"
+    },
+    {
+      "line": 1279,
+      "text": "config SCHED_AUTOGROUP"
+    },
+    {
+      "line": 1291,
+      "text": "config RT_SOFTIRQ_AWARE_SCHED"
+    },
+    {
+      "line": 1301,
+      "text": "config RELAY"
+    },
+    {
+      "line": 1313,
+      "text": "config BLK_DEV_INITRD"
+    },
+    {
+      "line": 1334,
+      "text": "config BOOT_CONFIG"
+    },
+    {
+      "line": 1346,
+      "text": "config BOOT_CONFIG_FORCE"
+    },
+    {
+      "line": 1359,
+      "text": "config BOOT_CONFIG_EMBED"
+    },
+    {
+      "line": 1370,
+      "text": "config BOOT_CONFIG_EMBED_FILE"
+    },
+    {
+      "line": 1378,
+      "text": "config CMDLINE_LOG_WRAP_IDEAL_LEN"
+    },
+    {
+      "line": 1396,
+      "text": "config INITRAMFS_PRESERVE_MTIME"
+    },
+    {
+      "line": 1411,
+      "text": "config CC_OPTIMIZE_FOR_PERFORMANCE"
+    },
+    {
+      "line": 1418,
+      "text": "config CC_OPTIMIZE_FOR_SIZE"
+    },
+    {
+      "line": 1426,
+      "text": "config HAVE_LD_DEAD_CODE_DATA_ELIMINATION"
+    },
+    {
+      "line": 1436,
+      "text": "config LD_DEAD_CODE_DATA_ELIMINATION"
+    },
+    {
+      "line": 1454,
+      "text": "config LD_ORPHAN_WARN"
+    },
+    {
+      "line": 1460,
+      "text": "config LD_ORPHAN_WARN_LEVEL"
+    },
+    {
+      "line": 1466,
+      "text": "config SYSCTL"
+    },
+    {
+      "line": 1469,
+      "text": "config HAVE_UID16"
+    },
+    {
+      "line": 1472,
+      "text": "config SYSCTL_EXCEPTION_TRACE"
+    },
+    {
+      "line": 1477,
+      "text": "config SYSCTL_ARCH_UNALIGN_NO_WARN"
+    },
+    {
+      "line": 1484,
+      "text": "config SYSCTL_ARCH_UNALIGN_ALLOW"
+    },
+    {
+      "line": 1492,
+      "text": "config HAVE_PCSPKR_PLATFORM"
+    },
+    {
+      "line": 1496,
+      "text": "config BPF"
+    },
+    {
+      "line": 1510,
+      "text": "config UID16"
+    },
+    {
+      "line": 1517,
+      "text": "config MULTIUSER"
+    },
+    {
+      "line": 1531,
+      "text": "config SGETMASK_SYSCALL"
+    },
+    {
+      "line": 1541,
+      "text": "config SYSFS_SYSCALL"
+    },
+    {
+      "line": 1551,
+      "text": "config FHANDLE"
+    },
+    {
+      "line": 1564,
+      "text": "config POSIX_TIMERS"
+    },
+    {
+      "line": 1581,
+      "text": "config PRINTK"
+    },
+    {
+      "line": 1592,
+      "text": "config BUG"
+    },
+    {
+      "line": 1602,
+      "text": "config ELF_CORE"
+    },
+    {
+      "line": 1610,
+      "text": "config PCSPKR_PLATFORM"
+    },
+    {
+      "line": 1619,
+      "text": "config BASE_FULL"
+    },
+    {
+      "line": 1627,
+      "text": "config FUTEX"
+    },
+    {
+      "line": 1637,
+      "text": "config FUTEX_PI"
+    },
+    {
+      "line": 1642,
+      "text": "config EPOLL"
+    },
+    {
+      "line": 1649,
+      "text": "config SIGNALFD"
+    },
+    {
+      "line": 1658,
+      "text": "config TIMERFD"
+    },
+    {
+      "line": 1667,
+      "text": "config EVENTFD"
+    },
+    {
+      "line": 1676,
+      "text": "config SHMEM"
+    },
+    {
+      "line": 1687,
+      "text": "config AIO"
+    },
+    {
+      "line": 1695,
+      "text": "config IO_URING"
+    },
+    {
+      "line": 1704,
+      "text": "config ADVISE_SYSCALLS"
+    },
+    {
+      "line": 1714,
+      "text": "config MEMBARRIER"
+    },
+    {
+      "line": 1726,
+      "text": "config KALLSYMS"
+    },
+    {
+      "line": 1734,
+      "text": "config KALLSYMS_SELFTEST"
+    },
+    {
+      "line": 1747,
+      "text": "config KALLSYMS_ALL"
+    },
+    {
+      "line": 1765,
+      "text": "config KALLSYMS_ABSOLUTE_PERCPU"
+    },
+    {
+      "line": 1770,
+      "text": "config KALLSYMS_BASE_RELATIVE"
+    },
+    {
+      "line": 1792,
+      "text": "config ARCH_HAS_MEMBARRIER_CALLBACKS"
+    },
+    {
+      "line": 1795,
+      "text": "config ARCH_HAS_MEMBARRIER_SYNC_CORE"
+    },
+    {
+      "line": 1798,
+      "text": "config KCMP"
+    },
+    {
+      "line": 1808,
+      "text": "config RSEQ"
+    },
+    {
+      "line": 1822,
+      "text": "config CACHESTAT_SYSCALL"
+    },
+    {
+      "line": 1832,
+      "text": "config DEBUG_RSEQ"
+    },
+    {
+      "line": 1841,
+      "text": "config HAVE_PERF_EVENTS"
+    },
+    {
+      "line": 1846,
+      "text": "config GUEST_PERF_EVENTS"
+    },
+    {
+      "line": 1850,
+      "text": "config PERF_USE_VMALLOC"
+    },
+    {
+      "line": 1855,
+      "text": "config PC104"
+    },
+    {
+      "line": 1864,
+      "text": "config PERF_EVENTS"
+    },
+    {
+      "line": 1892,
+      "text": "config DEBUG_PERF_USE_VMALLOC"
+    },
+    {
+      "line": 1907,
+      "text": "config SYSTEM_DATA_VERIFICATION"
+    },
+    {
+      "line": 1925,
+      "text": "config PROFILING"
+    },
+    {
+      "line": 1931,
+      "text": "config RUST"
+    },
+    {
+      "line": 1954,
+      "text": "config RUSTC_VERSION_TEXT"
+    },
+    {
+      "line": 1959,
+      "text": "config BINDGEN_VERSION_TEXT"
+    },
+    {
+      "line": 1971,
+      "text": "config TRACEPOINTS"
+    },
+    {
+      "line": 1980,
+      "text": "config RT_MUTEXES"
+    },
+    {
+      "line": 1984,
+      "text": "config BASE_SMALL"
+    },
+    {
+      "line": 1989,
+      "text": "config MODULE_SIG_FORMAT"
+    },
+    {
+      "line": 1995,
+      "text": "config INIT_ALL_POSSIBLE"
+    },
+    {
+      "line": 2006,
+      "text": "config PREEMPT_NOTIFIERS"
+    },
+    {
+      "line": 2009,
+      "text": "config PADATA"
+    },
+    {
+      "line": 2013,
+      "text": "config ASN1"
+    },
+    {
+      "line": 2023,
+      "text": "config ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE"
+    },
+    {
+      "line": 2026,
+      "text": "config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE"
+    },
+    {
+      "line": 2036,
+      "text": "config ARCH_HAS_SYSCALL_WRAPPER"
+    }
+  ],
+  "kconfigMenus": [
+    {
+      "line": 142,
+      "text": "menu \"General setup\""
+    },
+    {
+      "line": 489,
+      "text": "menu \"CPU/Task time and stats accounting\""
+    },
+    {
+      "line": 810,
+      "text": "menu \"Scheduler features\""
+    },
+    {
+      "line": 1862,
+      "text": "menu \"Kernel Performance Events And Counters\""
+    }
+  ],
+  "kconfigTail": {
+    "source": "init/Kconfig.gki",
+    "line": 2040,
+    "text": "source \"init/Kconfig.gki\""
+  },
+  "referenceDocs": [
+    {
+      "file": "kmi.html",
+      "kind": "Android 官方文档页",
+      "title": "Maintain a stable kernel module interface | Android OS core topic",
+      "isKernelData": false
+    },
+    {
+      "file": "lkm.html",
+      "kind": "Android 官方文档页",
+      "title": "Loadable kernel modules | Android OS core topics",
+      "isKernelData": false
+    }
+  ]
+}
