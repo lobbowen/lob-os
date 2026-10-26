@@ -405,11 +405,6 @@ elf_write_shape() {
     printf '  "derivedChain": [%s],\n' "$derived"
     printf '  "derivedLinks": [%s],\n' "$derived_links"
     printf '  "files": [%s],\n' "$files_json"
-    #  缺陷名（C-102）**那件实际要的那几层逐字没被声明**
-    #    => 而那 bin/ 与那 lib/ **那两**层逐字**是**那**通用**的（=> 而每件都有），
-    #       而而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
-    #       逐字**是**那**一件自己的**事**、=> 而而那**形态说明**逐字**只**声明**那两**层**。
-    #    => 而而那**处置**：=> 而那**额外**的**每一层**逐字**声明**出来（=> 而那**落位侧**逐字**照**它**搬**）。
     local extra_json=""
     local ed
     for ed in $(cd "$stage" && ls -A 2>/dev/null | LC_ALL=C sort); do
@@ -417,9 +412,15 @@ elf_write_shape() {
         bin|lib) continue ;;
       esac
       [ -d "$stage/$ed" ] || continue
-      extra_json="$extra_json${extra_json:+,}""$(elf_json_escape ""$ed"")"
+      _ej=$(elf_json_escape "$ed")
+      extra_json="$extra_json${extra_json:+,}"\"$_ej\"
     done
     printf '  "extraDirs": [%s]\n' "$extra_json"
+    #  缺陷名（C-102）**那件实际要的那几层逐字没被声明**
+    #    => 而那 bin/ 与那 lib/ **那两**层逐字**是**那**通用**的（=> 而每件都有），
+    #       而而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
+    #       逐字**是**那**一件自己的**事**、=> 而而那**形态说明**逐字**只**声明**那两**层**。
+    #    => 而而那**处置**：=> 而那**额外**的**每一层**逐字**声明**出来（=> 而那**落位侧**逐字**照**它**搬**）。
     printf '}\n'
   } > "$out"
   echo "[shape] $piece：kind=$kind entryForm=$entry_form 程序 $n_prog 份 · 库 $n_lib 份 → $(basename "$out")"
