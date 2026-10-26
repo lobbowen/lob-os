@@ -56,9 +56,13 @@ for need in ('bareName', 'symbolLoad', 'excluded'):
 
 #  而那分母逐字**要**与**那**裁定**逐字**一致**（=> 而那**裁定**逐字**是**那 04 **那边给**的**那清单正文**）。
 RULED = {
-    'bareName': ['node', 'npm', 'pnpm', 'jq', 'git', 'curl', 'make', 'cmake',
+    #  缺陷名（C-102）**这**两**个**列表逐字还是那**旧**的**裁定** ——
+    #    => 而那 04 那边逐字**裁**的是那 curl 归那 symbolLoad **那一族**（=> 而那**它**逐字**是**那库、
+    #       => 而那 entry 合法地**是**空**的**、=> 而它**与**那 openssl 与那 crypto 与那 zlib **那三**件**是**那**同**的**形状**）。
+    #    => 而而那**它**逐字**只**改**这**两个**族**的**这两个**列表、=> 而而那**它**逐字**不动**那**其余**判据**。
+    'bareName': ['node', 'npm', 'pnpm', 'jq', 'git', 'make', 'cmake',
                  'bash', 'ripgrep', 'sqlite', 'python', 'llvm', 'pkgconf', 'busybox'],
-    'symbolLoad': ['openssl', 'crypto', 'zlib'],
+    'symbolLoad': ['openssl', 'crypto', 'zlib', 'curl'],
     'excluded': ['sysroot', 'libcxx'],
 }
 for key, ruled in RULED.items():
