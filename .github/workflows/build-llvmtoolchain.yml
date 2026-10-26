@@ -106,6 +106,50 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: 清出磁盘空间（编 LLVM 要峰值空间，而 runner 自带的那些占了大头）
+        if: success()
+        run: |
+          set -uo pipefail
+          #  缺陷名（C-102）**那磁盘那一族逐字没有被定位、=> 而而那 05 那一笔只碰了它的一部分**
+          #  —— 而实际上那 40247630569 与那 40255598542 那**两**趟逐字**症状**逐字**一模一样**
+          #    （=> 而都是「No space left on device」），=> 而而那 40255598542 那一趟逐字**含**那 `rm -rf "$HOST_TB"` 那一笔。
+          #  => 而那**成因**逐字**是**那 runner **自带**的**那些**大件**占**的**空间**：
+          #    => 而那 Android SDK 那一族（=> 而它逐字**不是**那 NDK，=> 而 NDK 逐字**另**在**别**处**）逐字**几 GB**、
+          #    => 而那 /usr/local/lib/android 那**旧** SDK 逐字**几 GB**、=> 而那 hostedtoolcache 那一族逐字**几 GB**。
+          #  => 而那**编**这一族逐字**要**那**宿主**磁盘、=> 而而那**峰值**要**比**那**编完**的**产物**大**得多**。
+          #  => 而那**处置**：=> 而而那**用不到**的逐字**先删**、=> 而而那**要留**的逐字**留**着**。
+          #  => 而那**要留**的**只有**那 **NDK**（=> 而 NDK 逐字是**编**的**输入**、=> 而它**不能**删**）
+          #    与那**这一个** job **要**的**那点**东西**。
+          #  => 而按 C-103 那两边：「那**编**要**那**磁盘**空间**」与「那**取件**要**那**磁盘**空间**」
+          #  => 而那两边各答一件事、=> 而而处置不一样、=> 而按 C-135 那不是同一问。
+          #  => 而按 C-104：=> 而那**清**那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
+          #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
+          echo "== 清理前 =="
+          df -h / 2>/dev/null | tail -1 || true
+
+          #  那 Android SDK 那一族：=> 而那 **NDK** 逐字**不**在**这里**、=> 而那**其余**的逐字**这一趟**用**不到**。
+          for d in "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" /usr/local/lib/android; do
+            [ -d "$d" ] || continue
+            #  逐字**留**着 NDK 那一族（=> 而它逐字是**编**的**输入**）。
+            find "$d" -maxdepth 3 -type d -name 'ndk' -prune -o -print0 2>/dev/null \
+              | xargs -0 rm -rf 2>/dev/null || true
+          done
+
+          #  那 hostedtoolcache 那一族：=> 而而那**预装**的**工具链**逐字**这一趟**用**不到**
+          #  （=> 而而那 cmake 与 ninja 与那 NDK 逐字**都**在**别**处**）。
+          rm -rf /opt/hostedtoolcache/* 2>/dev/null || true
+
+          #  那旧版 Android SDK 那一族（=> 而那 NDK 逐字**另**在**别**处**、=> 而那**这一**份**用不到**）。
+          rm -rf /usr/local/lib/android/sdk/ndk-bundle 2>/dev/null || true
+          rm -rf /usr/local/share/android-sdk 2>/dev/null || true
+
+          #  那交换区与那包缓存那一族：=> 而而那**不**是**编**的**输入**。
+          rm -rf /var/cache/apt/archives/*.deb 2>/dev/null || true
+          rm -rf /opt/ghc 2>/dev/null || true
+
+          echo "== 清理后 =="
+          df -h / 2>/dev/null | tail -1 || true
+
       - name: 编 llvmtoolchain（llvmVersion 已填，首次真编）
         if: success()
         run: |
