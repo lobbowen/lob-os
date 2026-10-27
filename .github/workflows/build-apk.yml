@@ -248,7 +248,9 @@ jobs:
           for _d in "$DST/usr/lib/aarch64-linux-android/"*/; do
             _b="$(basename "$_d")"
             case "$_b" in
-              [0-9]*) [ "$_b" = "25" ] || rm -rf "$_d" ;;
+              #  => 而那**目标三元组**逐字**是**那 aarch64-linux-android35、=> 而而那**它**逐字**要**那 **35** **那一个**
+              #     **子目录**（=> 而而那 **clang** 逐字**按**那**目标**的**API**找**那 crt **那一族**）。
+              [0-9]*) [ "$_b" = "35" ] || rm -rf "$_d" ;;
             esac
           done
           #  => 而那 libc.a 与那 libc++_static.a 逐字**不**要**（=> 而而那**它**们**逐字是**那**两**件**事**：
