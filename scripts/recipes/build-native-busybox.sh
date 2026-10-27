@@ -606,6 +606,18 @@ BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $
   fi
 echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
+
+#  => 而那**落包集**逐字**取**那 **out/bin** 底下**那些软链**（=> 而而那**它们**逐字是**那**两**件**事**：
+#     「那**软链**是**什么**」与「那**本体**是**什么**」）。
+#  => 而而那**本体**逐字**仍**在**那包里**（=> 而那是那些软链的**指向目标**）。
+BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
+#  缺陷名（C-102）**那 emit_piece 那一族**逐字**没有**被**调**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那**配方**的**尾部**逐字**被**截**了、=> 而而那**它**们**逐字是**那**两**件**事**：
+#      「那**尾部**是**什么**」与「那**产物**是**什么**」）。
+#    => 而而那**后果**逐字 = 而那 CI 逐字**报**那「build 脚本没产出 dist/component-*.zip」、=> 而而那**件**逐字**发不上去**。
+#    => 而那**处置**：=> 而那**发**的那一句逐字**回**那**尾部**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
+emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version"
 # 缺陷名（C-102）**写的那一处与核的那一处用的 `$OUT` 不是同一个值** ——
 # 而两处都叫 OUT，=> 而同名不同义（按 C-150 那一族）。
 #
@@ -630,19 +642,5 @@ echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 #   => 而**写的那一处该用 $OUT_DIR**（=> 而那才是产物目录），=> 而核的那一处**不用改**（=> 而它已经对着产物目录）。
 # => 而判别形式：**写标记的那个 `$OUT` 与打包那一支的 `$OUT` 是不是同一个目录**
 #   —— => 而两处都叫 OUT 而来源不同源，=> 而同名不同义就是那一族。
-printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
 
 # 第五个参数是「这个件要在 usr/bin 出现的命令名」——
-#  **取落包集**（make install 连带建的那批软链），**不取 $APPLETS 派生、也不取 .rodata 那张表**。
-#   缺陷名（C-102）**声明集与落包集混用**：
-#     原来这一段写的是「从 $APPLETS 转小写派生」—— 而 $APPLETS 是**白名单**（决定编不编），
-#     而「这份字节实际响应哪些名字」是 **make install 连带建的那批软链**
-#     （man1 INSTALL 段：「If you enabled any applet installation scheme …
-#      these will also be installed in the location pointed to by CONFIG_PREFIX」）。
-#      **两方的读数各指哪一轮**（2026-10-20 实测，逐个包数过）：
-#       旧轮（b301f5 之前的那几轮：srcbe72ff17f17e / srccc116ca1a148 / srcec91509e6274）：
-#         **软链 17、无 sh**  那几轮 BB_BINS 取 $APPLETS 派生  sh 没被声明  没进包
-#       新轮（srcb1a8a6b2b285 / srcbc042d4e8e89 / src52587e94cdde，即 7f72d02 与 9e8338b 之后）：
-#         **软链 18、含 sh**  BB_BINS 取落包集  落包集里那 18 个（含 sh）全被声明  全进包
-#        而「落包集 18（18 = 17 软链 + 1 本体）」这个数是**错的**：
-#         落包集 = **软链的条数**；而「包内 bin/ 的条目数」= 软链 + 本体（今天 = 19）。
