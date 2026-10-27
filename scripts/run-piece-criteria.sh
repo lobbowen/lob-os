@@ -296,20 +296,37 @@ try:
     _prev = json.load(io.open(out_path, encoding='utf-8'))
 except Exception:
     _prev = None
+#  缺陷名（C-102）**那**不**完整**的**一趟**逐字**也**进**那历史** ——
+#    => 而而它治**的**是「那**历史**那一族**记**的**是**不是**那**完整**的**读数**」。
+#    => 而那**成因**：=> 而那**单件**跑的**那一趟**逐字**也**写**那**整个** doc（=> 而那 N 逐字**是**那 1、
+#       => 而而那**它**们**逐字**不**是**那**分母**的**条数**）、=> 而而那**它**们**逐字**也**进**那历史**。
+#    => 而那**后果**逐字**是**：=> 而那历史那一族逐字**混**了**那**完整**的**读数**与那**残缺**的**读数**、
+#       => 而而那**它**们逐字**分不**开**。
+#    => 而那**处置**：=> 而那历史那一族逐字**只**收**那**完整**的**读数**（=> 而那 N 逐字**要**等于**那**分母**的**条数**）。
+#    => 而按 C-104：=> 而那**历史**那一族逐字**只有**一条**写**的路**（=> 而这一支**就是**它**）。
+_full_expected = len(m0p_set)
+_prev_N = _prev.get('N') if isinstance(_prev, dict) else None
 if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != doc.get('takenAt'):
-    _hist = _prev.get('history') or []
-    _hist = [h for h in _hist if h.get('takenAt') != _prev.get('takenAt')]
-    _hist.append({
-        'takenAt': _prev.get('takenAt'),
-        'M': _prev.get('M'),
-        'N': _prev.get('N'),
-        'failed': _prev.get('failed'),
-        'collectedM': (_prev.get('collected') or {}).get('M'),
-        'collectedN': (_prev.get('collected') or {}).get('N'),
-        'notPassed': [p.get('id') for p in (_prev.get('pieces') or []) if p.get('status') != '过'],
-        'note': '那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）',
-    })
-    doc['history'] = _hist
+    if _prev_N == _full_expected:
+        _hist = _prev.get('history') or []
+        _hist = [h for h in _hist if h.get('takenAt') != _prev.get('takenAt')]
+        _hist.append({
+            'takenAt': _prev.get('takenAt'),
+            'M': _prev.get('M'),
+            'N': _prev.get('N'),
+            'failed': _prev.get('failed'),
+            'collectedM': (_prev.get('collected') or {}).get('M'),
+            'collectedN': (_prev.get('collected') or {}).get('N'),
+            'notPassed': [p.get('id') for p in (_prev.get('pieces') or []) if p.get('status') != '过'],
+            'note': '那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而而它逐字**不**覆盖**那**这一版**）',
+        })
+        doc['history'] = _hist
+    else:
+        #  => 而那**不**完整**的**那一趟**逐字**不**进**那历史**（=> 而它逐字**是**那**残缺**的**读数**）。
+        _hist = (_prev.get('history') or []) if isinstance(_prev, dict) else []
+        if _hist:
+            doc['history'] = _hist
+        print('[warn] 而那**前**一**版**逐字 N=' + str(_prev_N) + '、=> 而而那**它**逐字**不**等于**那分母**的**条数**（=' + str(_full_expected) + '）、=> 而而那**它**逐字**不**进**那历史**')
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))
