@@ -63,7 +63,7 @@ object ProgramArchive {
     private fun symlinkTargetOf(entryName: String, bytes: ByteArray, entryNames: Set<String>): String? {
         if (bytes.isEmpty() || bytes.size > 4096) return null
         if (bytes[0] == 0x7f.toByte() && bytes.size > 3 &&
-            bytes[1] == "E".code.toByte() && bytes[2] == "L".code.toByte() && bytes[3] == "F".code.toByte()
+            bytes[1] == 0x45.toByte() && bytes[2] == 0x4c.toByte() && bytes[3] == 0x46.toByte()
         ) return null
         val text = runCatching { String(bytes, Charsets.UTF_8) }.getOrNull() ?: return null
         if (text.isEmpty() || text.any { it == 0.toChar() } || text.contains(10.toChar())) return null

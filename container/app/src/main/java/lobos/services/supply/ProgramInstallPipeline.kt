@@ -68,8 +68,8 @@ object ProgramInstallPipeline {
              *  => 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而而它们各自是命令）。 */
             val derivedLinks: List<String> = emptyList(),
             /** 那件**额外**要的那几层（=> 而那 bin/ 与那 lib/ **那两**层**不**在里面）。
-             *  => 而那 git 那一件逐字要那 **libexec/**（=> 而那子命令目录）、
-             *  => 而那 cmake 那一件逐字要那 **share/**（=> 而那模块目录）。
+             *  => 而那 git 那一件逐字要那 **libexec** 那一层（=> 而那子命令目录）、
+             *  => 而那 cmake 那一件逐字要那 **share** 那一层（=> 而那模块目录）。
              *  => 而它们逐字**是**那**落位事实**、=> 而那**落位侧**逐字**照**它们**搬**。 */
             val extraDirs: List<String> = emptyList(),
         ) {
