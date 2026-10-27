@@ -201,8 +201,24 @@ node "$ROOT_DIR/scripts/verify/find-platform-h-android-branch.js" "$PLATFORM_H" 
 #
 # 而这一件在 CI 上产出的形态会变（=> 而 ET_EXEC -> ET_DYN），
 # **=> 而而它落 bin/ 那个位置不变，=> 而而那 17 条软链指向它的方式也不变（=> 而而都是 argv[0] 派生物）。**
-set_conf STATIC n
-set_conf PIE y
+#  缺陷名（C-102）**这一族逐字只编那 PIE **那一个**、=> 而而那 initramfs **那一层**逐字**要**那**静态**的**那一个**
+#    => 而而它治**的**是「那 **initramfs** **那一层**逐字**能不能**装**进**那**静态**的**那一个**」。
+#    => 而那**成因**：=> 而那 PIE **那一个**逐字**是**那 ET_DYN、=> 而而那**它**逐字**要**那 **linker64** **那一族**、
+#       => 而而那 **linker64** 逐字**不**在**那 initramfs **那一层**里面**、=> 而而那 **initramfs** **那一层**逐字**要**那**静态**的**那一个**。
+#    => 而那**处置**：=> 而那**这一族**逐字**能**编**那**两种**形态**（=> 而那 **PIE** **那一个**与那**静态**那一个**）、
+#       => 而那**开关**逐字**由**那 **LOBOS_BUSYBOX_STATIC** **那个**环境变量**给**、=> 而而那**默认**逐字**是**那 PIE。
+#    => 而按 C-104：=> 而那 busybox **那一族**逐字**有**两条路**（=> 而那**两条**路逐字**落**的是**那两**个**不同**的**产物**、
+#       => 而而那**它**们逐字**不是**同一条内容的**两条取法**、=> 而而那**它**们逐字**是**那**两**个**不同**的**形态**）；
+#       => 而而那 initramfs **那一层**逐字**只有**一条路**。
+BUSYBOX_STATIC="${LOBOS_BUSYBOX_STATIC:-0}"
+if [ "$BUSYBOX_STATIC" = "1" ]; then
+  #  => 而那**静态**的**那一个**（=> 而而它逐字**是**那 ET_EXEC、=> 而而它逐字**不**要**那 **linker64**）
+  set_conf STATIC y
+  set_conf PIE n
+else
+  set_conf STATIC n
+  set_conf PIE y
+fi
 
 #  编译器：官方只有「前缀」这一条路，没有 clang 变体 
 # busybox 的 Makefile 第 292~298 行写死了：
@@ -357,7 +373,10 @@ echo "[$TOOL] 声明的 $(printf '%s\n' $APPLETS | wc -w) 个 applet 全部在�
 BB="$OUT_DIR/bin/libbusybox.so"
 SIZE=$(stat -c%s "$BB")
 [ "$SIZE" -gt 100000 ] || die "产物可疑" "busybox 只有 $SIZE 字节 —— 动态编也不该这么小"
-"$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true
+    #  => 而那**静态**的**那一个**逐字**不**能** strip（=> 而而它逐字**要**留**那**符号**给**那**静态**链接**用**）
+    if [ "$BUSYBOX_STATIC" != "1" ]; then
+      "$LLVM_STRIP" --strip-unneeded "$BB" 2>/dev/null || true
+    fi
 
 INFO=$(file -b "$BB")
 case "$INFO" in
@@ -383,16 +402,28 @@ note "$INFO"
 #
 # 而「无 PT_DYNAMIC」那个判据是**静态编专属**的（=> 而动态编一定有一个 PT_DYNAMIC），
 # **=> 而它今天必须换成「有 PT_DYNAMIC」**，=> 而而换成「ET_DYN + 有 PT_INTERP」这两格。
-ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
-[ "$ETYPE" = "DYN" ] || die "不是 PIE 产物" "e_type=$ETYPE —— 而这一件必须编成 ET_DYN（PIE），而 ET_EXEC 在设备上不可执行（域的策略），而套 linker64 会被 AOSP linker_main.cpp:405 那一道硬门挡掉"
+#  => 而那**形态**那一族逐字**分**那**两种**（=> 而那 PIE **那一个**要**那 ET_DYN** 与**那 PT_INTERP**、=> 而那**静态**那一个**要**那 ET_EXEC** 与**没有**那 PT_INTERP**）
+if [ "$BUSYBOX_STATIC" = "1" ]; then
+  #  => 而那**静态**的**那一族**（=> 而而它逐字**不**要**那 **linker64**、=> 而而它逐字**能**进**那 initramfs **那一层**）
+  ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
+  [ "$ETYPE" = "EXEC" ] || die "不是静态产物" "e_type=$ETYPE —— 而那**静态**的**那一个**必须**是**那 ET_EXEC"
+  NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
+  [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那**静态**的**那一个**逐字**不**能**有**那**动态**依赖"
+  INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP')
+  [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那**静态**的**那一个**逐字**不**能**要**那 **linker64**"
+  echo "[$TOOL] 形态：e_type=$ETYPE、静态（无 PT_INTERP、NEEDED=$NEEDED 项）"
+else
+  ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
+  [ "$ETYPE" = "DYN" ] || die "不是 PIE 产物" "e_type=$ETYPE —— 而这一件必须编成 ET_DYN（PIE），而 ET_EXEC 在设备上不可执行（域的策略），而套 linker64 会被 AOSP linker_main.cpp:405 那一道硬门挡掉"
 
-NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
+  NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
 DYN=$(printf '%s\n' "$("$LLVM_READELF" -W -l "$BB" 2>/dev/null || true)" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')
 [ -n "$DYN" ] || die "不是动态产物" "没有 PT_DYNAMIC（NEEDED=$NEEDED 项）—— PIE 那一族一定有它，而缺了它说明链接没走动态那一路"
 
 INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP')
 [ "$INTERP" -ge 1 ] || die "缺 PT_INTERP" "INTERP 行数=$INTERP —— 而这一件要经 linker64 驱动，=> 而那个驱动者由 PT_INTERP 指出来（=> 而设备上是 /system/bin/linker64）"
 echo "[$TOOL] 形态：e_type=$ETYPE、PT_INTERP=$INTERP 行、PT_DYNAMIC 有、NEEDED=$NEEDED 项"
+fi
 
 BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
       | while read -r a; do
@@ -403,7 +434,11 @@ BAD=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $
         done)
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
-echo "[ok] $BB $(stat -c%s "$BB") 字节（PIE/ET_DYN，有 PT_DYNAMIC 与 PT_INTERP，16KB 对齐合格）"
+  if [ "$BUSYBOX_STATIC" = "1" ]; then
+    echo "[ok] $BB $(stat -c%s "$BB") 字节（静态/ET_EXEC，无 PT_INTERP、无动态依赖，16KB 对齐合格）"
+  else
+    echo "[ok] $BB $(stat -c%s "$BB") 字节（PIE/ET_DYN，有 PT_DYNAMIC 与 PT_INTERP，16KB 对齐合格）"
+  fi
 echo "[$TOOL] 软链随 make install 一起建（busybox 官方机制：构建系统自己知道有哪些 applet）"
 echo "[$TOOL] 判据用 'busybox <applet> --help'，不用 '<applet> --help'"
 # 缺陷名（C-102）**写的那一处与核的那一处用的 `$OUT` 不是同一个值** ——
