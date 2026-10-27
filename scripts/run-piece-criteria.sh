@@ -226,7 +226,7 @@ def run_criterion(code, criterion_env=None):
     env_prefix = ''
     #  => 而那判据**用**那 os.tmpdir() 逐字**建**那**临时目录**、=> 而而那**它**逐字**要**那 TMPDIR **在**那设备**上**生效**。
     if child_tmpdir:
-        env_prefix += 'export TMPDIR=' + child_tmpdir + '; '
+        env_prefix += 'export TMPDIR=' + child_tmpdir + '; export LOBOS_ROOT=/data/user/0/' + pkg + '; '
     #  => 而那**证书**那一族逐字**跟着**那**运行时**给**孩子**的**那** env **快照**走**（=> 而那**它**们逐字**是**那**真源**）
     for _ck, _cv in (('SSL_CERT_FILE', child_ssl_cert_file),
                      ('CURL_CA_BUNDLE', child_curl_ca_bundle),
