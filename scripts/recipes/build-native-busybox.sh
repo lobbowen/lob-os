@@ -43,7 +43,13 @@ answers() {
   #  => 而那**另**一个**坑**：=> 而那 **answers** 逐字**原来**是**那进程替换**（=> 而而那**它**逐字**跟**那 kconfig **不**同步**、
   #     => 而而那**后果**逐字 = 那 kconfig 逐字**问**到**后半**就**没有**答案**了）。
   #     => 而那**处置**：=> 而那**答案**逐字**先**落**成**那**一个**文件**、=> 而而那 **oldconfig** 逐字**从**那**文件**读**。
-  local af="$WORK/oldconfig-answers.txt"
+  #  缺陷名（C-102）**那 answers **逐字**写死**那一个**文件名**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 defconfig **那一个**调用**逐字**导**到**那 defconfig-answers.txt、
+#      => 而而那**它**们**逐字是**那**两**件**事**：「那**文件名**是**什么**」与「那**调用**是**什么**」）。
+#    => 而而那**后果**逐字 = 而那 cat 逐字**读**那**它自己**逐字**在写**的**那一个**文件**、
+#      => 而而那 CI 逐字**报**那「cat: …: input file is output file」、=> 而而那**编**逐字**过不**了**。
+#    => 而那**处置**：=> 而那**落点**逐字**由**那**调用**给**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+  local af="${1:-$WORK/oldconfig-answers.txt}"
   : > "$af"
   local m=0
   while [ "$m" -lt 1200 ]; do printf 'n\n16\n256\n' >> "$af"; m=$((m + 1)); done
@@ -110,7 +116,7 @@ cd "$SRC"
 #  => 而那 defconfig 逐字**也**会**问**（=> 而那**它**逐字**要**那 stdin、=> 而而那 CI **没有**那 tty）、
 #     => 而而那**后果**逐字 = 那 defconfig 逐字**读到 EOF** 就**退**、=> 而而那**它**逐字**报**那「No rule to make target」。
 #     => 而那**处置**：=> 而那**答案**逐字**先**落**成**那**一个**文件**、=> 而而那 defconfig 逐字**从**那**文件**读**。
-answers > "$WORK/defconfig-answers.txt"
+answers "$WORK/defconfig-answers.txt" > /dev/null
 make defconfig < "$WORK/defconfig-answers.txt" > "$WORK/defconfig.log" 2>&1 \
   || { echo "=== make defconfig 失败取证（末 30 行）==="; tail -30 "$WORK/defconfig.log"; exit 1; }
 [ -f "$SRC/.config" ] || die "defconfig 没产出 .config" "看 $WORK/defconfig.log"
@@ -403,7 +409,7 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
 #   yes "" 会让每个提问取默认，但 yes 会被提前关闭的管道打断（Broken pipe），
 #   所以改成自己产出一批空行。
-answers > "$WORK/oldconfig-answers.txt"
+answers "$WORK/oldconfig-answers.txt" > /dev/null
 make oldconfig < "$WORK/oldconfig-answers.txt" > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
@@ -640,16 +646,3 @@ printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
 #         **软链 18、含 sh**  BB_BINS 取落包集  落包集里那 18 个（含 sh）全被声明  全进包
 #        而「落包集 18（18 = 17 软链 + 1 本体）」这个数是**错的**：
 #         落包集 = **软链的条数**；而「包内 bin/ 的条目数」= 软链 + 本体（今天 = 19）。
-#          我 2026-10-19 那一版把这两件事混成了一件 —— 03 今天按 C-100 补了这一条。
-#      而**「sh 为什么在落包集里」这一格【未核】**：
-#         白名单式配置（:114-121）先关掉 .config 里所有 CONFIG_XXX=y，再只开 $APPLETS 那些；
-#         而 sh 是 ash 的别名 applet（它的开关是 CONFIG_ASH / CONFIG_SH_IS_ASH），
-#         那两项**不在 $APPLETS 里**  按这段逻辑该被关掉  sh 不该被编  不该有软链。
-#          而实测**新轮里 sh 在**   **这两条对不上**，而**答它要那一轮的 .config**（本机没有）
-#          **这一格按未核记下，不猜**（C-05）；而它不改变「取落包集」这个改法。
-#      而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
-#     （这一件编译时按白名单关掉了它） package-bundle-zip.sh 的 BINS 那一支会判红
-#     （「清单里的命令入口不存在：bin/$bn 在 $OUT 下没有 —— 声明了但没产出」）。
-#      三个集合的读数（按轮次分清）：
-#       旧轮：表 19 / 落包集 17 / 白名单 17  表 − 落包集 = {awk, sh}、落包集 − 白名单 = ∅
-#       新轮：表 19 / 落包集 18 / 白名单 17  表 − 落包集 = {awk}、落包集 − 白名单 = {sh}
