@@ -122,7 +122,12 @@ echo "[git] 依赖三件就位：zlib / openssl / curl"
 #      => 而而那**成因**：=> 而那 make 那一行逐字**不**带**引号**、=> 而而那**它**逐字**把**那**带空格**的**值**逐字**拆开**了**。
 #      => 而而那**后果**逐字 = 而那 **-Wl,-rpath,…** 逐字**变成**那 make 的**一个**目标**、=> 而而那**它**逐字**不**进**那 ALL_LDFLAGS**、
 #        => 而而那**证据**逐字 = 而那 CI **那一趟**编出来**那一个** git 逐字**零个** RUNPATH**。
-GIT_RPATH='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN/../lib'
+#    => 而那**那一个**逐字**要**那 **$$ORIGIN**（=> 而而那**它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
+#      => 而而那**成因**逐字 = 而那 shell 逐字**用**那**单**引号**就**不**展开**、=> 而而那 make 逐字**把**那 $ORIGIN **当**那 **make 变量**（=> 而而那**它**逐字**是空的**）、
+#        => 而而那**后果**逐字 = 而那 RUNPATH 逐字**变成**那「RIGIN/../lib」、=> 而而那**它**逐字**指不到**那**任何**一处**。
+#      => 而而那**处置**逐字 = 而那 **$$ORIGIN** 逐字**给**那 make（=> 而而那 **$$** 逐字**是**那 make 的**转义**、=> 而而那**它**逐字**交给**那**链接器**时**就**是**那 **$ORIGIN**）。
+#        => 而而那**证据**逐字 = 而那 CI **那一趟**编出来**那一个** git 逐字**零个** RUNPATH**。
+GIT_RPATH='-Wl,--enable-new-dtags -Wl,-rpath,$$ORIGIN/../lib'
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS LDFLAGS_APPEND="$GIT_RPATH" CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then
