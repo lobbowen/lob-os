@@ -159,6 +159,70 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+#  缺陷名（C-102）**那 urls 逐字**有**几个**的**时候**逐字**拿**一个**钉值**去**比**每一个** ——
+#    => 而而它治**的**是「那**逐文件**那一族**取不取得到**」。
+#    => 而那**成因**：=> 而那 kernel 那一格逐字**是**那**逐文件**那一族（=> 而那 urls 逐字**有**那**四**条**）、
+#       => 而而那**它们**逐字**各**是**那**一个**文件**、=> 而而那**每**一个**的**字节**都**不**是**那钉值**，
+#       => 而而那**它**们**永远**对不上**、=> 而而那**钉值**逐字**对不上**任何**一条**。
+#    => 而那**处置**：=> 而那**逐文件**那一族（=> 而那 urls 逐字**带**那 ?format=TEXT **那一族**）逐字**合成**
+#       **那一个**确定性 tar **再**跟**那钉值**比（=> 而那**它**逐字**两次**做**一样**）。
+#    => 而按 C-104：=> 而那取件那一族逐字**只有**一条路（=> 而那**合成**不是**那**第二种生成路径**、
+#       => 而那**它**逐字**是**那**同一个**产物的**一种**取法**）。
+  f="$TMP/download"
+if [ "${#URLS[@]}" -gt 1 ]; then
+  #  => 而那**逐文件**那一族（=> 而那**每**一条**的**路径**都**是**那 ?format=TEXT **那一族**）
+  _all_txt=1
+  for u in "${URLS[@]}"; do
+    case "$u" in *"?format=TEXT") : ;; *) _all_txt=0 ;; esac
+  done
+  if [ "$_all_txt" = 1 ]; then
+    _stage="$TMP/kernel-files"
+    rm -rf "$_stage" && mkdir -p "$_stage"
+    _paths=""
+    for u in "${URLS[@]}"; do
+      _p="${u%%\?*}"
+      _rel="${_p#*+/}"   #  => 而那**它**逐字**剥掉**那 host **与**那 repo **与**那 **+/**
+      _rel="${_rel#*/}"   #  => 而那**它**逐字**剥掉**那 commit **那一个**
+      _out="$_stage/$_rel"
+      mkdir -p "$(dirname "$_out")"
+      _raw="$TMP/kernel-files.raw"
+      _ok=0
+      for _try in 1 2 3 4 5; do
+        if curl -fsSL --http1.1 --max-time 900 "$u" -o "$_raw" 2>/dev/null; then
+          if base64 -d < "$_raw" > "$_out" 2>/dev/null; then _ok=1; break; fi
+        fi
+        sleep 2
+      done
+      if [ "$_ok" != 1 ]; then
+        echo "[fetch-pinned] 逐文件那一族取不到：$u"
+        exit 1
+      fi
+      _paths="$_paths$_rel\n"
+    done
+    #  => 而那**合成**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**（=> 而那**它**逐字**两次**做**一样**）
+    if command -v python3 >/dev/null 2>&1; then
+      printf '%b' "$_paths" > "$TMP/kernel-files.paths"
+      python3 scripts/toolchain/kernel-files-tar.py "$_stage" "$TMP/kernel-files.paths" > "$f"
+    else
+      echo "[fetch-pinned] 逐文件那一族要合成那确定性 tar、=> 而而那 python3 逐字**没有**"
+      exit 1
+    fi
+    got="$(sha256sum "$f" | cut -d' ' -f1)"
+    if [ "$got" != "$WANT" ]; then
+      echo "[fetch-pinned] 逐文件那一族合成出来的不合钉值：实得 $got（期望 $WANT）"
+      exit 1
+    fi
+    mkdir -p "$(dirname "$OUT")"
+    mv "$f" "$OUT"
+    if [ -n "$VERSION_FILE" ]; then
+      mkdir -p "$(dirname "$VERSION_FILE")"
+      printf '%s\n' "$VER" > "$VERSION_FILE"
+      echo "[fetch-pinned] 件版本格 $VERSION_FILE = $VER（这一格由这次取数写，与钉值是同一个事实）"
+    fi
+    echo "[fetch-pinned] 校验通过（逐文件那一族合成）：$(basename "$OUT") 钉值表 version=${VER:-未名} sha256=$got"
+    exit 0
+  fi
+fi
 for url in "${URLS[@]}"; do
   # 只认 https。早先这里还放行 file://（想着「本地测试方便」）——
   # 但 curl 默认**禁用** file 协议（实测：`curl: (1) Protocol "file" is disabled`），
@@ -168,7 +232,6 @@ for url in "${URLS[@]}"; do
     https://*) : ;;
     *) die "来源不是 https（file:// 也不行 —— curl 禁用了 file 协议，配了必然失败）: $url" ;;
   esac
-  f="$TMP/download"
   #  缺陷名（C-102）**这一行逐字**没**带**那 --http1.1** ——
   #    => 而而它治**的**是「那来源逐字**取不取得到**」（=> 而那取件那一族）。
   #    => 而那**成因**：=> 而那上游（=> 而那 android.googlesource.com **那一族**）逐字**要**那 HTTP/1.1，

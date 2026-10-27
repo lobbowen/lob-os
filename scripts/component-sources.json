@@ -130,11 +130,14 @@
       "piece": true
     },
     "kernel": {
-      "$comment": "而那内核源码那一族逐字**不**进那仓内、=> 而它逐字**是**那取件那一族、=> 而它逐字**走**那 fetch-pinned.sh 那一条现成的路。=> 而那**版本号**逐字 = 6.6.144、=> 而那**分支**逐字 = android15-6.6、=> 而那 tip 那一个数逐字 = 18e7dadae19bd16a5a027d8bd95663f759af51fa。=> 而那 urls **那一族**逐字**是**那**逐文件**那一族（=> 而那 ?format=TEXT **那一族**），=> 而而那**它**逐字**稳**、=> 而那归档那一族逐字**每次打包都换**那字节。=> 而那 sha256 **那一格**逐字**是**那**四件逐文件**合成**那一个**产物**的那一个（=> 而那**它**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**）。=> 而而那**四件**逐字**跟**那仓内那 docs/kernel-baseline/upstream/ 底下**那四件**逐字**一样**。",
+      "$comment": "而那内核源码那一族逐字**不**进那仓内、=> 而它逐字**是**那取件那一族、=> 而它逐字**走**那 fetch-pinned.sh 那一条现成的路。=> 而那**版本号**逐字 = 6.6.144、=> 而那**分支**逐字 = android15-6.6、=> 而那 tip 那一个数逐字 = 18e7dadae19bd16a5a027d8bd95663f759af51fa。=> 而那 urls 那一族逐字**是**那**逐文件**那一族（=> 而那四个路径逐字**是**那**同一个** commit **底下**的）、=> 而那格式逐字**是**那 ?format=TEXT（=> 而那服务端逐字**给**的是**那 base64 **编码**的**文本**）。=> 而那 sha256 那一格逐字**是**那**四件逐文件**合成**那一个**确定性** tar **那一个**的**数**（=> 而那**它**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**、=> 而那**它**逐字**两次**做**一样**）。=> 而那**四个**文件**各**一个 sha256 逐字**与**那仓内那 docs/kernel-baseline/upstream/ 底下**那四件**逐字**一样**。=> 而那**归档**那一族（=> 而那 +archive/）逐字**不能**当**那钉值**来源（=> 而那服务端逐字**每次**现打、=> 而而那**它**逐字**每次**换**那字节**、=> 而而那 sha256 **永远**对不上**）。",
       "version": "6.6.144",
       "sha256": "c6f39a13f5d418be4d4f6ca3ce43a47af25b0b9017e92286b7ec0323ef5713e7",
       "urls": [
-        "https://android.googlesource.com/kernel/common/+archive/18e7dadae19bd16a5a027d8bd95663f759af51fa.tar.gz"
+        "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/Makefile?format=TEXT",
+        "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/arch/arm64/configs/gki_defconfig?format=TEXT",
+        "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/init/Kconfig.gki?format=TEXT",
+        "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/init/Kconfig?format=TEXT"
       ],
       "piece": false
     },
