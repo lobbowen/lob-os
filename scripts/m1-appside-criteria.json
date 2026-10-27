@@ -38,7 +38,26 @@
         "readySecondsMean": 0.385,
         "readySecondsMedian": 0.393,
         "note": "=> 而那**读数**归 **07**、=> 而而那**判据**归 **04**",
-        "archived": "07/runs/app-restart-100-20261027-a.tsv | 3883 字节 | sha256 35ff4461b972a09295235f59f7fc1fd9ef8a72f6dc60920ec9b3e6d043bc3e0b | 那一栏逐字是那 FAIL、=> 而而那**它**逐字**是**那**判定**那一栏**自己**算错**了**、=> 而而那**它**里面**那**就绪**秒数**逐字**是**那**真**的**读数**；=> 而那 -b.tsv | 4037 字节 | sha256 3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739 | 那一栏逐字**没有**那**时刻**、=> 而而那**它**逐字**只**在**那**表头**（=> 而按 C-115 逐字**那**两者**不互相顶替**）"
+        "archived": "07/runs/app-restart-100-20261027-a.tsv | 3883 字节 | sha256 35ff4461b972a09295235f59f7fc1fd9ef8a72f6dc60920ec9b3e6d043bc3e0b | 那一栏逐字是那 FAIL、=> 而而那**它**逐字**是**那**判定**那一栏**自己**算错**了**、=> 而而那**它**里面**那**就绪**秒数**逐字**是**那**真**的**读数**；=> 而那 -b.tsv | 4037 字节 | sha256 3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739 | 那一栏逐字**没有**那**时刻**、=> 而而那**它**逐字**只**在**那**表头**（=> 而按 C-115 逐字**那**两者**不互相顶替**）",
+        "takenAt": "2026-10-27T08:25:45.234842Z",
+        "takenAtNote": "=> 而那**设备侧**那**采集**的**那取数时刻**、=> 而而它逐字**跟**那统一采集**那一趟**那**共同时刻**逐字**一致**、=> 而按 C-115 逐字**两条**并列、=> 而按 C-274 逐字**每**个**时点**带**它**那**时刻**",
+        "unifiedTakenAt": "2026-10-27T08:25:45.234842Z",
+        "headSha": "e1816a815ea7f42dc9fed982860b5651d845719b",
+        "countBasis": "=> 而那 rows 那一格逐字 = **100**、=> 而那 readyBothPresent 逐字 = 「100 之 100」、=> 而那 distinctPid 逐字 = **100**",
+        "previousReadings": {
+          "source": "07/runs/app-restart-100-20261027-d.tsv",
+          "sourceSha256": "41838f882b02d31d025f43ce1b35b7864766a66ca2edf4cccea00e73d083173b",
+          "sourceBytes": 5387,
+          "rows": 100,
+          "readyBothPresent": "100 之 100",
+          "distinctPid": 100,
+          "readySecondsMin": 0.313,
+          "readySecondsMax": 0.499,
+          "readySecondsMean": 0.385,
+          "readySecondsMedian": 0.393,
+          "note": "=> 而那**读数**归 **07**、=> 而而那**判据**归 **04**",
+          "archived": "07/runs/app-restart-100-20261027-a.tsv | 3883 字节 | sha256 35ff4461b972a09295235f59f7fc1fd9ef8a72f6dc60920ec9b3e6d043bc3e0b | 那一栏逐字是那 FAIL、=> 而而那**它**逐字**是**那**判定**那一栏**自己**算错**了**、=> 而而那**它**里面**那**就绪**秒数**逐字**是**那**真**的**读数**；=> 而那 -b.tsv | 4037 字节 | sha256 3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739 | 那一栏逐字**没有**那**时刻**、=> 而而那**它**逐字**只**在**那**表头**（=> 而按 C-115 逐字**那**两者**不互相顶替**）"
+        }
       }
     }
   },
@@ -76,7 +95,24 @@
         "readySecondsMin": 0.313,
         "readySecondsMax": 0.499,
         "readySecondsMean": 0.385,
-        "readySecondsMedian": 0.393
+        "readySecondsMedian": 0.393,
+        "takenAt": "2026-10-27T08:25:45.234842Z",
+        "takenAtNote": "=> 而那**设备侧**那**采集**的**那取数时刻**、=> 而而它逐字**跟**那统一采集**那一趟**那**共同时刻**逐字**一致**、=> 而按 C-115 逐字**两条**并列、=> 而按 C-274 逐字**每**个**时点**带**它**那**时刻**",
+        "unifiedTakenAt": "2026-10-27T08:25:45.234842Z",
+        "headSha": "e1816a815ea7f42dc9fed982860b5651d845719b",
+        "countBasis": "=> 而那 rows 那一格逐字 = **100**、=> 而那 readyBothPresent 逐字 = 「100 之 100」、=> 而那 distinctPid 逐字 = **100**",
+        "previousReadings": {
+          "source": "07/runs/app-restart-100-20261027-d.tsv",
+          "sourceSha256": "41838f882b02d31d025f43ce1b35b7864766a66ca2edf4cccea00e73d083173b",
+          "sourceBytes": 5387,
+          "rows": 100,
+          "verdict": "100 之 100 OK",
+          "archived": "07/runs/app-restart-100-20261027-a.tsv | 3883 字节 | sha256 35ff4461b972a09295235f59f7fc1fd9ef8a72f6dc60920ec9b3e6d043bc3e0b | 那一栏逐字是那 FAIL、=> 而而那**它**逐字**是**那**判定**那一栏**自己**算错**了**、=> 而而那**它**里面**那**就绪**秒数**逐字**是**那**真**的**读数**；=> 而那 -b.tsv | 4037 字节 | sha256 3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739 | 那一栏逐字**没有**那**时刻**、=> 而而那**它**逐字**只**在**那**表头**（=> 而按 C-115 逐字**那**两者**不互相顶替**）",
+          "readySecondsMin": 0.313,
+          "readySecondsMax": 0.499,
+          "readySecondsMean": 0.385,
+          "readySecondsMedian": 0.393
+        }
       }
     }
   }
