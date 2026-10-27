@@ -360,17 +360,37 @@ class OsHostService : Service() {
         private const val NOTIFY_MS = 60_000L
         private const val LEDGER_INTERVAL_MS = 10 * 60_000L
 
-        fun ensureRunning(context: Context) {
+        fun ensureRunning(context: Context, action: String? = null) {
             try {
                 //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
                 //    => 而而那一拍逐字**配错了**、=> 而而问二那个量逐字**算不出来**
-                //    —— 而实际上这一路逐字是 `startService`（=> 而**不是** `startForegroundService`）、
-                //    => 而而 FGS start 那一拍逐字**不**在这一路上、=> 而而这里逐字**不该**记那一拍。
-                //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状，=> 而而它逐字是「**记错了**」那个形状。
-                //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**改这一行。
-                context.startService(Intent(context, OsHostService::class.java))
+                //    —— 而实际上这一路逐字**也**是 `startForegroundService`、
+                //    => 而而 FGS start 那一拍逐字**在**这一路上、=> 而而这里逐字**记**它**是**对的**。
+                //  缺陷名（C-102）**这一条路逐字用**那 startService（=> 而而那**它**们**逐字是**那**两**件**事**）。
+                //    => 而那**成因**：=> 而那 startService 逐字**只**在**那应用**在**前台**的时候**才**能**起**那后台服务**、
+                //      => 而而那**应用起来**那一拍逐字**不**在前台**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+                //    => 而而那**后果**逐字 = 而那宿主服务逐字**起不来**、=> 而而那**落位**那一族**与**那**身份**那一族
+                //      逐字**都**只在**那宿主服务起**的那一趟**里**跑**、=> 而而那**它们**逐字**都**没跑**。
+                //      => 而而那**证据**逐字 = 而那设备上那「起内置服务」**与**那「assets 列表」**与**那
+                //        build-identity.json **逐字都**是**那旧**的**那一个**。
+                //    => 而那**处置**：=> 而这一条路逐字**也**用**那 startForegroundService（=> 而而那**它**逐字**跟**
+                //      那 BootReceiver.startQuietly **那一族**同一**一个**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+                //    => 而按 C-104：=> 而那宿主那一族逐字**只有**这一条路**用** startForegroundService、
+                //      => 而而那**它**们**逐字是**那**同一个**触发**的**两种**写法**、=> 而而那**它**们**逐字不是**两条路**。
+                val svc = Intent(context, OsHostService::class.java)
+                if (!action.isNullOrBlank()) svc.action = action
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    noteFgsStart(context, "ensure")
+                    context.startForegroundService(svc)
+                } else {
+                    context.startService(svc)
+                }
             } catch (e: Throwable) {
                 Log.w(TAG, "拉起宿主失败（等互保闭环其它边重试）", e)
+                RuntimeDiagnostics.append(
+                    context, "host", false, "拉起宿主失败",
+                    e.javaClass.name + ": " + (e.message ?: ""),
+                )
             }
         }
 
