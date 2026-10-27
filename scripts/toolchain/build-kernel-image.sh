@@ -74,6 +74,16 @@ fi
 chmod 0755 "$IRFS_STAGE/bin/busybox"
 cp "$ROOT/scripts/initramfs/lobos-init" "$IRFS_STAGE/init"
 chmod 0755 "$IRFS_STAGE/init"
+#  => 而那 **rootfs** 那一层逐字**要**跟**那 initramfs **一起**装**（=> 而而那**它**逐字**是**那**磁盘上**的**那一层**、
+#     => 而而那 initramfs 那一层逐字**是**那**内存里**的**那一层**、=> 而而那**它们**逐字**是**那**两**件**事**）。
+#     => 而那**归档**逐字**在**那 /rootfs.erofs（=> 而而那**它**逐字**是**那 erofs **那一族**）。
+ROOTFS_ARCHIVE="${ROOTFS_ARCHIVE:-$ROOT/work/rootfs/system/rootfs.erofs}"
+if [ -f "$ROOTFS_ARCHIVE" ]; then
+  cp "$ROOTFS_ARCHIVE" "$IRFS_STAGE/rootfs.erofs"
+  note "initramfs 那一层：rootfs.erofs（$(( $(stat -c %s "$IRFS_STAGE/rootfs.erofs") / 1024 )) KiB）"
+else
+  note "initramfs 那一层：没有那 rootfs.erofs（=> 而那系统层逐字**挂不上**、=> 而按 C-105 报缺）"
+fi
 note "initramfs 那一层：bin/busybox（静态）+ init"
 
 mkdir -p "$OUT"

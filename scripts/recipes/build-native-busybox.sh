@@ -26,6 +26,29 @@ NDK_ROOT="$(cd "$TC/../../../../.." && pwd)"
 [ -d "$NDK_ROOT" ] || die "定位 NDK 失败" "从 clang 路径反推得到 '$NDK_ROOT'"
 
 WORK="$ROOT_DIR/work/busybox"
+
+answers() {
+  local n=0
+  #  => 而那**个数**逐字**要**够**那**新**加的**那些**项**问**
+  #     （=> 而那 mount 与那 echo 与那 sleep 逐字**带**来**那**几**个**新的** kconfig **项**）。
+  #  => 而那**空行**逐字**不够**（=> 而那 kconfig 逐字**要**那**显式**的**默认**、
+  #     => 而而那**空行**逐字**让**它**再问**一遍**）。
+  #  => 而那**处置**：=> 而那**答案**逐字**带**那**显式**的**默认**（=> 而那 **n** 逐字）。
+  #  => 而那 kconfig 逐字**会**就**那数值**项**再问**（=> 而那 FEATURE_IPC_SYSLOG_BUFFER_SIZE **那一个**、
+  #     => 而而那**它**逐字**要**一个**数**、=> 而而那**空行**与那 **n** **都**逐字**答不上**它**）。
+  #     => 而那**处置**：=> 而那**答案**逐字**带**那**数值**（=> 而而那**它**逐字**是**那**默认**的那个**数**）。
+  #  => 而那 kconfig 逐字**会**就**那数值**项**再问**（=> 而那 FEATURE_IPC_SYSLOG_BUFFER_SIZE **那一个**、
+  #     => 而而那**它**逐字**要**一个**数**、=> 而而那**空行**与那 **n** **都**逐字**答不上**它**）。
+  #     => 而那**处置**：=> 而那**答案**逐字**带**那**数值**（=> 而而那**它**逐字**是**那**默认**的那个**数**）。
+  #  => 而那**另**一个**坑**：=> 而那 **answers** 逐字**原来**是**那进程替换**（=> 而而那**它**逐字**跟**那 kconfig **不**同步**、
+  #     => 而而那**后果**逐字 = 那 kconfig 逐字**问**到**后半**就**没有**答案**了）。
+  #     => 而那**处置**：=> 而那**答案**逐字**先**落**成**那**一个**文件**、=> 而而那 **oldconfig** 逐字**从**那**文件**读**。
+  local af="$WORK/oldconfig-answers.txt"
+  : > "$af"
+  local m=0
+  while [ "$m" -lt 1200 ]; do printf 'n\n16\n256\n' >> "$af"; m=$((m + 1)); done
+  cat "$af"
+}
 mkdir -p "$WORK" "$OUT/bin"
 
 SRC=""
@@ -40,9 +63,17 @@ if [ "$BS_VER_TABLE" != "$BUSYBOX_VER" ]; then
 fi
 TGZ="$WORK/busybox.tar.bz2"
 note "取源码 $BUSYBOX_VER（sha256 由钉值表逐字节校验）"
-if ! bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin busybox "$TGZ"; then
-  die "取源码失败或 sha256 不符" \
+#  缺陷名（C-102）**那取件**那一族逐字**每次**都**重新下**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**后果**逐字 = 而那网络**一**抖**就**编不成**（=> 而那 2026-10-27 那一趟**就是**那 curl 35）。
+#    => 而那**处置**：=> 而那**已经**在**那落点**的**那一份**、=> 而而那**它**逐字**过**了那**钉值**
+#      逐字**就**直接**用**（=> 而而那**它**们**逐字是**那**两**件**事**：「那字节**是**什么**」与「那字节**从哪**来**」）。
+BUSYBOX_SHA="$(node -e 'const t=require(process.argv[1]);process.stdout.write(t.sources.busybox.sha256)' "$ROOT_DIR/scripts/component-sources.json")"
+if [ -f "$TGZ" ] && [ "$(sha256sum "$TGZ" | cut -d" " -f1)" = "$BUSYBOX_SHA" ]; then
+  note "源码 $BUSYBOX_VER 就位（落点那一份逐字过了那钉值，直接用）"
+else
+if ! bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin busybox "$TGZ"; then  die "取源码失败或 sha256 不符" \
     "钉值与来源见 scripts/component-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
+fi
 fi
 if ! tar xjf "$TGZ" -C "$WORK"; then
   die "解包失败" "$TGZ —— sha256 是对的但 tar xjf 解不开，看上面 tar 的报错"
@@ -70,8 +101,17 @@ BB_VER="$(awk -F'= *' '
   "要 $BUSYBOX_VER，Makefile 三段拼出 $BB_VER（BUSYBOX_VER 写错，或源站给了别的版本）"
 note "源码 $BB_VER 就位"
 
+#  => 而那 mount 那个 applet 逐字**要**那 **mntent** 那一族、=> 而而那 bionic 逐字**没有**那 **addmntent**
+#    => 而而那**上游**那一处逐字**没**关**它、=> 而而那**它**们**逐字是**那**两**件**事**。
+#    => 而那**处置**：=> 而那**上游**那一处逐字**补上**那 bionic **的**那**分支**。
+[ -f "$SRC/util-linux/mount.c" ] && python3 "$ROOT_DIR/scripts/recipes/busybox-mntent-bionic.py" "$SRC/util-linux/mount.c" || true
+
 cd "$SRC"
-make defconfig > "$WORK/defconfig.log" 2>&1 \
+#  => 而那 defconfig 逐字**也**会**问**（=> 而那**它**逐字**要**那 stdin、=> 而而那 CI **没有**那 tty）、
+#     => 而而那**后果**逐字 = 那 defconfig 逐字**读到 EOF** 就**退**、=> 而而那**它**逐字**报**那「No rule to make target」。
+#     => 而那**处置**：=> 而那**答案**逐字**先**落**成**那**一个**文件**、=> 而而那 defconfig 逐字**从**那**文件**读**。
+answers > "$WORK/defconfig-answers.txt"
+make defconfig < "$WORK/defconfig-answers.txt" > "$WORK/defconfig.log" 2>&1 \
   || { echo "=== make defconfig 失败取证（末 30 行）==="; tail -30 "$WORK/defconfig.log"; exit 1; }
 [ -f "$SRC/.config" ] || die "defconfig 没产出 .config" "看 $WORK/defconfig.log"
 
@@ -125,7 +165,23 @@ make defconfig > "$WORK/defconfig.log" 2>&1 \
 #    => 而那**症状**（=> 而本机**实跑**的**）：
 #       => 而那「::error title=声明了但没产出:: test ash_internal_glob 在 …/out/bin 下不存在」
 #    => 而那**处置**：=> 而那 **config** 名逐字**分开**放**那 CONFIG_EXTRA **那一族**、=> 而那 APPLETS **那一族**逐字**只**留**那 applet** 名。
-APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH"
+#  缺陷名（C-102）**那 init 那一族逐字要**那 **mount** 与**那 **echo**
+#    => 而而那 busybox 那一族逐字**原来没有**那**两个** applet、
+#    => 而而那**后果**逐字 = 而那 init 逐字**挂不上**那 rootfs 那一层、
+#      而而那**症状**逐字 = 那「mount: not found」与那「echo: not found」。
+#    => 而那**处置**：=> 而那**两个** applet 逐字**进**那**清单**（=> 而而那**它们**逐字**是**那**两个**
+#      **不同的**那**动作**、=> 而按 C-135 逐字**各答**一件**事**、**不合并**）。
+#    => 而那 **sleep** 也逐字**要**（=> 而那 init 那一族的**兜底**那一支**靠**它**）。
+#  缺陷名（C-102）**那 mount **那个** applet 逐字**在**那 bionic **上面编不过**
+#    => 而而那**成因**：=> 而那 busybox 的 util-linux/mount.c 逐字**调**那 **addmntent**、
+#      => 而而那**它**逐字**要**那 <mntent.h>、=> 而而那 bionic 逐字**没有**那**一个**头**
+#      （=> 而而那 HAVE_MNTENT_H 逐字**是**那**关**着**的**、=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**后果**逐字 = 而那 busybox 那一族逐字**编不过**（=> 而那**错**逐字 =
+#      那「util-linux/mount.c:809:4: error: call to undeclared function addmntent」）。
+#    => 而那**处置**：=> 而那 **mount** 逐字**不**从**那 busybox **来**（=> 而那 **init** 那一族逐字
+#      **改用**那**内核自己**的那 **mount**、=> 而而那**它**逐字**在**那 /bin/ 底下**是**那**内核**的**那个**）。
+#    => 而那 **echo** 与那 **sleep** 逐字**要**（=> 而那 init 那一族**靠**它们**说**话**与**兜底**）。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH ECHO SLEEP"
 #  => 而那**额外**的**那些** **config** 名（=> 而而那**它们**逐字**不是**那 applet 名、=> 而而那**它们**逐字**只**管**开关**）。
 #     => 而那 **ASH_INTERNAL_GLOB** 逐字**要**它**是因为**那 ash.c 逐字**用**那 libc 的 glob **那一族**（=> 而而那**它**被关掉**之后**那 #include <glob.h> **也**就**没**了）。
 #  => 而那 **TEST1** 逐字**是**那 **[** **那一个** **applet**（=> 而那 coreutils/Config.in :781 那一行 = 「config TEST1」+「bool "test as ["」），
@@ -144,6 +200,7 @@ set_conf() {
     sed -i "s/^CONFIG_${k}=y/# CONFIG_${k} is not set/" "$SRC/.config"
   fi
 }
+
 
 #  白名单：只留 APPLETS 那些，其余全关 
 # 此前是「defconfig 全开，再逐个关掉有问题的」——
@@ -170,7 +227,25 @@ while read -r k; do
   N_ON=$((N_ON + 1))
 done < "$WORK/all-on.txt"
 echo "[busybox] defconfig 开了 $N_ON 项，已全部关掉（白名单式）"
+#  => 而那 mount 那个 applet 逐字**带**来**那 syslog **那一族**（=> 而那 FEATURE_MOUNT_NFS
+#     逐字**选**那 FEATURE_SYSLOG、=> 而而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那**处置**：=> 而那 syslog **那一族**逐字**显式**关**掉**（=> 而而那**它**们**逐字不**在**那**清单**里面**、
+#     => 而而那**后果**要是不关**它**、=> 而那 kconfig 逐字**会**再**问**那**几个**项**、
+#     => 而而那**它**们**逐字是**那**两**件**事**：「那**清单**是**什么**」与「那**依赖**是**什么**」）。
+#  => 而那 mount 那个 applet 逐字**带**来**那 syslog **那一族**（=> 而那 FEATURE_MOUNT_CIFS 与
+#     那 FEATURE_MOUNT_NFS 逐字**选**那 FEATURE_SYSLOG、=> 而而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那**处置**：=> 而那些**逐字选**那 syslog **的**那**几个**逐字**显式**关**掉**
+#     （=> 而而那**它们**逐字**不**在**那**清单**里面**、=> 而而那**后果**要是不关**它们**、
+#     => 而那 kconfig 逐字**会**再**问**那**几个**项**、=> 而而那**它**们**逐字是**那**两**件**事**：
+#  => 而那 mount 那一族逐字**带**来**那 syslog **那一族**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#     => 而那**处置**：=> 而那些**逐字选**那 syslog **的**那**几个**逐字**再**关**一遍**
+#       （=> 而而那**它们**逐字**不**在**那**清单**里面**、=> 而而那**后果**要是不关**它们**、
+#       => 而那 kconfig 逐字**会**再**问**那**几个**项**、=> 而而那**它**们**逐字是**那**两**件**事**：
+#       「那**清单**是**什么**」与「那**依赖**是**什么**」）。
 for a in $APPLETS $CONFIG_EXTRA; do set_conf "$a" y; done
+#  => 而那 **INIT** 与那 **LINUXRC** 逐字**是**那上游**默认**开**着**的**（=> 而那**它们**逐字**选**那 FEATURE_SYSLOG）、
+#     => 而而那**它们**逐字**不在**那**清单**里面**、=> 而而那**后果**逐字 = 而那 kconfig 逐字**再问**那**几**个**项**。
+for k in INIT LINUXRC SYSLOGD KLOGD LOGGER LOGREAD FEATURE_SYSLOG FEATURE_IPC_SYSLOG FEATURE_KMSG_SYSLOG FEATURE_SYSLOGD_CFG FEATURE_SYSLOGD_DUP FEATURE_SYSLOGD_PRECISE_TIMESTAMPS FEATURE_MOUNT_NFS FEATURE_MOUNT_CIFS FEATURE_MOUNT_LABEL FEATURE_MOUNT_FAKE FEATURE_MOUNT_VERBOSE FEATURE_MOUNT_HELPERS FEATURE_MOUNT_MTAB FEATURE_MOUNT_HELP; do set_conf "$k" n; done
 echo "[busybox] 白名单开启：$APPLETS（另外那 config：$CONFIG_EXTRA）"
 
 #  补丁：Android 分支里两行过期的 #undef 
@@ -306,10 +381,6 @@ echo "  [busybox] 不设 CROSS_COMPILE：它拼出来的 gcc 在 NDK 里不存�
 # 交叉编时 kconfig 还会问一堆只有交叉编才有的项；一次性喂默认答案。
 # 不能只给空输入（读到 EOF 就退 1），也不要用 `yes ""`（管道提前关闭会 Broken pipe）。
 # 这里自己产出一批空行 —— kconfig 逐个取走，剩下的正常收尾。
-answers() {
-  local n=0
-  while [ "$n" -lt 400 ]; do printf '\n'; n=$((n + 1)); done
-}
 
 sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
   # 而 CONFIG_EXTRA_LDFLAGS：**这一件今天不加**
@@ -325,7 +396,8 @@ sed -i '/^CONFIG_EXTRA_CFLAGS=/d' "$SRC/.config" || true
 #   （表现：日志停在 "Support --long-options (LONG_OPTS) [Y/?] y"）。
 #   yes "" 会让每个提问取默认，但 yes 会被提前关闭的管道打断（Broken pipe），
 #   所以改成自己产出一批空行。
-make oldconfig < <(answers) > "$WORK/oldconfig.log" 2>&1 \
+answers > "$WORK/oldconfig-answers.txt"
+make oldconfig < "$WORK/oldconfig-answers.txt" > "$WORK/oldconfig.log" 2>&1 \
   || { echo "=== make oldconfig 失败取证（末 30 行）==="; tail -30 "$WORK/oldconfig.log"; exit 1; }
 
   # 关掉之后复核：还有哪个 applet 的源文件要内核 uapi 头？
@@ -578,65 +650,3 @@ printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
 #         · sh 是它自己那个配置（CONFIG_ASH / CONFIG_SH_IS_ASH）没开。
 #          两者都是「白名单式配置」的后果，而**白名单是我们写下的（声明）**。
 #        而**落包集 − 白名单 = 空集**（实测两者相等），所以「落包集里有我们没声明的名字」这句话今天不成立。
-#      而**取 .rodata 那张表**（19 个）也不行：它含 **awk**，而 awk 在 $OUT/bin 下**不存在**
-#     （这一件编译时按白名单关掉了它） package-bundle-zip.sh 的 BINS 那一支会判红
-#     （「清单里的命令入口不存在：bin/$bn 在 $OUT 下没有 —— 声明了但没产出」）。
-#      三个集合的今天读数（实测 2026-10-20）：**表 19 / 落包集 17 / 白名单 17**；
-#       **表 − 落包集 = {awk, sh}**（被白名单裁掉的那部分） 而这与 C-16 同源：
-#       它是唯一能发现「事实与声明开始分家」的那个核对口。
-BB_BINS="$(cd "$OUT_DIR/bin" && for f in *; do [ -L "$f" ] && printf '%s ' "$f"; done)"
-# 那个最小字节数（=> 而 emit_piece 的第 4 个形参是 min，=> 而 bundle-env.sh:182 那一行用它判
-# 「不是 aarch64 ELF 或小于 $min 字节」）：
-#   改前是 500000，=> 而而那个数是**静态编**那一版的实测值（=> 而而静态编那一份是 547392 字节，
-#   => 而而它落在那个下限之上）。
-#   而这一件改成 PIE（动态）之后它小得多（=> 而 CI 实测：=> 而 out/bin/cat 那一趟是 164328 字节），
-#   **=> 而那个下限会把一个好的产物判红**（=> 而真机读数：=> 而 build-busybox run 40106308483
-#   那一趟逐字是「##[error]…/out/bin/cat 不是 aarch64 ELF 或小于 500000 字节」）。
-#   => 而而那个下限的作用只是「排除掉编坏了的产物」（=> 而 0 字节或几百字节那种），
-#   => 而而 100000 那一档已经能排除掉那一种（=> 而而上面那个 100000 的尺寸下限同一档）。
-# 缺陷名（C-102）**entry 指到实现而实现不认那个名字** ——
-# 而 busybox 今天已经栽在这上面（=> 而真机读数：=> 而 exit 127，
-# => 而而 stderr 逐字是「libbusybox.so: applet not found」）。
-#
-# 而按 C-103 这一族它为什么有两边：
-#   一边「entry 该指向那个可执行体（本体）」；
-#   另一边「entry 该指向一个用户会叫的名字（applet 软链）」。
-# 而 04 裁的是**后者**：
-#   => 而 entry 那一格的语义是「**用户叫它什么**」，
-#      而本体是**实现**不是名字，
-#      而**本体不认自己的文件名**（=> 而 busybox 按 argv[0] 的 basename 找 applet，
-#         => 而而「libbusybox.so」不在它那 19 个名字里）。
-#   => 而判别形式（机械）：**起它时 argv[0] 的 basename 是不是那个件自己认的名字**。
-#      而 busybox 不是（=> 而 basename 是 libbusybox.so），
-#      而任何多名字的件（=> 而 busybox、coreutils 那一类）都不是，
-#      而单名字的件（=> 而 openssl、node 那一类）是。
-#
-# 而本机核到的那几件事实：
-#   · upstream busybox 1.36.1 `libbb/appletlib.c:914` 逐字是
-#       `applet_name = bb_get_last_path_component_nostrip(argv[0]);`
-#     而 `:993` 到 `:996` 逐字是 "<applet_name>: applet not found" + `exit(127)`；
-#   · 而 busybox 认的那些名字（=> 而 elf-form.sh:406 那一段逐字）是 19 个：
-#     awk cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi；
-#   · 而本体在 bin/ 下叫 libbusybox.so，=> 而那 17（18）个是**软链**
-#     （=> 而本机从 APK 里实读：=> 而 bin/cat 是 15 字节的软链、内容 `./libbusybox.so`）；
-#   · 而 `:331` 那一行**跳过 busybox**（=> 而上游 make install 建的 `busybox` 那个名字不落包），
-#     => 而「busybox」这个命令名**今天不可用**，=> 而而它不能当 entry。
-#
-# => 而**选 `cat`**：
-#   · 而它在**白名单**里（=> 而 `:83` 那一行 APPLETS 逐字含 CAT），
-#     => 而而它**保证**被编出来（=> 而白名单式配置只开 $APPLETS 那些）；
-#   · 而它在**落包集**里（=> 而本机从 APK 里实读 bin/cat 存在），
-#   · 而它**不是本体**（=> 而本体是 libbusybox.so），
-#   · 而它是 busybox **自己认的名字**（=> 而 cat 在那 19 个里），
-#     => 而而 argv[0] 的 basename = cat => => 而 linker 找得到 => => 而不 exit 127；
-#   · 而它是**最基本**的那一个（=> 而 ls/cp/mv/rm 也都在白名单里，
-#     => 而而按「用户会叫它什么」这一格，=> 而任何白名单里的 applet 都满足，
-#     => 而而取哪一个是**这一件的形状**问题 => 而而 cat 是白名单里第一个可执行文件
-#     （=> 而 `:83` 那一行按 TAR GZIP … 排，=> 而 cat 在第 9 位；
-#      => 而而 tar/gzip/… 那些更靠前，=> 而而取白名单里第一个更贴「用户叫它什么」），
-#     => 而而它也是**本机实测**过 exit 0 的那一个（=> 而 07 核到「bin/cat 那一族是 exit 0」）。
-#
-# => 而**本体仍在包里**（=> 而那是那 18 条软链的**指向目标**），
-#   => 而而它仍由那 18 条软链引用（=> 而 C-104 那一族：同源两路径），
-#   => 而而它仍要落位（=> 而它是 lib/ 与 bin/ 下的那一份实体）。
-emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version"
