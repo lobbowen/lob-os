@@ -65,28 +65,53 @@ else
   note "静态判定：跳过（=> 而那 readelf 不在，=> 而按 C-105 报缺）"
 fi
 
-#  => 而那**设备树** 逐字**要**那**机型**自己的**那一份**（=> 而而那**它**逐字**不**在**那 GKI **那一族**里面**）。
+#  => 而那**设备树** 逐字**只**挡**那**起得来**那一件**、=> 而而那 **Image** **逐字不等**它。
+#     => 而那**它**们逐字**是**那**两**件**事**（=> 而那**设备树**是**那**载体**要**的**、
+#        => 而而那 **Image** 逐字**是**那**内核本体**、=> 而而那**处置**逐字**不合并**）。
+#     => 而而那**处置**：=> 而那**设备树**逐字**从**这**一支**移走**（=> 而它逐字**归**那**起得来**那一件**），
+#        => 而而这**一支**逐字**只**产**那**内核本体**。
+#  => 而那**起得来**那一件逐字**要**那**设备树**（=> 而那 **DTS** **环境变量**逐字**给**它**），
+#     => 而那**它**逐字**是**那**模拟器**那一族**的**事**（=> 而而那**它**逐字**不**在**这**一支**里**）。
 DTS="${DTS:-}"
-if [ -z "$DTS" ]; then
-  die "缺设备树" "那设备树逐字要那机型自己的那一份、=> 而那它逐字不在那 GKI 那一族里面、=> 而按 C-105 报缺（=> 而那 DTB 逐字要那外部给的）"
+if [ -n "$DTS" ]; then
+  [ -f "$DTS" ] || die "缺设备树" "$DTS 不在"
+  cp "$DTS" "$OUT/"
+  note "设备树（附带）：$(basename "$DTS")"
+else
+  note "设备树：逐字**不在**这**一支**（=> 而那 **Image** 逐字不等**它**、=> 而那**起得来**那一件逐字**要**它**）"
 fi
-[ -f "$DTS" ] || die "缺设备树" "$DTS 不在"
-cp "$DTS" "$OUT/"
-note "设备树：$(basename "$DTS")"
 
 #  => 而那**内核镜像** 逐字**要**那 **Image** **那一件**（=> 而而它**要**那 aarch64 **交叉编译器**）。
-CC="${CC:-}"
-if [ -z "$CC" ]; then
-  die "缺交叉编译器" "那内核镜像逐字要那 aarch64 交叉编译器（=> 而那 NDK 逐字在仓外、=> 而按 C-105 报缺）"
-fi
-[ -x "$CC" ] || die "缺交叉编译器" "$CC 不可执行"
-
+#  => 而那 **CROSS_COMPILE** **前缀** 逐字**要**那 **gcc** / **ld** / **ar** / **nm** / **objcopy** **那几**个**名字**
+#     （=> 而那内核 **Makefile** 逐字 = 「CC = $(CROSS_COMPILE)gcc」、=> 而那 LD = $(CROSS_COMPILE)ld、
+#       => 而那 AR = $(CROSS_COMPILE)ar、=> 而那 NM = $(CROSS_COMPILE)nm、=> 而那 OBJCOPY = $(CROSS_COMPILE)objcopy）。
+#     => 而那 NDK **那一族** 逐字**只**有**那 clang** 与**那 **llvm-*** **那几**个**（=> 而那**它**们**逐字是**那**两**件**事**、
+#        => 而而那**处置**逐字**不合并**）。
+#     => 而而那**处置**：=> 而那**前缀**逐字**在**那**仓外**那**一处**建**出来**（=> 而那**它**们逐字**是**那**软链**）、
+#        => 而而那 **HOSTCC** 逐字**要**那**宿主**的**编译器**（=> 而那**它**逐字**不是**那 NDK **那一族**、
+#        => 而而那**它**们**逐字是**那**两**件**事**）。
+CROSS="${CROSS:-aarch64-linux-android-}"
+CROSS_BIN="${CROSS_BIN:-$(dirname "$CC")}"
+HOSTCC="${HOSTCC:-gcc}"
+note "CROSS_COMPILE 前缀：$CROSS（工具在 $CROSS_BIN）　HOSTCC：$HOSTCC"
 KBUILD="$OUT/kbuild"
 rm -rf "$KBUILD"
 mkdir -p "$KBUILD"
 note "编内核（$JOBS 作业）"
-make -C "$KERNEL_SRC" O="$KBUILD" ARCH=arm64 CROSS_COMPILE="$(dirname "$CC")/aarch64-linux-android-" \
-  gki_defconfig \
+#     => 而那**它**比那上游那一份逐字**多**那 **CONFIG_ANDROID_WRAPFD=y** **那一行**、
+#     => 而而那**两者**逐字**是**那**两**件**事**、=> 而而那**处置**逐字**不合并**）。
+#  => 而那 **DEFCONFIG** **环境变量** 逐字**给**那**哪**一份**（=> 而而那**默认**逐字**是**那仓内那一份**）。
+DEFCONFIG="${DEFCONFIG:-$ROOT/docs/kernel-baseline/gki_defconfig}"
+[ -f "$DEFCONFIG" ] || die "缺 defconfig" "$DEFCONFIG 不在（=> 而按 C-105 报缺）"
+note "defconfig：$DEFCONFIG（$(stat -c%s "$DEFCONFIG") 字节、sha256 $(sha256sum "$DEFCONFIG" | cut -c1-16)）"
+make -C "$KERNEL_SRC" O="$KBUILD" ARCH=arm64 CROSS_COMPILE="$CROSS_BIN/$CROSS" HOSTCC="$HOSTCC" \
+  olddefconfig \
+  > "$OUT/kbuild-config.log" 2>&1 \
+  || { echo "=== 配置失败取证（末 40 行）==="; tail -40 "$OUT/kbuild-config.log"; exit 1; }
+
+note "编内核（$JOBS 作业）—— 这一步在 CI 上要几十分钟到数小时"
+make -C "$KERNEL_SRC" O="$KBUILD" ARCH=arm64 CROSS_COMPILE="$CROSS_BIN/$CROSS" HOSTCC="$HOSTCC" \
+  -j"$JOBS" Image \
   > "$OUT/kbuild.log" 2>&1 \
   || { echo "=== 内核编译失败取证（末 40 行）==="; tail -40 "$OUT/kbuild.log"; exit 1; }
 
