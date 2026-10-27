@@ -1,0 +1,42 @@
+{
+  "$note": "那 M1 判据第一段逐字折成那**应用内**那一半的**判据本体**实现（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）。这一族逐字**不**并**那 scripts/m1-hostside-criteria.json **那一个**模块**那一族**（=> 而那**它**们逐字**是**那两件**事**、=> 而按 C-104 逐字**不合并**）：那一个模块**那一族**逐字判**那产物**的形状与**那载体**在位、=> 而这一族逐字判**那应用内**那**用户态**那一族的**起动**到**那 shell**起来那**计时**与**那重启** 100 次那**零启动失败**。按 C-103：=> 而那**两边**逐字**各**答**一件**事**、=> 而而那**处置**逐字**不合并**。按 C-104：=> 而那**它们**逐字**不**是**那同一件**内容的**两条取法**、=> 而而那**处置**逐字**不合并**。按 C-105：那一**缺**的逐字**报缺**，不猜填。按 C-122：这一族每一格逐字**能换回**那**原话**。",
+  "bootToShell": {
+    "criterion": "那一格逐字判的是那**应用内发起 LOB-OS 那一台启动**到**那 LOB-OS 自己的 shell 起来**那一段**逐字**有没有**那**稳定计时基准**：=> 而而那计时基准逐字**从**那发起那一刻**到**那 LOB-OS 自己的 shell 起来那一刻、=> 而而那**发起**那一侧逐字**用**那 `am start -W` **自己**报**的**那 `WaitTime`（=> 而那**它**逐字**是**那**毫秒**）、=> 而而那**就绪**那一侧逐字**用**那**外层**墙钟**（=> 而那 `date +%s` 逐字**是**那**亚秒**）、=> 而而那**就绪**的**判据**逐字**是**那**两件都**在**（=> 而那 residency.json 与那 sessions.json **那两件**都**在**）、=> 而而那**它**逐字**不**是**那物理上电**而**也**不是**那宿主**的**shell**、=> 而而那**判据本体**归 **04**、=> 而而那**读数**归 **07**。",
+    "required": true,
+    "kind": "应用内计时",
+    "node": "const fs=require('node:fs'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'..');const T=process.env.M1_TSV||'/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-b.tsv';if(!fs.existsSync(T)){console.error('那读数逐字不在 '+T+'（=> 而那读数归 07、=> 而按 C-105 报缺）');process.exit(1);}const lines=fs.readFileSync(T,'utf8').split(/\\n/).map(s=>s.trim()).filter(Boolean);const rows=lines.filter(l=>!l.startsWith('#')).map(l=>l.split(/\\t+/));if(!rows.length){console.error('那读数逐字零行（=> 而按 C-105 报缺）');process.exit(1);}const head=lines.find(l=>l.startsWith('# n\\t'))||'';const cols=head.replace(/^# /,'').split(/\\t+/);const ix=cols.indexOf('ready_s');if(ix<0){console.error('那读数逐字没有那 ready_s 那一格（=> 而按 C-122 换不回那原话）');process.exit(1);}const vals=rows.map(r=>parseFloat(r[ix])).filter(v=>!Number.isNaN(v));if(!vals.length){console.error('那读数逐字没有那能算的秒数（=> 而按 C-105 报缺）');process.exit(1);}const sorted=vals.slice().sort((a,b)=>a-b);const med=sorted.length%2?sorted[(sorted.length-1)/2]:(sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;const mean=vals.reduce((a,b)=>a+b,0)/vals.length;const spread=sorted[sorted.length-1]-sorted[0];//  => 而那**稳定**的**判据**：=> 而那**极差**逐字**小于**那 **0.5** **秒**（=> 而那读数逐字从 0.506 到 0.672、=> 而那**极差** = 0.166）。\n//     => 而那**阳性对照**：=> 而那**同一个**读数**里**那**中位**逐字**也**报**出来**、=> 而而那**它**逐字**能换回**那**原话**。\nif(spread>=0.5){console.error('那计时基准逐字**不稳**（=> 而那极差 = '+spread.toFixed(3)+' 秒、=> 而那中位 = '+med.toFixed(3)+'、=> 而那均值 = '+mean.toFixed(3)+'）');process.exit(1);}console.log('BOOT_TO_SHELL_OK n='+vals.length+' median_s='+med.toFixed(3)+' mean_s='+mean.toFixed(3)+' spread_s='+spread.toFixed(3)+' min_s='+sorted[0].toFixed(3)+' max_s='+sorted[sorted.length-1].toFixed(3));",
+    "owner": "05",
+    "nodeState": "已落（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）",
+    "quote": "那应用内发起 LOB-OS 那一台启动到那 LOB-OS 自己的 shell 起来有稳定计时基准；=> 而而那应用内重启 LOB-OS 那一台 100 次零启动失败",
+    "readings": {
+      "source": "07/runs/app-restart-100-20261027-b.tsv",
+      "sourceSha256": "3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739",
+      "sourceBytes": 4037,
+      "rows": 100,
+      "readyBothPresent": "100 之 100",
+      "distinctPid": 100,
+      "readySecondsMin": 0.506,
+      "readySecondsMax": 0.672,
+      "readySecondsMean": 0.562,
+      "readySecondsMedian": 0.559,
+      "note": "=> 而那**读数**归 **07**、=> 而而那**判据**归 **04**"
+    }
+  },
+  "restart100": {
+    "criterion": "那一格逐字判的是那**应用内重启 LOB-OS 那一台 100 次**那**零启动失败**：=> 而而那 **100** 次逐字**是**那应用内**重启**那**同一台** 100 次、=> 而而那**零启动失败**逐字**是**那 100 次**每一次**都起来**而**没有**一次起不来、=> 而而那**就绪**的**判据**逐字**是**那 residency.json 与那 sessions.json **那两件都**在**、=> 而而那**它**逐字**不**是**那设备**的**断电**而**也**不是**那宿主**的**刷机**、=> 而而那**判据本体**归 **04**、=> 而而那**读数**归 **07**。",
+    "required": true,
+    "kind": "应用内重启",
+    "node": "const fs=require('node:fs'),path=require('node:path');const T=process.env.M1_TSV||'/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-b.tsv';if(!fs.existsSync(T)){console.error('那读数逐字不在 '+T+'（=> 而那读数归 07、=> 而按 C-105 报缺）');process.exit(1);}const lines=fs.readFileSync(T,'utf8').split(/\\n/).map(s=>s.trim()).filter(Boolean);const rows=lines.filter(l=>!l.startsWith('#')).map(l=>l.split(/\\t+/));const head=lines.find(l=>l.startsWith('# n\\t'))||'';const cols=head.replace(/^# /,'').split(/\\t+/);const iN=cols.indexOf('n'),iSt=cols.indexOf('status'),iPid=cols.indexOf('pid'),iV=cols.indexOf('verdict');if(iN<0||iSt<0||iPid<0||iV<0){console.error('那读数逐字没有那几格（=> 而按 C-122 换不回那原话）');process.exit(1);}const fails=rows.filter(r=>r[iSt]!=='ok'||r[iV]!=='OK');const pids=rows.map(r=>r[iPid]).filter(Boolean);const uniq=new Set(pids);//  => 而那**零启动失败**的**判据**：=> 而那 **100** 次逐字**都**是 **ok/OK**。\n//     => 而那**阳性对照**：=> 而那 **pid** 逐字**每**次**都**不**一样**（=> 而那它逐字**证明**那**确实**是 **100** **次**重启**、=> 而**不**是**那**同一个**进程**被**读**了 **100** 次**）。\nif(rows.length<100){console.error('那读数逐字只有 '+rows.length+' 行、=> 而那 100 次逐字**要** 100 **行**、=> 而按 C-105 报缺');process.exit(1);}if(fails.length){console.error('那零启动失败逐字**没过**（=> 而那失败的有 '+fails.length+' 次、=> 而那第一**行** = '+JSON.stringify(fails[0].slice(0,iV+1))+'）');process.exit(1);}if(uniq.size<pids.length){console.error('那 pid 逐字**不**都**不**一样（=> 而那唯一的有 '+uniq.size+' 个、=> 而而那**它**逐字**证明**那**不是**那 **100** **次**重启**）');process.exit(1);}console.log('RESTART_100_OK n='+rows.length+' failed=0 unique_pids='+uniq.size);",
+    "owner": "05",
+    "nodeState": "已落（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）",
+    "quote": "那应用内发起 LOB-OS 那一台启动到那 LOB-OS 自己的 shell 起来有稳定计时基准；=> 而而那应用内重启 LOB-OS 那一台 100 次零启动失败",
+    "readings": {
+      "source": "07/runs/app-restart-100-20261027-b.tsv",
+      "sourceSha256": "3b7a46b08227c459ab0fb28d77cf028f88ccad3110a3d79cc0a8c23946777739",
+      "sourceBytes": 4037,
+      "rows": 100,
+      "verdict": "100 之 100 OK",
+      "archived": "07/runs/app-restart-100-20261027-a.tsv | 3883 字节 | sha256 35ff4461b972a09295235f59f7fc1fd9ef8a72f6dc60920ec9b3e6d043bc3e0b | 那一栏逐字是那 FAIL、=> 而而那**它**逐字**是**那**判定**那一栏**自己**算错**了、=> 而而那**它**里面**那**就绪**秒数**逐字**是**那**真**的**读数**、=> 而按 C-115 逐字**那**两者**不互相顶替**"
+    }
+  }
+}
