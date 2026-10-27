@@ -96,13 +96,45 @@ mkdir -p "$OUT/system"
 
 #  => 而那**系统层**逐字**是**那 squashfs 归档**（=> 而而那**它**逐字**只读**、=> 而而那**它**逐字**在**那磁盘上**）。
 #     => 而而那**它**逐字**是**那内核**注册**的**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**、=> 而按 C-104 逐字**不合并**）。
+#  缺陷名（C-102）**那 rootfs **那一件**逐字**只**装**那 busybox **那一套**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 SRC 逐字**是**那 initramfs-root **那一族**、=> 而而那**它**逐字**只有**那 bin **与**那 init **那两**件、
+#      => 而而那 **M3** **那二十件**逐字**要**按**裸名调起**、=> 而而那**它们**逐字**要**那 usr/bin **那一层**。
+#    => 而而那**后果**逐字 = 而那 M3 **那计数**逐字**只**有**那 1/20**（=> 而而那**唯一**那**一件**逐字**是**那 busybox**）。
+#    => 而那**处置**：=> 而那 **usr/bin** **那一层**逐字**从**那**件**的**产物**装**（=> 而而那**取件**归 06、
+#      => 而而那**它**们**逐字是**那**两**件**事**：「那**产物**装没装**」与「那**取件**从**哪**来**」）、=> 而而那**处置**逐字**不合并**。
+#    => 而那**入口**：=> 而那 M3_PIECE_STAGE 逐字**给**那**暂存**那一棵**树**（=> 而而那**它**逐字**是**那**外部**给**的**那一个**）。
+#  => 而那 **M3** **那二十件**逐字**装进**那 usr/bin **那一层**（=> 而而那**它们**逐字是**那**两**件**事**：
+#     「那**产物**装没装**」与「那**取件**从**哪**来**」）、=> 而而那**处置**逐字**不合并**。
+#  => 而那 **usr/lib** 那一族逐字**给**那**动态链接**的**那**那些**件**（=> 而而那**它**逐字**是**那**编译期材料**那一族**）。
+M3_STAGE="${M3_PIECE_STAGE:-$ROOT/work/m3-stage}"
+if [ -d "$M3_STAGE" ]; then
+  note "装那 M3 那一族（来源 $M3_STAGE）"
+  mkdir -p "$SRC/usr"
+  if [ -d "$M3_STAGE/usr/bin" ]; then
+    cp -a "$M3_STAGE/usr/bin/." "$SRC/usr/bin/"
+  fi
+
 note "装那系统层（squashfs，用 $MKSQUASHFS）"
 rm -f "$OUT/system/rootfs.squashfs"
 #     => 而那 mksquashfs 的**那一个**用法逐字**是**「那来源 **先**、=> 而而那**落点** **后**」（=> 而而那**它**们**逐字是**那**两**件**事**）。
 "$MKSQUASHFS" "$SRC" "$OUT/system/rootfs.squashfs" -noappend -no-progress >/dev/null 2>&1 || true
 [ -f "$OUT/system/rootfs.squashfs" ] || die "系统层没产出" "$OUT/system/rootfs.squashfs 不在"
 
-#  => 而那**可写层**逐字**是**那**一个**目录**（=> 而而那**它**逐字**不是**一个挂载**点**：
+  if [ -d "$M3_STAGE/usr/lib" ]; then
+    mkdir -p "$SRC/usr/lib"
+    cp -a "$M3_STAGE/usr/lib/." "$SRC/usr/lib/"
+  fi
+  if [ -d "$M3_STAGE/bin" ]; then
+    mkdir -p "$SRC/bin"
+    cp -a "$M3_STAGE/bin/." "$SRC/bin/"
+  fi
+  if [ -d "$M3_STAGE/lib" ]; then
+    mkdir -p "$SRC/lib"
+    cp -a "$M3_STAGE/lib/." "$SRC/lib/"
+  fi
+else
+  note "没有那 M3 暂存（$M3_STAGE）=> 而那 M3 那一族逐字**装不进来**（=> 而按 C-105 报缺）"
+fi
 #     => 而那**设备上**逐字**没有**那 **CAP_SYS_ADMIN**、=> 而而那 **mount** 逐字**成不了**）。
 note "建那可写层（工作区目录）"
 mkdir -p "$OUT/workdir"
