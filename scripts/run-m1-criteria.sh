@@ -18,7 +18,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
 DIR="${1:-$ROOT/work/kernel-image}"
-TSV="${2:-/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-b.tsv}"
+TSV="${2:-/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-e.tsv}"
 OUT="${M1_OUT:-$ROOT/work/m1-readings.json}"
 
 command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上逐字**没有**那个 node（=> 而那判据逐字**要**它**才**跑得动）"; exit 2; }
