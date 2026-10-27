@@ -325,6 +325,16 @@ jobs:
             VARIANT=debug
           fi
           echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
+          #  缺陷名（C-102）**那 variant 逐字**只**在**那 gradle **那一句**的**后**面**写**、
+          #    => 而而那 gradle **那一句**逐字**红**了**就**走**不到**那**一行**、
+          #    => 而而那 **outputs.variant** 逐字**是**那**空**的、
+          #    => 而而那 step 21 与那 step 25 与那 step 28 逐字**就**拿到**那**空段**
+          #      （=> 而那路径逐字 = 「container/app/build/outputs/apk//*.apk」）、
+          #    => 而而那**症状**逐字**是**那「No files were found with the provided path」。
+          #  => 而那**处置**：=> 而那 variant 逐字**先**写**出去**（=> 而它逐字**不依赖**那 gradle **的**成败**）、
+          #    => 而而那 gradle **那一句**逐字**还**写**一遍**（=> 而那**它**逐字**一样**、=> 而而那**它**逐字**不**是**第二条路**）。
+          #  => 而按 C-102：=> 而它治**的**是「那**变量**逐字**没带上**」那一层、=> 而而那**根因**逐字**是**那 gradle **那一句**红**了**。
+          echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
 
           # ★ 清掉上一次构建残留的 packaged_res ——
           #   Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
