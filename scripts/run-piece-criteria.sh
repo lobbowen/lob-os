@@ -254,7 +254,7 @@ def run_criterion(code, criterion_env=None):
     #     => 而那**目标前缀**与那 PATH 与那 LD_LIBRARY_PATH 逐字**指**那**我们自己**那台**那产物自己带的**那一层**。
     if self_mode:
         self_inner = ('mkdir -p ' + self_tmp + ' && echo ' + b64 + ' | base64 -d > ' + self_tmp + '/probe.js && '
-                       'export TMPDIR=' + self_tmp + '; export LD_LIBRARY_PATH=' + self_lib + '; export PATH=' + self_prefix + ':' + host_node_dir + ':' + os.environ.get('PATH','') + '; '
+                       'export TMPDIR=' + self_tmp + '; export LOBOS_LIB_PREFIX=' + self_lib + '; export LD_LIBRARY_PATH=' + self_lib + '; export PATH=' + self_prefix + ':' + host_node_dir + ':' + os.environ.get('PATH','') + '; '
                        'node ' + self_tmp + '/probe.js 2>&1; echo "__LOBOS_RC__$?"; rm -f ' + self_tmp + '/probe.js')
         rr = subprocess.run(['/bin/sh', '-c', self_inner], capture_output=True, text=True, timeout=int(timeout) + 180, cwd=self_tmp)
     else:

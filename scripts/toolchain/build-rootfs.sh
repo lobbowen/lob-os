@@ -111,9 +111,27 @@ if [ -d "$M3_STAGE" ]; then
   note "装那 M3 那一族（来源 $M3_STAGE）"
   mkdir -p "$SRC/usr"
   if [ -d "$M3_STAGE/usr/bin" ]; then
+    mkdir -p "$SRC/usr/bin"
     cp -a "$M3_STAGE/usr/bin/." "$SRC/usr/bin/"
+    #  缺陷名（C-102）**那 M3 那一族**逐字**带着**那宿主**那**绝对路径**的**软链**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#      => 而那**成因**：=> 而那 llvm **那一件**逐字**是**那 dist/bin **那一族**的**软链**、=> 而而那**它**逐字**指**到
+#        那宿主上**那一个**绝对路径**、=> 而而那**它**逐字**在**那**归档**里面**指不到**。
+#      => 而而那**后果**逐字 = 而那 llvm **那一格**在**那新 rootfs** 里**起不来**。
+#      => 而那**处置**：=> 而那**软链**逐字**改**成**那相对**的**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#        「那**产物**是**什么**」与「那**路径**是**什么**」）、=> 而而那**处置**逐字**不合并**。
+    for _sl in "$SRC/usr/bin/"*; do
+      [ -L "$_sl" ] || continue
+      _tg="$(readlink "$_sl")"
+      case "$_tg" in
+        /*)
+          if [ -e "$_tg" ]; then
+            _rel="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$_tg" "$SRC/usr/bin")"
+            ln -sf "$_rel" "$_sl"
+          fi
+          ;;
+      esac
+    done
   fi
-
 note "装那系统层（squashfs，用 $MKSQUASHFS）"
 rm -f "$OUT/system/rootfs.squashfs"
 #     => 而那 mksquashfs 的**那一个**用法逐字**是**「那来源 **先**、=> 而而那**落点** **后**」（=> 而而那**它**们**逐字是**那**两**件**事**）。
