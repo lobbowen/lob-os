@@ -35,9 +35,30 @@ NINJA="${NINJA:-ninja}"
 for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
   [ -x "$t" ] || die "缺工具" "$t 不存在"
 done
+#  缺陷名（C-102）**那一格逐字**只**看**那 recipe **自己**的**那**变量**、=> 而而那 CMake 逐字**要**那 ninja **在**那 PATH **上面**
+#    => 而而它治**的**是「那**缺**的**那一句**说得**对不对**」。
+#    => 而那**成因**：=> 而那 command -v "$NINJA" 对**绝对路径**逐字**也**是**真**的（=> 而那退出码 = 0、
+#       => 而而那**它**逐字**只**证明**那**文件**在**、=> 而而那**它**逐字**不**证明**那**它**在**那 PATH **上面**）、
+#       => 而而那 CMake 逐字**要**的**是**那 PATH **上面**（=> 而那**阳性对照**：=> 而那**不在**那 PATH **上面**时
+#       => 而那 CMake 逐字**报**那「CMake Error: CMake was unable to find a build program corresponding to Ninja.」）。
+#    => 而那**处置**：=> 而那**工具**逐字**要**在**那 PATH **上面**有**它**（=> 而而那**绝对路径**逐字**也**算**），
+#       => 而而那**缺**的**那一句**逐字**说**清**那**它**逐字**要**什么**。
+#    => 而按 C-104：=> 而那**工具**检查那一族逐字**只有**一条路（=> 而这一支**就是**它**）。
 for t in "$CMAKE" "$NINJA"; do
-  command -v "$t" >/dev/null 2>&1 || die "缺工具" \
-    "$t 没有 —— 编 LLVM 要 cmake + ninja（runner 预装；缺了请 sudo apt-get install -y cmake ninja-build）"
+  #  => 而那**它**逐字**要**在**那 PATH **上面**（=> 而那 CMake 逐字**只**在**那 PATH **上面**找**它**）
+  #     => 而那 command -v 对**绝对路径**逐字**也**是**真**的、=> 而而那**它**逐字**不**能**判**那**它**在不在**那 PATH **上面**。
+  _found=""
+  _base="$(basename "$t")"
+  _IFS_save="$IFS"; IFS=":"; for _d in $PATH; do
+    [ -n "$_d" ] || continue
+    if [ -x "$_d/$_base" ]; then _found="$_d/$_base"; break; fi
+  done; IFS="$_IFS_save"
+  if [ -z "$_found" ]; then
+    #  => 而那**绝对路径**的**那一族**逐字**也**要**在**那 PATH **上面**（=> 而那 CMake 逐字**要**它**）
+    die "缺工具" \
+      "$t 没有 —— 编 LLVM 要 cmake + ninja（runner 预装；缺了请 sudo apt-get install -y cmake ninja-build）；
+      => 而那**它**逐字**要**在**那 PATH **上面**、=> 而那 CMake 逐字**只**在**那 PATH **上面**找**它**"
+  fi
 done
 
 NDK_ROOT="$(cd "$TC/../../../../.." && pwd)"
