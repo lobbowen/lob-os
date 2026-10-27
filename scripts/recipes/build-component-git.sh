@@ -118,15 +118,19 @@ echo "[git] 依赖三件就位：zlib / openssl / curl"
 #    => 而而那**后果**逐字 = 而那 git **那一格**逐字**报**那「library libz.so.1 not found」、
 #      => 而而那**它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
 #    => 而那**处置**：=> 而那**链接**那一行逐字**带上**那 RUNPATH（=> 而而那 LDFLAGS_APPEND 逐字**流进**那 ALL_LDFLAGS）。
+#    => 而那**那一个**逐字**单独**给**那 make **那一条**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**变量**是**什么**」与「那**引用**是**什么**」）。
+#      => 而而那**成因**：=> 而那 make 那一行逐字**不**带**引号**、=> 而而那**它**逐字**把**那**带空格**的**值**逐字**拆开**了**。
+#      => 而而那**后果**逐字 = 而那 **-Wl,-rpath,…** 逐字**变成**那 make 的**一个**目标**、=> 而而那**它**逐字**不**进**那 ALL_LDFLAGS**、
+#        => 而而那**证据**逐字 = 而那 CI **那一趟**编出来**那一个** git 逐字**零个** RUNPATH**。
 GIT_RPATH='-Wl,--enable-new-dtags -Wl,-rpath,$ORIGIN/../lib'
-MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX LDFLAGS_APPEND="$GIT_RPATH" uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
+MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
-if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then
+if ! make -j2 $MAKE_ARGS LDFLAGS_APPEND="$GIT_RPATH" CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then
   echo "::error title=make 失败::见上"
   exit 1
 fi
 echo "[git] make install"
-if ! make $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" install; then
+if ! make $MAKE_ARGS LDFLAGS_APPEND="$GIT_RPATH" CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" install; then
   echo "::error title=install 失败::见上"
   exit 1
 fi
