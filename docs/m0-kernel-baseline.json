@@ -4149,12 +4149,12 @@
       "title": "那 KMI 符号清单本体",
       "isKernelData": true,
       "status": "已核",
-      "note": "=> 而那**它**逐字**是**那 KMI **符号清单本体**（=> 而那 kmi.html 与那 lkm.html **只**是那**网页**）、=> 而而那**它**逐字**是**那**完整**的**一份**（=> 而**不**是**那 4227072** 字节**那**截断**的一份**）",
+      "note": "=> 而那**它**逐字**是**那 KMI **符号清单本体**（=> 而那 kmi.html 与那 lkm.html **只**是那**网页**）、=> 而而那**它**逐字**是**那**完整**的**一份**（=> 而**不**是**那 4227072** 字节**那**截断**的一份**） => 而那 lines 与那 bytes 逐字**改成**那**现行**的那一份那**两**个**数**（=> 而那 457887 与那 8024104）、=> 而而那**旧**的那一份逐字**留档**在**那** replacedFrom **那一族**里（=> 而那 555592 与那 9789395、=> 而按 C-115）、=> 而而那**校验脚本**逐字**只核**那 sha256（=> 而那 lines 与那 bytes **那两**格逐字**不**在**那判据**里面、=> 而那**实施**归 **05**、=> 而按 C-105 报缺）",
       "path": "docs/kernel-baseline/upstream/abi_gki_aarch64.stg",
       "sha256": "481104a10434fba05ce5dca36aa22c2ddb3639c059d94e146c9a53ec9f84132b",
-      "lines": 555592,
-      "bytes": 9789395,
-      "source": "https://android.googlesource.com/kernel/common/+/refs/heads/android16-6.12/gki/aarch64/abi.stg?format=TEXT",
+      "lines": 457887,
+      "bytes": 8024104,
+      "source": "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/android/abi_gki_aarch64.stg?format=TEXT",
       "fetchMethod": "curl -sL --http1.1 --max-time 380 --retry 2 --retry-delay 3（=> 而而那 --http1.1 **那一个**参数**要**带**、=> 而而**不**带**就**那 curl **退出码 35**）",
       "replacedFrom": {
         "sha256": "a5bb07726682383798f24afd129e6f67834e8f74855bd2bc38128dd16cb4f2e2",
@@ -4163,7 +4163,8 @@
         "source": "https://android.googlesource.com/kernel/common/+/refs/heads/android16-6.12/gki/aarch64/abi.stg?format=TEXT",
         "archivedAs": "docs/kernel-baseline/upstream/abi_gki_aarch64.android16-6.12.stg",
         "note": "=> 而那**旧**的**那一份**逐字**是**那 **android16-6.12** 那一版、=> 而而那**它**逐字**留档不删**（=> 而按 C-115）。"
-      }
+      },
+      "countedFrom": "docs/kernel-baseline/upstream/abi_gki_aarch64.stg"
     }
   ],
   "upstream": {

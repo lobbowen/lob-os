@@ -1,0 +1,24 @@
+{
+  "$note": "那 M0 那一族逐字折成那**判据本体**实现（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）。这一族逐字判**那启动链**（=> 而那启动链逐字就是「那内核在那目标上起得来」那一个形状），=> 而而那**计时基准**与**那零启动失败**逐字**不在**那一格里（=> 而那两件**是**那 M1 判据本体**那用户态**那一族的**事**）。按 C-103：=> 而那**两边**逐字**各**答**一件**事**、=> 而而那**处置**逐字**不合并**。按 C-104：=> 而这一族与那 M1 判据本体**那两件**逐字**不是**那同一条内容的两条取法、=> 而而那**处置**逐字**不合并**。按 C-105：那一**缺**的逐字**报缺**，不猜填。按 C-97：=> 而那判据本体归 04、=> 而那产物与那编归 05、=> 而那读数归 07、=> 而那归属与那裁定归 01。",
+  "bootChain": {
+    "criterion": "那一格逐字判的是**那启动链**逐字**起得来**那一个形状：=> 而那内核镜像与那 initramfs 那一层与那 /init 那一层逐字**都在**、=> 而而那 **/init** 逐字**以 PID 1** 起来**并**接管、=> 而而那**它**逐字**不**判**那**上电**到**那 shell**起来**那**计时基准**（=> 而那**计时基准**与**那零启动失败**逐字**是**那 M1 判据本体**那用户态**那一族的**事**）、=> 而而那**目标机型**与那 **UART** 逐字**是**那宿主绑定项**那一族**、=> 而而那**判据本体**归 **04**、=> 而而那**产物**与那**编**归 **05**、=> 而而那**读数**归 **07**。",
+    "required": true,
+    "kind": "启动链形状",
+    "node": "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'..');const DIR=process.env.M0_IMAGE_DIR||path.join(ROOT,'work/kernel-image');//  => 而那**启动链**那一族逐字**要**那**三件**（=> 而那内核镜像、=> 而那 initramfs 那一层、=> 而那 /init 那一层）。\nconst need=[['Image','那内核镜像'],['initramfs.cpio','那 initramfs 那一层']];const miss=need.filter(([n])=>!fs.existsSync(path.join(DIR,n)));if(miss.length){console.error('那启动链逐字缺 '+miss.map(m=>m[1]).join('、')+'（=> 而按 C-105 报缺）');process.exit(1);}//  => 而那**归档**逐字**要**是那 newc **那一族**（=> 而那头逐字 = 070701、=> 而那末尾逐字 = TRAILER!!!）。\nconst buf=fs.readFileSync(path.join(DIR,'initramfs.cpio'));if(buf.subarray(0,6).toString('latin1')!=='070701'){console.error('那 initramfs 那一层逐字**不是**那 newc 那一族（=> 而那内核逐字只收那 newc）');process.exit(1);}if(buf.indexOf(Buffer.from('TRAILER!!!','latin1'))<0){console.error('那 initramfs 那一层逐字**没有**那 TRAILER!!! 末尾（=> 而那 newc 那一族逐字要它）');process.exit(1);}//  => 而那**/init** 逐字**要**在**那归档**的**根**、=> 而而那**它**逐字**要**以 PID 1**起来**并**接管**。\nconst r=cp.spawnSync('cpio',['-itv'],{input:buf,encoding:'utf8',timeout:60000});if(r.status!==0){console.error('那归档逐字读不出来：'+String(r.stderr||'').trim());process.exit(1);}const lines=String(r.stdout||'').split(/\\n/).map(s=>s.trim()).filter(Boolean);const initLine=lines.find(s=>/^-rwxr-xr-x/.test(s)&&/\\sinit$/.test(s));if(!initLine){console.error('那归档的根逐字没有那可执行的 /init（=> 而那 /init 那一层逐字要以 PID 1 起来并接管）');process.exit(1);}//  => 而那**钉值**逐字**要**跟**那内核**那**两个**数**一致**（=> 而那 tree 与那 commit）。\nconst meta=path.join(DIR,'kernel-image-meta.json');if(!fs.existsSync(meta)){console.error('那钉值逐字不在 '+meta+'（=> 而那 tree 与那 commit 那两个数逐字带在那产物里面、=> 而按 C-105 报缺）');process.exit(1);}const m=JSON.parse(fs.readFileSync(meta,'utf8'));for(const k of ['tree','commit','version']) if(!m[k]){console.error('那钉值逐字缺 '+k+'（=> 而按 C-105 报缺）');process.exit(1);}//  => 而那**阳性对照**：=> 而那**它**们**逐字**都**在**、=> 而而那**它**们**逐字**能**换回**去**。\nconsole.log('BOOT_CHAIN_OK image_bytes='+fs.statSync(path.join(DIR,'Image')).size+' cpio_bytes='+buf.length+' init='+initLine.split(/\\s+/).slice(-2).join(' ')+' tree='+m.tree+' commit='+m.commit+' version='+m.version);",
+    "owner": "05",
+    "nodeState": "已落（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）",
+    "quote": "内核能在目标机型启动到 UART 有输出；kmi.html/lkm.html 由官方流程产出=> 而按 C-92 删掉那「目标机型」与那「UART」那两个词之后还剩「那内核能起得来」",
+    "excludedFromThisCriterion": [
+      "那计时基准",
+      "那零启动失败",
+      "那目标机型",
+      "那 UART"
+    ],
+    "hostBound": [
+      "那 kmi.html",
+      "那 lkm.html",
+      "那目标机型",
+      "那 UART"
+    ]
+  }
+}
