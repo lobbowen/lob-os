@@ -189,7 +189,9 @@ if [ "${#URLS[@]}" -gt 1 ]; then
       _ok=0
       for _try in 1 2 3 4 5; do
         if curl -fsSL --http1.1 --max-time 900 "$u" -o "$_raw" 2>/dev/null; then
-          if base64 -d < "$_raw" > "$_out" 2>/dev/null; then _ok=1; break; fi
+          #  => 而那**空**的逐字**是**那**上游**偶尔**给**的**那一种**（=> 而那 06 那边逐字**核**的**是**那 e3b0c442、=> 而那**它**逐字**是**那**空文件**那 sha）、
+          #     => 而那**它**逐字**会**让**那合成**逐字**不稳**、=> 而而那**处置**逐字**是**：=> 而那**空**的**不**算**取到**、=> 而那**重试**继续**走**。
+          if [ -s "$_raw" ] && base64 -d < "$_raw" > "$_out" 2>/dev/null && [ -s "$_out" ]; then _ok=1; break; fi
         fi
         sleep 2
       done
