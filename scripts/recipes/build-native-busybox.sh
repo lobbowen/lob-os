@@ -471,6 +471,16 @@ mkdir -p "$OUT_DIR/lib" "$OUT_DIR/bin"
 #    现在：本体在 bin/libbusybox.so（与它按形态该落的地方一致），软链指向 ../bin/libbusybox.so。
 cp -f "$SRC/busybox" "$OUT_DIR/bin/libbusybox.so"
 chmod 0755 "$OUT_DIR/bin/libbusybox.so"
+#  缺陷名（C-102）**本体逐字**只有**那 libbusybox.so **那一个**名字**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 applet **那十七**条软链逐字**是**那 argv[0] **那些**派生**物**、
+#      => 而而那**本体自己**那**一个**名字**逐字**没有**被**建**出来**。
+#    => 而而那**后果**逐字 = 而那 busybox **那一格**逐字**报**那「No such file or directory」、
+#      => 而而那**它**们**逐字是**那**两**件**事**。
+#    => 而那**处置**：=> 而那**本体自己**那**一个**名字**也**建**出来**（=> 而那**它**逐字**是**那**本体**那一份**字节**）。
+if [ ! -e "$OUT_DIR/bin/busybox" ]; then
+  ln -sf libbusybox.so "$OUT_DIR/bin/busybox"
+  note "本体自己那一个名字已建（busybox -> libbusybox.so）"
+fi
 
 # applet 落 bin/，而软链指向**本体那份字节**（本体也在 bin/）。
 #
@@ -635,12 +645,3 @@ emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version
 #     => 而 "$out" 是 emit_piece 的第 2 个形参（bundle-env.sh:135 逐字 `out="$2"`）
 #     => 而 busybox 那一件传的是 $OUT_DIR（:298 逐字 `OUT_DIR="$WORK/out"`）
 #     => 而那是**产物的目录**（=> 而打包那一支读的是 `$OUT/bin`、`$OUT/lib`、`$OUT/$ENTRY`，
-#        => 而那三处都是**内容**那一层 => 而所以那一支的 OUT 就是内容目录）。
-#
-# => 而那一个标记文件的语义是「**这一件走到哪一步了**」（=> 而 package-bundle-zip.sh:408 那一段逐字），
-#   => 而它**是产物的一部分**（=> 而它要跟产物在同一个目录里），
-#   => 而**写的那一处该用 $OUT_DIR**（=> 而那才是产物目录），=> 而核的那一处**不用改**（=> 而它已经对着产物目录）。
-# => 而判别形式：**写标记的那个 `$OUT` 与打包那一支的 `$OUT` 是不是同一个目录**
-#   —— => 而两处都叫 OUT 而来源不同源，=> 而同名不同义就是那一族。
-
-# 第五个参数是「这个件要在 usr/bin 出现的命令名」——
