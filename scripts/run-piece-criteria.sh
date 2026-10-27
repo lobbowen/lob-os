@@ -76,8 +76,24 @@ pieces = [k for k in sorted(d.keys())
           if k != '$note' and isinstance(d[k], dict) and d[k].get('node')]
 if wanted:
     pieces = [k for k in pieces if k in wanted]
-
+    #  缺陷名（C-102）**那单件**跑**的那一趟**逐字**覆盖**那**整个**文件**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#      => 而那**成因**：=> 而那 wanted 那一族逐字**把**那**采集**逐字**缩**到**那几件**、
+#        => 而而那 N 逐字**是**那 len(m0p_results)（=> 而那**它**逐字**是**那**跑过**的**那几件**的**条数**）、
+#        => 而而那**它**逐字**不**是**那分母**的**条数**（=> 而那 docs/m0prime-denominator.json 逐字那 count = **14**）、
+#        => 而而那**后果**逐字 = 而那**整个**文件逐字**变成**那**残缺**的**一份**（=> 而那 M 逐字 = **0**、那 N 逐字 = **2**）。
+#      => 而那**处置**：=> 而那**单件**跑的**那一趟**逐字**合并**进**那前**一**版**（=> 而那**它**们**逐字是**那**两**件**事**：
+#        「那**这**一趟**测**了什么**」与「那**整个**文件**记**的**是**什么**」）、=> 而而那**处置**逐字**不合并**。
+#      => 而按 C-115：=> 而那**前**一**版**逐字**留档不删**、=> 而那**这一版**逐字**只**换**那**测过**的**那几件**。
+    _partial = True
+else:
+    _partial = False
 now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+_now_partial = now
+#  => 而那 **_prev** 逐字**先**读**出来**（=> 而而那**单件**跑的**那一趟**逐字**要**合并**进**它**）。
+try:
+    _prev = json.load(io.open(out_path, encoding='utf-8'))
+except Exception:
+    _prev = None
 results = []
 
 # 那判据逐字**自己**去**spawn**那目标、=> 而那**目标**逐字**在**那设备**上**。
@@ -229,6 +245,17 @@ for k in pieces:
     })
 
 #  那**两个**分母逐字**各**答**一件**事**、=> 而按 C-135 逐字**不合并**（=> 而而那 **M/N** 那个数逐字**是**那 M0prime **那一族**的**）
+#  => 而那**单件**跑**的那一趟**逐字**合并**进**那前**一**版**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+if _partial and isinstance(_prev, dict) and _prev.get("pieces"):
+    _old = {p.get("id"): p for p in (_prev.get("pieces") or [])}
+    for p in results:
+        _old[p["id"]] = p
+    _merged = [_old[k] for k in sorted(_old.keys())]
+    results = _merged
+    #  => 而那 takenAt 逐字**留**那前**一**版**的**（=> 而那**它**逐字**是**那**完整**的**那一趟**的**时刻**）。
+    now = _prev.get("takenAt") or now
+    #  => 而那**取数时刻**逐字**带**那**这一趟**测**了**什么**（=> 而按 C-274 逐字**每**个**时点**带**它**那**时刻**）。
+    doc["partialAt"] = _now_partial
 m0p_results = [r for r in results if r['id'] in m0p_set]
 m0p_passed = sum(1 for r in m0p_results if r['status'] == '过')
 m0p_failed = sum(1 for r in m0p_results if r['status'] == '不过')
@@ -292,10 +319,6 @@ doc = {
 #    => 而那**后果**逐字**是**：=> 而那**两**个**时点**的**读数**逐字**互相**覆盖**、=> 而而那**它们**逐字**分不**开**。
 #    => 而那**处置**：=> 而那**旧**的**那一版**逐字**并**进**那**历史**那一族**（=> 而那**它**们逐字**并列**）。
 #    => 而按 C-115：=> 而那**两**份**读数**不**同时点**、=> 而而它们**不互相**覆盖**。
-try:
-    _prev = json.load(io.open(out_path, encoding='utf-8'))
-except Exception:
-    _prev = None
 #  缺陷名（C-102）**那**不**完整**的**一趟**逐字**也**进**那历史** ——
 #    => 而而它治**的**是「那**历史**那一族**记**的**是**不是**那**完整**的**读数**」。
 #    => 而那**成因**：=> 而那**单件**跑的**那一趟**逐字**也**写**那**整个** doc（=> 而那 N 逐字**是**那 1、
