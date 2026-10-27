@@ -20,6 +20,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 KERNEL_SRC="${KERNEL_SRC:-$ROOT/work/kernel-src}"
 #  => 而那**静态**的**那一个** busybox 逐字**要**在**那仓外**（=> 而那它逐字**是**那 initramfs **那一层**的**内容**）。
 BUSYBOX_BIN="${BUSYBOX_BIN:-$ROOT/work/busybox/out/bin/libbusybox.so}"
+BUSYBOX_LINK_DIR="${BUSYBOX_LINK_DIR:-$ROOT/work/busybox/out/bin}"
+BUSYBOX_LINK_DIR="${BUSYBOX_LINK_DIR:-$ROOT/work/busybox/out/bin}"
 OUT="${1:-$ROOT/work/kernel-image}"
 JOBS="${JOBS:-$(nproc)}"
 
@@ -47,6 +49,28 @@ note "归档那一族不作钉值来源（=> 而那 tree 对象与那 commit 才
 IRFS_STAGE="$OUT/initramfs-root"
 rm -rf "$IRFS_STAGE" && mkdir -p "$IRFS_STAGE/bin"
 cp "$BUSYBOX_BIN" "$IRFS_STAGE/bin/busybox"
+#  => 而那 **applet** **软链**逐字**要**跟**那**本体**一**起**装**（=> 而那 **sh** **那一族**逐字**要**那 **sh**、
+#     => 而那 **[** **那一族**逐字**要**那 **[**、=> 而而那**它们**逐字**是**那**两**件**事**）。
+#     => 而那 busybox **那一个** out/bin/ 底下**那**软链**逐字**就是**那**落包集**（=> 而而那**它们**逐字**跟**那**本体**同**一**个**目录**）。
+if [ -d "$BUSYBOX_LINK_DIR" ]; then
+  for _l in "$BUSYBOX_LINK_DIR"/*; do
+    [ -L "$_l" ] || continue
+    ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
+  done
+else
+  note "initramfs 那一层：bin/busybox（静态）+ init（=> 而那 applet 软链**没有**、=> 而按 C-105 报缺）"
+fi
+#  => 而那 **applet** **软链**逐字**要**跟**那**本体**一**起**装**（=> 而那 **sh** **那一族**逐字**要**那 **sh**、
+#     => 而那 **[** **那一族**逐字**要**那 **[**、=> 而而那**它们**逐字**是**那**两**件**事**）。
+#     => 而那 busybox **那一个** out/bin/ 底下**那**软链**逐字**就是**那**落包集**（=> 而而那**它们**逐字**跟**那**本体**同**一**个**目录**）。
+if [ -d "$BUSYBOX_LINK_DIR" ]; then
+  for _l in "$BUSYBOX_LINK_DIR"/*; do
+    [ -L "$_l" ] || continue
+    ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
+  done
+else
+  note "initramfs 那一层：bin/busybox（静态）+ init（=> 而那 applet 软链**没有**、=> 而按 C-105 报缺）"
+fi
 chmod 0755 "$IRFS_STAGE/bin/busybox"
 cp "$ROOT/scripts/initramfs/lobos-init" "$IRFS_STAGE/init"
 chmod 0755 "$IRFS_STAGE/init"

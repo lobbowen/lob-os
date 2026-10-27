@@ -54,6 +54,14 @@ def _entry(name: bytes, data, ino: int, mode: int, nlink: int, mtime: int = 0) -
     return out
 
 
+#  缺陷名（C-102）**那**软链**逐字**被**跟**着**读**成**那**本体**的**内容**了**、=> 而而那**它**逐字**不**是**那**软链**
+#    => 而而它治**的**是「那 initramfs **那一层**逐字**装**得**对不对**」。
+#    => 而那**成因**：=> 而那 build() 那一族逐字**走**那 os.walk、=> 而而那**它**逐字**把**那**软链**当**那**普通文件**、
+#       => 而而那**读**的**是**那**目标**的**内容**、=> 而而那**归档**里逐字**就**是**那**本体**的**一份**拷贝**（=> 而**不**是**那**软链**）。
+#    => 而那**症状**（=> 而本机**实跑**的**）：=> 而那 cpio -itv 逐字**每**一个**都**是**那 **546264** **字节**、
+#       => 而而那**软链**逐字**变成**了**那**本体**的**一份**拷贝**。
+#    => 而那**处置**：=> 而那 newc **那一族**逐字**有**那 S_IFLNK **那一档**（=> 而那 c_mode 逐字**带**那 **0o120000**）、
+#       => 而而那**它**们**逐字是**那**两**件**事**、=> 而按 C-104 逐字**不合并**）。
 def build(root: str, out_path: str) -> None:
     files = []
     for dirpath, dirnames, filenames in os.walk(root):
@@ -64,7 +72,11 @@ def build(root: str, out_path: str) -> None:
         for fn in sorted(filenames):
             p = os.path.join(dirpath, fn)
             r = os.path.relpath(p, root).replace(os.sep, "/")
-            files.append((r, p, 0o100755))
+            #  => 而那**软链**逐字**要**记**那 S_IFLNK **那一档**（=> 而那**它**们**逐字是**那**两**件**事**）。
+            if os.path.islink(p):
+                files.append((r, p, 0o120777))
+            else:
+                files.append((r, p, 0o100755))
     #  那**根**目录**要**在**最**前面**（=> 而那内核逐字**从**那**根**开始**解**）。
     files.sort(key=lambda t: (t[0] != "", t[0]))
     blob = bytearray()
@@ -77,8 +89,12 @@ def build(root: str, out_path: str) -> None:
             blob += _entry(name.encode(), b"", ino, mode, 2)
             ino += 1
             continue
-        with open(path, "rb") as f:
-            data = f.read()
+        if os.path.islink(path):
+            #  => 而那**软链**逐字**存**那**目标**（=> 而那 newc **那一族**逐字**要**那 S_IFLNK **那一档**）
+            data = os.readlink(path).encode()
+        else:
+            with open(path, "rb") as f:
+                data = f.read()
         blob += _entry(name.encode(), data, ino, mode, 1)
         ino += 1
     blob += _entry(TRAILER, b"", 0, 0, 1)

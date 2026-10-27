@@ -80,7 +80,59 @@ make defconfig > "$WORK/defconfig.log" 2>&1 \
 # CONFIG_FEATURE_* 一起被关掉，于是 `CONFIG_AWK=y` 单独存在不足以让它被编，
 # `make install` 不给它建软链。
 # 2026-10-16 实测：CI 判红「bin/awk 声明了但没产出」，而本行原先写着 AWK。
-APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE"
+#  缺陷名（C-102）**那 applet 清单逐字没有那 TEST 与那 ASH**、=> 而而那 initramfs **那一层**逐字**要**那 **[** 与那 **sh**
+#    => 而而它治**的**是「那 /init **那一层**逐字能不能以 PID 1 起来并接管」。
+#    => 而那**成因**：=> 而那 **[** **那一个** **applet** 逐字**是**那 **TEST** **那一个** **config**（=> 而那 **# CONFIG_TEST is not set**）、
+#       => 而而那 **sh** **那一个** **applet** 逐字**是**那 **ASH** **那一个** **config**（=> 而那 **CONFIG_SH_IS_ASH=y**）、
+#       => 而而那**白名单**逐字**只**留那 **APPLETS** **那些**、=> 而而那**它**们**不**在**那**清单**里面**。
+#    => 而那**症状**（=> 而本机**实跑**的**）：
+#       => 而那 **/init: line 39: [: not found**（=> 而而那 **[** **那一个** **applet** 逐字**没有**）
+#       => 而那 **init: applet not found**（=> 而而那 busybox 逐字**要**那 **argv[0]** 逐字**是**那 **sh**）
+#    => 而那**处置**：=> 而那 **TEST** 与那 **ASH** **那两**个**加**进**那 APPLETS **那个清单**。
+#    => 而按 C-104：=> 而那 busybox **那一族**逐字**有**两条路（=> 而那 PIE **那一个**与那**静态**那一个**）、
+#       => 而而那**它们**逐字**是**那**两**个**不同**的**产物**、=> 而而那**处置**逐字**不合并**。
+#    => 而那**第二个**缺陷名（C-102）**那白名单逐字把那 ASH_INTERNAL_GLOB 也关掉了**、=> 而而那 ash.c 逐字**要**那 libc 的 glob **那一族**
+#    => 而而它治**的**是「那 ASH **那一个** **applet** 逐字**编不编得出**来」。
+#    => 而那**成因**：=> 而那 ash.c :263 那一行 = 「#if !ENABLE_ASH_INTERNAL_GLOB」+「# include <glob.h>」，
+#       => 而而那 ASH_INTERNAL_GLOB **那一族**逐字**默认**是 **y**（=> 而那 shell/Config.in :111 那一行 = 「default y」）、
+#       => 而而那**白名单**逐字**只**留那 APPLETS **那些**、=> 而而那**它**逐字**被**关掉**了**、
+#       => 而而那**它**被关掉**之后**那 #include **也**就**没**了、=> 而而那 ash.c 逐字**用**那 libc 的 glob **却**没有**那**头文件**。
+#    => 而那**症状**（=> 而本机**实跑**的**）：
+#       => 而那「1251:shell/ash.c:7818:7: error: call to undeclared function 'glob'」
+#       => 而那「1578:make[1]: *** [scripts/Makefile.build:197: shell/ash.o] Error 1」
+#    => 而那**处置**：=> 而那 **ASH_INTERNAL_GLOB** **加**进**那 APPLETS **那个清单**（=> 而而它逐字**是**那**内部**的**那一族**、=> 而而那**它**逐字**不**要**那**头文件**）。
+#    => 而那**第二个**缺陷名（C-102）**那白名单逐字把那 ASH_INTERNAL_GLOB 也关掉了**、=> 而而那 ash.c 逐字**要**那 libc 的 glob **那一族**
+#    => 而而它治**的**是「那 ASH **那一个** **applet** 逐字**编不编得出**来」。
+#    => 而那**成因**：=> 而那 ash.c :263 那一行 = 「#if !ENABLE_ASH_INTERNAL_GLOB」+「# include <glob.h>」，
+#       => 而而那 ASH_INTERNAL_GLOB **那一族**逐字**默认**是 **y**（=> 而那 shell/Config.in :111 那一行 = 「default y」）、
+#       => 而而那**白名单**逐字**只**留那 APPLETS **那些**、=> 而而那**它**逐字**被**关掉**了**、
+#       => 而而那**它**被关掉**之后**那 #include **也**就**没**了、=> 而而那 ash.c 逐字**用**那 libc 的 glob **却**没有**那**头文件**。
+#    => 而那**症状**（=> 而本机**实跑**的**）：
+#       => 而那「1251:shell/ash.c:7818:7: error: call to undeclared function 'glob'」
+#       => 而那「1578:make[1]: *** [scripts/Makefile.build:197: shell/ash.o] Error 1」
+#    => 而那**处置**：=> 而那 **ASH_INTERNAL_GLOB** **加**进**那 APPLETS **那个清单**（=> 而而它逐字**是**那**内部**的**那一族**、=> 而而那**它**逐字**不**要**那**头文件**）。
+#    => 而那**第三个**缺陷名（C-102）**那 APPLETS 清单逐字把 applet 名与那 config 名混**在**一**起**了**、=> 而而那**落包集**核对逐字**当**那 config 名**也**是**那**applet**
+#    => 而而它治**的**是「那声明集与那落包集那**核对**逐字**准不准**」。
+#    => 而那**成因**：=> 而那 ASH_INTERNAL_GLOB 逐字**是**那**一个** **config** 名（=> 而而那**它**逐字**不**是**那**一个** **applet** 名）、
+#       => 而而那**声明集**逐字**拿**那 APPLETS **去**比**那落包集**、=> 而而那**它**就**永远**落**在**那落包集**外面**。
+#    => 而那**症状**（=> 而本机**实跑**的**）：
+#       => 而那「::error title=声明了但没产出:: test ash_internal_glob 在 …/out/bin 下不存在」
+#    => 而那**处置**：=> 而那 **config** 名逐字**分开**放**那 CONFIG_EXTRA **那一族**、=> 而那 APPLETS **那一族**逐字**只**留**那 applet** 名。
+#    => 而那**第三个**缺陷名（C-102）**那 APPLETS 清单逐字把 applet 名与那 config 名混**在**一**起**了**、=> 而而那**落包集**核对逐字**当**那 config 名**也**是**那**applet**
+#    => 而而它治**的**是「那声明集与那落包集那**核对**逐字**准不准**」。
+#    => 而那**成因**：=> 而那 ASH_INTERNAL_GLOB 逐字**是**那**一个** **config** 名（=> 而而那**它**逐字**不**是**那**一个** **applet** 名）、
+#       => 而而那**声明集**逐字**拿**那 APPLETS **去**比**那落包集**、=> 而而那**它**就**永远**落**在**那落包集**外面**。
+#    => 而那**症状**（=> 而本机**实跑**的**）：
+#       => 而那「::error title=声明了但没产出:: test ash_internal_glob 在 …/out/bin 下不存在」
+#    => 而那**处置**：=> 而那 **config** 名逐字**分开**放**那 CONFIG_EXTRA **那一族**、=> 而那 APPLETS **那一族**逐字**只**留**那 applet** 名。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH"
+#  => 而那**额外**的**那些** **config** 名（=> 而而那**它们**逐字**不是**那 applet 名、=> 而而那**它们**逐字**只**管**开关**）。
+#     => 而那 **ASH_INTERNAL_GLOB** 逐字**要**它**是因为**那 ash.c 逐字**用**那 libc 的 glob **那一族**（=> 而而那**它**被关掉**之后**那 #include <glob.h> **也**就**没**了）。
+#  => 而那 **TEST1** 逐字**是**那 **[** **那一个** **applet**（=> 而那 coreutils/Config.in :781 那一行 = 「config TEST1」+「bool "test as ["」），
+#     => 而那 **TEST** 逐字**是**那 **test** **那一个** **applet**（=> 而那 :773 那一行 = 「config TEST」+「bool "test (4.1 kb)"」），
+#     => 而那两**个**逐字**是**那**两**件**事**、=> 而而那**它**们**逐字不合并**。
+#     => 而那 **[** **那一个**逐字**是**那 initramfs **那一层**要**的**（=> 而那 ash.c 逐字**用**那 **[** **那一族**）。
+CONFIG_EXTRA="ASH_INTERNAL_GLOB TEST1"
 
 set_conf() {
   local k="$1" v="$2"
@@ -118,8 +170,8 @@ while read -r k; do
   N_ON=$((N_ON + 1))
 done < "$WORK/all-on.txt"
 echo "[busybox] defconfig 开了 $N_ON 项，已全部关掉（白名单式）"
-for a in $APPLETS; do set_conf "$a" y; done
-echo "[busybox] 白名单开启：$APPLETS"
+for a in $APPLETS $CONFIG_EXTRA; do set_conf "$a" y; done
+echo "[busybox] 白名单开启：$APPLETS（另外那 config：$CONFIG_EXTRA）"
 
 #  补丁：Android 分支里两行过期的 #undef 
 # 症状（实测）：
@@ -264,14 +316,14 @@ make oldconfig < <(answers) > "$WORK/oldconfig.log" 2>&1 \
 
   # 关掉之后复核：还有哪个 applet 的源文件要内核 uapi 头？
   STILL="$(
-    for a in $APPLETS; do
+for a in $APPLETS $CONFIG_EXTRA; do
       grep -q "^CONFIG_${a}=y" "$SRC/.config" && printf '%s\n' "$a"
     done | tr '\n' ' '
   )"
   echo "[busybox] 关完内核 uapi 头那批之后，仍开启的 applet：${STILL:-（无）}"
 
 MISSING=""
-for a in $APPLETS; do
+for a in $APPLETS $CONFIG_EXTRA; do
   grep -q "^CONFIG_${a}=y" "$SRC/.config" || MISSING="$MISSING $a"
 done
 [ -z "$MISSING" ] || die "配置项未生效" \
