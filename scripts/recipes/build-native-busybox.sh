@@ -409,7 +409,17 @@ if [ "$BUSYBOX_STATIC" = "1" ]; then
   [ "$ETYPE" = "EXEC" ] || die "不是静态产物" "e_type=$ETYPE —— 而那**静态**的**那一个**必须**是**那 ET_EXEC"
   NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
   [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那**静态**的**那一个**逐字**不**能**有**那**动态**依赖"
-  INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP')
+  #  缺陷名（C-102）**那 grep -c 零命中逐字把**那一步**带**死**了** ——
+  #    => 而而它治**的**是「那**形态**判据逐字**判不判得到**」。
+  #    => 而那**成因**：=> 而那 grep -c **零命中**的**退出码** = **1**（=> 而那 06 那边本机**实跑**逐字 = 1）、
+  #       => 而而那 set -euo pipefail 逐字**就死**在**那一行**、=> 而而那**它**逐字**没有**走到**那一句** die**、
+  #       => 而而那**日志**逐字**停在**那一句 note **之后**。
+  #    => 而那**静态**那一支逐字**期望**那 INTERP **= 0**（=> 而而那**它**逐字**是**那**静态**的**前提**）、
+  #       => 而而那 **PIE** 那一支逐字**期望**那 INTERP **≥ 1**（=> 而而那**它**逐字**碰巧**没踩**那一个**坑**）。
+  #    => 而那**处置**：=> 而那**两处**都**加**那 || true（=> 而而那**它**逐字**把**那**退出码**归零**、
+  #       => 而而那**零**逐字**照样**是**那零**、=> 而而那**它**们**逐字不合并**）。
+  #    => 而按 C-104：=> 而那**形态**判据那一族逐字**只有**一条路（=> 而这一支**就是**它**）。
+  INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP' || true)
   [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那**静态**的**那一个**逐字**不**能**要**那 **linker64**"
   echo "[$TOOL] 形态：e_type=$ETYPE、静态（无 PT_INTERP、NEEDED=$NEEDED 项）"
 else
@@ -420,7 +430,7 @@ else
 DYN=$(printf '%s\n' "$("$LLVM_READELF" -W -l "$BB" 2>/dev/null || true)" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')
 [ -n "$DYN" ] || die "不是动态产物" "没有 PT_DYNAMIC（NEEDED=$NEEDED 项）—— PIE 那一族一定有它，而缺了它说明链接没走动态那一路"
 
-INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP')
+INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP' || true)
 [ "$INTERP" -ge 1 ] || die "缺 PT_INTERP" "INTERP 行数=$INTERP —— 而这一件要经 linker64 驱动，=> 而那个驱动者由 PT_INTERP 指出来（=> 而设备上是 /system/bin/linker64）"
 echo "[$TOOL] 形态：e_type=$ETYPE、PT_INTERP=$INTERP 行、PT_DYNAMIC 有、NEEDED=$NEEDED 项"
 fi
