@@ -116,4 +116,15 @@ make -C "$KERNEL_SRC" O="$KBUILD" ARCH=arm64 CROSS_COMPILE="$CROSS_BIN/$CROSS" H
   || { echo "=== 内核编译失败取证（末 40 行）==="; tail -40 "$OUT/kbuild.log"; exit 1; }
 
 cp "$KBUILD/arch/arm64/boot/Image" "$OUT/"
+#  => 而那**钉值**逐字**带**在那**产物**里面**（=> 而那 tree 对象与那 commit **那两**个**数**）。
+#     => 而那**归档**那一族逐字**每次**换**那字节**、=> 而而那**它**们**不**是那**钉值来源**。
+cat > "$OUT/kernel-image-meta.json" << METAEOF
+{
+  "version": "$KVER",
+  "commit": "$COMMIT",
+  "tree": "$TREE",
+  "pinNote": "=> 而那归档那一族逐字每次换那字节、=> 而而那它不作那钉值来源、=> 而而那钉值逐字用那 tree 对象与那 commit 那两个数"
+}
+METAEOF
+note "钉值已带进产物：kernel-image-meta.json（tree=$TREE commit=$COMMIT version=$KVER）"
 note "内核镜像：Image（$KVER tree=$TREE commit=$COMMIT）"

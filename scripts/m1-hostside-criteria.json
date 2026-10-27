@@ -1,0 +1,27 @@
+{
+  "$note": "那 M1 判据第一段逐字折成那主机侧那一半的**判据本体**实现（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数归 07）。这一族逐字**不**并**那 scripts/piece-criteria.json **那个**模块**那一族**（=> 而那**它**们逐字**是**那两件**事**、=> 而按 C-104 逐字**不合并**）：那模块那一族逐字判**那用户态模块**按裸名调起并读回真实输出、=> 而这一族逐字判**那产物**的形状与**那载体**在位。按 C-103：=> 而那**两边**逐字**各**答**一件**事**、=> 而而那**处置**逐字**不合并**。这一族逐字**不判**那时序（=> 而那时序逐字要那真机）。",
+  "kernelImage": {
+    "criterion": "那内核镜像那一件逐字要核那 tree 与那 commit 那两个数（=> 而而那它们带在那产物里面、=> 而而那它们能对账）、=> 而而那它逐字能用那整棵那一族当那钉值、=> 而而那它逐字判那字节的形状而不判那它起不起来。",
+    "required": true,
+    "kind": "产物形状",
+    "node": "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'../..');const DIR=process.env.LOBOS_KERNEL_IMAGE_DIR||path.join(ROOT,'work/kernel-image');const IMG=path.join(DIR,'Image');if(!fs.existsSync(IMG)){console.error('那内核镜像逐字不在 '+IMG+'（=> 而按 C-105 报缺）');process.exit(1);}const st=fs.statSync(IMG);const head=fs.readFileSync(IMG).subarray(0,4).toString('hex');if(head!=='4d5a40fa'){console.error('那内核镜像的头逐字是 '+head+'、=> 而那 arm64 那一个魔数逐字要是 4d5a40fa');process.exit(1);}const meta=path.join(DIR,'kernel-image-meta.json');if(!fs.existsSync(meta)){console.error('那钉值逐字不在 '+meta+'（=> 而那 tree 与那 commit 那两个数逐字带在那产物里面、=> 而按 C-105 报缺）');process.exit(1);}const m=JSON.parse(fs.readFileSync(meta,'utf8'));for(const k of ['tree','commit','version']){if(!m[k]){console.error('那钉值逐字缺 '+k+'（=> 而按 C-105 报缺）');process.exit(1);}}if(!/^[0-9a-f]{40}$/.test(m.tree)){console.error('那 tree 逐字不是那内容寻址的那一个（'+m.tree+'）');process.exit(1);}if(!/^[0-9a-f]{40}$/.test(m.commit)){console.error('那 commit 逐字不是那内容寻址的那一个（'+m.commit+'）');process.exit(1);}console.log('KERNEL_IMAGE_OK tree='+m.tree+' commit='+m.commit+' version='+m.version+' bytes='+st.size);"
+  },
+  "initramfsLayer": {
+    "criterion": "那 initramfs 那一层逐字只认那 newc 那一族（=> 而那头逐字 = 「070701」而那末尾逐字 = 「TRAILER!!!」）、=> 而而那它逐字要那静态的那一个 busybox（=> 而而那它逐字要那静态的那一个没有那 PT_INTERP）。",
+    "required": true,
+    "kind": "产物形状",
+    "node": "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'../..');const DIR=process.env.LOBOS_KERNEL_IMAGE_DIR||path.join(ROOT,'work/kernel-image');const CPIO=path.join(DIR,'initramfs.cpio');if(!fs.existsSync(CPIO)){console.error('那归档逐字不在 '+CPIO+'（=> 而按 C-105 报缺）');process.exit(1);}const buf=fs.readFileSync(CPIO);if(buf.subarray(0,6).toString('latin1')!=='070701'){console.error('那归档的头逐字不是 070701、=> 而那内核逐字只收那 newc 那一族');process.exit(1);}if(buf.indexOf(Buffer.from('TRAILER!!!','latin1'))<0){console.error('那归档逐字没有那 TRAILER!!! 末尾、=> 而那 newc 那一族逐字要它');process.exit(1);}const r=cp.spawnSync('cpio',['-itv'],{input:buf,encoding:'utf8',timeout:60000});if(r.status!==0){console.error('那归档逐字读不出来：'+String(r.stderr||'').trim());process.exit(1);}const lines=String(r.stdout||'').split(/\\n/).map(s=>s.trim()).filter(Boolean);if(!lines.some(s=>/(^|\\s)init(\\s|$)/.test(s))){console.error('那归档的根逐字没有那 init、=> 而那 /init 那一层逐字要在那归档的根');process.exit(1);}const bb=path.join(ROOT,'work/busybox/out/bin/libbusybox.so');if(fs.existsSync(bb)){  const rr=cp.spawnSync('readelf',['-W','-l',bb],{encoding:'utf8',timeout:60000});  if(rr.status===0&&/INTERP/.test(String(rr.stdout||''))){console.error('那静态的那一个逐字有那 PT_INTERP、=> 而那 initramfs 那一层逐字要那静态的那一个');process.exit(1);}}console.log('INITRAMFS_OK bytes='+buf.length+' entries='+lines.length);"
+  },
+  "initLayer": {
+    "criterion": "那 /init 那一层逐字要以 PID 1 起来并接管、=> 而而那它在那归档的根、=> 而而那它是那 shell。",
+    "required": true,
+    "kind": "产物形状",
+    "node": "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'../..');const DIR=process.env.LOBOS_KERNEL_IMAGE_DIR||path.join(ROOT,'work/kernel-image');const CPIO=path.join(DIR,'initramfs.cpio');if(!fs.existsSync(CPIO)){console.error('那归档逐字不在 '+CPIO+'（=> 而按 C-105 报缺）');process.exit(1);}const buf=fs.readFileSync(CPIO);const r=cp.spawnSync('cpio',['-itv'],{input:buf,encoding:'utf8',timeout:60000});if(r.status!==0){console.error('那归档逐字读不出来：'+String(r.stderr||'').trim());process.exit(1);}const out=String(r.stdout||'');const m=out.match(/^-rwxr-xr-x[^\\n]*\\sinit\\s*$/m);if(!m){console.error('那归档的根逐字没有那可执行的 init、=> 而那 /init 那一层逐字要以 PID 1 起来、=> 而而那它逐字要那可执行的');process.exit(1);}console.log('INIT_LAYER_OK '+m[0].trim());"
+  },
+  "hostCarrier": {
+    "criterion": "那宿主侧的载体逐字要那内核镜像与那 initramfs 那一层与那 /init 那一层都在那设备不在的时候能看得见、=> 而而那它逐字不判那时序（=> 而那时序逐字要那真机）。",
+    "required": true,
+    "kind": "载体在位",
+    "node": "const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path');const ROOT=process.env.LOBOS_ROOT||path.resolve(__dirname,'../..');const DIR=process.env.LOBOS_KERNEL_IMAGE_DIR||path.join(ROOT,'work/kernel-image');const need=['Image','initramfs.cpio'];const miss=need.filter(n=>!fs.existsSync(path.join(DIR,n)));if(miss.length){console.error('那载体逐字缺 '+miss.join(' ')+'（=> 而那内核镜像与那 initramfs 那一层逐字都要在那设备不在的时候看得见、=> 而按 C-105 报缺）');process.exit(1);}const q=cp.spawnSync('command',['-v','qemu-system-aarch64'],{encoding:'utf8',shell:true,timeout:60000});const qp=String(q.stdout||'').trim();if(!qp){console.error('那载体逐字找不到那 qemu-system-aarch64（=> 而那它逐字要那内核镜像与那 initramfs 那一层起起来、=> 而按 C-105 报缺）');process.exit(1);}console.log('CARRIER_OK dir='+DIR+' qemu='+qp);"
+  }
+}
