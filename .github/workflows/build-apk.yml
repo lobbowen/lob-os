@@ -229,10 +229,16 @@ jobs:
           [ -n "$SRC" ] || { echo "::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）"; exit 1; }
           DST=container/app/src/main/assets/sysroot
           rm -rf "$DST"
-          mkdir -p "$DST"
-          cp -a "$SRC/usr/include" "$DST/include"
-          mkdir -p "$DST/lib"
-          cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/lib/" 2>/dev/null || true
+          mkdir -p "$DST/usr/lib/aarch64-linux-android"
+          cp -a "$SRC/usr/include" "$DST/usr/include"
+          #  => 而那**架构**那**一族**的头逐字**也**要**并**进去**（=> 而而那 asm/types.h 逐字**在**那
+          #     usr/include/aarch64-linux-android/asm/ **那一族**、=> 而而那**顶层**的**那个**里面**没有**它**）。
+          if [ -d "$SRC/usr/include/aarch64-linux-android" ]; then
+            cp -a "$SRC/usr/include/aarch64-linux-android/." "$DST/usr/include/"
+          fi
+          #  => 而那**库**逐字**要**按**那 NDK **那一族**的**层次**摆**（=> 而而那 crtbegin_so.o 与那 crtend_so.o
+          #     逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、=> 而而那**顶层**的**那个**里面**没有**它们**）。
+          cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/usr/lib/aarch64-linux-android/" 2>/dev/null || true
           #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang **那工具链**那一族**
           #    => 而而那 clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
           #    => 而而那**它**逐字**在**那 APK **外面**、=> 而而那**它**逐字**进不去**那**设备**
@@ -244,8 +250,8 @@ jobs:
           #  => 而按 C-104：=> 而那**它**们逐字**不是**那同一件内容的两条取法、=> 而而那**处置**逐字**不合并**。
           TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
           if [ -n "$TOOLLIB" ]; then
-            cp -a "$TOOLLIB"/. "$DST/lib/" 2>/dev/null || true
-            echo "[sysroot] 工具链库已并入 $DST/lib（$(ls "$DST/lib" | wc -l) 项）"
+            cp -a "$TOOLLIB"/. "$DST/usr/lib/" 2>/dev/null || true
+            echo "[sysroot] 工具链库已并入 $DST/usr/lib（$(ls "$DST/usr/lib" | wc -l) 项）"
           else
             echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK=$NDK）"
             exit 1

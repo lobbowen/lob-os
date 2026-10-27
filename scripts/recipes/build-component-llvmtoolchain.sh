@@ -441,13 +441,30 @@ fi
 NSDK_SR="${NSDK_SR:-$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1 || true)}"
 if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
   rm -rf "$OUT/sysroot"
-  mkdir -p "$OUT/sysroot"
-  cp -a "$NSDK_SR/usr/include" "$OUT/sysroot/include"
-  mkdir -p "$OUT/sysroot/lib"
-  cp -a "$NSDK_SR"/usr/lib/aarch64-linux-android/. "$OUT/sysroot/lib/" 2>/dev/null || true
+  mkdir -p "$OUT/sysroot/usr/lib/aarch64-linux-android"
+  cp -a "$NSDK_SR/usr/include" "$OUT/sysroot/usr/include"
+  #  缺陷名（C-102）**那 sysroot** 逐字**缺**那**架构**那**一族**的头**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**成因**：=> 而那 asm/types.h 逐字**在**那 usr/include/aarch64-linux-android/asm/ **那一族**、
+#      => 而而那**顶层**的**那个** usr/include/ **里面没有**那**一个**目录**、
+#      => 而而那**后果**逐字 = 那「fatal error: 'asm/types.h' file not found」。
+#    => 而那**处置**：=> 而那**架构**那**一族**的头逐字**也**并**进**那 sysroot **那 include/ **里面**
+#      （=> 而而那**它**们**逐字是**那**两**件**事**：「那 sysroot **是**什么**」与「那**头**从哪**来**」）。
+  NSDK_ARCHINC="$(ls -d "$NSDK_SR"/usr/include/aarch64-linux-android 2>/dev/null | head -1)"
+  if [ -n "$NSDK_ARCHINC" ] && [ -d "$NSDK_ARCHINC" ]; then
+    cp -a "$NSDK_ARCHINC/." "$OUT/sysroot/usr/include/" 2>/dev/null || true
+    echo "[sysroot] 架构头已并入（asm/types.h 在那里）"
+  fi
+  #  缺陷名（C-102）**那 sysroot** 逐字**把**那**库**放错**了**一层**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**成因**：=> 而那 crtbegin_so.o 与那 crtend_so.o 逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、
+#      => 而而那**顶层**的**那个** usr/lib/aarch64-linux-android/ **里面没有**它们**、
+#      => 而而那**后果**逐字 = 那「ld.lld: error: cannot open crtbegin_so.o: No such file or directory」。
+#    => 而那**处置**：=> 而那 sysroot 逐字**照**那 NDK **那一族**的**层次**摆**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#      「那 sysroot **是**什么**」与「那**层次**是**什么**」）。
+  cp -a "$NSDK_SR"/usr/lib/aarch64-linux-android/. "$OUT/sysroot/usr/lib/aarch64-linux-android/" 2>/dev/null || true
+  #  => 而那 libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（=> 而而那**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
   NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
   if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
-    cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/lib/" 2>/dev/null || true
+    cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/usr/lib/" 2>/dev/null || true
     echo "[sysroot] 工具链库已并入（libunwind.a 在那里）"
   else
     echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK_ROOT=$NDK_ROOT）"
