@@ -107,11 +107,11 @@ object ProgramInstallPipeline {
                 files = files,
                 derivedLinks = (o.optJSONArray("derivedLinks") ?: JSONArray()).let { arr ->
                     (0 until arr.length()).mapNotNull { i ->
-                extraDirs = (o.optJSONArray("extraDirs") ?: JSONArray()).let { arr ->
-                    (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
-                },
                         arr.optString(i, "").trim().takeIf { it.isNotEmpty() }
                     }
+                },
+                extraDirs = (o.optJSONArray("extraDirs") ?: JSONArray()).let { arr ->
+                    (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
                 },
             )
         }
