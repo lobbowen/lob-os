@@ -91,9 +91,19 @@ fi
 SRC="${ROOTFS_SRC:-$ROOT/work/kernel-image/initramfs-root}"
 [ -d "$SRC" ] || die "缺系统层来源" "$SRC 不在 —— 先编那 initramfs 那一层（scripts/toolchain/build-kernel-image.sh）"
 
+#  => 而那**暂存**逐字**是**那**一份**独立的**那一个**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#     「那 initramfs **那一族**」与「那 rootfs **那一族**」）、=> 而而那**处置**逐字**不合并**。
+#  => 而那**它**逐字**避免**把**那 llvm **那 1.3 G** 逐字**复制**进**那 initramfs-root **那一族**
+#     （=> 而而那**它**们**逐字是**那**两**件**事**：「那**暂存**是**什么**」与「那**大小**是**什么**」）。
+STAGE="${ROOTFS_STAGE:-$ROOT/work/rootfs-stage}"
+if [ "$SRC" != "$STAGE" ]; then
+  rm -rf "$STAGE"
+  mkdir -p "$STAGE"
+  cp -a "$SRC/." "$STAGE/"
+fi
+
 rm -rf "$OUT"
 mkdir -p "$OUT/system"
-
 #  => 而那**系统层**逐字**是**那 squashfs 归档**（=> 而而那**它**逐字**只读**、=> 而而那**它**逐字**在**那磁盘上**）。
 #     => 而而那**它**逐字**是**那内核**注册**的**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**、=> 而按 C-104 逐字**不合并**）。
 #  缺陷名（C-102）**那 rootfs **那一件**逐字**只**装**那 busybox **那一套**（=> 而而那**它**们**逐字是**那**两**件**事**）。
@@ -109,23 +119,52 @@ mkdir -p "$OUT/system"
 M3_STAGE="${M3_PIECE_STAGE:-$ROOT/work/m3-stage}"
 if [ -d "$M3_STAGE" ]; then
   note "装那 M3 那一族（来源 $M3_STAGE）"
-  mkdir -p "$SRC/usr"
+  mkdir -p "$STAGE/usr"
+  #  缺陷名（C-102）**那 busybox **那一件**逐字**没有**那**本体**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 M3 那一族逐字**只有**那 libbusybox.so **那一个**、=> 而而那**它**们**逐字是**那**两**件**事**：
+#      「那**库**是**什么**」与「那**本体**是**什么**」）。
+#    => 而那**后果**逐字 = 而那 busybox **那一格**逐字**报**那「ABSENT」、=> 而而那**它**们**逐字是**那**两**件**事**。
+#    => 而那**处置**：=> 而那**本体**逐字**进**那 usr/bin **那一层**（=> 而那**它**逐字**是**那 libbusybox.so **那一个**、
+#      => 而而那**它**们**逐字是**那**两**件**事**：「那**本体**是**什么**」与「那**落位**是**什么**」）。
+  if [ -f "$M3_STAGE/usr/lib/libbusybox.so" ] && [ ! -f "$M3_STAGE/usr/bin/busybox" ]; then
+    cp -f "$M3_STAGE/usr/lib/libbusybox.so" "$STAGE/usr/bin/busybox"
+    note "busybox 本体已进那 usr/bin 那一层"
+  fi
+  #  缺陷名（C-102）**那 llvm **那一族**逐字**带着**那宿主**那**绝对路径**的**软链**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 m3-stage 那 clang **那一族**逐字**是**那 dist/bin **那一族**的**软链**、=> 而而那**它**逐字**指**到
+#      那宿主上**那一个**绝对路径**、=> 而而那**它**逐字**在**那**归档**里面**指不到**。
+#    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**报**那「ABSENT」、=> 而而那**它**们**逐字是**那**两**件**事**。
+#    => 而那**处置**：=> 而那 llvm **那一族**逐字**从**那 dist **那一族****复制**进**那**归档**
+#      （=> 而而那**它**们**逐字是**那**两**件**事**：「那**产物**是**什么**」与「那**落位**是**什么**」）。
+  LLVM_SRC="${LLVM_SRC:-$ROOT/dist}"
+  if [ -d "$LLVM_SRC/bin" ] && [ -f "$LLVM_SRC/bin/clang-21" ]; then
+    mkdir -p "$STAGE/usr/bin" "$STAGE/usr/lib"
+    for _b in clang clang++ clang-21 clang-cl clang-cpp; do
+      [ -e "$LLVM_SRC/bin/$_b" ] || continue
+      cp -fL "$LLVM_SRC/bin/$_b" "$STAGE/usr/bin/$_b" 2>/dev/null || true
+    done
+    if [ -d "$LLVM_SRC/lib/clang" ]; then
+      mkdir -p "$STAGE/usr/lib/clang"
+      cp -a "$LLVM_SRC/lib/clang/." "$STAGE/usr/lib/clang/" 2>/dev/null || true
+    fi
+    note "llvm 那一族已从那 dist 复制进那归档（=> 而那**软链**逐字**不**再指**那宿主**）"
+  fi
   if [ -d "$M3_STAGE/usr/bin" ]; then
-    mkdir -p "$SRC/usr/bin"
-    cp -a "$M3_STAGE/usr/bin/." "$SRC/usr/bin/"
+    mkdir -p "$STAGE/usr/bin"
+    cp -a "$M3_STAGE/usr/bin/." "$STAGE/usr/bin/"
     #  缺陷名（C-102）**那 M3 那一族**逐字**带着**那宿主**那**绝对路径**的**软链**（=> 而而那**它**们**逐字是**那**两**件**事**）。
 #      => 而那**成因**：=> 而那 llvm **那一件**逐字**是**那 dist/bin **那一族**的**软链**、=> 而而那**它**逐字**指**到
 #        那宿主上**那一个**绝对路径**、=> 而而那**它**逐字**在**那**归档**里面**指不到**。
 #      => 而而那**后果**逐字 = 而那 llvm **那一格**在**那新 rootfs** 里**起不来**。
 #      => 而那**处置**：=> 而那**软链**逐字**改**成**那相对**的**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：
 #        「那**产物**是**什么**」与「那**路径**是**什么**」）、=> 而而那**处置**逐字**不合并**。
-    for _sl in "$SRC/usr/bin/"*; do
+    for _sl in "$STAGE/usr/bin/"*; do
       [ -L "$_sl" ] || continue
       _tg="$(readlink "$_sl")"
       case "$_tg" in
         /*)
           if [ -e "$_tg" ]; then
-            _rel="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$_tg" "$SRC/usr/bin")"
+            _rel="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$_tg" "$STAGE/usr/bin")"
             ln -sf "$_rel" "$_sl"
           fi
           ;;
@@ -135,20 +174,20 @@ if [ -d "$M3_STAGE" ]; then
 note "装那系统层（squashfs，用 $MKSQUASHFS）"
 rm -f "$OUT/system/rootfs.squashfs"
 #     => 而那 mksquashfs 的**那一个**用法逐字**是**「那来源 **先**、=> 而而那**落点** **后**」（=> 而而那**它**们**逐字是**那**两**件**事**）。
-"$MKSQUASHFS" "$SRC" "$OUT/system/rootfs.squashfs" -noappend -no-progress >/dev/null 2>&1 || true
+"$MKSQUASHFS" "$STAGE" "$OUT/system/rootfs.squashfs" -noappend -no-progress >/dev/null 2>&1 || true
 [ -f "$OUT/system/rootfs.squashfs" ] || die "系统层没产出" "$OUT/system/rootfs.squashfs 不在"
 
   if [ -d "$M3_STAGE/usr/lib" ]; then
-    mkdir -p "$SRC/usr/lib"
-    cp -a "$M3_STAGE/usr/lib/." "$SRC/usr/lib/"
+    mkdir -p "$STAGE/usr/lib"
+    cp -a "$M3_STAGE/usr/lib/." "$STAGE/usr/lib/"
   fi
   if [ -d "$M3_STAGE/bin" ]; then
-    mkdir -p "$SRC/bin"
-    cp -a "$M3_STAGE/bin/." "$SRC/bin/"
+    mkdir -p "$STAGE/bin"
+    cp -a "$M3_STAGE/bin/." "$STAGE/bin/"
   fi
   if [ -d "$M3_STAGE/lib" ]; then
-    mkdir -p "$SRC/lib"
-    cp -a "$M3_STAGE/lib/." "$SRC/lib/"
+    mkdir -p "$STAGE/lib"
+    cp -a "$M3_STAGE/lib/." "$STAGE/lib/"
   fi
 else
   note "没有那 M3 暂存（$M3_STAGE）=> 而那 M3 那一族逐字**装不进来**（=> 而按 C-105 报缺）"
