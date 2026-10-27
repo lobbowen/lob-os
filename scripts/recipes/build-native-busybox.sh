@@ -181,7 +181,10 @@ make defconfig < "$WORK/defconfig-answers.txt" > "$WORK/defconfig.log" 2>&1 \
 #    => 而那**处置**：=> 而那 **mount** 逐字**不**从**那 busybox **来**（=> 而那 **init** 那一族逐字
 #      **改用**那**内核自己**的那 **mount**、=> 而而那**它**逐字**在**那 /bin/ 底下**是**那**内核**的**那个**）。
 #    => 而那 **echo** 与那 **sleep** 逐字**要**（=> 而那 init 那一族**靠**它们**说**话**与**兜底**）。
-APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH ECHO SLEEP"
+#  => 而那 **mount** 那个 applet 逐字**要**那 **mntent** 那一族、=> 而而那 bionic 逐字**没有**那 **addmntent**、
+#     => 而而那**它**们**逐字是**那**两**件**事**。
+#     => 而那**处置**：=> 而那 scripts/recipes/busybox-mntent-bionic.py 逐字**补**那**上游**那一处**。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH MOUNT LOSETUP ECHO SLEEP"
 #  => 而那**额外**的**那些** **config** 名（=> 而而那**它们**逐字**不是**那 applet 名、=> 而而那**它们**逐字**只**管**开关**）。
 #     => 而那 **ASH_INTERNAL_GLOB** 逐字**要**它**是因为**那 ash.c 逐字**用**那 libc 的 glob **那一族**（=> 而而那**它**被关掉**之后**那 #include <glob.h> **也**就**没**了）。
 #  => 而那 **TEST1** 逐字**是**那 **[** **那一个** **applet**（=> 而那 coreutils/Config.in :781 那一行 = 「config TEST1」+「bool "test as ["」），
@@ -479,7 +482,11 @@ chmod 0755 "$OUT_DIR/bin/libbusybox.so"
 #   -> ./libbusybox.so 一跳；写成 libbusybox.so（无 ./) 会断链，
 #   而断链会让整个工具族在真机上继续消失而 CI 全绿。
 NAPP=0
-for l in "$WORK/install/bin/"*; do
+#  缺陷名（C-102）**那收集**逐字**只**扫**那 install/bin/ **那一族**（=> 而而那**后果**逐字 =
+#    而那**有的** applet 逐字**落**在**那 install/sbin/ **那一族**、=> 而而那**它**逐字**进不来**、
+#    => 而而那**后果**逐字 = 那「::error title=声明了但没产出:: losetup … 不存在」（=> 而那 **losetup** 逐字**是**那**那一个**）。
+#    => 而那**处置**：=> 而那**收集**逐字**也**扫**那 install/sbin/ **与**那 install/usr/bin/ **那两**族**。
+for l in "$WORK/install/bin/"* "$WORK/install/sbin/"* "$WORK/install/usr/bin/"*; do
   [ -L "$l" ] || continue
   b="$(basename "$l")"
   [ "$b" = busybox ] && continue
@@ -642,11 +649,3 @@ printf '%s' "$BB_VER" > "$OUT_DIR/$TOOL.version"
 #      三个集合的读数（按轮次分清）：
 #       旧轮：表 19 / 落包集 17 / 白名单 17  表 − 落包集 = {awk, sh}、落包集 − 白名单 = ∅
 #       新轮：表 19 / 落包集 18 / 白名单 17  表 − 落包集 = {awk}、落包集 − 白名单 = {sh}
-#        而**差集记的是什么**：它记的是「这一件编译时没编出那个能力」——
-#         而它**不区分**「我们显式关掉了它」与「它依赖的那些被我们关掉了，于是它编不出来」（01 今天裁的）。
-#        而这一格与 C-16 同源：它是唯一能发现「事实与声明开始分家」的那个核对口。
-#        而这**一个**差集不区分两种成因：
-#         · awk 是**它依赖的那些配置被一起关掉了**，于是它编不出来（**不是「我们不要它」**）；
-#         · sh 是它自己那个配置（CONFIG_ASH / CONFIG_SH_IS_ASH）没开。
-#          两者都是「白名单式配置」的后果，而**白名单是我们写下的（声明）**。
-#        而**落包集 − 白名单 = 空集**（实测两者相等），所以「落包集里有我们没声明的名字」这句话今天不成立。

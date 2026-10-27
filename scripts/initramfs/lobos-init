@@ -40,15 +40,48 @@ mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
 #      => 而而那**可写层**逐字**是**那 /workdir（=> 而而那**它**逐字**是**那 tmpfs **挂载点**）。
 #    => 而那 **init** 逐字**以 PID 1** 起来**、=> 而而那**它**逐字**有**那 **CAP_SYS_ADMIN**
 #      （=> 而那**宿主**那一台逐字**没有**它、=> 而而那**那里**逐字**成不了**这个**挂载**）。
-if [ -f /rootfs.erofs ]; then
-  mkdir -p /system /workdir 2>/dev/null || true
-  if mount -t erofs loop /rootfs.erofs /system 2>/dev/null; then
-    echo "lobos-init: 系统层已挂上（erofs，/system 只读）" >&2
-  else
-    echo "lobos-init: 系统层挂不上（=> 而那 rootfs 那一层逐字**装错**了**）" >&2
-  fi
-  mount -t tmpfs tmpfs /workdir 2>/dev/null || true
+#  一之二，=> 而那 **rootfs** 那一层（=> 而那**系统层**逐字**是**那**磁盘上**的**那一层**）。
+#    => 而那**它**逐字**该挂在那 LOB-OS **自己**那台里面**（=> 而那 **01** 那边逐字裁的
+#      「那 rootfs 那一层逐字**该挂在那 LOB-OS 自己那台里面**、=> 而而那**它**逐字**不该挂在那宿主**
+#      Android **那一台**上**、=> 而而那 07 那边逐字**试**的**是**那宿主那一台**）。
+#    => 而那**它**逐字**跟**那 initramfs **那一层**逐字**是**那**两**件**事**
+#      （=> 而那 initramfs 那一层逐字**是**那**内存里**的**那一层**、=> 而而那 rootfs 逐字**是**那**磁盘上**的**那一层**）。
+#    => 而那**这一层**逐字**在**那 /rootfs.squashfs **与**那 /rootfs.erofs（=> 而而那**它们**逐字**是**那**两**件**事**、
+#      => 而而那**可写层**逐字**是**那 /workdir（=> 而而那**它**逐字**是**那 tmpfs **挂载点**）。
+#    => 而那 **init** 逐字**以 PID 1** 起来**、=> 而而那**它**逐字**有**那 **CAP_SYS_ADMIN**
+#      （=> 而那**宿主**那一台逐字**没有**它、=> 而而那**那里**逐字**成不了**这个**挂载**）。
+#    => 而那**归档**逐字**要**那**块设备**（=> 而而那**它**逐字**不**接**那文件**）：
+#      => 而那**处置**：=> 而那**回路设备**逐字**先**建**出来**（=> 而而那**内核**逐字 CONFIG_BLK_DEV_LOOP=y）、
+#        => 而而那**挂载**逐字**用**那**块设备**。
+#    => 而那**设备节点**逐字**要**那 devtmpfs（=> 而而那**它**逐字**是**那 /dev/loop* **那些**节点的**来处**）。
+mkdir -p /proc /sys /dev /system /workdir 2>/dev/null || true
+mount -t proc proc /proc 2>/dev/null || true
+mount -t sysfs sysfs /sys 2>/dev/null || true
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+MOUNTED=""
+for ARCHIVE in /rootfs.squashfs /rootfs.erofs; do
+  [ -f "$ARCHIVE" ] || continue
+  for d in /dev/loop0 /dev/loop1 /dev/loop2 /dev/loop3 /dev/loop4 /dev/loop5 /dev/loop6 /dev/loop7; do
+    [ -b "$d" ] || continue
+    losetup "$d" "$ARCHIVE" 2>/dev/null || continue
+    case "$ARCHIVE" in
+      *.squashfs) FSTYPE=squashfs ;;
+      *.erofs) FSTYPE=erofs ;;
+      *) FSTYPE="" ;;
+    esac
+    if [ -n "$FSTYPE" ] && mount -t "$FSTYPE" "$d" /system 2>/dev/null; then
+      MOUNTED="$ARCHIVE"
+      break
+    fi
+  done
+  [ -n "$MOUNTED" ] && break
+done
+if [ -n "$MOUNTED" ]; then
+  echo "lobos-init: 系统层已挂上（$MOUNTED，/system 只读）" >&2
+else
+  echo "lobos-init: 系统层挂不上（=> 而那 rootfs 那一层逐字**装错**了**）" >&2
 fi
+mount -t tmpfs tmpfs /workdir 2>/dev/null || true
 #  二，=> 而那**设备**那一族（=> 而那 /dev/console 逐字**要**能**读**那**内核**的**输出**）。
 [ -c /dev/console ] || mknod /dev/console c 5 1 2>/dev/null || true
 

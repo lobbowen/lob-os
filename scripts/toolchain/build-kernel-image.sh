@@ -77,13 +77,17 @@ chmod 0755 "$IRFS_STAGE/init"
 #  => 而那 **rootfs** 那一层逐字**要**跟**那 initramfs **一起**装**（=> 而而那**它**逐字**是**那**磁盘上**的**那一层**、
 #     => 而而那 initramfs 那一层逐字**是**那**内存里**的**那一层**、=> 而而那**它们**逐字**是**那**两**件**事**）。
 #     => 而那**归档**逐字**在**那 /rootfs.erofs（=> 而而那**它**逐字**是**那 erofs **那一族**）。
-ROOTFS_ARCHIVE="${ROOTFS_ARCHIVE:-$ROOT/work/rootfs/system/rootfs.erofs}"
-if [ -f "$ROOTFS_ARCHIVE" ]; then
-  cp "$ROOTFS_ARCHIVE" "$IRFS_STAGE/rootfs.erofs"
-  note "initramfs 那一层：rootfs.erofs（$(( $(stat -c %s "$IRFS_STAGE/rootfs.erofs") / 1024 )) KiB）"
-else
-  note "initramfs 那一层：没有那 rootfs.erofs（=> 而那系统层逐字**挂不上**、=> 而按 C-105 报缺）"
-fi
+#     => 而那**两种**归档逐字**都**装**（=> 而而那**它们**逐字**是**那**两**件**事**、=> 而而那**内核**逐字**有**那**哪一**族**
+#       **就**用**那**哪一**族**、=> 而而那**它**们**逐字是**那**两**件**事**）。
+ROOTFS_DIR="${ROOTFS_DIR:-$ROOT/work/rootfs/system}"
+for A in rootfs.squashfs rootfs.erofs; do
+  if [ -f "$ROOTFS_DIR/$A" ]; then
+    cp "$ROOTFS_DIR/$A" "$IRFS_STAGE/$A"
+    note "initramfs 那一层：$A（$(( $(stat -c %s "$IRFS_STAGE/$A") / 1024 )) KiB）"
+  else
+    note "initramfs 那一层：没有那 $A（=> 而那系统层逐字**挂不上**、=> 而按 C-105 报缺）"
+  fi
+done
 note "initramfs 那一层：bin/busybox（静态）+ init"
 
 mkdir -p "$OUT"
