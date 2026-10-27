@@ -239,7 +239,22 @@ jobs:
           #  => 而那**库**逐字**要**按**那 NDK **那一族**的**层次**摆**（=> 而而那 crtbegin_so.o 与那 crtend_so.o
           #     逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、=> 而而那**顶层**的**那个**里面**没有**它们**）。
           cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang **那工具链**那一族**
+          #  缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
+          #    => 而而那**后果**逐字 = 而那 libc.a 逐字 = **26672138** 字节、=> 而而那 libc++_static.a 逐字 = **24518858** 字节、
+          #      => 而而那**整个**的**那一份**逐字 = **125 M**、=> 而而那 APK **那一份**逐字**涨**那**一百**多 M、
+          #      => 而而那**它**们**逐字是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
+          #    => 而那**处置**：=> 而那 **<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
+          #      => 而而那**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
+          for _d in "$DST/usr/lib/aarch64-linux-android/"*/; do
+            _b="$(basename "$_d")"
+            case "$_b" in
+              [0-9]*) [ "$_b" = "25" ] || rm -rf "$_d" ;;
+            esac
+          done
+          #  => 而那 libc.a 与那 libc++_static.a 逐字**不**要**（=> 而而那**它**们**逐字是**那**两**件**事**：
+          #     「那**链接**要**什么**」与「那**静态库**是**什么**」）、=> 而而那**处置**逐字**不合并**。
+          rm -f "$DST/usr/lib/aarch64-linux-android/libc.a" "$DST/usr/lib/aarch64-linux-android/libc++_static.a"
+          rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang **那工具链**那一族**
           #    => 而而那 clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
           #    => 而而那**它**逐字**在**那 APK **外面**、=> 而而那**它**逐字**进不去**那**设备**
           #    => 而而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、

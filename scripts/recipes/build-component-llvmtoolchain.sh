@@ -461,7 +461,19 @@ if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
 #    => 而那**处置**：=> 而那 sysroot 逐字**照**那 NDK **那一族**的**层次**摆**（=> 而而那**它**们**逐字是**那**两**件**事**：
 #      「那 sysroot **是**什么**」与「那**层次**是**什么**」）。
   cp -a "$NSDK_SR"/usr/lib/aarch64-linux-android/. "$OUT/sysroot/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-  #  => 而那 libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（=> 而而那**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
+  #  缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
+  #    => 而而那**后果**逐字 = 而那 libc.a 逐字 = **26672138** 字节、=> 而而那 libc++_static.a 逐字 = **24518858** 字节、
+  #      => 而而那**整个**的**那一份**逐字 = **125 M**、=> 而而那**它**们**逐字是**那**两**件**事**。
+  #    => 而那**处置**：=> 而那 **<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
+  #      => 而而那**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
+  for _d in "$OUT/sysroot/usr/lib/aarch64-linux-android/"*/; do
+    _b="$(basename "$_d")"
+    case "$_b" in
+      [0-9]*) [ "$_b" = "$API" ] || rm -rf "$_d" ;;
+    esac
+  done
+  #  => 而那 libc.a 与那 libc++_static.a 逐字**不**要**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+  rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"  #  => 而那 libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（=> 而而那**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
   NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
   if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
     cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/usr/lib/" 2>/dev/null || true

@@ -184,7 +184,11 @@ make defconfig < "$WORK/defconfig-answers.txt" > "$WORK/defconfig.log" 2>&1 \
 #  => 而那 **mount** 那个 applet 逐字**要**那 **mntent** 那一族、=> 而而那 bionic 逐字**没有**那 **addmntent**、
 #     => 而而那**它**们**逐字是**那**两**件**事**。
 #     => 而那**处置**：=> 而那 scripts/recipes/busybox-mntent-bionic.py 逐字**补**那**上游**那一处**。
-APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH MOUNT LOSETUP ECHO SLEEP"
+#  => 而那 **printf** 逐字**要**（=> 而那 07 那边逐字**核**的**是**那设备上那 busybox **那一套**逐字**只**有那 21 个 applet、
+#     => 而而那 **echo** 与那 **printf** 逐字**不**在**那里面**、=> 而而那**它**逐字**是**那**读法**的**那**一件**）。
+#     => 而那**处置**：=> 而那 **printf** 逐字**进**那**清单**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#       「那 **busybox** **那一族**逐字**补不补**那**两个** applet**」与「那**判据**逐字**能不能**绕**过**它**」）。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH MOUNT LOSETUP ECHO SLEEP PRINTF"
 #  => 而那**额外**的**那些** **config** 名（=> 而而那**它们**逐字**不是**那 applet 名、=> 而而那**它们**逐字**只**管**开关**）。
 #     => 而那 **ASH_INTERNAL_GLOB** 逐字**要**它**是因为**那 ash.c 逐字**用**那 libc 的 glob **那一族**（=> 而而那**它**被关掉**之后**那 #include <glob.h> **也**就**没**了）。
 #  => 而那 **TEST1** 逐字**是**那 **[** **那一个** **applet**（=> 而那 coreutils/Config.in :781 那一行 = 「config TEST1」+「bool "test as ["」），
