@@ -474,13 +474,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     private fun toHost(action: String) {
         val i = Intent(this, OsHostService::class.java).setAction(action)
+        //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
+        //    => 而而那一拍逐字**配错了**、=> 而而问二那个量逐字**算不出来**
+        //    —— 而实际上这一路逐字是 `startService`（=> 而**不是** `startForegroundService`）、
+        //    => 而而 FGS start 那一拍逐字**不**在这一路上、=> 而而这里逐字**不该**记那一拍。
+        //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状，=> 而而它逐字是「**记错了**」那个形状。
+        //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**改这一行。
         //  缺陷名（C-102）**这一条路逐字用**那 startService（=> 而而那**它**们**逐字是**那**两**件**事**）。
         //    => 而那**成因**：=> 而那 startService 逐字**只**在**那应用**在**前台**的时候**才**能**起**那后台服务**、
         //      => 而而那**它**们**逐字是**那**两**件**事**。
         //    => 而而那**后果**逐字 = 而那宿主服务逐字**起不来**、=> 而而那**落位**那一族**与**那**身份**那一族
         //      逐字**都**只在**那宿主服务起**的那一趟**里**跑**、=> 而而那**它们**逐字**都**没跑**。
-        //    => 而那**处置**：=> 而这一条路逐字**走**那 ensureRunning（=> 而而那**它**逐字**是**那**一个**入口**、
-        //      => 而而那**它**逐字**跟**那 BootReceiver.startQuietly **那一族**同一**一个**）。
+        //    => 而那**处置**：=> 而这一条路逐字**走**那 ensureRunning（=> 而而那**它**逐字**是**那**一个**入口**）。
         //    => 而按 C-104：=> 而那宿主那一族逐字**只有**那一个**入口**（=> 而而那**它**们**逐字是**那同一个**触发**的**两种**写法**）。
         lobos.services.host.OsHostService.ensureRunning(this, action)
     }
@@ -1023,3 +1028,626 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         execAsJson(r)
     },
     "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
+            val snap = lobos.services.perm.PermissionLedger.register(this@CapabilityBroker)
+            lobos.services.perm.PermissionLedger.toJson(snap)
+        },
+        "os.permissions.roles" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            JSONObject().apply {
+                put("roles", JSONArray().apply {
+                    for (r in lobos.services.perm.PermissionRoles.declared()) {
+                        put(JSONObject().apply {
+                            put("id", r.id)
+                            put("purpose", r.purpose)
+                            put("policy", r.policy.name)
+                            put("autoHeal", r.autoHeal.name)
+                            put("owner", r.owner)
+                        })
+                    }
+                })
+                put("undeclared", JSONArray().apply {
+                    for (r in lobos.services.perm.PermissionRoles.undeclared()) put(r.id)
+                })
+            }
+        },
+        "os.notif.publish" to MethodDef(listOf("base"), true) { p, programId ->
+            if (programId.isBlank()) {
+                throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
+            }
+            val n = lobos.services.reg.ProgramNotificationHub.publish(
+                this@CapabilityBroker,
+                programId,
+                p.optString("title", ""),
+                p.optString("text", ""),
+                p.optBoolean("ongoing", true),
+                p.optBoolean("silent", true),
+                p.optString("group", "").ifBlank { null },
+                p.optString("groupLabel", "").ifBlank { null },
+                p.optString("subText", "").ifBlank { null },
+                if (p.has("progress")) p.optInt("progress", -1) else null,
+            )
+            JSONObject().apply {
+                put("ok", true)
+                put("programId", n.programId)
+                put("atMs", n.atMs)
+            }
+        },
+        "os.notif.clear" to MethodDef(listOf("base"), true) { p, programId ->
+            val target = p.optString("programId", "").ifBlank { programId }
+            if (target != programId) {
+                throw BridgeError(CODE_POLICY_DENIED, "只能撤下自己的通知")
+            }
+            JSONObject().apply {
+                put("ok", true)
+                put("cleared", lobos.services.reg.ProgramNotificationHub.clear(this@CapabilityBroker, target))
+            }
+        },
+        "os.notif.list" to MethodDef(listOf("base"), false) { _, _programId ->
+            JSONObject().apply {
+                put("notices", lobos.services.reg.ProgramNotificationHub.listJson())
+            }
+        },
+        "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            lobos.services.reg.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
+                put("notices", lobos.services.reg.ProgramNotificationHub.listJson())
+                put("noticeGroups", lobos.services.reg.ProgramNotificationHub.groupsJson())
+                put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount(this@CapabilityBroker))
+            }
+        },
+        "os.accessibility.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            JSONObject().apply {
+                put("state", AccessibilityServiceState.state(this@CapabilityBroker).name)
+                put("connected", AccessibilityServiceState.isBound(this@CapabilityBroker))
+                put("role", "UI 自动化的执行体（不参与保活）")
+            }
+        },
+        "os.accessibility.enable" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, _programId ->
+            val ms = p.optLong("timeoutMs", 8000L)
+            val out = AccessibilityServiceState.ensureBound(this@CapabilityBroker, ms)
+            JSONObject().apply {
+                put("state", out.state.name)
+                put("connected", out.bound)
+                put("issued", out.issued)
+                put("detail", out.detail)
+            }
+        },
+        "os.accessibility.disable" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { _, _programId ->
+            val out = AccessibilityServiceState.disable(this@CapabilityBroker)
+            JSONObject().apply {
+                put("state", out.state.name)
+                put("connected", out.bound)
+                put("issued", out.issued)
+                put("detail", out.detail)
+            }
+        },
+        "os.accessibility.actions" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            val a11y = requireA11y()
+            JSONObject().apply {
+                put("globalActions", org.json.JSONArray(a11y.globalActions()))
+                put("eventTypes", org.json.JSONArray(a11y.eventTypeNames()))
+            }
+        },
+        "sys.api" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
+            ApiSpec.toJson((METHODS.keys + OS_METHODS.keys).distinct().sorted()).apply {
+                put("protocol", JSONObject().apply {
+                    put("min", PROTOCOL_MIN)
+                    put("max", BuildConfig.BRIDGE_PROTOCOL)
+                })
+                put("summary", ApiSpec.surface())
+                put("aliases", JSONArray().apply {
+                    for (m in (METHODS.keys + OS_METHODS.keys).distinct().sorted().filter { ApiSpec.isDeprecated(it) }) {
+                        put(JSONObject().apply { put("alias", m); put("canonical", ApiSpec.canonical(m)) })
+                    }
+                })
+            }
+        },
+          "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
+              val report = PieceProvisioner.prepare(this)
+              JSONObject().apply {
+                  put("allRequiredReady", report.allRequiredReady)
+                  put("assets", report.toJson().optJSONArray("assets") ?: JSONArray())
+                  put("failedRequired", JSONArray(report.failedRequired.map { it.first.id }))
+                  put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
+                  put("libSearchPath", LibPath.searchPath(this@CapabilityBroker))
+              }
+          },
+        "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->
+            val ch = "hostbridge_notif"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                notifManager.createNotificationChannel(
+                    NotificationChannel(ch, "HostBridge", NotificationManager.IMPORTANCE_LOW)
+                )
+            }
+            val n = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                android.app.Notification.Builder(this, ch)
+            else android.app.Notification.Builder(this)
+            n.setContentTitle(p.optString("title", "Lob OS")).setContentText(p.optString("text", ""))
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+            notifManager.notify((10000 + (System.currentTimeMillis() % 55000)).toInt(), n.build())
+            JSONObject().apply { put("posted", true) }
+        },
+        "notif.read" to MethodDef(listOf("notification_access"), true) { p, _programId ->
+            if (!NotificationStore.connected) {
+                throw BridgeError(
+                    CODE_CAPABILITY_MISSING,
+                    "通知监听未连接：请在 设置 → 通知 → 通知使用权 中启用本应用后重试。"
+                )
+            }
+            val limit = p.optInt("limit", 50).coerceIn(1, 200)
+            val arr = NotificationStore.snapshot(limit)
+            JSONObject().apply {
+                put("notifications", arr)
+                put("count", arr.length())
+            }
+        },
+        "app.listInstalled" to MethodDef(listOf("base"), false) { _, _programId ->
+            val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            val arr = JSONArray()
+            for (ai in apps) arr.put(ai.packageName)
+            JSONObject().apply { put("packages", arr); put("count", arr.length()) }
+        },
+        "app.launch" to MethodDef(listOf("base"), false) { p, _programId ->
+            val pkg = p.optString("pkg", "")
+            val ai = packageManager.getLaunchIntentForPackage(pkg)
+            if (ai == null) throw BridgeError(CODE_INVALID_PARAM, "无启动入口: $pkg")
+            ai.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(ai)
+            JSONObject().apply { put("launched", pkg) }
+        },
+        "app.openUrl" to MethodDef(listOf("base"), false) { p, _programId ->
+            val url = p.optString("url", "")
+            if (url.isEmpty()) throw BridgeError(CODE_INVALID_PARAM, "url 为空")
+            val ai = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            ai.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (ai.resolveActivity(packageManager) == null) throw BridgeError(CODE_INVALID_PARAM, "无可用浏览器: $url")
+            startActivity(ai)
+            JSONObject().apply { put("opened", true); put("url", url) }
+        },
+        "ui.tap" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            val ok = a11y.performTap(
+                p.optDouble("x", 0.0).toFloat(),
+                p.optDouble("y", 0.0).toFloat(),
+                p.optLong("durationMs", 60L)
+            )
+            JSONObject().apply { put("ok", ok) }
+        },
+        "ui.swipe" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            val ok = a11y.performSwipe(
+                p.optDouble("x1", 0.0).toFloat(), p.optDouble("y1", 0.0).toFloat(),
+                p.optDouble("x2", 0.0).toFloat(), p.optDouble("y2", 0.0).toFloat(),
+                p.optLong("durationMs", 300L)
+            )
+            JSONObject().apply { put("ok", ok) }
+        },
+        "ui.inputText" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            val text = p.optString("text", "")
+            if (p.has("selector") && p.optJSONObject("selector")?.length() == 0) {
+                throw BridgeError(CODE_INVALID_PARAM, "selector 不能为空对象")
+            }
+            val ok = a11y.inputText(text, p.optJSONObject("selector"))
+            JSONObject().apply { put("ok", ok) }
+        },
+        "ui.getUiTree" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+            val a11y = requireA11y()
+            a11y.dumpUiTree(
+                maxNodes = p.optInt("maxNodes", 3000),
+                maxDepth = p.optInt("maxDepth", 40)
+            )
+        },
+        "ui.globalAction" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            val action = p.optString("action", "")
+            val id = a11y.globalActionOf(action)
+            if (id < 0) {
+                throw BridgeError(
+                    CODE_INVALID_PARAM,
+                    "不支持的全局动作：" + action + "（可用：" + a11y.globalActions().joinToString(",") + "）",
+                )
+            }
+            JSONObject().apply {
+                put("ok", a11y.performGlobalAction(action))
+                put("action", action)
+            }
+        },
+        "ui.events" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+            val a11y = requireA11y()
+            val names = p.optJSONArray("types")
+            val types = names?.let { a ->
+                (0 until a.length()).map { a11y.eventTypeOf(a.optString(it)) }.filter { it >= 0 }
+            } ?: emptyList()
+            JSONObject().apply {
+                put("seq", a11y.eventSeq())
+                put("uiSeq", a11y.uiSeq())
+                put("windowDirty", a11y.takeWindowDirty())
+                put("buffered", a11y.eventCount())
+                put("typeNames", org.json.JSONArray(a11y.eventTypeNames()))
+                put("events", a11y.eventsSince(
+                    p.optLong("since", 0L),
+                    p.optInt("max", 100),
+                    types,
+                ))
+            }
+        },
+        "ui.dropEvents" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+            val a11y = requireA11y()
+            JSONObject().apply {
+                put("dropped", a11y.dropEventsBefore(p.optLong("seq", 0L)))
+                put("seq", a11y.eventSeq())
+            }
+        },
+        "ui.screenshot" to MethodDef(listOf("mediaprojection"), true) { p, _programId ->
+            val svc = ScreenCaptureController.instance
+                ?: throw BridgeError(
+                    CODE_CAPABILITY_MISSING,
+                    "截屏服务未启动。需先在 App 内完成一次截屏授权（系统弹窗），此后可后台复用"
+                )
+            val metrics = resources.displayMetrics
+            val w = p.optInt("width", metrics.widthPixels)
+            val h = p.optInt("height", metrics.heightPixels)
+            val bmp = svc.capture(w, h, metrics.densityDpi)
+                ?: throw BridgeError(CODE_INTERNAL, "截屏失败（8s 内未取到帧；可能屏幕处于锁屏/息屏）")
+
+            val dir = File(filesDir, "screenshots").apply { mkdirs() }
+            val file = File(dir, "shot-${System.currentTimeMillis()}.png")
+            file.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            val outW = bmp.width
+            val outH = bmp.height
+            bmp.recycle()
+
+            if (p.optBoolean("inline", false)) {
+                val bytes = file.readBytes()
+                JSONObject().apply {
+                    put("encoding", "base64")
+                    put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                    put("width", outW); put("height", outH); put("bytes", bytes.size)
+                    put("path", file.absolutePath)
+                }
+            } else {
+                JSONObject().apply {
+                    put("path", file.absolutePath)
+                    put("width", outW)
+                    put("height", outH)
+                    put("bytes", file.length())
+                }
+            }
+        },
+        "ui.waitFor" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+            val a11y = requireA11y()
+            val selector = p.optJSONObject("selector")
+                ?: throw BridgeError(CODE_INVALID_PARAM, "waitFor 需要 selector")
+            a11y.waitForNode(
+                selector,
+                timeoutMs = p.optLong("timeoutMs", 10_000L),
+                intervalMs = p.optLong("intervalMs", 250L)
+            )
+        },
+        "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireReadableFile(p.optString("path", ""))
+            val maxBytes = p.optLong("maxBytes", DEFAULT_FS_MAX_BYTES).coerceIn(1L, MAX_FS_BYTES)
+            if (f.length() > maxBytes) {
+                throw BridgeError(
+                    CODE_INVALID_PARAM,
+                    "文件 ${f.length()} 字节超过上限 $maxBytes；用 maxBytes 显式放大（硬顶 ${MAX_FS_BYTES}）"
+                )
+            }
+            val bytes = f.readBytes()
+            val encoding = p.optString("encoding", "auto")
+            if (encoding == "base64") {
+                JSONObject().apply {
+                    put("path", f.absolutePath)
+                    put("bytes", bytes.size)
+                    put("encoding", "base64")
+                    put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                }
+            } else {
+                val text = String(bytes, Charsets.UTF_8)
+                val lossless = text.toByteArray(Charsets.UTF_8).contentEquals(bytes)
+                JSONObject().apply {
+                    put("path", f.absolutePath)
+                    put("bytes", bytes.size)
+                    if (lossless) {
+                        put("encoding", "utf8")
+                        put("content", text)
+                    } else {
+                        put("encoding", "base64")
+                        put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+                        put("note", "内容非合法 UTF-8，已自动以 base64 返回（避免损坏二进制）")
+                    }
+                }
+            }
+        },
+        "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireWritableFile(p.optString("path", ""))
+            val encoding = p.optString("encoding", "utf8")
+            val content = p.optString("content", "")
+            val bytes = if (encoding == "base64") {
+                android.util.Base64.decode(content, android.util.Base64.DEFAULT)
+            } else {
+                content.toByteArray(Charsets.UTF_8)
+            }
+            val append = p.optBoolean("append", false)
+            f.parentFile?.mkdirs()
+            if (append) f.appendBytes(bytes) else f.writeBytes(bytes)
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("bytes", bytes.size)
+                put("appended", append)
+                auditPathHint(f.absolutePath)?.let { put("hint", it) }
+            }
+        },
+        "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val path = p.optString("path", "")
+            val f = when {
+                path.isBlank() -> File(Environment.getExternalStorageDirectory().absolutePath)
+                else -> File(path)
+            }
+            if (!f.exists()) throw BridgeError(CODE_INVALID_PARAM, "路径不存在: ${f.absolutePath}")
+            val recursive = p.optBoolean("recursive", false)
+            val maxEntries = p.optInt("maxEntries", 1000).coerceIn(1, 10000)
+            val arr = JSONArray()
+            var truncated = false
+            if (f.isDirectory) {
+                if (recursive) f.walkTopDown().forEach { c ->
+                    if (arr.length() >= maxEntries) { truncated = true; return@forEach }
+                    if (c.absolutePath != f.absolutePath) arr.put(fileToJson(c))
+                } else {
+                    val kids = f.listFiles() ?: emptyArray()
+                    for (c in kids) {
+                        if (arr.length() >= maxEntries) { truncated = true; break }
+                        arr.put(fileToJson(c))
+                    }
+                }
+            }
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("isDirectory", f.isDirectory)
+                put("entries", arr)
+                put("count", arr.length())
+                put("truncated", truncated)
+            }
+        },
+        "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
+            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+                throw BridgeError(CODE_POLICY_DENIED, it)
+            }
+            val f = requireWritableFile(p.optString("path", ""))
+            val ok = if (f.exists()) f.isDirectory else f.mkdirs()
+            if (!ok) throw BridgeError(CODE_INTERNAL, "创建目录失败: ${f.absolutePath}")
+            JSONObject().apply {
+                put("path", f.absolutePath)
+                put("existed", f.exists())
+            }
+        },
+        "build.programInstall" to MethodDef(listOf("program_update"), true) { p, _programId ->
+            val checkOnly = p.optBoolean("checkOnly", false)
+            val target = p.optString("id", "")
+            if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
+            val ota = ProgramOtaUpdater.checkAndUpdate(this, ProgramDir(this, target), checkOnly)
+            JSONObject().apply {
+                put("ok", if (checkOnly) ota.checked else ota.updated)
+                put("checked", ota.checked)
+                put("available", ota.available)
+                put("updated", ota.updated)
+                put("current", ota.current ?: JSONObject.NULL)
+                put("version", ota.remote ?: JSONObject.NULL)
+                put("source", ProgramInstaller.Source.OTA.label)
+                put("detail", ota.detail)
+                put("restartRequired", ota.updated)
+            }
+        },
+        "build.programStatus" to MethodDef(listOf("program_update"), false) { _, _programId ->
+            val ids = lobos.services.reg.ProgramRegistry.listIds(this)
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
+            JSONObject().apply {
+                put("current", single?.currentVersion() ?: JSONObject.NULL)
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: JSONObject.NULL }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
+                put("integrity", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).integrityChecks() }))
+            }
+        },
+        "build.apk" to MethodDef(listOf("program_update"), true) { p, _programId ->
+            throw BridgeError(
+                CODE_INVALID_PARAM,
+                "build.apk 已废弃：内置构建链经实测不可行（Google Maven 无 aarch64 版 aapt2，" +
+                    "interp/架构/libc 三关装机后无法补救）。请改用 build.programInstall —— " +
+                    "设备安装已签名宿主，无需编译。"
+            )
+        },
+        "build.status" to MethodDef(listOf("program_update"), false) { _, _programId ->
+            val ids = lobos.services.reg.ProgramRegistry.listIds(this)
+            val single = ids.singleOrNull()?.let { ProgramDir(this@CapabilityBroker, it) }
+            JSONObject().apply {
+                put("current", single?.currentVersion() ?: JSONObject.NULL)
+                put("programs", JSONObject(ids.associateWith { ProgramDir(this@CapabilityBroker, it).currentVersion() ?: JSONObject.NULL }))
+                put("installed", JSONArray(ids.flatMap { ProgramDir(this@CapabilityBroker, it).installedVersions() }))
+            }
+        }
+    )
+
+    private fun fileToJson(f: File): JSONObject = JSONObject().apply {
+        put("name", f.name)
+        put("path", f.absolutePath)
+        put("directory", f.isDirectory)
+        put("size", if (f.isDirectory) 0L else f.length())
+        put("modified", f.lastModified())
+        put("readable", f.canRead())
+        put("writable", f.canWrite())
+    }
+
+    private fun requireReadableFile(path: String): File {
+        if (path.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "path 为空")
+        val f = File(path)
+        if (!f.exists()) throw BridgeError(CODE_INVALID_PARAM, "文件不存在: $path")
+        if (f.isDirectory) throw BridgeError(CODE_INVALID_PARAM, "是目录而非文件: $path")
+        if (!f.canRead()) throw BridgeError(CODE_INVALID_PARAM, "无读权限: $path")
+        return f
+    }
+
+    private fun requireWritableFile(path: String): File {
+        if (path.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "path 为空")
+        val f = File(path)
+        if (f.exists() && f.isDirectory) throw BridgeError(CODE_INVALID_PARAM, "是目录而非文件: $path")
+        val parent = f.parentFile
+        if (parent != null && !parent.exists()) {
+            if (!parent.mkdirs() && !parent.exists()) {
+                throw BridgeError(CODE_INVALID_PARAM, "无法创建父目录: ${parent.absolutePath}")
+            }
+        }
+        if (parent != null && !parent.canWrite()) {
+            throw BridgeError(CODE_INVALID_PARAM, "父目录不可写: ${parent.absolutePath}")
+        }
+        return f
+    }
+
+    private fun auditPathHint(path: String): String? {
+        val p = path.trim()
+        return when {
+            p.startsWith("/dev/") || p == "/dev" ->
+                "⚠ 写入 /dev 下的块设备/字符设备可能立即损坏设备数据"
+            p.startsWith("/proc/") || p.startsWith("/sys/") ->
+                "⚠ /proc 与 /sys 是内核接口，写入可能使系统立即不稳定或崩溃"
+            p.startsWith("/system") || p.startsWith("/vendor") || p.startsWith("/boot") ->
+                "⚠ 系统分区受 verified boot 保护，写入通常失败；强行修改可能导致设备无法启动"
+            p == "/" -> "⚠ 根目录写入：请确认目标路径"
+            else -> null
+        }
+    }
+
+    fun shutdown() {
+        running = false
+        for ((_, s) in servers) runCatching { s.close() }
+        servers.clear()
+        live = null
+    }
+
+    fun invokeLocal(programId: String, method: String, params: JSONObject): JSONObject {
+        if (live == null) return localFail("宿主桥未启动：快应用能力面此刻不可用")
+        val id = programId.trim()
+        if (id.isBlank()) return localFail("缺少 programId")
+        if (id != INSTALLER_ID && !lobos.services.reg.ProgramRegistry.listIds(this).contains(id)) {
+            return localFail("程序不在册，不得发起能力调用: $id")
+        }
+        val token = lobos.kernel.proc.SessionRegistry.issue(this, id, 0L)
+        val session = lobos.kernel.proc.SessionRegistry.list(this).firstOrNull { it.token == token }
+            ?: return localFail("会话签发后读不回来: $id")
+        val holder = SessionHolder(lobos.kernel.proc.SessionRegistry.socketName(token))
+        holder.session = session
+        holder.granted = serverGranted(session).toSet()
+        holder.system = holder.granted.contains(ApiSpec.GROUP_SYS)
+        val req = JSONObject().apply {
+            put("id", 0)
+            put("method", method)
+            put("params", params ?: JSONObject())
+        }
+        val res = dispatch(req, holder) ?: return localFail("宿主桥无响应")
+        val err = res.optJSONObject("error")
+        if (err != null) {
+            return JSONObject().apply {
+                put("ok", false)
+                put("code", err.optInt("code", CODE_INTERNAL))
+                put("error", err.optString("message", ""))
+            }
+        }
+        return res.optJSONObject("result")?.apply { if (!has("ok")) put("ok", true) }
+            ?: JSONObject().apply { put("ok", true) }
+    }
+
+    private fun localFail(message: String): JSONObject =
+        JSONObject().apply { put("ok", false); put("code", CODE_SESSION_MISSING); put("error", message) }
+
+    companion object {
+        const val TAG = "CapabilityBroker"
+        const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
+
+        const val BRIDGE_BASE = "base"
+
+        const val INSTALLER_ID = "lobos.installer"
+        const val INSTALLER_GENERATION = 1L
+        const val MAX_FRAME_CHARS = 256 * 1024
+        const val MAX_CONNECTIONS = 16
+
+        @Volatile private var live: CapabilityBroker? = null
+
+        fun live(): CapabilityBroker? = live
+
+        fun prepareSession(ctx: Context, programId: String, generation: Long): String {
+            val b = live
+            return if (b != null) b.beginSession(programId, generation)
+            else lobos.kernel.proc.SessionRegistry.issue(ctx, programId, generation)
+        }
+        const val CODE_CAPABILITY_MISSING = -32001
+        const val CODE_INVALID_PARAM = -32602
+        const val CODE_METHOD_NOT_FOUND = -32601
+        const val CODE_NOT_IMPLEMENTED = -32002
+        const val CODE_SESSION_MISSING = -32004
+        const val CODE_PROTOCOL_UNSUPPORTED = -32006
+        const val PROTOCOL_MIN = 1
+        const val CODE_POLICY_DENIED = -32005
+        const val CODE_INTERNAL = -32603
+
+        const val EXTRA_PKG = "lobos_target"
+
+        const val MAX_SHELL_OUTPUT = 256 * 1024
+
+        const val DEFAULT_FS_MAX_BYTES = 8L * 1024 * 1024
+        const val MAX_FS_BYTES = 64L * 1024 * 1024
+
+    }
+}
+
+data class MethodDef(
+    val caps: List<String>,
+    val audit: Boolean,
+    val handle: (JSONObject, String) -> JSONObject
+)
+
+class BridgeError(val code: Int, message: String) : Exception(message)
+
+private fun JSONArray.toList(): List<String> {
+    val out = mutableListOf<String>()
+    for (i in 0 until length()) out.add(getString(i))
+    return out
+}
+
+private fun execAsJson(r: lobos.kernel.ipc.LocalExec.Outcome): JSONObject = JSONObject().apply {
+    put("ok", r.ok)
+    put(
+        "stdout",
+        if (r.stdout.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+            r.stdout.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+        } else r.stdout,
+    )
+    if (r.stderr.isNotEmpty()) {
+        put(
+            "stderr",
+            if (r.stderr.length > CapabilityBroker.MAX_SHELL_OUTPUT) {
+                r.stderr.take(CapabilityBroker.MAX_SHELL_OUTPUT) + "\n…(截断)"
+            } else r.stderr,
+        )
+    }
+    put("exitCode", r.exitCode)
+    put("via", r.via.name)
+    put("tty", r.via == lobos.kernel.ipc.LocalExec.Via.PTY)
+    put(
+        "note",
+        when (r.via) {
+            lobos.kernel.ipc.LocalExec.Via.PTY ->
+                "底座 PTY 本地执行（不依赖无线调试）；进程得到真终端：isatty 为真、可交互、能读窗口大小。"
+            lobos.kernel.ipc.LocalExec.Via.PLAIN ->
+                "本地执行但无 PTY（不依赖无线调试）；isatty 为假，进不了交互模式。" +
+                    (r.error ?: "")
+        },
+    )
+    if (r.error != null) put("detail", r.error)
+}
