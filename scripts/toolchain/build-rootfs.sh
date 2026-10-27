@@ -136,11 +136,16 @@ if [ -d "$M3_STAGE" ]; then
 #    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**报**那「ABSENT」、=> 而而那**它**们**逐字是**那**两**件**事**。
 #    => 而那**处置**：=> 而那 llvm **那一族**逐字**从**那 dist **那一族****复制**进**那**归档**
 #      （=> 而而那**它**们**逐字是**那**两**件**事**：「那**产物**是**什么**」与「那**落位**是**什么**」）。
+    note "llvm 那一族已从那 dist 复制进那归档（=> 而那**软链**逐字**不**再指**那宿主**）"
+  fi
   LLVM_SRC="${LLVM_SRC:-$ROOT/dist}"
   if [ -d "$LLVM_SRC/bin" ] && [ -f "$LLVM_SRC/bin/clang-21" ]; then
     mkdir -p "$STAGE/usr/bin" "$STAGE/usr/lib"
     for _b in clang clang++ clang-21 clang-cl clang-cpp; do
       [ -e "$LLVM_SRC/bin/$_b" ] || continue
+      #  => 而那**软链**逐字**先删**再**复制**（=> 而那 cp **不写**那**悬空**的**软链**、=> 而而那**它**们**逐字是**那**两**件**事**：
+#        「那**软链**是**什么**」与「那 cp **写**什么**」）。
+      rm -f "$STAGE/usr/bin/$_b"
       cp -fL "$LLVM_SRC/bin/$_b" "$STAGE/usr/bin/$_b" 2>/dev/null || true
     done
     if [ -d "$LLVM_SRC/lib/clang" ]; then
@@ -149,49 +154,51 @@ if [ -d "$M3_STAGE" ]; then
     fi
     note "llvm 那一族已从那 dist 复制进那归档（=> 而那**软链**逐字**不**再指**那宿主**）"
   fi
+
   if [ -d "$M3_STAGE/usr/bin" ]; then
-    mkdir -p "$STAGE/usr/bin"
-    cp -a "$M3_STAGE/usr/bin/." "$STAGE/usr/bin/"
-    #  缺陷名（C-102）**那 M3 那一族**逐字**带着**那宿主**那**绝对路径**的**软链**（=> 而而那**它**们**逐字是**那**两**件**事**）。
-#      => 而那**成因**：=> 而那 llvm **那一件**逐字**是**那 dist/bin **那一族**的**软链**、=> 而而那**它**逐字**指**到
-#        那宿主上**那一个**绝对路径**、=> 而而那**它**逐字**在**那**归档**里面**指不到**。
-#      => 而而那**后果**逐字 = 而那 llvm **那一格**在**那新 rootfs** 里**起不来**。
-#      => 而那**处置**：=> 而那**软链**逐字**改**成**那相对**的**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：
-#        「那**产物**是**什么**」与「那**路径**是**什么**」）、=> 而而那**处置**逐字**不合并**。
-    for _sl in "$STAGE/usr/bin/"*; do
-      [ -L "$_sl" ] || continue
-      _tg="$(readlink "$_sl")"
-      case "$_tg" in
-        /*)
-          if [ -e "$_tg" ]; then
-            _rel="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$_tg" "$STAGE/usr/bin")"
-            ln -sf "$_rel" "$_sl"
-          fi
-          ;;
+    note "装那 M3 那一族（来源 $M3_STAGE）"
+    mkdir -p "$STAGE/usr"
+    #  => 而那 llvm **那一族**逐字**不**从**那 M3** **那一份**过来（=> 而而那**它**们**逐字是**那**两**件**事**：
+#     「那**产物**是**什么**」与「那**软链**指**哪**」）、=> 而而那 LLVM **那一份**逐字**已经**复制**进来**了**。
+    for _f in "$M3_STAGE/usr/bin/"*; do
+      _b="$(basename "$_f")"
+      case "$_b" in
+        clang|clang++|clang-21|clang-cl|clang-cpp) continue ;;
       esac
+      cp -a "$_f" "$STAGE/usr/bin/"
     done
+    if [ -d "$M3_STAGE/usr/lib" ]; then
+      mkdir -p "$STAGE/usr/lib"
+      cp -a "$M3_STAGE/usr/lib/." "$STAGE/usr/lib/"
+    fi
+    if [ -d "$M3_STAGE/bin" ]; then
+      mkdir -p "$STAGE/bin"
+      cp -a "$M3_STAGE/bin/." "$STAGE/bin/"
+    fi
+    if [ -d "$M3_STAGE/lib" ]; then
+      mkdir -p "$STAGE/lib"
+      cp -a "$M3_STAGE/lib/." "$STAGE/lib/"
+    fi
+    #  缺陷名（C-102）**那 busybox **那一件**逐字**没有**那**本体**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#      => 而那**成因**：=> 而那 M3 那一族逐字**只有**那 libbusybox.so **那一个**、=> 而而那**它**们**逐字是**那**两**件**事**：
+#        「那**库**是**什么**」与「那**本体**是**什么**」）。
+#      => 而那**后果**逐字 = 而那 busybox **那一格**逐字**报**那「ABSENT」、=> 而而那**它**们**逐字是**那**两**件**事**。
+#      => 而那**处置**：=> 而那**本体**逐字**进**那 usr/bin **那一层**（=> 而那**它**逐字**是**那 libbusybox.so **那一个**）。
+    if [ -f "$M3_STAGE/usr/lib/libbusybox.so" ] && [ ! -f "$M3_STAGE/usr/bin/busybox" ]; then
+      cp -f "$M3_STAGE/usr/lib/libbusybox.so" "$STAGE/usr/bin/busybox"
+      note "busybox 本体已进那 usr/bin 那一层"
+    fi
+  else
+    note "没有那 M3 暂存（$M3_STAGE）=> 而那 M3 那一族逐字**装不进来**（=> 而按 C-105 报缺）"
   fi
+
+#  => 而那**归档**逐字**在**那**所有**那**复制**之后**才**做**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#     「那**暂存树**是**什么**」与「那**归档**是**什么**」）、=> 而而那**处置**逐字**不合并**。
 note "装那系统层（squashfs，用 $MKSQUASHFS）"
 rm -f "$OUT/system/rootfs.squashfs"
-#     => 而那 mksquashfs 的**那一个**用法逐字**是**「那来源 **先**、=> 而而那**落点** **后**」（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#     => 而那 mksquashfs 的**那一个**用法逐字**是**「那来源 **先**、=> 而而那**落点** **后**」
 "$MKSQUASHFS" "$STAGE" "$OUT/system/rootfs.squashfs" -noappend -no-progress >/dev/null 2>&1 || true
 [ -f "$OUT/system/rootfs.squashfs" ] || die "系统层没产出" "$OUT/system/rootfs.squashfs 不在"
-
-  if [ -d "$M3_STAGE/usr/lib" ]; then
-    mkdir -p "$STAGE/usr/lib"
-    cp -a "$M3_STAGE/usr/lib/." "$STAGE/usr/lib/"
-  fi
-  if [ -d "$M3_STAGE/bin" ]; then
-    mkdir -p "$STAGE/bin"
-    cp -a "$M3_STAGE/bin/." "$STAGE/bin/"
-  fi
-  if [ -d "$M3_STAGE/lib" ]; then
-    mkdir -p "$STAGE/lib"
-    cp -a "$M3_STAGE/lib/." "$STAGE/lib/"
-  fi
-else
-  note "没有那 M3 暂存（$M3_STAGE）=> 而那 M3 那一族逐字**装不进来**（=> 而按 C-105 报缺）"
-fi
 #     => 而那**设备上**逐字**没有**那 **CAP_SYS_ADMIN**、=> 而而那 **mount** 逐字**成不了**）。
 note "建那可写层（工作区目录）"
 mkdir -p "$OUT/workdir"
