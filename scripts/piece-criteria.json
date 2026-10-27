@@ -62,14 +62,15 @@
     "node": "",
     "owner": "05",
     "nodeState": "待 05 落（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数与那设备写入归 07、=> 而按 C-105 报缺）",
-    "citation": "那 .github/workflows/build-apk.yml 逐字那 **:236** 那一行 = 「[ -f \"$DST/include/stdio.h\" ] || { echo \"::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败\"; exit 1; }」（=> 而那 **:229** 那一行 = 「[ -n \"$SRC\" ] || { echo \"::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）\"; exit 1; }」、=> 而而那 **:230** 那一行 = 「DST=container/app/src/main/assets/sysroot」）、=> 而那**那一步**逐字是那 **:219** 那一行 = 「- name: 放置 sysroot 到 assets（编译期材料 · 不是件）」",
-    "citationNote": "=> 而那 criterion 那一栏**原文**逐字**引**的**是**那「第 **147** 步」、=> 而而那**它**逐字**换不回**那**原话**（=> 而那**仓内**那 build-apk.yml 逐字 = **551** 行、=> 而而那**那两**处**硬判**逐字**在**那 **:229** 与那 **:236** 那**两**行、=> 而而那「第 **147** 步」那一读法**按 C-115 留档不删**）",
+    "citation": "那 .github/workflows/build-apk.yml 逐字那 **:253** 那一行 = 「[ -f \"$DST/include/stdio.h\" ] || { echo \"::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败\"; exit 1; }」（=> 而那 **:229** 那一行 = 「[ -n \"$SRC\" ] || { echo \"::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）\"; exit 1; }」、=> 而而那 **:230** 那一行 = 「DST=container/app/src/main/assets/sysroot」、=> 而而那 **:219** 那一行 = 「- name: 放置 sysroot 到 assets（编译期材料 · 不是件）」）",
+    "citationNote": "=> 而那 criterion 那一栏**原文**逐字**引**的**是**那「第 **147** 步」、=> 而而那**它**逐字**换不回**那**原话**（=> 而那**仓内**那 build-apk.yml 逐字**现在** = **568** 行、=> 而而那那**硬判**逐字**在**那 **:229** 与那 **:253** 那**两**行、=> 而而那**旧**的**那一读法**（=> 而那「:236」与那**仓内**那 build-apk.yml 逐字**当时** = **551** 行）逐字**按 C-115 留档不删**）",
     "hostSide": "那仓内那 container/app/src/main/assets/ 底下逐字**现在**只有那 ca-bundle.pem（**188900** 字节）与那 supply/ **那一**目录、=> 而而那 assets/sysroot **目录**逐字**不在**（=> 而那**它**逐字**是**那**构建期**才**从**那 NDK** **拷**过来**的**、=> 而而那**产物**与那**编**归 **05**）",
     "deviceSide": "=> 而那设备侧那 files 底下逐字**没有**那 sysroot **那**一**件**（=> 而而那 find 那 sysroot 与那 libunwind.a 与那 crtend_so.o 逐字**都**是**零命中**、=> 而而那**它**们**逐字是**那**两**件**事**、=> 而而那**读数**归 **07**）",
     "notRunnable": "=> 而那**它**逐字**是**那**编译期材料**、=> 而而它**本来**就**没有**那**可执行行为**（=> 而那 Linux 的**对应物**逐字**是**那 gcc 包的 include/ 与那 libc6-dev 包）",
     "excludedFromThisCriterion": [
       "那 lib/ 下那些库的架构（=> 而那**实际**拷的**是**那 NDK sysroot 逐字那 usr/lib/aarch64-linux-android/ **的**内容、=> 而而那**架构**随**那 NDK** 的**目标**而**定**）"
-    ]
+    ],
+    "citationOldReading": "=> 而那**旧**的**那一读法**逐字**是**那「:236」（=> 而那**仓内**那 build-apk.yml 逐字**当时** = **551** 行）、=> 而而那**它**逐字**是**那**同一条**硬判**的**另**一个**行号**（=> 而而那**它**们**逐字是**那**两**件**事**、=> 而按 C-115 逐字**两条并列**）"
   },
   "make": {
     "criterion": "make 起得来，并且**真编译一条 makefile 到可执行文件再 clean 掉** ——起得来不等于能用：make 自己就是构建系统，它坏的方式是「跑起来了但不建东西」。所以判据覆盖变量展开、命令行目标、隐式规则（%.o: %.c）与 clean，缺一都不算通过。",
@@ -97,12 +98,13 @@
     "owner": "05",
     "nodeState": "待 05 落（=> 而那判据本体归 04、=> 而那实现归 05、=> 而那读数与那设备写入归 07、=> 而按 C-105 报缺）",
     "citation": "那 .github/workflows/build-apk.yml 逐字那 **:203** 那一行 = 「[ -f \"$SRC\" ] || { echo \"::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载；NDK=$NDK\"; exit 1; }」（=> 而那 **:202** 那一行 = 「SRC=\"$(ls \"$NDK\"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)\"」、=> 而而那 **:204** 那一行 = 「cp -f \"$SRC\" \"$J/libc++_shared.so\"」）",
-    "citationNote": "=> 而那 criterion 那一栏**原文**逐字**引**的**是**那「第 **114** 步」、=> 而而那**它**逐字**换不回**那**原话**（=> 而那**仓内**那 build-apk.yml 逐字 = **551** 行、=> 而而那**那**一处**硬判**逐字**在**那 **:203** 那一行、=> 而而那「第 **114** 步」那一读法**按 C-115 留档不删**）",
+    "citationNote": "=> 而那 criterion 那一栏**原文**逐字**引**的**是**那「第 **114** 步」、=> 而而那**它**逐字**换不回**那**原话**（=> 而那**仓内**那 build-apk.yml 逐字**现在** = **568** 行、=> 而而那那**硬判**逐字**在**那 **:203** 那一行、=> 而而那**旧**的**那一读法**逐字**按 C-115 留档不删**）",
     "hostSide": "=> 而那**它**逐字**是**那 NDK **直接**给的、=> 而而那**它**逐字**不产**那 component-meta.json、=> 而而那**产物**与那**编**归 **05**",
     "notRunnable": "=> 而那**起得来**逐字**不适用**、=> 而而那**它**逐字**是**那**落位对**那一族**（=> 而那**它**逐字**不是**那**可执行能力**）",
     "excludedFromThisCriterion": [
       "那架构与那 DT_SONAME（=> 而那**实际**来自**那 NDK** 的 sysroot、=> 而而那**架构**随**那 NDK** 目标而**定**）"
-    ]
+    ],
+    "citationOldReading": "=> 而那**旧**的**那一读法**逐字**是**那「第 **114** 步」（=> 而那**仓内**那 build-apk.yml 逐字**当时** = **551** 行）、=> 而按 C-115 逐字**两条并列**"
   },
   "bash": {
     "criterion": "bash 起得来，并且**真跑一段脚本**：管道、变量展开、退出码各验一次（不是只看 --version）。起得来不等于能用：bash 自己坏的方式是「起得来但语法/退出码不对」，那会让程序里所有 #!/usr/bin/env bash 的快应用脚本一起失效。",
