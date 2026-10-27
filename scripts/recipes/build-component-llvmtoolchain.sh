@@ -423,7 +423,30 @@ cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 if [ -d "$STAGE/prefix/lib" ]; then
   cp -a "$STAGE/prefix/lib/." "$OUT/lib/"
 fi
-
+#  缺陷名（C-102）**那 clang **那一族**逐字**没有**那**资源**目录**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 cmake --install 逐字**只**装**那 lib/clang/21/include/ **那一族**、
+#      => 而而那**资源**目录**（那 libunwind.a **与**那 libclang_rt **那两**个**族**）逐字**在**那
+#        lib/clang/21/lib/ **那一族**、=> 而而那**它**们**逐字**没**装**、=> 而而那**它们**逐字**是**那**两**件**事**。
+#    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
+#      => 而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」
+#      **与**那「ld.lld: error: cannot open …/libclang_rt.builtins-aarch64-android.a」。
+#    => 而那**处置**：=> 而那 NDK **那一族**的**资源**目录逐字**也**并**进**那 **lib/clang/** **那一族**
+#      （=> 而而那**它**们**逐字是**那**两**件**事**：「那 clang **要**什么**」与「那**资源**从哪**来**」）。
+NSDK_CLANGRES="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/* 2>/dev/null | head -1 || true)"
+if [ -n "$NSDK_CLANGRES" ] && [ -d "$NSDK_CLANGRES/lib" ]; then
+  _cv="$(basename "$NSDK_CLANGRES")"
+  mkdir -p "$OUT/lib/clang/$_cv/lib"
+  cp -a "$NSDK_CLANGRES/lib/." "$OUT/lib/clang/$_cv/lib/" 2>/dev/null || true
+  #  => 而那 clang 逐字**按**那**目标三元组**找**那**资源**（=> 而而那**它**逐字**是**那
+  #     lib/clang/<版本>/lib/<三元组>/ **那一族**）、=> 而而那 NDK **那一族**逐字**是**那 linux/<架构>/ **那一族**、
+  #     => 而而那**处置**逐字**是**那**两个**层次**都**给**（=> 而而那**它们**逐字**是**那**两**件**事**：
+  #     「那 clang **要**哪**一层**」与「那 NDK **有**哪**一层**」）。
+  _triple="aarch64-unknown-linux-android$API"
+  mkdir -p "$OUT/lib/clang/$_cv/lib/$_triple"
+  cp -a "$NSDK_CLANGRES/lib/linux/aarch64/." "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
+  cp -a "$NSDK_CLANGRES/lib/linux/libclang_rt."* "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
+  echo "[llvm] 资源目录已并入（libunwind.a 与那 libclang_rt 在那里，三元组 $_triple）"
+fi
 #  缺陷名（C-102）**那 clang 逐字找不到**那 sysroot **与**那 libunwind.a
 #    => 而而那**成因**：
 #      · clang 逐字**从**那**它自己的**安装前缀**找**那 C++ **头文件**（=> 而那**路径**逐字**是**那
