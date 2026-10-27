@@ -33,9 +33,36 @@ ADB="${LOBOS_ADB:-/home/bowen/runtimes/platform-tools/adb}"
 DEV="${LOBOS_DEV:-f0942f56}"
 PKG="${LOBOS_PKG:-lobos.os}"
 # 那设备上那**目标**逐字**在**哪（=> 而那判据逐字**按裸名**去**spawn**、=> 而而那**这**个前缀逐字**要**被**换成**那设备上**那**路径**）
+# 那设备上那**目标**逐字**在**哪（=> 而那判据逐字**按裸名**去**spawn**、=> 而而那**这**个前缀逐字**要**被**换成**那设备上**那**路径*
 TARGET_PREFIX="${LOBOS_TARGET_PREFIX:-/data/user/0/$PKG/files/usr/bin}"
 TIMEOUT="${LOBOS_CRITERIA_TIMEOUT:-120}"
 
+#  缺陷名（C-102）**那采集层**逐字**只有**那**设备侧**的**那一条**路**
+#    => 而而那**它**逐字**读**的是那**宿主**那一份**路径**、=> 而而那**我们自己**那台里跑**那一族**逐字**还**没有**那一路**
+#    => 而而那**处置**归那主人**。
+#  => 而那**目标前缀**逐字**要**能**指向**那**新 rootfs** 里**那产物自己带的**那一层**
+#    （=> 而而那**它**们**逐字是**那**两**件**事**：「那**采集层**逐字**改**什么**」与
+#      「那**我们自己**那台**逐字**能不能**跑**那 M3 **那一族**」）、=> 而而那**处置**逐字**不合并**。
+#  => 而那 **LOBOS_TARGET_PREFIX** 逐字**能**指向**那我们自己**那台的**那产物**自己带的**那一层**
+#    （=> 而而那**它**逐字**是**那**宿主**上**那一份**路径**、=> 而而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那 **PATH** 与那 **LD_LIBRARY_PATH** 逐字**要**能**指**那**新 rootfs** 里**那库**那一层**
+#    （=> 而而那**它**们**逐字是**那**两**件**事**：「那**环境**是**什么**」与「那**库**在**哪**」）。
+#  => 而那**判据本体**那 **node** 字段逐字**不用改**（=> 而而那**它**逐字**只**管**spawn**那个**名字**与**读**那退出码**）。
+SELF_ROOT="${LOBOS_SELF_ROOT:-$HERE/dist}"
+SELF_PREFIX="${LOBOS_SELF_PREFIX:-$SELF_ROOT/bin}"
+SELF_LIB="${LOBOS_SELF_LIB:-$SELF_ROOT/lib:$SELF_ROOT/usr/lib}"
+SELF_SYSROOT="${LOBOS_SELF_SYSROOT:-$SELF_ROOT/sysroot}"
+#  => 而那**我们自己**那台**那一路**逐字**由**那 **LOBOS_SELF_MODE** **那个**开关**给**
+#    （=> 而而那**它**逐字**是**那**第二条**路**、=> 而而那**它们**逐字**是**那**两**件**事**）。
+#  => 而那**宿主**的**那个** node 逐字**要**在**那 PATH** 里面**（=> 而而那**它**逐字**是**那**宿主**的**那一个**、
+#     => 而而那**它**们**逐字是**那**两**件**事**：「那**目标**在**哪**」与「那**宿主**的**工具**在**哪**」）。
+HOST_NODE_DIR="${LOBOS_HOST_NODE_DIR:-$(dirname "$(command -v node 2>/dev/null || echo /usr/bin/node)")}"
+SELF_MODE="${LOBOS_SELF_MODE:-0}"
+if [ "$SELF_MODE" = "1" ]; then
+  [ -d "$SELF_PREFIX" ] || { echo "那我们自己那台的产物不在: $SELF_PREFIX"; exit 2; }
+  SELF_TMP="${LOBOS_SELF_TMP:-$SELF_ROOT/../work/self-tmp}"
+  mkdir -p "$SELF_TMP"
+fi
 if [ ! -f "$CRITERIA" ]; then
   echo "判据表不在: $CRITERIA"
   exit 2
@@ -59,17 +86,23 @@ fi
 #  而那分母逐字**读**那分母清单（=> 而那分母清单逐字**是**那**定义**、=> 而而它**不**随**那读数**变**）
 DENOM="$HERE/docs/m0prime-denominator.json"
 
-python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$DENOM" "$@" << 'PYEOF'
+python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$DENOM" "$SELF_MODE" "$SELF_PREFIX" "$SELF_LIB" "$SELF_SYSROOT" "$HOST_NODE_DIR" "$@" << 'PYEOF'
 import base64, io, json, os, subprocess, sys, time
 from datetime import datetime, timezone
 
 criteria_path, out_path, adb, dev, pkg, target_prefix, timeout = sys.argv[1:8]
+self_mode = sys.argv[9] == '1'
+self_prefix = sys.argv[10]
+self_lib = sys.argv[11]
+self_sysroot = sys.argv[12]
+host_node_dir = sys.argv[13]
+self_tmp = os.environ.get('LOBOS_SELF_TMP') or os.path.join(os.path.dirname(out_path), '..', 'work', 'self-tmp')
 lib_prefix = os.path.join(os.path.dirname(target_prefix), 'lib')
 denom = json.load(io.open(sys.argv[8], encoding='utf-8'))
 _dg = {g['key']: g for g in denom.get('denominators') or []}
 m0p_set = list(_dg.get('bareName', {}).get('set') or [])
 lib_set = list(_dg.get('symbolLoad', {}).get('set') or [])
-wanted = sys.argv[9:]
+wanted = sys.argv[14:]
 d = json.load(io.open(criteria_path, encoding='utf-8'))
 
 pieces = [k for k in sorted(d.keys())
@@ -216,7 +249,16 @@ def run_criterion(code, criterion_env=None):
              % (pkg, child_tmpdir, b64, tmp_path, lib_prefix, child_ld, child_path, tmp_path, tmp_path))
     #  => 而那判据**给**那目标**的**那**环境**逐字**要**在**那设备**上**生效**
     one = 'run-as ' + pkg + ' sh -c ' + chr(39) + env_prefix + inner + chr(39)
-    rr = subprocess.run([adb, '-s', dev, 'shell', one], capture_output=True, text=True, timeout=int(timeout) + 180)
+    #  => 而那**我们自己**那台**那一路**（=> 而而那**它**逐字**是**那**第二条**路**、
+    #     => 而而那**它**们**逐字是**那**两**件**事**：「那**设备侧**的**那一条**」与「那**我们自己**那台**的**那一条**」）。
+    #     => 而那**目标前缀**与那 PATH 与那 LD_LIBRARY_PATH 逐字**指**那**我们自己**那台**那产物自己带的**那一层**。
+    if self_mode:
+        self_inner = ('mkdir -p ' + self_tmp + ' && echo ' + b64 + ' | base64 -d > ' + self_tmp + '/probe.js && '
+                       'export TMPDIR=' + self_tmp + '; export LD_LIBRARY_PATH=' + self_lib + '; export PATH=' + self_prefix + ':' + host_node_dir + ':' + os.environ.get('PATH','') + '; '
+                       'node ' + self_tmp + '/probe.js 2>&1; echo "__LOBOS_RC__$?"; rm -f ' + self_tmp + '/probe.js')
+        rr = subprocess.run(['/bin/sh', '-c', self_inner], capture_output=True, text=True, timeout=int(timeout) + 180, cwd=self_tmp)
+    else:
+        rr = subprocess.run([adb, '-s', dev, 'shell', one], capture_output=True, text=True, timeout=int(timeout) + 180)
     out = rr.stdout or ''
     rc = None
     if '__LOBOS_RC__' in out:
@@ -255,7 +297,7 @@ if _partial and isinstance(_prev, dict) and _prev.get("pieces"):
     #  => 而那 takenAt 逐字**留**那前**一**版**的**（=> 而那**它**逐字**是**那**完整**的**那一趟**的**时刻**）。
     now = _prev.get("takenAt") or now
     #  => 而那**取数时刻**逐字**带**那**这一趟**测**了**什么**（=> 而按 C-274 逐字**每**个**时点**带**它**那**时刻**）。
-    doc["partialAt"] = _now_partial
+    _partialAt = _now_partial
 m0p_results = [r for r in results if r['id'] in m0p_set]
 m0p_passed = sum(1 for r in m0p_results if r['status'] == '过')
 m0p_failed = sum(1 for r in m0p_results if r['status'] == '不过')
@@ -313,6 +355,8 @@ doc = {
     'N': len(m0p_results),
     'failed': m0p_failed,
 }
+if _partial:
+    doc['partialAt'] = _partialAt
 #  缺陷名（C-102）**那读数逐字把**前**一**版**覆盖**了** ——
 #    => 而而它治**的**是「那读数逐字**能不能**换**回**去**」。
 #    => 而那**成因**：=> 而那**现行**的**那**写**法逐字**只**写**那**这一**版、=> 而而那**旧**的**那一版**就**没**了**。
