@@ -254,7 +254,12 @@ def run_criterion(code, criterion_env=None):
     #     => 而那**目标前缀**与那 PATH 与那 LD_LIBRARY_PATH 逐字**指**那**我们自己**那台**那产物自己带的**那一层**。
     if self_mode:
         self_inner = ('mkdir -p ' + self_tmp + ' && echo ' + b64 + ' | base64 -d > ' + self_tmp + '/probe.js && '
-                       'export TMPDIR=' + self_tmp + '; export LOBOS_LIB_PREFIX=' + self_lib + '; export LD_LIBRARY_PATH=' + self_lib + '; export PATH=' + self_prefix + ':' + host_node_dir + ':' + os.environ.get('PATH','') + '; '
+    #  缺陷名（C-102）**那 self_mode 那一支**逐字**把**那目标那前缀**排**在那宿主的那一个 node **前面**
+    #    => 而而那**它们**逐字在那暂存那 **aarch64** 那 busybox **上面**先**撞**了、=> 而而那 **wc** 逐字**没**跑成、
+    #      => 而而那 **.so** 逐字**其实**逐字**在**。
+    #    => 而那**处置**：=> 而那 PATH 逐字**该让**那宿主**的那一个** sh **与** node **在前**、
+    #      => 而而那**它**们**逐字是**那**两**件**事**：「那外层那个 sh **是**哪一个」与「那目标**在**哪**一台**上**跑**」）。
+                       'export TMPDIR=' + self_tmp + '; export LOBOS_LIB_PREFIX=' + self_lib + '; export LD_LIBRARY_PATH=' + self_lib + '; export PATH=' + host_node_dir + ':' + os.environ.get('PATH','') + ':' + self_prefix + '; '
                        'node ' + self_tmp + '/probe.js 2>&1; echo "__LOBOS_RC__$?"; rm -f ' + self_tmp + '/probe.js')
         rr = subprocess.run(['/bin/sh', '-c', self_inner], capture_output=True, text=True, timeout=int(timeout) + 180, cwd=self_tmp)
     else:
