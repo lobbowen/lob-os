@@ -233,6 +233,23 @@ jobs:
           cp -a "$SRC/usr/include" "$DST/include"
           mkdir -p "$DST/lib"
           cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/lib/" 2>/dev/null || true
+          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang **那工具链**那一族**
+          #    => 而而那 clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
+          #    => 而而那**它**逐字**在**那 APK **外面**、=> 而而那**它**逐字**进不去**那**设备**
+          #    => 而而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
+          #      而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」。
+          #  => 而那**处置**：=> 而那**工具链**那一族逐字**也**拷**进**那 sysroot **那 lib/ **里面**、
+          #    => 而而那**它**逐字**跟**那 sysroot **一起**进**那 APK**（=> 而那**它**们**逐字是**那**两**件**事**：
+          #      「那**头文件与库**」与「那**工具链**自己的**库**」）。
+          #  => 而按 C-104：=> 而那**它**们逐字**不是**那同一件内容的两条取法、=> 而而那**处置**逐字**不合并**。
+          TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
+          if [ -n "$TOOLLIB" ]; then
+            cp -a "$TOOLLIB"/. "$DST/lib/" 2>/dev/null || true
+            echo "[sysroot] 工具链库已并入 $DST/lib（$(ls "$DST/lib" | wc -l) 项）"
+          else
+            echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK=$NDK）"
+            exit 1
+          fi
           [ -f "$DST/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
           echo "[sysroot] 就位 $DST（include $(ls "$DST/include" | wc -l) 项 · lib $(ls "$DST/lib" | wc -l) 项）"
           du -sh "$DST"

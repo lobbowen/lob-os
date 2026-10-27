@@ -423,6 +423,41 @@ cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 if [ -d "$STAGE/prefix/lib" ]; then
   cp -a "$STAGE/prefix/lib/." "$OUT/lib/"
 fi
+
+#  缺陷名（C-102）**那 clang 逐字找不到**那 sysroot **与**那 libunwind.a
+#    => 而而那**成因**：
+#      · clang 逐字**从**那**它自己的**安装前缀**找**那 C++ **头文件**（=> 而那**路径**逐字**是**那
+#        bin/../sysroot/usr/include/c++/v1、=> 而而那**它**逐字**不**看**那 --sysroot **那一格**）；
+#      · 而那 libunwind.a 逐字**不**在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang
+#        **那工具链**那一族**（=> 而那 lib/clang/*/lib/linux/aarch64）。
+#    => 而而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
+#      而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」
+#      与那「ld.lld: error: cannot open crtend_so.o」。
+#  => 而那**处置**：=> 而那 sysroot **那一件**逐字**进**那 **$OUT/sysroot/**（=> 而而那**它**逐字**跟**那
+#      bin/ **相对**、=> 而而那 clang 逐字**按**它**自己**的**规则**就**找得到**）、
+#      => 而而那**工具链**那一族逐字**也**并**进**那 sysroot **那 lib/ **里面**（=> 而而那**它**们**逐字是**那**两**件**事**：
+#      「那**头文件与库**」与「那**工具链**自己的**库**」）。
+#    => 而按 C-104：=> 而那**它**们逐字**不是**那同一件内容的两条取法、=> 而而那**处置**逐字**不合并**。
+NSDK_SR="${NSDK_SR:-$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1 || true)}"
+if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
+  rm -rf "$OUT/sysroot"
+  mkdir -p "$OUT/sysroot"
+  cp -a "$NSDK_SR/usr/include" "$OUT/sysroot/include"
+  mkdir -p "$OUT/sysroot/lib"
+  cp -a "$NSDK_SR"/usr/lib/aarch64-linux-android/. "$OUT/sysroot/lib/" 2>/dev/null || true
+  NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
+  if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
+    cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/lib/" 2>/dev/null || true
+    echo "[sysroot] 工具链库已并入（libunwind.a 在那里）"
+  else
+    echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK_ROOT=$NDK_ROOT）"
+    exit 1
+  fi
+  echo "[sysroot] 就位 $OUT/sysroot"
+else
+  echo "::error title=找不到 NDK sysroot::编任何 C/C++ 都要它（NDK_ROOT=$NDK_ROOT）"
+  exit 1
+fi
 rm -rf "$STAGE"
 printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 
