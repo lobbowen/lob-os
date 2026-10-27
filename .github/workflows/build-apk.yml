@@ -256,8 +256,8 @@ jobs:
             echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK=$NDK）"
             exit 1
           fi
-          [ -f "$DST/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
-          echo "[sysroot] 就位 $DST（include $(ls "$DST/include" | wc -l) 项 · lib $(ls "$DST/lib" | wc -l) 项）"
+          [ -f "$DST/usr/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
+          echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include" | wc -l) 项 · lib $(ls "$DST/usr/lib" | wc -l) 项）"
           du -sh "$DST"
 
       # APK 是**取件模式**：预装件是现成的，编一次固化到 Release，之后一直取用。
