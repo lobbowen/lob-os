@@ -15,7 +15,14 @@ object ServiceRegistry {
     private fun decl(id: String, after: List<String>, f: (Context) -> Unit): SvcDecl =
         SvcDecl(id, after, f)
 
-    fun decls(): List<SvcDecl> {
+    //  缺陷名（C-102）**那新增**那一行逐字**用**的那**名字**逐字**在不在**那**函数**的**形参**里**。
+    //    => 而那**成因**：=> 而那 ea76e82 那一笔逐字**新增**了那「val pieceIds = … pieceIds(ctx) 」**那一行**、
+    //      => 而而那**它**逐字**在**那 decls() **那一族**里**、=> 而而那**它**的**形参**逐字**只**有**那 id / 那 after / 那 f、
+    //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**在不在**那**作用域**里**」）。
+    //    => 而那**后果**逐字 = 而那 :app:compileDebugKotlin 逐字**红**、=> 而而那**它**逐字**报**那「Unresolved reference ctx」。
+    //    => 而那**处置**：=> 而那 decls() 逐字**带上**那 ctx **那**一个**形参**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+    //      => 而而那**它**逐字**跟**那**落位**那一族**与**那身份**那一族逐字**不互相顶替**。
+    fun decls(ctx: Context): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
         //  缺陷名（C-102）**那落位**那一族逐字**一**次**装**完**那**几**件**（=> 而而那**它**逐字**一**旦**中途**断**了**、
         //    => 而而那**后面**那**几**件**逐字**就**没**装**、=> 而而那**身份**那一族逐字**也**跟**着**跑**不到**）。
@@ -104,7 +111,7 @@ object ServiceRegistry {
 
     fun ready(ctx: Context, alive: Set<String>): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
-        for (d in decls()) {
+        for (d in decls(ctx)) {
             var ok = true
             for (a in d.after) {
                 if (!alive.contains(a)) { ok = false }
@@ -115,9 +122,9 @@ object ServiceRegistry {
     }
 
     fun state(ctx: Context, alive: Set<String>): String {
-        if (decls().isEmpty()) return "（无内置服务）"
+        if (decls(ctx).isEmpty()) return "（无内置服务）"
         val sb = StringBuilder()
-        for (d in decls()) {
+        for (d in decls(ctx)) {
             if (sb.length > 0) sb.append("; ")
             sb.append(d.id)
             if (alive.contains(d.id)) {

@@ -55,14 +55,14 @@ class SupervisorPool(private val host: Service) {
             Journal.note(host, "service", null, "起内置服务", "id=" + d.id)
         }
         for (id in services.keys.toList()) {
-            if (ServiceRegistry.decls().none { it.id == id }) {
+            if (ServiceRegistry.decls(host).none { it.id == id }) {
                 services.remove(id)?.invoke()
                 Journal.note(host, "service", null, "注销内置服务", "id=" + id)
             }
         }
         RuntimeDiagnostics.append(
             host, "service", true,
-            "内置服务 " + services.size + "/" + ServiceRegistry.decls().size,
+            "内置服务 " + services.size + "/" + ServiceRegistry.decls(host).size,
             ServiceRegistry.state(host, services.keys),
         )
     }
