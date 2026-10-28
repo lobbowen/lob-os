@@ -207,7 +207,14 @@ APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE A
 #     => 而那 **TEST** 逐字**是**那 **test** **那一个** **applet**（=> 而那 :773 那一行 = 「config TEST」+「bool "test (4.1 kb)"」），
 #     => 而那两**个**逐字**是**那**两**件**事**、=> 而而那**它**们**逐字不合并**。
 #     => 而那 **[** **那一个**逐字**是**那 initramfs **那一层**要**的**（=> 而那 ash.c 逐字**用**那 **[** **那一族**）。
-CONFIG_EXTRA="ASH_INTERNAL_GLOB TEST1"
+#  缺陷名（C-102）**那 CONFIG_BUSYBOX** 逐字**没有**被**开**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 busybox **逐字**看**那 argv[0]** 来**决定**跑**哪**一个** applet**（=> 而那
+#      appletlib.c 逐字**那 run_applet_and_exit **那一族**），=> 而而那**它**逐字**只**在**那 ENABLE_BUSYBOX **开**着**的时候**
+#      逐字**才**认**那「busybox」**那一个**名字**（=> 而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**后果**逐字 = 而那 bin/busybox **逐字**报**那「busybox: applet not found」**、
+#      => 而而那**它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**applet** **那一族**开没开**」）。
+#    => 而那**处置**：=> 而那 CONFIG_EXTRA **那一族**逐字**加上**那 BUSYBOX（=> 而而那 **set_conf** **那一族**逐字**会**开**它**）。
+CONFIG_EXTRA="ASH_INTERNAL_GLOB TEST1 BUSYBOX"
 
 set_conf() {
   local k="$1" v="$2"
@@ -641,13 +648,3 @@ emit_piece "$TOOL" "$OUT_DIR" bin/libbusybox.so 100000 "$BB_BINS" "$TOOL.version
 #   ##[error]声明: busybox.version（ 而它是这一件自己声明的）
 #   ##[error] 而它在产物的目录里：/home/runner/work/lob-os/lob-os/work/busybox/out/busybox.version
 #   ##[error]Process completed with exit code 1.
-# 而那一句标记检查的出处是 package-bundle-zip.sh:417 逐字 `if [ ! -e "$OUT/$MARKER" ]; then`。
-#
-# 而两个 `$OUT` 的来源逐字不同：
-#   · **写的那一处**（这一行改前）：`$OUT` = bundle-env.sh:23 逐字 `OUT="${OUT:-dist}"`
-#     => 而那是**仓根的 dist/**（=> 而它是「构建工作目录」那一层）；
-#   · **核的那一处**：package-bundle-zip.sh:22 逐字 `OUT="${2:?需要 OUT_DIR}"`
-#     => 而那第 2 个入参是 bundle-env.sh:238 逐字传的 "$out"
-#     => 而 "$out" 是 emit_piece 的第 2 个形参（bundle-env.sh:135 逐字 `out="$2"`）
-#     => 而 busybox 那一件传的是 $OUT_DIR（:298 逐字 `OUT_DIR="$WORK/out"`）
-#     => 而那是**产物的目录**（=> 而打包那一支读的是 `$OUT/bin`、`$OUT/lib`、`$OUT/$ENTRY`，
