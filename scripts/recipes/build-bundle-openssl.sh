@@ -95,4 +95,11 @@ SSL="$OUT_DIR/lib/libssl-lobos.so"
   # 那样系统里就永远没有「openssl 这个命令」，只有库。
   OPENSSL_BINS=""
   [ -e "$OUT_DIR/bin/openssl" ] && OPENSSL_BINS="openssl"
-  OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl.so 1000 "$OPENSSL_BINS"
+  #  缺陷名（C-102）**那 entry** 逐字**指**那**旧名字**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**字节**是**什么**」）。
+  #    => 而那**成因**：=> 而那 shlib_variant **那一族**逐字**把**那库**改**名**了（=> 而那 SONAME 逐字 = 那 libssl-lobos.so）、
+  #      => 而而那 entry 逐字**还**是**那 lib/libssl.so**、=> 而而那**它**逐字**是**那**软链**、
+  #      => 而而那**打包**那一族逐字**只**搬**那 entry **那**一条**链**、=> 而而那**链**逐字**按**那**文件名**算**（=> 而而那**它**不认**那 libssl-lobos.so**）、
+  #      => 而而那**后果**逐字 = 而那包里**没有**那 libssl-lobos.so **那一份**实体**、
+  #        => 而而那**验形态**那一族逐字**报**那「lib/libssl.so 自述 SONAME=libssl-lobos.so，而链里没有这一层」。
+  #    => 而那**处置**：=> 而那 entry 逐字**指**那**改名**后的**那一个**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+  OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl-lobos.so 1000 "$OPENSSL_BINS"

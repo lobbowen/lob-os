@@ -147,7 +147,12 @@ jobs:
 
           # crypto 那一件的字节 = openssl 那一份包里的 libcrypto.so（实体那份，不是软链）。
           CR=""
-          for cand in .openssl-pkg/lib/libcrypto.so .openssl-pkg/lib/libcrypto.so.* ; do
+          #  缺陷名（C-102）**那找法**逐字**只**认**那旧名字**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**字节**是**什么**」）。
+          #    => 而那**成因**：=> 而那 shlib_variant **那一族**逐字**把**那库**改**名**了（=> 而那 SONAME 逐字 = 那 libcrypto-lobos.so）、
+          #      => 而而那**实体**逐字**是**那 libcrypto-lobos.so**、=> 而而那 libcrypto.so **只是**那**软链**、
+          #      => 而而那**找法**逐字**找**那**旧名字**、=> 而而那**它**逐字**不认**那**新**名字**。
+          #    => 而那**处置**：=> 而那**找法**逐字**也**认**那改名**后的**那一个**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+          for cand in .openssl-pkg/lib/libcrypto-lobos.so .openssl-pkg/lib/libcrypto.so .openssl-pkg/lib/libcrypto.so.* .openssl-pkg/lib/libcrypto-lobos.so.* ; do
             if [ -f "$cand" ] && [ ! -L "$cand" ]; then CR="$cand"; break; fi
           done
           [ -n "$CR" ] || { echo "::error title=openssl 包里没有 libcrypto.so::实体那份不在"; find .openssl-pkg -type f | head -20; exit 1; }
@@ -168,6 +173,7 @@ jobs:
           cp -Pf "$CR" .crypto-out/lib/
           # 本件自己的主名由本件自己摆出来（openssl 那个包里主名是 libssl.so，
           # 而 crypto 那一件要算得出 entry 就得自己有主名）。
+          #  => 而那**主名**逐字**指向**那**改名**后的**那一个**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**字节**是**什么**」）。
           [ -e .crypto-out/lib/libcrypto.so ] || ln -s "$(basename "$CR")" .crypto-out/lib/libcrypto.so
           # 这一件是**纯库件**（bin/ 目录不存在）=> entry 留空（按 C-05「没有」就是没有）。
           # 而 package-bundle-zip.sh 在打包前会 rm -rf dist/* —— 而那**不能**打在 openssl 固化之前
