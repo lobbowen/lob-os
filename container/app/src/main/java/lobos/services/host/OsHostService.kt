@@ -56,7 +56,7 @@ class OsHostService : Service() {
     //      => 而那 onCreate 逐字**在**那服务**起来**的第一**个**时刻**、=> 而而那**它**逐字**不等**那 onStartCommand。
     override fun onCreate() {
         super.onCreate()
-        promoteToForeground()
+        promoteToForeground("onCreate")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -68,7 +68,7 @@ class OsHostService : Service() {
             lobos.services.reg.ResidencyStatus.restore(this)
             OsInit.beginLife(this, ResidencyAudit.interruption(this))
         }
-        promoteToForeground()
+        promoteToForeground("onStartCommand")
         //  缺陷名（C-102）**那重活**逐字**跑**在**那主线程**上**（=> 而而那**它**们**逐字是**那**两**件**事**）。
         //    => 而那**成因**：=> 而那 ensureComponents 那一族逐字**去**装**那**预装件**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**落位**是**什么**」与「那**线程**是**什么**」）。
         //      => 而而那**装**那一族逐字**要**解包**与**搬**那**几**兆**字节**（=> 而那八**个** zip **那**一**族**），
@@ -131,7 +131,7 @@ class OsHostService : Service() {
     //    => 而「在 :99 前后加一行仓内自己的记录」是那一格**里面**的处置（=> 而按 C-220 那一族是**内容稿**、
     //    => 而而这一笔是**实现**那一族、=> 而那**只**加一行）。
     //    => 而这一行逐字用「host」那个 category（=> 而它逐字已经写得出、=> 而而 :102 那一行逐字是同一族）。
-    private fun promoteToForeground() {
+    private fun promoteToForeground(where: String) {
         var called = false
         var threw: String? = null
         try {
@@ -150,11 +150,20 @@ class OsHostService : Service() {
         //    「FGS start 那一拍」那**一行**、=> 而而那一行逐字带一个配对的标记。
         //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状、=> 而而它逐字是「**配不准**」那个形状。
         //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而而这一笔是**实现**那一族、=> 而而它逐字**只**加这一行。
+        //  缺陷名（C-102）**那一条读数**逐字**记不**出**那**调用处**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+        //    => 而那**成因**：=> 而那 promoteToForeground 逐字**从**那 onCreate **与**那 onStartCommand **那两**处**各**调**一次**、
+        //      => 而而那**它们**逐字**记**的是**那同一条**消息**、=> 而而那**它们**逐字**分不清**那**哪**一次**调**的**。
+        //    => 而而那**后果**逐字 = 而那**应用**自己**记**的那一条（那「已调用 startForeground=true」）**与**
+        //      那**系统**判的**那一条**（那「did not then call Service.startForeground()」）逐字**并排**、
+        //      => 而而那**它们**逐字**答**的是**那**两**件**事**（「那**应用**自己**记**的**那一族**」与「那**系统**判的**那一族**」）。
+        //    => 而那**处置**：=> 而那一条读数逐字**带上**那**调用处**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**调**的**是**哪**一处**」与「那**记**的**是**什么**」）。
+        //      => 而那**配对**逐字**带**那**编号**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**配**的**是**谁**」与「那**配**上**了**没有**」）。
+        //      => 而按 C-112：=> 而那**两条**逐字**都**是**那系统那边说的**、=> 而而那**它们**逐字**不互相顶替**。
         val paired = Companion.takeFgsStart()
         val gap = if (paired != null) System.currentTimeMillis() - paired.at else -1L
         RuntimeDiagnostics.append(
             this, "host", threw == null, "转前台那一族跑过了",
-            "已调用 startForeground=" + called + " 抛出=" + (threw ?: "无") +
+            "调用处=" + where + " 已调用 startForeground=" + called + " 抛出=" + (threw ?: "无") +
                 " 配对=" + (paired?.marker ?: "无") +
                 " 距FGSstart毫秒=" + gap,
         )
