@@ -57,12 +57,27 @@ class OsHostService : Service() {
             OsInit.beginLife(this, ResidencyAudit.interruption(this))
         }
         promoteToForeground()
-        ensureComponents(intent)
-        runCatching { lobos.services.reg.BuildIdentity.write(this) }
+        //  缺陷名（C-102）**那重活**逐字**跑**在**那主线程**上**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+        //    => 而那**成因**：=> 而那 ensureComponents 那一族逐字**去**装**那**预装件**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**落位**是**什么**」与「那**线程**是**什么**」）。
+        //      => 而而那**装**那一族逐字**要**解包**与**搬**那**几**兆**字节**（=> 而那八**个** zip **那**一**族**），
+        //      => 而而那**主线程**逐字**等不起**（=> 而那 20 秒**那一道**）
+        //    => 而而那**后果**逐字 = 而那宿主服务逐字**ANR**（=> 而那「waited 20003ms」**那一行**）、
+        //      => 而而那**进程**逐字**死**了、=> 而而那**落位**那一族**与**那**身份**那一族逐字**还是**没跑**。
+        //    => 而那**处置**：=> 而那重活逐字**搬到**那**线程**上**（=> 而而那 **HandlerThread** **那一族**逐字**先**起**、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**主线程**做**什么**」与「那**工作线程**做**什么**」）。
+        //    => 而按 C-104：=> 而那宿主那一族逐字**只有一条路**（=> 而而那**它**逐字**是**那**同一个**触发**、
+        //      => 而而那**它**们**逐字不是**两条路**）。
         if (born) {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
             handler = Handler(thread!!.looper)
+        }
+        //  => 而那重活逐字**在**那**工作线程**上**跑**（=> 而而那**主线程**逐字**只**做**那轻活**）。
+        handler?.post {
+            ensureComponents(intent)
+            runCatching { lobos.services.reg.BuildIdentity.write(this) }
+        }
+        if (born) {
             OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))
             handler?.post(tick)
             runCatching {
