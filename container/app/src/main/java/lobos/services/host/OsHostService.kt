@@ -47,6 +47,18 @@ class OsHostService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    //  缺陷名（C-102）**那 startForeground** 逐字**只**在**那 onStartCommand **那一族**里面**。
+    //    => 而那**成因**：=> 而那 startForegroundService 逐字**被**那系统**拒**了的时候（=> 而那 mAllowStartForeground false **那一族**）、
+    //      => 而而那**服务**逐字**没有**起、=> 而而那 onStartCommand 逐字**没有**跑、=> 而而那 startForeground 逐字**没有**被**调**。
+    //      => 而而那系统**等**那 startForeground **那一道**、=> 而而那**等不到**、=> 而而那 ANR 逐字**是**那「bg anr: … did not then call Service.startForeground()」。
+    //    => 而那**处置**：=> 而那 startForeground 逐字**搬**到**那 onCreate **那一族**里面**。
+    //      => 而而那**它**们**逐字是**那**两**件**事**：「那**服务**起没起**」与「那**入口**是**什么**」）。
+    //      => 而那 onCreate 逐字**在**那服务**起来**的第一**个**时刻**、=> 而而那**它**逐字**不等**那 onStartCommand。
+    override fun onCreate() {
+        super.onCreate()
+        promoteToForeground()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         runCatching { lobos.services.log.KillAudit.auditOnce(this) }
             .onFailure { Log.w(TAG, "读系统退出史失败", it) }
@@ -396,7 +408,20 @@ class OsHostService : Service() {
                 if (!action.isNullOrBlank()) svc.action = action
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     noteFgsStart(context, "ensure")
-                    context.startForegroundService(svc)
+                    //  缺陷名（C-102）**那 FGS **准入**被**那系统**拒**了**的时候、=> 而而那**它**们**逐字是**那**两**件**事**）。
+                    //    => 而那**成因**：=> 而那 startForegroundService 逐字**要**那**准入**（=> 而那 mAllowStartForeground **那一族**）、
+                    //      => 而而那**设备**逐字**可以**在**那 Dozing **那一档**里**拒**它**。
+                    //    => 而而那**后果**逐字 = 而那**服务**逐字**起不来**、=> 而而那 onStartCommand 逐字**没有**跑、
+                    //      => 而而那 startForeground 逐字**没有**被**调**、=> 而而那 ANR 逐字**是**那「did not then call Service.startForeground()」。
+                    //    => 而那**处置**：=> 而那 FGS **被拒**的时候**退回**那 startService（=> 而而那**它**逐字**是**那**同一个**服务**、
+                    //      => 而而那**它**们**逐字不是**两条路**）。
+                    //      => 而那 **onCreate** **那一族**逐字**已经**调**那 startForeground（=> 而而那**它**们**逐字是**那**两**件**事**）。
+                    try {
+                        context.startForegroundService(svc)
+                    } catch (e: IllegalStateException) {
+                        //  => 而那 FGS **准入**被拒**了**：=> 而而那**它**逐字**退回**那 startService
+                        context.startService(svc)
+                    }
                 } else {
                     context.startService(svc)
                 }
