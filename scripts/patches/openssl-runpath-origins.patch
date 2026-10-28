@@ -5,7 +5,7 @@
        $recipe .= <<"EOF";
  $full: $fulldeps
 -	\$(CC) \$(LIB_CFLAGS) $linkflags\$(LIB_LDFLAGS)$shared_soname$shared_imp \\
-+	\$(CC) \$(LIB_CFLAGS) $linkflags\$(LIB_LDFLAGS) '-Wl,--enable-new-dtags' '-Wl,-rpath,\\$ORIGIN'$shared_soname$shared_imp \\
++	\$(CC) \$(LIB_CFLAGS) $linkflags\$(LIB_LDFLAGS) '-Wl,--enable-new-dtags' '-Wl,-rpath,\$\$ORIGIN'$shared_soname$shared_imp \\
  		-o $full$shared_def \\
  		$fullobjs \\
  		$linklibs \$(LIB_EX_LIBS)
@@ -14,8 +14,7 @@
  $bin: $deps
  	rm -f $bin
 -	\$\${LDCMD:-$cmd} $cmdflags $linkflags\$(BIN_LDFLAGS) \\
-+	\$\${LDCMD:-$cmd} $cmdflags $linkflags'-Wl,--enable-new-dtags' '-Wl,-rpath,\\$ORIGIN/../lib'\$(BIN_LDFLAGS) \\
++	\$\${LDCMD:-$cmd} $cmdflags $linkflags '-Wl,--enable-new-dtags' '-Wl,-rpath,\$\$ORIGIN/../lib'\$(BIN_LDFLAGS) \\
  		-o $bin \\
  		$objs \\
  		$linklibs\$(BIN_EX_LIBS)
-
