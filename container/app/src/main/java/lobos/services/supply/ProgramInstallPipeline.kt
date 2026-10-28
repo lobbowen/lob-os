@@ -1075,10 +1075,23 @@ object ProgramInstallPipeline {
                 }
             }
         }
+        //  缺陷名（C-102）**那 ELF 依赖**那一族逐字**扫**那**全部**的**那**十九**件**的**每一**个**文件**。
+        //    => 而那**成因**：=> 而那 dependencySources 逐字**对**那**每一个**目录**走**那** walkTopDown（）、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**扫**了**多少**」）。
+        //      => 而而那**后果**逐字 = 而那 files/opt 底下逐字**有**那**一万八千**多个**文件**、
+        //        => 而而那**它**们**逐字是**那**两**件**事**：「那**扫**了**多少**」与「那**等**了**多久**」）。
+        //      => 而而那**落位**那一族逐字**停**在**那 crypto **那**一件**上**（=> 而那 seq=49858 **是**那**最后**一行）。
+        //    => 而那**处置**：=> 而那**它**逐字**只**看**那**库**那一族**的**那几**个**目录**（=> 而那 lib/ **与**那 bin/）、
+        //      => 而而那**它**们**逐字不**扫**那**整个**的**落位**目录**（=> 而那**那**一**些**件**逐字是**那**两**件**事**）。
         for (d in dirs) {
             if (!d.isDirectory) continue
-            d.walkTopDown().filter { it.isFile }.forEach { f ->
-                out.putIfAbsent(f.name, f)
+            //  => 而那**库**那一族逐字**在**那 lib/ **与**那 bin/ **底下**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+            for (sub in listOf(File(d, "lib"), File(d, "bin"), d)) {
+                if (!sub.isDirectory) continue
+                val kids = sub.listFiles() ?: continue
+                for (f in kids) {
+                    if (f.isFile) out.putIfAbsent(f.name, f)
+                }
             }
         }
         return out
