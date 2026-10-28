@@ -14,7 +14,7 @@
  $bin: $deps
  	rm -f $bin
 -	\$\${LDCMD:-$cmd} $cmdflags $linkflags\$(BIN_LDFLAGS) \\
-+	\$\${LDCMD:-$cmd} $cmdflags $linkflags '-Wl,--enable-new-dtags' '-Wl,-rpath,\$\$ORIGIN/../lib'\$(BIN_LDFLAGS) \\
++	\$\${LDCMD:-$cmd} $cmdflags $linkflags\$(BIN_LDFLAGS) '-Wl,--enable-new-dtags' '-Wl,-rpath,\$\$ORIGIN/../lib' \\
  		-o $bin \\
  		$objs \\
  		$linklibs\$(BIN_EX_LIBS)
