@@ -17,8 +17,33 @@ object ServiceRegistry {
 
     fun decls(): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
+        //  缺陷名（C-102）**那落位**那一族逐字**一**次**装**完**那**几**件**（=> 而而那**它**逐字**一**旦**中途**断**了**、
+        //    => 而而那**后面**那**几**件**逐字**就**没**装**、=> 而而那**身份**那一族逐字**也**跟**着**跑**不到**）。
+        //    => 而那**成因**：=> 而那 installAll 逐字**是**那**一个**服务**里**同步**跑**完**那**九**件**（=> 而而那**它**逐字**是**那**一**次**调用**）、
+        //      => 而而那**每一件**的**耗时**逐字**加**在**一起**、=> 而而那**它**们**逐字**是**那**两**件**事**：「那**一件**装没装**」与「那**总**共**多久**」）。
+        //    => 而那**处置**：=> 而那**每一件**逐字**自**己**成**一个**服务**（=> 而而那**它**逐字**被**那**池**一个**一个**起**）、
+        //      => 而而那**它**们**逐字**各**带**各**的**那**一笔**、=> 而而那**一件**断**了**不**影响**那**下一**件**。
+        //      => 而而那**它**们**逐字是**那**两**件**事**（「那**落位**那**件**落没落**」**与**「那**一次**构建**是**哪**一次**」）。
+        //  => 而那**逐件**那一族逐字**要**那**几件**的名字**（=> 而而那**它**逐字**由**那 APK **自己**说**）。
+        val pieceIds = runCatching { lobos.services.app.PreinstalledPieces.pieceIds(ctx) }
+            .getOrDefault(emptyList())
+        for (pid in pieceIds) {
+            out.add(
+                decl("piece-" + pid, ArrayList<String>()) { c ->
+                    runCatching { lobos.services.app.PreinstalledPieces.installOneById(c, pid) }
+                        .onFailure { e ->
+                            RuntimeDiagnostics.append(
+                                c, "prefix", false, "预装件装置过程中出错 " + pid,
+                                e.javaClass.name + ": " + (e.message ?: ""),
+                            )
+                        }
+                }
+            )
+        }
+        //  => 而那 **prefix** 那一族逐字**等**那**逐件**那些**都**起**了**（=> 而而那**它**逐字**不**自己**装**）。
+        //     => 而而那**它**逐字**是**那**全量**那一族**、=> 而而那**它**逐字**不**是**那**逐件**那一族**。
         out.add(
-            decl("prefix", ArrayList<String>()) { ctx ->
+            decl("prefix", pieceIds.map { "piece-" + it }) { ctx ->
                 runCatching { lobos.services.app.PreinstalledPieces.installAll(ctx) }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(

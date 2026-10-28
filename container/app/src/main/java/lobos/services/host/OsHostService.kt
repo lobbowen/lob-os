@@ -85,9 +85,15 @@ class OsHostService : Service() {
             handler = Handler(thread!!.looper)
         }
         //  => 而那重活逐字**在**那**工作线程**上**跑**（=> 而而那**主线程**逐字**只**做**那轻活**）。
+        //  缺陷名（C-102）**那身份**那一族逐字**不**该**跟**那**落位**的**成败**绑**在**一**起**。
+        //    => 而那**成因**：=> 而那 BuildIdentity.write 逐字**在**这**一块**里、=> 而而那**它**的**前面**是**那** ensureComponents(intent) **那一行**、
+        //      => 而而那**落位**那一族逐字**一**旦**中途**断了**、=> 而而那**它**逐字**就**跑**不到**那**身份**那一行**。
+        //      => 而而那**后果**逐字 = 而那**身份**那一族逐字**还是**那**旧**的**sha**。
+        //    => 而那**处置**：=> 而那**身份**那一族逐字**自己**写**（=> 而而那**它**逐字**在**那 OsApplication.onCreate **那一拍**写**）。
+        //      => 而而那**它**们**逐字是**那**两**件**事**（「那**落位**那**件**落没落**」**与**「那**一次**构建**是**哪**一次**」）。
+        //      => 而而那**它**逐字**不**跟**那**落位**的**成败**绑**在**一**起**。
         handler?.post {
             ensureComponents(intent)
-            runCatching { lobos.services.reg.BuildIdentity.write(this) }
         }
         if (born) {
             OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))

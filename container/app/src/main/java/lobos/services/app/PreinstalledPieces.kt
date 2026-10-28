@@ -14,6 +14,33 @@ object PreinstalledPieces {
         lobos.services.log.Journal.note(ctx, "prefix-trace", null, stage, detail)
     }
 
+    /**
+     * 那 APK 里那**几件**的名字（=> 而那**件**名逐字**去**那 .zip **那个**后缀**）。
+     *   => 而它逐字**给**那**逐件**做**那一族**用**（=> 而而那**它**逐字**不**自己**装**）。
+     */
+    fun pieceIds(ctx: Context): List<String> =
+        runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
+            .getOrDefault(emptyList())
+            .filter { it.endsWith(".zip") }
+            .map { it.substringBeforeLast('.') }
+            .sorted()
+
+    /**
+     * 装**那一个**件（=> 而那**件**名逐字**给**进来）。
+     *   => 而而那**它**逐字**记**那**一笔**（=> 而而那**它**逐字**是**那**逐件**那一族**的**一**件**）。
+     */
+    fun installOneById(ctx: Context, id: String): Boolean {
+        trace(ctx, "装 " + id, "开始")
+        val r = try {
+            installOne(ctx, id)
+        } catch (e: Throwable) {
+            trace(ctx, "装 " + id, "抛了 " + e.javaClass.name + ": " + (e.message ?: ""))
+            false
+        }
+        trace(ctx, "装 " + id, if (r) "成" else "败")
+        return r
+    }
+
     fun installAll(ctx: Context): List<String> {
         trace(ctx, "进入", "thread=" + Thread.currentThread().name)
         val names = runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
@@ -31,14 +58,8 @@ object PreinstalledPieces {
         for (n in names) {
             if (!n.endsWith(".zip")) continue
             val id = n.substringBeforeLast('.')
-            trace(ctx, "装 " + id, "开始")
-            val r = try {
-                installOne(ctx, id)
-            } catch (e: Throwable) {
-                trace(ctx, "装 " + id, "抛了 " + e.javaClass.name + ": " + (e.message ?: ""))
-                false
-            }
-            trace(ctx, "装 " + id, if (r) "成" else "败")
+            //  => 而那**逐件**那一族逐字**走**那 installOneById（=> 而而那**它**逐字**记**那**一笔**、=> 而而那**它**逐字**是**那**一**件**的事**）。
+            val r = installOneById(ctx, id)
             if (r) done += id else failed++
         }
 
