@@ -194,7 +194,13 @@ make defconfig < "$WORK/defconfig-answers.txt" > "$WORK/defconfig.log" 2>&1 \
 #     => 而而那 **echo** 与那 **printf** 逐字**不**在**那里面**、=> 而而那**它**逐字**是**那**读法**的**那**一件**）。
 #     => 而那**处置**：=> 而那 **printf** 逐字**进**那**清单**（=> 而而那**它**们**逐字是**那**两**件**事**：
 #       「那 **busybox** **那一族**逐字**补不补**那**两个** applet**」与「那**判据**逐字**能不能**绕**过**它**」）。
-APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH MOUNT LOSETUP ECHO SLEEP PRINTF"
+#  缺陷名（C-102）**那 applet **那一族**逐字**漏**了那 readlink **与**那 test **那两**个**。
+#    => 而那**成因**：=> 而那 APPLETS **那一族**逐字**只**列**那二十三**个**、=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而而那**后果**逐字 = 而那 guest 那一族逐字**只有**那二十一**个** applet、
+#      => 而而那 echo **与**那 mount **与**那 readlink **与**那 test **那几**个**逐字没有**、
+#      => 而而那**它**们**逐字是**那**两**件**事**：「那 guest **要**什么**」与「那**配方**列**了什么**」）。
+#    => 而那**处置**：=> 而那 APPLETS **那一族**逐字**补**上那 readlink **与**那 test **那两**个**。
+APPLETS="TAR GZIP GUNZIP GREP SED LS CP MV CAT MKDIR RM LN VI DF PS TRUE FALSE ASH MOUNT LOSETUP ECHO SLEEP PRINTF READLINK TEST"
 #  => 而那**额外**的**那些** **config** 名（=> 而而那**它们**逐字**不是**那 applet 名、=> 而而那**它们**逐字**只**管**开关**）。
 #     => 而那 **ASH_INTERNAL_GLOB** 逐字**要**它**是因为**那 ash.c 逐字**用**那 libc 的 glob **那一族**（=> 而而那**它**被关掉**之后**那 #include <glob.h> **也**就**没**了）。
 #  => 而那 **TEST1** 逐字**是**那 **[** **那一个** **applet**（=> 而那 coreutils/Config.in :781 那一行 = 「config TEST1」+「bool "test as ["」），
