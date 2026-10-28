@@ -263,9 +263,11 @@
       ]
     },
     "openssl-libname-variant.patch": {
-      "version": "3.6.3",
+      "version": "openssl-3.6.3",
       "sha256": "a16285eff259bc4f1ddf91cc48c67c47cb1bb1bbcccd132c46225a0f3b0d5782",
-      "urls": [],
+      "urls": [
+        "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-libname-variant.patch"
+      ],
       "note": "=> 而那 SONAME 逐字**不**与**那宿主**那**同名**、=> 而那**改名**由**那 shlib_variant **那一族**给"
     }
   },
