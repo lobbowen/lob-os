@@ -49,7 +49,7 @@ REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 #   ★★ => ★★ **=> 而它必须仍是可 grep 的字面文本**（★★ 而 verify-apk-native.sh:215 与 ★★
 #   ★★ ★ ★ build-apk.yml:275 **都按文本 grep 它**）★★
 #   ★★ => ★★ **=> 而改那张表之后要重跑那个生成器，★★ 而这一行要跟着更新** ★★
-PIECES=(zlib openssl curl jq bash busybox ripgrep crypto)
+PIECES=(bash busybox crypto curl git jq openssl ripgrep zlib)
 
 #  缺陷名（C-102）**那一读逐字只说「没取到」、=> 而而它不说是哪一种**
 #    —— 而实际上那**三处** return 1 逐字**分不出来**：

@@ -63,7 +63,8 @@
       "urls": [
         "https://cdn.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz",
         "https://mirrors.kernel.org/pub/software/scm/git/git-2.55.0.tar.xz"
-      ]
+      ],
+      "piece": true
     },
     "git-compat-posix.h.patch": {
       "version": "a897f5641358fad33d5d6e76c65335695b1da0fc",
