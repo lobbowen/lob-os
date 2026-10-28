@@ -166,8 +166,8 @@ case "$TOOL" in
   #      => 而而那**它们**逐字**要**跟着**那 openssl **那一趟**一起**重发**。
   #    => 而那**处置**：=> 而那 SRC_FILES 逐字**指**那**一个**文件**（=> 而而那**它们**逐字**是**那**两**件**事**））。
   #      => 而而那 git 那一件**新增**了**那一个**补丁**、=> 而而那**它**们**那三**件逐字**各**绑**那**自己**的那**一份**字节**。
-  openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch" ;;
-  crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch" ;;
+  openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch scripts/patches/openssl-libname-variant.patch" ;;
+  crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch scripts/patches/openssl-libname-variant.patch" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches/git-runpath-origins.patch" ;;
   # node 不在本轮范围（用户 2026-10-16：「node 不要修，node 是不能修的，是后期要用来验证的」）
   #  不给它算指纹：它那条流水线今天跑不通，而本轮不碰它。

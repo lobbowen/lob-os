@@ -35,13 +35,17 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   #   （而 git 那些补丁就是这条路：scripts/recipes/build-component-git.sh:67-73）
   #   而它**跟着上游那一版走** —— 而它的 pin 与今天取的源码树同版（openssl-3.6.3）
   #   而**打不上就判红退出**（而那正是 git 那一件的做法）
-  PATCH_NAME="openssl-runpath-origins.patch"
-  bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$PATCH_NAME" "$WORK/$PATCH_NAME"
-  if ! patch -p1 -i "$WORK/$PATCH_NAME"; then
-    echo "::error title=补丁打不上::$PATCH_NAME —— 而上游 openssl 版本与这一份补丁不匹配？"
-    exit 1
-  fi
-  echo "[openssl] 补丁已打：$PATCH_NAME"
+  #  缺陷名（C-102）**那库**逐字**与**那宿主**那**同名**、=> 而而那**它**逐字**被**那宿主**那 libc **命名空间**里**那同名**的**那一个**盖**了**。
+  #    => 而那**处置**：=> 而那 shlib_variant **那一族**逐字**改**那 SONAME 与那**符号版本**（=> 而那**它们**逐字**一起**变**）。
+  #    => 而那**这一份**补丁**带**那 pin**、=> 而它**跟着上游那一版**走**、=> 而**打不上**就**判红退出**。
+  for PATCH_NAME in openssl-runpath-origins.patch openssl-libname-variant.patch; do
+    bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$PATCH_NAME" "$WORK/$PATCH_NAME"
+    if ! patch -p1 -i "$WORK/$PATCH_NAME"; then
+      echo "::error title=补丁打不上::$PATCH_NAME —— 而上游 openssl 版本与这一份补丁不匹配？"
+      exit 1
+    fi
+    echo "[openssl] 补丁已打：$PATCH_NAME"
+  done
 
   # 而 rpath **不再从 Configure 那一行给**：
   #   而它由那份补丁给（scripts/patches/openssl-runpath-origins.patch）
@@ -76,8 +80,13 @@ echo "[openssl] 版本头在位"
 # 一件，有自己的 tag 与 asset —— 打包上传必须一件对一个 tag，
 # 否则两者会互相「复用」对方的包（base-openssl 上装的是 libcrypto.so）。
 # crypto 由 build-crypto.yml 从本件的固化包里取。
-SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
-[ -n "$SSL" ] || die "openssl 没产出 libssl.so" "$OUT_DIR/lib 下没有 libssl.so*"
+#  缺陷名（C-102）**那产物**逐字**自带**那**改名**后的**那**库**、=> 而而那**它**们**逐字是**那**两**件**事**：「那**库**叫**什么**」与「那**符号版本**是**什么**」）。
+#    => 而那**改**名**由**那 shlib_variant **那一族**给**（=> 而那 openssl-libname-variant.patch **那一份**）、
+#      => 而而那**产物**里**有**那 libssl-lobos.so **与**那 libcrypto-lobos.so、=> 而那**旧名字**的**那两**个**也**在**。
+#    => 而那**取**逐字**取**那**改名**后的**那一个**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+SSL="$OUT_DIR/lib/libssl-lobos.so"
+[ -f "$SSL" ] || SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
+[ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（=> 而那改名**后**的**那一个**）"
   # OPENSSL_LIBS=1：包要同时带 libssl.so 与 libcrypto.so ——
   # crypto 是清单里的独立一件（crypto.sameAs=openssl），
   # 由 build-crypto.yml 从本件的包里拆出去。
