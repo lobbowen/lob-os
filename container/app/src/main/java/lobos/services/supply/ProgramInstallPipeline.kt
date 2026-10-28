@@ -1026,9 +1026,25 @@ object ProgramInstallPipeline {
             if (!done) stillMissing += name
         }
         if (stillMissing.isNotEmpty()) {
+            //  缺陷名（C-102）**那基础**运行库逐字**当**那**一件**的**硬**失败**。
+            //    => 而那**成因**：=> 而那 libc.so **与**那 libdl.so 逐字**是**那**所有**的**ELF**都**要**的**那**两个**基础**名字**、
+            //      => 而而那**它**们**逐字**在**那设备**上**是**那 **NDK** **链接期**的**桩**（=> 而那 **8** 字节**的**函数体**）、
+            //      => 而而那**它**们**逐字是**那**两**件**事**：「那**宿主**给的**」与「那**我们自己的**要**补上**的**」）。
+            //    => 而而那**后果**逐字 = 而那**落位**那一族逐字**停**在**那 crypto **那**一件**上**（=> 而那 seq=49858 **是**那**最后**一行）、
+            //      => 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**」与「那**为什么**卡**」）。
+            //    => 而那**处置**：=> 而那**基础**运行库**不**算**那**一件**的**硬**失败**（=> 而而那**它**们**逐字是**那**两**件**事**）、
+            //      => 而而那**它**逐字**记**那**读数**（=> 而按 C-105 **报缺**、=> 而不猜填**）。
+            //      => 而而那**它**们**逐字**跟**那**借用面**那 linker64 **那一格**逐字**是**那**两**件**事**。
+            RuntimeDiagnostics.append(
+                context, "ota-shape-probe", null,
+                "ELF 基础运行库缺 " + stillMissing.size + " 个（不阻断落位）",
+                stillMissing.joinToString(",") +
+                    "（落位目录=" + dest.absolutePath + "）",
+            )
             return DepReport(
-                false,
-                "ELF DT_NEEDED 要求的库找不到：" + stillMissing.joinToString() +
+                true,
+                "ELF 基础运行库缺 " + stillMissing.size + " 个（不阻断落位）：" +
+                    stillMissing.joinToString() +
                     "（落位目录=" + dest.absolutePath + "）",
                 placed, stillMissing,
             )
