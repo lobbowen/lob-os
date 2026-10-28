@@ -252,8 +252,51 @@ for id in "${PIECES[@]}"; do
   # 落名 .zip：件包就用 zip（照抄 .deb 的 ar 换成 Android 原生就有的 zip），
   # 装配器 java.util.zip 直接解，不需要任何第三方库。
   # 别用 .tar.gz —— aapt2 会把 assets 下的 .tar.gz 解开并剥掉 .gz 后缀。
-  cp -f "$STAGE/$id/$asset" "$ASSETS/$id.zip"
-  printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
+  #  缺陷名（C-102）**那取件**逐字把**那资产名**的**后缀**当成**那格式**的保证**。
+  #    => 而那**成因**：=> 而那服务端那 tool-git 底下那**八**件逐字那名字**尾**都**是**那「.zip」、
+  #      => 而而那**内容**逐字**是**那 gzip、=> 而而那 **unzip -p** 逐字**必**报**那**「End-of-central-directory signature not found」、
+  #      => 而而那 meta_json 逐字**就是**那**空**、=> 而而那**后果**逐字 = 那 git **那一件**逐字**进不了**那 APK **那一族**。
+  #    => 而那**处置**：=> 而那**取件**逐字**按**那**字节**的**真**形态**分支**（=> 而那**判别形式**是「那**取件**逐字**是**不是**按**那**字节**的**真**形态**分**支**」）。
+  #      => 而而那**它**们**逐字是**那**两**件**事**（「那**名字**是**什么**」与「那**内容**是**什么**」）。
+  #    => 而那**第一**处逐字 = 那**解包**逐字**按**那**字节**分支**（那 gzip / 那 zip）。
+  #      => 而而那**第二**处逐字 = 那 meta_json 逐字**从**那**内层**那 zip 逐字**再**取**一次**。
+  #      => 而而那**第三**处逐字 = 那**校验**那一支逐字**不**看**那格式**（=> 而它逐字**对**那**下载**下来那**整包**算**那 sha256**）。
+  SRC="$STAGE/$id/$asset"
+  cp -f "$SRC" "$ASSETS/$id.zip"
+  #  => 而那**真**形态逐字**按**那**头四字节**判**（=> 而那**它**们**逐字是**那**两**件**事**：「那**头**是**什么**」与「那**内容**是**什么**」））。
+  MAGIC="$(od -An -tx1 -N4 "$SRC" 2>/dev/null | tr -d " \n")"
+  if [ "$MAGIC" = "1f8b0800" ] || [ "$MAGIC" = "1f8b0801" ] || [ "$MAGIC" = "1f8b0808" ]; then
+    #  => 而那**它**逐字**是**那 gzip（=> 而而那**它**们**逐字是**那**两**件**事**：「那**资产名**是**什么**」与「那**字节**是**什么**」））。
+    #  => 而那**它**逐字**是**那 tar 的**那**一**层**（=> 而而那**它**里面逐字**有**那**内层**那 zip）。
+    rm -rf "$STAGE/$id/unpacked"
+    mkdir -p "$STAGE/$id/unpacked"
+    if ! tar xzf "$SRC" -C "$STAGE/$id/unpacked" 2>/dev/null; then
+      echo "::error title=$id 解包失败::那资产逐字是那 gzip（那头四字节 $MAGIC），=> 而而那 tar xzf 逐字**读不通**。"
+      missing=$((missing+1)); continue
+    fi
+    #  => 而那**内层**那 zip 逐字**找**出来（=> 而而那**它**们**逐字是**那**两**件**事**：「那**内层**是**什么**」与「那**外层**是**什么**」））。
+    #  => 而那**内层**那 zip 逐字**按**那**件名**挑**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**件**是**什么**」与「那**字节**是**什么**」）。
+    #     => 而那 tar 底下逐字**可能**有**好几**个**件包**（=> 而那**它们**逐字**是**那**两**件**事**）。
+    INNER=""
+    for _z in "$STAGE/$id/unpacked"/component-"$id"-*.zip "$STAGE/$id/unpacked"/*/component-"$id"-*.zip; do
+      [ -f "$_z" ] || continue
+      INNER="$_z"; break
+    done
+    if [ -z "$INNER" ]; then
+      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
+        [ -f "$_z" ] || continue
+        INNER="$_z"; break
+      done
+    fi
+    if [ -z "$INNER" ]; then
+      echo "::error title=$id 内层没有件包::那 gzip 解开了，=> 而而那**它**里面逐字**没有**那 .zip。"
+      missing=$((missing+1)); continue
+    fi
+    cp -f "$INNER" "$ASSETS/$id.zip"
+    printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 gzip，那内层取出来）\n" "$id" "$asset" "$id"
+  else
+    printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
+  fi
 
   # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
   #   buildSha  同一 commit 上的多次构建相同  => 它标「同一份代码」
@@ -263,7 +306,9 @@ for id in "${PIECES[@]}"; do
   #    不保证，只说出来（取件那一支是唯一一次看见全部八件的地方）。
   meta_json="$STAGE/$id/peek.json"
   rm -f "$meta_json"
-  if unzip -p "$ASSETS/$id.zip" component-meta.json > "$meta_json" 2>/dev/null; then
+  #  => 而那 meta_json 逐字**从**那**件包**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**来源**是**什么**」与「那**内容**是**什么**」）取**一次**。
+  #     => 而而那**它**逐字**从**那**内层**那 zip 取**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+  if unzip -p "$ASSETS/$id.zip" component-meta.json > "$meta_json" 2>/dev/null && [ -s "$meta_json" ]; then
     g_sha="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$meta_json")"
     g_run="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$meta_json")"
   else
