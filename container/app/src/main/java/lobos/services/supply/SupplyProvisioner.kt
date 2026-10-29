@@ -19,6 +19,9 @@ object SupplyProvisioner {
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
+    /** 那探针逐字**只**解**那**头**这**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那**头**那**几**个**字符**用**）。 */
+    private const val PROBE_HEAD = 4096
+
     fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc(ctx)
 
     fun versionDir(ctx: Context, id: String, version: String): File =
@@ -218,7 +221,14 @@ object SupplyProvisioner {
                         val isElf = bytes.size > 3 && bytes[0] == 0x7f.toByte() &&
                             bytes[1] == 'E'.code.toByte() && bytes[2] == 'L'.code.toByte() &&
                             bytes[3] == 'F'.code.toByte()
-                        val text0 = runCatching { String(bytes, Charsets.UTF_8) }.getOrNull()
+                        //  缺陷名（C-102）**那探针**那一族逐字**把**那**整个**的**大**条目**逐字**解**成**那**一个**String**。
+                        //    => 而那**成因**：=> 而那 text0 逐字**是**那 String(bytes, Charsets.UTF_8)（=> 而而那**它**逐字**吃**那**整个**的**条目**）、
+                        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的是**什么**」与「那**吃**了**多少**」）。
+                        //      => 而那**后果**逐字 = 而那 crypto **那一件**逐字**卡**在**那解包**那一族**里**（=> 而那 seq=50016 **是**那**最后**一行**）、
+                        //        => 而而那**它**逐字**卡**了**那 **424** **秒**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
+                        //    => 而那**处置**：=> 而那**它**逐字**只**解**那**头**那**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那 **40** **个**字符**用**）。
+                        val head = if (bytes.size > PROBE_HEAD) bytes.copyOf(PROBE_HEAD) else bytes
+                        val text0 = runCatching { String(head, Charsets.UTF_8) }.getOrNull()
                         val dir0 = e.name.substringBeforeLast('/', "")
                         val resolved0 = runCatching {
                             java.nio.file.Paths.get(dir0, text0 ?: "").normalize()
