@@ -86,12 +86,19 @@ object ProgramStatusHub {
     fun snapshot(ctx: Context): List<ProgramStatus> {
         val installed = ProgramRegistry.listIds(ctx)
         val out = mutableListOf<ProgramStatus>()
+        //  缺陷名（C-102）**那状态**那一族逐字**对**那**每**一**件**都**重**算**那**活**着**的**那**一批**。
+        //    => 而那**成因**：=> 而那 statusOf 逐字**对**那**每一**件**都**调**那 ProcessLedger.liveOwned（）、
+        //      => 而而那 liveOwned 逐字**是**那 @Synchronized **那一族**、=> 而而那**它**逐字**对**那**每**一条**账本**都**去**读**那 **/proc/<pid>/cmdline**。
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**算**的**是**什么**」与「那**算**了几**遍**」）。
+        //      => 而而那**后果**逐字 = 而那**代价**逐字**随**那**件**数**逐字**平方**地**涨**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+        //    => 而那**处置**：=> 而那**活**着**的**那**一批**逐字**只**算**一**遍**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**算**的**是**什么**」与「那**算**了**几**遍**」）。
+        val live = ProcessLedger.liveOwned(ctx)
+        val liveIds = live.map { it.programId }.toSet()
         for (id in installed) {
-            out += statusOf(ctx, id)
+            out += statusOf(ctx, id, live)
         }
-        val liveIds = ProcessLedger.liveOwned(ctx).map { it.programId }.toSet()
         for (id in liveIds - installed.toSet()) {
-            out += statusOf(ctx, id)
+            out += statusOf(ctx, id, live)
         }
         return out.sortedBy { it.id }
     }
@@ -99,12 +106,15 @@ object ProgramStatusHub {
     private fun exitHint(active: UnitState.Active, unit: UnitEntry?): String =
         if (active == UnitState.Active.FAILED) " 退出码=" + (unit?.exitCode ?: -1) else ""
 
-    fun statusOf(ctx: Context, id: String): ProgramStatus {
+    fun statusOf(ctx: Context, id: String): ProgramStatus = statusOf(ctx, id, ProcessLedger.liveOwned(ctx))
+
+    /** 那**活**着**的**那**一批**逐字**由**调用方**算好**传**进来**（=> 而而那**它**逐字**免**那**每**一件**都**重**算**一遍**）。 */
+    fun statusOf(ctx: Context, id: String, live: List<ProcessLedger.Entry>): ProgramStatus {
         val entry = ProgramIndex.get(ctx, id)?.takeIf { it.levelOf(ctx) == Level.PROGRAM }
         val spec = ProgramRegistry.spec(ctx, id)
         // 判「在跑」不只从索引读 pid：索引可能停在 pid=0（回写失败/被吞）而账本有真值。
         // 先信账本 —— liveOwned 与状态机读的是同一批 pid，两侧不能读出不同的数。
-        val running = ProcessLedger.liveOwned(ctx)
+        val running = live
             .any { it.programId == id && ProcessLedger.isLive(it, ProcessLedger.entryPathOf(ctx, id)) }
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
