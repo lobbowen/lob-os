@@ -270,6 +270,71 @@
         "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-libname-variant.patch"
       ],
       "note": "=> 而那 SONAME 逐字**不**与**那宿主**那**同名**、=> 而那**改名**由**那 shlib_variant **那一族**给"
+    },
+    "libcxx": {
+      "name": "libcxx",
+      "version": "2f319446c492",
+      "commit": "2f319446c4928d735acca37bb442caefb0d77c5b",
+      "tree": "7914347e63ec7abc88b53f7408119c9a57f75b77",
+      "sha256": "2f3d7dc5273ba0999cfb399e6e3dbcb168da96300fcb640eaf890585e5c3e24a",
+      "contentSha256": "2f3d7dc5273ba0999cfb399e6e3dbcb168da96300fcb640eaf890585e5c3e24a",
+      "tarSha256": "eaa2e2502d3d46ce1a14a7eb3e495d2f86b11517aefd3604026b131cd6af7009",
+      "urls": [
+        "https://android.googlesource.com/platform/external/libcxx/+archive/2f319446c4928d735acca37bb442caefb0d77c5b.tar.gz"
+      ],
+      "piece": false
+    },
+    "libcxxabi": {
+      "name": "libcxxabi",
+      "version": "ac480ab8a10a",
+      "commit": "ac480ab8a10a51c4e2ddea4b6637adeed67da3e5",
+      "tree": "f7cbd0fbced461ec7e11b6d6e704bb697dbacd4c",
+      "sha256": "d0be6ca8c39acc2717dc93526772a93fbc5d4b79e3ec350d7d65f7619f8109b5",
+      "contentSha256": "d0be6ca8c39acc2717dc93526772a93fbc5d4b79e3ec350d7d65f7619f8109b5",
+      "tarSha256": "df6c68a35d2d3d0232b89a3f9425d6de3522ac39bb2b43854f2093314ae3106e",
+      "urls": [
+        "https://android.googlesource.com/platform/external/libcxxabi/+archive/ac480ab8a10a51c4e2ddea4b6637adeed67da3e5.tar.gz"
+      ],
+      "piece": false
+    },
+    "gwp_asan": {
+      "name": "gwp_asan",
+      "version": "df96c8131b0e",
+      "commit": "df96c8131b0e2cb91e7668a537bda7f18bc25635",
+      "tree": "49b3b5de693134937bdb61f2f11ac41d32853a48",
+      "sha256": "92378f6a15314a2b57aaaa60111640046d37e89e96e014c4fdb2109c71489f36",
+      "contentSha256": "92378f6a15314a2b57aaaa60111640046d37e89e96e014c4fdb2109c71489f36",
+      "tarSha256": "c4400c362bf568074efc15e94ff39222ad9fbb3ae1a5d062b26b35e94fa3840b",
+      "urls": [
+        "https://android.googlesource.com/platform/external/gwp_asan/+archive/df96c8131b0e2cb91e7668a537bda7f18bc25635.tar.gz"
+      ],
+      "piece": false
+    },
+    "jemalloc_new": {
+      "name": "jemalloc_new",
+      "version": "debafb7560c3",
+      "commit": "debafb7560c32c15390dfc1aa290ee5870aa303f",
+      "tree": "33933ef048c795571bca1553e158dab974696fa2",
+      "sha256": "b96f2578931219105ca44d17c947e7ac8a065fc97f28afc15b1e68cf5420ba08",
+      "contentSha256": "b96f2578931219105ca44d17c947e7ac8a065fc97f28afc15b1e68cf5420ba08",
+      "tarSha256": "0e6bbfbded00f0a0b5b4ca32ea7f25bb3d9809420dec6206b6f6c05031e911f3",
+      "urls": [
+        "https://android.googlesource.com/platform/external/jemalloc_new/+archive/debafb7560c32c15390dfc1aa290ee5870aa303f.tar.gz"
+      ],
+      "piece": false
+    },
+    "libunwind": {
+      "name": "libunwind",
+      "version": "ec57b05e0acc",
+      "commit": "ec57b05e0acc7838d2a0f75551a18d28f670692e",
+      "tree": "7f8fade384682bc770b6b6eb61dfad9dd987357d",
+      "sha256": "37667c917e7a643a74d7ab8a699671d9cd53df25db526e6730a9992254a1f851",
+      "contentSha256": "37667c917e7a643a74d7ab8a699671d9cd53df25db526e6730a9992254a1f851",
+      "tarSha256": "5db89e7f3be0bcbc9411796922d1b9134a1e9fe9e1742478ca3a0bc5ac61350c",
+      "urls": [
+        "https://android.googlesource.com/platform/external/libunwind/+archive/ec57b05e0acc7838d2a0f75551a18d28f670692e.tar.gz"
+      ],
+      "piece": false
     }
   },
   "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"

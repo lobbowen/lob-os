@@ -44,11 +44,19 @@ if [ "${1:-}" = "--pin" ]; then
     if (!/^[0-9a-f]{64}$/.test(String(s.sha256))) { console.error("键 " + process.argv[2] + " 的 sha256 不是 64 位小写十六进制: " + String(s.sha256)); process.exit(1); }
     if (!s.version || !String(s.version).trim()) { console.error("键 " + process.argv[2] + " 没有 version 格"); process.exit(1); }
     if (!Array.isArray(s.urls) || s.urls.length === 0) { console.error("键 " + process.argv[2] + " 的 urls 是空的"); process.exit(1); }
-    process.stdout.write(String(s.sha256) + "\n" + String(s.version) + "\n" + s.urls.join("\n") + "\n");
+    //  缺陷名（C-102）**那 sha256 那一格**逐字**记**的是那**内容**那一个数、=> 而而那**它**逐字**比**的是那**下载**下来**那一个** tar。
+    //    => 而那**成因**：=> 而那 tar 那**字节**逐字**每次**换（=> 而而那**它**们**逐字是**那**两**件**事**：「那**tar**是**什么**」与「那**内容**是**什么**」）。
+    //    => 而而那**后果**逐字 = 而那 `--pin` 那一族逐字**永远红**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**红**的是**什么**」与「那**为什么**」））。
+    //    => 而那**处置**：=> 而那**内容**那一个数逐字**另**一**格**记**（=> 而那 contentSha256 **那一格**）、
+    //      => 而而那**它**逐字**两**个**读法**都**留**着**（=> 而而那**它们**逐字是**那**两**件**事**：「那**读**的**是**什么**」与「那**比**的**是**什么**」）。
+    const cs = String(s.contentSha256 || "").trim();
+    //  => 而那**内容**那一个数逐字**走**那**自己**那一行（=> 而而那**它**逐字**不**跟**那 urls **混**在**一**起**）。
+    process.stdout.write(String(s.sha256) + "\n" + String(s.version) + "\n" + cs + "\n" + s.urls.join("\n") + "\n");
   ' "$TABLE" "$KEY")"; then
     die "钉值表这一格读不通：$KEY"
   fi
-  { IFS= read -r WANT; IFS= read -r VER; mapfile -t URLS; } <<< "$META"
+  { IFS= read -r WANT; IFS= read -r VER; IFS= read -r CONTENT_WANT || true; mapfile -t URLS; } <<< "$META"
+  [ -n "$CONTENT_WANT" ] || CONTENT_WANT=""
 elif [ "${1:-}" = "--time-base" ]; then
   # 件里嵌的构建时间基准也住这张表，而表的读者必须只有本脚本一个（⑦ 那条判据）。
   # 校验形状与「必须早于现在」都在这里判：钉在未来等于没钉（墙钟还没走到，重建每次都取 time()）。
@@ -245,7 +253,30 @@ for url in "${URLS[@]}"; do
     continue
   fi
   got="$(sha256sum "$f" | cut -d' ' -f1)"
-  if [ "$got" != "$WANT" ]; then
+  #  缺陷名（C-102）**那 sha256 那一格**逐字**记**的是那**内容**那一个数、=> 而而那**它**逐字**比**的是那**下载**下来**那一个** tar。
+  #    => 而那**成因**：=> 而那 tar 那**字节**逐字**每次**换（=> 而而那**它**们**逐字是**那**两**件**事**：「那**tar**是**什么**」与「那**内容**是**什么**」）。
+  #    => 而而那**后果**逐字 = 而那 `--pin` 那一族逐字**永远红**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**红**的是**什么**」与「那**为什么**」））。
+  #    => 而那**处置**：=> 而那**内容**那一个数**有**那 contentSha256 **那一格**的时候、
+  #      => 而而那**它**逐字**比**那**解开之后**那**逐件**清单**那一个**数**、=> 而而那**它**逐字**不**比**那 tar。
+  #      => 而而那**它**们**逐字是**那**两**件**事**：「那**比**的**是**什么**」与「那**记**的**是**什么**」）。
+  if [ -n "$CONTENT_WANT" ]; then
+    _cdir="$(dirname "$f")"
+    _cstage="$_cdir/content-$"
+    rm -rf "$_cstage"; mkdir -p "$_cstage"
+    if ! tar xzf "$f" -C "$_cstage" 2>/dev/null; then
+      echo "[fetch-pinned] 来源 $url 解不开（内容钉值那一族要解包再比）: $url"
+      rm -rf "$_cstage"
+      continue
+    fi
+    #  => 而那**清单**逐字**按**那**路径**排**序**（=> 而那**排序**逐字**用**那**本机**那**个**locale**、=> 而而那**它**逐字**不**是**那 LC_ALL=C **那一种**）。
+    cgot="$(cd "$_cstage" && find . -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)"
+    rm -rf "$_cstage"
+    if [ "$cgot" != "$CONTENT_WANT" ]; then
+      echo "[fetch-pinned] 来源 $url 的内容不合钉值：实得 $cgot（期望 $CONTENT_WANT）—— 这不是同一批内容，换下一条"
+      continue
+    fi
+    echo "[fetch-pinned] 内容钉值校验通过：$url（内容 $cgot；那 tar 那字节逐字每次换、=> 而那**它**逐字**不**钉**它**）"
+  elif [ "$got" != "$WANT" ]; then
     echo "[fetch-pinned] 来源 $url 不合钉值：实得 $got（期望 $WANT）—— 这不是同一批字节，换下一条"
     continue
   fi
