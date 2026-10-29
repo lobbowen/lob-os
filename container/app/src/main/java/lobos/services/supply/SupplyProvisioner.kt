@@ -19,8 +19,6 @@ object SupplyProvisioner {
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
-    /** 那探针逐字**只**解**那**头**这**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那**头**那**几**个**字符**用**）。 */
-    private const val PROBE_HEAD = 4096
 
     /** 那**软链**那一族逐字**只**看**那**头**这**几**个**字节**（=> 而而那**它**逐字**够**那**判**那**软链**用**）。 */
     private const val SYMLINK_HEAD_MAX = 4096
@@ -189,6 +187,9 @@ object SupplyProvisioner {
             // 而普通文件存的是内容。两个条件缺一不可：内容像一条路径，且按它解析出来的目标**在包里存在**。
             // （那三个 1 字节的 "x" 因此不会被误判：它解析成 bin/x，而包里没有 bin/x）
             val entryNames = java.util.Collections.list(zf.entries()).map { it.name }.toSet()
+            var entryCount = 0
+            var byteCount = 0L
+            var linkCount = 0
             for (e in java.util.Collections.list(zf.entries())) {
                 val out = File(dest, e.name).canonicalFile
                 if (out.path != destRoot.path && !out.path.startsWith(destRoot.path + File.separator)) {
@@ -212,6 +213,7 @@ object SupplyProvisioner {
                     }
                     val linkTarget = symlinkTargetOf(e.name, head, entryNames)
                     if (linkTarget != null) {
+                        linkCount++
                         // C-102 **解包时把软链展平成字节副本** —— 原来这一支只按字节拷贝，
                         // 于是「一条命令入口」从软链变成一份独立的字节副本：
                         // 真机读数（07，base-busybox 那一版）：files/opt/busybox/1.36.1/bin/cat 与
@@ -231,46 +233,23 @@ object SupplyProvisioner {
                                 }
                             }
                         }
+                        entryCount++
+                        byteCount += e.size
                         ExecBits.apply(out)
                     }
-                    // 读数（诊断用）：这一条解包后是什么、两个判据各自成立与否、建链结果是什么。
-                    // 而这一格今天未过（07 今天探针读到「落位前 19 项全是实体」
-                    //   => 展平发生在**进搬动循环之前** => 落在解包这一支），
-                    //   而两个判据按源码逻辑复现都成立（07 昨天 python 复现；
-                    //   本机今天又核过真实条目名 bin/libbusybox.so 确实在 entryNames 里、
-                    //   且条目名不带 ./ 前缀）=> 而真机上没建成 => 这几条读数是定它的那一格。
-                    if (probeCtx != null && e.name.contains('/') && !e.isDirectory) {
-                        val entrySize = e.size
-                        val isElf = head.size > 3 && head[0] == 0x7f.toByte() &&
-                            head[1] == 'E'.code.toByte() && head[2] == 'L'.code.toByte() &&
-                            head[3] == 'F'.code.toByte()
-                        //  缺陷名（C-102）**那探针**那一族逐字**把**那**整个**的**大**条目**逐字**解**成**那**一个**String**。
-                        //    => 而那**成因**：=> 而那 text0 逐字**是**那 String(bytes, Charsets.UTF_8)（=> 而而那**它**逐字**吃**那**整个**的**条目**）、
-                        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的是**什么**」与「那**吃**了**多少**」）。
-                        //      => 而那**后果**逐字 = 而那 crypto **那一件**逐字**卡**在**那解包**那一族**里**（=> 而那 seq=50016 **是**那**最后**一行**）、
-                        //        => 而而那**它**逐字**卡**了**那 **424** **秒**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
-                        //    => 而那**处置**：=> 而那**它**逐字**只**解**那**头**那**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那 **40** **个**字符**用**）。
-                        val text0 = runCatching { String(head, Charsets.UTF_8) }.getOrNull()
-                        val dir0 = e.name.substringBeforeLast('/', "")
-                        val resolved0 = runCatching {
-                            java.nio.file.Paths.get(dir0, text0 ?: "").normalize()
-                                .toString().removePrefix("./")
-                        }.getOrNull()
-                        val probeLine = "字节数=" + entrySize +
-                            " 是ELF=" + isElf +
-                            " 内容=" + (text0?.take(40) ?: "(解不出)") +
-                            " resolved=" + resolved0 +
-                            " 在entryNames=" + (resolved0 != null && entryNames.contains(resolved0)) +
-                            " 判为软链=" + (linkTarget != null)
-                        runCatching {
-                            RuntimeDiagnostics.append(
-                                probeCtx, "unzip-probe", true, "解包 " + e.name,
-                                probeLine + " 落盘后是软链=" + java.nio.file.Files.isSymbolicLink(out.toPath()) +
-                                    " 落盘字节数=" + (if (out.isFile) out.length() else -1),
-                            )
-                        }
-                    }
-
+                }
+            }
+            //  => 而那**逐件**逐条**的**读数**逐字**只**报**那**汇总**（=> 而那**条目**数、那**字节**数、那**软链**数）。
+            //      => 而而那**它**逐字**不**许**逐条目**落盘**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的**是**什么**」与「那**记**的**几**条**」）。
+            if (probeCtx != null) {
+                runCatching {
+                    RuntimeDiagnostics.append(
+                        probeCtx, "unzip-probe", true, "解包汇总 " + zip.name,
+                        "条目=" + (entryCount + linkCount) +
+                            " 文件=" + entryCount +
+                            " 软链=" + linkCount +
+                            " 字节=" + byteCount,
+                    )
                 }
             }
         }
