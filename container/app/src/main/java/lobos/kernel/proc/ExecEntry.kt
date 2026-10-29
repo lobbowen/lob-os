@@ -11,6 +11,8 @@ object ExecEntry {
         object Elf : Shape()
         object Exec : Shape()
         data class Shebang(val interp: String, val flags: String?) : Shape()
+        /** 那 **PE** 那一族（=> 而那 **MZ** **那两个**字节 **与**那 **PE\u0000\u0000** **那个**偏移**）。 */
+        object Pe : Shape()
         object Unknown : Shape()
     }
 
@@ -18,6 +20,10 @@ object ExecEntry {
     private const val ELF_MAGIC = 0x7F
     private const val ELF_ET_EXEC = 2
     private const val ELF_ET_DYN = 3
+    //  => 而那 **PE** **那**两个**字节**（=> 而那 **MZ**）**与**那 **PE\u0000\u0000** **那个**偏移**（=> 而那 **0x3C**）。
+    private const val PE_MAGIC_0 = 0x4D
+    private const val PE_MAGIC_1 = 0x5A
+    private const val PE_OFFSET = 0x3C
 
     private fun elfType(b: ByteArray, n: Int): Int {
         if (n < 18) return -1
@@ -41,6 +47,20 @@ object ExecEntry {
                 String(b, 0, n, Charsets.ISO_8859_1)
             }
         }.getOrNull() ?: return Shape.Unknown
+
+        //  缺陷名（C-102）**那 PE 解析**逐字**零命中**、=> 而和那**它**逐字**没有**那 PE 那一档、
+        //    => 而和那那**后果**逐字 = 而那 PE 那一族逐字**跑不起来**。
+        //  => 而那**处置**：=> 而那 **PE** **那**两个**字节**（=> 而那 **MZ**）**与**那 **PE\u0000\u0000** **那个**偏移**
+        //    （=> 而那 **0x3C**）逐字**在**那 **ELF** **判定**之后**、**在**那 **#!** **判定**之前**判**。
+        //    => 而那**它**逐字**是**那**形状识别**那一层、=> 而和那**它**逐字**不是**那**执行**那一层。
+        //    => 而和那**它**与那 Elf 与那 Exec 与那 Shebang 与那 Unknown 那四个逐字**不互相顶替**。
+        if (head.length >= PE_OFFSET + 4 &&
+            (head[0].code and 0xFF) == PE_MAGIC_0 &&
+            (head[1].code and 0xFF) == PE_MAGIC_1 &&
+            head[PE_OFFSET] == 'P' && head[PE_OFFSET + 1] == 'E'
+        ) {
+            return Shape.Pe
+        }
 
         if (head.startsWith("#!")) {
             val line = head.substring(2).lineSequence().firstOrNull { it.isNotBlank() }
@@ -94,6 +114,9 @@ object ExecEntry {
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
+        //  => 而那 **PE** 那一族逐字**没有**那**内核**能**直接**跑**的**入口**（=> 而那 **PE** 逐字**要**那 **Windows** **那一族**的**加载器**）。
+        //    => 而那**它**逐字**不**是**那 **ELF** 那一族、=> 而那**它**逐字**不**是**那**脚本**那一族、=> 而那**它**逐字**跑不起来**。
+        is Shape.Pe -> null
         is Shape.Unknown -> null
     }
 
@@ -101,6 +124,9 @@ object ExecEntry {
         is Shape.Elf -> "ELF 动态可执行文件（ET_DYN），经 " + SYSTEM_LINKER + " 驱动"
         is Shape.Exec -> "ELF 静态可执行文件（ET_EXEC），直接 exec，不经 linker"
         is Shape.Shebang -> "#! " + s.interp + (s.flags?.let { " $it" } ?: "") + " —— 用它跑"
+        is Shape.Pe ->
+            "PE 可执行文件（MZ + PE 签名）—— 那内核没有那 Windows 那一族的加载器，" +
+                "所以这个入口跑不起来。"
         is Shape.Unknown ->
             "既不是 ELF 也没有 #! —— 内核会回 ENOEXEC（这个入口无法执行）。" +
                 "要用解释器跑，请在文件头加一行 #!<解释器路径>"
