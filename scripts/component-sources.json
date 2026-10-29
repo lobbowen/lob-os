@@ -236,6 +236,8 @@
         "target": "aarch64-linux-android"
       },
       "sha256": "",
+      "crateSha256": "f77b8032dc584527975f34aa5a897d0ef5a785573fda778771a614ff9da501d9",
+      "crateUrl": "https://static.crates.io/crates/ripgrep/ripgrep-14.1.1.crate",
       "productName": "liblobosrg.so",
       "installName": "rg",
       "piece": true
