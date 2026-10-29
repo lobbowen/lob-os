@@ -201,12 +201,14 @@ class OsHostService : Service() {
     }
 
     private fun ensureComponents(intent: Intent?) {
-        try {
-            val p = pool ?: lobos.services.supervise.SupervisorPool(this).also { pool = it; it.start() }
-            p.onHostStart(intent)
-        } catch (t: Throwable) {
-            RuntimeDiagnostics.append(this, "runtime", false, "运行时实例组件异常", t::class.java.simpleName + ": " + t.message)
-        }
+        //  缺陷名（C-102）**那能力桥**逐字**起**在**那装件** **之后**、=> 而而那**它**们**逐字是**那**两**件**事**。
+        //    => 而那**成因**：=> 而那 pool.onHostStart 逐字**调**那 sync（=> 而那 syncServices 逐字**调**那 d.act(host)、
+        //      => 而那 **piece-<id>** **那一族**的 act 逐字**就是**那 installOneById（=> 而那**它**逐字**在**那**落位**那一族**里**））、
+        //      => 而而那**装件**逐字**是**那**同**一个**队列**上**那**一**个**长活**、=> 而而那**它**逐字**把**那**后面**的**那**几**步**饿死**。
+        //      => 而而那**能力桥**（=> 而那 broker.start() 那一行）逐字**在**那**装件** **之后**、=> 而而那**它**逐字**起不来**、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**桥**在不在**」与「那**它**为什么**没**起**」）。
+        //    => 而而那**后果**逐字 = 而那 LocalServerSocket 逐字**没有**在**听**、=> 而而那**它**逐字**让**那 M6 那**一格**逐字**还**测不了**。
+        //    => 而那**处置**：=> 而那**能力桥**逐字**先**起**（=> 而那**它**逐字**不**等**那**装件**）、=> 而而那**它**逐字**是**那**那**一个**队列**上**那**一**个**短活**。
         try {
             val b = broker ?: CapabilityBroker(this).also { broker = it; it.start() }
             b.onHostStart(intent)
@@ -219,7 +221,14 @@ class OsHostService : Service() {
         } catch (t: Throwable) {
             RuntimeDiagnostics.append(this, "capture", false, "截屏组件异常", t::class.java.simpleName + ": " + t.message)
         }
+        try {
+            val p = pool ?: lobos.services.supervise.SupervisorPool(this).also { pool = it; it.start() }
+            p.onHostStart(intent)
+        } catch (t: Throwable) {
+            RuntimeDiagnostics.append(this, "runtime", false, "运行时实例组件异常", t::class.java.simpleName + ": " + t.message)
+        }
     }
+
 
     private val tick: Runnable = Runnable {
         try {
