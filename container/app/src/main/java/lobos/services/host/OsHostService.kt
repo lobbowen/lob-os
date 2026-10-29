@@ -33,8 +33,10 @@ class OsHostService : Service() {
 
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
+    //  => 而那 **tick** 逐字**走**那**自己**的**那一个**队列**（=> 而那**它**逐字**不**跟**那**装件**那一族**抢**）。
+    private var tickThread: HandlerThread? = null
+    private var tickHandler: Handler? = null
     private var lastNotifyMs = 0L
-
     private var pool: lobos.services.supervise.SupervisorPool? = null
     private var broker: CapabilityBroker? = null
     private var capture: ScreenCaptureController? = null
@@ -89,6 +91,9 @@ class OsHostService : Service() {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
             handler = Handler(thread!!.looper)
+            //  => 而那 **tick** **那**一个**队列**（=> 而那**它**逐字**是**那**那**一个** HandlerThread）。
+            tickThread = HandlerThread("lobos-tick").apply { start() }
+            tickHandler = Handler(tickThread!!.looper)
         }
         //  => 而那**退出史**逐字**在**那**工作线程**上**取**（=> 而而那**它**逐字**不**在**那**主线程**上**等**那**系统**服务**那**一边**）。
         handler?.post {
@@ -108,7 +113,16 @@ class OsHostService : Service() {
         }
         if (born) {
             OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))
-            handler?.post(tick)
+            //  缺陷名（C-102）**那 tick** **与**那**装件**那一族逐字**在**那**同一**个**队列**上**。
+            //    => 而那**成因**：=> 而那 ensureComponents 那一族逐字**在**那 **:106** 那一行 **post** 到**那** handler **队列**、
+            //      => 而而那 **tick** 逐字**在**那 **:111** 那一行 **post** 到**那** **同一**个**队列**、
+            //      => 而和那**它们**逐字是**那**两**件**事**：「那**谁**先**到**」与「那**它**们**共**那**一个**队列**」）。
+            //    => 而而那**后果**逐字 = 而那**装件**那一族**一**挂**住**、=> 而而那**它**逐字**把**那 **tick** 逐字**饿死**、
+            //      => 而而那**它**逐字**让**那 ResidencyStatus.record 逐字**不**再**被**调**、=> 而而那**它**逐字**让**那 updatedAt 逐字**陈旧**、
+            //      => 而而那**它**逐字**让**那 Heartbeat.fresh 逐字**答**那 false、=> 而而那**它**逐字**让**那 controlPlaneUp 逐字**落**那 false。
+            //    => 而那**处置**：=> 而那 **tick** 逐字**走**那**自己**的**那一个**队列**（=> 而那**它**逐字**不**跟**那**装件**那一族**抢**）、
+            //      => 而而那**它**逐字**是**那**那**一个** Handler **那一族**、=> 而而那**它们**逐字**是**那**两**件**事**。
+            tickHandler?.post(tick)
             runCatching {
                 val ver = lobos.services.reg.ProgramRegistry.listIds(this)
                     .mapNotNull { ProgramDir(this, it).currentVersion() }
@@ -242,7 +256,7 @@ class OsHostService : Service() {
         } catch (e: Throwable) {
             Log.e(TAG, "宿主节拍异常（不致命，下一拍继续）", e)
         } finally {
-            handler?.postDelayed(tick, ResidencyPolicy.FAST_TICK_MS)
+            tickHandler?.postDelayed(tick, ResidencyPolicy.FAST_TICK_MS)
         }
     }
 
@@ -347,11 +361,15 @@ class OsHostService : Service() {
         runCatching { OsInit.transition(this, OsPhase.STOPPING, "宿主被销毁", ResidencyAudit.interruption(this)) }
         teardownStep("已写宿主被销毁")
         handler?.removeCallbacksAndMessages(null)
+        tickHandler?.removeCallbacksAndMessages(null)
         teardownStep("已清回调")
         thread?.quitSafely()
+        tickThread?.quitSafely()
         teardownStep("已退线程")
         thread = null
         handler = null
+        tickThread = null
+        tickHandler = null
         try { pool?.shutdown() } catch (_: Throwable) {}
         teardownStep("已关监督池")
         try { broker?.shutdown() } catch (_: Throwable) {}
