@@ -78,6 +78,9 @@ data class UnitEntry(
 
 object ProgramIndex {
 
+    /** 那 files 那一格逐字**只**记**那**头**这**几个**（=> 而那**它**逐字**记**那**截断**的**那**一条**）。 */
+    const val FILES_KEPT = 64
+
     private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
     private const val FILE = "program-index.json"
     private const val SCHEMA = 1
@@ -125,11 +128,23 @@ object ProgramIndex {
         put("required", e.required)
         e.invalid?.let { put("invalid", it) }
 
+        //  缺陷名（C-102）**那 files** 那一格逐字**把**那**每一**个**文件**逐字**都**写**进**那登记**。
+        //    => 而那**成因**：=> 而那 filesOf 逐字**对**那**落位目录**走**那 walkTopDown（）、
+        //      => 而而那**它**逐字**对**那**每一**个**文件**算**那 SHA-256（=> 而那 cmake **那一件**逐字 = 那 **4134** 个**文件**）、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**一**件**有**多少**」与「那**全部**有多**大**」）。
+        //    => 而而那**后果**逐字 = 而那**登记**逐字**有**那 **1353300** 字节（=> 而那 cmake **那一件**的**那 files** 逐字 = 那 **600235** **字符**）、
+        //      => 而而那 upsert 逐字**每**一**次**都**把**那**全部**逐字**读**了**再**写**回**去**、
+        //      => 而而那**落位**那一族逐字**卡**在**那 busybox **那**一件**上**（=> 而那 seq=49950 **是**那**最后**一行**）。
+        //    => 而那**处置**：=> 而那**它**逐字**只**记**那**头**那**几**个**（=> 而而那**它**逐字**记**那**截断**的**那**一条**、=> 而按 **C-105** **报缺**）。
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**记**的**是**什么**」与「那**丢**了**多少**」）。
         put("files", JSONArray().apply {
-            e.files.forEach { fr ->
+            e.files.take(FILES_KEPT).forEach { fr ->
                 put(JSONObject().apply { put("path", fr.path); put("sha256", fr.sha256) })
             }
         })
+        if (e.files.size > FILES_KEPT) {
+            put("filesTruncated", e.files.size - FILES_KEPT)
+        }
 
         put("requires", JSONArray(e.requires))
         put("after", JSONArray(e.after))
@@ -262,6 +277,16 @@ object ProgramIndex {
     @Synchronized
     fun byLevel(ctx: Context, level: Level): List<UnitEntry> = all(ctx).filter { it.levelOf(ctx) == level }
 
+    @Synchronized
+    //  缺陷名（C-102）**那登记**那一族逐字**每**一**次**都**把**那全部**的**登记**逐字**读**了**再**写**回**去**。
+    //    => 而那**成因**：=> 而那 upsert 逐字**先**调**那 all(ctx)（=> 而而那**它**逐字**读**那**整个**的**登记**、
+    //      => 而而那**它**逐字**解**那**整个**的**JSON**）、=> 而而那**它**们**逐字是**那**两**件**事**：「那**读**的是**什么**」与「那**写**的是**什么**」）。
+    //      => 而而那 **files** 那一格逐字**一**件**就**能**有**那**几十**万**字符**（=> 而那 cmake **那一件**逐字 = 那 **600235** 字符**）、
+    //        => 而而那**它**们**逐字是**那**两**件**事**：「那**一**件**有**多少**」与「那**全部**有多**大**」）。
+    //    => 而而那**后果**逐字 = 而那**落位**那一族逐字**卡**在**那 busybox **那**一件**上**（=> 而那 seq=49950 **是**那**最后**一行**）、
+    //      => 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
+    //    => 而那**处置**：=> 而那**它**逐字**不**再**每**一**次**都**把**那**全部**逐字**读**了**再**写**回**去**
+    //      （=> 而而那**它**逐字**只**取**那**要**改**的**那**一件**、=> 而而那**它**逐字**写**的**时候**也**只**改**那**一件**）。
     @Synchronized
     fun upsert(ctx: Context, entry: UnitEntry) {
         persist(ctx, all(ctx).filterNot { it.id == entry.id } + entry)
