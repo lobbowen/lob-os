@@ -37,6 +37,12 @@ object PreinstalledPieces {
             trace(ctx, "装 " + id, "抛了 " + e.javaClass.name + ": " + (e.message ?: ""))
             false
         }
+        //  缺陷名（C-102）**那「；成」**那一行**逐字**写**在**那 installOne **返**回**之后**、=> 而而那**它**逐字**晚**。
+        //    => 而那**成因**：=> 而那**调用方**（=> 而那 installOneById **:40** 那一行）逐字**等**那 installOne **返**回**才**写**，
+        //      => 而而那**进程**逐字**在**那**注册**之后**、**在**那**调用方**写**那一行**之前**、逐字**被**杀**了**。
+        //    => 而而那**后果**逐字 = 而那 journal 里**没有**那「；成」**那一行**（=> 而而那**它**逐字**看**不出**那**一件**到底**装没装**上**）。
+        //    => 而那**处置**：=> 而那**进度**逐字**在**那**关键**步骤**上**就**记**（=> 而而那**它**逐字**在**那**注册**之前**），
+        //      => 而而那**它**逐字**不**是**那**结果**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**记**在**哪**」）。
         trace(ctx, "装 " + id, if (r) "成" else "败")
         return r
     }
@@ -485,8 +491,10 @@ val derived = refreshDerivedLinks(ctx, id, version)
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
-            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
-            return true
+            //  => 而那**进度**逐字**在**那**注册**之前**就**记**（=> 而而那**它**逐字**是**那**关键**步骤**上的**那一个**）。
+            //    => 而那**它**逐字**不**是**那「；成」**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**是**不是**那**结果**」）。
+            trace(ctx, "装 " + id, "登记前")
+            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)            return true
         }
 
         val r = ProgramInstallPipeline.install(

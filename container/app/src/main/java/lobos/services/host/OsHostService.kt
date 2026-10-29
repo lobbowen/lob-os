@@ -60,8 +60,14 @@ class OsHostService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        runCatching { lobos.services.log.KillAudit.auditOnce(this) }
-            .onFailure { Log.w(TAG, "读系统退出史失败", it) }
+        //  缺陷名（C-102）**那退出史**逐字**在**那**主线程**上**取**（=> 而而那**它**逐字**是**那**一次** binder **调用**）。
+        //    => 而那**成因**：=> 而那 KillAudit.auditOnce 逐字**调**那 getHistoricalProcessExitReasons（=> 而那**它**逐字**是**那
+        //      **系统**服务**那**一边**的**同步** IPC）、=> 而而那**它**逐字**在**那**主线程**上**、=> 而而那**它**逐字**会**等**那**系统**服务**那**一边**。
+        //    => 而而那**后果**逐字 = 而那**宿主**服务逐字**ANR**（=> 而那「waited 20001ms: executing service …OsHostService」**那一行**）、
+        //      => 而而那**它**逐字**杀**了**那**进程**、=> 而而那**它**们**逐字是**那**两**件**事**：「那**读数**逐字**挂**在哪**」与「那**它**逐字**在**哪**一页**」））。
+        //    => 而那**处置**：=> 而那**退出史**逐字**搬**到**那**工作线程**上**取**（=> 而那**它**逐字**不**是**那**落位**那一族**、
+        //      => 而和那**它**们**逐字是**那**两**件**事**），=> 而那**主线程**逐字**只**做**那**轻活**。
+        //    => 而那**它**逐字**要**在**那 handler **起**好**之后**（=> 而那**它**逐字**不**是**那**出生**那一族**）。
         ResidencyAudit.auditPreviousExit(this)
         val born = thread == null
         if (born) {
@@ -83,6 +89,11 @@ class OsHostService : Service() {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
             handler = Handler(thread!!.looper)
+        }
+        //  => 而那**退出史**逐字**在**那**工作线程**上**取**（=> 而而那**它**逐字**不**在**那**主线程**上**等**那**系统**服务**那**一边**）。
+        handler?.post {
+            runCatching { lobos.services.log.KillAudit.auditOnce(this) }
+                .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         }
         //  => 而那重活逐字**在**那**工作线程**上**跑**（=> 而而那**主线程**逐字**只**做**那轻活**）。
         //  缺陷名（C-102）**那身份**那一族逐字**不**该**跟**那**落位**的**成败**绑**在**一**起**。
