@@ -145,16 +145,30 @@ object StateFiles {
         runCatching { JSONObject(file.readText()) }.getOrNull()
 
     @Synchronized
+    //  缺陷名（C-102）**那追加**那一族逐字**每一**行**都**把**那**整个**的**文件**逐字**读**了**再**写**回**去**。
+    //    => 而那**成因**：=> 而那 appendBounded 逐字**先**读**那**整个**的**文件**（=> 而而那**它**逐字**是**那 file.readText()）、
+    //      => 而而那**它**逐字**再**把**那整个**的文件**写**回**去**（=> 而而那**它**逐字**是**那 writeAtomic、=> 而而那**它**逐字**带**那**一次** fsync）。
+    //      => 而而那**它**们**逐字是**那**两**件**事**：「那**读**的是**什么**」与「那**写**的是**什么**」）。
+    //    => 而而那**后果**逐字 = 而那**代价**逐字**随**那**文件**多大**逐字**涨**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**代价**是**什么**」与「那**它**随**什么**涨**」）。
+    //      => 而那**探针**那一族逐字**每一**项**都**写**那**三**处、=> 而而那**它**们**逐字是**那**两**件**事**：「那**写**的是**什么**」与「那**每**一**项**的**代价**是**什么**」）。
+    //    => 而那**处置**：=> 而那**它**逐字**只**在**那**文件**太大**的时候**才**去**裁**它（=> 而而那**它**们**逐字是**那**两**件**事**）。
     fun appendBounded(file: File, line: String, maxBytes: Long = 512 * 1024L, keepLines: Int = 500) {
         val dir = file.parentFile ?: return
         dir.mkdirs()
         try {
-            val prev = if (file.isFile) file.readText() else ""
-            val next = (prev + line + "\n")
-            if (next.toByteArray(Charsets.UTF_8).size <= maxBytes) {
-                writeAtomic(file, next)
+            //  => 而那**常**那一档逐字**直接**追加**（=> 而而那**它**逐字**不**读**那**整个**的**文件**、
+            //      => 而而那**它**逐字**不**重写**那**整个**的**文件**、=> 而而那**它**们**逐字是**那**两**件**事**）。
+            val size = if (file.isFile) file.length() else 0L
+            if (size + line.toByteArray(Charsets.UTF_8).size + 1 <= maxBytes) {
+                FileOutputStream(file, true).use { out ->
+                    out.write(line.toByteArray(Charsets.UTF_8))
+                    out.write("\n".toByteArray(Charsets.UTF_8))
+                }
                 return
             }
+            //  => 而那**太大**的**时候**才**去**裁**它（=> 而而那**它**逐字**才**读**那**整个**的**文件**）。
+            val prev = if (file.isFile) file.readText() else ""
+            val next = (prev + line + "\n")
             val lines = next.split("\n").filter { it.isNotBlank() }
             if (lines.size <= keepLines) {
                 writeAtomic(file, lines.joinToString("\n") + "\n")
