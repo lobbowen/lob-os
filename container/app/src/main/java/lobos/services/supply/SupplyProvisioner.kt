@@ -22,6 +22,9 @@ object SupplyProvisioner {
     /** 那探针逐字**只**解**那**头**这**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那**头**那**几**个**字符**用**）。 */
     private const val PROBE_HEAD = 4096
 
+    /** 那**软链**那一族逐字**只**看**那**头**这**几**个**字节**（=> 而而那**它**逐字**够**那**判**那**软链**用**）。 */
+    private const val SYMLINK_HEAD_MAX = 4096
+
     fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc(ctx)
 
     fun versionDir(ctx: Context, id: String, version: String): File =
@@ -195,10 +198,19 @@ object SupplyProvisioner {
                     out.mkdirs()
                 } else {
                     out.parentFile?.mkdirs()
-                    val bytes = zf.getInputStream(e).use { ins ->
-                        ins.readBytes()
+                    //  缺陷名（C-102）**那解包**那一族逐字**把**那**整个**的**大**条目**逐字**读**进**那**内存**里**。
+                    //    => 而那**成因**：=> 而那 bytes 逐字**是**那 ins.readBytes()（=> 而而那**它**逐字**吃**那**整个**的**条目**）、
+                    //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**吃**了**多少**」）。
+                    //      => 而那 git **那一件**逐字**有**那「bin/scalar」**那字节 = 10946536**、那「bin/git-shell」**那字节 = 10773528**（=> 而而那**它们**逐字是**那**两**件**事**）。
+                    //    => 而而那**后果**逐字 = 而那**解包**逐字**要**把**那 40 兆**逐字**吃**进**那**内存**里**、=> 而而那**它**们**逐字是**那**两**件**事**：「那**吃**的是**什么**」与「那**慢**的是**什么**」）。
+                    //    => 而那**处置**：=> 而那**它**逐字**先**只**读**那**头**那**几**个**字节**（=> 而而那**它**逐字**判**那**软链**够不够**）、
+                    //      => 而而那**它**逐字**不**是**那**软链**的**时候**才**把**那**整个**的**条目**逐字**流**到**那盘**上**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+                    val head = zf.getInputStream(e).use { ins ->
+                        val b = ByteArray(SYMLINK_HEAD_MAX)
+                        val n = ins.read(b)
+                        if (n <= 0) ByteArray(0) else b.copyOf(n)
                     }
-                    val linkTarget = symlinkTargetOf(e.name, bytes, entryNames)
+                    val linkTarget = symlinkTargetOf(e.name, head, entryNames)
                     if (linkTarget != null) {
                         // C-102 **解包时把软链展平成字节副本** —— 原来这一支只按字节拷贝，
                         // 于是「一条命令入口」从软链变成一份独立的字节副本：
@@ -208,7 +220,17 @@ object SupplyProvisioner {
                         java.nio.file.Files.deleteIfExists(out.toPath())
                         java.nio.file.Files.createSymbolicLink(out.toPath(), java.nio.file.Paths.get(linkTarget))
                     } else {
-                        out.outputStream().use { it.write(bytes) }
+                        //  => 而那**普通**文件逐字**流**到**那盘**上**（=> 而而那**它**逐字**不**再**整个**读**进**那**内存**里**）。
+                        zf.getInputStream(e).use { ins ->
+                            out.outputStream().use { os ->
+                                val buf = ByteArray(1 shl 16)
+                                while (true) {
+                                    val n = ins.read(buf)
+                                    if (n <= 0) break
+                                    os.write(buf, 0, n)
+                                }
+                            }
+                        }
                         ExecBits.apply(out)
                     }
                     // 读数（诊断用）：这一条解包后是什么、两个判据各自成立与否、建链结果是什么。
@@ -218,23 +240,23 @@ object SupplyProvisioner {
                     //   本机今天又核过真实条目名 bin/libbusybox.so 确实在 entryNames 里、
                     //   且条目名不带 ./ 前缀）=> 而真机上没建成 => 这几条读数是定它的那一格。
                     if (probeCtx != null && e.name.contains('/') && !e.isDirectory) {
-                        val isElf = bytes.size > 3 && bytes[0] == 0x7f.toByte() &&
-                            bytes[1] == 'E'.code.toByte() && bytes[2] == 'L'.code.toByte() &&
-                            bytes[3] == 'F'.code.toByte()
+                        val entrySize = e.size
+                        val isElf = head.size > 3 && head[0] == 0x7f.toByte() &&
+                            head[1] == 'E'.code.toByte() && head[2] == 'L'.code.toByte() &&
+                            head[3] == 'F'.code.toByte()
                         //  缺陷名（C-102）**那探针**那一族逐字**把**那**整个**的**大**条目**逐字**解**成**那**一个**String**。
                         //    => 而那**成因**：=> 而那 text0 逐字**是**那 String(bytes, Charsets.UTF_8)（=> 而而那**它**逐字**吃**那**整个**的**条目**）、
                         //      => 而而那**它**们**逐字是**那**两**件**事**：「那**要**的是**什么**」与「那**吃**了**多少**」）。
                         //      => 而那**后果**逐字 = 而那 crypto **那一件**逐字**卡**在**那解包**那一族**里**（=> 而那 seq=50016 **是**那**最后**一行**）、
                         //        => 而而那**它**逐字**卡**了**那 **424** **秒**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
                         //    => 而那**处置**：=> 而那**它**逐字**只**解**那**头**那**几**个**字节**（=> 而而那**它**逐字**够**那 resolved0 **与**那 **40** **个**字符**用**）。
-                        val head = if (bytes.size > PROBE_HEAD) bytes.copyOf(PROBE_HEAD) else bytes
                         val text0 = runCatching { String(head, Charsets.UTF_8) }.getOrNull()
                         val dir0 = e.name.substringBeforeLast('/', "")
                         val resolved0 = runCatching {
                             java.nio.file.Paths.get(dir0, text0 ?: "").normalize()
                                 .toString().removePrefix("./")
                         }.getOrNull()
-                        val probeLine = "字节数=" + bytes.size +
+                        val probeLine = "字节数=" + entrySize +
                             " 是ELF=" + isElf +
                             " 内容=" + (text0?.take(40) ?: "(解不出)") +
                             " resolved=" + resolved0 +
