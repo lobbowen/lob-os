@@ -494,9 +494,9 @@ val derived = refreshDerivedLinks(ctx, id, version)
             //  => 而那**进度**逐字**在**那**注册**之前**就**记**（=> 而而那**它**逐字**是**那**关键**步骤**上的**那一个**）。
             //    => 而那**它**逐字**不**是**那「；成」**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**是**不是**那**结果**」）。
             trace(ctx, "装 " + id, "登记前")
-            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)            return true
+            register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
+            return true
         }
-
         val r = ProgramInstallPipeline.install(
             ctx,
             ProgramInstallPipeline.Spec(
