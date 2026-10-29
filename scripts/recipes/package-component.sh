@@ -62,6 +62,19 @@ node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" \
   --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" \
   || { echo "::error title=$TOOL 说明生成失败"; exit 1; }
 
+#  缺陷名（C-102）**那形态**逐字**只**在**那 bundle** **那一路**写**、=> 而那**组件** **这一路**没**写**。
+#    => 而那**成因**：=> 而那 elf_write_shape 逐字**只**被**那 package-bundle-zip.sh **调**（=> 而那那一行逐字 = 那
+#      「elf_write_shape "$ID" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib」）、=> 而而那**组件** **这一路**
+#      （=> 而那 git / npm / node / python3 / sqlite3 / make / cmake / pkg-config / llvmtoolchain 那**几**件**走**它**）
+#      逐字**没有**那**一处**、=> 而而那**它**们**逐字**是**那**两**件**事**：「那**形态**是**什么**」与「那**它**在**哪**一条**路**上**写**」）。
+#    => 而而那**后果**逐字 = 而那**组件** **那些**件**逐字**包里没有 piece-shape.json**、=> 而而那**它**们**逐字**是**那**两**件**事**：
+#      「那**安装**逐字**报缺**」与「那**它**们**逐字**装不上**」）、=> 而那 **git** **那一件**逐字**就**是**那**败**的**那一个**。
+#    => 而那**处置**：=> 而这**这一路**逐字**也**写**那**同一**份**形态**（=> 而那**它**们**逐字是**那**两**件**事**：「那**写**的**是**什么**」
+#      与「那**它**在**哪**一处**」）、=> 而那 entry 逐字**用**那**已经**算**好**的**那一个**（=> 而那那 :15 那一行）。
+source "$ROOT_DIR/scripts/toolchain/elf-form.sh"
+elf_write_shape "$TOOL" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib \
+  || { echo "::error title=$TOOL 形态算不出来::构建期必须能判形态（readelf 缺失）"; exit 1; }
+
 find "$STAGE" -exec touch -h -t 198001010000.00 {} +
 echo "[package] 打包（zip）：component-meta.json + bin + 其它 prefix 目录"
 ( cd "$STAGE" && zip -q -r -X -y "$ROOT_DIR/$RAW" . )
