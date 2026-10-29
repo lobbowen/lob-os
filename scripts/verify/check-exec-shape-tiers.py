@@ -10,7 +10,9 @@ import sys
 
 PE_MAGIC_0 = 0x4D
 PE_MAGIC_1 = 0x5A
-PE_OFFSET = 0x3C
+PE_LFANEW_OFFSET = 0x3C
+PE_SIGNATURE_0 = 0x50
+PE_SIGNATURE_1 = 0x45
 ELF_ET_EXEC = 2
 ELF_ET_DYN = 3
 
@@ -32,14 +34,21 @@ def detect(data):
         return 'Exec'
     if t == ELF_ET_DYN:
         return 'Elf'
-    if (
-        len(head) >= PE_OFFSET + 4
-        and (ord(head[0]) & 0xFF) == PE_MAGIC_0
-        and (ord(head[1]) & 0xFF) == PE_MAGIC_1
-        and head[PE_OFFSET] == 'P'
-        and head[PE_OFFSET + 1] == 'E'
-    ):
-        return 'Pe'
+    #  => 而那 **0x3C** 那一格逐字**是**那 **e_lfanew** 的**值**、=> 而那 PE 签名逐字**在**那 e_lfanew **那一处**。
+    if len(head) >= PE_LFANEW_OFFSET + 4 and (ord(head[0]) & 0xFF) == PE_MAGIC_0 and (ord(head[1]) & 0xFF) == PE_MAGIC_1:
+        lfanew = (
+            (ord(head[PE_LFANEW_OFFSET]) & 0xFF)
+            | ((ord(head[PE_LFANEW_OFFSET + 1]) & 0xFF) << 8)
+            | ((ord(head[PE_LFANEW_OFFSET + 2]) & 0xFF) << 16)
+            | ((ord(head[PE_LFANEW_OFFSET + 3]) & 0xFF) << 24)
+        )
+        if (
+            lfanew >= 4
+            and len(head) >= lfanew + 4
+            and (ord(head[lfanew]) & 0xFF) == PE_SIGNATURE_0
+            and (ord(head[lfanew + 1]) & 0xFF) == PE_SIGNATURE_1
+        ):
+            return 'Pe'
     if head.startswith('#!'):
         line = head[2:].split('\n')[0].strip()
         return 'Shebang' if line else 'Unknown'
@@ -50,7 +59,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 #  那**五**档各**答**什么（=> 而那**它**们逐字**不互相顶替**）。
 CASES = [
-    ('pe-sample/pe-sample.exe', 'Pe', '那一件逐字是不是那 PE 那一族'),
+    ('pe-sample/pe-real-header.bin', 'Pe', '那一件逐字是不是那 PE 那一族（那真的一个 PE 样本的头）'),
+    ('pe-sample/pe-sample.exe', 'Pe', '那一件逐字是不是那 PE 那一族（那合成的一个）'),
     ('pe-sample/elf-dyn', 'Elf', '那一件逐字是不是那 ELF ET_DYN 那一族'),
     ('pe-sample/elf-exec', 'Exec', '那一件逐字是不是那 ELF ET_EXEC 那一族'),
     ('pe-sample/shebang.sh', 'Shebang', '那一件逐字是不是那第一行那 #! 那一族'),

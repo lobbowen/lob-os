@@ -20,10 +20,14 @@ object ExecEntry {
     private const val ELF_MAGIC = 0x7F
     private const val ELF_ET_EXEC = 2
     private const val ELF_ET_DYN = 3
-    //  => 而那 **PE** **那**两个**字节**（=> 而那 **MZ**）**与**那 **PE\u0000\u0000** **那个**偏移**（=> 而那 **0x3C**）。
+    //  => 而那 **PE** **那**两个**字节**（=> 而那 **MZ**）**与**那 **PE** **那个**签名**在**哪**一格**。
+    //    => 而那 **0x3C** 那一格逐字**是**那 **e_lfanew** 的**值**（=> 而那**它**逐字**是**那 PE 头**相对**那 MZ 头**的**偏移**）、
+    //      => 而而那**它**逐字**不**是**那 PE 签名**在**哪**一格**、=> 而而那**它**逐字**是**那 PE 签名**在**哪**一格**的**指针**。
     private const val PE_MAGIC_0 = 0x4D
     private const val PE_MAGIC_1 = 0x5A
-    private const val PE_OFFSET = 0x3C
+    private const val PE_LFANEW_OFFSET = 0x3C
+    private const val PE_SIGNATURE_0 = 0x50
+    private const val PE_SIGNATURE_1 = 0x45
 
     private fun elfType(b: ByteArray, n: Int): Int {
         if (n < 18) return -1
@@ -48,18 +52,30 @@ object ExecEntry {
             }
         }.getOrNull() ?: return Shape.Unknown
 
-        //  缺陷名（C-102）**那 PE 解析**逐字**零命中**、=> 而和那**它**逐字**没有**那 PE 那一档、
-        //    => 而和那那**后果**逐字 = 而那 PE 那一族逐字**跑不起来**。
-        //  => 而那**处置**：=> 而那 **PE** **那**两个**字节**（=> 而那 **MZ**）**与**那 **PE\u0000\u0000** **那个**偏移**
-        //    （=> 而那 **0x3C**）逐字**在**那 **ELF** **判定**之后**、**在**那 **#!** **判定**之前**判**。
-        //    => 而那**它**逐字**是**那**形状识别**那一层、=> 而和那**它**逐字**不是**那**执行**那一层。
+        //  缺陷名（C-102）**那 PE 那一档**逐字**把**那 P **读**在**那**固定**的 0x3C、
+        //    => 而和那**它**逐字**没有**答**那**一件事**、=> 而和那那**后果**逐字 = 而那 PE 那一族逐字**认不出**那 PE 那一族**。
+        //    => 而那**成因**：=> 而那 **0x3C** 那一格逐字**是**那 **e_lfanew** 的**值**（=> 而那**它**逐字**是**那 PE 头
+        //      **相对**那 MZ 头**的**偏移**）、=> 而而那**它**逐字**不**是**那 PE 签名**在**哪**一格**、
+        //      => 而而那**它**逐字**是**那 PE 签名**在**哪**一格**的**指针**、=> 而那**签名**逐字**在**那 e_lfanew **那一处**。
+        //    => 而那**处置**：=> 而那 **PE** **那个**签名逐字**读**在**那**相对**的**那一处**（=> 而那**它**逐字**先**读**那 e_lfanew
+        //      **那**四个**字节**、=> 而而那**它**逐字**再**读**那 e_lfanew **那一处**的**那**四个**字节**）。
+        //    => 而那**它**逐字**在**那 **ELF** **判定**之后**、**在**那 **#!** **判定**之前**判**。
+        //    => 而那**它**逐字**是**那**形状识别**那一层、=> 而和那**它**逐字**不是**那**执行**那一层**。
         //    => 而和那**它**与那 Elf 与那 Exec 与那 Shebang 与那 Unknown 那四个逐字**不互相顶替**。
-        if (head.length >= PE_OFFSET + 4 &&
+        if (head.length >= PE_LFANEW_OFFSET + 4 &&
             (head[0].code and 0xFF) == PE_MAGIC_0 &&
-            (head[1].code and 0xFF) == PE_MAGIC_1 &&
-            head[PE_OFFSET] == 'P' && head[PE_OFFSET + 1] == 'E'
+            (head[1].code and 0xFF) == PE_MAGIC_1
         ) {
-            return Shape.Pe
+            val lfanew = (head[PE_LFANEW_OFFSET].code and 0xFF) or
+                ((head[PE_LFANEW_OFFSET + 1].code and 0xFF) shl 8) or
+                ((head[PE_LFANEW_OFFSET + 2].code and 0xFF) shl 16) or
+                ((head[PE_LFANEW_OFFSET + 3].code and 0xFF) shl 24)
+            if (lfanew >= 4 && head.length >= lfanew + 4 &&
+                (head[lfanew].code and 0xFF) == PE_SIGNATURE_0 &&
+                (head[lfanew + 1].code and 0xFF) == PE_SIGNATURE_1
+            ) {
+                return Shape.Pe
+            }
         }
 
         if (head.startsWith("#!")) {
