@@ -983,7 +983,18 @@ object ProgramInstallPipeline {
     }
 
     private fun satisfyElfDeps(context: Context, dest: File): DepReport {
-        val elfs = dest.walkTopDown().filter { it.isFile && isElf(it) }.toList()
+        //  缺陷名（C-102）**那 ELF 依赖**那一族逐字**扫**那**整个**的**落位**目录**。
+        //    => 而那**成因**：=> 而那 satisfyElfDeps 逐字**对**那 dest **走**那 walkTopDown（）、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那**扫**的**是**什么**」与「那**扫**了**多少**」）。
+        //      => 而而那**后果**逐字 = 而那**落位**那一族逐字**卡**在**那 busybox **那**一件**里**（=> 而那 seq=49950 **是**那**最后**一行**、
+        //        => 而而那**它**逐字**卡**了**那 **3443** **秒**）、=> 而而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
+        //    => 而那**处置**：=> 而那**它**逐字**只**看**那 lib/ **与**那 bin/ **那几**个**目录**（=> 而那**形状**逐字**跟**那 dependencySources **那一族**一样**）、
+        //      => 而而那**它**们**逐字是**那**两**件**事**：「那 ELF 依赖**在不在**」与「那**依赖来源**在不在**」）。
+        val elfs = linkedSetOf<File>()
+        for (sub in listOf(File(dest, "lib"), File(dest, "bin"), dest)) {
+            if (!sub.isDirectory) continue
+            sub.walkTopDown().filter { it.isFile && isElf(it) }.forEach { elfs.add(it) }
+        }
         if (elfs.isEmpty()) return DepReport(true, "落位目录内没有 ELF 文件，无需铺依赖", 0, emptyList())
 
         val needed = linkedSetOf<String>()
