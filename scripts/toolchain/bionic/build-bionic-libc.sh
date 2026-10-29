@@ -11,6 +11,7 @@ set -euo pipefail
 SRC="${1:?用法: build-bionic-libc.sh <bionic 源码树> <兄弟项目根> <产物落点>}"
 SIB="${2:?用法: build-bionic-libc.sh <bionic 源码树> <兄弟项目根> <产物落点> [libc++ 头目录]}"
 LIBCXX="${4:-$SIB/libcxx/include}"
+EXTRA="${5:-$SIB}"
 OUT="${3:?用法: build-bionic-libc.sh <bionic 源码树> <兄弟项目根> <产物落点>}"
 
 NDK_ROOT="${NDK_ROOT:-/home/bowen/ndk-acquire/sdk/ndk/30.0.16248370}"
@@ -40,6 +41,13 @@ if [ -f "$SA" ] && ! cmp -s "$SA" "$INC_DIR/bits-stdatomic.h"; then
 fi
 mkdir -p "$WORK/patched/bits"
 cp "$INC_DIR/bits-stdatomic.h" "$WORK/patched/bits/stdatomic.h"
+
+#  => 而那 <bionic/xxx.h> **那一族**逐字**要**那**一个** **bionic/** **那一层**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**引**的是**什么**」与「那**它**在**哪**一层**」）。
+#     => 而那 bionic 那 libc/platform/bionic 底下**那**几个**头**逐字**在**那**一处**、=> 而那**引**的**是**那「<bionic/xxx.h>」。
+mkdir -p "$WORK/patched/bionic"
+for h in "$SRC"/libc/platform/bionic/*.h; do
+  [ -e "$h" ] && cp "$h" "$WORK/patched/bionic/"
+done
 trap 'rm -rf "$WORK"' EXIT
 
 INC=(-nostdinc)
@@ -53,10 +61,12 @@ for d in \
   "$SIB/libbase/include" "$SIB/libziparchive/include" "$SIB/core/libutils/include" \
   "$SIB/core/debuggerd/include" "$SIB/core/libcutils/include" "$SIB/core/libcutils/include/private" \
   "$SIB/gwp_asan" "$SIB/jemalloc_new/include" "$SIB/libcxxabi/include" "$SIB/libcxx/include" \
+  "$EXTRA/gwp_asan" "$EXTRA/jemalloc_new/include" "$EXTRA/libcxxabi/include" "$EXTRA/libcxx/include" \
   "$SRC/libc/kernel/uapi" "$SRC/libc" "$SRC/libc/include" "$SRC/libc/private" \
   "$SRC/libc/platform/common" "$SRC/libc/platform/bionic" "$SRC/libc/platform/system/include" \
   "$SRC/libc/system/include" "$SRC/libc/system/core/include" "$SRC/libc/bionic/libc/include" \
   "$SRC/libc/async_safe/include" "$SRC/libc/async_safe/include/async_safe" \
+  "$SRC/libc/platform/bionic" "$SRC/libc/system_properties/include" "$SRC/libc/stdio" \
   "$SRC/libziparchive" "$SRC/libziparchive/include" "$SRC/libunwindstack/include" \
   "$SRC/external/selinux/libselinux/include" "$SRC/external/selinux/libsepol" \
   "$SRC/system/libziparchive" "$SRC/system/libziparchive/include" \
