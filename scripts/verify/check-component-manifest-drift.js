@@ -5,7 +5,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
 
-const ROOT = path.resolve(__dirname, '..');
+// C-102 层级错位：ROOT 原先解析成 scripts/ 自身，:63 的 channel.json 锚点落到了
+// scripts/container/app/src/main/assets/supply/channel.json，必然 ENOENT。
+// C-103 回答（为什么有两边）：ROOT 一词在仓内有两义 —— 甲：仓根；乙：scripts/ 自身。
+// 此处应当是甲。同一个词的含义被换掉这件事落在
+// scripts/publish/publish-component-manifest.js 与 scripts/publish/publish-native-manifest.js 三处，
+// 唯独 scripts/publish/check-component-manifest-drift.js 用的是 '../..'（甲），
+// 所以「两处对一处错」不是两个写法，是两义混用。
+const ROOT = path.resolve(__dirname, '../..');
 const argv = process.argv.slice(2);
 const IMMUTABLE = argv[0] === '--immutable';
 if (IMMUTABLE) argv.shift();
@@ -62,9 +69,26 @@ if (!Array.isArray(localTools) || localTools.length === 0) {
 const anchor = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'container/app/src/main/assets/supply/channel.json'), 'utf8'),
 );
+// C-102 字段层级错位：通道锚升到 schema 2 之后，清单名搬进了 manifests.component.name，
+// 而这一份还在读 v1 的平铺 manifestName —— 拼出来的键是 component-canary/undefined。
+// 读取口径照设备侧那一族（SupplyProvisioner.manifestNameOf，container/app/src/main/java/lobos/services/supply/SupplyProvisioner.kt:64）：
+// 先读 manifests[channel].name，没有再退回平铺 manifestName；两处都没有就是缺字段，按 C-05 报缺，不猜填。
+function manifestNameOf(a, channel) {
+  const m = a.manifests && a.manifests[channel];
+  if (m && typeof m.name === 'string' && m.name.trim()) return m.name.trim();
+  if (channel === 'component' && typeof a.manifestName === 'string' && a.manifestName.trim()) {
+    return a.manifestName.trim();
+  }
+  return null;
+}
+const MANIFEST_NAME = manifestNameOf(anchor, 'component');
+if (!MANIFEST_NAME) {
+  fail('通道锚里读不到 component 清单名（container/app/src/main/assets/supply/channel.json）'
+    + ' —— manifests.component.name 与平铺 manifestName 两处都没有');
+}
 const onlinePath = process.env.COMPONENT_ONLINE_FILE;
-const onlineFrom = onlinePath || 'component-' + CHANNEL + '/' + anchor.manifestName;
-const onlineUrl = anchor.baseUrl.replace(/\/+$/, '') + '/component-' + CHANNEL + '/' + anchor.manifestName
+const onlineFrom = onlinePath || 'component-' + CHANNEL + '/' + MANIFEST_NAME;
+const onlineUrl = anchor.baseUrl.replace(/\/+$/, '') + '/component-' + CHANNEL + '/' + MANIFEST_NAME
   + '?t=' + Date.now();
 
 function fetchOnline() {

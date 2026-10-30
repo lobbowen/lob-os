@@ -6,7 +6,14 @@ const path = require('node:path');
 const cp = require('node:child_process');
 const crypto = require('node:crypto');
 
-const ROOT = path.resolve(__dirname, '..');
+// C-102 层级错位：ROOT 原先解析成 scripts/ 自身，于是 ROOT-relative 路径全部少一层。
+// C-103 回答（为什么有两边）：仓内 ROOT 一词有两种含义。
+// 甲：仓根（repo root）。乙：scripts/ 自身。
+// 正确含义是甲；d6e954c 时 ROOT 确是仓根，VERIFY 为 path.join(ROOT,'scripts','component-sources.json')，
+// 到了 f87bcb2 把 ROOT 改成 '..'（变成乙）同时把 VERIFY 改成 path.join(ROOT,'component-sources.json')，
+// 4105f16 又照着乙把 registry 路径改成 path.join(ROOT,'registry',...)。
+// 所以这不是三处各写错一次，是一个词的含义被换掉、落在三个地方。
+const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
 const DIST = POS[0] || 'dist';
@@ -16,11 +23,11 @@ const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.COMPONENT_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.COMPONENT_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply/component-public.pem');
-const VERIFY = path.join(ROOT, 'component-sources.json');
+const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
 const TTL_MS = 30 * 86400_000;
 
 function entryOf(name) {
-  return cp.execFileSync('bash', [path.join(ROOT, 'registry', 'read-component-entry.sh'), name], { encoding: 'utf8' }).trim();
+  return cp.execFileSync('bash', [path.join(ROOT, 'scripts', 'registry', 'read-component-entry.sh'), name], { encoding: 'utf8' }).trim();
 }
 
 function pieceText(zipPath, rel) {
