@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "plink-win32-l2-sample",
+  "version": "0.83",
+  "architecture": "win32-i386",
+  "purpose": "PE L2 parser and process-image construction test sample; never executed",
+  "source": "https://www.chiark.greenend.org.uk/~sgtatham/putty/0.83/w32/plink.exe",
+  "sourceSha256": "7308e9d356f14aa1f08cab1af363f71a077bf35dcb49e50b363418044758cd1e",
+  "license": "MIT",
+  "licenseFile": "https://www.chiark.greenend.org.uk/~sgtatham/putty/licence.html"
+}

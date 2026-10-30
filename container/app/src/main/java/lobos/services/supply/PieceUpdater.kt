@@ -37,14 +37,22 @@ object PieceUpdater {
             val ver = pe.version
             val installed = if (pe.stateDir.isBlank() || pe.assetEntry.isBlank()) null
                 else File(File(pe.stateDir), pe.assetEntry)
+            val entryName = pe.assetEntry.substringAfterLast("/")
+            val activeLink = if (pe.assetEntry.startsWith("bin/")) {
+                File(PrefixProvisioner.binDir(ctx), entryName)
+            } else {
+                File(PrefixProvisioner.libDir(ctx), entryName)
+            }
+            val updated = pe.assetEntry.isNotBlank() && java.nio.file.Files.isSymbolicLink(activeLink.toPath())
+            val activeFile = if (updated) runCatching { activeLink.toPath().toRealPath().toFile() }.getOrNull() else installed
             out += State(
                 pe.id,
                 ver.ifBlank { null },
-                installed?.takeIf { it.isFile }?.let {
+                activeFile?.takeIf { it.isFile }?.let {
                     runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
                 },
-                installed?.takeIf { it.isFile },
-                false,
+                activeFile?.takeIf { it.isFile },
+                updated,
             )
         }
         return out

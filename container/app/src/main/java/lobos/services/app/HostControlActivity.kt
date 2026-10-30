@@ -25,7 +25,7 @@ class HostControlActivity : Activity() {
         val peSample = Button(this).apply { text = "加载 PE L2 样本" }
         update.setOnClickListener {
             update.isEnabled = false
-            result.text = HostControlService.update(this, manifest.text.toString(), request.text.toString(), true).toString()
+            result.text = HostControlService.update(this, manifest.text.toString(), request.text.toString(), false).toString()
             update.isEnabled = true
         }
         peSample.setOnClickListener {

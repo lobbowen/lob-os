@@ -43,11 +43,12 @@ object HostControlService {
 
     fun update(context: Context, manifestUrl: String, requestId: String, dryRun: Boolean): JSONObject {
         val app = context.applicationContext
+        val method = "lobos.sys.native.update"
         val correlatedId = requestId.trim().ifEmpty { "update-" + UUID.randomUUID() }
         val url = manifestUrl.trim()
-        if (url.isBlank()) return failure(correlatedId, "manifestUrl 为空")
+        if (url.isBlank()) return failure("lobos.sys.native.update", correlatedId, "manifestUrl 为空")
         val broker = lobos.api.CapabilityBroker.live()
-            ?: return failure(correlatedId, "宿主桥未启动：控制面此刻不可用")
+            ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
         return try {
             val token = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
             SessionRegistry.bindPid(app, token, android.os.Process.myPid())
@@ -60,7 +61,7 @@ object HostControlService {
                 put("ok", result.ok); put("code", result.code); put("requestId", correlatedId)
                 put("method", "lobos.sys.native.update"); put("result", result.value)
             }
-        } catch (e: Throwable) { failure(correlatedId, e.message ?: e.javaClass.simpleName) }
+        } catch (e: Throwable) { failure(method, correlatedId, e.message ?: e.javaClass.simpleName) }
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
     }
 
@@ -75,7 +76,7 @@ object HostControlService {
             app.assets.open(asset).use { input -> sample.outputStream().use { output -> input.copyTo(output) } }
             val actual = java.security.MessageDigest.getInstance("SHA-256").digest(sample.readBytes())
                 .joinToString("") { "%02x".format(it) }
-            if (actual != expectedSha256) return failure("pe-sample", "PE L2 样本 sha256 不匹配")
+            if (actual != expectedSha256) return failure("lobos.compat.pe.sample", "pe-sample", "PE L2 样本 sha256 不匹配")
             val image = PeLoader.parse(sample.readBytes())
             JSONObject().apply {
                 put("ok", true); put("requestId", "pe-sample"); put("asset", asset)
@@ -84,19 +85,20 @@ object HostControlService {
                 put("entryPoint", image.entryPointRva); put("imageBase", image.imageBase)
                 put("sections", image.sections.size); put("imports", image.imports.size)
             }
-        } catch (e: Throwable) { failure("pe-sample", e.message ?: e.javaClass.simpleName) }
+        } catch (e: Throwable) { failure("lobos.compat.pe.sample", "pe-sample", e.message ?: e.javaClass.simpleName) }
     }
 
     /** Formal rollback of one piece to its APK baseline. */
     fun rollback(context: Context, id: String, base: String, requestId: String, dryRun: Boolean): JSONObject {
         val app = context.applicationContext
+        val method = "lobos.sys.native.rollback"
         val pieceId = id.trim()
         val selectedBase = base.trim().ifEmpty { "apk" }
         val correlatedId = requestId.trim().ifEmpty { "rollback-" + UUID.randomUUID() }
-        if (pieceId.isBlank()) return failure(correlatedId, "id 为空")
-        if (selectedBase != "apk") return failure(correlatedId, "base 只接受 apk")
+        if (pieceId.isBlank()) return failure("lobos.sys.native.rollback", correlatedId, "id 为空")
+        if (selectedBase != "apk") return failure("lobos.sys.native.rollback", correlatedId, "base 只接受 apk")
         val broker = lobos.api.CapabilityBroker.live()
-            ?: return failure(correlatedId, "宿主桥未启动：控制面此刻不可用")
+            ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
         return try {
             val token = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
             SessionRegistry.bindPid(app, token, android.os.Process.myPid())
@@ -114,7 +116,7 @@ object HostControlService {
                 put("result", result.value)
             }
         } catch (e: Throwable) {
-            failure(correlatedId, e.message ?: e.javaClass.simpleName)
+            failure(method, correlatedId, e.message ?: e.javaClass.simpleName)
         }.also { response ->
             RuntimeDiagnostics.append(
                 app,
@@ -127,11 +129,11 @@ object HostControlService {
         }
     }
 
-    private fun failure(requestId: String, message: String): JSONObject = JSONObject().apply {
+    private fun failure(method: String, requestId: String, message: String): JSONObject = JSONObject().apply {
         put("ok", false)
         put("code", -1)
         put("requestId", requestId)
-        put("method", "lobos.sys.native.rollback")
+        put("method", method)
         put("error", message)
     }
 }
