@@ -129,17 +129,17 @@ object PreinstalledPieces {
         //     原来 primary / landedRel / dirs 三处都只按**一个** role 算，
         //     而 dirs 由那个 role 二选一（ROLE_PROGRAM => 只有 binDir、ROLE_LIBRARY => 只有 libDir）
         val shapeHere = ProgramInstallPipeline.PieceShape.read(verDir)
-        val targets = ArrayList<Pair<String, String>>()   // (落位后那一份的相对路径, 该建的目录)
+        val targets = ArrayList<Triple<String, String, String>>()   // (落位后那一份的相对路径, 该建的目录, 形态)
         if (shapeHere != null) {
             for (r in listOf(ProgramInstallPipeline.ROLE_LIBRARY, ProgramInstallPipeline.ROLE_PROGRAM)) {
                 val items = shapeHere.byRole(r)
                 if (items.isEmpty()) continue
                 val dir = ProgramInstallPipeline.PieceShape.dirForRole(r) ?: continue
                 val name = items.first().path.substringAfterLast('/')
-                targets.add(dir + "/" + name to when (r) {
+                targets.add(Triple(dir + "/" + name, when (r) {
                     ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath
                     else -> lobos.kernel.layout.PrefixProvisioner.libDir(ctx).absolutePath
-                })
+                }, r))
             }
         }
         if (targets.isEmpty()) {
@@ -153,7 +153,7 @@ object PreinstalledPieces {
         var ok = 0
         var rebuilt = 0
         val bad = mutableListOf<String>()
-        for ((landedRel, dirAbs) in targets) {
+        for ((landedRel, dirAbs, role) in targets) {
             val dir = File(dirAbs)
             val name = landedRel.substringAfterLast('/')
             val landed = File(verDir, landedRel).canonicalFile.path
@@ -164,19 +164,15 @@ object PreinstalledPieces {
             //   按 targets 逐条写同一件的那一格，=> 而**后一条把前一条盖掉了**
             //   （=> 而那盖掉的是「库那条入口指针」）。=> 而回退要落回的是**入口那一格**
             //   （=> 而那是程序形态那一条），=> 而所以现在**按角色记**：
-            //   程序形态记入口指针与那一份字节；库形态只记那一份字节。
-            if (dirAbs == lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath) {
-                runCatching {
-                    lobos.services.supply.PieceOriginStore.recordApkOriginal(
-                        ctx, id, version, link.absolutePath, File(verDir, landedRel).absolutePath,
-                    )
-                }
-            } else {
-                runCatching {
-                    lobos.services.supply.PieceOriginStore.recordApkBody(
-                        ctx, id, version, File(verDir, landedRel).absolutePath,
-                    )
-                }
+            //   每个角色各记一格（角色 + 那一条入口指针路径 + 那一份字节路径）。
+            //   缺陷名（C-102）**库形态那一格只记了字节、没记那条指针**：
+            //   而库形态的入口指针（usr/lib/<名>）恰恰是**回退要落回的那一条**，
+            //   => 而那一格没记 => 而「回到 APK 原件」对纯库件无从判。
+            //   现在：两个角色**都**按「角色 + 入口指针路径 + 那一份字节路径」记。
+            runCatching {
+                lobos.services.supply.PieceOriginStore.recordApkSlot(
+                    ctx, id, version, role, link.absolutePath, File(verDir, landedRel).absolutePath,
+                )
             }
             if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) {
                 // 这一条**该有而没有**（ 而 total 只数已存在的，  所以那一格看不见它）
