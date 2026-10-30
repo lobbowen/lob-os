@@ -22,10 +22,14 @@ class HostControlActivity : Activity() {
         val result = TextView(this)
         val update = Button(this).apply { text = "检查并更新系统件" }
         val rollback = Button(this).apply { text = "回滚系统件到 APK 原件" }
+        val peSample = Button(this).apply { text = "加载 PE L2 样本" }
         update.setOnClickListener {
             update.isEnabled = false
             result.text = HostControlService.update(this, manifest.text.toString(), request.text.toString(), true).toString()
             update.isEnabled = true
+        }
+        peSample.setOnClickListener {
+            result.text = lobos.services.host.HostControlService.loadPeSample(this).toString()
         }
         rollback.setOnClickListener {
             rollback.isEnabled = false
@@ -38,6 +42,7 @@ class HostControlActivity : Activity() {
         root.addView(request)
         root.addView(update)
         root.addView(rollback)
+        root.addView(peSample)
         root.addView(result)
         setContentView(root)
     }

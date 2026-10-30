@@ -2,6 +2,7 @@ package lobos.services.host
 
 import android.content.Context
 import java.util.UUID
+import lobos.kernel.compat.PeLoader
 import lobos.control.ControlClient
 import lobos.kernel.proc.SessionRegistry
 import lobos.services.log.RuntimeDiagnostics
@@ -61,6 +62,29 @@ object HostControlService {
             }
         } catch (e: Throwable) { failure(correlatedId, e.message ?: e.javaClass.simpleName) }
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
+    }
+
+    /** Load the shipped PE L2 sample through the production parser without executing it. */
+    fun loadPeSample(context: Context): JSONObject {
+        val app = context.applicationContext
+        return try {
+            val asset = "win32/plink.exe"
+            val expectedSha256 = "7308e9d356f14aa1f08cab1af363f71a077bf35dcb49e50b363418044758cd1e"
+            val sample = File(app.cacheDir, "win32/plink.exe")
+            sample.parentFile?.mkdirs()
+            app.assets.open(asset).use { input -> sample.outputStream().use { output -> input.copyTo(output) } }
+            val actual = java.security.MessageDigest.getInstance("SHA-256").digest(sample.readBytes())
+                .joinToString("") { "%02x".format(it) }
+            if (actual != expectedSha256) return failure("pe-sample", "PE L2 样本 sha256 不匹配")
+            val image = PeLoader.parse(sample.readBytes())
+            JSONObject().apply {
+                put("ok", true); put("requestId", "pe-sample"); put("asset", asset)
+                put("bytes", sample.length()); put("sha256", actual)
+                put("machine", image.machine); put("pe32Plus", image.pe32Plus)
+                put("entryPoint", image.entryPointRva); put("imageBase", image.imageBase)
+                put("sections", image.sections.size); put("imports", image.imports.size)
+            }
+        } catch (e: Throwable) { failure("pe-sample", e.message ?: e.javaClass.simpleName) }
     }
 
     /** Formal rollback of one piece to its APK baseline. */
