@@ -14,6 +14,11 @@ import java.nio.file.Files
  *  - 形状识别在 `lobos.kernel.proc.ExecEntry`（那一族逐字只读那 MZ 与那 e_lfanew）。
  *  - 本文件**不重做**形状识别：它从 PE 字节起手，自己解头、解节、解导入表。
  *  - 本文件**不执行** x86/x86-64 指令：它只把映像构造出来。
+ *
+ * 数值口径（=> 而那一族全是 32/64 位无符号字段，=> 而 Kotlin 那 Long 是有符号的，
+ * 所以那些字段一律读成 Long 再用；=> 而**不**混用 Int 与 Long）：
+ *  - 所有偏移、尺寸、RVA 一律 Long。
+ *  - 只有数组下标与字节偏移转成 Int。
  */
 class PeLoader private constructor(
     val image: PeProcessImage,
@@ -22,9 +27,9 @@ class PeLoader private constructor(
 
     companion object {
         private const val DOS_MAGIC = 0x5A4D
-        private const val PE_SIGNATURE = 0x00004550
-        private const val FILE_ALIGNMENT = 0x200
-        private const val DEFAULT_SECTION_ALIGNMENT = 0x1000
+        private const val PE_SIGNATURE = 0x00004550L
+        private const val FILE_ALIGNMENT = 0x200L
+        private const val DEFAULT_SECTION_ALIGNMENT = 0x1000L
 
         private const val OPT_MAGIC_PE32 = 0x10B
         private const val OPT_MAGIC_PE32_PLUS = 0x20B
@@ -113,10 +118,10 @@ class PeLoader private constructor(
                 )
             }
 
-            val effectiveAlignment = if (sectionAlignment == 0) DEFAULT_SECTION_ALIGNMENT else sectionAlignment
-            val effectiveFileAlignment = if (fileAlignment == 0) FILE_ALIGNMENT else fileAlignment
+            val effectiveAlignment = if (sectionAlignment == 0L) DEFAULT_SECTION_ALIGNMENT else sectionAlignment
+            val effectiveFileAlignment = if (fileAlignment == 0L) FILE_ALIGNMENT else fileAlignment
             val headerBytes = r.slice(0, sizeOfHeaders.toInt())
-            val imageSize = if (sizeOfImage > 0) sizeOfImage.toInt() else {
+            val imageSize = if (sizeOfImage > 0L) sizeOfImage.toInt() else {
                 sections.maxOfOrNull { alignUp(it.virtualAddress + it.virtualSize, effectiveAlignment) }?.toInt() ?: 0
             }
             if (imageSize < headerBytes.size) {
@@ -128,24 +133,19 @@ class PeLoader private constructor(
             headerBytes.copyInto(mapped)
 
             for (section in sections) {
-                if (section.virtualAddress >= mapped.size) {
+                if (section.virtualAddress >= mapped.size.toLong()) {
                     throw PeFormatException("section ${section.name} starts outside the image")
                 }
-                val copySize = minOf(section.rawSize, section.virtualSize.takeIf { it != 0L } ?: section.rawSize)
+                val copySize = minOf(section.rawSize, if (section.virtualSize != 0L) section.virtualSize else section.rawSize)
                 if (copySize == 0L) continue
                 r.requireRange(section.rawOffset.toInt(), copySize.toInt())
                 val source = r.slice(section.rawOffset.toInt(), copySize.toInt())
                 val destination = section.virtualAddress.toInt()
-                if (destination + source.size > mapped.size) {
+                if (destination.toLong() + copySize > mapped.size.toLong()) {
                     throw PeFormatException("section ${section.name} exceeds the mapped image")
                 }
                 source.copyInto(mapped, destination)
             }
-
-            //  => 而那 reader 逐字要带着**那两格**（=> 而那节表与那 PE32+ 那一档），
-            //     => 而而那**不**带的话、=> 而而那 thunk 那一步逐字**恒**按 PE32 读。
-            r.sections = sections
-            r.isPe32Plus = pe32Plus
 
             val view = ImageView(mapped, pe32Plus)
             val imports = parseImports(view, importRva, importSize)
@@ -166,7 +166,7 @@ class PeLoader private constructor(
             )
         }
 
-        /** 读数据目录第 index 格（=> 而那**它**返回 RVA，而那大小取不到就返回 0）。 */
+        /** 读数据目录第 index 格（=> 而那**它**返回 RVA 与那大小成对）。 */
         private fun directoryAt(
             r: PeReader,
             optional: Int,
@@ -174,7 +174,7 @@ class PeLoader private constructor(
             directoryCount: Long,
             index: Int,
         ): Pair<Long, Long> {
-            if (index >= directoryCount) return 0L to 0L
+            if (index.toLong() >= directoryCount) return 0L to 0L
             val at = optional + directoryBase + index * 8
             r.requireRange(at, 8)
             return r.u32(at) to r.u32(at + 4)
@@ -210,13 +210,14 @@ class PeLoader private constructor(
             var offset = view.rvaToOffset(lookupRva)
             if (offset < 0) return emptyList()
             val step = if (view.pe32Plus) 8 else 4
-            val ordinalFlag = if (view.pe32Plus) 0x8000000000000000L else 0x80000000L
+            // PE32+ 的序号标志位是第 63 位 => 那是 Long 的最高位 => 写成 Long.MIN_VALUE。
+            val ordinalFlag = if (view.pe32Plus) Long.MIN_VALUE else 0x80000000L
             val result = ArrayList<PeImportSymbol>()
             while (offset >= 0 && offset + step <= view.size) {
                 val value = if (view.pe32Plus) view.u64(offset) else view.u32(offset)
                 if (value == 0L) break
                 if (value and ordinalFlag != 0L) {
-                    result += PeImportSymbol.Ordinal((value and 0xFFFF).toInt())
+                    result += PeImportSymbol.Ordinal((value and 0xFFFFL).toInt())
                 } else {
                     val hintNameOffset = view.rvaToOffset(value)
                     if (hintNameOffset < 0) {
@@ -247,18 +248,18 @@ class PeLoader private constructor(
 
             val byName = LinkedHashMap<String, Long>()
             val byOrdinal = LinkedHashMap<Int, Long>()
-            for (i in 0 until numberOfFunctions) {
+            for (i in 0L until numberOfFunctions) {
                 val at = view.rvaToOffset(functionsRva + i * 4)
                 if (at < 0) continue
                 byOrdinal[(ordinalBase + i).toInt()] = view.u32(at)
             }
-            for (i in 0 until numberOfNames) {
+            for (i in 0L until numberOfNames) {
                 val nameAt = view.rvaToOffset(namesRva + i * 4)
                 if (nameAt < 0) continue
                 val symbolName = view.string(view.rvaToOffset(view.u32(nameAt)))
                 val ordinalAt = view.rvaToOffset(ordinalsRva + i * 2)
                 if (ordinalAt < 0) continue
-                val ordinalIndex = view.u16(ordinalAt)
+                val ordinalIndex = view.u16(ordinalAt).toLong()
                 val functionAt = view.rvaToOffset(functionsRva + ordinalIndex * 4)
                 if (functionAt < 0) continue
                 byName[symbolName] = view.u32(functionAt)
@@ -268,7 +269,7 @@ class PeLoader private constructor(
         }
 
         private fun alignUp(value: Long, alignment: Long): Long =
-            if (alignment <= 1) value else ((value + alignment - 1) / alignment) * alignment
+            if (alignment <= 1L) value else ((value + alignment - 1L) / alignment) * alignment
     }
 }
 
@@ -414,11 +415,6 @@ private class DependencyResolver(searchPath: List<File>) {
 
 /** 从文件字节里读数的那一副（=> 而那**它**逐字是那**头**那一层，不读映射后的映像）。 */
 private class PeReader(private val bytes: ByteArray) {
-    var sections: List<PeSection> = emptyList()
-        private set
-    var isPe32Plus: Boolean = false
-        private set
-
     fun u16(offset: Int): Int = buffer.getShort(offset).toInt() and 0xFFFF
     fun u32(offset: Int): Long = buffer.getInt(offset).toLong() and 0xFFFFFFFFL
     fun u64(offset: Int): Long = buffer.getLong(offset)
@@ -441,7 +437,7 @@ private class PeReader(private val bytes: ByteArray) {
         return String(bytes, offset, actualEnd - offset, Charsets.ISO_8859_1)
     }
 
-    private val buffer: ByteBuffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    private val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 }
 
 /**
@@ -469,5 +465,5 @@ private class ImageView(val bytes: ByteArray, val pe32Plus: Boolean) {
         return String(bytes, offset, end - offset, Charsets.ISO_8859_1)
     }
 
-    private val buffer: ByteBuffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+    private val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 }
