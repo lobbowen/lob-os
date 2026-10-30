@@ -146,9 +146,19 @@ jobs:
             exit 1
           fi
           ANCHOR=container/app/src/main/assets/supply/channel.json
-          MAN=$(node -p "require('./$ANCHOR').manifestName")
-          SIG=$(node -p "require('./$ANCHOR').sigName")
           CH=$(node -p "require('./$ANCHOR').channel")
+          # 清单名与签名名住在那一份 anchor 的 manifests.<channel> 下面，
+          # anchor 顶层没有这两个字段 —— 读顶层会拿到 undefined，
+          # 于是远端键会变成 component-canary/undefined。
+          # 取不到就当场停：绝不允许把带 undefined 的路径投到对象存储上。
+          MAN=$(node -p "require('./$ANCHOR').manifests?.['component']?.name || ''")
+          SIG=$(node -p "require('./$ANCHOR').manifests?.['component']?.sigName || ''")
+          if [ -z "$MAN" ] || [ -z "$SIG" ]; then
+            echo "::error title=清单名取不到::$ANCHOR 里没有 manifests.component.name / manifests.component.sigName —— 拒绝投递（否则远端键会变成 component-$CH/undefined）"
+            exit 1
+          fi
+          case "$MAN" in *undefined*|*null*) echo "::error title=清单名非法::$MAN 不是合法的远端键"; exit 1 ;; esac
+          case "$SIG" in *undefined*|*null*) echo "::error title=签名名非法::$SIG 不是合法的远端键"; exit 1 ;; esac
           export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
           node scripts/publish/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
           node scripts/publish/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60

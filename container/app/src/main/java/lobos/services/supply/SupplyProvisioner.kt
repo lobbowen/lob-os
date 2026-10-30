@@ -78,13 +78,52 @@ object SupplyProvisioner {
     internal fun uncached(url: String): String =
         url + (if (url.indexOf('?') >= 0) "&" else "?") + "t=" + System.currentTimeMillis()
 
+    /**
+     * 打开一个 GET 连接并跟完重定向，返回（连接, 最终状态码）。
+     *
+     * GitHub 的 release 资产直链先给 302（跳到 objects.githubusercontent.com），
+     * 跟随重定向之后才是 200。HttpURLConnection 遇到换协议的跳转不自动跟随，
+     * 那种情形下 responseCode 会停在 3xx —— 所以这里既开 instanceFollowRedirects，
+     * 也自己兜住 3xx + Location。
+     *
+     * 返回的 responseCode 是**重定向之后**那一跳的状态码。
+     */
+    private fun openFollowingRedirects(
+        url: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
+    ): Pair<HttpURLConnection, Int> {
+        var target = url
+        var hops = 0
+        while (true) {
+            val c = (URL(target).openConnection() as HttpURLConnection).apply {
+                connectTimeout = connectTimeoutMs
+                readTimeout = readTimeoutMs
+                requestMethod = "GET"
+                instanceFollowRedirects = true
+            }
+            val code = c.responseCode
+            if (code in 300..399) {
+                val loc = c.getHeaderField("Location")
+                c.disconnect()
+                if (loc.isNullOrBlank() || hops >= 8) {
+                    throw IllegalStateException("HTTP " + code + " " + target)
+                }
+                target = URL(URL(target), loc).toString()
+                hops++
+                continue
+            }
+            return Pair(c, code)
+        }
+    }
+
     internal fun httpGet(url: String, maxBytes: Int = MAX_FETCH_BYTES): ByteArray {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = FETCH_TIMEOUT_MS
-        conn.readTimeout = FETCH_TIMEOUT_MS
-        conn.instanceFollowRedirects = true
-        return try {
-            if (conn.responseCode != 200) throw IllegalStateException("HTTP " + conn.responseCode + " " + url)
+        var current: HttpURLConnection? = null
+        try {
+            //  与 httpGetToFile 走同一个 helper：跟随重定向，判的是重定向之后那一跳的码。
+            val (conn, code) = openFollowingRedirects(url, FETCH_TIMEOUT_MS, FETCH_TIMEOUT_MS)
+            current = conn
+            if (code !in 200..299) throw IllegalStateException("HTTP " + code + " " + url)
             val declared = conn.getHeaderFieldLong("Content-Length", -1L)
             if (declared > maxBytes.toLong()) {
                 throw IllegalStateException("响应声明 " + declared + " 字节，超上限 " + maxBytes + "：" + url)
@@ -103,7 +142,7 @@ object SupplyProvisioner {
                 out.toByteArray()
             }
         } finally {
-            conn.disconnect()
+            runCatching { current?.disconnect() }
         }
     }
 
@@ -120,23 +159,20 @@ object SupplyProvisioner {
 
     internal fun httpGetToFile(url: String, dest: File): Long {
         dest.parentFile?.mkdirs()
-        var conn: HttpURLConnection? = null
+        var current: HttpURLConnection? = null
         try {
-            conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout = 300_000
-                requestMethod = "GET"
-            }
-            val code = conn.responseCode
+            //  与 httpGet 走同一个 helper：跟随重定向，并且判的是**重定向之后**那一跳的码。
+            val (c, code) = openFollowingRedirects(url, 15_000, 300_000)
+            current = c
             if (code !in 200..299) {
                 throw IllegalStateException("件下载 HTTP " + code)
             }
             dest.outputStream().buffered().use { out ->
-                conn.inputStream.use { it.copyTo(out, 64 * 1024) }
+                c.inputStream.use { it.copyTo(out, 64 * 1024) }
             }
             return dest.length()
         } finally {
-            runCatching { conn?.disconnect() }
+            runCatching { current?.disconnect() }
         }
     }
 

@@ -1,0 +1,831 @@
+{
+  "schema": 2,
+  "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
+  "generatedBy": "scripts/publish/generate-native-capabilities-pin.js",
+  "generatedAt": "2026-10-30T14:42:06.726Z",
+  "generatedAtNote": "generatedAt 是生成时刻，每次运行都会变 —— 这个文件是生成物，不要手改。",
+  "abi": "arm64-v8a",
+  "source": {
+    "declaredInputs": [
+      ".github/native-capabilities.txt（档位表：tier / libName / id）",
+      "scripts/component-sources.json（每件的 version / installName / entryName / 上游源码 sha256）",
+      "scripts/toolchain/cache-key.sh tag <id>（release tag）",
+      "scripts/toolchain/cache-key.sh asset <id>（asset 名）"
+    ],
+    "artifactsFrom": "GitHub Releases（lobbowen/lob-os），每个 base-<id> tag 下的 <asset> 与 <asset>.sha256 边车",
+    "sha256Provenance": "边车给出的 sha256 与本地对下载字节实算的 sha256 逐字相同（两值都记在每条 pin 的 sidecarSha256 与 realSha256 里）；逐文件 sha256 由 zip 里的真实字节实算得到。",
+    "reader": {
+      "file": "scripts/publish/publish-native-manifest.js",
+      "pinPathLine": 28,
+      "readerLines": "82-93",
+      "useLines": "191-197",
+      "shape": "pins 是字典；读取方取最后一个键，值里要有 tag / zip / sha256 / abi 四格",
+      "knownGap": "读取方只认字典里的最后一条 pin，且要求那一份 zip 同时含各件的 libName；当前没有这样一份已发布的聚合 zip，所以这份文件里的逐件 pin 里只有最后一条会被现有读取方采用。而在 CI 里调用它时 ZIP 传的是空串（build-component.yml 第 110 行），于是 pin 命中恒假，这一份文件眼下只起「可核事实的登记」作用，还不构成 OTA 通道。"
+    }
+  },
+  "pieces": [
+    {
+      "id": "bash",
+      "tier": "upstream",
+      "capsLibName": "libbash.so",
+      "version": "5.2.15",
+      "tag": "base-bash",
+      "zip": "bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
+      "sha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "2dc8efbd12f39640f05d13535b710ea1ad0f7aa88970665c8986fed9235afe49"
+    },
+    {
+      "id": "ripgrep",
+      "tier": "upstream",
+      "capsLibName": "liblobosrg.so",
+      "version": "14.1.1",
+      "tag": "base-ripgrep",
+      "zip": "ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
+      "sha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "2cd54a29b91b502b2b3750c9a514f5a105355d533272384fca84ac873c8ac86c"
+    },
+    {
+      "id": "busybox",
+      "tier": "upstream",
+      "capsLibName": "libbusybox.so",
+      "version": "1.36.1",
+      "tag": "base-busybox",
+      "zip": "busybox-nodeps+ndk30.0.16248370+api35+srca796d8e9414e.zip",
+      "sha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "7555e88924a71bb9ba14852e5c95297c4a425dbce156786f80466a545bc188e2"
+    },
+    {
+      "id": "zlib",
+      "tier": "upstream",
+      "capsLibName": "libz.so",
+      "version": "1.3.2",
+      "tag": "base-zlib",
+      "zip": "zlib-nodeps+ndk30.0.16248370+api35+srcf9795674af36.zip",
+      "sha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "011800895e2e2729244ba97f9beb2ea43daeed2016d85f7bcb4ae7534890c0e8"
+    },
+    {
+      "id": "openssl",
+      "tier": "upstream",
+      "capsLibName": "libssl.so",
+      "version": "3.6.3",
+      "tag": "base-openssl",
+      "zip": "openssl-zlib+1.3.2+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "sha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "a4ae486cbae8d84027178dbd9ff27c5257326dd35d7b8f612af2d868c9337de1"
+    },
+    {
+      "id": "crypto",
+      "tier": "upstream",
+      "capsLibName": "libcrypto.so",
+      "version": "3.6.3",
+      "tag": "base-crypto",
+      "zip": "crypto-openssl+3.6.3+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "sha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "0d0a0197d85827014d79c40e88ea2c89446babccc221713d800806fe6a681f9c"
+    },
+    {
+      "id": "curl",
+      "tier": "upstream",
+      "capsLibName": "libcurl.so",
+      "version": "8.22.0",
+      "tag": "base-curl",
+      "zip": "curl-openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api35+src2b8529333b08.zip",
+      "sha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "ebb02bcf12ff2efb8b5647f9e2813baa2ed38a4763c28cc14f385e61d533f2d1"
+    },
+    {
+      "id": "jq",
+      "tier": "upstream",
+      "capsLibName": "jq",
+      "version": "1.8.2",
+      "tag": "base-jq",
+      "zip": "jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
+      "sha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "missing": false,
+      "missingReason": "",
+      "fingerprint": "e90d8be63f8c0757446dd1ef6b2c5e1bdb7e5af60727b3ea1dfba5c5e9b9fe08"
+    }
+  ],
+  "missing": [],
+  "pins": {
+    "2dc8efbd12f39640f05d13535b710ea1ad0f7aa88970665c8986fed9235afe49": {
+      "id": "bash",
+      "tier": "upstream",
+      "capsLibName": "libbash.so",
+      "capsLibNameFoundInArtifact": false,
+      "artifactLibraryPath": "",
+      "entryInArtifact": "bin/bash",
+      "entryInArtifactExists": true,
+      "kind": "program",
+      "declared": {
+        "version": "5.2.15",
+        "installName": "bash",
+        "entryName": "",
+        "upstreamSourceSha256": "13720965b5f4fc3a0d4b61dd37e7565c741da9a5be24edc2ae00182fc1b3588c"
+      },
+      "tag": "base-bash",
+      "zip": "bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
+      "sha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-bash/bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
+      "bytes": 588372,
+      "sidecarSha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "realSha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636211011",
+      "files": [
+        {
+          "path": "bin/bash",
+          "bytes": 1325760,
+          "sha256": "fe441f30c7d366e21f0ac2757356b413d9b1560ead6926daebb6ea79ef213067",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        }
+      ],
+      "filesVerified": true
+    },
+    "2cd54a29b91b502b2b3750c9a514f5a105355d533272384fca84ac873c8ac86c": {
+      "id": "ripgrep",
+      "tier": "upstream",
+      "capsLibName": "liblobosrg.so",
+      "capsLibNameFoundInArtifact": false,
+      "artifactLibraryPath": "",
+      "entryInArtifact": "bin/rg",
+      "entryInArtifactExists": true,
+      "kind": "program",
+      "declared": {
+        "version": "14.1.1",
+        "installName": "rg",
+        "entryName": "",
+        "upstreamSourceSha256": ""
+      },
+      "tag": "base-ripgrep",
+      "zip": "ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
+      "sha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-ripgrep/ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
+      "bytes": 7862995,
+      "sidecarSha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "realSha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636172789",
+      "files": [
+        {
+          "path": "bin/rg",
+          "bytes": 31703416,
+          "sha256": "2c08d075b96306024863cb84fe8ea25b66d5079e56b00096c6d5bca76c977de4",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        }
+      ],
+      "filesVerified": true
+    },
+    "7555e88924a71bb9ba14852e5c95297c4a425dbce156786f80466a545bc188e2": {
+      "id": "busybox",
+      "tier": "upstream",
+      "capsLibName": "libbusybox.so",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "",
+      "entryInArtifact": "bin/sh",
+      "entryInArtifactExists": true,
+      "kind": "program",
+      "declared": {
+        "version": "1.36.1",
+        "installName": "busybox",
+        "entryName": "sh",
+        "upstreamSourceSha256": "b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314"
+      },
+      "tag": "base-busybox",
+      "zip": "busybox-nodeps+ndk30.0.16248370+api35+srca796d8e9414e.zip",
+      "sha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-busybox/busybox-nodeps+ndk30.0.16248370+api35+srca796d8e9414e.zip",
+      "bytes": 107193,
+      "sidecarSha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "realSha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636146696",
+      "files": [
+        {
+          "path": "bin/[",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/ash",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/busybox",
+          "bytes": 13,
+          "sha256": "460a0c3b45658496e517858884a1b7f67ac84b70d88257d82bfa645fcff2e236",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/cat",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/cp",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/df",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/echo",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/env",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/false",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/grep",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/gunzip",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/gzip",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/libbusybox.so",
+          "bytes": 183040,
+          "sha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        },
+        {
+          "path": "bin/ln",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/losetup",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/ls",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/mkdir",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/mount",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/mv",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/printf",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/ps",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/readlink",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/rm",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/sed",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/sh",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/sleep",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/tar",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/test",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/true",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "bin/vi",
+          "bytes": 15,
+          "sha256": "a6f07a58434e82b4ced685cebdbc4489af9585b0ab7883802460c0fa9ef10834",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "symlink-target-text",
+          "linkTarget": "./libbusybox.so",
+          "resolvedFileSha256": "fd8276bc812ca5bb3113f2beccfdeb90d0c39f5d31f7113e389c4b522df3b1bc",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        }
+      ],
+      "filesVerified": true
+    },
+    "011800895e2e2729244ba97f9beb2ea43daeed2016d85f7bcb4ae7534890c0e8": {
+      "id": "zlib",
+      "tier": "upstream",
+      "capsLibName": "libz.so",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "lib/libz.so.1.3.2",
+      "entryInArtifact": "",
+      "entryInArtifactExists": false,
+      "kind": "library",
+      "declared": {
+        "version": "1.3.2",
+        "installName": "",
+        "entryName": "",
+        "upstreamSourceSha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
+      },
+      "tag": "base-zlib",
+      "zip": "zlib-nodeps+ndk30.0.16248370+api35+srcf9795674af36.zip",
+      "sha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-zlib/zlib-nodeps+ndk30.0.16248370+api35+srcf9795674af36.zip",
+      "bytes": 59580,
+      "sidecarSha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "realSha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636182088",
+      "files": [
+        {
+          "path": "lib/libz.so",
+          "bytes": 13,
+          "sha256": "aca38988cbda420e300ac2f10ee427759d5805c859381683cd8aef7d054a5de4",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "symlink-target-text",
+          "linkTarget": "libz.so.1.3.2",
+          "resolvedFileSha256": "9850a43d7929fbefa557ed34e758fc5efa3b0001e99f9cea3c8ca80461b959e8",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "lib/libz.so.1",
+          "bytes": 13,
+          "sha256": "aca38988cbda420e300ac2f10ee427759d5805c859381683cd8aef7d054a5de4",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "symlink-target-text",
+          "linkTarget": "libz.so.1.3.2",
+          "resolvedFileSha256": "9850a43d7929fbefa557ed34e758fc5efa3b0001e99f9cea3c8ca80461b959e8",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "lib/libz.so.1.3.2",
+          "bytes": 107480,
+          "sha256": "9850a43d7929fbefa557ed34e758fc5efa3b0001e99f9cea3c8ca80461b959e8",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        }
+      ],
+      "filesVerified": true
+    },
+    "a4ae486cbae8d84027178dbd9ff27c5257326dd35d7b8f612af2d868c9337de1": {
+      "id": "openssl",
+      "tier": "upstream",
+      "capsLibName": "libssl.so",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "lib/libcrypto-lobos.so",
+      "entryInArtifact": "bin/openssl",
+      "entryInArtifactExists": true,
+      "kind": "mixed",
+      "declared": {
+        "version": "3.6.3",
+        "installName": "",
+        "entryName": "openssl",
+        "upstreamSourceSha256": "243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1"
+      },
+      "tag": "base-openssl",
+      "zip": "openssl-zlib+1.3.2+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "sha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-openssl/openssl-zlib+1.3.2+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "bytes": 3938163,
+      "sidecarSha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "realSha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40635219455",
+      "files": [
+        {
+          "path": "bin/openssl",
+          "bytes": 1033584,
+          "sha256": "feaf785bb0be34e9f4e5a5d792b28f34ccf2e334495c5902881b667443ef480d",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        },
+        {
+          "path": "lib/libcrypto-lobos.so",
+          "bytes": 6058832,
+          "sha256": "dbabbd4a074fd52a30760fd18143b94156dcaa38c6ae89dc220b73df3c3cf19f",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        },
+        {
+          "path": "lib/libcrypto.so",
+          "bytes": 18,
+          "sha256": "d739c854aa6d1125092a60c3bbc6f2fce2e3bd8403d3b865a16c674b300f4c9f",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "symlink-target-text",
+          "linkTarget": "libcrypto-lobos.so",
+          "resolvedFileSha256": "dbabbd4a074fd52a30760fd18143b94156dcaa38c6ae89dc220b73df3c3cf19f",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        },
+        {
+          "path": "lib/libssl-lobos.so",
+          "bytes": 1139552,
+          "sha256": "0b96a087a43a4cafa5d9a9341ff17b94557addec767ba9863871e3135afd8d3a",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        },
+        {
+          "path": "lib/libssl.so",
+          "bytes": 15,
+          "sha256": "c214906a86ec85f6ff484e6facd77be6d2a0a924e297c80404f12a7a1fa7c6b4",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "symlink-target-text",
+          "linkTarget": "libssl-lobos.so",
+          "resolvedFileSha256": "0b96a087a43a4cafa5d9a9341ff17b94557addec767ba9863871e3135afd8d3a",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        }
+      ],
+      "filesVerified": true
+    },
+    "0d0a0197d85827014d79c40e88ea2c89446babccc221713d800806fe6a681f9c": {
+      "id": "crypto",
+      "tier": "upstream",
+      "capsLibName": "libcrypto.so",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "lib/libcrypto-lobos.so",
+      "entryInArtifact": "",
+      "entryInArtifactExists": false,
+      "kind": "library",
+      "declared": {
+        "version": "3.6.3",
+        "installName": "",
+        "entryName": "",
+        "upstreamSourceSha256": ""
+      },
+      "tag": "base-crypto",
+      "zip": "crypto-openssl+3.6.3+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "sha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-crypto/crypto-openssl+3.6.3+ndk30.0.16248370+api35+src53c9652662e4.zip",
+      "bytes": 2660854,
+      "sidecarSha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "realSha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40635219455",
+      "files": [
+        {
+          "path": "lib/libcrypto-lobos.so",
+          "bytes": 6058832,
+          "sha256": "dbabbd4a074fd52a30760fd18143b94156dcaa38c6ae89dc220b73df3c3cf19f",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        },
+        {
+          "path": "lib/libcrypto.so",
+          "bytes": 18,
+          "sha256": "d739c854aa6d1125092a60c3bbc6f2fce2e3bd8403d3b865a16c674b300f4c9f",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "symlink-target-text",
+          "linkTarget": "libcrypto-lobos.so",
+          "resolvedFileSha256": "dbabbd4a074fd52a30760fd18143b94156dcaa38c6ae89dc220b73df3c3cf19f",
+          "reason": "zip 里这一条是软链，存的是链接目标文本；它指向的那份字节的 sha256 记在 resolvedFileSha256"
+        }
+      ],
+      "filesVerified": true
+    },
+    "ebb02bcf12ff2efb8b5647f9e2813baa2ed38a4763c28cc14f385e61d533f2d1": {
+      "id": "curl",
+      "tier": "upstream",
+      "capsLibName": "libcurl.so",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "lib/libcurl.so",
+      "entryInArtifact": "",
+      "entryInArtifactExists": false,
+      "kind": "library",
+      "declared": {
+        "version": "8.22.0",
+        "installName": "",
+        "entryName": "",
+        "upstreamSourceSha256": "d54dd598bf05927a726deb38df31c6a255ba83ff1de57c5d1464dac3ed8f44a1"
+      },
+      "tag": "base-curl",
+      "zip": "curl-openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api35+src2b8529333b08.zip",
+      "sha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-curl/curl-openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api35+src2b8529333b08.zip",
+      "bytes": 330204,
+      "sidecarSha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "realSha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636155432",
+      "files": [
+        {
+          "path": "lib/libcurl.so",
+          "bytes": 739384,
+          "sha256": "b468c72cf9bbe1ac08dba1ce678af52aeb90ec7aedf81f0d5831a10717a1e778",
+          "form": "dyn-plain",
+          "role": "library",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        }
+      ],
+      "filesVerified": true
+    },
+    "e90d8be63f8c0757446dd1ef6b2c5e1bdb7e5af60727b3ea1dfba5c5e9b9fe08": {
+      "id": "jq",
+      "tier": "upstream",
+      "capsLibName": "jq",
+      "capsLibNameFoundInArtifact": true,
+      "artifactLibraryPath": "",
+      "entryInArtifact": "bin/jq",
+      "entryInArtifactExists": true,
+      "kind": "program",
+      "declared": {
+        "version": "1.8.2",
+        "installName": "",
+        "entryName": "",
+        "upstreamSourceSha256": "71b8d6e8f5fe81f6c6d0d110e3892251f6ce76ed095abd315e26e6e1193af3af"
+      },
+      "tag": "base-jq",
+      "zip": "jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
+      "sha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "abi": "arm64-v8a",
+      "url": "https://github.com/lobbowen/lob-os/releases/download/base-jq/jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
+      "bytes": 960444,
+      "sidecarSha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "realSha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "sha256MatchesSidecar": true,
+      "buildSha": "e4ed57230b2b2cf0b2fefd14f3d56d3452a3784d",
+      "buildRun": "40636164655",
+      "files": [
+        {
+          "path": "bin/jq",
+          "bytes": 2796016,
+          "sha256": "55da50fb74bb97caf0af918d11edcc1d11f65c9c9783faf8a1d36b6bc02f630a",
+          "form": "dyn-interp",
+          "role": "program",
+          "verified": "sha256-matched-piece-shape",
+          "reason": ""
+        }
+      ],
+      "filesVerified": true
+    }
+  }
+}
