@@ -119,7 +119,13 @@ object SupplyProvisioner {
 
     internal fun httpGet(url: String, maxBytes: Int = MAX_FETCH_BYTES): ByteArray {
         var current: HttpURLConnection? = null
-        try {
+        //  缺陷名（C-102）**httpGet 的函数体是 try/finally、而 try 那一段没有 return**：
+        //   重定向那一段抽成 helper 之后，这里从「return try { ... } finally { ... }」
+        //   变成了「try { ... } finally { ... }」—— 而 Kotlin 那一族里
+        //   函数体的最后一段是 try 时，它**不算**那个函数的返回值（编译器报
+        //   Missing return statement）。=> 而于是这一处编译不过。
+        //   现在：把 return 补回（与 httpGetToFile 那一支同形：try 里显式 return）。
+        return try {
             //  与 httpGetToFile 走同一个 helper：跟随重定向，判的是重定向之后那一跳的码。
             val (conn, code) = openFollowingRedirects(url, FETCH_TIMEOUT_MS, FETCH_TIMEOUT_MS)
             current = conn
