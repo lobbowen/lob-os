@@ -378,13 +378,23 @@ object PieceUpdater {
         val failureClass: String,
     )
 
-    companion object {
-        const val REASON_ROLLBACKABLE = "可回滚"
-        const val REASON_NOT_TAKEN_OVER = "未接管"
-        const val REASON_NO_ORIGIN_POINTER = "无来源指针"
-        const val REASON_LIBRARY_ENTRY_UNLOCATED = "库形态入口未定位"
-        const val REASON_NOT_REGISTERED = "非在册"
-    }
+    //  缺陷名（C-102）**这五个常量被写进了 object 体内的 companion object**：
+    //   而 Kotlin 的 companion 修饰符只许用在 class 里（data class 也算 class），
+    //   **不**许用在 standalone object 里
+    //   （CI 逐字：PieceUpdater.kt:381:5 Modifier 'companion' is not applicable inside
+    //   'standalone object'。）
+    //   => 而 `RollbackStatus` 那个 data class 在 :379 就已经闭合了，
+    //   => 而这一层 companion object 是 `object PieceUpdater` 的**直接成员**，
+    //   => 而那正是「standalone object 里面放 companion」那个非法形态。
+    //   修法：把 companion object 那层壳去掉，五个 const val 直接写在 `object PieceUpdater`
+    //   的体内（object 体内的顶层 const val 合法）。
+    //   而引用处 `PieceUpdater.REASON_*` 逐字**不变**
+    //   （全仓引用只在 PieceUpdater.kt 内，git grep 全仓命中零其它文件）。
+    const val REASON_ROLLBACKABLE = "可回滚"
+    const val REASON_NOT_TAKEN_OVER = "未接管"
+    const val REASON_NO_ORIGIN_POINTER = "无来源指针"
+    const val REASON_LIBRARY_ENTRY_UNLOCATED = "库形态入口未定位"
+    const val REASON_NOT_REGISTERED = "非在册"
 
     /**
      * 这一件现在能不能回退，理由是什么。

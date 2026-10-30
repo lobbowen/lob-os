@@ -13,6 +13,7 @@ on:
       - 'scripts/toolchain/fetch-component-artifacts.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/publish-native-manifest.js'
+      - 'scripts/publish/check-component-manifest-drift.js'
       - 'scripts/verify/check-component-manifest-drift.js'
       - 'scripts/publish/upload-qiniu.js'
       - 'scripts/registry/read-component-entry.sh'
@@ -28,6 +29,7 @@ on:
       - 'scripts/toolchain/fetch-component-artifacts.sh'
       - 'scripts/publish/publish-component-manifest.js'
       - 'scripts/publish/publish-native-manifest.js'
+      - 'scripts/publish/check-component-manifest-drift.js'
       - 'scripts/verify/check-component-manifest-drift.js'
   workflow_dispatch: {}
 
@@ -92,6 +94,14 @@ jobs:
           set -euo pipefail
           node scripts/publish/publish-native-manifest.js --project > work/native-declared.json
           node -p "'[native] ' + require('./work/native-declared.json').map(c => c.id + '@' + c.version + ' 来源 ' + c.source).join(' | ')"
+
+      # 仓内投影与声明源（钉值表 / 档位表 / pin 记录）的对账 ——
+      # 纯本地、不联网，任何一轮（校验轮也跑）都能跑；漂了就当场停。
+      - name: 投影对账（投影 vs 钉值表 / 档位表 / pin 记录）
+        run: |
+          set -euo pipefail
+          node scripts/publish/check-component-manifest-drift.js --immutable work/declared.json "${{ needs.resolve.outputs.channel }}"
+          node scripts/publish/check-component-manifest-drift.js --immutable work/native-declared.json "${{ needs.resolve.outputs.channel }}"
 
       - name: 原生清单签名（系统更新通道 —— 随 APK 打进来的底座件）
         if: ${{ needs.resolve.outputs.publish == 'true' }}
