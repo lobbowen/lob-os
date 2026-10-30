@@ -351,16 +351,33 @@ private class DependencyResolver(searchPath: List<File>) {
 
     fun resolve(imports: List<PeImport>): List<PeDependency> {
         val result = LinkedHashMap<String, PeDependency>()
-        for (import in imports) {
-            val key = import.dllName.lowercase()
-            if (result.containsKey(key)) continue
-            val file = find(import.dllName)
-                ?: throw PeFormatException("dependent library not found (unsupported): ${import.dllName}")
-            val depImage = PeLoader.parse(Files.readAllBytes(file.toPath()))
-            val (resolved, unsupported) = matchSymbols(import.symbols, depImage.exports)
-            result[key] = PeDependency(import.dllName, file, depImage, resolved, unsupported)
-        }
+        val visiting = LinkedHashSet<String>()
+        for (import in imports) resolveOne(import, result, visiting)
         return result.values.toList()
+    }
+
+    private fun resolveOne(
+        import: PeImport,
+        result: LinkedHashMap<String, PeDependency>,
+        visiting: LinkedHashSet<String>,
+    ) {
+        val key = import.dllName.lowercase()
+        if (result.containsKey(key)) return
+        if (!visiting.add(key)) {
+            throw PeFormatException("dependent library import cycle is unsupported: ${import.dllName}")
+        }
+        val file = find(import.dllName)
+            ?: throw PeFormatException("dependent library not found (unsupported): ${import.dllName}")
+        val depImage = PeLoader.parse(Files.readAllBytes(file.toPath()))
+        val (resolved, unsupported) = matchSymbols(import.symbols, depImage.exports)
+        if (unsupported.isNotEmpty()) {
+            throw PeFormatException(
+                "unsupported imports from ${import.dllName}: " + unsupported.joinToString(",")
+            )
+        }
+        result[key] = PeDependency(import.dllName, file, depImage, resolved, unsupported)
+        for (nested in depImage.imports) resolveOne(nested, result, visiting)
+        visiting.remove(key)
     }
 
     private fun matchSymbols(
