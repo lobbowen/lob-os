@@ -2,6 +2,7 @@ package lobos.services.host
 
 import android.content.Context
 import java.util.UUID
+import java.io.File
 import lobos.kernel.compat.PeLoader
 import lobos.control.ControlClient
 import lobos.kernel.proc.SessionRegistry
