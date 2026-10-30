@@ -91,10 +91,12 @@ class PeLoader private constructor(
             val directoryCountOffset = if (pe32Plus) 108 else 92
             val directoryBase = if (pe32Plus) 112 else 96
             val directoryCount = r.u32(optional + directoryCountOffset)
-            val exportRva = directoryAt(r, optional, directoryBase, directoryCount, 0)
-            val exportSize = directoryAt(r, optional, directoryBase, directoryCount, 1)
-            val importRva = directoryAt(r, optional, directoryBase, directoryCount, 1)
-            val importSize = directoryAt(r, optional, directoryBase, directoryCount, 2)
+            val exportDirectory = directoryAt(r, optional, directoryBase, directoryCount, 0)
+            val importDirectory = directoryAt(r, optional, directoryBase, directoryCount, 1)
+            val exportRva = exportDirectory.first
+            val exportSize = exportDirectory.second
+            val importRva = importDirectory.first
+            val importSize = importDirectory.second
 
             val sectionTable = optional + optionalSize
             val sections = ArrayList<PeSection>(sectionCount)
@@ -171,11 +173,11 @@ class PeLoader private constructor(
             directoryBase: Int,
             directoryCount: Long,
             index: Int,
-        ): Long {
-            if (index >= directoryCount) return 0L
+        ): Pair<Long, Long> {
+            if (index >= directoryCount) return 0L to 0L
             val at = optional + directoryBase + index * 8
             r.requireRange(at, 8)
-            return r.u32(at)
+            return r.u32(at) to r.u32(at + 4)
         }
 
         private fun parseImports(view: ImageView, importRva: Long, importSize: Long): List<PeImport> {
