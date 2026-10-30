@@ -12,6 +12,8 @@ import org.json.JSONObject
 object LobosBridge {
 
     private const val PONG = "pong"
+    private const val HOST_MANAGEMENT_ID = "lobos.installer"
+    private const val HOST_MANAGEMENT_GENERATION = 1L
 
     fun handle(ctx: Context, event: String, data: JSONObject?, reply: (JSONObject) -> Unit) {
         when (event) {
@@ -23,6 +25,7 @@ object LobosBridge {
             "desktopIcon.state" -> desktopState(ctx, data, reply)
             "openApp" -> openApp(data, reply)
             "invoke" -> reply(invoke(ctx, data))
+            "system.rollback" -> reply(systemRollback(ctx, data))
             else -> reply(JSONObject().apply { put("ok", false); put("error", "unknown event: $event") })
         }
     }
@@ -31,7 +34,7 @@ object LobosBridge {
         put("ok", true)
         put("runtime", "lobos")
         put("hostApis", listOf(
-            "ping", "capabilities", "backendEndpoint", "openApp", "invoke",
+            "ping", "capabilities", "backendEndpoint", "openApp", "invoke", "system.rollback",
             "desktopIcon.add", "desktopIcon.remove", "desktopIcon.state",
         ))
     }
@@ -57,6 +60,42 @@ object LobosBridge {
             put("wasInstalled", installed)
             if (failure.isNotEmpty()) put("error", failure)
         })
+    }
+
+    private fun systemRollback(ctx: Context, data: JSONObject?): JSONObject {
+        val caller = data?.optString("caller", "").orEmpty()
+        if (caller != HOST_MANAGEMENT_ID) {
+            return err("system.rollback 只允许 LOB-OS 宿主管理身份调用")
+        }
+        val id = data?.optString("id", "").orEmpty()
+        val base = data?.optString("base", "apk").orEmpty()
+        val requestId = data?.optString("requestId", "").orEmpty()
+        if (id.isBlank()) return err("system.rollback 缺 id")
+        if (base != "apk") return err("system.rollback 的 base 只接受 apk")
+        if (requestId.isBlank()) return err("system.rollback 缺 requestId")
+        val broker = lobos.api.CapabilityBroker.live()
+            ?: return err("宿主桥未启动：控制面此刻不可用")
+        return try {
+            val token = broker.beginSession(HOST_MANAGEMENT_ID, HOST_MANAGEMENT_GENERATION)
+            lobos.kernel.proc.SessionRegistry.bindPid(ctx, token, android.os.Process.myPid())
+            val client = lobos.control.ControlClient(
+                socketName = lobos.kernel.proc.SessionRegistry.socketName(token),
+                sessionToken = token,
+                protocolVersion = lobos.api.BuildConfig.BRIDGE_PROTOCOL,
+            )
+            val result = client.rollback(id, base, requestId, data?.optBoolean("dryRun", false) ?: false)
+            JSONObject().apply {
+                put("ok", result.ok)
+                put("code", result.code)
+                put("requestId", requestId)
+                put("result", result.value)
+            }
+        } catch (e: Throwable) {
+            JSONObject().apply {
+                put("ok", false); put("code", -1); put("requestId", requestId)
+                put("error", e.message ?: e.javaClass.simpleName)
+            }
+        }
     }
 
     private fun invoke(ctx: Context, data: JSONObject?): JSONObject {

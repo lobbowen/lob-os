@@ -443,7 +443,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 val s = r.toString()
                 if (s.length > 400) s.take(400) + "…" else s
             } ?: ""
-            val line = ts + " " + who + " method=" + method + " ok=" + ok + " params=" + summary +
+            val requestId = params.optString("requestId", "").trim()
+            val line = ts + " " + who + " method=" + method + " requestId=" +
+                (if (requestId.isBlank()) "(none)" else requestId) +
+                " ok=" + ok + " params=" + summary +
                 (if (err != null) " err=" + err else "") +
                 (if (out.isNotEmpty()) " result=" + out else "") + "\n"
             lobos.kernel.fs.StateFiles.appendBounded(File(filesDir, "bridge-audit.log"), line)
@@ -609,11 +612,70 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         "lobos.sys.native.rollback" to MethodDef(listOf("base"), true) { p, _programId ->
             val id = p.optString("id", "")
             if (id.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "id 为空")
-            val (ok, why) = PieceUpdater.rollback(this@CapabilityBroker, id)
-            JSONObject().apply {
-                put("ok", ok)
-                put("id", id)
-                put("detail", why ?: "已回滚到 APK 原件")
+            val base = p.optString("base", "apk")
+            if (base != "apk") throw BridgeError(CODE_INVALID_PARAM, "base 只接受 apk")
+            val requestId = p.optString("requestId", "").trim()
+            if (requestId.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "requestId 为空")
+            val dryRun = p.optBoolean("dryRun", false)
+            val store = ControlRequestStore(this@CapabilityBroker)
+            val existing = store.find(requestId)
+            if (existing != null) {
+                if (existing.method != "lobos.sys.native.rollback" || existing.pieceId != id || existing.base != base) {
+                    val rejected = JSONObject().apply {
+                        put("ok", false); put("id", id); put("state", "REJECTED")
+                        put("requestId", requestId); put("detail", "requestId 幂等冲突")
+                    }
+                    store.save(ControlRequestStore.Entry(
+                        requestId, "lobos.sys.native.rollback", id, base,
+                        ControlRequestStore.State.REJECTED, rejected, System.currentTimeMillis()
+                    ))
+                    throw BridgeError(CODE_INVALID_PARAM, "requestId 幂等冲突：$requestId")
+                }
+                existing.response
+            } else synchronized(store.lockFor(id)) {
+                val raced = store.find(requestId)
+                if (raced != null) {
+                    if (raced.method != "lobos.sys.native.rollback" || raced.pieceId != id || raced.base != base) {
+                        throw BridgeError(CODE_INVALID_PARAM, "requestId 幂等冲突：$requestId")
+                    }
+                    raced.response
+                } else {
+                    store.save(ControlRequestStore.Entry(
+                        requestId, "lobos.sys.native.rollback", id, base, ControlRequestStore.State.RECEIVED,
+                        JSONObject(), System.currentTimeMillis()
+                    ))
+                    store.save(ControlRequestStore.Entry(
+                        requestId, "lobos.sys.native.rollback", id, base, ControlRequestStore.State.VALIDATING,
+                        JSONObject(), System.currentTimeMillis()
+                    ))
+                    if (dryRun) {
+                        val response = JSONObject().apply {
+                            put("ok", true); put("id", id); put("state", "RECEIVED")
+                            put("requestId", requestId); put("detail", "dry-run：未修改基线")
+                        }
+                        store.save(ControlRequestStore.Entry(
+                            requestId, "lobos.sys.native.rollback", id, base, ControlRequestStore.State.RECEIVED,
+                            response, System.currentTimeMillis()
+                        ))
+                        response
+                    } else {
+                        store.save(ControlRequestStore.Entry(
+                            requestId, "lobos.sys.native.rollback", id, base, ControlRequestStore.State.RUNNING,
+                            JSONObject(), System.currentTimeMillis()
+                        ))
+                        val (ok, why) = PieceUpdater.rollback(this@CapabilityBroker, id)
+                        val response = JSONObject().apply {
+                            put("ok", ok); put("id", id); put("state", if (ok) "SUCCEEDED" else "FAILED")
+                            put("requestId", requestId); put("detail", why ?: "已回滚到 APK 原件")
+                        }
+                        store.save(ControlRequestStore.Entry(
+                            requestId, "lobos.sys.native.rollback", id, base,
+                            if (ok) ControlRequestStore.State.SUCCEEDED else ControlRequestStore.State.FAILED,
+                            response, System.currentTimeMillis()
+                        ))
+                        response
+                    }
+                }
             }
         },
         "os.state.get" to MethodDef(listOf("base"), false) { _, _programId ->
