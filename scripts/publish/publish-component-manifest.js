@@ -114,6 +114,32 @@ function assertNameUniqueness(tools) {
   }
 }
 
+// 缺陷名（C-102）**清单投影把整包读进内存** ——
+// 而这一族它为什么有两边：一边是「算内容哈希要那一份字节」，
+// 另一边是「那份字节**要多大**才拿得动」。
+// Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
+// 而件（llvmtoolchain 那一颗 8.4 GB）就是那种大小 ——
+// 读数：CI run_id=41114232489（head=650052b）step 4「清单投影」，
+// `File size (8414536031) is greater than 2 GiB`。
+// 而处置不是「换台机器」也不是「跳过那一颗」：哈希**流式**算，
+// 内存里只留一块 1 MiB 的缓冲；字节数取 stat 而不是量数组长度。
+// 而「取首 12 位」与「取全串」这一次只算一遍（=> 而那一遍就是同一份字节）。
+function sha256File(file) {
+  const h = crypto.createHash('sha256');
+  const fd = fs.openSync(file, 'r');
+  try {
+    const chunk = Buffer.allocUnsafe(1024 * 1024);
+    for (;;) {
+      const n = fs.readSync(fd, chunk, 0, chunk.length, null);
+      if (n <= 0) break;
+      h.update(chunk.subarray(0, n));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return h.digest('hex');
+}
+
 function toolsFromDist() {
   if (!fs.existsSync(DIST)) throw new Error('dist 目录不存在: ' + DIST);
   const out = [];
@@ -124,15 +150,16 @@ function toolsFromDist() {
     const ver = m[2];
     const claimed = m[3];
     const zipPath = path.join(DIST, f);
-    const buf = fs.readFileSync(zipPath);
-    if (buf.length === 0) throw new Error('0 字节产物: ' + f);
-    const real = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 12);
+    const bytes = fs.statSync(zipPath).size;
+    if (bytes === 0) throw new Error('0 字节产物: ' + f);
+    const digest = sha256File(zipPath);
+    const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
     const entry = entryOf(name);
     out.push({
       name, provider: 'zip', version: ver,
       url: BASE + '/component/' + f,
-      sha256: crypto.createHash('sha256').update(buf).digest('hex'),
+      sha256: digest,
       entry,
       aliases: aliasesOf(name, zipPath, entry),
     });
