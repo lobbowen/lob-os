@@ -31,20 +31,32 @@ object PieceUpdater {
 
     fun states(ctx: Context): List<State> {
         val out = mutableListOf<State>()
-        val nativeDir = ctx.applicationInfo.nativeLibraryDir
-        for (e0 in lobos.services.reg.ProgramIndex.all(ctx)) {
-            val pe = e0
+        val origins = PieceOriginStore.all(ctx).associateBy { it.id }
+        for (pe in lobos.services.reg.ProgramIndex.all(ctx)) {
             val ver = pe.version
+            //  缺陷名（C-102）**落位目录那一格按相对路径拼**：原来这一处是
+            //   File(File(pe.stateDir), pe.assetEntry)，=> 而 stateDir 记的是**相对**形态
+            //   （opt/<id>），=> 而那拼出来的是**相对当前工作目录**的路径，
+            //   => 而那**不是**落位目录（读侧 ProgramManager.stateDirOf 是
+            //   File(ctx.filesDir, e.stateDir)）。=> 而这一格只是「没有来源记录时」的兜底，
+            //   => 而它指向的那一份**从来不是**真的那一份。
             val installed = if (pe.stateDir.isBlank() || pe.assetEntry.isBlank()) null
-                else File(File(pe.stateDir), pe.assetEntry)
-            val entryName = pe.assetEntry.substringAfterLast("/")
-            val activeLink = if (pe.assetEntry.startsWith("bin/")) {
-                File(PrefixProvisioner.binDir(ctx), entryName)
-            } else {
-                File(PrefixProvisioner.libDir(ctx), entryName)
+                else File(File(ctx.filesDir, pe.stateDir), pe.assetEntry)
+            val origin = origins[pe.id]
+            //  「被更新接管了没有」这一格**不能**用「入口是不是软链」来答：
+            //   缺陷名（C-102）**软链那一格把两件事混成一件** —— 预装那一支**也**建软链
+            //   （usr/bin/xxx 指向落位那一份），=> 而那软链**不是**接管的证据，
+            //   => 而按「是不是软链」答，=> 而**每一件**都答「接管过」。
+            //  真正可判的事实是：**入口软链现在指着的那一份**是不是**记下来的 OTA 那一份**。
+            //   => 而那需要来源记录（PieceOriginStore）才有得比。
+            val otaActive = PieceOriginStore.otaInCharge(origin)
+            val otaLink = origin?.otaEntryPath.orEmpty()
+            val apkTarget = origin?.apkTargetPath.orEmpty()
+            val activeFile = when {
+                otaActive -> runCatching { File(otaLink).toPath().toRealPath().toFile() }.getOrNull()
+                apkTarget.isNotBlank() -> File(apkTarget).takeIf { it.isFile }
+                else -> installed
             }
-            val updated = pe.assetEntry.isNotBlank() && java.nio.file.Files.isSymbolicLink(activeLink.toPath())
-            val activeFile = if (updated) runCatching { activeLink.toPath().toRealPath().toFile() }.getOrNull() else installed
             out += State(
                 pe.id,
                 ver.ifBlank { null },
@@ -52,7 +64,7 @@ object PieceUpdater {
                     runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
                 },
                 activeFile?.takeIf { it.isFile },
-                updated,
+                otaActive,
             )
         }
         return out
@@ -310,6 +322,10 @@ object PieceUpdater {
         if (ok) {
             val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
             SupplyProvisioner.selectVersion(ctx, e.id, detected)
+            //  记录那一件现在的入口来源 = OTA 版本（=> 而那「回到 APK 原件」要靠这一格才判得出）。
+            runCatching {
+                PieceOriginStore.recordOtaVersion(ctx, e.id, detected, link.absolutePath, dest.absolutePath)
+            }
         }
         ok
     } catch (_: Throwable) {
@@ -325,19 +341,43 @@ object PieceUpdater {
         } else {
             File(PrefixProvisioner.libDir(ctx), entryName)
         }
+        val origin = PieceOriginStore.get(ctx, id)
         return try {
             if (!java.nio.file.Files.isSymbolicLink(link.toPath())) {
                 return false to "这一件没被更新接管（入口不是软链），无可回滚"
             }
-            java.nio.file.Files.deleteIfExists(link.toPath())
-            val rebuilt = PrefixProvisioner.provision(ctx).contains(pe.assetEntry.substringAfterLast("/"))
+            //  回退的落点是那**记下来的** APK 原件指针（=> 而不是猜一个目录）。
+            val apkTarget = origin?.apkTargetPath.orEmpty()
+            if (apkTarget.isBlank()) {
+                return false to "没有记下这一件的 APK 原件指针，无从回退（来源记录缺失）"
+            }
+            val apkFile = File(apkTarget)
+            if (!apkFile.isFile) {
+                return false to "记下的 APK 原件已不在：$apkTarget"
+            }
+            val staging = File(link.parentFile, "." + entryName + ".rollback")
+            runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
+            java.nio.file.Files.createSymbolicLink(staging.toPath(), apkFile.toPath())
+            val swapped = runCatching {
+                java.nio.file.Files.deleteIfExists(link.toPath())
+                staging.renameTo(link)
+            }.getOrDefault(false)
+            if (!swapped) {
+                runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
+                return false to "入口指针换不回 APK 原件（软链替换失败）"
+            }
             SupplyProvisioner.selectVersion(ctx, id, "")
+            PieceOriginStore.markApkActive(ctx, id)
+            val active = runCatching { link.toPath().toRealPath().toString() }.getOrDefault("")
+            val back = active == runCatching { apkFile.toPath().toRealPath().toString() }.getOrDefault("")
             RuntimeDiagnostics.append(
-                ctx, "piece-ota", rebuilt,
+                ctx, "piece-ota", back,
                 "件已回滚到 APK 原件：" + id,
-                "软链已删，provision " + if (rebuilt) "已重建原件" else "重建未成功（下次启动会再试）",
+                "入口=" + link.absolutePath + " 目标=" + active +
+                    " APK 原件=" + apkFile.absolutePath +
+                    (if (back) "（已核对一致）" else "（核对不一致）"),
             )
-            rebuilt to null
+            back to null
         } catch (ex: Throwable) {
             false to (ex.message ?: ex.javaClass.simpleName)
         }

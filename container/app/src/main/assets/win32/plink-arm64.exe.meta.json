@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "plink-win32-arm64-l2-sample",
+  "version": "0.83",
+  "architecture": "win32-arm64",
+  "purpose": "PE32+ ARM64 parser and process-image construction test sample; never executed",
+  "source": "https://the.earth.li/~sgtatham/putty/0.83/wa64/plink.exe",
+  "sourceSha256": "6824cd69458b58761077ca8d4f6a3ba788fe2596b2344e591f00593e13716354",
+  "license": "MIT",
+  "licenseFile": "https://the.earth.li/~sgtatham/putty/licence.html"
+}

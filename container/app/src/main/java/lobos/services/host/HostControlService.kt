@@ -7,6 +7,7 @@ import lobos.kernel.compat.PeLoader
 import lobos.control.ControlClient
 import lobos.kernel.proc.SessionRegistry
 import lobos.services.log.RuntimeDiagnostics
+import lobos.services.supply.PieceOriginStore
 import lobos.services.supply.PieceUpdater
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,14 +30,24 @@ object HostControlService {
     const val MANAGEMENT_ID = "lobos.installer"
     const val MANAGEMENT_GENERATION = 1L
 
-    /** List the pieces that can be rolled back to their APK baseline. */
+    /** List the pieces with their entry origin (APK original or OTA version). */
     fun pieces(context: Context): JSONArray {
+        val app = context.applicationContext
+        val origins = PieceOriginStore.all(app).associateBy { it.id }
         val arr = JSONArray()
-        for (s in PieceUpdater.states(context.applicationContext)) {
+        for (s in PieceUpdater.states(app)) {
+            val o = origins[s.id]
             arr.put(JSONObject().apply {
                 put("id", s.id)
                 put("installedVersion", s.installedVersion ?: JSONObject.NULL)
                 put("updated", s.updated)
+                put("origin", o?.active ?: "")
+                put("apkVersion", o?.apkVersion ?: "")
+                put("apkTarget", o?.apkTargetPath ?: "")
+                put("otaVersion", o?.otaVersion ?: "")
+                put("otaTarget", o?.otaTargetPath ?: "")
+                put("hasApkOriginal", o?.hasApkOriginal == true)
+                put("hasOta", o?.hasOta == true)
             })
         }
         return arr
@@ -66,27 +77,57 @@ object HostControlService {
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
     }
 
-    /** Load the shipped PE L2 sample through the production parser without executing it. */
-    fun loadPeSample(context: Context): JSONObject {
+    /** The PE L2 samples shipped with the product, with their expected digests. */
+    data class PeSample(val asset: String, val sha256: String, val label: String)
+
+    val peSamples: List<PeSample> = listOf(
+        PeSample(
+            "win32/plink-arm64.exe",
+            "6824cd69458b58761077ca8d4f6a3ba788fe2596b2344e591f00593e13716354",
+            "PE32+ ARM64",
+        ),
+        PeSample(
+            "win32/plink.exe",
+            "7308e9d356f14aa1f08cab1af363f71a077bf35dcb49e50b363418044758cd1e",
+            "PE32 i386",
+        ),
+    )
+
+    /** Load a shipped PE L2 sample through the production parser without executing it. */
+    fun loadPeSample(context: Context, asset: String): JSONObject {
         val app = context.applicationContext
+        val sample = peSamples.firstOrNull { it.asset == asset }
+            ?: return failure("lobos.compat.pe.sample", "pe-sample", "没有这一份 PE L2 样本：" + asset)
         return try {
-            val asset = "win32/plink.exe"
-            val expectedSha256 = "7308e9d356f14aa1f08cab1af363f71a077bf35dcb49e50b363418044758cd1e"
-            val sample = File(app.cacheDir, "win32/plink.exe")
-            sample.parentFile?.mkdirs()
-            app.assets.open(asset).use { input -> sample.outputStream().use { output -> input.copyTo(output) } }
-            val actual = java.security.MessageDigest.getInstance("SHA-256").digest(sample.readBytes())
+            val out = File(app.cacheDir, asset)
+            out.parentFile?.mkdirs()
+            app.assets.open(asset).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
+            val bytes = out.readBytes()
+            val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
-            if (actual != expectedSha256) return failure("lobos.compat.pe.sample", "pe-sample", "PE L2 样本 sha256 不匹配")
-            val image = PeLoader.parse(sample.readBytes())
+            if (actual != sample.sha256) {
+                return failure("lobos.compat.pe.sample", "pe-sample", "PE L2 样本 sha256 不匹配：" + asset)
+            }
+            val image = PeLoader.parse(bytes)
             JSONObject().apply {
                 put("ok", true); put("requestId", "pe-sample"); put("asset", asset)
-                put("bytes", sample.length()); put("sha256", actual)
-                put("machine", image.machine); put("pe32Plus", image.pe32Plus)
+                put("kind", sample.label)
+                put("bytes", out.length()); put("sha256", actual)
+                put("machine", image.machine); put("machineName", machineName(image.machine))
+                put("pe32Plus", image.pe32Plus)
                 put("entryPoint", image.entryPointRva); put("imageBase", image.imageBase)
                 put("sections", image.sections.size); put("imports", image.imports.size)
+                put("importDlls", image.imports.map { it.dllName })
             }
         } catch (e: Throwable) { failure("lobos.compat.pe.sample", "pe-sample", e.message ?: e.javaClass.simpleName) }
+    }
+
+    private fun machineName(machine: Int): String = when (machine) {
+        0x014c -> "i386"
+        0x8664 -> "x86-64"
+        0xAA64 -> "arm64"
+        0x01c0 -> "arm"
+        else -> "unknown(0x" + machine.toString(16) + ")"
     }
 
     /** Formal rollback of one piece to its APK baseline. */

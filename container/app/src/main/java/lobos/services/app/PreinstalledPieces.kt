@@ -158,6 +158,26 @@ object PreinstalledPieces {
             val name = landedRel.substringAfterLast('/')
             val landed = File(verDir, landedRel).canonicalFile.path
             val link = File(dir, name)
+            //  记录那一件的入口来源 = APK 原件（=> 而那来源这一格是「回到 APK 原件」可判的事实）。
+            //   缺陷名（C-102）**只记了程序形态那一条**：这一件若同时有库形态与程序形态
+            //   （mixed），=> 而那**两个角色各建一条派生物软链**，=> 而而原来这一处
+            //   按 targets 逐条写同一件的那一格，=> 而**后一条把前一条盖掉了**
+            //   （=> 而那盖掉的是「库那条入口指针」）。=> 而回退要落回的是**入口那一格**
+            //   （=> 而那是程序形态那一条），=> 而所以现在**按角色记**：
+            //   程序形态记入口指针与那一份字节；库形态只记那一份字节。
+            if (dirAbs == lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath) {
+                runCatching {
+                    lobos.services.supply.PieceOriginStore.recordApkOriginal(
+                        ctx, id, version, link.absolutePath, File(verDir, landedRel).absolutePath,
+                    )
+                }
+            } else {
+                runCatching {
+                    lobos.services.supply.PieceOriginStore.recordApkBody(
+                        ctx, id, version, File(verDir, landedRel).absolutePath,
+                    )
+                }
+            }
             if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) {
                 // 这一条**该有而没有**（ 而 total 只数已存在的，  所以那一格看不见它）
                 //   显式记一条：「派生物缺失」——  而不靠 total=0 让人去猜 
