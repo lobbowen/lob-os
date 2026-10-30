@@ -135,6 +135,12 @@ jobs:
         run: bash scripts/verify/verify-component-artifact.sh git
       - name: 打包 + sha256
         run: bash scripts/recipes/package-component.sh git
+      - name: 验形态（包自描述：库还是程序）
+        run: |
+          set -euo pipefail
+          PKG="$(ls dist/component-git-*.zip 2>/dev/null | head -1 || true)"
+          [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-git-*.zip"; exit 1; }
+          bash scripts/verify/verify-piece-shape.sh "$PKG" program
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
         uses: actions/cache/save@v4

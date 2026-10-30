@@ -136,7 +136,19 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             servers[name] = srv
             RuntimeDiagnostics.append(this, "bridge", true, "HostBridge 监听 UDS（会话名）", "name=" + name)
             while (running && servers[name] === srv) {
-                val sock = try { srv.accept() } catch (_: Throwable) { null } ?: break
+                val sock = try {
+                    srv.accept()
+                } catch (e: Throwable) {
+                    // 缺陷名（C-102）监听接受失败被静默吞掉：旧实现把异常变成 null 后直接退出，
+                    // executor 任务结束但诊断里没有失败原因，表现为能力桥无声消失。
+                    if (running && servers[name] === srv) {
+                        RuntimeDiagnostics.append(
+                            this, "bridge", false, "HostBridge 接受连接失败",
+                            "name=" + name + " " + e::class.java.simpleName + ": " + e.message,
+                        )
+                    }
+                    break
+                }
                 executor.execute { handleConnection(sock, name) }
             }
             servers.remove(name)
