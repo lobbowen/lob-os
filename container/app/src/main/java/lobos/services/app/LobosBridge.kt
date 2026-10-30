@@ -81,7 +81,7 @@ object LobosBridge {
             val client = lobos.control.ControlClient(
                 socketName = lobos.kernel.proc.SessionRegistry.socketName(token),
                 sessionToken = token,
-                protocolVersion = lobos.api.BuildConfig.BRIDGE_PROTOCOL,
+                protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
             )
             val result = client.rollback(id, base, requestId, data?.optBoolean("dryRun", false) ?: false)
             JSONObject().apply {
