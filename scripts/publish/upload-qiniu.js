@@ -31,6 +31,44 @@ function multipart(fields, fileField, fileName, fileBuf, mime) {
   return { body: Buffer.concat(parts), contentType: 'multipart/form-data; boundary=' + B };
 }
 
+// 缺陷名（C-102）**把整包读进内存** —— 而这一族它为什么有两边：
+//   一边是「上传要那些字节」，
+//   另一边是「那些字节**要多大**才拿得动」。
+// Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
+// 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
+// 处置：分片上传本来就按块读文件（每次 4 MiB），所以**不需要**整包在内存里：
+//   · 字节数取 stat；
+//   · 每一块用 fs.openSync + readSync 现读现传；
+//   · 回读校验用流式哈希（本地那份），远端那份照旧整块读（它是一个 HTTP 响应体，
+//     不是文件 —— 那一格本来就只能整块拿，且它的大小受远端限制）。
+function sha256File(file) {
+  const h = crypto.createHash('sha256');
+  const fd = fs.openSync(file, 'r');
+  try {
+    const chunk = Buffer.allocUnsafe(1024 * 1024);
+    for (;;) {
+      const n = fs.readSync(fd, chunk, 0, chunk.length, null);
+      if (n <= 0) break;
+      h.update(chunk.subarray(0, n));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return h.digest('hex');
+}
+
+// 从文件读一段（不把整份读进内存）
+function readChunk(fd, pos, len) {
+  const b = Buffer.allocUnsafe(len);
+  let got = 0;
+  while (got < len) {
+    const n = fs.readSync(fd, b, got, len - got, pos + got);
+    if (n <= 0) break;
+    got += n;
+  }
+  return b.subarray(0, got);
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const local = argv[0];
@@ -49,7 +87,7 @@ async function main() {
   if (!PUBLIC_BASE) { console.error('[qiniu] 缺少 QINIU_PUBLIC_BASE —— 没有回读锚就不许声称投放生效'); process.exit(2); }
   if (!fs.existsSync(local)) { console.error('[qiniu] 文件不存在: ' + local); process.exit(2); }
 
-  const buf = fs.readFileSync(local);
+  const bytes = fs.statSync(local).size;
   const B64URLSTR = (s) => B64URL(Buffer.from(s, 'utf8'));
   const ATTEMPTS = 3;
   const PER_ATTEMPT_MS = 900000;
@@ -71,29 +109,36 @@ async function main() {
     let host = HOST;
     let offset = 0;
     const ctxs = [];
-    while (offset < buf.length) {
-      const chunk = buf.subarray(offset, Math.min(offset + BLOCK, buf.length));
-      const url = host + '/mkblk/' + chunk.length;
-      let got = null, lastErr = null;
-      for (let a = 1; a <= 3 && !got; a++) {
-        try {
-          const token = uploadToken(AK, SK, BUCKET, key, 3600);
-          const r = await post(url, chunk, token);
-          if (!r || !r.ctx) throw new Error('缺 ctx: ' + JSON.stringify(r).slice(0, 150));
-          got = r;
-        } catch (e) {
-          lastErr = e;
-          if (a < 3) { const w = 2000 * a; console.error('[qiniu] 块 ' + offset + ' 第 ' + a + '/3 次失败（' + e.message + '），' + w + 'ms 后重试'); await new Promise((res) => setTimeout(res, w)); }
+    const fd = fs.openSync(local, 'r');
+    try {
+      while (offset < bytes) {
+        const want = Math.min(BLOCK, bytes - offset);
+        const chunk = readChunk(fd, offset, want);
+        if (chunk.length === 0) throw new Error('读到文件末尾之前就断了（offset=' + offset + '）');
+        const url = host + '/mkblk/' + chunk.length;
+        let got = null, lastErr = null;
+        for (let a = 1; a <= 3 && !got; a++) {
+          try {
+            const token = uploadToken(AK, SK, BUCKET, key, 3600);
+            const r = await post(url, chunk, token);
+            if (!r || !r.ctx) throw new Error('缺 ctx: ' + JSON.stringify(r).slice(0, 150));
+            got = r;
+          } catch (e) {
+            lastErr = e;
+            if (a < 3) { const w = 2000 * a; console.error('[qiniu] 块 ' + offset + ' 第 ' + a + '/3 次失败（' + e.message + '），' + w + 'ms 后重试'); await new Promise((res) => setTimeout(res, w)); }
+          }
         }
+        if (!got) throw new Error('块 ' + offset + ' 三次失败: ' + (lastErr && lastErr.message));
+        ctxs.push(got.ctx);
+        if (got.host) host = 'https://' + String(got.host).replace(/^https?:\/\//, '');
+        offset += chunk.length;
+        console.log('[qiniu] 块 ' + ctxs.length + ' 完成（' + offset + '/' + bytes + ' 字节）');
       }
-      if (!got) throw new Error('块 ' + offset + ' 三次失败: ' + (lastErr && lastErr.message));
-      ctxs.push(got.ctx);
-      if (got.host) host = 'https://' + String(got.host).replace(/^https?:\/\//, '');
-      offset += chunk.length;
-      console.log('[qiniu] 块 ' + ctxs.length + ' 完成（' + offset + '/' + buf.length + ' 字节）');
+    } finally {
+      fs.closeSync(fd);
     }
     const cc = (cacheSec !== null && Number.isFinite(cacheSec)) ? '/x:Cache-Control/' + B64URLSTR('max-age=' + cacheSec) : '';
-    const mk = host + '/mkfile/' + buf.length + '/key/' + B64URLSTR(key) + cc;
+    const mk = host + '/mkfile/' + bytes + '/key/' + B64URLSTR(key) + cc;
     let done = null, lastErr2 = null;
     for (let a = 1; a <= 3 && !done; a++) {
       try {
@@ -102,10 +147,16 @@ async function main() {
       } catch (e) { lastErr2 = e; if (a < 3) await new Promise((res) => setTimeout(res, 2000 * a)); }
     }
     if (!done) throw new Error('mkfile 三次失败: ' + (lastErr2 && lastErr2.message));
-    console.log('[qiniu] 已上传（分片）' + key + '（' + buf.length + ' 字节，' + ctxs.length + ' 块）服务端: ' + JSON.stringify(done).slice(0, 200));
+    console.log('[qiniu] 已上传（分片）' + key + '（' + bytes + ' 字节，' + ctxs.length + ' 块）服务端: ' + JSON.stringify(done).slice(0, 200));
   }
 
   async function uploadForm() {
+    // 这一支走整块表单上传，所以那一块**必须**在内存里 —— 而它只在文件不大于
+    // 8 MiB 时才走（分界就在下面那一句），所以读得下。
+    if (bytes > 8 * 1024 * 1024) {
+      throw new Error('不该走到这一支：文件 ' + bytes + ' 字节 > 8 MiB（这一支整块在内存里）');
+    }
+    const buf = fs.readFileSync(local);
     let lastErr = null;
     for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
       const token = uploadToken(AK, SK, BUCKET, key, 3600);
@@ -116,7 +167,7 @@ async function main() {
       try {
         const r = await fetch(HOST, { method: 'POST', headers: { 'Content-Type': mp.contentType }, body: mp.body, signal: AbortSignal.timeout(PER_ATTEMPT_MS) });
         const text = await r.text();
-        if (r.status === 200) { console.log('[qiniu] 已上传 ' + key + '（' + buf.length + ' 字节，' + (Date.now() - t0) + 'ms，第 ' + attempt + ' 次尝试）服务端: ' + text.slice(0, 200)); return; }
+        if (r.status === 200) { console.log('[qiniu] 已上传 ' + key + '（' + bytes + ' 字节，' + (Date.now() - t0) + 'ms，第 ' + attempt + ' 次尝试）服务端: ' + text.slice(0, 200)); return; }
         if (r.status >= 400 && r.status < 500) { console.error('[qiniu] 上传失败（4xx 不重试）key=' + key + ' status=' + r.status + ' body=' + text.slice(0, 300)); process.exit(1); }
         lastErr = new Error('status=' + r.status + ' body=' + text.slice(0, 200));
       } catch (e) { lastErr = e; }
@@ -128,23 +179,39 @@ async function main() {
 
   async function verifyPublic() {
     const url = PUBLIC_BASE + '/' + key.split('/').map(encodeURIComponent).join('/');
-    const want = crypto.createHash('sha256').update(buf).digest('hex');
+    const want = sha256File(local);
     let last = null;
     for (let a = 1; a <= READBACK_ATTEMPTS; a++) {
       let got = null;
+      let gotBytes = 0;
       last = null;
       try {
+        // 缺陷名（C-102）**回读那一格把响应体整块收进内存** ——
+        // 而那一格原来写的是 `got = Buffer.from(await res.arrayBuffer());`。
+        // 响应体就是那一份件（8.4 GB 那一颗）=> 这一格自己就把内存撑爆了
+        // （实测报错逐字：`data is too long`）。
+        // 而这一格要答的是「远端那份与本地那份是不是同一份字节」——
+        // 那只需要**流式**哈希，不需要把远端那份留在内存里。
         const res = await fetch(url + '?t=' + Date.now(), {
           headers: { 'cache-control': 'no-cache' }, redirect: 'follow',
           signal: AbortSignal.timeout(180000),
         });
-        if (res.status === 200) got = Buffer.from(await res.arrayBuffer());
-        else last = new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+        if (res.status === 200) {
+          const h = crypto.createHash('sha256');
+          let n = 0;
+          for await (const c of res.body) {
+            h.update(c);
+            n += c.length;
+          }
+          got = h.digest('hex');
+          gotBytes = n;
+        } else {
+          last = new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 120));
+        }
       } catch (e) { last = e; }
       if (got) {
-        const have = crypto.createHash('sha256').update(got).digest('hex');
-        if (have === want) { console.log('[qiniu] 回读 [ok] ' + url + ' bytes=' + got.length + ' sha256=' + have.slice(0, 12) + '…'); return; }
-        last = new Error('内容不符 bytes=' + got.length + '/' + buf.length + ' sha256=' + have.slice(0, 12) + '…/' + want.slice(0, 12) + '…');
+        if (got === want) { console.log('[qiniu] 回读 [ok] ' + url + ' bytes=' + gotBytes + ' sha256=' + got.slice(0, 12) + '…'); return; }
+        last = new Error('内容不符 bytes=' + gotBytes + '/' + bytes + ' sha256=' + got.slice(0, 12) + '…/' + want.slice(0, 12) + '…');
         break;
       }
       if (a < READBACK_ATTEMPTS) { const w = 5000 * a; console.error('[qiniu] 回读 ' + url + ' 第 ' + a + '/' + READBACK_ATTEMPTS + ' 次未取到（' + (last && last.message) + '），' + w + 'ms 后重试'); await new Promise((res) => setTimeout(res, w)); }
@@ -153,7 +220,7 @@ async function main() {
     process.exit(1);
   }
 
-  if (buf.length > 8 * 1024 * 1024) await uploadResumable();
+  if (bytes > 8 * 1024 * 1024) await uploadResumable();
   else await uploadForm();
   await verifyPublic();
 }

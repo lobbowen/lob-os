@@ -81,44 +81,134 @@ function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
-// 最小 zip 读取器：只解 stored(0) 与 deflate(8)，够读件包。
-function readZip(buf) {
-  let eocd = -1;
-  for (let i = buf.length - 22; i >= 0 && i >= buf.length - 22 - 65536; i--) {
-    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+// 缺陷名（C-102）**把整包读进内存** —— 而这一族它为什么有两边：
+//   一边是「算内容哈希要那一份字节」，
+//   另一边是「读那份字节要一次读多少」。
+// Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
+// 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
+// 处置：哈希流式算；zip 按需读（中央目录从尾部读，条目按偏移读），
+// 而不再把整包当一个 Buffer 拿着。
+function sha256File(file) {
+  const h = crypto.createHash('sha256');
+  const fd = fs.openSync(file, 'r');
+  try {
+    const chunk = Buffer.allocUnsafe(1024 * 1024);
+    for (;;) {
+      const n = fs.readSync(fd, chunk, 0, chunk.length, null);
+      if (n <= 0) break;
+      h.update(chunk.subarray(0, n));
+    }
+  } finally {
+    fs.closeSync(fd);
   }
-  if (eocd < 0) throw new Error('不是 zip（找不到中央目录结束记录）');
-  const count = buf.readUInt16LE(eocd + 10);
-  let off = buf.readUInt32LE(eocd + 16);
+  return h.digest('hex');
+}
+
+// 从文件按需读的最小 zip 读取器：只解 stored(0) 与 deflate(8)，够读件包。
+// 与 readZipFile 同一套对外接口，但**不**把整包读进内存：
+//   · 中央目录从文件尾部找 EOCD，按偏移整段读（那一段是目录，不是内容）；
+//   · 条目内容按本地文件头算出的偏移现读现解，只留一个条目。
+// 而 zip64（单包 >4 GiB 或条目数 >65535 时 zip 才写它）也认：
+//   EOCD 里那几格是 0xffffffff/0xffff 时改读 zip64 EOCD；
+//   条目里偏移/大小是 0xffffffff 时改读中央目录的 zip64 扩展字段。
+function readZipFile(file) {
+  const fd = fs.openSync(file, 'r');
+  const size = fs.fstatSync(fd).size;
+  const readAt = (pos, len) => {
+    if (len <= 0) return Buffer.alloc(0);
+    const b = Buffer.allocUnsafe(len);
+    let got = 0;
+    while (got < len) {
+      const n = fs.readSync(fd, b, got, len - got, pos + got);
+      if (n <= 0) break;
+      got += n;
+    }
+    return got === len ? b : b.subarray(0, got);
+  };
+
+  // 尾部找 EOCD（0x06054b50）
+  const tailLen = Math.min(size, 65536 + 22);
+  const tail = readAt(size - tailLen, tailLen);
+  let eocd = -1;
+  for (let i = tail.length - 22; i >= 0; i--) {
+    if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) { fs.closeSync(fd); throw new Error('不是 zip（找不到中央目录结束记录）'); }
+  let count = tail.readUInt16LE(eocd + 10);
+  let cdSize = tail.readUInt32LE(eocd + 12);
+  let cdOff = tail.readUInt32LE(eocd + 16);
+
+  // zip64：EOCD 那几格是哨兵值时，真实的在 zip64 EOCD 里
+  if (count === 0xffff || cdSize === 0xffffffff || cdOff === 0xffffffff) {
+    const loc = eocd >= 20 ? tail.readUInt32LE(eocd - 20) : 0;
+    if (loc !== 0x07064b50) { fs.closeSync(fd); throw new Error('zip64 哨兵在位，但找不到 zip64 定位器'); }
+    const z64Off = Number(tail.readBigUInt64LE(eocd - 12));
+    const z64 = readAt(z64Off, 56);
+    if (z64.readUInt32LE(0) !== 0x06064b50) { fs.closeSync(fd); throw new Error('zip64 结束记录坏了'); }
+    count = Number(z64.readBigUInt64LE(32));
+    cdSize = Number(z64.readBigUInt64LE(40));
+    cdOff = Number(z64.readBigUInt64LE(48));
+  }
+
+  const cd = readAt(cdOff, cdSize);
   const entries = new Map();
+  let off = 0;
   for (let n = 0; n < count; n++) {
-    if (buf.readUInt32LE(off) !== 0x02014b50) throw new Error('中央目录项坏了');
-    const method = buf.readUInt16LE(off + 10);
-    const csize = buf.readUInt32LE(off + 20);
-    const usize = buf.readUInt32LE(off + 24);
-    const nameLen = buf.readUInt16LE(off + 28);
-    const extraLen = buf.readUInt16LE(off + 30);
-    const commentLen = buf.readUInt16LE(off + 32);
-    const extAttr = buf.readUInt32LE(off + 38);
-    const localOff = buf.readUInt32LE(off + 42);
-    const name = buf.toString('utf8', off + 46, off + 46 + nameLen);
+    if (off + 46 > cd.length || cd.readUInt32LE(off) !== 0x02014b50) {
+      fs.closeSync(fd);
+      throw new Error('中央目录项坏了');
+    }
+    const method = cd.readUInt16LE(off + 10);
+    let csize = cd.readUInt32LE(off + 20);
+    let usize = cd.readUInt32LE(off + 24);
+    const nameLen = cd.readUInt16LE(off + 28);
+    const extraLen = cd.readUInt16LE(off + 30);
+    const commentLen = cd.readUInt16LE(off + 32);
+    const extAttr = cd.readUInt32LE(off + 38);
+    let localOff = cd.readUInt32LE(off + 42);
+    const name = cd.toString('utf8', off + 46, off + 46 + nameLen);
+    // zip64 扩展字段（头两个字节是 0x0001）
+    if (csize === 0xffffffff || usize === 0xffffffff || localOff === 0xffffffff) {
+      let e = off + 46 + nameLen;
+      const eEnd = e + extraLen;
+      while (e + 4 <= eEnd) {
+        const hid = cd.readUInt16LE(e);
+        const hsz = cd.readUInt16LE(e + 2);
+        if (hid === 0x0001) {
+          let p = e + 4;
+          if (usize === 0xffffffff) { usize = Number(cd.readBigUInt64LE(p)); p += 8; }
+          if (csize === 0xffffffff) { csize = Number(cd.readBigUInt64LE(p)); p += 8; }
+          if (localOff === 0xffffffff) { localOff = Number(cd.readBigUIntLE(p)); }
+          break;
+        }
+        e += 4 + hsz;
+      }
+    }
     const lho = localOff;
-    if (buf.readUInt32LE(lho) !== 0x04034b50) throw new Error('本地文件头坏了: ' + name);
-    const lNameLen = buf.readUInt16LE(lho + 26);
-    const lExtraLen = buf.readUInt16LE(lho + 28);
+    const lh = readAt(lho, 30);
+    if (lh.length < 30 || lh.readUInt32LE(0) !== 0x04034b50) {
+      fs.closeSync(fd);
+      throw new Error('本地文件头坏了: ' + name);
+    }
+    const lNameLen = lh.readUInt16LE(26);
+    const lExtraLen = lh.readUInt16LE(28);
     const dataStart = lho + 30 + lNameLen + lExtraLen;
-    const raw = buf.subarray(dataStart, dataStart + csize);
-    entries.set(name, { method, usize, extAttr, raw });
+    entries.set(name, { method, usize, extAttr, dataStart, csize });
     off += 46 + nameLen + extraLen + commentLen;
   }
+
   return {
     names: () => Array.from(entries.keys()),
     has: (n) => entries.has(n),
     bytes: (n) => {
       const e = entries.get(n);
       if (!e) return null;
-      if (e.method === 0) return Buffer.from(e.raw);
-      if (e.method === 8) return zlib.inflateRawSync(e.raw);
+      if (e.csize > 256 * 1024 * 1024) {
+        throw new Error('条目 ' + n + ' 压缩后仍有 ' + e.csize + ' 字节 —— 这一次读不下（这一份不整包读，改成按条目读）');
+      }
+      const raw = readAt(e.dataStart, e.csize);
+      if (e.method === 0) return raw;
+      if (e.method === 8) return zlib.inflateRawSync(raw);
       throw new Error('不支持的压缩方式 ' + e.method + '（条目 ' + n + '）');
     },
     isSymlink: (n) => {
@@ -127,11 +217,19 @@ function readZip(buf) {
       const mode = (e.extAttr >>> 16) & 0xf000;
       return mode === 0xa000;
     },
+    close: () => { try { fs.closeSync(fd); } catch (e) {} },
   };
 }
 
-function fetchToFile(url) {
-  // GitHub 的 release 资产直链会先给 302，跟随重定向后才是真正的字节。
+// 缺陷名（C-102）**同一条 zip 有两条读法**：原来只有一条 —— 把整包 readFileSync
+// 进内存再解析。而那一条对 >2 GiB 的件直接抛 ERR_FS_FILE_TOO_LARGE。
+// 现在只有一条读法：readZipFile（按需读）。
+// 处置不是「两条并存」，而是把整包在内存里的那一版删掉（C-104：同一类东西不许有第二种生成路径）——
+// 所以下面没有 readZip(buf) 了。
+
+// 下载到文件（**流式落盘**）—— 而不把响应攒成一个 Buffer。
+// 缺陷名（C-102）同族：那一份字节要多大才拿得动。
+function downloadTo(url, dest) {
   return new Promise((resolve, reject) => {
     const go = (u, hops) => {
       if (hops > 8) { reject(new Error('重定向跳太多次: ' + u)); return; }
@@ -146,9 +244,11 @@ function fetchToFile(url) {
           reject(new Error('HTTP ' + res.statusCode + ' ' + u));
           return;
         }
-        const chunks = [];
-        res.on('data', (c) => chunks.push(c));
-        res.on('end', () => resolve(Buffer.concat(chunks)));
+        const out = fs.createWriteStream(dest);
+        res.pipe(out);
+        res.on('error', reject);
+        out.on('error', reject);
+        out.on('finish', () => out.close(() => resolve()));
       }).on('error', reject);
     };
     go(url, 0);
@@ -192,12 +292,18 @@ async function fetchAsset(tag, asset, cacheDir) {
     if (!fs.existsSync(sidePath)) throw new Error('离线模式，缓存里没有 ' + asset + '.sha256');
   } else {
     fs.mkdirSync(cacheDir, { recursive: true });
-    fs.writeFileSync(zipPath, await fetchToFile(url));
-    fs.writeFileSync(sidePath, await fetchToFile(url + '.sha256'));
+    await downloadTo(url, zipPath);
+    await downloadTo(url + '.sha256', sidePath);
   }
-  const zipBytes = fs.readFileSync(zipPath);
+  // 缺陷名（C-102）**把整包读进内存**（同族第一处：这一行原为
+  // `const zipBytes = fs.readFileSync(zipPath);`）——
+  // Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
+  // 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
+  // 处置：哈希流式算，字节数取 stat，zip 按需读（readZipFile）。
+  const bytes = fs.statSync(zipPath).size;
+  const digest = sha256File(zipPath);
   const sideText = fs.readFileSync(sidePath, 'utf8').trim().split(/\s+/)[0] || '';
-  return { url, zipPath, sidePath, zipBytes, sideSha256: sideText };
+  return { url, zipPath, sidePath, bytes, digest, sideSha256: sideText };
 }
 
 function fileRecords(zip, shape) {
@@ -284,17 +390,17 @@ async function main() {
       rec.tag = tag;
       rec.zip = asset;
       const got = await fetchAsset(tag, asset, CACHE_DIR);
-      const real = sha256(got.zipBytes);
+      const real = got.digest;
       rec.sha256 = real;
       rec.url = got.url;
-      rec.bytes = got.zipBytes.length;
+      rec.bytes = got.bytes;
       rec.sidecarSha256 = got.sideSha256;
       rec.realSha256 = real;
       rec.sha256MatchesSidecar = real === got.sideSha256;
       if (!rec.sha256MatchesSidecar) {
         bad(c.id + '：下载字节的 sha256 与 release 上的 ' + asset + '.sha256 边车不一致');
       }
-      const zip = readZip(got.zipBytes);
+      const zip = readZipFile(got.zipPath);
       const metaBuf = zip.has('component-meta.json') ? zip.bytes('component-meta.json') : null;
       const shapeBuf = zip.has('piece-shape.json') ? zip.bytes('piece-shape.json') : null;
       let meta = null;
@@ -312,6 +418,7 @@ async function main() {
         sourceSha256: meta.sourceSha256 || '',
       } : null;
       const files = shape ? fileRecords(zip, shape) : [];
+      zip.close();
       rec.files = files;
       const unmatched = files.filter((f) => f.verified === 'sha256-mismatch' || f.verified === 'no');
       rec.filesVerified = unmatched.length === 0;
