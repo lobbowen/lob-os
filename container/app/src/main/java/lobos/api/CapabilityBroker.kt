@@ -602,12 +602,26 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "lobos.sys.native.update" to MethodDef(listOf("base"), true) { p, _programId ->
+            val requestId = p.optString("requestId", "").trim()
+            if (requestId.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "requestId 为空")
             val dry = p.optBoolean("dryRun", true)
-            PieceUpdater.checkAndUpdate(
-                this@CapabilityBroker,
-                p.optString("manifestUrl", ""),
-                dryRun = dry,
-            ).let { it.put("dryRun", dry) }
+            val store = ControlRequestStore(this@CapabilityBroker)
+            val existing = store.find(requestId)
+            if (existing != null) {
+                if (existing.method != "lobos.sys.native.update" || existing.pieceId != "native" || existing.base != "ota") {
+                    throw BridgeError(CODE_INVALID_PARAM, "requestId 幂等冲突：$requestId")
+                }
+                existing.response
+            } else synchronized(store.lockFor("native")) {
+                store.save(ControlRequestStore.Entry(requestId, "lobos.sys.native.update", "native", "ota", ControlRequestStore.State.RECEIVED, JSONObject(), System.currentTimeMillis()))
+                store.save(ControlRequestStore.Entry(requestId, "lobos.sys.native.update", "native", "ota", ControlRequestStore.State.VALIDATING, JSONObject(), System.currentTimeMillis()))
+                store.save(ControlRequestStore.Entry(requestId, "lobos.sys.native.update", "native", "ota", ControlRequestStore.State.RUNNING, JSONObject(), System.currentTimeMillis()))
+                val response = PieceUpdater.checkAndUpdate(this@CapabilityBroker, p.optString("manifestUrl", ""), dryRun = dry).let {
+                    it.put("dryRun", dry); it.put("requestId", requestId); it.put("state", "SUCCEEDED")
+                }
+                store.save(ControlRequestStore.Entry(requestId, "lobos.sys.native.update", "native", "ota", ControlRequestStore.State.SUCCEEDED, response, System.currentTimeMillis()))
+                response
+            }
         },
         "lobos.sys.native.rollback" to MethodDef(listOf("base"), true) { p, _programId ->
             val id = p.optString("id", "")

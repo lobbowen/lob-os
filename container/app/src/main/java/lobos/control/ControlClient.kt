@@ -37,48 +37,46 @@ class ControlClient(
         fun detail(): String = value.optString("detail", value.optString("error", ""))
     }
 
-    fun rollback(id: String, base: String, requestId: String, dryRun: Boolean = false): Result {
+    fun rollback(id: String, base: String, requestId: String, dryRun: Boolean = false): Result =
+        call("lobos.sys.native.rollback", requestId, JSONObject().apply {
+            put("id", id)
+            put("base", base)
+            put("dryRun", dryRun)
+        }, id, base)
+
+    fun update(manifestUrl: String, requestId: String, dryRun: Boolean = true): Result =
+        call("lobos.sys.native.update", requestId, JSONObject().apply {
+            put("manifestUrl", manifestUrl)
+            put("dryRun", dryRun)
+        }, "native", "ota")
+
+    private fun call(method: String, requestId: String, params: JSONObject, id: String, base: String): Result {
         require(id.isNotBlank()) { "id 为空" }
-        require(base == "apk") { "base 只接受 apk" }
         require(requestId.isNotBlank()) { "requestId 为空" }
         return LocalSocket().use { socket ->
             connect(socket)
             socket.soTimeout = timeoutMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
             val out = socket.outputStream.bufferedWriter(Charsets.UTF_8)
             val reader = BufferedReader(InputStreamReader(socket.inputStream, Charsets.UTF_8))
-
             fun exchange(request: JSONObject): JSONObject {
-                out.write(request.toString())
-                out.write("\n")
-                out.flush()
+                out.write(request.toString()); out.write("\n"); out.flush()
                 val line = reader.readLine() ?: throw ControlClientException("bridge closed before response")
                 return runCatching { JSONObject(line) }
                     .getOrElse { throw ControlClientException("invalid JSON-RPC response: ${it.message}") }
             }
-
             val handshake = JSONObject().apply {
-                put("jsonrpc", "2.0")
-                put("id", "handshake-" + UUID.randomUUID().toString())
+                put("jsonrpc", "2.0"); put("id", "handshake-" + UUID.randomUUID())
                 put("method", "bridge.handshake")
                 put("params", JSONObject().apply {
-                    put("protocol", protocolVersion)
-                    put("token", sessionToken)
+                    put("protocol", protocolVersion); put("token", sessionToken)
                     put("requires", org.json.JSONArray().put("base"))
                 })
             }
             val hs = exchange(handshake)
             if (hs.has("error")) return@use Result(false, hs.errorCode(), requestId, hs.errorValue())
-
             val request = JSONObject().apply {
-                put("jsonrpc", "2.0")
-                put("id", requestId)
-                put("method", "lobos.sys.native.rollback")
-                put("params", JSONObject().apply {
-                    put("id", id)
-                    put("base", base)
-                    put("requestId", requestId)
-                    put("dryRun", dryRun)
-                })
+                put("jsonrpc", "2.0"); put("id", requestId); put("method", method)
+                put("params", JSONObject(params.toString()).put("requestId", requestId))
             }
             val response = exchange(request)
             if (response.has("error")) return@use Result(false, response.errorCode(), requestId, response.errorValue())
