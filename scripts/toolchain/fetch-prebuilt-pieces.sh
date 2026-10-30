@@ -19,11 +19,149 @@ set -euo pipefail
 #   fetch-prebuilt-pieces.sh:131: GEN_ROWS: unbound variable
 GEN_ROWS=""
 
-cd "$(cd "$(dirname "$0")/../.." && pwd)"
+# 这一行的落点用 BASH_SOURCE（而不是 $0）—— 而因为 build-apk.yml:329 那一格是
+#   `source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces`
+# 而 source 的时候 $0 逐字是「bash」，=> 而 dirname 那一条算出来是错的落点。
+# 缺陷名（C-102）**同一份脚本按两种方式被调用，而落点只认其中一种**。
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 ASSETS="container/app/src/main/assets/pieces"
 STAGE="dist/.fetch"
 REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
+
+#  `--print-pieces` 那一格（=> 而那 build-apk.yml:313 那一格逐字是
+#    `source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces`）。
+#  缺陷名（C-102）**那一个钩子逐字不存在**、=> 而而那**调用点**逐字**在**：
+#    => 而那 source 逐字**顺带**把那整个取件循环逐字**跑一遍**（=> 而那下载两遍、=> 而那配额吃两遍）、
+#    => 而而那 stdout 逐字**是**那取件那一份输出、=> 而而那**调用方**逐字**读不出**那件数。
+#  => 而那**处置**：=> 而那**一个钩子**逐字**落**在这里、=> 而那 --print-pieces 逐字**只**答那件数。
+#    => 而那**按 C-104**：=> 而那「跑整个取件」与「只报件数」逐字**不是**同一问、=> 而那**不合并**。
+PRINT_PIECES_ONLY=0
+for _arg in "${@:-}"; do
+  [ "$_arg" = "--print-pieces" ] && PRINT_PIECES_ONLY=1
+done
+
+#  缺陷名（C-102）**那一族把「读不到」逐字压成一档**：
+#    而实际上那 API 逐字能答出**三档**不同的成因，而它们逐字**要**不同的处置：
+#      403 + 那 body 里逐字有 "rate limit"     = 限流（=> 而那匿名读逐字 60 次/小时）
+#      403 + 那 body 里逐字有 "Bad credentials" = 鉴权（=> 而那 token 逐字错了 / 过期了）
+#      404                                    = 那个 tag 或那个端点逐字不存在
+#    => 而而那旧版逐字只印「HTTP 那一档 = 403」，=> 而而那**三档**逐字**分不出来**、
+#    => 而而那**处置**（重试 / 换令牌 / 查 tag）逐字**对不上号**。
+#
+#  C-103 回答（这一族它为什么有两边）：一边是「读那一份 Release 清单」，
+#    另一边是「那一次读逐字**有没有身份**」。
+#    而那旧版把「有身份」当成**可选**：没有 token 就匿名读；
+#    而匿名读逐字 60 次/小时（带身份 5000 次/小时），
+#    => 而那一次读逐字在 CI 上逐字**被限流**（run 41118077153：9 件取到 3 件、6 件 403，
+#       而那 28 分钟前同一格逐字取到 9/9）。
+#    处置：给那一次读**一个身份**（=> 而那不是「重试」，=> 而那是「那一次读是谁做的」），
+#    并把「没有身份」逐字**报出来**而不是静默匿名（C-05：缺字段就报缺，不猜填）。
+#
+#  形状照抄 scripts/toolchain/fetch-component-artifacts.sh:11-13（那是仓内已有的同一纪律）。
+GH_TOKEN_VALUE="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [ -z "$GH_TOKEN_VALUE" ] && [ "$PRINT_PIECES_ONLY" -eq 0 ]; then
+  echo "::error title=缺令牌::取件要读 GitHub 的 Release 清单，而那匿名读只有 60 次/小时"
+  echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（=> 而 build-apk.yml 那一格逐字是 secrets.GITHUB_TOKEN）"
+  echo "::error:: 这一格不猜 —— 没有身份就不读，**不**静默匿名。"
+  exit 1
+fi
+export GH_TOKEN="$GH_TOKEN_VALUE"
+#  那**唯一**一份身份（=> 而那两条真读的路逐字都**只**认它）：
+#    缺陷名（C-102）**那两条真读的路逐字各认各的令牌名、=> 而那 workflow 那一格逐字给的是 GH_TOKEN**
+#      => 而那**后果**：那「有没有身份」那一格逐字**过了**（=> 而那 GH_TOKEN 逐字是给了的）、
+#         => 而那**请求**逐字**没带身份**（=> 而那匿名读逐字 60 次/小时、=> 而那症状逐字是 403 限流），
+#         => 而而那**看不出**是「令牌名不对」——**检查里过了但请求里没带身份**。
+#    => 而那**改法**：=> 而那**两条**真读的路逐字**都**走那**一个** gh_read_release、
+#       => 而那一个**只**认 GH_HDR、=> 而 GH_HDR **只**由那唯一一份身份构造。
+GH_HDR=(-H "Authorization: Bearer $GH_TOKEN")
+
+#  那一次读（那一份 Release 清单）的读数：全局
+#    GH_HTTP     = 那一读逐字**拿到**的 HTTP 那一档（none = 连那一档都没拿到）
+#    GH_FAIL_KIND= 那一次读逐字**属于**哪一档：ok / ratelimit / auth / notfound /
+#                 forbidden / empty / parse / http_<码>
+#    GH_READ_TAG / GH_READ_BODY = 读的是哪个 tag、body 落在哪
+#    GH_READ_RC  = 那一读逐字**成没成**（0 成 / 1 没成）
+GH_HTTP="none"
+GH_FAIL_KIND="ok"
+GH_READ_TAG=""
+GH_READ_BODY=""
+GH_READ_RC=1
+
+#  那 list_release_assets 那一族的读数：全局（=> 而它**先**得**有**值）
+#    缺陷名（C-102）**那三个读数逐字只在函数逐字跑了之后才存在**、
+#    => 而那脚本逐字是 `set -euo pipefail`（=> 而那 `-u` 逐字**管**着未绑定的变量），
+#    => 而而那**调用方**逐字在**第一次**调它**之前**读那三个、=> 而那逐字是「未绑定的变量」。
+#    => 而那**处置**：=> 而那三个逐字**先**给初值、=> 而那**没跑过**就逐字是「none / 1 / none」。
+LRA_HTTP="none"
+LRA_RC=1
+LRA_KIND="none"
+
+#  读那一份 Release 清单。**一次读**（=> 而那旧版逐字读了**两次**：
+#  一次 -w '%{http_code}' 只为拿那一档、一次取 body —— => 而那**两次**逐字**各**吃一次 API 配额）。
+#  同一个 tag 读过一次就不再读第二次（=> 而那配额逐字是有限的）。
+gh_read_release() {
+  local tag="$1"
+  if [ "$GH_READ_TAG" = "$tag" ]; then
+    return "$GH_READ_RC"
+  fi
+  GH_READ_TAG="$tag"
+  #  => 而那落点逐字**先**造出来（=> 而那 body 逐字**落**在那里面、=> 而而那 `curl -o` 逐字**要**那落点在）。
+  #    => 而而那 `mkdir -p` 逐字**原来**只**在**那脚本**后半**那一段（=> 而而那 `--print-pieces` 那一格逐字**提前** return、
+  #    => 而而那被**单独**调用的那一族逐字**没到**那后半段、=> 而而那 body 逐字**落不下**）。
+  mkdir -p "$STAGE"
+  GH_READ_BODY="$STAGE/.gh-release-body.json"
+  GH_READ_RC=1
+  GH_HTTP="none"
+  GH_FAIL_KIND="ok"
+  local http
+  http="$(curl -sS -o "$GH_READ_BODY" -w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
+          -H "Accept: application/vnd.github+json" \
+          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null || true)"
+  GH_HTTP="${http:-none}"
+  if [ "$GH_HTTP" = "200" ]; then
+    if [ ! -s "$GH_READ_BODY" ]; then
+      GH_FAIL_KIND="empty"
+      return 1
+    fi
+    GH_READ_RC=0
+    return 0
+  fi
+  #  三档分开（=> 而而那**处置**逐字**对得上号**）
+  case "$GH_HTTP" in
+    403|429)
+      if grep -qi "rate limit" "$GH_READ_BODY" 2>/dev/null; then
+        GH_FAIL_KIND="ratelimit"
+      elif grep -qi "bad credentials" "$GH_READ_BODY" 2>/dev/null; then
+        GH_FAIL_KIND="auth"
+      else
+        GH_FAIL_KIND="forbidden"
+      fi ;;
+    401)
+      GH_FAIL_KIND="auth" ;;
+    404)
+      GH_FAIL_KIND="notfound" ;;
+    *)
+      GH_FAIL_KIND="http_${GH_HTTP}" ;;
+  esac
+  return 1
+}
+
+#  那一档逐字**说人话**（=> 而而那标记逐字是给机器看的、这一句是给人看的）。
+gh_fail_label() {
+  case "$1" in
+    ok)         echo "那一次读逐字成了" ;;
+    ratelimit)  echo "限流（那 API 逐字 60 次/小时限匿名读、5000 次/小时限带身份读）" ;;
+    auth)       echo "鉴权被拒（那 token 逐字是错的 / 过期了 / 没这个权限）" ;;
+    notfound)   echo "那个 tag 或那个端点逐字不存在" ;;
+    forbidden)  echo "被拒（那 body 逐字没说清是限流还是鉴权）" ;;
+    empty)      echo "读到了 200 但那 body 逐字是空" ;;
+    parse)      echo "读到了 200 但那 JSON 逐字解析不了" ;;
+    http_none)  echo "连 HTTP 那一档都没拿到" ;;
+    http_*)     echo "那一读逐字失败（HTTP ${1#http_}）" ;;
+    *)          echo "那一读逐字失败" ;;
+  esac
+}
 
 #  而 crypto **不再作为独立的一件取**（01 今天裁：  而它就是 openssl 那一件的一部分）
 #   缺陷名（C-102）**那一件被当独立一件固化，于是要拆出一份自己的字节**：
@@ -67,26 +205,37 @@ PIECES=(bash busybox crypto curl git jq openssl ripgrep zlib)
 #  => 而那**改法**：=> 而而那**三处**逐字**各**带一个**标记**、=> 而而那**调用方**逐字**分得开**。
 #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 fetch_asset() {
-  local tag="$1" asset="$2" dir="$3" url
-  local hdr=()
-  [ -n "${GITHUB_TOKEN:-}" ] && hdr=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  # curl 到 api.github.com 偶发 TLS 断（unexpected eof while reading）—— 重试三次。
-  url="$(curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null \
-        | node -e '
+  local tag="$1" asset="$2" dir="$3" url fa_err
+  #  缺陷名（C-102）**那一次读逐字只认 GITHUB_TOKEN、=> 而那 workflow 那一格逐字给的是 GH_TOKEN**
+  #    => 而那**后果**：那「有没有身份」那一格逐字**过了**（=> 而那 GH_TOKEN 逐字是给了的）、
+  #       => 而那**请求**逐字**没带身份**（=> 而那匿名读逐字 60 次/小时、=> 而那症状逐字是 403 限流），
+  #       => 而而那**看不出**是「令牌名不对」——**检查里过了但请求里没带身份**。
+  #  => 而那**改法**：=> 而那一次读逐字**只**走 gh_read_release、=> 而那一个**只**认 GH_HDR、
+  #     => 而 GH_HDR **只**由那唯一一份身份（GH_TOKEN 或 GITHUB_TOKEN 择一）构造。
+  if ! gh_read_release "$tag"; then
+    #  那一读逐字**失败**了（=> 而限流 / 鉴权 / 端点错那**三档**逐字**分得开**了）。
+    echo "__FA_READ_FAILED__ http=${GH_HTTP:-none} kind=${GH_FAIL_KIND}" >&2
+    return 1
+  fi
+  #  那一次读逐字**成了**、=> 而那 body 逐字**已经**落在那一份落地的档里（=> 而那不用再读一次）。
+  fa_err="$STAGE/.fa-parse.err"
+  url="$(node -e '
+            const fs = require("fs");
             let d = "";
-            process.stdin.on("data", c => d += c).on("end", () => {
-              let j;
-              try {
-                j = JSON.parse(d);
-              } catch (e) {
-                process.stderr.write("__FA_PARSE_FAILED__\\n");
-                process.exit(3);
-              }
-              const a = (j.assets || []).find(x => x.name === process.argv[1]);
-              if (a) process.stdout.write(a.browser_download_url);
-            });
-          ' -- "$asset" 2>/dev/null)"
+            try { d = fs.readFileSync(process.argv[1], "utf8"); }
+            catch (e) { process.stderr.write("__FA_PARSE_FAILED__\n"); process.exit(3); }
+            let j;
+            try { j = JSON.parse(d); }
+            catch (e) { process.stderr.write("__FA_PARSE_FAILED__\n"); process.exit(3); }
+            const a = (j.assets || []).find(x => x.name === process.argv[2]);
+            if (a) process.stdout.write(a.browser_download_url);
+          ' "$GH_READ_BODY" "$asset" 2>"$fa_err")" || { cat "$fa_err" >&2; return 1; }
+  if [ -s "$fa_err" ]; then
+    #  缺陷名（C-102）**那解析失败那一族逐字把 stderr 逐字吞掉**（=> 而那旧版逐字是 2>/dev/null）、
+    #    => 而而那**调用方**逐字**只**看到「那 url 逐字是空」、=> 而而那**分不出**是「那名字不在」还是「那读没读到」。
+    cat "$fa_err" >&2
+    return 1
+  fi
   if [ -z "$url" ]; then
     #  那个**名字**逐字**没**被找到：=> 而而那**可能**是「那名字**不在**那筐里」、
     #  => 而而那**也**可能是「那名字**在**那筐里、而而那**读**逐字**没读到**」。
@@ -124,33 +273,38 @@ fetch_asset() {
 #    => 而而那一读逐字**失败**时逐字**走**另一条路、=> 而而那 stdout 逐字**带**一个**标记**。
 #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 list_release_assets() {
-  local tag="$1" hdr=()
-  [ -n "${GITHUB_TOKEN:-}" ] && hdr=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  local body rc http
+  local tag="$1"
+  local body rc http kind
   #  缺陷名（C-102）**那读失败那一族逐字只带一个 curl 逐字自己的码、=> 而而那 HTTP 那一档逐字要另取**
   #    —— 而实际上那 rc 逐字**只是** curl 那一族逐字**自己**的退出码（=> 而那 22 逐字是 curl 的「HTTP >= 400」那个码），
   #    => 而而那 401 与那 404 与那 429 那**几档**逐字**共用**同一个 22、=> 而而它们逐字**分不出来**。
-  #    => 而而那 HTTP 那一档逐字**能**另取（=> 而那 curl 逐字可以用 -w %{http_code} 逐字**带**出来），
-  #    => 而而那**改法**：=> 而那 body 逐字走 stdout、=> 而那 HTTP 那一档逐字走 stderr、=> 而而那 rc 逐字**也**留着。
-  #    => 而而那**调用方**逐字**能**分出那 401 与那 404 那**两**档。
-  #    => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
-  http="$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 2 "${hdr[@]}" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null || true)"
-  body="$(curl -fsSL --retry 3 --retry-delay 2 "${hdr[@]}" -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null)"
-  rc=$?
-  if [ "$rc" -ne 0 ] || [ -z "$body" ]; then
-    #  那一读逐字**失败**了：=> 而而那**不是**「那筐真的一件 asset 都没有」。
-    #  => 而而那逐字**带**一个标记、=> 而而那**调用方**逐字能**分出**那两种。
-    #  => 而而那 HTTP 那一档逐字**也**在标记里、=> 而而那**调用方**逐字**能**分出那 401 与那 404。
-    LRA_HTTP="${http:-none}"
+  #  => 而那**改法**：=> 而那一次读逐字**只**做一次（=> 而那旧版逐字读了**两次**：
+  #    一次 -w '%{http_code}' 只为拿那一档、一次取 body —— => 而那**两次**逐字**各**吃一次 API 配额），
+  #    => 而那 HTTP 那一档与那 body 逐字**一次**取回来、=> 而而那**三档**（限流 / 鉴权 / 端点错）逐字**分得开**。
+  #  => 而那**令牌名**逐字**只有** GH_HDR 那**一个**（=> 而那旧版逐字只认 GITHUB_TOKEN、
+  #    => 而那 workflow 那一格逐字给的是 GH_TOKEN、=> 而那**后果**是「检查里过了但请求里没带身份」）。
+  if ! gh_read_release "$tag"; then
+    rc=1
+    http="${GH_HTTP:-none}"
+    kind="${GH_FAIL_KIND:-http_none}"
+    LRA_HTTP="$http"
     LRA_RC="$rc"
-    echo "__LRA_READ_FAILED__ rc=$rc http=${http:-none}" >&2
+    LRA_KIND="$kind"
+    #  => 而那标记逐字**带着**那 HTTP 那一档与那**那一档**（=> 而而那旧版逐字只有 rc 与 http）。
+    echo "__LRA_READ_FAILED__ rc=$rc http=${http:-none} kind=${kind}" >&2
+    #  => 而那读数逐字**另外**落**一个档**（=> 而那三个全局变量逐字**只**在**那函数自己**的壳里**有值**、
+    #    => 而而那调用方逐字把它装在 `$(...)` 里面、=> 而那**子壳**逐字**改不到**那调用方的变量）。
+    printf 'rc=%s http=%s kind=%s\n' "$rc" "${http:-none}" "$kind" > "${STAGE}/.lra-readings"
     return 1
   fi
-  LRA_HTTP="${http:-none}"
+  body="$(cat "$GH_READ_BODY")"
+  rc=0
+  http="${GH_HTTP:-none}"
+  kind="ok"
+  LRA_HTTP="$http"
   LRA_RC="$rc"
+  LRA_KIND="$kind"
+  printf 'rc=%s http=%s kind=%s\n' "$rc" "${http:-none}" "$kind" > "${STAGE}/.lra-readings"
   printf '%s' "$body" \
     | node -e '
         let d = "";
@@ -160,8 +314,27 @@ list_release_assets() {
           try { j = JSON.parse(d); } catch (e) { process.stderr.write("__LRA_PARSE_FAILED__\\n"); process.exit(3); }
           (j.assets || []).map(x => x.name).filter(n => !/\.sha256$/.test(n)).forEach(n => process.stdout.write(n + "\n"));
         });
-      ' 2>/dev/null
+      '
+
 }
+
+#  `--print-pieces` 那一格（=> 而那 build-apk.yml:329 那一格逐字是
+#    `source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces; echo ${#PIECES[@]}`）。
+#  缺陷名（C-102）**那一个钩子逐字不存在**、=> 而而那**调用点**逐字**在**：
+#    => 而那 source 逐字**顺带**把那整个取件循环逐字**跑一遍**（=> 而那下载两遍、=> 而那配额吃两遍）、
+#    => 而而那 stdout 逐字**是**那取件那一份输出、=> 而而那**调用方**逐字**读不出**那件数。
+#  => 而那**处置**：=> 而那**一个钩子**逐字**落**在这里、=> 而那 --print-pieces 逐字**只**答那件数。
+#    => 而那 stdout 逐字**不**多写（=> 而那调用方逐字自己 `echo ${#PIECES[@]}`、=> 而那 stdout 逐字**只**是那一个数）。
+#  => 而那**停法**：=> 而那**被** source 的时候逐字**只** `return`（=> 而那 $0 逐字是「bash」、
+#    => 而那 `exit` 逐字会把那**调用方**的壳逐字**一起**带走）、=> 而那**被**直接执行的时候逐字 `exit`。
+#  => 而那**位置**：=> 而那**这一段**逐字**落**在那**所有**函数逐字**定义完**之后、
+#    => 而**不**是**在**那 PIECES 那一行**之后**（=> 而那 PIECES 那一行**之后**逐字是**那函数定义之前**、
+#    => 而那**被** source 的时候逐字**提前** return、=> 而那 gh_read_release / list_release_assets
+#    => 逐字**还不存在**、=> 而那调用方逐字**调不到**它们）。
+if [ "$PRINT_PIECES_ONLY" -eq 1 ]; then
+  if [ "${BASH_SOURCE[0]}" = "$0" ]; then exit 0; else return 0; fi
+fi
+
 mkdir -p "$ASSETS" "$STAGE"
 
 missing=0
@@ -194,17 +367,24 @@ for id in "${PIECES[@]}"; do
     lra_out="$(list_release_assets "$tag" 2>"$lra_err")" && lra_rc=0 || lra_rc=$?
     others="$lra_out"
     lra_http="none"
-    if [ -f "$lra_err" ]; then
-      case "$(cat "$lra_err")" in
-        *"http="*) lra_http="$(printf '%s' "$(cat "$lra_err")" | tr ' ' '\n' | sed -n 's/^http=//p' | head -1)" ;;
+    lra_kind="none"
+    #  => 而那读数逐字**从**那个档**取**（=> 而那三个全局变量逐字**只**在**那函数自己**的壳里**有值**、
+    #    => 而而那调用方逐字把它装在 `$(...)` 里面、=> 而那**子壳**逐字**改不到**那调用方的变量）。
+    if [ -f "${STAGE}/.lra-readings" ]; then
+      case "$(cat "$STAGE/.lra-readings")" in
+        *"http="*) lra_http="$(printf '%s' "$(cat "$STAGE/.lra-readings")" | tr ' ' '\n' | sed -n 's/^http=//p' | head -1)" ;;
+      esac
+      case "$(cat "$STAGE/.lra-readings")" in
+        *"kind="*) lra_kind="$(printf '%s' "$(cat "$STAGE/.lra-readings")" | tr ' ' '\n' | sed -n 's/^kind=//p' | head -1)" ;;
       esac
     fi
     if [ "$lra_rc" -ne 0 ]; then
-      #  那一读逐字**失败**了（=> 而而那限流 / 鉴权过期 / 端点变了 / 网络 那一族）：
+      #  那一读逐字**失败**了（=> 而而那限流 / 鉴权 / 端点变了 / 网络 那一族）：
       #  => 而而那**不是**「那筐真的一件 asset 都没有」、=> 而而那**不**能按「缺货」处置。
       #  => 而而那 HTTP 那一档逐字**已经**被带出来（=> 而而那 401 与那 404 与那 429 那**几档**逐字**分得开**了）。
       echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（=> 而而那 stdout 逐字是空、=> 而而那**不是**『那筐一个 asset 都没有』）。"
-      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、=> 而而那 curl 逐字自己的码逐字**在**那标记里、=> 而而那**两档**逐字**不是**同一档。*"
+      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、=> 而那**那一档** = ${lra_kind:-未知}、=> 而而那 curl 逐字自己的码逐字**在**那标记里、=> 而而那**两档**逐字**不是**同一档。*"
+      echo "::notice:: 那一档逐字说人话：$(gh_fail_label "$lra_kind")。*"
       echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），=> 而而那**不是** dispatch 那一件能解决的。*"
       miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then

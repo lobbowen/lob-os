@@ -28,6 +28,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    #  缺陷名（C-102）**那 workflow 逐字没有 permissions 那一块**、=> 而而那 GITHUB_TOKEN
+    #    逐字**默认**拿的是那仓的**默认**权限（=> 而那一档**按仓设置**变、=> 而而那**不可控**）。
+    #    => 而那取件那一格逐字**要**用那 GITHUB_TOKEN 去读 Release 清单、=> 而而那**只要**读。
+    #    => 而那**处置**：=> 而那 job 逐字**显式**给那 contents: read。
+    #    => 而那**不碰**那两处 APK_PUBLISH_TOKEN（=> 而那 :78 与那 :475 逐字是**发布**那一族的身份、
+    #      => 而而那**不是**取件的身份、=> 而而那**不合并**）。
+    permissions:
+      contents: read
     env:
       RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
       RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/os-release-') && github.ref_name }}
@@ -284,6 +292,14 @@ jobs:
       # 回退去编译正是「APK 又开始编件」的由来，而且会把「某个件没固化」
       # 这个事实藏起来 —— 构建变慢、变脆，还说不清为什么。
       - name: 取件（从 Release 取 base 筐的固化产物）
+        env:
+          #  缺陷名（C-102）**那一格逐字没有令牌**、=> 而而那脚本那一格逐字**要**读 Release 清单、
+          #    => 而而那**没有身份**就**匿名**读、=> 而而那匿名读逐字 60 次/小时、=> 而而那症状逐字是 403 限流。
+          #    => 而那**处置**：=> 而那**令牌**逐字**在这一格**给（=> 而那 step 逐字**必须**有 env，
+          #      => 而那 job 逐字**没有**那一个、=> 而而那**不放**在 job 那一层）。
+          #    => 而那**身份**：=> 而那 secrets.GITHUB_TOKEN 逐字是那**只读**的身份（=> 而那 contents: read）、
+          #      => 而而那**不是**那 APK_PUBLISH_TOKEN（=> 而那**不是**这一格的身份）。
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           bash scripts/toolchain/fetch-prebuilt-pieces.sh
