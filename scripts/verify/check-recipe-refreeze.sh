@@ -55,6 +55,27 @@ if [ ! -x "$CACHE_KEY" ] && [ ! -f "$CACHE_KEY" ]; then
   die "cache-key.sh 读不到：$CACHE_KEY" "而那一格逐字要那指纹算据、=> 而那算据逐字不在"
 fi
 
+#  => 而那**已发布**那一份的资产名（=> 而那从那 Release 上读、=> 而那逐字要那 token）
+publishedAssetNames() {
+  local tool="$1"
+  local tag asset
+  tag="$(bash "$CACHE_KEY" tag "$tool" 2>/dev/null || true)"
+  [ -n "$tag" ] || return 0
+  [ -n "${GITHUB_TOKEN:-}" ] || return 0
+  asset="$(bash "$CACHE_KEY" asset "$tool" 2>/dev/null || true)"
+  [ -n "$asset" ] || return 0
+  #  => 而那那**已发布**的那一份逐字是那 tag 下逐字**同源**的那一个（=> 而那 src 段逐字在名字里）
+  curl -sS -L --max-time 30 -H "Authorization: Bearer $GITHUB_TOKEN" \
+    "https://api.github.com/repos/lobbowen/lob-os/releases/tags/$tag" 2>/dev/null \
+    | node -e '
+let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+  try {
+    const j=JSON.parse(d);
+    for (const a of (j.assets||[])) process.stdout.write(String(a.name||"")+"\n");
+  } catch(e) {}
+})' 2>/dev/null | grep -E 'src[0-9a-f]+' || true
+}
+
 echo "== 那「recipe 指纹变了要重新固化」那一格 =="
 echo "   算据：scripts/toolchain/cache-key.sh"
 echo "   当前 HEAD：$(git -C "$ROOT" rev-parse HEAD 2>/dev/null | cut -c1-12)"
@@ -87,10 +108,23 @@ for (const k of Object.keys(pins)) {
 }
 ' "$ROOT/.github/native-capabilities-pin.json" "$p" 2>/dev/null)"
   old_src="$(printf '%s' "$old" | grep -o 'src[0-9a-f]*' | head -1)"
-  echo "   已发布那一份：${old_src:-(pin 记录里读不到)}"
   if [ -z "$old_src" ]; then
-    echo "   [缺] 那已发布那一份的指纹逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
-    rc_all=1; continue
+    #  => 而那**不在**那 pin 记录里的那几件（=> 而那 git 那一件逐字走 tool 筐）
+    #    => 而它们逐字**不**在底座件那一份 pin 记录里
+    #    => 而而那**已发布**那一份的指纹逐字从**那 Release 上那资产名**里读
+    #      （=> 而那 asset 名逐字含那 src<12 位>、=> 而那 tag 逐字是那 `cache-key.sh tag` 那一族）。
+    #    => 而而那读不到时逐字**报缺**（=> 而按 C-05 不猜填）。
+    published="$(publishedAssetNames "$p")"
+    old_src="$(printf '%s\n' "$published" | grep -o 'src[0-9a-f]*' | head -1)"
+    echo "   已发布那一份：${old_src:-(Release 上读不到)}"
+    if [ -z "$old_src" ]; then
+      echo "   [缺] 那已发布那一份的指纹逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
+      echo "        => 而那这一件逐字**不在**那 pin 记录里、=> 而而它逐字走**另一个筐**"
+      echo "        => 而而那它逐字要么被**纳进**那 pin 记录、=> 而要么在脚本里另算那一筐"
+      rc_all=1; continue
+    fi
+  else
+    echo "   已发布那一份：$old_src"
   fi
   if [ "$cur_src" = "$old_src" ]; then
     echo "   [绿] 那指纹逐字**没变**（=> 而那这一件逐字**不用**重新固化）"

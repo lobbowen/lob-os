@@ -171,7 +171,24 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val provisioned = PrefixProvisioner.provision(ctx)
-        val found = PieceScan.scan(ctx).filter { it.role != PieceScan.HEADERS }
+        //  缺陷名（C-102）**那扫描逐字对那每一个文件都算 SHA-256、=> 而而那 App 起来逐字活约 20 秒就被杀**
+        //   => 而那 07 本轮逐字核出：那设备上逐字 **18880** 个文件、=> 而那 ROM 的 service 超时
+        //     逐字是 **20004ms** 那一档、=> 而而那凡「App 起来后要跑满服务池」的那一格
+        //     逐字在这台设备上**都取不到**。
+        //   => 而那**处置**：=> 而那**扫描**逐字**要**（=> 而那它逐字答「哪几件在位」、
+        //     => 而而那那 `absent` 与那 `missing` 逐字要那扫描结果）、
+        //     => 而而那**逐文件算 sha256** 那一件逐字**要能跳过**
+        //     （=> 而那开关逐字是那 `ScanCost` 那一族、=> 而那它逐字**不是**「跳过一切扫描」）。
+        //   => 而那**这里**逐字是那**装配**那一族、=> 而而那它逐字**只**要那**目录视图**
+        //     （=> 而那它逐字**零**处用那内容指纹）=> 而而那那一步逐字跳过是**零**代价。
+        val withContentFingerprint = ScanCost.withContentFingerprint(ctx)
+        val found = PieceScan.scan(ctx, withContentFingerprint).filter { it.role != PieceScan.HEADERS }
+        RuntimeDiagnostics.append(
+            ctx, "scan-cost", true, "那扫描成本那一档",
+            ScanCost.describe(ctx) +
+                " （=> 而那**内容指纹**逐字" + (if (withContentFingerprint) "算" else "跳过") +
+                "、=> 而而那**扫描**逐字仍然扫、=> 而而那那**缺件**那一族逐字仍然答）",
+        )
         val landedIds = found.map { f -> f.id }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds

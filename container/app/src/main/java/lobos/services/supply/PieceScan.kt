@@ -34,7 +34,19 @@ object PieceScan {
 
         val libName: String get() = entry.substringAfterLast('/', "")
     }
-    fun scan(ctx: Context): List<Found> {
+    /**
+     * 那**扫描**那一格 —— 「跳过 rebuild」那个开关逐字在哪一层。
+     *
+     *  ★ 这一格逐字**不是**「跳过一切扫描」：
+     *   · 而那它逐字**仍然**扫那**目录**、=> 而而那它逐字**仍然**答「哪几件在位」、
+     *     => 而而那它逐字**仍然**答那**入口在不在**（=> 而那 `entryOf` 那一格逐字**不受**这个开关影响）、
+     *     => 而而那它逐字**仍然**答那**缺件**那一族。
+     *   · 而而那它逐字**不**做的是「那**每一个**文件**读一遍并算一遍 sha256」那一件。
+     *
+     *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
+     *   => 而那**默认逐字是 true**（=> 而那它是那**默认**行为、=> 而而那**不**改变任何东西）
+     */
+    fun scan(ctx: Context, withContentFingerprint: Boolean = true): List<Found> {
         val lib = SystemDirs.opt(ctx)
         val kids = lib.listFiles() ?: return emptyList()
         val out = mutableListOf<Found>()
@@ -42,7 +54,7 @@ object PieceScan {
             if (!pieceDir.isDirectory) continue
             val id = pieceDir.name
             if (File(pieceDir, "include").isDirectory) {
-                val hf = filesOf(pieceDir)
+                val hf = filesOf(pieceDir, withContentFingerprint)
                 out += Found(id, "from-layout", pieceDir, "include", HEADERS,
                     sha256Of(pieceDir, hf), metaOf(pieceDir), hf)
                 continue
@@ -54,7 +66,7 @@ object PieceScan {
                 // **不再**由运行期读那份字节的 ELF 头回答（第三行规则）。无效则**报缺**：continue（不登记）。
                 val declared = metaOf(verDir)?.optString("entry", "").orEmpty()
                 val entry = entryOf(verDir, declared) ?: continue
-                val files = filesOf(verDir)
+                val files = filesOf(verDir, withContentFingerprint)
                 out += Found(
                     id = id,
                     version = version,
@@ -234,7 +246,31 @@ object PieceScan {
         return ""
     }
 
-    private fun filesOf(verDir: File): List<UnitEntry.FileRec> {
+    /**
+     * 那**扫描成本**那一格 —— 「跳过 rebuild」那个开关逐字**管**的是哪一段。
+     *
+     *  缺陷名（C-102）**那扫描逐字对那每一个文件都算 SHA-256、=> 而而那 App 起来逐字活约 20 秒就被杀**
+     *   => 而那旧版逐字是 `verDir.walkTopDown().forEach { … SupplySha.sha256(f) }`
+     *     => 而而那它逐字**对**那**每一个**文件**读一遍并算一遍 sha256
+     *     => 而而那设备上逐字 **18880** 个文件（=> 而那 python **8096**、sysroot **3385**、
+     *       npm **1937**、llvm **901**、git 224、openssl 149）
+     *     => 而而那那 ROM 的 service 超时逐字是 **20004ms** 那一档
+     *     => 而而那凡「App 起来后要跑满服务池」的那一格、逐字在这台设备上**都取不到**
+     *       （=> 而那**不只是** M7-12 那一格）。
+     *   => 而那**处置**：=> 而那**扫描**逐字**要**（=> 而那它逐字答「哪几件在位」、
+     *     => 而而那它逐字是那 RuntimeEnvironment 那一族**唯一**要的东西），
+     *     => 而而那**逐文件算 sha256** 那一步逐字**要能跳过**
+     *     （=> 而而那它逐字是「那**内容**指纹」、=> 而而那 RuntimeEnvironment 那一族逐字**零**处用它）。
+     *
+     *  ★ 这一格逐字**不是**「跳过一切扫描」：
+     *   · 而那它逐字**仍然**扫那**目录**、=> 而而那它逐字**仍然**答「哪几件在位、哪一个入口在不在」、
+     *     => 而而那它逐字**仍然**答那**缺件**那一族（=> 而那 `absent` 与那 `missing` 逐字要那扫描结果）。
+     *   · 而而那它逐字**不**答的是「那**每一件**的**内容**指纹」=> 而而那它逐字**报缺**（=> 而按 C-05）。
+     *   · => 而而那**语义**逐字要**明确**：=> 而那它逐字是「**这一趟逐字只要那目录视图、而那内容指纹逐字跳过**」。
+     *
+     *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
+     */
+    private fun filesOf(verDir: File, withContentFingerprint: Boolean): List<UnitEntry.FileRec> {
         val base = verDir.absolutePath
         val out = mutableListOf<UnitEntry.FileRec>()
         verDir.walkTopDown().forEach { f ->
@@ -242,13 +278,20 @@ object PieceScan {
             if (f.name == "component-meta.json") return@forEach
             val rel = f.absolutePath.removePrefix(base).trimStart('/')
             if (rel.isEmpty()) return@forEach
-            out += UnitEntry.FileRec(rel, SupplySha.sha256(f))
+            //  => 而那跳过那一档逐字**记**那**空**指纹（=> 而按 C-05 报缺、=> 而而那不猜填）
+            //    ——=> 而而那它逐字**不被**冒充成「那内容逐字是空」
+            //    （=> 而那 `sha256Of` 那一格逐字会拿那 sha256 逐字去算那件指纹、
+            //      => 而而那它逐字得**看得见**那「这一趟没算」这一件）。
+            out += UnitEntry.FileRec(rel, if (withContentFingerprint) SupplySha.sha256(f) else "")
         }
         return out.sortedBy { it.path }
     }
 
     private fun sha256Of(verDir: File, files: List<UnitEntry.FileRec>): String {
         if (files.isEmpty()) return ""
+        //  => 而那**跳过内容指纹**那一档逐字**不许**产出那一个假的件指纹
+        //    （=> 而那它逐字是「那内容逐字**没算**」、=> 而按 C-05 报缺、=> 而不猜填）。
+        if (files.any { it.sha256.isEmpty() }) return ""
         val md = java.security.MessageDigest.getInstance("SHA-256")
         for (fr in files) {
             md.update(fr.path.toByteArray(Charsets.UTF_8))
