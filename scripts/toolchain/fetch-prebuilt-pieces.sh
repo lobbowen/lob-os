@@ -441,9 +441,25 @@ for id in "${PIECES[@]}"; do
   #      => 而而那**第三**处逐字 = 那**校验**那一支逐字**不**看**那格式**（=> 而它逐字**对**那**下载**下来那**整包**算**那 sha256**）。
   SRC="$STAGE/$id/$asset"
   cp -f "$SRC" "$ASSETS/$id.zip"
-  #  => 而那**真**形态逐字**按**那**头四字节**判**（=> 而那**它**们**逐字是**那**两**件**事**：「那**头**是**什么**」与「那**内容**是**什么**」））。
-  MAGIC="$(od -An -tx1 -N4 "$SRC" 2>/dev/null | tr -d " \n")"
-  if [ "$MAGIC" = "1f8b0800" ] || [ "$MAGIC" = "1f8b0801" ] || [ "$MAGIC" = "1f8b0808" ]; then
+  #  缺陷名（C-102）**这里逐字是第二套容器判别源、=> 而仓内的判别源逐字已经有一份** ——
+  #    => 而那旧版逐字是 `MAGIC="$(od -An -tx1 -N4 "$SRC" ...)"` 加一条三值分支
+  #      （1f8b0800 / 1f8b0801 / 1f8b0808）、
+  #    => 而那 scripts/toolchain/fmt.sh 那一族逐字**已经**判那同一件事
+  #      （=> 而它逐字 :14 那行 head -c 4 | od -An -tx1 | tr -d ' \n'、=> 而 :16 的 504b* 是 zip、
+  #      => 而 :17 的 1f8b* 是 gzip），
+  #    => 而那两套逐字**各判各的**（=> 而那一套**没有** zip64 那一档）。
+  #    => 而按 C-994「判别源必须唯一、=> 而其余各处改成调它」：
+  #      这一处逐字**改成调 fmt.sh**、=> 而那 MAGIC 那一格逐字**删掉**。
+  #  => 而那**判别的内容**逐字不变（=> 而那 gzip 那一支还是解包、=> 而那 zip 那一支还是直接用）。
+  #  => 而那新增的 zip64 那一档逐字**不影响**这一支（=> 而那 zip64 逐字**也是** zip 容器、
+  #      => 而那 zip 分支逐字照样直接用、=> 而它逐字**不需要**解包）。
+  FMT_SH="$(cd "$(dirname "$0")" && pwd)/fmt.sh"
+  [ -f "$FMT_SH" ] || { echo "::error title=没有判别源::$FMT_SH 不在 —— 容器判别源必须唯一"; missing=$((missing+1)); continue; }
+  # shellcheck source=../toolchain/fmt.sh
+  . "$FMT_SH"
+  MAGIC="$(fmt_magic "$SRC")"
+  SRC_FMT="$(fmt_of "$SRC")"
+  if [ "$SRC_FMT" = "gzip" ]; then
     #  => 而那**它**逐字**是**那 gzip（=> 而而那**它**们**逐字是**那**两**件**事**：「那**资产名**是**什么**」与「那**字节**是**什么**」））。
     #  => 而那**它**逐字**是**那 tar 的**那**一**层**（=> 而而那**它**里面逐字**有**那**内层**那 zip）。
     rm -rf "$STAGE/$id/unpacked"
@@ -456,24 +472,92 @@ for id in "${PIECES[@]}"; do
     #  => 而那**内层**那 zip 逐字**按**那**件名**挑**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**件**是**什么**」与「那**字节**是**什么**」）。
     #     => 而那 tar 底下逐字**可能**有**好几**个**件包**（=> 而那**它们**逐字**是**那**两**件**事**）。
     INNER=""
+    INNER_N=0
     for _z in "$STAGE/$id/unpacked"/component-"$id"-*.zip "$STAGE/$id/unpacked"/*/component-"$id"-*.zip; do
       [ -f "$_z" ] || continue
-      INNER="$_z"; break
+      INNER="$_z"; INNER_N=$((INNER_N+1))
     done
-    if [ -z "$INNER" ]; then
+    if [ "$INNER_N" -eq 0 ]; then
       for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
         [ -f "$_z" ] || continue
-        INNER="$_z"; break
+        INNER="$_z"; INNER_N=$((INNER_N+1))
       done
     fi
-    if [ -z "$INNER" ]; then
+    if [ "$INNER_N" -eq 0 ]; then
       echo "::error title=$id 内层没有件包::那 gzip 解开了，=> 而而那**它**里面逐字**没有**那 .zip。"
+      missing=$((missing+1)); continue
+    fi
+    #  缺陷名（C-102）**「内层不唯一」那一档逐字被静默取第一个** ——
+    #    => 而那旧版逐字是 `INNER="$_z"; break`（=> 而那它逐字**取第一个**、=> 而那不唯一**不报**）。
+    #    => 而「内层不唯一时怎么办」那一格**归 01 裁**（=> 而本处**不**拍板）、
+    #      => 而本处逐字**把那一档测出来**（=> 而 01 才有事实可裁）。
+    if [ "$INNER_N" -gt 1 ]; then
+      echo "::error title=$id 内层不唯一::那 gzip 解开了，=> 而而那里面逐字有 $INNER_N 个件包候选（=> 而那本该取哪一个**归 01 裁**）。"
+      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
+        [ -f "$_z" ] || continue
+        echo "::error::  候选 $_z（头四字节 $(fmt_magic "$_z")）"
+      done
+      echo "::error:: 而那本处逐字**不**取第一个（=> 而那旧版逐字取第一个、=> 而那会把那一颗取错）。"
       missing=$((missing+1)); continue
     fi
     cp -f "$INNER" "$ASSETS/$id.zip"
     printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 gzip，那内层取出来）\n" "$id" "$asset" "$id"
+  elif [ "$SRC_FMT" = "zip" ] || [ "$SRC_FMT" = "zip64" ]; then
+    #  => 而那**它**逐字是那 zip（=> 而那 CI artifact 那一族逐字是「zip 套内层」那个形状：
+    #     => 而那外层逐字装着那**内层**那一个件包、=> 而那内层才是那一颗件）。
+    #  => 而那旧版逐字**没有**这一支（=> 而它逐字把那外层当件包直接用、
+    #     => 而而那 unzip -p 逐字**读不到** component-meta.json、=> 而而那 meta_json 逐字是那空）。
+    #  缺陷名（C-102）**「外层套内层」那一档逐字按「外层中央目录条目数 = 1」判** ——
+    #    => 而那旧版逐字是 `if [ "$OUTER_ENTRIES" = "1" ]`，
+    #    => 而而那**一个判据要判两件不同的事**（=> 而按 C-135 那不是同一问）：
+    #      · 「那 CI artifact 那一族」逐字外层**只有一条**条目（=> 而那一条逐字是那内层那一个 .zip）；
+    #      · 而那 git 那一件的真件包逐字外层**有 239 条**条目（=> 而那它**就是**那一颗件、=> 而它**不是**套着）。
+    #    => 而一个判据判两件事、=> 而它在别的形状上**会错**。
+    #  => 而那**处置**：=> 而那一档逐字**按字节**判（=> 而按 C-994 的立论：形态按头字节魔数判、=> 而不按名字）——
+    #    => 而那**内层**逐字**解出来**、=> 而它的头四字节逐字**是** 504b* 才算它是那 zip 容器。
+    #    => 而「哪一层才算那一颗件」那一格**归 01 裁**（=> 而本处**不**拍板、=> 而只把事实摆出来）。
+    rm -rf "$STAGE/$id/unpacked"
+    mkdir -p "$STAGE/$id/unpacked"
+    if ! unzip -q -o "$SRC" -d "$STAGE/$id/unpacked" 2>/dev/null; then
+      echo "::error title=$id 解包失败::那资产逐字是那 zip（头四字节 $MAGIC），=> 而而那 unzip 逐字**读不通**。"
+      missing=$((missing+1)); continue
+    fi
+    #  => 而那**内层**那 zip 逐字**按字节**挑（=> 而**不按名字**）：
+    #    => 而那候选逐字是那解出来的那几个 .zip、=> 而那**头四字节**逐字是 504b* 的那一个才是那 zip 容器。
+    INNER=""
+    INNER_N=0
+    for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
+      [ -f "$_z" ] || continue
+      _zm="$(fmt_magic "$_z")"
+      case "$_zm" in
+        504b*) INNER="$_z"; INNER_N=$((INNER_N+1)) ;;
+      esac
+    done
+    if [ "$INNER_N" -eq 0 ]; then
+      #  => 而那**没有一个**内层逐字是那 zip 容器（=> 而那外层逐字**就是**那一颗件本身）
+      printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
+    elif [ "$INNER_N" -gt 1 ]; then
+      #  => 而那「内层不唯一」那一档：=> 而那一格**归 01 裁**（=> 而本处**不**拍板）、
+      #    => 而本处逐字**把那一档测出来**。
+      echo "::error title=$id 内层不唯一::那外层 zip 解开了，=> 而而那里面逐字有 $INNER_N 个 **zip 容器**（=> 而那该取哪一个**归 01 裁**）。"
+      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
+        [ -f "$_z" ] || continue
+        _zm="$(fmt_magic "$_z")"
+        case "$_zm" in 504b*) echo "::error::  候选 $_z（头四字节 $_zm）" ;; esac
+      done
+      echo "::error:: 而那本处逐字**不**取第一个（=> 而那会把那一颗取错）。"
+      missing=$((missing+1)); continue
+    else
+      cp -f "$INNER" "$ASSETS/$id.zip"
+      printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
+    fi
   else
-    printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
+    #  => 而那**它**逐字**既不是** gzip **也不是** zip（=> 而那形态逐字是那 fmt.sh 逐字给的）。
+    #  => 而那旧版逐字把它**当**那 zip 那一支用（=> 而那 unzip -p 逐字读不到）。
+    #  => 而现在逐字**报出来**（=> 而按 C-05「缺字段就报缺」、=> 而不猜填）。
+    echo "::error title=$id 容器形态不认::那资产逐字是那 $SRC_FMT（头四字节 $MAGIC），=> 而而那既不是 zip 也不是 gzip。"
+    echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），=> 而那**不是** dispatch 能解决的。"
+    missing=$((missing+1)); continue
   fi
 
   # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
