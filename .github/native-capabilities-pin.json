@@ -2,7 +2,7 @@
   "schema": 2,
   "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
   "generatedBy": "scripts/publish/generate-native-capabilities-pin.js",
-  "generatedAt": "2026-10-31T11:53:06.371Z",
+  "generatedAt": "2026-10-31T12:02:46.628Z",
   "generatedAtNote": "generatedAt 是生成时刻，每次运行都会变 —— 这个文件是生成物，不要手改。",
   "abi": "arm64-v8a",
   "source": {
@@ -27,26 +27,26 @@
     {
       "id": "bash",
       "tier": "upstream",
-      "capsLibName": "libbash.so",
+      "capsLibName": "bin/bash",
       "version": "5.2.15",
       "tag": "base-bash",
       "zip": "bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
       "sha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "580e0513f0cdc631fa67a70f65e59a03a0d4a550e861da9f76b2e817d713176b"
+      "fingerprint": "66a917cff2d439518be100526ddb7fac04929a9a8536b892e7489e30b3983f3c"
     },
     {
       "id": "ripgrep",
       "tier": "upstream",
-      "capsLibName": "liblobosrg.so",
+      "capsLibName": "bin/rg",
       "version": "14.1.1",
       "tag": "base-ripgrep",
       "zip": "ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
       "sha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "8c183c47e943ff0acfd86ef65d9d6073be63bbfad09f9af2a4b95889ca905734"
+      "fingerprint": "dc73a48b82e89e9b9e61e3daedcbae3d009d36ab7ae96146697778589b3e5b7e"
     },
     {
       "id": "busybox",
@@ -123,13 +123,13 @@
   ],
   "missing": [],
   "pins": {
-    "580e0513f0cdc631fa67a70f65e59a03a0d4a550e861da9f76b2e817d713176b": {
+    "66a917cff2d439518be100526ddb7fac04929a9a8536b892e7489e30b3983f3c": {
       "id": "bash",
       "tier": "upstream",
-      "capsLibName": "libbash.so",
+      "capsLibName": "bin/bash",
       "capsEntryKind": "program",
-      "capsLibNameIsBare": true,
-      "capsLibNameFoundInArtifact": false,
+      "capsLibNameIsBare": false,
+      "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/bash",
       "entryInArtifactExists": true,
@@ -174,13 +174,13 @@
       ],
       "filesVerified": true
     },
-    "8c183c47e943ff0acfd86ef65d9d6073be63bbfad09f9af2a4b95889ca905734": {
+    "dc73a48b82e89e9b9e61e3daedcbae3d009d36ab7ae96146697778589b3e5b7e": {
       "id": "ripgrep",
       "tier": "upstream",
-      "capsLibName": "liblobosrg.so",
+      "capsLibName": "bin/rg",
       "capsEntryKind": "program",
-      "capsLibNameIsBare": true,
-      "capsLibNameFoundInArtifact": false,
+      "capsLibNameIsBare": false,
+      "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/rg",
       "entryInArtifactExists": true,
