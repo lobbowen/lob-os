@@ -129,6 +129,14 @@
         },
         "abi": {
           "type": "string"
+        },
+        "missing": {
+          "type": "boolean",
+          "description": "这一件逐字**没取到**（=> 而那一件逐字**不在**那 tools[] 里面、=> 而而它逐字在**声明侧**那一份的 missing[] 那一列里）。=> 而这一格逐字**只**出现在**声明侧**那一份（=> 而那**投影侧**那一份逐字**不留占位**、=> 而它逐字只答「取到了什么」）。"
+        },
+        "missingReason": {
+          "type": "string",
+          "description": "那一件逐字**为什么**没取到（=> 而那一档逐字是**枚举值**：ratelimit / auth / notfound / unknown / norun / contract）。=> 而它逐字答的是**成因**、=> 而**不是**猜。"
         }
       },
       "required": [
@@ -136,6 +144,28 @@
         "version",
         "sha256",
         "entry"
+      ]
+    },
+    "missingPiece": {
+      "type": "object",
+      "description": "声明侧那一份的 missing[] 一个条目（=> 而那一件逐字没取到）。",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "description": "那一档（=> 而那一档逐字是**枚举值**、=> 而**不**是散文）。"
+        },
+        "detail": {
+          "type": "string",
+          "description": "那一档的**原话**（=> 而那它逐字是那响应体或那契约的逐字原话、=> 而**不是**概括）。"
+        }
+      },
+      "required": [
+        "name",
+        "reason"
       ]
     }
   },
@@ -170,7 +200,15 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/publishedTool"
-          }
+          },
+          "description": "**取到**的那些件（=> 而那投影侧逐字只答「取到了什么」、=> 而而那没取到的逐字**不在**这里）。"
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/missingPiece"
+          },
+          "description": "**没取到**的那些件（=> 而每一件逐字带它**为什么**没取到、=> 而那一档逐字是**枚举值**）。=> 而这一格逐字是**声明侧**那一份的、=> 而而**投影侧**那一份逐字**不留占位**（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「投影侧 work/declared.json 逐字不留占位（=> 而它答『取到了什么』）」）。"
         }
       },
       "required": [

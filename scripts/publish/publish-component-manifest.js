@@ -356,6 +356,30 @@ function toolsFromDist() {
   return out;
 }
 
+// 那一趟的**缺件表**（=> 而那它逐字是那四列那一档：件名 / 那一档 / 那一档的原话 / 容器形态）。
+//   => 而那它逐字是「**声明侧**那一份」的缺件状态来源
+//     （=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「**声明侧那一份逐字要带缺件状态**」、
+//     => 而而那**投影侧**那一份逐字**不留占位**）。
+function missingPieces() {
+  const out = [];
+  const p = path.join(ROOT, 'dist', '.fetch-missing.tsv');
+  if (!fs.existsSync(p)) return out;
+  let raw = '';
+  try { raw = fs.readFileSync(p, 'utf8'); } catch (e) { return out; }
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue;
+    const parts = line.split('\t');
+    const name = String(parts[0] || '').trim();
+    if (!name) continue;
+    out.push({
+      name,
+      reason: String(parts[1] || '').trim() || 'unknown',
+      detail: String(parts[2] || '').trim(),
+    });
+  }
+  return out;
+}
+
 function versionString() {
   const d = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
   const run = process.env.GITHUB_RUN_NUMBER || '0';
@@ -441,8 +465,19 @@ function main() {
   }
   assertNameUniqueness(tools);
   if (PROJECT_ONLY) {
+    //  => 而那**投影侧**那一份逐字**不留占位**（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md
+    //     逐字「**投影侧 `work/declared.json` 逐字不留占位**（=> 而它答『取到了什么』）」）
+    //  => 而而那**缺件状态**逐字落在**声明侧**那一份（=> 而那一格逐字是「声明侧那一份逐字要带缺件状态」）。
     process.stdout.write(JSON.stringify(tools, null, 2) + '\n');
     return;
+  }
+  //  => 而那**声明侧**那一份逐字带那缺件状态（=> 而 01 裁的 S606-02 逐字
+  //     「**声明侧那一份逐字要带缺件状态**」、=> 而而那**缺件占位落在显式缺件表」）。
+  const missing = missingPieces();
+  if (missing.length) {
+    for (const m of missing) {
+      process.stderr.write('  - ' + m.name + ' 缺件（' + m.reason + '）：' + m.detail + '\n');
+    }
   }
   const man = {
     schema: 1,
@@ -452,6 +487,8 @@ function main() {
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
     tools,
+    //  => 而那**缺件**逐字在这一格（=> 而它逐字是**声明侧**那一份的、=> 而而那**投影侧**那一份逐字没有它）。
+    missing,
   };
   const body = JSON.stringify(man, null, 2) + '\n';
   const key = fs.readFileSync(KEY, 'utf8');
