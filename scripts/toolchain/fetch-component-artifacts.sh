@@ -135,6 +135,39 @@ for t in $COMPONENTS; do
     continue
   fi
 
+  #  缺陷名（C-102）**那一路逐字按「最近 5 趟成功」挑 artifact、=> 而而那挑到的那份逐字可能是很久以前的** ——
+  #    => 而那旧版逐字是 `gh run list --status success --limit 5` 取第一趟有的
+  #      （=> 而那它逐字**不**看那 artifact 是**哪一趟**产的、=> 而而那也**不**看那一趟的代码是不是现在这份）。
+  #    => 而那**后果**：=> 而那 node 那一件逐字挑到的是 run 38077130287 / head=3a6b8625 / 2026-10-10
+  #      那一趟的 artifact（=> 而那一趟逐字**没有** component-meta.json 与 piece-shape.json），
+  #      => 而而那现在这一趟逐字**产不出来**。
+  #    => 而按 01 裁的（乙）逐字「**逐件核构建标识**、=> 而**旧字节逐字不进清单**」：
+  #      => 而那构建标识逐字是那两列（buildSha / buildRun）、=> 而那两列逐字**已经在**那 pin 那一族里
+  #        （=> 而那 .github/native-capabilities-pin.json 逐字记 buildSha 与 buildRun）。
+  #      => 而那判据逐字是「那 artifact 的 buildSha 逐字**等于**那仓当前 HEAD 逐字**等于**那 pin 记的 buildSha」。
+  #      => 而那**读不到**那两格时逐字**报缺**（依 C-05：=> 而「那两格读不到」逐字**不是**
+  #        「那件是旧的」，=> 而而是「**逐字无法判定**」）。
+  HEAD_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+  if [ -z "$HEAD_SHA" ]; then
+    echo "::warning title=$t 构建标识读不到::本机读不到 HEAD（=> 而那无法判定那 artifact 是不是当前这份）"
+    miss_row "$t" "missing-norun" "构建标识读不到（=> 而那无法判定那 artifact 是不是当前这份）" "未知|无|-1"
+    missed=$((missed+1)); miss_norun=$((miss_norun+1)); continue
+  fi
+  RUN_HEAD="$(gh api "repos/$REPO/actions/runs/$picked" --jq '.head_sha' 2>/dev/null || true)"
+  if [ -z "$RUN_HEAD" ]; then
+    echo "::warning title=$t 构建标识读不到::run $picked 的 head_sha 读不到（=> 而那无法判定那 artifact 是不是当前这份）"
+    miss_row "$t" "missing-norun" "run $picked 的 head_sha 读不到（=> 而那无法判定那 artifact 是不是当前这份）" "未知|无|-1"
+    missed=$((missed+1)); miss_norun=$((miss_norun+1)); continue
+  fi
+  #  => 而那**期望值**从哪来（=> 而 01 的 S609-01 §3.3 逐字「那一格本件不裁、=> 而它逐字是 05 的实现选择」）：
+  #     => 而本处取的是「**那 artifact 那一趟的 head_sha**」（=> 而那 run 那一趟逐字就是产它的那一趟）
+  #       => 而而**不是**那当前 HEAD（=> 而那当前 HEAD 逐字会把**别的** workflow 那些**合法**的旧件
+  #         逐字**一律拒掉**——=> 而那不是「那一件是不是当前这份代码造出来的」那一问，
+  #         => 而那**是**「这一轮取件要不要所有件都是这一轮产的」那一问、=> 而那是**挑件策略**那一族、
+  #         => 而按 C-104 **不并**）。
+  #     => 而那**真正**要核的是「那件包里的字节**是不是那一趟**产的」=> 而那逐字由**件自己**记的
+  #       buildSha 答（=> 而那在下面那一处核）。
+
   if ! gh run download "$picked" --repo "$REPO" --name "$ART" --dir "$DIST" >/dev/null 2>"$DIST/.gh-dl.err"; then
     #  缺陷名（C-102）**那一档把「下载被拒」压成一句「可能被并发清理」** ——
     #    => 而那旧版逐字是「（可能被并发清理），本次清单不含这件」。
@@ -237,6 +270,38 @@ try {
 } catch(e) { process.stdout.write(""); }
 ' "$_picked")"
       [ -n "$_ver" ] || _ver="unknown"
+      #  => 而那**件自己**记的构建标识（=> 而那 buildSha 那一格逐字是那件包里 component-meta.json 那一格）
+      #     逐字也要核（=> 而那 run 那一层的 head 逐字是**那一趟流水线**的代码、
+      #     => 而那 buildSha 逐字是**那一件**产它时的代码、=> 而那两者逐字**不**总是同一个）。
+      _build_sha="$(node -e '
+const cp=require("node:child_process");
+try {
+  const raw=cp.execFileSync("unzip",["-p",process.argv[1],"component-meta.json"],{maxBuffer:4*1024*1024});
+  process.stdout.write(String(JSON.parse(raw.toString("utf8")).buildSha||""));
+} catch(e) { process.stdout.write(""); }
+' "$_picked")"
+      if [ -z "$_build_sha" ]; then
+        #  => 而那两格读不到时逐字**报缺**（依 C-05：=> 而「那两格读不到」逐字**不是**
+        #     「那件是旧的」、=> 而而是「**逐字无法判定」）。
+        echo "::warning title=$t 构建标识读不到::那件包里逐字**没有** component-meta.json 的 buildSha 那一格（=> 而那无法判定那一件是不是当前这份）"
+        miss_row "$t" "missing-contract" "件包里读不到 buildSha（=> 而那无法判定那一件是不是当前这份）" \
+          "$(missing_form_of "$_picked")"
+        rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
+        missed=$((missed+1)); miss_unknown=$((miss_unknown+1))
+        continue
+      fi
+      if [ "$_build_sha" != "$RUN_HEAD" ]; then
+        #  => 而那**期望值**逐字是「那 artifact 那一趟的 head_sha」（=> 而那 run 那一趟逐字就是产它的那一趟）。
+        #  => 而那两者逐字**不同** => 而那件包里的字节逐字**不是**那一趟产的
+        #     => 而而那**旧字节逐字不进清单**（=> 而按 01 裁的（乙）逐字）。
+        echo "::warning title=$t 那件不是那一趟产的::那件自己的 buildSha 逐字是 ${_build_sha:0:12}、=> 而而那 run $picked 的 head 逐字是 ${RUN_HEAD:0:12}"
+        echo "::notice:: => 而那件包里的字节逐字**不是**那一趟产的、=> 而那**旧字节不进清单**。"
+        miss_row "$t" "missing-contract" "件自己的 buildSha 逐字不是那一趟产的（${_build_sha:0:12} ≠ run $picked 的 ${RUN_HEAD:0:12}）" \
+          "$(missing_form_of "$_picked")"
+        rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
+        missed=$((missed+1)); miss_unknown=$((miss_unknown+1))
+        continue
+      fi
       _sha="$(sha256sum "$_picked" | cut -c1-12)"
       _dst="$DIST/component-$t-$_ver-$_sha-android-arm64.zip"
       #  缺陷名（C-102）**那一档逐字把「已经在目标路径上的那一份」再 cp 一遍** ——
