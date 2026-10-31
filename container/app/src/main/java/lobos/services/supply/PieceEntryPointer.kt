@@ -139,11 +139,25 @@ object PieceEntryPointer {
      *   => 而那 openssl 那一件逐字有两条链（libcrypto.so 与 libssl.so），
      *     => 而 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」。
      *   => 而本件逐字返回**全部**那几条。
+     *
+     * 缺陷名（C-102）**那 shape 那一格逐字是必填、=> 而而调用方逐字漏传就编译不过** ——
+     *   => 而那旧版逐字是 `shape: ...Piece?`（=> 而**没有**默认值），
+     *     => 而那 3ec28a6 那一笔那四处逐字改成了 `locateAll(ctx, e)`（=> 而那**两参**形态）
+     *     => 而那**两参**形态逐字**没有**、=> 而那四处逐字编译不过
+     *     （=> 而那真机读数：run 41193831000 / job 124512628916 逐字
+     *       「PieceUpdater.kt:338:44 No value passed for parameter 'shape'」四行）。
+     *   => 而那**处置**：=> 而那 shape 那一格逐字给**默认值**
+     *     （=> 而那默认值逐字就是 `shapeOf(ctx, pe)`），
+     *     => 而而那与上面那个两参 `locate` 逐字**同一口径**
+     *     （=> 而那 :126 逐字 `locate(ctx, pe, shapeOf(ctx, pe))`）
+     *     => 而而那**不引入第二处真相**（=> 而那形态说明那一格逐字**只有一处**来源：shapeOf）。
+     *   => 而那**调用方**逐字**不必**自己读那形态说明（=> 而那四处上下文里逐字**没有**读好的 shape
+     *     => 而那若逐字让它们各自读、=> 而那就是**四处**重复读同一份）。
      */
     fun locateAll(
         ctx: Context,
         pe: UnitEntry,
-        shape: ProgramInstallPipeline.PieceShape.Piece?,
+        shape: ProgramInstallPipeline.PieceShape.Piece? = shapeOf(ctx, pe),
     ): LocatedAll {
         val role = roleOf(pe)
         if (role == ProgramInstallPipeline.ROLE_PROGRAM) {
