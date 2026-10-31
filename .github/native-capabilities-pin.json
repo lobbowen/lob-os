@@ -2,7 +2,7 @@
   "schema": 2,
   "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
   "generatedBy": "scripts/publish/generate-native-capabilities-pin.js",
-  "generatedAt": "2026-10-31T10:33:37.671Z",
+  "generatedAt": "2026-10-31T11:47:16.531Z",
   "generatedAtNote": "generatedAt 是生成时刻，每次运行都会变 —— 这个文件是生成物，不要手改。",
   "abi": "arm64-v8a",
   "source": {
@@ -34,7 +34,7 @@
       "sha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "2dc8efbd12f39640f05d13535b710ea1ad0f7aa88970665c8986fed9235afe49"
+      "fingerprint": "580e0513f0cdc631fa67a70f65e59a03a0d4a550e861da9f76b2e817d713176b"
     },
     {
       "id": "ripgrep",
@@ -46,7 +46,7 @@
       "sha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "2cd54a29b91b502b2b3750c9a514f5a105355d533272384fca84ac873c8ac86c"
+      "fingerprint": "8c183c47e943ff0acfd86ef65d9d6073be63bbfad09f9af2a4b95889ca905734"
     },
     {
       "id": "busybox",
@@ -58,7 +58,7 @@
       "sha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "7555e88924a71bb9ba14852e5c95297c4a425dbce156786f80466a545bc188e2"
+      "fingerprint": "acbfe5d876159dd70b9a0d8ef8c98f93cb6d57a413cbf466e6044667167f6dc2"
     },
     {
       "id": "zlib",
@@ -70,7 +70,7 @@
       "sha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "011800895e2e2729244ba97f9beb2ea43daeed2016d85f7bcb4ae7534890c0e8"
+      "fingerprint": "d1512ef53c0a834960ff21deefa5caed955f03213ec14f9a9c1171215f1123aa"
     },
     {
       "id": "openssl",
@@ -82,7 +82,7 @@
       "sha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "a4ae486cbae8d84027178dbd9ff27c5257326dd35d7b8f612af2d868c9337de1"
+      "fingerprint": "d61dc99582dbe97c7f612ba6c755c12cb1f71b93268dce5d885c2343eaa11463"
     },
     {
       "id": "crypto",
@@ -94,7 +94,7 @@
       "sha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "0d0a0197d85827014d79c40e88ea2c89446babccc221713d800806fe6a681f9c"
+      "fingerprint": "9ed96897f28b0748bdc1ebc0a259a3b65b30e8889bb7f132aff76bb034f9dce0"
     },
     {
       "id": "curl",
@@ -106,7 +106,7 @@
       "sha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "ebb02bcf12ff2efb8b5647f9e2813baa2ed38a4763c28cc14f385e61d533f2d1"
+      "fingerprint": "0539348bc701cc92edf1062a6f4aad0087c54fc67e4be8f1100091dfa03b6ddb"
     },
     {
       "id": "jq",
@@ -118,15 +118,17 @@
       "sha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "043f38dd7d23431f60701a4c8b35cc5047a871e2dd3e4e04bee41e32535f8334"
+      "fingerprint": "cb4ccadd8bdb89a785dd41525e117ef4970b0c20817f3ac5c9be80913ea1f065"
     }
   ],
   "missing": [],
   "pins": {
-    "2dc8efbd12f39640f05d13535b710ea1ad0f7aa88970665c8986fed9235afe49": {
+    "580e0513f0cdc631fa67a70f65e59a03a0d4a550e861da9f76b2e817d713176b": {
       "id": "bash",
       "tier": "upstream",
       "capsLibName": "libbash.so",
+      "capsEntryKind": "program",
+      "capsLibNameIsBare": true,
       "capsLibNameFoundInArtifact": false,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/bash",
@@ -141,6 +143,16 @@
       "tag": "base-bash",
       "zip": "bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
       "sha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "outerSha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "outerBytes": 588372,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 4,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "f77480c3e6b0637bb2a0c97b85b793d370076de646425fdd8bac38cec92a34ba",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-bash/bash-nodeps+ndk30.0.16248370+api35+src62b8a096427c.zip",
       "bytes": 588372,
@@ -162,10 +174,12 @@
       ],
       "filesVerified": true
     },
-    "2cd54a29b91b502b2b3750c9a514f5a105355d533272384fca84ac873c8ac86c": {
+    "8c183c47e943ff0acfd86ef65d9d6073be63bbfad09f9af2a4b95889ca905734": {
       "id": "ripgrep",
       "tier": "upstream",
       "capsLibName": "liblobosrg.so",
+      "capsEntryKind": "program",
+      "capsLibNameIsBare": true,
       "capsLibNameFoundInArtifact": false,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/rg",
@@ -180,6 +194,16 @@
       "tag": "base-ripgrep",
       "zip": "ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
       "sha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "outerSha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "outerBytes": 7862995,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 4,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "24511d129e78a7787c457b7f297b6a1ccad4b2318055f929accb889bab3ab3ca",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-ripgrep/ripgrep-nodeps+ndk30.0.16248370+api35+src23bea2ae7265.zip",
       "bytes": 7862995,
@@ -201,10 +225,12 @@
       ],
       "filesVerified": true
     },
-    "7555e88924a71bb9ba14852e5c95297c4a425dbce156786f80466a545bc188e2": {
+    "acbfe5d876159dd70b9a0d8ef8c98f93cb6d57a413cbf466e6044667167f6dc2": {
       "id": "busybox",
       "tier": "upstream",
       "capsLibName": "libbusybox.so",
+      "capsEntryKind": "program",
+      "capsLibNameIsBare": true,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/sh",
@@ -219,6 +245,16 @@
       "tag": "base-busybox",
       "zip": "busybox-nodeps+ndk30.0.16248370+api35+srca796d8e9414e.zip",
       "sha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "outerSha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "outerBytes": 107193,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 34,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "70a9bb7d4035cc3dc76bc38c786042e051b0b7d022dc4574ac551fa82c2e0a85",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-busybox/busybox-nodeps+ndk30.0.16248370+api35+srca796d8e9414e.zip",
       "bytes": 107193,
@@ -559,10 +595,12 @@
       ],
       "filesVerified": true
     },
-    "011800895e2e2729244ba97f9beb2ea43daeed2016d85f7bcb4ae7534890c0e8": {
+    "d1512ef53c0a834960ff21deefa5caed955f03213ec14f9a9c1171215f1123aa": {
       "id": "zlib",
       "tier": "upstream",
       "capsLibName": "libz.so",
+      "capsEntryKind": "library",
+      "capsLibNameIsBare": false,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "lib/libz.so.1.3.2",
       "entryInArtifact": "",
@@ -577,6 +615,16 @@
       "tag": "base-zlib",
       "zip": "zlib-nodeps+ndk30.0.16248370+api35+srcf9795674af36.zip",
       "sha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "outerSha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "outerBytes": 59580,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 6,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "bb15f581ff85cd0b1078e0c0e97d184b8aa1a08c5d1aaed74b5f6bf43f2f078b",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-zlib/zlib-nodeps+ndk30.0.16248370+api35+srcf9795674af36.zip",
       "bytes": 59580,
@@ -620,10 +668,12 @@
       ],
       "filesVerified": true
     },
-    "a4ae486cbae8d84027178dbd9ff27c5257326dd35d7b8f612af2d868c9337de1": {
+    "d61dc99582dbe97c7f612ba6c755c12cb1f71b93268dce5d885c2343eaa11463": {
       "id": "openssl",
       "tier": "upstream",
       "capsLibName": "libssl.so",
+      "capsEntryKind": "program",
+      "capsLibNameIsBare": true,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "lib/libcrypto-lobos.so",
       "entryInArtifact": "bin/openssl",
@@ -638,6 +688,16 @@
       "tag": "base-openssl",
       "zip": "openssl-zlib+1.3.2+ndk30.0.16248370+api35+src53c9652662e4.zip",
       "sha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "outerSha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "outerBytes": 3938163,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 153,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "ab189509bde0fc8f7464938c3f7994ccb02e9d403d751d5f36173453085b6323",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-openssl/openssl-zlib+1.3.2+ndk30.0.16248370+api35+src53c9652662e4.zip",
       "bytes": 3938163,
@@ -699,10 +759,12 @@
       ],
       "filesVerified": true
     },
-    "0d0a0197d85827014d79c40e88ea2c89446babccc221713d800806fe6a681f9c": {
+    "9ed96897f28b0748bdc1ebc0a259a3b65b30e8889bb7f132aff76bb034f9dce0": {
       "id": "crypto",
       "tier": "upstream",
       "capsLibName": "libcrypto.so",
+      "capsEntryKind": "library",
+      "capsLibNameIsBare": false,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "lib/libcrypto-lobos.so",
       "entryInArtifact": "",
@@ -717,6 +779,16 @@
       "tag": "base-crypto",
       "zip": "crypto-openssl+3.6.3+ndk30.0.16248370+api35+src53c9652662e4.zip",
       "sha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "outerSha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "outerBytes": 2660854,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 5,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "56af08b38d1c7a3c7e7764043276768bb900ca9cf0141a075fe5fc0bdefcb1dc",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-crypto/crypto-openssl+3.6.3+ndk30.0.16248370+api35+src53c9652662e4.zip",
       "bytes": 2660854,
@@ -749,10 +821,12 @@
       ],
       "filesVerified": true
     },
-    "ebb02bcf12ff2efb8b5647f9e2813baa2ed38a4763c28cc14f385e61d533f2d1": {
+    "0539348bc701cc92edf1062a6f4aad0087c54fc67e4be8f1100091dfa03b6ddb": {
       "id": "curl",
       "tier": "upstream",
       "capsLibName": "libcurl.so",
+      "capsEntryKind": "library",
+      "capsLibNameIsBare": false,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "lib/libcurl.so",
       "entryInArtifact": "",
@@ -767,6 +841,16 @@
       "tag": "base-curl",
       "zip": "curl-openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api35+src2b8529333b08.zip",
       "sha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "outerSha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "outerBytes": 330204,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 4,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "01b25c447346803f84b22e525038f558a52eeecfef140efb15b692c48f3fcccb",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-curl/curl-openssl+3.6.3zlib+1.3.2+ndk30.0.16248370+api35+src2b8529333b08.zip",
       "bytes": 330204,
@@ -788,10 +872,12 @@
       ],
       "filesVerified": true
     },
-    "043f38dd7d23431f60701a4c8b35cc5047a871e2dd3e4e04bee41e32535f8334": {
+    "cb4ccadd8bdb89a785dd41525e117ef4970b0c20817f3ac5c9be80913ea1f065": {
       "id": "jq",
       "tier": "upstream",
       "capsLibName": "bin/jq",
+      "capsEntryKind": "program",
+      "capsLibNameIsBare": false,
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/jq",
@@ -806,6 +892,16 @@
       "tag": "base-jq",
       "zip": "jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
       "sha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "outerSha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "outerBytes": 960444,
+      "outerForm": "zip",
+      "outerMagic": "504b0304",
+      "outerEntries": 4,
+      "sidecarLayer": "outer",
+      "sha256Layer": "inner",
+      "innerSha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
+      "innerBytes": 0,
+      "innerZip": "",
       "abi": "arm64-v8a",
       "url": "https://github.com/lobbowen/lob-os/releases/download/base-jq/jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
       "bytes": 960444,
