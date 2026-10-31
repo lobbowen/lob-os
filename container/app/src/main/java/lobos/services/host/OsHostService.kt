@@ -106,7 +106,14 @@ class OsHostService : Service() {
             //      => 而而那服务池逐字**先到**、=> 而而那它逐字把 beginLife 写的那一档逐字**清掉了**
             //      （=> 而那 07 本轮逐字核到：那 scan-cost 那一档逐字在 journal 的 at 逐字 1793483983860、
             //        而那 diag.jsonl 逐字**最早**一条 at 逐字 1793483984570 —— **晚 710 ms**）。
-            runCatching { lobos.services.log.RuntimeDiagnostics.clear(this) }
+            //  => 而那**出生标记**逐字**先**记下（=> 而那它逐字是那「上一世 / 这一世」的分界）
+            //    => 而而那它逐字**必须**在 beginLife **之前**（=> 而那 beginLife 逐字写的
+            //      「宿主出生」「索引已从落位重建」与那 scan-cost 那一档逐字是**这一世**的、
+            //      => 而而那它们逐字要**留住**）。
+            runCatching { lobos.services.log.RuntimeDiagnostics.markLife(this) }
+            //  => 而那 clear 逐字**只清上一世**（=> 而那它逐字按那标记逐字切）
+            //    => 而而那它逐字**在**那标记**之后**逐字**不**清（=> 而那这是 01 那一裁）
+            runCatching { lobos.services.log.RuntimeDiagnostics.clear(this, "LIFE-MARK") }
             lobos.services.reg.ResidencyStatus.restore(this)
             OsInit.beginLife(this, ResidencyAudit.interruption(this))
             //  => 而那**出生**逐字**做完**就逐字记下（=> 而那它逐字是那进程自己的一个状态、

@@ -65,14 +65,32 @@ object PieceScan {
                 // 入口有效性只问「清单写的那份在不在」（§20.2:625 的不兜底仍然成立）；
                 // **不再**由运行期读那份字节的 ELF 头回答（第三行规则）。无效则**报缺**：continue（不登记）。
                 val declared = metaOf(verDir)?.optString("entry", "").orEmpty()
-                val entry = entryOf(verDir, declared) ?: continue
+                val role = roleOf(verDir)
+                //  缺陷名（C-102）**那库形态逐字从 scan 的结果里丢掉、=> 而而那 landedIds 缺它们**
+                //    => 而那旧版逐字是 `val entry = entryOf(verDir, declared) ?: continue`
+                //      => 而那**库形态那三件**（=> 而那 crypto / curl / zlib）逐字 `entry=''`
+                //        （=> 而那按 C-05「没有」就是没有、=> 而那它们逐字**本就不该**有程序入口）
+                //      => 而而那 `continue` 逐字把**它们整件**逐字从 scan 的结果里丢掉
+                //    => 而而那**后果**（07 本轮逐字核出）：=> 而那 `landedIds` 缺它们
+                //      => 而而那 prefix 那一档逐字报 FAIL
+                //      （=> 而那 07 逐字：「FAIL | $PREFIX 缺件：crypto,curl,zlib | 落位根=…/files/opt 已落位=13（…） 包里有=9（…）」）
+                //      => 而而那**阳性对照**逐字是「同一份 diag 逐字 `"stage":"prefix"` 命中 **2**」
+                //        （=> 而那一条 OK「预装件全部就位（9 件）」与那一条 FAIL
+                //          => 而而那那个 FAIL 逐字是真的、=> 而**不是**读不到）
+                //    => 而那**处置**：=> 而那**库形态**逐字**照样登记**（=> 而它逐字有程序入口没有**无关**）
+                //      => 而而那**入口**那一格逐字**留空**（=> 而那按 C-05 报缺、=> 而不猜填）
+                //      => 而而那**有**程序入口而那入口逐字**不在**的那一件逐字**仍然** continue
+                //        （=> 而那**不可用**那一族逐字**不**登记、=> 而那才是那一族本来的语义）
+                val entry = entryOf(verDir, declared)
+                val libraryShaped = role == LIBRARY
+                if (entry == null && !libraryShaped) continue
                 val files = filesOf(verDir, withContentFingerprint)
                 out += Found(
                     id = id,
                     version = version,
                     dir = verDir,
-                    entry = entry,
-                    role = roleOf(verDir),
+                    entry = entry.orEmpty(),
+                    role = role,
                     sha256 = sha256Of(verDir, files),
                     meta = metaOf(verDir),
                     files = files,

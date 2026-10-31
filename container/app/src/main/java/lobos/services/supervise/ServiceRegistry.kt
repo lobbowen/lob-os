@@ -49,8 +49,24 @@ object ServiceRegistry {
         }
         //  => 而那 **prefix** 那一族逐字**等**那**逐件**那些**都**起**了**（=> 而而那**它**逐字**不**自己**装**）。
         //     => 而而那**它**逐字**是**那**全量**那一族**、=> 而而那**它**逐字**不**是**那**逐件**那一族**。
+        //  => 而那**等**的那几件逐字**只**是那**有程序入口**的那几件
+        //    （=> 而那 07 本轮逐字核出：那库形态那三件（=> 而那 crypto / curl / zlib）逐字 `role=library`、
+        //      => 而那它们逐字**本就不该起进程**、=> 而而那 prefix 那一档逐字**不该等**它们
+        //      => 而而那 prefix 逐字报 FAIL：「FAIL | $PREFIX 缺件：crypto,curl,zlib | 落位根=…/files/opt
+        //        已落位=13（…） 包里有=9（…）」）
+        //    => 而那**判据**逐字是那件**自己**的形态（=> 而那它逐字在落位侧那份 component-meta.json 里、
+        //      => 而那它逐字是那**构建期**写下的 role、=> 而而那运行期逐字**只读**它）
+        //  => 而那**判据**逐字**只读**那件自己落位侧那份清单里的 role
+        //    （=> 而那 `roleFromDisk` 那一格逐字只读、=> 而而那它逐字**读不到**就逐字**当程序形态**
+        //      （=> 而那按 C-05 报缺、=> 而而那**宁可多等**也不**少等**）
+        val processShaped = pieceIds.filter { pid ->
+            runCatching {
+                lobos.services.supply.PieceScan.roleFromDisk(ctx, pid) !=
+                    lobos.services.supply.PieceScan.LIBRARY
+            }.getOrDefault(true)
+        }
         out.add(
-            decl("prefix", pieceIds.map { "piece-" + it }) { ctx ->
+            decl("prefix", processShaped.map { "piece-" + it }) { ctx ->
                 runCatching { lobos.services.app.PreinstalledPieces.installAll(ctx) }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(

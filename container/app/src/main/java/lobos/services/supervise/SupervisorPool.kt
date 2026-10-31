@@ -50,24 +50,52 @@ class SupervisorPool(private val host: Service) {
 
     @Synchronized
     private fun syncServices() {
+        //  缺陷名（C-102）**那服务池逐字一轮只解开一层、=> 而而那链条逐字一层一层等下去**
+        //    => 而那旧版逐字是：
+        //        val alive = services.keys.toMutableSet()
+        //        for (d in ServiceRegistry.ready(host, alive)) { … }
+        //      => 而而那 `alive` 逐字是**那一轮开始时**的快照、=> 而而那 `ready` 那一格
+        //        逐字按那**快照**算（=> 而那 ServiceRegistry.ready 逐字 `if (!alive.contains(a)) { ok = false }`）
+        //      => 而而那这一轮逐字新起的那些**不进**这一轮那 `ready` 的计算
+        //      => 而而那**下一层**逐字**下一轮**才起得起来
+        //    => 而那**后果**（07 本轮逐字核出、Lead 本机实读 `SupervisorPool.kt:52` 到 `:53` 逐字成立）：
+        //      => 而那链条逐字是 `piece-<id>` → `prefix` → `view` → {`pty`, `sysdev`}
+        //      => 而而那 **prefix 永远等**、=> 而而那 **view / pty / sysdev 永远等**
+        //      => 而而那 `files/dev` 逐字**永不重写**、=> 而而那 `nodes` 那一栏逐字**永远旧版**
+        //      => 而而那 `ShellEntry` 逐字找不到 shell、=> 而而那 `sys.tty.exec` 逐字**失败**
+        //      => 而而那是一条**闭环**
+        //    => 而那**处置**：=> 而那**一轮**逐字**一路解到没有新的 ready**（=> 而那 `alive` 逐字**边起边更新**）
+        //      => 而而那链条逐字**不再**一层一层等、=> 而而那**一轮之内**逐字全起来。
         val alive = services.keys.toMutableSet()
-        for (d in ServiceRegistry.ready(host, alive)) {
-            if (services.containsKey(d.id)) continue
-            val ok = runCatching {
-                d.act(host)
-                true
-            }.getOrElse { e ->
-                Log.w(TAG, "内置服务启动失败: " + d.id, e)
-                RuntimeDiagnostics.append(
-                    host, "service", false, "内置服务启动失败 " + d.id,
-                    e.javaClass.name + ": " + (e.message ?: ""),
-                )
-                false
+        //  => 而那**一轮**逐字**解多轮**（=> 而那上限逐字是那链条的层数、=> 而而那它逐字防「起起来又注销」那种循环）
+        var rounds = 0
+        while (rounds < MAX_SERVICE_ROUNDS) {
+            val ready = ServiceRegistry.ready(host, alive)
+                .filter { !alive.contains(it.id) }
+            if (ready.isEmpty()) break
+            var progressed = false
+            for (d in ready) {
+                if (services.containsKey(d.id)) continue
+                val ok = runCatching {
+                    d.act(host)
+                    true
+                }.getOrElse { e ->
+                    Log.w(TAG, "内置服务启动失败: " + d.id, e)
+                    RuntimeDiagnostics.append(
+                        host, "service", false, "内置服务启动失败 " + d.id,
+                        e.javaClass.name + ": " + (e.message ?: ""),
+                    )
+                    false
+                }
+                if (!ok) continue
+                services[d.id] = { noopUnit() }
+                //  => 而那 `alive` 逐字**边起边更新**（=> 而而那下一层逐字**这一轮**就起得来）
+                alive.add(d.id)
+                progressed = true
+                Journal.note(host, "service", null, "起内置服务", "id=" + d.id)
             }
-            if (!ok) continue
-            services[d.id] = { noopUnit() }
-            alive.add(d.id)
-            Journal.note(host, "service", null, "起内置服务", "id=" + d.id)
+            if (!progressed) break
+            rounds++
         }
         for (id in services.keys.toList()) {
             if (ServiceRegistry.decls(host).none { it.id == id }) {
@@ -173,6 +201,10 @@ class SupervisorPool(private val host: Service) {
 
     companion object {
         const val MAX_RUNNING = 12
+
+        //  => 而那**一轮**逐字**解多轮**的那个上限（=> 而那它逐字是那链条的层数、
+        //    => 而而那它逐字防「起起来又注销」那种循环、=> 而而那它逐字**足够**解完那一族）
+        const val MAX_SERVICE_ROUNDS = 8
 
         const val TAG = "SupervisorPool"
     }
