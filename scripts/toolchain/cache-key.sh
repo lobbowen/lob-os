@@ -187,7 +187,7 @@ case "$TOOL" in
   #   => 而**键名**用 workflow 那一趟传给 package-component.sh 的那个（=> 而那是这一族 case 的键）：
   #     pkgconf（=> 而 build-component-pkg-config.sh 那一件自己的 TOOL 逐字是 pkg-config，
   #             => 而而**两个名字指的是同一件**，=> 而而 case 的键必须跟 workflow 那一趟一致）、
-  #     llvm（=> 而 build-component-llvmtoolchain.sh 那一件自己的 TOOL 逐字是 llvmtoolchain，=> 而同理）。
+  #     llvm（=> 而 build-component-llvmtoolchain.sh 那一件自己的 TOOL 逐字是 llvm，=> 而同理）。
   #   => 而**不加** scripts/patches：=> 而那六件的 recipe 都不引用它（=> 而本机逐个核过）。
   pkgconf) SRC_FILES="scripts/recipes/build-component-pkg-config.sh" ;;
   make)   SRC_FILES="scripts/recipes/build-component-make.sh" ;;

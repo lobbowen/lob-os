@@ -391,7 +391,15 @@ jobs:
 
           #  那 recipe 那一族逐字留的那四份 log 逐字**留在 runner 上**、=> 而而它们逐字**没被传出来**、
           #  => 而这一步逐字把**它们**捞出来落到 artifact。
-          WORK="$GITHUB_WORKSPACE/work/llvmtoolchain"
+          #  缺陷名（C-102）**这一格逐字读的是那**旧**的**工作目录名**、=> 而那 recipe 那一族逐字改写它了** ——
+          #    而那 recipe 那一件自己的 TOOL 逐字从 llvmtoolchain 改成 llvm（=> 而 01 §5.1 第 3 条：
+          #    那两个 TOOL 字面该统一、=> 而件名逐字是 llvm）、
+          #    => 而那 recipe 逐字**从 $TOOL 派生**那工作目录（=> 而那 WORK="$ROOT_DIR/work/$TOOL"）、
+          #    => 而那它**跟着**变了（=> 而那旧的那个目录名逐字**不再存在**）。
+          #    => 而这一格逐字照旧**捞不到那四份 log**（=> 而那 [ -e "$WORK/$f" ] 逐字逐个不成立、
+          #      => 而那 `|| true` 逐字把**每一件**都吞掉、=> 而那一步逐字**静默**空跑）。
+          #    => 而按 C-104：=> 而那工作目录那一族逐字**只有一条路**、=> 而而那**不是**第二种生成路径。
+          WORK="$GITHUB_WORKSPACE/work/llvm"
           for f in host-configure.log host-build.log cmake.log build.log; do
             [ -e "$WORK/$f" ] && cp -f "$WORK/$f" "$D/" 2>/dev/null || true
           done

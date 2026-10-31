@@ -78,16 +78,29 @@ function aliasesOf(name, zipPath, declaredEntry) {
     }
     return [];
   }
-  if (bin[name] !== declaredEntry) {
-    throw new Error('件 ' + name + ' 的 package.json bin 映射里 ' + name + ' → ' + String(bin[name]) +
-      '，与仓内声明的入口 ' + declaredEntry + ' 分叉 —— 入口只能有一个真相（scripts/registry/read-component-entry.sh 那条纪律）');
+  //  缺陷名（C-102）**拿件名当 package.json 的 bin 映射的必有键，而件名不是件内任一可执行名**
+  //    —— 而原来那一判别式逐字是 `if (bin[name] !== declaredEntry)`：它要求「件名那一键存在、且值逐字等于入口」。
+  //    => 而 llvm 那一件逐字**没有** llvm 这个可执行名（recipe 的 NEED_BIN 八项里逐字没有 llvm），
+  //    => 而 :89 逐字又把件名从别名集合里剔掉、=> 而而那**同一段代码**里件名那一格既被要求存在、又被要求不参与。
+  //  => 而那**处置**（按 01 裁的形态）：bin 是对象时，只要求「存在一个键，其值逐字等于 declaredEntry」，
+  //    而**不**要求任何键 == 件名；那一键**不作为别名**发出去（:89 按键名跳过、下面按值再兜一次）。
+  //  => 而那**真源**逐字不变：declaredEntry 来自 scripts/registry/read-component-entry.sh
+  //    （=> 而那 entry 由 gen-component-meta.js:269 逐字算出来）、=> 而这一格**不引入第二处真相**。
+  const entryBase = String(declaredEntry).split('/').pop();
+  const entryKeys = Object.keys(bin).filter((k) => bin[k] === declaredEntry);
+  if (!entryKeys.length) {
+    throw new Error('件 ' + name + ' 的 package.json bin 映射里没有任何一项逐字指向仓内声明的入口 ' + declaredEntry +
+      '（这一件声明过的键: ' + Object.keys(bin).sort().join(', ') + '）—— 入口只能有一个真相（scripts/registry/read-component-entry.sh 那条纪律）');
   }
   const names = pieceNames(zipPath);
   const out = [];
   for (const alias of Object.keys(bin).sort()) {
-    const entryBase = String(declaredEntry).split('/').pop();
     if (alias === name || alias === entryBase) continue;
     const rel = bin[alias];
+    //  那一键（值逐字等于仓内声明的入口）不是别名、=> 而它是**入口本身**、=> 而它不进别名集合。
+    //  => 而 :89 按**键名**跳过 entryBase、=> 而这里按**值**再兜一次
+    //  （=> 而当那一键的名字**不**等于 entryBase 时，:89 那一条逐字拦不住它）。
+    if (rel === declaredEntry) continue;
     if (typeof rel !== 'string' || !rel.includes('/') || rel.startsWith('/') || rel.split('/').includes('..')) {
       throw new Error('件 ' + name + ' 的别名 ' + alias + ' 的件内入口不是合规相对路径: ' + String(rel));
     }

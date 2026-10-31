@@ -7,7 +7,23 @@ cd "$HERE/../.."
 ROOT_DIR="$(pwd)"
 
 OUT="${OUT:-dist}"
-TOOL="llvmtoolchain"
+#  缺陷名（C-102）**同一个 TOOL 字面在两处指的是两样东西** ——
+#   而这一族它为什么有两边：一边是「这一件**叫什么**」（件名那一格，服务打包与取件）、
+#   另一边是「这一件**里那些程序叫什么**」（件内 bin/ 下那些项的名字，服务调用）。
+#   => 而这两边各答一件事、=> 而按 C-135 那不是同一问、=> 而那**不该合并**。
+#   => 而这一处的 TOOL 逐字服务的是**打包与取件**（产物文件名、sources 的键、Release tag），
+#      => 而那件名逐字是 **llvm**（package-component.sh:8 逐字取的是位置参数、
+#      => 而调用方 build-llvmtoolchain.yml:296 逐字传的是 llvm、
+#      => 而 package-component.sh:83 逐字 ZIP="dist/component-${TOOL}-..." 逐字含 llvm 不含 llvmtoolchain）。
+#   => 而「llvmtoolchain」逐字是**recipe 名 / workflow 名 / 文件名**那一族
+#      （fetch-component-artifacts.sh:56 的 build-llvmtoolchain.yml、
+#      => 而 cache-key.sh:197 的 scripts/recipes/build-component-llvmtoolchain.sh），
+#      => 而它**不是**件名。
+#   => 而按 01 裁的 S606-01-ALIAS-BIN-KEY-RULING.md §5.1 第 3 条：这两个 TOOL 字面该统一，
+#      => 而本处取**形式乙**（TOOL 改成 llvm）：§4.3 逐字「两处都要落在同一个字面上，
+#      => 而否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」，
+#      => 而形式甲（只改 TOOL、delete 照旧）逐字不够（§5.1 逐字「删 bin["llvm"] 仍删不到东西」）。
+TOOL="llvm"
 ABI="${ABI:-arm64-v8a}"
 API="${ANDROID_API:-35}"
 JOBS="${JOBS:-4}"
@@ -527,18 +543,37 @@ printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 note "写件内 package.json（别名映射）"
 node -e '
 const fs = require("node:fs"), path = require("node:path");
-const dir = process.argv[1], entry = process.argv[2];
+const dir = process.argv[1], entry = process.argv[2], tool = process.argv[3];
 const names = fs.readdirSync(dir).filter((n) => {
   try { return fs.statSync(path.join(dir, n)).isFile(); } catch (e) { return false; }
 }).sort();
 const bin = {};
 for (const n of names) bin[n] = "bin/" + n;
-// 本名（键 == 件名）不重复声明 —— 两侧都会跳过它，写了也只是噪音
+//  缺陷名（C-102）**那一行 delete 删的是一个不存在的键、=> 而它那行注释所假定的形状也不成立** ——
+//    而旧版那一行逐字是 `delete bin[entry];`、=> 而那 entry 逐字传的是件名那一格（llvm）、
+//    => 而那 bin 映射的键逐字是**件内那些程序名**（clang / clang++ / ld.lld / llvm-ar …）、
+//    => 而那里面**没有**件名那一键、=> 而那 delete 逐字**什么也没删**（=> 而 01 §1.3 逐字核过这一点）。
+//    => 而旧版那一行注释逐字说「本名（键 == 件名）不重复声明」——=> 而那个「键 == 件名」的形状
+//      逐字**不成立**（=> 而件名是 llvm、=> 而那键是程序名、=> 而它们逐字不是同一个东西）。
 delete bin[entry];
+//  => 而**这一行必须逐字是 no-op、=> 而而且必须继续是 no-op**：它要防的是「把**件名**当成别名重复声明」，
+//    => 而件名 llvm 逐字**不在**那 bin 映射里（=> 而那 bin 映射的键逐字是程序名）、
+//    => 而所以 no-op 恰好是对的（=> 而那一句 delete 逐字防的东西压根没发生过）。
+//  => 而**不许**把它改成「删那个值逐字等于仓内声明的入口的那一键」（=> 而那是 01 §5.1 第 3 条形式乙那一半）：
+//    => 而 01 §4.1 逐字裁「bin 是对象时、=> 而必须存在一个键、其值逐字等于 declaredEntry」，
+//      => 而 llvm 那一件逐字就是 bin["clang"] = "bin/clang"、=> 而那 declaredEntry 逐字是 bin/clang；
+//      => 而那两段**互斥**：=> 而删了 bin["clang"]、=> 而那发侧逐字算出来的 entryKeys 逐字**为空**
+//        => 而那一格**必判红**（=> 而 Lead 本机实跑两支：保持现状逐字 entryKeys=["clang"] 通过；
+//          => 而删 bin["clang"] 逐字 entryKeys=[] 判红）。
+//  => 而那**入口那一键**为什么**不进别名集合**：=> 那由**两侧各自**排除
+//    （=> 发侧 publish-component-manifest.js:89 按键名跳 entryBase、=> 装侧 ProgramInstallPipeline.kt:1212 同口径），
+//    => 而**不在生成侧删键**（=> 而按 C-103 那两边各答一件事、=> 而按 C-135 那不是同一问）。
+//  => 而件名那一格（name）逐字从 $TOOL 派生、=> 而那不再另写一个字面（=> 而 01 §4.3 逐字：
+//    「两处都要落在同一个字面上、=> 而否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」）。
 fs.writeFileSync(path.join(dir, "..", "package.json"),
-  JSON.stringify({ name: "llvmtoolchain", bin }, null, 2) + "\n");
+  JSON.stringify({ name: tool, bin }, null, 2) + "\n");
 console.log("[ok] package.json 声明别名 " + Object.keys(bin).length + " 个");
-' "$TOOLDIR" "$TOOL"
+' "$TOOLDIR" "$TOOL" "$TOOL"
 [ -f "$OUT/package.json" ] || die "没产出 package.json" \
   "别名映射是装侧建链与发侧写清单的唯一真相 —— 没有它这一件只有入口能用"
 
