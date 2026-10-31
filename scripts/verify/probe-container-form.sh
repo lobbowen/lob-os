@@ -46,6 +46,18 @@ probe_one() {
   echo "  判别源给的形态=$fmt"
   case "$fmt" in
     zip|zip64)
+      #  => 而那**第 1 步**那一格：=> 而那**外层自己**含不含 component-meta.json
+      #     （=> 而那逐字是「外层即件包」那一档的判据、=> 而 01 裁的 S607-01 §3.1 逐字
+      #      「**除非外层自己逐字含 component-meta.json**」）。
+      OUTER_ID="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+      if [ -n "$OUTER_ID" ]; then
+        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
+      else
+        echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
+      fi
       entries="$(fmt_zip_entries "$f" 2>/dev/null)"
       if [ -z "$entries" ]; then
         echo "  外层中央目录条目数=读不到"
@@ -61,8 +73,20 @@ probe_one() {
       #  => 而那 gzip 逐字是「外层是 tar.gz、而那里面逐字装着那内层那一个件包」那个形状
       #     => 而而那内层逐字是**什么**逐字是取证要答的那一格、=> 而不是判据。
       WORK="$(mktemp -d)"
+      OUTER_ID=""
       if tar tzf "$f" >/dev/null 2>&1; then
         echo "  外层=tar.gz"
+        WORK="$(mktemp -d)"
+        tar xzf "$f" -C "$WORK" 2>/dev/null || true
+        OUTER_ID="$(cat "$WORK"/component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+        if [ -n "$OUTER_ID" ]; then
+          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
+        else
+          echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
+        fi
         tar tzf "$f" 2>/dev/null | while IFS= read -r nm; do
           [ -n "$nm" ] || continue
           echo "    外层条目=$nm"

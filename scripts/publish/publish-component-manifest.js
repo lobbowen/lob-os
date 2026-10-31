@@ -59,6 +59,35 @@ function containerFormOf(file) {
 //      => 而**名字 glob 只当第一道粗筛**」、
 //     => 而「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」。
 //  => 而那**判据必须落在内容上**（=> 而不按名字）。
+//
+// 缺陷名（C-102）**「按内容挑内层」那一格只覆盖了「外层套内层」那一档，
+//   而「外层即件包」那一档被一并套进了同一个挑法** ——
+//   => 而那旧版逐字**只有**「解开外层、=> 而在解开处找内层」那一步，
+//     => 而那八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
+//       逐字是**外层自己就是那一颗件**（=> 而那 Release 资产逐字**就是**那件包本身），
+//       => 而它们**没有内层**、=> 而按内容挑逐字**挑不出**任何候选。
+//   => 而 01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
+//     「**内层那一颗件包才算**。**外层不是那一颗件**（=> 而那**除非外层自己逐字含 component-meta.json**）」
+//     => 而那**后半句**逐字就是这一档、=> 而那实现里逐字**没有实现那后半句**。
+//
+// => 而那**三步**（逐字）：
+//   第 1 步：那**外层自己**是不是那一颗件（=> 而那外层根目录逐字有没有 component-meta.json、
+//            => 而有 => 而那它的 `id` 逐字要等于要取的件名、=> 而不对 => 判红）；
+//   第 2 步：外层**没有** component-meta.json => 而那走「外层套内层」那一档（=> 而按内容挑内层、
+//            => 而那零个或多个都判红、不取第一个）；
+//   第 3 步：gzip / tar 那一档 => 而那**先解开 tar**、=> 而再对解开处逐字走第 1 步与第 2 步。
+function pieceIdOf(zipPath) {
+  try {
+    const raw = cp.execFileSync('unzip', ['-p', zipPath, 'component-meta.json'], {
+      encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (!raw) return '';
+    return String(JSON.parse(raw).id || '');
+  } catch (e) {
+    return '';
+  }
+}
+
 function innerZipCandidates(file) {
   const work = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'lob-inner-'));
   try {
@@ -122,6 +151,31 @@ function innerZipCandidates(file) {
 
 // 那一件**里层**那一个 zip（=> 而那按内容挑、=> 而那零个或多个都判红）。
 function innerZipOf(file, wantPiece) {
+  //  => 而那第 1 步：那**外层自己**是不是那一颗件
+  //     （=> 而那 zip 那一档逐字**不**解开、=> 而那 gzip 那一档逐字**先解开**）。
+  const form = containerFormOf(file);
+  const outerId = (form === 'gzip')
+    ? (() => {
+        const work = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'lob-outer-'));
+        try {
+          cp.execFileSync('tar', ['xzf', file, '-C', work], { stdio: ['ignore', 'pipe', 'pipe'] });
+          const p = path.join(work, 'component-meta.json');
+          if (!fs.existsSync(p)) return '';
+          return String(JSON.parse(fs.readFileSync(p, 'utf8')).id || '');
+        } catch (e) {
+          return '';
+        } finally {
+          try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* 清理失败不影响判别 */ }
+        }
+      })()
+    : pieceIdOf(file);
+  if (outerId) {
+    if (outerId === wantPiece) return file;   //  => 而那**外层自己**就是那一颗件
+    throw new Error(
+      '件 ' + file + ' 的**外层自己**就是那一颗件、=> 而它的 id 逐字是 ' + outerId +
+      '（要的是 ' + wantPiece + '）—— 判红'
+    );
+  }
   const picked = innerZipCandidates(file);
   if (!picked.length) {
     throw new Error(

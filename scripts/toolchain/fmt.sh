@@ -188,24 +188,100 @@ fmt_inner_zip_candidates() {
     *) return 1 ;;
   esac
   local z
+  #  => 而那**同一个**文件逐字可能**命中**那几条 glob 里的**好几条**
+  #     （=> 而那 component-*.zip 逐字也命中 *.zip、=> 而那 */component-*.zip 逐字也命中 */ *.zip）
+  #     => 而那重复逐字会让下面那个「候选数」逐字**数多**、=> 而而那判红是**假**的。
+  #     => 而所以这一处逐字**去重**（=> 而那逐字按**真实路径**去重、=> 而不按名字）。
+  local seen=" "
   for z in "$work"/component-*.zip "$work"/*/component-*.zip "$work"/*.zip "$work"/*/*.zip; do
     [ -f "$z" ] || continue
     #  => 而那**按字节**筛（=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器）。
-    case "$(fmt_magic "$z")" in 504b*) printf '%s\n' "$z" ;; esac
+    case "$(fmt_magic "$z")" in 504b*) ;; *) continue ;; esac
+    local real
+    real="$(cd "$(dirname "$z")" && pwd)/$(basename "$z")"
+    case "$seen" in *" $real "*) continue ;; esac
+    seen="$seen$real "
+    printf '%s\n' "$z"
   done
   return 0
 }
 
-# 那**内层**那个 zip（=> 而那按内容挑、=> 而那零个或多个都判红、=> 而不取第一个）。
-#   => 而那件名逐字是第二个实参（=> 而那它逐字是那 `component-meta.json` 里的 `id`）。
-fmt_pick_inner_zip() {
+# 那一颗件**在哪一层**（=> 而那是那唯一判别源、=> 而按 01 裁的
+# S607-01-CONTAINER-FORM-RULING.md §2.1 那张表 + §3.1 逐字）。
+#
+# 缺陷名（C-102）**「按内容挑内层」那一格只覆盖了「外层套内层」那一档，
+#   而「外层即件包」那一档被一并套进了同一个挑法** ——
+#   => 而那旧版逐字**只有**「解开外层、=> 而在解开处找内层」那一步，
+#     => 而那八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
+#       逐字是**外层自己就是那一颗件**（=> 而那 Release 资产逐字**就是**那件包本身），
+#       => 而它们**没有内层**、=> 而按内容挑逐字**挑不出**任何候选
+#       （=> 而那真机读数逐字是「那候选逐字是 无」）。
+#   => 而 01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
+#     「**内层那一颗件包才算**。**外层不是那一颗件**（=> 而那**除非外层自己逐字含 component-meta.json**）」
+#     => 而那**后半句**逐字就是这一档、=> 而那实现里逐字**没有实现那后半句**。
+#
+# => 而那**三步**（逐字）：
+#   第 1 步：解开外层 => 而那**外层根目录**逐字有没有 component-meta.json
+#            => 而**有** => 而那**外层自己就是那一颗件**（档一）=> 而那它的 `id` 逐字要等于要取的件名
+#               （=> 而不对 => 判红）；
+#   第 2 步：外层**没有** component-meta.json => 而那走「外层套内层」那一档：
+#            按内容挑内层（=> 而那候选逐字含 component-meta.json、=> 而它的 `id` 逐字等于件名；
+#            => 而**零个或多个都判红、不取第一个**）；
+#   第 3 步：gzip / tar 那一档 => 而那**先解开 tar**、=> 而再对解开处逐字走第 1 步与第 2 步。
+#
+# 用法：fmt_pick_piece <文件> <解开到哪儿> <件名>
+#   => 而那 stdout 逐字是那**一颗件包**的路径、=> 而那 stderr 逐字是那**为什么**没有。
+fmt_pick_piece() {
   local f="$1" work="$2" want="$3"
-  [ -n "$want" ] || { echo "用法: fmt_pick_inner_zip <文件> <解开到哪儿> <件名>" >&2; return 2; }
-  local cands n id
-  cands="$(fmt_inner_zip_candidates "$f" "$work")"
-  n=0
-  local hit=""
-  local ids=""
+  [ -n "$want" ] || { echo "用法: fmt_pick_piece <文件> <解开到哪儿> <件名>" >&2; return 2; }
+  [ -s "$f" ] || { echo "那一份是空的" >&2; return 1; }
+  local m
+  m="$(fmt_magic "$f")"
+  #  => 而那第 3 步：gzip / tar 那一档 => 而那**先解开 tar**。
+  case "$m" in
+    1f8b*) tar xzf "$f" -C "$work" 2>/dev/null || { echo "那 gzip 解不开" >&2; return 1; } ;;
+    504b*) : ;;   #  => 而那 zip 那一档逐字**不**解开（=> 而那第 1 步逐字看那外层**自己**）
+    *) return 1 ;;
+  esac
+  #  => 而那第 1 步：外层**自己**是不是那一颗件。
+  case "$m" in
+    504b*) ;;
+    *) : ;;
+  esac
+  if [ "${m#504b}" != "$m" ]; then
+    local outer_id
+    outer_id="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+    if [ -n "$outer_id" ]; then
+      if [ "$outer_id" = "$want" ]; then
+        printf '%s\n' "$f"
+        return 0
+      fi
+      echo "那**外层自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      return 1
+    fi
+  else
+    #  => 而那 gzip / tar 那一档：=> 而那解开处逐字**自己**含 component-meta.json 吗
+    local outer_id
+    outer_id="$(cat "$work"/component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+    if [ -n "$outer_id" ]; then
+      if [ "$outer_id" = "$want" ]; then
+        printf '%s\n' "$f"
+        return 0
+      fi
+      echo "那**解开处自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      return 1
+    fi
+  fi
+  #  => 而那第 2 步：外层套内层 => 而那按内容挑、=> 而那零个或多个都判红、=> 而不取第一个。
+  local cands n id hit ids
+  cands="$(fmt_inner_zip_candidates "$f" "$work/.inner")"
+  n=0; hit=""; ids=""
   while IFS= read -r c; do
     [ -n "$c" ] || continue
     id="$(unzip -p "$c" component-meta.json 2>/dev/null | node -e '
