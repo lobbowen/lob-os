@@ -182,7 +182,11 @@ object PieceEntryPointer {
         //  => 而那下面逐字**调**那唯一那套口径（=> 而按 C-104 判别源要唯一）：
         //    而那 ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格逐字是**那唯一**一处、
         //    => 而而 PreinstalledPieces 那一族逐字**也调**它。
-        val picked = ProgramInstallPipeline.PieceShape.pointerLayerOf(shape, role, verDirOf(ctx, pe))
+        //  => 而那档名逐字从那**唯一**那一格取（=> 而那 pointerLayerWithTier 那一格）、
+        //     => 而而那「单层无软链」那一档逐字**显式**是 "single"
+        //     （=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
+        val layer = ProgramInstallPipeline.PieceShape.pointerLayerWithTier(shape, role, verDirOf(ctx, pe))
+        val picked = layer.pointers
         if (picked.isEmpty()) {
             //  => 而那**择一不出来**时（=> 而那三档：形态说明不带 chain[0] / 择一不唯一 / 指针层取不出）
             //     => 而那按 01 裁的 S604-01 §3.1 逐字**报缺**（=> 而不按首项、不按字典序、不猜）。
@@ -208,7 +212,7 @@ object PieceEntryPointer {
                     landedRel = landed,
                     detail = "库形态：入口指针按落位目录 " + ProgramInstallPipeline.SHAPE_NAME +
                         " 里 files[] 的库形态那一条（软链层、=> 而那 basename 等于 chain[0]）定位（usr/lib/" + base + "）",
-                    tier = if (picked.size > 1) "multi" else "chain0",
+                    tier = layer.tier,
                 )
             )
         }

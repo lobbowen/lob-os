@@ -182,12 +182,31 @@ object ProgramInstallPipeline {
          * => 而那**择一不出来**时（=> 而那是 zlib 那一格在 chain[0] 读不到时）
          *   => 而这一件逐字返回**空**（=> 而那调用方逐字**报缺**、=> 而不按首项兜底）。
          */
-        fun pointerLayerOf(piece: Piece, role: String, verDir: File?): List<FileShape> {
+        fun pointerLayerOf(piece: Piece, role: String, verDir: File?): List<FileShape> =
+            pointerLayerWithTier(piece, role, verDir).pointers
+
+        /**
+         * 那一件该建**哪几条**入口指针，**外加**它落在**哪一档**。
+         *
+         * 缺陷名（C-102）**那一档逐字没有被报出来、=> 而而那 curl 那一件被标成了另一档** ——
+         *   => 而 01 裁的 S604-01 §3.1 第 4 条逐字要求「**并在这一格显式记「单层无软链」**」、
+         *     => 而而那**单层无软链**那一档逐字被混进了「chain0」那一档（=> 而那一档逐字是「甲+chain[0] 择一」）。
+         *   => 而那**后果**：=> 而那调用方逐字**分不出**「这一件是 curl 那一档」与「这一件是 crypto 那一档」。
+         *
+         * => 而那各档逐字是：
+         *   "program" 程序形态（=> 而它逐字只有一条入口、=> 而它不参与择一）
+         *   "single"  单层无软链（=> 而那唯一库项逐字是普通文件、=> 而那 chain 长度 1、
+         *            => 而那 soname 与 basename 同名、=> 而那它**不是缺**）
+         *   "chain0"  甲（软链层）+ chain[0] 择一
+         *   "multi"   多指针档（=> 而那一件逐字有**好几条**链、=> 而 openssl 那一件逐字是两条）
+         *   ""         报缺（=> 而那 pointers 逐字是空、=> 而那调用方逐字报缺）
+         */
+        fun pointerLayerWithTier(piece: Piece, role: String, verDir: File?): PointerLayer {
             val items = piece.byRole(role)
-            if (items.isEmpty()) return emptyList()
+            if (items.isEmpty()) return PointerLayer(emptyList(), "")
             if (role != ROLE_LIBRARY) {
                 //  => 而那程序形态那一族逐字只有**一条**入口（=> 而那它不参与择一）。
-                return listOf(items.first())
+                return PointerLayer(listOf(items.first()), "program")
             }
             //  甲：那一项在**落位目录里是软链**。
             //  => 而那优先逐字用**产物自带**的那一格（derivedLinks、=> 而那它逐字记的就是「哪些是派生物」）。
@@ -203,23 +222,32 @@ object ProgramInstallPipeline {
                 val chainLen = only.chain.size
                 val sonameSelf = only.soname.isNotBlank() && only.soname == base
                 if (chainLen == 1 && sonameSelf) {
-                    return listOf(only)      //  => 而那「单层无软链」这一档
+                    //  => 而那「单层无软链」这一档逐字**显式记为它自己**
+                    //     （=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
+                    return PointerLayer(listOf(only), "single")
                 }
             }
             val soft = softLinkPathsOf(piece, verDir)
-                ?: return emptyList()      //  => 而那两处都读不到 => 报缺（=> 而调用方逐字报缺）
+                ?: return PointerLayer(emptyList(), "")   //  => 而那两处都读不到 => 报缺
             val pointerLayer = items.filter { soft.contains(it.path) }
             if (pointerLayer.isEmpty()) {
                 //  => 而那**有**好几项、=> 而那没有一项是软链、=> 而那不是「单层」、
                 //     => 而那**报缺**（=> 而按 C-05 不猜）。
-                return emptyList()
+                return PointerLayer(emptyList(), "")
             }
             //  乙：按 chain[0] 择一。
             val roots = items.mapNotNull { it.chain.firstOrNull()?.takeIf { s -> s.isNotBlank() } }.toSet()
-            if (roots.isEmpty()) return emptyList()   //  => 而那 chain[0] 读不到 => 报缺
+            if (roots.isEmpty()) return PointerLayer(emptyList(), "")   //  => 而那 chain[0] 读不到 => 报缺
             val picked = pointerLayer.filter { roots.contains(it.path.substringAfterLast('/')) }
-            return picked
+            val tier = if (picked.size > 1) "multi" else "chain0"
+            return PointerLayer(picked, tier)
         }
+
+        /** 那一档的结果：逐字是那几条指针 + 它落在**哪一档**（=> 而那档名逐字见 pointerLayerWithTier）。 */
+        data class PointerLayer(
+            val pointers: List<FileShape>,
+            val tier: String,
+        )
 
         /**
          * 落位目录里哪些项是**软链**（相对路径，逐字带那一层目录名）。
