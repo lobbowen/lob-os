@@ -194,7 +194,10 @@ object ProgramInstallPipeline {
          *   => 而那**后果**：=> 而那调用方逐字**分不出**「这一件是 curl 那一档」与「这一件是 crypto 那一档」。
          *
          * => 而那各档逐字是：
-         *   "program" 程序形态（=> 而它逐字只有一条入口、=> 而它不参与择一）
+         *   "no-library" 这一件逐字没有 role=library 的项（=> 而它逐字不是缺）
+         *   / "single" 单层无软链 / "chain0" 甲+chain[0] 择一出来恰好一条
+         *   / "multi" 择一出来多于一条 / "" 算不出来
+         *   => 而那档名逐字是 01 裁的 S610-01 §2.4 那五档（=> 而那 **"program" 那一档逐字取消**）。
          *   "single"  单层无软链（=> 而那唯一库项逐字是普通文件、=> 而那 chain 长度 1、
          *            => 而那 soname 与 basename 同名、=> 而那它**不是缺**）
          *   "chain0"  甲（软链层）+ chain[0] 择一
@@ -203,10 +206,22 @@ object ProgramInstallPipeline {
          */
         fun pointerLayerWithTier(piece: Piece, role: String, verDir: File?): PointerLayer {
             val items = piece.byRole(role)
-            if (items.isEmpty()) return PointerLayer(emptyList(), "")
+            //  => 而那**新口径**（=> 而按 01 裁的 S610-01-MIXED-SHAPE-TIER-RULING.md §2.4 逐字）：
+            //     「**`program` 那一档逐字取消**、=> 而改成 **`no-library`**；
+            //      => 而那判据逐字是「**那一件逐字有没有 `role=library` 的项**」、
+            //      => 而**不是**「注册表 assetEntry 非空不空**」」
+            //   => 而所以那**判据**逐字只看那一件**有没有 role=library 的项**，
+            //      => 而**不**由 roleOf 那一票决定（=> 而那 roleOf 逐字答的是「有没有程序入口」）。
             if (role != ROLE_LIBRARY) {
-                //  => 而那程序形态那一族逐字只有**一条**入口（=> 而那它不参与择一）。
-                return PointerLayer(listOf(items.first()), "program")
+                //  => 而那**程序角色**那一族逐字只有**一条**入口（=> 而那它不参与择一）。
+                //     => 而而那一档逐字**不是** "program"（=> 而那一档逐字**取消**了）、
+                //       => 而而它逐字是 "no-library"（=> 而那它逐字答的是「这一件逐字没有库形态那几项」）。
+                return PointerLayer(listOf(items.first()), "no-library")
+            }
+            if (items.isEmpty()) {
+                //  => 而那**没有 role=library 的项**那一档逐字是 "no-library"
+                //     （=> 而按 01 裁的 S610-01 §2.4 第 5 条逐字「它逐字**不是缺**」）。
+                return PointerLayer(emptyList(), "no-library")
             }
             //  甲：那一项在**落位目录里是软链**。
             //  => 而那优先逐字用**产物自带**的那一格（derivedLinks、=> 而那它逐字记的就是「哪些是派生物」）。
