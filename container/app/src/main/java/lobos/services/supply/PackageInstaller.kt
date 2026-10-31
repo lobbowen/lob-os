@@ -70,10 +70,43 @@ object PackageInstaller {
     private fun dirOf(ctx: Context, name: String): ProgramDir =
         ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name))
 
+    /**
+     * 这一件**归不归包回退这一族管**（=> 而那桥侧与实现侧逐字**读同一件事**）。
+     *
+     * 缺陷名（C-102）**包回退入口的两道守卫方向相反** ——
+     *   逐字（01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §5.4 的 R-4 逐字）：
+     *   「桥侧 `CapabilityBroker.kt:411` 只放行 `isPiece` 一族，
+     *     实现侧 `PackageInstaller.kt:75` 拒掉 `isPiece` 一族；
+     *     两道守卫共用同一把形态尺（`ProgramIndex.kt:70-72`）而读的方向相反
+     *     —— 于是这一条入口当前对任何一件都走不到成功。」
+     *   => 而那形态尺逐字答的是「这一件**有没有程序入口**」（=> 而 assetEntry 空不空），
+     *     => 而**不是**「这一件**归谁管**」。
+     *   => 而**处置**（按 01 的 S602-01 §11 归属表第 4 行逐字）：
+     *     「05 让 `CapabilityBroker.kt:411` 与 `PackageInstaller.kt:75` 两道守卫**读同一件事**
+     *       （这一件归谁管），不再一个要 `isPiece`、一个不要 `isPiece`」。
+     *
+     * => 而那**读什么**（=> 而那是**两问**、=> 而按 C-135 那不是同一问）：
+     *   · 「这一件**归谁管**」=> 而那判据逐字是「这一件**有没有一个可删的落位版本目录**」
+     *     （=> 而那落位目录那一格逐字对程序形态件非空、对库形态件空串）。
+     *   · 「这一件**能不能回退**」=> 而那逐字是**逐件的前置条件**（=> 而那在 rollbackToBaseline 里判）。
+     *
+     * => 而那**为什么不是** isPiece：=> 而那 isPiece 判的是形态（=> 而库形态件逐字**有** APK 原件基线：
+     *   而那 PreinstalledPieces 那一支逐字**按角色**给每一件记了 apk 槽、=> 而那库角色也有），
+     *   => 而而那一族的**准入**问句**不是**形态。
+     */
+    fun ownsPackageRollback(ctx: Context, name: String): Boolean {
+        //  => 而那一格逐字是**落位目录**那一格（=> 而那它逐字对程序形态件非空、对库形态件空串）。
+        //  => 而那**读法**逐字与那形态尺**不同问**（=> 而那形态尺问「有没有程序入口」、
+        //     => 而这一格问「有没有一个可删的落位版本目录」）。
+        return ProgramManager.relStateDir(ctx, name).isNotBlank()
+    }
+
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
-        if (reg != null && ProgramIndex.isPiece(ctx, reg)) {
-            Journal.note(ctx, "package", false, "拒绝回滚基础设施", "name=" + name + "（随 APK 交付，无可回滚基线）")
+        //  => 而这一道守卫逐字**与桥侧读同一件事**（=> 而那 ownership 那一个）、
+        //  => 而而**不是**那形态尺（=> 而那方向相反那一族逐字治掉了）。
+        if (reg != null && !ownsPackageRollback(ctx, name)) {
+            Journal.note(ctx, "package", false, "拒绝回滚：这一件不归包回滚这一族管", "name=" + name)
             return false
         }
         val dir = ProgramManager.stateDirOf(ctx, name)

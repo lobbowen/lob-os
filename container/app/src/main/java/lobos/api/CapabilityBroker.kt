@@ -408,8 +408,36 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 JSONObject().apply { put("ok", PackageInstaller.uninstall(this@CapabilityBroker, name)) }
             }
             "rollback" -> {
-                if (!ProgramIndex.isPiece(this@CapabilityBroker, name)) {
-                    throw BridgeError(CODE_POLICY_DENIED, "只有系统基础环境支持回退到 APK 基线：" + name)
+                //  缺陷名（C-102）**包回退入口的两道守卫方向相反** ——
+                //    逐字（01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §5.4 的 R-4 逐字）：
+                //    「桥侧 `CapabilityBroker.kt:411` 只放行 `isPiece` 一族，
+                //      实现侧 `PackageInstaller.kt:75` 拒掉 `isPiece` 一族；
+                //      两道守卫共用同一把形态尺（`ProgramIndex.kt:70-72`）而读的方向相反
+                //      —— 于是这一条入口当前对任何一件都走不到成功。」
+                //    => 而那形态尺逐字答的是「这一件**有没有程序入口**」（=> 而 assetEntry 空不空），
+                //      => 而**不是**「这一件**归谁管**」（=> 而那是**两问**、=> 而按 C-135 那不是同一问）。
+                //    => 而那后果逐字：程序形态件被**这一道**拒成「只有系统基础环境支持回退到 APK 基线」、
+                //      而库形态件被**实现侧那一道**拒成「拒绝回滚基础设施」=> 而那两句话互相矛盾。
+                //  => 而**处置**（按 01 的 S602-01 §11 归属表第 4 行逐字）：
+                //    「05 让 `CapabilityBroker.kt:411` 与 `PackageInstaller.kt:75` 两道守卫**读同一件事**
+                //      （这一件归谁管），不再一个要 `isPiece`、一个不要 `isPiece`」。
+                //    => 而那**读什么**：=> 而那一族逐字是「**包回退**」那一族（=> 而它的目标对象逐字是
+                //      「包 / 版本目录」）、=> 而**不是**「正式系统件入口」那一族
+                //      （=> 而那逐字是 `lobos.sys.native.rollback`、=> 而那它逐字换**入口指针**、
+                //      => 而而那两族逐字**目标对象不同、审计方法名不同**、=> 而按规范逐字**不混称**、
+                //      => 而按 C-135 那**不合并**）。
+                //    => 而那**判据**逐字是「这一件**有没有一个可删的落位版本目录**」
+                //      （=> 而那落位目录那一格逐字对程序形态件非空、对库形态件空串）。
+                //    => 而这一道守卫逐字**只**判「这一件归不归包回滚这一族管」，
+                //      => 而而**那能不能回滚**逐字是**逐件的前置条件**（=> 而那归实现侧那一道）。
+                //    => 而那判据逐字**只有一处**（=> 而那 PackageInstaller.ownsPackageRollback 那一格）、
+                //      => 而而那一格逐字是**两处**逐字共用的（=> 而按 C-104 判别源要唯一）。
+                if (!PackageInstaller.ownsPackageRollback(this@CapabilityBroker, name)) {
+                    throw BridgeError(
+                        CODE_POLICY_DENIED,
+                        "这一件不在包回退这一族（只有控制面板清单里那些件才归它管）：" + name +
+                            "（=> 而正式系统件的回退逐字走 lobos.sys.native.rollback，=> 而那两族不混用）",
+                    )
                 }
                 JSONObject().apply { put("ok", PackageInstaller.rollbackToBaseline(this@CapabilityBroker, name)) }
             }
