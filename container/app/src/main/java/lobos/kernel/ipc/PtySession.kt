@@ -32,6 +32,9 @@ object PtySession {
     private const val DEFAULT_ROWS = 24
     private const val DEFAULT_COLS = 80
 
+    //  => 而那**停那一个线程**逐字等的时长（=> 而那**有界**、=> 而那不逐字无限等）。
+    private const val READER_JOIN_MS = 500L
+
     class Session internal constructor(
         private val host: Host,
         val sid: Int,
@@ -94,6 +97,26 @@ object PtySession {
                     synchronized(diag) {
                         diag.append(line).append('\n')
                         if (diag.length > 8192) diag.setLength(0)
+                    }
+                    //  缺陷名（C-102）**那一路逐字只进 diag、=> 而而那零字不进诊断那一族** ——
+                    //    => 而那旧版逐字只把那一行写进那个内存里的 diag 串
+                    //      （=> 而那 diag 逐字只被 diagnostics() 那一格读出来、=> 而而那 diagnostics()
+                    //        逐字只在「PTY 超时未就绪」那一支被用、=> 而而那**其余**那些诊断输出
+                    //        逐字**只留在内存里**、=> 而那进程一退逐字**全没了**）。
+                    //    => 而那**后果**：=> 而那 PTY 宿主逐字报了错、=> 而那 diag.jsonl 逐字**没有**它
+                    //      （=> 而那读设备的人逐字看不到「宿主说了什么」）。
+                    //    => 而那**处置**：=> 而那一行逐字**也**进诊断那一族
+                    //      （=> 而那 RuntimeDiagnostics.append 逐字写进 diag.jsonl）。
+                    //    => 而那 ctx 逐字**可以**是空（=> 而那 Host 那个 ctx 那一格逐字可选）
+                    //      => 而而那空的时候逐字**不报**（=> 而那不是「那一档没算」、=> 而那是「没有地方可报」）。
+                    val c = ctx
+                    if (c != null) {
+                        runCatching {
+                            lobos.services.log.RuntimeDiagnostics.append(
+                                c, "pty-diag", false, "PTY 宿主诊断输出",
+                                "行=" + line,
+                            )
+                        }
                     }
                 }
             } catch (_: Exception) {
@@ -270,6 +293,32 @@ object PtySession {
             runCatching { fromHost.close() }
             for (s in sessions.values) s.markClosed()
             sessions.clear()
+            //  缺陷名（C-102）**那两个线程逐字没有「停它的那一格」** ——
+            //    => 而那旧版逐字只 `proc.destroy()` 与关那三个流（=> 而那**零字没有** join 那两个线程）
+            //      => 而那 reader 逐字是 pump() 那一支的**唯一驱动**（=> 而那 pump() 逐字读 fromHost）
+            //        而那 diagReader 逐字是 proc.errorStream 的**唯一读者**
+            //      => 而那**流关掉之后**那两个线程逐字**各自卡在那一读上**、=> 而它们逐字是 daemon
+            //        （=> 而 daemon 逐字在进程退出时才被逐字杀掉）=> 而那一次 close 之后
+            //        它们逐字**还占着那个进程**，=> 而而那**下一次** openSession 逐字再建两个。
+            //    => 而那**处置**：=> 而那**先断流、再 join**（=> 而那 join 逐字有界、=> 而那不逐字无限等）。
+            //      => 而那 join 逐字**放在关流之后**（=> 而那线程逐字要靠流关闭才逐字醒）。
+            stopReader(reader, "lobos-pty-reader")
+            stopReader(diagReader, "lobos-pty-diag")
+        }
+
+        /**
+         * 停那一个线程（=> 而那**有界**、=> 而那不逐字无限等）。
+         *   => 而那先 interrupt（=> 而那线程逐字卡在那一读上、=> 而 interrupt 逐字能逐字把它叫醒）
+         *     => 而那再 join 那一个有界的时长（=> 而那超时逐字就逐字放弃、=> 而那它逐字是 daemon、=> 而那不逐字挡着进程）。
+         */
+        private fun stopReader(t: Thread, name: String) {
+            if (!t.isAlive) return
+            runCatching { t.interrupt() }
+            runCatching { t.join(READER_JOIN_MS) }
+            if (t.isAlive) {
+                //  => 而那它逐字还没停 => 而那记一条（=> 而那按 C-05「缺字段就报缺」不逐字假装它停了）。
+                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（=> 而它逐字是 daemon、=> 而进程退出时会被杀掉）")
+            }
         }
     }
 

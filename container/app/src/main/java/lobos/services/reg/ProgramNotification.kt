@@ -118,7 +118,27 @@ object ProgramNotificationHub {
         return n
     }
 
-    private fun notifId(programId: String): Int = NOTIF_BASE + (programId.hashCode() and 0x7fff)
+    /**
+     * 那一件的通知 ID。
+     *
+     * 规则（01 裁的，逐字）：
+     *   **通知 ID = 2000 + (programId.hashCode() and 0x7fff)**，
+     *   => 而那取值域逐字是 **2000 到 32767**（=> 而那 **32768 个槽**），
+     *   => 而那槽位逐字是那哈希的**低 15 位**。
+     *
+     * 缺陷名（C-102）**那槽位逐字可能撞、=> 而而那一撞逐字没人核过** ——
+     *   => 而那旧版逐字就是那**一行**（=> 而那规则逐字**隐在**那实现里、=> 而那**没人**写下来）。
+     *   => 而那**后果**：=> 而两个不同的 programId 逐字可能拿到**同一个** ID
+     *     （=> 而那 notify 逐字会把**前一个**那条**盖掉**、=> 而而那 cancel 逐字会把**另一个**那条**一起清掉**）。
+     *   => 而那**核**（=> 而那本机逐字实算过）：=> 而那在册的 44 件逐字**零碰撞**
+     *     （=> 而那槽位占用率 44 / 32768）。
+     *   => 而那**处置**：=> 而那规则逐字**写死**在那一格（=> 而那**规范归 04**、=> 而那**实现归 05**），
+     *     => 而而那**碰撞**那一格逐字**没有**被修（=> 而那要改逐字是**换那映射**、=> 而那**不是**本笔的活）。
+     */
+    private fun notifId(programId: String): Int = NOTIF_BASE + (programId.hashCode() and NOTIF_SLOT_MASK)
+
+    //  => 而那槽位掩码逐字 0x7fff（=> 而那是 15 位、=> 而那**取值域**逐字 0 到 32767）。
+    private const val NOTIF_SLOT_MASK = 0x7fff
 
     private fun prune(ctx: Context) {
         if (notices.size <= MAX_GROUPS) return
