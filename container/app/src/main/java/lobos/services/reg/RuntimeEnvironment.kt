@@ -169,14 +169,6 @@ object RuntimeEnvironment {
         }
     }
 
-    private fun isLink(f: File): Boolean = runCatching {
-        val mode = android.system.Os.lstat(f.path).st_mode
-        (mode and S_IFMT) == S_IFLNK
-    }.getOrDefault(false)
-
-    private const val S_IFMT = 0xF000
-    private const val S_IFLNK = 0xA000
-
     private fun assemble(ctx: Context): Snapshot {
         val provisioned = PrefixProvisioner.provision(ctx)
         val found = PieceScan.scan(ctx).filter { it.role != PieceScan.HEADERS }

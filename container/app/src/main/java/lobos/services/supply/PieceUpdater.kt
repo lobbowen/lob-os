@@ -675,6 +675,4 @@ object PieceUpdater {
         return gone to freed
     }
 
-    private fun ProgramIndex_safeSegment(v: String): Boolean =
-        v.isNotBlank() && v != "." && v != ".." && v.none { it == '/' || it == '\\' || it.code < 0x20 }
 }

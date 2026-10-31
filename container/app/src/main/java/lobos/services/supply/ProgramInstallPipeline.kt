@@ -1113,18 +1113,6 @@ object ProgramInstallPipeline {
         return PieceMeta(o)
     }
 
-    private fun depsOf(context: Context, programId: String): List<String> {
-        val arr = runCatching {
-            CatalogClient.entryFor(context, programId)?.optJSONArray("deps")
-        }.getOrNull() ?: return emptyList()
-        val out = mutableListOf<String>()
-        for (i in 0 until arr.length()) {
-            val v = arr.optString(i, "").trim()
-            if (v.isNotBlank() && v !in out) out += v
-        }
-        return out
-    }
-
     private data class DepReport(val ok: Boolean, val detail: String, val placed: Int, val missing: List<String>)
 
     private fun linkerCanFind(context: Context, name: String): Boolean {

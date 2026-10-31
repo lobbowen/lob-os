@@ -31,7 +31,6 @@ class ProgramDir(
 
     private val programRoot =
         storeRoot ?: File(lobos.kernel.layout.SystemDirs.opt(context), programId)
-    private val currentPointer = File(programRoot, "CURRENT")
 
     fun currentVersion(): String? = store.currentVersion()
 

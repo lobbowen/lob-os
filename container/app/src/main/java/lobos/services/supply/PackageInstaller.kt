@@ -67,9 +67,6 @@ object PackageInstaller {
         runCatching { ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name)).currentVersion() }
             .getOrNull()
 
-    private fun dirOf(ctx: Context, name: String): ProgramDir =
-        ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name))
-
     /**
      * 这一件**归不归包回退这一族管**（=> 而那桥侧与实现侧逐字**读同一件事**）。
      *
