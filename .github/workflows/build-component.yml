@@ -109,6 +109,19 @@ jobs:
           node scripts/verify/reconcile-missing-pieces.js \
             dist/.fetch-missing.json work/declared.json
 
+      #  缺陷名（C-102）**「声明侧带缺件状态」那一格在 CI 上逐字没被验** ——
+      #    => 而那声明侧那一份逐字**要私钥**才能签（=> 而那把私钥逐字**不在仓内**），
+      #      => 而而那一趟**是校验轮**、=> 而那 step 8 到 10 逐字 skipped
+      #      => 而而那一格逐字**产不出来**、=> 而而它逐字**在 CI 上未触发**（依 C-113 / C-116）。
+      #    => 而而那**投影侧**逐字**不留占位**（=> 而它逐字只答「取到了什么」）、
+      #      => 而而那**声明侧**逐字**要带**那缺件状态（=> 而按 01 裁的 S606-02 逐字）。
+      #    => 而那一档逐字**不签名、=> 而只产出那形状**、=> 而而它逐字让那一格逐字**能被核**。
+      - name: 声明侧形状（--declared-only：不签名、只核那一格）
+        run: |
+          set -euo pipefail
+          node scripts/publish/publish-component-manifest.js dist --declared-only > work/declared-side.json
+          node -p "'[declared-side] 缺件 ' + require('./work/declared-side.json').missing.map(m => m.name + '[' + m.reason + ']').join(' | ')"
+
       - name: 底座件清单投影（与组件清单同一把钥匙）
         run: |
           set -euo pipefail

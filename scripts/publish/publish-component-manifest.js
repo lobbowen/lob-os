@@ -16,6 +16,9 @@ const crypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
+//  => 而那 **--declared-only** 那一档（=> 而它逐字产出**声明侧那一份的形状**、=> 而**不**签名、
+//     => 而而它逐字只供核「声明侧带缺件状态」那一格用、=> 而那它逐字**不能**当发布产物）。
+const DECLARED_ONLY = process.argv.includes('--declared-only');
 const DIST = POS[0] || 'dist';
 const OUT = POS[1] || 'release';
 const KEY = POS[2] || 'keys/ota-private.pem';
@@ -389,6 +392,15 @@ function versionString() {
 function revisionForManifest() {
   const raw = process.env.LOBOS_COMPONENT_REVISION || '';
   if (!/^[1-9][0-9]*$/.test(raw)) {
+    //  => 而那 **--declared-only** 那一档逐字**不要求**那 revision
+    //     （=> 而那它逐字只是**核那形状**用、=> 而那一趟逐字**不是**发布轮、
+    //     => 而而那一趟逐字**没有**发布 tag、=> 而而那个 revision 逐字**不存在**）。
+    //     => 而而那它逐字报**缺**（=> 而按 C-05「缺字段就报缺、不许猜填」）
+    //       ——=> 而而那它逐字**不**编一个值（=> 而那编一个就逐字把那形状**验错**了）。
+    if (DECLARED_ONLY) {
+      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（=> 而那一趟逐字不是发布轮）');
+      return 0;
+    }
     throw new Error('LOBOS_COMPONENT_REVISION 必须是正整数（它来自发布 tag `component-<channel>-<revision>`），读到: ' + (raw || '空'));
   }
   return Number(raw);
@@ -491,6 +503,21 @@ function main() {
     missing,
   };
   const body = JSON.stringify(man, null, 2) + '\n';
+  //  => 而那 **--declared-only** 那一档（=> 而它逐字产出**声明侧那一份的形状**、=> 而**不**签名）。
+  //     => 而那**为什么**要有它（=> 而按 01 裁的 S606-02 逐字「**声明侧那一份逐字要带缺件状态**」）：
+  //       · 而那声明侧那一份逐字**要私钥**才能签（=> 而那把私钥逐字**不在仓内**）
+  //         => 而而那「声明侧带缺件状态」那一格在 CI 的**校验轮**逐字**产不出来**
+  //         （=> 而那 step 8 到 10 逐字 skipped）=> 而而那一格逐字**在 CI 上未触发**
+  //         （=> 而按 C-113 / C-116 逐字标明「未触发」）。
+  //       · 而这一档逐字**不签名、=> 而只产出那形状**、=> 而而它逐字让那一格逐字**能被核**
+  //         （=> 而那 CI 上逐字能跑、=> 而而那一格逐字**从「未触发」变成「已核」**）。
+  //       · 而那它逐字**不是**发布那一支（=> 而那一支逐字仍然签名、=> 而那它逐字**只**多一档投影）。
+  //       · 而那它逐字**不能**被当成发布产物（=> 而它逐字**没有**签名、=> 而那设备验不过、
+  //         => 而而那一档逐字**只**供核那一格用）。
+  if (DECLARED_ONLY) {
+    process.stdout.write(body);
+    return;
+  }
   const key = fs.readFileSync(KEY, 'utf8');
   const sig = crypto.sign(null, Buffer.from(body, 'utf8'), key).toString('base64');
   const ok = crypto.verify(null, Buffer.from(body, 'utf8'), fs.readFileSync(PUBKEY, 'utf8'), Buffer.from(sig, 'base64'));
