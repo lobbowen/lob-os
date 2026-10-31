@@ -194,6 +194,64 @@ for t in $COMPONENTS; do
   fi
   rm -f "$DIST/.gh-dl.err"
 
+  #  缺陷名（C-102）**这一路逐字没有容器分支、=> 而而它逐字按名字 glob 取那一颗件** ——
+  #    => 而那旧版逐字是 `compgen -G "$DIST/component-$t-*-android-arm64.zip"`
+  #      （=> 而那**按名字**、=> 而那**不**看那字节）。
+  #    => 而那**名字**与那**内容**逐字是**两件**事：
+  #      · 而那 CI artifact 那一族逐字是「zip 套 zip」（=> 而那外层逐字装着那**内层**那一个件包）；
+  #      · 而那 Release 资产那一族逐字是「gzip 套 zip」（=> 而那外层逐字 1f8b0800）。
+  #    => 而按名字取逐字**在这两种形状上都会取错**（=> 而那取到的是**外层**、=> 而而那外层逐字不是那一颗件）。
+  #  => 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §2.1 那张表 + §3.1 逐字：
+  #     逐字调 fmt.sh 的 fmt_of（=> 而那判别源唯一）+ 那三步
+  #     （①先判外层自己是不是那一颗件；②外层没有 component-meta.json 才走「外层套内层」；
+  #      ③gzip/tar 先解 tar 再走 ① 与 ②）。
+  #  => 而那**挑**那一格逐字**只有一处**（=> 而那 fmt.sh 的 fmt_pick_piece 那一格）。
+  #  => 而那**期望形态**与**实际形态**逐字都报出来（=> 而那「那一颗是什么形态、期望什么形态」那一问）。
+  _cand=""
+  for _c in "$DIST"/*.zip; do
+    [ -f "$_c" ] || continue
+    case "$(basename "$_c")" in
+      component-$t-*) _cand="$_c"; break ;;
+    esac
+  done
+  if [ -n "$_cand" ]; then
+    _form="$(fmt_of "$_cand")"
+    _magic="$(fmt_magic "$_cand")"
+    echo "::notice:: $t 那一颗的容器形态=$_form（头四字节 $_magic）"
+    _unp="$DIST/.unpack-$t"
+    if _picked="$(fmt_pick_piece "$_cand" "$_unp" "$t" 2>"$DIST/.pick-$t.err")"; then
+      if [ "$_picked" != "$_cand" ]; then
+        #  => 而那**外层套内层**那一族 => 而那内层才是那一颗件（=> 而那外层逐字留着、=> 而而那它不进那清单）。
+        echo "::notice:: $t 那一颗是**外层套内层**：=> 而那外层=$_cand、=> 而那内层=${_picked##*/}"
+      else
+        echo "::notice:: $t 那一颗**外层自己**就是那一颗件"
+      fi
+      #  => 而那落名逐字照**那契约**（=> 而那发布投影逐字按
+      #     component-<件>-<版>-<哈希12位>-android-arm64.zip 那一格挑、=> 而那哈希逐字要**实算**
+      #     => 而而那不对逐字判红「文件名里的内容哈希与实际不符」）。
+      _ver="$(node -e '
+const cp=require("node:child_process");
+try {
+  const raw=cp.execFileSync("unzip",["-p",process.argv[1],"component-meta.json"],{maxBuffer:4*1024*1024});
+  process.stdout.write(String(JSON.parse(raw.toString("utf8")).version||""));
+} catch(e) { process.stdout.write(""); }
+' "$_picked")"
+      [ -n "$_ver" ] || _ver="unknown"
+      _sha="$(sha256sum "$_picked" | cut -c1-12)"
+      cp -f "$_picked" "$DIST/component-$t-$_ver-$_sha-android-arm64.zip"
+    else
+      echo "::warning title=$t 挑不出那一颗件::$(tr '\n' ' ' < "$DIST/.pick-$t.err")"
+      echo "::notice:: 那期望形态=$_form（头四字节 $_magic）、=> 而那按内容挑逐字挑不出（=> 而按 C-05 不猜、=> 而不取第一个）。"
+      miss_row "$t" "missing-contract" "artifact 里的容器逐字挑不出那一颗件（形态=$_form、头四字节 $_magic）" \
+        "$(missing_form_of "$_cand")"
+      rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
+      missed=$((missed+1))
+      miss_unknown=$((miss_unknown+1))
+      continue
+    fi
+    rm -rf "$_unp" "$DIST/.pick-$t.err"
+  fi
+
   # 名字里必须有版本号：component-<件>-<版>-<哈希>-android-arm64.zip
   # （打包侧在读不到版本时写 unknown，见 recipes/package-component.sh:9 —— 那颗不是本轮编的）
   mapfile -t zips < <(compgen -G "$DIST/component-$t-*-android-arm64.zip" | grep -v -- "-unknown-" || true)
