@@ -212,16 +212,18 @@ object ProgramInstallPipeline {
             //      => 而**不是**「注册表 assetEntry 非空不空**」」
             //   => 而所以那**判据**逐字只看那一件**有没有 role=library 的项**，
             //      => 而**不**由 roleOf 那一票决定（=> 而那 roleOf 逐字答的是「有没有程序入口」）。
+            //  => 而那**空**那一档逐字**先**判（=> 而那 items.first() 逐字在空的时候逐字抛异常）：
+            //     => 而那旧版逐字把这一档判**在后面**、=> 而而那一支逐字 unguarded。
+            if (items.isEmpty()) {
+                //  => 而那**没有 role=library 的项**那一档逐字是 "no-library"
+                //     （=> 而按 01 裁的 S610-01 §2.4 第 5 条逐字「它逐字**不是缺**」）。
+                return PointerLayer(emptyList(), "no-library")
+            }
             if (role != ROLE_LIBRARY) {
                 //  => 而那**程序角色**那一族逐字只有**一条**入口（=> 而那它不参与择一）。
                 //     => 而而那一档逐字**不是** "program"（=> 而那一档逐字**取消**了）、
                 //       => 而而它逐字是 "no-library"（=> 而那它逐字答的是「这一件逐字没有库形态那几项」）。
                 return PointerLayer(listOf(items.first()), "no-library")
-            }
-            if (items.isEmpty()) {
-                //  => 而那**没有 role=library 的项**那一档逐字是 "no-library"
-                //     （=> 而按 01 裁的 S610-01 §2.4 第 5 条逐字「它逐字**不是缺**」）。
-                return PointerLayer(emptyList(), "no-library")
             }
             //  甲：那一项在**落位目录里是软链**。
             //  => 而那优先逐字用**产物自带**的那一格（derivedLinks、=> 而那它逐字记的就是「哪些是派生物」）。

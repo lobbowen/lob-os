@@ -203,13 +203,19 @@ object PieceEntryPointer {
             //      => 而它逐字**不是缺**（**它是程序形态那一族**）」）。
             //  => 而而那**程序入口**逐字**照样**要给（=> 而那那一件逐字有程序入口）。
             val progItems = shape.byRole(ProgramInstallPipeline.ROLE_PROGRAM)
-            val progPointers = if (progItems.size == 1) {
+            //  => 而那判据逐字是「**有** role=program 的项」（=> 而**不是**「恰好一条」）：
+            //     => 而那 busybox 那一件逐字有 **30** 条 role=program 的项（=> 而那 29 条软链 + 本体那一份）、
+            //       => 而而那「恰好一条」逐字会把它的程序入口**静默丢掉**。
+            //     => 而那**入口那一条**逐字取那一件**自己**的 entry（=> 而那 entry 逐字是那一件声明的入口）。
+            val progPointers = if (progItems.isNotEmpty()) {
                 //  => 而那**程序入口**逐字**不**由注册表 assetEntry 答
                 //     （=> 而按 01 裁的 S610-01 §2.2 第 3 条逐字「『有没有程序入口』那一格逐字归
                 //       **产物那一份的 `files[]` 里 `role=program` 那一族**」、
                 //      => 而那 assetEntry 那一格逐字是**派生索引**、=> 而那它逐字不是那一格的真源）。
-                val prog = progItems.first()
-                val name = prog.path.substringAfterLast('/')
+                //  => 而那**入口那一条**逐字取那一件**自己**声明的 entry
+                //     （=> 而那 entry 逐字是那一件声明的那一个、=> 而那它逐字**不**依赖「恰好一条」）。
+                val progEntry = shape.entry.trim()
+                val name = progEntry.substringAfterLast('/')
                 val dir = ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_PROGRAM)
                 if (name.isBlank() || dir == null) {
                     emptyList()
@@ -240,7 +246,15 @@ object PieceEntryPointer {
         //  => 而那档名逐字从那**唯一**那一格取（=> 而那 pointerLayerWithTier 那一格）、
         //     => 而而那「单层无软链」那一档逐字**显式**是 "single"
         //     （=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
-        val layer = ProgramInstallPipeline.PieceShape.pointerLayerWithTier(shape, role, verDirOf(ctx, pe))
+        //  => 而那**判据**逐字是「那一件逐字有没有 `role=library` 的项」
+        //     （=> 而按 01 裁的 S610-01 §2.4 逐字「**`program` 那一档逐字取消**、=> 而改成 `no-library`；
+        //      => 而那判据逐字是「那一件逐字有没有 `role=library` 的项」、
+        //      => 而**不是**「注册表 assetEntry 非空不空**」」）。
+        //  => 而所以那一格逐字**必须**传 ROLE_LIBRARY（=> 而那 libItems 逐字非空逐字就是那一族）
+        //     ——=> 而那旧版逐字传的是 roleOf 那一票（=> 而那对 mixed 那一件逐字是 program）
+        //     ——=> 而而那 openssl 那一件逐字走不到库形态那一支（=> 而那两条库指针逐字**读不到**）。
+        val layer = ProgramInstallPipeline.PieceShape.pointerLayerWithTier(
+            shape, ProgramInstallPipeline.ROLE_LIBRARY, verDirOf(ctx, pe))
         val picked = layer.pointers
         if (picked.isEmpty()) {
             //  => 而那**择一不出来**时（=> 而那三档：形态说明不带 chain[0] / 择一不唯一 / 指针层取不出）
@@ -259,9 +273,8 @@ object PieceEntryPointer {
         //     => 而而那程序入口逐字**不**由注册表 assetEntry 答（=> 而按 01 裁的 S610-01 §2.2 第 3 条逐字
         //       「『有没有程序入口』那一格逐字归**产物那一份的 `files[]` 里 `role=program` 那一族**」）。
         val progItems = shape.byRole(ProgramInstallPipeline.ROLE_PROGRAM)
-        if (progItems.size == 1) {
-            val prog = progItems.first()
-            val pname = prog.path.substringAfterLast('/')
+        if (progItems.isNotEmpty()) {
+            val pname = shape.entry.trim().substringAfterLast('/')
             val pdir = ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_PROGRAM)
             if (pname.isNotBlank() && pdir != null) {
                 out.add(
@@ -271,7 +284,9 @@ object PieceEntryPointer {
                         pointer = File(PrefixProvisioner.binDir(ctx), pname),
                         landedRel = pdir + "/" + pname,
                         detail = "程序形态：入口指针按产物那一份 files[] 里 role=program 那一项定位（usr/bin/" + pname + "）",
-                        tier = layer.tier,
+                        //  => 而那程序入口逐字**不**带那库链那一档（=> 而那档名逐字答的是「库形态那几项」、
+                        //     => 而那程序入口逐字**不是**库链那一族、=> 而按 C-105 那两问**不并**）。
+                        tier = "program-entry",
                     )
                 )
             }
@@ -316,7 +331,10 @@ object PieceEntryPointer {
         //        · 而那 07 本轮实读逐字：events.jsonl 里 "category":"diag: 命中 470
         //          => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而而那两条**都能**读到。
         //      => 而而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
-        reportTier(ctx, pe, layer.tier, out.size, out.map { it.name }, hasLibraryItems = true)
+        //  => 而那**指针条数**逐字只数那**库链**那几条（=> 而那程序入口逐字**不**混进去）
+        //     ——=> 而那档名与那条数逐字**量的是同一族**（=> 而那「库形态那几项」那一族）。
+        val libNames = picked.map { it.path.substringAfterLast('/') }
+        reportTier(ctx, pe, layer.tier, libNames.size, libNames, hasLibraryItems = true)
         return LocatedAll(role, out)
     }
 
