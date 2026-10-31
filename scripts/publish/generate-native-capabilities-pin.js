@@ -654,7 +654,7 @@ async function main() {
       //  => 而那 **outerSha256** 那一格（=> 而那它逐字是那**外层**那一份的 sha256）、
       //  => 而那 **sidecarLayer** 那一格（=> 而那它逐字记的是「那 sha256 记的是哪一层」：
       //     inner = 那 sha256 记的是**内层**那一个件包；outer = 记的是**外层**那一份）。
-      //  => 而按 Lead 那��裁逐字「**同层才比**」=> 而而那比边车那一份逐字要比**同层**那一份。
+      //  => 而按 Lead 那一裁逐字「**同层才比**」=> 而而那比边车那一份逐字要比**同层**那一份。
       outerSha256: rec.outerSha256,
       outerBytes: rec.outerBytes,
       outerForm: rec.outerForm,

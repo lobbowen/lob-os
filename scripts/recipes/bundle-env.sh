@@ -178,7 +178,7 @@ emit_piece() {
   #
   # 而成因：这一份 bundle-env.sh 在 source 的时候（=> 而第 15 行）cd 回了仓根，
   # **=> 而那时的 cwd 是对的**；
-  # 而 busybox 那一件在 build-native-busybox.sh:73 那一处 `cd "$SRC"` 进��了源码树，
+  # 而 busybox 那一件在 build-native-busybox.sh:73 那一处 `cd "$SRC"` 进了源码树，
   # **=> 而 emit_piece 是第 462 行才被调的，=> 而那时的 cwd 还在源码树里**
   # => 而那个相对路径就解析到源码树底下去了，=> 而源码树里没有 scripts/toolchain/。
   #

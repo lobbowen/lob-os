@@ -379,7 +379,7 @@ object PreinstalledPieces {
         //    => 而处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
         //      => 而有 => 而那一格**不**判已落位到最新 => => 而走重装 => => 而 install 跑
         //      => => 而 install 那一族逐字是「整目录换上去」（=> 而旧那一份被 renameTo 挪走、
-        //         => 而然后 deleteRecursively）=> => 而那一项**自然**没有���。
+        //         => 而然后 deleteRecursively）=> => 而那一项**自然**没有。
         val staleInLanding = mutableListOf<String>()
         run {
             val declared = shape.files.map { fs ->
