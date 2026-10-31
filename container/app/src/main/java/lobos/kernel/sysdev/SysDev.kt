@@ -26,7 +26,14 @@ object SysDev {
         //       => 而而那它逐字默认 rw-------、=> 而而那权限位逐字落到了**上一趟那一份**上。
         //   => 而那**正解**：=> 而那 `applyDeclaredModes` 逐字**先**落那权限位、
         //     => 而而那 `nodeKinds` 逐字**后**读那实际权限（=> 而那它逐字读的是**落完之后**的那一个）。
+        //  => 而那 `index.json` 那一份逐字**先**写出来（=> 而那第一遍）
+        //     => 而而那它逐字**要存在**，=> 而而那**它自己**那一格逐字才读得到它那**实际**权限
+        //       （=> 而那 `applyDeclaredModes` 逐字**要**它**在**、=> 而而那它逐字才能落那权限位）
+        indexJson(ctx, r)
         applyDeclaredModes(r)
+        //  => 而而那**第二遍**：=> 而那权限位逐字**落完**了、=> 而而那它自己那一格逐字读得到那**实际**权限
+        //     => 而而那这一遍逐字**覆写**那 index.json、=> 而而那 writeText 逐字**保留**那已落的权限位
+        //       （=> 而那 writeText 逐字**不改**那已存在那一份的权限）
         indexJson(ctx, r)
         r
     }.getOrNull()
@@ -116,7 +123,11 @@ object SysDev {
         //     => 而而那**没有一类是字符设备或块设备**（=> 而那它逐字全是目录 / 普通文件 / 软链）。
         //  => 而那 `nodes` 那一栏逐字**在**那 `applyDeclaredModes` **之后**取
         //    （=> 而那它逐字读的是**落完权限之后**的那实际权限、=> 而那才逐字是那声明要对照的那一个）
-        o.put("nodes", nodeKinds(r))
+        //  => 而那 `nodes` 那一栏逐字**在**那 `applyDeclaredModes` **之后**取
+        //    （=> 而那它逐字读的是**落完权限之后**的那实际权限、=> 而那才逐字是那声明要对照的那一个）
+        //  => 而而那**它自己**那一格逐字**标成它自己**（=> 而那 `index.json` 那一份逐字是**这一份**、
+        //    => 而而那它逐字**必存在**、=> 而而那它逐字**不必**等写出来才有）
+        o.put("nodes", nodeKinds(r, "index.json"))
         //  => 而那**声明**逐字**真的**落成那权限位（=> 而那不逐字只写一句话）
         //     => 而那**落**的那一步逐字在**这个函数之外**、=> 而而那它在**这之前**
         //       （=> 而那 `render` 那一族逐字：`applyDeclaredModes(r)` 然后 `indexJson(ctx, r)`）
@@ -134,11 +145,20 @@ object SysDev {
      *    => 而那**软链**逐字 lrwxrwxrwx（=> 而那软链的权限逐字**没有**意义、=> 而那它逐字**只登记**）。
      *  => 而那**声明**与那**实际**逐字**必须一致**（=> 而那不一致逐字判红、=> 而那不静默）。
      */
-    private fun nodeKinds(r: File): JSONArray {
+    private fun nodeKinds(r: File, selfPath: String): JSONArray {
         val out = JSONArray()
         for (d in NODE_DECLARATION) {
             val target = File(r, d.path)
             val exists = target.exists()
+            //  缺陷名（C-102）**那 `index.json` 那一类逐字永远自指不可见** ——
+            //   => 而那旧版逐字是 `nodeKinds` 逐字在 `index.json` 写出来**之前**取
+            //     => 而而那它逐字描述的是「写之前那一瞬间」
+            //     => 而而那 `index.json` **自己**逐字**那时**还不存在
+            //     => 而而那它逐字**永远** exists=false（=> 而那 07 本轮逐字核到的那一条）
+            //   => 而那**正解**（=> 而那是 Lead 逐字采纳的那 (乙)）：
+            //     => 而那**它自己**逐字写成「**它自己**」（=> 而那一类逐字就是 index.json 那一份）
+            //     => 而而那它逐字**不算**那 exists 那一格（=> 而它逐字**必存在**、=> 而它逐字是**这一份**）
+            val isSelf = d.path == selfPath
             //  => 而那**实际**权限逐字**读**出来（=> 而那读不到就逐字**报缺**、=> 而不猜填）。
             val actual = if (!exists) "" else actualModeOf(target)
             val declared = d.mode
@@ -146,11 +166,14 @@ object SysDev {
                 put("path", d.path)
                 put("kind", d.kind)
                 put("declaredMode", declared)
-                put("exists", exists)
+                //  => 而那**它自己**那一格逐字**标成它自己**（=> 而它逐字**不算**那 exists）
+                put("self", isSelf)
+                put("exists", if (isSelf) true else exists)
                 put("actualMode", actual)
                 //  => 而那**声明与实际不一致**逐字**显式记出来**（=> 而那它逐字不是判红、=> 而那那是**事实**）。
                 //  => 而那**软链**那一格逐字**不**判「对不对得上」（=> 而那软链的权限逐字**没有**意义）。
                 put("matches", when {
+                    isSelf -> null
                     !exists -> null
                     d.kind == "symlink" -> null
                     else -> (actual == declared)

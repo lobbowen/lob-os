@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import lobos.services.host.HostControlService
@@ -28,10 +29,29 @@ class HostControlActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        //  缺陷名（C-102）**那根 LinearLayout 逐字不可滚、=> 而而那控件总数逐字超出屏幕、=> 而而那最后那个按钮被压成 0 高** ——
+        //    => 而那旧版逐字是 `val root = LinearLayout(this).apply { orientation = VERTICAL … }`
+        //      => 而而那 LinearLayout 逐字**不可滚**（=> 而那它逐字把子控件**挤**在一屏里）
+        //      => 而而那那一屏逐字 1080x2120、=> 而而那控件总数逐字**超出**它
+        //      => 而而那**最后**那个（逐字是那「在 LOB-OS 里跑这条命令」那一个）按钮
+        //        逐字被压成 **0 高**（=> 而那设备侧 07 逐字核到
+        //        `android.widget.Button{d61fd89 … 32,2088-1048,2088 …}`）
+        //      => 而而那它逐字在屏幕内（=> 而那 y=2088、=> 而那屏幕 2120 高）
+        //        **但高 0**、=> 而而那它逐字**点不到**、=> 而而那它逐字**也不在焦点链**里
+        //        （=> 而那 20 次 TAB 逐字走完 Spinner → 刷新件列表 → 更新清单 URL → requestId
+        //          → 更新系统件 → 回滚 → PE ARM64 → PE i386 → 命令输入框 → 回到 Spinner
+    //          ——=> 而而那那个按钮逐字**不在**那一链里）
+        //      => 而而那**输入**那一格逐字**是**通的（=> 而那阳性对照逐字：命令输入框逐字确实被填上了）
+        //    => 而那**正解**：=> 而那根逐字换成 **ScrollView**（=> 而而那它逐字可滚、
+        //      => 而而那控件超屏时逐字**能滚到**、=> 而而那按钮逐字**不再**被压成 0 高）。
+        val root = ScrollView(this).apply {
             setPadding(32, 32, 32, 32)
+            //  => 而那那内容逐字还是那一个竖排（=> 而而那 ScrollView 逐字只带**一个**孩子）
+            addView(LinearLayout(this@HostControlActivity).apply {
+                orientation = LinearLayout.VERTICAL
+            })
         }
+        val content = root.getChildAt(0) as LinearLayout
         spinner = Spinner(this)
         manifest = EditText(this).apply { hint = "更新清单 URL（https）" }
         request = EditText(this).apply { hint = "requestId（可空，自动生成）" }
@@ -113,20 +133,20 @@ class HostControlActivity : Activity() {
             }
         }
 
-        root.addView(TextView(this).apply { text = "LOB-OS 管理" })
-        root.addView(idHint)
-        root.addView(spinner)
-        root.addView(detail)
-        root.addView(refresh)
-        root.addView(manifest)
-        root.addView(request)
-        root.addView(update)
-        root.addView(rollback)
-        root.addView(peSample)
-        root.addView(peSample32)
-        root.addView(cmdField)
-        root.addView(exec)
-        root.addView(result)
+        content.addView(TextView(this).apply { text = "LOB-OS 管理" })
+        content.addView(idHint)
+        content.addView(spinner)
+        content.addView(detail)
+        content.addView(refresh)
+        content.addView(manifest)
+        content.addView(request)
+        content.addView(update)
+        content.addView(rollback)
+        content.addView(peSample)
+        content.addView(peSample32)
+        content.addView(cmdField)
+        content.addView(exec)
+        content.addView(result)
         setContentView(root)
         loadPieces()
     }
