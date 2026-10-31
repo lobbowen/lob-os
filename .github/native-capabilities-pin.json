@@ -2,7 +2,7 @@
   "schema": 2,
   "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
   "generatedBy": "scripts/publish/generate-native-capabilities-pin.js",
-  "generatedAt": "2026-10-30T14:42:06.726Z",
+  "generatedAt": "2026-10-31T10:33:37.671Z",
   "generatedAtNote": "generatedAt 是生成时刻，每次运行都会变 —— 这个文件是生成物，不要手改。",
   "abi": "arm64-v8a",
   "source": {
@@ -111,14 +111,14 @@
     {
       "id": "jq",
       "tier": "upstream",
-      "capsLibName": "jq",
+      "capsLibName": "bin/jq",
       "version": "1.8.2",
       "tag": "base-jq",
       "zip": "jq-nodeps+ndk30.0.16248370+api35+src8871e4a801c2.zip",
       "sha256": "7b40a094a6e724e27089a7b36d64cbba5d72c2ad452b9dfe3500b09ffe9286b0",
       "missing": false,
       "missingReason": "",
-      "fingerprint": "e90d8be63f8c0757446dd1ef6b2c5e1bdb7e5af60727b3ea1dfba5c5e9b9fe08"
+      "fingerprint": "043f38dd7d23431f60701a4c8b35cc5047a871e2dd3e4e04bee41e32535f8334"
     }
   ],
   "missing": [],
@@ -788,10 +788,10 @@
       ],
       "filesVerified": true
     },
-    "e90d8be63f8c0757446dd1ef6b2c5e1bdb7e5af60727b3ea1dfba5c5e9b9fe08": {
+    "043f38dd7d23431f60701a4c8b35cc5047a871e2dd3e4e04bee41e32535f8334": {
       "id": "jq",
       "tier": "upstream",
-      "capsLibName": "jq",
+      "capsLibName": "bin/jq",
       "capsLibNameFoundInArtifact": true,
       "artifactLibraryPath": "",
       "entryInArtifact": "bin/jq",

@@ -99,6 +99,25 @@ function readJson(p, what) {
   }
 }
 
+// 那一趟的**缺件表**（=> 而那 dist/.fetch-missing.tsv 那一档、=> 而那它逐字是那四列：
+//   件名 / 那一档 / 那一档的原话 / 容器形态那一格）。
+//   => 而那读不到时逐字是**空**（=> 而而那不是「没有缺件」、=> 而而那是没有那张表）。
+function readMissingTable() {
+  const out = new Map();
+  const p = path.join(ROOT, 'dist', '.fetch-missing.tsv');
+  if (!fs.existsSync(p)) return out;
+  let raw = '';
+  try { raw = fs.readFileSync(p, 'utf8'); } catch (e) { return out; }
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue;
+    const parts = line.split('\t');
+    const id = String(parts[0] || '').trim();
+    if (!id) continue;
+    out.set(id, { kind: String(parts[1] || '').trim(), detail: String(parts[2] || '').trim() });
+  }
+  return out;
+}
+
 // 控制面板件清单（=> 而那逐字从 cache-key.sh 的 bucket_for 出、=> 而那**那是唯一真相**）。
 //   => 而那底座件那一族（base / apkonly 筐）逐字**不进**这一轴
 //     （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
@@ -194,14 +213,35 @@ function main() {
   //      （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
   if (shape.kind === 'component') {
     const projected = new Set(shape.tools.map((t) => String(t.name)));
+    //  缺陷名（C-102）**那一轴逐字把「已知缺件」与「件级缺失」混成一档，
+    //    于是三处已知缺件被逐字判成漂移** ——
+    //    => 而 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字裁的是
+    //      「**投影侧 `work/declared.json` 逐字不留占位**（=> 而它答『取到了什么』）」，
+    //    => 而那**投影里没有**那几件逐字是**对的**（=> 而那那几件逐字是「已知缺件」）。
+    //    => 而而那那一裁逐字还给了另一半：「**声明侧那一份逐字要带缺件状态**」。
+    //    => 而那**判红的正确形态**逐字是：「那一件逐字在控制面板件清单里、
+    //      => 而它逐字既不在投影里、=> 而也**不在**那一趟的缺件表里」。
+    //    => 而那缺件表逐字是 dist/.fetch-missing.tsv（=> 而那它逐字是那四列那一档：
+    //      件名 / 那一档 / 那一档的原话 / 容器形态）。
+    const missingTable = readMissingTable();
     for (const row of bucketComponents()) {
       const id = row.name;
       if (row.bucket === 'base' || row.bucket === 'apkonly') continue;
       if (!sources[id]) continue;
-      if (!projected.has(id)) {
-        drift(id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），=> 而它逐字**不在**那投影里 —— ' +
-          '这一件缺失（=> 而那投影侧逐字只从投影出发、=> 而那零漂移；=> 而而那这一件逐字**该被看见**）');
+      if (projected.has(id)) continue;
+      const miss = missingTable.get(id);
+      if (miss) {
+        //  => 而那**已知缺件**逐字**不判红**（=> 而它逐字在缺件表里、=> 而那缺件表就是那显式的一格），
+        //    => 而而它逐字**报出来**（=> 而那才是「件不静默消失」那一格的兑现）。
+        console.log('[drift] ' + id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），' +
+          '=> 而它逐字**不在**那投影里 —— ' +
+          '而而它逐字**在**那缺件表里（档位 ' + miss.kind + '、=> 而那一档的原话逐字：' + miss.detail + '）' +
+          '=> 而而那投影侧逐字**不留占位**是**对的**（=> 而按 01 裁的 S606-02 逐字「它答『取到了什么』」）。');
+        continue;
       }
+      drift(id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），=> 而它逐字**不在**那投影里、' +
+        '=> 而也**不在**那缺件表里 —— 这一件**真**缺失（=> 而那投影侧逐字只从投影出发、=> 而那零漂移；' +
+        '=> 而而那这一件逐字**该被看见**）');
     }
   }
 
