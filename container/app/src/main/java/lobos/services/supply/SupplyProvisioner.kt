@@ -206,7 +206,26 @@ object SupplyProvisioner {
      * C-104 有没有第二种生成路径：没有。=> 而那判别逐字**只有**这一处（=> 而按 C-994「判别源必须唯一」）。
      */
     internal fun unzipFromFile(pkg: File, dest: File, probeCtx: android.content.Context? = null) {
-        when (containerFormOf(pkg)) {
+        val form = containerFormOf(pkg)
+        //  => 而那 ctx 逐字**要**有（=> 而那出口逐字要有地方可报、=> 而那 ctx 逐字是那唯一的地方）。
+        //     => 而那三处调用点逐字**都**有 ctx 可传（=> 而那一处 PieceUpdater 那边的
+        //       逐字**原来没传**、=> 而而它现在逐字传上、=> 而而那出口逐字**处处**都报得出）。
+        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+        //    => 而那旧版逐字是 `when (containerFormOf(pkg))`（=> 而那**赋值**逐字**没有消费方**：
+        //      而 Lead 本机实读逐字「全仓调用点逐字只有一处」、=> 而那**就是**这一处）。
+        //    => 而那与 C-996 那一族（Located.tier）逐字**同一形状**（=> 而那判别式被写了、被赋值了、
+        //      => 而而没有任何一处读它）。
+        //    => 而那**后果**：=> 而 07 本轮实测逐字**触发了** unzipFromFile（=> 而那 Kotlin 侧那一档逐字被算了）
+        //      **但那一档逐字没被报出来** => 而那**读不到**。
+        //    => 而那**处置**：=> 而那一档逐字**报进诊断那一族**
+        //      （=> 而那 RuntimeDiagnostics.append 逐字写进 diag.jsonl、=> 而而那正是 07 能读到的那一份）。
+        //    => 而那**stage** 那一格的名字逐字是 "container-form"（=> 而它逐字答的是「这一份是什么容器」；
+        //      => 而而它逐字**不**与那 "lib-entry-tier" 那一格混（=> 而那是库入口那一档）。
+        //    => 而那**为什么**在这里报、=> 而不在 containerFormOf 那一格里报：
+        //      · 而那 containerFormOf 那一格逐字**没有** ctx（=> 而它逐字是纯函数、=> 而那它逐字不该有副作用）；
+        //      · 而那**调用点**逐字是那实际**做了那个动作**的地方（=> 而 unzipFromFile 逐字就是那解包那一族）。
+        reportContainerForm(probeCtx, pkg, form)
+        when (form) {
             CONTAINER_ZIP -> unzip(pkg, dest, probeCtx)
             CONTAINER_GZIP -> untarFromFile(pkg, dest)
             CONTAINER_TAR -> untarFromFile(pkg, dest)
@@ -216,6 +235,39 @@ object SupplyProvisioner {
                 unzip(pkg, dest, probeCtx)
             }
         }
+    }
+
+    /**
+     * 那一档的**出口**（=> 而它逐字把「这一份是什么容器」报进诊断那一族）。
+     *   => 而那 ctx **可以**是空（=> 而那 probeCtx 那一格逐字可选、=> 而而那空的时候逐字**不报**、
+     *     => 而而那**不是**「那一档没算」、=> 而而那是「**没有地方可报**」）。
+     */
+    private fun reportContainerForm(
+        ctx: android.content.Context?,
+        pkg: File,
+        form: String,
+    ) {
+        val c = ctx ?: return
+        val magic = try {
+            pkg.inputStream().use { ins ->
+                val b = ByteArray(4)
+                var got = 0
+                while (got < 4) {
+                    val n = ins.read(b, got, 4 - got)
+                    if (n <= 0) break
+                    got += n
+                }
+                if (got < 4) "" else b.joinToString("") { "%02x".format(it) }
+            }
+        } catch (e: Throwable) {
+            ""
+        }
+        lobos.services.log.RuntimeDiagnostics.append(
+            c, "container-form", true,
+            "容器形态 " + form,
+            "文件=" + pkg.name + " 档位=" + form + " 头四字节=" + magic +
+                " （=> 而那一档逐字是「这一份实际上是什么容器」）",
+        )
     }
 
     /** 容器形态那一格（=> 而那它逐字**按头四字节**判、=> 而不按名字）。

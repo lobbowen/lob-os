@@ -240,7 +240,7 @@ object PieceUpdater {
                 return out
             }
             runCatching { unpacked.deleteRecursively() }
-            SupplyProvisioner.unzipFromFile(tmp, unpacked)
+            SupplyProvisioner.unzipFromFile(tmp, unpacked, ctx)
 
             for ((e, ver, c) in todo) {
                 val inPackage = c.optString("libName", e.libName).ifBlank { e.libName }
