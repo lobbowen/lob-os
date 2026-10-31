@@ -326,31 +326,47 @@ object PieceUpdater {
         version: String,
         dest: File,
     ): Boolean = try {
-        val located = PieceEntryPointer.locate(ctx, e)
-            ?: return false
-        val link = located.pointer
-        val entryName = located.name
-        val staging = File(link.parentFile, "." + entryName + ".new")
-        runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
-        java.nio.file.Files.createSymbolicLink(staging.toPath(), dest.toPath())
-        val ok = staging.renameTo(link) || run {
-            java.nio.file.Files.deleteIfExists(link.toPath())
-            staging.renameTo(link)
-        }
-        if (ok) {
-            val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
-            SupplyProvisioner.selectVersion(ctx, e.id, detected)
+        //  缺陷名（C-102）**那入口指针逐字只切第一条、=> 而而那一件逐字可能有多条** ——
+        //   => 而那旧版逐字是 `PieceEntryPointer.locate(ctx, e)`（=> 而那**只**给第一条），
+        //     => 而那 openssl 那一件逐字有**两条**库指针（libcrypto.so 与 libssl.so）
+        //       （=> 而按 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」）
+        //     => 而而那第二条指针在 OTA 那条路上逐字**永远没被切过**。
+        //   => 而那**处置**：=> 而那逐字取**全部**那几条（=> 而那 locateAll 那一档）、
+        //     => 而而那**逐条**切、=> 而而那**逐条**记来源。
+        //   => 而那「全部都切成了」逐字是那一族成功与失败的**判据**
+        //     （=> 而那只要有一条切不成、=> 而那一件逐字就是没成）。
+        val locatedAll = PieceEntryPointer.locateAll(ctx, e)
+        if (locatedAll.pointers.isEmpty()) return false
+        var allOk = true
+        for (located in locatedAll.pointers) {
+            val link = located.pointer
+            val entryName = located.name
+            val staging = File(link.parentFile, "." + entryName + ".new")
+            runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
+            java.nio.file.Files.createSymbolicLink(staging.toPath(), dest.toPath())
+            val ok = staging.renameTo(link) || run {
+                java.nio.file.Files.deleteIfExists(link.toPath())
+                staging.renameTo(link)
+            }
+            if (!ok) {
+                allOk = false
+                continue
+            }
             //  记录那一件现在的入口来源 = OTA 版本（=> 而那「回到 APK 原件」要靠这一格才判得出）。
             //   缺陷名（C-102）**记的是平铺的一格**（recordOtaVersion）=> 而库形态那一件
             //   的那一条指针没地方记 => 而「被接管没有」对纯库件答不出。
             //   现在：按角色记（role + 入口指针路径 + 那一份字节路径）。
             runCatching {
                 PieceOriginStore.recordOtaSlot(
-                    ctx, e.id, detected, located.role, link.absolutePath, dest.absolutePath,
+                    ctx, e.id, version, located.role, link.absolutePath, dest.absolutePath,
                 )
             }
         }
-        ok
+        if (allOk) {
+            val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
+            SupplyProvisioner.selectVersion(ctx, e.id, detected)
+        }
+        allOk
     } catch (_: Throwable) {
         false
     }
@@ -415,8 +431,10 @@ object PieceUpdater {
                 "", "", "", "",
             )
         val role = PieceEntryPointer.roleOf(pe)
-        val located = PieceEntryPointer.locate(ctx, pe)
-        if (role == ProgramInstallPipeline.ROLE_LIBRARY && located == null) {
+        //  => 而那**全部**那几条（=> 而那旧版逐字只给第一条、=> 而那库形态那一件逐字可能有多条）。
+        val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
+        val located = locatedAll.firstOrNull()
+        if (role == ProgramInstallPipeline.ROLE_LIBRARY && locatedAll.pointers.isEmpty()) {
             return RollbackStatus(
                 id, false, REASON_LIBRARY_ENTRY_UNLOCATED,
                 "F3 库形态入口未定位：落位目录里读不到 " + ProgramInstallPipeline.SHAPE_NAME +
@@ -501,36 +519,77 @@ object PieceUpdater {
             return false to (status.reason + "：" + status.detail)
         }
         val pe = lobos.services.reg.ProgramIndex.get(ctx, id) ?: return false to REASON_NOT_REGISTERED
-        val located = PieceEntryPointer.locate(ctx, pe) ?: return false to REASON_LIBRARY_ENTRY_UNLOCATED
-        val link = located.pointer
-        val entryName = located.name
+        //  缺陷名（C-102）**那回退逐字只换第一条指针、=> 而而那一件逐字可能有多条** ——
+        //   => 而那旧版逐字是 `PieceEntryPointer.locate(ctx, pe)`（=> 而那**只**给第一条），
+        //     => 而那 openssl 那一件逐字有**两条**库指针（=> 而按 01 裁的 S604-01 §1.4 第 3 条
+        //       逐字「**这一格不是「取第一个」**」）=> 而而那第二条指针逐字**永远换不回**。
+        //   => 而那**处置**：=> 而那逐字取**全部**那几条、=> 而而那**逐条**换、
+        //     => 而而那**逐条**核（=> 而 C-941 那逐字比较对**每一条**都做一遍）。
+        //   => 而那**判据**逐字是「**每一条**都换成了、=> 而而每一条都核对一致」。
+        val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
+        if (locatedAll.pointers.isEmpty()) return false to REASON_LIBRARY_ENTRY_UNLOCATED
         val origin = PieceOriginStore.get(ctx, id)
-        val otaSlot = PieceOriginStore.otaSlotsInCharge(origin).firstOrNull()
-            ?: return false to (REASON_NOT_TAKEN_OVER + "：入口指针当前没有指向记下来的 OTA 那一份")
-        val apkSlot = PieceOriginStore.apkSlotFor(origin, otaSlot)
-            ?: return false to (REASON_NO_ORIGIN_POINTER + "：来源记录里没有这一件对应的 APK 原件指针格子")
-        val apkFile = File(apkSlot.targetPath)
-        if (!apkFile.isFile) {
-            return false to "记下的 APK 原件已不在：" + apkSlot.targetPath
+        val otaSlots = PieceOriginStore.otaSlotsInCharge(origin)
+        if (otaSlots.isEmpty()) {
+            return false to (REASON_NOT_TAKEN_OVER + "：入口指针当前没有指向记下来的 OTA 那一份")
         }
         return try {
-            val staging = File(link.parentFile, "." + entryName + ".rollback")
-            runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
-            java.nio.file.Files.createSymbolicLink(staging.toPath(), apkFile.toPath())
-            val swapped = runCatching {
-                java.nio.file.Files.deleteIfExists(link.toPath())
-                staging.renameTo(link)
-            }.getOrDefault(false)
-            if (!swapped) {
+            //  => 而那**逐条**换、=> 而而那**逐条**核（=> 而那判据逐字是「每一条都换成了」）。
+            //  => 而那**每一条**逐字用它**自己**的那一格来源（=> 而那 apkSlotFor 逐字先按 entryPath 找、
+            //     => 而那**指针路径才是那身份**、=> 而那角色只是**元数据**）。
+            var allSwapped = true
+            var allBack = true
+            val facts = mutableListOf<String>()
+            for (located in locatedAll.pointers) {
+                val link = located.pointer
+                val entryName = located.name
+                //  => 而那这一条指针逐字**自己**的那一条 OTA 槽（=> 而那按 entryPath 逐字找）。
+                val otaSlot = otaSlots.firstOrNull { it.entryPath == link.absolutePath }
+                    ?: otaSlots.firstOrNull { it.role == located.role }
+                if (otaSlot == null) {
+                    allSwapped = false
+                    facts.add("入口=" + link.absolutePath + " （来源记录里没有这一条指针的 OTA 槽）")
+                    continue
+                }
+                val apkSlot = PieceOriginStore.apkSlotFor(origin, otaSlot)
+                if (apkSlot == null) {
+                    allSwapped = false
+                    facts.add("入口=" + link.absolutePath + " （来源记录里没有这一条指针的 APK 原件指针格子）")
+                    continue
+                }
+                val apkFile = File(apkSlot.targetPath)
+                if (!apkFile.isFile) {
+                    allSwapped = false
+                    facts.add("入口=" + link.absolutePath + " （记下的 APK 原件已不在：" + apkSlot.targetPath + "）")
+                    continue
+                }
+                val staging = File(link.parentFile, "." + entryName + ".rollback")
                 runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
-                return false to "入口指针换不回 APK 原件（软链替换失败）"
+                java.nio.file.Files.createSymbolicLink(staging.toPath(), apkFile.toPath())
+                val swapped = runCatching {
+                    java.nio.file.Files.deleteIfExists(link.toPath())
+                    staging.renameTo(link)
+                }.getOrDefault(false)
+                if (!swapped) {
+                    runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
+                    allSwapped = false
+                    facts.add("入口=" + link.absolutePath + " （软链替换失败）")
+                    continue
+                }
+                //  C-941：回退成没成 = 两边都取 realpath 再**逐字**比较。
+                val active = runCatching { link.toPath().toRealPath().toString() }.getOrDefault("")
+                val want = runCatching { apkFile.toPath().toRealPath().toString() }.getOrDefault("")
+                val back = active.isNotBlank() && active == want
+                if (!back) allBack = false
+                facts.add("入口=" + link.absolutePath + " 目标=" + active +
+                    " APK 原件=" + apkFile.absolutePath +
+                    (if (back) "（已核对一致）" else "（核对不一致）"))
             }
-            SupplyProvisioner.selectVersion(ctx, id, "")
-            PieceOriginStore.markApkActive(ctx, id)
-            //  C-941：回退成没成 = 两边都取 realpath 再**逐字**比较。
-            val active = runCatching { link.toPath().toRealPath().toString() }.getOrDefault("")
-            val want = runCatching { apkFile.toPath().toRealPath().toString() }.getOrDefault("")
-            val back = active.isNotBlank() && active == want
+            val back = allSwapped && allBack
+            if (allSwapped) {
+                SupplyProvisioner.selectVersion(ctx, id, "")
+                PieceOriginStore.markApkActive(ctx, id)
+            }
             //  规范 §122.31 逐字要求：那条 detail 须含「软链删除与 provision 重建结果」。
             //  缺陷名（C-102）**detail 只报了路径、没报那一句**：原来这一条写的是
             //   「入口=… 目标=… APK 原件=…」，=> 而那一句话**不在**里面 =>
@@ -539,9 +598,7 @@ object PieceUpdater {
             RuntimeDiagnostics.append(
                 ctx, "piece-ota", back,
                 "件已回滚到 APK 原件：" + id,
-                "软链删除与 provision 重建结果：入口=" + link.absolutePath +
-                    " 目标=" + active + " APK 原件=" + apkFile.absolutePath +
-                    (if (back) "（已核对一致）" else "（核对不一致）"),
+                "软链删除与 provision 重建结果：" + facts.joinToString("；"),
             )
             back to null
         } catch (ex: Throwable) {
@@ -558,19 +615,46 @@ object PieceUpdater {
     fun verifyApkRestored(ctx: Context, id: String): Pair<Boolean, String> {
         val pe = lobos.services.reg.ProgramIndex.get(ctx, id)
             ?: return false to REASON_NOT_REGISTERED + "：注册表里没有 id=" + id
-        val located = PieceEntryPointer.locate(ctx, pe)
-            ?: return false to REASON_LIBRARY_ENTRY_UNLOCATED + "：入口指针定位不到"
+        //  => 而那**全部**那几条（=> 而那旧版逐字只核第一条、=> 而那库形态那一件逐字可能有多条）。
+        val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
+        if (locatedAll.pointers.isEmpty()) {
+            return false to REASON_LIBRARY_ENTRY_UNLOCATED + "：入口指针定位不到"
+        }
         val origin = PieceOriginStore.get(ctx, id)
-        val apkSlot = origin?.apkSlots?.firstOrNull { it.complete }
-            ?: return false to REASON_NO_ORIGIN_POINTER + "：来源记录里没有这一件的 APK 原件指针格子"
-        val ptrReal = runCatching { located.pointer.toPath().toRealPath().toString() }.getOrNull()
-            ?: return false to "入口指针读不出 realpath"
-        val bodyReal = runCatching { File(apkSlot.targetPath).toPath().toRealPath().toString() }.getOrNull()
-            ?: return false to "APK 原件读不出 realpath"
-        return if (ptrReal == bodyReal) {
-            true to "入口 realpath 与来源记录里记下的 APK 原件一致"
+        //  => 而那**逐条**核（=> 而那每一条逐字用它**自己**的那一格 APK 原件槽）。
+        val facts = mutableListOf<String>()
+        var allOk = true
+        for (located in locatedAll.pointers) {
+            val apkSlot = origin?.apkSlots?.firstOrNull {
+                it.complete && it.entryPath == located.pointer.absolutePath
+            } ?: origin?.apkSlots?.firstOrNull { it.complete && it.role == located.role }
+                ?: origin?.apkSlots?.firstOrNull { it.complete }
+            if (apkSlot == null) {
+                allOk = false
+                facts.add("入口=" + located.pointer.absolutePath + " （没有它的 APK 原件指针格子）")
+                continue
+            }
+            val ptrReal = runCatching { located.pointer.toPath().toRealPath().toString() }.getOrNull()
+            if (ptrReal == null) {
+                allOk = false
+                facts.add("入口=" + located.pointer.absolutePath + " （入口指针读不出 realpath）")
+                continue
+            }
+            val bodyReal = runCatching { File(apkSlot.targetPath).toPath().toRealPath().toString() }.getOrNull()
+            if (bodyReal == null) {
+                allOk = false
+                facts.add("入口=" + located.pointer.absolutePath + " （APK 原件读不出 realpath）")
+                continue
+            }
+            val same = ptrReal == bodyReal
+            if (!same) allOk = false
+            facts.add("入口=" + located.pointer.absolutePath +
+                (if (same) "（realpath 与来源记录里记下的 APK 原件一致）" else "（realpath 与来源记录里记下的 APK 原件不一致）"))
+        }
+        return if (allOk) {
+            true to "入口 realpath 与来源记录里记下的 APK 原件一致（" + facts.joinToString("；") + "）"
         } else {
-            false to "入口 realpath 与来源记录里记下的 APK 原件不一致"
+            false to "入口 realpath 与来源记录里记下的 APK 原件不一致（" + facts.joinToString("；") + "）"
         }
     }
 

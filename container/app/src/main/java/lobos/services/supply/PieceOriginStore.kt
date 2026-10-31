@@ -156,7 +156,19 @@ object PieceOriginStore {
         targetPath: String,
     ) {
         val cur = get(ctx, id)
-        val slots = cur?.apkSlots.orEmpty().filterNot { it.role == role } + Slot(role, entryPath, targetPath)
+        //  缺陷名（C-102）**那槽逐字只按角色分、=> 而而同一角色逐字可以有多条指针** ——
+        //    => 而那旧版逐字是 `filterNot { it.role == role } + Slot(role, ...)`
+        //      => 而那 openssl 那一件逐字有**两条**库指针（libcrypto.so 与 libssl.so）、
+        //        => 而而它们逐字**同属 library 那一角色**
+        //      => 而而那第二条逐字把第一条**盖掉**（=> 而那 filterNot 逐字把它删了）。
+        //    => 而那**后果**：=> 而「回到 APK 原件」对那第二条指针**答不出**
+        //      （=> 而那来源记录里**已经没有**它了）。
+        //    => 而那**处置**：=> 而那槽逐字按**指针路径**分（=> 而那 entryPath 逐字是那指针的身份）、
+        //      => 而那角色逐字降级成**元数据**（=> 而它仍逐字记着那一条是哪个角色）。
+        //    => 而那 apkSlotFor 那一格逐字**已经**是按 entryPath 先找（=> 而那那一句逐字是
+        //      「The pointer path is the primary key」）=> 而那两处口径逐字一致。
+        val slots = cur?.apkSlots.orEmpty().filterNot { it.entryPath == entryPath } +
+            Slot(role, entryPath, targetPath)
         write(ctx, Origin(
             id = id,
             active = if (otaInCharge(cur)) SOURCE_OTA else SOURCE_APK,
@@ -179,7 +191,11 @@ object PieceOriginStore {
         targetPath: String,
     ) {
         val cur = get(ctx, id)
-        val slots = cur?.otaSlots.orEmpty().filterNot { it.role == role } + Slot(role, entryPath, targetPath)
+        //  => 而那逐字按**指针路径**分（=> 而那理由逐字见 recordApkSlot 那一条注释）：
+        //     而那同一角色逐字可以有多条指针（=> 而 openssl 那一件逐字是两条库指针），
+        //     => 而而那旧版逐字按角色分、=> 而那第二条逐字把第一条盖掉。
+        val slots = cur?.otaSlots.orEmpty().filterNot { it.entryPath == entryPath } +
+            Slot(role, entryPath, targetPath)
         write(ctx, Origin(
             id = id,
             active = SOURCE_OTA,
