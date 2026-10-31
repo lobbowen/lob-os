@@ -598,17 +598,24 @@ async function main() {
         : (rec.kind === 'library' ? 'library' : (rec.kind === 'program' ? 'program' : 'unknown'));
       rec.capsEntryKind = entryKind;
       //  => 而那 capsLibName 那一格逐字**不改名、改语义**：
-      //     => 而那它逐字在**库形态**那一族逐字**就是**那 `.so` 名（=> 而那一档逐字不��）；
-      //     => 而那它逐字在**程序形态**那一族逐字**该**是那**件包内相对路径**（=> 而那档位表逐字写的是裸名）。
-      if (entryKind === 'program' && c.capsLibName && !c.capsLibName.includes('/')) {
-        //  => 而那一格逐字**报出来**（=> 而按 C-05「缺字段就报缺、不许猜填」、
-        //     => 而而那档位表那一格逐字**是**裸名、=> 而那它逐字**对不上**件包内相对路径）。
-        bad(c.id + '：档位表第二列逐字是裸名 ' + c.capsLibName +
-          '，=> 而按 C-979 程序形态逐字该是件包内相对路径（=> 而那一件的入口逐字是 ' +
-          (rec.entryInArtifact || '(空)') + '）');
-        rec.capsLibNameIsBare = true;
-      } else {
-        rec.capsLibNameIsBare = false;
+      //     => 而那一格逐字答的是「**这一件逐字提供哪个字节名**」（=> 而 Lead 本机实读逐字：
+      //       「`capsLibName` 这一格装的是「**在件包里能命中那一项的字符串**」」），
+      //       => 而**不是**「这一件的入口是什么」。
+      //  => 而那一格逐字**不是**「程序形态 ⇒ 相对路径」那条**普遍规则**
+      //     （=> 而 Lead 判：busybox 那一件逐字是**程序形态**、
+      //       => 而而它逐字**真的提供** libbusybox.so 那个字节
+      //       （=> 而它逐字 programs 里有 bin/libbusybox.so + 29 条软链））。
+      //  => 而 01 裁的 S606-01 §9.1 逐字那句「llvm 那一件……逐字应是 bin/clang」逐字**只**关于 llvm 那一件
+      //     （=> 而那一件逐字**没有** clang 那个字节、=> 而它逐字提供的是 bin/clang）。
+      //  => 而那一格逐字**能不能在件包里命中**才是那一族「档位表与产物分家」那一格：
+      //     => 而那 capsLibNameFoundInArtifact 逐字是 false 时、=> 而那**档位表第二列与产物对不上**
+      //       逐字**报出来**（=> 而按 C-05「缺字段就报缺、不许猜填」、
+      //       => 而而那那一格逐字**不许**越权去改那档位表）。
+      rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
+      if (!rec.capsLibNameFoundInArtifact) {
+        bad(c.id + '：档位表第二列逐字是 ' + c.capsLibName +
+          '，=> 而那件包里逐字**命中不到**它（=> 而那是「档位表与产物分家」那一格）' +
+          '（=> 而那该提供的是 ' + (rec.artifactLibraryPath || rec.entryInArtifact || '(空)') + '）');
       }
       const realLib = files.find((f) => f.role === 'library' && f.verified === 'sha256-matched-piece-shape');
       rec.artifactLibraryPath = realLib ? realLib.path : '';
