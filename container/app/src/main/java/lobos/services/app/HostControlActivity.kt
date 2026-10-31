@@ -54,16 +54,27 @@ class HostControlActivity : Activity() {
         refresh.setOnClickListener { loadPieces() }
         update.setOnClickListener {
             update.isEnabled = false
-            result.text = HostControlService.update(this, manifest.text.toString(), request.text.toString(), false).toString()
+            //  缺陷名（C-102）**那返回体在 UI 上被随即覆盖掉** ——
+            //    => 而那旧版逐字是「先 result.text = 那一趟的返回体、=> 而后 loadPieces()」，
+            //      => 而而那 loadPieces() 逐字把 result.text **覆写**成 pieces JSON
+            //      （=> 而那 :122 逐字 result.text = pieces.toString()），
+            //      => 而而**人看不见那一趟的结果**。
+            //    => 而那**后果**：=> 而 M6 那一格要核的逐字是「设备侧真实出现 rollback 行」，
+            //      => 而而**人看不见那一趟返回什么**、=> 而就只剩设备文件上的审计行可看。
+            //    => 而那**处置**：=> 而那一趟的返回体逐字**落在最后**
+            //      （=> 而 loadPieces() 逐字**先**跑、=> 而后 result.text 逐字被那一趟的返回体占住）。
+            val r = HostControlService.update(this, manifest.text.toString(), request.text.toString(), false).toString()
             update.isEnabled = true
-            loadPieces()
+            loadPieces(showPiecesInResult = false)
+            result.text = r
         }
         rollback.setOnClickListener {
             rollback.isEnabled = false
             val id = pieceIds.getOrNull(spinner.selectedItemPosition).orEmpty()
-            result.text = HostControlService.rollback(this, id, "apk", request.text.toString(), false).toString()
+            val r = HostControlService.rollback(this, id, "apk", request.text.toString(), false).toString()
             rollback.isEnabled = true
-            loadPieces()
+            loadPieces(showPiecesInResult = false)
+            result.text = r
         }
         peSample.setOnClickListener {
             result.text = HostControlService.loadPeSample(this, "win32/plink-arm64.exe").toString()
@@ -100,7 +111,13 @@ class HostControlActivity : Activity() {
         loadPieces()
     }
 
-    private fun loadPieces() {
+    /**
+     * 刷那件列表。
+     *
+     * @param showPiecesInResult 那返回体逐字**要不要**被这一份 pieces JSON 占住
+     *   （=> 而那默认逐字是「要」、=> 而而那 refresh 那一支逐字靠它显示 pieces）。
+     */
+    private fun loadPieces(showPiecesInResult: Boolean = true) {
         val pieces = HostControlService.pieces(this)
         pieceRows = (0 until pieces.length()).mapNotNull { pieces.optJSONObject(it) }
         pieceIds = pieceRows.map { it.optString("id", "").orEmpty() }
@@ -119,7 +136,16 @@ class HostControlActivity : Activity() {
         }
         spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         showDetail(spinner.selectedItemPosition)
-        result.text = pieces.toString()
+        //  => 而那「刷完就显示 pieces」那一语义逐字**保留**（=> 而那 refresh 那一支逐字**只**调这一格、
+        //     => 而而那 update / rollback 那两支逐字**先**调这一格、=> 而后逐字把 result.text 换成那一趟的返回体）。
+        //  => 而那**为什么**不是「loadPieces 不动 result.text」：
+        //     => 而那 refresh 那一支逐字**要**「刷完就显示 pieces」（=> 而那它逐字只调这一格、
+        //       => 而而那它逐字**没有**别的地方把 result.text 设回去），
+        //     => 而而若这一格逐字不动 result.text、=> 而那 refresh 那一支逐字**就什么也不显示**。
+        //     => 而那**处置**：=> 而那「不动」那一格逐字做成**参数**（=> 而那默认逐字是「显示 pieces」）。
+        if (showPiecesInResult) {
+            result.text = pieces.toString()
+        }
     }
 
     /**
