@@ -302,8 +302,39 @@ object PieceScan {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
+    /**
+     * 那**重建索引**那一族 —— 「跳过 rebuild」那个开关逐字**接**在这一族。
+     *
+     *  缺陷名（C-102）**那开关逐字只接在 assemble 那一族、=> 而而那 rebuild 那一族逐字用默认值**
+     *   => 而那旧版逐字是 `fun rebuild(ctx: Context): Int { val found = scan(ctx) … }`
+     *     => 而而那 `scan` 那一格逐字**有**那默认值 `withContentFingerprint = true`
+     *     => 而而那**默认**逐字就是**算**那全部 18880 个文件的 sha256
+     *     => 而而那 App 起来逐字活约 20 秒就被杀（=> 而那 ROM 的 service 超时逐字是 20004ms 那一档）
+     *   => 而那**后果**（07 本轮逐字实测）：=> 而那 `diag.jsonl` 逐字 `stage="scan-cost"` 命中 **0**
+     *     => 而而那 App 逐字**仍算**那全部 18880 个文件、=> 而而那那 20 秒逐字**照旧**
+     *     => 而而那**服务池**逐字被饿死（=> 而那 events 逐字「内置服务 **9/13**」）
+     *     => 而而那**主线程**逐字被卡（=> 而那 `OsInit.beginLife` 逐字在 `onStartCommand` 主线程上）
+     *     => 而而那**工作线程**逐字跑不到桥那一步（=> 而那 `/proc/net/unix` 逐字**没有** `lobos_hostbridge`）
+     *     => 而而那那 `ControlClient.exec` 那一趟逐字因此**起不来**。
+     *
+     *  ★ 这一格逐字**自己读**那一档（=> 而那它逐字对那调用方逐字**透明**）：
+     *   => 而那 `OsInit.beginLife` 那一格逐字**不用改**（=> 而那它逐字调 `rebuild(ctx)`、=> 而那它逐字不用知道那一档）。
+     *
+     *  ★ 而那**诊断**那一档逐字要在**这一族之前**就报出来（=> 而那 07 本轮逐字核到
+     *    `stage="scan-cost"` 命中 0、=> 而而那它逐字是「那一档逐字在 assemble 那一族才报、
+     *    而而那 rebuild 那一族逐字跑不到那一步」）。
+     */
     fun rebuild(ctx: Context): Int {
-        val found = scan(ctx)
+        val withContentFingerprint = lobos.services.reg.ScanCost.withContentFingerprint(ctx)
+        //  => 而那**诊断**那一档逐字**先**报（=> 而那它逐字在那一族**之前**、=> 而而那它逐字才看得到）
+        RuntimeDiagnostics.append(
+            ctx, "scan-cost", true, "那扫描成本那一档",
+            lobos.services.reg.ScanCost.describe(ctx) +
+                " （=> 而那**重建索引**那一族逐字走这一档、=> 而而那**内容指纹**逐字" +
+                (if (withContentFingerprint) "算" else "跳过") +
+                "、=> 而而那**扫描**逐字仍然扫、=> 而而那那**缺件**那一族逐字仍然答）",
+        )
+        val found = scan(ctx, withContentFingerprint)
         if (found.isEmpty()) return 0
         val cur = ProgramIndex.all(ctx).associateBy { it.id }
         var changed = 0

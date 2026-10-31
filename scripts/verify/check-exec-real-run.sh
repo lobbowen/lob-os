@@ -117,6 +117,133 @@ fi
 say "   声明：$DECL"
 say ""
 
+# ── 那一份声明逐字**自洽**那一格 ─────────────────────────────────
+#   缺陷名（C-102）**那一道检查逐字只判那一份声明在不在、=> 而而那它逐字不读它的内容**
+#     => 而那 02 本轮逐字核出：=> 而那 `DECL` 命中 4 行、=> 而而那 `expectStdoutContains` 命中 **0**、
+#       => 而而那 `pieces` 命中 **0**（=> 而那阳性对照逐字找法有效）
+#       => 而而那**那九件逐字没有一条**进了这一道检查。
+#   => 而那**本机**那一道检查逐字跑不了那九件（=> 而那它们逐字是 aarch64、=> 而而那本机逐字是 x86-64）
+#     => 而那**分层**逐字是：=> 那**逐件真跑**归**设备侧**那一道（=> 而那归 07），
+#       => 而而那**本机**这一道逐字核的是「**那一份声明逐字自洽**」。
+#   => 而那**自洽**逐字是那三条：
+#     · 每一件逐字有 `args`、=> 而而那 `expectExit` 逐字有、=> 而而那 `expectStdoutContains` 逐字**非空**
+#       （=> 而那那三件**库**那一族逐字**除外**、=> 而而它们逐字用 `expectPresent` 那一族判）
+#     · 而而那那九件逐字与**那归档那九件**逐字对得上
+#     · => 而而那**逐件真跑**逐字**不**在这里（=> 而那它逐字要设备那一层）
+say "== 那一份声明逐字自洽（=> 而那逐件真跑归设备侧那一道）=="
+DECL_CHECK="$(node -e '
+const fs=require("fs");
+const p=process.argv[1];
+let d;
+try{ d=JSON.parse(fs.readFileSync(p,"utf8")); }catch(e){ console.log("ERR|读不到那一份声明|"+e.message); process.exit(0); }
+const pieces=(d && d.pieces) || {};
+const ids=Object.keys(pieces);
+if(!ids.length){ console.log("ERR|那一份声明逐字没有 pieces 那一栏"); process.exit(0); }
+let bad=0;
+for(const id of ids){
+  const v=pieces[id]||{};
+  const kind=v.kind;
+  if(kind==="library"){
+    //  => 而那**库**那一族逐字**没有**程序入口 => 而而它们逐字用 expectPresent 那一族判
+    if(!v.expectPresent){ console.log("BAD|"+id+"|库那一族逐字没有 expectPresent 那一格（=> 而按 C-05 报缺）"); bad++; }
+    if(v.args!==null && v.args!==undefined){ console.log("BAD|"+id+"|库那一族逐字不该有 args（=> 而它逐字没有程序入口）"); bad++; }
+    continue;
+  }
+  if(kind!=="program"){ console.log("BAD|"+id+"|kind 逐字是 "+JSON.stringify(kind)+"（=> 而那取值域逐字只有 program 与 library）"); bad++; continue; }
+  if(!Array.isArray(v.args) || !v.args.length){ console.log("BAD|"+id+"|args 逐字空（=> 而按 C-05 报缺）"); bad++; }
+  if(v.expectExit===null || v.expectExit===undefined){ console.log("BAD|"+id+"|expectExit 逐字缺（=> 而按 C-05 报缺）"); bad++; }
+  if(!v.expectStdoutContains){ console.log("BAD|"+id+"|expectStdoutContains 逐字空（=> 而按 C-05 报缺）"); bad++; }
+}
+console.log("COUNT|"+ids.length+"|"+bad);
+' "$DECL" 2>/dev/null)"
+DECL_BAD="$(printf '%s\n' "$DECL_CHECK" | grep -c '^BAD|')"
+DECL_ERR="$(printf '%s\n' "$DECL_CHECK" | grep '^ERR|' | head -1)"
+DECL_N="$(printf '%s\n' "$DECL_CHECK" | grep '^COUNT|' | cut -d'|' -f2)"
+if [ -n "$DECL_ERR" ]; then
+  say "   [error] $(printf '%s' "$DECL_ERR" | cut -d'|' -f2-) （=> 而按 C-05 报缺）"
+  rc_all=1
+else
+  printf '%s\n' "$DECL_CHECK" | grep '^BAD|' | sed 's/^/   [红] /'
+  say "   那声明逐字 $DECL_N 件、形状不合 $DECL_BAD 处"
+  if [ "$DECL_BAD" != "0" ]; then
+    say "   => 而那那一份声明逐字**不自洽**（=> 而那逐件真跑归设备侧那一道）"
+    rc_all=1
+  else
+    say "   [绿] 那一份声明逐字**自洽**（=> 而那逐件真跑归设备侧那一道、=> 而那归 07）"
+  fi
+fi
+say ""
+
+# ── 那一份声明与**那归档那九件**逐字对得上 ────────────────────────
+#   缺陷名（C-102）**那一份声明逐字是手写的、=> 而而那它逐字没有产出者**
+#     => 而那 02 本轮逐字核出：=> 而那仓内 4 个命中文件逐字**全是读者或引文**、=> 而**无生成器**，
+#       => 而而那 `scripts/recipes/gen-component-meta.js:473` 那一处逐字**在构建期读它**、
+#         => 而而那它逐字据此派生 `role=shell` 那一档
+#       => 而而那**那一族**逐字「那一档必须有一个产出者」（=> 而那 C-1004）
+#     => 而那**对照**逐字是那**归档那九件**（=> 而那它们逐字是那**产物**，=> 而而那它们逐字自带
+#       那 component-meta.json 的 id / version / role）。
+#   => 而而那**这两件**逐字**不并**（依 C-104）：
+#     · 那「那库在不在、那符号在不在」那一族（=> 而那 `check-elf-deps.sh` 与那 piece-criteria
+#       那 `sonameCriterion` 那一族逐字**已经在做**那件事）=> 而那**不**该并进这一道
+#     · 而而那**这一道**逐字只核「那一份声明逐字与那产物逐字对得上」。
+ARCHIVE_DIR="${LOBOS_PIECE_ARCHIVE:-/home/bowen/LOBOS/lob-os-team/06-asset-keeper/assets/pieces}"
+say "== 那一份声明与那归档那九件逐字对得上（=> 而那逐件真跑归设备侧那一道）=="
+if [ ! -d "$ARCHIVE_DIR" ]; then
+  say "   [缺] 那归档那九件逐字不在：$ARCHIVE_DIR（=> 而按 C-05 报缺、=> 而不猜）"
+  rc_all=1
+else
+  ARCH="$(node -e '
+const fs=require("fs"),cp=require("child_process"),path=require("path");
+const dir=process.argv[1];
+const decl=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+const pieces=(decl.pieces)||{};
+let bad=0,checked=0;
+for(const id of Object.keys(pieces)){
+  const pd=path.join(dir,id);
+  if(!fs.existsSync(pd)){ console.log("BAD|"+id+"|那归档那九件里逐字没有这一件（=> 而按 C-05 报缺）"); bad++; continue; }
+  const zips=fs.readdirSync(pd).filter(f=>f.endsWith(".zip")&&!f.endsWith(".gz"));
+  if(!zips.length){ console.log("BAD|"+id+"|那归档那九件里逐字没有可读的那一份（=> 而按 C-05 报缺）"); bad++; continue; }
+  let meta=null;
+  for(const z of zips){
+    try{
+      const raw=cp.execFileSync("unzip",["-p",path.join(pd,z),"component-meta.json"],{maxBuffer:4*1024*1024});
+      meta=JSON.parse(raw.toString("utf8")); break;
+    }catch(e){}
+  }
+  if(!meta){ console.log("BAD|"+id+"|那归档那一份里逐字读不出 component-meta.json（=> 而按 C-05 报缺）"); bad++; continue; }
+  checked++;
+  const v=pieces[id];
+  //  => 而那**形态**逐字对得上（=> 而那 program / library 那一族）
+  if(v.kind && meta.role && v.kind!==meta.role){
+    //  => 而那**shell** 那一族逐字是 program 那一边的一个子类（=> 而那它逐字不是一个新形态）
+    const shellish=(v.kind==="program"&&meta.role==="shell")||(v.kind==="library"&&meta.role==="library");
+    if(!shellish){ console.log("BAD|"+id+"|声明 kind="+v.kind+" 而那产物 role="+meta.role+"（=> 而那两者逐字对不上）"); bad++; }
+  }
+  //  => 而那**版本**逐字对得上：=> 而那**版本那一档**的期望（=> 而那 `--version` 那一档）
+  //     逐字**含**那产物的版本号；=> 而而那**别**的期望（=> 而那 jq 那一档逐字是「真跑一段 JSON」）
+  //     逐字**不含**版本、=> 而那它逐字**不许**被这样判（=> 而那那一条逐字是**另一问**）。
+  const ver=String(meta.version||"");
+  const verArgs=Array.isArray(v.args)?v.args:[];
+  const isVersionProbe=verArgs.indexOf("--version")>=0||verArgs.indexOf("version")>=0;
+  if(ver && isVersionProbe && v.expectStdoutContains && v.expectStdoutContains.indexOf(ver)<0){
+    console.log("BAD|"+id+"|期望 stdout 逐字不含那产物的版本 "+ver+"（=> 而那期望与那产物逐字对不上）"); bad++;
+  }
+}
+console.log("COUNT|"+checked+"|"+bad);
+' "$ARCHIVE_DIR" "$DECL" 2>/dev/null)"
+  ARCH_BAD="$(printf '%s\n' "$ARCH" | grep -c '^BAD|')"
+  ARCH_N="$(printf '%s\n' "$ARCH" | grep '^COUNT|' | cut -d'|' -f2)"
+  printf '%s\n' "$ARCH" | grep '^BAD|' | sed 's/^/   [红] /'
+  say "   那归档逐字核了 $ARCH_N 件、逐字对不上 $ARCH_BAD 处"
+  if [ "$ARCH_BAD" != "0" ]; then
+    say "   => 而那那一份声明与那产物逐字**对不上**（=> 而那**手写**那一族逐字缺一个**产出者**）"
+    rc_all=1
+  else
+    say "   [绿] 那一份声明与那归档那九件逐字**对得上**"
+  fi
+fi
+say ""
+
 say "== (甲) 那一档逐字能跑的那几档 ⇒ 判红 =="
 
 #   => 而那**期望行为**逐字是那件自己的（=> 而那**不是**「退出码是 0」那一件事、

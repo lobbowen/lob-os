@@ -183,12 +183,10 @@ object RuntimeEnvironment {
         //     （=> 而那它逐字**零**处用那内容指纹）=> 而而那那一步逐字跳过是**零**代价。
         val withContentFingerprint = ScanCost.withContentFingerprint(ctx)
         val found = PieceScan.scan(ctx, withContentFingerprint).filter { it.role != PieceScan.HEADERS }
-        RuntimeDiagnostics.append(
-            ctx, "scan-cost", true, "那扫描成本那一档",
-            ScanCost.describe(ctx) +
-                " （=> 而那**内容指纹**逐字" + (if (withContentFingerprint) "算" else "跳过") +
-                "、=> 而而那**扫描**逐字仍然扫、=> 而而那那**缺件**那一族逐字仍然答）",
-        )
+        //  => 而那**诊断**那一档逐字**不**在这里报（=> 而那它逐字在 `PieceScan.rebuild` 那一族**之前**报）
+        //    ——=> 而那 07 本轮逐字核到 `stage="scan-cost"` 命中 **0**，
+        //      => 而而那**原因**逐字是「那一档逐字在 assemble 那一族才报、=> 而而那 rebuild 那一族跑不到那一步」。
+        //    => 而而那这里逐字**只**用它那一格开关（=> 而而那它逐字对那调用方逐字透明）。
         val landedIds = found.map { f -> f.id }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds
