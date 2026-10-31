@@ -1,0 +1,94 @@
+{
+  "$note": "「那件产品逐字跑出它自己那行为」那一族 —— **那期望行为声明**。逐件、逐字、可核。",
+  "$family": {
+    "what": "那一件产品字节逐字在 LOB-OS 自己那一份 Linux 上被真正加载并运行，跑出它自己的行为，且退出码正确；**这一格的判据是那一次运行的观察结果**（那进程的输出与那退出码），**不是**那一串文件头字节。",
+    "criterionSource": "=> 而那判别式逐字由 02 裁、=> 而那它逐字已落在 docs/spec/ONE-STANDARD.md §122.83.4（=> 而那一节逐字绑在提交 62e3154 上）。",
+    "whyHere": "=> 而这一份逐字是**数据**（=> 而那它逐字是那**期望行为**、=> 而而那它逐字**逐件**一条），",
+    "whyNotPieceCriteria": "=> 而那 scripts/piece-criteria.json 逐字是**判据本体 + 探针代码**那一族（=> 而那它逐字逐件带那 criterion 与那 node 那两格探针）；",
+    "whyNotPieceCriteriaMore": "=> 而而那**期望行为**逐字是**另一件事**（=> 而那它逐字答「那一件跑出来逐字**是什么**」、=> 而那判据那一族答「怎样算跑成了」），",
+    "whyNotM0Criteria": "=> 而那 scripts/m0-criteria.json 逐字是那**判据库**（=> 而那它逐字逐条是判据本体、=> 而那 run-m0-criteria.js 逐字只跑那些**带 node 键**的）；",
+    "whyNotM0CriteriaMore": "=> 而那 M7 那一族逐字是那 **12 个宿主绑定项**（=> 而那它逐字**不是**这一族、=> 而那它逐字是那**宿主边界**那一族、=> 而这两件逐字**不并**）。",
+    "kind": "=> 而这一份逐字是**一份声明**（=> 而那它逐字**不**判红、=> 而而那**核**是 scripts/verify/check-exec-real-run.sh 那一族的事）。",
+    "positiveControl": "=> 而那一族逐字要**阳性对照**（依 C-108：=> 而那要有一件逐字已经能跑的那一件）=> 而那对照那一件逐字是 shebang 那一档（=> 而那仓内逐字有 scripts/verify/pe-sample/shebang.sh）。",
+    "positiveControlNote": "=> 而那仓内那两份 ELF 样本逐字**只是头**（=> 而那 256 字节、=> 而那没有程序头）=> 而而那**真件**逐字是 aarch64 => 而那**本机跑不了** => 而那 ELF 那两档的真跑逐字要**设备侧**。",
+    "fields": {
+      "args": "=> 而那**实参**那一格：=> 而那它逐字是那件自己的（=> 而那那几件逐字是 `--version`）。",
+      "expectStdout": "=> 而那**期望 stdout**那一格：=> 而那它逐字是那件自己那行为（=> 而那它逐字**逐字**比、=> 而而那它逐字**不**是「退出码是 0」那一件事）。",
+      "expectExit": "=> 而那**期望退出码**那一格：=> 而那它逐字是那件自己的（=> 而那正常那几件逐字是 0）。",
+      "kind": "=> 而那 **kind** 那一格：program（=> 而那它逐字有程序入口）| library（=> 而那它逐字**没有**程序入口、=> 而而那它逐字**不能**这样跑）。"
+    },
+    "libraryNote": "=> 而那三个**库**那一族（zlib / crypto / curl）逐字**没有**程序入口 => 而那它们逐字**不能**这样跑 => 而而那它们逐字用「**那库在不在、那符号在不在**」那一族判（=> 而那 scripts/verify/check-elf-deps.sh 与那 piece-criteria 那 sonameCriterion 那一族）=> 而那**两件**逐字**不并**（依 C-104）。"
+  },
+  "pieces": {
+    "bash": {
+      "kind": "program",
+      "args": ["--version"],
+      "expectStdoutContains": "GNU bash, version 5.2.15(1)-release (aarch64-unknown-linux-android)",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=5.2.15 逐字**一致**。"
+    },
+    "busybox": {
+      "kind": "program",
+      "args": ["--version"],
+      "expectStdoutContains": "BusyBox v1.36.1",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=1.36.1 逐字**一致**。"
+    },
+    "jq": {
+      "kind": "program",
+      "args": ["-n", "{ \"a\": 1 }"],
+      "expectStdoutContains": "{ \"a\": 1 }",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的（=> 而那 jq 那一件逐字**不是**只看 --version、=> 而而那它逐字**真跑一段 JSON**）。"
+    },
+    "openssl": {
+      "kind": "program",
+      "args": ["version"],
+      "expectStdoutContains": "OpenSSL 3.6.3 9 Jun 2026",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=3.6.3 逐字**一致**。"
+    },
+    "ripgrep": {
+      "kind": "program",
+      "args": ["--version"],
+      "expectStdoutContains": "ripgrep 14.1.1",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=14.1.1 逐字**一致**。"
+    },
+    "git": {
+      "kind": "program",
+      "args": ["--version"],
+      "expectStdoutContains": "git version 2.55.0",
+      "expectExit": 0,
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=2.55.0 逐字**一致**。",
+      "note": "=> 而那 git 那一件在设备上逐字**没跑起来**、=> 而那成因逐字**不是**「那库不在」、=> 而而是「那一趟逐字在宿主 shell 那一层跑」（=> 而那 LD_LIBRARY_PATH 逐字只给 LOB-OS 自己起的程序）=> 而那一族逐字是 C-1003「取法那一层」那一族。"
+    },
+    "zlib": {
+      "kind": "library",
+      "args": null,
+      "expectStdoutContains": null,
+      "expectExit": null,
+      "expectPresent": "zlib-present",
+      "source": "=> 而那 07 本轮逐字当场定的。",
+      "note": "=> 而那三个**库**那一族逐字**没有**程序入口 => 而那它们逐字**不能**这样跑 => 而而那它们逐字用「那库在不在、那符号在不在」那一族判。"
+    },
+    "crypto": {
+      "kind": "library",
+      "args": null,
+      "expectStdoutContains": null,
+      "expectExit": null,
+      "expectPresent": "crypto-present",
+      "source": "=> 而那 07 本轮逐字当场定的。",
+      "note": "=> 而那三个**库**那一族逐字**没有**程序入口 => 而那它们逐字**不能**这样跑 => 而而那它们逐字用「那库在不在、那符号在不在」那一族判。"
+    },
+    "curl": {
+      "kind": "library",
+      "args": null,
+      "expectStdoutContains": null,
+      "expectExit": null,
+      "expectPresent": "curl-present",
+      "source": "=> 而那 07 本轮逐字当场定的。",
+      "note": "=> 而那三个**库**那一族逐字**没有**程序入口 => 而那它们逐字**不能**这样跑 => 而而那它们逐字用「那库在不在、那符号在不在」那一族判。"
+    }
+  }
+}
