@@ -32,6 +32,24 @@ import lobos.device.ServiceState
 class OsHostService : Service() {
 
     private var thread: HandlerThread? = null
+
+    //  缺陷名（C-102）**那 born 那一格逐字表达的是「这进程没被销毁过」、=> 而而那它逐字该表达「这进程是第一次起来」** ——
+    //    => 而那旧版逐字是 `val born = thread == null`
+    //      => 而而那 `thread` 逐字**只在** onDestroy（`:378`）逐字变 null、
+    //        => 而而那 onDestroy 逐字**只**在服务被**正常拆解**时跑
+    //        => 而而那那系统**杀**进程那一族逐字**不走** onDestroy
+    //        => 而而那 **thread 逐字永不为 null**
+    //      => 而而那 **born 逐字恒为 false**
+    //      => 而而那**后果**：=> 而那 `OsInit.beginLife` 逐字**永不被调**
+    //        => 而而那 `events.jsonl` 逐字 os-phase / 宿主出生 / os-run 逐字**都 0**
+    //          （=> 而那 beginLife 逐字必写其中之一）
+    //        => 而而那 `files/var/lib/state.json` 逐字 phase=**DEGRADED**（=> 而**不是** beginLife 写的 BOOTING）
+    //        => 而而那 diag 逐字「宿主拆解进度」逐字 **0**（=> 而那 onDestroy 逐字没跑过）
+    //    => 而那**正解**：=> 而那「这进程逐字是第一次起来」逐字是**那进程自己的一个状态**，
+    //      => 而而它逐字**不**由「有没有被销毁过」推出来。
+    //    => 而那它逐字是那**进程自己的**一个逐字状态（=> 而那它逐字随那进程一起来、=> 而那它逐字随那进程一起走）。
+    @Volatile private var processBorn: Boolean = false
+    @Volatile private var birthDone: Boolean = false
     private var handler: Handler? = null
     //  => 而那 **tick** 逐字**走**那**自己**的**那一个**队列**（=> 而那**它**逐字**不**跟**那**装件**那一族**抢**）。
     private var tickThread: HandlerThread? = null
@@ -71,10 +89,20 @@ class OsHostService : Service() {
         //      => 而和那**它**们**逐字是**那**两**件**事**），=> 而那**主线程**逐字**只**做**那**轻活**。
         //    => 而那**它**逐字**要**在**那 handler **起**好**之后**（=> 而那**它**逐字**不**是**那**出生**那一族**）。
         ResidencyAudit.auditPreviousExit(this)
-        val born = thread == null
+        //  => 而那 born 那一格逐字改成「这进程逐字是第一次起来」
+        //    （=> 而而那**不是**「这进程没被销毁过」、=> 而而那**不是** `thread == null`）。
+        val born = !birthDone
+        if (born) {
+            processBorn = true
+        }
         if (born) {
             lobos.services.reg.ResidencyStatus.restore(this)
             OsInit.beginLife(this, ResidencyAudit.interruption(this))
+            //  => 而那**出生**逐字**做完**就逐字记下（=> 而那它逐字是那进程自己的一个状态、
+            //    => 而而那它逐字**不**由「有没有被销毁过」推出来）。
+            //  => 而而那**第二次** onStartCommand 逐字**不再**走那出生那一族（=> 而那 beginLife 逐字**只**跑一次）
+            //    => 而而那**同一进程**里那 onStartCommand 逐字**可以**再被调（=> 而那它逐字是那服务的常态）。
+            birthDone = true
         }
         promoteToForeground("onStartCommand")
         //  缺陷名（C-102）**那重活**逐字**跑**在**那主线程**上**（=> 而而那**它**们**逐字是**那**两**件**事**）。

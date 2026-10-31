@@ -50,6 +50,16 @@ class HostControlActivity : Activity() {
         val rollback = Button(this).apply { text = "回滚系统件到 APK 原件" }
         val peSample = Button(this).apply { text = "加载 PE L2 样本（ARM64）" }
         val peSample32 = Button(this).apply { text = "加载 PE L2 样本（i386）" }
+        //  缺陷名（C-102）**那「跑一条命令」逐字没有产品 UI 入口** ——
+        //    => 而那旧版逐字**只有**那 `ControlClient.exec` 那一格（=> 而那是**客户端**那一族、
+        //      => 而而那它逐字要一次**带 token** 的 handshake、=> 而而那设备侧逐字**没有**那一枚新 token）
+        //    => 而而那 `LobosBridge.invoke` 逐字**拒** SCOPE_SYSTEM、=> 而而那 `QuickAppLaunchActivity`
+        //      那一支逐字是 EXTRA_EXEC（=> 而那**只能**用 `am start` 带 extra 叫起来）
+        //    => 而而那**后果**：=> 而那产品侧逐字**没有**能走的那一族
+        //    => 而那**处置**：=> 而那**这一格**逐字是那产品 UI 上的一个入口，
+        //      => 而而那它逐字走 `invokeLocal` 那一格（=> 而而那它逐字**不经 socket**、=> 而而那它逐字**不** claim 会话）。
+        val cmdField = EditText(this).apply { hint = "要跑的命令（在 LOB-OS 自己那一份 Linux 里跑）" }
+        val exec = Button(this).apply { text = "在 LOB-OS 里跑这条命令（真实执行）" }
 
         refresh.setOnClickListener { loadPieces() }
         update.setOnClickListener {
@@ -73,6 +83,14 @@ class HostControlActivity : Activity() {
             val id = pieceIds.getOrNull(spinner.selectedItemPosition).orEmpty()
             val r = HostControlService.rollback(this, id, "apk", request.text.toString(), false).toString()
             rollback.isEnabled = true
+            loadPieces(showPiecesInResult = false)
+            result.text = r
+        }
+        exec.setOnClickListener {
+            exec.isEnabled = false
+            val r = HostControlService.execCommand(this, cmdField.text.toString()).toString()
+            exec.isEnabled = true
+            //  => 而那返回体逐字**落在最后**（=> 而那 loadPieces 那一族逐字会覆写 result.text）
             loadPieces(showPiecesInResult = false)
             result.text = r
         }
@@ -106,6 +124,8 @@ class HostControlActivity : Activity() {
         root.addView(rollback)
         root.addView(peSample)
         root.addView(peSample32)
+        root.addView(cmdField)
+        root.addView(exec)
         root.addView(result)
         setContentView(root)
         loadPieces()

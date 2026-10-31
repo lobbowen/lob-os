@@ -167,6 +167,45 @@ object HostControlService {
     )
 
     /** Load a shipped PE L2 sample through the production parser without executing it. */
+    /**
+     * 在 LOB-OS 自己那一份 Linux 里跑一条命令（=> 而那它逐字是那**产品**那一面）。
+     *
+     *  缺陷名（C-102）**那「跑一条用户指定的命令」逐字没有合法的产品入口** ——
+     *   => 而那旧版逐字**只有**那 `ControlClient.exec` 那一格（=> 而那是**客户端**那一族、
+     *     => 而而那它逐字要一次**带 token**的 handshake）
+     *   => 而而那设备侧逐字**没有**别的一条路：
+     *     · `LobosBridge.invoke` 逐字**拒** SCOPE_SYSTEM（=> 而那 `sys.tty.exec` 逐字是那系统作用域）
+     *     · `QuickAppLaunchActivity` 那一支逐字是 EXTRA_EXEC 那一格
+     *       （=> 而那它逐字**只能**用 `am start` 带 extra 叫起来、=> 而那**不是**一个产品 UI 入口）
+     *   => 而那**后果**：=> 而那产品侧逐字**没有**能走的那一族
+     *     （=> 而那 `invokeLocal` 那一格逐字**能**调 `sys.tty.exec`、=> 而那它逐字以 INSTALLER_ID
+     *       逐字放行、=> 而那 serverGranted 逐字对 installer 逐字给全部含 GROUP_SYS、
+     *       => 而那它逐字**不经 socket**、=> 而而那它逐字**不 claim 会话**）
+     *   => 而那**处置**：=> 而那**这一格**逐字就是那产品 UI 上的一个入口
+     *     （=> 而那它逐字走 `invokeLocal` 那一格、=> 而而那它逐字**不走**那 token 那一族）。
+     *
+     *  @param cmd 那要跑的命令串（=> 而那它逐字**在** LOB-OS 自己那一份 Linux 里跑）
+     *  @param timeoutMs 那超时（=> 而那它逐字默认 10000）
+     */
+    fun execCommand(context: Context, cmd: String, timeoutMs: Long = 10_000L): JSONObject {
+        val method = "sys.tty.exec"
+        if (cmd.isBlank()) return failure(method, "exec", "命令为空")
+        val broker = lobos.api.CapabilityBroker.live()
+            ?: return failure(method, "exec", "宿主桥未启动：能力面此刻不可用")
+        return runCatching {
+            broker.invokeLocal(
+                lobos.api.CapabilityBroker.INSTALLER_ID,
+                method,
+                JSONObject().apply {
+                    put("cmd", cmd)
+                    put("timeoutMs", timeoutMs)
+                },
+            )
+        }.getOrElse { e ->
+            failure(method, "exec", e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     fun loadPeSample(context: Context, asset: String): JSONObject {
         val app = context.applicationContext
         //  缺陷名（C-118）这一支不走桥，它的方法名是 lobos.compat.pe.sample，

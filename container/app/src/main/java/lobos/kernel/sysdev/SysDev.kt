@@ -18,6 +18,15 @@ object SysDev {
         r.mkdirs()
         ttyDir(ctx, r)
         execNode(r)
+        //  缺陷名（C-102）**那顺序逐字错了、=> 而而那它逐字作用在上一趟那一份上** ——
+        //   => 而那旧版逐字是 `ttyDir / execNode / indexJson` 那三步、=> 而而那 `applyDeclaredModes`
+        //     逐字在 `indexJson` **里面**、=> 而而那 `indexJson` 逐字**先**写那 index.json、
+        //     => 而而那 `applyDeclaredModes` 逐字**后**落那权限位
+        //     => 而而那**这一趟**那一份是**新建**的（=> 而那 `wipe` 逐字先清过）、
+        //       => 而而那它逐字默认 rw-------、=> 而而那权限位逐字落到了**上一趟那一份**上。
+        //   => 而那**正解**：=> 而那 `applyDeclaredModes` 逐字**先**落那权限位、
+        //     => 而而那 `nodeKinds` 逐字**后**读那实际权限（=> 而那它逐字读的是**落完之后**的那一个）。
+        applyDeclaredModes(r)
         indexJson(ctx, r)
         r
     }.getOrNull()
@@ -105,12 +114,14 @@ object SysDev {
         //   => 而那**为什么**逐字是那九类：=> 而那九类逐字是 SysDev.render 那一格逐字落的
         //     （=> 而那 wipe / mkdirs / ttyDir / execNode / indexJson 那五步）
         //     => 而而那**没有一类是字符设备或块设备**（=> 而那它逐字全是目录 / 普通文件 / 软链）。
+        //  => 而那 `nodes` 那一栏逐字**在**那 `applyDeclaredModes` **之后**取
+        //    （=> 而那它逐字读的是**落完权限之后**的那实际权限、=> 而那才逐字是那声明要对照的那一个）
         o.put("nodes", nodeKinds(r))
-        //  => 而那**声明**逐字**真的**落成那权限位（=> 而那不逐字只写一句话）。
-        //     => 而那逐字在**建完之后**落（=> 而那目录与那文件逐字**先**在、=> 而那权限**后**落）。
-        //     => 而那**软链**逐字**不**落权限（=> 而那 chmod 落在软链上逐字**跟**目标、
+        //  => 而那**声明**逐字**真的**落成那权限位（=> 而那不逐字只写一句话）
+        //     => 而那**落**的那一步逐字在**这个函数之外**、=> 而而那它在**这之前**
+        //       （=> 而那 `render` 那一族逐字：`applyDeclaredModes(r)` 然后 `indexJson(ctx, r)`）
+        //     => 而而那**软链**逐字**不**落权限（=> 而那 chmod 落在软链上逐字**跟**目标、
         //        => 而那那不是声明、=> 而那它逐字只是登记）。
-        applyDeclaredModes(r)
         File(r, "index.json").writeText(o.toString(2))
     }
 
@@ -158,7 +169,15 @@ object SysDev {
     private fun applyDeclaredModes(r: File) {
         for (d in NODE_DECLARATION) {
             if (d.kind == "symlink") continue
-            if (d.path == ".") continue
+            //  => 而那**根目录**那一类（=> 而那 `dev/` 本身）逐字**不**跳过
+            //    （=> 而那旧版逐字 `if (d.path == ".") continue` 逐字把它**显式跳过**、
+            //      => 而而那它逐字保持那**默认** rwx------）
+            //    => 而而那**这一趟**那一份是**新建**的、=> 而而那那权限位逐字要**落上去**。
+            //    => 而而那它逐字是那 `root(ctx)` 那一格（=> 而那 `dev/` 那一面）。
+            if (d.path == ".") {
+                setModeOf(r, d.mode)
+                continue
+            }
             //  => 而那那**带 <NNN>** 那一类逐字**逐会话**落（=> 而那它逐字是那一族里唯一带变量的）。
             if (d.path.contains("<NNN>")) {
                 //  => 而那那一族逐字**按它自己那形状**解析（=> 而那旧版逐字用 removePrefix 去剥
