@@ -238,7 +238,19 @@ try {
 ' "$_picked")"
       [ -n "$_ver" ] || _ver="unknown"
       _sha="$(sha256sum "$_picked" | cut -c1-12)"
-      cp -f "$_picked" "$DIST/component-$t-$_ver-$_sha-android-arm64.zip"
+      _dst="$DIST/component-$t-$_ver-$_sha-android-arm64.zip"
+      #  缺陷名（C-102）**那一档逐字把「已经在目标路径上的那一份」再 cp 一遍** ——
+      #    => 而那旧版逐字是 `cp -f "$_picked" "$DIST/component-$t-$_ver-$_sha-android-arm64.zip"`
+      #      => 而那「外层自己就是那一颗件」那一档（=> 而那 git 那一件逐字是这一档）
+      #        逐字**源与目标逐字是同一个文件**（=> 而那它逐字**已经在** $DIST 里了）
+      #      => 而那 cp 逐字报「are the same file」=> 而而那**整趟 step 退出 1**。
+      #    => 而那**处置**：=> 而那源与目标逐字**同一个**时逐字**不 cp**（=> 而那它逐字已经在对的地方）。
+      #      => 而那第四种收尾（=> 而那前三步是「外层自己」/「外层套内层」/「gzip-tar」）。
+      if [ "$_picked" = "$_dst" ]; then
+        echo "::notice:: $t 那一颗逐字**已经在**那个路径上（=> 而那不拷、=> 而那 cp 逐字会报 are the same file）。"
+      else
+        cp -f "$_picked" "$_dst"
+      fi
     else
       echo "::warning title=$t 挑不出那一颗件::$(tr '\n' ' ' < "$DIST/.pick-$t.err")"
       echo "::notice:: 那期望形态=$_form（头四字节 $_magic）、=> 而那按内容挑逐字挑不出（=> 而按 C-05 不猜、=> 而不取第一个）。"
