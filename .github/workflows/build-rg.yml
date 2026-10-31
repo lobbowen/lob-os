@@ -101,6 +101,21 @@ jobs:
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "rg 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
+
+      #  缺陷名（C-102）**那一族逐字没有一道「固化产物与当前代码一致」的检查** ——
+      #    => 而那旧版逐字**没有**任何一处逐字核「那一份逐字是不是这一份代码造出来的」，
+      #      => 而而那**后果**逐字是：改了一个 recipe => 而那固化产物逐字全是旧的
+      #        => 而而那守卫逐字**在取件那一趟**才发现 => 而而那根因逐字在**几百行日志里**。
+      #    => 而那**正解**：=> 而那**固化这一趟跑完之后**逐字核一次（=> 而那守卫逐字**早**知道）。
+      #    => 而那判据逐字是那**构建标识**那一族（=> 而那不是「那文件头字节」）：
+      #      buildSha（=> 而那产出它的那一次构建的代码 sha）逐字**等于**那 pin 那一族记的那一件。
+      - name: 固化产物与当前代码一致（构建标识那一族）
+        if: steps.reuse.outputs.hit != 'yes'
+        run: |
+          set -euo pipefail
+          #  => 而那 pin 那一族逐字记的是那**当前**这一份代码编出来的那一件
+          #    （=> 而那它逐字由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
+          bash scripts/verify/check-frozen-freshness.sh "dist/${{ steps.uwkey.outputs.asset }}"
       - name: 失败现场（Job Summary，不裁剪）
         if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh ripgrep

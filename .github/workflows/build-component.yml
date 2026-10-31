@@ -21,6 +21,15 @@ on:
       - 'container/app/src/main/assets/supply/component-public.pem'
       - '.github/native-capabilities.txt'
       - 'version.json'
+      # ★ 那一族 recipe（=> 而那 `cache-key.sh:209` 逐字那 `PKG_MECH` 那一族）——
+      #   改了它们 => 而那**固化产物的指纹全变** => 而那九件逐字**要重新固化**。
+      #   而那**报告**逐字要在**改动落地**这一趟就出来（=> 而不是等到取件那一趟、
+      #   => 而而那那时根因逐字在**几百行日志里**）。
+      - 'scripts/recipes/gen-component-meta.js'
+      - 'scripts/recipes/package-bundle-zip.sh'
+      - 'scripts/toolchain/elf-form.sh'
+      - 'scripts/toolchain/cache-key.sh'
+      - 'scripts/verify/check-recipe-refreeze.sh'
     tags:
       - 'component-*'
   pull_request:
@@ -103,6 +112,21 @@ jobs:
       #      => 而而那「看得见」的那一格逐字**能对账**。
       #    => 而「清单里要不要留一条占位（missing 状态 + 成因）」那一问**归 01 裁**、
       #      => 而本处**不**拍板、=> 而只把事实**逐件**对账出来。
+      #  缺陷名（C-102）**那一族逐字要等到取件那一趟才发现、=> 而而那根因逐字在几百行日志里** ——
+      #    => 而那旧版逐字**没有**任何一处逐字在**改动那一格**的那一趟就报「那九件逐字要重新固化」。
+      #    => 而那**正解**：=> 而那**改动落地**这一趟逐字就算那指纹、=> 而而它逐字跟那**已发布**的那一份比。
+      #    => 而那它逐字**不是**一个探针（=> 而它是那一族逐字**该有的自检**）。
+      - name: recipe 指纹变了要重新固化（改动落地那一趟就报）
+        run: |
+          set -uo pipefail
+          bash scripts/verify/check-recipe-refreeze.sh || true
+          {
+            echo "## recipe 指纹变了要重新固化"
+            echo ""
+            echo "（=> 而那上面那几行逐字是那**当前**指纹与那**已发布**那一份的比对、"
+            echo "=> 而那不等逐字就是「那一件逐字要重新固化」、=> 而而那固化那一族归 06。）"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: 缺件对账（那清单 vs 那缺件表）
         run: |
           set -euo pipefail
