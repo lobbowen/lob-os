@@ -444,6 +444,48 @@ if (printEntry) {
 }
 
 const computed = computeEntry();
+
+/**
+ * 那一件逐字**是不是一个命令解释器**（=> 而那它逐字是**派生**的、=> 而而那它逐字**不**是自报的）。
+ *
+ *  依据：01 裁的 S615-01-DECLARED-TIER-SHELL-ROLE-PTS-RULING.md §3.1 逐字三格：
+ *    · 格一 它逐字能 `-c` 跑一条命令
+ *    · 格二 它逐字有程序入口（=> 而那 files[] 逐字有 role=program 的项）
+ *    · 格三 它逐字自己的那行为逐字是「解释命令」
+ *      （=> 而那**期望声明**逐字有 `-c` 那一档）
+ *  => 而那三格逐字全中 => 而那它逐字登记为 role=shell
+ *
+ *  => 而那**期望声明**逐字从哪来：=> 而那 scripts/verify/expected-behaviour.json 那一族
+ *    （=> 而那它逐字是「那件产品逐字跑出它自己那行为」那一族的**声明侧**）
+ *  => 而那读不到时逐字**报缺**、=> 而而那**不猜**（依 C-05）。
+ *
+ *  @param {object} computed 那 computeEntry 那一格的结果
+ *  @param {string} id 那一件的名字
+ *  @returns {boolean} 那一件逐字是不是一个命令解释器
+ */
+function isCommandInterpreter(computed, id) {
+  //  => 而那格二：它逐字有程序入口（=> 而那 entry 逐字非空、=> 而那它逐字是程序形态）。
+  if (!computed || computed.role !== 'program' || !computed.entry) return false;
+  //  => 而那格一与格三：=> 而那**期望声明**逐字有 `-c` 那一档
+  //    （=> 而那 args 逐字含 `-c`、=> 而而那它逐字就是「那一件逐字接受一条命令字符串」那一族）。
+  let decl = null;
+  try {
+    const p = path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json');
+    decl = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    //  => 而那读不到时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而不把那一件**默认**当解释器）。
+    console.error('::warning title=期望声明读不到::' + path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json')
+      + ' 读不到（=> 而那一件逐字**不**判成 shell、=> 而而那按 C-05 报缺）');
+    return false;
+  }
+  const piece = decl && decl.pieces && decl.pieces[id];
+  if (!piece) return false;
+  if (piece.kind !== 'program') return false;
+  //  => 而那格一与格三逐字**同一个判据**：=> 而那**期望声明**逐字有 `-c` 那一档
+  //    （=> 而那 `interpreterArgs` 那一格逐字就是「`-c` 跑一条命令」那一档的期望）。
+  const interp = Array.isArray(piece.interpreterArgs) ? piece.interpreterArgs : null;
+  return !!interp && interp.indexOf('-c') >= 0;
+}
 if (computed.error) {
   console.error('::error title=' + id + ' 算不出 entry::' + computed.error);
   process.exit(1);
@@ -516,7 +558,15 @@ const meta = {
   //      而索引重建那一支读的是前者而监督环那一支读的是后者。
   //   => 而这里把 role **补进产物那一份**（=> 而两份就一致了，=> 而按 C-104「只有一条生成路径」），
   //      而运行期那一处（PieceScan.roleOf）**先读产物那一份**、=> 而读不到才落到落位侧那一份（=> 而那是兜底）。
-  role: computed.role || '',
+  //  ★ role 那一档逐字**派生**（=> 而那 01 裁的 S615-01 §3.1 逐字三格、=> 而而那它逐字**不**是自报的）。
+  //    · 格一 它逐字能 `-c` 跑一条命令
+  //    · 格二 它逐字有程序入口（=> 而那 files[] 逐字有 role=program 的项）
+  //    · 格三 它逐字自己的那行为逐字是「解释命令」
+  //      （=> 而那**期望声明**逐字有 `-c` 那一档）
+  //    => 而那三格逐字全中 => 而那它逐字登记为 role=shell
+  //    => 而而那**不许**按 id 猜（=> 而那正是 979270e 按 C-05 删掉那两条兜底的理由）
+  //       （=> 而那正解逐字是「那一档逐字被产出来」，不是「那一档逐字被猜出来」）。
+  role: computed.role === 'program' && isCommandInterpreter(computed, id) ? 'shell' : (computed.role || ''),
   requires: deps,
   essential: src.essential === true,
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',

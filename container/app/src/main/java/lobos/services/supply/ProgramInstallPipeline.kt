@@ -33,6 +33,11 @@ object ProgramInstallPipeline {
     const val SHAPE_NAME = "piece-shape.json"
     const val ROLE_PROGRAM = "program"
     const val ROLE_LIBRARY = "library"
+    //  => 而那 **shell** 那一档逐字是**派生**的（=> 而那 01 裁的 S615-01 §3.1）：
+    //     => 而它逐字是「那一件逐字能 `-c` 跑一条命令」+「那一件逐字有程序入口」
+    //       +「那一件逐字自己的那行为逐字是解释命令」那三格全中的那一件。
+    //     => 而而那它逐字**落程序目录**（=> 而那它逐字是 program 那一边）。
+    const val ROLE_SHELL = "shell"
 
     /** 产物自带的形态说明 —— 构建期算好（scripts/toolchain/elf-form.sh 照 ExecBits.formOf 那把尺），
      *  随包落进落位目录。**运行期只读它**：读不到就是读不到（返回 null），调用方报缺，
@@ -149,6 +154,11 @@ object ProgramInstallPipeline {
         fun dirForRole(role: String): String? = when (role) {
             ROLE_PROGRAM -> "bin"
             ROLE_LIBRARY -> "lib"
+            //  => 而那 **shell** 那一档逐字是**程序形态**那一族的一个**子类**
+            //     （=> 而它逐字有程序入口、=> 而而那它逐字落**程序目录**）。
+            //  => 而那它逐字是**派生**的（=> 而那 01 裁的 S615-01 §3.1 逐字三格判据）、
+            //     => 而而那它逐字**不是**一个**新的**落位形态、=> 而而那它逐字**只是** program 那一边。
+            ROLE_SHELL -> "bin"
             else -> null
         }
 

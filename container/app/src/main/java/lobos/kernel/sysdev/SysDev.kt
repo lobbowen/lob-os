@@ -32,8 +32,20 @@ object SysDev {
         val rows = JSONArray()
         for (s in PtySession.activeSessions(ctx)) {
             val n = String.format("%03d", s.sid)
-            val f = File(pts, n)
-            f.writeText(
+            //  缺陷名（C-102）**那一格逐字把 `<NNN>` 写成文件、=> 而而那它底下的 `slave` 逐字建不出来** ——
+            //    => 而那旧版逐字是 `val f = File(pts, n); f.writeText(...)`
+            //      => 而而那它逐字把 `<NNN>` 落成一个**普通文件**、
+            //        => 而而那紧接着逐字 `File(pts, "$n/slave").mkdirs()`
+            //        => 而而那那**父**逐字是**文件**、=> 而而那那一次 mkdirs 逐字**失败**
+            //        => 而而那那**子树**逐字**从来没建出来**（=> 而那 symlink 那一步逐字也失败）。
+            //    => 而那**判别形式**逐字归 01（=> 而那 S615-01 §4 逐字裁归 05 修），
+            //      而那**修法**逐字写成：**那 `<NNN>` 逐字改成目录**、
+            //      **而那四行内容（sid/slave/rows/cols）逐字落到它底下一个逐字命名的文件里**。
+            //    => 而那**文件名**逐字是 `session.txt`（=> 而那它逐字在 04 那声明里逐字要被点名）。
+            //    => 而那四行内容逐字**一个字节都不少**（=> 而那 sid / slave / rows / cols 那四行）。
+            val sessionDir = File(pts, n)
+            sessionDir.mkdirs()
+            File(sessionDir, SESSION_FILE_NAME).writeText(
                 buildString {
                     append("sid=").append(s.sid).append('\n')
                     append("slave=").append(s.slavePath).append('\n')
@@ -41,7 +53,7 @@ object SysDev {
                     append("cols=").append(s.initialCols).append('\n').append('\n')
                 }
             )
-            File(pts, "$n/slave").let { d ->
+            File(sessionDir, "slave").let { d ->
                 d.mkdirs()
                 runCatching {
                     java.nio.file.Files.createSymbolicLink(
@@ -251,11 +263,15 @@ object SysDev {
         val mode: String,
     )
 
+    /** 那会话那一格逐字落那四行内容的那文件名（=> 而那它逐字在 04 那声明里逐字要被点名）。 */
+    const val SESSION_FILE_NAME = "session.txt"
+
     private val NODE_DECLARATION = listOf(
         NodeDecl(".", "dir", "rwxr-xr-x"),
         NodeDecl("tty", "dir", "rwxr-xr-x"),
         NodeDecl("tty/pts", "dir", "rwxr-xr-x"),
-        NodeDecl("tty/pts/<NNN>", "file", "rw-r--r--"),
+        NodeDecl("tty/pts/<NNN>", "dir", "rwxr-xr-x"),
+        NodeDecl("tty/pts/<NNN>/$SESSION_FILE_NAME", "file", "rw-r--r--"),
         NodeDecl("tty/pts/<NNN>/slave", "dir", "rwxr-xr-x"),
         //  => 而那软链那一行逐字**没有**权限（=> 而那软链的权限逐字**没有**意义、
         //     => 而那 chmod 落在软链上逐字跟目标、=> 而而那它逐字**只登记**）。

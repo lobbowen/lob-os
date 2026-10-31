@@ -25,14 +25,22 @@
       "args": ["--version"],
       "expectStdoutContains": "GNU bash, version 5.2.15(1)-release (aarch64-unknown-linux-android)",
       "expectExit": 0,
-      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=5.2.15 逐字**一致**。"
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=5.2.15 逐字**一致**。",
+      "interpreterArgs": ["-c", "echo hello-shell-role"],
+      "interpreterExpectStdoutContains": "hello-shell-role",
+      "interpreterExpectExit": 0,
+      "interpreterNote": "=> 而那**这一档**逐字是那 01 裁的 S615-01 §3.1 逐字**格一与格三**那个判据：=> 而那它逐字是「`-c` 跑一条命令」那一档。=> 而而那它逐字**与**那上面那 args 逐字**两件**（=> 而那上面那**版本**那一档、=> 而这一档**执行命令**那一档）=> 而按 C-105 那**不合并**。"
     },
     "busybox": {
       "kind": "program",
       "args": ["--version"],
       "expectStdoutContains": "BusyBox v1.36.1",
       "expectExit": 0,
-      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=1.36.1 逐字**一致**。"
+      "source": "=> 而那 07 本轮逐字当场定的、=> 而那它逐字与那 06 归档那件包的 component-meta.json 逐字 version=1.36.1 逐字**一致**。",
+      "interpreterArgs": ["-c", "echo hello-shell-role"],
+      "interpreterExpectStdoutContains": "hello-shell-role",
+      "interpreterExpectExit": 0,
+      "interpreterNote": "=> 而那**这一档**逐字是那 01 裁的 S615-01 §3.1 逐字**格一与格三**那个判据：=> 而那它逐字是「`-c` 跑一条命令」那一档。=> 而而那 busybox 那一件逐字是**多调用**那一族（=> 而那它逐字有 29 条软链）、=> 而而那它逐字**认得** `-c`（=> 而那 busybox 逐字 applet 那一族）。"
     },
     "jq": {
       "kind": "program",
