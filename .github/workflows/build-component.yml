@@ -79,7 +79,14 @@ jobs:
           set -euo pipefail
           mkdir -p dist work
           bash scripts/toolchain/fetch-component-artifacts.sh | tee work/fetch.tsv
-          echo "[fetch] 上面这份是本轮取件口径：缺件只在 warning 里显式出现，不会静默从清单里消失"
+          #  缺陷名（C-102）**这一句逐字是一句与事实相反的口径** ——
+          #    而那旧版逐字是「缺件只在 warning 里显式出现，不会静默从清单里消失」，
+          #    => 而 run 41189310138 的 step 3 逐字证明它**没做到**：
+          #      那三件（python / sqlite / pkgconf）逐字**不在**那 [declared] 那一行里
+          #      （=> 而那 [declared] 那一行只含**取到**的那几件）。
+          #    => 而那这句话逐字被写进 CI 输出里当口径用、=> 而而它逐字答的是与事实相反的那一句。
+          #  => 而按 C-05「缺字段就报缺，不许猜填」：=> 而那口径逐字改成**中性且真的**那一句。
+          echo "[fetch] 缺件逐字在上面那几行里（work/fetch.tsv 与 dist/.fetch-missing.tsv）；=> 而那清单只含**取到**的那些件。"
           node -p "'[fetch] dist 里 ' + require('fs').readdirSync('dist').filter(f => f.endsWith('.zip')).length + ' 颗 zip'"
 
       - name: 清单投影（--project：不签名、不读私钥）
@@ -88,6 +95,19 @@ jobs:
           mkdir -p work
           node scripts/publish/publish-component-manifest.js dist --project > work/declared.json
           node -p "'[declared] ' + require('./work/declared.json').map(t => t.name + '@' + t.version + ' 入口 ' + t.entry + ' 别名 ' + (t.aliases||[]).map(a=>a.name).join('+')).join(' | ')"
+
+      #  缺陷名（C-102）**那清单与那缺件表逐字对不上账、=> 而而没人核** ——
+      #    => 而 run 41189310138 的 step 3 逐字缺了 python / sqlite / pkgconf 三件、
+      #      => 而那 [declared] 那一行逐字**不含**那三件、=> 而那**没人核**、=> 而那事就过去了。
+      #    => 而按 C-05「缺字段就报缺、不许猜填」：=> 而那缺的几件逐字**必须**在某一格里**看得见**、
+      #      => 而而那「看得见」的那一格逐字**能对账**。
+      #    => 而「清单里要不要留一条占位（missing 状态 + 成因）」那一问**归 01 裁**、
+      #      => 而本处**不**拍板、=> 而只把事实**逐件**对账出来。
+      - name: 缺件对账（那清单 vs 那缺件表）
+        run: |
+          set -euo pipefail
+          node scripts/verify/reconcile-missing-pieces.js \
+            dist/.fetch-missing.json work/declared.json
 
       - name: 底座件清单投影（与组件清单同一把钥匙）
         run: |

@@ -79,6 +79,21 @@ probe_one() {
           [ -n "$nm" ] || continue
           echo "    内层条目=$nm 内层usize=$us"
         done
+        #  => 而那**内层那一件自己的 `id`** 那一格（=> 而那是 01 裁的挑选依据）：
+        #    => 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字「**按内容挑** ——
+        #      => 而内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**」。
+        INNER_ID="$(unzip -p "$inner" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  try {
+    const m = JSON.parse(d);
+    process.stdout.write("id=" + String(m.id || "") + " piece=" + String(m.piece || "") + " version=" + String(m.version || ""));
+  } catch (e) { process.stdout.write(""); }
+});')"
+        if [ -n "$INNER_ID" ]; then
+          echo "  内层component-meta.json=$INNER_ID"
+        else
+          echo "  内层component-meta.json=（读不到 / 那一件没有）"
+        fi
       else
         echo "  内层=没找到件包"
       fi ;;

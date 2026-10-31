@@ -135,11 +135,40 @@ object PreinstalledPieces {
                 val items = shapeHere.byRole(r)
                 if (items.isEmpty()) continue
                 val dir = ProgramInstallPipeline.PieceShape.dirForRole(r) ?: continue
-                val name = items.first().path.substringAfterLast('/')
-                targets.add(Triple(dir + "/" + name, when (r) {
+                val abs = when (r) {
                     ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath
                     else -> lobos.kernel.layout.PrefixProvisioner.libDir(ctx).absolutePath
-                }, r))
+                }
+                //  缺陷名（C-102）**这一格逐字只取首项、=> 而而那一件逐字可能有好几条链** ——
+                //    => 而那旧版逐字是 `val name = items.first().path.substringAfterLast('/')`
+                //      （=> 而那首项逐字是「LC_ALL=C sort 的**副产品**」、=> 而它逐字是**实体名**那一层）
+                //    => 而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.4 第 3 条逐字：
+                //      openssl 那一件逐字有**两条**链（libcrypto.so 与 libssl.so）
+                //      => 而「**这一格不是「取第一个」**」。
+                //    => 而那**该取哪几条**：=> 而那指针层（软链那一层）逐字**全部**取、=> 而再按 chain[0] 择一。
+                //    => 而那择一那一格逐字**与** PieceEntryPointer 那一族**同一套口径**
+                //      （=> 而按 C-104 判别源要唯一、=> 而不各写一套）。
+                val picked = ProgramInstallPipeline.PieceShape.pointerLayerOf(shapeHere, r, verDir)
+                val chosen = if (picked.isNotEmpty()) {
+                    picked
+                } else {
+                    //  => 而那择一不唯一或取不出时（=> 而那是库形态那一族）
+                    //     => 而那**报缺**（=> 而按 C-05 不猜、=> 而不按首项兜底）。
+                    emptyList()
+                }
+                if (chosen.isEmpty()) {
+                    //  => 而那**程序形态**那一族逐字只有一条入口（=> 而那它不参与择一），
+                    //     => 而那库形态那一族择一不出来时逐字**不建**那一条（=> 而那下面逐字报缺）。
+                    if (r == ProgramInstallPipeline.ROLE_PROGRAM && items.size == 1) {
+                        val name = items.first().path.substringAfterLast('/')
+                        targets.add(Triple(dir + "/" + name, abs, r))
+                    }
+                    continue
+                }
+                for (item in chosen) {
+                    val name = item.path.substringAfterLast('/')
+                    targets.add(Triple(dir + "/" + name, abs, r))
+                }
             }
         }
         if (targets.isEmpty()) {
@@ -269,8 +298,24 @@ object PreinstalledPieces {
             shape.roleOf(entry)
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
         } else {
-            shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY)
-                .firstOrNull()?.role
+            //  缺陷名（C-102）**这一格逐字取库形态那一项的首项、=> 而而那一件逐字可能有好几条链** ——
+            //    => 而那旧版逐字是 `shape.byRole(ROLE_LIBRARY).firstOrNull()?.role`
+            //      （=> 而那首项逐字是「LC_ALL=C sort 的**副产品**」、=> 而它逐字是**实体名**那一层）。
+            //    => 而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.4 第 3 条逐字：
+            //      openssl 那一件逐字有**两条**链（libcrypto.so 与 libssl.so）
+            //      => 而「**这一格不是「取第一个」**」。
+            //    => 而那**取哪几条**：=> 而那逐字**调**那唯一那套口径
+            //      （=> 而那 ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格）、
+            //      => 而而那择一不出来时逐字**报缺**（=> 而按 C-05 不猜、=> 而不按首项兜底）。
+            val verDirForRole = File(
+                SystemDirs.pieceDir(ctx, id),
+                lobos.services.reg.ProgramIndex.safeSegment(version)
+                    ?: return fail(ctx, id, "版本号非法 " + version),
+            )
+            val libLayer = ProgramInstallPipeline.PieceShape.pointerLayerOf(
+                shape, ProgramInstallPipeline.ROLE_LIBRARY, verDirForRole,
+            )
+            libLayer.firstOrNull()?.role
                 ?: return fail(
                     ctx, id,
                     "产物没有带库形态的落位项，而这一件又没有入口 —— 形态是构建期算好的，" +

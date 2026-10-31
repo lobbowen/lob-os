@@ -468,36 +468,38 @@ for id in "${PIECES[@]}"; do
       echo "::error title=$id 解包失败::那资产逐字是那 gzip（那头四字节 $MAGIC），=> 而而那 tar xzf 逐字**读不通**。"
       missing=$((missing+1)); continue
     fi
-    #  => 而那**内层**那 zip 逐字**找**出来（=> 而而那**它**们**逐字是**那**两**件**事**：「那**内层**是**什么**」与「那**外层**是**什么**」））。
-    #  => 而那**内层**那 zip 逐字**按**那**件名**挑**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**件**是**什么**」与「那**字节**是**什么**」）。
-    #     => 而那 tar 底下逐字**可能**有**好几**个**件包**（=> 而那**它们**逐字**是**那**两**件**事**）。
+    #  => 而那**内层**那 zip 逐字**按内容**挑（=> 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字
+    #     「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
+    #      => 而**名字 glob 只当第一道粗筛**」、
+    #     => 而「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」）。
+    #  => 而那**名字 glob** 逐字只当**第一道粗筛**（=> 而那判据逐字**落在内容上**）。
     INNER=""
     INNER_N=0
-    for _z in "$STAGE/$id/unpacked"/component-"$id"-*.zip "$STAGE/$id/unpacked"/*/component-"$id"-*.zip; do
+    INNER_IDS=""
+    for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
       [ -f "$_z" ] || continue
+      #  => 而那**按字节**筛（=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器）。
+      _zm="$(fmt_magic "$_z")"
+      case "$_zm" in 504b*) ;; *) continue ;; esac
+      #  => 而那**按内容**筛（=> 而那一份逐字**含 component-meta.json**、
+      #     => 而那它的 `id` 逐字**等于**要取的那一件）。
+      _zid="$(unzip -p "$_z" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+      [ -n "$_zid" ] || continue
+      INNER_IDS="$INNER_IDS $_zid"
+      [ "$_zid" = "$id" ] || continue
       INNER="$_z"; INNER_N=$((INNER_N+1))
     done
     if [ "$INNER_N" -eq 0 ]; then
-      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
-        [ -f "$_z" ] || continue
-        INNER="$_z"; INNER_N=$((INNER_N+1))
-      done
-    fi
-    if [ "$INNER_N" -eq 0 ]; then
-      echo "::error title=$id 内层没有件包::那 gzip 解开了，=> 而而那**它**里面逐字**没有**那 .zip。"
+      echo "::error title=$id 内层没有那一颗件::那 gzip 解开了，=> 而那里面逐字**没有** id=$id 的件包（=> 而那候选逐字是${INNER_IDS:- 无}）。"
+      echo "::error:: 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个、=> 而也不退回外层凑数。"
       missing=$((missing+1)); continue
     fi
-    #  缺陷名（C-102）**「内层不唯一」那一档逐字被静默取第一个** ——
-    #    => 而那旧版逐字是 `INNER="$_z"; break`（=> 而那它逐字**取第一个**、=> 而那不唯一**不报**）。
-    #    => 而「内层不唯一时怎么办」那一格**归 01 裁**（=> 而本处**不**拍板）、
-    #      => 而本处逐字**把那一档测出来**（=> 而 01 才有事实可裁）。
+    #  => 而那「内层不唯一」那一档逐字**判红**（=> 而那旧版逐字取第一个）。
     if [ "$INNER_N" -gt 1 ]; then
-      echo "::error title=$id 内层不唯一::那 gzip 解开了，=> 而而那里面逐字有 $INNER_N 个件包候选（=> 而那本该取哪一个**归 01 裁**）。"
-      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
-        [ -f "$_z" ] || continue
-        echo "::error::  候选 $_z（头四字节 $(fmt_magic "$_z")）"
-      done
-      echo "::error:: 而那本处逐字**不**取第一个（=> 而那旧版逐字取第一个、=> 而那会把那一颗取错）。"
+      echo "::error title=$id 内层不唯一::那 gzip 解开了，=> 而而那里面逐字有 $INNER_N 个 id=$id 的件包（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。"
       missing=$((missing+1)); continue
     fi
     cp -f "$INNER" "$ASSETS/$id.zip"
@@ -522,35 +524,42 @@ for id in "${PIECES[@]}"; do
       echo "::error title=$id 解包失败::那资产逐字是那 zip（头四字节 $MAGIC），=> 而而那 unzip 逐字**读不通**。"
       missing=$((missing+1)); continue
     fi
-    #  => 而那**内层**那 zip 逐字**按字节**挑（=> 而**不按名字**）：
-    #    => 而那候选逐字是那解出来的那几个 .zip、=> 而那**头四字节**逐字是 504b* 的那一个才是那 zip 容器。
+    #  => 而那**内层**那 zip 逐字**按内容**挑（=> 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字
+    #     「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
+    #      => 而**名字 glob 只当第一道粗筛**」、
+    #     => 而「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」）。
+    #  => 而那**字节**那一筛逐字**先**做（=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器），
+    #  => 而那**内容**那一筛逐字**后**做（=> 而那 id 逐字**等于**要取的那一件）。
     INNER=""
     INNER_N=0
+    INNER_IDS=""
     for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
       [ -f "$_z" ] || continue
       _zm="$(fmt_magic "$_z")"
-      case "$_zm" in
-        504b*) INNER="$_z"; INNER_N=$((INNER_N+1)) ;;
-      esac
+      case "$_zm" in 504b*) ;; *) continue ;; esac
+      _zid="$(unzip -p "$_z" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+      [ -n "$_zid" ] || continue
+      INNER_IDS="$INNER_IDS $_zid"
+      [ "$_zid" = "$id" ] || continue
+      INNER="$_z"; INNER_N=$((INNER_N+1))
     done
     if [ "$INNER_N" -eq 0 ]; then
-      #  => 而那**没有一个**内层逐字是那 zip 容器（=> 而那外层逐字**就是**那一颗件本身）
-      printf "  ✓ %-9s %s → %s.zip\n" "$id" "$asset" "$id"
-    elif [ "$INNER_N" -gt 1 ]; then
-      #  => 而那「内层不唯一」那一档：=> 而那一格**归 01 裁**（=> 而本处**不**拍板）、
-      #    => 而本处逐字**把那一档测出来**。
-      echo "::error title=$id 内层不唯一::那外层 zip 解开了，=> 而而那里面逐字有 $INNER_N 个 **zip 容器**（=> 而那该取哪一个**归 01 裁**）。"
-      for _z in "$STAGE/$id/unpacked"/*.zip "$STAGE/$id/unpacked"/*/*.zip; do
-        [ -f "$_z" ] || continue
-        _zm="$(fmt_magic "$_z")"
-        case "$_zm" in 504b*) echo "::error::  候选 $_z（头四字节 $_zm）" ;; esac
-      done
-      echo "::error:: 而那本处逐字**不**取第一个（=> 而那会把那一颗取错）。"
+      #  => 而那**没有**内层逐字是那一颗件（=> 而那候选逐字是别的件、=> 而那外层**不是**那一颗件）。
+      #  => 而按 01 裁的规则逐字「**不许退回外层凑数**」=> 而这里逐字**判红**。
+      echo "::error title=$id 内层没有那一颗件::那外层 zip 解开了，=> 而那里面逐字**没有** id=$id 的件包（=> 而那候选逐字是${INNER_IDS:- 无}）。"
+      echo "::error:: 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个、=> 而也不退回外层凑数。"
       missing=$((missing+1)); continue
-    else
-      cp -f "$INNER" "$ASSETS/$id.zip"
-      printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
     fi
+    if [ "$INNER_N" -gt 1 ]; then
+      #  => 而那「内层不唯一」那一档逐字**判红**（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。
+      echo "::error title=$id 内层不唯一::那外层 zip 解开了，=> 而而那里面逐字有 $INNER_N 个 id=$id 的件包（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。"
+      missing=$((missing+1)); continue
+    fi
+    cp -f "$INNER" "$ASSETS/$id.zip"
+    printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
   else
     #  => 而那**它**逐字**既不是** gzip **也不是** zip（=> 而那形态逐字是那 fmt.sh 逐字给的）。
     #  => 而那旧版逐字把它**当**那 zip 那一支用（=> 而那 unzip -p 逐字读不到）。

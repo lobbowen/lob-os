@@ -31,6 +31,30 @@ import lobos.services.reg.UnitEntry
  *   而「OTA 那一件是库形态」就**没有任何一条路径能算出入口指针**。
  *   现在：形态说明按「登记那一版的落位目录 -> 该件落位根下别的版本目录」逐个找，
  *   找到就用；找不到就报缺（不拿注册表那一格派生索引顶替）。
+ *
+ * 缺陷名（C-102）**库形态的入口指针按 files[] 的**首项**取** ——
+ *   而那首项逐字是「LC_ALL=C sort 的**副产品**」（=> 而那顺序逐字是路径字典序）、
+ *   => 而它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（=> 而而那不是指针层）。
+ *   而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.5 第 1 条逐字给的缺陷名是
+ *   「取 files[] 的**首项**作为入口指针名，而首项是 LC_ALL=C sort 的**副产品**（无语义）」。
+ *   而 §1.3 逐字裁的判别式是**两步**：
+ *     甲：那一项在**落位目录里是软链**（=> 而不是普通文件）=> 而它才是「指针层」；
+ *     乙：在甲给出的那些项里，取 basename 等于**该件 files[] 里 role=library 各项 chain[0]** 的那一个。
+ *   => 而本件逐字**照那两步**实现、=> 而那 chain 那一格逐字是**产物自带**的
+ *     （=> 而那 build 期 scripts/toolchain/elf-form.sh 的 elf_chain_names 写的）。
+ *
+ * 缺陷名（C-102）**库形态的入口指针逐字只取一条、=> 而而那一件逐字可能有好几条** ——
+ *   而 01 裁的 S604-01 §1.4 第 3 条逐字：openssl 那一件逐字有**两条**链
+ *   （libcrypto.so 与 libssl.so）、=> 而「**这一格不是「取第一个」**」。
+ *   => 而本件逐字返回**全部**那几条、=> 而那落位侧逐字**逐条**建链。
+ *
+ * C-05 报缺口径（01 裁的 S604-01 §3.1 四档，每档都要说得出话）：
+ *   1. 形态说明读不到 ⇒ 报缺（不探测字节、不猜）。
+ *   2. 形态说明读得到但 role=library 的项一条都没有 ⇒ 报缺。
+ *   3. 库项存在但**开发名那一层取不出**（chain[0] 取不到、或择一不唯一）⇒ 报缺
+ *      （不按首项、不按字典序、不猜）—— zlib 是唯一一格依赖 chain[0] 才唯一的。
+ *   4. **单层无软链**（curl：唯一库项是普通文件、chain 长度 1、soname 与 basename 同名）
+ *      ⇒ **不报缺**，取那唯一库项的 basename 记为开发名，=> 而**显式记为「单层无软链」这一档**。
  */
 object PieceEntryPointer {
 
@@ -46,7 +70,22 @@ object PieceEntryPointer {
         val landedRel: String,
         /** 定位依据（人话，写进诊断）。 */
         val detail: String,
+        /**
+         * 这一条指针落在**哪一档**（=> 而那各档逐字是 01 裁的 S604-01 §3.1 那四档 + 程序形态那一档）：
+         * "program" 程序形态 / "chain0" 甲+chain[0] 择一 / "single" 单层无软链 / "multi" 多指针档。
+         */
+        val tier: String = "",
     )
+
+    /** 定位的结果。=> 而那库形态逐字**可以**有好几条（=> 而那 openssl 那一件逐字是两条）。 */
+    data class LocatedAll(
+        val role: String,
+        val pointers: List<Located>,
+        /** 报缺那一档的话（=> 而那 pointers 逐字为空时逐字是那一句）。 */
+        val missing: String = "",
+    ) {
+        fun firstOrNull(): Located? = pointers.firstOrNull()
+    }
 
     /** 形态：注册表 assetEntry 非空 = 程序形态；空 = 库形态。 */
     fun roleOf(pe: UnitEntry): String =
@@ -81,8 +120,8 @@ object PieceEntryPointer {
     }
 
     /**
-     * 定位这一件的入口指针。返回 null = 定位不到（只有库形态会这样：
-     * 落位目录里读不到 piece-shape.json，或其中没有 role=library 的那一条）。
+     * 定位这一件的入口指针。返回 null = 定位不到（只有库形态会这样）。
+     *  => 而那库形态逐字**可能**有多条、=> 而这一格逐字**取全部**（=> 而那第一条逐字是给老调用方用的）。
      */
     fun locate(ctx: Context, pe: UnitEntry): Located? = locate(ctx, pe, shapeOf(ctx, pe))
 
@@ -91,34 +130,97 @@ object PieceEntryPointer {
         ctx: Context,
         pe: UnitEntry,
         shape: ProgramInstallPipeline.PieceShape.Piece?,
-    ): Located? {
+    ): Located? = locateAll(ctx, pe, shape).firstOrNull()
+
+    /**
+     * 定位这一件的**全部**入口指针。
+     *
+     * 缺陷名（C-102）**那一格逐字只取一条、=> 而而那一件逐字可能有好几条** ——
+     *   => 而那 openssl 那一件逐字有两条链（libcrypto.so 与 libssl.so），
+     *     => 而 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」。
+     *   => 而本件逐字返回**全部**那几条。
+     */
+    fun locateAll(
+        ctx: Context,
+        pe: UnitEntry,
+        shape: ProgramInstallPipeline.PieceShape.Piece?,
+    ): LocatedAll {
         val role = roleOf(pe)
         if (role == ProgramInstallPipeline.ROLE_PROGRAM) {
             val name = pe.assetEntry.substringAfterLast('/')
-            if (name.isBlank()) return null
-            val dir = ProgramInstallPipeline.PieceShape.dirForRole(role) ?: return null
-            return Located(
-                role = role,
-                name = name,
-                pointer = File(PrefixProvisioner.binDir(ctx), name),
-                landedRel = dir + "/" + name,
-                detail = "程序形态：入口指针按注册表 assetEntry 的最后一段定位（usr/bin/" + name + "）",
+            if (name.isBlank()) {
+                return LocatedAll(role, emptyList(), "注册表 assetEntry 逐字是空的 —— 报缺，不猜")
+            }
+            val dir = ProgramInstallPipeline.PieceShape.dirForRole(role)
+                ?: return LocatedAll(role, emptyList(), "程序形态那一格逐字没有落位目录 —— 报缺，不猜")
+            return LocatedAll(
+                role,
+                listOf(
+                    Located(
+                        role = role,
+                        name = name,
+                        pointer = File(PrefixProvisioner.binDir(ctx), name),
+                        landedRel = dir + "/" + name,
+                        detail = "程序形态：入口指针按注册表 assetEntry 的最后一段定位（usr/bin/" + name + "）",
+                        tier = "program",
+                    )
+                ),
             )
         }
-        if (shape == null) return null
-        val libItem = shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY).firstOrNull() ?: return null
-        val name = libItem.path.substringAfterLast('/')
-        if (name.isBlank()) return null
-        val landedRel = ProgramInstallPipeline.PieceShape.landedRel(shape, libItem.path) ?: return null
-        return Located(
-            role = role,
-            name = name,
-            pointer = File(PrefixProvisioner.libDir(ctx), name),
-            landedRel = landedRel,
-            detail = "库形态：入口指针按落位目录 " + ProgramInstallPipeline.SHAPE_NAME +
-                " 里 files[] 的库形态那一条定位（usr/lib/" + name + "）",
-        )
+        //  => 而那以下逐字是**库形态**那一族（=> 而按 01 裁的 S604-01 §3.1 那四档处置）。
+        if (shape == null) {
+            return LocatedAll(
+                role, emptyList(),
+                "形态说明读不到（" + ProgramInstallPipeline.SHAPE_NAME + "）—— 形态是生产时就知道的事，" +
+                    "运行期只读它；读不到就报缺，不探测字节、不猜",
+            )
+        }
+        val libItems = shape.byRole(ProgramInstallPipeline.ROLE_LIBRARY)
+        if (libItems.isEmpty()) {
+            return LocatedAll(role, emptyList(), "这一件没有库形态的项 —— 报缺，不猜一个")
+        }
+        //  => 而那下面逐字**调**那唯一那套口径（=> 而按 C-104 判别源要唯一）：
+        //    而那 ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格逐字是**那唯一**一处、
+        //    => 而而 PreinstalledPieces 那一族逐字**也调**它。
+        val picked = ProgramInstallPipeline.PieceShape.pointerLayerOf(shape, role, verDirOf(ctx, pe))
+        if (picked.isEmpty()) {
+            //  => 而那**择一不出来**时（=> 而那三档：形态说明不带 chain[0] / 择一不唯一 / 指针层取不出）
+            //     => 而那按 01 裁的 S604-01 §3.1 逐字**报缺**（=> 而不按首项、不按字典序、不猜）。
+            return LocatedAll(
+                role, emptyList(),
+                "库项存在但**开发名那一层**取不出（形态说明里没有 chain[0]、或择一不唯一）" +
+                    "—— 报缺，不按首项、不按字典序、不猜",
+            )
+        }
+        //  => 而那 openssl 那一件逐字给**两条**（=> 而 libcrypto.so 与 libssl.so 各一条链）。
+        //     => 而这一格逐字**不是**「取第一个」（=> 而 01 裁的 S604-01 §1.4 第 3 条）。
+        val out = mutableListOf<Located>()
+        for (item in picked) {
+            val base = item.path.substringAfterLast('/')
+            if (base.isBlank()) continue
+            val landed = ProgramInstallPipeline.PieceShape.landedRel(shape, item.path)
+                ?: continue
+            out.add(
+                Located(
+                    role = role,
+                    name = base,
+                    pointer = File(PrefixProvisioner.libDir(ctx), base),
+                    landedRel = landed,
+                    detail = "库形态：入口指针按落位目录 " + ProgramInstallPipeline.SHAPE_NAME +
+                        " 里 files[] 的库形态那一条（软链层、=> 而那 basename 等于 chain[0]）定位（usr/lib/" + base + "）",
+                    tier = if (picked.size > 1) "multi" else "chain0",
+                )
+            )
+        }
+        if (out.isEmpty()) {
+            return LocatedAll(
+                role, emptyList(),
+                "库项存在但**开发名那一层**取不出（择一之后算不出落位相对路径）—— 报缺，不按首项、不按字典序、不猜",
+            )
+        }
+        return LocatedAll(role, out)
     }
+
 
     fun locate(ctx: Context, id: String): Located? =
         ProgramIndex.get(ctx, id)?.let { locate(ctx, it) }

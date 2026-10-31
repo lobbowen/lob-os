@@ -96,7 +96,12 @@ jobs:
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
             mv "dist/$ASSET" "dist/component-cmake.zip"
             [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-cmake.zip.sha256" || true
-            tar xzf "dist/component-cmake.zip" -C dist
+            #  缺陷名（C-102）**按名硬取**：=> 而那旧版逐字是 `tar xzf "dist/component-cmake.zip" -C dist`
+            #    => 而那**文件名后缀**逐字是 .zip 而那命令逐字是 tar xzf、
+            #    => 而那**内容**逐字是 tar.gz（=> 而那那一条 tar xzf 在 zip 内容上逐字解不开）。
+            #    => 而那「哪一层才算那一颗件」那一格**归 01 裁**（=> 而本处**不**拍板）。
+            #  => 而按 C-994「判别源必须唯一」：=> 而那一格逐字**调** scripts/toolchain/fmt.sh。
+            bash scripts/toolchain/unpack-piece.sh "dist/component-cmake.zip" dist
             ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else

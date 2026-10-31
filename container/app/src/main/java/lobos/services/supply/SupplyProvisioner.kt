@@ -184,12 +184,97 @@ object SupplyProvisioner {
 
     internal fun sha256HexFile(f: File): String = lobos.kernel.crypto.Crypto.sha256HexFile(f)
 
+    /**
+     * 解包：按**字节**分派，**不**按文件名后缀。
+     *
+     * 缺陷名（C-102）**那解包逐字按文件名的后缀分派** ——
+     *   而那旧版逐字是：
+     *     n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
+     *     n.endsWith(".zip") -> unzip(pkg, dest, probeCtx)
+     *     else -> unzip(pkg, dest, probeCtx)
+     *   => 而那**名字**与那**内容**逐字是**两件**事：
+     *     · Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz，=> 而里面的内容**已经是 zip**
+     *       （=> 而那 fmt.sh 那一族逐字写着「按扩展名分派会对 zip 内容走 tar 分支，解不开，判据一律拒绝」）；
+     *     · 而那 CI artifact 那一族逐字是「zip 套 zip」（=> 而那外层逐字装着那内层那一个件包）。
+     *   => 而按后缀分派逐字**在这两种形状上都会解错**（=> 而那 zip 套 zip 那一族逐字会把外层当件包）。
+     *
+     * C-103 这一族它为什么有两边：
+     *   一边是「这一份**叫什么名字**」（=> 而那名字是**约定**、=> 而它逐字会骗人）；
+     *   另一边是「这一份**实际上是什么容器**」（=> 而那只能**看头四字节**答）。
+     *   => 而那两边各答一件事、=> 而那解包该按**后者**分派。
+     *
+     * C-104 有没有第二种生成路径：没有。=> 而那判别逐字**只有**这一处（=> 而按 C-994「判别源必须唯一」）。
+     */
     internal fun unzipFromFile(pkg: File, dest: File, probeCtx: android.content.Context? = null) {
-        val n = pkg.name.lowercase()
-        when {
-            n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
-        n.endsWith(".zip") -> unzip(pkg, dest, probeCtx)
-            else -> unzip(pkg, dest, probeCtx)
+        when (containerFormOf(pkg)) {
+            CONTAINER_ZIP -> unzip(pkg, dest, probeCtx)
+            CONTAINER_GZIP -> untarFromFile(pkg, dest)
+            CONTAINER_TAR -> untarFromFile(pkg, dest)
+            else -> {
+                //  => 而那认不出来时逐字**按 zip 试一次**（=> 而那 zip 那一支逐字会自己报出真错），
+                //  => 而而**不**按文件名猜（=> 而那后缀逐字是骗人的）。
+                unzip(pkg, dest, probeCtx)
+            }
+        }
+    }
+
+    /** 容器形态那一格（=> 而那它逐字**按头四字节**判、=> 而不按名字）。
+     *
+     *  => 而那**取值域逐字只有三档**（=> 而 01 裁的 S607-01-CONTAINER-FORM-RULING.md §2.1
+     *     逐字「外壳 3 档 + 内外层关系 1 档 = 4 档」、=> 而**zip64 不是第五个容器**、
+     *     => 而它是 zip 那一档的**中央目录变体**）。
+     *  => 而那**运行期不需要**那一档（=> 而 zip64 逐字**用同一个解包器**、
+     *     => 而那 zip64 的差别逐字在条目头与偏移表、=> 而**解包器自己认**）。
+     *  => 而那**头四字节分不出** zip 与 zip64（=> 而那两个样本逐字都是 504b0304）、
+     *     => 而若运行期要分它、=> 而那判别式逐字得**再读一次尾部**（=> 而那是每次解包多一次尾读的代价）。
+     */
+    const val CONTAINER_ZIP = "zip"
+    const val CONTAINER_GZIP = "gzip"
+    const val CONTAINER_TAR = "tar"
+    const val CONTAINER_UNKNOWN = "unknown"
+
+    /**
+     * 这一份**实际上是什么容器**（=> 而那只读头四字节、=> 而**不**整读）。
+     *   504b0304 = zip（=> 而那 zip32 与 zip64 **分不出头四字节**、=> 而那要靠尾部哨兵、
+     *                    => 而那运行期**不需要**分它、=> 而解包器自己认）；
+     *   1f8b08xx = gzip；
+     *   其余     = tar（=> 而那判据逐字是「头四字节不是 504b* 也不是 1f8b*、=> 而 tar tf 读得通」）。
+     */
+    internal fun containerFormOf(pkg: File): String {
+        if (!pkg.isFile || pkg.length() <= 0L) return CONTAINER_UNKNOWN
+        val head = try {
+            pkg.inputStream().use { ins ->
+                val b = ByteArray(4)
+                var got = 0
+                while (got < 4) {
+                    val n = ins.read(b, got, 4 - got)
+                    if (n <= 0) break
+                    got += n
+                }
+                if (got < 4) return CONTAINER_UNKNOWN
+                b
+            }
+        } catch (e: Throwable) {
+            return CONTAINER_UNKNOWN
+        }
+        val b0 = head[0].toInt() and 0xFF
+        val b1 = head[1].toInt() and 0xFF
+        val b2 = head[2].toInt() and 0xFF
+        val b3 = head[3].toInt() and 0xFF
+        return when {
+            b0 == 0x50 && b1 == 0x4b -> CONTAINER_ZIP
+            b0 == 0x1f && b1 == 0x8b -> CONTAINER_GZIP
+            else -> {
+                //  => 而那 tar 那一档逐字要**试读**（=> 而 01 §2.1 逐字「tar tf 读得通」）。
+                val tarOk = try {
+                    val pb = ProcessBuilder("tar", "tf", pkg.absolutePath)
+                    pb.redirectErrorStream(true)
+                    pb.start().waitFor() == 0
+                } catch (e: Throwable) {
+                    false
+                }
+                if (tarOk) CONTAINER_TAR else CONTAINER_UNKNOWN
+            }
         }
     }
 

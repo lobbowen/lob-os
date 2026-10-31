@@ -55,6 +55,23 @@ object ProgramInstallPipeline {
             val role: String,
             val mode: String,
             val sha256: String,
+            /** 那一层的链（开发名 -> SONAME -> 实体）。
+             *  而它**是产物自带的**（构建期 scripts/toolchain/elf-form.sh 的 elf_chain_names 写的），
+             *  而 chain[0] 逐字是**开发名那一层**的名字。
+             *  缺陷名（C-102）**形态说明只读了五格、把开发名那一层整丢了**：
+             *   而原来这一格只有 path/dir/role/mode/sha256 => 而「哪一层是开发名」这一问
+             *   在运行期**无从问起** => 而库形态的入口指针名只能去取 files[] 的**首项**
+             *   （=> 而那首项是「LC_ALL=C sort 的副产品」，=> 而而它常常是**实体名**那一层）。
+             *  现在：chain 也读进来，=> 而开发名那一层**按它判**。
+             */
+            val chain: List<String> = emptyList(),
+            /** 那一项自述的 SONAME（=> 而它**是产物自带的**、=> 而那构建期 elf-form.sh 写的）。
+             *  缺陷名（C-102）**形态说明只读了五格、把 SONAME 与 chain 整丢了**：
+             *   而原来这一格只有 path/dir/role/mode/sha256
+             *   => 而「哪一层是开发名」「哪一层是实体」这两问在运行期**无从问起**。
+             *  现在：chain 与 soname 也读进来。
+             */
+            val soname: String = "",
         )
 
         data class Piece(
@@ -97,6 +114,17 @@ object ProgramInstallPipeline {
                             fo.optString("role", "").trim(),
                             fo.optString("mode", "").trim(),
                             fo.optString("sha256", "").trim(),
+                            //  => 而那 chain 逐字是**产物自带**的那一格（=> 而那构建期逐字是
+                            //     scripts/toolchain/elf-form.sh 的 elf_chain_names 写的），
+                            //  => 而而它**缺了**逐字是空（=> 而按 C-05「没有」就是没有、=> 而不猜填）。
+                            (fo.optJSONArray("chain") ?: JSONArray()).let { ca ->
+                                (0 until ca.length()).mapNotNull { j ->
+                                    ca.optString(j, "").trim().takeIf { it.isNotEmpty() }
+                                }
+                            },
+                            //  => 而那 soname 那一格逐字**也是产物自带的**
+                            //     （=> 而那构建期逐字是 elf-form.sh 的 elf_soname 写的）。
+                            fo.optString("soname", "").trim(),
                         )
                     )
                 }
@@ -130,6 +158,89 @@ object ProgramInstallPipeline {
             val role = piece.roleOf(rel) ?: return null
             val dir = dirForRole(role) ?: return null
             return dir + "/" + rel.substringAfterLast('/')
+        }
+
+        /**
+         * 那一件该建**哪几条**入口指针（按形态）。
+         *
+         * 缺陷名（C-102）**这一族逐字只取 files[] 的首项** ——
+         *   而那首项逐字是「LC_ALL=C sort 的**副产品**」（=> 而那顺序逐字是路径字典序）、
+         *   => 而它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（=> 而而那不是指针层）。
+         *   而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.5 第 1 条逐字给的缺陷名是
+         *   「取 files[] 的**首项**作为入口指针名，而首项是 LC_ALL=C sort 的**副产品**（无语义）」。
+         *
+         * 而那判别式逐字是**两步**（=> 而 01 裁的 S604-01 §1.3）：
+         *   甲：那一项在**落位目录里是软链**（=> 而不是普通文件）=> 而它才是「指针层」；
+         *   乙：在甲给出的那些项里，取 basename 等于**该件 files[] 里 role=library 各项 chain[0]** 的那一个。
+         *
+         * => 而这是**唯一**那套口径（=> 而按 C-104 判别源要唯一）：
+         *   而 PieceEntryPointer 那一族与 PreinstalledPieces 那一族逐字**都调**这一件。
+         *
+         * => 而那**单层无软链**那一档（curl）：=> 而那唯一库项逐字是普通文件、=> 而那**不**是缺。
+         *   => 而它逐字**显式**在这里处理（=> 而那它逐字是「开发名与实体名同名」那一条）。
+         *
+         * => 而那**择一不出来**时（=> 而那是 zlib 那一格在 chain[0] 读不到时）
+         *   => 而这一件逐字返回**空**（=> 而那调用方逐字**报缺**、=> 而不按首项兜底）。
+         */
+        fun pointerLayerOf(piece: Piece, role: String, verDir: File?): List<FileShape> {
+            val items = piece.byRole(role)
+            if (items.isEmpty()) return emptyList()
+            if (role != ROLE_LIBRARY) {
+                //  => 而那程序形态那一族逐字只有**一条**入口（=> 而那它不参与择一）。
+                return listOf(items.first())
+            }
+            //  甲：那一项在**落位目录里是软链**。
+            //  => 而那优先逐字用**产物自带**的那一格（derivedLinks、=> 而那它逐字记的就是「哪些是派生物」）。
+            //  => 而那「单层无软链」那一档（curl）逐字**先**判：
+            //     而那唯一库项逐字是**普通文件**、=> 而那 chain 长度 1、=> 而那 soname 与 basename 同名
+            //     => 而那**不是缺**（=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字
+            //        「取唯一库项的 basename 记为开发名，=> 而并在这一格显式记『单层无软链』」）。
+            //     => 而那**判据**逐字是「那唯一库项的 chain 长度 == 1 且 soname == basename」
+            //        （=> 而那是**产物自带**的那两格、=> 而它逐字不必去看落位目录）。
+            if (items.size == 1) {
+                val only = items.first()
+                val base = only.path.substringAfterLast('/')
+                val chainLen = only.chain.size
+                val sonameSelf = only.soname.isNotBlank() && only.soname == base
+                if (chainLen == 1 && sonameSelf) {
+                    return listOf(only)      //  => 而那「单层无软链」这一档
+                }
+            }
+            val soft = softLinkPathsOf(piece, verDir)
+                ?: return emptyList()      //  => 而那两处都读不到 => 报缺（=> 而调用方逐字报缺）
+            val pointerLayer = items.filter { soft.contains(it.path) }
+            if (pointerLayer.isEmpty()) {
+                //  => 而那**有**好几项、=> 而那没有一项是软链、=> 而那不是「单层」、
+                //     => 而那**报缺**（=> 而按 C-05 不猜）。
+                return emptyList()
+            }
+            //  乙：按 chain[0] 择一。
+            val roots = items.mapNotNull { it.chain.firstOrNull()?.takeIf { s -> s.isNotBlank() } }.toSet()
+            if (roots.isEmpty()) return emptyList()   //  => 而那 chain[0] 读不到 => 报缺
+            val picked = pointerLayer.filter { roots.contains(it.path.substringAfterLast('/')) }
+            return picked
+        }
+
+        /**
+         * 落位目录里哪些项是**软链**（相对路径，逐字带那一层目录名）。
+         *  => 而那优先逐字用**产物自带**的那一格（derivedLinks）、=> 而那读不到时逐字**看落位目录本身**。
+         *  => 而两处都读不到 ⇒ 返回 null（=> 而那调用方逐字**报缺**、=> 而不猜）。
+         */
+        fun softLinkPathsOf(piece: Piece, verDir: File?): Set<String>? {
+            if (piece.derivedLinks.isNotEmpty()) return piece.derivedLinks.toSet()
+            val dir = verDir ?: return null
+            if (!dir.isDirectory) return null
+            val out = mutableSetOf<String>()
+            for (sub in listOf(File(dir, "lib"), File(dir, "bin"))) {
+                val kids = sub.listFiles() ?: continue
+                for (f in kids) {
+                    val isLink = runCatching {
+                        java.nio.file.Files.isSymbolicLink(f.toPath())
+                    }.getOrDefault(false)
+                    if (isLink) out.add(sub.name + "/" + f.name)
+                }
+            }
+            return if (out.isEmpty()) null else out
         }
     }
 

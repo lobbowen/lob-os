@@ -17,7 +17,36 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-key="${1:?usage: read-component-entry.sh <件名>}"
+#  缺陷名（C-102）**那三个空逐字分不出来** ——
+#   而那旧版逐字是三个 `printf '\n'; exit 0`（=> 而那三处逐字**都是空串**、=> 而都 exit 0）：
+#     ① 纯库件（entry 合法地是空）
+#     ② 产物存在、而那一份 meta 的 entry 逐字是空
+#     ③ 读不到产物（压根没有可比对的声明）
+#   => 而那调用方逐字只看到「空」，=> 而而那**三问**逐字**答不出**。
+#   => 而 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「本件只记，归 05」、
+#     => 而归 05 的处置逐字是「要么给不同的非空值、要么给不同的退出码」。
+#   => 而本处取**不同的非空值**、=> 而它逐字落在**单独那一档输出**上（=> 而那一档输出逐字**新**）：
+#     而那**默认**那一档（stdout）逐字**一个字都不改**（=> 而那三个调用点逐字不变、=> 而那 exit 0 逐字不变），
+#     => 而那 `--why` 那一档逐字**答**「那一个空是哪一个」。
+WHY_ONLY=0
+if [ "${1:-}" = "--why" ]; then
+  WHY_ONLY=1
+  shift
+fi
+key="${1:?usage: read-component-entry.sh [--why] <件名>}"
+
+# 那一档**为什么**是空（=> 而那三个空逐字分得开、=> 而那逐字是**枚举值**）。
+why_pure_library() { printf 'pure-library\n'; }
+why_entry_empty()  { printf 'entry-empty\n'; }
+why_no_artifact()  { printf 'no-artifact\n'; }
+why_found()        { printf 'entry-found\n'; }
+
+# 那一档输出（=> 而那 `--why` 那一档逐字只答那一个词、=> 而**不**答那入口）。
+why_say() {
+  [ "$WHY_ONLY" -eq 1 ] || return 0
+  printf '%s' "$1"
+  exit 0
+}
 
 # ★ 缺陷名（C-102）**判据在产物之前跑** ——
 #   而这一族它为什么有两边：一边是「**产物自带的那一份** component-meta.json 的 entry」
@@ -50,9 +79,10 @@ key="${1:?usage: read-component-entry.sh <件名>}"
 # ① 落位结果（=> 而 dist/ 下那一批字节）—— **先**算它（=> 而它此刻就在）
 if [ -d "$ROOT/dist" ]; then
   e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$ROOT/dist" 2>/dev/null || true)"
-  if [ -n "$e" ]; then printf '%s\n' "$e"; exit 0; fi
+  if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
   # 纯库件：entry 合法地是空 —— 而落位结果存在 => 答「空」
   if [ -d "$ROOT/dist/lib" ] || [ -d "$ROOT/dist/bin" ]; then
+    why_say "$(why_pure_library)"
     printf '\n'; exit 0
   fi
 fi
@@ -66,13 +96,15 @@ for z in "$ROOT"/dist/component-"$key"-*.zip; do
       try { process.stdout.write(String((JSON.parse(d).entry) || "")); } catch (e) {}
     });
   ' 2>/dev/null)"
-  if [ -n "$e" ]; then printf '%s\n' "$e"; exit 0; fi
+  if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
   # 纯库件：entry 合法地是空 —— 而那一份 meta 存在 => 答「空」
   if unzip -p "$z" component-meta.json 2>/dev/null | grep -q '"entry"'; then
+    why_say "$(why_entry_empty)"
     printf '\n'; exit 0
   fi
 done
 
 # ③ 读不到产物 => 答「没有可比对的声明」
+why_say "$(why_no_artifact)"
 printf '\n'
 exit 0

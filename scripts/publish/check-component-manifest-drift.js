@@ -39,6 +39,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const cp = require('node:child_process');
 
 // 本文件在 scripts/publish/ 下 —— 上溯两层到仓根。
 const ROOT = path.resolve(__dirname, '../..');
@@ -98,6 +99,29 @@ function readJson(p, what) {
   }
 }
 
+// 控制面板件清单（=> 而那逐字从 cache-key.sh 的 bucket_for 出、=> 而那**那是唯一真相**）。
+//   => 而那底座件那一族（base / apkonly 筐）逐字**不进**这一轴
+//     （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
+function bucketComponents() {
+  const lister = path.join(ROOT, 'scripts', 'registry', 'list-bucket-components.js');
+  if (!fs.existsSync(lister)) { fail('缺少控制面板件清单的来源：' + lister); }
+  let out = '';
+  try {
+    out = cp.execFileSync('node', [lister, '--buckets'], { encoding: 'utf8' });
+  } catch (e) {
+    fail('读不出控制面板件清单（' + lister + '）：' + String(e.stderr || e.message).slice(0, 200));
+  }
+  const rows = [];
+  for (const line of String(out).split('\n')) {
+    const t = line.trim();
+    if (!t) continue;
+    const parts = t.split('\t');
+    if (parts.length < 2) continue;
+    rows.push({ name: parts[0].trim(), bucket: parts[1].trim() });
+  }
+  return rows;
+}
+
 // 投影文件有两种形状：
 //   · 组件投影（publish-component-manifest.js --project 的 stdout）：数组，每项有 name
 //   · 组件清单（签过名的那份）：对象，有 tools 数组
@@ -153,6 +177,31 @@ function main() {
     }
     if (!t.sha256 || !HEX64.test(String(t.sha256))) {
       drift(id + '.sha256：投影里不是一份 64 位十六进制的值（读到 ' + JSON.stringify(t.sha256) + '）');
+    }
+  }
+
+  //  缺陷名（C-102）**一件缺失即零漂移** ——
+  //    => 而那旧版逐字**只**从**投影**那一侧出发（=> 而那 :144 逐字 shape.tools、
+  //      => 而那 :160 逐字 shape.components），
+  //    => 而而那**声明侧**逐字**没有**反向核（=> 而那组件清单里逐字**少**一件时、=> 而那零漂移）。
+  //    => 而那 node / python / sqlite / pkgconf 那四件逐字**在** components.json 的 sources 里
+  //      （=> 而那四件逐字**没有** piece: true、=> 而那它们**不进**那取件循环）、
+  //      => 而它们逐字是**控制面板清单该有的那几件**（=> 而那 bucket_for 逐字把 node/python
+  //      归 rt 筐、=> 而 pkgconf/sqlite 归 tool 筐）=> 而它们**缺了**逐字**该被看见**。
+  //    => 而那**判据**逐字：=> 而那**控制面板件清单**逐字从 cache-key.sh 的 bucket_for 出（=> 而那那是唯一真相）、
+  //      => 而那投影里逐字**缺**哪一件、=> 而那那一件就逐字报缺。
+  //    => 而而那「底座件」那一族（base / apkonly 筐）逐字**不进**这一轴
+  //      （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
+  if (shape.kind === 'component') {
+    const projected = new Set(shape.tools.map((t) => String(t.name)));
+    for (const row of bucketComponents()) {
+      const id = row.name;
+      if (row.bucket === 'base' || row.bucket === 'apkonly') continue;
+      if (!sources[id]) continue;
+      if (!projected.has(id)) {
+        drift(id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），=> 而它逐字**不在**那投影里 —— ' +
+          '这一件缺失（=> 而那投影侧逐字只从投影出发、=> 而那零漂移；=> 而而那这一件逐字**该被看见**）');
+      }
     }
   }
 

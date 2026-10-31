@@ -20,6 +20,13 @@ fi
 
 mkdir -p "$DIST"
 
+#  那容器判别源逐字**唯一**（=> 而按 C-994「判别源必须唯一、=> 而其余各处改成调它」）：
+#  => 而那 fmt.sh 那一件逐字按头四字节与尾部哨兵判、=> 而它逐字有 zip / zip64 / gzip / tar / 未知 那五档。
+FMT_SH="$ROOT_DIR/scripts/toolchain/fmt.sh"
+[ -f "$FMT_SH" ] || { echo "::error title=没有判别源::$FMT_SH 不在 —— 容器判别源必须唯一"; exit 1; }
+# shellcheck source=fmt.sh
+. "$FMT_SH"
+
 COMPONENTS="$(node scripts/registry/list-bucket-components.js)"
 [ -n "${COMPONENTS// /}" ] || { echo "::error title=件清单为空::bucket_for 没解析出任何件"; exit 1; }
 
@@ -44,12 +51,47 @@ miss_ratelimit=0; miss_auth=0; miss_notfound=0; miss_unknown=0
 miss_norun=0
 MISS_TSV="$DIST/.fetch-missing.tsv"
 : > "$MISS_TSV"
+#  那缺件表逐字**另外**落一份机器可读的那一份（=> 而 JSON 是逐字能对账的形态）。
+#  => 而「清单里要不要留一条占位（missing 状态 + 成因）」那一问**归 01 裁**、
+#  => 而本处**不**拍板、=> 而只把事实**逐件**落成机器可读的那一份（=> 而它逐字能对账）。
+MISS_JSON="$DIST/.fetch-missing.json"
+printf '[]\n' > "$MISS_JSON"
 
 #  缺件逐字**落**那显式缺件表（=> 而那一件**不许**静默从清单里消失）。
-#  => 而那表逐字是三列：件名 / 那一档 / 那一档的原话。
+#  => 而那表逐字是**四列**：件名 / 那一档 / 那一档的原话 / **容器形态**那一格。
+#  => 而那第四列逐字是**三样**（=> 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §4 逐字
+#     「形态档落在缺件表里逐字要带三样：形态名、头四字节、外层中央目录条目数」）：
+#     而那三样逐字用**竖线**隔开写进**一列**（=> 而那竖线逐字是机器可读的分隔符）。
+#  => 而那档位逐字取自**枚举**（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字
+#     「档位取自枚举不许散文」）：
+#       成因轴四档：ratelimit / auth / notfound / unknown
+#       与「下载被拒」**不是同一问**的两档：missing-norun / missing-contract
 miss_row() {
-  printf '%s\t%s\t%s\n' "$1" "$2" "$3" | tee -a "$MISS_TSV"
+  local mform="${4:-}"
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$mform" | tee -a "$MISS_TSV"
+  #  => 而那机器可读的那一份逐字**同步**落（=> 而那 JSON 逐字是那几件的数组）。
+  node -e '
+const fs = require("node:fs");
+const p = process.argv[1];
+let arr = [];
+try { arr = JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { arr = []; }
+if (!Array.isArray(arr)) arr = [];
+const f = process.argv[5] ? process.argv[5].split("|") : [];
+arr.push({ piece: process.argv[2], kind: process.argv[3], detail: process.argv[4],
+           form: { name: f[0] || "", magic: f[1] || "", outerEntries: Number(f[2] || -1) } });
+fs.writeFileSync(p, JSON.stringify(arr, null, 2) + "\n");
+' "$MISS_JSON" "$1" "$2" "$3" "$mform"
 }
+
+# 那一档的**容器形态**那一格（=> 而那三样：形态名 / 头四字节 / 外层中央目录条目数）。
+#  => 而那形态逐字按**字节**判（=> 而那判别源唯一：scripts/toolchain/fmt.sh）。
+#  => 而那文件逐字不在时（=> 而那一件压根没下下来）=> 而那形态逐字**报缺**（=> 而不猜）。
+missing_form_of() {
+  local f="$1"
+  if [ ! -f "$f" ]; then printf '%s' "未知|无|-1"; return 0; fi
+  printf '%s|%s|%s' "$(fmt_of "$f")" "$(fmt_magic "$f")" "$(fmt_outer_entries_of "$f")"
+}
+
 for t in $COMPONENTS; do
   case " $NATIVE " in
     *" $t "*) echo -e "$t\tskipped-native\t随 APK 内置，不在控制面板清单里"; skipped=$((skipped+1)); continue ;;
@@ -87,7 +129,7 @@ for t in $COMPONENTS; do
 
   if [ -z "$picked" ]; then
     echo "::warning title=$t 没有可取的件::$WF 还没有成功 run，或其 artifact 已过保留期 —— 本次清单不含这件"
-    miss_row "$t" "missing-norun" "没有产物活着的成功 run（$WF / $ART）"
+    miss_row "$t" "missing-norun" "没有产物活着的成功 run（$WF / $ART）" "未知|无|-1"
     missed=$((missed+1))
     miss_norun=$((miss_norun+1))
     continue
@@ -137,7 +179,10 @@ for t in $COMPONENTS; do
       *)         echo "::notice:: 那一档是**成因未知**（=> 而那响应体逐字没给出可判的那一档、=> 而按 C-05 不猜）。*" ;;
     esac
     echo "::notice:: 本次清单不含这一件 —— 而它逐字**进**那显式缺件表（=> 而不会静默消失）。*"
-    miss_row "$t" "missing-$DL_KIND" "run $picked 下载被拒（HTTP $DL_HTTP / $DL_KIND）"
+    #  => 而那形态那一格逐字从那**下载下来**的那一份读（=> 而那它逐字可能已经半截、
+    #     => 而那读不出来时逐字是「未知|无|-1」=> 而而那**不**猜）。
+    miss_row "$t" "missing-$DL_KIND" "run $picked 下载被拒（HTTP $DL_HTTP / $DL_KIND）" \
+      "$(missing_form_of "$DIST/.gh-dl-partial")"
     missed=$((missed+1))
     case "$DL_KIND" in
       ratelimit) miss_ratelimit=$((miss_ratelimit+1)) ;;
@@ -154,7 +199,8 @@ for t in $COMPONENTS; do
   mapfile -t zips < <(compgen -G "$DIST/component-$t-*-android-arm64.zip" | grep -v -- "-unknown-" || true)
   if [ "${#zips[@]}" -eq 0 ]; then
     echo "::warning title=$t 产物不合契约::run $picked 的 $ART 里没有 component-$t-<版>-<哈希>-android-arm64.zip"
-    miss_row "$t" "missing-contract" "artifact 里没有符合命名契约的 zip"
+    miss_row "$t" "missing-contract" "artifact 里没有符合命名契约的 zip" \
+      "$(missing_form_of "$DIST/component-$t-"*.zip 2>/dev/null | head -1)"
     rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
     missed=$((missed+1))
     miss_unknown=$((miss_unknown+1))
@@ -188,6 +234,8 @@ if [ "$missed" -gt 0 ]; then
     echo "  · $mt  [$mkind] $mwhy"
   done < "$MISS_TSV"
   echo "::notice title=本轮有缺件::上面那几件逐字**进**了那份显式缺件表、=> 而它们逐字**没有**静默从清单里消失。"
+  echo "::notice:: 而那机器可读的那一份逐字是 $MISS_JSON（=> 而那逐件、逐档、逐字原话）。*"
+  echo "::notice:: 而那清单（work/declared.json）逐字**只含取到的那些件** —— 而那缺的几件**不在**它里面。*"
 fi
 if [ "$got" -eq 0 ]; then
   echo "::error title=一件也没取到::清单投影会把「没有件」和「清单为空」混为一谈，这里先停"

@@ -30,7 +30,129 @@ function entryOf(name) {
   return cp.execFileSync('bash', [path.join(ROOT, 'scripts', 'registry', 'read-component-entry.sh'), name], { encoding: 'utf8' }).trim();
 }
 
+//  缺陷名（C-102）**那发布投影逐字按文件名后缀选工具** ——
+//    而那旧版逐字是 `unzip -p` 与 `unzip -l`（=> 而那两处逐字**只**认 zip）。
+//    => 而那**名字**与那**内容**逐字是**两件**事：
+//      · Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz，=> 而里面的内容**已经是 zip**；
+//      · 而那 CI artifact 那一族逐字是「zip 套 zip」（=> 而那外层逐字装着那内层那一个件包）。
+//    => 而按后缀选工具逐字**在这两种形状上都会解错**。
+//  => 而按 C-994「判别源必须唯一」：=> 而那一格逐字**调** scripts/toolchain/fmt.sh
+//    （=> 而那 fmt_of 逐字按头四字节与尾部哨兵判、=> 而它逐字有 zip / zip64 / gzip / tar / 未知 那五档）。
+//  => 而那**真源**逐字不变：declaredEntry 仍来自 scripts/registry/read-component-entry.sh。
+
+// 那一件**实际上是什么容器**（=> 而那判别源唯一、=> 而那它逐字就是 fmt.sh 那一个）。
+function containerFormOf(file) {
+  const FMT_SH = path.join(ROOT, 'scripts', 'toolchain', 'fmt.sh');
+  if (!fs.existsSync(FMT_SH)) {
+    throw new Error('判别源不在: ' + FMT_SH + ' —— 容器判别源必须唯一');
+  }
+  const r = cp.spawnSync('bash', ['-c', '. "$1"; fmt_of "$2"', 'bash', FMT_SH, file], { encoding: 'utf8' });
+  if (r.status !== 0) {
+    throw new Error('判别源读不了 ' + file + ': ' + String(r.stderr || '').slice(0, 200));
+  }
+  return String(r.stdout || '').trim();
+}
+
+// 那一件**里层**那一个 zip（=> 而那挑选规则逐字只有一条）。
+//  => 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字
+//     「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
+//      => 而**名字 glob 只当第一道粗筛**」、
+//     => 而「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」。
+//  => 而那**判据必须落在内容上**（=> 而不按名字）。
+function innerZipCandidates(file) {
+  const work = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'lob-inner-'));
+  try {
+    const form = containerFormOf(file);
+    if (form === 'gzip') {
+      cp.execFileSync('tar', ['xzf', file, '-C', work], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } else if (form === 'zip' || form === 'zip64') {
+      cp.execFileSync('unzip', ['-q', '-o', file, '-d', work], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } else {
+      return [];
+    }
+    const out = [];
+    const walk = (dir, depth) => {
+      if (depth > 2) return;
+      let kids = [];
+      try { kids = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+      for (const k of kids) {
+        const p = path.join(dir, k.name);
+        if (k.isDirectory()) walk(p, depth + 1);
+        else if (k.isFile() && /\.zip$/.test(k.name)) out.push(p);
+      }
+    };
+    walk(work, 0);
+    //  => 而那**按字节**挑（=> 而不按名字）：=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器。
+    const zips = [];
+    for (const p of out) {
+      const fd = fs.openSync(p, 'r');
+      try {
+        const b = Buffer.alloc(4);
+        const n = fs.readSync(fd, b, 0, 4, 0);
+        if (n >= 4 && b[0] === 0x50 && b[1] === 0x4b) zips.push(p);
+      } finally {
+        fs.closeSync(fd);
+      }
+    }
+    //  => 而那**按内容**挑（=> 而 01 裁的规则）：=> 而那候选逐字**含 component-meta.json**、
+    //     => 而那一份里的 `id` 逐字**等于**要取的那一件。
+    const picked = [];
+    for (const p of zips) {
+      let meta = null;
+      try {
+        meta = cp.execFileSync('unzip', ['-p', p, 'component-meta.json'], {
+          encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } catch (e) {
+        meta = null;
+      }
+      if (!meta) continue;
+      let id = '';
+      try { id = String(JSON.parse(meta).id || ''); } catch (e) { id = ''; }
+      if (!id) continue;
+      picked.push({ path: p, id });
+    }
+    return picked;
+  } catch (e) {
+    return [];
+  } finally {
+    try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* 清理失败不影响判别 */ }
+  }
+}
+
+// 那一件**里层**那一个 zip（=> 而那按内容挑、=> 而那零个或多个都判红）。
+function innerZipOf(file, wantPiece) {
+  const picked = innerZipCandidates(file);
+  if (!picked.length) {
+    throw new Error(
+      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有**一个含 component-meta.json 的件包' +
+      '（=> 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个）。'
+    );
+  }
+  const hit = wantPiece ? picked.filter((c) => c.id === wantPiece) : picked;
+  if (hit.length === 0) {
+    throw new Error(
+      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
+      '（=> 而那候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
+    );
+  }
+  if (hit.length > 1) {
+    throw new Error(
+      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
+      ' 的件包（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
+    );
+  }
+  return hit[0].path;
+}
+
 function pieceText(zipPath, rel) {
+  const form = containerFormOf(zipPath);
+  if (form !== 'zip' && form !== 'zip64') {
+    throw new Error(
+      '件 ' + zipPath + ' 的容器形态逐字是 ' + form + ' —— 而这一格逐字要读件内那一个 package.json，' +
+      '=> 而那形态逐字不对（=> 而那不是 zip 容器、=> 而那解不开）。'
+    );
+  }
   if (!pieceNames(zipPath).includes(rel)) return null;
   try {
     return cp.execFileSync('unzip', ['-p', zipPath, rel], {

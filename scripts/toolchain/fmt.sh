@@ -75,6 +75,8 @@ try {
     process.stdout.write("zip32"); process.exit(0);
   }
   const loc = e >= 20 ? tail.readUInt32LE(e - 20) : 0;
+  //  => 而那**定位器不在位**时（=> 而那哨兵逐字在位、=> 而而那定位器逐字坏了）
+  //     => 而 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「**那一档必须单独报、不许当 zip 处理**」。
   process.stdout.write(loc === 0x07064b50 ? "zip64" : "zip64-sentinel-no-locator");
 } catch (e) {
   process.stdout.write("unreadable");
@@ -165,10 +167,72 @@ try {
 ' "$f"
 }
 
-# 「外层套内层」那一格里，**内层**那个 zip 的路径。
+# 「外层套内层」那一格里，**内层**那些 zip 的路径（=> 而那**全部**、=> 而不取第一个）。
 #   => 而它逐字**先把外层解开**（=> 而那外层逐字可能是 gzip、=> 而也可能是 zip），
-#      => 而再在那解开的地方逐字**找**那个内层 zip。
-#   => 而「哪一层才算那一颗件」那一问**不**在这里答（=> 而那是 01 裁的判别形式）。
+#      => 而再在那解开的地方逐字**找**那些内层 zip。
+#   => 而「哪一层才算那一颗件」那一问**不**在这里答（=> 而那是 01 裁的判别形式）：
+#     => 而那**挑选**规则逐字按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3：
+#        「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
+#         => 而**名字 glob 只当第一道粗筛**」、
+#        => 而「**零个候选与多过一个候选都判红、不取第一个**」。
+#     => 而本函数逐字**只**给出那些候选（=> 而那**挑**那一格逐字在 fmt_pick_inner_zip）。
+fmt_inner_zip_candidates() {
+  local f="$1" work="$2" m
+  [ -s "$f" ] || return 1
+  [ -n "$work" ] || { echo "用法: fmt_inner_zip_candidates <文件> <解开到哪儿>"; return 2; }
+  rm -rf "$work"; mkdir -p "$work"
+  m="$(fmt_magic "$f")"
+  case "$m" in
+    1f8b*) tar xzf "$f" -C "$work" 2>/dev/null || { return 1; } ;;
+    504b*) unzip -q -o "$f" -d "$work" 2>/dev/null || { return 1; } ;;
+    *) return 1 ;;
+  esac
+  local z
+  for z in "$work"/component-*.zip "$work"/*/component-*.zip "$work"/*.zip "$work"/*/*.zip; do
+    [ -f "$z" ] || continue
+    #  => 而那**按字节**筛（=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器）。
+    case "$(fmt_magic "$z")" in 504b*) printf '%s\n' "$z" ;; esac
+  done
+  return 0
+}
+
+# 那**内层**那个 zip（=> 而那按内容挑、=> 而那零个或多个都判红、=> 而不取第一个）。
+#   => 而那件名逐字是第二个实参（=> 而那它逐字是那 `component-meta.json` 里的 `id`）。
+fmt_pick_inner_zip() {
+  local f="$1" work="$2" want="$3"
+  [ -n "$want" ] || { echo "用法: fmt_pick_inner_zip <文件> <解开到哪儿> <件名>" >&2; return 2; }
+  local cands n id
+  cands="$(fmt_inner_zip_candidates "$f" "$work")"
+  n=0
+  local hit=""
+  local ids=""
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    id="$(unzip -p "$c" component-meta.json 2>/dev/null | node -e '
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+  try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
+});')"
+    [ -n "$id" ] || continue
+    ids="$ids $id"
+    if [ "$id" = "$want" ]; then
+      hit="$c"
+      n=$((n+1))
+    fi
+  done <<< "$cands"
+  if [ "$n" -eq 0 ]; then
+    echo "内层没有那一颗件（要 id=$want；候选逐字是${ids:- 无}）—— 报缺，不猜，不取第一个" >&2
+    return 1
+  fi
+  if [ "$n" -gt 1 ]; then
+    echo "内层不唯一（有 $n 个 id=$want 的候选）—— 判红，不取第一个" >&2
+    return 1
+  fi
+  printf '%s\n' "$hit"
+  return 0
+}
+
+# 「外层套内层」那一格里，**内层**那个 zip 的路径（=> 而那是那**第一个**候选、
+#   => 而那**只**给取证用、=> 而那**挑选**那一格逐字用 fmt_pick_inner_zip）。
 fmt_inner_zip() {
   local f="$1" work="$2" m
   [ -s "$f" ] || return 1
@@ -190,6 +254,20 @@ fmt_inner_zip() {
   return 1
 }
 
+# 那一份的**形态名**（=> 而那它逐字就是 fmt_of 那一档）。
+fmt_name_of() {
+  fmt_of "$1"
+}
+
+# 那一份的**外层中央目录条目数**（=> 而那它逐字是那中央目录里那几条）。
+#   => 而那读不到时逐字是 -1（=> 而那 -1 逐字答的是「算不出来」、=> 而不是 0）。
+fmt_outer_entries_of() {
+  local f="$1" n
+  n="$(fmt_zip_entries "$f" 2>/dev/null | grep -c . || true)"
+  [ -n "$n" ] || n=-1
+  printf '%s\n' "$n"
+}
+
 fmt_of() {
   local f="$1" m
   [ -s "$f" ] || { echo "空文件"; return 1; }
@@ -201,6 +279,9 @@ fmt_of() {
       #     => 而现在那逻辑**归到**这一件、=> 而那一处**改成调它**）。
       case "$(fmt_is_zip64 "$f")" in
         zip64) echo "zip64"; return 0 ;;
+        #  => 而那**哨兵在位但定位器坏了**那一档逐字**单独报**
+        #     （=> 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「不许当 zip 处理」）。
+        zip64-sentinel-no-locator) echo "zip64-定位器坏了"; return 1 ;;
         *)     echo "zip"; return 0 ;;
       esac ;;
     1f8b*)                                            echo "gzip"; return 0 ;;
