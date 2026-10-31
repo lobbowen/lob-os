@@ -3,6 +3,7 @@ package lobos.services.supply
 import android.content.Context
 import java.io.File
 import lobos.kernel.layout.PrefixProvisioner
+import lobos.services.log.RuntimeDiagnostics
 import lobos.services.reg.ProgramIndex
 import lobos.services.reg.ProgramManager
 import lobos.services.reg.UnitEntry
@@ -167,7 +168,7 @@ object PieceEntryPointer {
             }
             val dir = ProgramInstallPipeline.PieceShape.dirForRole(role)
                 ?: return LocatedAll(role, emptyList(), "程序形态那一格逐字没有落位目录 —— 报缺，不猜")
-            return LocatedAll(
+            val prog = LocatedAll(
                 role,
                 listOf(
                     Located(
@@ -180,6 +181,10 @@ object PieceEntryPointer {
                     )
                 ),
             )
+            //  => 而那**程序形态**那一档也逐字有**出口**（=> 而那一档逐字是 "program"、
+            //   => 而而它逐字**同样**算出来了、=> 而而它逐字**同样**不能只赋值不报）。
+            reportTier(ctx, pe, "program", 1, prog.pointers.map { it.name })
+            return prog
         }
         //  => 而那以下逐字是**库形态**那一族（=> 而按 01 裁的 S604-01 §3.1 那四档处置）。
         if (shape == null) {
@@ -236,7 +241,65 @@ object PieceEntryPointer {
                 "库项存在但**开发名那一层**取不出（择一之后算不出落位相对路径）—— 报缺，不按首项、不按字典序、不猜",
             )
         }
+        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+        //    => 而那旧版逐字是 `tier = layer.tier`（=> 而那**赋值**逐字**没有消费方**：
+        //      而 Lead 本机实跑 `grep -rn '\.tier' --include=*.kt container/` 逐字命中**只有 1 处**、=> 而那**就是**这一行赋值）。
+        //    => 而那与 C-993 逐字**同一形状**（=> 而那判别式被写了、被赋值了、=> 而没有任何一处读它）。
+        //    => 而那**后果**：=> 而那设备侧逐字读不到它（=> 而 07 本轮实读：single / chain0 / multi /
+        //      pointerLayer / 单层无软链 在 diag.jsonl 与 events.jsonl 里逐字**全部 0**，
+        //      => 而那阳性对照逐字 diag 的 "stage": 命中 **914**、events 的 "category":"diag: 命中 **470**）
+        //      => 而而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
+        //    => 而那**处置**：=> 而那**出口**逐字是那诊断那一族（=> 而那 RuntimeDiagnostics.append
+        //      逐字写进 diag.jsonl、=> 而那正是 07 能读到的那一份）。
+        //      => 而而那**为什么**是诊断那一族而不是 Journal.events：
+        //        · 而那 Journal.events 那一族逐字是「**动作**」的记录（=> 而那它逐字按 category 分）；
+        //          而而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
+        //          => 而那它逐字是**形状**那一类、=> 而那 diag.jsonl 那一族逐字就是那形状那一族。
+        //        · 而那 07 本轮实读逐字：events.jsonl 里 "category":"diag: 命中 470
+        //          => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而而那两条**都能**读到。
+        //      => 而而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
+        reportTier(ctx, pe, layer.tier, out.size, out.map { it.name })
         return LocatedAll(role, out)
+    }
+
+    /**
+     * 那一档的**出口**（=> 而它逐字把那一档**报出来**）。
+     *
+     * 缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+     *   => 而那旧版逐字是 `tier = layer.tier`（=> 而那**赋值**逐字**没有消费方**：
+     *     而 Lead 本机实跑 `grep -rn '\.tier' --include=*.kt container/` 逐字命中**只有 1 处**、
+     *     => 而那**就是**那一行赋值）。
+     *   => 而那与 C-993 逐字**同一形状**（=> 而那判别式被写了、被赋值了、=> 而没有任何一处读它）。
+     *   => 而那**后果**：=> 而那设备侧逐字读不到它
+     *     （=> 而 07 本轮实读：single / chain0 / multi / pointerLayer / 单层无软链
+     *       在 diag.jsonl 与 events.jsonl 里逐字**全部 0**，
+     *       => 而那阳性对照逐字 diag 的 "stage": 命中 **914**、events 的 "category":"diag: 命中 **470**）
+     *     => 而而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
+     *   => 而那**处置**：=> 而那**出口**逐字是那诊断那一族
+     *     （=> 而那 RuntimeDiagnostics.append 逐字写进 diag.jsonl、=> 而那正是 07 能读到的那一份）。
+     *   => 而而那**为什么**是诊断那一族而不是 Journal.events：
+     *     · 而那 Journal.events 那一族逐字是「**动作**」的记录（=> 而那它逐字按 category 分）；
+     *       而而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
+     *       => 而那它逐字是**形状**那一类、=> 而那 diag.jsonl 那一族逐字就是那形状那一族。
+     *     · 而那 07 本轮实读逐字：events.jsonl 里 "category":"diag: 命中 470
+     *       => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而而那两条**都能**读到。
+     *   => 而而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
+     */
+    private fun reportTier(
+        ctx: Context,
+        pe: UnitEntry,
+        tier: String,
+        count: Int,
+        names: List<String>,
+    ) {
+        RuntimeDiagnostics.append(
+            ctx, "lib-entry-tier", true,
+            "入口指针档位 " + tier,
+            "id=" + pe.id + " 档位=" + tier +
+                " 指针条数=" + count +
+                " 指针=" + names.joinToString(",") +
+                " （=> 而那一档逐字是「这一件有几条链、那一档是什么形态」）",
+        )
     }
 
 
