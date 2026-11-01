@@ -543,7 +543,10 @@ object ProgramInstallPipeline {
             //    现在：空 entry  库件，落位照上面（按形态逐项）走完，入口留空。
             //   而「库装库目录」说的是**库字节落在库目录**，那件事由 dirForRole 保证 ——
             //   与「库件没有入口」（入口）不冲突。
-            val libRole = shape.files.firstOrNull()?.role
+            //  => 而那**系统角色**逐字走那产物自带的那一格（=> 而那它逐字**不**按形态那一把尺兜底）
+            //    （=> 而而那库形态那三件逐字那两把尺逐字**一样**、=> 而而那它逐字**一致**更**好**）
+            val libRole = shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
+                ?: shape.files.firstOrNull()?.role
             if (libRole == null) {
                 return null to LandFailure(
                     "entry-missing",
@@ -562,10 +565,22 @@ object ProgramInstallPipeline {
                 "entry-not-in-shape",
                 "清单声明的入口 " + entrySrc + " 不在产物声明的落位集合里 —— 报缺，不猜另一个",
             )
-        val entryRole = shape.roleOf(entrySrc)
+        //  缺陷名（C-102）**那一格逐字取那**形态**那一把尺、=> 而而那它逐字答的是**另一问**
+        //   => 而那旧版逐字是 `val entryRole = shape.roleOf(entrySrc)`
+        //     => 而而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
+        //       （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
+        //     => 而而那这**一件**逐字要记的是「**它在 LOB-OS 自己那一份 Linux 上扮演什么角色**」
+        //       （=> 而那那**系统角色**那一把尺：=> 而那 shell / library / …）
+        //     => 而而那那**两把尺**逐字**对不上**（=> 而而那 bash 逐字 files 1 条逐字 role='program'
+        //       而而那它逐字**真的**是那 shell 那一族）
+        //   => 而那**处置**：=> 而那**系统角色**逐字走那产物自带的 `systemRole` 那一格
+        //     （=> 而那构建期逐字从那 `component-meta.json` 派生、=> 而而那那**一份真源**逐字是那一份）
+        //     => 而而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不按形态那一把尺兜底）
+        val entryRole = shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
             ?: return null to LandFailure(
-                "entry-form-unknown",
-                "入口 " + entrySrc + " 的形态认不出 —— 报缺，不猜",
+                "entry-system-role-unknown",
+                "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
+                    "（=> 而那它逐字该从那 component-meta.json 派生、=> 而那按 C-05 不猜填）",
             )
         return Landed(entryDst, entryRole, shape.kind, moved, "", probe) to null
     }
@@ -1004,6 +1019,9 @@ object ProgramInstallPipeline {
         //    于是那几件调起来是那份库字节 —— 今天五件失败的成因。
         //   现在入口格只对**程序形态**填；库形态那一格空着（= 只有落位目录）。
         val isProgram = role == ROLE_PROGRAM
+        //  => 而那**库**那一档逐字判据是「那它逐字**真的**没有程序入口」
+        //    （=> 而那它逐字**不是**「那它逐字不是 program」）
+        val isLibrary = role == ROLE_LIBRARY
         val upserted = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 context,
@@ -1019,7 +1037,16 @@ object ProgramInstallPipeline {
                   //  库件没有入口（entryRel 空） libName 取**那份库字节**的名字（按形态从落位结果算）。
                   //   程序件：libName = 落位后那一条的文件名（与原来逐字相同）。
                   libName = if (entryRel.isNotBlank()) entryRel.substringAfterLast("/") else landed.libName,
-                      assetEntry = if (isProgram) entryRel else "",
+                      //  缺陷名（C-102）**那一格逐字只对 role='program' 填、=> 而而那 role='shell' 那一档逐字也有入口**
+                      //    => 而那旧版逐字是 `assetEntry = if (isProgram) entryRel else ""`
+                      //      => 而而那 role='shell' 逐字**不是** 'program'、=> 而而那它逐字把入口逐字**清空**了
+                      //      => 而而那那 `ShellEntry.resolve` 那一格逐字就答不出那 shell
+                      //    => 而那**处置**：=> 而那**入口**那一格逐字该答
+                      //      「**那一件逐字有没有程序入口**」、=> 而而那它逐字**不该**由
+                      //      「那一件逐字是什么角色」决定
+                      //      => 而而那 role='library' 那一档逐字**仍然**该清空
+                      //      => 而而那 role='shell' 那一档逐字**不该**清空
+                      assetEntry = if (isLibrary) "" else entryRel,
                       role = role,
                       requires = meta.requires(),
                       required = meta.requiredOr(false),

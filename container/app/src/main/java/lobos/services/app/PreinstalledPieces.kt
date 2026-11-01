@@ -730,6 +730,9 @@ val derived = refreshDerivedLinks(ctx, id, version)
     ) {
         val prev = lobos.services.reg.ProgramIndex.get(ctx, id)
         val isProgram = role == ProgramInstallPipeline.ROLE_PROGRAM
+        //  => 而那**库**那一档逐字判据是「那它逐字**真的**没有程序入口」
+        //    （=> 而那它逐字**不是**「那它逐字不是 program」）
+        val isLibrary = role == ProgramInstallPipeline.ROLE_LIBRARY
         runCatching {
             lobos.services.reg.ProgramIndex.upsert(
                 ctx,
@@ -745,7 +748,31 @@ val derived = refreshDerivedLinks(ctx, id, version)
                     //  库件没有入口（entry 空） libName 取**那份库字节**的名字。
                     //   而那一份从落位目录 lib/ 下按**形态**取（role=library），不按目录名、不按 entry。
                     libName = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir),
-                    assetEntry = if (isProgram) entry else "",
+                    //  缺陷名（C-102）**那一格逐字只对 role='program' 填、=> 而而那 role='shell' 那一档逐字也有入口**
+                    //    => 而那旧版逐字是 `assetEntry = if (isProgram) entry else ""`
+                    //      => 而那 `isProgram` 逐字是 `role == ROLE_PROGRAM`
+                    //        （=> 而那 Lead 本机实读 `PreinstalledPieces.kt:732` 逐字成立）
+                    //      => 而而那 role='shell' 逐字**不是** 'program'、=> 而而那那 isProgram 逐字为 false
+                    //      => 而而那它逐字把 shell 那一档**也**清空了
+                    //    => 而而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+                    //      · 而那注册表里 bash/busybox 逐字 assetEntry=''
+                    //      · 而那 `ShellEntry.kt:11` 到 `:13` 逐字
+                    //        `if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null`
+                    //        => 而而那那 resolve 逐字返回 null
+                    //      · => 而而那 `sys.tty.exec` 那一趟逐字抛
+                    //        「底座没有命令解释器（/usr/bin 下无可用入口）」
+                    //    => 而而那**那不是**「那一件没有入口」（=> 而那落位那一面逐字**全对**：
+                    //      => 而那 usr/bin 两个软链逐字都在、=> 而那 entry 逐字都在、
+      //        => 而那落位侧清单逐字 role='shell'）
+                    //      => 而而那**差的只是**注册表那一个 assetEntry
+                    //    => 而那**处置**：=> 而那**入口**那一格逐字该答
+                    //      「**那一件逐字有没有程序入口**」、=> 而而那它逐字**不该**由
+                    //      「那一件逐字是什么角色」决定
+                    //      => 而而那 role='library' 那一档逐字**仍然**该清空
+                    //        （=> 而那它逐字**真的**没有程序入口）
+                    //      => 而而那 role='shell' 那一档逐字**不该**清空
+                    //    => 而那**那两把尺逐字各答一件事**那一个错在那一格上（=> 而依 C-105 逐字**不**合并）
+                    assetEntry = if (isLibrary) "" else entry,
                     role = role,
                     required = meta?.optBoolean("essential", false) ?: false,
                     capabilities = emptyList(),

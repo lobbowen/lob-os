@@ -15,6 +15,16 @@ enum class Level { PIECE, PROGRAM }
 
 enum class Desired { RUNNING, STOPPED, FROZEN }
 
+/**
+ * 那**系统件**那一族的角色（=> 而那它逐字是「那**件**逐字是什么角色」那一族）。
+ *   => 而而那它逐字**不含** 'app'（=> 而那 'app' 逐字是那**用户程序**那一族）
+ *   => 而而那它逐字**不**拿 'program' 那一档当**用户程序**的判据
+ *     （=> 而那用户程序逐字**可能**自报 'program'、=> 而而那那**判据**逐字**不**是它）
+ */
+val SYSTEM_PIECE_ROLES: Set<String> = setOf(
+    "shell", "multi-command", "library", "headers", "entry-unusable",
+)
+
 data class UnitEntry(
         val id: String,
         val version: String,
@@ -59,17 +69,46 @@ data class UnitEntry(
     ) {
         data class FileRec(val path: String, val sha256: String)
 
-        /** 形态**只从登记的位置格回答**：有可调起入口 = 程序，只有落位目录 = 库/头。
+        /** 形态**只从登记的 role 那一格回答**：用户程序（role='app'）= 程序，系统件 = 件。
          *
          *  ★ **缺陷名（C-102）运行期拿字节现算形态**：原来这一段调 [PieceScan.runnableOnDisk]
          *    去 walk 落位目录读 ELF 头，再与自报的 role 比对，不一致就记诊断 ——
          *    运行期既判断又探测。今天的三条规则里，第三条是：运行期只读，不判断、不探测。
-         *    而形态是**生产时就知道的事**：安装流程已把落位目录与入口写进 stateDir / assetEntry。
+         *    而形态是**生产时就知道的事**：安装流程已把落位目录与角色写进 stateDir / role。
          *    所以现在只读那两格；[ctx] 不再参与判定（保留参数是为了不破坏全部调用点）。
-         *  ★ 缺格就报缺：stateDir 空 => 落位缺失，答 PIECE 是「没有落位」，不是猜一个形态。 */
+         *  ★ 缺格就报缺：stateDir 空 => 落位缺失，答 PIECE 是「没有落位」，不是猜一个形态。
+         *
+         *  ★★ **缺陷名（C-102）那一格逐字按那 `assetEntry` 推、=> 而而那它逐字答错了那一问** ——
+         *    => 而那旧版逐字是 `return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM`
+         *      => 而而那那**判据**逐字是「那**入口**那一格有没有值」
+         *      => 而而那**入口**那一格答的是「**那一件逐字有没有程序入口**」
+         *      => 而而那这一格答的是「**那一件在登记里是用户程序还是系统件**」
+         *      => 而而那那**两问**逐字**不是**一问（=> 而依 C-105 逐字**不**互相顶替）
+         *    => 而而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+         *      · 而那 `PreinstalledPieces.kt:748` 逐字 `assetEntry = if (isProgram) entry else ""`
+         *        逐字把 **shell** 那一档的入口逐字**清空**了
+         *      · => 而而那那 `levelOf` 逐字把 shell 那一档判成 PIECE
+         *      · => 而而那 `ShellEntry.resolve` 那一格逐字按那 `isPiece` 筛、=> 而而那它逐字**筛掉** shell
+         *      · => 而而那 `sys.tty.exec` 那一趟逐字抛「底座没有命令解释器（/usr/bin 下无可用入口）」
+         *    => 而那**正解**：=> 而那**角色**那一格逐字是那**真源**
+         *      （=> 而那它逐字是**登记**的一栏、=> 而而那它逐字**落进 JSON**、=> 而而那它逐字**不**是推出来的）
+         *      => 而而那用户程序那一族逐字是 role='app'（=> 而那 `ProgramDir.kt:166` 逐字
+         *        `spec?.role?.takeIf { it.isNotBlank() } ?: "app"`）
+         *      => 而而那系统件那一族逐字是 shell / multi-command / library / headers 那一族
+         *      => 而而那**role 空**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而那它逐字是「没登记」）
+         */
         fun levelOf(ctx: Context): Level {
             if (stateDir.isBlank()) return Level.PIECE
-            return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM
+            if (role.isBlank()) return Level.PIECE
+            //  => 而那**用户程序**那一族逐字是 role='app'
+            //     （=> 而那 `ProgramDir.kt:166` 逐字 `spec?.role?.takeIf { it.isNotBlank() } ?: "app"`
+            //       => 而而那那**默认**逐字是 'app'）
+            //  => 而而那那**系统件**那一族逐字是 shell / multi-command / library / headers 那一族
+            //  => 而而那那**用户程序**那一族逐字**可能**逐字自报 'program' 那一档
+            //     （=> 而那 spec 那一格逐字是人写的、=> 而而那它逐字**不**该决定「这是不是用户程序」）
+            //  => 而而那**判据**逐字是「那**系统件**那一族的角色那一族」逐字**不**是它
+            //     （=> 而依 C-105 逐字**不**互相顶替）
+            return if (SYSTEM_PIECE_ROLES.contains(role)) Level.PIECE else Level.PROGRAM
         }
 
 
@@ -80,6 +119,16 @@ object ProgramIndex {
 
     /** 那 files 那一格逐字**只**记**那**头**这**几个**（=> 而那**它**逐字**记**那**截断**的**那**一条**）。 */
     const val FILES_KEPT = 64
+
+    /**
+     * 那**系统件**那一族的角色（=> 而那它逐字是「那**件**逐字是什么角色」那一族）。
+     *   => 而而那它逐字**不含** 'app'（=> 而那 'app' 逐字是那**用户程序**那一族）
+     *   => 而而那它逐字**不**拿 'program' 那一档当**用户程序**的判据
+     *     （=> 而那用户程序逐字**可能**自报 'program'、=> 而而那那**判据**逐字**不**是它）
+     */
+    val SYSTEM_PIECE_ROLES: Set<String> = setOf(
+        "shell", "multi-command", "library", "headers", "entry-unusable",
+    )
 
     private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
     private const val FILE = "program-index.json"
