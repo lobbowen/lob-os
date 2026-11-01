@@ -56,13 +56,56 @@ object SonameChain {
         runCatching { ElfFacts.read(f)?.soname }.getOrNull()?.takeIf { it.isNotBlank() }
 
     /**
+     * 那**SONAME**逐字**只读一次**（=> 而而那同一份逐字**复用**）。
+     *
+     * 缺陷名（C-102）**那 `plan` 那一格逐字对每一个同名前缀的兄弟逐字再读一遍**
+     *   => 而那旧版逐字是 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`
+     *     => 而而那 `sonameOf` 逐字逐字调那 `ElfFacts.read`、=> 而而那它逐字**把整个文件**读进堆
+     *     => 而而那**兄弟**逐字是那**同名前缀**的那些（=> 而那 libz.so / libz.so.1 / libz.so.1.3.2）
+     *       => 而而那**每一个**目标逐字要把它那**全部**兄弟逐字再读一遍
+     *     => 而而那那是 **O(n²)** 量级的读（=> 而那 llvm 那一件逐字 159 个文件、7.3 GiB）
+     *   => 而那**处置**：=> 而那**SONAME**逐字**缓存**（=> 而而那同一份逐字**只读一次**）
+     *     => 而而那那 **O(n²)** 逐字变成 **O(n)**
+     */
+    private val sonameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** 那一个文件逐字的 SONAME（=> 而而那同一份逐字**只读一次**）。 */
+    fun sonameOfCached(f: File): String? =
+        sonameCache.getOrPut(f.absolutePath) { sonameOf(f) ?: "" }
+            .takeIf { it.isNotBlank() }
+
+    /**
+     * 那**内容指纹**逐字**只算一次**（=> 而而那同一份逐字**复用**）。
+     *
+     * 缺陷名（C-102）**那内容指纹逐字被算了两遍、=> 而而那 7.3 GiB 逐字被读了两遍**
+     *   => 而那旧版逐字是 `LdConfig.kt:73` 逐字 `.add(Triple(e.id, so, SupplySha.sha256(so)))`
+     *     => 而而那 `SonameChain.plan` 那一格逐字**又**对每一个同名前缀的兄弟逐字再读一遍
+     *       （=> 而那 `plan` 那一格逐字 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`）
+     *     => 而而那 `plan` 那一格逐字**又**逐字调那 `ElfFacts.read`、=> 而而那它逐字**把整个文件**读进堆
+     *   => 而而那**后果**：=> 而那 7.3 GiB 逐字**读了两遍**、=> 而而那那一遍逐字是**整读**
+     *     （=> 而那 1.4 GiB 那个文件逐字进堆）=> 而而那那 17 分钟逐字就是这一族
+     *     （=> 而那 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
+     *       => 而而那 sha256 逐字**本身不慢**、=> 而而那慢的是**重复读**与**整读**）
+     *   => 而那**处置**：=> 而那**内容指纹**逐字**只算一次**、=> 而而那**同一份**逐字**复用**
+     *     => 而而那 `ld.so.cache` 逐字**要**内容指纹才写得出来、=> 而而那它逐字**不能**被跳过
+     *       （=> 而那它逐字不是「跳过内容指纹」那一族、=> 而那它是「**同一份只算一次**」那一族）
+     */
+    private val contentDigestCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** 那一个文件逐字的内容指纹（=> 而而那同一份逐字**只算一次**）。 */
+    fun contentDigest(f: File): String =
+        contentDigestCache.getOrPut(f.absolutePath) {
+            lobos.services.supply.SupplySha.sha256(f)
+        }
+
+    /**
      * 给一个 piece 里的库文件定出三段链。
      * 实体是「同一个 SONAME 的兄弟里版本层数最多的那个」，
      * 因为 zip 展平后 libz.so / libz.so.1 / libz.so.1.3.2 三个副本同名同内容都在。
      * 非共享库（ELF 里没有 DT_SONAME）返回 null。
      */
     fun plan(target: File): Plan? {
-        val soname = sonameOf(target) ?: return null
+        val soname = sonameOfCached(target) ?: return null
         val base = baseNameOf(soname)
         val dir = target.parentFile ?: return null
         val siblings = dir.listFiles()?.filter { it.isFile && it.name.startsWith(base) } ?: return null
@@ -70,7 +113,8 @@ object SonameChain {
         var entity = target
         var best = versionDepth(target.name)
         for (s in siblings) {
-            if (sonameOf(s) != soname) continue
+            //  => 而那 SONAME 逐字走那**缓存**（=> 而而那它逐字**不**再逐字整读那兄弟）
+            if (sonameOfCached(s) != soname) continue
             val d = versionDepth(s.name)
             if (d > best || (d == best && s.name.length > entity.name.length)) {
                 entity = s

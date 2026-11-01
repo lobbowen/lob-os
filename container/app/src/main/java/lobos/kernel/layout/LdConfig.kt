@@ -70,7 +70,12 @@ object LdConfig {
             File(root, "lib").listFiles()?.sortedBy { it.name }?.forEach { so ->
                 if (!so.isFile) return@forEach
                 sonameCandidates.computeIfAbsent(so.name) { ArrayList() }
-                    .add(Triple(e.id, so, lobos.services.supply.SupplySha.sha256(so)))
+                    //  => 而那内容指纹逐字走那**缓存**（=> 而而那同一份逐字**只算一次**）
+                    //    （=> 而那 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
+                    //      => 而而那 sha256 逐字**本身不慢**、=> 而而那慢的是**重复读**与**整读**）
+                    //    => 而而那 `ld.so.cache` 逐字**要**内容指纹才写得出来
+                    //      => 而而那它逐字**不能**被跳过（=> 而那它逐字不是「跳过内容指纹」那一族）
+                    .add(Triple(e.id, so, SonameChain.contentDigest(so)))
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
