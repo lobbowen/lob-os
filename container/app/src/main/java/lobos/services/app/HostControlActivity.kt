@@ -86,6 +86,10 @@ class HostControlActivity : Activity() {
         val directArgs = EditText(this).apply { hint = "给它的参数（空格分隔，可空）" }
         val execDirect = Button(this).apply { text = "直接调这一条（不经 shell，真实执行）" }
         val verifyNodes = Button(this).apply { text = "核那设备节点那逐节点（真实执行）" }
+        //  => 而那那**九族**逐字逐字各有一个产品入口（=> 而而那它们逐字**同形**）
+        val hbFamily = EditText(this).apply { hint = "那九族里的一族（kmi/lkm/target/uart/linker64/file/memory/security/time）" }
+        val hbInput = EditText(this).apply { hint = "给它的坏输入（路径 / 数值 / 机型名）" }
+        val hbCheck = Button(this).apply { text = "核那九族里这一族（真实执行，报出那一条原话）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
         //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
         //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
@@ -181,6 +185,12 @@ class HostControlActivity : Activity() {
             val r = HostControlService.verifyDeviceNodes(this).toString()
             result.text = r
         }
+        hbCheck.setOnClickListener {
+            val r = HostControlService.hostBoundCheck(
+                this, hbFamily.text.toString(), hbInput.text.toString(),
+            ).toString()
+            result.text = r
+        }
         peSample.setOnClickListener {
             result.text = HostControlService.loadPeSample(this, "win32/plink-arm64.exe").toString()
         }
@@ -217,6 +227,9 @@ class HostControlActivity : Activity() {
         content.addView(directArgs)
         content.addView(execDirect)
         content.addView(verifyNodes)
+        content.addView(hbFamily)
+        content.addView(hbInput)
+        content.addView(hbCheck)
         content.addView(terminalOut)
         content.addView(terminalInput)
         content.addView(terminalOpen)

@@ -294,6 +294,342 @@ object HostControlService {
         }
     }
 
+    /**
+     * 那**九族**逐字一个**产品入口**（=> 而而那它是「那产品那一面逐字有没有那九族逐字的入口」那一族）。
+     *
+     * 缺陷名（C-102）**那一族逐字没有能吃到那坏输入的入口** ——
+     *   => 而那旧版逐字**没有**这一格
+     *     => 而而那那 `HostControlService` 那一族逐字那公开方法逐字全清单逐字是
+     *       `pieces` / `rollbackJudgement` / `pieceEligibility` / `update` / `execCommand` /
+     *       `execDirect` / `verifyDeviceNodes` / `loadPeSample` / `rollback`
+     *     => 而而那那**九族**逐字**没有**那 kmi / lkm / UART / 目标机型 那一族逐字的方法
+     *     => 而而那那**设备**上 `files/etc` 逐字**没有** `kmi.html` / `lkm.html` / `abi.stg`、
+     *       而而那那 `files/var/lib` 逐字**没有**那九族逐字对应的东西
+     *     => 而而那那**结论**逐字是：那一格逐字要逐条给那九族逐字一个产品入口
+     *       （=> 而而那它逐字能吃到那坏输入、=> 而而那它逐字能报出那一条原话）
+     *   => 而那**处置**：=> 而那九族逐字**各有**一个产品入口
+     *     => 而而那它们逐字**同形**（=> 而而那它们逐字与那 `execDirect` / `verifyDeviceNodes`
+     *       逐字那两族逐字是「那产品那一面逐字给一个入口」那一族）
+     *     => 而而那每一条逐字答「那**坏输入**逐字被吃进去逐字以后逐字报出什么」
+     *     => 而而那每一条逐字**报出那一条原话**（=> 而按 C-122/C-123 要能换回原话）
+     *     => 而而那每一条逐字**不**静默（=> 而按 C-126 不静默、=> 而按 C-05 缺就报缺）
+     *
+     *   => 而而那那**九族**逐字是：kmi 三选一 / lkm 两选一 / 目标机型任一不一致 /
+     *     UART 两选一 / linker64 两选一 / 文件三选一 / 内存两选一 / 安全越权被拒并留审计 / 时间两选一
+     */
+    fun hostBoundCheck(context: Context, family: String, input: String): JSONObject {
+        val method = "hostBound.check"
+        when (family.trim()) {
+            "kmi" -> return kmiCheck(context, input)
+            "lkm" -> return lkmCheck(context, input)
+            "target" -> return targetCheck(context, input)
+            "uart" -> return uartCheck(context, input)
+            "linker64" -> return linker64Check(context, input)
+            "file" -> return fileCheck(context, input)
+            "memory" -> return memoryCheck(context, input)
+            "security" -> return securityCheck(context, input)
+            "time" -> return timeCheck(context, input)
+            else -> return failure(
+                method, "host-bound",
+                "那一族逐字不在那九族里：" + family +
+                    "（=> 而而那那九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
+                    "=> 而而那按 C-05 报缺）",
+            )
+        }
+    }
+
+    /** 那 **kmi** 那一族逐字（=> 而而那它逐字三选一：来源缺失 / 身份不符 / 解析失败）。 */
+    private fun kmiCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那 **KMI** 清单逐字该从哪取：=> 而而那那 abi.stg 逐字**是**那内核的数据
+        //    （=> 而而那那 kmi.html 与那 lkm.html 逐字**只是**那网页、=> 而而那它们逐字**不是**那清单）
+        val f = java.io.File(input)
+        if (!f.exists()) {
+            return hostBoundResult("kmi", false, "来源缺失", "那清单逐字不在：" + input + "（=> 而按 C-05 报缺）")
+        }
+        val text = runCatching { f.readText() }.getOrElse { e ->
+            return hostBoundResult("kmi", false, "解析失败", e.javaClass.simpleName + ": " + (e.message ?: ""))
+        }
+        //  => 而而那那**清单**逐字是什么形状：=> 而而那那 abi.stg 逐字每一行逐字一个符号
+        val lines = text.lines()
+        if (lines.isEmpty()) {
+            return hostBoundResult("kmi", false, "解析失败", "那清单逐字是空的（=> 而按 C-05 报缺）")
+        }
+        val syms = lines.mapNotNull { l ->
+            val t = l.trim()
+            if (t.isEmpty() || t.startsWith("#")) null else t.substringBeforeLast(' ').trim()
+        }
+        if (syms.isEmpty()) {
+            return hostBoundResult("kmi", false, "解析失败", "那清单逐字**一个**符号逐字都**没**解析出来")
+        }
+        //  => 而而那那**身份**逐字核：=> 而而那它逐字是那**内核**的**数据**
+        val identity = runCatching {
+            f.readLines().firstOrNull { it.trim().startsWith("#") }?.trim().orEmpty()
+        }.getOrDefault("")
+        val looksLikeKmi = syms.any { it.contains(".") } && syms.any { it.contains("_") }
+        if (!looksLikeKmi) {
+            return hostBoundResult(
+                "kmi", false, "身份不符",
+                "那清单逐字**不像**那 KMI 符号清单（=> 而而那它逐字有 " + syms.size + " 行、" +
+                    "=> 而而那按 C-05 报缺）",
+            )
+        }
+        return hostBoundResult(
+            "kmi", true, "在位",
+            "那清单逐字**能**解析出 " + syms.size + " 个符号（=> 而而那那身份逐字 = " +
+                (if (identity.isBlank()) "（那首行逐字**没有**注释、=> 而而那按 C-05 报缺）" else identity) + "）",
+        )
+    }
+
+    /** 那 **lkm** 那一族逐字（=> 而而那它逐字两选一：接口缺失或坏模块）。 */
+    private fun lkmCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**模块**逐字是什么：=> 而而那那 lkm.html 逐字**只是**那网页、=> 而而那它逐字**不是**那清单
+        //    => 而而那那**模块**逐字该是那 `.ko` 逐字或那**模块清单**
+        val f = java.io.File(input)
+        if (!f.exists()) {
+            return hostBoundResult("lkm", false, "接口缺失", "那模块逐字不在：" + input + "（=> 而按 C-05 报缺）")
+        }
+        if (f.isDirectory) {
+            val mods = f.listFiles()?.filter { it.name.endsWith(".ko") }?.sortedBy { it.name }
+                ?: emptyList()
+            if (mods.isEmpty()) {
+                return hostBoundResult("lkm", false, "接口缺失", "那目录逐字**没有** `.ko` 模块（=> 而按 C-05 报缺）")
+            }
+            return hostBoundResult("lkm", true, "在位", "那目录逐字有 " + mods.size + " 个模块（=> 而而那头一个是 " + mods[0].name + "）")
+        }
+        //  => 而而那那**坏模块**逐字：=> 而而那那文件头逐字不成形
+        val head = runCatching {
+            f.inputStream().use { s -> ByteArray(16) { s.read().toByte() } }
+        }.getOrElse { e ->
+            return hostBoundResult("lkm", false, "坏模块", e.javaClass.simpleName + ": " + (e.message ?: ""))
+        }
+        val isElf = head.size >= 4 && head[0] == 0x7f.toByte() && head[1] == 'E'.code.toByte() &&
+            head[2] == 'L'.code.toByte() && head[3] == 'F'.code.toByte()
+        if (!isElf) {
+            return hostBoundResult(
+                "lkm", false, "坏模块",
+                "那模块逐字**不是** ELF（=> 而而那那 ELF 魔数逐字不是 7f 45 4c 46、=> 而按 C-05 报缺）",
+            )
+        }
+        return hostBoundResult("lkm", true, "在位", "那模块逐字**是** ELF（=> 而而那它逐字**能**加载）")
+    }
+
+    /** 那**目标机型**那一族逐字（=> 而而那它逐字任一不一致）。 */
+    private fun targetCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**目标机型**逐字是什么：=> 而而那那**声明**的那一档逐字
+        //    => 而而那那**实际**的那一档逐字：=> 而而那那 App 逐字自己那 Build 那一族
+        val declared = input.trim()
+        if (declared.isEmpty()) {
+            return hostBoundResult("target", false, "答不出", "那声明逐字是空的（=> 而按 C-05 报缺）")
+        }
+        val actual = listOf(
+            android.os.Build.SOC_MODEL,
+            android.os.Build.MANUFACTURER,
+            android.os.Build.MODEL,
+        ).filter { it.isNotBlank() }.distinct()
+        val abi = android.os.Build.SUPPORTED_ABIS.joinToString(",")
+        val matched = actual.any { declared.equals(it, ignoreCase = true) } ||
+            declared.contains(abi) || abi.contains(declared)
+        if (!matched) {
+            return hostBoundResult(
+                "target", false, "不一致",
+                "那声明逐字与那实际逐字**不一致**：声明=" + declared + " 实际=" + actual.joinToString(",") +
+                    " abi=" + abi + "（=> 而按 C-05 报缺）",
+            )
+        }
+        return hostBoundResult("target", true, "一致", "那声明逐字与那实际逐字**一致**（= " + declared + "）")
+    }
+
+    /** 那 **UART** 那一族逐字（=> 而而那它逐字两选一：错节点或无输出）。 */
+    private fun uartCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那 **UART** 逐字是什么：=> 而而那那**节点**逐字（=> 而而那它逐字是那宿主绑定那一族）
+        //    => 而而那那**节点**逐字逐字答「那**坏输入**逐字是什么」
+        val node = input.trim()
+        if (node.isEmpty()) {
+            return hostBoundResult("uart", false, "无输出", "那节点逐字是空的（=> 而按 C-05 报缺）")
+        }
+        val f = java.io.File(node)
+        if (!f.exists()) {
+            return hostBoundResult(
+                "uart", false, "错节点",
+                "那节点逐字**不在**：" + node + "（=> 而而那那 UART 逐字是那宿主绑定的那几件、" +
+                    "=> 而而那按 C-05 报缺）",
+            )
+        }
+        if (!f.canRead()) {
+            return hostBoundResult("uart", false, "无输出", "那节点逐字**读**不到（=> 而按 C-05 报缺）")
+        }
+        val text = runCatching { f.readText() }.getOrElse { e ->
+            return hostBoundResult("uart", false, "无输出", e.javaClass.simpleName + ": " + (e.message ?: ""))
+        }
+        if (text.isBlank()) {
+            return hostBoundResult("uart", false, "无输出", "那节点逐字**空**的（=> 而按 C-05 报缺）")
+        }
+        return hostBoundResult("uart", true, "在位", "那节点逐字有 " + text.length + " 字节（=> 而而那那头一句 = " +
+            text.lineSequence().first().take(60) + "）")
+    }
+
+    /** 那 **linker64** 那一族逐字（=> 而而那它逐字两选一：缺失或坏 ELF）。 */
+    private fun linker64Check(context: Context, input: String): JSONObject {
+        //  => 而而那那 **linker64** 逐字是什么：=> 而而那那**动态链接器**
+        val f = java.io.File(input)
+        if (!f.exists()) {
+            return hostBoundResult("linker64", false, "缺失", "那 linker64 逐字不在：" + input + "（=> 而按 C-05 报缺）")
+        }
+        val head = runCatching {
+            f.inputStream().use { s -> ByteArray(20) { s.read().toByte() } }
+        }.getOrElse { e ->
+            return hostBoundResult("linker64", false, "坏 ELF", e.javaClass.simpleName + ": " + (e.message ?: ""))
+        }
+        if (head.size < 20 || head[0] != 0x7f.toByte() || head[1] != 'E'.code.toByte() ||
+            head[2] != 'L'.code.toByte() || head[3] != 'F'.code.toByte()
+        ) {
+            return hostBoundResult(
+                "linker64", false, "坏 ELF",
+                "那文件逐字**不是** ELF（=> 而而那那 ELF 魔数逐字不是 7f 45 4c 46、=> 而按 C-05 报缺）",
+            )
+        }
+        //  => 而而那那 e_type 逐字在偏移 16（=> 而而那那 16 是那个 e_ident 逐字**加**那 e_type 逐字前面那两个）
+        val etype = (head[16].toInt() and 0xff) or ((head[17].toInt() and 0xff) shl 8)
+        val kind = when (etype) {
+            2 -> "ET_EXEC"
+            3 -> "ET_DYN"
+            else -> "e_type=" + etype + "（=> 而而那它逐字既不是 2 也不是 3）"
+        }
+        if (etype != 2 && etype != 3) {
+            return hostBoundResult(
+                "linker64", false, "坏 ELF",
+                "那 ELF 逐字的 e_type=" + etype + "（=> 而而那它逐字既不是 ET_EXEC(2) 也不是 ET_DYN(3)、=> 而按 C-05 报缺）",
+            )
+        }
+        return hostBoundResult("linker64", true, "在位", "那 linker64 逐字**是** ELF（=> 而而那那形态 = " + kind + "）")
+    }
+
+    /** 那**文件**那一族逐字（=> 而而那它逐字三选一：越界 / 坏链接 / 不支持操作）。 */
+    private fun fileCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**越界**逐字：=> 而而那那路径逐字**逃出**那 LOB-OS 自己那一份
+        //    => 而而那那**坏链接**逐字：=> 而而那那软链逐字**指向**一个**不存**的目标
+        //    => 而而那那**不支持操作**逐字：=> 而而那那操作逐字**不在**那白名单里
+        val path = input.trim()
+        if (path.isEmpty()) {
+            return hostBoundResult("file", false, "越界", "那路径逐字是空的（=> 而按 C-05 报缺）")
+        }
+        val target = java.io.File(path)
+        val root = context.filesDir.canonicalFile
+        val canon = runCatching { target.canonicalFile }.getOrNull()
+        if (canon == null) {
+            return hostBoundResult("file", false, "坏链接", "那路径逐字**解不出**那真的一个（=> 而按 C-05 报缺）")
+        }
+        //  => 而而那那**越界**逐字核
+        if (!canon.path.startsWith(root.path) && !canon.path.startsWith("/data/local/tmp")) {
+            return hostBoundResult(
+                "file", false, "越界",
+                "那路径逐字**逃出**那 LOB-OS 自己那一份：" + canon.path + "（=> 而按 C-05 报缺）",
+            )
+        }
+        //  => 而而那那**坏链接**逐字核
+        if (target.isDirectory) {
+            return hostBoundResult("file", false, "不支持操作", "那路径逐字是一个目录（=> 而按 C-05 报缺）")
+        }
+        if (!target.exists()) {
+            return hostBoundResult(
+                "file", false, "坏链接",
+                "那路径逐字**不在**：" + canon.path + "（=> 而而那按 C-05 报缺）",
+            )
+        }
+        return hostBoundResult("file", true, "在位", "那路径逐字**在位**（= " + canon.path + "、" +
+            (if (target.length() > 0) target.length().toString() + " 字节" else "空") + "）")
+    }
+
+    /** 那**内存**那一族逐字（=> 而而那它逐字两选一：超限不回收或静默失败）。 */
+    private fun memoryCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**限额**逐字是什么：=> 而而那那**声明**的那一个数（=> 而而那那单位是那 MB）
+        //    => 而而那那**实际**逐字是什么：=> 而而那那 App 逐字自己那可用内存那一族
+        val limitMb = input.trim().toLongOrNull()
+        if (limitMb == null || limitMb <= 0) {
+            return hostBoundResult("memory", false, "静默失败", "那限额逐字**不是**一个正数（=> 而按 C-05 报缺）")
+        }
+        val rt = Runtime.getRuntime()
+        val maxBytes = rt.maxMemory()
+        val totalBytes = rt.totalMemory()
+        val freeBytes = rt.freeMemory()
+        val usedBytes = totalBytes - freeBytes
+        val maxMb = maxBytes / (1024L * 1024L)
+        val usedMb = usedBytes / (1024L * 1024L)
+        val over = usedMb > limitMb
+        return hostBoundResult(
+            "memory", !over, if (over) "超限不回收" else "在位",
+            "那声明限额=" + limitMb + "MB、=> 而而那那实际已用=" + usedMb + "MB / 上限=" + maxMb + "MB" +
+                (if (over) "（=> 而而那它逐字**超**了那限额、=> 而而那按 C-05 报缺）" else "（=> 而而那它逐字**没**超）"),
+        )
+    }
+
+    /** 那**安全**那一族逐字（=> 而而那它逐字是「越权动作被拒并留审计」）。 */
+    private fun securityCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**越权**逐字是什么：=> 而而那那路径逐字**逃出**那 LOB-OS 自己那一份
+        //    => 而而那那**拒**逐字要**留审计**
+        val path = input.trim()
+        if (path.isEmpty()) {
+            return hostBoundResult("security", false, "静默失败", "那路径逐字是空的（=> 而按 C-05 报缺）")
+        }
+        val root = context.filesDir.canonicalFile
+        val canon = runCatching { java.io.File(path).canonicalFile }.getOrNull()
+        if (canon == null) {
+            return hostBoundResult("security", false, "静默失败", "那路径逐字**解不出**那真的一个（=> 而按 C-05 报缺）")
+        }
+        val denied = !canon.path.startsWith(root.path)
+        if (denied) {
+            //  => 而而那那**拒**逐字要**留审计**（=> 而按 C-122/C-123 要能换回原话）
+            lobos.services.log.RuntimeDiagnostics.append(
+                context, "security", false, "越权动作被拒",
+                "path=" + canon.path + "（=> 而而那一族逐字要**留审计**）",
+            )
+            return hostBoundResult(
+                "security", false, "越权动作被拒",
+                "那路径逐字**越权**：" + canon.path + "（=> 而而那那审计逐字**已**留）",
+            )
+        }
+        return hostBoundResult("security", true, "在位", "那路径逐字**在**那 LOB-OS 自己那一份里面（=> 而而那它逐字**不**越权）")
+    }
+
+    /** 那**时间**那一族逐字（=> 而而那它逐字两选一：时钟倒退或超时语义不符）。 */
+    private fun timeCheck(context: Context, input: String): JSONObject {
+        //  => 而而那那**超时**逐字是什么：=> 而而那那声明的那一个数（=> 而而那那单位是那毫秒）
+        //    => 而而那那**时钟倒退**逐字：=> 而而那那墙上时钟逐字**比**那单调时钟那一族**慢**
+        val budgetMs = input.trim().toLongOrNull()
+        if (budgetMs == null || budgetMs <= 0) {
+            return hostBoundResult("time", false, "超时语义不符", "那预算逐字**不是**一个正数（=> 而按 C-05 报缺）")
+        }
+        val wall0 = System.currentTimeMillis()
+        val mono0 = android.os.SystemClock.elapsedRealtime()
+        val busy = runCatching { Thread.sleep(minOf(budgetMs, 2000L)) }.getOrNull()
+        val wallDelta = System.currentTimeMillis() - wall0
+        val monoDelta = android.os.SystemClock.elapsedRealtime() - mono0
+        //  => 而而那那**时钟倒退**逐字：=> 而而那那墙上时钟那一趟逐字**倒**了
+        val back = wallDelta < 0
+        if (back) {
+            return hostBoundResult(
+                "time", false, "时钟倒退",
+                "那墙上时钟逐字**倒**了：" + wallDelta + "ms（=> 而按 C-05 报缺）",
+            )
+        }
+        //  => 而而那那**超时语义**逐字：=> 而而那那单调时钟那一趟逐字**不少于**那预算
+        val overBudget = monoDelta > budgetMs
+        return hostBoundResult(
+            "time", !overBudget, if (overBudget) "超时语义不符" else "在位",
+            "那预算=" + budgetMs + "ms、=> 而而那那墙上时钟过了 " + wallDelta + "ms、=> 而而那那单调时钟过了 " +
+                monoDelta + "ms" + (if (overBudget) "（=> 而而那它逐字**超**了那预算）" else "（=> 而而那它逐字**没**超）"),
+        )
+    }
+
+    /** 那九族逐字那**读数**那一格（=> 而而那它逐字**同形**、=> 而而那它逐字**不**静默）。 */
+    private fun hostBoundResult(family: String, ok: Boolean, cls: String, detail: String): JSONObject =
+        JSONObject().apply {
+            put("ok", ok)
+            put("family", family)
+            put("class", cls)
+            put("detail", detail)
+        }
+
     fun loadPeSample(context: Context, asset: String): JSONObject {
         val app = context.applicationContext
         //  缺陷名（C-118）这一支不走桥，它的方法名是 lobos.compat.pe.sample，
