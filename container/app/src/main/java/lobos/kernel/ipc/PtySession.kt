@@ -292,23 +292,30 @@ object PtySession {
             pb.environment().clear()
             for ((k, v) in view) pb.environment()[k] = v
             pb.environment().remove("LD_PRELOAD")
-            //  => 而那那**三路**逐字**接**到那从设备上（=> 而那它逐字是那 PTY 那一层的本分）
-            runCatching {
-                //  => 而那**从设备**逐字**接**到那三路（=> 而那它逐字是那 PTY 那一层的本分）
-                //    => 而那 `Os.open` 逐字给的是那 `FileDescriptor`、=> 而而那 `Os.dup2` 逐字**要**它
-                val fd = android.system.Os.open(
-                    slave,
-                    android.system.OsConstants.O_RDWR,
-                    0,
-                )
-                android.system.Os.dup2(fd, 0)
-                android.system.Os.dup2(fd, 1)
-                android.system.Os.dup2(fd, 2)
-            }.onFailure { e ->
-                throw IllegalStateException("接那从设备失败：" + slave + " —— " + e.message, e)
-            }
+            //  => 而而那那**输出**逐字**走**那 Java 管道、=> 而而那那**产品侧**逐字**读**它
+            //    => 而而那那 `ProcessBuilder` 逐字默认逐字是那 **PIPE**、=> 而而那那**子进程**逐字
+            //      那 stdout/stderr 逐字**进**那管道、=> 而而那**没人读**它
+            //      => 而而那那**输出**逐字**没有**路回来
+            //    => 而那旧版逐字是「那 App 进程逐字自己逐字 `Os.dup2` 那三路」
+            //      => 而而那那 `Os.dup2` 逐字**改**的是**这 App 进程自己**的那三路
+            //        => 而而那那 App 进程逐字自己逐字**也**就**不能**往那 stdout 逐字写东西了
+            //          （=> 而那**后果**：=> 而而那那 App 自己的诊断逐字**丢失**）
+            //      => 而而那那**孩子**逐字**继承**那三路（=> 而而那它逐字是那从设备）
+            //        => 而而那那 master 逐字读得到、=> 而而那那 native 那一族逐字发 FRAME_DATA
+            //        => 而而那那**读**逐字**仍**在那 native 那一族那一族、=> 而而那那 App 自己的 stdout 逐字**丢**了
+            //    => 而那**处置**：=> 而而那那 `dup2` 逐字**整个不要**
+            //      => 而而那那子进程逐字的输出逐字**走**那 Java 管道
+            //      => 而而那那**产品侧**逐字**读**那管道、=> 而而那它逐字把输出逐字**送到**那一面
+            //        （=> 而那 `Session.deliver` 那一格、=> 而而那它逐字**就是**那 `onData` 那一路）
+            //      => 而而那那 **native** 那一族逐字**只**管那从设备那一头（=> 而而那它逐字**不**抢那读）
+            //      => 而而那那 App 自己的 stdout/stderr 逐字**不**被动
+            //    => 而而那那**判据**逐字是「那输出逐字**回不回来**」（=> 而那**读数**逐字是那 `onData` 那一路）
             val proc = pb.start()
             session.process = proc
+            //  => 而而那那**产品侧**逐字**读**那子进程逐字的输出、=> 而而那它逐字**送到**那一面
+            //    （=> 而那 `Session.deliver` 那一格、=> 而而那它逐字**就是**那 `onData` 那一路）
+            //  => 而而那那 **native** 那一族逐字**只**管那从设备那一头（=> 而而那它逐字**不**抢那读）
+            pumpOutput(session, proc)
             //  缺陷名（C-102）**那一格逐字没写那账本、=> 而而那那一格逐字是那产品侧逐字起的那一个**
             //    => 而那旧版逐字是 `session.process = proc`（=> 而而那它逐字**只**记那一个句柄）
             //      => 而而那那**账本**那一族逐字**没有**这一行、=> 而而那它逐字**漏记**
@@ -345,6 +352,41 @@ object PtySession {
                     runCatching { ProductSessions.remove("product-" + session.sid) }
                 }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
             }
+        }
+
+        /**
+         * 那**输出**那一条读（=> 而而那它逐字是「那一件逐字的输出逐字从哪条通道回来」那一族）。
+         *
+         *   => 而而那它逐字**读**那子进程逐字那 stdout/stderr 逐字、=> 而而那它逐字**送到**那一面
+         *     （=> 而那 `Session.deliver` 那一格）
+         *   => 而而那它逐字**不**抢那 native 那一族逐字那 master（=> 而而那那两遍逐字各读各的）
+         *   => 而而那它逐字**不**静默（=> 而那读出错时逐字**报缺**）
+         */
+        private fun pumpOutput(session: Session, proc: Process) {
+            val t = Thread({
+                runCatching {
+                    val inS = proc.inputStream
+                    val buf = ByteArray(4096)
+                    while (true) {
+                        val n = inS.read(buf)
+                        if (n <= 0) break
+                        val out = buf.copyOf(n)
+                        runCatching { session.deliver(out) }
+                    }
+                }
+                runCatching {
+                    val es = proc.errorStream
+                    val ebuf = ByteArray(4096)
+                    while (true) {
+                        val n = es.read(ebuf)
+                        if (n <= 0) break
+                        val out = ebuf.copyOf(n)
+                        runCatching { session.deliver(out) }
+                    }
+                }
+            }, "lobos-pty-output-" + session.sid)
+            t.isDaemon = true
+            t.start()
         }
 
         /**
