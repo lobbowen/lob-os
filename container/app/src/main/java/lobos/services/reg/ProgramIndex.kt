@@ -336,6 +336,21 @@ fun UnitEntry.edited(
     libName: String? = null,
     assetEntry: String? = null,
     role: String? = null,
+    //  缺陷名（C-102）**那 role 那一格逐字默认保留那旧值、=> 而而那它逐字不许拿旧值顶** ——
+    //   => 而那旧版逐字是 `role = role ?: this.role`
+    //     => 而那 `edited` 那一族逐字逐字**默认**保留那旧值
+    //       （=> 而那 ProgramIndex.kt:371 逐字那一行、=> 而那 Lead 本机实读逐字成立）
+    //   => 而那**后果**：=> 而那一次扫描跑完之后逐字**没有**把那登记那一格覆盖掉那个旧值
+    //     （=> 而那设备侧逐字：注册表里 bash 与 busybox 逐字**仍是** role='program'、
+    //       => 而那落位侧 component-meta.json 逐字**已经**是 'shell'）
+    //     => 而而那**判别形式**（01 裁的 S620-01 §2 逐字）：
+    //       「凡要答『那一件在 LOB-OS 自己那一份 Linux 上被登记成什么』，
+    //         判据必须落在『那扫描结果带的那 role 那一格』上，
+    //         不许拿旧值顶、不许猜；两份不一致时那一格要显式记出来，而不是静默取其中一份」
+    //   => 而那**处置**：=> 而那 `edited` 那一族逐字多一个形参
+    //     => 而那它逐字表达「**这一格逐字是这一趟扫描出来的**、=> 而而那**不是**旧值」
+    //     => 而那**默认**逐字**不**带上那旧值（=> 而那它逐字**不**顶）
+    roleFromScan: Boolean = false,
     requires: List<String>? = null,
     after: List<String>? = null,
     conflicts: List<String>? = null,
@@ -368,7 +383,9 @@ fun UnitEntry.edited(
     sha256 = sha256 ?: this.sha256,
     libName = libName ?: this.libName,
     assetEntry = assetEntry ?: this.assetEntry,
-    role = role ?: this.role,
+    //  => 而那 role 那一格：=> 而那**这一趟扫描出来的**逐字**总是赢**
+    //    => 而而那**不是**这一趟的、=> 而而那旧值逐字**才**留（=> 而那按 C-105 报缺、=> 而不猜填）
+    role = if (roleFromScan) (role ?: "") else (role ?: this.role),
     requires = requires ?: this.requires,
     after = after ?: this.after,
     conflicts = conflicts ?: this.conflicts,

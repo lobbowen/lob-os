@@ -359,7 +359,27 @@ object PieceScan {
         var removed = 0
         for (f in found) {
             val prev = cur[f.id]
+            //  缺陷名（C-102）**那 role 那一格逐字默认保留那旧值、=> 而而那它逐字不许拿旧值顶** ——
+            //   => 而那旧版逐字是 `edited(... role = f.role ...)`、=> 而那 `edited` 那一族逐字
+            //     逐字 `role = role ?: this.role`（=> 而那 Lead 本机实读 ProgramIndex.kt:371 逐字成立）
+            //     => 而而那**后果**：=> 而那一次扫描跑完之后逐字**没有**把那登记那一格覆盖掉那个旧值
+            //       （=> 而那设备侧逐字：注册表里 bash 与 busybox 逐字**仍是** role='program'、
+            //         => 而那落位侧 component-meta.json 逐字**已经**是 'shell'）
+            //   => 而那**处置**：=> 而那 `edited` 那一族逐字多那 `roleFromScan` 那一格
+            //     => 而那它逐字表达「**这一格逐字是这一趟扫描出来的**、=> 而而那**不是**旧值」
+            //   => 而而那**两份不一致**时逐字**显式记出来**（=> 而那它逐字**不是**静默取其中一份）
+            val roleFromScan = true
+            if (prev != null && prev.role.isNotBlank() && f.role.isNotBlank() && prev.role != f.role) {
+                RuntimeDiagnostics.append(
+                    ctx, "registry-role", false,
+                    "那登记那一格与那扫描结果逐字不一致",
+                    "件=" + f.id + " 登记=" + prev.role + " 扫描=" + f.role +
+                        " （=> 而那扫描结果逐字**赢**、=> 而而那旧值逐字**不**顶上来；" +
+                        "=> 而而那这**两份实际**逐字不一致那一族归 03 另立、=> 而而那它逐字是 C-998 那一族的**邻族**）",
+                )
+            }
             val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(
+                roleFromScan = roleFromScan,
                 version = f.version,
                 //  **缺陷名（C-102）stateDir 存绝对路径而读取侧按相对片段拼** ——
                 //   原来这里写 f.dir.absolutePath（绝对），而 ProgramManager.stateDirOf:81
