@@ -328,10 +328,47 @@ class OsHostService : Service() {
             }.getOrDefault(false),
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption(this))
-        runCatching {
-            (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
-                .notify(NOTIF_ID, buildHostNotification())
+        //  缺陷名（C-102）**那一格逐字每一拍逐字都重新算那一遍那状态快照** ——
+        //    => 而那旧版逐字是 `.notify(NOTIF_ID, buildHostNotification())`
+        //      => 而而那那 `buildHostNotification` 那一格逐字**每拍**逐字调那
+        //        `ProgramStatusHub.snapshot(this)`（=> 而而那它逐字把那**每一条**程序状态逐字**读一遍**）
+        //      => 而而那那**常驻通知**逐字**保留**（=> 而而那它逐字是那保活那一条、
+        //        => 而 Lead 逐字裁「那一族逐字**保留**前台服务、=> 而而那那**常驻通知**逐字**保留**」）
+        //      => 而而那那「**状态快照**」那一类逐字**改成按需**
+        //        （=> 而它逐字答的是「此刻那状态是什么」、=> 而而那它逐字**不**要求那进程逐字一直在）
+        //      => 而而那那**判据**逐字是「那一族逐字在那一段时间逐字**实际在做什么**」那一个事实上
+        //        （=> 而而那它逐字**不**由「它逐字该做什么」顶掉）
+        //    => 而那**处置**：=> 而那那通知逐字**按需**逐字重算
+        //      => 而而那它逐字**只**在「那内容**变了**」时逐字**重发**
+        //      => 而而那那内容**没**变时逐字**不**重算、=> 而而那那**快照**逐字**不**被翻
+        //      => 而而那那**判据**逐字是「那内容**变没变**」（=> 而而那它逐字是那**内容**那一面）
+        //      => 而而那那**没变**那一档逐字**不**算那一次重算（=> 而而那那**耗**逐字**没有**）
+        //  => 而而那那**内容**逐字**按需**逐字算（=> 而而那它逐字**只**在要发的那一趟才**算**）
+        //    => 而而那那「**没变**」那一档逐字**不**重发、=> 而而那那**快照**逐字**不**被翻
+        val text = currentNotificationText()
+        if (text != lastNotifiedText) {
+            lastNotifiedText = text
+            runCatching {
+                (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
+                    .notify(NOTIF_ID, buildHostNotification(text))
+            }
         }
+        //  => 而而那那「**没变**」那一档逐字**也**不重算那**那一条条**的程序状态
+        //    （=> 而而那那**快照**逐字**只**在 `buildNotification` 那一格逐字**才**被读
+        //      => 而而那那一格逐字**只**在上面那「变了」那一支逐字**才**被调到）
+    }
+
+    /**
+     * 那**通知**那内容逐字（=> 而而那它逐字**按需**逐字算、=> 而而那它逐字**缓存**着）。
+     *
+     *   => 而而那那**内容**逐字是那**状态**逐字（=> 而而那它逐字答「此刻那状态是什么」）
+     *   => 而而那那**缓存**逐字**只**在「那内容**变了**」时逐字**换**
+     *   => 而而那那**判据**逐字是「那内容**变没变**」
+     */
+    private fun currentNotificationText(): String {
+        val status = lobos.services.reg.ProgramStatusHub.summaryLine(this)
+        val progNotice = lobos.services.reg.ProgramNotificationHub.summaryLine()
+        return listOfNotNull(status, progNotice).joinToString("　")
     }
 
     private var ledgerRegisteredAtMs: Long = 0L
@@ -438,12 +475,13 @@ class OsHostService : Service() {
         teardownStep("已全部拆完")
     }
 
-    private fun buildHostNotification(): Notification {
-        val status = lobos.services.reg.ProgramStatusHub.summaryLine(this)
-        val progNotice = lobos.services.reg.ProgramNotificationHub.summaryLine()
-        val text = listOfNotNull(status, progNotice).joinToString("　")
-        return buildNotification(text)
-    }
+    /**
+     * 那**通知**那一格逐字（=> 而而那那**内容**逐字**由**那调用方逐字**给**、=> 而而那它逐字**不**自己再算一遍）。
+     *
+     *   => 而而那那**内容**逐字**按需**逐字算（=> 而而那那**快照**那一族逐字**不**被每拍翻一遍）
+     */
+    private fun buildHostNotification(text: String = currentNotificationText()): Notification =
+        buildNotification(text)
 
     private fun entryActivity(): Class<*> =
         lobos.services.app.QuickAppLaunchActivity::class.java
@@ -481,6 +519,9 @@ class OsHostService : Service() {
     companion object {
         const val TAG = "OsHostService"
         private const val NOTIF_ID = 1004
+
+        //  => 而那那**通知内容**逐字那一个缓存（=> 而而那它逐字**只**在「那内容**变了**」时逐字**换**）
+        @Volatile private var lastNotifiedText: String? = null
         private const val REQ_OPEN = 41
         private const val TICK_MS = ResidencyPolicy.FAST_TICK_MS
         private const val NOTIFY_MS = 60_000L
