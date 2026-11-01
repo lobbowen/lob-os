@@ -29,10 +29,13 @@ import org.json.JSONObject
  * ★ 怎么开：=> 而那**设备侧**逐字一个文件（=> 而那 `files/etc/` 底下那一份），
  *   => 而那格式逐字是那 JSON：
  *   ```
- *   { "skipContentFingerprint": true }
+ *   { "skipContentFingerprint": true, "skipTraversal": false }
  *   ```
  *   => 而那读不到时逐字用那**默认**（=> 而那默认逐字是**算**那内容指纹、=> 而而那**不**改变任何东西）。
  *   => 而那它逐字**只**管那**内容指纹**那一步、=> 而而那**别的**逐字**一概不**跳过。
+ *   => 而那**档二 · 遍历本身**逐字是**另一个**开关（=> 而那 `skipTraversal` 那一格）
+ *     （=> 而那它逐字答的是「那遍历本身要不要做」、=> 而那它逐字**不**答「那内容指纹算不算」
+ *       => 而那**两档逐字分开**、=> 而那**不并**）。
  */
 object ScanCost {
 
@@ -57,6 +60,40 @@ object ScanCost {
         }.getOrDefault(DEFAULT_WITH_CONTENT_FINGERPRINT)
     }
 
+    /**
+     * 那**档二 · 遍历本身**那一档 —— 「那一次扫描逐字要多久」逐字**答**在**这一档**上。
+     *
+     *  缺陷名（C-102）**那开关逐字只覆盖了那一族的一半、=> 而而那它逐字没有越界声称覆盖那一族**
+     *   => 而那旧版逐字**只有**那 `skipContentFingerprint` 那一档
+     *     （=> 而那它逐字只管那**内容指纹**那一步、=> 而而那**别的**逐字**一概不**跳过）
+     *     => 而而那**后果**（07 本轮逐字核出）：=> 而那 `filesOf` 那一格逐字**仍然** walkTopDown
+     *       逐字 stat 那**每一个**文件（=> 而那 files/opt 逐字 **18880** 个）
+     *       => 而而那**只**省了 hash、=> 而而那**没省那遍历**
+     *     => 而而那那 17 分钟那一读逐字**与**那遍历一致（=> 而 07 逐字**没有**栈、=> 而按 C-113/C-116
+     *       标明「**值是读出来的、归因是定位出来的**」）
+     *   => 而那**判别形式**（01 逐字核的）：
+     *     「凡要答『那一次扫描要多贵』，判据必须落在『那遍历本身』上，
+     *       **不许只落在『那内容指纹算不算』那一步**；
+     *       一个开关要么覆盖全部、要么不许声称覆盖那一族」
+     *
+     *  ★ 这一档逐字**独立**：=> 而那它逐字答的是「那遍历本身要不要做」
+     *    => 而而那它逐字**不**答「那内容指纹算不算」（=> 而那是**档一**）
+     *    => 而而那**两档逐字分开**、=> 而而那**不并**（依 C-105）。
+     *
+     *  => 而那**档二**关掉时逐字**只**答那**目录视图**（=> 而那它逐字**不**是「跳过一切扫描」）：
+     *    => 而那它逐字**仍然**答「哪几件在位」、=> 而而那**入口**那一格逐字**留空**
+     *      （=> 而那按 C-05 报缺、=> 而不猜填）、=> 而而那**缺件**那一族逐字仍然答。
+     */
+    fun traverseFiles(ctx: Context): Boolean {
+        val f = configFile(ctx)
+        if (!f.isFile) return true
+        return runCatching {
+            val o = JSONObject(f.readText())
+            val v = o.opt("skipTraversal")
+            if (v is Boolean) !v else true
+        }.getOrDefault(true)
+    }
+
     /** 那配置逐字在哪（=> 而那它是**设备侧**那一族、=> 而它逐字**不在** APK 里）。 */
     fun configFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.etc(ctx), CONFIG_NAME)
 
@@ -66,9 +103,11 @@ object ScanCost {
      */
     fun describe(ctx: Context): String {
         val on = withContentFingerprint(ctx)
+        val walk = traverseFiles(ctx)
         val src = if (configFile(ctx).isFile) "设备侧 " + configFile(ctx).absolutePath else "默认（无设备侧配置）"
         return "内容指纹=" + (if (on) "算" else "跳过") +
-            " 扫描=" + "仍然扫目录" +
+            " 遍历=" + (if (walk) "做" else "不做") +
+            " 目录视图=仍然扫目录" +
             " 来源=" + src
     }
 }

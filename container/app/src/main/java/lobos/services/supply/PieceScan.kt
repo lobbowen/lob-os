@@ -46,7 +46,11 @@ object PieceScan {
      *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
      *   => 而那**默认逐字是 true**（=> 而那它是那**默认**行为、=> 而而那**不**改变任何东西）
      */
-    fun scan(ctx: Context, withContentFingerprint: Boolean = true): List<Found> {
+    fun scan(
+        ctx: Context,
+        withContentFingerprint: Boolean = true,
+        traverseFiles: Boolean = true,
+    ): List<Found> {
         val lib = SystemDirs.opt(ctx)
         val kids = lib.listFiles() ?: return emptyList()
         val out = mutableListOf<Found>()
@@ -54,7 +58,7 @@ object PieceScan {
             if (!pieceDir.isDirectory) continue
             val id = pieceDir.name
             if (File(pieceDir, "include").isDirectory) {
-                val hf = filesOf(pieceDir, withContentFingerprint)
+                val hf = filesOf(pieceDir, withContentFingerprint, traverseFiles)
                 out += Found(id, "from-layout", pieceDir, "include", HEADERS,
                     sha256Of(pieceDir, hf), metaOf(pieceDir), hf)
                 continue
@@ -84,7 +88,7 @@ object PieceScan {
                 val entry = entryOf(verDir, declared)
                 val libraryShaped = role == LIBRARY
                 if (entry == null && !libraryShaped) continue
-                val files = filesOf(verDir, withContentFingerprint)
+                val files = filesOf(verDir, withContentFingerprint, traverseFiles)
                 out += Found(
                     id = id,
                     version = version,
@@ -288,9 +292,26 @@ object PieceScan {
      *
      *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
      */
-    private fun filesOf(verDir: File, withContentFingerprint: Boolean): List<UnitEntry.FileRec> {
+    /**
+     * 那**逐节点**那一族 —— 那一趟**逐文件**的读。
+     *
+     *  @param withContentFingerprint 那一档逐字**算不算**那内容指纹（=> 而那是**档一**）
+     *  @param traverseFiles 那一档逐字**做不做**那遍历本身（=> 而那是**档二**）
+     *   => 而而那**档二**关掉时逐字**只**答那**目录视图**（=> 而那它逐字**不是**「跳过一切扫描」：
+     *     => 而那它逐字**仍然**答「哪几件在位」、=> 而而那那**缺件**那一族逐字仍然答）。
+     */
+    private fun filesOf(
+        verDir: File,
+        withContentFingerprint: Boolean,
+        traverseFiles: Boolean = true,
+    ): List<UnitEntry.FileRec> {
         val base = verDir.absolutePath
         val out = mutableListOf<UnitEntry.FileRec>()
+        if (!traverseFiles) {
+            //  => 而那**档二**关掉时逐字**不**走那遍历（=> 而那它逐字**不**是「跳过一切扫描」）
+            //     => 而而那它逐字**只**答那**目录视图**（=> 而那它逐字**不**登记那**逐文件**那一族）
+            return out
+        }
         verDir.walkTopDown().forEach { f ->
             if (!f.isFile) return@forEach
             if (f.name == "component-meta.json") return@forEach
@@ -352,7 +373,23 @@ object PieceScan {
                 (if (withContentFingerprint) "算" else "跳过") +
                 "、=> 而而那**扫描**逐字仍然扫、=> 而而那那**缺件**那一族逐字仍然答）",
         )
-        val found = scan(ctx, withContentFingerprint)
+        //  => 而那**档二 · 遍历本身**那一档（=> 而那是 01 逐字核的判别形式：
+        //     「凡要答『那一次扫描要多贵』，判据必须落在『那遍历本身』上」）
+        val traverseFiles = lobos.services.reg.ScanCost.traverseFiles(ctx)
+        //  => 而那**这一次扫描逐字多久**逐字**量**出来（=> 而那它逐字是那「要多久」那一问的**答案**）
+        val scanStartMs = System.currentTimeMillis()
+        val found = scan(ctx, withContentFingerprint, traverseFiles)
+        val scanMs = System.currentTimeMillis() - scanStartMs
+        //  => 而那那一次扫描的**代价**逐字**报进诊断那一族**（=> 而那读设备的人逐字看得见）
+        RuntimeDiagnostics.append(
+            ctx, "scan-cost", true,
+            "那一次扫描逐字耗时 " + scanMs + "ms",
+            "遍历=" + (if (traverseFiles) "做" else "不做") +
+                " 内容指纹=" + (if (withContentFingerprint) "算" else "跳过") +
+                " 件数=" + found.size +
+                " （=> 而那**两档逐字分开**、=> 而那档二逐字答「那遍历本身」、" +
+                "=> 而那档一逐字答「那内容指纹算不算」；=> 而而那**两档逐字不并**）",
+        )
         if (found.isEmpty()) return 0
         val cur = ProgramIndex.all(ctx).associateBy { it.id }
         var changed = 0
