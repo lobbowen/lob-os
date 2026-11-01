@@ -96,35 +96,27 @@ for p in "${PIECES[@]}"; do
   echo "--- $p ---"
   echo "   当前指纹：$cur_src"
   echo "   当前资产名：${cur_asset:-(读不到)}"
-  #  => 而那**旧**的那一份逐字是那 pin 记录里记的那一件（=> 而那它逐字是那**上一次**固化的）
-  old="$(node -e '
-const fs=require("fs");
-const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-const pins=d.pins||{};
-const want=process.argv[2];
-for (const k of Object.keys(pins)) {
-  const q=pins[k];
-  if (q.id===want) { process.stdout.write(String(q.zip||"")); break; }
-}
-' "$ROOT/.github/native-capabilities-pin.json" "$p" 2>/dev/null)"
-  old_src="$(printf '%s' "$old" | grep -o 'src[0-9a-f]*' | head -1)"
-  if [ -z "$old_src" ]; then
-    #  => 而那**不在**那 pin 记录里的那几件（=> 而那 git 那一件逐字走 tool 筐）
-    #    => 而它们逐字**不**在底座件那一份 pin 记录里
-    #    => 而而那**已发布**那一份的指纹逐字从**那 Release 上那资产名**里读
-    #      （=> 而那 asset 名逐字含那 src<12 位>、=> 而那 tag 逐字是那 `cache-key.sh tag` 那一族）。
-    #    => 而而那读不到时逐字**报缺**（=> 而按 C-05 不猜填）。
-    published="$(publishedAssetNames "$p")"
-    old_src="$(printf '%s\n' "$published" | grep -o 'src[0-9a-f]*' | head -1)"
+  #  => 而那**已发布**那一份逐字**以那 Release 上那一份为准**
+  #    （=> 而那它逐字是那**真正**发布出去的那一份、=> 而而那它逐字**不是**那陈旧记录）
+  #  => 而那**先**问那 Release、=> 而那 pin 记录逐字**只**是那读不到时的一个**提示**
+  #    （=> 而那 pin 记录逐字是那**上一次**固化那一份的、=> 而而那它在「刚固化完」那一趟逐字**必然陈旧**）
+  published="$(publishedAssetNames "$p")"
+  old_src="$(printf '%s\n' "$published" | grep -o 'src[0-9a-f]*' | head -1)"
+  if [ -n "$old_src" ]; then
+    echo "   已发布那一份：$old_src"
+    echo "   来源：Release 上那一份（=> 而那它逐字是那**真正**发布出去的那一件）"
+  else
+    #  => 而那 Release 逐字读不到时逐字**报缺**（=> 而按 C-05 不猜填）
     echo "   已发布那一份：${old_src:-(Release 上读不到)}"
-    if [ -z "$old_src" ]; then
-      echo "   [缺] 那已发布那一份的指纹逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
-      echo "        => 而那这一件逐字**不在**那 pin 记录里、=> 而而它逐字走**另一个筐**"
-      echo "        => 而而那它逐字要么被**纳进**那 pin 记录、=> 而要么在脚本里另算那一筐"
+    echo "   来源：Release 上那一份读不到（=> 而按 C-05 报缺、=> 而不猜）"
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+      echo "   [缺] 那 Release 上那一份逐字读不到（=> 而那 token 逐字是空的）"
+      echo "        => 而而那这一格逐字**只能**在 CI 里判（=> 而那 CI 那一族逐字有那 token）"
       rc_all=1; continue
     fi
-  else
-    echo "   已发布那一份：$old_src"
+    echo "   [缺] 那 Release 上那一份逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "        => 而那 pin 记录逐字是那**上一次**固化那一份的、=> 而而那它逐字**不**当判据"
+    rc_all=1; continue
   fi
   if [ "$cur_src" = "$old_src" ]; then
     echo "   [绿] 那指纹逐字**没变**（=> 而那这一件逐字**不用**重新固化）"

@@ -44,7 +44,52 @@ object PtySession {
     ) {
         private val closed = AtomicBoolean(false)
 
-        @Volatile var onData: ((ByteArray) -> Unit)? = null
+        //  => 而那那回调逐字**接上**的时候逐字把缓冲**倒**给它（=> 而而那那输出逐字**不**丢）
+        @Volatile
+        var onData: ((ByteArray) -> Unit)? = null
+            set(value) {
+                field = value
+                if (value != null) flushPending()
+            }
+
+        //  缺陷名（C-102）**那一格逐字把输出逐字丢在中间、=> 而而那它逐字是在那回调**还没接上**的时候到的** ——
+        //    => 而那旧版逐字是 `onData` 逐字一个**可变字段**、=> 而而那调用方逐字**在** `start()` **返回之后**
+        //      逐字才把它接上（=> 而那 `runToCompletion` 那一族逐字是 `s.onData = { … }`）
+        //    => 而而那**时序**逐字是：=> 而那宿主逐字发 FRAME_READY（=> 而那 `onReady` 逐字建那 Session
+        //      并把 latch 逐字倒）、=> 而而那 `start()` 逐字**返回**、=> 而而那调用方逐字**还没**接 onData、
+        //      => 而而那**这中间**逐字那宿主逐字就**已经**可以发 FRAME_DATA 了
+        //      （=> 而那 `pty-session.c` 那一族逐字那 poll 循环逐字**每一轮**都把那些 master 逐字加进去）
+        //    => 而而那那**后果**（07 本轮逐字核出）：
+        //      · 那 `sys.tty.exec` 那一趟逐字 stdout 逐字**空**、=> 而那退出码逐字 0、=> 而那那期望逐字**没**出现
+        //      · 而而那那一趟跑的那命令逐字**没有进程**（=> 而那账本逐字只有 jq、=> 而那 `ps -A` 逐字 0）
+        //    => 而那**处置**：=> 而那输出逐字**先**落到那 Session 自己的**缓冲**里
+        //      => 而而那那回调逐字**接上**的时候逐字**把缓冲逐字倒给它**
+        //      => 而而那那样逐字**不**依赖那回调逐字什么时候接（=> 而那**不**是猜、=> 而那**不**是丢）
+        private val pending = java.io.ByteArrayOutputStream()
+        private val pendingLock = Any()
+
+        /** 那**缓冲**里逐字有东西没有（=> 而那它逐字是那**读数**、=> 而而那它逐字**不**是推出来的）。 */
+        val hasPending: Boolean get() = synchronized(pendingLock) { pending.size() > 0 }
+
+        internal fun deliver(data: ByteArray) {
+            val cb = onData
+            if (cb != null) {
+                try { cb.invoke(data) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+                return
+            }
+            //  => 而那那回调逐字**还没**接上 => 而而那那输出逐字**先进缓冲**、=> 而而那**不**丢
+            synchronized(pendingLock) { pending.write(data) }
+        }
+
+        internal fun flushPending() {
+            val cb = onData ?: return
+            val drained = synchronized(pendingLock) {
+                if (pending.size() == 0) return@synchronized ByteArray(0)
+                val b = pending.toByteArray(); pending.reset(); b
+            }
+            if (drained.isEmpty()) return
+            try { cb.invoke(drained) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+        }
 
         @Volatile var onExit: ((status: Int, signal: Int) -> Unit)? = null
 
@@ -263,7 +308,8 @@ object PtySession {
         }
 
         private fun onData(sid: Int, payload: ByteArray) {
-            try { sessions[sid]?.onData?.invoke(payload) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+            //  => 而那那输出逐字**先**落到那 Session 自己的缓冲里（=> 而而那回调**还没**接上时逐字**不**丢）
+            try { sessions[sid]?.deliver(payload) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
         }
 
         private fun onExited(sid: Int, payload: ByteArray) {

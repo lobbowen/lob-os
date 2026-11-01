@@ -108,7 +108,32 @@ class TerminalSession private constructor(
                     "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（=> 而那它逐字是那 APK 里那一份）",
                 )
             //  => 而那 argv 逐字**默认**是那解释器（=> 而那它逐字**没有**参数 => 而那它逐字**等**输入）
-            val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath) else argv
+            //
+            //  缺陷名（C-102）**那一档逐字只给那解释器、=> 而而那它逐字没有那个 `-i`**
+            //    => 而那旧版逐字是 `listOf(sh.absolutePath)`
+            //      => 而而那那 argv 逐字经那 `ExecEntry.argv` 那一族逐字变成
+            //        `[SYSTEM_LINKER, <解释器>]`（=> 而而那那 args.drop(1) 逐字是**空**）
+            //      => 而而那 Android linker64 逐字把那 argv **原样**传给那程序
+            //        （=> 而而那那程序逐字的 argv[0] 逐字是那 linker 自己、=> 而而那那 argv[1] 逐字
+            //          **就是**那程序逐字的第一个参数）
+            //        => 而而那那解释器逐字收到的 argv = `[<解释器>, <解释器>]`
+            //      => 而而那那 bash 那一族逐字**没有** `-c` 也没有 `-s` 时
+            //        逐字把 argv[1] 逐字**当脚本名**逐字去 exec
+            //        => 而而那那脚本名逐字就是那解释器自己
+            //        => 而而那那**错误**逐字是
+            //          `…/files/usr/bin/bash: …/files/usr/bin/bash: cannot execute binary file`
+            //      => 而而那那**会话**逐字**当场就退出了**（=> 而那 status=0 signal=0）
+            //    => 而而那**那**与那 `-c` 那一档逐字**不一样**：
+            //      => 而而那 `LocalExec` 那一族逐字给的是 `[<解释器>, "-c", <命令>]`
+            //        => 而而那那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-c", <命令>]`
+            //        => 而而那 bash 逐字收到 argv = `[<解释器>, "-c", <命令>]`
+            //        => 而而那那 `-c` 逐字是那**命令**、=> 而而那那**脚本名**那一格逐字**不**是它
+            //    => 而那**处置**：=> 而那**交互式**那一档逐字给那解释器逐字**加**一个 `-i`
+            //      （=> 而而那它逐字是「那解释器逐字是交互式」那一档的声明）
+            //      => 而而那加了它之后 bash 逐字**不**把 argv[1] 逐字当脚本名
+            //      => 而而那那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-i"]`
+            //      => 而而那 bash 逐字收到 argv = `[<解释器>, "-i"]`、=> 而而那那它逐字**读**那 stdin
+            val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv
             val s = lobos.kernel.ipc.PtySession.openSession(ctx, ptyBin, effArgv, rows, cols, timeoutMs)
             val t = TerminalSession(s, System.currentTimeMillis())
             //  => 而那**四条**逐字逐字接上（=> 而那它们逐字正是 01 裁的那四条）
