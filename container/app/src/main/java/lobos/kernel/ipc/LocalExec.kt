@@ -86,6 +86,17 @@ object LocalExec {
             tOut.join(500); tErr.join(500)
             val code = s.process.exitValue()
             Outcome(true, code, out.toString(), err.toString(), Via.PLAIN)
+        } catch (e: ProcessSupervisor.NotExecutable) {
+            //  => 而那 M7-05 那一族逐字要的那两样：=> 而那**退出码**逐字是那一个具体的数、
+            //    => 而而那那**诊断原文**逐字**进**那 stderr
+            Outcome(
+                false,
+                ProcessSupervisor.ENOEXEC_EXIT_CODE,
+                "",
+                e.message ?: ProcessSupervisor.ENOEXEC_DIAGNOSTIC,
+                Via.PLAIN,
+                e.message ?: ProcessSupervisor.ENOEXEC_DIAGNOSTIC,
+            )
         } catch (e: Throwable) {
             Outcome(false, -1, "", "", Via.PLAIN, e.message ?: e.javaClass.simpleName)
         }

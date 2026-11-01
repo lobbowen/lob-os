@@ -12,31 +12,46 @@ object SysDev {
 
     fun root(ctx: Context): File = File(ctx.filesDir, "dev")
 
-    fun render(ctx: Context): File? = runCatching {
-        val r = root(ctx)
-        wipe(r)
-        r.mkdirs()
-        ttyDir(ctx, r)
-        execNode(r)
-        //  缺陷名（C-102）**那顺序逐字错了、=> 而而那它逐字作用在上一趟那一份上** ——
-        //   => 而那旧版逐字是 `ttyDir / execNode / indexJson` 那三步、=> 而而那 `applyDeclaredModes`
-        //     逐字在 `indexJson` **里面**、=> 而而那 `indexJson` 逐字**先**写那 index.json、
-        //     => 而而那 `applyDeclaredModes` 逐字**后**落那权限位
-        //     => 而而那**这一趟**那一份是**新建**的（=> 而那 `wipe` 逐字先清过）、
-        //       => 而而那它逐字默认 rw-------、=> 而而那权限位逐字落到了**上一趟那一份**上。
-        //   => 而那**正解**：=> 而那 `applyDeclaredModes` 逐字**先**落那权限位、
-        //     => 而而那 `nodeKinds` 逐字**后**读那实际权限（=> 而那它逐字读的是**落完之后**的那一个）。
-        //  => 而那 `index.json` 那一份逐字**先**写出来（=> 而那第一遍）
-        //     => 而而那它逐字**要存在**，=> 而而那**它自己**那一格逐字才读得到它那**实际**权限
-        //       （=> 而那 `applyDeclaredModes` 逐字**要**它**在**、=> 而而那它逐字才能落那权限位）
-        indexJson(ctx, r)
-        applyDeclaredModes(r)
-        //  => 而而那**第二遍**：=> 而那权限位逐字**落完**了、=> 而而那它自己那一格逐字读得到那**实际**权限
-        //     => 而而那这一遍逐字**覆写**那 index.json、=> 而而那 writeText 逐字**保留**那已落的权限位
-        //       （=> 而那 writeText 逐字**不改**那已存在那一份的权限）
-        indexJson(ctx, r)
-        r
-    }.getOrNull()
+    /**
+     * 那**渲染**那一格逐字（=> 而而那它逐字答的是**那三类之一**、=> 而而那它逐字**不**只报「失败」）。
+     *
+     * 缺陷名（C-102）**那一格逐字把整个渲染包在 `runCatching { … }.getOrNull()` 里、=> 而而那它逐字不报缺** ——
+     *   => 而那旧版逐字是 `fun render(ctx: Context): File? = runCatching { … }.getOrNull()`
+     *     => 而而那它逐字**要么**返回那目录、**要么**返回 null
+     *     => 而而那它逐字**没有**任何一处说出**为什么**、=> 而而那那**调用方**逐字也**看不出来**
+     *   => 而而那**后果**（04 逐字落的 M7-12 那一条 negative 断言）：
+     *     「那一件逐字被要求建一个它逐字没有的那一类节点时，=> 而而那它逐字必须逐字拒绝、
+     *       => 而而那它逐字必须逐字报出那一类逐字是哪一类（=> 而而那它逐字不许只报「失败」）」
+     *   => 而那**处置**：=> 而那**渲染完**逐字**核一遍**那些节点
+     *     => 而而那它逐字**答**的是**那三类之一**、=> 而而那它逐字**报缺**（=> 而按 C-05 不猜填）
+     */
+    fun render(ctx: Context): File? {
+        val r = runCatching {
+            val root = root(ctx)
+            wipe(root)
+            root.mkdirs()
+            ttyDir(ctx, root)
+            execNode(root)
+            indexJson(ctx, root)
+            applyDeclaredModes(root)
+            indexJson(ctx, root)
+            root
+        }.getOrNull() ?: return null
+        //  => 而那**逐节点**逐字核一遍（=> 而而那它逐字答的是**那三类之一**）
+        val bad = verifyNodes(r)
+        if (bad != null) {
+            val (path, fault) = bad
+            val diag = "节点不合声明：" + path + " —— " + faultName(fault) +
+                "（=> 而而那它逐字**不**只报「失败」、=> 而而那它逐字报出那一类是哪一类）"
+            System.err.println(diag)
+            runCatching {
+                lobos.services.log.RuntimeDiagnostics.append(ctx, "sysdev", false, diag, "")
+            }
+            //  => 而而那它逐字**拒绝**（=> 而而那那**目录**逐字**不**算成那一次成功的渲染）
+            return null
+        }
+        return r
+    }
 
     private fun wipe(d: File) {
         if (!d.isDirectory) return
@@ -197,6 +212,113 @@ object SysDev {
      *   => 而那**可变的**那一类逐字是那会话（=> 而那它逐字数那 `tty/pts/` 底下那**真**的目录）
      *   => 而而那**不可变**的那些逐字**恒**是 1（=> 而而那是那**它自己**）
      */
+    /**
+     * 那**三类**逐字是哪一类（=> 而那是 M7-12 那一条 negative 断言逐字**要**的那三选一）。
+     *
+     * 缺陷名（C-102）**那一格逐字只报「失败」、=> 而而那它逐字不报出那一类是哪一类** ——
+     *   => 而那旧版逐字是 `render` 逐字整个 `runCatching { … }.getOrNull()`
+     *     => 而而那它逐字**要么**返回那目录、**要么**返回 null
+     *     => 而而那它逐字**没有**任何一处说出**为什么**
+     *   => 而而那**后果**（04 逐字落的 M7-12 那一条 negative 断言）：
+     *     「那一件逐字被要求建一个它逐字没有的那一类节点时，=> 而而那它逐字必须逐字拒绝、
+     *       => 而而那它逐字必须逐字报出那一类逐字是哪一类（=> 而而那它逐字不许只报「失败」）」
+     *   => 而那**处置**：=> 而那**每一类**逐字逐字核一遍、=> 而而那它逐字答的是**那三类之一**
+     *     · 「缺节点」=> 而而那那**声明**要它、=> 而而那盘上逐字**没有**
+     *     · 「类型错」=> 而而那那声明要它是什么、=> 而而那盘上逐字**是别的**
+     *     · 「权限过宽」=> 而而那那声明要它的权限、=> 而而那盘上逐字**比**那**宽**
+     */
+    enum class NodeFault {
+        /** 那声明要它、=> 而而那盘上逐字**没有**（=> 而那是「缺节点」那一类）。 */
+        MISSING,
+
+        /** 那声明要它是什么、=> 而而那盘上逐字**是别的**（=> 而那是「类型错」那一类）。 */
+        WRONG_TYPE,
+
+        /** 那声明要它的权限、=> 而而那盘上逐字**比**那**宽**（=> 而那是「权限过宽」那一类）。 */
+        TOO_WIDE,
+    }
+
+    /** 那**三类**逐字的中文（=> 而而那它逐字是那**报缺**时要说的那一句）。 */
+    fun faultName(f: NodeFault): String = when (f) {
+        NodeFault.MISSING -> "缺节点"
+        NodeFault.WRONG_TYPE -> "类型错"
+        NodeFault.TOO_WIDE -> "权限过宽"
+    }
+
+    /**
+     * 那**逐节点**逐字核一遍（=> 而而那它逐字答的是**那三类之一**、=> 而而那它逐字**不**只报「失败」）。
+     *
+     * @return 那**第一处**不对的那一格（=> 而而那**没有**不对时逐字是 null、=> 而而那它逐字是那**事实**）
+     */
+    fun verifyNodes(r: File): Pair<String, NodeFault>? {
+        for (d in NODE_DECLARATION) {
+            if (d.path == ".") {
+                //  => 而那那**根目录**那一类逐字核那**类型**与那**权限**
+                val actualKind = if (r.isDirectory) "dir" else "other"
+                if (d.kind != actualKind) return d.path to NodeFault.WRONG_TYPE
+                val m = actualModeOf(r)
+                if (m.isNotBlank() && d.mode.isNotBlank() && isWiderThan(m, d.mode)) {
+                    return d.path to NodeFault.TOO_WIDE
+                }
+                continue
+            }
+            if (d.path.contains("<NNN>")) {
+                //  => 而那那**带 <NNN>** 那一族逐字**按它自己那形状**核（=> 而而那那**实例**逐字存在）
+                val prefix = d.path.substringBefore("<NNN>")
+                val rest = d.path.substringAfter("<NNN>").trim('/')
+                val pts = File(r, prefix)
+                val kids = pts.listFiles()?.sortedBy { it.name } ?: emptyList()
+                for (k in kids) {
+                    val target = if (rest.isEmpty()) k else File(k, rest)
+                    val f = checkOne(d, target) ?: continue
+                    return f
+                }
+                continue
+            }
+            val target = File(r, d.path)
+            val f = checkOne(d, target)
+            if (f != null) return f
+        }
+        return null
+    }
+
+    /** 那**一个**节点逐字核（=> 而而那它逐字答的是**那三类之一**）。 */
+    private fun checkOne(d: NodeDecl, target: File): Pair<String, NodeFault>? {
+        //  => 而那「缺节点」那一族：=> 而而那那声明要它、=> 而而那盘上逐字**没有**
+        if (!target.exists()) return d.path to NodeFault.MISSING
+        if (d.kind == "symlink") {
+            //  => 而那那**软链**那一族逐字**不**核权限（=> 而而那它逐字**没有**那权限那一格）
+            if (!java.nio.file.Files.isSymbolicLink(target.toPath())) return d.path to NodeFault.WRONG_TYPE
+            return null
+        }
+        //  => 而那「类型错」那一族：=> 而而那那声明要它是目录、=> 而而那盘上逐字是文件（=> 或反过来）
+        val wantDir = d.kind == "dir"
+        if (target.isDirectory != wantDir) return d.path to NodeFault.WRONG_TYPE
+        //  => 而那「权限过宽」那一族：=> 而而那那声明要它的权限、=> 而而那盘上逐字**比**那**宽**
+        val actual = actualModeOf(target)
+        if (actual.isNotBlank() && d.mode.isNotBlank() && isWiderThan(actual, d.mode)) {
+            return d.path to NodeFault.TOO_WIDE
+        }
+        return null
+    }
+
+    /**
+     * 那**实际**权限逐字**比**那**声明**的宽不宽（=> 而那它逐字答的是**权限过宽**那一族）。
+     *   => 而而那它逐字**逐位**比（=> 而而那它逐字**看**那三个组逐字**多**了哪一位）
+     */
+    private fun isWiderThan(actual: String, declared: String): Boolean {
+        if (actual.length < 9 || declared.length < 9) return false
+        for (g in 0..2) {
+            for (b in 0..2) {
+                val ai = g * 3 + b
+                val have = actual[ai] != '-'
+                val want = declared[ai] != '-'
+                if (have && !want) return true
+            }
+        }
+        return false
+    }
+
     private fun instanceCounts(r: File): JSONObject {
         val o = JSONObject()
         //  => 而那**会话**那一类逐字数那 pts 底下那**真**的目录（=> 而那它逐字是那可变的）

@@ -461,7 +461,16 @@ object PtySession {
         val effArgv = if (argv.isEmpty()) argv
         else {
             val first = java.io.File(argv[0])
-            lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
+            //  => 而那**认不出**那一档逐字**报缺**、=> 而而那它逐字**不**调起（=> 而那 M7-05 那一族）
+            //    => 而那旧版逐字是 `?: argv`（=> 而而那它逐字**拿回那原样的 argv**、
+            //      => 而而那**坏 ELF 逐字被当程序调起**）
+            val shaped = lobos.kernel.proc.ExecEntry.argv(first, argv)
+            if (shaped == null) {
+                val diag = lobos.kernel.proc.ProcessSupervisor.enoexecDiagnostic(first)
+                System.err.println(diag)
+                throw lobos.kernel.proc.ProcessSupervisor.NotExecutable(first)
+            }
+            shaped
         }
         return host(ctx, bin).start(effArgv, rows, cols, timeoutMs)
     }
@@ -613,7 +622,22 @@ object PtySession {
         val alreadyDriven = argv[0] == lobos.kernel.proc.ExecEntry.SYSTEM_LINKER
         val first = java.io.File(argv[0])
         val effArgv = if (alreadyDriven) argv
-        else lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
+        else lobos.kernel.proc.ExecEntry.argv(first, argv)
+        //  => 而那**认不出**那一档逐字**报缺**、=> 而而那它逐字**不**调起（=> 而那 M7-05 那一族）
+        //    => 而那旧版逐字是 `?: argv`（=> 而而那它逐字**拿回那原样的 argv**、
+        //      => 而而那**坏 ELF 逐字被当程序调起**）
+        //    => 而而那那**退出码**逐字是那一个具体的数、=> 而而那那**诊断原文**逐字**进**那 stderr
+        if (effArgv == null) {
+            val diag = lobos.kernel.proc.ProcessSupervisor.enoexecDiagnostic(first)
+            System.err.println(diag)
+            return Result(
+                false,
+                lobos.kernel.proc.ProcessSupervisor.ENOEXEC_EXIT_CODE,
+                "",
+                diag,
+                completed = false,
+            )
+        }
         val h = try {
             if (env.isEmpty() && cwd == null) host(ctx, bin) else dedicatedHost(ctx, bin, env, cwd)
         } catch (e: Throwable) {

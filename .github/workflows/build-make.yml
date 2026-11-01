@@ -108,6 +108,28 @@ jobs:
       - name: 产出 make 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
         run: bash scripts/recipes/build-component-make.sh
+      - name: 复用那一支也要有那版本号
+        if: steps.reuse.outputs.hit == 'yes'
+        run: |
+          set -euo pipefail
+          #  缺陷名（C-102）**「那『仅在需要编时』」那一族逐字没有那版本号、=> 而而那它逐字是打包那一支**必须**有的一样东西** ——
+          #    => 而那旧版逐字**没有**这一步、=> 而而那「打包 + sha256」逐字**照跑**
+          #      => 而那 `package-component.sh:12` 逐字 `VER=$(cat "dist/${TOOL}.version" …)`
+          #         逐字读不到、=> 而而那它逐字 `die "缺版本号：dist/make.version 不在或为空"`
+          #    => 而那**成因**：=> 而那「产出那一件」逐字**只在**需要编时跑
+          #      （=> 而而那那**复用**那一支逐字**不编译**、=> 而而那那**编译**那一支产的
+          #       `dist/make.version` 逐字**不在**、=> 而而那它逐字**缺**）
+          #    => 而那**处置**：=> 而那**复用**那一支逐字**自己**写那版本号
+          #      => 而而那它逐字**从那钉值表**逐字取（=> 而那 `fetch-pinned.sh --src-version` 那一族
+          #         逐字是**纯查表**、=> 而而那它逐字**不**下载、=> 而而那它逐字**不**要求那一趟去编）
+          #      => 而而那它逐字**是**那**同一份事实**（=> 而那 `package-component.sh` 那一格逐字
+          #         逐字拿那钉值表逐字比那本产物那一份、=> 而而那两者逐字**应该**一致）
+          #      => 而而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而**不**编一个值）
+          VER="$(bash scripts/toolchain/fetch-pinned.sh --src-version make 2>/dev/null || true)"
+          [ -n "$VER" ] || { echo "::error title=缺版本号::钉值表那 make 那一格逐字读不到版本号 —— 不编值"; exit 1; }
+          mkdir -p dist
+          printf '%s\n' "$VER" > "dist/make.version"
+          echo "[make] 复用那一支的版本号 = $VER（从钉值表取的，与编译那一支写的是同一份事实）"
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
         run: bash scripts/verify/verify-component-artifact.sh make
       - name: 打包 + sha256
