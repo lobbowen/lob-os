@@ -220,18 +220,34 @@ object HostControlService {
      *       => 而而那那退出码逐字是那一个具体的数、=> 而而那那诊断原文逐字**进**那 stderr）
      *   => 而而那它逐字**不是**探针（=> 而而那它逐字是那**产品界面**上的一个**入口**）
      */
-    fun execDirect(context: Context, path: String, timeoutMs: Long = 10_000L): JSONObject {
+    /**
+     * 那**不经 shell** 逐字**直接调**那一条（=> 而而那它逐字**带参数**）。
+     *
+     * 缺陷名（C-102）**那一格逐字只有那路径一个形参、=> 而而那它逐字带不了参数** ——
+     *   => 而那旧版逐字是 `execDirect(context, path, timeoutMs)`、=> 而而那那 argv 逐字**只有**那一条
+     *     => 而而那那 git 那一件逐字**没有** `--version` 就逐字打 usage、=> 而而那那退出码逐字 1
+     *       （=> 而那 07 本轮逐字实测：=> 而那 stdout 逐字是 git 那 usage 原文）
+     *   => 而那**处置**：=> 而那 argv 逐字**带**那参数
+     *     => 而而那那参数逐字**透**给 `LocalExec.run` 那一族逐字那 argv 那一档
+     *     => 而而那那**形态**逐字**还是**那 `ExecEntry.argv` 那一族算的（=> 而而那它逐字**不**变）
+     */
+    fun execDirect(
+        context: Context,
+        path: String,
+        args: List<String> = emptyList(),
+        timeoutMs: Long = 10_000L,
+    ): JSONObject {
         val method = "exec.direct"
         if (path.isBlank()) return failure(method, "exec-direct", "路径为空")
         val target = java.io.File(path)
         if (!target.exists()) {
             return failure(method, "exec-direct", "那一件逐字不在：" + path + "（=> 而按 C-05 报缺）")
         }
-        //  => 而而那**不经 shell**：=> 而而那 argv 逐字**只有**那一条
+        //  => 而而那**不经 shell**：=> 而而那 argv 逐字**只有**那一条与那些参数
         //    => 而而那**形态**逐字**还是**那 `ExecEntry.argv` 那一族算的（=> 而而那它逐字**不**变）
         val r = lobos.kernel.ipc.LocalExec.run(
             context,
-            listOf(target.absolutePath),
+            listOf(target.absolutePath) + args,
             timeoutMs = timeoutMs,
             preferPty = false,
         )
@@ -242,6 +258,7 @@ object HostControlService {
             put("stderr", r.stderr)
             put("via", r.via.name)
             put("path", target.absolutePath)
+            put("args", args)
             put("detail", r.error ?: "")
         }
     }

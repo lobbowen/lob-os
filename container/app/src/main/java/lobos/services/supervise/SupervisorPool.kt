@@ -106,9 +106,38 @@ class SupervisorPool(private val host: Service) {
                     //     => 而而那那**诊断**逐字**照记**（=> 而那按 C-126 不静默）
                     val unhealthy = unhealthyServices.remove(d.id)
                     if (unhealthy != null) {
+                        //  => 而而那那**注销**逐字**同一轮**逐字就把那一族逐字**重起**
+                        //    （=> 而那旧版逐字是 `continue`、=> 而而那它逐字**只**注销、=> 而而那它逐字**等下一轮**）
+                        //      => 而而那那节拍逐字是 **15 秒**（=> 而那 `ResidencyPolicy.FAST_TICK_MS`）
+                        //      => 而而那那**两轮**逐字**要** 30 秒、=> 而而那 07 本轮逐字只等了 12 拍 / 96 秒
+                        //        而而那**类型错**那一类逐字**仍然没**重建
+                        //    => 而那**处置**：=> 而而那那**注销**之后**立刻**逐字把它当那**没起过**的再走一遍
+                        //      => 而而那那**自愈**逐字**一轮之内**逐字**走完**
+                        //      => 而而那那**判据**逐字**不**变（=> 而那它是「那一次动作逐字成没成」）
                         services.remove(d.id)?.invoke()
-                        Journal.note(host, "service", null, "注销不健康的服务（下一轮重起）", "id=" + d.id)
-                        continue
+                        alive.remove(d.id)
+                        Journal.note(host, "service", null, "注销不健康的服务并立即重起", "id=" + d.id)
+                        //  => 而而那那**重起**逐字**就在**这一轮（=> 而而那它逐字**不**等下一轮）
+                        val ok2 = runCatching {
+                            d.act(host)
+                            true
+                        }.getOrElse { e ->
+                            Log.w(TAG, "内置服务重起失败: " + d.id, e)
+                            RuntimeDiagnostics.append(
+                                host, "service", false, "内置服务重起失败 " + d.id,
+                                e.javaClass.name + ": " + (e.message ?: ""),
+                            )
+                            false
+                        }
+                        if (!ok2) {
+                            unhealthyServices.add(d.id)
+                            continue
+                        }
+                        unhealthyServices.remove(d.id)
+                        services[d.id] = { noopUnit() }
+                        alive.add(d.id)
+                        progressed = true
+                        Journal.note(host, "service", null, "重起内置服务", "id=" + d.id)
                     }
                     continue
                 }

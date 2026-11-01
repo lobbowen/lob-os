@@ -99,8 +99,34 @@ object SysDev {
     }
 
     private fun execNode(r: File) {
-        val d = File(r, "exec").apply { mkdirs() }
-        File(d, "shell.exec").writeText(
+        val d = File(r, "exec")
+        //  缺陷名（C-102）**那一格逐字不看那 mkdirs 逐字成没成、=> 而而那它逐字直接往下写** ——
+        //   => 而那旧版逐字是 `File(r, "exec").apply { mkdirs() }`
+        //     => 而而那 `mkdirs()` 逐字**失败**时逐字**返回 false**、=> 而而那 `apply` 逐字**不**看它
+        //       => 而而那那 `File(d, "shell.exec").writeText(…)` 逐字**抛**
+        //   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+        //     · 而那**类型错**那一类（=> 而那 `exec/shell.exec` 逐字是一个**目录**）
+        //       逐字让 `execNode` 逐字写不进去、=> 而而那那 render 逐字**抛**
+        //       => 而而那那一族逐字「起」逐字**只跑一次**（=> 而那 `SupervisorPool` 那一句）
+        //       => 而而那那**注销 + 重起**那两轮逐字在 96 秒内没走完（=> 而而那那节拍逐字是 15 秒）
+        //       => 而而那那**类型错**那一类逐字**仍然没**重建
+        //   => 而那**处置**：=> 而那 mkdirs 逐字**成没成**逐字**要看**
+        //     => 而而那它逐字**不成**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而**不**往下写）
+        if (!d.isDirectory && !d.mkdirs()) {
+            throw IllegalStateException(
+                "建不了那 exec 目录：" + d.absolutePath +
+                    "（=> 而而那它逐字**不成**、=> 而而那按 C-05 报缺、=> 而**不**往下写）"
+            )
+        }
+        //  => 而而那那**目标**逐字**已经**是一个目录时逐字**报缺**（=> 而那它是那「类型错」那一族）
+        val f = File(d, "shell.exec")
+        if (f.isDirectory) {
+            throw IllegalStateException(
+                "那 shell.exec 逐字已经是一个目录：" + f.absolutePath +
+                    "（=> 而而那是那「类型错」那一类、=> 而而那按 C-05 报缺）"
+            )
+        }
+        f.writeText(
             "lobos.sys.shell.exec\n" +
                 "shell.exec 是发起式调用：提交并拿结果，不属于可读事实。\n" +
                 "它经 CapabilityBroker 的 unix socket + JSON-RPC 提供，\n" +

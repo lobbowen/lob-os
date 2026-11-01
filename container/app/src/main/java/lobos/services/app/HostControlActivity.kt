@@ -83,6 +83,7 @@ class HostControlActivity : Activity() {
         //  => 而那 M7-05 那一格逐字**要**的那一条产品入口：=> 而而那它逐字**不经 shell**
         //  => 而那 M7-12 那一格逐字**要**的那一条产品入口：=> 而而那它逐字**核**那盘上现状
         val directPath = EditText(this).apply { hint = "要直接调的那一条的路径（不经 shell）" }
+        val directArgs = EditText(this).apply { hint = "给它的参数（空格分隔，可空）" }
         val execDirect = Button(this).apply { text = "直接调这一条（不经 shell，真实执行）" }
         val verifyNodes = Button(this).apply { text = "核那设备节点那逐节点（真实执行）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
@@ -170,7 +171,10 @@ class HostControlActivity : Activity() {
             result.text = if (ok) "会话已关" else "没有会话"
         }
         execDirect.setOnClickListener {
-            val r = HostControlService.execDirect(this, directPath.text.toString()).toString()
+            val argv = directArgs.text.toString().trim()
+                .split(' ', '\t')
+                .filter { it.isNotBlank() }
+            val r = HostControlService.execDirect(this, directPath.text.toString(), argv).toString()
             result.text = r
         }
         verifyNodes.setOnClickListener {
@@ -210,6 +214,7 @@ class HostControlActivity : Activity() {
         content.addView(cmdField)
         content.addView(exec)
         content.addView(directPath)
+        content.addView(directArgs)
         content.addView(execDirect)
         content.addView(verifyNodes)
         content.addView(terminalOut)
