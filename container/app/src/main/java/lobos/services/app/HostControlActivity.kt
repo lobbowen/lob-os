@@ -80,6 +80,19 @@ class HostControlActivity : Activity() {
         //      => 而而那它逐字走 `invokeLocal` 那一格（=> 而而那它逐字**不经 socket**、=> 而而那它逐字**不** claim 会话）。
         val cmdField = EditText(this).apply { hint = "要跑的命令（在 LOB-OS 自己那一份 Linux 里跑）" }
         val exec = Button(this).apply { text = "在 LOB-OS 里跑这条命令（真实执行）" }
+        //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
+        //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
+        //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
+        //       （=> 而那 01 本机实跑确认）
+        //   => 而那**处置**：=> 而那**这一格**逐字是那产品界面上那一个**消费者**
+        //     （=> 而那它逐字是那**持有者**、=> 而而那它逐字**持有**那一条会话、
+        //       => 而而那它逐字**跨调用**活着）
+        //   => 而而那它逐字**不**是 `SysDev.render` 起会话（=> 而那**不采用**那一族）
+        val terminalOut = TextView(this).apply { text = "（终端还没起）" }
+        val terminalInput = EditText(this).apply { hint = "终端里要输入的一行" }
+        val terminalOpen = Button(this).apply { text = "起一条交互式终端会话（真实持有）" }
+        val terminalSend = Button(this).apply { text = "把这一行送进那条会话" }
+        val terminalClose = Button(this).apply { text = "关掉那条会话" }
 
         refresh.setOnClickListener { loadPieces() }
         update.setOnClickListener {
@@ -114,6 +127,43 @@ class HostControlActivity : Activity() {
             loadPieces(showPiecesInResult = false)
             result.text = r
         }
+        terminalOpen.setOnClickListener {
+            terminalOpen.isEnabled = false
+            val r = runCatching {
+                val t = TerminalSessions.open(this, "ui")
+                //  => 而那**四条**逐字逐字接上（=> 而那能读 onData、=> 而那能 resize、=> 而那在 onExit 收尾）
+                t.onOutput = { d ->
+                    runOnUiThread {
+                        terminalOut.append(String(d, Charsets.UTF_8))
+                    }
+                }
+                t.onClosed = { status, signal ->
+                    runOnUiThread {
+                        terminalOut.append("\n[会话退出 status=" + status + " signal=" + signal + "]\n")
+                    }
+                }
+                t.resize(24, 80)
+                "会话已起：sid=" + t.session.sid + " slave=" + t.session.slavePath
+            }.getOrElse { e ->
+                e.javaClass.simpleName + ": " + (e.message ?: "")
+            }
+            terminalOpen.isEnabled = true
+            result.text = r
+        }
+        terminalSend.setOnClickListener {
+            val t = TerminalSessions.get("ui")
+            if (t == null) {
+                result.text = "还没有会话 —— 先起一条"
+            } else {
+                t.write(terminalInput.text.toString() + "\n")
+                terminalInput.setText("")
+                result.text = "已送进 sid=" + t.session.sid
+            }
+        }
+        terminalClose.setOnClickListener {
+            val ok = TerminalSessions.close("ui")
+            result.text = if (ok) "会话已关" else "没有会话"
+        }
         peSample.setOnClickListener {
             result.text = HostControlService.loadPeSample(this, "win32/plink-arm64.exe").toString()
         }
@@ -146,6 +196,11 @@ class HostControlActivity : Activity() {
         content.addView(peSample32)
         content.addView(cmdField)
         content.addView(exec)
+        content.addView(terminalOut)
+        content.addView(terminalInput)
+        content.addView(terminalOpen)
+        content.addView(terminalSend)
+        content.addView(terminalClose)
         content.addView(result)
         setContentView(root)
         loadPieces()
