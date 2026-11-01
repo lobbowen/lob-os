@@ -490,6 +490,70 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             put("error", JSONObject().apply { put("code", code); put("message", message) })
         }
 
+    /**
+     * 那**仓内清单声明过的那几件**（=> 而而那是那**包名**那一族）。
+     *
+     * 缺陷名（C-102）**那一族逐字能碰到设备上别的 app** ——
+     *   => 而那旧版逐字**没有**这一格（=> 而而那 `app.launch` 逐字**不**限那清单、
+     *     => 而而那 `app.listInstalled` 逐字把**全部**已装包名逐字列出来）
+     *   => 而那**判据**逐字是「那一件逐字是不是那**仓内清单**逐字声明过的那一件」
+     *     => 而而那那**清单**逐字是那登记册逐字里那 `ui.package` 那一格
+     *       （=> 而而那它逐字 1:1 绑定、=> 而而那它逐字**不是**人手写的一份名单）
+     *   => 而而那那**清单之外**的逐字按 **C-05** 报缺、=> 而**不**静默回退
+     */
+    private fun declaredPackages(): List<String> {
+        val out = sortedSetOf<String>()
+        runCatching {
+            for (e in lobos.services.reg.ProgramIndex.all(this)) {
+                val pkg = e.uiPackage.trim()
+                if (pkg.isNotBlank()) out.add(pkg)
+            }
+        }
+        return out.toList()
+    }
+
+    /**
+     * 那**承载**那一格逐字（=> 而而那它逐字是「我们自己那一个承载」那一面）。
+     *
+     * 缺陷名（C-102）**那一族逐字能点屏幕任意坐标、=> 而而那它逐字没有先核那前台是不是我们那一个** ——
+     *   => 而那旧版逐字**没有**这一格（=> 而而那 `ui.tap` 逐字直接 `performTap(x, y, durationMs)`）
+     *     => 而而那那**坐标**逐字**任意**、=> 而而那它逐字**能**点出去
+     *   => 而那**后果**（Lead 本机实读的事实）：=> 而而那那一族逐字在设备上跑 `uiautomator dump`
+     *     与 `input tap`、=> 而而那屏幕是开着的、=> 而而那那桌面图标逐字可见、
+     *     => 而而那那盲点坐标逐字落到了桌面上那一个图标上
+     *   => 而那**判别形式**（01 裁的）：
+     *     「⇒ 而那判据必须逐字落在『那一格逐字点的那个位置逐字在不在我们自己那一个承载的界面里』
+     *       那一个事实上、⇒ 而而那它逐字不许点出去」
+     *     => 而而那那「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」
+     *       （=> 而而那**不是**「设备上此刻前台那一面」）
+     *     => 而而那那**前置**逐字是「那前台逐字是不是我们那一个」
+     *   => 而那**处置**：=> 而而那那一族逐字**动之前**逐字先核那前台逐字是不是我们那一个
+     *     => 而而那**不是**的那一格逐字**不许**点（=> 而按 C-05 报缺、=> 而**不**静默放过）
+     */
+    private fun requireOurCarrier(): OsAccessibilityService {
+        val a11y = requireA11y()
+        val fg = runCatching { a11y.foregroundPackage() }.getOrDefault("")
+        //  => 而而那那**我们那一个**逐字是那 App 逐字自己（=> 而而那它逐字那**包名**那一族）
+        //  => 而而那那**清单**逐字声明过的那几件逐字**也**算我们那一个承载
+        val ours = declaredPackages() + packageName
+        if (fg.isBlank()) {
+            throw BridgeError(
+                CODE_POLICY_DENIED,
+                "读不到那前台逐字是哪一个（=> 而而那一族逐字**不许**在读不到的时候逐字点出去、" +
+                    "=> 而按 C-05 报缺）",
+            )
+        }
+        if (fg !in ours) {
+            throw BridgeError(
+                CODE_POLICY_DENIED,
+                "那前台逐字**不是**我们自己那一个承载：" + fg +
+                    "（=> 而而那「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」、" +
+                    "=> 而而那**不是**「设备上此刻前台那一面」；=> 而而那那一族逐字**不许**点出去）",
+            )
+        }
+        return a11y
+    }
+
     private fun requireA11y(): OsAccessibilityService =
         OsAccessibilityService.instance
             ?: throw BridgeError(CODE_CAPABILITY_MISSING, "无障碍服务未连接（请在系统设置中开启 Lob OS 无障碍服务）")
@@ -1320,18 +1384,42 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("count", arr.length())
             }
         },
-        "app.listInstalled" to MethodDef(listOf("base"), false) { _, _programId ->
-            val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+        "app.listInstalled" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { _, _programId ->
+            //  缺陷名（C-102）**那一族逐字把全部已装包名逐字列给程序** ——
+            //   => 而那旧版逐字是 `packageManager.getInstalledApplications(GET_META_DATA)`
+            //     => 而而那它逐字把手机上**全部**已装包名逐字列出来
+            //   => 而那**处置**：=> 而而那它逐字**只**列那**仓内清单声明过的那几件**
+            //     => 而而那那**其余**的逐字**不**列（=> 而那按 C-05 报缺）
             val arr = JSONArray()
-            for (ai in apps) arr.put(ai.packageName)
+            for (pkg in declaredPackages()) arr.put(pkg)
             JSONObject().apply { put("packages", arr); put("count", arr.length()) }
         },
-        "app.launch" to MethodDef(listOf("base"), false) { p, _programId ->
+        "app.launch" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
+            //  缺陷名（C-102）**那一族逐字能拉起手机上**任意**已装 app** ——
+            //   => 而那旧版逐字是 `packageManager.getLaunchIntentForPackage(pkg)`
+            //     => 而而那它逐字**不**限那**仓内清单声明过的那几件**
+            //       => 而而那「九号电动车」那个 app 逐字**就在**那一族逐字的能力范围里
+            //   => 而那**处置**：=> 而而那它逐字**只**许拉起那**仓内清单声明过的那几件**
+            //     => 而而那那**其余**的逐字按 **C-05** 报缺、=> 而**不**静默回退到「拉起任意 app」
+            //   => 而而那它逐字**显式**逐字记出它要拉哪一件（=> 而按 C-126 不静默）
             val pkg = p.optString("pkg", "")
+            val declared = declaredPackages()
+            if (pkg !in declared) {
+                throw BridgeError(
+                    CODE_INVALID_PARAM,
+                    "那一件逐字**不在**仓内清单声明过的那几件里：" + pkg +
+                        "（=> 而而那仓内清单声明过的那几件逐字是：" + declared.joinToString(",") +
+                        "；=> 而而那按 C-05 报缺、=> 而**不**静默回退到拉起任意 app）",
+                )
+            }
             val ai = packageManager.getLaunchIntentForPackage(pkg)
             if (ai == null) throw BridgeError(CODE_INVALID_PARAM, "无启动入口: $pkg")
             ai.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(ai)
+            RuntimeDiagnostics.append(
+                this, "app-launch", true, "拉起仓内清单声明过的那一件",
+                "pkg=" + pkg + "（=> 而而那它逐字**只**许拉起那清单声明过的那几件）",
+            )
             JSONObject().apply { put("launched", pkg) }
         },
         "app.openUrl" to MethodDef(listOf("base"), false) { p, _programId ->
@@ -1343,8 +1431,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             JSONObject().apply { put("opened", true); put("url", url) }
         },
-        "ui.tap" to MethodDef(listOf("accessibility"), true) { p, _programId ->
-            val a11y = requireA11y()
+        "ui.tap" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
+            val a11y = requireOurCarrier()
             val ok = a11y.performTap(
                 p.optDouble("x", 0.0).toFloat(),
                 p.optDouble("y", 0.0).toFloat(),
@@ -1352,8 +1440,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.swipe" to MethodDef(listOf("accessibility"), true) { p, _programId ->
-            val a11y = requireA11y()
+        "ui.swipe" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
+            val a11y = requireOurCarrier()
             val ok = a11y.performSwipe(
                 p.optDouble("x1", 0.0).toFloat(), p.optDouble("y1", 0.0).toFloat(),
                 p.optDouble("x2", 0.0).toFloat(), p.optDouble("y2", 0.0).toFloat(),
@@ -1361,8 +1449,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.inputText" to MethodDef(listOf("accessibility"), true) { p, _programId ->
-            val a11y = requireA11y()
+        "ui.inputText" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
+            val a11y = requireOurCarrier()
             val text = p.optString("text", "")
             if (p.has("selector") && p.optJSONObject("selector")?.length() == 0) {
                 throw BridgeError(CODE_INVALID_PARAM, "selector 不能为空对象")
@@ -1370,15 +1458,15 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val ok = a11y.inputText(text, p.optJSONObject("selector"))
             JSONObject().apply { put("ok", ok) }
         },
-        "ui.getUiTree" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+        "ui.getUiTree" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
             val a11y = requireA11y()
             a11y.dumpUiTree(
                 maxNodes = p.optInt("maxNodes", 3000),
                 maxDepth = p.optInt("maxDepth", 40)
             )
         },
-        "ui.globalAction" to MethodDef(listOf("accessibility"), true) { p, _programId ->
-            val a11y = requireA11y()
+        "ui.globalAction" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
+            val a11y = requireOurCarrier()
             val action = p.optString("action", "")
             val id = a11y.globalActionOf(action)
             if (id < 0) {
@@ -1392,7 +1480,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("action", action)
             }
         },
-        "ui.events" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+        "ui.events" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
             val a11y = requireA11y()
             val names = p.optJSONArray("types")
             val types = names?.let { a ->
@@ -1411,14 +1499,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 ))
             }
         },
-        "ui.dropEvents" to MethodDef(listOf("accessibility"), true) { p, _programId ->
+        "ui.dropEvents" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
             val a11y = requireA11y()
             JSONObject().apply {
                 put("dropped", a11y.dropEventsBefore(p.optLong("seq", 0L)))
                 put("seq", a11y.eventSeq())
             }
         },
-        "ui.screenshot" to MethodDef(listOf("mediaprojection"), true) { p, _programId ->
+        "ui.screenshot" to MethodDef(listOf("mediaprojection", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->
             val svc = ScreenCaptureController.instance
                 ?: throw BridgeError(
                     CODE_CAPABILITY_MISSING,
@@ -1454,7 +1542,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 }
             }
         },
-        "ui.waitFor" to MethodDef(listOf("accessibility"), false) { p, _programId ->
+        "ui.waitFor" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
             val a11y = requireA11y()
             val selector = p.optJSONObject("selector")
                 ?: throw BridgeError(CODE_INVALID_PARAM, "waitFor 需要 selector")
