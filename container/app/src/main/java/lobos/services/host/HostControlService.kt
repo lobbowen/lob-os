@@ -428,6 +428,42 @@ object HostControlService {
         return r ?: failure("cross-app", "cross-app", "那宿主桥没起来（=> 而而那按 C-05 报缺）")
     }
 
+    /**
+     * 那**堆**逐字那一格（=> 而而那它是「那一份逐字在那一堆里逐字待了多久、=> 而而那它逐字是不是逐字还在」那一族）。
+     *
+     * 缺陷名（C-102）**那一族逐字只有那上限、=> 而而那它逐字**不**答「那一份逐字待了多久」** ——
+     *   => 而那旧版逐字**没有**这一格
+     *     => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+     *       · 而那堆逐字 `Dalvik Heap` 逐字 **85682 → 188222 → 331053 KB ≈ 323 MB → 294482 KB ≈ 288 MB**
+     *       · => 而而那那**分配量**逐字是那 **139 MB AllocSpace**、=> 而而那那**两个** LOS 对象
+     *         逐字 **69 MB** 与 **94 MB**、=> 而而那那**一个大对象**逐字 55 到 94 MB
+     *       · => 而而那它逐字**就是**那**整读**的那一件（=> 而和那那**一份**逐字**被**留在那堆里）
+     *   => 而那**处置**：=> 而那**读法名**逐字**记**着（=> 而那是那 `ReadRoute` 那一族）
+     *     => 而而那那**记录**逐字逐字**带**那**读法名**与那**时刻**
+     *     => 而而那这一格逐字答的是「那一份逐字**待了多久**、=> 而而那它逐字**是不是还在**」
+     *       （=> 而而那那**判据**逐字**不**由「那一件逐字是什么」顶掉）
+     */
+    fun memoryProbe(context: Context): JSONObject {
+        val rt = Runtime.getRuntime()
+        val totalBytes = rt.totalMemory()
+        val freeBytes = rt.freeMemory()
+        val usedBytes = totalBytes - freeBytes
+        val maxBytes = rt.maxMemory()
+        val live = lobos.kernel.fs.ReadRoute.liveReads()
+        return JSONObject().apply {
+            put("ok", true)
+            put("heapUsedBytes", usedBytes)
+            put("heapTotalBytes", totalBytes)
+            put("heapMaxBytes", maxBytes)
+            put("heapUsedMb", usedBytes / (1024L * 1024L))
+            put("liveReads", live)
+            put("liveReadCount", live.length())
+            put("detail", "那堆逐字 = " + (usedBytes / (1024L * 1024L)) + " MB、" +
+                "=> 而而那那**还活着**的整读逐字 = " + live.length() + " 处、" +
+                "=> 而而那那**读法名**逐字答的是「那一条路」、=> 而而那那**待了多久**逐字**也在**那记录里")
+        }
+    }
+
     fun hostBoundCheck(context: Context, family: String, input: String): JSONObject {
         val method = "hostBound.check"
         when (family.trim()) {

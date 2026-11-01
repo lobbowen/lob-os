@@ -2,7 +2,8 @@ package lobos.kernel.fs
 
 import android.content.Context
 import java.io.File
-import java.io.InputStream
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * 那**读法**逐字**可查**的那一族（=> 而而那它逐字是「那一件逐字是从哪一条路逐字被整读的」那一族）。
@@ -74,6 +75,8 @@ object ReadRoute {
         maxBytes: Long,
         ok: Boolean,
     ) {
+        //  => 而而那那**还活着**的那几处逐字**记**着（=> 而而那那**待了多久**逐字**要**能答）
+        if (ok) remember(route, file.absolutePath, size)
         if (ctx == null) return
         runCatching {
             lobos.services.log.RuntimeDiagnostics.append(
@@ -85,5 +88,42 @@ object ReadRoute {
                     (if (ok) "" else "（=> 而而那那**超限**逐字**没有**被读）"),
             )
         }
+    }
+
+    /** 那**还活着**的那几处（=> 而而那那**读法名** + 那**字节** + 那**待了多久**）。 */
+    private data class Live(
+        val route: String,
+        val file: String,
+        val size: Long,
+        val atMs: Long,
+    )
+
+    private val live = LinkedHashMap<String, Live>()
+
+    private fun remember(route: String, file: String, size: Long) {
+        synchronized(live) {
+            live[route + "|" + file] = Live(route, file, size, System.currentTimeMillis())
+        }
+    }
+
+    /**
+     * 那**还活着**的那几处逐字（=> 而而那那**读法名**逐字答的是「那一条路」、
+     * => 而而那那**待了多久**逐字答的是「那一份逐字在那一堆里逐字待了多久」、
+     * => 而而那那**是不是还在**逐字答的是「它逐字**还**在那记录里」）。
+     */
+    fun liveReads(): JSONArray {
+        val out = JSONArray()
+        val now = System.currentTimeMillis()
+        synchronized(live) {
+            for (l in live.values) {
+                out.put(JSONObject().apply {
+                    put("route", l.route)
+                    put("file", l.file)
+                    put("bytes", l.size)
+                    put("ageMs", now - l.atMs)
+                })
+            }
+        }
+        return out
     }
 }

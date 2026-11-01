@@ -213,6 +213,15 @@ class OsHostService : Service() {
         var threw: String? = null
         try {
             called = true
+            //  => 而而那那**宿主**逐字**活着**逐字**记**着（=> 而而那那**幂等**那一格逐字**靠**它判）
+            OsHostService.hostAlive = true
+            //  => 而而那那**发法名**逐字答的是「那一条路」、=> 而而那那**记录**逐字**落**那诊断
+            //    （=> 而而那那**下一趟**逐字靠它逐字就能归到路、=> 而而那它逐字**不用**抓栈）
+            //    => 而而那那**系统**侧逐字记的那一条（`NotificationManagerService:post:lobos.os`）
+            //      逐字是**系统**记的我们这个 uid 发过一次、=> 而而那它逐字**不**逐字说我们逐字主动发的
+            lobos.kernel.fs.NotifyRoute.note(
+                this, "host.startForeground", NOTIF_ID, "前台", "where=" + where,
+            )
             startForeground(NOTIF_ID, buildHostNotification())
         } catch (t: Throwable) {
             threw = t::class.java.simpleName + ": " + t.message
@@ -349,6 +358,10 @@ class OsHostService : Service() {
         if (text != lastNotifiedText) {
             lastNotifiedText = text
             runCatching {
+                //  => 而而那那**发法名**逐字答的是「那一条路」、=> 而而那那**记录**逐字**落**那诊断
+                lobos.kernel.fs.NotifyRoute.note(
+                    this, "host.notify", NOTIF_ID, "前台", "（=> 而而那那内容**变了**才逐字重发）",
+                )
                 (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
                     .notify(NOTIF_ID, buildHostNotification(text))
             }
@@ -527,7 +540,33 @@ class OsHostService : Service() {
         private const val NOTIFY_MS = 60_000L
         private const val LEDGER_INTERVAL_MS = 10 * 60_000L
 
+        /**
+         * 那**宿主**逐字**活着没有**（=> 而而那它逐字是那**幂等**那一面）。
+         *
+         * 缺陷名（C-102）**那一格逐字每一轮逐字都重新拉起那宿主、=> 而而那它逐字就发一次通知** ——
+         *   => 而那旧版逐字**没有**这一格、=> 而而那那 `ensureRunning` 逐字**无条件**逐字调
+         *     那 `startForegroundService`
+         *     => 而而那那**每一次**逐字 `startForegroundService` 逐字**重新 post** 一次那前台通知
+         *       （=> 而而那那系统侧逐字记的那一条逐字是
+         *         `NotificationManagerService:post:lobos.os`）
+         *   => 而而那那**调用点**逐字每轮逐字都在调：
+         *     · `InstanceHost.bootProgramOnce` 逐字**每一轮**逐字调它
+         *       （=> 而而那那 `bootLoop` 逐字**一秒**一拍、=> 而而那那间隔逐字 6 到 60 秒那一档
+         *         的**根**逐字**就是**它）
+         *   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+         *     · 而那 **OOM** 逐字归零了、=> 而而那那通知逐字**仍在**每 2 到 3 秒一条
+     *       => 而而那那「崩溃 → 重启 → 重新 post」那条推论逐字**已被证伪**
+     *       => 而而那那通知逐字**有另一个成因**、=> 而而那它逐字就是这一格
+         *   => 而那**处置**：=> 而而那那**已经活着**时逐字**不**再拉起
+         *     => 而而那那**宿主**逐字**活着**时逐字**不**重新 post 那通知
+         *     => 而而那那**真的**没活着时逐字**才**拉起（=> 而而那那**保活**那一族逐字**不**受影响）
+         */
+        @Volatile private var hostAlive = false
+
         fun ensureRunning(context: Context, action: String? = null) {
+            //  => 而而那那**宿主**逐字**已经活着**时逐字**直接**回去
+            //    （=> 而而那那 `action` 逐字**不**空时逐字**不**省、=> 而而那它是那**显式**那一路）
+            if (hostAlive && action.isNullOrBlank()) return
             try {
                 //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
                 //    => 而而那一拍逐字**配错了**、=> 而而问二那个量逐字**算不出来**

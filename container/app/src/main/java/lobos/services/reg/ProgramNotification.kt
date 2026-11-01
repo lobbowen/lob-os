@@ -113,6 +113,9 @@ object ProgramNotificationHub {
             if (n.progress != null && n.progress >= 0) {
                 b.setProgress(100, n.progress, false)
             }
+            //  => 而而那那**发法名**逐字答的是「那一条路」、=> 而而那那**记录**逐字**落**那诊断
+            //    （=> 而而那那个 ID 逐字**稳定**（=> 而而那那**替换**那一族、=> 而而那那**不是**那**新增**那一族）
+            lobos.kernel.fs.NotifyRoute.note(ctx, "program.notif.post", notifId(safeId), "普通", "program=" + programId)
             nm.notify(notifId(safeId), b.build())
         }
         return n

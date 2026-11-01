@@ -96,6 +96,8 @@ class HostControlActivity : Activity() {
         val crossAppMethod = EditText(this).apply { hint = "那一族里的一格（app.launch / app.listInstalled / ui.tap）" }
         val crossAppArg = EditText(this).apply { hint = "给它的参数（包名 / 坐标）" }
         val crossApp = Button(this).apply { text = "走那跨 app 边界那一族（产品入口，真实执行）" }
+        //  => 而那那**堆**逐字那一格逐字一个入口（=> 而而那那**读法名**逐字答的是「那一条路」）
+        val memProbe = Button(this).apply { text = "核那堆逐字与那还活着的那几处整读（真实执行）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
         //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
         //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
@@ -203,6 +205,10 @@ class HostControlActivity : Activity() {
             ).toString()
             result.text = r
         }
+        memProbe.setOnClickListener {
+            val r = HostControlService.memoryProbe(this).toString()
+            result.text = r
+        }
         crossApp.setOnClickListener {
             val params = org.json.JSONObject()
             val a = crossAppArg.text.toString().trim()
@@ -261,6 +267,7 @@ class HostControlActivity : Activity() {
         content.addView(crossAppMethod)
         content.addView(crossAppArg)
         content.addView(crossApp)
+        content.addView(memProbe)
         content.addView(terminalOut)
         content.addView(terminalInput)
         content.addView(terminalOpen)

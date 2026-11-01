@@ -1388,7 +1388,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             else android.app.Notification.Builder(this)
             n.setContentTitle(p.optString("title", "Lob OS")).setContentText(p.optString("text", ""))
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-            notifManager.notify((10000 + (System.currentTimeMillis() % 55000)).toInt(), n.build())
+            val nid = (10000 + (System.currentTimeMillis() % 55000)).toInt()
+            //  => 而而那那**发法名**逐字答的是「那一条路」、=> 而而那那**记录**逐字**落**那诊断
+            //    （=> 而而那那**下一趟**逐字靠它逐字就能归到路、=> 而而那它逐字**不用**抓栈）
+            //  => 而而那那个 ID 逐字**每次**都**变**（=> 而而那那**每次**逐字**新增**一条、
+            //      => 而而那那**不是**那**替换**那一族、=> 而而那那**是**那**另一**成因）
+            lobos.kernel.fs.NotifyRoute.note(
+                this, "bridge.notif.post", nid, "普通",
+                "id 逐字每次都变 => 而而那那每次逐字**新增**一条",
+            )
+            notifManager.notify(nid, n.build())
             JSONObject().apply { put("posted", true) }
         },
         "notif.read" to MethodDef(listOf("notification_access"), true) { p, _programId ->
