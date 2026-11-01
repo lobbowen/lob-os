@@ -554,6 +554,22 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return a11y
     }
 
+    /**
+     * 那**无障碍**那一格逐字（=> 而而那它逐字**只**要那服务**连着**）。
+     *
+     * 缺陷名（C-102）**那一格逐字把「那读数那一族」与「那动手那一族」逐字**混**在一起** ——
+     *   => 而那旧版逐字**没有**这一格、=> 而而那那 `ui.*` 那一族九格逐字**一律**调那一个
+     *   => 而那**处置**：=> 而而那那**动手**那四格（=> 而那 `ui.tap` / `ui.swipe` /
+     *     `ui.inputText` / `ui.globalAction`）逐字调那 `requireOurCarrier` 那一格
+     *     （=> 而而那它逐字**先核**那前台逐字是不是我们那一个）
+     *   => 而而那那**只读**那四格（=> 而那 `ui.getUiTree` / `ui.events` / `ui.dropEvents` /
+     *     `ui.waitFor`）逐字**只**调这一格、=> 而而那它们逐字**不动**
+     *     => 而而那那 `ui.getUiTree` 那一格逐字是核那**落点**的那手段、
+     *       => 而而那它本身逐字**不能**被那前置限制
+     *       => 而而那那**落点**逐字在不在我们那一面上逐字**由那调用方**逐字自己判
+     *     => 而而那那按 **C-103**「那一问取到了另一问的那一面」逐字**不成立**
+     *       （=> 而而那读数那一族与那动手那一族逐字**各**答一件事）
+     */
     private fun requireA11y(): OsAccessibilityService =
         OsAccessibilityService.instance
             ?: throw BridgeError(CODE_CAPABILITY_MISSING, "无障碍服务未连接（请在系统设置中开启 Lob OS 无障碍服务）")
@@ -1422,13 +1438,27 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
             JSONObject().apply { put("launched", pkg) }
         },
-        "app.openUrl" to MethodDef(listOf("base"), false) { p, _programId ->
+        "app.openUrl" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
+            //  缺陷名（C-102）**那一族逐字能拉起手机上**别的** app、=> 而而那它逐字没有那一档** ——
+            //   => 而那旧版逐字是 `MethodDef(listOf("base"), false)`
+            //     => 而而那它逐字**没有** `ApiSpec.GROUP_CROSS_APP`
+            //       （=> 而而那那 `app.launch` 与那 `app.listInstalled` 逐字都带了）
+            //     => 而而那它逐字是 `ACTION_VIEW` 逐字拉起**浏览器**
+            //       => 而而那那**浏览器**逐字是手机上**另一个** app
+            //       => 而而那它逐字**也**逐字能碰到设备上别的 app
+            //     => 而而那它是那一族逐字**漏掉**的那一格
+            //   => 而那**处置**：=> 而而那它逐字**也**要带那一档、=> 而而那它逐字**默认不许**
+            //     => 而而那那**其余**的逐字按 **C-05** 报缺、=> 而**不**静默回退
             val url = p.optString("url", "")
             if (url.isEmpty()) throw BridgeError(CODE_INVALID_PARAM, "url 为空")
             val ai = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
             ai.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (ai.resolveActivity(packageManager) == null) throw BridgeError(CODE_INVALID_PARAM, "无可用浏览器: $url")
             startActivity(ai)
+            RuntimeDiagnostics.append(
+                this, "app-open-url", true, "拉起浏览器（那一件逐字在仓内清单声明过的那几件之外）",
+                "url=" + url + "（=> 而而那它逐字**只**许在那一档**显式声明**之后才**能**跑）",
+            )
             JSONObject().apply { put("opened", true); put("url", url) }
         },
         "ui.tap" to MethodDef(listOf("accessibility", ApiSpec.GROUP_CROSS_APP), true) { p, _programId ->

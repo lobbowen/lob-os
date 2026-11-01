@@ -317,6 +317,78 @@ object HostControlService {
      *   => 而而那那**九族**逐字是：kmi 三选一 / lkm 两选一 / 目标机型任一不一致 /
      *     UART 两选一 / linker64 两选一 / 文件三选一 / 内存两选一 / 安全越权被拒并留审计 / 时间两选一
      */
+    /**
+     * 那**九族**逐字那**positive** 那一侧（=> 而而那它是「那一族逐字合法时逐字答什么」那一族）。
+     *
+     * 缺陷名（C-102）**那一族逐字只有那 negative 那一侧、=> 而而那 positive 那一侧逐字没有** ——
+     *   => 而那旧版逐字**只有**那 `hostBoundCheck` 那一格（=> 而而那它逐字答「那**坏输入**被吃进去以后报出什么」）
+     *     => 而而那那**合法**那一侧逐字**没有**入口、=> 而而那 07 那一侧逐字**取不到**那 positive 那一读
+     *   => 而那**形状**逐字照 M7-05 与 M7-12 那两族（=> 而而那它们逐字是同形）：
+     *     · M7-05 那 positive 逐字是「那**合法** ELF 逐字跑起来、=> 而而那退出码逐字是那期望值、
+     *       => 而而那那 stderr 逐字**空**」
+     *     · M7-12 那 positive 逐字是「那三类里逐字合法的那一类逐字建得出来、
+     *       => 而而那它逐字类型与权限逐字相符」
+     *   => 而那**内容**逐字每条钉它自己那一个具体值（=> 而按 C-05 不猜填）
+     *   => 而那**两侧**逐字是**同一族的两侧**、=> 而而那它们逐字各答一件事、
+     *     => 而依 **C-105** 逐字**不合并**（=> 而而那那 negative 那一侧**不**被这一格顶掉）
+     */
+    fun hostBoundPositive(context: Context, family: String, input: String): JSONObject {
+        val method = "hostBound.positive"
+        when (family.trim()) {
+            "kmi" -> {
+                val r = kmiCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那一件逐字**是**那 KMI 符号清单、=> 而而那它逐字**能**解析出那符号")
+            }
+            "lkm" -> {
+                val r = lkmCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那一件逐字**是**那模块、=> 而而那它逐字**能**加载")
+            }
+            "target" -> {
+                val r = targetCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那声明逐字与那实际逐字**一致**")
+            }
+            "uart" -> {
+                val r = uartCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那节点逐字**在位**、=> 而而那它逐字**有**输出")
+            }
+            "linker64" -> {
+                val r = linker64Check(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那一件逐字**是**那 ELF、=> 而而那那 e_type 逐字是 2 或 3")
+            }
+            "file" -> {
+                val r = fileCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那路径逐字**在**那 LOB-OS 自己那一份里面、=> 而而那它逐字**在位**")
+            }
+            "memory" -> {
+                val r = memoryCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那已用逐字**没超**了那声明限额")
+            }
+            "security" -> {
+                val r = securityCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那路径逐字**不**越权")
+            }
+            "time" -> {
+                val r = timeCheck(context, input)
+                return r.put("side", "positive")
+                    .put("expect", "那墙上时钟逐字**没倒**、=> 而而那那单调时钟那一趟逐字**没超**了那预算")
+            }
+            else -> return failure(
+                method, "host-bound-positive",
+                "那一族逐字不在那九族里：" + family +
+                    "（=> 而而那那九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
+                    "=> 而而那按 C-05 报缺）",
+            )
+        }
+    }
+
     fun hostBoundCheck(context: Context, family: String, input: String): JSONObject {
         val method = "hostBound.check"
         when (family.trim()) {

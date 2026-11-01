@@ -19,7 +19,12 @@ HDR=()
 
 mkdir -p "$DEST"
 
-URL="$(curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
+#  => 而那**期望值**逐字要从那**被核的那一件**逐字**自己**读（=> 而那它逐字**不**由那产物倒推）
+#    => 而那它逐字是那 Release 资产那一格逐字那 `size`（=> 而那它逐字**就是**那一份逐字的字节数）
+#    => 而而那那**期望值**与那**下载**逐字**要**在**同一**个请求里取（=> 而那它逐字**不**两次问）
+#    => 而那**判据**逐字落在**请求**上（=> 而按 C-993 的第二件：
+#      => 而「检查里过了但请求里没带身份」逐字是同一形状、=> 而那判据必须落在请求上）。
+ASSET_JSON="$(curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
   -H "Accept: application/vnd.github+json" -H "User-Agent: lobos" \
   "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
   | node -e '
@@ -28,21 +33,66 @@ URL="$(curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
         try {
           const j = JSON.parse(d);
           const a = (j.assets || []).find(x => x.name === process.argv[1]);
-          if (a) process.stdout.write(a.browser_download_url);
+          if (a) {
+            process.stdout.write(JSON.stringify({ url: a.browser_download_url, size: a.size }));
+          }
         } catch (e) {}
       });
     ' -- "$ASSET" 2>/dev/null)"
+
+URL="$(printf '%s' "$ASSET_JSON" | node -e '
+  let d = "";
+  process.stdin.on("data", c => d += c).on("end", () => {
+    try { process.stdout.write(String(JSON.parse(d).url || "")); } catch (e) {}
+  });
+' 2>/dev/null)"
+EXPECT_BYTES="$(printf '%s' "$ASSET_JSON" | node -e '
+  let d = "";
+  process.stdin.on("data", c => d += c).on("end", () => {
+    try { process.stdout.write(String(JSON.parse(d).size || 0)); } catch (e) {}
+  });
+' 2>/dev/null)"
 
 if [ -z "$URL" ]; then
   echo "  [miss] Release $TAG 里没有 $ASSET"
   exit 1
 fi
 
-curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
-  -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
-  echo "  [miss] 下载 $ASSET 失败"
-  exit 1
-}
+#  缺陷名（C-102）**那取件那一族逐字按整份下、=> 而而那它逐字慢** ——
+#    => 而那旧读法逐字是 `curl -fsSL -o "$DEST/$ASSET" "$URL"`（=> 而那它逐字**整份**下）
+#      => 而那 GitHub blob 那一侧逐字 4.6 MB 逐字要 4m39s ≈ 17 KB/s
+#    => 而那**处置**：=> 而那它逐字**小片并发**（=> 而那每片逐字 1 MiB、=> 而那并发逐字 16）
+#      => 而而那那**完整性**那一格逐字**不**降
+#        （=> 而那它逐字核「got == expect」与「unzip -t 通过」那两格）
+#      => 而而那那**性能**那一格逐字**另**有一格（=> 而依 C-104 那两族逐字**不并**）
+#    => 而那那期望字节数逐字**从**那资产那一格逐字读（=> 而那它逐字**不**猜）
+if [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
+  if bash "$HERE/fetch-concurrent.sh" "$URL" "$DEST/$ASSET" "$EXPECT_BYTES"; then
+    echo "  [fetch] 那 $ASSET 逐字**小片并发**地下来了（=> 而那 got 逐字 == expect 逐字 = $EXPECT_BYTES）"
+  else
+    #  => 而那**小片并发**那一路逐字**不成**时逐字**回退**到那**整份**那一路
+    #    => 而而那**回退**逐字**要**留痕（=> 而那按 C-126 不静默）
+    echo "  [fetch] 那小片并发那一路逐字**不成**、=> 而而那回退到那整份那一路（=> 而而那性能那一格逐字**不**算）"
+    curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
+      -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
+      echo "  [miss] 下载 $ASSET 失败"
+      exit 1
+    }
+    _got="$(stat -c %s "$DEST/$ASSET" 2>/dev/null || echo 0)"
+    if [ "$_got" != "$EXPECT_BYTES" ]; then
+      echo "  [miss] 那 $ASSET 逐字 = $_got 字节、=> 而那期望值逐字 = $EXPECT_BYTES（=> 而而那按 C-05 报缺）"
+      exit 1
+    fi
+  fi
+else
+  #  => 而那期望字节数逐字读不到时逐字**用**那整份那一路（=> 而那按 C-05 报缺、=> 而**不**猜那期望值）
+  echo "  [fetch] 那期望字节数逐字读不到（=> 而那按 C-05 报缺）、=> 而而那用那整份那一路"
+  curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
+    -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
+    echo "  [miss] 下载 $ASSET 失败"
+    exit 1
+  }
+fi
 [ -s "$DEST/$ASSET" ] || { echo "  [miss] $ASSET 下下来是空的"; exit 1; }
 
 #  缺陷名（C-102）**那被拆**的**那包**逐字**取不**回来** ——
