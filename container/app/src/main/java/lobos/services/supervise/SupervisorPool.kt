@@ -83,61 +83,53 @@ class SupervisorPool(private val host: Service) {
         //  => 而那**一轮**逐字**解多轮**（=> 而那上限逐字是那链条的层数、=> 而而那它逐字防「起起来又注销」那种循环）
         var rounds = 0
         while (rounds < MAX_SERVICE_ROUNDS) {
-            val ready = ServiceRegistry.ready(host, alive)
-                .filter { !alive.contains(it.id) }
-            if (ready.isEmpty()) break
+            //  缺陷名（C-102）**那一族逐字只跑一次、=> 而而那它逐字坏了以后逐字永远不重建** ——
+            //   => 而那旧版逐字是 `for (d in ready) { if (services.containsKey(d.id)) continue; … }`
+            //     => 而而那那**动作**逐字**只**在**第一次**起的时候跑
+            //       => 而而那那**闭包**逐字**再**也不会跑、=> 而而那它逐字**再**也不会抛
+            //         => 而而那那**判健康**逐字**只看**「那一次抛没抛」
+            //           => 而而那那一族逐字**起**过一次之后逐字它的闭包逐字再也不会跑
+            //             => 而而那它逐字再也不会被判不健康、=> 而而那那一笔逐字落的「注销 + 立刻重起」逐字永远触发不了
+            //   => 而而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+            //     · 而那 `files/dev` 那一族逐字**核**仍**答对**（=> 而那「类型错」那一类逐字答得对）
+            //     · => 而而那它逐字**不重建**（=> 而而那 15 拍 / 120 秒逐字 `files/dev/exec` 逐字只剩那个目录）
+            //       => 而而那那**复原**只能靠**重启 App**
+            //   => 而那**处置**：=> 而那那**动作**逐字**每一轮**逐字都跑
+            //     => 而而那那**结果**逐字**记**着（=> 而那它是「上一次跑成功没有」）
+            //     => 而而那那**判健康**逐字按那结果（=> 而而那它逐字**不**是「抛异常没有」）
+            //     => 而而那那**闭包**逐字**不**再是那**动作**（=> 而而那它是那**注销**那一件）
+            val readyAll = ServiceRegistry.ready(host, alive)
+            if (readyAll.isEmpty()) break
             var progressed = false
-            for (d in ready) {
+            for (d in readyAll) {
                 if (services.containsKey(d.id)) {
-                    //  缺陷名（C-102）**那一族逐字坏了以后逐字永远不重建** ——
-                    //   => 而那旧版逐字是 `if (services.containsKey(d.id)) continue`
-                    //     => 而而那那**服务**逐字**起过**一次就**再**也不跑那动作
-                    //     => 而而那那**动作**逐字**失败**时逐字**没有任何一处**重试
-                    //       （=> 而那 `runCatching { … }` 逐字**吞掉**那失败、=> 而而那它逐字**只**记一条诊断）
-                    //   => 而而那**后果**（07 本轮逐字实测到、Lead 采纳那一条）：
-                    //     · 而那 `files/dev` 那一族逐字被一个错形状**永久弄坏**
-                    //       （=> 而那 `execNode` 逐字写不进那个目录 => 而那 render 逐字抛
-                    //         => 而而那那 runCatching 逐字**吞掉** => 而而那那一族逐字「起」逐字**只跑一次**
-                    //         （=> 而那 `SupervisorPool` 逐字 `if (services.containsKey(d.id)) continue`））
-                    //       => 而而那 `files/dev` 逐字**不再重建**、=> 而而那那**复原**只能靠**重启 App**
-                    //   => 而那**处置**：=> 而而那那**动作**逐字**失败**时逐字把那一族逐字**注销**
-                    //     => 而而那**下一轮**逐字**重新起**它（=> 而而那它逐字**自愈**）
-                    //     => 而而那那**判据**逐字是「那一次动作逐字成没成」（=> 而那它是那**动作**自己的事）
-                    //     => 而而那那**诊断**逐字**照记**（=> 而那按 C-126 不静默）
-                    val unhealthy = unhealthyServices.remove(d.id)
-                    if (unhealthy != null) {
-                        //  => 而而那那**注销**逐字**同一轮**逐字就把那一族逐字**重起**
-                        //    （=> 而那旧版逐字是 `continue`、=> 而而那它逐字**只**注销、=> 而而那它逐字**等下一轮**）
-                        //      => 而而那那节拍逐字是 **15 秒**（=> 而那 `ResidencyPolicy.FAST_TICK_MS`）
-                        //      => 而而那那**两轮**逐字**要** 30 秒、=> 而而那 07 本轮逐字只等了 12 拍 / 96 秒
-                        //        而而那**类型错**那一类逐字**仍然没**重建
-                        //    => 而那**处置**：=> 而而那那**注销**之后**立刻**逐字把它当那**没起过**的再走一遍
-                        //      => 而而那那**自愈**逐字**一轮之内**逐字**走完**
-                        //      => 而而那那**判据**逐字**不**变（=> 而那它是「那一次动作逐字成没成」）
-                        services.remove(d.id)?.invoke()
-                        alive.remove(d.id)
-                        Journal.note(host, "service", null, "注销不健康的服务并立即重起", "id=" + d.id)
-                        //  => 而而那那**重起**逐字**就在**这一轮（=> 而而那它逐字**不**等下一轮）
-                        val ok2 = runCatching {
-                            d.act(host)
-                            true
-                        }.getOrElse { e ->
-                            Log.w(TAG, "内置服务重起失败: " + d.id, e)
-                            RuntimeDiagnostics.append(
-                                host, "service", false, "内置服务重起失败 " + d.id,
-                                e.javaClass.name + ": " + (e.message ?: ""),
-                            )
-                            false
+                    //  => 而而那那**动作**逐字**每一轮**逐字都跑（=> 而而那它逐字**不**只在第一次跑）
+                    //    => 而而那那**结果**逐字**记**着、=> 而而那那**判健康**逐字按那结果
+                    //    => 而而那那**判据**逐字是「那**上一次**跑成功没有」（=> 而而那它逐字**不**是「抛异常没有」）
+                    val actOk = runCatching {
+                        d.act(host)
+                        true
+                    }.getOrElse { e ->
+                        Log.w(TAG, "内置服务运行失败: " + d.id, e)
+                        RuntimeDiagnostics.append(
+                            host, "service", false, "内置服务运行失败 " + d.id,
+                            e.javaClass.name + ": " + (e.message ?: ""),
+                        )
+                        false
+                    }
+                    val wasHealthy = !unhealthyServices.contains(d.id)
+                    if (!actOk) {
+                        //  => 而而那那**上一次跑成没有**逐字**记**着（=> 而而那它逐字**不**再抛才**算**好）
+                        unhealthyServices.add(d.id)
+                        if (wasHealthy) {
+                            Journal.note(host, "service", null, "内置服务不健康（下一轮重起）", "id=" + d.id)
                         }
-                        if (!ok2) {
-                            unhealthyServices.add(d.id)
-                            continue
-                        }
+                        continue
+                    }
+                    //  => 而而那那**跑成**了 => 而而那那**健康**逐字**恢复**
+                    if (!wasHealthy) {
                         unhealthyServices.remove(d.id)
-                        services[d.id] = { noopUnit() }
-                        alive.add(d.id)
-                        progressed = true
-                        Journal.note(host, "service", null, "重起内置服务", "id=" + d.id)
+                        Journal.note(host, "service", null, "内置服务恢复健康", "id=" + d.id)
                     }
                     continue
                 }
