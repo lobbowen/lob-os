@@ -115,12 +115,9 @@ static void diag_raw(const char *text) { diag_to(FRAME_ERROR, text); }
 
 static void note_raw(const char *text) { diag_to(FRAME_NOTE, text); }
 
-static int alloc_slot(void) {
-  for (int i = 0; i < MAX_SESSIONS; i++) {
-    if (!g_sessions[i].open) return i;
-  }
-  return -1;
-}
+//  缺陷名（C-102）**那一格逐字自己分槽、=> 而而那它逐字跟宿主侧分的那一号逐字错开** ——
+//   => 而而那它逐字**删掉**了（=> 而而那槽号逐字现在**由**那帧带来的那个号决定、=> 而那宿主侧逐字分）
+//   => 而而那那**号**逐字**必须**在 0..MAX_SESSIONS 那一族里、=> 而而那宿主侧逐字**也是**那样分的
 
 static void child_fail(int out_fd, int line, const char *what) {
     char buf[160];
@@ -273,15 +270,30 @@ int main(void) {
 
   while (!g_stop) {
     struct pollfd fds[1 + MAX_SESSIONS];
+    //  缺陷名（C-102）**那一格逐字按那数组下标反推那会话号、=> 而而那它逐字在有的会话关掉之后逐字就错位** ——
+    //   => 而那旧版逐字是 `fds[nfds].fd = g_sessions[i].master;`（=> 而而那 nfds 逐字**只数**那 open 的）
+    //     => 而而那读那一侧逐字是 `int sid = i - 1;`（=> 而那 i 逐字是那**数组下标**）
+    //     => 而而那那数组下标逐字**不**等于那**会话槽号**（=> 而而那有的会话关掉之后逐字**前移**了）
+    //   => 而而那**后果**（07 本轮逐字核出、Lead 逐字核过）：
+    //     · 而那 `exec` 那一趟逐字用那**槽 0**、=> 而而那它跑完逐字**退了**（=> 而而那槽 0 逐字关掉）
+    //     · 而而那那**终端**那一趟逐字用那**槽 1**
+    //     · => 而而那那数组下标逐字**前移**了、=> 而而那那 sid 逐字逐字**算错**
+    //     · => 而而那那终端那一趟的输出逐字逐字**发到槽 0** 去、=> 而而那那 stdout 逐字**没回来**
+    //       （=> 而那设备侧逐字「stdout 逐字空、=> 而那退出码逐字 0」、=> 而那那命令逐字**没有进程**）
+    //   => 而那**处置**：=> 而而那那**槽号**逐字**跟着**那 fd 逐字一起记
+    //     => 而而那那 sid 逐字**不再**是那数组下标减一
+    int fds_sid[1 + MAX_SESSIONS];
     int nfds = 0;
     fds[nfds].fd = in_fd;
     fds[nfds].events = POLLIN;
+    fds_sid[nfds] = -1;
     nfds++;
     for (int i = 0; i < MAX_SESSIONS; i++) {
       if (g_sessions[i].open) {
         fds[nfds].fd = g_sessions[i].master;
         fds[nfds].events = POLLIN;
         fds[nfds].revents = 0;
+        fds_sid[nfds] = i;          /* 那一格逐字是那**真的**会话槽号 */
         nfds++;
       }
     }
@@ -317,8 +329,27 @@ int main(void) {
 
       switch (h.kind) {
         case FRAME_OPEN: {
-          int slot = alloc_slot();
-          if (slot < 0) { send_error(out_fd, "会话数已满"); break; }
+          //  缺陷名（C-102）**那一格逐字自己分槽、=> 而而那它逐字跟宿主侧分的那一号逐字错开** ——
+          //   => 而那旧版逐字是 `int slot = alloc_slot();`
+          //     => 而而那那帧带来的 sid 逐字（=> 而那是宿主侧逐字 `allocSid()` 逐字分的那个）
+          //       逐字**根本没用**（=> 而而那它逐字**被丢掉**了）
+          //     => 而而那那 `FRAME_READY` 逐字回的逐字是那**真的**槽号
+          //     => 而而那宿主侧逐字 `onReady` 逐字按那**真的**槽号逐字建 Session、
+          //       而而那那 latch 逐字是按宿主侧**自己分的**那个号逐字挂的
+          //     => 而而那那**号**逐字**可能**不一致（=> 而而那那 latch 逐字**永远**等不到）
+          //   => 而那**处置**：=> 而那**槽**逐字**用**那帧带来的那个号
+          //     （=> 而而那宿主侧逐字 `allocSid()` 逐字从 0 逐字往上找、=> 而而那它逐字**最**多 8 个）
+          //     => 而而那那号逐字**已经在用**时逐字**报缺**（=> 而按 C-05 不猜填）
+          int slot = (int) h.sid;
+          if (slot < 0 || slot >= MAX_SESSIONS) {
+            send_error(out_fd, "会话号越界（宿主侧只分 0..7 那一族）");
+            break;
+          }
+          if (g_sessions[slot].open) {
+            send_error(out_fd, "会话号已被占用");
+            break;
+          }
+
           char **argv = NULL;
           int argc = parse_argv(payload, h.length, &argv);
           if (argc <= 0 || !argv) { free(payload); send_error(out_fd, "OPEN 的 argv 为空"); break; }
@@ -373,7 +404,8 @@ int main(void) {
 
     for (int i = 1; i < nfds; i++) {
       if (!(fds[i].revents & (POLLIN | POLLHUP | POLLERR))) continue;
-      int sid = i - 1;
+      int sid = fds_sid[i];        /* 那一格逐字是那**真的**会话槽号（=> 而而那不是那数组下标减一） */
+      if (sid < 0 || sid >= MAX_SESSIONS) continue;
       if (!g_sessions[sid].open) continue;
       static char buf[FRAME_MAX];
       ssize_t n = read(g_sessions[sid].master, buf, sizeof(buf));

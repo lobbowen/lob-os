@@ -124,12 +124,35 @@ object PtySession {
 
         internal fun markClosed() { closed.set(true) }
 
+        /**
+         * 关掉那一条会话（=> 而而那它逐字**把**那号逐字**还**给那 native 那一族）。
+         *
+         *  缺陷名（C-102）**这一格逐字只发那一帧、=> 而而那那号逐字在**两边**逐字**错开**了** ——
+         *   => 而那旧版逐字是 `if (closed.compareAndSet(false, true)) host.send(F_CLOSE, sid, …)`
+         *     => 而而那那 native 那一族逐字 `session_close` 逐字 `memset(&g_sessions[sid], 0, …)`
+         *       => 而而那那**槽**逐字**已经**清掉了
+         *     => 而而那那 Kotlin 那一族逐字那 `sessions` 那一族逐字**还留着**那一格
+         *       => 而而那那 `allocSid` 逐字**跳过**那一号、=> 而而那那 native 逐字**复用**它
+         *       => 而而那那**号**逐字**错开**了
+         *       => 而而那那**后果**：=> 而而那那 `FRAME_READY` 逐字回的号与那 `sessions` 那一族
+         *         逐字对不上、=> 而而那那 latch 逐字**永远**等不到、=> 而而那那**输出**逐字**找不到**那一格
+         *   => 而那**处置**：=> 而那这一格逐字**关**的时候逐字**同时**把那一号从那 `sessions` 那一族逐字去掉
+         *     => 而而那那**两边**逐字**同一**套号、=> 而而那那**号**逐字**不会**错开
+         */
         fun close() {
-            if (closed.compareAndSet(false, true)) host.send(F_CLOSE, sid, ByteArray(0))
+            if (closed.compareAndSet(false, true)) {
+                host.send(F_CLOSE, sid, ByteArray(0))
+                host.releaseSid(sid)
+            }
         }
     }
 
     class Host internal constructor(pb: ProcessBuilder, private val ctx: Context? = null) : AutoCloseable {
+
+        companion object {
+            /** 那**会话数**逐字**跟**那 native 那一族逐字**一样**（=> 而而那它逐字是 8）。 */
+            const val MAX_SESSIONS = 8
+        }
 
         private val proc: Process = pb.start()
         private val toHost = DataOutputStream(proc.outputStream)
@@ -204,10 +227,41 @@ object PtySession {
             return s
         }
 
-        private fun allocSid(): Int {
-            for (i in 0..255) if (!sessions.containsKey(i)) return i
-            throw IllegalStateException("会话数已满（256）")
+        /**
+         * 那**会话号**逐字**跟着**那 native 那一族逐字分的**槽**走
+         *   （=> 而而那它逐字**不**自己另分一套）。
+         *
+         *  缺陷名（C-102）**两边逐字各自分号、=> 而而那它们逐字会错开** ——
+         *   => 而那旧版逐字是 `for (i in 0..255) if (!sessions.containsKey(i)) return i`
+         *     => 而而那那 native 那一族逐字 `alloc_slot()` 逐字**只**在 0..MAX_SESSIONS（=> 而那是 8）里分
+         *     => 而而那那 `FRAME_OPEN` 那一族逐字**根本不用**那帧带来的 sid
+         *       （=> 而那 `int slot = alloc_slot();` 逐字**自己**分）
+         *     => 而而那那 `FRAME_READY` 逐字回的逐字是那**真的**槽号
+         *     => 而而那那 Kotlin 那一族逐字 `onReady` 逐字按那**真的**槽号逐字建 Session
+         *     => 而而那那 Kotlin 那一族逐字**自己**分的那个 sid 逐字**只**用在发那帧上
+         *       （=> 而那它逐字**被丢掉**了）
+         *     => 而而那**后果**（=> 而那槽复用之后）：=> 而那 native 逐字**复用**槽 0、
+         *       而而那那 Kotlin 逐字给 2、=> 而而那那**号**逐字**不一致**
+         *       => 而而那那 `sessions` 那一族逐字**按号**索引、=> 而而那它逐字**对不上**
+         *   => 而那**处置**：=> 而那**会话号**逐字**就用**那 native 逐字回的那个**槽号**
+         *     => 而而那它逐字**只**从那帧上来（=> 而而那它逐字**不**自己另分）
+         *     => 而而那发那帧那一格逐字**不再**带一个自己分的号（=> 而那它逐字**没有**用）
+         */
+        /** 把那一号逐字**还**回去（=> 而而那它逐字**跟**那 native 那一族逐字**同步**）。 */
+        @Synchronized
+        internal fun releaseSid(sid: Int) {
+            sessions.remove(sid)
+            ready.remove(sid)
         }
+
+        private fun allocSid(): Int {
+            //  => 而那那号逐字**跟**那 native 那一族逐字**同一**个范围
+            //    （=> 而而那那 native 那一族逐字 `MAX_SESSIONS` 逐字是 8）
+            //    => 而而那宿主侧逐字**分**的号逐字**必须**在那个范围里、=> 而而那它逐字**才**是那**真的**号
+            for (i in 0 until MAX_SESSIONS) if (!sessions.containsKey(i)) return i
+            throw IllegalStateException("会话数已满（$MAX_SESSIONS）")
+        }
+
 
         @Synchronized
         internal fun send(kind: Int, sid: Int, payload: ByteArray) {
