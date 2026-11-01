@@ -40,6 +40,12 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private var nodeProcess: Process? = null
     private var wakeLock: PowerManager.WakeLock? = null
+
+    /**
+     * 那**上一次**查那远端逐字是什么时候（=> 而而那它逐字是那**节律**那一族那一格）。
+     *   => 而而那它逐字 **0** 逐字表示「**还**没查过」（=> 而而那那**第一次**逐字**要**查）
+     */
+    @Volatile private var lastOtaCheckAtMs: Long = 0L
     private val bootExec = Executors.newSingleThreadExecutor()
     @Volatile private var bootLoopActive = false
     @Volatile private var keepRunning = true
@@ -85,20 +91,53 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         scheduleBootLoop()
     }
 
+    /**
+     * 那** wakelock** 那一格逐字（=> 而而那它逐字**只**在那一段逐字里持有）。
+     *
+     * 缺陷名（C-102）**那一格逐字每轮逐字 acquire 一把、=> 而而那它逐字用那 `setReferenceCounted(false)`** ——
+     *   => 而而那那 `setReferenceCounted(false)` 逐字是那**关键**（=> 而 Lead 本机实读成立）：
+     *     · 而而那**重复** acquire 逐字**不会**累积引用计数
+     *       => 而而那它逐字会把那**前面**的持有逐字**延长**
+     *       => 而而那它逐字**最后**那一把逐字**覆盖掉**前面那些
+     *   => 而而那**后果**（Lead 本机实测的读数，**值是跑出来的**）：
+     *     · 而那 CPU 占用率逐字 = **0.0%**（=> 而那 CPU 逐字**不是**那耗电的成因）
+     *     · => 而而那那**三个同名** wakelock 逐字是那**真凶**
+     *       （=> 而那唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 / 19:53:16 / 19:54:17 / 19:54:52
+     *         逐字都是 `ACQ lobos:runtime (partial)`、=> 而而那间隔逐字 6 到 60 秒、
+     *         => 而而那每一把逐字持有 30 到 60 秒）
+     *   => 而那**处置**：=> 而那**引用计数**逐字**开着**（=> 而而那重复 acquire 逐字**累积**、
+     *       => 而而那它逐字**不**会**覆盖**前面那些）
+     *     => 而而那那**释放**逐字逐字**配**上那 acquire 逐字（=> 而而那引用计数逐字**回**零）
+     *     => 而而那那**锁**逐字**只**在「那**启动**那一段」逐字里持有
+     *       （=> 而而那程序**活着**的那整段逐字**不该**一直占着）
+     */
     private fun acquireBriefWakeLock(timeoutMs: Long) {
         try {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lobos:runtime").apply {
-                setReferenceCounted(false)
-                acquire(timeoutMs)
-            }
+            //  缺陷名（C-102）**那一格逐字每轮逐字新建一把同名锁、=> 而而那它逐字就攒下多把** ——
+            //   => 而那旧版逐字是 `wakeLock = pm.newWakeLock(…)`（=> 而而那它逐字**在**每次 acquire 逐字**都新建**）
+            //     => 而而那那**名字**逐字**一样**（=> 而而那 `lobos:runtime`）
+            //     => 而而那那**多把**在 `dumpsys power` 逐字**看**成**一把**（=> 而而那那**名字**一样）
+            //       => 而而那那唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 /
+            //         19:53:16 / 19:54:17 / 19:54:52 逐字都是 `ACQ lobos:runtime (partial)`、
+            //         => 而而那那间隔逐字 6 到 60 秒、=> 而而那每一把逐字持有 30 到 60 秒
+            //       => 而而那那 CPU 占用率逐字 = **0.0%**（=> 而而那 CPU 逐字**不是**那耗电的成因）
+            //   => 而那**处置**：=> 而那把锁逐字**只建一次**、=> 而而那它逐字**复用**
+            //     => 而而那那**多把**逐字**不再**攒下
+            //     => 而而那那**引用计数**逐字**开着**（=> 而而那重复 acquire 逐字**累积**、
+            //       => 而而那它逐字**不**覆盖前面那些、=> 而而那那一把逐字**不会**一直占着）
+            val lock = wakeLock ?: pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lobos:runtime").apply {
+                setReferenceCounted(true)
+            }.also { wakeLock = it }
+            if (!lock.isHeld) lock.acquire(timeoutMs)
         } catch (_: Throwable) {
         }
     }
 
     private fun releaseWakeLock() {
+        //  => 而而那那把锁逐字**复用**（=> 而而那它逐字**不**再每轮逐字新建同名那几把）
+        //    => 而而那它逐字**释放**之后逐字**不**丢掉那一个句柄（=> 而而那下一次逐字**复用**它）
         try { wakeLock?.let { if (it.isHeld) it.release() } } catch (_: Throwable) { }
-        wakeLock = null
     }
 
     @Synchronized
@@ -274,7 +313,14 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
 
             val otaCfg = ProgramOtaUpdater.loadConfig(this)
-            if (otaCfg != null && otaCfg.autoCheck) {
+            //  => 而而那那**检查**逐字**自己**有节律（=> 而那它逐字**不**是那每一轮）
+            //    => 而而那它逐字**上次**查过逐字**多久**了、=> 而而那它逐字**不到**那个间隔逐字**不**查
+            //    => 而而那那**默认**逐字是那**一小时**那一档（=> 而那它逐字**不**是那每一轮）
+            val nowMs = SystemClock.elapsedRealtime()
+            val otaDue = otaCfg != null && otaCfg.autoCheck &&
+                (lastOtaCheckAtMs == 0L || nowMs - lastOtaCheckAtMs >= otaCfg.checkIntervalMs)
+            if (otaDue) {
+                lastOtaCheckAtMs = nowMs
                 try {
                     val ota = ProgramOtaUpdater.checkAndUpdate(this, km, budgetMs = otaCfg.startupBudgetMs)
                     if (ota.checked) {

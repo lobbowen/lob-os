@@ -25,9 +25,41 @@ object SysDev {
      *   => 而那**处置**：=> 而那**渲染完**逐字**核一遍**那些节点
      *     => 而而那它逐字**答**的是**那三类之一**、=> 而而那它逐字**报缺**（=> 而按 C-05 不猜填）
      */
+    /**
+     * 那**渲染**那一格逐字（=> 而而那它逐字**按状态**逐字判、=> 而而那它逐字**不**每拍逐字重建）。
+     *
+     * 缺陷名（C-102）**那一族逐字每 15 秒逐字 wipe 逐字再重建逐字整个 `files/dev`** ——
+     *   => 而那旧版逐字**每一趟**逐字都做那六步
+     *     （=> 而那 `wipe(root)` / `ttyDir` / `execNode` / `indexJson` / `applyDeclaredModes` / `indexJson`）
+     *   => 而而那那**代价**（Lead 本机实读逐字成立）：=> 而而那那六步逐字每 15 秒逐字做一遍
+     *     => 而而那那一族逐字引入了另一族**成本**（=> 而它是那 `babbf64` 那一笔为了修
+     *       「那 `files/dev` 那一族不自愈」逐字落的）
+     *   => 而那**处置**：=> 而那**重建**逐字**只**在「那一族逐字的状态变了」逐字时逐字才做
+     *     => 而而那那**状态**逐字是「那逐节点逐字全**合声明**」
+     *     => 而而那那**核**逐字**先**跑（=> 而那它逐字**不**改那盘）
+     *     => 而而那那**核**逐字答「那逐节点逐字全**合声明**」时逐字**不**重建
+     *       （=> 而而那那**已经**对的那一份逐字**留着**、=> 而而那它逐字**不**被 wipe）
+     *     => 而而那那**核**逐字答「有一处**不合**」时逐字**才**重建
+     *       （=> 而而那那「类型错」那一类逐字**被**修好、=> 而而那那「缺节点」与「权限过宽」两类也是）
+     *
+     *   => 而而那那**判据**逐字**不**变（=> 而那它是「那一次动作逐字成没成」）
+     *   => 而而那那**状态**逐字**没**变时逐字**不**动那盘（=> 而而那那**成本**逐字**没有**）
+     */
     fun render(ctx: Context): File? {
+        val root = root(ctx)
+        //  => 而而那那**状态**逐字**先**核（=> 而那它逐字**不**改那盘）
+        val current = verifyNodes(root)
+        //  => 而而那那**会话**逐字变了逐字**也**算「状态变了」
+        //    （=> 而而那那 `<NNN>` 那一类逐字是**逐会话**的、=> 而而那那**核**逐字看不见它变没变）
+        val sessionsNow = sessionSignature(ctx)
+        val lastSig = lastRenderedSessionSignature
+        if (current == null && root.isDirectory && sessionsNow == lastSig) {
+            //  => 而而那那逐节点逐字全**合声明**、=> 而而那那会话逐字**也**没变
+            //     => 而而那那**状态**逐字**没**变
+            //     => 而而那那**重建**逐字**不**做（=> 而而那那**成本**逐字**没有**）
+            return root
+        }
         val r = runCatching {
-            val root = root(ctx)
             wipe(root)
             root.mkdirs()
             ttyDir(ctx, root)
@@ -37,6 +69,7 @@ object SysDev {
             indexJson(ctx, root)
             root
         }.getOrNull() ?: return null
+        lastRenderedSessionSignature = sessionsNow
         //  => 而那**逐节点**逐字核一遍（=> 而而那它逐字答的是**那三类之一**）
         val bad = verifyNodes(r)
         if (bad != null) {
@@ -344,6 +377,18 @@ object SysDev {
         }
         return false
     }
+
+    /**
+     * 那**会话**逐字的签名（=> 而而那它逐字是「那会话逐字是哪几条」那一个**读数**）。
+     *   => 而而那它逐字**只**含那会话号与那从设备名（=> 而而那它逐字**不**含那输出）
+     */
+    private fun sessionSignature(ctx: Context): String =
+        runCatching {
+            PtySession.activeSessions(ctx).joinToString(";") { "${it.sid}:${it.slavePath}" }
+        }.getOrDefault("")
+
+    /** 那**上一次**渲染逐字时的会话逐字签名（=> 而而那它逐字是那**状态**那一格）。 */
+    @Volatile private var lastRenderedSessionSignature: String? = null
 
     private fun instanceCounts(r: File): JSONObject {
         val o = JSONObject()
