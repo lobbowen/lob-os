@@ -80,7 +80,25 @@ echo "[package] 打包（zip）：component-meta.json + bin + 其它 prefix 目�
 ( cd "$STAGE" && zip -q -r -X -y "$ROOT_DIR/$RAW" . )
 rm -rf "$STAGE"
 SHA=$(sha256sum "$RAW" | cut -c1-12)
-ZIP="dist/component-${TOOL}-${VER}-${SHA}-android-arm64.zip"
+#  缺陷名（C-102）**那产物名里那一个目标段逐字是写死的那一档、=> 而而那它逐字**没有**那声明侧** ——
+#    => 而那旧版逐字是 `ZIP="dist/component-${TOOL}-${VER}-${SHA}-android-arm64.zip"`
+#      （=> 而那目标段逐字是 `android-arm64`、=> 而那 PC 侧那一个逐字**还没有**）
+#    => 而那**那格乙**逐字要机械判「那产物名那目标段与那声明**相等**」
+#      => 而那那声明逐字是那「PC 侧那一个目标三元组」那一份（=> 而那它是那**声明侧**）
+#    => 而那那**默认**逐字**不变**（=> 而而那那**现有**那几件逐字**照**那 `android-arm64` 走）
+#      => 而而那那**PC 侧**逐字**要**换时逐字**显式**给那 `TARGET_SEGMENT`
+TARGET_SEGMENT="${TARGET_SEGMENT:-android-arm64}"
+#    => 而而那那**声明侧**逐字**给**了时逐字**核**那产物名那目标段与那声明**相等**
+#      （=> 而而那不等 ⇒ 判红并报出**哪一档**不等、=> 而那按 C-05 报缺、=> 而那**不**猜）
+if [ -n "${PC_TARGET_SEGMENT:-}" ]; then
+  _decl_seg="$(bash "$ROOT_DIR/scripts/toolchain/pc-target.sh" product-segment 2>/dev/null || true)"
+  if [ -n "$_decl_seg" ] && [ "$_decl_seg" != "$TARGET_SEGMENT" ]; then
+    echo "::error title=那产物名那目标段与那声明不等::产物名那目标段=$TARGET_SEGMENT、=> 而那声明=$_decl_seg"
+    echo "::error::  => 而那一档逐字是「承载形态」、=> 而那按 C-05 报缺、=> 而那**不**猜"
+    exit 1
+  fi
+fi
+ZIP="dist/component-${TOOL}-${VER}-${SHA}-${TARGET_SEGMENT}.zip"
 mv "$RAW" "$ZIP"
 NAME=$(basename "$ZIP")
 cd dist

@@ -338,47 +338,47 @@ object HostControlService {
             "kmi" -> {
                 val r = kmiCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那 KMI 符号清单、=> 而而那它逐字**能**解析出那符号")
+                    .put("expect", "那一件逐字**是**那 KMI 符号清单、=> 而而那它逐字**能**解析出那符号、=> 而而那它逐字**能**解析出**那一个数**个符号。")
             }
             "lkm" -> {
                 val r = lkmCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那模块、=> 而而那它逐字**能**加载")
+                    .put("expect", "那一件逐字**是**那模块、=> 而而那它逐字**能**加载、=> 而而那那目录逐字**有****那一个数**个模块。")
             }
             "target" -> {
                 val r = targetCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那声明逐字与那实际逐字**一致**")
+                    .put("expect", "那声明逐字与那实际逐字**一致**、=> 而而那那三者（构建目标 / 运行目标 / 设备身份）逐字是**那一个值**。")
             }
             "uart" -> {
                 val r = uartCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那节点逐字**在位**、=> 而而那它逐字**有**输出")
+                    .put("expect", "那节点逐字**在位**、=> 而而那它逐字**有**输出、=> 而而那那输出逐字含**那一条**。")
             }
             "linker64" -> {
                 val r = linker64Check(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那 ELF、=> 而而那那 e_type 逐字是 2 或 3")
+                    .put("expect", "那一件逐字**是**那 ELF、=> 而而那那 e_type 逐字是 **2** 或 **3**、=> 而而那那一个 ELF 逐字**在位**。")
             }
             "file" -> {
                 val r = fileCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那路径逐字**在**那 LOB-OS 自己那一份里面、=> 而而那它逐字**在位**")
+                    .put("expect", "那路径逐字**在**那 LOB-OS 自己那一份里面、=> 而而那它逐字**在位**、=> 而而那那一次落-读-删逐字**成**。")
             }
             "memory" -> {
                 val r = memoryCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那已用逐字**没超**了那声明限额")
+                    .put("expect", "那已用逐字**没超**了那声明限额、=> 而而那那限额逐字是**那一个数**。")
             }
             "security" -> {
                 val r = securityCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那路径逐字**不**越权")
+                    .put("expect", "那路径逐字**不**越权、=> 而而那那一次越权动作逐字**被拒**、=> 而而那它逐字**留审计**。")
             }
             "time" -> {
                 val r = timeCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那墙上时钟逐字**没倒**、=> 而而那那单调时钟那一趟逐字**没超**了那预算")
+                    .put("expect", "那墙上时钟逐字**没倒**、=> 而而那那单调时钟那一趟逐字**没超**了那预算、=> 而而那那预算逐字是**那一个数**。")
             }
             else -> return failure(
                 method, "host-bound-positive",

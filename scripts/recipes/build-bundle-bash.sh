@@ -11,6 +11,24 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" bash
 BASH_VER="$(bash scripts/toolchain/fetch-pinned.sh --src-version bash 2>/dev/null || true)"
 [ -n "$BASH_VER" ] || die "钉值表里没有 bash" "scripts/component-sources.json 的 sources.bash"
 
+#  缺陷名（C-102）**那 `--host=` 那一格逐字是写死的那一串、=> 而而那它逐字**没有**那声明侧** ——
+#    => 而那旧版逐字是 `--host=aarch64-linux-android`
+#      （=> 而那目标三元组逐字是**工具链**那一串、=> 而**不是**「宿主机器是什么」）
+#    => 而那那**三元组**逐字**不许**由那产物倒推（=> 而那是循环）
+#      => 而而那那**声明**逐字是那「PC 侧那一个目标三元组」那一份
+#    => 而而那那**默认**逐字**不变**（=> 而而那那**现有**那一档逐字**照**走）
+#      => 而而那那**PC 侧**逐字**要**换时逐字**显式**给那 `TARGET_HOST`
+TARGET_HOST="${TARGET_HOST:-aarch64-linux-android}"
+#    => 而而那那**声明侧**逐字**给**了时逐字**核**那 `--host=` 那一格逐字与那声明**相等**
+#      （=> 而而那不等 ⇒ 判红并报出**哪一档**不等、=> 而那按 C-05 报缺、=> 而那**不**猜）
+if [ -n "${PC_TARGET_TRIPLE:-}" ]; then
+  _decl_host="$(bash scripts/toolchain/pc-target.sh host-flag 2>/dev/null || true)"
+  if [ -n "$_decl_host" ] && [ "$_decl_host" != "$TARGET_HOST" ]; then
+    echo "[bash] 那 --host= 那一格逐字 = $TARGET_HOST、=> 而那声明逐字 = $_decl_host"
+    echo "[bash] => 而那一档逐字是「目标三元组」、=> 而那按 C-05 报缺、=> 而那**不**猜"
+    exit 1
+  fi
+fi
 echo "[bash] 取源码 $BASH_VER（sha256 由钉值表校验）"
 bash scripts/toolchain/fetch-pinned.sh --pin bash $WORK/bash.tar.gz \
   || die "bash 源码取不到或 sha256 不符" \
@@ -47,7 +65,7 @@ STUB
 (
   set -e
   cd "$WORK/bash-$BASH_VER"
-  ./configure --host=aarch64-linux-android --build=x86_64-pc-linux-gnu \
+  ./configure --host="$TARGET_HOST" --build=x86_64-pc-linux-gnu \
     --prefix=/native --disable-nls --without-bash-malloc \
     CC="$CC" \
     CFLAGS="-O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-unused-result" \
