@@ -18,6 +18,14 @@ object PtySession {
 
     private const val TAG = "PtySession"
 
+    /**
+     * 那**输出**逐字**捕获**那一个上限（=> 而而那它逐字**防**那堆逐字被那一趟输出逐字吃光）。
+     *
+     *   => 而而那那**上限**逐字是那 **4 MiB**（=> 而而那它逐字**够**那期望输出那一族逐字要的那一些）
+     *   => 而而那那**超出**的一截逐字**丢**、=> 而而那那**丢了多少**逐字**记**着（=> 而那按 C-05 不猜填）
+     */
+    private const val MAX_CAPTURED_OUTPUT_BYTES = 4 * 1024 * 1024
+
     private const val F_OPEN = 1
     private const val F_READY = 2
     private const val F_DATA = 3
@@ -994,9 +1002,30 @@ object PtySession {
         val ownHost = env.isNotEmpty() || cwd != null
         return try {
             val s = h.start(effArgv, DEFAULT_ROWS, DEFAULT_COLS, timeoutMs.coerceAtLeast(1_000))
+            //  缺陷名（C-102）**那一格逐字逐字**无上限**地累积那输出** ——
+            //    => 而那旧版逐字是 `val buf = java.io.ByteArrayOutputStream()`
+            //      => 而而那那**缓冲**逐字**一直**涨、=> 而而那它逐字**不**停
+            //        （=> 而而那那一趟逐字要多久、=> 而而那它逐字就涨多少）
+            //      => 而而那那堆逐字**本来**就只剩那**余量**了
+            //        （=> 而那设备上 `heapgrowthlimit` = 384m、=> 而而那那堆逐字已到 291 MB）
+            //    => 而那**处置**：=> 而而那那缓冲逐字**有**一个上限、=> 而而那超出那一截逐字**丢**
+            //      => 而而那那**期望输出**那一族逐字**要**的是那**开头**那一些（=> 而那它逐字**不**是全量）
+            //      => 而而那那**上限**逐字**要**报缺（=> 而那按 C-05 不猜填）
             val buf = java.io.ByteArrayOutputStream()
+            var dropped = 0L
             val done = CountDownLatch(1)
-            s.onData = { d -> synchronized(buf) { buf.write(d) } }
+            s.onData = { d ->
+                synchronized(buf) {
+                    if (buf.size() + d.size > MAX_CAPTURED_OUTPUT_BYTES) {
+                        //  => 而而那那**超出**的一截逐字**丢**、=> 而而那那**丢了多少**逐字**记**着
+                        val room = (MAX_CAPTURED_OUTPUT_BYTES - buf.size()).coerceAtLeast(0)
+                        if (room > 0) buf.write(d, 0, room)
+                        dropped += (d.size - room).toLong()
+                    } else {
+                        buf.write(d)
+                    }
+                }
+            }
             s.onExit = { _, _ -> done.countDown() }
             //  缺陷名（C-102）**那一格逐字只等 native 那一族那一条退出信号、=> 而而那那一条逐字**永远不来****
             //   => 而那旧版逐字是 `s.onExit = { _, _ -> done.countDown() }`
@@ -1019,19 +1048,21 @@ object PtySession {
                     }
                 }, "lobos-pty-exit-watch").apply { isDaemon = true; start() }
             }
+            //  => 而而那那**丢了多少**逐字**记**着（=> 而那按 C-05 不猜填、=> 而那**不**静默）
+            val droppedNote = if (dropped > 0L) "（=> 而那超出上限那一截逐字丢了 $dropped 字节）" else ""
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 s.close()
-                return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms", completed = false)
+                return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms$droppedNote", completed = false)
             }
             val out = buf.toString(Charsets.UTF_8.name())
             val code = s.exitStatus
             val sig = s.exitSignal
             if (sig != 0) {
-                Result(false, 128 + sig, out, "被信号 $sig 终止（${signalName(sig)}）")
+                Result(false, 128 + sig, out, "被信号 $sig 终止（${signalName(sig)}）$droppedNote")
             } else if (code != 0) {
-                Result(false, code, out, "退出码 $code")
+                Result(false, code, out, "退出码 $code$droppedNote")
             } else {
-                Result(true, 0, out, null)
+                Result(true, 0, out, if (dropped > 0L) "输出被截断$droppedNote" else null)
             }
         } catch (e: Throwable) {
             Result(false, -1, "", e.message ?: e.javaClass.simpleName, completed = false)
