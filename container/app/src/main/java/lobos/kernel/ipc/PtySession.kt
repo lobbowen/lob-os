@@ -106,6 +106,12 @@ object PtySession {
          */
         @Volatile var process: Process? = null
 
+        /**
+         * 那**程序名**（=> 而而那它逐字是那**件**逐字、=> 而而那它逐字**不**由那进程的名字反推）。
+         *   => 而而那它逐字**空**时逐字**报缺**（=> 而按 C-05 不猜填）
+         */
+        @Volatile var programId: String = ""
+
         internal fun recordExit(status: Int, signal: Int) {
             exitStatus = status
             exitSignal = signal
@@ -230,6 +236,9 @@ object PtySession {
                 )
             }
             val s = sessions[sid] ?: throw IllegalStateException("会话 $sid 建立后丢失")
+            //  => 而那**程序名**逐字**从**那 argv 逐字**头**那一条逐字取（=> 而而那它逐字**不**由那进程的名字反推）
+            //    => 而而那那**件**逐字是那一条的**最后**那一段（=> 而而那它逐字**不**猜）
+            s.programId = argv.firstOrNull()?.let { basenameOf(it) } ?: ""
             if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)
             //  缺陷名（C-102）**那一格逐字由 native 自己去 exec、=> 而而那它逐字在那个域里**跑不起来** ——
             //   => 而那**事实**（仓内 `ExecEntry.kt:115` 到 `:122` 逐字记着）：
@@ -300,7 +309,84 @@ object PtySession {
             }
             val proc = pb.start()
             session.process = proc
+            //  缺陷名（C-102）**那一格逐字没写那账本、=> 而而那那一格逐字是那产品侧逐字起的那一个**
+            //    => 而那旧版逐字是 `session.process = proc`（=> 而而那它逐字**只**记那一个句柄）
+            //      => 而而那那**账本**那一族逐字**没有**这一行、=> 而而那它逐字**漏记**
+            //    => 而而那**判别形式**（01 裁的 `S625-01-LEDGER-PTY-SESSION-RULING.md`）：
+            //      「答『那一个进程在 LOB-OS 自己那一份 Linux 上跑着、归谁管』，
+            //        判据必须落在『那账本那一行记的那五格』上，
+            //        不许由那进程的名字反推、不许猜；
+            //        => 而那 PTY 会话那一族起的那一个不许漏记、
+            //        => 而而那 native 那一族管的那一个不许记账本」
+            //    => 而而那**那五格**逐字是：程序名 / 那一代 / 那 pid / 那 starttime / 那起始时刻
+            //      （=> 而那 `ProcessLedger.Entry` 那一族逐字就是那五格）
+            //    => 而而那**程序名**逐字是那**件**逐字（=> 而而那它逐字**不**由那进程的名字反推）
+            //    => 而而那**那一代**逐字走那 `nextGeneration` 那一族（=> 而而那它逐字**不**猜）
+            //    => 而而那**native** 那一族管的那一个（=> 而而那 `session.process` 逐字**空**时）
+            //      逐字**不**记账本（=> 而而那它逐字**不是**那产品侧逐字起的那一个）
+            recordInLedger(ctx, session, proc, argv)
+            //  => 而而那那**退出清理**逐字与那**创建/记账**逐字**一致**
+            //    （=> 而那是 M7-07 那一行逐字说的「创建、记账、退出清理一致」）
+            //    => 而而那那进程逐字**退了**时逐字把那一行逐字**从账本清掉**
+            //      （=> 而否则那账本逐字**留着**一个**已经不在**的进程）
+            val pid0 = runCatching {
+                Regex("""pid=(\d+)""").find(proc.toString())?.groupValues?.get(1)?.toIntOrNull() ?: -1
+            }.getOrDefault(-1)
+            if (pid0 > 0) {
+                Thread({
+                    runCatching { proc.waitFor() }
+                    runCatching { lobos.kernel.proc.ProcessLedger.end(ctx, pid0) }
+                }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
+            }
         }
+
+        /**
+         * 那**账本**那一格逐字（=> 而而那它逐字记那**五格**、=> 而而那它逐字**不**漏记）。
+         *
+         *   => 而而那它逐字**失败**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而**不**静默）
+         *   => 而而那它逐字**不**替那 native 那一族管的那一个记账本（=> 而那它逐字**不是**产品侧起的）
+         */
+        private fun recordInLedger(
+            ctx: Context,
+            session: Session,
+            proc: Process,
+            argv: List<String>,
+        ) {
+            //  => 而那 pid 逐字**从**那进程自己逐字读（=> 而那它逐字**不**猜）
+            //    => 而而那那读法逐字跟那 `ProcessSupervisor` 那一族逐字**同一**个
+            //      （=> 而那 `Process.pid()` 逐字在那一层**不可用**、=> 而而那它逐字从 `toString()` 逐字取）
+            val pid = runCatching {
+                Regex("""pid=(\d+)""").find(proc.toString())?.groupValues?.get(1)?.toIntOrNull() ?: -1
+            }.getOrDefault(-1)
+            if (pid <= 0) {
+                //  => 而那 pid 逐字读不到时逐字**报缺**（=> 而按 C-05 不猜填）
+                lobos.services.log.RuntimeDiagnostics.append(
+                    ctx, "ledger", false, "PTY 会话那进程逐字取不到 pid",
+                    "sid=" + session.sid + " （=> 而而那账本那一行逐字**没有**记、=> 而那按 C-05 报缺）",
+                )
+                return
+            }
+            //  => 而那**程序名**逐字是那**件**逐字（=> 而而那它逐字**不**由那进程的名字反推）
+            val programId = session.programId.ifBlank {
+                argv.firstOrNull()?.let { basenameOf(it) } ?: ("pty-" + session.sid)
+            }
+            //  => 而那**那一代**逐字走那 `nextGeneration` 那一族（=> 而而那它逐字**不**猜）
+            val generation = lobos.kernel.proc.ProcessLedger.nextGeneration(ctx, programId)
+            val recorded = lobos.kernel.proc.ProcessLedger.begin(ctx, programId, generation, pid)
+            lobos.services.log.RuntimeDiagnostics.append(
+                ctx, "ledger", recorded != null,
+                "PTY 会话那进程逐字已记账",
+                if (recorded != null) {
+                    "program=" + recorded.programId + " gen=" + recorded.generation +
+                        " pid=" + recorded.pid + " starttime=" + recorded.starttime +
+                        " startedAt=" + recorded.startedAt
+                } else "账本那一行逐字**没有**记成（=> 而那按 C-05 报缺）",
+            )
+        }
+
+        /** 那一个路径逐字**最后**那一段（=> 而而那它逐字**不**猜）。 */
+        private fun basenameOf(p: String): String =
+            p.trimEnd('/').substringAfterLast('/').ifBlank { p }
 
         /**
          * 那**会话号**逐字**跟着**那 native 那一族逐字分的**槽**走
