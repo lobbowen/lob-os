@@ -454,11 +454,35 @@ object PtySession {
             ready.remove(sid)
         }
 
+        /**
+         * 那**会话号**逐字**统一**分（=> 而而那它逐字**不**让两边各自去抢）。
+         *
+         * 缺陷名（C-102）**那号逐字在两族逐字之间逐字撞了** ——
+         *   => 而那旧版逐字是 `for (i in 0 until MAX_SESSIONS) if (!sessions.containsKey(i)) return i`
+         *     => 而而那那 `sessions` 逐字**只是**宿主侧那一族（=> 而而那那产品侧持有的那些**不**在里面）
+         *     => 而而那那 **native** 那一族逐字**自己**有一份 `g_sessions[].open`
+         *       （=> 而而那那号逐字是**它**逐字分的、=> 而而那它逐字**不**知道宿主侧那一份）
+         *     => 而而那那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+         *       · 而那产品侧逐字那会话逐字拿到 0、=> 而而那那 native 那一族逐字那 0 号逐字
+         *         **已被** `sys.tty.exec` 那一族逐字占了
+         *       => 而而那那 diag 逐字「FAIL | PTY 的C 侧报错 | WINSIZE 指向不存在的会话」
+         *       => 而而那那**会话号**逐字错位那一族
+         *       => 而而那那 `tty/index.json` 逐字那两行逐字重复（=> 而而那那也是那号撞了那一族的旁证）
+         *   => 而那**处置**：=> 而那号逐字**统一**分、=> 而而那它逐字**不**由两边各自去抢
+         *     => 而而那它逐字**看**那**两边**逐字**都**占着的那些号
+         *     => 而而那那产品侧持有的那些逐字**也**算**占着**
+         *     => 而而那那 native 那一族逐字那槽逐字**空**着逐字才**用**
+         */
         private fun allocSid(): Int {
-            //  => 而那那号逐字**跟**那 native 那一族逐字**同一**个范围
-            //    （=> 而而那那 native 那一族逐字 `MAX_SESSIONS` 逐字是 8）
-            //    => 而而那宿主侧逐字**分**的号逐字**必须**在那个范围里、=> 而而那它逐字**才**是那**真的**号
-            for (i in 0 until MAX_SESSIONS) if (!sessions.containsKey(i)) return i
+            //  => 而而那那**占着**的那几号逐字 = 宿主侧那一族 ∪ 产品侧那一族 ∪ native 那一族
+            val taken = HashSet<Int>()
+            synchronized(this) { taken.addAll(sessions.keys) }
+            runCatching { ProductSessions.list().forEach { taken.add(it.sid) } }
+            runCatching {
+                val h = host
+                if (h != null) h.activeSessions().forEach { taken.add(it.sid) }
+            }
+            for (i in 0 until MAX_SESSIONS) if (!taken.contains(i)) return i
             throw IllegalStateException("会话数已满（$MAX_SESSIONS）")
         }
 
@@ -851,7 +875,22 @@ object PtySession {
         }.getOrDefault(emptyList())
         //  => 而而那那**产品侧**逐字持有的那一些（=> 而那些逐字**不**在 native 那一族那里面）
         val product = runCatching { ProductSessions.list() }.getOrDefault(emptyList())
-        return native + product
+        //  缺陷名（C-102）**那同一条会话逐字被列了两次** ——
+        //   => 而那旧版逐字是 `native + product`
+        //     => 而而那那**同一条**会话逐字**两边**都看得见（=> 而那 native 那一族逐字有一份、
+        //       而而那那产品侧那一族逐字**也**有一份）
+        //     => 而而那那 `tty/index.json` 逐字那两行逐字**重复**
+        //       （=> 而那 07 本轮逐字核到：`[{"sid":0,…},{"sid":0,…}]`、=> 而那那两行逐字**完全一样**）
+        //       （=> 而那那也是那号撞了那一族的**旁证**）
+        //   => 而那**处置**：=> 而那那**同一**那一条会话逐字**只**列一次
+        //     => 而而那那**判据**逐字是那**从设备名**（=> 而那它逐字**唯一**、=> 而那那号逐字**可能**重）
+        //     => 而而那那**号**逐字**不同**的那些逐字**都**留（=> 而那是**两条**不同的会话）
+        val seen = HashSet<String>()
+        val out = mutableListOf<Session>()
+        for (s in native + product) {
+            if (seen.add(s.slavePath)) out.add(s)
+        }
+        return out
     }
 
     fun ensureHost(ctx: Context): Boolean {

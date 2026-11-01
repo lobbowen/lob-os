@@ -231,6 +231,42 @@ object SysDev {
     private fun nodeKinds(r: File, selfPath: String): JSONArray {
         val out = JSONArray()
         for (d in NODE_DECLARATION) {
+            //  缺陷名（C-102）**那一格逐字按那带尖括号的字面量逐字去核、=> 而而那它逐字永远不存在** ——
+            //   => 而那旧版逐字是 `val target = File(r, d.path)`（=> 而那 d.path 逐字是「tty/pts/<NNN>」那一族）
+            //     => 而而那那**尖括号**逐字**永远**不在盘上、=> 而而那那 `exists` 逐字**永远**是 false
+            //       （=> 而那 07 本轮逐字核到：那 `nodes` 那一栏逐字那会话那三条逐字**仍 exists=false**）
+            //     => 而而那 `tty/index.json` 逐字那两行逐字重复（=> 而而那那也是那号撞了那一族的旁证）
+            //   => 而那**处置**：=> 而那**带 <NNN>** 那一族逐字**按实例**逐字核
+            //     => 而而那它逐字**跟**那 `verifyNodes` 那一格**同一把尺**（=> 而而那它逐字现在逐字是两把尺）
+            //     => 而而那那 `exists` 与那 `matches` 逐字**都**按那实例算
+            //   => 而而那那**其余**那几类逐字**不变**（=> 而而那它们逐字没有那尖括号）
+            if (d.path.contains("<NNN>")) {
+                val prefix = d.path.substringBefore("<NNN>")
+                val rest = d.path.substringAfter("<NNN>").trim('/')
+                val pts = File(r, prefix)
+                val kids = pts.listFiles()?.sortedBy { it.name } ?: emptyList()
+                for (k in kids) {
+                    val target = if (rest.isEmpty()) k else File(k, rest)
+                    val existsI = target.exists()
+                    val actualI = if (!existsI) "" else actualModeOf(target)
+                    out.put(JSONObject().apply {
+                        put("path", d.path)
+                        //  => 而而那那**实例**逐字**记**在那**实例**那一格（=> 而而那它逐字**可**机读）
+                        put("instance", k.name)
+                        put("kind", d.kind)
+                        put("declaredMode", d.mode)
+                        put("self", false)
+                        put("exists", existsI)
+                        put("actualMode", actualI)
+                        put("matches", when {
+                            !existsI -> null
+                            d.kind == "symlink" -> null
+                            else -> (actualI == d.mode)
+                        })
+                    })
+                }
+                continue
+            }
             val target = File(r, d.path)
             val exists = target.exists()
             //  缺陷名（C-102）**那 `index.json` 那一类逐字永远自指不可见** ——
