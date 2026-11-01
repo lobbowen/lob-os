@@ -92,6 +92,10 @@ class HostControlActivity : Activity() {
         val hbCheck = Button(this).apply { text = "核那九族里这一族（真实执行，报出那一条原话）" }
         //  => 而那那**九族**逐字那 positive 那一侧逐字**另**有一个入口（=> 而而那两侧逐字各答一件事）
         val hbPositive = Button(this).apply { text = "核那九族里这一族那合法那一侧（真实执行）" }
+        //  => 而那「跨 app 边界」那一族逐字一个产品入口（=> 而而那它逐字**不**是给程序开的后门）
+        val crossAppMethod = EditText(this).apply { hint = "那一族里的一格（app.launch / app.listInstalled / ui.tap）" }
+        val crossAppArg = EditText(this).apply { hint = "给它的参数（包名 / 坐标）" }
+        val crossApp = Button(this).apply { text = "走那跨 app 边界那一族（产品入口，真实执行）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
         //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
         //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
@@ -199,6 +203,21 @@ class HostControlActivity : Activity() {
             ).toString()
             result.text = r
         }
+        crossApp.setOnClickListener {
+            val params = org.json.JSONObject()
+            val a = crossAppArg.text.toString().trim()
+            when (crossAppMethod.text.toString().trim()) {
+                "app.launch" -> params.put("pkg", a)
+                "ui.tap" -> {
+                    val xy = a.split(",", " ").mapNotNull { it.trim().toDoubleOrNull() }
+                    if (xy.size >= 2) { params.put("x", xy[0]); params.put("y", xy[1]) }
+                }
+            }
+            val r = HostControlService.crossApp(
+                this, crossAppMethod.text.toString(), params,
+            ).toString()
+            result.text = r
+        }
         peSample.setOnClickListener {
             result.text = HostControlService.loadPeSample(this, "win32/plink-arm64.exe").toString()
         }
@@ -239,6 +258,9 @@ class HostControlActivity : Activity() {
         content.addView(hbInput)
         content.addView(hbCheck)
         content.addView(hbPositive)
+        content.addView(crossAppMethod)
+        content.addView(crossAppArg)
+        content.addView(crossApp)
         content.addView(terminalOut)
         content.addView(terminalInput)
         content.addView(terminalOpen)

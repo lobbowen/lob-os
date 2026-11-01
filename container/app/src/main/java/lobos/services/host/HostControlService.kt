@@ -389,6 +389,45 @@ object HostControlService {
         }
     }
 
+    /**
+     * 那「跨 app 边界」那一族逐字一个**产品入口**（=> 而而那它是产品那一面逐字的事、=> 而而那它逐字**不**是给程序那一族逐字开的后门）。
+     *
+     * 缺陷名（C-102）**那一族逐字在设备上逐字没有可走的路** ——
+     *   => 而那旧版逐字**没有**这一格
+     *     => 而而那那 `HostControlService` 那一族逐字那公开方法逐字全清单逐字是
+     *       `pieces` / `rollbackJudgement` / `pieceEligibility` / `update` / `execCommand` /
+     *       `execDirect` / `verifyDeviceNodes` / `hostBoundCheck` / `hostBoundPositive` /
+     *       `loadPeSample` / `rollback`
+     *       => 而而那它逐字**没有** `app.launch` / `app.listInstalled` / `ui.tap` 那一族逐字的方法
+     *     => 而而那那一族逐字**只能**经那桥逐字调、=> 而而那那桥逐字要求那会话逐字有那一档
+     *       （=> 而而那那 `GROUP_CROSS_APP` 那一档）、=> 而而那**没有任何一件声明过**
+     *     => 而而那那在设备上逐字**没有**可走的路（=> 而按 **C-05** 报缺）
+     *   => 那**处置**：=> 而那**产品入口**逐字经那**安装方**那一路逐字调
+     *     => 而而那那一路逐字是那 `INSTALLER_ID` 那一族、=> 而而那它是那**产品**那一面
+     *     => 而而那它逐字**不**是给程序那一族逐字开的后门（=> 而而那那**程序**逐字**还是**要那一档）
+     *     => 而而那那**读数**逐字**能**取到（=> 而而那那一格逐字是那读数那一族）
+     */
+    fun crossApp(context: Context, method: String, params: JSONObject): JSONObject {
+        val m = method.trim()
+        if (m !in CROSS_APP_METHODS) {
+            return failure(
+                "cross-app", "cross-app",
+                "那一族逐字不在那三格里：" + m +
+                    "（=> 而而那那三格逐字是：" + CROSS_APP_METHODS.joinToString(",") +
+                    "；=> 而而那按 C-05 报缺）",
+            )
+        }
+        //  => 而而那那一路逐字**经**那**安装方**那一族逐字调、=> 而而那它逐字**不**是给程序的后门
+        val r = runCatching {
+            lobos.api.CapabilityBroker.live()?.invokeLocal(
+                lobos.api.CapabilityBroker.INSTALLER_ID,
+                m,
+                params ?: JSONObject(),
+            )
+        }.getOrNull()
+        return r ?: failure("cross-app", "cross-app", "那宿主桥没起来（=> 而而那按 C-05 报缺）")
+    }
+
     fun hostBoundCheck(context: Context, family: String, input: String): JSONObject {
         val method = "hostBound.check"
         when (family.trim()) {
@@ -713,7 +752,8 @@ object HostControlService {
             val out = File(app.cacheDir, asset)
             out.parentFile?.mkdirs()
             app.assets.open(asset).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-            val bytes = out.readBytes()
+            //  => 而而那那**读法**逐字**可查**（=> 而而那那 `ReadRoute` 那一族逐字**记**那一格）
+            val bytes = lobos.kernel.fs.ReadRoute.readAll(app, "pe.sample", out)
             val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
             if (actual != sample.sha256) {
@@ -789,6 +829,9 @@ object HostControlService {
             )
         }
     }
+
+    /** 那「跨 app 边界」那一族逐字那**三格**（=> 而而那它逐字**不**给程序那一族逐字开后门）。 */
+    private val CROSS_APP_METHODS = listOf("app.launch", "app.listInstalled", "ui.tap")
 
     private fun failure(method: String, requestId: String, message: String): JSONObject = JSONObject().apply {
         put("ok", false)

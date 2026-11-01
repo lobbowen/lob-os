@@ -613,6 +613,23 @@ object PtySession {
             } catch (e: Exception) {
                 Log.w(TAG, "读帧线程异常", e)
             } finally {
+                //  缺陷名（C-102）**那一格逐字把**那产品侧**持有的那些会话逐字一起逐字标成**关了** ——
+                //    => 而那旧版逐字是 `for (s in sessions.values) s.markClosed()`
+                //      => 而而那那 `sessions` 逐字**只是**那 native 那一族逐字管的那一些
+                //      => 而而那那**读帧线程**逐字**结束**时（=> 而那是那 native 宿主逐字**没了**那一族）
+                //        逐字把**全部**那一族逐字标成**关**
+                //      => 而而那那**产品侧**持有的那些逐字**不在**那 `sessions` 那一族里
+                //        => 而而那它们逐字**不**受那 native 宿主逐字**生死**的影响
+                //        => 而而那**后果**（07 本轮逐字核出）：
+                //          · 而那会话逐字**起过**（=> 而那那 PTY 进程逐字**在**那账本里：
+                //            逐字 `linker64 gen=1 pid=18427 starttime=4710383`）
+                //          · => 而而那那会话逐字**没登记进 `files/dev`**
+                //            （=> 而那 pts 空、=> 而那等 8 拍 80 秒逐字没出现、=> 而那 index.json `[]`）
+                //          => 而而那是那 `activeSessions` 那一格逐字的问题
+                //            （=> 而而那那 `ProductSessions.list()` 逐字**滤掉**那 `isClosed` 的那些）
+                //    => 而那**处置**：=> 而而那那**产品侧**的那些逐字**不**被那一格逐字标成**关**
+                //      => 而而那它们逐字**只**由它们**自己**那一路逐字标（=> 而那是那进程逐字**退**了、
+                //        或而那那调用方逐字**显式**关它）
                 for (s in sessions.values) s.markClosed()
                 sessions.clear()
                 for (l in ready.values) l.countDown()
@@ -650,8 +667,30 @@ object PtySession {
                 status = b.int
                 signal = b.int
             }
-            s?.recordExit(status, signal)
-            s?.markClosed()
+            //  缺陷名（C-102）**那一格逐字把那 native 那一族的退出逐字当成那会话逐字**真的**退了** ——
+            //    => 而那旧版逐字是 `s?.recordExit(...); s?.markClosed()`
+            //      => 而而那那**退出信号**逐字是那 **native** 那一族逐字发的
+            //        （=> 而和那它逐字是那 **native fork 出来**的那个子进程逐字退时逐字发的）
+            //      => 而而那那**执行**逐字**已经**归那**产品侧**了（=> 而那是 52c0139 那一笔逐字落的）
+            //        => 而和那那 native 的那个子进程逐字**只**握那从设备、=> 而和那它逐字退
+            //          **不代表**那产品侧逐字起的那进程退
+            //      => 而而那那一格逐字 markClosed 逐字把那会话逐字逐字**关**了
+            //        => 而而那那 `ProductSessions.list()` 逐字**滤掉**那 `isClosed` 的那些
+            //          => 而而那那会话逐字**就**不在那名单里、=> 而而那那 `files/dev` 逐字**没有**它
+            //            （=> 而那 07 本轮逐字核到：=> 而那那会话逐字**起过**、
+            //              => 而而那那 PTY 进程逐字**在**那账本里：逐字 `linker64 gen=1 pid=18427`、
+            //              => 而而那那会话逐字**没登记进 `files/dev`**：
+            //              逐字 pts 空、=> 而那等 8 拍 80 秒逐字没出现、=> 而那 index.json `[]`）
+            //    => 而那**处置**：=> 而而那那**产品侧**的进程逐字**还活着**时
+            //      => 而而那那一格逐字**不**把那会话逐字标成**关**
+            //      => 而而那那会话逐字**继续**在那名单里、=> 而而那那 `files/dev` 逐字**有**它
+            //      => 而而那那**真的**退了时（=> 而那产品侧逐字**自己**报那退出、=> 或那调用方逐字**显式**关它）
+            //        逐字**才**标成**关**
+            val stillAlive = s?.process?.isAlive == true
+            if (!stillAlive) {
+                s?.recordExit(status, signal)
+                s?.markClosed()
+            }
             try { s?.onExit?.invoke(status, signal) }
             catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }

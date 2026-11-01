@@ -364,7 +364,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
         val id = session.programId.trim()
         if (id == INSTALLER_ID || !isProgramSession(session)) {
-            return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS
+            //  => 而而那那**安装方**那一族逐字**有**那「跨 app 边界」那一档
+            //    => 而而那是那**产品**那一面逐字走的那一条路
+            //      （=> 而而那那 `HostControlService.crossApp` 那一格逐字**经**它逐字调）
+            //    => 而而那它逐字**不**是给程序那一族逐字开的后门
+            //      （=> 而而那那**程序**逐字**还是**要那**声明**过才**能**要那一档）
+            return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS + ApiSpec.GROUP_CROSS_APP
         }
         return setOf(BRIDGE_BASE) + declaredCapabilities(id)
     }
@@ -1556,7 +1561,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             bmp.recycle()
 
             if (p.optBoolean("inline", false)) {
-                val bytes = file.readBytes()
+                //  => 而而那那**读法**逐字**可查**（=> 而而那那 `ReadRoute` 那一族逐字**记**那一格）
+                val bytes = lobos.kernel.fs.ReadRoute.readAll(
+                    this, "ui.screenshot", file,
+                    lobos.kernel.fs.ReadRoute.DEFAULT_MAX_BYTES * 4,
+                )
                 JSONObject().apply {
                     put("encoding", "base64")
                     put("content", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
@@ -1594,7 +1603,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     "文件 ${f.length()} 字节超过上限 $maxBytes；用 maxBytes 显式放大（硬顶 ${MAX_FS_BYTES}）"
                 )
             }
-            val bytes = f.readBytes()
+            //  => 而而那那**读法**逐字**可查**（=> 而而那那 `ReadRoute` 那一族逐字**记**那一格）
+            //    => 而而那那**上限**逐字**是**那读法逐字自己说的（=> 而而那它逐字**就是**那 `maxBytes`）
+            val bytes = lobos.kernel.fs.ReadRoute.readAll(this, "fs.read", f, maxBytes)
             val encoding = p.optString("encoding", "auto")
             if (encoding == "base64") {
                 JSONObject().apply {

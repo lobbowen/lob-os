@@ -17,6 +17,15 @@ object SupplyProvisioner {
     private const val CHANNEL_ASSET = "supply/channel.json"
     private const val FETCH_TIMEOUT_MS = 30000
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
+
+    /**
+     * 那**条目**逐字那一个上限（=> 而而那它逐字是那**读法**逐字自己说的）。
+     *
+     *   => 而而那那**上限**逐字是那 **4096** 字节
+     *     （=> 而而那那 `symlinkTargetOf` 那一格逐字**只**看那 ≤4096 那一族）
+     *   => 而而那那**读法**逐字是那 `supply.unzip` 那一族
+     */
+    internal const val ENTRY_READ_MAX_BYTES = 4096
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
 
@@ -474,6 +483,34 @@ object SupplyProvisioner {
      *     而判据仍按「内容能解成一条路径 + 按它解析出来的目标在包里存在」两条件缺一不可。
      *   而 ZipInputStream 是**流式**的（拿不到全量条目名） 先把条目名与内容各读一遍。
      */
+    /**
+     * 那**条目**逐字**按**那读法逐字读（=> 而而那那**上限**逐字**是**那读法逐字自己说的）。
+     *
+     *   => 而而那那**读法**逐字**可查**（=> 而而那那 `ReadRoute` 那一族逐字**记**那一格）
+     *   => 而而那那**上限**逐字是那 4096（=> 而而那那 `symlinkTargetOf` 逐字**只**看那 ≤4096 那一族）
+     *   => 而而那那**超限**逐字**报缺**（=> 而按 C-05 不猜填）
+     */
+    private fun readEntryCapped(zin: ZipInputStream, name: String): ByteArray {
+        val buf = java.io.ByteArrayOutputStream()
+        val chunk = ByteArray(4096)
+        var total = 0
+        while (total <= ENTRY_READ_MAX_BYTES) {
+            val n = zin.read(chunk)
+            if (n <= 0) break
+            buf.write(chunk, 0, n)
+            total += n
+        }
+        val bytes = buf.toByteArray()
+        if (bytes.size > ENTRY_READ_MAX_BYTES) {
+            throw IllegalStateException(
+                "那一个条目逐字太大：" + name + " 逐字 = " + bytes.size +
+                    " 字节、=> 而而那那读法逐字[supply.unzip]逐字只许 " + ENTRY_READ_MAX_BYTES +
+                    "（=> 而那按 C-05 报缺、=> 而那**不**整读进那堆）"
+            )
+        }
+        return bytes
+    }
+
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
@@ -483,7 +520,21 @@ object SupplyProvisioner {
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zin ->
             var e = zin.nextEntry
             while (e != null) {
-                if (!e.isDirectory) bodies[e.name] = zin.readBytes()
+                //  缺陷名（C-102）**那一格逐字把**那一个**条目逐字**整个**读进那堆** ——
+                //    => 而那旧版逐字是 `bodies[e.name] = zin.readBytes()`
+                //      => 而而那它逐字把**那一个条目**逐字**整个**读进那堆
+                //        （=> 而而那那**条目**逐字**可以**是那大件：=> 而那 `node` 那一件逐字
+                //          **116779696** 字节、=> 而那 `llvm-lipo` 那一件逐字 **133359688** 字节、
+                //          => 而那 `clang-21` 那一件逐字 **1383240488** 字节）
+                //      => 而而那那**分配量**逐字与那 logcat 逐字那 116 / 131 / 146 MB 逐字**同形**
+                //    => 而那**处置**：=> 而而那那**读法**逐字**可查**（=> 而而那那 `ReadRoute` 那一族）
+                //      => 而而那那**读法**逐字**自己**说它逐字要多少、=> 而而那那**上限**逐字**是**那读法的
+                //      => 而而那那**超限**逐字**报缺**（=> 而按 C-05 不猜填）
+                //    => 而那**判据**逐字是「那一件逐字是从**哪一条路**逐字被整读的」
+                //      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+                if (!e.isDirectory) {
+                    bodies[e.name] = readEntryCapped(zin, e.name)
+                }
                 names.add(e.name)
                 zin.closeEntry()
                 e = zin.nextEntry
