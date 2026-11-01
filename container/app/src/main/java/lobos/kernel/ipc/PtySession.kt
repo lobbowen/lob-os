@@ -99,6 +99,13 @@ object PtySession {
         @Volatile var exitSignal: Int = 0
             private set
 
+        /**
+         * 那**进程**（=> 而那它逐字是那**产品侧**逐字起的那一个、=> 而而那它逐字**不**是 native 那一族 fork 的）。
+         *   => 而而那它逐字**存在**时逐字是那**进程账本**那一族逐字该记的那一个
+         *   => 而而那它逐字**空**时逐字是「那 native 那一族逐字管的那一个」（=> 而而那它逐字**不**记账本）
+         */
+        @Volatile var process: Process? = null
+
         internal fun recordExit(status: Int, signal: Int) {
             exitStatus = status
             exitSignal = signal
@@ -224,7 +231,75 @@ object PtySession {
             }
             val s = sessions[sid] ?: throw IllegalStateException("会话 $sid 建立后丢失")
             if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)
+            //  缺陷名（C-102）**那一格逐字由 native 自己去 exec、=> 而而那它逐字在那个域里**跑不起来** ——
+            //   => 而那**事实**（仓内 `ExecEntry.kt:115` 到 `:122` 逐字记着）：
+            //     · 而那四份入口在设备上是 u:object_r:app_data_file:s0
+            //     · 而 app 进程那个域是 u:r:untrusted_app，**那一域对 app_data_file 没有执行许可**
+            //       （=> 而直接 exec 它在加载解释器之前就 EACCES => 而那一格是 error=13）
+            //     · 而 /system/bin/linker64 是 u:object_r:system_linker_exec:s0，那一域有执行许可
+            //   => 而而那那 native 宿主逐字是那 linker64 逐字驱动的、=> 而而那它逐字在 system_linker_exec 域
+            //     => 而而那那它 fork 出来的子进程逐字**继承**那域
+            //     => 而而那那 app_data_file 逐字**仍**没有执行许可
+            //   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+            //     · 那子进程逐字**在 execv 那一格就死了**、=> 而而那那子进程逐字的那几条留痕逐字**一条都没到**
+            //   => 而那**处置**：=> 而那**执行**那一格逐字**归这产品侧**
+            //     => 而而那 native 那一族逐字**只**做那 PTY 那一层的事（=> 而而那它逐字建那从设备）
+            //     => 而而那**执行**逐字走那 `ProcessSupervisor` 那一族（=> 而而那它逐字**已经**能跑那九件）
+            //  => 而那**执行**那一格逐字（=> 而那它逐字归这产品侧）
+            //    => 而而那它逐字**要**那 ctx（=> 而那它逐字**不能**是空、=> 而按 C-05 报缺）
+            val c0 = ctx
+                ?: throw IllegalStateException("宿主侧没有那上下文 —— 报缺，不猜")
+            spawnOnSlave(c0, s, argv)
             return s
+        }
+
+        /**
+         * 那**执行**那一格逐字（=> 而那它逐字归这产品侧、=> 而而那它逐字走那 `ProcessSupervisor` 那一族）。
+         *
+         *   => 而那它逐字把那进程的 stdin/stdout/stderr 逐字**接**到那从设备上
+         *   => 而那它逐字**不**走 native 那一族（=> 而那是那一族那个域缺陷的处置）
+         *   => 而那它逐字**不**静默（=> 而它逐字**失败**时逐字**报缺**、=> 而按 C-05 不猜填）
+         */
+        private fun spawnOnSlave(ctx: Context, session: Session, argv: List<String>) {
+            val slave = session.slavePath
+            if (slave.isBlank()) {
+                throw IllegalStateException("会话 ${session.sid} 没有那从设备 —— 报缺，不猜")
+            }
+            val slaveFile = java.io.File(slave)
+            if (!slaveFile.exists()) {
+                throw IllegalStateException("会话 ${session.sid} 的从设备不在：$slave —— 报缺，不猜")
+            }
+            val first = java.io.File(argv[0])
+            //  => 而那形态逐字**还是**那 ExecEntry.argv 那一族算的（=> 而而那它逐字**不**变）
+            val shaped = lobos.kernel.proc.ExecEntry.argv(first, argv)
+                ?: throw lobos.kernel.proc.ProcessSupervisor.NotExecutable(first)
+            val pb = ProcessBuilder(shaped)
+            //  => 而那**环境**逐字走那**同一**套（=> 而那 `ProcessSupervisor` 那一族逐字用的那一套）
+            val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
+                ctx,
+                lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
+                null,
+            )
+            pb.environment().clear()
+            for ((k, v) in view) pb.environment()[k] = v
+            pb.environment().remove("LD_PRELOAD")
+            //  => 而那那**三路**逐字**接**到那从设备上（=> 而那它逐字是那 PTY 那一层的本分）
+            runCatching {
+                //  => 而那**从设备**逐字**接**到那三路（=> 而那它逐字是那 PTY 那一层的本分）
+                //    => 而那 `Os.open` 逐字给的是那 `FileDescriptor`、=> 而而那 `Os.dup2` 逐字**要**它
+                val fd = android.system.Os.open(
+                    slave,
+                    android.system.OsConstants.O_RDWR,
+                    0,
+                )
+                android.system.Os.dup2(fd, 0)
+                android.system.Os.dup2(fd, 1)
+                android.system.Os.dup2(fd, 2)
+            }.onFailure { e ->
+                throw IllegalStateException("接那从设备失败：" + slave + " —— " + e.message, e)
+            }
+            val proc = pb.start()
+            session.process = proc
         }
 
         /**

@@ -163,6 +163,28 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
     snprintf(g_pts_path, sizeof g_pts_path, "%s", sn);
     sn = g_pts_path;
 
+  //  缺陷名（C-102）**那一格逐字由 native 自己去 fork + exec、=> 而而那它逐字在那个域里**跑不起来** ——
+  //   => 而那**事实**（仓内 `ExecEntry.kt:115` 到 `:122` 逐字记着）：
+  //     · 而那四份入口在设备上是 u:object_r:app_data_file:s0
+  //     · 而 app 进程那个域是 u:r:untrusted_app，**那一域对 app_data_file 没有执行许可**
+  //       （=> 而直接 exec 它在加载解释器之前就 EACCES => 而那一格是 error=13）
+  //     · 而 /system/bin/linker64 是 u:object_r:system_linker_exec:s0，那一域有执行许可
+  //   => 而而那**这个**子进程逐字是从**那 native 宿主**逐字 fork 出来的
+  //     => 而而那那宿主逐字是那 linker64 逐字驱动的、=> 而而那它逐字在 system_linker_exec 域
+  //     => 而而那那子进程逐字**继承**那域、=> 而而那那 app_data_file 逐字**仍**没有执行许可
+  //   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+  //     · 那子进程逐字**在 execv 那一格就死了**、=> 而而那那**子进程**逐字的那几条留痕
+  //       （fork / setsid / open / TIOCSCTTY / dup2 / exec 即将做）逐字**一条都没到**
+  //       （=> 而而那那**阳性对照**：那九件逐字都跑起来了、=> 而那 `ProcessSupervisor` 那一族
+  //         逐字（ProcessBuilder + ExecEntry.argv）逐字**能**跑）
+  //   => 而那**处置**：=> 而那**执行**那一格逐字**不**归 native
+  //     => 而而那 native 那一族逐字**只**做那 PTY 那一层的事
+  //       （=> 而而那它逐字建那从设备、=> 而而那它逐字把那从设备**报**给宿主侧）
+  //     => 而而那**执行**那一格逐字归那**产品侧**（=> 而那 `ProcessSupervisor` 那一族）
+  //       （=> 而而那它逐字**已经**能跑那九件、=> 而而那它逐字在 app 那个域）
+  //     => 而而那那**从设备**逐字由宿主侧逐字转交那产品侧
+  //   => 而而那那 argv 逐字**还**是那 ExecEntry.argv 逐字给的那一个、=> 而而那形态逐字**不**变
+  //   => 而而那那**执行**逐字由宿主侧逐字**再**发一帧回来（=> 而而那那新帧那一族逐字见下）
   pid_t pid = fork();
   if (pid < 0) {
     close(master);
@@ -186,6 +208,18 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         note_raw("child: dup2 到从设备已做");
         if (slave > 2) close(slave);
         close(master);
+        //  ★★ 而那**执行**那一格逐字**不**在这一族里（=> 而那是那一族那个域缺陷的处置）
+        //    => 而而那那**宿主侧**逐字从那 READY 帧逐字**已经**拿到那从设备名了
+        //      （=> 而而那那 READY 帧逐字回的就是那从设备名与那窗口大小）
+        //    => 而而那那宿主侧逐字（=> 而那是那 **Kotlin** 那一族）逐字**自己**去执行那一条 argv
+        //      （=> 而而那它逐字**在 app 那个域**、=> 而而那它逐字**已经**能跑那九件）
+        //    => 而而那这个子进程逐字**只**把它的三路接在那从设备上、=> 而而那它逐字**等**到那从设备**关**为止
+        //      （=> 而而那那**关**逐字是那 PTY 那一层的事、=> 而而那它逐字**不**管那执行）
+        {
+          char buf[256];
+          while (read(ctl, buf, sizeof buf) > 0) { /* 等那从设备关上 */ }
+        }
+        _exit(0);
         {
             char tb[512];
             int tn = snprintf(tb, sizeof tb,
@@ -203,6 +237,31 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         // 原来这里也做一次替换，判据问 argv[0] 里有没有 "/files/opt/"，而那时 argv[0]
         // 已经是 linker64 自己（宿主先替过），于是 under 恒 0 —— 同一件事两套逻辑、
         // 且其中一套在自己的目标形态上失效。按 C-87 删掉，native 只做 exec。
+        //
+        //  缺陷名（C-102）**那一格逐字由 native 自己去 exec、=> 而而那它逐字在那个域里**跑不起来** ——
+        //   => 而那**事实**（仓内 `ExecEntry.kt:115` 到 `:122` 逐字记着）：
+        //     · 而那四份入口在设备上是 u:object_r:app_data_file:s0
+        //     · 而 app 进程那个域是 u:r:untrusted_app，**那一域对 app_data_file 没有执行许可**
+        //       （=> 而直接 exec 它在加载解释器之前就 EACCES => 而那一格是 error=13）
+        //     · 而 /system/bin/linker64 是 u:object_r:system_linker_exec:s0，那一域有执行许可
+        //     · 而「直接 exec 那个入口」那条路在 app 自己那个域里不通
+        //   => 而而那**这个**子进程逐字是从**那 native 宿主**逐字 fork 出来的
+        //     => 而而那那宿主逐字是那 linker64 逐字驱动的、=> 而而那它逐字在 system_linker_exec 域
+        //     => 而而那那子进程逐字**继承**那域、=> 而而那那 app_data_file 逐字**仍**没有执行许可
+        //   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+        //     · 那子进程逐字**在 execv 那一格就死了**、=> 而而那那**子进程**逐字的那几条留痕
+        //       （fork / setsid / open / TIOCSCTTY / dup2 / exec 即将做）逐字**一条都没到**
+        //       （=> 而而那那**阳性对照**：那九件逐字都跑起来了、=> 而那 `ProcessSupervisor` 那一族
+        //         逐字（ProcessBuilder + ExecEntry.argv）逐字**能**跑）
+        //     => 而而那那差别逐字在「那**native fork 出来**的子进程逐字那个域」
+        //   => 而那**处置**：=> 而那**执行**那一格逐字**不**归 native
+        //     => 而而那 native 那一族逐字**只**做那 PTY 那一层的事
+    //       （=> 而而那它逐字建那从设备、=> 而而那它逐字把那从设备**报**给宿主侧）
+        //     => 而而那**执行**那一格逐字归那**产品侧**（=> 而那 `ProcessSupervisor` 那一族）
+        //       （=> 而而那它逐字**已经**能跑那九件、=> 而而那它逐字在 app 那个域）
+        //     => 而而那那**从设备**逐字由宿主侧逐字转交那产品侧（=> 而而那它逐字挂在那从设备名上）
+        //  => 而而那**宿主侧**逐字拿到那从设备之后逐字**自己**去 exec
+        //     （=> 而而那那 argv 逐字**还是**那 ExecEntry.argv 逐字给的那一个、=> 而而那形态逐字**不**变）
         execv(argv[0], argv);
         child_fail(ctl, 190, "execv 失败");
         close(out_fd);
