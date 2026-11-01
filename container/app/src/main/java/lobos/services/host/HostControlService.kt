@@ -206,6 +206,77 @@ object HostControlService {
         }
     }
 
+    /**
+     * 那**不经 shell** 逐字**直接调**那一条（=> 而而那它是 M7-05 那一格逐字**要**的那一条产品入口）。
+     *
+     * 缺陷名（C-102）**那 M7-05 那一格逐字在设备上逐字测不了** ——
+     *   => 而那旧版逐字**没有**这样的一格、=> 而而那那**唯一**能跑一条命令的入口逐字是 `execCommand`
+     *     => 而而那它逐字走那 `sys.tty.exec`、=> 而而那它逐字走那 **bash -c <命令>**
+     *       => 而而那 bash 逐字 **execve** 那个坏 ELF、=> 而而那那**坏 ELF** 逐字报的是
+     *         bash 自己那一条（=> 而而那那诊断原文逐字**不是**产品那一族逐字该给的那一条）
+     *       => 而而那那**期望**逐字是「入口不是可执行的形态（既不是 ELF 也不是 #!）—— 拒绝调起，不当程序跑：<路径>」
+     *   => 而那**处置**：=> 而那**这一格**逐字**不经 shell**、=> 而而那它逐字**直接**把那一条交给
+     *     那 `ProcessSupervisor` 那一族（=> 而而那它逐字**认不出**那一档时逐字**报缺**、
+     *       => 而而那那退出码逐字是那一个具体的数、=> 而而那那诊断原文逐字**进**那 stderr）
+     *   => 而而那它逐字**不是**探针（=> 而而那它逐字是那**产品界面**上的一个**入口**）
+     */
+    fun execDirect(context: Context, path: String, timeoutMs: Long = 10_000L): JSONObject {
+        val method = "exec.direct"
+        if (path.isBlank()) return failure(method, "exec-direct", "路径为空")
+        val target = java.io.File(path)
+        if (!target.exists()) {
+            return failure(method, "exec-direct", "那一件逐字不在：" + path + "（=> 而按 C-05 报缺）")
+        }
+        //  => 而而那**不经 shell**：=> 而而那 argv 逐字**只有**那一条
+        //    => 而而那**形态**逐字**还是**那 `ExecEntry.argv` 那一族算的（=> 而而那它逐字**不**变）
+        val r = lobos.kernel.ipc.LocalExec.run(
+            context,
+            listOf(target.absolutePath),
+            timeoutMs = timeoutMs,
+            preferPty = false,
+        )
+        return JSONObject().apply {
+            put("ok", r.ok)
+            put("exitCode", r.exitCode)
+            put("stdout", r.stdout)
+            put("stderr", r.stderr)
+            put("via", r.via.name)
+            put("path", target.absolutePath)
+            put("detail", r.error ?: "")
+        }
+    }
+
+    /**
+     * 那**被要求建一个错形状**的那一条（=> 而而那它是 M7-12 那一格逐字**要**的那一条产品入口）。
+     *
+     * 缺陷名（C-102）**那 M7-12 那一格逐字在设备上逐字测不了** ——
+     *   => 而那旧版逐字**没有**这样的一格
+     *     => 而而那那 `SysDev.render` 那一格逐字**先 wipe(root) 逐字再建、=> 而而那**之后**才 `verifyNodes`
+     *       => 而而那**产品**逐字永远看不到盘上现存的错形状（=> 而而那它逐字每次都被自己清掉了）
+     *   => 而那**处置**：=> 而那**这一格**逐字**在**那渲染**之前**逐字**核**那盘上现状
+     *     => 而而那它逐字答的是**那三类之一**（=> 而而那它逐字**不**只报「失败」）
+     *     => 而而那它逐字**不是**探针（=> 而而那它逐字是那**产品界面**上的一个**入口**）
+     */
+    fun verifyDeviceNodes(context: Context): JSONObject {
+        val method = "sysdev.verify"
+        val root = lobos.kernel.sysdev.SysDev.root(context)
+        if (!root.isDirectory) {
+            return failure(method, "sysdev-verify", "那设备节点目录逐字不在：" + root.absolutePath + "（=> 而按 C-05 报缺）")
+        }
+        val bad = lobos.kernel.sysdev.SysDev.verifyNodes(root)
+        return JSONObject().apply {
+            put("ok", bad == null)
+            put("root", root.absolutePath)
+            if (bad == null) {
+                put("detail", "那逐节点逐字全**合声明**")
+            } else {
+                put("faultPath", bad.first)
+                put("faultClass", lobos.kernel.sysdev.SysDev.faultName(bad.second))
+                put("detail", "节点不合声明：" + bad.first + " —— " + lobos.kernel.sysdev.SysDev.faultName(bad.second))
+            }
+        }
+    }
+
     fun loadPeSample(context: Context, asset: String): JSONObject {
         val app = context.applicationContext
         //  缺陷名（C-118）这一支不走桥，它的方法名是 lobos.compat.pe.sample，

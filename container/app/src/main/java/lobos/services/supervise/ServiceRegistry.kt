@@ -113,6 +113,13 @@ object ServiceRegistry {
         )
         out.add(
             decl("sysdev", listOf("view")) { ctx ->
+                //  缺陷名（C-102）**那一格逐字把失败逐字吞掉、=> 而而那那一族逐字因此永远不重建** ——
+                //   => 而那旧版逐字是 `runCatching { SysDev.render(ctx) }.onFailure { …记诊断… }`
+                //     => 而而那 `runCatching` 逐字**吞掉**那失败、=> 而而那那动作逐字**看上去**逐字成了
+                //       => 而而那那**服务池**逐字**不会**把它记成不健康、=> 而而那那一族逐字**不重起**
+                //   => 而而那**处置**：=> 而而那那失败逐字**记完诊断之后**逐字**再抛出去**
+                //     => 而而那那**服务池**那一族逐字就**看得见**那失败、=> 而而那它逐字**能**自愈
+                //     => 而而那那**诊断**逐字**照记**（=> 而那按 C-126 不静默）
                 runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(
@@ -120,6 +127,11 @@ object ServiceRegistry {
                             e.javaClass.name + ": " + (e.message ?: ""),
                         )
                     }
+                    .getOrNull()
+                    ?: throw IllegalStateException(
+                        "渲染 files/dev 失败（=> 而而那 render 逐字**答不出**那目录、" +
+                            "=> 而而那那一族逐字**要**重起）"
+                    )
             }
         )
         return out

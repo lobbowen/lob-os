@@ -16,6 +16,19 @@ class SupervisorPool(private val host: Service) {
     private val supervisors = LinkedHashMap<String, InstanceHost>()
     private val services = LinkedHashMap<String, () -> Unit>()
 
+    /**
+     * 那**不健康**的那几族（=> 而而那它们逐字下一轮逐字**要重起**）。
+     *
+     * 缺陷名（C-102）**那一族逐字坏了以后逐字永远不重建** ——
+     *   => 而那旧版逐字**没有**这样的一族（=> 而而那那动作逐字**失败**时逐字**只**记一条诊断）
+     *     => 而而那那一族逐字**起过**就**再**也不跑（=> 而而那 `services.containsKey` 那一句）
+     *     => 而而那**后果**（07 本轮逐字实测到）：=> 而那 `files/dev` 那一族逐字**被永久弄坏**
+     *   => 而那**处置**：=> 而而那那动作逐字**失败**时逐字把它记进这一族
+     *     => 而而那**下一轮**逐字把那一族逐字**注销**、=> 而而那再**下一轮**逐字**重起**它
+     *     => 而而那那**自愈**逐字**就是**那一族逐字**重起**那一下
+     */
+    private val unhealthyServices = LinkedHashSet<String>()
+
     @Synchronized
     fun start() {
         //  缺陷名（C-102）**那 clear 逐字与服务池一起来、=> 而而那它逐字把 beginLife 写的那一档逐字清掉了** ——
@@ -75,7 +88,30 @@ class SupervisorPool(private val host: Service) {
             if (ready.isEmpty()) break
             var progressed = false
             for (d in ready) {
-                if (services.containsKey(d.id)) continue
+                if (services.containsKey(d.id)) {
+                    //  缺陷名（C-102）**那一族逐字坏了以后逐字永远不重建** ——
+                    //   => 而那旧版逐字是 `if (services.containsKey(d.id)) continue`
+                    //     => 而而那那**服务**逐字**起过**一次就**再**也不跑那动作
+                    //     => 而而那那**动作**逐字**失败**时逐字**没有任何一处**重试
+                    //       （=> 而那 `runCatching { … }` 逐字**吞掉**那失败、=> 而而那它逐字**只**记一条诊断）
+                    //   => 而而那**后果**（07 本轮逐字实测到、Lead 采纳那一条）：
+                    //     · 而那 `files/dev` 那一族逐字被一个错形状**永久弄坏**
+                    //       （=> 而那 `execNode` 逐字写不进那个目录 => 而那 render 逐字抛
+                    //         => 而而那那 runCatching 逐字**吞掉** => 而而那那一族逐字「起」逐字**只跑一次**
+                    //         （=> 而那 `SupervisorPool` 逐字 `if (services.containsKey(d.id)) continue`））
+                    //       => 而而那 `files/dev` 逐字**不再重建**、=> 而而那那**复原**只能靠**重启 App**
+                    //   => 而那**处置**：=> 而而那那**动作**逐字**失败**时逐字把那一族逐字**注销**
+                    //     => 而而那**下一轮**逐字**重新起**它（=> 而而那它逐字**自愈**）
+                    //     => 而而那那**判据**逐字是「那一次动作逐字成没成」（=> 而那它是那**动作**自己的事）
+                    //     => 而而那那**诊断**逐字**照记**（=> 而那按 C-126 不静默）
+                    val unhealthy = unhealthyServices.remove(d.id)
+                    if (unhealthy != null) {
+                        services.remove(d.id)?.invoke()
+                        Journal.note(host, "service", null, "注销不健康的服务（下一轮重起）", "id=" + d.id)
+                        continue
+                    }
+                    continue
+                }
                 val ok = runCatching {
                     d.act(host)
                     true
@@ -87,7 +123,14 @@ class SupervisorPool(private val host: Service) {
                     )
                     false
                 }
-                if (!ok) continue
+                if (!ok) {
+                    //  => 而而那那动作逐字**失败**时逐字把它记成**不健康**
+                    //    （=> 而而那**下一轮**逐字注销它、=> 而而那再下一轮逐字**重起**它）
+                    //    => 而而那那**诊断**逐字**照记**（=> 而那按 C-126 不静默）
+                    unhealthyServices.add(d.id)
+                    continue
+                }
+                unhealthyServices.remove(d.id)
                 services[d.id] = { noopUnit() }
                 //  => 而那 `alive` 逐字**边起边更新**（=> 而而那下一层逐字**这一轮**就起得来）
                 alive.add(d.id)

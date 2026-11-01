@@ -324,6 +324,11 @@ object PtySession {
             //    => 而而那**那一代**逐字走那 `nextGeneration` 那一族（=> 而而那它逐字**不**猜）
             //    => 而而那**native** 那一族管的那一个（=> 而而那 `session.process` 逐字**空**时）
             //      逐字**不**记账本（=> 而而那它逐字**不是**那产品侧逐字起的那一个）
+            //  => 而而那那**产品侧**起的那一条逐字**记进**那产品侧那一族
+            //    （=> 而而那它逐字**不**在 native 那一族那里面、=> 而而那 `activeSessions` 逐字
+            //     逐字**要**能列它）
+            //    => 而而那那**键**逐字带那族标记（=> 而而那它逐字**不**与 native 那一族**冲突**）
+            ProductSessions.put("product-" + session.sid, session)
             recordInLedger(ctx, session, proc, argv)
             //  => 而而那那**退出清理**逐字与那**创建/记账**逐字**一致**
             //    （=> 而那是 M7-07 那一行逐字说的「创建、记账、退出清理一致」）
@@ -336,6 +341,8 @@ object PtySession {
                 Thread({
                     runCatching { proc.waitFor() }
                     runCatching { lobos.kernel.proc.ProcessLedger.end(ctx, pid0) }
+                    //  => 而而那那**产品侧**那一族逐字**去掉**那一条（=> 而而那它逐字**不在**了）
+                    runCatching { ProductSessions.remove("product-" + session.sid) }
                 }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
             }
         }
@@ -743,9 +750,76 @@ object PtySession {
     }
 
     fun isUsable(bin: java.io.File): Boolean = bin.isFile
+    /**
+     * 那**产品侧**逐字持有的那几条会话（=> 而那些逐字**不**是 native 那一族管的那一些）。
+     *
+     * 缺陷名（C-102）**那产品侧起的那一条逐字没人持有、=> 而而那它逐字不在那会话那一族的名单里** ——
+     *   => 而那旧版逐字**没有**这样的一族（=> 而那 `spawnOnSlave` 那一格逐字起完就**只**记那一个句柄）
+     *     => 而而那那**会话**逐字**没有**一个统一的名单、=> 而而那 `activeSessions` 逐字**只**问 native 那一族
+     *   => 而那**处置**：=> 而那**这一族**逐字持有那产品侧起的那几条
+     *     => 而而那它们逐字**可**被 `activeSessions` 逐字列出来
+     *     => 而而那那**会话号**逐字**不**该**冲突**（=> 而而那它逐字**带**一个族标记）
+     */
+    object ProductSessions {
+        private val lock = Any()
+        private val held = LinkedHashMap<String, Session>()
+
+        /** 那**记下**那一条（=> 而而那那号逐字**带**那族标记、=> 而而那它逐字**不**与 native 那一族**冲突**）。 */
+        @Synchronized
+        fun put(key: String, s: Session) {
+            synchronized(lock) { held[key] = s }
+        }
+
+        /** 那**还**在的那些（=> 而而那它们逐字**不**是 native 那一族管的那些）。 */
+        @Synchronized
+        fun list(): List<Session> {
+            val dead = mutableListOf<String>()
+            val out = mutableListOf<Session>()
+            synchronized(lock) {
+                for ((k, s) in held) {
+                    if (s.isClosed) dead.add(k) else out.add(s)
+                }
+                for (k in dead) held.remove(k)
+            }
+            return out
+        }
+
+        /** 那**去掉**那一条（=> 而而那那进程逐字退了时逐字调）。 */
+        @Synchronized
+        fun remove(key: String) {
+            synchronized(lock) { held.remove(key) }
+        }
+    }
+
+    /**
+     * 那**活着**的那几条会话（=> 而而那**两族**逐字**都**列）。
+     *
+     * 缺陷名（C-102）**那一格逐字只列 native 那一族管的那一些、=> 而而那产品侧持有的那些逐字不在里面** ——
+     *   => 而那旧版逐字是
+     *       `val h = host; return if (h == null) emptyList() else h.activeSessions()`
+     *     => 而而那那 `h.activeSessions()` 逐字**只**列那 `g_sessions` 那一族逐字管的那些
+     *       （=> 而而那是那 **native** 那一族逐字 fork 出来的）
+     *     => 而而那**产品侧**逐字持有的那一条（=> 而那 `spawnOnSlave` 那一格逐字起的那一个）
+     *       逐字**不在**那里面
+     *     => 而而那**后果**（07 本轮逐字核出、Lead 本机实读逐字成立）：
+     *       · 而那 `SysDev.kt:64` 逐字 `for (s in PtySession.activeSessions(ctx))`
+     *       · => 而而那产品侧逐字持有的那一条（=> 而那 sid=0 / slave=/dev/pts/2）逐字不在里面
+     *       · => 而而那 `files/dev/tty/pts/<NNN>` 逐字**永远建不出来**
+     *   => 而那**处置**：=> 而那**两族**逐字**都**列
+     *     · 那 **native** 那一族逐字管的那一些（=> 而那些逐字是那 PTY 那一层自己管的）
+     *     · 那**产品侧**逐字持有的那一些（=> 而那些逐字是那 `spawnOnSlave` 那一格逐字起的）
+     *     => 而而那那**会话号**逐字**不**该**冲突**（=> 而而那两族逐字**各**用自己那一套号）
+     *     => 而而那那**判别形式**（依 C-105 逐字**不**合并那两问）：
+     *       答「那**会话**逐字是什么」逐字该列**全部**；=> 而而那答「那**进程**逐字归谁管」逐字**只**看那账本
+     */
     fun activeSessions(ctx: Context): List<Session> {
-        val h = host
-        return if (h == null) emptyList() else h.activeSessions()
+        val native = runCatching {
+            val h = host
+            if (h == null) emptyList() else h.activeSessions()
+        }.getOrDefault(emptyList())
+        //  => 而而那那**产品侧**逐字持有的那一些（=> 而那些逐字**不**在 native 那一族那里面）
+        val product = runCatching { ProductSessions.list() }.getOrDefault(emptyList())
+        return native + product
     }
 
     fun ensureHost(ctx: Context): Boolean {
@@ -811,6 +885,27 @@ object PtySession {
             val done = CountDownLatch(1)
             s.onData = { d -> synchronized(buf) { buf.write(d) } }
             s.onExit = { _, _ -> done.countDown() }
+            //  缺陷名（C-102）**那一格逐字只等 native 那一族那一条退出信号、=> 而而那那一条逐字**永远不来****
+            //   => 而那旧版逐字是 `s.onExit = { _, _ -> done.countDown() }`
+            //     => 而而那那退出信号逐字是那 native 那一族逐字发的 `FRAME_EXITED`
+            //       （=> 而而那那一条逐字是那 **native fork 出来**的子进程逐字退时逐字发的）
+            //     => 而而那**现在**逐字那执行逐字归那**产品侧**（=> 而那是 52c0139 那一笔逐字落的）
+            //       => 而而那那产品侧逐字起的进程逐字**自己**退、=> 而而那那 native 那一族逐字**不知道**
+            //       => 而而那那 `FRAME_EXITED` 逐字**永远不来**、=> 而而那那**等**逐字**只能**超时
+            //   => 而而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+            //     · 那 `sys.tty.exec` 那一趟逐字「PTY 不可用（超时 10000ms）」、=> 而而那逐字走那无 PTY 通路
+            //     · => 而而那那**阳性对照**：那会话逐字**建得出来**（=> 而那 diag 逐字「会话 0 就绪 从设备=/dev/pts/N」）
+            //   => 而那**处置**：=> 而而那那进程逐字**自己**退了时逐字把那退出**报**出来
+            //     => 而而那那 `onExit` 逐字**两路**都能来（=> 而那 native 那一族逐字那一条 + 而那产品侧这一条）
+            //     => 而而那那**等**逐字因此逐字**等得到**、=> 而而那那**超时**逐字**不再**是那唯一那条路
+            s.process?.let { proc ->
+                Thread({
+                    val st = runCatching { proc.waitFor() }.getOrNull()
+                    runCatching {
+                        s.onExit?.invoke(st ?: 0, 0)
+                    }
+                }, "lobos-pty-exit-watch").apply { isDaemon = true; start() }
+            }
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 s.close()
                 return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms", completed = false)
