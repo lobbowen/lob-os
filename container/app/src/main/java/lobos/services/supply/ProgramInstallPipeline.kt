@@ -94,6 +94,28 @@ object ProgramInstallPipeline {
              *  => 而那 cmake 那一件逐字要那 **share** 那一层（=> 而那模块目录）。
              *  => 而它们逐字**是**那**落位事实**、=> 而那**落位侧**逐字**照**它们**搬**。 */
             val extraDirs: List<String> = emptyList(),
+            /**
+             * 那**系统角色**（=> 而那它逐字是「这一件在 LOB-OS 自己那一份 Linux 上扮演什么角色」）。
+             *
+             *  缺陷名（C-102）**那两份清单逐字不一致、=> 而而那那两把尺逐字各答一件事**
+             *   => 而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
+             *     （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
+             *   => 而而那那**件整体**的系统角色（=> 而那 exec / shell / library / …）
+             *     逐字**不**在那 `files[]` 逐字那一栏里、=> 而而那它逐字在**另一份清单**里
+             *     （=> 而那 `component-meta.json` 那一份）
+             *   => 而而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
+             *     => 而那 `PreinstalledPieces.kt:297` 逐字 `val entryRole: String = if (entry.isNotBlank()) {`
+             *       逐字**从那 `files[]` 逐字取**、=> 而而那它逐字必然 'program'
+             *     => 而而那**落位侧** `program-manifest.json` 逐字 'program'
+             *     => 而而那**注册表**逐字 'program'、=> 而而那 `role='shell'` 那一格逐字**永远**答不出来
+             *   => 而那**处置**（=> 而那是 Lead 采纳的那 (甲)）：
+             *     => 而那**构建期**逐字把那系统角色**也**写进那 `piece-shape.json` 那一份
+     *       （=> 而那 `scripts/toolchain/elf-form.sh` 逐字从那 `component-meta.json` 派生）
+     *     => 而而那**这一格**逐字**读**它、=> 而而那它逐字**不**再从那 `files[]` 逐字推
+             *
+             *  ★ 而那它逐字**读不到**时逐字是空（=> 而按 C-05 报缺、=> 而不猜填）。
+             */
+            val systemRole: String = "",
         ) {
             fun roleOf(rel: String): String? = files.firstOrNull { it.path == rel }?.role
 
@@ -137,6 +159,9 @@ object ProgramInstallPipeline {
             return Piece(
                 kind = o.optString("kind", "").trim(),
                 entry = o.optString("entry", "").trim(),
+                //  => 而那**系统角色**那一格逐字**读**那产物自带的那一份
+                //    （=> 而那它逐字**缺了**逐字是空、=> 而按 C-05「没有」就是没有、=> 而不猜填）
+                systemRole = o.optString("systemRole", "").trim(),
                 files = files,
                 derivedLinks = (o.optJSONArray("derivedLinks") ?: JSONArray()).let { arr ->
                     (0 until arr.length()).mapNotNull { i ->

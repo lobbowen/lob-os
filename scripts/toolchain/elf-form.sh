@@ -382,6 +382,33 @@ elf_write_shape() {
 "
   done
 
+  # ── 第零步：取那**系统角色**（=> 而那它逐字在 `component-meta.json` 那一份里）──
+  # 缺陷名（C-102）**那两份清单逐字不一致、=> 而而那它逐字是「一件逐字有两处逐字记它」那一族**
+  #   => 而那旧版逐字**只**写那**形态**那一把尺（=> 而那 role 逐字只有 program / library / unknown），
+  #     => 而而那 `component-meta.json` 那一份逐字写的是那**系统角色**那一把尺
+  #       （=> 而那 exec / shell / library / …）
+  #     => 而而那那**两把尺**逐字**对不上**：
+  #       · 而那 `component-meta.json` 逐字 bash = role='shell'
+  #       · 而而那 `piece-shape.json` 逐字 files 1 条逐字 role='program'
+  #         （=> 而那 busybox 逐字 files 30 条逐字 roles ['program']）
+  #   => 而而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
+  #     => 而那 `PreinstalledPieces.kt:297` 逐字 `val entryRole: String = if (entry.isNotBlank()) {`
+  #       逐字**从 `piece-shape.json` 的 `files[]` 取**、=> 而而那它逐字必然 'program'
+  #     => 而而那**落位侧** `program-manifest.json` 逐字 'program'
+  #     => 而而那**扫描**逐字读它、=> 而而那**注册表**逐字 'program'
+  #     => 而而那那 `role='shell'` 那一格逐字**永远**答不出来
+  #   => 而那**处置**（=> 而那是 Lead 采纳的那 (甲)）：=> 而那 `piece-shape.json` 那一侧
+  #     **也**要记那**系统角色**、=> 而而那它逐字**从**那 `component-meta.json` 那一份**派生**
+  #     （=> 而而那它逐字**不**另判一次、=> 而而那那**一份真源**逐字是那 `component-meta.json`）
+  #   => 而而那**逐文件**那一栏逐字**还是**那形态那一把尺（=> 而那 role 逐字 program / library）、
+  #     => 而而那**新增**的那一栏逐字是那**件整体**的系统角色
+  local sys_role=""
+  local meta_file="$stage/component-meta.json"
+  if [ -f "$meta_file" ]; then
+    sys_role="$(node -e 'let d="";try{d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch(e){process.stdout.write("")};process.stdout.write(String(d&&d.role||""))' "$meta_file" 2>/dev/null || echo '')"
+  fi
+  [ -n "$sys_role" ] || sys_role="unknown"
+
   local files_json="" programs="" libraries="" derived_links=""
   local n_prog=0 n_lib=0 n_bin=0 n_libdir=0
   local mode bytes sha soname chain chain_json entry_form="" entry_role="" dir n
@@ -458,6 +485,9 @@ elf_write_shape() {
     printf '  "entry": "%s",\n' "$(elf_json_escape "$entry")"
     printf '  "entryForm": "%s",\n' "$entry_form"
     printf '  "entryRole": "%s",\n' "${entry_role:-unknown}"
+    #  => 而那**系统角色**那一栏逐字**新**增（=> 而那它逐字从那 `component-meta.json` 派生）
+    #    => 而而那那**两把尺**逐字**同时**在那一份里、=> 而而那它们逐字**对得上**
+    printf '  "systemRole": "%s",\n' "$sys_role"
     printf '  "kind": "%s",\n' "$kind"
     printf '  "programs": [%s],\n' "$programs"
     printf '  "libraries": [%s],\n' "$libraries"

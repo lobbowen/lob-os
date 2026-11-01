@@ -295,8 +295,28 @@ object PreinstalledPieces {
         // => 而「entry 为空」那一支**仍**取库形态那一项
         //   （=> 而那是纯库件那一族：=> 而它们**真的**只有库形态的字节，=> 而而它们**该**是 library）。
         val entryRole: String = if (entry.isNotBlank()) {
-            shape.roleOf(entry)
-                ?: return fail(ctx, id, "入口 " + entry + " 的形态不在产物的形态说明里 —— 报缺，不猜")
+            //  缺陷名（C-102）**那一格逐字从那 `files[]` 逐字取、=> 而而那它逐字必然 'program'**
+            //    => 而那旧版逐字是 `shape.roleOf(entry)`
+            //      => 而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
+            //        （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
+            //      => 而而那那**件整体**的系统角色（=> 而那 exec / shell / library / …）
+            //        逐字**不**在那 `files[]` 逐字那一栏里
+            //      => 而而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
+            //        · 而那 `component-meta.json` 逐字 bash = role='shell'
+            //        · 而而那 `piece-shape.json` 逐字 files 1 条逐字 role='program'
+            //          （=> 而那 busybox 逐字 files 30 条逐字 roles ['program']）
+            //        · 而而那**落位侧** `program-manifest.json` 逐字 'program'
+            //        · => 而而那**注册表**逐字 'program'、=> 而而那 `role='shell'` 那一格逐字**永远**答不出来
+            //    => 而那**处置**（=> 而那是 Lead 采纳的那 (甲)）：
+            //      => 而那**系统角色**逐字走那产物自带的 `systemRole` 那一格
+            //        （=> 而那构建期逐字从那 `component-meta.json` 派生、=> 而而那那**一份真源**逐字是那一份）
+            //      => 而而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不按形态那一把尺兜底）
+            shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
+                ?: return fail(
+                    ctx, id,
+                    "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
+                        "（=> 而那它逐字该从那 component-meta.json 派生、=> 而那按 C-05 不猜填）",
+                )
         } else {
             //  缺陷名（C-102）**这一格逐字取库形态那一项的首项、=> 而而那一件逐字可能有好几条链** ——
             //    => 而那旧版逐字是 `shape.byRole(ROLE_LIBRARY).firstOrNull()?.role`
