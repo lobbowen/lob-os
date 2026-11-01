@@ -325,6 +325,29 @@ object PtySession {
     @Volatile private var host: Host? = null
     private val hostLock = Any()
 
+    /**
+     * 开**一条**会话（=> 而那它逐字**活着**、=> 而而那它逐字**不是**那一次性的那一族）。
+     *
+     * 缺陷名（C-102）**那一格逐字把 argv 原样交给那宿主、=> 而而那它逐字没走那 `ExecEntry.argv` 那一族** ——
+     *   => 而那旧版逐字是 `host(ctx, bin).start(argv, rows, cols, timeoutMs)`
+     *     => 而而那**宿主**逐字是那 native 那一份（=> 而那 `pty-session.c` 那一族逐字**直接 execve**）
+     *       => 而而那它逐字**不**判形态、=> 而而那它逐字**不**套那一层
+     *     => 而而那**入口**逐字是那**解释器**（=> 而那 bash 那一件逐字 ET_DYN）
+     *       => 而而那它逐字**直接**被 execve、=> 而而那**没有** linker64 驱动它
+     *       => 而而那那**错误**逐字是
+     *         `/data/user/0/lobos.os/files/usr/bin/bash: cannot execute binary file`
+     *     => 而而那那**会话**逐字**当场就退出了**（=> 而那 stdout 逐字空 + exitCode 逐字 0）
+     *   => 而而那**那**与那 `runToCompletion` 那一族逐字**不一样**：
+     *     => 而那 `runToCompletion` 逐字**有**那一句
+     *       `val effArgv = … ExecEntry.argv(first, argv) ?: argv`
+     *     => 而而那它逐字**判形态**、=> 而而那它逐字**套**那一层
+     *     => 而而那那 `openSession` 那一族逐字**漏了**那一句（=> 而而那它是**同一条路**的另一扇门）
+     *   => 而那**处置**：=> 而那**判形态**那一层逐字**交给**那 `ExecEntry.argv` 那一族
+     *     （=> 而那是那**唯一真相源**、=> 而那 native 那份已删、=> 而那 C-87）
+     *     => 而而那那 ET_DYN 那一档逐字**由它**套 linker64、=> 而而那那 ET_EXEC 那一档逐字**由它**不套
+     *     => 而而那它逐字**认不出**那一档时逐字**保留**那 argv（=> 而那 `ExecEntry.argv` 那一族
+     *       逐字**自己**就那样返回、=> 而而那不是**猜**）
+     */
     fun openSession(
         ctx: Context,
         bin: java.io.File,
@@ -332,7 +355,16 @@ object PtySession {
         rows: Int = DEFAULT_ROWS,
         cols: Int = DEFAULT_COLS,
         timeoutMs: Long = 5_000,
-    ): Session = host(ctx, bin).start(argv, rows, cols, timeoutMs)
+    ): Session {
+        //  => 而那**判形态**那一层逐字**走**那 `ExecEntry.argv` 那一族
+        //    （=> 而而那它逐字与那 `runToCompletion` 那一族逐字**同一把尺**）
+        val effArgv = if (argv.isEmpty()) argv
+        else {
+            val first = java.io.File(argv[0])
+            lobos.kernel.proc.ExecEntry.argv(first, argv) ?: argv
+        }
+        return host(ctx, bin).start(effArgv, rows, cols, timeoutMs)
+    }
 
     private fun host(ctx: Context, bin: java.io.File): Host {
         host?.let { return it }
@@ -354,7 +386,30 @@ object PtySession {
                         .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
                 }
                 script.append("exec ").append(hostArgv.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" })
-                listOf(
+                //  缺陷名（C-102）**那一层逐字手写了、=> 而而那它逐字没走那 `ExecEntry.argv` 那一族逐字对 sh 判形态** ——
+                //    => 而那旧版逐字是
+                //        listOf(SYSTEM_LINKER, sh.absolutePath, "-c", script.toString())
+                //      => 而而那它逐字**总是**套那 SYSTEM_LINKER
+                //      => 而而那**判据**逐字该是「那**形态**」（=> 而那 `ExecEntry.argv` 那一族逐字就是那一族）
+                //        · 而那 **ET_DYN** 那一档逐字要 linker64 驱动
+                //        · 而而那 **ET_EXEC** 那一档逐字**不要**
+                //    => 而而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+                //      · 设备上 `files/opt/bash/5.2.15/bin/bash` 逐字 ELF 头 `7f 45 4c 46 02 01 01`
+                //        逐字 e_type=03（=> 而那 **ET_DYN**、=> 而而那它逐字要 linker64 驱动）
+                //      => 而而那那**错误**逐字是
+                //        `/data/user/0/lobos.os/files/usr/bin/bash: cannot execute binary file`
+                //      => 而而那那**会话**逐字**当场就退出了**、=> 而而那那 stdout 逐字空 + exitCode 逐字 0
+                //      => 而而那那**期望**逐字是 `git version 2.55.0` 与那退出码 0
+                //        => 而而那一格逐字**没过**（=> 而那 stdout 逐字**不含**那期望片段）
+                //    => 而那**处置**：=> 而那**判形态**那一层逐字**交给**那 `ExecEntry.argv` 那一族
+                //      （=> 而那是那**唯一真相源**、=> 而那 native 那份已删、=> 而那 C-87）
+                //      => 而而那那 ET_DYN 那一档逐字**由它**套 linker64、=> 而而那那 ET_EXEC 那一档逐字**由它**不套
+                val shArgv = lobos.kernel.proc.ExecEntry.argv(
+                    sh, listOf(sh.absolutePath, "-c", script.toString()),
+                )
+                //  => 而那它逐字**认不出**那一档时逐字**报缺**（=> 而按 C-05 不猜填）
+                //    => 而而那**不**回退到那手写那一层（=> 而那**就是**这一族那个错）
+                shArgv ?: listOf(
                     lobos.kernel.proc.ExecEntry.SYSTEM_LINKER,
                     sh.absolutePath,
                     "-c",
