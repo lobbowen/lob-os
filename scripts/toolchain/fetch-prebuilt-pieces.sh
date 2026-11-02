@@ -409,87 +409,6 @@ for id in "${PIECES[@]}"; do
     continue
   fi
 
-  #  缺陷名（C-102）**那一格逐字只核那**名字**、=> 而而那它逐字**不**核那件自己的 buildSha** —
-  #    => 而那旧版逐字**没有**这一格
-  #      => 而而那那**旧产物**那一档（=> 而那 miss_stale 那一族）逐字**只**比那**资产名**
-  #        （=> 而那「Release $tag 里没有**一个**叫 $asset」那一族）
-  #        => 而而那那**名字**逐字**对得上**时、=> 而而那那**字节**逐字**可能**是**旧代码**产的
-  #      => 而而那那**后果**（06 本轮逐字核出、Lead 本机实读那 job log 逐字核过）：
-  #        · 那 manifest 那一趟逐字红在这一格：
-  #          `::[error]文件名里的内容哈希与实际不符: component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip（名 e1b5dcff3b3c vs 实 ac60a820aaaf）`
-  #          —— => 而而那那 `e1b5dcff3b3c` 逐字是那**旧指纹**那一族、=> 而那那现在逐字那新指纹逐字是 `src1f2d9e624963`
-  #            => 而而那那取到的那一份逐字是 **2026-10-27** 那一版（=> 而那它的哈希逐字是 `ac60a820aaaf`）
-  #      => 而那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」那一个事实上
-  #        （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
-  #    => 而那**处置**：=> 而而那那取件那一族逐字要逐字核那件自己的 buildSha
-  #      => 而而那那**不匹配**时逐字**拒**、=> 而而那它逐字**不许**拿那旧的那一份逐字**凑**
-  #      => 而而那那**期望值**逐字是那**当前代码**那一份（=> 而那 git HEAD）
-  #        （=> 而而那那 buildSha 逐字**就是**那**件自己**产它时那**一份代码**逐字的 sha）
-  #      => 而而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而那**不**当那**合**）
-  #  缺陷名（C-102）**那一格逐字只核那**名字**、=> 而而那它逐字**不**核那件自己的 buildSha** —
-  #    => 而那旧版逐字**没有**这一格
-  #      => 而而那那**旧产物**那一档（=> 而那 miss_stale 那一族）逐字**只**比那**资产名**
-  #        （=> 而那「Release $tag 里没有**一个**叫 $asset」那一族）
-  #        => 而而那那**名字**逐字**对得上**时、=> 而而那那**字节**逐字**可能**是**旧代码**产的
-  #      => 而而那那**后果**（06 本轮逐字核出、Lead 本机实读那 job log 逐字核过）：
-  #        · 那 manifest 那一趟逐字红在这一格：
-  #          `::[error]文件名里的内容哈希与实际不符: component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip（名 e1b5dcff3b3c vs 实 ac60a820aaaf）`
-  #          —— => 而而那那 `e1b5dcff3b3c` 逐字是那**旧指纹**那一族、=> 而那那现在逐字那新指纹逐字是 `src1f2d9e624963`
-  #            => 而而那那取到的那一份逐字是 **2026-10-27** 那一版（=> 而那它的哈希逐字是 `ac60a820aaaf`）
-  #      => 而那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」那一个事实上
-  #        （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
-  #    => 而那**处置**：=> 而而那那取件那一族逐字要逐字核那件自己的 buildSha
-  #      => 而而那那**期望值**逐字**不**是那 pin 记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的、
-  #        => 而而那它在「刚固化完」那一趟逐字**必然陈旧**、=> 而而那拿它当判据逐字**恒红**）
-  #        （=> 而那 `scripts/verify/check-frozen-freshness.sh` 那一族逐字**已经**是那一族：
-  #          「=> 而那 pin 记录逐字**只**是那**读不到**那两份时的一个**提示**、=> 而**不**是那判据」）
-  #      => 而而那那**期望值**逐字是「那产出它的那一次构建」的代码 sha：
-  #        · 首选：=> 而那**当前**那一趟构建逐字给的 `GITHUB_SHA`
-  #        · 次选：=> 而那**产物自己**逐字带的那 buildRun 逐字**反查**到的那一次构建
-  #          （=> 而而那那**反查**逐字**要**问那 GitHub API、=> 而而那那 API 逐字**不通**时逐字**答不出**）
-  #        · 兜底：=> 而而那那**两者**逐字**都**没有时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
-  _pkg_sha=""
-  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null \
-      | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' \
-      > "$STAGE/$id/bsha.json" 2>/dev/null && [ -s "$STAGE/$id/bsha.json" ]; then
-    _pkg_sha="$(cat "$STAGE/$id/bsha.json")"
-  fi
-  rm -f "$STAGE/$id/bsha.json"
-  _pkg_run=""
-  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null \
-      | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' \
-      > "$STAGE/$id/brun.json" 2>/dev/null && [ -s "$STAGE/$id/brun.json" ]; then
-    _pkg_run="$(cat "$STAGE/$id/brun.json")"
-  fi
-  rm -f "$STAGE/$id/brun.json"
-
-  _want_sha="${GITHUB_SHA:-}"
-  _want_src="GITHUB_SHA（=> 而那产出它的那一次构建）"
-  if [ -z "$_want_sha" ] && [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
-    #  => 而那**产物自己**逐字带的那 buildRun 逐字就是那产出它的那一次构建的**编号**
-    #    => 而而那它逐字**不需要**任何陈旧记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的）
-    _want_sha=""
-    _want_src="产物自带的 buildRun=$_pkg_run（=> 而那产出它的那一次构建）"
-  fi
-  if [ -n "$_want_sha" ]; then
-    if [ "$_pkg_sha" != "$_want_sha" ]; then
-      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那产出它的那一次构建逐字是 ${_want_sha:0:12}"
-      echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
-      echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
-      miss_stale=$((miss_stale+1)); missing=$((missing+1))
-      rm -rf "${STAGE:?}/$id"
-      continue
-    fi
-    echo "[ok] $id 那件自己的 buildSha 逐字与那产出它的那一次构建一致（$_want_src）"
-  elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
-    #  => 而而那那**判据**逐字**自洽**（=> 而而那它逐字**不**依赖那陈旧的 pin 记录）
-    echo "[ok] $id 那件逐字**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
-  else
-    #  => 而而那那**期望值**逐字**读不到**时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
-    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、=> 而而那产物自带的 buildRun 逐字**也**没有"
-    echo "::notice:: （=> 而而那那**判据**逐字**答不出**、=> 而而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺）"
-  fi
-
   # 校验字节与声明一致（AGENTS.md 第七节）。
   #    而那份 .sha256 的内容是**裸摘要 + 换行**（ 07 今天在 Release 上逐个核过， 65 字节），
   #    而 sha256sum -c 要的是「摘要␣␣文件名」那种格式   直接喂给它会失败 
@@ -614,6 +533,82 @@ for id in "${PIECES[@]}"; do
     echo "::error title=$id 容器形态不认::那资产逐字是那 $SRC_FMT（头四字节 $MAGIC），=> 而而那既不是 zip 也不是 gzip。"
     echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），=> 而那**不是** dispatch 能解决的。"
     missing=$((missing+1)); continue
+  fi
+
+  #  缺陷名（C-102）**那一格逐字只核那**名字**、=> 而而那它逐字**不**核那件自己的 buildSha** —
+  #    => 而那旧版逐字**没有**这一格
+  #      => 而而那那**旧产物**那一档（=> 而那 miss_stale 那一族）逐字**只**比那**资产名**
+  #        （=> 而那「Release $tag 里没有**一个**叫 $asset」那一族）
+  #        => 而而那那**名字**逐字**对得上**时、=> 而而那那**字节**逐字**可能**是**旧代码**产的
+  #      => 而而那那**后果**（06 本轮逐字核出、Lead 本机实读那 job log 逐字核过）：
+  #        · 那 manifest 那一趟逐字红在这一格：
+  #          `::[error]文件名里的内容哈希与实际不符: component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip（名 e1b5dcff3b3c vs 实 ac60a820aaaf）`
+  #      => 而那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」那一个事实上
+  #        （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+  #    => 而那**处置**：=> 而而那那取件那一族逐字要逐字核那件自己的 buildSha
+  #      => 而而那那**期望值**逐字**不**是那 pin 记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的、
+  #        => 而而那它在「刚固化完」那一趟逐字**必然陈旧**、=> 而而那拿它当判据逐字**恒红**）
+  #        （=> 而那 `scripts/verify/check-frozen-freshness.sh` 那一族逐字**已经**是那一族）
+  #      => 而而那那**期望值**逐字是「那产出它的那一次构建」的代码 sha：
+  #        · 首选：=> 而那**当前**那一趟构建逐字给的 `GITHUB_SHA`
+  #        · 次选：=> 而那**产物自己**逐字带的那 buildRun 逐字**反查**到的那一次构建
+  #        · 兜底：=> 而而那那**两者**逐字**都**没有时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
+  #
+  #  => 而而那那**读法**逐字**在这一层**（=> 而而那那**判据**逐字是「那件包自己那份 component-meta.json 逐字**在哪一层**」）
+  #    => 而而那那件包逐字**可能**是「外层即件包」那一档（=> 而那 meta 逐字**在**那根部）、
+  #      => 而和那那也**可能**是「外层套内层」那一档（=> 而那 meta 逐字**在**那**里面**那一层）
+  #    => 而而那那**这两**档逐字**已经**在**上面**逐字**摘**出来了（=> 而那 `fmt_pick_piece` 那一族逐字
+  #      逐字把那**内层**那一份逐字**放**到那 `$ASSETS/$id.zip`、=> 而那那根部逐字**就是**那一颗件）
+  #    => 而而那那 `unzip -p` 逐字**读**那根部、=> 而而那那**判据**逐字**成立**
+  #  缺陷名（C-102）**那一格逐字在**那件包**落位之前**逐字读**、=> 而而那它逐字**读不到****
+  #    => 而那旧版逐字**没有**这一格（=> 而而那那**旧**那一格逐字**在**那 `:451` 到 `:462` 那一段）
+  #      => 而而那那**旧**那一格逐字**在**那 `cp -f "$INNER" "$ASSETS/$id.zip"` **之前**逐字读
+  #        （=> 而那那**落位**逐字在 `:524` / `:568` / `:607`）
+  #      => 而而那那**旧**那一格逐字读到的是**上一趟**留下的那一份、=> 而而那那值逐字**是空**
+  #        （=> 而而那那 `.fetch` 那一族逐字**每趟**都清那目录、=> 而而那那 `$ASSETS` 逐字**不**清）
+  #      => 而而那那**后果**（Lead 本机实读那 job log 逐字核过）：
+  #        `::[error]那件自己的 buildSha 逐字是 、=> 而那产出它的那一次构建逐字是 7a600c072b43`
+  #        —— => 而而那那**值**逐字**是空**的、=> 而而那那**不是**「那字节不配」、
+  #          => 而而那它逐字是「那值逐字**根本**没读到」
+  #          （=> 而而那那**九件**逐字**都**是这一句、=> 而而那那「清单读失败 8」逐字归零了、
+  #            => 而而那那 buildSha 那一族逐字**生效**了、=> 而而那它逐字**生效过头**了）
+  #    => 而那**处置**：=> 而而那那一格逐字**落**在那件包**落位之后**
+  #      => 而而那那**读法**逐字**走**那**同一**个 `$ASSETS/$id.zip`（=> 而那那根部逐字**已经**是那一颗件）
+  #      => 而而那那**读法**逐字**只**认那**根部**、=> 而那它逐字**不**另找一路（=> 而按 C-104 逐字**不并**）
+  _pkg_sha=""
+  _pkg_run=""
+  if unzip -p "$ASSETS/$id.zip" component-meta.json > "$STAGE/$id/bsha.json" 2>/dev/null \
+      && [ -s "$STAGE/$id/bsha.json" ]; then
+    _pkg_sha="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
+    _pkg_run="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
+  fi
+  rm -f "$STAGE/$id/bsha.json"
+
+  _want_sha="${GITHUB_SHA:-}"
+  _want_src="GITHUB_SHA（=> 而那产出它的那一次构建）"
+  if [ -z "$_want_sha" ] && [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
+    #  => 而那**产物自己**逐字带的那 buildRun 逐字就是那产出它的那一次构建的**编号**
+    #    => 而而那它逐字**不需要**任何陈旧记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的）
+    _want_sha=""
+    _want_src="产物自带的 buildRun=$_pkg_run（=> 而那产出它的那一次构建）"
+  fi
+  if [ -n "$_want_sha" ]; then
+    if [ "$_pkg_sha" != "$_want_sha" ]; then
+      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那产出它的那一次构建逐字是 ${_want_sha:0:12}"
+      echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
+      echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
+      miss_stale=$((miss_stale+1)); missing=$((missing+1))
+      rm -rf "${STAGE:?}/$id"
+      continue
+    fi
+    echo "[ok] $id 那件自己的 buildSha 逐字与那产出它的那一次构建一致（$_want_src）"
+  elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
+    #  => 而而那那**判据**逐字**自洽**（=> 而而那它逐字**不**依赖那陈旧的 pin 记录）
+    echo "[ok] $id 那件逐字**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
+  else
+    #  => 而而那那**期望值**逐字**读不到**时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
+    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、=> 而而那产物自带的 buildRun 逐字**也**没有"
+    echo "::notice:: （=> 而而那那**判据**逐字**答不出**、=> 而而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺）"
   fi
 
   # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
