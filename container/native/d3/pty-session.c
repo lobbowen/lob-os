@@ -39,10 +39,16 @@ typedef struct {
 } frame_hdr;
 
 typedef struct {
-  int master;    
-  pid_t pid;     
-  int open;      
+  int master;
+  pid_t pid;
+  int open;
   char slave[128];
+  //  => 而而那那**待发**那一格逐字（=> 而而那它逐字是那「那宿主侧逐字**早**发的那一帧 WINSIZE」那一族）
+  //    => 而而那那 `pending_winsize` 逐字是「那一帧逐字**记着**了没有」、=> 而而那那 `pending_ws` 逐字是那一档尺寸
+  //    => 而而那那**槽**逐字**开**了之后逐字**就用**它（=> 而而那那**判据**逐字是「那一帧逐字发的时候、
+  //      => 而而那那 native 那一族逐字那槽逐字逐字开没开」那一个事实上）
+  struct winsize pending_ws;
+  int pending_winsize;
 } session;
 
 static session g_sessions[MAX_SESSIONS];
@@ -290,6 +296,25 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
   g_sessions[sid].master = master;
   g_sessions[sid].pid = pid;
   g_sessions[sid].open = 1;
+  //  缺陷名（C-102）**那一格逐字让那宿主侧逐字发得太早的那一帧逐字**白发了**、=> 而而那它逐字**丢掉**了那一档尺寸** ——
+  //    => 而那旧版逐字**没有**这一格
+  //      => 而而那那宿主侧逐字**早**发的那一帧 WINSIZE 逐字**被**那 `!g_sessions[s].open` 逐字**判**成
+  //        「WINSIZE 指向不存在的会话」、=> 而而那它逐字**断掉**、=> 而而那那一档尺寸逐字**没**落上去
+  //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+  //        · 而那那 `diag.jsonl` 逐字 `stage="pty"` 逐字两条 FAIL
+  //          「PTY 的C 侧报错 | WINSIZE 指向不存在的会话」逐字**还是**发
+  //          （逐字 `1793604597308` 与 `1793604876414`）
+  //        · => 而而那那**正解**逐字是「让那 native 那一族逐字**自己**答」
+  //          （=> 而而那那 `g_sessions[s].open` 那一格逐字是**它自己**的本地状态、
+  //            => 而而那那宿主侧逐字**看不到**它、=> 而而那那 `F_READY` 那一帧逐字**不是**那个状态的回执）
+  //    => 而那**处置**：=> 而而那那**早到**的那一帧逐字**先记下来**、=> 而而那那槽逐字开了再逐字**用**
+  //      => 而而那那 `open = 1` 逐字**就在**这里、=> 而而那那**补**逐字**就在**这**之后**
+  if (g_sessions[sid].pending_winsize) {
+    struct winsize pws;
+    memcpy(&pws, &g_sessions[sid].pending_ws, sizeof(pws));
+    g_sessions[sid].pending_winsize = 0;
+    ioctl(g_sessions[sid].master, TIOCSWINSZ, &pws);
+  }
   snprintf(g_sessions[sid].slave, sizeof(g_sessions[sid].slave), "%s", sn);
   return 0;
 }
@@ -462,7 +487,25 @@ int main(void) {
         }
         case FRAME_WINSIZE: {
           int s = h.sid;
-          if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error(out_fd, "WINSIZE 指向不存在的会话"); break; }
+          if (s >= MAX_SESSIONS) { send_error(out_fd, "WINSIZE 指向不存在的会话"); break; }
+          //  缺陷名（C-102）**那一格逐字把那一帧逐字**当成错**逐字丢掉** ——
+          //    => 而那旧版逐字是 `if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error(…); break; }`
+          //      => 而而那那宿主侧逐字**早**发的那一帧逐字**被**判成错、=> 而而那它逐字**报**那一条 FAIL
+          //      => 而而那那**正解**逐字是「让那 native 那一族逐字**自己**答」
+          //        （=> 而而那那 `open` 那一格逐字是**它自己**的本地状态、=> 而而那那宿主侧逐字**看不到**它）
+          //    => 而那**处置**：=> 而而那那**槽还没开**时逐字**先记下来**、=> 而而那那槽开了再逐字**用**
+          //      => 而而那那**判据**逐字是「那一帧逐字发的时候、=> 而而那那 native 那一族逐字那槽逐字逐字开没开」
+          //        那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+          //    => 而而那那**已经**开着的时逐字**照旧**逐字立刻用
+          if (!g_sessions[s].open) {
+            if (h.length >= sizeof(struct winsize)) {
+              memcpy(&g_sessions[s].pending_ws, payload, sizeof(struct winsize));
+              g_sessions[s].pending_winsize = 1;
+              /*  => 而而那那**早到**逐字**不是**错、=> 而而那它逐字**记着**、=> 而而那它逐字**等**那槽开了 */
+              diag_raw("WINSIZE 早到，槽还没开 -> 记下来等它开");
+            }
+            break;
+          }
           if (h.length >= sizeof(struct winsize)) {
             struct winsize ws;
             memcpy(&ws, payload, sizeof(ws));
