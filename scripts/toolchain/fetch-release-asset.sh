@@ -10,9 +10,32 @@
 # 用法：fetch-release-asset.sh <tag> <asset> <目标目录>
 set -uo pipefail
 
-TAG="${1:?需要 tag}"
-ASSET="${2:?需要资产名}"
-DEST="${3:?需要目标目录}"
+#  缺陷名（C-102）**那脚本逐字**只能**拼**、=> 而而那它逐字**不**许只取那**几块****
+#    => 而那旧版逐字**没有**那个档
+#      => 而那那**发布轮**逐字要把那**分片**逐字**也**发到那 CDN 上、=> 而而那那**分片**逐字**在**那 **Release** 上
+#        => 而而那那**取件**那**一边**逐字**已经**会拼、=> 而而那那**拼**的那**几步**逐字**不**许**再**来**一遍
+#          （=> 而依 C-104 逐字**不并**）
+#      => 而而那那**处置**：=> 而而那那 `--parts-only` 那一档逐字**只**取那**几块**与那**清单**、
+#        => 而而那它逐字**不**拼
+#      => 而那那**判据**逐字是「那发布轮逐字发出去的那些逐字、=> 而而那那下游逐字按那清单逐字拿不拿得到」
+#        那一个事实上
+#    => 而那那**用法**逐字是「fetch-release-asset.sh <tag> <asset> <目标目录> [--parts-only]」
+#  => 而那那**位置参数**逐字**先**挑出来（=> 而而那那**档**逐字**不占**那三个**位置**）
+#    => 而那**成因**：=> 而那旧版逐字是 `TAG="${1:?…}"`、=> 而而那那**档**逐字**写在**那**前面**时
+#      => 而而那那 `TAG` 逐字就**成了**那**档**、=> 而而那那 Release 逐字**找**不到那**一件**
+#        （=> 而那那真读数逐字是「[miss] Release --parts-only 里没有 tool-llvm」）
+PARTS_ONLY=0
+POS=()
+for _a in "$@"; do
+  if [ "$_a" = "--parts-only" ]; then
+    PARTS_ONLY=1
+  else
+    POS+=("$_a")
+  fi
+done
+TAG="${POS[0]:?需要 tag}"
+ASSET="${POS[1]:?需要资产名}"
+DEST="${POS[2]:?需要目标目录}"
 REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 
 #  缺陷名（C-102）**那脚本逐字引用逐字一个它自己没定义的变量** ——
@@ -49,21 +72,29 @@ mkdir -p "$DEST"
 #    => 而那**期望值**与那**下载**逐字**要**在**同一**个请求里取（=> 而那它逐字**不**两次问）
 #    => 而那**判据**逐字落在**请求**上（=> 而按 C-993 的第二件：
 #      => 而「检查里过了但请求里没带身份」逐字是同一形状、=> 而那判据必须落在请求上）。
-ASSET_JSON="$(curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
-  -H "Accept: application/vnd.github+json" -H "User-Agent: lobos" \
-  "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
-  | node -e '
-      let d = "";
-      process.stdin.on("data", c => d += c).on("end", () => {
-        try {
-          const j = JSON.parse(d);
-          const a = (j.assets || []).find(x => x.name === process.argv[1]);
-          if (a) {
-            process.stdout.write(JSON.stringify({ url: a.browser_download_url, size: a.size }));
-          }
-        } catch (e) {}
-      });
-    ' -- "$ASSET" 2>/dev/null)"
+#  => 而那那**取资产**逐字**只有**那一个读法（=> 而依 C-104 逐字**不并**、=> 而而那那**判别源必须唯一**）
+#    => 而而那那**取件**逐字**只**认那**精确名**、=> 而那那 glob 那一族逐字**不**许
+#    => 而而那那**分片清单**逐字**也**走那**同一个**读法（=> 而而那那**判别源**逐字**唯一**）
+gh_read_asset() {
+  local want="$1"
+  curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
+    -H "Accept: application/vnd.github+json" -H "User-Agent: lobos" \
+    "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
+    | node -e '
+        let d = "";
+        process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+          try {
+            const j = JSON.parse(d);
+            const a = (j.assets || []).find(x => x.name === process.argv[1]);
+            if (a) {
+              process.stdout.write(JSON.stringify({ url: a.browser_download_url, size: a.size }));
+            }
+          } catch (e) {}
+        });
+      ' -- "$want" 2>/dev/null
+}
+
+ASSET_JSON="$(gh_read_asset "$ASSET")"
 
 URL="$(printf '%s' "$ASSET_JSON" | node -e '
   let d = "";
@@ -78,7 +109,12 @@ EXPECT_BYTES="$(printf '%s' "$ASSET_JSON" | node -e '
   });
 ' 2>/dev/null)"
 
-if [ -z "$URL" ]; then
+#  => 而而那那 `--parts-only` 那一档逐字**不**要那**完整**那一份（=> 而它逐字**只要**那**几块**）
+#    => 而那**成因**：=> 而那那**发布轮**逐字把那**超了**上限的那一件逐字**拆**成那几块、
+#      => 而那那**完整**那一份逐字**在**那 **Release** 上**没有**（=> 而而那它逐字被那 `rm -f` **拿掉**了）
+#      => 而而那那**旧**次序逐字**先**要求那**完整**那一份、=> 而而那那 llvm 逐字**先**就逐字**退**了
+#    => 而那**处置**：=> 而而那那 `--parts-only` 那一档逐字**跳过**这一格
+if [ -z "$URL" ] && [ "$PARTS_ONLY" != "1" ]; then
   echo "  [miss] Release $TAG 里没有 $ASSET"
   exit 1
 fi
@@ -91,7 +127,39 @@ fi
 #        （=> 而那它逐字核「got == expect」与「unzip -t 通过」那两格）
 #      => 而那**性能**那一格逐字**另**有一格（=> 而依 C-104 那两族逐字**不并**）
 #    => 而那期望字节数逐字**从**那资产那一格逐字读（=> 而那它逐字**不**猜）
-if [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
+#  => 而而那那 `--parts-only` 那一档逐字**先**去看那**分片**（=> 而而那那**完整**那一份逐字**后**才下）
+#    => 而那**成因**：=> 而那那**发布轮**逐字把那**超了**上限的那一件逐字**拆**成那几块、=> 而那那**完整**那一份
+#      逐字**在**那 **Release** 上**没有**（=> 而而那它逐字**先**被那 `rm -f` **拿掉**了）
+#      => 而而那那**旧**次序逐字**先**下那**完整**那一份、=> 而那那 llvm 逐字**先**就逐字**退**了、
+#        => 而而那那**分片**那一族逐字**根本**逐字**到不了**
+#    => 而那**处置**：=> 而而那那 `--parts-only` 那一档逐字**先**去取那**分片**与那**清单**
+#      => 而而那那**完整**那一份逐字**不**下（=> 而而那那**发布轮**逐字**不**要**它**、=> 而它逐字**已经**在**那**取件**那一边**）
+if [ "$PARTS_ONLY" = "1" ]; then
+  _po_name="$ASSET.parts.txt"
+  #  => 而那那**分片清单**逐字**也是**那 **Release** 上的一个资产、=> 而而那它逐字**也要**逐字**按名取**
+  #    （=> 而而那那**取件**逐字**只**认那**精确名**、=> 而那那 glob 那一族逐字**不**许）
+  #    => 而而那那**读法**逐字**唯一**（=> 而依 C-104 逐字**不并**、=> 而而那那**判别源必须唯一**）
+  _po_json="$(gh_read_asset "$ASSET.parts.txt")"
+  _po_url="$(printf '%s' "$_po_json" | node -e '
+  let d = "";
+  process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+    try { process.stdout.write(String(JSON.parse(d).url || "")); } catch (e) {}
+  });
+' 2>/dev/null)"
+  if [ -z "$_po_url" ]; then
+    echo "  [miss] Release $TAG 里没有 $ASSET.parts.txt（=> 而那这一件逐字**没有**分片、=> 而那按 C-05 报缺）"
+    exit 1
+  fi
+  curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" -o "$DEST/$_po_name" "$_po_url" 2>/dev/null || {
+    echo "  [miss] 那分片清单 $ASSET.parts.txt 取不到（=> 而那按 C-05 报缺）"
+    exit 1
+  }
+  [ -s "$DEST/$_po_name" ] || { echo "  [miss] 那分片清单 $ASSET.parts.txt 是空的"; exit 1; }
+  echo "  [parts] 那 $ASSET 逐字**只取**那几块（=> 而而那它逐字**不**下那完整那一份）"
+fi
+if [ "$PARTS_ONLY" = "1" ]; then
+  : # => 而而那那 `--parts-only` 那一档逐字**不**要那**期望字节数**（=> 而而那那**几块**逐字各自逐字带那字节数）
+elif [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
   if bash "$HERE/fetch-concurrent.sh" "$URL" "$DEST/$ASSET" "$EXPECT_BYTES"; then
     echo "  [fetch] 那 $ASSET 逐字**小片并发**地下来了（=> 而那 got 逐字 == expect 逐字 = $EXPECT_BYTES）"
   else
@@ -109,7 +177,7 @@ if [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
       exit 1
     fi
   fi
-else
+elif [ "$PARTS_ONLY" != "1" ]; then
   #  => 而那期望字节数逐字读不到时逐字**用**那整份那一路（=> 而那按 C-05 报缺、=> 而**不**猜那期望值）
   echo "  [fetch] 那期望字节数逐字读不到（=> 而那按 C-05 报缺）、=> 而那用那整份那一路"
   curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
@@ -118,7 +186,9 @@ else
     exit 1
   }
 fi
-[ -s "$DEST/$ASSET" ] || { echo "  [miss] $ASSET 下下来是空的"; exit 1; }
+if [ "$PARTS_ONLY" != "1" ]; then
+  [ -s "$DEST/$ASSET" ] || { echo "  [miss] $ASSET 下下来是空的"; exit 1; }
+fi
 
 #  缺陷名（C-102）**那被拆**的**那包**逐字**取不**回来** ——
 #    => 而它治**的**是「那**取件**那**一边**逐字**能**不能**把**那**几块**拼**回来**」。
@@ -164,7 +234,13 @@ if [ -s "$PARTS_TXT" ]; then
     }
     [ -s "$DEST/$_pn" ] || { echo "  [miss] 分块 $_pn 下下来是空的"; exit 1; }
   done < "$DEST/$ASSET.parts"
-  #  => 而那**拼**回来**逐字要**按**那**清单**的**次序**（=> 而那**它**们逐字**是**那**按**那**序号**排**的**）
+  #  => 而而那那**拼**回来**逐字要**按**那**清单**的**次序**（=> 而那**它**们逐字**是**那**按**那**序号**排**的**）
+  #  => 而而那那 `--parts-only` 那一档逐字**只**取那**几块**、=> 而而那它逐字**不**拼
+  #    （=> 而而那那**发布轮**逐字要把那**分片**逐字**也**发上去、=> 而而那那**拼**的那**几步**逐字**不**许**再**来**一遍）
+  if [ "$PARTS_ONLY" = "1" ]; then
+    echo "  [parts] 那 $ASSET 逐字**只取**那几块（=> 而而那它逐字**不**拼）"
+    exit 0
+  fi
   : > "$DEST/$ASSET.joined"
   while read -r _pn; do
     [ -n "$_pn" ] || continue
