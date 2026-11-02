@@ -16,7 +16,7 @@ object PreinstalledPieces {
 
     /**
      * 那 APK 里那**几件**的名字（=> 而那**件**名逐字**去**那 .zip **那个**后缀**）。
-     *   => 而它逐字**给**那**逐件**做**那一族**用**（=> 而而那**它**逐字**不**自己**装**）。
+     *   => 而它逐字**给**那**逐件**做**那一族**用**（=> 而那**它**逐字**不**自己**装**）。
      */
     fun pieceIds(ctx: Context): List<String> =
         runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
@@ -27,7 +27,7 @@ object PreinstalledPieces {
 
     /**
      * 装**那一个**件（=> 而那**件**名逐字**给**进来）。
-     *   => 而而那**它**逐字**记**那**一笔**（=> 而而那**它**逐字**是**那**逐件**那一族**的**一**件**）。
+     *   => 而那**它**逐字**记**那**一笔**（=> 而那**它**逐字**是**那**逐件**那一族**的**一**件**）。
      */
     fun installOneById(ctx: Context, id: String): Boolean {
         trace(ctx, "装 " + id, "开始")
@@ -39,10 +39,10 @@ object PreinstalledPieces {
         }
         //  缺陷名（C-102）**那「；成」**那一行**逐字**写**在**那 installOne **返**回**之后**、=> 而而那**它**逐字**晚**。
         //    => 而那**成因**：=> 而那**调用方**（=> 而那 installOneById **:40** 那一行）逐字**等**那 installOne **返**回**才**写**，
-        //      => 而而那**进程**逐字**在**那**注册**之后**、**在**那**调用方**写**那一行**之前**、逐字**被**杀**了**。
-        //    => 而而那**后果**逐字 = 而那 journal 里**没有**那「；成」**那一行**（=> 而而那**它**逐字**看**不出**那**一件**到底**装没装**上**）。
-        //    => 而那**处置**：=> 而那**进度**逐字**在**那**关键**步骤**上**就**记**（=> 而而那**它**逐字**在**那**注册**之前**），
-        //      => 而而那**它**逐字**不**是**那**结果**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**记**在**哪**」）。
+        //      => 而那**进程**逐字**在**那**注册**之后**、**在**那**调用方**写**那一行**之前**、逐字**被**杀**了**。
+        //    => 而那**后果**逐字 = 而那 journal 里**没有**那「；成」**那一行**（=> 而那**它**逐字**看**不出**那**一件**到底**装没装**上**）。
+        //    => 而那**处置**：=> 而那**进度**逐字**在**那**关键**步骤**上**就**记**（=> 而那**它**逐字**在**那**注册**之前**），
+        //      => 而那**它**逐字**不**是**那**结果**那一族**（=> 而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**记**在**哪**」）。
         trace(ctx, "装 " + id, if (r) "成" else "败")
         return r
     }
@@ -64,7 +64,7 @@ object PreinstalledPieces {
         for (n in names) {
             if (!n.endsWith(".zip")) continue
             val id = n.substringBeforeLast('.')
-            //  => 而那**逐件**那一族逐字**走**那 installOneById（=> 而而那**它**逐字**记**那**一笔**、=> 而而那**它**逐字**是**那**一**件**的事**）。
+            //  => 而那**逐件**那一族逐字**走**那 installOneById（=> 而那**它**逐字**记**那**一笔**、=> 而那**它**逐字**是**那**一**件**的事**）。
             val r = installOneById(ctx, id)
             if (r) done += id else failed++
         }
@@ -189,7 +189,7 @@ object PreinstalledPieces {
             val link = File(dir, name)
             //  记录那一件的入口来源 = APK 原件（=> 而那来源这一格是「回到 APK 原件」可判的事实）。
             //   缺陷名（C-102）**只记了程序形态那一条**：这一件若同时有库形态与程序形态
-            //   （mixed），=> 而那**两个角色各建一条派生物软链**，=> 而而原来这一处
+            //   （mixed），=> 而那**两个角色各建一条派生物软链**，=> 而原来这一处
             //   按 targets 逐条写同一件的那一格，=> 而**后一条把前一条盖掉了**
             //   （=> 而那盖掉的是「库那条入口指针」）。=> 而回退要落回的是**入口那一格**
             //   （=> 而那是程序形态那一条），=> 而所以现在**按角色记**：
@@ -293,24 +293,24 @@ object PreinstalledPieces {
         //   => 而那**正是** entry 那一格（=> 而它非空就答它）。
         //
         // => 而「entry 为空」那一支**仍**取库形态那一项
-        //   （=> 而那是纯库件那一族：=> 而它们**真的**只有库形态的字节，=> 而而它们**该**是 library）。
+        //   （=> 而那是纯库件那一族：=> 而它们**真的**只有库形态的字节，=> 而它们**该**是 library）。
         val entryRole: String = if (entry.isNotBlank()) {
             //  缺陷名（C-102）**那一格逐字从那 `files[]` 逐字取、=> 而而那它逐字必然 'program'**
             //    => 而那旧版逐字是 `shape.roleOf(entry)`
             //      => 而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
             //        （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
-            //      => 而而那那**件整体**的系统角色（=> 而那 exec / shell / library / …）
+            //      => 而那**件整体**的系统角色（=> 而那 exec / shell / library / …）
             //        逐字**不**在那 `files[]` 逐字那一栏里
-            //      => 而而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
+            //      => 而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
             //        · 而那 `component-meta.json` 逐字 bash = role='shell'
-            //        · 而而那 `piece-shape.json` 逐字 files 1 条逐字 role='program'
+            //        · 而那 `piece-shape.json` 逐字 files 1 条逐字 role='program'
             //          （=> 而那 busybox 逐字 files 30 条逐字 roles ['program']）
-            //        · 而而那**落位侧** `program-manifest.json` 逐字 'program'
-            //        · => 而而那**注册表**逐字 'program'、=> 而而那 `role='shell'` 那一格逐字**永远**答不出来
+            //        · 而那**落位侧** `program-manifest.json` 逐字 'program'
+            //        · => 而那**注册表**逐字 'program'、=> 而那 `role='shell'` 那一格逐字**永远**答不出来
             //    => 而那**处置**（=> 而那是 Lead 采纳的那 (甲)）：
             //      => 而那**系统角色**逐字走那产物自带的 `systemRole` 那一格
-            //        （=> 而那构建期逐字从那 `component-meta.json` 派生、=> 而而那那**一份真源**逐字是那一份）
-            //      => 而而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不按形态那一把尺兜底）
+            //        （=> 而那构建期逐字从那 `component-meta.json` 派生、=> 而那**一份真源**逐字是那一份）
+            //      => 而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不按形态那一把尺兜底）
             shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
                 ?: return fail(
                     ctx, id,
@@ -326,7 +326,7 @@ object PreinstalledPieces {
             //      => 而「**这一格不是「取第一个」**」。
             //    => 而那**取哪几条**：=> 而那逐字**调**那唯一那套口径
             //      （=> 而那 ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格）、
-            //      => 而而那择一不出来时逐字**报缺**（=> 而按 C-05 不猜、=> 而不按首项兜底）。
+            //      => 而那择一不出来时逐字**报缺**（=> 而按 C-05 不猜、=> 而不按首项兜底）。
             val verDirForRole = File(
                 SystemDirs.pieceDir(ctx, id),
                 lobos.services.reg.ProgramIndex.safeSegment(version)
@@ -393,9 +393,9 @@ object PreinstalledPieces {
         //        而 mtime 逐字是 2026-10-24 06:31（=> 而那是 84df912 那一版落下的遗留物），
         //      · 而这一版**既没再落它、也没删它**。
         //    => 而成因：那一段比的是**逐项 sha256**（=> 而它只遍历 shape.files），
-        //      => 而而**多出来的**那几项**不在** shape.files 里、=> 而它们**不被比**、
-        //      => 而而「同内容不重写」那一短路就**成立**（=> 而 landedUpToDate 为真），
-        //      => 而而 install **压根没跑** => => 而那几项遗留物**永远删不掉**。
+        //      => 而**多出来的**那几项**不在** shape.files 里、=> 而它们**不被比**、
+        //      => 而「同内容不重写」那一短路就**成立**（=> 而 landedUpToDate 为真），
+        //      => 而 install **压根没跑** => => 而那几项遗留物**永远删不掉**。
         //    => 而处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
         //      => 而有 => 而那一格**不**判已落位到最新 => => 而走重装 => => 而 install 跑
         //      => => 而 install 那一族逐字是「整目录换上去」（=> 而旧那一份被 renameTo 挪走、
@@ -509,8 +509,8 @@ object PreinstalledPieces {
         //   （运行期不判形态、不替产物决定权限）」，=> 而它逐项 chmod）。
         //   而预装件走的是**快路径**（=> 而这一支），=> 而这一支**原来一个 chmod 都没有**。
         //   => 而那后果是：解包出来的那个字节**带着 zip 里的权限**落下去，
-        //      => 而而 zip 里那一项**没有**被执行位时（=> 而 c_rehash 那一项逐字是 -rw-------），
-        //      => 而而它在盘上**不可执行**，=> 而而它也**建不出** usr/bin 下的那一条软链。
+        //      => 而 zip 里那一项**没有**被执行位时（=> 而 c_rehash 那一项逐字是 -rw-------），
+        //      => 而它在盘上**不可执行**，=> 而它也**建不出** usr/bin 下的那一条软链。
         //   => 而处置：这一支也按**产物声明的 mode** 逐项落（=> 而与慢路径同一把尺、同一句话）。
         //   => 而**不**在这里判形态（=> 而形态是构建期算好的、=> 而那一格在 shape.files[].mode 里）。
         val modesLanded = runCatching {
@@ -572,8 +572,8 @@ val derived = refreshDerivedLinks(ctx, id, version)
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
-            //  => 而那**进度**逐字**在**那**注册**之前**就**记**（=> 而而那**它**逐字**是**那**关键**步骤**上的**那一个**）。
-            //    => 而那**它**逐字**不**是**那「；成」**那一族**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**是**不是**那**结果**」）。
+            //  => 而那**进度**逐字**在**那**注册**之前**就**记**（=> 而那**它**逐字**是**那**关键**步骤**上的**那一个**）。
+            //    => 而那**它**逐字**不**是**那「；成」**那一族**（=> 而那**它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**是**不是**那**结果**」）。
             trace(ctx, "装 " + id, "登记前")
             register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
             return true
@@ -752,25 +752,25 @@ val derived = refreshDerivedLinks(ctx, id, version)
                     //    => 而那旧版逐字是 `assetEntry = if (isProgram) entry else ""`
                     //      => 而那 `isProgram` 逐字是 `role == ROLE_PROGRAM`
                     //        （=> 而那 Lead 本机实读 `PreinstalledPieces.kt:732` 逐字成立）
-                    //      => 而而那 role='shell' 逐字**不是** 'program'、=> 而而那那 isProgram 逐字为 false
-                    //      => 而而那它逐字把 shell 那一档**也**清空了
-                    //    => 而而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
+                    //      => 而那 role='shell' 逐字**不是** 'program'、=> 而那 isProgram 逐字为 false
+                    //      => 而那它逐字把 shell 那一档**也**清空了
+                    //    => 而那**后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
                     //      · 而那注册表里 bash/busybox 逐字 assetEntry=''
                     //      · 而那 `ShellEntry.kt:11` 到 `:13` 逐字
                     //        `if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null`
-                    //        => 而而那那 resolve 逐字返回 null
-                    //      · => 而而那 `sys.tty.exec` 那一趟逐字抛
+                    //        => 而那 resolve 逐字返回 null
+                    //      · => 而那 `sys.tty.exec` 那一趟逐字抛
                     //        「底座没有命令解释器（/usr/bin 下无可用入口）」
-                    //    => 而而那**那不是**「那一件没有入口」（=> 而那落位那一面逐字**全对**：
+                    //    => 而那**那不是**「那一件没有入口」（=> 而那落位那一面逐字**全对**：
                     //      => 而那 usr/bin 两个软链逐字都在、=> 而那 entry 逐字都在、
       //        => 而那落位侧清单逐字 role='shell'）
-                    //      => 而而那**差的只是**注册表那一个 assetEntry
+                    //      => 而那**差的只是**注册表那一个 assetEntry
                     //    => 而那**处置**：=> 而那**入口**那一格逐字该答
-                    //      「**那一件逐字有没有程序入口**」、=> 而而那它逐字**不该**由
+                    //      「**那一件逐字有没有程序入口**」、=> 而那它逐字**不该**由
                     //      「那一件逐字是什么角色」决定
-                    //      => 而而那 role='library' 那一档逐字**仍然**该清空
+                    //      => 而那 role='library' 那一档逐字**仍然**该清空
                     //        （=> 而那它逐字**真的**没有程序入口）
-                    //      => 而而那 role='shell' 那一档逐字**不该**清空
+                    //      => 而那 role='shell' 那一档逐字**不该**清空
                     //    => 而那**那两把尺逐字各答一件事**那一个错在那一格上（=> 而依 C-105 逐字**不**合并）
                     assetEntry = if (isLibrary) "" else entry,
                     role = role,

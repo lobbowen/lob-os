@@ -4,10 +4,10 @@
 # 缺陷名（C-102）**指纹那一族取错了输入** ——
 #   而 06 今天实测（2026-10-25）：pkgconf / make / cmake / npm / pnpm / llvmtoolchain 那六件
 #   在 cache-key.sh 那个 case 里**没有自己的条目**、=> 而全落 *) SRC_FILES="" ;; 那一行，
-#   => 而而它们的 src 指纹于是**只**由 PKG_MECH 那三个文件算出来，
-#   => 而而那六件的 src 段**逐字相同**（=> 而实测是 src9251ee997f11）。
+#   => 而它们的 src 指纹于是**只**由 PKG_MECH 那三个文件算出来，
+#   => 而那六件的 src 段**逐字相同**（=> 而实测是 src9251ee997f11）。
 #   => 而后果：**改那六件任何一件的 recipe，它们的指纹一律不变**
-#   => 而而取件会取到**旧字节**（=> 而 release 上那个名字没变）。
+#   => 而取件会取到**旧字节**（=> 而 release 上那个名字没变）。
 #
 # 而这一条与 2026-10-16 那一条**不是同一族**：
 #   · 那一条查的是「有没有东西**压根没算出来**」（=> 而那是空输入的哈希 e3b0c44298fc）；
@@ -67,19 +67,19 @@ for t in "${TOOLS[@]}"; do
     npm)     own="scripts/recipes/build-component-npm.sh" ;;
     pnpm)    own="scripts/recipes/build-component-pnpm.sh" ;;
     llvm) own="scripts/recipes/build-component-llvmtoolchain.sh" ;;
-    *) echo "::error title=本条不认这个件名::$t —— 而而它是新加的，=> 而而本条那一族要**同步**加它"; BAD=$((BAD+1)); continue ;;
+    *) echo "::error title=本条不认这个件名::$t —— 而它是新加的，=> 而本条那一族要**同步**加它"; BAD=$((BAD+1)); continue ;;
   esac
   if [ -z "$own" ]; then
-    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而而它落 *) 那一行、=> 而而那意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、=> 而那意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
   # 二、**自己**按 cache-key.sh:188 那一行的算法重算一遍「它自己那些文件的聚合」
   ownhash=""
   ownhash="$(git ls-files $own 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
   # 三、**cache-key.sh 那个 case 里它自己那一条在不在**（=> 而那**才是**「取错了输入」那一族）
-  #   => 而而那**必须**从那一行**逐字**读出来（=> 而而不能用本条自己算的值替代它）
+  #   => 而那**必须**从那一行**逐字**读出来（=> 而不能用本条自己算的值替代它）
   if ! grep -qE "^  $t\) +SRC_FILES=\"" scripts/toolchain/cache-key.sh; then
-    echo "::error title=case 里没有这一件自己的条目::$t —— 而而它在 *) 那一行、=> 而而那意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、=> 而那意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
   # 四、**cache-key.sh 算出来的那一个**是不是上面那一个（=> 而那**该**含 PKG_MECH，=> 而所以本条核的是**它自己那部分**在不在）
@@ -88,7 +88,7 @@ for t in "${TOOLS[@]}"; do
     echo "::error title=算不出 src 段::$t —— 而 cache-key.sh 没有给出 12 位十六进制"
     BAD=$((BAD+1)); continue
   fi
-  # 而**它自己那一份**的聚合**不**该等于**全件**的聚合（=> 而那是两件事，=> 而而这里只记下它自己那一份）
+  # 而**它自己那一份**的聚合**不**该等于**全件**的聚合（=> 而那是两件事，=> 而这里只记下它自己那一份）
   OWN_HASH_OF["$t"]="$ownhash"
 done
 

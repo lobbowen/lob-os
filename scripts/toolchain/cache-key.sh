@@ -161,11 +161,11 @@ case "$TOOL" in
   #  缺陷名（C-102）**那指纹那一族**逐字把那**两**件**绑**在那**一个** scripts/patches **目录**上**。
   #    => 而那**成因**：=> 而那 SRC_FILES 逐字**指**的**那目录**里逐字**有**没有**别的件的**那一族**
   #      （=> 而那 git-runpath-origins.patch **那一个**逐字**就**在**那目录**底下**、
-  #      => 而而那**整个目录**逐字**进**了那 openssl 与那 crypto **那两**件逐字的指纹**）。
-  #    => 而而那**后果**逐字 = 而那 openssl 与那 crypto **那两**件逐字**被**那 git 那一件逐字**无端**改**了指纹**、
-  #      => 而而那**它们**逐字**要**跟着**那 openssl **那一趟**一起**重发**。
-  #    => 而那**处置**：=> 而那 SRC_FILES 逐字**指**那**一个**文件**（=> 而而那**它们**逐字**是**那**两**件**事**））。
-  #      => 而而那 git 那一件**新增**了**那一个**补丁**、=> 而而那**它**们**那三**件逐字**各**绑**那**自己**的那**一份**字节**。
+  #      => 而那**整个目录**逐字**进**了那 openssl 与那 crypto **那两**件逐字的指纹**）。
+  #    => 而那**后果**逐字 = 而那 openssl 与那 crypto **那两**件逐字**被**那 git 那一件逐字**无端**改**了指纹**、
+  #      => 而那**它们**逐字**要**跟着**那 openssl **那一趟**一起**重发**。
+  #    => 而那**处置**：=> 而那 SRC_FILES 逐字**指**那**一个**文件**（=> 而那**它们**逐字**是**那**两**件**事**））。
+  #      => 而那 git 那一件**新增**了**那一个**补丁**、=> 而那**它**们**那三**件逐字**各**绑**那**自己**的那**一份**字节**。
   openssl) SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch scripts/patches/openssl-libname-variant.patch" ;;
   crypto)  SRC_FILES="scripts/recipes/build-bundle-openssl.sh scripts/patches/openssl-runpath-origins.patch scripts/patches/openssl-libname-variant.patch" ;;
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches/git-runpath-origins.patch" ;;
@@ -175,18 +175,18 @@ case "$TOOL" in
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
   # [!] 缺陷名（C-102）**这一格取错了输入** —— 而而那六个件名今天**不在**上面那十二条里，
-  #   => 而而它们全落下面那一条 *) SRC_FILES="" ;;，=> 而而它们的 src 指纹于是**只**由 PKG_MECH
+  #   => 而它们全落下面那一条 *) SRC_FILES="" ;;，=> 而它们的 src 指纹于是**只**由 PKG_MECH
   #   那三个文件算出来（=> 而那六件的 src 段**逐字相同**，=> 而实测是 src9251ee997f11）。
   #   => 而后果：**改那六件任何一件的 recipe，它们的指纹一律不变**（=> 而 06 实测：pkgconf 4ca5da205f00、
   #     make f17560c4d7f8、cmake 3e8234d52937、npm 367b1c85d314、pnpm db3d96d72d0b、llvm cb1f5dce2aef），
-  #   => 而而取件会取到**旧字节**（=> 而 release 上那个名字没变）。
+  #   => 而取件会取到**旧字节**（=> 而 release 上那个名字没变）。
   #   => 而按 C-104：那一族是「同一件事有两个来源」，而这一格**不是**两个来源，
-  #     => 而而是「**一条路径取错了输入**」（=> 而那个输入是「这一件自己的 recipe」）。
+  #     => 而是「**一条路径取错了输入**」（=> 而那个输入是「这一件自己的 recipe」）。
   #
   # => 而处置：把这六个件名**各自自己的 recipe** 补进这一族。
   #   => 而**键名**用 workflow 那一趟传给 package-component.sh 的那个（=> 而那是这一族 case 的键）：
   #     pkgconf（=> 而 build-component-pkg-config.sh 那一件自己的 TOOL 逐字是 pkg-config，
-  #             => 而而**两个名字指的是同一件**，=> 而而 case 的键必须跟 workflow 那一趟一致）、
+  #             => 而**两个名字指的是同一件**，=> 而 case 的键必须跟 workflow 那一趟一致）、
   #     llvm（=> 而 build-component-llvmtoolchain.sh 那一件自己的 TOOL 逐字是 llvm，=> 而同理）。
   #   => 而**不加** scripts/patches：=> 而那六件的 recipe 都不引用它（=> 而本机逐个核过）。
   pkgconf) SRC_FILES="scripts/recipes/build-component-pkg-config.sh" ;;
@@ -219,11 +219,11 @@ if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
 fi
 [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
 #  缺陷名（C-102）**那指纹**逐字**只**算**那 recipe **那一件**的**字节**、=> 而而那**形态**逐字**不**在**那**里面**
-#    => 而而那**两种**形态（=> 而那 PIE **那一个**与那**静态**那一个**）逐字**算**出来**是**那**同一个**指纹**
-#    => 而而那**固化**产物逐字**只有**一个**名字**、=> 而而那**取件**逐字**取**那**一个**、
-#    => 而而那**它**逐字**不管**那**形态**是什么**就**被**取走**了
-#    => 而而那**后果**：=> 而那**要**那**静态**的**那一趟**逐字**取**到**那 PIE **那一份**、
-#      => 而而那**它**逐字**还**是**那 dyn-interp **那一个**（=> 而那 07 在设备侧核到的那现象）。
+#    => 而那**两种**形态（=> 而那 PIE **那一个**与那**静态**那一个**）逐字**算**出来**是**那**同一个**指纹**
+#    => 而那**固化**产物逐字**只有**一个**名字**、=> 而那**取件**逐字**取**那**一个**、
+#    => 而那**它**逐字**不管**那**形态**是什么**就**被**取走**了
+#    => 而那**后果**：=> 而那**要**那**静态**的**那一趟**逐字**取**到**那 PIE **那一份**、
+#      => 而那**它**逐字**还**是**那 dyn-interp **那一个**（=> 而那 07 在设备侧核到的那现象）。
 #  => 而那**处置**：=> 而那**指纹**逐字**带上**那**形态**（=> 而那**它**逐字**跟**那**产物**的**形态**走**）。
 #    => 而那**形态**逐字**由**那 **LOBOS_BUSYBOX_STATIC** **那个**环境变量**给**（=> 而那**默认**逐字**是**那 PIE）。
 #  => 而按 C-104：=> 而那**指纹**那一族逐字**只有**一条路（=> 而那**它**们**逐字是**那**两**件**事**：
@@ -231,7 +231,7 @@ fi
 FORM_TAG=""
 case "$TOOL" in
   busybox)
-    #  => 而那**静态**的**那一个**逐字**要**那**它自己的**名字**（=> 而而那 PIE **那一个**逐字**用**那**默认**的**名字**）。
+    #  => 而那**静态**的**那一个**逐字**要**那**它自己的**名字**（=> 而那 PIE **那一个**逐字**用**那**默认**的**名字**）。
     if [ "${LOBOS_BUSYBOX_STATIC:-0}" = "1" ]; then
       FORM_TAG="-static"
     fi

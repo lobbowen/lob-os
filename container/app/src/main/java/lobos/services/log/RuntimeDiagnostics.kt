@@ -58,8 +58,8 @@ object RuntimeDiagnostics {
      *     （=> 而那 07 逐字核到：那 scan-cost 那一档逐字在 journal 的 at 逐字 1793483983860、
      *       而那 diag.jsonl 逐字**最早**一条 at 逐字 1793483984570 —— **晚 710 ms**）
      *   => 而那**处置**：=> 而那它逐字只清「**上一世**」那一份
-     *     => 而而那「这一世」逐字从那**出生标记**之后算起（=> 而那它逐字**不**清出生之后写的那几行）
-     *     => 而而那它逐字**不**排在 beginLife **之后**（=> 而那那是那一条竞态的另一半）
+     *     => 而那「这一世」逐字从那**出生标记**之后算起（=> 而那它逐字**不**清出生之后写的那几行）
+     *     => 而那它逐字**不**排在 beginLife **之后**（=> 而那是那一条竞态的另一半）
      *
      *  @param lifeMark 那**这一世**的标记（=> 而那它逐字是那出生那一拍写下的）
      *   => 而那它逐字**空**时逐字**整份**清（=> 而那是那「没有标记」那一族、=> 而按 C-05 报缺）
@@ -72,18 +72,18 @@ object RuntimeDiagnostics {
             runCatching { structFile(ctx).writeText("") }
             return
         }
-        //  => 而那**文本**那一份：=> 而那它逐字**行**式、=> 而而那它逐字只清那标记**之前**的行
+        //  => 而那**文本**那一份：=> 而那它逐字**行**式、=> 而那它逐字只清那标记**之前**的行
         runCatching {
             val f = file(ctx)
             if (!f.isFile) return@runCatching
             val kept = f.readLines().filter { !it.contains(lifeMark) }
             //  => 而那它逐字**按行**判（=> 而那标记逐字逐行出现）
-            //     => 而而那它逐字**不**动那标记**之后**写的那些行（=> 而那「这一世」那几行逐字**留住**）
+            //     => 而那它逐字**不**动那标记**之后**写的那些行（=> 而那「这一世」那几行逐字**留住**）
             val out = kept.joinToString("\n")
             f.writeText(if (out.isEmpty()) "" else out + "\n")
         }
         //  => 而那**结构**那一份：=> 而那它逐字**行**式 JSON（=> 而那每行逐字带那 at）
-        //     => 而而那它逐字按那 at 逐字比（=> 而那标记那一拍逐字带一个 at）
+        //     => 而那它逐字按那 at 逐字比（=> 而那标记那一拍逐字带一个 at）
         runCatching {
             val f = structFile(ctx)
             if (!f.isFile) return@runCatching
@@ -102,7 +102,7 @@ object RuntimeDiagnostics {
     @Synchronized
     fun markLife(ctx: Context) {
         lifeMarkAt = System.currentTimeMillis()
-        //  => 而那那**标记**逐字也写进那**文本**那一份（=> 而而那它逐字是那一行）
+        //  => 而那**标记**逐字也写进那**文本**那一份（=> 而那它逐字是那一行）
         runCatching {
             lobos.kernel.fs.StateFiles.appendBounded(
                 file(ctx), "LIFE-MARK " + lifeMarkAt

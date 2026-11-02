@@ -17,7 +17,7 @@ import org.json.JSONObject
 /** LOB-OS management UI shipped in the host APK. */
 class HostControlActivity : Activity() {
 
-    /** 那**终端输出**逐字那一个上限（=> 而而那它逐字**只**留那**尾**那一截）。 */
+    /** 那**终端输出**逐字那一个上限（=> 而那它逐字**只**留那**尾**那一截）。 */
     private val MAX_TERMINAL_CHARS = 256 * 1024
     private lateinit var spinner: Spinner
     private lateinit var manifest: EditText
@@ -34,22 +34,22 @@ class HostControlActivity : Activity() {
         super.onCreate(savedInstanceState)
         //  缺陷名（C-102）**那根 LinearLayout 逐字不可滚、=> 而而那控件总数逐字超出屏幕、=> 而而那最后那个按钮被压成 0 高** ——
         //    => 而那旧版逐字是 `val root = LinearLayout(this).apply { orientation = VERTICAL … }`
-        //      => 而而那 LinearLayout 逐字**不可滚**（=> 而那它逐字把子控件**挤**在一屏里）
-        //      => 而而那那一屏逐字 1080x2120、=> 而而那控件总数逐字**超出**它
-        //      => 而而那**最后**那个（逐字是那「在 LOB-OS 里跑这条命令」那一个）按钮
+        //      => 而那 LinearLayout 逐字**不可滚**（=> 而那它逐字把子控件**挤**在一屏里）
+        //      => 而那一屏逐字 1080x2120、=> 而那控件总数逐字**超出**它
+        //      => 而那**最后**那个（逐字是那「在 LOB-OS 里跑这条命令」那一个）按钮
         //        逐字被压成 **0 高**（=> 而那设备侧 07 逐字核到
         //        `android.widget.Button{d61fd89 … 32,2088-1048,2088 …}`）
-        //      => 而而那它逐字在屏幕内（=> 而那 y=2088、=> 而那屏幕 2120 高）
-        //        **但高 0**、=> 而而那它逐字**点不到**、=> 而而那它逐字**也不在焦点链**里
+        //      => 而那它逐字在屏幕内（=> 而那 y=2088、=> 而那屏幕 2120 高）
+        //        **但高 0**、=> 而那它逐字**点不到**、=> 而那它逐字**也不在焦点链**里
         //        （=> 而那 20 次 TAB 逐字走完 Spinner → 刷新件列表 → 更新清单 URL → requestId
         //          → 更新系统件 → 回滚 → PE ARM64 → PE i386 → 命令输入框 → 回到 Spinner
-    //          ——=> 而而那那个按钮逐字**不在**那一链里）
-        //      => 而而那**输入**那一格逐字**是**通的（=> 而那阳性对照逐字：命令输入框逐字确实被填上了）
-        //    => 而那**正解**：=> 而那根逐字换成 **ScrollView**（=> 而而那它逐字可滚、
-        //      => 而而那控件超屏时逐字**能滚到**、=> 而而那按钮逐字**不再**被压成 0 高）。
+    //          ——=> 而那个按钮逐字**不在**那一链里）
+        //      => 而那**输入**那一格逐字**是**通的（=> 而那阳性对照逐字：命令输入框逐字确实被填上了）
+        //    => 而那**正解**：=> 而那根逐字换成 **ScrollView**（=> 而那它逐字可滚、
+        //      => 而那控件超屏时逐字**能滚到**、=> 而那按钮逐字**不再**被压成 0 高）。
         val root = ScrollView(this).apply {
             setPadding(32, 32, 32, 32)
-            //  => 而那那内容逐字还是那一个竖排（=> 而而那 ScrollView 逐字只带**一个**孩子）
+            //  => 而那内容逐字还是那一个竖排（=> 而那 ScrollView 逐字只带**一个**孩子）
             addView(LinearLayout(this@HostControlActivity).apply {
                 orientation = LinearLayout.VERTICAL
             })
@@ -75,42 +75,42 @@ class HostControlActivity : Activity() {
         val peSample32 = Button(this).apply { text = "加载 PE L2 样本（i386）" }
         //  缺陷名（C-102）**那「跑一条命令」逐字没有产品 UI 入口** ——
         //    => 而那旧版逐字**只有**那 `ControlClient.exec` 那一格（=> 而那是**客户端**那一族、
-        //      => 而而那它逐字要一次**带 token** 的 handshake、=> 而而那设备侧逐字**没有**那一枚新 token）
-        //    => 而而那 `LobosBridge.invoke` 逐字**拒** SCOPE_SYSTEM、=> 而而那 `QuickAppLaunchActivity`
+        //      => 而那它逐字要一次**带 token** 的 handshake、=> 而那设备侧逐字**没有**那一枚新 token）
+        //    => 而那 `LobosBridge.invoke` 逐字**拒** SCOPE_SYSTEM、=> 而那 `QuickAppLaunchActivity`
         //      那一支逐字是 EXTRA_EXEC（=> 而那**只能**用 `am start` 带 extra 叫起来）
-        //    => 而而那**后果**：=> 而那产品侧逐字**没有**能走的那一族
+        //    => 而那**后果**：=> 而那产品侧逐字**没有**能走的那一族
         //    => 而那**处置**：=> 而那**这一格**逐字是那产品 UI 上的一个入口，
-        //      => 而而那它逐字走 `invokeLocal` 那一格（=> 而而那它逐字**不经 socket**、=> 而而那它逐字**不** claim 会话）。
+        //      => 而那它逐字走 `invokeLocal` 那一格（=> 而那它逐字**不经 socket**、=> 而那它逐字**不** claim 会话）。
         val cmdField = EditText(this).apply { hint = "要跑的命令（在 LOB-OS 自己那一份 Linux 里跑）" }
         val exec = Button(this).apply { text = "在 LOB-OS 里跑这条命令（真实执行）" }
-        //  => 而那 M7-05 那一格逐字**要**的那一条产品入口：=> 而而那它逐字**不经 shell**
-        //  => 而那 M7-12 那一格逐字**要**的那一条产品入口：=> 而而那它逐字**核**那盘上现状
+        //  => 而那 M7-05 那一格逐字**要**的那一条产品入口：=> 而那它逐字**不经 shell**
+        //  => 而那 M7-12 那一格逐字**要**的那一条产品入口：=> 而那它逐字**核**那盘上现状
         val directPath = EditText(this).apply { hint = "要直接调的那一条的路径（不经 shell）" }
         val directArgs = EditText(this).apply { hint = "给它的参数（空格分隔，可空）" }
         val execDirect = Button(this).apply { text = "直接调这一条（不经 shell，真实执行）" }
         val verifyNodes = Button(this).apply { text = "核那设备节点那逐节点（真实执行）" }
-        //  => 而那那**九族**逐字逐字各有一个产品入口（=> 而而那它们逐字**同形**）
+        //  => 而那**九族**逐字各有一个产品入口（=> 而那它们逐字**同形**）
         val hbFamily = EditText(this).apply { hint = "那九族里的一族（kmi/lkm/target/uart/linker64/file/memory/security/time）" }
         val hbInput = EditText(this).apply { hint = "给它的坏输入（路径 / 数值 / 机型名）" }
         val hbCheck = Button(this).apply { text = "核那九族里这一族（真实执行，报出那一条原话）" }
-        //  => 而那那**九族**逐字那 positive 那一侧逐字**另**有一个入口（=> 而而那两侧逐字各答一件事）
+        //  => 而那**九族**逐字那 positive 那一侧逐字**另**有一个入口（=> 而那两侧逐字各答一件事）
         val hbPositive = Button(this).apply { text = "核那九族里这一族那合法那一侧（真实执行）" }
-        //  => 而那「跨 app 边界」那一族逐字一个产品入口（=> 而而那它逐字**不**是给程序开的后门）
+        //  => 而那「跨 app 边界」那一族逐字一个产品入口（=> 而那它逐字**不**是给程序开的后门）
         val crossAppMethod = EditText(this).apply { hint = "那一族里的一格（app.launch / app.listInstalled / ui.tap）" }
         val crossAppArg = EditText(this).apply { hint = "给它的参数（包名 / 坐标）" }
         val crossApp = Button(this).apply { text = "走那跨 app 边界那一族（产品入口，真实执行）" }
-        //  => 而那那**堆**逐字那一格逐字一个入口（=> 而而那那**读法名**逐字答的是「那一条路」）
+        //  => 而那**堆**逐字那一格逐字一个入口（=> 而那**读法名**逐字答的是「那一条路」）
         val memProbe = Button(this).apply { text = "核那堆逐字与那还活着的那几处整读（真实执行）" }
-        //  => 而那那「看得见装了哪些 app」那一族逐字**单**一个入口（=> 而而那它逐字**走**那 crossApp 那一格）
+        //  => 而那「看得见装了哪些 app」那一族逐字**单**一个入口（=> 而那它逐字**走**那 crossApp 那一格）
         val listApps = Button(this).apply { text = "看那仓内清单声明过的那几件（产品入口，真实执行）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
         //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
-        //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
+        //     => 而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
         //       （=> 而那 01 本机实跑确认）
         //   => 而那**处置**：=> 而那**这一格**逐字是那产品界面上那一个**消费者**
-        //     （=> 而那它逐字是那**持有者**、=> 而而那它逐字**持有**那一条会话、
-        //       => 而而那它逐字**跨调用**活着）
-        //   => 而而那它逐字**不**是 `SysDev.render` 起会话（=> 而那**不采用**那一族）
+        //     （=> 而那它逐字是那**持有者**、=> 而那它逐字**持有**那一条会话、
+        //       => 而那它逐字**跨调用**活着）
+        //   => 而那它逐字**不**是 `SysDev.render` 起会话（=> 而那**不采用**那一族）
         val terminalOut = TextView(this).apply { text = "（终端还没起）" }
         val terminalInput = EditText(this).apply { hint = "终端里要输入的一行" }
         val terminalOpen = Button(this).apply { text = "起一条交互式终端会话（真实持有）" }
@@ -122,11 +122,11 @@ class HostControlActivity : Activity() {
             update.isEnabled = false
             //  缺陷名（C-102）**那返回体在 UI 上被随即覆盖掉** ——
             //    => 而那旧版逐字是「先 result.text = 那一趟的返回体、=> 而后 loadPieces()」，
-            //      => 而而那 loadPieces() 逐字把 result.text **覆写**成 pieces JSON
+            //      => 而那 loadPieces() 逐字把 result.text **覆写**成 pieces JSON
             //      （=> 而那 :122 逐字 result.text = pieces.toString()），
-            //      => 而而**人看不见那一趟的结果**。
+            //      => 而**人看不见那一趟的结果**。
             //    => 而那**后果**：=> 而 M6 那一格要核的逐字是「设备侧真实出现 rollback 行」，
-            //      => 而而**人看不见那一趟返回什么**、=> 而就只剩设备文件上的审计行可看。
+            //      => 而**人看不见那一趟返回什么**、=> 而就只剩设备文件上的审计行可看。
             //    => 而那**处置**：=> 而那一趟的返回体逐字**落在最后**
             //      （=> 而 loadPieces() 逐字**先**跑、=> 而后 result.text 逐字被那一趟的返回体占住）。
             val r = HostControlService.update(this, manifest.text.toString(), request.text.toString(), false).toString()
@@ -154,7 +154,7 @@ class HostControlActivity : Activity() {
             terminalOpen.isEnabled = false
             val r = runCatching {
                 val t = TerminalSessions.open(this, "ui")
-                //  => 而那**四条**逐字逐字接上（=> 而那能读 onData、=> 而那能 resize、=> 而那在 onExit 收尾）
+                //  => 而那**四条**逐字接上（=> 而那能读 onData、=> 而那能 resize、=> 而那在 onExit 收尾）
                 t.onOutput = { d ->
                     runOnUiThread {
                         appendCapped(terminalOut, String(d, Charsets.UTF_8))
@@ -292,27 +292,27 @@ class HostControlActivity : Activity() {
      * 刷那件列表。
      *
      * @param showPiecesInResult 那返回体逐字**要不要**被这一份 pieces JSON 占住
-     *   （=> 而那默认逐字是「要」、=> 而而那 refresh 那一支逐字靠它显示 pieces）。
+     *   （=> 而那默认逐字是「要」、=> 而那 refresh 那一支逐字靠它显示 pieces）。
      */
     /**
-     * 那**终端输出**逐字**有**一个上限（=> 而而那它逐字**只**留那**尾**那一截）。
+     * 那**终端输出**逐字**有**一个上限（=> 而那它逐字**只**留那**尾**那一截）。
      *
      * 缺陷名（C-102）**那一格逐字把那终端输出逐字**无上限**地累积进那 TextView** ——
      *   => 而那旧版逐字是 `terminalOut.append(String(d, Charsets.UTF_8))`
-     *     => 而而那那 `TextView` 逐字**把**每一段逐字**都**留着、=> 而而那它逐字**一直**涨
-     *       （=> 而而那那**一个** TextView 逐字**自己**就**是**那一份**累积**）
-     *     => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
-     *       · 而那那耗电那第一格逐字**回退**：=> 而那 OOM 逐字 **18** 条、=> 而那堆逐字 349944 KB（≈342 MB）
-     *       · => 而而那那最近三条 OOM 逐字密集（逐字 `14:52:35.461`、`14:52:36.000`、`14:52:38.060`）
-     *         => 而而那那**正是** 07 那一趟逐字**起会话**那一族
-     *       => 而而那那**结论**逐字是「App 闲着逐字没有 OOM、=> 而起会话那一族逐字跑起来就会」
-     *       => 而而那那 `306a634` 那一笔逐字治的那一处（=> 而那那**缓冲**与那**输出**逐字**有**上限了）
+     *     => 而那 `TextView` 逐字**把**每一段逐字**都**留着、=> 而那它逐字**一直**涨
+     *       （=> 而那**一个** TextView 逐字**自己**就**是**那一份**累积**）
+     *     => 而那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+     *       · 而那耗电那第一格逐字**回退**：=> 而那 OOM 逐字 **18** 条、=> 而那堆逐字 349944 KB（≈342 MB）
+     *       · => 而那最近三条 OOM 逐字密集（逐字 `14:52:35.461`、`14:52:36.000`、`14:52:38.060`）
+     *         => 而那**正是** 07 那一趟逐字**起会话**那一族
+     *       => 而那**结论**逐字是「App 闲着逐字没有 OOM、=> 而起会话那一族逐字跑起来就会」
+     *       => 而那 `306a634` 那一笔逐字治的那一处（=> 而那**缓冲**与那**输出**逐字**有**上限了）
      *         逐字**生效**了（=> 而那 06:34:42Z 那一趟逐字 OOM 逐字 0 条、=> 而那堆逐字 181111 KB）
-     *       => 而而那这一格逐字是那**会话那一族**逐字**另有一处**逐字在累积
-     *     => 而而那那**判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
-     *   => 而那**处置**：=> 而而那那 **TextView** 逐字**只**留那**尾**那一截
-     *     => 而而那那**上限**逐字是那 **256 KiB** 逐字（=> 而而那那**头**那一截逐字**丢**、=> 而而那那**尾**那一截逐字**留**）
-     *     => 而而那那**丢**了逐字**说清**（=> 而那按 C-05 不猜填）
+     *       => 而那这一格逐字是那**会话那一族**逐字**另有一处**逐字在累积
+     *     => 而那**判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
+     *   => 而那**处置**：=> 而那 **TextView** 逐字**只**留那**尾**那一截
+     *     => 而那**上限**逐字是那 **256 KiB** 逐字（=> 而那**头**那一截逐字**丢**、=> 而那**尾**那一截逐字**留**）
+     *     => 而那**丢**了逐字**说清**（=> 而那按 C-05 不猜填）
      */
     private fun appendCapped(view: android.widget.TextView, text: String) {
         view.append(text)
@@ -341,11 +341,11 @@ class HostControlActivity : Activity() {
         spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         showDetail(spinner.selectedItemPosition)
         //  => 而那「刷完就显示 pieces」那一语义逐字**保留**（=> 而那 refresh 那一支逐字**只**调这一格、
-        //     => 而而那 update / rollback 那两支逐字**先**调这一格、=> 而后逐字把 result.text 换成那一趟的返回体）。
+        //     => 而那 update / rollback 那两支逐字**先**调这一格、=> 而后逐字把 result.text 换成那一趟的返回体）。
         //  => 而那**为什么**不是「loadPieces 不动 result.text」：
         //     => 而那 refresh 那一支逐字**要**「刷完就显示 pieces」（=> 而那它逐字只调这一格、
-        //       => 而而那它逐字**没有**别的地方把 result.text 设回去），
-        //     => 而而若这一格逐字不动 result.text、=> 而那 refresh 那一支逐字**就什么也不显示**。
+        //       => 而那它逐字**没有**别的地方把 result.text 设回去），
+        //     => 而若这一格逐字不动 result.text、=> 而那 refresh 那一支逐字**就什么也不显示**。
         //     => 而那**处置**：=> 而那「不动」那一格逐字做成**参数**（=> 而那默认逐字是「显示 pieces」）。
         if (showPiecesInResult) {
             result.text = pieces.toString()

@@ -75,7 +75,7 @@ try {
     process.stdout.write("zip32"); process.exit(0);
   }
   const loc = e >= 20 ? tail.readUInt32LE(e - 20) : 0;
-  //  => 而那**定位器不在位**时（=> 而那哨兵逐字在位、=> 而而那定位器逐字坏了）
+  //  => 而那**定位器不在位**时（=> 而那哨兵逐字在位、=> 而那定位器逐字坏了）
   //     => 而 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「**那一档必须单独报、不许当 zip 处理**」。
   process.stdout.write(loc === 0x07064b50 ? "zip64" : "zip64-sentinel-no-locator");
 } catch (e) {
@@ -190,7 +190,7 @@ fmt_inner_zip_candidates() {
   local z
   #  => 而那**同一个**文件逐字可能**命中**那几条 glob 里的**好几条**
   #     （=> 而那 component-*.zip 逐字也命中 *.zip、=> 而那 */component-*.zip 逐字也命中 */ *.zip）
-  #     => 而那重复逐字会让下面那个「候选数」逐字**数多**、=> 而而那判红是**假**的。
+  #     => 而那重复逐字会让下面那个「候选数」逐字**数多**、=> 而那判红是**假**的。
   #     => 而所以这一处逐字**去重**（=> 而那逐字按**真实路径**去重、=> 而不按名字）。
   local seen=" "
   for z in "$work"/component-*.zip "$work"/*/component-*.zip "$work"/*.zip "$work"/*/*.zip; do

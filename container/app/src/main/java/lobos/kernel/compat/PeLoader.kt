@@ -88,11 +88,11 @@ class PeLoader private constructor(
             //    逐字把目录读到了错的地方** ——
             //    => 而它治**的**是「那导入表那一格逐字从哪一格取」。
             //    => 而那**成因**：=> 而那 PE32+ 的可选头**少一个** BaseOfData（4 字节）、
-            //       => 而而那**后面每一格**逐字**往前挪**了 4 个字节、=> 而而那 NumberOfRvaAndSizes
-            //       逐字从 92 挪到了 108、=> 而而那数据目录逐字从 96 挪到了 112。
+            //       => 而那**后面每一格**逐字**往前挪**了 4 个字节、=> 而那 NumberOfRvaAndSizes
+            //       逐字从 92 挪到了 108、=> 而那数据目录逐字从 96 挪到了 112。
             //    => 而那**后果**：=> 而那 PE32+ 那一族逐字把**别的**目录读成了导入表
             //       （=> 而那一族多半会把一段无关的字节读成 DLL 名）。
-            //    => 而那**处置**：=> 而那两格逐字按 pe32Plus **分两支**取、=> 而而那**不合并**。
+            //    => 而那**处置**：=> 而那两格逐字按 pe32Plus **分两支**取、=> 而那**不合并**。
             val directoryCountOffset = if (pe32Plus) 108 else 92
             val directoryBase = if (pe32Plus) 112 else 96
             val directoryCount = r.u32(optional + directoryCountOffset)
@@ -202,9 +202,9 @@ class PeLoader private constructor(
         //    逐字把导入项逐字读成了别的东西** ——
         //    => 而它治**的**是「那导入表逐项逐字能不能解析出来」。
         //    => 而那**成因**：=> 而那 PE32+ 的导入名表逐字是 **8 字节**一项（低 4 字节是 RVA、
-        //       高 4 字节是 0），=> 而而那**序号标志位**逐字在**第 63 位**、=> 而而那 **PE32** 那一族
+        //       高 4 字节是 0），=> 而那**序号标志位**逐字在**第 63 位**、=> 而那 **PE32** 那一族
         //       逐字是 4 字节一项、标志位在**第 31 位**。
-        //    => 而那**处置**：=> 而那步长与那标志位逐字按 pe32Plus **分两支**取、=> 而而那**不合并**。
+        //    => 而那**处置**：=> 而那步长与那标志位逐字按 pe32Plus **分两支**取、=> 而那**不合并**。
         private fun parseThunks(view: ImageView, lookupRva: Long): List<PeImportSymbol> {
             if (lookupRva == 0L) return emptyList()
             var offset = view.rvaToOffset(lookupRva)
@@ -444,9 +444,9 @@ private class PeReader(private val bytes: ByteArray) {
  * 映射后的映像那一副（=> 而那**它**逐字按 RVA 读）。
  *
  *  => 而那 RVA 到映像偏移逐字就是**同一个数**：=> 而那映像**已经**是按各节自己的
- *     VirtualAddress 摆好的一份、=> 而而那**不**要再换算回文件偏移。
- *  => 而那**旧**的换算逐字是「拿文件偏移当映像偏移用」——=> 而而那**后果**是那导入名逐字
- *     读到了别的地方、=> 而而那**处置**是那一处换算逐字**删掉**。
+ *     VirtualAddress 摆好的一份、=> 而那**不**要再换算回文件偏移。
+ *  => 而那**旧**的换算逐字是「拿文件偏移当映像偏移用」——=> 而那**后果**是那导入名逐字
+ *     读到了别的地方、=> 而那**处置**是那一处换算逐字**删掉**。
  */
 private class ImageView(val bytes: ByteArray, val pe32Plus: Boolean) {
     val size: Int get() = bytes.size

@@ -51,25 +51,25 @@ class ControlClient(
         }, "native", "ota")
 
     /**
-     * 跑一条命令（=> 而它在 LOB-OS 自己那一份 Linux 里跑、=> 而而那 env 逐字是 LOB-OS 自己那套）。
+     * 跑一条命令（=> 而它在 LOB-OS 自己那一份 Linux 里跑、=> 而那 env 逐字是 LOB-OS 自己那套）。
      *
      *  缺陷名（C-102）**那个「跑一条用户指定的命令」的入口逐字没有、=> 而而那「起程序」那一族逐字只到那件自己**
-     *   => 而那旧版逐字**只有** [rollback] 与 [update] 两个方法、=> 而而那它们逐字**不**起程序。
-     *   => 而而那**后果**：=> 而那「在 LOB-OS 自己那一份起程序」那一格逐字**从外部**够不到
-     *     （=> 而而那那个手填 URL 的入口逐字是设备 UI 那一面、=> 而而那它逐字**不**是一个客户端）。
-     *   => 而那**处置**：=> 而那这一族逐字**该有**（=> 而它逐字是产品那一面、=> 而而它逐字**不是**探针）
-     *     => 而而那**形状**逐字由 01 裁（=> 而那 S615-01 §3.3）：
+     *   => 而那旧版逐字**只有** [rollback] 与 [update] 两个方法、=> 而那它们逐字**不**起程序。
+     *   => 而那**后果**：=> 而那「在 LOB-OS 自己那一份起程序」那一格逐字**从外部**够不到
+     *     （=> 而那个手填 URL 的入口逐字是设备 UI 那一面、=> 而那它逐字**不**是一个客户端）。
+     *   => 而那**处置**：=> 而那这一族逐字**该有**（=> 而它逐字是产品那一面、=> 而它逐字**不是**探针）
+     *     => 而那**形状**逐字由 01 裁（=> 而那 S615-01 §3.3）：
      *       · 那方法逐字是 [exec]
      *       · 那 handshake 的 `requires` 逐字**要能带** `lobos:sys`
      *         （=> 而那 `sys.tty.exec` 逐字要 `ApiSpec.GROUP_SYS`、=> 而那 CapabilityBroker.kt:1157
      *         逐字 `MethodDef(listOf(ApiSpec.GROUP_SYS), true)`）
      *       · 而那凭据逐字是那 `installerToken`（=> 而那 CapabilityBroker.kt:94）、
-     *         => 而而那它逐字落在 `files/run/sessions.json`、=> 而而那 `SystemFilesProvider` 逐字是只读出口。
+     *         => 而那它逐字落在 `files/run/sessions.json`、=> 而那 `SystemFilesProvider` 逐字是只读出口。
      *
      *  @param cmd 那要跑的命令串（=> 而那它逐字**在** LOB-OS 自己那一份跑）
      *  @param requestId 那请求号（=> 而那它逐字用来对账）
      *  @param timeoutMs 那超时（=> 而那逐字默认 10000）
-     *  @param noPty 那要不要走无 PTY 那一路（=> 而那逐字默认 false、=> 而而那 true 逐字强制无 PTY）
+     *  @param noPty 那要不要走无 PTY 那一路（=> 而那逐字默认 false、=> 而那 true 逐字强制无 PTY）
      */
     fun exec(
         cmd: String,
@@ -119,7 +119,7 @@ class ControlClient(
                 put("params", JSONObject().apply {
                     put("protocol", protocolVersion); put("token", sessionToken)
                     //  => 而那 requires 逐字**能带** `lobos:sys`（=> 而那它逐字是那 exec 那一族要的）
-                    //     => 而而那旧版逐字**只**带 "base"、=> 而而那它逐字**拿不到** GROUP_SYS。
+                    //     => 而那旧版逐字**只**带 "base"、=> 而那它逐字**拿不到** GROUP_SYS。
                     val req = org.json.JSONArray()
                     for (r in requires) req.put(r)
                     put("requires", req)

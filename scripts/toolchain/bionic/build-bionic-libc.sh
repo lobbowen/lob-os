@@ -31,9 +31,9 @@ trap 'rm -rf "$WORK"' EXIT
 
 #  缺陷名（C-102）那 atomic 那一族逐字在那 bionic 那 bits/stdatomic.h 与那 libc++ 的 <atomic> 之间撞了。
 #    => 而那处置：=> 而那 bits/stdatomic.h 逐字用那 INC_DIR/bits-stdatomic.h 那一份（=> 而那**它**逐字是那**委托**给那 libc++ 的 <atomic> 的那一份）、
-#      => 而而那**它**逐字**先**把那**拷贝**到**那**源码树**那一层**（=> 而那 INCLUDE/bits/ 底下**那一个**）、
+#      => 而那**它**逐字**先**把那**拷贝**到**那**源码树**那一层**（=> 而那 INCLUDE/bits/ 底下**那一个**）、
 #      => 而那 INCLUDE 逐字**先**建**好**。
-#  => 而那**拷贝**过**来**的**那**一份**逐字**盖**在**那**源码树**自己**的**那**一份**上**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**是**什么**」与「那**为什么**要**盖**」）。
+#  => 而那**拷贝**过**来**的**那**一份**逐字**盖**在**那**源码树**自己**的**那**一份**上**（=> 而那**它**们**逐字是**那**两**件**事**：「那**是**什么**」与「那**为什么**要**盖**」）。
 SA="$SRC/libc/include/bits/stdatomic.h"
 if [ -f "$SA" ] && ! cmp -s "$SA" "$INC_DIR/bits-stdatomic.h"; then
   cp "$SA" "$WORK/stdatomic.h.orig"
@@ -42,7 +42,7 @@ fi
 mkdir -p "$WORK/patched/bits"
 cp "$INC_DIR/bits-stdatomic.h" "$WORK/patched/bits/stdatomic.h"
 
-#  => 而那 <bionic/xxx.h> **那一族**逐字**要**那**一个** **bionic/** **那一层**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**引**的是**什么**」与「那**它**在**哪**一层**」）。
+#  => 而那 <bionic/xxx.h> **那一族**逐字**要**那**一个** **bionic/** **那一层**（=> 而那**它**们**逐字是**那**两**件**事**：「那**引**的是**什么**」与「那**它**在**哪**一层**」）。
 #     => 而那 bionic 那 libc/platform/bionic 底下**那**几个**头**逐字**在**那**一处**、=> 而那**引**的**是**那「<bionic/xxx.h>」。
 mkdir -p "$WORK/patched/bionic"
 for h in "$SRC"/libc/platform/bionic/*.h; do
@@ -52,10 +52,10 @@ trap 'rm -rf "$WORK"' EXIT
 
 INC=(-nostdinc)
 
-#  => 而那**拷贝**过**来**的**那**一份**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那**拷贝**过**来**的**那**一份**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（=> 而那**它**们**逐字是**那**两**件**事**）。
 INC+=(-isystem "$LIBCXX")
 
-#  => 而那**改过**的**那**一份 bits/stdatomic.h 逐字**要**在**那 bionic **自己**的**那**一份 **之前**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那**改过**的**那**一份 bits/stdatomic.h 逐字**要**在**那 bionic **自己**的**那**一份 **之前**（=> 而那**它**们**逐字是**那**两**件**事**）。
 INC+=(-I"$WORK/patched")
 for d in \
   "$SIB/libbase/include" "$SIB/libziparchive/include" "$SIB/core/libutils/include" \
@@ -73,17 +73,17 @@ for d in \
   ; do
   [ -d "$d" ] && INC+=(-I"$d")
 done
-#  => 而那 libc++ **那一族**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（=> 而而那**它**们**逐字是**那**两**件**事**）。
-#  => 而那 libc++ **那一族** 逐字**可以**在**那 SIB **底下**、=> 而而那**它**也**可以**在**那 LIBCXX **那一层**（=> 而那 work2 与那 work3 **那两**个**根**）。
+#  => 而那 libc++ **那一族**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（=> 而那**它**们**逐字是**那**两**件**事**）。
+#  => 而那 libc++ **那一族** 逐字**可以**在**那 SIB **底下**、=> 而那**它**也**可以**在**那 LIBCXX **那一层**（=> 而那 work2 与那 work3 **那两**个**根**）。
 INC+=(-isystem "$RES" -isystem "$SYS" -isystem "$ASM")
 
 #  缺陷名（C-102）那 atomic 那一族逐字在那 bionic 那 bits/stdatomic.h 与那 libc++ 的 <atomic> 之间撞了。
 #    => 而那成因：=> 而那 bionic 那 bits/stdatomic.h :153 那一行 = 那「#define atomic_is_lock_free(obj) ...」，
-#      => 而而那它逐字把那 libc++ 自己的那个函数名拆了（=> 而那 libc++ 的 atomic :1166 那一行）。
-#      => 而而那后果逐字 = 而那编过的个数上不去。
+#      => 而那它逐字把那 libc++ 自己的那个函数名拆了（=> 而那 libc++ 的 atomic :1166 那一行）。
+#      => 而那后果逐字 = 而那编过的个数上不去。
 #    => 而那处置：=> 而那三步：
 #      (1) 而那 bits/stdatomic.h 逐字先给那 memory_order 那一族（=> 而那 :128 到那 :135 那几行）；
-#      (2) 而那那几个宏逐字undef 了（=> 而那 atomic_is_lock_free 与那那几个操作宏）；
+#      (2) 而那几个宏逐字undef 了（=> 而那 atomic_is_lock_free 与那几个操作宏）；
 #      (3) 而那 libc++ 的 <atomic> 逐字后给那 std::atomic 那一族。
 echo "[build-bionic-libc] 那 atomic 那一族逐字用那 INC_DIR/atomic-shim.h（=> 而那三步）"
 

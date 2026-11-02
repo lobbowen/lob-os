@@ -113,17 +113,17 @@ done
 echo "[git] 依赖三件就位：zlib / openssl / curl"
 
 #  缺陷名（C-102）**那 git 那个二进制**逐字**零个** RUNPATH**（=> 而而那**它**们**逐字是**那**两**件**事**）。
-#    => 而那**成因**：=> 而那 git 逐字**要**那 libz.so.1 **那一个**、=> 而而那**它**逐字**是**那 LOB-OS 自己那**一族**的**库**、
-#      => 而而那 jq **要**的那些**都**是**那宿主**那**一族**、=> 而而那**它们**逐字**是**那**两**件**事**。
-#    => 而而那**后果**逐字 = 而那 git **那一格**逐字**报**那「library libz.so.1 not found」、
-#      => 而而那**它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
+#    => 而那**成因**：=> 而那 git 逐字**要**那 libz.so.1 **那一个**、=> 而那**它**逐字**是**那 LOB-OS 自己那**一族**的**库**、
+#      => 而那 jq **要**的那些**都**是**那宿主**那**一族**、=> 而那**它们**逐字**是**那**两**件**事**。
+#    => 而那**后果**逐字 = 而那 git **那一格**逐字**报**那「library libz.so.1 not found」、
+#      => 而那**它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
 #    => 而那**处置**：=> 而那 RUNPATH 逐字**写**在**那配方**那一族**里面**（=> 而那 **git-runpath-origins.patch**）。
-#      => 而而那**为什么**逐字**不能**经**那 env **那一族**：=> 而那 **make** 逐字**把**那 $ORIGIN **当**那 **make 变量**
-#        （=> 而而那**它**逐字**是空的**）、=> 而那**它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
-#        => 而而那**证据**逐字 = 而那 **CI** 编出来**那一个** git 逐字**带**那 RUNPATH **却**是**那「RIGIN/../lib」**
-#          （=> 而那**它**逐字**是**那 **RIGIN**、=> 而而那**它**们**逐字是**那**两**件**事**）。
-#      => 而而那**那一个**逐字**在**那**配方**里面**（=> 而而那**它**逐字**自己**写**那**转义**、=> 而而那**它**们**逐字是**那**两**件**事**）。
-#    => 而按 C-104：=> 而那 git **那一件**逐字**只有一条路**（=> 而而那**它**逐字**是**那**配方**那一族**、=> 而而那**它**们**逐字不是**第二条路**）。
+#      => 而那**为什么**逐字**不能**经**那 env **那一族**：=> 而那 **make** 逐字**把**那 $ORIGIN **当**那 **make 变量**
+#        （=> 而那**它**逐字**是空的**）、=> 而那**它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
+#        => 而那**证据**逐字 = 而那 **CI** 编出来**那一个** git 逐字**带**那 RUNPATH **却**是**那「RIGIN/../lib」**
+#          （=> 而那**它**逐字**是**那 **RIGIN**、=> 而那**它**们**逐字是**那**两**件**事**）。
+#      => 而那**那一个**逐字**在**那**配方**里面**（=> 而那**它**逐字**自己**写**那**转义**、=> 而那**它**们**逐字是**那**两**件**事**）。
+#    => 而按 C-104：=> 而那 git **那一件**逐字**只有一条路**（=> 而那**它**逐字**是**那**配方**那一族**、=> 而那**它**们**逐字不是**第二条路**）。
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then

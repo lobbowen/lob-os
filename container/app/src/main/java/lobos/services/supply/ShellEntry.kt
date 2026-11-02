@@ -28,17 +28,17 @@ object ShellEntry {
     fun resolve(ctx: Context): File? {
         //  缺陷名（C-102）**那一格逐字按那 `isPiece` 筛、=> 而而那它逐字把那 shell 那一档逐字筛掉**
         //   => 而那旧版逐字是 `ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(ctx, it) }`
-        //     => 而而那 `isPiece` 逐字是 `e.levelOf(ctx) == Level.PIECE`
+        //     => 而那 `isPiece` 逐字是 `e.levelOf(ctx) == Level.PIECE`
         //       （=> 而那 `ProgramIndex.kt:70` 那一格逐字
         //         `return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM`）
-        //       => 而而那那**判据**逐字是「那**入口**那一格有没有值」
-        //     => 而而那**修好了写入那一侧**之后（=> 而那 shell 那一档逐字**有**入口了）
-        //       => 而而那它逐字变成 `Level.PROGRAM`、=> 而而那**这一格**逐字就把它逐字**筛掉**
-        //       => 而而那 `resolve` 逐字还是返回 null、=> 而而那那**同一个**抛错逐字还在
+        //       => 而那**判据**逐字是「那**入口**那一格有没有值」
+        //     => 而那**修好了写入那一侧**之后（=> 而那 shell 那一档逐字**有**入口了）
+        //       => 而那它逐字变成 `Level.PROGRAM`、=> 而那**这一格**逐字就把它逐字**筛掉**
+        //       => 而那 `resolve` 逐字还是返回 null、=> 而那**同一个**抛错逐字还在
         //   => 而那**正解**：=> 而那**这一格**逐字找的是「那 role 逐字是 shell 那一档的那一件」、
-        //     => 而而那它逐字**不**该由「那一件在登记里是程序还是件」决定
+        //     => 而那它逐字**不**该由「那一件在登记里是程序还是件」决定
         //     （=> 而那是**两把尺**、=> 而依 C-105 逐字**不**互相顶替）
-        //   => 而而那它逐字**仍然**只在那**落位目录**底下找（=> 而那它逐字**不**认用户程序那一族）
+        //   => 而那它逐字**仍然**只在那**落位目录**底下找（=> 而那它逐字**不**认用户程序那一族）
         val pieces = ProgramIndex.all(ctx).filter { it.role == PieceScan.SHELL || it.role == PieceScan.MULTI_COMMAND }
 
         val shell = pieces.firstOrNull { it.role == PieceScan.SHELL }

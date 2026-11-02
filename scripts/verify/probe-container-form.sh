@@ -71,7 +71,7 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
       fi ;;
     gzip)
       #  => 而那 gzip 逐字是「外层是 tar.gz、而那里面逐字装着那内层那一个件包」那个形状
-      #     => 而而那内层逐字是**什么**逐字是取证要答的那一格、=> 而不是判据。
+      #     => 而那内层逐字是**什么**逐字是取证要答的那一格、=> 而不是判据。
       WORK="$(mktemp -d)"
       OUTER_ID=""
       if tar tzf "$f" >/dev/null 2>&1; then

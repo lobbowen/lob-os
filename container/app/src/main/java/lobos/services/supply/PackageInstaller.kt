@@ -89,7 +89,7 @@ object PackageInstaller {
      *
      * => 而那**为什么不是** isPiece：=> 而那 isPiece 判的是形态（=> 而库形态件逐字**有** APK 原件基线：
      *   而那 PreinstalledPieces 那一支逐字**按角色**给每一件记了 apk 槽、=> 而那库角色也有），
-     *   => 而而那一族的**准入**问句**不是**形态。
+     *   => 而那一族的**准入**问句**不是**形态。
      */
     fun ownsPackageRollback(ctx: Context, name: String): Boolean {
         //  => 而那一格逐字是**落位目录**那一格（=> 而那它逐字对程序形态件非空、对库形态件空串）。
@@ -101,7 +101,7 @@ object PackageInstaller {
     fun rollbackToBaseline(ctx: Context, name: String): Boolean {
         val reg = ProgramIndex.get(ctx, name)
         //  => 而这一道守卫逐字**与桥侧读同一件事**（=> 而那 ownership 那一个）、
-        //  => 而而**不是**那形态尺（=> 而那方向相反那一族逐字治掉了）。
+        //  => 而**不是**那形态尺（=> 而那方向相反那一族逐字治掉了）。
         if (reg != null && !ownsPackageRollback(ctx, name)) {
             Journal.note(ctx, "package", false, "拒绝回滚：这一件不归包回滚这一族管", "name=" + name)
             return false

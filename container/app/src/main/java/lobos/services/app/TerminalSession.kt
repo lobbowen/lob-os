@@ -12,7 +12,7 @@ import lobos.kernel.ipc.PtySession
  *
  * 01 裁的《S617-01-PTY-SESSION-NODES-RULING.md》逐字要它：
  *   · 那它逐字属于「产品那一个承载」那一档（=> 而那它逐字**不是**新形态）
- *   · 那那一个消费者逐字是「一个逐字持有 `Session` 的交互式终端那一面」
+ *   · 那一个消费者逐字是「一个逐字持有 `Session` 的交互式终端那一面」
  *   · => 而那形状写死到那四条（=> 而那四条逐字**正是** [PtySession.Session] 那四个方法）：
  *     能 write / 能读 onData / 能 resize / 在 onExit 收尾
  *
@@ -20,28 +20,28 @@ import lobos.kernel.ipc.PtySession
  *   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
  *     => 而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
  *       （=> 而那 01 本机实跑确认）
- *   => 而而那**后果**（07 本轮逐字核出）：=> 而那设备上逐字**没有**一条会话
- *     => 而而那 `files/dev/tty/pts` 逐字空、=> 而而那 `files/dev/tty/index.json` 逐字 `[]`
- *     => 而而那 `PtySession.activeSessions(ctx)` 逐字**恒**是 `emptyList()`
- *       （=> 而那 `openSession` 逐字零调用者、=> 而而那 `Host.start` 逐字只有
- *         `openSession` 与 `runToCompletion` 两个入口、=> 而而那 `runToCompletion`
- *         逐字同步等退出、=> 而而那 `ensureHost` 逐字只起宿主进程）
+ *   => 而那**后果**（07 本轮逐字核出）：=> 而那设备上逐字**没有**一条会话
+ *     => 而那 `files/dev/tty/pts` 逐字空、=> 而那 `files/dev/tty/index.json` 逐字 `[]`
+ *     => 而那 `PtySession.activeSessions(ctx)` 逐字**恒**是 `emptyList()`
+ *       （=> 而那 `openSession` 逐字零调用者、=> 而那 `Host.start` 逐字只有
+ *         `openSession` 与 `runToCompletion` 两个入口、=> 而那 `runToCompletion`
+ *         逐字同步等退出、=> 而那 `ensureHost` 逐字只起宿主进程）
  *   => 而那**处置**：=> 而那**这一格**逐字是那**持有者**
- *     => 而而那它逐字**只**在**产品那一个承载**那一档（=> 而那它逐字**不**是探针）
- *     => 而而那它逐字**不是** `SysDev.render` 起会话（=> 而那**不采用**那一族）：
+ *     => 而那它逐字**只**在**产品那一个承载**那一档（=> 而那它逐字**不**是探针）
+ *     => 而那它逐字**不是** `SysDev.render` 起会话（=> 而那**不采用**那一族）：
  *       渲染是投影、`wipe(r)` 每次重建、那 `sysdev` 那一族逐字每 15 秒重跑、
- *       => 而而且起会话失败逐字会让整个 `files/dev/` 渲染变成 null
+ *       => 而且起会话失败逐字会让整个 `files/dev/` 渲染变成 null
  *
  * **而那它逐字怎么起一条会话**：
  *   => 而那它逐字**要**那底座那一个解释器（=> 而那 `ShellEntry.require` 那一格）
- *     => 而而那那一个解释器逐字**要**那一件在 LOB-OS 自己那一份 Linux 上的**入口**
+ *     => 而那一个解释器逐字**要**那一件在 LOB-OS 自己那一份 Linux 上的**入口**
  *       （=> 而那 `assetEntry` 那一格、=> 而那 2838153 那一笔逐字修好了它）
- *   => 而而那那一条会话逐字跑那解释器、=> 而而那它逐字**保持活着**
- *     （=> 而而那它逐字**不**是 `runToCompletion` 那一族、=> 而而那那一条逐字**等退出**）
+ *   => 而那一条会话逐字跑那解释器、=> 而那它逐字**保持活着**
+ *     （=> 而那它逐字**不**是 `runToCompletion` 那一族、=> 而那一条逐字**等退出**）
  *
  * **而那它逐字在哪块屏幕上**：=> 而那一格逐字归 04 + 02 + 05（=> 而那「要做什么」的裁权），
- *   => 而而那本笔逐字落的是那**承载**那一侧（=> 而那它逐字是那**持有者**、=> 而而那它逐字**可**被
- *   任何那一面消费、=> 而而那它逐字**不**自己摆 UI）。
+ *   => 而那本笔逐字落的是那**承载**那一侧（=> 而那它逐字是那**持有者**、=> 而那它逐字**可**被
+ *   任何那一面消费、=> 而那它逐字**不**自己摆 UI）。
  */
 class TerminalSession private constructor(
     val session: PtySession.Session,
@@ -84,11 +84,11 @@ class TerminalSession private constructor(
         const val DEFAULT_COLS = 80
 
         /**
-         * 起**一条**会话（=> 而那它逐字**持有**它、=> 而而那它逐字**不**是那一次性的那一族）。
+         * 起**一条**会话（=> 而那它逐字**持有**它、=> 而那它逐字**不**是那一次性的那一族）。
          *
          * @param ctx 那上下文
          * @param argv 那要跑的程序与它的参数（=> 而那它逐字**默认**是那底座那一个解释器）
-         * @return 那一条会话（=> 而那它逐字**持有**它、=> 而而那它逐字**不**是 null）
+         * @return 那一条会话（=> 而那它逐字**持有**它、=> 而那它逐字**不**是 null）
          * @throws IllegalStateException 那底座那一个解释器逐字**没有**（=> 而那按 C-05 报缺、=> 而不猜填）
          */
         @Throws(IllegalStateException::class)
@@ -111,32 +111,32 @@ class TerminalSession private constructor(
             //
             //  缺陷名（C-102）**那一档逐字只给那解释器、=> 而而那它逐字没有那个 `-i`**
             //    => 而那旧版逐字是 `listOf(sh.absolutePath)`
-            //      => 而而那那 argv 逐字经那 `ExecEntry.argv` 那一族逐字变成
-            //        `[SYSTEM_LINKER, <解释器>]`（=> 而而那那 args.drop(1) 逐字是**空**）
-            //      => 而而那 Android linker64 逐字把那 argv **原样**传给那程序
-            //        （=> 而而那那程序逐字的 argv[0] 逐字是那 linker 自己、=> 而而那那 argv[1] 逐字
+            //      => 而那 argv 逐字经那 `ExecEntry.argv` 那一族逐字变成
+            //        `[SYSTEM_LINKER, <解释器>]`（=> 而那 args.drop(1) 逐字是**空**）
+            //      => 而那 Android linker64 逐字把那 argv **原样**传给那程序
+            //        （=> 而那程序逐字的 argv[0] 逐字是那 linker 自己、=> 而那 argv[1] 逐字
             //          **就是**那程序逐字的第一个参数）
-            //        => 而而那那解释器逐字收到的 argv = `[<解释器>, <解释器>]`
-            //      => 而而那那 bash 那一族逐字**没有** `-c` 也没有 `-s` 时
+            //        => 而那解释器逐字收到的 argv = `[<解释器>, <解释器>]`
+            //      => 而那 bash 那一族逐字**没有** `-c` 也没有 `-s` 时
             //        逐字把 argv[1] 逐字**当脚本名**逐字去 exec
-            //        => 而而那那脚本名逐字就是那解释器自己
-            //        => 而而那那**错误**逐字是
+            //        => 而那脚本名逐字就是那解释器自己
+            //        => 而那**错误**逐字是
             //          `…/files/usr/bin/bash: …/files/usr/bin/bash: cannot execute binary file`
-            //      => 而而那那**会话**逐字**当场就退出了**（=> 而那 status=0 signal=0）
-            //    => 而而那**那**与那 `-c` 那一档逐字**不一样**：
-            //      => 而而那 `LocalExec` 那一族逐字给的是 `[<解释器>, "-c", <命令>]`
-            //        => 而而那那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-c", <命令>]`
-            //        => 而而那 bash 逐字收到 argv = `[<解释器>, "-c", <命令>]`
-            //        => 而而那那 `-c` 逐字是那**命令**、=> 而而那那**脚本名**那一格逐字**不**是它
+            //      => 而那**会话**逐字**当场就退出了**（=> 而那 status=0 signal=0）
+            //    => 而那**那**与那 `-c` 那一档逐字**不一样**：
+            //      => 而那 `LocalExec` 那一族逐字给的是 `[<解释器>, "-c", <命令>]`
+            //        => 而那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-c", <命令>]`
+            //        => 而那 bash 逐字收到 argv = `[<解释器>, "-c", <命令>]`
+            //        => 而那 `-c` 逐字是那**命令**、=> 而那**脚本名**那一格逐字**不**是它
             //    => 而那**处置**：=> 而那**交互式**那一档逐字给那解释器逐字**加**一个 `-i`
-            //      （=> 而而那它逐字是「那解释器逐字是交互式」那一档的声明）
-            //      => 而而那加了它之后 bash 逐字**不**把 argv[1] 逐字当脚本名
-            //      => 而而那那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-i"]`
-            //      => 而而那 bash 逐字收到 argv = `[<解释器>, "-i"]`、=> 而而那那它逐字**读**那 stdin
+            //      （=> 而那它逐字是「那解释器逐字是交互式」那一档的声明）
+            //      => 而那加了它之后 bash 逐字**不**把 argv[1] 逐字当脚本名
+            //      => 而那 argv 逐字是 `[SYSTEM_LINKER, <解释器>, "-i"]`
+            //      => 而那 bash 逐字收到 argv = `[<解释器>, "-i"]`、=> 而那它逐字**读**那 stdin
             val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv
             val s = lobos.kernel.ipc.PtySession.openSession(ctx, ptyBin, effArgv, rows, cols, timeoutMs)
             val t = TerminalSession(s, System.currentTimeMillis())
-            //  => 而那**四条**逐字逐字接上（=> 而那它们逐字正是 01 裁的那四条）
+            //  => 而那**四条**逐字接上（=> 而那它们逐字正是 01 裁的那四条）
             //     · 能读 onData => 而那输出逐字去消费者
             s.onData = { d -> t.onOutput?.invoke(d) }
             //     · 在 onExit 收尾 => 而那退出码与那信号逐字**记**下来
@@ -156,12 +156,12 @@ class TerminalSession private constructor(
  *
  * **缺陷名（C-102）那会话逐字没人持有、=> 而而那它逐字只活在那一次调用里** ——
  *   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
- *     => 而而那 `PtySession.openSession` 逐字零调用者
+ *     => 而那 `PtySession.openSession` 逐字零调用者
  *       （=> 而那 01 本机实跑确认、=> 而那 07 本轮逐字核到设备上逐字没有会话）
  *   => 而那**处置**：=> 而那**这一格**逐字持有那几条
- *     => 而而那它们逐字**跨调用**活着（=> 而而那它们逐字**不是**那一次性的那一族）
- *     => 而而那 `PtySession.activeSessions(ctx)` 逐字**因此**非空
- *       （=> 而而那 `files/dev/tty/pts/<NNN>` 逐字**因此**存在、=> 而而那那**一格**逐字**解**了）
+ *     => 而那它们逐字**跨调用**活着（=> 而那它们逐字**不是**那一次性的那一族）
+ *     => 而那 `PtySession.activeSessions(ctx)` 逐字**因此**非空
+ *       （=> 而那 `files/dev/tty/pts/<NNN>` 逐字**因此**存在、=> 而那**一格**逐字**解**了）
  */
 object TerminalSessions {
     private val lock = Any()
@@ -177,7 +177,7 @@ object TerminalSessions {
         val t = TerminalSession.start(ctx, argv)
         synchronized(lock) {
             held.put(id, t)?.let { old ->
-                //  => 而那**同名**那一条逐字**先关掉**（=> 而而那它逐字**不**留着两条）
+                //  => 而那**同名**那一条逐字**先关掉**（=> 而那它逐字**不**留着两条）
                 runCatching { old.close() }
             }
             held[id] = t

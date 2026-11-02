@@ -11,41 +11,41 @@ TOOL="${1:?需要工具名}"
 VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
 #  缺陷名（C-102）**那一格逐字把那版本号逐字**吊**在那编译产出上、=> 而而那那编译那一档逐字被跳过了它逐字就**没有**了** ——
 #    => 而那旧版逐字是 `[ -n "$VER" ] || { echo "::error title=缺版本号::…"; exit 1; }`
-#      => 而而那那 `dist/${TOOL}.version` 逐字**只有**那编译那一个 recipe 逐字**写**
-#        （=> 而那那 python 那一族逐字是 `build-component-python3.sh:200` 逐字
+#      => 而那 `dist/${TOOL}.version` 逐字**只有**那编译那一个 recipe 逐字**写**
+#        （=> 而那 python 那一族逐字是 `build-component-python3.sh:200` 逐字
 #          `printf '%s' "$SRC_VER" > "$OUT/python.version"`、
-#          => 而那那 sqlite 那一族逐字是 `build-component-sqlite3.sh:18` 逐字
+#          => 而那 sqlite 那一族逐字是 `build-component-sqlite3.sh:18` 逐字
 #          `--version-file "$ROOT_DIR/$OUT/sqlite.version"`、
-#          => 而那那 pkgconf 那一族逐字是 `build-component-pkg-config.sh:107` 逐字
+#          => 而那 pkgconf 那一族逐字是 `build-component-pkg-config.sh:107` 逐字
 #          `printf '%s' "$SRC_VER" > "$OUT/pkgconf.version"`）
-#      => 而而那那**编译**那一档逐字带 `if: steps.reuse.outputs.hit != 'yes'`
-#        （=> 而那那 python 那一族逐字是 `build-python3.yml:122`、=> 而那那 sqlite 那一族逐字是
-#          `build-sqlite3.yml:109`、=> 而那那 pkgconf 那一族逐字是 `build-pkg-config.yml:109`）
-#        => 而而那那**复用命中**了（=> 而那那预制品逐字**已经**逐字在、=> 而那那编译逐字**跳过**）
-#        => 而而那那 `dist/${TOOL}.version` 逐字**从来没被写出来**
-#      => 而而那那**后果**（06 本机实读那三份 job log 逐字顺序、Lead 本机实读仓内逐字复核成立）：
+#      => 而那**编译**那一档逐字带 `if: steps.reuse.outputs.hit != 'yes'`
+#        （=> 而那 python 那一族逐字是 `build-python3.yml:122`、=> 而那 sqlite 那一族逐字是
+#          `build-sqlite3.yml:109`、=> 而那 pkgconf 那一族逐字是 `build-pkg-config.yml:109`）
+#        => 而那**复用命中**了（=> 而那预制品逐字**已经**逐字在、=> 而那编译逐字**跳过**）
+#        => 而那 `dist/${TOOL}.version` 逐字**从来没被写出来**
+#      => 而那**后果**（06 本机实读那三份 job log 逐字顺序、Lead 本机实读仓内逐字复核成立）：
 #        · 那 python 那一趟逐字 `##[error]dist/python.version 不在或为空 —— 不编值 …`
-#          （=> 而那逐字时刻 07:45:03.743、=> 而而那那二进制逐字**早**就做出来了
+#          （=> 而那逐字时刻 07:45:03.743、=> 而那二进制逐字**早**就做出来了
 #            （=> 而那逐字 `07:45:03.705` 逐字 `[ok] python 入口 25672408 字节 形状=elf 入口=bin/python3`））
 #        · 那 sqlite 那一趟逐字 `dist/sqlite.version 不在或为空`、那 pkgconf 那一趟逐字
 #          `dist/pkgconf.version 不在或为空`
-#      => 而而那那**缓存**那一句逐字**不是**那成因（=> 而那逐字 `07:45:05.505` 逐字晚 1.8 秒、
-#        => 而而那那**真正**的红逐字在 `:03.743`）=> 而那两族逐字**不并**、依 **C-104**
+#      => 而那**缓存**那一句逐字**不是**那成因（=> 而那逐字 `07:45:05.505` 逐字晚 1.8 秒、
+#        => 而那**真正**的红逐字在 `:03.743`）=> 而那两族逐字**不并**、依 **C-104**
 #    => 而那**判据**逐字是「那版本号逐字是不是那件自己的版本」那一个事实上
-#      （=> 而而那那**版本号**逐字**不**是「本轮编的」那个事实、=> 而它是那**件**自己的版本）
-#    => 而那**处置**：=> 而而那那版本号逐字**不靠**那编译产出
-#      => 而而那它逐字**从**那钉值表逐字**取**（=> 而那 `fetch-pinned.sh --src-version` 逐字**读**的
+#      （=> 而那**版本号**逐字**不**是「本轮编的」那个事实、=> 而它是那**件**自己的版本）
+#    => 而那**处置**：=> 而那版本号逐字**不靠**那编译产出
+#      => 而那它逐字**从**那钉值表逐字**取**（=> 而那 `fetch-pinned.sh --src-version` 逐字**读**的
 #        就是那 `scripts/component-sources.json` 那一族）
-#      => 而而那那**钉值表**逐字与那本产物那份逐字**本来就**要**对上**（=> 而和那那下面那一格逐字**已经在**核它）
-#        => 而而那那**两处一致**逐字**是**那一个事实、=> 而而那它逐字**不**是那「本轮编的」那一族
-#      => 而而那那**钉值表**逐字**没有**时逐字**照旧**逐字报缺（=> 而按 C-05 不猜填）
+#      => 而那**钉值表**逐字与那本产物那份逐字**本来就**要**对上**（=> 而和那下面那一格逐字**已经在**核它）
+#        => 而那**两处一致**逐字**是**那一个事实、=> 而那它逐字**不**是那「本轮编的」那一族
+#      => 而那**钉值表**逐字**没有**时逐字**照旧**逐字报缺（=> 而按 C-05 不猜填）
 if [ -z "$VER" ]; then
-  echo "::notice:: 那 dist/${TOOL}.version 不在（=> 而那那**复用**命中了、=> 而而那那编译逐字被跳过了）"
-  echo "::notice:: => 而而那那版本号逐字**改从**那钉值表逐字取（=> 而它是那件自己的版本、=> 而**不**是「本轮编的」那个事实）"
+  echo "::notice:: 那 dist/${TOOL}.version 不在（=> 而那**复用**命中了、=> 而那编译逐字被跳过了）"
+  echo "::notice:: => 而那版本号逐字**改从**那钉值表逐字取（=> 而它是那件自己的版本、=> 而**不**是「本轮编的」那个事实）"
   VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
   if [ -n "$VER" ]; then
     printf '%s' "$VER" > "dist/${TOOL}.version"
-    echo "::notice:: => 而而那那版本号逐字 = $VER（=> 而那从那钉值表逐字取到、=> 而而那它逐字**写回**了那一份）"
+    echo "::notice:: => 而那版本号逐字 = $VER（=> 而那从那钉值表逐字取到、=> 而那它逐字**写回**了那一份）"
   fi
 fi
 [ -n "$VER" ] || { echo "::error title=缺版本号::dist/${TOOL}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
@@ -91,9 +91,9 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 #   node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     "$ID" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
 #     --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN"
-# 而 **entry 不再由命令行传入**（=> 而它由生成器从落位结果算出，=> 而而那正是那一格该有的形态）。
+# 而 **entry 不再由命令行传入**（=> 而它由生成器从落位结果算出，=> 而那正是那一格该有的形态）。
 # 而构建标识那两格照 package-bundle-zip.sh 那一路取（=> 而 GITHUB_SHA / GITHUB_RUN_ID，
-#   => 而本地没有时是 "local"，=> 而而那正是「占位不能是空」那一格）。
+#   => 而本地没有时是 "local"，=> 而那正是「占位不能是空」那一格）。
 BUILD_SHA="${GITHUB_SHA:-local}"
 BUILD_RUN="${GITHUB_RUN_ID:-local}"
 node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" \
@@ -102,14 +102,14 @@ node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" \
   || { echo "::error title=$TOOL 说明生成失败"; exit 1; }
 
 #  缺陷名（C-102）**那形态**逐字**只**在**那 bundle** **那一路**写**、=> 而那**组件** **这一路**没**写**。
-#    => 而那**成因**：=> 而那 elf_write_shape 逐字**只**被**那 package-bundle-zip.sh **调**（=> 而那那一行逐字 = 那
-#      「elf_write_shape "$ID" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib」）、=> 而而那**组件** **这一路**
+#    => 而那**成因**：=> 而那 elf_write_shape 逐字**只**被**那 package-bundle-zip.sh **调**（=> 而那一行逐字 = 那
+#      「elf_write_shape "$ID" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib」）、=> 而那**组件** **这一路**
 #      （=> 而那 git / npm / node / python3 / sqlite3 / make / cmake / pkg-config / llvmtoolchain 那**几**件**走**它**）
-#      逐字**没有**那**一处**、=> 而而那**它**们**逐字**是**那**两**件**事**：「那**形态**是**什么**」与「那**它**在**哪**一条**路**上**写**」）。
-#    => 而而那**后果**逐字 = 而那**组件** **那些**件**逐字**包里没有 piece-shape.json**、=> 而而那**它**们**逐字**是**那**两**件**事**：
+#      逐字**没有**那**一处**、=> 而那**它**们**逐字**是**那**两**件**事**：「那**形态**是**什么**」与「那**它**在**哪**一条**路**上**写**」）。
+#    => 而那**后果**逐字 = 而那**组件** **那些**件**逐字**包里没有 piece-shape.json**、=> 而那**它**们**逐字**是**那**两**件**事**：
 #      「那**安装**逐字**报缺**」与「那**它**们**逐字**装不上**」）、=> 而那 **git** **那一件**逐字**就**是**那**败**的**那一个**。
 #    => 而那**处置**：=> 而这**这一路**逐字**也**写**那**同一**份**形态**（=> 而那**它**们**逐字是**那**两**件**事**：「那**写**的**是**什么**」
-#      与「那**它**在**哪**一处**」）、=> 而那 entry 逐字**用**那**已经**算**好**的**那一个**（=> 而那那 :15 那一行）。
+#      与「那**它**在**哪**一处**」）、=> 而那 entry 逐字**用**那**已经**算**好**的**那一个**（=> 而那 :15 那一行）。
 source "$ROOT_DIR/scripts/toolchain/elf-form.sh"
 elf_write_shape "$TOOL" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib \
   || { echo "::error title=$TOOL 形态算不出来::构建期必须能判形态（readelf 缺失）"; exit 1; }
@@ -123,12 +123,12 @@ SHA=$(sha256sum "$RAW" | cut -c1-12)
 #    => 而那旧版逐字是 `ZIP="dist/component-${TOOL}-${VER}-${SHA}-android-arm64.zip"`
 #      （=> 而那目标段逐字是 `android-arm64`、=> 而那 PC 侧那一个逐字**还没有**）
 #    => 而那**那格乙**逐字要机械判「那产物名那目标段与那声明**相等**」
-#      => 而那那声明逐字是那「PC 侧那一个目标三元组」那一份（=> 而那它是那**声明侧**）
-#    => 而那那**默认**逐字**不变**（=> 而而那那**现有**那几件逐字**照**那 `android-arm64` 走）
-#      => 而而那那**PC 侧**逐字**要**换时逐字**显式**给那 `TARGET_SEGMENT`
+#      => 而那声明逐字是那「PC 侧那一个目标三元组」那一份（=> 而那它是那**声明侧**）
+#    => 而那**默认**逐字**不变**（=> 而那**现有**那几件逐字**照**那 `android-arm64` 走）
+#      => 而那**PC 侧**逐字**要**换时逐字**显式**给那 `TARGET_SEGMENT`
 TARGET_SEGMENT="${TARGET_SEGMENT:-android-arm64}"
-#    => 而而那那**声明侧**逐字**给**了时逐字**核**那产物名那目标段与那声明**相等**
-#      （=> 而而那不等 ⇒ 判红并报出**哪一档**不等、=> 而那按 C-05 报缺、=> 而那**不**猜）
+#    => 而那**声明侧**逐字**给**了时逐字**核**那产物名那目标段与那声明**相等**
+#      （=> 而那不等判红并报出**哪一档**不等、=> 而那按 C-05 报缺、=> 而那**不**猜）
 if [ -n "${PC_TARGET_SEGMENT:-}" ]; then
   _decl_seg="$(bash "$ROOT_DIR/scripts/toolchain/pc-target.sh" product-segment 2>/dev/null || true)"
   if [ -n "$_decl_seg" ] && [ "$_decl_seg" != "$TARGET_SEGMENT" ]; then

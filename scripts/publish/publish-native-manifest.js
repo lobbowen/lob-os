@@ -85,12 +85,12 @@ function capsIndex() {
 //   => 而那旧版逐字是 `const k = keys[keys.length - 1]`（=> 而那**键顺序**是那生成物写的顺序、
 //     => 而那顺序逐字**不是**任何语义、=> 而它逐字**会变**）。
 //   => 而那**后果**：=> 而那清单里**每一件**逐字都拿**同一份** pin（=> 而那 url / sha256 / tag
-//     逐字全是**最后那一件**的）=> 而而那设备装到别的那一件时逐字**拉错字节**。
+//     逐字全是**最后那一件**的）=> 而那设备装到别的那一件时逐字**拉错字节**。
 //   => 而按 01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §11 归属表第 7 行逐字：
 //     「05 补 `source=ota` 的事实来源」=> 而那事实来源逐字**按件**给。
 function pinTable() {
   //  => 而那读不到时逐字**报缺**（=> 而按 C-05「缺字段就报缺、不许猜填」）、
-  //     => 而而**不**静默当成「没有 pin」。
+  //     => 而**不**静默当成「没有 pin」。
   try {
     const j = JSON.parse(fs.readFileSync(PIN, 'utf8'));
     const pins = j.pins || {};
@@ -247,7 +247,7 @@ function main() {
     //     · 那**事实来源**里逐字有没有**那一件**的那一档 pin（=> 而那逐字按 id 查）；
     //     · 而那 pin 逐字**指**的是不是**那一件**（=> 而那 zip 名字逐字对得上）。
     //  => 而那**缺一格**就逐字**留在 apk**那一侧（=> 而那一侧逐字是「随 APK 走」）
-    //     => 而而**不**拿别的那一件的 pin 顶替（=> 而那旧版逐字**每一件**都拿同一条）。
+    //     => 而**不**拿别的那一件的 pin 顶替（=> 而那旧版逐字**每一件**都拿同一条）。
     const pin = pinEntry(pins, e.id);
     if (pin) {
       const zipName = path.basename(ZIP);
@@ -258,15 +258,15 @@ function main() {
         c.sha256 = pin.sha256;
         c.pin = pin.tag;
       } else {
-        //  => 而那 pin 逐字有、=> 而而那**包**里逐字没有**那一件**
-        //     => 而那 source 逐字**留在 apk**、=> 而而那一句逐字说出来（=> 而不静默）。
+        //  => 而那 pin 逐字有、=> 而那**包**里逐字没有**那一件**
+        //     => 而那 source 逐字**留在 apk**、=> 而那一句逐字说出来（=> 而不静默）。
         console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
           '=> 而那一份件包里逐字**没有**它（=> 而那按后缀匹配的那旧版逐字**会**命中别的那一条）' +
           '=> 而那 source 逐字留在 apk。');
       }
     } else {
       //  => 而那 pin 记录里逐字**没有**它 => 而那 source 逐字是 apk、=> 而那**不**是缺件
-      //     （=> 而那 base 筐那些件逐字就随 APK 走、=> 而而它们逐字本来就不进 OTA）。
+      //     （=> 而那 base 筐那些件逐字就随 APK 走、=> 而它们逐字本来就不进 OTA）。
       console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它 => 而那 source 逐字是 apk（随 APK 走）。');
     }
     components.push(c);
@@ -293,7 +293,7 @@ function main() {
     expiresEpochMs: Date.now() + TTL_MS,
     //  => 而那整份清单的指纹逐字**不再**取「最后一条」那一条
     //     （=> 而那旧版逐字是 `pin ? pin.fingerprint : null`）
-    //     => 而而它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
+    //     => 而它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
     //       （=> 而那逐字让「这一份清单换了没有」逐字**判得出**）。
     fingerprint: manifestFingerprint(pins),
     components,

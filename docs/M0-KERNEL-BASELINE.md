@@ -2,12 +2,12 @@
 
 - 作者：05 core-developer
 - 日期：2026-10-26
-- 判据：那份清单逐字与那仓内那份 gki_defconfig 逐字对得上、=> 而而那清单里没有一条的出处是猜的。
+- 判据：那份清单逐字与那仓内那份 gki_defconfig 逐字对得上、=> 而那清单里没有一条的出处是猜的。
 - 素材（逐字在本仓内）：
   - `docs/kernel-baseline/gki_defconfig`（20365 字节 / 794 行）
   - `docs/kernel-baseline/kconfig`（66421 字节 / 2041 行）
   - `docs/kernel-baseline/upstream/`（那上游的原件：Kconfig / gki_defconfig / init-Kconfig.gki / Makefile）
-- 机器核对：`bash scripts/check-m0-kernel-baseline.sh`（=> 而它逐字逐条**重算**那份清单与那**差集**、=> 而而那**对不上**就**非零**退出**）
+- 机器核对：`bash scripts/check-m0-kernel-baseline.sh`（=> 而它逐字逐条**重算**那份清单与那**差集**、=> 而那**对不上**就**非零**退出**）
 - 那两份逐字**不是**那构建的输入（=> 而那构建逐字**不**读它们、=> 而那**判据**逐字**只**读它们）
 - 本稿只报读数与边界，不下判断。
 
@@ -31,13 +31,13 @@
 ## 二、那上游那一族（=> 而那**差集**逐字**机械**核过**）
 
 ```
-  => 而那那 kconfig逐字**与**上游那一份**的差** = **0** 行
+  => 而那 kconfig逐字**与**上游那一份**的差** = **0** 行
      => 而那本地那一份逐字 = docs/kernel-baseline/kconfig、=> 而那上游那一份逐字 = docs/kernel-baseline/upstream/Kconfig
-     => 而那那 kconfig逐字**与**上游那一份**一样**（=> 而那差集 = **0** 行）
-  => 而那那 gki_defconfig逐字**与**上游那一份**的差** = **1** 行
+     => 而那 kconfig逐字**与**上游那一份**一样**（=> 而那差集 = **0** 行）
+  => 而那 gki_defconfig逐字**与**上游那一份**的差** = **1** 行
      => 而那本地那一份逐字 = docs/kernel-baseline/gki_defconfig、=> 而那上游那一份逐字 = docs/kernel-baseline/upstream/gki_defconfig
      => 而那**差**的那一行逐字 = :639 「CONFIG_ANDROID_WRAPFD=y」（=> 而那**在**本地那一份、=> 而那上游**没有这一行）
-  => 而那那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、=> 而而它们逐字**都**是「# … is not set」=> 而而那后半**仍然成立**
+  => 而那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、=> 而它们逐字**都**是「# … is not set」=> 而那后半**仍然成立**
 ```
 
 ---
@@ -79,11 +79,11 @@
 
 ```
   => 而那 kmi.html 逐字**是**那 **Google 网页（登录页）**、=> 而那 title 逐字 = 「Maintain a stable kernel module interface | Android OS core topic」
-     => 而而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
+     => 而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
   => 而那 lkm.html 逐字**是**那 **Google 网页（登录页）**、=> 而那 title 逐字 = 「Loadable kernel modules | Android OS core topics」
-     => 而而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
+     => 而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
   => 而那 upstream/abi.stg 逐字**是**那 **那 KMI 那一族的**真**出处（那 kernel/common 那 gki/aarch64/abi.stg）**、=> 而那 title 逐字 = 「那 KMI 符号清单本体」
-     => 而而它逐字**还**没**进**那仓**内**、=> 而按 C-105 **报缺**
+     => 而它逐字**还**没**进**那仓**内**、=> 而按 C-105 **报缺**
 ```
 
 ---

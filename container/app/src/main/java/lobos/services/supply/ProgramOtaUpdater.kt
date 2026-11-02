@@ -34,15 +34,15 @@ object ProgramOtaUpdater {
          * 那**检查**逐字**多久**跑一次（=> 而那它逐字是那**节律**那一族、=> 而它逐字**不**是那预算那一格）。
          *
          * 缺陷名（C-102）**那一族逐字每轮逐字都查一次远端、=> 而而那它逐字没有自己的节律** ——
-         *   => 而那旧版逐字**没有**这一格（=> 而那那 `Config` 那一族逐字只有 autoCheck 与那预算）
-         *     => 而而那那**检查**逐字是那 `bootProgramOnce` 逐字里那**第四**项
+         *   => 而那旧版逐字**没有**这一格（=> 而那 `Config` 那一族逐字只有 autoCheck 与那预算）
+         *     => 而那**检查**逐字是那 `bootProgramOnce` 逐字里那**第四**项
          *       （=> 而那 `bootProgramOnce` 逐字**每轮**逐字都跑）
-         *     => 而而那那轮次逐字是那 `bootLoop` 逐字那一圈、=> 而而那它逐字**一**秒一拍
-         *       （=> 而那 `sleepQuiet(1000L)`）、=> 而而那那**间隔**逐字 6 到 60 秒
-         *     => 而而那那**唤醒历史**逐字正是那个节奏（=> 而那每一把逐字持有 30 到 60 秒）
-         *   => 而那**处置**：=> 而那那**检查**逐字**自己**有节拍
-         *     => 而而那它逐字**上次**查过逐字**多久**了、=> 而而那它逐字**不到**那个间隔逐字**不**查
-         *     => 而而那那**默认**逐字是一个**小时**（=> 而那它逐字**不**是那每一轮）
+         *     => 而那轮次逐字是那 `bootLoop` 逐字那一圈、=> 而那它逐字**一**秒一拍
+         *       （=> 而那 `sleepQuiet(1000L)`）、=> 而那**间隔**逐字 6 到 60 秒
+         *     => 而那**唤醒历史**逐字正是那个节奏（=> 而那每一把逐字持有 30 到 60 秒）
+         *   => 而那**处置**：=> 而那**检查**逐字**自己**有节拍
+         *     => 而那它逐字**上次**查过逐字**多久**了、=> 而那它逐字**不到**那个间隔逐字**不**查
+         *     => 而那**默认**逐字是一个**小时**（=> 而那它逐字**不**是那每一轮）
          */
         val checkIntervalMs: Long = DEFAULT_CHECK_INTERVAL_MS,
     ) {
@@ -95,7 +95,7 @@ object ProgramOtaUpdater {
                 ?: o.optString("manifestName", "").trim().ifBlank { ProgramDir.MANIFEST_NAME }
             val auto = mc?.optBoolean("autoCheck", true) ?: o.optBoolean("autoCheck", true)
             val budget = mc?.optLong("startupBudgetMs", 12000L) ?: o.optLong("startupBudgetMs", 12000L)
-            //  => 而而那那**检查节律**逐字**从那配置**逐字读（=> 而那它逐字**可**配）
+            //  => 而那**检查节律**逐字**从那配置**逐字读（=> 而那它逐字**可**配）
             val interval = mc?.optLong("checkIntervalMs", DEFAULT_CHECK_INTERVAL_MS)
                 ?: o.optLong("checkIntervalMs", DEFAULT_CHECK_INTERVAL_MS)
             run {

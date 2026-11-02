@@ -521,8 +521,8 @@ async function main() {
       //     · 而那 sidecarLayer 逐字记的是「那 sha256 记的是哪一层」。
       //   => 而那**边车**（.sha256）逐字是那**下载**下来那一份的（=> 而那是**外层**）
       //     => 而所以「同层才比」这一条逐字是：边车逐字比**外层**（=> 而那已核过、
-      //     => 而而那 sha256 那一格逐字是内层、=> 而那两者逐字**不是同一层**、
-      //     => 而而那**不**能互相顶替）。
+      //     => 而那 sha256 那一格逐字是内层、=> 而那两者逐字**不是同一层**、
+      //     => 而那**不**能互相顶替）。
       //   => 而那 sha256MatchesSidecar 那一格逐字答的是「那**外层**逐字对不对得上边车」。
       rec.sha256Layer = 'inner';
       rec.innerSha256 = real;
@@ -589,10 +589,10 @@ async function main() {
       //       另加一格 `capsEntryKind`（`library` / `program`）标明形态」
       //   => 而那**形态**逐字由那件包的**入口**答（=> 而那 entry 逐字带 `bin/` 或 `lib/` 前缀）。
       //   => 而那 01 裁的 S606-01-ALIAS-BIN-KEY-RULING.md §9.1 逐字：
-      //     「llvm 那一件的 capsEntryKind 逐字应是 program，=> 而而它的 capsLibName 逐字应是 bin/clang
+      //     「llvm 那一件的 capsEntryKind 逐字应是 program，=> 而它的 capsLibName 逐字应是 bin/clang
       //       （件包内相对路径），=> 而**不是** clang（裸名）」
       //   => 而那**裸名**那一档逐字**不报**（=> 而那档位表第二列逐字若**不带**前缀、
-      //     => 而那它逐字**就是**裸名、=> 而而那程序形态那一族逐字**该**改成带前缀）。
+      //     => 而那它逐字**就是**裸名、=> 而那程序形态那一族逐字**该**改成带前缀）。
       const entryKind = rec.entryInArtifact
         ? (rec.entryInArtifact.startsWith('lib/') ? 'library' : (rec.entryInArtifact.startsWith('bin/') ? 'program' : 'unknown'))
         : (rec.kind === 'library' ? 'library' : (rec.kind === 'program' ? 'program' : 'unknown'));
@@ -601,16 +601,16 @@ async function main() {
       //     => 而那一格逐字答的是「**这一件逐字提供哪个字节名**」（=> 而 Lead 本机实读逐字：
       //       「`capsLibName` 这一格装的是「**在件包里能命中那一项的字符串**」」），
       //       => 而**不是**「这一件的入口是什么」。
-      //  => 而那一格逐字**不是**「程序形态 ⇒ 相对路径」那条**普遍规则**
+      //  => 而那一格逐字**不是**「程序形态相对路径」那条**普遍规则**
       //     （=> 而 Lead 判：busybox 那一件逐字是**程序形态**、
-      //       => 而而它逐字**真的提供** libbusybox.so 那个字节
+      //       => 而它逐字**真的提供** libbusybox.so 那个字节
       //       （=> 而它逐字 programs 里有 bin/libbusybox.so + 29 条软链））。
       //  => 而 01 裁的 S606-01 §9.1 逐字那句「llvm 那一件……逐字应是 bin/clang」逐字**只**关于 llvm 那一件
       //     （=> 而那一件逐字**没有** clang 那个字节、=> 而它逐字提供的是 bin/clang）。
       //  => 而那一格逐字**能不能在件包里命中**才是那一族「档位表与产物分家」那一格：
       //     => 而那 capsLibNameFoundInArtifact 逐字是 false 时、=> 而那**档位表第二列与产物对不上**
       //       逐字**报出来**（=> 而按 C-05「缺字段就报缺、不许猜填」、
-      //       => 而而那那一格逐字**不许**越权去改那档位表）。
+      //       => 而那一格逐字**不许**越权去改那档位表）。
       rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
       if (!rec.capsLibNameFoundInArtifact) {
         bad(c.id + '：档位表第二列逐字是 ' + c.capsLibName +
@@ -654,7 +654,7 @@ async function main() {
       //  => 而那 **outerSha256** 那一格（=> 而那它逐字是那**外层**那一份的 sha256）、
       //  => 而那 **sidecarLayer** 那一格（=> 而那它逐字记的是「那 sha256 记的是哪一层」：
       //     inner = 那 sha256 记的是**内层**那一个件包；outer = 记的是**外层**那一份）。
-      //  => 而按 Lead 那一裁逐字「**同层才比**」=> 而而那比边车那一份逐字要比**同层**那一份。
+      //  => 而按 Lead 那一裁逐字「**同层才比**」=> 而那比边车那一份逐字要比**同层**那一份。
       outerSha256: rec.outerSha256,
       outerBytes: rec.outerBytes,
       outerForm: rec.outerForm,

@@ -22,26 +22,26 @@ object ElfFacts {
     private const val PT_INTERP = 3
 
     /**
-     * 那**头几段**逐字的上限（=> 而而那它逐字防一个畸形文件把堆吃光）。
-     *   => 而而那它逐字是 16 MiB（=> 而而那那程序头表、那动态段与那字符串表逐字**都**远小于它）
+     * 那**头几段**逐字的上限（=> 而那它逐字防一个畸形文件把堆吃光）。
+     *   => 而那它逐字是 16 MiB（=> 而那程序头表、那动态段与那字符串表逐字**都**远小于它）
      */
     private const val MAX_SEGMENT_BYTES = 16L * 1024 * 1024
 
     /**
-     * 那一件逐字**只要**那 ELF 头那几段（=> 而而那它逐字**不需要**整个文件）。
+     * 那一件逐字**只要**那 ELF 头那几段（=> 而那它逐字**不需要**整个文件）。
      *
      * 缺陷名（C-102）**那一格逐字把整个文件读进 JVM 堆、=> 而而那 1.4 GiB 那个文件逐字进堆、=> 而而那堆逐字装不下**
      *   => 而那旧版逐字是 `val b = file.readBytes()`
-     *     => 而而那它逐字把**整个**文件逐字读进堆（=> 而那最大的 libclang-cpp.so 逐字 1,543,940,120 字节）
-     *     => 而而那它逐字**只要**那 ELF 头、那程序头表、那动态段与那字符串表那几段
+     *     => 而那它逐字把**整个**文件逐字读进堆（=> 而那最大的 libclang-cpp.so 逐字 1,543,940,120 字节）
+     *     => 而那它逐字**只要**那 ELF 头、那程序头表、那动态段与那字符串表那几段
      *   => 而那**处置**：=> 而那它逐字**只**读那几段（=> 而那它逐字用 RandomAccessFile 逐字按偏移读）
-     *     => 而而那它逐字**不**再把整个文件逐字读进堆。
+     *     => 而那它逐字**不**再把整个文件逐字读进堆。
      */
     fun read(file: File): Dynamic? = try {
         java.io.RandomAccessFile(file, "r").use { raf ->
             val total = raf.length()
             if (total < 64) return null
-            //  => 而那**头**逐字读（=> 而而那它逐字只有 64 字节、=> 而而那它逐字**不**是那整个文件）
+            //  => 而那**头**逐字读（=> 而那它逐字只有 64 字节、=> 而那它逐字**不**是那整个文件）
             val head = ByteArray(64)
             raf.readFully(head)
             fun magic(i: Int): Int = head[i].toInt() and 0xff
@@ -66,17 +66,17 @@ object ElfFacts {
             var interpOff = -1L
             var interpLen = 0L
             for (i in 0 until phNum) {
-                //  => 而那 `ph` 那一份逐字**从 phOff 开始**、=> 而而那它逐字的下标逐字是**相对**那 phOff 的
-                //    （=> 而而那旧版逐字是 `val o = phOff + i * phEnt` 逐字拿去 `pb.position(o)`
-                //      => 而而那 `ph` 那一份的下标 0 逐字就是那 phOff 那一行
-                //      => 而而那那个偏移逐字**大**了 phOff 那一段、=> 而而那它逐字**读错了行**）
+                //  => 而那 `ph` 那一份逐字**从 phOff 开始**、=> 而那它逐字的下标逐字是**相对**那 phOff 的
+                //    （=> 而那旧版逐字是 `val o = phOff + i * phEnt` 逐字拿去 `pb.position(o)`
+                //      => 而那 `ph` 那一份的下标 0 逐字就是那 phOff 那一行
+                //      => 而那个偏移逐字**大**了 phOff 那一段、=> 而那它逐字**读错了行**）
                 val o = i * phEnt
                 if (o + 56 > ph.size) break
                 pb.position(o)
                 val type = pb.int
-                //  => 而那 `getLong` 逐字是**相对当前位置**的、=> 而而那它逐字**要**绝对偏移
-                //    （=> 而那 `pb.position(o)` 逐字把位置逐字设成 o、=> 而而那 `getLong(8)`
-                //      逐字读的是 o+8 之后那 8 字节、=> 而而那那**不是** p_offset）
+                //  => 而那 `getLong` 逐字是**相对当前位置**的、=> 而那它逐字**要**绝对偏移
+                //    （=> 而那 `pb.position(o)` 逐字把位置逐字设成 o、=> 而那 `getLong(8)`
+                //      逐字读的是 o+8 之后那 8 字节、=> 而那**不是** p_offset）
                 val fileOff = pb.getLong(o + 8)
                 val fileSize = pb.getLong(o + 32)
                 when (type) {
@@ -87,7 +87,7 @@ object ElfFacts {
             if (dynFileOff <= 0 || dynFileSize <= 0) return null
             if (dynFileSize > MAX_SEGMENT_BYTES) return null
 
-            //  => 而那**动态段**逐字读（=> 而而那它逐字通常只有几 KB）
+            //  => 而那**动态段**逐字读（=> 而那它逐字通常只有几 KB）
             val dyn = ByteArray(dynFileSize.toInt())
             raf.seek(dynFileOff)
             raf.readFully(dyn)
@@ -119,14 +119,14 @@ object ElfFacts {
             if (strtabVaddr < 0) return null
             if (strsz <= 0 || strsz > MAX_SEGMENT_BYTES) return null
 
-            //  => 而那 strtabOff 逐字是**虚拟地址**、=> 而而那它逐字要换算成**文件偏移**
+            //  => 而那 strtabOff 逐字是**虚拟地址**、=> 而那它逐字要换算成**文件偏移**
             val strtabOff = vaddrToOffset(ph, pb, phOff, phEnt, phNum, strtabVaddr) ?: return null
             if (strtabOff + strsz > total) return null
             val strtab = ByteArray(strsz.toInt())
             raf.seek(strtabOff)
             raf.readFully(strtab)
 
-            //  => 而那**字符串**逐字从**那字符串表**读（=> 而而那它逐字**不**再从整个文件读）
+            //  => 而那**字符串**逐字从**那字符串表**读（=> 而那它逐字**不**再从整个文件读）
             val cstr = label@ { off: Long ->
                 if (off < 0 || off >= strtab.size) return@label ""
                 var e = off.toInt()
@@ -135,7 +135,7 @@ object ElfFacts {
                 String(strtab, s, e - s, Charsets.UTF_8)
             }
 
-            //  => 而那 **PT_INTERP** 逐字单独读（=> 而而那它逐字只有那一小段）
+            //  => 而那 **PT_INTERP** 逐字单独读（=> 而那它逐字只有那一小段）
             val interp: String? = if (interpOff in 0 until total && interpLen in 1..4096) {
                 val seg = ByteArray(interpLen.toInt())
                 raf.seek(interpOff)
@@ -154,20 +154,20 @@ object ElfFacts {
     }
 
     /**
-     * 那虚拟地址逐字换算成文件偏移（=> 而而那它逐字只看那**程序头表**那一份、
-     *   => 而而那它逐字**不**再要那整个文件）。
+     * 那虚拟地址逐字换算成文件偏移（=> 而那它逐字只看那**程序头表**那一份、
+     *   => 而那它逐字**不**再要那整个文件）。
      */
     private fun vaddrToOffset(
         ph: ByteArray, buf: ByteBuffer, phOff: Long, phEnt: Int, phNum: Int, vaddr: Long,
     ): Long? {
         for (i in 0 until phNum) {
-            //  => 而那 `ph` 那一份逐字**从 phOff 开始**（=> 而而那下标逐字是**相对**的）
+            //  => 而那 `ph` 那一份逐字**从 phOff 开始**（=> 而那下标逐字是**相对**的）
             val o = i * phEnt
             if (o + 56 > ph.size) break
             buf.position(o)
             val type = buf.int
             if (type != 1) continue
-            //  => 而那 `getLong` 逐字是**相对当前位置**的（=> 而而那它逐字**要**绝对偏移）
+            //  => 而那 `getLong` 逐字是**相对当前位置**的（=> 而那它逐字**要**绝对偏移）
             val off = buf.getLong(o + 8)
             val v = buf.getLong(o + 16)
             val fileSz = buf.getLong(o + 32)
