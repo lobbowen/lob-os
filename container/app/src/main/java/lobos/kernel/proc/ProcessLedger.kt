@@ -230,7 +230,7 @@ object ProcessLedger {
     }
 
     /** 这个 programId 的 entry 绝对路径 —— 三处共用（liveOwned 的调用方都要它），
-     *  ★ 所以收在这里而不是让每个调用方各写一份。 */
+     *  [!] 所以收在这里而不是让每个调用方各写一份。 */
     fun entryPathOf(ctx: Context, programId: String): String? = runCatching {
         val spec = lobos.services.reg.ProgramRegistry.spec(ctx, programId) ?: return@runCatching null
         spec.entryFile.takeIf { it.isFile }?.absolutePath
@@ -239,9 +239,9 @@ object ProcessLedger {
     /** 在跑的条目 —— 判据两条，按顺序取：
      *  ① starttime 可用（账本里 >0 且现在读得到且相等）=> 以它为准（防 pid 复用）；
      *  ② starttime 拿不到（账本里就是 -1）=> 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
-     *  ★ 而今天这一格是②：宿主读不到自己子进程的 /proc/<pid>/stat。
-     *  ★ 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
-     *  ★ 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */
+     *  [!] 而今天这一格是②：宿主读不到自己子进程的 /proc/<pid>/stat。
+     *  [!] 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
+     *  [!] 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */
     @Synchronized
     fun liveOwned(ctx: Context): List<Entry> =
         list(ctx).filter { isLive(e = it, entryPath = entryPathOf(ctx, it.programId)) }

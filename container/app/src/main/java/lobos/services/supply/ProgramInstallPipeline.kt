@@ -113,7 +113,7 @@ object ProgramInstallPipeline {
      *       （=> 而那 `scripts/toolchain/elf-form.sh` 逐字从那 `component-meta.json` 派生）
      *     => 而而那**这一格**逐字**读**它、=> 而而那它逐字**不**再从那 `files[]` 逐字推
              *
-             *  ★ 而那它逐字**读不到**时逐字是空（=> 而按 C-05 报缺、=> 而不猜填）。
+             *  [!] 而那它逐字**读不到**时逐字是空（=> 而按 C-05 报缺、=> 而不猜填）。
              */
             val systemRole: String = "",
         ) {
@@ -1051,7 +1051,7 @@ object ProgramInstallPipeline {
                       requires = meta.requires(),
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
-                      //  ★ 缺陷名（C-102）**这一支不写 desired，而 UnitEntry 那一行的默认是 STOPPED**
+                      //  [!] 缺陷名（C-102）**这一支不写 desired，而 UnitEntry 那一行的默认是 STOPPED**
                       //    => 而这一件**装上来却不被监督**（=> 而 SupervisorPool.kt:138 逐字是
                       //      `.filter { it.levelOf(host) == Level.PROGRAM && it.desired == Desired.RUNNING }`）
                       //    => 而监督名单里**没有它**。

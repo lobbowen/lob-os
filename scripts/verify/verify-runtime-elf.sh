@@ -85,7 +85,7 @@ echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
 echo "   可执行资产: $EXEC_SET"
 
-# ★ 要列**全部共享库形态**的文件，不只是 `*.so` ——
+# [!] 要列**全部共享库形态**的文件，不只是 `*.so` ——
 #   共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2。
 #   `ls *.so` 只匹配到第一个（以 .so 结尾的那个），
 #   而 ELF 的 DT_NEEDED 写的是**带 SONAME 的那个**（libz.so.1）。
@@ -198,14 +198,14 @@ for f in "$DIR"/*.so; do
   fi
   line="$line 16KB-ok(${n_load}段)"
 
-  # ── 动态段：判据 3/4/5 的取数 ──────────────────────────────────────────
+  # -- 动态段：判据 3/4/5 的取数 ------------------------------------------
   dyn="$("$READELF" -W -d "$f" 2>/dev/null || true)"
   has_dynamic="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
   needed="$(printf '%s\n' "$dyn" | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}')"
   runpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RUNPATH).*\[\(.*\)\].*/\1/p')"
   rpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RPATH).*\[\(.*\)\].*/\1/p')"
 
-  # ── 3) 解释器 ──────────────────────────────────────────────────────────
+  # -- 3) 解释器 ----------------------------------------------------------
   interp="$(printf '%s\n' "$phdrs" | sed -n 's/.*\[Requesting program interpreter: \(.*\)\].*/\1/p')"
   is_exec=0
   case "$EXEC_SET" in
@@ -231,7 +231,7 @@ for f in "$DIR"/*.so; do
     line="$line ${interp:+interp=$interp}${interp:-interp=无(非可执行资产)}"
   fi
 
-  # ── 动态段能否取数 ─────────────────────────────────────────────────────
+  # -- 动态段能否取数 -----------------------------------------------------
   # 判「静态产物」用 PT_DYNAMIC 在不在，不用「readelf -d 输出了什么」：readelf 对
   # 没有动态段的文件照样打印一行 "There is no dynamic section in this file."，
   # 拿输出判空会把「取数失败」和「真的没依赖」混成同一种情形。
@@ -257,7 +257,7 @@ for f in "$DIR"/*.so; do
       ;;
   esac
 
-  # ── 4) 依赖闭环 ────────────────────────────────────────────────────────
+  # -- 4) 依赖闭环 --------------------------------------------------------
   if [ -z "$needed" ]; then
     echo "  [ok]   $base —— 动态段里没有 DT_NEEDED（无外部依赖）：$line"
     continue
@@ -285,7 +285,7 @@ for f in "$DIR"/*.so; do
   fi
   line="$line needed=$(printf '%s' "$needed" | wc -w)项闭环"
 
-  # ── 5) 随包依赖能否解析 ──────────────────────────────────────────
+  # -- 5) 随包依赖能否解析 ------------------------------------------
   # 判据问的是「空环境下能不能找到这些依赖」，答案不只有 RUNPATH 一条路。
   #
   # 我们的运行时怎么找库（照代码，不猜）：

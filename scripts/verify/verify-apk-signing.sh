@@ -121,7 +121,7 @@ if [ "$IS_DEBUG" = "1" ]; then
 fi
 
 if [ "$REQUIRE_STABLE" = "1" ]; then
-  echo "[lobos-signing] [ok] 非 debug 签名（发布链路放行）。⚠ 本次【没有】可比对的锚点指纹 —— 只证明了「不是 debug」，没证明「是哪把 key」。"
+  echo "[lobos-signing] [ok] 非 debug 签名（发布链路放行）。[warn] 本次【没有】可比对的锚点指纹 —— 只证明了「不是 debug」，没证明「是哪把 key」。"
   exit 0
 fi
 echo "::warning title=签名身份无从核验::未配 keystore 却拿到非 debug 签名 —— 没有锚点能证明它是【哪一把】key。发布请走配了 ANDROID_KEYSTORE_BASE64 的链路。"

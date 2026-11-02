@@ -84,7 +84,7 @@ jobs:
         if: ${{ env.RELEASE_ROUND == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
-          # ★ 四个签名 secret 必须**显式声明**在 env 里 ——
+          # [!] 四个签名 secret 必须**显式声明**在 env 里 ——
           #   GitHub 只把出现在 env/secrets 上下文里的值注入 job，
           #   step 的 run 块里 ${!v} 直接读环境变量，读不到没声明的 secret。
           #   上一版只声明了 GH_TOKEN，于是这四个在 run 块里恒为空，
@@ -109,10 +109,10 @@ jobs:
           SUMMARY="$GITHUB_STEP_SUMMARY"
           say() {
             echo "::error title=发布前置::$1"
-            echo "- ❌ $1" >> "$SUMMARY"
+            echo "- [fail] $1" >> "$SUMMARY"
             FAIL=1
           }
-          pass() { echo "- ✅ $1" >> "$SUMMARY"; }
+          pass() { echo "- [ok] $1" >> "$SUMMARY"; }
           echo '## 发布轮前置校验' >> "$SUMMARY"
 
           # (1) tag 与 version.json 必须逐字一致 —— 否则要编完 APK 才报
@@ -146,7 +146,7 @@ jobs:
 
           # (4) 同版本号只允许配同一批字节
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "- ⚠️ 跳过「同版本号闸门」（没有令牌查不了）" >> "$SUMMARY"
+            echo "- [warn] 跳过「同版本号闸门」（没有令牌查不了）" >> "$SUMMARY"
           elif gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             say "同版本号已发布过：$RELEASE_TAG 已存在。同号只能配同一批字节；要重发先提 versionCode 再打新 tag。"
           else
@@ -155,14 +155,14 @@ jobs:
 
           if [ "$FAIL" != "0" ]; then
             echo "" >> "$SUMMARY"
-            echo '**结论：❌ 未通过 —— 下面几条要先解决**' >> "$SUMMARY"
+            echo '**结论：[fail] 未通过 —— 下面几条要先解决**' >> "$SUMMARY"
             echo "" >> "$SUMMARY"
             echo '这些判据原本排在编译之后，白跑十几分钟才报。' >> "$SUMMARY"
             echo "::error title=发布前置校验未通过::详见本步的 Job Summary"
             exit 1
           fi
           echo "" >> "$SUMMARY"
-          echo '**结论：✅ 全过，可以往下走**' >> "$SUMMARY"
+          echo '**结论：[ok] 全过，可以往下走**' >> "$SUMMARY"
           echo "[preflight] 发布前置校验全过"
       - name: Install SDK packages (platform-tools / platform / build-tools)
         run: |
@@ -319,13 +319,13 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          # ★★ 而这一格原来硬编码 8 —— ★★ 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算）★★
-          #   ★★ **是两套口径**（★ ★ 而「同一格两处各算一次」那一族）★★
-          #   ★★ 而 crypto 归并进 openssl 之后（01 今天裁：★ ★ 而它就是 openssl 的一部分）★★
-          #   ★★ 件数从八变七 => ★★ 而这一处还在要 8 => ★★ 「取件跑过了却判红」★★
-          # => 现在：**从钉值表算**（★ ★ 与 verify-apk-native.sh 同一把尺）★★
-          # ★★ 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES ★★
-          #   （★ ★ 而它是「哪几件该取」唯一的生成点）★★
+          # [!][!] 而这一格原来硬编码 8 —— [!][!] 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算）[!][!]
+          #   [!][!] **是两套口径**（[!] [!] 而「同一格两处各算一次」那一族）[!][!]
+          #   [!][!] 而 crypto 归并进 openssl 之后（01 今天裁：[!] [!] 而它就是 openssl 的一部分）[!][!]
+          #   [!][!] 件数从八变七 => [!][!] 而这一处还在要 8 => [!][!] 「取件跑过了却判红」[!][!]
+          # => 现在：**从钉值表算**（[!] [!] 与 verify-apk-native.sh 同一把尺）[!][!]
+          # [!][!] 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES [!][!]
+          #   （[!] [!] 而它是「哪几件该取」唯一的生成点）[!][!]
           WANT_N=$(bash -c 'source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null; echo ${#PIECES[@]}' 2>/dev/null || echo "")
           if [ -z "$WANT_N" ]; then
             WANT_N=$(grep -o '^PIECES=(.*)' scripts/toolchain/fetch-prebuilt-pieces.sh | head -1 | sed 's/^PIECES=(//; s/)$//' | wc -w)
@@ -335,7 +335,7 @@ jobs:
             exit 1
           fi
           [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
-          echo "  件数 $N 与钉值表一致（$WANT_N）—— ★ ★ 而它不是硬编码的"
+          echo "  件数 $N 与钉值表一致（$WANT_N）—— [!] [!] 而它不是硬编码的"
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 
@@ -392,7 +392,7 @@ jobs:
           #  => 而按 C-102：=> 而它治**的**是「那**变量**逐字**没带上**」那一层、=> 而而那**根因**逐字**是**那 gradle **那一句**红**了**。
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
 
-          # ★ 清掉上一次构建残留的 packaged_res ——
+          # [!] 清掉上一次构建残留的 packaged_res ——
           #   Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
           #   而 packageDebugResources 在已有输出时**不覆盖**，于是
           #   上一轮那份坏副本会一直留着：
@@ -539,7 +539,7 @@ jobs:
           echo "| 记录本次产物的构建身份 | 需要 APK 存在 |" >> "$S"
           echo "| Upload APK | always()，但产物要存在 |" >> "$S"
           echo "" >> "$S"
-          echo "★ **上面三条若显示「未执行」，它们不构成任何证据** —— 那是上游断点，" >> "$S"
+          echo "[!] **上面三条若显示「未执行」，它们不构成任何证据** —— 那是上游断点，" >> "$S"
           echo "而「未执行」在 GitHub 的颜色里与「通过」一样绿。判别形式：它跑了没有？" >> "$S"
 
       - name: Collect failure diagnostics

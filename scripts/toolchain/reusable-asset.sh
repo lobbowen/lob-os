@@ -49,7 +49,7 @@ verify_local() {
 
   printf '%s\n' "$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
 
-  # ★ **第三参已删**（那一份是人写下的副本，而包里那份 meta 就是真源的产物）——
+  # [!] **第三参已删**（那一份是人写下的副本，而包里那份 meta 就是真源的产物）——
   #   01 今天裁的：entry 只有真源一处（gen-component-meta.js 的 computeEntry），
   #   而门禁比的是「包里的 meta 说 X」与「调用方说 X」，而那两处今天说的都是同一个旧值
   #   => 字面一致 => 门禁放过（crypto 那一件写的是 lib/libssl.so —— 指错了另一个件都没被抓住）。

@@ -54,7 +54,7 @@ elf_has_interp() {
 elf_form() {
   local f="$1" t
   if [ ! -f "$f" ]; then printf '%s\n' "$ELF_FORM_UNKNOWN"; return 0; fi
-  # ★ 缺陷名（C-102）**这一族的取值域按「能不能被当入口调起」那一问定**（=> 而 01 裁的，=> 而 S117）。
+  # [!] 缺陷名（C-102）**这一族的取值域按「能不能被当入口调起」那一问定**（=> 而 01 裁的，=> 而 S117）。
   #   而那判别形式的第 ② 步是「它的头是不是 #!」（=> 而而那一行空则不是可调起的）。
   #   而原来这一族**只**读 ELF 头（=> 而 elf_type_of 逐字是非 ELF 打印 OTHER），
   #   => 而而 #! 脚本落到 OTHER => 而而它那一档是 unknown => 而而它被那一列**整个漏掉**。
@@ -184,7 +184,7 @@ elf_ensure_chain() {
     done
     [ -n "$entity" ] || continue
 
-    # ★ **两问分开**（01 今天指出、03 今天更正其位置）：
+    # [!] **两问分开**（01 今天指出、03 今天更正其位置）：
     #   (a) 那份字节**自己说**它的 SONAME 是什么？读不到 => 按 C-05 报缺，**不替它编**。
     #   (b) 我们要不要给它建一条链？
     #   原来这一行 `[ -n "$soname" ] || soname="$root"` 把两问合成了一问：
@@ -213,7 +213,7 @@ elf_ensure_chain() {
       continue
     fi
 
-    # ── 第三段的名字 ──────────────────────────────────────────
+    # -- 第三段的名字 ------------------------------------------
     # 实体自己已经带着版本段（如 libcurl.so.4.8.0）=> 它就是第三段，不再另造一个。
     # 实体挂在开发名或 SONAME 层上（如 libssl.so / libcrypto.so.3）=> 用件自己的
     # 版本号造第三段 root.3.6.3。
@@ -227,7 +227,7 @@ elf_ensure_chain() {
       esac
     fi
 
-    # ── 补第三段 ──────────────────────────────────────────────
+    # -- 补第三段 ----------------------------------------------
     if [ -n "$third" ] && [ "$entity" != "$third" ] && [ ! -e "$dirpath/$third" ]; then
       # 实体挂在开发名/SONAME 层上 —— 挪到第三段
       mv -f "$dirpath/$entity" "$dirpath/$third" 2>/dev/null || true
@@ -235,7 +235,7 @@ elf_ensure_chain() {
       out="$out${out:+ }$third"
     fi
 
-    # ── 补第二段（SONAME 层）──────────────────────────────────
+    # -- 补第二段（SONAME 层）----------------------------------
     if [ -n "$soname" ] && [ "$soname" != "$root" ]; then
       if [ ! -e "$dirpath/$soname" ] || [ -L "$dirpath/$soname" ]; then
         ln -sfn "$entity" "$dirpath/$soname" 2>/dev/null || true
@@ -243,7 +243,7 @@ elf_ensure_chain() {
       fi
     fi
 
-    # ── 补第一段（开发名）──────────────────────────────────────
+    # -- 补第一段（开发名）--------------------------------------
     if [ ! -e "$dirpath/$root" ] || [ -L "$dirpath/$root" ]; then
       ln -sfn "$soname" "$dirpath/$root" 2>/dev/null || true
       out="$out${out:+ }$root"
@@ -275,7 +275,7 @@ elf_json_escape() {
 # 写出的取值域（运行期照这几个值读，不许认别的）：
 #   form  ∈ {exec, dyn-interp, dyn-plain, shebang, unknown}   逐文件的形态
 #           （照 ExecBits.kt:26-30 的三态：ET_EXEC / ET_DYN+PT_INTERP / ET_DYN 无 PT_INTERP）
-#           ★ shebang 那一档（=> 而 01 裁的 S117 那一件）：
+#           [!] shebang 那一档（=> 而 01 裁的 S117 那一件）：
 #             而这一族的取值域按「**能不能被当入口调起**」那一问定，=> 而按文件长什么样不定域；
 #             而 #! 脚本**是**可调起的（=> 而 c_rehash / npm-cli.js / pnpm 那几件都是），
 #             => 而那一档答 shebang，=> 而它的 role 是 program。
@@ -286,7 +286,7 @@ elf_json_escape() {
 #              只有 lib/                       => library（三段链库件：zlib / crypto / curl / openssl）
 #   mode  ∈ 八进制权限（owner 执行位是「程序」的可见标记）
 #
-# ★ kind 的取值域与运行期 PieceScan 的 role 词汇**不同**（那边是 exec/library/headers/
+# [!] kind 的取值域与运行期 PieceScan 的 role 词汇**不同**（那边是 exec/library/headers/
 #   shell/multi-command），因为那一边答的是「这一件在系统里扮演什么角色」，
 #   而这一边答的是「这一件带的是库还是程序」。
 #   两者是**两把尺**，不许互相顶替 —— 这条留给 01/04 裁（见报告第 3 节待裁清单第 1 条）。
@@ -309,7 +309,7 @@ elf_write_shape() {
 "
   done
 
-  # ── 第一步：补链（库形态的字节要有 ldconfig(8) 的三段）────────
+  # -- 第一步：补链（库形态的字节要有 ldconfig(8) 的三段）--------
   local derived="" rel real form role d
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
@@ -330,7 +330,7 @@ elf_write_shape() {
 "
   done
 
-  # ── 第二步：定权限（程序形态带 owner 执行位；库形态不带）──────
+  # -- 第二步：定权限（程序形态带 owner 执行位；库形态不带）------
   #  缺陷名（C-102）**那额外的那几层逐字没有定权限**
   #    => 而而它治**的**是「那产物里那些**可执行**的**字节**逐字**带没带**那 owner 执行位**」。
   #    => 而那 scopes 逐字**只**扫 **那 bin/** 与那 lib/ **那两**层、=> 而而那**别的**层
@@ -361,7 +361,7 @@ elf_write_shape() {
       library) chmod 0644 "$real" 2>/dev/null || true ;;
     esac
   done
-  # ── 第二步：定权限（程序形态带 owner 执行位；库形态不带）──────
+  # -- 第二步：定权限（程序形态带 owner 执行位；库形态不带）------
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
     if [ -L "$stage/$rel" ]; then real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"; else real="$stage/$rel"; fi
@@ -374,7 +374,7 @@ elf_write_shape() {
     esac
   done
 
-  # ── 第三步：重新列一遍（补链可能新增了名字）──────────────────
+  # -- 第三步：重新列一遍（补链可能新增了名字）------------------
   rels=""
   for s in "${scopes[@]}"; do
     [ -d "$stage/$s" ] || continue
@@ -382,7 +382,7 @@ elf_write_shape() {
 "
   done
 
-  # ── 第零步：取那**系统角色**（=> 而那它逐字在 `component-meta.json` 那一份里）──
+  # -- 第零步：取那**系统角色**（=> 而那它逐字在 `component-meta.json` 那一份里）--
   # 缺陷名（C-102）**那两份清单逐字不一致、=> 而而那它逐字是「一件逐字有两处逐字记它」那一族**
   #   => 而那旧版逐字**只**写那**形态**那一把尺（=> 而那 role 逐字只有 program / library / unknown），
   #     => 而而那 `component-meta.json` 那一份逐字写的是那**系统角色**那一把尺
@@ -414,14 +414,14 @@ elf_write_shape() {
   local mode bytes sha soname chain chain_json entry_form="" entry_role="" dir n
   for rel in $rels; do
     [ -e "$stage/$rel" ] || continue
-    # ★ 软链**照它指向的实体**算形态（form/role/sha 都取实体那份）—— 而**它仍进 files[]**。
-    #   ★★ 而它**必须**进 files[]（2026-10-20 实测出来的）：
+    # [!] 软链**照它指向的实体**算形态（form/role/sha 都取实体那份）—— 而**它仍进 files[]**。
+    #   [!][!] 而它**必须**进 files[]（2026-10-20 实测出来的）：
     #     落位侧 ProgramInstallPipeline.landByShape 的目标映射（map）**是从 files[] 建的**
     #     => 而软链不在 files[] 里 => map 里就没有它 => **它不会被搬**
     #     => 落位后 bin/ 下只有本体那一份、**那 17 条命令软链一条都没有**
     #     => 而 usr/bin 下那 17 条命令软链正是从它们建的 => 那 17 个命令会消失。
-    #   ★ 而 derivedLinks 那一格记的是「哪些是派生物」（它与 files[] 并存，不冲突）。
-    #   ★ 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）=> files[] 18 项是对的。
+    #   [!] 而 derivedLinks 那一格记的是「哪些是派生物」（它与 files[] 并存，不冲突）。
+    #   [!] 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）=> files[] 18 项是对的。
     if [ -L "$stage/$rel" ]; then
       real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
       [ -n "$real" ] && [ -f "$real" ] || continue
@@ -436,7 +436,7 @@ elf_write_shape() {
     dir="${rel%%/*}"
     [ "$dir" = "bin" ] && n_bin=$((n_bin+1))
     [ "$dir" = "lib" ] && n_libdir=$((n_libdir+1))
-    # ★ **kind 该用 role 那把尺（形态），不该用目录名** ——
+    # [!] **kind 该用 role 那把尺（形态），不该用目录名** ——
     #   缺陷名（C-102）kind 按目录名数：原来 kind 由 n_bin / n_libdir（`${rel%%/*}` 是 bin 还是 lib）决定，
     #   而「看目录名」按 §10.1:128 已判无效。
     #   => 今天两把尺会不一致：role 那把（形态）说 openssl 是 library（libssl.so 是 dyn-plain），
@@ -463,7 +463,7 @@ elf_write_shape() {
     if [ "$rel" = "$entry" ]; then entry_form="$form"; entry_role="$role"; fi
   done
   # 件整体的形态：**按形态判**（程序形态的份数与库形态的份数）—— 与 role 同一把尺。
-  # ★ 缺陷名（C-102）kind 按落位目录判：原来这一段是
+  # [!] 缺陷名（C-102）kind 按落位目录判：原来这一段是
   #   「n_bin>0 && n_libdir>0 => mixed；n_bin>0 => program；n_libdir>0 => library」，
   #   而 n_bin / n_libdir 数的是**目录名**（`${rel%%/*}` 是 bin 还是 lib）——
   #   「看目录名」按 §10.1:128 已判无效，而 role 那一格已经用形态那把尺了。
@@ -516,24 +516,24 @@ elf_write_shape() {
   return 0
 }
 
-# ── 多调用二进制的「我响应哪些名字」那张表 ──
+# -- 多调用二进制的「我响应哪些名字」那张表 --
 #
 # 01 今天从真机读出来的形态（十六进制原文）：
 #   .rodata 的第一个字节就是第一个名字，紧跟一个 NUL，然后是下一个名字，
 #   NUL 分隔、连续排列，直到某个不是名字的字符串为止。
 #   它是一份**普通的字符串常量区**，不是 .data.rel.ro 里的指针数组。
 #
-# ★ **它不是「这份字节响应哪些名字」** —— 01 今天裁的那一句已被今天的读数更正：
+# [!] **它不是「这份字节响应哪些名字」** —— 01 今天裁的那一句已被今天的读数更正：
 #   01 说「那份字节的 .rodata 开头就是『我响应哪些名字』那张表」=> 读它，不另带名单。
-#   ★ 而今天实测（这一件那份字节，01 今天逐字核过）：
+#   [!] 而今天实测（这一件那份字节，01 今天逐字核过）：
 #     表（.rodata）= **19 个**：awk cat cp df false grep gunzip gzip ln ls mkdir mv ps rm sed sh tar true vi
 #     白名单（$APPLETS，我们写下的）= **17 个**：tar gzip gunzip grep sed ls cp mv cat mkdir rm ln vi df ps true false
 #     落包集（make install 实际建出的软链）= **按轮次分清**（2026-10-20 逐个包数过）：
 #       旧轮（BB_BINS 取 $APPLETS 派生时）= **17 个、无 sh** => 表 − 落包集 = {awk, sh}
 #       新轮（BB_BINS 取落包集时）= **18 个、含 sh** => 表 − 落包集 = {awk}
-#     ★★ 而**表 − 落包集 记的是什么**：它记的是「这一件编译时没编出那个能力」——
+#     [!][!] 而**表 − 落包集 记的是什么**：它记的是「这一件编译时没编出那个能力」——
 #       而它**不区分**「我们显式关掉了它」与「它依赖的那些被我们关掉了，于是它编不出来」（01 今天裁的）。
-#       ★★ 而**「.rodata 里仍有 awk」**这一条已由今天实测坐实（那一件编译时按白名单关掉了 awk：
+#       [!][!] 而**「.rodata 里仍有 awk」**这一条已由今天实测坐实（那一件编译时按白名单关掉了 awk：
 #         build-native-busybox.sh:79-82「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，
 #         make install 不给它建软链」）=> **那张表是上游这份源码的 applet 全集**，
 #         **不是「这份字节响应哪些名字」**。

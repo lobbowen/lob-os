@@ -1,6 +1,6 @@
 # 随包原生资产清单 —— 由 CI 与构建脚本共同读取
 #
-# ⚠ 原由 scripts/registry/gen-native-assets.js 生成，**那份生成器已删** ——
+# [warn] 原由 scripts/registry/gen-native-assets.js 生成，**那份生成器已删** ——
 #   它指向的 NativeAssetRegistry.kt 早已不存在。现在**手动维护**。
 #   改这份文件时要与 container/app/build.gradle.kts、verify-apk-native.sh、
 #   verify-runtime-elf.sh、build-node-android.sh 对齐（它们都读它）。

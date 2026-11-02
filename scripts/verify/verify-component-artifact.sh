@@ -33,7 +33,7 @@ judge_shape() {
       *"ARM aarch64"*|*"aarch64"*|*"arm64"*|*"ARM64"*) : ;;
       *) echo "::error title=产物不是 arm64/aarch64::$INFO —— 不同 file 版本措辞不同（AArch64 / aarch64 / arm64），三者都接受"; exit 1 ;;
     esac
-    # ★ 静态件**不判红**，但要如实记下它不受语义层覆盖。
+    # [!] 静态件**不判红**，但要如实记下它不受语义层覆盖。
     #   判据原先是「必须 dynamically linked，否则 LD_PRELOAD 失效 → 判红」。
     #   那条对 base 筐的 busybox 就是错的：它**故意**静态编
     #   （build-native-busybox.sh 明确判「无 PT_DYNAMIC」——静态件不依赖

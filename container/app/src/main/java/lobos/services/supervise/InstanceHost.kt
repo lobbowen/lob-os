@@ -427,7 +427,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val kernelDir = programDir!!
             val kernelEntry = entry!!
             currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
-            //  ★ 缺陷名（C-102）**这一格跑在世代算出来之前** —— => 而而它**分不出**「上世」与「这一代」。
+            //  [!] 缺陷名（C-102）**这一格跑在世代算出来之前** —— => 而而它**分不出**「上世」与「这一代」。
             //   而「回收上世遗留进程」那一问**该**由 generation 答，=> 而而它**必须**在 currentGeneration
             //   定下来**之后**跑，=> 而否则那一格答的是「活着的条目」而不是「上世的条目」。
             //   => 而处置：把这一格挪到 currentGeneration 之后（=> 而而它的其余行为逐字不变）。
@@ -581,7 +581,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun reapOrphanKernel() {
         reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
-        //  ★ 缺陷名（C-102）**这一格把「活着的」当成了「上世的」** —— => 而它**没有按世代筛**。
+        //  [!] 缺陷名（C-102）**这一格把「活着的」当成了「上世的」** —— => 而它**没有按世代筛**。
         //   而这一格问的是「**上一代**遗留的进程还在不在」，=> 而而它逐字是「活着的账本条目」那一族
         //   （=> 而 ProcessLedger.liveOwned 逐字是 list(ctx).filter { isLive(...) }，
         //    => 而而**它不按 generation 筛**）。

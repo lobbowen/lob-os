@@ -174,7 +174,7 @@ case "$TOOL" in
   node)    SRC_FILES="" ;;
   python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
-  # ★ 缺陷名（C-102）**这一格取错了输入** —— 而而那六个件名今天**不在**上面那十二条里，
+  # [!] 缺陷名（C-102）**这一格取错了输入** —— 而而那六个件名今天**不在**上面那十二条里，
   #   => 而而它们全落下面那一条 *) SRC_FILES="" ;;，=> 而而它们的 src 指纹于是**只**由 PKG_MECH
   #   那三个文件算出来（=> 而那六件的 src 段**逐字相同**，=> 而实测是 src9251ee997f11）。
   #   => 而后果：**改那六件任何一件的 recipe，它们的指纹一律不变**（=> 而 06 实测：pkgconf 4ca5da205f00、

@@ -206,7 +206,7 @@ class SupervisorPool(private val host: Service) {
         if (wanted.isNotEmpty() || toStop.isNotEmpty()) {
             RuntimeDiagnostics.append(
                 host, "supervisor-pool", true, "监督池同步",
-                // ★ **缺陷名（C-102）一个词承担两个意思** —— 原文案把这一项写成「在跑=」，
+                // [!] **缺陷名（C-102）一个词承担两个意思** —— 原文案把这一项写成「在跑=」，
                 //   而它读的是 `supervisors.keys`：入表在启动**之前**（:90 先赋值、:92 才 start），
                 //   且启动失败不回滚（:93 的 catch 只写诊断、不删表项）=> 它是**意图**，不是事实。
                 //   而事实那一侧读的是账本：OsHostService 的 runningIds ← ProcessLedger.liveOwned。

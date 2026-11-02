@@ -145,7 +145,7 @@ mkdir -p "$BUILD"
 HOST_TB="$WORK/host-tblgen"
 rm -rf "$HOST_TB"
 note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。"
-# ★ 缺陷名（C-102）**这一格取错了对象** —— 而而 LLVM 21.1.0 那一族的 TableGen.cmake 逐字是：
+# [!] 缺陷名（C-102）**这一格取错了对象** —— 而而 LLVM 21.1.0 那一族的 TableGen.cmake 逐字是：
 #     if (LLVM_USE_HOST_TOOLS)                        （=> 而那是第 207 行）
 #       if( ${${project}_TABLEGEN} STREQUAL "${target}" )
 #         build_native_tool(${target} ${project}_TABLEGEN_EXE DEPENDS ${target})
@@ -295,7 +295,7 @@ note "cmake 配置通过"
 #  => 而按 C-104：=> 而那**删**那一族逐字**只有**一条路、=> 而而那**不是**第二种生成路径。
 #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而而这一笔是**实现**那一族。
 
-# ★ 缺陷名（C-102）**宿主工具被放错了目录** —— 而 LLVM 21.1.0 那一族的 build_native_tool
+# [!] 缺陷名（C-102）**宿主工具被放错了目录** —— 而 LLVM 21.1.0 那一族的 build_native_tool
 #   在**构建期**把自建的宿主工具放进 $BUILD/NATIVE/bin，=> 而那一份是**用交叉工具链编的**
 #   （=> 而那是 aarch64），=> 而它随后在 x86_64 构建机上被执行 => => 而逐字是「Exec format error」。
 #   => 而配置那一期它**没**被建（=> 而 07 那一趟的读数逐字是「NATIVE/bin（尚未创建 —— 好现象）」），

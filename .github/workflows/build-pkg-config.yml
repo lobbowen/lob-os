@@ -1,7 +1,7 @@
 name: Build Component · pkg-config
 
 on:
-  # ── 触发方式 ──
+  # -- 触发方式 --
   #
   # 只有两种：
   #   workflow_dispatch  手动 —— 「我现在要构建这一件」

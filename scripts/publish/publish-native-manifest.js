@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-// ★ 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
+// [!] 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
 //   于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
 //   「缺少 …/scripts/.github/native-capabilities.txt」）。那是目录归并时的遗留。
 const ROOT = path.resolve(__dirname, '../..');

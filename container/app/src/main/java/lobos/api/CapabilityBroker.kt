@@ -1824,12 +1824,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val p = path.trim()
         return when {
             p.startsWith("/dev/") || p == "/dev" ->
-                "⚠ 写入 /dev 下的块设备/字符设备可能立即损坏设备数据"
+                "[warn] 写入 /dev 下的块设备/字符设备可能立即损坏设备数据"
             p.startsWith("/proc/") || p.startsWith("/sys/") ->
-                "⚠ /proc 与 /sys 是内核接口，写入可能使系统立即不稳定或崩溃"
+                "[warn] /proc 与 /sys 是内核接口，写入可能使系统立即不稳定或崩溃"
             p.startsWith("/system") || p.startsWith("/vendor") || p.startsWith("/boot") ->
-                "⚠ 系统分区受 verified boot 保护，写入通常失败；强行修改可能导致设备无法启动"
-            p == "/" -> "⚠ 根目录写入：请确认目标路径"
+                "[warn] 系统分区受 verified boot 保护，写入通常失败；强行修改可能导致设备无法启动"
+            p == "/" -> "[warn] 根目录写入：请确认目标路径"
             else -> null
         }
     }

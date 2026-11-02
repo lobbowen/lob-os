@@ -17,7 +17,7 @@ object LdConfig {
         val etc = SystemDirs.etc(ctx)
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
-        //  ★ 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
+        //  [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
         //    而原来这一支逐字是 `.filter { ProgramIndex.isPiece(ctx, it) }`，
         //    => 而 isPiece 逐字是「assetEntry 空 => PIECE」，=> 而它**只**收**纯库件**那一族
         //       （=> 而 crypto / curl / zlib 那一族）。
@@ -203,7 +203,7 @@ object LdConfig {
     /**
      * 「已声明的命令入口」—— 这一列答的是「**这一件在 usr/bin 下应该有哪几个名字**」。
      *
-     * ★ 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
+     * [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
      *   而原来这一支逐字是 `if (!ProgramIndex.isPiece(ctx, e)) continue`，
      *   => 而 isPiece 逐字是「assetEntry 空 => PIECE」，=> 而它**只**收 Level.PIECE 那一族。
      *   => 而那一族的成员是「**纯库件**」（=> 而 crypto / curl / zlib 那一族，
@@ -225,7 +225,7 @@ object LdConfig {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
             for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
-                //  ★ 而这一处**不**按 Level 那一族筛（=> 而那正是那个假零的成因）。
+                //  [!] 而这一处**不**按 Level 那一族筛（=> 而那正是那个假零的成因）。
                 //    而那一件自己答「我有没有 bin/ 下的命令入口」——=> 而下面那一支逐字是
                 //    File(verDir, "bin").listFiles()，=> 而纯库件（=> 而 crypto / curl / zlib 那一族）
                 //    **自然**答空，=> 而程序形态那一族答出它 bin/ 下的那些名字。
@@ -236,7 +236,7 @@ object LdConfig {
         val opt = lobos.kernel.layout.SystemDirs.opt(ctx)
         val base = File(opt, pieceId)
         val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
-        //  ★ 缺陷名（C-102）**这一格把「本体那一份」也算成了命令名** —— 而它治的是**对象那一层**。
+        //  [!] 缺陷名（C-102）**这一格把「本体那一份」也算成了命令名** —— 而它治的是**对象那一层**。
         //    而原来这一支逐字是 `File(verDir, "bin").listFiles()?.map { it.name }`，
         //    => 而它把 bin/ 下**每一项**都算成「usr/bin 下的命令入口」。
         //    => 而 busybox 那一件 bin/ 下有 19 项：本体那一份（bin/libbusybox.so）+ 18 条指向它的软链，
@@ -259,7 +259,7 @@ object LdConfig {
                 .distinct()
                 .sorted()
         }
-        //  ★ 缺陷名（C-102）**这一支读的是**落位目录**而不是**产物那一份**
+        //  [!] 缺陷名（C-102）**这一支读的是**落位目录**而不是**产物那一份**
         //    => 而而落位目录里**可能有**产物说没有的那几项（=> 而那是**遗留物**），
         //    => 而而它们**不该**算成「这一件对外承诺的命令名」。
         //    => 而真机读数（07，6c107c7 那一版，2026-10-25）：

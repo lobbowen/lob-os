@@ -38,9 +38,9 @@ object SelfCheckReport {
         val f = failed(items)
         val u = unknown(items)
         return when {
-            f == 0 && u == 0 -> "✅ 自检通过（" + total + "/" + total + "）"
-            f == 0 -> "⚠ 自检 " + passed(items) + "/" + total + " 通过，另有 " + u + " 项未知（未测到 ≠ 没问题）"
-            else -> "❌ 自检 " + passed(items) + "/" + total + " 通过，" + f + " 项失败" + if (u > 0) "，另有 " + u + " 项未知" else ""
+            f == 0 && u == 0 -> "[ok] 自检通过（" + total + "/" + total + "）"
+            f == 0 -> "[warn] 自检 " + passed(items) + "/" + total + " 通过，另有 " + u + " 项未知（未测到 ≠ 没问题）"
+            else -> "[fail] 自检 " + passed(items) + "/" + total + " 通过，" + f + " 项失败" + if (u > 0) "，另有 " + u + " 项未知" else ""
         }
     }
 
@@ -49,8 +49,8 @@ object SelfCheckReport {
         sb.append(verdict(items)).append("\n")
         for (it in items) {
             val mark = when (it.ok) {
-                true -> "✅"
-                false -> "❌"
+                true -> "[ok]"
+                false -> "[fail]"
                 null -> "❔"
             }
             sb.append(mark).append(" ").append(it.title)

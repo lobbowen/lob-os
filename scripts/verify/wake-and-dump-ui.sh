@@ -43,7 +43,7 @@ usage() {
   echo "  退出码: 0=取到树并打印目标节点；2=参数/环境错误；3=未取到（屏幕黑 / 树里没有那个节点）"
 }
 
-# ── 职责边界：先拒掉一切越界请求，再谈功能 ──
+# -- 职责边界：先拒掉一切越界请求，再谈功能 --
 while [ $# -gt 0 ]; do
   case "$1" in
     --device)   [ $# -ge 2 ] || die "--device 缺值"; DEVICE="$2"; shift 2 ;;
@@ -96,7 +96,7 @@ echo "[pkg]  $PACKAGE"
 echo "[act]  $ACTIVITY"
 echo "[time] $(date -Is)"
 
-# ── 第一格：屏幕醒着没有（=> 而这一格逐字只**读**）──
+# -- 第一格：屏幕醒着没有（=> 而这一格逐字只**读**）--
 #   => 而那 mWakefulness 那一格逐字答「屏幕现在是不是黑的」。
 WAKE_LINE="$($ADB -s "$DEV" shell "dumpsys power 2>/dev/null | grep -i mWakefulness" 2>/dev/null | tr -d '\r' | head -1)"
 echo "[wake] ${WAKE_LINE:-(读不到 mWakefulness)}"
@@ -106,7 +106,7 @@ case "$WAKE_LINE" in
   *Dozing*|*Asleep*|*Standby*) DOZING=1 ;;
 esac
 
-# ── 第二格：唤醒那一格（=> 而它是**设备写入**、=> 而只归 07）──
+# -- 第二格：唤醒那一格（=> 而它是**设备写入**、=> 而只归 07）--
 WAKE_CMDS="adb -s $DEV shell input keyevent KEYCODE_WAKEUP
 adb -s $DEV shell wm dismiss-keyguard"
 if [ "$DOZING" = "1" ]; then
@@ -131,11 +131,11 @@ if [ "$DOZING" = "1" ]; then
   fi
 fi
 
-# ── 第三格：窗口可见没有（=> 而这一格逐字只**读**）──
+# -- 第三格：窗口可见没有（=> 而这一格逐字只**读**）--
 VIS_LINE="$($ADB -s "$DEV" shell "dumpsys window windows 2>/dev/null | grep -i 'mCurrentFocus\|mFocusedApp'" 2>/dev/null | tr -d '\r' | head -2)"
 echo "[focus] ${VIS_LINE:-(读不到焦点)}"
 
-# ── 第四格：dump（=> 而这一格逐字只**读**）──
+# -- 第四格：dump（=> 而这一格逐字只**读**）--
 DUMP_OUT="$(mktemp)"
 trap 'rm -f "$DUMP_OUT"' EXIT
 DUMP_ERR="$($ADB -s "$DEV" shell "uiautomator dump /sdcard/uidump.xml 2>&1; echo '---'; cat /sdcard/uidump.xml 2>/dev/null" 2>/dev/null | tr -d '\r')"
@@ -159,7 +159,7 @@ fi
 printf '%s\n' "$XML" > "$DUMP_OUT"
 echo "[dump] 控件树字节数=$(stat -c%s "$DUMP_OUT")"
 
-# ── 第五格：那目标节点在不在（=> 而那一格逐字答「那一件逐字在不在那棵树里」）──
+# -- 第五格：那目标节点在不在（=> 而那一格逐字答「那一件逐字在不在那棵树里」）--
 if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
   echo "[node] 那一格逐字**在**树里：$ACTIVITY"
   #  => 而那坐标逐字从那 XML 里**逐字**取出来（=> 而那**不是**读那旧的坐标）。

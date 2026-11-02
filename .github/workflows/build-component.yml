@@ -21,7 +21,7 @@ on:
       - 'container/app/src/main/assets/supply/component-public.pem'
       - '.github/native-capabilities.txt'
       - 'version.json'
-      # ★ 那一族 recipe（=> 而那 `cache-key.sh:209` 逐字那 `PKG_MECH` 那一族）——
+      # [!] 那一族 recipe（=> 而那 `cache-key.sh:209` 逐字那 `PKG_MECH` 那一族）——
       #   改了它们 => 而那**固化产物的指纹全变** => 而那九件逐字**要重新固化**。
       #   而那**报告**逐字要在**改动落地**这一趟就出来（=> 而不是等到取件那一趟、
       #   => 而而那那时根因逐字在**几百行日志里**）。

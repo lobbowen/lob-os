@@ -12,7 +12,7 @@
 # 机型差异会造成个别库缺席（libneuralnetworks.so 本机就没有），
 # 所以只收「实测在的那批」。
 #
-# ★ 这一份是**唯一一份**：scripts/verify/check-elf-deps.sh 与
+# [!] 这一份是**唯一一份**：scripts/verify/check-elf-deps.sh 与
 #   scripts/verify/verify-runtime-elf.sh 共用它。
 #   此前 scripts/ 下还立着一份同名的（12 项），两边已经漂了 ——
 #   旧那份含 libz.so，而 zlib 现在是我们的件（base 筐，落到 jniLibs），

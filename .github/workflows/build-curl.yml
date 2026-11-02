@@ -48,13 +48,13 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          # ★ 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          # [!] 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
           #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
           #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
           #   被当成新的继续用，CI 报 success 而包是空的。
           #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
           #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          # ★ 这一格验的是**包里那个入口文件** —— 而 curl 那一件是**纯库件**（bin/ 目录不存在），
+          # [!] 这一格验的是**包里那个入口文件** —— 而 curl 那一件是**纯库件**（bin/ 目录不存在），
           #   按今天的新规则它的 entry **留空**（按 C-05「没有」就是没有）。
           #   而 reusable-asset.sh 第三参空 => 只验「包里有 component-meta.json」。
           if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then

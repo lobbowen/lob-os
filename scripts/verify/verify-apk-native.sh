@@ -181,7 +181,7 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
 
   [ "$mid" = "$id" ] || { echo "[error] $id 的说明里 id=$mid 对不上"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
   [ -n "$mver" ] || { echo "[error] $id 的说明里没有 version"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
-  # ★ **纯库件没有 entry 是合法的**（按 C-05「没有」就是没有）——
+  # [!] **纯库件没有 entry 是合法的**（按 C-05「没有」就是没有）——
   #   缺陷名（C-102）**「说明里没有 entry」被当成缺件**：
   #     原来这一格是 `[ -n "$ment" ] || 判红` —— 而那把「这一件没有程序那一侧」
   #     当成了「清单坏了」=> crypto/curl/zlib 三个纯库件被判成缺项（piece-pack(3)）。
@@ -209,9 +209,9 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
   printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
 done
 
-# ★★ 而这一格原来在脚本里**硬编码八个 id**（★ ★ 而那与 PIECES 那一行是两套口径）★★
-#   ★★ => 而 crypto 归并之后（01 今天裁）★★ 件数变七，★ ★ 而这里还数八个 ★★
-#   ★★ => 而「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 ★★
+# [!][!] 而这一格原来在脚本里**硬编码八个 id**（[!] [!] 而那与 PIECES 那一行是两套口径）[!][!]
+#   [!][!] => 而 crypto 归并之后（01 今天裁）[!][!] 件数变七，[!] [!] 而这里还数八个 [!][!]
+#   [!][!] => 而「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 [!][!]
 WANT_N="$(grep -o '^PIECES=(.*)' "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" | head -1 \
           | sed 's/^PIECES=(//; s/)$//' | wc -w)"
 if [ -z "$WANT_N" ]; then

@@ -19,7 +19,7 @@ static void bind_real(void) {
   if (!real_access) real_access = (int (*)(const char *, int))dlsym(RTLD_NEXT, "access");
 }
 
-// ── 系统视图注入 ──────────────────────────────────────────────
+// -- 系统视图注入 ----------------------------------------------
 // 宿主（OsHostService）把自己的环境设成系统视图。
 // 每个 Lob OS 起的进程都从 execve 出去，所以在这里合并一次，
 // 而不是让每个调用方（程序宿主 / shell.exec / 终端）各自拼一遍。

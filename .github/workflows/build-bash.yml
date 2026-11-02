@@ -2,7 +2,7 @@ name: Build bash
 
 # 这一条编 bash，产出固化到 Release。APK 链只取用，不现场编。
 on:
-  # ── 触发方式 ──
+  # -- 触发方式 --
   #
   # 只有两种：
   #   workflow_dispatch  手动 —— 「我现在要构建这一件」
@@ -56,7 +56,7 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          # ★ 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          # [!] 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
           #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
           #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
           #   被当成新的继续用，CI 报 success 而包是空的。

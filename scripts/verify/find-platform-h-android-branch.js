@@ -27,7 +27,7 @@ lines.forEach((l, i) => {
 // 半开：先出现先闭
 ranges.sort((x, y) => (x.e - x.b) - (y.e - y.b));   // 小的（更内层）优先
 
-// ── 判据：分支头写着 ANDROID，而不是「区间里含 undef」──
+// -- 判据：分支头写着 ANDROID，而不是「区间里含 undef」--
 //   platform.h 里有 4 处 "# undef HAVE_STRCHRNUL"，分属
 //   __WATCOMC__ / __dietlibc__ / __APPLE__ / Android 四个分支。
 //   只按「区间里含 undef」去找，会抓到最内层的 __dietlibc__ 那个
@@ -48,7 +48,7 @@ if (androidBranches.length > 1) {
     '），取**含 HAVE_STRCHRNUL 的那一处**');
 }
 
-// ── Android 分支有两处（一个只设两个 SYS_* 宏就结束，另一个才是要改的）──
+// -- Android 分支有两处（一个只设两个 SYS_* 宏就结束，另一个才是要改的）--
 // 取含目标 undef 的那一处；若那一处已经没有裸 undef 行，说明**已经打过补丁**
 // （幂等的第二次运行），那就取「含我们写的那行注释」的那一处。
 const targets = ['# undef HAVE_STRCHRNUL', '# undef HAVE_MEMPCPY'];
@@ -87,7 +87,7 @@ for (let i = chosen.b; i <= chosen.e; i++) inRange.push(lines[i - 1]);
 console.error('[busybox] Android 条件块：第 ' + chosen.b + '~' + chosen.e + ' 行（' +
   (chosen.e - chosen.b + 1) + ' 行）');
 
-// ── --patch：直接改文件，不走 sed ─────────────────────────────
+// -- --patch：直接改文件，不走 sed -----------------------------
 // 为什么不用 sed 改：s/// 里的 \n 是 GNU sed 扩展，而 Android 上
 // /system/bin/sed 是 toybox（实测），它不认 —— 会静默不改或报错。
 // 而 `{a,b}` 地址块写法在 toybox 上也要当文件名解析（实测

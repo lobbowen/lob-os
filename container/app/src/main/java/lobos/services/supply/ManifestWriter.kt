@@ -27,7 +27,7 @@ object ManifestWriter {
         m.put("role", role)
         m.put("essential", meta?.optBoolean("essential", false) ?: false)
         m.put("requires", meta?.optJSONArray("requires") ?: JSONArray())
-        //  ★ 缺陷名（C-102）**同一件事在两条路径上有两个默认值，而落位那一条取到了 false 那个**
+        //  [!] 缺陷名（C-102）**同一件事在两条路径上有两个默认值，而落位那一条取到了 false 那个**
         //    —— 而「装上来就常驻」（=> 而 `lifecycle.resident` 那一格）今天**缺**。
         //
         //  而**缺了它为什么等于默认否掉**：

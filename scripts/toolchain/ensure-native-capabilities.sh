@@ -50,7 +50,7 @@ build_each() {
         echo "ok"
       else
         echo "FAILED"
-        echo "[caps] ★ build-bundle-$n.sh 失败"
+        echo "[caps] [!] build-bundle-$n.sh 失败"
         failed=1
       fi
     done
@@ -76,7 +76,7 @@ build_each() {
       echo "ok"
     else
       echo "FAILED"
-      echo "[caps] ★ $s 失败 —— 上面那条通知标了是哪一件"
+      echo "[caps] [!] $s 失败 —— 上面那条通知标了是哪一件"
       failed=1
     fi
   done

@@ -214,7 +214,7 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         note_raw("child: dup2 到从设备已做");
         if (slave > 2) close(slave);
         close(master);
-        //  ★★ 而那**执行**那一格逐字**不**在这一族里（=> 而那是那一族那个域缺陷的处置）
+        //  [!][!] 而那**执行**那一格逐字**不**在这一族里（=> 而那是那一族那个域缺陷的处置）
         //    => 而而那那**宿主侧**逐字从那 READY 帧逐字**已经**拿到那从设备名了
         //      （=> 而而那那 READY 帧逐字回的就是那从设备名与那窗口大小）
         //    => 而而那那宿主侧逐字（=> 而那是那 **Kotlin** 那一族）逐字**自己**去执行那一条 argv

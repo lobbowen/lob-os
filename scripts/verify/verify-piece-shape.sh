@@ -59,7 +59,7 @@ case "$KIND" in
   *) bad "形态取值域不对" "kind='$KIND' —— 取值域只有 program / library / mixed / unknown" ;;
 esac
 
-# ── 路二：只读包里的字节，现场复算形态，与形态文件对账 ─────────
+# -- 路二：只读包里的字节，现场复算形态，与形态文件对账 ---------
 # 这一路**不看**形态文件 —— 它是独立复算，两路相等才算自描述成立。
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../toolchain" && pwd)/elf-form.sh"
 
@@ -78,7 +78,7 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     real="$(readlink -f "$so")"
     [ -f "$real" ] || continue
     # 只对**库形态**（ET_DYN 无 PT_INTERP）的那份要求三段链。
-    # ★ 缺陷名（C-102）**「程序形态的字节住在 lib/ 下」被当成了合法形态**：
+    # [!] 缺陷名（C-102）**「程序形态的字节住在 lib/ 下」被当成了合法形态**：
     #   原来这一支是「形态不是 dyn-plain => 说一声『程序形态，不要求三段链』然后跳过」——
     #   而那把**一个落位缺陷**（程序形态的字节该落 bin/，不该落 lib/）说成了「正常的另一种形态」。
     #   后果（04 今天指出）：第一处改完（本体搬到 bin/）之后，**这一支反而会判红** ——
@@ -95,7 +95,7 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     chain="$(elf_chain_names "$W/lib" "$root")"
     n="$(printf '%s' "$chain" | wc -w)"
     say "lib/$base 的链：$chain（$n 段）"
-    # ★ **判据换成「SONAME 与链是否自洽」**（01 今天裁的）——
+    # [!] **判据换成「SONAME 与链是否自洽」**（01 今天裁的）——
     #   原来这一格写死了「段数 >= 3」，而那个 3 是我们自己加的一个数，不是 man 8 ldconfig 的要求：
     #   man 原文是「expects a certain pattern」（期待某种形状）与「may result in」（可能导致），
     #   而它那个示例里的「middle file」明确就是**那份字节自己说的 SONAME**。

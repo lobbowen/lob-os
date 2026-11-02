@@ -39,7 +39,7 @@ DEPS_FILE="$HERE/native-deps.txt"
 SYSTEM_LIBS=" $( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
 [ -n "${SYSTEM_LIBS// /}" ] || die "系统库白名单是空的" "$DEPS_FILE 被清空了 —— 那会把所有系统库都当成缺失依赖"
 
-# ── APK 基础库：直接读 jniLibs 目录，不维护名字清单 ──────────
+# -- APK 基础库：直接读 jniLibs 目录，不维护名字清单 ----------
 # 此前这里是一串硬编码：APK_LIBS=" libc++_shared.so libz.so libssl.so …"。
 # 那是**第二个事实来源**，必然和实际落位漂移 —— 已经漂了：
 # libz.so 既是 bionic 自带的（系统库），又是我们的件（base 筐里的 zlib），
@@ -57,7 +57,7 @@ if [ -z "$JNI_DIR" ]; then
     [ -d "$cand" ] && { JNI_DIR="${cand%/}"; break; }
   done
 fi
-# ── 目录不存在**不算错**，只是少一类判据 ──────────────────────
+# -- 目录不存在**不算错**，只是少一类判据 ----------------------
 # 本脚本也被 tool 筐那几个 workflow 调用（build-make / build-cmake /
 # build-git / build-llvmtoolchain / build-node / build-npm / build-pnpm /
 # build-python3 / build-sqlite3 / build-pkg-config 各自编各自的件），

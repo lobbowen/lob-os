@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # T1 —— 裸名可执行性判据。对一个名字：送一行 → 读回 stdout 与 stderr → 判定。
 #
-# ★ 读的是两个流。只读 stdout 的判据会把「什么都没说」当成「说清了」——
+# [!] 读的是两个流。只读 stdout 的判据会把「什么都没说」当成「说清了」——
 #   而符号错那一行恰好在 stderr 上，只读 stdout 会假绿。
 #
-# ★ 判据只取事实，不取声明：
+# [!] 判据只取事实，不取声明：
 #   落位   files/usr/bin/<名> 在不在、软链还是实体、目标多大
 #   权限   owner/group/other 三位有无 x
 #   ELF    DT_NEEDED 列出哪些共享库（readelf 带 -W，不带会截断）
 #   运行期 实际 exec 一次，拿到退出码、stdout、stderr 三样
 #
-# ★ 而它的失败原因里不会出现「我们认为」——每一条都指一个可核对的字节或一次读数。
+# [!] 而它的失败原因里不会出现「我们认为」——每一条都指一个可核对的字节或一次读数。
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -78,7 +78,7 @@ for name in "$@"; do
     both="$("$ent" --version 2>&1)"
     code=$?
     so="$both"
-    se="★★ 两个流不可分（无 python3 捕获）★★ —— 这一支只判退出码，"
+    se="[!][!] 两个流不可分（无 python3 捕获）[!][!] —— 这一支只判退出码，"
     se="$se 不可用它判「它说了什么」"
   fi
   if [ "$SPLIT" = "1" ]; then CAP="两个流分开（内存·python3）"; elif [ "$SPLIT" = "2" ]; then CAP="两个流分开（三次纯 shell 执行）"; else CAP="**合并流，只判退出码**"; fi
@@ -97,7 +97,7 @@ for name in "$@"; do
     echo "  第二次执行退出码=$code2（第一次=$code）"
     if [ "$code2" = "$code" ]; then
       echo "  第二信号：两次退出码一致 — 由两次独立的执行各读一次"
-      echo "  问二 能不能跑起来：$( [ "$code" -eq 0 ] && echo 能 || echo 不能 ) —— ★ ★ 且两次一致"
+      echo "  问二 能不能跑起来：$( [ "$code" -eq 0 ] && echo 能 || echo 不能 ) —— [!] [!] 且两次一致"
       if [ "$code" -eq 0 ]; then echo "  [绿]"; else echo "  [红] 落位在，而它跑不起来（两次一致）"; fi
       continue
     else
@@ -105,7 +105,7 @@ for name in "$@"; do
       rc_all=2; continue
     fi
   else
-    echo "  第二信号：拿不到（未分开捕获）—— ★ ★ 而这一格只能记「未验」"
+    echo "  第二信号：拿不到（未分开捕获）—— [!] [!] 而这一格只能记「未验」"
     echo "  问二 能不能跑起来：未验（无独立第二信号）"
     rc_all=2; continue
   fi

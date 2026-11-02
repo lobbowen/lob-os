@@ -9,7 +9,7 @@
 # 产物直接进 container/app/src/main/jniLibs/arm64-v8a/，由
 # kernel/compat/Compat.kt 按名字定位。
 #
-# ★ 不要 source scripts/recipes/bundle-env.sh：
+# [!] 不要 source scripts/recipes/bundle-env.sh：
 #   那个是**给件准备的** —— 它要求传件名、会 cd 到仓根、定义 land_piece/gen_meta
 #   并按件的形状落位。垫片三样都不要；而且它开头 `${1:?用法: source
 #   bundle-env.sh <件名>}` 在没传参时直接 exit 1 —— 曾经让 APK 构建在这里挂掉
@@ -56,7 +56,7 @@ so_ok() {
 
 CFLAGS="-O2 -fPIC"
 
-# ── posix：LD_PRELOAD 垫片（路径与链接语义兜底）──────────────────────
+# -- posix：LD_PRELOAD 垫片（路径与链接语义兜底）----------------------
 "$CC" -shared $CFLAGS \
   container/native/d1/link-interpose.c \
   container/native/d1/open-fallback.c \
@@ -72,7 +72,7 @@ cp -f "$WORK/liblobosposix.so" "$OUT/liblobosposix.so"
 echo "  ✓ posix      → liblobosposix.so"
 
 
-# ── ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）────────────
+# -- ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）------------
 # 动态链接，不带 -static：
 #   静态链接时 libc 整份链进去，fork 之后的 execv 不走 PLT、不查符号表，
 #   LD_PRELOAD 那套 execve 覆盖对它无效 → env_merge_sys 从来没被调过。
@@ -94,7 +94,7 @@ so_ok "$WORK/librivospty.so" 1000
 cp -f "$WORK/librivospty.so" "$OUT/librivospty.so"
 echo "  ✓ ptysession → librivospty.so"
 
-# ── flock：文件锁（node addon，依赖 node 头文件）────────────────────
+# -- flock：文件锁（node addon，依赖 node 头文件）--------------------
 # node 头文件没有就不带这一件 —— 它是可选增强，不该让整条链失败。
 if [ -n "${NODE_INCLUDE_DIR:-}" ] && [ -d "${NODE_INCLUDE_DIR:-}" ]; then
   "$CC" -shared $CFLAGS -DNAPI_VERSION=9 -I "$NODE_INCLUDE_DIR" \
