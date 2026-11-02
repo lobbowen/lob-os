@@ -21,6 +21,22 @@ object LocalExec {
         val error: String? = null,
     )
 
+    /**
+     * 那**输出**逐字那一个上限（=> 而而那它逐字**有**那个上限、=> 而那超出那一截逐字**丢**）。
+     *
+     *   => 而而那那**上限**逐字是那 **4 MiB** 逐字（=> 而与那 `PtySession` 那一族那一个上限逐字**同一个**）
+     *   => 而而那那**期望输出**那一族逐字**要**的是那**开头**那一些（=> 而那它逐字**不**是全量）
+     *   => 而而那那**丢了多少**逐字**说清**（=> 而那按 C-05 不猜填）
+     */
+    const val MAX_CAPTURED_OUTPUT_CHARS = 4 * 1024 * 1024
+
+    /** 那**丢了多少**逐字**说清**（=> 而那按 C-05 不猜填、=> 而那**丢**这一件逐字**报缺**）。 */
+    private fun droppedNote(outDropped: Long, errDropped: Long): String? {
+        if (outDropped <= 0L && errDropped <= 0L) return null
+        return "那输出逐字超了上限、=> 而而那那**丢**的一截逐字 = stdout " + outDropped +
+            " 字节、stderr " + errDropped + " 字节、=> 而那按 C-05 报缺"
+    }
+
     fun run(
         ctx: Context,
         argv: List<String>,
@@ -72,20 +88,64 @@ object LocalExec {
                 redirectErrorStream = false,
                 owner = ProcessSupervisor.OWNER_PROGRAM,
             )
+            //  缺陷名（C-102）**那一格逐字把那**全部**输出逐字**累积**进那堆、=> 而而那它逐字**没有上限** ——
+            //    => 而那旧版逐字是 `val out = StringBuilder()` / `val err = StringBuilder()`
+            //      => 而而那那**两**个逐字**无上限**地逐字涨
+            //        （=> 而而那那 `StringBuilder` 逐字**每个**字符逐字**再存**一份、
+            //          => 而而那那 `toString()` 逐字**又**是**一份**、=> 而而那那**峰值**逐字是**三**份）
+            //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+            //        · 而那 logcat 逐字 `Throwing OutOfMemoryError "Failed to allocate a 117031556 byte
+            //          allocation …"`（逐字 13:34:57.367、=> 而而那那 App 逐字刚起那 10 秒）
+            //        => 而而那那**分配量**逐字 117 MB、=> 而与设备上逐字那一件逐字**同形**
+            //        （=> 而而那那 `node` 那一件逐字 116779696 字节）
+            //      => 而而那那**常驻**那一族逐字是「逐字那 App 逐字逐字常驻逐字整读那一大件」
+            //        => 而而那那**判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
+            //    => 而那**处置**：=> 而而那那两段逐字**有**一个上限、=> 而那超出那一截逐字**丢**
+            //      => 而而那那**期望输出**那一族逐字**要**的是那**开头**那一些（=> 而那它逐字**不**是全量）
+            //      => 而而那那**上限**逐字**要**报缺（=> 而那按 C-05 不猜填、=> 而那**丢了多少**逐字**说清**）
             val out = StringBuilder()
             val err = StringBuilder()
-            val tOut = Thread { runCatching { s.process.inputStream.bufferedReader().forEachLine { out.append(it).append('\n') } } }
-            val tErr = Thread { runCatching { s.process.errorStream.bufferedReader().forEachLine { err.append(it).append('\n') } } }
+            var outDropped = 0L
+            var errDropped = 0L
+            val tOut = Thread {
+                runCatching {
+                    s.process.inputStream.bufferedReader().forEachLine {
+                        synchronized(out) {
+                            if (out.length + it.length + 1 <= MAX_CAPTURED_OUTPUT_CHARS) {
+                                out.append(it).append('\n')
+                            } else {
+                                outDropped += it.length + 1
+                            }
+                        }
+                    }
+                }
+            }
+            val tErr = Thread {
+                runCatching {
+                    s.process.errorStream.bufferedReader().forEachLine {
+                        synchronized(err) {
+                            if (err.length + it.length + 1 <= MAX_CAPTURED_OUTPUT_CHARS) {
+                                err.append(it).append('\n')
+                            } else {
+                                errDropped += it.length + 1
+                            }
+                        }
+                    }
+                }
+            }
             tOut.isDaemon = true; tErr.isDaemon = true
             tOut.start(); tErr.start()
             val exited = s.process.waitFor(timeoutMs.coerceAtLeast(1), java.util.concurrent.TimeUnit.MILLISECONDS)
             if (!exited) {
                 s.process.destroy()
-                return Outcome(false, -1, out.toString(), err.toString(), Via.PLAIN, "超时 ${timeoutMs}ms")
+                return Outcome(
+                    false, -1, out.toString(), err.toString(), Via.PLAIN,
+                    "超时 ${timeoutMs}ms" + droppedNote(outDropped, errDropped),
+                )
             }
             tOut.join(500); tErr.join(500)
             val code = s.process.exitValue()
-            Outcome(true, code, out.toString(), err.toString(), Via.PLAIN)
+            Outcome(true, code, out.toString(), err.toString(), Via.PLAIN, droppedNote(outDropped, errDropped))
         } catch (e: ProcessSupervisor.NotExecutable) {
             //  => 而那 M7-05 那一族逐字要的那两样：=> 而那**退出码**逐字是那一个具体的数、
             //    => 而而那那**诊断原文**逐字**进**那 stderr

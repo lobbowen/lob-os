@@ -52,6 +52,43 @@ object PtySession {
     ) {
         private val closed = AtomicBoolean(false)
 
+        /**
+         * 那 **native** 那一族逐字那槽逐字**开没开**（=> 而而那它逐字是「那帧逐字发的时候、=> 而而那那槽逐字逐字开没开」那一个事实上）。
+         *
+         * 缺陷名（C-102）**那一帧逐字发的时候、=> 而而那那槽逐字逐字还没开** ——
+         *   => 而那旧版逐字是 `resize()` 逐字**无条件**逐字发那 `F_WINSIZE`
+         *     => 而而那那 `F_WINSIZE` 逐字**只**那一处逐字发
+         *       （=> 而那 `PtySession.kt:141` 逐字 `host.send(F_WINSIZE, sid, b.array())`）
+         *     => 而而那那 `spawnOnSlave` 那一格逐字在**那 latch 等到之前**就逐字可能调那 `resize`
+         *       （=> 而那 `PtySession.kt:305` 逐字
+         *         `if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)`）
+         *       => 而而那那 native 那一族逐字那槽逐字**还没**开
+         *         => 而而那那 native 那一侧逐字**判**的是「那槽逐字开没开」：
+         *           （=> 而那 `pty-session.c:463` 到 `:465` 逐字
+         *             `case FRAME_WINSIZE: {` / `int s = h.sid;` /
+         *             `if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error(out_fd, "WINSIZE 指向不存在的会话"); break; }`）
+         *         => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+         *           · 而那那 `diag.jsonl` 逐字 `stage="pty"` 逐字两条 FAIL
+         *             「PTY 的C 侧报错 | WINSIZE 指向不存在的会话」
+         *             逐字又逐字出现了一条：逐字 `1793597239169` 与 `1793597303066`
+         *   => 而那**处置**：=> 而而那那 `F_WINSIZE` 逐字**等**那 `F_READY` 逐字**到了之后**才发
+         *     => 而而那那**正解**逐字是 07 逐字给的
+         *     => 而而那那**判据**逐字是「那一帧逐字发的时候、=> 而而那那槽逐字逐字开没开」那一个事实上
+         *       （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+         *
+         * 缺陷名（C-102）**那一格逐字**不知道**那 `F_READY` 逐字到没到** ——
+         *   => 而而那那产品侧逐字**知不知道**它到了、=> 而而那那**知不知道**的逐字怎么核
+         *     => 而而那那**答**逐字是那 `F_READY` 逐字**本身**逐字带着那**就绪**那一个事实
+         *       （=> 而而那那 `onReady` 逐字建那 `Session` 逐字**就是**那**到了**的凭据）
+         *     => 而而那那**用法**逐字：=> 而而那那 `resize` 逐字**先**看那一格
+         *       => 而而那那**还没**到时逐字**把**那**要的**尺寸**逐字**记**着
+         *         => 而而那那 `F_READY` 逐字到了之后逐字**补**发那一帧
+         */
+        @Volatile private var nativeSlotOpen = false
+
+        /** 那**要**的尺寸（=> 而而那它逐字**等**那 `F_READY` 到了之后逐字**补**发）。 */
+        @Volatile private var pendingWinsize: Pair<Int, Int>? = null
+
         //  => 而那那回调逐字**接上**的时候逐字把缓冲**倒**给它（=> 而而那那输出逐字**不**丢）
         @Volatile
         var onData: ((ByteArray) -> Unit)? = null
@@ -73,8 +110,23 @@ object PtySession {
         //    => 而那**处置**：=> 而那输出逐字**先**落到那 Session 自己的**缓冲**里
         //      => 而而那那回调逐字**接上**的时候逐字**把缓冲逐字倒给它**
         //      => 而而那那样逐字**不**依赖那回调逐字什么时候接（=> 而那**不**是猜、=> 而那**不**是丢）
+        //  缺陷名（C-102）**那一格逐字把那一段输出逐字**无上限**地累积进那堆** ——
+        //    => 而那旧版逐字是 `private val pending = java.io.ByteArrayOutputStream()`
+        //      => 而而那那**缓冲**逐字**没有**上限、=> 而而那它逐字**一直**涨
+        //        （=> 而而那那回调逐字**还没**接上那一段时间逐字**输出**多少、=> 而而那它逐字就涨多少）
+        //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+        //        · 而那 logcat 逐字 `Throwing OutOfMemoryError "Failed to allocate a 117031556 byte
+        //          allocation …"`
+        //        => 而而那那**分配量**逐字 117 MB、=> 而与设备上逐字那一件逐字**同形**
+        //      => 而而那那**判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
+        //    => 而那**处置**：=> 而而那那**缓冲**逐字**有**一个上限、=> 而那超出那一截逐字**丢**
+        //      => 而而那那**丢了多少**逐字**记**着（=> 而那按 C-05 不猜填）
         private val pending = java.io.ByteArrayOutputStream()
         private val pendingLock = Any()
+        private var pendingDropped = 0L
+
+        /** 那**缓冲**逐字那一个上限（=> 而而那它逐字**有**那个上限、=> 而那超出那一截逐字**丢**）。 */
+        private val MAX_PENDING_BYTES = 4 * 1024 * 1024
 
         /** 那**缓冲**里逐字有东西没有（=> 而那它逐字是那**读数**、=> 而而那它逐字**不**是推出来的）。 */
         val hasPending: Boolean get() = synchronized(pendingLock) { pending.size() > 0 }
@@ -86,7 +138,20 @@ object PtySession {
                 return
             }
             //  => 而那那回调逐字**还没**接上 => 而而那那输出逐字**先进缓冲**、=> 而而那**不**丢
-            synchronized(pendingLock) { pending.write(data) }
+            //    => 而而那那**缓冲**逐字**有**一个上限、=> 而那超出那一截逐字**丢**
+            //      （=> 而而那那**上限**逐字是那 4 MiB、=> 而与那 `LocalExec` 那一族那一个上限逐字**同一个**）
+            //      => 而而那那**丢了多少**逐字**记**着（=> 而那按 C-05 不猜填）
+            synchronized(pendingLock) {
+                val room = MAX_PENDING_BYTES - pending.size()
+                if (room <= 0) {
+                    pendingDropped += data.size.toLong()
+                } else if (data.size <= room) {
+                    pending.write(data)
+                } else {
+                    pending.write(data, 0, room)
+                    pendingDropped += (data.size - room).toLong()
+                }
+            }
         }
 
         internal fun flushPending() {
@@ -98,6 +163,9 @@ object PtySession {
             if (drained.isEmpty()) return
             try { cb.invoke(drained) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
         }
+
+        /** 那**丢了多少**逐字（=> 而那按 C-05 不猜填、=> 而那**丢**这一件逐字**报缺**）。 */
+        internal fun pendingDroppedBytes(): Long = synchronized(pendingLock) { pendingDropped }
 
         @Volatile var onExit: ((status: Int, signal: Int) -> Unit)? = null
 
@@ -134,11 +202,37 @@ object PtySession {
 
         fun resize(rows: Int, cols: Int) {
             if (closed.get()) return
+            //  => 而而那那 **native** 那一族逐字那槽逐字**还没**开时逐字**不**发那一帧
+            //    （=> 而而那那**判据**逐字是「那一帧逐字发的时候、=> 而而那那槽逐字逐字开没开」那一个事实上）
+            //    => 而而那那**要**的尺寸逐字**记**着、=> 而而那那 `F_READY` 到了之后逐字**补**发
+            if (!nativeSlotOpen) {
+                pendingWinsize = rows to cols
+                return
+            }
+            sendWinsize(rows, cols)
+        }
+
+        /** 那**真的**发那一帧（=> 而而那那槽逐字逐字**已经**开的时候才走这一格）。 */
+        private fun sendWinsize(rows: Int, cols: Int) {
             val b = java.nio.ByteBuffer.allocate(8)
             b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
             b.putShort(rows.toShort()).putShort(cols.toShort())
             b.putShort(0).putShort(0)
             host.send(F_WINSIZE, sid, b.array())
+        }
+
+        /**
+         * 那 **native** 那一族逐字那槽逐字**开好了**（=> 而而那它逐字**由**那 `F_READY` 逐字**触发**）。
+         *
+         *   => 而而那那**判据**逐字是「那 `F_READY` 逐字**到了**」那一个事实上
+         *     （=> 而而那那**就绪**那一个事实逐字**就是**那 `F_READY` 逐字**自己**带的）
+         *   => 而而那那**补发**逐字：=> 而而那那**记着**的尺寸逐字**这时候**才发
+         */
+        internal fun onNativeSlotOpen() {
+            nativeSlotOpen = true
+            val p = pendingWinsize ?: return
+            pendingWinsize = null
+            runCatching { sendWinsize(p.first, p.second) }
         }
 
         val isClosed: Boolean get() = closed.get()
@@ -791,6 +885,9 @@ object PtySession {
                 cols = b.short.toInt() and 0xFFFF
             } else { rows = DEFAULT_ROWS; cols = DEFAULT_COLS }
             sessions[sid] = Session(this, sid, slave, rows, cols)
+            //  => 而而那那 **native** 那一族逐字那槽逐字**开好了**（=> 而而那那 `F_READY` 逐字**就是**那凭据）
+            //    => 而而那那**补发**逐字**这时候**才发那 `F_WINSIZE`
+            sessions[sid]?.onNativeSlotOpen()
             ready.remove(sid)?.countDown()
         }
 
