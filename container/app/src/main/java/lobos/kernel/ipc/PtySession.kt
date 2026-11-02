@@ -188,6 +188,20 @@ object PtySession {
         }
 
         /**
+         * 那**native** 那一族逐字那槽逐字**还**回去（=> 而而那它逐字**只**发那 `F_CLOSE`）。
+         *
+         *   => 而而那它逐字**只**发那 `F_CLOSE`、=> 而而那它逐字**不**杀那进程
+         *     （=> 而那进程逐字**已经**退了、=> 而而那那 `close()` 那一格逐字**管**那终止）
+         *   => 而而那那 `close()` 那一格逐字那 `compareAndSet` 逐字**护着**、=> 而而那它逐字**只**发一次
+         */
+        internal fun releaseNativeSlot() {
+            if (!closed.compareAndSet(false, true)) return
+            runCatching { host.send(F_CLOSE, sid, ByteArray(0)) }
+            runCatching { host.releaseSid(sid) }
+            runCatching { ProductSessions.remove("product-" + sid) }
+        }
+
+        /**
          * 那**产品侧**的进程逐字**显式**终止（=> 而而那它逐字**走**那产品侧逐字自己报退出那一路）。
          *
          *   => 而而那它逐字**先**要那进程逐字**软**终止（=> 而而那那 `TERM` 逐字给那进程逐字**机会**收尾）
@@ -817,6 +831,30 @@ object PtySession {
             val stillAlive = s?.process?.isAlive == true
             if (!stillAlive) {
                 s?.recordExit(status, signal)
+                //  缺陷名（C-102）**那一格逐字**只**标成关、=> 而而那那 `F_CLOSE` 逐字**没人发** ——
+                //    => 而那旧版逐字是 `s?.recordExit(…); s?.markClosed()`
+                //      => 而而那那 `F_CLOSE` 逐字**只**在那 `close()` 那一格逐字发
+                //        （=> 而那 `PtySession.kt:184` 逐字 `host.send(F_CLOSE, sid, ByteArray(0))`）
+                //      => 而而那那**产品侧**逐字自己退时逐字**没有**发那 `F_CLOSE`
+                //        （=> 而那 `PtySession.kt:819` 到 `:820` 那一格逐字**只有**那两行）
+                //      => 而而那那 native 那一族逐字那槽逐字**还占着**
+                //        （=> 而而那那 `session_close` 逐字**没**被调到、=> 而而那那槽逐字**没**被清）
+                //      => 而而那那**下一趟**逐字分号逐字就**撞**
+                //        （=> 而那 `diag.jsonl` 逐字 `stage="pty"` 逐字「WINSIZE 指向不存在的会话」
+                //          逐字又逐字出现了一条：逐字 `1793594620810`）
+                //    => 而那**处置**：=> 而而那那**产品侧**自己退这一路逐字**也**发那 `F_CLOSE`
+                //      => 而而那那槽逐字**就**被还回去了、=> 而而那那**下一趟**逐字分号逐字**不撞**
+                //      => 而而那那 `close()` 那一格逐字那 `compareAndSet` 逐字**护着**、=> 而而那它逐字**只**发一次
+                //        （=> 而而那那**产品侧**自己退那一路逐字要逐字也受那一个护着、
+                //          => 而而那它逐字**不能**逐字发两次）
+                //    => 而那**判据**逐字是「那一件逐字退了之后、=> 而而那那 native 那一族逐字那槽逐字
+                //      有没有逐字被还回去」那一个事实上
+                //      （=> 而而那它逐字**不**由「那一格逐字报没报错」顶掉）
+                s?.releaseNativeSlot()
+                //  => 而而那那 markClosed 逐字**在**那 F_CLOSE **之后**、=> 而而那那次序**不能**反
+                //    （=> 而而那那 `markClosed` 逐字把那一格 `closed` 逐字**置真**、
+                //      => 而而那那 `releaseNativeSlot` 逐字那 `compareAndSet(false, true)`
+                //        逐字**就**会**不成**、=> 而而那那 F_CLOSE 逐字**就**发**不**出去）
                 s?.markClosed()
             }
             try { s?.onExit?.invoke(status, signal) }
