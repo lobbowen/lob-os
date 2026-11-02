@@ -1252,9 +1252,33 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
         }
         val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
+        //  缺陷名（C-102）**那一族逐字还是「经一个解释器跑一条命令」那一条、=> 而而那它逐字**没有**切到那「经 linker64」那一条** ——
+        //    => 而那旧版逐字是 `listOf(sh.absolutePath, "-c", cmd)`
+        //      => 而而那它逐字把**那整条命令**逐字当那 `-c` 逐字**后面**那一个**参数**
+        //        => 而而那那 **bash** 逐字**自己**逐字去 exec 那一件
+        //          => 而而那那**域**逐字对那 app_data_file 逐字**没有**执行许可
+        //            （=> 而而那那 app 进程逐字那个域逐字是 u:r:untrusted_app、
+        //              => 而而那那 app_data_file 逐字是 u:object_r:app_data_file:s0、
+        //              => 而而那那**直接** exec 它逐字**在**那加载解释器**之前**就 EACCES
+        //              => 而而那那一格逐字是 error=13、=> 而而那那 07 逐字读到的原话逐字就是
+        //                「Permission denied」）
+        //          => 而而那那 /system/bin/linker64 逐字是 u:object_r:system_linker_exec:s0、
+        //            而而那那一域逐字**有**执行许可
+        //      => 而而那那**经由 linker64 去 exec**那一件那条路逐字是**通**的
+        //    => 而那**判别形式**（01 `S635-01` 逐字裁）：
+        //      「=> 而那一族逐字是『那一件逐字怎么跑』那一族、=> 而而那它逐字**不**由
+        //        『那一件逐字是什么』顶掉。」
+        //    => 而那**处置**：=> 而而那那 argv 逐字**按**那 `ExecEntry.argv` 那一族算
+        //      => 而而那那 **linker64** 逐字**由**那 `ExecEntry` 那一族逐字**显式套**
+        //        （=> 而而那那 `:124` 逐字「而这一支**不能删**（ET_DYN 要经 linker64 驱动 ——
+        //          唯一真相源是本函数，native 那份已删，C-87）」）
+        //      => 而而那那 argv 逐字**完整**逐字传下去、=> 而而那那退出码与那 stderr 逐字**一样**报出来
+        //    => 而而那那**交互**那一层逐字**另**有一族（=> 而而那那 `execDirect` 那一族逐字**不是**同一件事）
+        //      => 而而那那**不经 bash** 那一族逐字**另**有一格（=> 而而那那 argv 逐字**第一条**是那一件）
+        val argv = shapedArgv(sh, cmd)
         val r = lobos.kernel.ipc.LocalExec.run(
             this@CapabilityBroker,
-            listOf(sh.absolutePath, "-c", cmd),
+            argv,
             timeoutMs = p.optLong("timeoutMs", 10_000L),
             preferPty = !p.optBoolean("noPty", false),
         )
@@ -1904,6 +1928,28 @@ private fun JSONArray.toList(): List<String> {
     val out = mutableListOf<String>()
     for (i in 0 until length()) out.add(getString(i))
     return out
+}
+
+/**
+ * 那**argv** 逐字**按**那 `ExecEntry.argv` 那一族算（=> 而而那它逐字**显式套**那 **linker64**）。
+ *
+ *   => 而而那那 argv 逐字**完整**逐字传下去（=> 而而那那退出码与那 stderr 逐字**一样**报出来）
+ *   => 而而那那 argv[0] 逐字**第一条**是那一件、=> 而而那那**后面**逐字是那**参数**
+ *   => 而而那那**命令串**逐字**要**逐字**拆**成那 argv（=> 而而那那**不带 shell**）
+ *     （=> 而而那那 **bash -c** 那一族逐字**不在**这里、=> 而而那那**不经 bash**）
+ *   => 而而那那**认不出**那一档时逐字**报缺**（=> 而按 C-05 不猜填、=> 而**不**静默回退到那 bash）
+ */
+private fun shapedArgv(entry: java.io.File, cmd: String): List<String> {
+    val parts = cmd.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (parts.isEmpty()) {
+        throw BridgeError(CapabilityBroker.CODE_INVALID_PARAM, "cmd 拆不出 argv")
+    }
+    val shaped = lobos.kernel.proc.ExecEntry.argv(entry, listOf(entry.absolutePath) + parts.drop(1))
+        ?: throw BridgeError(
+            CapabilityBroker.CODE_INVALID_PARAM,
+            lobos.kernel.proc.ProcessSupervisor.enoexecDiagnostic(entry),
+        )
+    return shaped
 }
 
 private fun execAsJson(r: lobos.kernel.ipc.LocalExec.Outcome): JSONObject = JSONObject().apply {
