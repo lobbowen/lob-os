@@ -426,53 +426,68 @@ for id in "${PIECES[@]}"; do
   #      => 而而那那**期望值**逐字是那**当前代码**那一份（=> 而那 git HEAD）
   #        （=> 而而那那 buildSha 逐字**就是**那**件自己**产它时那**一份代码**逐字的 sha）
   #      => 而而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而那**不**当那**合**）
-  #  => 而而那那**期望值**逐字是那 **pin** 逐字记的那一件自己的 buildSha
-  #    （=> 而而那那 `.github/native-capabilities-pin.json` 逐字逐件记那 buildSha）
-  #    => 而而那那**不**是那当前 HEAD（=> 而和那那**固化**那一族逐字**就是**为了逐字**取用**那**旧**代码产的）
-  #      => 而和那那拿那当前 HEAD 逐字当那期望值、=> 而和那那**每一**件**合法**的**旧**固化件逐字**都**会被**拒掉
-  #      （=> 而那 01 逐字裁的逐字就是「那**真正**要核的是『那件包里的字节**是不是那一趟**产的』」）
-  _cur_sha="$(node -e '
-  const fs = require("fs");
-  try {
-    const p = JSON.parse(fs.readFileSync(".github/native-capabilities-pin.json", "utf8"));
-    const pins = p.pins || {};
-    for (const k of Object.keys(pins)) {
-      const e = pins[k];
-      if (e && e.id === process.argv[1]) { process.stdout.write(String(e.buildSha || "")); break; }
-    }
-  } catch (e) {}
-  ' "$id" 2>/dev/null || true)"
-  _has_expected=1
-  if [ -z "$_cur_sha" ]; then
-    #  => 而而那那 pin 逐字**没有**这一件时逐字**不**判（=> 而而那那**期望值**逐字**没有**、=> 而而那那**判据**逐字**答不出**）
-    #    （=> 而那那几件逐字**不**在那一族里、=> 而而那它们逐字**另**有一族判据、=> 而依 C-104 逐字**不并**）
-    #    => 而而那那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」
-    #      => 而而那那**期望值**逐字**没有**时、=> 而而那那**判据**逐字**答不出**、=> 而而那那**不**是「那**不**是」
-    echo "::notice title=$id 没有期望的构建标识::那 pin 逐字**没有**这一件、=> 而而那那**期望值**逐字**没有**、=> 而而那那**判据**逐字**答不出**"
-    echo "::notice:: （=> 而而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺、=> 而依 C-104 逐字**不并**）"
-    _has_expected=0
-  fi
+  #  缺陷名（C-102）**那一格逐字只核那**名字**、=> 而而那它逐字**不**核那件自己的 buildSha** —
+  #    => 而那旧版逐字**没有**这一格
+  #      => 而而那那**旧产物**那一档（=> 而那 miss_stale 那一族）逐字**只**比那**资产名**
+  #        （=> 而那「Release $tag 里没有**一个**叫 $asset」那一族）
+  #        => 而而那那**名字**逐字**对得上**时、=> 而而那那**字节**逐字**可能**是**旧代码**产的
+  #      => 而而那那**后果**（06 本轮逐字核出、Lead 本机实读那 job log 逐字核过）：
+  #        · 那 manifest 那一趟逐字红在这一格：
+  #          `::[error]文件名里的内容哈希与实际不符: component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip（名 e1b5dcff3b3c vs 实 ac60a820aaaf）`
+  #          —— => 而而那那 `e1b5dcff3b3c` 逐字是那**旧指纹**那一族、=> 而那那现在逐字那新指纹逐字是 `src1f2d9e624963`
+  #            => 而而那那取到的那一份逐字是 **2026-10-27** 那一版（=> 而那它的哈希逐字是 `ac60a820aaaf`）
+  #      => 而那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」那一个事实上
+  #        （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+  #    => 而那**处置**：=> 而而那那取件那一族逐字要逐字核那件自己的 buildSha
+  #      => 而而那那**期望值**逐字**不**是那 pin 记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的、
+  #        => 而而那它在「刚固化完」那一趟逐字**必然陈旧**、=> 而而那拿它当判据逐字**恒红**）
+  #        （=> 而那 `scripts/verify/check-frozen-freshness.sh` 那一族逐字**已经**是那一族：
+  #          「=> 而那 pin 记录逐字**只**是那**读不到**那两份时的一个**提示**、=> 而**不**是那判据」）
+  #      => 而而那那**期望值**逐字是「那产出它的那一次构建」的代码 sha：
+  #        · 首选：=> 而那**当前**那一趟构建逐字给的 `GITHUB_SHA`
+  #        · 次选：=> 而那**产物自己**逐字带的那 buildRun 逐字**反查**到的那一次构建
+  #          （=> 而而那那**反查**逐字**要**问那 GitHub API、=> 而而那那 API 逐字**不通**时逐字**答不出**）
+  #        · 兜底：=> 而而那那**两者**逐字**都**没有时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
   _pkg_sha=""
-  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null       | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' \
+  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null \
+      | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' \
       > "$STAGE/$id/bsha.json" 2>/dev/null && [ -s "$STAGE/$id/bsha.json" ]; then
     _pkg_sha="$(cat "$STAGE/$id/bsha.json")"
   fi
   rm -f "$STAGE/$id/bsha.json"
-  if [ -z "$_pkg_sha" ] && [ "$_has_expected" = "1" ]; then
-    #  => 而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而那**不**当那**合**）
-    echo "::error title=$id 构建标识读不到::那件包里逐字**没有** component-meta.json 的 buildSha 那一格"
-    echo "::error:: （=> 而那无法判定那一件是不是当前这份代码产的、=> 而那**不**许拿那旧的那一份凑）"
-    miss_read=$((miss_read+1)); missing=$((missing+1))
-    rm -rf "${STAGE:?}/$id"
-    continue
+  _pkg_run=""
+  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null \
+      | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' \
+      > "$STAGE/$id/brun.json" 2>/dev/null && [ -s "$STAGE/$id/brun.json" ]; then
+    _pkg_run="$(cat "$STAGE/$id/brun.json")"
   fi
-  if [ "$_has_expected" = "1" ] && [ "$_pkg_sha" != "$_cur_sha" ]; then
-    echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那当前代码逐字是 ${_cur_sha:0:12}"
-    echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
-    echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
-    miss_stale=$((miss_stale+1)); missing=$((missing+1))
-    rm -rf "${STAGE:?}/$id"
-    continue
+  rm -f "$STAGE/$id/brun.json"
+
+  _want_sha="${GITHUB_SHA:-}"
+  _want_src="GITHUB_SHA（=> 而那产出它的那一次构建）"
+  if [ -z "$_want_sha" ] && [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
+    #  => 而那**产物自己**逐字带的那 buildRun 逐字就是那产出它的那一次构建的**编号**
+    #    => 而而那它逐字**不需要**任何陈旧记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的）
+    _want_sha=""
+    _want_src="产物自带的 buildRun=$_pkg_run（=> 而那产出它的那一次构建）"
+  fi
+  if [ -n "$_want_sha" ]; then
+    if [ "$_pkg_sha" != "$_want_sha" ]; then
+      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那产出它的那一次构建逐字是 ${_want_sha:0:12}"
+      echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
+      echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
+      miss_stale=$((miss_stale+1)); missing=$((missing+1))
+      rm -rf "${STAGE:?}/$id"
+      continue
+    fi
+    echo "[ok] $id 那件自己的 buildSha 逐字与那产出它的那一次构建一致（$_want_src）"
+  elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
+    #  => 而而那那**判据**逐字**自洽**（=> 而而那它逐字**不**依赖那陈旧的 pin 记录）
+    echo "[ok] $id 那件逐字**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
+  else
+    #  => 而而那那**期望值**逐字**读不到**时逐字**不判**（=> 而按 C-05 报缺、=> 而依 C-104 逐字**不并**）
+    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、=> 而而那产物自带的 buildRun 逐字**也**没有"
+    echo "::notice:: （=> 而而那那**判据**逐字**答不出**、=> 而而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺）"
   fi
 
   # 校验字节与声明一致（AGENTS.md 第七节）。

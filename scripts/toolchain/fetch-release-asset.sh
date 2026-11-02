@@ -14,6 +14,31 @@ TAG="${1:?需要 tag}"
 ASSET="${2:?需要资产名}"
 DEST="${3:?需要目标目录}"
 REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
+
+#  缺陷名（C-102）**那脚本逐字引用逐字一个它自己没定义的变量** ——
+#    => 而那旧版逐字**没有**这一行
+#      => 而而那那 `HERE` 逐字在 `:70` 逐字**被**逐字用了
+#        （=> 而那那 `if bash "$HERE/fetch-concurrent.sh" "$URL" "$DEST/$ASSET" "$EXPECT_BYTES"; then`）
+#        => 而而那那 `HERE` 逐字**从来没**被定义过
+#          （=> 而那 `:11` 逐字 `set -uo pipefail`、=> 而那 `:13` 到 `:18` 逐字定义的是
+#            `TAG`/`ASSET`/`DEST`/`REPO`/`HDR`、=> 而而那逐字**没有** `HERE`）
+#        => 而而那那 `set -u` 逐字把那一处逐字变成致命错
+#      => 而那**成因**：=> 而那 `git log -S 'fetch-concurrent.sh' -- scripts/toolchain/fetch-release-asset.sh`
+#        逐字 `ca93579`（=> 而那一笔逐字就是那「小片并发」那一族）
+#      => 而而那那**后果**（06 本机实读逐字核出、Lead 本机实读逐字复核成立）：
+#        · 而那那 openssl + crypto 那一趟逐字红了（=> 而那 run `41488877591`）：
+#          `:287  [crypto] 本轮没编 openssl（复用固化产物）=> 从 Release 取 openssl-zlib+…+src6e665478cbed.zip`
+#          `:288  scripts/toolchain/fetch-release-asset.sh: line 70: HERE: unbound variable`
+#          `:289  ##[error]Process completed with exit code 1.`
+#      => 而而那那**影响面**：=> 而而那凡是逐字要「从那 Release 逐字取一件来复用」的路径逐字都会踩到那 `HERE`
+#    => 而那**判据**逐字是「那脚本逐字引用逐字一个它自己没定义的变量」那一个事实上
+#      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+#    => 而那**处置**：=> 而而那那 `HERE` 逐字要逐字是那脚本自己逐字所在那目录、
+#      => 而而那它逐字用那脚本自己的路径算、=> 而而那它逐字**不**依赖调用方逐字传
+#      （=> 而那那 `piece-key.sh:23` 与那 `cache-key.sh:5` 逐字**已经**是那一族：
+#        `HERE="$(dirname "$0")"`）
+HERE="$(dirname "$0")"
+
 HDR=()
 [ -n "${GITHUB_TOKEN:-}" ] && HDR=(-H "Authorization: Bearer $GITHUB_TOKEN")
 
