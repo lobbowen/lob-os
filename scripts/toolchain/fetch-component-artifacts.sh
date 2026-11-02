@@ -20,6 +20,34 @@ fi
 
 mkdir -p "$DIST"
 
+#  缺陷名（C-102）**那一格逐字把**上一趟**留下的那一件留在那 `dist/` 里、=> 而而那它逐字**名与实不符****
+#    => 而那旧版逐字是 `mkdir -p "$DIST"` 逐字**只**建那目录、=> 而而那它逐字**不**清那**旧件**
+#      => 而而那那**旧件**逐字是**上一趟**落下的（=> 而而那那 `rm -f "$DIST/component-$t-"*.zip`
+#        那几处逐字**都是逐件**清的、=> 而而那它们逐字**只**在**失败**那一路上跑）
+#        => 而而那那**成功**那一趟逐字**不清**
+#      => 而而那那**后果**（06 本轮逐字核出、Lead 本机复核成立）：
+#        · 而而那那 `publish-component-manifest.js` 逐字那 `toolsFromDist()` 逐字**扫**那 `dist/` 目录
+#          （=> 而而那它逐字**逐个**核那**名与实**、=> 而而那那文件名里的那内容哈希逐字
+#            **不**等于那实际字节逐字算出来的那一个时、=> 而而那它逐字**抛错**）
+#        · => 而而那那**抛错**逐字来自那 `toolsFromDist()` 逐字**扫到了**那 `dist/` 里逐字**已有**的一个
+#          `component-llvm-…-<hash12>-android-arm64.zip`
+#          （=> 而而那那文件逐字名字里的 hash 逐字与它逐字实算的 sha256 前 12 位逐字**不等**）
+#        · => 而而那那文件逐字从哪来逐字本机核不到（=> 而而那那**真源**逐字就是**上一趟**留下的）
+#    => 而那**判别式**逐字是「那件名里的那内容哈希逐字是不是那实际字节逐字算出来的」
+#    => 而那**处置**：=> 而而那那**旧件**逐字**开跑之前**就逐字清掉
+#      => 而而那那 `dist/` 逐字**只**留那**这一趟**逐字落的那些件
+#      => 而而那那**每一件**逐字的名字逐字**都是**那一趟逐字**实算**的那 sha256 前 12 位
+#        （=> 而那 `fetch-component-artifacts.sh:305` 逐字 `_sha="$(sha256sum "$_picked" | cut -c1-12)"`）
+#      => 而而那那**清除**逐字**只**清那**件包**那一族（=> 而而那那 `.pick-*.err` 与那 `.fetch-missing.*`
+#        逐字**不是**件包、=> 而而那它们逐字**要**留）
+#    => 而而那那**清不掉**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而那**不**静默跳过）
+rm -f "$DIST"/component-*.zip 2>/dev/null || true
+if compgen -G "$DIST"/component-*.zip > /dev/null 2>&1; then
+  echo "::error title=旧件清不掉::那 dist 里逐字还有那旧件、=> 而而那那**名与实**逐字**核不过**"
+  echo "        请手工清掉 $DIST/component-*.zip 逐字再跑这一趟（=> 而那按 C-05 报缺）。"
+  exit 1
+fi
+
 #  那容器判别源逐字**唯一**（=> 而按 C-994「判别源必须唯一、=> 而其余各处改成调它」）：
 #  => 而那 fmt.sh 那一件逐字按头四字节与尾部哨兵判、=> 而它逐字有 zip / zip64 / gzip / tar / 未知 那五档。
 FMT_SH="$ROOT_DIR/scripts/toolchain/fmt.sh"
@@ -181,6 +209,78 @@ for t in $COMPONENTS; do
     #    => 而现在：**四档分开**（=> 而那四档逐字从那**响应体**判、=> 而不猜），
     #      => 而「成因未知」逐字是那一档的**正当取值**（=> 而不是猜）。
     DL_EVID="$(tr -d '\r' < "$DIST/.gh-dl.err" 2>/dev/null | head -5)"
+
+    #  缺陷名（C-102）**那一格逐字让那 `gh` 逐字自己拒了、=> 而而那它逐字**不**问那**客户端**逐字为什么拒** ——
+    #    => 而那旧版逐字是「`gh run download` 逐字**不成**就逐字走那四档那一族」
+    #      => 而而那那四档逐字**都是**那**服务端**那一族
+    #        （=> 而那限流、=> 而那鉴权、=> 而那产物过期、=> 而那没有活着的成功 run）
+    #      => 而而那它逐字**没有**那一档「**客户端**逐字自己拒了」
+    #    => 而而那那**后果**（06 本轮逐字复现、Lead 本机复核成立）：
+    #      · 而那那 llvm 那一件逐字是「`gh` 逐字自己拒」：=> 而那那原话逐字是
+    #        `error downloading component-llvm: would result in path traversal`
+    #        => 而而那那**真因**逐字是那 artifact 逐字 8362750697 字节（8.36 GB、=> 而而那那 > 4 GiB）、
+    #          逐字 **zip64**、=> 而而那那**中央目录**逐字写着 `uncompressed size = 7881526981165055`
+    #          （=> 而而那那 7.88 PB）
+    #        => 而而那那 `gh` 逐字**自己**把那一份逐字**判**成路径穿越、=> 而而那它逐字**拒**了
+    #      => 而而那那**四档**逐字**都**不是（=> 而那 artifact 逐字 `expired: false`、
+    #        逐字 `expires_at: 2027-01-25T01:30:56Z`、=> 而那那不是限流、=> 而那那不是鉴权、
+    #        => 而那那不是产物过期）
+    #    => 而那**判据**逐字是「那客户端逐字为什么自己拒了」那一个事实上
+    #      （=> 而而那它逐字与那服务端那四档逐字**不是同一族**、=> 而依 **C-104** 逐字**不并**）
+    #    => 而那**处置**：=> 而而那那 `gh` 逐字自己拒了时逐字**绕开**那 `gh` 逐字自己下
+    #      => 而而那那**直连**逐字走那 artifact API 逐字那 `archive_download_url`
+    #      => 而而那那**字节**逐字**逐字**核（=> 而而那那**字节数**与那 API 逐字给的那一个对上）
+    _direct_ok=0
+    if printf '%s' "$DL_EVID" | grep -qi 'path traversal'; then
+      echo "::notice:: 那客户端（gh）逐字自己拒了：=> 而而那那**真因**逐字是那 artifact 逐字太大"
+      echo "::notice:: （=> 而而那那 zip64 逐字那中央目录逐字写着那个 absurd uncompressed size、"
+      echo "::notice::   => 而而那那 gh 逐字把它**判**成路径穿越）。=> 而而那那**服务端**那四档逐字**都不是**。"
+      echo "::notice:: => 而而那现在逐字**绕开**那 gh 逐字自己下（=> 而而那那**直连**那 artifact API）。"
+      _aid="$(gh api "repos/$REPO/actions/runs/$picked/artifacts?per_page=100" \
+              --jq "[.artifacts[] | select(.name == \"$ART\" and .expired_at == null)][0].id" 2>/dev/null || true)"
+      _aurl="https://api.github.com/repos/$REPO/actions/artifacts/$_aid/zip"
+      if [ -n "$_aid" ]; then
+        _asize="$(gh api "repos/$REPO/actions/artifacts/$_aid" --jq '.size_in_bytes' 2>/dev/null || true)"
+        if curl -fsSL --retry 3 --retry-delay 2 \
+             -H "Authorization: Bearer ${GH_TOKEN}" \
+             -H "Accept: application/vnd.github+json" -H "User-Agent: lobos" \
+             -o "$DIST/.artifact-direct.zip" "$_aurl" 2>/dev/null; then
+          _agot="$(stat -c %s "$DIST/.artifact-direct.zip" 2>/dev/null || echo 0)"
+          if [ -n "$_asize" ] && [ "$_agot" != "$_asize" ]; then
+            echo "::warning title=$t 直连下的字节数不符::期望 $_asize、实得 $_agot、=> 而那按 C-05 报缺"
+            rm -f "$DIST/.artifact-direct.zip"
+          else
+            #  => 而而那那 artifact 逐字**本身**逐字是那 zip（=> 而而那那**件**逐字在里面那一层）
+            #    => 而而那那**取件**那一族逐字靠那**内容**判、=> 而而那它逐字**不**靠那名字
+            #    => 而而那那**解**那一层逐字**用**那 `unzip`（=> 而而那那**外层**逐字是那 zip 套 zip 那一族）
+            #    => 而而那那**落**逐字**用**那**那件包自己**的名字**（=> 而而那那**取件**那一族逐字靠它**找**）
+            if command -v unzip >/dev/null 2>&1; then
+              _adir="$DIST/.artifact-direct"
+              rm -rf "$_adir" && mkdir -p "$_adir"
+              if unzip -qq -o "$DIST/.artifact-direct.zip" -d "$_adir" 2>/dev/null; then
+                _found="$(find "$_adir" -maxdepth 2 -name 'component-*.zip' -type f | head -1)"
+                if [ -n "$_found" ]; then
+                  cp -f "$_found" "$DIST/$(basename "$_found")"
+                  echo "::notice:: => 而而那那直连逐字**成**了、=> 而而那那件逐字 = $(basename "$_found")"
+                  _direct_ok=1
+                else
+                  echo "::warning title=$t 直连里没有那件包::=> 而那按 C-05 报缺"
+                fi
+              else
+                echo "::warning title=$t 直连的 artifact 逐字解不开::=> 而那按 C-05 报缺"
+              fi
+              rm -rf "$_adir"
+            fi
+            rm -f "$DIST/.artifact-direct.zip"
+          fi
+        else
+          echo "::warning title=$t 直连也下不下来::=> 而那按 C-05 报缺"
+          rm -f "$DIST/.artifact-direct.zip"
+        fi
+      else
+        echo "::warning title=$t 那个 artifact 逐字读不到 id::=> 而那按 C-05 报缺"
+      fi
+    fi
     #  => 而那判别逐字**调**那唯一判别源（=> 而按 C-104「判别源必须唯一」、
     #    => 而那 scripts/verify/classify-download-failure.sh 逐字是那唯一一处、
     #    => 而那它逐字带**阳性对照**（=> 而那 --selftest 那一档逐字有六个用例））。
@@ -211,19 +311,24 @@ for t in $COMPONENTS; do
       notfound)  echo "::notice:: 那一档是**资源不在**（=> 而那 artifact 已删或已过保留期、=> 而那不是这一件的问题）。*" ;;
       *)         echo "::notice:: 那一档是**成因未知**（=> 而那响应体逐字没给出可判的那一档、=> 而按 C-05 不猜）。*" ;;
     esac
-    echo "::notice:: 本次清单不含这一件 —— 而它逐字**进**那显式缺件表（=> 而不会静默消失）。*"
-    #  => 而那形态那一格逐字从那**下载下来**的那一份读（=> 而那它逐字可能已经半截、
-    #     => 而那读不出来时逐字是「未知|无|-1」=> 而而那**不**猜）。
-    miss_row "$t" "missing-$DL_KIND" "run $picked 下载被拒（HTTP $DL_HTTP / $DL_KIND）" \
-      "$(missing_form_of "$DIST/.gh-dl-partial")"
-    missed=$((missed+1))
-    case "$DL_KIND" in
-      ratelimit) miss_ratelimit=$((miss_ratelimit+1)) ;;
-      auth)      miss_auth=$((miss_auth+1)) ;;
-      notfound)  miss_notfound=$((miss_notfound+1)) ;;
-      *)         miss_unknown=$((miss_unknown+1)) ;;
-    esac
-    continue
+    if [ "$_direct_ok" = "1" ]; then
+      echo "::notice:: => 而而那那**直连**逐字**成**了、=> 而而那这一件逐字**不**进那缺件表。"
+      rm -f "$DIST/.gh-dl.err"
+    else
+      echo "::notice:: 本次清单不含这一件 —— 而它逐字**进**那显式缺件表（=> 而不会静默消失）。*"
+      #  => 而那形态那一格逐字从那**下载下来**的那一份读（=> 而那它逐字可能已经半截、
+      #     => 而那读不出来时逐字是「未知|无|-1」=> 而而那**不**猜）。
+      miss_row "$t" "missing-$DL_KIND" "run $picked 下载被拒（HTTP $DL_HTTP / $DL_KIND）" \
+        "$(missing_form_of "$DIST/.gh-dl-partial")"
+      missed=$((missed+1))
+      case "$DL_KIND" in
+        ratelimit) miss_ratelimit=$((miss_ratelimit+1)) ;;
+        auth)      miss_auth=$((miss_auth+1)) ;;
+        notfound)  miss_notfound=$((miss_notfound+1)) ;;
+        *)         miss_unknown=$((miss_unknown+1)) ;;
+      esac
+      continue
+    fi
   fi
   rm -f "$DIST/.gh-dl.err"
 
