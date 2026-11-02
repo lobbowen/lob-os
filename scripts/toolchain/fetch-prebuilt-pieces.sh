@@ -409,6 +409,53 @@ for id in "${PIECES[@]}"; do
     continue
   fi
 
+  #  缺陷名（C-102）**那一格逐字只核那**名字**、=> 而而那它逐字**不**核那件自己的 buildSha** —
+  #    => 而那旧版逐字**没有**这一格
+  #      => 而而那那**旧产物**那一档（=> 而那 miss_stale 那一族）逐字**只**比那**资产名**
+  #        （=> 而那「Release $tag 里没有**一个**叫 $asset」那一族）
+  #        => 而而那那**名字**逐字**对得上**时、=> 而而那那**字节**逐字**可能**是**旧代码**产的
+  #      => 而而那那**后果**（06 本轮逐字核出、Lead 本机实读那 job log 逐字核过）：
+  #        · 那 manifest 那一趟逐字红在这一格：
+  #          `::[error]文件名里的内容哈希与实际不符: component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip（名 e1b5dcff3b3c vs 实 ac60a820aaaf）`
+  #          —— => 而而那那 `e1b5dcff3b3c` 逐字是那**旧指纹**那一族、=> 而那那现在逐字那新指纹逐字是 `src1f2d9e624963`
+  #            => 而而那那取到的那一份逐字是 **2026-10-27** 那一版（=> 而那它的哈希逐字是 `ac60a820aaaf`）
+  #      => 而那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」那一个事实上
+  #        （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+  #    => 而那**处置**：=> 而而那那取件那一族逐字要逐字核那件自己的 buildSha
+  #      => 而而那那**不匹配**时逐字**拒**、=> 而而那它逐字**不许**拿那旧的那一份逐字**凑**
+  #      => 而而那那**期望值**逐字是那**当前代码**那一份（=> 而那 git HEAD）
+  #        （=> 而而那那 buildSha 逐字**就是**那**件自己**产它时那**一份代码**逐字的 sha）
+  #      => 而而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而那**不**当那**合**）
+  _cur_sha="$(git rev-parse HEAD 2>/dev/null || true)"
+  if [ -z "$_cur_sha" ]; then
+    echo "::error title=$id 当前代码读不到::本机读不到 git HEAD（=> 而那无法判定那一件是不是当前这份代码产的）"
+    miss_read=$((miss_read+1)); missing=$((missing+1))
+    rm -rf "${STAGE:?}/$id"
+    continue
+  fi
+  _pkg_sha=""
+  if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null       | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' \
+      > "$STAGE/$id/bsha.json" 2>/dev/null && [ -s "$STAGE/$id/bsha.json" ]; then
+    _pkg_sha="$(cat "$STAGE/$id/bsha.json")"
+  fi
+  rm -f "$STAGE/$id/bsha.json"
+  if [ -z "$_pkg_sha" ]; then
+    #  => 而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而那**不**当那**合**）
+    echo "::error title=$id 构建标识读不到::那件包里逐字**没有** component-meta.json 的 buildSha 那一格"
+    echo "::error:: （=> 而那无法判定那一件是不是当前这份代码产的、=> 而那**不**许拿那旧的那一份凑）"
+    miss_read=$((miss_read+1)); missing=$((missing+1))
+    rm -rf "${STAGE:?}/$id"
+    continue
+  fi
+  if [ "$_pkg_sha" != "$_cur_sha" ]; then
+    echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那当前代码逐字是 ${_cur_sha:0:12}"
+    echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
+    echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
+    miss_stale=$((miss_stale+1)); missing=$((missing+1))
+    rm -rf "${STAGE:?}/$id"
+    continue
+  fi
+
   # 校验字节与声明一致（AGENTS.md 第七节）。
   #    而那份 .sha256 的内容是**裸摘要 + 换行**（ 07 今天在 Release 上逐个核过， 65 字节），
   #    而 sha256sum -c 要的是「摘要␣␣文件名」那种格式   直接喂给它会失败 

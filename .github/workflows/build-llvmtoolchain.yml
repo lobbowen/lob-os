@@ -628,10 +628,46 @@ jobs:
             echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
             exit 1
           fi
-          for f in dist/component-llvm-*.zip; do
-            [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
-            QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
-              node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+          #  缺陷名（C-102）**那一格逐字只发那**完整**那一份、=> 而而那它逐字**发不出去**、=> 而而那那**分片**逐字**也**没发**
+          #    => 而那旧版逐字是 `for f in dist/component-llvm-*.zip; do … upload-qiniu.js "$f" …`
+          #      => 而而那那**超了**上限的那一件逐字**已经拆**成那几块了、=> 而那那**完整**那一份逐字**不存在**
+          #        （=> 而那那 `rm -f "$PW/$ASSET"` 逐字**已经**把它**拿掉**了、=> 而而那那几块逐字**在**那 `$PW` 里）
+          #      => 而而那那 `dist/component-llvm-*.zip` 逐字**匹配不到**那**完整**那一份
+          #      => 而而那那**分片**逐字**不**在那 `dist/` 里、=> 而而那它们逐字**从来没**上那 CDN
+          #      => 而而那那**下游**逐字那 manifest 逐字给的那 URL 逐字**是**那**完整**那一份
+          #        （=> 而那 `publish-component-manifest.js:353` 逐字 `url: BASE + '/component/' + f`）
+          #        => 而而那那**三份**逐字全 **404**（=> 而那 06 本轮逐字核出、Lead 本机实读成立）
+          #      => 而而那那**分片**逐字逐字**也没上**那 CDN
+          #    => 而那**判据**逐字是「那发布轮逐字发出去的那些逐字，下游逐字拿不拿得到」那一个事实上
+          #    => 而那**处置**：=> 而而那那**分片**与那**清单**逐字**也**上那 CDN
+          #      => 而而那那**完整**那一份逐字**先**逐字**拼**回来再发（=> 而而那那下游逐字**按**那 URL 逐字**直接**取）
+          #      => 而而那那**分片**逐字**也**发上去、=> 而而那那下游逐字**也能**逐字**自己拼**
+          #      => 而而那那**没拆**的那一件（=> 而那那**小**的）逐字**照旧**逐字**直接**发
+          _pub_base="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")"
+          # => 而而那那**完整**那一份：=> 而而那那**拆过**的先**拼**回来、=> 而而那那**没拆**的直接用
+          _whole=""
+          if ls dist/component-llvm-*.zip >/dev/null 2>&1; then
+            _whole="$(ls dist/component-llvm-*.zip | head -1)"
+          elif ls "$PW"/"$ASSET".part-* >/dev/null 2>&1; then
+            echo "[notice] 那 $ASSET 逐字**拆**成了 $(ls "$PW"/"$ASSET".part-* | wc -l) 块、=> 而而那那**完整**那一份逐字**先拼**回来"
+            _whole="dist/$ASSET"
+            : > "$_whole"
+            for _part in "$PW"/"$ASSET".part-*; do
+              cat "$_part" >> "$_whole"
+            done
+            echo "[notice] => 而而那那**拼**回来逐字 = $(stat -c %s "$_whole") 字节"
+          fi
+          if [ -z "$_whole" ] || [ ! -f "$_whole" ]; then
+            echo "::error title=没有件可发::那 dist 里逐字**没有**那完整件、=> 而而那那 $PW 里逐字**也没有**那分片"
+            exit 1
+          fi
+          QINIU_PUBLIC_BASE="$_pub_base" \
+            node scripts/publish/upload-qiniu.js "$_whole" "component/$(basename "$_whole")" --cache-control=31536000
+          # => 而而那那**分片**与那**清单**逐字**也**上那 CDN（=> 而而那那下游逐字**也能**逐字**自己拼**回来）
+          for _part in "$PW"/"$ASSET".part-* "$PW"/"$ASSET".parts.txt; do
+            [ -f "$_part" ] || continue
+            QINIU_PUBLIC_BASE="$_pub_base" \
+              node scripts/publish/upload-qiniu.js "$_part" "component/$(basename "$_part")" --cache-control=31536000
           done
 
       - uses: actions/upload-artifact@v4
