@@ -438,6 +438,32 @@ int main(void) {
         break;
       }
       if (h.length > FRAME_MAX) {
+        //  缺陷名（C-102）**那一格逐字把那一帧逐字**丢掉**、=> 而而那它逐字**没**把那体逐字**吃掉****
+        //    => 而那旧版逐字是
+        //      `if (h.length > FRAME_MAX) { send_error(out_fd, "frame payload 超上限"); continue; }`
+        //      => 而而那那**体**逐字**还**在那**管道**里、=> 而而那那 `continue` 逐字**直接**逐字去读**下一**帧
+        //        => 而而那那**下一**帧逐字逐字**读**到的是那**上一**帧逐字**剩**的**体**
+        //      => 而而那那**流**逐字**就**逐字**错位**了、=> 而而那那**下一**帧逐字那 sid 逐字**是**那**体**里的某个字节
+        //        => 而而那那 sid 逐字**可能**逐字**大于**那 `MAX_SESSIONS`
+        //          => 而而那那 `FRAME_WINSIZE` 那一格逐字就逐字判「WINSIZE 指向不存在的会话」
+        //          => 而而那那**时刻**逐字**对不上**、=> 而而那那**症状**逐字**偶发**
+        //      => 而而那那**判据**逐字是「那帧通道逐字**是不是**还逐字**同步**着」那一个事实上
+        //    => 而那**处置**：=> 而而那那**体**逐字**吃掉**、=> 而而那那**流**逐字**不**错位
+        //      => 而而那那**体**逐字**吃**不掉时逐字**断掉**（=> 而而那那**流**逐字**已经**没救了）
+        //      => 而而那那**上限**逐字**还**是那 64 KiB、=> 而而那那宿主侧逐字**要**守那**同一个**上限
+        uint64_t left = (uint64_t)h.length;
+        unsigned char sink[4096];
+        while (left > 0) {
+          size_t want = left < sizeof(sink) ? (size_t)left : sizeof(sink);
+          ssize_t got = read(in_fd, sink, want);
+          if (got < 0) { if (errno == EINTR) continue; break; }
+          if (got == 0) break;
+          left -= (uint64_t)got;
+        }
+        if (left > 0) {
+          diag_raw("读帧体中断（payload 超上限）");
+          break;
+        }
         send_error(out_fd, "frame payload 超上限");
         continue;
       }

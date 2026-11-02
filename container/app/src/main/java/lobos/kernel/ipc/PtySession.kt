@@ -52,6 +52,18 @@ object PtySession {
      */
     private const val MAX_FRAME_BYTES = 1024 * 1024
 
+    /**
+     * 那**输入**逐字那一个上限（=> 而而那它逐字与那 native 那一族逐字那 `FRAME_MAX` 逐字**同一个**上限）。
+     *
+     *   => 而而那那 native 那一族逐字那 `FRAME_MAX` 逐字是那 **64 KiB**
+     *   => 而而那那超出那一截逐字**丢**了、=> 而而那那**帧**逐字**不**超、=> 而而那那**流**逐字**不**错位
+     */
+    private const val MAX_INPUT_BYTES = 64 * 1024
+
+    /** 那**输入**逐字**丢了多少**（=> 而那按 C-05 不猜填） */
+    private val inputDroppedLock = Any()
+    @Volatile private var inputDropped = 0L
+
     class Session internal constructor(
         private val host: Host,
         val sid: Int,
@@ -225,9 +237,33 @@ object PtySession {
             exitSignal = signal
         }
 
+        //  缺陷名（C-102）**那一格逐字把那一帧逐字**发得太大**、=> 而而那那 native 那一族逐字逐字**丢**那一帧**
+        //    => 而那旧版逐字是 `host.send(F_INPUT, sid, data)`
+        //      => 而而那那**体**逐字**没有上限**、=> 而而那那 native 那一族逐字那 `FRAME_MAX` 逐字是那 **64 KiB**
+        //        => 而而那那 native 那一族逐字那「frame payload 超上限」那一格逐字**丢**那一帧、=> 而而那它逐字**没**把那体逐字**吃掉**
+        //          => 而而那那**流**逐字就逐字**错位**了
+        //            => 而而那那**下一**帧逐字那 sid 逐字**是**那**体**里的某个字节
+        //              => 而而那那 sid 逐字**可能**逐字**大于**那 `MAX_SESSIONS`
+        //                => 而而那那 `FRAME_WINSIZE` 那一格逐字就逐字判「WINSIZE 指向不存在的会话」
+        //                => 而而那那**时刻**逐字**对不上**、=> 而而那那**症状**逐字**偶发**
+        //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机实读逐字复核成立）：
+        //        · 而那那两条 FAIL 逐字每次逐字都在那「会话 0 就绪」逐字之后 3 到 4 秒
+        //          （逐字 20:41:07 -> 20:41:10、逐字 20:48:51 -> 20:48:55）
+        //    => 而那**判据**逐字是「那一帧逐字发的时候、=> 而而那那 native 那一族逐字那槽逐字逐字开没开」那一个事实上
+        //      （=> 而而那它逐字**不**由「那 stderr 那一行逐字什么时候打出来」顶掉）
+        //    => 而那**处置**：=> 而而那那**输入**逐字**有**一个上限、=> 而那超出那一截逐字**截**、=> 而而那那**帧**逐字**不**超
+        //      => 而而那那**上限**逐字是那 **64 KiB**、=> 而而那它逐字与那 native 那一族逐字**同一个**上限
         fun write(data: ByteArray) {
             if (closed.get()) return
-            host.send(F_INPUT, sid, data)
+            if (data.size <= MAX_INPUT_BYTES) {
+                host.send(F_INPUT, sid, data)
+                return
+            }
+            //  => 而而那那**超出**逐字**截**、=> 而而那那**丢**了**多少**逐字**记**着（=> 而按 C-05 不猜填）
+            val keep = data.copyOf(MAX_INPUT_BYTES)
+            val dropped = (data.size - MAX_INPUT_BYTES).toLong()
+            synchronized(inputDroppedLock) { inputDropped += dropped }
+            host.send(F_INPUT, sid, keep)
         }
 
         fun write(text: String) = write(text.toByteArray(Charsets.UTF_8))

@@ -111,8 +111,34 @@ object PieceUpdater {
             )
         }.getOrNull()
         if (sig == null) { res.put("ok", false); res.put("detail", "签名下载失败：$sigUrl"); return res }
-        if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) {
+        //  缺陷名（C-102）**那一格逐字只答「过没过」、=> 而而那那**为什么**逐字答不出**
+        //    => 而那旧版逐字是 `if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) { … }`
+        //      => 而而那那**异常**逐字**被**那 `catch (_: Throwable) { false }` 逐字**吞了**
+        //        （=> 而那 `Crypto.verifyEd25519` 那一族逐字**不**报那异常是什么）
+        //      => 而而那那**判据**逐字是「那设备端逐字为什么不过」、
+        //        => 而而那那**判据**逐字必须落在「那设备端逐字实际用的是什么锚、
+        //          => 而而那它逐字实际验的是哪一份字节、
+        //          => 而而那那两者逐字与那仓内逐字那一把一致不一致」那一个事实上
+        //        （=> 而而那它逐字**不**由「那宿主机上逐字验过」顶掉
+        //          —— 而而那那两读逐字是不同时点的两读、=> 而而那那宿主机那一读逐字**不**能顶替那设备那一读，依 C-115）
+        //      => 而而那那**四件事实**逐字**报**出来、=> 而而那那**判据**逐字**才**答得出
+        //    => 而那**处置**：=> 而而那那验签逐字**带事实**地走一遍
+        //      => 而而那那**四件事实**逐字是：
+        //        ① 那 App 进程逐字实际读到的那 pem 逐字的 sha256(raw32) 与 sha256(DER)
+        //        ② 那验签那一格逐字实际喂进去的那 body 逐字的字节数与 sha256
+        //        ③ 那 sig 逐字的字节数
+        //        ④ 那 verifyEd25519 那一格逐字**抛了什么异常**
+        //    => 而而那那**判据注释**那一族逐字**不许删**（=> 而而那那是那**定位依据**）
+        //    => 而而那那**规范**那一层归 **04**、=> 而而那那**判据**归 **01**、=> 而而那那**实现**归 **05**
+        val facts = lobos.kernel.crypto.Crypto.verifyEd25519WithFacts(pubPem, body, sig)
+        if (!facts.ok) {
             RuntimeDiagnostics.append(ctx, "piece-ota", false, "系统件清单验签不通过（拒用）", url)
+            //  => 而而那那**事实**逐字**进**那诊断那一族（=> 而而那那 `diag.jsonl` 那一族）
+            RuntimeDiagnostics.append(
+                ctx, "piece-ota-verify", false,
+                "那验签那一格逐字实际用的是什么锚、=> 而而那它逐字实际验的是哪一份字节",
+                facts.oneLine(),
+            )
             res.put("ok", false); res.put("detail", "清单验签不通过（拒用）")
             return res
         }
