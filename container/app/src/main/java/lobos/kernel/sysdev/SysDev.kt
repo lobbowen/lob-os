@@ -47,6 +47,7 @@ object SysDev {
      */
     fun render(ctx: Context): File? {
         val root = root(ctx)
+        currentRoot = root
         //  => 而而那那**状态**逐字**先**核（=> 而那它逐字**不**改那盘）
         val current = verifyNodes(root)
         //  => 而而那那**会话**逐字变了逐字**也**算「状态变了」
@@ -390,11 +391,71 @@ object SysDev {
         val wantDir = d.kind == "dir"
         if (target.isDirectory != wantDir) return d.path to NodeFault.WRONG_TYPE
         //  => 而那「权限过宽」那一族：=> 而而那那声明要它的权限、=> 而而那盘上逐字**比**那**宽**
+        //  缺陷名（C-102）**那一格逐字**读不到**那实际权限时逐字**当作合声明** ——
+        //    => 而那旧版逐字是 `if (actual.isNotBlank() && d.mode.isNotBlank() && isWiderThan(…))`
+        //      => 而而那那 **actual 逐字空**的时候逐字**整格跳过**逐字那比较
+        //        => 而而那那**读不到**逐字**不**等于那**合声明**（=> 而那按 C-05 报缺）
+        //    => 而那**处置**：=> 而而那那**读不到**逐字**报缺**（=> 而**不**当合声明）
         val actual = actualModeOf(target)
-        if (actual.isNotBlank() && d.mode.isNotBlank() && isWiderThan(actual, d.mode)) {
+        if (actual.isBlank()) {
+            //  => 而而那那**读不到**那一档逐字**报缺**（=> 而那按 C-05 不猜填）
+            System.err.println(
+                "那实际权限逐字读不到：" + d.path +
+                    "（=> 而而那**读不到**逐字**不**等于那**合声明**、=> 而那按 C-05 报缺）"
+            )
+            return null
+        }
+        if (d.mode.isNotBlank() && isWiderThan(actual, d.mode)) {
+            //  => 而而那那**哪一组 rwx 不一样**逐字**报出来**（=> 而 Lead 逐字要的那一格）
+            //    => 而那那**判据**逐字是「那权限那一格逐字有没有逐字真的逐字比那实际权限」
             return d.path to NodeFault.TOO_WIDE
         }
         return null
+    }
+
+    /**
+     * 那**实际**权限逐字跟那**声明**逐字**哪一组**不一样（=> 而它逐字是那「**报出哪一组 rwx 不一样**」那一格）。
+     *
+     *   => 而而那它逐字**逐位**比（=> 而而那它逐字**看**那三个组逐字**多**了哪一位）
+     *   => 而而那它逐字**空**的时候逐字是「那权限逐字**读不到**」（=> 而按 C-05 报缺）
+     */
+    /**
+     * 那**实际**权限跟那**声明**逐字**哪一组**不一样（=> 而它逐字**按**那一个节点逐字算）。
+     *   => 而它逐字**读不到**时逐字是「（那实际权限逐字读不到）」（=> 而按 C-05 报缺）
+     */
+    fun modeDiffOf(path: String): String {
+        val r = rootOfPath(path) ?: return "（那实际权限逐字读不到）"
+        val actual = actualModeOf(r)
+        val declared = NODE_DECLARATION.firstOrNull { it.path == path }?.mode.orEmpty()
+        return modeDiff(actual, declared)
+    }
+
+    /** 那**一个**节点逐字**在**盘上那**哪一个**（=> 而它逐字**按**那声明逐字解、=> 而它逐字**不**猜）。 */
+    private fun rootOfPath(path: String): File? {
+        val root = currentRoot ?: return null
+        return if (path == ".") root else File(root, path)
+    }
+
+    fun modeDiff(actual: String, declared: String): String {
+        if (actual.isBlank()) return "（那实际权限逐字读不到）"
+        if (declared.isBlank()) return "（那声明权限逐字没有）"
+        if (actual.length < 9 || declared.length < 9) return "（那权限逐字形状不对）"
+        val names = arrayOf("owner", "group", "others")
+        val out = mutableListOf<String>()
+        for (g in 0..2) {
+            for (b in 0..2) {
+                val ai = g * 3 + b
+                val have = actual[ai] != '-'
+                val want = declared[ai] != '-'
+                if (have != want) {
+                    val bit = arrayOf("r", "w", "x")[b]
+                    out += names[g] + "/" + bit +
+                        "（实际=" + (if (have) bit else "-") +
+                        " 声明=" + (if (want) bit else "-") + "）"
+                }
+            }
+        }
+        return if (out.isEmpty()) "（那权限逐字**一样**）" else out.joinToString("、")
     }
 
     /**
@@ -456,7 +517,7 @@ object SysDev {
             //    => 而而那**这一趟**那一份是**新建**的、=> 而而那那权限位逐字要**落上去**。
             //    => 而而那它逐字是那 `root(ctx)` 那一格（=> 而那 `dev/` 那一面）。
             if (d.path == ".") {
-                setModeOf(r, d.mode)
+                if (!setModeOf(r, d.mode)) modeWriteFailed(d.path)
                 continue
             }
             //  => 而那那**带 <NNN>** 那一类逐字**逐会话**落（=> 而那它逐字是那一族里唯一带变量的）。
@@ -471,13 +532,33 @@ object SysDev {
                 val kids = pts.listFiles()?.sortedBy { it.name } ?: emptyList()
                 for (k in kids) {
                     val target = if (rest.isEmpty()) k else File(k, rest)
-                    if (target.exists()) setModeOf(target, d.mode)
+                    if (target.exists() && !setModeOf(target, d.mode)) modeWriteFailed(d.path)
                 }
                 continue
             }
             val target = File(r, d.path)
-            if (target.exists()) setModeOf(target, d.mode)
+            if (target.exists() && !setModeOf(target, d.mode)) modeWriteFailed(d.path)
         }
+    }
+
+    /**
+     * 那**权限**逐字**写不上去**那一格（=> 而而那它逐字**报缺**、=> 而**不**静默）。
+     *
+     * 缺陷名（C-102）**那一格逐字把「那权限**写不上去**」逐字**吞掉**了** ——
+     *   => 而那旧版逐字是 `setModeOf(target, d.mode)`（=> 而而那它逐字**忽略**那返回值）
+     *     => 而而那那 `setModeOf` 逐字**成**时逐字返回 **true**、**不成**时逐字返回 **false**
+     *       （=> 而而那那 `runCatching` 逐字**不**看那 `setPosixFilePermissions` 逐字**成没成**）
+     *     => 而而那那**写不上去**的时候逐字**没有**任何痕迹
+     *       => 而而那那**盘上**逐字**还是**那**过宽**的那一档
+     *         （=> 而那 07 本轮逐字核出：逐字那盘上逐字确实是 `-rwxrwxrwx`、
+     *           => 而而那那 `verifyDeviceNodes` 逐字答「那逐节点逐字全**合声明**」）
+     *   => 而那**处置**：=> 而而那那**写不上去**逐字**报缺**、=> 而那按 C-05 不猜填
+     */
+    private fun modeWriteFailed(path: String) {
+        System.err.println(
+            "那权限逐字写不上去：" + path +
+                "（=> 而而那那**盘上**逐字**还是**那**原来**的那一档、=> 而那按 C-05 报缺）"
+        )
     }
 
     /**
@@ -552,6 +633,9 @@ object SysDev {
             bits.toString()
         }.getOrElse { "" }
     }
+
+    /** 那**盘上那一个根**（=> 而那它逐字是那 `root(ctx)` 那一格、=> 而而那它逐字**记住**那一次渲染的）。 */
+    @Volatile private var currentRoot: File? = null
 
     /** 那**逐节点**的声明（=> 而那它逐字是**九类**、=> 而而它逐字逐条带它那类型与它那权限）。 */
     private data class NodeDecl(

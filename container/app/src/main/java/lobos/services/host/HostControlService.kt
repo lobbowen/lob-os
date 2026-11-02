@@ -289,7 +289,14 @@ object HostControlService {
             } else {
                 put("faultPath", bad.first)
                 put("faultClass", lobos.kernel.sysdev.SysDev.faultName(bad.second))
-                put("detail", "节点不合声明：" + bad.first + " —— " + lobos.kernel.sysdev.SysDev.faultName(bad.second))
+                //  => 而而那那**哪一组 rwx 不一样**逐字**报出来**（=> 而 Lead 逐字要的那一格）
+                //    => 而而那它逐字**只**在那一档逐字是「权限过宽」时逐字**答**
+                val diff = if (bad.second == lobos.kernel.sysdev.SysDev.NodeFault.TOO_WIDE) {
+                    lobos.kernel.sysdev.SysDev.modeDiffOf(bad.first)
+                } else ""
+                put("modeDiff", diff)
+                put("detail", "节点不合声明：" + bad.first + " —— " + lobos.kernel.sysdev.SysDev.faultName(bad.second) +
+                    (if (diff.isBlank()) "" else "（" + diff + "）"))
             }
         }
     }
@@ -386,6 +393,38 @@ object HostControlService {
                     "（=> 而而那那九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
                     "=> 而而那按 C-05 报缺）",
             )
+        }
+    }
+
+    /**
+     * 那「**看得见装了哪些 app**」那一族逐字一个**产品入口**（=> 而而那它是那 `app.listInstalled` 那一格）。
+     *
+     * 缺陷名（C-102）**那一格逐字没有单独的产品入口** ——
+     *   => 而那旧版逐字**只有**那 `crossApp` 那一格逐字**兼**着
+     *     （=> 而而那那 UI 那一族逐字要**手打**那方法名、=> 而而那那**读数**逐字**难**取）
+     *   => 而而那那 07 逐字核出：=> 而而那那**返回体**逐字**答**了那一格
+     *     （=> 而而那那 `app.launch` 那一格逐字答的那一条逐字里逐字写着
+     *       「那仓内清单声明过的那几件逐字是：」逐字后面逐字是**空**的
+     *       => 而逐字那一档逐字**没有任何一件声明过**
+     *       => 而逐字那 `app.listInstalled` 逐字应当逐字**只列那 0 件**）
+     *   => 而而那那**App 自己退到后台**那一格（=> 而那 07 逐字核出）=> 而而那它是那**产品入口**那一格的问题
+     *   => 而那**处置**：=> 而那那一族逐字**单**一个产品入口、=> 而而那它逐字**走**那 `crossApp` 那一格
+     *     （=> 而而那那**形状**逐字**已经**有了、=> 而而那那「跨 app」那一族逐字经那**安装方**那一路逐字调、
+     *       => 而而那那安装方逐字有 `GROUP_CROSS_APP` 那一档、=> 而而那那 UI 那一族逐字多那三个入口）
+     *     => 而而那那 `app.listInstalled` 逐字与那 `app.launch` 逐字**同形**
+     */
+    fun listDeclaredApps(context: Context): JSONObject {
+        //  => 而而那那一族逐字**只列**那**仓内清单声明过的那几件**、=> 而而那那**其余**逐字**不**列
+        //    （=> 而那按 C-05 报缺、=> 而**不**静默地少列）
+        val declared = runCatching {
+            lobos.api.CapabilityBroker.live()?.declaredPackages()
+        }.getOrNull() ?: emptyList()
+        return JSONObject().apply {
+            put("ok", true)
+            put("packages", org.json.JSONArray(declared))
+            put("count", declared.size)
+            put("detail", "那仓内清单声明过的那几件逐字 = " + declared.joinToString(",") +
+                "（=> 而而那那**0 件**逐字**也是**一个**答**、=> 而而那按 C-05 不猜填）")
         }
     }
 

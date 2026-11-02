@@ -506,7 +506,14 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
      *       （=> 而而那它逐字 1:1 绑定、=> 而而那它逐字**不是**人手写的一份名单）
      *   => 而而那那**清单之外**的逐字按 **C-05** 报缺、=> 而**不**静默回退
      */
-    private fun declaredPackages(): List<String> {
+    /**
+     * 那**仓内清单声明过的那几件**（=> 而而那它是那**授权**那一面、=> 而而那那**产品入口**也**用**它）。
+     *
+     *   => 而而那那**清单**逐字是那登记册逐字里那 `ui.package` 那一格
+     *     （=> 而而那它逐字 1:1 绑定、=> 而而那它逐字**不是**人手写的一份名单）
+     *   => 而而那它逐字**公开**（=> 而而那那**产品入口**那一族逐字**要**它、=> 而而那那**桥**那一族逐字**也**用它）
+     */
+    fun declaredPackages(): List<String> {
         val out = sortedSetOf<String>()
         runCatching {
             for (e in lobos.services.reg.ProgramIndex.all(this)) {

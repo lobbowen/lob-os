@@ -98,6 +98,8 @@ class HostControlActivity : Activity() {
         val crossApp = Button(this).apply { text = "走那跨 app 边界那一族（产品入口，真实执行）" }
         //  => 而那那**堆**逐字那一格逐字一个入口（=> 而而那那**读法名**逐字答的是「那一条路」）
         val memProbe = Button(this).apply { text = "核那堆逐字与那还活着的那几处整读（真实执行）" }
+        //  => 而那那「看得见装了哪些 app」那一族逐字**单**一个入口（=> 而而那它逐字**走**那 crossApp 那一格）
+        val listApps = Button(this).apply { text = "看那仓内清单声明过的那几件（产品入口，真实执行）" }
         //  缺陷名（C-102）**那四个会话方法逐字零产品调用者、=> 而而那它逐字没有消费者** ——
         //   => 而那旧版逐字**没有**任何一处逐字持有那一条 `Session`
         //     => 而而那 `Session.write` / `onData` / `onExit` / `resize` 逐字**零**产品调用者
@@ -205,6 +207,10 @@ class HostControlActivity : Activity() {
             ).toString()
             result.text = r
         }
+        listApps.setOnClickListener {
+            val r = HostControlService.listDeclaredApps(this).toString()
+            result.text = r
+        }
         memProbe.setOnClickListener {
             val r = HostControlService.memoryProbe(this).toString()
             result.text = r
@@ -268,6 +274,7 @@ class HostControlActivity : Activity() {
         content.addView(crossAppArg)
         content.addView(crossApp)
         content.addView(memProbe)
+        content.addView(listApps)
         content.addView(terminalOut)
         content.addView(terminalInput)
         content.addView(terminalOpen)
