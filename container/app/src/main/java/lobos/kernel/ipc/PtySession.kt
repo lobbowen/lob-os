@@ -300,25 +300,61 @@ object PtySession {
             pb.environment().clear()
             for ((k, v) in view) pb.environment()[k] = v
             pb.environment().remove("LD_PRELOAD")
-            //  => 而而那那**输出**逐字**走**那 Java 管道、=> 而而那那**产品侧**逐字**读**它
-            //    => 而而那那 `ProcessBuilder` 逐字默认逐字是那 **PIPE**、=> 而而那那**子进程**逐字
-            //      那 stdout/stderr 逐字**进**那管道、=> 而而那**没人读**它
-            //      => 而而那那**输出**逐字**没有**路回来
-            //    => 而那旧版逐字是「那 App 进程逐字自己逐字 `Os.dup2` 那三路」
-            //      => 而而那那 `Os.dup2` 逐字**改**的是**这 App 进程自己**的那三路
-            //        => 而而那那 App 进程逐字自己逐字**也**就**不能**往那 stdout 逐字写东西了
-            //          （=> 而那**后果**：=> 而而那那 App 自己的诊断逐字**丢失**）
-            //      => 而而那那**孩子**逐字**继承**那三路（=> 而而那它逐字是那从设备）
-            //        => 而而那那 master 逐字读得到、=> 而而那那 native 那一族逐字发 FRAME_DATA
-            //        => 而而那那**读**逐字**仍**在那 native 那一族那一族、=> 而而那那 App 自己的 stdout 逐字**丢**了
-            //    => 而那**处置**：=> 而而那那 `dup2` 逐字**整个不要**
-            //      => 而而那那子进程逐字的输出逐字**走**那 Java 管道
-            //      => 而而那那**产品侧**逐字**读**那管道、=> 而而那它逐字把输出逐字**送到**那一面
-            //        （=> 而那 `Session.deliver` 那一格、=> 而而那它逐字**就是**那 `onData` 那一路）
-            //      => 而而那那 **native** 那一族逐字**只**管那从设备那一头（=> 而而那它逐字**不**抢那读）
-            //      => 而而那那 App 自己的 stdout/stderr 逐字**不**被动
-            //    => 而而那那**判据**逐字是「那输出逐字**回不回来**」（=> 而那**读数**逐字是那 `onData` 那一路）
-            val proc = pb.start()
+            //  缺陷名（C-102）**那一格逐字把那**输入**也逐字拿掉了、=> 而而那那会话逐字**当场就退** ——
+            //    => 而那旧版逐字是「那 `dup2` 逐字**整个不要**」
+            //      => 而而那那 `dup2` 逐字原来逐字把那**三路**逐字接到那从设备上
+            //        （=> 而而那那 stdin 逐字**也**在里头、=> 而而那那 stdout/stderr 逐字**也**在里头）
+            //      => 而而那把那**三路**逐字**整个**去掉之后：
+            //        · 而而那那 stdout/stderr 逐字**留**那 Java 管道（=> 而那**对**的、
+            //          => 而而那那**产品侧**逐字**读**它、=> 而而那那 App 自己的 stdout 逐字**不**被动）
+            //        · => 而而那那 **stdin** 逐字也逐字**留**那 Java 管道
+            //          => 而而那那管道逐字**没有**写的那一头
+            //          => 而而那那 `bash -i` 逐字读那 stdin 逐字 => 而而那它逐字**立刻**拿到 **EOF**
+            //          => 而而那那**会话**逐字**当场就退**了（=> 而那 status=0 signal=0）
+            //            （=> 而那 07 本轮逐字核出：=> 而那那会话逐字**起过**（24 次 TAB 到位）、
+            //              => 而那那账本逐字**只有**那 `jq` 那一件、=> 而那那 PTY 会话逐字那一件逐字**又退了**、
+            //              => 而那那 `files/dev/tty/pts` 空、=> 而那那 `index.json` `[]`）
+            //    => 而那**处置**：=> 而而那那 **stdin** 逐字**单独**接到那从设备上
+            //      => 而而那那 stdout/stderr 逐字**仍**留那 Java 管道（=> 而那**对**的那一族）
+            //      => 而而那那 App 进程逐字自己逐字那三路逐字**不**被动（=> 而而那那**它**逐字**只**动那 stdin）
+            //      => 而而那那 stdin 逐字**不**是那 Java 管道、=> 而而那那 `bash -i` 逐字**等**那用户逐字输入
+            //        （=> 而而那那从设备逐字**没有**别的一头写它时、=> 而而那它逐字**不**给 EOF）
+            //    => 而而那那**判据**逐字是「那会话逐字该活多久」
+            //      （=> 而而那它逐字**不**由「那进程逐字做了什么」顶掉）
+            //      => 而而那那**该**活到那用户逐字关它或那调用方逐字**显式**关它
+            //        （=> 而而那它逐字**不**该因为那读侧逐字 EOF 就走）
+            //
+            //  => 而而那那 stdin 逐字**要**那从设备、=> 而而那那 App 进程逐字自己逐字那 stdin 逐字**先**存一份
+            //    => 而而那那**存**那一份逐字**只**在**那 fork 之前**做、=> 而而那那**孩子**逐字**起完**就**还**回去
+            val savedStdin = runCatching {
+                //  => 而而那那 App 进程逐字自己逐字那 stdin 逐字**先**复制一份
+                //    （=> 而而那那 android.jar 逐字**剥掉**了那 `FileDescriptor` 逐字那静态字段、
+                //      => 而而那它逐字**不能**直接引用、=> 而而那那**唯一**的路逐字是那 `Os.dup` 逐字
+                //      => 而而那那 `Os.dup` 逐字**要**一个真的那 `FileDescriptor`）
+                val p = android.system.Os.open("/proc/self/fd/0", android.system.OsConstants.O_RDONLY, 0)
+                android.system.Os.dup(p).also { android.system.Os.close(p) }
+            }.getOrNull()
+            val slaveFd = runCatching {
+                android.system.Os.open(slave, android.system.OsConstants.O_RDWR, 0)
+            }.getOrNull()
+            if (slaveFd == null) {
+                throw IllegalStateException("那从设备逐字开不了：" + slave + "（=> 而而那按 C-05 报缺）")
+            }
+            val proc = try {
+                //  => 而而那那 **stdin** 逐字**单独**接到那从设备上
+                //    （=> 而而那那 stdout/stderr 逐字**不**动、=> 而而那它们逐字**仍**是那 Java 管道）
+                android.system.Os.dup2(slaveFd, 0)
+                val p = pb.start()
+                //  => 而而那那 App 进程逐字自己逐字那 stdin 逐字**还**回去
+                //    （=> 而而那那**孩子**逐字**已经**继承了那从设备、=> 而而那它逐字**不**受影响）
+                if (savedStdin != null) {
+                    runCatching { android.system.Os.dup2(savedStdin, 0) }
+                    runCatching { android.system.Os.close(savedStdin) }
+                }
+                p
+            } finally {
+                runCatching { android.system.Os.close(slaveFd) }
+            }
             session.process = proc
             //  => 而而那那**产品侧**逐字**读**那子进程逐字的输出、=> 而而那它逐字**送到**那一面
             //    （=> 而那 `Session.deliver` 那一格、=> 而而那它逐字**就是**那 `onData` 那一路）
