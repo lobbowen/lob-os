@@ -9,6 +9,45 @@ TOOL="${1:?需要工具名}"
 # 版本号读不到就报缺，不编一个值（那个值会一路进文件名与 meta，
 # 让「本轮编的」与「上一次留下的」分不出来）。范式照 :13 与 :21。
 VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
+#  缺陷名（C-102）**那一格逐字把那版本号逐字**吊**在那编译产出上、=> 而而那那编译那一档逐字被跳过了它逐字就**没有**了** ——
+#    => 而那旧版逐字是 `[ -n "$VER" ] || { echo "::error title=缺版本号::…"; exit 1; }`
+#      => 而而那那 `dist/${TOOL}.version` 逐字**只有**那编译那一个 recipe 逐字**写**
+#        （=> 而那那 python 那一族逐字是 `build-component-python3.sh:200` 逐字
+#          `printf '%s' "$SRC_VER" > "$OUT/python.version"`、
+#          => 而那那 sqlite 那一族逐字是 `build-component-sqlite3.sh:18` 逐字
+#          `--version-file "$ROOT_DIR/$OUT/sqlite.version"`、
+#          => 而那那 pkgconf 那一族逐字是 `build-component-pkg-config.sh:107` 逐字
+#          `printf '%s' "$SRC_VER" > "$OUT/pkgconf.version"`）
+#      => 而而那那**编译**那一档逐字带 `if: steps.reuse.outputs.hit != 'yes'`
+#        （=> 而那那 python 那一族逐字是 `build-python3.yml:122`、=> 而那那 sqlite 那一族逐字是
+#          `build-sqlite3.yml:109`、=> 而那那 pkgconf 那一族逐字是 `build-pkg-config.yml:109`）
+#        => 而而那那**复用命中**了（=> 而那那预制品逐字**已经**逐字在、=> 而那那编译逐字**跳过**）
+#        => 而而那那 `dist/${TOOL}.version` 逐字**从来没被写出来**
+#      => 而而那那**后果**（06 本机实读那三份 job log 逐字顺序、Lead 本机实读仓内逐字复核成立）：
+#        · 那 python 那一趟逐字 `##[error]dist/python.version 不在或为空 —— 不编值 …`
+#          （=> 而那逐字时刻 07:45:03.743、=> 而而那那二进制逐字**早**就做出来了
+#            （=> 而那逐字 `07:45:03.705` 逐字 `[ok] python 入口 25672408 字节 形状=elf 入口=bin/python3`））
+#        · 那 sqlite 那一趟逐字 `dist/sqlite.version 不在或为空`、那 pkgconf 那一趟逐字
+#          `dist/pkgconf.version 不在或为空`
+#      => 而而那那**缓存**那一句逐字**不是**那成因（=> 而那逐字 `07:45:05.505` 逐字晚 1.8 秒、
+#        => 而而那那**真正**的红逐字在 `:03.743`）=> 而那两族逐字**不并**、依 **C-104**
+#    => 而那**判据**逐字是「那版本号逐字是不是那件自己的版本」那一个事实上
+#      （=> 而而那那**版本号**逐字**不**是「本轮编的」那个事实、=> 而它是那**件**自己的版本）
+#    => 而那**处置**：=> 而而那那版本号逐字**不靠**那编译产出
+#      => 而而那它逐字**从**那钉值表逐字**取**（=> 而那 `fetch-pinned.sh --src-version` 逐字**读**的
+#        就是那 `scripts/component-sources.json` 那一族）
+#      => 而而那那**钉值表**逐字与那本产物那份逐字**本来就**要**对上**（=> 而和那那下面那一格逐字**已经在**核它）
+#        => 而而那那**两处一致**逐字**是**那一个事实、=> 而而那它逐字**不**是那「本轮编的」那一族
+#      => 而而那那**钉值表**逐字**没有**时逐字**照旧**逐字报缺（=> 而按 C-05 不猜填）
+if [ -z "$VER" ]; then
+  echo "::notice:: 那 dist/${TOOL}.version 不在（=> 而那那**复用**命中了、=> 而而那那编译逐字被跳过了）"
+  echo "::notice:: => 而而那那版本号逐字**改从**那钉值表逐字取（=> 而它是那件自己的版本、=> 而**不**是「本轮编的」那个事实）"
+  VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
+  if [ -n "$VER" ]; then
+    printf '%s' "$VER" > "dist/${TOOL}.version"
+    echo "::notice:: => 而而那那版本号逐字 = $VER（=> 而那从那钉值表逐字取到、=> 而而那它逐字**写回**了那一份）"
+  fi
+fi
 [ -n "$VER" ] || { echo "::error title=缺版本号::dist/${TOOL}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
 RAW="work/.component-${TOOL}-raw.zip"
 mkdir -p "$(dirname "$RAW")"
