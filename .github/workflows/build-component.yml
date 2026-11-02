@@ -233,3 +233,48 @@ jobs:
           node scripts/publish/upload-qiniu.js release/native-manifest.json "component-$CH/native-manifest.json" --cache-control=600
           node scripts/publish/upload-qiniu.js release/native-manifest.json.sig "component-$CH/native-manifest.json.sig" --cache-control=600
           echo "[native] 已发布 component-$CH/native-manifest.json"
+          #  缺陷名（C-102）**那一格逐字只发那清单、=> 而而那那清单逐字指向的那十件包逐字**没发****
+          #    => 而那旧版逐字**没有**这一段
+          #      => 而而那那**清单**逐字**上了**那 CDN、=> 而而那它逐字**验签**逐字**过**
+          #        （=> 而而那那键逐字是那 `component-$CH/$MAN` 那一族、=> 而而那它逐字**在**那 CDN 上）
+          #      => 而而那那**清单里逐字指向**的那些件包逐字**还不在**那 CDN 上
+          #        （=> 而那 06 本机逐个打了逐字**全 404**、=> 而那那 URL 逐字是那一种形状：
+          #          `https://lobcdn.zll.ink/component/component-llvm-21.1.0-e1b5dcff3b3c-android-arm64.zip`
+          #          => 而而那那 `component/` 那一档逐字**没有**任何一件、=> 而而那那**清单**逐字投影逐字是
+          #            那 `component/` 那一档（=> 而那 `publish-component-manifest.js:353` 逐字
+          #            `url: BASE + '/component/' + f`））
+          #      => 而而那那**后果**逐字 = 那下游逐字**按**那清单逐字**取**不到那件包
+          #    => 而那**判据**逐字是「那发布轮逐字发出去的那些逐字、=> 而而那那下游逐字按那清单逐字拿不拿得到」
+          #      那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+          #    => 而那**处置**：=> 而而那那**十件包**逐字**也**发到那 `component/` 那一档
+          #      => 而而那它逐字发的时候逐字要用那**清单**逐字指向的那**同一个名字**
+          #        （=> 而那那名字逐字带那指纹、=> 而而那那指纹逐字**得**是那当前代码逐字该有的那一个）
+          #      => 而而那那名字逐字**从**那清单逐字**取**（=> 而而那它逐字**不**另算一份名）
+          #        （=> 而而那那 `publish-component-manifest.js` 那一族逐字**就是**那名字的**真源**）
+          node -e '
+          const fs = require("fs");
+          const m = JSON.parse(fs.readFileSync("release/component-manifest.json", "utf8"));
+          const tools = m.tools || [];
+          //  => 而而那那**名字**逐字**从**那清单逐字**指向**的那一个逐字**取**
+          //    （=> 而而那那 URL 逐字是那 `publish-component-manifest.js:353` 逐字 `BASE + "/component/" + f`）
+          const names = tools.map(t => String(t.url || "").split("/").pop()).filter(Boolean);
+          if (!names.length) {
+            console.error("::error title=清单里没有件::那清单逐字没有 tools 那一族、=> 而而那那件包逐字**没**有名字可发");
+            process.exit(1);
+          }
+          fs.writeFileSync("work/cdn-pieces.txt", names.join("\n") + "\n");
+          '
+          _cdn_n=0
+          while IFS= read -r _cdn_name; do
+            [ -n "$_cdn_name" ] || continue
+            _cdn_file="dist/$_cdn_name"
+            if [ ! -f "$_cdn_file" ]; then
+              echo "::error title=那件包不在 dist 里::$_cdn_name —— 而那清单逐字指向了它、=> 而而那本机逐字**没有**它"
+              exit 1
+            fi
+            #  => 而而那那**键**逐字必须逐字**跟**那清单逐字指向的那一个**一样**
+            #    （=> 而而那那清单逐字指向的那前缀逐字是 `component/`、=> 而那那前缀逐字**不**是那 `component-$CH/`）
+            node scripts/publish/upload-qiniu.js "$_cdn_file" "component/$_cdn_name" --cache-control=31536000
+            _cdn_n=$((_cdn_n + 1))
+          done < work/cdn-pieces.txt
+          echo "[cdn] 已发布 $_cdn_n 件包到 component/"

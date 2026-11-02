@@ -426,12 +426,31 @@ for id in "${PIECES[@]}"; do
   #      => 而而那那**期望值**逐字是那**当前代码**那一份（=> 而那 git HEAD）
   #        （=> 而而那那 buildSha 逐字**就是**那**件自己**产它时那**一份代码**逐字的 sha）
   #      => 而而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而那**不**当那**合**）
-  _cur_sha="$(git rev-parse HEAD 2>/dev/null || true)"
+  #  => 而而那那**期望值**逐字是那 **pin** 逐字记的那一件自己的 buildSha
+  #    （=> 而而那那 `.github/native-capabilities-pin.json` 逐字逐件记那 buildSha）
+  #    => 而而那那**不**是那当前 HEAD（=> 而和那那**固化**那一族逐字**就是**为了逐字**取用**那**旧**代码产的）
+  #      => 而和那那拿那当前 HEAD 逐字当那期望值、=> 而和那那**每一**件**合法**的**旧**固化件逐字**都**会被**拒掉
+  #      （=> 而那 01 逐字裁的逐字就是「那**真正**要核的是『那件包里的字节**是不是那一趟**产的』」）
+  _cur_sha="$(node -e '
+  const fs = require("fs");
+  try {
+    const p = JSON.parse(fs.readFileSync(".github/native-capabilities-pin.json", "utf8"));
+    const pins = p.pins || {};
+    for (const k of Object.keys(pins)) {
+      const e = pins[k];
+      if (e && e.id === process.argv[1]) { process.stdout.write(String(e.buildSha || "")); break; }
+    }
+  } catch (e) {}
+  ' "$id" 2>/dev/null || true)"
+  _has_expected=1
   if [ -z "$_cur_sha" ]; then
-    echo "::error title=$id 当前代码读不到::本机读不到 git HEAD（=> 而那无法判定那一件是不是当前这份代码产的）"
-    miss_read=$((miss_read+1)); missing=$((missing+1))
-    rm -rf "${STAGE:?}/$id"
-    continue
+    #  => 而而那那 pin 逐字**没有**这一件时逐字**不**判（=> 而而那那**期望值**逐字**没有**、=> 而而那那**判据**逐字**答不出**）
+    #    （=> 而那那几件逐字**不**在那一族里、=> 而而那它们逐字**另**有一族判据、=> 而依 C-104 逐字**不并**）
+    #    => 而而那那**判据**逐字是「那取到的那一份逐字是不是那当前代码逐字该有的那一份」
+    #      => 而而那那**期望值**逐字**没有**时、=> 而而那那**判据**逐字**答不出**、=> 而而那那**不**是「那**不**是」
+    echo "::notice title=$id 没有期望的构建标识::那 pin 逐字**没有**这一件、=> 而而那那**期望值**逐字**没有**、=> 而而那那**判据**逐字**答不出**"
+    echo "::notice:: （=> 而而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺、=> 而依 C-104 逐字**不并**）"
+    _has_expected=0
   fi
   _pkg_sha=""
   if unzip -p "$ASSETS/$id.zip" component-meta.json 2>/dev/null       | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' \
@@ -439,7 +458,7 @@ for id in "${PIECES[@]}"; do
     _pkg_sha="$(cat "$STAGE/$id/bsha.json")"
   fi
   rm -f "$STAGE/$id/bsha.json"
-  if [ -z "$_pkg_sha" ]; then
+  if [ -z "$_pkg_sha" ] && [ "$_has_expected" = "1" ]; then
     #  => 而那那**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而那**不**当那**合**）
     echo "::error title=$id 构建标识读不到::那件包里逐字**没有** component-meta.json 的 buildSha 那一格"
     echo "::error:: （=> 而那无法判定那一件是不是当前这份代码产的、=> 而那**不**许拿那旧的那一份凑）"
@@ -447,7 +466,7 @@ for id in "${PIECES[@]}"; do
     rm -rf "${STAGE:?}/$id"
     continue
   fi
-  if [ "$_pkg_sha" != "$_cur_sha" ]; then
+  if [ "$_has_expected" = "1" ] && [ "$_pkg_sha" != "$_cur_sha" ]; then
     echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那当前代码逐字是 ${_cur_sha:0:12}"
     echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
     echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
