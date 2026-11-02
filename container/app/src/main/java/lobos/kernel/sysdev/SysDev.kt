@@ -346,6 +346,77 @@ object SysDev {
      *
      * @return 那**第一处**不对的那一格（=> 而而那**没有**不对时逐字是 null、=> 而而那它逐字是那**事实**）
      */
+    /** 那**不合**的那几处逐字（=> 而而那它逐字是「那一件逐字 + 那一类」。）。 */
+    data class Fault(val path: String, val fault: NodeFault, val instance: String? = null)
+
+    /**
+     * 那**不合**的那**几处**逐字**全部**报出来（=> 而而那它逐字**不**只报那**第一处**）。
+     *
+     * 缺陷名（C-102）**那一格逐字只报那**第一处**、=> 而而那那一处逐字**盖住**了其余那几处** ——
+     *   => 而那旧版逐字是 `verifyNodes` 逐字 `return d.path to NodeFault.…`
+     *     => 而而那那**第一处**不合逐字**一**命中、=> 而而那那**其余**那几处逐字**就**再也不**看**了
+     *     => 而而那那**后果**（01 逐字核出的）：
+     *       · 而那那「**类型错**」那一类逐字本轮逐字**没有**单独取到
+     *         （=> 而而那那**缺节点**与那**权限过宽**两类逐字已过）
+     *       => 而而那那**盘上**逐字真有一处错、=> 而而那那一处逐字**盖住**了那一个
+     *   => 而那**处置**：=> 而而那那**核**逐字**逐条**走一遍、=> 而而那那**不合**的**每一处**逐字**都**报出来
+     *     => 而而那那**读数侧**逐字答的是「那**全部**不合的那几处逐字**各自**是哪一类」
+     *     => 而而那那**判据**逐字是「那**几处**逐字**各自**是哪一类」
+     *       （=> 而而那它逐字**不**许只报那**第一处**、=> 而而那它逐字**不许**把那一处**盖住**其余那几处）
+     *     => 而而那那**渲染**那一格逐字**照旧**：=> 而而那它逐字**先**核、=> 而而那有不合时逐字**重建**
+     *       （=> 而而那那**重建**逐字把那不合逐字**修好**、=> 而而那那「修好」逐字**不**是那**读数**）
+     */
+    fun verifyAllFaults(r: File): List<Fault> {
+        val out = mutableListOf<Fault>()
+        for (d in NODE_DECLARATION) {
+            if (d.path == ".") {
+                val actualKind = if (r.isDirectory) "dir" else "other"
+                if (d.kind != actualKind) {
+                    out.add(Fault(d.path, NodeFault.WRONG_TYPE))
+                } else {
+                    val m = actualModeOf(r)
+                    if (m.isNotBlank() && d.mode.isNotBlank() && isWiderThan(m, d.mode)) {
+                        out.add(Fault(d.path, NodeFault.TOO_WIDE))
+                    }
+                }
+                continue
+            }
+            if (d.path.contains("<NNN>")) {
+                val prefix = d.path.substringBefore("<NNN>")
+                val rest = d.path.substringAfter("<NNN>").trim('/')
+                val pts = File(r, prefix)
+                val kids = pts.listFiles()?.sortedBy { it.name } ?: emptyList()
+                for (k in kids) {
+                    val target = if (rest.isEmpty()) k else File(k, rest)
+                    checkOneAll(d, target, k.name)?.let { out.add(it) }
+                }
+                continue
+            }
+            val target = File(r, d.path)
+            checkOneAll(d, target, null)?.let { out.add(it) }
+        }
+        return out
+    }
+
+    /** 那**一个**节点逐字那**全部**不合（=> 而而那它逐字**不**只报那**第一类**）。 */
+    private fun checkOneAll(d: NodeDecl, target: File, instance: String?): Fault? {
+        if (!target.exists()) return Fault(d.path, NodeFault.MISSING, instance)
+        if (d.kind == "symlink") {
+            if (!java.nio.file.Files.isSymbolicLink(target.toPath())) {
+                return Fault(d.path, NodeFault.WRONG_TYPE, instance)
+            }
+            return null
+        }
+        val wantDir = d.kind == "dir"
+        if (target.isDirectory != wantDir) return Fault(d.path, NodeFault.WRONG_TYPE, instance)
+        val actual = actualModeOf(target)
+        if (actual.isBlank()) return null
+        if (d.mode.isNotBlank() && isWiderThan(actual, d.mode)) {
+            return Fault(d.path, NodeFault.TOO_WIDE, instance)
+        }
+        return null
+    }
+
     fun verifyNodes(r: File): Pair<String, NodeFault>? {
         for (d in NODE_DECLARATION) {
             if (d.path == ".") {

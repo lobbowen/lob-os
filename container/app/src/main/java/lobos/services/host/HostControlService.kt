@@ -281,9 +281,25 @@ object HostControlService {
             return failure(method, "sysdev-verify", "那设备节点目录逐字不在：" + root.absolutePath + "（=> 而按 C-05 报缺）")
         }
         val bad = lobos.kernel.sysdev.SysDev.verifyNodes(root)
+        //  => 而而那那**全部**不合的那几处逐字（=> 而而那它逐字**不**只报那**第一处**、
+        //    => 而而那那一处逐字**不许**盖住其余那几处）
+        val all = lobos.kernel.sysdev.SysDev.verifyAllFaults(root)
         return JSONObject().apply {
             put("ok", bad == null)
             put("root", root.absolutePath)
+            put("faultCount", all.size)
+            put("faults", org.json.JSONArray().apply {
+                for (f in all) {
+                    put(JSONObject().apply {
+                        put("path", f.path)
+                        put("class", lobos.kernel.sysdev.SysDev.faultName(f.fault))
+                        put("instance", f.instance ?: JSONObject.NULL)
+                        put("modeDiff", if (f.fault == lobos.kernel.sysdev.SysDev.NodeFault.TOO_WIDE) {
+                            lobos.kernel.sysdev.SysDev.modeDiffOf(f.path)
+                        } else "")
+                    })
+                }
+            })
             if (bad == null) {
                 put("detail", "那逐节点逐字全**合声明**")
             } else {
