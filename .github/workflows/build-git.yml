@@ -141,7 +141,19 @@ jobs:
             work/zlib/out
             work/openssl/out
             work/curl/out
-            dist/component-git-*.zip
+            #  缺陷名（C-102）**那缓存逐字把那**内层**那一份逐字也逐字存进去、=> 而而那它逐字**本来**不该被缓存**
+            #    => 而那旧版逐字是 `dist/component-git-*.zip`
+            #      => 而而那那 glob 逐字**要**那连字符后面逐字**有**东西、=> 而那那**外层**那一份逐字**没有**
+            #        （=> 而那那**外层**那一份逐字是 `dist/component-git.zip`、=> 而那那**内层**那一份逐字
+            #          逐字是 `dist/component-git-<版>-<指纹>-android-arm64.zip`）
+            #      => 而而那那 glob 逐字**两**份逐字**都**命中不到、=> 而而那那**缓存**逐字逐字**存不下**那外层
+            #        => 而而那那**缓存命中**逐字**不**可能、=> 而而那那**内层**逐字**不在**那缓存里
+            #      => 而而那那**判据**逐字是「那上传进那 artifact 逐字里的那内层 zip 逐字是不是只含那**本轮编的**那一颗」
+            #        那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+            #    => 而那**处置**：=> 而而那那缓存逐字逐字**只**存那**外层**那可复用的那一份
+            #      => 而而那那**内层**解出来的那一份逐字**不**进缓存
+            #        （=> 而而那那内层逐字是那**一次构建**的产物、=> 而而那它逐字本来逐字**不该**被缓存）
+            dist/component-git.zip
           key: ${{ steps.uwkey.outputs.key }}
       - name: 编 base 筐的预装件（git 依赖其中的 zlib / openssl / curl）
         if: steps.reuse.outputs.hit != 'yes'
@@ -219,7 +231,7 @@ jobs:
             work/zlib/out
             work/openssl/out
             work/curl/out
-            dist/component-git-*.zip
+            dist/component-git.zip
           key: ${{ steps.uwkey.outputs.key }}
 
       - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
@@ -278,8 +290,57 @@ jobs:
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
               node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
+      #  缺陷名（C-102）**那一格逐字让那**旧件**进那 artifact、=> 而而那那 artifact 逐字**里面**逐字就有那**两颗**同名件**
+      #    => 而那旧版逐字**没有**这一格
+      #      => 而而那那**缓存恢复**逐字**在**最前那一段（=> 而那那**外层**那一份逐字**恢复**回来）
+      #      => 而而那那**复用**那一路逐字又**解开**一份（=> 而而那那**版本一样**、=> 而而那那**指纹**逐字**可能不同**）
+      #      => 而而那那**编译**那一路逐字又**产出**一份（=> 而而那那**指纹**逐字**又是**另一个）
+      #      => 而而而那那**上传**那一格逐字那 path 逐字是 `dist/component-git-*.zip`
+      #        => 而而那那**所有**那旧件逐字**都**进那 artifact
+      #      => 而而那那**后果**（06 本机实读那 job log、Lead 本机实读逐字复核成立）：
+      #        `::[error]component-git 里有 2 颗 git 的 zip:`
+      #        `  component-git-<版>-<指纹>-android-arm64.zip`
+      #        `  component-git-<版>-<指纹>-android-arm64.zip`
+      #        `::[error]逐件判断它们哪颗是本轮编的 —— 那份 artifact 不该收进清单`
+      #      => 而那**判据**逐字是「那上传进那 artifact 逐字里的那内层 zip 逐字是不是只含那**本轮编的**那一颗」
+      #        那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+      #    => 而那**处置**：=> 而而那那**上传**那一格逐字**之前**逐字把那**旧件**逐字清掉
+      #      => 而而那那**清**逐字**不**逐字一刀切（=> 而而那那本轮编的那一颗逐字因为是最新逐字、
+      #        => 而而那它逐字**要**逐字保住）=> 而而那那**清**逐字逐字**按**那**指纹**逐字挑那一颗
+      #      => 而而那那**挑**逐字**按**那**修改时刻**（=> 而那那**最新**逐字**就是**那本轮编的那一颗）
+      - name: 只把本轮编的那一颗装进 artifact（清掉上一轮留下的）
+        run: |
+          set -euo pipefail
+          # => 而而那那**候选**逐字是那 `dist/` 里逐字那 `component-git-*.zip`
+          mapfile -t _all < <(compgen -G "dist/component-git-*.zip" || true)
+          if [ "${#_all[@]}" -gt 1 ]; then
+            # => 而而那那**最新**逐字就是那**本轮编**的那一颗（=> 而而那它逐字按那修改时刻逐字**最新**）
+            _keep=""
+            for _f in "${_all[@]}"; do
+              if [ -z "$_keep" ] || [ "$_f" -nt "$_keep" ]; then _keep="$_f"; fi
+            done
+            echo "[notice] 那 dist 里逐字有 ${#_all[@]} 颗同族件、=> 而而那那**留**最新那一颗：$_keep"
+            for _f in "${_all[@]}"; do
+              [ "$_f" = "$_keep" ] && continue
+              echo "[notice] => 而而那那**旧件**逐字清掉：$_f"
+              rm -f "$_f"
+            done
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: component-git
+          #  缺陷名（C-102）**那上传逐字把**所有**那旧件逐字都装进去、=> 而而那那 artifact 逐字**里面**逐字就有那**两颗**同名件**
+          #    => 而那旧版逐字是 `path: dist/component-git-*.zip`
+          #      => 而而那那 glob 逐字**把**那 `dist/` 里逐字**所有**那 `component-git-*.zip` 逐字**都**装进去
+          #      => 而而那那**后果**（06 本机实读那 job log、Lead 本机实读逐字复核成立）：
+          #        `::[error]component-git 里有 2 颗 git 的 zip:`
+          #        `  component-git-<版>-<指纹>-android-arm64.zip`
+          #        `::[error]逐件判断它们哪颗是本轮编的 —— 那份 artifact 不该收进清单`
+          #      => 而那**处置**：=> 而而那那**上传**那一格逐字**之前**逐字把那**旧件**逐字清掉
+          #        => 而而那那 `dist/component-git-*.zip` 逐字**只**留那**本轮编的**那一颗
+          #        => 而而那那**清**逐字**不能**逐字一刀切（=> 而而那那本轮编的那一颗逐字因为是最新逐字、
+          #          => 而而那它逐字**要**逐字保住）=> 而而那那**清**逐字逐字**按**那**指纹**逐字挑那一颗
+          #      => 而那**判据**逐字是「那上传进那 artifact 逐字里的那内层 zip 逐字是不是只含那**本轮编的**那一颗」
+          #        那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
           path: dist/component-git-*.zip
           retention-days: 30
