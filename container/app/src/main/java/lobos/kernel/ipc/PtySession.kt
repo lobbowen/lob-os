@@ -162,9 +162,50 @@ object PtySession {
          */
         fun close() {
             if (closed.compareAndSet(false, true)) {
+                //  缺陷名（C-102）**那一格逐字只关了那一族、=> 而而那那**产品侧**的进程逐字**还活着** ——
+                //    => 而那旧版逐字是 `host.send(F_CLOSE, sid, …)` + `host.releaseSid(sid)`
+                //      => 而而那那 `F_CLOSE` 逐字**只**让那 native 那一族逐字**关它自己那一个**
+                //        （=> 而而那那 `pty-session.c` 逐字 `session_close` 逐字
+                //          `kill(g_sessions[sid].pid, SIGHUP)` 逐字杀的是**那 native fork 出来**那个子进程、
+                //          => 而而那那子进程逐字**只**握那从设备、=> 而而那它逐字**不是**那产品侧起的那一个）
+                //        => 而而那那**产品侧**逐字起的那进程逐字**没人杀**
+                //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+                //        · 关完之后逐字那账本逐字**仍有** `linker64 gen=2 pid=26021`
+                //        · => 而而那那 `files/dev` 逐字**仍有** `pts: [000]` 与 `index.json: [{"sid":0,…}]`
+                //        · => 而而那那 `/proc` 逐字**还有**那三个 `linker64`
+                //        => 而而那一格逐字**不是**退出清理那一族逐字的问题
+                //          （=> 而那会话逐字真的活着、=> 而「关掉那条会话」那一格逐字**没生效**）
+                //    => 而那**判据**逐字是「那一格逐字关了之后、=> 而而那它逐字有没有逐字真的关掉」那一个事实上
+                //      （=> 而而那它逐字**不**由「那进程逐字还在不在」顶掉）
+                //    => 而那**处置**：=> 而那**产品侧**的进程逐字**显式**逐字终止
+                //      => 而而那它逐字**走**那产品侧逐字自己报退出那一路（=> 而而那它逐字**不许**只靠那读帧线程）
+                //      => 而而那那**退出清理**逐字随它逐字**走**（=> 而而那那账本逐字与那 `files/dev` 逐字**同步**清空）
+                terminateProcess()
                 host.send(F_CLOSE, sid, ByteArray(0))
                 host.releaseSid(sid)
+                ProductSessions.remove("product-" + sid)
             }
+        }
+
+        /**
+         * 那**产品侧**的进程逐字**显式**终止（=> 而而那它逐字**走**那产品侧逐字自己报退出那一路）。
+         *
+         *   => 而而那它逐字**先**要那进程逐字**软**终止（=> 而而那那 `TERM` 逐字给那进程逐字**机会**收尾）
+         *   => 而而那它逐字**不**软终止逐字**成**时逐字**硬**终止（=> 而而那按 C-05 不猜填、=> 而**不**留着）
+         *   => 而而那那**退出清理**逐字随它逐字**走**（=> 而而那那账本逐字与那 `files/dev` 逐字**同步**清空）
+         */
+        private fun terminateProcess() {
+            val proc = process ?: return
+            //  => 而而那那**软**终止逐字**先**（=> 而而那那 `TERM` 逐字给那进程逐字**机会**收尾）
+            runCatching { proc.destroy() }
+            val deadline = System.currentTimeMillis() + 2000L
+            while (System.currentTimeMillis() < deadline) {
+                if (!proc.isAlive) return
+                runCatching { Thread.sleep(50L) }
+            }
+            //  => 而而那那**软**终止逐字**没**成时逐字**硬**终止（=> 而而那它逐字**不**留着）
+            runCatching { proc.destroyForcibly() }
+            runCatching { proc.waitFor(1, java.util.concurrent.TimeUnit.SECONDS) }
         }
     }
 
@@ -380,6 +421,21 @@ object PtySession {
             //     逐字**要**能列它）
             //    => 而而那那**键**逐字带那族标记（=> 而而那它逐字**不**与 native 那一族**冲突**）
             ProductSessions.put("product-" + session.sid, session)
+            //  缺陷名（C-102）**那一格逐字要等那一拍才逐字登记进 `files/dev`** ——
+            //    => 而那旧版逐字**只**记进那 `ProductSessions` 那一族
+            //      => 而而那那 `files/dev` 逐字**只**在那一 `SysDev.render` 那一拍逐字**才**写
+            //        （=> 而而那那一拍逐字是那 15 秒那一族、=> 而而那那 `SupervisorPool` 那一族逐字**驱动**它）
+            //      => 而而那那**会话**逐字**起**了之后、=> 而而那那 15 秒**之内**逐字**取**那一读逐字**看不到**它
+            //        （=> 而那 07 本轮逐字核出：=> 而那 `sess3.sh` 每 3 秒 12 拍逐字全空、
+            //          => 而那 `sess4.sh` 每 1 秒 40 拍逐字全空、UTC 03:53:07Z 到 03:53:22Z）
+            //      => 而而那那账本逐字**有**它（=> 而那 `linker64 gen=1 pid=22915 starttime=7581679`）
+            //        => 而而那那一件逐字**起过**、=> 而而那它逐字**退了**
+            //    => 而那**判据**逐字是「那会话逐字该活多久」那一个事实上
+            //      （=> 而而那它逐字与那「那会话号逐字撞了」那一族逐字共同的那一族）
+            //    => 而那**处置**：=> 而而那那**会话**逐字**登记**逐字**立刻**就逐字**做**
+            //      => 而而那那 `files/dev` 逐字**立刻**逐字**有**它（=> 而而那那**读数**逐字**不用**等那一拍）
+            //      => 而而那那**判读**那一族逐字**不用**赶在那一拍之内核
+            notifyRegistered(ctx)
             recordInLedger(ctx, session, proc, argv)
             //  => 而而那那**退出清理**逐字与那**创建/记账**逐字**一致**
             //    （=> 而那是 M7-07 那一行逐字说的「创建、记账、退出清理一致」）
@@ -391,10 +447,46 @@ object PtySession {
             if (pid0 > 0) {
                 Thread({
                     runCatching { proc.waitFor() }
+                    //  缺陷名（C-102）**那一格逐字**只**清了那一族、=> 而而那那 native 那一族逐字那槽逐字**还占着** ——
+                    //    => 而那旧版逐字是 `ProcessLedger.end(…)` + `ProductSessions.remove(…)`
+                    //      => 而而那那**账本**清了、=> 而而那那**名单**清了
+                    //      => 而而那那 **`F_CLOSE`** 逐字**没人发**
+                    //        （=> 而而那那 `F_CLOSE` 逐字**只有**那 `Session.close()` 那一格逐字发）
+                    //      => 而而那那 native 那一族逐字那槽逐字**还占着**
+                    //        （=> 而而那那 `session_close` 逐字**没**被调到、=> 而而那那槽逐字**没**被清）
+                    //      => 而而那那**下一趟**逐字分号逐字就**撞**
+                    //        （=> 而而那那 `diag.jsonl` 逐字 `stage="pty"` 逐字两条 FAIL
+                    //          「PTY 的C 侧报错 | WINSIZE 指向不存在的会话」）
+                    //    => 而那**处置**：=> 而而那那**产品侧**逐字自己退时逐字**显式**逐字发那 `F_CLOSE`
+                    //      => 而而那那槽逐字**就**被还回去了、=> 而而那那**下一趟**逐字分号逐字**不撞**
+                    //      => 而而那那**判据**逐字是「那会话号逐字撞了那一族」那一个事实上
+                    //        （=> 而而那它逐字与那「那会话逐字该活多久」那一族逐字**不并**）
+                    runCatching { session.close() }
                     runCatching { lobos.kernel.proc.ProcessLedger.end(ctx, pid0) }
                     //  => 而而那那**产品侧**那一族逐字**去掉**那一条（=> 而而那它逐字**不在**了）
                     runCatching { ProductSessions.remove("product-" + session.sid) }
                 }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
+            }
+        }
+
+        /**
+         * 那**会话**逐字**登记**那一格（=> 而而那它逐字**立刻**就逐字把那 `files/dev` 逐字**刷新**一遍）。
+         *
+         *   => 而而那那**刷新**逐字**不**逐字等那 15 秒那一拍（=> 而而那那**读数**逐字**不用**赶在那一拍之内核）
+         *   => 而而那那**刷新**逐字**失败**时逐字**不**逐字把那一格逐字的中断逐字带出去
+         *     （=> 而而那它逐字**自己** catch 住、=> 而而那它逐字**报缺**）
+         */
+        private fun notifyRegistered(ctx: Context) {
+            val c = ctx ?: return
+            runCatching {
+                lobos.kernel.sysdev.SysDev.render(c)
+            }.onFailure { e ->
+                runCatching {
+                    lobos.services.log.RuntimeDiagnostics.append(
+                        c, "pty", false, "那会话逐字登记后刷新 files/dev 失败",
+                        e.javaClass.name + ": " + (e.message ?: ""),
+                    )
+                }
             }
         }
 
