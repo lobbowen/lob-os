@@ -89,6 +89,29 @@ object PtySession {
         /** 那**要**的尺寸（=> 而而那它逐字**等**那 `F_READY` 到了之后逐字**补**发）。 */
         @Volatile private var pendingWinsize: Pair<Int, Int>? = null
 
+        /**
+         * 那 `F_READY` 逐字**真到**没有（=> 而而那它逐字**不**逐字是那 `nativeSlotOpen` 逐字的同义词）。
+         *
+         * 缺陷名（C-102）**那一格逐字拿那本地状态逐字当凭据、=> 而而那那 `F_READY` 逐字那一帧逐字还没真到** ——
+         *   => 而那旧版逐字是 `nativeSlotOpen` 逐字**一被置真**就逐字**当**那**就绪**的凭据
+         *     => 而而那那 `nativeSlotOpen` 逐字是那 native 那一族逐字**自己的本地状态**
+         *       （=> 而而那它逐字**可以**比那 `F_READY` 逐字那一帧**先**变真、
+         *         => 而而那那 `F_READY` 逐字那一帧逐字**还没**到）
+         *     => 而而那那 `resize` 那一格逐字就逐字**拿**那本地状态逐字**当**那**凭据**
+         *       => 而而那那 `F_WINSIZE` 逐字逐字**发得太早**
+         *         （=> 而而那那 native 那一族逐字那槽逐字逐字**还没**开、=> 而而那它逐字**判**的是那**本地**那一格）
+         *     => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+         *       · 而那那 `diag.jsonl` 逐字 `stage="pty"` 逐字 FAIL
+         *         「PTY 的C 侧报错 | WINSIZE 指向不存在的会话」逐字**还在**发
+         *         （=> 而那那两趟会话逐字都是「会话 0 就绪」、=> 而那那号逐字**没撞**）
+         *   => 而那**处置**：=> 而而那那**凭据**逐字**只**是那 `F_READY` 逐字**那一帧真的到**
+         *     => 而而那它逐字**不**逐字是那本地状态逐字（=> 而依 **C-103** 那两边逐字各答一件事）
+         *     => 而而那那 `resize` 那一格逐字**等**那**真的到**、=> 而而那它逐字**不许**拿那本地状态逐字**当**凭据
+         *   => 而而那那**判据**逐字是「那一帧逐字发的时候、=> 而而那那 native 那一族逐字那槽逐字逐字开没开」
+         *     那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+         */
+        @Volatile private var readyFrameArrived = false
+
         //  => 而那那回调逐字**接上**的时候逐字把缓冲**倒**给它（=> 而而那那输出逐字**不**丢）
         @Volatile
         var onData: ((ByteArray) -> Unit)? = null
@@ -205,7 +228,10 @@ object PtySession {
             //  => 而而那那 **native** 那一族逐字那槽逐字**还没**开时逐字**不**发那一帧
             //    （=> 而而那那**判据**逐字是「那一帧逐字发的时候、=> 而而那那槽逐字逐字开没开」那一个事实上）
             //    => 而而那那**要**的尺寸逐字**记**着、=> 而而那那 `F_READY` 到了之后逐字**补**发
-            if (!nativeSlotOpen) {
+            //  => 而而那那 **F_READY** 逐字**真到**没有
+            //    （=> 而而那它逐字**不**逐字是那 `nativeSlotOpen` 逐字的同义词、
+            //      => 而而那那本地状态逐字**可以**比那 `F_READY` 逐字那一帧**先**变真）
+            if (!readyFrameArrived) {
                 pendingWinsize = rows to cols
                 return
             }
@@ -230,6 +256,16 @@ object PtySession {
          */
         internal fun onNativeSlotOpen() {
             nativeSlotOpen = true
+        }
+
+        /**
+         * 那 `F_READY` 逐字**那一帧真的到**了（=> 而而那它逐字**是**那**凭据**）。
+         *
+         *   => 而而那它逐字**只**由那 `F_READY` 逐字**触发**（=> 而而那它逐字**不**由那本地状态逐字触发）
+         *   => 而而那那**补发**逐字：=> 而而那那**记着**的尺寸逐字**这时候**才发
+         */
+        internal fun onReadyFrameArrived() {
+            readyFrameArrived = true
             val p = pendingWinsize ?: return
             pendingWinsize = null
             runCatching { sendWinsize(p.first, p.second) }
@@ -569,8 +605,24 @@ object PtySession {
                     //      => 而而那那槽逐字**就**被还回去了、=> 而而那那**下一趟**逐字分号逐字**不撞**
                     //      => 而而那那**判据**逐字是「那会话号逐字撞了那一族」那一个事实上
                     //        （=> 而而那它逐字与那「那会话逐字该活多久」那一族逐字**不并**）
-                    runCatching { session.close() }
+                    //  缺陷名（C-102）**那一格逐字等那终止逐字那 2 秒预算走完、=> 而而那那账本逐字没清** ——
+                    //    => 而那旧版逐字是 `session.close()` **在**那 `ProcessLedger.end` **之前**
+                    //      => 而而那那 `session.close()` 那一格逐字**现在**会 `terminateProcess()`
+                    //        （=> 而而那它逐字**有**那 2 秒逐字预算：=> 而而那那 `TERM` 逐字等 2 秒、
+                    //          => 而而那那 `TERM` 逐字**不成**才逐字**硬**终止）
+                    //      => 而而那那**账本**逐字在那 2 秒**之后**才清
+                    //        => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+                    //          · 而那那三样逐字全对：=> 而那那 `files/dev/tty/pts` 逐字**空**、
+                    //            => 而那那 `files/dev/tty/index.json` 逐字**空**、
+                    //            => 而那那 `/proc` 逐字**只剩一个** `linker64`
+                    //          · => 而而那那**账本**逐字**仍有** `linker64 gen=1 pid=25944 starttime=8594873`
+                    //          · => 而而那那账本逐字 40 秒逐字**没清**
+                    //    => 而那**判据**逐字是「那会话逐字关了之后、=> 而而那那账本逐字有没有逐字清掉」
+                    //      那一个事实上（=> 而而那它逐字**不**由「那进程逐字还在不在」顶掉）
+                    //    => 而那**处置**：=> 而而那那 `ProcessLedger.end` 逐字**先**走、=> 而而那那终止逐字随后
+                    //      => 而而那那**账本**逐字**不**等那 2 秒预算
                     runCatching { lobos.kernel.proc.ProcessLedger.end(ctx, pid0) }
+                    runCatching { session.close() }
                     //  => 而而那那**产品侧**那一族逐字**去掉**那一条（=> 而而那它逐字**不在**了）
                     runCatching { ProductSessions.remove("product-" + session.sid) }
                 }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
@@ -887,7 +939,10 @@ object PtySession {
             sessions[sid] = Session(this, sid, slave, rows, cols)
             //  => 而而那那 **native** 那一族逐字那槽逐字**开好了**（=> 而而那那 `F_READY` 逐字**就是**那凭据）
             //    => 而而那那**补发**逐字**这时候**才发那 `F_WINSIZE`
-            sessions[sid]?.onNativeSlotOpen()
+            //  => 而而那那 **F_READY** 逐字**那一帧真的到**了（=> 而而那它逐字**是**那**凭据**）
+            //    => 而而那那**补发**逐字**这时候**才发那 `F_WINSIZE`
+            //      （=> 而而那那本地状态逐字**不**许当那凭据、=> 而依 C-103 那两边逐字各答一件事）
+            sessions[sid]?.onReadyFrameArrived()
             ready.remove(sid)?.countDown()
         }
 

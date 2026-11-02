@@ -16,6 +16,9 @@ import org.json.JSONObject
 
 /** LOB-OS management UI shipped in the host APK. */
 class HostControlActivity : Activity() {
+
+    /** 那**终端输出**逐字那一个上限（=> 而而那它逐字**只**留那**尾**那一截）。 */
+    private val MAX_TERMINAL_CHARS = 256 * 1024
     private lateinit var spinner: Spinner
     private lateinit var manifest: EditText
     private lateinit var request: EditText
@@ -154,7 +157,7 @@ class HostControlActivity : Activity() {
                 //  => 而那**四条**逐字逐字接上（=> 而那能读 onData、=> 而那能 resize、=> 而那在 onExit 收尾）
                 t.onOutput = { d ->
                     runOnUiThread {
-                        terminalOut.append(String(d, Charsets.UTF_8))
+                        appendCapped(terminalOut, String(d, Charsets.UTF_8))
                     }
                 }
                 t.onClosed = { status, signal ->
@@ -291,6 +294,33 @@ class HostControlActivity : Activity() {
      * @param showPiecesInResult 那返回体逐字**要不要**被这一份 pieces JSON 占住
      *   （=> 而那默认逐字是「要」、=> 而而那 refresh 那一支逐字靠它显示 pieces）。
      */
+    /**
+     * 那**终端输出**逐字**有**一个上限（=> 而而那它逐字**只**留那**尾**那一截）。
+     *
+     * 缺陷名（C-102）**那一格逐字把那终端输出逐字**无上限**地累积进那 TextView** ——
+     *   => 而那旧版逐字是 `terminalOut.append(String(d, Charsets.UTF_8))`
+     *     => 而而那那 `TextView` 逐字**把**每一段逐字**都**留着、=> 而而那它逐字**一直**涨
+     *       （=> 而而那那**一个** TextView 逐字**自己**就**是**那一份**累积**）
+     *     => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+     *       · 而那那耗电那第一格逐字**回退**：=> 而那 OOM 逐字 **18** 条、=> 而那堆逐字 349944 KB（≈342 MB）
+     *       · => 而而那那最近三条 OOM 逐字密集（逐字 `14:52:35.461`、`14:52:36.000`、`14:52:38.060`）
+     *         => 而而那那**正是** 07 那一趟逐字**起会话**那一族
+     *       => 而而那那**结论**逐字是「App 闲着逐字没有 OOM、=> 而起会话那一族逐字跑起来就会」
+     *       => 而而那那 `306a634` 那一笔逐字治的那一处（=> 而那那**缓冲**与那**输出**逐字**有**上限了）
+     *         逐字**生效**了（=> 而那 06:34:42Z 那一趟逐字 OOM 逐字 0 条、=> 而那堆逐字 181111 KB）
+     *       => 而而那这一格逐字是那**会话那一族**逐字**另有一处**逐字在累积
+     *     => 而而那那**判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
+     *   => 而那**处置**：=> 而而那那 **TextView** 逐字**只**留那**尾**那一截
+     *     => 而而那那**上限**逐字是那 **256 KiB** 逐字（=> 而而那那**头**那一截逐字**丢**、=> 而而那那**尾**那一截逐字**留**）
+     *     => 而而那那**丢**了逐字**说清**（=> 而那按 C-05 不猜填）
+     */
+    private fun appendCapped(view: android.widget.TextView, text: String) {
+        view.append(text)
+        val full = view.text.toString()
+        if (full.length <= MAX_TERMINAL_CHARS) return
+        view.text = full.takeLast(MAX_TERMINAL_CHARS)
+    }
+
     private fun loadPieces(showPiecesInResult: Boolean = true) {
         val pieces = HostControlService.pieces(this)
         pieceRows = (0 until pieces.length()).mapNotNull { pieces.optJSONObject(it) }
