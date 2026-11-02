@@ -43,6 +43,15 @@ object PtySession {
     //  => 而那**停那一个线程**逐字等的时长（=> 而那**有界**、=> 而那不逐字无限等）。
     private const val READER_JOIN_MS = 500L
 
+    /**
+     * 那**帧**逐字那长度逐字那一个上限（=> 而而那那**长度**逐字**从线**上逐字来、=> 而而那它逐字**不能**信）。
+     *
+     *   => 而而那那 native 那一族逐字**自己**逐字**发**的逐字**最大**是那 64 KiB（=> 而而那那 `FRAME_MAX`）
+     *   => 而而那这 1 MiB 逐字**是**那它逐字的 **16 倍**、=> 而而那那**余量**逐字**够**
+     *   => 而而那那**超了**逐字**报缺**、=> 而按 C-05 不猜填
+     */
+    private const val MAX_FRAME_BYTES = 1024 * 1024
+
     class Session internal constructor(
         private val host: Host,
         val sid: Int,
@@ -414,6 +423,10 @@ object PtySession {
         private val sessions = ConcurrentHashMap<Int, Session>()
 
         private val ready = ConcurrentHashMap<Int, CountDownLatch>()
+
+        //  => 而而那那**发帧**逐字那**锁**（=> 而而那那**两**个线程逐字**各**写那管道、
+        //    => 而而那那**次序**逐字**要**保证、=> 而而那那**头与体**逐字**要**连着）
+        private val sendLock = Any()
 
         @Volatile private var lastError: String = ""
 
@@ -867,6 +880,31 @@ object PtySession {
 
 
         @Synchronized
+        //  缺陷名（C-102）**那一格逐字把那一帧逐字**拆**成**两**次写、=> 而而那它们逐字**没有**那**锁****
+        //    => 而那旧版逐字是
+        //      `toHost.write(h)` + `toHost.write(payload)` + `toHost.flush()`
+        //      => 而而那那**两**个线程逐字**各**写那管道：
+        //        · 那**调用方线程**逐字写那 `F_OPEN`
+        //        · 那 **reader 线程**逐字写那 `F_READY` 的**反应**（=> 而而那那**补发**）
+        //      => 而而那那**写**逐字**没有**那**锁**、=> 而而那那**次序**逐字**不**保证
+        //        => 而而那那**两**个线程逐字**同时**写时、=> 而而那它们逐字**能**逐字**交错**：
+        //          A 写头 -> B 写头+体 -> A 写体
+        //          => 而而那那 native 那一族逐字读到的那一帧逐字**头与体对不上**
+        //            （=> 而而那那 `h.length` 逐字**是**B 的、=> 而而那那**体**逐字**是**A 的）
+        //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+        //        · 而那那 `diag.jsonl` 逐字 `stage="pty"` 逐字两条 FAIL
+        //          「PTY 的C 侧报错 | WINSIZE 指向不存在的会话」逐字**还是**发
+        //          （逐字 `1793621838075` 与 `1793622097373`）
+        //        · => 而而那那 `F_READY` 逐字**已经**真到了（=> 而那逐字「会话 0 就绪」逐字
+        //          逐字就在那 FAIL 逐字前 2.1 秒）=> 而而那那一帧逐字**还是发早了**
+        //          （=> 而而那那**错**逐字**不**是那**早**、=> 而而那它逐字是那**帧**逐字**错乱**）
+        //        · => 而而那那 **sid** 逐字**也可能**错（=> 而而那那 native 那一族逐字按那**号**逐字找那槽
+        //          => 而而那那**号**逐字**是**别的那一个 => 而而那它逐字就判「那会话逐字不存在」）
+        //    => 而那**判据**逐字是「那一帧逐字发的时候、=> 而而那那 native 那一族逐字那槽逐字逐字开没开」
+        //      那一个事实上（=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+        //    => 而那**处置**：=> 而而那那一帧逐字**一次**写（=> 而而那那**头与体**逐字**连着**）、
+        //      => 而而那那**写**逐字**一把锁**（=> 而而那那**次序**逐字**就是**那**写**次序）
+        //      => 而而那那**早到**那一帧逐字**由**那 native 那一族逐字**自己**答（=> 而而那那 `pending_winsize` 那一格）
         internal fun send(kind: Int, sid: Int, payload: ByteArray) {
             try {
                 val h = ByteArray(8)
@@ -877,9 +915,14 @@ object PtySession {
                 h[5] = ((len shr 8) and 0xFF).toByte()
                 h[6] = ((len shr 16) and 0xFF).toByte()
                 h[7] = ((len shr 24) and 0xFF).toByte()
-                toHost.write(h)
-                if (payload.isNotEmpty()) toHost.write(payload)
-                toHost.flush()
+                //  => 而而那那**一帧**逐字**连着**头与体逐字**写成**那**一个**字节串**
+                //    （=> 而而那那**两次**写逐字**能**逐字**交错**、=> 而而那那**一次**写逐字**不**能）
+                val frame = if (payload.isEmpty()) h else h + payload
+                //  => 而而那那**写**逐字**一把锁**（=> 而而那那**次序**逐字**就是**那**写**次序）
+                synchronized(sendLock) {
+                    toHost.write(frame)
+                    toHost.flush()
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "发帧失败 kind=$kind sid=$sid", e)
                 lastError = e.message ?: e.javaClass.simpleName
@@ -907,6 +950,39 @@ object PtySession {
                     if (b3 < 0 || b4 < 0 || b5 < 0 || b6 < 0) break
                     val len = (b3.toInt() and 0xFF) or ((b4.toInt() and 0xFF) shl 8) or
                               ((b5.toInt() and 0xFF) shl 16) or ((b6.toInt() and 0xFF) shl 24)
+                    //  缺陷名（C-102）**那一格逐字拿那线上逐字来的长度逐字**直接**去分配、=> 而而那它逐字**没有上限****
+                    //    => 而那旧版逐字是 `val buf = ByteArray(len)`
+                    //      => 而而那那 len 逐字是那**四个字节**逐字**拼**的、=> 而而那那**最大值** = 4294967295（4 GiB）
+                    //      => 而而那那帧通道逐字**能**逐字**错位**：
+                    //        · 那 native 那一族逐字那 `send_frame` 逐字**两次**写（=> 而而那那头与那体逐字**分**开写）
+                    //        · => 而而那那**写**逐字**能**逐字**交错**、=> 而而那那**读**逐字**逐字节**读（=> 而而那那 `fromHost.read()` 逐字**一**个**一**个读）
+                    //        => 而而那那 len 逐字就**是**那**别**的那一帧逐字**拼**出来的
+                    //          （=> 而而那那**拼错**逐字就**能**是那**几亿**）
+                    //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+                    //        · 而那那耗电那第一格逐字**回退**、=> 而那那 OOM 逐字**第 2** 趟逐字就**来**了
+                    //        · 而那那**分配量**逐字 = **117031556** 字节
+                    //          （=> 而而那那 `node` 那一件逐字 116779696 字节、=> 而和那那那**差**逐字 251860
+                    //            => 而和那那那**差**逐字**就是**那**压缩**逐字与那**解压**逐字那**差**）
+                    //      => 而而那那**后果**逐字 = 那 `ByteArray(len)` 逐字**直接**就**超**了那堆
+                    //    => 而那**判据**逐字是「那一格逐字要多少、=> 而而那它逐字**不该**要那么多」那一个事实上
+                    //    => 而那**处置**：=> 而而那那长度逐字**有**一个上限、=> 而那超出那一截逐字**报缺**、=> 而**不**分配
+                    //      => 而而那那**上限**逐字是那 **1 MiB**
+                    //        （=> 而而那那 native 那一族逐字**自己**逐字**发**的逐字**最大**是那 64 KiB、
+                    //          => 而而那那 1 MiB 逐字**是**那它逐字的 **16 倍**、=> 而而那那**余量**逐字**够**）
+                    //      => 而而那那**长度**逐字**超**了时逐字**丢**那一帧、=> 而而那那**流**逐字**它自己**也**已经**错位了
+                    //        （=> 而而那那**帧**逐字**能**逐字**重新同步**、=> 而而那那**流**逐字**不能**）
+                    //        => 而而那那**报缺**逐字**说清**那**长度**（=> 而按 C-05 不猜填）
+                    if (len > MAX_FRAME_BYTES) {
+                        val msg = "那帧长度逐字超上限：len=" + len + "、上限=" + MAX_FRAME_BYTES +
+                            "（=> 而而那那帧通道逐字**错位**了、=> 而而那那**流**逐字**不能**逐字重新同步）"
+                        lastError = msg
+                        synchronized(diag) {
+                            diag.append(msg).append(10.toChar())
+                            if (diag.length > 8192) diag.setLength(0)
+                        }
+                        ctx?.let { KernelHooks.report(it, "pty", false, "PTY 宿主读帧长度超上限", msg) }
+                        break
+                    }
                     val payload = if (len > 0) {
                         val buf = ByteArray(len)
                         fromHost.readFully(buf)

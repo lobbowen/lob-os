@@ -92,9 +92,28 @@ static int send_frame(int fd, uint8_t kind, uint8_t sid, const void *payload, ui
   h.sid = sid;
   h.flags = 0;
   h.length = len;
-  if (write_full(fd, &h, sizeof(h)) != 0) return -1;
-  if (len > 0 && write_full(fd, payload, len) != 0) return -1;
-  return 0;
+  //  缺陷名（C-102）**那一格逐字把那一帧逐字**拆**成**两**次写、=> 而而那它们逐字**能**逐字**交错****
+  //    => 而那旧版逐字是 `write_full(&h)` + `write_full(payload)`
+  //      => 而而那那**头与体**逐字**分**开写、=> 而而那那**写**逐字**能**逐字**交错**
+  //        （=> 而而那那**读**那一侧逐字**逐字节**读那帧通道、=> 而而那那长度逐字**能**从**错位**的字节拼出来）
+  //      => 而而那那**后果**（07 本轮逐字核出、Lead 本机复核成立）：
+  //        · 而而那那**读**那一侧逐字那 `ByteArray(len)` 逐字**没有上限**、=> 而而那它逐字**直接**就**超**了那堆
+  //          （=> 而那那**分配量**逐字 = **117031556** 字节）
+  //        · => 而而那那**耗电**那第一格逐字**回退**、=> 而而那那 OOM 逐字**第 2** 趟逐字就**来**了
+  //    => 而那**判据**逐字是「那一帧逐字**是不是**一个**整的**」那一个事实上
+  //    => 而那**处置**：=> 而而那那一帧逐字**一次**写（=> 而而那那**头与体**逐字**连着**）
+  //      => 而而那那**写**逐字**一个**整的、=> 而而那那**读**那一侧逐字**按**那长度逐字**一次**取
+  //      => 而而那那**读**那一侧逐字**另有**一个上限（=> 而那 `PtySession.kt` 那一 `MAX_FRAME_BYTES`）
+  //    => 而那**上限**逐字是那 64 KiB（=> 而而那那 `FRAME_MAX`）、=> 而而那那帧通道逐字**自己**逐字**不发**更大的
+  if (len > FRAME_MAX) return -1;
+  size_t total = sizeof(h) + (len > 0 ? (size_t)len : 0);
+  unsigned char *buf = (unsigned char *)malloc(total);
+  if (!buf) return -1;
+  memcpy(buf, &h, sizeof(h));
+  if (len > 0) memcpy(buf + sizeof(h), payload, len);
+  int rc = write_full(fd, buf, total);
+  free(buf);
+  return rc == 0 ? 0 : -1;
 }
 
 static void send_error(int fd, const char *msg) {
