@@ -267,11 +267,11 @@
     },
     "openssl-libname-variant.patch": {
       "version": "openssl-3.6.3",
-      "sha256": "a16285eff259bc4f1ddf91cc48c67c47cb1bb1bbcccd132c46225a0f3b0d5782",
+      "sha256": "702b4764023f4c1e70c6c9f60b783c058274ad0ba3384d1d0cf98b8be6cbb9ae",
       "urls": [
         "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-libname-variant.patch"
       ],
-      "note": "=> 而那 SONAME 逐字**不**与**那宿主**那**同名**、=> 而那**改名**由**那 shlib_variant **那一族**给"
+      "note": "=> 而那 SONAME 逐字**不**与**那宿主**那**同名**、=> 而那**改名**由**那 shlib_variant **那一族**给=> 而那那**钉值**逐字**跟**那**实际字节**走（=> 而那那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上、=> 而而那它逐字**不**由「那一族逐字是什么」顶掉）=> 而那那 `554b197` 逐字改了那 patch 逐字**那几行**`+` 逐字（=> 而那那**注释**逐字）、=> 而而那那**上下文行**逐字**一行**没动、=> 而而那那**打上**逐字**不受**影响"
     },
     "libcxx": {
       "name": "libcxx",
