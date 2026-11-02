@@ -724,16 +724,28 @@ object PtySession {
                         runCatching { session.deliver(out) }
                     }
                 }
-                runCatching {
-                    val es = proc.errorStream
-                    val ebuf = ByteArray(4096)
-                    while (true) {
-                        val n = es.read(ebuf)
-                        if (n <= 0) break
-                        val out = ebuf.copyOf(n)
-                        runCatching { session.deliver(out) }
-                    }
-                }
+                //  缺陷名（C-102）**那一路逐字**又**读**那 stderr、=> 而而那那 stderr 逐字**有**两个读者** ——
+                //    => 而那旧版逐字是 `val es = proc.errorStream` + `while (true) { es.read(ebuf) … }`
+                //      => 而而那那 `diagReader` 那一族逐字**也**读那 `proc.errorStream`
+                //        （=> 而那 `:393` 逐字 `proc.errorStream.bufferedReader().forEachLine { … }`）
+                //        => 而而那那**两个**读者逐字**各**读那**同一个**流
+                //      => 而而那那 `InputStream` 逐字**不是**那**可**逐字**并发读**的那一种
+                //        => 而而那那两读者逐字**抢**那同一批字节、=> 而而那那**行**逐字**被**逐字**劈开**
+                //      => 而而那那 `forEachLine` 逐字**等**那一个换行、=> 而而那那换行逐字**已经**被**别**那个读者**吃掉**了
+                //        => 而而那它逐字**等**到**下一个**换行才逐字**醒**、=> 而而那那**等待**逐字**没有**上限
+                //    => 而而那那**后果**（07 本轮逐字核出、Lead 本机实读成立）：
+                //      · 而那那「会话 0 就绪」那条 note 逐字是那 **stderr** 上那一条
+                //        （=> 而它逐字**不**是那帧通道、=> 而它逐字**另**一条通道）
+                //      · => 而那那「会话 0 就绪」逐字 18:58:21、=> 而那那 **4 秒之后**那一帧逐字才发
+                //        （=> 而那那 18:58:25Z）
+                //      => 而而那那**延迟**逐字**在**那 stderr 那一路、=> 而而那那**帧**逐字**不**延后
+                //      => 而而那那「帧错位」与那「读帧无上限」两族逐字**没有完全治好**
+                //    => 而那**判据**逐字是「那一路字节逐字**是不是**只有**一个**读者」那一个事实上
+                //      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+                //    => 而那**处置**：=> 而而那那 stderr 逐字**只**归那 `diagReader` 那一族
+                //      => 而而那那**输出**那一路逐字**只**读那 `inputStream`、=> 而那它逐字**不**再读那 stderr
+                //      => 而而那那 stderr 逐字**进**那诊断那一族（=> 而而那那 `diag.jsonl` 逐字**有**它）
+                //      => 而而那那**输出**逐字**不**再**混**那 stderr（=> 而而那那**别的**那一族逐字**不并**）
             }, "lobos-pty-output-" + session.sid)
             t.isDaemon = true
             t.start()
