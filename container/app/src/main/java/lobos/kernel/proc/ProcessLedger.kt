@@ -237,16 +237,16 @@ object ProcessLedger {
     }.getOrNull()
 
     /** 在跑的条目 —— 判据两条，按顺序取：
-     *  ① starttime 可用（账本里 >0 且现在读得到且相等）=> 以它为准（防 pid 复用）；
-     *  ② starttime 拿不到（账本里就是 -1）=> 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
-     *  [!] 而今天这一格是②：宿主读不到自己子进程的 /proc/<pid>/stat。
+     *  1. starttime 可用（账本里 >0 且现在读得到且相等）=> 以它为准（防 pid 复用）；
+     *  2. starttime 拿不到（账本里就是 -1）=> 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
+     *  [!] 而今天这一格是2.：宿主读不到自己子进程的 /proc/<pid>/stat。
      *  [!] 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
      *  [!] 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */
     @Synchronized
     fun liveOwned(ctx: Context): List<Entry> =
         list(ctx).filter { isLive(e = it, entryPath = entryPathOf(ctx, it.programId)) }
 
-    /** 判活的那一条（三处共用）。② 里 cmdline 只回答「这个 pid 是不是这个件的入口」，不防 pid 复用。 */
+    /** 判活的那一条（三处共用）。2. 里 cmdline 只回答「这个 pid 是不是这个件的入口」，不防 pid 复用。 */
     fun isLive(e: Entry, entryPath: String?): Boolean =
         if (e.starttime > 0) isOwnedAlive(e.pid, e.starttime)
         else entryPath != null && isOwnedAliveByCmdline(e.pid, entryPath)

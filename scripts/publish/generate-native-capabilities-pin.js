@@ -150,9 +150,9 @@ function outerEntryCount(file) {
 
 // 「外层套内层」那一族：=> 而那**内层**那一个件包（=> 而那按内容挑、=> 而零个或多个都判红）。
 //   => 而那**判据**逐字与 scripts/toolchain/fmt.sh 的 fmt_pick_piece **同形**：
-//     ① 先判外层自己是不是那一颗件（=> 而那它逐字含 component-meta.json 且那 id 逐字等于要取的那一件）；
-//     ② 外层没有才走「外层套内层」（=> 而那按内容挑内层）；
-//     ③ gzip / tar 那一档先解 tar 再走 ① 与 ②。
+//     1. 先判外层自己是不是那一颗件（=> 而那它逐字含 component-meta.json 且那 id 逐字等于要取的那一件）；
+//     2. 外层没有才走「外层套内层」（=> 而那按内容挑内层）；
+//     3. gzip / tar 那一档先解 tar 再走 1. 与 2.。
 //   => 而那**不取第一个**、=> 而零个或多个逐字**判红**。
 function pickInnerZip(file, form) {
   const want = path.basename(file).replace(/\.zip$/, '');

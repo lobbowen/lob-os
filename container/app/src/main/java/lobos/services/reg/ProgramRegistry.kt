@@ -117,8 +117,8 @@ object ProgramRegistry {
             // [!] **缺陷名（C-102）运行期探测形态**：这一支原来是一段形态判定
             //   `!lobos.kernel.elf.ExecBits.isRunnableByForm(entryFile) ->`，读那份字节的
             //   e_type（ET_EXEC / ET_DYN）与 PT_INTERP，由运行期自己算「这是不是程序」。
-            //   它在这里已经经历过三代：① ExecBits.isRunnable（含 owner 执行位）；
-            //   ② 换成 isRunnableByForm（只问形态）以与 PieceScan 对齐；③ 本次整支删除。
+            //   它在这里已经经历过三代：1. ExecBits.isRunnable（含 owner 执行位）；
+            //   2. 换成 isRunnableByForm（只问形态）以与 PieceScan 对齐；3. 本次整支删除。
             //   前两代都是为了消解「两把尺并存」这一症状；症状的根因是这一问本身不该在运行期问 ——
             //   形态是构建期就知道的事（用户第一行规则），落位目录是构建期定的（第二行规则）。
             //

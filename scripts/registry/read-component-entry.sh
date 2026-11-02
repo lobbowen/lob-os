@@ -19,9 +19,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 #  缺陷名（C-102）**那三个空逐字分不出来** ——
 #   而那旧版逐字是三个 `printf '\n'; exit 0`（=> 而那三处逐字**都是空串**、=> 而都 exit 0）：
-#     ① 纯库件（entry 合法地是空）
-#     ② 产物存在、而那一份 meta 的 entry 逐字是空
-#     ③ 读不到产物（压根没有可比对的声明）
+#     1. 纯库件（entry 合法地是空）
+#     2. 产物存在、而那一份 meta 的 entry 逐字是空
+#     3. 读不到产物（压根没有可比对的声明）
 #   => 而那调用方逐字只看到「空」，=> 而而那**三问**逐字**答不出**。
 #   => 而 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「本件只记，归 05」、
 #     => 而归 05 的处置逐字是「要么给不同的非空值、要么给不同的退出码」。
@@ -61,7 +61,7 @@ why_say() {
 #   · 而**打包那一支才是产出那份 zip 的那一个**（=> 而 package-component.sh:70 逐字
 #     `ZIP="dist/component-${TOOL}-${VER}-${SHA}-android-arm64.zip"`）
 #     => 而判据在 :107 要读那份 zip 里的 meta => 而那时 zip **还不存在**
-#     => 而 read-component-entry.sh 走 ② 那一支答空 => 而 :78 拿空串去 judge_shape
+#     => 而 read-component-entry.sh 走 2. 那一支答空 => 而 :78 拿空串去 judge_shape
 #     => 而报「入口 dist/ 没产出」。
 #
 # => 而成因是 **0a57629**（2026-10-20）把这一格从**读表**（component-verify.json）
@@ -76,7 +76,7 @@ why_say() {
 #   => 而算它的是 gen-component-meta.js 的 computeEntry（=> 而那**就是**唯一真源那一份算法）。
 #   => 而**顺序不用倒**（=> 而那要改 10 个 workflow，=> 而而那治的是症状不是成因）。
 
-# ① 落位结果（=> 而 dist/ 下那一批字节）—— **先**算它（=> 而它此刻就在）
+# 1. 落位结果（=> 而 dist/ 下那一批字节）—— **先**算它（=> 而它此刻就在）
 if [ -d "$ROOT/dist" ]; then
   e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$ROOT/dist" 2>/dev/null || true)"
   if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
@@ -87,7 +87,7 @@ if [ -d "$ROOT/dist" ]; then
   fi
 fi
 
-# ② 产物自带的那一份（=> 而那是**上一次**打出来的那份 zip，=> 而而它在时 answer 的是**上一次**的答案）
+# 2. 产物自带的那一份（=> 而那是**上一次**打出来的那份 zip，=> 而而它在时 answer 的是**上一次**的答案）
 for z in "$ROOT"/dist/component-"$key"-*.zip; do
   [ -f "$z" ] || continue
   e="$(unzip -p "$z" component-meta.json 2>/dev/null | node -e '
@@ -104,7 +104,7 @@ for z in "$ROOT"/dist/component-"$key"-*.zip; do
   fi
 done
 
-# ③ 读不到产物 => 答「没有可比对的声明」
+# 3. 读不到产物 => 答「没有可比对的声明」
 why_say "$(why_no_artifact)"
 printf '\n'
 exit 0
