@@ -341,6 +341,31 @@ miss_stale=0
 miss_read=0
 ok=0
 
+#  => 而那那**反查**那一族：=> 而那那 run id 逐字**反查**到那产出它的那一趟的 head sha
+#    => 而那那**期望值**逐字是那**产出它的那一趟**（=> 而而那它逐字**不**是那当前 HEAD）
+#    => 而那那**问不到**时逐字**答不出**（=> 而那空串、=> 而按 C-05 不猜填）
+#    => 而那那**身份**逐字**只**用那 GH_HDR（=> 而那那唯一一份身份、=> 而按 C-104 逐字**不并**）
+run_head_sha_of() {
+  local run="$1"
+  [ -n "$run" ] || { printf ''; return 0; }
+  local body="$STAGE/.run-$run.json"
+  local http
+  http="$(curl -sS -o "$body" -w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
+    "https://api.github.com/repos/$REPO/actions/runs/$run" 2>/dev/null || true)"
+  if [ "$http" != "200" ]; then
+    rm -f "$body"
+    printf ''
+    return 0
+  fi
+  local sha
+  sha="$(node -e '
+let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{
+  try{process.stdout.write(String(JSON.parse(d).head_sha||""))}catch(e){process.stdout.write("")}
+})' < "$body" 2>/dev/null)"
+  rm -f "$body"
+  printf '%s' "$sha"
+}
+
 for id in "${PIECES[@]}"; do
   tag="$(bash scripts/toolchain/cache-key.sh tag "$id")"
   asset="$(bash scripts/toolchain/cache-key.sh asset "$id")"
@@ -584,13 +609,35 @@ for id in "${PIECES[@]}"; do
   fi
   rm -f "$STAGE/$id/bsha.json"
 
-  _want_sha="${GITHUB_SHA:-}"
-  _want_src="GITHUB_SHA（=> 而那产出它的那一次构建）"
-  if [ -z "$_want_sha" ] && [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
-    #  => 而那**产物自己**逐字带的那 buildRun 逐字就是那产出它的那一次构建的**编号**
-    #    => 而而那它逐字**不需要**任何陈旧记录（=> 而那 pin 记录逐字是那**上一次**固化那一份的）
-    _want_sha=""
-    _want_src="产物自带的 buildRun=$_pkg_run（=> 而那产出它的那一次构建）"
+  #  缺陷名（C-102）**那一格逐字拿那**当前**那一趟构建逐字当那**期望值**、=> 而而那它逐字**恒红****
+  #    => 而那旧版逐字是 `_want_sha="${GITHUB_SHA:-}"`（=> 而而那那**第一档**逐字**总是**那当前 HEAD）
+  #      => 而而那那**第一档**逐字只适用「那件包逐字就是**这一趟**固化出来的那一件」
+  #        （=> 而那当前 HEAD 逐字每一次逐字都在变、=> 而而那那**旧**一轮固化的件包逐字
+  #          **legitimately** 逐字不是那当前 HEAD 产的）
+  #      => 而而那那**后果**（Lead 本机实读那 job log 逐字核过）：
+  #        `::[error]那件自己的 buildSha 逐字是 6ee61a0f6ed2、=> 而那产出它的那一次构建逐字是 fc80bf01e090`
+  #        `::[error]那件自己的 buildSha 逐字是 6aceba012cde、=> 而那产出它的那一次构建逐字是 fc80bf01e090`
+  #        （…九件逐字都是这一句、=> 而而那那「旧产物 9」逐字**恒**红）
+  #    => 而那**判据**逐字是「那一格逐字要核的那 buildSha 逐字、=> 而而那它逐字要跟**产出它的那一趟**逐字比、
+  #      => 而而那它逐字**不**跟那**当前**那一趟逐字比」那一个事实上
+  #      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+  #    => 而那**处置**：=> 而而那那**第一档**逐字只在该件包逐字就是**这一趟**固化出来的那一件逐字时才适用
+  #      · 判「是不是这一趟产的那一件」：=> 而那**产物自己**逐字带的那 `buildRun` 逐字**等于**那当前那一趟的 run id
+  #        （=> 而那那当前 run id 逐字是那 `GITHUB_RUN_ID`）
+  #      · 否则：=> 而和那那**一律**走那 `buildRun` **反查**（=> 而那那件包逐字自带 `buildRun` 逐字
+  #        就是产出它的那一趟 run）
+  #      · 反查逐字问不到时逐字**不判**、=> 而而那它逐字**不**是「那不是」
+  _want_sha=""
+  _want_src=""
+  _cur_run="${GITHUB_RUN_ID:-}"
+  if [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ] && [ -n "$_cur_run" ] && [ "$_pkg_run" = "$_cur_run" ]; then
+    #  => 而而那那件包逐字就是**这一趟**固化出来的那一件（=> 而那它逐字自带的那 buildRun 逐字等于那当前 run）
+    _want_sha="${GITHUB_SHA:-}"
+    _want_src="GITHUB_SHA（=> 而那件包逐字就是这一趟产的那一件）"
+  elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
+    #  => 而和那那**一律**走那 buildRun **反查**（=> 而那那件包逐字自带 buildRun 逐字就是产出它的那一趟 run）
+    _want_sha="$(run_head_sha_of "$_pkg_run")"
+    _want_src="产物自带的 buildRun=$_pkg_run 反查（=> 而那产出它的那一趟）"
   fi
   if [ -n "$_want_sha" ]; then
     if [ "$_pkg_sha" != "$_want_sha" ]; then
