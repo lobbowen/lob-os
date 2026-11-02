@@ -52,9 +52,9 @@ for (let i = 0; i < argv.length; i++) {
     // [!] 只算 entry 并打印（=> 而不写清单）。
     //   而它治的是「**判据在产物之前跑**」那一族：
     //     · 判据那一处（verify-component-artifact.sh:6）与打包那一处（package-component.sh:15）
-    //       都要读 entry，=> 而而打包那一支才是产出那份 zip 的那一个，
+    //       都要读 entry，=> 而打包那一支才是产出那份 zip 的那一个，
     //       => 而判据在打包**之前**跑 => 而那时 zip 还不存在。
-    //   => 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而而那一份此刻就在 dist/ 下）。
+    //   => 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而那一份此刻就在 dist/ 下）。
     //   => 而用法：node gen-component-meta.js --print-entry <件名> <落位目录>
     printEntry = { id: argv[i + 1] || '', payload: argv[i + 2] || '' };
     i += 2;
@@ -79,7 +79,7 @@ if (positional.length === 4) {
 
 // => 而 --print-entry 那一形态把件名与落位目录**放在两个形参里**（=> 而不是位置参数），
 //    => 而所以那一形态下 `id` 是**空的**（=> 而 positional 是空的），
-//    => 而而 `readAuthorEntryName(id)` 要它（=> 而它按表里的键找那一格）。
+//    => 而 `readAuthorEntryName(id)` 要它（=> 而它按表里的键找那一格）。
 const [id0, version0, outPath0] = positional;
 const id = printEntry ? printEntry.id : id0;
 const version = printEntry ? '' : version0;
@@ -126,13 +126,13 @@ function elf_form_of(file) {
     if (head[0] !== 0x7f || head[1] !== 0x45 || head[2] !== 0x4c || head[3] !== 0x46) {
       // [!] `#!` 脚本（=> 而 npm / pnpm 那两件的入口是 bin/npm-cli.js 与 bin/pnpm）：
       //   而 elf-form.sh 的取值域里 unknown 逐字是「不是 ELF（或是 #! 脚本）」，
-      //   => 而而它**是**入口（=> 而 verify-component-artifact.sh 那一支逐字认 shebang 形态），
-      //   => 而所以这一处把它单列成一个形态（=> 而而那是 02 核到的那一格）。
+      //   => 而它**是**入口（=> 而 verify-component-artifact.sh 那一支逐字认 shebang 形态），
+      //   => 而所以这一处把它单列成一个形态（=> 而那是 02 核到的那一格）。
       // [!] 而 01 裁的 S117 那一件把这一族的取值域按「**能不能被当入口调起**」那一问定：
-      //   => 而那判别形式的第 ② 步是「它的头是不是 #!」（=> 而而**那一行去掉 #! 之后**为空，
+      //   => 而那判别形式的第 2 步是「它的头是不是 #!」（=> 而**那一行去掉 #! 之后**为空，
       //      => 而则它不是可调起的、=> 而它不是入口形态）。
       //   => 而 elf-form.sh 那一族（=> 而那是**另一把尺**）已按同一判别形式实现，
-      //      => 而而这一族**也**按同一判别形式（=> 而而两把尺在域里答同一问，=> 而那是 01 裁的第 ② 条）。
+      //      => 而这一族**也**按同一判别形式（=> 而两把尺在域里答同一问，=> 而那是 01 裁的第 2 条）。
       if (n >= 2 && head[0] === 0x23 && head[1] === 0x21) {
         // 而那一行去掉 #! 之后为空 => 而那不是可调起的
         const line = fs.readFileSync(file, 'utf8').split('\n', 1)[0];
@@ -172,7 +172,7 @@ function is_program_form(dir, name) {
 //   => 而**第二问的判据是内容逐字相同**（=> 而 sha256），=> 而那才是这一族的判别形式。
 //   => 而**而**这一族与「能不能当入口」分开之后，=> 而 openssl 那一件的两条路径
 //      （=> 而 bin/openssl 与 bin/c_rehash 是**两份不同的** shebang 脚本）
-//      => 而而它们**不是**多调用那一族（=> 而它们不是同一份字节）。
+//      => 而它们**不是**多调用那一族（=> 而它们不是同一份字节）。
 function same_bytes(dir, names) {
   if (names.length === 0) return false;
   const shaOf = (n) => {
@@ -194,7 +194,7 @@ function same_bytes(dir, names) {
 // **作者那一侧给的「入口该取哪一个名字」** —— 那一格落在
 // component-sources.json 的 `sources.<件>.entryName`。
 //
-// 而 01 那一件 S115 第三节落点 ③ 逐字：「**候选集合与每条候选的正当性由那一件的作者那一侧给**
+// 而 01 那一件 S115 第三节落点 3 逐字：「**候选集合与每条候选的正当性由那一件的作者那一侧给**
 //（=> 而 busybox 那一族上游自带那一组，=> 而上游知道每个 applet 的定位）」，
 // 而「取哪一个」是**使用期的分布**（=> 而 busybox 认全部那些名字，=> 而它没有「唯一一个更真」的名字）
 // => 而构建期**不**按文件名字母序挑（=> 而「排序加 break」是实现细节）。
@@ -240,9 +240,9 @@ function computeEntry() {
     //
     // [!] 缺陷名（C-102）**把这两问当成一问** —— 而 332a82b 那一笔（=> 而加 shebang 那一族）
     //   就栽在这儿：=> 而 openssl 那一件的 bin/ 下有**两份不同的** shebang 脚本
-    //   （=> 而 bin/openssl 与 bin/c_rehash），=> 而而它们**不是**同一份字节
-    //   => 而而旧的那一支只看「程序形态的项 > 1」=> => 而它把 openssl 那一件
-    //   误判成多调用那一族 => => 而而它判红「那是多个入口，该件只应有一个」
+    //   （=> 而 bin/openssl 与 bin/c_rehash），=> 而它们**不是**同一份字节
+    //   => 而旧的那一支只看「程序形态的项 > 1」=> => 而它把 openssl 那一件
+    //   误判成多调用那一族 => => 而它判红「那是多个入口，该件只应有一个」
     //   => => 而 openssl 与 curl 那一件今天在打包步红（=> 而 CI 逐字：
     //   「落位目录 … 的 bin/ 下有 2 个程序形态字节，而它们**不是同一份**（c_rehash、openssl）」）。
     //
@@ -250,7 +250,7 @@ function computeEntry() {
     const isMultiCall = same_bytes(binDir, binProgram);
     if (!isMultiCall) {
       // 而**不是**多调用那一族 => 而那是「这一件有多个入口」那一问
-      //   => 而它要**作者那一侧**给（=> 而与 busybox 那一族同一族：=> 而而那一格是
+      //   => 而它要**作者那一侧**给（=> 而与 busybox 那一族同一族：=> 而那一格是
       //   component-sources.json 的 sources.<件>.entryName）。
       const declaredEntry = readAuthorEntryName(id);
       if (!declaredEntry) {
@@ -259,7 +259,7 @@ function computeEntry() {
           + '），而它们**不是同一份字节**（=> 而那不是多调用二进制那一族，'
           + '=> 而那是「这一件有多个入口」那一问）'
           + '—— 而这一件**没有**声明该取哪一个（=> 而那一格落在'
-          + 'component-sources.json 的 sources.<件>.entryName，=> 而而它要**作者那一侧**给）' };
+          + 'component-sources.json 的 sources.<件>.entryName，=> 而它要**作者那一侧**给）' };
       }
       if (binProgram.indexOf(declaredEntry) < 0) {
         return { error: '这一件声明的入口名 ' + declaredEntry + ' 不在落位结果那几项里（'
@@ -289,7 +289,7 @@ function computeEntry() {
     //     => 「落位目录的 bin/ 下有 17 个文件，但没有一个是程序形态」（旧版的 binProgram 名单不含本体时才出现）。
     //   => 现在：**本体那份**（它的 realpath 就是它自己）与那 17 条软链**是同一份字节**
     //     => 判据改成「这些项的内容是否逐字相同」（sha256）—— 那是「彼此是同一份吗」的可机械核形式。
-    //   => 而而上面那一段（isMultiCall）已经**按内容**核过这一条了。    // bin/ 下有多个程序形态字节 —— 那是**多调用二进制**的形状（01 今天裁定）：
+    //   => 而上面那一段（isMultiCall）已经**按内容**核过这一条了。    // bin/ 下有多个程序形态字节 —— 那是**多调用二进制**的形状（01 今天裁定）：
     // 「一份程序字节 + 若干个命令名」，而命令名是**派生物**（man1 INSTALL 段：
     // make install 自己知道编了哪些 applet，并连带把软链建好）。
     // 入口指向**那一份字节**（它们全是软链，指向同一份），那批名字不进清单。
@@ -318,12 +318,12 @@ function computeEntry() {
     }
     // 缺陷名（C-102）**entry 指到实现而实现不认那个名字** ——
     // 而 busybox 今天已经栽在这上面（=> 而真机读数：=> 而 exit 127，
-    // => 而而 stderr 逐字是「libbusybox.so: applet not found」）。
+    // => 而 stderr 逐字是「libbusybox.so: applet not found」）。
     //
     // 而按 C-103 这一族它为什么有两边：
     //   一边「entry 该指向那个可执行体（本体）」；
     //   另一边「entry 该指向一个用户会叫的名字（applet 软链）」。
-    // 而 04 裁的是**后者**（=> 而 01 那一件 S115 把它拆成三问，=> 而而本段按 S115 落）：
+    // 而 04 裁的是**后者**（=> 而 01 那一件 S115 把它拆成三问，=> 而本段按 S115 落）：
     //
     // 而 S115 的三问：
     //   S1 **「这一件是不是多调用二进制」**：=> 而 bin/ 下**程序形态**的项 > 1（binProgram.length > 1）。
@@ -369,7 +369,7 @@ function computeEntry() {
     }
     // 那一组「它自己 install 的名字」= 那一族里**不是本体**的那几个软链名（=> 而 R1/R3）。
     const aliasNames = binProgram.filter((n) => n !== body);
-    // 作者那一侧给的那一份（=> 而 01 那一件 S115 第三节落点 ③）。
+    // 作者那一侧给的那一份（=> 而 01 那一件 S115 第三节落点 3）。
     const declared = readAuthorEntryName(id);
     if (!declared) {
       return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
@@ -425,9 +425,9 @@ function computeEntry() {
 // [!] 只算 entry 并打印（=> 而不写清单）。
 //   而它治的是「**判据在产物之前跑**」那一族：
 //     · 判据那一处（verify-component-artifact.sh:6）与打包那一处（package-component.sh:15）
-//       都要读 entry，=> 而而打包那一支才是产出那份 zip 的那一个，
+//       都要读 entry，=> 而打包那一支才是产出那份 zip 的那一个，
 //       => 而判据在打包**之前**跑 => 而那时 zip 还不存在。
-//   => 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而而那一份此刻就在 dist/ 下）。
+//   => 而这一形态让读侧**从落位结果算**（=> 而那是同一份算法、=> 而那一份此刻就在 dist/ 下）。
 if (printEntry) {
   if (!printEntry.id || !printEntry.payload) {
     console.error('用法: node gen-component-meta.js --print-entry <件名> <落位目录>');
@@ -436,7 +436,7 @@ if (printEntry) {
   PAYLOAD = path.resolve(printEntry.payload);
   const c = computeEntry();
   if (c.error) {
-    // 算不出来 => 答「没有」（=> 而 exit 0，=> 而而那与这一格是可选的那一族一致）。
+    // 算不出来 => 答「没有」（=> 而 exit 0，=> 而那与这一格是可选的那一族一致）。
     process.exit(0);
   }
   process.stdout.write(String(c.entry || ''));
@@ -446,7 +446,7 @@ if (printEntry) {
 const computed = computeEntry();
 
 /**
- * 那一件逐字**是不是一个命令解释器**（=> 而那它逐字是**派生**的、=> 而而那它逐字**不**是自报的）。
+ * 那一件逐字**是不是一个命令解释器**（=> 而那它逐字是**派生**的、=> 而那它逐字**不**是自报的）。
  *
  *  依据：01 裁的 S615-01-DECLARED-TIER-SHELL-ROLE-PTS-RULING.md §3.1 逐字三格：
  *    · 格一 它逐字能 `-c` 跑一条命令
@@ -457,7 +457,7 @@ const computed = computeEntry();
  *
  *  => 而那**期望声明**逐字从哪来：=> 而那 scripts/verify/expected-behaviour.json 那一族
  *    （=> 而那它逐字是「那件产品逐字跑出它自己那行为」那一族的**声明侧**）
- *  => 而那读不到时逐字**报缺**、=> 而而那**不猜**（依 C-05）。
+ *  => 而那读不到时逐字**报缺**、=> 而那**不猜**（依 C-05）。
  *
  *  @param {object} computed 那 computeEntry 那一格的结果
  *  @param {string} id 那一件的名字
@@ -467,15 +467,15 @@ function isCommandInterpreter(computed, id) {
   //  => 而那格二：它逐字有程序入口（=> 而那 entry 逐字非空、=> 而那它逐字是程序形态）。
   if (!computed || computed.role !== 'program' || !computed.entry) return false;
   //  => 而那格一与格三：=> 而那**期望声明**逐字有 `-c` 那一档
-  //    （=> 而那 args 逐字含 `-c`、=> 而而那它逐字就是「那一件逐字接受一条命令字符串」那一族）。
+  //    （=> 而那 args 逐字含 `-c`、=> 而那它逐字就是「那一件逐字接受一条命令字符串」那一族）。
   let decl = null;
   try {
     const p = path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json');
     decl = JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch (e) {
-    //  => 而那读不到时逐字**报缺**（=> 而按 C-05 不猜填、=> 而而不把那一件**默认**当解释器）。
+    //  => 而那读不到时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不把那一件**默认**当解释器）。
     console.error('::warning title=期望声明读不到::' + path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json')
-      + ' 读不到（=> 而那一件逐字**不**判成 shell、=> 而而那按 C-05 报缺）');
+      + ' 读不到（=> 而那一件逐字**不**判成 shell、=> 而那按 C-05 报缺）');
     return false;
   }
   const piece = decl && decl.pieces && decl.pieces[id];
@@ -532,13 +532,13 @@ const meta = {
   entry: entry,
   // entry 由谁算 —— 写进清单，让读清单的人不必再猜。
   entryProvenance: 'gen-component-meta.js:落位结果（构建期算出，非人填）',
-  // [!] 「**为什么是这一个**」落进清单（01 那一件 S115 第三节落点 ②）。
+  // [!] 「**为什么是这一个**」落进清单（01 那一件 S115 第三节落点 2）。
   //   而它**原来只打到控制台**（=> 而 `:395` 那一行逐字是「依据=」+ computed.by），
   //   => 而落位侧那三份（component-meta.json / piece-shape.json / program-manifest.json）
   //      **都没有 by 键**（=> 而 07 今天逐字核到设备侧那一格是空的）。
   //   => 而这一格**机器可读**（=> 而读清单的人不必再从控制台日志里捞）。
   by: computed.by || '',
-  // [!] role 那一格 —— 落进**产物**这一份（01 那一件 S115 第三节落点 ③ 的那一族）。
+  // [!] role 那一格 —— 落进**产物**这一份（01 那一件 S115 第三节落点 3 的那一族）。
   //   而它治的是「**role 那一格在两份清单里，而索引重建那一支读的那一份没有它**」：
   //     · 落位侧 program-manifest.json **有** role（=> 而 ManifestWriter 写它，=> 而 :27 那一行
   //       逐字是 `m.put("role", role)`），
@@ -558,13 +558,13 @@ const meta = {
   //      而索引重建那一支读的是前者而监督环那一支读的是后者。
   //   => 而这里把 role **补进产物那一份**（=> 而两份就一致了，=> 而按 C-104「只有一条生成路径」），
   //      而运行期那一处（PieceScan.roleOf）**先读产物那一份**、=> 而读不到才落到落位侧那一份（=> 而那是兜底）。
-  //  [!] role 那一档逐字**派生**（=> 而那 01 裁的 S615-01 §3.1 逐字三格、=> 而而那它逐字**不**是自报的）。
+  //  [!] role 那一档逐字**派生**（=> 而那 01 裁的 S615-01 §3.1 逐字三格、=> 而那它逐字**不**是自报的）。
   //    · 格一 它逐字能 `-c` 跑一条命令
   //    · 格二 它逐字有程序入口（=> 而那 files[] 逐字有 role=program 的项）
   //    · 格三 它逐字自己的那行为逐字是「解释命令」
   //      （=> 而那**期望声明**逐字有 `-c` 那一档）
   //    => 而那三格逐字全中 => 而那它逐字登记为 role=shell
-  //    => 而而那**不许**按 id 猜（=> 而那正是 979270e 按 C-05 删掉那两条兜底的理由）
+  //    => 而那**不许**按 id 猜（=> 而那正是 979270e 按 C-05 删掉那两条兜底的理由）
   //       （=> 而那正解逐字是「那一档逐字被产出来」，不是「那一档逐字被猜出来」）。
   role: computed.role === 'program' && isCommandInterpreter(computed, id) ? 'shell' : (computed.role || ''),
   requires: deps,

@@ -35,7 +35,7 @@ import lobos.services.reg.UnitEntry
  *
  * 缺陷名（C-102）**库形态的入口指针按 files[] 的**首项**取** ——
  *   而那首项逐字是「LC_ALL=C sort 的**副产品**」（=> 而那顺序逐字是路径字典序）、
- *   => 而它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（=> 而而那不是指针层）。
+ *   => 而它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（=> 而那不是指针层）。
  *   而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.5 第 1 条逐字给的缺陷名是
  *   「取 files[] 的**首项**作为入口指针名，而首项是 LC_ALL=C sort 的**副产品**（无语义）」。
  *   而 §1.3 逐字裁的判别式是**两步**：
@@ -44,18 +44,18 @@ import lobos.services.reg.UnitEntry
  *   => 而本件逐字**照那两步**实现、=> 而那 chain 那一格逐字是**产物自带**的
  *     （=> 而那 build 期 scripts/toolchain/elf-form.sh 的 elf_chain_names 写的）。
  *
- * 缺陷名（C-102）**库形态的入口指针逐字只取一条、=> 而而那一件逐字可能有好几条** ——
+ * 缺陷名（C-102）**库形态的入口指针逐字只取一条、=> 而那一件逐字可能有好几条** ——
  *   而 01 裁的 S604-01 §1.4 第 3 条逐字：openssl 那一件逐字有**两条**链
  *   （libcrypto.so 与 libssl.so）、=> 而「**这一格不是「取第一个」**」。
  *   => 而本件逐字返回**全部**那几条、=> 而那落位侧逐字**逐条**建链。
  *
  * C-05 报缺口径（01 裁的 S604-01 §3.1 四档，每档都要说得出话）：
- *   1. 形态说明读不到 ⇒ 报缺（不探测字节、不猜）。
- *   2. 形态说明读得到但 role=library 的项一条都没有 ⇒ 报缺。
- *   3. 库项存在但**开发名那一层取不出**（chain[0] 取不到、或择一不唯一）⇒ 报缺
+ *   1. 形态说明读不到报缺（不探测字节、不猜）。
+ *   2. 形态说明读得到但 role=library 的项一条都没有报缺。
+ *   3. 库项存在但**开发名那一层取不出**（chain[0] 取不到、或择一不唯一）报缺
  *      （不按首项、不按字典序、不猜）—— zlib 是唯一一格依赖 chain[0] 才唯一的。
  *   4. **单层无软链**（curl：唯一库项是普通文件、chain 长度 1、soname 与 basename 同名）
- *      ⇒ **不报缺**，取那唯一库项的 basename 记为开发名，=> 而**显式记为「单层无软链」这一档**。
+ *     **不报缺**，取那唯一库项的 basename 记为开发名，=> 而**显式记为「单层无软链」这一档**。
  */
 object PieceEntryPointer {
 
@@ -100,7 +100,7 @@ object PieceEntryPointer {
      *     ——依据逐字：ProgramInstallPipeline.kt:948 到 :953 那一段逐字写
      *     「程序形态 `assetEntry` = 落位后那一条／库形态 `assetEntry` 空（这一件没有程序入口）」、
      *     :970 逐字 `assetEntry = if (isProgram) entryRel else ""`（**逐字是派生索引**）。
-     *   => 而而这一格逐字把那**派生索引**当成了形态、=> 而那**注释**逐字也这么写
+     *   => 而这一格逐字把那**派生索引**当成了形态、=> 而那**注释**逐字也这么写
      *     （=> 而那正是缺陷名那一半）。
      *   => 而那**三格各答一件事**（依 C-105 不合并）：
      *     · 「这一件是什么形态」=> 归产物那一份的 `kind`（program / library / mixed / unknown）；
@@ -154,12 +154,12 @@ object PieceEntryPointer {
     /**
      * 定位这一件的**全部**入口指针。
      *
-     * 缺陷名（C-102）**那一格逐字只取一条、=> 而而那一件逐字可能有好几条** ——
+     * 缺陷名（C-102）**那一格逐字只取一条、=> 而那一件逐字可能有好几条** ——
      *   => 而那 openssl 那一件逐字有两条链（libcrypto.so 与 libssl.so），
      *     => 而 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」。
      *   => 而本件逐字返回**全部**那几条。
      *
-     * 缺陷名（C-102）**那 shape 那一格逐字是必填、=> 而而调用方逐字漏传就编译不过** ——
+     * 缺陷名（C-102）**那 shape 那一格逐字是必填、=> 而调用方逐字漏传就编译不过** ——
      *   => 而那旧版逐字是 `shape: ...Piece?`（=> 而**没有**默认值），
      *     => 而那 3ec28a6 那一笔那四处逐字改成了 `locateAll(ctx, e)`（=> 而那**两参**形态）
      *     => 而那**两参**形态逐字**没有**、=> 而那四处逐字编译不过
@@ -167,9 +167,9 @@ object PieceEntryPointer {
      *       「PieceUpdater.kt:338:44 No value passed for parameter 'shape'」四行）。
      *   => 而那**处置**：=> 而那 shape 那一格逐字给**默认值**
      *     （=> 而那默认值逐字就是 `shapeOf(ctx, pe)`），
-     *     => 而而那与上面那个两参 `locate` 逐字**同一口径**
+     *     => 而那与上面那个两参 `locate` 逐字**同一口径**
      *     （=> 而那 :126 逐字 `locate(ctx, pe, shapeOf(ctx, pe))`）
-     *     => 而而那**不引入第二处真相**（=> 而那形态说明那一格逐字**只有一处**来源：shapeOf）。
+     *     => 而那**不引入第二处真相**（=> 而那形态说明那一格逐字**只有一处**来源：shapeOf）。
      *   => 而那**调用方**逐字**不必**自己读那形态说明（=> 而那四处上下文里逐字**没有**读好的 shape
      *     => 而那若逐字让它们各自读、=> 而那就是**四处**重复读同一份）。
      */
@@ -181,8 +181,8 @@ object PieceEntryPointer {
         val role = roleOf(pe)
         //  => 而那**程序形态**那一支逐字**不再**早 return（=> 而那是 C-997 那一族的落点）：
         //     => 而那旧版逐字是 `if (role == ROLE_PROGRAM) { … return prog }`
-        //       => 而而那 openssl 那一件逐字**有**程序入口（bin/openssl）=> 而而它逐字被归到 program 那一支
-        //       => 而而那它那**两条库指针**在那一档里逐字**读不到**
+        //       => 而那 openssl 那一件逐字**有**程序入口（bin/openssl）=> 而它逐字被归到 program 那一支
+        //       => 而那它那**两条库指针**在那一档里逐字**读不到**
         //       （=> 而 07 本轮实测逐字：设备侧 diag.jsonl 逐字把 openssl 报成 program 档位）。
         //     => 而那 openssl 那一件逐字是 **kind=mixed**
         //       （=> 而那 06 归档那件包的 piece-shape.json 逐字：programs=["bin/openssl"]、
@@ -201,11 +201,11 @@ object PieceEntryPointer {
             //  => 而那**新档** no-library（=> 而按 01 裁的 S610-01 §2.4 第 5 条逐字：
             //     「**那一件逐字没有 `role=library` 的项**（`items.isEmpty()`）
             //      => 而它逐字**不是缺**（**它是程序形态那一族**）」）。
-            //  => 而而那**程序入口**逐字**照样**要给（=> 而那那一件逐字有程序入口）。
+            //  => 而那**程序入口**逐字**照样**要给（=> 而那一件逐字有程序入口）。
             val progItems = shape.byRole(ProgramInstallPipeline.ROLE_PROGRAM)
             //  => 而那判据逐字是「**有** role=program 的项」（=> 而**不是**「恰好一条」）：
             //     => 而那 busybox 那一件逐字有 **30** 条 role=program 的项（=> 而那 29 条软链 + 本体那一份）、
-            //       => 而而那「恰好一条」逐字会把它的程序入口**静默丢掉**。
+            //       => 而那「恰好一条」逐字会把它的程序入口**静默丢掉**。
             //     => 而那**入口那一条**逐字取那一件**自己**的 entry（=> 而那 entry 逐字是那一件声明的入口）。
             val progPointers = if (progItems.isNotEmpty()) {
                 //  => 而那**程序入口**逐字**不**由注册表 assetEntry 答
@@ -234,17 +234,17 @@ object PieceEntryPointer {
             } else {
                 emptyList()
             }
-            //  => 而那一档逐字**有出口**（=> 而那一档逐字是 "no-library"、=> 而而它逐字算出来了、
-            //   => 而而它逐字**同样**不能只赋值不报）。
+            //  => 而那一档逐字**有出口**（=> 而那一档逐字是 "no-library"、=> 而它逐字算出来了、
+            //   => 而它逐字**同样**不能只赋值不报）。
             reportTier(ctx, pe, "no-library", progPointers.size, progPointers.map { it.name },
                 hasLibraryItems = false)
             return LocatedAll(role, progPointers)
         }
         //  => 而那下面逐字**调**那唯一那套口径（=> 而按 C-104 判别源要唯一）：
         //    而那 ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格逐字是**那唯一**一处、
-        //    => 而而 PreinstalledPieces 那一族逐字**也调**它。
+        //    => 而 PreinstalledPieces 那一族逐字**也调**它。
         //  => 而那档名逐字从那**唯一**那一格取（=> 而那 pointerLayerWithTier 那一格）、
-        //     => 而而那「单层无软链」那一档逐字**显式**是 "single"
+        //     => 而那「单层无软链」那一档逐字**显式**是 "single"
         //     （=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
         //  => 而那**判据**逐字是「那一件逐字有没有 `role=library` 的项」
         //     （=> 而按 01 裁的 S610-01 §2.4 逐字「**`program` 那一档逐字取消**、=> 而改成 `no-library`；
@@ -252,7 +252,7 @@ object PieceEntryPointer {
         //      => 而**不是**「注册表 assetEntry 非空不空**」」）。
         //  => 而所以那一格逐字**必须**传 ROLE_LIBRARY（=> 而那 libItems 逐字非空逐字就是那一族）
         //     ——=> 而那旧版逐字传的是 roleOf 那一票（=> 而那对 mixed 那一件逐字是 program）
-        //     ——=> 而而那 openssl 那一件逐字走不到库形态那一支（=> 而那两条库指针逐字**读不到**）。
+        //     ——=> 而那 openssl 那一件逐字走不到库形态那一支（=> 而那两条库指针逐字**读不到**）。
         val layer = ProgramInstallPipeline.PieceShape.pointerLayerWithTier(
             shape, ProgramInstallPipeline.ROLE_LIBRARY, verDirOf(ctx, pe))
         val picked = layer.pointers
@@ -270,7 +270,7 @@ object PieceEntryPointer {
         val out = mutableListOf<Located>()
         //  => 而那**程序入口**逐字**也**要给（=> 而那 openssl 那一件逐字是 **kind=mixed**：
         //     => 而它逐字**既有**程序入口（bin/openssl）**又有**两条库链）。
-        //     => 而而那程序入口逐字**不**由注册表 assetEntry 答（=> 而按 01 裁的 S610-01 §2.2 第 3 条逐字
+        //     => 而那程序入口逐字**不**由注册表 assetEntry 答（=> 而按 01 裁的 S610-01 §2.2 第 3 条逐字
         //       「『有没有程序入口』那一格逐字归**产物那一份的 `files[]` 里 `role=program` 那一族**」）。
         val progItems = shape.byRole(ProgramInstallPipeline.ROLE_PROGRAM)
         if (progItems.isNotEmpty()) {
@@ -321,16 +321,16 @@ object PieceEntryPointer {
         //    => 而那**后果**：=> 而那设备侧逐字读不到它（=> 而 07 本轮实读：single / chain0 / multi /
         //      pointerLayer / 单层无软链 在 diag.jsonl 与 events.jsonl 里逐字**全部 0**，
         //      => 而那阳性对照逐字 diag 的 "stage": 命中 **914**、events 的 "category":"diag: 命中 **470**）
-        //      => 而而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
+        //      => 而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
         //    => 而那**处置**：=> 而那**出口**逐字是那诊断那一族（=> 而那 RuntimeDiagnostics.append
         //      逐字写进 diag.jsonl、=> 而那正是 07 能读到的那一份）。
-        //      => 而而那**为什么**是诊断那一族而不是 Journal.events：
+        //      => 而那**为什么**是诊断那一族而不是 Journal.events：
         //        · 而那 Journal.events 那一族逐字是「**动作**」的记录（=> 而那它逐字按 category 分）；
-        //          而而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
+        //          而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
         //          => 而那它逐字是**形状**那一类、=> 而那 diag.jsonl 那一族逐字就是那形状那一族。
         //        · 而那 07 本轮实读逐字：events.jsonl 里 "category":"diag: 命中 470
-        //          => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而而那两条**都能**读到。
-        //      => 而而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
+        //          => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而那两条**都能**读到。
+        //      => 而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
         //  => 而那**指针条数**逐字只数那**库链**那几条（=> 而那程序入口逐字**不**混进去）
         //     ——=> 而那档名与那条数逐字**量的是同一族**（=> 而那「库形态那几项」那一族）。
         val libNames = picked.map { it.path.substringAfterLast('/') }
@@ -350,16 +350,16 @@ object PieceEntryPointer {
      *     （=> 而 07 本轮实读：single / chain0 / multi / pointerLayer / 单层无软链
      *       在 diag.jsonl 与 events.jsonl 里逐字**全部 0**，
      *       => 而那阳性对照逐字 diag 的 "stage": 命中 **914**、events 的 "category":"diag: 命中 **470**）
-     *     => 而而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
+     *     => 而那读不到它是「**那一档没有出口**」、=> 而**不是**「那一笔没进设备」。
      *   => 而那**处置**：=> 而那**出口**逐字是那诊断那一族
      *     （=> 而那 RuntimeDiagnostics.append 逐字写进 diag.jsonl、=> 而那正是 07 能读到的那一份）。
-     *   => 而而那**为什么**是诊断那一族而不是 Journal.events：
+     *   => 而那**为什么**是诊断那一族而不是 Journal.events：
      *     · 而那 Journal.events 那一族逐字是「**动作**」的记录（=> 而那它逐字按 category 分）；
-     *       而而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
+     *       而那一档逐字是「**这一件有几条链、那一档是什么形态**」那一个**事实**、
      *       => 而那它逐字是**形状**那一类、=> 而那 diag.jsonl 那一族逐字就是那形状那一族。
      *     · 而那 07 本轮实读逐字：events.jsonl 里 "category":"diag: 命中 470
-     *       => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而而那两条**都能**读到。
-     *   => 而而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
+     *       => 而那 events 那一族逐字**也**收 diag 那一族的事、=> 而那两条**都能**读到。
+     *   => 而那**判据侧**那一格（=> 而那档名口径 program / single / chain0 / multi / 空）**归 01**裁。
      */
     private fun reportTier(
         ctx: Context,
