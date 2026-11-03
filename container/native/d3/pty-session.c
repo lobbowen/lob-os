@@ -73,10 +73,50 @@ static int read_full(int fd, void *buf, size_t n) {
   return 1;
 }
 
+/*  => 而那 **PIPE_BUF** 逐字是那 POSIX 逐字**保证原子**的那**上限**（=> 而 Linux 逐字是 4096）
+    => 而那那**写**逐字**小于等于**它逐字就**不**会**被**别的那**写**插**进去 */
+#ifndef PIPE_BUF
+#define PIPE_BUF 4096
+#endif
+
 static int write_full(int fd, const void *buf, size_t n) {
   size_t sent = 0;
   while (sent < n) {
     ssize_t r = write(fd, (const char *)buf + sent, n - sent);
+    if (r < 0) {
+      if (errno == EINTR) continue;
+      return -1;
+    }
+    sent += (size_t)r;
+  }
+  return 0;
+}
+
+/*  缺陷名（C-102）**那一格逐字把那一帧逐字**一次**写完、=> 而而那那**大**的那一帧逐字**不**原子**
+    => 而那旧版逐字是 `write_full(fd, buf, total);`（=> 而那那一帧逐字**一次**写完）
+      => 而那那 **write()** 逐字**大于**那 `PIPE_BUF` 逐字时逐字**不**原子
+        （=> 而那 POSIX 逐字**只**保证那**小于等于**那 `PIPE_BUF` 逐字的那**写**逐字**不**被**插**）
+      => 而而那那**子进程**逐字**也**往那**同一个** stdout 逐字写帧（=> 而那 `note_raw` 那一族）
+        （=> 而那那**子进程**逐字那六条「child: ...」逐字**就是**那帧通道上的**六帧**）
+        => 而那那**子进程**逐字那帧逐字**插**进那**大**的那一帧逐字**中间**、=> 而那**流**逐字**就**错位了
+          => 而那**下一**帧逐字那 sid 逐字**是**那**体**里的某个字节、=> 而那 sid 逐字**可能大于**那 `MAX_SESSIONS`
+            => 而那 `FRAME_WINSIZE` 那一格逐字就逐字判「WINSIZE 指向不存在的会话」
+      => 而那**后果**（07 本轮逐字核出、Lead 本机实读逐字复核成立）：
+        => 而那**第一趟**逐字那子进程逐字**还**在发那六条、=> 而那那一趟逐字**偶发**
+        => 而那**后**面那几趟逐字那子进程逐字**已经**发完了、=> 而那它们逐字**都**OK
+    => 而那**判据**逐字是「那一帧逐字写出去的时候、=> 而那那**写**逐字**是不是**原子**的」那一个事实上
+      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+    => 而那**处置**：=> 而那**帧**逐字**分块**写、=> 而那每一块逐字**小于等于**那 `PIPE_BUF`
+      => 而那那**写**逐字**原子**、=> 而那那**别的**写逐字**插不**进来
+      => 而那那**帧**逐字**还是**那**完整**的那一帧（=> 而那那**读**那一边逐字**按帧**读、=> 而那那**分块**逐字**它**看不出来）
+      => 而那那**上限**逐字**那 `FRAME_MAX`** 逐字**不**变（=> 而那那**读**那一边逐字**仍**然**收**那**完整**的那一帧）
+*/
+static int write_frame_atomic(int fd, const void *buf, size_t n) {
+  size_t sent = 0;
+  while (sent < n) {
+    size_t chunk = n - sent;
+    if (chunk > (size_t)PIPE_BUF) chunk = (size_t)PIPE_BUF;
+    ssize_t r = write(fd, (const char *)buf + sent, chunk);
     if (r < 0) {
       if (errno == EINTR) continue;
       return -1;
@@ -111,7 +151,8 @@ static int send_frame(int fd, uint8_t kind, uint8_t sid, const void *payload, ui
   if (!buf) return -1;
   memcpy(buf, &h, sizeof(h));
   if (len > 0) memcpy(buf + sizeof(h), payload, len);
-  int rc = write_full(fd, buf, total);
+  //  => 而那那**分块**那一族逐字**保证**那每一次**写**逐字**原子**（=> 而那那 PIPE_BUF 那一族）
+  int rc = write_frame_atomic(fd, buf, total);
   free(buf);
   return rc == 0 ? 0 : -1;
 }
@@ -140,6 +181,34 @@ static void diag_raw(const char *text) { diag_to(FRAME_ERROR, text); }
 
 static void note_raw(const char *text) { diag_to(FRAME_NOTE, text); }
 
+/*  缺陷名（C-102）**那一格逐字让那**子进程**也往那帧通道逐字写帧、=> 而而那那**流**逐字**会**错位**
+    => 而那旧版逐字是（=> 而那子进程逐字那六条「child: ...」逐字**就是**那帧通道上的**六帧**）
+      `child_note("child: fork 已做");` 逐字走那 `diag_to` 那一族、=> 而那 `diag_to` 逐字
+      `send_frame(g_diag_fd, ...)` 逐字往那**帧通道**写
+    => 而而那那**子进程**逐字与那**native** 逐字**各**写那**同一个** stdout 逐字、=> 而那**没有**那**锁**
+      => 而那那**大**的那一帧逐字**一次**写完（=> 而那 `F_DATA` 那一帧逐字**能**到那 `FRAME_MAX` = 64 KiB）
+        => 而那那 **write()** 逐字**大于**那 `PIPE_BUF` 逐字时逐字**不**原子
+          （=> 而那 POSIX 逐字**只**保证那**小于等于**那 `PIPE_BUF` 逐字的那**写**逐字**不**被**插**）
+        => 而而那那**子进程**逐字那帧逐字**插**进那**大**的那一帧逐字**中间**、=> 而那**流**逐字**就**错位了
+          => 而那**下一**帧逐字那 sid 逐字**是**那**体**里的某个字节、=> 而那 sid 逐字**可能大于**那 `MAX_SESSIONS`
+            => 而那 `FRAME_WINSIZE` 那一格逐字就逐字判「WINSIZE 指向不存在的会话」
+    => 而那**后果**（07 本轮逐字核出、Lead 本机实读逐字复核成立）：
+      => 而那**第一趟**逐字那子进程逐字**还**在发那六条、=> 而那那一趟逐字**偶发**
+      => 而那**后**面那几趟逐字那子进程逐字**已经**发完了、=> 而那它们逐字**都**OK
+    => 而那**判据**逐字是「那帧通道逐字**是不是**只有**一个**写者」那一个事实上
+      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+    => 而那**处置**：=> 而那**子进程**逐字那**诊断**逐字**只**往那 stderr 逐字写、=> 而它**不**碰那帧通道
+      => 而那**信息**逐字**不**丢（=> 而那宿主侧逐字那 `diagReader` 逐字**读**那 stderr、
+        => 而而那那些逐字逐字**照旧**进那诊断那一族）
+      => 而而那那帧通道逐字**只有**那 native 逐字**一个**写者、=> 而那**流**逐字**不会**错位
+      => 而而那那**分块**那一族逐字**也**留着（=> 而那它逐字**保证**那每一次**写**逐字**原子**）
+*/
+static void child_note(const char *text) {
+  /* => 而那**只**往那 stderr 逐字写、=> 而那它**不**碰那帧通道 */
+  fprintf(stderr, "%s\n", text);
+  fflush(stderr);
+}
+
 //  缺陷名（C-102）**那一格逐字自己分槽、=> 而那它逐字跟宿主侧分的那一号逐字错开** ——
 //   => 而那它逐字**删掉**了（=> 而那槽号逐字现在**由**那帧带来的那个号决定、=> 而那宿主侧逐字分）
 //   => 而那**号**逐字**必须**在 0..MAX_SESSIONS 那一族里、=> 而那宿主侧逐字**也是**那样分的
@@ -148,8 +217,10 @@ static void child_fail(int out_fd, int line, const char *what) {
     char buf[160];
     int e = errno;
     int n = snprintf(buf, sizeof(buf), "line %d %s：%s(%d)", line, what, strerror(e), e);
-    if (n > 0) send_frame(out_fd, FRAME_ERROR, 0, buf, (uint32_t)n);
-    diag_raw(buf);
+    /*  => 而那那**子进程**逐字**不**往那帧通道逐字写（=> 而那那**帧通道**逐字**只有**那 native 逐字**一个**写者）
+        （=> 而那旧版逐字是 `send_frame(out_fd, FRAME_ERROR, 0, buf, (uint32_t)n);`） */
+    (void)out_fd;
+    if (n > 0) { fprintf(stderr, "%s\n", buf); fflush(stderr); }
     _exit(127);
 }
 
@@ -216,21 +287,22 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
     return -1;
   }
     if (pid == 0) {
-        // 逐步留痕：崩溃在哪一步之后一目了然。走 note_raw（diag_to 双路：全局诊断 fd + stderr），
-        // 不走裸 send_frame(out_fd, …) —— 那个 fd 只有 native 宿主在读，宿主不看就等于没写。
-        note_raw("child: fork 已做");
+        // 逐步留痕：崩溃在哪一步之后一目了然。
+        // 走 child_note（**只**往 stderr 写）—— 那个 fd 只有 native 宿主在读，宿主不看就等于没写；
+        // 而且那帧通道逐字**只有**那 native 宿主逐字**一个**写者（=> 而那子进程逐字**插**进去逐字**就**错位了）。
+        child_note("child: fork 已做");
         if (setsid() < 0) child_fail(out_fd, 141, "setsid 失败");
-        note_raw("child: setsid 已做");
+        child_note("child: setsid 已做");
         int ctl = fcntl(out_fd, F_DUPFD_CLOEXEC, 10);
         if (ctl < 0) ctl = out_fd;
-        note_raw("child: fcntl 控制口已留");
+        child_note("child: fcntl 控制口已留");
         int slave = open(sn, O_RDWR);
         if (slave < 0) child_fail(ctl, 145, "open 从设备失败");
-        note_raw("child: open 从设备已做");
+        child_note("child: open 从设备已做");
         if (ioctl(slave, TIOCSCTTY, 0) < 0) child_fail(ctl, 146, "TIOCSCTTY 失败");
-        note_raw("child: TIOCSCTTY 已做");
+        child_note("child: TIOCSCTTY 已做");
         if (dup2(slave, 0) < 0 || dup2(slave, 1) < 0 || dup2(slave, 2) < 0) child_fail(ctl, 147, "dup2 到从设备失败");
-        note_raw("child: dup2 到从设备已做");
+        child_note("child: dup2 到从设备已做");
         if (slave > 2) close(slave);
         close(master);
         //  [!][!] 而那**执行**那一格逐字**不**在这一族里（=> 而那是那一族那个域缺陷的处置）
@@ -271,13 +343,13 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
                 "child: exec 即将做 argv[0]=%s argv[1]=%s slave=%s argc=%d",
                 argc > 0 ? argv[0] : "(无)", argc > 1 ? argv[1] : "(无)",
                 sn, argc);
-            if (tn > 0) note_raw(tb);
+            if (tn > 0) child_note(tb);
         }
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGPIPE, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
-        note_raw("child: signal 已做");
+        child_note("child: signal 已做");
         // ET_DYN 要经 linker64 驱动 —— 唯一真相源是宿主侧 ExecEntry.argv（它读文件头定形态）。
         // 原来这里也做一次替换，判据问 argv[0] 里有没有 "/files/opt/"，而那时 argv[0]
         // 已经是 linker64 自己（宿主先替过），于是 under 恒 0 —— 同一件事两套逻辑、

@@ -164,23 +164,69 @@ object Crypto {
         var shaDer = ""
         var derLen = 0
         var derOk = false
-        var err = ""
         var ok = false
+        //  => 而那**每一次尝试**逐字各报什么（=> 而那判据逐字是「那**每一次**尝试逐字各报什么」那一个事实上）
+        //    => 而那**旧**读法逐字那一条
+        val oldRoute = StringBuilder()
+        //  => 而那**新**读法逐字那一条
+        val newRoute = StringBuilder()
+
+        var der: ByteArray = ByteArray(0)
         try {
-            val der = pemToDer(pubPem)
+            der = pemToDer(pubPem)
             derLen = der.size
             derOk = true
             raw32 = if (der.size >= 32) der.copyOfRange(der.size - 32, der.size).joinToString("") { "%02x".format(it) } else ""
             shaRaw = sha256Hex(raw32.toByteArray(Charsets.UTF_8))
             shaDer = sha256Hex(der)
+        } catch (t: Throwable) {
+            //  => 而那**异常**逐字**不**吞、=> 而那它逐字**带**那四件事实一起报出来
+            oldRoute.append("pem 那解码逐字就**失败**了：" + t.javaClass.name + ": " + (t.message ?: ""))
+        }
+
+        //  => 而那**旧**读法（=> 而那 `X509EncodedKeySpec` 那一族）
+        //    => 而那**宿主 JVM** 逐字**过**、=> 而而那那 **Android** 逐字**不过**
+        try {
             val key = KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(der))
             val v = Signature.getInstance("Ed25519")
             v.initVerify(key)
             v.update(data)
-            ok = v.verify(sig)
+            val r = v.verify(sig)
+            oldRoute.append(if (r) "那验签逐字**过**了" else "那验签逐字**不过**（=> 而那签名逐字**不**配那公钥）")
+            if (r) ok = true
         } catch (t: Throwable) {
-            //  => 而那**异常**逐字**不**吞、=> 而那它逐字**带**那四件事实一起报出来
-            err = t.javaClass.name + ": " + (t.message ?: "")
+            oldRoute.append(t.javaClass.name + ": " + (t.message ?: ""))
+        }
+
+        //  => 而那**新**读法（=> 而那 `EdECPublicKeySpec` + `EdECPoint` 那一族）
+        //    => 而那**设备**逐字**才**走那一条（=> 而那它逐字**在**那 Android 上**有**）
+        //  => 而那**每一次尝试**逐字各报什么、=> 而那**第二次**的失败逐字**不**许被**第一次**盖住
+        if (!ok) {
+            try {
+                if (der.size < 32) {
+                    newRoute.append("那裸那 32 字节逐字**不够**（=> 而那 DER 逐字只有 " + der.size + " 字节）")
+                } else {
+                    val raw = der.copyOfRange(der.size - 32, der.size)
+                    val key = KeyFactory.getInstance("Ed25519").generatePublic(
+                        EdECPublicKeySpec(NamedParameterSpec.ED25519, ed25519PointOf(raw)),
+                    )
+                    val v = Signature.getInstance("Ed25519")
+                    v.initVerify(key)
+                    v.update(data)
+                    val r = v.verify(sig)
+                    newRoute.append(if (r) "那验签逐字**过**了" else "那验签逐字**不过**（=> 而那签名逐字**不**配那公钥）")
+                    if (r) ok = true
+                }
+            } catch (t: Throwable) {
+                newRoute.append(t.javaClass.name + ": " + (t.message ?: ""))
+            }
+        }
+
+        //  => 而那**判据**逐字是「那**每一次**尝试逐字各报什么」那一个事实上
+        //    => 而那两次逐字**各**占一行、=> 而那**不**许第二次的失败逐字被第一次盖住
+        val err = buildString {
+            append("旧读法[").append(oldRoute).append("]")
+            append(" 新读法[").append(newRoute).append("]")
         }
         return VerifyFacts(
             raw32Hex = raw32,
