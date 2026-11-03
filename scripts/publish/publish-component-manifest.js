@@ -235,6 +235,20 @@ function pieceNames(zipPath) {
   return out;
 }
 
+//  => 而而那那 **recipe 指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（=> 而依 C-104 逐字**判别源必须唯一**）
+//    => 而而那那 `cache-key.sh key <件名>` 逐字**给**的那键逐字**含**那 `src<12位>` 那一族、=> 而那**就是**那指纹
+function recipeFingerprintOf(pieceId) {
+  try {
+    const out = cp.execFileSync('bash', [
+      path.join(ROOT, 'scripts', 'toolchain', 'cache-key.sh'), 'key', pieceId
+    ], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+    const m = /src([0-9a-f]{12})/.exec(out);
+    return m ? m[1] : '';
+  } catch (e) {
+    return '';
+  }
+}
+
 function aliasesOf(name, zipPath, declaredEntry) {
   const raw = pieceText(zipPath, 'package.json');
   if (raw === null) return [];
@@ -348,10 +362,25 @@ function toolsFromDist() {
     const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
     const entry = entryOf(name);
+    //  缺陷名（C-102）**那一格逐字**不记**那 recipe 指纹、=> 而而那那**闸门**逐字**答不出**
+    //    「那字节变了是不是那 recipe 变了」——
+    //      => 而那旧版逐字**只**记那内容哈希、=> 而而那那**内容哈希**逐字**只**说「那字节**是什么**」
+    //        （=> 而而那它逐字**不**说「那字节**为什么**变」）
+    //      => 而而那那**闸门**逐字**只能**按「同一 name@version 逐字不许换字节」那一族逐字判
+    //        => 而而那那**recipe 变了**逐字**换**了字节逐字**也**被**判红**
+    //          （=> 而而那那**旧字节**逐字**是**那**旧** recipe 产的、=> 而而那那**新字节**逐字**是**那**新** recipe 产的、
+    //            => 而而那那**两半**逐字**都**合法、=> 而而那那**闸门**逐字**分不出**）
+    //    => 而那**判据**逐字是「那字节逐字是不是那实际字节、=> 而而那那**实际字节**逐字**为什么**变」那一个事实上
+    //    => 而那**处置**：=> 而而那那**清单**逐字**多**记那 **recipe 指纹**那一格
+    //      => 而而那那**指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（=> 而依 C-104 逐字**判别源必须唯一**）
+    //      => 而而那那**闸门**逐字**拿**它逐字**对**：=> 指纹**一样**而字节**变了**逐字**那才是**偷换
+    const recipeFp = recipeFingerprintOf(name);
     out.push({
       name, provider: 'zip', version: ver,
       url: BASE + '/component/' + f,
       sha256: digest,
+      //  => 而而那那 recipe 指纹逐字**进**那清单、=> 而而那那**闸门**逐字**拿**它逐字**判**
+      recipeFingerprint: recipeFp,
       entry,
       aliases: aliasesOf(name, zipPath, entry),
     });

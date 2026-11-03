@@ -36,6 +36,16 @@ mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$TOOL"
 mkdir -p "$WORK"
 
+
+#  缺陷名（C-102）**那一族逐字**没有**把那墙钟逐字钉住、=> 而而那那**字节**逐字**编**进去了**
+#    => 而那旧版逐字**没有**这一族
+#      => 而而那那**可复现**逐字那**三样**：① 那源码钉值逐字**有**、③ 那工具链逐字**有**、
+#        ② 那**归档内 mtime**逐字**没有**（=> 而而那那 `SOURCE_DATE_EPOCH` 逐字**没**设）
+#      => 而而那那**墙钟**逐字**编**进那件包、=> 而而那那**同一个** recipe 逐字**再**编一次逐字**也**会**变**
+#        => 而而那那**闸门**逐字就逐字判「同一 name@version 换了字节」
+#    => 而那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上
+#    => 而那**处置**：=> 而而那那**墙钟**逐字**钉**住（=> 而那那**读口**逐字**唯一**、依 C-105）
+export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --time-base 2>/dev/null || echo 0)"
 CMAKE_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version $TOOL)"
 SRC="$WORK/$TOOL-src"
 if [ ! -d "$SRC" ]; then
