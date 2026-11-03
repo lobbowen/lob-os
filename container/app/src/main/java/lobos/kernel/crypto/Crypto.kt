@@ -3,6 +3,8 @@ package lobos.kernel.crypto
 import java.io.File
 import java.security.KeyFactory
 import java.security.MessageDigest
+import java.security.Provider
+import java.security.Security
 import java.security.Signature
 import java.security.spec.EdECPublicKeySpec
 import java.security.spec.X509EncodedKeySpec
@@ -186,17 +188,39 @@ object Crypto {
 
         //  => 而那**旧**读法（=> 而那 `X509EncodedKeySpec` 那一族）
         //    => 而那**宿主 JVM** 逐字**过**、=> 而而那那 **Android** 逐字**不过**
-        try {
-            val key = KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(der))
-            val v = Signature.getInstance("Ed25519")
-            v.initVerify(key)
-            v.update(data)
-            val r = v.verify(sig)
-            oldRoute.append(if (r) "那验签逐字**过**了" else "那验签逐字**不过**（=> 而那签名逐字**不**配那公钥）")
-            if (r) ok = true
-        } catch (t: Throwable) {
-            oldRoute.append(t.javaClass.name + ": " + (t.message ?: ""))
+        //    => 而那**真因**逐字（07 本轮逐字核出、Lead 本机实读逐字复核成立）：
+        //      => 而而那那**两次**尝试逐字抛的是那**同一个**异常
+        //        （=> 而那那 `InvalidKeySpecException: To generate a key pair in Android Keystore…`）
+        //      => 而而那那**根因**逐字**不**是那读法本身
+        //        => 而而而那那 `KeyFactory.getInstance("Ed25519")` 逐字在 **Android** 上逐字**整条路**都不可用
+        //          （=> 而那那 `generatePublic` 逐字两种 spec 逐字都被逐字拒）
+        //      => 而那**判据**逐字是「=> 而凡一格逐字要答『那验签逐字为什么不过』，
+        //        => 而那判据必须落在『那验签那一族逐字用的那条 API 逐字在那个平台上逐字存不存在、
+        //          => 而而那它逐字有没有另一条逐字**同族**的路』那一个事实上」
+        //    => 而那**处置**：=> 而而那那**提供者**逐字**一个**一个**试**
+        //      => 而那那 `KeyFactory.getInstance("Ed25519")` 逐字**只**取那**第一个**提供者
+        //        （=> 而那在 **Android** 上逐字**就是**那 **AndroidKeyStore** 那一族、
+        //        => 而那它逐字**只**认那 **Keystore** 那一族）
+        //      => 而而那那**逐个**提供者逐字**都**试、=> 而而那那**能**认那 `X509EncodedKeySpec` 逐字**那个**就**用**它
+        //      => 而那那**提供者名**逐字**不猜填**（=> 而那设备逐字**是**那 **API 36**、
+        //        => 而那那**提供者名**逐字**各**版本**不**一定**一样）
+        for (r in ed25519KeyFactories()) {
+            try {
+                val key = r.kf.generatePublic(X509EncodedKeySpec(der))
+                val v = r.sig
+                v.initVerify(key)
+                v.update(data)
+                val ok1 = v.verify(sig)
+                oldRoute.append(
+                    "那提供者[" + r.provider + "]逐字**过**了、=> 而那验签逐字"
+                        + (if (ok1) "**过**了" else "**不过**（=> 而那签名逐字**不**配那公钥）"),
+                )
+                if (ok1) { ok = true; break }
+            } catch (t: Throwable) {
+                oldRoute.append("那提供者[" + r.provider + "]逐字**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
+            }
         }
+        if (oldRoute.isBlank()) oldRoute.append("那提供者逐字**一个**都没有（=> 而那那 `KeyFactory.Ed25519` 逐字**没**人认）")
 
         //  => 而那**新**读法（=> 而那 `EdECPublicKeySpec` + `EdECPoint` 那一族）
         //    => 而那**设备**逐字**才**走那一条（=> 而那它逐字**在**那 Android 上**有**）
@@ -207,15 +231,26 @@ object Crypto {
                     newRoute.append("那裸那 32 字节逐字**不够**（=> 而那 DER 逐字只有 " + der.size + " 字节）")
                 } else {
                     val raw = der.copyOfRange(der.size - 32, der.size)
-                    val key = KeyFactory.getInstance("Ed25519").generatePublic(
-                        EdECPublicKeySpec(NamedParameterSpec.ED25519, ed25519PointOf(raw)),
-                    )
-                    val v = Signature.getInstance("Ed25519")
-                    v.initVerify(key)
-                    v.update(data)
-                    val r = v.verify(sig)
-                    newRoute.append(if (r) "那验签逐字**过**了" else "那验签逐字**不过**（=> 而那签名逐字**不**配那公钥）")
-                    if (r) ok = true
+                    //  => 而那那**提供者**逐字**也**逐个**试**（=> 而那 `KeyFactory.getInstance("Ed25519")`
+                    //    逐字**只**取那**第一个**提供者、=> 而那在 **Android** 上逐字**就是**那 **AndroidKeyStore** 那一族）
+                    for (r in ed25519KeyFactories()) {
+                        try {
+                            val key = r.kf.generatePublic(
+                                EdECPublicKeySpec(NamedParameterSpec.ED25519, ed25519PointOf(raw)),
+                            )
+                            val v = r.sig
+                            v.initVerify(key)
+                            v.update(data)
+                            val ok2 = v.verify(sig)
+                            newRoute.append(
+                                "那提供者[" + r.provider + "]逐字**过**了、=> 而那验签逐字"
+                                    + (if (ok2) "**过**了" else "**不过**（=> 而那签名逐字**不**配那公钥）"),
+                            )
+                            if (ok2) { ok = true; break }
+                        } catch (t: Throwable) {
+                            newRoute.append("那提供者[" + r.provider + "]逐字**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
+                        }
+                    }
                 }
             } catch (t: Throwable) {
                 newRoute.append(t.javaClass.name + ": " + (t.message ?: ""))
@@ -240,6 +275,50 @@ object Crypto {
             error = err,
             ok = ok,
         )
+    }
+
+    /**
+     * 那 **Ed25519** 逐字那**提供者**逐字**一个**一个**列**出来（=> 而那那 `KeyFactory` 与那 `Signature` 逐字**配对**）。
+     *
+     *   => 而那**判据**逐字是「那验签那一族逐字用的那条 API 逐字在那个平台上逐字存不存在、
+     *     => 而而那它逐字有没有另一条逐字**同族**的路」那一个事实上
+     *   => 而那 `KeyFactory.getInstance("Ed25519")` 逐字**只**取那**第一个**提供者
+     *     （=> 而那在 **Android** 上逐字**就是**那 **AndroidKeyStore** 那一族、
+     *     => 而那它逐字**只**认那 **Keystore** 那一族、=> 而那它逐字**把**那 `X509EncodedKeySpec`
+     *       逐字**也**拒了、=> 而那它逐字**也**把**那** `EdECPublicKeySpec` 逐字**拒**了）
+     *   => 而那**提供者名**逐字**不猜填**（=> 而那设备逐字**是**那 **API 36**、
+     *     => 而那那**提供者名**逐字**各**版本**不**一定**一样）
+     *   => 而那那**判别源**逐字**唯一**（=> 而依 C-104 逐字**判别源必须唯一**）
+     */
+    private data class Ed25519Factory(val provider: String, val kf: KeyFactory, val sig: Signature)
+
+    private fun ed25519KeyFactories(): List<Ed25519Factory> {
+        val out = ArrayList<Ed25519Factory>()
+        val providers = try {
+            Security.getProviders()
+        } catch (_: Throwable) {
+            emptyArray<Provider>()
+        }
+        for (p in providers) {
+            // => 而那那 `KeyFactory.Ed25519` 逐字**在不在**那个提供者逐字**里**
+            val kfAlg = try { p.get("KeyFactory.Ed25519") } catch (_: Throwable) { null }
+            if (kfAlg == null) continue
+            try {
+                val kf = KeyFactory.getInstance("Ed25519", p)
+                val sig = Signature.getInstance("Ed25519", p)
+                out.add(Ed25519Factory(p.name, kf, sig))
+            } catch (_: Throwable) {
+                // => 而那那个提供者逐字**不**认那 Ed25519 逐字、=> 而那它逐字**跳过**
+            }
+        }
+        // => 而那那**默认**那一个逐字**也**列上（=> 而那它逐字**可能**不在那 providers 逐字**里**）
+        if (out.isEmpty()) {
+            try {
+                out.add(Ed25519Factory("默认", KeyFactory.getInstance("Ed25519"), Signature.getInstance("Ed25519")))
+            } catch (_: Throwable) {
+            }
+        }
+        return out
     }
 
     /** 那 sha256 逐字（=> 而那 hex 小写） */

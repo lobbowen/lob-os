@@ -203,10 +203,35 @@ static void note_raw(const char *text) { diag_to(FRAME_NOTE, text); }
       => 而而那那帧通道逐字**只有**那 native 逐字**一个**写者、=> 而那**流**逐字**不会**错位
       => 而而那那**分块**那一族逐字**也**留着（=> 而那它逐字**保证**那每一次**写**逐字**原子**）
 */
+  /*  缺陷名（C-102）**那一格逐字往那 stderr 逐字写、=> 而而那那**子进程**逐字那 stderr
+      逐字**还是**那帧通道、=> 而而那那**插**进去逐字**就**错位了**
+    => 而那旧版逐字是（=> 而那那**子进程**逐字那六条「child: ...」逐字**就是**那帧通道上的**六帧**）
+      `fprintf(stderr, "%s\n", text); fflush(stderr);`
+    => 而那**真因**逐字：=> 而那那**子进程**逐字那 `dup2(slave, 1)` 与那 `dup2(slave, 2)`
+      逐字**在**那**六条**逐字**之后**、=> 而而那那**前**几条逐字那 stderr 逐字**还是**那**继承**的
+      （=> 而那**继承**的逐字**就是**那 native 的 stdout/stderr、=> 而那**就是**那帧通道）
+      => 而而那那**子进程**逐字那 stderr 逐字**后来**才被 `dup2` 逐字**改**成那 pty
+        （=> 而那时逐字那 stderr 逐字**已经**是那 pty 了、=> 而那 pty 逐字**也**是那**输出**那一族、
+        => 而而那那**宿主侧**逐字**读**的是那 pty、=> 而那**帧通道**逐字**不**是**它**）
+    => 而那**判据**逐字是「那子进程逐字那诊断逐字写出去的时候、=> 而而那它逐字写的那一个通道
+      逐字**是不是**那帧通道」那一个事实上
+      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+    => 而那**处置**：=> 而那那**子进程**逐字那诊断逐字走那**专用**那一族管道、=> 而那**读**那一侧
+      逐字**就是**那 native 宿主
+      => 而而那那**帧通道**逐字**只有**那 native 宿主逐字**一个**写者、=> 而那**流**逐字**不会**错位
+      => 而那那**信息**逐字**不**丢（=> 而那 native 宿主逐字**读**那**专用**那一族、=> 而那它逐字**照旧**报出去）
+*/
+static int g_child_diag_fd = -1;
+/* => 而那那**读**端逐字（=> 而那它是那 native 宿主逐字**那一边**） */
+static int g_diag_read_fd = -1;
+
 static void child_note(const char *text) {
-  /* => 而那**只**往那 stderr 逐字写、=> 而那它**不**碰那帧通道 */
-  fprintf(stderr, "%s\n", text);
-  fflush(stderr);
+  /* => 而那那**专用**那一族逐字**没**开时逐字**退回**那 stderr（=> 而那它逐字**只是**临时的） */
+  int fd = g_child_diag_fd;
+  if (fd < 0) fd = 2;
+  char buf[256];
+  int n = snprintf(buf, sizeof buf, "%s\n", text);
+  if (n > 0) { ssize_t w = write(fd, buf, (size_t)n); (void)w; }
 }
 
 //  缺陷名（C-102）**那一格逐字自己分槽、=> 而那它逐字跟宿主侧分的那一号逐字错开** ——
@@ -281,6 +306,15 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
   //     => 而那**从设备**逐字由宿主侧逐字转交那产品侧
   //   => 而那 argv 逐字**还**是那 ExecEntry.argv 逐字给的那一个、=> 而那形态逐字**不**变
   //   => 而那**执行**逐字由宿主侧逐字**再**发一帧回来（=> 而那新帧那一族逐字见下）
+  //  => 而那那**子进程**逐字那**诊断**逐字走那**专用**那一族管道（=> 而那它逐字**不**碰那帧通道）
+  //    => 而那那**管道**逐字**在**那 fork **之前**逐字**开**、=> 而那那**子进程**逐字**拿**那写端
+  //    => 而那那**读**端逐字**在**那 native 宿主逐字**那一边**
+  int diag_pipe[2] = { -1, -1 };
+  if (pipe(diag_pipe) == 0) {
+    /* => 而那那**子进程**逐字**继承**那写端、=> 而那那**读**端逐字**要**关掉 */
+    g_diag_read_fd = diag_pipe[0];
+  }
+
   pid_t pid = fork();
   if (pid < 0) {
     close(master);
@@ -293,6 +327,15 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         child_note("child: fork 已做");
         if (setsid() < 0) child_fail(out_fd, 141, "setsid 失败");
         child_note("child: setsid 已做");
+        /* => 而那那**子进程**逐字那诊断逐字走那**专用**那一族管道、=> 而那它逐字**不**碰那帧通道
+            （=> 而那那**真因**：=> 而那那**子进程**逐字那 stderr 逐字**在**那 `dup2` **之前**
+              逐字**还是**那**继承**的、=> 而那**继承**的逐字**就是**那帧通道） */
+        if (diag_pipe[0] >= 0) close(diag_pipe[0]);
+        g_child_diag_fd = diag_pipe[1];
+        /* => 而那那**子进程**逐字那 stderr 逐字**立刻**逐字**改**成那**专用**那一族
+          （=> 而那它逐字**不**再**是**那帧通道、=> 而那那**前**几条留痕逐字**也**安全了） */
+        if (g_child_diag_fd >= 0) dup2(g_child_diag_fd, 2);
+
         int ctl = fcntl(out_fd, F_DUPFD_CLOEXEC, 10);
         if (ctl < 0) ctl = out_fd;
         child_note("child: fcntl 控制口已留");
@@ -483,6 +526,17 @@ int main(void) {
     fds[nfds].events = POLLIN;
     fds_sid[nfds] = -1;
     nfds++;
+    //  => 而那那**子进程**逐字那**诊断**逐字那**专用**那一族管道逐字**进**那 poll 那一族
+    //    => 而那那**读**端逐字**就是**那 native 宿主、=> 而那那**子进程**逐字**不**碰那帧通道
+    //    => 而那那**信息**逐字**不**丢（=> 而那它逐字**照旧**报出去、=> 而那那宿主侧逐字**读**那 stderr）
+    int diag_slot = -1;
+    if (g_diag_read_fd >= 0) {
+      fds[nfds].fd = g_diag_read_fd;
+      fds[nfds].events = POLLIN;
+      fds_sid[nfds] = -2;               /* => 而那那**诊断**逐字那**一格**逐字**标**出来 */
+      diag_slot = nfds;
+      nfds++;
+    }
     for (int i = 0; i < MAX_SESSIONS; i++) {
       if (g_sessions[i].open) {
         fds[nfds].fd = g_sessions[i].master;
@@ -498,6 +552,19 @@ int main(void) {
       if (errno == EINTR) continue;
       diag_raw("poll 控制通道失败");
       break;
+    }
+
+    //  => 而那那**子进程**逐字那**诊断**逐字那**专用**那一族管道逐字**读**（=> 而那那**读**端逐字**就是**这宿主）
+    //    => 而那那**信息**逐字**不**丢（=> 而那它逐字**照旧**往那 stderr 逐字写、=> 而那宿主侧逐字**读**那 stderr）
+    //    => 而而那那**帧通道**逐字**不**被那子进程逐字**碰**（=> 而那**流**逐字**不会**错位）
+    if (diag_slot >= 0 && (fds[diag_slot].revents & (POLLIN | POLLHUP | POLLERR))) {
+      char db[512];
+      ssize_t dn = read(g_diag_read_fd, db, sizeof(db));
+      if (dn > 0) {
+        // => 而那那**子进程**逐字那留痕逐字**照旧**进那诊断那一族（=> 而那它逐字**只**往那 stderr 逐字写）
+        fprintf(stderr, "%.*s", (int)dn, db);
+        fflush(stderr);
+      }
     }
 
     if (fds[0].revents & (POLLIN | POLLHUP)) {
