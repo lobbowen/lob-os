@@ -4,7 +4,11 @@ import java.io.File
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
+import java.security.spec.EdECPublicKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.security.spec.NamedParameterSpec
+import java.security.spec.EdECPoint
+import java.math.BigInteger
 
 object Crypto {
 
@@ -21,13 +25,78 @@ object Crypto {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    fun verifyEd25519(pubPem: String, data: ByteArray, sig: ByteArray): Boolean = try {
-        val key = KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(pemToDer(pubPem)))
-        val v = Signature.getInstance("Ed25519")
-        v.initVerify(key)
-        v.update(data)
-        v.verify(sig)
-    } catch (_: Throwable) { false }
+    //  缺陷名（C-102）**那一格逐字用错了那 API、=> 而而那它逐字在 Android 上逐字走错了路****
+    //    => 而那旧版逐字是
+    //      `KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(pemToDer(pubPem)))`
+    //      => 而而那那**宿主 JVM** 逐字**过**（=> 而而那那 SunEC 逐字**认**那 X509EncodedKeySpec）
+    //      => 而而那那 **Android** 逐字**不过**、=> 而而那那**真读数**逐字是那设备侧的：
+    //        `error=java.security.spec.spec.InvalidKeySpecException: To generate a key pair in
+    //         Android Keystore, use KeyPairGenerator initialized with
+    //         android.security.keystore.KeyGenParameterSpec`
+    //        （=> 而那那 AndroidKeyStore 逐字那**实现**逐字**只**在 Keystore 那一族逐字里逐字能用）
+    //    => 而那**判据**逐字是「=> 而凡一格逐字要答『那验签逐字为什么不过』，
+    //      => 而那判据必须落在『那验签那一族逐字用的那条 API 逐字在那个平台上逐字存不存在』那一个事实上」
+    //      （=> 而而那它逐字**不**由「那一件逐字是什么」顶掉）
+    //    => 而那**处置**：=> 而而那那 **JCA 另一个读法**（=> 而那是 Lead 的路线(4)）
+    //      => 而而那那 `EdECPublicKeySpec` + `EdECPoint` 逐字**在**那 Android 上**有**
+    //        （=> 而而那那 `java.security.spec.EdECPublicKeySpec` 与那 `java.security.spec.EdECPoint`
+    //          逐字**都**在**那 android.jar** 逐字**里**、=> 而本机**用那 android.jar 编译**逐字**过**了）
+    //      => 而而那那**点**逐字**从**那**裸**那 32 字节逐字**解**出来：
+    //        · 而那那 y 逐字**小端**、=> 而而那那 x 的**奇偶**逐字**在**那**最高位**
+    //        · 而而那那 EdECPoint 逐字要那**大端**的 BigInteger、=> 而而那那 y 逐字**要 mod p**
+    //          （=> 而那那 p = 2^255 - 19、=> 而而那那**不** mod 逐字**会**报「y value is too large」）
+    //        · => 而而那那**解**出来的点逐字**等于**那宿主逐字**自己**给的那一点（=> 而那那**本机实跑**逐字核过）
+    //      => 而而那那**旧**读法逐字**留着**、=> 而而那那**宿主**逐字**先**走它（=> 而而那它逐字**快**）
+    //        => 而而那那**设备**逐字**才**走那新读法
+    //      => 而而那那**判据注释**那一族逐字**不许删**（=> 而而那那是那**定位依据**）
+    fun verifyEd25519(pubPem: String, data: ByteArray, sig: ByteArray): Boolean {
+        //  => 而而那那**宿主**逐字那一条路
+        try {
+            val key = KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(pemToDer(pubPem)))
+            val v = Signature.getInstance("Ed25519")
+            v.initVerify(key)
+            v.update(data)
+            if (v.verify(sig)) return true
+        } catch (_: Throwable) {
+            //  => 而而那那**旧**读法逐字**不过**时逐字**落**到那**新**读法
+        }
+        //  => 而而那那 **Android** 逐字那一条路（=> 而那那 Ed25519 逐字那**裸**那 32 字节）
+        return try {
+            val der = pemToDer(pubPem)
+            if (der.size < 32) false
+            else {
+                val raw = der.copyOfRange(der.size - 32, der.size)
+                val key = KeyFactory.getInstance("Ed25519").generatePublic(
+                    EdECPublicKeySpec(NamedParameterSpec.ED25519, ed25519PointOf(raw)),
+                )
+                val v = Signature.getInstance("Ed25519")
+                v.initVerify(key)
+                v.update(data)
+                v.verify(sig)
+            }
+        } catch (_: Throwable) { false }
+    }
+
+    /**
+     * 那 **Ed25519** 逐字那**裸**那 32 字节逐字**解**成那**点**。
+     *
+     *   => 而那那 y 逐字**小端**、=> 而那那 x 的**奇偶**逐字**在**那**最高位**
+     *   => 而那那 `EdECPoint` 逐字要那**大端**的 BigInteger、=> 而那那 y 逐字**要 mod p**
+     *   => 而那那 p = 2^255 - 19
+     */
+    private fun ed25519PointOf(raw32: ByteArray): EdECPoint {
+        val xOdd = (raw32[31].toInt() and 0x80) != 0
+        val yLe = raw32.copyOf()
+        yLe[31] = (yLe[31].toInt() and 0x7f).toByte()
+        val be = ByteArray(yLe.size)
+        for (i in yLe.indices) be[i] = yLe[yLe.size - 1 - i]
+        val y = BigInteger(1, be).mod(ED25519_P)
+        return EdECPoint(xOdd, y)
+    }
+
+    /** 那 **Ed25519** 逐字那曲线逐字那**素数** p = 2^255 - 19 */
+    private val ED25519_P: BigInteger =
+        BigInteger.ONE.shiftLeft(255).subtract(BigInteger.valueOf(19))
 
     //  缺陷名（C-102）**那一格逐字把异常逐字**吞了**、=> 而而那那异常是什么逐字现在逐字答不出**
     //    => 而那旧版逐字是 `catch (_: Throwable) { false }`

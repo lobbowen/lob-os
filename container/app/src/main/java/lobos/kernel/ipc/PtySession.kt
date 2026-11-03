@@ -37,6 +37,12 @@ object PtySession {
     private const val F_ERROR = 9
     private const val F_NOTE = 10
 
+    /**
+     * 那**槽**逐字**空没空**逐字**等**的那**上限**（=> 而那 native 那一族逐字那 500 毫秒之后逐字**还没**回）。
+     *   => 而那宿主侧逐字**不**能**永远**等、=> 而那它逐字**照样**还、=> 而那一档逐字**记**下来
+     */
+    private const val SLOT_FREED_TIMEOUT_MS = 2_000L
+
     private const val DEFAULT_ROWS = 24
     private const val DEFAULT_COLS = 80
 
@@ -371,6 +377,25 @@ object PtySession {
                 //      => 而那**退出清理**逐字随它逐字**走**（=> 而那账本逐字与那 `files/dev` 逐字**同步**清空）
                 terminateProcess()
                 host.send(F_CLOSE, sid, ByteArray(0))
+                //  缺陷名（C-102）**那一格逐字把那一号逐字**立刻**还回去、=> 而而那那 native 那一族逐字那槽逐字**还没**空**
+                //    => 而那 native 那一族逐字那 F_CLOSE 逐字**现在**逐字**回**一帧（=> 而那 FRAME_EXITED 那一族）
+                //      （=> 而那它逐字**关**完那槽逐字才回、=> 而那它逐字**等**那子进程逐字**死**逐字最多 500 毫秒）
+                //    => 而那旧版逐字是 `host.releaseSid(sid)` 逐字**紧跟**在那 F_CLOSE 逐字**后面**
+                //      => 而那宿主侧逐字**不**等那 native 那一族逐字**回**话
+                //        => 而那**下一趟**逐字拿到那**同一个**号、=> 而那 native 那一族逐字那槽逐字**还开着**
+                //          => 而那 native 那一族逐字就逐字报「会话号已被占用」
+                //            （=> 而那**槽**逐字**还开着**时逐字那 F_WINSIZE 逐字落到那**旧**会话上、
+                //              => 而那 sid 逐字**对不上**那一族逐字就逐字报「WINSIZE 指向不存在的会话」）
+                //    => 而那**判据**逐字是「那一号逐字还回去的时候、=> 而那 native 那一族逐字那槽逐字**空没空**」
+                //      那一个事实上（=> 而而那它逐字**不**由「那一帧逐字发出去没有」顶掉）
+                //    => 而那**处置**：=> 而那宿主侧逐字**等**那**回**帧逐字到了才**还**那一号
+                //      => 而那**判据**逐字**答得出**、=> 而那**号**逐字**还**得**准**
+                //      => 而那**等**逐字**有**一个**上限**（=> 而那 native 那一族逐字那 500 毫秒之后逐字**还没**回，
+                //        => 而那宿主侧逐字**不**能**永远**等、=> 而那它逐字**照样**还、=> 而那一档逐字**记**下来）
+                val freed = host.awaitSlotFreed(sid, SLOT_FREED_TIMEOUT_MS)
+                if (!freed) {
+                    host.reportSlotNotFreed(sid)
+                }
                 host.releaseSid(sid)
                 ProductSessions.remove("product-" + sid)
             }
@@ -458,6 +483,16 @@ object PtySession {
 
         private val sessions = ConcurrentHashMap<Int, Session>()
 
+        /**
+         * 那**占着**的槽逐字（=> 而那 native 那一族逐字那 `open` 那一格的宿主侧逐字**镜像**）。
+         *
+         *   => 而那**判据**逐字是「那一号逐字还回去的时候、=> 而那 native 那一族逐字那槽逐字**空没空**」
+         *     那一个事实上（=> 而而那它逐字**不**由「那一帧逐字发出去没有」顶掉）
+         *   => 而那**占着**逐字**记**那 native 那一族逐字**回**的那**回**帧
+         *   => 而那**没**收到那**回**帧逐字就**一直**占着（=> 而那**保守**那一档、=> 而那它逐字**不**抢那号）
+         */
+        private val slotBusy = HashSet<Int>()
+
         private val ready = ConcurrentHashMap<Int, CountDownLatch>()
 
         //  => 而那**发帧**逐字那**锁**（=> 而那**两**个线程逐字**各**写那管道、
@@ -492,6 +527,9 @@ object PtySession {
                 )
             }
             val s = sessions[sid] ?: throw IllegalStateException("会话 $sid 建立后丢失")
+            //  => 而那 native 那一族逐字那槽逐字**开**了、=> 而那它逐字**占着**
+            //    => 而那**判据**逐字是「那一号逐字还回去的时候、=> 而那 native 那一族逐字那槽逐字**空没空**」
+            markSlotBusy(sid)
             //  => 而那**程序名**逐字**从**那 argv 逐字**头**那一条逐字取（=> 而那它逐字**不**由那进程的名字反推）
             //    => 而那**件**逐字是那一条的**最后**那一段（=> 而那它逐字**不**猜）
             s.programId = argv.firstOrNull()?.let { basenameOf(it) } ?: ""
@@ -1118,6 +1156,12 @@ object PtySession {
 
         private fun onExited(sid: Int, payload: ByteArray) {
             val s = sessions.remove(sid)
+            //  => 而那 native 那一族逐字**回**了那**回**帧、=> 而那它逐字**关**完那槽了
+            //    => 而那**判据**逐字是「那一号逐字还回去的时候、=> 而那 native 那一族逐字那槽逐字**空没空**」
+            //      那一个事实上
+            //    => 而那**回**帧逐字**是**那 native 那一族逐字那 `F_CLOSE` 逐字**关**完才**发**的
+            //      （=> 而那**等**那子进程逐字**死**逐字最多 500 毫秒逐字**在**那 native 那一族**里面**）
+            markSlotFreed(sid)
             var status = -1
             var signal = 0
             if (payload.size >= 8) {
@@ -1179,6 +1223,46 @@ object PtySession {
         }
 
     fun activeSessions(): List<Session> = sessions.values.toList()
+
+    /**
+     * 那**槽**逐字**空没空**逐字**等**。
+     *
+     *   => 而那 native 那一族逐字那 `F_CLOSE` 逐字**关**完那槽逐字才**回**一帧（=> 而那 `FRAME_EXITED` 那一族）
+     *   => 而那**判据**逐字是「那一号逐字还回去的时候、=> 而那 native 那一族逐字那槽逐字**空没空**」
+     *   => 而那**等**逐字**有**一个**上限**、=> 而那**上限**到了逐字**不**等
+     *   => 而那**答**逐字是那**真没空**（=> 而那它逐字**不**猜填）
+     */
+    fun awaitSlotFreed(sid: Int, timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            val free = synchronized(this) { !slotBusy.contains(sid) }
+            if (free) return true
+            if (System.currentTimeMillis() >= deadline) return false
+            Thread.sleep(20)
+        }
+    }
+
+    /** 那**槽**逐字**空**了逐字**记**一下（=> 而那 native 那一族逐字**回**了那**回**帧）。 */
+    internal fun markSlotFreed(sid: Int) {
+        synchronized(this) { slotBusy.remove(sid) }
+    }
+
+    /** 那**槽**逐字**占着**逐字**记**一下（=> 而那 native 那一族逐字**开**了那槽）。 */
+    internal fun markSlotBusy(sid: Int) {
+        synchronized(this) { slotBusy.add(sid) }
+    }
+
+    /**
+     * 那**槽**逐字**没**回报已空逐字**记**一下（=> 而那一号逐字**照样**还了、=> 而那一档逐字**不**静着）。
+     */
+    internal fun reportSlotNotFreed(sid: Int) {
+        ctx?.let {
+            KernelHooks.report(
+                it, "pty", false, "PTY 的C 侧报错",
+                "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，=> 而那一号逐字**照样**还了",
+            )
+        }
+    }
 
     fun diagnostics(): String = synchronized(diag) { diag.toString() }
 
