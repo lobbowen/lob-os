@@ -29,7 +29,7 @@ cat <<'TXT'
    （包名带 sha12 前缀，同版本重建不会覆盖旧键）
 
 2. 发布到供给源并重发签名清单（控制面板按它下发；清单会带 node 条目）：
-     node scripts/publish/publish-component-manifest.js dist          # 签名，需 keys/ota-private.pem
+     node scripts/publish/publish-component-manifest.js dist
      node scripts/publish/upload-qiniu.js dist/component-node-*.zip component/<同名 zip>
 
 3. 设备端：os.catalog action=refresh 刷新清单 → 装 node

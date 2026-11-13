@@ -11,20 +11,6 @@ object ApiSpec {
     const val GROUP_DEV = "lobos:dev"
     const val GROUP_SYS = "lobos:sys"
 
-    /**
-     * 那「能不能碰设备上别的 app」逐字**独立成**一档。
-     *
-     * 缺陷名（C-102）**那能力组逐字没有分出这一档、 每一件逐字实得的就只有 `base`** ——
-     *   旧版逐字**没有**这一档（ `app.launch` 逐字只要 `base` 那一档就**放行**）
-     *     **结论**逐字是：那一族逐字**不是**「某一个件能拉起任意 app」，
-     *       而是「**每一件**都能拉起任意 app」—— 它逐字**比**「某一个件」那一读**还要宽**
-     *     `component-sources.json` 那 44 键逐字**都没有** `capabilities` 那一格
-     *       （ 每一件逐字实得的就**只有** `base`）
-     *   **处置**： 这一档逐字**默认不许**
-     *     它逐字要**逐字显式声明**才能要
-     *     它逐字**独立**成一档（ 它逐字**不**并进 `base` 那一档、
-     *       依 C-103 逐字**不**用「那一件逐字是什么」顶掉它）
-     */
     const val GROUP_CROSS_APP = "lobos:cross-app"
 
     const val TIER_DEV = "dev"
@@ -121,7 +107,7 @@ object ApiSpec {
         "os.accessibility.actions" to "lobos.sys.accessibility.actions",
         "sys.nativeAssets" to "lobos.sys.device.nativeAssets",
         "os.nativeAssets.status" to "lobos.sys.device.nativeAssetsStatus",
-        
+
     )
 
     fun canonical(method: String): String = CANONICAL[method] ?: method

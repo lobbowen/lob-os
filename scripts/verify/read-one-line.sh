@@ -1,28 +1,5 @@
 #!/usr/bin/env bash
-# 真机读数工具 —— **只做一件事：取回设备上 compat-degrade.log 里匹配指定模式的行**。
-#
-# 职责边界（写成「不做什么」是因为下一轮一定会有人来加能力）：
-# - **不做 ls** —— 不列目录
-# - **不做 pull** —— 不取回任意文件
-# - **不做 write/push** —— 不往设备写任何东西
-# - 不改设备的任何状态，只读
-# 传了上述类参数或位置参数，一律非零退出并打印「本工具不做该操作」。
-#
-# 唯一用途：取 compat-degrade.log 里 d1.env-merge 那一行。
-# 它之所以需要独立成工具，是因为仓外那把取数工具（work/.lobos-tools/obs.js）只管 CI 侧
-# （GitHub Actions），且携带个人凭据 —— 入库脚本不该以仓外文件为参照。
-# 工具一旦什么都能做，后来就没有理由拒绝新增用途。
-#
-# 取数前置（不是取数之后）：取回该行之前先确认 LOBOS_COMPAT_LOG 在子进程 env 中
-# 且路径可写。compat-report.h:36-48 读 getenv("LOBOS_COMPAT_LOG")，路径为空或不以 / 开头
-# 就落 write(2)=stderr —— 此时「取不到」会被误读成「机制没生效」，
-# 而真相是「通道没通」。（见 I-32：能力具备 ≠ 条件满足。）
-#
-# 这个工具现在很可能空手而归：exec-path.c:97 的取值用 getenv()，读宿主进程自身 environ，
-# 而全仓无一处 setenv/PUTENV，父侧 environ 从未被写 → extra=0 → :100 提前 return →
-# :111 的自述一行都不打。先备尺子，再解环（M0a），尺子才有东西可量。
-#
-# 凭据：只可能用到 adb（USB 直连）；不使用仓外的 tok（那是个人 GitHub 凭据，不在本脚本视野内）。
+
 set -uo pipefail
 export LC_ALL=C
 
@@ -41,7 +18,6 @@ usage() {
   echo "  退出码: 0=取到并打印该行原文；2=参数/环境错误；3=未取到"
 }
 
-# -- 职责边界：先拒掉一切越界请求，再谈功能 --
 while [ $# -gt 0 ]; do
   case "$1" in
     --file)    [ $# -ge 2 ] || die "--file 缺值"; FILE="$2"; shift 2 ;;
@@ -80,7 +56,6 @@ DEVS="$($ADB devices 2>/dev/null | awk 'NR>1 && $2=="device"{print $1}')"
 DEV="$(printf '%s\n' "$DEVS" | head -1)"
 DEV_COUNT="$(printf '%s\n' "$DEVS" | wc -l | tr -d ' ')"
 
-# 取数前置 —— 先确认通道，再读数（I-25 / I-32）
 if [ "$LAST" = "" ] && [ $DEV_COUNT -gt 1 ]; then
   echo "[warn] 多台设备在线，取第一台：$DEV" >&2
 fi

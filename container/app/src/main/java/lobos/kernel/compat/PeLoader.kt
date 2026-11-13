@@ -6,20 +6,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.file.Files
 
-/**
- * 用户态 PE L2 加载器（ BLUEPRINT 那 **L2** 那一档：映射节、解析导入、
- * 按 LOB-OS 库搜索路径（`mm/LibPath`）加载依赖、构造进程映像）。
- *
- * 分层纪律（ L1 那一族只答「是什么」、而这一族答「怎么装」）：
- *  - 形状识别在 `lobos.kernel.proc.ExecEntry`（那一族逐字只读那 MZ 与那 e_lfanew）。
- *  - 本文件**不重做**形状识别：它从 PE 字节起手，自己解头、解节、解导入表。
- *  - 本文件**不执行** x86/x86-64 指令：它只把映像构造出来。
- *
- * 数值口径（ 一族全是 32/64 位无符号字段， Kotlin 那 Long 是有符号的，
- * 所以那些字段一律读成 Long 再用； **不**混用 Int 与 Long）：
- *  - 所有偏移、尺寸、RVA 一律 Long。
- *  - 只有数组下标与字节偏移转成 Int。
- */
 class PeLoader private constructor(
     val image: PeProcessImage,
     val dependencies: List<PeDependency>,
@@ -34,7 +20,6 @@ class PeLoader private constructor(
         private const val OPT_MAGIC_PE32 = 0x10B
         private const val OPT_MAGIC_PE32_PLUS = 0x20B
 
-        /** 加载一个 PE，并把它的导入表里点名的 DLL 在那搜索路径上找齐。 */
         fun load(executable: File, librarySearchPath: List<File>): PeLoader {
             val executableBytes = Files.readAllBytes(executable.toPath())
             val executableImage = parseImage(executableBytes)
@@ -43,7 +28,6 @@ class PeLoader private constructor(
             return PeLoader(executableImage, dependencies)
         }
 
-        /** 用 mm/LibPath 那一格（ **它**逐字是那 LOB-OS 库搜索路径的**唯一**生成点）加载。 */
         fun load(ctx: Context, executable: File): PeLoader {
             val dirs = lobos.kernel.mm.LibPath.searchPath(ctx)
                 .split(File.pathSeparator)
@@ -52,7 +36,6 @@ class PeLoader private constructor(
             return load(executable, dirs)
         }
 
-        /** 只解析并映射，不解析依赖。 */
         fun parse(bytes: ByteArray): PeProcessImage = parseImage(bytes)
 
         private fun parseImage(bytes: ByteArray): PeProcessImage {
@@ -84,15 +67,6 @@ class PeLoader private constructor(
             val sizeOfImage = r.u32(optional + 56)
             val sizeOfHeaders = r.u32(optional + 60)
 
-            //  缺陷名（C-102）**那数据目录那一格逐字按 PE32 的偏移读、 PE32+ 那一族
-            //    逐字把目录读到了错的地方** ——
-            //    它治**的**是「那导入表那一格逐字从哪一格取」。
-            //    **成因**： PE32+ 的可选头**少一个** BaseOfData（4 字节）、
-            //       **后面每一格**逐字**往前挪**了 4 个字节、 NumberOfRvaAndSizes
-            //       逐字从 92 挪到了 108、 数据目录逐字从 96 挪到了 112。
-            //    **后果**： PE32+ 那一族逐字把**别的**目录读成了导入表
-            //       （ 一族多半会把一段无关的字节读成 DLL 名）。
-            //    **处置**： 两格逐字按 pe32Plus **分两支**取、 **不合并**。
             val directoryCountOffset = if (pe32Plus) 108 else 92
             val directoryBase = if (pe32Plus) 112 else 96
             val directoryCount = r.u32(optional + directoryCountOffset)
@@ -128,7 +102,6 @@ class PeLoader private constructor(
                 throw PeFormatException("PE image size is smaller than its headers")
             }
 
-            // 映射节：头先落，其余每一节按它自己的 VirtualAddress 落，缺的那段留零。
             val mapped = ByteArray(imageSize)
             headerBytes.copyInto(mapped)
 
@@ -166,7 +139,6 @@ class PeLoader private constructor(
             )
         }
 
-        /** 读数据目录第 index 格（ **它**返回 RVA 与那大小成对）。 */
         private fun directoryAt(
             r: PeReader,
             optional: Int,
@@ -198,19 +170,12 @@ class PeLoader private constructor(
             return result
         }
 
-        //  缺陷名（C-102）**那 thunk 那一格逐字恒按 4 字节步长读、 PE32+ 那一族
-        //    逐字把导入项逐字读成了别的东西** ——
-        //    它治**的**是「那导入表逐项逐字能不能解析出来」。
-        //    **成因**： PE32+ 的导入名表逐字是 **8 字节**一项（低 4 字节是 RVA、
-        //       高 4 字节是 0）， **序号标志位**逐字在**第 63 位**、 **PE32** 那一族
-        //       逐字是 4 字节一项、标志位在**第 31 位**。
-        //    **处置**： 步长与那标志位逐字按 pe32Plus **分两支**取、 **不合并**。
         private fun parseThunks(view: ImageView, lookupRva: Long): List<PeImportSymbol> {
             if (lookupRva == 0L) return emptyList()
             var offset = view.rvaToOffset(lookupRva)
             if (offset < 0) return emptyList()
             val step = if (view.pe32Plus) 8 else 4
-            // PE32+ 的序号标志位是第 63 位 那是 Long 的最高位 写成 Long.MIN_VALUE。
+
             val ordinalFlag = if (view.pe32Plus) Long.MIN_VALUE else 0x80000000L
             val result = ArrayList<PeImportSymbol>()
             while (offset >= 0 && offset + step <= view.size) {
@@ -233,7 +198,6 @@ class PeLoader private constructor(
             return result
         }
 
-        /** 读导出表（ **它**答的是「那一件依赖逐字导出了哪些符号」）。 */
         private fun parseExports(view: ImageView, exportRva: Long, exportSize: Long): PeExports {
             if (exportRva == 0L) return PeExports(null, emptyMap(), emptyMap())
             val dir = view.rvaToOffset(exportRva)
@@ -296,7 +260,7 @@ data class PeProcessImage(
     val exports: PeExports,
     val bytes: ByteArray,
 ) {
-    /** 入口地址（ **它**逐字是那映像基址加那入口 RVA）。 */
+
     val entryPointAddress: Long get() = imageBase + entryPointRva
 }
 
@@ -313,13 +277,6 @@ data class PeExports(
     val byOrdinal: Map<Int, Long>,
 )
 
-/**
- * 一件依赖（ **它**逐字是那导入表里点名的那个 DLL 在那搜索路径上落到的那一份）。
- *
- * `resolved` 逐字记那**能**解出来的那几项（ 地址是那映像里的 RVA）；
- * `unsupported` 逐字记那**解不出来**的那几项（ 按 BLUEPRINT 那 M3 那一行
- * 逐字要「报不支持」而**不**是静默跳过）。
- */
 data class PeDependency(
     val requestedName: String,
     val file: File,
@@ -330,17 +287,9 @@ data class PeDependency(
 
 class PeFormatException(message: String) : IllegalArgumentException(message)
 
-/**
- * 按那搜索路径找依赖。
- *
- *  **它**逐字只做一件事： DLL 名逐字在**那一串目录**里落到哪一份。
- *  **它**逐字不替那程序自己声明的路径（ 按 C-92， **具体**的名字删掉了
- *     而这一行逐字还剩「按那库搜索路径找」这个**形状**）。
- */
 private class DependencyResolver(searchPath: List<File>) {
     private val roots = searchPath.filter { it.isDirectory }
 
-    /** 那一格：名字逐字（小写）-> 那一份文件。 */
     private val index: Map<String, File> by lazy {
         val out = LinkedHashMap<String, File>()
         for (root in roots) {
@@ -413,7 +362,6 @@ private class DependencyResolver(searchPath: List<File>) {
     }
 }
 
-/** 从文件字节里读数的那一副（ **它**逐字是那**头**那一层，不读映射后的映像）。 */
 private class PeReader(private val bytes: ByteArray) {
     fun u16(offset: Int): Int = buffer.getShort(offset).toInt() and 0xFFFF
     fun u32(offset: Int): Long = buffer.getInt(offset).toLong() and 0xFFFFFFFFL
@@ -440,14 +388,6 @@ private class PeReader(private val bytes: ByteArray) {
     private val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 }
 
-/**
- * 映射后的映像那一副（ **它**逐字按 RVA 读）。
- *
- *  RVA 到映像偏移逐字就是**同一个数**： 映像**已经**是按各节自己的
- *     VirtualAddress 摆好的一份、 **不**要再换算回文件偏移。
- *  **旧**的换算逐字是「拿文件偏移当映像偏移用」—— **后果**是那导入名逐字
- *     读到了别的地方、 **处置**是那一处换算逐字**删掉**。
- */
 private class ImageView(val bytes: ByteArray, val pe32Plus: Boolean) {
     val size: Int get() = bytes.size
 
@@ -455,7 +395,6 @@ private class ImageView(val bytes: ByteArray, val pe32Plus: Boolean) {
     fun u32(offset: Int): Long = buffer.getInt(offset).toLong() and 0xFFFFFFFFL
     fun u64(offset: Int): Long = buffer.getLong(offset)
 
-    /** RVA -> 映像偏移（ **它**逐字是恒等； 越界就返回 -1）。 */
     fun rvaToOffset(rva: Long): Int = if (rva in 0 until bytes.size.toLong()) rva.toInt() else -1
 
     fun string(offset: Int): String {

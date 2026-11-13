@@ -15,14 +15,6 @@ mkdir -p "$ROOT_DIR/$OUT/bin" work
 
 echo "[git] 取源码（钉值表的 git 那一格）"
 
-#  缺陷名（C-102）**那一族逐字**没有**把那墙钟逐字钉住、那**字节**逐字**编**进去了**
-# 旧版逐字**没有**这一族
-# 那**可复现**逐字那**三样**： 那源码钉值逐字**有**、 那工具链逐字**有**、
-#         那**归档内 mtime**逐字**没有**（那 `SOURCE_DATE_EPOCH` 逐字**没**设）
-# 那**墙钟**逐字**编**进那件包、那**同一个** recipe 逐字**再**编一次逐字**也**会**变**
-# 那**闸门**逐字就逐字判「同一 name@version 换了字节」
-# 那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上
-# 那**处置**：那**墙钟**逐字**钉**住（那**读口**逐字**唯一**、依 C-105）
 export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --time-base 2>/dev/null || echo 0)"
 bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin git "$ROOT_DIR/work/git.tar.xz" \
   --version-file "$ROOT_DIR/$OUT/git.version"
@@ -61,15 +53,7 @@ fi
 echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
 grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
 grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
-# curl / openssl / zlib 现在是**预装件**（base 筐，见 scripts/component-sources.json），
-# 落位在 usr/lib/<id>/<版本>/lib/ 并建了全局软链 —— 
-#   git 只记 DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局那份找。
-#
-#   此前这里编静态库然后 -lcurl -lssl -lcrypto -lz 全链进去 ——
-#   那正是一个二进制里装了几个件（Linux 里 git 链的是 .so，不是 .a）。
-#
-# 所以：不再调 build-shared-deps.sh（那个一次编三份静态库的脚本已删）。
-# 依赖从落位处取（prefix 在编译期就能算出来）。
+
 echo "[git] 依赖用预装件（usr/lib 下的全局软链），不再静态链入"
 
 cd "$ROOT_DIR/work/git-src"
@@ -98,15 +82,6 @@ else
 fi
 export RANLIB="$TC_DIR/llvm-ranlib"
 
-#  依赖从哪来：base 筐三个预装件的构建输出 
-# curl / openssl / zlib 早已不再编到 work/deps（那个一次编三份静态库的
-# build-shared-deps.sh 已删）。它们现在是独立的件，各自由自己的脚本编，
-# 构建输出留在 work/<件名>/out/{include,lib}/ —— 那正是 configure 想要的前缀形状
-# （build-bundle-curl.sh 对 openssl/zlib 就是这么找的）。
-#
-# 这里链的是**共享库**，不是一个二进制里静态塞几份 .a —— git 只记
-# DT_NEEDED libcurl.so / libssl.so / libz.so，运行时从全局落位那份找。
-# 这与脚本原有的设计意图一致（见上面那段注释），只是当时没跟上脚本的删除。
 ZLIB_PREFIX="$ROOT_DIR/work/zlib/out"
 OPENSSL_PREFIX="$ROOT_DIR/work/openssl/out"
 CURL_PREFIX="$ROOT_DIR/work/curl/out"
@@ -122,18 +97,6 @@ for p in "$ZLIB_PREFIX" "$OPENSSL_PREFIX" "$CURL_PREFIX"; do
 done
 echo "[git] 依赖三件就位：zlib / openssl / curl"
 
-#  缺陷名（C-102）**那 git 那个二进制**逐字**零个** RUNPATH**（那**它**们**逐字是**那**两**件**事**）。
-# 那**成因**：那 git 逐字**要**那 libz.so.1 **那一个**、那**它**逐字**是**那 LOB-OS 自己那**一族**的**库**、
-# 那 jq **要**的那些**都**是**那宿主**那**一族**、那**它们**逐字**是**那**两**件**事**。
-# 那**后果**逐字那 git **那一格**逐字**报**那「library libz.so.1 not found」、
-# 那**它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
-# 那**处置**：那 RUNPATH 逐字**写**在**那配方**那一族**里面**（那 **git-runpath-origins.patch**）。
-# 那**为什么**逐字**不能**经**那 env **那一族**：那 **make** 逐字**把**那 $ORIGIN **当**那 **make 变量**
-#        （那**它**逐字**是空的**）、那**它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
-# 那**证据**逐字那 **CI** 编出来**那一个** git 逐字**带**那 RUNPATH **却**是**那「RIGIN/../lib」**
-#          （那**它**逐字**是**那 **RIGIN**、那**它**们**逐字是**那**两**件**事**）。
-# 那**那一个**逐字**在**那**配方**里面**（那**它**逐字**自己**写**那**转义**、那**它**们**逐字是**那**两**件**事**）。
-# 按 C-104：那 git **那一件**逐字**只有一条路**（那**它**逐字**是**那**配方**那一族**、那**它**们**逐字不是**第二条路**）。
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then
@@ -194,9 +157,7 @@ for f in "$GITCORE"/*; do
   fi
 done
 echo "[git] 链接农场：符号链接 $LINKED、副本瘦身 $SLIMMED、真独立文件 $KEPT"
-# 只量 git 件本身 —— bin/ 与 libexec/。不能 du 整个 $OUT：
-# 缓存路径里有 dist/component-git-*.zip（上轮 package-component.sh 的产物，
-# 每个 23 MiB），把它们算进来就得出 85 MiB 这个假数，件树其实只有 40。
+
 PIECE_KEEP='bin libexec'
 PIECE_TREE=0
 for d in $PIECE_KEEP; do

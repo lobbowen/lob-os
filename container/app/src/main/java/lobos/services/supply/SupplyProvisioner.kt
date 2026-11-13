@@ -18,18 +18,9 @@ object SupplyProvisioner {
     private const val FETCH_TIMEOUT_MS = 30000
     internal const val MAX_FETCH_BYTES = 256 * 1024 * 1024
 
-    /**
-     * 那**条目**逐字那一个上限（ 它逐字是那**读法**逐字自己说的）。
-     *
-     *   **上限**逐字是那 **4096** 字节
-     *     （ `symlinkTargetOf` 那一格逐字**只**看那 ≤4096 那一族）
-     *   **读法**逐字是那 `supply.unzip` 那一族
-     */
     internal const val ENTRY_READ_MAX_BYTES = 4096
     internal const val MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 
-
-    /** 那**软链**那一族逐字**只**看**那**头**这**几**个**字节**（ **它**逐字**够**那**判**那**软链**用**）。 */
     private const val SYMLINK_HEAD_MAX = 4096
 
     fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc(ctx)
@@ -87,16 +78,6 @@ object SupplyProvisioner {
     internal fun uncached(url: String): String =
         url + (if (url.indexOf('?') >= 0) "&" else "?") + "t=" + System.currentTimeMillis()
 
-    /**
-     * 打开一个 GET 连接并跟完重定向，返回（连接, 最终状态码）。
-     *
-     * GitHub 的 release 资产直链先给 302（跳到 objects.githubusercontent.com），
-     * 跟随重定向之后才是 200。HttpURLConnection 遇到换协议的跳转不自动跟随，
-     * 那种情形下 responseCode 会停在 3xx —— 所以这里既开 instanceFollowRedirects，
-     * 也自己兜住 3xx + Location。
-     *
-     * 返回的 responseCode 是**重定向之后**那一跳的状态码。
-     */
     private fun openFollowingRedirects(
         url: String,
         connectTimeoutMs: Int,
@@ -128,14 +109,9 @@ object SupplyProvisioner {
 
     internal fun httpGet(url: String, maxBytes: Int = MAX_FETCH_BYTES): ByteArray {
         var current: HttpURLConnection? = null
-        //  缺陷名（C-102）**httpGet 的函数体是 try/finally、而 try 那一段没有 return**：
-        //   重定向那一段抽成 helper 之后，这里从「return try { ... } finally { ... }」
-        //   变成了「try { ... } finally { ... }」—— 而 Kotlin 那一族里
-        //   函数体的最后一段是 try 时，它**不算**那个函数的返回值（编译器报
-        //   Missing return statement）。 于是这一处编译不过。
-        //   现在：把 return 补回（与 httpGetToFile 那一支同形：try 里显式 return）。
+
         return try {
-            //  与 httpGetToFile 走同一个 helper：跟随重定向，判的是重定向之后那一跳的码。
+
             val (conn, code) = openFollowingRedirects(url, FETCH_TIMEOUT_MS, FETCH_TIMEOUT_MS)
             current = conn
             if (code !in 200..299) throw IllegalStateException("HTTP " + code + " " + url)
@@ -176,7 +152,7 @@ object SupplyProvisioner {
         dest.parentFile?.mkdirs()
         var current: HttpURLConnection? = null
         try {
-            //  与 httpGet 走同一个 helper：跟随重定向，并且判的是**重定向之后**那一跳的码。
+
             val (c, code) = openFollowingRedirects(url, 15_000, 300_000)
             current = c
             if (code !in 200..299) {
@@ -193,64 +169,21 @@ object SupplyProvisioner {
 
     internal fun sha256HexFile(f: File): String = lobos.kernel.crypto.Crypto.sha256HexFile(f)
 
-    /**
-     * 解包：按**字节**分派，**不**按文件名后缀。
-     *
-     * 缺陷名（C-102）**那解包逐字按文件名的后缀分派** ——
-     *   而那旧版逐字是：
-     *     n.endsWith(".tar.gz") || n.endsWith(".tgz") -> untarFromFile(pkg, dest)
-     *     n.endsWith(".zip") -> unzip(pkg, dest, probeCtx)
-     *     else -> unzip(pkg, dest, probeCtx)
-     *   **名字**与那**内容**逐字是**两件**事：
-     *     · Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz， 里面的内容**已经是 zip**
-     *       （ fmt.sh 那一族逐字写着「按扩展名分派会对 zip 内容走 tar 分支，解不开，判据一律拒绝」）；
-     *     · 而那 CI artifact 那一族逐字是「zip 套 zip」（ 外层逐字装着那内层那一个件包）。
-     *   按后缀分派逐字**在这两种形状上都会解错**（ zip 套 zip 那一族逐字会把外层当件包）。
-     *
-     * C-103 这一族它为什么有两边：
-     *   一边是「这一份**叫什么名字**」（ 名字是**约定**、 它逐字会骗人）；
-     *   另一边是「这一份**实际上是什么容器**」（ 只能**看头四字节**答）。
-     *   两边各答一件事、 解包该按**后者**分派。
-     *
-     * C-104 有没有第二种生成路径：没有。 判别逐字**只有**这一处（ 按 C-994「判别源必须唯一」）。
-     */
     internal fun unzipFromFile(pkg: File, dest: File, probeCtx: android.content.Context? = null) {
         val form = containerFormOf(pkg)
-        //  ctx 逐字**要**有（ 出口逐字要有地方可报、 ctx 逐字是那唯一的地方）。
-        //     三处调用点逐字**都**有 ctx 可传（ 一处 PieceUpdater 那边的
-        //       逐字**原来没传**、 它现在逐字传上、 出口逐字**处处**都报得出）。
-        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 一族等于没做**
-        //    旧版逐字是 `when (containerFormOf(pkg))`（ **赋值**逐字**没有消费方**：
-        //      而 Lead 本机实读逐字「全仓调用点逐字只有一处」、 **就是**这一处）。
-        //    与 C-996 那一族（Located.tier）逐字**同一形状**（ 判别式被写了、被赋值了、
-        //      没有任何一处读它）。
-        //    **后果**： 07 本轮实测逐字**触发了** unzipFromFile（ Kotlin 侧那一档逐字被算了）
-        //      **但那一档逐字没被报出来** **读不到**。
-        //    **处置**： 一档逐字**报进诊断那一族**
-        //      （ RuntimeDiagnostics.append 逐字写进 diag.jsonl、 正是 07 能读到的那一份）。
-        //    **stage** 那一格的名字逐字是 "container-form"（ 它逐字答的是「这一份是什么容器」；
-        //      它逐字**不**与那 "lib-entry-tier" 那一格混（ 是库入口那一档）。
-        //    **为什么**在这里报、 不在 containerFormOf 那一格里报：
-        //      · 而那 containerFormOf 那一格逐字**没有** ctx（ 它逐字是纯函数、 它逐字不该有副作用）；
-        //      · 而那**调用点**逐字是那实际**做了那个动作**的地方（ unzipFromFile 逐字就是那解包那一族）。
+
         reportContainerForm(probeCtx, pkg, form)
         when (form) {
             CONTAINER_ZIP -> unzip(pkg, dest, probeCtx)
             CONTAINER_GZIP -> untarFromFile(pkg, dest)
             CONTAINER_TAR -> untarFromFile(pkg, dest)
             else -> {
-                //  认不出来时逐字**按 zip 试一次**（ zip 那一支逐字会自己报出真错），
-                //  **不**按文件名猜（ 后缀逐字是骗人的）。
+
                 unzip(pkg, dest, probeCtx)
             }
         }
     }
 
-    /**
-     * 那一档的**出口**（ 它逐字把「这一份是什么容器」报进诊断那一族）。
-     *   ctx **可以**是空（ probeCtx 那一格逐字可选、 空的时候逐字**不报**、
-     *     **不是**「那一档没算」、 是「**没有地方可报**」）。
-     */
     private fun reportContainerForm(
         ctx: android.content.Context?,
         pkg: File,
@@ -279,44 +212,11 @@ object SupplyProvisioner {
         )
     }
 
-    /** 容器形态那一格（ 它逐字**按头四字节**判、 不按名字）。
-     *
-     *  **取值域逐字只有三档**（ 01 裁的 S607-01-CONTAINER-FORM-RULING.md §2.1
-     *     逐字「外壳 3 档 + 内外层关系 1 档 = 4 档」、 **zip64 不是第五个容器**、
-     *     它是 zip 那一档的**中央目录变体**）。
-     *  **运行期不需要**那一档（ zip64 逐字**用同一个解包器**、
-     *     zip64 的差别逐字在条目头与偏移表、 **解包器自己认**）。
-     *  **头四字节分不出** zip 与 zip64（ 两个样本逐字都是 504b0304）、
-     *     若运行期要分它、 判别式逐字得**再读一次尾部**（ 是每次解包多一次尾读的代价）。
-     */
     const val CONTAINER_ZIP = "zip"
     const val CONTAINER_GZIP = "gzip"
     const val CONTAINER_TAR = "tar"
     const val CONTAINER_UNKNOWN = "unknown"
 
-    /**
-     * 这一份**实际上是什么容器**（ 只读头四字节、 **不**整读）。
-     *   504b0304 = zip（ zip32 与 zip64 **分不出头四字节**、 要靠尾部哨兵、
-     *                    运行期**不需要**分它、 解包器自己认）；
-     *   1f8b08xx = gzip；
-     *   其余     = tar（ 判据逐字是「头四字节不是 504b* 也不是 1f8b*、 tar tf 读得通」）。
-     *
-     *  zip 那一支逐字**只比前两字节**（504b、 **不是** 504b0304）：
-     *     而 01 裁的 S607-01-CONTAINER-FORM-RULING.md §2.1 逐字写的是「头四字节逐字 `50 4b 03 04`
-     *     （即 `504b*`）」、 **504b\* 逐字就是前两字节加一个通配**（ 是 `50 4b` 开头的一切）。
-     *     **为什么**比 `504b0304` 更宽是**对的**：
-     *       · 而那 zip 里的**本地文件头**逐字总是 `50 4b 03 04`（ 件包的第一条逐字是它）；
-     *       · 而那**中央目录结束记录**逐字是 `50 4b 05 06`、 **数据描述符**逐字是 `50 4b 07 08`
-     *         （ 两者逐字都在 zip 容器里面、 它们**也**是 `50 4b` 开头）；
-     *       运行期这一格答的是「这一份**是不是 zip 容器**」（ 解包器要认的是**整个容器**），
-     *         **不是**「这一份的头**那一条**逐字是不是本地文件头」。
-     *     **若**只比 `504b0304`， 一个逐字以 `50 4b 05 06` 开头的那一份
-     *       （ 逐字是一个**空**的 zip、或那一段字节**不是**一个完整 zip）会被误判成「不是 zip」。
-     *     fmt.sh 那一族（ 是**构建侧**那一把尺）逐字用的也是 `504b*`：
-     *       fmt.sh 的 fmt_of 逐字是 `case "$m" in 504b*)`， $m 逐字是**头四字节**。
-     *     **两处口径逐字一致**（ 一处逐字是 `504b*`、 这一处逐字是前两字节 `50 4b`
-     *       —— **含** 504b0304、 **不含**别的 50 4b 开头的东西、 口径逐字同形）。
-     */
     internal fun containerFormOf(pkg: File): String {
         if (!pkg.isFile || pkg.length() <= 0L) return CONTAINER_UNKNOWN
         val head = try {
@@ -342,7 +242,7 @@ object SupplyProvisioner {
             b0 == 0x50 && b1 == 0x4b -> CONTAINER_ZIP
             b0 == 0x1f && b1 == 0x8b -> CONTAINER_GZIP
             else -> {
-                //  tar 那一档逐字要**试读**（ 01 §2.1 逐字「tar tf 读得通」）。
+
                 val tarOk = try {
                     val pb = ProcessBuilder("tar", "tf", pkg.absolutePath)
                     pb.redirectErrorStream(true)
@@ -386,10 +286,7 @@ object SupplyProvisioner {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
         java.util.zip.ZipFile(zip).use { zf ->
-            // 包里有哪些条目 —— 判「这条是不是软链」要用它：
-            // 软链条目在 zip 里存的是**目标路径字符串**（实测 bin/cat 的 20 字节 = "../lib/libbusybox.so"），
-            // 而普通文件存的是内容。两个条件缺一不可：内容像一条路径，且按它解析出来的目标**在包里存在**。
-            // （那三个 1 字节的 "x" 因此不会被误判：它解析成 bin/x，而包里没有 bin/x）
+
             val entryNames = java.util.Collections.list(zf.entries()).map { it.name }.toSet()
             var entryCount = 0
             var byteCount = 0L
@@ -403,13 +300,7 @@ object SupplyProvisioner {
                     out.mkdirs()
                 } else {
                     out.parentFile?.mkdirs()
-                    //  缺陷名（C-102）**那解包**那一族逐字**把**那**整个**的**大**条目**逐字**读**进**那**内存**里**。
-                    //    **成因**： bytes 逐字**是**那 ins.readBytes()（ **它**逐字**吃**那**整个**的**条目**）、
-                    //      **它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**吃**了**多少**」）。
-                    //      git **那一件**逐字**有**那「bin/scalar」**那字节 = 10946536**、那「bin/git-shell」**那字节 = 10773528**（ **它们**逐字是**那**两**件**事**）。
-                    //    **后果**逐字 = 而那**解包**逐字**要**把**那 40 兆**逐字**吃**进**那**内存**里**、 **它**们**逐字是**那**两**件**事**：「那**吃**的是**什么**」与「那**慢**的是**什么**」）。
-                    //    **处置**： **它**逐字**先**只**读**那**头**那**几**个**字节**（ **它**逐字**判**那**软链**够不够**）、
-                    //      **它**逐字**不**是**那**软链**的**时候**才**把**那**整个**的**条目**逐字**流**到**那盘**上**（ **它**们**逐字是**那**两**件**事**）。
+
                     val head = zf.getInputStream(e).use { ins ->
                         val b = ByteArray(SYMLINK_HEAD_MAX)
                         val n = ins.read(b)
@@ -418,15 +309,11 @@ object SupplyProvisioner {
                     val linkTarget = symlinkTargetOf(e.name, head, entryNames)
                     if (linkTarget != null) {
                         linkCount++
-                        // C-102 **解包时把软链展平成字节副本** —— 原来这一支只按字节拷贝，
-                        // 于是「一条命令入口」从软链变成一份独立的字节副本：
-                        // 真机读数（07，base-busybox 那一版）：files/opt/busybox/1.36.1/bin/cat 与
-                        // lib/libbusybox.so sha256 相同（87e32d67…b51e0） 同一份字节出现在 18 个名字下。
-                        // 处置：重建一条软链，指向包里那个目标（相对路径，与打包时一致）。
+
                         java.nio.file.Files.deleteIfExists(out.toPath())
                         java.nio.file.Files.createSymbolicLink(out.toPath(), java.nio.file.Paths.get(linkTarget))
                     } else {
-                        //  **普通**文件逐字**流**到**那盘**上**（ **它**逐字**不**再**整个**读**进**那**内存**里**）。
+
                         zf.getInputStream(e).use { ins ->
                             out.outputStream().use { os ->
                                 val buf = ByteArray(1 shl 16)
@@ -443,8 +330,7 @@ object SupplyProvisioner {
                     }
                 }
             }
-            //  **逐件**逐条**的**读数**逐字**只**报**那**汇总**（ **条目**数、那**字节**数、那**软链**数）。
-            //      **它**逐字**不**许**逐条目**落盘**（ **它**们**逐字是**那**两**件**事**：「那**记**的**是**什么**」与「那**记**的**几**条**」）。
+
             if (probeCtx != null) {
                 runCatching {
                     RuntimeDiagnostics.append(
@@ -459,9 +345,6 @@ object SupplyProvisioner {
         }
     }
 
-    /** 这一条是不是软链条目；是的话返回它的目标（相对路径），不是则返回 null。
-     *  判据两个条件缺一不可：内容能解成一条路径，且按它解析出来的目标**在包里存在**。
-     *   而 1 字节的小文件（今天 dist/ 那三个 "x"）解析出来的目标不在包里  判为普通文件。 */
     private fun symlinkTargetOf(entryName: String, bytes: ByteArray, entryNames: Set<String>): String? {
         if (bytes.isEmpty() || bytes.size > 4096) return null
         if (bytes[0] == 0x7f.toByte() && bytes.size > 3 &&
@@ -475,21 +358,6 @@ object SupplyProvisioner {
         return text
     }
 
-    /** 与 [unzip] 同形，**也要认软链条目** ——
-     *   缺陷名（C-102）**第二处解包把软链展平成字节副本**：
-     *    原来这一支只按字节拷贝（`zin.copyTo(it)`），而 [unzip] 那一支已经会重建软链
-     *    （ 那是 64d40f0 建的） **同一件事有两个实现，而只有一个认软链**
-     *     ** 走这一支的那条链**（ProgramInstaller.kt:110） **拿到的是展平后的字节**。
-     *     而判据仍按「内容能解成一条路径 + 按它解析出来的目标在包里存在」两条件缺一不可。
-     *   而 ZipInputStream 是**流式**的（拿不到全量条目名） 先把条目名与内容各读一遍。
-     */
-    /**
-     * 那**条目**逐字**按**那读法逐字读（ **上限**逐字**是**那读法逐字自己说的）。
-     *
-     *   **读法**逐字**可查**（ `ReadRoute` 那一族逐字**记**那一格）
-     *   **上限**逐字是那 4096（ `symlinkTargetOf` 逐字**只**看那 ≤4096 那一族）
-     *   **超限**逐字**报缺**（ 按 C-05 不猜填）
-     */
     private fun readEntryCapped(zin: ZipInputStream, name: String): ByteArray {
         val buf = java.io.ByteArrayOutputStream()
         val chunk = ByteArray(4096)
@@ -514,24 +382,13 @@ object SupplyProvisioner {
     internal fun unzipInto(zipBytes: ByteArray, dest: File) {
         dest.mkdirs()
         val destRoot = dest.canonicalFile
-        // 先读一遍：条目名 + 每一项的内容（ZipInputStream 是流式的，判软链要「全量条目名」）。
+
         val names = LinkedHashSet<String>()
         val bodies = LinkedHashMap<String, ByteArray>()
         ZipInputStream(ByteArrayInputStream(zipBytes)).use { zin ->
             var e = zin.nextEntry
             while (e != null) {
-                //  缺陷名（C-102）**那一格逐字把**那一个**条目逐字**整个**读进那堆** ——
-                //    旧版逐字是 `bodies[e.name] = zin.readBytes()`
-                //      它逐字把**那一个条目**逐字**整个**读进那堆
-                //        （ **条目**逐字**可以**是那大件： `node` 那一件逐字
-                //          **116779696** 字节、 `llvm-lipo` 那一件逐字 **133359688** 字节、
-                //          `clang-21` 那一件逐字 **1383240488** 字节）
-                //      **分配量**逐字与那 logcat 逐字那 116 / 131 / 146 MB 逐字**同形**
-                //    **处置**： **读法**逐字**可查**（ `ReadRoute` 那一族）
-                //      **读法**逐字**自己**说它逐字要多少、 **上限**逐字**是**那读法的
-                //      **超限**逐字**报缺**（ 按 C-05 不猜填）
-                //    **判据**逐字是「那一件逐字是从**哪一条路**逐字被整读的」
-                //      （ 它逐字**不**由「那一件逐字是什么」顶掉）
+
                 if (!e.isDirectory) {
                     bodies[e.name] = readEntryCapped(zin, e.name)
                 }

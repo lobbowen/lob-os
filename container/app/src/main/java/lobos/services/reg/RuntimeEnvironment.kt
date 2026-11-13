@@ -50,52 +50,11 @@ object RuntimeEnvironment {
         put("HOME", root.home.absolutePath)
         put("TMPDIR", root.tmpDir.absolutePath)
         put("LANG", "C.UTF-8")
-        //  缺陷名（C-102）**那一族逐字没有那 TERM、 交互式那一档逐字因此立刻就退** ——
-        //   旧版逐字**没有**这一项（ `treeRootEnv` 逐字只设 HOME / TMPDIR / LANG / …）
-        //   **后果**（07 本轮逐字核出、Lead 本机复核成立）：
-        //     · 那交互式终端那一族逐字「起一条交互式终端会话」逐字**成立**
-        //       （ 会话逐字**起过**、 账本里有 linker64）
-        //     · 四个判据逐字**全不成立**（ pts 空、 index.json `[]`、
-        //       nodes 那三条 exists=false、 instances `0`）
-        //     **成因**： bash `-i` 逐字**没有** TERM
-        //       bash 逐字**没有** TERM 逐字**不肯**跑交互式、 它逐字**立刻**退
-        //         （ bash 那一条逐字是「终端没有 terminal type」那一族）
-        //       **会话**逐字**起完就退**、 **能 write** 那一格逐字取不到
-        //   **处置**： TERM 逐字**给**一个值
-        //     它逐字是那**终端类型**那一族（ 标准值逐字是 `xterm`）
-        //     **用户声明**的那一项逐字**不许**覆盖它（ `RESERVED_ENV` 那一族逐字已经含 TERM）
+
         put("TERM", "xterm")
-        //  缺陷名（C-102）**那 PREFIX 那一族逐字没有给** ——
-        //    它治**的**是「那**运行时**逐字**告诉**那**目标**它**自己**在**哪**一层**前缀**下面**」。
-        //    **成因**： cmake **那一件**逐字**读**的**是**那 $ENV{PREFIX}/include/android/api-level.h
-        //       （ CMakeDetermineSystem.cmake :40 **那一行**）、 **它**逐字**要**那 PREFIX **那一个**变量**。
-        //    **后果**逐字**是**： cmake configure 逐字**报**那「file failed to open for reading」
-        //       （ 真机读数： CMake Error at …/Modules/CMakeDetermineSystem.cmake:40 (file)）。
-        //    **处置**： PREFIX 逐字**指向**那**前缀**那一层（ root.prefixRoot）。
-        //    按 C-104： **运行时**给**孩子**的**那** env **快照**逐字**只有**一条路（ 这一支**就是**它**）。
+
         put("PREFIX", root.prefixRoot.absolutePath)
-        //  缺陷名 缺陷名（C-102）那**库**的**搜索次序**逐字**没**算**那件自己的**那**一层**
-        //    它治**的**是「那**运行时**逐字**加载**的**是**哪**一个** libcrypto / libc++_shared.so」。
-        //    它**不**是「那加载器坏了」、 它**不**是「那 DT_RUNPATH 要改」。
-        //
-        //    而那**两**个**读数**逐字**是**那**同一个**形状**（ **两者**逐字**不是**那**同一个**符号**）：
-        //      一：那 openssl —— 而那**运行**时逐字**先**找到**那宿主**那**/system/lib64/libcrypto.so，
-        //         而那**宿主**那一份逐字**没有**那 **OSSL_CMP_ITAV_dup**，
-        //         而那**我们**的**那两份** libcrypto 逐字**都**有那**符号**。
-        //      二：那 node —— 而那 libnode.so 的 RUNPATH 逐字 = **$ORIGIN**，
-        //         而那 $ORIGIN 逐字**是**那 **bin** **那一**层，
-        //         而那 libc++_shared.so 逐字**在**那 **lib** **那一**层。
-        //    **两**个**成因**逐字**同**一个：
-        //       **那加载器**逐字**只**在**那几条路径**上找、 **件自己的**那**一层**逐字**不**在**那几条路径**上**。
-        //    **差别**逐字**是**那**库**在哪**那一层**（ openssl 的**那一份**在**那 usr/lib**、
-        //       而那 node 的**那一份**在**那件自己的**那 **lib/** **那一层**）。
-        //
-        //    **处置**逐字**是**：那**树根的库目录**逐字**排**在**那一条路径**的**前面**，
-        //       而且**每一件**自己**那** lib/ **那一层**也**排**在**那一条路径**上（ **落位事实**逐字**是**这样**的**）。
-        //    **程序自己声明**的**那一项**逐字**仍然不许生效**（ 它归那 RESERVED_ENV **那一族**管、
-        //       **不**能靠「让程序声明自己那一项」来**修**）。
-        //    按 C-92：而那**具体**的**名字**（LD_LIBRARY_PATH）**删掉**了、
-        //       而这一行逐字**还**剩「那树根的库目录排在那一条路径上」这个**形状**。
+
         put("LD_LIBRARY_PATH", joinPath(root.prefixLib.absolutePath, root.nativeLibDir, pieceLibDirs(ctx), inheritedLd))
         put(
             "PATH",
@@ -147,15 +106,7 @@ object RuntimeEnvironment {
         dirs.add(LibPath.searchPath(ctx))
         return dirs.filter { File(it).isDirectory }.joinToString(":")
       }
-    /** 那一件自己**那** lib/ **那一层**（ **落位事实**：每件的库**在**它**自己的**那**一层**里**）。
-     *
-     *  **它**逐字**是**那**库**的**搜索次序**那一族**的**另一半**：
-     *     而那 usr/lib **那一层**逐字**收**的是**那件**的**库**的**软链**，
-     *     而那**链接器**逐字**只**找**那**软链**指**的**那**一份**、 **软链**逐字**指**到**那件自己的**那**一层**。
-     *     node 那一件逐字**没有**那**软链**（ libc++_shared.so 逐字**不**在**那 usr/lib** **底下**），
-     *        所以而它逐字**要**自己**那**一层**逐字**在**那一条路径**上**。
-     *  **它**逐字**不**管「那件的依赖满不满足」（ 是**那落位侧**的**活**、 SYSTEM_LIB_DIRS **不动**）。
-     */
+
     fun pieceLibDirs(ctx: Context): String {
         val opt = File(ctx.filesDir, "opt")
         val dirs = LinkedHashSet<String>()
@@ -186,22 +137,10 @@ object RuntimeEnvironment {
 
     private fun assemble(ctx: Context): Snapshot {
         val provisioned = PrefixProvisioner.provision(ctx)
-        //  缺陷名（C-102）**那扫描逐字对那每一个文件都算 SHA-256、 App 起来逐字活约 20 秒就被杀**
-        //   07 本轮逐字核出：那设备上逐字 **18880** 个文件、 ROM 的 service 超时
-        //     逐字是 **20004ms** 那一档、 凡「App 起来后要跑满服务池」的那一格
-        //     逐字在这台设备上**都取不到**。
-        //   **处置**： **扫描**逐字**要**（ 它逐字答「哪几件在位」、
-        //     `absent` 与那 `missing` 逐字要那扫描结果）、
-        //     **逐文件算 sha256** 那一件逐字**要能跳过**
-        //     （ 开关逐字是那 `ScanCost` 那一族、 它逐字**不是**「跳过一切扫描」）。
-        //   **这里**逐字是那**装配**那一族、 它逐字**只**要那**目录视图**
-        //     （ 它逐字**零**处用那内容指纹） 一步逐字跳过是**零**代价。
+
         val withContentFingerprint = ScanCost.withContentFingerprint(ctx)
         val found = PieceScan.scan(ctx, withContentFingerprint).filter { it.role != PieceScan.HEADERS }
-        //  **诊断**那一档逐字**不**在这里报（ 它逐字在 `PieceScan.rebuild` 那一族**之前**报）
-        //    —— 07 本轮逐字核到 `stage="scan-cost"` 命中 **0**，
-        //      **原因**逐字是「那一档逐字在 assemble 那一族才报、 rebuild 那一族跑不到那一步」。
-        //    这里逐字**只**用它那一格开关（ 它逐字对那调用方逐字透明）。
+
         val landedIds = found.map { f -> f.id }.toSet()
         val packagedIds = PieceScan.packagedIds(ctx)
         val absent = packagedIds - landedIds

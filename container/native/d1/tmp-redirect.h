@@ -11,7 +11,7 @@
 static inline const char *dsh_tmp_redirect(const char *path, char *buf, size_t bufsz) {
     if (path == 0 || path[0] != '/') return path;
     if (strncmp(path, "/tmp", 4) != 0) return path;
-    if (path[4] != '/' && path[4] != '\0') return path;  
+    if (path[4] != '/' && path[4] != '\0') return path;
     const char *tmp = getenv("TMPDIR");
     if (tmp == 0 || tmp[0] != '/') return path;
     size_t tl = strlen(tmp);

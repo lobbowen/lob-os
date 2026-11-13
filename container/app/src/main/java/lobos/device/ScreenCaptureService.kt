@@ -32,7 +32,7 @@ class ScreenCaptureService : Service() {
 
     private fun promote() {
         val notif = buildNotification()
-        //  **发法名**逐字答的是「那一条路」、 **记录**逐字**落**那诊断
+
         lobos.kernel.fs.NotifyRoute.note(this, "capture.startForeground", NOTIF_ID, "前台")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

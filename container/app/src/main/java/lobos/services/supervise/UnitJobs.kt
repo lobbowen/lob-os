@@ -28,7 +28,7 @@ object UnitJobs {
 
     fun enqueue(ctx: Context, job: Job): Verdict {
         val pending = read(ctx)
-        if (pending.any { it.unit == job.unit }) return Verdict.Ok   // 已在队里，不重复排
+        if (pending.any { it.unit == job.unit }) return Verdict.Ok
         val next = pending + job
         return verify(ctx, next).also {
             if (it is Verdict.Ok) write(ctx, next)
@@ -59,9 +59,9 @@ object UnitJobs {
             color[n] = GRAY
             stack.add(n)
             for (m in edges(n)) {
-                if (!color.containsKey(m)) continue          // 不在册的边由 verify() 先拦
+                if (!color.containsKey(m)) continue
                 when (color[m]) {
-                    GRAY -> {                                 // 回边 = 环
+                    GRAY -> {
                         val from = stack.indexOf(m)
                         return stack.subList(from, stack.size).toList() + m
                     }

@@ -64,7 +64,7 @@ note_missing() {
   fi
   MISSING="$MISSING $1"
 }
-# 能力尚未实现（不是 APK 少了东西）—— 记录但不计缺
+
 note_degraded() {
   if [ "$REPORT" = "1" ]; then echo "  [未实现] $1 —— $2"; else echo "  [未实现] $1 —— $2"; fi
   DEGRADED="$DEGRADED $1"
@@ -100,15 +100,9 @@ fi
 
 echo
 echo "--- 小体积原生件（已退役：改走标准件包）---"
-# 这一段原来查「件有没有躺在 APK 的 lib/<ABI>/ 里」，清单是
-# .github/native-capabilities.txt（8 个件）。
-# 那条通道已经删了：件现在是自描述的标准包，放 assets/pieces/<id>.tar.gz，
-# 启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装上（与 OTA 件同一条路）。
-# 件不进 lib/ —— 预装件与用户装的件必须同构，不能一条走特权、一条走标准。
-# 清单 .github/native-capabilities.txt 随之退役（component-sources.json 是唯一来源）。
+
 echo "  （本段已退役，见下方 assets/pieces/ 那一节）"
 echo
-
 
 echo
 echo "--- npm 归口（必须为空）---"
@@ -141,13 +135,9 @@ for a in $ASSETS; do
     || note_missing "lib/${ABI}/$a" "清单来源: .github/native-assets.txt（NativeAssetRegistry 的投影）"
 done
 
-
 echo
 echo "--- 预装件包（assets/pieces/<id>.zip）· 装配器只读包 ---"
-# 件随 APK 打包为标准包，启动时由 PreinstalledPieces 走 ProgramInstallPipeline 装上
-# （与 OTA 装件同一条路）。装配器读包里的 component-meta.json（照抄 .deb 的 control），
-# 所以「包里有没有、说明对不对、那个文件在不在」三件事都要在这里验 ——
-# 缺任何一样，真机上那一件就装不上，而构建期看不出来。
+
 PIECE_BAD=0
 PIECE_N=0
 W="$(mktemp -d)"
@@ -181,13 +171,7 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
 
   [ "$mid" = "$id" ] || { echo "[error] $id 的说明里 id=$mid 对不上"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
   [ -n "$mver" ] || { echo "[error] $id 的说明里没有 version"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
- # **纯库件没有 entry 是合法的**（按 C-05「没有」就是没有）——
-  #   缺陷名（C-102）**「说明里没有 entry」被当成缺件**：
-  #     原来这一格是 `[ -n "$ment" ] || 判红` —— 而那把「这一件没有程序那一侧」
-  #     当成了「清单坏了」=> crypto/curl/zlib 三个纯库件被判成缺项（piece-pack(3)）。
-  #   => 现在：按**产物自带的形态**（piece-shape.json 的 kind）判：
-  #     kind=library => 这一件没有程序那一侧 => entry 合法地是空（不判红）；
-  #     否则 => entry 必须有。
+
   mkind=""
   if [ -f "$W/x/piece-shape.json" ]; then
     mkind="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).kind||""))}catch(e){}})' < "$W/x/piece-shape.json")"
@@ -200,7 +184,6 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
     echo "  · $id 是纯库件（kind=library）=> 没有程序那一侧 => entry 合法地是空"
   fi
 
-  # entry 若有，那它指的文件必须在包里
   if [ -n "$ment" ] && [ ! -f "$W/x/$ment" ] && [ ! -L "$W/x/$ment" ]; then
     echo "[error] $id 的包里没有 entry 指的文件 $ment"
     PIECE_BAD=$((PIECE_BAD + 1)); continue
@@ -209,11 +192,6 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
   printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
 done
 
-# 「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行，
-# 件数由那个脚本自己报出来（--print-pieces），与取件用的是同一处算式。
-# 以前这里是按文本 grep 那一行再数词数，等于把一行文本当成真源，
-# 于是数组里的件数和文本里的词数可以各说各话，碰巧一样时看不出来。
-# 现在只走脚本自己报数这一条路。
 pieces_rc=0
 WANT_N="$(bash "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" --print-pieces 2>/dev/null)" || pieces_rc=$?
 if [ "$pieces_rc" != "0" ] || [ -z "$WANT_N" ]; then

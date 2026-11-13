@@ -7,13 +7,6 @@ import java.io.InputStreamReader
 import java.util.UUID
 import org.json.JSONObject
 
-/**
- * Formal LOB-OS control client.
- *
- * This library owns the JSON-RPC handshake, newline framing, token use, timeout, structured error
- * classification, and requestId correlation. Android LocalSocket is only the transport adapter.
- * It is not a probe and it does not invoke CapabilityBroker directly.
- */
 class ControlClient(
     private val socketName: String,
     private val sessionToken: String,
@@ -50,27 +43,6 @@ class ControlClient(
             put("dryRun", dryRun)
         }, "native", "ota")
 
-    /**
-     * 跑一条命令（ 它在 LOB-OS 自己那一份 Linux 里跑、 env 逐字是 LOB-OS 自己那套）。
-     *
-     *  缺陷名（C-102）**那个「跑一条用户指定的命令」的入口逐字没有、 「起程序」那一族逐字只到那件自己**
-     *   旧版逐字**只有** [rollback] 与 [update] 两个方法、 它们逐字**不**起程序。
-     *   **后果**： 「在 LOB-OS 自己那一份起程序」那一格逐字**从外部**够不到
-     *     （ 个手填 URL 的入口逐字是设备 UI 那一面、 它逐字**不**是一个客户端）。
-     *   **处置**： 这一族逐字**该有**（ 它逐字是产品那一面、 它逐字**不是**探针）
-     *     **形状**逐字由 01 裁（ S615-01 §3.3）：
-     *       · 那方法逐字是 [exec]
-     *       · 那 handshake 的 `requires` 逐字**要能带** `lobos:sys`
-     *         （ `sys.tty.exec` 逐字要 `ApiSpec.GROUP_SYS`、 CapabilityBroker.kt:1157
-     *         逐字 `MethodDef(listOf(ApiSpec.GROUP_SYS), true)`）
-     *       · 而那凭据逐字是那 `installerToken`（ CapabilityBroker.kt:94）、
-     *         它逐字落在 `files/run/sessions.json`、 `SystemFilesProvider` 逐字是只读出口。
-     *
-     *  @param cmd 那要跑的命令串（ 它逐字**在** LOB-OS 自己那一份跑）
-     *  @param requestId 那请求号（ 它逐字用来对账）
-     *  @param timeoutMs 那超时（ 逐字默认 10000）
-     *  @param noPty 那要不要走无 PTY 那一路（ 逐字默认 false、 true 逐字强制无 PTY）
-     */
     fun exec(
         cmd: String,
         requestId: String,
@@ -118,8 +90,7 @@ class ControlClient(
                 put("method", "bridge.handshake")
                 put("params", JSONObject().apply {
                     put("protocol", protocolVersion); put("token", sessionToken)
-                    //  requires 逐字**能带** `lobos:sys`（ 它逐字是那 exec 那一族要的）
-                    //     旧版逐字**只**带 "base"、 它逐字**拿不到** GROUP_SYS。
+
                     val req = org.json.JSONArray()
                     for (r in requires) req.put(r)
                     put("requires", req)
@@ -141,11 +112,8 @@ class ControlClient(
 
 class ControlClientException(message: String) : IllegalStateException(message)
 
-/** 那 bridge 的基础能力组（ 它是每一个桥会话逐字都有的那一组）。 */
 private const val BRIDGE_BASE = "base"
 
-/** 那系统能力组（ 它逐字是 `sys.tty.exec` 那一族要的那一组、 ApiSpec.kt:12 逐字
- *  `const val GROUP_SYS = "lobos:sys"`）。 */
 private const val GROUP_SYS = "lobos:sys"
 
 private fun JSONObject.errorCode(): Int = optJSONObject("error")?.optInt("code", -1) ?: -1

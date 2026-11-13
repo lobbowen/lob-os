@@ -1,25 +1,10 @@
 #!/usr/bin/env bash
-# 族六 · 取件那一次下载被拒时的四档判别（取证 + 阳性对照）。
-#
-# 它**只判那响应体**（四档逐字是：服务端限流 / 鉴权不对 / 资源不在 / 成因未知），
-# 而**不猜**（按 C-05「缺字段就报缺、不许猜填」、
-# 一档逐字是「成因未知」是正当取值、不是猜出来的成因）。
-#
-# 用法：
-#   bash scripts/verify/classify-download-failure.sh <响应体文件> [更多文件…]
-#   bash scripts/verify/classify-download-failure.sh --selftest
-#
-# 而它判别的那一档逐字与 scripts/toolchain/fetch-component-artifacts.sh
-# 那一族逐字**同一套口径**（按 C-104「判别源必须唯一」，
-# 脚本逐字**调**这一件、不另写一套）。
+
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$HERE/../.." && pwd)"
 
-# 那一档判别（**唯一**判别源）：响应体逐字 -> 那一档。
-# 它逐字**只**按那**响应体里的原话**判、**不**按 HTTP 码猜成因
-#     （那 HTTP 503 可能是限流、也可能是别的、逐字得看原话）。
 classify_download_failure() {
   local evid="$1"
   case "$evid" in
@@ -30,12 +15,11 @@ classify_download_failure() {
     *"HTTP 404"*|*"Not Found"*|*"not found"*|*"BlobNotFound"*)
       echo "notfound" ;;
     *)
-      # 一档逐字是「成因未知」（**不是**猜一个成因）。
+
       echo "unknown" ;;
   esac
 }
 
-# 那 HTTP 那一档逐字**从**那响应体里**取**（不猜）。
 http_of() {
   local evid="$1" h
   h="$(printf '%s' "$evid" | sed -n 's/.*HTTP \([0-9][0-9][0-9]\).*/\1/p' | head -1)"
@@ -43,15 +27,6 @@ http_of() {
   printf '%s\n' "$h"
 }
 
-# 那**响应头**那一档（「资源不在」与「限流」怎么区分、要靠响应头）。
-# 判据逐字落在**请求**上（按 C-993 的第二件：
-#「检查里过了但请求里没带身份」逐字是同一形状、判据必须落在请求上）。
-# 三个头逐字是：
-#     x-ratelimit-remaining: 0   => 配额**用光**了（是限流那一族）
-#     retry-after: <秒>          => 服务端逐字让你**等**（是限流那一族）
-#     x-github-request-id: ...   => 那一读**确实到了服务端**（404 那一档逐字也有它）
-#「资源不在」那一档（404）逐字**没有**那前两个头。
-# 输入逐字是那**响应头**那一段（那 gh api --include 逐字给的那一段）。
 classify_by_headers() {
   local hdr="$1"
   local remaining retry
@@ -77,16 +52,14 @@ report() {
 }
 
 if [ "${1:-}" = "--headers" ]; then
-  # 一格逐字**只**答那**一档**（输入逐字是那**响应头**那一段）。
+
   hdr="$(tr -d '\r' 2>/dev/null | head -40)"
   classify_by_headers "$hdr"
   exit 0
 fi
 
 if [ "${1:-}" = "--kind" ]; then
-  # 一格逐字**只**答那**一档**（调用方逐字把它装进 $(...) 里、
-  # 它逐字只需要那一个词、不要那整段报告）。
-  # 输入逐字是**响应体**（从 stdin 逐字读、逐位只取头五行）。
+
   evid="$(tr -d '\r' 2>/dev/null | head -5)"
   classify_download_failure "$evid"
   exit 0

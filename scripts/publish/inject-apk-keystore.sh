@@ -46,9 +46,6 @@ while IFS= read -r ln; do
   case "${ln,,}" in (*"ingerprint"*) echo "[lobos-signing] keystore 证书 $ln" ;; esac
 done <<<"$(keytool -printcert -file "$CERT" 2>/dev/null || true)"
 
-# gradle 读这三个变量决定 signingConfig（container/app/build.gradle.kts:93-103，
-# 名字要与它逐字对齐）；第四个 LOBOS_APK_CERT_FILE 是给下游签名身份门禁取锚点用的。
-# 一律走 GITHUB_ENV，不把口令写进步骤命令行。
 if [ -n "${GITHUB_ENV:-}" ]; then
   {
     echo "LOBOS_KEYSTORE_PASSWORD=$KS_PASS"

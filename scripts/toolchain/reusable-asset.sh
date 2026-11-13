@@ -1,22 +1,5 @@
 #!/usr/bin/env bash
-# 判「这个固化产物能不能直接用」—— 验内容，不只验存在。
-#
-# 验三件事，缺一不可：
-# 1. 包里有 component-meta.json 装配器只读包里的那份（照抄 .deb 的 control）
-# 2. 那份 meta 里的 entry 与本件该有的 entry 一致
-# —— 否则「包里说有 A、实际装的是 B」，装配器装完才发现，落位已被污染
-# 3. 包里真有 entry 指的那个路径（文件或软链都算）
-# —— 共享库整条链里 libz.so 与 libz.so.1 都是软链，只认常规文件会漏
-#
-# 为什么必须验到这一层：已经踩过三次。
-# · 只判 gh release view 成功 → 旧格式包被当新的用（CI 报 success，包是空的）
-# · 只判包里有没有 meta → entry 错配的包照样命中（openssl 的包里装的是 crypto）
-# · 只按文件名列表找 → 软链形式的 libz.so 被当成「不在包里」
-# 根子同一个：判据只验形式、不验内容。
-#
-# 用法：
-# reusable-asset.sh <tag> <asset> [<entry>]
-# reusable-asset.sh --probe-dir <目录> <asset> <entry>
+
 set -uo pipefail
 
 PROBE_DIR=""
@@ -49,14 +32,6 @@ verify_local() {
 
   printf '%s\n' "$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
 
-  # **第三参已删**（那一份是人写下的副本，而包里那份 meta 就是真源的产物）——
-  # 01 今天裁的：entry 只有真源一处（gen-component-meta.js 的 computeEntry），
-  # 而门禁比的是「包里的 meta 说 X」与「调用方说 X」，而那两处今天说的都是同一个旧值
-  # => 字面一致 => 门禁放过（crypto 那一件写的是 lib/libssl.so —— 指错了另一个件都没被抓住）。
-  # => 现在这一格改成：**包里那份 meta 必须与真源同源** ——
-  # 1. 它带的 entry 那一格必须是**按形态算出来**的（entryProvenance 写着「构建期算出，非人填」）；
-  # 2. 纯库件（entry 为空）也合法 —— 按 C-05「没有」就是没有。
-  # 而「第三参」那一格保留着：它仍可用于「我明确知道这一件该有的 entry」的调用方（自检用）。
   meta_prov="$(read_meta_entry "$f" | node -e '
     let d = "";
     process.stdin.on("data", c => d += c).on("end", () => {
@@ -64,7 +39,7 @@ verify_local() {
     });
   ' 2>/dev/null)"
   if [ -z "$meta_prov" ]; then
-    # 不是按形态算出来的那一份 => 判红（那说明它是人写下的旧格式包）
+
     [ -n "$WANT_ENTRY" ] && return 1
   fi
   if [ -n "$WANT_ENTRY" ]; then

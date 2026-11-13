@@ -400,20 +400,6 @@ class OsAccessibilityService : AccessibilityService() {
         return out
     }
 
-    /**
-     * 那**前台**逐字是哪一个 app（ 它逐字是那**根窗口**逐字那一包名）。
-     *
-     * 缺陷名（C-102）**那一族逐字能点屏幕任意坐标、 它逐字没有先核那前台是不是我们那一个** ——
-     *   旧版逐字**没有**这一格（ `ui.tap` 逐字直接 `performTap(x, y, durationMs)`）
-     *     **坐标**逐字**任意**、 它逐字**能**点出去
-     *   **判别形式**（01 裁的）：
-     *     「而那判据必须逐字落在『那一格逐字点的那个位置逐字在不在我们自己那一个承载的界面里』那一个事实上、
-     *      而那它逐字不许点出去」
-     *     「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」
-     *       （ **不是**「设备上此刻前台那一面」）
-     *     **前置**逐字是「那前台逐字是不是我们那一个」
-     *   **处置**： 这一格逐字答那**前台包名**（ 它逐字**读不到**时逐字是空）
-     */
     fun foregroundPackage(): String {
         val root = try { rootInActiveWindow } catch (_: Throwable) { null } ?: return ""
         return try { root.packageName?.toString().orEmpty() } catch (_: Throwable) { "" }

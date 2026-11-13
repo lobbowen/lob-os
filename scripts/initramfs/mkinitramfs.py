@@ -1,19 +1,4 @@
-#!/usr/bin/env python3
-# 把 initramfs 那一层装成内核认的那一个格式。
-#
-# 缺陷名（C-102）**那仓内逐字没有那 initramfs 那一层的装配脚本**
-# 它治**的**是「那 initramfs 那一层逐字**装配**得**成不成**」。
-# 那**成因**：仓内逐字**没有**那 cpio **那一层**与那 /init **那一层**的**装配**。
-# 那**处置**：这一族逐字**只**认**那 newc**（内核认**那一个**）。
-#      newc 的头逐字是那 "070701"、归档**末尾**逐字**要**那 "TRAILER!!!"。
-# 那 cpio.h 那一件逐字**写着**那 MAGIC = "070707"（那**旧**的**那一种**），
-#       而那**旧**的**那一种**逐字**不**带**那**目录**项、内核**不**收**它**。
-#
-# 判别形式：
-#   - 那 newc 那一族逐字**带**那 "070701" **那一个**头、每一项**带**那 ino 与那 nlink。
-#   - 那 "070707" **那一个**逐字**不**带**那**目录**项、内核**不**收**它**。
-#
-# 按 C-104：而那 initramfs **这一族**逐字**只有**一条**路**（这一支**就是**它**）。
+
 import os
 import struct
 import sys
@@ -21,47 +6,34 @@ import sys
 MAGIC = b"070701"
 TRAILER = b"TRAILER!!!"
 
-
 def _pad4(n: int) -> int:
     return (4 - (n % 4)) % 4
 
-
 def _entry(name: bytes, data, ino: int, mode: int, nlink: int, mtime: int = 0) -> bytes:
-    #  那 newc 那一族逐字**是**那 110 字节**那一个**头（名字**不**算**在**那**头**里面**）。
+
     if data is None:
         data = b""
-    #  那 newc 那一族逐字**是**那 **13** 个**字段**（那 6 + 8*13 = **110** 字节、名字**从**那 110 **开始**）。
-    #    而那**字段**逐字**是**：c_ino c_mode c_uid c_gid c_nlink c_mtime c_filesize
-    #      c_devmajor c_devminor c_rdevmajor c_rdevminor c_namesize c_check。
+
     hdr = (MAGIC
-           + b"%08X" % ino        # c_ino
-           + b"%08X" % mode       # c_mode
-           + b"%08X" % 0           # c_uid
-           + b"%08X" % 0           # c_gid
-           + b"%08X" % nlink      # c_nlink
-           + b"%08X" % mtime      # c_mtime
-           + b"%08X" % len(data)   # c_filesize（那**目录**项逐字**是**那空字节**的长度**）
-           + b"%08X" % 0           # c_devmajor
-           + b"%08X" % 0           # c_devminor
-           + b"%08X" % 0           # c_rdevmajor
-           + b"%08X" % 0           # c_rdevminor
-           + b"%08X" % (len(name) + 1)  # c_namesize（含那结尾的 NUL）
-           + b"%08X" % 0)          # c_check（那 newc 那一族逐字**不**用**它**）
+           + b"%08X" % ino
+           + b"%08X" % mode
+           + b"%08X" % 0
+           + b"%08X" % 0
+           + b"%08X" % nlink
+           + b"%08X" % mtime
+           + b"%08X" % len(data)
+           + b"%08X" % 0
+           + b"%08X" % 0
+           + b"%08X" % 0
+           + b"%08X" % 0
+           + b"%08X" % (len(name) + 1)
+           + b"%08X" % 0)
     out = hdr + name + b"\0"
     out += b"\0" * _pad4(len(out))
     out += data
     out += b"\0" * _pad4(len(data))
     return out
 
-
-#  缺陷名（C-102）**那**软链**逐字**被**跟**着**读**成**那**本体**的**内容**了**、那**它**逐字**不**是**那**软链**
-# 它治**的**是「那 initramfs **那一层**逐字**装**得**对不对**」。
-# 那**成因**：那 build() 那一族逐字**走**那 os.walk、那**它**逐字**把**那**软链**当**那**普通文件**、
-# 那**读**的**是**那**目标**的**内容**、那**归档**里逐字**就**是**那**本体**的**一份**拷贝**（**不**是**那**软链**）。
-# 那**症状**（本机**实跑**的**）：那 cpio -itv 逐字**每**一个**都**是**那 **546264** **字节**、
-# 那**软链**逐字**变成**了**那**本体**的**一份**拷贝**。
-# 那**处置**：那 newc **那一族**逐字**有**那 S_IFLNK **那一档**（那 c_mode 逐字**带**那 **0o120000**）、
-# 那**它**们**逐字是**那**两**件**事**、按 C-104 逐字**不合并**）。
 def build(root: str, out_path: str) -> None:
     files = []
     for dirpath, dirnames, filenames in os.walk(root):
@@ -72,16 +44,16 @@ def build(root: str, out_path: str) -> None:
         for fn in sorted(filenames):
             p = os.path.join(dirpath, fn)
             r = os.path.relpath(p, root).replace(os.sep, "/")
-            # 那**软链**逐字**要**记**那 S_IFLNK **那一档**（那**它**们**逐字是**那**两**件**事**）。
+
             if os.path.islink(p):
                 files.append((r, p, 0o120777))
             else:
                 files.append((r, p, 0o100755))
-    #  那**根**目录**要**在**最**前面**（内核逐字**从**那**根**开始**解**）。
+
     files.sort(key=lambda t: (t[0] != "", t[0]))
     blob = bytearray()
     ino = 1
-    #  而那**根**那一项逐字**要**那**名字**（那 newc **那一族**逐字**用**那**没有**那**前导**斜杠**的**相对**路径**）。
+
     blob += _entry(b".", None, ino, 0o040755, 2)
     ino += 1
     for name, path, mode in files:
@@ -90,7 +62,7 @@ def build(root: str, out_path: str) -> None:
             ino += 1
             continue
         if os.path.islink(path):
-            # 那**软链**逐字**存**那**目标**（那 newc **那一族**逐字**要**那 S_IFLNK **那一档**）
+
             data = os.readlink(path).encode()
         else:
             with open(path, "rb") as f:
@@ -103,7 +75,6 @@ def build(root: str, out_path: str) -> None:
         f.write(bytes(blob))
     print("[initramfs] 写了 %s：%d 字节、%d 项、头 %s" % (
         out_path, len(blob), len(files), MAGIC.decode()))
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

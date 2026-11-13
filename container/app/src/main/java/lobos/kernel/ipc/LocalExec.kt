@@ -21,16 +21,8 @@ object LocalExec {
         val error: String? = null,
     )
 
-    /**
-     * 那**输出**逐字那一个上限（ 它逐字**有**那个上限、 超出那一截逐字**丢**）。
-     *
-     *   **上限**逐字是那 **4 MiB** 逐字（ 与那 `PtySession` 那一族那一个上限逐字**同一个**）
-     *   **期望输出**那一族逐字**要**的是那**开头**那一些（ 它逐字**不**是全量）
-     *   **丢了多少**逐字**说清**（ 按 C-05 不猜填）
-     */
     const val MAX_CAPTURED_OUTPUT_CHARS = 4 * 1024 * 1024
 
-    /** 那**丢了多少**逐字**说清**（ 按 C-05 不猜填、 **丢**这一件逐字**报缺**）。 */
     private fun droppedNote(outDropped: Long, errDropped: Long): String? {
         if (outDropped <= 0L && errDropped <= 0L) return null
         return "那输出逐字超了上限、**丢**的一截逐字 = stdout " + outDropped +
@@ -88,11 +80,7 @@ object LocalExec {
                 redirectErrorStream = false,
                 owner = ProcessSupervisor.OWNER_PROGRAM,
             )
-            // 缺陷名 C-102：stdout/stderr 无上限累积进堆。
-            //   旧版 `StringBuilder()` 无上限：每字符存两份、toString 又一份，峰值三份。
-            //   后果：设备 logcat 报 OOM「Failed to allocate 117031556 byte」，App 刚起 10 秒。
-            //   判据：那一份在那一段还在被读。
-            //   处置：设上限 MAX_CAPTURED_OUTPUT_CHARS，超出丢掉并报缺（C-05，不猜填）。
+
             val out = StringBuilder()
             val err = StringBuilder()
             var outDropped = 0L
@@ -137,8 +125,7 @@ object LocalExec {
             val code = s.process.exitValue()
             Outcome(true, code, out.toString(), err.toString(), Via.PLAIN, droppedNote(outDropped, errDropped))
         } catch (e: ProcessSupervisor.NotExecutable) {
-            //  M7-05 那一族逐字要的那两样： **退出码**逐字是那一个具体的数、
-            //    **诊断原文**逐字**进**那 stderr
+
             Outcome(
                 false,
                 ProcessSupervisor.ENOEXEC_EXIT_CODE,

@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
-# 按**字节**解包那一份件（不按文件名后缀）。
-# 缺陷名（C-102）**按名硬取**：旧版逐字是 `tar xzf "dist/component-<件>.zip" -C dist`
-# 那**文件名后缀**逐字是 .zip 而那命令逐字是 tar xzf、那**内容**逐字是 tar.gz
-#   （一条 tar xzf 在 zip 内容上逐字解不开）。
-# 按 C-994「判别源必须唯一」：判别逐字**调** scripts/toolchain/fmt.sh。
-# 用法：bash scripts/toolchain/unpack-piece.sh <件包路径> <解到哪儿>
+
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$HERE/../.." && pwd)"
 FMT_SH="$ROOT_DIR/scripts/toolchain/fmt.sh"
 [ -f "$FMT_SH" ] || { echo "::error title=没有判别源::$FMT_SH 不在 —— 容器判别源必须唯一"; exit 1; }
-# shellcheck source=fmt.sh
+
 . "$FMT_SH"
 
 PKG="${1:?需要件包路径}"

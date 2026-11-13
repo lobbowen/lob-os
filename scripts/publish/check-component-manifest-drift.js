@@ -14,27 +14,6 @@
 //   2. 投影里记的 version 与 sources 里记的 version 逐字相同。
 //   3. 投影里记的 sha256 是一份 64 位十六进制的非空值。
 //   4. .github/native-capabilities.txt 档位表里的每一个 id，在
-//      .github/native-capabilities-pin.json 里都有一条 pin（取不到事实的那几条
-//      必须在 pin 文件的 missing 里写明原因 —— 那是「已知缺」，不是「对不上」）。
-//   5. 每一条 pin 记的版本与 sources 里记的版本逐字相同
-//      （版本变了而 pin 没重新生成，就是漂移）。
-//   6. 每一条 pin 记的上游源码 sha256 与 sources 里记的那一格逐字相同。
-//   7. 每一条 pin 记的 capsLibName 与档位表里那一列逐字相同。
-//   8. 每一条 pin 的 sha256 是一份 64 位十六进制的非空值。
-//
-// 用法：
-//   node scripts/publish/check-component-manifest-drift.js <投影文件> [通道]
-//   node scripts/publish/check-component-manifest-drift.js --immutable <投影文件> [通道]
-//
-// --immutable 的含义：**只读对账**。本文件在两种模式下都绝不往被对账的文件上写，
-//   而 --immutable 额外做一件事 —— 读完再读一次，比对前后两次的 sha256，
-//   把「这份投影文件没有被改写」这句结论变成实测出来的，而不是承诺出来的。
-//
-// 退出码：
-//   0  没有漂移
-//   1  有漂移（漂移条目逐条印在 stdout 上）
-//
-// 本文件不签名、不读私钥、不联网。
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -75,7 +54,6 @@ function sha256File(p) {
   return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 }
 
-// 档位表：<tier> <libName> <id>
 function parseCaps() {
   if (!fs.existsSync(CAPS)) { fail('缺少 ' + CAPS + ' —— 底座件档位表没了'); }
   const byId = new Map();
@@ -99,9 +77,6 @@ function readJson(p, what) {
   }
 }
 
-// 那一趟的**缺件表**（那 dist/.fetch-missing.tsv 那一档、它逐字是那四列：
-//   件名 / 那一档 / 那一档的原话 / 容器形态那一格）。
-// 读不到时逐字是**空**（不是「没有缺件」、是没有那张表）。
 function readMissingTable() {
   const out = new Map();
   const p = path.join(ROOT, 'dist', '.fetch-missing.tsv');
@@ -118,9 +93,6 @@ function readMissingTable() {
   return out;
 }
 
-// 控制面板件清单（逐字从 cache-key.sh 的 bucket_for 出、那**那是唯一真相**）。
-// 底座件那一族（base / apkonly 筐）逐字**不进**这一轴
-//     （它们随 APK 走、不在控制面板清单里、按 C-135 那不是同一问）。
 function bucketComponents() {
   const lister = path.join(ROOT, 'scripts', 'registry', 'list-bucket-components.js');
   if (!fs.existsSync(lister)) { fail('缺少控制面板件清单的来源：' + lister); }
@@ -141,11 +113,6 @@ function bucketComponents() {
   return rows;
 }
 
-// 投影文件有两种形状：
-//   · 组件投影（publish-component-manifest.js --project 的 stdout）：数组，每项有 name
-//   · 组件清单（签过名的那份）：对象，有 tools 数组
-//   · 底座件投影（publish-native-manifest.js --project 的 stdout）：数组，每项有 id
-//   · 底座件清单（签过名的那一份）：对象，有 components 数组
 function classify(parsed) {
   if (Array.isArray(parsed)) {
     if (!parsed.length) return { kind: 'empty', tools: [], components: [] };
@@ -199,30 +166,12 @@ function main() {
     }
   }
 
-  //  缺陷名（C-102）**一件缺失即零漂移** ——
-  // 旧版逐字**只**从**投影**那一侧出发（那 :144 逐字 shape.tools、
-  // 那 :160 逐字 shape.components），
-  // 那**声明侧**逐字**没有**反向核（组件清单里逐字**少**一件时、零漂移）。
-  // 那 node / python / sqlite / pkgconf 那四件逐字**在** components.json 的 sources 里
-  //      （四件逐字**没有** piece: true、它们**不进**那取件循环）、
-  // 它们逐字是**控制面板清单该有的那几件**（那 bucket_for 逐字把 node/python
-  //      归 rt 筐、pkgconf/sqlite 归 tool 筐）它们**缺了**逐字**该被看见**。
-  // 那**判据**逐字：那**控制面板件清单**逐字从 cache-key.sh 的 bucket_for 出（是唯一真相）、
-  // 投影里逐字**缺**哪一件、一件就逐字报缺。
-  // 那「底座件」那一族（base / apkonly 筐）逐字**不进**这一轴
-  //      （它们随 APK 走、不在控制面板清单里、按 C-135 那不是同一问）。
   if (shape.kind === 'component') {
     const projected = new Set(shape.tools.map((t) => String(t.name)));
     //  缺陷名（C-102）**那一轴逐字把「已知缺件」与「件级缺失」混成一档，
     //    于是三处已知缺件被逐字判成漂移** ——
     //01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字裁的是
-    //      「**投影侧 `work/declared.json` 逐字不留占位**（它答『取到了什么』）」，
-    // 那**投影里没有**那几件逐字是**对的**（几件逐字是「已知缺件」）。
-    // 一裁逐字还给了另一半：「**声明侧那一份逐字要带缺件状态**」。
-    // 那**判红的正确形态**逐字是：「那一件逐字在控制面板件清单里、
-    // 它逐字既不在投影里、也**不在**那一趟的缺件表里」。
-    // 缺件表逐字是 dist/.fetch-missing.tsv（它逐字是那四列那一档：
-    //      件名 / 那一档 / 那一档的原话 / 容器形态）。
+
     const missingTable = readMissingTable();
     for (const row of bucketComponents()) {
       const id = row.name;
@@ -245,7 +194,6 @@ function main() {
     }
   }
 
-  // 底座件投影：id 必须在档位表里、版本必须与钉值表逐字相同、入口必须是声明过的那一个。
   for (const c of shape.components) {
     const id = c.id;
     if (!caps.has(id)) {
@@ -265,7 +213,6 @@ function main() {
     }
   }
 
-  // 档位表里的每一件，在 pin 记录里都要有一条 pin。
   const pinsById = new Map();
   for (const fp of Object.keys(pins)) {
     const p = pins[fp];
@@ -290,7 +237,6 @@ function main() {
     }
   }
 
-  // 每一条 pin 自身：版本、上游源码哈希、档位表那一列、自身哈希。
   for (const [id, { fp, p }] of pinsById) {
     const src = sources[id] || {};
     const declared = p.declared || {};

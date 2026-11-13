@@ -1,31 +1,3 @@
-/*-
- * Copyright (c) 2011 Ed Schouten <ed@FreeBSD.org>
- *                    David Chisnall <theraven@FreeBSD.org>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * $FreeBSD$
- */
 
 #pragma once
 
@@ -65,25 +37,12 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-/*
- * C: Do it ourselves.
- * Note that the runtime representation defined here should be compatible
- * with the C++ one, i.e. an _Atomic(T) needs to contain the same
- * bits as a T.
- */
-
-#include <stddef.h>  /* For ptrdiff_t. */
+#include <stddef.h>
 #include <stdint.h>
-// Include uchar.h only when available.  Bionic's stdatomic.h is also used for
-// the host (via a copy in prebuilts/clang) and uchar.h is not available in the
-// glibc used for the host.
-#if defined(__BIONIC__)
-# include <uchar.h>  /* For char16_t and char32_t.              */
-#endif
 
-/*
- * 7.17.1 Atomic lock-free macros.
- */
+#if defined(__BIONIC__)
+# include <uchar.h>
+#endif
 
 #ifdef __GCC_ATOMIC_BOOL_LOCK_FREE
 #define	ATOMIC_BOOL_LOCK_FREE		__GCC_ATOMIC_BOOL_LOCK_FREE
@@ -116,18 +75,8 @@
 #define	ATOMIC_POINTER_LOCK_FREE	__GCC_ATOMIC_POINTER_LOCK_FREE
 #endif
 
-/*
- * 7.17.2 Initialization.
- */
-
 #define	ATOMIC_VAR_INIT(value)		(value)
 #define	atomic_init(obj, value)		__c11_atomic_init(obj, value)
-
-/*
- * Clang and recent GCC both provide predefined macros for the memory
- * orderings.  If we are using a compiler that doesn't define them, use the
- * clang values - these will be ignored in the fallback path.
- */
 
 #ifndef __ATOMIC_RELAXED
 #define __ATOMIC_RELAXED		0
@@ -148,15 +97,6 @@
 #define __ATOMIC_SEQ_CST		5
 #endif
 
-/*
- * 7.17.3 Order and consistency.
- *
- * The memory_order_* constants that denote the barrier behaviour of the
- * atomic operations.
- * The enum values must be identical to those used by the
- * C++ <atomic> header.
- */
-
 typedef enum {
 	memory_order_relaxed = __ATOMIC_RELAXED,
 	memory_order_consume = __ATOMIC_CONSUME,
@@ -166,10 +106,6 @@ typedef enum {
 	memory_order_seq_cst = __ATOMIC_SEQ_CST
 } memory_order;
 
-/*
- * 7.17.4 Fences.
- */
-
 static __inline void atomic_thread_fence(memory_order __order __attribute__((__unused__))) {
 	__c11_atomic_thread_fence(__order);
 }
@@ -178,15 +114,7 @@ static __inline void atomic_signal_fence(memory_order __order __attribute__((__u
 	__c11_atomic_signal_fence(__order);
 }
 
-/*
- * 7.17.5 Lock-free property.
- */
-
 #define	atomic_is_lock_free(obj) __c11_atomic_is_lock_free(sizeof(*(obj)))
-
-/*
- * 7.17.6 Atomic integer types.
- */
 
 typedef _Atomic(bool)			atomic_bool;
 typedef _Atomic(char)			atomic_char;
@@ -228,14 +156,6 @@ typedef _Atomic(ptrdiff_t)		atomic_ptrdiff_t;
 typedef _Atomic(intmax_t)		atomic_intmax_t;
 typedef _Atomic(uintmax_t)		atomic_uintmax_t;
 
-/*
- * 7.17.7 Operations on atomic types.
- */
-
-/*
- * Compiler-specific operations.
- */
-
 #define	atomic_compare_exchange_strong_explicit(object, expected,	\
     desired, success, failure)						\
 	__c11_atomic_compare_exchange_strong(object, expected, desired,	\
@@ -261,10 +181,6 @@ typedef _Atomic(uintmax_t)		atomic_uintmax_t;
 #define	atomic_store_explicit(object, desired, order)			\
 	__c11_atomic_store(object, desired, order)
 
-/*
- * Convenience functions.
- */
-
 #define	atomic_compare_exchange_strong(object, expected, desired)	\
 	atomic_compare_exchange_strong_explicit(object, expected,	\
 	    desired, memory_order_seq_cst, memory_order_seq_cst)
@@ -288,13 +204,6 @@ typedef _Atomic(uintmax_t)		atomic_uintmax_t;
 #define	atomic_store(object, desired)					\
 	atomic_store_explicit(object, desired, memory_order_seq_cst)
 
-/*
- * 7.17.8 Atomic flag type and operations.
- *
- * XXX: Assume atomic_bool can be used as an atomic_flag. Is there some
- * kind of compiler built-in type we could use?
- */
-
 typedef struct {
 	atomic_bool	__flag;
 } atomic_flag;
@@ -317,4 +226,4 @@ static __inline void atomic_flag_clear(volatile atomic_flag * _Nonnull __object)
 	atomic_flag_clear_explicit(__object, memory_order_seq_cst);
 }
 
-#endif /* !defined(_STDATOMIC_HAVE_ATOMIC) */
+#endif

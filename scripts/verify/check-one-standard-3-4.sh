@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# check-one-standard-3-4.sh
-# 判据源: docs/spec/ONE-STANDARD.md 第三节 3.4 四格
-# 范围: container/app/src/main/java (运行侧 .kt)
-# 纪律: 只读; 不联网; 不碰设备; 不改实现代码
-# C-108: 零命中先阳性对照; 注释命中与代码命中分开计
 
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -22,16 +17,13 @@ echo " 用法  : bash scripts/verify/check-one-standard-3-4.sh"
 echo "=============================================================="
 echo ""
 
-# ---- 这次跑的是工作树, 还是某一次提交? (C-25) ----
-# 判别: 跑的时候能不能说出 head 与 run_id; 而工作树有未提交改动要自己说出来。
 HEAD_SHA=""
 HEAD_SHORT=""
 if git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1; then
   HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
   HEAD_SHORT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
 fi
-# run_id: 优先用环境变量传入(调用方从 CI 侧或装机记录里取到的那一次),
-# 其次取仓内构建身份文件; 都没有就照实说未核 —— 不猜。
+
 RUN_ID=""
 RUN_ID_SRC=""
 if [ -n "${LOBOS_RUN_ID:-}" ]; then
@@ -83,7 +75,6 @@ else
   fi
 fi
 echo ""
-
 
 classify() {
   local s

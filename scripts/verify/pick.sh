@@ -54,7 +54,7 @@ if [ "$ambiguity" = last ] || [ "${count:-1}" -gt 1 ]; then
     sum="$(sha256sum "$f")" || { echo "::error title=pick($label)::sha256 读不到 $f" >&2; exit 1; }
     printf '%s\t%s\t%s\n' "${sum%% *}" "$(stat -c%s "$f")" "$f" >>"$sumfile"
   done <<<"$found"
-  # 只取前两个不同摘要就知道是否同内容，不为计数整表去重。
+
   distinct="$(cut -f1 "$sumfile" | sort -u | sed -n '1,2p' | sed -n '$=')"
   if [ "${count:-1}" -gt 1 ] && [ "${distinct:-1}" -gt 1 ]; then
     if [ "$ambiguity" = strict ]; then
@@ -72,7 +72,7 @@ if [ "$ambiguity" = last ] || [ "${count:-1}" -gt 1 ]; then
 fi
 
 if [ "$ambiguity" = last ]; then
-  # 同内容先按摘要去重，免得两个同字节的不同路径抢「末位」。
+
   sort -u -k1,1 "$sumfile" | sort -k3,3V | tail -1 | cut -f3
 else
   printf '%s\n' "$found" | head -1

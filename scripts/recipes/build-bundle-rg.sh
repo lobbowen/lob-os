@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# 编 ripgrep —— glob/grep 工具，编成 liblobosrg.so 落 $PREFIX/bin/rg。
-#
-# 它走 cargo（Rust），不是 tarball —— 所以钉值表里那一项没有 urls，只有 version。
+
 set -uo pipefail
-# shellcheck disable=SC1091
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" rg
 
 if ! command -v cargo >/dev/null 2>&1; then
@@ -15,13 +13,11 @@ rustup target add aarch64-linux-android >/dev/null 2>&1 \
   || echo "[warn] rustup target add 失败（可能已装）"
 
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
-# 与 verify-runtime-elf.sh:321 / check-elf-deps.sh:156 一致
-#     （「只有 DT_RPATH 不行，bionic 忽略它」）
+
 export CC_aarch64_linux_android="$CC"
 export CXX_aarch64_linux_android="$CC"
 export AR_aarch64_linux_android="$LLVM_AR"
 
-# 版本从钉值表读，不在脚本里写第二份
 RG_VER="$(node -e '
   const t = require(process.argv[1]);
   const s = (t.sources || {}).ripgrep;
@@ -41,7 +37,6 @@ cp -f "$WORK/rgbin/bin/rg" "$OUT_DIR/bin/rg"
 [ -x "$OUT_DIR/bin/rg" ] || die "rg 产物不可执行" "\$PREFIX/bin/rg 无回退路径"
 emit_piece ripgrep "$OUT_DIR" bin/rg 300000
 
-# 字节身份与钉值表比对（钉表里记的是 crates.io 发布物的 sha256）
 RG_GOT="$(sha256sum "$WORK/liblobosrg.so" | cut -d' ' -f1)"
 RG_WANT="$(node -e '
   const t = require(process.argv[1]);

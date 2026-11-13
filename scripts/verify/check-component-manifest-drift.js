@@ -6,12 +6,7 @@ const path = require('node:path');
 const https = require('node:https');
 
 // C-102 层级错位：ROOT 原先解析成 scripts/ 自身，:63 的 channel.json 锚点落到了
-// scripts/container/app/src/main/assets/supply/channel.json，必然 ENOENT。
-// C-103 回答（为什么有两边）：ROOT 一词在仓内有两义 —— 甲：仓根；乙：scripts/ 自身。
-// 此处应当是甲。同一个词的含义被换掉这件事落在
-// scripts/publish/publish-component-manifest.js 与 scripts/publish/publish-native-manifest.js 三处，
-// 唯独 scripts/publish/check-component-manifest-drift.js 用的是 '../..'（甲），
-// 所以「两处对一处错」不是两个写法，是两义混用。
+
 const ROOT = path.resolve(__dirname, '../..');
 const argv = process.argv.slice(2);
 const IMMUTABLE = argv[0] === '--immutable';
@@ -50,12 +45,7 @@ try {
   // C-987 整读豁免（这一处读的是清单 JSON，不是件包）：
   // 这一处整读的是「即将上传的清单」JSON 本身，量级在 KB 级（十件左右，
   // 每件六七个字段，几千字节到几十 KB）。node 的 readFileSync 对超过 2 GiB 的文件
-  // 会报 ERR_FS_FILE_TOO_LARGE（已实测：3 GiB 的稀疏文件即触发），
-  // 但那是件包级别的问题，清单 JSON 永远到不了那个量级，所以这一处不适用 C-987，
-  // 整读是安全的。
-  // 判据是「读的对象是什么」，不是「用了 readFileSync 就该流式」：
-  // 这个脚本从头到尾只读清单，从不打开任何件包（件包的 sha256 是清单里的一个字段，
-  // 不是这里算出来的），所以本文件不存在需要改成流式的件包整读。
+
   parsed = JSON.parse(fs.readFileSync(LOCAL, 'utf8'));
 } catch (e) {
   fail('本地清单读不出（' + LOCAL + '）: ' + e.message);
@@ -158,16 +148,12 @@ function gate(online, onlineRevisionRaw, firstPublish) {
         //        （那**旧字节**逐字**是**那**旧** recipe 产的、那**新字节**逐字**是**那**新** recipe 产的、
         // 那**两半**逐字**都**合法、那**闸门**逐字**分不出**）
         // 那**判据**逐字是「那字节逐字是不是那实际字节、那**实际字节**逐字**为什么**变」那一个事实上
-        //      （它逐字**不**由「那一件逐字是什么」顶掉）
-        // 那**处置**：那**清单**逐字**多**记那 **recipe 指纹**那一格、
-        // 那**指纹**逐字**一样**而字节**变了**逐字**那才是**偷换、那**该**判红
-        // 那**指纹**逐字**变了**逐字**换**了字节逐字**是**那 recipe 变了、那**合法**、它逐字**记**下来
+
         const oldFp = String(got.recipeFingerprint || '');
         const newFp = String(t.recipeFingerprint || '');
         if (oldFp && newFp && oldFp !== newFp) {
           // 那**指纹**逐字**变了**（那 recipe 逐字**变了**）、那**字节**逐字**跟着**变
-          // 那**版本号**逐字**没变**、那**上游源码**逐字**也**没变
-          // 那**件**逐字**是**那**同一份上游**逐字**的**另一个**编译产物
+
           console.log('[gate] ' + t.name + '@' + t.version + ' 换了字节，但**那 recipe 指纹也换了**'
             + '（线上 ' + oldFp + ' → 本次 ' + newFp + '）'
             + ' ——那**recipe 变了**逐字**换**了字节逐字**是**那合法的**那一种**、那**版本号**逐字**没变**'

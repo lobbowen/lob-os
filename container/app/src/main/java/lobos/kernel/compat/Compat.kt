@@ -38,13 +38,6 @@ object Compat {
         return "rw-r--r--"
     }
 
-    /**
-     * 那**写**那一格逐字（ 它逐字**流式**落盘、 它逐字**不**整读进那堆）。
-     *
-     *   **哈希**逐字**先**核（ **期望值**逐字**不**由那产物倒推）
-     *   **写**逐字**按**那一块一块逐字写（ 它逐字**不**整读）
-     *   **权限**逐字**落**上去（ 它逐字与那**旧**那一族逐字**一致**）
-     */
     fun installOtaStreaming(
         ctx: Context,
         name: String,
@@ -127,15 +120,7 @@ object Compat {
             val link = dst.resolve(name)
             val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
             if (!isLink && link.isFile) continue
-            //  缺陷名（C-102）**那一格逐字把那一件逐字**整读**进堆再算哈希** ——
-            //    旧版逐字是 `val bytes = runCatching { src.readBytes() }.getOrNull() ?: continue`
-            //      它逐字把那**一份**逐字**整个**读进那堆
-            //        （ `.so` 逐字通常不大、 它逐字**要**核）
-            //      **哈希**逐字**本来就**有那**流式**那一族
-            //        （ `Crypto.sha256HexFile` 逐字**按**那一块一块逐字读）
-            //    **处置**： 哈希逐字**走**那**流式**那一族、 它逐字**不**整读
-            //      **写**逐字也逐字**流式**（ 它逐字**不**再整读一遍）
-            //    **判据**逐字是「那一份逐字**有**多大」（ 它逐字**不**定死一个数）
+
             val sha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: continue
             if (isLink || !link.exists()) {
                 runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }

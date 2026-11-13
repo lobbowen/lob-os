@@ -14,8 +14,7 @@ URLS=()
 VERSION_FILE=""
 
 if [ "${1:-}" = "--list-keys" ]; then
-  # N3 规范的唯一权威读法：需要直接看表的下游一律走这里，不许自己读文件。
-  # 判别形式：全仓 grep「把 component-sources.json 赋给变量」应只剩本文件一处。
+
   node -e '
     const t=require(process.argv[1]);
     const pat=new RegExp(process.argv[2]||".*");
@@ -58,18 +57,7 @@ if [ "${1:-}" = "--pin" ]; then
   { IFS= read -r WANT; IFS= read -r VER; IFS= read -r CONTENT_WANT || true; mapfile -t URLS; } <<< "$META"
   [ -n "$CONTENT_WANT" ] || CONTENT_WANT=""
 elif [ "${1:-}" = "--time-base" ] || [ "${1:-}" = "--source-date-epoch" ]; then
-  #  缺陷名（C-102）**那一档逐字**只有**那一个名字**、那**调用者**逐字**用**的是那**另一个****
-  # 旧版逐字是 `elif [ "${1:-}" = "--time-base" ]; then`
-  # 那 `build-bundle-openssl.sh:18` 逐字**调**的是那 `--source-date-epoch`
-  # 那**旗标**逐字**不存在**、那**调用**逐字**退**成那一个**错**
-  #          （真读数逐字是「::error title=源码钉值不合::用法: … --time-base 或 … --ndk 或 …」）
-  # 那 `2>/dev/null || echo 0` 逐字**把**那错**吞**了、那 `SOURCE_DATE_EPOCH` 逐字**成了**那 **0**
-  # 那**墙钟**逐字**没**被**钉**住、那**字节**逐字**编**进去的
-  #            （那**同一份** recipe 逐字**再**编一次逐字**也**会**变**）
-  # 那**判据**逐字是「那调用者逐字**用**的那个旗标逐字**是不是**真的**存在**」那一个事实上
-  # 那**处置**：那**两个名字**逐字**认**同一件（那**读取口**逐字**唯一**、依 C-105）
-  # 件里嵌的构建时间基准也住这张表，而表的读者必须只有本脚本一个（⑦ 那条判据）。
-  # 校验形状与「必须早于现在」都在这里判：钉在未来等于没钉（墙钟还没走到，重建每次都取 time()）。
+
   if ! TB="$(node -e '
     const path = require("node:path");
     let tab;
@@ -84,9 +72,7 @@ elif [ "${1:-}" = "--time-base" ] || [ "${1:-}" = "--source-date-epoch" ]; then
   echo "$TB"
   exit 0
 elif [ "${1:-}" = "--ndk" ]; then
-  # 交叉编译用的 NDK 版本也住这张表，表的读者仍然只有本脚本（⑦ 那条判据）。
-  # 这里**只取不判**：NDK 不是下载来的源码，「实际用的那版等不等于钉值」由 build-component 的
-  # 「定位 NDK」步在 runner 上判（那里才有两侧读数可比）。
+
   if ! ND="$(node -e '
     const path = require("node:path");
     let tab;
@@ -100,28 +86,7 @@ elif [ "${1:-}" = "--ndk" ]; then
   echo "$ND"
   exit 0
 elif [ "${1:-}" = "--llvm" ]; then
-  # NDK **内置的 LLVM 版本**也住这张表。
-  #
-  # 为什么单独记一格：sysroot 来自 NDK，而 clang 件要编的就是 LLVM —— 两者
-  # 版本不配的话，编出来的 clang 读 sysroot 会有说不清的怪问题。
-  # 而 NDK 的版本号（29.x）与其内置 LLVM 的版本号（20.x）**是两件事**，
-  # 从前者推不出后者，所以必须显式记。
-  #
-  # -- 这一格该填什么、不该填什么（我在这里判错过一次）--
-  #   填**实测到的 NDK 版本**，可以短：20 / 20.1 / 20.0.0 都行。
-  #   不要把 sources.llvm.version（要编的源码版本，如 20.1.8）填到这一格。
-  #
-  #   比较是「前缀」关系：实测值必须以这一格开头，反向不成立。
-  #   实测 20.1.8 / 钉 20   → 过   （钉得短是允许的）
-  #   实测 20.0.0 / 钉 20.1.8 → 红   （钉得比实测长且不一致，就是不同源）
-  #   实测 20.1.8 / 钉 20.1.9 → 红
-  #
-  #   我曾把这一格填成 sources.llvm 的 20.1.8，而 NDK 实测是 20.0.0，
-  #   于是判红 —— 那次「红」是**对的**：两个版本确实不是同一版 LLVM。
-  #
-  # 这里**只取不判**（与 --ndk 同理）：NDK 不是下载来的源码，
-  # 「实际那版等不等于钉值」由 build 脚本在 runner 上问 NDK 自己来判。
-  # 没有这一格时读出空串并由调用方决定怎么办 —— 不猜版本号。
+
   if ! LV="$(node -e '
     const path = require("node:path");
     let tab;
@@ -138,13 +103,7 @@ elif [ "${1:-}" = "--llvm" ]; then
   echo "$LV"
   exit 0
 elif [ "${1:-}" = "--src-version" ]; then
-  # 读某个 sources 键的**版本号**，不下载。
-  #
-  # 为什么需要这一档：build-component-llvmtoolchain.sh 早先为了拿 LLVM 的版本，
-  # 跑的是 `--pin llvm /dev/null` —— 那会**下载整个 171 MiB 源码包**，
-  # 只为了从一行输出里 sed 出版本号。而「这个件该编哪个版本」是纯查表的事。
-  #
-  # 只取不判（与 --ndk/--llvm 同理）：sha256 校验属于 --pin 的职责。
+
   KEY="${2:?用法: $0 --src-version <键>（键见 $TABLE）}"
   if ! SV="$(node -e '
     const path = require("node:path");
@@ -177,18 +136,9 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-#  缺陷名（C-102）**那 urls 逐字**有**几个**的**时候**逐字**拿**一个**钉值**去**比**每一个** ——
-# 它治**的**是「那**逐文件**那一族**取不取得到**」。
-# 那**成因**：那 kernel 那一格逐字**是**那**逐文件**那一族（那 urls 逐字**有**那**四**条**）、
-# 那**它们**逐字**各**是**那**一个**文件**、那**每**一个**的**字节**都**不**是**那钉值**，
-# 那**它**们**永远**对不上**、那**钉值**逐字**对不上**任何**一条**。
-# 那**处置**：那**逐文件**那一族（那 urls 逐字**带**那 ?format=TEXT **那一族**）逐字**合成**
-#       **那一个**确定性 tar **再**跟**那钉值**比（那**它**逐字**两次**做**一样**）。
-# 按 C-104：取件那一族逐字**只有**一条路（那**合成**不是**那**第二种生成路径**、
-# 那**它**逐字**是**那**同一个**产物的**一种**取法**）。
   f="$TMP/download"
 if [ "${#URLS[@]}" -gt 1 ]; then
-  # 那**逐文件**那一族（那**每**一条**的**路径**都**是**那 ?format=TEXT **那一族**）
+
   _all_txt=1
   for u in "${URLS[@]}"; do
     case "$u" in *"?format=TEXT") : ;; *) _all_txt=0 ;; esac
@@ -199,16 +149,15 @@ if [ "${#URLS[@]}" -gt 1 ]; then
     _paths=""
     for u in "${URLS[@]}"; do
       _p="${u%%\?*}"
-      _rel="${_p#*+/}"   #那**它**逐字**剥掉**那 host **与**那 repo **与**那 **+/**
-      _rel="${_rel#*/}"   #那**它**逐字**剥掉**那 commit **那一个**
+      _rel="${_p#*+/}"
+      _rel="${_rel#*/}"
       _out="$_stage/$_rel"
       mkdir -p "$(dirname "$_out")"
       _raw="$TMP/kernel-files.raw"
       _ok=0
       for _try in 1 2 3 4 5; do
         if curl -fsSL --http1.1 --max-time 900 "$u" -o "$_raw" 2>/dev/null; then
-          # 那**空**的逐字**是**那**上游**偶尔**给**的**那一种**（那 06 那边逐字**核**的**是**那 e3b0c442、那**它**逐字**是**那**空文件**那 sha）、
-          # 那**它**逐字**会**让**那合成**逐字**不稳**、那**处置**逐字**是**：那**空**的**不**算**取到**、那**重试**继续**走**。
+
           if [ -s "$_raw" ] && base64 -d < "$_raw" > "$_out" 2>/dev/null && [ -s "$_out" ]; then _ok=1; break; fi
         fi
         sleep 2
@@ -219,7 +168,7 @@ if [ "${#URLS[@]}" -gt 1 ]; then
       fi
       _paths="$_paths$_rel\n"
     done
-    # 那**合成**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**（那**它**逐字**两次**做**一样**）
+
     if command -v python3 >/dev/null 2>&1; then
       printf '%b' "$_paths" > "$TMP/kernel-files.paths"
       python3 scripts/toolchain/kernel-files-tar.py "$_stage" "$TMP/kernel-files.paths" > "$f"
@@ -244,31 +193,18 @@ if [ "${#URLS[@]}" -gt 1 ]; then
   fi
 fi
 for url in "${URLS[@]}"; do
-  # 只认 https。早先这里还放行 file://（想着「本地测试方便」）——
-  # 但 curl 默认**禁用** file 协议（实测：`curl: (1) Protocol "file" is disabled`），
-  # 所以那条放行等于给了一个必然失败的分支：报出来的是 curl 的协议错误，
-  # 而不是「这个来源不可用，换下一条」。
+
   case "$url" in
     https://*) : ;;
     *) die "来源不是 https（file:// 也不行 —— curl 禁用了 file 协议，配了必然失败）: $url" ;;
   esac
-  #  缺陷名（C-102）**这一行逐字**没**带**那 --http1.1** ——
-  # 它治**的**是「那来源逐字**取不取得到**」（取件那一族）。
-  # 那**成因**：上游（那 android.googlesource.com **那一族**）逐字**要**那 HTTP/1.1，
-  # 那 curl 默认逐字**走**那 HTTP/2、那**它**逐字**退**那 **35**（那 C-532 **那一族**记**的**那**一件**）。
-  # 那**处置**：这一行逐字**带**那 --http1.1（带上**之后**逐字**是**那 **0**）。
-  # 按 C-104：取件那一族逐字**只有**一条路（那**它们**逐字都**是**那 curl **那一条**）。
+
   if ! curl -fsSL --http1.1 --max-time 900 "$url" -o "$f"; then
     echo "[fetch-pinned] 下载失败，换下一条来源：$url"
     continue
   fi
   got="$(sha256sum "$f" | cut -d' ' -f1)"
-  #  缺陷名（C-102）**那 sha256 那一格**逐字**记**的是那**内容**那一个数、那**它**逐字**比**的是那**下载**下来**那一个** tar。
-  # 那**成因**：那 tar 那**字节**逐字**每次**换（那**它**们**逐字是**那**两**件**事**：「那**tar**是**什么**」与「那**内容**是**什么**」）。
-  # 那**后果**逐字那 `--pin` 那一族逐字**永远红**（那**它**们**逐字是**那**两**件**事**：「那**红**的是**什么**」与「那**为什么**」））。
-  # 那**处置**：那**内容**那一个数**有**那 contentSha256 **那一格**的时候、
-  # 那**它**逐字**比**那**解开之后**那**逐件**清单**那一个**数**、那**它**逐字**不**比**那 tar。
-  # 那**它**们**逐字是**那**两**件**事**：「那**比**的**是**什么**」与「那**记**的**是**什么**」）。
+
   if [ -n "$CONTENT_WANT" ]; then
     _cdir="$(dirname "$f")"
     _cstage="$_cdir/content-$"
@@ -278,7 +214,7 @@ for url in "${URLS[@]}"; do
       rm -rf "$_cstage"
       continue
     fi
-    # 那**清单**逐字**按**那**路径**排**序**（那**排序**逐字**用**那**本机**那**个**locale**、那**它**逐字**不**是**那 LC_ALL=C **那一种**）。
+
     cgot="$(cd "$_cstage" && find . -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)"
     rm -rf "$_cstage"
     if [ "$cgot" != "$CONTENT_WANT" ]; then

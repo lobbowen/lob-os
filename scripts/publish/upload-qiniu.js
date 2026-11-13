@@ -31,16 +31,6 @@ function multipart(fields, fileField, fileName, fileBuf, mime) {
   return { body: Buffer.concat(parts), contentType: 'multipart/form-data; boundary=' + B };
 }
 
-// 缺陷名（C-102）**把整包读进内存** —— 而这一族它为什么有两边：
-//   一边是「上传要那些字节」，
-//   另一边是「那些字节**要多大**才拿得动」。
-// Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
-// 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
-// 处置：分片上传本来就按块读文件（每次 4 MiB），所以**不需要**整包在内存里：
-//   · 字节数取 stat；
-//   · 每一块用 fs.openSync + readSync 现读现传；
-//   · 回读校验用流式哈希（本地那份），远端那份照旧整块读（它是一个 HTTP 响应体，
-//     不是文件 —— 那一格本来就只能整块拿，且它的大小受远端限制）。
 function sha256File(file) {
   const h = crypto.createHash('sha256');
   const fd = fs.openSync(file, 'r');
@@ -57,7 +47,6 @@ function sha256File(file) {
   return h.digest('hex');
 }
 
-// 从文件读一段（不把整份读进内存）
 function readChunk(fd, pos, len) {
   const b = Buffer.allocUnsafe(len);
   let got = 0;
@@ -152,7 +141,7 @@ async function main() {
 
   async function uploadForm() {
     // 这一支走整块表单上传，所以那一块**必须**在内存里 —— 而它只在文件不大于
-    // 8 MiB 时才走（分界就在下面那一句），所以读得下。
+
     if (bytes > 8 * 1024 * 1024) {
       throw new Error('不该走到这一支：文件 ' + bytes + ' 字节 > 8 MiB（这一支整块在内存里）');
     }
@@ -189,9 +178,7 @@ async function main() {
         // 缺陷名（C-102）**回读那一格把响应体整块收进内存** ——
         // 而那一格原来写的是 `got = Buffer.from(await res.arrayBuffer());`。
         // 响应体就是那一份件（8.4 GB 那一颗）=> 这一格自己就把内存撑爆了
-        // （实测报错逐字：`data is too long`）。
-        // 而这一格要答的是「远端那份与本地那份是不是同一份字节」——
-        // 那只需要**流式**哈希，不需要把远端那份留在内存里。
+
         const res = await fetch(url + '?t=' + Date.now(), {
           headers: { 'cache-control': 'no-cache' }, redirect: 'follow',
           signal: AbortSignal.timeout(180000),

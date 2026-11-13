@@ -26,17 +26,12 @@ import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8', errors='replace').read()
 old = """#if V8_LIBC_GLIBC || V8_LIBC_BSD || V8_LIBC_UCLIBC || V8_OS_SOLARIS
-#define HAVE_EXECINFO_H 1
-#endif"""
+
 new = """#if V8_LIBC_GLIBC || V8_LIBC_BSD || V8_LIBC_UCLIBC || V8_OS_SOLARIS
-#define HAVE_EXECINFO_H 1
-#endif
+
 // [android-container patch] bionic libc has no <execinfo.h>/backtrace();
 // force-disable the execinfo path to avoid 'use of undeclared identifier backtrace'.
-#if defined(__ANDROID__)
-#undef HAVE_EXECINFO_H
-#define HAVE_EXECINFO_H 0
-#endif"""
+
 if old in s:
     s = s.replace(old, new, 1)
     open(p, 'w', encoding='utf-8').write(s)
@@ -200,8 +195,7 @@ PY
   NDKBIN_FOR_CHECK="$( { ls -d "$ANDROID_NDK"/toolchains/llvm/prebuilt/*/bin 2>/dev/null || true; } | head -1)"
   if [ -n "$NDKBIN_FOR_CHECK" ] && [ -x "$NDKBIN_FOR_CHECK/aarch64-linux-android${ANDROID_API}-clang" ]; then
     cat > "$WORK/memalign_probe.c" <<'PROBE'
-#include <malloc.h>
-#include <stdlib.h>
+
 int main(void) { void* p = memalign(4096, 8192); free(p); return 0; }
 PROBE
     if "$NDKBIN_FOR_CHECK/aarch64-linux-android${ANDROID_API}-clang" -Wl,--no-undefined \
@@ -228,10 +222,7 @@ probe_host_compiler() {
   [ -n "$cxx" ] || return 1
   command -v "$cxx" >/dev/null 2>&1 || [ -x "$cxx" ] || return 1
   cat > "$WORK/host_probe.cpp" <<'PROBE'
-#include <atomic>
-#include <cstdio>
-#include <string>
-#include <memory>
+
 int main() {
     int v = 0, exp = 0;
     __atomic_compare_exchange_n(&v, &exp, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);

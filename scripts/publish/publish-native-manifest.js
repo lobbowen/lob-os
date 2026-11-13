@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 
 // 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
 // 于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
-// 「缺少 …/scripts/.github/native-capabilities.txt」）。那是目录归并时的遗留。
+
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
@@ -19,9 +19,7 @@ const BASE = (process.env.NATIVE_BASE_URL || 'https://lobcdn.zll.ink').replace(/
 const PUBKEY = process.env.NATIVE_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
 // 事实源（两个，别再找已删的 NativeAssetRegistry.kt —— 那个文件已随
-// 「内核不预置件清单」那轮清理删掉了）：
-// CAPS —— .github/native-capabilities.txt：<档位> <libName> <id>
-// VERIFY —— scripts/component-sources.json：每件的 version/entry/form
+
 const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
 const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
@@ -79,15 +77,6 @@ function capsIndex() {
   return map;
 }
 
-// 那一档 pin 记录（它逐字**按 id**查、不按「最后一条」）。
-//
-// 缺陷名（C-102）**那 pin 逐字取「最后一条」、一件逐字可能是别的那一件** ——
-// 旧版逐字是 `const k = keys[keys.length - 1]`（那**键顺序**是那生成物写的顺序、
-// 顺序逐字**不是**任何语义、它逐字**会变**）。
-// 那**后果**：清单里**每一件**逐字都拿**同一份** pin（那 url / sha256 / tag
-// 逐字全是**最后那一件**的）设备装到别的那一件时逐字**拉错字节**。
-// 按 01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §11 归属表第 7 行逐字：
-// 「05 补 `source=ota` 的事实来源」事实来源逐字**按件**给。
 function pinTable() {
   // 读不到时逐字**报缺**（按 C-05「缺字段就报缺、不许猜填」）、
   // **不**静默当成「没有 pin」。
@@ -107,14 +96,11 @@ function pinTable() {
   }
 }
 
-// 那一件**自己**的那一档 pin（没有逐字就是「没有」**不**拿别的那一件顶替）。
 function pinEntry(pins, id) {
   if (!pins || !pins.has(id)) return null;
   return pins.get(id);
 }
 
-// 整份清单的指纹（它逐字是**每一件自己**的那一档 pin 的指纹逐字合起来）。
-// 旧版逐字取「最后一条」那一条（顺序逐字**不是**语义、它逐字**会变**）。
 function manifestFingerprint(pins) {
   if (!pins || pins.size === 0) return null;
   const parts = [...pins.entries()]
@@ -123,20 +109,6 @@ function manifestFingerprint(pins) {
   return parts.join('|');
 }
 
-// 那一份件包里**有没有**那一条（那**逐字**按条目名逐字比、**不**按后缀）。
-//
-// 缺陷名（C-102）**那匹配逐字按后缀、后缀逐字会撞车** ——
-// 旧版逐字是 `r.stdout.split('\n').some((l) => l.trim().endsWith(rel))`
-// 那**后缀**逐字**不是**那身份：
-// · 而那 rel 逐字是 `bin/bash`、那 endsWith 逐字也命中 `usr/bin/bash`、
-// `opt/x/bin/bash`、那**任何**以 bin/bash 结尾的路径；
-// · 而那 rel 逐字是 `libcurl.so`、那 endsWith 逐字**也**命中 `lib/libcurl.so.1`
-// （那**版本层**逐字不是同一件）。
-// 那**后果**：那「这一件在不在那份包里」逐字**答错**、
-// 那 source 那一格逐字跟着答错（设备会装到别的那一份）。
-//
-// 那**逐字**该按什么比：那**条目名**逐字**就是**那身份
-// （件包里的相对路径、程序形态逐字是 bin/<名>、库形态逐字是 lib/<名>）。
 function zipHas(zip, rel) {
   if (!zip || !fs.existsSync(zip) || !rel) return false;
   const r = require('node:child_process').spawnSync('unzip', ['-l', zip], { encoding: 'utf8' });
@@ -194,11 +166,7 @@ function versionOf(id) {
   } catch (e) {
     bad('判据表读不出（' + VERIFY + '）：' + e.message);
   }
-  // 内核的兼容性垫片（posix/flock/ptyprobe/ptysession）不再是件：它们是
-  // container/native 下我们自己写的 C，随 APK 而来、只有一个版本、不走 OTA，
-  // 编译进 jniLibs 由 kernel/compat/Compat.kt 定位，不在此列。
-  // 这里的映射只列「钉值表里查得到上游版本」的那些。
-  // 查找顺序照 gen-component-meta.js 第 50 行：先 verify 再 sources。
+
   const vv = (vtab[id] || {}).version;
   if (vv && String(vv).trim()) return String(vv).trim();
   const key = PIN_KEY[id];
@@ -266,7 +234,7 @@ function main() {
       }
     } else {
       // 那 pin 记录里逐字**没有**它那 source 逐字是 apk、那**不**是缺件
-      // （那 base 筐那些件逐字就随 APK 走、它们逐字本来就不进 OTA）。
+
       console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
     }
     components.push(c);
@@ -292,9 +260,7 @@ function main() {
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
     // 整份清单的指纹逐字**不再**取「最后一条」那一条
-    // （旧版逐字是 `pin ? pin.fingerprint : null`）
-    // 它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
-    // （逐字让「这一份清单换了没有」逐字**判得出**）。
+
     fingerprint: manifestFingerprint(pins),
     components,
   };

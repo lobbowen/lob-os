@@ -36,15 +36,6 @@ mkdir -p "$OUT/bin"
 WORK="$ROOT_DIR/work/$TOOL"
 mkdir -p "$WORK"
 
-
-#  缺陷名（C-102）**那一族逐字**没有**把那墙钟逐字钉住、那**字节**逐字**编**进去了**
-# 旧版逐字**没有**这一族
-# 那**可复现**逐字那**三样**： 那源码钉值逐字**有**、 那工具链逐字**有**、
-#         那**归档内 mtime**逐字**没有**（那 `SOURCE_DATE_EPOCH` 逐字**没**设）
-# 那**墙钟**逐字**编**进那件包、那**同一个** recipe 逐字**再**编一次逐字**也**会**变**
-# 那**闸门**逐字就逐字判「同一 name@version 换了字节」
-# 那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上
-# 那**处置**：那**墙钟**逐字**钉**住（那**读口**逐字**唯一**、依 C-105）
 export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --time-base 2>/dev/null || echo 0)"
 CMAKE_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version $TOOL)"
 SRC="$WORK/$TOOL-src"
@@ -70,24 +61,13 @@ note "源码 $GOT_VER 就位"
 
 PATCH_FILE="$ROOT_DIR/patches/cmake-cmlibuv-no-cpumask-on-android.patch"
 [ -f "$PATCH_FILE" ] || die "缺 libuv 补丁" "$PATCH_FILE 不存在 —— 没有它 cmake 会编不过（core.c:1683 CPU_SETSIZE）"
-# patch 遇到「补丁已经打过」会**交互式询问**：
-#   Reversed (or previously applied) patch detected! Assume -R? [n]
-# CI 上没有 tty，它读到 EOF 就跳过补丁并返回非零 ——
-# 于是「早就打过了」与「真打不上」被混为一谈，都判红。
-#
-# 而 work/cmake 在缓存路径里（build-cmake.yml 第 123 行），打过补丁的源码树
-# 会被下一轮直接复用 —— 「already applied」是常态，不是异常。
-#
-# 先用 --dry-run 分三种情况（只用两个实现都有的选项）：
-#   能干净应用        → 真打
-#   反向能干净应用    → 说明已经是打过补丁的状态，视为成功
-#   两者都不行        → 才是真打不上
+
 if patch -p1 -d "$SRC" -i "$PATCH_FILE" --dry-run >/dev/null 2>&1; then
   patch -p1 -d "$SRC" -i "$PATCH_FILE" >/dev/null 2>&1 \
     || die "libuv 补丁应用失败" "dry-run 说能打上、真打却失败 —— 源码树状态与补丁不一致"
   note "libuv 补丁已打（Android 上关掉 CPU affinity）"
 elif patch -R -p1 -d "$SRC" -i "$PATCH_FILE" --dry-run >/dev/null 2>&1; then
-  # 反向能打上 = 当前内容就是打过补丁的那份（缓存复用）。那正是我们要的状态。
+
   note "libuv 补丁已在此源码树里（缓存复用，不重复打）"
 else
   die "libuv 补丁打不上" "为什么需要它：clang 的 Android target 预定义 __linux__（实测 __linux__/__ANDROID__/__BIONIC__ 都是 1），Bionic 的 <sched.h> 不提供 cpu_set_t/CPU_SETSIZE/sched_getaffinity，libuv 只看 __linux__ 于是编不过（core.c:1683）。改法同 Termux 的 libuv 补丁。不选 -U__linux__ 是因为那全局生效，libcurl/zstd/c-ares 也可能依赖它。CMake $GOT_VER 的 Utilities/cmlibuv/src/unix/internal.h 与补丁不匹配 —— 补丁是按 $CMAKE_VER 写的。换 CMake 版本时要一起更新 patches/ 下这个文件。"
@@ -206,20 +186,9 @@ done
 cp -f "$BIN" "$OUT/bin/$TOOL"
 chmod 0755 "$OUT/bin/$TOOL"
 rm -rf "$OUT/share" && mkdir -p "$OUT/share"
-    #  缺陷名（C-102）**那一层逐字被**改名**了、那 **cmake** **那一件**逐字**找不**到**它**
-    # 它治**的**是「那模块目录逐字**在不在**那**cmake** **自己**找**的**那个**位置**」。
-    # 那**成因**：上游逐字**找**的是那 **/share/cmake-4.4**（那 cmake **那一件**的**那** strings
-    #       里面逐字**含**那 /share/cmake-4.4、那**它**逐字**是**那**版本号**的**前两段**）。
-    # 这一格逐字**把**那 MODDIR **改名**成**那 share/cmake、那**它**逐字**不**是**那**上游**找**的**那个**名字**。
-    # 那**后果**逐字**是**：那 cmake 逐字**报**那「Could not find CMAKE_ROOT !!!」
-    #       （真机读数：那 opt/cmake/4.4.4/share/cmake **那一层**逐字**有**那 Modules、
-    # 那 **cmake --version** 逐字**还**是**那**同一**一句**错**）。
-    # 那**处置**：层逐字**用**那**上游**的**那个**名字**（那 MAJOR.MINOR 逐字**是**那**前两段**、
-    #**不**是**那完整**的**那个**版本号**）。
-    # 按 C-104：产物侧与那打包侧与那落位侧那三条生成路径逐字**都是一条**、那**它**们**不**在**那三处**。
+
     CMAKE_MM="${CMAKE_VER%%.*}.$(printf "%s" "$CMAKE_VER" | cut -d. -f2)"
     cp -a "$MODDIR" "$OUT/share/cmake-$CMAKE_MM"
-
 
 printf '%s' "$CMAKE_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"

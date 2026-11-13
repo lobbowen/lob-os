@@ -1,20 +1,5 @@
 #!/usr/bin/env bash
-# 造一份**底座件清单**（native-manifest.json + .sig）到某目录（M6 正向在设备上那一趟的「那份清单」那一格）。
-#
-# 为什么要有它（Lead 那一裁：「逐字一个只读静态服务 + 逐字一个『造一份 native-manifest.json 到某目录』那一档」）：
-#   · M6 正向要一份带 `source=ota` 的底座件清单、它逐字来自那 CDN、那 CDN 逐字 404。
-#   · 而那**清单本体**逐字**只有一条**生成路径（按 C-104 判别源要唯一）：
-#     **scripts/publish/publish-native-manifest.js**（它逐字是那发布链那一格）。
-# 本脚本逐字**不**另写一份生成逻辑、它逐字**调**那一个、
-# 它逐字**只**负责「把输出目录准备好 + 把 baseUrl 指到本机 + 把要签的私钥显式说出来」。
-#
-# 那一格逐字**卡在一个外部条件上**（一格逐字归用户与 06）：
-#   那清单逐字要由**与 APK 内那枚公钥配对的私钥**签（发布脚本逐字自检、不配对就 exit 1）。
-# 把私钥逐字不在仓内（那 `keys/` 逐字不存在、那 `.gitignore` 逐字忽略它）
-# 本脚本逐字**据实报缺**（依 C-05）、它逐字**不**编一把、它逐字**不**换锚。
-#
-# 用法：
-#   bash scripts/serve/make-native-manifest.sh <输出目录> <私钥路径> [件包zip...]
+
 set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -34,7 +19,6 @@ say "== 那底座件清单 =="
 say "   输出目录：$OUT"
 say "   私钥：${KEY:-（没给）}"
 
-# --- 那私钥那一格（一格逐字**据实报缺**、依 C-05） ---
 if [ -z "$KEY" ]; then
   say "::error title=缺私钥::没给私钥路径。"
   say "::notice::一格逐字卡在**外部条件**上：清单逐字要由与 APK 内那枚公钥**配对**的私钥签，"
@@ -47,7 +31,6 @@ if [ ! -f "$KEY" ]; then
   exit 1
 fi
 
-# --- 那锚点那一格（它是**信任根**、它逐字决定「这份清单算不算数」） ---
 ANCHOR="$ROOT_DIR/container/app/src/main/assets/supply/component-public.pem"
 if [ ! -f "$ANCHOR" ]; then
   say "::error title=锚点读不到::$ANCHOR 不在（一格逐字报缺）"
@@ -64,13 +47,11 @@ fi
 rm -f /tmp/m6-anchor-check.$$
 say "   [配对通过]"
 
-# --- 那 baseUrl 那一格（它逐字指向**本机**、那**不改** channel.json） ---
 PORT="${M6_LOCAL_PORT:-8099}"
 export NATIVE_BASE_URL="http://127.0.0.1:${PORT}"
 
 mkdir -p "$OUT"
 
-# --- 那生成那一格（它逐字**调**那唯一那一条路径、本脚本逐字不自写生成逻辑） ---
 PUB="$ROOT_DIR/scripts/publish/publish-native-manifest.js"
 if [ "${#ZIPS[@]}" -eq 0 ]; then
   say "::notice:: 没给件包 zip、发布脚本逐字**只**吃那 pin 记录里的那几件、"

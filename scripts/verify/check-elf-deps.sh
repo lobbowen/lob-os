@@ -39,15 +39,6 @@ DEPS_FILE="$HERE/native-deps.txt"
 SYSTEM_LIBS=" $( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
 [ -n "${SYSTEM_LIBS// /}" ] || die "系统库白名单是空的" "$DEPS_FILE 被清空了 —— 那会把所有系统库都当成缺失依赖"
 
-# -- APK 基础库：直接读 jniLibs 目录，不维护名字清单 ----------
-# 此前这里是一串硬编码：APK_LIBS=" libc++_shared.so libz.so libssl.so …"。
-# 那是**第二个事实来源**，必然和实际落位漂移 —— 已经漂了：
-# libz.so 既是 bionic 自带的（系统库），又是我们的件（base 筐里的 zlib），
-# 同一个名字两个身份。清单里写哪个，对判据的结论完全不同。
-#
-# 现在改成问「这库在不在 APK 的 jniLibs 里」—— 落位是唯一真相，
-# 判据跟着落位走，不存在漂移。系统库与 APK 库重名时以「在 APK 里」为准，
-# 因为那才是运行时会找到的那份。
 JNI_DIR="${APK_JNI_DIR:-}"
 if [ -z "$JNI_DIR" ]; then
   _ROOT="${ROOT:-}"
@@ -57,16 +48,7 @@ if [ -z "$JNI_DIR" ]; then
     [ -d "$cand" ] && { JNI_DIR="${cand%/}"; break; }
   done
 fi
-# -- 目录不存在**不算错**，只是少一类判据 ----------------------
-# 本脚本也被 tool 筐那几个 workflow 调用（build-make / build-cmake /
-# build-git / build-llvmtoolchain / build-node / build-npm / build-pnpm /
-# build-python3 / build-sqlite3 / build-pkg-config 各自编各自的件），
-# 而那些 workflow 不跑 ensure-native-capabilities.sh —— jniLibs 目录
-# 那时可能根本还没建。
-#
-# 那种情况下把「找不到 jniLibs」判红，等于为了一条此刻无从判断的
-# 判据拦住一次本来能过的构建（门禁不能挡路）。
-# 所以：目录在 → 参与判据；目录不在 → 明确说明少判了哪一类，然后照常判。
+
 if [ -z "$JNI_DIR" ] || [ ! -d "$JNI_DIR" ]; then
   APK_LIBS=""
   echo "[$LABEL] 没有 jniLibs 目录 —— 少判「APK 基础库」这一类（其余照判）"
@@ -90,20 +72,6 @@ if [ -z "${NEEDED// /}" ]; then
   exit 0
 fi
 
-#  缺陷名（C-102）**那「件自己的 lib/」逐字找的是那「件**旁边**那个 lib/」、落位逐字是**那**平**的**那**一件** ---
-#  而实际上那 40281519231 那一趟逐字红在「依赖这些库，但它们既不在 bionic 白名单、也不是 APK 基础库、
-#    也不在件自己的 lib/ 下： libclang.so」（那 c-index-test 逐字**是**那 llvmtoolchain **那一件自己**产出来的**件**、
-# 那 libclang.so 逐字**本来**就**应该**在**那件自己的** lib/ **那一族**里）。
-# 那**为什么**有**两边**：一边是「**那产物**逐字**在**哪**一层**」（要**看**那 recipe 那一族**落位**那几行**）、
-#    另一边是「**那判据**逐字**去**哪**一层**找**那**件自己的**库**」（要**看**这一族**这一行**）
-# 两边各答一件事、按 C-135 那不是同一问。
-# 那**处置**：那「件自己的 lib/」逐字**要**是**那件根底下的**那**一个** lib/ 那一族
-#    （那**平**的**落位**那一族：程序那一份在 bin/ 下、件根逐字**是**那 bin/ 的**上一**层**、
-# 库那几份就在**那件根**底下的 lib/ **那一族**里、那**库件**那一族逐字**自己**就在那 lib/ **里面**）。
-# 那**旧**的**那一行**（它是「件**旁边**那个 lib/」）逐字**也**保留**当**那**第二**个**候选**、
-# 那**两**个**候选**逐字**都**认、那**判据**逐字**不**会被**这一笔**削弱**。
-# 按 C-104：那**判据**那一族逐字**只有**一条路、那**不是**第二种生成路径。
-# 按 C-220：04 那边要落**内容稿**、这一笔是**实现**那一族。
 FILEDIR="$(cd "$(dirname "$FILE")" && pwd)"
 LIBDIR="$FILEDIR/lib"
 case "$(basename "$FILEDIR")" in
@@ -114,12 +82,6 @@ for _d in "$LIBDIR" "$FILEDIR/lib"; do
   [ -d "$_d" ] && LOCAL_LIBS="$LOCAL_LIBS $(ls "$_d" 2>/dev/null | tr '\n' ' ')"
 done
 
-# 共享库是一条链：libz.so → libz.so.1 → libz.so.1.3.2，三层是**同一份字节的
-# 多个名字**（land_piece 用 cp -f 解开了软链，见 bundle-env.sh）。而：
-#   · APK 的 jniLibs 只打包 *.so，版本化命名那两层进不去；
-#   · linker 运行时按 DT_NEEDED 的名字找，那正是带版本号的那个。
-# 所以比对时把 NEEDED 归到链首再认 —— 与 PrefixProvisioner.provision()
-# 「拿同 id 那份顶上」是同一个做法（两处必须一致）。
 chain_head() {
   case "$1" in
     *.so.[0-9]*) printf '%s' "${1%%.so.[0-9]*}.so" ;;
@@ -134,7 +96,7 @@ for lib in $NEEDED; do
   [ "$lib" = "$(basename "$FILE")" ] && continue
   ch="$(chain_head "$lib")"
   case "$SYSTEM_LIBS" in *" $lib "*) continue ;; esac
-  # APK 基础库与件自己的 lib/：认链首，也认原名
+
   if [ -n "${APK_LIBS// /}" ]; then
     case " $APK_LIBS " in *" $ch "*) continue ;; esac
     case " $APK_LIBS " in *" $lib "*) continue ;; esac
@@ -143,11 +105,7 @@ for lib in $NEEDED; do
     case " $LOCAL_LIBS " in *" $ch "*) SELF_DEPS="$SELF_DEPS $lib"; continue ;; esac
     case " $LOCAL_LIBS " in *" $lib "*) SELF_DEPS="$SELF_DEPS $lib"; continue ;; esac
   fi
-  # 版本化命名（libfoo.so.N）而链首在 APK 基础库与件自己的 lib/ 里都没有：
-  # 这一类此刻无从判断 —— tool 筐那几个 workflow 不编 base 件，那份依赖是靠
-  # **运行时** usr/lib 的全局软链满足的（见 build-component-git.sh 的注释）。
-  # 构建期看不到那个软链，所以判红等于为了一条此刻无从判断的判据拦住构建。
-  # 如实说明少判了什么，但不判红。
+
   case "$lib" in
     *.so.[0-9]*)
       if [ -z "${APK_LIBS// /}" ] && [ -z "${LOCAL_LIBS// /}" ]; then
@@ -172,16 +130,7 @@ if [ -n "$SELF_DEPS" ]; then
       echo "[ok] $LABEL 依赖同目录库$SELF_DEPS，靠 DT_RUNPATH=$RUNPATH 自解析"
       ;;
     *)
-      #  缺陷名（C-102）**这条判据逐字把「那别名能不能按裸名调起」判成了「那 DT_RUNPATH 有没有 $ORIGIN」**
-      # 它治**的**是「那**运行时**逐字**加载**的**是**哪**一个**库**」那一族。
-      # 它**不**是「那 DT_RUNPATH 有没有 $ORIGIN」那一族（是**产物**那一侧**的**形状**）。
-      # 那 verify-runtime-elf.sh :304 到 :320 逐字**已经**是**那**放宽**的**那一版**
-      #       （01 今天逐字**裁**过：那**前置**「那库只在 APK 的 jniLibs 里、没有任何全局软链」
-      #         逐字**不**成立、那**判据**逐字**不该**把**上面**那条路**否掉**）。
-      # 那**处置**：依赖**能**由**那随包库**解析**就**算过**、并**说明**是**靠**哪**一条路**
-      #       （那 RUNPATH **更好**、它逐字**只**是**让**那库**跟着**那文件**走**）。
-      # 那**它**逐字**不是**「那 DT_RUNPATH 逐字有没有 $ORIGIN」那个**形状**。
-      # 按 C-135：那**两**问逐字**各**答**一件**事**、它们**不合并**。
+
       if [ -n "$RPATH" ]; then
         echo "[ok] $LABEL 依赖同目录库$SELF_DEPS，靠 usr/lib 的全局软链解析（现有 RPATH=[$RPATH] 而 bionic 忽略它）"
       else
@@ -195,10 +144,7 @@ fi
 N_SYS=0; N_APK=0; N_LOCAL=0
 for lib in $NEEDED; do
   [ "$lib" = "$(basename "$FILE")" ] && continue
-  # 判据与上面那个循环逐字一致（都用 case，不用 grep）：
-  # 上一处用 `case "$SYSTEM_LIBS" in *" $lib "*)`，这一处却用
-  # `grep -qw -- "$lib"` —— 两个写法对含点的库名行为不同，
-  # 于是可能出现「上面判成缺失、这里却算进系统库」的自相矛盾。
+
   case "$SYSTEM_LIBS" in *" $lib "*) N_SYS=$((N_SYS+1)); continue ;; esac
   case "$APK_LIBS"     in *" $lib "*) N_APK=$((N_APK+1)); continue ;; esac
   N_LOCAL=$((N_LOCAL+1))

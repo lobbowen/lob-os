@@ -142,14 +142,7 @@ object PackageVerifier {
             val e = entries.firstOrNull { !it.isDirectory && it.name.endsWith("program-manifest.json") }
                 ?: return null
             if (!e.name.startsWith("program/") || !e.name.contains("/program-manifest.json")) return null
-            //  缺陷名（C-102）**那一格逐字把 zip 里那一个条目逐字**整读**进堆** ——
-            //    旧版逐字是 `zf.getInputStream(e).use { it.readBytes().toString(Charsets.UTF_8) }`
-            //      它逐字把**那一个条目**逐字**整个**读进那堆
-            //      一条逐字**本该**是那清单（小）、 它逐字**没有**上限
-            //        （ zip 逐字是**用户给的**、 条目逐字**可能**是那大件）
-            //    **处置**： 一条目逐字**有**一个上限、 超出那一截逐字**报缺**
-            //      按 C-05 不猜填、 **不**把那一大截逐字读进那堆
-            //    **上限**逐字**够**那清单（ 清单逐字是那 JSON、 它逐字**小**）
+
             val eSize = e.size
             if (eSize > MAX_MANIFEST_ENTRY_BYTES) {
                 return null
@@ -162,12 +155,6 @@ object PackageVerifier {
         }
     }.getOrNull()
 
-    /**
-     * 那**清单**那一条目逐字那一个上限（ 它逐字**防**那堆被那一条逐字吃光）。
-     *
-     *   **上限**逐字是那 **1 MiB**（ 清单逐字是那 JSON、 它逐字**小**）
-     *   超出那一截逐字**报缺**（ 按 C-05 不猜填）
-     */
     private const val MAX_MANIFEST_ENTRY_BYTES = 1024 * 1024
 
     fun sha256HexFile(f: File): String = Crypto.sha256HexFile(f)

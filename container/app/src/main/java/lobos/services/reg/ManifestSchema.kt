@@ -1,6 +1,5 @@
 package lobos.services.reg
 
-
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.services.supply.ProgramDir

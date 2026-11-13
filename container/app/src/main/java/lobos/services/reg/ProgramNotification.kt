@@ -113,34 +113,15 @@ object ProgramNotificationHub {
             if (n.progress != null && n.progress >= 0) {
                 b.setProgress(100, n.progress, false)
             }
-            //  **发法名**逐字答的是「那一条路」、 **记录**逐字**落**那诊断
-            //    （ 个 ID 逐字**稳定**（ **替换**那一族、 **不是**那**新增**那一族）
+
             lobos.kernel.fs.NotifyRoute.note(ctx, "program.notif.post", notifId(safeId), "普通", "program=" + programId)
             nm.notify(notifId(safeId), b.build())
         }
         return n
     }
 
-    /**
-     * 那一件的通知 ID。
-     *
-     * 规则（01 裁的，逐字）：
-     *   **通知 ID = 2000 + (programId.hashCode() and 0x7fff)**，
-     *   取值域逐字是 **2000 到 32767**（ **32768 个槽**），
-     *   槽位逐字是那哈希的**低 15 位**。
-     *
-     * 缺陷名（C-102）**那槽位逐字可能撞、 一撞逐字没人核过** ——
-     *   旧版逐字就是那**一行**（ 规则逐字**隐在**那实现里、 **没人**写下来）。
-     *   **后果**： 两个不同的 programId 逐字可能拿到**同一个** ID
-     *     （ notify 逐字会把**前一个**那条**盖掉**、 cancel 逐字会把**另一个**那条**一起清掉**）。
-     *   **核**（ 本机逐字实算过）： 在册的 44 件逐字**零碰撞**
-     *     （ 槽位占用率 44 / 32768）。
-     *   **处置**： 规则逐字**写死**在那一格（ **规范归 04**、 **实现归 05**），
-     *     **碰撞**那一格逐字**没有**被修（ 要改逐字是**换那映射**、 **不是**本笔的活）。
-     */
     private fun notifId(programId: String): Int = NOTIF_BASE + (programId.hashCode() and NOTIF_SLOT_MASK)
 
-    //  槽位掩码逐字 0x7fff（ 是 15 位、 **取值域**逐字 0 到 32767）。
     private const val NOTIF_SLOT_MASK = 0x7fff
 
     private fun prune(ctx: Context) {

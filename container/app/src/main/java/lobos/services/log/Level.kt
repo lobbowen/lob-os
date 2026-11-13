@@ -1,6 +1,5 @@
 package lobos.services.log
 
-
 enum class Level(val code: String) {
     INFO("info"),
     WARN("warn"),

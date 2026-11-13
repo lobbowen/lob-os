@@ -3,10 +3,7 @@ set -euo pipefail
 export LC_ALL=C
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 白名单与 check-elf-deps.sh 共用同一份 —— 同一事实只能有一个来源。
-# 此前这里指向上级目录 scripts/native-deps.txt，而 scripts/verify/ 下还有一份，
-# 两份内容已经漂了：旧那份 12 项（含 libz.so —— 而 zlib 现在是我们的件，
-# 在 base 筐里，该由 jniLibs 实测得出，不该进系统库白名单）。旧的那份已删。
+
 DEPS_FILE="$SCRIPT_DIR/native-deps.txt"
 MANIFEST_FILE="$SCRIPT_DIR/../../.github/native-assets.txt"
 CAPS_FILE="$SCRIPT_DIR/../../.github/native-capabilities.txt"
@@ -85,13 +82,6 @@ echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
 echo "   可执行资产: $EXEC_SET"
 
-# 要列**全部共享库形态**的文件，不只是 `*.so` ——
-# 共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2。
-# `ls *.so` 只匹配到第一个（以 .so 结尾的那个），
-# 而 ELF 的 DT_NEEDED 写的是**带 SONAME 的那个**（libz.so.1）。
-# 于是它既不在系统白名单、也不在随包名单里 → 被判「依赖闭包断了」。
-# （实测就栽在这：libcurl.so 的 NEEDED 是 libz.so.1。）
-# .meta.json 是说明不是库，用 \.so 锚定已排除。
 SO_LIST="$(cd "$DIR" && ls | sed -n '/\.so\(\.[0-9][0-9.]*\)\{0,1\}$/p')"
 if [ -z "$SO_LIST" ]; then
   echo "[error] $DIR 下没有任何共享库（多半是下载/拷贝没落到位）。"
@@ -198,14 +188,12 @@ for f in "$DIR"/*.so; do
   fi
   line="$line 16KB-ok(${n_load}段)"
 
-  # -- 动态段：判据 3/4/5 的取数 ------------------------------------------
   dyn="$("$READELF" -W -d "$f" 2>/dev/null || true)"
   has_dynamic="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
   needed="$(printf '%s\n' "$dyn" | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}')"
   runpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RUNPATH).*\[\(.*\)\].*/\1/p')"
   rpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RPATH).*\[\(.*\)\].*/\1/p')"
 
-  # -- 3) 解释器 ----------------------------------------------------------
   interp="$(printf '%s\n' "$phdrs" | sed -n 's/.*\[Requesting program interpreter: \(.*\)\].*/\1/p')"
   is_exec=0
   case "$EXEC_SET" in
@@ -231,10 +219,6 @@ for f in "$DIR"/*.so; do
     line="$line ${interp:+interp=$interp}${interp:-interp=无(非可执行资产)}"
   fi
 
-  # -- 动态段能否取数 -----------------------------------------------------
-  # 判「静态产物」用 PT_DYNAMIC 在不在，不用「readelf -d 输出了什么」：readelf 对
-  # 没有动态段的文件照样打印一行 "There is no dynamic section in this file."，
-  # 拿输出判空会把「取数失败」和「真的没依赖」混成同一种情形。
   if [ -z "$has_dynamic" ]; then
     case " $DEP_SET " in
       *" $base "*)
@@ -257,7 +241,6 @@ for f in "$DIR"/*.so; do
       ;;
   esac
 
-  # -- 4) 依赖闭环 --------------------------------------------------------
   if [ -z "$needed" ]; then
     echo "  [ok]   $base —— 动态段里没有 DT_NEEDED（无外部依赖）：$line"
     continue
@@ -285,29 +268,6 @@ for f in "$DIR"/*.so; do
   fi
   line="$line needed=$(printf '%s' "$needed" | wc -w)项闭环"
 
-  # -- 5) 随包依赖能否解析 ------------------------------------------
-  # 判据问的是「空环境下能不能找到这些依赖」，答案不只有 RUNPATH 一条路。
-  #
-  # 我们的运行时怎么找库（照代码，不猜）：
-  # · PrefixProvisioner.landOne() 给每一层建**全局软链**
-  # usr/lib/<库文件名> → usr/lib/<id>/<版本>/lib/<库文件名>
-  # —— 照 ldconfig(8) 对 libfoo.so → .so.1 → .so.1.12 做的事。
-  # （PrefixProvisioner.kt 第 70~90 行）
-  # · RuntimeEnvironment.treeRootEnv() 把 LD_LIBRARY_PATH 设成
-  # libSearchPath(ctx) = SystemDirs.lib(ctx) = filesDir/usr/lib
-  # —— 正是那些软链所在处（第 56 行 + 第 96 行）
-  #
-  # 所以「libcurl.so 依赖 libssl.so / libcrypto.so / libz.so.1」
-  # 这类，在运行时是**解析得到**的：usr/lib 下有全局软链，且
-  # LD_LIBRARY_PATH 指的就是那里。
-  #
-  # 此前这条判据要求「必须 DT_RUNPATH=$ORIGIN」，把上面那条路否掉了 ——
-  # 于是每个依赖随包库的件都判红（实测 libcurl.so / libssl.so 等）。
-  # 它原来的理由（「空环境（载荷 run_code 起子进程）下必然 CANNOT LINK」）
-  # 前提是「库只在 APK 的 jniLibs 里、没有任何全局软链」，而那个前提不成立。
-  #
-  # 现在的判据：依赖能由随包库解析就算过，并说明是靠哪条路
-  # （有 RUNPATH 更好 —— 库跟着文件走，连 LD_LIBRARY_PATH 都不必依赖）。
   if [ -z "$local_deps" ]; then
     echo "  [ok]   $base —— 不依赖随包库：$line"
     continue

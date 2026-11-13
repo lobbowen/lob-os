@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# 件构建失败时把现场写进 Job Summary。
-#
-# 为什么：GitHub 会裁剪 stdout，我这几轮拿到过三次残缺信息 ——
-#   line 14: unexpected EOF while looking f…
-#   /home/runner/work/_temp/…sh: line 9: ASSET: unbound variable
-# 都看不出是哪一行、哪一步。Job Summary 不裁剪，是给「人」看的正式出口。
-#
-# stdout 仍然是给 CI 判定用的；这里是给人看的。
+
 set -uo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 
 ID="${1:?需要件名}"
 OUT="${GITHUB_STEP_SUMMARY:-}"
-# 总是先落一个文件：Summary 在 Actions API 上不好取回，
-# 而 artifact 我这边能直接下载 —— 两条路都得有。
+
 FILE="${RUNNER_TEMP:-/tmp}/piece-diag-$ID.md"
 mkdir -p "$(dirname "$FILE")"
 
@@ -56,11 +48,7 @@ mkdir -p "$(dirname "$FILE")"
 
   echo "### 编译日志末尾"
   echo ""
-  # 缺陷名（C-102）**$ROOT 在这个脚本里从未被定义** —— 而它只出现这一处。
-  #   而 set -u 下那一句是「unbound variable」：
-  #   真机读数（07，run 39531522481 等三件绿的日志里都有这一句）
-  #   => **而后半边 `work/` 是相对路径**（而 cwd 是仓根，而它能取到）
-  #   => **前半边那个 $ROOT 是笔误，正确的是 work/kernel-compat/**
+
   for lg in work/kernel-compat/cc-*.log work/"$ID"/*.log; do
     [ -f "$lg" ] || continue
     echo "**$lg**"

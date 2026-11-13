@@ -69,7 +69,6 @@ if (!missing.length) {
   process.exit(0);
 }
 
-// 缺件逐字**逐条**摆出来（一件、那一档、那一档的原话）。
 const byKind = new Map();
 for (const m of missing) {
   const kind = String(m && m.kind || 'unknown');
@@ -83,8 +82,6 @@ for (const [kind, list] of [...byKind.entries()].sort()) {
   }
 }
 
-// 那**矛盾**那一格：清单里逐字**有**那缺件表里的某一件、
-// 两格逐字**互相矛盾**（一件逐字既说「缺」又逐字在清单里）。
 let conflict = 0;
 for (const m of missing) {
   const piece = String(m && m.piece || '');
@@ -98,7 +95,6 @@ if (conflict) {
   process.exit(1);
 }
 
-// 清单逐字**不含**那缺件表里的任何一件、两格逐字**对得上**。
 console.log('[reconcile] 对得上：那清单逐字**不含**那缺件表里的任何一件（缺的几件逐字**看得见**了）。');
 console.log('[reconcile] 而那清单逐字只含**取到**的那些件 —— 而那缺的几件逐字在 ' + missPath + ' 里。');
 process.exit(0);

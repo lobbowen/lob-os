@@ -12,36 +12,22 @@ import lobos.services.supply.PieceUpdater
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Host-resident formal management service of LOB-OS: the product-internal control plane entry. The host owns it, so the
- * management UI inside the APK can call it without an installed quick app. Authorization: fixed host management identity
- * (lobos.installer), which the broker treats as a system-scope session. Audit: the broker log records each requestId and
- * this service writes a host-control diagnostic per call. Transport: still crosses the formal LocalSocket handshake via
- * ControlClient, so token, framing, timeout, structured errors and idempotency all apply. */
 object HostControlService {
     const val MANAGEMENT_ID = "lobos.installer"
     const val MANAGEMENT_GENERATION = 1L
 
-    /**
-     * List the pieces with their entry origin (APK or OTA) and each one's rollback eligibility. 缺陷 C-945：件列表原先只有来源记录那几格、
-     *   没有回退资格与理由，而「能不能回退」是操作者最先要看的一格；主体是所有在册的件（ProgramIndex 全部登记项）。
-     *   「在册」由注册表答、「有来源记录」由来源记录答（缺失时空串、回退理由「无来源指针」）；八个字段都有真实消费者（本文件
-     *   JSON 与 HostControlActivity）：origin、apkVersion、apkTarget、otaVersion、otaTarget、hasApkOriginal、hasOta、updated。
-     */
     fun pieces(context: Context): JSONArray {
         val app = context.applicationContext
         val origins = PieceOriginStore.all(app).associateBy { it.id }
         val arr = JSONArray()
         for (s in PieceUpdater.states(app)) {
             val o = origins[s.id]
-            //  缺陷名 C-102：回退资格原先在两处各写一套（控制面按「入口是不是软链」判接管、回退本身按来源记录判），
-            //    两处会给出不同答案（UI 说可回滚、回退时答未接管）。现在只有一处判据（`PieceUpdater.rollbackStatus`）。
+
             val status = PieceUpdater.rollbackStatus(app, s.id)
             arr.put(JSONObject().apply {
                 put("id", s.id)
                 put("installedVersion", s.installedVersion ?: JSONObject.NULL)
-                // 缺陷名（C-945）updated 的含义定为「OTA 那一份当前在接管」（来源记录里那一条指针
-                //  实况），而不是「这一件曾经装过什么东西」。
+
                 put("updated", s.updated)
                 put("origin", o?.active ?: "")
                 put("apkVersion", o?.apkVersion ?: "")
@@ -61,18 +47,11 @@ object HostControlService {
         return arr
     }
 
-    /**
-     * 某一件事的回退资格与理由（按 id 查，不限在册）。
-     * 判据只有一处：`PieceUpdater.rollbackStatus`（回退那族唯一的判据来源）；01 linux-architect 裁定；
-     * 回退主体集合是所有在册的件（C-954）。理由五种：可回滚 / 未接管（F2）/ 无来源指针（F1）/
-     * 库形态入口未定位（F3）/ 非在册。
-     */
     fun rollbackJudgement(context: Context, id: String): PieceUpdater.RollbackStatus {
         val app = context.applicationContext
         return PieceUpdater.rollbackStatus(app, id.trim())
     }
 
-    /** 某一件事的回退资格（JSON 形态，供 UI 与外部调用方读）。 */
     fun pieceEligibility(context: Context, id: String): JSONObject {
         val app = context.applicationContext
         val j = rollbackJudgement(app, id)
@@ -91,8 +70,7 @@ object HostControlService {
         val method = "lobos.sys.native.update"
         val correlatedId = requestId.trim().ifEmpty { "update-" + UUID.randomUUID() }
         val url = manifestUrl.trim()
-        //  缺陷名 C-118：失败结果里的 method 必须写本次真正调用的那个方法——这一支调 client.update，
-        //  所以是 lobos.sys.native.update；下面每处 failure 都取本支的 method 变量，不写死字面量。
+
         if (url.isBlank()) return failure(method, correlatedId, "manifestUrl 为空")
         val broker = lobos.api.CapabilityBroker.live()
             ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
@@ -112,7 +90,6 @@ object HostControlService {
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
     }
 
-    /** The PE L2 samples shipped with the product, with their expected digests. */
     data class PeSample(val asset: String, val sha256: String, val label: String)
 
     val peSamples: List<PeSample> = listOf(
@@ -128,13 +105,6 @@ object HostControlService {
         ),
     )
 
-    /** Load a shipped PE L2 sample through the production parser without executing it. */
-    /**
-     * 在 LOB-OS 自己那一份 Linux 里跑一条命令（产品那一面）。缺陷 C-102：旧版没有合法的产品入口——只有 `ControlClient.exec`（客户端那族、要带
-     *   token 的 handshake）；`LobosBridge.invoke` 拒 SCOPE_SYSTEM，`QuickAppLaunchActivity` 那支只能用 `am start` 带 extra 叫起来；而
-     *   `invokeLocal` 能调 `sys.tty.exec`（INSTALLER_ID 放行、含 GROUP_SYS，不经 socket、不 claim 会话）。处置：这一格就是产品 UI 上的入口。
-     * @param cmd 命令串，@param timeoutMs 超时（默认 10000）。
-     */
     fun execCommand(context: Context, cmd: String, timeoutMs: Long = 10_000L): JSONObject {
         val method = "sys.tty.exec"
         if (cmd.isBlank()) return failure(method, "exec", "命令为空")
@@ -154,12 +124,6 @@ object HostControlService {
         }
     }
 
-    /**
-     * 不经 shell 直接调那一条（M7-05 要的那条产品入口）。缺陷 C-102：旧版测不了 M7-05——唯一入口 `execCommand` 走 `sys.tty.exec` 的
-     *   `bash -c <命令>`，bash 去 execve 那个坏 ELF、报的是它自己那条，而不是「入口不是可执行的形态（既不是 ELF 也不是 #!）—— 拒绝调起，
-     *   不当程序跑：<路径>」。处置：这一格直接交给 `ProcessSupervisor`（认不出时报缺、退出码是那个数、诊断进 stderr）。
-     * 缺陷 C-102（带参数）：旧版 `execDirect(context, path, timeoutMs)` 的 argv 只有那一条，git 没有 `--version` 就打 usage、退出码 1（07
-     *   实测 stdout 是 git 的 usage 原文）。处置：argv 带上参数并透给 `LocalExec.run`；形态仍由 `ExecEntry.argv` 算。 */
     fun execDirect(
         context: Context,
         path: String,
@@ -172,7 +136,7 @@ object HostControlService {
         if (!target.exists()) {
             return failure(method, "exec-direct", "那一件逐字不在：" + path + "（按 C-05 报缺）")
         }
-        //  不经 shell：argv 只有那一条与那些参数；形态仍由 `ExecEntry.argv` 那族算（不变）。
+
         val r = lobos.kernel.ipc.LocalExec.run(
             context,
             listOf(target.absolutePath) + args,
@@ -191,12 +155,6 @@ object HostControlService {
         }
     }
 
-    /**
-     * 被要求建一个错形状的那一条（M7-12 要的那条产品入口）。
-     * 缺陷 C-102：旧版在设备上测不了 M7-12——没有这一格，`SysDev.render` 先 `wipe(root)` 再建、之后才 `verifyNodes`，
-     *   产品永远看不到盘上现存的错形状（每次都被自己清掉了）。
-     * 处置：这一格在渲染之前核盘上现状，答的是那三类之一（不只报「失败」）；它不是探针，是产品界面上的一个入口。
-     */
     fun verifyDeviceNodes(context: Context): JSONObject {
         val method = "sysdev.verify"
         val root = lobos.kernel.sysdev.SysDev.root(context)
@@ -204,7 +162,7 @@ object HostControlService {
             return failure(method, "sysdev-verify", "那设备节点目录逐字不在：" + root.absolutePath + "（按 C-05 报缺）")
         }
         val bad = lobos.kernel.sysdev.SysDev.verifyNodes(root)
-        //  全部不合的那几处（不只报第一处，一处不许盖住其余几处）
+
         val all = lobos.kernel.sysdev.SysDev.verifyAllFaults(root)
         return JSONObject().apply {
             put("ok", bad == null)
@@ -227,7 +185,7 @@ object HostControlService {
             } else {
                 put("faultPath", bad.first)
                 put("faultClass", lobos.kernel.sysdev.SysDev.faultName(bad.second))
-                //  报出哪一组 rwx 不一样（Lead 要的那一格）：只在「权限过宽」那一档才答。
+
                 val diff = if (bad.second == lobos.kernel.sysdev.SysDev.NodeFault.TOO_WIDE) {
                     lobos.kernel.sysdev.SysDev.modeDiffOf(bad.first)
                 } else ""
@@ -238,12 +196,6 @@ object HostControlService {
         }
     }
 
-    /**
-     * 九族每族一个产品入口（含 positive 那一侧）。缺陷 C-102：旧版没有能吃到坏输入的入口——公开方法只有 `pieces` / `rollbackJudgement` /
-     *   `pieceEligibility` / `update` / `execCommand` / `execDirect` / `verifyDeviceNodes` / `loadPeSample` / `rollback`，而只有 negative
-     *   （`hostBoundCheck`）、07 取不到 positive 那一读。九族：kmi / lkm / 目标机型 / UART / linker64 / 文件 / 内存 / 安全越权 / 时间；
-     *   处置：每族一个入口（与 `execDirect` 同形）、报原话（C-122/C-123）、不静默（C-126），positive 形状照 M7-05 与 M7-12（C-05），两侧不合并（C-105）。
-     */
     fun hostBoundPositive(context: Context, family: String, input: String): JSONObject {
         val method = "hostBound.positive"
         when (family.trim()) {
@@ -301,14 +253,8 @@ object HostControlService {
         }
     }
 
-    /**
-     * 「看得见装了哪些 app」那一族一个产品入口（即 `app.listInstalled` 那一格）。
-     * 缺陷 C-102：旧版没有单独的产品入口——只有 `crossApp` 兼着（UI 要手打方法名、读数难取）。07 核出：返回体答了那一格（`app.launch`
-     *   的返回里「那仓内清单声明过的那几件是：」后面是空的，即没有一件声明过，应只列 0 件）；「App 自己退到后台」那格也是产品入口问题。
-     * 处置：单一个产品入口、走 `crossApp`（形状已有，「跨 app」经安装方那一路调、安装方有 `GROUP_CROSS_APP`），与 `app.launch` 同形。
-     */
     fun listDeclaredApps(context: Context): JSONObject {
-        //  只列仓内清单声明过的那几件、其余不列（按 C-05 报缺，不静默地少列）
+
         val declared = runCatching {
             lobos.api.CapabilityBroker.live()?.declaredPackages()
         }.getOrNull() ?: emptyList()
@@ -321,12 +267,6 @@ object HostControlService {
         }
     }
 
-    /**
-     * 「跨 app 边界」那一族一个产品入口（是产品那一面的事，不是给程序那族开的后门）。
-     * 缺陷 C-102：旧版在设备上没有可走的路——公开方法里没有 `app.launch` / `app.listInstalled` / `ui.tap`，而这族只能经桥调、
-     *   桥要求会话有 `GROUP_CROSS_APP` 那一档，设备上没有任何一件声明过（按 C-05 报缺）。
-     * 处置：产品入口经安装方那一路调（`INSTALLER_ID` 那族，是产品那一面）；它不是给程序的后门（程序仍要那一档），读数能取到。
-     */
     fun crossApp(context: Context, method: String, params: JSONObject): JSONObject {
         val m = method.trim()
         if (m !in CROSS_APP_METHODS) {
@@ -337,7 +277,7 @@ object HostControlService {
                     "；按 C-05 报缺）",
             )
         }
-        //  一路经安装方那一族调，不是给程序的后门。
+
         val r = runCatching {
             lobos.api.CapabilityBroker.live()?.invokeLocal(
                 lobos.api.CapabilityBroker.INSTALLER_ID,
@@ -348,12 +288,6 @@ object HostControlService {
         return r ?: failure("cross-app", "cross-app", "那宿主桥没起来（按 C-05 报缺）")
     }
 
-    /**
-     * 堆那一格（「那一份在那一堆里待了多久、是不是还在」那一族）。
-     * 缺陷 C-102：旧版只有上限、不答「待了多久」。后果（07 核出）：`Dalvik Heap` 85682 → 188222 → 331053 KB ≈ 323 MB →
-     *   294482 KB ≈ 288 MB；分配量是 139 MB AllocSpace、两个 LOS 对象（69 MB 与 94 MB，一个大对象 55 到 94 MB），那就是「整读」
-     *   的那一件（一份被留在堆里）。
-     * 处置：读法名（`ReadRoute`）记着，记录带读法名与时刻；这一格答「待了多久、是不是还在」，判据不由「那一件是什么」顶掉。 */
     fun memoryProbe(context: Context): JSONObject {
         val rt = Runtime.getRuntime()
         val totalBytes = rt.totalMemory()
@@ -396,9 +330,8 @@ object HostControlService {
         }
     }
 
-    /** 那 kmi 那一族（三选一：来源缺失 / 身份不符 / 解析失败）。 */
     private fun kmiCheck(context: Context, input: String): JSONObject {
-        //  KMI 清单该从哪取：`abi.stg` 是内核的数据（`kmi.html` 与 `lkm.html` 只是网页、不是清单）
+
         val f = java.io.File(input)
         if (!f.exists()) {
             return hostBoundResult("kmi", false, "来源缺失", "那清单逐字不在：" + input + "（按 C-05 报缺）")
@@ -406,7 +339,7 @@ object HostControlService {
         val text = runCatching { f.readText() }.getOrElse { e ->
             return hostBoundResult("kmi", false, "解析失败", e.javaClass.simpleName + ": " + (e.message ?: ""))
         }
-        //  清单的形状：`abi.stg` 每一行一个符号
+
         val lines = text.lines()
         if (lines.isEmpty()) {
             return hostBoundResult("kmi", false, "解析失败", "那清单逐字是空的（按 C-05 报缺）")
@@ -418,7 +351,7 @@ object HostControlService {
         if (syms.isEmpty()) {
             return hostBoundResult("kmi", false, "解析失败", "那清单逐字**一个**符号逐字都**没**解析出来")
         }
-        //  身份核：它是内核的数据
+
         val identity = runCatching {
             f.readLines().firstOrNull { it.trim().startsWith("#") }?.trim().orEmpty()
         }.getOrDefault("")
@@ -437,9 +370,8 @@ object HostControlService {
         )
     }
 
-    /** 那 lkm 那一族（两选一：接口缺失或坏模块）。 */
     private fun lkmCheck(context: Context, input: String): JSONObject {
-        //  模块是什么：`lkm.html` 只是网页、不是清单；模块该是 `.ko` 或模块清单
+
         val f = java.io.File(input)
         if (!f.exists()) {
             return hostBoundResult("lkm", false, "接口缺失", "那模块逐字不在：" + input + "（按 C-05 报缺）")
@@ -452,7 +384,7 @@ object HostControlService {
             }
             return hostBoundResult("lkm", true, "在位", "那目录逐字有 " + mods.size + " 个模块（头一个是 " + mods[0].name + "）")
         }
-        //  坏模块：文件头不成形。
+
         val head = runCatching {
             f.inputStream().use { s -> ByteArray(16) { s.read().toByte() } }
         }.getOrElse { e ->
@@ -469,9 +401,8 @@ object HostControlService {
         return hostBoundResult("lkm", true, "在位", "那模块逐字**是** ELF（它逐字**能**加载）")
     }
 
-    /** 那目标机型那一族（任一不一致）。 */
     private fun targetCheck(context: Context, input: String): JSONObject {
-        //  目标机型是什么：声明那一档；实际那一档取 App 自己的 Build
+
         val declared = input.trim()
         if (declared.isEmpty()) {
             return hostBoundResult("target", false, "答不出", "那声明逐字是空的（按 C-05 报缺）")
@@ -494,9 +425,8 @@ object HostControlService {
         return hostBoundResult("target", true, "一致", "那声明逐字与那实际逐字**一致**（= " + declared + "）")
     }
 
-    /** 那 UART 那一族（两选一：错节点或无输出）。 */
     private fun uartCheck(context: Context, input: String): JSONObject {
-        //  UART 是什么：节点（宿主绑定那族），节点答「坏输入是什么」
+
         val node = input.trim()
         if (node.isEmpty()) {
             return hostBoundResult("uart", false, "无输出", "那节点逐字是空的（按 C-05 报缺）")
@@ -522,9 +452,8 @@ object HostControlService {
             text.lineSequence().first().take(60) + "）")
     }
 
-    /** 那 linker64 那一族（两选一：缺失或坏 ELF）。 */
     private fun linker64Check(context: Context, input: String): JSONObject {
-        //  linker64 是什么：动态链接器
+
         val f = java.io.File(input)
         if (!f.exists()) {
             return hostBoundResult("linker64", false, "缺失", "那 linker64 逐字不在：" + input + "（按 C-05 报缺）")
@@ -542,7 +471,7 @@ object HostControlService {
                 "那文件逐字**不是** ELF（ ELF 魔数逐字不是 7f 45 4c 46、按 C-05 报缺）",
             )
         }
-        //  e_type 在偏移 16（e_ident 之后那两个字节）。
+
         val etype = (head[16].toInt() and 0xff) or ((head[17].toInt() and 0xff) shl 8)
         val kind = when (etype) {
             2 -> "ET_EXEC"
@@ -558,9 +487,8 @@ object HostControlService {
         return hostBoundResult("linker64", true, "在位", "那 linker64 逐字**是** ELF（形态 = " + kind + "）")
     }
 
-    /** 那文件那一族（三选一：越界 / 坏链接 / 不支持操作）。 */
     private fun fileCheck(context: Context, input: String): JSONObject {
-        //  越界：路径逃出 LOB-OS 自己那一份；坏链接：软链指向一个不存在的目标；不支持操作：操作不在白名单里
+
         val path = input.trim()
         if (path.isEmpty()) {
             return hostBoundResult("file", false, "越界", "那路径逐字是空的（按 C-05 报缺）")
@@ -571,14 +499,14 @@ object HostControlService {
         if (canon == null) {
             return hostBoundResult("file", false, "坏链接", "那路径逐字**解不出**那真的一个（按 C-05 报缺）")
         }
-        //  核越界。
+
         if (!canon.path.startsWith(root.path) && !canon.path.startsWith("/data/local/tmp")) {
             return hostBoundResult(
                 "file", false, "越界",
                 "那路径逐字**逃出**那 LOB-OS 自己那一份：" + canon.path + "（按 C-05 报缺）",
             )
         }
-        //  核坏链接。
+
         if (target.isDirectory) {
             return hostBoundResult("file", false, "不支持操作", "那路径逐字是一个目录（按 C-05 报缺）")
         }
@@ -592,9 +520,8 @@ object HostControlService {
             (if (target.length() > 0) target.length().toString() + " 字节" else "空") + "）")
     }
 
-    /** 那内存那一族（两选一：超限不回收或静默失败）。 */
     private fun memoryCheck(context: Context, input: String): JSONObject {
-        //  限额是什么：声明那个数（单位 MB）；实际是什么：App 自己那可用内存
+
         val limitMb = input.trim().toLongOrNull()
         if (limitMb == null || limitMb <= 0) {
             return hostBoundResult("memory", false, "静默失败", "那限额逐字**不是**一个正数（按 C-05 报缺）")
@@ -614,9 +541,8 @@ object HostControlService {
         )
     }
 
-    /** 那安全那一族（越权动作被拒并留审计）。 */
     private fun securityCheck(context: Context, input: String): JSONObject {
-        //  越权：路径逃出 LOB-OS 自己那一份；拒要留审计
+
         val path = input.trim()
         if (path.isEmpty()) {
             return hostBoundResult("security", false, "静默失败", "那路径逐字是空的（按 C-05 报缺）")
@@ -628,7 +554,7 @@ object HostControlService {
         }
         val denied = !canon.path.startsWith(root.path)
         if (denied) {
-            //  拒要留审计（C-122/C-123：要能换回原话）。
+
             lobos.services.log.RuntimeDiagnostics.append(
                 context, "security", false, "越权动作被拒",
                 "path=" + canon.path + "（一族逐字要**留审计**）",
@@ -641,9 +567,8 @@ object HostControlService {
         return hostBoundResult("security", true, "在位", "那路径逐字**在**那 LOB-OS 自己那一份里面（它逐字**不**越权）")
     }
 
-    /** 那时间那一族（两选一：时钟倒退或超时语义不符）。 */
     private fun timeCheck(context: Context, input: String): JSONObject {
-        //  超时是什么：声明那个数（单位毫秒）；时钟倒退：墙上时钟比单调时钟那族慢
+
         val budgetMs = input.trim().toLongOrNull()
         if (budgetMs == null || budgetMs <= 0) {
             return hostBoundResult("time", false, "超时语义不符", "那预算逐字**不是**一个正数（按 C-05 报缺）")
@@ -653,7 +578,7 @@ object HostControlService {
         val busy = runCatching { Thread.sleep(minOf(budgetMs, 2000L)) }.getOrNull()
         val wallDelta = System.currentTimeMillis() - wall0
         val monoDelta = android.os.SystemClock.elapsedRealtime() - mono0
-        //  时钟倒退：墙上时钟那一趟倒了。
+
         val back = wallDelta < 0
         if (back) {
             return hostBoundResult(
@@ -661,7 +586,7 @@ object HostControlService {
                 "那墙上时钟逐字**倒**了：" + wallDelta + "ms（按 C-05 报缺）",
             )
         }
-        //  超时语义：单调时钟那一趟不少于那预算。
+
         val overBudget = monoDelta > budgetMs
         return hostBoundResult(
             "time", !overBudget, if (overBudget) "超时语义不符" else "在位",
@@ -670,7 +595,6 @@ object HostControlService {
         )
     }
 
-    /** 那九族的读数那一格（同形、不静默）。 */
     private fun hostBoundResult(family: String, ok: Boolean, cls: String, detail: String): JSONObject =
         JSONObject().apply {
             put("ok", ok)
@@ -681,8 +605,7 @@ object HostControlService {
 
     fun loadPeSample(context: Context, asset: String): JSONObject {
         val app = context.applicationContext
-        //  缺陷名（C-118）这一支不走桥，它的方法名是 lobos.compat.pe.sample，
-        //  而失败文案里的 method 那一格必须与本支一致。
+
         val method = "lobos.compat.pe.sample"
         val sample = peSamples.firstOrNull { it.asset == asset }
             ?: return failure(method, "pe-sample", "没有这一份 PE L2 样本：" + asset)
@@ -690,7 +613,7 @@ object HostControlService {
             val out = File(app.cacheDir, asset)
             out.parentFile?.mkdirs()
             app.assets.open(asset).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-            //  读法可查（`ReadRoute` 那一族记那一格）。
+
             val bytes = lobos.kernel.fs.ReadRoute.readAll(app, "pe.sample", out)
             val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
@@ -719,12 +642,9 @@ object HostControlService {
         else -> "unknown(0x" + machine.toString(16) + ")"
     }
 
-    /** Formal rollback of one piece to its APK baseline. */
     fun rollback(context: Context, id: String, base: String, requestId: String, dryRun: Boolean): JSONObject {
         val app = context.applicationContext
-        //  缺陷名（C-118）失败结果里的 method 那一格必须写**本次真正调用的那个方法**：
-        //  这一支调的是 client.rollback，所以方法名是 lobos.sys.native.rollback，
-        //  而不能写成 update 那一支的说法。下面每一处 failure 都取本支的 method 变量。
+
         val method = "lobos.sys.native.rollback"
         val pieceId = id.trim()
         val selectedBase = base.trim().ifEmpty { "apk" }
@@ -742,8 +662,7 @@ object HostControlService {
                 protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
             )
             val result = client.rollback(pieceId, selectedBase, correlatedId, dryRun)
-            //  回退成功的判据（01 裁定）：回退之后入口软链的 realpath 与来源记录里记下的
-            //  APK 原件 body 的 realpath 相等。这一格只读，只作核对与诊断。
+
             val verified = if (result.ok && !dryRun) PieceUpdater.verifyApkRestored(app, pieceId) else (false to "未执行真实回退（失败或 dryRun）")
             JSONObject().apply {
                 put("ok", result.ok)
@@ -768,7 +687,6 @@ object HostControlService {
         }
     }
 
-    /** 「跨 app 边界」那一族的三个方法（不给程序那族开后门）。 */
     private val CROSS_APP_METHODS = listOf("app.launch", "app.listInstalled", "ui.tap")
 
     private fun failure(method: String, requestId: String, message: String): JSONObject = JSONObject().apply {

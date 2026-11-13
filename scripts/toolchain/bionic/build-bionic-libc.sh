@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# 编 bionic 的 libc.so（那 loader 那一族与那 libc 那一族那两件的前置）。
-#
-# 这一份逐字记的是那读数归 07 与那产物与那编归 05 那两条线的分界：
-# 读数（设备侧逐字怎么起、产物逐字多大）归 07；
-# 编（怎么编出来）归 05（=> 就是这一份）。
-#
-# 用法：build-bionic-libc.sh <bionic 源码树> <兄弟项目根> <产物落点>
+
 set -euo pipefail
 
 SRC="${1:?用法: build-bionic-libc.sh <bionic 源码树> <兄弟项目根> <产物落点>}"
@@ -24,16 +18,9 @@ ASM="$SYS/aarch64-linux-android"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 INC_DIR="$HERE/include"
 
-# 兄弟项目根（它们逐字是那几族：system/libbase、system/core、system/libziparchive、
-# external/libcxx、external/libcxxabi、external/gwp_asan、external/jemalloc_new、platform/external/libunwind）。
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-#  缺陷名（C-102）那 atomic 那一族逐字在那 bionic 那 bits/stdatomic.h 与那 libc++ 的 <atomic> 之间撞了。
-# 处置：那 bits/stdatomic.h 逐字用那 INC_DIR/bits-stdatomic.h 那一份（那**它**逐字是那**委托**给那 libc++ 的 <atomic> 的那一份）、
-# 那**它**逐字**先**把那**拷贝**到**那**源码树**那一层**（那 INCLUDE/bits/ 底下**那一个**）、
-# 那 INCLUDE 逐字**先**建**好**。
-# 那**拷贝**过**来**的**那**一份**逐字**盖**在**那**源码树**自己**的**那**一份**上**（那**它**们**逐字是**那**两**件**事**：「那**是**什么**」与「那**为什么**要**盖**」）。
 SA="$SRC/libc/include/bits/stdatomic.h"
 if [ -f "$SA" ] && ! cmp -s "$SA" "$INC_DIR/bits-stdatomic.h"; then
   cp "$SA" "$WORK/stdatomic.h.orig"
@@ -42,8 +29,6 @@ fi
 mkdir -p "$WORK/patched/bits"
 cp "$INC_DIR/bits-stdatomic.h" "$WORK/patched/bits/stdatomic.h"
 
-# 那 <bionic/xxx.h> **那一族**逐字**要**那**一个** **bionic/** **那一层**（那**它**们**逐字是**那**两**件**事**：「那**引**的是**什么**」与「那**它**在**哪**一层**」）。
-# 那 bionic 那 libc/platform/bionic 底下**那**几个**头**逐字**在**那**一处**、那**引**的**是**那「<bionic/xxx.h>」。
 mkdir -p "$WORK/patched/bionic"
 for h in "$SRC"/libc/platform/bionic/*.h; do
   [ -e "$h" ] && cp "$h" "$WORK/patched/bionic/"
@@ -52,10 +37,8 @@ trap 'rm -rf "$WORK"' EXIT
 
 INC=(-nostdinc)
 
-# 那**拷贝**过**来**的**那**一份**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（那**它**们**逐字是**那**两**件**事**）。
 INC+=(-isystem "$LIBCXX")
 
-# 那**改过**的**那**一份 bits/stdatomic.h 逐字**要**在**那 bionic **自己**的**那**一份 **之前**（那**它**们**逐字是**那**两**件**事**）。
 INC+=(-I"$WORK/patched")
 for d in \
   "$SIB/libbase/include" "$SIB/libziparchive/include" "$SIB/core/libutils/include" \
@@ -73,18 +56,9 @@ for d in \
   ; do
   [ -d "$d" ] && INC+=(-I"$d")
 done
-# 那 libc++ **那一族**逐字**要**在**那 bionic **自己**的**那** libc/include **之前**（那**它**们**逐字是**那**两**件**事**）。
-# 那 libc++ **那一族** 逐字**可以**在**那 SIB **底下**、那**它**也**可以**在**那 LIBCXX **那一层**（那 work2 与那 work3 **那两**个**根**）。
+
 INC+=(-isystem "$RES" -isystem "$SYS" -isystem "$ASM")
 
-#  缺陷名（C-102）那 atomic 那一族逐字在那 bionic 那 bits/stdatomic.h 与那 libc++ 的 <atomic> 之间撞了。
-# 成因：那 bionic 那 bits/stdatomic.h :153 那一行 = 那「#define atomic_is_lock_free(obj) ...」，
-# 它逐字把那 libc++ 自己的那个函数名拆了（那 libc++ 的 atomic :1166 那一行）。
-# 后果逐字编过的个数上不去。
-# 处置：三步：
-#      (1) 而那 bits/stdatomic.h 逐字先给那 memory_order 那一族（那 :128 到那 :135 那几行）；
-#      (2) 而那几个宏逐字undef 了（那 atomic_is_lock_free 与那几个操作宏）；
-#      (3) 而那 libc++ 的 <atomic> 逐字后给那 std::atomic 那一族。
 echo "[build-bionic-libc] 那 atomic 那一族逐字用那 INC_DIR/atomic-shim.h（三步）"
 
 OBJS=()

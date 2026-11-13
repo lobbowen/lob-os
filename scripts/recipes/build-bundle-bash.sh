@@ -1,26 +1,14 @@
 #!/usr/bin/env bash
-# 编 bash —— 系统的命令解释器，编成 libbash.so 落 $PREFIX/bin/bash。
-#
-# 此前在 build-native-capabilities.sh 里（一个脚本编 7 个件），
-# 于是 APK 链只能整体调它 —— 现场编译。现在每件一个脚本，编完固化，APK 只取用。
+
 set -uo pipefail
-# shellcheck disable=SC1091
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bundle-env.sh" bash
 
-# 版本以钉值表为准，脚本里不再写一份（此前两处各写一遍，不一致时才发现）
 BASH_VER="$(bash scripts/toolchain/fetch-pinned.sh --src-version bash 2>/dev/null || true)"
 [ -n "$BASH_VER" ] || die "钉值表里没有 bash" "scripts/component-sources.json 的 sources.bash"
 
-#  缺陷名（C-102）**那 `--host=` 那一格逐字是写死的那一串、它逐字**没有**那声明侧** ——
-# 旧版逐字是 `--host=aarch64-linux-android`
-#      （目标三元组逐字是**工具链**那一串、**不是**「宿主机器是什么」）
-# 那**三元组**逐字**不许**由那产物倒推（是循环）
-# 那**声明**逐字是那「PC 侧那一个目标三元组」那一份
-# 那**默认**逐字**不变**（那**现有**那一档逐字**照**走）
-# 那**PC 侧**逐字**要**换时逐字**显式**给那 `TARGET_HOST`
 TARGET_HOST="${TARGET_HOST:-aarch64-linux-android}"
-# 那**声明侧**逐字**给**了时逐字**核**那 `--host=` 那一格逐字与那声明**相等**
-#      （不等判红并报出**哪一档**不等、按 C-05 报缺、那**不**猜）
+
 if [ -n "${PC_TARGET_TRIPLE:-}" ]; then
   _decl_host="$(bash scripts/toolchain/pc-target.sh host-flag 2>/dev/null || true)"
   if [ -n "$_decl_host" ] && [ "$_decl_host" != "$TARGET_HOST" ]; then
@@ -37,14 +25,12 @@ bash scripts/toolchain/fetch-pinned.sh --pin bash $WORK/bash.tar.gz \
 echo "[bash] 命中钉值来源，sha256 校验通过"
 
 rm -rf "$WORK/bash-$BASH_VER"
-#  解到 $WORK（不是 /tmp）—— 解到 /tmp 的话下面 cd "$WORK/bash-$BASH_VER"
-#   会进到一个空目录（那是我上一轮漏改的一处）
+
 mkdir -p "$WORK"
 tar -xzf "$WORK/bash.tar.gz" -C "$WORK" || die "bash 解包失败" "sha256 是对的但 tar 解不开"
 [ -d "$WORK/bash-$BASH_VER" ] || die "bash 源码目录名不符" \
   "期望 $WORK/bash-$BASH_VER，实际解出：$(ls -d "$WORK"/bash-* 2>/dev/null | tr "\n" " ")"
 
-# bionic 无termcap：readline 美化路径的 no-op 桩（载荷只走非交互 bash -c）
 cat > $WORK/termcap_stub.c <<'STUB'
 int tputs(const char *s, int n, int (*f)(int)) { (void)s; (void)n; (void)f; return 0; }
 int tgetent(char *bp, const char *name) { (void)bp; (void)name; return -1; }
@@ -75,12 +61,7 @@ STUB
     bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \
     bash_cv_unusable_rtsigs=no > $WORK/bash-configure.log 2>&1 \
     || { echo "=== configure 失败取证 ==="; tail -40 $WORK/bash-configure.log; exit 1; }
-    # 构建期工具（mkbuiltins 等）用宿主编译器编，它们用的是 K&R 老式声明
-  # （mkbuiltins.c:62 `static char *xmalloc (), *xrealloc ();`）。
-  # 现代 clang 默认 gnu17 把 `void f()` 当无参原型，于是报
-  # 「too many arguments to function 'xmalloc'; expected 0」。
-  # 构建期工具走 CFLAGS_FOR_BUILD（builtins/Makefile.in:61 与 :183），
-  # 给它加 -std=gnu89 回到老语义；目标产物仍用原 CFLAGS。
+
   make -j4 bash \
     CFLAGS_FOR_BUILD="-std=gnu89 -O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion" \
     > $WORK/bash-make.log 2>&1 || {

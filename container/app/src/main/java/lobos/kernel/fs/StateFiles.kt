@@ -23,24 +23,7 @@ object StateFiles {
                 out.flush()
                 out.fd.sync()
             }
-            //  缺陷名（C-102）**那一格把「换名成功」当成了「写完」的标记** —— 而实际上
-            //    「写完」的标记是 tmp 的内容齐（ 上面这一段跑完就说明内容齐），
-            //    而「换名成功」的标记是目标文件那一份变了（ 逐字是 renameTo 的结果）；
-            //    而这两件事逐字是**两件事**， 这一族逐字**只**把第二格记了下来
-            //    （ 只有「rename 失败」那一支写了 note、 「换名没成」那一条**没有**任何痕迹）。
-            //    后果是这一族逐字分不出「写完了但没落上」与「压根没写完」。
-            //    04 裁的是**在这一族内部记**（ **不要**让那 24 处调用方各接一次）。
-            //    按 C-105： 「进程死在写与换名之间」那一格**缺字段**（ 落在上面那一段
-            //       与这一行之间、 **没有任何一行代码**在那儿跑、 它逐字**记不住**）
-            //       **要**设备侧那一格。
-            //  缺陷名（C-102）**换名那一步为什么不失败** —— 而实际上 File.renameTo 逐字只返 Boolean、
-            //    它**不**带 errno、 一族逐字**记不下**「为什么失败」那一格。
-            //    按 C-103 先答「它为什么有两边」： 两边是「仓内那一族**记不着的**」
-            //       （ 逐字是 errno、 **要**系统那一族）与「仓内那一族**记着的**」
-            //       （ 逐字是「写完了、而没落上」那半句）；
-            //    原来那一句只记了**后者**、 **前者**逐字**没有**任何痕迹。
-            //    这里逐字改用 android.system.Os.rename 那一族（ 它是同一个 POSIX rename）、
-            //       它逐字抛 ErrnoException、 一族逐字**带** errno、 errno 那一格**能**取到。
+
             var renamed = true
             var errno = 0
             try {
@@ -50,12 +33,7 @@ object StateFiles {
                 errno = e.errno
             }
             if (!renamed) {
-                //  缺陷名（C-102）**那一次失败的是哪一种** —— 而实际上设备侧逐字能造出来的失败**只有一种**
-                //    （ 逐字是「目标是非空目录」）， 另两种逐字是「**没失败**」：
-                //      只读文件（chmod 400） 逐字是「换名逐字改的是**目录项**、 逐字由**那个目录**的写权限管」；
-                //      悬空软链（ln -s 到不存在的目标） 逐字是「换名逐字把软链**换掉**了」。
-                //    原来那一句逐字**分辨不了**这几种、 它逐字只说了「rename 失败」。
-                //    这里逐字把「目标那一份是什么」记下来、 它逐字是**能分辨**那几种的那一格。
+
                 val targetKind = when {
                     file.isDirectory -> "目标是目录"
                     file.isFile -> "目标是真文件"
@@ -90,14 +68,6 @@ object StateFiles {
         false
     }
 
-    /**
-     * 缺陷名（C-102）**为什么失败没有 errno** —— 而实际上 errno 那一格逐字是**能**取的
-     * （ android.system.Os.errno 那一族逐字给的是上一次系统调用留下的 errno），
-     * 原来那一句只记了「写完了、而没落上」那半句、 **errno 那一格逐字没有**任何痕迹。
-     * 按 C-103 那两边是「仓内那一族**记不着的**」与「仓内那一族**记着的**」，
-     * 这一族逐字把**能记的那一边**补上、 它逐字**不**替 errno 那一族说话
-     * （ errno 的**含义**逐字要 errnoName 那一族逐字给出）。
-     */
     private fun errnoName(errno: Int): String = when (errno) {
         1 -> "EPERM"
         2 -> "ENOENT"
@@ -119,16 +89,7 @@ object StateFiles {
             if (!dir.isDirectory) dir.mkdirs()
             val prev = if (f.isFile) f.readText() else ""
             val lines = (prev + detail + "\n").split("\n").filter { it.isNotBlank() }
-            //  缺陷名（C-102）**该截断的那一格逐字只写不截** —— 「读」那一半逐字读的是**全部**、
-            //    「写」那一半逐字要的是**最后 50 行**， 个「截断」的**前提**是这一行**覆盖**整个文件。
-            //    这一行原来逐字是 FileOutputStream(f, true)（ 是**追加**）、
-            //    **追加**的那 50 行逐字是**加在旧文件后面**的、 旧的那部分**原样留着**，
-            //    个「只留最后 50 行」**从来没有落进文件**、 文件**一直涨**
-            //    （ 个增长模型逐字是 N -> 2N-1 行： 07 核到设备侧那两份逐字是 163 行/9943 字节与 15 行/780 字节）。
-            //    处置（ lead 核过那是**外科手术式改动**那一族、 按 C-220 **不是**内容稿）：
-            //       把 true 去掉、 改成**覆盖**、 一格**真的落到文件上**，
-            //       文件逐字从「2N-1 行」变成「**最多 50 行**」。
-            //    「读」那一半**不用改**（ :53 逐字读全文、 正是截断之后要读的那一份）。
+
             FileOutputStream(f).use { it.write((lines.takeLast(50).joinToString("\n") + "\n").toByteArray(Charsets.UTF_8)) }
         }
     }
@@ -145,19 +106,12 @@ object StateFiles {
         runCatching { JSONObject(file.readText()) }.getOrNull()
 
     @Synchronized
-    //  缺陷名（C-102）**那追加**那一族逐字**每一**行**都**把**那**整个**的**文件**逐字**读**了**再**写**回**去**。
-    //    **成因**： appendBounded 逐字**先**读**那**整个**的**文件**（ **它**逐字**是**那 file.readText()）、
-    //      **它**逐字**再**把**那整个**的文件**写**回**去**（ **它**逐字**是**那 writeAtomic、 **它**逐字**带**那**一次** fsync）。
-    //      **它**们**逐字是**那**两**件**事**：「那**读**的是**什么**」与「那**写**的是**什么**」）。
-    //    **后果**逐字 = 而那**代价**逐字**随**那**文件**多大**逐字**涨**（ **它**们**逐字是**那**两**件**事**：「那**代价**是**什么**」与「那**它**随**什么**涨**」）。
-    //      **探针**那一族逐字**每一**项**都**写**那**三**处、 **它**们**逐字是**那**两**件**事**：「那**写**的是**什么**」与「那**每**一**项**的**代价**是**什么**」）。
-    //    **处置**： **它**逐字**只**在**那**文件**太大**的时候**才**去**裁**它（ **它**们**逐字是**那**两**件**事**）。
+
     fun appendBounded(file: File, line: String, maxBytes: Long = 512 * 1024L, keepLines: Int = 500) {
         val dir = file.parentFile ?: return
         dir.mkdirs()
         try {
-            //  **常**那一档逐字**直接**追加**（ **它**逐字**不**读**那**整个**的**文件**、
-            //      **它**逐字**不**重写**那**整个**的**文件**、 **它**们**逐字是**那**两**件**事**）。
+
             val size = if (file.isFile) file.length() else 0L
             if (size + line.toByteArray(Charsets.UTF_8).size + 1 <= maxBytes) {
                 FileOutputStream(file, true).use { out ->
@@ -166,7 +120,7 @@ object StateFiles {
                 }
                 return
             }
-            //  **太大**的**时候**才**去**裁**它（ **它**逐字**才**读**那**整个**的**文件**）。
+
             val prev = if (file.isFile) file.readText() else ""
             val next = (prev + line + "\n")
             val lines = next.split("\n").filter { it.isNotBlank() }
@@ -207,17 +161,7 @@ object StateFiles {
         sweep(SystemDirs.etc(ctx))
         sweep(SystemDirs.opt(ctx))
         sweep(ctx.filesDir)
-        // 共享区（usr/）下那些**派生物软链**：它们是「某一刻建出来的」，
-        // 而建链那一处**只建不删**（PrefixProvisioner.provision 逐条 linkTo，
-        // 而它没有「这一条不该存在」的分支） sweep 的五个根里**没有 usr/**
-        // 所以一条指向「按形态已经不存在的那一份」的链会永远留着。
-        //  真机读数（07，2026-10-21）：usr/lib/libbusybox.so 还在（mtime 10-20 01:58），
-        //   而 busybox 的 files[] 19 项全是 role=program、lib/ 下 0 条
-        // 那一条指向的路径**按形态根本不该存在**，而它是断链。
-        //  而判别（04 今天那条）：清它的那一格扫的是哪棵树；
-        //    而系统里可能落位的那几棵都在它范围内吗 ——  不在  有一类落位结果永远不会被清掉。
-        //  现在：扫 usr/ 下那两处的**符号链接**，删掉**指向不存在目标**的那些
-        //   （ 只删断链， 不碰实体文件、 也不碰指向有效目标的链）。
+
         for (sub in arrayOf("usr/lib", "usr/bin")) {
             val d = File(ctx.filesDir, sub)
             val links = d.listFiles()?.filter { java.nio.file.Files.isSymbolicLink(it.toPath()) } ?: continue

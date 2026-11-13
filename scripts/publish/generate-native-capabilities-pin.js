@@ -11,34 +11,6 @@
 //   => 读取方要求 pin 的**值**里有 tag / zip / sha256 / abi 这四格。
 //
 // 这份文件以前由 .github/workflows/pin-capabilities.yml 产（那时它打的是
-// 「把 jniLibs 里那些 .so 收成一个 zip」的原生件包）。那个 workflow 与它的
-// 指纹脚本 scripts/verify/native-capabilities-fingerprint.sh 都已经删了，
-// 于是 pin 记录只剩历史、没有在产的那一半。本脚本就是补回那一半。
-//
-// 本脚本做什么：
-//   1. 读仓内声明源：.github/native-capabilities.txt（档位表）与
-//      scripts/component-sources.json（每件的 version/installName/entryName）。
-//   2. 用 scripts/toolchain/cache-key.sh 的 tag/asset 子命令算出每一件当前
-//      应有的 release tag 与 asset 名（这两个子命令自己会去读钉值表）。
-//   3. 从 GitHub Releases 下载那一份 asset 与它的 .sha256 边车，
-//      本地实算下载字节的 sha256，与边车逐字比对。
-//   4. 从 zip 里取 component-meta.json 与 piece-shape.json，
-//      并把每一件**每一个文件**的真实字节取出、实算 sha256，与 piece-shape
-//      里记的那一格比对（软链条目单独记账，它存的是链接目标文本）。
-//   5. 写出 .github/native-capabilities-pin.json，每一条 pin 带来源与取证记录。
-//
-// 取不到可核事实的那一条，写成 missing 并附原因，不编 sha256。
-//
-// zip 的读法：本脚本自带一个最小 zip 读取器（只解 stored 与 deflate），
-// 不调 unzip —— 因为 unzip 的 -p 把条目名当通配符，busybox 里那一条
-// 「bin/[」会被当成未闭合的字符组而取不出（实测返回空）。
-//
-// 用法：
-//   node scripts/publish/generate-native-capabilities-pin.js
-//   node scripts/publish/generate-native-capabilities-pin.js --out <路径> --print
-//   node scripts/publish/generate-native-capabilities-pin.js --cache-dir <目录> [--offline]
-//
-// 本脚本不需要任何密钥，也不会签名任何东西。
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -81,13 +53,6 @@ function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
-// 缺陷名（C-102）**把整包读进内存** —— 而这一族它为什么有两边：
-//   一边是「算内容哈希要那一份字节」，
-//   另一边是「读那份字节要一次读多少」。
-// Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
-// 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
-// 处置：哈希流式算；zip 按需读（中央目录从尾部读，条目按偏移读），
-// 而不再把整包当一个 Buffer 拿着。
 function sha256File(file) {
   const h = crypto.createHash('sha256');
   const fd = fs.openSync(file, 'r');
@@ -104,19 +69,6 @@ function sha256File(file) {
   return h.digest('hex');
 }
 
-// 从文件按需读的最小 zip 读取器：只解 stored(0) 与 deflate(8)，够读件包。
-// 与 readZipFile 同一套对外接口，但**不**把整包读进内存：
-//   · 中央目录从文件尾部找 EOCD，按偏移整段读（那一段是目录，不是内容）；
-//   · 条目内容按本地文件头算出的偏移现读现解，只留一个条目。
-// 而 zip64（单包 >4 GiB 或条目数 >65535 时 zip 才写它）也认：
-//   EOCD 里那几格是 0xffffffff/0xffff 时改读 zip64 EOCD；
-//   条目里偏移/大小是 0xffffffff 时改读中央目录的 zip64 扩展字段。
-// 那**容器形态**逐字**按字节**判（判别源唯一：scripts/toolchain/fmt.sh）
-// 那 zip64 那一档逐字**也**认（它逐字是 zip 那一档的中央目录变体、
-// 它逐字要靠尾部哨兵、它逐字**分不出**头四字节）。
-// 那**判别源唯一**这一格逐字**跨语言**：那 shell 侧逐字是 fmt.sh、
-// 那 Node 侧逐字**调**它（那**同一判别式**、文件不是同一份；
-// 一格**归 01**在 S607-01 里再裁一句）。
 function containerFormOf(file) {
   const FMT = path.join(ROOT, 'scripts', 'toolchain', 'fmt.sh');
   if (!fs.existsSync(FMT)) { bad('判别源不在：' + FMT + ' —— 容器判别源必须唯一'); return 'unknown'; }
@@ -125,7 +77,6 @@ function containerFormOf(file) {
   return String(r.stdout || '').trim() || 'unknown';
 }
 
-// 那一份的**头四字节**（它逐字是「那**头**是什么」那一格）。
 function magicOf(file) {
   try {
     const fd = fs.openSync(file, 'r');
@@ -138,7 +89,6 @@ function magicOf(file) {
   } catch (e) { return ''; }
 }
 
-// 那**外层**的中央目录条目数（读不到时逐字是 -1、那 -1 答的是「算不出来」）。
 function outerEntryCount(file) {
   try {
     const z = readZipFile(file);
@@ -148,12 +98,6 @@ function outerEntryCount(file) {
   } catch (e) { return -1; }
 }
 
-// 「外层套内层」那一族：那**内层**那一个件包（按内容挑、零个或多个都判红）。
-// 那**判据**逐字与 scripts/toolchain/fmt.sh 的 fmt_pick_piece **同形**：
-//     1. 先判外层自己是不是那一颗件（它逐字含 component-meta.json 且那 id 逐字等于要取的那一件）；
-//     2. 外层没有才走「外层套内层」（按内容挑内层）；
-//     3. gzip / tar 那一档先解 tar 再走 1. 与 2.。
-// 那**不取第一个**、零个或多个逐字**判红**。
 function pickInnerZip(file, form) {
   const want = path.basename(file).replace(/\.zip$/, '');
   const work = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pin-inner-'));
@@ -163,7 +107,7 @@ function pickInnerZip(file, form) {
     if (outerId) {
       return outerId === want ? { path: file, outerEntries: outerEntryCount(file) } : null;
     }
-    // 那「外层套内层」那一档
+
     const inners = [];
     const walk = (dir, depth) => {
       if (depth > 2) return;
@@ -200,7 +144,6 @@ function pickInnerZip(file, form) {
   }
 }
 
-// 那**外层**（或那解开的 tar）的 component-meta.json 里的 id（没有逐字是空串）。
 function outerMetaId(file, form, work) {
   try {
     if (form === 'gzip') {
@@ -330,14 +273,6 @@ function readZipFile(file) {
   };
 }
 
-// 缺陷名（C-102）**同一条 zip 有两条读法**：原来只有一条 —— 把整包 readFileSync
-// 进内存再解析。而那一条对 >2 GiB 的件直接抛 ERR_FS_FILE_TOO_LARGE。
-// 现在只有一条读法：readZipFile（按需读）。
-// 处置不是「两条并存」，而是把整包在内存里的那一版删掉（C-104：同一类东西不许有第二种生成路径）——
-// 所以下面没有 readZip(buf) 了。
-
-// 下载到文件（**流式落盘**）—— 而不把响应攒成一个 Buffer。
-// 缺陷名（C-102）同族：那一份字节要多大才拿得动。
 function downloadTo(url, dest) {
   return new Promise((resolve, reject) => {
     const go = (u, hops) => {
@@ -404,11 +339,7 @@ async function fetchAsset(tag, asset, cacheDir) {
     await downloadTo(url, zipPath);
     await downloadTo(url + '.sha256', sidePath);
   }
-  // 缺陷名（C-102）**把整包读进内存**（同族第一处：这一行原为
-  // `const zipBytes = fs.readFileSync(zipPath);`）——
-  // Node 24 对单次 readFileSync 超过 2 GiB 直接抛 ERR_FS_FILE_TOO_LARGE，
-  // 而件（llvmtoolchain 那一颗 8414536031 字节）就是那种大小。
-  // 处置：哈希流式算，字节数取 stat，zip 按需读（readZipFile）。
+
   const bytes = fs.statSync(zipPath).size;
   const digest = sha256File(zipPath);
   const sideText = fs.readFileSync(sidePath, 'utf8').trim().split(/\s+/)[0] || '';
@@ -514,16 +445,7 @@ async function main() {
       if (!rec.sha256MatchesSidecar) {
         bad(c.id + '：下载字节的 sha256 与 release 上的 ' + asset + '.sha256 边车不一致');
       }
-      // 那 **sha256** 那一格逐字记的是**哪一层**（Lead 那一裁逐字「pin 记内层 zip
-      //     + 显式 outerSha256 + sidecarLayer（同层才比）」）：
-      //     · 而那**外层**那一份的 sha256 逐字是那**下载**下来那一份的（已记在 outerSha256）；
-      //     · 而那**内层**那一个件包的 sha256 逐字**另外**算（那 sha256 那一格逐字记它）；
-      //     · 而那 sidecarLayer 逐字记的是「那 sha256 记的是哪一层」。
-      // 那**边车**（.sha256）逐字是那**下载**下来那一份的（是**外层**）
-      // 所以「同层才比」这一条逐字是：边车逐字比**外层**（已核过、
-      // 那 sha256 那一格逐字是内层、两者逐字**不是同一层**、
-      // 那**不**能互相顶替）。
-      // 那 sha256MatchesSidecar 那一格逐字答的是「那**外层**逐字对不对得上边车」。
+
       rec.sha256Layer = 'inner';
       rec.innerSha256 = real;
       // 那**容器形态**逐字**按字节**判（判别源唯一：scripts/toolchain/fmt.sh）
@@ -542,10 +464,7 @@ async function main() {
       const zipPathForFacts = inner ? inner.path : got.zipPath;
       const zip = readZipFile(zipPathForFacts);
       // 那 **sha256** 那一格逐字**按层**给（Lead 那一裁逐字「pin 记内层 zip
-      //     + 显式 outerSha256 + sidecarLayer（同层才比）」）：
-      //     · 而那**内层**那一个件包逐字**另外**算 sha256（那 sha256 那一格逐字是它）；
-      //     · 而那**外层**那一份逐字是那**下载**下来那一份的（已记在 outerSha256）；
-      //     · 而那 sidecarLayer 逐字记的是「那 sha256 记的是哪一层」。
+
       if (inner) {
         rec.sha256 = sha256File(inner.path);
         rec.innerBytes = fs.statSync(inner.path).size;
@@ -590,9 +509,7 @@ async function main() {
       // 那**形态**逐字由那件包的**入口**答（那 entry 逐字带 `bin/` 或 `lib/` 前缀）。
       // 那 01 裁的 S606-01-ALIAS-BIN-KEY-RULING.md §9.1 逐字：
       //     「llvm 那一件的 capsEntryKind 逐字应是 program，它的 capsLibName 逐字应是 bin/clang
-      //       （件包内相对路径），**不是** clang（裸名）」
-      // 那**裸名**那一档逐字**不报**（档位表第二列逐字若**不带**前缀、
-      // 它逐字**就是**裸名、程序形态那一族逐字**该**改成带前缀）。
+
       const entryKind = rec.entryInArtifact
         ? (rec.entryInArtifact.startsWith('lib/') ? 'library' : (rec.entryInArtifact.startsWith('bin/') ? 'program' : 'unknown'))
         : (rec.kind === 'library' ? 'library' : (rec.kind === 'program' ? 'program' : 'unknown'));
@@ -604,13 +521,7 @@ async function main() {
       // 一格逐字**不是**「程序形态相对路径」那条**普遍规则**
       //     （Lead 判：busybox 那一件逐字是**程序形态**、
       // 它逐字**真的提供** libbusybox.so 那个字节
-      //       （它逐字 programs 里有 bin/libbusybox.so + 29 条软链））。
-      //01 裁的 S606-01 §9.1 逐字那句「llvm 那一件……逐字应是 bin/clang」逐字**只**关于 llvm 那一件
-      //     （一件逐字**没有** clang 那个字节、它逐字提供的是 bin/clang）。
-      // 一格逐字**能不能在件包里命中**才是那一族「档位表与产物分家」那一格：
-      // 那 capsLibNameFoundInArtifact 逐字是 false 时、那**档位表第二列与产物对不上**
-      //       逐字**报出来**（按 C-05「缺字段就报缺、不许猜填」、
-      // 一格逐字**不许**越权去改那档位表）。
+
       rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
       if (!rec.capsLibNameFoundInArtifact) {
         bad(c.id + '：档位表第二列逐字是 ' + c.capsLibName +
@@ -629,7 +540,6 @@ async function main() {
     perPiece.push(rec);
   }
 
-  // 每一条能取到事实的，写成一条 pin（键是这一件的指纹，值里有 tag/zip/sha256/abi）。
   for (const rec of perPiece) {
     if (rec.missing) continue;
     const fp = fingerprintOf(rec);
@@ -638,7 +548,7 @@ async function main() {
       tier: rec.tier,
       capsLibName: rec.capsLibName,
       // 那 **capsEntryKind** 那一格（按 C-979 逐字「另加一格 capsEntryKind
-      //     （library / program）标明形态」）它逐字答「这一件是哪一形态」。
+
       capsEntryKind: rec.capsEntryKind,
       // 那 capsLibName 逐字**是不是裸名**那一格（程序形态逐字该是件包内相对路径）。
       capsLibNameIsBare: rec.capsLibNameIsBare,

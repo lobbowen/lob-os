@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ===== 2026-10-17 降级为报告（Lead 裁定）=====
-# 原为判红门禁。现降级：真防线是安装器 ——
-# 装不上时安装器当场报 INSTALL_FAILED_UPDATE_INCOMPATIBLE，
-# 而「证书指纹是否等于锚点」只是【配置是否生效】的旁证。
-# C-22b：报错必须分清「已坏」与「证据不足」。
-#   本脚本只对【已坏】判红；【证据不足】一律 warning + exit 0。
-
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APK="${1:-}"
 shift || true
@@ -32,7 +25,6 @@ if [ -n "$EXPECT_CERT" ] && [ ! -s "$EXPECT_CERT" ]; then
   exit 1
 fi
 
-# 不吞 stderr：pick.sh 零命中时会打 warning 说明 find 为什么没命中
 APKSIGNER="$(bash "$HERE/pick.sh" --allow-empty --last apksigner \
   "${ANDROID_HOME:-/nonexistent}/build-tools" -name apksigner -type f || true)"
 [ -n "$APKSIGNER" ] || APKSIGNER="$(command -v apksigner || true)"
@@ -85,7 +77,7 @@ IS_DEBUG=0
 case "${DN,,}" in (*"android debug"*) IS_DEBUG=1 ;; esac
 
 if [ -n "$EXPECT_CERT" ]; then
-  # 锚点指纹：优先 keytool（注入侧就是它导出的证书，同一工具链最可比），退 openssl。
+
   CT=""
   if command -v keytool >/dev/null 2>&1; then
     CT="$(keytool -printcert -file "$EXPECT_CERT" 2>/dev/null || true)"
@@ -103,8 +95,7 @@ if [ -n "$EXPECT_CERT" ]; then
   fi
   echo "[lobos-signing] [ok] APK 证书指纹与注入锚点一致（${EXPECT_CERT##*/} = $FP）"
   if [ "$REQUIRE_STABLE" = "1" ] && [ "$IS_DEBUG" = "1" ]; then
-    # 一致只证明「签名配置生效」，不证明「这把 key 是稳定的」。发布链路两个都要：
-    # 有人会把本地 debug keystore 灌进 ANDROID_KEYSTORE_BASE64，那等于没配。
+
     echo "::error title=发布包是 debug 签名::锚点虽一致，但它本身就是 Android Debug 身份 —— 换 keystore 后存量设备照样装不上。"
     exit 1
   fi

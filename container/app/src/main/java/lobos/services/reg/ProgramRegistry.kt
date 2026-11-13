@@ -114,20 +114,7 @@ object ProgramRegistry {
         val invalid = when {
             schemaErrors.isNotEmpty() -> schemaErrors.first()
             !entryFile.exists() -> "入口不存在：" + entryFile.absolutePath
-            // **缺陷名（C-102）运行期探测形态**：这一支原来是一段形态判定
-            // `!lobos.kernel.elf.ExecBits.isRunnableByForm(entryFile) ->`，读那份字节的
-            // e_type（ET_EXEC / ET_DYN）与 PT_INTERP，由运行期自己算「这是不是程序」。
-            // 它在这里已经经历过三代：1. ExecBits.isRunnable（含 owner 执行位）；
-            // 2. 换成 isRunnableByForm（只问形态）以与 PieceScan 对齐；3. 本次整支删除。
-            // 前两代都是为了消解「两把尺并存」这一症状；症状的根因是这一问本身不该在运行期问 ——
-            // 形态是构建期就知道的事（用户第一行规则），落位目录是构建期定的（第二行规则）。
-            //
-            // 删掉之后这一支的判据回到「清单声明的 entry 与落位结果是否一致」，
-            // 而 entry 本身由 gen-component-meta.js 从落位结果算出（构建期），运行期只读。
-            //
-            // 后果据实写出（不推断）：一个程序的 entry 若在构建期被算成一个共享库形态的文件，
-            // 这一处今天**不再**能拦住 —— 那个保证已经移到构建期（算错即判红退出）。
-            // 若要保留运行期这一道拦截，就等于把形态探测放回来，与第三行规则冲突。
+
             else -> null
         }
         val note = if (args == null) "清单未声明 args：按空参数启动（需要子命令的程序会打印用法并退出，请安装携带 args 的新包）" else null

@@ -64,4 +64,3 @@ Java_lobos_kernel_compat_LobosEnv_nativeGetenv(JNIEnv *env, jclass cls, jstring 
     (*env)->ReleaseStringUTFChars(env, k, ck);
     return r;
 }
-

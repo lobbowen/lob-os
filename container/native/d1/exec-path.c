@@ -19,14 +19,6 @@ static void bind_real(void) {
   if (!real_access) real_access = (int (*)(const char *, int))dlsym(RTLD_NEXT, "access");
 }
 
-// -- 系统视图注入 ----------------------------------------------
-// 宿主（OsHostService）把自己的环境设成系统视图。
-// 每个 Lob OS 起的进程都从 execve 出去，所以在这里合并一次，
-// 而不是让每个调用方（程序宿主 / shell.exec / 终端）各自拼一遍。
-//
-// 契约：envp 里缺、但 environ 里有且属于系统视图的键，补进 envp。
-// envp 里显式给了的，不覆盖 —— 显式优先。
-
 static char *lobos_sysenv_cache = 0;
 
 static const char *lobos_sysenv_path(void) {
@@ -87,15 +79,6 @@ static int env_has(char *const envp[], const char *k) {
     return 0;
 }
 
-//  缺陷名（C-102）**那 env 风格那 shebang 里的 VAR=VALUE 逐字被丢了** ——
-//    它治**的**是「那 shebang 逐字**指定**的**那环境**逐字**到不**到**那**孩子**的**环境**」。
-//    **成因**： execve **那一族**逐字**跳过**那 VAR=VALUE **那些**记号（ :391 那一行）、
-//       **它**们逐字**只**被**跳过**、 **它们**逐字**没有**进**那 envp**。
-//    **后果**逐字**是**： npm **那一件**的**那个** wrapper 逐字**走**那 /usr/bin/env **那一条**路、
-//       **它**逐字**先**把**那 LD_LIBRARY_PATH **换**成**它自己**那一个（ **它**逐字**盖掉**了**那**宿主**给的**那一个**）、
-//       node **那一件**逐字**链不**上**那库**、 **它**逐字**挂**在**那**那一步**。
-//    **处置**： VAR=VALUE **那些**记号逐字**按**那 env **那一族**的**语义**进**那 envp**。
-//    按 C-104： env 风格那 shebang 逐字**只有**一条**路**（ 这一支**就是**它**）。
 static char **env_put(char *const envp[], const char *kv) {
   size_t n = 0;
   while (envp && envp[n]) n++;
@@ -237,13 +220,7 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
         unsigned long long strtab_off = 0;
         unsigned long long strsz = 0;
         unsigned long long parsed = 0, escaped = 0, dropped = 0;
-        /* 两遍，不依赖排列顺序。
-         * 单遍顺序扫描曾假设「DT_STRTAB 排在 DT_NEEDED 之前」—— 真实 .dynamic 里
-         * STRTAB 常在最后（readelf -d libcurl.so：NEEDED 在 line 4-8，STRTAB 在 line 24）。
-         * 那一版于是：合法依赖一条都读不出（strtab_off 还是 0 就被 continue），
-         * 却继续把 STRTAB 之后的非动态数据当 tag/val 解释，拿其中的字节当「偏移」
-         * 去 dynstr_at 读 .dynstr 之外的 255 字节 → 任意二进制 → NewStringUTF abort。
-         * 判据：修好后 libcurl.so 必须读出 libssl/libcrypto/libz/libdl/libc 五条。 */
+
         for (o = 0; o + 16 <= dynsz; o += 16) {
             unsigned long long tag = (unsigned long long)dyn[o] | ((unsigned long long)dyn[o+1] << 8)
                 | ((unsigned long long)dyn[o+2] << 16) | ((unsigned long long)dyn[o+3] << 24)
@@ -262,12 +239,7 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
             snprintf(out, cap, "no-DT_STRTAB parsed=0 escaped=0 dropped=0");
             return -1;
         }
-        /* DT_STRSZ 缺失或为 0 时**判错，不兜底**。
-         * 兜底不是安全的代名词：曾用 strsz=dynsz 兜底，那等于「用一个错的窗口大小放行越界」——
-         * 没有兜底时 val>=strsz 会因 strsz=0 而全部跳过（安全但无用），
-         * 有兜底反而读到 .dynstr 之外，正是本次崩溃的同一个形态。
-         * 实测（本机 719 个带 PT_DYNAMIC 的 .so）：无一缺 STRSZ，故此路为纵深防御；
-         * 但读不可信输入时不能假设它守规范。停下来说明「读不出」比用错的边界继续读诚实。 */
+
         if (strsz == 0) {
             close(fd);
             snprintf(out, cap, "no-DT_STRSZ parsed=0 escaped=0 dropped=0");
@@ -285,7 +257,7 @@ static int lobos_needed(const char *path, char *out, size_t cap) {
             const char *s;
             if (tag == 0) break;
             if (tag != 1) continue;
-            /* 夹在 DT_STRSZ 里：越界即丢弃，绝不去读 .dynstr 之外的字节。 */
+
             if (val >= strsz) { dropped++; continue; }
             s = dynstr_at(path, strtab_off + val);
             if (s == 0) { dropped++; continue; }
@@ -387,8 +359,7 @@ static int exec_with(const char *exe, const char *script, char *const argv[], ch
 }
 
 int execve(const char *path, char *const argv[], char *const envp[]) {
-  // 系统视图合并：一次，所有走 execve 的进程都拿到。
-  // envp 为 NULL（execv 用 environ）时直接用 environ —— 那已含宿主环境。
+
   if (envp) {
     char **merged = env_merge_sys(envp);
     if (!merged) return -1;
@@ -406,8 +377,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
     int cmd = 1;
     int envStyle = strcmp(disp0, "env") == 0;
     if (envStyle) {
-      //  缺陷名（C-102）**那 VAR=VALUE 那些记号逐字被丢了** —— 而而那**它们**逐字**要**进**那 envp**。
-      //    **处置**： **它们**逐字**并**进**那 envp**（ **显式**给的**优先**、 **后**给的**盖掉**前面**的**）。
+
       while (cmd < ntok && strchr(tok[cmd], '=')) {
         char **merged = env_put(envp, tok[cmd]);
         if (!merged) return -1;
@@ -436,19 +406,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
       int et = 0;
       int ac = 0;
       while (argv && argv[ac]) ac++;
-      /* 缺陷（C-102）**重复替换：已替换过的 argv 又被替换一次**。
-       *  真机读数（07，logcat）：四条 Cmdline 同形 = /system/bin/linker64 /system/bin/linker64 …
-       *  —— linker64 出现两次。linker64 自己也是 ET_DYN，所以当 path 已经是它时，
-       *  这一支再套一层 linker64 把自己当程序加载 call_constructors → libc 初始化链崩
-       *  （kill-audit 记 desc=null pointer dereference）。
-       *
-       *  这一支**不能删**：宿主侧 ExecEntry.argv 已经替过的进程走不到这里（它直接 execve），
-       *  而经 LD_PRELOAD 注入的 execve 若不在这儿替，argv[0] 不是 linker64 的 ET_DYN 就起不来。
-       *
-       *  真机八件读数（07）：bash / jq / ripgrep = DYN(PIE)；curl / openssl / crypto / zlib 的
-       *  .so = DYN(共享目标文件)；busybox = EXEC —— 八件里唯一不是 DYN 的，本来就不经这一支。
-       *  而今天崩的两件 bash / ripgrep 都是 DYN(PIE)，正好落在门内。
-       * 门条件 = etype==ET_DYN **且** path 不是 SYSTEM_LINKER 本身。 */
+
       if (read_etype(path, &et) && et == 3 &&
           !(path && strcmp(path, LOBOS_SYSTEM_LINKER) == 0)) {
           char **na = (char **)malloc((ac + 3) * sizeof(char *));
@@ -525,4 +483,3 @@ Java_lobos_kernel_compat_PieceInspect_nativeNeeded(JNIEnv *env, jclass cls, jstr
     (*env)->ReleaseStringUTFChars(env, path, p);
     return out;
 }
-

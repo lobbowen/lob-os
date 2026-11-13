@@ -1,44 +1,12 @@
 #!/usr/bin/env bash
-# 源码指纹的完整性判据 —— 每一件的 src 指纹**是不是它自己那些文件的聚合**。
-#
-# 缺陷名（C-102）**指纹那一族取错了输入** ——
-#   而 06 今天实测（2026-10-25）：pkgconf / make / cmake / npm / pnpm / llvmtoolchain 那六件
-#   在 cache-key.sh 那个 case 里**没有自己的条目**、全落 *) SRC_FILES="" ;; 那一行，
-# 它们的 src 指纹于是**只**由 PKG_MECH 那三个文件算出来，
-# 六件的 src 段**逐字相同**（实测是 src9251ee997f11）。
-# 后果：**改那六件任何一件的 recipe，它们的指纹一律不变**
-# 取件会取到**旧字节**（release 上那个名字没变）。
-#
-# 而这一条与 2026-10-16 那一条**不是同一族**：
-#   · 那一条查的是「有没有东西**压根没算出来**」（是空输入的哈希 e3b0c44298fc）；
-#   · 这一条查的是「**算出来的那个值是不是这一件自己的**」（是「取错了输入」）。
-# 按 C-135 那是两问，这一条核的是第二问。
-#
-# 判别形式（可机械核，三条）：
-#   一，**每一件**自己的 SRC_FILES **非空**；
-#   二，**每一件**算出来的 src 段**互不相同**（「字节同源」的那一对是**预期**，不判重）；
-#   三，**改**某一件自己的 recipe =>**那一件**的 src 段**要变**
-#      （这**要改一次仓**才能核，今天本条**不**核它，它留给 CI 那一步）。
-#
-# 而**为什么必须独立于 cache-key.sh 自身**：
-#   一个值「算对了」与「**压根没算自己那份**」在输出上都是 12 位十六进制，格式上不可区分。
-# 本条**只**用 cache-key.sh 当**被核对象**，它**不**复用 cache-key.sh 的内部算法
-# 它**自己**按 cache-key.sh:188 那一行的算法重算一遍「它自己那些文件的聚合」再逐字比。
-#
-# 用法：bash scripts/verify/check-src-fingerprints.sh
+
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-# 字节同源的件：它们**应当**同指纹（它们**不**判重）。
-# crypto 的 libcrypto.so 是从 openssl 的包里拆出来的（build-crypto.yml 逐字是 unzip dist/$OASSET），
-# 而 openssl 的 recipe 只被它自己 SRC_FILES 收录 —— 若不给 crypto 同一份，
-# 「改了 openssl 而 crypto 没变」就会被漏掉。
 SAME_SOURCE="crypto:openssl"
 
-# 本条核的件：base 筐那 8 件 + tool 与 rt 筐那 6 件。
-# node **不**在其中（用户 2026-10-16 逐字「node 不要修，node 是不能修的，是后期要用来验证的」）。
 TOOLS=(zlib openssl crypto curl jq bash ripgrep busybox git python sqlite pkgconf make cmake npm pnpm llvm)
 
 declare -A PAIR_OF
@@ -47,7 +15,7 @@ declare -A OWN_HASH_OF
 BAD=0
 
 for t in "${TOOLS[@]}"; do
-  # 一、**它自己那一份**的 SRC_FILES 是什么（那**不**经过 cache-key.sh，是从那一行逐字读出来的）
+
   own=""
   case "$t" in
     busybox) own="scripts/recipes/build-native-busybox.sh" ;;
@@ -73,26 +41,24 @@ for t in "${TOOLS[@]}"; do
     echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
-  # 二、**自己**按 cache-key.sh:188 那一行的算法重算一遍「它自己那些文件的聚合」
+
   ownhash=""
   ownhash="$(git ls-files $own 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
-  # 三、**cache-key.sh 那个 case 里它自己那一条在不在**（那**才是**「取错了输入」那一族）
-  # 那**必须**从那一行**逐字**读出来（不能用本条自己算的值替代它）
+
   if ! grep -qE "^  $t\) +SRC_FILES=\"" scripts/toolchain/cache-key.sh; then
     echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
-  # 四、**cache-key.sh 算出来的那一个**是不是上面那一个（那**该**含 PKG_MECH，所以本条核的是**它自己那部分**在不在）
+
   got="$(bash scripts/toolchain/cache-key.sh key "$t" 2>/dev/null | grep -oE 'src[0-9a-f]{12}' | head -1)"
   if [ -z "$got" ]; then
     echo "::error title=算不出 src 段::$t —— 而 cache-key.sh 没有给出 12 位十六进制"
     BAD=$((BAD+1)); continue
   fi
-  # 而**它自己那一份**的聚合**不**该等于**全件**的聚合（是两件事，这里只记下它自己那一份）
+
   OWN_HASH_OF["$t"]="$ownhash"
 done
 
-# 二、**互不相同**（「字节同源」的那一对是**预期**，不判重）
 for t in "${TOOLS[@]}"; do
   h="${OWN_HASH_OF[$t]:-}"
   [ -n "$h" ] || continue

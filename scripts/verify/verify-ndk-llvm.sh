@@ -36,27 +36,7 @@ if [ "$GOT_NDK" != "$WANT_NDK" ]; then
 fi
 
 CLANG=""
-# 缺陷名（C-102）**这一格在 CI 上答不了** —— 而而那一档随 bash 版本变：
-# 本机 bash 5.3.9：一个**设过的空串**在 `[ -z "$X" ]` 与命令名位置上**都正常**；
-# CI 那个 bash（ubuntu-24.04 那一版）**报**「CLANG: unbound variable」。
-# 那**不是**「CLANG 没被赋值」（它**是**设过的、它**是空的**），
-# 那**不是**「找不到 clang」，报出来的是「变量没定义」——两件事不一样。
-# **处置**：这一格全部用 \${CLANG:-} 那一档（它在**未定义**时也答空、
-# 在 set -u 下**不报** unbound，它在哪个 bash 版本上都是同一个语义）。
-# 一格该做的是**报缺**（按 C-05 报缺不猜填），在下面那一句。
-# 缺陷名（C-102）**找 clang 的那一处与上游那一处用的不是同一个名字** ——
-# 而这一处逐字是 `for c in "$NDK"/toolchains/llvm/prebuilt/*/bin/clang`，
-# 找的是**通用** clang（叫 `clang`）；
-# NDK 里那个叫 `aarch64-linux-android35-clang`（**带三元组前缀**），
-# locate-ndk.sh:49 逐字是 `CC="$TC/aarch64-linux-android35-clang"`，
-# 它**找得到**（CI 那一趟 step 4 逐字是「[ndk] clang: Android (16134705, …) clang version 21.0.0」）。
-# 所以这一处的 CLANG **一直是空的** =>`set -u` 下一行就炸
-# =>报出来的是「CLANG: unbound variable」而不是「NDK 里找不到 clang」。
-#
-# **处置**：这一处**从 CC 反推**（CC 是 locate-ndk.sh 注入的那一个，
-# 它**就是**那一个真能找到的 clang，两处**同源**）。
-# CC 没有时**才**退回那一个 glob（找的是通用 clang，
-# 有些 NDK 确实有它，不是错的、只是**另一条**路）。
+
 if [ -n "${CC:-}" ] && [ -f "$CC" ]; then
   CLANG="$CC"
 fi
@@ -67,20 +47,7 @@ if [ -z "${CLANG:-}" ]; then
 fi
 [ -n "${CLANG:-}" ] || die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
-# 缺陷名（C-102）**在**命令名位置**展开变量，而 `set -u` 在那一档的语义随 bash 版本变**：
-# 本机 bash 5.3.9 那一档：一个**设过的空串**在命令名位置**不报** unbound（它跑空命令、空命令成功）；
-# CI 那个 bash（ubuntu-24.04 那一版）**报**「CLANG: unbound variable」。
-# 那**不是**「CLANG 没被赋值」（:38 逐字是 CLANG="",它是设过的），
-# 是「**在命令名位置**展开」这一档。
-#
-# **处置**：用 command（让那个展开落在**参数位置**而不是命令名位置，
-# 一档在哪个 bash 版本上都是同一个语义）。
-#
-# 而**空值**那一档也要自己挡（才是 CI 上真正报出来的那一句）：
-# `command "${CLANG:-}" --version` 在 CLANG **是空的**时，command 后面跟的是**空串**，
-# 个 bash（ubuntu-24.04 那一版）按 `set -u` 报「CLANG: unbound variable」；
-# 一句该做的是**报缺**（按 C-05 报缺不猜填），**不**该让 `set -u` 替它报
-# （报出来的是「变量没定义」而不是「找不到 clang」）。
+
 if [ -z "${CLANG:-}" ]; then
   die "证据不足：NDK 里找不到 clang" "找 $NDK/toolchains/llvm/prebuilt/*/bin/clang 没找到" \
   "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"

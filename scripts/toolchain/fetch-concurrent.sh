@@ -1,28 +1,16 @@
 #!/usr/bin/env bash
-#  从一个 URL **小片并发**地取件（它逐字核「got == expect」与「unzip -t 通过」那两格）。
-#
-#  缺陷名（C-102）**那取件那一族逐字按整份下、它逐字慢** ——
-# 旧读法逐字是 `curl -fsSL -o "$DEST/$ASSET" "$URL"`（它逐字**整份**下）
-# 那 GitHub blob 那一侧逐字 4.6 MB 逐字要 4m39s ≈ 17 KB/s
-# 那**处置**：它逐字**小片并发**（每片逐字 1 MiB、并发逐字 16）
-# 那**完整性**那一格逐字**不**降（它逐字核「got == expect」与「unzip -t 通过」）
-# 那**性能**那一格逐字**另**有一格（依 C-104 那两族逐字**不并**）
-#
-#  用法：fetch-concurrent.sh <url> <目标文件> <期望字节数>
-# 期望字节数逐字**要**给（它逐字**从**那 Release 资产那一格读、**不**猜）
+
 set -uo pipefail
 
 URL="${1:?需要 url}"
 DST="${2:?需要目标文件}"
 EXPECT="${3:?需要期望字节数}"
 
-CHUNK="${CHUNK_BYTES:-1048576}"     #每片逐字 1 MiB
-CONC="${CONCURRENCY:-16}"           #并发逐字 16
+CHUNK="${CHUNK_BYTES:-1048576}"
+CONC="${CONCURRENCY:-16}"
 PARTDIR="$(mktemp -d)"
 trap 'rm -rf "$PARTDIR"' EXIT
 
-# 那**期望值**逐字**从**那被核的那一件逐字**自己**读（它逐字**不**由那产物倒推）
-# 它逐字**不**是一个正数时逐字**报缺**（按 C-05 不猜填）
 case "$EXPECT" in
   ''|*[!0-9]*) echo "报缺：那期望字节数逐字不是一个数：$EXPECT" >&2; exit 2 ;;
 esac
@@ -30,7 +18,6 @@ esac
 
 nchunks=$(( (EXPECT + CHUNK - 1) / CHUNK ))
 
-# 那**每一片**逐字**并发**地取（它们逐字**各自**一个文件、它们逐字**不**互相干扰）
 pids=""
 for i in $(seq 0 $((nchunks-1))); do
   off=$((i * CHUNK))
@@ -42,12 +29,11 @@ for i in $(seq 0 $((nchunks-1))); do
       -o "$PARTDIR/part.$(printf '%05d' "$i")" "$URL" 2>/dev/null
   ) &
   pids="$pids $!"
-  # 并发逐字**有**个上限（它逐字**不**开太多、机器**不**被打爆）
+
   while [ "$(jobs -rp | wc -l)" -ge "$CONC" ]; do sleep 0.05; done
 done
 for p in $pids; do wait "$p" 2>/dev/null || true; done
 
-# 那**完整性**第一格：那**字节数**逐字**等于**那期望值
 got=0
 for f in "$PARTDIR"/part.*; do
   [ -f "$f" ] || continue
@@ -58,14 +44,11 @@ if [ "$got" != "$EXPECT" ]; then
   exit 1
 fi
 
-# 那**拼**回来（它逐字**按**那**序号**排**的、它逐字**不**按那目录顺序）
 : > "$DST"
 for f in $(ls -1 "$PARTDIR" | sort); do
   cat "$PARTDIR/$f" >> "$DST"
 done
 
-# 那**完整性**第二格：那**容器**逐字**能**解开（那 unzip -t 那一格）
-# 那**不是** zip 时逐字**不**判、那**别的**容器那一族**归**它自己的检查
 case "$(head -c 2 "$DST" | od -An -tx1 | tr -d ' \n')" in
   504b)
     unzip -t "$DST" >/dev/null 2>&1 || {

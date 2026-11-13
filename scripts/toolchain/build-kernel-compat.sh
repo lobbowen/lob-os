@@ -1,21 +1,5 @@
 #!/usr/bin/env bash
-# 编内核的兼容性垫片 —— 四个我们自己的 C，随源码走、随 APK 走。
-#
-# 与「件」的区别（这是为什么它们不再走 build-bundle-*.sh）：
-# · 不生成 component-meta.json
-# · 不铺位到 usr/lib/<id>/<版本>/、不建全局软链、不进件清单
-# · 只有一个版本，永不 OTA 替换 —— 它们是内核的一部分，不是可替换的外部软件
-#
-# 产物直接进 container/app/src/main/jniLibs/arm64-v8a/，由
-# kernel/compat/Compat.kt 按名字定位。
-#
-# 不要 source scripts/recipes/bundle-env.sh：
-# 那个是**给件准备的** —— 它要求传件名、会 cd 到仓根、定义 land_piece/gen_meta
-# 并按件的形状落位。垫片三样都不要；而且它开头 `${1:?用法: source
-# bundle-env.sh <件名>}` 在没传参时直接 exit 1 —— 曾经让 APK 构建在这里挂掉
-# （而 CC 其实由 CI 注入，压根用不着它）。
-#
-# 垫片需要的只有编译器。CC 由 CI 注入；本地没有就跑 locate-ndk.sh。
+
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,7 +12,6 @@ WORK="$ROOT/work/kernel-compat"
 
 die() { echo "::error title=$1::$(printf '%s\n' "${@:2}")" >&2; exit 1; }
 
-# 编译器：CI 注入了就用，没注入就自己定位（locate-ndk 会写 GITHUB_ENV）
 if [ -z "${CC:-}" ]; then
   [ -f "$ROOT/scripts/toolchain/locate-ndk.sh" ] \
     || die "缺编译器" "环境里没有 CC，也没有 scripts/toolchain/locate-ndk.sh"
@@ -46,7 +29,6 @@ fi
 
 mkdir -p "$OUT" "$WORK"
 
-# 至少是这个字节数的 ELF
 so_ok() {
   local f="$1" min="$2" sz
   [ -f "$f" ] || { echo "!! 没产出：$f" >&2; return 1; }
@@ -56,7 +38,6 @@ so_ok() {
 
 CFLAGS="-O2 -fPIC"
 
-# -- posix：LD_PRELOAD 垫片（路径与链接语义兜底）----------------------
 "$CC" -shared $CFLAGS \
   container/native/d1/link-interpose.c \
   container/native/d1/open-fallback.c \
@@ -71,19 +52,6 @@ so_ok "$WORK/liblobosposix.so" 500
 cp -f "$WORK/liblobosposix.so" "$OUT/liblobosposix.so"
 echo "  ✓ posix      → liblobosposix.so"
 
-
-# -- ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）------------
-# 动态链接，不带 -static：
-# 静态链接时 libc 整份链进去，fork 之后的 execv 不走 PLT、不查符号表，
-# LD_PRELOAD 那套 execve 覆盖对它无效 → env_merge_sys 从来没被调过。
-# 而 linker64 只驱动 ET_DYN，去掉 -static 之后它才成 ET_DYN。
-# ExecEntry.kt:51 判 e_type，ET_DYN 走 /system/bin/linker64。
-# -Wl,--no-as-needed -llobosposix：
-# bionic 的 LD_PRELOAD 库进的是「依赖链」而不是「PLT 查找顺序」
-# —— linker.cpp:1455 find_library_internal 遍历依赖链上已加载的 soinfo
-# → 符号覆盖只对「从它 dlopen」有效，对 pty-session.c 的 execv 无效
-# → env_merge_sys 从来没被调过
-# 写进 DT_NEEDED 之后链接器就一定会加载它，那本来就该用链接器做
 "$CC" -O2 -fPIE -pie \
   -o "$WORK/librivospty.so" \
   container/native/d3/pty-session.c \
@@ -94,8 +62,6 @@ so_ok "$WORK/librivospty.so" 1000
 cp -f "$WORK/librivospty.so" "$OUT/librivospty.so"
 echo "  ✓ ptysession → librivospty.so"
 
-# -- flock：文件锁（node addon，依赖 node 头文件）--------------------
-# node 头文件没有就不带这一件 —— 它是可选增强，不该让整条链失败。
 if [ -n "${NODE_INCLUDE_DIR:-}" ] && [ -d "${NODE_INCLUDE_DIR:-}" ]; then
   "$CC" -shared $CFLAGS -DNAPI_VERSION=9 -I "$NODE_INCLUDE_DIR" \
     -o "$WORK/liblobosflock.so" \

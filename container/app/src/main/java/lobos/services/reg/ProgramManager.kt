@@ -72,8 +72,6 @@ object ProgramManager {
     fun currentVersion(ctx: Context, id: String): String? =
         runCatching { dirOf(ctx, id).currentVersion() }.getOrNull()
 
-    /** 位置只从登记的格子读（C-102）：入口格空  它只有落位目录（库/头）；
-     *  入口格有值且 stateDir 有值  那是程序的数据目录。不再问「它是什么形态」。 */
     fun stateDirOf(ctx: Context, id: String): File {
         val e = ProgramIndex.get(ctx, id)
         if (e != null) {
@@ -85,13 +83,13 @@ object ProgramManager {
 
     fun infraSourceFile(ctx: Context, e: UnitEntry): File =
         SystemDirs.opt(ctx).let { File(it, e.id) }
-    /** 形态只读登记的两格（C-102）：不调 isPiece，也不再走一次磁盘探测。 */
+
     fun levelOf(ctx: Context, id: String): Level =
         ProgramIndex.get(ctx, id)?.levelOf(ctx) ?: Level.PIECE
 
     private fun realityOf(ctx: Context, e: UnitEntry): Reality? {
         val dir = stateDirOf(ctx, e.id)
-        // 「落位在哪」由登记格回答（stateDirOf 已经只读格）；这里只做存在性核对，不判形态。
+
         val landed = dir.isDirectory
         val version = if (landed) {
             runCatching { dirOf(ctx, e.id).currentVersion() }.getOrNull().orEmpty()
@@ -107,7 +105,6 @@ object ProgramManager {
 
     fun stateRoot(ctx: Context): File = ProgramIndex.root(ctx)
 
-    /** 只有程序有 usr 下的视图；库/头（入口格空）没有（C-102：读格，不判形态）。 */
     fun relStateDir(ctx: Context, id: String): String {
         val e = ProgramIndex.get(ctx, id) ?: return ""
         if (e.assetEntry.isBlank()) return ""
@@ -159,7 +156,7 @@ object ProgramManager {
         val cur = File(usr, "current")
         cur.mkdirs()
         for (e in enabled) {
-            if (e.assetEntry.isBlank()) continue   // C-102：无入口格者不参与 usr/ 装配
+            if (e.assetEntry.isBlank()) continue
             val version = currentVersion(ctx, e.id) ?: continue
             val target = File(stateDirOf(ctx, e.id), version)
             if (!target.isDirectory) continue
@@ -188,7 +185,7 @@ object ProgramManager {
 
     fun requestDesired(ctx: Context, id: String, d: Desired, reason: String = ""): String? {
         val cur = ProgramIndex.get(ctx, id)?.desired
-        if (cur == d) return null                      // 已经是这个期望，不排
+        if (cur == d) return null
         return when (val v = UnitJobs.enqueue(
             ctx,
             UnitJobs.Job(id, d, reason.ifBlank { "requested " + d.name }),

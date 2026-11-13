@@ -14,7 +14,6 @@ object PrefixProvisioner {
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
-
     fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr(ctx)
     fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin(ctx)
     fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
@@ -37,10 +36,6 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         } catch (_: Exception) { caDst.delete() }
         return ready
     }
-
-
-
-
 
     private fun linkHeadersInclude(ctx: Context): List<String> {
         val headersRoot = headersIncludeDir(ctx) ?: return emptyList()

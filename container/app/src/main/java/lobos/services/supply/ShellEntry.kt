@@ -19,26 +19,13 @@ object ShellEntry {
         return f.takeIf { it.isFile }
     }
 
-    /** 判据是什么 —— 供报缺时逐条列出，不让「没有」与「哪条没命中」混成一句。 */
     fun criteria(): List<String> = listOf(
         "role=shell（落位 bin/ 下有可执行入口的件，被登记为 shell）",
         "role=multi-command（落位 bin/ 下有可执行入口的件，被登记为 multi-command）",
     )
 
     fun resolve(ctx: Context): File? {
-        //  缺陷名（C-102）**那一格逐字按那 `isPiece` 筛、 它逐字把那 shell 那一档逐字筛掉**
-        //   旧版逐字是 `ProgramIndex.all(ctx).filter { ProgramIndex.isPiece(ctx, it) }`
-        //     `isPiece` 逐字是 `e.levelOf(ctx) == Level.PIECE`
-        //       （ `ProgramIndex.kt:70` 那一格逐字
-        //         `return if (assetEntry.isBlank()) Level.PIECE else Level.PROGRAM`）
-        //       **判据**逐字是「那**入口**那一格有没有值」
-        //     **修好了写入那一侧**之后（ shell 那一档逐字**有**入口了）
-        //       它逐字变成 `Level.PROGRAM`、 **这一格**逐字就把它逐字**筛掉**
-        //       `resolve` 逐字还是返回 null、 **同一个**抛错逐字还在
-        //   **正解**： **这一格**逐字找的是「那 role 逐字是 shell 那一档的那一件」、
-        //     它逐字**不**该由「那一件在登记里是程序还是件」决定
-        //     （ 是**两把尺**、 依 C-105 逐字**不**互相顶替）
-        //   它逐字**仍然**只在那**落位目录**底下找（ 它逐字**不**认用户程序那一族）
+
         val pieces = ProgramIndex.all(ctx).filter { it.role == PieceScan.SHELL || it.role == PieceScan.MULTI_COMMAND }
 
         val shell = pieces.firstOrNull { it.role == PieceScan.SHELL }

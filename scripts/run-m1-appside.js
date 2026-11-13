@@ -1,9 +1,4 @@
-// 那 M1 判据第一段逐字折成那**应用内**那一半的**采集层** —— 逐条把
-// scripts/m1-appside-criteria.json 里面的机器可执行判据跑一遍。
-//
-// 按 C-103：那**两边**逐字**各**答**一件**事**、那**处置**逐字**不合并**。
-// 按 C-105：那**缺**的逐字**报缺**，不猜填。
-// 按 C-108：那**零命中**逐字**要**配**那阳性对照**。
+
 const fs = require('node:fs');
 const cp = require('node:child_process');
 const path = require('node:path');
