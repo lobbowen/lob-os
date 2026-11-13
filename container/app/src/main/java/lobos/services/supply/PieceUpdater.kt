@@ -103,8 +103,8 @@ object PieceUpdater {
 
         val facts = lobos.kernel.crypto.Crypto.verifyEd25519WithFacts(pubPem, body, sig)
         val t3 = System.currentTimeMillis()
-        val timing = "计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1)
-            + " 毫秒、验签 " + (t3 - t2) + " 毫秒"
+        val timing = "计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1) +
+            " 毫秒、验签 " + (t3 - t2) + " 毫秒"
         if (!facts.ok) {
             RuntimeDiagnostics.append(ctx, "piece-ota", false, "系统件清单验签不通过（拒用）", url)
 
@@ -204,8 +204,8 @@ object PieceUpdater {
         RuntimeDiagnostics.append(
             ctx, "piece-ota", true,
             "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
-            "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1)
-                + " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒",
+            "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1) +
+                " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒",
         )
         if (applied.length() > 0) {
             runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
