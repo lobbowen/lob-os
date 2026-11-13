@@ -97,9 +97,16 @@ object PieceUpdater {
             res.put("ok", false); res.put("detail", "信任根读不到：assets/$PUB_PEM_ASSET")
             return res
         }
+        // 分段计时：把这一趟花在哪几段各自记下来，
+        // 这样下一轮读数能看见时间花在哪，而不用靠推算。
+        // 07 实测「点更新系统件到 piece-ota 落日志」2861 毫秒，
+        // 那里面有两次网络下载、纯实现验签、清单比对几段，
+        // 分开量才知道该优化哪一段。
+        val t0 = System.currentTimeMillis()
         val body = runCatching {
             SupplyProvisioner.httpGet(SupplyProvisioner.uncached(url), MAX_MANIFEST_BYTES)
         }.getOrNull()
+        val t1 = System.currentTimeMillis()
         if (body == null) { res.put("ok", false); res.put("detail", "清单下载失败：$url"); return res }
 
         val sigUrl = url + ".sig"
@@ -110,38 +117,40 @@ object PieceUpdater {
                 android.util.Base64.DEFAULT,
             )
         }.getOrNull()
+        val t2 = System.currentTimeMillis()
         if (sig == null) { res.put("ok", false); res.put("detail", "签名下载失败：$sigUrl"); return res }
-        //  缺陷名（C-102）**那一格逐字只答「过没过」、 **为什么**逐字答不出**
-        //    旧版逐字是 `if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) { … }`
-        //      **异常**逐字**被**那 `catch (_: Throwable) { false }` 逐字**吞了**
-        //        （ `Crypto.verifyEd25519` 那一族逐字**不**报那异常是什么）
-        //      **判据**逐字是「那设备端逐字为什么不过」、
-        //        **判据**逐字必须落在「那设备端逐字实际用的是什么锚、
-        //          它逐字实际验的是哪一份字节、
-        //          两者逐字与那仓内逐字那一把一致不一致」那一个事实上
-        //        （ 它逐字**不**由「那宿主机上逐字验过」顶掉
-        //          —— 而那两读逐字是不同时点的两读、 宿主机那一读逐字**不**能顶替那设备那一读，依 C-115）
-        //      **四件事实**逐字**报**出来、 **判据**逐字**才**答得出
-        //    **处置**： 验签逐字**带事实**地走一遍
-        //      **四件事实**逐字是：
-        //        1. 那 App 进程逐字实际读到的那 pem 逐字的 sha256(raw32) 与 sha256(DER)
-        //        2. 那验签那一格逐字实际喂进去的那 body 逐字的字节数与 sha256
-        //        3. 那 sig 逐字的字节数
-        //        4. 那 verifyEd25519 那一格逐字**抛了什么异常**
-        //    **判据注释**那一族逐字**不许删**（ 是那**定位依据**）
-        //    **规范**那一层归 **04**、 **判据**归 **01**、 **实现**归 **05**
+        // 验签那一格：带事实地走一遍。
+        // 事实是四件：App 进程实际读到的那把锚的 sha256(raw32) 与 sha256(DER)、
+        // 实际喂进去的那份 body 的字节数与 sha256、签名的字节数、
+        // 以及验签那一格抛了什么异常。
+        // 这些事实要答的问题是「设备端为什么不过」，
+        // 必须落在「实际用的是什么锚、实际验的是哪一份字节、
+        // 两者与仓内那把一致不一致」这一个事实上，
+        // 不能由「宿主机上验过」顶掉 —— 那是两个不同时点的两读，依 C-115 互不顶替。
         val facts = lobos.kernel.crypto.Crypto.verifyEd25519WithFacts(pubPem, body, sig)
+        val t3 = System.currentTimeMillis()
+        val timing = "计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1)
+            + " 毫秒、验签 " + (t3 - t2) + " 毫秒"
         if (!facts.ok) {
             RuntimeDiagnostics.append(ctx, "piece-ota", false, "系统件清单验签不通过（拒用）", url)
-            //  **事实**逐字**进**那诊断那一族（ `diag.jsonl` 那一族）
+            // 事实进诊断那一族（diag.jsonl 那一族）
             RuntimeDiagnostics.append(
                 ctx, "piece-ota-verify", false,
-                "那验签那一格逐字实际用的是什么锚、它逐字实际验的是哪一份字节",
-                facts.oneLine(),
+                "那验签那一格实际用的是什么锚、它实际验的是哪一份字节",
+                facts.oneLine() + " " + timing,
             )
             res.put("ok", false); res.put("detail", "清单验签不通过（拒用）")
             return res
         }
+        // 通过路径也要留同一份事实。
+        // 以前这一条只在失败分支写，于是验签通过时设备日志里一行事实都没有，
+        // 判「过了」只能靠「失败那条不出现」加「下游 OK」倒推 ——
+        // 那是倒推，不是正面证据。闸门通过也该留正面一行。
+        RuntimeDiagnostics.append(
+            ctx, "piece-ota-verify", true,
+            "那验签那一格实际用的是什么锚、它实际验的是哪一份字节",
+            facts.oneLine() + " " + timing,
+        )
 
         val parsed = runCatching { JSONObject(body.toString(Charsets.UTF_8)) }.getOrNull()
         if (parsed == null) { res.put("ok", false); res.put("detail", "清单不是合法 JSON"); return res }
@@ -219,10 +228,13 @@ object PieceUpdater {
         res.put("applied", applied)
         res.put("skipped", skipped)
         res.put("dryRun", dryRun)
+        // 比对那一段的耗时也记上，四段合起来这一趟的时间分布就完整了。
+        val t4 = System.currentTimeMillis()
         RuntimeDiagnostics.append(
             ctx, "piece-ota", true,
             "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
-            "清单=$url 过期于=$expires",
+            "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1)
+                + " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒",
         )
         if (applied.length() > 0) {
             runCatching { lobos.kernel.layout.LdConfig.run(ctx) }

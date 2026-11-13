@@ -35,46 +35,44 @@ object Crypto {
         } catch (_: Throwable) { false }
     }
 
-    //  缺陷名（C-102）**那一格逐字把异常逐字**吞了**、 异常是什么逐字现在逐字答不出**
-    //    旧版逐字是 `catch (_: Throwable) { false }`
-    //      **判据**逐字是「那设备端逐字为什么不过」、
-    //        **判据**逐字必须落在「那设备端逐字实际用的是什么锚、
-    //          它逐字实际验的是哪一份字节、
-    //          两者逐字与那仓内逐字那一把一致不一致」那一个事实上
-    //        （ 它逐字**不**由「那宿主机上逐字验过」顶掉
-    //          —— 而那两读逐字是不同时点的两读、 宿主机那一读逐字**不**能顶替那设备那一读，依 C-115）
-    //      **异常是什么**逐字**答不出**、 **判据**逐字**就**答不出
-    //    **处置**： **异常**逐字**不**吞、 它逐字**带**那四件事实一起报出来
-    //      四件事实逐字是：
-    //        1. 那 App 进程逐字实际读到的那 pem 逐字的 sha256(raw32) 与 sha256(DER)
-    //        2. 那验签那一格逐字实际喂进去的那 body 逐字的字节数与 sha256
-    //        3. 那 sig 逐字的字节数
-    //        4. 那 verifyEd25519 那一格逐字**抛了什么异常**
-    //      **判据注释**那一族逐字**不许删**（ 是那**定位依据**）
-    //      **规范**那一层归 **04**、 **判据**归 **01**、 **实现**归 **05**
+    // 缺陷名（C-102）那一格把异常吞了，异常是什么答不出。
+    //   旧版是 `catch (_: Throwable) { false }`。
+    //   要答的问题是「设备端为什么不过」，判据必须落在
+    //   「设备端实际用的是什么锚、它实际验的是哪一份字节、
+    //   两者与仓内那把一致不一致」这一个事实上 ——
+    //   不能由「宿主机上验过」顶掉：那是两个不同时点的两读，
+    //   宿主机那一读不能顶替设备那一读，依 C-115。
+    //   异常是什么答不出，判据就答不出。
+    //   处置：异常不吞，它带那四件事实一起报出来：
+    //     1. App 进程实际读到的那份 pem 的 sha256(raw32) 与 sha256(DER)
+    //     2. 验签那一格实际喂进去的那份 body 的字节数与 sha256
+    //     3. 签名的字节数
+    //     4. 验签那一格抛了什么异常
+    //   这些判据注释不许删（那是定位依据）。
+    //   规范那一层归 04、判据归 01、实现归 05。
     data class VerifyFacts(
-        /** 那 pem 逐字那 **raw 32 字节**（ Ed25519 逐字那公钥逐字就是那 32 字节） */
+        /** 那份 pem 里的 raw 32 字节（Ed25519 的公钥就是那 32 字节） */
         val raw32Hex: String,
-        /** 那 pem 逐字那 **sha256(raw32)** */
+        /** 那份 pem 的 sha256(raw32) */
         val sha256Raw32: String,
-        /** 那 pem 逐字那 **sha256(DER)** */
+        /** 那份 pem 的 sha256(DER) */
         val sha256Der: String,
-        /** 那 pem 逐字那 **DER** 逐字那长度 */
+        /** 那份 pem 的 DER 长度 */
         val derBytes: Int,
-        /** 那 pem 逐字那 DER 逐字它**解不**解得出来 */
+        /** 那份 pem 的 DER 解不解得出来 */
         val derDecoded: Boolean,
-        /** 那 body 逐字那**字节数** */
+        /** 那份 body 的字节数 */
         val bodyBytes: Int,
-        /** 那 body 逐字那 **sha256** */
+        /** 那份 body 的 sha256 */
         val bodySha256: String,
-        /** 那 sig 逐字那**字节数** */
+        /** 签名的字节数 */
         val sigBytes: Int,
-        /** 那**异常**是什么（ 没有异常时逐字是那空串） */
+        /** 异常是什么（没有异常时是空串） */
         val error: String,
-        /** 那验签逐字**过没过** */
+        /** 验签过没过 */
         val ok: Boolean,
     ) {
-        /** 那**一行**逐字**读得出来**的那一份（ 它逐字进那诊断那一族） */
+        /** 读得出来的那一行（它进诊断那一族） */
         fun oneLine(): String =
             "ok=" + ok +
                 " pem.raw32=" + raw32Hex +
@@ -89,11 +87,10 @@ object Crypto {
     }
 
     /**
-     * 那验签那一格逐字**带事实**地走一遍（ 它逐字**不**吞那异常）。
+     * 验签带事实地走一遍（它不吞异常）。
      *
-     *   **判据**逐字是「那设备端逐字实际用的是什么锚、
-     *     它逐字实际验的是哪一份字节、
-     *     两者逐字与那仓内逐字那一把一致不一致」那一个事实上
+     *   判据是「设备端实际用的是什么锚、它实际验的是哪一份字节、
+     *   两者与仓内那把一致不一致」这一个事实上。
      */
     fun verifyEd25519WithFacts(pubPem: String, data: ByteArray, sig: ByteArray): VerifyFacts {
         var raw32 = ""
@@ -102,10 +99,10 @@ object Crypto {
         var derLen = 0
         var derOk = false
         var ok = false
-        //  **每一次尝试**逐字各报什么（ 判据逐字是「那**每一次**尝试逐字各报什么」那一个事实上）
-        //    **旧**读法逐字那一条
+        // 每一次尝试各报什么（判据是「每一次尝试各报什么」这一个事实上）
+        // 旧读法那一栏
         val oldRoute = StringBuilder()
-        //  **新**读法逐字那一条
+        // 新读法那一栏
         val newRoute = StringBuilder()
 
         var der: ByteArray = ByteArray(0)
@@ -117,8 +114,8 @@ object Crypto {
             shaRaw = sha256Hex(raw32.toByteArray(Charsets.UTF_8))
             shaDer = sha256Hex(der)
         } catch (t: Throwable) {
-            //  **异常**逐字**不**吞、 它逐字**带**那四件事实一起报出来
-            oldRoute.append("pem 那解码逐字就**失败**了：" + t.javaClass.name + ": " + (t.message ?: ""))
+            // 异常不吞，它带那四件事实一起报出来
+            oldRoute.append("pem 那解码就**失败**了：" + t.javaClass.name + ": " + (t.message ?: ""))
         }
 
         // 验签走纯实现（Ed25519Pure），不走平台的提供者。
@@ -146,7 +143,7 @@ object Crypto {
                 oldRoute.append(t.javaClass.name + ": " + (t.message ?: ""))
             }
         } else {
-            oldRoute.append("那公钥逐字不是 32 字节（读到 " + raw32Bytes.size + " 字节），没法验签")
+            oldRoute.append("那公钥不是 32 字节（读到 " + raw32Bytes.size + " 字节），没法验签")
         }
 
         // 两栏保留是为了读数格式不变（07 的读数靠这两栏分栏）。
@@ -155,7 +152,7 @@ object Crypto {
         if (!ok) {
             try {
                 if (der.size < 32) {
-                    newRoute.append("那裸那 32 字节逐字**不够**（ DER 逐字只有 " + der.size + " 字节）")
+                    newRoute.append("那裸那 32 字节**不够**（DER 只有 " + der.size + " 字节）")
                 } else {
                     val raw = der.copyOfRange(der.size - 32, der.size)
                     val ok2 = Ed25519Pure.verify(raw, data, sig)
@@ -173,8 +170,8 @@ object Crypto {
             newRoute.append("那验签**过**了（与旧读法同一个纯实现的结果）")
         }
 
-        //  **判据**逐字是「那**每一次**尝试逐字各报什么」那一个事实上
-        //    两次逐字**各**占一行、 **不**许第二次的失败逐字被第一次盖住
+        // 判据是「每一次尝试各报什么」这一个事实上
+        // 两栏各占一行，不许第二次的失败被第一次盖住
         val err = buildString {
             append("旧读法[").append(oldRoute).append("]")
             append(" 新读法[").append(newRoute).append("]")
@@ -194,7 +191,7 @@ object Crypto {
     }
 
 
-    /** 那 sha256 逐字（ hex 小写） */
+    /** 那 sha256（hex 小写） */
     fun sha256Hex(b: ByteArray): String {
         val md = MessageDigest.getInstance("SHA-256")
         return md.digest(b).joinToString("") { "%02x".format(it) }
