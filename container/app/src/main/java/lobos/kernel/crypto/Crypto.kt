@@ -200,6 +200,26 @@ object Crypto {
         return md.digest(b).joinToString("") { "%02x".format(it) }
     }
 
+    /**
+     * 文件的 sha256（hex 小写）。
+     *
+     * 按 64 KiB 一块边读边算，不把整个文件读进内存。
+     * 依 C-987：件包可能超过 2 GiB，整读会撞 ERR_FS_FILE_TOO_LARGE。
+     * 调用方：PackageVerifier.kt:34 与 :173、Compat.kt:59 与 :139。
+     */
+    fun sha256HexFile(f: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        f.inputStream().buffered().use { ins ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
+    }
+
     private fun pemToDer(pem: String): ByteArray {
         val body = pem.replace("-----BEGIN PUBLIC KEY-----", "")
             .replace("-----END PUBLIC KEY-----", "")
