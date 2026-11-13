@@ -60,7 +60,7 @@ mkdir -p "$(dirname "$FILE")"
   #   而 set -u 下那一句是「unbound variable」：
   #   真机读数（07，run 39531522481 等三件绿的日志里都有这一句）
   #   => **而后半边 `work/` 是相对路径**（而 cwd 是仓根，而它能取到）
-  #   => **=> 而前半边那个 $ROOT 是笔误，=> 而正确的是 work/kernel-compat/**
+  #   => ** 前半边那个 $ROOT 是笔误， 正确的是 work/kernel-compat/**
   for lg in work/kernel-compat/cc-*.log work/"$ID"/*.log; do
     [ -f "$lg" ] || continue
     echo "**$lg**"

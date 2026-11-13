@@ -95,7 +95,7 @@ object DesktopIcons {
         if (iconPath.isBlank()) return null
         val f = File(programRoot, iconPath)
         if (!f.isFile || f.length() == 0L) return null
-        //  => 而那**读法**逐字**可查**（=> 而那 `ReadRoute` 那一族逐字**记**那一格）
+        //  **读法**逐字**可查**（ `ReadRoute` 那一族逐字**记**那一格）
         return decode(lobos.kernel.fs.ReadRoute.readAll(null, "desktop.icon", f)) ?: decodeFile(f)
     }
 

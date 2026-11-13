@@ -40,7 +40,7 @@ tar xzf "$ROOT_DIR/work/jq.tar.gz" -C "$WORK/src" --strip-components=1
   # 而那两段 -Wl 是给 DT_RUNPATH 的（而这一件是**静态**的：
   #   它的 NEEDED 只有 libm/libdl/libc（07 今天的 readelf 读数），
   #   **而静态产物没有同件的库要找** => **RUNPATH 那一格对它不生效**
-  #   => 而这里给上只是统一形状，而它**不改变这一件的形态**
+  # 这里给上只是统一形状，而它**不改变这一件的形态**
   #       它先定义 DOLLAR='$' 再拼）
   make -j"$JOBS" LDFLAGS="-static" > "$WORK/build.log" 2>&1 \
     || { echo "=== jq 编译失败取证（末 30 行）==="; tail -30 "$WORK/build.log"; exit 1; }

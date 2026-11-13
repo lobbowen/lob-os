@@ -49,11 +49,11 @@ source "$ROOT/scripts/toolchain/elf-form.sh"
 
 # 件的**作者声明的入口名** —— 取自 component-sources.json 的 sources.<件>.entryName。
 #
-# [!] 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**，=> 而那**不是**「这一件的入口」。
-#   而「这一件有多个入口时该取哪一个」那一问的答案**本来就存在**（=> 而就是这一格），
-#   => 而它与「多调用那一族」是两问（=> 而按 C-135）。
-#   => 而这一格与 bundle-env.sh 那一族（=> 而 emit_piece 那一支）**逐字同一句**，
-#      => 而两处**必须**同源（=> 而不然一处改了另一处盖掉它）。
+# [!] 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**， **不是**「这一件的入口」。
+#   而「这一件有多个入口时该取哪一个」那一问的答案**本来就存在**（ 就是这一格），
+# 它与「多调用那一族」是两问（ 按 C-135）。
+# 这一格与 bundle-env.sh 那一族（ emit_piece 那一支）**逐字同一句**，
+# 两处**必须**同源（ 不然一处改了另一处盖掉它）。
 author_entry_name_of() {
   node -e '
     const s = require(process.argv[1]).sources || {};
@@ -88,18 +88,18 @@ author_entry_name_of() {
 DECLARED_ENTRY="$ENTRY"
 PROG_ENTRY=""
 # [!] 缺陷名（C-102）**这一格挑的是「第一个程序形态的项」** —— 而那**不是**「这一件的入口」。
-#   而 bin/ 下有**多个**程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
-#   => 而 c_rehash 是 #! 脚本、=> 而按 01 裁的 S117 那一件它**是**入口形态、
-#   => 而它按 LC_ALL=C 排序**在前**），=> 而那一支挑到的是**排序靠前**的那一个，
-#   => 而那**不一定是**作者声明的那一个。
-#   => 而那**实测**：build-openssl run 40164564474（sha=84df912）逐字是
+#   而 bin/ 下有**多个**程序形态的项时（ openssl 那一件有 bin/c_rehash 与 bin/openssl，
+# c_rehash 是 #! 脚本、 按 01 裁的 S117 那一件它**是**入口形态、
+# 它按 LC_ALL=C 排序**在前**）， 一支挑到的是**排序靠前**的那一个，
+# **不一定是**作者声明的那一个。
+# **实测**：build-openssl run 40164564474（sha=84df912）逐字是
 #     「（这一件有程序那一侧：entry=bin/c_rehash）」
-#     => 而那一件**声明**的 entry 逐字是 bin/openssl（=> 而那是 component-sources.json
-#        的 sources.openssl.entryName），=> 而它**被**那一支跳过了。
-#   => 而 bundle-env.sh 那一支（=> 而 emit_piece 那一族）**已经**改成「先取作者声明的那一个」，
-#      => 而**这一支**（=> 而打包这一族）**也**要改，=> 而不然它**盖掉**前面那一支。
-#   => 而处置：先取作者声明的那一个；=> 而它**不在** bin/ 下或它不是入口形态时，
-#     **才**退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+# 一件**声明**的 entry 逐字是 bin/openssl（ 是 component-sources.json
+#        的 sources.openssl.entryName）， 它**被**那一支跳过了。
+# bundle-env.sh 那一支（ emit_piece 那一族）**已经**改成「先取作者声明的那一个」，
+# **这一支**（ 打包这一族）**也**要改， 不然它**盖掉**前面那一支。
+# 处置：先取作者声明的那一个； 它**不在** bin/ 下或它不是入口形态时，
+#     **才**退回「按形态挑第一个」那一支（ **保持**原来那一支的行为）。
 WANT_ENTRY="$(author_entry_name_of "$ID")"
 if [ -n "$WANT_ENTRY" ] && [ -f "$OUT/bin/$WANT_ENTRY" ]; then
   wf="$(elf_form "$OUT/bin/$WANT_ENTRY" 2>/dev/null)"
@@ -165,34 +165,34 @@ if [ -n "$ENTRY" ]; then
     done
     echo "  （混合件：lib/ 下搬了 $(ls -A "$STAGE/lib" 2>/dev/null | wc -l) 个名字）"
   fi
-  #  **bin/ 下搬的是「这一件**声明**的那几项」**（=> 而那 = entry + BINS + entry 那一条自己的软链目标）。
+  #  **bin/ 下搬的是「这一件**声明**的那几项」**（ = entry + BINS + entry 那一条自己的软链目标）。
   #
   #  [!] 缺陷名（C-102）**这一格搬的是「bin/ 下有什么」而不是「这一件承诺提供什么」**
-  #   => 而上游 `make install_sw` 会把**上游自己那些程序**一并装进来
-  #      （=> 而 openssl 那一件逐字是 bin/c_rehash，=> 而它第一行逐字是 #!/usr/bin/env perl）。
-  #   => 而 perl 在这台宿主上**不是一件**（=> 而 02 今天核过：仓里 28 个件键无 perl、
-  #      => 而设备上 files/usr/bin 那 24 条无 perl、=> 而设备上 files/opt 那 8 个目录无 perl）；
-  #   => 而 07 今天在设备侧真跑了一次：退出码 126、=> 而 stderr 逐字是
+  # 上游 `make install_sw` 会把**上游自己那些程序**一并装进来
+  #      （ openssl 那一件逐字是 bin/c_rehash， 它第一行逐字是 #!/usr/bin/env perl）。
+  # perl 在这台宿主上**不是一件**（ 02 今天核过：仓里 28 个件键无 perl、
+  # 设备上 files/usr/bin 那 24 条无 perl、 设备上 files/opt 那 8 个目录无 perl）；
+  # 07 今天在设备侧真跑了一次：退出码 126、 stderr 逐字是
   #      「…/files/usr/bin/c_rehash: No such file or directory」
-  #      （=> 而那 126 就是「解释器找不到」，=> 而 07 加的阳性对照逐字证了
-  #      「同样的调用方式与同样的 shebang 机制走得通、=> 而失败的是解释器找不到」）。
-  #   => 而 02 第十一轮裁了：那一格**不该带**（=> 而按 C-126 已过）。
+  #      （ 126 就是「解释器找不到」， 07 加的阳性对照逐字证了
+  #      「同样的调用方式与同样的 shebang 机制走得通、 失败的是解释器找不到」）。
+  # 02 第十一轮裁了：那一格**不该带**（ 按 C-126 已过）。
   #
-  #   => 而这一格**该**搬的是「这一件对外承诺要提供的东西」：
-  #      一，entry 那一项（=> 而它可能**不在** bin/ 下，=> 而比如 openssl 那一件逐字是 lib/libssl.so）；
-  #      二，BINS 那一列（=> 而那是作者声明的**命令名**清单）；
-  #      三，而 bin/ 下**那几项软链的指向目标**（=> 而 busybox 那一件逐字是 bin/libbusybox.so，
-  #         => 而它是那 18 条软链的指向目标、=> 而它**不在** BINS 那一列里、
-  #         => 而它不搬那 18 条软链就**全**是断链）。
+  # 这一格**该**搬的是「这一件对外承诺要提供的东西」：
+  #      一，entry 那一项（ 它可能**不在** bin/ 下， 比如 openssl 那一件逐字是 lib/libssl.so）；
+  #      二，BINS 那一列（ 是作者声明的**命令名**清单）；
+  #      三，而 bin/ 下**那几项软链的指向目标**（ busybox 那一件逐字是 bin/libbusybox.so，
+  # 它是那 18 条软链的指向目标、 它**不在** BINS 那一列里、
+  # 它不搬那 18 条软链就**全**是断链）。
   #
-  #   => 而**不**搬「bin/ 下其余那些」（=> 而比如 c_rehash 那一项）。
-  #      （=> 而那正是 02 裁的那一格：=> 而那个字节所依赖的解释器在这台宿主上**不是一件**。）
+  # **不**搬「bin/ 下其余那些」（ 比如 c_rehash 那一项）。
+  #      （ 正是 02 裁的那一格： 个字节所依赖的解释器在这台宿主上**不是一件**。）
   #
-  #   => 而这一格**不是**「收全了之后该不该收」（=> 而那是 0a00489 那一族），
-  #      => 而它是「**声明**的那几项搬不搬」（=> 而那两族**不顶替**）。
+  # 这一格**不是**「收全了之后该不该收」（ 是 0a00489 那一族），
+  # 它是「**声明**的那几项搬不搬」（ 两族**不顶替**）。
   if [ -d "$OUT/bin" ]; then
     mkdir -p "$STAGE/bin"
-    #  一，BINS 那一列（=> 而那逐字是「这个件要在 usr/bin 出现的命令名」）
+    #  一，BINS 那一列（ 逐字是「这个件要在 usr/bin 出现的命令名」）
     for bn in $BINS; do
       if [ -e "$OUT/bin/$bn" ]; then
         cp -Pf "$OUT/bin/$bn" "$STAGE/bin/$bn" || {
@@ -201,15 +201,15 @@ if [ -n "$ENTRY" ]; then
         }
       fi
     done
-    #  二，bin/ 下**那几项软链的指向目标**（=> 而 busybox 那一件逐字是 bin/libbusybox.so）
-    #    => 而那**必须**搬，=> 而不然那几条软链在 $STAGE 里**全是断链**
-    #    （=> 而 07 核到过：清单生成器读那些软链读不出实体、=> 而它判「没有一个是程序形态」）。
+    #  二，bin/ 下**那几项软链的指向目标**（ busybox 那一件逐字是 bin/libbusybox.so）
+    # **必须**搬， 不然那几条软链在 $STAGE 里**全是断链**
+    #    （ 07 核到过：清单生成器读那些软链读不出实体、 它判「没有一个是程序形态」）。
     for f in $(ls -A "$OUT/bin" 2>/dev/null | LC_ALL=C sort); do
       p="$OUT/bin/$f"
       [ -L "$p" ] || continue
       real="$(readlink -f "$p" 2>/dev/null || true)"
       [ -n "$real" ] && [ -f "$real" ] || continue
-      #  而那目标**相对** $OUT 的路径（=> 而软链逐字是 ./libbusybox.so）
+      #  而那目标**相对** $OUT 的路径（ 软链逐字是 ./libbusybox.so）
       rel="${real#$OUT/}"
       [ "$rel" != "$real" ] || continue
       if [ ! -e "$STAGE/$rel" ]; then
@@ -222,12 +222,12 @@ if [ -n "$ENTRY" ]; then
     done
     echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字；=> 而那是 BINS 那一列 + 那几条软链的指向目标）"
     #  缺陷名（C-102）**那 link-farm 那一族软链逐字没有建**
-    #    => 而那 link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（=> 而那格式逐字是「落位相对路径<TAB>指向目标」），
-    #       而那**它**逐字**在**那**产物**里**、=> 而那**打包**这一族逐字**没有**读**它**。
-    #    => 而那后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**不带那 git- 前缀），
-    #       而那**它**逐字**找不到**（=> 而那 git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
-    #    => 而那**处置**：=> 而那 link-farm **逐条**逐字**在**那暂存目录**上**建**那**软链**（=> 而那**它**逐字**是**那**落位事实**）。
-    #    => 而那**它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、=> 而那**它**逐字**也不是**「那加载器坏了」那个形状。
+    # link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（ 格式逐字是「落位相对路径<TAB>指向目标」），
+    #       而那**它**逐字**在**那**产物**里**、 **打包**这一族逐字**没有**读**它**。
+    # 后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（ **它**不带那 git- 前缀），
+    #       而那**它**逐字**找不到**（ git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
+    # **处置**： link-farm **逐条**逐字**在**那暂存目录**上**建**那**软链**（ **它**逐字**是**那**落位事实**）。
+    # **它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、 **它**逐字**也不是**「那加载器坏了」那个形状。
     if [ -f "$OUT/link-farm.txt" ]; then
       N_FARM=0
       while read -r FLINE; do
@@ -236,26 +236,26 @@ if [ -n "$ENTRY" ]; then
         [ -n "$FPATH" ] || continue
         [ -n "$FTGT" ] || continue
         mkdir -p "$STAGE/$(dirname "$FPATH")"
-        #  => 而那目标**逐字要**先**在**（=> 而那**它**逐字**指**到**那**暂存目录**里**的**那一份**）
+        # 目标**逐字要**先**在**（ **它**逐字**指**到**那**暂存目录**里**的**那一份**）
         if [ ! -e "$STAGE/$FPATH" ]; then
           ln -sf "$FTGT" "$STAGE/$FPATH" 2>/dev/null || true
         fi
         N_FARM=$((N_FARM+1))
       done < "$OUT/link-farm.txt"
       echo "  （link-farm：建了 $N_FARM 条软链）"
-      #  => 而那 link-farm.txt 逐字**要**跟**着**那**件**走**（=> 而那**它**逐字**是**那**清单**、=> 而那**落位侧**逐字**要**读**它**才**建得出**那**软链**）
+      # link-farm.txt 逐字**要**跟**着**那**件**走**（ **它**逐字**是**那**清单**、 **落位侧**逐字**要**读**它**才**建得出**那**软链**）
       if [ -f "$OUT/link-farm.txt" ]; then
         cp -f "$OUT/link-farm.txt" "$STAGE/link-farm.txt" 2>/dev/null || true
       fi
     fi
     #  缺陷名（C-102）**那件实际要的那几层逐字没有搬**
-    #    => 而那 bin/ 与那 lib/ **那两**层逐字**是**那**通用**的（=> 而每件都有），
-    #       而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
-    #       逐字**是**那**一件自己的**事**、=> 而那**打包**这一族逐字**只**搬**那两**层**。
-    #    => 而那后果逐字**是**：=> 而那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**找不到）、
-    #       而那 cmake 逐字**是**那**空壳**（=> 而那模块目录不在旁边）。
-    #    => 而那**处置**：=> 而那件根底下**除**那 bin/ 与那 lib/ **之外**的**每一层**逐字**都**搬**（=> 而那**落位事实**逐字**是**这样**的**）。
-    #    => 而那**它**逐字**不是**「那 DT_RUNPATH 要改」那个形状、=> 而那**它**逐字**也不是**「那加载器坏了」那个形状。
+    # bin/ 与那 lib/ **那两**层逐字**是**那**通用**的（ 每件都有），
+    #       而那**别的**层（ git 那一件要那 **libexec/**、 cmake 那一件要那 **share/**）
+    #       逐字**是**那**一件自己的**事**、 **打包**这一族逐字**只**搬**那两**层**。
+    # 后果逐字**是**： git 按那 exec-path 逐字找那 remote-https（ **它**找不到）、
+    #       而那 cmake 逐字**是**那**空壳**（ 模块目录不在旁边）。
+    # **处置**： 件根底下**除**那 bin/ 与那 lib/ **之外**的**每一层**逐字**都**搬**（ **落位事实**逐字**是**这样**的**）。
+    # **它**逐字**不是**「那 DT_RUNPATH 要改」那个形状、 **它**逐字**也不是**「那加载器坏了」那个形状。
     for extra in $(cd "$OUT" && ls -A 2>/dev/null | LC_ALL=C sort); do
       case "$extra" in
         bin|lib|*.zip|*.tar.gz|*.sha256|component-meta.json|piece-shape.json|program-manifest.json|link-farm.txt|*.version) continue ;;
@@ -426,11 +426,11 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 
 # ---- $ORIGIN（归产物那一侧；01 今天裁的）----
 # 为什么在这一支加（不在安装那一侧）：
-#   · $ORIGIN 这个值只有在产物里才成立，而落位侧改它 = 改那份字节 => 那要重编，不是重装
-#   · RUNPATH 是那份字节的属性 => 归安装侧就是「在安装期改产物属性」（C-16）
+#   · $ORIGIN 这个值只有在产物里才成立，而落位侧改它 = 改那份字节 那要重编，不是重装
+#   · RUNPATH 是那份字节的属性 归安装侧就是「在安装期改产物属性」（C-16）
 # 为什么走「事后 objcopy」而不是链期 -Wl：
 #   [读数·实测] 那个 configure 那一侧今天**零 LDFLAGS**
-#     （curl 与 openssl 两件各 grep 一次，都是零命中）=> 而 LDFLAGS 那一路无处可插
+#     （curl 与 openssl 两件各 grep 一次，都是零命中） LDFLAGS 那一路无处可插
 #   [源码·今天代码怎么写] 而八件的链接是**第三方 configure 驱动**的
 #     （build-bundle-curl.sh:41 ./configure，:53 只传 CC/AR/RANLIB）
 #      而这一行说的是「代码今天怎么写」，  而上面那一行才是读数 
@@ -461,9 +461,9 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #     （仓里 build-node-android.sh:363 的诊断文案这么说，而我今天没找到它的逐字原文）
 #
 # 而这一格今天**只写「同一目录」那一侧**；跨目录那一格[未过]（见提交说明）。
-#   · 库形态那几份落在 lib/，而它们的 $ORIGIN 就是 lib/ 自己 => 裸 $ORIGIN
+#   · 库形态那几份落在 lib/，而它们的 $ORIGIN 就是 lib/ 自己 裸 $ORIGIN
 #   · 程序形态那几份落在 bin/，而它们的 $ORIGIN 是 bin/
-#     => 它要够到同件的 lib/ 就得写 $ORIGIN/../lib 这一类形态
+# 它要够到同件的 lib/ 就得写 $ORIGIN/../lib 这一类形态
 #     => **而那一格今天【未过】**（要取的是 NDK 里那个 llvm-objcopy 加 --enable-new-dtags
 #        之后它把 RUNPATH 写成什么形态），**所以今天不写它**
 
@@ -471,22 +471,22 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 #   · CI 读数（run 39509725200，head=1946162）：
 #     --help 输出的字节数: 11864（  而它非零  而那证明输出取到了）
 #     而那 11864 字节里**零个含 rpath 的行** =>
-#     **=> 而那份工具没有那个功能**（**不是**「未过」）
-#     **=> 而 NDK 里那个 llvm-objcopy 根本不支持写 rpath**
-#   ·   **=> 事后 objcopy 写 DT_RUNPATH 这条路从根上走不通** 
+#     ** 份工具没有那个功能**（**不是**「未过」）
+#     ** NDK 里那个 llvm-objcopy 根本不支持写 rpath**
+#   ·   ** 事后 objcopy 写 DT_RUNPATH 这条路从根上走不通** 
 #   ·   而仓里唯一能写出 DT_RUNPATH 的先例是**链期参数**：
 #     scripts/toolchain/build-node-android.sh:299
 #       LDFLAGS_TARGET_OVERRIDE="LDFLAGS.target=-Wl,--enable-new-dtags -Wl,-rpath,'$ORIGIN'"
 #     （  而另两处也写明「只有 DT_RPATH 不行，要 --enable-new-dtags」：
 #      scripts/verify/verify-runtime-elf.sh:321 与 scripts/verify/check-elf-deps.sh:156）
-#   ·   **=> 而「这一件能不能在链期拿到 DT_RUNPATH」是一个**逐件**的判据**（  八件四种构建系统：
+#   ·   ** 「这一件能不能在链期拿到 DT_RUNPATH」是一个**逐件**的判据**（  八件四种构建系统：
 #      configure 那一族 / openssl Configure / cargo / make+Kconfig）
 #       而那个逐件判据**今天已核出来**（07 今天的逐件读数 + 我今天逐件改）：
 #         zlib LDSHARED / curl configure / jq make / bash LDFLAGS / openssl Configure
 #         而 ripgrep 那一件**本来就有**（  而 07 今天核到它的产物里 DT_RUNPATH [$ORIGIN]）
 #         而 busybox **静态、无 .so**   而 RUNPATH 那一格对它不适用 
-#   ·   **=> 而那一格今天不再是「缺一个判据」** ——  而**链期**那一路今天通了 
-#       而**不能给一个不存在的通用能力加判据** =>  而今天整段撤掉 
+#   ·   ** 一格今天不再是「缺一个判据」** ——  而**链期**那一路今天通了 
+#       而**不能给一个不存在的通用能力加判据** 今天整段撤掉 
 #       （  而撤掉它之后， 七件不再在这一格判红）
 
 # 算出来的 entry 与调用方声明的那一份不一致  两处形态说法分叉了。

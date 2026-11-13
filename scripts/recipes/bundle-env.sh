@@ -81,26 +81,26 @@ JOBS="${JOBS:-2}"
 # 校验产出的 .so：必须是 aarch64 的 ELF，且不太小（太小说明编坏了）
 #
 # [!] 缺陷名（C-102）**这一格按文件长什么样定** —— 而 01 裁的 S117 那一件把形态那一族的取值域
-#   按「**能不能被当入口调起**」那一问定，=> 而按文件长什么样不定域。
+#   按「**能不能被当入口调起**」那一问定， 按文件长什么样不定域。
 #   而这一格原来逐字是 `file -bL "$f" | grep -q "ELF 64-bit.*ARM aarch64"`
-#   => 而那是**第四把尺**，=> 而它答的是「这个文件的字节长得像不像 aarch64 的 ELF」。
-#   => 而 #! 脚本（=> 而 c_rehash / npm-cli.js / pnpm 那几件都是）**不是** ELF，
-#   => 而它们**是**可调起的入口形态（=> 而按那一把尺它们是 shebang + program），
-#   => 而所以这一格**判它们红**，=> 而那一趟逐字是
+# 是**第四把尺**， 它答的是「这个文件的字节长得像不像 aarch64 的 ELF」。
+# #! 脚本（ c_rehash / npm-cli.js / pnpm 那几件都是）**不是** ELF，
+# 它们**是**可调起的入口形态（ 按那一把尺它们是 shebang + program），
+# 所以这一格**判它们红**， 一趟逐字是
 #   「##[error]…/work/openssl/out/bin/c_rehash 不是 aarch64 ELF 或小于 1000 字节」。
-#   => 而处置：这一格改用**形态那一把尺**（=> 而 elf_form 那一族），
-#     而**字节大小**那一条**不变**（=> 而那一条答的是「编坏了没有」，=> 而那不是形态那一问）。
+# 处置：这一格改用**形态那一把尺**（ elf_form 那一族），
+#     而**字节大小**那一条**不变**（ 一条答的是「编坏了没有」， 不是形态那一问）。
 check_so() {
   local f="$1" min="${2:-1000}"
   [ -f "$f" ] || return 1
   local sz
   sz="$(wc -c < "$f")"
   [ "$sz" -ge "$min" ] || return 1
-  # 形态那一把尺（=> 而 elf-form.sh 那一族，=> 而它现在认 shebang 那一档）：
-  #   exec / dyn-interp  => 而那是 aarch64 的 ELF 程序
-  #   dyn-plain          => 而那是 aarch64 的 ELF 库
-  #   shebang            => 而那是 #! 脚本（=> 而它是可调起的入口形态）
-  #   unknown            => 而那不是入口形态、=> 而也不是库形态（=> 而它不该进这一件）
+  # 形态那一把尺（ elf-form.sh 那一族， 它现在认 shebang 那一档）：
+  #   exec / dyn-interp 是 aarch64 的 ELF 程序
+  #   dyn-plain 是 aarch64 的 ELF 库
+  #   shebang 是 #! 脚本（ 它是可调起的入口形态）
+  #   unknown 不是入口形态、 也不是库形态（ 它不该进这一件）
   local form
   form="$(elf_form "$f" 2>/dev/null)"
   case "$form" in
@@ -129,14 +129,14 @@ version_of() {
 
 # 件的**作者声明的入口名** —— 取自 component-sources.json 的 sources.<件>.entryName。
 #
-# [!] 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**，=> 而那**不是**「这一件的入口」。
-#   而 bin/ 下有多个程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
-#   => 而 c_rehash 是 #! 脚本、=> 而它是入口形态、=> 而它按 LC_ALL=C 排序**在前**），
-#   => 而那一支挑到的是**排序靠前**的那一个，=> 而那**不一定是**作者声明的那一个。
-#   => 而作者声明的那一格**本来就存在**（=> 而 component-sources.json 的 sources.<件>.entryName），
-#   => 而那一格是「**这一件有多个入口时该取哪一个**」那一问的答案（=> 而按 C-135 它与「多调用那一族」是两问）。
-#   => 而处置：先取作者声明的那一个；=> 而它**不在** bin/ 下或它不是入口形态时，
-#     才退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+# [!] 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」**， **不是**「这一件的入口」。
+#   而 bin/ 下有多个程序形态的项时（ openssl 那一件有 bin/c_rehash 与 bin/openssl，
+# c_rehash 是 #! 脚本、 它是入口形态、 它按 LC_ALL=C 排序**在前**），
+# 一支挑到的是**排序靠前**的那一个， **不一定是**作者声明的那一个。
+# 作者声明的那一格**本来就存在**（ component-sources.json 的 sources.<件>.entryName），
+# 一格是「**这一件有多个入口时该取哪一个**」那一问的答案（ 按 C-135 它与「多调用那一族」是两问）。
+# 处置：先取作者声明的那一个； 它**不在** bin/ 下或它不是入口形态时，
+#     才退回「按形态挑第一个」那一支（ **保持**原来那一支的行为）。
 author_entry_name_of() {
   node -e '
     const s = require(process.argv[1]).sources || {};
@@ -166,7 +166,7 @@ emit_piece() {
   # 而「那一件该有的那个文件」这个声明，从**产物那一份**读（01 今天裁的候选 (a)，
   #   而 03 今天补的那一句把机制说全了：
   #   **声明由产出方给**，而打包那一支**手上没有那份信息**（而 (b) 按形态算已被读数排除）
-  # => 而它落在 component-sources.json 的 sources 表里（与 installName 同一族）
+  # 它落在 component-sources.json 的 sources 表里（与 installName 同一族）
   # => **而这里读它，那个声明就由产出方给、而不由调用方传**
   # 而**没声明就不查**（而那不是「缺」，C-05）
   # 缺陷名（C-102）**这一处用的是相对路径，而 cwd 不一定是仓根**。
@@ -176,17 +176,17 @@ emit_piece() {
   # 而那一趟的前一句逐字是
   #   ##[error]…/work/busybox/out/bin/cat 不是 aarch64 ELF 或小于 500000 字节
   #
-  # 而成因：这一份 bundle-env.sh 在 source 的时候（=> 而第 15 行）cd 回了仓根，
-  # **=> 而那时的 cwd 是对的**；
+  # 而成因：这一份 bundle-env.sh 在 source 的时候（ 第 15 行）cd 回了仓根，
+  # ** 时的 cwd 是对的**；
   # 而 busybox 那一件在 build-native-busybox.sh:73 那一处 `cd "$SRC"` 进了源码树，
-  # **=> 而 emit_piece 是第 462 行才被调的，=> 而那时的 cwd 还在源码树里**
-  # => 而那个相对路径就解析到源码树底下去了，=> 而源码树里没有 scripts/toolchain/。
+  # ** emit_piece 是第 462 行才被调的， 时的 cwd 还在源码树里**
+  # 个相对路径就解析到源码树底下去了， 源码树里没有 scripts/toolchain/。
   #
-  # 而对照：bash 那个 recipe 从不 cd（=> 而 build-bundle-bash.sh:71 直接调 emit_piece），=> 而所以它没事。
-  # 而本文件里其余那几处调仓内脚本的（=> 而 :39、:48、:115、:220）**逐字都是 "$ROOT_DIR/..."**，
-  # **=> 而只有这一处是相对路径**。
+  # 而对照：bash 那个 recipe 从不 cd（ build-bundle-bash.sh:71 直接调 emit_piece）， 所以它没事。
+  # 而本文件里其余那几处调仓内脚本的（ :39、:48、:115、:220）**逐字都是 "$ROOT_DIR/..."**，
+  # ** 只有这一处是相对路径**。
   #
-  # => 而处置：这一处改成绝对路径（=> 而与本文件其余那几处同一口径）。
+  # 处置：这一处改成绝对路径（ 与本文件其余那几处同一口径）。
   local marker="$(node "$ROOT_DIR/scripts/toolchain/read-marker.js" "$id")"
   #  **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
   #   缺陷名（C-102）entry 散在几处、而那几处是副本：
@@ -206,14 +206,14 @@ emit_piece() {
   #   作用在**库**上  程序那一份（bin/openssl）没被判型、没带执行位。
   local pick=""
   #  [!] 缺陷名（C-102）**「按形态挑」挑的是「第一个程序形态的项」** —— 而那不是「这一件的入口」。
-  #   而 bin/ 下有**多个**程序形态的项时（=> 而 openssl 那一件有 bin/c_rehash 与 bin/openssl，
-  #   => 而 c_rehash 是 #! 脚本、=> 而按 01 裁的 S117 那一件它**是**入口形态、
-  #   => 而它按 LC_ALL=C 排序**在前**），=> 而那一支挑到的是**排序靠前**的那一个。
-  #   => 而作者声明的那一格**本来就存在**（=> 而 component-sources.json 的 sources.<件>.entryName），
-  #   => 而那一格是「这一件有多个入口时该取哪一个」那一问的答案（=> 而按 C-135 它与「多调用那一族」是两问）。
-  #   => 而处置：**先**取作者声明的那一个；
-  #     而它**不在** bin/ 下、或它不是入口形态（=> 而按形态那一把尺）时，
-  #     **才**退回「按形态挑第一个」那一支（=> 而那**保持**原来那一支的行为）。
+  #   而 bin/ 下有**多个**程序形态的项时（ openssl 那一件有 bin/c_rehash 与 bin/openssl，
+  # c_rehash 是 #! 脚本、 按 01 裁的 S117 那一件它**是**入口形态、
+  # 它按 LC_ALL=C 排序**在前**）， 一支挑到的是**排序靠前**的那一个。
+  # 作者声明的那一格**本来就存在**（ component-sources.json 的 sources.<件>.entryName），
+  # 一格是「这一件有多个入口时该取哪一个」那一问的答案（ 按 C-135 它与「多调用那一族」是两问）。
+  # 处置：**先**取作者声明的那一个；
+  #     而它**不在** bin/ 下、或它不是入口形态（ 按形态那一把尺）时，
+  #     **才**退回「按形态挑第一个」那一支（ **保持**原来那一支的行为）。
   local want_entry="$(author_entry_name_of "$id")"
   if [ -n "$want_entry" ] && [ -f "$out/bin/$want_entry" ]; then
     local wf="$(elf_form "$out/bin/$want_entry" 2>/dev/null)"

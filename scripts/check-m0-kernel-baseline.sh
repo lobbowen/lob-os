@@ -6,11 +6,11 @@
 #
 # 判据：
 #   一、那份清单逐字与那仓内那份 gki_defconfig 逐字对得上。
-#   二、那清单里没有一条的出处是猜的（=> 而那每一行号都要能读出那一条原文）。
-#   三、那内核版本号那一格没有就报缺（=> 而不猜填）。
+#   二、那清单里没有一条的出处是猜的（ 每一行号都要能读出那一条原文）。
+#   三、那内核版本号那一格没有就报缺（ 不猜填）。
 #
 # 素材逐字在本仓内：docs/kernel-baseline/gki_defconfig 与 docs/kernel-baseline/kconfig。
-# 而那两份逐字**不是**那构建的输入（=> 而那构建逐字**不**读它们、=> 而那**判据**逐字**只**读它们）。
+# 而那两份逐字**不是**那构建的输入（ 构建逐字**不**读它们、 **判据**逐字**只**读它们）。
 #
 # 退出码：0 = 逐条对得上；1 = 有对不上或缺出处；2 = 素材不在或读不出。
 
@@ -96,13 +96,13 @@ if n < 1 or n > len(kl):
 elif kl[n - 1].rstrip() != t['text']:
     bad.append('kconfigTail :%d 逐字对不上（清单记 %s、实际 %s）' % (n, t['text'], kl[n - 1].rstrip()))
 
-# 那引用的被核对的那文件逐字得在**那仓内**（=> 而那 init/Kconfig.gki 逐字**已经**在**那仓内**了）。
+# 那引用的被核对的那文件逐字得在**那仓内**（ init/Kconfig.gki 逐字**已经**在**那仓内**了）。
 for m in d.get('missingReferences') or []:
     p = os.path.join(kb, m['ref'])
     if not os.path.isfile(p):
         missing.append('%s 逐字**不**在**那仓内**（=> 而那 %s 逐字引它、=> 而按 C-105 报缺）' % (m['ref'], m['from']))
 
-# 那引用的那几件逐字**要**在**那仓内**、=> 而那**出处**逐字**要**能**核**。
+# 那引用的那几件逐字**要**在**那仓内**、 **出处**逐字**要**能**核**。
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(data_path)))
 for m in d.get('referencedFiles') or []:
     p = os.path.join(ROOTDIR, m['path'])
@@ -113,7 +113,7 @@ for m in d.get('referencedFiles') or []:
     if m.get('sha256') and got != m['sha256']:
         bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (m['ref'], m['sha256'][:16], got[:16]))
 
-# 那**上游**那一族：=> 而那**差集**逐字**要**机械**核过**。
+# 那**上游**那一族： **差集**逐字**要**机械**核过**。
 up = d.get('upstream') or {}
 def diff_lines(a, b):
     la = io.open(a, encoding='utf-8', errors='replace').read().split(chr(10))
@@ -143,14 +143,14 @@ kv = d.get('kernelVersion') or {}
 if not kv.get('value'):
     missing.append('那内核版本号逐字还没有（=> 而按 C-105 不猜填、=> 而那取逐字不归 01、=> 而那取逐字归 06）')
 
-# 那**网页**那一族（=> 而那 kmi.html 与那 lkm.html）逐字**不**是**那内核**的**配置**、
-# => 而那**真正**是**那内核**的**数据**的**那一件**（=> 而那 abi.stg）逐字**要**标**缺**（=> 而它**还**没**进**那仓**内**）。
+# 那**网页**那一族（ kmi.html 与那 lkm.html）逐字**不**是**那内核**的**配置**、
+# **真正**是**那内核**的**数据**的**那一件**（ abi.stg）逐字**要**标**缺**（ 它**还**没**进**那仓**内**）。
 for r in d.get('referenceDocs') or []:
     if r.get('isKernelData'):
         if r.get('status') == '未核':
             missing.append('%s 逐字**是**那内核的**数据**、=> 而它**还**没**进**那仓**内**、=> 而按 C-105 报缺' % r['file'])
         else:
-            #  而那**它**逐字**在**那仓内、=> 而那 sha256 逐字**要**对得上（=> 而那**它**逐字**是**那**完整**的**一份**）
+            #  而那**它**逐字**在**那仓内、 sha256 逐字**要**对得上（ **它**逐字**是**那**完整**的**一份**）
             p2 = os.path.join(ROOTDIR, r.get('path') or ('docs/kernel-baseline/' + r['file']))
             if not os.path.isfile(p2):
                 missing.append('%s 逐字**不**在**那仓内**' % r['file'])
@@ -159,7 +159,7 @@ for r in d.get('referenceDocs') or []:
                 if r.get('sha256') and got2 != r['sha256']:
                     bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (r['file'], r['sha256'][:16], got2[:16]))
     elif r.get('file', '').endswith('.html'):
-        #  那网页那一族逐字**不**是那内核的**配置**、=> 而那清单**不**把它**算**成**条目**
+        #  那网页那一族逐字**不**是那内核的**配置**、 清单**不**把它**算**成**条目**
         if r.get('isKernelData'):
             bad.append('网页材料 %s 逐字被标成内核数据' % r['file'])
 

@@ -34,25 +34,25 @@ object PieceUpdater {
         for (pe in lobos.services.reg.ProgramIndex.all(ctx)) {
             val ver = pe.version
             //  缺陷名（C-102）**落位目录那一格按相对路径拼**：原来这一处是
-            //   File(File(pe.stateDir), pe.assetEntry)，=> 而 stateDir 记的是**相对**形态
-            //   （opt/<id>），=> 而那拼出来的是**相对当前工作目录**的路径，
-            //   => 而那**不是**落位目录（读侧 ProgramManager.stateDirOf 是
-            //   File(ctx.filesDir, e.stateDir)）。=> 而这一格只是「没有来源记录时」的兜底，
-            //   => 而它指向的那一份**从来不是**真的那一份。
+            //   File(File(pe.stateDir), pe.assetEntry)， stateDir 记的是**相对**形态
+            //   （opt/<id>）， 拼出来的是**相对当前工作目录**的路径，
+            //   **不是**落位目录（读侧 ProgramManager.stateDirOf 是
+            //   File(ctx.filesDir, e.stateDir)）。 这一格只是「没有来源记录时」的兜底，
+            //   它指向的那一份**从来不是**真的那一份。
             val installed = if (pe.stateDir.isBlank() || pe.assetEntry.isBlank()) null
                 else File(File(ctx.filesDir, pe.stateDir), pe.assetEntry)
             val origin = origins[pe.id]
             //  「被更新接管了没有」这一格**不能**用「入口是不是软链」来答：
             //   缺陷名（C-102）**软链那一格把两件事混成一件** —— 预装那一支**也**建软链
-            //   （usr/bin/xxx 指向落位那一份），=> 而那软链**不是**接管的证据，
-            //   => 而按「是不是软链」答，=> 而**每一件**都答「接管过」。
+            //   （usr/bin/xxx 指向落位那一份）， 软链**不是**接管的证据，
+            //   按「是不是软链」答， **每一件**都答「接管过」。
             //  真正可判的事实是：**入口软链现在指着的那一份**是不是**记下来的 OTA 那一份**。
-            //   => 而那需要来源记录（PieceOriginStore）才有得比。
+            //   需要来源记录（PieceOriginStore）才有得比。
             //   缺陷名（C-102）**只比了「列表里第一个完整的那一条」**：
             //   而按角色的来源记录里**可以有多条**（程序形态一条、库形态一条），
-            //   => 而「接管」是**按指针**判的（入口软链当前指着谁），
-            //   => 而这里逐条比（otaSlotsInCharge），=> 而「现在指着的那一份」
-            //   => 取**接管着的那一条**（不是列表里第一条）。
+            //   「接管」是**按指针**判的（入口软链当前指着谁），
+            //   这里逐条比（otaSlotsInCharge）， 「现在指着的那一份」
+            // 取**接管着的那一条**（不是列表里第一条）。
             val otaSlotsInCharge = PieceOriginStore.otaSlotsInCharge(origin)
             val otaActive = otaSlotsInCharge.isNotEmpty()
             val apkSlots = origin?.apkSlots.orEmpty().filter { it.complete }
@@ -111,29 +111,29 @@ object PieceUpdater {
             )
         }.getOrNull()
         if (sig == null) { res.put("ok", false); res.put("detail", "签名下载失败：$sigUrl"); return res }
-        //  缺陷名（C-102）**那一格逐字只答「过没过」、=> 而而那那**为什么**逐字答不出**
-        //    => 而那旧版逐字是 `if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) { … }`
-        //      => 而那**异常**逐字**被**那 `catch (_: Throwable) { false }` 逐字**吞了**
-        //        （=> 而那 `Crypto.verifyEd25519` 那一族逐字**不**报那异常是什么）
-        //      => 而那**判据**逐字是「那设备端逐字为什么不过」、
-        //        => 而那**判据**逐字必须落在「那设备端逐字实际用的是什么锚、
-        //          => 而那它逐字实际验的是哪一份字节、
-        //          => 而那两者逐字与那仓内逐字那一把一致不一致」那一个事实上
-        //        （=> 而那它逐字**不**由「那宿主机上逐字验过」顶掉
-        //          —— 而那两读逐字是不同时点的两读、=> 而那宿主机那一读逐字**不**能顶替那设备那一读，依 C-115）
-        //      => 而那**四件事实**逐字**报**出来、=> 而那**判据**逐字**才**答得出
-        //    => 而那**处置**：=> 而那验签逐字**带事实**地走一遍
-        //      => 而那**四件事实**逐字是：
+        //  缺陷名（C-102）**那一格逐字只答「过没过」、 **为什么**逐字答不出**
+        //    旧版逐字是 `if (!SupplyProvisioner.verifyEd25519(pubPem, body, sig)) { … }`
+        //      **异常**逐字**被**那 `catch (_: Throwable) { false }` 逐字**吞了**
+        //        （ `Crypto.verifyEd25519` 那一族逐字**不**报那异常是什么）
+        //      **判据**逐字是「那设备端逐字为什么不过」、
+        //        **判据**逐字必须落在「那设备端逐字实际用的是什么锚、
+        //          它逐字实际验的是哪一份字节、
+        //          两者逐字与那仓内逐字那一把一致不一致」那一个事实上
+        //        （ 它逐字**不**由「那宿主机上逐字验过」顶掉
+        //          —— 而那两读逐字是不同时点的两读、 宿主机那一读逐字**不**能顶替那设备那一读，依 C-115）
+        //      **四件事实**逐字**报**出来、 **判据**逐字**才**答得出
+        //    **处置**： 验签逐字**带事实**地走一遍
+        //      **四件事实**逐字是：
         //        1. 那 App 进程逐字实际读到的那 pem 逐字的 sha256(raw32) 与 sha256(DER)
         //        2. 那验签那一格逐字实际喂进去的那 body 逐字的字节数与 sha256
         //        3. 那 sig 逐字的字节数
         //        4. 那 verifyEd25519 那一格逐字**抛了什么异常**
-        //    => 而那**判据注释**那一族逐字**不许删**（=> 而那是那**定位依据**）
-        //    => 而那**规范**那一层归 **04**、=> 而那**判据**归 **01**、=> 而那**实现**归 **05**
+        //    **判据注释**那一族逐字**不许删**（ 是那**定位依据**）
+        //    **规范**那一层归 **04**、 **判据**归 **01**、 **实现**归 **05**
         val facts = lobos.kernel.crypto.Crypto.verifyEd25519WithFacts(pubPem, body, sig)
         if (!facts.ok) {
             RuntimeDiagnostics.append(ctx, "piece-ota", false, "系统件清单验签不通过（拒用）", url)
-            //  => 而那**事实**逐字**进**那诊断那一族（=> 而那 `diag.jsonl` 那一族）
+            //  **事实**逐字**进**那诊断那一族（ `diag.jsonl` 那一族）
             RuntimeDiagnostics.append(
                 ctx, "piece-ota-verify", false,
                 "那验签那一格逐字实际用的是什么锚、=> 而那它逐字实际验的是哪一份字节",
@@ -336,14 +336,14 @@ object PieceUpdater {
      * 把入口指针切到新版本那一份，并记下「OTA 那一侧」的来源。
      *
      * 缺陷名（C-102）**入口指针的名字按注册表 assetEntry 那一格算**：
-     *   而库形态那一件 assetEntry 是空的 => 而那拼出来的是**空名** =>
+     *   而库形态那一件 assetEntry 是空的 拼出来的是**空名** =>
      *   而「入口软链」根本建不起来（usr/lib/ 这一条没有名字的入口），
      *   而「被接管没有」那一问也无从判。
      *   现在：程序形态按 assetEntry 的最后一段；库形态按落位目录那份 piece-shape.json
      *   里 files[] 的库形态那一条（PieceEntryPointer）。
      *
      * 缺陷名（C-102）**OTA 那一侧只记了一条平铺的指针格子**：
-     *   而库形态那一件的那一条指针**没地方记** => 而「回到 APK 原件」对纯库件无从判。
+     *   而库形态那一件的那一条指针**没地方记** 「回到 APK 原件」对纯库件无从判。
      *   现在：按角色记（recordOtaSlot）。
      */
     private fun pointEntryAt(
@@ -352,15 +352,15 @@ object PieceUpdater {
         version: String,
         dest: File,
     ): Boolean = try {
-        //  缺陷名（C-102）**那入口指针逐字只切第一条、=> 而而那一件逐字可能有多条** ——
-        //   => 而那旧版逐字是 `PieceEntryPointer.locate(ctx, e)`（=> 而那**只**给第一条），
-        //     => 而那 openssl 那一件逐字有**两条**库指针（libcrypto.so 与 libssl.so）
-        //       （=> 而按 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」）
-        //     => 而那第二条指针在 OTA 那条路上逐字**永远没被切过**。
-        //   => 而那**处置**：=> 而那逐字取**全部**那几条（=> 而那 locateAll 那一档）、
-        //     => 而那**逐条**切、=> 而那**逐条**记来源。
-        //   => 而那「全部都切成了」逐字是那一族成功与失败的**判据**
-        //     （=> 而那只要有一条切不成、=> 而那一件逐字就是没成）。
+        //  缺陷名（C-102）**那入口指针逐字只切第一条、 一件逐字可能有多条** ——
+        //   旧版逐字是 `PieceEntryPointer.locate(ctx, e)`（ **只**给第一条），
+        //     openssl 那一件逐字有**两条**库指针（libcrypto.so 与 libssl.so）
+        //       （ 按 01 裁的 S604-01 §1.4 第 3 条逐字「**这一格不是「取第一个」**」）
+        //     第二条指针在 OTA 那条路上逐字**永远没被切过**。
+        //   **处置**： 逐字取**全部**那几条（ locateAll 那一档）、
+        //     **逐条**切、 **逐条**记来源。
+        //   「全部都切成了」逐字是那一族成功与失败的**判据**
+        //     （ 只要有一条切不成、 一件逐字就是没成）。
         val locatedAll = PieceEntryPointer.locateAll(ctx, e)
         if (locatedAll.pointers.isEmpty()) return false
         var allOk = true
@@ -378,9 +378,9 @@ object PieceUpdater {
                 allOk = false
                 continue
             }
-            //  记录那一件现在的入口来源 = OTA 版本（=> 而那「回到 APK 原件」要靠这一格才判得出）。
-            //   缺陷名（C-102）**记的是平铺的一格**（recordOtaVersion）=> 而库形态那一件
-            //   的那一条指针没地方记 => 而「被接管没有」对纯库件答不出。
+            //  记录那一件现在的入口来源 = OTA 版本（ 「回到 APK 原件」要靠这一格才判得出）。
+            //   缺陷名（C-102）**记的是平铺的一格**（recordOtaVersion） 库形态那一件
+            //   的那一条指针没地方记 「被接管没有」对纯库件答不出。
             //   现在：按角色记（role + 入口指针路径 + 那一份字节路径）。
             runCatching {
                 PieceOriginStore.recordOtaSlot(
@@ -399,7 +399,7 @@ object PieceUpdater {
 
     /**
      * 回退资格与理由（01 裁定的口径）。这一族是**回退那一族唯一的判据来源**，
-     * 控制面（HostControlService）与回退本身都读它，=> 而两处**不各写一套**。
+     * 控制面（HostControlService）与回退本身都读它， 两处**不各写一套**。
      *
      * 判定顺序：非在册 -> 库形态入口未定位 -> 未接管 -> 无来源指针 -> 可回滚。
      */
@@ -425,9 +425,9 @@ object PieceUpdater {
     //   **不**许用在 standalone object 里
     //   （CI 逐字：PieceUpdater.kt:381:5 Modifier 'companion' is not applicable inside
     //   'standalone object'。）
-    //   => 而 `RollbackStatus` 那个 data class 在 :379 就已经闭合了，
-    //   => 而这一层 companion object 是 `object PieceUpdater` 的**直接成员**，
-    //   => 而那正是「standalone object 里面放 companion」那个非法形态。
+    //   `RollbackStatus` 那个 data class 在 :379 就已经闭合了，
+    //   这一层 companion object 是 `object PieceUpdater` 的**直接成员**，
+    //   正是「standalone object 里面放 companion」那个非法形态。
     //   修法：把 companion object 那层壳去掉，五个 const val 直接写在 `object PieceUpdater`
     //   的体内（object 体内的顶层 const val 合法）。
     //   而引用处 `PieceUpdater.REASON_*` 逐字**不变**
@@ -457,7 +457,7 @@ object PieceUpdater {
                 "", "", "", "",
             )
         val role = PieceEntryPointer.roleOf(pe)
-        //  => 而那**全部**那几条（=> 而那旧版逐字只给第一条、=> 而那库形态那一件逐字可能有多条）。
+        //  **全部**那几条（ 旧版逐字只给第一条、 库形态那一件逐字可能有多条）。
         val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
         val located = locatedAll.firstOrNull()
         if (role == ProgramInstallPipeline.ROLE_LIBRARY && locatedAll.pointers.isEmpty()) {
@@ -476,9 +476,9 @@ object PieceUpdater {
             //   「这一件没被更新接管（入口不是软链），无可回滚」——
             //   而那把「是不是软链」当成了「有没有被接管」，
             //   而预装那一支**也**建软链（usr/bin/xxx 指向落位那一份），
-            //   => 而按那一问**每一件**都答「接管过」，
-            //   => 而那一句「入口不是软链」在真机上**几乎永远不成立**，
-            //   => 而它**答的不是事实**。
+            //   按那一问**每一件**都答「接管过」，
+            //   一句「入口不是软链」在真机上**几乎永远不成立**，
+            //   它**答的不是事实**。
             //  按 C-944 的实测口径：入口软链当前 realpath == 记下的 ota 槽那一份的 realpath
             //  才算被接管。现在这一格判的就是那两条 realpath 逐字相等（PieceOriginStore.slotInCharge）。
             return RollbackStatus(
@@ -511,7 +511,7 @@ object PieceUpdater {
      * 把这一件回退到 APK 原件。
      *
      * 缺陷名（C-102）**回退的主体集合按 isPiece 那一格筛**：
-     *   而 isPiece 逐字是「assetEntry 空 => PIECE」=> 而它**只**收纯库件那一族 =>
+     *   而 isPiece 逐字是「assetEntry 空 => PIECE」 它**只**收纯库件那一族 =>
      *   而程序形态那一族（git / jq / openssl …）**一件都进不来** =>
      *   而「回退到 APK 原件」这件事对程序形态**从来没发生过**。
      *   01 裁定：回退的主体集合是**所有在册的件**（不分形态）（C-954：
@@ -519,21 +519,21 @@ object PieceUpdater {
      *
      * R-4（**只报，本轮不改**）：包回退那一族有**两道方向相反的守卫**——
      *   · CapabilityBroker.kt:411 的 "rollback" 动作：`if (!ProgramIndex.isPiece(...))` 拒掉非纯库件，
-     *     而它放行的是纯库件（=> 而纯库件按 01 的裁定**有** APK 原件基线）。
+     *     而它放行的是纯库件（ 纯库件按 01 的裁定**有** APK 原件基线）。
      *   · PackageInstaller.kt:75 的 rollbackToBaseline：`if (reg != null && ProgramIndex.isPiece(...))`
      *     **拒掉**纯库件（理由是「随 APK 交付，无可回滚基线」）。
-     *   两道方向相反 => 而那一族入口（lobos.program.install 的 action=rollback）
+     *   两道方向相反 一族入口（lobos.program.install 的 action=rollback）
      *   对**任何一件**都走不到成功：纯库件被第二道拒，程序形态被第一道拒。
      *   按 01 的判别形式未裁定，那一条链本轮**不许改**（只报缺）。
      *   而**本函数**这一族（lobos.sys.native.rollback 走的那一条）不经过那两道守卫，
      *   所以本轮改的主体集合在这一条链上是生效的。
      *
      * 缺陷名（C-102）**入口指针按注册表那一格拼名字**：库形态那一件拼出空名 =>
-     *   而「入口是不是软链」「软链当前指着谁」两问都答不出 => 而回退无从下手。
+     *   而「入口是不是软链」「软链当前指着谁」两问都答不出 回退无从下手。
      *   现在：按形态定位（PieceEntryPointer）。
      *
      * 缺陷名（C-102）**「是不是软链」当成了「有没有被接管」**：
-     *   而预装那一支也建软链 => 而按软链判 => 而**每一件**都答「接管过」。
+     *   而预装那一支也建软链 按软链判 **每一件**都答「接管过」。
      *   现在：按 C-944 判「入口软链当前 realpath == 记下来的 OTA 那一份」。
      *
      * 缺陷名（C-102）**回退成没成只比了字符串**：
@@ -545,13 +545,13 @@ object PieceUpdater {
             return false to (status.reason + "：" + status.detail)
         }
         val pe = lobos.services.reg.ProgramIndex.get(ctx, id) ?: return false to REASON_NOT_REGISTERED
-        //  缺陷名（C-102）**那回退逐字只换第一条指针、=> 而而那一件逐字可能有多条** ——
-        //   => 而那旧版逐字是 `PieceEntryPointer.locate(ctx, pe)`（=> 而那**只**给第一条），
-        //     => 而那 openssl 那一件逐字有**两条**库指针（=> 而按 01 裁的 S604-01 §1.4 第 3 条
-        //       逐字「**这一格不是「取第一个」**」）=> 而那第二条指针逐字**永远换不回**。
-        //   => 而那**处置**：=> 而那逐字取**全部**那几条、=> 而那**逐条**换、
-        //     => 而那**逐条**核（=> 而 C-941 那逐字比较对**每一条**都做一遍）。
-        //   => 而那**判据**逐字是「**每一条**都换成了、=> 而每一条都核对一致」。
+        //  缺陷名（C-102）**那回退逐字只换第一条指针、 一件逐字可能有多条** ——
+        //   旧版逐字是 `PieceEntryPointer.locate(ctx, pe)`（ **只**给第一条），
+        //     openssl 那一件逐字有**两条**库指针（ 按 01 裁的 S604-01 §1.4 第 3 条
+        //       逐字「**这一格不是「取第一个」**」） 第二条指针逐字**永远换不回**。
+        //   **处置**： 逐字取**全部**那几条、 **逐条**换、
+        //     **逐条**核（ C-941 那逐字比较对**每一条**都做一遍）。
+        //   **判据**逐字是「**每一条**都换成了、 每一条都核对一致」。
         val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
         if (locatedAll.pointers.isEmpty()) return false to REASON_LIBRARY_ENTRY_UNLOCATED
         val origin = PieceOriginStore.get(ctx, id)
@@ -560,16 +560,16 @@ object PieceUpdater {
             return false to (REASON_NOT_TAKEN_OVER + "：入口指针当前没有指向记下来的 OTA 那一份")
         }
         return try {
-            //  => 而那**逐条**换、=> 而那**逐条**核（=> 而那判据逐字是「每一条都换成了」）。
-            //  => 而那**每一条**逐字用它**自己**的那一格来源（=> 而那 apkSlotFor 逐字先按 entryPath 找、
-            //     => 而那**指针路径才是那身份**、=> 而那角色只是**元数据**）。
+            //  **逐条**换、 **逐条**核（ 判据逐字是「每一条都换成了」）。
+            //  **每一条**逐字用它**自己**的那一格来源（ apkSlotFor 逐字先按 entryPath 找、
+            //     **指针路径才是那身份**、 角色只是**元数据**）。
             var allSwapped = true
             var allBack = true
             val facts = mutableListOf<String>()
             for (located in locatedAll.pointers) {
                 val link = located.pointer
                 val entryName = located.name
-                //  => 而那这一条指针逐字**自己**的那一条 OTA 槽（=> 而那按 entryPath 逐字找）。
+                //  这一条指针逐字**自己**的那一条 OTA 槽（ 按 entryPath 逐字找）。
                 val otaSlot = otaSlots.firstOrNull { it.entryPath == link.absolutePath }
                     ?: otaSlots.firstOrNull { it.role == located.role }
                 if (otaSlot == null) {
@@ -618,7 +618,7 @@ object PieceUpdater {
             }
             //  规范 §122.31 逐字要求：那条 detail 须含「软链删除与 provision 重建结果」。
             //  缺陷名（C-102）**detail 只报了路径、没报那一句**：原来这一条写的是
-            //   「入口=… 目标=… APK 原件=…」，=> 而那一句话**不在**里面 =>
+            //   「入口=… 目标=… APK 原件=…」， 一句话**不在**里面 =>
             //   而按规范逐字验收（读 diag.jsonl 那一行）就**判不过**。
             //  现在：先写那一句（说明这一趟做了什么），再写**逐条事实**（路径与核对结果）。
             RuntimeDiagnostics.append(
@@ -641,13 +641,13 @@ object PieceUpdater {
     fun verifyApkRestored(ctx: Context, id: String): Pair<Boolean, String> {
         val pe = lobos.services.reg.ProgramIndex.get(ctx, id)
             ?: return false to REASON_NOT_REGISTERED + "：注册表里没有 id=" + id
-        //  => 而那**全部**那几条（=> 而那旧版逐字只核第一条、=> 而那库形态那一件逐字可能有多条）。
+        //  **全部**那几条（ 旧版逐字只核第一条、 库形态那一件逐字可能有多条）。
         val locatedAll = PieceEntryPointer.locateAll(ctx, pe)
         if (locatedAll.pointers.isEmpty()) {
             return false to REASON_LIBRARY_ENTRY_UNLOCATED + "：入口指针定位不到"
         }
         val origin = PieceOriginStore.get(ctx, id)
-        //  => 而那**逐条**核（=> 而那每一条逐字用它**自己**的那一格 APK 原件槽）。
+        //  **逐条**核（ 每一条逐字用它**自己**的那一格 APK 原件槽）。
         val facts = mutableListOf<String>()
         var allOk = true
         for (located in locatedAll.pointers) {

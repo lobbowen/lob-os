@@ -33,10 +33,10 @@ object ProgramInstallPipeline {
     const val SHAPE_NAME = "piece-shape.json"
     const val ROLE_PROGRAM = "program"
     const val ROLE_LIBRARY = "library"
-    //  => 而那 **shell** 那一档逐字是**派生**的（=> 而那 01 裁的 S615-01 §3.1）：
-    //     => 而它逐字是「那一件逐字能 `-c` 跑一条命令」+「那一件逐字有程序入口」
+    //  **shell** 那一档逐字是**派生**的（ 01 裁的 S615-01 §3.1）：
+    //     它逐字是「那一件逐字能 `-c` 跑一条命令」+「那一件逐字有程序入口」
     //       +「那一件逐字自己的那行为逐字是解释命令」那三格全中的那一件。
-    //     => 而那它逐字**落程序目录**（=> 而那它逐字是 program 那一边）。
+    //     它逐字**落程序目录**（ 它逐字是 program 那一边）。
     const val ROLE_SHELL = "shell"
 
     /** 产物自带的形态说明 —— 构建期算好（scripts/toolchain/elf-form.sh 照 ExecBits.formOf 那把尺），
@@ -64,16 +64,16 @@ object ProgramInstallPipeline {
              *  而它**是产物自带的**（构建期 scripts/toolchain/elf-form.sh 的 elf_chain_names 写的），
              *  而 chain[0] 逐字是**开发名那一层**的名字。
              *  缺陷名（C-102）**形态说明只读了五格、把开发名那一层整丢了**：
-             *   而原来这一格只有 path/dir/role/mode/sha256 => 而「哪一层是开发名」这一问
-             *   在运行期**无从问起** => 而库形态的入口指针名只能去取 files[] 的**首项**
-             *   （=> 而那首项是「LC_ALL=C sort 的副产品」，=> 而它常常是**实体名**那一层）。
-             *  现在：chain 也读进来，=> 而开发名那一层**按它判**。
+             *   而原来这一格只有 path/dir/role/mode/sha256 「哪一层是开发名」这一问
+             *   在运行期**无从问起** 库形态的入口指针名只能去取 files[] 的**首项**
+             *   （ 首项是「LC_ALL=C sort 的副产品」， 它常常是**实体名**那一层）。
+             *  现在：chain 也读进来， 开发名那一层**按它判**。
              */
             val chain: List<String> = emptyList(),
-            /** 那一项自述的 SONAME（=> 而它**是产物自带的**、=> 而那构建期 elf-form.sh 写的）。
+            /** 那一项自述的 SONAME（ 它**是产物自带的**、 构建期 elf-form.sh 写的）。
              *  缺陷名（C-102）**形态说明只读了五格、把 SONAME 与 chain 整丢了**：
              *   而原来这一格只有 path/dir/role/mode/sha256
-             *   => 而「哪一层是开发名」「哪一层是实体」这两问在运行期**无从问起**。
+             *   「哪一层是开发名」「哪一层是实体」这两问在运行期**无从问起**。
              *  现在：chain 与 soname 也读进来。
              */
             val soname: String = "",
@@ -83,37 +83,37 @@ object ProgramInstallPipeline {
             val kind: String,
             val entry: String,
             val files: List<FileShape>,
-            /** 派生物那几项（=> 而构建期逐字是「哪些是派生物」）。
+            /** 派生物那几项（ 构建期逐字是「哪些是派生物」）。
              *  而它是**作者声明**的「这一件在 usr/bin 下该有哪几个命令名」——
-             *  => 而 busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
-             *  => 而**本体那一份**（bin/libbusybox.so）**不在**里面（=> 而它不认自己的文件名）。
-             *  => 而 openssl 那一件是**空的**（=> 而它那两项都是**实体**、=> 而它们各自是命令）。 */
+             *  busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
+             *  **本体那一份**（bin/libbusybox.so）**不在**里面（ 它不认自己的文件名）。
+             *  openssl 那一件是**空的**（ 它那两项都是**实体**、 它们各自是命令）。 */
             val derivedLinks: List<String> = emptyList(),
-            /** 那件**额外**要的那几层（=> 而那 bin/ 与那 lib/ **那两**层**不**在里面）。
-             *  => 而那 git 那一件逐字要那 **libexec** 那一层（=> 而那子命令目录）、
-             *  => 而那 cmake 那一件逐字要那 **share** 那一层（=> 而那模块目录）。
-             *  => 而它们逐字**是**那**落位事实**、=> 而那**落位侧**逐字**照**它们**搬**。 */
+            /** 那件**额外**要的那几层（ bin/ 与那 lib/ **那两**层**不**在里面）。
+             *  git 那一件逐字要那 **libexec** 那一层（ 子命令目录）、
+             *  cmake 那一件逐字要那 **share** 那一层（ 模块目录）。
+             *  它们逐字**是**那**落位事实**、 **落位侧**逐字**照**它们**搬**。 */
             val extraDirs: List<String> = emptyList(),
             /**
-             * 那**系统角色**（=> 而那它逐字是「这一件在 LOB-OS 自己那一份 Linux 上扮演什么角色」）。
+             * 那**系统角色**（ 它逐字是「这一件在 LOB-OS 自己那一份 Linux 上扮演什么角色」）。
              *
-             *  缺陷名（C-102）**那两份清单逐字不一致、=> 而那两把尺逐字各答一件事**
-             *   => 而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
-             *     （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
-             *   => 而那**件整体**的系统角色（=> 而那 exec / shell / library / …）
-             *     逐字**不**在那 `files[]` 逐字那一栏里、=> 而那它逐字在**另一份清单**里
-             *     （=> 而那 `component-meta.json` 那一份）
-             *   => 而那**后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
-             *     => 而那 `PreinstalledPieces.kt:297` 逐字 `val entryRole: String = if (entry.isNotBlank()) {`
-             *       逐字**从那 `files[]` 逐字取**、=> 而那它逐字必然 'program'
-             *     => 而那**落位侧** `program-manifest.json` 逐字 'program'
-             *     => 而那**注册表**逐字 'program'、=> 而那 `role='shell'` 那一格逐字**永远**答不出来
-             *   => 而那**处置**（=> 而那是 Lead 采纳的那 (甲)）：
-             *     => 而那**构建期**逐字把那系统角色**也**写进那 `piece-shape.json` 那一份
-     *       （=> 而那 `scripts/toolchain/elf-form.sh` 逐字从那 `component-meta.json` 派生）
-     *     => 而那**这一格**逐字**读**它、=> 而那它逐字**不**再从那 `files[]` 逐字推
+             *  缺陷名（C-102）**那两份清单逐字不一致、 两把尺逐字各答一件事**
+             *   `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
+             *     （ program / library / unknown、 它逐字答的是「那一份字节是程序还是库」）
+             *   **件整体**的系统角色（ exec / shell / library / …）
+             *     逐字**不**在那 `files[]` 逐字那一栏里、 它逐字在**另一份清单**里
+             *     （ `component-meta.json` 那一份）
+             *   **后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
+             *     `PreinstalledPieces.kt:297` 逐字 `val entryRole: String = if (entry.isNotBlank()) {`
+             *       逐字**从那 `files[]` 逐字取**、 它逐字必然 'program'
+             *     **落位侧** `program-manifest.json` 逐字 'program'
+             *     **注册表**逐字 'program'、 `role='shell'` 那一格逐字**永远**答不出来
+             *   **处置**（ 是 Lead 采纳的那 (甲)）：
+             *     **构建期**逐字把那系统角色**也**写进那 `piece-shape.json` 那一份
+     *       （ `scripts/toolchain/elf-form.sh` 逐字从那 `component-meta.json` 派生）
+     *     **这一格**逐字**读**它、 它逐字**不**再从那 `files[]` 逐字推
              *
-             *  [!] 而那它逐字**读不到**时逐字是空（=> 而按 C-05 报缺、=> 而不猜填）。
+             *  [!] 而那它逐字**读不到**时逐字是空（ 按 C-05 报缺、 不猜填）。
              */
             val systemRole: String = "",
         ) {
@@ -141,16 +141,16 @@ object ProgramInstallPipeline {
                             fo.optString("role", "").trim(),
                             fo.optString("mode", "").trim(),
                             fo.optString("sha256", "").trim(),
-                            //  => 而那 chain 逐字是**产物自带**的那一格（=> 而那构建期逐字是
+                            //  chain 逐字是**产物自带**的那一格（ 构建期逐字是
                             //     scripts/toolchain/elf-form.sh 的 elf_chain_names 写的），
-                            //  => 而它**缺了**逐字是空（=> 而按 C-05「没有」就是没有、=> 而不猜填）。
+                            //  它**缺了**逐字是空（ 按 C-05「没有」就是没有、 不猜填）。
                             (fo.optJSONArray("chain") ?: JSONArray()).let { ca ->
                                 (0 until ca.length()).mapNotNull { j ->
                                     ca.optString(j, "").trim().takeIf { it.isNotEmpty() }
                                 }
                             },
-                            //  => 而那 soname 那一格逐字**也是产物自带的**
-                            //     （=> 而那构建期逐字是 elf-form.sh 的 elf_soname 写的）。
+                            //  soname 那一格逐字**也是产物自带的**
+                            //     （ 构建期逐字是 elf-form.sh 的 elf_soname 写的）。
                             fo.optString("soname", "").trim(),
                         )
                     )
@@ -159,8 +159,8 @@ object ProgramInstallPipeline {
             return Piece(
                 kind = o.optString("kind", "").trim(),
                 entry = o.optString("entry", "").trim(),
-                //  => 而那**系统角色**那一格逐字**读**那产物自带的那一份
-                //    （=> 而那它逐字**缺了**逐字是空、=> 而按 C-05「没有」就是没有、=> 而不猜填）
+                //  **系统角色**那一格逐字**读**那产物自带的那一份
+                //    （ 它逐字**缺了**逐字是空、 按 C-05「没有」就是没有、 不猜填）
                 systemRole = o.optString("systemRole", "").trim(),
                 files = files,
                 derivedLinks = (o.optJSONArray("derivedLinks") ?: JSONArray()).let { arr ->
@@ -179,10 +179,10 @@ object ProgramInstallPipeline {
         fun dirForRole(role: String): String? = when (role) {
             ROLE_PROGRAM -> "bin"
             ROLE_LIBRARY -> "lib"
-            //  => 而那 **shell** 那一档逐字是**程序形态**那一族的一个**子类**
-            //     （=> 而它逐字有程序入口、=> 而那它逐字落**程序目录**）。
-            //  => 而那它逐字是**派生**的（=> 而那 01 裁的 S615-01 §3.1 逐字三格判据）、
-            //     => 而那它逐字**不是**一个**新的**落位形态、=> 而那它逐字**只是** program 那一边。
+            //  **shell** 那一档逐字是**程序形态**那一族的一个**子类**
+            //     （ 它逐字有程序入口、 它逐字落**程序目录**）。
+            //  它逐字是**派生**的（ 01 裁的 S615-01 §3.1 逐字三格判据）、
+            //     它逐字**不是**一个**新的**落位形态、 它逐字**只是** program 那一边。
             ROLE_SHELL -> "bin"
             else -> null
         }
@@ -199,23 +199,23 @@ object ProgramInstallPipeline {
          * 那一件该建**哪几条**入口指针（按形态）。
          *
          * 缺陷名（C-102）**这一族逐字只取 files[] 的首项** ——
-         *   而那首项逐字是「LC_ALL=C sort 的**副产品**」（=> 而那顺序逐字是路径字典序）、
-         *   => 而它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（=> 而那不是指针层）。
+         *   而那首项逐字是「LC_ALL=C sort 的**副产品**」（ 顺序逐字是路径字典序）、
+         *   它在 crypto / openssl / zlib 上逐字给的是**实体名**那一层（ 不是指针层）。
          *   而 01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.5 第 1 条逐字给的缺陷名是
          *   「取 files[] 的**首项**作为入口指针名，而首项是 LC_ALL=C sort 的**副产品**（无语义）」。
          *
-         * 而那判别式逐字是**两步**（=> 而 01 裁的 S604-01 §1.3）：
-         *   甲：那一项在**落位目录里是软链**（=> 而不是普通文件）=> 而它才是「指针层」；
+         * 而那判别式逐字是**两步**（ 01 裁的 S604-01 §1.3）：
+         *   甲：那一项在**落位目录里是软链**（ 不是普通文件） 它才是「指针层」；
          *   乙：在甲给出的那些项里，取 basename 等于**该件 files[] 里 role=library 各项 chain[0]** 的那一个。
          *
-         * => 而这是**唯一**那套口径（=> 而按 C-104 判别源要唯一）：
+         * 这是**唯一**那套口径（ 按 C-104 判别源要唯一）：
          *   而 PieceEntryPointer 那一族与 PreinstalledPieces 那一族逐字**都调**这一件。
          *
-         * => 而那**单层无软链**那一档（curl）：=> 而那唯一库项逐字是普通文件、=> 而那**不**是缺。
-         *   => 而它逐字**显式**在这里处理（=> 而那它逐字是「开发名与实体名同名」那一条）。
+         * **单层无软链**那一档（curl）： 唯一库项逐字是普通文件、 **不**是缺。
+         *   它逐字**显式**在这里处理（ 它逐字是「开发名与实体名同名」那一条）。
          *
-         * => 而那**择一不出来**时（=> 而那是 zlib 那一格在 chain[0] 读不到时）
-         *   => 而这一件逐字返回**空**（=> 而那调用方逐字**报缺**、=> 而不按首项兜底）。
+         * **择一不出来**时（ 是 zlib 那一格在 chain[0] 读不到时）
+         *   这一件逐字返回**空**（ 调用方逐字**报缺**、 不按首项兜底）。
          */
         fun pointerLayerOf(piece: Piece, role: String, verDir: File?): List<FileShape> =
             pointerLayerWithTier(piece, role, verDir).pointers
@@ -223,59 +223,59 @@ object ProgramInstallPipeline {
         /**
          * 那一件该建**哪几条**入口指针，**外加**它落在**哪一档**。
          *
-         * 缺陷名（C-102）**那一档逐字没有被报出来、=> 而那 curl 那一件被标成了另一档** ——
-         *   => 而 01 裁的 S604-01 §3.1 第 4 条逐字要求「**并在这一格显式记「单层无软链」**」、
-         *     => 而那**单层无软链**那一档逐字被混进了「chain0」那一档（=> 而那一档逐字是「甲+chain[0] 择一」）。
-         *   => 而那**后果**：=> 而那调用方逐字**分不出**「这一件是 curl 那一档」与「这一件是 crypto 那一档」。
+         * 缺陷名（C-102）**那一档逐字没有被报出来、 curl 那一件被标成了另一档** ——
+         *   01 裁的 S604-01 §3.1 第 4 条逐字要求「**并在这一格显式记「单层无软链」**」、
+         *     **单层无软链**那一档逐字被混进了「chain0」那一档（ 一档逐字是「甲+chain[0] 择一」）。
+         *   **后果**： 调用方逐字**分不出**「这一件是 curl 那一档」与「这一件是 crypto 那一档」。
          *
-         * => 而那各档逐字是：
-         *   "no-library" 这一件逐字没有 role=library 的项（=> 而它逐字不是缺）
+         * 各档逐字是：
+         *   "no-library" 这一件逐字没有 role=library 的项（ 它逐字不是缺）
          *   / "single" 单层无软链 / "chain0" 甲+chain[0] 择一出来恰好一条
          *   / "multi" 择一出来多于一条 / "" 算不出来
-         *   => 而那档名逐字是 01 裁的 S610-01 §2.4 那五档（=> 而那 **"program" 那一档逐字取消**）。
-         *   "single"  单层无软链（=> 而那唯一库项逐字是普通文件、=> 而那 chain 长度 1、
-         *            => 而那 soname 与 basename 同名、=> 而那它**不是缺**）
+         *   档名逐字是 01 裁的 S610-01 §2.4 那五档（ **"program" 那一档逐字取消**）。
+         *   "single"  单层无软链（ 唯一库项逐字是普通文件、 chain 长度 1、
+         *            soname 与 basename 同名、 它**不是缺**）
          *   "chain0"  甲（软链层）+ chain[0] 择一
-         *   "multi"   多指针档（=> 而那一件逐字有**好几条**链、=> 而 openssl 那一件逐字是两条）
-         *   ""         报缺（=> 而那 pointers 逐字是空、=> 而那调用方逐字报缺）
+         *   "multi"   多指针档（ 一件逐字有**好几条**链、 openssl 那一件逐字是两条）
+         *   ""         报缺（ pointers 逐字是空、 调用方逐字报缺）
          */
         fun pointerLayerWithTier(piece: Piece, role: String, verDir: File?): PointerLayer {
             val items = piece.byRole(role)
-            //  => 而那**新口径**（=> 而按 01 裁的 S610-01-MIXED-SHAPE-TIER-RULING.md §2.4 逐字）：
-            //     「**`program` 那一档逐字取消**、=> 而改成 **`no-library`**；
-            //      => 而那判据逐字是「**那一件逐字有没有 `role=library` 的项**」、
-            //      => 而**不是**「注册表 assetEntry 非空不空**」」
-            //   => 而所以那**判据**逐字只看那一件**有没有 role=library 的项**，
-            //      => 而**不**由 roleOf 那一票决定（=> 而那 roleOf 逐字答的是「有没有程序入口」）。
-            //  => 而那**空**那一档逐字**先**判（=> 而那 items.first() 逐字在空的时候逐字抛异常）：
-            //     => 而那旧版逐字把这一档判**在后面**、=> 而那一支逐字 unguarded。
+            //  **新口径**（ 按 01 裁的 S610-01-MIXED-SHAPE-TIER-RULING.md §2.4 逐字）：
+            //     「**`program` 那一档逐字取消**、 改成 **`no-library`**；
+            //      判据逐字是「**那一件逐字有没有 `role=library` 的项**」、
+            //      **不是**「注册表 assetEntry 非空不空**」」
+            //   所以那**判据**逐字只看那一件**有没有 role=library 的项**，
+            //      **不**由 roleOf 那一票决定（ roleOf 逐字答的是「有没有程序入口」）。
+            //  **空**那一档逐字**先**判（ items.first() 逐字在空的时候逐字抛异常）：
+            //     旧版逐字把这一档判**在后面**、 一支逐字 unguarded。
             if (items.isEmpty()) {
-                //  => 而那**没有 role=library 的项**那一档逐字是 "no-library"
-                //     （=> 而按 01 裁的 S610-01 §2.4 第 5 条逐字「它逐字**不是缺**」）。
+                //  **没有 role=library 的项**那一档逐字是 "no-library"
+                //     （ 按 01 裁的 S610-01 §2.4 第 5 条逐字「它逐字**不是缺**」）。
                 return PointerLayer(emptyList(), "no-library")
             }
             if (role != ROLE_LIBRARY) {
-                //  => 而那**程序角色**那一族逐字只有**一条**入口（=> 而那它不参与择一）。
-                //     => 而那一档逐字**不是** "program"（=> 而那一档逐字**取消**了）、
-                //       => 而它逐字是 "no-library"（=> 而那它逐字答的是「这一件逐字没有库形态那几项」）。
+                //  **程序角色**那一族逐字只有**一条**入口（ 它不参与择一）。
+                //     一档逐字**不是** "program"（ 一档逐字**取消**了）、
+                //       它逐字是 "no-library"（ 它逐字答的是「这一件逐字没有库形态那几项」）。
                 return PointerLayer(listOf(items.first()), "no-library")
             }
             //  甲：那一项在**落位目录里是软链**。
-            //  => 而那优先逐字用**产物自带**的那一格（derivedLinks、=> 而那它逐字记的就是「哪些是派生物」）。
-            //  => 而那「单层无软链」那一档（curl）逐字**先**判：
-            //     而那唯一库项逐字是**普通文件**、=> 而那 chain 长度 1、=> 而那 soname 与 basename 同名
-            //     => 而那**不是缺**（=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字
-            //        「取唯一库项的 basename 记为开发名，=> 而并在这一格显式记『单层无软链』」）。
-            //     => 而那**判据**逐字是「那唯一库项的 chain 长度 == 1 且 soname == basename」
-            //        （=> 而那是**产物自带**的那两格、=> 而它逐字不必去看落位目录）。
+            //  优先逐字用**产物自带**的那一格（derivedLinks、 它逐字记的就是「哪些是派生物」）。
+            //  「单层无软链」那一档（curl）逐字**先**判：
+            //     而那唯一库项逐字是**普通文件**、 chain 长度 1、 soname 与 basename 同名
+            //     **不是缺**（ 按 01 裁的 S604-01 §3.1 第 4 条逐字
+            //        「取唯一库项的 basename 记为开发名， 并在这一格显式记『单层无软链』」）。
+            //     **判据**逐字是「那唯一库项的 chain 长度 == 1 且 soname == basename」
+            //        （ 是**产物自带**的那两格、 它逐字不必去看落位目录）。
             if (items.size == 1) {
                 val only = items.first()
                 val base = only.path.substringAfterLast('/')
                 val chainLen = only.chain.size
                 val sonameSelf = only.soname.isNotBlank() && only.soname == base
                 if (chainLen == 1 && sonameSelf) {
-                    //  => 而那「单层无软链」这一档逐字**显式记为它自己**
-                    //     （=> 而按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
+                    //  「单层无软链」这一档逐字**显式记为它自己**
+                    //     （ 按 01 裁的 S604-01 §3.1 第 4 条逐字「并在这一格显式记『单层无软链』」）。
                     return PointerLayer(listOf(only), "single")
                 }
             }
@@ -283,8 +283,8 @@ object ProgramInstallPipeline {
                 ?: return PointerLayer(emptyList(), "")   //  => 而那两处都读不到 => 报缺
             val pointerLayer = items.filter { soft.contains(it.path) }
             if (pointerLayer.isEmpty()) {
-                //  => 而那**有**好几项、=> 而那没有一项是软链、=> 而那不是「单层」、
-                //     => 而那**报缺**（=> 而按 C-05 不猜）。
+                //  **有**好几项、 没有一项是软链、 不是「单层」、
+                //     **报缺**（ 按 C-05 不猜）。
                 return PointerLayer(emptyList(), "")
             }
             //  乙：按 chain[0] 择一。
@@ -295,7 +295,7 @@ object ProgramInstallPipeline {
             return PointerLayer(picked, tier)
         }
 
-        /** 那一档的结果：逐字是那几条指针 + 它落在**哪一档**（=> 而那档名逐字见 pointerLayerWithTier）。 */
+        /** 那一档的结果：逐字是那几条指针 + 它落在**哪一档**（ 档名逐字见 pointerLayerWithTier）。 */
         data class PointerLayer(
             val pointers: List<FileShape>,
             val tier: String,
@@ -303,8 +303,8 @@ object ProgramInstallPipeline {
 
         /**
          * 落位目录里哪些项是**软链**（相对路径，逐字带那一层目录名）。
-         *  => 而那优先逐字用**产物自带**的那一格（derivedLinks）、=> 而那读不到时逐字**看落位目录本身**。
-         *  => 而两处都读不到返回 null（=> 而那调用方逐字**报缺**、=> 而不猜）。
+         *  优先逐字用**产物自带**的那一格（derivedLinks）、 读不到时逐字**看落位目录本身**。
+         *  两处都读不到返回 null（ 调用方逐字**报缺**、 不猜）。
          */
         fun softLinkPathsOf(piece: Piece, verDir: File?): Set<String>? {
             if (piece.derivedLinks.isNotEmpty()) return piece.derivedLinks.toSet()
@@ -405,7 +405,7 @@ object ProgramInstallPipeline {
             // 读数（诊断用）：这一项在搬之前是软链还是实体、摘要多少。
             // 这一条必须在 src == dst 的 continue **之前**：
             //   而 busybox 那一件 19 项全是 src == dst（role=program 落在 bin/，
-            //   而包内路径本来就是 bin/...）=> 而 continue 在前的话这两条读数一次都不会执行，
+            //   而包内路径本来就是 bin/...） continue 在前的话这两条读数一次都不会执行，
             //   probe 恒为空 => diag 里 0 条。
             //   而 07 今天带阳性对照测到的那 0 条就是这么来的（run 见提交说明）。
             if (isDiagnostic && !src.startsWith(".")) {
@@ -464,17 +464,17 @@ object ProgramInstallPipeline {
         }
 
         //  缺陷名（C-102）**那 link-farm 那一族软链逐字没有建**
-        //    => 而那 link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（=> 而那格式逐字是「落位相对路径<TAB>指向目标」），
-        //       而那**它**逐字**跟着**那**件**走**、=> 而那**落位侧**逐字**要**读**它**才**建得出**那**软链**。
-        //    => 而那后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（=> 而那**它**不带那 git- 前缀），
-        //       而那**它**逐字**找不到**（=> 而那 git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
-        //    => 而那**处置**：=> 而那 link-farm **逐条**逐字**在**那落位目录**上**建**那**软链**（=> 而那**它**逐字**是**那**落位事实**）。
-        //    => 而那**它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、=> 而那**它**逐字**也不是**「那加载器坏了」那个形状。
+        //    link-farm.txt 逐字**是**那构建侧**写**的**那**清单**（ 格式逐字是「落位相对路径<TAB>指向目标」），
+        //       而那**它**逐字**跟着**那**件**走**、 **落位侧**逐字**要**读**它**才**建得出**那**软链**。
+        //    后果逐字**是**：那 git 按那 exec-path 逐字找那 remote-https（ **它**不带那 git- 前缀），
+        //       而那**它**逐字**找不到**（ git-remote-https 逐字**退**成**那一个** 15 字节**的**文字桩**）。
+        //    **处置**： link-farm **逐条**逐字**在**那落位目录**上**建**那**软链**（ **它**逐字**是**那**落位事实**）。
+        //    **它**逐字**不**是「那 DT_RUNPATH 要改」那个形状、 **它**逐字**也不是**「那加载器坏了」那个形状。
         //  缺陷名（C-102）**那件实际要的那几层逐字没有搬**
-        //    => 而那 bin/ 与那 lib/ **那两**层逐字**走**那 files[] **那条路**（=> 而按形态落），
-        //       而那**别的**层（=> 而那 git 那一件要那 **libexec/**、=> 而那 cmake 那一件要那 **share/**）
-        //       逐字**不**在**那** files[] **里面**、=> 而那**它们**逐字**要**按**原样**落**。
-        //    => 而那**处置**：=> 而那**额外**的**每一层**逐字**整层**搬**过去**（=> 而那**落位事实**逐字**是**这样**的**）。
+        //    bin/ 与那 lib/ **那两**层逐字**走**那 files[] **那条路**（ 按形态落），
+        //       而那**别的**层（ git 那一件要那 **libexec/**、 cmake 那一件要那 **share/**）
+        //       逐字**不**在**那** files[] **里面**、 **它们**逐字**要**按**原样**落**。
+        //    **处置**： **额外**的**每一层**逐字**整层**搬**过去**（ **落位事实**逐字**是**这样**的**）。
         for (extra in shape.extraDirs) {
             val srcDir = File(dest, extra)
             if (!srcDir.isDirectory) continue
@@ -543,8 +543,8 @@ object ProgramInstallPipeline {
             //    现在：空 entry  库件，落位照上面（按形态逐项）走完，入口留空。
             //   而「库装库目录」说的是**库字节落在库目录**，那件事由 dirForRole 保证 ——
             //   与「库件没有入口」（入口）不冲突。
-            //  => 而那**系统角色**逐字走那产物自带的那一格（=> 而那它逐字**不**按形态那一把尺兜底）
-            //    （=> 而那库形态那三件逐字那两把尺逐字**一样**、=> 而那它逐字**一致**更**好**）
+            //  **系统角色**逐字走那产物自带的那一格（ 它逐字**不**按形态那一把尺兜底）
+            //    （ 库形态那三件逐字那两把尺逐字**一样**、 它逐字**一致**更**好**）
             val libRole = shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
                 ?: shape.files.firstOrNull()?.role
             if (libRole == null) {
@@ -565,17 +565,17 @@ object ProgramInstallPipeline {
                 "entry-not-in-shape",
                 "清单声明的入口 " + entrySrc + " 不在产物声明的落位集合里 —— 报缺，不猜另一个",
             )
-        //  缺陷名（C-102）**那一格逐字取那**形态**那一把尺、=> 而那它逐字答的是**另一问**
-        //   => 而那旧版逐字是 `val entryRole = shape.roleOf(entrySrc)`
-        //     => 而那 `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
-        //       （=> 而那 program / library / unknown、=> 而那它逐字答的是「那一份字节是程序还是库」）
-        //     => 而那这**一件**逐字要记的是「**它在 LOB-OS 自己那一份 Linux 上扮演什么角色**」
-        //       （=> 而那**系统角色**那一把尺：=> 而那 shell / library / …）
-        //     => 而那**两把尺**逐字**对不上**（=> 而那 bash 逐字 files 1 条逐字 role='program'
+        //  缺陷名（C-102）**那一格逐字取那**形态**那一把尺、 它逐字答的是**另一问**
+        //   旧版逐字是 `val entryRole = shape.roleOf(entrySrc)`
+        //     `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
+        //       （ program / library / unknown、 它逐字答的是「那一份字节是程序还是库」）
+        //     这**一件**逐字要记的是「**它在 LOB-OS 自己那一份 Linux 上扮演什么角色**」
+        //       （ **系统角色**那一把尺： shell / library / …）
+        //     **两把尺**逐字**对不上**（ bash 逐字 files 1 条逐字 role='program'
         //       而那它逐字**真的**是那 shell 那一族）
-        //   => 而那**处置**：=> 而那**系统角色**逐字走那产物自带的 `systemRole` 那一格
-        //     （=> 而那构建期逐字从那 `component-meta.json` 派生、=> 而那**一份真源**逐字是那一份）
-        //     => 而那它逐字**读不到**时逐字**报缺**（=> 而按 C-05 不猜填、=> 而不按形态那一把尺兜底）
+        //   **处置**： **系统角色**逐字走那产物自带的 `systemRole` 那一格
+        //     （ 构建期逐字从那 `component-meta.json` 派生、 **一份真源**逐字是那一份）
+        //     它逐字**读不到**时逐字**报缺**（ 按 C-05 不猜填、 不按形态那一把尺兜底）
         val entryRole = shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
             ?: return null to LandFailure(
                 "entry-system-role-unknown",
@@ -589,7 +589,7 @@ object ProgramInstallPipeline {
      *
      *  族一（落在哪）：搬动只有这一个实现，rename 与 copy 都走这里。
      *  而 copyRecursively 那一条不能用于落位：
-     *    它对目录逐项复制，符号链接会被跟到目标 => 一条命令软链变成一份字节副本。
+     *    它对目录逐项复制，符号链接会被跟到目标 一条命令软链变成一份字节副本。
      *  而 rename 不解引用，所以第一优先走 rename（installComponent 里那一支）。
      *  这一支是 rename 失败时的兜底，而兜底也必须保留软链。
      */
@@ -759,11 +759,11 @@ object ProgramInstallPipeline {
                       //     —— 「清单声明优先，缺了才用形态」，而 declared 是**注册表**里那一件
                       //     （不是产物），baseEntry 也是**注册表**里那一件
                       //     => **两处都是旧值**，而它们决定入口格填不填
-                      //     => 而真机读数（01 今天核过，2026-10-20）：busybox 新落位那份的清单写
+                      //     真机读数（01 今天核过，2026-10-20）：busybox 新落位那份的清单写
                       //        entry=bin/libbusybox.so（程序）而 lib/ 空、bin/ 下 19 个实体
-                      //        => 形态与角色在那一份上已经对不上，而没有任何一处会报出来。
-                      //   判别形式：这一格的答案会不会因「谁来问」而不同？会 => 没归一。
-                      //   => 现在：这一处**不写 role**（留空），而 role 与入口格由**落位之后**那次
+                      // 形态与角色在那一份上已经对不上，而没有任何一处会报出来。
+                      //   判别形式：这一格的答案会不会因「谁来问」而不同？会 没归一。
+                      // 现在：这一处**不写 role**（留空），而 role 与入口格由**落位之后**那次
                       //     登记按落位算出的那一格写（见本文件后面那次 upsert，它用 landed.role）。
                       //      而这里留空不是「没有这一格」：stateDir 那格仍照写（族一），
                       //      而 levelOf 对「stateDir 有值而 assetEntry 空」的读法是 PIECE，
@@ -818,8 +818,8 @@ object ProgramInstallPipeline {
         // 判别：真机上落位结果落在 files/<id>/<ver>/<ver>/，
         //   而 stateDirOf 的三支（ProgramManager.kt:80 走 opt/<id>、:81 走 filesDir+stateDir、
         //   :83 走 programRoot+id 而 programRoot=SystemDirs.opt）**全都落在 opt/ 之下**
-        //   => 当前代码拼不出那个形状 => 那一格是运行时拼的或装进去的
-        //   => 而这三条读数就是定它的那一格。
+        // 当前代码拼不出那个形状 那一格是运行时拼的或装进去的
+        //   这三条读数就是定它的那一格。
         val regNow = lobos.services.reg.ProgramIndex.get(context, spec.programId)
         RuntimeDiagnostics.append(
             context, "ota-shape-probe", true, "落位根读数 " + spec.programId,
@@ -857,15 +857,15 @@ object ProgramInstallPipeline {
             //   缺陷名（C-102）**展平落在这一支**：
             //     原来这一支是 staging.copyRecursively(incoming, overwrite = true)
             //       —— 而 File.copyRecursively 对目录逐项复制，符号链接会被跟到目标
-            //       => 那 18 条命令软链变成 18 份字节副本（真机读数 07：bin/ 下 19 个实体）
+            // 那 18 条命令软链变成 18 份字节副本（真机读数 07：bin/ 下 19 个实体）
             //     而 renameTo(dest) 在 dest 非空时必然失败（整目录换掉的前提就是 dest 已在）
             //       => **真机上每次都走 copy 这一支**
             //   真机读数（07，run_id 39465653670）：unzip-probe 那组 31 条里
-            //     ('true','true') 20 条（判为软链且落盘后是软链）=> 解包之后那 18 条在盘上就是软链
-            //     而落位探针说「落位前 19 项全是实体」=> 二者之间那一步就是这一支。
+            //     ('true','true') 20 条（判为软链且落盘后是软链） 解包之后那 18 条在盘上就是软链
+            //     而落位探针说「落位前 19 项全是实体」 二者之间那一步就是这一支。
             //   判别形式：解包与落位之间搬目录的那一步，用的是 rename 还是 copy；
             //     **copy 会解引用软链，而 rename 不会**。
-            //   => 现在：复制时保留符号链接（逐项自己搬，不让 copyRecursively 跟目标）。
+            // 现在：复制时保留符号链接（逐项自己搬，不让 copyRecursively 跟目标）。
             val copied = runCatching {
                 copyTreePreservingLinks(staging, incoming)
             }
@@ -975,26 +975,26 @@ object ProgramInstallPipeline {
         //   而那一份 crypto 的形态逐字是：meta 的 entry 是**空串**、
         //   piece-shape.json 的 files[] 那一行 role 是 **library**、
         //   而 entryForm 与 entryRole 两格都是 **unknown**。
-        //   => 而时序逐字是：落位成功 → 建链失败 → 没登记 → ldconfig 报 kind1。
+        //   时序逐字是：落位成功 → 建链失败 → 没登记 → ldconfig 报 kind1。
         //
         // 而成因（本机逐处核到）：
         //   · landByShape 对**纯库件**返回的是 `Landed("", libRole, …)`（:287 那一行逐字，
-        //     => 而 entryRel 是**空串**）；
+        //     entryRel 是**空串**）；
         //   · 而 :680 那一行逐字是 `val entryRel = landed.entryRel`；
         //   · 而 linkEntry :943 那一行逐字是 `val target = File(dest, entryRel)`
-        //     => 而空串时 target 就是**落位目录自己**（=> 而那是一个**目录**）；
-        //   · 而 :945 那一关（entry 越出落位目录）它**过**（=> 而 tCanon == rootCanon）；
+        //     空串时 target 就是**落位目录自己**（ 是一个**目录**）；
+        //   · 而 :945 那一关（entry 越出落位目录）它**过**（ tCanon == rootCanon）；
         //   · 而 :952 那一行逐字是 `if (!target.isFile) return false`
-        //     => 而 target 是目录不是文件 => **它就是失败的那一处**。
+        //     target 是目录不是文件 => **它就是失败的那一处**。
         //
         // 而**为什么快路径那几件（curl / zlib，它们同样是纯库件、entry 同样是空串）没事**：
-        //   => 而快路径（PreinstalledPieces.kt:296 那一支）**根本不调 linkEntry**
-        //     （=> 而那一段里 linkEntry 零命中），=> 而它调的是 refreshDerivedLinks
-        //     （=> 而那一支按 `shape.byRole(ROLE_LIBRARY)` 逐形态建链，=> 而**不按 entry 猜**）；
-        //   => 而慢路径这一支按 **entry** 建链 => 而纯库件没有 entry => 而它必然失败。
+        //   快路径（PreinstalledPieces.kt:296 那一支）**根本不调 linkEntry**
+        //     （ 一段里 linkEntry 零命中）， 它调的是 refreshDerivedLinks
+        //     （ 一支按 `shape.byRole(ROLE_LIBRARY)` 逐形态建链， **不按 entry 猜**）；
+        //   慢路径这一支按 **entry** 建链 纯库件没有 entry 它必然失败。
         //
-        // => 而处置：**纯库件不建「入口软链」**（=> 而它没有入口），
-        //   => 而它**要落位、要登记成件**，=> 而登记那一格（:691 往后的 upsert）**要走到**。
+        // 处置：**纯库件不建「入口软链」**（ 它没有入口），
+        //   它**要落位、要登记成件**， 登记那一格（:691 往后的 upsert）**要走到**。
         val entryRel = landed.entryRel
         if (entryRel.isNotBlank() && !linkEntry(context, dest, entryRel, spec.programId, role)) {
             return Result(
@@ -1019,8 +1019,8 @@ object ProgramInstallPipeline {
         //    于是那几件调起来是那份库字节 —— 今天五件失败的成因。
         //   现在入口格只对**程序形态**填；库形态那一格空着（= 只有落位目录）。
         val isProgram = role == ROLE_PROGRAM
-        //  => 而那**库**那一档逐字判据是「那它逐字**真的**没有程序入口」
-        //    （=> 而那它逐字**不是**「那它逐字不是 program」）
+        //  **库**那一档逐字判据是「那它逐字**真的**没有程序入口」
+        //    （ 它逐字**不是**「那它逐字不是 program」）
         val isLibrary = role == ROLE_LIBRARY
         val upserted = runCatching {
             lobos.services.reg.ProgramIndex.upsert(
@@ -1037,51 +1037,51 @@ object ProgramInstallPipeline {
                   //  库件没有入口（entryRel 空） libName 取**那份库字节**的名字（按形态从落位结果算）。
                   //   程序件：libName = 落位后那一条的文件名（与原来逐字相同）。
                   libName = if (entryRel.isNotBlank()) entryRel.substringAfterLast("/") else landed.libName,
-                      //  缺陷名（C-102）**那一格逐字只对 role='program' 填、=> 而那 role='shell' 那一档逐字也有入口**
-                      //    => 而那旧版逐字是 `assetEntry = if (isProgram) entryRel else ""`
-                      //      => 而那 role='shell' 逐字**不是** 'program'、=> 而那它逐字把入口逐字**清空**了
-                      //      => 而那 `ShellEntry.resolve` 那一格逐字就答不出那 shell
-                      //    => 而那**处置**：=> 而那**入口**那一格逐字该答
-                      //      「**那一件逐字有没有程序入口**」、=> 而那它逐字**不该**由
+                      //  缺陷名（C-102）**那一格逐字只对 role='program' 填、 role='shell' 那一档逐字也有入口**
+                      //    旧版逐字是 `assetEntry = if (isProgram) entryRel else ""`
+                      //      role='shell' 逐字**不是** 'program'、 它逐字把入口逐字**清空**了
+                      //      `ShellEntry.resolve` 那一格逐字就答不出那 shell
+                      //    **处置**： **入口**那一格逐字该答
+                      //      「**那一件逐字有没有程序入口**」、 它逐字**不该**由
                       //      「那一件逐字是什么角色」决定
-                      //      => 而那 role='library' 那一档逐字**仍然**该清空
-                      //      => 而那 role='shell' 那一档逐字**不该**清空
+                      //      role='library' 那一档逐字**仍然**该清空
+                      //      role='shell' 那一档逐字**不该**清空
                       assetEntry = if (isLibrary) "" else entryRel,
                       role = role,
                       requires = meta.requires(),
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
                       //  [!] 缺陷名（C-102）**这一支不写 desired，而 UnitEntry 那一行的默认是 STOPPED**
-                      //    => 而这一件**装上来却不被监督**（=> 而 SupervisorPool.kt:138 逐字是
+                      //    这一件**装上来却不被监督**（ SupervisorPool.kt:138 逐字是
                       //      `.filter { it.levelOf(host) == Level.PROGRAM && it.desired == Desired.RUNNING }`）
-                      //    => 而监督名单里**没有它**。
+                      //    监督名单里**没有它**。
                       //
-                      //  而**为什么快路径那几件没事**（=> 而 bash / jq / ripgrep 都在监督名单里）：
-                      //    => 而快路径（PreinstalledPieces.kt:537 那一行）逐字是
+                      //  而**为什么快路径那几件没事**（ bash / jq / ripgrep 都在监督名单里）：
+                      //    快路径（PreinstalledPieces.kt:537 那一行）逐字是
                       //      `desired = lobos.services.reg.Desired.RUNNING`，
-                      //      => 而这一支（慢路径 installComponent）**没写** => => 而两处**不同源**。
-                      //    => 而 busybox 那一件今天走的是**慢路径**（=> 而那一趟的字节变了
-                      //      => 而「是不是同一份」那一格判不一致 => 而走重装 => 而走这一支）。
+                      //      这一支（慢路径 installComponent）**没写** 两处**不同源**。
+                      //    busybox 那一件今天走的是**慢路径**（ 一趟的字节变了
+                      //      「是不是同一份」那一格判不一致 走重装 走这一支）。
                       //
-                      //  => 而**「装上来就常驻」这一格该由谁写**（=> 而 lead 问的那一条）：
-                      //    => 而落位侧那份 manifest **没有** lifecycle 那一格（=> 而 ManifestWriter.build
+                      //  **「装上来就常驻」这一格该由谁写**（ lead 问的那一条）：
+                      //    落位侧那份 manifest **没有** lifecycle 那一格（ ManifestWriter.build
                       //      逐字是 schema / id / version / entry / role / essential / requires / source / sourceSha256
                       //      —— 而**没有 lifecycle**），
-                      //    => 而 ProgramRegistry.kt:146 那一行逐字是
+                      //    ProgramRegistry.kt:146 那一行逐字是
                       //      `resident = life?.optBoolean("resident", true) ?: true`
-                      //      => 而**默认是 true**，=> 而 ProgramDir.kt:169 那一行逐字是
+                      //      **默认是 true**， ProgramDir.kt:169 那一行逐字是
                       //      `val resident = spec?.resident == true`
-                      //      => 而落位那一支的 spec 是 **null**（=> 而 :163 逐字 `val spec = if (landed) null else …`）
-                      //      => 而**null?.resident == true** 是 false。
-                      //    => 而那正是 journal 逐字「resident=false」那一条。
+                      //      落位那一支的 spec 是 **null**（ :163 逐字 `val spec = if (landed) null else …`）
+                      //      **null?.resident == true** 是 false。
+                      //    正是 journal 逐字「resident=false」那一条。
                       //
-                      //  => 而本机核到的是：**这一格该由落位侧那一份说了算**，
-                      //    => 而它今天缺 lifecycle 那一格 => => 而默认被否掉了。
-                      //    => 而这一支**照快路径那一支答**（=> 而那是同一族里另一条生成路径，
-                      //      => 而按 C-104 「只有一条生成路径」=> 而两处该一致）：
-                      //      => 而「装上来就常驻」= true。
-                      //    => 而**库件**不受影响（=> 而 SupervisorPool.kt:138 那一支还要求
-                      //      `it.levelOf(host) == Level.PROGRAM`，=> 而库件 assetEntry 空 => level 是 PIECE）。
+                      //  本机核到的是：**这一格该由落位侧那一份说了算**，
+                      //    它今天缺 lifecycle 那一格 默认被否掉了。
+                      //    这一支**照快路径那一支答**（ 是同一族里另一条生成路径，
+                      //      按 C-104 「只有一条生成路径」 两处该一致）：
+                      //      「装上来就常驻」= true。
+                      //    **库件**不受影响（ SupervisorPool.kt:138 那一支还要求
+                      //      `it.levelOf(host) == Level.PROGRAM`， 库件 assetEntry 空 => level 是 PIECE）。
                       desired = lobos.services.reg.Desired.RUNNING,
                 ),
             )
@@ -1098,16 +1098,16 @@ object ProgramInstallPipeline {
             return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
         }
         //  缺陷名（C-102）**那全局那一层逐字没有跟着那一次换重建**
-        //    => 而它治**的**是「那 usr/bin 与那 usr/lib **那一层**逐字**跟**那**换掉之后**的**那版本**对不对得上**」。
-        //    => 而那**成因**：=> 而那一次换版本逐字**只**换**那一件自己的**落位目录**（=> 而那是整目录换掉：
-        //       .previous -> dest -> 失败回退 -> 删 .previous），=> 而那 usr/bin 与那 usr/lib **那一层**
-        //       逐字**不在**那替换**的范围**里、=> 而它们逐字**是**那 LdConfig **那一族**建的。
-        //    => 而那**后果**逐字**是**：=> 而那 applet **那一族**软链逐字**指向**那一次换掉之后**就不在**的**那本体**；
+        //    它治**的**是「那 usr/bin 与那 usr/lib **那一层**逐字**跟**那**换掉之后**的**那版本**对不对得上**」。
+        //    **成因**： 一次换版本逐字**只**换**那一件自己的**落位目录**（ 是整目录换掉：
+        //       .previous -> dest -> 失败回退 -> 删 .previous）， usr/bin 与那 usr/lib **那一层**
+        //       逐字**不在**那替换**的范围**里、 它们逐字**是**那 LdConfig **那一族**建的。
+        //    **后果**逐字**是**： applet **那一族**软链逐字**指向**那一次换掉之后**就不在**的**那本体**；
         //       于是一族逐字是「那一次换件」的事**被**读成了「那库不在设备上」。
-        //    => 而那**处置**：=> 而那**全局**那一层逐字**跟着**那一次换**重建**（=> 而那 LdConfig **那一族**逐字**管**它）。
-        //    => 而那**它**逐字**不**是「那加载器坏了」那个形状、=> 而那**它**逐字**不是**「那 DT_RUNPATH 要改」那个形状。
-        //    => 而按 C-104：=> 而那**全局**那一层逐字**只有**一条生成路径（=> 而那 LdConfig.run **那一族**）。
-        //    => 而按 C-135：=> 而「那一次换件」与「那全局那一层」逐字**是**两**问**、=> 而它们**不合并**。
+        //    **处置**： **全局**那一层逐字**跟着**那一次换**重建**（ LdConfig **那一族**逐字**管**它）。
+        //    **它**逐字**不**是「那加载器坏了」那个形状、 **它**逐字**不是**「那 DT_RUNPATH 要改」那个形状。
+        //    按 C-104： **全局**那一层逐字**只有**一条生成路径（ LdConfig.run **那一族**）。
+        //    按 C-135： 「那一次换件」与「那全局那一层」逐字**是**两**问**、 它们**不合并**。
         val globalRebuilt = runCatching {
             lobos.kernel.layout.LdConfig.run(context)
         }.onFailure {
@@ -1190,12 +1190,12 @@ object ProgramInstallPipeline {
 
     private fun satisfyElfDeps(context: Context, dest: File): DepReport {
         //  缺陷名（C-102）**那 ELF 依赖**那一族逐字**扫**那**整个**的**落位**目录**。
-        //    => 而那**成因**：=> 而那 satisfyElfDeps 逐字**对**那 dest **走**那 walkTopDown（）、
-        //      => 而那**它**们**逐字是**那**两**件**事**：「那**扫**的**是**什么**」与「那**扫**了**多少**」）。
-        //      => 而那**后果**逐字 = 而那**落位**那一族逐字**卡**在**那 busybox **那**一件**里**（=> 而那 seq=49950 **是**那**最后**一行**、
-        //        => 而那**它**逐字**卡**了**那 **3443** **秒**）、=> 而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
-        //    => 而那**处置**：=> 而那**它**逐字**只**看**那 lib/ **与**那 bin/ **那几**个**目录**（=> 而那**形状**逐字**跟**那 dependencySources **那一族**一样**）、
-        //      => 而那**它**们**逐字是**那**两**件**事**：「那 ELF 依赖**在不在**」与「那**依赖来源**在不在**」）。
+        //    **成因**： satisfyElfDeps 逐字**对**那 dest **走**那 walkTopDown（）、
+        //      **它**们**逐字是**那**两**件**事**：「那**扫**的**是**什么**」与「那**扫**了**多少**」）。
+        //      **后果**逐字 = 而那**落位**那一族逐字**卡**在**那 busybox **那**一件**里**（ seq=49950 **是**那**最后**一行**、
+        //        **它**逐字**卡**了**那 **3443** **秒**）、 **它**们**逐字是**那**两**件**事**：「那**卡**在**哪**一步**」与「那**为什么**卡**」）。
+        //    **处置**： **它**逐字**只**看**那 lib/ **与**那 bin/ **那几**个**目录**（ **形状**逐字**跟**那 dependencySources **那一族**一样**）、
+        //      **它**们**逐字是**那**两**件**事**：「那 ELF 依赖**在不在**」与「那**依赖来源**在不在**」）。
         val elfs = linkedSetOf<File>()
         for (sub in listOf(File(dest, "lib"), File(dest, "bin"), dest)) {
             if (!sub.isDirectory) continue
@@ -1244,14 +1244,14 @@ object ProgramInstallPipeline {
         }
         if (stillMissing.isNotEmpty()) {
             //  缺陷名（C-102）**那基础**运行库逐字**当**那**一件**的**硬**失败**。
-            //    => 而那**成因**：=> 而那 libc.so **与**那 libdl.so 逐字**是**那**所有**的**ELF**都**要**的**那**两个**基础**名字**、
-            //      => 而那**它**们**逐字**在**那设备**上**是**那 **NDK** **链接期**的**桩**（=> 而那 **8** 字节**的**函数体**）、
-            //      => 而那**它**们**逐字是**那**两**件**事**：「那**宿主**给的**」与「那**我们自己的**要**补上**的**」）。
-            //    => 而那**后果**逐字 = 而那**落位**那一族逐字**停**在**那 crypto **那**一件**上**（=> 而那 seq=49858 **是**那**最后**一行）、
-            //      => 而那**它**们**逐字是**那**两**件**事**：「那**卡**在**哪**」与「那**为什么**卡**」）。
-            //    => 而那**处置**：=> 而那**基础**运行库**不**算**那**一件**的**硬**失败**（=> 而那**它**们**逐字是**那**两**件**事**）、
-            //      => 而那**它**逐字**记**那**读数**（=> 而按 C-105 **报缺**、=> 而不猜填**）。
-            //      => 而那**它**们**逐字**跟**那**借用面**那 linker64 **那一格**逐字**是**那**两**件**事**。
+            //    **成因**： libc.so **与**那 libdl.so 逐字**是**那**所有**的**ELF**都**要**的**那**两个**基础**名字**、
+            //      **它**们**逐字**在**那设备**上**是**那 **NDK** **链接期**的**桩**（ **8** 字节**的**函数体**）、
+            //      **它**们**逐字是**那**两**件**事**：「那**宿主**给的**」与「那**我们自己的**要**补上**的**」）。
+            //    **后果**逐字 = 而那**落位**那一族逐字**停**在**那 crypto **那**一件**上**（ seq=49858 **是**那**最后**一行）、
+            //      **它**们**逐字是**那**两**件**事**：「那**卡**在**哪**」与「那**为什么**卡**」）。
+            //    **处置**： **基础**运行库**不**算**那**一件**的**硬**失败**（ **它**们**逐字是**那**两**件**事**）、
+            //      **它**逐字**记**那**读数**（ 按 C-105 **报缺**、 不猜填**）。
+            //      **它**们**逐字**跟**那**借用面**那 linker64 **那一格**逐字**是**那**两**件**事**。
             RuntimeDiagnostics.append(
                 context, "ota-shape-probe", null,
                 "ELF 基础运行库缺 " + stillMissing.size + " 个（不阻断落位）",
@@ -1309,16 +1309,16 @@ object ProgramInstallPipeline {
             }
         }
         //  缺陷名（C-102）**那 ELF 依赖**那一族逐字**扫**那**全部**的**那**十九**件**的**每一**个**文件**。
-        //    => 而那**成因**：=> 而那 dependencySources 逐字**对**那**每一个**目录**走**那** walkTopDown（）、
-        //      => 而那**它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**扫**了**多少**」）。
-        //      => 而那**后果**逐字 = 而那 files/opt 底下逐字**有**那**一万八千**多个**文件**、
-        //        => 而那**它**们**逐字是**那**两**件**事**：「那**扫**了**多少**」与「那**等**了**多久**」）。
-        //      => 而那**落位**那一族逐字**停**在**那 crypto **那**一件**上**（=> 而那 seq=49858 **是**那**最后**一行）。
-        //    => 而那**处置**：=> 而那**它**逐字**只**看**那**库**那一族**的**那几**个**目录**（=> 而那 lib/ **与**那 bin/）、
-        //      => 而那**它**们**逐字不**扫**那**整个**的**落位**目录**（=> 而那**那**一**些**件**逐字是**那**两**件**事**）。
+        //    **成因**： dependencySources 逐字**对**那**每一个**目录**走**那** walkTopDown（）、
+        //      **它**们**逐字是**那**两**件**事**：「那**要**的**是**什么**」与「那**扫**了**多少**」）。
+        //      **后果**逐字 = 而那 files/opt 底下逐字**有**那**一万八千**多个**文件**、
+        //        **它**们**逐字是**那**两**件**事**：「那**扫**了**多少**」与「那**等**了**多久**」）。
+        //      **落位**那一族逐字**停**在**那 crypto **那**一件**上**（ seq=49858 **是**那**最后**一行）。
+        //    **处置**： **它**逐字**只**看**那**库**那一族**的**那几**个**目录**（ lib/ **与**那 bin/）、
+        //      **它**们**逐字不**扫**那**整个**的**落位**目录**（ **那**一**些**件**逐字是**那**两**件**事**）。
         for (d in dirs) {
             if (!d.isDirectory) continue
-            //  => 而那**库**那一族逐字**在**那 lib/ **与**那 bin/ **底下**（=> 而那**它**们**逐字是**那**两**件**事**）。
+            //  **库**那一族逐字**在**那 lib/ **与**那 bin/ **底下**（ **它**们**逐字是**那**两**件**事**）。
             for (sub in listOf(File(d, "lib"), File(d, "bin"), d)) {
                 if (!sub.isDirectory) continue
                 val kids = sub.listFiles() ?: continue

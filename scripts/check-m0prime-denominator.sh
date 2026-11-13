@@ -5,10 +5,10 @@
 #   check-m0prime-denominator.sh
 #
 # 判据：
-#   一、那清单里没有一条的出处是猜的（=> 而那每一款的出处都要能读回那一条原文）。
-#   二、那分母逐字分成那两个（按裸名调起 / 按需装载并解析出符号），=> 而那 sysroot 与那 libcxx 逐字标出来为什么不进。
-#   三、那清单**不**跟那读数那一件合一（=> 而那是两个文件、=> 而那读数是一个时点的读数）。
-#   四、那 sed 逐字是那 busybox 的一个 applet、=> 而它**不**是**另**一件**件**。
+#   一、那清单里没有一条的出处是猜的（ 每一款的出处都要能读回那一条原文）。
+#   二、那分母逐字分成那两个（按裸名调起 / 按需装载并解析出符号）， sysroot 与那 libcxx 逐字标出来为什么不进。
+#   三、那清单**不**跟那读数那一件合一（ 是两个文件、 读数是一个时点的读数）。
+#   四、那 sed 逐字是那 busybox 的一个 applet、 它**不**是**另**一件**件**。
 #
 # 退出码：0 = 逐条对得上；1 = 有对不上或缺出处；2 = 清单不在或读不出。
 
@@ -42,7 +42,7 @@ srcs = json.load(io.open(sources_path, encoding='utf-8'))['sources']
 bad = []
 missing = []
 
-# 一、那分母逐字**三**族、=> 而那**每**一族逐字**带**那 set **与**那 count**。
+# 一、那分母逐字**三**族、 **每**一族逐字**带**那 set **与**那 count**。
 groups = {}
 for g in d.get('denominators') or []:
     groups[g['key']] = g
@@ -54,12 +54,12 @@ for need in ('bareName', 'symbolLoad', 'excluded'):
     if g.get('count') != len(g.get('set') or []):
         bad.append('%s 那一族的 count 逐字对不上（清单记 %s、实际 %d）' % (need, g.get('count'), len(g.get('set') or [])))
 
-#  而那分母逐字**要**与**那**裁定**逐字**一致**（=> 而那**裁定**逐字**是**那 04 **那边给**的**那清单正文**）。
+#  而那分母逐字**要**与**那**裁定**逐字**一致**（ **裁定**逐字**是**那 04 **那边给**的**那清单正文**）。
 RULED = {
     #  缺陷名（C-102）**这**两**个**列表逐字还是那**旧**的**裁定** ——
-    #    => 而那 04 那边逐字**裁**的是那 curl 归那 symbolLoad **那一族**（=> 而那**它**逐字**是**那库、
-    #       => 而那 entry 合法地**是**空**的**、=> 而它**与**那 openssl 与那 crypto 与那 zlib **那三**件**是**那**同**的**形状**）。
-    #    => 而而那**它**逐字**只**改**这**两个**族**的**这两个**列表、=> 而而那**它**逐字**不动**那**其余**判据**。
+    # 04 那边逐字**裁**的是那 curl 归那 symbolLoad **那一族**（ **它**逐字**是**那库、
+    # entry 合法地**是**空**的**、 它**与**那 openssl 与那 crypto 与那 zlib **那三**件**是**那**同**的**形状**）。
+    # **它**逐字**只**改**这**两个**族**的**这两个**列表、 **它**逐字**不动**那**其余**判据**。
     'bareName': ['node', 'npm', 'pnpm', 'jq', 'git', 'make', 'cmake',
                  'bash', 'ripgrep', 'sqlite', 'python', 'llvm', 'pkgconf', 'busybox'],
     'symbolLoad': ['openssl', 'crypto', 'zlib', 'curl'],
@@ -77,7 +77,7 @@ for key, ruled in RULED.items():
         bad.append('%s 那一族逐字**与**那裁定**不一致**（=> 而那多**出**的 = %s、=> 而那**缺**的 = %s）'
                    % (key, only_got, only_want))
 
-# 二、那**每**一条逐字**带**出处、=> 而而那出处逐字**能**读回**那一条**原文**。
+# 二、那**每**一条逐字**带**出处、 出处逐字**能**读回**那一条**原文**。
 items = d.get('items') or []
 seen = set()
 for it in items:
@@ -107,7 +107,7 @@ for it in items:
         elif 'piece-criteria.json' in prov:
             ok = (k in cp)
         elif 'program-manifest.json' in prov:
-            #  而那**设备**上**那一份**逐字**可能**不**在**（=> 而那**它**逐字**是**那**时点**的**读数**、=> 而按 C-115 逐字**不**当**那定义**）
+            #  而那**设备**上**那一份**逐字**可能**不**在**（ **它**逐字**是**那**时点**的**读数**、 按 C-115 逐字**不**当**那定义**）
             ok = True
         if not ok:
             bad.append('%s 的出处逐字读不回那一条：%s' % (k, prov[:70]))
@@ -118,7 +118,7 @@ for key, g in groups.items():
         if k not in seen:
             bad.append('%s 逐字**在**那 %s **那一族**的 set **里面**、=> 而而它**不**在**那 items **里面**' % (k, key))
 
-# 四、那 sed 逐字**是**那 busybox **的**一个 applet、=> 而它**不**是**另**一件**件**。
+# 四、那 sed 逐字**是**那 busybox **的**一个 applet、 它**不**是**另**一件**件**。
 apps = d.get('applets') or []
 sed_in_items = any(it.get('id') == 'sed' for it in items)
 if sed_in_items:
@@ -132,7 +132,7 @@ for it in items:
         if not it.get('excludedReason'):
             missing.append('%s 逐字**标**成**不**进**、=> 而而它**没有**那**为什么**' % it.get('id'))
 
-# 六、那清单逐字**不**跟**那读数**那一件**合一**（=> 而那是两个文件**、**=> 而那读数是一个时点的读数**）。
+# 六、那清单逐字**不**跟**那读数**那一件**合一**（ 是两个文件**、** 读数是一个时点的读数**）。
 if os.path.abspath(data_path) == os.path.abspath(readings_path):
     bad.append('那分母清单逐字**跟**那读数**同一**个文件**、=> 而而那**两个**逐字**不**是同一件**')
 if not os.path.isfile(readings_path):

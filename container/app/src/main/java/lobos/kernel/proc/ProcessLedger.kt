@@ -237,8 +237,8 @@ object ProcessLedger {
     }.getOrNull()
 
     /** 在跑的条目 —— 判据两条，按顺序取：
-     *  1. starttime 可用（账本里 >0 且现在读得到且相等）=> 以它为准（防 pid 复用）；
-     *  2. starttime 拿不到（账本里就是 -1）=> 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
+     *  1. starttime 可用（账本里 >0 且现在读得到且相等） 以它为准（防 pid 复用）；
+     *  2. starttime 拿不到（账本里就是 -1） 退到 cmdline 路径（见 isOwnedAliveByCmdline 的注释与它的边界）。
      *  [!] 而今天这一格是2.：宿主读不到自己子进程的 /proc/<pid>/stat。
      *  [!] 三处调用方（OsHostService / InstanceHost / ProgramStatus）都走这一条，
      *  [!] 免得其中某处退回纯 starttime 而与另两处读出不同的数。 */

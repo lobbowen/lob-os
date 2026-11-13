@@ -49,41 +49,41 @@ object RuntimeDiagnostics {
     /**
      * 那**清**那一格 —— 「只清上一世」。
      *
-     *  缺陷名（C-102）**那 clear 逐字把整份清空、=> 而而那它逐字把「这一世」写的那几行也清了**
-     *   => 而那旧版逐字是 `file(ctx).writeText(""); structFile(ctx).writeText("")`
-     *     => 而那它逐字**整份**清空（=> 而那它逐字**不**分「上一世」与「这一世」）
-     *   => 而那**后果**（07 本轮逐字核出）：=> 而那 `beginLife` 逐字在**主线程**写的那几行
-     *     （=> 而那「宿主出生」「索引已从落位重建」与那 `scan-cost` 那一档）
+     *  缺陷名（C-102）**那 clear 逐字把整份清空、 它逐字把「这一世」写的那几行也清了**
+     *   旧版逐字是 `file(ctx).writeText(""); structFile(ctx).writeText("")`
+     *     它逐字**整份**清空（ 它逐字**不**分「上一世」与「这一世」）
+     *   **后果**（07 本轮逐字核出）： `beginLife` 逐字在**主线程**写的那几行
+     *     （ 「宿主出生」「索引已从落位重建」与那 `scan-cost` 那一档）
      *     逐字被那服务池（在**工作线程**上）逐字**清掉**
-     *     （=> 而那 07 逐字核到：那 scan-cost 那一档逐字在 journal 的 at 逐字 1793483983860、
+     *     （ 07 逐字核到：那 scan-cost 那一档逐字在 journal 的 at 逐字 1793483983860、
      *       而那 diag.jsonl 逐字**最早**一条 at 逐字 1793483984570 —— **晚 710 ms**）
-     *   => 而那**处置**：=> 而那它逐字只清「**上一世**」那一份
-     *     => 而那「这一世」逐字从那**出生标记**之后算起（=> 而那它逐字**不**清出生之后写的那几行）
-     *     => 而那它逐字**不**排在 beginLife **之后**（=> 而那是那一条竞态的另一半）
+     *   **处置**： 它逐字只清「**上一世**」那一份
+     *     「这一世」逐字从那**出生标记**之后算起（ 它逐字**不**清出生之后写的那几行）
+     *     它逐字**不**排在 beginLife **之后**（ 是那一条竞态的另一半）
      *
-     *  @param lifeMark 那**这一世**的标记（=> 而那它逐字是那出生那一拍写下的）
-     *   => 而那它逐字**空**时逐字**整份**清（=> 而那是那「没有标记」那一族、=> 而按 C-05 报缺）
+     *  @param lifeMark 那**这一世**的标记（ 它逐字是那出生那一拍写下的）
+     *   它逐字**空**时逐字**整份**清（ 是那「没有标记」那一族、 按 C-05 报缺）
      */
     @Synchronized
     fun clear(ctx: Context, lifeMark: String = "") {
         if (lifeMark.isBlank()) {
-            //  => 而那**没有标记**时逐字**整份**清（=> 而那按 C-05 报缺、=> 而不猜填）
+            //  **没有标记**时逐字**整份**清（ 按 C-05 报缺、 不猜填）
             file(ctx).writeText("")
             runCatching { structFile(ctx).writeText("") }
             return
         }
-        //  => 而那**文本**那一份：=> 而那它逐字**行**式、=> 而那它逐字只清那标记**之前**的行
+        //  **文本**那一份： 它逐字**行**式、 它逐字只清那标记**之前**的行
         runCatching {
             val f = file(ctx)
             if (!f.isFile) return@runCatching
             val kept = f.readLines().filter { !it.contains(lifeMark) }
-            //  => 而那它逐字**按行**判（=> 而那标记逐字逐行出现）
-            //     => 而那它逐字**不**动那标记**之后**写的那些行（=> 而那「这一世」那几行逐字**留住**）
+            //  它逐字**按行**判（ 标记逐字逐行出现）
+            //     它逐字**不**动那标记**之后**写的那些行（ 「这一世」那几行逐字**留住**）
             val out = kept.joinToString("\n")
             f.writeText(if (out.isEmpty()) "" else out + "\n")
         }
-        //  => 而那**结构**那一份：=> 而那它逐字**行**式 JSON（=> 而那每行逐字带那 at）
-        //     => 而那它逐字按那 at 逐字比（=> 而那标记那一拍逐字带一个 at）
+        //  **结构**那一份： 它逐字**行**式 JSON（ 每行逐字带那 at）
+        //     它逐字按那 at 逐字比（ 标记那一拍逐字带一个 at）
         runCatching {
             val f = structFile(ctx)
             if (!f.isFile) return@runCatching
@@ -95,14 +95,14 @@ object RuntimeDiagnostics {
         }
     }
 
-    //  => 而那**这一世**的取数时刻（=> 而那它逐字是那出生标记那一拍的毫秒）
+    //  **这一世**的取数时刻（ 它逐字是那出生标记那一拍的毫秒）
     @Volatile private var lifeMarkAt: Long = 0L
 
-    /** 记下那**这一世**的取数时刻（=> 而那它逐字是那「上一世 / 这一世」的分界）。 */
+    /** 记下那**这一世**的取数时刻（ 它逐字是那「上一世 / 这一世」的分界）。 */
     @Synchronized
     fun markLife(ctx: Context) {
         lifeMarkAt = System.currentTimeMillis()
-        //  => 而那**标记**逐字也写进那**文本**那一份（=> 而那它逐字是那一行）
+        //  **标记**逐字也写进那**文本**那一份（ 它逐字是那一行）
         runCatching {
             lobos.kernel.fs.StateFiles.appendBounded(
                 file(ctx), "LIFE-MARK " + lifeMarkAt

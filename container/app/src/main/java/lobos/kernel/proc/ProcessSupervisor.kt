@@ -21,34 +21,34 @@ object ProcessSupervisor {
     )
 
     /**
-     * 那**拒绝**那一格逐字要报的诊断（=> 而那是 M7-05 那一条 negative 断言逐字**要**的那原文）。
+     * 那**拒绝**那一格逐字要报的诊断（ 是 M7-05 那一条 negative 断言逐字**要**的那原文）。
      *
-     * 缺陷名（C-102）**那一格逐字把一个坏 ELF 当程序调起、=> 而而那它逐字不许** ——
-     *   => 而那旧版逐字是 `val real = ExecEntry.argv(File(command[0]), command)`
-     *     => 而那 `ExecEntry.argv` 那一族逐字对**认不出**的那一档逐字返回 **null**
-     *       （=> 而那 `Shape.Unknown -> null`）
-     *     => 而那下面那一行逐字 `if (real != null) real else command`
-     *       => 而那它逐字**拿回那原样的 argv**、=> 而那**坏 ELF 逐字被当程序调起**
-     *   => 而那**后果**（04 逐字落的 M7-05 那一条 negative 断言）：
-     *     「那一件逐字收到一个坏 ELF 时，=> 而那它逐字不许把它当程序调起、
-     *       => 而那它逐字必须逐字以那一个具体的退出码退出、
-     *       => 而那它逐字必须逐字在 stderr 上留那一条诊断原文」
-     *   => 而那**处置**：=> 而那**认不出**那一档逐字**不**调起、=> 而那它逐字**报缺**
-     *     （=> 而按 C-05 不猜填、=> 而**不**拿一个假的 argv 顶上去）
-     *     => 而那**退出码**逐字是那一个具体的数、=> 而那**诊断原文**逐字是那一条
+     * 缺陷名（C-102）**那一格逐字把一个坏 ELF 当程序调起、 它逐字不许** ——
+     *   旧版逐字是 `val real = ExecEntry.argv(File(command[0]), command)`
+     *     `ExecEntry.argv` 那一族逐字对**认不出**的那一档逐字返回 **null**
+     *       （ `Shape.Unknown -> null`）
+     *     下面那一行逐字 `if (real != null) real else command`
+     *       它逐字**拿回那原样的 argv**、 **坏 ELF 逐字被当程序调起**
+     *   **后果**（04 逐字落的 M7-05 那一条 negative 断言）：
+     *     「那一件逐字收到一个坏 ELF 时， 它逐字不许把它当程序调起、
+     *       它逐字必须逐字以那一个具体的退出码退出、
+     *       它逐字必须逐字在 stderr 上留那一条诊断原文」
+     *   **处置**： **认不出**那一档逐字**不**调起、 它逐字**报缺**
+     *     （ 按 C-05 不猜填、 **不**拿一个假的 argv 顶上去）
+     *     **退出码**逐字是那一个具体的数、 **诊断原文**逐字是那一条
      */
     const val ENOEXEC_EXIT_CODE = 126
     const val ENOEXEC_DIAGNOSTIC = "入口不是可执行的形态（既不是 ELF 也不是 #!）—— 拒绝调起，不当程序跑"
 
-    /** 那**拒绝**那一格逐字要报的那一条（=> 而那它逐字**是**那原文、=> 而那它逐字**可机读**）。 */
+    /** 那**拒绝**那一格逐字要报的那一条（ 它逐字**是**那原文、 它逐字**可机读**）。 */
     fun enoexecDiagnostic(entry: File): String =
         ENOEXEC_DIAGNOSTIC + "：" + entry.absolutePath +
             "（" + ExecEntry.describe(entry) + "）"
 
     /**
-     * 那**认不出**那一档逐字**报缺**（=> 而那它逐字**不**调起）。
-     *   => 而那它逐字**答**的是「那一件逐字没有可调起的入口」那一族
-     *   => 而那它逐字**不**是「那一件没有入口」（=> 而那入口那一格逐字**有**、=> 而那**形态**认不出）
+     * 那**认不出**那一档逐字**报缺**（ 它逐字**不**调起）。
+     *   它逐字**答**的是「那一件逐字没有可调起的入口」那一族
+     *   它逐字**不**是「那一件没有入口」（ 入口那一格逐字**有**、 **形态**认不出）
      */
     class NotExecutable(val entry: File) : IllegalStateException(
         enoexecDiagnostic(entry)
@@ -66,16 +66,16 @@ object ProcessSupervisor {
     ): Spawned {
         val first = java.io.File(command[0])
         val real = ExecEntry.argv(first, command)
-        //  => 而那**认不出**那一档逐字**报缺**、=> 而那它逐字**不**调起（=> 而那 M7-05 那一族）
-        //    => 而那旧版逐字是 `if (real != null) real else command`
-        //      => 而那它逐字**拿回那原样的 argv**、=> 而那**坏 ELF 逐字被当程序调起**
-        //    => 而那**判据**逐字是「那形态**认不出**」=> 而那它逐字**只**是那**认不出**那一族
-        //      （=> 而那 `Shape.Unknown` 逐字是「既不是 ELF 也没有 #!」、=> 而那它逐字**正是**那坏 ELF 那一族）
-        //    => 而那 `Pe` 那一族逐字**也**是那**认不出**（=> 而那它逐字**该**同样被拒、
-        //      => 而那按 C-105 逐字**不**另分一档）
+        //  **认不出**那一档逐字**报缺**、 它逐字**不**调起（ M7-05 那一族）
+        //    旧版逐字是 `if (real != null) real else command`
+        //      它逐字**拿回那原样的 argv**、 **坏 ELF 逐字被当程序调起**
+        //    **判据**逐字是「那形态**认不出**」 它逐字**只**是那**认不出**那一族
+        //      （ `Shape.Unknown` 逐字是「既不是 ELF 也没有 #!」、 它逐字**正是**那坏 ELF 那一族）
+        //    `Pe` 那一族逐字**也**是那**认不出**（ 它逐字**该**同样被拒、
+        //      按 C-105 逐字**不**另分一档）
         if (real == null) {
             val diag = enoexecDiagnostic(first)
-            //  => 而那**诊断原文**逐字**进**那 stderr（=> 而那是 M7-05 那一条逐字**要**的那一处）
+            //  **诊断原文**逐字**进**那 stderr（ 是 M7-05 那一条逐字**要**的那一处）
             System.err.println(diag)
             runCatching {
                 android.util.Log.w("ProcessSupervisor", diag)

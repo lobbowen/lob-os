@@ -38,13 +38,13 @@ object PieceScan {
      * 那**扫描**那一格 —— 「跳过 rebuild」那个开关逐字在哪一层。
      *
      *  [!] 这一格逐字**不是**「跳过一切扫描」：
-     *   · 而那它逐字**仍然**扫那**目录**、=> 而那它逐字**仍然**答「哪几件在位」、
-     *     => 而那它逐字**仍然**答那**入口在不在**（=> 而那 `entryOf` 那一格逐字**不受**这个开关影响）、
-     *     => 而那它逐字**仍然**答那**缺件**那一族。
+     *   · 而那它逐字**仍然**扫那**目录**、 它逐字**仍然**答「哪几件在位」、
+     *     它逐字**仍然**答那**入口在不在**（ `entryOf` 那一格逐字**不受**这个开关影响）、
+     *     它逐字**仍然**答那**缺件**那一族。
      *   · 而那它逐字**不**做的是「那**每一个**文件**读一遍并算一遍 sha256」那一件。
      *
-     *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
-     *   => 而那**默认逐字是 true**（=> 而那它是那**默认**行为、=> 而那**不**改变任何东西）
+     *  @param withContentFingerprint 那要不要算那**内容**指纹（ sha256 那一族）
+     *   **默认逐字是 true**（ 它是那**默认**行为、 **不**改变任何东西）
      */
     fun scan(
         ctx: Context,
@@ -70,21 +70,21 @@ object PieceScan {
                 // **不再**由运行期读那份字节的 ELF 头回答（第三行规则）。无效则**报缺**：continue（不登记）。
                 val declared = metaOf(verDir)?.optString("entry", "").orEmpty()
                 val role = roleOf(verDir)
-                //  缺陷名（C-102）**那库形态逐字从 scan 的结果里丢掉、=> 而而那 landedIds 缺它们**
-                //    => 而那旧版逐字是 `val entry = entryOf(verDir, declared) ?: continue`
-                //      => 而那**库形态那三件**（=> 而那 crypto / curl / zlib）逐字 `entry=''`
-                //        （=> 而那按 C-05「没有」就是没有、=> 而那它们逐字**本就不该**有程序入口）
-                //      => 而那 `continue` 逐字把**它们整件**逐字从 scan 的结果里丢掉
-                //    => 而那**后果**（07 本轮逐字核出）：=> 而那 `landedIds` 缺它们
-                //      => 而那 prefix 那一档逐字报 FAIL
-                //      （=> 而那 07 逐字：「FAIL | $PREFIX 缺件：crypto,curl,zlib | 落位根=…/files/opt 已落位=13（…） 包里有=9（…）」）
-                //      => 而那**阳性对照**逐字是「同一份 diag 逐字 `"stage":"prefix"` 命中 **2**」
-                //        （=> 而那一条 OK「预装件全部就位（9 件）」与那一条 FAIL
-                //          => 而那个 FAIL 逐字是真的、=> 而**不是**读不到）
-                //    => 而那**处置**：=> 而那**库形态**逐字**照样登记**（=> 而它逐字有程序入口没有**无关**）
-                //      => 而那**入口**那一格逐字**留空**（=> 而那按 C-05 报缺、=> 而不猜填）
-                //      => 而那**有**程序入口而那入口逐字**不在**的那一件逐字**仍然** continue
-                //        （=> 而那**不可用**那一族逐字**不**登记、=> 而那才是那一族本来的语义）
+                //  缺陷名（C-102）**那库形态逐字从 scan 的结果里丢掉、 landedIds 缺它们**
+                //    旧版逐字是 `val entry = entryOf(verDir, declared) ?: continue`
+                //      **库形态那三件**（ crypto / curl / zlib）逐字 `entry=''`
+                //        （ 按 C-05「没有」就是没有、 它们逐字**本就不该**有程序入口）
+                //      `continue` 逐字把**它们整件**逐字从 scan 的结果里丢掉
+                //    **后果**（07 本轮逐字核出）： `landedIds` 缺它们
+                //      prefix 那一档逐字报 FAIL
+                //      （ 07 逐字：「FAIL | $PREFIX 缺件：crypto,curl,zlib | 落位根=…/files/opt 已落位=13（…） 包里有=9（…）」）
+                //      **阳性对照**逐字是「同一份 diag 逐字 `"stage":"prefix"` 命中 **2**」
+                //        （ 一条 OK「预装件全部就位（9 件）」与那一条 FAIL
+                //          个 FAIL 逐字是真的、 **不是**读不到）
+                //    **处置**： **库形态**逐字**照样登记**（ 它逐字有程序入口没有**无关**）
+                //      **入口**那一格逐字**留空**（ 按 C-05 报缺、 不猜填）
+                //      **有**程序入口而那入口逐字**不在**的那一件逐字**仍然** continue
+                //        （ **不可用**那一族逐字**不**登记、 才是那一族本来的语义）
                 val entry = entryOf(verDir, declared)
                 val libraryShaped = role == LIBRARY
                 if (entry == null && !libraryShaped) continue
@@ -127,44 +127,44 @@ object PieceScan {
         val declared = metaOf(verDir)?.optString(ROLE_KEY, "").orEmpty().trim()
         if (declared.isNotBlank()) return declared
         // 缺陷名（C-102）**role 那一格在两份清单里，而这一处读的那一份没有它** ——
-        // 而落位侧**确实**有那一份带 role 的清单（=> 而 ManifestWriter 写它，
-        // => 而那一份是 program-manifest.json，=> 而它的 role 键逐字是 `role`）。
+        // 而落位侧**确实**有那一份带 role 的清单（ ManifestWriter 写它，
+        // 一份是 program-manifest.json， 它的 role 键逐字是 `role`）。
         //
         // 真机读数（07，2026-10-25，build-apk 40134460082 / sha=9144b24）：
         //   索引里 busybox 那一行的 role 逐字是 `entry-unusable`，
-        //   而落位侧那份 program-manifest.json 的 role 逐字是 `program`，=> 而两处逐字不同；
+        //   而落位侧那份 program-manifest.json 的 role 逐字是 `program`， 两处逐字不同；
         //   而后果是 busybox 那一件**没进监督名单**（journal 逐字「监督名单=bash,jq,ripgrep」），
-        //   => 而它没被启动，=> 而「exit 变成 0」那一格**不存在**（=> 而不是 0，=> 而按 C-126 是未过）。
+        //   它没被启动， 「exit 变成 0」那一格**不存在**（ 不是 0， 按 C-126 是未过）。
         //
         // 而**为什么落位侧那份 component-meta.json 没有 role 键**：
-        //   => 而产物的 component-meta.json 由 gen-component-meta.js 写（=> 而它那个 meta 对象逐字是
+        //   产物的 component-meta.json 由 gen-component-meta.js 写（ 它那个 meta 对象逐字是
         //      schema / id / version / entry / entryProvenance / requires / essential / source / sourceSha256
-        //      / buildSha / buildRun，=> 而**没有 role**），
-        //   => 而落位侧那一份是**照抄**产物那一份的（=> 而 PreinstalledPieces 那一支只是 copy），
-        //   => 而所以 role 那一格**只**在 program-manifest.json 那一份里。
+        //      / buildSha / buildRun， **没有 role**），
+        //   落位侧那一份是**照抄**产物那一份的（ PreinstalledPieces 那一支只是 copy），
+        //   所以 role 那一格**只**在 program-manifest.json 那一份里。
         //
         // 而按 C-103 这一族它为什么有两边：
-        //   一边是「**产物自带的** component-meta.json 的 role」（=> 而它今天不存在，
-        //        => 而加它要改 gen-component-meta.js，=> 而那在 PKG_MECH 里，=> 而八件要重固化）；
-        //   另一边是「**落位侧写的** program-manifest.json 的 role」（=> 而它**存在**，
-        //        => 而落位侧那一份是运行期写的，=> 而它不用重新固化）。
+        //   一边是「**产物自带的** component-meta.json 的 role」（ 它今天不存在，
+        //        加它要改 gen-component-meta.js， 在 PKG_MECH 里， 八件要重固化）；
+        //   另一边是「**落位侧写的** program-manifest.json 的 role」（ 它**存在**，
+        //        落位侧那一份是运行期写的， 它不用重新固化）。
         //
-        // => 而**两份都读**（=> 而这就是本稿的处置）：
-        //   => 而**先**读**产物那一份**（=> 而 :93 那一支在前面，=> 而那一份从 41f3129 那一版起也带 role 键了，
-        //      => 而它由构建期从落位结果算出，=> 而它是**真源**），
-        //   => 而**读不到**才落到**落位侧那一份**（=> 而它是兜底，=> 而它与监督环那一支读的是同一份）。
-        // => 而这样两份**一致**（=> 而按 C-104「只有一条生成路径」），
-        //   => 而索引重建那一支拿到的就是 `program`（=> 而不是 `entry-unusable`）。
-        // => 而**旧产物**（=> 而那一件是在 41f3129 之前固化的，=> 而它那一份没有 role 键）
-        //   => 而这一处仍**答得出来**（=> 而落位侧那一份有，=> 而它就是兜底那一份）。
+        // **两份都读**（ 这就是本稿的处置）：
+        //   **先**读**产物那一份**（ :93 那一支在前面， 一份从 41f3129 那一版起也带 role 键了，
+        //      它由构建期从落位结果算出， 它是**真源**），
+        //   **读不到**才落到**落位侧那一份**（ 它是兜底， 它与监督环那一支读的是同一份）。
+        // 这样两份**一致**（ 按 C-104「只有一条生成路径」），
+        //   索引重建那一支拿到的就是 `program`（ 不是 `entry-unusable`）。
+        // **旧产物**（ 一件是在 41f3129 之前固化的， 它那一份没有 role 键）
+        //   这一处仍**答得出来**（ 落位侧那一份有， 它就是兜底那一份）。
         val manifest = manifestOf(verDir)
         val mRole = manifest?.optString(ROLE_KEY, "").orEmpty().trim()
         return mRole.ifBlank { ENTRY_UNUSABLE }
     }
 
     /** 落位侧那一份清单（program-manifest.json）—— 落位时由 [ManifestWriter] 写。
-     *  而**它与产物自带的 component-meta.json 是两份不同的清单**（=> 而前者由运行期写、
-     *  => 而后者是产物照抄过来的），=> 而 role 那一格**只在**前者里。 */
+     *  而**它与产物自带的 component-meta.json 是两份不同的清单**（ 前者由运行期写、
+     *  后者是产物照抄过来的）， role 那一格**只在**前者里。 */
     private fun manifestOf(verDir: File): JSONObject? {
         val f = File(verDir, lobos.services.supply.ProgramDir.MANIFEST_NAME)
         if (!f.isFile) return null
@@ -182,10 +182,10 @@ object PieceScan {
      *    再走 [roleOf] 扫盘判形态 —— 主语是盘上那份字节，而不是构建期写下的那一格。
      *    §10.1:138「一个字段若需要同时回答两个问题，拆成两个字段或废掉其中一个」 现在只读那一格。
      *
-     *   **而那两份清单**（=> 而 41f3129 那一版起两份都带 role 键了，=> 而读侧按「先真源后兜底」）：
-     *    一、**产物自带的** `component-meta.json`（=> 而构建期写，=> 而它是真源）；
-     *    二、**落位侧写的** `program-manifest.json`（=> 而运行期写，=> 而它兜底，
-     *       => 而它对**旧产物**也答得出来）。 */
+     *   **而那两份清单**（ 41f3129 那一版起两份都带 role 键了， 读侧按「先真源后兜底」）：
+     *    一、**产物自带的** `component-meta.json`（ 构建期写， 它是真源）；
+     *    二、**落位侧写的** `program-manifest.json`（ 运行期写， 它兜底，
+     *       它对**旧产物**也答得出来）。 */
     fun roleFromDisk(ctx: Context, id: String): String {
         // 找不到落位目录时**不猜**：按 §10.1:142「这一格的答案能不能从任意一个落位字节的 ELF 头读出来？
         // 不能  它不是判据，是我们的命名」 没有字节就没有答案，报缺（§10.1:119 的三态里「不可执行」那一态）。
@@ -238,14 +238,14 @@ object PieceScan {
     private fun relativeStateDir(ctx: Context, dir: File): String {
         // 剥掉的是 **filesDir**，不是 opt/：
         //   读侧 ProgramManager.stateDirOf 的那一支是 File(ctx.filesDir, e.stateDir)
-        //   => 那一格必须相对 filesDir，所以要剥 filesDir。
+        // 那一格必须相对 filesDir，所以要剥 filesDir。
         // 缺陷名（C-102）**剥错了那一层**：
-        //   原来这里剥的是 opt/（含 id 段一起剥）=> 对 files/opt/busybox/1.36.1
+        //   原来这里剥的是 opt/（含 id 段一起剥） 对 files/opt/busybox/1.36.1
         //   它算出 "busybox/1.36.1"，而 relStateDir 写进注册表的是 "opt/busybox"
         //   => **两个函数对同一件产出的不是同一个字符串**
-        //   => 而读侧按 filesDir 解析 "busybox/1.36.1" => dir = files/busybox/1.36.1
+        //   读侧按 filesDir 解析 "busybox/1.36.1" => dir = files/busybox/1.36.1
         //   => dest = files/busybox/1.36.1/1.36.1（版本段两遍）
-        //   => 真机读数（07）：files/busybox/1.36.1/1.36.1/，而注册表说 opt/busybox
+        // 真机读数（07）：files/busybox/1.36.1/1.36.1/，而注册表说 opt/busybox
         //   => **注册表说它在哪与它真正在哪不是同一处**
         val filesRoot = ctx.filesDir.canonicalFile.path
         val optRoot = SystemDirs.opt(ctx).canonicalFile.path
@@ -271,34 +271,34 @@ object PieceScan {
     /**
      * 那**扫描成本**那一格 —— 「跳过 rebuild」那个开关逐字**管**的是哪一段。
      *
-     *  缺陷名（C-102）**那扫描逐字对那每一个文件都算 SHA-256、=> 而而那 App 起来逐字活约 20 秒就被杀**
-     *   => 而那旧版逐字是 `verDir.walkTopDown().forEach { … SupplySha.sha256(f) }`
-     *     => 而那它逐字**对**那**每一个**文件**读一遍并算一遍 sha256
-     *     => 而那设备上逐字 **18880** 个文件（=> 而那 python **8096**、sysroot **3385**、
+     *  缺陷名（C-102）**那扫描逐字对那每一个文件都算 SHA-256、 App 起来逐字活约 20 秒就被杀**
+     *   旧版逐字是 `verDir.walkTopDown().forEach { … SupplySha.sha256(f) }`
+     *     它逐字**对**那**每一个**文件**读一遍并算一遍 sha256
+     *     设备上逐字 **18880** 个文件（ python **8096**、sysroot **3385**、
      *       npm **1937**、llvm **901**、git 224、openssl 149）
-     *     => 而那 ROM 的 service 超时逐字是 **20004ms** 那一档
-     *     => 而那凡「App 起来后要跑满服务池」的那一格、逐字在这台设备上**都取不到**
-     *       （=> 而那**不只是** M7-12 那一格）。
-     *   => 而那**处置**：=> 而那**扫描**逐字**要**（=> 而那它逐字答「哪几件在位」、
-     *     => 而那它逐字是那 RuntimeEnvironment 那一族**唯一**要的东西），
-     *     => 而那**逐文件算 sha256** 那一步逐字**要能跳过**
-     *     （=> 而那它逐字是「那**内容**指纹」、=> 而那 RuntimeEnvironment 那一族逐字**零**处用它）。
+     *     ROM 的 service 超时逐字是 **20004ms** 那一档
+     *     凡「App 起来后要跑满服务池」的那一格、逐字在这台设备上**都取不到**
+     *       （ **不只是** M7-12 那一格）。
+     *   **处置**： **扫描**逐字**要**（ 它逐字答「哪几件在位」、
+     *     它逐字是那 RuntimeEnvironment 那一族**唯一**要的东西），
+     *     **逐文件算 sha256** 那一步逐字**要能跳过**
+     *     （ 它逐字是「那**内容**指纹」、 RuntimeEnvironment 那一族逐字**零**处用它）。
      *
      *  [!] 这一格逐字**不是**「跳过一切扫描」：
-     *   · 而那它逐字**仍然**扫那**目录**、=> 而那它逐字**仍然**答「哪几件在位、哪一个入口在不在」、
-     *     => 而那它逐字**仍然**答那**缺件**那一族（=> 而那 `absent` 与那 `missing` 逐字要那扫描结果）。
-     *   · 而那它逐字**不**答的是「那**每一件**的**内容**指纹」=> 而那它逐字**报缺**（=> 而按 C-05）。
-     *   · => 而那**语义**逐字要**明确**：=> 而那它逐字是「**这一趟逐字只要那目录视图、而那内容指纹逐字跳过**」。
+     *   · 而那它逐字**仍然**扫那**目录**、 它逐字**仍然**答「哪几件在位、哪一个入口在不在」、
+     *     它逐字**仍然**答那**缺件**那一族（ `absent` 与那 `missing` 逐字要那扫描结果）。
+     *   · 而那它逐字**不**答的是「那**每一件**的**内容**指纹」 它逐字**报缺**（ 按 C-05）。
+     *   · **语义**逐字要**明确**： 它逐字是「**这一趟逐字只要那目录视图、而那内容指纹逐字跳过**」。
      *
-     *  @param withContentFingerprint 那要不要算那**内容**指纹（=> 而那 sha256 那一族）
+     *  @param withContentFingerprint 那要不要算那**内容**指纹（ sha256 那一族）
      */
     /**
      * 那**逐节点**那一族 —— 那一趟**逐文件**的读。
      *
-     *  @param withContentFingerprint 那一档逐字**算不算**那内容指纹（=> 而那是**档一**）
-     *  @param traverseFiles 那一档逐字**做不做**那遍历本身（=> 而那是**档二**）
-     *   => 而那**档二**关掉时逐字**只**答那**目录视图**（=> 而那它逐字**不是**「跳过一切扫描」：
-     *     => 而那它逐字**仍然**答「哪几件在位」、=> 而那**缺件**那一族逐字仍然答）。
+     *  @param withContentFingerprint 那一档逐字**算不算**那内容指纹（ 是**档一**）
+     *  @param traverseFiles 那一档逐字**做不做**那遍历本身（ 是**档二**）
+     *   **档二**关掉时逐字**只**答那**目录视图**（ 它逐字**不是**「跳过一切扫描」：
+     *     它逐字**仍然**答「哪几件在位」、 **缺件**那一族逐字仍然答）。
      */
     private fun filesOf(
         verDir: File,
@@ -308,8 +308,8 @@ object PieceScan {
         val base = verDir.absolutePath
         val out = mutableListOf<UnitEntry.FileRec>()
         if (!traverseFiles) {
-            //  => 而那**档二**关掉时逐字**不**走那遍历（=> 而那它逐字**不**是「跳过一切扫描」）
-            //     => 而那它逐字**只**答那**目录视图**（=> 而那它逐字**不**登记那**逐文件**那一族）
+            //  **档二**关掉时逐字**不**走那遍历（ 它逐字**不**是「跳过一切扫描」）
+            //     它逐字**只**答那**目录视图**（ 它逐字**不**登记那**逐文件**那一族）
             return out
         }
         verDir.walkTopDown().forEach { f ->
@@ -317,10 +317,10 @@ object PieceScan {
             if (f.name == "component-meta.json") return@forEach
             val rel = f.absolutePath.removePrefix(base).trimStart('/')
             if (rel.isEmpty()) return@forEach
-            //  => 而那跳过那一档逐字**记**那**空**指纹（=> 而按 C-05 报缺、=> 而那不猜填）
-            //    ——=> 而那它逐字**不被**冒充成「那内容逐字是空」
-            //    （=> 而那 `sha256Of` 那一格逐字会拿那 sha256 逐字去算那件指纹、
-            //      => 而那它逐字得**看得见**那「这一趟没算」这一件）。
+            //  跳过那一档逐字**记**那**空**指纹（ 按 C-05 报缺、 不猜填）
+            //    —— 它逐字**不被**冒充成「那内容逐字是空」
+            //    （ `sha256Of` 那一格逐字会拿那 sha256 逐字去算那件指纹、
+            //      它逐字得**看得见**那「这一趟没算」这一件）。
             out += UnitEntry.FileRec(rel, if (withContentFingerprint) SupplySha.sha256(f) else "")
         }
         return out.sortedBy { it.path }
@@ -328,8 +328,8 @@ object PieceScan {
 
     private fun sha256Of(verDir: File, files: List<UnitEntry.FileRec>): String {
         if (files.isEmpty()) return ""
-        //  => 而那**跳过内容指纹**那一档逐字**不许**产出那一个假的件指纹
-        //    （=> 而那它逐字是「那内容逐字**没算**」、=> 而按 C-05 报缺、=> 而不猜填）。
+        //  **跳过内容指纹**那一档逐字**不许**产出那一个假的件指纹
+        //    （ 它逐字是「那内容逐字**没算**」、 按 C-05 报缺、 不猜填）。
         if (files.any { it.sha256.isEmpty() }) return ""
         val md = java.security.MessageDigest.getInstance("SHA-256")
         for (fr in files) {
@@ -344,28 +344,28 @@ object PieceScan {
     /**
      * 那**重建索引**那一族 —— 「跳过 rebuild」那个开关逐字**接**在这一族。
      *
-     *  缺陷名（C-102）**那开关逐字只接在 assemble 那一族、=> 而而那 rebuild 那一族逐字用默认值**
-     *   => 而那旧版逐字是 `fun rebuild(ctx: Context): Int { val found = scan(ctx) … }`
-     *     => 而那 `scan` 那一格逐字**有**那默认值 `withContentFingerprint = true`
-     *     => 而那**默认**逐字就是**算**那全部 18880 个文件的 sha256
-     *     => 而那 App 起来逐字活约 20 秒就被杀（=> 而那 ROM 的 service 超时逐字是 20004ms 那一档）
-     *   => 而那**后果**（07 本轮逐字实测）：=> 而那 `diag.jsonl` 逐字 `stage="scan-cost"` 命中 **0**
-     *     => 而那 App 逐字**仍算**那全部 18880 个文件、=> 而那 20 秒逐字**照旧**
-     *     => 而那**服务池**逐字被饿死（=> 而那 events 逐字「内置服务 **9/13**」）
-     *     => 而那**主线程**逐字被卡（=> 而那 `OsInit.beginLife` 逐字在 `onStartCommand` 主线程上）
-     *     => 而那**工作线程**逐字跑不到桥那一步（=> 而那 `/proc/net/unix` 逐字**没有** `lobos_hostbridge`）
-     *     => 而那 `ControlClient.exec` 那一趟逐字因此**起不来**。
+     *  缺陷名（C-102）**那开关逐字只接在 assemble 那一族、 rebuild 那一族逐字用默认值**
+     *   旧版逐字是 `fun rebuild(ctx: Context): Int { val found = scan(ctx) … }`
+     *     `scan` 那一格逐字**有**那默认值 `withContentFingerprint = true`
+     *     **默认**逐字就是**算**那全部 18880 个文件的 sha256
+     *     App 起来逐字活约 20 秒就被杀（ ROM 的 service 超时逐字是 20004ms 那一档）
+     *   **后果**（07 本轮逐字实测）： `diag.jsonl` 逐字 `stage="scan-cost"` 命中 **0**
+     *     App 逐字**仍算**那全部 18880 个文件、 20 秒逐字**照旧**
+     *     **服务池**逐字被饿死（ events 逐字「内置服务 **9/13**」）
+     *     **主线程**逐字被卡（ `OsInit.beginLife` 逐字在 `onStartCommand` 主线程上）
+     *     **工作线程**逐字跑不到桥那一步（ `/proc/net/unix` 逐字**没有** `lobos_hostbridge`）
+     *     `ControlClient.exec` 那一趟逐字因此**起不来**。
      *
-     *  [!] 这一格逐字**自己读**那一档（=> 而那它逐字对那调用方逐字**透明**）：
-     *   => 而那 `OsInit.beginLife` 那一格逐字**不用改**（=> 而那它逐字调 `rebuild(ctx)`、=> 而那它逐字不用知道那一档）。
+     *  [!] 这一格逐字**自己读**那一档（ 它逐字对那调用方逐字**透明**）：
+     *   `OsInit.beginLife` 那一格逐字**不用改**（ 它逐字调 `rebuild(ctx)`、 它逐字不用知道那一档）。
      *
-     *  [!] 而那**诊断**那一档逐字要在**这一族之前**就报出来（=> 而那 07 本轮逐字核到
-     *    `stage="scan-cost"` 命中 0、=> 而那它逐字是「那一档逐字在 assemble 那一族才报、
+     *  [!] 而那**诊断**那一档逐字要在**这一族之前**就报出来（ 07 本轮逐字核到
+     *    `stage="scan-cost"` 命中 0、 它逐字是「那一档逐字在 assemble 那一族才报、
      *    而那 rebuild 那一族逐字跑不到那一步」）。
      */
     fun rebuild(ctx: Context): Int {
         val withContentFingerprint = lobos.services.reg.ScanCost.withContentFingerprint(ctx)
-        //  => 而那**诊断**那一档逐字**先**报（=> 而那它逐字在那一族**之前**、=> 而那它逐字才看得到）
+        //  **诊断**那一档逐字**先**报（ 它逐字在那一族**之前**、 它逐字才看得到）
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true, "那扫描成本那一档",
             lobos.services.reg.ScanCost.describe(ctx) +
@@ -373,14 +373,14 @@ object PieceScan {
                 (if (withContentFingerprint) "算" else "跳过") +
                 "、=> 而那**扫描**逐字仍然扫、=> 而那**缺件**那一族逐字仍然答）",
         )
-        //  => 而那**档二 · 遍历本身**那一档（=> 而那是 01 逐字核的判别形式：
+        //  **档二 · 遍历本身**那一档（ 是 01 逐字核的判别形式：
         //     「凡要答『那一次扫描要多贵』，判据必须落在『那遍历本身』上」）
         val traverseFiles = lobos.services.reg.ScanCost.traverseFiles(ctx)
-        //  => 而那**这一次扫描逐字多久**逐字**量**出来（=> 而那它逐字是那「要多久」那一问的**答案**）
+        //  **这一次扫描逐字多久**逐字**量**出来（ 它逐字是那「要多久」那一问的**答案**）
         val scanStartMs = System.currentTimeMillis()
         val found = scan(ctx, withContentFingerprint, traverseFiles)
         val scanMs = System.currentTimeMillis() - scanStartMs
-        //  => 而那一次扫描的**代价**逐字**报进诊断那一族**（=> 而那读设备的人逐字看得见）
+        //  一次扫描的**代价**逐字**报进诊断那一族**（ 读设备的人逐字看得见）
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true,
             "那一次扫描逐字耗时 " + scanMs + "ms",
@@ -396,15 +396,15 @@ object PieceScan {
         var removed = 0
         for (f in found) {
             val prev = cur[f.id]
-            //  缺陷名（C-102）**那 role 那一格逐字默认保留那旧值、=> 而而那它逐字不许拿旧值顶** ——
-            //   => 而那旧版逐字是 `edited(... role = f.role ...)`、=> 而那 `edited` 那一族逐字
-            //     逐字 `role = role ?: this.role`（=> 而那 Lead 本机实读 ProgramIndex.kt:371 逐字成立）
-            //     => 而那**后果**：=> 而那一次扫描跑完之后逐字**没有**把那登记那一格覆盖掉那个旧值
-            //       （=> 而那设备侧逐字：注册表里 bash 与 busybox 逐字**仍是** role='program'、
-            //         => 而那落位侧 component-meta.json 逐字**已经**是 'shell'）
-            //   => 而那**处置**：=> 而那 `edited` 那一族逐字多那 `roleFromScan` 那一格
-            //     => 而那它逐字表达「**这一格逐字是这一趟扫描出来的**、=> 而那**不是**旧值」
-            //   => 而那**两份不一致**时逐字**显式记出来**（=> 而那它逐字**不是**静默取其中一份）
+            //  缺陷名（C-102）**那 role 那一格逐字默认保留那旧值、 它逐字不许拿旧值顶** ——
+            //   旧版逐字是 `edited(... role = f.role ...)`、 `edited` 那一族逐字
+            //     逐字 `role = role ?: this.role`（ Lead 本机实读 ProgramIndex.kt:371 逐字成立）
+            //     **后果**： 一次扫描跑完之后逐字**没有**把那登记那一格覆盖掉那个旧值
+            //       （ 设备侧逐字：注册表里 bash 与 busybox 逐字**仍是** role='program'、
+            //         落位侧 component-meta.json 逐字**已经**是 'shell'）
+            //   **处置**： `edited` 那一族逐字多那 `roleFromScan` 那一格
+            //     它逐字表达「**这一格逐字是这一趟扫描出来的**、 **不是**旧值」
+            //   **两份不一致**时逐字**显式记出来**（ 它逐字**不是**静默取其中一份）
             val roleFromScan = true
             if (prev != null && prev.role.isNotBlank() && f.role.isNotBlank() && prev.role != f.role) {
                 RuntimeDiagnostics.append(
@@ -470,7 +470,7 @@ object PieceScan {
         }
         for (e in ProgramIndex.all(ctx)) {
             if (e.id in foundIds) continue
-            // 这一格**不按 levelOf 判**—— 而 01 今天指出：levelOf 判的是 stateDir/assetEntry，            // **不是 role 字段** —— 而它答的是「有没有那个入口」，不是「这一件归谁管」：            // 真机读数（01 今天逐行核过，2026-10-21）：登记八行，role 是 4 library / 3 program，            // 而**按 levelOf 算**（assetEntry 空 => PIECE）是 **4 PIECE / 4 PROGRAM**            // **=> 而两把尺对同一行给出的答案不一样 => 用 levelOf 会误删**            // 例：openssl 那一行 role 是 library 而 assetEntry 是空，            // **=> levelOf 判它 PIECE => 那一行会被删** —— 而它是今天**在册**的那一件。            // => 而本支只管「扫件」（01 今天裁：而 scan 枚举的是 opt/ 底下那些，            // **而一个程序的落位目录根本不在 opt/**）=> **=> 判据是「它是不是一件」**            // **=> 而本支能看见的每一件，按定义都该由它管**            // => 而 found 之外的、又在 opt/ 底下的，才是「扫不到该删」            if (!optRootIds.contains(e.id)) continue
+            // 这一格**不按 levelOf 判**—— 而 01 今天指出：levelOf 判的是 stateDir/assetEntry，            // **不是 role 字段** —— 而它答的是「有没有那个入口」，不是「这一件归谁管」：            // 真机读数（01 今天逐行核过，2026-10-21）：登记八行，role 是 4 library / 3 program，            // 而**按 levelOf 算**（assetEntry 空 => PIECE）是 **4 PIECE / 4 PROGRAM**            // ** 两把尺对同一行给出的答案不一样 用 levelOf 会误删**            // 例：openssl 那一行 role 是 library 而 assetEntry 是空，            // **=> levelOf 判它 PIECE 那一行会被删** —— 而它是今天**在册**的那一件。            // 本支只管「扫件」（01 今天裁：而 scan 枚举的是 opt/ 底下那些，            // **而一个程序的落位目录根本不在 opt/**）=> ** 判据是「它是不是一件」**            // ** 本支能看见的每一件，按定义都该由它管**            // found 之外的、又在 opt/ 底下的，才是「扫不到该删」            if (!optRootIds.contains(e.id)) continue
             if (ProgramIndex.remove(ctx, e.id)) {
                 removed++
                 RuntimeDiagnostics.append(
@@ -492,12 +492,12 @@ object PieceScan {
         //   缺陷名（C-102）**verify 拼出来的那条路径不存在**：
         //     原来这一行是 `val base = File(e.stateDir)`，而 e.stateDir 是**相对**形态
         //     （opt/bash），而 fr.path 是**件内**相对路径（bin/bash）
-        //     => 拼出来既不相对 filesDir、也**缺版本段**
+        // 拼出来既不相对 filesDir、也**缺版本段**
         //     => File("opt/bash", "bin/bash") = <cwd>/opt/bash/bin/bash（不存在）
-        //     => 真机读数（07，2026-10-21）：八件**全部**答「坏」，而每一项都因为「不在」
-        //     => 而它答「缺」不是判出了差异，是**每项都没找到**。
+        // 真机读数（07，2026-10-21）：八件**全部**答「坏」，而每一项都因为「不在」
+        //     它答「缺」不是判出了差异，是**每项都没找到**。
         //   判别形式：它拼出来的那条路径，真机上存不存在。
-        //   => 现在：转调族一的真源（PieceScan.landedPieceDir，根是 SystemDirs.opt），
+        // 现在：转调族一的真源（PieceScan.landedPieceDir，根是 SystemDirs.opt），
         //     而版本段由它自己选（取那个含清单的版本目录）。
         val base = landedPieceDir(ctx, id)
             ?: return Verdict(false, 0, listOf("找不到落位目录：" + e.stateDir + "/<版本>"))

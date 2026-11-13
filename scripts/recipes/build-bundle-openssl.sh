@@ -35,9 +35,9 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
   #   （而 git 那些补丁就是这条路：scripts/recipes/build-component-git.sh:67-73）
   #   而它**跟着上游那一版走** —— 而它的 pin 与今天取的源码树同版（openssl-3.6.3）
   #   而**打不上就判红退出**（而那正是 git 那一件的做法）
-  #  缺陷名（C-102）**那库**逐字**与**那宿主**那**同名**、=> 而而那**它**逐字**被**那宿主**那 libc **命名空间**里**那同名**的**那一个**盖**了**。
-  #    => 而那**处置**：=> 而那 shlib_variant **那一族**逐字**改**那 SONAME 与那**符号版本**（=> 而那**它们**逐字**一起**变**）。
-  #    => 而那**这一份**补丁**带**那 pin**、=> 而它**跟着上游那一版**走**、=> 而**打不上**就**判红退出**。
+  #  缺陷名（C-102）**那库**逐字**与**那宿主**那**同名**、 **它**逐字**被**那宿主**那 libc **命名空间**里**那同名**的**那一个**盖**了**。
+  # **处置**： shlib_variant **那一族**逐字**改**那 SONAME 与那**符号版本**（ **它们**逐字**一起**变**）。
+  # **这一份**补丁**带**那 pin**、 它**跟着上游那一版**走**、 **打不上**就**判红退出**。
   for PATCH_NAME in openssl-runpath-origins.patch openssl-libname-variant.patch; do
     bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$PATCH_NAME" "$WORK/$PATCH_NAME"
     if ! patch -p1 -i "$WORK/$PATCH_NAME"; then
@@ -49,14 +49,14 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
 
   # 而 rpath **不再从 Configure 那一行给**：
   #   而它由那份补丁给（scripts/patches/openssl-runpath-origins.patch）
-  #   => 而两处都给，而链接器会把两个 rpath 用冒号连起来，=> 而值成 RIGIN:RIGIN
-  #   => 而那一处撤掉，而值只剩补丁那一个
+  # 两处都给，而链接器会把两个 rpath 用冒号连起来， 值成 RIGIN:RIGIN
+  # 一处撤掉，而值只剩补丁那一个
   # 而 --enable-new-dtags **要留着**（[!][!] 而它决定出 DT_RUNPATH 而不是 DT_RPATH，[!][!]
   #   而 bionic 忽略 DT_RPATH，[!][!] 而 verify-runtime-elf.sh:321 查的是 DT_RUNPATH）[!][!]
   #   而 rpath 那一项**不再从 Configure 那一行给**：
   #   而它由那份补丁给（scripts/patches/openssl-runpath-origins.patch）
-  #   => 而两处都给，而链接器会把两个 rpath 用冒号连起来，=> 而值成 RIGIN:RIGIN
-  #   => 而那一处撤掉，而值只剩补丁那一个
+  # 两处都给，而链接器会把两个 rpath 用冒号连起来， 值成 RIGIN:RIGIN
+  # 一处撤掉，而值只剩补丁那一个
   ./Configure android-arm64 shared -fPIC -D__ANDROID_API__=$API \
     '-Wl,--enable-new-dtags' \
     --prefix="$OUT_DIR" --openssldir="$OUT_DIR/ssl" \
@@ -80,10 +80,10 @@ echo "[openssl] 版本头在位"
 # 一件，有自己的 tag 与 asset —— 打包上传必须一件对一个 tag，
 # 否则两者会互相「复用」对方的包（base-openssl 上装的是 libcrypto.so）。
 # crypto 由 build-crypto.yml 从本件的固化包里取。
-#  缺陷名（C-102）**那产物**逐字**自带**那**改名**后的**那**库**、=> 而而那**它**们**逐字是**那**两**件**事**：「那**库**叫**什么**」与「那**符号版本**是**什么**」）。
-#    => 而那**改**名**由**那 shlib_variant **那一族**给**（=> 而那 openssl-libname-variant.patch **那一份**）、
-#      => 而那**产物**里**有**那 libssl-lobos.so **与**那 libcrypto-lobos.so、=> 而那**旧名字**的**那两**个**也**在**。
-#    => 而那**取**逐字**取**那**改名**后的**那一个**（=> 而那**它**们**逐字是**那**两**件**事**）。
+#  缺陷名（C-102）**那产物**逐字**自带**那**改名**后的**那**库**、 **它**们**逐字是**那**两**件**事**：「那**库**叫**什么**」与「那**符号版本**是**什么**」）。
+# **改**名**由**那 shlib_variant **那一族**给**（ openssl-libname-variant.patch **那一份**）、
+# **产物**里**有**那 libssl-lobos.so **与**那 libcrypto-lobos.so、 **旧名字**的**那两**个**也**在**。
+# **取**逐字**取**那**改名**后的**那一个**（ **它**们**逐字是**那**两**件**事**）。
 SSL="$OUT_DIR/lib/libssl-lobos.so"
 [ -f "$SSL" ] || SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
 [ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（=> 而那改名**后**的**那一个**）"
@@ -95,11 +95,11 @@ SSL="$OUT_DIR/lib/libssl-lobos.so"
   # 那样系统里就永远没有「openssl 这个命令」，只有库。
   OPENSSL_BINS=""
   [ -e "$OUT_DIR/bin/openssl" ] && OPENSSL_BINS="openssl"
-  #  缺陷名（C-102）**那 entry** 逐字**指**那**旧名字**（=> 而而那**它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**字节**是**什么**」）。
-  #    => 而那**成因**：=> 而那 shlib_variant **那一族**逐字**把**那库**改**名**了（=> 而那 SONAME 逐字 = 那 libssl-lobos.so）、
-  #      => 而那 entry 逐字**还**是**那 lib/libssl.so**、=> 而那**它**逐字**是**那**软链**、
-  #      => 而那**打包**那一族逐字**只**搬**那 entry **那**一条**链**、=> 而那**链**逐字**按**那**文件名**算**（=> 而那**它**不认**那 libssl-lobos.so**）、
-  #      => 而那**后果**逐字 = 而那包里**没有**那 libssl-lobos.so **那一份**实体**、
-  #        => 而那**验形态**那一族逐字**报**那「lib/libssl.so 自述 SONAME=libssl-lobos.so，而链里没有这一层」。
-  #    => 而那**处置**：=> 而那 entry 逐字**指**那**改名**后的**那一个**（=> 而那**它**们**逐字是**那**两**件**事**）。
+  #  缺陷名（C-102）**那 entry** 逐字**指**那**旧名字**（ **它**们**逐字是**那**两**件**事**：「那**名字**是**什么**」与「那**字节**是**什么**」）。
+  # **成因**： shlib_variant **那一族**逐字**把**那库**改**名**了（ SONAME 逐字 = 那 libssl-lobos.so）、
+  # entry 逐字**还**是**那 lib/libssl.so**、 **它**逐字**是**那**软链**、
+  # **打包**那一族逐字**只**搬**那 entry **那**一条**链**、 **链**逐字**按**那**文件名**算**（ **它**不认**那 libssl-lobos.so**）、
+  # **后果**逐字 = 而那包里**没有**那 libssl-lobos.so **那一份**实体**、
+  # **验形态**那一族逐字**报**那「lib/libssl.so 自述 SONAME=libssl-lobos.so，而链里没有这一层」。
+  # **处置**： entry 逐字**指**那**改名**后的**那一个**（ **它**们**逐字是**那**两**件**事**）。
   OPENSSL_LIBS=1 emit_piece openssl "$OUT_DIR" lib/libssl-lobos.so 1000 "$OPENSSL_BINS"

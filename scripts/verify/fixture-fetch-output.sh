@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# 合成 fixture：取件那一族的输出形态与四档分档（=> 而那**不联网**、=> 而那**不**要令牌）。
+# 合成 fixture：取件那一族的输出形态与四档分档（ **不联网**、 **不**要令牌）。
 #
 # 缺陷名（C-102）**那一族的输出形态只能靠真 CI 才能验** ——
-#   => 而 C-993 那一族逐字要求「判别式必须有调用点」、
-#     而那「ok 计数器的输出形态」那一格逐字要**一次真读数**（=> 而那真读数逐字要一次 CI）。
-#   => 而本 fixture 逐字给的是**本机可跑**的那一份（=> 而它逐字**不**替代那 CI 那一趟）。
+# C-993 那一族逐字要求「判别式必须有调用点」、
+#     而那「ok 计数器的输出形态」那一格逐字要**一次真读数**（ 真读数逐字要一次 CI）。
+# 本 fixture 逐字给的是**本机可跑**的那一份（ 它逐字**不**替代那 CI 那一趟）。
 #
 # 它验三样（逐字）：
-#   1. 那 ok 计数器逐字等于**真取到的件数**（=> 而那旧版逐字恒印 0）；
-#   2. 那缺件逐字**分档**（=> 而那六档逐字是枚举值、=> 而不散文）；
-#   3. 那件逐字**进**那显式缺件表（=> 而不静默从清单里消失）。
+#   1. 那 ok 计数器逐字等于**真取到的件数**（ 旧版逐字恒印 0）；
+#   2. 那缺件逐字**分档**（ 六档逐字是枚举值、 不散文）；
+#   3. 那件逐字**进**那显式缺件表（ 不静默从清单里消失）。
 #
 # 用法：bash scripts/verify/fixture-fetch-output.sh
 set -uo pipefail
@@ -20,8 +20,8 @@ RC=0
 say() { printf '%s\n' "$*"; }
 
 say "== 格 (1) 那 ok 计数器逐字等于真取到的件数 =="
-#  => 而那一段逐字抄 fetch-prebuilt-pieces.sh 那一循环的**判定结构**
-#     （=> 而那成功的那一支加一次、=> 而那失败的那几支 continue、=> 而那些**不**加）。
+# 一段逐字抄 fetch-prebuilt-pieces.sh 那一循环的**判定结构**
+#     （ 成功的那一支加一次、 失败的那几支 continue、 些**不**加）。
 ok=0; missing=0; got=""
 for id in a b c d e f g h i; do
   case "$id" in
@@ -38,7 +38,7 @@ say "  那行输出逐字=[fetch] 已取到 $ok 个。缺的那几个要单独�
 
 say ""
 say "== 格 (2) 那缺件逐字分档、=> 而那档位逐字是枚举值 =="
-#  => 而那六档逐字是（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字）：
+# 六档逐字是（ 按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字）：
 #     成因轴四档：ratelimit / auth / notfound / unknown
 #     + 与下载被拒**不是同一问**的两档：missing-norun / missing-contract
 MISS_TSV="$W/.fetch-missing.tsv"
@@ -97,7 +97,7 @@ bash scripts/verify/classify-download-failure.sh --selftest 2>&1 | grep -E '^  (
 say ""
 say "== 格 (5) 那件逐字**进**那显式缺件表（=> 而不静默从清单里消失）=="
 node -e '
-//  => 而那反例：=> 而那清单里逐字**有**那缺件表里的某一件 => 而那两格逐字**矛盾** => 而那要判红。
+//  反例： 清单里逐字**有**那缺件表里的某一件 两格逐字**矛盾** 要判红。
 const miss=require(process.argv[1]);
 const man=[{name:"cmake"},{name:"git"},{name:"llvm"}];
 const inMan=new Set(man.map(t=>t.name));

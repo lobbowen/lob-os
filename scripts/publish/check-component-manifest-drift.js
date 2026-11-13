@@ -99,9 +99,9 @@ function readJson(p, what) {
   }
 }
 
-// 那一趟的**缺件表**（=> 而那 dist/.fetch-missing.tsv 那一档、=> 而那它逐字是那四列：
+// 那一趟的**缺件表**（ dist/.fetch-missing.tsv 那一档、 它逐字是那四列：
 //   件名 / 那一档 / 那一档的原话 / 容器形态那一格）。
-//   => 而那读不到时逐字是**空**（=> 而那不是「没有缺件」、=> 而那是没有那张表）。
+//   读不到时逐字是**空**（ 不是「没有缺件」、 是没有那张表）。
 function readMissingTable() {
   const out = new Map();
   const p = path.join(ROOT, 'dist', '.fetch-missing.tsv');
@@ -118,9 +118,9 @@ function readMissingTable() {
   return out;
 }
 
-// 控制面板件清单（=> 而那逐字从 cache-key.sh 的 bucket_for 出、=> 而那**那是唯一真相**）。
-//   => 而那底座件那一族（base / apkonly 筐）逐字**不进**这一轴
-//     （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
+// 控制面板件清单（ 逐字从 cache-key.sh 的 bucket_for 出、 **那是唯一真相**）。
+//   底座件那一族（base / apkonly 筐）逐字**不进**这一轴
+//     （ 它们随 APK 走、 不在控制面板清单里、 按 C-135 那不是同一问）。
 function bucketComponents() {
   const lister = path.join(ROOT, 'scripts', 'registry', 'list-bucket-components.js');
   if (!fs.existsSync(lister)) { fail('缺少控制面板件清单的来源：' + lister); }
@@ -200,28 +200,28 @@ function main() {
   }
 
   //  缺陷名（C-102）**一件缺失即零漂移** ——
-  //    => 而那旧版逐字**只**从**投影**那一侧出发（=> 而那 :144 逐字 shape.tools、
-  //      => 而那 :160 逐字 shape.components），
-  //    => 而那**声明侧**逐字**没有**反向核（=> 而那组件清单里逐字**少**一件时、=> 而那零漂移）。
-  //    => 而那 node / python / sqlite / pkgconf 那四件逐字**在** components.json 的 sources 里
-  //      （=> 而那四件逐字**没有** piece: true、=> 而那它们**不进**那取件循环）、
-  //      => 而它们逐字是**控制面板清单该有的那几件**（=> 而那 bucket_for 逐字把 node/python
-  //      归 rt 筐、=> 而 pkgconf/sqlite 归 tool 筐）=> 而它们**缺了**逐字**该被看见**。
-  //    => 而那**判据**逐字：=> 而那**控制面板件清单**逐字从 cache-key.sh 的 bucket_for 出（=> 而那是唯一真相）、
-  //      => 而那投影里逐字**缺**哪一件、=> 而那一件就逐字报缺。
-  //    => 而那「底座件」那一族（base / apkonly 筐）逐字**不进**这一轴
-  //      （=> 而它们随 APK 走、=> 而那不在控制面板清单里、=> 而按 C-135 那不是同一问）。
+  //    旧版逐字**只**从**投影**那一侧出发（ :144 逐字 shape.tools、
+  //      :160 逐字 shape.components），
+  //    **声明侧**逐字**没有**反向核（ 组件清单里逐字**少**一件时、 零漂移）。
+  //    node / python / sqlite / pkgconf 那四件逐字**在** components.json 的 sources 里
+  //      （ 四件逐字**没有** piece: true、 它们**不进**那取件循环）、
+  //      它们逐字是**控制面板清单该有的那几件**（ bucket_for 逐字把 node/python
+  //      归 rt 筐、 pkgconf/sqlite 归 tool 筐） 它们**缺了**逐字**该被看见**。
+  //    **判据**逐字： **控制面板件清单**逐字从 cache-key.sh 的 bucket_for 出（ 是唯一真相）、
+  //      投影里逐字**缺**哪一件、 一件就逐字报缺。
+  //    「底座件」那一族（base / apkonly 筐）逐字**不进**这一轴
+  //      （ 它们随 APK 走、 不在控制面板清单里、 按 C-135 那不是同一问）。
   if (shape.kind === 'component') {
     const projected = new Set(shape.tools.map((t) => String(t.name)));
     //  缺陷名（C-102）**那一轴逐字把「已知缺件」与「件级缺失」混成一档，
     //    于是三处已知缺件被逐字判成漂移** ——
-    //    => 而 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字裁的是
-    //      「**投影侧 `work/declared.json` 逐字不留占位**（=> 而它答『取到了什么』）」，
-    //    => 而那**投影里没有**那几件逐字是**对的**（=> 而那几件逐字是「已知缺件」）。
-    //    => 而那一裁逐字还给了另一半：「**声明侧那一份逐字要带缺件状态**」。
-    //    => 而那**判红的正确形态**逐字是：「那一件逐字在控制面板件清单里、
-    //      => 而它逐字既不在投影里、=> 而也**不在**那一趟的缺件表里」。
-    //    => 而那缺件表逐字是 dist/.fetch-missing.tsv（=> 而那它逐字是那四列那一档：
+    //    01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字裁的是
+    //      「**投影侧 `work/declared.json` 逐字不留占位**（ 它答『取到了什么』）」，
+    //    **投影里没有**那几件逐字是**对的**（ 几件逐字是「已知缺件」）。
+    //    一裁逐字还给了另一半：「**声明侧那一份逐字要带缺件状态**」。
+    //    **判红的正确形态**逐字是：「那一件逐字在控制面板件清单里、
+    //      它逐字既不在投影里、 也**不在**那一趟的缺件表里」。
+    //    缺件表逐字是 dist/.fetch-missing.tsv（ 它逐字是那四列那一档：
     //      件名 / 那一档 / 那一档的原话 / 容器形态）。
     const missingTable = readMissingTable();
     for (const row of bucketComponents()) {
@@ -231,8 +231,8 @@ function main() {
       if (projected.has(id)) continue;
       const miss = missingTable.get(id);
       if (miss) {
-        //  => 而那**已知缺件**逐字**不判红**（=> 而它逐字在缺件表里、=> 而那缺件表就是那显式的一格），
-        //    => 而它逐字**报出来**（=> 而那才是「件不静默消失」那一格的兑现）。
+        //  **已知缺件**逐字**不判红**（ 它逐字在缺件表里、 缺件表就是那显式的一格），
+        //    它逐字**报出来**（ 才是「件不静默消失」那一格的兑现）。
         console.log('[drift] ' + id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），' +
           '=> 而它逐字**不在**那投影里 —— ' +
           '而它逐字**在**那缺件表里（档位 ' + miss.kind + '、=> 而那一档的原话逐字：' + miss.detail + '）' +

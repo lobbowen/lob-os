@@ -88,14 +88,14 @@ static int env_has(char *const envp[], const char *k) {
 }
 
 //  缺陷名（C-102）**那 env 风格那 shebang 里的 VAR=VALUE 逐字被丢了** ——
-//    => 而它治**的**是「那 shebang 逐字**指定**的**那环境**逐字**到不**到**那**孩子**的**环境**」。
-//    => 而那**成因**：=> 而那 execve **那一族**逐字**跳过**那 VAR=VALUE **那些**记号（=> 而那 :391 那一行）、
-//       => 而那**它**们逐字**只**被**跳过**、=> 而那**它们**逐字**没有**进**那 envp**。
-//    => 而那**后果**逐字**是**：=> 而那 npm **那一件**的**那个** wrapper 逐字**走**那 /usr/bin/env **那一条**路、
-//       => 而那**它**逐字**先**把**那 LD_LIBRARY_PATH **换**成**它自己**那一个（=> 而那**它**逐字**盖掉**了**那**宿主**给的**那一个**）、
-//       => 而那 node **那一件**逐字**链不**上**那库**、=> 而那**它**逐字**挂**在**那**那一步**。
-//    => 而那**处置**：=> 而那 VAR=VALUE **那些**记号逐字**按**那 env **那一族**的**语义**进**那 envp**。
-//    => 而按 C-104：=> 而那 env 风格那 shebang 逐字**只有**一条**路**（=> 而这一支**就是**它**）。
+//    它治**的**是「那 shebang 逐字**指定**的**那环境**逐字**到不**到**那**孩子**的**环境**」。
+//    **成因**： execve **那一族**逐字**跳过**那 VAR=VALUE **那些**记号（ :391 那一行）、
+//       **它**们逐字**只**被**跳过**、 **它们**逐字**没有**进**那 envp**。
+//    **后果**逐字**是**： npm **那一件**的**那个** wrapper 逐字**走**那 /usr/bin/env **那一条**路、
+//       **它**逐字**先**把**那 LD_LIBRARY_PATH **换**成**它自己**那一个（ **它**逐字**盖掉**了**那**宿主**给的**那一个**）、
+//       node **那一件**逐字**链不**上**那库**、 **它**逐字**挂**在**那**那一步**。
+//    **处置**： VAR=VALUE **那些**记号逐字**按**那 env **那一族**的**语义**进**那 envp**。
+//    按 C-104： env 风格那 shebang 逐字**只有**一条**路**（ 这一支**就是**它**）。
 static char **env_put(char *const envp[], const char *kv) {
   size_t n = 0;
   while (envp && envp[n]) n++;
@@ -407,7 +407,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
     int envStyle = strcmp(disp0, "env") == 0;
     if (envStyle) {
       //  缺陷名（C-102）**那 VAR=VALUE 那些记号逐字被丢了** —— 而而那**它们**逐字**要**进**那 envp**。
-      //    => 而那**处置**：=> 而那**它们**逐字**并**进**那 envp**（=> 而那**显式**给的**优先**、=> 而那**后**给的**盖掉**前面**的**）。
+      //    **处置**： **它们**逐字**并**进**那 envp**（ **显式**给的**优先**、 **后**给的**盖掉**前面**的**）。
       while (cmd < ntok && strchr(tok[cmd], '=')) {
         char **merged = env_put(envp, tok[cmd]);
         if (!merged) return -1;
@@ -448,7 +448,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
        *  真机八件读数（07）：bash / jq / ripgrep = DYN(PIE)；curl / openssl / crypto / zlib 的
        *  .so = DYN(共享目标文件)；busybox = EXEC —— 八件里唯一不是 DYN 的，本来就不经这一支。
        *  而今天崩的两件 bash / ripgrep 都是 DYN(PIE)，正好落在门内。
-       *  => 门条件 = etype==ET_DYN **且** path 不是 SYSTEM_LINKER 本身。 */
+       * 门条件 = etype==ET_DYN **且** path 不是 SYSTEM_LINKER 本身。 */
       if (read_etype(path, &et) && et == 3 &&
           !(path && strcmp(path, LOBOS_SYSTEM_LINKER) == 0)) {
           char **na = (char **)malloc((ac + 3) * sizeof(char *));

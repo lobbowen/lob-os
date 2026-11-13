@@ -15,14 +15,14 @@ mkdir -p "$ROOT_DIR/$OUT/bin" work
 
 echo "[git] 取源码（钉值表的 git 那一格）"
 
-#  缺陷名（C-102）**那一族逐字**没有**把那墙钟逐字钉住、=> 而而那那**字节**逐字**编**进去了**
-#    => 而那旧版逐字**没有**这一族
-#      => 而而那那**可复现**逐字那**三样**：1.  那源码钉值逐字**有**、3.  那工具链逐字**有**、
-#        2.  那**归档内 mtime**逐字**没有**（=> 而而那那 `SOURCE_DATE_EPOCH` 逐字**没**设）
-#      => 而而那那**墙钟**逐字**编**进那件包、=> 而而那那**同一个** recipe 逐字**再**编一次逐字**也**会**变**
-#        => 而而那那**闸门**逐字就逐字判「同一 name@version 换了字节」
-#    => 而那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上
-#    => 而那**处置**：=> 而而那那**墙钟**逐字**钉**住（=> 而那那**读口**逐字**唯一**、依 C-105）
+#  缺陷名（C-102）**那一族逐字**没有**把那墙钟逐字钉住、 **字节**逐字**编**进去了**
+# 旧版逐字**没有**这一族
+# **可复现**逐字那**三样**：1.  那源码钉值逐字**有**、3.  那工具链逐字**有**、
+#        2.  那**归档内 mtime**逐字**没有**（ `SOURCE_DATE_EPOCH` 逐字**没**设）
+# **墙钟**逐字**编**进那件包、 **同一个** recipe 逐字**再**编一次逐字**也**会**变**
+# **闸门**逐字就逐字判「同一 name@version 换了字节」
+# **判据**逐字是「那字节逐字是不是那实际字节」那一个事实上
+# **处置**： **墙钟**逐字**钉**住（ **读口**逐字**唯一**、依 C-105）
 export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --time-base 2>/dev/null || echo 0)"
 bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin git "$ROOT_DIR/work/git.tar.xz" \
   --version-file "$ROOT_DIR/$OUT/git.version"
@@ -122,18 +122,18 @@ for p in "$ZLIB_PREFIX" "$OPENSSL_PREFIX" "$CURL_PREFIX"; do
 done
 echo "[git] 依赖三件就位：zlib / openssl / curl"
 
-#  缺陷名（C-102）**那 git 那个二进制**逐字**零个** RUNPATH**（=> 而而那**它**们**逐字是**那**两**件**事**）。
-#    => 而那**成因**：=> 而那 git 逐字**要**那 libz.so.1 **那一个**、=> 而那**它**逐字**是**那 LOB-OS 自己那**一族**的**库**、
-#      => 而那 jq **要**的那些**都**是**那宿主**那**一族**、=> 而那**它们**逐字**是**那**两**件**事**。
-#    => 而那**后果**逐字 = 而那 git **那一格**逐字**报**那「library libz.so.1 not found」、
-#      => 而那**它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
-#    => 而那**处置**：=> 而那 RUNPATH 逐字**写**在**那配方**那一族**里面**（=> 而那 **git-runpath-origins.patch**）。
-#      => 而那**为什么**逐字**不能**经**那 env **那一族**：=> 而那 **make** 逐字**把**那 $ORIGIN **当**那 **make 变量**
-#        （=> 而那**它**逐字**是空的**）、=> 而那**它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
-#        => 而那**证据**逐字 = 而那 **CI** 编出来**那一个** git 逐字**带**那 RUNPATH **却**是**那「RIGIN/../lib」**
-#          （=> 而那**它**逐字**是**那 **RIGIN**、=> 而那**它**们**逐字是**那**两**件**事**）。
-#      => 而那**那一个**逐字**在**那**配方**里面**（=> 而那**它**逐字**自己**写**那**转义**、=> 而那**它**们**逐字是**那**两**件**事**）。
-#    => 而按 C-104：=> 而那 git **那一件**逐字**只有一条路**（=> 而那**它**逐字**是**那**配方**那一族**、=> 而那**它**们**逐字不是**第二条路**）。
+#  缺陷名（C-102）**那 git 那个二进制**逐字**零个** RUNPATH**（ **它**们**逐字是**那**两**件**事**）。
+# **成因**： git 逐字**要**那 libz.so.1 **那一个**、 **它**逐字**是**那 LOB-OS 自己那**一族**的**库**、
+# jq **要**的那些**都**是**那宿主**那**一族**、 **它们**逐字**是**那**两**件**事**。
+# **后果**逐字 = 而那 git **那一格**逐字**报**那「library libz.so.1 not found」、
+# **它**逐字**只**在**那 LD_LIBRARY_PATH **带上**那**绝对**路径时**才**过**。
+# **处置**： RUNPATH 逐字**写**在**那配方**那一族**里面**（ **git-runpath-origins.patch**）。
+# **为什么**逐字**不能**经**那 env **那一族**： **make** 逐字**把**那 $ORIGIN **当**那 **make 变量**
+#        （ **它**逐字**是空的**）、 **它**们**逐字是**那**两**件**事**：「那 shell **展不展开**」与「那 make **展不展开**」）。
+# **证据**逐字 = 而那 **CI** 编出来**那一个** git 逐字**带**那 RUNPATH **却**是**那「RIGIN/../lib」**
+#          （ **它**逐字**是**那 **RIGIN**、 **它**们**逐字是**那**两**件**事**）。
+# **那一个**逐字**在**那**配方**里面**（ **它**逐字**自己**写**那**转义**、 **它**们**逐字是**那**两**件**事**）。
+# 按 C-104： git **那一件**逐字**只有一条路**（ **它**逐字**是**那**配方**那一族**、 **它**们**逐字不是**第二条路**）。
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
 if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" all; then

@@ -364,11 +364,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
         val id = session.programId.trim()
         if (id == INSTALLER_ID || !isProgramSession(session)) {
-            //  => 而那**安装方**那一族逐字**有**那「跨 app 边界」那一档
-            //    => 而那是那**产品**那一面逐字走的那一条路
-            //      （=> 而那 `HostControlService.crossApp` 那一格逐字**经**它逐字调）
-            //    => 而那它逐字**不**是给程序那一族逐字开的后门
-            //      （=> 而那**程序**逐字**还是**要那**声明**过才**能**要那一档）
+            //  **安装方**那一族逐字**有**那「跨 app 边界」那一档
+            //    是那**产品**那一面逐字走的那一条路
+            //      （ `HostControlService.crossApp` 那一格逐字**经**它逐字调）
+            //    它逐字**不**是给程序那一族逐字开的后门
+            //      （ **程序**逐字**还是**要那**声明**过才**能**要那一档）
             return setOf(BRIDGE_BASE) + ApiSpec.GROUP_SYS + ApiSpec.GROUP_CROSS_APP
         }
         return setOf(BRIDGE_BASE) + declaredCapabilities(id)
@@ -419,24 +419,24 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 //      实现侧 `PackageInstaller.kt:75` 拒掉 `isPiece` 一族；
                 //      两道守卫共用同一把形态尺（`ProgramIndex.kt:70-72`）而读的方向相反
                 //      —— 于是这一条入口当前对任何一件都走不到成功。」
-                //    => 而那形态尺逐字答的是「这一件**有没有程序入口**」（=> 而 assetEntry 空不空），
-                //      => 而**不是**「这一件**归谁管**」（=> 而那是**两问**、=> 而按 C-135 那不是同一问）。
-                //    => 而那后果逐字：程序形态件被**这一道**拒成「只有系统基础环境支持回退到 APK 基线」、
-                //      而库形态件被**实现侧那一道**拒成「拒绝回滚基础设施」=> 而那两句话互相矛盾。
-                //  => 而**处置**（按 01 的 S602-01 §11 归属表第 4 行逐字）：
+                //    形态尺逐字答的是「这一件**有没有程序入口**」（ assetEntry 空不空），
+                //      **不是**「这一件**归谁管**」（ 是**两问**、 按 C-135 那不是同一问）。
+                //    后果逐字：程序形态件被**这一道**拒成「只有系统基础环境支持回退到 APK 基线」、
+                //      而库形态件被**实现侧那一道**拒成「拒绝回滚基础设施」 两句话互相矛盾。
+                //  **处置**（按 01 的 S602-01 §11 归属表第 4 行逐字）：
                 //    「05 让 `CapabilityBroker.kt:411` 与 `PackageInstaller.kt:75` 两道守卫**读同一件事**
                 //      （这一件归谁管），不再一个要 `isPiece`、一个不要 `isPiece`」。
-                //    => 而那**读什么**：=> 而那一族逐字是「**包回退**」那一族（=> 而它的目标对象逐字是
-                //      「包 / 版本目录」）、=> 而**不是**「正式系统件入口」那一族
-                //      （=> 而那逐字是 `lobos.sys.native.rollback`、=> 而那它逐字换**入口指针**、
-                //      => 而那两族逐字**目标对象不同、审计方法名不同**、=> 而按规范逐字**不混称**、
-                //      => 而按 C-135 那**不合并**）。
-                //    => 而那**判据**逐字是「这一件**有没有一个可删的落位版本目录**」
-                //      （=> 而那落位目录那一格逐字对程序形态件非空、对库形态件空串）。
-                //    => 而这一道守卫逐字**只**判「这一件归不归包回滚这一族管」，
-                //      => 而**那能不能回滚**逐字是**逐件的前置条件**（=> 而那归实现侧那一道）。
-                //    => 而那判据逐字**只有一处**（=> 而那 PackageInstaller.ownsPackageRollback 那一格）、
-                //      => 而那一格逐字是**两处**逐字共用的（=> 而按 C-104 判别源要唯一）。
+                //    **读什么**： 一族逐字是「**包回退**」那一族（ 它的目标对象逐字是
+                //      「包 / 版本目录」）、 **不是**「正式系统件入口」那一族
+                //      （ 逐字是 `lobos.sys.native.rollback`、 它逐字换**入口指针**、
+                //      两族逐字**目标对象不同、审计方法名不同**、 按规范逐字**不混称**、
+                //      按 C-135 那**不合并**）。
+                //    **判据**逐字是「这一件**有没有一个可删的落位版本目录**」
+                //      （ 落位目录那一格逐字对程序形态件非空、对库形态件空串）。
+                //    这一道守卫逐字**只**判「这一件归不归包回滚这一族管」，
+                //      **那能不能回滚**逐字是**逐件的前置条件**（ 归实现侧那一道）。
+                //    判据逐字**只有一处**（ PackageInstaller.ownsPackageRollback 那一格）、
+                //      一格逐字是**两处**逐字共用的（ 按 C-104 判别源要唯一）。
                 if (!PackageInstaller.ownsPackageRollback(this@CapabilityBroker, name)) {
                     throw BridgeError(
                         CODE_POLICY_DENIED,
@@ -496,22 +496,22 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
 
     /**
-     * 那**仓内清单声明过的那几件**（=> 而那是那**包名**那一族）。
+     * 那**仓内清单声明过的那几件**（ 是那**包名**那一族）。
      *
      * 缺陷名（C-102）**那一族逐字能碰到设备上别的 app** ——
-     *   => 而那旧版逐字**没有**这一格（=> 而那 `app.launch` 逐字**不**限那清单、
-     *     => 而那 `app.listInstalled` 逐字把**全部**已装包名逐字列出来）
-     *   => 而那**判据**逐字是「那一件逐字是不是那**仓内清单**逐字声明过的那一件」
-     *     => 而那**清单**逐字是那登记册逐字里那 `ui.package` 那一格
-     *       （=> 而那它逐字 1:1 绑定、=> 而那它逐字**不是**人手写的一份名单）
-     *   => 而那**清单之外**的逐字按 **C-05** 报缺、=> 而**不**静默回退
+     *   旧版逐字**没有**这一格（ `app.launch` 逐字**不**限那清单、
+     *     `app.listInstalled` 逐字把**全部**已装包名逐字列出来）
+     *   **判据**逐字是「那一件逐字是不是那**仓内清单**逐字声明过的那一件」
+     *     **清单**逐字是那登记册逐字里那 `ui.package` 那一格
+     *       （ 它逐字 1:1 绑定、 它逐字**不是**人手写的一份名单）
+     *   **清单之外**的逐字按 **C-05** 报缺、 **不**静默回退
      */
     /**
-     * 那**仓内清单声明过的那几件**（=> 而那它是那**授权**那一面、=> 而那**产品入口**也**用**它）。
+     * 那**仓内清单声明过的那几件**（ 它是那**授权**那一面、 **产品入口**也**用**它）。
      *
-     *   => 而那**清单**逐字是那登记册逐字里那 `ui.package` 那一格
-     *     （=> 而那它逐字 1:1 绑定、=> 而那它逐字**不是**人手写的一份名单）
-     *   => 而那它逐字**公开**（=> 而那**产品入口**那一族逐字**要**它、=> 而那**桥**那一族逐字**也**用它）
+     *   **清单**逐字是那登记册逐字里那 `ui.package` 那一格
+     *     （ 它逐字 1:1 绑定、 它逐字**不是**人手写的一份名单）
+     *   它逐字**公开**（ **产品入口**那一族逐字**要**它、 **桥**那一族逐字**也**用它）
      */
     fun declaredPackages(): List<String> {
         val out = sortedSetOf<String>()
@@ -525,28 +525,28 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     /**
-     * 那**承载**那一格逐字（=> 而那它逐字是「我们自己那一个承载」那一面）。
+     * 那**承载**那一格逐字（ 它逐字是「我们自己那一个承载」那一面）。
      *
-     * 缺陷名（C-102）**那一族逐字能点屏幕任意坐标、=> 而那它逐字没有先核那前台是不是我们那一个** ——
-     *   => 而那旧版逐字**没有**这一格（=> 而那 `ui.tap` 逐字直接 `performTap(x, y, durationMs)`）
-     *     => 而那**坐标**逐字**任意**、=> 而那它逐字**能**点出去
-     *   => 而那**后果**（Lead 本机实读的事实）：=> 而那一族逐字在设备上跑 `uiautomator dump`
-     *     与 `input tap`、=> 而那屏幕是开着的、=> 而那桌面图标逐字可见、
-     *     => 而那盲点坐标逐字落到了桌面上那一个图标上
-     *   => 而那**判别形式**（01 裁的）：
+     * 缺陷名（C-102）**那一族逐字能点屏幕任意坐标、 它逐字没有先核那前台是不是我们那一个** ——
+     *   旧版逐字**没有**这一格（ `ui.tap` 逐字直接 `performTap(x, y, durationMs)`）
+     *     **坐标**逐字**任意**、 它逐字**能**点出去
+     *   **后果**（Lead 本机实读的事实）： 一族逐字在设备上跑 `uiautomator dump`
+     *     与 `input tap`、 屏幕是开着的、 桌面图标逐字可见、
+     *     盲点坐标逐字落到了桌面上那一个图标上
+     *   **判别形式**（01 裁的）：
      *     「而那判据必须逐字落在『那一格逐字点的那个位置逐字在不在我们自己那一个承载的界面里』
      *       那一个事实上、而那它逐字不许点出去」
-     *     => 而那「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」
-     *       （=> 而那**不是**「设备上此刻前台那一面」）
-     *     => 而那**前置**逐字是「那前台逐字是不是我们那一个」
-     *   => 而那**处置**：=> 而那一族逐字**动之前**逐字先核那前台逐字是不是我们那一个
-     *     => 而那**不是**的那一格逐字**不许**点（=> 而按 C-05 报缺、=> 而**不**静默放过）
+     *     「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」
+     *       （ **不是**「设备上此刻前台那一面」）
+     *     **前置**逐字是「那前台逐字是不是我们那一个」
+     *   **处置**： 一族逐字**动之前**逐字先核那前台逐字是不是我们那一个
+     *     **不是**的那一格逐字**不许**点（ 按 C-05 报缺、 **不**静默放过）
      */
     private fun requireOurCarrier(): OsAccessibilityService {
         val a11y = requireA11y()
         val fg = runCatching { a11y.foregroundPackage() }.getOrDefault("")
-        //  => 而那**我们那一个**逐字是那 App 逐字自己（=> 而那它逐字那**包名**那一族）
-        //  => 而那**清单**逐字声明过的那几件逐字**也**算我们那一个承载
+        //  **我们那一个**逐字是那 App 逐字自己（ 它逐字那**包名**那一族）
+        //  **清单**逐字声明过的那几件逐字**也**算我们那一个承载
         val ours = declaredPackages() + packageName
         if (fg.isBlank()) {
             throw BridgeError(
@@ -567,20 +567,20 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     }
 
     /**
-     * 那**无障碍**那一格逐字（=> 而那它逐字**只**要那服务**连着**）。
+     * 那**无障碍**那一格逐字（ 它逐字**只**要那服务**连着**）。
      *
      * 缺陷名（C-102）**那一格逐字把「那读数那一族」与「那动手那一族」逐字**混**在一起** ——
-     *   => 而那旧版逐字**没有**这一格、=> 而那 `ui.*` 那一族九格逐字**一律**调那一个
-     *   => 而那**处置**：=> 而那**动手**那四格（=> 而那 `ui.tap` / `ui.swipe` /
+     *   旧版逐字**没有**这一格、 `ui.*` 那一族九格逐字**一律**调那一个
+     *   **处置**： **动手**那四格（ `ui.tap` / `ui.swipe` /
      *     `ui.inputText` / `ui.globalAction`）逐字调那 `requireOurCarrier` 那一格
-     *     （=> 而那它逐字**先核**那前台逐字是不是我们那一个）
-     *   => 而那**只读**那四格（=> 而那 `ui.getUiTree` / `ui.events` / `ui.dropEvents` /
-     *     `ui.waitFor`）逐字**只**调这一格、=> 而那它们逐字**不动**
-     *     => 而那 `ui.getUiTree` 那一格逐字是核那**落点**的那手段、
-     *       => 而那它本身逐字**不能**被那前置限制
-     *       => 而那**落点**逐字在不在我们那一面上逐字**由那调用方**逐字自己判
-     *     => 而那按 **C-103**「那一问取到了另一问的那一面」逐字**不成立**
-     *       （=> 而那读数那一族与那动手那一族逐字**各**答一件事）
+     *     （ 它逐字**先核**那前台逐字是不是我们那一个）
+     *   **只读**那四格（ `ui.getUiTree` / `ui.events` / `ui.dropEvents` /
+     *     `ui.waitFor`）逐字**只**调这一格、 它们逐字**不动**
+     *     `ui.getUiTree` 那一格逐字是核那**落点**的那手段、
+     *       它本身逐字**不能**被那前置限制
+     *       **落点**逐字在不在我们那一面上逐字**由那调用方**逐字自己判
+     *     按 **C-103**「那一问取到了另一问的那一面」逐字**不成立**
+     *       （ 读数那一族与那动手那一族逐字**各**答一件事）
      */
     private fun requireA11y(): OsAccessibilityService =
         OsAccessibilityService.instance
@@ -610,18 +610,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun toHost(action: String) {
         val i = Intent(this, OsHostService::class.java).setAction(action)
         //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
-        //    => 而那一拍逐字**配错了**、=> 而问二那个量逐字**算不出来**
-        //    —— 而实际上这一路逐字是 `startService`（=> 而**不是** `startForegroundService`）、
-        //    => 而 FGS start 那一拍逐字**不**在这一路上、=> 而这里逐字**不该**记那一拍。
-        //    => 而按 C-112：=> 而那一格逐字**不是**「我算不出来的」那个形状，=> 而它逐字是「**记错了**」那个形状。
-        //    => 而按 C-220：=> 而 04 那边那一族是**内容稿**、=> 而这一笔是**实现**那一族、=> 而它逐字**只**改这一行。
-        //  缺陷名（C-102）**这一条路逐字用**那 startService（=> 而那**它**们**逐字是**那**两**件**事**）。
-        //    => 而那**成因**：=> 而那 startService 逐字**只**在**那应用**在**前台**的时候**才**能**起**那后台服务**、
-        //      => 而那**它**们**逐字是**那**两**件**事**。
-        //    => 而那**后果**逐字 = 而那宿主服务逐字**起不来**、=> 而那**落位**那一族**与**那**身份**那一族
-        //      逐字**都**只在**那宿主服务起**的那一趟**里**跑**、=> 而那**它们**逐字**都**没跑**。
-        //    => 而那**处置**：=> 而这一条路逐字**走**那 ensureRunning（=> 而那**它**逐字**是**那**一个**入口**）。
-        //    => 而按 C-104：=> 而那宿主那一族逐字**只有**那一个**入口**（=> 而那**它**们**逐字是**那同一个**触发**的**两种**写法**）。
+        //    一拍逐字**配错了**、 问二那个量逐字**算不出来**
+        //    —— 而实际上这一路逐字是 `startService`（ **不是** `startForegroundService`）、
+        //    FGS start 那一拍逐字**不**在这一路上、 这里逐字**不该**记那一拍。
+        //    按 C-112： 一格逐字**不是**「我算不出来的」那个形状， 它逐字是「**记错了**」那个形状。
+        //    按 C-220： 04 那边那一族是**内容稿**、 这一笔是**实现**那一族、 它逐字**只**改这一行。
+        //  缺陷名（C-102）**这一条路逐字用**那 startService（ **它**们**逐字是**那**两**件**事**）。
+        //    **成因**： startService 逐字**只**在**那应用**在**前台**的时候**才**能**起**那后台服务**、
+        //      **它**们**逐字是**那**两**件**事**。
+        //    **后果**逐字 = 而那宿主服务逐字**起不来**、 **落位**那一族**与**那**身份**那一族
+        //      逐字**都**只在**那宿主服务起**的那一趟**里**跑**、 **它们**逐字**都**没跑**。
+        //    **处置**： 这一条路逐字**走**那 ensureRunning（ **它**逐字**是**那**一个**入口**）。
+        //    按 C-104： 宿主那一族逐字**只有**那一个**入口**（ **它**们**逐字是**那同一个**触发**的**两种**写法**）。
         lobos.services.host.OsHostService.ensureRunning(this, action)
     }
 
@@ -1252,29 +1252,29 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
         }
         val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
-        //  缺陷名（C-102）**那一族逐字还是「经一个解释器跑一条命令」那一条、=> 而那它逐字**没有**切到那「经 linker64」那一条** ——
-        //    => 而那旧版逐字是 `listOf(sh.absolutePath, "-c", cmd)`
-        //      => 而那它逐字把**那整条命令**逐字当那 `-c` 逐字**后面**那一个**参数**
-        //        => 而那 **bash** 逐字**自己**逐字去 exec 那一件
-        //          => 而那**域**逐字对那 app_data_file 逐字**没有**执行许可
-        //            （=> 而那 app 进程逐字那个域逐字是 u:r:untrusted_app、
-        //              => 而那 app_data_file 逐字是 u:object_r:app_data_file:s0、
-        //              => 而那**直接** exec 它逐字**在**那加载解释器**之前**就 EACCES
-        //              => 而那一格逐字是 error=13、=> 而那 07 逐字读到的原话逐字就是
+        //  缺陷名（C-102）**那一族逐字还是「经一个解释器跑一条命令」那一条、 它逐字**没有**切到那「经 linker64」那一条** ——
+        //    旧版逐字是 `listOf(sh.absolutePath, "-c", cmd)`
+        //      它逐字把**那整条命令**逐字当那 `-c` 逐字**后面**那一个**参数**
+        //        **bash** 逐字**自己**逐字去 exec 那一件
+        //          **域**逐字对那 app_data_file 逐字**没有**执行许可
+        //            （ app 进程逐字那个域逐字是 u:r:untrusted_app、
+        //              app_data_file 逐字是 u:object_r:app_data_file:s0、
+        //              **直接** exec 它逐字**在**那加载解释器**之前**就 EACCES
+        //              一格逐字是 error=13、 07 逐字读到的原话逐字就是
         //                「Permission denied」）
-        //          => 而那 /system/bin/linker64 逐字是 u:object_r:system_linker_exec:s0、
+        //          /system/bin/linker64 逐字是 u:object_r:system_linker_exec:s0、
         //            而那一域逐字**有**执行许可
-        //      => 而那**经由 linker64 去 exec**那一件那条路逐字是**通**的
-        //    => 而那**判别形式**（01 `S635-01` 逐字裁）：
-        //      「=> 而那一族逐字是『那一件逐字怎么跑』那一族、=> 而那它逐字**不**由
+        //      **经由 linker64 去 exec**那一件那条路逐字是**通**的
+        //    **判别形式**（01 `S635-01` 逐字裁）：
+        //      「 一族逐字是『那一件逐字怎么跑』那一族、 它逐字**不**由
         //        『那一件逐字是什么』顶掉。」
-        //    => 而那**处置**：=> 而那 argv 逐字**按**那 `ExecEntry.argv` 那一族算
-        //      => 而那 **linker64** 逐字**由**那 `ExecEntry` 那一族逐字**显式套**
-        //        （=> 而那 `:124` 逐字「而这一支**不能删**（ET_DYN 要经 linker64 驱动 ——
+        //    **处置**： argv 逐字**按**那 `ExecEntry.argv` 那一族算
+        //      **linker64** 逐字**由**那 `ExecEntry` 那一族逐字**显式套**
+        //        （ `:124` 逐字「而这一支**不能删**（ET_DYN 要经 linker64 驱动 ——
         //          唯一真相源是本函数，native 那份已删，C-87）」）
-        //      => 而那 argv 逐字**完整**逐字传下去、=> 而那退出码与那 stderr 逐字**一样**报出来
-        //    => 而那**交互**那一层逐字**另**有一族（=> 而那 `execDirect` 那一族逐字**不是**同一件事）
-        //      => 而那**不经 bash** 那一族逐字**另**有一格（=> 而那 argv 逐字**第一条**是那一件）
+        //      argv 逐字**完整**逐字传下去、 退出码与那 stderr 逐字**一样**报出来
+        //    **交互**那一层逐字**另**有一族（ `execDirect` 那一族逐字**不是**同一件事）
+        //      **不经 bash** 那一族逐字**另**有一格（ argv 逐字**第一条**是那一件）
         val argv = shapedArgv(sh, cmd)
         val r = lobos.kernel.ipc.LocalExec.run(
             this@CapabilityBroker,
@@ -1420,10 +1420,10 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             n.setContentTitle(p.optString("title", "Lob OS")).setContentText(p.optString("text", ""))
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
             val nid = (10000 + (System.currentTimeMillis() % 55000)).toInt()
-            //  => 而那**发法名**逐字答的是「那一条路」、=> 而那**记录**逐字**落**那诊断
-            //    （=> 而那**下一趟**逐字靠它逐字就能归到路、=> 而那它逐字**不用**抓栈）
-            //  => 而那个 ID 逐字**每次**都**变**（=> 而那**每次**逐字**新增**一条、
-            //      => 而那**不是**那**替换**那一族、=> 而那**是**那**另一**成因）
+            //  **发法名**逐字答的是「那一条路」、 **记录**逐字**落**那诊断
+            //    （ **下一趟**逐字靠它逐字就能归到路、 它逐字**不用**抓栈）
+            //  个 ID 逐字**每次**都**变**（ **每次**逐字**新增**一条、
+            //      **不是**那**替换**那一族、 **是**那**另一**成因）
             lobos.kernel.fs.NotifyRoute.note(
                 this, "bridge.notif.post", nid, "普通",
                 "id 逐字每次都变 => 而那每次逐字**新增**一条",
@@ -1447,22 +1447,22 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "app.listInstalled" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { _, _programId ->
             //  缺陷名（C-102）**那一族逐字把全部已装包名逐字列给程序** ——
-            //   => 而那旧版逐字是 `packageManager.getInstalledApplications(GET_META_DATA)`
-            //     => 而那它逐字把手机上**全部**已装包名逐字列出来
-            //   => 而那**处置**：=> 而那它逐字**只**列那**仓内清单声明过的那几件**
-            //     => 而那**其余**的逐字**不**列（=> 而那按 C-05 报缺）
+            //   旧版逐字是 `packageManager.getInstalledApplications(GET_META_DATA)`
+            //     它逐字把手机上**全部**已装包名逐字列出来
+            //   **处置**： 它逐字**只**列那**仓内清单声明过的那几件**
+            //     **其余**的逐字**不**列（ 按 C-05 报缺）
             val arr = JSONArray()
             for (pkg in declaredPackages()) arr.put(pkg)
             JSONObject().apply { put("packages", arr); put("count", arr.length()) }
         },
         "app.launch" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
             //  缺陷名（C-102）**那一族逐字能拉起手机上**任意**已装 app** ——
-            //   => 而那旧版逐字是 `packageManager.getLaunchIntentForPackage(pkg)`
-            //     => 而那它逐字**不**限那**仓内清单声明过的那几件**
-            //       => 而那「九号电动车」那个 app 逐字**就在**那一族逐字的能力范围里
-            //   => 而那**处置**：=> 而那它逐字**只**许拉起那**仓内清单声明过的那几件**
-            //     => 而那**其余**的逐字按 **C-05** 报缺、=> 而**不**静默回退到「拉起任意 app」
-            //   => 而那它逐字**显式**逐字记出它要拉哪一件（=> 而按 C-126 不静默）
+            //   旧版逐字是 `packageManager.getLaunchIntentForPackage(pkg)`
+            //     它逐字**不**限那**仓内清单声明过的那几件**
+            //       「九号电动车」那个 app 逐字**就在**那一族逐字的能力范围里
+            //   **处置**： 它逐字**只**许拉起那**仓内清单声明过的那几件**
+            //     **其余**的逐字按 **C-05** 报缺、 **不**静默回退到「拉起任意 app」
+            //   它逐字**显式**逐字记出它要拉哪一件（ 按 C-126 不静默）
             val pkg = p.optString("pkg", "")
             val declared = declaredPackages()
             if (pkg !in declared) {
@@ -1484,16 +1484,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             JSONObject().apply { put("launched", pkg) }
         },
         "app.openUrl" to MethodDef(listOf("base", ApiSpec.GROUP_CROSS_APP), false) { p, _programId ->
-            //  缺陷名（C-102）**那一族逐字能拉起手机上**别的** app、=> 而那它逐字没有那一档** ——
-            //   => 而那旧版逐字是 `MethodDef(listOf("base"), false)`
-            //     => 而那它逐字**没有** `ApiSpec.GROUP_CROSS_APP`
-            //       （=> 而那 `app.launch` 与那 `app.listInstalled` 逐字都带了）
-            //     => 而那它逐字是 `ACTION_VIEW` 逐字拉起**浏览器**
-            //       => 而那**浏览器**逐字是手机上**另一个** app
-            //       => 而那它逐字**也**逐字能碰到设备上别的 app
-            //     => 而那它是那一族逐字**漏掉**的那一格
-            //   => 而那**处置**：=> 而那它逐字**也**要带那一档、=> 而那它逐字**默认不许**
-            //     => 而那**其余**的逐字按 **C-05** 报缺、=> 而**不**静默回退
+            //  缺陷名（C-102）**那一族逐字能拉起手机上**别的** app、 它逐字没有那一档** ——
+            //   旧版逐字是 `MethodDef(listOf("base"), false)`
+            //     它逐字**没有** `ApiSpec.GROUP_CROSS_APP`
+            //       （ `app.launch` 与那 `app.listInstalled` 逐字都带了）
+            //     它逐字是 `ACTION_VIEW` 逐字拉起**浏览器**
+            //       **浏览器**逐字是手机上**另一个** app
+            //       它逐字**也**逐字能碰到设备上别的 app
+            //     它是那一族逐字**漏掉**的那一格
+            //   **处置**： 它逐字**也**要带那一档、 它逐字**默认不许**
+            //     **其余**的逐字按 **C-05** 报缺、 **不**静默回退
             val url = p.optString("url", "")
             if (url.isEmpty()) throw BridgeError(CODE_INVALID_PARAM, "url 为空")
             val ai = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
@@ -1601,7 +1601,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             bmp.recycle()
 
             if (p.optBoolean("inline", false)) {
-                //  => 而那**读法**逐字**可查**（=> 而那 `ReadRoute` 那一族逐字**记**那一格）
+                //  **读法**逐字**可查**（ `ReadRoute` 那一族逐字**记**那一格）
                 val bytes = lobos.kernel.fs.ReadRoute.readAll(
                     this, "ui.screenshot", file,
                     lobos.kernel.fs.ReadRoute.DEFAULT_MAX_BYTES * 4,
@@ -1643,8 +1643,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     "文件 ${f.length()} 字节超过上限 $maxBytes；用 maxBytes 显式放大（硬顶 ${MAX_FS_BYTES}）"
                 )
             }
-            //  => 而那**读法**逐字**可查**（=> 而那 `ReadRoute` 那一族逐字**记**那一格）
-            //    => 而那**上限**逐字**是**那读法逐字自己说的（=> 而那它逐字**就是**那 `maxBytes`）
+            //  **读法**逐字**可查**（ `ReadRoute` 那一族逐字**记**那一格）
+            //    **上限**逐字**是**那读法逐字自己说的（ 它逐字**就是**那 `maxBytes`）
             val bytes = lobos.kernel.fs.ReadRoute.readAll(this, "fs.read", f, maxBytes)
             val encoding = p.optString("encoding", "auto")
             if (encoding == "base64") {
@@ -1931,13 +1931,13 @@ private fun JSONArray.toList(): List<String> {
 }
 
 /**
- * 那**argv** 逐字**按**那 `ExecEntry.argv` 那一族算（=> 而那它逐字**显式套**那 **linker64**）。
+ * 那**argv** 逐字**按**那 `ExecEntry.argv` 那一族算（ 它逐字**显式套**那 **linker64**）。
  *
- *   => 而那 argv 逐字**完整**逐字传下去（=> 而那退出码与那 stderr 逐字**一样**报出来）
- *   => 而那 argv[0] 逐字**第一条**是那一件、=> 而那**后面**逐字是那**参数**
- *   => 而那**命令串**逐字**要**逐字**拆**成那 argv（=> 而那**不带 shell**）
- *     （=> 而那 **bash -c** 那一族逐字**不在**这里、=> 而那**不经 bash**）
- *   => 而那**认不出**那一档时逐字**报缺**（=> 而按 C-05 不猜填、=> 而**不**静默回退到那 bash）
+ *   argv 逐字**完整**逐字传下去（ 退出码与那 stderr 逐字**一样**报出来）
+ *   argv[0] 逐字**第一条**是那一件、 **后面**逐字是那**参数**
+ *   **命令串**逐字**要**逐字**拆**成那 argv（ **不带 shell**）
+ *     （ **bash -c** 那一族逐字**不在**这里、 **不经 bash**）
+ *   **认不出**那一档时逐字**报缺**（ 按 C-05 不猜填、 **不**静默回退到那 bash）
  */
 private fun shapedArgv(entry: java.io.File, cmd: String): List<String> {
     val parts = cmd.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
