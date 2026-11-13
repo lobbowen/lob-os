@@ -13,7 +13,7 @@
 # 而它的失败原因里不会出现「我们认为」——每一条都指一个可核对的字节或一次读数。
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.."&& pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 READELF="${READELF:-llvm-readelf}"
 command -v "$READELF" >/dev/null 2>&1 || READELF=readelf
 
@@ -26,31 +26,31 @@ for name in "$@"; do
   echo "=== $name"
   ent="$BIN/$ENT_PREFIX$name"
   if [ ! -e "$ent" ]; then
-    echo "问一 落位在不在：不在（$ent 不存在）"
-    echo "[红] 落位缺"
-    echo "事实：无此路径"
+    echo "  问一 落位在不在：不在（$ent 不存在）"
+    echo "  [红] 落位缺"
+    echo "       事实：无此路径"
     rc_all=1; continue
   fi
   if [ -L "$ent" ]; then
-    echo "落位：软链 → $(readlink "$ent"2>/dev/null || echo 不可读)"
+    echo "  落位：软链 → $(readlink "$ent" 2>/dev/null || echo 不可读)"
   else
-    echo "落位：实体文件 $(wc -c < "$ent"2>/dev/null || echo 0) 字节"
+    echo "  落位：实体文件 $(wc -c < "$ent" 2>/dev/null || echo 0) 字节"
   fi
   if [ ! -f "$ent" ]; then
-    echo "问一 落位在不在：在（但目标是坏的）"
-    echo "[红] 落位的目标是坏的"
-    echo "事实：软链指向一个不存在的路径"
+    echo "  问一 落位在不在：在（但目标是坏的）"
+    echo "  [红] 落位的目标是坏的"
+    echo "       事实：软链指向一个不存在的路径"
     rc_all=1; continue
   fi
-  perm="$(ls -l "$ent"2>/dev/null | cut -c1-10)"
-  echo "权限：$perm"
+  perm="$(ls -l "$ent" 2>/dev/null | cut -c1-10)"
+  echo "  权限：$perm"
   case "$perm" in
     ?x*|???x*|????x*|?????x*) : ;;
     *) echo " [红] 执行位缺：$perm"
-       echo "事实：owner/group/other 三位都没有 x"
+       echo "       事实：owner/group/other 三位都没有 x"
        rc_all=1; continue ;;
   esac
-  need="$("$READELF"-W -d "$ent"2>/dev/null | sed -n "s/.*NEEDED.*\[\(.*\)\]/\1/p"| tr "\n"" ")"
+  need="$("$READELF" -W -d "$ent" 2>/dev/null | sed -n "s/.*NEEDED.*\[\(.*\)\]/\1/p" | tr "\n" " ")"
   so=""
   se=""
   code=0
@@ -58,67 +58,67 @@ for name in "$@"; do
   ERRF=""
   if [ -z "${T1_NOPY:-}" ] && [ -z "${T1_NOSHELL:-}" ]; then
     if [ -n "${T1_SPAWNLIKE:-}" ]; then
-      so="$(LD_LIBRARY_PATH="$LO_LIB""$ent" --version 2>/dev/null | head -3 | tr '\n''|')"
+      so="$(LD_LIBRARY_PATH="$LO_LIB" "$ent" --version 2>/dev/null | head -3 | tr '\n' '|')"
     else
-      so=$("$ent" --version 2>/dev/null | head -3 | tr '\n''|')
+      so=$("$ent" --version 2>/dev/null | head -3 | tr '\n' '|')
     fi
-    se=$("$ent" --version 2>&1 1>/dev/null | head -3 | tr '\n''|')
+    se=$("$ent" --version 2>&1 1>/dev/null | head -3 | tr '\n' '|')
     code=$("$ent" --version >/dev/null 2>&1; echo $?)
     SPLIT=2
   elif [ -z "${T1_NOPY:-}" ] && command -v python3 >/dev/null 2>&1; then
-    marked="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('SO:'+p.stdout.decode(errors='replace')[:400]+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n'+'RC:'+str(p.returncode)+'\n')""$ent"2>/dev/null)"
+    marked="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('SO:'+p.stdout.decode(errors='replace')[:400]+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n'+'RC:'+str(p.returncode)+'\n')" "$ent" 2>/dev/null)"
     if printf "%s" "$marked" | grep -q "^RC:"; then
-      so="$(printf "%s""$marked"| sed -n "s/^SO://p"| head -3 | tr "\n""|")"
-      se="$(printf "%s""$marked"| sed -n "s/^SE://p"| head -3 | tr "\n""|")"
-      code="$(printf "%s""$marked"| sed -n "s/^RC://p"| head -1)"
+      so="$(printf "%s" "$marked" | sed -n "s/^SO://p" | head -3 | tr "\n" "|")"
+      se="$(printf "%s" "$marked" | sed -n "s/^SE://p" | head -3 | tr "\n" "|")"
+      code="$(printf "%s" "$marked" | sed -n "s/^RC://p" | head -1)"
       SPLIT=1
     fi
   fi
   if [ "$SPLIT" = "0" ]; then
-    both="$("$ent"--version 2>&1)"
+    both="$("$ent" --version 2>&1)"
     code=$?
     so="$both"
-    se="两个流不可分（无 python3 捕获） —— 这一支只判退出码，"
+    se=" 两个流不可分（无 python3 捕获）  —— 这一支只判退出码，"
     se="$se 不可用它判「它说了什么」"
   fi
   if [ "$SPLIT" = "1" ]; then CAP="两个流分开（内存·python3）"; elif [ "$SPLIT" = "2" ]; then CAP="两个流分开（三次纯 shell 执行）"; else CAP="**合并流，只判退出码**"; fi
-  echo "捕获方式：$CAP"
+  echo "  捕获方式：$CAP"
   code2=-1
   se2=""
   if [ "$SPLIT" = "2" ]; then code2=$("$ent" --version >/dev/null 2>&1; echo $?); se2="x"; fi
   if [ "$SPLIT" = "1" ]; then
-    marked2="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('RC:'+str(p.returncode)+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n')""$ent"2>/dev/null)"
+    marked2="$(python3 -c "import subprocess,sys; p=subprocess.run([sys.argv[1],'--version'],capture_output=True); sys.stdout.write('RC:'+str(p.returncode)+'\n'+'SE:'+p.stderr.decode(errors='replace')[:400]+'\n')" "$ent" 2>/dev/null)"
     if printf "%s" "$marked2" | grep -q "^RC:"; then
-      code2="$(printf "%s""$marked2"| sed -n "s/^RC://p"| head -1)"
-      se2="$(printf "%s""$marked2"| sed -n "s/^SE://p"| head -3 | tr "\n""|")"
+      code2="$(printf "%s" "$marked2" | sed -n "s/^RC://p" | head -1)"
+      se2="$(printf "%s" "$marked2" | sed -n "s/^SE://p" | head -3 | tr "\n" "|")"
     fi
   fi
   if [ "$code2" -ge 0 ] 2>/dev/null; then
-    echo "第二次执行退出码=$code2（第一次=$code）"
+    echo "  第二次执行退出码=$code2（第一次=$code）"
     if [ "$code2" = "$code" ]; then
-      echo "第二信号：两次退出码一致 — 由两次独立的执行各读一次"
-      echo "问二 能不能跑起来：$( [ "$code"-eq 0 ] && echo 能 || echo 不能 ) —— 且两次一致"
-      if [ "$code" -eq 0 ]; then echo "[绿]"; else echo "[红] 落位在，而它跑不起来（两次一致）"; fi
+      echo "  第二信号：两次退出码一致 — 由两次独立的执行各读一次"
+      echo "  问二 能不能跑起来：$( [ "$code" -eq 0 ] && echo 能 || echo 不能 ) —— 且两次一致"
+      if [ "$code" -eq 0 ]; then echo "  [绿]"; else echo "  [红] 落位在，而它跑不起来（两次一致）"; fi
       continue
     else
-      echo "[红] 两次退出码不一致：$code 与 $code2 —— 而判据自己的执行不确定，结论不可采信"
+      echo "  [红] 两次退出码不一致：$code 与 $code2 —— 而判据自己的执行不确定，结论不可采信"
       rc_all=2; continue
     fi
   else
-    echo "第二信号：拿不到（未分开捕获）—— 而这一格只能记「未验」"
-    echo "问二 能不能跑起来：未验（无独立第二信号）"
+    echo "  第二信号：拿不到（未分开捕获）—— 而这一格只能记「未验」"
+    echo "  问二 能不能跑起来：未验（无独立第二信号）"
     rc_all=2; continue
   fi
-  echo "运行期 --version 退出码=$code"
-  echo "stdout：$(printf "%s""$so"| head -2 | tr "\n""|")"
-  echo "stderr：${se:-（空）}"
-  echo "问一 落位在不在：是在"
+  echo "  运行期 --version 退出码=$code"
+  echo "  stdout：$(printf "%s" "$so" | head -2 | tr "\n" "|")"
+  echo "  stderr：${se:-（空）}"
+  echo "  问一 落位在不在：是在"
   if [ "$code" -eq 0 ]; then
-    echo "问二 能不能跑起来：能"
-    echo "[绿]"
+    echo "  问二 能不能跑起来：能"
+    echo "  [绿]"
   else
-    echo "问二 能不能跑起来：不能（退出码 $code）"
-    echo "[红] 落位在，而它跑不起来"
+    echo "  问二 能不能跑起来：不能（退出码 $code）"
+    echo "  [红] 落位在，而它跑不起来"
     rc_all=1
   fi
 done

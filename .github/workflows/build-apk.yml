@@ -179,7 +179,7 @@ jobs:
           # 免得几十行之后才报「找不到 apksigner」，看不出是哪一步没装成
           if ! find "$SDK/build-tools" -name apksigner 2>/dev/null | head -1 | grep -q .; then
             echo "::error title=build-tools 里没有 apksigner::签名核验依赖它"
-            ls -1 "$SDK/build-tools" 2>/dev/null || echo "（build-tools 目录不存在）"
+            ls -1 "$SDK/build-tools" 2>/dev/null || echo "  （build-tools 目录不存在）"
             exit 1
           fi
           echo "[ok] SDK 包就绪（含 apksigner）"
@@ -205,7 +205,7 @@ jobs:
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$J"
-          NDK="$(cd "$(dirname "$CC")/../../../../.."&& pwd)"
+          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
           echo "[libc++] NDK=$NDK（由 locate-ndk.sh 注入的 CC 反推，与组件链同一份）"
           SRC="$(ls "$NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
           [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载；NDK=$NDK"; exit 1; }
@@ -232,7 +232,7 @@ jobs:
           # · 不产 component-meta.json（不是 usr/lib/<id>/<版本>/ 那个形状）
           # · 不落位（内核不认识它）
           # Linux 的对应物：gcc 包的 include/ 与 libc6-dev 包 —— 都是编译材料。
-          NDK="$(cd "$(dirname "$CC")/../../../../.."&& pwd)"
+          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
           SRC="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1)"
           [ -n "$SRC" ] || { echo "::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）"; exit 1; }
           DST=container/app/src/main/assets/sysroot
@@ -276,13 +276,13 @@ jobs:
           TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
           if [ -n "$TOOLLIB" ]; then
             cp -a "$TOOLLIB"/. "$DST/usr/lib/" 2>/dev/null || true
-            echo "[sysroot] 工具链库已并入 $DST/usr/lib（$(ls "$DST/usr/lib"| wc -l) 项）"
+            echo "[sysroot] 工具链库已并入 $DST/usr/lib（$(ls "$DST/usr/lib" | wc -l) 项）"
           else
             echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK=$NDK）"
             exit 1
           fi
           [ -f "$DST/usr/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
-          echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include"| wc -l) 项 · lib $(ls "$DST/usr/lib"| wc -l) 项）"
+          echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include" | wc -l) 项 · lib $(ls "$DST/usr/lib" | wc -l) 项）"
           du -sh "$DST"
 
       # APK 是**取件模式**：预装件是现成的，编一次固化到 Release，之后一直取用。
@@ -324,13 +324,8 @@ jobs:
           # 这里还在要 8，于是取件明明跑过了却判红，报错还看不出是缺件还是数字过期。
           # 另一个毛病是口径分两处：这里算一遍，verify-apk-native.sh 也算一遍，
           # 两边碰巧一样时看不出来，不一样时又说不清是哪边错。
-          # 现在件数只有一个真源：fetch-prebuilt-pieces.sh 里 PIECES 那一行，
-          # 它是「哪几件该取」唯一的生成点；件数由那个脚本自己报出来，
-          # build-apk.yml 与 verify-apk-native.sh 都走同一条口径。
-          # C-995：件数的真源只有一处 —— fetch-prebuilt-pieces.sh 的 PIECES 那一行。
-          # 以前这里还有第二条路：grep 出那一行再数词数。那条路把「一行文本」当成了真源，
-          # 于是「脚本里的数组」和「文本里的词数」可以各说各话，两边碰巧一样时看不出来，
-          # 不一样时又说不清是哪边错。现在只留 --print-pieces 这一条路：
+          # 「该取哪几件」只有一个真源：fetch-prebuilt-pieces.sh 里 PIECES 那一行，
+          # 它是唯一的生成点；件数由那个脚本自己报出来，两处都走同一条口径。
           # 它由脚本自己把 PIECES 数组的个数打到 stdout，算式就在脚本里，与取件用的是同一处。
           # 注意读的是 stdout 上脚本给的那个数，不再由这里 ${#PIECES[@]} 自己算 ——
           # 脚本没跑起来时数组根本没建立，那个算式给出的是 0，而 0 长得像一个正常的数。
@@ -344,7 +339,7 @@ jobs:
             exit 1
           fi
           [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
-          echo "件数 $N 与钉值表一致（$WANT_N）—— 而它不是硬编码的"
+          echo "  件数 $N 与钉值表一致（$WANT_N）—— 而它不是硬编码的"
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 
@@ -508,7 +503,7 @@ jobs:
           fi
           APK="$(ls container/app/build/outputs/apk/release/*.apk | head -1)"
           [ -f "$APK" ] || { echo "::error::没有 release 变体的 APK：$APK"; exit 1; }
-          SHA="$(sha256sum "$APK"| cut -c1-64)"
+          SHA="$(sha256sum "$APK" | cut -c1-64)"
           ASSET="lobos-os-$NAME_VER.apk"
           if [ -z "${GH_TOKEN:-}" ]; then
             echo "::error title=发布轮缺令牌::os-release-* 这一轮要发正式版，需要 secrets APK_PUBLISH_TOKEN"
@@ -589,7 +584,7 @@ jobs:
           ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true
           find container/app/src/main/assets -type f 2>/dev/null | sort > "$D/assets-tree.txt"
           find container/app/build/intermediates/assets -type f 2>/dev/null | sort | head -40 > "$D/assets-merged.txt" || true
-            { echo "## 源目录字节数（对照用）"; find container/app/src/main/assets -type f -printf "%10s  %p\n"2>/dev/null | sort -k2; } > "$D/src-bytes.txt" || true
+            { echo "## 源目录字节数（对照用）"; find container/app/src/main/assets -type f -printf "%10s  %p\n" 2>/dev/null | sort -k2; } > "$D/src-bytes.txt" || true
           ls -la container/app/src/main/assets/pieces/ >> "$D/assets-tree.txt" 2>/dev/null || true
             APKX=$(ls container/app/build/outputs/apk/*/*.apk 2>/dev/null | head -1)
             if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; zipinfo -l "$APKX" 2>/dev/null | grep -E "assets/(pieces|jssdk)" > "$D/apk-pieces-bytes.txt" || true; fi
@@ -603,7 +598,7 @@ jobs:
           echo "- node: $(node --version 2>/dev/null)" >> "$D/env.txt"
           echo "- CC: ${CC:-（空）}" >> "$D/env.txt"
           echo "- 取件到的件包:" >> "$D/env.txt"
-          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/ /' >> "$D/env.txt"
+          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/    /' >> "$D/env.txt"
 
           ls -laR "$D" 2>/dev/null | head -40
 

@@ -14,7 +14,7 @@ die() {
 
 NDK=""
 if [ -n "${CC:-}" ] && [ -f "$CC" ]; then
-  NDK="$(cd "$(dirname "$CC")/../../../../.."&& pwd 2>/dev/null || true)"
+  NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd 2>/dev/null || true)"
 fi
 if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
   NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
@@ -29,7 +29,7 @@ fi
 GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' "$NDK/source.properties" 2>/dev/null || true)"
 [ -n "$GOT_NDK" ] || die "证据不足：读不出 NDK 版本" "$NDK/source.properties 里没有 Pkg.Revision" \
   "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
-WANT_NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh"--ndk)"
+WANT_NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
   die "已坏：NDK 版本与钉值不符" \
     "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion。坏在哪：用这个 NDK 编出来的 .so 依赖的是另一套 sysroot => 真机装载期报缺符号，而症状与「符号写错了」一模一样"
@@ -90,11 +90,11 @@ if ! command "${CLANG:-}" --version >/dev/null 2>&1; then
   "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
 fi
 
-VER_OUT="$(command "${CLANG:-}"--version 2>&1 | head -3)"
+VER_OUT="$(command "${CLANG:-}" --version 2>&1 | head -3)"
 echo "[ndk-llvm] $VER_OUT"
 
-GOT_REV="$(printf '%s\n'"$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
-[ -n "$GOT_REV" ] || GOT_REV="$(printf '%s\n'"$VER_OUT" | grep -o 'clang-r[0-9a-f]\{6,\}'| head -1 | sed 's/clang-//')"
+GOT_REV="$(printf '%s\n' "$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
+[ -n "$GOT_REV" ] || GOT_REV="$(printf '%s\n' "$VER_OUT" | grep -o 'clang-r[0-9a-f]\{6,\}' | head -1 | sed 's/clang-//')"
 if [ -n "$GOT_REV" ]; then
   echo "[ndk-llvm] NDK 这一版的 clang 修订号 = $GOT_REV（不是语义版本）"
 fi
@@ -108,7 +108,7 @@ for si in "$NDK"/toolchains/llvm/prebuilt/*/AndroidVersion.txt \
            "$NDK"/toolchains/llvm/prebuilt/*/share/clang_source_info.md; do
   [ -f "$si" ] || continue
   v="$(grep -o -E '[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+' "$si" | head -1)"
-  [ -n "$v" ] || v="$(grep -o 'llvmorg-[0-9][0-9.]*' "$si"| head -1)"
+  [ -n "$v" ] || v="$(grep -o 'llvmorg-[0-9][0-9.]*' "$si" | head -1)"
   if [ -n "$v" ]; then GOT_LLVM="${v#llvmorg-}"; SRC="$si"; break; fi
 done
 if [ -n "$GOT_LLVM" ]; then
@@ -138,7 +138,7 @@ if [ -n "$GOT_LLVM" ]; then
   fi
 fi
 
-WANT_LLVM="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh"--llvm)"
+WANT_LLVM="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --llvm)"
 if [ -z "$WANT_LLVM" ]; then
   die "证据不足：钉值表没有 llvmVersion" \
     "NDK $GOT_NDK 内置 LLVM $GOT_LLVM。请把 llvmVersion 填进 scripts/component-sources.json ——" \

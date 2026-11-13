@@ -2,7 +2,7 @@
 set -euo pipefail
 export LC_ALL=C
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"&& pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 白名单与 check-elf-deps.sh 共用同一份 —— 同一事实只能有一个来源。
 # 此前这里指向上级目录 scripts/native-deps.txt，而 scripts/verify/ 下还有一份，
 # 两份内容已经漂了：旧那份 12 项（含 libz.so —— 而 zlib 现在是我们的件，
@@ -38,40 +38,40 @@ if [ -z "$READELF" ]; then
 fi
 if [ -z "$READELF" ]; then
   echo "[error] 找不到 readelf / llvm-readelf —— 无法校验就不得放行产物。"
-  echo "坏在哪：无法判定随包 ELF 的依赖闭包是否完整 —— 真机上会报 cannot locate symbol。"
+  echo "        坏在哪：无法判定随包 ELF 的依赖闭包是否完整 —— 真机上会报 cannot locate symbol。"
   exit 2
 fi
 if ! "$READELF" --version >/dev/null 2>&1; then
   echo "[error] 指定的 readelf 无法执行：$READELF"
-  echo "坏在哪：这是环境问题（不是产物不合格）—— 本层判据一条都不会跑，随包 ELF 的依赖闭包无人核。"
-  echo "这是环境/用法问题（不是产物不合格）—— 取不出数据就一条判据都不会跑，拒绝校验。"
+  echo "        坏在哪：这是环境问题（不是产物不合格）—— 本层判据一条都不会跑，随包 ELF 的依赖闭包无人核。"
+  echo "        这是环境/用法问题（不是产物不合格）—— 取不出数据就一条判据都不会跑，拒绝校验。"
   exit 2
 fi
 echo "[info] 使用 readelf: $READELF"
 
 if [ ! -f "$DEPS_FILE" ]; then
   echo "[error] 找不到系统库白名单: $DEPS_FILE"
-  echo "坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"
+  echo "        坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"
   exit 2
 fi
-SYSTEM_LIBS="$( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r'| tr '\n'' ') "
+SYSTEM_LIBS=" $( { grep -v '^[[:space:]]*#' "$DEPS_FILE" | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
 [ -n "${SYSTEM_LIBS// /}" ] || { echo "[error] $DEPS_FILE 里没有任何库名（是不是被清空了？）"
-  echo "坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"; exit 2; }
+  echo "        坏在哪：无法判定随包 ELF 是否依赖了系统库 —— 真机上会报 cannot locate symbol。"; exit 2; }
 
 if [ ! -f "$MANIFEST_FILE" ]; then
   echo "[error] 找不到可执行资产清单: $MANIFEST_FILE —— 判据 3 无从进行。"
   exit 2
 fi
-DEP_SET="$( { sed -n '/依赖库/,/^#/p' "$MANIFEST_FILE" \
-                | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r'| tr '\n'' ') "
-EXEC_SET="$( { sed -n '/可执行资产本体/,$p' "$MANIFEST_FILE" \
-                | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r'| tr '\n'' ') "
+DEP_SET=" $( { sed -n '/依赖库/,/^#/p' "$MANIFEST_FILE" \
+                | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
+EXEC_SET=" $( { sed -n '/可执行资产本体/,$p' "$MANIFEST_FILE" \
+                | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true; } | tr -d '\r' | tr '\n' ' ') "
 
-SOFT_SET=""
+SOFT_SET=" "
 if [ -f "$CAPS_FILE" ]; then
   SOFT_SET=" $( { while read -r TIER LIB _ID; do
                      case "$TIER" in soft) echo "$LIB" ;; esac
-                   done < "$CAPS_FILE" | tr -d '\r'| tr '\n'' '; } || true ) "
+                   done < "$CAPS_FILE" | tr -d '\r' | tr '\n' ' '; } || true ) "
 else
   echo "[error] 找不到档位表: $CAPS_FILE —— soft 件的降级语义无从判定，判据会被误用成硬红。"
   exit 2
@@ -81,9 +81,9 @@ fi
 if [ -z "${EXEC_SET// /}" ]; then
   echo "[note] 清单的「可执行资产本体」段为空（node 由控制面板下发，APK 内没有可执行件）—— 只校验依赖库段。"
 fi
-echo "== 校验器: $READELF 目录: $DIR =="
-echo "系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS"| wc -w) 项）"
-echo "可执行资产: $EXEC_SET"
+echo "== 校验器: $READELF  目录: $DIR =="
+echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
+echo "   可执行资产: $EXEC_SET"
 
 # 要列**全部共享库形态**的文件，不只是 `*.so` ——
 # 共享库产物是一整条链：libz.so → libz.so.1 → libz.so.1.3.2。
@@ -97,11 +97,11 @@ if [ -z "$SO_LIST" ]; then
   echo "[error] $DIR 下没有任何共享库（多半是下载/拷贝没落到位）。"
   exit 2
 fi
-BUNDLED=" $(printf '%s\n'"$SO_LIST" | tr '\n'' ') "
+BUNDLED=" $(printf '%s\n' "$SO_LIST" | tr '\n' ' ') "
 
 SEEN_EXEC=""
 for _b in $EXEC_SET; do
-  case "$BUNDLED" in *"$_b "*) SEEN_EXEC="$SEEN_EXEC $_b" ;; esac
+  case "$BUNDLED" in *" $_b "*) SEEN_EXEC="$SEEN_EXEC $_b" ;; esac
 done
 if [ -n "${EXEC_SET// /}" ] && [ -z "$SEEN_EXEC" ]; then
   echo "[error] $DIR 里没有清单声明的可执行资产（$EXEC_SET）—— 判据 3 将一条不跑，拒绝校验。"
@@ -109,14 +109,14 @@ if [ -n "${EXEC_SET// /}" ] && [ -z "$SEEN_EXEC" ]; then
 fi
 SEEN_DEP=""
 for _b in $DEP_SET; do
-  case "$BUNDLED" in *"$_b "*) SEEN_DEP="$SEEN_DEP $_b" ;; esac
+  case "$BUNDLED" in *" $_b "*) SEEN_DEP="$SEEN_DEP $_b" ;; esac
 done
 if [ -n "${DEP_SET// /}" ] && [ -z "$SEEN_DEP" ]; then
   echo "[error] $DIR 里没有清单声明的依赖库（$DEP_SET）—— DT_NEEDED 闭环无从进行。"
   exit 2
 fi
-echo "依赖库段: ${DEP_SET:-（空）}"
-echo "已对上: 依赖库=$SEEN_DEP 可执行=$SEEN_EXEC"
+echo "   依赖库段: ${DEP_SET:-（空）}"
+echo "   已对上: 依赖库=$SEEN_DEP 可执行=$SEEN_EXEC"
 
 fail=0
 soft_degraded=""
@@ -134,44 +134,44 @@ for f in "$DIR"/*.so; do
     fi
     fail=1
   }
-  hdr="$("$READELF"-W -h "$f"2>/dev/null || true)"
+  hdr="$("$READELF" -W -h "$f" 2>/dev/null || true)"
   if [ -z "$hdr" ]; then
-    echo "${tag:-?} —— readelf -W -h 读不出 ELF 文件头。"
-    echo "坏在哪：装到真机上 exec 直接失败（不是合法可执行文件）；"
-    echo "也可能是产物没落到位或已被截断，先确认 dist 下这个文件完整。"
-    echo "证据强度：【未验证】。我只试了 readelf -W -h 一种形态；"
-    echo "也可能是这台机器的 readelf 读不了这种产物 —— 请先手工 file 核一遍再判它坏。"
+    echo "  ${tag:-?} —— readelf -W -h 读不出 ELF 文件头。"
+    echo "         坏在哪：装到真机上 exec 直接失败（不是合法可执行文件）；"
+    echo "         也可能是产物没落到位或已被截断，先确认 dist 下这个文件完整。"
+    echo "         证据强度：【未验证】。我只试了 readelf -W -h 一种形态；"
+    echo "         也可能是这台机器的 readelf 读不了这种产物 —— 请先手工 file 核一遍再判它坏。"
     note_fail
     continue
   fi
-  phdrs="$("$READELF"-W -l "$f"2>/dev/null || true)"
+  phdrs="$("$READELF" -W -l "$f" 2>/dev/null || true)"
   if [ -z "$phdrs" ]; then
     echo "readelf -W -l 读不出 Program Headers —— **形态判据全部无从进行**。"
-    echo "坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 => exec 或 dlopen 会在装载期失败。"
-    echo "证据强度：【未验证】。我只试了 readelf -W -l 这一种形态；"
-    echo "它也可能是我这个判据的读法不对，而不是产物坏了 —— 请先用 file 与 readelf -h 手工核一遍。"
+    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 => exec 或 dlopen 会在装载期失败。"
+    echo "         证据强度：【未验证】。我只试了 readelf -W -l 这一种形态；"
+    echo "         它也可能是我这个判据的读法不对，而不是产物坏了 —— 请先用 file 与 readelf -h 手工核一遍。"
     note_fail
     continue
   fi
 
-  machine="$(printf '%s\n'"$hdr" | awk -F': *''/^[[:space:]]*Machine:/{gsub(/[[:space:]]+$/,"",$2); print $2}')"
+  machine="$(printf '%s\n' "$hdr" | awk -F': *' '/^[[:space:]]*Machine:/{gsub(/[[:space:]]+$/,"",$2); print $2}')"
   case "$machine" in
     AArch64|aarch64|arm64|ARM64) : ;;
     *)
-      echo "$tag —— 架构是「${machine:-读不出}」，不是 arm64/aarch64。"
-      echo "本仓只投 arm64-v8a；装到真机上就是 exec format error。"
-      echo "注：不同工具链的 readelf 对同一架构写法不同（AArch64 / aarch64 / arm64），三者都接受。"
-      printf '%s\n'"$hdr" | { grep -E "Machine|Type:" || true; } | sed 's/^/         /'
+      echo "  $tag —— 架构是「${machine:-读不出}」，不是 arm64/aarch64。"
+      echo "         本仓只投 arm64-v8a；装到真机上就是 exec format error。"
+      echo "         注：不同工具链的 readelf 对同一架构写法不同（AArch64 / aarch64 / arm64），三者都接受。"
+      printf '%s\n' "$hdr" | { grep -E "Machine|Type:" || true; } | sed 's/^/         /'
       note_fail
       continue
       ;;
   esac
   line="arch=$machine"
 
-  load_aligns="$(printf '%s\n'"$phdrs" | awk '/^[[:space:]]*LOAD/{print $NF}')"
+  load_aligns="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*LOAD/{print $NF}')"
   if [ -z "$load_aligns" ]; then
-    echo "$tag —— 没有 LOAD 段（或读不出），16KB 对齐判据无从进行。"
-    printf '%s\n'"$phdrs" | sed 's/^/         /'
+    echo "  $tag —— 没有 LOAD 段（或读不出），16KB 对齐判据无从进行。"
+    printf '%s\n' "$phdrs" | sed 's/^/         /'
     note_fail
     continue
   fi
@@ -190,39 +190,39 @@ for f in "$DIR"/*.so; do
     n_load=$(( n_load + 1 ))
   done <<<"$load_aligns"
   if [ -n "$bad_align" ]; then
-    echo "$tag —— 这些 LOAD 段的对齐不是 16KB 的整数倍:$bad_align"
-    echo "Android 15+ 在 16KB 页设备上会返回 ELIBBAD / Exec format error。"
-    printf '%s\n'"$phdrs" | { grep -E '^ *LOAD'|| true; } | sed 's/^/         /'
+    echo "  $tag —— 这些 LOAD 段的对齐不是 16KB 的整数倍:$bad_align"
+    echo "         Android 15+ 在 16KB 页设备上会返回 ELIBBAD / Exec format error。"
+    printf '%s\n' "$phdrs" | { grep -E '^ *LOAD' || true; } | sed 's/^/         /'
     note_fail
     continue
   fi
   line="$line 16KB-ok(${n_load}段)"
 
   # -- 动态段：判据 3/4/5 的取数 ------------------------------------------
-  dyn="$("$READELF"-W -d "$f"2>/dev/null || true)"
-  has_dynamic="$(printf '%s\n'"$phdrs" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
-  needed="$(printf '%s\n'"$dyn" | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}')"
-  runpath="$(printf '%s\n'"$dyn" | sed -n 's/.*(RUNPATH).*\[\(.*\)\].*/\1/p')"
-  rpath="$(printf '%s\n'"$dyn" | sed -n 's/.*(RPATH).*\[\(.*\)\].*/\1/p')"
+  dyn="$("$READELF" -W -d "$f" 2>/dev/null || true)"
+  has_dynamic="$(printf '%s\n' "$phdrs" | awk '/^[[:space:]]*DYNAMIC/{print "y"}')"
+  needed="$(printf '%s\n' "$dyn" | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}')"
+  runpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RUNPATH).*\[\(.*\)\].*/\1/p')"
+  rpath="$(printf '%s\n' "$dyn" | sed -n 's/.*(RPATH).*\[\(.*\)\].*/\1/p')"
 
   # -- 3) 解释器 ----------------------------------------------------------
-  interp="$(printf '%s\n'"$phdrs" | sed -n 's/.*\[Requesting program interpreter: \(.*\)\].*/\1/p')"
+  interp="$(printf '%s\n' "$phdrs" | sed -n 's/.*\[Requesting program interpreter: \(.*\)\].*/\1/p')"
   is_exec=0
   case "$EXEC_SET" in
     *" $base "*) is_exec=1 ;;
   esac
   if [ -n "$interp" ] && [ "$interp" != "/system/bin/linker64" ]; then
-    echo "$tag —— PT_INTERP=$interp —— 这不是 bionic 的解释器。"
-    echo "说明它是拿主机（glibc）工具链链接的，真机上无法 exec。"
+    echo "  $tag —— PT_INTERP=$interp —— 这不是 bionic 的解释器。"
+    echo "         说明它是拿主机（glibc）工具链链接的，真机上无法 exec。"
     note_fail
     continue
   fi
   if [ "$is_exec" = 1 ]; then
     if [ -z "$interp" ]; then
-      echo "$tag —— 清单说它是要被 exec 的可执行资产，却没有 PT_INTERP。"
-      echo "带 DT_NEEDED 又没有解释器的 ELF，宿主起不来（没人替它映射 libc）。"
-      echo "解法：确认它是静态链接（那就把它从可执行资产里摘掉并核对探针），"
-      echo "或核对 android-configure / 交叉链接参数是否用了 NDK 工具链。"
+      echo "  $tag —— 清单说它是要被 exec 的可执行资产，却没有 PT_INTERP。"
+      echo "         带 DT_NEEDED 又没有解释器的 ELF，宿主起不来（没人替它映射 libc）。"
+      echo "         解法：确认它是静态链接（那就把它从可执行资产里摘掉并核对探针），"
+      echo "         或核对 android-configure / 交叉链接参数是否用了 NDK 工具链。"
       note_fail
       continue
     fi
@@ -236,22 +236,22 @@ for f in "$DIR"/*.so; do
   # 没有动态段的文件照样打印一行 "There is no dynamic section in this file."，
   # 拿输出判空会把「取数失败」和「真的没依赖」混成同一种情形。
   if [ -z "$has_dynamic" ]; then
-    case "$DEP_SET " in
+    case " $DEP_SET " in
       *" $base "*)
-        echo "$tag —— 清单把它当依赖库，但它没有 PT_DYNAMIC（静态产物）。"
-        echo "依赖库必须是可动态链接的共享库（DT_NEEDED 的解析者），"
-        echo "静态可执行文件冒充它会在装机后起不来。"
+        echo "  $tag —— 清单把它当依赖库，但它没有 PT_DYNAMIC（静态产物）。"
+        echo "         依赖库必须是可动态链接的共享库（DT_NEEDED 的解析者），"
+        echo "         静态可执行文件冒充它会在装机后起不来。"
         note_fail
         continue
         ;;
     esac
-    echo "[skip] $base —— 无 PT_DYNAMIC（静态产物），只判架构/对齐/解释器：$line"
+    echo "  [skip] $base —— 无 PT_DYNAMIC（静态产物），只判架构/对齐/解释器：$line"
     continue
   fi
   case "$dyn" in
     *Dynamic*) : ;;
     *)
-      echo "$tag —— 有 PT_DYNAMIC 却读不出动态段内容，取数失败而非「无依赖」。"
+      echo "  $tag —— 有 PT_DYNAMIC 却读不出动态段内容，取数失败而非「无依赖」。"
       note_fail
       continue
       ;;
@@ -259,7 +259,7 @@ for f in "$DIR"/*.so; do
 
   # -- 4) 依赖闭环 --------------------------------------------------------
   if [ -z "$needed" ]; then
-    echo "[ok] $base —— 动态段里没有 DT_NEEDED（无外部依赖）：$line"
+    echo "  [ok]   $base —— 动态段里没有 DT_NEEDED（无外部依赖）：$line"
     continue
   fi
   missing=""
@@ -277,13 +277,13 @@ for f in "$DIR"/*.so; do
     esac
   done
   if [ -n "$missing" ]; then
-    echo "$tag —— 这些依赖既不在系统白名单、也没随包投放:$missing"
-    echo "白名单只住 $DEPS_FILE；装到真机上报 'cannot locate symbol'。"
-    printf '%s\n'"$dyn" | { grep -E "NEEDED" || true; } | sed 's/^/         /'
+    echo "  $tag —— 这些依赖既不在系统白名单、也没随包投放:$missing"
+    echo "         白名单只住 $DEPS_FILE；装到真机上报 'cannot locate symbol'。"
+    printf '%s\n' "$dyn" | { grep -E "NEEDED" || true; } | sed 's/^/         /'
     note_fail
     continue
   fi
-  line="$line needed=$(printf '%s' "$needed"| wc -w)项闭环"
+  line="$line needed=$(printf '%s' "$needed" | wc -w)项闭环"
 
   # -- 5) 随包依赖能否解析 ------------------------------------------
   # 判据问的是「空环境下能不能找到这些依赖」，答案不只有 RUNPATH 一条路。
@@ -309,20 +309,20 @@ for f in "$DIR"/*.so; do
   # 现在的判据：依赖能由随包库解析就算过，并说明是靠哪条路
   # （有 RUNPATH 更好 —— 库跟着文件走，连 LD_LIBRARY_PATH 都不必依赖）。
   if [ -z "$local_deps" ]; then
-    echo "[ok] $base —— 不依赖随包库：$line"
+    echo "  [ok]   $base —— 不依赖随包库：$line"
     continue
   fi
   case "$runpath" in
     *'$ORIGIN'*)
-      echo "[ok] $base —— 靠 DT_RUNPATH 自解析随包依赖:$local_deps；$line"
+      echo "  [ok]   $base —— 靠 DT_RUNPATH 自解析随包依赖:$local_deps；$line"
       ;;
     *)
       if [ -n "$rpath" ]; then
-        echo "$base —— 只有 DT_RPATH=[$rpath]，bionic 忽略它；改用 -Wl,--enable-new-dtags 出 DT_RUNPATH。"
-        echo "（目前仍可解析：usr/lib 有全局软链 + LD_LIBRARY_PATH 指那里）$line"
+        echo "  $base —— 只有 DT_RPATH=[$rpath]，bionic 忽略它；改用 -Wl,--enable-new-dtags 出 DT_RUNPATH。"
+        echo "         （目前仍可解析：usr/lib 有全局软链 + LD_LIBRARY_PATH 指那里）$line"
       else
-        echo "[ok] $base —— 无 DT_RUNPATH，但靠 usr/lib 的全局软链解析随包依赖:$local_deps；$line"
-        echo "（PrefixProvisioner.landOne 建全局软链 · RuntimeEnvironment 第 56 行设 LD_LIBRARY_PATH=usr/lib）"
+        echo "  [ok]   $base —— 无 DT_RUNPATH，但靠 usr/lib 的全局软链解析随包依赖:$local_deps；$line"
+        echo "         （PrefixProvisioner.landOne 建全局软链 · RuntimeEnvironment 第 56 行设 LD_LIBRARY_PATH=usr/lib）"
       fi
       ;;
   esac

@@ -18,7 +18,7 @@
 # · ls .github/workflows/ —— 没有打包原生件的 workflow
 # · 各 workflow 的 gh release create 上传的是 APK（build-apk.yml 里明写 "$APK#$NAME"）
 set -uo pipefail
-cd "$(cd "$(dirname "$0")/../.."&& pwd)"
+cd "$(cd "$(dirname "$0")/../.." && pwd)"
 ABI="${ABI:-arm64-v8a}"
 
 # 只编指定的几件（默认全量）。件名不带 .sh，可多次给：

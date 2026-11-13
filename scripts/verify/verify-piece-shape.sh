@@ -35,7 +35,7 @@ SHAPE="$W/piece-shape.json"
 }
 
 FAIL=0
-say() { echo "$1"; }
+say() { echo "  $1"; }
 bad() { echo "::error title=$1::$2"; FAIL=1; }
 
 # 读形态文件（node 在 CI 上一定有；没有就退 python3）
@@ -61,7 +61,7 @@ esac
 
 # -- 路二：只读包里的字节，现场复算形态，与形态文件对账 ---------
 # 这一路**不看**形态文件 —— 它是独立复算，两路相等才算自描述成立。
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../toolchain"&& pwd)/elf-form.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../toolchain" && pwd)/elf-form.sh"
 
 RECOMP=""
 if [ -n "$ENTRY" ] && [ -e "$W/$ENTRY" ]; then
@@ -92,8 +92,8 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     fi
     base="$(basename "$so")"
     root="$(elf_chain_root "$base")"
-    chain="$(elf_chain_names "$W/lib""$root")"
-    n="$(printf '%s' "$chain"| wc -w)"
+    chain="$(elf_chain_names "$W/lib" "$root")"
+    n="$(printf '%s' "$chain" | wc -w)"
     say "lib/$base 的链：$chain（$n 段）"
     # **判据换成「SONAME 与链是否自洽」**（01 今天裁的）——
     # 原来这一格写死了「段数 >= 3」，而那个 3 是我们自己加的一个数，不是 man 8 ldconfig 的要求：
@@ -107,10 +107,10 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
       # 读不到 SONAME => 那份字节没自说它叫什么 => 按 C-05 报缺，不替它编
       bad "SONAME 读不到" "lib/$base 那份字节没有 DT_SONAME —— 它自述的 SONAME 是什么读不出来，报缺（不替它编）"
     elif [ "$soname" = "$root" ]; then
-      say "SONAME=$soname 与开发名同名 => 按那个形状就是 $n 段，自洽"
+      say "  SONAME=$soname 与开发名同名 => 按那个形状就是 $n 段，自洽"
     else
       # SONAME 与开发名不同名 => 链里必须有一层就叫 SONAME
-      case "$chain " in
+      case " $chain " in
         *" $soname "*) say " SONAME=$soname 在链里，自洽" ;;
         *) bad "链与 SONAME 不自洽" "lib/$base 自述 SONAME=$soname，而链里没有这一层：$chain" ;;
       esac

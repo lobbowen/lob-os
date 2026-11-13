@@ -39,7 +39,7 @@ function stripComments(src) {
 function parseRegistry() {
   // libName 与 id 的对应来自 CAPS（它就是那张清单）；
   // version/entry 来自 VERIFY。两者都是仓内文件，不需要 Kotlin 注册表。
-  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + '—— 底座件清单没了'); return []; }
+  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件清单没了'); return []; }
   let vtab = {};
   try {
     vtab = (JSON.parse(fs.readFileSync(VERIFY, 'utf8')).sources) || {};
@@ -63,13 +63,13 @@ function parseRegistry() {
       version: v.version || '',
     });
   }
-  if (!out.length) bad('从 ' + CAPS + '一件也没解析出来 —— 清单格式变了？');
+  if (!out.length) bad('从 ' + CAPS + ' 一件也没解析出来 —— 清单格式变了？');
   return out;
 }
 
 function capsIndex() {
   const map = new Map();
-  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + '—— 底座件档位表没了'); return map; }
+  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件档位表没了'); return map; }
   for (const line of fs.readFileSync(CAPS, 'utf8').split('\n')) {
     const t = line.trim();
     if (!t || t.startsWith('#')) continue;
@@ -102,7 +102,7 @@ function pinTable() {
     }
     return byId;
   } catch (e) {
-    bad('读不了 ' + PIN + '：' + e.message + '—— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
+    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
     return new Map();
   }
 }
@@ -226,14 +226,14 @@ function main() {
       '检查 PIN_KEY 的映射与 ' + SOURCES);
   }
   for (const id of noVersion) {
-    console.error('[bundled-only] ' + id + '钉值表里没有它的版本 → 不进 OTA 清单，只随 APK 打包');
+    console.error('  [bundled-only] ' + id + ' 钉值表里没有它的版本 → 不进 OTA 清单，只随 APK 打包');
   }
 
   const components = [];
   for (const { e, version } of versioned) {
     const capsId = byId.get(e.libName);
     if (capsId && capsId !== e.id) {
-      bad('注册表 id=' + e.id + '与档位表 id=' + capsId + '对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
+      bad('注册表 id=' + e.id + ' 与档位表 id=' + capsId + ' 对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
     }
     const c = {
       id: e.id,
@@ -260,14 +260,14 @@ function main() {
       } else {
         // 那 pin 逐字有、那**包**里逐字没有**那一件**
         // 那 source 逐字**留在 apk**、一句逐字说出来（不静默）。
-        console.error('[pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
+        console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
           '一份件包里逐字**没有**它（按后缀匹配的那旧版逐字**会**命中别的那一条）' +
           '那 source 逐字留在 apk。');
       }
     } else {
       // 那 pin 记录里逐字**没有**它那 source 逐字是 apk、那**不**是缺件
       // （那 base 筐那些件逐字就随 APK 走、它们逐字本来就不进 OTA）。
-      console.error('[no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
+      console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
     }
     components.push(c);
   }
@@ -275,7 +275,7 @@ function main() {
   if (PROJECT_ONLY) {
     process.stdout.write(JSON.stringify(components, null, 2) + '\n');
     for (const c of components) {
-      console.error('- ' + c.id + '@' + c.version + 'entry=' + c.entry + '来源=' + c.source);
+      console.error('  - ' + c.id + '@' + c.version + ' entry=' + c.entry + ' 来源=' + c.source);
     }
     if (problems.length) {
       for (const p of problems) console.error('::error title=底座件清单投影失败::' + p);
@@ -309,8 +309,8 @@ function main() {
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'native-manifest.json'), body);
   fs.writeFileSync(path.join(OUT, 'native-manifest.json.sig'), sig + '\n');
-  console.log('[native] channel=' + CHANNEL + 'revision=' + man.revision + 'components=' + components.length
-    + '（可 OTA ' + components.filter((c) => c.source === 'ota').length + '件）');
+  console.log('[native] channel=' + CHANNEL + ' revision=' + man.revision + ' components=' + components.length
+    + '（可 OTA ' + components.filter((c) => c.source === 'ota').length + ' 件）');
   console.log('[native] 签名自检通过: ' + path.join(OUT, 'native-manifest.json'));
   if (problems.length) {
     for (const p of problems) console.error('::warning title=底座件清单有问题::' + p);

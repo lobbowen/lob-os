@@ -161,23 +161,23 @@ object SonameChain {
             return Landed(
                 ok = r >= 0,
                 created = if (r > 0) 1 else 0,
-                detail = if (r < 0) target.absolutePath + "-> " + dst.absolutePath else "",
-                log = "lib " + target.name + "-> " + dst.name + "" + target.absolutePath + "(无 SONAME，单层)",
+                detail = if (r < 0) target.absolutePath + " -> " + dst.absolutePath else "",
+                log = "lib  " + target.name + " -> " + dst.name + "   " + target.absolutePath + "   (无 SONAME，单层)",
             )
         }
         val created = apply(p, usrLib)
         val shape = buildString {
             append(p.linkerName ?: p.soname)
             if (p.fullName != null) {
-                append("-> ").append(p.soname)
-                append("-> ").append(p.fullName)
+                append(" -> ").append(p.soname)
+                append(" -> ").append(p.fullName)
             }
         }
         return Landed(
             ok = true,
             created = created,
             detail = "",
-            log = "lib " + target.name + "-> " + shape + "" + p.entity.absolutePath,
+            log = "lib  " + target.name + " -> " + shape + "   " + p.entity.absolutePath,
         )
     }
 

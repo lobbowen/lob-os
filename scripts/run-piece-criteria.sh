@@ -26,7 +26,7 @@
 
 set -uo pipefail
 
-HERE="$(cd "$(dirname "$0")/.."&& pwd)"
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
 CRITERIA="$HERE/scripts/piece-criteria.json"
 OUT="$HERE/docs/m0prime-readings.json"
 ADB="${LOBOS_ADB:-/home/bowen/runtimes/platform-tools/adb}"
@@ -196,9 +196,9 @@ child_git_ssl_cainfo = child_env_value('GIT_SSL_CAINFO')
 # 按 C-104：那**采集层**逐字**只有**一条路（这一支**就是**它）。
 child_prefix = child_env_value('PREFIX')
 if os.environ.get('LOBOS_DEBUG'):
-    print('[debug] ld=' + str(len(child_ld)) + 'path=' + str(len(child_path)))
+    print('[debug] ld=' + str(len(child_ld)) + ' path=' + str(len(child_path)))
 if os.environ.get('LOBOS_DEBUG'):
-    print('[debug] child_ld len=' + str(len(child_ld)) + 'child_path len=' + str(len(child_path)))
+    print('[debug] child_ld len=' + str(len(child_ld)) + ' child_path len=' + str(len(child_path)))
 if not child_ld:
     print('报缺：那设备上那 runtime.json **里面**的**那** env **快照**逐字**取不到**'
           '（那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、**不猜填**）')
@@ -217,10 +217,10 @@ def run_criterion(code, criterion_env=None):
     _dq = chr(34)
     _h = 'process.on(' + _dq + 'uncaughtException' + _dq
     _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
-    _h += '+ (e && e.stack || e)); process.exit(1); });' + chr(10)
+    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
     _h += 'process.on(' + _dq + 'unhandledRejection' + _dq
     _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
-    _h += '+ (e && e.stack || e)); process.exit(1); });' + chr(10)
+    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
     child_tmpdir = child_env_value('TMPDIR') or ('/data/user/0/%s/files/tmp' % pkg)
 
     env_prefix = ''
@@ -248,12 +248,12 @@ def run_criterion(code, criterion_env=None):
              'node %s 2>&1; echo "__LOBOS_RC__$?"; rm -f %s'
              % (pkg, child_tmpdir, b64, tmp_path, lib_prefix, child_ld, child_path, tmp_path, tmp_path))
     # 判据**给**那目标**的**那**环境**逐字**要**在**那设备**上**生效**
-    one = 'run-as ' + pkg + 'sh -c ' + chr(39) + env_prefix + inner + chr(39)
+    one = 'run-as ' + pkg + ' sh -c ' + chr(39) + env_prefix + inner + chr(39)
     # 那**我们自己**那台**那一路**（那**它**逐字**是**那**第二条**路**、
     # 那**它**们**逐字是**那**两**件**事**：「那**设备侧**的**那一条**」与「那**我们自己**那台**的**那一条**」）。
     # 那**目标前缀**与那 PATH 与那 LD_LIBRARY_PATH 逐字**指**那**我们自己**那台**那产物自己带的**那一层**。
     if self_mode:
-        self_inner = ('mkdir -p ' + self_tmp + '&& echo ' + b64 + '| base64 -d > ' + self_tmp + '/probe.js && '
+        self_inner = ('mkdir -p ' + self_tmp + ' && echo ' + b64 + ' | base64 -d > ' + self_tmp + '/probe.js && '
     # 缺陷名（C-102）**那 self_mode 那一支**逐字**把**那目标那前缀**排**在那宿主的那一个 node **前面**
     # 那**它们**逐字在那暂存那 **aarch64** 那 busybox **上面**先**撞**了、那 **wc** 逐字**没**跑成、
     # 那 **.so** 逐字**其实**逐字**在**。
@@ -403,5 +403,5 @@ io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=Fals
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))
 for r in results:
-    print('%-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
+    print('  %-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
 PYEOF

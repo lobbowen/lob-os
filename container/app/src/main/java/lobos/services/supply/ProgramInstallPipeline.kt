@@ -266,7 +266,7 @@ object ProgramInstallPipeline {
             if (clash != null) {
                 return null to LandFailure(
                     "shape-landing-clash",
-                    "落位目标重名：" + fs.path + "与 " + clash.key + "都要落到 " + target,
+                    "落位目标重名：" + fs.path + " 与 " + clash.key + " 都要落到 " + target,
                 )
             }
             map[fs.path] = target
@@ -297,15 +297,15 @@ object ProgramInstallPipeline {
             // 读数必须在 `continue` 之前：busybox 那件 19 项全是 src == dst，continue 在前则读数一次都不执行、probe 恒空，
             // diag 里 0 条（07 今天带阳性对照测到的就是这么来的）。
             if (isDiagnostic && !src.startsWith(".")) {
-                probe += "落位前 " + src + "是" +
+                probe += "落位前 " + src + " 是" +
                     (if (java.nio.file.Files.isSymbolicLink(s.toPath())) "软链" else "实体") +
-                    "摘要=" + shortShaOf(s) + ";"
+                    " 摘要=" + shortShaOf(s) + ";"
             }
             if (src == dst) {
                 if (isDiagnostic && !dst.startsWith(".")) {
-                    probe += "落位跳过(同名) " + dst + "是" +
+                    probe += "落位跳过(同名) " + dst + " 是" +
                         (if (java.nio.file.Files.isSymbolicLink(d.toPath())) "软链" else "实体") +
-                        "摘要=" + shortShaOf(d) + ";"
+                        " 摘要=" + shortShaOf(d) + ";"
                 }
                 continue
             }
@@ -322,15 +322,15 @@ object ProgramInstallPipeline {
             if (!s.renameTo(d)) {
                 return null to LandFailure(
                     "shape-landing-failed",
-                    "落位失败（搬不动）：" + src + "-> " + dst,
+                    "落位失败（搬不动）：" + src + " -> " + dst,
                 )
             }
-            moved.add(src + "-> " + dst)
+            moved.add(src + " -> " + dst)
             // 读数（诊断用）：搬之后那一条是软链还是实体、它的摘要是多少（与上面那条并列）。
             if (isDiagnostic && !dst.startsWith(".")) {
-                probe += "落位后 " + dst + "是" +
+                probe += "落位后 " + dst + " 是" +
                     (if (java.nio.file.Files.isSymbolicLink(d.toPath())) "软链" else "实体") +
-                    "摘要=" + shortShaOf(d) + ";"
+                    " 摘要=" + shortShaOf(d) + ";"
             }
         }
 
@@ -439,7 +439,7 @@ object ProgramInstallPipeline {
         val entryDst = map[entrySrc]
             ?: return null to LandFailure(
                 "entry-not-in-shape",
-                "清单声明的入口 " + entrySrc + "不在产物声明的落位集合里 —— 报缺，不猜另一个",
+                "清单声明的入口 " + entrySrc + " 不在产物声明的落位集合里 —— 报缺，不猜另一个",
             )
         // 缺陷名 C-102：这一格取的是形态那把尺，答的却是另一问。旧版 `val entryRole = shape.roleOf(entrySrc)`，
         // `files[]` 的 `role` 是形态（program/library/unknown：那份字节是程序还是库），而这里要记的是
@@ -647,9 +647,9 @@ object ProgramInstallPipeline {
 
         lobos.services.log.Journal.note(
             context, "package", true, "包已安装",
-            "id=" + spec.programId + "version=" + version +
-                "来源=" + spec.from.label +
-                "dir=" + dir.absolutePath,
+            "id=" + spec.programId + " version=" + version +
+                " 来源=" + spec.from.label +
+                " dir=" + dir.absolutePath,
         )
         return Result(true, version, null, "已登记 " + spec.programId + "@" + version, base.nodeVerifyOutput)
     }
@@ -663,9 +663,9 @@ object ProgramInstallPipeline {
         RuntimeDiagnostics.append(
             context, "ota-shape-probe", true, "落位根读数 " + spec.programId,
             "dir=" + dir.absolutePath +
-                "注册表stateDir=" + (regNow?.stateDir ?: "(无这一件)") +
-                "入口格=" + (if (regNow == null) "(无)" else if (regNow.assetEntry.isBlank()) "空(库件那支)" else "有值") +
-                "version=" + (spec.expectedVersion ?: "(空)"),
+                " 注册表stateDir=" + (regNow?.stateDir ?: "(无这一件)") +
+                " 入口格=" + (if (regNow == null) "(无)" else if (regNow.assetEntry.isBlank()) "空(库件那支)" else "有值") +
+                " version=" + (spec.expectedVersion ?: "(空)"),
         )
         val staging = File(dir, "." + spec.zip.nameWithoutExtension + ".staging")
         runCatching {
@@ -741,7 +741,7 @@ object ProgramInstallPipeline {
             val f = landFail
             RuntimeDiagnostics.append(
                 context, "ota", false, "件落位失败（按形态）",
-                spec.programId + "：" + (f?.reason ?: "") + "—— " + (f?.detail ?: ""),
+                spec.programId + "：" + (f?.reason ?: "") + " —— " + (f?.detail ?: ""),
             )
             return Result(
                 false, safeVer, f?.reason ?: "shape-landing-failed",
@@ -753,7 +753,7 @@ object ProgramInstallPipeline {
             RuntimeDiagnostics.append(
                 context, "ota", true, "件按形态落位",
                 spec.programId + "：" + landed.moved.joinToString("，") +
-                    "；入口 " + declaredEntry + "-> " + landed.entryRel +
+                    "；入口 " + declaredEntry + " -> " + landed.entryRel +
                     "（角色 " + landed.role + "，整件 " + landed.kind + "）",
             )
         }
@@ -873,12 +873,12 @@ object ProgramInstallPipeline {
         RuntimeDiagnostics.append(
             context, "ota", globalRebuilt.isSuccess,
             "件换完之后全局那一层重建",
-            spec.programId + "@" + safeVer + "usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
+            spec.programId + "@" + safeVer + " usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
         )
         lobos.services.log.Journal.note(
             context, "package", true, "系统组件已安装",
-            "id=" + spec.programId + "version=" + safeVer +
-                "来源=" + spec.from.label + "dir=" + dest.absolutePath,
+            "id=" + spec.programId + " version=" + safeVer +
+                " 来源=" + spec.from.label + " dir=" + dest.absolutePath,
         )
         return Result(true, safeVer, null, "")
     }
@@ -998,13 +998,13 @@ object ProgramInstallPipeline {
             // 处置：基础运行库不算这一件的硬失败，只记读数（按 C-105 报缺、不猜填）。
             RuntimeDiagnostics.append(
                 context, "ota-shape-probe", null,
-                "ELF 基础运行库缺 " + stillMissing.size + "个（不阻断落位）",
+                "ELF 基础运行库缺 " + stillMissing.size + " 个（不阻断落位）",
                 stillMissing.joinToString(",") +
                     "（落位目录=" + dest.absolutePath + "）",
             )
             return DepReport(
                 true,
-                "ELF 基础运行库缺 " + stillMissing.size + "个（不阻断落位）：" +
+                "ELF 基础运行库缺 " + stillMissing.size + " 个（不阻断落位）：" +
                     stillMissing.joinToString() +
                     "（落位目录=" + dest.absolutePath + "）",
                 placed, stillMissing,
@@ -1084,7 +1084,7 @@ object ProgramInstallPipeline {
         val purged = lobos.kernel.layout.EntryLinks.purge(context, programId, dest)
         if (purged > 0) {
             RuntimeDiagnostics.append(
-                context, "linkEntry", true, programId + "清掉旧入口软链 " + purged + "条",
+                context, "linkEntry", true, programId + " 清掉旧入口软链 " + purged + " 条",
                 "dest=" + dest.absolutePath,
             )
         }
@@ -1094,7 +1094,7 @@ object ProgramInstallPipeline {
         if (tCanon != rootCanon && !tCanon.startsWith(rootCanon + File.separator)) {
             RuntimeDiagnostics.append(
                 context, "linkEntry", false, "entry 越出落位目录，已拒绝",
-                "entry=" + entryRel + "target=" + tCanon + "root=" + rootCanon,
+                "entry=" + entryRel + "  target=" + tCanon + "  root=" + rootCanon,
             )
             return false
         }
@@ -1109,7 +1109,7 @@ object ProgramInstallPipeline {
             else -> {
                 RuntimeDiagnostics.append(
                     context, "linkEntry", false, "入口形态认不出，报缺",
-                    "entry=" + entryRel + "role=" + role + "—— 不猜它该建在哪",
+                    "entry=" + entryRel + "  role=" + role + " —— 不猜它该建在哪",
                 )
                 return false
             }
@@ -1121,8 +1121,8 @@ object ProgramInstallPipeline {
         RuntimeDiagnostics.append(
             context, "linkEntry", ok,
             (if (ok) "入口软链已建 " else "入口软链建不起来 ") + programId,
-            "entry=" + entryRel + "dest=" + dest.absolutePath +
-                "target=" + target.absolutePath + "dir=" + dir.absolutePath,
+            "entry=" + entryRel + "  dest=" + dest.absolutePath +
+                "  target=" + target.absolutePath + "  dir=" + dir.absolutePath,
         )
         return ok
     }

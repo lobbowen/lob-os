@@ -274,7 +274,7 @@ jobs:
           while IFS= read -r _cdn_name; do
             [ -n "$_cdn_name" ] || continue
             #**件名**逐字**跟**那**名字**逐字**同一个**顺序（两行逐字**同一个**清单逐字**出**的）
-            _cdn_id="$(sed -n "$((_cdn_i + 1))p"work/cdn-ids.txt 2>/dev/null || true)"
+            _cdn_id="$(sed -n "$((_cdn_i + 1))p" work/cdn-ids.txt 2>/dev/null || true)"
             _cdn_i=$((_cdn_i + 1))
             _cdn_file="dist/$_cdn_name"
             if [ ! -f "$_cdn_file" ]; then
@@ -304,8 +304,8 @@ jobs:
             # 逐字 `mkblk` 逐块上、`mkfile` 逐字合、**回读**逐字**流式**核）
             #**取件**那**一边**逐字**已经**会拼、**拼**的那**几步**逐字**不**许**再**来**一遍
             # （依 C-104 逐字**不并**、**分片**逐字**直接从**那 Release **逐字取**）
-            _cdn_tag="$(bash scripts/toolchain/cache-key.sh tag "$_cdn_id"2>/dev/null | tail -1 || true)"
-            _cdn_asset="$(bash scripts/toolchain/cache-key.sh asset "$_cdn_id"2>/dev/null | tail -1 || true)"
+            _cdn_tag="$(bash scripts/toolchain/cache-key.sh tag "$_cdn_id" 2>/dev/null | tail -1 || true)"
+            _cdn_asset="$(bash scripts/toolchain/cache-key.sh asset "$_cdn_id" 2>/dev/null | tail -1 || true)"
             if [ -n "$_cdn_tag" ] && [ -n "$_cdn_asset" ]; then
               rm -rf "dist/.cdn-parts-$_cdn_id" && mkdir -p "dist/.cdn-parts-$_cdn_id"
               if bash scripts/toolchain/fetch-release-asset.sh --parts-only "$_cdn_tag" "$_cdn_asset" "dist/.cdn-parts-$_cdn_id" >/dev/null 2>&1; then

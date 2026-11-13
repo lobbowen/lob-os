@@ -45,7 +45,7 @@ object PreinstalledPieces {
     fun installAll(ctx: Context): List<String> {
         trace(ctx, "进入", "thread=" + Thread.currentThread().name)
         val names = runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
-            .also { trace(ctx, "assets.list", "结果 " + (it.getOrNull()?.size ?: -1) + "项，异常=" + (it.exceptionOrNull()?.javaClass?.simpleName ?: "无")) }
+            .also { trace(ctx, "assets.list", "结果 " + (it.getOrNull()?.size ?: -1) + " 项，异常=" + (it.exceptionOrNull()?.javaClass?.simpleName ?: "无")) }
             .getOrDefault(emptyList())
         trace(ctx, "assets 列表", names.joinToString(",").take(300))
         if (names.isEmpty()) {
@@ -69,7 +69,7 @@ object PreinstalledPieces {
             if (failed == 0) "预装件全部就位（${done.size} 件）"
             else "预装件 $failed 个没装上",
             "已装=" + done.joinToString(",") +
-                if (failed > 0) "失败=" + failed else "",
+                if (failed > 0) "  失败=" + failed else "",
         )
         runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
             .onFailure {
@@ -176,7 +176,7 @@ object PreinstalledPieces {
             if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists()) {
                 // 这一条**该有而没有**（ 而 total 只数已存在的， 所以那一格看不见它）
                 // 显式记一条：「派生物缺失」—— 而不靠 total=0 让人去猜 
-                bad += dir.name + "/" + name + "缺失（该有而没有）"
+                bad += dir.name + "/" + name + " 缺失（该有而没有）"
                 continue
             }
             total++
@@ -195,7 +195,7 @@ object PreinstalledPieces {
                 t.isFile && t.canonicalFile.path == landed
             }.getOrDefault(false)
             if (made) { ok++; rebuilt++ } else {
-                bad += dir.name + "/" + name + "重算后仍不通"
+                bad += dir.name + "/" + name + " 重算后仍不通"
             }
         }
         return DerivedCheck(total, ok, rebuilt, bad.joinToString("；"))
@@ -268,7 +268,7 @@ object PreinstalledPieces {
         }
         val landedEntry = if (entry.isBlank()) "" else {
             ProgramInstallPipeline.PieceShape.landedRel(shape, entry)
-                ?: return fail(ctx, id, "入口 " + entry + "的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
+                ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
         }
 
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
@@ -386,7 +386,7 @@ object PreinstalledPieces {
             n
         }.getOrDefault(0)
         if (modesLanded == 0 && shape.files.isNotEmpty()) {
-            trace(ctx, "落权限", id + "一项也没落（产物没带 mode）—— 而运行期不替产物决定权限")
+            trace(ctx, "落权限", id + " 一项也没落（产物没带 mode）—— 而运行期不替产物决定权限")
         }
     val manifestWritten = runCatching {
                 lobos.services.supply.ManifestWriter.write(
@@ -406,7 +406,7 @@ object PreinstalledPieces {
         }.getOrDefault(false)
         if (!shapeRefreshed) {
             trace(ctx, "刷新 " + ProgramInstallPipeline.SHAPE_NAME,
-                id + "失败（快路径）：产物那一份不在 —— 而建链会报缺，不猜")
+                id + " 失败（快路径）：产物那一份不在 —— 而建链会报缺，不猜")
         }
         val metaRefreshed = runCatching {
             val j = landedMeta ?: return@runCatching false
@@ -417,18 +417,18 @@ object PreinstalledPieces {
         }.getOrDefault(false)
         if (!metaRefreshed) {
             trace(ctx, "刷新 " + lobos.kernel.layout.PrefixProvisioner.META_NAME,
-                id + "失败（快路径）：落位目录那份仍是旧的那一份")
+                id + " 失败（快路径）：落位目录那份仍是旧的那一份")
         }
 val derived = refreshDerivedLinks(ctx, id, version)
-            trace(ctx, "校验派生物软链", id + "共=" + derived.total + "对=" + derived.okCount +
-                "重算=" + derived.rebuilt + "" + derived.detail)
+            trace(ctx, "校验派生物软链", id + " 共=" + derived.total + " 对=" + derived.okCount +
+                " 重算=" + derived.rebuilt + " " + derived.detail)
             runCatching { pkg.deleteRecursively() }
         runCatching { unpacked.deleteRecursively() }
 
 
-            trace(ctx, "写 program-manifest.json", id + "成=" + manifestWritten.isSuccess +
-                "目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
-                (if (manifestWritten.isSuccess) "" else "失败=" + manifestWritten.exceptionOrNull()))
+            trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
+                " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
+                (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
             // 进度在注册之前就记（它是关键步骤上的那一个，不是等「；成」那个结果）。
             trace(ctx, "装 " + id, "登记前")
             register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
@@ -450,7 +450,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
         if (!r.ok) {
             RuntimeDiagnostics.append(
                 ctx, "prefix", false, "预装件 $id 装不上",
-                (r.reason ?: "") + "— " + r.detail,
+                (r.reason ?: "") + " — " + r.detail,
             )
             return false
         // 格三（是不是我们要的那一代）：比「install 之后落位目录那份 vs 产物那份」。缺陷 C-102：旧版检查跑在 install 之前，
@@ -479,7 +479,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
                 val missing = listOfNotNull(
                     "产物那份".takeIf { pkgBuild.isBlank() || pkgIsLocal },
                     "落位目录那份".takeIf { landedBuild.isBlank() || landedIsLocal },
-                ).joinToString("与 ")
+                ).joinToString(" 与 ")
                 lobos.services.log.Journal.note(
                     ctx, "prefix-trace", null, "报缺：无法判定是不是这一代 " + id,
                     missing + "没有 buildSha 那一格 —— 而「缺」既不是「= APK 那一代」， 也不是「= 未知的那一代」",
@@ -489,7 +489,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
                 lobos.services.log.Journal.note(
                     ctx, "prefix-trace", false, "不同代：不是这一次构建的那一份 " + id,
                     "产物 buildSha=" + pkgBuild + "、落位 buildSha=" + landedBuild +
-                        "—— 只报，不拦落位（构建标识是观察点，逐项摘要才是闸门）",
+                        " —— 只报，不拦落位（构建标识是观察点，逐项摘要才是闸门）",
                 )
             }
         }

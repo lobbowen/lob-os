@@ -18,8 +18,8 @@
 # 垫片需要的只有编译器。CC 由 CI 注入；本地没有就跑 locate-ndk.sh。
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")"&& pwd)"
-ROOT="$(cd "$HERE/../.."&& pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$ROOT"
 
 ABI="${ABI:-arm64-v8a}"
@@ -50,7 +50,7 @@ mkdir -p "$OUT" "$WORK"
 so_ok() {
   local f="$1" min="$2" sz
   [ -f "$f" ] || { echo "!! 没产出：$f" >&2; return 1; }
-  sz="$(stat -c%s "$f"2>/dev/null || echo 0)"
+  sz="$(stat -c%s "$f" 2>/dev/null || echo 0)"
   [ "$sz" -ge "$min" ] || { echo "!! 太小（$sz < $min）：$f" >&2; return 1; }
 }
 
@@ -69,7 +69,7 @@ CFLAGS="-O2 -fPIC"
 
 so_ok "$WORK/liblobosposix.so" 500
 cp -f "$WORK/liblobosposix.so" "$OUT/liblobosposix.so"
-echo "✓ posix → liblobosposix.so"
+echo "  ✓ posix      → liblobosposix.so"
 
 
 # -- ptysession：PTY 宿主（被当可执行程序驱动，不是 preload）------------
@@ -92,7 +92,7 @@ echo "✓ posix → liblobosposix.so"
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
 so_ok "$WORK/librivospty.so" 1000
 cp -f "$WORK/librivospty.so" "$OUT/librivospty.so"
-echo "✓ ptysession → librivospty.so"
+echo "  ✓ ptysession → librivospty.so"
 
 # -- flock：文件锁（node addon，依赖 node 头文件）--------------------
 # node 头文件没有就不带这一件 —— 它是可选增强，不该让整条链失败。
@@ -100,10 +100,10 @@ if [ -n "${NODE_INCLUDE_DIR:-}" ] && [ -d "${NODE_INCLUDE_DIR:-}" ]; then
   "$CC" -shared $CFLAGS -DNAPI_VERSION=9 -I "$NODE_INCLUDE_DIR" \
     -o "$WORK/liblobosflock.so" \
     container/native/d2/flock.c 2>"$WORK/cc-flock.log" \
-    && { so_ok "$WORK/liblobosflock.so" 1000 && cp -f "$WORK/liblobosflock.so" "$OUT/liblobosflock.so" && echo "✓ flock → liblobosflock.so"; } \
-    || echo "- flock 编不出来（node 头文件相关），这项不随包带" >&2
+    && { so_ok "$WORK/liblobosflock.so" 1000 && cp -f "$WORK/liblobosflock.so" "$OUT/liblobosflock.so" && echo "  ✓ flock      → liblobosflock.so"; } \
+    || echo "  - flock 编不出来（node 头文件相关），这项不随包带" >&2
 else
-  echo "- flock 需要 node 头文件（NODE_INCLUDE_DIR 未给），不随包带" >&2
+  echo "  - flock 需要 node 头文件（NODE_INCLUDE_DIR 未给），不随包带" >&2
 fi
 
 find "$OUT" -maxdepth 1 -type f \( -name 'liblobos*.so' -o -name 'librivospty.so' \) \

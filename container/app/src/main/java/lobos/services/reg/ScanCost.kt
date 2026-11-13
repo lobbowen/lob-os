@@ -106,8 +106,8 @@ object ScanCost {
         val walk = traverseFiles(ctx)
         val src = if (configFile(ctx).isFile) "设备侧 " + configFile(ctx).absolutePath else "默认（无设备侧配置）"
         return "内容指纹=" + (if (on) "算" else "跳过") +
-            "遍历=" + (if (walk) "做" else "不做") +
-            "目录视图=仍然扫目录" +
-            "来源=" + src
+            " 遍历=" + (if (walk) "做" else "不做") +
+            " 目录视图=仍然扫目录" +
+            " 来源=" + src
     }
 }

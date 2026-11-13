@@ -23,7 +23,7 @@ GEN_ROWS=""
 # `source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces`
 # 而 source 的时候 $0 逐字是「bash」，dirname 那一条算出来是错的落点。
 # 缺陷名（C-102）**同一份脚本按两种方式被调用，而落点只认其中一种**。
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&& pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 ASSETS="container/app/src/main/assets/pieces"
 STAGE="dist/.fetch"
@@ -118,7 +118,7 @@ gh_read_release() {
   GH_HTTP="none"
   GH_FAIL_KIND="ok"
   local http
-  http="$(curl -sS -o "$GH_READ_BODY"-w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
+  http="$(curl -sS -o "$GH_READ_BODY" -w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
           -H "Accept: application/vnd.github+json" \
           "https://api.github.com/repos/$REPO/releases/tags/$tag" 2>/dev/null || true)"
   GH_HTTP="${http:-none}"
@@ -239,7 +239,7 @@ fetch_asset() {
             catch (e) { process.stderr.write("__FA_PARSE_FAILED__\n"); process.exit(3); }
             const a = (j.assets || []).find(x => x.name === process.argv[2]);
             if (a) process.stdout.write(a.browser_download_url);
-          ' "$GH_READ_BODY" "$asset" 2>"$fa_err")"|| { cat "$fa_err" >&2; return 1; }
+          ' "$GH_READ_BODY" "$asset" 2>"$fa_err")" || { cat "$fa_err" >&2; return 1; }
   if [ -s "$fa_err" ]; then
     # 缺陷名（C-102）**那解析失败那一族逐字把 stderr 逐字吞掉**（旧版逐字是 2>/dev/null）、
     # 那**调用方**逐字**只**看到「那 url 逐字是空」、那**分不出**是「那名字不在」还是「那读没读到」。
@@ -370,7 +370,7 @@ run_head_sha_of() {
   [ -n "$run" ] || { printf ''; return 0; }
   local body="$STAGE/.run-$run.json"
   local http
-  http="$(curl -sS -o "$body"-w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
+  http="$(curl -sS -o "$body" -w '%{http_code}' --retry 3 --retry-delay 2 "${GH_HDR[@]}" \
     "https://api.github.com/repos/$REPO/actions/runs/$run" 2>/dev/null || true)"
   if [ "$http" != "200" ]; then
     rm -f "$body"
@@ -394,7 +394,7 @@ for id in "${PIECES[@]}"; do
 
   if ! fetch_asset "$tag" "$asset" "$STAGE/$id"; then
     echo "::error title=$id 没有固化产物::Release $tag 里取不到 $asset —— 先去构建这一件："
-    echo "::error:: gh workflow run $(bash scripts/toolchain/piece-workflow-name.sh "$id") （见 RELEASE-POLICY.md）"
+    echo "::error::  gh workflow run $(bash scripts/toolchain/piece-workflow-name.sh "$id")   （见 RELEASE-POLICY.md）"
     # 缺陷名（C-102）**那赋值在 set -e 下逐字把整趟掐掉**、
     # 那**分族**那一支逐字**永远**走不到、一族逐字**永远**没被**验过**
     # —— 而实际上那脚本逐字第 13 行是 `set -euo pipefail`，
@@ -407,7 +407,7 @@ for id in "${PIECES[@]}"; do
     # 那一读逐字**只**做一次：那 stdout 与那 stderr 逐字**分**开取、那 HTTP 那一档逐字**在**那 stderr 里。
     # 那 stderr 逐字**落**一个临时的档、那 HTTP 那一档逐字**从**那档**取**。
     lra_err="${STAGE}/lra.err"
-    lra_out="$(list_release_assets "$tag"2>"$lra_err")" && lra_rc=0 || lra_rc=$?
+    lra_out="$(list_release_assets "$tag" 2>"$lra_err")" && lra_rc=0 || lra_rc=$?
     others="$lra_out"
     lra_http="none"
     lra_kind="none"
@@ -434,19 +434,19 @@ for id in "${PIECES[@]}"; do
       echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
       echo "::notice:: 处置：dispatch 那一件即可。*"
       miss_stock=$((miss_stock+1))
-    elif printf "%s\n""$others"| grep -qxF "$asset"; then
+    elif printf "%s\n" "$others" | grep -qxF "$asset"; then
       # **第三**个形状：那**名字逐字在里面**、那**一次**逐字**没取到**。
       # 那**两条**分支逐字**都不覆盖**它、旧版逐字把它误判成「旧产物拦住了」。
       # 那**真的成因**逐字**在**那 fetch_asset 那一族**里面**（三处 return 1 逐字**分不出来**）。
       echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，那**这一次**逐字**没取到**。"
       echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），那**不是**『没固化过』、也**不是**『旧产物』。*"
-      printf "%s\n""$others"| sed "s/^/::notice::   /"
+      printf "%s\n" "$others" | sed "s/^/::notice::   /"
       miss_read=$((miss_read+1))
     else
       echo "::notice title=$id 旧产物拦住了::Release $tag 里有 asset，但**没有一个叫 $asset** —— 那说明这一件改过 recipe，"
       echo "::notice:: 而固化产物还是旧的。**旧产物不能冒充新代码的产物**，所以这里必须拦。"
       echo "::notice:: 该 tag 下现有的 asset 名字："
-      printf "%s\n""$others"| sed "s/^/::notice::   /"
+      printf "%s\n" "$others" | sed "s/^/::notice::   /"
       echo "::notice:: 处置：dispatch 那一件重新固化（同名不同内容会被覆盖）。*"
       miss_stale=$((miss_stale+1))
     fi
@@ -460,12 +460,12 @@ for id in "${PIECES[@]}"; do
   # 所以这里不喂给它：自己取第一段（摘要）与实算的摘要比。
   if [ -f "$STAGE/$id/$asset.sha256" ]; then
     want="$(tr -d '\r\n ' < "$STAGE/$id/$asset.sha256" | head -c 64)"
-    got="$(sha256sum "$STAGE/$id/$asset"| cut -d' ' -f1)"
+    got="$(sha256sum "$STAGE/$id/$asset" | cut -d' ' -f1)"
     if [ -z "$want" ] || [ "$want" != "$got" ]; then
       echo "::error title=$id 校验失败::$asset 的 sha256 对不上（声明 ${want:-空} / 实算 $got）—— Release 里的产物被改过或截断"
       missing=$((missing+1)); continue
     fi
-    printf "  · %-9s sha256 已核（%s…）\n""$id""${got:0:12}"
+    printf "  · %-9s sha256 已核（%s…）\n" "$id" "${got:0:12}"
   else
     echo "::notice title=$id 无伴随摘要::Release 上没有 $asset.sha256 —— 这一件**没被校验过**（ 而取件必须核字节数与声明一致）"
   fi
@@ -498,7 +498,7 @@ for id in "${PIECES[@]}"; do
   # 那**判别的内容**逐字不变（那 gzip 那一支还是解包、那 zip 那一支还是直接用）。
   # 新增的 zip64 那一档逐字**不影响**这一支（那 zip64 逐字**也是** zip 容器、
   # 那 zip 分支逐字照样直接用、它逐字**不需要**解包）。
-  FMT_SH="$(cd "$(dirname "$0")"&& pwd)/fmt.sh"
+  FMT_SH="$(cd "$(dirname "$0")" && pwd)/fmt.sh"
   [ -f "$FMT_SH" ] || { echo "::error title=没有判别源::$FMT_SH 不在 —— 容器判别源必须唯一"; missing=$((missing+1)); continue; }
   # shellcheck source=../toolchain/fmt.sh
   . "$FMT_SH"
@@ -524,13 +524,13 @@ for id in "${PIECES[@]}"; do
     # 那**三步**逐字治的是这一族那**八件**（它们逐字是「外层即件包」那一档、
     # 旧版逐字只有「解开外层找内层」那一步它们逐字被判成「候选逐字是 无」）。
     INNER=""
-    if ! INNER="$(fmt_pick_piece "$SRC""$STAGE/$id/unpacked""$id"2>"$STAGE/$id/pick.err")"; then
-      echo "::error title=$id 挑不出那一颗件::$(tr '\n'' ' < "$STAGE/$id/pick.err")"
+    if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
+      echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
       echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     cp -f "$INNER" "$ASSETS/$id.zip"
-    printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 gzip，那内层取出来）\n""$id""$asset""$id"
+    printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 gzip，那内层取出来）\n" "$id" "$asset" "$id"
   elif [ "$SRC_FMT" = "zip" ] || [ "$SRC_FMT" = "zip64" ]; then
     # 那**它**逐字是那 zip（那 CI artifact 那一族逐字是「zip 套内层」那个形状：
     # 外层逐字装着那**内层**那一个件包、内层才是那一颗件）。
@@ -559,17 +559,17 @@ for id in "${PIECES[@]}"; do
     # 它们逐字被判成「那候选逐字是 无」）。
     # 那 zip 那一档**不**解开（第 1 步逐字看那**外层自己**）。
     INNER=""
-    if ! INNER="$(fmt_pick_piece "$SRC""$STAGE/$id/unpacked""$id"2>"$STAGE/$id/pick.err")"; then
-      echo "::error title=$id 挑不出那一颗件::$(tr '\n'' ' < "$STAGE/$id/pick.err")"
+    if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
+      echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
       echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     if [ "$INNER" = "$SRC" ]; then
       # 那**外层自己**就是那一颗件（它逐字已经在 $ASSETS/$id.zip 了、不用再搬）。
-      printf "  ✓ %-9s %s → %s.zip（那资产逐字**就是**那一颗件）\n""$id""$asset""$id"
+      printf "  ✓ %-9s %s → %s.zip（那资产逐字**就是**那一颗件）\n" "$id" "$asset" "$id"
     else
       cp -f "$INNER" "$ASSETS/$id.zip"
-      printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n""$id""$asset""$id"
+      printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
     fi
   else
     # 那**它**逐字**既不是** gzip **也不是** zip（形态逐字是那 fmt.sh 逐字给的）。
@@ -715,39 +715,39 @@ if [ -n "${GEN_ROWS:-}" ]; then
   echo ""
   echo "--- 这一批件的构建标识（buildSha = 同一份代码 / buildRun = 哪一次流水线）---"
   printf '%s' "$GEN_ROWS" | while IFS='|' read -r gid gsha grun; do
-    printf "  %-9s buildSha=%-42s buildRun=%s\n""$gid""${gsha:-(没有)}""${grun:-(没有)}"
+    printf "  %-9s buildSha=%-42s buildRun=%s\n" "$gid" "${gsha:-(没有)}" "${grun:-(没有)}"
   done
-  runs="$(printf '%s' "$GEN_ROWS"| cut -d'|' -f3 | sed '/^$/d' | sort -u)"
-  shas="$(printf '%s' "$GEN_ROWS"| cut -d'|' -f2 | sed '/^$/d' | sort -u)"
+  runs="$(printf '%s' "$GEN_ROWS" | cut -d'|' -f3 | sed '/^$/d' | sort -u)"
+  shas="$(printf '%s' "$GEN_ROWS" | cut -d'|' -f2 | sed '/^$/d' | sort -u)"
   n_run="$(printf '%s\n' "$runs" | grep -c . || true)"
   n_sha="$(printf '%s\n' "$shas" | grep -c . || true)"
-  n_none="$(printf '%s' "$GEN_ROWS"| grep -c '||$' || true)"
-  echo "去重后: buildRun $n_run 个 / buildSha $n_sha 个（$n_none 件没带那一格）"
+  n_none="$(printf '%s' "$GEN_ROWS" | grep -c '||$' || true)"
+  echo "  去重后: buildRun $n_run 个 / buildSha $n_sha 个（$n_none 件没带那一格）"
   if [ "$n_none" -gt 0 ]; then
-    echo "::notice title=这一批不完整::有 $n_none 件没带构建标识 「是不是这一代」对它们答不出"
+    echo "  ::notice title=这一批不完整::有 $n_none 件没带构建标识  「是不是这一代」对它们答不出"
   fi
   if [ "$n_run" -gt 1 ]; then
-    echo "::notice title=这一批不同代::去重后 buildRun $n_run 个 这一批不是同一次流水线造的"
-    echo "::notice:: 而那不是缺陷 —— 每件各自 dispatch 一条 run（01 今天裁定） 按构造就不可能同代。"
+    echo "  ::notice title=这一批不同代::去重后 buildRun $n_run 个  这一批不是同一次流水线造的"
+    echo "  ::notice:: 而那不是缺陷 —— 每件各自 dispatch 一条 run（01 今天裁定） 按构造就不可能同代。"
   else
-    echo "::notice title=这一批同代::去重后 buildRun $n_run 个 这一批是同一次流水线造的"
+    echo "  ::notice title=这一批同代::去重后 buildRun $n_run 个  这一批是同一次流水线造的"
   fi
   if [ "$n_sha" -gt 1 ]; then
-    echo "::notice title=这一批不止一份代码::去重后 buildSha $n_sha 个 这一批跨了多个 commit"
+    echo "  ::notice title=这一批不止一份代码::去重后 buildSha $n_sha 个  这一批跨了多个 commit"
   fi
 fi
 if [ "$missing" -gt 0 ]; then
   echo ""
   echo "::error title=取件不全::$missing / ${#PIECES[@]} 个件取不到（缺货 $miss_stock · 旧产物 $miss_stale · 清单读失败 $miss_read）"
   if [ "$miss_stock" -gt 0 ]; then
-    echo "::error:: **缺货**（该 tag 一个 asset 都没有）→ dispatch 那一件即可"
+    echo "::error::  **缺货**（该 tag 一个 asset 都没有）→ dispatch 那一件即可"
   fi
   if [ "$miss_read" -gt 0 ]; then
-    echo "::error:: **清单读失败**（那一份**没读到**）→ 先查那一次读（token / 限流 / 端点），**不是** dispatch 能解决的"
+    echo "::error::  **清单读失败**（那一份**没读到**）→ 先查那一次读（token / 限流 / 端点），**不是** dispatch 能解决的"
   fi
   if [ "$miss_stale" -gt 0 ]; then
-    echo "::error:: **旧产物**（有 asset 但名字对不上 = 改过 recipe 指纹变了）→ 必须 dispatch 重新固化，"
-    echo "::error:: 否则会取到旧包、打出 APK、CI 全绿，而那个产物里没有本次改动的任何东西"
+    echo "::error::  **旧产物**（有 asset 但名字对不上 = 改过 recipe 指纹变了）→ 必须 dispatch 重新固化，"
+    echo "::error::  否则会取到旧包、打出 APK、CI 全绿，而那个产物里没有本次改动的任何东西"
   fi
   echo "[fetch] 已取到 $ok 个。缺的那几个要单独构建，别在 APK 里编 —— 见 RELEASE-POLICY.md"
   exit 1

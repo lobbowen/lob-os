@@ -26,7 +26,7 @@ else
   TAG="${1:?需要 tag}"; ASSET="${2:?需要资产名}"; WANT_ENTRY="${3:-}"; EXTRA_FILES="${4:-}"
 fi
 
-FMT_SH="$(cd "$(dirname "$0")"&& pwd)/fmt.sh"
+FMT_SH="$(cd "$(dirname "$0")" && pwd)/fmt.sh"
 [ -f "$FMT_SH" ] && . "$FMT_SH" || true
 
 read_meta_entry() {
@@ -41,13 +41,13 @@ verify_local() {
   [ -s "$f" ] || return 1
 
   case "$(fmt_of "$f")" in
-    gzip|tar.gz)  listing="$(tar -tzf "$f"2>/dev/null)" ;;
-    zip)          listing="$(unzip -l "$f"2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print $4}')" ;;
+    gzip|tar.gz)  listing="$(tar -tzf "$f" 2>/dev/null)" ;;
+    zip)          listing="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print $4}')" ;;
     *) listing="$(grep -ao 'component-meta\.json' "$f" 2>/dev/null)" ;;
   esac
   [ -n "$listing" ] || return 1
 
-  printf '%s\n'"$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
+  printf '%s\n' "$listing" | grep -qE '(^|/)component-meta\.json$' || return 1
 
   # **第三参已删**（那一份是人写下的副本，而包里那份 meta 就是真源的产物）——
   # 01 今天裁的：entry 只有真源一处（gen-component-meta.js 的 computeEntry），
@@ -78,14 +78,14 @@ verify_local() {
   fi
 
   if [ "$(fmt_of "$f")" = "zip" ]; then
-    vl="$(unzip -l "$f"2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print "- "$4}' | sed 's#^./##')"
+    vl="$(unzip -l "$f" 2>/dev/null | awk 'NF>=4 && $1 ~ /^[0-9]+$/ {print "- " $4}' | sed 's#^./##')"
   else
-    vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t""p}')"
+    vl="$(tar -tzvf "$f" 2>/dev/null | awk 'NF>=6 {t=$1; p=$6; sub(/^\.\//,"",p); print t" "p}')"
   fi
 
   if [ -n "$vl" ]; then
     for want in $WANT_ENTRY $EXTRA_FILES; do
-      printf '%s\n'"$vl" | awk -v w="$want" '
+      printf '%s\n' "$vl" | awk -v w="$want" '
         { t=$1; p=$2;
           if ((substr(t,1,1)=="-" || substr(t,1,1)=="l") && p==w) { print "hit"; exit } }
       ' | grep -q hit || return 1
@@ -94,7 +94,7 @@ verify_local() {
   fi
 
   for want in $WANT_ENTRY $EXTRA_FILES; do
-    printf '%s\n'"$listing" | sed 's#^\./##' | grep -qx "$want" || return 1
+    printf '%s\n' "$listing" | sed 's#^\./##' | grep -qx "$want" || return 1
   done
   return 0
 }
@@ -109,14 +109,14 @@ trap 'rm -rf "$TMP"' EXIT
 
 if ! gh release download "$TAG" --repo "${GITHUB_REPOSITORY:-lobbowen/lob-os}" \
      --pattern "$ASSET" --dir "$TMP" >/dev/null 2>&1; then
-  echo "[miss] Release $TAG 里没有 $ASSET"
+  echo "  [miss] Release $TAG 里没有 $ASSET"
   exit 1
 fi
 
 if ! verify_local "$TMP/$ASSET"; then
-  echo "[miss] $ASSET 在，但内容不对（缺 component-meta.json / entry 不符 / 缺那个路径）—— 需要重新固化"
+  echo "  [miss] $ASSET 在，但内容不对（缺 component-meta.json / entry 不符 / 缺那个路径）—— 需要重新固化"
   exit 1
 fi
 
-echo "[ok] $ASSET 可复用"
+echo "  [ok] $ASSET 可复用"
 exit 0

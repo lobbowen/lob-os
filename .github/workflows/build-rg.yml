@@ -97,10 +97,10 @@ jobs:
           # 上传名用 cache-key.sh 给的那个 —— 复用判据与取件都按它，两处必须同源。
           # 之前这里用包名、判据那里用 deps 名，对不上，于是每轮都判为「未固化」。
           cp -f "$PKG" "dist/$ASSET"
-          sha256sum "dist/$ASSET" | cut -d'' -f1 > "dist/$ASSET.sha256"
+          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "rg 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
-          echo "[ok] 包=$(basename "$PKG") 上传名=$ASSET → $TAG"
+          echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
 
       # 缺陷名（C-102）**那一族逐字没有一道「固化产物与当前代码一致」的检查** ——
       # 旧版逐字**没有**任何一处逐字核「那一份逐字是不是这一份代码造出来的」，

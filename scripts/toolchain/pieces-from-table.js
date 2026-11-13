@@ -46,4 +46,4 @@ const out = PIECE_IDS.filter((id) => {
   return e.notStandalone !== true;
 });
 
-process.stdout.write(out.join(''));
+process.stdout.write(out.join(' '));

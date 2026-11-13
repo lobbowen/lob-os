@@ -15,8 +15,8 @@
 # 读不到 => **答「没有可比对的声明」**（exit 0，输出空）—— 按 C-05「没有」就是没有，
 # 而**不报缺**（那一格不是缺件，是一个可选项）。
 set -uo pipefail
-HERE="$(cd "$(dirname "$0")"&& pwd)"
-ROOT="$(cd "$HERE/../.."&& pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 # 缺陷名（C-102）**那三个空逐字分不出来** ——
 # 而那旧版逐字是三个 `printf '\n'; exit 0`（三处逐字**都是空串**、都 exit 0）：
 # 1. 纯库件（entry 合法地是空）
@@ -78,7 +78,7 @@ why_say() {
 
 # 1. 落位结果（dist/ 下那一批字节）—— **先**算它（它此刻就在）
 if [ -d "$ROOT/dist" ]; then
-  e="$(node "$ROOT/scripts/recipes/gen-component-meta.js"--print-entry "$key""$ROOT/dist"2>/dev/null || true)"
+  e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$ROOT/dist" 2>/dev/null || true)"
   if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
   # 纯库件：entry 合法地是空 —— 而落位结果存在 => 答「空」
   if [ -d "$ROOT/dist/lib" ] || [ -d "$ROOT/dist/bin" ]; then

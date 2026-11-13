@@ -3,7 +3,7 @@ set -euo pipefail
 export LC_ALL=C
 
 HERE="$(dirname "$0")"
-ROOT_DIR="$(cd "$HERE/../.."&& pwd)"
+ROOT_DIR="$(cd "$HERE/../.." && pwd)"
 
 TOOL=""
 KIND="key"
@@ -25,7 +25,7 @@ for a in "$@"; do
 done
 [ -n "$TOOL" ] || {
   echo "用法: $0 <子命令> <件名>" >&2
-  echo "子命令: key · tag · deps · deps-list · asset" >&2
+  echo "  子命令: key · tag · deps · deps-list · asset" >&2
   exit 2
 }
 # N3（S3b）：表的取值一律走 fetch-pinned.sh，本脚本不自己解释它。
@@ -96,15 +96,15 @@ die() {
   # 报错若走 stdout 会被那个变量吞掉，终端上什么都看不到 ——
   # 表现为「件名写错了，但脚本一声不响」。
   echo "::error title=未知件名::$TOOL 不在已知列表里 —— 加新件时要在这里补 deps_for 与 bucket_for" >&2
-  echo "本脚本认的件名（注意是 python 不是 python3、是 ripgrep 不是 rg）：" >&2
-  echo "$KNOWN_TOOLS" >&2
+  echo "         本脚本认的件名（注意是 python 不是 python3、是 ripgrep 不是 rg）：" >&2
+  echo "         $KNOWN_TOOLS" >&2
   exit 1
 }
 
 DEPS="$(deps_for "$TOOL")"
 VER=""
 for k in $DEPS; do
-  v="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh"--src-version "$k"2>/dev/null || true)"
+  v="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$k" 2>/dev/null || true)"
   [ -n "$v" ] || v="none"
   VER="$VER$k-$v"
 done
@@ -113,19 +113,19 @@ done
 if [ "$TOOL" = "git" ]; then
   P=""
   for k in $(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --list-keys '^git-.*\.patch$'); do
-    v="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh"--src-version "$k"2>/dev/null || true)"
-    P="$P$(echo "$k"| head -c6)-${v:0:8}; "
+    v="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$k" 2>/dev/null || true)"
+    P="$P$(echo "$k" | head -c6)-${v:0:8}; "
   done
   VER="$VER|patch:$P"
 fi
 
 if [ "$TOOL" = "node" ]; then
-  NVER="$(bash "$ROOT_DIR/scripts/registry/read-node-versions.sh"default)"
-  NABI="$(bash "$ROOT_DIR/scripts/registry/read-node-versions.sh"abi | tr -c 'A-Za-z0-9._-' '+')"
+  NVER="$(bash "$ROOT_DIR/scripts/registry/read-node-versions.sh" default)"
+  NABI="$(bash "$ROOT_DIR/scripts/registry/read-node-versions.sh" abi | tr -c 'A-Za-z0-9._-' '+')"
   VER="${NVER}+${NABI}"
 fi
 
-NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh"--ndk 2>/dev/null || echo unknown)"
+NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --ndk 2>/dev/null || echo unknown)"
 API=35
 RUN_OS="${RUN_OS:-Linux}"
 RUN_ARCH="${RUN_ARCH:-X64}"
@@ -214,7 +214,7 @@ SRC_FILES="$SRC_FILES $PKG_MECH"
 # CI 取件时算出的不一致，重固化完了还是取不到。
 # 2026-10-16 实测（修之前）：本地 e43e07288faf、CI a1f1d75df276、Release 里 85bd6ce121b3。
 if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
-  SRC_HASH="$(cd "$ROOT_DIR"&& git ls-files $SRC_FILES 2>/dev/null | while read -r f; do git show "HEAD:$f"2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
+  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files $SRC_FILES 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
   [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
 fi
 [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
@@ -250,7 +250,7 @@ case "$KIND" in
     deps_for "$TOOL"
     ;;
   asset)
-    SAFE="$(printf '%s' "$DEPS_STR"| tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
+    SAFE="$(printf '%s' "$DEPS_STR" | tr -c 'A-Za-z0-9._' '+' | tr -s '+' '+')"
     # 扩展名跟内容走：件包已经是 zip（package-bundle-zip.sh 打的是 zip），
     # 名字叫 .tar.gz 而内容是 zip 会让「看名字判断版本」的人被骗 —— 判据按 magic 字节认，名字也该一致。
     echo "$TOOL-$SAFE.zip"

@@ -10,8 +10,8 @@ set -uo pipefail
 PIECE_NAME="${1:?用法: source bundle-env.sh <件名>}"
 
 # 仓根（本文件在 scripts/recipes/）
-PIECE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")"&& pwd)"
-ROOT_DIR="$(cd "$PIECE_HERE/../.."&& pwd)"
+PIECE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$PIECE_HERE/../.." && pwd)"
 cd "$ROOT_DIR"
 
 # 形态判据（ET_EXEC / ET_DYN+PT_INTERP / ET_DYN 无 PT_INTERP）——
@@ -70,7 +70,7 @@ AR_BIN="$LLVM_AR"
 RANLIB_BIN="$LLVM_RANLIB"
 
 # NDK 根 —— openssl 的 Configure 要它认android-arm64
-NDK_ROOT="$(cd "$(dirname "$CC")/../../../../.."&& pwd)"
+NDK_ROOT="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
 
 # Android API 级别（NDK 的 clang 三元组里带着它）
 API="${ANDROID_API:-35}"
@@ -102,7 +102,7 @@ check_so() {
   # shebang是 #! 脚本（它是可调起的入口形态）
   # unknown不是入口形态、也不是库形态（它不该进这一件）
   local form
-  form="$(elf_form "$f"2>/dev/null)"
+  form="$(elf_form "$f" 2>/dev/null)"
   case "$form" in
     "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP"|"$ELF_FORM_DYN_PLAIN"|"$ELF_FORM_SHEBANG") return 0 ;;
     *) return 1 ;;
@@ -187,7 +187,7 @@ emit_piece() {
   # **只有这一处是相对路径**。
   #
   # 处置：这一处改成绝对路径（与本文件其余那几处同一口径）。
-  local marker="$(node "$ROOT_DIR/scripts/toolchain/read-marker.js""$id")"
+  local marker="$(node "$ROOT_DIR/scripts/toolchain/read-marker.js" "$id")"
   # **不再与「声明」比** —— 声明那一份已删（component-sources.json 的 entry 键 15 处）。
   # 缺陷名（C-102）entry 散在几处、而那几处是副本：
   # 原来这一格是「declared（表里那份）!= $entry（recipe 传的那份） 判红」，
@@ -216,14 +216,14 @@ emit_piece() {
   # **才**退回「按形态挑第一个」那一支（那**保持**原来那一支的行为）。
   local want_entry="$(author_entry_name_of "$id")"
   if [ -n "$want_entry" ] && [ -f "$out/bin/$want_entry" ]; then
-    local wf="$(elf_form "$out/bin/$want_entry"2>/dev/null)"
+    local wf="$(elf_form "$out/bin/$want_entry" 2>/dev/null)"
     if elf_form_is_program "$wf"; then pick="bin/$want_entry"; fi
   fi
   if [ -z "$pick" ] && [ -d "$out/bin" ]; then
     for f in $(ls -A "$out/bin" 2>/dev/null | LC_ALL=C sort); do
       p="$out/bin/$f"
       [ -f "$p" ] || continue
-      ff="$(elf_form "$p"2>/dev/null)"
+      ff="$(elf_form "$p" 2>/dev/null)"
       if elf_form_is_program "$ff"; then pick="bin/$f"; break; fi
     done
   fi
@@ -234,7 +234,7 @@ emit_piece() {
   fi
   [ -n "$pick" ] || die "${id} 没产出" "bin/ 下无程序形态字节、lib/ 下无主名 .so —— 这一件没有可判形态的字节"
   if [ -n "$entry" ] && [ "$entry" != "$pick" ]; then
-    echo "（这一件按形态算出的入口是 $pick，而调用方声明的是 $entry —— 以形态为准）"
+    echo "  （这一件按形态算出的入口是 $pick，而调用方声明的是 $entry —— 以形态为准）"
   fi
   entry="$pick"
   so="$out/$entry"
@@ -255,7 +255,7 @@ emit_piece() {
   local form role
   form="$(elf_form "$so")"
   role="$(elf_role_of_form "$form")"
-  echo "（形态：$form → $role）"
+  echo "  （形态：$form → $role）"
   case "$role" in
     program)
       # 程序那一件带单入口，且那份字节在构建期就带 owner 执行位。
@@ -264,8 +264,8 @@ emit_piece() {
       # 库那一件带三段链（ldconfig(8)）：libfoo.so -> libfoo.so.1 -> libfoo.so.1.12
       chmod 0644 "$so"
       local derived
-      derived="$(elf_ensure_chain "$dir""$ver")"
-      [ -n "$derived" ] && echo "（补齐三段链：$(echo $derived | tr ' ' ' ')）" ;;
+      derived="$(elf_ensure_chain "$dir" "$ver")"
+      [ -n "$derived" ] && echo "  （补齐三段链：$(echo $derived | tr ' ' ' ')）" ;;
     unknown)
       die "${id} 形态判不出来" "$so 不是 ELF —— 形态必须在构建期定下来" ;;
   esac
@@ -277,7 +277,7 @@ emit_piece() {
       b="$(basename "$f")"
       case "$b" in *.so|*.so.*) cp -Pf "$f" "$out/" 2>/dev/null || cp -f "$f" "$out/" ;; esac
     done
-    echo "（共享库整条链一起进包）"
+    echo "  （共享库整条链一起进包）"
   fi
   bash "$ROOT_DIR/scripts/recipes/package-bundle-zip.sh" "$id" "$out" "$ver" "$entry" "$bins" "$marker"
 }

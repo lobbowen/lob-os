@@ -369,7 +369,7 @@ object PieceScan {
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true, "那扫描成本那一档",
             lobos.services.reg.ScanCost.describe(ctx) +
-                "（**重建索引**那一族逐字走这一档、**内容指纹**逐字" +
+                " （**重建索引**那一族逐字走这一档、**内容指纹**逐字" +
                 (if (withContentFingerprint) "算" else "跳过") +
                 "、**扫描**逐字仍然扫、**缺件**那一族逐字仍然答）",
         )
@@ -385,9 +385,9 @@ object PieceScan {
             ctx, "scan-cost", true,
             "那一次扫描逐字耗时 " + scanMs + "ms",
             "遍历=" + (if (traverseFiles) "做" else "不做") +
-                "内容指纹=" + (if (withContentFingerprint) "算" else "跳过") +
-                "件数=" + found.size +
-                "（**两档逐字分开**、档二逐字答「那遍历本身」、" +
+                " 内容指纹=" + (if (withContentFingerprint) "算" else "跳过") +
+                " 件数=" + found.size +
+                " （**两档逐字分开**、档二逐字答「那遍历本身」、" +
                 "档一逐字答「那内容指纹算不算」；**两档逐字不并**）",
         )
         if (found.isEmpty()) return 0
@@ -410,8 +410,8 @@ object PieceScan {
                 RuntimeDiagnostics.append(
                     ctx, "registry-role", false,
                     "那登记那一格与那扫描结果逐字不一致",
-                    "件=" + f.id + "登记=" + prev.role + "扫描=" + f.role +
-                        "（扫描结果逐字**赢**、旧值逐字**不**顶上来；" +
+                    "件=" + f.id + " 登记=" + prev.role + " 扫描=" + f.role +
+                        " （扫描结果逐字**赢**、旧值逐字**不**顶上来；" +
                         "这**两份实际**逐字不一致那一族归 03 另立、它逐字是 C-998 那一族的**邻族**）",
                 )
             }
@@ -475,7 +475,7 @@ object PieceScan {
                 removed++
                 RuntimeDiagnostics.append(
                     ctx, "scan", true, "登记里删掉（扫不到）" + e.id,
-                    "这一件在落位目录里已经不存在，而登记里还有它那一行（ 而 upsert 只换不删）",
+                    "这一件在落位目录里已经不存在，而登记里还有它那一行（  而 upsert 只换不删）",
                 )
             }
         }

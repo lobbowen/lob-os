@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TOOL="${1:?需要工具名}"
-ROOT="$(cd "$(dirname "$0")/../.."&& pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ENTRY=$(bash "$ROOT/scripts/registry/read-component-entry.sh" "$TOOL")
 
 STATIC_LIST=""
@@ -114,7 +114,7 @@ if (!bin || typeof bin === "string") process.exit(0);
 const skip = process.argv[2];
 for (const [name, rel] of Object.entries(bin)) {
   if (typeof rel !== "string" || rel === skip) continue;
-  process.stdout.write(name + "\t"+ rel + "\n");
+  process.stdout.write(name + "\t" + rel + "\n");
 }
 ' "$ROOT/dist/package.json" "$ENTRY") || exit 1
 while IFS="$(printf '\t')" read -r ANAME AREL; do

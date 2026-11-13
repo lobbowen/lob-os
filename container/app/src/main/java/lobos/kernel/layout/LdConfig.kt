@@ -84,14 +84,14 @@ object LdConfig {
                 val dst = File(usrBin, exe.name)
                 val prev = claimed[exe.name]
                 if (prev != null) {
-                    unresolved += "bin/" + exe.name + "被两处声明：已有 " + prev + "，忽略 " + exe.absolutePath
-                    log += "bin " + exe.name + "冲突，保留 " + prev
+                    unresolved += "bin/" + exe.name + " 被两处声明：已有 " + prev + "，忽略 " + exe.absolutePath
+                    log += "bin  " + exe.name + "   冲突，保留 " + prev
                     return@forEach
                 }
                 claimed[exe.name] = exe.absolutePath
                 binInstalled += exe.name
-                if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + "→ " + dst.absolutePath
-                log += "bin " + exe.name + "→ " + dst.name + "" + exe.absolutePath
+                if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
+                log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
 
 
         // SONAME -> 该指向哪一处（S56 裁定的三情形， 而 C-05：不能确定就报缺）
@@ -106,16 +106,16 @@ object LdConfig {
                 linked += landed.created
                 if (!landed.ok) unresolved += landed.detail
                 log += landed.log
-                log += "kind1 " + soname + "只有一件提供（" + cands[0].first + "）指向它"
+                log += "kind1 " + soname + " 只有一件提供（" + cands[0].first + "）指向它"
                 continue
             }
             val shas = cands.map { it.third }.toSet()
             if (shas.size > 1) {
                 val who = cands.joinToString(",") { it.first }
-                unresolved += "kind3 歧义 SONAME " + soname + "由 " + cands.size +
-                    "件提供而字节不同（" + who + "）—— 报歧义、不建链" +
+                unresolved += "kind3 歧义 SONAME " + soname + " 由 " + cands.size +
+                    " 件提供而字节不同（" + who + "）—— 报歧义、不建链" +
                     "（指向哪一处会改变程序行为，而让字母序决定它不可接受）"
-                log += "ambiguous " + soname + "提供者=" + who
+                log += "ambiguous " + soname + "  提供者=" + who
                 continue
             }
             val first = cands[0]
@@ -123,10 +123,10 @@ object LdConfig {
             linked += landed.created
             if (!landed.ok) unresolved += landed.detail
             log += landed.log
-            log += "kind2 " + soname + "共 " + cands.size +
-                "处提供（字节逐字相同）指向 " + first.first +
+            log += "kind2 " + soname + " 共 " + cands.size +
+                " 处提供（字节逐字相同）指向 " + first.first +
                 "；而「无害」不该靠「恰好扫到了哪一个」"
-            log += "note " + soname + "共 " + cands.size + "处提供（字节逐字相同）指向 " +
+            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）指向 " +
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
         }            }
         }
@@ -140,10 +140,10 @@ object LdConfig {
             ctx, "ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +
                 if (unresolved.isEmpty()) "" else "；${unresolved.size} 条建链失败",
-            "usr/lib=" + usrLib.absolutePath + "usr/bin=" + usrBin.absolutePath +
-                "\n"+ log.joinToString("\n") +
+            "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
+                "\n" + log.joinToString("\n") +
                 if (unresolved.isEmpty()) ""
-                else "\n建链失败="+ unresolved.joinToString("  |  "),
+                else "\n建链失败=" + unresolved.joinToString("  |  "),
         )
         val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
@@ -154,7 +154,7 @@ object LdConfig {
                     "usr/bin 里的命令入口（声明 ${declaredBins.size} · 已建 ${binInstalled.size}）",
                     if (missingBins.isEmpty()) "声明的命令全部建出"
                     else "声明了但没建出：" + missingBins.joinToString(", ") +
-                        "—— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
+                        " —— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
                 ),
         )
         val selfCheck = lobos.services.supply.SelfCheckReport.format(items)
@@ -165,8 +165,8 @@ object LdConfig {
             Log.w(TAG, "selfcheck 未通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
         }
         if (unresolved.isNotEmpty()) {
-            Log.w(TAG, "ldconfig 有 " + unresolved.size + "条未解决（详见 diag.jsonl 的 ldconfig 记录）")
-            for (u in unresolved) Log.w(TAG, "" + u)
+            Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
+            for (u in unresolved) Log.w(TAG, "  " + u)
         }
         return linked
     }

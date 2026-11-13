@@ -181,9 +181,9 @@ class SupervisorPool(private val host: Service) {
         val wanted = if (all.size <= MAX_RUNNING) all else all.take(MAX_RUNNING)
         if (all.size > MAX_RUNNING) {
             Journal.note(host, "supervisor-pool", null, "超出并发上限，已截断",
-                "期望 " + all.size + "条，只起 " + wanted.size + "条：上限 " + MAX_RUNNING +
+                "期望 " + all.size + " 条，只起 " + wanted.size + " 条：上限 " + MAX_RUNNING +
                     "（Android 每个应用最多 32 个子进程，本系统还要留余量给件与探针）" +
-                    "落下：" + all.drop(MAX_RUNNING).joinToString(","))
+                    " 落下：" + all.drop(MAX_RUNNING).joinToString(","))
         }
         val toStop = supervisors.keys.filter { it !in wanted }
         for (id in toStop) {
@@ -199,7 +199,7 @@ class SupervisorPool(private val host: Service) {
                 s.start()
             } catch (e: Throwable) {
                 Log.w(TAG, "启动监督器失败: " + id, e)
-                RuntimeDiagnostics.append(host, "supervisor-pool", false, "启动监督器失败", "id=" + id + "" + e.message)
+                RuntimeDiagnostics.append(host, "supervisor-pool", false, "启动监督器失败", "id=" + id + " " + e.message)
             }
             Journal.note(host, "supervisor-pool", null, "开始监督程序", "id=" + id)
         }
@@ -226,13 +226,13 @@ class SupervisorPool(private val host: Service) {
             }.onFailure {
                 Journal.note(
                     host, "job", false,
-                    "作业落地失败 " + job.unit + "→ " + job.desired.name,
+                    "作业落地失败 " + job.unit + " → " + job.desired.name,
                     it.message ?: "",
                 )
             }
             Journal.note(
                 host, "job", null,
-                "执行作业 " + job.unit + "→ " + job.desired.name,
+                "执行作业 " + job.unit + " → " + job.desired.name,
                 job.reason,
             )
         }

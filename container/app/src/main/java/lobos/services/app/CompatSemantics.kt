@@ -94,7 +94,7 @@ object CompatSemantics {
             "absent",
             "【现状】我们的系统根在物理上是 filesDir（/data/user/0/<包>/files），"
                 + "usr/opt/var/etc 都在安卓真实的 / 之下 —— 是**嵌套**，不是隔离。"
-                + "我们的 / 只在逻辑上存在：没有任何一层把 \"/data/data\"变成查无此目录。"
+                + "我们的 / 只在逻辑上存在：没有任何一层把 \"/data/data\" 变成查无此目录。"
                 + "核实 chroot / unshare / pivot_root / CLONE_NEWNS 全仓零出现。"
                 + "现有四个 LD_PRELOAD hook（exec-path 查解释器 · open-fallback "
                 + "EACCES 回退 HOME · link-interpose 拦 link/linkat · tmp-paths 改 /tmp）"

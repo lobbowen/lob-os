@@ -39,7 +39,7 @@ object ProcessLedger {
             lobos.kernel.KernelHooks.report(
                 ctx, "ledger", false,
                 "进程账本不可解析：按无进程处理（已失去全部归属信息）",
-                f.absolutePath + "" + e::class.java.simpleName + ": " + (e.message ?: "")
+                f.absolutePath + " " + e::class.java.simpleName + ": " + (e.message ?: "")
                 )
             JSONObject()
         }
@@ -57,7 +57,7 @@ object ProcessLedger {
         val stat = runCatching { File("/proc/" + pid + "/stat").readText() }.getOrNull() ?: return null
         val close = stat.lastIndexOf(')')
         if (close < 0) return null
-        return stat.substring(close + 2).split('').map { it.trim() }.filter { it.isNotEmpty() }
+        return stat.substring(close + 2).split(' ').map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     fun starttimeOf(pid: Int): Long {
@@ -68,7 +68,7 @@ object ProcessLedger {
 
     fun ppidOf(pid: Int): Int = runCatching {
         val stat = File("/proc/" + pid + "/stat").readText()
-        stat.substringAfterLast(") ").split("").getOrNull(1)?.toIntOrNull() ?: -1
+        stat.substringAfterLast(") ").split(" ").getOrNull(1)?.toIntOrNull() ?: -1
     }.getOrDefault(-1)
 
     fun descendantsOf(rootPid: Int, maxDepth: Int = 16): List<Int> {
@@ -132,7 +132,7 @@ object ProcessLedger {
             val pid = name.toIntOrNull() ?: continue
             if (pid <= 1) continue
             val stat = runCatching { File("/proc/" + name + "/stat").readText() }.getOrNull() ?: continue
-            val ppid = stat.substringAfterLast(") ").split("").getOrNull(1)?.toIntOrNull() ?: continue
+            val ppid = stat.substringAfterLast(") ").split(" ").getOrNull(1)?.toIntOrNull() ?: continue
             if (ppid != me) continue
             val cmd = runCatching {
                 File("/proc/" + name + "/cmdline").readBytes().toString(Charsets.UTF_8)

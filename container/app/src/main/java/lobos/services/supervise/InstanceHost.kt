@@ -227,7 +227,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 lobos.services.reg.ProgramStatusHub.publishQuarantined(programId, true)
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
-                    "窗口内重启 " + windowNow + "次（上限 " + maxNow + "）· 窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms"
+                    "窗口内重启 " + windowNow + " 次（上限 " + maxNow + "）· 窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms"
                 )
                 var quarantinePolls = 0
                 while (keepRunning && !quarantineReset) {
@@ -236,7 +236,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     if (quarantinePolls >= SupervisorPolicy.QUARANTINE_HALF_OPEN_POLLS) {
                         RuntimeDiagnostics.append(
                             this, "supervisor", null, "隔离半开：允许一次试探性重启",
-                            "已等待 " + quarantinePolls + "个轮询周期",
+                            "已等待 " + quarantinePolls + " 个轮询周期",
                         )
                         break
                     }
@@ -254,7 +254,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (spec != null && spec.restart == lobos.services.reg.Restart.NEVER) {
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "清单声明 restart=never：不再重启该程序",
-                    "id=" + spec.id + "programId=" + programId,
+                    "id=" + spec.id + " programId=" + programId,
                 )
                 keepRunning = false
                 break
@@ -262,7 +262,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (spec != null && spec.maxRestarts in 1..restartCount) {
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "清单 maxRestarts 已达上限：转入隔离",
-                    "id=" + spec.id + "maxRestarts=" + spec.maxRestarts + "attempt=" + restartCount,
+                    "id=" + spec.id + " maxRestarts=" + spec.maxRestarts + " attempt=" + restartCount,
                 )
                 runCatching {
                     lobos.services.reg.ProgramIndex.mutate(this@InstanceHost, programId) {
@@ -349,15 +349,15 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (declaredSafe.second.isNotEmpty() || overrideSafe.second.isNotEmpty()) {
                 lobos.services.log.Journal.note(
                     this, "settings", false, "保留环境变量被拒（程序不得改写宿主注入面）",
-                    "id=" + programId + "清单丢弃=" + declaredSafe.second.joinToString(",") +
-                        "设置丢弃=" + overrideSafe.second.joinToString(","),
+                    "id=" + programId + " 清单丢弃=" + declaredSafe.second.joinToString(",") +
+                        " 设置丢弃=" + overrideSafe.second.joinToString(","),
                 )
             }
             if (argsOverride != null || envOverride.isNotEmpty()) {
                 lobos.services.log.Journal.note(
                     this, "settings", null, "程序设置生效（宿主在 spawn 时叠加）",
-                    "id=" + programId + "args=" + (argsOverride?.joinToString("") ?: "(按清单)") +
-                        "env键=" + envOverride.keys.joinToString(","),
+                    "id=" + programId + " args=" + (argsOverride?.joinToString(" ") ?: "(按清单)") +
+                        " env键=" + envOverride.keys.joinToString(","),
                 )
             }
             val kVersion = spec?.version ?: km.currentVersion()
@@ -485,8 +485,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
                 if (recorded != null) {
-                    "program=" + recorded.programId + "gen=" + recorded.generation +
-                        "pid=" + recorded.pid + "starttime=" + recorded.starttime
+                    "program=" + recorded.programId + " gen=" + recorded.generation +
+                        " pid=" + recorded.pid + " starttime=" + recorded.starttime
                 } else "pid 无法取得，账本未记录"
             )
             if (recorded != null) {
@@ -539,7 +539,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         is AssetStatus.NotExecutable ->
             "无法 exec（依赖已确认完好 → SELinux 拒 exec，查那个文件是否真在可执行位置）"
         is AssetStatus.Unusable ->
-            "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)"}}"
+            "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)" }}"
     }
 
     private fun currentPid(p: Process?): String {
@@ -565,13 +565,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "supervisor", n > 0,
                 "按账本回收进程树（pid + 后代）",
-                reason + "pid=" + pid + "后代=" + descendants.size + "已发信号=" + n +
+                reason + " pid=" + pid + " 后代=" + descendants.size + " 已发信号=" + n +
                     "（通用 APK 无法建进程组：子进程继承宿主组，故按 ppid 链扫后代）",
             )
         } else if (pid > 0) {
             RuntimeDiagnostics.append(
                 this, "supervisor", false, "账本无本世代条目，仅销毁 Java 侧句柄",
-                reason + "pid=" + pid,
+                reason + " pid=" + pid,
             )
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
@@ -606,7 +606,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         for (e in owned) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "回收上世遗留进程",
-                "pid=" + e.pid + "starttime=" + e.starttime + "program=" + e.programId + "gen=" + e.generation
+                "pid=" + e.pid + " starttime=" + e.starttime + " program=" + e.programId + " gen=" + e.generation
             )
             stopProcessTree(e.pid)
             lobos.kernel.proc.ProcessLedger.end(this, e.pid)
@@ -614,7 +614,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         for (e in reused) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "账本 pid 已被复用：不杀",
-                "pid=" + e.pid + "ledgerStart=" + e.starttime + "nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
+                "pid=" + e.pid + " ledgerStart=" + e.starttime + " nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
             )
             lobos.kernel.proc.ProcessLedger.end(this, e.pid)
         }
@@ -731,7 +731,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 this, "program-stderr", err.isNotBlank(), "子进程标准错误(完整)",
                 if (err.isNotBlank()) err
                 else "(node 确实没有 stderr 输出；已等待 ${waited}ms 让转发线程收敛。\n" +
-                    "stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
+                    " stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
             )
         }.start()
     }
@@ -778,7 +778,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             km.clearPending()
             RuntimeDiagnostics.append(
                 this, "program-commit", true,
-                "程序 " + pend.version + "已提交（版本下限提升）",
+                "程序 " + pend.version + " 已提交（版本下限提升）",
                 "from=" + (pend.from ?: "(无)") + "；floor=" + (km.floorVersion() ?: "(未设)")
             )
         } catch (e: Throwable) {
@@ -799,9 +799,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 val lowered = km.lowerFloor(from)
                 RuntimeDiagnostics.append(
                     this, "program-rollback", false,
-                    "程序 " + pend.version + "未通过健康检查，已回滚到 " + from,
+                    "程序 " + pend.version + " 未通过健康检查，已回滚到 " + from,
                     "版本下限 " + (if (lowered) "已同步下调到 " + from else "保持 " + (km.floorVersion() ?: "(未设)")) +
-                        "—— 不下调会把自己锁死：floor 高于当前版本时，任何不高于它的包都会被 version-below-floor 拒掉"
+                        " —— 不下调会把自己锁死：floor 高于当前版本时，任何不高于它的包都会被 version-below-floor 拒掉"
                 )
             }
             km.clearPending()
