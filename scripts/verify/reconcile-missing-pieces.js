@@ -2,23 +2,23 @@
 /**
  * 缺件对账：那一清单 vs 那缺件表。
  *
- * 缺陷名（C-102）**那清单与那缺件表逐字对不上账、 没人核** ——
- *   而那旧版逐字没有这一格： 缺的几件逐字**不在**那清单里、
- *   **没人核**、 事就过去了（ run 41189310138 的 step 3
- *   逐字缺了 python / sqlite / pkgconf 三件、 [declared] 那一行逐字不含那三件）。
- *   按 C-05「缺字段就报缺、不许猜填」： 缺的几件逐字**必须**在某一格里**看得见**、
- *     「看得见」的那一格逐字**能对账**。
+ * 缺陷名（C-102）**那清单与那缺件表逐字对不上账、=> 而而没人核** ——
+ *   而那旧版逐字没有这一格：=> 而那缺的几件逐字**不在**那清单里、
+ *   => 而那**没人核**、=> 而那事就过去了（=> 而 run 41189310138 的 step 3
+ *   逐字缺了 python / sqlite / pkgconf 三件、=> 而那 [declared] 那一行逐字不含那三件）。
+ *   => 而按 C-05「缺字段就报缺、不许猜填」：=> 而那缺的几件逐字**必须**在某一格里**看得见**、
+ *     => 而那「看得见」的那一格逐字**能对账**。
  *
  * 而「清单里要不要留一条占位（missing 状态 + 成因）」那一问**归 01 裁**
- * （ 本脚本**不**拍板、 只把事实**逐件**摆出来）。
+ * （=> 而本脚本**不**拍板、=> 而只把事实**逐件**摆出来）。
  *
  * 用法：
  *   node scripts/verify/reconcile-missing-pieces.js <缺件表.json> <清单.json>
  *
  * 退出码：
- *   0 = 对得上（ 清单逐字**不含**那缺件表里的任何一件）
- *   1 = 对不上（ 清单里逐字**有**那缺件表里的某一件、 是矛盾）
- *   2 = 那缺件表读不到（ 按 C-05 报缺）
+ *   0 = 对得上（=> 而那清单逐字**不含**那缺件表里的任何一件）
+ *   1 = 对不上（=> 而那清单里逐字**有**那缺件表里的某一件、=> 而那是矛盾）
+ *   2 = 那缺件表读不到（=> 而那按 C-05 报缺）
  */
 'use strict';
 const fs = require('node:fs');
@@ -39,9 +39,9 @@ let missing;
 try {
   missing = readJson(missPath);
 } catch (e) {
-  //  按 C-05 报缺（ 不猜填、 不把它当成「没有缺件」）。
+  //  => 而那按 C-05 报缺（=> 而不猜填、=> 而不把它当成「没有缺件」）。
   console.error('::error title=缺件表读不到::' + missPath + ' 不在或读不出：' + e.message);
-  console.error('::error:: 处置：先跑 scripts/toolchain/fetch-component-artifacts.sh，那一档逐字落那缺件表。');
+  console.error('::error:: 处置：先跑 scripts/toolchain/fetch-component-artifacts.sh，=> 而那一档逐字落那缺件表。');
   process.exit(2);
 }
 if (!Array.isArray(missing)) {
@@ -65,11 +65,11 @@ const inManifest = new Set(manifest.map((t) => String(t && t.name || '')));
 console.log('[reconcile] 清单里逐字 ' + manifest.length + ' 件；缺件表里逐字 ' + missing.length + ' 条');
 
 if (!missing.length) {
-  console.log('[reconcile] 缺件表逐字是空的 => 这一轮**没有**缺件（那清单逐字是全的）。');
+  console.log('[reconcile] 缺件表逐字是空的 => 这一轮**没有**缺件（=> 而那清单逐字是全的）。');
   process.exit(0);
 }
 
-//  缺件逐字**逐条**摆出来（ 一件、那一档、那一档的原话）。
+//  => 而那缺件逐字**逐条**摆出来（=> 而那一件、那一档、那一档的原话）。
 const byKind = new Map();
 for (const m of missing) {
   const kind = String(m && m.kind || 'unknown');
@@ -83,13 +83,13 @@ for (const [kind, list] of [...byKind.entries()].sort()) {
   }
 }
 
-//  **矛盾**那一格： 清单里逐字**有**那缺件表里的某一件、
-//    两格逐字**互相矛盾**（ 一件逐字既说「缺」又逐字在清单里）。
+//  => 而那**矛盾**那一格：=> 而那清单里逐字**有**那缺件表里的某一件、
+//    => 而那两格逐字**互相矛盾**（=> 而那一件逐字既说「缺」又逐字在清单里）。
 let conflict = 0;
 for (const m of missing) {
   const piece = String(m && m.piece || '');
   if (piece && inManifest.has(piece)) {
-    console.error('::error title=缺件表与清单矛盾::' + piece + ' 逐字在缺件表里、它逐字**又**在那清单里。');
+    console.error('::error title=缺件表与清单矛盾::' + piece + ' 逐字在缺件表里、=> 而它逐字**又**在那清单里。');
     conflict++;
   }
 }
@@ -98,7 +98,7 @@ if (conflict) {
   process.exit(1);
 }
 
-//  清单逐字**不含**那缺件表里的任何一件、 两格逐字**对得上**。
-console.log('[reconcile] 对得上：那清单逐字**不含**那缺件表里的任何一件（那缺的几件逐字**看得见**了）。');
+//  => 而那清单逐字**不含**那缺件表里的任何一件、=> 而那两格逐字**对得上**。
+console.log('[reconcile] 对得上：那清单逐字**不含**那缺件表里的任何一件（=> 而那缺的几件逐字**看得见**了）。');
 console.log('[reconcile] 而那清单逐字只含**取到**的那些件 —— 而那缺的几件逐字在 ' + missPath + ' 里。');
 process.exit(0);

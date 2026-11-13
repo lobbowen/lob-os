@@ -79,18 +79,18 @@ function capsIndex() {
   return map;
 }
 
-// 那一档 pin 记录（ 它逐字**按 id**查、 不按「最后一条」）。
+// 那一档 pin 记录（=> 而那它逐字**按 id**查、=> 而不按「最后一条」）。
 //
-// 缺陷名（C-102）**那 pin 逐字取「最后一条」、 一件逐字可能是别的那一件** ——
-//   旧版逐字是 `const k = keys[keys.length - 1]`（ **键顺序**是那生成物写的顺序、
-//     顺序逐字**不是**任何语义、 它逐字**会变**）。
-//   **后果**： 清单里**每一件**逐字都拿**同一份** pin（ url / sha256 / tag
-//     逐字全是**最后那一件**的） 设备装到别的那一件时逐字**拉错字节**。
-//   按 01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §11 归属表第 7 行逐字：
-//     「05 补 `source=ota` 的事实来源」 事实来源逐字**按件**给。
+// 缺陷名（C-102）**那 pin 逐字取「最后一条」、=> 而而那一件逐字可能是别的那一件** ——
+//   => 而那旧版逐字是 `const k = keys[keys.length - 1]`（=> 而那**键顺序**是那生成物写的顺序、
+//     => 而那顺序逐字**不是**任何语义、=> 而它逐字**会变**）。
+//   => 而那**后果**：=> 而那清单里**每一件**逐字都拿**同一份** pin（=> 而那 url / sha256 / tag
+//     逐字全是**最后那一件**的）=> 而那设备装到别的那一件时逐字**拉错字节**。
+//   => 而按 01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §11 归属表第 7 行逐字：
+//     「05 补 `source=ota` 的事实来源」=> 而那事实来源逐字**按件**给。
 function pinTable() {
-  //  读不到时逐字**报缺**（ 按 C-05「缺字段就报缺、不许猜填」）、
-  //     **不**静默当成「没有 pin」。
+  //  => 而那读不到时逐字**报缺**（=> 而按 C-05「缺字段就报缺、不许猜填」）、
+  //     => 而**不**静默当成「没有 pin」。
   try {
     const j = JSON.parse(fs.readFileSync(PIN, 'utf8'));
     const pins = j.pins || {};
@@ -102,19 +102,19 @@ function pinTable() {
     }
     return byId;
   } catch (e) {
-    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
+    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格逐字**要有**它、=> 而按 C-05 报缺。');
     return new Map();
   }
 }
 
-// 那一件**自己**的那一档 pin（ 没有逐字就是「没有」 **不**拿别的那一件顶替）。
+// 那一件**自己**的那一档 pin（=> 而那没有逐字就是「没有」=> 而**不**拿别的那一件顶替）。
 function pinEntry(pins, id) {
   if (!pins || !pins.has(id)) return null;
   return pins.get(id);
 }
 
-// 整份清单的指纹（ 它逐字是**每一件自己**的那一档 pin 的指纹逐字合起来）。
-//  旧版逐字取「最后一条」那一条（ 顺序逐字**不是**语义、 它逐字**会变**）。
+// 整份清单的指纹（=> 而那它逐字是**每一件自己**的那一档 pin 的指纹逐字合起来）。
+//  => 而那旧版逐字取「最后一条」那一条（=> 而那顺序逐字**不是**语义、=> 而它逐字**会变**）。
 function manifestFingerprint(pins) {
   if (!pins || pins.size === 0) return null;
   const parts = [...pins.entries()]
@@ -123,28 +123,28 @@ function manifestFingerprint(pins) {
   return parts.join('|');
 }
 
-// 那一份件包里**有没有**那一条（ **逐字**按条目名逐字比、 **不**按后缀）。
+// 那一份件包里**有没有**那一条（=> 而那**逐字**按条目名逐字比、=> 而**不**按后缀）。
 //
-// 缺陷名（C-102）**那匹配逐字按后缀、 后缀逐字会撞车** ——
-//   旧版逐字是 `r.stdout.split('\n').some((l) => l.trim().endsWith(rel))`
-//   **后缀**逐字**不是**那身份：
-//     · 而那 rel 逐字是 `bin/bash`、 endsWith 逐字也命中 `usr/bin/bash`、
-//       `opt/x/bin/bash`、 **任何**以 bin/bash 结尾的路径；
-//     · 而那 rel 逐字是 `libcurl.so`、 endsWith 逐字**也**命中 `lib/libcurl.so.1`
-//       （ **版本层**逐字不是同一件）。
-//   **后果**： 「这一件在不在那份包里」逐字**答错**、
-//     source 那一格逐字跟着答错（ 设备会装到别的那一份）。
+// 缺陷名（C-102）**那匹配逐字按后缀、=> 而而那后缀逐字会撞车** ——
+//   => 而那旧版逐字是 `r.stdout.split('\n').some((l) => l.trim().endsWith(rel))`
+//   => 而那**后缀**逐字**不是**那身份：
+//     · 而那 rel 逐字是 `bin/bash`、=> 而那 endsWith 逐字也命中 `usr/bin/bash`、
+//       `opt/x/bin/bash`、=> 而那**任何**以 bin/bash 结尾的路径；
+//     · 而那 rel 逐字是 `libcurl.so`、=> 而那 endsWith 逐字**也**命中 `lib/libcurl.so.1`
+//       （=> 而那**版本层**逐字不是同一件）。
+//   => 而那**后果**：=> 而那「这一件在不在那份包里」逐字**答错**、
+//     => 而那 source 那一格逐字跟着答错（=> 而那设备会装到别的那一份）。
 //
-// **逐字**该按什么比： **条目名**逐字**就是**那身份
-//   （ 件包里的相对路径、 程序形态逐字是 bin/<名>、 库形态逐字是 lib/<名>）。
+// => 而那**逐字**该按什么比：=> 而那**条目名**逐字**就是**那身份
+//   （=> 而那件包里的相对路径、=> 而那程序形态逐字是 bin/<名>、=> 而那库形态逐字是 lib/<名>）。
 function zipHas(zip, rel) {
   if (!zip || !fs.existsSync(zip) || !rel) return false;
   const r = require('node:child_process').spawnSync('unzip', ['-l', zip], { encoding: 'utf8' });
   if (r.status !== 0) return false;
   const want = String(rel).replace(/^\.\//, '');
   for (const line of String(r.stdout || '').split('\n')) {
-    //  unzip -l 那一行的格式逐字是「<长度> <日期> <时间> <名字>」
-    //     名字逐字是最后一段（ 名字里**可以**有空格、 用最后一个字段切会切错）。
+    //  => 而那 unzip -l 那一行的格式逐字是「<长度> <日期> <时间> <名字>」
+    //     => 而那名字逐字是最后一段（=> 而那名字里**可以**有空格、=> 而那用最后一个字段切会切错）。
     const m = /^\s*\d+\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+(.+)$/.exec(line);
     if (!m) continue;
     if (m[1].trim() === want) return true;
@@ -211,7 +211,7 @@ function versionOf(id) {
 function main() {
   const reg = parseRegistry();
   const byId = capsIndex();
-  //  pin 逐字**按件**查（ 逐字不是「最后一条」）。
+  //  => 而那 pin 逐字**按件**查（=> 而那逐字不是「最后一条」）。
   const pins = pinTable();
 
   const versioned = [];
@@ -242,12 +242,12 @@ function main() {
       libName: e.libName,
       source: 'apk',
     };
-    //  source=ota 那一格逐字**按件**判（ 三问逐字都要答）：
-    //     · 那**包**里逐字有没有**那一件**（ zipHas 逐字按条目名逐字比）；
-    //     · 那**事实来源**里逐字有没有**那一件**的那一档 pin（ 逐字按 id 查）；
-    //     · 而那 pin 逐字**指**的是不是**那一件**（ zip 名字逐字对得上）。
-    //  **缺一格**就逐字**留在 apk**那一侧（ 一侧逐字是「随 APK 走」）
-    //     **不**拿别的那一件的 pin 顶替（ 旧版逐字**每一件**都拿同一条）。
+    //  => 而那 source=ota 那一格逐字**按件**判（=> 而那三问逐字都要答）：
+    //     · 那**包**里逐字有没有**那一件**（=> 而那 zipHas 逐字按条目名逐字比）；
+    //     · 那**事实来源**里逐字有没有**那一件**的那一档 pin（=> 而那逐字按 id 查）；
+    //     · 而那 pin 逐字**指**的是不是**那一件**（=> 而那 zip 名字逐字对得上）。
+    //  => 而那**缺一格**就逐字**留在 apk**那一侧（=> 而那一侧逐字是「随 APK 走」）
+    //     => 而**不**拿别的那一件的 pin 顶替（=> 而那旧版逐字**每一件**都拿同一条）。
     const pin = pinEntry(pins, e.id);
     if (pin) {
       const zipName = path.basename(ZIP);
@@ -258,16 +258,16 @@ function main() {
         c.sha256 = pin.sha256;
         c.pin = pin.tag;
       } else {
-        //  pin 逐字有、 **包**里逐字没有**那一件**
-        //     source 逐字**留在 apk**、 一句逐字说出来（ 不静默）。
+        //  => 而那 pin 逐字有、=> 而那**包**里逐字没有**那一件**
+        //     => 而那 source 逐字**留在 apk**、=> 而那一句逐字说出来（=> 而不静默）。
         console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
-          '那一份件包里逐字**没有**它（那按后缀匹配的那旧版逐字**会**命中别的那一条）' +
-          '那 source 逐字留在 apk。');
+          '=> 而那一份件包里逐字**没有**它（=> 而那按后缀匹配的那旧版逐字**会**命中别的那一条）' +
+          '=> 而那 source 逐字留在 apk。');
       }
     } else {
-      //  pin 记录里逐字**没有**它 source 逐字是 apk、 **不**是缺件
-      //     （ base 筐那些件逐字就随 APK 走、 它们逐字本来就不进 OTA）。
-      console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
+      //  => 而那 pin 记录里逐字**没有**它 => 而那 source 逐字是 apk、=> 而那**不**是缺件
+      //     （=> 而那 base 筐那些件逐字就随 APK 走、=> 而它们逐字本来就不进 OTA）。
+      console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它 => 而那 source 逐字是 apk（随 APK 走）。');
     }
     components.push(c);
   }
@@ -291,10 +291,10 @@ function main() {
     version: versionString(),
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
-    //  整份清单的指纹逐字**不再**取「最后一条」那一条
-    //     （ 旧版逐字是 `pin ? pin.fingerprint : null`）
-    //     它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
-    //       （ 逐字让「这一份清单换了没有」逐字**判得出**）。
+    //  => 而那整份清单的指纹逐字**不再**取「最后一条」那一条
+    //     （=> 而那旧版逐字是 `pin ? pin.fingerprint : null`）
+    //     => 而它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
+    //       （=> 而那逐字让「这一份清单换了没有」逐字**判得出**）。
     fingerprint: manifestFingerprint(pins),
     components,
   };

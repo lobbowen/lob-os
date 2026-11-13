@@ -8,10 +8,10 @@
 #   —— 这个问题我踩过一次：资产名与内容格式不一致时，扩展名是骗人的。
 #
 #  为什么要有这一件（判据 C-994，位置 CONSTRAINTS.md 节标题「一百八十二」）：
-#   **判别源必须唯一**。 仓内曾有两套：一套在这里（fmt_of）、
-# 另一套在 fetch-prebuilt-pieces.sh 里（它自己 head -c 4 判 magic）、
-# 两套逐字**各判各的**（ 一套**没有** zip64 那一档）。
-# 现在：**这一件是唯一判别源**， 其余各处逐字**改成调它**。
+#   **判别源必须唯一**。=> 而仓内曾有两套：一套在这里（fmt_of）、
+#   => 而另一套在 fetch-prebuilt-pieces.sh 里（它自己 head -c 4 判 magic）、
+#   => 而那两套逐字**各判各的**（=> 而那一套**没有** zip64 那一档）。
+#   => 而现在：**这一件是唯一判别源**，=> 而其余各处逐字**改成调它**。
 #
 # 用法：. fmt.sh <文件>   → 打印 zip | zip64 | gzip | tar | 未知
 #
@@ -21,10 +21,10 @@
 #   fmt_outer_is_zip <文件> → 这一份**是不是**一个 zip 容器（zip/zip64 都算）
 #   fmt_inner_zip <文件>  → 「外层套内层」那一格里，**内层**那个 zip 的路径（解开了才有）
 #
-# 而「哪一层才算那一颗件」那一问**不**是这一件答的（ 是 01 裁的判别形式）。
+# 而「哪一层才算那一颗件」那一问**不**是这一件答的（=> 而那是 01 裁的判别形式）。
 
 # 头四字节（逐位十六进制、逐字不带空格）。
-# 它逐字是「那**头**是什么」那一格（ 不是「那**内容**是什么」那一格）。
+#   => 而它逐字是「那**头**是什么」那一格（=> 而不是「那**内容**是什么」那一格）。
 fmt_magic() {
   local f="$1"
   [ -s "$f" ] || { echo ""; return 1; }
@@ -32,7 +32,7 @@ fmt_magic() {
 }
 
 # 这一份是不是一个 zip 容器（zip32 与 zip64 都算）？
-# 它逐字只看那**头四字节**（ 504b0304 逐字是 zip 的本地文件头魔数）。
+#   => 而它逐字只看那**头四字节**（=> 而那 504b0304 逐字是 zip 的本地文件头魔数）。
 fmt_outer_is_zip() {
   local f="$1" m
   [ -s "$f" ] || return 1
@@ -44,12 +44,12 @@ fmt_outer_is_zip() {
 }
 
 # 这一份是不是 zip64？
-# zip64（单包 >4 GiB 或条目数 >65535 时 zip 才写它）那几格逐字是哨兵值
+#   => 而 zip64（单包 >4 GiB 或条目数 >65535 时 zip 才写它）那几格逐字是哨兵值
 #      （条目数 0xffff、目录大小与目录偏移 0xffffffff），
-# 真实的逐字在 zip64 EOCD 里、 zip64 定位器（魔数 0x07064b50）
+#      => 而那真实的逐字在 zip64 EOCD 里、=> 而那 zip64 定位器（魔数 0x07064b50）
 #      逐字**在**那 EOCD **前面 20 字节**。
-# 这一段逐字**只读尾部**（ 64 KiB + 22 字节），
-# **不整读**（ 8.4 GB 那一颗整读逐字会 ERR_FS_FILE_TOO_LARGE）。
+#   => 而这一段逐字**只读尾部**（=> 而那 64 KiB + 22 字节），
+#      => 而**不整读**（=> 而那 8.4 GB 那一颗整读逐字会 ERR_FS_FILE_TOO_LARGE）。
 fmt_is_zip64() {
   local f="$1"
   [ -s "$f" ] || return 1
@@ -75,8 +75,8 @@ try {
     process.stdout.write("zip32"); process.exit(0);
   }
   const loc = e >= 20 ? tail.readUInt32LE(e - 20) : 0;
-  //  **定位器不在位**时（ 哨兵逐字在位、 定位器逐字坏了）
-  //     01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「**那一档必须单独报、不许当 zip 处理**」。
+  //  => 而那**定位器不在位**时（=> 而那哨兵逐字在位、=> 而那定位器逐字坏了）
+  //     => 而 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「**那一档必须单独报、不许当 zip 处理**」。
   process.stdout.write(loc === 0x07064b50 ? "zip64" : "zip64-sentinel-no-locator");
 } catch (e) {
   process.stdout.write("unreadable");
@@ -85,10 +85,10 @@ try {
 }
 
 # 中央目录里那一条一条（名字 + 未压缩大小 + 压缩大小），一条一行。
-# 它逐字**只读中央目录那一段**（ 一段不是内容、 它通常很小），
-# **不整读**。
-# zip64 那几格逐字是哨兵值时， 真实的逐字在中央目录项的 zip64 扩展字段里
-#      （ 个扩展字段的头两个字节逐字是 0x0001）。
+#   => 而它逐字**只读中央目录那一段**（=> 而那一段不是内容、=> 而它通常很小），
+#      => 而**不整读**。
+#   => 而 zip64 那几格逐字是哨兵值时，=> 而那真实的逐字在中央目录项的 zip64 扩展字段里
+#      （=> 而那个扩展字段的头两个字节逐字是 0x0001）。
 fmt_zip_entries() {
   local f="$1"
   [ -s "$f" ] || return 1
@@ -96,7 +96,7 @@ fmt_zip_entries() {
 const fs = require("node:fs");
 let fd;
 try { fd = fs.openSync(process.argv[1], "r"); } catch (e) { process.exit(1); }
-const readAt = (pos, len) {
+const readAt = (pos, len) => {
   if (len <= 0) return Buffer.alloc(0);
   const b = Buffer.allocUnsafe(len);
   let got = 0;
@@ -167,15 +167,15 @@ try {
 ' "$f"
 }
 
-# 「外层套内层」那一格里，**内层**那些 zip 的路径（ **全部**、 不取第一个）。
-# 它逐字**先把外层解开**（ 外层逐字可能是 gzip、 也可能是 zip），
-# 再在那解开的地方逐字**找**那些内层 zip。
-# 「哪一层才算那一颗件」那一问**不**在这里答（ 是 01 裁的判别形式）：
-# **挑选**规则逐字按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3：
+# 「外层套内层」那一格里，**内层**那些 zip 的路径（=> 而那**全部**、=> 而不取第一个）。
+#   => 而它逐字**先把外层解开**（=> 而那外层逐字可能是 gzip、=> 而也可能是 zip），
+#      => 而再在那解开的地方逐字**找**那些内层 zip。
+#   => 而「哪一层才算那一颗件」那一问**不**在这里答（=> 而那是 01 裁的判别形式）：
+#     => 而那**挑选**规则逐字按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3：
 #        「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
-# **名字 glob 只当第一道粗筛**」、
-# 「**零个候选与多过一个候选都判红、不取第一个**」。
-# 本函数逐字**只**给出那些候选（ **挑**那一格逐字在 fmt_pick_inner_zip）。
+#         => 而**名字 glob 只当第一道粗筛**」、
+#        => 而「**零个候选与多过一个候选都判红、不取第一个**」。
+#     => 而本函数逐字**只**给出那些候选（=> 而那**挑**那一格逐字在 fmt_pick_inner_zip）。
 fmt_inner_zip_candidates() {
   local f="$1" work="$2" m
   [ -s "$f" ] || return 1
@@ -188,14 +188,14 @@ fmt_inner_zip_candidates() {
     *) return 1 ;;
   esac
   local z
-  # **同一个**文件逐字可能**命中**那几条 glob 里的**好几条**
-  #     （ component-*.zip 逐字也命中 *.zip、 */component-*.zip 逐字也命中 */ *.zip）
-  # 重复逐字会让下面那个「候选数」逐字**数多**、 判红是**假**的。
-  # 所以这一处逐字**去重**（ 逐字按**真实路径**去重、 不按名字）。
+  #  => 而那**同一个**文件逐字可能**命中**那几条 glob 里的**好几条**
+  #     （=> 而那 component-*.zip 逐字也命中 *.zip、=> 而那 */component-*.zip 逐字也命中 */ *.zip）
+  #     => 而那重复逐字会让下面那个「候选数」逐字**数多**、=> 而那判红是**假**的。
+  #     => 而所以这一处逐字**去重**（=> 而那逐字按**真实路径**去重、=> 而不按名字）。
   local seen=" "
   for z in "$work"/component-*.zip "$work"/*/component-*.zip "$work"/*.zip "$work"/*/*.zip; do
     [ -f "$z" ] || continue
-    # **按字节**筛（ 候选逐字**头四字节**是 504b* 的那一个才算 zip 容器）。
+    #  => 而那**按字节**筛（=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器）。
     case "$(fmt_magic "$z")" in 504b*) ;; *) continue ;; esac
     local real
     real="$(cd "$(dirname "$z")" && pwd)/$(basename "$z")"
@@ -206,44 +206,44 @@ fmt_inner_zip_candidates() {
   return 0
 }
 
-# 那一颗件**在哪一层**（ 是那唯一判别源、 按 01 裁的
+# 那一颗件**在哪一层**（=> 而那是那唯一判别源、=> 而按 01 裁的
 # S607-01-CONTAINER-FORM-RULING.md §2.1 那张表 + §3.1 逐字）。
 #
 # 缺陷名（C-102）**「按内容挑内层」那一格只覆盖了「外层套内层」那一档，
 #   而「外层即件包」那一档被一并套进了同一个挑法** ——
-# 旧版逐字**只有**「解开外层、 在解开处找内层」那一步，
-# 八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
-#       逐字是**外层自己就是那一颗件**（ Release 资产逐字**就是**那件包本身），
-# 它们**没有内层**、 按内容挑逐字**挑不出**任何候选
-#       （ 真机读数逐字是「那候选逐字是 无」）。
-# 01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
-#     「**内层那一颗件包才算**。**外层不是那一颗件**（ **除非外层自己逐字含 component-meta.json**）」
-# **后半句**逐字就是这一档、 实现里逐字**没有实现那后半句**。
+#   => 而那旧版逐字**只有**「解开外层、=> 而在解开处找内层」那一步，
+#     => 而那八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
+#       逐字是**外层自己就是那一颗件**（=> 而那 Release 资产逐字**就是**那件包本身），
+#       => 而它们**没有内层**、=> 而按内容挑逐字**挑不出**任何候选
+#       （=> 而那真机读数逐字是「那候选逐字是 无」）。
+#   => 而 01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
+#     「**内层那一颗件包才算**。**外层不是那一颗件**（=> 而那**除非外层自己逐字含 component-meta.json**）」
+#     => 而那**后半句**逐字就是这一档、=> 而那实现里逐字**没有实现那后半句**。
 #
-# **三步**（逐字）：
-#   第 1 步：解开外层 **外层根目录**逐字有没有 component-meta.json
-# **有** **外层自己就是那一颗件**（档一） 它的 `id` 逐字要等于要取的件名
-#               （ 不对 判红）；
-#   第 2 步：外层**没有** component-meta.json 走「外层套内层」那一档：
-#            按内容挑内层（ 候选逐字含 component-meta.json、 它的 `id` 逐字等于件名；
-# **零个或多个都判红、不取第一个**）；
-#   第 3 步：gzip / tar 那一档 **先解开 tar**、 再对解开处逐字走第 1 步与第 2 步。
+# => 而那**三步**（逐字）：
+#   第 1 步：解开外层 => 而那**外层根目录**逐字有没有 component-meta.json
+#            => 而**有** => 而那**外层自己就是那一颗件**（档一）=> 而那它的 `id` 逐字要等于要取的件名
+#               （=> 而不对 => 判红）；
+#   第 2 步：外层**没有** component-meta.json => 而那走「外层套内层」那一档：
+#            按内容挑内层（=> 而那候选逐字含 component-meta.json、=> 而它的 `id` 逐字等于件名；
+#            => 而**零个或多个都判红、不取第一个**）；
+#   第 3 步：gzip / tar 那一档 => 而那**先解开 tar**、=> 而再对解开处逐字走第 1 步与第 2 步。
 #
 # 用法：fmt_pick_piece <文件> <解开到哪儿> <件名>
-# stdout 逐字是那**一颗件包**的路径、 stderr 逐字是那**为什么**没有。
+#   => 而那 stdout 逐字是那**一颗件包**的路径、=> 而那 stderr 逐字是那**为什么**没有。
 fmt_pick_piece() {
   local f="$1" work="$2" want="$3"
   [ -n "$want" ] || { echo "用法: fmt_pick_piece <文件> <解开到哪儿> <件名>" >&2; return 2; }
   [ -s "$f" ] || { echo "那一份是空的" >&2; return 1; }
   local m
   m="$(fmt_magic "$f")"
-  # 第 3 步：gzip / tar 那一档 **先解开 tar**。
+  #  => 而那第 3 步：gzip / tar 那一档 => 而那**先解开 tar**。
   case "$m" in
     1f8b*) tar xzf "$f" -C "$work" 2>/dev/null || { echo "那 gzip 解不开" >&2; return 1; } ;;
-    504b*) : ;;   #   zip 那一档逐字**不**解开（第 1 步逐字看那外层**自己**）
+    504b*) : ;;   #  => 而那 zip 那一档逐字**不**解开（=> 而那第 1 步逐字看那外层**自己**）
     *) return 1 ;;
   esac
-  # 第 1 步：外层**自己**是不是那一颗件。
+  #  => 而那第 1 步：外层**自己**是不是那一颗件。
   case "$m" in
     504b*) ;;
     *) : ;;
@@ -251,7 +251,7 @@ fmt_pick_piece() {
   if [ "${m#504b}" != "$m" ]; then
     local outer_id
     outer_id="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     if [ -n "$outer_id" ]; then
@@ -259,14 +259,14 @@ let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**外层自己**就是那一颗件、它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那**外层自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   else
-    # gzip / tar 那一档： 解开处逐字**自己**含 component-meta.json 吗
+    #  => 而那 gzip / tar 那一档：=> 而那解开处逐字**自己**含 component-meta.json 吗
     local outer_id
     outer_id="$(cat "$work"/component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     if [ -n "$outer_id" ]; then
@@ -274,18 +274,18 @@ let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**解开处自己**就是那一颗件、它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那**解开处自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   fi
-  # 第 2 步：外层套内层 按内容挑、 零个或多个都判红、 不取第一个。
+  #  => 而那第 2 步：外层套内层 => 而那按内容挑、=> 而那零个或多个都判红、=> 而不取第一个。
   local cands n id hit ids
   cands="$(fmt_inner_zip_candidates "$f" "$work/.inner")"
   n=0; hit=""; ids=""
   while IFS= read -r c; do
     [ -n "$c" ] || continue
     id="$(unzip -p "$c" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     [ -n "$id" ] || continue
@@ -307,8 +307,8 @@ let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
   return 0
 }
 
-# 「外层套内层」那一格里，**内层**那个 zip 的路径（ 是那**第一个**候选、
-# **只**给取证用、 **挑选**那一格逐字用 fmt_pick_inner_zip）。
+# 「外层套内层」那一格里，**内层**那个 zip 的路径（=> 而那是那**第一个**候选、
+#   => 而那**只**给取证用、=> 而那**挑选**那一格逐字用 fmt_pick_inner_zip）。
 fmt_inner_zip() {
   local f="$1" work="$2" m
   [ -s "$f" ] || return 1
@@ -330,13 +330,13 @@ fmt_inner_zip() {
   return 1
 }
 
-# 那一份的**形态名**（ 它逐字就是 fmt_of 那一档）。
+# 那一份的**形态名**（=> 而那它逐字就是 fmt_of 那一档）。
 fmt_name_of() {
   fmt_of "$1"
 }
 
-# 那一份的**外层中央目录条目数**（ 它逐字是那中央目录里那几条）。
-# 读不到时逐字是 -1（ -1 逐字答的是「算不出来」、 不是 0）。
+# 那一份的**外层中央目录条目数**（=> 而那它逐字是那中央目录里那几条）。
+#   => 而那读不到时逐字是 -1（=> 而那 -1 逐字答的是「算不出来」、=> 而不是 0）。
 fmt_outer_entries_of() {
   local f="$1" n
   n="$(fmt_zip_entries "$f" 2>/dev/null | grep -c . || true)"
@@ -350,13 +350,13 @@ fmt_of() {
   m="$(fmt_magic "$f")"
   case "$m" in
     504b*)
-      # zip32 与 zip64 逐字**分**开报（ zip64 那一档是这一件补上的、
-      # 它逐字来自 generate-native-capabilities-pin.js 那一处判别逻辑、
-      # 现在那逻辑**归到**这一件、 一处**改成调它**）。
+      #  => 而 zip32 与 zip64 逐字**分**开报（=> 而那 zip64 那一档是这一件补上的、
+      #     => 而它逐字来自 generate-native-capabilities-pin.js 那一处判别逻辑、
+      #     => 而现在那逻辑**归到**这一件、=> 而那一处**改成调它**）。
       case "$(fmt_is_zip64 "$f")" in
         zip64) echo "zip64"; return 0 ;;
-        # **哨兵在位但定位器坏了**那一档逐字**单独报**
-        #     （ 按 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「不许当 zip 处理」）。
+        #  => 而那**哨兵在位但定位器坏了**那一档逐字**单独报**
+        #     （=> 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md 逐字「不许当 zip 处理」）。
         zip64-sentinel-no-locator) echo "zip64-定位器坏了"; return 1 ;;
         *)     echo "zip"; return 0 ;;
       esac ;;

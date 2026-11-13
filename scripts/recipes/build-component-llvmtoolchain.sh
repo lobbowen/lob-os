@@ -7,12 +7,22 @@ cd "$HERE/../.."
 ROOT_DIR="$(pwd)"
 
 OUT="${OUT:-dist}"
-#  缺陷名 C-102：同一个 TOOL 字面在两处指两样东西：一边是「这一件叫什么」（件名，服务打包与取件），
-#   一边是「件里那些程序叫什么」（件内 bin/ 下的名字，服务调用）。两边各答一件事，按 C-135 不是同一问、不合并。
-#  这一处的 TOOL 服务打包与取件（产物文件名、sources 的键、Release tag），件名是 llvm：
-#   package-component.sh:8 取位置参数、build-llvmtoolchain.yml:296 传 llvm、package-component.sh:83 的 ZIP 含 llvm 不含 llvmtoolchain。
-#  「llvmtoolchain」是 recipe 名 / workflow 名 / 文件名那一族（fetch-component-artifacts.sh:56、cache-key.sh:197），它不是件名。
-#  按 S606-01-ALIAS-BIN-KEY-RULING.md §5.1 第 3 条取形式乙（TOOL 改成 llvm）；形式甲（只改 TOOL、delete 照旧）不够：删 bin["llvm"] 仍删不到东西。
+#  缺陷名（C-102）**同一个 TOOL 字面在两处指的是两样东西** ——
+#   而这一族它为什么有两边：一边是「这一件**叫什么**」（件名那一格，服务打包与取件）、
+#   另一边是「这一件**里那些程序叫什么**」（件内 bin/ 下那些项的名字，服务调用）。
+#   => 而这两边各答一件事、=> 而按 C-135 那不是同一问、=> 而那**不该合并**。
+#   => 而这一处的 TOOL 逐字服务的是**打包与取件**（产物文件名、sources 的键、Release tag），
+#      => 而那件名逐字是 **llvm**（package-component.sh:8 逐字取的是位置参数、
+#      => 而调用方 build-llvmtoolchain.yml:296 逐字传的是 llvm、
+#      => 而 package-component.sh:83 逐字 ZIP="dist/component-${TOOL}-..." 逐字含 llvm 不含 llvmtoolchain）。
+#   => 而「llvmtoolchain」逐字是**recipe 名 / workflow 名 / 文件名**那一族
+#      （fetch-component-artifacts.sh:56 的 build-llvmtoolchain.yml、
+#      => 而 cache-key.sh:197 的 scripts/recipes/build-component-llvmtoolchain.sh），
+#      => 而它**不是**件名。
+#   => 而按 01 裁的 S606-01-ALIAS-BIN-KEY-RULING.md §5.1 第 3 条：这两个 TOOL 字面该统一，
+#      => 而本处取**形式乙**（TOOL 改成 llvm）：§4.3 逐字「两处都要落在同一个字面上，
+#      => 而否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」，
+#      => 而形式甲（只改 TOOL、delete 照旧）逐字不够（§5.1 逐字「删 bin["llvm"] 仍删不到东西」）。
 TOOL="llvm"
 ABI="${ABI:-arm64-v8a}"
 API="${ANDROID_API:-35}"
@@ -41,14 +51,18 @@ NINJA="${NINJA:-ninja}"
 for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
   [ -x "$t" ] || die "缺工具" "$t 不存在"
 done
-#  缺陷名 C-102：检查只看 recipe 自己的变量，而 CMake 要 ninja 在 PATH 上面。
-#  成因：`command -v "$NINJA"` 对绝对路径也是真（退出码 0），只证明文件在、不证明在 PATH 上面；
-#   CMake 要的是 PATH 上面（阳性对照：不在 PATH 上时报
-#   「CMake Error: CMake was unable to find a build program corresponding to Ninja.」）。
-#  处置：工具要能在 PATH 上面找到（绝对路径也算），缺的那一句要说清它要什么。按 C-104：工具检查只有一条路。
+#  缺陷名（C-102）**那一格逐字**只**看**那 recipe **自己**的**那**变量**、=> 而而那 CMake 逐字**要**那 ninja **在**那 PATH **上面**
+#    => 而它治**的**是「那**缺**的**那一句**说得**对不对**」。
+#    => 而那**成因**：=> 而那 command -v "$NINJA" 对**绝对路径**逐字**也**是**真**的（=> 而那退出码 = 0、
+#       => 而那**它**逐字**只**证明**那**文件**在**、=> 而那**它**逐字**不**证明**那**它**在**那 PATH **上面**）、
+#       => 而那 CMake 逐字**要**的**是**那 PATH **上面**（=> 而那**阳性对照**：=> 而那**不在**那 PATH **上面**时
+#       => 而那 CMake 逐字**报**那「CMake Error: CMake was unable to find a build program corresponding to Ninja.」）。
+#    => 而那**处置**：=> 而那**工具**逐字**要**在**那 PATH **上面**有**它**（=> 而那**绝对路径**逐字**也**算**），
+#       => 而那**缺**的**那一句**逐字**说**清**那**它**逐字**要**什么**。
+#    => 而按 C-104：=> 而那**工具**检查那一族逐字**只有**一条路（=> 而这一支**就是**它**）。
 for t in "$CMAKE" "$NINJA"; do
-  # 工具要在 PATH 上面（CMake 只在 PATH 上面找它）。
-  # command -v 对绝对路径也是真，判不了它在不在 PATH 上面。
+  #  => 而那**它**逐字**要**在**那 PATH **上面**（=> 而那 CMake 逐字**只**在**那 PATH **上面**找**它**）
+  #     => 而那 command -v 对**绝对路径**逐字**也**是**真**的、=> 而那**它**逐字**不**能**判**那**它**在不在**那 PATH **上面**。
   _found=""
   _base="$(basename "$t")"
   _IFS_save="$IFS"; IFS=":"; for _d in $PATH; do
@@ -56,10 +70,10 @@ for t in "$CMAKE" "$NINJA"; do
     if [ -x "$_d/$_base" ]; then _found="$_d/$_base"; break; fi
   done; IFS="$_IFS_save"
   if [ -z "$_found" ]; then
-    # 绝对路径那一族也要在 PATH 上面（CMake 要它）。
+    #  => 而那**绝对路径**的**那一族**逐字**也**要**在**那 PATH **上面**（=> 而那 CMake 逐字**要**它**）
     die "缺工具" \
       "$t 没有 —— 编 LLVM 要 cmake + ninja（runner 预装；缺了请 sudo apt-get install -y cmake ninja-build）；
-      **它**逐字**要**在**那 PATH **上面**、 CMake 逐字**只**在**那 PATH **上面**找**它**"
+      => 而那**它**逐字**要**在**那 PATH **上面**、=> 而那 CMake 逐字**只**在**那 PATH **上面**找**它**"
   fi
 done
 
@@ -110,14 +124,16 @@ if [ ! -d "$SRC/llvm" ]; then
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xJf "$TGZ" -C "$SRC" --strip-components=1 \
     || die "解包失败" "$TGZ —— 格式是否与 .tar.xz 相符？"
-  #  缺陷名 C-102：源码包解完就留在磁盘上，而它没有任何后续要读它的地方——
-  #  解包出来的那一份已经在 $SRC 里。LLVM 源码包是 171 MiB 那一档，解包出来更大。
-  #  目标编要宿主磁盘，不该与源码包挤在同一块盘上。
+  #  缺陷名（C-102）**那源码包逐字解完就留在那磁盘上** —— => 而而它逐字**没有**任何**后续**要**读**它**
+  #  => 而那**解包**出来的那一份（=> 而它是那 .tar.xz 展开的**同一**份内容）逐字**已经**在 $SRC **里面**了。
+  #  => 而那 LLVM 源码包逐字是 **171 MiB** 那一档、=> 而那**解包**出来的那一份**更大**。
+  #  => 而那**目标编**那一族逐字**要**那**宿主**磁盘、=> 而它逐字**不该**与那**源码包**挤**在**那**同一**块**盘**上**。
   rm -f "$TGZ"
   note "源码包已删（解包出来的那一份已经在 $SRC 里）—— 不给它留一份重复的"
 fi
-#  缺陷名 C-102：源码包在每一趟都可能留在磁盘上——它是压缩副本，$SRC 已在位的那一趟也可能留着它。
-#  处置：.tar.xz 每一趟都删，$SRC 留着（它是目标编的输入）。
+#  缺陷名（C-102）**那源码包逐字在每一次跑的时候都可能留在那磁盘上** —— => 而而它逐字是那压缩副本、
+#  => 而它逐字在那 $SRC 已经在位的那一趟里也可能留着（=> 而那一趟解包失败就留下了它）。
+#  => 而那处置：=> 而那 .tar.xz 每一趟都删、=> 而那 $SRC 留着（=> 而它是那目标编的输入）。
 rm -f "$WORK/llvm.src.tar.xz"
 [ -f "$SRC/llvm/CMakeLists.txt" ] || die "源码树异常" "缺 llvm/CMakeLists.txt —— 拿到的不是 llvm-project"
 note "源码就位：$(cat "$SRC/llvm/CMakeLists.txt" 2>/dev/null | grep -m1 -o 'project(LLVM)' || echo 'llvm-project')"
@@ -129,22 +145,36 @@ mkdir -p "$BUILD"
 HOST_TB="$WORK/host-tblgen"
 rm -rf "$HOST_TB"
 note "先编宿主版 tblgen —— 不做这步，LLVM 的 build_native_tool 会把交叉编出来的 llvm-min-tblgen 放进 NATIVE/bin，然后在 x86_64 构建机上执行 aarch64 产物（Exec format error）。"
-#  缺陷名 C-102：这一格取错了对象。LLVM 21.1.0 的 TableGen.cmake 里 `if (LLVM_USE_HOST_TOOLS)`（第 207 行）包住
-#   build_native_tool(${target} ${project}_TABLEGEN_EXE DEPENDS ${target})，这是唯一把宿主工具装到 ${project}_TABLEGEN_EXE 的地方，
-#   外面没有 else（第 226 行是它的 endif）。LLVM_USE_HOST_TOOLS=OFF 时不被宿主那份接管：llvm-min-tblgen 走 build_native_tool 自建
-#   （aarch64 交叉产物），在 x86_64 构建机上执行报「Exec format error」（40154442601 那一趟实测）。
-#  LLVM_TABLEGEN 只对 llvm-min-tblgen 生效、且要求不是 llvm-tblgen，我们那格正是 llvm-tblgen，接管不了它。
-#  处置：LLVM_USE_HOST_TOOLS=ON（让宿主那份接管，build_native_tool 不再自建）。这是上游开关，不改上游源码。
+# [!] 缺陷名（C-102）**这一格取错了对象** —— 而而 LLVM 21.1.0 那一族的 TableGen.cmake 逐字是：
+#     if (LLVM_USE_HOST_TOOLS)                        （=> 而那是第 207 行）
+#       if( ${${project}_TABLEGEN} STREQUAL "${target}" )
+#         build_native_tool(${target} ${project}_TABLEGEN_EXE DEPENDS ${target})
+#   => 而那个 if 块**是唯一**把宿主工具装到 ${project}_TABLEGEN_EXE 的地方，
+#   => 而它的**外面**没有 else（=> 而第 226 行就是那个 if 的 endif）。
+#   => 而所以 LLVM_USE_HOST_TOOLS=OFF 时，=> 而那一格**不被宿主那份**接管，
+#   => 而 llvm-min-tblgen 走 build_native_tool 自建（=> 而那是**交叉**产物，=> 而那是 aarch64），
+#   => 而它在 x86_64 构建机上被执行时逐字是「Exec format error」（=> 而 40154442601 那一趟实测）。
+#   => 而 LLVM_TABLEGEN 那一格**只**对 llvm-min-tblgen 生效，=> 而且它要「不是 llvm-tblgen」才生效（=> 而那一行逐字是
+#     AND NOT "${LLVM_TABLEGEN}" STREQUAL "llvm-tblgen"）—— => 而我们那一格**正是** llvm-tblgen，
+#   => 而所以那一格**也**不接管 llvm-min-tblgen。
+#   => 而**处置**：LLVM_USE_HOST_TOOLS=ON（=> 而那一格让宿主那份接管，=> 而 build_native_tool 不再自建）。
+#   => 而那一处是**上游**的开关，=> 而不改上游源码。
 note "  注意：不能只靠「不设 toolchain 文件」—— locate-ndk.sh 注入的 CC/CXX 在环境里，CMake 会直接采用它们，于是宿主构建也编成 aarch64（实测 host-tblgen/bin/llvm-min-tblgen: Exec format error）。要显式覆盖。"
 command -v cc >/dev/null 2>&1 || die "缺宿主 cc" \
   "编宿主 tblgen 需要宿主编译器；runner 自带 /usr/bin/cc。缺了请 apt-get install build-essential"
 command -v c++ >/dev/null 2>&1 || die "缺宿主 c++" "同上"
-#  缺陷名 C-102：宿主那一支也把 clang 与 lld 打开了，而它只需要 tblgen 那几件。
-#  clang 那一族拉进 legacy pass manager（llvm::Pass / llvm::ModulePass / llvm::FunctionPass / llvm::PassRegistry），LLVM 21 已删（LLVM 17 之后就没有）。
-#  后果：宿主那一支编出来的 libLLVM 缺那一族符号，交叉那一支链接时报
-#   「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」（40161547449 那一趟 26 条，全是 legacy pass manager）。
-#  处置：宿主那一支只开它要的那一件（clang-tblgen 要 clang 那一族，lld 不要、也不参与那几件 tblgen）。
-#  注意：这段注记必须在命令外面，不能放在反斜杠续行中间（会断掉续行，报 line 136: -DLLVM_ENABLE_PROJECTS=clang: command not found）。
+#  缺陷名（C-102）**宿主那一支也把 clang 与 lld 打开了** —— => 而它**只需要** tblgen 那几件。
+#   而 clang 那一族**拉进** legacy pass manager（=> 而 llvm::Pass / llvm::ModulePass /
+#   llvm::FunctionPass / llvm::PassRegistry 那一族），=> 而 LLVM 21 那一版**已经删了**它们
+#   （=> 而 LLVM 17 之后就没有了）。
+#   => 而后果：宿主那一支**自己**编出来的 libLLVM 缺那一族符号 => => 而交叉那一支链接时
+#      逐字是「ld.lld: error: undefined symbol: llvm::Pass::~Pass()」
+#      （=> 而 40161547449 那一趟逐字 26 条那一种，=> 而它们**逐字全是** legacy pass manager 那一族）。
+#   => 而处置：宿主那一支**只**开它要的那一件（=> 而 clang-tblgen 那一件**要** clang 那一族，
+#      => 而 lld **不**要、=> 而它**也不**参与那几件 tblgen）。
+#   => 而注意：这一段注记**必须**在命令**外面**、=> 而它**不能**放在反斜杠续行**中间**
+#      （=> 而那会**断掉**续行、=> 而下一行逐字被当成一条新命令、=> 而那一趟逐字是
+#         「scripts/recipes/build-component-llvmtoolchain.sh: line 136: -DLLVM_ENABLE_PROJECTS=clang: command not found」）。
 env -u CC -u CXX -u CMAKE_TOOLCHAIN_FILE -u ANDROID_NDK -u ANDROID_NDK_HOME \
   cmake -S "$SRC/llvm" -B "$HOST_TB" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
@@ -183,21 +213,47 @@ for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do
 done
 note "宿主 tblgen 就位：$NATIVE_DIR（$(ls "$NATIVE_DIR" | tr '\n' ' ')）"
 
-#  缺陷名 C-102：编 LLVM 要宿主磁盘，四笔里没一支管它。40247630569 那一趟红在
-#  「No space left on device」（job = failure、第 9 步 in_progress、第 13/14/15 步 pending，编本身没报错）。
-#  占空间的是宿主 tblgen 那一棵（$HOST_TB）：建在 :98，目标编在 :281 时它还在盘上，而它在 :165 之后再没被读到过——
-#  真正还要的只有那 4 个可执行文件，已在 $NATIVE_DIR 里（:212 / :213 两个 cmake 开关、:254 拷贝、:269 / :287 取证）。
-#  处置：$HOST_TB 在那 4 个拷贝出去之后就删掉，目标编开始时盘上只剩目标那一棵；代价是它再也不能重编（:99 是重来入口）。
-#  按 C-103 两边：「$HOST_TB 还要不要留」与「$BUILD 会长多大」各答一件事（C-135）；按 C-104 删只有一条路；按 C-220 04 那边落内容稿。
+#  缺陷名（C-102）**那编 LLVM 那一族逐字要那宿主磁盘、=> 而而那四笔逐字没一支管它**
+#    —— 而实际上那 40247630569 那一趟逐字**红**在那一句
+#    「Unhandled exception. System.IO.IOException: No space left on device」（=> 而那 job 逐字
+#    = completed / failure、=> 而那第 9 步逐字 = in_progress、=> 而那第 13 与 14 与 15 步
+#    逐字 = pending、=> 而那**编**本身逐字**没**报错）。
+#  => 而那**具体**是**哪**一族占的空间：=> 而那**宿主 tblgen** 那一棵（$HOST_TB）
+#    逐字**建**在 :98、=> 而那**目标编**那一族逐字**发生**在 :281（=> 而那 $HOST_TB
+#    逐字**还**在**那磁盘**上）、=> 而那 $HOST_TB **那一整棵**构建树逐字**在** :165 之后
+#    **就**再**也**没有**被**读**到**了（=> 而那**真正**还**要**的**只有**那 4 个
+#    可执行文件、=> 而它们逐字**已经**在 $NATIVE_DIR **里面**、=> 而那 $NATIVE_DIR 逐字
+#    **后面**还**要**用：:212 / :213 那**两**个 cmake 开关、:254 那一行拷贝、
+#    :269 / :287 那一段取证）。
+#  => 而那**处置**：=> 而那 $HOST_TB 逐字**在**那 4 个**拷贝**出去**之后**就**删掉**、
+#    => 而那**目标编**那一族逐字**开始**的时候那磁盘**上**只**剩**那**目标**那一棵。
+#  => 而那**代价**：=> 而那 $HOST_TB 逐字**再**也**不能**重**编**（=> 而它**要**重**编**
+#    就**要** rm -rf 重**来**一遍、=> 而那 :99 那一行逐字**就是**那个**入口**）。
+#  => 而按 C-103 那两边：「那 $HOST_TB 逐字**还**要**不要**留**」与「那 $BUILD 那一棵逐字
+#    **会**长**多**大**」=> 而那两边各答一件事、=> 而处置不一样、=> 而按 C-135 那不是同一问。
+#  => 而按 C-104：=> 而那**删**那一族逐字**只有**一条路、=> 而那**不是**第二种生成路径。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
 rm -rf "$HOST_TB"
 note "宿主 tblgen 构建树已删（只留 $NATIVE_DIR 那 4 个可执行文件）—— 目标编那一族开始前先把磁盘腾出来"
 
-#  缺陷名 C-102：这一族多编了一个不需要的 target。它拖进来的符号是 LLVM 21 已删的那一族
-#  （llvm::Pass / llvm::ModulePass / llvm::FunctionPass / llvm::PassRegistry / llvm::Instruction::eraseFromParent /
-#   llvm::Value::replaceAllUsesWith / llvm::Constant::getNullValue / llvm::Module::getNamedMetadata），是那 4 个测试 pass 的 vtable 拖进来的。
-#  那个 target 是 tools/bugpoint-passes（给 bugpoint 用的测试 pass），不受 LLVM_INCLUDE_TESTS 管、受 LLVM_BUILD_TOOLS 管
-#  （`if( NOT LLVM_BUILD_TOOLS ) set(EXCLUDE_FROM_ALL ON) endif()`），LLVM_INCLUDE_TESTS=OFF 已开它还是被编；开关名 LLVM_TOOL_BUGPOINT_PASSES_BUILD=OFF。
-#  bugpoint 不在 NEED_BIN 一族里、仓内零命中，只是副产品不交付；宿主那一支不用加这档。注记必须放在命令外面（原因同 :136 那一类报错）。
+#  缺陷名（C-102）**这一族多编了一个不需要的 target** —— => 而而那一族拖进来的那一批符号
+#    逐字是 LLVM 21 那一版**已经删了**的那一族（=> 而 llvm::Pass / llvm::ModulePass /
+#    llvm::FunctionPass / llvm::PassRegistry 那一族、=> 而 llvm::Instruction::eraseFromParent /
+#    llvm::Value::replaceAllUsesWith / llvm::Constant::getNullValue / llvm::Module::getNamedMetadata
+#    那一族逐字是**被**那 4 个测试 pass 的 vtable **拖进来的**间接依赖）。
+#    => 而那个 target 逐字是 tools/bugpoint-passes（=> 而 LLVM 源码里**给 bugpoint 用的测试 pass**），
+#    => 而它逐字**不由** LLVM_INCLUDE_TESTS 那一档管（=> 而那逐字是 LLVM_BUILD_TOOLS 那一档：
+#       if( NOT LLVM_BUILD_TOOLS ) set(EXCLUDE_FROM_ALL ON) endif()）。
+#    => 而 LLVM_INCLUDE_TESTS=OFF 逐字**已经**开着、=> 而那个 target 逐字**还是**被编了。
+#    => 而那个开关名逐字是 LLVM_TOOL_BUGPOINT_PASSES_BUILD=OFF
+#       （=> 而 bugpoint-passes -> BUGPOINT_PASSES 那一步逐字是 canonicalize_tool_name 的
+#          减号变下划线再 TOUPPER、=> 而 llvm_add_implicit_projects 逐字判 ${project}_TOOL_${name}_BUILD）。
+#    => 而 bugpoint 那个可执行文件逐字**不在** NEED_BIN 那一族里、=> 而仓内逐字**零命中**、
+#       => 而它逐字只是一个**副产品**、=> 而那一件逐字不交付它。
+#    => 而宿主那一支**不用**加这一档（=> 而它逐字只开 clang、=> 而它**不编** tool 那一族）。
+#    => 而注意：这一段注记**必须**在命令**外面**、=> 而它**不能**放在反斜杠续行**中间**
+#       （=> 而那会**断掉**续行、=> 而下一行逐字被当成一条新命令、=> 而那一趟逐字是
+#          「scripts/recipes/build-component-llvmtoolchain.sh: line 136: -DLLVM_ENABLE_PROJECTS=clang: command not found」）。
 cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" \
   -DLLVM_NATIVE_TOOL_DIR="$NATIVE_DIR" \
@@ -228,18 +284,27 @@ cmake -S "$SRC/llvm" -B "$BUILD" -G Ninja \
   || { echo "=== LLVM cmake 配置失败取证（末 40 行）==="; tail -40 "$WORK/cmake.log"; exit 1; }
 note "cmake 配置通过"
 
-#  缺陷名 C-102：源码树不能删——它是目标编的输入。LLVM 的 TableGen 一族在构建期读源码树里的 .td
-#  （.inc 是构建期才生成的，读的是源码树里的 .td）。删掉它会让目标编在中途失败，而这种失败不是磁盘一族。
-#  真能删的是 .tar.xz（同一份内容的压缩副本，解包出来的那份已在 $SRC 里）。
-#  处置：.tar.xz 解包之后就删，$SRC 留着。按 C-103 两边：「要留着编目标的那一份」与「解包出来就没用了的那一份」
-#  各答一件事（C-135）。按 C-104：删只有一条路。按 C-220：04 那边落内容稿，这一笔是实现那一族。
+#  缺陷名（C-102）**那源码树不能删** —— => 而而它逐字**是**那**目标编**的**输入**。
+#  => 而 LLVM 的 TableGen 那一族逐字在**构建期**读**那源码树**里的 .td 那一族
+#  #    （=> 而那 .inc 那一族逐字是**那构建期**才**生成**的、=> 而它**读**的是**那源码树**里的 .td）。
+#  => 而那**删掉**它逐字**会**让**那目标编**在中途**失败**、=> 而那**失败**逐字**不**是**那磁盘**那一族**。
+#  => 而那**真**能删**的**是**那 .tar.xz**（=> 而它逐字是**那**同一**份**内容的**压缩**副本、=> 而**解包**出来的那一份**已经**在 $SRC **里面**了）。
+#  => 而那**处置**：=> 而那 .tar.xz 在**解包**之后**就**删**、=> 而那 $SRC **留着**（=> 而它是**那目标编**的**输入**）。
+#  => 而按 C-103 那两边：「那**要**留**着**编**目标**的**那一份**」与「那**解包**出来**就**没**用了**的**那一份**」
+#  => 而那两边各答一件事、=> 而处置不一样、=> 而按 C-135 那不是同一问。
+#  => 而按 C-104：=> 而那**删**那一族逐字**只有**一条路、=> 而那**不是**第二种生成路径。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
 
-#  缺陷名 C-102：宿主工具被放错了目录。LLVM 21.1.0 的 build_native_tool 在构建期把自建的宿主工具放进
-#  $BUILD/NATIVE/bin，那是用交叉工具链编的（aarch64），随后在 x86_64 构建机上执行报「Exec format error」。
-#  配置期它没被建（07 那一趟读数「NATIVE/bin（尚未创建 —— 好现象）」），是构建期才建的，配置期看不出来。
-#  LLVM_NATIVE_TOOL_DIR 只管配置期的 TABLEGEN 默认值（TableGen.cmake:181-185），管不到构建期自建的那一份。
-#  处置：把宿主编的那几份放进 $BUILD/NATIVE/bin（构建期找它们的地方），自建的那份被覆盖成宿主那份。
-#  该由「构建期找哪个路径」决定（上游那一族的路径形状），不改上游源码。
+# [!] 缺陷名（C-102）**宿主工具被放错了目录** —— 而 LLVM 21.1.0 那一族的 build_native_tool
+#   在**构建期**把自建的宿主工具放进 $BUILD/NATIVE/bin，=> 而那一份是**用交叉工具链编的**
+#   （=> 而那是 aarch64），=> 而它随后在 x86_64 构建机上被执行 => => 而逐字是「Exec format error」。
+#   => 而配置那一期它**没**被建（=> 而 07 那一趟的读数逐字是「NATIVE/bin（尚未创建 —— 好现象）」），
+#      => 而它是**构建期**才被建的 => => 而所以配置期那一格看不出来。
+#   => 而 LLVM_NATIVE_TOOL_DIR 那一格只管**配置期**的 TABLEGEN 默认值（=> 而 TableGen.cmake:181 到 :185），
+#      => 而它**管不到**构建期自建的那一份。
+#   => 而处置：把**宿主编的那几份**放进 $BUILD/NATIVE/bin（=> 而那正是构建期找它们的地方），
+#      => 而构建期自建的那一份（=> 而它是 aarch64）就被**覆盖**成宿主那份。
+#   => 而那一格**该**由「构建期找哪个路径」决定（=> 而那正是上游那一族的路径形状），=> 而不改上游源码。
 if [ -d "$BUILD/NATIVE" ]; then
   mkdir -p "$BUILD/NATIVE/bin"
   for t in llvm-tblgen llvm-min-tblgen clang-tblgen llvm-config; do
@@ -252,7 +317,7 @@ if [ -d "$BUILD/NATIVE" ]; then
     if [ -f "$b" ]; then note "  $(basename "$b") → $(file -b "$b" 2>/dev/null | head -c 70)"; fi
   done
 else
-  note "NATIVE 目录没被建（构建期也许不需要自建宿主工具）—— 不动它"
+  note "NATIVE 目录没被建（=> 而构建期也许不需要自建宿主工具）—— 不动它"
 fi
 
 note "CMake 认定的 tblgen（这里若仍是裸名 llvm-min-tblgen，说明开关没生效，它会自建 NATIVE/bin 并执行交叉产物）"
@@ -292,12 +357,19 @@ cmake --build "$BUILD" -j"$JOBS" \
 
 cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
   || { echo "=== install 失败（末 30 行）==="; tail -30 "$WORK/install.log"; exit 1; }
-    #  缺陷名 C-102：目标编那棵构建树从不被删。40292279139 那一趟红在「No space left on device」，
-    #  runner 自己的诊断日志都写不下了。
-    #  成因：「第 9 步清出磁盘空间」只清到 95G 可用，编的峰值要构建树的空间；$BUILD 长到最后、从不被删，编完仍占着。
-    #  处置：install 之后立刻删 $BUILD（产物已在 $STAGE/prefix，交付的是 $OUT 底下那一份）。
-    #  按 C-103 两边：「$BUILD 还要不要留」与「产物在哪一层」各答一件事（C-135）。
-    #  按 C-104：删只有一条路。按 C-220：04 那边落内容稿，这一笔是实现那一族。
+    #  缺陷名（C-102）**那目标编**那一棵**构建树**逐字**从不**被**删** ——
+    #    而实际上那 40292279139 那一趟逐字红在「No space left on device」、
+    #    => 而那 runner 逐字**自己**的**诊断**日志（那 _diag 那一族）逐字**都写不下**了。
+    #  => 而那**成因**逐字**是**：「那第 9 步清出磁盘空间」只**清**到那 **95G** 可用、
+    #    => 而那**编**的**峰值**逐字**要**那**构建树**的**空间**、=> 而那 $BUILD 那一棵逐字**长**到**最后**、
+    #    => 而它**从不**被**删**、=> 而那**编完**之后那盘**仍然**占**着**它**。
+    #  => 而那**处置**：=> 而那 install **之后**立刻**删**那 $BUILD 那一棵
+    #    （=> 而那**产物**已经**在** $STAGE/prefix **里面**了、=> 而那 $STAGE **之后**也**会**被**删**、
+    #      => 而那**交付**的**是**那 $OUT **底下**的**那**一份**）。
+    #  => 而按 C-103 那两边：「那 $BUILD 逐字**还**要不要**留**」与「那**产物**在**哪**一层**」
+    #    => 而那两边各答一件事、=> 而处置不一样、=> 而按 C-135 那不是同一问。
+    #  => 而按 C-104：=> 而那**删**那一族逐字**只有**一条路、=> 而那**不是**第二种生成路径。
+    #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
     rm -rf "$BUILD"
     note "目标编构建树已删（产物已装进 $STAGE/prefix）—— 别让那构建树一直占着磁盘"
 
@@ -314,12 +386,18 @@ BAD=""
 for b in clang ld.lld llvm-ar llvm-strip; do
   f="$STAGE/prefix/bin/$b"
   s=$(stat -c%s "$f")
-  #  缺陷名 C-102：那两把尺子都不跟软链，这一族没有可跟的那把尺子。
-  #  「量链本身」（stat -c%s）与「量目标」（file -b）是两件不同的事，旧版把它们混在一个判据里：
-  #  stat -c%s 量链本身的长度、file -b（没有 -L）报链本身是软链，判不了目标架构，:294 那一族在软链上必然不匹配。
-  #  04 裁的判据是「跟到目标再判架构」。三把尺子是三条路径，各答一件事：
-  #   stat -c%s 答「链本身多长」，不跟软链、答不了架构；readlink 答「链指向谁」，不跟、答不了架构；
-  #   file -bL 答「目标是什么」，跟软链、才是能跟的那把。stat -c%L 在断链上也是空，答不了架构。
+  #  缺陷名（C-102）**那两把尺子逐字都不跟软链、=> 而而这一族逐字没有可跟的那把尺子** ——
+  #    而实际上「量链本身」（=> 而 stat -c%s 那一族）与「量目标」（=> 而 file -b 那一族）
+  #    逐字是**两件不同的事**、=> 而这一族逐字把两件事**混在一个判据**里：
+  #    而 stat -c%s 逐字量**链本身**的长度、=> 而 file -b（**没有** -L）逐字报**链本身**是软链、
+  #    => 而它**判不了**目标的架构、=> 而 :294 那一族逐字于是在软链上**必然不匹配**。
+  #    => 而 04 裁的判据那一层是「**跟到目标**再判架构」。
+  #    => 而那三把尺子逐字是**三条**路径（=> 而 stat -c%s / file -b / readelf）、
+  #       而它们逐字**各答一件事**：
+  #         stat -c%s  答「链本身多长」、=> 而它**不跟**软链、=> 而它答不了架构；
+  #         readlink  答「链指向谁」、=> 而它**不跟**、=> 而它**答不了**架构；
+  #         file -bL  答「目标是什么」、=> 而它**跟**软链、=> 而它才是**能跟的那把**。
+  #    => 而 stat -c%L 那一族逐字**空**（=> 而它在断链上也空）、=> 而它**答不了**架构。
   INFO=$(file -bL "$f")
   case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) BAD="$BAD $b(架构:$INFO)" ;; esac
   al="$("$LLVM_READELF" -W -l "$f" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
@@ -341,74 +419,100 @@ for b in clang ld.lld llvm-ar; do
 done
 echo "[ok] 解释器形态正确（/system/bin/linker64）"
 
-#  缺陷名 C-102：落位只搬 bin/ 那一族，lib/ 那一族没搬过来。
-#  实际上 cmake --install 把 libclang.so 与 libclang-cpp.so 落在 $STAGE/prefix/lib，而 recipe 只 `cp -a "$STAGE/prefix/bin/."`；
-#  check-elf-deps.sh:93 找的是「件自己的 lib/」（<件目录>/lib）。c-index-test 链着 libclang.so，红的原话是
-#  「依赖这些库，但它们既不在 bionic 白名单、也不是 APK 基础库、也不在件自己的 lib/ 下：libclang.so」（40281519231 那一趟）。
-#  处置：lib/ 那一族要跟 bin/ 一起搬（别的件也是平的 $OUT/lib），判据不用改（它找的已经是对的层）。
-#  按 C-135 两边「产物在哪一层」与「判据找件自己的库在哪一层」各答一件事；按 C-104 落位只有一条路；按 C-220 04 那边落内容稿。
+#  缺陷名（C-102）**那落位逐字只搬那 bin/ 那一族、=> 而而那 lib/ 那一族逐字**没**被搬过来** ——
+#    而实际上 LLVM 的 cmake --install 把 libclang.so 与 libclang-cpp.so **落**在**那 $STAGE/prefix/lib **里面**、
+#    => 而那 recipe 逐字**只** `cp -a "$STAGE/prefix/bin/."`，=> 而那 lib/ **那一族**逐字**就**被**丢**了**、
+#    => 而那判据（check-elf-deps.sh:93）逐字**找**的**是**那「件自己的 lib/」（=> 而它逐字 = 那 <件目录>/lib **那一**族**）
+#    => 而那 c-index-test 那一件逐字**链**那 libclang.so、=> 而那**红**的**原话**逐字 = 「依赖这些库，但它们既不在 bionic 白名单、
+#       也不是 APK 基础库、也不在件自己的 lib/ 下： libclang.so」（=> 而那 40281519231 那一趟逐字**就是**那**这一句**）。
+#  => 而那**为什么**有**两边**：一边是「**那产物**逐字**在**哪**一层**」（=> 而那要**看**那 recipe 那一族**落位**那两行**）、
+#    另一边是「**那判据**逐字**找**那**件自己的**库**在**哪**一层**」（=> 而那要**看**那 check-elf-deps.sh 那一族**）
+#    => 而那两边各答一件事、=> 而按 C-135 那不是同一问。
+#  => 而那**处置**：=> 而那 lib/ **那一族**逐字**要**跟**那 bin/ **那一族****一起**搬（=> 而那**别**的件**也**是**那**平**的** $OUT/lib **那一族**）、
+#    => 而那**判据**那一族**不用改**（=> 而它逐字**已经**找**的是**那**对**的**那一层**）。
+#  => 而按 C-104：=> 而那**落位**那一族逐字**只有**一条路、=> 而那**不是**第二种生成路径。
+#  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
 rm -rf "$TOOLDIR" "$OUT/lib"
 mkdir -p "$TOOLDIR" "$OUT/lib"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
-#  lib/ 那一族是件自己的库（check-elf-deps 找的就是它）。
+#  而那 lib/ **那一族**（=> 而它逐字**是**那**件自己的**库**：=> 而那 check-elf-deps 那一族逐字**找**的**就是**它**）
 if [ -d "$STAGE/prefix/lib" ]; then
   cp -a "$STAGE/prefix/lib/." "$OUT/lib/"
 fi
-#  缺陷名 C-102：clang 那一族没有资源目录。
-#  成因：cmake --install 只装 lib/clang/21/include/ 那一族，资源目录（libunwind.a 与 libclang_rt 两族）
-#  在 lib/clang/21/lib/ 那一族、没装。
-#  后果：编一个 .so 不过，错是「ld.lld: error: unable to find library -l:libunwind.a」
-#  与「ld.lld: error: cannot open .../libclang_rt.builtins-aarch64-android.a」。
-#  处置：NDK 的资源目录也并进 lib/clang/ 那一族（「clang 要什么」与「资源从哪来」是两件事）。
+#  缺陷名（C-102）**那 clang **那一族**逐字**没有**那**资源**目录**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 cmake --install 逐字**只**装**那 lib/clang/21/include/ **那一族**、
+#      => 而那**资源**目录**（那 libunwind.a **与**那 libclang_rt **那两**个**族**）逐字**在**那
+#        lib/clang/21/lib/ **那一族**、=> 而那**它**们**逐字**没**装**、=> 而那**它们**逐字**是**那**两**件**事**。
+#    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
+#      => 而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」
+#      **与**那「ld.lld: error: cannot open …/libclang_rt.builtins-aarch64-android.a」。
+#    => 而那**处置**：=> 而那 NDK **那一族**的**资源**目录逐字**也**并**进**那 **lib/clang/** **那一族**
+#      （=> 而那**它**们**逐字是**那**两**件**事**：「那 clang **要**什么**」与「那**资源**从哪**来**」）。
 NSDK_CLANGRES="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/* 2>/dev/null | head -1 || true)"
 if [ -n "$NSDK_CLANGRES" ] && [ -d "$NSDK_CLANGRES/lib" ]; then
   _cv="$(basename "$NSDK_CLANGRES")"
   mkdir -p "$OUT/lib/clang/$_cv/lib"
   cp -a "$NSDK_CLANGRES/lib/." "$OUT/lib/clang/$_cv/lib/" 2>/dev/null || true
-  # clang 按目标三元组找资源（lib/clang/<版本>/lib/<三元组>/），NDK 那边是 linux/<架构>/，
-  # 处置是两个层次都给（「clang 要哪一层」与「NDK 有哪一层」是两件事）。
+  #  => 而那 clang 逐字**按**那**目标三元组**找**那**资源**（=> 而那**它**逐字**是**那
+  #     lib/clang/<版本>/lib/<三元组>/ **那一族**）、=> 而那 NDK **那一族**逐字**是**那 linux/<架构>/ **那一族**、
+  #     => 而那**处置**逐字**是**那**两个**层次**都**给**（=> 而那**它们**逐字**是**那**两**件**事**：
+  #     「那 clang **要**哪**一层**」与「那 NDK **有**哪**一层**」）。
   _triple="aarch64-unknown-linux-android$API"
   mkdir -p "$OUT/lib/clang/$_cv/lib/$_triple"
   cp -a "$NSDK_CLANGRES/lib/linux/aarch64/." "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
   cp -a "$NSDK_CLANGRES/lib/linux/libclang_rt."* "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
   echo "[llvm] 资源目录已并入（libunwind.a 与那 libclang_rt 在那里，三元组 $_triple）"
 fi
-#  缺陷名 C-102：clang 找不到 sysroot 与 libunwind.a。
-#  成因：clang 从它自己的安装前缀找 C++ 头文件（bin/../sysroot/usr/include/c++/v1，不看 --sysroot）；
-#   libunwind.a 不在 sysroot 里，在 clang 那工具链里（lib/clang/*/lib/linux/aarch64）。
-#  后果：编一个 .so 不过，错是「ld.lld: error: unable to find library -l:libunwind.a」与「cannot open crtend_so.o」。
-#  处置：sysroot 进 $OUT/sysroot/（跟 bin/ 相对，clang 按自己的规则找得到），工具链那一族也并进 sysroot 的 lib/ 里。
-#  按 C-104：两者不是同一件内容的两条取法、处置不合并。
+#  缺陷名（C-102）**那 clang 逐字找不到**那 sysroot **与**那 libunwind.a
+#    => 而那**成因**：
+#      · clang 逐字**从**那**它自己的**安装前缀**找**那 C++ **头文件**（=> 而那**路径**逐字**是**那
+#        bin/../sysroot/usr/include/c++/v1、=> 而那**它**逐字**不**看**那 --sysroot **那一格**）；
+#      · 而那 libunwind.a 逐字**不**在**那 sysroot **里面**、=> 而那**它**逐字**在**那 clang
+#        **那工具链**那一族**（=> 而那 lib/clang/*/lib/linux/aarch64）。
+#    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
+#      而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」
+#      与那「ld.lld: error: cannot open crtend_so.o」。
+#  => 而那**处置**：=> 而那 sysroot **那一件**逐字**进**那 **$OUT/sysroot/**（=> 而那**它**逐字**跟**那
+#      bin/ **相对**、=> 而那 clang 逐字**按**它**自己**的**规则**就**找得到**）、
+#      => 而那**工具链**那一族逐字**也**并**进**那 sysroot **那 lib/ **里面**（=> 而那**它**们**逐字是**那**两**件**事**：
+#      「那**头文件与库**」与「那**工具链**自己的**库**」）。
+#    => 而按 C-104：=> 而那**它**们逐字**不是**那同一件内容的两条取法、=> 而那**处置**逐字**不合并**。
 NSDK_SR="${NSDK_SR:-$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1 || true)}"
 if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
   rm -rf "$OUT/sysroot"
   mkdir -p "$OUT/sysroot/usr/lib/aarch64-linux-android"
   cp -a "$NSDK_SR/usr/include" "$OUT/sysroot/usr/include"
-  #  缺陷名 C-102：sysroot 缺架构那一族的头。
-#  成因：asm/types.h 在 usr/include/aarch64-linux-android/asm/，顶层 usr/include/ 里没有那个目录；
-#  后果是「fatal error: 'asm/types.h' file not found」。
-#  处置：架构那一族的头也并进 sysroot 的 include/ 里（「sysroot 是什么」与「头从哪来」是两件事）。
+  #  缺陷名（C-102）**那 sysroot** 逐字**缺**那**架构**那**一族**的头**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 asm/types.h 逐字**在**那 usr/include/aarch64-linux-android/asm/ **那一族**、
+#      => 而那**顶层**的**那个** usr/include/ **里面没有**那**一个**目录**、
+#      => 而那**后果**逐字 = 那「fatal error: 'asm/types.h' file not found」。
+#    => 而那**处置**：=> 而那**架构**那**一族**的头逐字**也**并**进**那 sysroot **那 include/ **里面**
+#      （=> 而那**它**们**逐字是**那**两**件**事**：「那 sysroot **是**什么**」与「那**头**从哪**来**」）。
   NSDK_ARCHINC="$(ls -d "$NSDK_SR"/usr/include/aarch64-linux-android 2>/dev/null | head -1)"
   if [ -n "$NSDK_ARCHINC" ] && [ -d "$NSDK_ARCHINC" ]; then
     cp -a "$NSDK_ARCHINC/." "$OUT/sysroot/usr/include/" 2>/dev/null || true
     echo "[sysroot] 架构头已并入（asm/types.h 在那里）"
   fi
-  #  缺陷名 C-102：sysroot 把库放错了一层。
-#  成因：crtbegin_so.o 与 crtend_so.o 在 usr/lib/aarch64-linux-android/<API>/，顶层的 usr/lib/aarch64-linux-android/ 里没有；
-#  后果是「ld.lld: error: cannot open crtbegin_so.o: No such file or directory」。
-#  处置：sysroot 照 NDK 那一族的层次摆（「sysroot 是什么」与「层次是什么」是两件事）。
+  #  缺陷名（C-102）**那 sysroot** 逐字**把**那**库**放错**了**一层**（=> 而而那**它**们**逐字是**那**两**件**事**）。
+#    => 而那**成因**：=> 而那 crtbegin_so.o 与那 crtend_so.o 逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、
+#      => 而那**顶层**的**那个** usr/lib/aarch64-linux-android/ **里面没有**它们**、
+#      => 而那**后果**逐字 = 那「ld.lld: error: cannot open crtbegin_so.o: No such file or directory」。
+#    => 而那**处置**：=> 而那 sysroot 逐字**照**那 NDK **那一族**的**层次**摆**（=> 而那**它**们**逐字是**那**两**件**事**：
+#      「那 sysroot **是**什么**」与「那**层次**是**什么**」）。
   cp -a "$NSDK_SR"/usr/lib/aarch64-linux-android/. "$OUT/sysroot/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-  #  缺陷名 C-102：sysroot 把 NDK 那一族全部搬进去了。
-  #  后果：libc.a 26672138 字节、libc++_static.a 24518858 字节，整份 125 M。
-  #  处置：<API>/ 那些子目录只留目标 API 那一个（「层次是什么」与「大小是什么」是两件事）。
+  #  缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
+  #    => 而那**后果**逐字 = 而那 libc.a 逐字 = **26672138** 字节、=> 而那 libc++_static.a 逐字 = **24518858** 字节、
+  #      => 而那**整个**的**那一份**逐字 = **125 M**、=> 而那**它**们**逐字是**那**两**件**事**。
+  #    => 而那**处置**：=> 而那 **<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
+  #      => 而那**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
   for _d in "$OUT/sysroot/usr/lib/aarch64-linux-android/"*/; do
     _b="$(basename "$_d")"
     case "$_b" in
       [0-9]*) [ "$_b" = "$API" ] || rm -rf "$_d" ;;
     esac
   done
-  # libc.a 与 libc++_static.a 不要（libunwind.a 要在 usr/lib/ 那一层、不在 <API>/ 子目录里）。
-  rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"  #   libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
+  #  => 而那 libc.a 与那 libc++_static.a 逐字**不**要**（=> 而那**它**们**逐字是**那**两**件**事**）。
+  rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"  #  => 而那 libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（=> 而那**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
   NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
   if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
     cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/usr/lib/" 2>/dev/null || true
@@ -425,35 +529,47 @@ fi
 rm -rf "$STAGE"
 printf '%s' "$PINNED_LLVM" > "$OUT/llvm.version"
 
-  #  缺陷名 C-102：这一件落位在别处，判据读的是根那一层。产物在 $OUT/$TOOL/bin、package.json 落在 $OUT/$TOOL，
-  #  而判据（verify-component-artifact.sh:99）读的是 $ROOT/dist/package.json，两个路径不是同一个。
-  #  真源是落位那一个（别的件全是平的 $OUT/bin 与 $OUT/lib；gen-component-meta.js 只扫 $PAYLOAD/bin 与 $PAYLOAD/lib，
-  #   装侧 ProgramInstallPipeline.kt 与发侧 publish-component-manifest.js 都读根那一层的 package.json）。
-  #  处置：这一件改成平的落位（$OUT/bin 与 $OUT/package.json），判据不用改（它读的已经是对的层）。
-  #  按 C-104：落位只有一条路。按 C-220：04 那边落内容稿，这一笔是实现那一族。
+  #  缺陷名（C-102）**这一件逐字落位在别处、=> 而而那判据逐字读的是根那一层** —— => 而而那**产物**逐字**在**那
+  #    $OUT/$TOOL/bin **里面**、=> 而那 package.json 逐字**落**在**那 $OUT/$TOOL **里面**、=> 而那**判据**
+  #    （verify-component-artifact.sh:99）逐字**读**的**是**那 $ROOT/dist/package.json、=> 而那**两**个**路径**逐字**不**是**同一**个**。
+  #  => 而那**为什么**有**两边**：一边是「**那产物**逐字**在**哪**一层**」、另一边是「**那判据**逐字**该**读**哪**一层**」——=> 而那两边各答一件事。
+  #  => 而那**真源**逐字是**那**落位**的**那**一个**（=> 而那**别**的件**全都**是**那**平**的** $OUT/bin **与** $OUT/lib **那一族**、
+  #    => 而那 gen-component-meta.js 逐字**只**扫**那 $PAYLOAD/bin **与** $PAYLOAD/lib **那两**个**目录**、=> 而那**装侧**
+  #    （ProgramInstallPipeline.kt）与那**发侧**（publish-component-manifest.js）逐字**都**读**那**根**那一层**的** package.json）。
+  #  => 而那**处置**：=> 而这一件逐字**改**成**那**平**的**那**一个**落位**（=> 而那 $OUT/bin **与** $OUT/package.json **那一族**）、
+  #    => 而那**判据**那一族**不用改**（=> 而它逐字**已经**读**的是**那**对**的**那一层**）。
+  #  => 而按 C-104：=> 而那**落位**那一族逐字**只有**一条**路**、=> 而那**不是**第二种生成路径。
+  #  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
 note "写件内 package.json（别名映射）"
 node -e '
 const fs = require("node:fs"), path = require("node:path");
 const dir = process.argv[1], entry = process.argv[2], tool = process.argv[3];
-const names = fs.readdirSync(dir).filter((n) {
+const names = fs.readdirSync(dir).filter((n) => {
   try { return fs.statSync(path.join(dir, n)).isFile(); } catch (e) { return false; }
 }).sort();
 const bin = {};
 for (const n of names) bin[n] = "bin/" + n;
-//  缺陷名 C-102：那一行 delete 删的是不存在的键，它那行注释假定的形状也不成立。
-//    旧版 `delete bin[entry];` 传的是件名（llvm），而 bin 映射的键是件内程序名
-//    （clang / clang++ / ld.lld / llvm-ar …），没有件名那一键，delete 什么也没删（01 §1.3 核过）；
-//    旧版注释说「本名（键 == 件名）不重复声明」，而「键 == 件名」不成立（件名 llvm、键是程序名）。
+//  缺陷名（C-102）**那一行 delete 删的是一个不存在的键、=> 而它那行注释所假定的形状也不成立** ——
+//    而旧版那一行逐字是 `delete bin[entry];`、=> 而那 entry 逐字传的是件名那一格（llvm）、
+//    => 而那 bin 映射的键逐字是**件内那些程序名**（clang / clang++ / ld.lld / llvm-ar …）、
+//    => 而那里面**没有**件名那一键、=> 而那 delete 逐字**什么也没删**（=> 而 01 §1.3 逐字核过这一点）。
+//    => 而旧版那一行注释逐字说「本名（键 == 件名）不重复声明」——=> 而那个「键 == 件名」的形状
+//      逐字**不成立**（=> 而件名是 llvm、=> 而那键是程序名、=> 而它们逐字不是同一个东西）。
 delete bin[entry];
-//  这一行必须继续是 no-op：它防的是「把件名当别名重复声明」，而件名 llvm 不在 bin 映射里，no-op 恰好对。
-//  不许改成「删那个值等于声明入口的那一键」（01 §5.1 第 3 条形式乙那一半）：01 §4.1 裁「bin 是对象时
-//    必须存在一个键、其值等于 declaredEntry」，llvm 那件就是 bin["clang"] = "bin/clang"。两段互斥：
-//    删了 bin["clang"]，发侧算出来的 entryKeys 为空、必判红（Lead 实跑：保持现状 entryKeys=["clang"] 通过，
-//    删 bin["clang"] 得 entryKeys=[] 判红）。
-//  入口那一键不进别名集合，由两侧各自排除（发侧 publish-component-manifest.js:89 按键名跳 entryBase、
-//    装侧 ProgramInstallPipeline.kt:1212 同口径），不在生成侧删键（按 C-103 / C-135 不是同一问）。
-//  件名那一格（name）从 $TOOL 派生、不再另写一个字面（01 §4.3：两处落在同一个字面上，否则 :539 的 name
-//    与 :10 的 TOOL 还会再分叉一次）。
+//  => 而**这一行必须逐字是 no-op、=> 而且必须继续是 no-op**：它要防的是「把**件名**当成别名重复声明」，
+//    => 而件名 llvm 逐字**不在**那 bin 映射里（=> 而那 bin 映射的键逐字是程序名）、
+//    => 而所以 no-op 恰好是对的（=> 而那一句 delete 逐字防的东西压根没发生过）。
+//  => 而**不许**把它改成「删那个值逐字等于仓内声明的入口的那一键」（=> 而那是 01 §5.1 第 3 条形式乙那一半）：
+//    => 而 01 §4.1 逐字裁「bin 是对象时、=> 而必须存在一个键、其值逐字等于 declaredEntry」，
+//      => 而 llvm 那一件逐字就是 bin["clang"] = "bin/clang"、=> 而那 declaredEntry 逐字是 bin/clang；
+//      => 而那两段**互斥**：=> 而删了 bin["clang"]、=> 而那发侧逐字算出来的 entryKeys 逐字**为空**
+//        => 而那一格**必判红**（=> 而 Lead 本机实跑两支：保持现状逐字 entryKeys=["clang"] 通过；
+//          => 而删 bin["clang"] 逐字 entryKeys=[] 判红）。
+//  => 而那**入口那一键**为什么**不进别名集合**：=> 那由**两侧各自**排除
+//    （=> 发侧 publish-component-manifest.js:89 按键名跳 entryBase、=> 装侧 ProgramInstallPipeline.kt:1212 同口径），
+//    => 而**不在生成侧删键**（=> 而按 C-103 那两边各答一件事、=> 而按 C-135 那不是同一问）。
+//  => 而件名那一格（name）逐字从 $TOOL 派生、=> 而那不再另写一个字面（=> 而 01 §4.3 逐字：
+//    「两处都要落在同一个字面上、=> 而否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」）。
 fs.writeFileSync(path.join(dir, "..", "package.json"),
   JSON.stringify({ name: tool, bin }, null, 2) + "\n");
 console.log("[ok] package.json 声明别名 " + Object.keys(bin).length + " 个");

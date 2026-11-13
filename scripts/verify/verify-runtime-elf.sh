@@ -147,7 +147,7 @@ for f in "$DIR"/*.so; do
   phdrs="$("$READELF" -W -l "$f" 2>/dev/null || true)"
   if [ -z "$phdrs" ]; then
     echo "readelf -W -l 读不出 Program Headers —— **形态判据全部无从进行**。"
-    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 exec 或 dlopen 会在装载期失败。"
+    echo "         坏在哪：这是一个 aarch64 库/程序该有的段表读不出来 => exec 或 dlopen 会在装载期失败。"
     echo "         证据强度：【未验证】。我只试了 readelf -W -l 这一种形态；"
     echo "         它也可能是我这个判据的读法不对，而不是产物坏了 —— 请先用 file 与 readelf -h 手工核一遍。"
     note_fail
@@ -329,10 +329,10 @@ for f in "$DIR"/*.so; do
 done
 
 if [ "$fail" -ne 0 ]; then
-  echo "=[error] 有原生产物不满足「形态 + 空环境下自解析依赖」，拒绝。"
+  echo "==> [error] 有原生产物不满足「形态 + 空环境下自解析依赖」，拒绝。"
   exit 1
 fi
 if [ -n "$soft_degraded" ]; then
   echo "::warning title=能力降级::以下 soft 档位件形态/依赖不合格，本轮不判红：$soft_degraded"
 fi
-echo "=[ok] 全部原生产物形态正确、可自解析同目录依赖"
+echo "==> [ok] 全部原生产物形态正确、可自解析同目录依赖"

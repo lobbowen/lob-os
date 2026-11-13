@@ -2,10 +2,10 @@
 # 族七 · 容器层取证脚本。
 #
 # 它**只取证**，不判别「哪一层才算那一颗件」
-# （ 是 01 裁的 S607-01-CONTAINER-FORM-RULING.md 那一格、 本脚本**不**拍板）。
+# （=> 而那是 01 裁的 S607-01-CONTAINER-FORM-RULING.md 那一格、=> 而本脚本**不**拍板）。
 #
-# 判别源**唯一**：scripts/toolchain/fmt.sh（ 按 C-994「判别源必须唯一」、
-# 其余各处改成调它、 本脚本**不**另写第二套 MAGIC= 判别）。
+# 判别源**唯一**：scripts/toolchain/fmt.sh（=> 而按 C-994「判别源必须唯一」、
+# => 而其余各处改成调它、=> 而本脚本**不**另写第二套 MAGIC= 判别）。
 #
 # 逐件打：
 #   头四字节（十六进制）
@@ -13,15 +13,15 @@
 #   内层条目名
 #   内层 usize
 #
-# 一脚本两用：既能读本地件包，也能读 CI 下的件包（ CI 下的那一份
-# 逐字是一个**外层容器**（ 里面逐字装着那**内层**那一个件包）。
+# 一脚本两用：既能读本地件包，也能读 CI 下的件包（=> 而那 CI 下的那一份
+# 逐字是一个**外层容器**（=> 而那里面逐字装着那**内层**那一个件包）。
 #
 # 用法：
 #   bash scripts/verify/probe-container-form.sh <件包路径> [更多路径…]
 #   bash scripts/verify/probe-container-form.sh --dir <目录>   # 扫那目录下全部件包
 #
-# 而「整读」逐字**不做**（ 8.4 GB 那一颗整读逐字 ERR_FS_FILE_TOO_LARGE、
-# Release 直链逐字约 3 KB/s 且必断） 它逐字**只读头四字节与尾部**。
+# 而「整读」逐字**不做**（=> 而那 8.4 GB 那一颗整读逐字 ERR_FS_FILE_TOO_LARGE、
+# => 而那 Release 直链逐字约 3 KB/s 且必断）=> 而它逐字**只读头四字节与尾部**。
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -46,17 +46,17 @@ probe_one() {
   echo "  判别源给的形态=$fmt"
   case "$fmt" in
     zip|zip64)
-      # **第 1 步**那一格： **外层自己**含不含 component-meta.json
-      #     （ 逐字是「外层即件包」那一档的判据、 01 裁的 S607-01 §3.1 逐字
+      #  => 而那**第 1 步**那一格：=> 而那**外层自己**含不含 component-meta.json
+      #     （=> 而那逐字是「外层即件包」那一档的判据、=> 而 01 裁的 S607-01 §3.1 逐字
       #      「**除非外层自己逐字含 component-meta.json**」）。
       OUTER_ID="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
       if [ -n "$OUTER_ID" ]; then
-        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）**外层自己就是那一颗件**"
+        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
       else
-        echo "  外层自己含component-meta.json=否 走「外层套内层」那一档"
+        echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
       fi
       entries="$(fmt_zip_entries "$f" 2>/dev/null)"
       if [ -z "$entries" ]; then
@@ -70,8 +70,8 @@ let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
         done
       fi ;;
     gzip)
-      # gzip 逐字是「外层是 tar.gz、而那里面逐字装着那内层那一个件包」那个形状
-      # 内层逐字是**什么**逐字是取证要答的那一格、 不是判据。
+      #  => 而那 gzip 逐字是「外层是 tar.gz、而那里面逐字装着那内层那一个件包」那个形状
+      #     => 而那内层逐字是**什么**逐字是取证要答的那一格、=> 而不是判据。
       WORK="$(mktemp -d)"
       OUTER_ID=""
       if tar tzf "$f" >/dev/null 2>&1; then
@@ -79,13 +79,13 @@ let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
         WORK="$(mktemp -d)"
         tar xzf "$f" -C "$WORK" 2>/dev/null || true
         OUTER_ID="$(cat "$WORK"/component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
         if [ -n "$OUTER_ID" ]; then
-          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）**外层自己就是那一颗件**"
+          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
         else
-          echo "  外层自己含component-meta.json=否 走「外层套内层」那一档"
+          echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
         fi
         tar tzf "$f" 2>/dev/null | while IFS= read -r nm; do
           [ -n "$nm" ] || continue
@@ -103,11 +103,11 @@ let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
           [ -n "$nm" ] || continue
           echo "    内层条目=$nm 内层usize=$us"
         done
-        # **内层那一件自己的 `id`** 那一格（ 是 01 裁的挑选依据）：
-        # 按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字「**按内容挑** ——
-        # 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**」。
+        #  => 而那**内层那一件自己的 `id`** 那一格（=> 而那是 01 裁的挑选依据）：
+        #    => 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字「**按内容挑** ——
+        #      => 而内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**」。
         INNER_ID="$(unzip -p "$inner" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
+let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
   try {
     const m = JSON.parse(d);
     process.stdout.write("id=" + String(m.id || "") + " piece=" + String(m.piece || "") + " version=" + String(m.version || ""));

@@ -15,7 +15,7 @@ rustup target add aarch64-linux-android >/dev/null 2>&1 \
   || echo "[warn] rustup target add 失败（可能已装）"
 
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
-# 与 verify-runtime-elf.sh:321 / check-elf-deps.sh:156 一致
+#   => 而那与 verify-runtime-elf.sh:321 / check-elf-deps.sh:156 一致
 #     （「只有 DT_RPATH 不行，bionic 忽略它」）
 export CC_aarch64_linux_android="$CC"
 export CXX_aarch64_linux_android="$CC"

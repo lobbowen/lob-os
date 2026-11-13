@@ -175,29 +175,29 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
     PIECE_BAD=$((PIECE_BAD + 1)); continue
   fi
 
-  mid="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})' < "$W/x/component-meta.json")"
-  mver="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})' < "$W/x/component-meta.json")"
-  ment="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$W/x/component-meta.json")"
+  mid="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})' < "$W/x/component-meta.json")"
+  mver="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})' < "$W/x/component-meta.json")"
+  ment="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$W/x/component-meta.json")"
 
   [ "$mid" = "$id" ] || { echo "[error] $id 的说明里 id=$mid 对不上"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
   [ -n "$mver" ] || { echo "[error] $id 的说明里没有 version"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
   # [!] **纯库件没有 entry 是合法的**（按 C-05「没有」就是没有）——
   #   缺陷名（C-102）**「说明里没有 entry」被当成缺件**：
   #     原来这一格是 `[ -n "$ment" ] || 判红` —— 而那把「这一件没有程序那一侧」
-  #     当成了「清单坏了」crypto/curl/zlib 三个纯库件被判成缺项（piece-pack(3)）。
-  # 现在：按**产物自带的形态**（piece-shape.json 的 kind）判：
-  #     kind=library 这一件没有程序那一侧 entry 合法地是空（不判红）；
-  #     否则 entry 必须有。
+  #     当成了「清单坏了」=> crypto/curl/zlib 三个纯库件被判成缺项（piece-pack(3)）。
+  #   => 现在：按**产物自带的形态**（piece-shape.json 的 kind）判：
+  #     kind=library => 这一件没有程序那一侧 => entry 合法地是空（不判红）；
+  #     否则 => entry 必须有。
   mkind=""
   if [ -f "$W/x/piece-shape.json" ]; then
-    mkind="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).kind||""))}catch(e){}})' < "$W/x/piece-shape.json")"
+    mkind="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).kind||""))}catch(e){}})' < "$W/x/piece-shape.json")"
   fi
   if [ -z "$ment" ] && [ "$mkind" != "library" ]; then
     echo "[error] $id 的说明里没有 entry（而它的形态是 ${mkind:-未知}）"
     PIECE_BAD=$((PIECE_BAD + 1)); continue
   fi
   if [ -z "$ment" ]; then
-    echo "  · $id 是纯库件（kind=library）没有程序那一侧 entry 合法地是空"
+    echo "  · $id 是纯库件（kind=library）=> 没有程序那一侧 => entry 合法地是空"
   fi
 
   # entry 若有，那它指的文件必须在包里
@@ -210,8 +210,8 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
 done
 
 # [!][!] 而这一格原来在脚本里**硬编码八个 id**（[!] [!] 而那与 PIECES 那一行是两套口径）[!][!]
-#   [!][!] crypto 归并之后（01 今天裁）[!][!] 件数变七，[!] [!] 而这里还数八个 [!][!]
-#   [!][!] 「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 [!][!]
+#   [!][!] => 而 crypto 归并之后（01 今天裁）[!][!] 件数变七，[!] [!] 而这里还数八个 [!][!]
+#   [!][!] => 而「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 [!][!]
 WANT_N="$(grep -o '^PIECES=(.*)' "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" | head -1 \
           | sed 's/^PIECES=(//; s/)$//' | wc -w)"
 if [ -z "$WANT_N" ]; then
@@ -240,10 +240,10 @@ if [ "$REPORT" = "1" ]; then
 fi
 
 if [ -n "$MISSING" ]; then
-  echo "=[error] 审计不通过，缺项:$MISSING"
+  echo "==> [error] 审计不通过，缺项:$MISSING"
   echo "    这正是真机 'cannot locate symbol _ZTVNSt6__ndk119basic_ostringstream'"
   echo "    一类故障的直接原因。请检查 scripts/toolchain/build-node-android.sh 的打包段、"
   echo "    app/build.gradle.kts 的 jniLibs 配置与各 Stage 步骤。"
   exit 1
 fi
-echo "=[ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产与 npm 全在包里，件走 assets/pieces/）')
+echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产与 npm 全在包里，件走 assets/pieces/）')
