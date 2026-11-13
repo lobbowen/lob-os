@@ -15,8 +15,7 @@ object PreinstalledPieces {
     }
 
     /**
-     * 那 APK 里那**几件**的名字（ **件**名逐字**去**那 .zip **那个**后缀**）。
-     *   它逐字**给**那**逐件**做**那一族**用**（ **它**逐字**不**自己**装**）。
+     * APK 里那几件的名字（去掉 .zip 后缀），给逐件那一族用（它自己不装）。
      */
     fun pieceIds(ctx: Context): List<String> =
         runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
@@ -26,8 +25,7 @@ object PreinstalledPieces {
             .sorted()
 
     /**
-     * 装**那一个**件（ **件**名逐字**给**进来）。
-     *   **它**逐字**记**那**一笔**（ **它**逐字**是**那**逐件**那一族**的**一**件**）。
+     * 装那一个件（件名给进来），并记那一笔（它是逐件那一族的一件）。
      */
     fun installOneById(ctx: Context, id: String): Boolean {
         trace(ctx, "装 " + id, "开始")
@@ -37,12 +35,9 @@ object PreinstalledPieces {
             trace(ctx, "装 " + id, "抛了 " + e.javaClass.name + ": " + (e.message ?: ""))
             false
         }
-        //  缺陷名（C-102）**那「；成」**那一行**逐字**写**在**那 installOne **返**回**之后**、 **它**逐字**晚**。
-        //    **成因**： **调用方**（ installOneById **:40** 那一行）逐字**等**那 installOne **返**回**才**写**，
-        //      **进程**逐字**在**那**注册**之后**、**在**那**调用方**写**那一行**之前**、逐字**被**杀**了**。
-        //    **后果**逐字 = 而那 journal 里**没有**那「；成」**那一行**（ **它**逐字**看**不出**那**一件**到底**装没装**上**）。
-        //    **处置**： **进度**逐字**在**那**关键**步骤**上**就**记**（ **它**逐字**在**那**注册**之前**），
-        //      **它**逐字**不**是**那**结果**那一族**（ **它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**记**在**哪**」）。
+        //  缺陷名 C-102：那「；成」那一行写在 `installOne` 返回之后、太晚。
+        //   进程在注册之后、在调用方写那一行之前被杀，journal 里就没有「；成」（看不出那一件装没装上）。
+        //  处置：进度在关键步骤上就记（在注册之前），不是等结果。
         trace(ctx, "装 " + id, if (r) "成" else "败")
         return r
     }
@@ -64,7 +59,7 @@ object PreinstalledPieces {
         for (n in names) {
             if (!n.endsWith(".zip")) continue
             val id = n.substringBeforeLast('.')
-            //  **逐件**那一族逐字**走**那 installOneById（ **它**逐字**记**那**一笔**、 **它**逐字**是**那**一**件**的事**）。
+            //  逐件那一族走 `installOneById`（它记那一笔）。
             val r = installOneById(ctx, id)
             if (r) done += id else failed++
         }
@@ -99,35 +94,23 @@ object PreinstalledPieces {
     )
 
     /** 校验这一件的派生物软链，有一条不对就当场重算它。
-     *
-     *  缺陷（C-102） 落位检查只验原物在不在、派生物指向哪不管
-     *   软链是派生物而落位跳过已存在项，派生物因此永不刷新
-     *   link 成功不等于目标可达
-     *
-     *  判据：每一条「指向这一件」的软链，目标必须存在，且必须落在落位目录里。
-     *  真机读数（07，ls -l，**旧版落位那一版**：5a265b1）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
-     *  files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry> —— 前缀两遍、版本段两遍，
-     *  而 linkcrypto/libcurl/libz 那三行是干净的。跨多版装机不变，因为这一支只验原物。
-     *
-     *   缺陷名（C-102）**派生物校验也按目录名分家**：原来那一行是
-     *    if (entry.startsWith("lib/")) libDir else binDir —— 又是「看目录名」。
-     *   现在目录由**形态**决定（[role] 那一格，产物带来的）。
-     */
+     *  缺陷 C-102：落位检查只验原物在不在、派生物指向哪不管（软链是派生物而落位跳过已存在项，永不刷新），
+     *  而 link 成功不等于目标可达。判据：每一条「指向这一件」的软链，目标必须存在、且落在落位目录里。
+     *  真机读数（07，ls -l，旧版落位 5a265b1）：libbusybox.so / liblobosjq.so / libssl.so 的目标是
+     *  `files/data/user/0/lobos.os/files/opt/<id>/<ver>/<ver>/<entry>`（前缀两遍、版本段两遍），linkcrypto/libcurl/libz 干净。
+     *  旧版还按目录名分家（`if (entry.startsWith("lib/")) libDir else binDir`），现在由形态决定（`[role]`）。 */
     private fun refreshDerivedLinks(
         ctx: Context,
         id: String,
         version: String,
     ): DerivedCheck {
         val verDir = File(SystemDirs.pieceDir(ctx, id), version)
-        // 族二（这一件是程序还是库）：派生物**按产物里实际存在的每一种形态各建各的那一条**。
-        //    而这一格**不再按「一个 primary + 一个 role」算**——
-        //      那样算出来的 `dirs` 由那一个 role 二选一， 而 mixed 那一件两种形态都有，
-        //      于是另一种形态该建的那一条**永远不在检查范围内**。
-        //    而**这一格也不接受「按 entry 猜」**： 形态是构建期算好的（04 今天那张表第二行），
-        //      运行期只读产物那一份（ 读不到就报缺，  不按某一支兜底）。
-        //   缺陷名（C-102）**mixed 那一件被按单一形态看待**：
-        //     原来 primary / landedRel / dirs 三处都只按**一个** role 算，
-        //     而 dirs 由那个 role 二选一（ROLE_PROGRAM 只有 binDir、ROLE_LIBRARY 只有 libDir）
+        // 族二（这一件是程序还是库）：派生物按产物里实际存在的每一种形态各建各的那一条。
+        //  不再按「一个 primary + 一个 role」算——那样 `dirs` 由那一个 role 二选一，而 mixed 那一件两种形态都有，
+        //  另一种形态该建的那条永远不在检查范围内。也不接受「按 entry 猜」：形态是构建期算好的（04 那张表第二行），
+        //  运行期只读产物那一份（读不到就报缺、不按某一支兜底）。
+        //  缺陷 C-102：旧版把 mixed 那一件按单一形态看待（primary / landedRel / dirs 三处都只按一个 role 算，
+        //  而 dirs 由那个 role 二选一：ROLE_PROGRAM 只有 binDir、ROLE_LIBRARY 只有 libDir）。
         val shapeHere = ProgramInstallPipeline.PieceShape.read(verDir)
         val targets = ArrayList<Triple<String, String, String>>()   // (落位后那一份的相对路径, 该建的目录, 形态)
         if (shapeHere != null) {
@@ -139,15 +122,10 @@ object PreinstalledPieces {
                     ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath
                     else -> lobos.kernel.layout.PrefixProvisioner.libDir(ctx).absolutePath
                 }
-                //  缺陷名（C-102）**这一格逐字只取首项、 一件逐字可能有好几条链** ——
-                //    旧版逐字是 `val name = items.first().path.substringAfterLast('/')`
-                //      （ 首项逐字是「LC_ALL=C sort 的**副产品**」、 它逐字是**实体名**那一层）
-                //    01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.4 第 3 条逐字：
-                //      openssl 那一件逐字有**两条**链（libcrypto.so 与 libssl.so）
-                //      「**这一格不是「取第一个」**」。
-                //    **该取哪几条**： 指针层（软链那一层）逐字**全部**取、 再按 chain[0] 择一。
-                //    择一那一格逐字**与** PieceEntryPointer 那一族**同一套口径**
-                //      （ 按 C-104 判别源要唯一、 不各写一套）。
+                //  缺陷名 C-102：这一格只取首项，而一件可能有好几条链。旧版 `val name = items.first().path.substringAfterLast('/')`
+                //    （首项是 LC_ALL=C sort 的副产品、是实体名那层）；01 裁的 S604-01 §1.4 第 3 条：openssl 有两条链
+                //    （libcrypto.so 与 libssl.so），「这一格不是「取第一个」」。该取指针层（软链那层）全部、再按 `chain[0]` 择一，
+                //    与 PieceEntryPointer 同一套口径（C-104 判别源唯一、不各写一套）。
                 val picked = ProgramInstallPipeline.PieceShape.pointerLayerOf(shapeHere, r, verDir)
                 val chosen = if (picked.isNotEmpty()) {
                     picked
@@ -157,8 +135,7 @@ object PreinstalledPieces {
                     emptyList()
                 }
                 if (chosen.isEmpty()) {
-                    //  **程序形态**那一族逐字只有一条入口（ 它不参与择一），
-                    //     库形态那一族择一不出来时逐字**不建**那一条（ 下面逐字报缺）。
+                    //  程序形态只有一条入口（不参与择一）；库形态择一不出来时不建那一条（下面报缺）。
                     if (r == ProgramInstallPipeline.ROLE_PROGRAM && items.size == 1) {
                         val name = items.first().path.substringAfterLast('/')
                         targets.add(Triple(dir + "/" + name, abs, r))
@@ -187,17 +164,10 @@ object PreinstalledPieces {
             val name = landedRel.substringAfterLast('/')
             val landed = File(verDir, landedRel).canonicalFile.path
             val link = File(dir, name)
-            //  记录那一件的入口来源 = APK 原件（ 来源这一格是「回到 APK 原件」可判的事实）。
-            //   缺陷名（C-102）**只记了程序形态那一条**：这一件若同时有库形态与程序形态
-            //   （mixed）， **两个角色各建一条派生物软链**， 原来这一处
-            //   按 targets 逐条写同一件的那一格， **后一条把前一条盖掉了**
-            //   （ 盖掉的是「库那条入口指针」）。 回退要落回的是**入口那一格**
-            //   （ 是程序形态那一条）， 所以现在**按角色记**：
-            //   每个角色各记一格（角色 + 那一条入口指针路径 + 那一份字节路径）。
-            //   缺陷名（C-102）**库形态那一格只记了字节、没记那条指针**：
-            //   而库形态的入口指针（usr/lib/<名>）恰恰是**回退要落回的那一条**，
-            //   一格没记 「回到 APK 原件」对纯库件无从判。
-            //   现在：两个角色**都**按「角色 + 入口指针路径 + 那一份字节路径」记。
+            //  记录那一件的入口来源 = APK 原件（来源这一格是「回到 APK 原件」可判的事实）。
+            //  缺陷名 C-102：旧版只记了程序形态那一条——mixed 那件两个角色各建一条派生物软链，原来按 targets 逐条写同一件的
+            //    那一格，后一条把前一条盖掉了（盖掉的是库那条入口指针）；而库形态的入口指针（usr/lib/<名>）恰恰是回退要落回
+            //    的那一条，一格没记「回到 APK 原件」对纯库件无从判。现在两个角色都按「角色 + 入口指针路径 + 字节路径」记。
             runCatching {
                 lobos.services.supply.PieceOriginStore.recordApkSlot(
                     ctx, id, version, role, link.absolutePath, File(verDir, landedRel).absolutePath,
@@ -245,12 +215,10 @@ object PreinstalledPieces {
         }.getOrNull() ?: return fail(ctx, id, "component-meta.json 解析失败")
 
         val version = meta.optString("version", "").ifBlank { return fail(ctx, id, "说明里没有 version") }
-        // entry **允许为空** —— 那是「这一件没有程序那一侧」（纯库件：crypto/curl/zlib）。
-        //  缺陷名（C-102）纯库件被当成「说明里没有 entry」而报缺：
-        //   原来这一行是 ifBlank { return fail(… "说明里没有 entry") }，
-        //   而那把「没有入口」当成了「清单坏了」 纯库件一步都装不上。
-        //   而按 C-05「没有」就是没有：纯库件**本来就该没有入口**（07 今天的复算表：
-        //   crypto/curl/zlib 复算 role=library 且 bin/ 目录不存在）。
+        // entry 允许为空——那是「这一件没有程序那一侧」（纯库件：crypto/curl/zlib）。
+        //  缺陷名 C-102：旧版 `ifBlank { return fail(… "说明里没有 entry") }` 把「没有入口」当成了「清单坏了」，
+        //  纯库件一步都装不上。按 C-05「没有」就是没有：纯库件本来就该没有入口（07 复算表：crypto/curl/zlib
+        //  复算 role=library 且 bin/ 目录不存在）。
         val entry = meta.optString("entry", "").trim()
 
         // 形态只从**产物自带的** piece-shape.json 读。读不到  报缺，
@@ -259,58 +227,19 @@ object PreinstalledPieces {
             ?: return fail(ctx, id, "包里没有 piece-shape.json（产物没带形态）—— 报缺，不探测字节")
         if (entry.isNotBlank() && !File(unpacked, entry).isFile) return fail(ctx, id, "包里没有 entry 指的文件 " + entry)
 
-        // 落位后入口在哪：由形态决定（库进库目录、程序进程序目录），不看目录名。
-        // 纯库件没有入口  landedEntry 为空  它只落库那一份（dirForRole 那把尺）。
-        //  编译错误（run 39415331935 第21步）：entryRole 原来声明在 if 块里，
-        //   而下面三处（refreshDerivedLinks / ManifestWriter.write / register）要它  提到外层。
-        // 族二（这一件是程序还是库）：构建期按形态算出，运行期**只读那一格**（04 今天那张表第二行）。
-        //   缺陷名（C-102）**这一格有两把尺**：
-        //     原来空 entry 时这一处**自己答 ROLE_LIBRARY** —— 而那是运行期在猜形态。
-        //     而形态是构建期算好的（scripts/toolchain/elf-form.sh 照那一把尺），随产物落进
-        //     piece-shape.json 的 files[].role —— 运行期只该读它。
-        //   真机读数（01 今天核过，2026-10-20）：busybox 那个落位目录里 lib/ 是空的、
-        //     而 bin/ 下 19 个实体 => **形态与角色在那一份上已经对不上了**。
-        // 现在：只从产物那一份取；取不到就报缺（C-05），不自己答一个。
-        //
-        // [!] 缺陷名（C-102）**这一格取错了输入** —— 而 04 今天裁的判据方向是：
-        //   「**按 entry 那一项的形态**」， **不是**「先找库形态的落位项」。
-        //
-        // 而改前的形态（ 本机逐处核到了它怎么把 openssl 那一件判错）：
-        //   val entryRole = shape.byRole(ROLE_LIBRARY).firstOrNull()?.role   （ **先**找库形态）
-        //   openssl 那一件**有** lib/libcrypto.so 与 lib/libssl.so 它**找到了**
-        //   => entryRole = **library**（ **不是**按 entry 那一项的形态，
-        //   entry 那一项逐字是 bin/openssl、 它在产物那一份里的 role 逐字是 **program**）
-        // 落位侧那份 program-manifest.json 的 role 逐字就是 library
-        //   => :541 那一行 `assetEntry = if (isProgram) entry else ""` 把它清空
-        // 索引里 openssl 那一行 assetEntry 逐字是空、role 逐字是 library
-        //   => levelOf 判 PIECE 它进不了监督名单（SupervisorPool.kt:136 那一道）
-        // 它那一件自己的 bin/openssl 也因此**进不了** usr/bin。
-        //
-        // 一族的判别形式（可机械判）：「**这一件有没有程序形态的字节**」
-        //   openssl **有**（ bin/openssl 在产物那一份的 programs 那一列里）。
-        //
-        // 按 C-103 那一格该问的是「**这一件有没有可调起的入口**」
-        //   **正是** entry 那一格（ 它非空就答它）。
-        //
-        // 「entry 为空」那一支**仍**取库形态那一项
-        //   （ 是纯库件那一族： 它们**真的**只有库形态的字节， 它们**该**是 library）。
+        //  落位后入口在哪由形态决定（不看目录名）；纯库件没有入口，landedEntry 为空。entryRole 原在 if 块里、三处
+        //   （refreshDerivedLinks / ManifestWriter.write / register）要它，已提到外层（run 39415331935 第21步）。
+        //  族二（是程序还是库）：形态构建期算出，运行期只读那一格（04 那张表第二行）。缺陷 C-102：旧版空 entry 时自己答 ROLE_LIBRARY
+        //   （猜形态）；真机读数（01，2026-10-20）busybox 落位目录 lib/ 空、bin/ 下 19 个实体，形态与角色对不上。
+        //  缺陷 C-102（取错输入）：旧版先找库形态（openssl 的 libcrypto.so 与 libssl.so 由此被找到，而 entry 是 bin/openssl/program），
+        //   `:541` 因此清空 assetEntry、levelOf 判 PIECE 不进监督名单（`SupervisorPool.kt:136`）；按 C-103 该问 entry 那格。
         val entryRole: String = if (entry.isNotBlank()) {
-            //  缺陷名（C-102）**那一格逐字从那 `files[]` 逐字取、 它逐字必然 'program'**
-            //    旧版逐字是 `shape.roleOf(entry)`
-            //      `files[]` 逐字每一项那 `role` 逐字是**形态**那一把尺
-            //        （ program / library / unknown、 它逐字答的是「那一份字节是程序还是库」）
-            //      **件整体**的系统角色（ exec / shell / library / …）
-            //        逐字**不**在那 `files[]` 逐字那一栏里
-            //      **后果**（07 本轮逐字核出、Lead 本机独立复核成立）：
-            //        · 而那 `component-meta.json` 逐字 bash = role='shell'
-            //        · 而那 `piece-shape.json` 逐字 files 1 条逐字 role='program'
-            //          （ busybox 逐字 files 30 条逐字 roles ['program']）
-            //        · 而那**落位侧** `program-manifest.json` 逐字 'program'
-            //        · **注册表**逐字 'program'、 `role='shell'` 那一格逐字**永远**答不出来
-            //    **处置**（ 是 Lead 采纳的那 (甲)）：
-            //      **系统角色**逐字走那产物自带的 `systemRole` 那一格
-            //        （ 构建期逐字从那 `component-meta.json` 派生、 **一份真源**逐字是那一份）
-            //      它逐字**读不到**时逐字**报缺**（ 按 C-05 不猜填、 不按形态那一把尺兜底）
+            //  缺陷名 C-102：这一格从 `files[]` 取、必然 'program'。旧版 `shape.roleOf(entry)`，而 `files[]` 的 `role` 是形态那把尺
+            //    （program / library / unknown），件整体的系统角色（exec / shell / library / …）不在那一栏里。
+            //   后果（07 核出）：`component-meta.json` 里 bash 是 role='shell'，而 `piece-shape.json` 的 files 1 条是 role='program'
+            //    （busybox 30 条、roles ['program']），落位侧 `program-manifest.json` 是 'program'，注册表也是，`role='shell'`
+            //    永远答不出。处置（Lead 采纳的甲）：系统角色走产物自带的 `systemRole`（构建期从 `component-meta.json` 派生、
+            //    一份真源）；读不到时报缺（C-05，不猜填、不按形态那把尺兜底）。
             shape.systemRole.takeIf { it.isNotBlank() && it != "unknown" }
                 ?: return fail(
                     ctx, id,
@@ -318,15 +247,10 @@ object PreinstalledPieces {
                         "（=> 而那它逐字该从那 component-meta.json 派生、=> 而那按 C-05 不猜填）",
                 )
         } else {
-            //  缺陷名（C-102）**这一格逐字取库形态那一项的首项、 一件逐字可能有好几条链** ——
-            //    旧版逐字是 `shape.byRole(ROLE_LIBRARY).firstOrNull()?.role`
-            //      （ 首项逐字是「LC_ALL=C sort 的**副产品**」、 它逐字是**实体名**那一层）。
-            //    01 裁的 S604-01-LIBRARY-ENTRY-LAYER-RULING.md §1.4 第 3 条逐字：
-            //      openssl 那一件逐字有**两条**链（libcrypto.so 与 libssl.so）
-            //      「**这一格不是「取第一个」**」。
-            //    **取哪几条**： 逐字**调**那唯一那套口径
-            //      （ ProgramInstallPipeline.PieceShape.pointerLayerOf 那一格）、
-            //      择一不出来时逐字**报缺**（ 按 C-05 不猜、 不按首项兜底）。
+            //  缺陷名 C-102：这一格取库形态那项的首项，而一件可能有好几条链。旧版 `shape.byRole(ROLE_LIBRARY).firstOrNull()?.role`
+            //    （首项是 LC_ALL=C sort 的副产品、是实体名那层）；01 裁的 S604-01 §1.4 第 3 条：openssl 有两条链（libcrypto.so
+            //    与 libssl.so），「这一格不是「取第一个」」。取哪几条：调唯一那套口径（`pointerLayerOf`），择一不出来时报缺
+            //    （C-05，不猜、不按首项兜底）。
             val verDirForRole = File(
                 SystemDirs.pieceDir(ctx, id),
                 lobos.services.reg.ProgramIndex.safeSegment(version)
@@ -348,22 +272,11 @@ object PreinstalledPieces {
         }
 
         val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
-        //  纯库件没有入口  这一支的判据不能是「verDir/<entry> 在不在」
-        //   （空 entry 时 File(verDir, "") 是目录  恒真  误短路）。
-        //    纯库件验的是「它那一份库字节在不在 lib/ 下」——按形态（role=library）判。
-        //  **「已落位」的判据是「是不是同一份」，不是「在不在」** ——
-        //   缺陷名（C-102）**旧字节永远换不掉**：
-        //     原来这里判的是「落位目录里那份东西在不在」—— 而「在」只说明**有个东西在那儿**，
-        //     不说明它是**这一份**。而落位目录是 opt/<id>/<version> ——
-        //     **版本号没变而内容变了**（指纹变了） 同一目录  旧字节留着  新的没落下来。
-        //    真机读数（01 今天逐件核的，2026-10-20）：
-        //     真机 busybox 那一件的落位目录 mtime = 04:49（唯一旧的一件），
-        //     它的字节 sha = 87e32d67… 而新包那份是 4ce4a418…（我今天核过新包的 files[].sha256）
-        //      **同一份吗？不是**  那一格今天判「不一致」 走重装  新字节落下来。
-        //    现在：逐项比对**产物自带的 files[].sha256**与落位目录里那份的 sha256。
-        //     而 piece-shape.json 是产物自带的（构建期算的），落位目录里那份的 sha 现算。
-        //  纯库件（没有入口）那一格也用**同一把尺**（是不是同一份）：
-        //   原来它判的是「lib/ 下有没有文件」—— 而那同样只说明「有个东西在那儿」。
+        //  纯库件没有入口，这一支的判据不能是「verDir/<entry> 在不在」（空 entry 时 `File(verDir, "")` 是目录、恒真、误短路），
+        //    它验的是「那份库字节在不在 lib/ 下」（按形态 role=library 判）。
+        //  「已落位」的判据是「是不是同一份」而非「在不在」——缺陷 C-102（旧字节永远换不掉）：落位目录是 opt/<id>/<version>，
+        //    版本号没变而内容变了时同一目录、旧字节留着。真机读数（01，2026-10-20）：busybox 落位目录 mtime=04:49（唯一旧的一件），
+        //    它字节 sha=87e32d67… 而新包那份 4ce4a418…，判「不一致」走重装。现在逐项比 `files[].sha256` 与盘上那份现算的 sha。
         val landedPresent = if (landedEntry.isBlank()) {
             val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")
             libDir.isDirectory && libDir.listFiles()?.any { it.isFile } == true
@@ -371,35 +284,18 @@ object PreinstalledPieces {
             File(verDir, landedEntry).isFile
         }
         // 族三（是不是我们要的那一代）：逐项比「落位上那份字节的 sha256」与「产物 files[].sha256」。
-        //   缺陷名（C-102）**「跳过当成相同」在比代这一格上把「不知道」当成了「是」**：
-        //     原来这一支有两处 `return@all true`：
-        //       · fs.sha256.isBlank() 产物没给摘要，而这一格答「相同」
-        //       · dst.canonicalFile 取不到 路径算不出来，而这一格也答「相同」
-        //     而 §1.55：缺字段要报缺、不拿缺省当值。
-        //      而后果是可核的：产物少给一条摘要 那一项永远被判「相同」=>
-        //        那一项**永远不会被换掉**（ 这就是「旧字节换不掉」那一族里的一格）
-        //   判别形式：那一项缺摘要时，这一格答的是「相同」还是「无法判定」；
-        //     答「相同」 这一格把「缺证据」当成了「证据支持」。
-        // 现在：缺摘要或路径算不出来都答「无法判定」，而「无法判定」**不判已落位到最新**
-        //     （ 走重装，而重装会重新落位并重写这一格）。
+        //  缺陷名 C-102：「跳过当成相同」在比代这一格上把「不知道」当成了「是」——旧版有两处 `return@all true`：
+        //    fs.sha256.isBlank()（产物没给摘要）与 dst.canonicalFile 取不到（路径算不出来），都答「相同」。
+        //  而 §1.55：缺字段要报缺、不拿缺省当值。后果可核：产物少给一条摘要，那一项永远被判「相同」、永远不会被换掉
+        //    （这就是「旧字节换不掉」里的一格）。判别形式：那一项缺摘要时答「相同」还是「无法判定」——答「相同」就是把
+        //    缺证据当成了证据支持。现在缺摘要或路径算不出来都答「无法判定」，而不判已落位到最新（走重装）。
         val unverifiable = mutableListOf<String>()
-        //  [!] 缺陷名（C-102）**这一格只比「产物说有的那几项」** —— **产物说没有的那几项**
-        //    **从来没被比过** 落位目录里**多出来**的那些项**永远留着**。
-        //    正是 07 今天在设备侧核到的那一格：
-        //      · 6c107c7 那一版产物里**没有** bin/c_rehash（ 本机核过产物那一份），
-        //      · 而这一趟 journal 逐字有「OK 解包 bin/openssl」两行、 **含 c_rehash 的解包行数 = 0**
-        //        （ 这一版压根没解包它），
-        //      · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**、
-        //        而 mtime 逐字是 2026-10-24 06:31（ 是 84df912 那一版落下的遗留物），
-        //      · 而这一版**既没再落它、也没删它**。
-        //    成因：那一段比的是**逐项 sha256**（ 它只遍历 shape.files），
-        //      **多出来的**那几项**不在** shape.files 里、 它们**不被比**、
-        //      「同内容不重写」那一短路就**成立**（ landedUpToDate 为真），
-        //      install **压根没跑** 几项遗留物**永远删不掉**。
-        //    处置：这一格还要核「落位目录里**有没有**产物说没有的那几项」；
-        //      有 一格**不**判已落位到最新 走重装 => install 跑
-        //      => install 那一族逐字是「整目录换上去」（ 旧那一份被 renameTo 挪走、
-        //         然后 deleteRecursively） 一项**自然**没有。
+        //  [!] 缺陷名 C-102：这一格只比「产物说有的那几项」，产物说没有的那几项从来没被比过，落位目录里多出来的那些永远留着。
+        //    正是 07 在设备侧核到的：6c107c7 那一版产物里没有 bin/c_rehash（本机核过），journal 里「OK 解包 bin/openssl」
+        //    两行、含 c_rehash 的解包行数 = 0，而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节还在、mtime 2026-10-24 06:31
+        //    （84df912 那版落下的遗留物），这一版既没再落它、也没删它。成因：那一段只遍历 `shape.files` 比逐项 sha256，
+        //    多出来的不在里面、不比，「同内容不重写」的短路就成立（landedUpToDate 为真），install 压根没跑。处置：还要核
+        //    「落位目录里有没有产物说没有的那几项」，有就不判已落位到最新、走重装（install 是整目录换上去，旧的自然没有）。
         val staleInLanding = mutableListOf<String>()
         run {
             val declared = shape.files.map { fs ->
@@ -443,26 +339,12 @@ object PreinstalledPieces {
             if (!real.isFile) return@all false
             sha256Of(real) == fs.sha256
         }
-        // 格三（是不是我们要的那一代）：读产物自带的那一格构建标识。
-        //   C-104（加了之后有没有消费者）：而 01 今天核到**今天零个消费者**
-        //   （落位侧只读 component-meta.json 的 version 与 entry 两格）——
-        //   而「加了字段」与「加了读者」必须同一处落地，否则那一问的答案就是「是」。
-        //    而它要答的是：「落位上那份是不是**这一次构建**造出来的那一份」。
-        //    而它与 sameBytes 是两问（04 今天 §1.93 与本节）：
-        //     · sameBytes 答「落位上那份 == 产物里那份」（内容）
-        //     · 这一格答「产物里那份 == 这一次构建的那一份」（代）
-        //    而落位目录里没有这一格（它只存在包里那份 component-meta.json 里）
-        //    而落位目录那份清单是 installComponent 落位后写的 ——  而它写的时候
-        //    有没有把构建标识一起写进去，决定这一格能不能答。
-        //  处置：**只报，不拦**（03 今天给的两条我判甲，理由是判据那一层）。
-        //   甲 只报：写一条诊断，不动落位。后果是那一件是旧代时系统继续用旧字节跑。
-        //   乙 拦住：判它不是这一代就不落。后果是「拿不到」与「不是」在读侧不可分
-        //     —— 而本地件（buildSha=local）与旧件（落位目录里那份没有那一格）
-        //     **都读不到**构建标识  而这一族按「拿不到要答不知道」
-        //     **而「不知道」不能拦住落位**。
-        //    所以：landedUpToDate **只看内容**（sameBytes），构建标识那一格只报。
-        //  「落位目录里有没有产物说没有的那几项」也要算进去（ 一格见上面那一段）
-        //     有 一格**不**判已落位到最新 走重装 => install 跑
+        // 格三（是不是我们要的那一代）：读产物自带的那一格构建标识。C-104：01 核到今天零个消费者（落位侧只读 component-meta.json
+        //    的 version 与 entry 两格），而「加了字段」与「加了读者」必须同一处落地。它答「落位上那份是不是这一次构建造出来的」，
+        //    与 sameBytes 是两问（04 §1.93：内容 vs 代）；这一格只存在包里那份 component-meta.json 里。
+        //  处置：只报、不拦（03 两条判甲）。甲只报=写诊断不动落位（旧代继续用旧字节）；乙拦住=判它不是这一代就不落，而「拿不到」
+        //    与「不是」在读侧不可分（buildSha=local 与旧件都读不到），拿不到要答不知道、不知道不能拦住落位。所以 landedUpToDate
+        //    只看内容（sameBytes），构建标识那格只报。「落位目录里有没有产物说没有的那几项」也算进去（见上一段）。
         val landedUpToDate = landedPresent && sameBytes && staleInLanding.isEmpty()
         if (unverifiable.isNotEmpty()) {
             lobos.services.log.Journal.note(
@@ -472,47 +354,22 @@ object PreinstalledPieces {
             )
         }
         if (verDir.isDirectory && landedUpToDate) {
-            // 缺陷（C-102） 落位检查只验原物在不在、派生物指向哪不管
-            //         软链是派生物而落位跳过已存在项，派生物因此永不刷新
-            //  这一支原来只验 verDir/<entry>（原物）在，就 register 并 return true；
-            //   而 usr/bin 与 usr/lib 下指向这一件的软链是**派生物**，坏链就永远留在这儿。
-            //   真机读数（07，**旧版落位那一版**：5a265b1）：libbusybox.so / liblobosjq.so / libssl.so 三条坏的，跨多版装机不变。
-            //    而那三条坏链的名字里有 liblobosjq.so —— 而今天 jq 那一件的 lib/ 下不再有那一份
-            //   （03 今天那一问：零人 NEEDED 它  产物里就不该有） 那一版的名字不再成立。
-            //  return 之前先校验派生物；有一条不对就重算它。
-            //   缺陷名（C-102）**短路那一支按目录名验原物**：原来验的是 verDir/<entry>，
-            //    而 entry 是清单里那一条（lib/ 那份） 这一支的判据是「目录名对不对」，
-            //    不是「形态对不对」。现在验的是**落位后那一条**（形态决定的）。
-                    // 格一那一族的收尾：**快路径也要刷新落位目录那两份产物自带的清单**。
-        //   缺陷名（C-102）**只刷了其中一份，而建链读的是另一份**：
-        //     · 产物自带两份：component-meta.json（META_NAME）与 piece-shape.json（SHAPE_NAME）
-        //     · 而 refreshDerivedLinks 读的是 **piece-shape.json**（PieceShape.read(verDir)）
-        //     · 而原来这一处只刷 component-meta.json   建链读到的是**上一次重装带过来的**那一份 
-        //     ·  而 62e0c7c 只做了一半 ——  而那一半就是「六件报缺」那一格的原因 
-        //    而真机读数（07，2026-10-21，run 39483058890 / head=fec29ac）：
-        //     八件的 component-meta.json 全部刷新（mtime 03:39/03:40，全部带 buildSha）
-        //     而 piece-shape.json **只有 busybox 与 ripgrep 两件有** —— 
-        //     而那两件正是**今天被重装过**的那两件   ** 这是「那个动作的副作用」，
-        //      而不是「那六件坏了」**（04 今天第二段那条判别）
-        //    现在：两份都刷，**而且这份在 refreshDerivedLinks 之前**（  而顺序是这一格的关键：
-        //      建链读的那一份要在刷新之后才拿得到   顺序要反过来 ）
-        //    而 piece-shape.json **逐字复制产物那一份** —— 
-        //      而它不是登记（  登记是 manifest 与 index， 而它只描述「这一件是什么」）
-        //      而它是**构建期算好的那一格**（C-16：  运行期只读不判断）   所以照抄 
+            //  缺陷 C-102：落位检查只验原物在不在、派生物指向哪不管——软链是派生物而落位跳过已存在项，永不刷新（原支只验 verDir/<entry>
+            //    在就 register 并 return true；07 旧版落位 5a265b1：libbusybox.so / liblobosjq.so / libssl.so 三条坏的、跨多版装机不变）。
+            //  格一那一族的收尾：快路径也要刷新两份产物清单。缺陷 C-102：旧版只刷 component-meta.json，而 `refreshDerivedLinks` 读
+            //    piece-shape.json（62e0c7c 只做了一半，就是「六件报缺」那格；07，2026-10-21，run 39483058890 / head=fec29ac：八件的
+            //    component-meta.json 全刷新，piece-shape.json 只有 busybox 与 ripgrep 有）。现在两份都刷、这份在 `refreshDerivedLinks`
+            //    之前（顺序是关键），piece-shape.json 直接复制产物那份（C-16：运行期只读不判断）。
             val landedMeta = runCatching {
                 val j = org.json.JSONObject(meta.toString())
                 j.put("entry", landedEntry)
                 j
             }.getOrNull()
-        //  [!] 缺陷名（C-102）**落位侧按哪一把尺落的权限** —— 而**这一支**没有落权限。
-        //   而慢路径那一支有（ ProgramInstallPipeline 逐字是「权限按**产物声明的 mode** 落
-        //   （运行期不判形态、不替产物决定权限）」， 它逐项 chmod）。
-        //   而预装件走的是**快路径**（ 这一支）， 这一支**原来一个 chmod 都没有**。
-        //   后果是：解包出来的那个字节**带着 zip 里的权限**落下去，
-        //      zip 里那一项**没有**被执行位时（ c_rehash 那一项逐字是 -rw-------），
-        //      它在盘上**不可执行**， 它也**建不出** usr/bin 下的那一条软链。
-        //   处置：这一支也按**产物声明的 mode** 逐项落（ 与慢路径同一把尺、同一句话）。
-        //   **不**在这里判形态（ 形态是构建期算好的、 一格在 shape.files[].mode 里）。
+        //  [!] 缺陷名 C-102：落位侧按哪一把尺落的权限——而这一支没有落权限。慢路径那一支有（ProgramInstallPipeline
+        //    「权限按产物声明的 mode 落，运行期不判形态、不替产物决定权限」，逐项 chmod），而预装件走的是快路径（这一支），
+        //    这一支原来一个 chmod 都没有。后果：解包出来的字节带着 zip 里的权限落下去，zip 里那一项没有被执行位时
+        //    （c_rehash 是 -rw-------），它在盘上不可执行，也建不出 usr/bin 下那条软链。处置：这一支也按产物声明的 mode 逐项落
+        //    （与慢路径同一把尺）；不在这里判形态（形态是构建期算好的，在 `shape.files[].mode` 里）。
         val modesLanded = runCatching {
             var n = 0
             for (fs in shape.files) {
@@ -572,8 +429,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
             trace(ctx, "写 program-manifest.json", id + " 成=" + manifestWritten.isSuccess +
                 " 目标=" + verDir.absolutePath + "/" + lobos.services.supply.ProgramDir.MANIFEST_NAME +
                 (if (manifestWritten.isSuccess) "" else " 失败=" + manifestWritten.exceptionOrNull()))
-            //  **进度**逐字**在**那**注册**之前**就**记**（ **它**逐字**是**那**关键**步骤**上的**那一个**）。
-            //    **它**逐字**不**是**那「；成」**那一族**（ **它**们**逐字是**那**两**件**事**：「那**记**的是**什么**」与「那**它**是**不是**那**结果**」）。
+            //  进度在注册之前就记（它是关键步骤上的那一个，不是等「；成」那个结果）。
             trace(ctx, "装 " + id, "登记前")
             register(ctx, id, version, relStateDir(id), landedEntry, entryRole, verDir, landedMeta)
             return true
@@ -597,20 +453,12 @@ val derived = refreshDerivedLinks(ctx, id, version)
                 (r.reason ?: "") + " — " + r.detail,
             )
             return false
-        // 格三（是不是我们要的那一代）：比「**install 之后**落位目录那份 vs 产物那份」。
-        //   缺陷名（C-102）**检查跑在 install 之前，读到的是上一次留下的旧文件**：
-        //     原来这一段在 install 调用之前，而 install 在本函数后面
-        //      它读到的落位目录那份**还没被换成包里那一份**
-        // 八件全报「不是这一次构建的那一份」。
-        //    真机读数（07，2026-10-21）： 那 8 条全在同一个 prefix-trace 轮次里（ (b) 不成立），
-        //      而 APK 里那个 zip 与 Release 上那一份 cmp 逐字相同（ (a) 也不成立）
-        //       那一格的真根因是**行序**  这一段挪到 install 之后。
-        //    而这一格**不参与**「已落位到最新」那个判断（04 今天第七条：
-        //      构建标识报不一致 = 观察点，不拦；逐项摘要报不一致 = 闸门，拦）
-        //       它在这里只写一条诊断。
-        //    而**三种状态不可互相替代**（01 今天 S53，C-05）：
-        //       那一格写着值 → 可答；  那一格**不存在** → 报缺（ 而它**不是**「= APK 那一代」）；
-        //       写着值而 ≠ APK 那一格 → 不同代。 而**答不出「是」时要答「缺」或「不同」，不许答「是」**。
+        // 格三（是不是我们要的那一代）：比「install 之后落位目录那份 vs 产物那份」。缺陷 C-102：旧版检查跑在 install 之前，
+        //    读到的是上次留下的旧文件，于是八件全报「不是这一次构建的那一份」。真机读数（07，2026-10-21）：那 8 条全在同一个
+        //    prefix-trace 轮次里（(b) 不成立）、APK 里那个 zip 与 Release 上那份 cmp 相同（(a) 也不成立），真根因是行序，
+        //    这一段已挪到 install 之后。这一格不参与「已落位到最新」（04 第七条：构建标识报不一致=观察点不拦，逐项摘要=闸门拦）。
+        //  三种状态不可互相替代（01 S53，C-05）：写着值→可答；那格不存在→报缺（不是「= APK 那一代」）；写着值而 ≠ APK→不同代。
+        //    答不出「是」时要答「缺」或「不同」，不许答「是」。
         val pkgBuild = runCatching {
             val f = File(unpacked, lobos.kernel.layout.PrefixProvisioner.META_NAME)
             if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
@@ -619,16 +467,11 @@ val derived = refreshDerivedLinks(ctx, id, version)
             val f = File(verDir, lobos.kernel.layout.PrefixProvisioner.META_NAME)
             if (!f.isFile) "" else org.json.JSONObject(f.readText()).optString("buildSha", "").trim()
         }.getOrDefault("")
-        // 01 今天 S53：三态不可互相替代（C-05）——而**三态判别要求两处都先确认存在**：
-        //    两处都存在而相等 同代
-        //    **有一处不存在** 报缺（ 而它**不是**「= APK 那一代」， 也不是「= 未知的那一代」）
-        //    两处都存在而不等 不同代
-        //  而「凡那一格参与比较，先确认它在每一件上都存在；有一件缺  那一格整体报缺」
-        //  而「local」那个占位**也要报缺**（04 今天那条总判据）：
-        //   它是「本地造的那一份」，而它与「= APK 那一格」在读侧**不可区分**
-        //    而结论需要一个具体值（「是不是这一次构建的」）  那一格必须报缺，不许填 
-        //    而它与 APK 那一格都是 40 位时两者逐字相同  「恰好同相」 
-        //    换一个输入就不同相了（ APK 那一格不是 local）   不能拿它判「同代」。
+        // 01 S53：三态不可互相替代（C-05）——三态判别要求两处都先确认存在：两处都存在而相等 = 同代；有一处不存在 = 报缺
+        //   （不是「= APK 那一代」，也不是「未知的那一代」）；两处都存在而不等 = 不同代。
+        // 「凡那一格参与比较，先确认它在每一件上都存在；有一件缺，那一格整体报缺」；「local」那个占位也要报缺
+        //   （04 那条总判据）：它是「本地造的那一份」，与「= APK 那一格」在读侧不可区分，而结论需要一个具体值，那一格必须报缺、
+        //   不许填。它与 APK 那一格都是 40 位时两者相同只是「恰好同相」，换一个输入就不同相了，不能拿它判「同代」。
         val pkgIsLocal = pkgBuild.equals("local", ignoreCase = true)
         val landedIsLocal = landedBuild.equals("local", ignoreCase = true)
         when {
@@ -669,10 +512,9 @@ val derived = refreshDerivedLinks(ctx, id, version)
         md.digest().joinToString("") { "%02x".format(it) }
     }.getOrDefault("")
 
-    /** 纯库件那一份库字节的名字 —— 从落位目录 lib/ 下取（**按形态**：库形态的那一份）。
-     *   库件没有入口（清单里 entry 空） 「库在哪里」那一格记的就是这个名字。
-     *   而它不按目录名挑：lib/ 下若有多个 .so，取**主名**那一个（名字恰以 .so 结尾）——
-     *    主名是「这一件的那一份」的标记（与构建侧同一把尺）。 */
+    /** 纯库件那份库字节的名字：从落位目录 lib/ 下按形态取（库形态那一份）。库件没有入口（entry 空），「库在哪里」那格
+     *  记的就是这个名字。不按目录名挑：lib/ 下若有多个 .so，取主名那一个（名字恰以 .so 结尾，是「这一件的那一份」的标记，
+     *  与构建侧同一把尺）。 */
     private fun libFileNameOf(verDir: File): String {
         val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")
         val files = libDir.listFiles()?.filter { it.isFile } ?: return ""
@@ -701,21 +543,12 @@ val derived = refreshDerivedLinks(ctx, id, version)
         if (role == ProgramInstallPipeline.ROLE_PROGRAM) lobos.services.reg.Level.PROGRAM
         else lobos.services.reg.Level.PIECE
 
-    /** 登记这一件。**注册表只记「库在哪里」与「程序在哪里」。**
-     *
-     *   缺陷名（C-102）**库那份也被记成入口**：原来这一行无条件
-     *    `assetEntry = entry`（清单里那一条，不分形态） lib/ 下那份也成了「入口」，
-     *    于是「入口格有值」被当成了「这一件是程序」——
-     *    今天五件失败的成因：入口填到了 lib 那一份。
-     *   现在**入口格只对程序形态填**；库形态那一格空着（= 只有落位目录）。
-     *
-     *   缺陷名（C-102）**role 由运行期现读字节填**：原来这一行是
-     *    `role = PieceScan.roleFromDisk(ctx, id)`（walk 落位目录读 ELF 头）。
-     *    形态是**生产时就知道的事** —— 现在从产物带来的那一格（[role]）读。
-     *
-     *   role 回答的是「它是什么」；「它是不是底座解释器」是另一个问题（§10.1:138），
-     *    由 [ShellEntry] 的判据回答，不靠这个字段。
-     */
+    /** 登记这一件。注册表只记「库在哪里」与「程序在哪里」。
+     *  缺陷 C-102：库那份也被记成入口——原来 `assetEntry = entry` 无条件，lib/ 下那份也成了入口，「入口格有值」被当成「这一件是
+     *   程序」（今天五件失败的成因）；现在入口格只对程序形态填，库形态空着（只有落位目录）。
+     *  缺陷 C-102：role 由运行期现读字节填——原来 `role = PieceScan.roleFromDisk(ctx, id)`（walk 落位目录读 ELF 头），而形态是
+     *   生产时就知道的事，现在从产物带来的那一格（`[role]`）读。role 答「它是什么」；「是不是底座解释器」是另一问（§10.1:138），
+     *   由 `[ShellEntry]` 的判据回答。 */
     private fun register(
         ctx: Context,
         id: String,
@@ -730,8 +563,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
     ) {
         val prev = lobos.services.reg.ProgramIndex.get(ctx, id)
         val isProgram = role == ProgramInstallPipeline.ROLE_PROGRAM
-        //  **库**那一档逐字判据是「那它逐字**真的**没有程序入口」
-        //    （ 它逐字**不是**「那它逐字不是 program」）
+        //  库那一档的判据是「它真的没有程序入口」，不是「它不是 program」。
         val isLibrary = role == ProgramInstallPipeline.ROLE_LIBRARY
         runCatching {
             lobos.services.reg.ProgramIndex.upsert(
@@ -745,33 +577,14 @@ val derived = refreshDerivedLinks(ctx, id, version)
                     stateDir = stateDir,
                     enabled = true,
                     desired = lobos.services.reg.Desired.RUNNING,
-                    //  库件没有入口（entry 空） libName 取**那份库字节**的名字。
-                    //   而那一份从落位目录 lib/ 下按**形态**取（role=library），不按目录名、不按 entry。
+                    //  库件没有入口（entry 空），libName 取那份库字节的名字，从落位目录 lib/ 下按形态取（role=library）。
                     libName = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir),
-                    //  缺陷名（C-102）**那一格逐字只对 role='program' 填、 role='shell' 那一档逐字也有入口**
-                    //    旧版逐字是 `assetEntry = if (isProgram) entry else ""`
-                    //      `isProgram` 逐字是 `role == ROLE_PROGRAM`
-                    //        （ Lead 本机实读 `PreinstalledPieces.kt:732` 逐字成立）
-                    //      role='shell' 逐字**不是** 'program'、 isProgram 逐字为 false
-                    //      它逐字把 shell 那一档**也**清空了
-                    //    **后果**（07 本轮逐字核出、Lead 本机实读仓内逐字成立）：
-                    //      · 而那注册表里 bash/busybox 逐字 assetEntry=''
-                    //      · 而那 `ShellEntry.kt:11` 到 `:13` 逐字
-                    //        `if (e.stateDir.isBlank() || e.assetEntry.isBlank()) null`
-                    //        resolve 逐字返回 null
-                    //      · `sys.tty.exec` 那一趟逐字抛
-                    //        「底座没有命令解释器（/usr/bin 下无可用入口）」
-                    //    **那不是**「那一件没有入口」（ 落位那一面逐字**全对**：
-                    //      usr/bin 两个软链逐字都在、 entry 逐字都在、
-      //        落位侧清单逐字 role='shell'）
-                    //      **差的只是**注册表那一个 assetEntry
-                    //    **处置**： **入口**那一格逐字该答
-                    //      「**那一件逐字有没有程序入口**」、 它逐字**不该**由
-                    //      「那一件逐字是什么角色」决定
-                    //      role='library' 那一档逐字**仍然**该清空
-                    //        （ 它逐字**真的**没有程序入口）
-                    //      role='shell' 那一档逐字**不该**清空
-                    //    **那两把尺逐字各答一件事**那一个错在那一格上（ 依 C-105 逐字**不**合并）
+                    //  库件没有入口（entry 空），libName 取那份库字节的名字，从落位目录 lib/ 下按形态取（role=library）。
+                    //  缺陷 C-102：入口格只对 role='program' 填，而 role='shell' 也有入口——旧版 `assetEntry = if (isProgram) entry
+                    //    else ""`（isProgram 是 `role == ROLE_PROGRAM`，Lead 实读 `PreinstalledPieces.kt:732`）把 shell 也清空了：注册表里
+                    //    bash/busybox 的 assetEntry=''，`ShellEntry.kt:11`-`:13` 的判据让 resolve 返回 null，`sys.tty.exec` 抛「底座没有
+                    //    命令解释器」——而落位那面全对（usr/bin 两个软链都在、entry 都在、清单 role='shell'），差的只是那个 assetEntry。
+                    //  处置：入口格答「那一件有没有程序入口」，不由角色决定——library 仍清空、shell 不清空；两把尺不合并（C-105）。
                     assetEntry = if (isLibrary) "" else entry,
                     role = role,
                     required = meta?.optBoolean("essential", false) ?: false,

@@ -88,21 +88,11 @@ object LocalExec {
                 redirectErrorStream = false,
                 owner = ProcessSupervisor.OWNER_PROGRAM,
             )
-            //  缺陷名（C-102）**那一格逐字把那**全部**输出逐字**累积**进那堆、 它逐字**没有上限** ——
-            //    旧版逐字是 `val out = StringBuilder()` / `val err = StringBuilder()`
-            //      **两**个逐字**无上限**地逐字涨
-            //        （ `StringBuilder` 逐字**每个**字符逐字**再存**一份、
-            //          `toString()` 逐字**又**是**一份**、 **峰值**逐字是**三**份）
-            //      **后果**（07 本轮逐字核出、Lead 本机复核成立）：
-            //        · 而那 logcat 逐字 `Throwing OutOfMemoryError "Failed to allocate a 117031556 byte
-            //          allocation …"`（逐字 13:34:57.367、 App 逐字刚起那 10 秒）
-            //        **分配量**逐字 117 MB、 与设备上逐字那一件逐字**同形**
-            //        （ `node` 那一件逐字 116779696 字节）
-            //      **常驻**那一族逐字是「逐字那 App 逐字常驻逐字整读那一大件」
-            //        **判据**逐字是「那一份逐字在那一段逐字还在逐字被读」那一个事实上
-            //    **处置**： 两段逐字**有**一个上限、 超出那一截逐字**丢**
-            //      **期望输出**那一族逐字**要**的是那**开头**那一些（ 它逐字**不**是全量）
-            //      **上限**逐字**要**报缺（ 按 C-05 不猜填、 **丢了多少**逐字**说清**）
+            // 缺陷名 C-102：stdout/stderr 无上限累积进堆。
+            //   旧版 `StringBuilder()` 无上限：每字符存两份、toString 又一份，峰值三份。
+            //   后果：设备 logcat 报 OOM「Failed to allocate 117031556 byte」，App 刚起 10 秒。
+            //   判据：那一份在那一段还在被读。
+            //   处置：设上限 MAX_CAPTURED_OUTPUT_CHARS，超出丢掉并报缺（C-05，不猜填）。
             val out = StringBuilder()
             val err = StringBuilder()
             var outDropped = 0L

@@ -33,25 +33,15 @@ class OsHostService : Service() {
 
     private var thread: HandlerThread? = null
 
-    //  缺陷名（C-102）**那 born 那一格逐字表达的是「这进程没被销毁过」、 它逐字该表达「这进程是第一次起来」** ——
-    //    旧版逐字是 `val born = thread == null`
-    //      `thread` 逐字**只在** onDestroy（`:378`）逐字变 null、
-    //        onDestroy 逐字**只**在服务被**正常拆解**时跑
-    //        系统**杀**进程那一族逐字**不走** onDestroy
-    //        **thread 逐字永不为 null**
-    //      **born 逐字恒为 false**
-    //      **后果**： `OsInit.beginLife` 逐字**永不被调**
-    //        `events.jsonl` 逐字 os-phase / 宿主出生 / os-run 逐字**都 0**
-    //          （ beginLife 逐字必写其中之一）
-    //        `files/var/lib/state.json` 逐字 phase=**DEGRADED**（ **不是** beginLife 写的 BOOTING）
-    //        diag 逐字「宿主拆解进度」逐字 **0**（ onDestroy 逐字没跑过）
-    //    **正解**： 「这进程逐字是第一次起来」逐字是**那进程自己的一个状态**，
-    //      它逐字**不**由「有没有被销毁过」推出来。
-    //    它逐字是那**进程自己的**一个逐字状态（ 它逐字随那进程一起来、 它逐字随那进程一起走）。
+    //  缺陷名 C-102：旧版 `val born = thread == null` 表达的是「这进程没被销毁过」，不是「第一次起来」。
+    //    `thread` 只在 onDestroy（`:378`）变 null，而 onDestroy 只在服务被正常拆解时跑，系统杀进程不走它，
+    //    于是 thread 永不为 null、born 恒为 false、`OsInit.beginLife` 永不被调：`events.jsonl` 的 os-phase /
+    //    宿主出生 / os-run 都 0，`files/var/lib/state.json` phase=DEGRADED（不是 beginLife 写的 BOOTING），
+    //    diag「宿主拆解进度」0。正解：「这进程是第一次起来」是进程自己的状态，不由「有没有被销毁过」推出。
     @Volatile private var processBorn: Boolean = false
     @Volatile private var birthDone: Boolean = false
     private var handler: Handler? = null
-    //  **tick** 逐字**走**那**自己**的**那一个**队列**（ **它**逐字**不**跟**那**装件**那一族**抢**）。
+    //  tick 走自己的队列（不跟装件那一族抢）。
     private var tickThread: HandlerThread? = null
     private var tickHandler: Handler? = null
     private var lastNotifyMs = 0L
@@ -67,107 +57,73 @@ class OsHostService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    //  缺陷名（C-102）**那 startForeground** 逐字**只**在**那 onStartCommand **那一族**里面**。
-    //    **成因**： startForegroundService 逐字**被**那系统**拒**了的时候（ mAllowStartForeground false **那一族**）、
-    //      **服务**逐字**没有**起、 onStartCommand 逐字**没有**跑、 startForeground 逐字**没有**被**调**。
-    //      系统**等**那 startForeground **那一道**、 **等不到**、 ANR 逐字**是**那「bg anr: … did not then call Service.startForeground()」。
-    //    **处置**： startForeground 逐字**搬**到**那 onCreate **那一族**里面**。
-    //      **它**们**逐字是**那**两**件**事**：「那**服务**起没起**」与「那**入口**是**什么**」）。
-    //      onCreate 逐字**在**那服务**起来**的第一**个**时刻**、 **它**逐字**不等**那 onStartCommand。
+    //  缺陷名 C-102：旧版 startForeground 只在 onStartCommand 里。成因：startForegroundService 被系统拒了
+    //    （mAllowStartForeground false）时服务没起、onStartCommand 没跑、startForeground 没被调，系统等不到
+    //    就 ANR（「bg anr: … did not then call Service.startForeground()」）。
+    //  处置：startForeground 搬到 onCreate（服务起来的第一个时刻，不等 onStartCommand）。
     override fun onCreate() {
         super.onCreate()
         promoteToForeground("onCreate")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        //  缺陷名（C-102）**那退出史**逐字**在**那**主线程**上**取**（ **它**逐字**是**那**一次** binder **调用**）。
-        //    **成因**： KillAudit.auditOnce 逐字**调**那 getHistoricalProcessExitReasons（ **它**逐字**是**那
-        //      **系统**服务**那**一边**的**同步** IPC）、 **它**逐字**在**那**主线程**上**、 **它**逐字**会**等**那**系统**服务**那**一边**。
-        //    **后果**逐字 = 而那**宿主**服务逐字**ANR**（ 「waited 20001ms: executing service …OsHostService」**那一行**）、
-        //      **它**逐字**杀**了**那**进程**、 **它**们**逐字是**那**两**件**事**：「那**读数**逐字**挂**在哪**」与「那**它**逐字**在**哪**一页**」））。
-        //    **处置**： **退出史**逐字**搬**到**那**工作线程**上**取**（ **它**逐字**不**是**那**落位**那一族**、
-        //      和那**它**们**逐字是**那**两**件**事**）， **主线程**逐字**只**做**那**轻活**。
-        //    **它**逐字**要**在**那 handler **起**好**之后**（ **它**逐字**不**是**那**出生**那一族**）。
+        //  缺陷名 C-102：退出史在主线程上取（`KillAudit.auditOnce` 调 `getHistoricalProcessExitReasons`，
+        //    那是系统服务的同步 IPC）。后果：宿主 ANR（「waited 20001ms: executing service …OsHostService」）被杀。
+        //  处置：退出史搬到工作线程上取，主线程只做轻活；要在 handler 起好之后。
         ResidencyAudit.auditPreviousExit(this)
-        //  born 那一格逐字改成「这进程逐字是第一次起来」
+        //  born 那一格改成「这进程是第一次起来」
         //    （ **不是**「这进程没被销毁过」、 **不是** `thread == null`）。
         val born = !birthDone
         if (born) {
             processBorn = true
         }
         if (born) {
-            //  **诊断**那一族的「上一世」那一份逐字**先清**（ 它逐字是那诊断那一族自己的语义：
-            //    它逐字只清「上一世」那一份、 它逐字**不**清「这一世」写的那几行）
-            //    它逐字**必须**在 beginLife **之前**（ beginLife 逐字写的
-            //      「宿主出生」「索引已从落位重建」那几行逐字是**这一世**的、 它们逐字要**留住**）。
-            //    它逐字**原来**在服务池那一族（ `SupervisorPool.start()` 逐字
-            //      `RuntimeDiagnostics.clear(host)`、 它逐字在**工作线程**上、
-            //      **出生**那一族逐字在**主线程**上） **两条链是竞态**、
-            //      服务池逐字**先到**、 它逐字把 beginLife 写的那一档逐字**清掉了**
-            //      （ 07 本轮逐字核到：那 scan-cost 那一档逐字在 journal 的 at 逐字 1793483983860、
-            //        而那 diag.jsonl 逐字**最早**一条 at 逐字 1793483984570 —— **晚 710 ms**）。
-            //  **出生标记**逐字**先**记下（ 它逐字是那「上一世 / 这一世」的分界）
-            //    它逐字**必须**在 beginLife **之前**（ beginLife 逐字写的
-            //      「宿主出生」「索引已从落位重建」与那 scan-cost 那一档逐字是**这一世**的、
-            //      它们逐字要**留住**）。
+            //  诊断的「上一世」那一份先清（只清上一世、不清这一世写的行），必须在 beginLife 之前——
+            //    beginLife 写的「宿主出生」「索引已从落位重建」是这一世的、要留住。旧版它原来在服务池那一族
+            //    （`SupervisorPool.start()` 的 `RuntimeDiagnostics.clear(host)`，在工作线程上）而出生在主线程上，
+            //    两条链竞态、服务池先到，把 beginLife 写的那一档清掉了（07 核到 journal at 1793483983860、
+            //    而 diag.jsonl 最早一条 at 1793483984570，晚 710 ms）。
+            //  出生标记先记下（它是「上一世/这一世」的分界），也必须在 beginLife 之前；clear 只清上一世（01 那一裁）。
             runCatching { lobos.services.log.RuntimeDiagnostics.markLife(this) }
-            //  clear 逐字**只清上一世**（ 它逐字按那标记逐字切）
-            //    它逐字**在**那标记**之后**逐字**不**清（ 这是 01 那一裁）
+            //  clear 只清上一世（按那标记切）
+            //    标记之后才清（这是 01 那一裁）
             runCatching { lobos.services.log.RuntimeDiagnostics.clear(this, "LIFE-MARK") }
             lobos.services.reg.ResidencyStatus.restore(this)
             OsInit.beginLife(this, ResidencyAudit.interruption(this))
-            //  **出生**逐字**做完**就逐字记下（ 它逐字是那进程自己的一个状态、
-            //    它逐字**不**由「有没有被销毁过」推出来）。
-            //  **第二次** onStartCommand 逐字**不再**走那出生那一族（ beginLife 逐字**只**跑一次）
-            //    **同一进程**里那 onStartCommand 逐字**可以**再被调（ 它逐字是那服务的常态）。
+            //  出生做完就记下（是进程自己的状态，不由「有没有被销毁过」推出）；第二次 onStartCommand 不再走出生那一族
+            //    （beginLife 只跑一次），而同一进程里 onStartCommand 可以再被调（服务的常态）。
             birthDone = true
         }
         promoteToForeground("onStartCommand")
-        //  缺陷名（C-102）**那重活**逐字**跑**在**那主线程**上**（ **它**们**逐字是**那**两**件**事**）。
-        //    **成因**： ensureComponents 那一族逐字**去**装**那**预装件**（ **它**们**逐字是**那**两**件**事**：「那**落位**是**什么**」与「那**线程**是**什么**」）。
-        //      **装**那一族逐字**要**解包**与**搬**那**几**兆**字节**（ 八**个** zip **那**一**族**），
-        //      **主线程**逐字**等不起**（ 20 秒**那一道**）
-        //    **后果**逐字 = 而那宿主服务逐字**ANR**（ 「waited 20003ms」**那一行**）、
-        //      **进程**逐字**死**了、 **落位**那一族**与**那**身份**那一族逐字**还是**没跑**。
-        //    **处置**： 重活逐字**搬到**那**线程**上**（ **HandlerThread** **那一族**逐字**先**起**、
-        //      **它**们**逐字是**那**两**件**事**：「那**主线程**做**什么**」与「那**工作线程**做**什么**」）。
-        //    按 C-104： 宿主那一族逐字**只有一条路**（ **它**逐字**是**那**同一个**触发**、
-        //      **它**们**逐字不是**两条路**）。
+        //  缺陷名 C-102：重活跑在主线程上。成因：ensureComponents 去装预装件，要解包与搬那几兆字节（八个 zip），
+        //    主线程等不起那 20 秒。后果：宿主 ANR（「waited 20003ms」）、进程死了，落位与身份都没跑。
+        //  处置：重活搬到 HandlerThread 上（先起线程），主线程只做轻活。按 C-104：宿主只有一条路。
         if (born) {
             startedAtMs = System.currentTimeMillis()
             thread = HandlerThread("lobos-host").apply { start() }
             handler = Handler(thread!!.looper)
-            //  **tick** **那**一个**队列**（ **它**逐字**是**那**那**一个** HandlerThread）。
+            //  tick 用自己那一个 HandlerThread。
             tickThread = HandlerThread("lobos-tick").apply { start() }
             tickHandler = Handler(tickThread!!.looper)
         }
-        //  **退出史**逐字**在**那**工作线程**上**取**（ **它**逐字**不**在**那**主线程**上**等**那**系统**服务**那**一边**）。
+        //  退出史在工作线程上取（不在主线程上等系统服务那一边）。
         handler?.post {
             runCatching { lobos.services.log.KillAudit.auditOnce(this) }
                 .onFailure { Log.w(TAG, "读系统退出史失败", it) }
         }
-        //  重活逐字**在**那**工作线程**上**跑**（ **主线程**逐字**只**做**那轻活**）。
-        //  缺陷名（C-102）**那身份**那一族逐字**不**该**跟**那**落位**的**成败**绑**在**一**起**。
-        //    **成因**： BuildIdentity.write 逐字**在**这**一块**里、 **它**的**前面**是**那** ensureComponents(intent) **那一行**、
-        //      **落位**那一族逐字**一**旦**中途**断了**、 **它**逐字**就**跑**不到**那**身份**那一行**。
-        //      **后果**逐字 = 而那**身份**那一族逐字**还是**那**旧**的**sha**。
-        //    **处置**： **身份**那一族逐字**自己**写**（ **它**逐字**在**那 OsApplication.onCreate **那一拍**写**）。
-        //      **它**们**逐字是**那**两**件**事**（「那**落位**那**件**落没落**」**与**「那**一次**构建**是**哪**一次**」）。
-        //      **它**逐字**不**跟**那**落位**的**成败**绑**在**一**起**。
+        //  重活在工作线程上跑（主线程只做轻活）。
+        //  缺陷名 C-102：身份那一族不该跟落位的成败绑在一起。成因：`BuildIdentity.write` 在这块里，前面是
+        //    `ensureComponents(intent)`，落位一旦中途断了就跑不到身份那一行，后果是身份还是旧的 sha。
+        //  处置：身份自己写（在 `OsApplication.onCreate` 那一拍），不跟落位成败绑在一起。
         handler?.post {
             ensureComponents(intent)
         }
         if (born) {
             OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))
-            //  缺陷名（C-102）**那 tick** **与**那**装件**那一族逐字**在**那**同一**个**队列**上**。
-            //    **成因**： ensureComponents 那一族逐字**在**那 **:106** 那一行 **post** 到**那** handler **队列**、
-            //      **tick** 逐字**在**那 **:111** 那一行 **post** 到**那** **同一**个**队列**、
-            //      和那**它们**逐字是**那**两**件**事**：「那**谁**先**到**」与「那**它**们**共**那**一个**队列**」）。
-            //    **后果**逐字 = 而那**装件**那一族**一**挂**住**、 **它**逐字**把**那 **tick** 逐字**饿死**、
-            //      **它**逐字**让**那 ResidencyStatus.record 逐字**不**再**被**调**、 **它**逐字**让**那 updatedAt 逐字**陈旧**、
-            //      **它**逐字**让**那 Heartbeat.fresh 逐字**答**那 false、 **它**逐字**让**那 controlPlaneUp 逐字**落**那 false。
-            //    **处置**： **tick** 逐字**走**那**自己**的**那一个**队列**（ **它**逐字**不**跟**那**装件**那一族**抢**）、
-            //      **它**逐字**是**那**那**一个** Handler **那一族**、 **它们**逐字**是**那**两**件**事**。
+            //  缺陷名 C-102：旧版 tick 与装件在同一队列上（ensureComponents 在 `:106` post 到 handler 队列、
+            //    tick 在 `:111` post 到同一队列）。后果：装件一挂住就把 tick 饿死，`ResidencyStatus.record` 不再被调、
+            //    updatedAt 陈旧、`Heartbeat.fresh` 答 false、controlPlaneUp 落 false。
+            //  处置：tick 走自己的队列（`tickHandler`），不跟装件抢。
             tickHandler?.post(tick)
             runCatching {
                 val ver = lobos.services.reg.ProgramRegistry.listIds(this)
@@ -198,27 +154,20 @@ class OsHostService : Service() {
         return START_STICKY
     }
 
-    //  缺陷名（C-102）**那一行把「startForeground() 那一族跑过了」与「它抛没抛」记成了两件事** —— 而实际上
-    //    「跑过了」的标记是那**一次调用被走到了**（ :99 那一行逐字是 startForeground），
-    //    而「抛没抛」的标记是**那一次调用有没有抛**（ :102 那一族逐字只在**抛了**时写、
-    //    它逐字零命中、 **只**说明「没抛」）；
-    //    这一族逐字**只**记了「抛没抛」那**一件**、 「跑过了」那**一件**逐字**没有**任何痕迹，
-    //    一族逐字分不出「压根没走到 :99」与「走到了、而没抛」。
-    //    04 今天裁的是「合成一格」： 「那一行记的是什么、它什么时候记、它为什么**不**记」那三条**合成**一格，
-    //    「在 :99 前后加一行仓内自己的记录」是那一格**里面**的处置（ 按 C-220 那一族是**内容稿**、
-    //    这一笔是**实现**那一族、 **只**加一行）。
-    //    这一行逐字用「host」那个 category（ 它逐字已经写得出、 :102 那一行逐字是同一族）。
+    //  缺陷名 C-102：旧版把「startForeground() 跑过了」与「它抛没抛」记成了两件事——「跑过了」的标记是那一次
+    //    调用被走到了（`:99`），「抛没抛」的标记只在抛了时写（`:102`），零命中只说「没抛」，分不出「压根没走到
+    //    :99」与「走到了、没抛」。04 今天裁的是合成一格（那一行记什么、什么时候记、为什么不记），处置是在 :99
+    //    前后加一行仓内自己的记录（C-220 那一族是内容稿、这一笔是实现）。这一行用 "host" 那个 category。
     private fun promoteToForeground(where: String) {
         var called = false
         var threw: String? = null
         try {
             called = true
-            //  **宿主**逐字**活着**逐字**记**着（ **幂等**那一格逐字**靠**它判）
+            //  宿主活着就记着（幂等那一格靠它判）。
             OsHostService.hostAlive = true
-            //  **发法名**逐字答的是「那一条路」、 **记录**逐字**落**那诊断
-            //    （ **下一趟**逐字靠它逐字就能归到路、 它逐字**不用**抓栈）
-            //    **系统**侧逐字记的那一条（`NotificationManagerService:post:lobos.os`）
-            //      逐字是**系统**记的我们这个 uid 发过一次、 它逐字**不**逐字说我们逐字主动发的
+            //  发法名答的是「那一条路」，记录落进诊断（下一趟靠它就能归到路、不用抓栈）。
+            //  系统侧记的那一条（`NotificationManagerService:post:lobos.os`）是系统记的我们这个 uid 发过一次，
+            //  不是我们主动发的。
             lobos.kernel.fs.NotifyRoute.note(
                 this, "host.startForeground", NOTIF_ID, "前台", "where=" + where,
             )
@@ -230,21 +179,12 @@ class OsHostService : Service() {
                 t::class.java.simpleName + ": " + t.message,
             )
         }
-        //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
-        //    一行逐字没有配对的标记、 一个量逐字算不准**
-        //    —— 而实际上这一行逐字是「startForeground 那一拍」， 它逐字**要**能指回
-        //    「FGS start 那一拍」那**一行**、 一行逐字带一个配对的标记。
-        //    按 C-112： 一格逐字**不是**「我算不出来的」那个形状、 它逐字是「**配不准**」那个形状。
-        //    按 C-220： 04 那边那一族是**内容稿**、 这一笔是**实现**那一族、 它逐字**只**加这一行。
-        //  缺陷名（C-102）**那一条读数**逐字**记不**出**那**调用处**（ **它**们**逐字是**那**两**件**事**）。
-        //    **成因**： promoteToForeground 逐字**从**那 onCreate **与**那 onStartCommand **那两**处**各**调**一次**、
-        //      **它们**逐字**记**的是**那同一条**消息**、 **它们**逐字**分不清**那**哪**一次**调**的**。
-        //    **后果**逐字 = 而那**应用**自己**记**的那一条（那「已调用 startForeground=true」）**与**
-        //      那**系统**判的**那一条**（那「did not then call Service.startForeground()」）逐字**并排**、
-        //      **它们**逐字**答**的是**那**两**件**事**（「那**应用**自己**记**的**那一族**」与「那**系统**判的**那一族**」）。
-        //    **处置**： 一条读数逐字**带上**那**调用处**（ **它**们**逐字是**那**两**件**事**：「那**调**的**是**哪**一处**」与「那**记**的**是**什么**」）。
-        //      **配对**逐字**带**那**编号**（ **它**们**逐字是**那**两**件**事**：「那**配**的**是**谁**」与「那**配**上**了**没有**」）。
-        //      按 C-112： **两条**逐字**都**是**那系统那边说的**、 **它们**逐字**不互相顶替**。
+        //  缺陷名 C-102：startForeground 那一拍没有配对的标记，一个量算不准。这一行要能指回「FGS start 那一拍」，
+        //    一行带一个配对的标记。按 C-112：这不是「算不出来」那个形状，是「配不准」；按 C-220 这一笔只加这一行。
+        //  缺陷名 C-102：旧版那条读数记不出调用处——promoteToForeground 从 onCreate 与 onStartCommand 各调一次，
+        //    记的是同一条消息、分不清哪一次。后果：应用自己记的「已调用 startForeground=true」与系统判的
+        //    「did not then call Service.startForeground()」并排。处置：一条读数带调用处，配对带编号（按 C-112，
+        //    两条都是系统那边说的、不互相顶替）。
         val paired = Companion.takeFgsStart()
         val gap = if (paired != null) System.currentTimeMillis() - paired.at else -1L
         RuntimeDiagnostics.append(
@@ -256,14 +196,9 @@ class OsHostService : Service() {
     }
 
     private fun ensureComponents(intent: Intent?) {
-        //  缺陷名（C-102）**那能力桥**逐字**起**在**那装件** **之后**、 **它**们**逐字是**那**两**件**事**。
-        //    **成因**： pool.onHostStart 逐字**调**那 sync（ syncServices 逐字**调**那 d.act(host)、
-        //      **piece-<id>** **那一族**的 act 逐字**就是**那 installOneById（ **它**逐字**在**那**落位**那一族**里**））、
-        //      **装件**逐字**是**那**同**一个**队列**上**那**一**个**长活**、 **它**逐字**把**那**后面**的**那**几**步**饿死**。
-        //      **能力桥**（ broker.start() 那一行）逐字**在**那**装件** **之后**、 **它**逐字**起不来**、
-        //      **它**们**逐字是**那**两**件**事**：「那**桥**在不在**」与「那**它**为什么**没**起**」）。
-        //    **后果**逐字 = 而那 LocalServerSocket 逐字**没有**在**听**、 **它**逐字**让**那 M6 那**一格**逐字**还**测不了**。
-        //    **处置**： **能力桥**逐字**先**起**（ **它**逐字**不**等**那**装件**）、 **它**逐字**是**那**那**一个**队列**上**那**一**个**短活**。
+        //  缺陷名 C-102：能力桥起在装件之后。成因：`pool.onHostStart` 调 sync（`syncServices` 调 `d.act(host)`，
+        //    piece-<id> 的 act 就是 `installOneById`），装件是同一队列上的长活、把后面几步饿死，broker.start() 起不来。
+        //    后果：LocalServerSocket 没在听，M6 那一格还测不了。处置：能力桥先起（不等装件），它是短活。
         try {
             val b = broker ?: CapabilityBroker(this).also { broker = it; it.start() }
             b.onHostStart(intent)
@@ -337,28 +272,15 @@ class OsHostService : Service() {
             }.getOrDefault(false),
         )
         OsInit.refresh(this, facts, ResidencyAudit.interruption(this))
-        //  缺陷名（C-102）**那一格逐字每一拍逐字都重新算那一遍那状态快照** ——
-        //    旧版逐字是 `.notify(NOTIF_ID, buildHostNotification())`
-        //      `buildHostNotification` 那一格逐字**每拍**逐字调那
-        //        `ProgramStatusHub.snapshot(this)`（ 它逐字把那**每一条**程序状态逐字**读一遍**）
-        //      **常驻通知**逐字**保留**（ 它逐字是那保活那一条、
-        //        Lead 逐字裁「那一族逐字**保留**前台服务、 **常驻通知**逐字**保留**」）
-        //      「**状态快照**」那一类逐字**改成按需**
-        //        （ 它逐字答的是「此刻那状态是什么」、 它逐字**不**要求那进程逐字一直在）
-        //      **判据**逐字是「那一族逐字在那一段时间逐字**实际在做什么**」那一个事实上
-        //        （ 它逐字**不**由「它逐字该做什么」顶掉）
-        //    **处置**： 通知逐字**按需**逐字重算
-        //      它逐字**只**在「那内容**变了**」时逐字**重发**
-        //      内容**没**变时逐字**不**重算、 **快照**逐字**不**被翻
-        //      **判据**逐字是「那内容**变没变**」（ 它逐字是那**内容**那一面）
-        //      **没变**那一档逐字**不**算那一次重算（ **耗**逐字**没有**）
-        //  **内容**逐字**按需**逐字算（ 它逐字**只**在要发的那一趟才**算**）
-        //    「**没变**」那一档逐字**不**重发、 **快照**逐字**不**被翻
+        //  缺陷名 C-102：旧版每一拍都重算状态快照（`.notify(NOTIF_ID, buildHostNotification())` 每拍调
+        //    `ProgramStatusHub.snapshot(this)`，把每一条程序状态读一遍）。常驻通知保留（Lead 裁「保留前台服务、
+        //    保留常驻通知」），状态快照改成按需（它答「此刻状态是什么」、不要求进程一直在）。
+        //  处置：通知按需重算，只在内容变了时重发；没变不重算、快照不被翻（没变那一档不产生耗）。
         val text = currentNotificationText()
         if (text != lastNotifiedText) {
             lastNotifiedText = text
             runCatching {
-                //  **发法名**逐字答的是「那一条路」、 **记录**逐字**落**那诊断
+                //  发法名答的是「那一条路」，记录落进诊断
                 lobos.kernel.fs.NotifyRoute.note(
                     this, "host.notify", NOTIF_ID, "前台", "（=> 而那内容**变了**才逐字重发）",
                 )
@@ -366,17 +288,12 @@ class OsHostService : Service() {
                     .notify(NOTIF_ID, buildHostNotification(text))
             }
         }
-        //  「**没变**」那一档逐字**也**不重算那**那一条条**的程序状态
-        //    （ **快照**逐字**只**在 `buildNotification` 那一格逐字**才**被读
-        //      一格逐字**只**在上面那「变了」那一支逐字**才**被调到）
+        //  「没变」那一档也不重算程序状态：快照只在 `buildNotification` 那格被读，
+        //    而它只在上面「变了」那一支才被调到。
     }
 
     /**
-     * 那**通知**那内容逐字（ 它逐字**按需**逐字算、 它逐字**缓存**着）。
-     *
-     *   **内容**逐字是那**状态**逐字（ 它逐字答「此刻那状态是什么」）
-     *   **缓存**逐字**只**在「那内容**变了**」时逐字**换**
-     *   **判据**逐字是「那内容**变没变**」
+     * 通知内容（按需算、缓存着）：内容是状态（答「此刻状态是什么」），缓存只在内容变了时换，判据是「内容变没变」。
      */
     private fun currentNotificationText(): String {
         val status = lobos.services.reg.ProgramStatusHub.summaryLine(this)
@@ -450,16 +367,10 @@ class OsHostService : Service() {
     }
 
     override fun onDestroy() {
-        //  缺陷名（C-102）**宿主正在拆、而进程死在拆到一半** —— 而实际上 onDestroy 那一族逐字有**六步**
-        //    （ :271 到 :276： **四行**逐字**没有一行**会抛）， 原来那一句只记了**第一步**
-        //    （ 「宿主被销毁」那一行）、 **后面那几步**逐字**没有**任何痕迹；
-        //    后果是： 进程死在拆到一半时、 外面逐字只看见「宿主被销毁」那一行、
-        //    **看不出**它死在哪一步、 一格逐字**答不了**「为什么那几趟死在拆到一半」。
-        //    按 C-103 先答「它为什么有两边」： 两边是「仓内那一族**记不着的**」
-        //       （ 逐字是「进程死在哪一步」这一格、 **要**设备侧那一格）与
-        //       「仓内那一族**记着的**」（ 逐字是那六步逐字各记一行）。
-        //    这里逐字在**每一步之后**记一行、 它逐字**只**记「走到哪一步了」那一格、
-        //       「为什么死」那一格逐字**仍**要设备侧那一格。
+        //  缺陷名 C-102：旧版那句只记了第一步（「宿主被销毁」），后面几步没痕迹，进程死在拆到一半时外面看不出
+        //    它死在哪一步（onDestroy 那一族有六步，`:271` 到 `:276` 四行没有一行会抛）。按 C-103 先答「为什么有两边」：
+        //    两边是「仓内记不着的」（进程死在哪一步，要设备侧）与「仓内记着的」（六步各记一行）。
+        //    这里在每一步之后记一行，只记「走到哪一步」，「为什么死」仍要设备侧那一格。
         val teardownStep = { step: String ->
             RuntimeDiagnostics.append(this, "host", true, "宿主拆解进度: " + step, "onDestroy 已走到=" + step)
         }
@@ -489,9 +400,7 @@ class OsHostService : Service() {
     }
 
     /**
-     * 那**通知**那一格逐字（ **内容**逐字**由**那调用方逐字**给**、 它逐字**不**自己再算一遍）。
-     *
-     *   **内容**逐字**按需**逐字算（ **快照**那一族逐字**不**被每拍翻一遍）
+     * 通知那一格（内容由调用方给、不自己再算）：内容按需算，快照不被每拍翻一遍。
      */
     private fun buildHostNotification(text: String = currentNotificationText()): Notification =
         buildNotification(text)
@@ -533,7 +442,7 @@ class OsHostService : Service() {
         const val TAG = "OsHostService"
         private const val NOTIF_ID = 1004
 
-        //  **通知内容**逐字那一个缓存（ 它逐字**只**在「那内容**变了**」时逐字**换**）
+        //  通知内容的缓存（只在内容变了时换）。
         @Volatile private var lastNotifiedText: String? = null
         private const val REQ_OPEN = 41
         private const val TICK_MS = ResidencyPolicy.FAST_TICK_MS
@@ -541,64 +450,35 @@ class OsHostService : Service() {
         private const val LEDGER_INTERVAL_MS = 10 * 60_000L
 
         /**
-         * 那**宿主**逐字**活着没有**（ 它逐字是那**幂等**那一面）。
-         *
-         * 缺陷名（C-102）**那一格逐字每一轮逐字都重新拉起那宿主、 它逐字就发一次通知** ——
-         *   旧版逐字**没有**这一格、 `ensureRunning` 逐字**无条件**逐字调
-         *     那 `startForegroundService`
-         *     **每一次**逐字 `startForegroundService` 逐字**重新 post** 一次那前台通知
-         *       （ 系统侧逐字记的那一条逐字是
-         *         `NotificationManagerService:post:lobos.os`）
-         *   **调用点**逐字每轮逐字都在调：
-         *     · `InstanceHost.bootProgramOnce` 逐字**每一轮**逐字调它
-         *       （ `bootLoop` 逐字**一秒**一拍、 间隔逐字 6 到 60 秒那一档
-         *         的**根**逐字**就是**它）
-         *   **后果**（07 本轮逐字核出、Lead 本机复核成立）：
-         *     · 而那 **OOM** 逐字归零了、 通知逐字**仍在**每 2 到 3 秒一条
-     *       「崩溃 → 重启 → 重新 post」那条推论逐字**已被证伪**
-     *       通知逐字**有另一个成因**、 它逐字就是这一格
-         *   **处置**： **已经活着**时逐字**不**再拉起
-         *     **宿主**逐字**活着**时逐字**不**重新 post 那通知
-         *     **真的**没活着时逐字**才**拉起（ **保活**那一族逐字**不**受影响）
+         * 宿主活着没有（幂等那一面）。缺陷 C-102：旧版 `ensureRunning` 无条件调 `startForegroundService`，每次都重新 post 一次
+         *   前台通知（系统侧记 `NotificationManagerService:post:lobos.os`），而 `InstanceHost.bootProgramOnce` 每轮都调它
+         *   （`bootLoop` 一秒一拍、间隔 6 到 60 秒的根就是它）。后果：OOM 归零了而通知仍每 2 到 3 秒一条，「崩溃 → 重启 →
+         *   重新 post」被证伪。处置：已活着就不再拉起、不重新 post（真没活着才拉起）。
          */
         @Volatile private var hostAlive = false
 
         fun ensureRunning(context: Context, action: String? = null) {
-            //  **宿主**逐字**已经活着**时逐字**直接**回去
-            //    （ `action` 逐字**不**空时逐字**不**省、 它是那**显式**那一路）
+            //  宿主已经活着时直接回去
+            //    （`action` 不空时不省，它是显式那一路）。
             if (hostAlive && action.isNullOrBlank()) return
             try {
-                //  缺陷名（C-102）**「FGS start 那一拍」逐字被记在了**不是** FGS start 的那一路上、
-                //    一拍逐字**配错了**、 问二那个量逐字**算不出来**
-                //    —— 而实际上这一路逐字**也**是 `startForegroundService`、
-                //    FGS start 那一拍逐字**在**这一路上、 这里逐字**记**它**是**对的**。
-                //  缺陷名（C-102）**这一条路逐字用**那 startService（ **它**们**逐字是**那**两**件**事**）。
-                //    **成因**： startService 逐字**只**在**那应用**在**前台**的时候**才**能**起**那后台服务**、
-                //      **应用起来**那一拍逐字**不**在前台**（ **它**们**逐字是**那**两**件**事**）。
-                //    **后果**逐字 = 而那宿主服务逐字**起不来**、 **落位**那一族**与**那**身份**那一族
-                //      逐字**都**只在**那宿主服务起**的那一趟**里**跑**、 **它们**逐字**都**没跑**。
-                //      **证据**逐字 = 而那设备上那「起内置服务」**与**那「assets 列表」**与**那
-                //        build-identity.json **逐字都**是**那旧**的**那一个**。
-                //    **处置**： 这一条路逐字**也**用**那 startForegroundService（ **它**逐字**跟**
-                //      那 BootReceiver.startQuietly **那一族**同一**一个**（ **它**们**逐字是**那**两**件**事**）。
-                //    按 C-104： 宿主那一族逐字**只有**这一条路**用** startForegroundService、
-                //      **它**们**逐字是**那**同一个**触发**的**两种**写法**、 **它**们**逐字不是**两条路**。
+                //  缺陷名 C-102：「FGS start 那一拍」曾被记在不是 FGS start 的路上——这一路也是 `startForegroundService`，记它是对的。
+                //  缺陷名 C-102：旧版这一路用 `startService`，而它只应用在前台时才能起后台服务，应用起来那一拍不在前台。
+                //    后果：宿主服务起不来，落位与身份都只在宿主服务起的那一趟里跑、都没跑（设备上「起内置服务」「assets 列表」
+                //    「build-identity.json」都是旧的）。处置：这一路也用 `startForegroundService`（与 `BootReceiver.startQuietly`
+                //    同一个）；按 C-104：只有这一条路，不是两条路。
                 val svc = Intent(context, OsHostService::class.java)
                 if (!action.isNullOrBlank()) svc.action = action
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     noteFgsStart(context, "ensure")
-                    //  缺陷名（C-102）**那 FGS **准入**被**那系统**拒**了**的时候、 **它**们**逐字是**那**两**件**事**）。
-                    //    **成因**： startForegroundService 逐字**要**那**准入**（ mAllowStartForeground **那一族**）、
-                    //      **设备**逐字**可以**在**那 Dozing **那一档**里**拒**它**。
-                    //    **后果**逐字 = 而那**服务**逐字**起不来**、 onStartCommand 逐字**没有**跑、
-                    //      startForeground 逐字**没有**被**调**、 ANR 逐字**是**那「did not then call Service.startForeground()」。
-                    //    **处置**： FGS **被拒**的时候**退回**那 startService（ **它**逐字**是**那**同一个**服务**、
-                    //      **它**们**逐字不是**两条路**）。
-                    //      **onCreate** **那一族**逐字**已经**调**那 startForeground（ **它**们**逐字是**那**两**件**事**）。
+                    //  缺陷名 C-102：FGS 准入被系统拒时。成因：`startForegroundService` 要 mAllowStartForeground，
+                    //    Dozing 那一档可以拒它。后果：服务起不来、onStartCommand 没跑、ANR 是那「did not then call
+                    //    Service.startForeground()」。处置：被拒时退回 `startService`（同一个服务），而 onCreate
+                    //    已经调过 startForeground。
                     try {
                         context.startForegroundService(svc)
                     } catch (e: IllegalStateException) {
-                        //  FGS **准入**被拒**了**： **它**逐字**退回**那 startService
+                        //  FGS 准入被拒：退回 `startService`。
                         context.startService(svc)
                     }
                 } else {
@@ -614,24 +494,15 @@ class OsHostService : Service() {
         }
 
         /**
-         *  缺陷名（C-102）**那 5 秒窗口的起算时刻逐字没被记下来、 一个量逐字算不出来**
-         *  —— 而实际上那 5 秒窗口逐字是「FGS start -> startForeground」那个量，
-         *  这一族逐字把「FGS start」那一拍记下来、 一格逐字**能**算出来。
-         *  按 C-103： 它为什么有两边 两边逐字是「宿主出生 -> startForeground」与
-         *     「FGS start -> startForeground」那两族、 它们起算的**时刻不一样**、 落点是**同一拍**。
-         *  按 C-112： 这一行逐字带**完整 epoch 毫秒**、 一格逐字**不是**「我算不出来的」那个形状。
-         *  按 C-220： 04 那边那一族是**内容稿**、 这一笔是**实现**那一族。
+         * 缺陷名 C-102：旧版没记 5 秒窗口的起算时刻，一个量算不出来。那一族把「FGS start」那一拍记下来，就能算。
+         *    按 C-103：它有两边——「宿主出生 -> startForeground」与「FGS start -> startForeground」起算时刻不同、
+         *    落点是同一拍。按 C-112：这一行带完整 epoch 毫秒，不是「算不出来」那个形状；按 C-220 这一笔是实现。
          */
         fun noteFgsStart(context: Context, path: String) {
             val at = System.currentTimeMillis()
             val elapsed = android.os.SystemClock.elapsedRealtime()
-            //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
-            //    一行逐字没有配对的标记、 一个量逐字算不准**
-            //    —— 而实际上同一次触发逐字**只**记一行、 这一行逐字带一个配对的标记，
-            //    服务起来那一拍逐字**能**指回这一行、 一个量逐字**能**算准。
-            //    按 C-104： **同一个**触发逐字**只**触发一次、 **一次**记一行、
-            //    **不**会有第二行逐字**抢**掉配对。
-            //    按 C-220： 04 那边那一族是**内容稿**、 这一笔是**实现**那一族、 它逐字**只**加这一行。
+            //  缺陷名 C-102：startForeground 那一拍要配「FGS start」那一行，两行都带配对的标记，一个量才算得准。
+            //    同一次触发只记一行；按 C-104 一次记一行、不会有第二行抢掉配对；按 C-220 这一笔只加这一行。
             val marker = path + "#" + at
             RuntimeDiagnostics.append(
                 context, "fgs-start", true, "FGS start 那一拍",
@@ -641,18 +512,15 @@ class OsHostService : Service() {
             fgsStartMarker = FgsStart(at, marker)
         }
 
-        /** 而 FGS start 那一拍逐字与它的配对标记（ 一族逐字是**同一个**触发逐字**一次**配一个） */
+        /** FGS start 那一拍与它的配对标记（同一个触发一次配一个）。 */
         class FgsStart(val at: Long, val marker: String)
 
-        //  缺陷名（C-102）**那一次 startForeground 逐字该配哪一行 FGS start 逐字、
-        //    一行逐字没有配对的标记、 一个量逐字算不准**
-        //    —— 而实际上这一格逐字是「**这一次**触发逐字记的那一行」、
-        //    它逐字只装**一行**、 消费掉之后逐字清空、 下一次触发逐字**另**记一行。
-        //    按 C-112： 一格逐字**不是**「我算不出来的」那个形状、 它逐字是「**配不准**」那个形状。
+        //  缺陷名 C-102：startForeground 那一拍要配「FGS start」那一行。这一格装的是这一次触发记的那一行、
+        //    只装一行，消费掉就清空，下一次触发另记一行。按 C-112：不是「算不出来」那个形状，是「配不准」。
         @Volatile
         private var fgsStartMarker: FgsStart? = null
 
-        /** 而那一格逐字取出配对标记并清空（ 它逐字**只**给**一次** startForeground 用） */
+        /** 取出配对标记并清空（只给一次 startForeground 用）。 */
         fun takeFgsStart(): FgsStart? {
             val m = fgsStartMarker
             fgsStartMarker = null
