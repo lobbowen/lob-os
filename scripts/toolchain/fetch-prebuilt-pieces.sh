@@ -190,6 +190,13 @@ gh_fail_label() {
 #   [!][!] => [!][!] **它必须仍是可 grep 的字面文本**（[!][!] 而 verify-apk-native.sh:215 与 [!][!]
 #   [!][!] [!] [!] build-apk.yml:275 **都按文本 grep 它**）[!][!]
 #   [!][!] => [!][!] **改那张表之后要重跑那个生成器，[!][!] 而这一行要跟着更新** [!][!]
+#
+# C-995：这一行是「该取哪几件」的唯一真源。生成器 pieces-from-table.js 从钉值表算出它，
+# 而「有几件」这个数由 --print-pieces 直接从下面这个数组的个数吐出来 ——
+# 算式就在这个脚本里，与取件用的是同一处，不再另有一条路。
+# 以前 build-apk.yml 那边还有第二条路：grep 出这一行再数词数。那条路把「一行文本」
+# 当成了真源，于是数组和文本可以各说各话；两边碰巧一样时看不出来，不一样时又说不清
+# 是哪边错。现在那条路已经删掉，只剩 --print-pieces 这一条。
 PIECES=(bash busybox crypto curl git jq openssl ripgrep zlib)
 
 #  缺陷名（C-102）**那一读逐字只说「没取到」、它不说是哪一种**
@@ -330,6 +337,19 @@ list_release_assets() {
 # 那**被** source 的时候逐字**提前** return、那 gh_read_release / list_release_assets
 #    => 逐字**还不存在**、调用方逐字**调不到**它们）。
 if [ "$PRINT_PIECES_ONLY" -eq 1 ]; then
+  # C-995：这一格要能被调用方**信任**。
+  # 调用方原来写的是 `source ... --print-pieces; echo ${#PIECES[@]}`，但这条路有毛病：
+  # source 失败时 PIECES 这个数组根本没建立，${#PIECES[@]} 算出来是 **0**，
+  # 而 0 长得像一个正常的数（「该取 0 件」），不是「没读出来」。调用方拿 -z 判空判不出来。
+  # 现在改成：脚本自己把件数**打到 stdout**，调用方只读 stdout。
+  # 这样「脚本没跑起来」的表现就是**没有输出**（空串），而不是一个假的 0，
+  # 调用方的 -z 判空就能真的判到。
+  # 数组空了也是缺件，同样不能交 0 出去，报错走 stderr，stdout 保持干净。
+  if [ "${#PIECES[@]}" -eq 0 ]; then
+    echo "[error] PIECES 是空的 —— 该取几件没定下来，报缺，不交 0" >&2
+    if [ "${BASH_SOURCE[0]}" = "$0" ]; then exit 1; else return 1; fi
+  fi
+  echo "${#PIECES[@]}"
   if [ "${BASH_SOURCE[0]}" = "$0" ]; then exit 0; else return 0; fi
 fi
 

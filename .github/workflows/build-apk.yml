@@ -326,12 +326,20 @@ jobs:
           # => 现在：**从钉值表算**（[!] [!] 与 verify-apk-native.sh 同一把尺）[!][!]
           # [!][!] 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES [!][!]
           #   （[!] [!] 而它是「哪几件该取」唯一的生成点）[!][!]
-          WANT_N=$(bash -c 'source scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null; echo ${#PIECES[@]}' 2>/dev/null || echo "")
+          # C-995：件数的真源只有一处 —— fetch-prebuilt-pieces.sh 的 PIECES 那一行。
+          # 以前这里还有第二条路：grep 出那一行再数词数。那条路把「一行文本」当成了真源，
+          # 于是「脚本里的数组」和「文本里的词数」可以各说各话，两边碰巧一样时看不出来，
+          # 不一样时又说不清是哪边错。现在只留 --print-pieces 这一条路：
+          # 它由脚本自己把 PIECES 数组的个数打到 stdout，算式就在脚本里，与取件用的是同一处。
+          # 注意读的是 stdout 上脚本给的那个数，不再由这里 ${#PIECES[@]} 自己算 ——
+          # 脚本没跑起来时数组根本没建立，那个算式给出的是 0，而 0 长得像一个正常的数。
+          # 由脚本自己给数，脚本没跑起来就是没有输出（空串），这一格才判得出来。
+          WANT_N=$(bash scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null || echo "")
           if [ -z "$WANT_N" ]; then
-            WANT_N=$(grep -o '^PIECES=(.*)' scripts/toolchain/fetch-prebuilt-pieces.sh | head -1 | sed 's/^PIECES=(//; s/)$//' | wc -w)
-          fi
-          if [ -z "$WANT_N" ]; then
-            echo "::error title=读不出钉值表的件数::而这一格不能猜 —— 报缺，不填一个看起来对的值"
+            # 报缺，不猜填。空串和 0 都不行：空串会让下面的比较变成「N != 」（恒判红，
+            # 报错信息还看不出是缺件还是缺口径），0 则是「假零候选」那一族 ——
+            # 看起来像一个数，其实什么都没查到。这里必须说清楚是哪一件读不出来。
+            echo "::error title=读不出该取的件数::而这一格不能猜 —— --print-pieces 没给出件数（脚本路径 scripts/toolchain/fetch-prebuilt-pieces.sh），报缺，不填一个看起来对的值"
             exit 1
           fi
           [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }

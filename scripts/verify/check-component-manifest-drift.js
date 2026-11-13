@@ -47,6 +47,15 @@ if (!LOCAL) fail(IMMUTABLE ? '--immutable 后面没给即将上传的清单文�
 
 let parsed;
 try {
+  // C-987 整读豁免（这一处读的是清单 JSON，不是件包）：
+  // 这一处整读的是「即将上传的清单」JSON 本身，量级在 KB 级（十件左右，
+  // 每件六七个字段，几千字节到几十 KB）。node 的 readFileSync 对超过 2 GiB 的文件
+  // 会报 ERR_FS_FILE_TOO_LARGE（已实测：3 GiB 的稀疏文件即触发），
+  // 但那是件包级别的问题，清单 JSON 永远到不了那个量级，所以这一处不适用 C-987，
+  // 整读是安全的。
+  // 判据是「读的对象是什么」，不是「用了 readFileSync 就该流式」：
+  // 这个脚本从头到尾只读清单，从不打开任何件包（件包的 sha256 是清单里的一个字段，
+  // 不是这里算出来的），所以本文件不存在需要改成流式的件包整读。
   parsed = JSON.parse(fs.readFileSync(LOCAL, 'utf8'));
 } catch (e) {
   fail('本地清单读不出（' + LOCAL + '）: ' + e.message);
@@ -67,6 +76,10 @@ if (!Array.isArray(localTools) || localTools.length === 0) {
 }
 
 const anchor = JSON.parse(
+  // C-987 整读豁免（这一处读的是通道锚 JSON，不是件包）：
+  // channel.json 是仓内固定的一份小 JSON（当前 553 字节），里面只有通道名、
+  // 清单名与 CDN 基址。它是编译期材料，不是件包，永远到不了 2 GiB，
+  // 所以这一处整读安全，不适用 C-987。
   fs.readFileSync(path.join(ROOT, 'container/app/src/main/assets/supply/channel.json'), 'utf8'),
 );
 // C-102 字段层级错位：通道锚升到 schema 2 之后，清单名搬进了 manifests.component.name，
@@ -95,11 +108,20 @@ function fetchOnline() {
   return new Promise((resolve, reject) => {
     if (onlinePath) {
       if (!fs.existsSync(onlinePath)) return resolve({ missing: true });
+      // C-987 整读豁免（这一处读的是线上清单 JSON，不是件包）：
+      // COMPONENT_ONLINE_FILE 指向的是线上那份清单（component-manifest.json），
+      // 量级在 KB 级。它是清单，不是件包，所以不适用 C-987，整读安全。
+      // 注意别把它和「件包」混起来：件包是 dist/ 下的 .zip（llvm 那件超过 8 GiB），
+      // 本脚本不碰件包。
       return resolve({ buf: fs.readFileSync(onlinePath) });
     }
     const req = https.get(onlineUrl, { timeout: 15_000 }, (res) => {
       if (res.statusCode === 404) return resolve({ missing: true });
       if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode + ' ' + onlineUrl));
+      // C-987 整读豁免（这一处收的是线上清单 JSON，不是件包）：
+      // 累加整包是为了把这份清单 JSON 完整收下来再 JSON.parse，量级在 KB 级。
+      // 真正会超过 2 GiB 的是件包（llvm 那件 8.4 GB），而件包不经过这里，
+      // 所以这里不需要流式化，也不需要设上限。
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => resolve({ buf: Buffer.concat(chunks) }));
