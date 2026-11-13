@@ -75,7 +75,15 @@ STUB
     bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes \
     bash_cv_unusable_rtsigs=no > $WORK/bash-configure.log 2>&1 \
     || { echo "=== configure 失败取证 ==="; tail -40 $WORK/bash-configure.log; exit 1; }
-  make -j4 bash > $WORK/bash-make.log 2>&1 || {
+    # 构建期工具（mkbuiltins 等）用宿主编译器编，它们用的是 K&R 老式声明
+  # （mkbuiltins.c:62 `static char *xmalloc (), *xrealloc ();`）。
+  # 现代 clang 默认 gnu17 把 `void f()` 当无参原型，于是报
+  # 「too many arguments to function 'xmalloc'; expected 0」。
+  # 构建期工具走 CFLAGS_FOR_BUILD（builtins/Makefile.in:61 与 :183），
+  # 给它加 -std=gnu89 回到老语义；目标产物仍用原 CFLAGS。
+  make -j4 bash \
+    CFLAGS_FOR_BUILD="-std=gnu89 -O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion" \
+    > $WORK/bash-make.log 2>&1 || {
     echo "=== make 失败取证 ==="
     grep -nE "error:|Error [0-9]+$|undefined symbol" $WORK/bash-make.log | head -40 || true
     tail -120 $WORK/bash-make.log
