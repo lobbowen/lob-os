@@ -75,7 +75,7 @@ object CompatSemantics {
             "形态决定：不做多用户。理由——我们是在安卓上模拟出来的一套系统，"
                 + "不是安卓本身。"
                 + "1. 文件系统在应用私有目录 filesDir 下自成一套（etc/usr/var/run/opt）。"
-                + "[!] 但要说清：这只在**逻辑上**自成一套 —— 物理上它们仍在安卓的 / 之下，"
+                + "但要说清：这只在**逻辑上**自成一套 —— 物理上它们仍在安卓的 / 之下，"
                 + "程序里的绝对路径会落到安卓的真实位置（见 isolation 那一项）。"
                 + "我们代码里 /data/data 与 su 零出现，那只说明**我们自己没写这些路径**，"
                 + "不等于系统碰不到。"
@@ -94,7 +94,7 @@ object CompatSemantics {
             "absent",
             "【现状】我们的系统根在物理上是 filesDir（/data/user/0/<包>/files），"
                 + "usr/opt/var/etc 都在安卓真实的 / 之下 —— 是**嵌套**，不是隔离。"
-                + "我们的 / 只在逻辑上存在：没有任何一层把 \"/data/data\" 变成查无此目录。"
+                + "我们的 / 只在逻辑上存在：没有任何一层把 \"/data/data\"变成查无此目录。"
                 + "核实 chroot / unshare / pivot_root / CLONE_NEWNS 全仓零出现。"
                 + "现有四个 LD_PRELOAD hook（exec-path 查解释器 · open-fallback "
                 + "EACCES 回退 HOME · link-interpose 拦 link/linkat · tmp-paths 改 /tmp）"

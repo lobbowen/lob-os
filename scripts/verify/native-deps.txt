@@ -1,9 +1,9 @@
 # bionic 系统库白名单 —— 判「DT_NEEDED 里的这个库是不是系统自带的」。
 #
 # 用途：check-elf-deps.sh 拿它把 ELF 的依赖闭包分成三类
-#   · 系统自带（这份名单）—— 真机上 bionic linker 直接就能找到
-#   · APK 基础库（jniLibs 目录实测）—— 我们的件
-#   · 件自己 lib/ 下的库 —— 靠 DT_RUNPATH=$ORIGIN 自解析
+# · 系统自带（这份名单）—— 真机上 bionic linker 直接就能找到
+# · APK 基础库（jniLibs 目录实测）—— 我们的件
+# · 件自己 lib/ 下的库 —— 靠 DT_RUNPATH=$ORIGIN 自解析
 # 剩下的才是「断掉的闭包」：编译期看不出来，装到真机上才报
 # cannot locate symbol。
 #
@@ -12,11 +12,11 @@
 # 机型差异会造成个别库缺席（libneuralnetworks.so 本机就没有），
 # 所以只收「实测在的那批」。
 #
-# [!] 这一份是**唯一一份**：scripts/verify/check-elf-deps.sh 与
-#   scripts/verify/verify-runtime-elf.sh 共用它。
-#   此前 scripts/ 下还立着一份同名的（12 项），两边已经漂了 ——
-#   旧那份含 libz.so，而 zlib 现在是我们的件（base 筐，落到 jniLibs），
-#   该由 jniLibs 实测得出，不该算「系统自带」。旧的那份已删。
+# 这一份是**唯一一份**：scripts/verify/check-elf-deps.sh 与
+# scripts/verify/verify-runtime-elf.sh 共用它。
+# 此前 scripts/ 下还立着一份同名的（12 项），两边已经漂了 ——
+# 旧那份含 libz.so，而 zlib 现在是我们的件（base 筐，落到 jniLibs），
+# 该由 jniLibs 实测得出，不该算「系统自带」。旧的那份已删。
 #
 # 为什么 libz.so 不在这里：它与 bionic 自带的同名，但运行时会先找到
 # APK 里我们编的那份 —— 所以它归「APK 基础库」那类，由 jniLibs 实测得出。

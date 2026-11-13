@@ -48,15 +48,15 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          # [!] 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
-          #   只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
-          #   id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
-          #   被当成新的继续用，CI 报 success 而包是空的。
-          #   （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
-          #     verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          # [!] 这一格验的是**包里那个入口文件** —— 而 curl 那一件是**纯库件**（bin/ 目录不存在），
-          #   按今天的新规则它的 entry **留空**（按 C-05「没有」就是没有）。
-          #   而 reusable-asset.sh 第三参空 => 只验「包里有 component-meta.json」。
+          # 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
+          # 只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
+          # id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
+          # 被当成新的继续用，CI 报 success 而包是空的。
+          # （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
+          # verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
+          # 这一格验的是**包里那个入口文件** —— 而 curl 那一件是**纯库件**（bin/ 目录不存在），
+          # 按今天的新规则它的 entry **留空**（按 C-05「没有」就是没有）。
+          # 而 reusable-asset.sh 第三参空 => 只验「包里有 component-meta.json」。
           if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
@@ -97,24 +97,24 @@ jobs:
           # 上传名用 cache-key.sh 给的那个 —— 复用判据与取件都按它，两处必须同源。
           # 之前这里用包名、判据那里用 deps 名，对不上，于是每轮都判为「未固化」。
           cp -f "$PKG" "dist/$ASSET"
-          sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
+          sha256sum "dist/$ASSET" | cut -d'' -f1 > "dist/$ASSET.sha256"
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "curl 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
-          echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
+          echo "[ok] 包=$(basename "$PKG") 上传名=$ASSET → $TAG"
 
-      #  缺陷名（C-102）**那一族逐字没有一道「固化产物与当前代码一致」的检查** ——
-      #    => 而那旧版逐字**没有**任何一处逐字核「那一份逐字是不是这一份代码造出来的」，
-      #      => 而那**后果**逐字是：改了一个 recipe => 而那固化产物逐字全是旧的
-      #        => 而那守卫逐字**在取件那一趟**才发现 => 而那根因逐字在**几百行日志里**。
-      #    => 而那**正解**：=> 而那**固化这一趟跑完之后**逐字核一次（=> 而那守卫逐字**早**知道）。
-      #    => 而那判据逐字是那**构建标识**那一族（=> 而那不是「那文件头字节」）：
-      #      buildSha（=> 而那产出它的那一次构建的代码 sha）逐字**等于**那 pin 那一族记的那一件。
+      # 缺陷名（C-102）**那一族逐字没有一道「固化产物与当前代码一致」的检查** ——
+      # 旧版逐字**没有**任何一处逐字核「那一份逐字是不是这一份代码造出来的」，
+      #**后果**逐字是：改了一个 recipe固化产物逐字全是旧的
+      # 守卫逐字**在取件那一趟**才发现根因逐字在**几百行日志里**。
+      #**正解**：**固化这一趟跑完之后**逐字核一次（守卫逐字**早**知道）。
+      # 判据逐字是那**构建标识**那一族（不是「那文件头字节」）：
+      # buildSha（产出它的那一次构建的代码 sha）逐字**等于**那 pin 那一族记的那一件。
       - name: 固化产物与当前代码一致（构建标识那一族）
         if: steps.reuse.outputs.hit != 'yes'
         run: |
           set -euo pipefail
-          #  => 而那 pin 那一族逐字记的是那**当前**这一份代码编出来的那一件
-          #    （=> 而那它逐字由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
+          #pin 那一族逐字记的是那**当前**这一份代码编出来的那一件
+          # （它逐字由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
           bash scripts/verify/check-frozen-freshness.sh "dist/${{ steps.uwkey.outputs.asset }}"
       - name: 失败现场（Job Summary，不裁剪）
         if: always()

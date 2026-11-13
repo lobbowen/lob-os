@@ -165,33 +165,33 @@ class ProgramDir(
             } else {
                 spec?.role?.takeIf { it.isNotBlank() } ?: "app"
             }
-            //  [!] 缺陷名（C-102）**同一件事在两条路径上有两个默认值，而落位那一条取到了 false 那个**
-            //    —— 而「装上来就常驻」（ `lifecycle.resident` 那一格）今天**缺**。
+            // 缺陷名（C-102）**同一件事在两条路径上有两个默认值，而落位那一条取到了 false 那个**
+            // —— 而「装上来就常驻」（ `lifecycle.resident` 那一格）今天**缺**。
             //
-            //  而**这一格该由谁写**（ 01 那一件 S116 第二节的三问， 04 那一裁核为成立）：
-            //    · G1 **设备上被读的那一份**是**落位侧那一份**
-            //      （ ProgramRegistry.kt:100 逐字是 `val life = json.optJSONObject("lifecycle")`，
-            //        个 json 读的是 ProgramDir.MANIFEST_NAME = program-manifest.json）；
-            //    · G2 而**构建期那一份**（component-meta.json）**不是**同一份；
-            //    · G3 而这一格**该落在 G1 答的那一份**（ 落位侧那一份）
-            //      它今天**缺**（ ManifestWriter.build 那一串 m.put 里没有 lifecycle 那一格）。
+            // 而**这一格该由谁写**（ 01 那一件 S116 第二节的三问， 04 那一裁核为成立）：
+            // · G1 **设备上被读的那一份**是**落位侧那一份**
+            // （ ProgramRegistry.kt:100 逐字是 `val life = json.optJSONObject("lifecycle")`，
+            // 个 json 读的是 ProgramDir.MANIFEST_NAME = program-manifest.json）；
+            // · G2 而**构建期那一份**（component-meta.json）**不是**同一份；
+            // · G3 而这一格**该落在 G1 答的那一份**（ 落位侧那一份）
+            // 它今天**缺**（ ManifestWriter.build 那一串 m.put 里没有 lifecycle 那一格）。
             //
-            //  **缺了它为什么取到 false**： `spec` 在落位那一支是 **null**
-            //    （ 上面 :163 那一行逐字 `val spec = if (landed) null else …`），
-            //    **`null?.resident == true` 是 false**
-            //    正是 journal 逐字「resident=false」那一条。
+            // **缺了它为什么取到 false**： `spec` 在落位那一支是 **null**
+            // （ 上面 :163 那一行逐字 `val spec = if (landed) null else …`），
+            // **`null?.resident == true` 是 false**
+            // 正是 journal 逐字「resident=false」那一条。
             //
-            //  **读那一侧**（ ProgramRegistry.kt:146 那一行）的缺省是 **true**，
-            //    与这一侧**不一致**（ 按 C-115 两条并列留档）。
-            //  按 01 那一件 S116 第一节的裁定「装上来就常驻」= **true**，
-            //    这一格**必须显式写**、 **不许靠缺省**。
+            // **读那一侧**（ ProgramRegistry.kt:146 那一行）的缺省是 **true**，
+            // 与这一侧**不一致**（ 按 C-115 两条并列留档）。
+            // 按 01 那一件 S116 第一节的裁定「装上来就常驻」= **true**，
+            // 这一格**必须显式写**、 **不许靠缺省**。
             //
-            //  **落位侧那一份**现在写了 lifecycle 那一格（ ManifestWriter.build 那一处），
-            //    这一处就**从落位侧那一份读**（ 不是从那个 null 的 spec 算）。
+            // **落位侧那一份**现在写了 lifecycle 那一格（ ManifestWriter.build 那一处），
+            // 这一处就**从落位侧那一份读**（ 不是从那个 null 的 spec 算）。
             val resident = if (landed) {
                 // 落位那一支：从**落位侧那一份**（program-manifest.json）读 lifecycle.resident
-                //  （ 一份由 ManifestWriter 写， 它今天显式写了那一格）。
-                //  （ 读不到就答 true， 与 ProgramRegistry.kt:146 的缺省一致）。
+                // （ 一份由 ManifestWriter 写， 它今天显式写了那一格）。
+                // （ 读不到就答 true， 与 ProgramRegistry.kt:146 的缺省一致）。
                 val life = rawManifest(version)?.optJSONObject("lifecycle")
                 life?.optBoolean("resident", true) ?: true
             } else {
@@ -221,7 +221,7 @@ class ProgramDir(
             if (landed) lobos.services.reg.ProgramIndex.clearInvalid(context, programId)
             lobos.services.log.Journal.note(
                 context, "registry", null, "指针切换即登记（不改动 desired，启停意图由安装与用户决定）",
-                "id=" + programId + " version=" + version + " role=" + role + " resident=" + resident,
+                "id=" + programId + "version=" + version + "role=" + role + "resident=" + resident,
             )
         }
     }

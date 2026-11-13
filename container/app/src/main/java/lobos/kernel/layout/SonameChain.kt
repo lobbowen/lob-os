@@ -3,25 +3,25 @@ package lobos.kernel.layout
 import java.io.File
 import lobos.kernel.elf.ElfFacts
 
-/**
+/* *
  * ldconfig(8) 的三段链形状：libfoo.so -> libfoo.so.<major> -> libfoo.so.<full>。
  *
- *   - libfoo.so       linker 用的名字（-lfoo 的那个）
- *   - libfoo.so.1     中间层 = ELF 头里的 SONAME（DT_SONAME），运行时被记进 NEEDED 的名字
- *   - libfoo.so.1.12  实体文件
+ * - libfoo.so linker 用的名字（-lfoo 的那个）
+ * - libfoo.so.1 中间层 = ELF 头里的 SONAME（DT_SONAME），运行时被记进 NEEDED 的名字
+ * - libfoo.so.1.12 实体文件
  *
  * 本仓的形状说明：
- *   - 实体文件由构建期给（scripts/recipes/bundle-env.sh 用 cp -Pf 把整条链拷进包）；
- *   - 但进 zip 时符号链接被展平成同名副本（zip 格式不存 symlink），
- *     所以「哪一层是实体」必须靠 ELF 头的 SONAME 加文件名版本层数来判，不能靠 ls -l。
- *   - 落位期（这里）负责在 usr/lib 补出三段链。
+ * - 实体文件由构建期给（scripts/recipes/bundle-env.sh 用 cp -Pf 把整条链拷进包）；
+ * - 但进 zip 时符号链接被展平成同名副本（zip 格式不存 symlink），
+ * 所以「哪一层是实体」必须靠 ELF 头的 SONAME 加文件名版本层数来判，不能靠 ls -l。
+ * - 落位期（这里）负责在 usr/lib 补出三段链。
  *
  * bionic 侧 ldconfig 的原文今天【未核】（取不到 bionic 源码），
  * 这里的形状照 glibc man 页（ldconfig(8) "the library soname" 一节）写。
  */
 object SonameChain {
 
-    /** 一次建链的完整计划 */
+    /* * 一次建链的完整计划 */
     data class Plan(
         val soname: String,       // 中间层名，例 libz.so.1
         val entity: File,        // 实体文件，例 .../lib/libz.so.1.3.2
@@ -29,7 +29,7 @@ object SonameChain {
         val linkerName: String?, // linker 用的名字（!= SONAME 时），例 libz.so
     )
 
-    /** 落位结果 */
+    /* * 落位结果 */
     data class Landed(
         val ok: Boolean,
         val created: Int,     // 本次新建的软链条数
@@ -37,13 +37,13 @@ object SonameChain {
         val log: String,      // 给人看的形状
     )
 
-    /** soname -> 去掉版本后缀的基名。libz.so.1 -> libz.so；libcrypto.so -> libcrypto.so */
+    /* * soname -> 去掉版本后缀的基名。libz.so.1 -> libz.so；libcrypto.so -> libcrypto.so */
     fun baseNameOf(soname: String): String {
         val i = soname.indexOf(".so")
         return if (i < 0) soname else soname.substring(0, i + 3)
     }
 
-    /** .so 后面的段数。libz.so.1.3.2 -> 3；libz.so -> 0 */
+    /* * .so 后面的段数。libz.so.1.3.2 -> 3；libz.so -> 0 */
     private fun versionDepth(name: String): Int {
         val i = name.indexOf(".so")
         if (i < 0) return 0
@@ -55,50 +55,50 @@ object SonameChain {
     private fun sonameOf(f: File): String? =
         runCatching { ElfFacts.read(f)?.soname }.getOrNull()?.takeIf { it.isNotBlank() }
 
-    /**
+    /* *
      * 那**SONAME**逐字**只读一次**（ 同一份逐字**复用**）。
      *
      * 缺陷名（C-102）**那 `plan` 那一格逐字对每一个同名前缀的兄弟逐字再读一遍**
-     *   旧版逐字是 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`
-     *     `sonameOf` 逐字调那 `ElfFacts.read`、 它逐字**把整个文件**读进堆
-     *     **兄弟**逐字是那**同名前缀**的那些（ libz.so / libz.so.1 / libz.so.1.3.2）
-     *       **每一个**目标逐字要把它那**全部**兄弟逐字再读一遍
-     *     是 **O(n²)** 量级的读（ llvm 那一件逐字 159 个文件、7.3 GiB）
-     *   **处置**： **SONAME**逐字**缓存**（ 同一份逐字**只读一次**）
-     *     **O(n²)** 逐字变成 **O(n)**
+     * 旧版逐字是 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`
+     * `sonameOf` 逐字调那 `ElfFacts.read`、 它逐字**把整个文件**读进堆
+     * **兄弟**逐字是那**同名前缀**的那些（ libz.so / libz.so.1 / libz.so.1.3.2）
+     * **每一个**目标逐字要把它那**全部**兄弟逐字再读一遍
+     * 是 **O(n²)** 量级的读（ llvm 那一件逐字 159 个文件、7.3 GiB）
+     * **处置**： **SONAME**逐字**缓存**（ 同一份逐字**只读一次**）
+     * **O(n²)** 逐字变成 **O(n)**
      */
     private val sonameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /** 那一个文件逐字的 SONAME（ 同一份逐字**只读一次**）。 */
+    /* * 那一个文件逐字的 SONAME（ 同一份逐字**只读一次**）。 */
     fun sonameOfCached(f: File): String? =
         sonameCache.getOrPut(f.absolutePath) { sonameOf(f) ?: "" }
             .takeIf { it.isNotBlank() }
 
-    /**
+    /* *
      * 那**内容指纹**逐字**只算一次**（ 同一份逐字**复用**）。
      *
      * 缺陷名（C-102）**那内容指纹逐字被算了两遍、 7.3 GiB 逐字被读了两遍**
-     *   旧版逐字是 `LdConfig.kt:73` 逐字 `.add(Triple(e.id, so, SupplySha.sha256(so)))`
-     *     `SonameChain.plan` 那一格逐字**又**对每一个同名前缀的兄弟逐字再读一遍
-     *       （ `plan` 那一格逐字 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`）
-     *     `plan` 那一格逐字**又**逐字调那 `ElfFacts.read`、 它逐字**把整个文件**读进堆
-     *   **后果**： 7.3 GiB 逐字**读了两遍**、 一遍逐字是**整读**
-     *     （ 1.4 GiB 那个文件逐字进堆） 17 分钟逐字就是这一族
-     *     （ 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
-     *       sha256 逐字**本身不慢**、 慢的是**重复读**与**整读**）
-     *   **处置**： **内容指纹**逐字**只算一次**、 **同一份**逐字**复用**
-     *     `ld.so.cache` 逐字**要**内容指纹才写得出来、 它逐字**不能**被跳过
-     *       （ 它逐字不是「跳过内容指纹」那一族、 它是「**同一份只算一次**」那一族）
+     * 旧版逐字是 `LdConfig.kt:73` 逐字 `.add(Triple(e.id, so, SupplySha.sha256(so)))`
+     * `SonameChain.plan` 那一格逐字**又**对每一个同名前缀的兄弟逐字再读一遍
+     * （ `plan` 那一格逐字 `for (s in siblings) { if (sonameOf(s) != soname) continue … }`）
+     * `plan` 那一格逐字**又**逐字调那 `ElfFacts.read`、 它逐字**把整个文件**读进堆
+     * **后果**： 7.3 GiB 逐字**读了两遍**、 一遍逐字是**整读**
+     * （ 1.4 GiB 那个文件逐字进堆） 17 分钟逐字就是这一族
+     * （ 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
+     * sha256 逐字**本身不慢**、 慢的是**重复读**与**整读**）
+     * **处置**： **内容指纹**逐字**只算一次**、 **同一份**逐字**复用**
+     * `ld.so.cache` 逐字**要**内容指纹才写得出来、 它逐字**不能**被跳过
+     * （ 它逐字不是「跳过内容指纹」那一族、 它是「**同一份只算一次**」那一族）
      */
     private val contentDigestCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /** 那一个文件逐字的内容指纹（ 同一份逐字**只算一次**）。 */
+    /* * 那一个文件逐字的内容指纹（ 同一份逐字**只算一次**）。 */
     fun contentDigest(f: File): String =
         contentDigestCache.getOrPut(f.absolutePath) {
             lobos.services.supply.SupplySha.sha256(f)
         }
 
-    /**
+    /* *
      * 给一个 piece 里的库文件定出三段链。
      * 实体是「同一个 SONAME 的兄弟里版本层数最多的那个」，
      * 因为 zip 展平后 libz.so / libz.so.1 / libz.so.1.3.2 三个副本同名同内容都在。
@@ -113,7 +113,7 @@ object SonameChain {
         var entity = target
         var best = versionDepth(target.name)
         for (s in siblings) {
-            //  SONAME 逐字走那**缓存**（ 它逐字**不**再逐字整读那兄弟）
+            // SONAME 逐字走那**缓存**（ 它逐字**不**再逐字整读那兄弟）
             if (sonameOfCached(s) != soname) continue
             val d = versionDepth(s.name)
             if (d > best || (d == best && s.name.length > entity.name.length)) {
@@ -130,11 +130,11 @@ object SonameChain {
         )
     }
 
-    /**
+    /* *
      * 在 usr/lib 里把三段链建出来：
-     *   usr/lib/<full>   -> 实体文件（绝对路径）
-     *   usr/lib/<soname> -> usr/lib/<full>
-     *   usr/lib/<base>   -> usr/lib/<soname>
+     * usr/lib/<full> -> 实体文件（绝对路径）
+     * usr/lib/<soname> -> usr/lib/<full>
+     * usr/lib/<base> -> usr/lib/<soname>
      * 名字退化时（实体名 == SONAME，或 SONAME 没版本）相应少一层。
      * 返回新建条数（已存在且指向一致的不重复计）。
      */
@@ -149,7 +149,7 @@ object SonameChain {
         return created
     }
 
-    /**
+    /* *
      * 落位一个 piece 里的库文件：能读出 SONAME 的走三段链，
      * 读不出的（静态库、无 DT_SONAME）退化成一条同名软链。
      */
@@ -161,27 +161,27 @@ object SonameChain {
             return Landed(
                 ok = r >= 0,
                 created = if (r > 0) 1 else 0,
-                detail = if (r < 0) target.absolutePath + " -> " + dst.absolutePath else "",
-                log = "lib  " + target.name + " -> " + dst.name + "   " + target.absolutePath + "   (无 SONAME，单层)",
+                detail = if (r < 0) target.absolutePath + "-> " + dst.absolutePath else "",
+                log = "lib " + target.name + "-> " + dst.name + "" + target.absolutePath + "(无 SONAME，单层)",
             )
         }
         val created = apply(p, usrLib)
         val shape = buildString {
             append(p.linkerName ?: p.soname)
             if (p.fullName != null) {
-                append(" -> ").append(p.soname)
-                append(" -> ").append(p.fullName)
+                append("-> ").append(p.soname)
+                append("-> ").append(p.fullName)
             }
         }
         return Landed(
             ok = true,
             created = created,
             detail = "",
-            log = "lib  " + target.name + " -> " + shape + "   " + p.entity.absolutePath,
+            log = "lib " + target.name + "-> " + shape + "" + p.entity.absolutePath,
         )
     }
 
-    /**
+    /* *
      * 建一条软链。
      * 返回 1 = 本次新建，0 = 已存在且指向一致，-1 = 失败。
      */
@@ -197,12 +197,12 @@ object SonameChain {
         // 走不到 delete，于是 createSymbolicLink 在同一路径上必然 EEXIST 失败。
         // 所以是软链就按软链删，不问 exists()。
         if (isLink) {
-            // [!] 编译错误（run 39416349435 第21步 / 39415331935 第21步）：`!` 套在 Any 上 ——
-            //   Files.delete 返回**平台类型**（Boolean!）runCatching 的 Result<T> 推不出 T
-            //   getOrDefault/getOrElse 的结果类型退化成 Any `!` 找不到 not 操作符。
+            // 编译错误（run 39416349435 第21步 / 39415331935 第21步）：`!` 套在 Any 上 ——
+            // Files.delete 返回**平台类型**（Boolean!）runCatching 的 Result<T> 推不出 T
+            // getOrDefault/getOrElse 的结果类型退化成 Any `!` 找不到 not 操作符。
             // 处置：**显式标注** Result<Boolean>（不做类型推断）。
             // 处置：改用 **deleteIfExists**（它的返回类型是 **boolean**，不是平台类型）
-            //     Result<Boolean> 推得出来，`!` 也有 not 操作符。
+            // Result<Boolean> 推得出来，`!` 也有 not 操作符。
             val deleted: Boolean = runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
                 .getOrElse { false }
             if (!deleted) return -1

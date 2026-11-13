@@ -2,10 +2,10 @@
 # M0′ 真判据的采集那一层 —— 逐条把那 piece-criteria.json 里面的机器可执行判据跑一遍。
 #
 # 用法：
-#   run-piece-criteria.sh [件名 ...]
+# run-piece-criteria.sh [件名 ...]
 # 不给件名就逐条跑那表里全部的。
 #
-# [!] 那判据**在宿主**上跑、那**目标**在**设备**上跑。
+# 那判据**在宿主**上跑、那**目标**在**设备**上跑。
 # 宿主**有**那个 node（设备上**没有**）、
 # 判据**自己**去**spawn**那目标、
 # 目标**在**那设备**上**、
@@ -14,10 +14,10 @@
 # 那**判据**的**那** node 字段**不**用**改**（它逐字**只**管**spawn**那个**名字**与**读**那退出码**与**那 stderr**）。
 #
 # 它做什么：
-#   一、逐条读那 scripts/piece-criteria.json，把那带 node 字段的判据逐个取出来。
-#   二、逐条把那 node 字段（那可直接跑的验收代码）逐个跑在那宿主上，目标**经**adb **在**那设备**上**跑**。
-#   三、逐条记下：过 / 不过 / 未核，加那退出码、那 stderr 尾部、那取数时刻。
-#   四、把那结果逐条**重算**成 M 与 N，写进那读数的那一件。
+# 一、逐条读那 scripts/piece-criteria.json，把那带 node 字段的判据逐个取出来。
+# 二、逐条把那 node 字段（那可直接跑的验收代码）逐个跑在那宿主上，目标**经**adb **在**那设备**上**跑**。
+# 三、逐条记下：过 / 不过 / 未核，加那退出码、那 stderr 尾部、那取数时刻。
+# 四、把那结果逐条**重算**成 M 与 N，写进那读数的那一件。
 #
 # 那 M 与 N 逐字**不**是手写的结论、它们逐字**是**那逐条**跑**出来的**结果**。
 # 那阈值那一格逐字**没有**就**报缺**（按 C-105 不猜填）。
@@ -26,7 +26,7 @@
 
 set -uo pipefail
 
-HERE="$(cd "$(dirname "$0")/.." && pwd)"
+HERE="$(cd "$(dirname "$0")/.."&& pwd)"
 CRITERIA="$HERE/scripts/piece-criteria.json"
 OUT="$HERE/docs/m0prime-readings.json"
 ADB="${LOBOS_ADB:-/home/bowen/runtimes/platform-tools/adb}"
@@ -37,23 +37,23 @@ PKG="${LOBOS_PKG:-lobos.os}"
 TARGET_PREFIX="${LOBOS_TARGET_PREFIX:-/data/user/0/$PKG/files/usr/bin}"
 TIMEOUT="${LOBOS_CRITERIA_TIMEOUT:-120}"
 
-#  缺陷名（C-102）**那采集层**逐字**只有**那**设备侧**的**那一条**路**
+# 缺陷名（C-102）**那采集层**逐字**只有**那**设备侧**的**那一条**路**
 # 那**它**逐字**读**的是那**宿主**那一份**路径**、那**我们自己**那台里跑**那一族**逐字**还**没有**那一路**
 # 那**处置**归那主人**。
 # 那**目标前缀**逐字**要**能**指向**那**新 rootfs** 里**那产物自己带的**那一层**
-#    （那**它**们**逐字是**那**两**件**事**：「那**采集层**逐字**改**什么**」与
-#      「那**我们自己**那台**逐字**能不能**跑**那 M3 **那一族**」）、那**处置**逐字**不合并**。
+# （那**它**们**逐字是**那**两**件**事**：「那**采集层**逐字**改**什么**」与
+# 「那**我们自己**那台**逐字**能不能**跑**那 M3 **那一族**」）、那**处置**逐字**不合并**。
 # 那 **LOBOS_TARGET_PREFIX** 逐字**能**指向**那我们自己**那台的**那产物**自己带的**那一层**
-#    （那**它**逐字**是**那**宿主**上**那一份**路径**、那**它**们**逐字是**那**两**件**事**）。
+# （那**它**逐字**是**那**宿主**上**那一份**路径**、那**它**们**逐字是**那**两**件**事**）。
 # 那 **PATH** 与那 **LD_LIBRARY_PATH** 逐字**要**能**指**那**新 rootfs** 里**那库**那一层**
-#    （那**它**们**逐字是**那**两**件**事**：「那**环境**是**什么**」与「那**库**在**哪**」）。
+# （那**它**们**逐字是**那**两**件**事**：「那**环境**是**什么**」与「那**库**在**哪**」）。
 # 那**判据本体**那 **node** 字段逐字**不用改**（那**它**逐字**只**管**spawn**那个**名字**与**读**那退出码**）。
 SELF_ROOT="${LOBOS_SELF_ROOT:-$HERE/dist}"
 SELF_PREFIX="${LOBOS_SELF_PREFIX:-$SELF_ROOT/bin}"
 SELF_LIB="${LOBOS_SELF_LIB:-$SELF_ROOT/lib:$SELF_ROOT/usr/lib}"
 SELF_SYSROOT="${LOBOS_SELF_SYSROOT:-$SELF_ROOT/sysroot}"
 # 那**我们自己**那台**那一路**逐字**由**那 **LOBOS_SELF_MODE** **那个**开关**给**
-#    （那**它**逐字**是**那**第二条**路**、那**它们**逐字**是**那**两**件**事**）。
+# （那**它**逐字**是**那**第二条**路**、那**它们**逐字**是**那**两**件**事**）。
 # 那**宿主**的**那个** node 逐字**要**在**那 PATH** 里面**（那**它**逐字**是**那**宿主**的**那一个**、
 # 那**它**们**逐字是**那**两**件**事**：「那**目标**在**哪**」与「那**宿主**的**工具**在**哪**」）。
 HOST_NODE_DIR="${LOBOS_HOST_NODE_DIR:-$(dirname "$(command -v node 2>/dev/null || echo /usr/bin/node)")}"
@@ -82,8 +82,8 @@ if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
   exit 2
 fi
 
-#  那**旧**的**那一句**（那 ROUND51 :10 到 :17 **逐字**给**的**）按 C-115 **留档不删**、它**已经****不**是**那事实**了、那**事实**逐字**是**那**下面**那**读**那分母清单**的**那一条**
-#  而那分母逐字**读**那分母清单（分母清单逐字**是**那**定义**、它**不**随**那读数**变**）
+# 那**旧**的**那一句**（那 ROUND51 :10 到 :17 **逐字**给**的**）按 C-115 **留档不删**、它**已经****不**是**那事实**了、那**事实**逐字**是**那**下面**那**读**那分母清单**的**那一条**
+# 而那分母逐字**读**那分母清单（分母清单逐字**是**那**定义**、它**不**随**那读数**变**）
 DENOM="$HERE/docs/m0prime-denominator.json"
 
 python3 - "$CRITERIA" "$OUT" "$ADB" "$DEV" "$PKG" "$TARGET_PREFIX" "$TIMEOUT" "$DENOM" "$SELF_MODE" "$SELF_PREFIX" "$SELF_LIB" "$SELF_SYSROOT" "$HOST_NODE_DIR" "$@" << 'PYEOF'
@@ -109,13 +109,13 @@ pieces = [k for k in sorted(d.keys())
           if k != '$note' and isinstance(d[k], dict) and d[k].get('node')]
 if wanted:
     pieces = [k for k in pieces if k in wanted]
-    #  缺陷名（C-102）**那单件**跑**的那一趟**逐字**覆盖**那**整个**文件**（那**它**们**逐字是**那**两**件**事**）。
+    # 缺陷名（C-102）**那单件**跑**的那一趟**逐字**覆盖**那**整个**文件**（那**它**们**逐字是**那**两**件**事**）。
 # 那**成因**：那 wanted 那一族逐字**把**那**采集**逐字**缩**到**那几件**、
 # 那 N 逐字**是**那 len(m0p_results)（那**它**逐字**是**那**跑过**的**那几件**的**条数**）、
 # 那**它**逐字**不**是**那分母**的**条数**（那 docs/m0prime-denominator.json 逐字那 count = **14**）、
 # 那**后果**逐字那**整个**文件逐字**变成**那**残缺**的**一份**（那 M 逐字 = **0**、那 N 逐字 = **2**）。
 # 那**处置**：那**单件**跑的**那一趟**逐字**合并**进**那前**一**版**（那**它**们**逐字是**那**两**件**事**：
-#        「那**这**一趟**测**了什么**」与「那**整个**文件**记**的**是**什么**」）、那**处置**逐字**不合并**。
+# 「那**这**一趟**测**了什么**」与「那**整个**文件**记**的**是**什么**」）、那**处置**逐字**不合并**。
 # 按 C-115：那**前**一**版**逐字**留档不删**、那**这一版**逐字**只**换**那**测过**的**那几件**。
     _partial = True
 else:
@@ -135,7 +135,7 @@ results = []
 
 
 def child_env_value(key):
-    #  那**应用**给**它**的**孩子**的**那** env **快照**（那 runtime.json **里面**的**那**一份**）。
+    # 那**应用**给**它**的**孩子**的**那** env **快照**（那 runtime.json **里面**的**那**一份**）。
     p = '/data/user/0/%s/files/run/proc/runtime.json' % pkg
     rr = subprocess.run([adb, '-s', dev, 'shell', 'run-as', pkg, 'cat', p],
                         capture_output=True, text=True, timeout=90)
@@ -153,7 +153,7 @@ def child_env_value(key):
 
 
 def child_ld_path():
-    #  那**应用**给**它**的**孩子**的**那**一条**路径**：那 runtime.json **里面**的**那** env **快照**。
+    # 那**应用**给**它**的**孩子**的**那**一条**路径**：那 runtime.json **里面**的**那** env **快照**。
     # 那**它**逐字**是**那设备侧**真的**给**孩子**的**那一条**（那**它**逐字**不**是**本脚本**自己**编**的**）。
     # 那**取不到**就**报缺**（按 C-105 **不猜填**）。
     p = '/data/user/0/%s/files/run/proc/runtime.json' % pkg
@@ -174,7 +174,7 @@ def child_ld_path():
 
 child_ld = child_env_value('LD_LIBRARY_PATH')
 child_path = child_env_value('PATH')
-#  缺陷名（C-102）**那一族证书那一族逐字没有带过去** ——
+# 缺陷名（C-102）**那一族证书那一族逐字没有带过去** ——
 # 那**它**治**的**是「那判据在**那设备**上**能不能**验**那**证书**」。
 # 那**成因**：那 child_env_value **那一族**逐字**只**导出**那 LD_LIBRARY_PATH** 与**那 PATH**、
 # 那**它**们**不**含**那 SSL_CERT_FILE** 与那 CURL_CA_BUNDLE** 与那 GIT_SSL_CAINFO**。
@@ -185,20 +185,20 @@ child_path = child_env_value('PATH')
 child_ssl_cert_file = child_env_value('SSL_CERT_FILE')
 child_curl_ca_bundle = child_env_value('CURL_CA_BUNDLE')
 child_git_ssl_cainfo = child_env_value('GIT_SSL_CAINFO')
-#  缺陷名（C-102）**那 PREFIX 那一族逐字没有带过去** ——
+# 缺陷名（C-102）**那 PREFIX 那一族逐字没有带过去** ——
 # 它治**的**是「那判据在**那设备**上**能不能**找到**那**前缀**那一层**」。
 # 那**成因**：那**运行时**给**孩子**的**那** env **快照**里面**已经有**那 PREFIX（那 9c74013
-#       逐字**给**了**那 RuntimeEnvironment.kt **那一行**）、那**采集层**逐字**只**导出**那**几个**、
+# 逐字**给**了**那 RuntimeEnvironment.kt **那一行**）、那**采集层**逐字**只**导出**那**几个**、
 # 那 PREFIX 逐字**不**在**那**清单**里面**、那**它**逐字**没**进**那判据真跑**的**那环境**。
 # 那**后果**逐字**是**：那 cmake **那一件**逐字**报**那「file failed to open for reading …/include/android/api-level.h」
-#       （那 CMakeDetermineSystem.cmake :40 **那一行**逐字**读**的**是**那 $ENV{PREFIX}）。
+# （那 CMakeDetermineSystem.cmake :40 **那一行**逐字**读**的**是**那 $ENV{PREFIX}）。
 # 那**处置**：那 PREFIX 逐字**跟着**那**运行时**的**那**快照**带**过去**（那**它**们逐字**是**那**真源**）。
 # 按 C-104：那**采集层**逐字**只有**一条路（这一支**就是**它）。
 child_prefix = child_env_value('PREFIX')
 if os.environ.get('LOBOS_DEBUG'):
-    print('[debug] ld=' + str(len(child_ld)) + ' path=' + str(len(child_path)))
+    print('[debug] ld=' + str(len(child_ld)) + 'path=' + str(len(child_path)))
 if os.environ.get('LOBOS_DEBUG'):
-    print('[debug] child_ld len=' + str(len(child_ld)) + ' child_path len=' + str(len(child_path)))
+    print('[debug] child_ld len=' + str(len(child_ld)) + 'child_path len=' + str(len(child_path)))
 if not child_ld:
     print('报缺：那设备上那 runtime.json **里面**的**那** env **快照**逐字**取不到**'
           '（那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、**不猜填**）')
@@ -217,10 +217,10 @@ def run_criterion(code, criterion_env=None):
     _dq = chr(34)
     _h = 'process.on(' + _dq + 'uncaughtException' + _dq
     _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
-    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
+    _h += '+ (e && e.stack || e)); process.exit(1); });' + chr(10)
     _h += 'process.on(' + _dq + 'unhandledRejection' + _dq
     _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
-    _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
+    _h += '+ (e && e.stack || e)); process.exit(1); });' + chr(10)
     child_tmpdir = child_env_value('TMPDIR') or ('/data/user/0/%s/files/tmp' % pkg)
 
     env_prefix = ''
@@ -248,13 +248,13 @@ def run_criterion(code, criterion_env=None):
              'node %s 2>&1; echo "__LOBOS_RC__$?"; rm -f %s'
              % (pkg, child_tmpdir, b64, tmp_path, lib_prefix, child_ld, child_path, tmp_path, tmp_path))
     # 判据**给**那目标**的**那**环境**逐字**要**在**那设备**上**生效**
-    one = 'run-as ' + pkg + ' sh -c ' + chr(39) + env_prefix + inner + chr(39)
+    one = 'run-as ' + pkg + 'sh -c ' + chr(39) + env_prefix + inner + chr(39)
     # 那**我们自己**那台**那一路**（那**它**逐字**是**那**第二条**路**、
     # 那**它**们**逐字是**那**两**件**事**：「那**设备侧**的**那一条**」与「那**我们自己**那台**的**那一条**」）。
     # 那**目标前缀**与那 PATH 与那 LD_LIBRARY_PATH 逐字**指**那**我们自己**那台**那产物自己带的**那一层**。
     if self_mode:
-        self_inner = ('mkdir -p ' + self_tmp + ' && echo ' + b64 + ' | base64 -d > ' + self_tmp + '/probe.js && '
-    #  缺陷名（C-102）**那 self_mode 那一支**逐字**把**那目标那前缀**排**在那宿主的那一个 node **前面**
+        self_inner = ('mkdir -p ' + self_tmp + '&& echo ' + b64 + '| base64 -d > ' + self_tmp + '/probe.js && '
+    # 缺陷名（C-102）**那 self_mode 那一支**逐字**把**那目标那前缀**排**在那宿主的那一个 node **前面**
     # 那**它们**逐字在那暂存那 **aarch64** 那 busybox **上面**先**撞**了、那 **wc** 逐字**没**跑成、
     # 那 **.so** 逐字**其实**逐字**在**。
     # 那**处置**：那 PATH 逐字**该让**那宿主**的那一个** sh **与** node **在前**、
@@ -291,7 +291,7 @@ for k in pieces:
         'criterion': d[k].get('criterion', ''),
     })
 
-#  那**两个**分母逐字**各**答**一件**事**、按 C-135 逐字**不合并**（那 **M/N** 那个数逐字**是**那 M0prime **那一族**的**）
+# 那**两个**分母逐字**各**答**一件**事**、按 C-135 逐字**不合并**（那 **M/N** 那个数逐字**是**那 M0prime **那一族**的**）
 # 那**单件**跑**的那一趟**逐字**合并**进**那前**一**版**（那**它**们**逐字是**那**两**件**事**）。
 if _partial and isinstance(_prev, dict) and _prev.get("pieces"):
     _old = {p.get("id"): p for p in (_prev.get("pieces") or [])}
@@ -316,9 +316,9 @@ doc = {
     'notFamily': '那内核可信起点那一族（是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、两者逐字**不**是同一件、两者逐字**不**能合成一件）',
     'takenAt': now,
     'runner': '那宿主跑那个 node、目标经 adb 在那设备上跑（判据的 node 字段**不**用改）',
-    #  缺陷名（C-102）**那阈值那一族逐字换不回去** —— 而而那**处置**：阈值逐字**记成**那**自选**那一族**的**形状**。
+    # 缺陷名（C-102）**那阈值那一族逐字换不回去** —— 而而那**处置**：阈值逐字**记成**那**自选**那一族**的**形状**。
     # 那**它**逐字**带**那**三样**：那版本（仓内那 version.json 逐字 = 那 versionName 0.0.6 / 那 versionCode 6）、
-    #       那理由、取值（那**它**逐字**要**带**那读数**的**基线**（按 C-274 与按 C-203 那一族**））。
+    # 那理由、取值（那**它**逐字**要**带**那读数**的**基线**（按 C-274 与按 C-203 那一族**））。
     # 按 C-115：那**旧**的**那一句**（那阈值逐字**没有**出处、按 C-105 报缺）按 **留档不删**、它**在**那**下面**那一句**里面**。
     'threshold': {'value': 0.55, 'status': '已核',
                   'kind': 'M/N 大于等于 0.55',
@@ -329,7 +329,7 @@ doc = {
                   'note': '那阈值逐字**不**是**那读数**（那 M/N **逐字**是**那读数**）、那**旧**的**那一句**逐字 = 「那阈值逐字**没有**出处（那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而那**那一句**逐字**是**那**另一个**阈值**、**不**是**这**一个**）、按 C-105 报缺」——那**旧**的**那一句**按 **留档不删**、它**在**那**上面**那一句**里面**'},
     'M0prime': {
         'set': m0p_set,
-        #  这一句逐字**记**的**是**那**来源**（那**它**逐字**是**那能力声明**、那**它**逐字**要**能**换**回**去**）。
+        # 这一句逐字**记**的**是**那**来源**（那**它**逐字**是**那能力声明**、那**它**逐字**要**能**换**回**去**）。
         # 那**旧**的**那一句**逐字**是**「那分母清单逐字**是**那**定义**、它**不**随**那读数**变**」、
         # 那**它**逐字**只**说了**那一个**方向**、那**另一个**方向（读数**跟着**那分母**走**）逐字**没**说**。
         # 那**它**逐字**不**是「与那事实相反」那个形状（那**它**逐字**是**那**分母清单**、分母清单逐字**不**随**那读数**变**、那**那一句**逐字**是**那**对的**）。
@@ -362,13 +362,13 @@ doc = {
 }
 if _partial:
     doc['partialAt'] = _partialAt
-#  缺陷名（C-102）**那读数逐字把**前**一**版**覆盖**了** ——
+# 缺陷名（C-102）**那读数逐字把**前**一**版**覆盖**了** ——
 # 它治**的**是「那读数逐字**能不能**换**回**去**」。
 # 那**成因**：那**现行**的**那**写**法逐字**只**写**那**这一**版、那**旧**的**那一版**就**没**了**。
 # 那**后果**逐字**是**：那**两**个**时点**的**读数**逐字**互相**覆盖**、那**它们**逐字**分不**开**。
 # 那**处置**：那**旧**的**那一版**逐字**并**进**那**历史**那一族**（那**它**们逐字**并列**）。
 # 按 C-115：那**两**份**读数**不**同时点**、它们**不互相**覆盖**。
-#  缺陷名（C-102）**那**不**完整**的**一趟**逐字**也**进**那历史** ——
+# 缺陷名（C-102）**那**不**完整**的**一趟**逐字**也**进**那历史** ——
 # 它治**的**是「那**历史**那一族**记**的**是**不是**那**完整**的**读数**」。
 # 那**成因**：那**单件**跑的**那一趟**逐字**也**写**那**整个** doc（那 N 逐字**是**那 1、
 # 那**它**们**逐字**不**是**那**分母**的**条数**）、那**它**们**逐字**也**进**那历史**。
@@ -403,5 +403,5 @@ io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=Fals
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))
 for r in results:
-    print('  %-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
+    print('%-10s %s rc=%s' % (r['id'], r['status'], r['exitCode']))
 PYEOF

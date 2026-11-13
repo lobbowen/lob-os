@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-// [!] 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
-//   于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
-//   「缺少 …/scripts/.github/native-capabilities.txt」）。那是目录归并时的遗留。
+// 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
+// 于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
+// 「缺少 …/scripts/.github/native-capabilities.txt」）。那是目录归并时的遗留。
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
@@ -20,8 +20,8 @@ const PUBKEY = process.env.NATIVE_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
 // 事实源（两个，别再找已删的 NativeAssetRegistry.kt —— 那个文件已随
 // 「内核不预置件清单」那轮清理删掉了）：
-//   CAPS     —— .github/native-capabilities.txt：<档位> <libName> <id>
-//   VERIFY   —— scripts/component-sources.json：每件的 version/entry/form
+// CAPS —— .github/native-capabilities.txt：<档位> <libName> <id>
+// VERIFY —— scripts/component-sources.json：每件的 version/entry/form
 const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
 const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
 const CAPS = path.join(ROOT, '.github', 'native-capabilities.txt');
@@ -39,7 +39,7 @@ function stripComments(src) {
 function parseRegistry() {
   // libName 与 id 的对应来自 CAPS（它就是那张清单）；
   // version/entry 来自 VERIFY。两者都是仓内文件，不需要 Kotlin 注册表。
-  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件清单没了'); return []; }
+  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + '—— 底座件清单没了'); return []; }
   let vtab = {};
   try {
     vtab = (JSON.parse(fs.readFileSync(VERIFY, 'utf8')).sources) || {};
@@ -63,13 +63,13 @@ function parseRegistry() {
       version: v.version || '',
     });
   }
-  if (!out.length) bad('从 ' + CAPS + ' 一件也没解析出来 —— 清单格式变了？');
+  if (!out.length) bad('从 ' + CAPS + '一件也没解析出来 —— 清单格式变了？');
   return out;
 }
 
 function capsIndex() {
   const map = new Map();
-  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件档位表没了'); return map; }
+  if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + '—— 底座件档位表没了'); return map; }
   for (const line of fs.readFileSync(CAPS, 'utf8').split('\n')) {
     const t = line.trim();
     if (!t || t.startsWith('#')) continue;
@@ -85,12 +85,12 @@ function capsIndex() {
 // 旧版逐字是 `const k = keys[keys.length - 1]`（那**键顺序**是那生成物写的顺序、
 // 顺序逐字**不是**任何语义、它逐字**会变**）。
 // 那**后果**：清单里**每一件**逐字都拿**同一份** pin（那 url / sha256 / tag
-//     逐字全是**最后那一件**的）设备装到别的那一件时逐字**拉错字节**。
+// 逐字全是**最后那一件**的）设备装到别的那一件时逐字**拉错字节**。
 // 按 01 裁的 S602-01-ROLLBACK-SUBJECT-SET.md §11 归属表第 7 行逐字：
-//     「05 补 `source=ota` 的事实来源」事实来源逐字**按件**给。
+// 「05 补 `source=ota` 的事实来源」事实来源逐字**按件**给。
 function pinTable() {
   // 读不到时逐字**报缺**（按 C-05「缺字段就报缺、不许猜填」）、
-  //**不**静默当成「没有 pin」。
+  // **不**静默当成「没有 pin」。
   try {
     const j = JSON.parse(fs.readFileSync(PIN, 'utf8'));
     const pins = j.pins || {};
@@ -102,7 +102,7 @@ function pinTable() {
     }
     return byId;
   } catch (e) {
-    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
+    bad('读不了 ' + PIN + '：' + e.message + '—— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
     return new Map();
   }
 }
@@ -128,15 +128,15 @@ function manifestFingerprint(pins) {
 // 缺陷名（C-102）**那匹配逐字按后缀、后缀逐字会撞车** ——
 // 旧版逐字是 `r.stdout.split('\n').some((l) => l.trim().endsWith(rel))`
 // 那**后缀**逐字**不是**那身份：
-//     · 而那 rel 逐字是 `bin/bash`、那 endsWith 逐字也命中 `usr/bin/bash`、
-//       `opt/x/bin/bash`、那**任何**以 bin/bash 结尾的路径；
-//     · 而那 rel 逐字是 `libcurl.so`、那 endsWith 逐字**也**命中 `lib/libcurl.so.1`
-//       （那**版本层**逐字不是同一件）。
+// · 而那 rel 逐字是 `bin/bash`、那 endsWith 逐字也命中 `usr/bin/bash`、
+// `opt/x/bin/bash`、那**任何**以 bin/bash 结尾的路径；
+// · 而那 rel 逐字是 `libcurl.so`、那 endsWith 逐字**也**命中 `lib/libcurl.so.1`
+// （那**版本层**逐字不是同一件）。
 // 那**后果**：那「这一件在不在那份包里」逐字**答错**、
 // 那 source 那一格逐字跟着答错（设备会装到别的那一份）。
 //
 // 那**逐字**该按什么比：那**条目名**逐字**就是**那身份
-//   （件包里的相对路径、程序形态逐字是 bin/<名>、库形态逐字是 lib/<名>）。
+// （件包里的相对路径、程序形态逐字是 bin/<名>、库形态逐字是 lib/<名>）。
 function zipHas(zip, rel) {
   if (!zip || !fs.existsSync(zip) || !rel) return false;
   const r = require('node:child_process').spawnSync('unzip', ['-l', zip], { encoding: 'utf8' });
@@ -226,14 +226,14 @@ function main() {
       '检查 PIN_KEY 的映射与 ' + SOURCES);
   }
   for (const id of noVersion) {
-    console.error('  [bundled-only] ' + id + ' 钉值表里没有它的版本 → 不进 OTA 清单，只随 APK 打包');
+    console.error('[bundled-only] ' + id + '钉值表里没有它的版本 → 不进 OTA 清单，只随 APK 打包');
   }
 
   const components = [];
   for (const { e, version } of versioned) {
     const capsId = byId.get(e.libName);
     if (capsId && capsId !== e.id) {
-      bad('注册表 id=' + e.id + ' 与档位表 id=' + capsId + ' 对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
+      bad('注册表 id=' + e.id + '与档位表 id=' + capsId + '对不上（libName=' + e.libName + '）—— 两份清单会互相认错');
     }
     const c = {
       id: e.id,
@@ -243,11 +243,11 @@ function main() {
       source: 'apk',
     };
     // 那 source=ota 那一格逐字**按件**判（三问逐字都要答）：
-    //     · 那**包**里逐字有没有**那一件**（那 zipHas 逐字按条目名逐字比）；
-    //     · 那**事实来源**里逐字有没有**那一件**的那一档 pin（逐字按 id 查）；
-    //     · 而那 pin 逐字**指**的是不是**那一件**（那 zip 名字逐字对得上）。
+    // · 那**包**里逐字有没有**那一件**（那 zipHas 逐字按条目名逐字比）；
+    // · 那**事实来源**里逐字有没有**那一件**的那一档 pin（逐字按 id 查）；
+    // · 而那 pin 逐字**指**的是不是**那一件**（那 zip 名字逐字对得上）。
     // 那**缺一格**就逐字**留在 apk**那一侧（一侧逐字是「随 APK 走」）
-    //**不**拿别的那一件的 pin 顶替（旧版逐字**每一件**都拿同一条）。
+    // **不**拿别的那一件的 pin 顶替（旧版逐字**每一件**都拿同一条）。
     const pin = pinEntry(pins, e.id);
     if (pin) {
       const zipName = path.basename(ZIP);
@@ -260,14 +260,14 @@ function main() {
       } else {
         // 那 pin 逐字有、那**包**里逐字没有**那一件**
         // 那 source 逐字**留在 apk**、一句逐字说出来（不静默）。
-        console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
+        console.error('[pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
           '一份件包里逐字**没有**它（按后缀匹配的那旧版逐字**会**命中别的那一条）' +
           '那 source 逐字留在 apk。');
       }
     } else {
       // 那 pin 记录里逐字**没有**它那 source 逐字是 apk、那**不**是缺件
-      //     （那 base 筐那些件逐字就随 APK 走、它们逐字本来就不进 OTA）。
-      console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
+      // （那 base 筐那些件逐字就随 APK 走、它们逐字本来就不进 OTA）。
+      console.error('[no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
     }
     components.push(c);
   }
@@ -275,7 +275,7 @@ function main() {
   if (PROJECT_ONLY) {
     process.stdout.write(JSON.stringify(components, null, 2) + '\n');
     for (const c of components) {
-      console.error('  - ' + c.id + '@' + c.version + ' entry=' + c.entry + ' 来源=' + c.source);
+      console.error('- ' + c.id + '@' + c.version + 'entry=' + c.entry + '来源=' + c.source);
     }
     if (problems.length) {
       for (const p of problems) console.error('::error title=底座件清单投影失败::' + p);
@@ -292,9 +292,9 @@ function main() {
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
     // 整份清单的指纹逐字**不再**取「最后一条」那一条
-    //     （旧版逐字是 `pin ? pin.fingerprint : null`）
+    // （旧版逐字是 `pin ? pin.fingerprint : null`）
     // 它逐字是**所有**那些 ota 那一侧的指纹逐字合起来那一格
-    //       （逐字让「这一份清单换了没有」逐字**判得出**）。
+    // （逐字让「这一份清单换了没有」逐字**判得出**）。
     fingerprint: manifestFingerprint(pins),
     components,
   };
@@ -309,8 +309,8 @@ function main() {
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'native-manifest.json'), body);
   fs.writeFileSync(path.join(OUT, 'native-manifest.json.sig'), sig + '\n');
-  console.log('[native] channel=' + CHANNEL + ' revision=' + man.revision + ' components=' + components.length
-    + '（可 OTA ' + components.filter((c) => c.source === 'ota').length + ' 件）');
+  console.log('[native] channel=' + CHANNEL + 'revision=' + man.revision + 'components=' + components.length
+    + '（可 OTA ' + components.filter((c) => c.source === 'ota').length + '件）');
   console.log('[native] 签名自检通过: ' + path.join(OUT, 'native-manifest.json'));
   if (problems.length) {
     for (const p of problems) console.error('::warning title=底座件清单有问题::' + p);

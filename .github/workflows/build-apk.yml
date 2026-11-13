@@ -28,12 +28,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    #  缺陷名（C-102）**那 workflow 逐字没有 permissions 那一块**、=> 而而那 GITHUB_TOKEN
-    #    逐字**默认**拿的是那仓的**默认**权限（=> 而那一档**按仓设置**变、=> 而那**不可控**）。
-    #    => 而那取件那一格逐字**要**用那 GITHUB_TOKEN 去读 Release 清单、=> 而那**只要**读。
-    #    => 而那**处置**：=> 而那 job 逐字**显式**给那 contents: read。
-    #    => 而那**不碰**那两处 APK_PUBLISH_TOKEN（=> 而那 :78 与那 :475 逐字是**发布**那一族的身份、
-    #      => 而那**不是**取件的身份、=> 而那**不合并**）。
+    # 缺陷名（C-102）**那 workflow 逐字没有 permissions 那一块**、GITHUB_TOKEN
+    # 逐字**默认**拿的是那仓的**默认**权限（一档**按仓设置**变、**不可控**）。
+    # 取件那一格逐字**要**用那 GITHUB_TOKEN 去读 Release 清单、**只要**读。
+    #**处置**：job 逐字**显式**给那 contents: read。
+    #**不碰**那两处 APK_PUBLISH_TOKEN（:78 与那 :475 逐字是**发布**那一族的身份、
+    #**不是**取件的身份、**不合并**）。
     permissions:
       contents: read
     env:
@@ -84,11 +84,11 @@ jobs:
         if: ${{ env.RELEASE_ROUND == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
-          # [!] 四个签名 secret 必须**显式声明**在 env 里 ——
-          #   GitHub 只把出现在 env/secrets 上下文里的值注入 job，
-          #   step 的 run 块里 ${!v} 直接读环境变量，读不到没声明的 secret。
-          #   上一版只声明了 GH_TOKEN，于是这四个在 run 块里恒为空，
-          #   表现为「secret 明明存在（API 查得到）却报缺少」。
+          # 四个签名 secret 必须**显式声明**在 env 里 ——
+          # GitHub 只把出现在 env/secrets 上下文里的值注入 job，
+          # step 的 run 块里 ${!v} 直接读环境变量，读不到没声明的 secret。
+          # 上一版只声明了 GH_TOKEN，于是这四个在 run 块里恒为空，
+          # 表现为「secret 明明存在（API 查得到）却报缺少」。
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -126,7 +126,7 @@ jobs:
           fi
 
           # (2) 四件签名密钥必须齐 —— 缺一个就退回一次性 debug 签名，
-          #     装到已装设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
+          # 装到已装设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
           MISSING_KEYS=""
           for v in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             [ -n "${!v:-}" ] || MISSING_KEYS="$MISSING_KEYS $v"
@@ -179,7 +179,7 @@ jobs:
           # 免得几十行之后才报「找不到 apksigner」，看不出是哪一步没装成
           if ! find "$SDK/build-tools" -name apksigner 2>/dev/null | head -1 | grep -q .; then
             echo "::error title=build-tools 里没有 apksigner::签名核验依赖它"
-            ls -1 "$SDK/build-tools" 2>/dev/null || echo "  （build-tools 目录不存在）"
+            ls -1 "$SDK/build-tools" 2>/dev/null || echo "（build-tools 目录不存在）"
             exit 1
           fi
           echo "[ok] SDK 包就绪（含 apksigner）"
@@ -205,7 +205,7 @@ jobs:
           set -euo pipefail
           J=container/app/src/main/jniLibs/arm64-v8a
           mkdir -p "$J"
-          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          NDK="$(cd "$(dirname "$CC")/../../../../.."&& pwd)"
           echo "[libc++] NDK=$NDK（由 locate-ndk.sh 注入的 CC 反推，与组件链同一份）"
           SRC="$(ls "$NDK"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
           [ -f "$SRC" ] || { echo "::error title=缺 libc++_shared.so::APK 内 C++ 原生件将无法加载；NDK=$NDK"; exit 1; }
@@ -229,60 +229,60 @@ jobs:
           set -euo pipefail
           # sysroot 是**编译期**的头文件与库目录（include/ + lib/），
           # 不是可运行的能力 —— 所以进 APK 但不成为件：
-          #   · 不产 component-meta.json（不是 usr/lib/<id>/<版本>/ 那个形状）
-          #   · 不落位（内核不认识它）
+          # · 不产 component-meta.json（不是 usr/lib/<id>/<版本>/ 那个形状）
+          # · 不落位（内核不认识它）
           # Linux 的对应物：gcc 包的 include/ 与 libc6-dev 包 —— 都是编译材料。
-          NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          NDK="$(cd "$(dirname "$CC")/../../../../.."&& pwd)"
           SRC="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1)"
           [ -n "$SRC" ] || { echo "::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）"; exit 1; }
           DST=container/app/src/main/assets/sysroot
           rm -rf "$DST"
           mkdir -p "$DST/usr/lib/aarch64-linux-android"
           cp -a "$SRC/usr/include" "$DST/usr/include"
-          #  => 而那**架构**那**一族**的头逐字**也**要**并**进去**（=> 而那 asm/types.h 逐字**在**那
-          #     usr/include/aarch64-linux-android/asm/ **那一族**、=> 而那**顶层**的**那个**里面**没有**它**）。
+          #**架构**那**一族**的头逐字**也**要**并**进去**（asm/types.h 逐字**在**那
+          # usr/include/aarch64-linux-android/asm/ **那一族**、**顶层**的**那个**里面**没有**它**）。
           if [ -d "$SRC/usr/include/aarch64-linux-android" ]; then
             cp -a "$SRC/usr/include/aarch64-linux-android/." "$DST/usr/include/"
           fi
-          #  => 而那**库**逐字**要**按**那 NDK **那一族**的**层次**摆**（=> 而那 crtbegin_so.o 与那 crtend_so.o
-          #     逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、=> 而那**顶层**的**那个**里面**没有**它们**）。
+          #**库**逐字**要**按**那 NDK **那一族**的**层次**摆**（crtbegin_so.o 与那 crtend_so.o
+          # 逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、**顶层**的**那个**里面**没有**它们**）。
           cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-          #  缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
-          #    => 而那**后果**逐字 = 而那 libc.a 逐字 = **26672138** 字节、=> 而那 libc++_static.a 逐字 = **24518858** 字节、
-          #      => 而那**整个**的**那一份**逐字 = **125 M**、=> 而那 APK **那一份**逐字**涨**那**一百**多 M、
-          #      => 而那**它**们**逐字是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
-          #    => 而那**处置**：=> 而那 **<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
-          #      => 而那**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
+          # 缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
+          #**后果**逐字libc.a 逐字 = **26672138** 字节、libc++_static.a 逐字 = **24518858** 字节、
+          #**整个**的**那一份**逐字 = **125 M**、APK **那一份**逐字**涨**那**一百**多 M、
+          #**它**们**逐字是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
+          #**处置**：**<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
+          #**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
           for _d in "$DST/usr/lib/aarch64-linux-android/"*/; do
             _b="$(basename "$_d")"
             case "$_b" in
-              #  => 而那**目标三元组**逐字**是**那 aarch64-linux-android35、=> 而那**它**逐字**要**那 **35** **那一个**
-              #     **子目录**（=> 而那 **clang** 逐字**按**那**目标**的**API**找**那 crt **那一族**）。
+              #**目标三元组**逐字**是**那 aarch64-linux-android35、**它**逐字**要**那 **35** **那一个**
+              # **子目录**（**clang** 逐字**按**那**目标**的**API**找**那 crt **那一族**）。
               [0-9]*) [ "$_b" = "35" ] || rm -rf "$_d" ;;
             esac
           done
-          #  => 而那 libc.a 与那 libc++_static.a 逐字**不**要**（=> 而那**它**们**逐字是**那**两**件**事**：
-          #     「那**链接**要**什么**」与「那**静态库**是**什么**」）、=> 而那**处置**逐字**不合并**。
+          #libc.a 与那 libc++_static.a 逐字**不**要**（**它**们**逐字是**那**两**件**事**：
+          # 「那**链接**要**什么**」与「那**静态库**是**什么**」）、**处置**逐字**不合并**。
           rm -f "$DST/usr/lib/aarch64-linux-android/libc.a" "$DST/usr/lib/aarch64-linux-android/libc++_static.a"
-          rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、=> 而而那**它**逐字**在**那 clang **那工具链**那一族**
-          #    => 而那 clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
-          #    => 而那**它**逐字**在**那 APK **外面**、=> 而那**它**逐字**进不去**那**设备**
-          #    => 而那**后果**逐字 = 而那 llvm **那一格**逐字**编**一个 .so **不过**、
-          #      而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」。
-          #  => 而那**处置**：=> 而那**工具链**那一族逐字**也**拷**进**那 sysroot **那 lib/ **里面**、
-          #    => 而那**它**逐字**跟**那 sysroot **一起**进**那 APK**（=> 而那**它**们**逐字是**那**两**件**事**：
-          #      「那**头文件与库**」与「那**工具链**自己的**库**」）。
-          #  => 而按 C-104：=> 而那**它**们逐字**不是**那同一件内容的两条取法、=> 而那**处置**逐字**不合并**。
+          rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、**它**逐字**在**那 clang **那工具链**那一族**
+          #clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
+          #**它**逐字**在**那 APK **外面**、**它**逐字**进不去**那**设备**
+          #**后果**逐字llvm **那一格**逐字**编**一个 .so **不过**、
+          # 而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」。
+          #**处置**：**工具链**那一族逐字**也**拷**进**那 sysroot **那 lib/ **里面**、
+          #**它**逐字**跟**那 sysroot **一起**进**那 APK**（**它**们**逐字是**那**两**件**事**：
+          # 「那**头文件与库**」与「那**工具链**自己的**库**」）。
+          # 按 C-104：**它**们逐字**不是**那同一件内容的两条取法、**处置**逐字**不合并**。
           TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
           if [ -n "$TOOLLIB" ]; then
             cp -a "$TOOLLIB"/. "$DST/usr/lib/" 2>/dev/null || true
-            echo "[sysroot] 工具链库已并入 $DST/usr/lib（$(ls "$DST/usr/lib" | wc -l) 项）"
+            echo "[sysroot] 工具链库已并入 $DST/usr/lib（$(ls "$DST/usr/lib"| wc -l) 项）"
           else
             echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK=$NDK）"
             exit 1
           fi
           [ -f "$DST/usr/include/stdio.h" ] || { echo "::error title=sysroot 缺 stdio.h::编译任何 C 程序都会失败"; exit 1; }
-          echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include" | wc -l) 项 · lib $(ls "$DST/usr/lib" | wc -l) 项）"
+          echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include"| wc -l) 项 · lib $(ls "$DST/usr/lib"| wc -l) 项）"
           du -sh "$DST"
 
       # APK 是**取件模式**：预装件是现成的，编一次固化到 Release，之后一直取用。
@@ -293,12 +293,12 @@ jobs:
       # 这个事实藏起来 —— 构建变慢、变脆，还说不清为什么。
       - name: 取件（从 Release 取 base 筐的固化产物）
         env:
-          #  缺陷名（C-102）**那一格逐字没有令牌**、=> 而而那脚本那一格逐字**要**读 Release 清单、
-          #    => 而那**没有身份**就**匿名**读、=> 而那匿名读逐字 60 次/小时、=> 而那症状逐字是 403 限流。
-          #    => 而那**处置**：=> 而那**令牌**逐字**在这一格**给（=> 而那 step 逐字**必须**有 env，
-          #      => 而那 job 逐字**没有**那一个、=> 而那**不放**在 job 那一层）。
-          #    => 而那**身份**：=> 而那 secrets.GITHUB_TOKEN 逐字是那**只读**的身份（=> 而那 contents: read）、
-          #      => 而那**不是**那 APK_PUBLISH_TOKEN（=> 而那**不是**这一格的身份）。
+          # 缺陷名（C-102）**那一格逐字没有令牌**、脚本那一格逐字**要**读 Release 清单、
+          #**没有身份**就**匿名**读、匿名读逐字 60 次/小时、症状逐字是 403 限流。
+          #**处置**：**令牌**逐字**在这一格**给（step 逐字**必须**有 env，
+          #job 逐字**没有**那一个、**不放**在 job 那一层）。
+          #**身份**：secrets.GITHUB_TOKEN 逐字是那**只读**的身份（contents: read）、
+          #**不是**那 APK_PUBLISH_TOKEN（**不是**这一格的身份）。
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
@@ -319,13 +319,13 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          # [!][!] 而这一格原来硬编码 8 —— [!][!] 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算）[!][!]
-          #   [!][!] **是两套口径**（[!] [!] 而「同一格两处各算一次」那一族）[!][!]
-          #   [!][!] 而 crypto 归并进 openssl 之后（01 今天裁：[!] [!] 而它就是 openssl 的一部分）[!][!]
-          #   [!][!] 件数从八变七 => [!][!] 而这一处还在要 8 => [!][!] 「取件跑过了却判红」[!][!]
-          # => 现在：**从钉值表算**（[!] [!] 与 verify-apk-native.sh 同一把尺）[!][!]
-          # [!][!] 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES [!][!]
-          #   （[!] [!] 而它是「哪几件该取」唯一的生成点）[!][!]
+          # 而这一格原来硬编码 8 —— 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算） 
+          # **是两套口径**（ 而「同一格两处各算一次」那一族） 
+          # 而 crypto 归并进 openssl 之后（01 今天裁： 而它就是 openssl 的一部分） 
+          # 件数从八变七这一处还在要 8 => 「取件跑过了却判红」 
+          # => 现在：**从钉值表算**（ 与 verify-apk-native.sh 同一把尺） 
+          # 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES 
+          # （ 而它是「哪几件该取」唯一的生成点） 
           # C-995：件数的真源只有一处 —— fetch-prebuilt-pieces.sh 的 PIECES 那一行。
           # 以前这里还有第二条路：grep 出那一行再数词数。那条路把「一行文本」当成了真源，
           # 于是「脚本里的数组」和「文本里的词数」可以各说各话，两边碰巧一样时看不出来，
@@ -343,7 +343,7 @@ jobs:
             exit 1
           fi
           [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
-          echo "  件数 $N 与钉值表一致（$WANT_N）—— [!] [!] 而它不是硬编码的"
+          echo "件数 $N 与钉值表一致（$WANT_N）—— 而它不是硬编码的"
           echo "件包（assets/pieces/，启动时装配器解包安装）："
           ls -la container/app/src/main/assets/pieces/
 
@@ -389,28 +389,28 @@ jobs:
             VARIANT=debug
           fi
           echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
-          #  缺陷名（C-102）**那 variant 逐字**只**在**那 gradle **那一句**的**后**面**写**、
-          #    => 而那 gradle **那一句**逐字**红**了**就**走**不到**那**一行**、
-          #    => 而那 **outputs.variant** 逐字**是**那**空**的、
-          #    => 而那 step 21 与那 step 25 与那 step 28 逐字**就**拿到**那**空段**
-          #      （=> 而那路径逐字 = 「container/app/build/outputs/apk//*.apk」）、
-          #    => 而那**症状**逐字**是**那「No files were found with the provided path」。
-          #  => 而那**处置**：=> 而那 variant 逐字**先**写**出去**（=> 而它逐字**不依赖**那 gradle **的**成败**）、
-          #    => 而那 gradle **那一句**逐字**还**写**一遍**（=> 而那**它**逐字**一样**、=> 而那**它**逐字**不**是**第二条路**）。
-          #  => 而按 C-102：=> 而它治**的**是「那**变量**逐字**没带上**」那一层、=> 而而那**根因**逐字**是**那 gradle **那一句**红**了**。
+          # 缺陷名（C-102）**那 variant 逐字**只**在**那 gradle **那一句**的**后**面**写**、
+          #gradle **那一句**逐字**红**了**就**走**不到**那**一行**、
+          #**outputs.variant** 逐字**是**那**空**的、
+          #step 21 与那 step 25 与那 step 28 逐字**就**拿到**那**空段**
+          # （路径逐字 = 「container/app/build/outputs/apk//*.apk」）、
+          #**症状**逐字**是**那「No files were found with the provided path」。
+          #**处置**：variant 逐字**先**写**出去**（它逐字**不依赖**那 gradle **的**成败**）、
+          #gradle **那一句**逐字**还**写**一遍**（**它**逐字**一样**、**它**逐字**不**是**第二条路**）。
+          # 按 C-102：它治**的**是「那**变量**逐字**没带上**」那一层、**根因**逐字**是**那 gradle **那一句**红**了**。
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
 
-          # [!] 清掉上一次构建残留的 packaged_res ——
-          #   Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
-          #   而 packageDebugResources 在已有输出时**不覆盖**，于是
-          #   上一轮那份坏副本会一直留着：
-          #     [Fatal Error] activity_main.xml:61:1: XML document structures
-          #                   must start and end within the same entity.
-          #   —— 报的是 build/intermediates/packaged_res/…/activity_main.xml，
-          #   而 src/res/layout/ 那份是好的。
+          # 清掉上一次构建残留的 packaged_res ——
+          # Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
+          # 而 packageDebugResources 在已有输出时**不覆盖**，于是
+          # 上一轮那份坏副本会一直留着：
+          # [Fatal Error] activity_main.xml:61:1: XML document structures
+          # must start and end within the same entity.
+          # —— 报的是 build/intermediates/packaged_res/…/activity_main.xml，
+          # 而 src/res/layout/ 那份是好的。
           #
           # 只清这一个 intermediates 子目录，不动依赖缓存
-          #（清整个 build/ 会让每次都全量重编，慢很多）。
+          # （清整个 build/ 会让每次都全量重编，慢很多）。
           rm -rf container/app/build/intermediates/packaged_res
           echo "[gradle] 已清 packaged_res（避免沿用上一轮的残留）"
           gradle "assemble$VARIANT" --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
@@ -454,9 +454,9 @@ jobs:
             exit 1
           fi
           # 取件口径三条（规范 I-33）：
-          #   1) head_sha 必须等于本地 HEAD —— 不等说明产物与当前源码脱钩
-          #   2) 同一 head_sha 取 run 号最大者
-          #   3) 记下 run 号 —— 没有它，同一 commit 的两次验证拿到不同字节也无人察觉
+          # 1) head_sha 必须等于本地 HEAD —— 不等说明产物与当前源码脱钩
+          # 2) 同一 head_sha 取 run 号最大者
+          # 3) 记下 run 号 —— 没有它，同一 commit 的两次验证拿到不同字节也无人察觉
           SHA="${GITHUB_SHA}"
           if [ "$SHA" != "$(git rev-parse HEAD)" ]; then
             echo "::error title=产物 sha 与本地 HEAD 不符::${SHA} vs $(git rev-parse HEAD)"
@@ -507,7 +507,7 @@ jobs:
           fi
           APK="$(ls container/app/build/outputs/apk/release/*.apk | head -1)"
           [ -f "$APK" ] || { echo "::error::没有 release 变体的 APK：$APK"; exit 1; }
-          SHA="$(sha256sum "$APK" | cut -c1-64)"
+          SHA="$(sha256sum "$APK"| cut -c1-64)"
           ASSET="lobos-os-$NAME_VER.apk"
           if [ -z "${GH_TOKEN:-}" ]; then
             echo "::error title=发布轮缺令牌::os-release-* 这一轮要发正式版，需要 secrets APK_PUBLISH_TOKEN"
@@ -547,7 +547,7 @@ jobs:
           echo "| 记录本次产物的构建身份 | 需要 APK 存在 |" >> "$S"
           echo "| Upload APK | always()，但产物要存在 |" >> "$S"
           echo "" >> "$S"
-          echo "[!] **上面三条若显示「未执行」，它们不构成任何证据** —— 那是上游断点，" >> "$S"
+          echo "**上面三条若显示「未执行」，它们不构成任何证据** —— 那是上游断点，" >> "$S"
           echo "而「未执行」在 GitHub 的颜色里与「通过」一样绿。判别形式：它跑了没有？" >> "$S"
 
       - name: Collect failure diagnostics
@@ -588,7 +588,7 @@ jobs:
           ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true
           find container/app/src/main/assets -type f 2>/dev/null | sort > "$D/assets-tree.txt"
           find container/app/build/intermediates/assets -type f 2>/dev/null | sort | head -40 > "$D/assets-merged.txt" || true
-            { echo "## 源目录字节数（对照用）"; find container/app/src/main/assets -type f -printf "%10s  %p\n" 2>/dev/null | sort -k2; } > "$D/src-bytes.txt" || true
+            { echo "## 源目录字节数（对照用）"; find container/app/src/main/assets -type f -printf "%10s  %p\n"2>/dev/null | sort -k2; } > "$D/src-bytes.txt" || true
           ls -la container/app/src/main/assets/pieces/ >> "$D/assets-tree.txt" 2>/dev/null || true
             APKX=$(ls container/app/build/outputs/apk/*/*.apk 2>/dev/null | head -1)
             if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; zipinfo -l "$APKX" 2>/dev/null | grep -E "assets/(pieces|jssdk)" > "$D/apk-pieces-bytes.txt" || true; fi
@@ -602,7 +602,7 @@ jobs:
           echo "- node: $(node --version 2>/dev/null)" >> "$D/env.txt"
           echo "- CC: ${CC:-（空）}" >> "$D/env.txt"
           echo "- 取件到的件包:" >> "$D/env.txt"
-          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/    /' >> "$D/env.txt"
+          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/ /' >> "$D/env.txt"
 
           ls -laR "$D" 2>/dev/null | head -40
 

@@ -6,42 +6,42 @@
 # 剩下的每一条都是上游软件（有真实版本、可 OTA 替换）。
 #
 # [warn] 原由 scripts/registry/gen-native-assets.js 生成，**那份生成器已删** ——
-#   它指向的 NativeAssetRegistry.kt 早已不存在，于是这个文件事实上靠手维护，
-#   而漂了：jq 漏了（build-bundle-jq.sh 真在产它，缺了不会被查出来）、
-#   node-pty 留着但两张表都没有、也没有任何脚本产它。已一并改正。
+# 它指向的 NativeAssetRegistry.kt 早已不存在，于是这个文件事实上靠手维护，
+# 而漂了：jq 漏了（build-bundle-jq.sh 真在产它，缺了不会被查出来）、
+# node-pty 留着但两张表都没有、也没有任何脚本产它。已一并改正。
 #
 # 现在**手动维护**，改这份文件时必须与这三处对齐：
-#   · scripts/toolchain/ensure-native-capabilities.sh 的 build_each 列表（谁在编）
-#   · scripts/component-verify.json 的 criteria（每件的 entry/形式/版本）
-#   · scripts/component-sources.json 的 sources（上游版本与 sha256）
+# · scripts/toolchain/ensure-native-capabilities.sh 的 build_each 列表（谁在编）
+# · scripts/component-verify.json 的 criteria（每件的 entry/形式/版本）
+# · scripts/component-sources.json 的 sources（上游版本与 sha256）
 # 档位只影响「缺件时判红还是降级」（构建期严重程度），
 # 与 component-verify.json 的 required（运行上要不要它，= deb-control 的 Essential）是两件事。
 #
 # 格式：<档位> <libName> <id>；空行与 # 开头的行忽略。
 # 档位 = NativeExecutable.buildTier：
-#   upstream  上游源码配方 —— $PREFIX 依赖它且无回退 => 缺件硬红
-#   soft      上游配方有不确定性 —— 缺件只降级（不判红），不陪葬其它能力
+# upstream 上游源码配方 —— $PREFIX 依赖它且无回退 => 缺件硬红
+# soft 上游配方有不确定性 —— 缺件只降级（不判红），不陪葬其它能力
 
 # --- upstream ---
-# [!] bash 那一件**不再提供 libbash.so** —— 而那一列逐字是「**这一件提供的那个字节名**」。
-#   而 06 归档那一件逐字："programs":["bin/bash"]、逐字 "libraries":[]、逐字 "derivedLinks":[]
-#   => 而那件包里逐字有 bin/bash、逐字**没有** libbash.so
-#   => 而那 pin 重生成逐字报「档位表第二列逐字是 libbash.so，=> 而那件包里逐字**命中不到**它」
-#   => 而那该写它逐字真提供的那一个（=> 而那是 bin/bash）。
-#   （=> 而这与 jq 那一件同一形状、=> 而也与 01 裁的 S606-01 §9.1 逐字对 llvm 那一件的裁同一形状。）
+# bash 那一件**不再提供 libbash.so** —— 而那一列逐字是「**这一件提供的那个字节名**」。
+# 而 06 归档那一件逐字："programs":["bin/bash"]、逐字 "libraries":[]、逐字 "derivedLinks":[]
+# 件包里逐字有 bin/bash、逐字**没有** libbash.so
+#pin 重生成逐字报「档位表第二列逐字是 libbash.so，件包里逐字**命中不到**它」
+# 该写它逐字真提供的那一个（是 bin/bash）。
+# （这与 jq 那一件同一形状、也与 01 裁的 S606-01 §9.1 逐字对 llvm 那一件的裁同一形状。）
 upstream bin/bash bash
-# [!] ripgrep 那一件逐字同形：而 06 归档那一件逐字 "programs":["bin/rg"]、逐字 "libraries":[]
-#   => 而那它逐字提供的是 bin/rg、=> 而**不是** liblobosrg.so。
+# ripgrep 那一件逐字同形：而 06 归档那一件逐字 "programs":["bin/rg"]、逐字 "libraries":[]
+# 它逐字提供的是 bin/rg、**不是** liblobosrg.so。
 upstream bin/rg ripgrep
 upstream libbusybox.so busybox
 upstream libz.so zlib
 upstream libssl.so openssl
 upstream libcrypto.so crypto
 upstream libcurl.so curl
-# [!] jq 那一件今天**不再提供 liblobosjq.so** —— 03 今天那一问：
-#   「这一件 lib/ 下那份字节，有谁 NEEDED 它？」jq 的 DT_NEEDED 只有 libm/libdl/libc
-#   => 零人 NEEDED 它 => 产物里就不该有它（改包，不是改落位）=> 它的入口是 bin/jq。
-#   => 而这一列是**那一件提供的那个字节名** => 改成 bin/jq。
+# jq 那一件今天**不再提供 liblobosjq.so** —— 03 今天那一问：
+# 「这一件 lib/ 下那份字节，有谁 NEEDED 它？」jq 的 DT_NEEDED 只有 libm/libdl/libc
+# => 零人 NEEDED 它 => 产物里就不该有它（改包，不是改落位）=> 它的入口是 bin/jq。
+# 这一列是**那一件提供的那个字节名** => 改成 bin/jq。
 upstream bin/jq jq
 # --- soft ---
 

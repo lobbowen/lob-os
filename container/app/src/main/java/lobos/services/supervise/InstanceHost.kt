@@ -41,9 +41,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var nodeProcess: Process? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
-    /**
+    /* *
      * 那**上一次**查那远端逐字是什么时候（ 它逐字是那**节律**那一族那一格）。
-     *   它逐字 **0** 逐字表示「**还**没查过」（ **第一次**逐字**要**查）
+     * 它逐字 **0** 逐字表示「**还**没查过」（ **第一次**逐字**要**查）
      */
     @Volatile private var lastOtaCheckAtMs: Long = 0L
     private val bootExec = Executors.newSingleThreadExecutor()
@@ -91,41 +91,41 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         scheduleBootLoop()
     }
 
-    /**
+    /* *
      * 那** wakelock** 那一格逐字（ 它逐字**只**在那一段逐字里持有）。
      *
      * 缺陷名（C-102）**那一格逐字每轮逐字 acquire 一把、 它逐字用那 `setReferenceCounted(false)`** ——
-     *   `setReferenceCounted(false)` 逐字是那**关键**（ Lead 本机实读成立）：
-     *     · 而那**重复** acquire 逐字**不会**累积引用计数
-     *       它逐字会把那**前面**的持有逐字**延长**
-     *       它逐字**最后**那一把逐字**覆盖掉**前面那些
-     *   **后果**（Lead 本机实测的读数，**值是跑出来的**）：
-     *     · 而那 CPU 占用率逐字 = **0.0%**（ CPU 逐字**不是**那耗电的成因）
-     *     · **三个同名** wakelock 逐字是那**真凶**
-     *       （ 唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 / 19:53:16 / 19:54:17 / 19:54:52
-     *         逐字都是 `ACQ lobos:runtime (partial)`、 间隔逐字 6 到 60 秒、
-     *         每一把逐字持有 30 到 60 秒）
-     *   **处置**： **引用计数**逐字**开着**（ 重复 acquire 逐字**累积**、
-     *       它逐字**不**会**覆盖**前面那些）
-     *     **释放**逐字**配**上那 acquire 逐字（ 引用计数逐字**回**零）
-     *     **锁**逐字**只**在「那**启动**那一段」逐字里持有
-     *       （ 程序**活着**的那整段逐字**不该**一直占着）
+     * `setReferenceCounted(false)` 逐字是那**关键**（ Lead 本机实读成立）：
+     * · 而那**重复** acquire 逐字**不会**累积引用计数
+     * 它逐字会把那**前面**的持有逐字**延长**
+     * 它逐字**最后**那一把逐字**覆盖掉**前面那些
+     * **后果**（Lead 本机实测的读数，**值是跑出来的**）：
+     * · 而那 CPU 占用率逐字 = **0.0%**（ CPU 逐字**不是**那耗电的成因）
+     * · **三个同名** wakelock 逐字是那**真凶**
+     * （ 唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 / 19:53:16 / 19:54:17 / 19:54:52
+     * 逐字都是 `ACQ lobos:runtime (partial)`、 间隔逐字 6 到 60 秒、
+     * 每一把逐字持有 30 到 60 秒）
+     * **处置**： **引用计数**逐字**开着**（ 重复 acquire 逐字**累积**、
+     * 它逐字**不**会**覆盖**前面那些）
+     * **释放**逐字**配**上那 acquire 逐字（ 引用计数逐字**回**零）
+     * **锁**逐字**只**在「那**启动**那一段」逐字里持有
+     * （ 程序**活着**的那整段逐字**不该**一直占着）
      */
     private fun acquireBriefWakeLock(timeoutMs: Long) {
         try {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
-            //  缺陷名（C-102）**那一格逐字每轮逐字新建一把同名锁、 它逐字就攒下多把** ——
-            //   旧版逐字是 `wakeLock = pm.newWakeLock(…)`（ 它逐字**在**每次 acquire 逐字**都新建**）
-            //     **名字**逐字**一样**（ `lobos:runtime`）
-            //     **多把**在 `dumpsys power` 逐字**看**成**一把**（ **名字**一样）
-            //       唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 /
-            //         19:53:16 / 19:54:17 / 19:54:52 逐字都是 `ACQ lobos:runtime (partial)`、
-            //         间隔逐字 6 到 60 秒、 每一把逐字持有 30 到 60 秒
-            //       CPU 占用率逐字 = **0.0%**（ CPU 逐字**不是**那耗电的成因）
-            //   **处置**： 把锁逐字**只建一次**、 它逐字**复用**
-            //     **多把**逐字**不再**攒下
-            //     **引用计数**逐字**开着**（ 重复 acquire 逐字**累积**、
-            //       它逐字**不**覆盖前面那些、 一把逐字**不会**一直占着）
+            // 缺陷名（C-102）**那一格逐字每轮逐字新建一把同名锁、 它逐字就攒下多把** ——
+            // 旧版逐字是 `wakeLock = pm.newWakeLock(…)`（ 它逐字**在**每次 acquire 逐字**都新建**）
+            // **名字**逐字**一样**（ `lobos:runtime`）
+            // **多把**在 `dumpsys power` 逐字**看**成**一把**（ **名字**一样）
+            // 唤醒历史逐字 19:50:12 / 19:51:47 / 19:51:54 / 19:52:10 /
+            // 19:53:16 / 19:54:17 / 19:54:52 逐字都是 `ACQ lobos:runtime (partial)`、
+            // 间隔逐字 6 到 60 秒、 每一把逐字持有 30 到 60 秒
+            // CPU 占用率逐字 = **0.0%**（ CPU 逐字**不是**那耗电的成因）
+            // **处置**： 把锁逐字**只建一次**、 它逐字**复用**
+            // **多把**逐字**不再**攒下
+            // **引用计数**逐字**开着**（ 重复 acquire 逐字**累积**、
+            // 它逐字**不**覆盖前面那些、 一把逐字**不会**一直占着）
             val lock = wakeLock ?: pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lobos:runtime").apply {
                 setReferenceCounted(true)
             }.also { wakeLock = it }
@@ -135,8 +135,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     }
 
     private fun releaseWakeLock() {
-        //  把锁逐字**复用**（ 它逐字**不**再每轮逐字新建同名那几把）
-        //    它逐字**释放**之后逐字**不**丢掉那一个句柄（ 下一次逐字**复用**它）
+        // 把锁逐字**复用**（ 它逐字**不**再每轮逐字新建同名那几把）
+        // 它逐字**释放**之后逐字**不**丢掉那一个句柄（ 下一次逐字**复用**它）
         try { wakeLock?.let { if (it.isHeld) it.release() } } catch (_: Throwable) { }
     }
 
@@ -227,7 +227,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 lobos.services.reg.ProgramStatusHub.publishQuarantined(programId, true)
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "进入隔离（QUARANTINED）：重启过密",
-                    "窗口内重启 " + windowNow + " 次（上限 " + maxNow + "）· 窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms"
+                    "窗口内重启 " + windowNow + "次（上限 " + maxNow + "）· 窗口 " + SupervisorPolicy.RESTART_WINDOW_MS + "ms"
                 )
                 var quarantinePolls = 0
                 while (keepRunning && !quarantineReset) {
@@ -236,7 +236,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     if (quarantinePolls >= SupervisorPolicy.QUARANTINE_HALF_OPEN_POLLS) {
                         RuntimeDiagnostics.append(
                             this, "supervisor", null, "隔离半开：允许一次试探性重启",
-                            "已等待 " + quarantinePolls + " 个轮询周期",
+                            "已等待 " + quarantinePolls + "个轮询周期",
                         )
                         break
                     }
@@ -254,7 +254,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (spec != null && spec.restart == lobos.services.reg.Restart.NEVER) {
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "清单声明 restart=never：不再重启该程序",
-                    "id=" + spec.id + " programId=" + programId,
+                    "id=" + spec.id + "programId=" + programId,
                 )
                 keepRunning = false
                 break
@@ -262,7 +262,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (spec != null && spec.maxRestarts in 1..restartCount) {
                 RuntimeDiagnostics.append(
                     this, "supervisor", false, "清单 maxRestarts 已达上限：转入隔离",
-                    "id=" + spec.id + " maxRestarts=" + spec.maxRestarts + " attempt=" + restartCount,
+                    "id=" + spec.id + "maxRestarts=" + spec.maxRestarts + "attempt=" + restartCount,
                 )
                 runCatching {
                     lobos.services.reg.ProgramIndex.mutate(this@InstanceHost, programId) {
@@ -313,9 +313,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             }
 
             val otaCfg = ProgramOtaUpdater.loadConfig(this)
-            //  **检查**逐字**自己**有节律（ 它逐字**不**是那每一轮）
-            //    它逐字**上次**查过逐字**多久**了、 它逐字**不到**那个间隔逐字**不**查
-            //    **默认**逐字是那**一小时**那一档（ 它逐字**不**是那每一轮）
+            // **检查**逐字**自己**有节律（ 它逐字**不**是那每一轮）
+            // 它逐字**上次**查过逐字**多久**了、 它逐字**不到**那个间隔逐字**不**查
+            // **默认**逐字是那**一小时**那一档（ 它逐字**不**是那每一轮）
             val nowMs = SystemClock.elapsedRealtime()
             val otaDue = otaCfg != null && otaCfg.autoCheck &&
                 (lastOtaCheckAtMs == 0L || nowMs - lastOtaCheckAtMs >= otaCfg.checkIntervalMs)
@@ -349,15 +349,15 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (declaredSafe.second.isNotEmpty() || overrideSafe.second.isNotEmpty()) {
                 lobos.services.log.Journal.note(
                     this, "settings", false, "保留环境变量被拒（程序不得改写宿主注入面）",
-                    "id=" + programId + " 清单丢弃=" + declaredSafe.second.joinToString(",") +
-                        " 设置丢弃=" + overrideSafe.second.joinToString(","),
+                    "id=" + programId + "清单丢弃=" + declaredSafe.second.joinToString(",") +
+                        "设置丢弃=" + overrideSafe.second.joinToString(","),
                 )
             }
             if (argsOverride != null || envOverride.isNotEmpty()) {
                 lobos.services.log.Journal.note(
                     this, "settings", null, "程序设置生效（宿主在 spawn 时叠加）",
-                    "id=" + programId + " args=" + (argsOverride?.joinToString(" ") ?: "(按清单)") +
-                        " env键=" + envOverride.keys.joinToString(","),
+                    "id=" + programId + "args=" + (argsOverride?.joinToString("") ?: "(按清单)") +
+                        "env键=" + envOverride.keys.joinToString(","),
                 )
             }
             val kVersion = spec?.version ?: km.currentVersion()
@@ -427,10 +427,10 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             val kernelDir = programDir!!
             val kernelEntry = entry!!
             currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
-            //  [!] 缺陷名（C-102）**这一格跑在世代算出来之前** —— 它**分不出**「上世」与「这一代」。
-            //   而「回收上世遗留进程」那一问**该**由 generation 答， 它**必须**在 currentGeneration
-            //   定下来**之后**跑， 否则那一格答的是「活着的条目」而不是「上世的条目」。
-            //   处置：把这一格挪到 currentGeneration 之后（ 它的其余行为逐字不变）。
+            // 缺陷名（C-102）**这一格跑在世代算出来之前** —— 它**分不出**「上世」与「这一代」。
+            // 而「回收上世遗留进程」那一问**该**由 generation 答， 它**必须**在 currentGeneration
+            // 定下来**之后**跑， 否则那一格答的是「活着的条目」而不是「上世的条目」。
+            // 处置：把这一格挪到 currentGeneration 之后（ 它的其余行为逐字不变）。
             reapOrphanKernel()
             val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
             val plan = GuestAdapter.programPlan(
@@ -485,8 +485,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
                 if (recorded != null) {
-                    "program=" + recorded.programId + " gen=" + recorded.generation +
-                        " pid=" + recorded.pid + " starttime=" + recorded.starttime
+                    "program=" + recorded.programId + "gen=" + recorded.generation +
+                        "pid=" + recorded.pid + "starttime=" + recorded.starttime
                 } else "pid 无法取得，账本未记录"
             )
             if (recorded != null) {
@@ -539,7 +539,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         is AssetStatus.NotExecutable ->
             "无法 exec（依赖已确认完好 → SELinux 拒 exec，查那个文件是否真在可执行位置）"
         is AssetStatus.Unusable ->
-            "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)" }}"
+            "起不来 exit=${st.exit}，输出=${st.output.ifBlank { "(空)"}}"
     }
 
     private fun currentPid(p: Process?): String {
@@ -565,13 +565,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             RuntimeDiagnostics.append(
                 this, "supervisor", n > 0,
                 "按账本回收进程树（pid + 后代）",
-                reason + " pid=" + pid + " 后代=" + descendants.size + " 已发信号=" + n +
+                reason + "pid=" + pid + "后代=" + descendants.size + "已发信号=" + n +
                     "（通用 APK 无法建进程组：子进程继承宿主组，故按 ppid 链扫后代）",
             )
         } else if (pid > 0) {
             RuntimeDiagnostics.append(
                 this, "supervisor", false, "账本无本世代条目，仅销毁 Java 侧句柄",
-                reason + " pid=" + pid,
+                reason + "pid=" + pid,
             )
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
@@ -581,24 +581,24 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private fun reapOrphanKernel() {
         reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
-        //  [!] 缺陷名（C-102）**这一格把「活着的」当成了「上世的」** —— 它**没有按世代筛**。
-        //   而这一格问的是「**上一代**遗留的进程还在不在」， 它逐字是「活着的账本条目」那一族
-        //   （ ProcessLedger.liveOwned 逐字是 list(ctx).filter { isLive(...) }，
-        //    **它不按 generation 筛**）。
-        //   真机读数（07，47353ab 那一版，2026-10-25）：
-        //     [13:58:54] OK 进程归属已记账 | program=busybox gen=1 pid=8810 starttime=21558096
-        //     [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
-        //     [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
-        //     [13:58:54] OK 程序进程已启动 | pid=8810, program=busybox, 健康判据 127.0.0.1:41000/status
-        //     [13:58:54] 后端退出 -> 前端已收；unit=busybox exitCode=143
-        //   两行逐字是**同一个 pid**、 它是**这一趟刚起的那个**（ 143 = 128+15 = SIGTERM）。
-        //   成因：这一格在起进程**之前**跑（ 本文件 :381 那一行）， 账本里**上一趟**留下的
-        //      那一代条目（ generation 逐字还是 1、 pid **恰好**被内核复用了）
-        //      isOwnedAlive 逐字是 starttimeOf(pid) == starttime
-        //      一条**看起来还活着** 它**被 SIGTERM 了**。
-        //   「上世」那一问**该**由 generation 答： 当前这一代（currentGeneration）
-        //      **不是**上世、 它**不该**被杀。
-        //   处置：这一格**只**收 generation **小于**当前这一代的那几条。
+        // 缺陷名（C-102）**这一格把「活着的」当成了「上世的」** —— 它**没有按世代筛**。
+        // 而这一格问的是「**上一代**遗留的进程还在不在」， 它逐字是「活着的账本条目」那一族
+        // （ ProcessLedger.liveOwned 逐字是 list(ctx).filter { isLive(...) }，
+        // **它不按 generation 筛**）。
+        // 真机读数（07，47353ab 那一版，2026-10-25）：
+        // [13:58:54] OK 进程归属已记账 | program=busybox gen=1 pid=8810 starttime=21558096
+        // [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
+        // [13:58:54] INFO 回收上世遗留进程 | pid=8810 starttime=21558096 program=busybox gen=1
+        // [13:58:54] OK 程序进程已启动 | pid=8810, program=busybox, 健康判据 127.0.0.1:41000/status
+        // [13:58:54] 后端退出 -> 前端已收；unit=busybox exitCode=143
+        // 两行逐字是**同一个 pid**、 它是**这一趟刚起的那个**（ 143 = 128+15 = SIGTERM）。
+        // 成因：这一格在起进程**之前**跑（ 本文件 :381 那一行）， 账本里**上一趟**留下的
+        // 那一代条目（ generation 逐字还是 1、 pid **恰好**被内核复用了）
+        // isOwnedAlive 逐字是 starttimeOf(pid) == starttime
+        // 一条**看起来还活着** 它**被 SIGTERM 了**。
+        // 「上世」那一问**该**由 generation 答： 当前这一代（currentGeneration）
+        // **不是**上世、 它**不该**被杀。
+        // 处置：这一格**只**收 generation **小于**当前这一代的那几条。
         val owned = lobos.kernel.proc.ProcessLedger.liveOwned(this)
             .filter { it.generation < currentGeneration }
         val reused = lobos.kernel.proc.ProcessLedger.pidReused(this)
@@ -606,7 +606,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         for (e in owned) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "回收上世遗留进程",
-                "pid=" + e.pid + " starttime=" + e.starttime + " program=" + e.programId + " gen=" + e.generation
+                "pid=" + e.pid + "starttime=" + e.starttime + "program=" + e.programId + "gen=" + e.generation
             )
             stopProcessTree(e.pid)
             lobos.kernel.proc.ProcessLedger.end(this, e.pid)
@@ -614,7 +614,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         for (e in reused) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "账本 pid 已被复用：不杀",
-                "pid=" + e.pid + " ledgerStart=" + e.starttime + " nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
+                "pid=" + e.pid + "ledgerStart=" + e.starttime + "nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
             )
             lobos.kernel.proc.ProcessLedger.end(this, e.pid)
         }
@@ -731,7 +731,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 this, "program-stderr", err.isNotBlank(), "子进程标准错误(完整)",
                 if (err.isNotBlank()) err
                 else "(node 确实没有 stderr 输出；已等待 ${waited}ms 让转发线程收敛。\n" +
-                    " stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
+                    "stdout 已逐行写入 logcat，可用 adb logcat -s InstanceHost:*)"
             )
         }.start()
     }
@@ -778,7 +778,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             km.clearPending()
             RuntimeDiagnostics.append(
                 this, "program-commit", true,
-                "程序 " + pend.version + " 已提交（版本下限提升）",
+                "程序 " + pend.version + "已提交（版本下限提升）",
                 "from=" + (pend.from ?: "(无)") + "；floor=" + (km.floorVersion() ?: "(未设)")
             )
         } catch (e: Throwable) {
@@ -799,9 +799,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 val lowered = km.lowerFloor(from)
                 RuntimeDiagnostics.append(
                     this, "program-rollback", false,
-                    "程序 " + pend.version + " 未通过健康检查，已回滚到 " + from,
+                    "程序 " + pend.version + "未通过健康检查，已回滚到 " + from,
                     "版本下限 " + (if (lowered) "已同步下调到 " + from else "保持 " + (km.floorVersion() ?: "(未设)")) +
-                        " —— 不下调会把自己锁死：floor 高于当前版本时，任何不高于它的包都会被 version-below-floor 拒掉"
+                        "—— 不下调会把自己锁死：floor 高于当前版本时，任何不高于它的包都会被 version-below-floor 拒掉"
                 )
             }
             km.clearPending()

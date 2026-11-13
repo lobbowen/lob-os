@@ -10,8 +10,8 @@ name: Build crypto
 #   读数：base-crypto 筐里 crypto-openssl+3.6.3+ndk30.0.16248370+api35+src90fa46a13608.zip
 #   那一份的 component-meta.json 里 buildRun=40030227900，
 #   而 base-openssl 筐里 src90fa46a13608 那一份的 meta 里 buildRun=40030215774 —— 两者不同。
-#   => 而「一份产物里那几件要保证同一次构建」（01 今天 S81/S82 裁的是甲）这一格不成立。
-#   => 而 lead 今天裁：保留 crypto 作为独立一件，改由 openssl 那一趟同源产出。
+#「一份产物里那几件要保证同一次构建」（01 今天 S81/S82 裁的是甲）这一格不成立。
+#lead 今天裁：保留 crypto 作为独立一件，改由 openssl 那一趟同源产出。
 #
 # 而这一份的读者 scripts/toolchain/piece-workflow-name.sh:13 已经写着
 #   crypto) echo "build-openssl.yml" ;;   # crypto 由 openssl 连带产出

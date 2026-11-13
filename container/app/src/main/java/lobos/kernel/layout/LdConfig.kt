@@ -17,19 +17,19 @@ object LdConfig {
         val etc = SystemDirs.etc(ctx)
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
-        //  [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
-        //    而原来这一支逐字是 `.filter { ProgramIndex.isPiece(ctx, it) }`，
-        //    isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收**纯库件**那一族
-        //       （ crypto / curl / zlib 那一族）。
-        //    **程序形态**那一族（ busybox / bash / jq / openssl / ripgrep）**不在**里面，
-        //    它们 bin/ 下那些命令入口**从来没被扫过**，
-        //    usr/bin 下的命令入口**一条也没建**
-        //       （ 07 今天核到设备侧逐字是「已建 0」，而那**不是**「没有命令入口」，
-        //       是「**这一支**没扫到那些件」）。
-        //    处置：这一支收**所有在册的件**（ 不按 Level 筛），
-        //       「这一件有没有 bin/ 下的命令入口」由**它自己**回答
-        //       （ 下面那一支逐字是 File(root, "bin").listFiles()）。
-        //    按 C-135：这与「这一件是不是库件」是**两问**（ 一问由 Level 那一族答）。
+        // 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
+        // 而原来这一支逐字是 `.filter { ProgramIndex.isPiece(ctx, it) }`，
+        // isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收**纯库件**那一族
+        // （ crypto / curl / zlib 那一族）。
+        // **程序形态**那一族（ busybox / bash / jq / openssl / ripgrep）**不在**里面，
+        // 它们 bin/ 下那些命令入口**从来没被扫过**，
+        // usr/bin 下的命令入口**一条也没建**
+        // （ 07 今天核到设备侧逐字是「已建 0」，而那**不是**「没有命令入口」，
+        // 是「**这一支**没扫到那些件」）。
+        // 处置：这一支收**所有在册的件**（ 不按 Level 筛），
+        // 「这一件有没有 bin/ 下的命令入口」由**它自己**回答
+        // （ 下面那一支逐字是 File(root, "bin").listFiles()）。
+        // 按 C-135：这与「这一件是不是库件」是**两问**（ 一问由 Level 那一族答）。
         val idx = lobos.services.reg.ProgramIndex.all(ctx)
             .sortedBy { it.id }
         val pieces = idx.map { File(opt, it.id) }
@@ -38,8 +38,8 @@ object LdConfig {
         val unresolved = mutableListOf<String>()
         val claimed = mutableMapOf<String, String>()
         // SONAME -> 提供它的那几处（件 id、那一处、字节摘要）。
-        //    而它必须**先收集全部再决定**（S56）：
-        //    原来这一处是「扫到一个建一个」，  而后建的覆盖先建的   由遍历顺序决定 
+        // 而它必须**先收集全部再决定**（S56）：
+        // 原来这一处是「扫到一个建一个」， 而后建的覆盖先建的 由遍历顺序决定 
         val sonameCandidates = LinkedHashMap<String, MutableList<Triple<String, File, String>>>()
         val binInstalled = mutableListOf<String>()
 
@@ -54,27 +54,27 @@ object LdConfig {
             // C-102: 原来这里只建一条「同名软链 -> SONAME 名字」，丢掉了 ldconfig(8) 的三段链形状
             // （libfoo.so -> libfoo.so.<major> -> libfoo.so.<full>），改为按 SonameChain 落三段链。
             //
-            //  而「两件都提供同一个 SONAME 时链该指向哪一处」这一格（S56 裁定）：
-            //    它不该由「谁先扫到」或「谁后扫到」决定 ——  而那正是原来这一处的行为：
-            //    idx 是 sortedBy { it.id }， 而 lib/ 下逐个建链   **后建的那一条覆盖先建的**  
-            //    而今天 crypto 输给 openssl **只因为 c < o**   改一个件名它就反过来  
-            //    **「字母序」不是一条规则，只是遍历顺序的副产品**（ C-92）。
-            //    而那一格该由「这一份是不是唯一的」决定（01 今天裁的），三种情形三条处置：
-            //     一 只有一件提供那个 SONAME              -> 指向它
-            //     二 多件提供、而字节**逐字相同**        -> 指向任一处，**并记「共 N 处」**
-            //        （ 字节相同  指向哪一处今天无害，  而「无害」不该靠「恰好扫到了哪一个」）
-            //     三 多件提供、而字节**不同**            -> **报歧义、不建链**
-            //        （ 字节不同  链指哪一处会改变程序行为，  而让字母决定程序行为不可接受）
-            //    而实现：**先收集**这一批每一件 lib/ 下每个文件的名字与字节摘要，
-            //     **再按名字分组**， 然后按上面三条分别处置。
+            // 而「两件都提供同一个 SONAME 时链该指向哪一处」这一格（S56 裁定）：
+            // 它不该由「谁先扫到」或「谁后扫到」决定 —— 而那正是原来这一处的行为：
+            // idx 是 sortedBy { it.id }， 而 lib/ 下逐个建链 **后建的那一条覆盖先建的** 
+            // 而今天 crypto 输给 openssl **只因为 c < o** 改一个件名它就反过来 
+            // **「字母序」不是一条规则，只是遍历顺序的副产品**（ C-92）。
+            // 而那一格该由「这一份是不是唯一的」决定（01 今天裁的），三种情形三条处置：
+            // 一 只有一件提供那个 SONAME -> 指向它
+            // 二 多件提供、而字节**逐字相同** -> 指向任一处，**并记「共 N 处」**
+            // （ 字节相同 指向哪一处今天无害， 而「无害」不该靠「恰好扫到了哪一个」）
+            // 三 多件提供、而字节**不同** -> **报歧义、不建链**
+            // （ 字节不同 链指哪一处会改变程序行为， 而让字母决定程序行为不可接受）
+            // 而实现：**先收集**这一批每一件 lib/ 下每个文件的名字与字节摘要，
+            // **再按名字分组**， 然后按上面三条分别处置。
             File(root, "lib").listFiles()?.sortedBy { it.name }?.forEach { so ->
                 if (!so.isFile) return@forEach
                 sonameCandidates.computeIfAbsent(so.name) { ArrayList() }
-                    //  内容指纹逐字走那**缓存**（ 同一份逐字**只算一次**）
-                    //    （ 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
-                    //      sha256 逐字**本身不慢**、 慢的是**重复读**与**整读**）
-                    //    `ld.so.cache` 逐字**要**内容指纹才写得出来
-                    //      它逐字**不能**被跳过（ 它逐字不是「跳过内容指纹」那一族）
+                    // 内容指纹逐字走那**缓存**（ 同一份逐字**只算一次**）
+                    // （ 07 逐字核出那 `/system/bin/sha256sum` 逐字对那 7.3 GiB 逐字只要 12.31 s
+                    // sha256 逐字**本身不慢**、 慢的是**重复读**与**整读**）
+                    // `ld.so.cache` 逐字**要**内容指纹才写得出来
+                    // 它逐字**不能**被跳过（ 它逐字不是「跳过内容指纹」那一族）
                     .add(Triple(e.id, so, SonameChain.contentDigest(so)))
             }
 
@@ -84,21 +84,21 @@ object LdConfig {
                 val dst = File(usrBin, exe.name)
                 val prev = claimed[exe.name]
                 if (prev != null) {
-                    unresolved += "bin/" + exe.name + " 被两处声明：已有 " + prev + "，忽略 " + exe.absolutePath
-                    log += "bin  " + exe.name + "   冲突，保留 " + prev
+                    unresolved += "bin/" + exe.name + "被两处声明：已有 " + prev + "，忽略 " + exe.absolutePath
+                    log += "bin " + exe.name + "冲突，保留 " + prev
                     return@forEach
                 }
                 claimed[exe.name] = exe.absolutePath
                 binInstalled += exe.name
-                if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
-                log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
+                if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + "→ " + dst.absolutePath
+                log += "bin " + exe.name + "→ " + dst.name + "" + exe.absolutePath
 
 
         // SONAME -> 该指向哪一处（S56 裁定的三情形， 而 C-05：不能确定就报缺）
-        //   一 只有一件提供那个 SONAME        -> 指向它
-        //   二 多件提供、字节**逐字相同**     -> 指向其中一处，**并记「共 N 处」**
-        //   三 多件提供、字节**不同**         -> **报歧义、不建链**
-        //     （ 字节不同 链指哪一处会改变程序行为， 而让字母序决定它不可接受）
+        // 一 只有一件提供那个 SONAME -> 指向它
+        // 二 多件提供、字节**逐字相同** -> 指向其中一处，**并记「共 N 处」**
+        // 三 多件提供、字节**不同** -> **报歧义、不建链**
+        // （ 字节不同 链指哪一处会改变程序行为， 而让字母序决定它不可接受）
         for ((soname, cands) in sonameCandidates) {
             if (cands.size == 1) {
                 val so = cands[0].second
@@ -106,16 +106,16 @@ object LdConfig {
                 linked += landed.created
                 if (!landed.ok) unresolved += landed.detail
                 log += landed.log
-                log += "kind1 " + soname + " 只有一件提供（" + cands[0].first + "）指向它"
+                log += "kind1 " + soname + "只有一件提供（" + cands[0].first + "）指向它"
                 continue
             }
             val shas = cands.map { it.third }.toSet()
             if (shas.size > 1) {
                 val who = cands.joinToString(",") { it.first }
-                unresolved += "kind3 歧义 SONAME " + soname + " 由 " + cands.size +
-                    " 件提供而字节不同（" + who + "）—— 报歧义、不建链" +
+                unresolved += "kind3 歧义 SONAME " + soname + "由 " + cands.size +
+                    "件提供而字节不同（" + who + "）—— 报歧义、不建链" +
                     "（指向哪一处会改变程序行为，而让字母序决定它不可接受）"
-                log += "ambiguous " + soname + "  提供者=" + who
+                log += "ambiguous " + soname + "提供者=" + who
                 continue
             }
             val first = cands[0]
@@ -123,10 +123,10 @@ object LdConfig {
             linked += landed.created
             if (!landed.ok) unresolved += landed.detail
             log += landed.log
-            log += "kind2 " + soname + " 共 " + cands.size +
-                " 处提供（字节逐字相同）指向 " + first.first +
+            log += "kind2 " + soname + "共 " + cands.size +
+                "处提供（字节逐字相同）指向 " + first.first +
                 "；而「无害」不该靠「恰好扫到了哪一个」"
-            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）指向 " +
+            log += "note " + soname + "共 " + cands.size + "处提供（字节逐字相同）指向 " +
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
         }            }
         }
@@ -140,10 +140,10 @@ object LdConfig {
             ctx, "ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +
                 if (unresolved.isEmpty()) "" else "；${unresolved.size} 条建链失败",
-            "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
-                "\n" + log.joinToString("\n") +
+            "usr/lib=" + usrLib.absolutePath + "usr/bin=" + usrBin.absolutePath +
+                "\n"+ log.joinToString("\n") +
                 if (unresolved.isEmpty()) ""
-                else "\n建链失败=" + unresolved.joinToString("  |  "),
+                else "\n建链失败="+ unresolved.joinToString("  |  "),
         )
         val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
@@ -154,7 +154,7 @@ object LdConfig {
                     "usr/bin 里的命令入口（声明 ${declaredBins.size} · 已建 ${binInstalled.size}）",
                     if (missingBins.isEmpty()) "声明的命令全部建出"
                     else "声明了但没建出：" + missingBins.joinToString(", ") +
-                        " —— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
+                        "—— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
                 ),
         )
         val selfCheck = lobos.services.supply.SelfCheckReport.format(items)
@@ -165,8 +165,8 @@ object LdConfig {
             Log.w(TAG, "selfcheck 未通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
         }
         if (unresolved.isNotEmpty()) {
-            Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
-            for (u in unresolved) Log.w(TAG, "  " + u)
+            Log.w(TAG, "ldconfig 有 " + unresolved.size + "条未解决（详见 diag.jsonl 的 ldconfig 记录）")
+            for (u in unresolved) Log.w(TAG, "" + u)
         }
         return linked
     }
@@ -200,35 +200,35 @@ object LdConfig {
         }
         return out
     }
-    /**
+    /* *
      * 「已声明的命令入口」—— 这一列答的是「**这一件在 usr/bin 下应该有哪几个名字**」。
      *
-     * [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
-     *   而原来这一支逐字是 `if (!ProgramIndex.isPiece(ctx, e)) continue`，
-     *   isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收 Level.PIECE 那一族。
-     *   一族的成员是「**纯库件**」（ crypto / curl / zlib 那一族，
-     *      它们**真的**只有 lib/ 下的字节、 它们**没有** bin/ 目录）。
-     *   openssl 在 0a00489 那一笔之后 assetEntry 逐字是 bin/openssl（ 它非空），
-     *      它于是判 PROGRAM、 它被 continue **跳过**了。
-     *   个「声明」那一列于是逐字是 0 —— **那不是**「这一类被声明了 0 个」，
-     *      是「那一列按 isPiece 选、 选出来的那一族里**没有** bin/ 下的程序形态字节」。
-     *   正是 C-112 那一族（「0 最容易被相信」那一族）： 个 0 是个**假零**。
+     * 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
+     * 而原来这一支逐字是 `if (!ProgramIndex.isPiece(ctx, e)) continue`，
+     * isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收 Level.PIECE 那一族。
+     * 一族的成员是「**纯库件**」（ crypto / curl / zlib 那一族，
+     * 它们**真的**只有 lib/ 下的字节、 它们**没有** bin/ 目录）。
+     * openssl 在 0a00489 那一笔之后 assetEntry 逐字是 bin/openssl（ 它非空），
+     * 它于是判 PROGRAM、 它被 continue **跳过**了。
+     * 个「声明」那一列于是逐字是 0 —— **那不是**「这一类被声明了 0 个」，
+     * 是「那一列按 isPiece 选、 选出来的那一族里**没有** bin/ 下的程序形态字节」。
+     * 正是 C-112 那一族（「0 最容易被相信」那一族）： 个 0 是个**假零**。
      *
      * 处置：这一格**按那一件有没有 bin/ 目录**来选， **不**按 Level 那一族筛。
-     *   「这一件有没有 bin/ 下的命令入口」这一问， 它**该**由那一件自己回答
-     *      （ 下面那一支逐字是 File(verDir, "bin").listFiles()）。
-     *   「纯库件」那一族**自然**答空（ 它们没有 bin/ 目录），
-     *      「程序形态」那一族答出它 bin/ 下的那些名字。
-     *   按 C-135：这与「这一件是不是库件」是**两问**（ 一问由 Level 那一族答）。
+     * 「这一件有没有 bin/ 下的命令入口」这一问， 它**该**由那一件自己回答
+     * （ 下面那一支逐字是 File(verDir, "bin").listFiles()）。
+     * 「纯库件」那一族**自然**答空（ 它们没有 bin/ 目录），
+     * 「程序形态」那一族答出它 bin/ 下的那些名字。
+     * 按 C-135：这与「这一件是不是库件」是**两问**（ 一问由 Level 那一族答）。
      */
     fun declaredBins(ctx: Context, pieceId: String): List<String> {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
             for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
-                //  [!] 而这一处**不**按 Level 那一族筛（ 正是那个假零的成因）。
-                //    而那一件自己答「我有没有 bin/ 下的命令入口」—— 下面那一支逐字是
-                //    File(verDir, "bin").listFiles()， 纯库件（ crypto / curl / zlib 那一族）
-                //    **自然**答空， 程序形态那一族答出它 bin/ 下的那些名字。
+                // 而这一处**不**按 Level 那一族筛（ 正是那个假零的成因）。
+                // 而那一件自己答「我有没有 bin/ 下的命令入口」—— 下面那一支逐字是
+                // File(verDir, "bin").listFiles()， 纯库件（ crypto / curl / zlib 那一族）
+                // **自然**答空， 程序形态那一族答出它 bin/ 下的那些名字。
                 out += declaredBins(ctx, e.id)
             }
             return out.distinct()
@@ -236,20 +236,20 @@ object LdConfig {
         val opt = lobos.kernel.layout.SystemDirs.opt(ctx)
         val base = File(opt, pieceId)
         val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
-        //  [!] 缺陷名（C-102）**这一格把「本体那一份」也算成了命令名** —— 而它治的是**对象那一层**。
-        //    而原来这一支逐字是 `File(verDir, "bin").listFiles()?.map { it.name }`，
-        //    它把 bin/ 下**每一项**都算成「usr/bin 下的命令入口」。
-        //    busybox 那一件 bin/ 下有 19 项：本体那一份（bin/libbusybox.so）+ 18 条指向它的软链，
-        //    **本体那一份不认自己的文件名**（ 01 核到过），
-        //    它**不该**出现在「usr/bin 里的命令入口」那一列里
-        //    07 今天核到设备侧逐字是「声明了但没建出：… libbusybox.so …」（ 是**假零**那一族的反面）。
-        //    「哪几项是**命令名**」那一格**产物自带**：
-        //       derivedLinks 那一格逐字记的是「哪些是派生物」（ 构建期 elf-form.sh 那一处写的），
-        //       busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
-        //       **本体那一份不在**里面。
-        //    处置：**先**取产物那一份的 derivedLinks（ **就是**作者声明的命令名清单）；
-        //       而它**为空**时（ openssl 那一件： 它那两项都是**实体**、 它们各自是命令），
-        //       才退回「bin/ 下那些项」那一支。
+        // 缺陷名（C-102）**这一格把「本体那一份」也算成了命令名** —— 而它治的是**对象那一层**。
+        // 而原来这一支逐字是 `File(verDir, "bin").listFiles()?.map { it.name }`，
+        // 它把 bin/ 下**每一项**都算成「usr/bin 下的命令入口」。
+        // busybox 那一件 bin/ 下有 19 项：本体那一份（bin/libbusybox.so）+ 18 条指向它的软链，
+        // **本体那一份不认自己的文件名**（ 01 核到过），
+        // 它**不该**出现在「usr/bin 里的命令入口」那一列里
+        // 07 今天核到设备侧逐字是「声明了但没建出：… libbusybox.so …」（ 是**假零**那一族的反面）。
+        // 「哪几项是**命令名**」那一格**产物自带**：
+        // derivedLinks 那一格逐字记的是「哪些是派生物」（ 构建期 elf-form.sh 那一处写的），
+        // busybox 那一件逐字是那 18 个 applet 名字（cat、cp、df…vi），
+        // **本体那一份不在**里面。
+        // 处置：**先**取产物那一份的 derivedLinks（ **就是**作者声明的命令名清单）；
+        // 而它**为空**时（ openssl 那一件： 它那两项都是**实体**、 它们各自是命令），
+        // 才退回「bin/ 下那些项」那一支。
         val shape = lobos.services.supply.ProgramInstallPipeline.PieceShape.read(verDir)
         if (shape != null && shape.derivedLinks.isNotEmpty()) {
             return shape.derivedLinks
@@ -259,16 +259,16 @@ object LdConfig {
                 .distinct()
                 .sorted()
         }
-        //  [!] 缺陷名（C-102）**这一支读的是**落位目录**而不是**产物那一份**
-        //    落位目录里**可能有**产物说没有的那几项（ 是**遗留物**），
-        //    它们**不该**算成「这一件对外承诺的命令名」。
-        //    真机读数（07，6c107c7 那一版，2026-10-25）：
-        //      · 那一版产物里**没有** bin/c_rehash（ 本机核过产物那一份），
-        //      · 而落位侧 piece-shape.json 的 files[] 逐字是 3 项（ c_rehash **不在**了），
-        //      · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**（ 是遗留物），
-        //      · 而「声明」那一列逐字仍是 23（ 就是这一支把它数进去了）。
-        //    处置：这一支改读**产物那一份**的 files[]（ 是**这一件自己声明的**），
-        //      落位目录那份**只**用来判「形态」（ 它不判「承诺了什么」）。
+        // 缺陷名（C-102）**这一支读的是**落位目录**而不是**产物那一份**
+        // 落位目录里**可能有**产物说没有的那几项（ 是**遗留物**），
+        // 它们**不该**算成「这一件对外承诺的命令名」。
+        // 真机读数（07，6c107c7 那一版，2026-10-25）：
+        // · 那一版产物里**没有** bin/c_rehash（ 本机核过产物那一份），
+        // · 而落位侧 piece-shape.json 的 files[] 逐字是 3 项（ c_rehash **不在**了），
+        // · 而设备上 opt/openssl/3.6.3/bin/c_rehash 那个字节**逐字还在**（ 是遗留物），
+        // · 而「声明」那一列逐字仍是 23（ 就是这一支把它数进去了）。
+        // 处置：这一支改读**产物那一份**的 files[]（ 是**这一件自己声明的**），
+        // 落位目录那份**只**用来判「形态」（ 它不判「承诺了什么」）。
         if (shape != null) {
             return shape.files
                 .filter { it.role == lobos.services.supply.ProgramInstallPipeline.ROLE_PROGRAM }
