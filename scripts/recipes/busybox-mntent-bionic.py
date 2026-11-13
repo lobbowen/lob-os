@@ -21,9 +21,9 @@ stub = (
     chr(10) +
     '/* 缺陷名（C-102）那 bionic 逐字**没有**那 addmntent（ endmntent 逐字**有**）。' +
     chr(10) +
-    '   => 而那**它们**逐字是**那 glibc** 才**有**的**、=> 而那**后果**逐字 = 而那 mount 那个 applet 逐字**编不过**。' +
+    '   **它们**逐字是**那 glibc** 才**有**的**、**后果**逐字 = 而那 mount 那个 applet 逐字**编不过**。' +
     chr(10) +
-    '   => 而那**处置**：=> 而那**两个**函数逐字**给**那**空**实现**（=> 而那 mtab 那一族' +
+    '   **处置**：**两个**函数逐字**给**那**空**实现**（ mtab 那一族' +
     chr(10) +
     '     在**那设备**上逐字**没有**那个**用法**）。 */' +
     chr(10) +
@@ -38,4 +38,4 @@ stub = (
 )
 s = s.replace(marker, stub, 1)
 io.open(p, 'w', encoding='utf-8').write(s)
-print('  [busybox] 补了那 mount.c 的 mntent 空实现（=> 而那 bionic 逐字**没有**那 addmntent）')
+print('  [busybox] 补了那 mount.c 的 mntent 空实现（ bionic 逐字**没有**那 addmntent）')

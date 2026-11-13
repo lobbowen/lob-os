@@ -45,7 +45,7 @@ object SysDev {
         if (bad != null) {
             val (path, fault) = bad
             val diag = "节点不合声明：" + path + " —— " + faultName(fault) +
-                "（=> 而那它逐字**不**只报「失败」、=> 而那它逐字报出那一类是哪一类）"
+                "（它逐字**不**只报「失败」、它逐字报出那一类是哪一类）"
             System.err.println(diag)
             runCatching {
                 lobos.services.log.RuntimeDiagnostics.append(ctx, "sysdev", false, diag, "")
@@ -104,7 +104,7 @@ object SysDev {
         if (!d.isDirectory && !d.mkdirs()) {
             throw IllegalStateException(
                 "建不了那 exec 目录：" + d.absolutePath +
-                    "（=> 而那它逐字**不成**、=> 而那按 C-05 报缺、=> 而**不**往下写）"
+                    "（它逐字**不成**、按 C-05 报缺、**不**往下写）"
             )
         }
         //  目标已经是目录时报缺（是「类型错」那一族）。
@@ -112,7 +112,7 @@ object SysDev {
         if (f.isDirectory) {
             throw IllegalStateException(
                 "那 shell.exec 逐字已经是一个目录：" + f.absolutePath +
-                    "（=> 而那是那「类型错」那一类、=> 而那按 C-05 报缺）"
+                    "（是那「类型错」那一类、按 C-05 报缺）"
             )
         }
         f.writeText(
@@ -363,7 +363,7 @@ object SysDev {
             //  读不到就报缺（C-05，不猜填）。
             System.err.println(
                 "那实际权限逐字读不到：" + d.path +
-                    "（=> 而那**读不到**逐字**不**等于那**合声明**、=> 而那按 C-05 报缺）"
+                    "（**读不到**逐字**不**等于那**合声明**、按 C-05 报缺）"
             )
             return null
         }
@@ -496,7 +496,7 @@ object SysDev {
     private fun modeWriteFailed(path: String) {
         System.err.println(
             "那权限逐字写不上去：" + path +
-                "（=> 而那**盘上**逐字**还是**那**原来**的那一档、=> 而那按 C-05 报缺）"
+                "（**盘上**逐字**还是**那**原来**的那一档、按 C-05 报缺）"
         )
     }
 

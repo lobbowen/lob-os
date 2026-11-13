@@ -49,10 +49,10 @@ process.stdout.write(ids.join(" "));
   read -r -a PIECES < /tmp/.lobos-pieces.$$
   rm -f /tmp/.lobos-pieces.$$
 fi
-[ ${#PIECES[@]} -ge 1 ] || die "那九件逐字读不到" "而那 pin 记录逐字读不到、=> 而那按 C-05 报缺"
+[ ${#PIECES[@]} -ge 1 ] || die "那九件逐字读不到" "而那 pin 记录逐字读不到、按 C-05 报缺"
 
 if [ ! -x "$CACHE_KEY" ] && [ ! -f "$CACHE_KEY" ]; then
-  die "cache-key.sh 读不到：$CACHE_KEY" "而那一格逐字要那指纹算据、=> 而那算据逐字不在"
+  die "cache-key.sh 读不到：$CACHE_KEY" "而那一格逐字要那指纹算据、算据逐字不在"
 fi
 
 # **已发布**那一份的资产名（ 从那 Release 上读、 逐字要那 token）
@@ -68,7 +68,7 @@ publishedAssetNames() {
   curl -sS -L --max-time 30 -H "Authorization: Bearer $GITHUB_TOKEN" \
     "https://api.github.com/repos/lobbowen/lob-os/releases/tags/$tag" 2>/dev/null \
     | node -e '
-let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+let d="";process.stdin.on("data",cd+=c).on("end",(){
   try {
     const j=JSON.parse(d);
     for (const a of (j.assets||[])) process.stdout.write(String(a.name||"")+"\n");
@@ -90,7 +90,7 @@ for p in "${PIECES[@]}"; do
   cur_src="$(printf '%s' "$cur_asset" | grep -o 'src[0-9a-f]*' | head -1)"
   if [ -z "$cur_src" ]; then
     echo "--- $p ---"
-    echo "   [缺] 那当前指纹逐字算不出来（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "   [缺] 那当前指纹逐字算不出来（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "--- $p ---"
@@ -116,21 +116,21 @@ for p in "${PIECES[@]}"; do
   # **匹配**逐字是那**当前资产名**逐字**整条**比（ %2B 与那 + 逐字是同一个）
   if printf '%s\n' "$published" | sed 's/%2B/+/g' | grep -Fxq "$(printf '%s' "$cur_asset" | sed 's/%2B/+/g')"; then
     echo "   当前资产名在 Release 上：${cur_asset}"
-    echo "   => 而那这一格逐字**答的是**「那当前这一份逐字有没有被发布出去」、=> 而那答案逐字是「有」"
-    echo "   [绿] 那当前资产名逐字**在** Release 上（=> 而那它逐字**不需要**重新固化）"
+    echo "   这一格逐字**答的是**「那当前这一份逐字有没有被发布出去」、答案逐字是「有」"
+    echo "   [绿] 那当前资产名逐字**在** Release 上（它逐字**不需要**重新固化）"
     continue
   fi
   # Release 逐字读不到时逐字**报缺**（ 按 C-05 不猜填）
   if [ -z "$published" ]; then
     echo "   当前资产名在 Release 上：${cur_asset:-(算不出)}"
-    echo "   来源：Release 上那一份读不到（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "   来源：Release 上那一份读不到（按 C-05 报缺、不猜）"
     if [ -z "${GITHUB_TOKEN:-}" ]; then
-      echo "   [缺] 那 Release 上那一份逐字读不到（=> 而那 token 逐字是空的）"
-      echo "        => 而那这一格逐字**只能**在 CI 里判（=> 而那 CI 那一族逐字有那 token）"
+      echo "   [缺] 那 Release 上那一份逐字读不到（ token 逐字是空的）"
+      echo "        这一格逐字**只能**在 CI 里判（ CI 那一族逐字有那 token）"
       rc_all=1; continue
     fi
-    echo "   [缺] 那 Release 上那一份逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
-    echo "        => 而那 pin 记录逐字是那**上一次**固化那一份的、=> 而那它逐字**不**当判据"
+    echo "   [缺] 那 Release 上那一份逐字读不到（按 C-05 报缺、不猜）"
+    echo "         pin 记录逐字是那**上一次**固化那一份的、它逐字**不**当判据"
     rc_all=1; continue
   fi
   # Release 上逐字**读到了**、 当前资产名逐字**不在**里面
@@ -138,17 +138,17 @@ for p in "${PIECES[@]}"; do
   echo "   当前资产名：${cur_asset}"
   echo "   Release 上逐字有的那几份："
   printf '%s\n' "$published" | sed 's/^/        /' | head -8
-  echo "   [红] 那当前资产名逐字**不**在 Release 上（=> 而那这一件逐字**要**发布出去）"
+  echo "   [红] 那当前资产名逐字**不**在 Release 上（这一件逐字**要**发布出去）"
   rc_all=1
   continue
 done
 
 echo ""
 if [ "$rc_all" = "0" ]; then
-  echo "=> 而那当前那几份逐字**都**在 Release 上（=> 而那它们逐字**不用**再发布）"
+  echo "当前那几份逐字**都**在 Release 上（它们逐字**不用**再发布）"
 else
-  echo "=> 而那有那几件逐字**当前那一份不**在 Release 上（=> 而那它们逐字**要**发布出去）"
-  echo "   => 而那**发布那一族**归 06、=> 而那**规范那一层**归 04"
+  echo "有那几件逐字**当前那一份不**在 Release 上（它们逐字**要**发布出去）"
+  echo "   **发布那一族**归 06、**规范那一层**归 04"
 fi
 echo ""
 echo "退出码=$rc_all"

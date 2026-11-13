@@ -21,7 +21,7 @@ DIR="${1:-$ROOT/work/kernel-image}"
 TSV="${2:-/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-e.tsv}"
 OUT="${M1_OUT:-$ROOT/work/m1-readings.json}"
 
-command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上逐字**没有**那个 node（=> 而那判据逐字**要**它**才**跑得动）"; exit 2; }
+command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上逐字**没有**那个 node（判据逐字**要**它**才**跑得动）"; exit 2; }
 
 export LOBOS_ROOT="$ROOT"
 export LOBOS_KERNEL_IMAGE_DIR="$DIR"
@@ -35,9 +35,9 @@ HOST_OUT="$(mktemp)"
 APP_OUT="$(mktemp)"
 trap 'rm -f "$HOST_OUT" "$APP_OUT"' EXIT
 
-echo "[m1] 主机侧那四格（=> 而那产物**那一族**的形状与那载体在位）"
+echo "[m1] 主机侧那四格（产物**那一族**的形状与那载体在位）"
 M1_OUT="$HOST_OUT" node "$HERE/run-m1-hostside.js" || true
-echo "[m1] 应用内那两格（=> 而那用户态**那一族**的计时与那重启）"
+echo "[m1] 应用内那两格（用户态**那一族**的计时与那重启）"
 M1_OUT="$APP_OUT" node "$HERE/run-m1-appside.js" || true
 
 echo "[m1] 合并两边的读数"

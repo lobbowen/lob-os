@@ -85,7 +85,7 @@ INC+=(-isystem "$RES" -isystem "$SYS" -isystem "$ASM")
 #      (1) 而那 bits/stdatomic.h 逐字先给那 memory_order 那一族（ :128 到那 :135 那几行）；
 #      (2) 而那几个宏逐字undef 了（ atomic_is_lock_free 与那几个操作宏）；
 #      (3) 而那 libc++ 的 <atomic> 逐字后给那 std::atomic 那一族。
-echo "[build-bionic-libc] 那 atomic 那一族逐字用那 INC_DIR/atomic-shim.h（=> 而那三步）"
+echo "[build-bionic-libc] 那 atomic 那一族逐字用那 INC_DIR/atomic-shim.h（三步）"
 
 OBJS=()
 OK=0
@@ -107,7 +107,7 @@ for s in "$SRC"/libc/bionic/*.cpp "$SRC"/libc/bionic/*.c; do
   fi
 done
 echo "[build-bionic-libc] 编过 $OK 个、编不过 $FAIL 个"
-[ "$FAIL" -eq 0 ] || { echo "[build-bionic-libc] 还有编不过的、=> 而那产物逐字不出来" >&2; exit 1; }
+[ "$FAIL" -eq 0 ] || { echo "[build-bionic-libc] 还有编不过的、产物逐字不出来" >&2; exit 1; }
 
 echo "[build-bionic-libc] 链接那产物"
 "${CLANG}" -nostdlib -shared -fPIC -O1 -w -o "$OUT" "${OBJS[@]}"

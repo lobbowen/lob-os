@@ -20,7 +20,7 @@ import tarfile
 
 def main() -> int:
     if len(sys.argv) < 2:
-        sys.stderr.write("用法: %s <那**逐文件**装好的**那一层**> [那**清单**文件**（=> 而那**次序**）]\n" % sys.argv[0])
+        sys.stderr.write("用法: %s <那**逐文件**装好的**那一层**> [那**清单**文件**（**次序**）]\n" % sys.argv[0])
         return 2
     root = sys.argv[1]
     # **次序**逐字**是**那**清单**给的**次序**（ **它**逐字**不**自己**排**）。

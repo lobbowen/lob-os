@@ -439,7 +439,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
       /* 缺陷（C-102）**重复替换：已替换过的 argv 又被替换一次**。
        *  真机读数（07，logcat）：四条 Cmdline 同形 = /system/bin/linker64 /system/bin/linker64 …
        *  —— linker64 出现两次。linker64 自己也是 ET_DYN，所以当 path 已经是它时，
-       *  这一支再套一层 => linker64 把自己当程序加载 => call_constructors → libc 初始化链崩
+       *  这一支再套一层 linker64 把自己当程序加载 call_constructors → libc 初始化链崩
        *  （kill-audit 记 desc=null pointer dereference）。
        *
        *  这一支**不能删**：宿主侧 ExecEntry.argv 已经替过的进程走不到这里（它直接 execve），

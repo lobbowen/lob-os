@@ -45,13 +45,13 @@ if [ ! -x "$ADB" ]; then
   exit 2
 fi
 if ! command -v node >/dev/null 2>&1; then
-  echo "报缺：那宿主上逐字**没有**那个 node（=> 而那判据逐字**要**它**才**跑得动）"
+  echo "报缺：那宿主上逐字**没有**那个 node（判据逐字**要**它**才**跑得动）"
   exit 2
 fi
 
 # 设备通不通——通是设备侧的实施要保证的。
 if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
-  echo "报缺：那设备逐字**不**通（=> 而那**装**与**那**取件**都**是**那设备侧**的**实施**、=> 而本脚本逐字**不**动**那设备**）"
+  echo "报缺：那设备逐字**不**通（**装**与**那**取件**都**是**那设备侧**的**实施**、本脚本逐字**不**动**那设备**）"
   exit 2
 fi
 
@@ -173,7 +173,7 @@ if os.environ.get('LOBOS_DEBUG'):
     print('[debug] child_ld len=' + str(len(child_ld)) + ' child_path len=' + str(len(child_path)))
 if not child_ld:
     print('报缺：那设备上那 runtime.json **里面**的**那** env **快照**逐字**取不到**'
-          '（=> 而那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、=> 而**不猜填**）')
+          '（**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、**不猜填**）')
 
 
 def run_criterion(code, criterion_env=None):
@@ -188,10 +188,10 @@ def run_criterion(code, criterion_env=None):
     # **它****不**改**那判据**本体**的**形状**（ 判据**还是**那 throw）。
     _dq = chr(34)
     _h = 'process.on(' + _dq + 'uncaughtException' + _dq
-    _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
+    _h += ', (e) { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
     _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
     _h += 'process.on(' + _dq + 'unhandledRejection' + _dq
-    _h += ', (e) => { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
+    _h += ', (e) { console.log(' + _dq + 'LOBOS_CRIT_ERROR: ' + _dq
     _h += ' + (e && e.stack || e)); process.exit(1); });' + chr(10)
     child_tmpdir = child_env_value('TMPDIR') or ('/data/user/0/%s/files/tmp' % pkg)
 
@@ -248,7 +248,7 @@ def run_criterion(code, criterion_env=None):
     if rc is None:
         detail = (rr.stderr or '').strip()
         if 'inaccessible or not found' in detail or 'not found' in detail:
-            detail = '那设备上逐字**没有**那个 node（=> 而那判据逐字**要**设备**上的**那** node）'
+            detail = '那设备上逐字**没有**那个 node（判据逐字**要**设备**上的**那** node）'
         return None, (out + detail).strip()
     return rc, out.replace(chr(13) + chr(10), chr(10)).strip()
 
@@ -283,11 +283,11 @@ passed = sum(1 for r in results if r['status'] == '过')
 failed = sum(1 for r in results if r['status'] == '不过')
 
 doc = {
-    '$note': 'M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、=> 而那 M 与 N 逐字**是**那重算出来的、=> 而那手写的结论**不**算。',
+    '$note': 'M0′ 真判据的读数。逐件的过/不过逐字**是**那逐条跑出来的结果、 M 与 N 逐字**是**那重算出来的、手写的结论**不**算。',
     'family': 'M0′ 真判据（用户态件那一族）',
-    'notFamily': '那内核可信起点那一族（=> 而那是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、=> 而那两者逐字**不**是同一件、=> 而那两者逐字**不**能合成一件）',
+    'notFamily': '那内核可信起点那一族（是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、两者逐字**不**是同一件、两者逐字**不**能合成一件）',
     'takenAt': now,
-    'runner': '那宿主跑那个 node、=> 而那目标经 adb 在那设备上跑（=> 而那判据的 node 字段**不**用改）',
+    'runner': '那宿主跑那个 node、目标经 adb 在那设备上跑（判据的 node 字段**不**用改）',
     #  缺陷名（C-102）**那阈值那一族逐字换不回去** —— 而而那**处置**： 阈值**记成**那**自选**那一族**的**形状**。
     # **它****带**那**三样**：那版本（ 仓内那 version.json  = 那 versionName 0.0.6 / 那 versionCode 6）、
     #       那理由、 取值（ **它****要**带**那读数**的**基线**（ 按 C-274 与按 C-203 那一族**））。
@@ -295,10 +295,10 @@ doc = {
     'threshold': {'value': 0.55, 'status': '已核',
                   'kind': 'M/N 大于等于 0.55',
                   'version': '那仓内那 version.json 逐字 = 那 versionName 0.0.6 / 那 versionCode 6',
-                  'reason': '那 M0prime 真判据逐字是那 M/N 比率、=> 而那**它**逐字**是**那**下限**（=> 而那**它**逐字**不**是**那**目标**）、=> 而那**它**逐字**随版本递增**（=> 而那**它**逐字**只**能**往**上**走**不能**往**下**走**）',
-                  'baseline': '那取数时刻 = 那 takenAt、=> 而那 M/N 逐字 = 那 M0prime 那一格的 M 与 N（=> 而那**它**逐字**是**那**重算**出来**的**）、=> 而按 C-274 与按 C-203 那一族',
-                  'provenance': '那 **0.55** 那一档逐字**是**那**设计选择**那一族**的**选择**、=> 而那**它**逐字**由**那 lead 与那 04 **一起**定**（=> 而那**它**逐字**不**在**那**上游官方流程**里**）、=> 而那**它**逐字**不能**冒充**那**上游**的**（=> 而那 C-519 那一族逐字**仍**未过**、=> 而按 C-105 **报缺**）',
-                  'note': '那阈值逐字**不**是**那读数**（=> 而那 M/N **逐字**是**那读数**）、=> 而那**旧**的**那一句**逐字 = 「那阈值逐字**没有**出处（=> 而那 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而那**那一句**逐字**是**那**另一个**阈值**、=> 而**不**是**这**一个**）、=> 而按 C-105 报缺」——=> 而那**旧**的**那一句**按 **留档不删**、=> 而它**在**那**上面**那一句**里面**'},
+                  'reason': '那 M0prime 真判据逐字是那 M/N 比率、**它**逐字**是**那**下限**（**它**逐字**不**是**那**目标**）、**它**逐字**随版本递增**（**它**逐字**只**能**往**上**走**不能**往**下**走**）',
+                  'baseline': '那取数时刻 = 那 takenAt、 M/N 逐字 = 那 M0prime 那一格的 M 与 N（**它**逐字**是**那**重算**出来**的**）、按 C-274 与按 C-203 那一族',
+                  'provenance': '那 **0.55** 那一档逐字**是**那**设计选择**那一族**的**选择**、**它**逐字**由**那 lead 与那 04 **一起**定**（**它**逐字**不**在**那**上游官方流程**里**）、**它**逐字**不能**冒充**那**上游**的**（ C-519 那一族逐字**仍**未过**、按 C-105 **报缺**）',
+                  'note': '那阈值逐字**不**是**那读数**（ M/N **逐字**是**那读数**）、**旧**的**那一句**逐字 = 「那阈值逐字**没有**出处（ 03 那边逐字**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而那**那一句**逐字**是**那**另一个**阈值**、**不**是**这**一个**）、按 C-105 报缺」——**旧**的**那一句**按 **留档不删**、它**在**那**上面**那一句**里面**'},
     'M0prime': {
         'set': m0p_set,
         #  这一句**记**的**是**那**来源**（ **它****是**那能力声明**、 **它****要**能**换**回**去**）。
@@ -307,17 +307,17 @@ doc = {
         # **它****不**是「与那事实相反」那个形状（ **它****是**那**分母清单**、 分母清单**不**随**那读数**变**、 **那一句****是**那**对的**）。
         # **真的**耦合方向**是**那读数**跟着**那分母**走**（ :70 与那 :204 **那两**行**就是**它**）。
         # 按 C-115： **旧**的**那一句**按 **留档不删**、 它**在**那稿子**里面**。
-        'setSource': '那 docs/m0prime-denominator.json（=> 而那分母清单逐字**是**那**定义**、=> 而那读数逐字**跟着**它**走**）',
-        'rule': '那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）',
+        'setSource': '那 docs/m0prime-denominator.json（分母清单逐字**是**那**定义**、读数逐字**跟着**它**走**）',
+        'rule': '那有可执行入口的用户态件（判据对象逐字是 (件, entry) 那一对）',
         'M': m0p_passed,
         'N': len(m0p_results),
         'failed': m0p_failed,
-        'note': '那 M0prime 真判据的分母（=> 而那八件里跑起来几个）'
+        'note': '那 M0prime 真判据的分母（八件里跑起来几个）'
     },
     'pieces': results,
     'library': {
         'set': lib_set,
-        'rule': '那库类件（=> 而那 entry 合法地是空）逐字不进那按裸名调起的分母',
+        'rule': '那库类件（ entry 合法地是空）逐字不进那按裸名调起的分母',
         'M': sum(1 for r in results if r['id'] in lib_set and r['status'] == '过'),
         'N': len(lib_set),
         'note': '那按需装载并解析出符号的那一族'
@@ -326,7 +326,7 @@ doc = {
         'M': passed,
         'N': len(results),
         'failed': failed,
-        'note': '那采集那一层跑的那全部（=> 而那分母逐字是**那表**里带那 node 字段的件数、=> 而它逐字**不**是**那 M0prime 的**分母**）'
+        'note': '那采集那一层跑的那全部（分母逐字是**那表**里带那 node 字段的件数、它逐字**不**是**那 M0prime 的**分母**）'
     },
     'M': m0p_passed,
     'N': len(m0p_results),
@@ -362,7 +362,7 @@ if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != 
             'collectedM': (_prev.get('collected') or {}).get('M'),
             'collectedN': (_prev.get('collected') or {}).get('N'),
             'notPassed': [p.get('id') for p in (_prev.get('pieces') or []) if p.get('status') != '过'],
-            'note': '那**前**一**版**的**读数**（=> 而那它逐字**是**那**那一个**时点**的**事实**、=> 而它逐字**不**覆盖**那**这一版**）',
+            'note': '那**前**一**版**的**读数**（它逐字**是**那**那一个**时点**的**事实**、它逐字**不**覆盖**那**这一版**）',
         })
         doc['history'] = _hist
     else:
@@ -370,7 +370,7 @@ if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != 
         _hist = (_prev.get('history') or []) if isinstance(_prev, dict) else []
         if _hist:
             doc['history'] = _hist
-        print('[warn] 而那**前**一**版**逐字 N=' + str(_prev_N) + '、=> 而那**它**逐字**不**等于**那分母**的**条数**（=' + str(_full_expected) + '）、=> 而那**它**逐字**不**进**那历史**')
+        print('[warn] 而那**前**一**版**逐字 N=' + str(_prev_N) + '、**它**逐字**不**等于**那分母**的**条数**（=' + str(_full_expected) + '）、**它**逐字**不**进**那历史**')
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))

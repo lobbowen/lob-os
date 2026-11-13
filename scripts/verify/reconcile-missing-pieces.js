@@ -41,7 +41,7 @@ try {
 } catch (e) {
   //  按 C-05 报缺（ 不猜填、 不把它当成「没有缺件」）。
   console.error('::error title=缺件表读不到::' + missPath + ' 不在或读不出：' + e.message);
-  console.error('::error:: 处置：先跑 scripts/toolchain/fetch-component-artifacts.sh，=> 而那一档逐字落那缺件表。');
+  console.error('::error:: 处置：先跑 scripts/toolchain/fetch-component-artifacts.sh，那一档逐字落那缺件表。');
   process.exit(2);
 }
 if (!Array.isArray(missing)) {
@@ -65,7 +65,7 @@ const inManifest = new Set(manifest.map((t) => String(t && t.name || '')));
 console.log('[reconcile] 清单里逐字 ' + manifest.length + ' 件；缺件表里逐字 ' + missing.length + ' 条');
 
 if (!missing.length) {
-  console.log('[reconcile] 缺件表逐字是空的 => 这一轮**没有**缺件（=> 而那清单逐字是全的）。');
+  console.log('[reconcile] 缺件表逐字是空的 => 这一轮**没有**缺件（那清单逐字是全的）。');
   process.exit(0);
 }
 
@@ -89,7 +89,7 @@ let conflict = 0;
 for (const m of missing) {
   const piece = String(m && m.piece || '');
   if (piece && inManifest.has(piece)) {
-    console.error('::error title=缺件表与清单矛盾::' + piece + ' 逐字在缺件表里、=> 而它逐字**又**在那清单里。');
+    console.error('::error title=缺件表与清单矛盾::' + piece + ' 逐字在缺件表里、它逐字**又**在那清单里。');
     conflict++;
   }
 }
@@ -99,6 +99,6 @@ if (conflict) {
 }
 
 //  清单逐字**不含**那缺件表里的任何一件、 两格逐字**对得上**。
-console.log('[reconcile] 对得上：那清单逐字**不含**那缺件表里的任何一件（=> 而那缺的几件逐字**看得见**了）。');
+console.log('[reconcile] 对得上：那清单逐字**不含**那缺件表里的任何一件（那缺的几件逐字**看得见**了）。');
 console.log('[reconcile] 而那清单逐字只含**取到**的那些件 —— 而那缺的几件逐字在 ' + missPath + ' 里。');
 process.exit(0);

@@ -2,58 +2,58 @@
 
 - 作者：05 core-developer
 - 日期：2026-10-26
-- 判据：那份清单逐字与那仓内那份 gki_defconfig 逐字对得上、=> 而那清单里没有一条的出处是猜的。
+- 判据：那份清单逐字与那仓内那份 gki_defconfig 逐字对得上、清单里没有一条的出处是猜的。
 - 素材（逐字在本仓内）：
   - `docs/kernel-baseline/gki_defconfig`（20365 字节 / 794 行）
   - `docs/kernel-baseline/kconfig`（66421 字节 / 2041 行）
   - `docs/kernel-baseline/upstream/`（那上游的原件：Kconfig / gki_defconfig / init-Kconfig.gki / Makefile）
-- 机器核对：`bash scripts/check-m0-kernel-baseline.sh`（=> 而它逐字逐条**重算**那份清单与那**差集**、=> 而那**对不上**就**非零**退出**）
-- 那两份逐字**不是**那构建的输入（=> 而那构建逐字**不**读它们、=> 而那**判据**逐字**只**读它们）
+- 机器核对：`bash scripts/check-m0-kernel-baseline.sh`（它逐字逐条**重算**那份清单与那**差集**、**对不上**就**非零**退出**）
+- 那两份逐字**不是**那构建的输入（构建逐字**不**读它们、**判据**逐字**只**读它们）
 - 本稿只报读数与边界，不下判断。
 
 ---
 
-## 一、那内核版本号那一格（=> 而那**已核**了）
+## 一、那内核版本号那一格（**已核**了）
 
 ```
-  => 而那版本号逐字 = **6.6.144**、=> 而那分支逐字 = **android15-6.6**
-  => 而那出处逐字 = 那上游那 Makefile **第 2/3/4** 行（=> 而那 VERSION = 6 / PATCHLEVEL = 6 / SUBLEVEL = 144）
-  => 而那分支出处逐字 = https://android.googlesource.com/kernel/common/+/refs/heads/android15-6.6/
-  => 而那 Makefile 逐字**在**那仓内：docs/kernel-baseline/upstream/Makefile（sha256 4ba1d2ca8989e2a5…）
-  => 而那 LTS 基线逐字 = 6.6 是那 longterm 那一族、released 2023-10-29、EOL Dec 2027、维护者 Greg Kroah-Hartman & Sasha Levin
-  => 而那出处逐字 = https://www.kernel.org/releases.html
-  => 而那 stable 对照逐字 = 那 linux-6.6.y 的 Makefile 逐字 VERSION=6 / PATCHLEVEL=6 / SUBLEVEL=160
-  => 而那**两条**报缺逐字**都**有**出处**了**（=> 而那**报缺**那两**条**逐字 = 那内核版本号与那 init/Kconfig.gki **那两**条**）
-```
-
----
-
-## 二、那上游那一族（=> 而那**差集**逐字**机械**核过**）
-
-```
-  => 而那 kconfig逐字**与**上游那一份**的差** = **0** 行
-     => 而那本地那一份逐字 = docs/kernel-baseline/kconfig、=> 而那上游那一份逐字 = docs/kernel-baseline/upstream/Kconfig
-     => 而那 kconfig逐字**与**上游那一份**一样**（=> 而那差集 = **0** 行）
-  => 而那 gki_defconfig逐字**与**上游那一份**的差** = **1** 行
-     => 而那本地那一份逐字 = docs/kernel-baseline/gki_defconfig、=> 而那上游那一份逐字 = docs/kernel-baseline/upstream/gki_defconfig
-     => 而那**差**的那一行逐字 = :639 「CONFIG_ANDROID_WRAPFD=y」（=> 而那**在**本地那一份、=> 而那上游**没有这一行）
-  => 而那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、=> 而它们逐字**都**是「# … is not set」=> 而那后半**仍然成立**
+  版本号逐字 = **6.6.144**、分支逐字 = **android15-6.6**
+  出处逐字 = 那上游那 Makefile **第 2/3/4** 行（ VERSION = 6 / PATCHLEVEL = 6 / SUBLEVEL = 144）
+  分支出处逐字 = https://android.googlesource.com/kernel/common/+/refs/heads/android15-6.6/
+   Makefile 逐字**在**那仓内：docs/kernel-baseline/upstream/Makefile（sha256 4ba1d2ca8989e2a5…）
+   LTS 基线逐字 = 6.6 是那 longterm 那一族、released 2023-10-29、EOL Dec 2027、维护者 Greg Kroah-Hartman & Sasha Levin
+  出处逐字 = https://www.kernel.org/releases.html
+   stable 对照逐字 = 那 linux-6.6.y 的 Makefile 逐字 VERSION=6 / PATCHLEVEL=6 / SUBLEVEL=160
+  **两条**报缺逐字**都**有**出处**了**（**报缺**那两**条**逐字 = 那内核版本号与那 init/Kconfig.gki **那两**条**）
 ```
 
 ---
 
-## 三、那被引用的那一件（=> 而它逐字**已经**在**那仓内**了）
+## 二、那上游那一族（**差集**逐字**机械**核过**）
 
 ```
-  => 而那 init/Kconfig.gki 逐字**已经**在**那仓内**：docs/kernel-baseline/upstream/init-Kconfig.gki
-     => 而它逐字 = 310 行 / 10229 字节 / sha256 1040d004230a5e97f5f51d227af1876d…
-     => 而那出处逐字 = 那上游那 android15-6.6 那分支的 init/Kconfig.gki
-     => 而那**引它**的那一行逐字 = 那 kconfig 第 **2040** 行（=> 而第 2039 行是 if 64BIT、第 2041 行是 endif）
+   kconfig逐字**与**上游那一份**的差** = **0** 行
+     本地那一份逐字 = docs/kernel-baseline/kconfig、上游那一份逐字 = docs/kernel-baseline/upstream/Kconfig
+      kconfig逐字**与**上游那一份**一样**（差集 = **0** 行）
+   gki_defconfig逐字**与**上游那一份**的差** = **1** 行
+     本地那一份逐字 = docs/kernel-baseline/gki_defconfig、上游那一份逐字 = docs/kernel-baseline/upstream/gki_defconfig
+     **差**的那一行逐字 = :639 「CONFIG_ANDROID_WRAPFD=y」（**在**本地那一份、上游**没有这一行）
+   CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、它们逐字**都**是「# … is not set」后半**仍然成立**
 ```
 
 ---
 
-## 四、那几件点名要**逐条**记的（=> 而那 9 处 ANDROID_、那 H616 那两处、那 LOCALVERSION 那一行）
+## 三、那被引用的那一件（它逐字**已经**在**那仓内**了）
+
+```
+   init/Kconfig.gki 逐字**已经**在**那仓内**：docs/kernel-baseline/upstream/init-Kconfig.gki
+     它逐字 = 310 行 / 10229 字节 / sha256 1040d004230a5e97f5f51d227af1876d…
+     出处逐字 = 那上游那 android15-6.6 那分支的 init/Kconfig.gki
+     **引它**的那一行逐字 = 那 kconfig 第 **2040** 行（第 2039 行是 if 64BIT、第 2041 行是 endif）
+```
+
+---
+
+## 四、那几件点名要**逐条**记的（ 9 处 ANDROID_、那 H616 那两处、那 LOCALVERSION 那一行）
 
 ```
   --- 那 9 处 ANDROID_ 项 ---
@@ -75,20 +75,20 @@
 
 ---
 
-## 五、那两件参考材料（=> 而那**两**件**不是**那模块清单**）
+## 五、那两件参考材料（**两**件**不是**那模块清单**）
 
 ```
-  => 而那 kmi.html 逐字**是**那 **Google 网页（登录页）**、=> 而那 title 逐字 = 「Maintain a stable kernel module interface | Android OS core topic」
-     => 而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
-  => 而那 lkm.html 逐字**是**那 **Google 网页（登录页）**、=> 而那 title 逐字 = 「Loadable kernel modules | Android OS core topics」
-     => 而它逐字**不是**那**内核**的**配置**、=> 而那清单**不**把它**算**成**条目**
-  => 而那 upstream/abi.stg 逐字**是**那 **那 KMI 那一族的**真**出处（那 kernel/common 那 gki/aarch64/abi.stg）**、=> 而那 title 逐字 = 「那 KMI 符号清单本体」
-     => 而它逐字**还**没**进**那仓**内**、=> 而按 C-105 **报缺**
+   kmi.html 逐字**是**那 **Google 网页（登录页）**、 title 逐字 = 「Maintain a stable kernel module interface | Android OS core topic」
+     它逐字**不是**那**内核**的**配置**、清单**不**把它**算**成**条目**
+   lkm.html 逐字**是**那 **Google 网页（登录页）**、 title 逐字 = 「Loadable kernel modules | Android OS core topics」
+     它逐字**不是**那**内核**的**配置**、清单**不**把它**算**成**条目**
+   upstream/abi.stg 逐字**是**那 **那 KMI 那一族的**真**出处（那 kernel/common 那 gki/aarch64/abi.stg）**、 title 逐字 = 「那 KMI 符号清单本体」
+     它逐字**还**没**进**那仓**内**、按 C-105 **报缺**
 ```
 
 ---
 
-## 六、那 defconfig 逐条清单（=> 而那 794 条**逐条**都**带**出处**）
+## 六、那 defconfig 逐条清单（ 794 条**逐条**都**带**出处**）
 
 ```
   行号 | 原文
@@ -891,7 +891,7 @@
 
 ---
 
-## 七、那 Kconfig 逐段清单（=> 而那 210 个 config 段与那 4 个 menu 段**逐条**都**带**出处**）
+## 七、那 Kconfig 逐段清单（ 210 个 config 段与那 4 个 menu 段**逐条**都**带**出处**）
 
 ```
   --- 那 4 个 menu 段 ---
@@ -1122,11 +1122,11 @@
 
 ## 八、边界与未核
 
-1. **「那 KMI 那一族逐字在哪」——=> 而本机**未核**（=> 而那 06 那边逐字**取**到**的**那**本体**逐字**是**那 kernel/common 那 gki/aarch64/abi.stg、=> 而它**还**没**进**那仓**内**、=> 而按 C-105 **报缺**）。**
-2. **「那 M0prime 的分母逐字是几」——=> 而本机**未核**（=> 而那**清单**归 **04** 那一族、=> 而按 C-105 **报缺**）。**
-3. **「那 M/N 阈值逐字是多少」——=> 而本机**未核**（=> 而按 C-105 **报缺**、=> 而按 C-122 逐字**不**能**当**判据**用**）。**
-4. **「那 M0prime 真判据今天过没过」——=> 而本机**已核**（=> 而那 M/N 逐字 = **7/8**、=> 而那**唯一**不过**的**是**那 openssl）。**
-5. **01 与 03 与 04 与 06 与 07 那几份被引用的稿子与那判据库与那 work 根目录——=> 而那**不是**本机的写范围、 而本机**没动**。**
+1. **「那 KMI 那一族逐字在哪」——本机**未核**（ 06 那边逐字**取**到**的**那**本体**逐字**是**那 kernel/common 那 gki/aarch64/abi.stg、它**还**没**进**那仓**内**、按 C-105 **报缺**）。**
+2. **「那 M0prime 的分母逐字是几」——本机**未核**（**清单**归 **04** 那一族、按 C-105 **报缺**）。**
+3. **「那 M/N 阈值逐字是多少」——本机**未核**（按 C-105 **报缺**、按 C-122 逐字**不**能**当**判据**用**）。**
+4. **「那 M0prime 真判据今天过没过」——本机**已核**（ M/N 逐字 = **7/8**、**唯一**不过**的**是**那 openssl）。**
+5. **01 与 03 与 04 与 06 与 07 那几份被引用的稿子与那判据库与那 work 根目录——**不是**本机的写范围、 而本机**没动**。**
 
 ---
 

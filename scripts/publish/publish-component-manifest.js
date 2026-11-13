@@ -173,30 +173,30 @@ function innerZipOf(file, wantPiece) {
       })()
     : pieceIdOf(file);
   if (outerId) {
-    if (outerId === wantPiece) return file;   //  => 而那**外层自己**就是那一颗件
+    if (outerId === wantPiece) return file;   // 外层自己就是那一颗件
     throw new Error(
-      '件 ' + file + ' 的**外层自己**就是那一颗件、=> 而它的 id 逐字是 ' + outerId +
+      '件 ' + file + ' 的**外层自己**就是那一颗件、它的 id 逐字是 ' + outerId +
       '（要的是 ' + wantPiece + '）—— 判红'
     );
   }
   const picked = innerZipCandidates(file);
   if (!picked.length) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有**一个含 component-meta.json 的件包' +
-      '（=> 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个）。'
+      '件 ' + file + ' 的外层解开之后，那里面逐字**没有**一个含 component-meta.json 的件包' +
+      '（那按内容挑逐字挑不出、按 C-05 不猜、不取第一个）。'
     );
   }
   const hit = wantPiece ? picked.filter((c) => c.id === wantPiece) : picked;
   if (hit.length === 0) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
-      '（=> 而那候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
+      '件 ' + file + ' 的外层解开之后，那里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
+      '（那候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
     );
   }
   if (hit.length > 1) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
-      ' 的件包（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
+      '件 ' + file + ' 的外层解开之后，那里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
+      ' 的件包（01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
     );
   }
   return hit[0].path;
@@ -207,7 +207,7 @@ function pieceText(zipPath, rel) {
   if (form !== 'zip' && form !== 'zip64') {
     throw new Error(
       '件 ' + zipPath + ' 的容器形态逐字是 ' + form + ' —— 而这一格逐字要读件内那一个 package.json，' +
-      '=> 而那形态逐字不对（=> 而那不是 zip 容器、=> 而那解不开）。'
+      '那形态逐字不对（那不是 zip 容器、那解不开）。'
     );
   }
   if (!pieceNames(zipPath).includes(rel)) return null;
@@ -427,7 +427,7 @@ function revisionForManifest() {
     //     它逐字报**缺**（ 按 C-05「缺字段就报缺、不许猜填」）
     //       —— 它逐字**不**编一个值（ 编一个就逐字把那形状**验错**了）。
     if (DECLARED_ONLY) {
-      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（=> 而那一趟逐字不是发布轮）');
+      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（那一趟逐字不是发布轮）');
       return 0;
     }
     throw new Error('LOBOS_COMPONENT_REVISION 必须是正整数（它来自发布 tag `component-<channel>-<revision>`），读到: ' + (raw || '空'));

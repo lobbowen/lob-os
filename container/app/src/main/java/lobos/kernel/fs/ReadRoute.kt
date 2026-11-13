@@ -52,8 +52,8 @@ object ReadRoute {
             note(ctx, route, file, size, maxBytes, false)
             throw IllegalStateException(
                 "那一份逐字太大：" + file.absolutePath + " 逐字 = " + size +
-                    " 字节、=> 而那读法逐字[" + route + "]逐字只许 " + maxBytes +
-                    "（=> 而那按 C-05 报缺、=> 而那**不**整读进那堆）"
+                    " 字节、读法逐字[" + route + "]逐字只许 " + maxBytes +
+                    "（按 C-05 报缺、**不**整读进那堆）"
             )
         }
         val bytes = file.inputStream().use { it.readBytes() }
@@ -85,7 +85,7 @@ object ReadRoute {
                 "file=" + file.absolutePath +
                     " bytes=" + size +
                     " limit=" + maxBytes +
-                    (if (ok) "" else "（=> 而那**超限**逐字**没有**被读）"),
+                    (if (ok) "" else "（**超限**逐字**没有**被读）"),
             )
         }
     }

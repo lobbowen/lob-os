@@ -86,7 +86,7 @@ echo "[openssl] 版本头在位"
 # **取**逐字**取**那**改名**后的**那一个**（ **它**们**逐字是**那**两**件**事**）。
 SSL="$OUT_DIR/lib/libssl-lobos.so"
 [ -f "$SSL" ] || SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
-[ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（=> 而那改名**后**的**那一个**）"
+[ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（改名**后**的**那一个**）"
   # OPENSSL_LIBS=1：包要同时带 libssl.so 与 libcrypto.so ——
   # crypto 是清单里的独立一件（crypto.sameAs=openssl），
   # 由 build-crypto.yml 从本件的包里拆出去。

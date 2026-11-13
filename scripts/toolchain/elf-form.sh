@@ -281,9 +281,9 @@ elf_json_escape() {
 # 一档答 shebang， 它的 role 是 program。
 #   role  ∈ {program, library, unknown}              逐文件的角色（按 form 判）
 #   kind  ∈ {program, library, mixed, unknown}       件整体：
-#              bin/ 与 lib/ 都有内容            => mixed（混合件：busybox / jq）
-#              只有 bin/                       => program（单入口程序件：bash / rg）
-#              只有 lib/                       => library（三段链库件：zlib / crypto / curl / openssl）
+#              bin/ 与 lib/ 都有内容            mixed（混合件：busybox / jq）
+#              只有 bin/                       program（单入口程序件：bash / rg）
+#              只有 lib/                       library（三段链库件：zlib / crypto / curl / openssl）
 #   mode  ∈ 八进制权限（owner 执行位是「程序」的可见标记）
 #
 # [!] kind 的取值域与运行期 PieceScan 的 role 词汇**不同**（那边是 exec/library/headers/
@@ -417,11 +417,11 @@ elf_write_shape() {
     # [!] 软链**照它指向的实体**算形态（form/role/sha 都取实体那份）—— 而**它仍进 files[]**。
     #   [!][!] 而它**必须**进 files[]（2026-10-20 实测出来的）：
     #     落位侧 ProgramInstallPipeline.landByShape 的目标映射（map）**是从 files[] 建的**
-    # 软链不在 files[] 里 => map 里就没有它 => **它不会被搬**
+    # 软链不在 files[] 里 map 里就没有它 **它不会被搬**
     # 落位后 bin/ 下只有本体那一份、**那 17 条命令软链一条都没有**
     # usr/bin 下那 17 条命令软链正是从它们建的 那 17 个命令会消失。
     #   [!] 而 derivedLinks 那一格记的是「哪些是派生物」（它与 files[] 并存，不冲突）。
-    #   [!] 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）=> files[] 18 项是对的。
+    #   [!] 而 01 今天裁的（S32）也说了：18 个名字**都是事实**（都在磁盘上、都在被调用）files[] 18 项是对的。
     if [ -L "$stage/$rel" ]; then
       real="$(readlink -f "$stage/$rel" 2>/dev/null || true)"
       [ -n "$real" ] && [ -f "$real" ] || continue
@@ -464,11 +464,11 @@ elf_write_shape() {
   done
   # 件整体的形态：**按形态判**（程序形态的份数与库形态的份数）—— 与 role 同一把尺。
   # [!] 缺陷名（C-102）kind 按落位目录判：原来这一段是
-  #   「n_bin>0 && n_libdir>0 => mixed；n_bin>0 => program；n_libdir>0 => library」，
+  #   「n_bin>0 && n_libdir>0 mixed；n_bin>0 program；n_libdir>0 library」，
   #   而 n_bin / n_libdir 数的是**目录名**（`${rel%%/*}` 是 bin 还是 lib）——
   #   「看目录名」按 §10.1:128 已判无效，而 role 那一格已经用形态那把尺了。
   # 两把尺会不一致：openssl 的 libssl.so 是 dyn-plain（role=library）
-  #     而 bin/openssl 是程序形态 => role 说它有程序形态的字节、kind 却按目录名说 mixed。
+  #     而 bin/openssl 是程序形态 role 说它有程序形态的字节、kind 却按目录名说 mixed。
   # 现在 kind 与 role 同源：n_prog（程序形态的份数）与 n_lib（库形态的份数）。
   local kind="unknown"
   if [ "$n_prog" -gt 0 ] && [ "$n_lib" -gt 0 ]; then kind="mixed"
@@ -535,7 +535,7 @@ elf_write_shape() {
 #       而它**不区分**「我们显式关掉了它」与「它依赖的那些被我们关掉了，于是它编不出来」（01 今天裁的）。
 #       [!][!] 而**「.rodata 里仍有 awk」**这一条已由今天实测坐实（那一件编译时按白名单关掉了 awk：
 #         build-native-busybox.sh:79-82「AWK 不在清单里……CONFIG_AWK=y 单独存在不足以让它被编，
-#         make install 不给它建软链」）=> **那张表是上游这份源码的 applet 全集**，
+#         make install 不给它建软链」）**那张表是上游这份源码的 applet 全集**，
 #         **不是「这份字节响应哪些名字」**。
 # 「这份字节响应哪些名字」的**真源**是 make install 连带建的那批软链
 #     （man1 INSTALL 段：「If you enabled any applet installation scheme …

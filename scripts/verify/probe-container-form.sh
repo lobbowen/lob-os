@@ -50,13 +50,13 @@ probe_one() {
       #     （ 逐字是「外层即件包」那一档的判据、 01 裁的 S607-01 §3.1 逐字
       #      「**除非外层自己逐字含 component-meta.json**」）。
       OUTER_ID="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
       if [ -n "$OUTER_ID" ]; then
-        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
+        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）**外层自己就是那一颗件**"
       else
-        echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
+        echo "  外层自己含component-meta.json=否 走「外层套内层」那一档"
       fi
       entries="$(fmt_zip_entries "$f" 2>/dev/null)"
       if [ -z "$entries" ]; then
@@ -79,13 +79,13 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
         WORK="$(mktemp -d)"
         tar xzf "$f" -C "$WORK" 2>/dev/null || true
         OUTER_ID="$(cat "$WORK"/component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
         if [ -n "$OUTER_ID" ]; then
-          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）=> 而那**外层自己就是那一颗件**"
+          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）**外层自己就是那一颗件**"
         else
-          echo "  外层自己含component-meta.json=否 => 而那走「外层套内层」那一档"
+          echo "  外层自己含component-meta.json=否 走「外层套内层」那一档"
         fi
         tar tzf "$f" 2>/dev/null | while IFS= read -r nm; do
           [ -n "$nm" ] || continue
@@ -107,7 +107,7 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
         # 按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字「**按内容挑** ——
         # 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**」。
         INNER_ID="$(unzip -p "$inner" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", c d += c); process.stdin.on("end", () {
   try {
     const m = JSON.parse(d);
     process.stdout.write("id=" + String(m.id || "") + " piece=" + String(m.piece || "") + " version=" + String(m.version || ""));

@@ -56,7 +56,7 @@ object PtySession {
      */
     private const val MAX_INPUT_BYTES = 64 * 1024
 
-    /** 那**输入**逐字**丢了多少**（ 按 C-05 不猜填） */
+    /** 输入丢了多少（C-05，不猜填）。 */
     private val inputDroppedLock = Any()
     @Volatile private var inputDropped = 0L
 
@@ -71,13 +71,14 @@ object PtySession {
 
         /**
          * native 侧的槽开没开（判据是「那一帧发的时候、槽开没开」那一个事实）。
-         * 缺陷 C-102：旧版 `resize()` 无条件发 `F_WINSIZE`（唯一发送点 `PtySession.kt:141`），`spawnOnSlave`（`:305`）
-         *   在 latch 等到之前就可能调它，native 判 `g_sessions[s].open`（`pty-session.c:463`）报「WINSIZE 指向不存在的会话」。
+         * 缺陷 C-102：旧版 `resize()` 无条件发 `F_WINSIZE`（唯一发送点 `host.send(F_WINSIZE, sid, b.array())`），`spawnOnSlave`
+         *   的 `if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)` 在 latch 等到之前就可能调它，
+         *   native 判 `g_sessions[s].open`（`pty-session.c:463`-`:465` 的 `case FRAME_WINSIZE:`）报「WINSIZE 指向不存在的会话」。
          * 后果：diag.jsonl 两条 FAIL（1793597239169、1793597303066）。处置：等 `F_READY` 到了才发（`onReady` 就是凭据）。
          */
         @Volatile private var nativeSlotOpen = false
 
-        /** 那**要**的尺寸（ 它逐字**等**那 `F_READY` 到了之后逐字**补**发）。 */
+        /** 要的尺寸（`F_READY` 到了之后补发）。 */
         @Volatile private var pendingWinsize: Pair<Int, Int>? = null
 
         /**
@@ -105,10 +106,10 @@ object PtySession {
         private val pendingLock = Any()
         private var pendingDropped = 0L
 
-        /** 那**缓冲**逐字那一个上限（ 它逐字**有**那个上限、 超出那一截逐字**丢**）。 */
+        /** 缓冲的上限（超出那一截丢掉）。 */
         private val MAX_PENDING_BYTES = 4 * 1024 * 1024
 
-        /** 那**缓冲**里逐字有东西没有（ 它逐字是那**读数**、 它逐字**不**是推出来的）。 */
+        /** 缓冲里有没有东西（读数，不是推出来的）。 */
         val hasPending: Boolean get() = synchronized(pendingLock) { pending.size() > 0 }
 
         internal fun deliver(data: ByteArray) {
@@ -142,7 +143,7 @@ object PtySession {
             try { cb.invoke(drained) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
         }
 
-        /** 那**丢了多少**逐字（ 按 C-05 不猜填、 **丢**这一件逐字**报缺**）。 */
+        /** 丢了多少（C-05，不猜填；丢了就报缺）。 */
         internal fun pendingDroppedBytes(): Long = synchronized(pendingLock) { pendingDropped }
 
         @Volatile var onExit: ((status: Int, signal: Int) -> Unit)? = null
@@ -198,7 +199,7 @@ object PtySession {
             sendWinsize(rows, cols)
         }
 
-        /** 那**真的**发那一帧（ 槽逐字**已经**开的时候才走这一格）。 */
+        /** 真的发那一帧（槽已经开的时候才走这一格）。 */
         private fun sendWinsize(rows: Int, cols: Int) {
             val b = java.nio.ByteBuffer.allocate(8)
             b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
@@ -292,7 +293,7 @@ object PtySession {
     class Host internal constructor(pb: ProcessBuilder, private val ctx: Context? = null) : AutoCloseable {
 
         companion object {
-            /** 那**会话数**逐字**跟**那 native 那一族逐字**一样**（ 它逐字是 8）。 */
+            /** 会话数与 native 一样（8）。 */
             const val MAX_SESSIONS = 8
         }
 
@@ -428,7 +429,7 @@ object PtySession {
                 android.system.Os.open(slave, android.system.OsConstants.O_RDWR, 0)
             }.getOrNull()
             if (slaveFd == null) {
-                throw IllegalStateException("那从设备逐字开不了：" + slave + "（=> 而那按 C-05 报缺）")
+                throw IllegalStateException("那从设备逐字开不了：" + slave + "（按 C-05 报缺）")
             }
             val proc = try {
                 //  stdin 单独接到从设备上（stdout/stderr 不动，仍是 Java 管道）。
@@ -524,7 +525,7 @@ object PtySession {
                 }
                 //  缺陷名 C-102：那一路又读了 stderr，stderr 有了两个读者。
                 //   旧版 `val es = proc.errorStream` + `while (true) { es.read(ebuf) … }`，而 `diagReader` 也读它
-                //   （`:393` 的 `forEachLine`）。`InputStream` 不能并发读：两读者抢同一批字节、行被劈开，
+                //   （`proc.errorStream.bufferedReader().forEachLine { … }`）。`InputStream` 不能并发读：两读者抢同一批字节、行被劈开，
                 //   `forEachLine` 等的换行被吃掉、等待没有上限。后果：「会话 0 就绪」那条 note 在 stderr 上，
                 //   18:58:21 打的、4 秒之后那一帧才发（18:58:25Z）。
                 //   处置：stderr 只归 `diagReader`（进 diag.jsonl），输出那一路只读 `inputStream`。
@@ -555,7 +556,7 @@ object PtySession {
                 //  pid 读不到时报缺（C-05，不猜填）。
                 lobos.services.log.RuntimeDiagnostics.append(
                     ctx, "ledger", false, "PTY 会话那进程逐字取不到 pid",
-                    "sid=" + session.sid + " （=> 而那账本那一行逐字**没有**记、=> 而那按 C-05 报缺）",
+                    "sid=" + session.sid + " （账本那一行逐字**没有**记、按 C-05 报缺）",
                 )
                 return
             }
@@ -573,7 +574,7 @@ object PtySession {
                     "program=" + recorded.programId + " gen=" + recorded.generation +
                         " pid=" + recorded.pid + " starttime=" + recorded.starttime +
                         " startedAt=" + recorded.startedAt
-                } else "账本那一行逐字**没有**记成（=> 而那按 C-05 报缺）",
+                } else "账本那一行逐字**没有**记成（按 C-05 报缺）",
             )
             } catch (e: Throwable) {
                 //  记账失败时报缺、不把中断带出去；`ProductSessions.put` 与会话本身不受影响。
@@ -581,22 +582,21 @@ object PtySession {
                     lobos.services.log.RuntimeDiagnostics.append(
                         ctx, "ledger", false, "PTY 会话那进程逐字记不进账本",
                         "sid=" + session.sid + " " + e.javaClass.name + ": " + (e.message ?: "") +
-                            "（=> 而那一格逐字**没有**中断、=> 而那会话逐字**仍然**活着）",
+                            "（一格逐字**没有**中断、会话逐字**仍然**活着）",
                     )
                 }
             }
         }
 
-        /** 那一个路径逐字**最后**那一段（ 它逐字**不**猜）。 */
+        /** 那一个路径的最后一段（不猜）。 */
         private fun basenameOf(p: String): String =
             p.trimEnd('/').substringAfterLast('/').ifBlank { p }
 
         /**
-         * 会话号跟着 native 分的槽走（不自另分一套）。
-         * 缺陷 C-102：旧版 `for (i in 0..255) if (!sessions.containsKey(i)) return i`，而 native 的 `alloc_slot()`
-         *   只在 0..MAX_SESSIONS（8）里分，`FRAME_READY` 回的是真槽号、Kotlin 自己分的 sid 被丢掉。
-         *   后果（槽复用后）：native 复用槽 0 而 Kotlin 给 2，号不一致，`sessions` 按号索引就对不上。
-         * 处置：会话号就用 native 回的槽号，只从帧上来。
+         * 会话号跟着 native 分的槽走（不自另分一套）。缺陷 C-102：旧版
+         *   `for (i in 0..255) if (!sessions.containsKey(i)) return i`，而 native 的 `alloc_slot()` 只在 0..MAX_SESSIONS（8）
+         *   里分，`FRAME_READY` 回的是真槽号、Kotlin 自己分的 sid 被丢掉。后果（槽复用后）：native 复用槽 0 而 Kotlin 给 2，
+         *   号不一致，`sessions` 按号索引就对不上。处置：会话号就用 native 回的槽号，只从帧上来。
          */
         @Synchronized
         internal fun releaseSid(sid: Int) {
@@ -605,10 +605,9 @@ object PtySession {
         }
 
         /**
-         * 会话号统一分（不让两边各自去抢）。缺陷 C-102：旧版
-         *   `for (i in 0 until MAX_SESSIONS) if (!sessions.containsKey(i)) return i`，而 `sessions` 只是宿主侧那一族，
-         *   native 自己有一份 `g_sessions[].open`。后果：产品侧的会话拿到 0，而 native 的 0 号已被 `sys.tty.exec`
-         *   占了，报「WINSIZE 指向不存在的会话」，`tty/index.json` 那两行重复。
+         * 会话号统一分（不让两边各自去抢）。缺陷 C-102：旧版 `for (i in 0 until MAX_SESSIONS) if (!sessions.containsKey(i))
+         *   return i`，而 `sessions` 只是宿主侧那一族，native 自己有一份 `g_sessions[].open`。后果：产品侧的会话拿到 0，
+         *   而 native 的 0 号已被 `sys.tty.exec` 占了，报「WINSIZE 指向不存在的会话」，`tty/index.json` 那两行重复。
          * 处置：号统一分，看两边都占着的号——产品侧持有的也算占着，native 的槽空了才用。
          */
         private fun allocSid(): Int {
@@ -676,7 +675,7 @@ object PtySession {
                     if (b3 < 0 || b4 < 0 || b5 < 0 || b6 < 0) break
                     val len = (b3.toInt() and 0xFF) or ((b4.toInt() and 0xFF) shl 8) or
                               ((b5.toInt() and 0xFF) shl 16) or ((b6.toInt() and 0xFF) shl 24)
-                    //  缺陷名 C-102：旧版拿线上来的长度直接分配（`val buf = ByteArray(len)`），len 是四个字节拼的、
+                    //  缺陷名 C-102：旧版拿线上来的长度直接分配（`val buf = ByteArray(len)`），len 是 `fromHost.read()` 四个字节拼的、
                     //   最大 4294967295（4 GiB）；帧通道能错位（native `send_frame` 两次写、写能交错，读是逐字节）。
                     //   后果：分配量 117031556 字节（`node` 那一件 116779696 字节，差 251860 是压缩与解压之差），
                     //   耗电那第一格回退、第二趟就来 OOM。
@@ -684,7 +683,7 @@ object PtySession {
                     //   超了丢那一帧并说清长度（C-05，不猜填）——流已错位，帧能重新同步。
                     if (len > MAX_FRAME_BYTES) {
                         val msg = "那帧长度逐字超上限：len=" + len + "、上限=" + MAX_FRAME_BYTES +
-                            "（=> 而那帧通道逐字**错位**了、=> 而那**流**逐字**不能**逐字重新同步）"
+                            "（帧通道逐字**错位**了、**流**逐字**不能**逐字重新同步）"
                         lastError = msg
                         synchronized(diag) {
                             diag.append(msg).append(10.toChar())
@@ -787,8 +786,8 @@ object PtySession {
             if (!stillAlive) {
                 s?.recordExit(status, signal)
                 //  缺陷名 C-102：旧版只标成关，`F_CLOSE` 没人发。
-                //   旧版 `s?.recordExit(…); s?.markClosed()`，而 `F_CLOSE` 只在 `close()` 里发（`PtySession.kt:184`），
-                //   产品侧自己退时没发（`PtySession.kt:819`-`:820` 只有那两行），native 的槽还占着，下一趟分号就撞
+                //   旧版 `s?.recordExit(…); s?.markClosed()`，而 `F_CLOSE` 只在 `close()` 里发（`host.send(F_CLOSE, sid, ByteArray(0))`），
+                //   产品侧自己退时没发（`onExited` 那条路只有 `recordExit` 与 `markClosed` 两行），native 的槽还占着，下一趟分号就撞
                 //   （diag.jsonl 又出现「WINSIZE 指向不存在的会话」，1793594620810）。
                 //   处置：产品侧自己退这一路也发 `F_CLOSE`（`close()` 的 `compareAndSet` 护着，不能发两次）。
                 //   判据是「那件退了之后、native 的槽有没有被还回去」。
@@ -816,12 +815,12 @@ object PtySession {
         }
     }
 
-    /** 那**槽**逐字**空**了逐字**记**一下（ native 那一族逐字**回**了那**回**帧）。 */
+    /** 记一下槽空了（native 回了那回帧）。 */
     internal fun markSlotFreed(sid: Int) {
         synchronized(this) { slotBusy.remove(sid) }
     }
 
-    /** 那**槽**逐字**占着**逐字**记**一下（ native 那一族逐字**开**了那槽）。 */
+    /** 记一下槽占着（native 开了那槽）。 */
     internal fun markSlotBusy(sid: Int) {
         synchronized(this) { slotBusy.add(sid) }
     }
@@ -833,7 +832,7 @@ object PtySession {
         ctx?.let {
             KernelHooks.report(
                 it, "pty", false, "PTY 的C 侧报错",
-                "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，=> 而那一号逐字**照样**还了",
+                "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号逐字**照样**还了",
             )
         }
     }
@@ -865,7 +864,7 @@ object PtySession {
             runCatching { t.join(READER_JOIN_MS) }
             if (t.isAlive) {
                 //  它还没停就记一条（C-05：缺字段就报缺，不假装它停了）。
-                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（=> 而它逐字是 daemon、=> 而进程退出时会被杀掉）")
+                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（它逐字是 daemon、进程退出时会被杀掉）")
             }
         }
     }
@@ -874,10 +873,9 @@ object PtySession {
     private val hostLock = Any()
 
     /**
-     * 开一条会话（活着的那一种，不是一次性的）。缺陷 C-102：旧版把 argv 原样交给宿主、没走 `ExecEntry.argv`
-     *   （`host(ctx, bin).start(argv, …)`），而宿主是 native 那份（`pty-session.c` 直接 execve、不判形态）。入口是
-     *   解释器（bash 是 ET_DYN），直接 execve 没有 linker64 驱动，报 `.../usr/bin/bash: cannot execute binary file`，
-     *   会话当场退出（stdout 空 + exitCode 0）。
+     * 开一条会话（活着的那一种）。缺陷 C-102：旧版把 argv 原样交给宿主、没走 `ExecEntry.argv`（`host(ctx, bin).start(argv, …)`），
+     *   而宿主是 native 那份（`pty-session.c` 直接 execve、不判形态）。入口是解释器（bash 是 ET_DYN），直接 execve 没有 linker64
+     *   驱动，报 `.../usr/bin/bash: cannot execute binary file`，会话当场退出（stdout 空 + exitCode 0）。
      * 处置：判形态交给 `ExecEntry.argv`（唯一真相源，native 那份已删，C-87）：ET_DYN 套 linker64、ET_EXEC 不套。
      */
     fun openSession(
@@ -994,13 +992,13 @@ object PtySession {
         private val lock = Any()
         private val held = LinkedHashMap<String, Session>()
 
-        /** 那**记下**那一条（ 号逐字**带**那族标记、 它逐字**不**与 native 那一族**冲突**）。 */
+        /** 记下那一条（键带族标记，不与 native 冲突）。 */
         @Synchronized
         fun put(key: String, s: Session) {
             synchronized(lock) { held[key] = s }
         }
 
-        /** 那**还**在的那些（ 它们逐字**不**是 native 那一族管的那些）。 */
+        /** 还在的那些（不是 native 管的那些）。 */
         @Synchronized
         fun list(): List<Session> {
             val dead = mutableListOf<String>()
@@ -1014,7 +1012,7 @@ object PtySession {
             return out
         }
 
-        /** 那**去掉**那一条（ 进程逐字退了时逐字调）。 */
+        /** 去掉那一条（进程退了时调）。 */
         @Synchronized
         fun remove(key: String) {
             synchronized(lock) { held.remove(key) }
@@ -1022,10 +1020,9 @@ object PtySession {
     }
 
     /**
-     * 活着的那几条会话（两族都列）。缺陷 C-102：旧版只列 native 那一族（`h.activeSessions()` 只列
-     *   `g_sessions` 管的），产品侧持有的那一条（`spawnOnSlave` 起的）不在里面。后果：`SysDev.kt:64` 的
-     *   `for (s in PtySession.activeSessions(ctx))` 拿不到它，`files/dev/tty/pts/<NNN>` 永远建不出来
-     *   （sid=0 / slave=/dev/pts/2）。
+     * 活着的那几条会话（两族都列）。缺陷 C-102：旧版只列 native 那一族（`h.activeSessions()` 只列 `g_sessions` 管的），产品侧
+     *   持有的那一条（`spawnOnSlave` 起的）不在里面。后果：`SysDev.kt:64` 的 `for (s in PtySession.activeSessions(ctx))`
+     *   拿不到它，`files/dev/tty/pts/<NNN>` 永远建不出来（sid=0 / slave=/dev/pts/2）。
      * 处置：两族都列。判据依 C-105 不合并两问——答「会话是什么」列全部，答「进程归谁管」只看账本。
      */
     fun activeSessions(ctx: Context): List<Session> {
@@ -1133,7 +1130,7 @@ object PtySession {
                 }, "lobos-pty-exit-watch").apply { isDaemon = true; start() }
             }
             //  丢了多少记着（C-05，不猜填、不静默）。
-            val droppedNote = if (dropped > 0L) "（=> 而那超出上限那一截逐字丢了 $dropped 字节）" else ""
+            val droppedNote = if (dropped > 0L) "（超出上限那一截逐字丢了 $dropped 字节）" else ""
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 s.close()
                 return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms$droppedNote", completed = false)

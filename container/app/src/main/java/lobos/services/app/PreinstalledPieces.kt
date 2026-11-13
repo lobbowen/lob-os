@@ -244,7 +244,7 @@ object PreinstalledPieces {
                 ?: return fail(
                     ctx, id,
                     "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
-                        "（=> 而那它逐字该从那 component-meta.json 派生、=> 而那按 C-05 不猜填）",
+                        "（它逐字该从那 component-meta.json 派生、按 C-05 不猜填）",
                 )
         } else {
             //  缺陷名 C-102：这一格取库形态那项的首项，而一件可能有好几条链。旧版 `shape.byRole(ROLE_LIBRARY).firstOrNull()?.role`
@@ -320,8 +320,8 @@ object PreinstalledPieces {
                 ctx, "prefix-trace", false,
                 "落位目录里有产物说没有的那几项 " + id,
                 staleInLanding.joinToString("，") +
-                    "（=> 而那一版产物里没有它们，=> 而它们是上一版落下的遗留物，" +
-                    "=> 而按「产物说没有的就不该在」这一条，=> 而走重装把它们换掉）",
+                    "（一版产物里没有它们，它们是上一版落下的遗留物，" +
+                    "按「产物说没有的就不该在」这一条，走重装把它们换掉）",
             )
         }
         val sameBytes = shape.files.all { fs ->
@@ -350,7 +350,7 @@ object PreinstalledPieces {
             lobos.services.log.Journal.note(
                 ctx, "prefix-trace", false, "无法判定是不是那一代 " + id,
                 unverifiable.joinToString("，") +
-                    "（按 §1.55：缺证据不答「相同」=> 这一格不判已落位到最新 => 走重装）",
+                    "（按 §1.55：缺证据不答「相同」这一格不判已落位到最新 走重装）",
             )
         }
         if (verDir.isDirectory && landedUpToDate) {

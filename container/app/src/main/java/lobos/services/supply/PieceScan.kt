@@ -242,16 +242,16 @@ object PieceScan {
         // 缺陷名（C-102）**剥错了那一层**：
         //   原来这里剥的是 opt/（含 id 段一起剥） 对 files/opt/busybox/1.36.1
         //   它算出 "busybox/1.36.1"，而 relStateDir 写进注册表的是 "opt/busybox"
-        //   => **两个函数对同一件产出的不是同一个字符串**
-        //   读侧按 filesDir 解析 "busybox/1.36.1" => dir = files/busybox/1.36.1
-        //   => dest = files/busybox/1.36.1/1.36.1（版本段两遍）
+        //   **两个函数对同一件产出的不是同一个字符串**
+        //   读侧按 filesDir 解析 "busybox/1.36.1" dir = files/busybox/1.36.1
+        //   dest = files/busybox/1.36.1/1.36.1（版本段两遍）
         // 真机读数（07）：files/busybox/1.36.1/1.36.1/，而注册表说 opt/busybox
-        //   => **注册表说它在哪与它真正在哪不是同一处**
+        //   **注册表说它在哪与它真正在哪不是同一处**
         val filesRoot = ctx.filesDir.canonicalFile.path
         val optRoot = SystemDirs.opt(ctx).canonicalFile.path
         val d = runCatching { dir.canonicalFile.path }.getOrDefault(dir.absolutePath)
         if (d.startsWith(optRoot + File.separator)) {
-            // opt/<id>/<ver> => opt/<id>（只到 id，版本由目录名承担，不进这一格）
+            // opt/<id>/<ver> opt/<id>（只到 id，版本由目录名承担，不进这一格）
             //   而这一格必须与 ProgramManager.relStateDir（ProgramManager.kt:114）
             //   产出的形状一致：REL_OPT + "/" + id —— 否则两个写侧对同一件产出不同字符串。
             val id = d.substring(optRoot.length + 1).substringBefore(File.separatorChar)
@@ -369,9 +369,9 @@ object PieceScan {
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true, "那扫描成本那一档",
             lobos.services.reg.ScanCost.describe(ctx) +
-                " （=> 而那**重建索引**那一族逐字走这一档、=> 而那**内容指纹**逐字" +
+                " （**重建索引**那一族逐字走这一档、**内容指纹**逐字" +
                 (if (withContentFingerprint) "算" else "跳过") +
-                "、=> 而那**扫描**逐字仍然扫、=> 而那**缺件**那一族逐字仍然答）",
+                "、**扫描**逐字仍然扫、**缺件**那一族逐字仍然答）",
         )
         //  **档二 · 遍历本身**那一档（ 是 01 逐字核的判别形式：
         //     「凡要答『那一次扫描要多贵』，判据必须落在『那遍历本身』上」）
@@ -387,8 +387,8 @@ object PieceScan {
             "遍历=" + (if (traverseFiles) "做" else "不做") +
                 " 内容指纹=" + (if (withContentFingerprint) "算" else "跳过") +
                 " 件数=" + found.size +
-                " （=> 而那**两档逐字分开**、=> 而那档二逐字答「那遍历本身」、" +
-                "=> 而那档一逐字答「那内容指纹算不算」；=> 而那**两档逐字不并**）",
+                " （**两档逐字分开**、档二逐字答「那遍历本身」、" +
+                "档一逐字答「那内容指纹算不算」；**两档逐字不并**）",
         )
         if (found.isEmpty()) return 0
         val cur = ProgramIndex.all(ctx).associateBy { it.id }
@@ -411,8 +411,8 @@ object PieceScan {
                     ctx, "registry-role", false,
                     "那登记那一格与那扫描结果逐字不一致",
                     "件=" + f.id + " 登记=" + prev.role + " 扫描=" + f.role +
-                        " （=> 而那扫描结果逐字**赢**、=> 而那旧值逐字**不**顶上来；" +
-                        "=> 而那这**两份实际**逐字不一致那一族归 03 另立、=> 而那它逐字是 C-998 那一族的**邻族**）",
+                        " （扫描结果逐字**赢**、旧值逐字**不**顶上来；" +
+                        "这**两份实际**逐字不一致那一族归 03 另立、它逐字是 C-998 那一族的**邻族**）",
                 )
             }
             val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(
@@ -464,13 +464,13 @@ object PieceScan {
                 ?.toSet()
         }.getOrNull() ?: emptySet()
         if (optRootIds.isEmpty()) {
-            // 而读不到 opt/ 底下有什么 => **那一格答不出「有没有该删的」**
-            // => **不删**（「拿不到要答不知道」，而不能拿「没有」当答案）
+            // 而读不到 opt/ 底下有什么 **那一格答不出「有没有该删的」**
+            // **不删**（「拿不到要答不知道」，而不能拿「没有」当答案）
             return changed
         }
         for (e in ProgramIndex.all(ctx)) {
             if (e.id in foundIds) continue
-            // 这一格**不按 levelOf 判**—— 而 01 今天指出：levelOf 判的是 stateDir/assetEntry，            // **不是 role 字段** —— 而它答的是「有没有那个入口」，不是「这一件归谁管」：            // 真机读数（01 今天逐行核过，2026-10-21）：登记八行，role 是 4 library / 3 program，            // 而**按 levelOf 算**（assetEntry 空 => PIECE）是 **4 PIECE / 4 PROGRAM**            // ** 两把尺对同一行给出的答案不一样 用 levelOf 会误删**            // 例：openssl 那一行 role 是 library 而 assetEntry 是空，            // **=> levelOf 判它 PIECE 那一行会被删** —— 而它是今天**在册**的那一件。            // 本支只管「扫件」（01 今天裁：而 scan 枚举的是 opt/ 底下那些，            // **而一个程序的落位目录根本不在 opt/**）=> ** 判据是「它是不是一件」**            // ** 本支能看见的每一件，按定义都该由它管**            // found 之外的、又在 opt/ 底下的，才是「扫不到该删」            if (!optRootIds.contains(e.id)) continue
+            // 这一格**不按 levelOf 判**—— 而 01 今天指出：levelOf 判的是 stateDir/assetEntry，            // **不是 role 字段** —— 而它答的是「有没有那个入口」，不是「这一件归谁管」：            // 真机读数（01 今天逐行核过，2026-10-21）：登记八行，role 是 4 library / 3 program，            // 而**按 levelOf 算**（assetEntry 空 PIECE）是 **4 PIECE / 4 PROGRAM**            // ** 两把尺对同一行给出的答案不一样 用 levelOf 会误删**            // 例：openssl 那一行 role 是 library 而 assetEntry 是空，            // **levelOf 判它 PIECE 那一行会被删** —— 而它是今天**在册**的那一件。            // 本支只管「扫件」（01 今天裁：而 scan 枚举的是 opt/ 底下那些，            // **而一个程序的落位目录根本不在 opt/**）** 判据是「它是不是一件」**            // ** 本支能看见的每一件，按定义都该由它管**            // found 之外的、又在 opt/ 底下的，才是「扫不到该删」            if (!optRootIds.contains(e.id)) continue
             if (ProgramIndex.remove(ctx, e.id)) {
                 removed++
                 RuntimeDiagnostics.append(
@@ -493,7 +493,7 @@ object PieceScan {
         //     原来这一行是 `val base = File(e.stateDir)`，而 e.stateDir 是**相对**形态
         //     （opt/bash），而 fr.path 是**件内**相对路径（bin/bash）
         // 拼出来既不相对 filesDir、也**缺版本段**
-        //     => File("opt/bash", "bin/bash") = <cwd>/opt/bash/bin/bash（不存在）
+        //     File("opt/bash", "bin/bash") = <cwd>/opt/bash/bin/bash（不存在）
         // 真机读数（07，2026-10-21）：八件**全部**答「坏」，而每一项都因为「不在」
         //     它答「缺」不是判出了差异，是**每项都没找到**。
         //   判别形式：它拼出来的那条路径，真机上存不存在。

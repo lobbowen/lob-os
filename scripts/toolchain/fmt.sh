@@ -96,7 +96,7 @@ fmt_zip_entries() {
 const fs = require("node:fs");
 let fd;
 try { fd = fs.openSync(process.argv[1], "r"); } catch (e) { process.exit(1); }
-const readAt = (pos, len) => {
+const readAt = (pos, len) {
   if (len <= 0) return Buffer.alloc(0);
   const b = Buffer.allocUnsafe(len);
   let got = 0;
@@ -240,7 +240,7 @@ fmt_pick_piece() {
   # 第 3 步：gzip / tar 那一档 **先解开 tar**。
   case "$m" in
     1f8b*) tar xzf "$f" -C "$work" 2>/dev/null || { echo "那 gzip 解不开" >&2; return 1; } ;;
-    504b*) : ;;   #  => 而那 zip 那一档逐字**不**解开（=> 而那第 1 步逐字看那外层**自己**）
+    504b*) : ;;   #   zip 那一档逐字**不**解开（第 1 步逐字看那外层**自己**）
     *) return 1 ;;
   esac
   # 第 1 步：外层**自己**是不是那一颗件。
@@ -251,7 +251,7 @@ fmt_pick_piece() {
   if [ "${m#504b}" != "$m" ]; then
     local outer_id
     outer_id="$(unzip -p "$f" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     if [ -n "$outer_id" ]; then
@@ -259,14 +259,14 @@ let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () =>
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**外层自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那**外层自己**就是那一颗件、它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   else
     # gzip / tar 那一档： 解开处逐字**自己**含 component-meta.json 吗
     local outer_id
     outer_id="$(cat "$work"/component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     if [ -n "$outer_id" ]; then
@@ -274,7 +274,7 @@ let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () =>
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**解开处自己**就是那一颗件、=> 而它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那**解开处自己**就是那一颗件、它的 id 逐字是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   fi
@@ -285,7 +285,7 @@ let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () =>
   while IFS= read -r c; do
     [ -n "$c" ] || continue
     id="$(unzip -p "$c" component-meta.json 2>/dev/null | node -e '
-let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () => {
+let d = ""; process.stdin.on("data", x d += x); process.stdin.on("end", () {
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
     [ -n "$id" ] || continue

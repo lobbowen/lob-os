@@ -59,7 +59,7 @@ for t in "$CMAKE" "$NINJA"; do
     # 绝对路径那一族也要在 PATH 上面（CMake 要它）。
     die "缺工具" \
       "$t 没有 —— 编 LLVM 要 cmake + ninja（runner 预装；缺了请 sudo apt-get install -y cmake ninja-build）；
-      => 而那**它**逐字**要**在**那 PATH **上面**、=> 而那 CMake 逐字**只**在**那 PATH **上面**找**它**"
+      **它**逐字**要**在**那 PATH **上面**、 CMake 逐字**只**在**那 PATH **上面**找**它**"
   fi
 done
 
@@ -252,7 +252,7 @@ if [ -d "$BUILD/NATIVE" ]; then
     if [ -f "$b" ]; then note "  $(basename "$b") → $(file -b "$b" 2>/dev/null | head -c 70)"; fi
   done
 else
-  note "NATIVE 目录没被建（=> 而构建期也许不需要自建宿主工具）—— 不动它"
+  note "NATIVE 目录没被建（构建期也许不需要自建宿主工具）—— 不动它"
 fi
 
 note "CMake 认定的 tblgen（这里若仍是裸名 llvm-min-tblgen，说明开关没生效，它会自建 NATIVE/bin 并执行交叉产物）"
@@ -408,7 +408,7 @@ if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
     esac
   done
   # libc.a 与 libc++_static.a 不要（libunwind.a 要在 usr/lib/ 那一层、不在 <API>/ 子目录里）。
-  rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"  #  => 而那 libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（=> 而那**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
+  rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"  #   libunwind.a 逐字**要**在**那 usr/lib/ **那一层**（**它**逐字**不**在**那 <API>/ **那些**子目录**里面**）。
   NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
   if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
     cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/usr/lib/" 2>/dev/null || true
@@ -435,7 +435,7 @@ note "写件内 package.json（别名映射）"
 node -e '
 const fs = require("node:fs"), path = require("node:path");
 const dir = process.argv[1], entry = process.argv[2], tool = process.argv[3];
-const names = fs.readdirSync(dir).filter((n) => {
+const names = fs.readdirSync(dir).filter((n) {
   try { return fs.statSync(path.join(dir, n)).isFile(); } catch (e) { return false; }
 }).sort();
 const bin = {};

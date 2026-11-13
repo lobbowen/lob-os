@@ -1,7 +1,7 @@
 {
-  "$comment-buildTimeEpoch": "件里嵌的构建时间基准（epoch 秒）。为什么要钉（2026-10-01 定罪，债表 ENV-32）：静态链进 curl/git 的 openssl 把构建时刻写进件字节 —— 上游 util/mkbuildinf.pl:19 是 gmtime($ENV{SOURCE_DATE_EPOCH} // time())，经 crypto/build.info:118 的 GENERATE[buildinf.h] 落成 #define DATE。墙钟进字节 => 同一版本号每次重建 sha 全变 => 内容寻址的键堆积、设备全体重下、drift 第 ② 格永无宁日。取一个**过去的**整点：2026-01-01T00:00:00Z。读取口是钉值表唯一的读者 scripts/toolchain/fetch-pinned.sh --time-base（⑦ 那条判据），判据宿主唯一 scripts/verify/verify-component-build-date.sh。",
+  "$comment-buildTimeEpoch": "件里嵌的构建时间基准（epoch 秒）。为什么要钉（2026-10-01 定罪，债表 ENV-32）：静态链进 curl/git 的 openssl 把构建时刻写进件字节 —— 上游 util/mkbuildinf.pl:19 是 gmtime($ENV{SOURCE_DATE_EPOCH} // time())，经 crypto/build.info:118 的 GENERATE[buildinf.h] 落成 #define DATE。墙钟进字节 同一版本号每次重建 sha 全变 内容寻址的键堆积、设备全体重下、drift 第 2 格永无宁日。取一个**过去的**整点：2026-01-01T00:00:00Z。读取口是钉值表唯一的读者 scripts/toolchain/fetch-pinned.sh --time-base（⑦ 那条判据），判据宿主唯一 scripts/verify/verify-component-build-date.sh。",
   "buildTimeEpoch": 1767225600,
-  "$comment-ndkVersion": "四颗交叉编译件用的 NDK 版本（债表 ENV-30）。为什么也要住这张表：件的身份 = 源码批次 × 构建时刻 × 工具链，前两格已各自钉住，第三格此前由 runner 镜像决定（build-component.yml 取 ANDROID_NDK_LATEST_HOME，只判目录在不在），仓内没有任何声明可比 => 镜像换一版 NDK，六颗件的 sha 全变而 CI 不会红。这一格**不由下载得到**，所以 scripts/toolchain/fetch-pinned.sh 只把它读出来（--ndk），判点在 build-component.yml 的「定位 NDK」步：那里同时打「钉值/实测/本镜像现有」三个读数，不等就红。值 29.0.14206865 的出处（2026-10-01 现读，不是推的）：同一 commit 的两次独立校验轮 run 36777332724 与 36777975369，六颗 job 落在两颗镜像（Version 20260920.314.1 与 20260927.320.1）上，日志里真正使用的 clang 路径同为 .../sdk/ndk/29.0.14206865/...，且这两轮的六颗件 sha 逐颗全等。runner 上 NDK 版本目录全集与 source.properties 的 Revision 由那一步自己打印，改钉值前必须先拿到那两个读数。",
+  "$comment-ndkVersion": "四颗交叉编译件用的 NDK 版本（债表 ENV-30）。为什么也要住这张表：件的身份 = 源码批次 × 构建时刻 × 工具链，前两格已各自钉住，第三格此前由 runner 镜像决定（build-component.yml 取 ANDROID_NDK_LATEST_HOME，只判目录在不在），仓内没有任何声明可比 镜像换一版 NDK，六颗件的 sha 全变而 CI 不会红。这一格**不由下载得到**，所以 scripts/toolchain/fetch-pinned.sh 只把它读出来（--ndk），判点在 build-component.yml 的「定位 NDK」步：那里同时打「钉值/实测/本镜像现有」三个读数，不等就红。值 29.0.14206865 的出处（2026-10-01 现读，不是推的）：同一 commit 的两次独立校验轮 run 36777332724 与 36777975369，六颗 job 落在两颗镜像（Version 20260920.314.1 与 20260927.320.1）上，日志里真正使用的 clang 路径同为 .../sdk/ndk/29.0.14206865/...，且这两轮的六颗件 sha 逐颗全等。runner 上 NDK 版本目录全集与 source.properties 的 Revision 由那一步自己打印，改钉值前必须先拿到那两个读数。",
   "ndkVersion": "30.0.16248370",
   "llvmVersion": "21.0.0",
   "sources": {
@@ -24,7 +24,7 @@
       ],
       "installName": "busybox",
       "marker": "busybox.version",
-      "$comment-entryName": "而这一格是「入口该取它自己 install 的那一组名字里的哪一个」—— => 而那是 01 那一件 S115 第三节落点 ③ 说的「作者那一侧给」那一份。=> 而而为什么是 sh：=> 而这一件自己 install 的是 make install 连带建出的那批软链（=> 而 man1 INSTALL 段：构建系统自己知道编了哪些 applet），=> 而而那不是那份字节 .rodata 开头那张表（=> 而 01 那一件 S115 更正了 04 那一裁引的那个数：「19 个」是表一，而它自己 install 的是表三，=> 而表三按轮次是 17 个无 sh 或 18 个含 sh，=> 而而两轮都无 awk）。=> 而而 sh 是用户真的会叫的那个名字（=> 而 sh 是 POSIX 那一族的标准 shell 名）。=> 而而两个今天不可用的名字：busybox 那个名字自己不落包（=> 而 build-native-busybox.sh:331 那一行跳过它）=> 而它不认自己；而 awk 两轮落包集都没有它。=> 而而为什么构建期不能自己挑：=> 而「最常被叫」是使用期的分布，=> 而构建期只知道哪些名字存在；=> 而 busybox 认全部那些名字（=> 而 upstream busybox 1.36.1 libbb/appletlib.c:914 逐字是 applet_name = bb_get_last_path_component_nostrip(argv[0]);）=> 而它没有「唯一一个更真」的名字。=> 而而为什么不能是本体那份（=> 而 04 那一裁判掉的那一边）：=> 而本体那份在 bin/ 下叫 libbusybox.so，=> 而它不认自己的文件名，=> 而起它时 stderr 逐字是 libbusybox.so: applet not found 而 exit 127。=> 而而这一格今天是不是过了：=> 而「取自哪一组」已核（=> 而 S115 第一节与第二节），=> 而「组内哪一个」按 C-135 是一个使用期的分布（=> 而 01 那一件 S115 第三节说它今天未过）。=> 而而这一格填的是作者那一侧给的答案（=> 而上游知道每个 applet 的定位），=> 而而它要 07 在设备上核（=> 而 busybox 那一件在监督环里的 exitCode 预期从 127 变成 0）。",
+      "$comment-entryName": "而这一格是「入口该取它自己 install 的那一组名字里的哪一个」—— 是 01 那一件 S115 第三节落点 3 说的「作者那一侧给」那一份。为什么是 sh：这一件自己 install 的是 make install 连带建出的那批软链（man1 INSTALL 段：构建系统自己知道编了哪些 applet），不是那份字节 .rodata 开头那张表（01 那一件 S115 更正了 04 那一裁引的那个数：「19 个」是表一，而它自己 install 的是表三，表三按轮次是 17 个无 sh 或 18 个含 sh，两轮都无 awk）。sh 是用户真的会叫的那个名字（sh 是 POSIX 那一族的标准 shell 名）。两个今天不可用的名字：busybox 那个名字自己不落包（build-native-busybox.sh:331 那一行跳过它）它不认自己；而 awk 两轮落包集都没有它。为什么构建期不能自己挑：「最常被叫」是使用期的分布，构建期只知道哪些名字存在；busybox 认全部那些名字（upstream busybox 1.36.1 libbb/appletlib.c:914 逐字是 applet_name = bb_get_last_path_component_nostrip(argv[0]);）它没有「唯一一个更真」的名字。为什么不能是本体那份（04 那一裁判掉的那一边）：本体那份在 bin/ 下叫 libbusybox.so，它不认自己的文件名，起它时 stderr 逐字是 libbusybox.so: applet not found 而 exit 127。这一格今天是不是过了：「取自哪一组」已核（S115 第一节与第二节），「组内哪一个」按 C-135 是一个使用期的分布（01 那一件 S115 第三节说它今天未过）。这一格填的是作者那一侧给的答案（上游知道每个 applet 的定位），它要 07 在设备上核（busybox 那一件在监督环里的 exitCode 预期从 127 变成 0）。",
       "entryName": "sh",
       "piece": true
     },
@@ -43,7 +43,7 @@
       ],
       "sameAs": "openssl",
       "note": "libcrypto.so 与 libssl.so 一并编出（OpenSSL 的一部分），不是独立的上游项目 —— 版本与 openssl 同步。",
-      "$comment-notStandalone-removed": "而那一格（notStandalone）今天被删了（2026-10-25）。缺陷名（C-102）：**「归并」与「随不随 APK 走」被当成了同一件事**。而那两个是两个问句（按 C-135）：一、「归并之后 crypto 那一件还存不存在」（而 01 那一件裁的是那一格仍未过，01 本件不裁）；二、「crypto 那一件随不随 APK 走」（而那是**落位**那一格）。而原来这一格 notStandalone: true 把 crypto 排除在 PIECES 之外（=> 而 scripts/toolchain/pieces-from-table.js:46 逐字是 `return e.notStandalone !== true;`），=> 而那**只**回答了问句二、=> 而而它**没有**回答问句一。而今天设备上那两份必须变成同一份（=> 而 lead 派的处置方向是 D-改动，=> 而 01 那一件第六版裁的是「取路 A」），=> 而要做的正是让 crypto 那一件随 APK 走（=> 而它随 APK 走时那一件是 src90fa46a13608 那一版，=> 而而那一份与 openssl 那一件那一份**逐字相同**，=> 而而本机核过 cmp 零输出、exit 0）。而删这一格**不改任何一件的指纹**（=> 而本机核过：=> 而 component-sources.json **不在** SRC_FILES 也不在 PKG_MECH 里，=> 而而 11 件的指纹逐字与改前相同），=> 而而**只有 crypto 那一件多一个 asset 要取**（=> 而那一份今天已经在 base-crypto 筐里）。",
+      "$comment-notStandalone-removed": "而那一格（notStandalone）今天被删了（2026-10-25）。缺陷名（C-102）：**「归并」与「随不随 APK 走」被当成了同一件事**。而那两个是两个问句（按 C-135）：一、「归并之后 crypto 那一件还存不存在」（而 01 那一件裁的是那一格仍未过，01 本件不裁）；二、「crypto 那一件随不随 APK 走」（而那是**落位**那一格）。而原来这一格 notStandalone: true 把 crypto 排除在 PIECES 之外（scripts/toolchain/pieces-from-table.js:46 逐字是 `return e.notStandalone !== true;`），**只**回答了问句二、它**没有**回答问句一。而今天设备上那两份必须变成同一份（lead 派的处置方向是 D-改动，01 那一件第六版裁的是「取路 A」），要做的正是让 crypto 那一件随 APK 走（它随 APK 走时那一件是 src90fa46a13608 那一版，一份与 openssl 那一件那一份**逐字相同**，本机核过 cmp 零输出、exit 0）。而删这一格**不改任何一件的指纹**（本机核过：component-sources.json **不在** SRC_FILES 也不在 PKG_MECH 里，11 件的指纹逐字与改前相同），**只有 crypto 那一件多一个 asset 要取**（一份今天已经在 base-crypto 筐里）。",
       "piece": true
     },
     "curl": {
@@ -56,7 +56,7 @@
       "piece": true
     },
     "git": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 git 那一件：=> 而上游 make install 会把 git 与那一批 git-* 子命令**都**装进 bin/（=> 而它们**各自**是独立的 ELF 程序、=> 而而字节**各不相同**，=> 而而那**不是**同一份字节的多个名字）。而**取哪一个**：=> 而 bin/git 才是这一件**本名**（=> 而那一批 git-* 是子命令，=> 而而它们是这一件的**部件**、=> 而而那一件自己的安装步骤后来把它们搬进 libexec/git-core 那一族，=> 而而那一份另有一格记着哪些是派生物）。",
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— 它与 busybox 那一族的「多调用二进制」是**两问**（按 C-135）。而 git 那一件：上游 make install 会把 git 与那一批 git-* 子命令**都**装进 bin/（它们**各自**是独立的 ELF 程序、字节**各不相同**，**不是**同一份字节的多个名字）。而**取哪一个**：bin/git 才是这一件**本名**（一批 git-* 是子命令，它们是这一件的**部件**、一件自己的安装步骤后来把它们搬进 libexec/git-core 那一族，一份另有一格记着哪些是派生物）。",
       "entryName": "git",
       "version": "2.55.0",
       "sha256": "457fdb04dc8728e007d4688695e6912e6f680727920f2a40bf11eacc17505357",
@@ -131,7 +131,7 @@
       "piece": true
     },
     "kernel": {
-      "$comment": "而那内核源码那一族逐字**不**进那仓内、=> 而它逐字**是**那取件那一族、=> 而它逐字**走**那 fetch-pinned.sh 那一条现成的路。=> 而那**版本号**逐字 = 6.6.144、=> 而那**分支**逐字 = android15-6.6、=> 而那 tip 那一个数逐字 = 18e7dadae19bd16a5a027d8bd95663f759af51fa。=> 而那 urls 那一族逐字**是**那**逐文件**那一族（=> 而那四个路径逐字**是**那**同一个** commit **底下**的）、=> 而那格式逐字**是**那 ?format=TEXT（=> 而那服务端逐字**给**的是**那 base64 **编码**的**文本**）。=> 而那 sha256 那一格逐字**是**那**四件逐文件**合成**那一个**确定性** tar **那一个**的**数**（=> 而那**它**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**、=> 而那**它**逐字**两次**做**一样**）。=> 而那**四个**文件**各**一个 sha256 逐字**与**那仓内那 docs/kernel-baseline/upstream/ 底下**那四件**逐字**一样**。=> 而那**归档**那一族（=> 而那 +archive/）逐字**不能**当**那钉值**来源（=> 而那服务端逐字**每次**现打、=> 而而那**它**逐字**每次**换**那字节**、=> 而而那 sha256 **永远**对不上**）。",
+      "$comment": "而那内核源码那一族逐字**不**进那仓内、它逐字**是**那取件那一族、它逐字**走**那 fetch-pinned.sh 那一条现成的路。**版本号**逐字 = 6.6.144、**分支**逐字 = android15-6.6、 tip 那一个数逐字 = 18e7dadae19bd16a5a027d8bd95663f759af51fa。 urls 那一族逐字**是**那**逐文件**那一族（四个路径逐字**是**那**同一个** commit **底下**的）、格式逐字**是**那 ?format=TEXT（服务端逐字**给**的是**那 base64 **编码**的**文本**）。 sha256 那一格逐字**是**那**四件逐文件**合成**那一个**确定性** tar **那一个**的**数**（**它**逐字**用**那 mtime=0 那一族**好**的**确定性**打包**、**它**逐字**两次**做**一样**）。**四个**文件**各**一个 sha256 逐字**与**那仓内那 docs/kernel-baseline/upstream/ 底下**那四件**逐字**一样**。**归档**那一族（ +archive/）逐字**不能**当**那钉值**来源（服务端逐字**每次**现打、**它**逐字**每次**换**那字节**、 sha256 **永远**对不上**）。",
       "version": "6.6.144",
       "sha256": "c6f39a13f5d418be4d4f6ca3ce43a47af25b0b9017e92286b7ec0323ef5713e7",
       "urls": [
@@ -143,7 +143,7 @@
       "piece": false
     },
     "llvm": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 llvmtoolchain 那一件：=> 而那 bin/ 下有**一百零几**个**各自不同**的程序形态字节（=> 而它们**不是**同一份字节、=> 而那**不是**多调用那一族），=> 而而那**入口**逐字**该**取**那 clang**（=> 而它是那 C++ 前端、=> 而它是那 NEED_BIN 那一族的头一个、=> 而它是这一件的**名字**）。=> 而而它**原来**没有**这一格**、=> 而而那 gen-component-meta.js :255 那一支逐字**因此**算**不出**入口、=> 而而那 read-component-entry.sh 逐字**答**一个**空行**、=> 而而那判据就**拿**那**空**的**去**比**那 dist/ **那一**个**目录**。",
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— 它与 busybox 那一族的「多调用二进制」是**两问**（按 C-135）。而 llvmtoolchain 那一件： bin/ 下有**一百零几**个**各自不同**的程序形态字节（它们**不是**同一份字节、**不是**多调用那一族），**入口**逐字**该**取**那 clang**（它是那 C++ 前端、它是那 NEED_BIN 那一族的头一个、它是这一件的**名字**）。它**原来**没有**这一格**、 gen-component-meta.js :255 那一支逐字**因此**算**不出**入口、 read-component-entry.sh 逐字**答**一个**空行**、判据就**拿**那**空**的**去**比**那 dist/ **那一**个**目录**。",
       "entryName": "clang",
       "version": "21.1.0",
       "sha256": "1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825",
@@ -177,16 +177,16 @@
       ]
     },
     "npm": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 npm 那一件：=> 而它的 bin/ 下有三份**不同的** shebang 脚本（=> 而 bin/npm-cli.js、bin/npx-cli.js、bin/npm-prefix.js），=> 而而它们**不是**同一份字节（=> 而而那不是多调用那一族，=> 而而那是「这一件有多个入口」那一问）。而**取哪一个**：=> 而 bin/npm-cli.js 才是这一件**本名**（=> 而而上游 npm 根 package.json 的 bin 键逐字是 npm 对 bin/npm-cli.js、而 npx 对 bin/npx-cli.js），=> 而而那一份**是**上游自己声明的入口，=> 而而这一格就是把它写下来。",
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— 它与 busybox 那一族的「多调用二进制」是**两问**（按 C-135）。而 npm 那一件：它的 bin/ 下有三份**不同的** shebang 脚本（bin/npm-cli.js、bin/npx-cli.js、bin/npm-prefix.js），它们**不是**同一份字节（不是多调用那一族，是「这一件有多个入口」那一问）。而**取哪一个**：bin/npm-cli.js 才是这一件**本名**（上游 npm 根 package.json 的 bin 键逐字是 npm 对 bin/npm-cli.js、而 npx 对 bin/npx-cli.js），一份**是**上游自己声明的入口，这一格就是把它写下来。",
       "entryName": "npm-cli.js",
       "version": "11.19.0",
-      "$comment-version": "而这一格**必须与产物那份逐字相同**（=> 而 package-component.sh:18 那一处逐字是那个等号比较）—— => 而而它原来写的是 11.x（=> 而那是**大版本占位**），=> 而而那一件的真实版本由 scripts/node-versions.json 那一格给出（=> 而逐字是 11.19.0），=> 而而 build-component-npm.sh:8 那一行逐字是 NPM_VERSION 从 read-node-versions.sh npm 取。",
+      "$comment-version": "而这一格**必须与产物那份逐字相同**（package-component.sh:18 那一处逐字是那个等号比较）—— 它原来写的是 11.x（是**大版本占位**），一件的真实版本由 scripts/node-versions.json 那一格给出（逐字是 11.19.0），build-component-npm.sh:8 那一行逐字是 NPM_VERSION 从 read-node-versions.sh npm 取。",
       "urls": [],
       "fromNode": true,
       "note": "随 Node.js 一起来的包管理器（Node.js 生态，独立分发）。"
     },
     "openssl": {
-      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— => 而它与 busybox 那一族的「多调用二进制」是**两问**（=> 而按 C-135）。而 busybox 那一族：=> 而 bin/ 下那 19 项是**同一份字节的多个名字**（=> 而那是多调用那一族，=> 而而它取的是作者声明的那一个软链名）。而 openssl 那一件：=> 而 bin/ 下有**两份不同的** shebang 脚本（=> 而 bin/openssl 与 bin/c_rehash，=> 而而 c_rehash 是上游 openssl 3.6.3 的 make install_sw 装出来的、=> 而而它不是我们起的名，=> 而而那**不是**同一份字节）=> => 而那是「这一件有多个入口」那一问。而**取哪一个**：=> 而 bin/openssl 才是这一件**本名**（=> 而而 bin/c_rehash 是上游附带的），=> 而而旧表（3a6b8625 那一版 component-verify.json）逐字是 openssl 的 entry = lib/libssl.so，=> 而而那是**库**那一侧（=> 而而今天按形态算出来的是 bin/openssl）。",
+      "$comment-entryName": "而这一格是「这一件有**多个**入口时该取哪一个」—— 它与 busybox 那一族的「多调用二进制」是**两问**（按 C-135）。而 busybox 那一族：bin/ 下那 19 项是**同一份字节的多个名字**（是多调用那一族，它取的是作者声明的那一个软链名）。而 openssl 那一件：bin/ 下有**两份不同的** shebang 脚本（bin/openssl 与 bin/c_rehash，c_rehash 是上游 openssl 3.6.3 的 make install_sw 装出来的、它不是我们起的名，**不是**同一份字节）是「这一件有多个入口」那一问。而**取哪一个**：bin/openssl 才是这一件**本名**（bin/c_rehash 是上游附带的），旧表（3a6b8625 那一版 component-verify.json）逐字是 openssl 的 entry = lib/libssl.so，是**库**那一侧（今天按形态算出来的是 bin/openssl）。",
       "entryName": "openssl",
       "version": "3.6.3",
       "sha256": "243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1",
@@ -211,7 +211,7 @@
     },
     "pnpm": {
       "version": "12.7.0",
-      "$comment-version": "而这一格**必须与产物那份逐字相同**（=> 而 package-component.sh:18 那一处逐字是那个等号比较）—— => 而而它原来写的是 10.x（=> 而那是**大版本占位**），=> 而而那一件的真实版本由 build-component-pnpm.sh:8 那一行给出（=> 而逐字是 PNPM_VERSION=12.7.0）。",
+      "$comment-version": "而这一格**必须与产物那份逐字相同**（package-component.sh:18 那一处逐字是那个等号比较）—— 它原来写的是 10.x（是**大版本占位**），一件的真实版本由 build-component-pnpm.sh:8 那一行给出（逐字是 PNPM_VERSION=12.7.0）。",
       "urls": [
         "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz"
       ],
@@ -227,7 +227,7 @@
     "ripgrep": {
       "$comment-shape": "**这一项的形状与其余 20 项不同：没有 urls，因为没有可下载的 tarball。** 其余件是「下载源码 tar.gz → 逐字节校验 sha256 → configure/make 编译」；ripgrep 是 Rust 件，走 `cargo install --locked --version 14.1.1`（crates.io），源码由 cargo 自己按 lock 文件取，我们不经手 tarball，所以拿不到「源码包」的 sha256。",
       "$comment-hash": "**这里的 sha256 是编出来的二进制（liblobosrg.so）的哈希，不是源码包的哈希** —— 两者不是一回事，写混了会让「校验源码」这个动作变成校验自己的产物。它由 scripts/recipes/build-native-capabilities.sh 在 cargo install 成功之后算出：先比对表里的值，一致则判绿（说明这一版编出来的东西与上一次逐字节相同）；不一致时**把实测值写进表并打印提示**，下一轮就以它为基线。首次运行时表里为空 → 记为「首轮建立基线」并写入。",
-      "$comment-verify": "与 NDK 版本同理（见 $comment-ndkVersion）：cargo 的 `--locked` 锁的是依赖图，不锁 crates.io 上那个 .crate 包本身。要真正锁住「拿到的是同一份源码」，得比对 crates.io 的校验值 —— 但那要另做一次下载+计算，而 crates.io 的 .crate 哈希与最终 .so 哈希无从互推。所以这里的保证是：**同一 NDK + 同一版本 => 同一产物**（cargo install 的输入与 NDK clang 都钉住了）。要更强保证需另设判据，本项不声称。",
+      "$comment-verify": "与 NDK 版本同理（见 $comment-ndkVersion）：cargo 的 `--locked` 锁的是依赖图，不锁 crates.io 上那个 .crate 包本身。要真正锁住「拿到的是同一份源码」，得比对 crates.io 的校验值 —— 但那要另做一次下载+计算，而 crates.io 的 .crate 哈希与最终 .so 哈希无从互推。所以这里的保证是：**同一 NDK + 同一版本 同一产物**（cargo install 的输入与 NDK clang 都钉住了）。要更强保证需另设判据，本项不声称。",
       "version": "14.1.1",
       "builtFrom": {
         "tool": "cargo",
@@ -271,7 +271,7 @@
       "urls": [
         "https://github.com/lobbowen/lob-os/raw/main/scripts/patches/openssl-libname-variant.patch"
       ],
-      "note": "=> 而那 SONAME 逐字**不**与**那宿主**那**同名**、=> 而那**改名**由**那 shlib_variant **那一族**给=> 而那那**钉值**逐字**跟**那**实际字节**走（=> 而那那**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上、=> 而而那它逐字**不**由「那一族逐字是什么」顶掉）=> 而那那 `554b197` 逐字改了那 patch 逐字**那几行**`+` 逐字（=> 而那那**注释**逐字）、=> 而而那那**上下文行**逐字**一行**没动、=> 而而那那**打上**逐字**不受**影响"
+      "note": " SONAME 逐字**不**与**那宿主**那**同名**、**改名**由**那 shlib_variant **那一族**给**钉值**逐字**跟**那**实际字节**走（**判据**逐字是「那字节逐字是不是那实际字节」那一个事实上、它逐字**不**由「那一族逐字是什么」顶掉） `554b197` 逐字改了那 patch 逐字**那几行**`+` 逐字（**注释**逐字）、**上下文行**逐字**一行**没动、**打上**逐字**不受**影响"
     },
     "libcxx": {
       "name": "libcxx",
@@ -339,7 +339,7 @@
       "piece": false
     },
     "kernel-src": {
-      "$comment": "=> 而那**整棵**内核源码树那一族逐字**进**那仓内、=> 而它逐字**是**那取件那一族、=> 而它逐字**走**那 fetch-pinned.sh 那一条现成的路。=> 而那那 **sha256** 那一格逐字**记**的是那**内容**那一个数、=> 而那那 **contentSha256** 那一格逐字**是**那**同一个**数、=> 而那那 **tarSha256** 那一格逐字**记**的是那**一次**下载**那一个** tar（=> 而那那 tar 那**字节**逐字**每次**换、=> 而那那**两个**读法逐字**都**留着）。=> 而那那 tar 逐字**不**含那 .git/（=> 而那那 build-kernel-image.sh 逐字 :35 那一行 那「git -C \"$KERNEL_SRC\" rev-parse HEAD」逐字**要**那**那一个** git 仓、=> 而那那 tar **给不了**）、=> 而那那 **整棵**源码树那一族逐字**只能**从**那 git** 那一侧**取**（=> 而那那 git 那一侧逐字**这**一**轮**TLS **握手**败、=> 而按 C-105 报缺**）。",
+      "$comment": "**整棵**内核源码树那一族逐字**进**那仓内、它逐字**是**那取件那一族、它逐字**走**那 fetch-pinned.sh 那一条现成的路。 **sha256** 那一格逐字**记**的是那**内容**那一个数、 **contentSha256** 那一格逐字**是**那**同一个**数、 **tarSha256** 那一格逐字**记**的是那**一次**下载**那一个** tar（ tar 那**字节**逐字**每次**换、**两个**读法逐字**都**留着）。 tar 逐字**不**含那 .git/（ build-kernel-image.sh 逐字 :35 那一行 那「git -C \"$KERNEL_SRC\" rev-parse HEAD」逐字**要**那**那一个** git 仓、 tar **给不了**）、 **整棵**源码树那一族逐字**只能**从**那 git** 那一侧**取**（ git 那一侧逐字**这**一**轮**TLS **握手**败、按 C-105 报缺**）。",
       "name": "kernel-src",
       "version": "6.6.144",
       "commit": "18e7dadae19bd16a5a027d8bd95663f759af51fa",
@@ -353,7 +353,7 @@
       "piece": false
     },
     "libutils": {
-      "$comment": "=> 而那那 **libutils** 那一族逐字**是**那 platform/system/core 底下那 libutils **那一个目录**（=> 而那**它**逐字**不是**那一个**顶层**项目**、=> 而那那 manifest 那 1425 个**项目**里逐字**没有**那一个、=> 而那那 platform/system/core 那**顶层**逐字**含**那 libutils）。=> 而那那 **sha256** 那一格逐字**记**的是那**内容**那一个数、=> 而那那 **contentSha256** 那一格逐字**是**那**同一个**数、=> 而那那 **tarSha256** 那一格逐字**记**的是那**一次**下载**那一个** tar（=> 而那那 tar 那**字节**逐字**每次**换、=> 而那那**两个**读法逐字**都**留着）。=> 而那那**路径**逐字**不**是那 platform/system/core/libutils（=> 而那那一处逐字 = 那 HTTP 404）。 => 而那那**分支**对应逐字 = 那 android15-release（=> 而那那**证据**逐字**是**那**服务端**给的：那 manifest 那 default.xml 逐字那 revision=\"android15-release\"）。",
+      "$comment": " **libutils** 那一族逐字**是**那 platform/system/core 底下那 libutils **那一个目录**（**它**逐字**不是**那一个**顶层**项目**、 manifest 那 1425 个**项目**里逐字**没有**那一个、 platform/system/core 那**顶层**逐字**含**那 libutils）。 **sha256** 那一格逐字**记**的是那**内容**那一个数、 **contentSha256** 那一格逐字**是**那**同一个**数、 **tarSha256** 那一格逐字**记**的是那**一次**下载**那一个** tar（ tar 那**字节**逐字**每次**换、**两个**读法逐字**都**留着）。**路径**逐字**不**是那 platform/system/core/libutils（一处逐字 = 那 HTTP 404）。 **分支**对应逐字 = 那 android15-release（**证据**逐字**是**那**服务端**给的：那 manifest 那 default.xml 逐字那 revision=\"android15-release\"）。",
       "name": "libutils",
       "version": "32bd7a7dd519",
       "commit": "32bd7a7dd5190626302b661d818f1d23d9be7b0b",

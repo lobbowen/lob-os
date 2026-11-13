@@ -105,7 +105,7 @@ class TerminalSession private constructor(
             //  **宿主**逐字要在（ 它逐字**只**是那 APK 里那一份、 它逐字不是要另装的件）
             val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
                 ?: throw IllegalStateException(
-                    "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（=> 而那它逐字是那 APK 里那一份）",
+                    "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它逐字是那 APK 里那一份）",
                 )
             //  argv 逐字**默认**是那解释器（ 它逐字**没有**参数 它逐字**等**输入）
             //

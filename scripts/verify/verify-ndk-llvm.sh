@@ -32,7 +32,7 @@ GOT_NDK="$(awk -F= '/^Pkg\.Revision/ {gsub(/[[:space:]]/,"",$2); print $2; exit}
 WANT_NDK="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --ndk)"
 if [ "$GOT_NDK" != "$WANT_NDK" ]; then
   die "已坏：NDK 版本与钉值不符" \
-    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion。坏在哪：用这个 NDK 编出来的 .so 依赖的是另一套 sysroot => 真机装载期报缺符号，而症状与「符号写错了」一模一样"
+    "钉值表要 $WANT_NDK，实际读到 $GOT_NDK（目录 $NDK）—— 若这与 locate-ndk.sh 报的目录不是同一个，说明两个脚本解析 NDK 的规则不一致（这里从 CC 反推，locate-ndk.sh 从 \$SDK/ndk/<钉值> 取；别再让 ANDROID_NDK_LATEST_HOME 抢先，它在 runner 上是预装的老版本）。换 NDK 要同时改 component-sources.json 的 ndkVersion。坏在哪：用这个 NDK 编出来的 .so 依赖的是另一套 sysroot 真机装载期报缺符号，而症状与「符号写错了」一模一样"
 fi
 
 CLANG=""
@@ -50,7 +50,7 @@ CLANG=""
 # NDK 里那个叫 `aarch64-linux-android35-clang`（ **带三元组前缀**），
 # locate-ndk.sh:49 逐字是 `CC="$TC/aarch64-linux-android35-clang"`，
 # 它**找得到**（ CI 那一趟 step 4 逐字是「[ndk] clang: Android (16134705, …) clang version 21.0.0」）。
-# 所以这一处的 CLANG **一直是空的** => `set -u` 下一行就炸
+# 所以这一处的 CLANG **一直是空的** `set -u` 下一行就炸
 # 报出来的是「CLANG: unbound variable」而不是「NDK 里找不到 clang」。
 #
 # **处置**：这一处**从 CC 反推**（ CC 是 locate-ndk.sh 注入的那一个，

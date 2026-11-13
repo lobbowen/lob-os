@@ -59,7 +59,7 @@ verify_local() {
   #   而「第三参」那一格保留着：它仍可用于「我明确知道这一件该有的 entry」的调用方（自检用）。
   meta_prov="$(read_meta_entry "$f" | node -e '
     let d = "";
-    process.stdin.on("data", c => d += c).on("end", () => {
+    process.stdin.on("data", c d += c).on("end", () {
       try { const m = JSON.parse(d); process.stdout.write(String(m.entryProvenance || "")); } catch (e) {}
     });
   ' 2>/dev/null)"
@@ -70,7 +70,7 @@ verify_local() {
   if [ -n "$WANT_ENTRY" ]; then
     entry="$(read_meta_entry "$f" | node -e '
       let d = "";
-      process.stdin.on("data", c => d += c).on("end", () => {
+      process.stdin.on("data", c d += c).on("end", () {
         try { process.stdout.write((JSON.parse(d).entry) || ""); } catch (e) {}
       });
     ' 2>/dev/null)"

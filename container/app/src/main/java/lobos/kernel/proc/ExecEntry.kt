@@ -97,19 +97,19 @@ object ExecEntry {
         // —— linker64 出现两次。
         //
         // **而那一层只能有一层，而那一层必须由这一侧显式给**（07 设备侧 2026-10-24 的读数）：
-        //  · X1（直接起入口）=> argv 里 linker64 出现 **0 次**、exit=0
+        //  · X1（直接起入口）argv 里 linker64 出现 **0 次**、exit=0
         //    个入口带 PT_INTERP = /system/bin/linker64，
         //       **而内核 exec 它时并没有把那条解释器加进 argv**
         //       所以「入口带 PT_INTERP 内核会替我们套」这个前提**不成立**
-        //  · X2（argv[0]=linker64, argv[1]=入口）=> exit=0
+        //  · X2（argv[0]=linker64, argv[1]=入口）exit=0
         //    正是**显式**套那一层的形态 它是跑得通的那一条
-        //  · X3（两层都套）=> `error: linker cannot load itself`、exit=1
+        //  · X3（两层都套）`error: linker cannot load itself`、exit=1
         //
         // ** 所以判据是「有没有已经被替过」**，而**不是**「入口带不带 PT_INTERP」：
         //   替过了（argv[0] 已是 linker64） 不再替
-        //     （ 否则两层 => linker64 把自己当程序加载 => call_constructors => libc 初始化链崩；
+        //     （ 否则两层 linker64 把自己当程序加载 call_constructors libc 初始化链崩；
         //      AOSP linker_main.cpp:358 那一处注释写的正是「the linker attempts to execute itself」）；
-        //   没替过 => **显式套** SYSTEM_LINKER。
+        //   没替过 **显式套** SYSTEM_LINKER。
         //
         // **而为什么必须显式套**（07 设备侧 2026-10-24 的读数，0e447ef 那一版的回归）：
         //   那四份入口在设备上是 u:object_r:app_data_file:s0，

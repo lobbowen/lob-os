@@ -42,7 +42,7 @@ bad() { echo "::error title=$1::$2"; FAIL=1; }
 read_field() {
   local key="$1"
   if command -v node >/dev/null 2>&1; then
-    node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const j=JSON.parse(d);process.stdout.write(String(j[process.argv[1]]||""))}catch(e){}})' "$key" < "$SHAPE"
+    node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{const j=JSON.parse(d);process.stdout.write(String(j[process.argv[1]]||""))}catch(e){}})' "$key" < "$SHAPE"
   else
     python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$SHAPE" "$key"
   fi
@@ -107,7 +107,7 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
       # 读不到 SONAME 那份字节没自说它叫什么 按 C-05 报缺，不替它编
       bad "SONAME 读不到" "lib/$base 那份字节没有 DT_SONAME —— 它自述的 SONAME 是什么读不出来，报缺（不替它编）"
     elif [ "$soname" = "$root" ]; then
-      say "  SONAME=$soname 与开发名同名 => 按那个形状就是 $n 段，自洽"
+      say "  SONAME=$soname 与开发名同名 按那个形状就是 $n 段，自洽"
     else
       # SONAME 与开发名不同名 链里必须有一层就叫 SONAME
       case " $chain " in

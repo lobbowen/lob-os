@@ -4145,36 +4145,36 @@
     },
     {
       "file": "upstream/abi_gki_aarch64.stg",
-      "kind": "那 KMI 那一族的**真**出处（=> 而那 **android15-6.6** 那一版的**那** android/abi_gki_aarch64.stg）",
+      "kind": "那 KMI 那一族的**真**出处（ **android15-6.6** 那一版的**那** android/abi_gki_aarch64.stg）",
       "title": "那 KMI 符号清单本体",
       "isKernelData": true,
       "status": "已核",
-      "note": "=> 而那**它**逐字**是**那 KMI **符号清单本体**（=> 而那 kmi.html 与那 lkm.html **只**是那**网页**）、=> 而那**它**逐字**是**那**完整**的**一份**（=> 而**不**是**那 4227072** 字节**那**截断**的一份**） => 而那 lines 与那 bytes 逐字**改成**那**现行**的那一份那**两**个**数**（=> 而那 457887 与那 8024104）、=> 而那**旧**的那一份逐字**留档**在**那** replacedFrom **那一族**里（=> 而那 555592 与那 9789395、=> 而按 C-115）、=> 而那**校验脚本**逐字**只核**那 sha256（=> 而那 lines 与那 bytes **那两**格逐字**不**在**那判据**里面、=> 而那**实施**归 **05**、=> 而按 C-105 报缺）",
+      "note": "**它**逐字**是**那 KMI **符号清单本体**（ kmi.html 与那 lkm.html **只**是那**网页**）、**它**逐字**是**那**完整**的**一份**（**不**是**那 4227072** 字节**那**截断**的一份**）  lines 与那 bytes 逐字**改成**那**现行**的那一份那**两**个**数**（ 457887 与那 8024104）、**旧**的那一份逐字**留档**在**那** replacedFrom **那一族**里（ 555592 与那 9789395、按 C-115）、**校验脚本**逐字**只核**那 sha256（ lines 与那 bytes **那两**格逐字**不**在**那判据**里面、**实施**归 **05**、按 C-105 报缺）",
       "path": "docs/kernel-baseline/upstream/abi_gki_aarch64.stg",
       "sha256": "481104a10434fba05ce5dca36aa22c2ddb3639c059d94e146c9a53ec9f84132b",
       "lines": 457887,
       "bytes": 8024104,
       "source": "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/android/abi_gki_aarch64.stg?format=TEXT",
-      "fetchMethod": "curl -sL --http1.1 --max-time 380 --retry 2 --retry-delay 3（=> 而那 --http1.1 **那一个**参数**要**带**、=> 而**不**带**就**那 curl **退出码 35**）",
+      "fetchMethod": "curl -sL --http1.1 --max-time 380 --retry 2 --retry-delay 3（ --http1.1 **那一个**参数**要**带**、**不**带**就**那 curl **退出码 35**）",
       "replacedFrom": {
         "sha256": "a5bb07726682383798f24afd129e6f67834e8f74855bd2bc38128dd16cb4f2e2",
         "bytes": 9789395,
         "lines": 555592,
         "source": "https://android.googlesource.com/kernel/common/+/refs/heads/android16-6.12/gki/aarch64/abi.stg?format=TEXT",
         "archivedAs": "docs/kernel-baseline/upstream/abi_gki_aarch64.android16-6.12.stg",
-        "note": "=> 而那**旧**的**那一份**逐字**是**那 **android16-6.12** 那一版、=> 而那**它**逐字**留档不删**（=> 而按 C-115）。"
+        "note": "**旧**的**那一份**逐字**是**那 **android16-6.12** 那一版、**它**逐字**留档不删**（按 C-115）。"
       },
       "countedFrom": "docs/kernel-baseline/upstream/abi_gki_aarch64.stg"
     }
   ],
   "upstream": {
-    "note": "那上游的**原件**逐字**在**那仓内、=> 而那**差集**逐字**机械**核过",
+    "note": "那上游的**原件**逐字**在**那仓内、**差集**逐字**机械**核过",
     "initKconfig": {
       "localPath": "docs/kernel-baseline/kconfig",
       "upstreamPath": "docs/kernel-baseline/upstream/Kconfig",
       "upstreamSha256": "e93cb175309d0ccebd7da7d11af418978730796a0a2207af1fba4b5ca4ae0b9b",
       "diffLines": 0,
-      "note": "那 kconfig 逐字**与**上游那 init/Kconfig **一样**（=> 而那差集 = **0** 行）"
+      "note": "那 kconfig 逐字**与**上游那 init/Kconfig **一样**（差集 = **0** 行）"
     },
     "gkiDefconfig": {
       "localPath": "docs/kernel-baseline/gki_defconfig",
@@ -4187,12 +4187,12 @@
           "text": "CONFIG_ANDROID_WRAPFD=y",
           "in": "本地那一份",
           "upstream": "没有这一行",
-          "note": "=> 而那**只**差**这一**行**、=> 而那**本机**多**这一**行"
+          "note": "**只**差**这一**行**、**本机**多**这一**行"
         }
       ],
       "note": "那 gki_defconfig 逐字**与**上游那一份**逐字只差 1 行**"
     },
-    "platformNote": "那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、=> 而它们逐字**都**是「# … is not set」=> 而那后半**仍然成立**"
+    "platformNote": "那 CONFIG_PINCTRL_SUN50I_H616 与那 _H616_R 逐字**在**那份里、它们逐字**都**是「# … is not set」后半**仍然成立**"
   },
   "referencedFiles": [
     {
@@ -4205,7 +4205,7 @@
       "lines": 310,
       "bytes": 10229,
       "source": "那上游那 android15-6.6 那分支的 init/Kconfig.gki",
-      "note": "=> 而那 kconfig 第 2040 行逐字 source 它、=> 而第 2039 行是 if 64BIT、第 2041 行是 endif"
+      "note": " kconfig 第 2040 行逐字 source 它、第 2039 行是 if 64BIT、第 2041 行是 endif"
     }
   ],
   "kmiSource": {
@@ -4214,15 +4214,15 @@
     "lines": 457887,
     "bytes": 8024104,
     "source": "https://android.googlesource.com/kernel/common/+/18e7dadae19bd16a5a027d8bd95663f759af51fa/android/abi_gki_aarch64.stg?format=TEXT",
-    "fetchMethod": "curl -fsSL --http1.1 --max-time 380 --retry 2 --retry-delay 3（=> 而那**空**的**要**重**取**、=> 而那上游逐字**偶尔**给**那**空**的**）",
-    "note": "=> 而那**它**逐字**是**那 KMI **那一族**的**真**出处、=> 而那 kmi.html 与那 lkm.html **只**是那**网页**、=> 而那**它**逐字**是**那**内核**的**数据**（=> 而**不**是**那用户态**件**的**分母**）。=> 而那**这一件**逐字**是**那 **android15-6.6** 那一版（=> 而那**它**逐字**跟**那钉值表**那一格**对得上**）、=> 而那 **android15-6.6** 那一版逐字**没有**那 gki/aarch64/abi.stg、=> 而那**它**逐字**是**那 **android/**底下**那一个**。",
+    "fetchMethod": "curl -fsSL --http1.1 --max-time 380 --retry 2 --retry-delay 3（**空**的**要**重**取**、上游逐字**偶尔**给**那**空**的**）",
+    "note": "**它**逐字**是**那 KMI **那一族**的**真**出处、 kmi.html 与那 lkm.html **只**是那**网页**、**它**逐字**是**那**内核**的**数据**（**不**是**那用户态**件**的**分母**）。**这一件**逐字**是**那 **android15-6.6** 那一版（**它**逐字**跟**那钉值表**那一格**对得上**）、 **android15-6.6** 那一版逐字**没有**那 gki/aarch64/abi.stg、**它**逐字**是**那 **android/**底下**那一个**。",
     "replacedFrom": {
       "sha256": "a5bb07726682383798f24afd129e6f67834e8f74855bd2bc38128dd16cb4f2e2",
       "lines": 555592,
       "bytes": 9789395,
       "source": "https://android.googlesource.com/kernel/common/+/refs/heads/android16-6.12/gki/aarch64/abi.stg?format=TEXT",
       "archivedAs": "docs/kernel-baseline/upstream/abi_gki_aarch64.android16-6.12.stg",
-      "note": "=> 而那**旧**的**那一份**逐字**是**那 **android16-6.12** 那一版、=> 而那**它**逐字**留档不删**（=> 而按 C-115）。"
+      "note": "**旧**的**那一份**逐字**是**那 **android16-6.12** 那一版、**它**逐字**留档不删**（按 C-115）。"
     }
   }
 }

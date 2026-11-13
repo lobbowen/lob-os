@@ -256,10 +256,10 @@ function computeEntry() {
       if (!declaredEntry) {
         return { error: '落位目录 ' + PAYLOAD + ' 的 bin/ 下有 ' + binProgram.length
           + ' 个程序形态字节（' + binProgram.join('、')
-          + '），而它们**不是同一份字节**（=> 而那不是多调用二进制那一族，'
-          + '=> 而那是「这一件有多个入口」那一问）'
-          + '—— 而这一件**没有**声明该取哪一个（=> 而那一格落在'
-          + 'component-sources.json 的 sources.<件>.entryName，=> 而它要**作者那一侧**给）' };
+          + '），而它们**不是同一份字节**（那不是多调用二进制那一族，'
+          + '那是「这一件有多个入口」那一问）'
+          + '—— 而这一件**没有**声明该取哪一个（那一格落在'
+          + 'component-sources.json 的 sources.<件>.entryName，它要**作者那一侧**给）' };
       }
       if (binProgram.indexOf(declaredEntry) < 0) {
         return { error: '这一件声明的入口名 ' + declaredEntry + ' 不在落位结果那几项里（'
@@ -268,7 +268,7 @@ function computeEntry() {
       return {
         entry: 'bin/' + declaredEntry,
         by: '落位结果：bin/ 下有 ' + binProgram.length + ' 个程序形态字节（'
-          + binProgram.join('、') + '），而它们**不是同一份字节**（=> 而那不是多调用那一族）'
+          + binProgram.join('、') + '），而它们**不是同一份字节**（那不是多调用那一族）'
           + '；入口取作者那一侧声明的那一个 bin/' + declaredEntry
           + (libPrimary.length > 0 ? '；该件同时带库 ' + libPrimary.length + ' 份' : ''),
         role: 'program',
@@ -376,13 +376,13 @@ function computeEntry() {
         + ' 个程序形态字节（多调用二进制），而这一件**没有**声明入口该取它自己 install 的那一组名字里的哪一个'
         + '（本体那份 bin/' + body + ' 不认自己的文件名；它自己 install 的是 '
         + (aliasNames.length ? aliasNames.join('、') : '空') + '）'
-        + '—— 而「取哪一个」是**使用期**的分布（=> 而 busybox 认全部那些名字，=> 而它没有「唯一一个更真」的名字）'
-        + '=> 而它要**那一件的作者那一侧**给（=> 而那一份落在 component-sources.json 的 sources.<件>.entryName）' };
+        + '—— 而「取哪一个」是**使用期**的分布（busybox 认全部那些名字，它没有「唯一一个更真」的名字）'
+        + '它要**那一件的作者那一侧**给（那一份落在 component-sources.json 的 sources.<件>.entryName）' };
     }
     if (aliasNames.indexOf(declared) < 0) {
       return { error: '这一件声明的入口名 ' + declared + ' 不在它自己 install 的那一组里（'
         + (aliasNames.length ? aliasNames.join('、') : '空') + '）—— 而本体那份 bin/' + body
-        + ' 不认自己的文件名，=> 而那不是一个可用的入口名' };
+        + ' 不认自己的文件名，那不是一个可用的入口名' };
     }
     return {
       entry: 'bin/' + declared,
@@ -475,7 +475,7 @@ function isCommandInterpreter(computed, id) {
   } catch (e) {
     //  读不到时逐字**报缺**（ 按 C-05 不猜填、 不把那一件**默认**当解释器）。
     console.error('::warning title=期望声明读不到::' + path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json')
-      + ' 读不到（=> 而那一件逐字**不**判成 shell、=> 而那按 C-05 报缺）');
+      + ' 读不到（那一件逐字**不**判成 shell、那按 C-05 报缺）');
     return false;
   }
   const piece = decl && decl.pieces && decl.pieces[id];

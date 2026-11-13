@@ -17,7 +17,7 @@
 # 判别形式（可机械核，三条）：
 #   一，**每一件**自己的 SRC_FILES **非空**；
 #   二，**每一件**算出来的 src 段**互不相同**（ 「字节同源」的那一对是**预期**， 不判重）；
-#   三，**改**某一件自己的 recipe => **那一件**的 src 段**要变**
+#   三，**改**某一件自己的 recipe **那一件**的 src 段**要变**
 #      （ 这**要改一次仓**才能核， 今天本条**不**核它， 它留给 CI 那一步）。
 #
 # 而**为什么必须独立于 cache-key.sh 自身**：
@@ -70,7 +70,7 @@ for t in "${TOOLS[@]}"; do
     *) echo "::error title=本条不认这个件名::$t —— 而它是新加的， 本条那一族要**同步**加它"; BAD=$((BAD+1)); continue ;;
   esac
   if [ -z "$own" ]; then
-    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、=> 而那意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
   # 二、**自己**按 cache-key.sh:188 那一行的算法重算一遍「它自己那些文件的聚合」
@@ -79,7 +79,7 @@ for t in "${TOOLS[@]}"; do
   # 三、**cache-key.sh 那个 case 里它自己那一条在不在**（ **才是**「取错了输入」那一族）
   # **必须**从那一行**逐字**读出来（ 不能用本条自己算的值替代它）
   if ! grep -qE "^  $t\) +SRC_FILES=\"" scripts/toolchain/cache-key.sh; then
-    echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、=> 而那意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
   # 四、**cache-key.sh 算出来的那一个**是不是上面那一个（ **该**含 PKG_MECH， 所以本条核的是**它自己那部分**在不在）

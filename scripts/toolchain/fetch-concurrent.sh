@@ -16,8 +16,8 @@ URL="${1:?需要 url}"
 DST="${2:?需要目标文件}"
 EXPECT="${3:?需要期望字节数}"
 
-CHUNK="${CHUNK_BYTES:-1048576}"     # => 而那每片逐字 1 MiB
-CONC="${CONCURRENCY:-16}"           # => 而那并发逐字 16
+CHUNK="${CHUNK_BYTES:-1048576}"     # 每片逐字 1 MiB
+CONC="${CONCURRENCY:-16}"           # 并发逐字 16
 PARTDIR="$(mktemp -d)"
 trap 'rm -rf "$PARTDIR"' EXIT
 
@@ -54,7 +54,7 @@ for f in "$PARTDIR"/part.*; do
   got=$((got + $(stat -c %s "$f" 2>/dev/null || echo 0)))
 done
 if [ "$got" != "$EXPECT" ]; then
-  echo "报缺：那取下来的字节数逐字 = $got、=> 而那期望值逐字 = $EXPECT（=> 而那按 C-05 报缺）" >&2
+  echo "报缺：那取下来的字节数逐字 = $got、期望值逐字 = $EXPECT（按 C-05 报缺）" >&2
   exit 1
 fi
 
@@ -69,13 +69,13 @@ done
 case "$(head -c 2 "$DST" | od -An -tx1 | tr -d ' \n')" in
   504b)
     unzip -t "$DST" >/dev/null 2>&1 || {
-      echo "报缺：那 unzip -t 逐字**不过**（=> 而那取回来的逐字**不完整**）" >&2
+      echo "报缺：那 unzip -t 逐字**不过**（取回来的逐字**不完整**）" >&2
       exit 1
     }
-    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT；=> 而那 unzip -t 逐字**过**"
+    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT； unzip -t 逐字**过**"
     ;;
   *)
-    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT；=> 而那**不是** zip、=> 而那 unzip -t 那一格逐字**不**判"
+    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT；**不是** zip、 unzip -t 那一格逐字**不**判"
     ;;
 esac
 exit 0

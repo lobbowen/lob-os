@@ -29,8 +29,8 @@ die() { echo "::error title=$1::$(printf '%s\n' "${@:2}")" >&2; exit 1; }
 note() { echo "[kernel-image] $*"; }
 
 # **tree** 与那 **commit** **那两**个**数** 逐字**是**那**钉值**（ **它**们**不**是**那**归档**的**字节**）。
-[ -d "$KERNEL_SRC" ] || die "缺内核源码" "$KERNEL_SRC 不在（=> 而那内核源码逐字在仓外，=> 而按 C-105 报缺）"
-[ -f "$BUSYBOX_BIN" ] || die "缺静态 busybox" "$BUSYBOX_BIN 不在（=> 而那 initramfs 那一层逐字要那静态的那一个，=> 而按 C-105 报缺）"
+[ -d "$KERNEL_SRC" ] || die "缺内核源码" "$KERNEL_SRC 不在（内核源码逐字在仓外，按 C-105 报缺）"
+[ -f "$BUSYBOX_BIN" ] || die "缺静态 busybox" "$BUSYBOX_BIN 不在（ initramfs 那一层逐字要那静态的那一个，按 C-105 报缺）"
 
 COMMIT="$(git -C "$KERNEL_SRC" rev-parse HEAD)"
 TREE="$(git -C "$KERNEL_SRC" rev-parse "HEAD^{tree}")"
@@ -43,7 +43,7 @@ note "版本：$KVER"
 
 # **归档**那一族逐字**不能**当**那钉值来源**（ **它**逐字**每次**换**那字节**、
 # **钉值**逐字**用**那 tree 对象**与**那 commit）。
-note "归档那一族不作钉值来源（=> 而那 tree 对象与那 commit 才是那一族）"
+note "归档那一族不作钉值来源（ tree 对象与那 commit 才是那一族）"
 
 # **initramfs** **那一层** 逐字**要**那**静态**的**那一个** busybox **与**那 /init。
 IRFS_STAGE="$OUT/initramfs-root"
@@ -58,7 +58,7 @@ if [ -d "$BUSYBOX_LINK_DIR" ]; then
     ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
   done
 else
-  note "initramfs 那一层：bin/busybox（静态）+ init（=> 而那 applet 软链**没有**、=> 而按 C-105 报缺）"
+  note "initramfs 那一层：bin/busybox（静态）+ init（ applet 软链**没有**、按 C-105 报缺）"
 fi
 # **applet** **软链**逐字**要**跟**那**本体**一**起**装**（ **sh** **那一族**逐字**要**那 **sh**、
 # **[** **那一族**逐字**要**那 **[**、 **它们**逐字**是**那**两**件**事**）。
@@ -69,7 +69,7 @@ if [ -d "$BUSYBOX_LINK_DIR" ]; then
     ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
   done
 else
-  note "initramfs 那一层：bin/busybox（静态）+ init（=> 而那 applet 软链**没有**、=> 而按 C-105 报缺）"
+  note "initramfs 那一层：bin/busybox（静态）+ init（ applet 软链**没有**、按 C-105 报缺）"
 fi
 chmod 0755 "$IRFS_STAGE/bin/busybox"
 cp "$ROOT/scripts/initramfs/lobos-init" "$IRFS_STAGE/init"
@@ -85,7 +85,7 @@ for A in rootfs.squashfs rootfs.erofs; do
     cp "$ROOTFS_DIR/$A" "$IRFS_STAGE/$A"
     note "initramfs 那一层：$A（$(( $(stat -c %s "$IRFS_STAGE/$A") / 1024 )) KiB）"
   else
-    note "initramfs 那一层：没有那 $A（=> 而那系统层逐字**挂不上**、=> 而按 C-105 报缺）"
+    note "initramfs 那一层：没有那 $A（系统层逐字**挂不上**、按 C-105 报缺）"
   fi
 done
 note "initramfs 那一层：bin/busybox（静态）+ init"
@@ -96,11 +96,11 @@ python3 "$ROOT/scripts/initramfs/mkinitramfs.py" "$IRFS_STAGE" "$OUT/initramfs.c
 # **判据**： **静态**的**那一个**逐字**不**能**有**那 PT_INTERP**（ CMake 逐字**要**它**不**要**那 linker64**）。
 if command -v readelf >/dev/null 2>&1; then
   if readelf -W -l "$IRFS_STAGE/bin/busybox" 2>/dev/null | grep -q INTERP; then
-    die "那静态的判定没过" "$IRFS_STAGE/bin/busybox 有 PT_INTERP => 而那它逐字是动态的那一族、=> 而那 initramfs 那一层逐字要那静态的那一个"
+    die "那静态的判定没过" "$IRFS_STAGE/bin/busybox 有 PT_INTERP 它逐字是动态的那一族、 initramfs 那一层逐字要那静态的那一个"
   fi
   note "静态判定：有那静态的那一个（无 PT_INTERP）"
 else
-  note "静态判定：跳过（=> 而那 readelf 不在，=> 而按 C-105 报缺）"
+  note "静态判定：跳过（ readelf 不在，按 C-105 报缺）"
 fi
 
 # **设备树** 逐字**只**挡**那**起得来**那一件**、 **Image** **逐字不等**它。
@@ -116,7 +116,7 @@ if [ -n "$DTS" ]; then
   cp "$DTS" "$OUT/"
   note "设备树（附带）：$(basename "$DTS")"
 else
-  note "设备树：逐字**不在**这**一支**（=> 而那 **Image** 逐字不等**它**、=> 而那**起得来**那一件逐字**要**它**）"
+  note "设备树：逐字**不在**这**一支**（ **Image** 逐字不等**它**、**起得来**那一件逐字**要**它**）"
 fi
 
 # **内核镜像** 逐字**要**那 **Image** **那一件**（ 它**要**那 aarch64 **交叉编译器**）。
@@ -140,7 +140,7 @@ note "编内核（$JOBS 作业）"
 # **两者**逐字**是**那**两**件**事**、 **处置**逐字**不合并**）。
 # **DEFCONFIG** **环境变量** 逐字**给**那**哪**一份**（ **默认**逐字**是**那仓内那一份**）。
 DEFCONFIG="${DEFCONFIG:-$ROOT/docs/kernel-baseline/gki_defconfig}"
-[ -f "$DEFCONFIG" ] || die "缺 defconfig" "$DEFCONFIG 不在（=> 而按 C-105 报缺）"
+[ -f "$DEFCONFIG" ] || die "缺 defconfig" "$DEFCONFIG 不在（按 C-105 报缺）"
 note "defconfig：$DEFCONFIG（$(stat -c%s "$DEFCONFIG") 字节、sha256 $(sha256sum "$DEFCONFIG" | cut -c1-16)）"
 make -C "$KERNEL_SRC" O="$KBUILD" ARCH=arm64 CROSS_COMPILE="$CROSS_BIN/$CROSS" HOSTCC="$HOSTCC" \
   olddefconfig \
@@ -161,7 +161,7 @@ cat > "$OUT/kernel-image-meta.json" << METAEOF
   "version": "$KVER",
   "commit": "$COMMIT",
   "tree": "$TREE",
-  "pinNote": "=> 而那归档那一族逐字每次换那字节、=> 而那它不作那钉值来源、=> 而那钉值逐字用那 tree 对象与那 commit 那两个数"
+  "pinNote": "归档那一族逐字每次换那字节、它不作那钉值来源、钉值逐字用那 tree 对象与那 commit 那两个数"
 }
 METAEOF
 note "钉值已带进产物：kernel-image-meta.json（tree=$TREE commit=$COMMIT version=$KVER）"

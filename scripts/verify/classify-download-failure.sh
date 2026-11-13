@@ -123,10 +123,10 @@ if [ "${1:-}" = "--selftest" ]; then
     printf '  %-12s HTTP=%s\n' "$(basename "$f")" "$(http_of "$(tr -d '\r' < "$f" | head -5)")"
   done
   echo ""
-  echo "== 阳性对照：那一族判别逐字能区分（=> 而不是全落 unknown）=="
+  echo "== 阳性对照：那一族判别逐字能区分（不是全落 unknown）=="
   for f in "$W"/*.txt; do printf '  %-12s -> %s\n' "$(basename "$f")" "$(classify_download_failure "$(tr -d '\r' < "$f" | head -5)")"; done
   echo ""
-  echo "== 响应头那一档（=> 而那判据逐字落在请求上）=="
+  echo "== 响应头那一档（判据逐字落在请求上）=="
   printf 'HTTP/1.1 403 Forbidden\r\nx-ratelimit-limit: 5000\r\nx-ratelimit-remaining: 0\r\nretry-after: 60\r\n' > "$W/h-rl.txt"
   printf 'HTTP/1.1 404 Not Found\r\nx-github-request-id: ABC:123\r\n' > "$W/h-404.txt"
   printf 'HTTP/1.1 200 OK\r\nx-ratelimit-limit: 5000\r\nx-ratelimit-remaining: 4307\r\n' > "$W/h-ok.txt"

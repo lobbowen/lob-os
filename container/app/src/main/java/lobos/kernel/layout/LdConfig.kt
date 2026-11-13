@@ -19,7 +19,7 @@ object LdConfig {
 
         //  [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**。
         //    而原来这一支逐字是 `.filter { ProgramIndex.isPiece(ctx, it) }`，
-        //    isPiece 逐字是「assetEntry 空 => PIECE」， 它**只**收**纯库件**那一族
+        //    isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收**纯库件**那一族
         //       （ crypto / curl / zlib 那一族）。
         //    **程序形态**那一族（ busybox / bash / jq / openssl / ripgrep）**不在**里面，
         //    它们 bin/ 下那些命令入口**从来没被扫过**，
@@ -106,7 +106,7 @@ object LdConfig {
                 linked += landed.created
                 if (!landed.ok) unresolved += landed.detail
                 log += landed.log
-                log += "kind1 " + soname + " 只有一件提供（" + cands[0].first + "）=> 指向它"
+                log += "kind1 " + soname + " 只有一件提供（" + cands[0].first + "）指向它"
                 continue
             }
             val shas = cands.map { it.third }.toSet()
@@ -124,9 +124,9 @@ object LdConfig {
             if (!landed.ok) unresolved += landed.detail
             log += landed.log
             log += "kind2 " + soname + " 共 " + cands.size +
-                " 处提供（字节逐字相同）=> 指向 " + first.first +
+                " 处提供（字节逐字相同）指向 " + first.first +
                 "；而「无害」不该靠「恰好扫到了哪一个」"
-            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）=> 指向 " +
+            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）指向 " +
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
         }            }
         }
@@ -205,7 +205,7 @@ object LdConfig {
      *
      * [!] 缺陷名（C-102）**这一格挑错了同一件里的那一个** —— 而它治的是**对象那一层**：
      *   而原来这一支逐字是 `if (!ProgramIndex.isPiece(ctx, e)) continue`，
-     *   isPiece 逐字是「assetEntry 空 => PIECE」， 它**只**收 Level.PIECE 那一族。
+     *   isPiece 逐字是「assetEntry 空 PIECE」， 它**只**收 Level.PIECE 那一族。
      *   一族的成员是「**纯库件**」（ crypto / curl / zlib 那一族，
      *      它们**真的**只有 lib/ 下的字节、 它们**没有** bin/ 目录）。
      *   openssl 在 0a00489 那一笔之后 assetEntry 逐字是 bin/openssl（ 它非空），

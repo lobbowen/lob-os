@@ -42,7 +42,7 @@ S4="$BIG/component-curl-1.0.0-0b593614e187-android-arm64.zip"
 printf '\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00' > "$W/not-a-container.bin"
 
 SAMPLES=""
-say "== 样本组（=> 而那逐字照 01 的 S607-01 §12.2 第 3 条那五条）=="
+say "== 样本组（逐字照 01 的 S607-01 §12.2 第 3 条那五条）=="
 i=0
 for s in "$S1" "$S2" "$S3" "$S4" "$W/not-a-container.bin"; do
   i=$((i+1))
@@ -51,7 +51,7 @@ for s in "$S1" "$S2" "$S3" "$S4" "$W/not-a-container.bin"; do
     SAMPLES="$SAMPLES$s
 "
   else
-    say "  样本$i = （不在本机）=> 按 C-05 报缺，不猜"
+    say "  样本$i = （不在本机）按 C-05 报缺，不猜"
     SAMPLES="$SAMPLES$s
 "
   fi
@@ -86,14 +86,14 @@ kotlin_form() {
 }
 
 say ""
-say "== 三侧逐字过那五份样本（=> 而每一侧逐字都要给出那一列）=="
+say "== 三侧逐字过那五份样本（每一侧逐字都要给出那一列）=="
 KT_MISSING=0
 printf '%-4s %-14s %-12s %-12s %-12s %s\n' "#" "样本" "shell" "Node" "Kotlin" "口径"
 n=0
 while IFS= read -r s; do
   n=$((n+1))
   if [ -z "$s" ]; then
-    printf '%-4s %-14s %-12s %-12s %-12s %s\n' "$n" "（缺）" "-" "-" "-" "=> 报缺，不猜"
+    printf '%-4s %-14s %-12s %-12s %-12s %s\n' "$n" "（缺）" "-" "-" "-" "报缺，不猜"
     continue
   fi
   sh="$(shell_form "$s")"
@@ -115,18 +115,18 @@ while IFS= read -r s; do
   printf '%-4s %-14s %-12s %-12s %-12s %s\n' "$n" "$(basename "$s" | cut -c1-13)" "$sh" "$nd" "$kt" "外壳档：sh=$sh_o nd=$nd_o kt=$kt_o"
   # **阳性对照**（依 C-108）： 每一侧逐字都要给出那列、 **列若为空**
   # 那是「那一侧没接线」、 **不是**「那一侧答不出」。
-  if [ -z "$sh" ]; then say "  => 而那 shell 侧逐字**没给出**那一列（=> 而那是「那一侧没接线」）"; RC=1; fi
-  if [ -z "$nd" ]; then say "  => 而那 Node 侧逐字**没给出**那一列（=> 而那是「那一侧没接线」）"; RC=1; fi
+  if [ -z "$sh" ]; then say "   shell 侧逐字**没给出**那一列（是「那一侧没接线」）"; RC=1; fi
+  if [ -z "$nd" ]; then say "   Node 侧逐字**没给出**那一列（是「那一侧没接线」）"; RC=1; fi
   if [ -z "$kt" ]; then
-    say "  => 而那 Kotlin 侧逐字**没给出**那一列（=> 而那本机**没有** Android 运行时、=> 而按 C-05 报缺、=> 而**不**假装跑过）"
+    say "   Kotlin 侧逐字**没给出**那一列（本机**没有** Android 运行时、按 C-05 报缺、**不**假装跑过）"
     KT_MISSING=1
   fi
   # **三侧逐字同一**那一格： 口径是「同一个**外壳**档」。
   if [ -n "$sh_o" ] && [ -n "$nd_o" ] && [ "$sh_o" != "$nd_o" ]; then
-    say "  => 而那 shell 与 Node 逐字**不同**（=> 而那一族未过）"; RC=1
+    say "   shell 与 Node 逐字**不同**（一族未过）"; RC=1
   fi
   if [ -n "$kt_o" ] && [ -n "$sh_o" ] && [ "$kt_o" != "$sh_o" ]; then
-    say "  => 而那 Kotlin 与 shell 逐字**不同**（=> 而那一族未过）"; RC=1
+    say "   Kotlin 与 shell 逐字**不同**（一族未过）"; RC=1
   fi
   # Kotlin 侧**空**时逐字**不**判「不同」（ 「空」逐字是「那一侧没接线」、
   # **不是**「那一侧答出了别的档」 **判红**逐字留给那一格「未过（缺运行时）」）。
@@ -134,18 +134,18 @@ done <<< "$SAMPLES"
 
 say ""
 say "== 口径说明（逐字照 01 的 S607-01 §12.3 第 3 条）=="
-say "  「同一个档」逐字是「同一个**外壳**档」（zip / gzip / tar / 未知），=> 而**不是**「逐字同一个字符串」。"
-say "  => 而那 zip64 逐字是 zip 那一档的**变体**：=> 而那 shell 与 Node 逐字给 zip64、"
-say "     => 而那 Kotlin 逐字给 zip（=> 而那是**有意**的、=> 而那运行期逐字**不分** zip64、"
-say "     => 而那 zip64 逐字**用同一个解包器**、=> 而那差别逐字在中央目录、=> 而**解包器自己认**）。"
-say "  => 而那 zip64 与 zip 分不分逐字归各语言侧自己要的那一档（=> 而那一格**不是**「判别源唯一」那一族管的事）。"
+say "  「同一个档」逐字是「同一个**外壳**档」（zip / gzip / tar / 未知），**不是**「逐字同一个字符串」。"
+say "   zip64 逐字是 zip 那一档的**变体**： shell 与 Node 逐字给 zip64、"
+say "      Kotlin 逐字给 zip（是**有意**的、运行期逐字**不分** zip64、"
+say "      zip64 逐字**用同一个解包器**、差别逐字在中央目录、**解包器自己认**）。"
+say "   zip64 与 zip 分不分逐字归各语言侧自己要的那一档（一格**不是**「判别源唯一」那一族管的事）。"
 
 say ""
 say "== 结论 =="
-say "  shell 侧与 Node 侧逐字**同一**（=> 而那 Node 侧逐字**调**那 shell 侧那一份）。"
-say "  Kotlin 侧那一格本机**未过（缺运行时）**（=> 而按 C-05 报缺、=> 而**不**假装跑过）。"
+say "  shell 侧与 Node 侧逐字**同一**（ Node 侧逐字**调**那 shell 侧那一份）。"
+say "  Kotlin 侧那一格本机**未过（缺运行时）**（按 C-05 报缺、**不**假装跑过）。"
 if [ "$KT_MISSING" = "1" ]; then
-  say "  => 而那 Kotlin 侧逐字**没接线**（=> 而那不是「答不出」、=> 而那是「本机没有那一门运行时」）"
+  say "   Kotlin 侧逐字**没接线**（不是「答不出」、是「本机没有那一门运行时」）"
 fi
 say ""
 say "退出码=$RC"

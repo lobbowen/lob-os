@@ -212,15 +212,15 @@ object Crypto {
                 v.update(data)
                 val ok1 = v.verify(sig)
                 oldRoute.append(
-                    "那提供者[" + r.provider + "]逐字**过**了、=> 而那验签逐字"
-                        + (if (ok1) "**过**了" else "**不过**（=> 而那签名逐字**不**配那公钥）"),
+                    "那提供者[" + r.provider + "]逐字**过**了、验签逐字"
+                        + (if (ok1) "**过**了" else "**不过**（签名逐字**不**配那公钥）"),
                 )
                 if (ok1) { ok = true; break }
             } catch (t: Throwable) {
                 oldRoute.append("那提供者[" + r.provider + "]逐字**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
             }
         }
-        if (oldRoute.isBlank()) oldRoute.append("那提供者逐字**一个**都没有（=> 而那那 `KeyFactory.Ed25519` 逐字**没**人认）")
+        if (oldRoute.isBlank()) oldRoute.append("那提供者逐字**一个**都没有（ `KeyFactory.Ed25519` 逐字**没**人认）")
 
         //  **新**读法（ `EdECPublicKeySpec` + `EdECPoint` 那一族）
         //    **设备**逐字**才**走那一条（ 它逐字**在**那 Android 上**有**）
@@ -228,7 +228,7 @@ object Crypto {
         if (!ok) {
             try {
                 if (der.size < 32) {
-                    newRoute.append("那裸那 32 字节逐字**不够**（=> 而那 DER 逐字只有 " + der.size + " 字节）")
+                    newRoute.append("那裸那 32 字节逐字**不够**（ DER 逐字只有 " + der.size + " 字节）")
                 } else {
                     val raw = der.copyOfRange(der.size - 32, der.size)
                     //  **提供者**逐字**也**逐个**试**（ `KeyFactory.getInstance("Ed25519")`
@@ -243,8 +243,8 @@ object Crypto {
                             v.update(data)
                             val ok2 = v.verify(sig)
                             newRoute.append(
-                                "那提供者[" + r.provider + "]逐字**过**了、=> 而那验签逐字"
-                                    + (if (ok2) "**过**了" else "**不过**（=> 而那签名逐字**不**配那公钥）"),
+                                "那提供者[" + r.provider + "]逐字**过**了、验签逐字"
+                                    + (if (ok2) "**过**了" else "**不过**（签名逐字**不**配那公钥）"),
                             )
                             if (ok2) { ok = true; break }
                         } catch (t: Throwable) {

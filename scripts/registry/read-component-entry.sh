@@ -12,7 +12,7 @@
 #
 # 用法：read-component-entry.sh <件名>
 #   读得到 打印那一格（纯库件是空行）
-#   读不到 => **答「没有可比对的声明」**（exit 0，输出空）—— 按 C-05「没有」就是没有，
+#   读不到 **答「没有可比对的声明」**（exit 0，输出空）—— 按 C-05「没有」就是没有，
 #   而**不报缺**（那一格不是缺件，是一个可选项）。
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -92,7 +92,7 @@ for z in "$ROOT"/dist/component-"$key"-*.zip; do
   [ -f "$z" ] || continue
   e="$(unzip -p "$z" component-meta.json 2>/dev/null | node -e '
     let d = "";
-    process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+    process.stdin.on("data", c d += c); process.stdin.on("end", () {
       try { process.stdout.write(String((JSON.parse(d).entry) || "")); } catch (e) {}
     });
   ' 2>/dev/null)"

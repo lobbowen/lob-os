@@ -147,12 +147,12 @@ if [ -n "$ENTRY" ]; then
       if [ ! -e "$STAGE/$rel" ]; then
         mkdir -p "$(dirname "$STAGE/$rel")"
         cp -Pf "$OUT/$rel" "$STAGE/$rel" || {
-          echo "::error title=$ID 软链目标搬运失败::bin/$f 指向 $rel，=> 而那一项搬不进暂存目录"
+          echo "::error title=$ID 软链目标搬运失败::bin/$f 指向 $rel，一项搬不进暂存目录"
           exit 1
         }
       fi
     done
-    echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字；=> 而那是 BINS 那一列 + 那几条软链的指向目标）"
+    echo "  （bin/ 下搬了 $(ls -A "$STAGE/bin" 2>/dev/null | wc -l) 个名字；是 BINS 那一列 + 那几条软链的指向目标）"
     #  缺陷名 C-102：旧版没建 link-farm 那一族软链。link-farm.txt 是构建侧写的清单（格式「落位相对路径<TAB>指向目标」），
     #  它在产物里，而打包这一族没读它。后果：git 按 exec-path 找 remote-https（不带 git- 前缀）找不到，
     #  退成那一个 15 字节的文字桩。
@@ -312,21 +312,21 @@ node "$ROOT/scripts/recipes/gen-component-meta.js" \
 
 # 写 RUNPATH 而不写 RPATH：curl 那份 libcurl.so 的 NEEDED 五条全是直接依赖（libssl.so / libcrypto.so / libz.so.1 /
 #  libdl.so / libc.so，readelf -d 实读）；ld.so(8):77-82：DT_RUNPATH "only to find those objects required by
-#  DT_NEEDED entries and do not apply to those objects' children" => 直接依赖这一问 RUNPATH 就够。
+#  DT_NEEDED entries and do not apply to those objects' children" 直接依赖这一问 RUNPATH 就够。
 #  这一句不能跨宿主：换到 bionic 上证据不成立（04 那条判别），「在 bionic 上实际生效」今天未过；
 #  [转述·未核原文] bionic 上 DT_RPATH 已知会白编（build-node-android.sh:363 的诊断文案这么说，未找到原文）。
 # 今天只写「同一目录」那一侧（库落 lib/ 用裸 $ORIGIN、程序落 bin/）；跨目录的 $ORIGIN/../lib 那一格今天未过。
 
 # 「写 DT_RUNPATH」那一格整段撤掉，已定的结论：
 #   CI 读数（run 39509725200，head=1946162）：--help 输出 11864 字节（非零，证明输出取到了），其中零个含 rpath 的行
-#   => 那个工具没有这个功能（不是「未过」），NDK 里那个 llvm-objcopy 根本不支持写 rpath。
+#   个工具没有这个功能（不是「未过」），NDK 里那个 llvm-objcopy 根本不支持写 rpath。
 #   唯一先例是链期参数：build-node-android.sh:299 的 LDFLAGS_TARGET_OVERRIDE（--enable-new-dtags + -rpath '$ORIGIN'），
 #   另两处也写明「只有 DT_RPATH 不行」：verify-runtime-elf.sh:321 与 check-elf-deps.sh:156。
 #   「能不能在链期拿到 DT_RUNPATH」是逐件判据，八件今天都已核出来通了（busybox 静态无 .so 不适用），撤掉后七件不再判红。
 
 # 算出来的 entry 与调用方声明的那一份不一致，两处形态说法分叉了。不判红（那样会把两个真相源永远锁死），
 # 但要说出来——哪个是真相由 01/04 裁。
-META_ENTRY="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$STAGE/component-meta.json")"
+META_ENTRY="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$STAGE/component-meta.json")"
 if [ -n "$META_ENTRY" ] && [ -n "$ENTRY" ] && [ "$META_ENTRY" != "$ENTRY" ]; then
   echo "::warning title=$ID 入口两处不一致::落位算出的 entry=$META_ENTRY，而调用方声明的是 $ENTRY —— 形态以落位结果为准（待 01/04 裁定）"
   ENTRY="$META_ENTRY"

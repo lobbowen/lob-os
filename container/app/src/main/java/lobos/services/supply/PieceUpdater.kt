@@ -136,7 +136,7 @@ object PieceUpdater {
             //  **事实**逐字**进**那诊断那一族（ `diag.jsonl` 那一族）
             RuntimeDiagnostics.append(
                 ctx, "piece-ota-verify", false,
-                "那验签那一格逐字实际用的是什么锚、=> 而那它逐字实际验的是哪一份字节",
+                "那验签那一格逐字实际用的是什么锚、它逐字实际验的是哪一份字节",
                 facts.oneLine(),
             )
             res.put("ok", false); res.put("detail", "清单验签不通过（拒用）")
@@ -336,7 +336,7 @@ object PieceUpdater {
      * 把入口指针切到新版本那一份，并记下「OTA 那一侧」的来源。
      *
      * 缺陷名（C-102）**入口指针的名字按注册表 assetEntry 那一格算**：
-     *   而库形态那一件 assetEntry 是空的 拼出来的是**空名** =>
+     *   而库形态那一件 assetEntry 是空的 拼出来的是**空名** 
      *   而「入口软链」根本建不起来（usr/lib/ 这一条没有名字的入口），
      *   而「被接管没有」那一问也无从判。
      *   现在：程序形态按 assetEntry 的最后一段；库形态按落位目录那份 piece-shape.json
@@ -464,7 +464,7 @@ object PieceUpdater {
             return RollbackStatus(
                 id, false, REASON_LIBRARY_ENTRY_UNLOCATED,
                 "F3 库形态入口未定位：落位目录里读不到 " + ProgramInstallPipeline.SHAPE_NAME +
-                    " 或其中没有库形态那一条（=> 而那名字只能从产物那一份取，=> 而不拿派生索引顶替）",
+                    " 或其中没有库形态那一条（名字只能从产物那一份取，不拿派生索引顶替）",
                 role, "", "", "F3",
             )
         }
@@ -484,8 +484,8 @@ object PieceUpdater {
             return RollbackStatus(
                 id, false, REASON_NOT_TAKEN_OVER,
                 "F2 未接管：入口软链当前 realpath 不等于来源记录里那一条 ota 槽那一份的 realpath" +
-                    "（=> 而判据是「入口软链 current realpath == 记下的 ota 槽 body realpath」，" +
-                    "=> 而不按「是不是软链」判）",
+                    "（判据是「入口软链 current realpath == 记下的 ota 槽 body realpath」，" +
+                    "不按「是不是软链」判）",
                 role, pointer?.absolutePath.orEmpty(), "", "F2",
             )
         }
@@ -495,7 +495,7 @@ object PieceUpdater {
             return RollbackStatus(
                 id, false, REASON_NO_ORIGIN_POINTER,
                 "F1 缺来源指针：来源记录里没有这一件对应的 APK 原件指针格子" +
-                    "（=> 而回退的落点必须是那**记下来的**那一条，=> 而不猜一个目录）",
+                    "（回退的落点必须是那**记下来的**那一条，不猜一个目录）",
                 role, pointer?.absolutePath.orEmpty(), "", "F1",
             )
         }
@@ -511,8 +511,8 @@ object PieceUpdater {
      * 把这一件回退到 APK 原件。
      *
      * 缺陷名（C-102）**回退的主体集合按 isPiece 那一格筛**：
-     *   而 isPiece 逐字是「assetEntry 空 => PIECE」 它**只**收纯库件那一族 =>
-     *   而程序形态那一族（git / jq / openssl …）**一件都进不来** =>
+     *   而 isPiece 逐字是「assetEntry 空 PIECE」 它**只**收纯库件那一族 
+     *   而程序形态那一族（git / jq / openssl …）**一件都进不来** 
      *   而「回退到 APK 原件」这件事对程序形态**从来没发生过**。
      *   01 裁定：回退的主体集合是**所有在册的件**（不分形态）（C-954：
      *   守卫不得以实现形态代判据）。
@@ -528,7 +528,7 @@ object PieceUpdater {
      *   而**本函数**这一族（lobos.sys.native.rollback 走的那一条）不经过那两道守卫，
      *   所以本轮改的主体集合在这一条链上是生效的。
      *
-     * 缺陷名（C-102）**入口指针按注册表那一格拼名字**：库形态那一件拼出空名 =>
+     * 缺陷名（C-102）**入口指针按注册表那一格拼名字**：库形态那一件拼出空名 
      *   而「入口是不是软链」「软链当前指着谁」两问都答不出 回退无从下手。
      *   现在：按形态定位（PieceEntryPointer）。
      *
@@ -618,7 +618,7 @@ object PieceUpdater {
             }
             //  规范 §122.31 逐字要求：那条 detail 须含「软链删除与 provision 重建结果」。
             //  缺陷名（C-102）**detail 只报了路径、没报那一句**：原来这一条写的是
-            //   「入口=… 目标=… APK 原件=…」， 一句话**不在**里面 =>
+            //   「入口=… 目标=… APK 原件=…」， 一句话**不在**里面 
             //   而按规范逐字验收（读 diag.jsonl 那一行）就**判不过**。
             //  现在：先写那一句（说明这一趟做了什么），再写**逐条事实**（路径与核对结果）。
             RuntimeDiagnostics.append(

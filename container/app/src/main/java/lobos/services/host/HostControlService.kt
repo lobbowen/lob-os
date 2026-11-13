@@ -23,12 +23,10 @@ object HostControlService {
     const val MANAGEMENT_GENERATION = 1L
 
     /**
-     * List the pieces with their entry origin (APK original or OTA version) and each one's rollback eligibility.
-     * 缺陷 C-945：件列表原先只有来源记录那几格，没有回退资格与理由，而「能不能回退」是操作者最先要看的一格。
-     * 主体是所有在册的件（ProgramIndex 全部登记项）；「在册」由注册表答、「有来源记录」由来源记录答，所以来源字段缺失时是空串、
-     *   回退理由答「无来源指针」。
-     * C-945 八个字段都有真实消费者（本文件 JSON 与 HostControlActivity 下拉标签/逐字段明细）：origin 为 active（apk/ota）、apkVersion、
-     *   apkTarget（apkSlots 的 entryPath）、otaVersion、otaTarget（otaSlots 的 entryPath）、hasApkOriginal、hasOta、updated。
+     * List the pieces with their entry origin (APK or OTA) and each one's rollback eligibility. 缺陷 C-945：件列表原先只有来源记录那几格、
+     *   没有回退资格与理由，而「能不能回退」是操作者最先要看的一格；主体是所有在册的件（ProgramIndex 全部登记项）。
+     *   「在册」由注册表答、「有来源记录」由来源记录答（缺失时空串、回退理由「无来源指针」）；八个字段都有真实消费者（本文件
+     *   JSON 与 HostControlActivity）：origin、apkVersion、apkTarget、otaVersion、otaTarget、hasApkOriginal、hasOta、updated。
      */
     fun pieces(context: Context): JSONArray {
         val app = context.applicationContext
@@ -132,12 +130,11 @@ object HostControlService {
 
     /** Load a shipped PE L2 sample through the production parser without executing it. */
     /**
-     * 在 LOB-OS 自己那一份 Linux 里跑一条命令（产品那一面）。
-     * 缺陷 C-102：旧版「跑一条用户指定的命令」没有合法的产品入口——只有 `ControlClient.exec`（客户端那族、要带 token 的 handshake）：
-     *   `LobosBridge.invoke` 拒 SCOPE_SYSTEM（`sys.tty.exec` 是系统作用域），`QuickAppLaunchActivity` 那支只能用 `am start` 带 extra 叫起来。
-     *   而 `invokeLocal` 能调 `sys.tty.exec`（INSTALLER_ID 放行、serverGranted 给 installer 全部含 GROUP_SYS，不经 socket、不 claim 会话）。
-     * 处置：这一格就是产品 UI 上的一个入口（走 `invokeLocal`、不走 token 那族）。
-     * @param cmd 要跑的命令串；@param timeoutMs 超时（默认 10000） */
+     * 在 LOB-OS 自己那一份 Linux 里跑一条命令（产品那一面）。缺陷 C-102：旧版没有合法的产品入口——只有 `ControlClient.exec`（客户端那族、要带
+     *   token 的 handshake）；`LobosBridge.invoke` 拒 SCOPE_SYSTEM，`QuickAppLaunchActivity` 那支只能用 `am start` 带 extra 叫起来；而
+     *   `invokeLocal` 能调 `sys.tty.exec`（INSTALLER_ID 放行、含 GROUP_SYS，不经 socket、不 claim 会话）。处置：这一格就是产品 UI 上的入口。
+     * @param cmd 命令串，@param timeoutMs 超时（默认 10000）。
+     */
     fun execCommand(context: Context, cmd: String, timeoutMs: Long = 10_000L): JSONObject {
         val method = "sys.tty.exec"
         if (cmd.isBlank()) return failure(method, "exec", "命令为空")
@@ -158,12 +155,11 @@ object HostControlService {
     }
 
     /**
-     * 不经 shell 直接调那一条（M7-05 要的那条产品入口）。
-     * 缺陷 C-102：旧版在设备上测不了 M7-05——唯一能跑命令的入口是 `execCommand`（走 `sys.tty.exec` 的 `bash -c <命令>`），bash 去 execve
-     *   那个坏 ELF、报的是 bash 自己那条，而不是产品那族该给的「入口不是可执行的形态（既不是 ELF 也不是 #!）—— 拒绝调起，不当程序跑：
-     *   <路径>」。处置：这一格不经 shell，直接交给 `ProcessSupervisor`（认不出那一档时报缺、退出码是那个数、诊断进 stderr）。
-     * 缺陷 C-102（带参数）：旧版 `execDirect(context, path, timeoutMs)` 的 argv 只有那一条，git 没有 `--version` 就打 usage、退出码 1
-     *   （07 实测 stdout 是 git 的 usage 原文）。处置：argv 带上参数并透给 `LocalExec.run`；形态仍由 `ExecEntry.argv` 算。 */
+     * 不经 shell 直接调那一条（M7-05 要的那条产品入口）。缺陷 C-102：旧版测不了 M7-05——唯一入口 `execCommand` 走 `sys.tty.exec` 的
+     *   `bash -c <命令>`，bash 去 execve 那个坏 ELF、报的是它自己那条，而不是「入口不是可执行的形态（既不是 ELF 也不是 #!）—— 拒绝调起，
+     *   不当程序跑：<路径>」。处置：这一格直接交给 `ProcessSupervisor`（认不出时报缺、退出码是那个数、诊断进 stderr）。
+     * 缺陷 C-102（带参数）：旧版 `execDirect(context, path, timeoutMs)` 的 argv 只有那一条，git 没有 `--version` 就打 usage、退出码 1（07
+     *   实测 stdout 是 git 的 usage 原文）。处置：argv 带上参数并透给 `LocalExec.run`；形态仍由 `ExecEntry.argv` 算。 */
     fun execDirect(
         context: Context,
         path: String,
@@ -174,7 +170,7 @@ object HostControlService {
         if (path.isBlank()) return failure(method, "exec-direct", "路径为空")
         val target = java.io.File(path)
         if (!target.exists()) {
-            return failure(method, "exec-direct", "那一件逐字不在：" + path + "（=> 而按 C-05 报缺）")
+            return failure(method, "exec-direct", "那一件逐字不在：" + path + "（按 C-05 报缺）")
         }
         //  不经 shell：argv 只有那一条与那些参数；形态仍由 `ExecEntry.argv` 那族算（不变）。
         val r = lobos.kernel.ipc.LocalExec.run(
@@ -205,7 +201,7 @@ object HostControlService {
         val method = "sysdev.verify"
         val root = lobos.kernel.sysdev.SysDev.root(context)
         if (!root.isDirectory) {
-            return failure(method, "sysdev-verify", "那设备节点目录逐字不在：" + root.absolutePath + "（=> 而按 C-05 报缺）")
+            return failure(method, "sysdev-verify", "那设备节点目录逐字不在：" + root.absolutePath + "（按 C-05 报缺）")
         }
         val bad = lobos.kernel.sysdev.SysDev.verifyNodes(root)
         //  全部不合的那几处（不只报第一处，一处不许盖住其余几处）
@@ -243,13 +239,10 @@ object HostControlService {
     }
 
     /**
-     * 九族每族一个产品入口（「产品那面有没有九族的入口」那一族）。
-     * 缺陷 C-102：旧版没有能吃到坏输入的入口——公开方法只有 `pieces` / `rollbackJudgement` / `pieceEligibility` / `update` / `execCommand` / `execDirect` /
-     *   `verifyDeviceNodes` / `loadPeSample` / `rollback`，没有 kmi / lkm / UART / 目标机型那族；`files/etc` 没有 `kmi.html` / `lkm.html` / `abi.stg`。
-     * 九族：kmi 三选一 / lkm 两选一 / 目标机型任一不一致 / UART 两选一 / linker64 两选一 / 文件三选一 / 内存两选一 / 安全越权被拒并留审计 / 时间两选一。
-     *   处置：每族一个入口（与 `execDirect` 同形），答「坏输入被吃进去后报出什么」并报出原话（C-122/C-123）、不静默（C-126）。
-     * positive 那一侧：缺陷 C-102 旧版只有 negative（`hostBoundCheck`），07 取不到 positive 那一读；形状照 M7-05（合法 ELF 跑起来、退出码是期望值、
-     *   stderr 空）与 M7-12（合法那类建得出来、类型与权限相符），每条钉它自己那个具体值（C-05 不猜填），两侧依 C-105 不合并。
+     * 九族每族一个产品入口（含 positive 那一侧）。缺陷 C-102：旧版没有能吃到坏输入的入口——公开方法只有 `pieces` / `rollbackJudgement` /
+     *   `pieceEligibility` / `update` / `execCommand` / `execDirect` / `verifyDeviceNodes` / `loadPeSample` / `rollback`，而只有 negative
+     *   （`hostBoundCheck`）、07 取不到 positive 那一读。九族：kmi / lkm / 目标机型 / UART / linker64 / 文件 / 内存 / 安全越权 / 时间；
+     *   处置：每族一个入口（与 `execDirect` 同形）、报原话（C-122/C-123）、不静默（C-126），positive 形状照 M7-05 与 M7-12（C-05），两侧不合并（C-105）。
      */
     fun hostBoundPositive(context: Context, family: String, input: String): JSONObject {
         val method = "hostBound.positive"
@@ -257,53 +250,53 @@ object HostControlService {
             "kmi" -> {
                 val r = kmiCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那 KMI 符号清单、=> 而那它逐字**能**解析出那符号、=> 而那它逐字**能**解析出**那一个数**个符号。")
+                    .put("expect", "那一件逐字**是**那 KMI 符号清单、它逐字**能**解析出那符号、它逐字**能**解析出**那一个数**个符号。")
             }
             "lkm" -> {
                 val r = lkmCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那模块、=> 而那它逐字**能**加载、=> 而那目录逐字**有****那一个数**个模块。")
+                    .put("expect", "那一件逐字**是**那模块、它逐字**能**加载、目录逐字**有****那一个数**个模块。")
             }
             "target" -> {
                 val r = targetCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那声明逐字与那实际逐字**一致**、=> 而那三者（构建目标 / 运行目标 / 设备身份）逐字是**那一个值**。")
+                    .put("expect", "那声明逐字与那实际逐字**一致**、三者（构建目标 / 运行目标 / 设备身份）逐字是**那一个值**。")
             }
             "uart" -> {
                 val r = uartCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那节点逐字**在位**、=> 而那它逐字**有**输出、=> 而那输出逐字含**那一条**。")
+                    .put("expect", "那节点逐字**在位**、它逐字**有**输出、输出逐字含**那一条**。")
             }
             "linker64" -> {
                 val r = linker64Check(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那一件逐字**是**那 ELF、=> 而那 e_type 逐字是 **2** 或 **3**、=> 而那一个 ELF 逐字**在位**。")
+                    .put("expect", "那一件逐字**是**那 ELF、 e_type 逐字是 **2** 或 **3**、一个 ELF 逐字**在位**。")
             }
             "file" -> {
                 val r = fileCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那路径逐字**在**那 LOB-OS 自己那一份里面、=> 而那它逐字**在位**、=> 而那一次落-读-删逐字**成**。")
+                    .put("expect", "那路径逐字**在**那 LOB-OS 自己那一份里面、它逐字**在位**、一次落-读-删逐字**成**。")
             }
             "memory" -> {
                 val r = memoryCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那已用逐字**没超**了那声明限额、=> 而那限额逐字是**那一个数**。")
+                    .put("expect", "那已用逐字**没超**了那声明限额、限额逐字是**那一个数**。")
             }
             "security" -> {
                 val r = securityCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那路径逐字**不**越权、=> 而那一次越权动作逐字**被拒**、=> 而那它逐字**留审计**。")
+                    .put("expect", "那路径逐字**不**越权、一次越权动作逐字**被拒**、它逐字**留审计**。")
             }
             "time" -> {
                 val r = timeCheck(context, input)
                 return r.put("side", "positive")
-                    .put("expect", "那墙上时钟逐字**没倒**、=> 而那单调时钟那一趟逐字**没超**了那预算、=> 而那预算逐字是**那一个数**。")
+                    .put("expect", "那墙上时钟逐字**没倒**、单调时钟那一趟逐字**没超**了那预算、预算逐字是**那一个数**。")
             }
             else -> return failure(
                 method, "host-bound-positive",
                 "那一族逐字不在那九族里：" + family +
-                    "（=> 而那九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
-                    "=> 而那按 C-05 报缺）",
+                    "（九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
+                    "按 C-05 报缺）",
             )
         }
     }
@@ -324,7 +317,7 @@ object HostControlService {
             put("packages", org.json.JSONArray(declared))
             put("count", declared.size)
             put("detail", "那仓内清单声明过的那几件逐字 = " + declared.joinToString(",") +
-                "（=> 而那**0 件**逐字**也是**一个**答**、=> 而那按 C-05 不猜填）")
+                "（**0 件**逐字**也是**一个**答**、按 C-05 不猜填）")
         }
     }
 
@@ -340,8 +333,8 @@ object HostControlService {
             return failure(
                 "cross-app", "cross-app",
                 "那一族逐字不在那三格里：" + m +
-                    "（=> 而那三格逐字是：" + CROSS_APP_METHODS.joinToString(",") +
-                    "；=> 而那按 C-05 报缺）",
+                    "（三格逐字是：" + CROSS_APP_METHODS.joinToString(",") +
+                    "；按 C-05 报缺）",
             )
         }
         //  一路经安装方那一族调，不是给程序的后门。
@@ -352,7 +345,7 @@ object HostControlService {
                 params ?: JSONObject(),
             )
         }.getOrNull()
-        return r ?: failure("cross-app", "cross-app", "那宿主桥没起来（=> 而那按 C-05 报缺）")
+        return r ?: failure("cross-app", "cross-app", "那宿主桥没起来（按 C-05 报缺）")
     }
 
     /**
@@ -377,8 +370,8 @@ object HostControlService {
             put("liveReads", live)
             put("liveReadCount", live.length())
             put("detail", "那堆逐字 = " + (usedBytes / (1024L * 1024L)) + " MB、" +
-                "=> 而那**还活着**的整读逐字 = " + live.length() + " 处、" +
-                "=> 而那**读法名**逐字答的是「那一条路」、=> 而那**待了多久**逐字**也在**那记录里")
+                "**还活着**的整读逐字 = " + live.length() + " 处、" +
+                "**读法名**逐字答的是「那一条路」、**待了多久**逐字**也在**那记录里")
         }
     }
 
@@ -397,8 +390,8 @@ object HostControlService {
             else -> return failure(
                 method, "host-bound",
                 "那一族逐字不在那九族里：" + family +
-                    "（=> 而那九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
-                    "=> 而那按 C-05 报缺）",
+                    "（九族逐字是：kmi / lkm / target / uart / linker64 / file / memory / security / time；" +
+                    "按 C-05 报缺）",
             )
         }
     }
@@ -408,7 +401,7 @@ object HostControlService {
         //  KMI 清单该从哪取：`abi.stg` 是内核的数据（`kmi.html` 与 `lkm.html` 只是网页、不是清单）
         val f = java.io.File(input)
         if (!f.exists()) {
-            return hostBoundResult("kmi", false, "来源缺失", "那清单逐字不在：" + input + "（=> 而按 C-05 报缺）")
+            return hostBoundResult("kmi", false, "来源缺失", "那清单逐字不在：" + input + "（按 C-05 报缺）")
         }
         val text = runCatching { f.readText() }.getOrElse { e ->
             return hostBoundResult("kmi", false, "解析失败", e.javaClass.simpleName + ": " + (e.message ?: ""))
@@ -416,7 +409,7 @@ object HostControlService {
         //  清单的形状：`abi.stg` 每一行一个符号
         val lines = text.lines()
         if (lines.isEmpty()) {
-            return hostBoundResult("kmi", false, "解析失败", "那清单逐字是空的（=> 而按 C-05 报缺）")
+            return hostBoundResult("kmi", false, "解析失败", "那清单逐字是空的（按 C-05 报缺）")
         }
         val syms = lines.mapNotNull { l ->
             val t = l.trim()
@@ -433,14 +426,14 @@ object HostControlService {
         if (!looksLikeKmi) {
             return hostBoundResult(
                 "kmi", false, "身份不符",
-                "那清单逐字**不像**那 KMI 符号清单（=> 而那它逐字有 " + syms.size + " 行、" +
-                    "=> 而那按 C-05 报缺）",
+                "那清单逐字**不像**那 KMI 符号清单（它逐字有 " + syms.size + " 行、" +
+                    "按 C-05 报缺）",
             )
         }
         return hostBoundResult(
             "kmi", true, "在位",
-            "那清单逐字**能**解析出 " + syms.size + " 个符号（=> 而那身份逐字 = " +
-                (if (identity.isBlank()) "（那首行逐字**没有**注释、=> 而那按 C-05 报缺）" else identity) + "）",
+            "那清单逐字**能**解析出 " + syms.size + " 个符号（身份逐字 = " +
+                (if (identity.isBlank()) "（那首行逐字**没有**注释、按 C-05 报缺）" else identity) + "）",
         )
     }
 
@@ -449,15 +442,15 @@ object HostControlService {
         //  模块是什么：`lkm.html` 只是网页、不是清单；模块该是 `.ko` 或模块清单
         val f = java.io.File(input)
         if (!f.exists()) {
-            return hostBoundResult("lkm", false, "接口缺失", "那模块逐字不在：" + input + "（=> 而按 C-05 报缺）")
+            return hostBoundResult("lkm", false, "接口缺失", "那模块逐字不在：" + input + "（按 C-05 报缺）")
         }
         if (f.isDirectory) {
             val mods = f.listFiles()?.filter { it.name.endsWith(".ko") }?.sortedBy { it.name }
                 ?: emptyList()
             if (mods.isEmpty()) {
-                return hostBoundResult("lkm", false, "接口缺失", "那目录逐字**没有** `.ko` 模块（=> 而按 C-05 报缺）")
+                return hostBoundResult("lkm", false, "接口缺失", "那目录逐字**没有** `.ko` 模块（按 C-05 报缺）")
             }
-            return hostBoundResult("lkm", true, "在位", "那目录逐字有 " + mods.size + " 个模块（=> 而那头一个是 " + mods[0].name + "）")
+            return hostBoundResult("lkm", true, "在位", "那目录逐字有 " + mods.size + " 个模块（头一个是 " + mods[0].name + "）")
         }
         //  坏模块：文件头不成形。
         val head = runCatching {
@@ -470,10 +463,10 @@ object HostControlService {
         if (!isElf) {
             return hostBoundResult(
                 "lkm", false, "坏模块",
-                "那模块逐字**不是** ELF（=> 而那 ELF 魔数逐字不是 7f 45 4c 46、=> 而按 C-05 报缺）",
+                "那模块逐字**不是** ELF（ ELF 魔数逐字不是 7f 45 4c 46、按 C-05 报缺）",
             )
         }
-        return hostBoundResult("lkm", true, "在位", "那模块逐字**是** ELF（=> 而那它逐字**能**加载）")
+        return hostBoundResult("lkm", true, "在位", "那模块逐字**是** ELF（它逐字**能**加载）")
     }
 
     /** 那目标机型那一族（任一不一致）。 */
@@ -481,7 +474,7 @@ object HostControlService {
         //  目标机型是什么：声明那一档；实际那一档取 App 自己的 Build
         val declared = input.trim()
         if (declared.isEmpty()) {
-            return hostBoundResult("target", false, "答不出", "那声明逐字是空的（=> 而按 C-05 报缺）")
+            return hostBoundResult("target", false, "答不出", "那声明逐字是空的（按 C-05 报缺）")
         }
         val actual = listOf(
             android.os.Build.SOC_MODEL,
@@ -495,7 +488,7 @@ object HostControlService {
             return hostBoundResult(
                 "target", false, "不一致",
                 "那声明逐字与那实际逐字**不一致**：声明=" + declared + " 实际=" + actual.joinToString(",") +
-                    " abi=" + abi + "（=> 而按 C-05 报缺）",
+                    " abi=" + abi + "（按 C-05 报缺）",
             )
         }
         return hostBoundResult("target", true, "一致", "那声明逐字与那实际逐字**一致**（= " + declared + "）")
@@ -506,26 +499,26 @@ object HostControlService {
         //  UART 是什么：节点（宿主绑定那族），节点答「坏输入是什么」
         val node = input.trim()
         if (node.isEmpty()) {
-            return hostBoundResult("uart", false, "无输出", "那节点逐字是空的（=> 而按 C-05 报缺）")
+            return hostBoundResult("uart", false, "无输出", "那节点逐字是空的（按 C-05 报缺）")
         }
         val f = java.io.File(node)
         if (!f.exists()) {
             return hostBoundResult(
                 "uart", false, "错节点",
-                "那节点逐字**不在**：" + node + "（=> 而那 UART 逐字是那宿主绑定的那几件、" +
-                    "=> 而那按 C-05 报缺）",
+                "那节点逐字**不在**：" + node + "（ UART 逐字是那宿主绑定的那几件、" +
+                    "按 C-05 报缺）",
             )
         }
         if (!f.canRead()) {
-            return hostBoundResult("uart", false, "无输出", "那节点逐字**读**不到（=> 而按 C-05 报缺）")
+            return hostBoundResult("uart", false, "无输出", "那节点逐字**读**不到（按 C-05 报缺）")
         }
         val text = runCatching { f.readText() }.getOrElse { e ->
             return hostBoundResult("uart", false, "无输出", e.javaClass.simpleName + ": " + (e.message ?: ""))
         }
         if (text.isBlank()) {
-            return hostBoundResult("uart", false, "无输出", "那节点逐字**空**的（=> 而按 C-05 报缺）")
+            return hostBoundResult("uart", false, "无输出", "那节点逐字**空**的（按 C-05 报缺）")
         }
-        return hostBoundResult("uart", true, "在位", "那节点逐字有 " + text.length + " 字节（=> 而那头一句 = " +
+        return hostBoundResult("uart", true, "在位", "那节点逐字有 " + text.length + " 字节（头一句 = " +
             text.lineSequence().first().take(60) + "）")
     }
 
@@ -534,7 +527,7 @@ object HostControlService {
         //  linker64 是什么：动态链接器
         val f = java.io.File(input)
         if (!f.exists()) {
-            return hostBoundResult("linker64", false, "缺失", "那 linker64 逐字不在：" + input + "（=> 而按 C-05 报缺）")
+            return hostBoundResult("linker64", false, "缺失", "那 linker64 逐字不在：" + input + "（按 C-05 报缺）")
         }
         val head = runCatching {
             f.inputStream().use { s -> ByteArray(20) { s.read().toByte() } }
@@ -546,7 +539,7 @@ object HostControlService {
         ) {
             return hostBoundResult(
                 "linker64", false, "坏 ELF",
-                "那文件逐字**不是** ELF（=> 而那 ELF 魔数逐字不是 7f 45 4c 46、=> 而按 C-05 报缺）",
+                "那文件逐字**不是** ELF（ ELF 魔数逐字不是 7f 45 4c 46、按 C-05 报缺）",
             )
         }
         //  e_type 在偏移 16（e_ident 之后那两个字节）。
@@ -554,15 +547,15 @@ object HostControlService {
         val kind = when (etype) {
             2 -> "ET_EXEC"
             3 -> "ET_DYN"
-            else -> "e_type=" + etype + "（=> 而那它逐字既不是 2 也不是 3）"
+            else -> "e_type=" + etype + "（它逐字既不是 2 也不是 3）"
         }
         if (etype != 2 && etype != 3) {
             return hostBoundResult(
                 "linker64", false, "坏 ELF",
-                "那 ELF 逐字的 e_type=" + etype + "（=> 而那它逐字既不是 ET_EXEC(2) 也不是 ET_DYN(3)、=> 而按 C-05 报缺）",
+                "那 ELF 逐字的 e_type=" + etype + "（它逐字既不是 ET_EXEC(2) 也不是 ET_DYN(3)、按 C-05 报缺）",
             )
         }
-        return hostBoundResult("linker64", true, "在位", "那 linker64 逐字**是** ELF（=> 而那形态 = " + kind + "）")
+        return hostBoundResult("linker64", true, "在位", "那 linker64 逐字**是** ELF（形态 = " + kind + "）")
     }
 
     /** 那文件那一族（三选一：越界 / 坏链接 / 不支持操作）。 */
@@ -570,29 +563,29 @@ object HostControlService {
         //  越界：路径逃出 LOB-OS 自己那一份；坏链接：软链指向一个不存在的目标；不支持操作：操作不在白名单里
         val path = input.trim()
         if (path.isEmpty()) {
-            return hostBoundResult("file", false, "越界", "那路径逐字是空的（=> 而按 C-05 报缺）")
+            return hostBoundResult("file", false, "越界", "那路径逐字是空的（按 C-05 报缺）")
         }
         val target = java.io.File(path)
         val root = context.filesDir.canonicalFile
         val canon = runCatching { target.canonicalFile }.getOrNull()
         if (canon == null) {
-            return hostBoundResult("file", false, "坏链接", "那路径逐字**解不出**那真的一个（=> 而按 C-05 报缺）")
+            return hostBoundResult("file", false, "坏链接", "那路径逐字**解不出**那真的一个（按 C-05 报缺）")
         }
         //  核越界。
         if (!canon.path.startsWith(root.path) && !canon.path.startsWith("/data/local/tmp")) {
             return hostBoundResult(
                 "file", false, "越界",
-                "那路径逐字**逃出**那 LOB-OS 自己那一份：" + canon.path + "（=> 而按 C-05 报缺）",
+                "那路径逐字**逃出**那 LOB-OS 自己那一份：" + canon.path + "（按 C-05 报缺）",
             )
         }
         //  核坏链接。
         if (target.isDirectory) {
-            return hostBoundResult("file", false, "不支持操作", "那路径逐字是一个目录（=> 而按 C-05 报缺）")
+            return hostBoundResult("file", false, "不支持操作", "那路径逐字是一个目录（按 C-05 报缺）")
         }
         if (!target.exists()) {
             return hostBoundResult(
                 "file", false, "坏链接",
-                "那路径逐字**不在**：" + canon.path + "（=> 而那按 C-05 报缺）",
+                "那路径逐字**不在**：" + canon.path + "（按 C-05 报缺）",
             )
         }
         return hostBoundResult("file", true, "在位", "那路径逐字**在位**（= " + canon.path + "、" +
@@ -604,7 +597,7 @@ object HostControlService {
         //  限额是什么：声明那个数（单位 MB）；实际是什么：App 自己那可用内存
         val limitMb = input.trim().toLongOrNull()
         if (limitMb == null || limitMb <= 0) {
-            return hostBoundResult("memory", false, "静默失败", "那限额逐字**不是**一个正数（=> 而按 C-05 报缺）")
+            return hostBoundResult("memory", false, "静默失败", "那限额逐字**不是**一个正数（按 C-05 报缺）")
         }
         val rt = Runtime.getRuntime()
         val maxBytes = rt.maxMemory()
@@ -616,8 +609,8 @@ object HostControlService {
         val over = usedMb > limitMb
         return hostBoundResult(
             "memory", !over, if (over) "超限不回收" else "在位",
-            "那声明限额=" + limitMb + "MB、=> 而那实际已用=" + usedMb + "MB / 上限=" + maxMb + "MB" +
-                (if (over) "（=> 而那它逐字**超**了那限额、=> 而那按 C-05 报缺）" else "（=> 而那它逐字**没**超）"),
+            "那声明限额=" + limitMb + "MB、实际已用=" + usedMb + "MB / 上限=" + maxMb + "MB" +
+                (if (over) "（它逐字**超**了那限额、按 C-05 报缺）" else "（它逐字**没**超）"),
         )
     }
 
@@ -626,26 +619,26 @@ object HostControlService {
         //  越权：路径逃出 LOB-OS 自己那一份；拒要留审计
         val path = input.trim()
         if (path.isEmpty()) {
-            return hostBoundResult("security", false, "静默失败", "那路径逐字是空的（=> 而按 C-05 报缺）")
+            return hostBoundResult("security", false, "静默失败", "那路径逐字是空的（按 C-05 报缺）")
         }
         val root = context.filesDir.canonicalFile
         val canon = runCatching { java.io.File(path).canonicalFile }.getOrNull()
         if (canon == null) {
-            return hostBoundResult("security", false, "静默失败", "那路径逐字**解不出**那真的一个（=> 而按 C-05 报缺）")
+            return hostBoundResult("security", false, "静默失败", "那路径逐字**解不出**那真的一个（按 C-05 报缺）")
         }
         val denied = !canon.path.startsWith(root.path)
         if (denied) {
             //  拒要留审计（C-122/C-123：要能换回原话）。
             lobos.services.log.RuntimeDiagnostics.append(
                 context, "security", false, "越权动作被拒",
-                "path=" + canon.path + "（=> 而那一族逐字要**留审计**）",
+                "path=" + canon.path + "（一族逐字要**留审计**）",
             )
             return hostBoundResult(
                 "security", false, "越权动作被拒",
-                "那路径逐字**越权**：" + canon.path + "（=> 而那审计逐字**已**留）",
+                "那路径逐字**越权**：" + canon.path + "（审计逐字**已**留）",
             )
         }
-        return hostBoundResult("security", true, "在位", "那路径逐字**在**那 LOB-OS 自己那一份里面（=> 而那它逐字**不**越权）")
+        return hostBoundResult("security", true, "在位", "那路径逐字**在**那 LOB-OS 自己那一份里面（它逐字**不**越权）")
     }
 
     /** 那时间那一族（两选一：时钟倒退或超时语义不符）。 */
@@ -653,7 +646,7 @@ object HostControlService {
         //  超时是什么：声明那个数（单位毫秒）；时钟倒退：墙上时钟比单调时钟那族慢
         val budgetMs = input.trim().toLongOrNull()
         if (budgetMs == null || budgetMs <= 0) {
-            return hostBoundResult("time", false, "超时语义不符", "那预算逐字**不是**一个正数（=> 而按 C-05 报缺）")
+            return hostBoundResult("time", false, "超时语义不符", "那预算逐字**不是**一个正数（按 C-05 报缺）")
         }
         val wall0 = System.currentTimeMillis()
         val mono0 = android.os.SystemClock.elapsedRealtime()
@@ -665,15 +658,15 @@ object HostControlService {
         if (back) {
             return hostBoundResult(
                 "time", false, "时钟倒退",
-                "那墙上时钟逐字**倒**了：" + wallDelta + "ms（=> 而按 C-05 报缺）",
+                "那墙上时钟逐字**倒**了：" + wallDelta + "ms（按 C-05 报缺）",
             )
         }
         //  超时语义：单调时钟那一趟不少于那预算。
         val overBudget = monoDelta > budgetMs
         return hostBoundResult(
             "time", !overBudget, if (overBudget) "超时语义不符" else "在位",
-            "那预算=" + budgetMs + "ms、=> 而那墙上时钟过了 " + wallDelta + "ms、=> 而那单调时钟过了 " +
-                monoDelta + "ms" + (if (overBudget) "（=> 而那它逐字**超**了那预算）" else "（=> 而那它逐字**没**超）"),
+            "那预算=" + budgetMs + "ms、墙上时钟过了 " + wallDelta + "ms、单调时钟过了 " +
+                monoDelta + "ms" + (if (overBudget) "（它逐字**超**了那预算）" else "（它逐字**没**超）"),
         )
     }
 

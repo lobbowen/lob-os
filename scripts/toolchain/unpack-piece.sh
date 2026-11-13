@@ -30,7 +30,7 @@ case "$FORM" in
     ;;
   *)
     echo "::error title=容器形态不认::$PKG 逐字是那 $FORM（头四字节 $MAGIC）"
-    echo "::error:: 处置：核那一份的容器形态（scripts/verify/probe-container-form.sh），=> 而那**不是**按名字猜能解决的。"
+    echo "::error:: 处置：核那一份的容器形态（scripts/verify/probe-container-form.sh），**不是**按名字猜能解决的。"
     exit 1
     ;;
 esac

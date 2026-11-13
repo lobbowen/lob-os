@@ -100,14 +100,14 @@ elif kl[n - 1].rstrip() != t['text']:
 for m in d.get('missingReferences') or []:
     p = os.path.join(kb, m['ref'])
     if not os.path.isfile(p):
-        missing.append('%s 逐字**不**在**那仓内**（=> 而那 %s 逐字引它、=> 而按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s 逐字**不**在**那仓内**（ %s 逐字引它、按 C-105 报缺）' % (m['ref'], m['from']))
 
 # 那引用的那几件逐字**要**在**那仓内**、 **出处**逐字**要**能**核**。
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(data_path)))
 for m in d.get('referencedFiles') or []:
     p = os.path.join(ROOTDIR, m['path'])
     if not os.path.isfile(p):
-        missing.append('%s 逐字**不**在**那仓内**（=> 而那 %s 逐字引它、=> 而按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s 逐字**不**在**那仓内**（ %s 逐字引它、按 C-105 报缺）' % (m['ref'], m['from']))
         continue
     got = hashlib.sha256(open(p, 'rb').read()).hexdigest()
     if m.get('sha256') and got != m['sha256']:
@@ -141,14 +141,14 @@ for key in ('initKconfig', 'gkiDefconfig'):
 
 kv = d.get('kernelVersion') or {}
 if not kv.get('value'):
-    missing.append('那内核版本号逐字还没有（=> 而按 C-105 不猜填、=> 而那取逐字不归 01、=> 而那取逐字归 06）')
+    missing.append('那内核版本号逐字还没有（按 C-105 不猜填、取逐字不归 01、取逐字归 06）')
 
 # 那**网页**那一族（ kmi.html 与那 lkm.html）逐字**不**是**那内核**的**配置**、
 # **真正**是**那内核**的**数据**的**那一件**（ abi.stg）逐字**要**标**缺**（ 它**还**没**进**那仓**内**）。
 for r in d.get('referenceDocs') or []:
     if r.get('isKernelData'):
         if r.get('status') == '未核':
-            missing.append('%s 逐字**是**那内核的**数据**、=> 而它**还**没**进**那仓**内**、=> 而按 C-105 报缺' % r['file'])
+            missing.append('%s 逐字**是**那内核的**数据**、它**还**没**进**那仓**内**、按 C-105 报缺' % r['file'])
         else:
             #  而那**它**逐字**在**那仓内、 sha256 逐字**要**对得上（ **它**逐字**是**那**完整**的**一份**）
             p2 = os.path.join(ROOTDIR, r.get('path') or ('docs/kernel-baseline/' + r['file']))

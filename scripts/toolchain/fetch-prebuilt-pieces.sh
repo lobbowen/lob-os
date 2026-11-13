@@ -39,7 +39,7 @@ done
 GH_TOKEN_VALUE="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 if [ -z "$GH_TOKEN_VALUE" ] && [ "$PRINT_PIECES_ONLY" -eq 0 ]; then
   echo "::error title=缺令牌::取件要读 GitHub 的 Release 清单，而那匿名读只有 60 次/小时"
-  echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（=> 而 build-apk.yml 那一格逐字是 secrets.GITHUB_TOKEN）"
+  echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（build-apk.yml 那一格逐字是 secrets.GITHUB_TOKEN）"
   echo "::error:: 这一格不猜 —— 没有身份就不读，**不**静默匿名。"
   exit 1
 fi
@@ -160,7 +160,7 @@ fetch_asset() {
             let j;
             try { j = JSON.parse(d); }
             catch (e) { process.stderr.write("__FA_PARSE_FAILED__\n"); process.exit(3); }
-            const a = (j.assets || []).find(x => x.name === process.argv[2]);
+            const a = (j.assets || []).find(x x.name === process.argv[2]);
             if (a) process.stdout.write(a.browser_download_url);
           ' "$GH_READ_BODY" "$asset" 2>"$fa_err")" || { cat "$fa_err" >&2; return 1; }
   if [ -s "$fa_err" ]; then
@@ -214,11 +214,11 @@ list_release_assets() {
   printf '%s' "$body" \
     | node -e '
         let d = "";
-        process.stdin.on("data", c => d += c);
-        process.stdin.on("end", () => {
+        process.stdin.on("data", c d += c);
+        process.stdin.on("end", () {
           let j;
           try { j = JSON.parse(d); } catch (e) { process.stderr.write("__LRA_PARSE_FAILED__\\n"); process.exit(3); }
-          (j.assets || []).map(x => x.name).filter(n => !/\.sha256$/.test(n)).forEach(n => process.stdout.write(n + "\n"));
+          (j.assets || []).map(x x.name).filter(n !/\.sha256$/.test(n)).forEach(n process.stdout.write(n + "\n"));
         });
       '
 
@@ -258,7 +258,7 @@ run_head_sha_of() {
   fi
   local sha
   sha="$(node -e '
-let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{
+let d="";process.stdin.on("data",cd+=c);process.stdin.on("end",(){
   try{process.stdout.write(String(JSON.parse(d).head_sha||""))}catch(e){process.stdout.write("")}
 })' < "$body" 2>/dev/null)"
   rm -f "$body"
@@ -294,10 +294,10 @@ for id in "${PIECES[@]}"; do
     if [ "$lra_rc" -ne 0 ]; then
       #  那一读失败了（限流 / 鉴权 / 端点变了 / 网络），不是「一件 asset 都没有」，不能按缺货处置。
       #  HTTP 档已被带出来（401 / 404 / 429 分得开了）。
-      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（=> 而那 stdout 逐字是空、=> 而那**不是**『那筐一个 asset 都没有』）。"
-      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、=> 而那**那一档** = ${lra_kind:-未知}、=> 而那 curl 逐字自己的码逐字**在**那标记里、=> 而那**两档**逐字**不是**同一档。*"
+      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（ stdout 逐字是空、**不是**『那筐一个 asset 都没有』）。"
+      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、**那一档** = ${lra_kind:-未知}、 curl 逐字自己的码逐字**在**那标记里、**两档**逐字**不是**同一档。*"
       echo "::notice:: 那一档逐字说人话：$(gh_fail_label "$lra_kind")。*"
-      echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），=> 而那**不是** dispatch 那一件能解决的。*"
+      echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），**不是** dispatch 那一件能解决的。*"
       miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then
       echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
@@ -306,8 +306,8 @@ for id in "${PIECES[@]}"; do
     elif printf "%s\n" "$others" | grep -qxF "$asset"; then
       #  第三个形状：名字在里面、一次没取到，两条分支都不覆盖它（旧版误判成「旧产物拦住了」）。
       #  真的成因在 fetch_asset 那一族里面（三处 return 1 分不出来）。
-      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，=> 而那**这一次**逐字**没取到**。"
-      echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），=> 而那**不是**『没固化过』、=> 而也**不是**『旧产物』。*"
+      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，**这一次**逐字**没取到**。"
+      echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），**不是**『没固化过』、也**不是**『旧产物』。*"
       printf "%s\n" "$others" | sed "s/^/::notice::   /"
       miss_read=$((miss_read+1))
     else
@@ -360,7 +360,7 @@ for id in "${PIECES[@]}"; do
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! tar xzf "$SRC" -C "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产逐字是那 gzip（那头四字节 $MAGIC），=> 而那 tar xzf 逐字**读不通**。"
+      echo "::error title=$id 解包失败::那资产逐字是那 gzip（那头四字节 $MAGIC）， tar xzf 逐字**读不通**。"
       missing=$((missing+1)); continue
     fi
     # 内层那一颗件按内容挑（01 裁的 S607-01-CONTAINER-FORM-RULING.md §3.1：内层那一颗件包才算，
@@ -371,7 +371,7 @@ for id in "${PIECES[@]}"; do
     INNER=""
     if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
       echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
-      echo "::error:: 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个。"
+      echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     cp -f "$INNER" "$ASSETS/$id.zip"
@@ -386,7 +386,7 @@ for id in "${PIECES[@]}"; do
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! unzip -q -o "$SRC" -d "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产逐字是那 zip（头四字节 $MAGIC），=> 而那 unzip 逐字**读不通**。"
+      echo "::error title=$id 解包失败::那资产逐字是那 zip（头四字节 $MAGIC）， unzip 逐字**读不通**。"
       missing=$((missing+1)); continue
     fi
     # 判别源唯一（按 C-994）：fmt_pick_piece 是唯一一处，走三步（外层自己是不是那一颗件 / 外层套内层 / gzip 先解开）。
@@ -395,7 +395,7 @@ for id in "${PIECES[@]}"; do
     INNER=""
     if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
       echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
-      echo "::error:: 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个。"
+      echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     if [ "$INNER" = "$SRC" ]; then
@@ -408,8 +408,8 @@ for id in "${PIECES[@]}"; do
   else
     # 它既不是 gzip 也不是 zip（形态是 fmt.sh 给的）。旧版把它当 zip 那一支用（unzip -p 读不到）。
     # 现在报出来（按 C-05「缺字段就报缺」，不猜填）。
-    echo "::error title=$id 容器形态不认::那资产逐字是那 $SRC_FMT（头四字节 $MAGIC），=> 而那既不是 zip 也不是 gzip。"
-    echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），=> 而那**不是** dispatch 能解决的。"
+    echo "::error title=$id 容器形态不认::那资产逐字是那 $SRC_FMT（头四字节 $MAGIC），既不是 zip 也不是 gzip。"
+    echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），**不是** dispatch 能解决的。"
     missing=$((missing+1)); continue
   fi
 
@@ -423,8 +423,8 @@ for id in "${PIECES[@]}"; do
   _pkg_run=""
   if unzip -p "$ASSETS/$id.zip" component-meta.json > "$STAGE/$id/bsha.json" 2>/dev/null \
       && [ -s "$STAGE/$id/bsha.json" ]; then
-    _pkg_sha="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
-    _pkg_run="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
+    _pkg_sha="$(node -e 'let d="";process.stdin.on("data",cd+=c);process.stdin.on("end",(){try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
+    _pkg_run="$(node -e 'let d="";process.stdin.on("data",cd+=c);process.stdin.on("end",(){try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$STAGE/$id/bsha.json")"
   fi
   rm -f "$STAGE/$id/bsha.json"
 
@@ -440,17 +440,17 @@ for id in "${PIECES[@]}"; do
   if [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ] && [ -n "$_cur_run" ] && [ "$_pkg_run" = "$_cur_run" ]; then
     # 件包就是这一趟固化出来的那一件（自带的 buildRun 等于当前 run）。
     _want_sha="${GITHUB_SHA:-}"
-    _want_src="GITHUB_SHA（=> 而那件包逐字就是这一趟产的那一件）"
+    _want_src="GITHUB_SHA（件包逐字就是这一趟产的那一件）"
   elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
     # 一律走 buildRun 反查（件包自带的 buildRun 就是产出它的那一趟 run）。
     _want_sha="$(run_head_sha_of "$_pkg_run")"
-    _want_src="产物自带的 buildRun=$_pkg_run 反查（=> 而那产出它的那一趟）"
+    _want_src="产物自带的 buildRun=$_pkg_run 反查（产出它的那一趟）"
   fi
   if [ -n "$_want_sha" ]; then
     if [ "$_pkg_sha" != "$_want_sha" ]; then
-      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、=> 而那产出它的那一次构建逐字是 ${_want_sha:0:12}"
-      echo "::error:: （=> 而那**旧字节不能冒充新代码的产物**、=> 而那**不**许拿那旧的那一份凑）"
-      echo "::error:: 处置：dispatch 那一件重新固化（=> 而那新的指纹逐字**才**是当前这份代码的）。"
+      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、产出它的那一次构建逐字是 ${_want_sha:0:12}"
+      echo "::error:: （**旧字节不能冒充新代码的产物**、**不**许拿那旧的那一份凑）"
+      echo "::error:: 处置：dispatch 那一件重新固化（新的指纹逐字**才**是当前这份代码的）。"
       miss_stale=$((miss_stale+1)); missing=$((missing+1))
       rm -rf "${STAGE:?}/$id"
       continue
@@ -461,8 +461,8 @@ for id in "${PIECES[@]}"; do
     echo "[ok] $id 那件逐字**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
   else
     # 期望值读不到时不判（按 C-05 报缺、依 C-104 不并）。
-    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、=> 而那产物自带的 buildRun 逐字**也**没有"
-    echo "::notice:: （=> 而那**判据**逐字**答不出**、=> 而那它逐字**不**判成「那不是当前这份」、=> 而那按 C-05 报缺）"
+    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、产物自带的 buildRun 逐字**也**没有"
+    echo "::notice:: （**判据**逐字**答不出**、它逐字**不**判成「那不是当前这份」、按 C-05 报缺）"
   fi
 
   # 格三（是不是我们要的那一代）：把这一件的两个标识读出来，供循环后那一格用。
@@ -473,8 +473,8 @@ for id in "${PIECES[@]}"; do
   rm -f "$meta_json"
   # meta_json 从件包取一次（$ASSETS/$id.zip 的根部，来源与内容两件事都在里面）。
   if unzip -p "$ASSETS/$id.zip" component-meta.json > "$meta_json" 2>/dev/null && [ -s "$meta_json" ]; then
-    g_sha="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$meta_json")"
-    g_run="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$meta_json")"
+    g_sha="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){}})' < "$meta_json")"
+    g_run="$(node -e 'let d="";process.stdin.on("data",cd+=c).on("end",(){try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){}})' < "$meta_json")"
   else
     g_sha=""; g_run=""
   fi

@@ -63,7 +63,7 @@ if [ -z "$MKSQUASHFS" ]; then
   # **宿主**上逐字**没有**那 mksquashfs、 **设备**上**没有**它
   #     （ /system/bin/ 底下逐字**只有**那 mkfs.erofs、 **它**们**逐字是**那**两**件**事**）。
   # **处置**： **系统层**逐字**只**落**那**形状**、 **归档**逐字**报缺**（ 按 C-105）。
-  echo "::notice title=宿主上没有 mksquashfs::那系统层逐字**要**那 squashfs 归档、=> 而那工具**没有**它"
+  echo "::notice title=宿主上没有 mksquashfs::那系统层逐字**要**那 squashfs 归档、工具**没有**它"
   mkdir -p "$OUT/system" "$OUT/workdir"
   cat > "$OUT/rootfs-shape.json" <<JSON
 {
@@ -80,7 +80,7 @@ if [ -z "$MKSQUASHFS" ]; then
     "path": "workdir",
     "property": "可写"
   },
-  "note": "=> 而那**系统层**逐字**要**那 mksquashfs **做**、=> 而那**宿主**上逐字**没有**它"
+  "note": "**系统层**逐字**要**那 mksquashfs **做**、**宿主**上逐字**没有**它"
 }
 JSON
   echo "[ok] $OUT（那两样的**形状**已落；那系统层那归档逐字**报缺**）"
@@ -136,7 +136,7 @@ if [ -d "$M3_STAGE" ]; then
 # **后果**逐字 = 而那 llvm **那一格**逐字**报**那「ABSENT」、 **它**们**逐字是**那**两**件**事**。
 # **处置**： llvm **那一族**逐字**从**那 dist **那一族****复制**进**那**归档**
 #      （ **它**们**逐字是**那**两**件**事**：「那**产物**是**什么**」与「那**落位**是**什么**」）。
-    note "llvm 那一族已从那 dist 复制进那归档（=> 而那**软链**逐字**不**再指**那宿主**）"
+    note "llvm 那一族已从那 dist 复制进那归档（**软链**逐字**不**再指**那宿主**）"
   fi
   #  缺陷名（C-102）**那 llvm **那一族**逐字**只**认**那 dist **那一处**（ **它**们**逐字是**那**两**件**事**）。
 # **成因**： dist/bin **那一族**逐字**会**被**那 llvm **那一次**编**清掉**、 **它**们**逐字是**那**两**件**事**：
@@ -146,7 +146,7 @@ if [ -d "$M3_STAGE" ]; then
   LLVM_SRC="${LLVM_SRC:-$ROOT/dist}"
   if [ ! -f "$LLVM_SRC/bin/clang-21" ] && [ -f "$STAGE/usr/bin/clang-21" ]; then
     LLVM_SRC="$STAGE"
-    note "那 dist 底下没有那 clang-21（=> 而那**它**逐字**已经**被**清掉**）、=> 而那**来源**逐字**改**用那**上**一次**编**留**的**那一份**"
+    note "那 dist 底下没有那 clang-21（**它**逐字**已经**被**清掉**）、**来源**逐字**改**用那**上**一次**编**留**的**那一份**"
   fi
   if [ -d "$LLVM_SRC/bin" ] && [ -f "$LLVM_SRC/bin/clang-21" ]; then
     mkdir -p "$STAGE/usr/bin" "$STAGE/usr/lib"
@@ -161,7 +161,7 @@ if [ -d "$M3_STAGE" ]; then
       mkdir -p "$STAGE/usr/lib/clang"
       cp -a "$LLVM_SRC/lib/clang/." "$STAGE/usr/lib/clang/" 2>/dev/null || true
     fi
-    note "llvm 那一族已从那 dist 复制进那归档（=> 而那**软链**逐字**不**再指**那宿主**）"
+    note "llvm 那一族已从那 dist 复制进那归档（**软链**逐字**不**再指**那宿主**）"
   fi
 
   if [ -d "$M3_STAGE/usr/bin" ]; then
@@ -198,7 +198,7 @@ if [ -d "$M3_STAGE" ]; then
       note "busybox 本体已进那 usr/bin 那一层"
     fi
   else
-    note "没有那 M3 暂存（$M3_STAGE）=> 而那 M3 那一族逐字**装不进来**（=> 而按 C-105 报缺）"
+    note "没有那 M3 暂存（$M3_STAGE） M3 那一族逐字**装不进来**（按 C-105 报缺）"
   fi
 
 # **归档**逐字**在**那**所有**那**复制**之后**才**做**（ **它**们**逐字是**那**两**件**事**：
@@ -229,7 +229,7 @@ cat > "$OUT/rootfs-shape.json" <<JSON
     "path": "workdir",
     "property": "可写"
   },
-  "note": "=> 而那**两样**逐字**不能并成一个文件**、=> 而那**系统层**逐字**是**那**归档**、=> 而那**可写层**逐字**是**那**目录**、=> 而按 C-104 逐字**不合并**"
+  "note": "**两样**逐字**不能并成一个文件**、**系统层**逐字**是**那**归档**、**可写层**逐字**是**那**目录**、按 C-104 逐字**不合并**"
 }
 JSON
 

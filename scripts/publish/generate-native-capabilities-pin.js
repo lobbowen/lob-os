@@ -530,7 +530,7 @@ async function main() {
       //     zip64 那一档逐字**也**认（ 它逐字是 zip 那一档的中央目录变体）。
       //  形态逐字**三层**：外层容器 / 外层是不是 zip / 外层是不是 zip64。
       rec.outerForm = containerFormOf(got.zipPath);
-      rec.outerSha256 = got.digest;      //  => 而那**外层**那一份的 sha256（=> 而那 sha256 逐字是那**下载**下来那一份的）
+      rec.outerSha256 = got.digest;      // 外层那一份的 sha256（sha256 是那下载下来那一份的）
       rec.outerBytes = got.bytes;
       rec.outerMagic = magicOf(got.zipPath);
       //  **内层**那一份（ 「外层套内层」那一族）：
@@ -614,8 +614,8 @@ async function main() {
       rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
       if (!rec.capsLibNameFoundInArtifact) {
         bad(c.id + '：档位表第二列逐字是 ' + c.capsLibName +
-          '，=> 而那件包里逐字**命中不到**它（=> 而那是「档位表与产物分家」那一格）' +
-          '（=> 而那该提供的是 ' + (rec.artifactLibraryPath || rec.entryInArtifact || '(空)') + '）');
+          '，那件包里逐字**命中不到**它（那是「档位表与产物分家」那一格）' +
+          '（那该提供的是 ' + (rec.artifactLibraryPath || rec.entryInArtifact || '(空)') + '）');
       }
       const realLib = files.find((f) => f.role === 'library' && f.verified === 'sha256-matched-piece-shape');
       rec.artifactLibraryPath = realLib ? realLib.path : '';

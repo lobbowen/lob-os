@@ -34,10 +34,10 @@ done
 say "  真取到的件=$got"
 say "  ok 逐字=$ok   missing 逐字=$missing"
 say "  那行输出逐字=[fetch] 已取到 $ok 个。缺的那几个要单独构建，别在 APK 里编 —— 见 RELEASE-POLICY.md"
-[ "$ok" -eq 6 ] && say "  判定：ok 逐字等于真取到的件数（6）=> 格过" || { say "  判定：错"; RC=1; }
+[ "$ok" -eq 6 ] && say "  判定：ok 逐字等于真取到的件数（6）格过" || { say "  判定：错"; RC=1; }
 
 say ""
-say "== 格 (2) 那缺件逐字分档、=> 而那档位逐字是枚举值 =="
+say "== 格 (2) 那缺件逐字分档、档位逐字是枚举值 =="
 # 六档逐字是（ 按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字）：
 #     成因轴四档：ratelimit / auth / notfound / unknown
 #     + 与下载被拒**不是同一问**的两档：missing-norun / missing-contract
@@ -67,7 +67,7 @@ miss_row "npm"     "missing-auth"    "run 123 下载被拒（HTTP 401 / auth）"
 miss_row "cmake2"  "missing-notfound" "run 123 下载被拒（HTTP 404 / notfound）" "未知|无|-1"
 miss_row "make2"   "missing-unknown" "run 123 下载被拒（HTTP 500 / unknown）" "未知|无|-1"
 miss_row "npm2"    "missing-contract" "artifact 里没有符合命名契约的 zip" "zip|504b0304|4"
-say "  那缺件表逐字（=> 而那它逐字是**四列**）："
+say "  那缺件表逐字（它逐字是**四列**）："
 cat "$MISS_TSV" | sed 's/^/    /'
 say ""
 say "  那机器可读的那一份逐字："
@@ -77,7 +77,7 @@ for (const x of a) console.log("    " + x.piece + "  kind=" + x.kind + "  form="
 ' "$W/.fetch-missing.json"
 
 say ""
-say "== 格 (3) 那档位逐字**取自枚举**、=> 而不散文（=> 而按 01 的 S606-02 逐字）=="
+say "== 格 (3) 那档位逐字**取自枚举**、不散文（按 01 的 S606-02 逐字）=="
 node -e '
 const ALLOWED = new Set(["missing-ratelimit","missing-auth","missing-notfound","missing-unknown","missing-norun","missing-contract"]);
 const a=require(process.argv[1]);
@@ -88,23 +88,23 @@ for (const x of a) {
 console.log("    枚举值逐字=" + JSON.stringify([...ALLOWED].sort()));
 console.log("    不在枚举里的条数=" + bad);
 process.exit(bad ? 1 : 0);
-' "$W/.fetch-missing.json" && say "  判定：逐字全在枚举里 => 格过" || { say "  判定：错"; RC=1; }
+' "$W/.fetch-missing.json" && say "  判定：逐字全在枚举里 格过" || { say "  判定：错"; RC=1; }
 
 say ""
-say "== 格 (4) 阳性对照：那四档判别逐字能分开（=> 而不是全落 unknown）=="
+say "== 格 (4) 阳性对照：那四档判别逐字能分开（不是全落 unknown）=="
 bash scripts/verify/classify-download-failure.sh --selftest 2>&1 | grep -E '^  (503|401|404|403|empty|500)\.txt' | sed 's/^/  /'
 
 say ""
-say "== 格 (5) 那件逐字**进**那显式缺件表（=> 而不静默从清单里消失）=="
+say "== 格 (5) 那件逐字**进**那显式缺件表（不静默从清单里消失）=="
 node -e '
 //  反例： 清单里逐字**有**那缺件表里的某一件 两格逐字**矛盾** 要判红。
 const miss=require(process.argv[1]);
 const man=[{name:"cmake"},{name:"git"},{name:"llvm"}];
-const inMan=new Set(man.map(t=>t.name));
+const inMan=new Set(man.map(tt.name));
 let conflict=0;
 for (const m of miss) if (inMan.has(m.piece)) { console.log("    矛盾：" + m.piece); conflict++; }
 console.log("    矛盾条数=" + conflict);
-console.log("    => 而那缺的几件逐字**不在**那清单里 => 而那两格逐字**对得上**（=> 而那投影侧不留占位是对的）");
+console.log("    缺的几件逐字**不在**那清单里 两格逐字**对得上**（投影侧不留占位是对的）");
 ' "$W/.fetch-missing.json"
 
 say ""

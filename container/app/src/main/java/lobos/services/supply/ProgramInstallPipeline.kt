@@ -188,7 +188,7 @@ object ProgramInstallPipeline {
                 }
             }
             val soft = softLinkPathsOf(piece, verDir)
-                ?: return PointerLayer(emptyList(), "")   //  => 而那两处都读不到 => 报缺
+                ?: return PointerLayer(emptyList(), "")   //  两处都读不到 报缺
             val pointerLayer = items.filter { soft.contains(it.path) }
             if (pointerLayer.isEmpty()) {
                 //  **有**好几项、 没有一项是软链、 不是「单层」、
@@ -197,7 +197,7 @@ object ProgramInstallPipeline {
             }
             //  乙：按 chain[0] 择一。
             val roots = items.mapNotNull { it.chain.firstOrNull()?.takeIf { s -> s.isNotBlank() } }.toSet()
-            if (roots.isEmpty()) return PointerLayer(emptyList(), "")   //  => 而那 chain[0] 读不到 => 报缺
+            if (roots.isEmpty()) return PointerLayer(emptyList(), "")   //   chain[0] 读不到 报缺
             val picked = pointerLayer.filter { roots.contains(it.path.substringAfterLast('/')) }
             val tier = if (picked.size > 1) "multi" else "chain0"
             return PointerLayer(picked, tier)
@@ -451,7 +451,7 @@ object ProgramInstallPipeline {
             ?: return null to LandFailure(
                 "entry-system-role-unknown",
                 "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
-                    "（=> 而那它逐字该从那 component-meta.json 派生、=> 而那按 C-05 不猜填）",
+                    "（它逐字该从那 component-meta.json 派生、按 C-05 不猜填）",
             )
         return Landed(entryDst, entryRole, shape.kind, moved, "", probe) to null
     }
@@ -841,7 +841,7 @@ object ProgramInstallPipeline {
                       //   快路径那几件没事：`PreinstalledPieces.kt:537` 写了 `desired = Desired.RUNNING`，这一支没写、两处不同源。
                       //  该由落位侧那份说了算，但它缺 lifecycle（`ManifestWriter.build` 的 schema 里没有），`ProgramRegistry.kt:146`
                       //    默认 true，而落位那支 spec 是 null（`ProgramDir.kt:169` 的 `spec?.resident == true` 于是 false，
-                      //    正是 journal 里「resident=false」）。按 C-104 照快路径答：desired = RUNNING；库件不受影响（=> PIECE）。
+                      //    正是 journal 里「resident=false」）。按 C-104 照快路径答：desired = RUNNING；库件不受影响（PIECE）。
                       desired = lobos.services.reg.Desired.RUNNING,
                 ),
             )
@@ -873,7 +873,7 @@ object ProgramInstallPipeline {
         RuntimeDiagnostics.append(
             context, "ota", globalRebuilt.isSuccess,
             "件换完之后全局那一层重建",
-            spec.programId + "@" + safeVer + " => usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
+            spec.programId + "@" + safeVer + " usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
         )
         lobos.services.log.Journal.note(
             context, "package", true, "系统组件已安装",

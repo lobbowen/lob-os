@@ -151,7 +151,7 @@ object ProcessLedger {
      *
      *  为什么需要它：宿主 JVM 读不到**自己 fork 出来的子进程**的 /proc/<pid>/stat
      *  （真机读数：进程起来了 pid=30605/30624/30638，账本也记了，而 starttimeOf 返回 -1
-     *  => begin() 把 -1 原样存下=> isOwnedAlive 立刻 false => programsRunning 恒 0）。
+     *  begin() 把 -1 原样存下isOwnedAlive 立刻 false programsRunning 恒 0）。
      *  而 scanChildPid（:128-143）已经在读 /proc/<pid>/cmdline 并与 entry 绝对路径做子串匹配，
      *  这条路是实测可用的。
      *

@@ -1,13 +1,13 @@
 {
-  "$note": "那 M0prime 真判据的分母清单。=> 而那判据对象逐字是 (件, entry) 那一对、=> 而那分母逐字分成那两个（按裸名调起 / 按需装载并解析出符号）、=> 而那 sysroot 与那 libcxx 逐字标出来为什么不进。=> 而那清单**不**跟那 docs/m0prime-readings.json 合一（=> 而那分母是一个定义、=> 而而那读数是一个时点的读数）。",
+  "$note": "那 M0prime 真判据的分母清单。判据对象逐字是 (件, entry) 那一对、分母逐字分成那两个（按裸名调起 / 按需装载并解析出符号）、 sysroot 与那 libcxx 逐字标出来为什么不进。清单**不**跟那 docs/m0prime-readings.json 合一（分母是一个定义、读数是一个时点的读数）。",
   "family": "M0prime 真判据的分母（那定义那一件）",
-  "notFamily": "那读数那一件（=> 而那是 docs/m0prime-readings.json、=> 而那读数**不**随**那定义**变、=> 而而那定义**不**随**那读数**变）",
-  "ruledBy": "04 那边逐字给的那清单正文（=> 而那判据归 04 那一族、=> 而那清单归 04 那一族、=> 而那采集归 05 与 07 那一族）",
+  "notFamily": "那读数那一件（是 docs/m0prime-readings.json、读数**不**随**那定义**变、定义**不**随**那读数**变）",
+  "ruledBy": "04 那边逐字给的那清单正文（判据归 04 那一族、清单归 04 那一族、采集归 05 与 07 那一族）",
   "denominators": [
     {
       "key": "bareName",
       "name": "按裸名调起",
-      "rule": "那有可执行入口的用户态件（=> 而那判据对象逐字是 (件, entry) 那一对）",
+      "rule": "那有可执行入口的用户态件（判据对象逐字是 (件, entry) 那一对）",
       "count": 14,
       "set": [
         "node",
@@ -25,12 +25,12 @@
         "pkgconf",
         "busybox"
       ],
-      "note": "=> 而那 curl 那一件逐字**从**这**一族**移**出**了**（=> 而按 C-115 那**旧**的**那一版**留档不删、=> 而那**旧**的**那一版**逐字**记**在**那** curl **那一**条**的** rulingConflict **那一格**里**）"
+      "note": " curl 那一件逐字**从**这**一族**移**出**了**（按 C-115 那**旧**的**那一版**留档不删、**旧**的**那一版**逐字**记**在**那** curl **那一**条**的** rulingConflict **那一格**里**）"
     },
     {
       "key": "symbolLoad",
       "name": "按需装载并解析出符号",
-      "rule": "那库类件（=> 而那 entry 合法地是空）",
+      "rule": "那库类件（ entry 合法地是空）",
       "count": 4,
       "set": [
         "openssl",
@@ -38,7 +38,7 @@
         "zlib",
         "curl"
       ],
-      "note": "=> 而那 curl 那一件逐字**进**了**这**一族**（=> 而那**它**逐字**是**那库**、=> 而那 entry 逐字合法地**是**空**的**、=> 而它**与**那 openssl 与那 crypto **同族**）"
+      "note": " curl 那一件逐字**进**了**这**一族**（**它**逐字**是**那库**、 entry 逐字合法地**是**空**的**、它**与**那 openssl 与那 crypto **同族**）"
     },
     {
       "key": "excluded",
@@ -55,7 +55,7 @@
     {
       "name": "sed",
       "belongsTo": "busybox",
-      "note": "=> 而那 sed 逐字**不是**那顶层**键**之一、=> 而它逐字**是**那 busybox **的**一个 applet、=> 而而它**算**在**那 busybox **那**一件**里面**、=> 而它**不**是**另**一件**件**"
+      "note": " sed 逐字**不是**那顶层**键**之一、它逐字**是**那 busybox **的**一个 applet、它**算**在**那 busybox **那**一件**里面**、它**不**是**另**一件**件**"
     }
   ],
   "items": [
@@ -66,7 +66,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 node 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 node 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -88,7 +88,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 pnpm 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 pnpm 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -127,10 +127,10 @@
       ],
       "onDeviceNow": true,
       "rulingConflict": {
-        "ruledBy": "04 那边逐字把 curl 归那「按需装载并解析出符号」那一族（=> 而那**它**逐字**是**那库、=> 而那 entry 合法地**是**空**的**、=> 而它**与**那 openssl 与那 crypto **同族**）",
-        "observed": "=> 而那**设备**上**它自己的** program-manifest.json 逐字 = 「entry: \"\"、role: \"library」、=> 而那 files/opt/curl/8.22.0/ **底下**逐字**没有**那 bin **那一层**、=> 而那 files/usr/bin/curl 逐字**不**存在、=> 而那 which curl 逐字 = **/system/bin/curl**（=> 而那**它**是**那宿主**那一个**、=> 而**不**是**那我们**的**那一份**）",
+        "ruledBy": "04 那边逐字把 curl 归那「按需装载并解析出符号」那一族（**它**逐字**是**那库、 entry 合法地**是**空**的**、它**与**那 openssl 与那 crypto **同族**）",
+        "observed": "**设备**上**它自己的** program-manifest.json 逐字 = 「entry: \"\"、role: \"library」、 files/opt/curl/8.22.0/ **底下**逐字**没有**那 bin **那一层**、 files/usr/bin/curl 逐字**不**存在、 which curl 逐字 = **/system/bin/curl**（**它**是**那宿主**那一个**、**不**是**那我们**的**那一份**）",
         "status": "已核",
-        "note": "=> 而那**两者**逐字**不**一致**那一问逐字**已核**：那归属那一问逐字 = 「那一件逐字有没有**可调起入口**」而那形态那一问逐字 = 「那一件逐字带了哪些字节、而那些字节是什么形态」、=> 而按 C-135 那**两格**逐字**不合并**；=> 而那 curl **那一**件逐字**没有**那 files/usr/bin/curl、=> 而那 which curl 逐字 = **/system/bin/curl**（=> 而那**它**是**那宿主**那一个**）。=> 而按 C-136 与按 C-115：那**旧**的**那一版**逐字**留档不删** —— 那一版逐字 = 「04 那边逐字把 curl 归那「按裸名调起」那一族（=> 而那 15 件**里面**它**在**）」；=> 而那**旧**的**那一版**逐字**前提**是「那 curl 归那「按裸名调起」那一族」、=> 而它逐字**被**那 02 那边 2026-10-27 那一裁定**推翻**了、=> 而按 C-115 那一版**留档不删**。=> 而那判据**本体**那一栏**归 04** 那一族、=> 而那**它**逐字**是**那能力声明、=> 而**按落位事实写**。"
+        "note": "**两者**逐字**不**一致**那一问逐字**已核**：那归属那一问逐字 = 「那一件逐字有没有**可调起入口**」而那形态那一问逐字 = 「那一件逐字带了哪些字节、而那些字节是什么形态」、按 C-135 那**两格**逐字**不合并**； curl **那一**件逐字**没有**那 files/usr/bin/curl、 which curl 逐字 = **/system/bin/curl**（**它**是**那宿主**那一个**）。按 C-136 与按 C-115：那**旧**的**那一版**逐字**留档不删** —— 那一版逐字 = 「04 那边逐字把 curl 归那「按裸名调起」那一族（ 15 件**里面**它**在**）」；**旧**的**那一版**逐字**前提**是「那 curl 归那「按裸名调起」那一族」、它逐字**被**那 02 那边 2026-10-27 那一裁定**推翻**了、按 C-115 那一版**留档不删**。判据**本体**那一栏**归 04** 那一族、**它**逐字**是**那能力声明、**按落位事实写**。"
       }
     },
     {
@@ -140,7 +140,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 make 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 make 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -151,7 +151,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 cmake 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 cmake 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -188,7 +188,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 sqlite 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 sqlite 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -199,7 +199,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 python 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 python 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -221,7 +221,7 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 pkgconf 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）"
+        "scripts/piece-criteria.json 的 pkgconf 那一档（ criterion 那一句逐字写着「起得来」那一族）"
       ],
       "onDeviceNow": false
     },
@@ -284,10 +284,10 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 sysroot 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）",
+        "scripts/piece-criteria.json 的 sysroot 那一档（ criterion 那一句逐字写着「起得来」那一族）",
         "scripts/piece-criteria.json 的 sysroot 那一档的 criterion 逐字写着「本来就没有可执行行为」/「起得来不适用」"
       ],
-      "excludedReason": "那编译期材料逐字不是那用户态模块、=> 而它逐字不进那分母",
+      "excludedReason": "那编译期材料逐字不是那用户态模块、它逐字不进那分母",
       "onDeviceNow": false
     },
     {
@@ -297,17 +297,17 @@
       "role": null,
       "version": null,
       "provenance": [
-        "scripts/piece-criteria.json 的 libcxx 那一档（=> 而那 criterion 那一句逐字写着「起得来」那一族）",
+        "scripts/piece-criteria.json 的 libcxx 那一档（ criterion 那一句逐字写着「起得来」那一族）",
         "scripts/piece-criteria.json 的 libcxx 那一档的 criterion 逐字写着「本来就没有可执行行为」/「起得来不适用」"
       ],
-      "excludedReason": "那编译期材料逐字不是那用户态模块、=> 而它逐字不进那分母",
+      "excludedReason": "那编译期材料逐字不是那用户态模块、它逐字不进那分母",
       "onDeviceNow": false
     }
   ],
   "openItems": [
     {
       "id": "pkgconf",
-      "note": "=> 而那 pkgconf 逐字**没有**那 node **字段**、=> 而而它逐字**该**算**进**那分母**、=> 而而那**它**的**那**机器**可执行**的**那一段**逐字**还**没**补**、=> 而按 C-105 报缺"
+      "note": " pkgconf 逐字**没有**那 node **字段**、它逐字**该**算**进**那分母**、**它**的**那**机器**可执行**的**那一段**逐字**还**没**补**、按 C-105 报缺"
     }
   ]
 }

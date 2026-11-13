@@ -86,4 +86,4 @@ if [ -n "$PRIVATE" ]; then
   echo "[ok]   配对成立：私钥派生公钥 == 锚点（$anchor_fp）"
 fi
 
-echo "==> [ok] OTA 锚点判据全部通过"
+echo "=[ok] OTA 锚点判据全部通过"

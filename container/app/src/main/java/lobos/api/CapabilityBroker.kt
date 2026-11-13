@@ -441,7 +441,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     throw BridgeError(
                         CODE_POLICY_DENIED,
                         "这一件不在包回退这一族（只有控制面板清单里那些件才归它管）：" + name +
-                            "（=> 而正式系统件的回退逐字走 lobos.sys.native.rollback，=> 而那两族不混用）",
+                            "（正式系统件的回退逐字走 lobos.sys.native.rollback，两族不混用）",
                     )
                 }
                 JSONObject().apply { put("ok", PackageInstaller.rollbackToBaseline(this@CapabilityBroker, name)) }
@@ -551,16 +551,16 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (fg.isBlank()) {
             throw BridgeError(
                 CODE_POLICY_DENIED,
-                "读不到那前台逐字是哪一个（=> 而那一族逐字**不许**在读不到的时候逐字点出去、" +
-                    "=> 而按 C-05 报缺）",
+                "读不到那前台逐字是哪一个（一族逐字**不许**在读不到的时候逐字点出去、" +
+                    "按 C-05 报缺）",
             )
         }
         if (fg !in ours) {
             throw BridgeError(
                 CODE_POLICY_DENIED,
                 "那前台逐字**不是**我们自己那一个承载：" + fg +
-                    "（=> 而那「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」、" +
-                    "=> 而那**不是**「设备上此刻前台那一面」；=> 而那一族逐字**不许**点出去）",
+                    "（「我们自己那一个承载」逐字是「那一件自己逐字呈现出来的那一面」、" +
+                    "**不是**「设备上此刻前台那一面」；一族逐字**不许**点出去）",
             )
         }
         return a11y
@@ -1426,7 +1426,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             //      **不是**那**替换**那一族、 **是**那**另一**成因）
             lobos.kernel.fs.NotifyRoute.note(
                 this, "bridge.notif.post", nid, "普通",
-                "id 逐字每次都变 => 而那每次逐字**新增**一条",
+                "id 逐字每次都变 每次逐字**新增**一条",
             )
             notifManager.notify(nid, n.build())
             JSONObject().apply { put("posted", true) }
@@ -1469,8 +1469,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 throw BridgeError(
                     CODE_INVALID_PARAM,
                     "那一件逐字**不在**仓内清单声明过的那几件里：" + pkg +
-                        "（=> 而那仓内清单声明过的那几件逐字是：" + declared.joinToString(",") +
-                        "；=> 而那按 C-05 报缺、=> 而**不**静默回退到拉起任意 app）",
+                        "（仓内清单声明过的那几件逐字是：" + declared.joinToString(",") +
+                        "；按 C-05 报缺、**不**静默回退到拉起任意 app）",
                 )
             }
             val ai = packageManager.getLaunchIntentForPackage(pkg)
@@ -1479,7 +1479,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             RuntimeDiagnostics.append(
                 this, "app-launch", true, "拉起仓内清单声明过的那一件",
-                "pkg=" + pkg + "（=> 而那它逐字**只**许拉起那清单声明过的那几件）",
+                "pkg=" + pkg + "（它逐字**只**许拉起那清单声明过的那几件）",
             )
             JSONObject().apply { put("launched", pkg) }
         },
@@ -1502,7 +1502,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             startActivity(ai)
             RuntimeDiagnostics.append(
                 this, "app-open-url", true, "拉起浏览器（那一件逐字在仓内清单声明过的那几件之外）",
-                "url=" + url + "（=> 而那它逐字**只**许在那一档**显式声明**之后才**能**跑）",
+                "url=" + url + "（它逐字**只**许在那一档**显式声明**之后才**能**跑）",
             )
             JSONObject().apply { put("opened", true); put("url", url) }
         },

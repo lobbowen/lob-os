@@ -28,7 +28,7 @@ import lobos.services.reg.UnitEntry
  * 缺陷名（C-102）**库形态的入口指针拼在 usr/lib/ 下却按 bin/ 那一条算**：
  *   而 OTA 那条路径（PieceUpdater.place）把新版本落到**新的版本目录**，
  *   而那一份目录里**没有** piece-shape.json（形态说明是产物带来的，OTA 包不带）。
- *   而库形态的入口名字**只能**从形态说明取 一支就取不到 =>
+ *   而库形态的入口名字**只能**从形态说明取 一支就取不到 
  *   而「OTA 那一件是库形态」就**没有任何一条路径能算出入口指针**。
  *   现在：形态说明按「登记那一版的落位目录 -> 该件落位根下别的版本目录」逐个找，
  *   找到就用；找不到就报缺（不拿注册表那一格派生索引顶替）。
@@ -303,7 +303,7 @@ object PieceEntryPointer {
                     pointer = File(PrefixProvisioner.libDir(ctx), base),
                     landedRel = landed,
                     detail = "库形态：入口指针按落位目录 " + ProgramInstallPipeline.SHAPE_NAME +
-                        " 里 files[] 的库形态那一条（软链层、=> 而那 basename 等于 chain[0]）定位（usr/lib/" + base + "）",
+                        " 里 files[] 的库形态那一条（软链层、 basename 等于 chain[0]）定位（usr/lib/" + base + "）",
                     tier = layer.tier,
                 )
             )
@@ -314,7 +314,7 @@ object PieceEntryPointer {
                 "库项存在但**开发名那一层**取不出（择一之后算不出落位相对路径）—— 报缺，不按首项、不按字典序、不猜",
             )
         }
-        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 一族等于没做**
         //    旧版逐字是 `tier = layer.tier`（ **赋值**逐字**没有消费方**：
         //      而 Lead 本机实跑 `grep -rn '\.tier' --include=*.kt container/` 逐字命中**只有 1 处**、 **就是**这一行赋值）。
         //    与 C-993 逐字**同一形状**（ 判别式被写了、被赋值了、 没有任何一处读它）。
@@ -341,7 +341,7 @@ object PieceEntryPointer {
     /**
      * 那一档的**出口**（ 它逐字把那一档**报出来**）。
      *
-     * 缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+     * 缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 一族等于没做**
      *   旧版逐字是 `tier = layer.tier`（ **赋值**逐字**没有消费方**：
      *     而 Lead 本机实跑 `grep -rn '\.tier' --include=*.kt container/` 逐字命中**只有 1 处**、
      *     **就是**那一行赋值）。
@@ -376,8 +376,8 @@ object PieceEntryPointer {
                 " 指针条数=" + count +
                 " 指针=" + names.joinToString(",") +
                 " 有库形态项=" + hasLibraryItems +
-                " （=> 而那一档逐字答的是「**这一件的库形态那几项**：它逐字有几条库链、那一档是什么形态」" +
-                "；=> 而那档名逐字是 single / chain0 / multi / 空 / no-library）",
+                " （一档逐字答的是「**这一件的库形态那几项**：它逐字有几条库链、那一档是什么形态」" +
+                "；档名逐字是 single / chain0 / multi / 空 / no-library）",
         )
     }
 

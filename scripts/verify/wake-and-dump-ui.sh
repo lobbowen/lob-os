@@ -111,7 +111,7 @@ WAKE_CMDS="adb -s $DEV shell input keyevent KEYCODE_WAKEUP
 adb -s $DEV shell wm dismiss-keyguard"
 if [ "$DOZING" = "1" ]; then
   if [ "$DO_WAKE" = "1" ]; then
-    echo "[wake] 屏幕逐字是灭的、=> 而那按 --wake 逐字执行那两条唤醒命令："
+    echo "[wake] 屏幕逐字是灭的、按 --wake 逐字执行那两条唤醒命令："
     printf '%s\n' "$WAKE_CMDS" | sed 's/^/       /'
     # shellcheck disable=SC2086
     $ADB -s "$DEV" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
@@ -124,9 +124,9 @@ if [ "$DOZING" = "1" ]; then
       *) DOZING=0 ;;
     esac
   else
-    echo "[wake] 屏幕逐字是灭的、=> 而那唤醒那两条命令逐字由 07 执行（=> 而设备写入只归 07）："
+    echo "[wake] 屏幕逐字是灭的、唤醒那两条命令逐字由 07 执行（设备写入只归 07）："
     printf '%s\n' "$WAKE_CMDS" | sed 's/^/       /'
-    echo "[wake] 唤醒之后重跑本工具、=> 而那时它逐字会拿到树。"
+    echo "[wake] 唤醒之后重跑本工具、时它逐字会拿到树。"
     exit 3
   fi
 fi
@@ -142,10 +142,10 @@ DUMP_ERR="$($ADB -s "$DEV" shell "uiautomator dump /sdcard/uidump.xml 2>&1; echo
 
 if printf '%s\n' "$DUMP_ERR" | grep -q 'null root node returned by UiTestAutomationBridge'; then
   echo "[error] 设备回了这一句原文：ERROR: null root node returned by UiTestAutomationBridge" >&2
-  echo "        => 而那屏幕逐字是灭的、=> 而那唤醒那一格**没满足**。" >&2
-  echo "        => 而那唤醒是**设备写入**、=> 而只归 07；=> 而那两条命令逐字是：" >&2
+  echo "        屏幕逐字是灭的、唤醒那一格**没满足**。" >&2
+  echo "        唤醒是**设备写入**、只归 07；两条命令逐字是：" >&2
   printf '%s\n' "$WAKE_CMDS" | sed 's/^/          /' >&2
-  echo "        => 而那唤醒之后**重跑**本工具、=> 而那时它逐字会拿到树。" >&2
+  echo "        唤醒之后**重跑**本工具、时它逐字会拿到树。" >&2
   exit 3
 fi
 
@@ -179,10 +179,10 @@ if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
 fi
 
 echo "[error] 树取到了，但那一格逐字**不在**树里：$ACTIVITY" >&2
-echo "        => 而那这与「屏幕黑」是**两件**事、=> 而那要分开确认（依 I-32）。" >&2
-echo "        => 而那先看 [focus] 那一行：=> 而那焦点逐字在别处、=> 而那要先把那个 Activity 叫起来。" >&2
+echo "        这与「屏幕黑」是**两件**事、要分开确认（依 I-32）。" >&2
+echo "        先看 [focus] 那一行：焦点逐字在别处、要先把那个 Activity 叫起来。" >&2
 if [ -n "$OUT" ]; then
   cp "$DUMP_OUT" "$OUT"
-  echo "[out]  $OUT（=> 而那树逐字留下来了、=> 而那目标逐字不在里面）" >&2
+  echo "[out]  $OUT（树逐字留下来了、目标逐字不在里面）" >&2
 fi
 exit 3

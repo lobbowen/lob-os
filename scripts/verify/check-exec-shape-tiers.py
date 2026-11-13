@@ -96,7 +96,7 @@ fail = 0
 for rel, want, what in CASES:
     p = os.path.join(HERE, rel)
     if not os.path.isfile(p):
-        print('  缺样本：%s（=> 而那取件归 06、=> 而按 C-105 报缺）' % rel)
+        print('  缺样本：%s（取件归 06、按 C-105 报缺）' % rel)
         fail += 1
         continue
     got = detect(open(p, 'rb').read())
@@ -105,7 +105,7 @@ for rel, want, what in CASES:
         fail += 1
     print('  %s %-22s 判=%-8s 要=%-8s 答的是「%s」' % ('过' if ok else '不过', rel, got, want, what))
 
-print('  => 而那 Shape 那五档逐字各答什么、=> 而那 PE 那一档逐字测了没有：%s' % ('过' if fail == 0 else '不过'))
+print('   Shape 那五档逐字各答什么、 PE 那一档逐字测了没有：%s' % ('过' if fail == 0 else '不过'))
 
 # 宣称了什么 / 做到了什么 两栏并列。
 #   这一段只读仓内实现代码，不改任何东西，也不判红（它是一份声明，核是别的族的事）。
@@ -115,15 +115,15 @@ KT = 'container/app/src/main/java/lobos/kernel/proc/ExecEntry.kt'
 # 「做到了什么」栏按实现代码逐条核、不猜。
 DELIVERED = [
     ('Exec',   'is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)',
-               '逐字给出那一条 argv、=> 而那它逐字**能**起那 ELF 静态件'),
+               '逐字给出那一条 argv、它逐字**能**起那 ELF 静态件'),
     ('Elf',    'is Shape.Elf ->',
-               '逐字给出那一条 argv（=> 而那它逐字经那 linker64 驱动）'),
+               '逐字给出那一条 argv（它逐字经那 linker64 驱动）'),
     ('Shebang','is Shape.Shebang ->',
-               '逐字给出那一条 argv（=> 而那它逐字**用**那第一行那解释器）'),
+               '逐字给出那一条 argv（它逐字**用**那第一行那解释器）'),
     ('Pe',     'is Shape.Pe -> null',
-               '逐字**给不出**那一条 argv、=> 而那它逐字**跑不起来**'),
+               '逐字**给不出**那一条 argv、它逐字**跑不起来**'),
     ('Unknown','is Shape.Unknown -> null',
-               '逐字**给不出**那一条 argv、=> 而那它逐字**跑不起来**'),
+               '逐字**给不出**那一条 argv、它逐字**跑不起来**'),
 ]
 
 try:
@@ -135,7 +135,7 @@ except OSError:
 print('')
 print('  「宣称了什么」与「做到了什么」那两栏并列：')
 if kt is None:
-    print('    [error] 读不到 %s（=> 而那一格逐字报缺、=> 而不猜）' % KT)
+    print('    [error] 读不到 %s（一格逐字报缺、不猜）' % KT)
     sys.exit(2)
 
 for tier, marker, meaning in DELIVERED:
@@ -148,14 +148,14 @@ for tier, marker, meaning in DELIVERED:
 
 # PE 一档不可执行，根因两件要写出来：承载是 arm64、执行族 0 命中。
 print('')
-print('    而那 PE 那一档在 PC 侧逐字**不可执行**，=> 而那根因逐字是那两件：')
+print('    而那 PE 那一档在 PC 侧逐字**不可执行**，根因逐字是那两件：')
 # 第一件从 APK 的 ABI 读，不是猜的。
-print('      (1) 承载逐字是 arm64 —— 而那它逐字是那 APK 那一档的 ABI（=> 而那它逐字**不是**那解析器的短板）')
+print('      (1) 承载逐字是 arm64 —— 而那它逐字是那 APK 那一档的 ABI（它逐字**不是**那解析器的短板）')
 print('      (2) 执行族逐字 0 命中 —— 而那仓内逐字**没有**任何一处执行 PE 那一族的代码')
-print('      => 而那**不是**「解析器不支持 x86-64」（=> 而那它逐字**支持**那 PE32 那一档的解析）')
-print('      => 而那「不可执行」逐字**不等于**「会拦住它」：')
+print('      **不是**「解析器不支持 x86-64」（它逐字**支持**那 PE32 那一档的解析）')
+print('      「不可执行」逐字**不等于**「会拦住它」：')
 print('         而那 ProcessSupervisor.kt:33-:34 逐字仍走 ProcessBuilder(if (real != null) real else command)')
-print('         => 而那 PE 仍一路走到 pb.start()、=> 而那**唯一**显式拒 PE 的地方是 GuestAdapter.kt:56')
+print('          PE 仍一路走到 pb.start()、**唯一**显式拒 PE 的地方是 GuestAdapter.kt:56')
 
 # ProcessSupervisor 那一格还在（零命中要阳性对照）。
 ps = os.path.join(HERE, '..', '..', 'container/app/src/main/java/lobos/kernel/proc/ProcessSupervisor.kt')
@@ -168,19 +168,19 @@ try:
         fail += 1
     print('    %s 而那 ProcessSupervisor 那一格逐字仍走 %s' % ('过' if ps_ok else '不过', ps_marker))
 except OSError:
-    print('    [error] 读不到 %s（=> 而那一格逐字报缺）' % ps)
+    print('    [error] 读不到 %s（一格逐字报缺）' % ps)
     fail += 1
 
 # 「第 3 层（可执行）」判三格（依规范正文 §122.77.4）。
 print('')
-print('  而那「第 3 层（可执行）」那一档逐字判那三格（=> 而那**不是一格**）：')
+print('  而那「第 3 层（可执行）」那一档逐字判那三格（**不是一格**）：')
 
 # 格一：那一件是 Shape.Pe 且 PeLoader.parse 不抛。
 pe_decl = 'object Pe : Shape()'
 pe_ok = pe_decl in kt
 if not pe_ok:
     fail += 1
-print('    %s 格一 · 解析得出来 —— 那一件逐字是 Shape.Pe（=> 而那规范正文逐字记**已过**）'
+print('    %s 格一 · 解析得出来 —— 那一件逐字是 Shape.Pe（规范正文逐字记**已过**）'
       % ('过' if pe_ok else '不过'))
 
 # 格二：PeLoader.load 映节、解导入表、找齐依赖；两个 load 重载全仓零外部调用点。
@@ -209,16 +209,16 @@ try:
                 load_calls += 1
             if 'PeLoader.parse(' in src:
                 parse_calls += 1
-    print('    %s 格二 · 映像构造得出来 —— 而那 load 那一族逐字在（=> 而那 %d 处外部调用点）'
+    print('    %s 格二 · 映像构造得出来 —— 而那 load 那一族逐字在（ %d 处外部调用点）'
           % ('过' if has_load else '不过', load_calls))
-    print('       => 而那规范正文逐字记那**部分**：=> 而那逐字是「**有实现、无调用点**」')
-    print('       => 而那全仓那个调用点逐字是 parse（=> 而那**不是** load）：%d 处'
+    print('       规范正文逐字记那**部分**：逐字是「**有实现、无调用点**」')
+    print('       全仓那个调用点逐字是 parse（**不是** load）：%d 处'
           % parse_calls)
     if load_calls > 0:
-        print('       [error] 而那 load 那一族逐字**有**外部调用点、=> 而那规范正文那一格逐字**过期**了')
+        print('       [error] 而那 load 那一族逐字**有**外部调用点、规范正文那一格逐字**过期**了')
         fail += 1
 except OSError:
-    print('    [error] 读不到 %s（=> 而那一格逐字报缺）' % loader)
+    print('    [error] 读不到 %s（一格逐字报缺）' % loader)
     fail += 1
 
 # 格三：argv 对那一件给不出那一行，那一行就不可能被真的执行。
@@ -226,18 +226,18 @@ argv_null = 'is Shape.Pe -> null'
 argv_ok = argv_null in kt
 if not argv_ok:
     fail += 1
-print('    %s 格三 · 真跑起来 —— 而那 argv 对那一件逐字**给不出**那一行（=> 而那规范正文逐字记**未过**）'
+print('    %s 格三 · 真跑起来 —— 而那 argv 对那一件逐字**给不出**那一行（规范正文逐字记**未过**）'
       % ('过' if argv_ok else '不过'))
-print('       => 而那 PE 那一族逐字**没有执行原语**、=> 而那承载逐字是 arm64')
-print('       => 而那这一格逐字**测不了**（=> 而按 C-05 报缺、=> 而按 C-126 写「测不了 + 成因」）')
-print('       => 而那**不**许写成「跑不起来」（=> 而那是**推论**、=> 而那不是**读数**）')
+print('        PE 那一族逐字**没有执行原语**、承载逐字是 arm64')
+print('       这一格逐字**测不了**（按 C-05 报缺、按 C-126 写「测不了 + 成因」）')
+print('       **不**许写成「跑不起来」（是**推论**、不是**读数**）')
 
 print('')
-print('  => 而那两栏逐字**并列**、=> 而那它们逐字**不互相顶替**：')
-print('     第一栏逐字答「那 Shape 那五档各**是什么**」（=> 而那它逐字是**形状识别**那一层）')
-print('     第二栏逐字答「那一件字节逐字**跑不跑得起来**」（=> 而那它逐字是**执行**那一层）')
-print('     => 而那**两栏**逐字**不是**那同一件内容的两条取法（依 C-104 不并）')
-print('     => 而那「能不能跑」逐字要**设备侧**那一次真跑（=> 而那一格归 07）')
-print('     => 而那**本工具**逐字**不**拿那文件头字节**冒充**那一次运行（依 02 裁的那判别式）')
+print('  两栏逐字**并列**、它们逐字**不互相顶替**：')
+print('     第一栏逐字答「那 Shape 那五档各**是什么**」（它逐字是**形状识别**那一层）')
+print('     第二栏逐字答「那一件字节逐字**跑不跑得起来**」（它逐字是**执行**那一层）')
+print('     **两栏**逐字**不是**那同一件内容的两条取法（依 C-104 不并）')
+print('     「能不能跑」逐字要**设备侧**那一次真跑（一格归 07）')
+print('     **本工具**逐字**不**拿那文件头字节**冒充**那一次运行（依 02 裁的那判别式）')
 
 sys.exit(0 if fail == 0 else 1)

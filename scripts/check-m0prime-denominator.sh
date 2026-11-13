@@ -74,7 +74,7 @@ for key, ruled in RULED.items():
     if got_set != want_set:
         only_got = [x for x in got_set if x not in want_set]
         only_want = [x for x in want_set if x not in got_set]
-        bad.append('%s 那一族逐字**与**那裁定**不一致**（=> 而那多**出**的 = %s、=> 而那**缺**的 = %s）'
+        bad.append('%s 那一族逐字**与**那裁定**不一致**（多**出**的 = %s、**缺**的 = %s）'
                    % (key, only_got, only_want))
 
 # 二、那**每**一条逐字**带**出处、 出处逐字**能**读回**那一条**原文**。
@@ -116,13 +116,13 @@ for it in items:
 for key, g in groups.items():
     for k in (g.get('set') or []):
         if k not in seen:
-            bad.append('%s 逐字**在**那 %s **那一族**的 set **里面**、=> 而而它**不**在**那 items **里面**' % (k, key))
+            bad.append('%s 逐字**在**那 %s **那一族**的 set **里面**、它**不**在**那 items **里面**' % (k, key))
 
 # 四、那 sed 逐字**是**那 busybox **的**一个 applet、 它**不**是**另**一件**件**。
 apps = d.get('applets') or []
 sed_in_items = any(it.get('id') == 'sed' for it in items)
 if sed_in_items:
-    bad.append('那 sed 逐字**被**当成**另**一件**件**记**进**那 items **里面**、=> 而而它**算**在**那 busybox **那**一件**里面**')
+    bad.append('那 sed 逐字**被**当成**另**一件**件**记**进**那 items **里面**、它**算**在**那 busybox **那**一件**里面**')
 if not any(a.get('name') == 'sed' and a.get('belongsTo') == 'busybox' for a in apps):
     missing.append('那 sed 逐字**没有**被标成**那 busybox **的**一个 applet')
 
@@ -130,11 +130,11 @@ if not any(a.get('name') == 'sed' and a.get('belongsTo') == 'busybox' for a in a
 for it in items:
     if it.get('denominator') == 'excluded':
         if not it.get('excludedReason'):
-            missing.append('%s 逐字**标**成**不**进**、=> 而而它**没有**那**为什么**' % it.get('id'))
+            missing.append('%s 逐字**标**成**不**进**、它**没有**那**为什么**' % it.get('id'))
 
 # 六、那清单逐字**不**跟**那读数**那一件**合一**（ 是两个文件**、** 读数是一个时点的读数**）。
 if os.path.abspath(data_path) == os.path.abspath(readings_path):
-    bad.append('那分母清单逐字**跟**那读数**同一**个文件**、=> 而而那**两个**逐字**不**是同一件**')
+    bad.append('那分母清单逐字**跟**那读数**同一**个文件**、**两个**逐字**不**是同一件**')
 if not os.path.isfile(readings_path):
     missing.append('那读数那一件不在: %s' % readings_path)
 

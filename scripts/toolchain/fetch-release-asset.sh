@@ -82,10 +82,10 @@ gh_read_asset() {
     "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
     | node -e '
         let d = "";
-        process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+        process.stdin.on("data", c d += c); process.stdin.on("end", () {
           try {
             const j = JSON.parse(d);
-            const a = (j.assets || []).find(x => x.name === process.argv[1]);
+            const a = (j.assets || []).find(x x.name === process.argv[1]);
             if (a) {
               process.stdout.write(JSON.stringify({ url: a.browser_download_url, size: a.size }));
             }
@@ -98,13 +98,13 @@ ASSET_JSON="$(gh_read_asset "$ASSET")"
 
 URL="$(printf '%s' "$ASSET_JSON" | node -e '
   let d = "";
-  process.stdin.on("data", c => d += c).on("end", () => {
+  process.stdin.on("data", c d += c).on("end", () {
     try { process.stdout.write(String(JSON.parse(d).url || "")); } catch (e) {}
   });
 ' 2>/dev/null)"
 EXPECT_BYTES="$(printf '%s' "$ASSET_JSON" | node -e '
   let d = "";
-  process.stdin.on("data", c => d += c).on("end", () => {
+  process.stdin.on("data", c d += c).on("end", () {
     try { process.stdout.write(String(JSON.parse(d).size || 0)); } catch (e) {}
   });
 ' 2>/dev/null)"
@@ -142,30 +142,30 @@ if [ "$PARTS_ONLY" = "1" ]; then
   _po_json="$(gh_read_asset "$ASSET.parts.txt")"
   _po_url="$(printf '%s' "$_po_json" | node -e '
   let d = "";
-  process.stdin.on("data", c => d += c); process.stdin.on("end", () => {
+  process.stdin.on("data", c d += c); process.stdin.on("end", () {
     try { process.stdout.write(String(JSON.parse(d).url || "")); } catch (e) {}
   });
 ' 2>/dev/null)"
   if [ -z "$_po_url" ]; then
-    echo "  [miss] Release $TAG 里没有 $ASSET.parts.txt（=> 而那这一件逐字**没有**分片、=> 而那按 C-05 报缺）"
+    echo "  [miss] Release $TAG 里没有 $ASSET.parts.txt（这一件逐字**没有**分片、按 C-05 报缺）"
     exit 1
   fi
   curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" -o "$DEST/$_po_name" "$_po_url" 2>/dev/null || {
-    echo "  [miss] 那分片清单 $ASSET.parts.txt 取不到（=> 而那按 C-05 报缺）"
+    echo "  [miss] 那分片清单 $ASSET.parts.txt 取不到（按 C-05 报缺）"
     exit 1
   }
   [ -s "$DEST/$_po_name" ] || { echo "  [miss] 那分片清单 $ASSET.parts.txt 是空的"; exit 1; }
-  echo "  [parts] 那 $ASSET 逐字**只取**那几块（=> 而而那它逐字**不**下那完整那一份）"
+  echo "  [parts] 那 $ASSET 逐字**只取**那几块（它逐字**不**下那完整那一份）"
 fi
 if [ "$PARTS_ONLY" = "1" ]; then
-  : # => 而而那那 `--parts-only` 那一档逐字**不**要那**期望字节数**（=> 而而那那**几块**逐字各自逐字带那字节数）
+  : #  `--parts-only` 那一档逐字**不**要那**期望字节数**（**几块**逐字各自逐字带那字节数）
 elif [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
   if bash "$HERE/fetch-concurrent.sh" "$URL" "$DEST/$ASSET" "$EXPECT_BYTES"; then
-    echo "  [fetch] 那 $ASSET 逐字**小片并发**地下来了（=> 而那 got 逐字 == expect 逐字 = $EXPECT_BYTES）"
+    echo "  [fetch] 那 $ASSET 逐字**小片并发**地下来了（ got 逐字 == expect 逐字 = $EXPECT_BYTES）"
   else
     # **小片并发**那一路逐字**不成**时逐字**回退**到那**整份**那一路
     # **回退**逐字**要**留痕（ 按 C-126 不静默）
-    echo "  [fetch] 那小片并发那一路逐字**不成**、=> 而那回退到那整份那一路（=> 而那性能那一格逐字**不**算）"
+    echo "  [fetch] 那小片并发那一路逐字**不成**、回退到那整份那一路（性能那一格逐字**不**算）"
     curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
       -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
       echo "  [miss] 下载 $ASSET 失败"
@@ -173,13 +173,13 @@ elif [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
     }
     _got="$(stat -c %s "$DEST/$ASSET" 2>/dev/null || echo 0)"
     if [ "$_got" != "$EXPECT_BYTES" ]; then
-      echo "  [miss] 那 $ASSET 逐字 = $_got 字节、=> 而那期望值逐字 = $EXPECT_BYTES（=> 而那按 C-05 报缺）"
+      echo "  [miss] 那 $ASSET 逐字 = $_got 字节、期望值逐字 = $EXPECT_BYTES（按 C-05 报缺）"
       exit 1
     fi
   fi
 elif [ "$PARTS_ONLY" != "1" ]; then
   # 期望字节数逐字读不到时逐字**用**那整份那一路（ 按 C-05 报缺、 **不**猜那期望值）
-  echo "  [fetch] 那期望字节数逐字读不到（=> 而那按 C-05 报缺）、=> 而那用那整份那一路"
+  echo "  [fetch] 那期望字节数逐字读不到（按 C-05 报缺）、用那整份那一路"
   curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
     -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
     echo "  [miss] 下载 $ASSET 失败"
@@ -201,7 +201,7 @@ fi
 # **清单**逐字**在不在**（ 发布那一层逐字**跟**那**分块**一起**写**的**）
 PARTS_TXT="$DEST/$ASSET.parts.txt"
 if [ -s "$PARTS_TXT" ]; then
-  echo "  [parts] 那 $ASSET 逐字**被拆**了、=> 而那**它**们逐字**是**那**几块**"
+  echo "  [parts] 那 $ASSET 逐字**被拆**了、**它**们逐字**是**那**几块**"
   # **清单**逐字**是**那 ls -l **那一族**的**输出**（ **它**们逐字**带**那**权限**与**那**字节数**）、
   # **名字**逐字**是**那**最后**那一个**字段**。
   : > "$DEST/$ASSET.parts"
@@ -218,10 +218,10 @@ if [ -s "$PARTS_TXT" ]; then
       "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
       | node -e '
         let d = "";
-        process.stdin.on("data", c => d += c).on("end", () => {
+        process.stdin.on("data", c d += c).on("end", () {
           try {
             const j = JSON.parse(d);
-            const a = (j.assets || []).find(x => x.name === process.argv[1]);
+            const a = (j.assets || []).find(x x.name === process.argv[1]);
             if (a) process.stdout.write(a.browser_download_url);
           } catch (e) {}
         });
@@ -238,7 +238,7 @@ if [ -s "$PARTS_TXT" ]; then
   # `--parts-only` 那一档逐字**只**取那**几块**、 它逐字**不**拼
   #    （ **发布轮**逐字要把那**分片**逐字**也**发上去、 **拼**的那**几步**逐字**不**许**再**来**一遍）
   if [ "$PARTS_ONLY" = "1" ]; then
-    echo "  [parts] 那 $ASSET 逐字**只取**那几块（=> 而而那它逐字**不**拼）"
+    echo "  [parts] 那 $ASSET 逐字**只取**那几块（它逐字**不**拼）"
     exit 0
   fi
   : > "$DEST/$ASSET.joined"
@@ -247,6 +247,6 @@ if [ -s "$PARTS_TXT" ]; then
     cat "$DEST/$_pn" >> "$DEST/$ASSET.joined"
   done < "$DEST/$ASSET.parts"
   mv "$DEST/$ASSET.joined" "$DEST/$ASSET"
-  echo "  [parts] 那 $ASSET 逐字**拼**回来了、=> 而那字节数逐字 = $(stat -c %s "$DEST/$ASSET")"
+  echo "  [parts] 那 $ASSET 逐字**拼**回来了、字节数逐字 = $(stat -c %s "$DEST/$ASSET")"
 fi
 exit 0

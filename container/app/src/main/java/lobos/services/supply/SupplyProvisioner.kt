@@ -219,7 +219,7 @@ object SupplyProvisioner {
         //  ctx 逐字**要**有（ 出口逐字要有地方可报、 ctx 逐字是那唯一的地方）。
         //     三处调用点逐字**都**有 ctx 可传（ 一处 PieceUpdater 那边的
         //       逐字**原来没传**、 它现在逐字传上、 出口逐字**处处**都报得出）。
-        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 ⇒ 那一族等于没做**
+        //  缺陷名（C-102）**那一档逐字算出来了、赋到值了，而逐字没有任何一处读它、逐字也没有任何一处把它报出来 一族等于没做**
         //    旧版逐字是 `when (containerFormOf(pkg))`（ **赋值**逐字**没有消费方**：
         //      而 Lead 本机实读逐字「全仓调用点逐字只有一处」、 **就是**这一处）。
         //    与 C-996 那一族（Located.tier）逐字**同一形状**（ 判别式被写了、被赋值了、
@@ -275,7 +275,7 @@ object SupplyProvisioner {
             c, "container-form", true,
             "容器形态 " + form,
             "文件=" + pkg.name + " 档位=" + form + " 头四字节=" + magic +
-                " （=> 而那一档逐字是「这一份实际上是什么容器」）",
+                " （一档逐字是「这一份实际上是什么容器」）",
         )
     }
 
@@ -504,8 +504,8 @@ object SupplyProvisioner {
         if (bytes.size > ENTRY_READ_MAX_BYTES) {
             throw IllegalStateException(
                 "那一个条目逐字太大：" + name + " 逐字 = " + bytes.size +
-                    " 字节、=> 而那读法逐字[supply.unzip]逐字只许 " + ENTRY_READ_MAX_BYTES +
-                    "（=> 而那按 C-05 报缺、=> 而那**不**整读进那堆）"
+                    " 字节、读法逐字[supply.unzip]逐字只许 " + ENTRY_READ_MAX_BYTES +
+                    "（按 C-05 报缺、**不**整读进那堆）"
             )
         }
         return bytes

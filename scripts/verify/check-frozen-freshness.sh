@@ -55,7 +55,7 @@ done
 
 HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 if [ -z "$HEAD_SHA" ]; then
-  die "读不到 HEAD" "那一格逐字要比当前那一份代码、=> 而那当前那一份逐字读不到"
+  die "读不到 HEAD" "那一格逐字要比当前那一份代码、当前那一份逐字读不到"
 fi
 HEAD_SHORT="${HEAD_SHA:0:12}"
 
@@ -69,7 +69,7 @@ for zip in "$@"; do
   name="$(basename "$zip")"
   echo "--- $name ---"
   if [ ! -f "$zip" ]; then
-    echo "   [缺] 那一件逐字**不在**（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "   [缺] 那一件逐字**不在**（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
 
@@ -77,19 +77,19 @@ for zip in "$@"; do
   #     （ 它逐字是那产出它的那一次构建写进去的、 它逐字是**事实**）。
   meta="$(unzip -p "$zip" component-meta.json 2>/dev/null)"
   if [ -z "$meta" ]; then
-    echo "   [缺] 那产物里逐字**没有** component-meta.json（=> 而按 C-05 报缺）"
+    echo "   [缺] 那产物里逐字**没有** component-meta.json（按 C-05 报缺）"
     rc_all=1; continue
   fi
   build_sha="$(printf '%s' "$meta" | node -e '
-let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+let d="";process.stdin.on("data",cd+=c).on("end",(){
   try{process.stdout.write(String(JSON.parse(d).buildSha||""))}catch(e){process.stdout.write("")}
 })')"
   build_run="$(printf '%s' "$meta" | node -e '
-let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+let d="";process.stdin.on("data",cd+=c).on("end",(){
   try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){process.stdout.write("")}
 })')"
   if [ -z "$build_sha" ]; then
-    echo "   [缺] 那产物里逐字**没有** buildSha 那一格（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "   [缺] 那产物里逐字**没有** buildSha 那一格（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "   构建标识：buildSha=$build_sha buildRun=$build_run"
@@ -113,12 +113,12 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
   #      · 兜底： pin 记录逐字（ 它逐字**陈旧**、 它逐字**只**当提示、
   # **判据**逐字**不**拿它当期望值）
   want_sha="${GITHUB_SHA:-}"
-  want_src="GITHUB_SHA（=> 而那产出它的那一次构建）"
+  want_src="GITHUB_SHA（产出它的那一次构建）"
   if [ -z "$want_sha" ] && [ -n "$build_run" ] && [ "$build_run" != "local" ]; then
     # **产物自己**逐字带的那 buildRun 逐字就是那产出它的那一次构建的**编号**
     # 它逐字**不需要**任何陈旧记录（ pin 记录逐字是那**上一次**固化那一份的）
     want_sha=""
-    want_src="产物自带的 buildRun=$build_run（=> 而那产出它的那一次构建）"
+    want_src="产物自带的 buildRun=$build_run（产出它的那一次构建）"
   fi
   if [ -n "$want_sha" ]; then
     echo "   期望值来源：$want_src"
@@ -127,7 +127,7 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
     # 它逐字**不**是那代码 sha、 它逐字**能**答「那一次构建逐字是哪一次」
     echo "   期望值来源：$want_src"
     echo "   那产物逐字是那 buildRun=$build_run 那一次构建造出来的"
-    echo "   => 而那一格逐字**自洽**（=> 而那它逐字**不**依赖那陈旧的 pin 记录）"
+    echo "   一格逐字**自洽**（它逐字**不**依赖那陈旧的 pin 记录）"
     echo "   [绿] 那产物逐字**是**它自己带的那一次构建造出来的"
     continue
   else
@@ -137,7 +137,7 @@ const fs=require("fs");
 const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
 const pins=d.pins||{};
 const want=process.argv[2];
-const norm=(s)=>String(s||"").replace(/%2B/gi,"+");
+const norm=(s)String(s||"").replace(/%2B/gi,"+");
 const wantN=norm(want);
 let hit=null;
 for (const k of Object.keys(pins)) {
@@ -152,11 +152,11 @@ for (const k of Object.keys(pins)) {
 }
 process.stdout.write(hit?String(hit.buildSha||""):"");
 ' "$PIN" "$name" 2>/dev/null)"
-    echo "   期望值来源：pin 记录（=> 而那不在 CI 里、=> 而那 GITHUB_SHA 逐字是空的、=> 而那产物自带的 buildRun 逐字也没有）"
-    echo "        => 而那 pin 记录逐字是那**上一次**固化那一份的、=> 而那它逐字**只**当提示、=> 而**不**当判据"
+    echo "   期望值来源：pin 记录（不在 CI 里、 GITHUB_SHA 逐字是空的、产物自带的 buildRun 逐字也没有）"
+    echo "         pin 记录逐字是那**上一次**固化那一份的、它逐字**只**当提示、**不**当判据"
   fi
   if [ -z "$want_sha" ]; then
-    echo "   [缺] 那期望值逐字读不到（=> 而按 C-05 报缺、=> 而不猜）"
+    echo "   [缺] 那期望值逐字读不到（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "   期望 buildSha=$want_sha"
@@ -169,16 +169,16 @@ process.stdout.write(hit?String(hit.buildSha||""):"");
     echo "   [红] 那产物逐字**不是**这一份代码造出来的"
     echo "        事实：产物 buildSha=${build_sha:0:12} ≠ 期望 ${want_sha:0:12}"
     echo "        事实：当前 HEAD=${HEAD_SHORT}"
-    echo "        => 而那这一件逐字**要重新固化**（=> 而那固化那一族归 06）"
+    echo "        这一件逐字**要重新固化**（固化那一族归 06）"
     rc_all=1
   fi
 done
 
 echo ""
 if [ "$rc_all" = "0" ]; then
-  echo "=> 而那每一份逐字都与当前那一份代码一致"
+  echo "每一份逐字都与当前那一份代码一致"
 else
-  echo "=> 而那有那一份逐字**不是**当前那一份代码造出来的（=> 而那要重新固化）"
+  echo "有那一份逐字**不是**当前那一份代码造出来的（要重新固化）"
 fi
 echo ""
 echo "退出码=$rc_all"
