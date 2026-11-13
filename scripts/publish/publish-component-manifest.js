@@ -16,8 +16,8 @@ const crypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
-//  => 而那 **--declared-only** 那一档（=> 而它逐字产出**声明侧那一份的形状**、=> 而**不**签名、
-//     => 而它逐字只供核「声明侧带缺件状态」那一格用、=> 而那它逐字**不能**当发布产物）。
+// 那 **--declared-only** 那一档（它逐字产出**声明侧那一份的形状**、**不**签名、
+// 它逐字只供核「声明侧带缺件状态」那一格用、它逐字**不能**当发布产物）。
 const DECLARED_ONLY = process.argv.includes('--declared-only');
 const DIST = POS[0] || 'dist';
 const OUT = POS[1] || 'release';
@@ -34,16 +34,16 @@ function entryOf(name) {
 }
 
 //  缺陷名（C-102）**那发布投影逐字按文件名后缀选工具** ——
-//    而那旧版逐字是 `unzip -p` 与 `unzip -l`（=> 而那两处逐字**只**认 zip）。
-//    => 而那**名字**与那**内容**逐字是**两件**事：
-//      · Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz，=> 而里面的内容**已经是 zip**；
-//      · 而那 CI artifact 那一族逐字是「zip 套 zip」（=> 而那外层逐字装着那内层那一个件包）。
-//    => 而按后缀选工具逐字**在这两种形状上都会解错**。
-//  => 而按 C-994「判别源必须唯一」：=> 而那一格逐字**调** scripts/toolchain/fmt.sh
-//    （=> 而那 fmt_of 逐字按头四字节与尾部哨兵判、=> 而它逐字有 zip / zip64 / gzip / tar / 未知 那五档）。
-//  => 而那**真源**逐字不变：declaredEntry 仍来自 scripts/registry/read-component-entry.sh。
+//    而那旧版逐字是 `unzip -p` 与 `unzip -l`（两处逐字**只**认 zip）。
+// 那**名字**与那**内容**逐字是**两件**事：
+//      · Release 上的资产名沿用旧的 <id>-<deps>+…tar.gz，里面的内容**已经是 zip**；
+//      · 而那 CI artifact 那一族逐字是「zip 套 zip」（外层逐字装着那内层那一个件包）。
+// 按后缀选工具逐字**在这两种形状上都会解错**。
+// 按 C-994「判别源必须唯一」：一格逐字**调** scripts/toolchain/fmt.sh
+//    （那 fmt_of 逐字按头四字节与尾部哨兵判、它逐字有 zip / zip64 / gzip / tar / 未知 那五档）。
+// 那**真源**逐字不变：declaredEntry 仍来自 scripts/registry/read-component-entry.sh。
 
-// 那一件**实际上是什么容器**（=> 而那判别源唯一、=> 而那它逐字就是 fmt.sh 那一个）。
+// 那一件**实际上是什么容器**（判别源唯一、它逐字就是 fmt.sh 那一个）。
 function containerFormOf(file) {
   const FMT_SH = path.join(ROOT, 'scripts', 'toolchain', 'fmt.sh');
   if (!fs.existsSync(FMT_SH)) {
@@ -56,29 +56,29 @@ function containerFormOf(file) {
   return String(r.stdout || '').trim();
 }
 
-// 那一件**里层**那一个 zip（=> 而那挑选规则逐字只有一条）。
-//  => 而按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字
+// 那一件**里层**那一个 zip（挑选规则逐字只有一条）。
+// 按 01 裁的 S607-01-CONTAINER-FORM-RULING.md §3 逐字
 //     「**按内容挑** —— 内层容器的中央目录里**逐字含 `component-meta.json` 且其 `id` 逐字等于要取的件名**；
-//      => 而**名字 glob 只当第一道粗筛**」、
-//     => 而「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」。
-//  => 而那**判据必须落在内容上**（=> 而不按名字）。
+//**名字 glob 只当第一道粗筛**」、
+//「**零个候选与多过一个候选都判红、不取第一个、不猜、不许退回外层凑数**」。
+// 那**判据必须落在内容上**（不按名字）。
 //
 // 缺陷名（C-102）**「按内容挑内层」那一格只覆盖了「外层套内层」那一档，
 //   而「外层即件包」那一档被一并套进了同一个挑法** ——
-//   => 而那旧版逐字**只有**「解开外层、=> 而在解开处找内层」那一步，
-//     => 而那八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
-//       逐字是**外层自己就是那一颗件**（=> 而那 Release 资产逐字**就是**那件包本身），
-//       => 而它们**没有内层**、=> 而按内容挑逐字**挑不出**任何候选。
-//   => 而 01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
-//     「**内层那一颗件包才算**。**外层不是那一颗件**（=> 而那**除非外层自己逐字含 component-meta.json**）」
-//     => 而那**后半句**逐字就是这一档、=> 而那实现里逐字**没有实现那后半句**。
+// 旧版逐字**只有**「解开外层、在解开处找内层」那一步，
+// 八件（bash / busybox / crypto / curl / jq / openssl / ripgrep / zlib）
+//       逐字是**外层自己就是那一颗件**（那 Release 资产逐字**就是**那件包本身），
+// 它们**没有内层**、按内容挑逐字**挑不出**任何候选。
+//01 裁的 S607-01 §3.1 逐字那一句**本来就含**这一档：
+//     「**内层那一颗件包才算**。**外层不是那一颗件**（那**除非外层自己逐字含 component-meta.json**）」
+// 那**后半句**逐字就是这一档、实现里逐字**没有实现那后半句**。
 //
-// => 而那**三步**（逐字）：
-//   第 1 步：那**外层自己**是不是那一颗件（=> 而那外层根目录逐字有没有 component-meta.json、
-//            => 而有 => 而那它的 `id` 逐字要等于要取的件名、=> 而不对 => 判红）；
-//   第 2 步：外层**没有** component-meta.json => 而那走「外层套内层」那一档（=> 而按内容挑内层、
-//            => 而那零个或多个都判红、不取第一个）；
-//   第 3 步：gzip / tar 那一档 => 而那**先解开 tar**、=> 而再对解开处逐字走第 1 步与第 2 步。
+// 那**三步**（逐字）：
+//   第 1 步：那**外层自己**是不是那一颗件（外层根目录逐字有没有 component-meta.json、
+// 有它的 `id` 逐字要等于要取的件名、不对 => 判红）；
+//   第 2 步：外层**没有** component-meta.json走「外层套内层」那一档（按内容挑内层、
+// 零个或多个都判红、不取第一个）；
+//   第 3 步：gzip / tar 那一档那**先解开 tar**、再对解开处逐字走第 1 步与第 2 步。
 function pieceIdOf(zipPath) {
   try {
     const raw = cp.execFileSync('unzip', ['-p', zipPath, 'component-meta.json'], {
@@ -114,7 +114,7 @@ function innerZipCandidates(file) {
       }
     };
     walk(work, 0);
-    //  => 而那**按字节**挑（=> 而不按名字）：=> 而那候选逐字**头四字节**是 504b* 的那一个才算 zip 容器。
+    // 那**按字节**挑（不按名字）：候选逐字**头四字节**是 504b* 的那一个才算 zip 容器。
     const zips = [];
     for (const p of out) {
       const fd = fs.openSync(p, 'r');
@@ -126,8 +126,8 @@ function innerZipCandidates(file) {
         fs.closeSync(fd);
       }
     }
-    //  => 而那**按内容**挑（=> 而 01 裁的规则）：=> 而那候选逐字**含 component-meta.json**、
-    //     => 而那一份里的 `id` 逐字**等于**要取的那一件。
+    // 那**按内容**挑（01 裁的规则）：候选逐字**含 component-meta.json**、
+    // 一份里的 `id` 逐字**等于**要取的那一件。
     const picked = [];
     for (const p of zips) {
       let meta = null;
@@ -152,10 +152,10 @@ function innerZipCandidates(file) {
   }
 }
 
-// 那一件**里层**那一个 zip（=> 而那按内容挑、=> 而那零个或多个都判红）。
+// 那一件**里层**那一个 zip（按内容挑、零个或多个都判红）。
 function innerZipOf(file, wantPiece) {
-  //  => 而那第 1 步：那**外层自己**是不是那一颗件
-  //     （=> 而那 zip 那一档逐字**不**解开、=> 而那 gzip 那一档逐字**先解开**）。
+  // 第 1 步：那**外层自己**是不是那一颗件
+  //     （那 zip 那一档逐字**不**解开、那 gzip 那一档逐字**先解开**）。
   const form = containerFormOf(file);
   const outerId = (form === 'gzip')
     ? (() => {
@@ -173,30 +173,30 @@ function innerZipOf(file, wantPiece) {
       })()
     : pieceIdOf(file);
   if (outerId) {
-    if (outerId === wantPiece) return file;   //  => 而那**外层自己**就是那一颗件
+    if (outerId === wantPiece) return file;   //那**外层自己**就是那一颗件
     throw new Error(
-      '件 ' + file + ' 的**外层自己**就是那一颗件、=> 而它的 id 逐字是 ' + outerId +
+      '件 ' + file + ' 的**外层自己**就是那一颗件、它的 id 逐字是 ' + outerId +
       '（要的是 ' + wantPiece + '）—— 判红'
     );
   }
   const picked = innerZipCandidates(file);
   if (!picked.length) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有**一个含 component-meta.json 的件包' +
-      '（=> 而那按内容挑逐字挑不出、=> 而按 C-05 不猜、=> 而不取第一个）。'
+      '件 ' + file + ' 的外层解开之后，里面逐字**没有**一个含 component-meta.json 的件包' +
+      '（按内容挑逐字挑不出、按 C-05 不猜、不取第一个）。'
     );
   }
   const hit = wantPiece ? picked.filter((c) => c.id === wantPiece) : picked;
   if (hit.length === 0) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
-      '（=> 而那候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
+      '件 ' + file + ' 的外层解开之后，里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
+      '（候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
     );
   }
   if (hit.length > 1) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，=> 而那里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
-      ' 的件包（=> 而 01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
+      '件 ' + file + ' 的外层解开之后，里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
+      ' 的件包（01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
     );
   }
   return hit[0].path;
@@ -207,7 +207,7 @@ function pieceText(zipPath, rel) {
   if (form !== 'zip' && form !== 'zip64') {
     throw new Error(
       '件 ' + zipPath + ' 的容器形态逐字是 ' + form + ' —— 而这一格逐字要读件内那一个 package.json，' +
-      '=> 而那形态逐字不对（=> 而那不是 zip 容器、=> 而那解不开）。'
+      '形态逐字不对（不是 zip 容器、解不开）。'
     );
   }
   if (!pieceNames(zipPath).includes(rel)) return null;
@@ -235,8 +235,8 @@ function pieceNames(zipPath) {
   return out;
 }
 
-//  => 而而那那 **recipe 指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（=> 而依 C-104 逐字**判别源必须唯一**）
-//    => 而而那那 `cache-key.sh key <件名>` 逐字**给**的那键逐字**含**那 `src<12位>` 那一族、=> 而那**就是**那指纹
+// 那 **recipe 指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（依 C-104 逐字**判别源必须唯一**）
+// 那 `cache-key.sh key <件名>` 逐字**给**的那键逐字**含**那 `src<12位>` 那一族、那**就是**那指纹
 function recipeFingerprintOf(pieceId) {
   try {
     const out = cp.execFileSync('bash', [
@@ -273,12 +273,12 @@ function aliasesOf(name, zipPath, declaredEntry) {
   }
   //  缺陷名（C-102）**拿件名当 package.json 的 bin 映射的必有键，而件名不是件内任一可执行名**
   //    —— 而原来那一判别式逐字是 `if (bin[name] !== declaredEntry)`：它要求「件名那一键存在、且值逐字等于入口」。
-  //    => 而 llvm 那一件逐字**没有** llvm 这个可执行名（recipe 的 NEED_BIN 八项里逐字没有 llvm），
-  //    => 而 :89 逐字又把件名从别名集合里剔掉、=> 而那**同一段代码**里件名那一格既被要求存在、又被要求不参与。
-  //  => 而那**处置**（按 01 裁的形态）：bin 是对象时，只要求「存在一个键，其值逐字等于 declaredEntry」，
+  //llvm 那一件逐字**没有** llvm 这个可执行名（recipe 的 NEED_BIN 八项里逐字没有 llvm），
+  //:89 逐字又把件名从别名集合里剔掉、那**同一段代码**里件名那一格既被要求存在、又被要求不参与。
+  // 那**处置**（按 01 裁的形态）：bin 是对象时，只要求「存在一个键，其值逐字等于 declaredEntry」，
   //    而**不**要求任何键 == 件名；那一键**不作为别名**发出去（:89 按键名跳过、下面按值再兜一次）。
-  //  => 而那**真源**逐字不变：declaredEntry 来自 scripts/registry/read-component-entry.sh
-  //    （=> 而那 entry 由 gen-component-meta.js:269 逐字算出来）、=> 而这一格**不引入第二处真相**。
+  // 那**真源**逐字不变：declaredEntry 来自 scripts/registry/read-component-entry.sh
+  //    （那 entry 由 gen-component-meta.js:269 逐字算出来）、这一格**不引入第二处真相**。
   const entryBase = String(declaredEntry).split('/').pop();
   const entryKeys = Object.keys(bin).filter((k) => bin[k] === declaredEntry);
   if (!entryKeys.length) {
@@ -290,9 +290,9 @@ function aliasesOf(name, zipPath, declaredEntry) {
   for (const alias of Object.keys(bin).sort()) {
     if (alias === name || alias === entryBase) continue;
     const rel = bin[alias];
-    //  那一键（值逐字等于仓内声明的入口）不是别名、=> 而它是**入口本身**、=> 而它不进别名集合。
-    //  => 而 :89 按**键名**跳过 entryBase、=> 而这里按**值**再兜一次
-    //  （=> 而当那一键的名字**不**等于 entryBase 时，:89 那一条逐字拦不住它）。
+    //  那一键（值逐字等于仓内声明的入口）不是别名、它是**入口本身**、它不进别名集合。
+    //:89 按**键名**跳过 entryBase、这里按**值**再兜一次
+    //  （当那一键的名字**不**等于 entryBase 时，:89 那一条逐字拦不住它）。
     if (rel === declaredEntry) continue;
     if (typeof rel !== 'string' || !rel.includes('/') || rel.startsWith('/') || rel.split('/').includes('..')) {
       throw new Error('件 ' + name + ' 的别名 ' + alias + ' 的件内入口不是合规相对路径: ' + String(rel));
@@ -329,7 +329,7 @@ function assertNameUniqueness(tools) {
 // `File size (8414536031) is greater than 2 GiB`。
 // 而处置不是「换台机器」也不是「跳过那一颗」：哈希**流式**算，
 // 内存里只留一块 1 MiB 的缓冲；字节数取 stat 而不是量数组长度。
-// 而「取首 12 位」与「取全串」这一次只算一遍（=> 而那一遍就是同一份字节）。
+// 而「取首 12 位」与「取全串」这一次只算一遍（一遍就是同一份字节）。
 function sha256File(file) {
   const h = crypto.createHash('sha256');
   const fd = fs.openSync(file, 'r');
@@ -362,24 +362,24 @@ function toolsFromDist() {
     const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
     const entry = entryOf(name);
-    //  缺陷名（C-102）**那一格逐字**不记**那 recipe 指纹、=> 而而那那**闸门**逐字**答不出**
+    //  缺陷名（C-102）**那一格逐字**不记**那 recipe 指纹、那**闸门**逐字**答不出**
     //    「那字节变了是不是那 recipe 变了」——
-    //      => 而那旧版逐字**只**记那内容哈希、=> 而而那那**内容哈希**逐字**只**说「那字节**是什么**」
-    //        （=> 而而那它逐字**不**说「那字节**为什么**变」）
-    //      => 而而那那**闸门**逐字**只能**按「同一 name@version 逐字不许换字节」那一族逐字判
-    //        => 而而那那**recipe 变了**逐字**换**了字节逐字**也**被**判红**
-    //          （=> 而而那那**旧字节**逐字**是**那**旧** recipe 产的、=> 而而那那**新字节**逐字**是**那**新** recipe 产的、
-    //            => 而而那那**两半**逐字**都**合法、=> 而而那那**闸门**逐字**分不出**）
-    //    => 而那**判据**逐字是「那字节逐字是不是那实际字节、=> 而而那那**实际字节**逐字**为什么**变」那一个事实上
-    //    => 而那**处置**：=> 而而那那**清单**逐字**多**记那 **recipe 指纹**那一格
-    //      => 而而那那**指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（=> 而依 C-104 逐字**判别源必须唯一**）
-    //      => 而而那那**闸门**逐字**拿**它逐字**对**：=> 指纹**一样**而字节**变了**逐字**那才是**偷换
+    // 旧版逐字**只**记那内容哈希、那**内容哈希**逐字**只**说「那字节**是什么**」
+    //        （它逐字**不**说「那字节**为什么**变」）
+    // 那**闸门**逐字**只能**按「同一 name@version 逐字不许换字节」那一族逐字判
+    // 那**recipe 变了**逐字**换**了字节逐字**也**被**判红**
+    //          （那**旧字节**逐字**是**那**旧** recipe 产的、那**新字节**逐字**是**那**新** recipe 产的、
+    // 那**两半**逐字**都**合法、那**闸门**逐字**分不出**）
+    // 那**判据**逐字是「那字节逐字是不是那实际字节、那**实际字节**逐字**为什么**变」那一个事实上
+    // 那**处置**：那**清单**逐字**多**记那 **recipe 指纹**那一格
+    // 那**指纹**逐字**只**从那 `cache-key.sh` 那一族逐字**取**（依 C-104 逐字**判别源必须唯一**）
+    // 那**闸门**逐字**拿**它逐字**对**：=> 指纹**一样**而字节**变了**逐字**那才是**偷换
     const recipeFp = recipeFingerprintOf(name);
     out.push({
       name, provider: 'zip', version: ver,
       url: BASE + '/component/' + f,
       sha256: digest,
-      //  => 而而那那 recipe 指纹逐字**进**那清单、=> 而而那那**闸门**逐字**拿**它逐字**判**
+      // 那 recipe 指纹逐字**进**那清单、那**闸门**逐字**拿**它逐字**判**
       recipeFingerprint: recipeFp,
       entry,
       aliases: aliasesOf(name, zipPath, entry),
@@ -388,10 +388,10 @@ function toolsFromDist() {
   return out;
 }
 
-// 那一趟的**缺件表**（=> 而那它逐字是那四列那一档：件名 / 那一档 / 那一档的原话 / 容器形态）。
-//   => 而那它逐字是「**声明侧**那一份」的缺件状态来源
-//     （=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「**声明侧那一份逐字要带缺件状态**」、
-//     => 而那**投影侧**那一份逐字**不留占位**）。
+// 那一趟的**缺件表**（它逐字是那四列那一档：件名 / 那一档 / 那一档的原话 / 容器形态）。
+// 它逐字是「**声明侧**那一份」的缺件状态来源
+//     （按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「**声明侧那一份逐字要带缺件状态**」、
+// 那**投影侧**那一份逐字**不留占位**）。
 function missingPieces() {
   const out = [];
   const p = path.join(ROOT, 'dist', '.fetch-missing.tsv');
@@ -421,13 +421,13 @@ function versionString() {
 function revisionForManifest() {
   const raw = process.env.LOBOS_COMPONENT_REVISION || '';
   if (!/^[1-9][0-9]*$/.test(raw)) {
-    //  => 而那 **--declared-only** 那一档逐字**不要求**那 revision
-    //     （=> 而那它逐字只是**核那形状**用、=> 而那一趟逐字**不是**发布轮、
-    //     => 而那一趟逐字**没有**发布 tag、=> 而那个 revision 逐字**不存在**）。
-    //     => 而那它逐字报**缺**（=> 而按 C-05「缺字段就报缺、不许猜填」）
-    //       ——=> 而那它逐字**不**编一个值（=> 而那编一个就逐字把那形状**验错**了）。
+    // 那 **--declared-only** 那一档逐字**不要求**那 revision
+    //     （它逐字只是**核那形状**用、一趟逐字**不是**发布轮、
+    // 一趟逐字**没有**发布 tag、个 revision 逐字**不存在**）。
+    // 它逐字报**缺**（按 C-05「缺字段就报缺、不许猜填」）
+    //       ——它逐字**不**编一个值（编一个就逐字把那形状**验错**了）。
     if (DECLARED_ONLY) {
-      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（=> 而那一趟逐字不是发布轮）');
+      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（一趟逐字不是发布轮）');
       return 0;
     }
     throw new Error('LOBOS_COMPONENT_REVISION 必须是正整数（它来自发布 tag `component-<channel>-<revision>`），读到: ' + (raw || '空'));
@@ -448,55 +448,55 @@ function main() {
     // 判据只挂在真正由产物自身证明的字段上（entry 的存在性、必需字段齐全）。
     // 原来那道门要的是 component-sources.json 里的 node —— 那个字符串在整个仓里不存在，
     // 而 component-verify.json 自己写着「它不是自动执行的检查」。按 C-91 废除。
-    //  缺陷名（C-102）**那判据逐字去问了一处逐字已经被删掉的地方**、=> 而而那消息逐字说错了那要补什么
-    //    —— 而那**真的成因**逐字是：「那判据逐字去**钉值表**里要那一格、=> 而那一格逐字
-    //    **在 2026-10-20** 逐字**被删**了、=> 而它的**唯一真源**逐字是产物自带的
+    //  缺陷名（C-102）**那判据逐字去问了一处逐字已经被删掉的地方**、消息逐字说错了那要补什么
+    //    —— 而那**真的成因**逐字是：「那判据逐字去**钉值表**里要那一格、一格逐字
+    //    **在 2026-10-20** 逐字**被删**了、它的**唯一真源**逐字是产物自带的
     //    component-meta.json」那个形状。
-    //    => 而那 read-component-entry.sh 那一族逐字**自己写着**缘由（=> 而本机逐字读过）：
+    // 那 read-component-entry.sh 那一族逐字**自己写着**缘由（本机逐字读过）：
     //       :2 | # 读「这一件该有的入口」—— **从产物里读回**，不从表里读。
     //       :8 | #   而 component-sources.json 的 entry 键（15 处）与各 workflow 的第三参都是**人写下的副本**
     //       :11| # => 所以那两处副本都删了（2026-10-20），而这个脚本改成**从产物里读回 entry**。
-    //    => 而那**纯库件**逐字**故意**是空（=> 而那 gen-component-meta.js:415 那一行
-    //       逐字 = 「return { entry: '', role: 'library', … }」）、=> 而那**不是**缺陷。
-    //    => 而那**消息**逐字说的「在 scripts/component-sources.json 里补」逐字**指错了**、
-    //    => 而那一格**补**不**进去**、=> 而那一格逐字**该**从**产物**里**读**。
-    //    => 而那**不是**「那表里**每一件**都**漏**了那一格」那个形状、
-    //    => 而那也**不是**「那一格逐字**根本不该**在**那张表**里」那个形状
-    //  （=> 而那逐字是「那一格逐字**曾经**在那张表里、=> 而它逐字**因为**是**副本**逐字**被删**了」）。
+    // 那**纯库件**逐字**故意**是空（那 gen-component-meta.js:415 那一行
+    //       逐字 = 「return { entry: '', role: 'library', … }」）、那**不是**缺陷。
+    // 那**消息**逐字说的「在 scripts/component-sources.json 里补」逐字**指错了**、
+    // 一格**补**不**进去**、一格逐字**该**从**产物**里**读**。
+    // 那**不是**「那表里**每一件**都**漏**了那一格」那个形状、
+    // 也**不是**「那一格逐字**根本不该**在**那张表**里」那个形状
+    //  （逐字是「那一格逐字**曾经**在那张表里、它逐字**因为**是**副本**逐字**被删**了」）。
     //    —— 而那 table 那一族逐字在 0a57629（2026-10-20）逐字被「entry 的三处副本收口成真源一处」
-    //    那一笔逐字改过（=> 而那**改的是那表**、=> 而那**没改**这道门）。
+    //    那一笔逐字改过（那**改的是那表**、那**没改**这道门）。
     //
-    //  而那判据该挂在**哪**一处（=> 而按 C-103 那一族）：
-    //    一边「**那一件**在不在那表里」        => 而那治的是**登记**那一族
-    //    另一边「**那表里每一件**都有没有那一格」=> 而那治的是**那格从哪来**那一族
-    //  => 而它们**各**答一件事、=> 而那**处置**不一样、=> 而它们**不并**。
+    //  而那判据该挂在**哪**一处（按 C-103 那一族）：
+    //    一边「**那一件**在不在那表里」治的是**登记**那一族
+    //    另一边「**那表里每一件**都有没有那一格」治的是**那格从哪来**那一族
+    // 它们**各**答一件事、那**处置**不一样、它们**不并**。
     //
-    //  而那**真源**逐字是**产物**那一份（=> 而那 entry 由 read-component-entry.sh 逐字算出来、
-    //  => 而那 t.entry 逐字就是**它**算出来的那一份、=> 而它逐字**不需要**表里那一格）。
-    //  => 而那表里逐字那一格叫 entryName、=> 而它逐字是「**这一件有多个入口时该取哪一个**」那一族
-    //  （=> 而按 C-92：=> 而删掉那个名字，=> 而还剩「**多入口时取哪一个**」那个形状）。
-    //  => 而那 4 个有 entryName 的件逐字 = openssl / git / busybox / npm、
-    //  => 而那**两个**（openssl / busybox）逐字**就在** base 筐那 8 件里（=> 而那 8 件逐字 =
-    //     zlib / openssl / curl / jq / bash / busybox / ripgrep / crypto、=> 而那由
+    //  而那**真源**逐字是**产物**那一份（那 entry 由 read-component-entry.sh 逐字算出来、
+    // 那 t.entry 逐字就是**它**算出来的那一份、它逐字**不需要**表里那一格）。
+    // 表里逐字那一格叫 entryName、它逐字是「**这一件有多个入口时该取哪一个**」那一族
+    //  （按 C-92：删掉那个名字，还剩「**多入口时取哪一个**」那个形状）。
+    // 那 4 个有 entryName 的件逐字 = openssl / git / busybox / npm、
+    // 那**两个**（openssl / busybox）逐字**就在** base 筐那 8 件里（那 8 件逐字 =
+    //     zlib / openssl / curl / jq / bash / busybox / ripgrep / crypto、由
     //     fetch-prebuilt-pieces.sh:52 那一行逐字 PIECES=(zlib openssl curl jq bash busybox ripgrep crypto) 定）、
-    //  => 而那**另外两个**（git / npm）逐字**不**在那 8 件里。
-    //  => 而那**纯库件**逐字（crypto / curl / zlib 那一族）逐字**故意**是空（=> 而那 gen-component-meta.js:415
-    //     那一行逐字 = 「return { entry: '', role: 'library', … }」）、=> 而那**不是**缺陷。
+    // 那**另外两个**（git / npm）逐字**不**在那 8 件里。
+    // 那**纯库件**逐字（crypto / curl / zlib 那一族）逐字**故意**是空（那 gen-component-meta.js:415
+    //     那一行逐字 = 「return { entry: '', role: 'library', … }」）、那**不是**缺陷。
     //
-    //  => 而那 :161 与 :162 那一族逐字**记着同一族形状**（=> 而那逐字是「那**同一族**形状在 **node** 那一格
-    //     逐字**被废除**了、=> 而它在 **entry** 那一格逐字**留着**」那个形状）。
-    //  => 而按 C-104：=> 而那表里逐字**零**个 entry、=> 而那**没有**第二种生成路径。
-    //  => 而按 C-220：=> 而 04 那边要落**内容稿**、=> 而这一笔是**实现**那一族。
+    // 那 :161 与 :162 那一族逐字**记着同一族形状**（逐字是「那**同一族**形状在 **node** 那一格
+    //     逐字**被废除**了、它在 **entry** 那一格逐字**留着**」那个形状）。
+    // 按 C-104：表里逐字**零**个 entry、那**没有**第二种生成路径。
+    // 按 C-220：04 那边要落**内容稿**、这一笔是**实现**那一族。
     const v = crit[t.name];
     if (!v) {
       throw new Error('钉值表里没有这一件: ' + t.name + '（在 scripts/component-sources.json 里补）');
     }
-    //  入口逐字**不**再看那表里那一格：=> 而那**真源**逐字是**产物**那一份、=> 而那表里逐字**零**个 entry。
-    //  => 而那**纯库件**逐字合法地 entry 逐字是空、=> 而那**不**判红、=> 而那**只**记下它。
+    //  入口逐字**不**再看那表里那一格：那**真源**逐字是**产物**那一份、表里逐字**零**个 entry。
+    // 那**纯库件**逐字合法地 entry 逐字是空、那**不**判红、那**只**记下它。
     if (!t.entry) {
-      //  这一句逐字**必须**写 stderr：=> 而 --project 那一档逐字把 stdout **重定向**成
-      //  work/declared.json（=> 而那 build-component.yml:87 那一行）、=> 而那 stdout **只**能是那份 JSON。
-      //  => 而 console.log 逐字会写 stdout、=> 而那会把那一份 JSON 逐字**写坏**（=> 而那是 SyntaxError 那一族）。
+      //  这一句逐字**必须**写 stderr：--project 那一档逐字把 stdout **重定向**成
+      //  work/declared.json（那 build-component.yml:87 那一行）、那 stdout **只**能是那份 JSON。
+      //console.log 逐字会写 stdout、会把那一份 JSON 逐字**写坏**（是 SyntaxError 那一族）。
       process.stderr.write('  - ' + t.name + ' 纯库件（没有程序那一侧、entry 留空）\n');
     }
     t.kind = t.kind || 'component';
@@ -506,14 +506,14 @@ function main() {
   }
   assertNameUniqueness(tools);
   if (PROJECT_ONLY) {
-    //  => 而那**投影侧**那一份逐字**不留占位**（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md
-    //     逐字「**投影侧 `work/declared.json` 逐字不留占位**（=> 而它答『取到了什么』）」）
-    //  => 而那**缺件状态**逐字落在**声明侧**那一份（=> 而那一格逐字是「声明侧那一份逐字要带缺件状态」）。
+    // 那**投影侧**那一份逐字**不留占位**（按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md
+    //     逐字「**投影侧 `work/declared.json` 逐字不留占位**（它答『取到了什么』）」）
+    // 那**缺件状态**逐字落在**声明侧**那一份（一格逐字是「声明侧那一份逐字要带缺件状态」）。
     process.stdout.write(JSON.stringify(tools, null, 2) + '\n');
     return;
   }
-  //  => 而那**声明侧**那一份逐字带那缺件状态（=> 而 01 裁的 S606-02 逐字
-  //     「**声明侧那一份逐字要带缺件状态**」、=> 而那**缺件占位落在显式缺件表」）。
+  // 那**声明侧**那一份逐字带那缺件状态（01 裁的 S606-02 逐字
+  //     「**声明侧那一份逐字要带缺件状态**」、那**缺件占位落在显式缺件表」）。
   const missing = missingPieces();
   if (missing.length) {
     for (const m of missing) {
@@ -528,21 +528,21 @@ function main() {
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
     tools,
-    //  => 而那**缺件**逐字在这一格（=> 而它逐字是**声明侧**那一份的、=> 而那**投影侧**那一份逐字没有它）。
+    // 那**缺件**逐字在这一格（它逐字是**声明侧**那一份的、那**投影侧**那一份逐字没有它）。
     missing,
   };
   const body = JSON.stringify(man, null, 2) + '\n';
-  //  => 而那 **--declared-only** 那一档（=> 而它逐字产出**声明侧那一份的形状**、=> 而**不**签名）。
-  //     => 而那**为什么**要有它（=> 而按 01 裁的 S606-02 逐字「**声明侧那一份逐字要带缺件状态**」）：
-  //       · 而那声明侧那一份逐字**要私钥**才能签（=> 而那把私钥逐字**不在仓内**）
-  //         => 而那「声明侧带缺件状态」那一格在 CI 的**校验轮**逐字**产不出来**
-  //         （=> 而那 step 8 到 10 逐字 skipped）=> 而那一格逐字**在 CI 上未触发**
-  //         （=> 而按 C-113 / C-116 逐字标明「未触发」）。
-  //       · 而这一档逐字**不签名、=> 而只产出那形状**、=> 而它逐字让那一格逐字**能被核**
-  //         （=> 而那 CI 上逐字能跑、=> 而那一格逐字**从「未触发」变成「已核」**）。
-  //       · 而那它逐字**不是**发布那一支（=> 而那一支逐字仍然签名、=> 而那它逐字**只**多一档投影）。
-  //       · 而那它逐字**不能**被当成发布产物（=> 而它逐字**没有**签名、=> 而那设备验不过、
-  //         => 而那一档逐字**只**供核那一格用）。
+  // 那 **--declared-only** 那一档（它逐字产出**声明侧那一份的形状**、**不**签名）。
+  // 那**为什么**要有它（按 01 裁的 S606-02 逐字「**声明侧那一份逐字要带缺件状态**」）：
+  //       · 而那声明侧那一份逐字**要私钥**才能签（把私钥逐字**不在仓内**）
+  // 那「声明侧带缺件状态」那一格在 CI 的**校验轮**逐字**产不出来**
+  //         （那 step 8 到 10 逐字 skipped）一格逐字**在 CI 上未触发**
+  //         （按 C-113 / C-116 逐字标明「未触发」）。
+  //       · 而这一档逐字**不签名、只产出那形状**、它逐字让那一格逐字**能被核**
+  //         （那 CI 上逐字能跑、一格逐字**从「未触发」变成「已核」**）。
+  //       · 而那它逐字**不是**发布那一支（一支逐字仍然签名、它逐字**只**多一档投影）。
+  //       · 而那它逐字**不能**被当成发布产物（它逐字**没有**签名、设备验不过、
+  // 一档逐字**只**供核那一格用）。
   if (DECLARED_ONLY) {
     process.stdout.write(body);
     return;

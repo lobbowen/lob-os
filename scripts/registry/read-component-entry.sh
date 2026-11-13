@@ -18,16 +18,16 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 #  缺陷名（C-102）**那三个空逐字分不出来** ——
-#   而那旧版逐字是三个 `printf '\n'; exit 0`（=> 而那三处逐字**都是空串**、=> 而都 exit 0）：
+#   而那旧版逐字是三个 `printf '\n'; exit 0`（三处逐字**都是空串**、都 exit 0）：
 #     1. 纯库件（entry 合法地是空）
 #     2. 产物存在、而那一份 meta 的 entry 逐字是空
 #     3. 读不到产物（压根没有可比对的声明）
-#   => 而那调用方逐字只看到「空」，=> 而那**三问**逐字**答不出**。
-#   => 而 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「本件只记，归 05」、
-#     => 而归 05 的处置逐字是「要么给不同的非空值、要么给不同的退出码」。
-#   => 而本处取**不同的非空值**、=> 而它逐字落在**单独那一档输出**上（=> 而那一档输出逐字**新**）：
-#     而那**默认**那一档（stdout）逐字**一个字都不改**（=> 而那三个调用点逐字不变、=> 而那 exit 0 逐字不变），
-#     => 而那 `--why` 那一档逐字**答**「那一个空是哪一个」。
+# 调用方逐字只看到「空」，那**三问**逐字**答不出**。
+#01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「本件只记，归 05」、
+# 归 05 的处置逐字是「要么给不同的非空值、要么给不同的退出码」。
+# 本处取**不同的非空值**、它逐字落在**单独那一档输出**上（一档输出逐字**新**）：
+#     而那**默认**那一档（stdout）逐字**一个字都不改**（三个调用点逐字不变、那 exit 0 逐字不变），
+# 那 `--why` 那一档逐字**答**「那一个空是哪一个」。
 WHY_ONLY=0
 if [ "${1:-}" = "--why" ]; then
   WHY_ONLY=1
@@ -35,13 +35,13 @@ if [ "${1:-}" = "--why" ]; then
 fi
 key="${1:?usage: read-component-entry.sh [--why] <件名>}"
 
-# 那一档**为什么**是空（=> 而那三个空逐字分得开、=> 而那逐字是**枚举值**）。
+# 那一档**为什么**是空（三个空逐字分得开、逐字是**枚举值**）。
 why_pure_library() { printf 'pure-library\n'; }
 why_entry_empty()  { printf 'entry-empty\n'; }
 why_no_artifact()  { printf 'no-artifact\n'; }
 why_found()        { printf 'entry-found\n'; }
 
-# 那一档输出（=> 而那 `--why` 那一档逐字只答那一个词、=> 而**不**答那入口）。
+# 那一档输出（那 `--why` 那一档逐字只答那一个词、**不**答那入口）。
 why_say() {
   [ "$WHY_ONLY" -eq 1 ] || return 0
   printf '%s' "$1"
@@ -50,7 +50,7 @@ why_say() {
 
 # [!] 缺陷名（C-102）**判据在产物之前跑** ——
 #   而这一族它为什么有两边：一边是「**产物自带的那一份** component-meta.json 的 entry」
-#   （=> 而那是唯一真源），另一边是「**落位结果**算出来的那个 entry」（=> 而那是同一件事的另一种形态）。
+#   （是唯一真源），另一边是「**落位结果**算出来的那个 entry」（是同一件事的另一种形态）。
 #
 # 真机读数（02 与 05，2026-10-25）：
 #   · 判据那一处是 verify-component-artifact.sh:6 逐字
@@ -58,25 +58,25 @@ why_say() {
 #     与 :78 逐字 `judge_shape "$ENTRY" "入口"`；
 #   · 打包那一处是 package-component.sh:15 逐字同一句；
 #   · 而 workflow 那一处逐字是 build-sqlite3.yml:107 判据、:109 打包；
-#   · 而**打包那一支才是产出那份 zip 的那一个**（=> 而 package-component.sh:70 逐字
+#   · 而**打包那一支才是产出那份 zip 的那一个**（package-component.sh:70 逐字
 #     `ZIP="dist/component-${TOOL}-${VER}-${SHA}-android-arm64.zip"`）
-#     => 而判据在 :107 要读那份 zip 里的 meta => 而那时 zip **还不存在**
-#     => 而 read-component-entry.sh 走 2. 那一支答空 => 而 :78 拿空串去 judge_shape
-#     => 而报「入口 dist/ 没产出」。
+# 判据在 :107 要读那份 zip 里的 meta时 zip **还不存在**
+#read-component-entry.sh 走 2. 那一支答空:78 拿空串去 judge_shape
+# 报「入口 dist/ 没产出」。
 #
-# => 而成因是 **0a57629**（2026-10-20）把这一格从**读表**（component-verify.json）
-#   换成**读产物**，=> 而它**没有**把 workflow 里那两步的顺序倒过来；
-#   => 而改前那一版（3a6b8625，2026-10-10 最后绿的那一趟）逐字是
-#   `F="$HERE/../component-verify.json"`（=> 而读表 => 而判据在打包之前也能读到），
-#   => 而那一版 workflow 的顺序**逐字相同**。
-# => 而那是 C-104 那一族「改了生成路径而没改依赖它的那几处」的形态。
+# 成因是 **0a57629**（2026-10-20）把这一格从**读表**（component-verify.json）
+#   换成**读产物**，它**没有**把 workflow 里那两步的顺序倒过来；
+# 改前那一版（3a6b8625，2026-10-10 最后绿的那一趟）逐字是
+#   `F="$HERE/../component-verify.json"`（读表判据在打包之前也能读到），
+# 一版 workflow 的顺序**逐字相同**。
+# 是 C-104 那一族「改了生成路径而没改依赖它的那几处」的形态。
 #
-# => 而**处置**：这一处**从落位结果算**（=> 而不只从产物那份 zip 读）。
-#   => 而「落位结果」是 dist/ 下那一批字节（=> 而打包那一支与判据那一处**都**有它），
-#   => 而算它的是 gen-component-meta.js 的 computeEntry（=> 而那**就是**唯一真源那一份算法）。
-#   => 而**顺序不用倒**（=> 而那要改 10 个 workflow，=> 而那治的是症状不是成因）。
+#**处置**：这一处**从落位结果算**（不只从产物那份 zip 读）。
+#「落位结果」是 dist/ 下那一批字节（打包那一支与判据那一处**都**有它），
+# 算它的是 gen-component-meta.js 的 computeEntry（那**就是**唯一真源那一份算法）。
+#**顺序不用倒**（要改 10 个 workflow，治的是症状不是成因）。
 
-# 1. 落位结果（=> 而 dist/ 下那一批字节）—— **先**算它（=> 而它此刻就在）
+# 1. 落位结果（dist/ 下那一批字节）—— **先**算它（它此刻就在）
 if [ -d "$ROOT/dist" ]; then
   e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$ROOT/dist" 2>/dev/null || true)"
   if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
@@ -87,7 +87,7 @@ if [ -d "$ROOT/dist" ]; then
   fi
 fi
 
-# 2. 产物自带的那一份（=> 而那是**上一次**打出来的那份 zip，=> 而它在时 answer 的是**上一次**的答案）
+# 2. 产物自带的那一份（是**上一次**打出来的那份 zip，它在时 answer 的是**上一次**的答案）
 for z in "$ROOT"/dist/component-"$key"-*.zip; do
   [ -f "$z" ] || continue
   e="$(unzip -p "$z" component-meta.json 2>/dev/null | node -e '

@@ -62,11 +62,11 @@
         "role": {
           "type": "string",
           "enum": ["program", "library"],
-          "description": "这一件是程序形态还是库形态。来源唯一：构建期的落位结果 —— 由 scripts/recipes/gen-component-meta.js 按 bin/ 与 lib/ 下各形态的份数算出。而它与落位侧 program-manifest.json 的 role 键同源（C-104：只有一条生成路径）：=> 而落位侧那一份由运行期的 ManifestWriter 写，=> 而这一份由构建期写，=> 而两处逐字相同。"
+          "description": "这一件是程序形态还是库形态。来源唯一：构建期的落位结果 —— 由 scripts/recipes/gen-component-meta.js 按 bin/ 与 lib/ 下各形态的份数算出。而它与落位侧 program-manifest.json 的 role 键同源（C-104：只有一条生成路径）：落位侧那一份由运行期的 ManifestWriter 写，这一份由构建期写，两处逐字相同。"
         },
         "by": {
           "type": "string",
-          "description": "「为什么 entry 是这一个」的说明 —— 构建期从落位结果算出来的那一句（01 那一件 S115 第三节落点 2）。而它机器可读：=> 而读清单的人不必再从控制台日志里捞。"
+          "description": "「为什么 entry 是这一个」的说明 —— 构建期从落位结果算出来的那一句（01 那一件 S115 第三节落点 2）。而它机器可读：读清单的人不必再从控制台日志里捞。"
         }
       },
       "required": [
@@ -132,11 +132,11 @@
         },
         "missing": {
           "type": "boolean",
-          "description": "这一件逐字**没取到**（=> 而那一件逐字**不在**那 tools[] 里面、=> 而它逐字在**声明侧**那一份的 missing[] 那一列里）。=> 而这一格逐字**只**出现在**声明侧**那一份（=> 而那**投影侧**那一份逐字**不留占位**、=> 而它逐字只答「取到了什么」）。"
+          "description": "这一件逐字**没取到**（一件逐字**不在**那 tools[] 里面、它逐字在**声明侧**那一份的 missing[] 那一列里）。这一格逐字**只**出现在**声明侧**那一份（那**投影侧**那一份逐字**不留占位**、它逐字只答「取到了什么」）。"
         },
         "missingReason": {
           "type": "string",
-          "description": "那一件逐字**为什么**没取到（=> 而那一档逐字是**枚举值**：ratelimit / auth / notfound / unknown / norun / contract）。=> 而它逐字答的是**成因**、=> 而**不是**猜。"
+          "description": "那一件逐字**为什么**没取到（一档逐字是**枚举值**：ratelimit / auth / notfound / unknown / norun / contract）。它逐字答的是**成因**、**不是**猜。"
         }
       },
       "required": [
@@ -148,7 +148,7 @@
     },
     "missingPiece": {
       "type": "object",
-      "description": "声明侧那一份的 missing[] 一个条目（=> 而那一件逐字没取到）。",
+      "description": "声明侧那一份的 missing[] 一个条目（一件逐字没取到）。",
       "properties": {
         "name": {
           "type": "string",
@@ -156,11 +156,11 @@
         },
         "reason": {
           "type": "string",
-          "description": "那一档（=> 而那一档逐字是**枚举值**、=> 而**不**是散文）。"
+          "description": "那一档（一档逐字是**枚举值**、**不**是散文）。"
         },
         "detail": {
           "type": "string",
-          "description": "那一档的**原话**（=> 而那它逐字是那响应体或那契约的逐字原话、=> 而**不是**概括）。"
+          "description": "那一档的**原话**（它逐字是那响应体或那契约的逐字原话、**不是**概括）。"
         }
       },
       "required": [
@@ -201,14 +201,14 @@
           "items": {
             "$ref": "#/definitions/publishedTool"
           },
-          "description": "**取到**的那些件（=> 而那投影侧逐字只答「取到了什么」、=> 而那没取到的逐字**不在**这里）。"
+          "description": "**取到**的那些件（投影侧逐字只答「取到了什么」、没取到的逐字**不在**这里）。"
         },
         "missing": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/missingPiece"
           },
-          "description": "**没取到**的那些件（=> 而每一件逐字带它**为什么**没取到、=> 而那一档逐字是**枚举值**）。=> 而这一格逐字是**声明侧**那一份的、=> 而**投影侧**那一份逐字**不留占位**（=> 而按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「投影侧 work/declared.json 逐字不留占位（=> 而它答『取到了什么』）」）。"
+          "description": "**没取到**的那些件（每一件逐字带它**为什么**没取到、一档逐字是**枚举值**）。这一格逐字是**声明侧**那一份的、**投影侧**那一份逐字**不留占位**（按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字「投影侧 work/declared.json 逐字不留占位（它答『取到了什么』）」）。"
         }
       },
       "required": [

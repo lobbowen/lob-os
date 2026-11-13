@@ -8,19 +8,19 @@
 #   - **不点业务按钮**   —— 不代替 07 触发任何业务动作
 #   传了上述类参数或位置参数，一律非零退出并打印「本工具不做该操作」。
 #
-# 为什么要有它（=> 而那一格逐字是「**设备读数怎么取**」那一族、=> 而它**不属产品缺陷**，依 C-104 不并）：
+# 为什么要有它（一格逐字是「**设备读数怎么取**」那一族、它**不属产品缺陷**，依 C-104 不并）：
 #   · 07 本轮实测逐字：「这台设备上 `uiautomator dump` 对 HostControlActivity 在熄屏时逐字失效
 #     （`ERROR: null root node returned by UiTestAutomationBridge`），**但屏幕点亮后就能拿到控件树**；
 #     而设备会自己熄屏（`mWakefulness=Dozing` 时窗口逐字 `isVisible=false`）
-#     => 而那一趟必须先 `input keyevent KEYCODE_WAKEUP` + `wm dismiss-keyguard`，
+# 一趟必须先 `input keyevent KEYCODE_WAKEUP` + `wm dismiss-keyguard`，
 #        再按 dump 出来的真实坐标点」
-#   · 而「按旧坐标点了两轮都落在 launcher 上」=> 而那**焦点判定与可见性两处都得先满足**。
-#   => 而那规范正文那两条逐字在 docs/spec/ONE-STANDARD.md §122.83.6。
+#   · 而「按旧坐标点了两轮都落在 launcher 上」那**焦点判定与可见性两处都得先满足**。
+# 规范正文那两条逐字在 docs/spec/ONE-STANDARD.md §122.83.6。
 #
-# **唤醒那一格是设备写入**（=> 而设备写入只归 07）：
-#   => 而本脚本逐字**默认不自己唤醒**；=> 而它逐字把那两条命令**打出来**给 07 执行
-#     （=> 而那一形态与 scripts/serve/serve-static-readonly.sh 那「adb reverse 打给 07」逐字同形）。
-#   => 而要它**自己**唤醒，那要显式给 --wake（=> 而那一格逐字会把那两条命令打出来再执行）。
+# **唤醒那一格是设备写入**（设备写入只归 07）：
+# 本脚本逐字**默认不自己唤醒**；它逐字把那两条命令**打出来**给 07 执行
+#     （一形态与 scripts/serve/serve-static-readonly.sh 那「adb reverse 打给 07」逐字同形）。
+# 要它**自己**唤醒，那要显式给 --wake（一格逐字会把那两条命令打出来再执行）。
 #
 # 凭据：只可能用到 adb（USB 直连）；不使用仓外的 tok（那是个人 GitHub 凭据，不在本脚本视野内）。
 set -uo pipefail
@@ -96,8 +96,8 @@ echo "[pkg]  $PACKAGE"
 echo "[act]  $ACTIVITY"
 echo "[time] $(date -Is)"
 
-# -- 第一格：屏幕醒着没有（=> 而这一格逐字只**读**）--
-#   => 而那 mWakefulness 那一格逐字答「屏幕现在是不是黑的」。
+# -- 第一格：屏幕醒着没有（这一格逐字只**读**）--
+# 那 mWakefulness 那一格逐字答「屏幕现在是不是黑的」。
 WAKE_LINE="$($ADB -s "$DEV" shell "dumpsys power 2>/dev/null | grep -i mWakefulness" 2>/dev/null | tr -d '\r' | head -1)"
 echo "[wake] ${WAKE_LINE:-(读不到 mWakefulness)}"
 
@@ -106,12 +106,12 @@ case "$WAKE_LINE" in
   *Dozing*|*Asleep*|*Standby*) DOZING=1 ;;
 esac
 
-# -- 第二格：唤醒那一格（=> 而它是**设备写入**、=> 而只归 07）--
+# -- 第二格：唤醒那一格（它是**设备写入**、只归 07）--
 WAKE_CMDS="adb -s $DEV shell input keyevent KEYCODE_WAKEUP
 adb -s $DEV shell wm dismiss-keyguard"
 if [ "$DOZING" = "1" ]; then
   if [ "$DO_WAKE" = "1" ]; then
-    echo "[wake] 屏幕逐字是灭的、=> 而那按 --wake 逐字执行那两条唤醒命令："
+    echo "[wake] 屏幕逐字是灭的、按 --wake 逐字执行那两条唤醒命令："
     printf '%s\n' "$WAKE_CMDS" | sed 's/^/       /'
     # shellcheck disable=SC2086
     $ADB -s "$DEV" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
@@ -124,28 +124,28 @@ if [ "$DOZING" = "1" ]; then
       *) DOZING=0 ;;
     esac
   else
-    echo "[wake] 屏幕逐字是灭的、=> 而那唤醒那两条命令逐字由 07 执行（=> 而设备写入只归 07）："
+    echo "[wake] 屏幕逐字是灭的、唤醒那两条命令逐字由 07 执行（设备写入只归 07）："
     printf '%s\n' "$WAKE_CMDS" | sed 's/^/       /'
-    echo "[wake] 唤醒之后重跑本工具、=> 而那时它逐字会拿到树。"
+    echo "[wake] 唤醒之后重跑本工具、时它逐字会拿到树。"
     exit 3
   fi
 fi
 
-# -- 第三格：窗口可见没有（=> 而这一格逐字只**读**）--
+# -- 第三格：窗口可见没有（这一格逐字只**读**）--
 VIS_LINE="$($ADB -s "$DEV" shell "dumpsys window windows 2>/dev/null | grep -i 'mCurrentFocus\|mFocusedApp'" 2>/dev/null | tr -d '\r' | head -2)"
 echo "[focus] ${VIS_LINE:-(读不到焦点)}"
 
-# -- 第四格：dump（=> 而这一格逐字只**读**）--
+# -- 第四格：dump（这一格逐字只**读**）--
 DUMP_OUT="$(mktemp)"
 trap 'rm -f "$DUMP_OUT"' EXIT
 DUMP_ERR="$($ADB -s "$DEV" shell "uiautomator dump /sdcard/uidump.xml 2>&1; echo '---'; cat /sdcard/uidump.xml 2>/dev/null" 2>/dev/null | tr -d '\r')"
 
 if printf '%s\n' "$DUMP_ERR" | grep -q 'null root node returned by UiTestAutomationBridge'; then
   echo "[error] 设备回了这一句原文：ERROR: null root node returned by UiTestAutomationBridge" >&2
-  echo "        => 而那屏幕逐字是灭的、=> 而那唤醒那一格**没满足**。" >&2
-  echo "        => 而那唤醒是**设备写入**、=> 而只归 07；=> 而那两条命令逐字是：" >&2
+  echo "屏幕逐字是灭的、唤醒那一格**没满足**。" >&2
+  echo "唤醒是**设备写入**、只归 07；两条命令逐字是：" >&2
   printf '%s\n' "$WAKE_CMDS" | sed 's/^/          /' >&2
-  echo "        => 而那唤醒之后**重跑**本工具、=> 而那时它逐字会拿到树。" >&2
+  echo "唤醒之后**重跑**本工具、时它逐字会拿到树。" >&2
   exit 3
 fi
 
@@ -159,15 +159,15 @@ fi
 printf '%s\n' "$XML" > "$DUMP_OUT"
 echo "[dump] 控件树字节数=$(stat -c%s "$DUMP_OUT")"
 
-# -- 第五格：那目标节点在不在（=> 而那一格逐字答「那一件逐字在不在那棵树里」）--
+# -- 第五格：那目标节点在不在（一格逐字答「那一件逐字在不在那棵树里」）--
 if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
   echo "[node] 那一格逐字**在**树里：$ACTIVITY"
-  #  => 而那坐标逐字从那 XML 里**逐字**取出来（=> 而那**不是**读那旧的坐标）。
+  # 坐标逐字从那 XML 里**逐字**取出来（那**不是**读那旧的坐标）。
   BOUNDS="$(printf '%s\n' "$XML" | grep -o 'resource-id="[^"]*"[^>]*bounds="\[[0-9,]*\]\[[0-9,]*\]"' | head -1)"
   if [ -n "$BOUNDS" ]; then
     echo "[bounds] $BOUNDS"
   else
-    #  => 而那资源 id 那一格逐字没有的、=> 而那退到那 activity 那一格上的 bounds。
+    # 资源 id 那一格逐字没有的、退到那 activity 那一格上的 bounds。
     BOUNDS2="$(printf '%s\n' "$XML" | grep -o "$ACTIVITY\"[^>]*bounds=\"\[[0-9,]*\]\[[0-9,]*\]\"" | head -1)"
     echo "[bounds] ${BOUNDS2:-(树里逐字没取到 bounds —— 而那要人从那 XML 里看)}"
   fi
@@ -179,10 +179,10 @@ if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
 fi
 
 echo "[error] 树取到了，但那一格逐字**不在**树里：$ACTIVITY" >&2
-echo "        => 而那这与「屏幕黑」是**两件**事、=> 而那要分开确认（依 I-32）。" >&2
-echo "        => 而那先看 [focus] 那一行：=> 而那焦点逐字在别处、=> 而那要先把那个 Activity 叫起来。" >&2
+echo "这与「屏幕黑」是**两件**事、要分开确认（依 I-32）。" >&2
+echo "先看 [focus] 那一行：焦点逐字在别处、要先把那个 Activity 叫起来。" >&2
 if [ -n "$OUT" ]; then
   cp "$DUMP_OUT" "$OUT"
-  echo "[out]  $OUT（=> 而那树逐字留下来了、=> 而那目标逐字不在里面）" >&2
+  echo "[out]  $OUT（树逐字留下来了、目标逐字不在里面）" >&2
 fi
 exit 3
