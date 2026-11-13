@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 'use strict';
 
-// 底座件 pin 记录的重生成器 —— 恢复仓内那「可生产的那一半」。
-//
-// 背景（读 .github/native-capabilities-pin.json 的那一份在 scripts/publish/publish-native-manifest.js）：
-//   · 第 28 行读这个文件；第 82-93 行 pinEntry() 取 j.pins 这一张字典，
-//     并**只取最后一个键**（keys[keys.length-1]），把它展开成 { fingerprint, ...那个值 }。
-//   · 第 191 行用它：ZIP 里有那一件的 libName 时，该件改成 source=ota，
-//     url 指向 BASE/<channel>/native/<zip 名>，sha256 取 pin.sha256，pin 记 pin.tag。
-//   => 读取方要求 pin 的**值**里有 tag / zip / sha256 / abi 这四格。
-//
-// 这份文件以前由 .github/workflows/pin-capabilities.yml 产（那时它打的是
+
+
+
+
+
+
+
+
+
+
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -102,7 +102,7 @@ function pickInnerZip(file, form) {
   const want = path.basename(file).replace(/\.zip$/, '');
   const work = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pin-inner-'));
   try {
-    // 那**外层自己**是不是那一颗件
+    
     const outerId = outerMetaId(file, form, work);
     if (outerId) {
       return outerId === want ? { path: file, outerEntries: outerEntryCount(file) } : null;
@@ -140,7 +140,7 @@ function pickInnerZip(file, form) {
     bad('挑内层失败（' + file + '）：' + e.message);
     return null;
   } finally {
-    try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* 清理失败不影响判别 */ }
+    try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) {  }
   }
 }
 
@@ -178,7 +178,7 @@ function readZipFile(file) {
     return got === len ? b : b.subarray(0, got);
   };
 
-  // 尾部找 EOCD（0x06054b50）
+  
   const tailLen = Math.min(size, 65536 + 22);
   const tail = readAt(size - tailLen, tailLen);
   let eocd = -1;
@@ -190,7 +190,7 @@ function readZipFile(file) {
   let cdSize = tail.readUInt32LE(eocd + 12);
   let cdOff = tail.readUInt32LE(eocd + 16);
 
-  // zip64：EOCD 那几格是哨兵值时，真实的在 zip64 EOCD 里
+  
   if (count === 0xffff || cdSize === 0xffffffff || cdOff === 0xffffffff) {
     const loc = eocd >= 20 ? tail.readUInt32LE(eocd - 20) : 0;
     if (loc !== 0x07064b50) { fs.closeSync(fd); throw new Error('zip64 哨兵在位，但找不到 zip64 定位器'); }
@@ -219,7 +219,7 @@ function readZipFile(file) {
     const extAttr = cd.readUInt32LE(off + 38);
     let localOff = cd.readUInt32LE(off + 42);
     const name = cd.toString('utf8', off + 46, off + 46 + nameLen);
-    // zip64 扩展字段（头两个字节是 0x0001）
+    
     if (csize === 0xffffffff || usize === 0xffffffff || localOff === 0xffffffff) {
       let e = off + 46 + nameLen;
       const eEnd = e + extraLen;
@@ -356,7 +356,7 @@ function fileRecords(zip, shape) {
     }
     const buf = zip.bytes(f.path);
     if (zip.isSymlink(f.path)) {
-      // 软链条目：zip 里存的是链接目标文本，不是那份字节。
+      
       out.push({
         path: f.path,
         bytes: buf.length,
@@ -395,8 +395,8 @@ function fingerprintOf(rec) {
     tag: rec.tag,
     zip: rec.zip,
     sha256: rec.sha256,
-    // 那**层**那一格逐字进指纹（那 sha256 那一格逐字记的是哪一层、
-    // 那**变了层**逐字得**判得出**）。
+    
+    
     sidecarLayer: rec.sidecarLayer,
     outerSha256: rec.outerSha256,
     capsEntryKind: rec.capsEntryKind,
@@ -448,22 +448,22 @@ async function main() {
 
       rec.sha256Layer = 'inner';
       rec.innerSha256 = real;
-      // 那**容器形态**逐字**按字节**判（判别源唯一：scripts/toolchain/fmt.sh）
-      // 那 zip64 那一档逐字**也**认（它逐字是 zip 那一档的中央目录变体）。
-      // 形态逐字**三层**：外层容器 / 外层是不是 zip / 外层是不是 zip64。
+      
+      
+      
       rec.outerForm = containerFormOf(got.zipPath);
-      rec.outerSha256 = got.digest;      //那**外层**那一份的 sha256（那 sha256 逐字是那**下载**下来那一份的）
+      rec.outerSha256 = got.digest;      
       rec.outerBytes = got.bytes;
       rec.outerMagic = magicOf(got.zipPath);
-      // 那**内层**那一份（那「外层套内层」那一族）：
-      //     而那 sha256 逐字要记**内层**那一份的（那 pin 记的是**内层**那一个件包），
-      // 那**同层才比**（那 sidecarLayer 逐字记的是「那 sha256 记的是哪一层」）。
+      
+      
+      
       const inner = pickInnerZip(got.zipPath, rec.outerForm);
       rec.sidecarLayer = inner ? 'inner' : 'outer';
       rec.outerEntries = inner ? inner.outerEntries : (rec.outerForm === 'zip' || rec.outerForm === 'zip64' ? outerEntryCount(got.zipPath) : -1);
       const zipPathForFacts = inner ? inner.path : got.zipPath;
       const zip = readZipFile(zipPathForFacts);
-      // 那 **sha256** 那一格逐字**按层**给（Lead 那一裁逐字「pin 记内层 zip
+      
 
       if (inner) {
         rec.sha256 = sha256File(inner.path);
@@ -498,29 +498,29 @@ async function main() {
       if (unmatched.length) bad(c.id + '：' + unmatched.length + ' 个文件与 piece-shape 里记的 sha256 对不上');
       rec.kind = shape ? (shape.kind || '') : '';
       rec.entryInArtifact = shape && shape.entry ? shape.entry : '';
-      // 档位表里那一列 libName 是老流程（jniLibs 里那几个 .so）留下的名字，
-      // 与现在件包里的真实路径不一定同名。这里如实记下对照结果。
+      
+      
       const libHit = files.find((f) => f.path === c.capsLibName || f.path.endsWith('/' + c.capsLibName));
       rec.capsLibNameFoundInArtifact = !!libHit;
-      // 那 **capsEntryKind** 那一格（是 C-979 逐字要的那一格）：
-      //     「`capsLibName` 这一格装的是「**在件包里能命中那一项的字符串**」；
-      //       库形态 = `.so` 名，程序形态 = **件包内相对路径**（`bin/git`、`bin/bash`、`bin/rg`），**不用裸名**；
-      //       另加一格 `capsEntryKind`（`library` / `program`）标明形态」
-      // 那**形态**逐字由那件包的**入口**答（那 entry 逐字带 `bin/` 或 `lib/` 前缀）。
-      // 那 01 裁的 S606-01-ALIAS-BIN-KEY-RULING.md §9.1 逐字：
-      //     「llvm 那一件的 capsEntryKind 逐字应是 program，它的 capsLibName 逐字应是 bin/clang
+      
+      
+      
+      
+      
+      
+      
 
       const entryKind = rec.entryInArtifact
         ? (rec.entryInArtifact.startsWith('lib/') ? 'library' : (rec.entryInArtifact.startsWith('bin/') ? 'program' : 'unknown'))
         : (rec.kind === 'library' ? 'library' : (rec.kind === 'program' ? 'program' : 'unknown'));
       rec.capsEntryKind = entryKind;
-      // 那 capsLibName 那一格逐字**不改名、改语义**：
-      // 一格逐字答的是「**这一件逐字提供哪个字节名**」（Lead 本机实读逐字：
-      //       「`capsLibName` 这一格装的是「**在件包里能命中那一项的字符串**」」），
-      //**不是**「这一件的入口是什么」。
-      // 一格逐字**不是**「程序形态相对路径」那条**普遍规则**
-      //     （Lead 判：busybox 那一件逐字是**程序形态**、
-      // 它逐字**真的提供** libbusybox.so 那个字节
+      
+      
+      
+      
+      
+      
+      
 
       rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
       if (!rec.capsLibNameFoundInArtifact) {
@@ -547,10 +547,10 @@ async function main() {
       id: rec.id,
       tier: rec.tier,
       capsLibName: rec.capsLibName,
-      // 那 **capsEntryKind** 那一格（按 C-979 逐字「另加一格 capsEntryKind
+      
 
       capsEntryKind: rec.capsEntryKind,
-      // 那 capsLibName 逐字**是不是裸名**那一格（程序形态逐字该是件包内相对路径）。
+      
       capsLibNameIsBare: rec.capsLibNameIsBare,
       capsLibNameFoundInArtifact: rec.capsLibNameFoundInArtifact,
       artifactLibraryPath: rec.artifactLibraryPath,
@@ -561,10 +561,10 @@ async function main() {
       tag: rec.tag,
       zip: rec.zip,
       sha256: rec.sha256,
-      // 那 **outerSha256** 那一格（它逐字是那**外层**那一份的 sha256）、
-      // 那 **sidecarLayer** 那一格（它逐字记的是「那 sha256 记的是哪一层」：
-      //     inner = 那 sha256 记的是**内层**那一个件包；outer = 记的是**外层**那一份）。
-      // 按 Lead 那一裁逐字「**同层才比**」比边车那一份逐字要比**同层**那一份。
+      
+      
+      
+      
       outerSha256: rec.outerSha256,
       outerBytes: rec.outerBytes,
       outerForm: rec.outerForm,

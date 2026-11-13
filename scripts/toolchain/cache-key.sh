@@ -138,8 +138,9 @@ esac
 PKG_MECH="scripts/recipes/gen-component-meta.js scripts/recipes/package-bundle-zip.sh scripts/toolchain/elf-form.sh"
 SRC_FILES="$SRC_FILES $PKG_MECH"
 
+STRIP="$ROOT_DIR/scripts/toolchain/comment-strip.py"
 if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
-  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files $SRC_FILES 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
+  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files $SRC_FILES 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | python3 "$STRIP" "$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
   [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
 fi
 [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"

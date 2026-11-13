@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
 
-// C-102 层级错位：ROOT 原先解析成 scripts/ 自身，:63 的 channel.json 锚点落到了
+
 
 const ROOT = path.resolve(__dirname, '../..');
 const argv = process.argv.slice(2);
@@ -42,9 +42,9 @@ if (!LOCAL) fail(IMMUTABLE ? '--immutable 后面没给即将上传的清单文�
 
 let parsed;
 try {
-  // C-987 整读豁免（这一处读的是清单 JSON，不是件包）：
-  // 这一处整读的是「即将上传的清单」JSON 本身，量级在 KB 级（十件左右，
-  // 每件六七个字段，几千字节到几十 KB）。node 的 readFileSync 对超过 2 GiB 的文件
+  
+  
+  
 
   parsed = JSON.parse(fs.readFileSync(LOCAL, 'utf8'));
 } catch (e) {
@@ -66,16 +66,16 @@ if (!Array.isArray(localTools) || localTools.length === 0) {
 }
 
 const anchor = JSON.parse(
-  // C-987 整读豁免（这一处读的是通道锚 JSON，不是件包）：
-  // channel.json 是仓内固定的一份小 JSON（当前 553 字节），里面只有通道名、
-  // 清单名与 CDN 基址。它是编译期材料，不是件包，永远到不了 2 GiB，
-  // 所以这一处整读安全，不适用 C-987。
+  
+  
+  
+  
   fs.readFileSync(path.join(ROOT, 'container/app/src/main/assets/supply/channel.json'), 'utf8'),
 );
-// C-102 字段层级错位：通道锚升到 schema 2 之后，清单名搬进了 manifests.component.name，
-// 而这一份还在读 v1 的平铺 manifestName —— 拼出来的键是 component-canary/undefined。
-// 读取口径照设备侧那一族（SupplyProvisioner.manifestNameOf，container/app/src/main/java/lobos/services/supply/SupplyProvisioner.kt:64）：
-// 先读 manifests[channel].name，没有再退回平铺 manifestName；两处都没有就是缺字段，按 C-05 报缺，不猜填。
+
+
+
+
 function manifestNameOf(a, channel) {
   const m = a.manifests && a.manifests[channel];
   if (m && typeof m.name === 'string' && m.name.trim()) return m.name.trim();
@@ -98,20 +98,20 @@ function fetchOnline() {
   return new Promise((resolve, reject) => {
     if (onlinePath) {
       if (!fs.existsSync(onlinePath)) return resolve({ missing: true });
-      // C-987 整读豁免（这一处读的是线上清单 JSON，不是件包）：
-      // COMPONENT_ONLINE_FILE 指向的是线上那份清单（component-manifest.json），
-      // 量级在 KB 级。它是清单，不是件包，所以不适用 C-987，整读安全。
-      // 注意别把它和「件包」混起来：件包是 dist/ 下的 .zip（llvm 那件超过 8 GiB），
-      // 本脚本不碰件包。
+      
+      
+      
+      
+      
       return resolve({ buf: fs.readFileSync(onlinePath) });
     }
     const req = https.get(onlineUrl, { timeout: 15_000 }, (res) => {
       if (res.statusCode === 404) return resolve({ missing: true });
       if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode + ' ' + onlineUrl));
-      // C-987 整读豁免（这一处收的是线上清单 JSON，不是件包）：
-      // 累加整包是为了把这份清单 JSON 完整收下来再 JSON.parse，量级在 KB 级。
-      // 真正会超过 2 GiB 的是件包（llvm 那件 8.4 GB），而件包不经过这里，
-      // 所以这里不需要流式化，也不需要设上限。
+      
+      
+      
+      
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => resolve({ buf: Buffer.concat(chunks) }));
@@ -142,24 +142,24 @@ function gate(online, onlineRevisionRaw, firstPublish) {
       if (!got || got.version !== t.version) continue;
       checked++;
       if (got.sha256 !== t.sha256) {
-        //  缺陷名（C-102）**那一格逐字**不**分**「那 recipe 变了」与「那字节被偷换了」那两族 ——
-        // 旧版逐字是「同 name@version 逐字不许换字节」那一族逐字**一刀切**
-        // 那**recipe 变了**逐字**换**了字节逐字**也**被**判红**
-        //        （那**旧字节**逐字**是**那**旧** recipe 产的、那**新字节**逐字**是**那**新** recipe 产的、
-        // 那**两半**逐字**都**合法、那**闸门**逐字**分不出**）
-        // 那**判据**逐字是「那字节逐字是不是那实际字节、那**实际字节**逐字**为什么**变」那一个事实上
+        
+        
+        
+        
+        
+        
 
         const oldFp = String(got.recipeFingerprint || '');
         const newFp = String(t.recipeFingerprint || '');
         if (oldFp && newFp && oldFp !== newFp) {
-          // 那**指纹**逐字**变了**（那 recipe 逐字**变了**）、那**字节**逐字**跟着**变
+          
 
           console.log('[gate] ' + t.name + '@' + t.version + ' 换了字节，但**那 recipe 指纹也换了**'
             + '（线上 ' + oldFp + ' → 本次 ' + newFp + '）'
             + ' ——那**recipe 变了**逐字**换**了字节逐字**是**那合法的**那一种**、那**版本号**逐字**没变**'
             + '（那**上游源码**逐字**没变**）');
         } else {
-          // 那**指纹**逐字**一样**（那 recipe 逐字**没变**）而字节**变了**、那**才**是偷换
+          
           reds.push(t.name + '@' + t.version + ' 换了字节：线上 sha ' + String(got.sha256).slice(0, 12)
             + '… 本次 ' + String(t.sha256).slice(0, 12)
             + '… —— 件按内容寻址命名，所以这**不会**盖掉旧对象（设备按 sha 命中与否自己会重下， integrity 不破）；'

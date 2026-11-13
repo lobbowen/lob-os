@@ -6,18 +6,18 @@ const path = require('node:path');
 const cp = require('node:child_process');
 const crypto = require('node:crypto');
 
-// C-102 层级错位：ROOT 原先解析成 scripts/ 自身，于是 ROOT-relative 路径全部少一层。
-// C-103 回答（为什么有两边）：仓内 ROOT 一词有两种含义。
-// 甲：仓根（repo root）。乙：scripts/ 自身。
-// 正确含义是甲；d6e954c 时 ROOT 确是仓根，VERIFY 为 path.join(ROOT,'scripts','component-sources.json')，
-// 到了 f87bcb2 把 ROOT 改成 '..'（变成乙）同时把 VERIFY 改成 path.join(ROOT,'component-sources.json')，
-// 4105f16 又照着乙把 registry 路径改成 path.join(ROOT,'registry',...)。
-// 所以这不是三处各写错一次，是一个词的含义被换掉、落在三个地方。
+
+
+
+
+
+
+
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const PROJECT_ONLY = process.argv.includes('--project');
-// 那 **--declared-only** 那一档（它逐字产出**声明侧那一份的形状**、**不**签名、
-// 它逐字只供核「声明侧带缺件状态」那一格用、它逐字**不能**当发布产物）。
+
+
 const DECLARED_ONLY = process.argv.includes('--declared-only');
 const DIST = POS[0] || 'dist';
 const OUT = POS[1] || 'release';
@@ -80,7 +80,7 @@ function innerZipCandidates(file) {
       }
     };
     walk(work, 0);
-    // 那**按字节**挑（不按名字）：候选逐字**头四字节**是 504b* 的那一个才算 zip 容器。
+    
     const zips = [];
     for (const p of out) {
       const fd = fs.openSync(p, 'r');
@@ -113,12 +113,12 @@ function innerZipCandidates(file) {
   } catch (e) {
     return [];
   } finally {
-    try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* 清理失败不影响判别 */ }
+    try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) {  }
   }
 }
 
 function innerZipOf(file, wantPiece) {
-  // 第 1 步：那**外层自己**是不是那一颗件
+  
 
   const form = containerFormOf(file);
   const outerId = (form === 'gzip')
@@ -132,12 +132,12 @@ function innerZipOf(file, wantPiece) {
         } catch (e) {
           return '';
         } finally {
-          try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* 清理失败不影响判别 */ }
+          try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) {  }
         }
       })()
     : pieceIdOf(file);
   if (outerId) {
-    if (outerId === wantPiece) return file;   //那**外层自己**就是那一颗件
+    if (outerId === wantPiece) return file;   
     throw new Error(
       '件 ' + file + ' 的**外层自己**就是那一颗件、它的 id 逐字是 ' + outerId +
       '（要的是 ' + wantPiece + '）—— 判红'
@@ -245,8 +245,8 @@ function aliasesOf(name, zipPath, declaredEntry) {
   for (const alias of Object.keys(bin).sort()) {
     if (alias === name || alias === entryBase) continue;
     const rel = bin[alias];
-    //  那一键（值逐字等于仓内声明的入口）不是别名、它是**入口本身**、它不进别名集合。
-    //:89 按**键名**跳过 entryBase、这里按**值**再兜一次
+    
+    
 
     if (rel === declaredEntry) continue;
     if (typeof rel !== 'string' || !rel.includes('/') || rel.startsWith('/') || rel.split('/').includes('..')) {
@@ -307,18 +307,18 @@ function toolsFromDist() {
     const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
     const entry = entryOf(name);
-    //  缺陷名（C-102）**那一格逐字**不记**那 recipe 指纹、那**闸门**逐字**答不出**
-    //    「那字节变了是不是那 recipe 变了」——
-    // 旧版逐字**只**记那内容哈希、那**内容哈希**逐字**只**说「那字节**是什么**」
-    //        （它逐字**不**说「那字节**为什么**变」）
-    // 那**闸门**逐字**只能**按「同一 name@version 逐字不许换字节」那一族逐字判
+    
+    
+    
+    
+    
 
     const recipeFp = recipeFingerprintOf(name);
     out.push({
       name, provider: 'zip', version: ver,
       url: BASE + '/component/' + f,
       sha256: digest,
-      // 那 recipe 指纹逐字**进**那清单、那**闸门**逐字**拿**它逐字**判**
+      
       recipeFingerprint: recipeFp,
       entry,
       aliases: aliasesOf(name, zipPath, entry),
@@ -356,7 +356,7 @@ function versionString() {
 function revisionForManifest() {
   const raw = process.env.LOBOS_COMPONENT_REVISION || '';
   if (!/^[1-9][0-9]*$/.test(raw)) {
-    // 那 **--declared-only** 那一档逐字**不要求**那 revision
+    
 
     if (DECLARED_ONLY) {
       console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（一趟逐字不是发布轮）');
@@ -377,10 +377,10 @@ function main() {
   const tools = toolsFromDist().sort((a, b) => a.name.localeCompare(b.name));
   if (!tools.length) throw new Error('清单为空：dist 下没有一颗按命名契约产出的件');
   for (const t of tools) {
-    // 判据只挂在真正由产物自身证明的字段上（entry 的存在性、必需字段齐全）。
-    // 原来那道门要的是 component-sources.json 里的 node —— 那个字符串在整个仓里不存在，
-    // 而 component-verify.json 自己写着「它不是自动执行的检查」。按 C-91 废除。
-    //  缺陷名（C-102）**那判据逐字去问了一处逐字已经被删掉的地方**、消息逐字说错了那要补什么
+    
+    
+    
+    
 
     const v = crit[t.name];
     if (!v) {
@@ -388,7 +388,7 @@ function main() {
     }
 
     if (!t.entry) {
-      //  这一句逐字**必须**写 stderr：--project 那一档逐字把 stdout **重定向**成
+      
 
       process.stderr.write('  - ' + t.name + ' 纯库件（没有程序那一侧、entry 留空）\n');
     }
@@ -399,7 +399,7 @@ function main() {
   }
   assertNameUniqueness(tools);
   if (PROJECT_ONLY) {
-    // 那**投影侧**那一份逐字**不留占位**（按 01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md
+    
 
     process.stdout.write(JSON.stringify(tools, null, 2) + '\n');
     return;
@@ -419,21 +419,21 @@ function main() {
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
     tools,
-    // 那**缺件**逐字在这一格（它逐字是**声明侧**那一份的、那**投影侧**那一份逐字没有它）。
+    
     missing,
   };
   const body = JSON.stringify(man, null, 2) + '\n';
-  // 那 **--declared-only** 那一档（它逐字产出**声明侧那一份的形状**、**不**签名）。
-  // 那**为什么**要有它（按 01 裁的 S606-02 逐字「**声明侧那一份逐字要带缺件状态**」）：
-  //       · 而那声明侧那一份逐字**要私钥**才能签（把私钥逐字**不在仓内**）
-  // 那「声明侧带缺件状态」那一格在 CI 的**校验轮**逐字**产不出来**
-  //         （那 step 8 到 10 逐字 skipped）一格逐字**在 CI 上未触发**
-  //         （按 C-113 / C-116 逐字标明「未触发」）。
-  //       · 而这一档逐字**不签名、只产出那形状**、它逐字让那一格逐字**能被核**
-  //         （那 CI 上逐字能跑、一格逐字**从「未触发」变成「已核」**）。
-  //       · 而那它逐字**不是**发布那一支（一支逐字仍然签名、它逐字**只**多一档投影）。
-  //       · 而那它逐字**不能**被当成发布产物（它逐字**没有**签名、设备验不过、
-  // 一档逐字**只**供核那一格用）。
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   if (DECLARED_ONLY) {
     process.stdout.write(body);
     return;

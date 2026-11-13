@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-// 上溯两层到仓根 —— 本文件在 scripts/publish/，只上溯一层会落在 scripts/ 下，
-// 于是 CAPS/SOURCES/PUBKEY 全被算成 scripts/.github/… （实测：投影报
+
+
 
 const ROOT = path.resolve(__dirname, '../..');
 const POS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -18,7 +18,7 @@ const CHANNEL = POS[3] || 'canary';
 const BASE = (process.env.NATIVE_BASE_URL || 'https://lobcdn.zll.ink').replace(/\/+$/, '');
 const PUBKEY = process.env.NATIVE_PUBKEY
   || path.join(ROOT, 'container', 'app', 'src', 'main', 'assets', 'supply', 'component-public.pem');
-// 事实源（两个，别再找已删的 NativeAssetRegistry.kt —— 那个文件已随
+
 
 const VERIFY = path.join(ROOT, 'scripts', 'component-sources.json');
 const SOURCES = path.join(ROOT, 'scripts', 'component-sources.json');
@@ -35,8 +35,8 @@ function stripComments(src) {
 }
 
 function parseRegistry() {
-  // libName 与 id 的对应来自 CAPS（它就是那张清单）；
-  // version/entry 来自 VERIFY。两者都是仓内文件，不需要 Kotlin 注册表。
+  
+  
   if (!fs.existsSync(CAPS)) { bad('缺少 ' + CAPS + ' —— 底座件清单没了'); return []; }
   let vtab = {};
   try {
@@ -55,8 +55,8 @@ function parseRegistry() {
     out.push({
       id,
       libName,
-      // installName：落位后的裸名。VERIFY 没有这一格时退回 libName ——
-      // 那是同一件事的两种叫法，不要因此报「缺字段」。
+      
+      
       installName: v.installName || libName,
       version: v.version || '',
     });
@@ -78,8 +78,8 @@ function capsIndex() {
 }
 
 function pinTable() {
-  // 读不到时逐字**报缺**（按 C-05「缺字段就报缺、不许猜填」）、
-  // **不**静默当成「没有 pin」。
+  
+  
   try {
     const j = JSON.parse(fs.readFileSync(PIN, 'utf8'));
     const pins = j.pins || {};
@@ -115,8 +115,8 @@ function zipHas(zip, rel) {
   if (r.status !== 0) return false;
   const want = String(rel).replace(/^\.\//, '');
   for (const line of String(r.stdout || '').split('\n')) {
-    // 那 unzip -l 那一行的格式逐字是「<长度> <日期> <时间> <名字>」
-    // 名字逐字是最后一段（名字里**可以**有空格、用最后一个字段切会切错）。
+    
+    
     const m = /^\s*\d+\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+(.+)$/.exec(line);
     if (!m) continue;
     if (m[1].trim() === want) return true;
@@ -179,7 +179,7 @@ function versionOf(id) {
 function main() {
   const reg = parseRegistry();
   const byId = capsIndex();
-  // 那 pin 逐字**按件**查（逐字不是「最后一条」）。
+  
   const pins = pinTable();
 
   const versioned = [];
@@ -210,12 +210,12 @@ function main() {
       libName: e.libName,
       source: 'apk',
     };
-    // 那 source=ota 那一格逐字**按件**判（三问逐字都要答）：
-    // · 那**包**里逐字有没有**那一件**（那 zipHas 逐字按条目名逐字比）；
-    // · 那**事实来源**里逐字有没有**那一件**的那一档 pin（逐字按 id 查）；
-    // · 而那 pin 逐字**指**的是不是**那一件**（那 zip 名字逐字对得上）。
-    // 那**缺一格**就逐字**留在 apk**那一侧（一侧逐字是「随 APK 走」）
-    // **不**拿别的那一件的 pin 顶替（旧版逐字**每一件**都拿同一条）。
+    
+    
+    
+    
+    
+    
     const pin = pinEntry(pins, e.id);
     if (pin) {
       const zipName = path.basename(ZIP);
@@ -226,14 +226,14 @@ function main() {
         c.sha256 = pin.sha256;
         c.pin = pin.tag;
       } else {
-        // 那 pin 逐字有、那**包**里逐字没有**那一件**
-        // 那 source 逐字**留在 apk**、一句逐字说出来（不静默）。
+        
+        
         console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
           '一份件包里逐字**没有**它（按后缀匹配的那旧版逐字**会**命中别的那一条）' +
           '那 source 逐字留在 apk。');
       }
     } else {
-      // 那 pin 记录里逐字**没有**它那 source 逐字是 apk、那**不**是缺件
+      
 
       console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
     }
@@ -259,7 +259,7 @@ function main() {
     version: versionString(),
     sequence: Math.floor(Date.now() / 1000),
     expiresEpochMs: Date.now() + TTL_MS,
-    // 整份清单的指纹逐字**不再**取「最后一条」那一条
+    
 
     fingerprint: manifestFingerprint(pins),
     components,

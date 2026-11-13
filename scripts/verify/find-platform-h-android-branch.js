@@ -7,7 +7,7 @@ if (!H || !fs.existsSync(H)) { console.error('用法: find-android-branch.js <pl
 
 const lines = fs.readFileSync(H, 'utf8').split('\n');
 
-// 找出所有 #if…#endif 的区间（栈）
+
 const stack = [];
 const ranges = [];
 lines.forEach((l, i) => {
@@ -18,8 +18,8 @@ lines.forEach((l, i) => {
     if (b) ranges.push({ b, e: i + 1 });
   }
 });
-// 半开：先出现先闭
-ranges.sort((x, y) => (x.e - x.b) - (y.e - y.b));   // 小的（更内层）优先
+
+ranges.sort((x, y) => (x.e - x.b) - (y.e - y.b));   
 
 const isAndroidHead = (n) =>
   /^#if\s+defined\(ANDROID\)\s*\|\|\s*defined\(__ANDROID__\)/.test((lines[n - 1] || '').trim());
@@ -46,7 +46,7 @@ for (const r of androidBranches) {
 }
 let alreadyPatched = false;
 if (!chosen) {
-  // 找含我们写的分级注释的那一处 —— 那是「已经打过」的证据
+  
   for (const r of androidBranches) {
     for (let i = r.b; i <= r.e; i++) {
       if (TIERED_MARK.test(lines[i - 1] || '')) { chosen = r; alreadyPatched = true; break; }
@@ -71,8 +71,8 @@ for (let i = chosen.b; i <= chosen.e; i++) inRange.push(lines[i - 1]);
 console.error('[busybox] Android 条件块：第 ' + chosen.b + '~' + chosen.e + ' 行（' +
   (chosen.e - chosen.b + 1) + ' 行）');
 
-// -- --patch：直接改文件，不走 sed -----------------------------
-// 为什么不用 sed 改：s
+
+
 
 const PATCH = process.argv.includes('--patch');
 if (!PATCH) {
@@ -86,8 +86,8 @@ const NEEDS_TIERING = {
   '# undef HAVE_MEMPCPY':
     '# if __ANDROID_API__ < 21\n#  undef HAVE_MEMPCPY /* 同上 */\n# endif',
 };
-// 这两个 bionic 确实没有，那两行 #undef 是**对的**，必须保留：
-//   strverscmp · wait3（实测 .dynsym 里没有）
+
+
 const KEEP_AS_IS = new Set(['# undef HAVE_STRVERSCMP', '# undef HAVE_WAIT3']);
 
 const out = [];
@@ -109,7 +109,7 @@ for (let i = 1; i <= lines.length; i++) {
 }
 
 if (!nStr) {
-  // 同理：分支找到了却没匹配上 —— 那行可能被上游改了写法
+  
   console.error('::notice title=补丁没打上::Android 分支第 ' + chosen.b + '~' + chosen.e +
     ' 行里没有可替换的 "# undef HAVE_STRCHRNUL" —— 上游可能改了写法。文件未改动。');
   process.exit(0);

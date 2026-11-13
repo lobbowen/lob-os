@@ -140,7 +140,7 @@ async function main() {
   }
 
   async function uploadForm() {
-    // 这一支走整块表单上传，所以那一块**必须**在内存里 —— 而它只在文件不大于
+    
 
     if (bytes > 8 * 1024 * 1024) {
       throw new Error('不该走到这一支：文件 ' + bytes + ' 字节 > 8 MiB（这一支整块在内存里）');
@@ -175,9 +175,9 @@ async function main() {
       let gotBytes = 0;
       last = null;
       try {
-        // 缺陷名（C-102）**回读那一格把响应体整块收进内存** ——
-        // 而那一格原来写的是 `got = Buffer.from(await res.arrayBuffer());`。
-        // 响应体就是那一份件（8.4 GB 那一颗）=> 这一格自己就把内存撑爆了
+        
+        
+        
 
         const res = await fetch(url + '?t=' + Date.now(), {
           headers: { 'cache-control': 'no-cache' }, redirect: 'follow',

@@ -1,25 +1,25 @@
 #!/usr/bin/env node
-/**
- * 缺件对账：那一清单 vs 那缺件表。
- *
- * 缺陷名（C-102）**那清单与那缺件表逐字对不上账、没人核** ——
- *   而那旧版逐字没有这一格：缺的几件逐字**不在**那清单里、
- *那**没人核**、事就过去了（run 41189310138 的 step 3
- *   逐字缺了 python / sqlite / pkgconf 三件、那 [declared] 那一行逐字不含那三件）。
- *按 C-05「缺字段就报缺、不许猜填」：缺的几件逐字**必须**在某一格里**看得见**、
- *那「看得见」的那一格逐字**能对账**。
- *
- * 而「清单里要不要留一条占位（missing 状态 + 成因）」那一问**归 01 裁**
- * （本脚本**不**拍板、只把事实**逐件**摆出来）。
- *
- * 用法：
- *   node scripts/verify/reconcile-missing-pieces.js <缺件表.json> <清单.json>
- *
- * 退出码：
- *   0 = 对得上（清单逐字**不含**那缺件表里的任何一件）
- *   1 = 对不上（清单里逐字**有**那缺件表里的某一件、是矛盾）
- *   2 = 那缺件表读不到（按 C-05 报缺）
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 'use strict';
 const fs = require('node:fs');
 
@@ -39,7 +39,7 @@ let missing;
 try {
   missing = readJson(missPath);
 } catch (e) {
-  // 按 C-05 报缺（不猜填、不把它当成「没有缺件」）。
+  
   console.error('::error title=缺件表读不到::' + missPath + ' 不在或读不出：' + e.message);
   console.error('::error:: 处置：先跑 scripts/toolchain/fetch-component-artifacts.sh，一档逐字落那缺件表。');
   process.exit(2);

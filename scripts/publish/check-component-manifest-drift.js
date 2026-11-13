@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 'use strict';
 
-// 组件清单投影与仓内声明源的对账闸门 —— 发布侧的那一份。
-//
-// 与 scripts/verify/check-component-manifest-drift.js 的分工：
-//   · scripts/verify/ 那一份拿**线上**清单来比，判「同 name@version 有没有换字节」
-//     与「revision 单调」，它是发布前最后一道闸，跑在真正投递的那一轮。
-//   · 本文件拿**仓内投影**来比，判「投影里那一格与钉值表 / 档位表 / pin 记录对不对得上」。
-//     它只读本地文件，不联网，可以在任意一轮（哪怕校验轮）里跑。
-//
-// 它比什么（逐条列清）：
-//   1. 投影里的每一件在 scripts/component-sources.json 的 sources 里都有登记。
-//   2. 投影里记的 version 与 sources 里记的 version 逐字相同。
-//   3. 投影里记的 sha256 是一份 64 位十六进制的非空值。
-//   4. .github/native-capabilities.txt 档位表里的每一个 id，在
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const cp = require('node:child_process');
 
-// 本文件在 scripts/publish/ 下 —— 上溯两层到仓根。
+
 const ROOT = path.resolve(__dirname, '../..');
 const ARGS = process.argv.slice(2);
 
 const IMMUTABLE = ARGS.includes('--immutable');
 const POS = ARGS.filter((a) => !a.startsWith('--'));
-// 没给路径时，按「仓内投影的落位」依次找：先正式清单，再两份投影文件。
+
 const DEFAULT_CANDIDATES = [
   path.join(ROOT, 'release', 'component-manifest.json'),
   path.join(ROOT, 'work', 'declared.json'),
@@ -150,7 +150,7 @@ function main() {
     + '.github/native-capabilities.txt（' + caps.size + ' 条）、'
     + '.github/native-capabilities-pin.json（pin ' + Object.keys(pins).length + ' 条，missing ' + pinMissing.length + ' 条）');
 
-  // 组件投影：件在钉值表里登记了没有、版本对不对、哈希是不是一份像样的哈希。
+  
   for (const t of shape.tools) {
     const id = t.name;
     const src = sources[id];
@@ -168,9 +168,9 @@ function main() {
 
   if (shape.kind === 'component') {
     const projected = new Set(shape.tools.map((t) => String(t.name)));
-    //  缺陷名（C-102）**那一轴逐字把「已知缺件」与「件级缺失」混成一档，
-    //    于是三处已知缺件被逐字判成漂移** ——
-    //01 裁的 S606-02-MISSING-PIECE-FORM-RULING.md 逐字裁的是
+    
+    
+    
 
     const missingTable = readMissingTable();
     for (const row of bucketComponents()) {
@@ -180,8 +180,8 @@ function main() {
       if (projected.has(id)) continue;
       const miss = missingTable.get(id);
       if (miss) {
-        // 那**已知缺件**逐字**不判红**（它逐字在缺件表里、缺件表就是那显式的一格），
-        // 它逐字**报出来**（才是「件不静默消失」那一格的兑现）。
+        
+        
         console.log('[drift] ' + id + '：控制面板件清单里有这一件（筐 ' + row.bucket + '），' +
           '它逐字**不在**那投影里 —— ' +
           '而它逐字**在**那缺件表里（档位 ' + miss.kind + '、一档的原话逐字：' + miss.detail + '）' +

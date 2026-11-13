@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// 读「这一件该有的那个文件」这个声明 —— 而它落在产物那一份里（component-sources.json）。
-//
-// 为什么在这里：01 今天裁的候选 (a) 是「声明在那一件自己那边」，
-//   而 03 今天补的那一句把机制说全了：
-//   **声明由产出方给**，而打包那一支手上没有那份信息
+
+
+
+
+
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,7 +21,7 @@ let doc;
 try {
   doc = JSON.parse(fs.readFileSync(table, 'utf8'));
 } catch (e) {
-  // 读不到表 => 答「没有声明」，而不是猜一个
+  
   process.exit(0);
 }
 
