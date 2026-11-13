@@ -319,13 +319,14 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          # 而这一格原来硬编码 8 —— 而它与 verify-apk-native.sh 的 WANT_N（从钉值表算） 
-          # **是两套口径**（ 而「同一格两处各算一次」那一族） 
-          # 而 crypto 归并进 openssl 之后（01 今天裁： 而它就是 openssl 的一部分） 
-          # 件数从八变七这一处还在要 8 => 「取件跑过了却判红」 
-          # => 现在：**从钉值表算**（ 与 verify-apk-native.sh 同一把尺） 
-          # 而真源是 fetch-prebuilt-pieces.sh 里那一行 PIECES 
-          # （ 而它是「哪几件该取」唯一的生成点） 
+          # 这一格原来在这里硬编码 8，是个写死的数字，跟「该取哪几件」没有连上：
+          # 件数一旦变了（crypto 后来并进 openssl、zlib 与 openssl 的归属也调整过），
+          # 这里还在要 8，于是取件明明跑过了却判红，报错还看不出是缺件还是数字过期。
+          # 另一个毛病是口径分两处：这里算一遍，verify-apk-native.sh 也算一遍，
+          # 两边碰巧一样时看不出来，不一样时又说不清是哪边错。
+          # 现在件数只有一个真源：fetch-prebuilt-pieces.sh 里 PIECES 那一行，
+          # 它是「哪几件该取」唯一的生成点；件数由那个脚本自己报出来，
+          # build-apk.yml 与 verify-apk-native.sh 都走同一条口径。
           # C-995：件数的真源只有一处 —— fetch-prebuilt-pieces.sh 的 PIECES 那一行。
           # 以前这里还有第二条路：grep 出那一行再数词数。那条路把「一行文本」当成了真源，
           # 于是「脚本里的数组」和「文本里的词数」可以各说各话，两边碰巧一样时看不出来，

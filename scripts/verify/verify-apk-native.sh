@@ -209,20 +209,22 @@ for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
   printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
 done
 
-# 而这一格原来在脚本里**硬编码八个 id**（ 而那与 PIECES 那一行是两套口径）
-# crypto 归并之后（01 今天裁） 件数变七， 而这里还数八个 
-# 「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行 
-WANT_N="$(grep -o '^PIECES=(.*)' "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" | head -1 \
-          | sed 's/^PIECES=(//; s/)$//' | wc -w)"
-if [ -z "$WANT_N" ]; then
-  echo "[error] 读不出该取几件（PIECES 那一行）—— 而这一格不能猜（§1.55：缺字段报缺，不填看起来对的值）"
+# 「该取哪几件」的唯一真源是 fetch-prebuilt-pieces.sh 里 PIECES 那一行，
+# 件数由那个脚本自己报出来（--print-pieces），与取件用的是同一处算式。
+# 以前这里是按文本 grep 那一行再数词数，等于把一行文本当成真源，
+# 于是数组里的件数和文本里的词数可以各说各话，碰巧一样时看不出来。
+# 现在只走脚本自己报数这一条路。
+pieces_rc=0
+WANT_N="$(bash "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" --print-pieces 2>/dev/null)" || pieces_rc=$?
+if [ "$pieces_rc" != "0" ] || [ -z "$WANT_N" ]; then
+  echo "[error] 读不出该取几件（fetch-prebuilt-pieces.sh --print-pieces，rc=$pieces_rc）—— 这一格不能猜，缺字段就报缺，不填看起来对的值"
   exit 1
 fi
 if [ "$PIECE_N" != "$WANT_N" ]; then
-  echo "[error] 预装件包 $PIECE_N 个，钉值表里有 $WANT_N 个"
+  echo "[error] 预装件包 $PIECE_N 个，该取的件有 $WANT_N 个"
   PIECE_BAD=$((PIECE_BAD + 1))
 fi
-echo "  预装件包 $PIECE_N 个，钉值表 $WANT_N 个"
+echo "  预装件包 $PIECE_N 个，该取的件 $WANT_N 个"
 [ "$PIECE_BAD" = "0" ] || MISSING="$MISSING piece-pack($PIECE_BAD)"
 
 echo
