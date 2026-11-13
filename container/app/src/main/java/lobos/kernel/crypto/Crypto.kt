@@ -14,6 +14,16 @@ import java.math.BigInteger
 
 object Crypto {
 
+    /**
+     * Android 自带的那个 KeyStore 提供者。
+     * 它的 KeyFactory 只用于按 KeyGenParameterSpec 生成密钥，
+     * 不用于解析 X509 公钥做验签，所以挑工厂时在挑选阶段就排除它。
+     */
+    private const val ANDROID_KEYSTORE_PROVIDER = "AndroidKeyStore"
+
+    /** Ed25519 在不同实现上的算法拼写，两种都试。 */
+    private val ED25519_ALGORITHM_SPELLINGS = arrayOf("Ed25519", "EdDSA")
+
     fun sha256HexFile(f: File): String {
         val md = MessageDigest.getInstance("SHA-256")
         f.inputStream().buffered().use { ins ->
@@ -186,41 +196,50 @@ object Crypto {
             oldRoute.append("pem 那解码逐字就**失败**了：" + t.javaClass.name + ": " + (t.message ?: ""))
         }
 
-        //  **旧**读法（ `X509EncodedKeySpec` 那一族）
-        //    **宿主 JVM** 逐字**过**、 **Android** 逐字**不过**
-        //    **真因**逐字（07 本轮逐字核出、Lead 本机实读逐字复核成立）：
-        //      **两次**尝试逐字抛的是那**同一个**异常
-        //        （ `InvalidKeySpecException: To generate a key pair in Android Keystore…`）
-        //      **根因**逐字**不**是那读法本身
-        //        `KeyFactory.getInstance("Ed25519")` 逐字在 **Android** 上逐字**整条路**都不可用
-        //          （ `generatePublic` 逐字两种 spec 逐字都被逐字拒）
-        //      **判据**逐字是「 凡一格逐字要答『那验签逐字为什么不过』，
-        //        判据必须落在『那验签那一族逐字用的那条 API 逐字在那个平台上逐字存不存在、
-        //          它逐字有没有另一条逐字**同族**的路』那一个事实上」
-        //    **处置**： **提供者**逐字**一个**一个**试**
-        //      `KeyFactory.getInstance("Ed25519")` 逐字**只**取那**第一个**提供者
-        //        （ 在 **Android** 上逐字**就是**那 **AndroidKeyStore** 那一族、
-        //        它逐字**只**认那 **Keystore** 那一族）
-        //      **逐个**提供者逐字**都**试、 **能**认那 `X509EncodedKeySpec` 逐字**那个**就**用**它
-        //      **提供者名**逐字**不猜填**（ 设备逐字**是**那 **API 36**、
-        //        **提供者名**逐字**各**版本**不**一定**一样）
-        for (r in ed25519KeyFactories()) {
-            try {
-                val key = r.kf.generatePublic(X509EncodedKeySpec(der))
-                val v = r.sig
-                v.initVerify(key)
-                v.update(data)
-                val ok1 = v.verify(sig)
-                oldRoute.append(
-                    "那提供者[" + r.provider + "]逐字**过**了、验签逐字"
-                        + (if (ok1) "**过**了" else "**不过**（签名逐字**不**配那公钥）"),
-                )
-                if (ok1) { ok = true; break }
-            } catch (t: Throwable) {
-                oldRoute.append("那提供者[" + r.provider + "]逐字**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
+        // 旧读法（X509EncodedKeySpec 那一族）
+        //   宿主 JVM 上它能过，Android 上它过不了。
+        //   真因（07 本轮核出、Lead 本机实读复核成立）：
+        //     两次尝试抛的是同一个异常
+        //       （InvalidKeySpecException: To generate a key pair in Android Keystore…）
+        //     根因不是读法本身：KeyFactory.getInstance("Ed25519") 在 Android 上
+        //     整条路都不可用 —— generatePublic 两种 spec 都被拒。
+        //     原因有两层：
+        //       一层是 getInstance 不带 provider 时只取第一个提供者，
+        //         在 Android 上那正是 AndroidKeyStore，它只认 Keystore 那一族；
+        //       另一层是上一版修法用 p.get("KeyFactory.Ed25519") 先筛提供者，
+        //         那个服务键在 Android 的提供者里查不到，于是每个提供者都被筛掉，
+        //         循环体一步没走到，最后落到「默认」那一条，等于没修。
+        //   判据是「验签为什么不过，必须落在『用的那条 API 在那个平台上存不存在、
+        //     它有没有另一条同族的路』这一个事实上」
+        //   处置：把「找哪个提供者」换成「哪个工厂真能解析我们手上这把公钥」，
+        //     也就是 ed25519KeyFactories 里做的接受性验收。
+        val oldSpec = try { X509EncodedKeySpec(der) } catch (_: Throwable) { null }
+        if (oldSpec == null) {
+            oldRoute.append("那 X509 公钥造不出来（公钥字节读不出）")
+        } else {
+            val oldFactories = ed25519KeyFactories(oldSpec)
+            for (r in oldFactories.first) {
+                try {
+                    val key = r.kf.generatePublic(oldSpec)
+                    val v = r.sig
+                    v.initVerify(key)
+                    v.update(data)
+                    val ok1 = v.verify(sig)
+                    oldRoute.append(
+                        "那提供者[" + r.provider + "/" + r.algorithm + "]验签"
+                            + (if (ok1) "**过**了" else "**不过**（签名配不上那公钥）"),
+                    )
+                    if (ok1) { ok = true; break }
+                } catch (t: Throwable) {
+                    oldRoute.append("那提供者[" + r.provider + "/" + r.algorithm + "]**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
+                }
+            }
+            if (oldFactories.first.isEmpty()) {
+                // 全部试完一个都没有：报缺，把试过哪些、各自为什么失败列出来。
+                // 不静默落回 getInstance("Ed25519") 那一条 —— 那一条在 Android 上必然是 AndroidKeyStore。
+                oldRoute.append("没有能用的工厂。试过：" + (if (oldFactories.second.isBlank()) "（一个提供者都没有）" else oldFactories.second))
             }
         }
-        if (oldRoute.isBlank()) oldRoute.append("那提供者逐字**一个**都没有（ `KeyFactory.Ed25519` 逐字**没**人认）")
 
         //  **新**读法（ `EdECPublicKeySpec` + `EdECPoint` 那一族）
         //    **设备**逐字**才**走那一条（ 它逐字**在**那 Android 上**有**）
@@ -231,9 +250,11 @@ object Crypto {
                     newRoute.append("那裸那 32 字节逐字**不够**（ DER 逐字只有 " + der.size + " 字节）")
                 } else {
                     val raw = der.copyOfRange(der.size - 32, der.size)
-                    //  **提供者**逐字**也**逐个**试**（ `KeyFactory.getInstance("Ed25519")`
-                    //    逐字**只**取那**第一个**提供者、 在 **Android** 上逐字**就是**那 **AndroidKeyStore** 那一族）
-                    for (r in ed25519KeyFactories()) {
+                    // 新读法用的也是同一批挑出来的工厂。
+                    // 挑选时用 X509 公钥做接受性验收，验签时再换成 EdECPublicKeySpec ——
+                    // 两者的公钥是同一把，只是编码形式不同。
+                    val newFactories = ed25519KeyFactories(oldSpec ?: X509EncodedKeySpec(der))
+                    for (r in newFactories.first) {
                         try {
                             val key = r.kf.generatePublic(
                                 EdECPublicKeySpec(NamedParameterSpec.ED25519, ed25519PointOf(raw)),
@@ -243,13 +264,16 @@ object Crypto {
                             v.update(data)
                             val ok2 = v.verify(sig)
                             newRoute.append(
-                                "那提供者[" + r.provider + "]逐字**过**了、验签逐字"
-                                    + (if (ok2) "**过**了" else "**不过**（签名逐字**不**配那公钥）"),
+                                "那提供者[" + r.provider + "/" + r.algorithm + "]验签"
+                                    + (if (ok2) "**过**了" else "**不过**（签名配不上那公钥）"),
                             )
                             if (ok2) { ok = true; break }
                         } catch (t: Throwable) {
-                            newRoute.append("那提供者[" + r.provider + "]逐字**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
+                            newRoute.append("那提供者[" + r.provider + "/" + r.algorithm + "]**红**：" + t.javaClass.name + ": " + (t.message ?: ""))
                         }
+                    }
+                    if (newFactories.first.isEmpty()) {
+                        newRoute.append("没有能用的工厂。试过：" + (if (newFactories.second.isBlank()) "（一个提供者都没有）" else newFactories.second))
                     }
                 }
             } catch (t: Throwable) {
@@ -290,35 +314,88 @@ object Crypto {
      *     **提供者名**逐字**各**版本**不**一定**一样）
      *   **判别源**逐字**唯一**（ 依 C-104 逐字**判别源必须唯一**）
      */
-    private data class Ed25519Factory(val provider: String, val kf: KeyFactory, val sig: Signature)
+    private data class Ed25519Factory(
+        val provider: String,
+        val algorithm: String,
+        val kf: KeyFactory,
+        val sig: Signature,
+    )
 
-    private fun ed25519KeyFactories(): List<Ed25519Factory> {
+    /**
+     * 在一个提供者里找能用的 Signature，两个算法拼写都试。
+     * 返回第一个配对的（Signature 与它用的拼写），没有就返回 null。
+     */
+    private fun signatureFor(p: Provider): Pair<Signature, String>? {
+        for (sa in ED25519_ALGORITHM_SPELLINGS) {
+            try {
+                return Pair(Signature.getInstance(sa, p), sa)
+            } catch (_: Throwable) {
+            }
+        }
+        return null
+    }
+
+    /**
+     * 挑出能用的 Ed25519 验签工厂。
+     *
+     * 判据是「这个工厂能不能解析我们真正要验的那把公钥」——
+     * 我们不需要知道哪个提供者登记了 Ed25519，只需要知道哪几个工厂
+     * 能拿 APK 里那把公钥做验签。所以直接把公钥的 X509 字节传进来试。
+     *
+     * 为什么不看服务键名：旧写法用 p.get("KeyFactory.Ed25519") 先筛一遍。
+     * 那一步在 Android 上把每一个提供者都筛掉了（该服务键在那些提供者里查不到），
+     * 于是循环体一步都没走到，最后落到「默认」那一条，
+     * 而它解析到的正是 AndroidKeyStore ——
+     * 那一族的 KeyFactory 只用于 KeyGenParameterSpec 生成密钥，
+     * 拿 X509EncodedKeySpec 去生成公钥必然抛 InvalidKeySpecException。
+     * 设备读数里提供者名是「默认」，就是这个原因。
+     *
+     * AndroidKeyStore 在挑选阶段就排除掉，不等它抛异常：
+     * 它的 KeyFactory 本来就不是给「解析 X509 公钥做验签」用的，
+     * 留着它只会把一个必然失败的候选混进诊断里。
+     *
+     * 遍历不依赖任何服务键名，所以「有可用工厂就一定能找出来」：
+     * 每个提供者都试两种算法拼写，每个组合都用真公钥做一次接受性验收，
+     * 能过 generatePublic 才算可用。唯一被排除的是 AndroidKeyStore。
+     */
+    private fun ed25519KeyFactories(spec: X509EncodedKeySpec): Pair<List<Ed25519Factory>, String> {
         val out = ArrayList<Ed25519Factory>()
+        val tried = StringBuilder()
         val providers = try {
             Security.getProviders()
         } catch (_: Throwable) {
             emptyArray<Provider>()
         }
         for (p in providers) {
-            // `KeyFactory.Ed25519` 逐字**在不在**那个提供者逐字**里**
-            val kfAlg = try { p.get("KeyFactory.Ed25519") } catch (_: Throwable) { null }
-            if (kfAlg == null) continue
-            try {
-                val kf = KeyFactory.getInstance("Ed25519", p)
-                val sig = Signature.getInstance("Ed25519", p)
-                out.add(Ed25519Factory(p.name, kf, sig))
-            } catch (_: Throwable) {
-                // 个提供者逐字**不**认那 Ed25519 逐字、 它逐字**跳过**
+            // AndroidKeyStore 在挑选阶段排除：它不是给解析 X509 公钥用的
+            if (p.name == ANDROID_KEYSTORE_PROVIDER) {
+                tried.append(p.name).append(": 排除（它只用于生成密钥，不解析 X509 公钥）; ")
+                continue
+            }
+            for (alg in ED25519_ALGORITHM_SPELLINGS) {
+                try {
+                    val kf = KeyFactory.getInstance(alg, p)
+                    // 签名那一族单独找一遍：有些实现把密钥那一族与签名那一族
+                    // 登记在不同的名字下（密钥那边叫 EdDSA、签名那边只叫 Ed25519），
+                    // 所以签名不跟着密钥的拼写走，两个拼写都试，谁先成用谁。
+                    val sigPair = signatureFor(p)
+                    if (sigPair == null) {
+                        tried.append(p.name).append("/").append(alg)
+                            .append(": 那一族没有可用的 Signature; ")
+                        continue
+                    }
+                    // 接受性验收：用真正要验的那把公钥试一次，过不了就跳过
+                    kf.generatePublic(spec)
+                    out.add(Ed25519Factory(p.name, alg + "+" + sigPair.second, kf, sigPair.first))
+                    tried.append(p.name).append("/").append(alg).append("+").append(sigPair.second).append(": 可用; ")
+                } catch (t: Throwable) {
+                    tried.append(p.name).append("/").append(alg).append(": ")
+                        .append(t.javaClass.simpleName).append(": ")
+                        .append(t.message ?: "").append("; ")
+                }
             }
         }
-        // **默认**那一个逐字**也**列上（ 它逐字**可能**不在那 providers 逐字**里**）
-        if (out.isEmpty()) {
-            try {
-                out.add(Ed25519Factory("默认", KeyFactory.getInstance("Ed25519"), Signature.getInstance("Ed25519")))
-            } catch (_: Throwable) {
-            }
-        }
-        return out
+        return Pair(out, tried.toString())
     }
 
     /** 那 sha256 逐字（ hex 小写） */
