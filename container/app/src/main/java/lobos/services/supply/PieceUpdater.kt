@@ -126,7 +126,9 @@ object PieceUpdater {
             facts.oneLine() + " " + timing,
         )
 
+        val tp0 = System.currentTimeMillis()
         val parsed = runCatching { JSONObject(body.toString(Charsets.UTF_8)) }.getOrNull()
+        val tp1 = System.currentTimeMillis()
         if (parsed == null) { res.put("ok", false); res.put("detail", "清单不是合法 JSON"); return res }
         val expires = parsed.optLong("expiresEpochMs", 0L)
         if (expires <= 0L) { res.put("ok", false); res.put("detail", "清单缺 expiresEpochMs（必填）"); return res }
@@ -139,10 +141,14 @@ object PieceUpdater {
         val applied = JSONArray()
         val skipped = JSONArray()
         val pending = mutableListOf<Triple<lobos.services.reg.UnitEntry, String, JSONObject>>()
-        val byId = lobos.services.reg.ProgramIndex.all(ctx)
+        val tb0 = System.currentTimeMillis()
+        val allEntries = lobos.services.reg.ProgramIndex.all(ctx)
+        val tb1 = System.currentTimeMillis()
+        val byId = allEntries
             .filter { it.stateDir.isNotBlank() }
             .filter { PieceScan.pieceMeta(ctx, it.id) != null }
             .associateBy { it.id }
+        val tb2 = System.currentTimeMillis()
 
         val ts0 = System.currentTimeMillis()
         val perPiece = mutableListOf<Pair<String, Long>>()
@@ -222,7 +228,9 @@ object PieceUpdater {
             "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
             "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1) +
                 " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒" +
-                " 比对细分：逐件读状态 " + (ts1 - ts0) + " 毫秒、建索引 " + (ts2 - ts1) +
+                " 比对细分：解清单 " + (tp1 - tp0) + " 毫秒、读注册表 " + (tb1 - tb0) +
+                " 毫秒、读各件元数据 " + (tb2 - tb1) +
+                " 毫秒、逐件读状态 " + (ts1 - ts0) + " 毫秒、建索引 " + (ts2 - ts1) +
                 " 毫秒、读尺寸 " + (ts3 - ts2) + " 毫秒、逐件对清单 " + (t4 - ts3) + " 毫秒" +
                 " 逐件耗时：" + pieceBreakdown,
         )
