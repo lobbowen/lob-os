@@ -6,6 +6,7 @@ import lobos.services.supply.CatalogClient
 import lobos.services.supply.PieceScan
 import lobos.services.app.PieceProvisioner
 import lobos.services.supply.SupplyProvisioner
+import lobos.services.supply.ProgramDir
 
 object InstalledRuntime {
 
@@ -21,11 +22,11 @@ object InstalledRuntime {
     }
 
     fun versionOf(ctx: Context, id: String): String {
-        val bin = binOf(ctx, id) ?: return ""
+        val bin = binOf(ctx, id) ?: return currentPointerVersion(ctx, id)
         val args = PieceScan.pieceMeta(ctx, id)?.optJSONArray("versionArgs")?.let { a ->
             (0 until a.length()).map { a.optString(it) }
         } ?: emptyList()
-        if (args.isEmpty()) return recordedVersion(ctx, id)
+        if (args.isEmpty()) return recordedVersion(ctx, id).ifBlank { currentPointerVersion(ctx, id) }
         val out = runCatching {
             val cmd = listOf(bin.absolutePath) + args
             val real = lobos.kernel.proc.ExecEntry.argv(bin, cmd)
@@ -40,11 +41,23 @@ object InstalledRuntime {
             p.waitFor()
             if (p.exitValue() == 0) text.trim() else ""
         }.getOrNull().orEmpty()
-        return extractVersion(out) ?: recordedVersion(ctx, id)
+        return extractVersion(out)
+            ?: recordedVersion(ctx, id).ifBlank { currentPointerVersion(ctx, id) }
     }
 
     private fun recordedVersion(ctx: Context, id: String): String =
         SupplyProvisioner.selectedVersion(ctx, id)
+
+    private fun currentPointerVersion(ctx: Context, id: String): String {
+        if (id.isBlank()) return ""
+        return runCatching {
+            val dir = ProgramDir(ctx, id, ProgramManager.stateDirOf(ctx, id))
+            val v = dir.currentVersion()?.trim().orEmpty()
+            if (v.isBlank()) return@runCatching ""
+            if (!dir.programDir(v).isDirectory) return@runCatching ""
+            v
+        }.getOrDefault("")
+    }
 
     fun notInstalledHint(ctx: Context, id: String): String {
         val registered = ProgramIndex.get(ctx, id) != null
