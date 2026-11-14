@@ -155,6 +155,11 @@ static void diag_raw(const char *text) { diag_to(FRAME_ERROR, text); }
 
 static void note_raw(const char *text) { diag_to(FRAME_NOTE, text); }
 
+static void trace_raw(const char *text) {
+  fprintf(stderr, "%s\n", text);
+  fflush(stderr);
+}
+
 static int g_child_diag_fd = -1;
 
 static int g_diag_read_fd = -1;
@@ -458,7 +463,10 @@ int main(void) {
         }
         case FRAME_INPUT: {
           int s = h.sid;
-          if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error_sid(out_fd, h.sid, h.kind, "INPUT 指向不存在的会话"); break; }
+          if (s >= MAX_SESSIONS || !g_sessions[s].open) {
+            trace_raw("INPUT 落到不存在的会话（会话已结束，宿主与 native 的正常竞争）—— 不回错误帧");
+            break;
+          }
           if (h.length > 0) write_full(g_sessions[s].master, payload, h.length);
           break;
         }
