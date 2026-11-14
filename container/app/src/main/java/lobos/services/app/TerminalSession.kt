@@ -26,7 +26,7 @@ class TerminalSession private constructor(
 
     @Volatile var onClosed: ((status: Int, signal: Int) -> Unit)? = null
 
-    fun write(text: String) = session.write(text)
+    fun write(text: String): Boolean = session.write(text)
 
     fun resize(rows: Int, cols: Int) = session.resize(rows, cols)
 

@@ -136,9 +136,13 @@ class HostControlActivity : Activity() {
             if (t == null) {
                 result.text = "还没有会话 —— 先起一条"
             } else {
-                t.write(terminalInput.text.toString() + "\n")
-                terminalInput.setText("")
-                result.text = "已送进 sid=" + t.session.sid
+                val sent = t.write(terminalInput.text.toString() + "\n")
+                if (sent) {
+                    terminalInput.setText("")
+                    result.text = "已送进 sid=" + t.session.sid
+                } else {
+                    result.text = "会话已结束 —— 那一行送不进去（sid=" + t.session.sid + "）"
+                }
             }
         }
         terminalClose.setOnClickListener {

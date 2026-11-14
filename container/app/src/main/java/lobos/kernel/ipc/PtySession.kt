@@ -125,27 +125,28 @@ object PtySession {
             exitSignal = signal
         }
 
-        fun write(data: ByteArray) {
+        fun write(data: ByteArray): Boolean {
             if (closed.get()) {
                 host.note(
                     "PTY 写入落到已关的会话",
                     "sid=" + sid + " 字节=" + data.size +
                         " —— 送不进去（会话已结束），而调用方逐字以为送进去了",
                 )
-                return
+                return false
             }
             if (data.size <= MAX_INPUT_BYTES) {
                 host.send(F_INPUT, sid, data)
-                return
+                return true
             }
 
             val keep = data.copyOf(MAX_INPUT_BYTES)
             val dropped = (data.size - MAX_INPUT_BYTES).toLong()
             synchronized(inputDroppedLock) { inputDropped += dropped }
             host.send(F_INPUT, sid, keep)
+            return true
         }
 
-        fun write(text: String) = write(text.toByteArray(Charsets.UTF_8))
+        fun write(text: String): Boolean = write(text.toByteArray(Charsets.UTF_8))
 
         fun resize(rows: Int, cols: Int) {
             if (closed.get()) {
