@@ -125,6 +125,16 @@ static void send_error(int fd, const char *msg) {
   send_frame(fd, FRAME_ERROR, 0, msg, (uint32_t)strlen(msg) + 1);
 }
 
+static void send_error_sid(int fd, uint8_t sid, uint8_t kind, const char *msg) {
+  char b[224];
+  int n = snprintf(b, sizeof b, "kind=%u sid=%u %s", (unsigned)kind, (unsigned)sid, msg);
+  if (n > 0 && n < (int)sizeof b) {
+    send_frame(fd, FRAME_ERROR, sid, b, (uint32_t)n + 1);
+  } else {
+    send_frame(fd, FRAME_ERROR, sid, msg, (uint32_t)strlen(msg) + 1);
+  }
+}
+
 static int g_diag_fd = -1;
 
 static void diag_to(int kind, const char *text) {
@@ -413,11 +423,11 @@ int main(void) {
 
           int slot = (int) h.sid;
           if (slot < 0 || slot >= MAX_SESSIONS) {
-            send_error(out_fd, "会话号越界（宿主侧只分 0..7 那一族）");
+            send_error_sid(out_fd, h.sid, h.kind, "会话号越界（宿主侧只分 0..7 那一族）");
             break;
           }
           if (g_sessions[slot].open) {
-            send_error(out_fd, "会话号已被占用");
+            send_error_sid(out_fd, h.sid, h.kind, "会话号已被占用");
             break;
           }
 
@@ -448,13 +458,13 @@ int main(void) {
         }
         case FRAME_INPUT: {
           int s = h.sid;
-          if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error(out_fd, "INPUT 指向不存在的会话"); break; }
+          if (s >= MAX_SESSIONS || !g_sessions[s].open) { send_error_sid(out_fd, h.sid, h.kind, "INPUT 指向不存在的会话"); break; }
           if (h.length > 0) write_full(g_sessions[s].master, payload, h.length);
           break;
         }
         case FRAME_WINSIZE: {
           int s = h.sid;
-          if (s >= MAX_SESSIONS) { send_error(out_fd, "WINSIZE 指向不存在的会话"); break; }
+          if (s >= MAX_SESSIONS) { send_error_sid(out_fd, h.sid, h.kind, "WINSIZE 指向不存在的会话"); break; }
 
           if (!g_sessions[s].open) {
             if (h.length >= sizeof(struct winsize)) {

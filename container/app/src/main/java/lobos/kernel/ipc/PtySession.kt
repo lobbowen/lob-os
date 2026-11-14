@@ -55,6 +55,7 @@ object PtySession {
         private val closed = AtomicBoolean(false)
 
         @Volatile private var nativeSlotOpen = false
+        @Volatile private var nativeSlotClosed = false
 
         @Volatile private var pendingWinsize: Pair<Int, Int>? = null
 
@@ -147,6 +148,7 @@ object PtySession {
         }
 
         private fun sendWinsize(rows: Int, cols: Int) {
+            if (nativeSlotClosed) return
             val b = java.nio.ByteBuffer.allocate(8)
             b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
             b.putShort(rows.toShort()).putShort(cols.toShort())
@@ -164,6 +166,13 @@ object PtySession {
             pendingWinsize = null
             runCatching { sendWinsize(p.first, p.second) }
         }
+
+        internal fun onNativeSlotClosed() {
+            nativeSlotOpen = false
+            nativeSlotClosed = true
+        }
+
+        val nativeSlotIsClosed: Boolean get() = nativeSlotClosed
 
         val isClosed: Boolean get() = closed.get()
 
@@ -589,6 +598,7 @@ object PtySession {
             val s = sessions.remove(sid)
 
             markSlotFreed(sid)
+            s?.onNativeSlotClosed()
             var status = -1
             var signal = 0
             if (payload.size >= 8) {
