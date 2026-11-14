@@ -137,7 +137,7 @@ object PieceUpdater {
             return res
         }
 
-        val arr = parsed.optJSONArray("components") ?: JSONArray()
+        val arr = parsed.optJSONArray("tools") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
         val pending = mutableListOf<Triple<lobos.services.reg.UnitEntry, String, JSONObject>>()
@@ -161,7 +161,7 @@ object PieceUpdater {
 
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
-            val id = c.optString("id", "")
+            val id = c.optString("name", "").ifBlank { c.optString("id", "") }
             if (id.isBlank()) continue
             val e = byId[id]
             if (e == null) {
@@ -169,14 +169,6 @@ object PieceUpdater {
                 continue
             }
             val cur = statesById[id]
-            val src = c.optString("source", "")
-            if (src != "ota") {
-                skipped.put(
-                    JSONObject().put("id", id).put("why", "清单标 source=$src（没有可下载的更新）；" +
-                        "本机是 ${cur?.installedVersion ?: "随包原件"}")
-                )
-                continue
-            }
             val sha = c.optString("sha256", "")
             if (sha.isBlank()) {
                 skipped.put(JSONObject().put("id", id).put("why", "清单没有 sha256 —— 无从判断该不该装"))
@@ -586,6 +578,7 @@ object PieceUpdater {
         val root = SupplyProvisioner.pieceDir(ctx, id)
         if (!root.isDirectory) return emptyList<String>() to 0L
         val now = states(ctx).firstOrNull { it.id == id }?.installedVersion
+        if (now.isNullOrBlank()) return emptyList<String>() to 0L
         val versions = root.list()?.filter { it.isNotBlank() }?.sorted().orEmpty()
             .filter { it != now }
         val drop = versions.dropLast(keep.coerceAtLeast(0))
