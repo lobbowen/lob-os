@@ -10,6 +10,28 @@ object LdConfig {
 
     private const val TAG = "lobos.ldconfig"
 
+    private const val LOG_HEAD_LINES = 200
+
+    private const val FAILED_HEAD_LINES = 200
+
+    private fun summarizeLog(log: List<String>): String {
+        if (log.isEmpty()) return "（没有软链记录）\n"
+        val decisive = log.filter {
+            it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ")
+        }
+        val out = StringBuilder()
+        out.append("软链记录逐字共 ").append(log.size)
+            .append(" 行（完整清单可由重跑 ldconfig 再生，不落盘）\n")
+        out.append("前 ").append(LOG_HEAD_LINES).append(" 条：\n")
+        for (l in log.take(LOG_HEAD_LINES)) out.append(l).append('\n')
+        if (decisive.isNotEmpty()) {
+            out.append("判定相关那几行（多提供者与歧义，逐字共 ")
+                .append(decisive.size).append(" 行）：\n")
+            for (l in decisive.take(LOG_HEAD_LINES)) out.append(l).append('\n')
+        }
+        return out.toString()
+    }
+
     fun run(ctx: Context): Int {
         val opt = SystemDirs.opt(ctx)
         val usrBin = SystemDirs.bin(ctx)
@@ -97,9 +119,12 @@ object LdConfig {
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +
                 if (unresolved.isEmpty()) "" else "；${unresolved.size} 条建链失败",
             "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
-                "\n" + log.joinToString("\n") +
+                "\n" + summarizeLog(log) +
                 if (unresolved.isEmpty()) ""
-                else "\n建链失败=" + unresolved.joinToString("  |  "),
+                else "\n建链失败=" + unresolved.take(FAILED_HEAD_LINES).joinToString("  |  ") +
+                    if (unresolved.size > FAILED_HEAD_LINES)
+                        "  |  （共 " + unresolved.size + " 条，只记前 " + FAILED_HEAD_LINES + " 条）"
+                    else "",
         )
         val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
