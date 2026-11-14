@@ -15,6 +15,11 @@ object PieceUpdater {
     private const val PUB_PEM_ASSET = "supply/component-public.pem"
     private const val MAX_MANIFEST_BYTES = SupplyProvisioner.MAX_MANIFEST_BYTES
 
+    private val SHAPE_AND_META_FILES = listOf(
+        ProgramInstallPipeline.SHAPE_NAME,
+        "component-meta.json",
+    )
+
     data class State(
         val id: String,
         val installedVersion: String?,
@@ -140,6 +145,7 @@ object PieceUpdater {
         val arr = parsed.optJSONArray("tools") ?: JSONArray()
         val applied = JSONArray()
         val skipped = JSONArray()
+        val halfPlaced = JSONArray()
         val pending = mutableListOf<Triple<lobos.services.reg.UnitEntry, String, JSONObject>>()
         val tb0 = System.currentTimeMillis()
         val allEntries = lobos.services.reg.ProgramIndex.all(ctx)
@@ -194,19 +200,25 @@ object PieceUpdater {
             val sha = first.optString("sha256", "")
             val results = installGroup(ctx, url, sha, group)
             for ((e, _, _) in group) {
-                val r = results[e.id] ?: (false to "未处理")
-                if (r.first) {
+                val r = results[e.id] ?: InstallOutcome(false, "未处理", false)
+                if (r.ok) {
                     applied.put(JSONObject()
                         .put("id", e.id)
                         .put("version", InstalledRuntime.versionOf(ctx, e.id)))
+                } else if (r.directoryPlaced) {
+                    halfPlaced.put(JSONObject()
+                        .put("id", e.id)
+                        .put("why", r.why ?: "未知原因")
+                        .put("version", InstalledRuntime.versionOf(ctx, e.id)))
                 } else {
-                    skipped.put(JSONObject().put("id", e.id).put("why", r.second ?: "未知原因"))
+                    skipped.put(JSONObject().put("id", e.id).put("why", r.why ?: "未知原因"))
                 }
             }
         }
 
         res.put("ok", true)
         res.put("applied", applied)
+        res.put("halfPlaced", halfPlaced)
         res.put("skipped", skipped)
         res.put("dryRun", dryRun)
 
@@ -217,7 +229,7 @@ object PieceUpdater {
         }
         RuntimeDiagnostics.append(
             ctx, "piece-ota", true,
-            "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
+            "件清单比对完成（${applied.length()} 件更新 / ${halfPlaced.length()} 件落位但指针没切 / ${skipped.length()} 件跳过）",
             "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1) +
                 " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒" +
                 " 比对细分：解清单 " + (tp1 - tp0) + " 毫秒、读注册表 " + (tb1 - tb0) +
@@ -243,15 +255,15 @@ object PieceUpdater {
         url: String,
         wantSha: String,
         items: List<Triple<lobos.services.reg.UnitEntry, String, JSONObject>>,
-    ): Map<String, Pair<Boolean, String?>> {
-        val out = LinkedHashMap<String, Pair<Boolean, String?>>()
+    ): Map<String, InstallOutcome> {
+        val out = LinkedHashMap<String, InstallOutcome>()
         if (url.isBlank() || wantSha.isBlank()) {
-            for ((e, _, _) in items) out[e.id] = false to "清单项缺 url/sha256"
+            for ((e, _, _) in items) out[e.id] = InstallOutcome(false, "清单项缺 url/sha256", false)
             return out
         }
         val todo = items.filter { (e, ver, _) ->
             val ok = lobos.services.reg.ProgramIndex.safeSegment(ver) != null
-            if (!ok) out[e.id] = false to "版本号非法（会越界）：$ver"
+            if (!ok) out[e.id] = InstallOutcome(false, "版本号非法（会越界）：$ver", false)
             ok
         }
         if (todo.isEmpty()) return out
@@ -264,26 +276,28 @@ object PieceUpdater {
             val got = SupplyProvisioner.sha256HexFile(tmp)
             if (got != wantSha) {
                 val why = "sha256 不符：${got.take(12)} != ${wantSha.take(12)}"
-                for ((e, _, _) in todo) out[e.id] = false to why
+                for ((e, _, _) in todo) out[e.id] = InstallOutcome(false, why, false)
                 return out
             }
             runCatching { unpacked.deleteRecursively() }
             SupplyProvisioner.unzipFromFile(tmp, unpacked, ctx)
 
             for ((e, ver, c) in todo) {
-                val inPackage = c.optString("libName", e.libName).ifBlank { e.libName }
-                val picked = findInPackage(unpacked, inPackage)
+                val libInPack = c.optString("libName", e.libName)
+                val entryRel = c.optString("entry", "")
+                val inPackage = if (libInPack.isNotBlank()) libInPack else entryRel
+                val picked = if (inPackage.isBlank()) null else findInPackage(unpacked, inPackage)
                 out[e.id] = if (picked == null) {
-                    false to ("包里没有 $inPackage（包内实际有：" +
-                        listPackTop(unpacked).take(8).joinToString(", ") + "）")
+                    InstallOutcome(false, ("包里没有 $inPackage（包内实际有：" +
+                        listPackTop(unpacked).take(8).joinToString(", ") + "）"), false)
                 } else {
-                    place(ctx, e, ver, c.optString("entry", ""), picked)
+                    place(ctx, e, ver, entryRel, picked, unpacked)
                 }
             }
             out
         } catch (ex: Throwable) {
             val why = ex.message ?: ex.javaClass.simpleName
-            for ((e, _, _) in todo) if (out[e.id] == null) out[e.id] = false to why
+            for ((e, _, _) in todo) if (out[e.id] == null) out[e.id] = InstallOutcome(false, why, false)
             out
         } finally {
             runCatching { tmp.delete() }
@@ -291,7 +305,7 @@ object PieceUpdater {
         }
     }
 
-    private fun place(ctx: Context, e: lobos.services.reg.UnitEntry, version: String, entryRel: String, picked: File): Pair<Boolean, String?> =
+    private fun place(ctx: Context, e: lobos.services.reg.UnitEntry, version: String, entryRel: String, picked: File, unpacked: File? = null): InstallOutcome =
         try {
             val dir = versionDir(ctx, e.id, version)
             val staged = File(dir.parentFile, "." + dir.name + ".staging")
@@ -301,27 +315,37 @@ object PieceUpdater {
             picked.copyTo(stagedDest, overwrite = true)
             if (!stagedDest.isFile || stagedDest.length() != picked.length()) {
                 runCatching { staged.deleteRecursively() }
-                return false to "落盘后长度不符"
+                return InstallOutcome(false, "落盘后长度不符", false)
             }
             ExecBits.apply(stagedDest)
+            if (unpacked != null) {
+                for (n in SHAPE_AND_META_FILES) {
+                    val src = File(unpacked, n)
+                    if (src.isFile) {
+                        runCatching { src.copyTo(File(staged, n), overwrite = true) }
+                    }
+                }
+            }
             val aside = if (dir.isDirectory) {
                 File(dir.parentFile, dir.name + ".replaced-" + System.currentTimeMillis())
             } else null
             if (aside != null && !dir.renameTo(aside)) {
                 runCatching { staged.deleteRecursively() }
-                return false to "旧版本目录无法让位：不动指针，保持现状"
+                return InstallOutcome(false, "旧版本目录无法让位：不动指针，保持现状", false)
             }
             if (!staged.renameTo(dir)) {
                 if (aside != null) aside.renameTo(dir)
                 runCatching { staged.deleteRecursively() }
-                return false to "无法把新版本换进去（旧版本已复位）"
+                return InstallOutcome(false, "无法把新版本换进去（旧版本已复位）", false)
             }
             if (aside != null) aside.deleteRecursively()
             val dest = File(dir, entryRel)
-            if (!pointEntryAt(ctx, e, version, dest)) return false to "入口软链切换失败"
-            true to null
+            if (!pointEntryAt(ctx, e, version, dest)) {
+                return InstallOutcome(false, "入口软链没切过去（新版本目录已落位，指针仍在旧位置）", true)
+            }
+            InstallOutcome(true, null, false)
         } catch (ex: Throwable) {
-            false to (ex.message ?: ex.javaClass.simpleName)
+            InstallOutcome(false, ex.message ?: ex.javaClass.simpleName, false)
         }
 
     private fun findInPackage(root: File, rel: String): File? {
@@ -373,6 +397,12 @@ object PieceUpdater {
     } catch (_: Throwable) {
         false
     }
+
+    data class InstallOutcome(
+        val ok: Boolean,
+        val why: String?,
+        val directoryPlaced: Boolean,
+    )
 
     data class RollbackStatus(
         val id: String,
