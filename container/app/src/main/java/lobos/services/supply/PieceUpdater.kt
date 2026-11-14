@@ -28,7 +28,7 @@ object PieceUpdater {
     fun versionDir(ctx: Context, id: String, version: String): File =
         SupplyProvisioner.versionDir(ctx, id, version).also { it.parentFile?.mkdirs() }
 
-    fun states(ctx: Context): List<State> {
+    fun states(ctx: Context, perPiece: MutableList<Pair<String, Long>>? = null): List<State> {
         val out = mutableListOf<State>()
         val origins = PieceOriginStore.all(ctx).associateBy { it.id }
         for (pe in lobos.services.reg.ProgramIndex.all(ctx)) {
@@ -48,12 +48,15 @@ object PieceUpdater {
                 apkSlots.isNotEmpty() -> File(apkSlots.first().targetPath).takeIf { it.isFile }
                 else -> installed
             }
+            val pieceStart = System.currentTimeMillis()
+            val sha = activeFile?.takeIf { it.isFile }?.let {
+                runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
+            }
+            perPiece?.add(pe.id to (System.currentTimeMillis() - pieceStart))
             out += State(
                 pe.id,
                 ver.ifBlank { null },
-                activeFile?.takeIf { it.isFile }?.let {
-                    runCatching { SupplyProvisioner.sha256HexFile(it) }.getOrNull()
-                },
+                sha,
                 activeFile?.takeIf { it.isFile },
                 otaActive,
             )
@@ -141,6 +144,15 @@ object PieceUpdater {
             .filter { PieceScan.pieceMeta(ctx, it.id) != null }
             .associateBy { it.id }
 
+        val ts0 = System.currentTimeMillis()
+        val perPiece = mutableListOf<Pair<String, Long>>()
+        val allStates = states(ctx, perPiece)
+        val ts1 = System.currentTimeMillis()
+        val statesById = allStates.associateBy { it.id }
+        val ts2 = System.currentTimeMillis()
+        val pieceSizes = allStates.map { it.id to (it.source?.let { f -> f.length() } ?: -1L) }
+        val ts3 = System.currentTimeMillis()
+
         for (i in 0 until arr.length()) {
             val c = arr.optJSONObject(i) ?: continue
             val id = c.optString("id", "")
@@ -150,7 +162,7 @@ object PieceUpdater {
                 skipped.put(JSONObject().put("id", id).put("why", "注册表里没有这一件（清单不能凭空加件）"))
                 continue
             }
-            val cur = states(ctx).firstOrNull { it.id == id }
+            val cur = statesById[id]
             val src = c.optString("source", "")
             if (src != "ota") {
                 skipped.put(
@@ -201,11 +213,18 @@ object PieceUpdater {
         res.put("dryRun", dryRun)
 
         val t4 = System.currentTimeMillis()
+        val pieceBreakdown = perPiece.joinToString(" ") { (id, ms) ->
+            val size = pieceSizes.firstOrNull { it.first == id }?.second ?: -1L
+            id + " " + ms + " 毫秒/" + size + " 字节"
+        }
         RuntimeDiagnostics.append(
             ctx, "piece-ota", true,
             "件清单比对完成（${applied.length()} 件更新 / ${skipped.length()} 件跳过）",
             "清单=$url 过期于=$expires 计时：下载清单 " + (t1 - t0) + " 毫秒、下载签名 " + (t2 - t1) +
-                " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒",
+                " 毫秒、验签 " + (t3 - t2) + " 毫秒、比对 " + (t4 - t3) + " 毫秒" +
+                " 比对细分：逐件读状态 " + (ts1 - ts0) + " 毫秒、建索引 " + (ts2 - ts1) +
+                " 毫秒、读尺寸 " + (ts3 - ts2) + " 毫秒、逐件对清单 " + (t4 - ts3) + " 毫秒" +
+                " 逐件耗时：" + pieceBreakdown,
         )
         if (applied.length() > 0) {
             runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
