@@ -200,8 +200,20 @@ jobs:
           set -euo pipefail
           node scripts/verify/check-component-manifest-drift.js --immutable release/component-manifest.json "${{ needs.resolve.outputs.channel }}"
 
-      - name: 发布清单到对象存储
+      # 缺陷名（C-102）那一格逐字把清单先发、件包后发、=> 而而那那清单逐字指向的件包逐字还没发
+      # 旧版逐字是「清单先发、件包后发」
+      # => 而而那那下游逐字一旦读到那清单、=> 而它逐字指的那些逐字还没在
+      # => 而那 revision 17 那一趟逐字就是那样：清单 01:42:02 先发、
+      #    而那 llvm 那一件 8.5 GB 从 06:40 到 07:39 只走了 100 来块、fetch failed 然后被取消、
+      #    而那剩下 7 件压根没轮到 => 而那清单逐字指向 8 个不存在的文件
+      # => 而那处置：那十件包先发、每件发完回读核过（upload-qiniu.js 自带回读）、
+      #    => 而那清单最后发
+      # => 而那代价：那清单会晚一到两小时（llvm 要跑 6 小时），
+      #    但对下游是好事 —— 下游一旦读到清单，它指的就全在
+      # => 而那 timeout 逐字治不了根本、它只把「挂住」变成「红」
+      - name: 发布件包到对象存储（清单之前）
         if: ${{ needs.resolve.outputs.publish == 'true' }}
+        timeout-minutes: 360
         env:
           QINIU_AK: ${{ secrets.QINIU_AK }}
           QINIU_SK: ${{ secrets.QINIU_SK }}
@@ -227,12 +239,6 @@ jobs:
           case "$MAN" in *undefined*|*null*) echo "::error title=清单名非法::$MAN 不是合法的远端键"; exit 1 ;; esac
           case "$SIG" in *undefined*|*null*) echo "::error title=签名名非法::$SIG 不是合法的远端键"; exit 1 ;; esac
           export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
-          node scripts/publish/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
-          node scripts/publish/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60
-          echo "[manifest] 已发布 component-$CH/$MAN"
-          node scripts/publish/upload-qiniu.js release/native-manifest.json "component-$CH/native-manifest.json" --cache-control=600
-          node scripts/publish/upload-qiniu.js release/native-manifest.json.sig "component-$CH/native-manifest.json.sig" --cache-control=600
-          echo "[native] 已发布 component-$CH/native-manifest.json"
           # 缺陷名（C-102）**那一格逐字只发那清单、清单逐字指向的那十件包逐字**没发****
           # 旧版逐字**没有**这一段
           #**清单**逐字**上了**那 CDN、它逐字**验签**逐字**过**
@@ -322,3 +328,33 @@ jobs:
             fi
           done < work/cdn-pieces.txt
           echo "[cdn] 已发布 $_cdn_n 件包（+ $_cdn_parts_n 件分片）到 component/"
+
+      - name: 发布清单到对象存储（件包之后）
+        if: ${{ needs.resolve.outputs.publish == 'true' }}
+        timeout-minutes: 60
+        env:
+          QINIU_AK: ${{ secrets.QINIU_AK }}
+          QINIU_SK: ${{ secrets.QINIU_SK }}
+          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QINIU_AK:-}" ] || [ -z "${QINIU_SK:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
+            echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
+            exit 1
+          fi
+          ANCHOR=container/app/src/main/assets/supply/channel.json
+          CH=$(node -p "require('./$ANCHOR').channel")
+          MAN=$(node -p "require('./$ANCHOR').manifests?.['component']?.name || ''")
+          SIG=$(node -p "require('./$ANCHOR').manifests?.['component']?.sigName || ''")
+          if [ -z "$MAN" ] || [ -z "$SIG" ]; then
+            echo "::error title=清单名取不到::$ANCHOR 里没有 manifests.component.name / manifests.component.sigName —— 拒绝投递"
+            exit 1
+          fi
+          case "$MAN" in *undefined*|*null*) echo "::error title=清单名非法::$MAN 不是合法的远端键"; exit 1 ;; esac
+          case "$SIG" in *undefined*|*null*) echo "::error title=签名名非法::$SIG 不是合法的远端键"; exit 1 ;; esac
+          export QINIU_PUBLIC_BASE="$(node -p "require('./$ANCHOR').baseUrl")"
+          node scripts/publish/upload-qiniu.js release/component-manifest.json "component-$CH/$MAN" --cache-control=60
+          node scripts/publish/upload-qiniu.js release/component-manifest.json.sig "component-$CH/$SIG" --cache-control=60
+          echo "[manifest] 已发布 component-$CH/$MAN"
+          node scripts/publish/upload-qiniu.js release/native-manifest.json "component-$CH/native-manifest.json" --cache-control=600
+          node scripts/publish/upload-qiniu.js release/native-manifest.json.sig "component-$CH/native-manifest.json.sig" --cache-control=600
