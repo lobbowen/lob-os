@@ -269,7 +269,6 @@ object PieceUpdater {
         if (todo.isEmpty()) return out
 
         val tmp = File(ctx.cacheDir, "native-pack-" + wantSha.take(12) + ".zip")
-        val unpacked = File(ctx.cacheDir, "native-pack-" + wantSha.take(12) + "-unpack")
         return try {
             val cached = tmp.isFile && SupplyProvisioner.sha256HexFile(tmp) == wantSha
             if (!cached) SupplyProvisioner.httpGetToFile(url, tmp)
@@ -279,19 +278,27 @@ object PieceUpdater {
                 for ((e, _, _) in todo) out[e.id] = InstallOutcome(false, why, false)
                 return out
             }
-            runCatching { unpacked.deleteRecursively() }
-            SupplyProvisioner.unzipFromFile(tmp, unpacked, ctx)
-
             for ((e, ver, c) in todo) {
-                val libInPack = c.optString("libName", e.libName)
                 val entryRel = c.optString("entry", "")
-                val inPackage = if (libInPack.isNotBlank()) libInPack else entryRel
-                val picked = if (inPackage.isBlank()) null else findInPackage(unpacked, inPackage)
-                out[e.id] = if (picked == null) {
-                    InstallOutcome(false, ("包里没有 $inPackage（包内实际有：" +
-                        listPackTop(unpacked).take(8).joinToString(", ") + "）"), false)
+                val r = runCatching {
+                    ProgramInstallPipeline.install(
+                        ctx,
+                        ProgramInstallPipeline.Spec(
+                            from = ProgramInstallPipeline.From.COMPONENT,
+                            programId = e.id,
+                            zip = tmp,
+                            shape = ProgramInstallPipeline.Shape.COMPONENT,
+                            expectedVersion = ver,
+                            expectedEntryRel = entryRel,
+                        ),
+                    )
+                }.getOrElse { ex -> null }
+                out[e.id] = if (r == null) {
+                    InstallOutcome(false, "装件抛异常", false)
+                } else if (r.ok) {
+                    InstallOutcome(true, null, true)
                 } else {
-                    place(ctx, e, ver, entryRel, picked, unpacked)
+                    InstallOutcome(false, (r.reason ?: "") + " — " + r.detail, false)
                 }
             }
             out
@@ -301,102 +308,12 @@ object PieceUpdater {
             out
         } finally {
             runCatching { tmp.delete() }
-            runCatching { unpacked.deleteRecursively() }
         }
     }
 
-    private fun place(ctx: Context, e: lobos.services.reg.UnitEntry, version: String, entryRel: String, picked: File, unpacked: File? = null): InstallOutcome =
-        try {
-            val dir = versionDir(ctx, e.id, version)
-            val staged = File(dir.parentFile, "." + dir.name + ".staging")
-            runCatching { staged.deleteRecursively() }
-            val stagedDest = File(staged, entryRel)
-            stagedDest.parentFile?.mkdirs()
-            picked.copyTo(stagedDest, overwrite = true)
-            if (!stagedDest.isFile || stagedDest.length() != picked.length()) {
-                runCatching { staged.deleteRecursively() }
-                return InstallOutcome(false, "落盘后长度不符", false)
-            }
-            ExecBits.apply(stagedDest)
-            if (unpacked != null) {
-                for (n in SHAPE_AND_META_FILES) {
-                    val src = File(unpacked, n)
-                    if (src.isFile) {
-                        runCatching { src.copyTo(File(staged, n), overwrite = true) }
-                    }
-                }
-            }
-            val aside = if (dir.isDirectory) {
-                File(dir.parentFile, dir.name + ".replaced-" + System.currentTimeMillis())
-            } else null
-            if (aside != null && !dir.renameTo(aside)) {
-                runCatching { staged.deleteRecursively() }
-                return InstallOutcome(false, "旧版本目录无法让位：不动指针，保持现状", false)
-            }
-            if (!staged.renameTo(dir)) {
-                if (aside != null) aside.renameTo(dir)
-                runCatching { staged.deleteRecursively() }
-                return InstallOutcome(false, "无法把新版本换进去（旧版本已复位）", false)
-            }
-            if (aside != null) aside.deleteRecursively()
-            val dest = File(dir, entryRel)
-            if (!pointEntryAt(ctx, e, version, dest)) {
-                return InstallOutcome(false, "入口软链没切过去（新版本目录已落位，指针仍在旧位置）", true)
-            }
-            InstallOutcome(true, null, false)
-        } catch (ex: Throwable) {
+ catch (ex: Throwable) {
             InstallOutcome(false, ex.message ?: ex.javaClass.simpleName, false)
         }
-
-    private fun findInPackage(root: File, rel: String): File? {
-        val direct = File(root, rel)
-        if (direct.isFile) return direct
-        val byName = root.walkTopDown().firstOrNull { it.isFile && it.name == File(rel).name }
-        return byName
-    }
-
-    private fun listPackTop(root: File): List<String> =
-        (root.list()?.sorted() ?: emptyList()).take(8)
-
-    private fun pointEntryAt(
-        ctx: Context,
-        e: lobos.services.reg.UnitEntry,
-        version: String,
-        dest: File,
-    ): Boolean = try {
-
-        val locatedAll = PieceEntryPointer.locateAll(ctx, e)
-        if (locatedAll.pointers.isEmpty()) return false
-        var allOk = true
-        for (located in locatedAll.pointers) {
-            val link = located.pointer
-            val entryName = located.name
-            val staging = File(link.parentFile, "." + entryName + ".new")
-            runCatching { java.nio.file.Files.deleteIfExists(staging.toPath()) }
-            java.nio.file.Files.createSymbolicLink(staging.toPath(), dest.toPath())
-            val ok = staging.renameTo(link) || run {
-                java.nio.file.Files.deleteIfExists(link.toPath())
-                staging.renameTo(link)
-            }
-            if (!ok) {
-                allOk = false
-                continue
-            }
-
-            runCatching {
-                PieceOriginStore.recordOtaSlot(
-                    ctx, e.id, version, located.role, link.absolutePath, dest.absolutePath,
-                )
-            }
-        }
-        if (allOk) {
-            val detected = InstalledRuntime.versionOf(ctx, e.id).ifBlank { version }
-            SupplyProvisioner.selectVersion(ctx, e.id, detected)
-        }
-        allOk
-    } catch (_: Throwable) {
-        false
-    }
 
     data class InstallOutcome(
         val ok: Boolean,
