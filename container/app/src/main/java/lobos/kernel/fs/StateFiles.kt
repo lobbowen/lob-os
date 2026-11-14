@@ -112,24 +112,93 @@ object StateFiles {
         dir.mkdirs()
         try {
 
+            val lineBytes = line.toByteArray(Charsets.UTF_8)
             val size = if (file.isFile) file.length() else 0L
-            if (size + line.toByteArray(Charsets.UTF_8).size + 1 <= maxBytes) {
+            if (size + lineBytes.size + 1 <= maxBytes) {
                 FileOutputStream(file, true).use { out ->
-                    out.write(line.toByteArray(Charsets.UTF_8))
+                    out.write(lineBytes)
                     out.write("\n".toByteArray(Charsets.UTF_8))
                 }
                 return
             }
 
-            val prev = if (file.isFile) file.readText() else ""
-            val next = (prev + line + "\n")
-            val lines = next.split("\n").filter { it.isNotBlank() }
-            if (lines.size <= keepLines) {
-                writeAtomic(file, lines.joinToString("\n") + "\n")
-                return
+            val kept = tailLines(file, keepLines, maxBytes)
+            val out = StringBuilder()
+            for (l in kept.lines) out.append(l).append('\n')
+            if (kept.droppedOversizedCount > 0) {
+                out.append("丢弃了一条超大记录（").append(kept.droppedOversizedBytes)
+                    .append(" 字节）\n")
             }
-            writeAtomic(file, lines.takeLast(keepLines).joinToString("\n") + "\n")
+            out.append(line).append('\n')
+            writeAtomic(file, out.toString())
         } catch (_: Throwable) { }
+    }
+
+    private class TailResult(
+        val lines: List<String>,
+        val droppedOversizedBytes: Long,
+        val droppedOversizedCount: Int,
+    )
+
+    private fun tailLines(file: File, keepLines: Int, maxBytes: Long): TailResult {
+        if (!file.isFile) return TailResult(emptyList(), 0L, 0)
+        val kept = mutableListOf<String>()
+        var totalBytes = 0L
+        var droppedOversizedBytes = 0L
+        var droppedOversizedCount = 0
+        java.io.RandomAccessFile(file, "r").use { raf ->
+            val fileLen = raf.length()
+            val chunk = ByteArray(64 * 1024)
+            val newlines = ArrayList<Long>()
+            var scanEnd = fileLen
+            while (scanEnd > 0 && newlines.size <= keepLines) {
+                val n = minOf(chunk.size.toLong(), scanEnd).toInt()
+                val from = scanEnd - n
+                raf.seek(from)
+                raf.readFully(chunk, 0, n)
+                var i = n - 1
+                while (i >= 0) {
+                    if (chunk[i] == '\n'.code.toByte()) {
+                        newlines.add(from + i)
+                        if (newlines.size > keepLines) break
+                    }
+                    i--
+                }
+                scanEnd = from
+            }
+            val newestFirst = mutableListOf<Pair<Long, Long>>()
+            val lastNewline = if (newlines.isEmpty()) -1L else newlines[0]
+            if (lastNewline >= 0 && lastNewline < fileLen - 1) {
+                newestFirst.add(lastNewline + 1 to fileLen)
+            }
+            val usable = if (newlines.size > keepLines) keepLines else newlines.size
+            for (k in 0 until usable) {
+                val lineEnd = newlines[k]
+                val lineStart = if (k + 1 < newlines.size) newlines[k + 1] + 1 else 0L
+                newestFirst.add(lineStart to lineEnd)
+            }
+            for (r in newestFirst) {
+                if (kept.size >= keepLines) break
+                val len = (r.second - r.first).toInt()
+                if (len <= 0) continue
+                val buf = ByteArray(len)
+                raf.seek(r.first)
+                raf.readFully(buf)
+                val b = len.toLong()
+                if (b > maxBytes) {
+                    droppedOversizedBytes += b
+                    droppedOversizedCount++
+                    continue
+                }
+                if (totalBytes + b > maxBytes) continue
+                val text = String(buf, Charsets.UTF_8)
+                if (text.isBlank()) continue
+                kept.add(text)
+                totalBytes += b
+            }
+        }
+        kept.reverse()
+        return TailResult(kept, droppedOversizedBytes, droppedOversizedCount)
     }
 
     fun fsyncDir(dir: File) {
