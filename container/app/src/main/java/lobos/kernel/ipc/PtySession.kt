@@ -126,7 +126,14 @@ object PtySession {
         }
 
         fun write(data: ByteArray) {
-            if (closed.get()) return
+            if (closed.get()) {
+                host.note(
+                    "PTY 写入落到已关的会话",
+                    "sid=" + sid + " 字节=" + data.size +
+                        " —— 送不进去（会话已结束），而调用方逐字以为送进去了",
+                )
+                return
+            }
             if (data.size <= MAX_INPUT_BYTES) {
                 host.send(F_INPUT, sid, data)
                 return
@@ -141,14 +148,27 @@ object PtySession {
         fun write(text: String) = write(text.toByteArray(Charsets.UTF_8))
 
         fun resize(rows: Int, cols: Int) {
-            if (closed.get()) return
+            if (closed.get()) {
+                host.note(
+                    "PTY 改尺寸落到已关的会话",
+                    "sid=" + sid + " 尺寸=" + rows + "x" + cols + " —— 送不进去（会话已结束）",
+                )
+                return
+            }
 
             pendingWinsize = rows to cols
             sendWinsize(rows, cols)
         }
 
         private fun sendWinsize(rows: Int, cols: Int) {
-            if (nativeSlotClosed) return
+            if (nativeSlotClosed) {
+                host.note(
+                    "PTY 跳过 WINSIZE（槽已关）",
+                    "sid=" + sid + " 尺寸=" + rows + "x" + cols +
+                        " —— native 那一槽已经关了，发过去只会撞「指向不存在的会话」",
+                )
+                return
+            }
             val b = java.nio.ByteBuffer.allocate(8)
             b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
             b.putShort(rows.toShort()).putShort(cols.toShort())
@@ -646,6 +666,12 @@ object PtySession {
                 it, "pty", false, "PTY 的C 侧报错",
                 "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号逐字**照样**还了",
             )
+        }
+    }
+
+    internal fun note(message: String, detail: String) {
+        ctx?.let {
+            KernelHooks.report(it, "pty", true, message, detail)
         }
     }
 
