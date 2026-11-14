@@ -311,10 +311,6 @@ object PieceUpdater {
         }
     }
 
- catch (ex: Throwable) {
-            InstallOutcome(false, ex.message ?: ex.javaClass.simpleName, false)
-        }
-
     data class InstallOutcome(
         val ok: Boolean,
         val why: String?,
