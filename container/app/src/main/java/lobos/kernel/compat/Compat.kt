@@ -119,13 +119,32 @@ object Compat {
             if (!src.isFile) continue
             val link = dst.resolve(name)
             val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
-            if (!isLink && link.isFile) continue
 
             val sha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: continue
-            if (isLink || !link.exists()) {
-                runCatching { java.nio.file.Files.deleteIfExists(link.toPath()) }
-                if (installOtaStreaming(ctx, name, src, sha, null)) n++
+
+            if (!isLink && link.isFile) {
+                val have = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(link) }.getOrNull()
+                if (have == sha) continue
             }
+            if (installOtaStreaming(ctx, name, src, sha, null)) n++
+        }
+        return n
+    }
+
+    fun refreshToApk(ctx: Context): Int {
+        val dst = libDir(ctx)
+        if (!dst.isDirectory && !dst.mkdirs()) return 0
+        var n = 0
+        for (name in managedComponents()) {
+            val src = apkLibDir(ctx).resolve(name)
+            if (!src.isFile) continue
+            val link = dst.resolve(name)
+            if (java.nio.file.Files.isSymbolicLink(link.toPath())) continue
+            if (!link.isFile) continue
+            val srcSha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: continue
+            val dstSha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(link) }.getOrNull() ?: continue
+            if (srcSha == dstSha) continue
+            if (installOtaStreaming(ctx, name, src, srcSha, null)) n++
         }
         return n
     }

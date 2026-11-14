@@ -704,6 +704,60 @@ object PtySession {
     @Volatile private var host: Host? = null
     private val hostLock = Any()
 
+    private val nativeRefreshed = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    fun refreshNativeOnce(ctx: Context): Int {
+        if (!nativeRefreshed.compareAndSet(false, true)) return 0
+        val n = runCatching { lobos.kernel.compat.Compat.refreshToApk(ctx) }.getOrDefault(0)
+        if (n <= 0) return 0
+        val restarted = restartHost(ctx)
+        lobos.services.log.RuntimeDiagnostics.append(
+            ctx, "native-lib", true,
+            "内核构件已按 APK 那一份刷新",
+            "刷新=" + n + " 件；pty 宿主重启=" + restarted +
+                " —— 而那一份 APK 里的才是唯一真源（实体文件不再逐字锁死在旧版）",
+        )
+        return n
+    }
+
+    fun restartHost(ctx: Context): Boolean {
+        val bin = lobos.kernel.compat.Compat.ptyHost(ctx)
+        if (bin == null) {
+            lobos.services.log.RuntimeDiagnostics.append(
+                ctx, "pty", false, "PTY 宿主重启失败", "内核构件缺失（librivospty 不在系统库）",
+            )
+            return false
+        }
+        val live = host?.activeSessions()?.size ?: 0
+        if (live > 0) {
+            lobos.services.log.RuntimeDiagnostics.append(
+                ctx, "pty", true, "PTY 宿主不重启（还有活着的会话）",
+                "活会话=" + live + " 件 —— 杀掉宿主会让那 " + live +
+                    " 件逐字全部收到 EXITED（用户逐字正在用它们）",
+            )
+            return false
+        }
+        val old = synchronized(hostLock) {
+            val h = host
+            host = null
+            h
+        }
+        if (old != null) {
+            runCatching { old.close() }
+        }
+        return runCatching { host(ctx, bin) }
+            .fold(
+                onSuccess = { true },
+                onFailure = { e ->
+                    lobos.services.log.RuntimeDiagnostics.append(
+                        ctx, "pty", false, "PTY 宿主重启失败",
+                        e.javaClass.name + ": " + (e.message ?: ""),
+                    )
+                    false
+                },
+            )
+    }
+
     fun openSession(
         ctx: Context,
         bin: java.io.File,
@@ -844,6 +898,7 @@ object PtySession {
     }
 
     fun ensureHost(ctx: Context): Boolean {
+        refreshNativeOnce(ctx)
         val bin = lobos.kernel.compat.Compat.ptyHost(ctx)
         if (bin == null) {
             lobos.services.log.RuntimeDiagnostics.append(
