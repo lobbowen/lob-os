@@ -2,6 +2,7 @@ package lobos.kernel.compat
 
 import android.content.Context
 import java.io.File
+import lobos.services.log.RuntimeDiagnostics
 
 object Compat {
 
@@ -28,7 +29,12 @@ object Compat {
         }.getOrNull()
         if (curPerm != null) {
             val s = java.nio.file.attribute.PosixFilePermissions.toString(curPerm)
-            return if (s.contains("x")) s else s + "rwxr-xr-x".take(3)
+            if (s.contains("x")) return s
+            val withX = java.util.EnumSet.copyOf(curPerm)
+            withX.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE)
+            withX.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE)
+            withX.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE)
+            return java.nio.file.attribute.PosixFilePermissions.toString(withX)
         }
         val ap = apkLibDir(ctx).resolve(name)
         val apPerm = runCatching {
@@ -114,20 +120,24 @@ object Compat {
         val dst = libDir(ctx)
         if (!dst.isDirectory && !dst.mkdirs()) return 0
         var n = 0
+        val trace = StringBuilder()
         for (name in managedComponents()) {
             val src = apkLibDir(ctx).resolve(name)
-            if (!src.isFile) continue
+            if (!src.isFile) { trace.append(name).append(":apk没有; "); continue }
             val link = dst.resolve(name)
             val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
-
-            val sha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: continue
-
+            val sha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull()
+            if (sha == null) { trace.append(name).append(":apk读取失败; "); continue }
             if (!isLink && link.isFile) {
                 val have = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(link) }.getOrNull()
-                if (have == sha) continue
+                if (have == sha) { trace.append(name).append(":一致; "); continue }
+                trace.append(name).append(":不一致apk=").append(sha.take(12)).append(" 盘上=").append((have ?: "读失败").take(12)).append("; ")
             }
-            if (installOtaStreaming(ctx, name, src, sha, null)) n++
+            val done = installOtaStreaming(ctx, name, src, sha, null)
+            trace.append(name).append(if (done) ":已重铺; " else ":重铺失败; ")
+            if (done) n++
         }
+        RuntimeDiagnostics.append(ctx, "sysview", n > 0, "垫片重铺明细", "共 " + n + " 个；" + trace)
         return n
     }
 
