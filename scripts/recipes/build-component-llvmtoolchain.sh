@@ -211,9 +211,7 @@ fi
 note "CMake 认定的 tblgen（这里若仍是裸名 llvm-min-tblgen，说明开关没生效，它会自建 NATIVE/bin 并执行交叉产物）"
 TB="$(grep -E '^(LLVM_TABLEGEN|LLVM_NATIVE_TOOL_DIR|LLVM_USE_HOST_TOOLS|LLVM_TABLEGEN_EXE)' "$BUILD/CMakeCache.txt" 2>/dev/null || true)"
 echo "  ${TB:-（CMakeCache.txt 里没有这些键）}"
-echo "  native-tools 实际内容："
 ls -la "$NATIVE_DIR" 2>/dev/null | sed 's/^/    /' || echo "    （读不到）"
-echo "  NATIVE/bin（NATIVE 目录被建了就说明还在自建宿主工具）："
 if [ -d "$BUILD/NATIVE/bin" ]; then
   ( ls -la "$BUILD/NATIVE/bin" 2>/dev/null | head -6 || true ) | sed 's/^/    /'
   for b in "$BUILD/NATIVE/bin/llvm-min-tblgen" "$BUILD/NATIVE/bin/llvm-config"; do
@@ -281,7 +279,6 @@ for b in clang ld.lld llvm-ar; do
     *) die "解释器不对" "$b 的 PT_INTERP=$interp —— 说明是拿宿主链接器编的，设备上跑不了" ;;
   esac
 done
-echo "[ok] 解释器形态正确（/system/bin/linker64）"
 
 rm -rf "$TOOLDIR" "$OUT/lib"
 mkdir -p "$TOOLDIR" "$OUT/lib"

@@ -13,7 +13,6 @@ fi
 OUT="${OUT:-dist}"
 mkdir -p "$ROOT_DIR/$OUT/bin" work
 
-echo "[git] 取源码（钉值表的 git 那一格）"
 
 export SOURCE_DATE_EPOCH="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --time-base 2>/dev/null || echo 0)"
 bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin git "$ROOT_DIR/work/git.tar.xz" \
@@ -25,7 +24,6 @@ if ! tar xJf work/git.tar.xz -C work/git-src --strip-components=1; then
   exit 1
 fi
 [ -f work/git-src/Makefile ] || { echo "::error title=源码树异常::没有 Makefile"; exit 1; }
-echo "[git] 源码树就位"
 
 TC_DIR=$(dirname "$CC")
 ANDROID_API=35
@@ -50,11 +48,9 @@ else
   echo "[git] 诊断：裸名不可解析 → 报错 127 就是这个原因"
   ls "$TC_DIR"/aarch64-linux-android35-clang 2>&1 | sed "s/^/[git] 诊断：  /"
 fi
-echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："
 grep -n "legacy-dso-legacyprov" Makefile 2>/dev/null | head -3 | sed "s/^/[git] 诊断：  /" || true
 grep -nE "^\s*(CC|GIT-CFLAGS)\s*[:?]?=" Makefile 2>/dev/null | head -5 | sed "s/^/[git] 诊断：  /" || true
 
-echo "[git] 依赖用预装件（usr/lib 下的全局软链），不再静态链入"
 
 cd "$ROOT_DIR/work/git-src"
 
@@ -88,14 +84,9 @@ CURL_PREFIX="$ROOT_DIR/work/curl/out"
 for p in "$ZLIB_PREFIX" "$OPENSSL_PREFIX" "$CURL_PREFIX"; do
   [ -d "$p/lib" ] || {
     echo "::error title=依赖件没编出来::$p/lib 不存在 —— git 依赖 base 筐里的"
-    echo "         zlib / openssl / curl 三个件。要么让本 workflow 先跑"
-    echo "         ensure-native-capabilities.sh（build-apk.yml 就在跑它），"
-    echo "         要么 git 不带 https（NO_CURL=1）—— 但那条路与"
-    echo "         另一条路会让 git 不带 https —— 而那不是构建期能判的事。"
     exit 1
   }
 done
-echo "[git] 依赖三件就位：zlib / openssl / curl"
 
 MAKE_ARGS="CC=$CC AR=$AR RANLIB=$RANLIB PTHREAD_LIBS= NO_RUST=1 CURLDIR=$CURL_PREFIX OPENSSLDIR=$OPENSSL_PREFIX uname_S=Linux uname_M=aarch64 prefix=$ROOT_DIR/$OUT CSPRNG_METHOD= HAVE_SYNC_FILE_RANGE= HAVE_GETRUSAGE= HAVE_SYSINFO= NO_EXPAT=1 NO_GETTEXT=1 NO_ICONV=1 NO_TCLTK=1 NO_NSEC=1 NO_INSTALL_HARDLINKS=1 NO_PERL=1 NO_PYTHON=1 RUNTIME_PREFIX=1 ac_cv_fread_reads_directories=yes ac_cv_header_libintl_h=no ac_cv_iconv_omits_bom=no ac_cv_snprintf_returns_bogus=no"
 echo "[git] make（$MAKE_ARGS）"
@@ -103,7 +94,6 @@ if ! make -j2 $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib 
   echo "::error title=make 失败::见上"
   exit 1
 fi
-echo "[git] make install"
 if ! make $MAKE_ARGS CURL_LIBCURL="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib -lcurl -lssl -lcrypto -lz -ldl" CURL_LIBS="-lcurl -lssl -lcrypto -lz" OPENSSL_LIBSSL="-lssl -lcrypto" CPPFLAGS="-I$CURL_PREFIX/include -I$OPENSSL_PREFIX/include -I$ZLIB_PREFIX/include" LDFLAGS="-L$CURL_PREFIX/lib -L$OPENSSL_PREFIX/lib -L$ZLIB_PREFIX/lib" install; then
   echo "::error title=install 失败::见上"
   exit 1
@@ -169,7 +159,6 @@ TREE=$PIECE_TREE
 echo "[git] 件树体积 ${TREE} MiB（bin/git $BINSIZE 字节 · 链接农场 $LINKED 链 / $KEPT 独立文件）"
 if [ "$TREE" -gt 60 ]; then
   echo "::error title=件太大::${TREE} MiB —— 超过 60 MiB 上限"
-  echo "        件树里占用前十的条目："
   TMPD="$(mktemp)"
   for d in $PIECE_KEEP; do
     [ -d "$ROOT_DIR/$OUT/$d" ] && du -am "$ROOT_DIR/$OUT/$d" 2>/dev/null

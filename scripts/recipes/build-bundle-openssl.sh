@@ -42,7 +42,6 @@ tar xzf "$ROOT_DIR/work/openssl.tar.gz" -C "$WORK/src" --strip-components=1
 
 [ -f "$OUT_DIR/include/openssl/opensslv.h" ] || [ -f "$WORK/src/include/openssl/opensslv.h" ] \
   || die "openssl 没产出版本头" "opensslv.h 应该在（找不到说明 Configure 或 make 失败）"
-echo "[openssl] 版本头在位"
 
 SSL="$OUT_DIR/lib/libssl-lobos.so"
 [ -f "$SSL" ] || SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"

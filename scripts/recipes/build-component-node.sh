@@ -31,7 +31,6 @@ do
 done
 if [ -z "$SRC" ]; then
   echo "::error title=没有 libnode.so::本脚本不编译 node（编译要 3~4 小时，走 Node Runtime workflow 一次）"
-  echo "           期望在 work/ 或 dist/ 下找到 libnode.so，实际内容："
   ls -la "$RAW_DIR" 2>/dev/null | head -n 10 || true
   ls -la "$ROOT_DIR/dist" 2>/dev/null | head -n 10 || true
   ls -la "$ROOT_DIR/container/app/src/main/jniLibs/arm64-v8a" 2>/dev/null | head -n 10 || true
@@ -97,7 +96,6 @@ if [ -n "$READELF_BIN" ]; then
   echo "[node] 外部依赖: ${NEEDED:-（无）}"
   case "$NEEDED" in
     *libc++_shared.so*)
-      echo "[node] 依赖 libc++_shared.so —— 它随 APK 交付在 nativeLibraryDir，"
       echo "       由 LD_LIBRARY_PATH 供给（RuntimeEnvironment），件内无需自带。" ;;
   esac
 fi

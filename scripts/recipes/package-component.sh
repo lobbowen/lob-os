@@ -11,7 +11,6 @@ VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
 
 if [ -z "$VER" ]; then
   echo "::notice:: 那 dist/${TOOL}.version 不在（那复用命中了、编译被跳过了）"
-  echo "::notice::版本号改从那钉值表取（它是那件自己的版本、不是「本轮编的」那个事实）"
   VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
   if [ -n "$VER" ]; then
     printf '%s' "$VER" > "dist/${TOOL}.version"

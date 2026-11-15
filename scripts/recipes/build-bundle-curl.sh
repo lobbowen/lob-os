@@ -54,4 +54,3 @@ SO="$(ls "$OUT_DIR"/lib/libcurl.so* 2>/dev/null | head -1)"
 [ -f "$OUT_DIR/include/curl/curl.h" ] || die "curl 头文件没装上" "依赖它的件编不过 http.c"
 
 emit_piece curl "$OUT_DIR" lib/libcurl.so 1000
-echo "[ok] curl 是共享库（git 编的时候只记 NEEDED，不静态链进去）"

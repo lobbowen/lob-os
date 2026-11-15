@@ -71,4 +71,3 @@ SO="$OUT_DIR/lib/libz.so"
   || die "zlib 共享库缺 SONAME 层" "$OUT_DIR/lib 下只有 libz.so，没有 libz.so.1"
 
 emit_piece zlib "$OUT_DIR" lib/libz.so 1000
-echo "[ok] zlib 是共享库（不是静态链进别的二进制）"

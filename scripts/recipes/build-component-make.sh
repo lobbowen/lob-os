@@ -86,7 +86,6 @@ BIN="$BUILD/make"
 cp -f "$BIN" "$OUT/bin/$TOOL" || { echo "::error title=cp 失败::源=$BIN  目标=$OUT/bin/$TOOL"; exit 1; }
 echo "[make] cp 完成：$(ls -la "$OUT/bin/$TOOL" 2>&1 | head -1)"
 chmod 0755 "$OUT/bin/$TOOL" || { echo "::error title=chmod 失败::$OUT/bin/$TOOL"; exit 1; }
-echo "[make] chmod 完成"
 
 INFO=$(file -b "$OUT/bin/$TOOL")
 case "$INFO" in *aarch64*|*arm64*|*ARM64*) : ;; *) die "架构不对" "$INFO" ;; esac

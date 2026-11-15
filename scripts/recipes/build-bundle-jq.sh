@@ -52,4 +52,3 @@ if [ ! -f "$SO" ]; then
 fi
 
 emit_piece jq "$OUT_DIR" bin/jq 300000 "jq"
-echo "[ok] jq 落位（可执行件，bin/jq 那一侧；lib/ 下不再复制一份没人要的拷贝）"

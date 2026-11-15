@@ -22,7 +22,6 @@ bash scripts/toolchain/fetch-pinned.sh --pin bash $WORK/bash.tar.gz \
   || die "bash 源码取不到或 sha256 不符" \
        "钉值与来源见 scripts/component-sources.json 的 sources.bash" \
        "所有镜像都试过了仍失败；不要改成不校验的下载"
-echo "[bash] 命中钉值来源，sha256 校验通过"
 
 rm -rf "$WORK/bash-$BASH_VER"
 
