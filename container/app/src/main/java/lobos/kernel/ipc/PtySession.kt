@@ -342,33 +342,19 @@ object PtySession {
             for ((k, v) in view) pb.environment()[k] = v
             pb.environment().remove("LD_PRELOAD")
 
-            val savedStdin = runCatching {
-
-                val p = android.system.Os.open("/proc/self/fd/0", android.system.OsConstants.O_RDONLY, 0)
-                android.system.Os.dup(p).also { android.system.Os.close(p) }
-            }.getOrNull()
             val slaveFd = runCatching {
                 android.system.Os.open(slave, android.system.OsConstants.O_RDWR, 0)
             }.getOrNull()
             if (slaveFd == null) {
                 throw IllegalStateException("那从设备逐字开不了：" + slave + "（按 C-05 报缺）")
             }
-            val proc = try {
+            runCatching { android.system.Os.close(slaveFd) }
 
-                android.system.Os.dup2(slaveFd, 0)
-                val p = pb.start()
-
-                if (savedStdin != null) {
-                    runCatching { android.system.Os.dup2(savedStdin, 0) }
-                    runCatching { android.system.Os.close(savedStdin) }
-                }
-                p
-            } finally {
-                runCatching { android.system.Os.close(slaveFd) }
-            }
+            pb.redirectInput(slaveFile)
+            pb.redirectOutput(slaveFile)
+            pb.redirectError(slaveFile)
+            val proc = pb.start()
             session.process = proc
-
-            pumpOutput(session, proc)
 
             ProductSessions.put("product-" + session.sid, session)
 
@@ -403,24 +389,6 @@ object PtySession {
                     )
                 }
             }
-        }
-
-        private fun pumpOutput(session: Session, proc: Process) {
-            val t = Thread({
-                runCatching {
-                    val inS = proc.inputStream
-                    val buf = ByteArray(4096)
-                    while (true) {
-                        val n = inS.read(buf)
-                        if (n <= 0) break
-                        val out = buf.copyOf(n)
-                        runCatching { session.deliver(out) }
-                    }
-                }
-
-            }, "lobos-pty-output-" + session.sid)
-            t.isDaemon = true
-            t.start()
         }
 
         private fun recordInLedger(
