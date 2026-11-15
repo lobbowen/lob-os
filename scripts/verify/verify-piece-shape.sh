@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 
 set -uo pipefail
 
@@ -35,7 +37,7 @@ KIND="$(read_field kind)"
 ENTRY="$(read_field entry)"
 ENTRY_FORM="$(read_field entryForm)"
 ENTRY_ROLE="$(read_field entryRole)"
-say "kind=$KIND entry=$ENTRY entryForm=$ENTRY_FORM entryRole=$ENTRY_ROLE"
+v "kind=$KIND entry=$ENTRY entryForm=$ENTRY_FORM entryRole=$ENTRY_ROLE"
 
 case "$KIND" in
   program|library|mixed) : ;;
@@ -113,5 +115,5 @@ if [ "$FAIL" -ne 0 ]; then
   echo "::error title=形态判据不成立::$ZIP —— 包不自描述形态"
   exit 1
 fi
-echo ""
+v ""
 echo "[ok] $ZIP 形态自描述成立（kind=$KIND entryForm=$ENTRY_FORM）"

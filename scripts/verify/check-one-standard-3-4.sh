@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -9,11 +11,11 @@ PASS=0
 FAIL=0
 FAILED=()
 
-echo " ONE-STANDARD 第三节 3.4 四格检查"
-echo " 判据源: docs/spec/ONE-STANDARD.md 第三节 3.4"
-echo " 范围  : $SCOPE  (.kt 文件数: $KT_TOTAL)"
-echo " 用法  : bash scripts/verify/check-one-standard-3-4.sh"
-echo ""
+v " ONE-STANDARD 第三节 3.4 四格检查"
+v " 判据源: docs/spec/ONE-STANDARD.md 第三节 3.4"
+v " 范围  : $SCOPE  (.kt 文件数: $KT_TOTAL)"
+v " 用法  : bash scripts/verify/check-one-standard-3-4.sh"
+v ""
 
 HEAD_SHA=""
 HEAD_SHORT=""
@@ -44,8 +46,8 @@ if [ -n "$HEAD_SHORT" ]; then
 else
   echo " HEAD        : (不是 git 仓, 或 git 不可用)"
 fi
-echo " run_id      : $RUN_ID"
-echo " run_id 来源 : $RUN_ID_SRC"
+v " run_id      : $RUN_ID"
+v " run_id 来源 : $RUN_ID_SRC"
 if [ "$DIRTY_LINES" -gt 0 ]; then
   echo " 工作树状态  : 有未提交改动 ($DIRTY_LINES 项, 其中落在检查范围内 $DIRTY_SCOPE 项)"
   if [ "$DIRTY_SCOPE" -gt 0 ]; then
@@ -71,7 +73,7 @@ else
     echo "              这一份读数能说出 head, 但说不出它对应哪一次构建。"
   fi
 fi
-echo ""
+v ""
 
 classify() {
   local s
@@ -88,10 +90,10 @@ classify() {
 check_cell() {
   local idx="$1" name="$2" basis="$3" pat="$4" ctrl="$5"
   local out ctl line body
-echo "[格 $idx] $name"
+v "[格 $idx] $name"
 echo "  判读依据: $basis"
-echo "  期望    : 零命中"
-echo ""
+v "  期望    : 零命中"
+v ""
   ctl="$(grep -rnE "$ctrl" --include=*.kt "$SCOPE" 2>/dev/null | wc -l | tr -d " ")"
   line="$(grep -rnE "$ctrl" --include=*.kt "$SCOPE" 2>/dev/null | head -1)"
   echo "  阳性对照(C-108): grep -rnE '$ctrl' -> 命中 $ctl 行"
@@ -112,10 +114,10 @@ echo ""
     echo ""
     return
   fi
-echo ""
+v ""
   local code_n=0 comm_n=0
   out="$(grep -rnE "$pat" --include=*.kt "$SCOPE" 2>/dev/null)"
-echo "  违例形态清单:"
+v "  违例形态清单:"
   if [ -z "$out" ]; then
     echo "    (无)"
   else
@@ -131,9 +133,9 @@ echo "  违例形态清单:"
       fi
     done <<< "$out"
   fi
-echo ""
-echo "  实际命中: 代码 $code_n 行 / 注释 $comm_n 行 / 合计 $((code_n+comm_n)) 行"
-echo ""
+v ""
+v "  实际命中: 代码 $code_n 行 / 注释 $comm_n 行 / 合计 $((code_n+comm_n)) 行"
+v ""
   if [ "$((code_n+comm_n))" -eq 0 ]; then
     echo "  该格判读: 过"; PASS=$((PASS+1))
   else
@@ -141,7 +143,7 @@ echo ""
     FAILED+=("格$idx $name")
     FAIL=$((FAIL+1))
   fi
-echo ""
+v ""
 }
 
 check_cell 1 "运行期不读字节头判形态" "违反第三节" \

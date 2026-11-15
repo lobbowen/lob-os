@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 export LC_ALL=C
 

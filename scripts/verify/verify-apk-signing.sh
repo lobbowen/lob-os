@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -68,10 +70,10 @@ if [ -z "$DN" ]; then
   exit 0
 fi
 
-echo "[lobos-signing] apksigner: $APKSIGNER"
-echo "[lobos-signing] APK: $APK"
-echo "[lobos-signing] $DN"
-echo "[lobos-signing] SHA-256 指纹: ${FP:-（apksigner 输出里没解析到 sha-256 摘要行）}"
+v "[lobos-signing] apksigner: $APKSIGNER"
+v "[lobos-signing] APK: $APK"
+v "[lobos-signing] $DN"
+v "[lobos-signing] SHA-256 指纹: ${FP:-（apksigner 输出里没解析到 sha-256 摘要行）}"
 
 IS_DEBUG=0
 case "${DN,,}" in (*"android debug"*) IS_DEBUG=1 ;; esac
@@ -115,4 +117,4 @@ if [ "$REQUIRE_STABLE" = "1" ]; then
   echo "[lobos-signing] [ok] 非 debug 签名（发布链路放行）。[warn] 本次【没有】可比对的锚点指纹 —— 只证明了「不是 debug」，没证明「是哪把 key」。"
   exit 0
 fi
-echo "::warning title=签名身份无从核验::未配 keystore 却拿到非 debug 签名 —— 没有锚点能证明它是【哪一把】key。发布请走配了 ANDROID_KEYSTORE_BASE64 的链路。"
+v "::warning title=签名身份无从核验::未配 keystore 却拿到非 debug 签名 —— 没有锚点能证明它是【哪一把】key。发布请走配了 ANDROID_KEYSTORE_BASE64 的链路。"

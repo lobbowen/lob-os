@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 
 set -uo pipefail
 export LC_ALL=C
@@ -42,17 +44,17 @@ sys.stdout.write('RC:' + str(p.returncode) + '\n')
   OUT_SO="$so"; OUT_SE="$se"; OUT_RC="$code"
 }
 
-say "=============================================================="
-say " 「真跑起来」那一族 —— 那一次运行的观察结果"
-say " 判据源: 02 裁的那一句（它已落在 spec §122.83.4）"
-say " 形状   : scripts/verify/t1-bare-exec.sh 那一族"
-say " 用法   : bash scripts/verify/check-exec-real-run.sh"
-say "=============================================================="
-say ""
+v "=============================================================="
+v " 「真跑起来」那一族 —— 那一次运行的观察结果"
+v " 判据源: 02 裁的那一句（它已落在 spec §122.83.4）"
+v " 形状   : scripts/verify/t1-bare-exec.sh 那一族"
+v " 用法   : bash scripts/verify/check-exec-real-run.sh"
+v "=============================================================="
+v ""
 
 CTL="$SAMPLE_DIR/shebang.sh"
 say "== 阳性对照（依 C-108：要有一件已经能跑的那一件）=="
-say "   对照那一件是：$CTL"
+v "   对照那一件是：$CTL"
 if [ ! -f "$CTL" ]; then
   say "   [error] 对照那一件读不到（一格报缺、整道检查不可信）"
   exit 1
@@ -66,16 +68,16 @@ run_once "$CTL_TMP/ctl.sh"
 ctl_rc1="$OUT_RC"; ctl_so1="$OUT_SO"
 run_once "$CTL_TMP/ctl.sh"
 ctl_rc2="$OUT_RC"
-say "   第一次：退出码=$ctl_rc1 stdout=$ctl_so1"
-say "   第二次：退出码=$ctl_rc2"
+v "   第一次：退出码=$ctl_rc1 stdout=$ctl_so1"
+v "   第二次：退出码=$ctl_rc2"
 if [ "$ctl_rc1" != "0" ] || [ "$ctl_rc2" != "0" ] || [ "$ctl_rc1" != "$ctl_rc2" ]; then
   say "   [error] 对照那一件跑不出它自己那行为、或那两次退出码不一致"
   say "一格意味着这一道检查不可信（依 C-108）"
   exit 1
 fi
-say "对照那一件跑得出它自己那行为、两次退出码一致"
-say "这一道检查可信"
-say ""
+v "对照那一件跑得出它自己那行为、两次退出码一致"
+v "这一道检查可信"
+v ""
 
 say "== 那期望行为声明（它是那一份数据、它逐件一条）=="
 DECL="$ROOT/scripts/verify/expected-behaviour.json"
@@ -84,8 +86,8 @@ if [ ! -f "$DECL" ]; then
   say "按 C-05 报缺（不猜填）"
   exit 1
 fi
-say "   声明：$DECL"
-say ""
+v "   声明：$DECL"
+v ""
 
 say "== 那一份声明自洽（逐件真跑归设备侧那一道）=="
 DECL_CHECK="$(node -e '
@@ -128,7 +130,7 @@ else
     say "   [绿] 那一份声明自洽（逐件真跑归设备侧那一道、归 07）"
   fi
 fi
-say ""
+v ""
 
 ARCHIVE_DIR="${LOBOS_PIECE_ARCHIVE:-/home/bowen/LOBOS/lob-os-team/06-asset-keeper/assets/pieces}"
 say "== 那一份声明与那归档那九件对得上（逐件真跑归设备侧那一道）=="
@@ -181,7 +183,7 @@ console.log("COUNT|"+checked+"|"+bad);
     say "   [绿] 那一份声明与那归档那九件对得上"
   fi
 fi
-say ""
+v ""
 
 say "== (甲) 那一档能跑的那几档判红 =="
 
@@ -253,10 +255,10 @@ for pair in "ELF-DYN:elf-dyn" "ELF-EXEC:elf-exec"; do
   say "那真跑那一格要设备侧（承载是 arm64、一格归 07）"
 done
 
-say ""
+v ""
 say "== (乙) 那一档测不了的那一档（PE）记缺 =="
 PE_DIR="$ROOT/container/app/src/main/assets/win32"
-say "   仓内那真 PE 样本在：$PE_DIR"
+v "   仓内那真 PE 样本在：$PE_DIR"
 if [ ! -d "$PE_DIR" ]; then
   say "   [缺] 那真 PE 样本没有（按 C-05 报缺）"
 else
@@ -271,18 +273,18 @@ else
     fi
   done
 fi
-say ""
-say "一格测不了：仓内没有 Win32 系统面、PE 那一族没有执行原语"
+v ""
+v "一格测不了：仓内没有 Win32 系统面、PE 那一族没有执行原语"
 
-say ""
+v ""
 say "== 结论 =="
 if [ "$rc_all" = "0" ]; then
   say "能跑的那几档跑得出它自己那行为、退出码正确"
 else
   say "能跑的那几档里有跑不出的（已判红）"
 fi
-say "测不了的那一档记缺 + 成因（按 C-05 报缺、按 C-126 写「测不了」）"
-say "那不许把「测不了」写成「跑不起来」（是推论、不是读数）"
-say ""
-say "退出码=$rc_all"
+v "测不了的那一档记缺 + 成因（按 C-05 报缺、按 C-126 写「测不了」）"
+v "那不许把「测不了」写成「跑不起来」（是推论、不是读数）"
+v ""
+v "退出码=$rc_all"
 exit $rc_all

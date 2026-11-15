@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 export LC_ALL=C
 
@@ -52,7 +54,7 @@ esac
 anchor_fp="$("$OPENSSL" pkey -pubin -in "$ANCHOR" -outform DER 2>/dev/null | "$OPENSSL" dgst -sha256 | awk '{print $NF}' || true)"
 [ -n "$anchor_fp" ] || { echo "[error] 锚点指纹取不出来（openssl 版本行为变了？）—— 无从核验即不放行。"; exit 2; }
 echo "[ok]   锚点是一把有效的 Ed25519 公钥：$ANCHOR"
-echo "       指纹 sha256(DER)=$anchor_fp"
+v "       指纹 sha256(DER)=$anchor_fp"
 
 if [ -n "$PRIVATE" ]; then
   if [ ! -s "$PRIVATE" ]; then

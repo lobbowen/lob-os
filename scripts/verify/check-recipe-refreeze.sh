@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 
 set -uo pipefail
 export LC_ALL=C
@@ -51,9 +53,9 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
 })' 2>/dev/null | grep -E 'src[0-9a-f]+' || true
 }
 
-echo "   算据：scripts/toolchain/cache-key.sh"
-echo "   当前 HEAD：$(git -C "$ROOT" rev-parse HEAD 2>/dev/null | cut -c1-12)"
-echo ""
+v "   算据：scripts/toolchain/cache-key.sh"
+v "   当前 HEAD：$(git -C "$ROOT" rev-parse HEAD 2>/dev/null | cut -c1-12)"
+v ""
 
 rc_all=0
 for p in "${PIECES[@]}"; do
@@ -97,13 +99,13 @@ for p in "${PIECES[@]}"; do
   continue
 done
 
-echo ""
+v ""
 if [ "$rc_all" = "0" ]; then
   echo "当前那几份都在 Release 上（它们不用再发布）"
 else
   echo "有那几件当前那一份不在 Release 上（它们要发布出去）"
   echo "那发布那一族归 06、那规范那一层归 04"
 fi
-echo ""
-echo "退出码=$rc_all"
+v ""
+v "退出码=$rc_all"
 exit $rc_all

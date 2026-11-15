@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 
 set -uo pipefail
 export LC_ALL=C
@@ -30,9 +32,9 @@ if [ -z "$HEAD_SHA" ]; then
 fi
 HEAD_SHORT="${HEAD_SHA:0:12}"
 
-echo "   当前 HEAD：$HEAD_SHA"
-echo "   pin 记录：$PIN"
-echo ""
+v "   当前 HEAD：$HEAD_SHA"
+v "   pin 记录：$PIN"
+v ""
 
 rc_all=0
 for zip in "$@"; do
@@ -119,12 +121,12 @@ process.stdout.write(hit?String(hit.buildSha||""):"");
   fi
 done
 
-echo ""
+v ""
 if [ "$rc_all" = "0" ]; then
   echo "每一份都与当前那一份代码一致"
 else
   echo "有那一份不是当前那一份代码造出来的（要重新固化）"
 fi
-echo ""
-echo "退出码=$rc_all"
+v ""
+v "退出码=$rc_all"
 exit $rc_all

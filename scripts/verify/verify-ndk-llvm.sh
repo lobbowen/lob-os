@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 export LC_ALL=C
 
@@ -58,7 +60,7 @@ if ! command "${CLANG:-}" --version >/dev/null 2>&1; then
 fi
 
 VER_OUT="$(command "${CLANG:-}" --version 2>&1 | head -3)"
-echo "[ndk-llvm] $VER_OUT"
+v "[ndk-llvm] $VER_OUT"
 
 GOT_REV="$(printf '%s\n' "$VER_OUT" | sed -n 's/.*[ (]r\([0-9a-f]\{6,\}\)[) ].*/\1/p' | head -1)"
 [ -n "$GOT_REV" ] || GOT_REV="$(printf '%s\n' "$VER_OUT" | grep -o 'clang-r[0-9a-f]\{6,\}' | head -1 | sed 's/clang-//')"

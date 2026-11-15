@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 export LC_ALL=C
 
@@ -44,7 +46,7 @@ if ! "$READELF" --version >/dev/null 2>&1; then
   echo "        这是环境/用法问题（不是产物不合格）—— 取不出数据就一条判据都不会跑，拒绝校验。"
   exit 2
 fi
-echo "[info] 使用 readelf: $READELF"
+v "[info] 使用 readelf: $READELF"
 
 if [ ! -f "$DEPS_FILE" ]; then
   echo "[error] 找不到系统库白名单: $DEPS_FILE"
@@ -78,8 +80,8 @@ fi
 if [ -z "${EXEC_SET// /}" ]; then
   echo "[note] 清单的「可执行资产本体」段为空（node 由控制面板下发，APK 内没有可执行件）—— 只校验依赖库段。"
 fi
-echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
-echo "   可执行资产: $EXEC_SET"
+v "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
+v "   可执行资产: $EXEC_SET"
 
 SO_LIST="$(cd "$DIR" && ls | sed -n '/\.so\(\.[0-9][0-9.]*\)\{0,1\}$/p')"
 if [ -z "$SO_LIST" ]; then
@@ -104,8 +106,8 @@ if [ -n "${DEP_SET// /}" ] && [ -z "$SEEN_DEP" ]; then
   echo "[error] $DIR 里没有清单声明的依赖库（$DEP_SET）—— DT_NEEDED 闭环无从进行。"
   exit 2
 fi
-echo "   依赖库段: ${DEP_SET:-（空）}"
-echo "   已对上: 依赖库=$SEEN_DEP 可执行=$SEEN_EXEC"
+v "   依赖库段: ${DEP_SET:-（空）}"
+v "   已对上: 依赖库=$SEEN_DEP 可执行=$SEEN_EXEC"
 
 fail=0
 soft_degraded=""

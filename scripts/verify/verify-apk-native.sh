@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+V="${LOBOS_VERBOSE:-0}"
+v() { if [ "$V" = "1" ]; then printf '%s\n' "$@"; fi; return 0; }
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -97,7 +99,7 @@ fi
 
 echo
 
-echo "  （本段已退役，见下方 assets/pieces/ 那一节）"
+v "  （本段已退役，见下方 assets/pieces/ 那一节）"
 echo
 
 echo
@@ -130,7 +132,7 @@ for a in $ASSETS; do
 done
 
 echo
-echo "--- 预装件包（assets/pieces/<id>.zip）· 装配器只读包 ---"
+v "--- 预装件包（assets/pieces/<id>.zip）· 装配器只读包 ---"
 
 PIECE_BAD=0
 PIECE_N=0
@@ -196,7 +198,7 @@ if [ "$PIECE_N" != "$WANT_N" ]; then
   echo "[error] 预装件包 $PIECE_N 个，该取的件有 $WANT_N 个"
   PIECE_BAD=$((PIECE_BAD + 1))
 fi
-echo "  预装件包 $PIECE_N 个，该取的件 $WANT_N 个"
+v "  预装件包 $PIECE_N 个，该取的件 $WANT_N 个"
 [ "$PIECE_BAD" = "0" ] || MISSING="$MISSING piece-pack($PIECE_BAD)"
 
 echo
