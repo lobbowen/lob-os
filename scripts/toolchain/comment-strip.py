@@ -6,10 +6,14 @@
 这个项目已经因此重固化过四次。指纹要认的是「会改变构建结果的东西」，
 注释不是 —— 所以先剥注释再算哈希。
 
-硬要求：对不含注释的输入，输出必须与输入节相同。
-否则「剥注释」这件事本身就会改指纹，改造白做。
-所以这里不在没注释的地方做任何规范化：不去行尾空白、不动缩进、
-不改行尾符、不补不删空行。
+硬要求 1：幂等。对同一输入跑两遍，输出必须相同。
+硬要求 2：只丢「不影响产物」的东西。注释之外，还丢纯提示行的字面量
+（首词是 echo/printf/die/say/warn/err/fail/note/trace，且整行没有重定向、
+没有管道、没有命令替换、没有变量展开）。有这些的一律保留原样 ——
+那种 echo 可能是在生成内容，不是在打印提示。
+硬要求 3：影响构建结果的东西必须仍然改变哈希（命令、参数、CFLAGS、路径、
+生成的配置文件内容）。
+除此之外不做任何规范化：不去行尾空白、不动缩进、不改行尾符、不补不删空行。
 
 用法：
     comment-strip.py <原文件名>  < 输入  > 输出
@@ -22,6 +26,7 @@
     .c .h                // 与 /* */
     其它                  原样
 """
+import re
 import sys
 
 
@@ -246,10 +251,42 @@ def strip_sh(src):
     return '\n'.join(out)
 
 
+def strip_message_lines(src):
+    """指纹不该把纯提示文字当成构建输入：一句提示的措辞不改变产物里任何一个字节。
+
+    只处理「首词是提示函数」的行（echo/printf/die/say/warn/err/fail/note/trace），
+    且整行没有重定向、没有管道、没有命令替换、没有变量展开 ——
+    有这些的一律保留原样，因为那种行可能是在生成内容而不是在打印提示。
+    命中的行把字符串字面量内容换成 ... ，命令本身与参数个数保留。
+    """
+    HINT = ('echo', 'printf', 'die', 'say', 'warn', 'err', 'fail', 'note', 'trace')
+    lines = src.split('\n')
+    out = []
+    for line in lines:
+        t = line.strip()
+        t2 = t
+        while t2[:2] in ('||', '&&') or t2[:1] in ('(', '!'):
+            t2 = t2[1:].lstrip() if t2[:1] in ('(', '!') else t2[2:].lstrip()
+        w = t2.split(None, 1)[0] if t2 else ''
+        w = w.rstrip(';|&')
+        hit = (w in HINT and '>' not in t2 and '|' not in t2 and '<' not in t2
+               and '$(' not in t2 and '${' not in t2)
+        if not hit:
+            out.append(line)
+            continue
+        new = re.sub('([\'"])[^\'"\n]*\\1', '\\1...\\1', t)
+        if new == t:
+            out.append(line)
+            continue
+        lead = line[: len(line) - len(line.lstrip())]
+        tail = ';' if t.rstrip().endswith(';') else ''
+        out.append(lead + new + tail if tail and not new.rstrip().endswith(';') else lead + new)
+    return '\n'.join(out)
+
 def pick(name):
     low = name.lower()
     if low.endswith(('.sh', '.bash')):
-        return strip_sh
+        return lambda s: strip_message_lines(strip_sh(s))
     if low.endswith(('.js', '.mjs')):
         return strip_js
     if low.endswith(('.kt', '.java')):
