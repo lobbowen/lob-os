@@ -148,8 +148,7 @@ object PieceScan {
             val path = o.optString("path", "")
             val sha = o.optString("sha256", "")
             if (path.isBlank() || sha.isBlank()) continue
-            val abs = File(base, path).absolutePath
-            out.add(UnitEntry.FileRec(abs, sha))
+            out.add(UnitEntry.FileRec(path, sha))
         }
         return out
     }
@@ -297,7 +296,7 @@ object PieceScan {
                 continue
             }
             val rel = raw
-            val f = File(base, rel)
+            val f = if (raw.startsWith("/")) File(raw) else File(base, rel)
             when {
                 !f.isFile -> bad += "缺：" + rel
                 SupplySha.sha256(f) != fr.sha256 -> bad += "被换过：" + rel
