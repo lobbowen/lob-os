@@ -1,31 +1,5 @@
 #!/usr/bin/env python3
-"""把源码里的注释剥掉，供指纹计算用。
-
-为什么要有这一份：件的指纹原先按文件原始字节算，于是改一处注释
-（哪怕只删一个标记）都会让该件的资产名变、旧产物作废、必须重固化一轮。
-这个项目已经因此重固化过四次。指纹要认的是「会改变构建结果的东西」，
-注释不是 —— 所以先剥注释再算哈希。
-
-硬要求 1：幂等。对同一输入跑两遍，输出必须相同。
-硬要求 2：只丢「不影响产物」的东西。注释之外，还丢纯提示行的字面量
-（首词是 echo/printf/die/say/warn/err/fail/note/trace，且整行没有重定向、
-没有管道、没有命令替换、没有变量展开）。有这些的一律保留原样 ——
-那种 echo 可能是在生成内容，不是在打印提示。
-硬要求 3：影响构建结果的东西必须仍然改变哈希（命令、参数、CFLAGS、路径、
-生成的配置文件内容）。
-除此之外不做任何规范化：不去行尾空白、不动缩进、不改行尾符、不补不删空行。
-
-用法：
-    comment-strip.py <原文件名>  < 输入  > 输出
-按文件后缀选语言；认不出的后缀原样输出。
-
-语言支持：
-    .sh                  shell（# 只在词首算注释；首行 #! 是 shebang 保留）
-    .js .mjs .kt .java   // 与 /* */（Kotlin 的块注释按深度配对）
-    .py                  # （三引号串保留，它是运行期对象）
-    .c .h                // 与 /* */
-    其它                  原样
-"""
+"""把源码里的注释与纯提示文字剥掉，供指纹计算用。用法: comment-strip.py <原文件名> < 输入 > 输出"""
 import re
 import sys
 
@@ -43,7 +17,6 @@ def strip_c_like(src, nested_block=False):
     n = len(src)
     while i < n:
         c = src[i]
-        # 三引号原始串（Kotlin/Java 的 \"\"\"）
         if src.startswith('"""', i):
             j = i + 3
             while j < n and not src.startswith('"""', j):
@@ -137,7 +110,6 @@ def strip_js(src):
             out.append(src[i:j])
             i = j
             continue
-        # 行注释；前面是反斜杠时是正则里的转义斜杠，不是注释
         if src.startswith('//', i) and (i == 0 or src[i - 1] != '\\'):
             j = src.find('\n', i)
             j = n if j < 0 else j
@@ -216,7 +188,6 @@ def strip_sh(src):
         if s.startswith('#'):
             out.append('')
             continue
-        # 行内 # 注释：只认「引号外、前面是空白」的 #
         res = []
         i = 0
         n = len(line)

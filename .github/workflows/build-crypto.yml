@@ -1,25 +1,5 @@
 name: Build crypto
 
-# crypto 那一件的**固化产物由 build-openssl.yml 那一趟产出** ——
-# 而这一份只是**核**它：它现在不再自己拆包、不再自己打包、不再自己上传。
-#
-# 缺陷名（C-102）**同一个 libcrypto.so 字节有两条生成路径**：
-#   原来：openssl 那一件一次 make 出 libssl.so 与 libcrypto.so，
-#   而这一份（build-crypto.yml）**从 openssl 的固化包里拆出来**重打一个包并上传到 base-crypto；
-#   而那一拆一打发生在**另一次流水线**（buildRun 不同）——
-#   读数：base-crypto 筐里 crypto-openssl+3.6.3+ndk30.0.16248370+api35+src90fa46a13608.zip
-#   那一份的 component-meta.json 里 buildRun=40030227900，
-#   而 base-openssl 筐里 src90fa46a13608 那一份的 meta 里 buildRun=40030215774 —— 两者不同。
-#「一份产物里那几件要保证同一次构建」（01 今天 S81/S82 裁的是甲）这一格不成立。
-#lead 今天裁：保留 crypto 作为独立一件，改由 openssl 那一趟同源产出。
-#
-# 而这一份的读者 scripts/toolchain/piece-workflow-name.sh:13 已经写着
-#   crypto) echo "build-openssl.yml" ;;   # crypto 由 openssl 连带产出
-#   而它的读者是 fetch-prebuilt-pieces.sh:121 —— 与本件现在做的事是同一件事。
-#
-# 所以这一份做的事：
-#   1. dispatch build-openssl.yml（那一趟会同时产出并上传 crypto 那一件）；
-#   2. 等 base-crypto 筐里那一件到位并**核它的内容**（meta 与形状）。
 on:
   workflow_dispatch: {}
 
@@ -92,10 +72,7 @@ jobs:
           rm -rf c-pkg o-pkg && mkdir -p c-pkg o-pkg
           unzip -qq -o "dist/$ASSET" -d c-pkg
           unzip -qq -o "dist/$OASSET" -d o-pkg
-          # 形状对账（只看包本身）。
           bash scripts/verify/verify-piece-shape.sh "dist/$ASSET" library
-          # 构建标识：crypto 那一份必须与 openssl 那一份**同一格** ——
-          #   而那正是「同一次构建」那一格要验的（buildSha 与 buildRun 两格都要相等）。
           for f in c-pkg/component-meta.json o-pkg/component-meta.json; do
             [ -f "$f" ] || { echo "::error title=包里没有 component-meta.json::$f 不在"; exit 1; }
           done

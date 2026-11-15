@@ -1,16 +1,6 @@
 name: Build Component · make
 
 on:
-  # -- 触发方式 --
-  #
-  # 只有两种：
-  #   workflow_dispatch  手动 —— 「我现在要构建这一件」
-  #   tag                发布轮（os-release-*）
-  #
-  # 不再由 push 触发。件是独立的：改一份文档、改另一个件的钉值，
-  # 都不该重建这一件；反过来真的要重建时，dispatch 这一条就够了。
-  # 之前靠 paths 白名单过滤，结果是「改一个共享脚本触发 16 个」——
-  # 白名单只能防漏，不能防多，而且漏与多都是错。
   workflow_dispatch: {}
 
 concurrency:
@@ -66,9 +56,6 @@ jobs:
       - name: 算本件的固化标识（key / tag / asset）
         id: uwkey
         run: |
-          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 11 个 workflow 都调它，
-          # 免得各自留一份空壳（此前 11 个的这段是空的，tag/asset 为空串，
-          # 「已固化就复用」从未命中过）。
           bash scripts/toolchain/piece-key.sh make
       - name: 已发布就复用（不重编）
         id: reuse
@@ -85,30 +72,6 @@ jobs:
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
             mv "dist/$ASSET" "dist/component-make.zip"
             [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-make.zip.sha256" || true
-            #  缺陷名（C-102）**按名硬取**：旧版是 `tar xzf "dist/component-make.zip" -C dist`
-            #**文件名后缀**是 .zip 而那命令是 tar xzf、
-            #**内容**是 tar.gz（一条 tar xzf 在 zip 内容上解不开）。
-            #「哪一层才算那一颗件」那一格**归 01 裁**（本处**不**拍板）。
-            # 按 C-994「判别源必须唯一」：一格**调** scripts/toolchain/fmt.sh。
-            #  缺陷名（C-102）**那一格让那**旧件**留在那 `dist/` 里、artifact**里面**就有那**两颗**同名件**
-            # 旧版**没有**这一行
-            #**缓存**存的那 `dist/component-make-*.zip`（**缓存命中**时**恢复**回来）
-            #       **包括**那**上一轮** **解开**出来的那**内层**那一份
-            #        （**内层**那一份**带着**那版本号与那指纹、名字**就是**那 `component-<件>-<版>-<指纹>-…zip`）
-            #**复用**这一路又从那 Release**解开**一份（**版本一样**、**指纹** **可能不同**）
-            #**上传**那一格那 path 是 `dist/component-make-*.zip`
-            #**两颗** **都**进那 artifact
-            #**后果**（06 本机实读那 job log、Lead 本机实读复核成立）：
-            #        `::[error]component-sqlite 里有 2 颗 sqlite 的 zip:`
-            #        `  component-sqlite-3.53.4-087255f116d8-android-arm64.zip`
-            #        `  component-sqlite-3.53.4-43a13ff2387e-android-arm64.zip`
-            #        `::[error]逐件判断它们哪颗是本轮编的 —— 那份 artifact 不该收进清单`
-            #**判据**是「那 artifact 里那内层 zip 是不是只含那**本轮编的**那一颗」
-            #      （它**不**许靠猜、它**要**按那指纹挑那一颗）
-            #**处置**：**旧件** **解开之前**就清掉
-            #`dist/`**只**留那**这一轮** **解开**出来的那一颗
-            #artifact**里面** **只有**那一颗、**多颗**那一族**不再**触发
-            #**归属**：**清**归 **05**；**读数**归 **06** 与 **07**。
             rm -f dist/component-make-*.zip
             bash scripts/toolchain/unpack-piece.sh "dist/component-make.zip" dist
             ls -la dist/ | sed 's/^/  /'
@@ -123,18 +86,6 @@ jobs:
         with:
           path: |
             work/make
-            #  缺陷名（C-102）**那缓存把那**内层**那一份也存进去、它**本来**不该被缓存**
-            # 旧版是 `dist/component-make-*.zip`
-            #glob**要**那连字符后面**有**东西、**外层**那一份**没有**
-            #        （**外层**那一份是 `dist/component-make.zip`、**内层**那一份
-            #         是 `dist/component-make-<版>-<指纹>-android-arm64.zip`）
-            #glob**两**份**都**命中不到、**缓存** **存不下**那外层
-            #**缓存命中** **不**可能、**内层** **不在**那缓存里
-            #**判据**是「那上传进那 artifact 里的那内层 zip 是不是只含那**本轮编的**那一颗」
-            #        那一个事实上（它**不**由「那一件是什么」顶掉）
-            #**处置**：缓存**只**存那**外层**那可复用的那一份
-            #**内层**解出来的那一份**不**进缓存
-            #        （内层是那**一次构建**的产物、它本来**不该**被缓存）
             dist/component-make.zip
           key: ${{ steps.uwkey.outputs.key }}
       - name: 产出 make 件（仅在需要编时）
@@ -144,19 +95,6 @@ jobs:
         if: steps.reuse.outputs.hit == 'yes'
         run: |
           set -euo pipefail
-          #  缺陷名（C-102）**「那『仅在需要编时』」那一族没有那版本号、它是打包那一支**必须**有的一样东西** ——
-          # 旧版**没有**这一步、「打包 + sha256」**照跑**
-          #`package-component.sh:12` `VER=$(cat "dist/${TOOL}.version" …)`
-          #        读不到、它`die "缺版本号：dist/make.version 不在或为空"`
-          #**成因**：「产出那一件」**只在**需要编时跑
-          #      （**复用**那一支**不编译**、**编译**那一支产的
-          #       `dist/make.version`**不在**、它**缺**）
-          #**处置**：**复用**那一支**自己**写那版本号
-          # 它**从那钉值表**取（`fetch-pinned.sh --src-version` 那一族
-          #        是**纯查表**、它**不**下载、它**不**要求那一趟去编）
-          # 它**是**那**同一份事实**（`package-component.sh` 那一格
-          #        拿那钉值表比那本产物那一份、两者**应该**一致）
-          # 它**读不到**时**报缺**（按 C-05 不猜填、**不**编一个值）
           VER="$(bash scripts/toolchain/fetch-pinned.sh --src-version make 2>/dev/null || true)"
           [ -n "$VER" ] || { echo "::error title=缺版本号::钉值表那 make 那一格读不到版本号 —— 不编值"; exit 1; }
           mkdir -p dist
@@ -168,28 +106,6 @@ jobs:
         run: bash scripts/recipes/package-component.sh make
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
-        #  缺陷名（C-102）**那一格让那缓存配额把那一趟判红、它**不该**挡那产物**
-        # 旧版**没有**这一行
-        #`actions/cache/save@v4`**失败** **就是**那一步**失败**
-        #**原话**是（Lead 本机实读核过）：
-        #          `Failed to save: Unable to reserve cache with key uw-pkgconf-nodeps-…, anot…`
-        #          / `##[warning]Cache save failed.`
-        #**配额**是 GitHub 那一族、它**不归**我们改
-        #**后果**：**产物** **已经**做成、
-        #**存回缓存** **在**那**上传那 artifact**之前**
-        #          （`upload-artifact`在 `:180`、`cache/save`在 `:117`）
-        # 缓存**存不下** **就**把那一趟**判红**、
-        #**artifact 根本没传上去**
-        #**恢复**那一格**有** `continue-on-error: true`
-        #        （**存**那一格**没有**、两边**不对称**）
-        #**判据**是「那一趟失败有没有影响那产物本身」那一个事实上
-        #**缓存** **只是**省时间、它**不是**那产物
-        #**处置**：**存**那一格**也** `continue-on-error: true`
-        #**存不下** **只是**那一步**警告**、一趟**继续**往下走
-        #**产物** **照旧**传上去
-        #**归属**：**配额**归 GitHub（它**不归**我们改）、
-        #**缓存** **只是**省时间、它**不**成为那发布轮的**阻塞点**
-        #      （发布轮要的是那 artifact**在**、它**不是**那缓存）
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
@@ -254,31 +170,11 @@ jobs:
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
               node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
-      #  缺陷名（C-102）**那一格让那**旧件**进那 artifact、artifact**里面**就有那**两颗**同名件**
-      # 旧版**没有**这一格
-      #**缓存恢复** **在**最前那一段（**外层**那一份**恢复**回来）
-      #**复用**那一路又**解开**一份（**版本一样**、**指纹** **可能不同**）
-      #**编译**那一路又**产出**一份（**指纹** **又是**另一个）
-      #**上传**那一格那 path 是 `dist/component-make-*.zip`
-      #**所有**那旧件**都**进那 artifact
-      #**后果**（06 本机实读那 job log、Lead 本机实读复核成立）：
-      #        `::[error]component-make 里有 2 颗 make 的 zip:`
-      #        `  component-make-<版>-<指纹>-android-arm64.zip`
-      #        `  component-make-<版>-<指纹>-android-arm64.zip`
-      #        `::[error]逐件判断它们哪颗是本轮编的 —— 那份 artifact 不该收进清单`
-      #**判据**是「那上传进那 artifact 里的那内层 zip 是不是只含那**本轮编的**那一颗」
-      #        那一个事实上（它**不**由「那一件是什么」顶掉）
-      #**处置**：**上传**那一格**之前**把那**旧件**清掉
-      #**清** **不**一刀切（本轮编的那一颗因为是最新、
-      # 它**要**保住）**清** **按**那**指纹**挑那一颗
-      #**挑** **按**那**修改时刻**（**最新** **就是**那本轮编的那一颗）
       - name: 只把本轮编的那一颗装进 artifact（清掉上一轮留下的）
         run: |
           set -euo pipefail
-          #**候选**是那 `dist/` 里那 `component-make-*.zip`
           mapfile -t _all < <(compgen -G "dist/component-make-*.zip" || true)
           if [ "${#_all[@]}" -gt 1 ]; then
-            #**最新**就是那**本轮编**的那一颗（它按那修改时刻**最新**）
             _keep=""
             for _f in "${_all[@]}"; do
               if [ -z "$_keep" ] || [ "$_f" -nt "$_keep" ]; then _keep="$_f"; fi
@@ -293,18 +189,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: component-make
-          #  缺陷名（C-102）**那上传把**所有**那旧件都装进去、artifact**里面**就有那**两颗**同名件**
-          # 旧版是 `path: dist/component-make-*.zip`
-          #glob**把**那 `dist/` 里**所有**那 `component-make-*.zip`**都**装进去
-          #**后果**（06 本机实读那 job log、Lead 本机实读复核成立）：
-          #        `::[error]component-make 里有 2 颗 make 的 zip:`
-          #        `  component-make-<版>-<指纹>-android-arm64.zip`
-          #        `::[error]逐件判断它们哪颗是本轮编的 —— 那份 artifact 不该收进清单`
-          #**处置**：**上传**那一格**之前**把那**旧件**清掉
-          #`dist/component-make-*.zip`**只**留那**本轮编的**那一颗
-          #**清** **不能**一刀切（本轮编的那一颗因为是最新、
-          # 它**要**保住）**清** **按**那**指纹**挑那一颗
-          #**判据**是「那上传进那 artifact 里的那内层 zip 是不是只含那**本轮编的**那一颗」
-          #        那一个事实上（它**不**由「那一件是什么」顶掉）
           path: dist/component-make-*.zip
           retention-days: 30

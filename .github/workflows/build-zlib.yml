@@ -1,10 +1,6 @@
 name: Build zlib
 
-# 编 zlib 1.3.2 —— curl 与 openssl 都依赖它（component-sources.json 的 deps 里列着）。
-# 基础件：随 APK 内置，但由本 workflow 编一次、固化到 Release，APK 只取不编。
 on:
-  # 只手动：「我现在要构建这一件」。
-  # 件是独立的 —— 不由 push 触发。详见 RELEASE-POLICY.md。
   workflow_dispatch: {}
 
 concurrency:
@@ -37,7 +33,6 @@ jobs:
       - name: 算本件的固化标识（key / tag / asset）
         id: uwkey
         run: |
-          # 三样都由 scripts/toolchain/piece-key.sh 单点算出 —— 各 workflow 都调它。
           bash scripts/toolchain/piece-key.sh zlib
 
       - name: 已固化就复用（不重编）
@@ -48,15 +43,6 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          # 判据必须验**内容**：包里要有 component-meta.json，否则装配器读不了。
-          # 只判「Release 存在」或「资产名存在」是不够的 —— asset 名只含
-          # id/deps/ndk/api，不含格式版本，改版前后同名。于是旧格式的包
-          # 被当成新的继续用，CI 报 success 而包是空的。
-          # （同类错误还有：Mirror 判「写没写」被 truncate 掩盖；
-          # verify-apk-native 与内核同用一套错判据，两边一起错查不出。）
-          # 这一格验的是**包里那个入口文件** —— 而 zlib 那一件是**纯库件**（bin/ 目录不存在），
-          # 按今天的新规则它的 entry **留空**（按 C-05「没有」就是没有）。
-          # 而 reusable-asset.sh 第三参空 => 只验「包里有 component-meta.json」。
           if bash scripts/toolchain/reusable-asset.sh "$TAG" "$ASSET" ; then
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
@@ -73,8 +59,6 @@ jobs:
           set -euo pipefail
           PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
           [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; exit 1; }
-          # 只看产物本身：包里带 piece-shape.json（构建期算的形态），
-          # 现场用 readelf 复算一遍，两路对账。
           bash scripts/verify/verify-piece-shape.sh "$PKG" library
 
       - name: 固化标准件包到 Release
@@ -86,31 +70,18 @@ jobs:
           ASSET="${{ steps.uwkey.outputs.asset }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
           TAG="${{ steps.uwkey.outputs.tag }}"
-          # 标准包由 build-bundle-*.sh 的 emit_piece 产出（dist/component-<id>-<版本>-<sha>.zip），
-          # 里面带 component-meta.json —— 装配器只读包，不查外部清单。
           PKG="$(ls dist/component-*.zip 2>/dev/null | head -1 || true)"
           [ -n "$PKG" ] || { echo "::error title=没有标准包::build 脚本没产出 dist/component-*.zip"; ls -la dist/ | head; exit 1; }
-          # 上传名用 cache-key.sh 给的那个 —— 复用判据与取件都按它，两处必须同源。
-          # 之前这里用包名、判据那里用 deps 名，对不上，于是每轮都判为「未固化」。
           cp -f "$PKG" "dist/$ASSET"
           sha256sum "dist/$ASSET" | cut -d' ' -f1 > "dist/$ASSET.sha256"
           gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1             || gh release create "$TAG" --repo "${{ github.repository }}"                  --title "zlib 固化产物" --notes "标准件包（带 component-meta.json）。编一次，后续轮次直接取用"
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
 
-      # 缺陷名（C-102）**那一族没有一道「固化产物与当前代码一致」的检查** ——
-      # 旧版**没有**任何一处核「那一份是不是这一份代码造出来的」，
-      #**后果**是：改了一个 recipe 固化产物全是旧的
-      # 守卫**在取件那一趟**才发现根因在**几百行日志里**。
-      #**正解**：**固化这一趟跑完之后**核一次（守卫**早**知道）。
-      # 判据是那**构建标识**那一族（不是「那文件头字节」）：
-      # buildSha（产出它的那一次构建的代码 sha）**等于**那 pin 那一族记的那一件。
       - name: 固化产物与当前代码一致（构建标识那一族）
         if: steps.reuse.outputs.hit != 'yes'
         run: |
           set -euo pipefail
-          #pin 那一族记的是那**当前**这一份代码编出来的那一件
-          # （它由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
           bash scripts/verify/check-frozen-freshness.sh "dist/${{ steps.uwkey.outputs.asset }}"
       - name: 失败现场（Job Summary，不裁剪）
         if: always()

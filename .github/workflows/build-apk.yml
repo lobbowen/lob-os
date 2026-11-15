@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    # 只有「影响 APK 的东西」变了才构建。改文档、改 version.json、改脚本注释
-    # 都不该占用 runner —— 一次完整构建约 8 分钟。
     paths:
       - 'container/**'
       - 'scripts/**'
@@ -28,12 +26,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    # 缺陷名（C-102）**那 workflow 没有 permissions 那一块**、GITHUB_TOKEN
-    #**默认**拿的是那仓的**默认**权限（一档**按仓设置**变、**不可控**）。
-    # 取件那一格**要**用那 GITHUB_TOKEN 去读 Release 清单、**只要**读。
-    #**处置**：job**显式**给那 contents: read。
-    #**不碰**那两处 APK_PUBLISH_TOKEN（:78 与那 :475 是**发布**那一族的身份、
-    #**不是**取件的身份、**不合并**）。
     permissions:
       contents: read
     env:
@@ -72,32 +64,16 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
           echo "ANDROID_NDK_LATEST_HOME=${ANDROID_NDK_LATEST_HOME:-<unset>}"
 
-      # 发布轮的前置校验 —— 放在所有耗时步骤之前。
-      #
-      # 为什么必须提前：发布轮的三个专属判据（tag 与 version.json 一致、
-      # 签名密钥在位、发布令牌在位）原本排在第 30 步之后，也就是**编完
-      # 13 个原生件 + 整个 APK 之后**才判。tag 打错一个字符、secret 没配，
-      # 都要等十几分钟才报错。校验轮不会碰到这些，所以这个洞一直没人踩到。
-      #
-      # 这一步只读，不改任何东西 —— 它要保证「发布轮往下走之前一定不会白跑」。
       - name: 发布轮前置校验（tag / 密钥 / 令牌 / 版本闸门）
         if: ${{ env.RELEASE_ROUND == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.APK_PUBLISH_TOKEN }}
-          # 四个签名 secret 必须**显式声明**在 env 里 ——
-          # GitHub 只把出现在 env/secrets 上下文里的值注入 job，
-          # step 的 run 块里 ${!v} 直接读环境变量，读不到没声明的 secret。
-          # 上一版只声明了 GH_TOKEN，于是这四个在 run 块里恒为空，
-          # 表现为「secret 明明存在（API 查得到）却报缺少」。
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          # jq 在本 workflow 里第一次被用到就是这里（此前那 7 处都在发布轮末尾，
-          # 校验轮从没跑过那段）—— 所以「jq 可用」此前从未被验证过。
-          # 缺它时 set -e 会在第一条 echo 之前就杀掉脚本，报错原因一个字都看不到。
           for t in jq gh; do
             command -v $t >/dev/null 2>&1 || {
               echo "::error title=发布前置::缺 $t —— runner 上没有，前置校验跑不起来"
@@ -115,7 +91,6 @@ jobs:
           pass() { echo "- [ok] $1" >> "$SUMMARY"; }
           echo '## 发布轮前置校验' >> "$SUMMARY"
 
-          # (1) tag 与 version.json 必须一致 —— 否则要编完 APK 才报
           [ -f version.json ] || { echo "::error title=发布前置::工作区里没有 version.json"; exit 1; }
           NAME_VER="$(jq -r '.shell.versionName' version.json)"
           CODE="$(jq -r '.shell.versionCode' version.json)"
@@ -125,8 +100,6 @@ jobs:
             pass "tag 与 version.json 一致：$RELEASE_TAG（versionCode=$CODE）"
           fi
 
-          # (2) 四件签名密钥必须齐 —— 缺一个就退回一次性 debug 签名，
-          # 装到已装设备上必然 INSTALL_FAILED_UPDATE_INCOMPATIBLE
           MISSING_KEYS=""
           for v in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             [ -n "${!v:-}" ] || MISSING_KEYS="$MISSING_KEYS $v"
@@ -137,14 +110,12 @@ jobs:
             pass "签名密钥四件齐备（alias 由 secrets 提供）"
           fi
 
-          # (3) 发布令牌
           if [ -z "${GH_TOKEN:-}" ]; then
             say "缺少 secrets.APK_PUBLISH_TOKEN —— 发不了 release"
           else
             pass "发布令牌在位"
           fi
 
-          # (4) 同版本号只允许配同一批字节
           if [ -z "${GH_TOKEN:-}" ]; then
             echo "- [warn] 跳过「同版本号闸门」（没有令牌查不了）" >> "$SUMMARY"
           elif gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
@@ -175,8 +146,6 @@ jobs:
             ls -1 "$SDK" 2>/dev/null || true
             exit 1
           fi
-          # 后面 verify-apk-signing.sh 要在这里找 apksigner —— 先确认它真的在，
-          # 免得几十行之后才报「找不到 apksigner」，看不出是哪一步没装成
           if ! find "$SDK/build-tools" -name apksigner 2>/dev/null | head -1 | grep -q .; then
             echo "::error title=build-tools 里没有 apksigner::签名核验依赖它"
             ls -1 "$SDK/build-tools" 2>/dev/null || echo "  （build-tools 目录不存在）"
@@ -227,11 +196,6 @@ jobs:
       - name: 放置 sysroot 到 assets（编译期材料 · 不是件）
         run: |
           set -euo pipefail
-          # sysroot 是**编译期**的头文件与库目录（include/ + lib/），
-          # 不是可运行的能力 —— 所以进 APK 但不成为件：
-          # · 不产 component-meta.json（不是 usr/lib/<id>/<版本>/ 那个形状）
-          # · 不落位（内核不认识它）
-          # Linux 的对应物：gcc 包的 include/ 与 libc6-dev 包 —— 都是编译材料。
           NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
           SRC="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1)"
           [ -n "$SRC" ] || { echo "::error title=找不到 NDK sysroot::编译任何 C/C++ 都要它（NDK=$NDK）"; exit 1; }
@@ -239,40 +203,18 @@ jobs:
           rm -rf "$DST"
           mkdir -p "$DST/usr/lib/aarch64-linux-android"
           cp -a "$SRC/usr/include" "$DST/usr/include"
-          #**架构**那**一族**的头**也**要**并**进去**（asm/types.h**在**那
-          # usr/include/aarch64-linux-android/asm/ **那一族**、**顶层**的**那个**里面**没有**它**）。
           if [ -d "$SRC/usr/include/aarch64-linux-android" ]; then
             cp -a "$SRC/usr/include/aarch64-linux-android/." "$DST/usr/include/"
           fi
-          #**库** **要**按**那 NDK **那一族**的**层次**摆**（crtbegin_so.o 与那 crtend_so.o
-          #**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、**顶层**的**那个**里面**没有**它们**）。
           cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-          # 缺陷名（C-102）**那 sysroot **那一族** **把**那 NDK **那一族**的**全部**搬**进去**了**
-          #**后果**libc.a  = **26672138** 字节、libc++_static.a  = **24518858** 字节、
-          #**整个**的**那一份** = **125 M**、APK **那一份** **涨**那**一百**多 M、
-          #**它**们**是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
-          #**处置**：**<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
-          #**它**们**是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
           for _d in "$DST/usr/lib/aarch64-linux-android/"*/; do
             _b="$(basename "$_d")"
             case "$_b" in
-              #**目标三元组** **是**那 aarch64-linux-android35、**它** **要**那 **35** **那一个**
-              # **子目录**（**clang** **按**那**目标**的**API**找**那 crt **那一族**）。
               [0-9]*) [ "$_b" = "35" ] || rm -rf "$_d" ;;
             esac
           done
-          #libc.a 与那 libc++_static.a**不**要**（**它**们**是**那**两**件**事**：
-          # 「那**链接**要**什么**」与「那**静态库**是**什么**」）、**处置** **不合并**。
           rm -f "$DST/usr/lib/aarch64-linux-android/libc.a" "$DST/usr/lib/aarch64-linux-android/libc++_static.a"
           rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 不在**那 sysroot **里面**、**它** **在**那 clang **那工具链**那一族**
-          #clang**编**的**那**时候**从**那**工具链**那一族**找**那 libunwind.a**、
-          #**它** **在**那 APK **外面**、**它** **进不去**那**设备**
-          #**后果**llvm **那一格** **编**一个 .so **不过**、
-          # 而那**错** = 那「ld.lld: error: unable to find library -l:libunwind.a」。
-          #**处置**：**工具链**那一族**也**拷**进**那 sysroot **那 lib/ **里面**、
-          #**它** **跟**那 sysroot **一起**进**那 APK**（**它**们**是**那**两**件**事**：
-          # 「那**头文件与库**」与「那**工具链**自己的**库**」）。
-          # 按 C-104：**它**们**不是**那同一件内容的两条取法、**处置** **不合并**。
           TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
           if [ -n "$TOOLLIB" ]; then
             cp -a "$TOOLLIB"/. "$DST/usr/lib/" 2>/dev/null || true
@@ -285,29 +227,13 @@ jobs:
           echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include" | wc -l) 项 · lib $(ls "$DST/usr/lib" | wc -l) 项）"
           du -sh "$DST"
 
-      # APK 是**取件模式**：预装件是现成的，编一次固化到 Release，之后一直取用。
-      # 这里不再编译任何件 —— 取不到就报错退出，明说缺哪个、该去跑
-      # 「workflow_dispatch build-<id>」（见 RELEASE-POLICY.md）。
-      #
-      # 回退去编译正是「APK 又开始编件」的由来，而且会把「某个件没固化」
-      # 这个事实藏起来 —— 构建变慢、变脆，还说不清为什么。
       - name: 取件（从 Release 取 base 筐的固化产物）
         env:
-          # 缺陷名（C-102）**那一格没有令牌**、脚本那一格**要**读 Release 清单、
-          #**没有身份**就**匿名**读、匿名读60 次/ 小时、症状是 403 限流。
-          #**处置**：**令牌** **在这一格**给（step**必须**有 env，
-          #job**没有**那一个、**不放**在 job 那一层）。
-          #**身份**：secrets.GITHUB_TOKEN 是那**只读**的身份（contents: read）、
-          #**不是**那 APK_PUBLISH_TOKEN（**不是**这一格的身份）。
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           bash scripts/toolchain/fetch-prebuilt-pieces.sh
 
-      # 内核的兼容性垫片（posix · flock · ptyprobe · ptysession）是
-      # container/native 下我们自己写的 C，随 APK 而来 —— 它们不是件、
-      # 不走 Release、不进清单、不可 OTA 替换。所以这里仍然要编，
-      # 但编的是内核的一部分，不是「取件」。
       - name: 编内核的兼容性垫片（内核的一部分，不是件）
         run: |
           set -euo pipefail
@@ -319,22 +245,8 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          # 这一格原来在这里硬编码 8，是个写死的数字，跟「该取哪几件」没有连上：
-          # 件数一旦变了（crypto 后来并进 openssl、zlib 与 openssl 的归属也调整过），
-          # 这里还在要 8，于是取件明明跑过了却判红，报错还看不出是缺件还是数字过期。
-          # 另一个毛病是口径分两处：这里算一遍，verify-apk-native.sh 也算一遍，
-          # 两边碰巧一样时看不出来，不一样时又说不清是哪边错。
-          # 「该取哪几件」只有一个真源：fetch-prebuilt-pieces.sh 里 PIECES 那一行，
-          # 它是唯一的生成点；件数由那个脚本自己报出来，两处都走同一条口径。
-          # 它由脚本自己把 PIECES 数组的个数打到 stdout，算式就在脚本里，与取件用的是同一处。
-          # 注意读的是 stdout 上脚本给的那个数，不再由这里 ${#PIECES[@]} 自己算 ——
-          # 脚本没跑起来时数组根本没建立，那个算式给出的是 0，而 0 长得像一个正常的数。
-          # 由脚本自己给数，脚本没跑起来就是没有输出（空串），这一格才判得出来。
           WANT_N=$(bash scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null || echo "")
           if [ -z "$WANT_N" ]; then
-            # 报缺，不猜填。空串和 0 都不行：空串会让下面的比较变成「N != 」（恒判红，
-            # 报错信息还看不出是缺件还是缺口径），0 则是「假零候选」那一族 ——
-            # 看起来像一个数，其实什么都没查到。这里必须说清楚是哪一件读不出来。
             echo "::error title=读不出该取的件数::而这一格不能猜 —— --print-pieces 没给出件数（脚本路径 scripts/toolchain/fetch-prebuilt-pieces.sh），报缺，不填一个看起来对的值"
             exit 1
           fi
@@ -385,28 +297,8 @@ jobs:
             VARIANT=debug
           fi
           echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
-          # 缺陷名（C-102）**那 variant**只**在**那 gradle **那一句**的**后**面**写**、
-          #gradle **那一句** **红**了**就**走**不到**那**一行**、
-          #**outputs.variant** **是**那**空**的、
-          #step 21 与那 step 25 与那 step 28**就**拿到**那**空段**
-          # （路径 = 「container/app/build/outputs/apk//*.apk」）、
-          #**症状** **是**那「No files were found with the provided path」。
-          #**处置**：variant**先**写**出去**（它**不依赖**那 gradle **的**成败**）、
-          #gradle **那一句** **还**写**一遍**（**它** **一样**、**它** **不**是**第二条路**）。
-          # 按 C-102：它治**的**是「那**变量** **没带上**」那一层、**根因** **是**那 gradle **那一句**红**了**。
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
 
-          # 清掉上一次构建残留的 packaged_res ——
-          # Gradle 的 build/ 是缓存带过来的（setup-gradle 会恢复它），
-          # 而 packageDebugResources 在已有输出时**不覆盖**，于是
-          # 上一轮那份坏副本会一直留着：
-          # [Fatal Error] activity_main.xml:61:1: XML document structures
-          # must start and end within the same entity.
-          # —— 报的是 build/intermediates/packaged_res/…/activity_main.xml，
-          # 而 src/res/layout/ 那份是好的。
-          #
-          # 只清这一个 intermediates 子目录，不动依赖缓存
-          # （清整个 build/ 会让每次都全量重编，慢很多）。
           rm -rf container/app/build/intermediates/packaged_res
           echo "[gradle] 已清 packaged_res（避免沿用上一轮的残留）"
           gradle "assemble$VARIANT" --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-build.log
@@ -449,10 +341,6 @@ jobs:
             echo "::error title=没有 APK 可标身份::装机后无法归因，不放行"
             exit 1
           fi
-          # 取件口径三条（规范 I-33）：
-          # 1) head_sha 必须等于本地 HEAD —— 不等说明产物与当前源码脱钩
-          # 2) 同一 head_sha 取 run 号最大者
-          # 3) 记下 run 号 —— 没有它，同一 commit 的两次验证拿到不同字节也无人察觉
           SHA="${GITHUB_SHA}"
           if [ "$SHA" != "$(git rev-parse HEAD)" ]; then
             echo "::error title=产物 sha 与本地 HEAD 不符::${SHA} vs $(git rev-parse HEAD)"
@@ -473,21 +361,9 @@ jobs:
           path: |
             container/app/build/outputs/apk/${{ steps.gradlebuild.outputs.variant }}/*.apk
             work/build-identity.txt
-          # 必须 error 而非 warn：build-identity.txt 是「防读到旧版本」的唯一凭据。
-          # 若它生成失败而此处只 warn，流水线照样绿、产物照样缺它、无人报错 ——
-          # 用来防错的东西自己静默失效。（test-engineer 2026-10-15 提出）
           if-no-files-found: error
           retention-days: 30
 
-      # 校验轮**不发 Release**。
-      #
-      # 此前这一步每次 push main 都建一个 `verify-<sha>` release，到今天堆了 18 个，
-      # 全是 0 下载的垃圾，把真正的 `os-release-*` 埋在里面。
-      # 验证包的用途只是「跑完能下载装一下」，而那正是 CI artifact 的本职 ——
-      # 它保留 30 天，不需要永久留档。
-      #
-      # 要拿验证包：Actions 页面 → 本次 run → Artifacts → apk-debug。
-      # release 里只应该有两类东西：正式版 os-release-VERSION，和件 <筐>-<件名>。
 
       - name: 发布轮：发正式版到 os-release-<versionName>
         if: success() && env.RELEASE_ROUND == 'true'
@@ -555,14 +431,11 @@ jobs:
 
           { for f in work/kernel-compat/cc-*.log; do [ -e "$f" ] && { echo "===== $(basename "$f") ====="; tail -40 "$f"; }; done; } > "$D/native-logs.txt" 2>&1 || true
 
-          # Gradle 的 HTML 报告里有完整的编译错误（含文件名/行号/消息），
-          # 而 logs API 取回来会被裁剪 —— 这份落到 artifact 才拿得到。
           for r in container/app/build/reports/problems/problems-report.html \
                    container/app/build/reports/tests; do
             [ -e "$r" ] && cp -rf "$r" "$D/" 2>/dev/null || true
           done
 
-          # 把错误行单独摘成一份纯文本，省得下整个 HTML
           {
             echo "## 编译错误（从 Gradle 输出里摘的）"
             echo
@@ -578,7 +451,6 @@ jobs:
               container/app/build/reports/problems/problems-report.html 2>/dev/null | sort -u | head -20
           } > "$D/compile-errors.txt" 2>/dev/null || true
 
-          # 取件与固化相关的现场
           cp -f /tmp/gradle-build.log "$D/" 2>/dev/null || true
           cp -f /tmp/verify.log "$D/" 2>/dev/null || true
           ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true

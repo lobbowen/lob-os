@@ -2,16 +2,6 @@ name: Node Runtime (编译一次，制品复用)
 
 on:
   workflow_dispatch:
-  # -- 触发方式 --
-  #
-  # 只有两种：
-  #   workflow_dispatch  手动 —— 「我现在要构建这一件」
-  #   tag                发布轮（os-release-*）
-  #
-  # 不再由 push 触发。件是独立的：改一份文档、改另一个件的钉值，
-  # 都不该重建这一件；反过来真的要重建时，dispatch 这一条就够了。
-  # 之前靠 paths 白名单过滤，结果是「改一个共享脚本触发 16 个」——
-  # 白名单只能防漏，不能防多，而且漏与多都是错。
 
 concurrency:
   group: node-runtime-${{ github.ref }}
@@ -43,9 +33,6 @@ jobs:
       - name: 算本件的固化标识（tag / asset）
         id: key
         run: |
-          # 与其余件同源：piece-key.sh 一处算出 tag 与 asset。
-          # 此前这里是两个空 step（只有 id 没有 run），tag/asset 为空串，
-          # 「已发布就复用」从未命中过 —— 与那 11 个 workflow 同一个毛病。
           bash scripts/toolchain/piece-key.sh node
 
 

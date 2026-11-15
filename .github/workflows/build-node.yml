@@ -1,16 +1,6 @@
 name: Build Component · node
 
 on:
-  # -- 触发方式 --
-  #
-  # 只有两种：
-  #   workflow_dispatch  手动 —— 「我现在要构建这一件」
-  #   tag                发布轮（os-release-*）
-  #
-  # 不再由 push 触发。件是独立的：改一份文档、改另一个件的钉值，
-  # 都不该重建这一件；反过来真的要重建时，dispatch 这一条就够了。
-  # 之前靠 paths 白名单过滤，结果是「改一个共享脚本触发 16 个」——
-  # 白名单只能防漏，不能防多，而且漏与多都是错。
   workflow_dispatch: {}
 
 concurrency:
@@ -67,8 +57,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # TAG 与 NAME 都由 piece-key.sh 单点算出 —— 与 node-runtime.yml:49 同一个源。
-          # 此前这两个变量在本文件里从未赋值，set -u 下第一行就 NAME: unbound variable（2026-10-16 实测）。
           KEYOUT="$(GITHUB_OUTPUT=/dev/null bash scripts/toolchain/piece-key.sh node 2>/dev/null || true)"
           TAG="$(printf '%s\n' "$KEYOUT" | sed -n 's/^tag=//p')"
           NAME="$(printf '%s\n' "$KEYOUT" | sed -n 's/^asset=//p')"
