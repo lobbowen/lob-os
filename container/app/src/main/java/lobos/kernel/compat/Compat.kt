@@ -7,7 +7,6 @@ import lobos.services.log.RuntimeDiagnostics
 object Compat {
 
     const val LIB_POSIX = "liblobosposix.so"
-    const val LIB_PTYPROBE = "liblobosptyprobe.so"
     const val LIB_PTYSESSION = "librivospty.so"
     const val LIB_FLOCK = "liblobosflock.so"
 
@@ -141,29 +140,8 @@ object Compat {
         return n
     }
 
-    fun refreshToApk(ctx: Context): Int {
-        val dst = libDir(ctx)
-        if (!dst.isDirectory && !dst.mkdirs()) return 0
-        var n = 0
-        for (name in managedComponents()) {
-            val src = apkLibDir(ctx).resolve(name)
-            if (!src.isFile) continue
-            val link = dst.resolve(name)
-            if (java.nio.file.Files.isSymbolicLink(link.toPath())) continue
-            if (!link.isFile) continue
-            val srcSha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: continue
-            val dstSha = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(link) }.getOrNull() ?: continue
-            if (srcSha == dstSha) continue
-            if (installOtaStreaming(ctx, name, src, srcSha, null)) n++
-        }
-        return n
-    }
-
     fun ptyHost(ctx: Context): File? = lib(ctx, LIB_PTYSESSION)
 
     fun flockLib(ctx: Context): File? = lib(ctx, LIB_FLOCK)
 
-    fun allPresent(ctx: Context): Map<String, Boolean> =
-        listOf(LIB_POSIX, LIB_PTYPROBE, LIB_PTYSESSION, LIB_FLOCK)
-            .associateWith { lib(ctx, it) != null }
 }
