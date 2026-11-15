@@ -201,7 +201,7 @@ object PreinstalledPieces {
                 ?: return fail(
                     ctx, id,
                     "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
-                        "（它逐字该从那 component-meta.json 派生、按 C-05 不猜填）",
+                        "（它该从那 component-meta.json 派生、按 C-05 不猜填）",
                 )
         } else {
 

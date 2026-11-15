@@ -131,8 +131,8 @@ function pickInnerZip(file, form) {
       if (id === want) hits.push(p);
     }
     if (hits.length !== 1) {
-      if (hits.length === 0) bad(want + '：外层套内层那一族里逐字挑不出内层那一个（候选 ' + inners.length + ' 个）');
-      else bad(want + '：外层套内层那一族里逐字有 ' + hits.length + ' 个内层候选 —— 多过候选判红，不取第一个');
+      if (hits.length === 0) bad(want + '：外层套内层那一族里挑不出内层那一个（候选 ' + inners.length + ' 个）');
+      else bad(want + '：外层套内层那一族里有 ' + hits.length + ' 个内层候选 —— 多过候选判红，不取第一个');
       return null;
     }
     return { path: hits[0], outerEntries: outerEntryCount(file) };
@@ -524,8 +524,8 @@ async function main() {
 
       rec.capsLibNameIsBare = !!(c.capsLibName && !c.capsLibName.includes('/'));
       if (!rec.capsLibNameFoundInArtifact) {
-        bad(c.id + '：档位表第二列逐字是 ' + c.capsLibName +
-          '，件包里逐字**命中不到**它（是「档位表与产物分家」那一格）' +
+        bad(c.id + '：档位表第二列是 ' + c.capsLibName +
+          '，件包里**命中不到**它（是「档位表与产物分家」那一格）' +
           '（该提供的是 ' + (rec.artifactLibraryPath || rec.entryInArtifact || '(空)') + '）');
       }
       const realLib = files.find((f) => f.role === 'library' && f.verified === 'sha256-matched-piece-shape');
@@ -592,7 +592,7 @@ async function main() {
     schema: 2,
     note: '本文件是生成物，不要手改。' +
       '本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。' +
-      '每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；' +
+      '每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车比对通过；' +
       'files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。' +
       '本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。' +
       'generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。' +
@@ -609,7 +609,7 @@ async function main() {
         'scripts/toolchain/cache-key.sh asset <id>（asset 名）',
       ],
       artifactsFrom: 'GitHub Releases（' + GITHUB_REPO + '），每个 base-<id> tag 下的 <asset> 与 <asset>.sha256 边车',
-      sha256Provenance: '边车给出的 sha256 与本地对下载字节实算的 sha256 逐字相同（两值都记在每条 pin 的 sidecarSha256 与 realSha256 里）；' +
+      sha256Provenance: '边车给出的 sha256 与本地对下载字节实算的 sha256 相同（两值都记在每条 pin 的 sidecarSha256 与 realSha256 里）；' +
         '逐文件 sha256 由 zip 里的真实字节实算得到。',
       reader: {
         file: 'scripts/publish/publish-native-manifest.js',

@@ -18,7 +18,7 @@ done
 GH_TOKEN_VALUE="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 if [ -z "$GH_TOKEN_VALUE" ] && [ "$PRINT_PIECES_ONLY" -eq 0 ]; then
   echo "::error title=缺令牌::取件要读 GitHub 的 Release 清单，而那匿名读只有 60 次/小时"
-  echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（build-apk.yml 那一格逐字是 secrets.GITHUB_TOKEN）"
+  echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（build-apk.yml 那一格是 secrets.GITHUB_TOKEN）"
   echo "::error:: 这一格不猜 —— 没有身份就不读，**不**静默匿名。"
   exit 1
 fi
@@ -79,16 +79,16 @@ gh_read_release() {
 
 gh_fail_label() {
   case "$1" in
-    ok)         echo "那一次读逐字成了" ;;
-    ratelimit)  echo "限流（那 API 逐字 60 次/小时限匿名读、5000 次/小时限带身份读）" ;;
-    auth)       echo "鉴权被拒（那 token 逐字是错的 / 过期了 / 没这个权限）" ;;
-    notfound)   echo "那个 tag 或那个端点逐字不存在" ;;
-    forbidden)  echo "被拒（那 body 逐字没说清是限流还是鉴权）" ;;
-    empty)      echo "读到了 200 但那 body 逐字是空" ;;
-    parse)      echo "读到了 200 但那 JSON 逐字解析不了" ;;
+    ok)         echo "那一次读成了" ;;
+    ratelimit)  echo "限流（那 API 60 次/ 小时限匿名读、5000 次/ 小时限带身份读）" ;;
+    auth)       echo "鉴权被拒（那 token 是错的 / 过期了 / 没这个权限）" ;;
+    notfound)   echo "那个 tag 或那个端点不存在" ;;
+    forbidden)  echo "被拒（那 body 没说清是限流还是鉴权）" ;;
+    empty)      echo "读到了 200 但那 body 是空" ;;
+    parse)      echo "读到了 200 但那 JSON 解析不了" ;;
     http_none)  echo "连 HTTP 那一档都没拿到" ;;
-    http_*)     echo "那一读逐字失败（HTTP ${1#http_}）" ;;
-    *) echo "那一读逐字失败" ;;
+    http_*)     echo "那一读失败（HTTP ${1#http_}）" ;;
+    *) echo "那一读失败" ;;
   esac
 }
 
@@ -230,9 +230,9 @@ for id in "${PIECES[@]}"; do
     fi
     if [ "$lra_rc" -ne 0 ]; then
 
-      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（那 stdout 逐字是空、那**不是**『那筐一个 asset 都没有』）。"
-      echo "::notice:: HTTP 那一档 = ${lra_http:-未知}、那**那一档** = ${lra_kind:-未知}、那 curl 逐字自己的码逐字**在**那标记里、那**两档**逐字**不是**同一档。*"
-      echo "::notice:: 那一档逐字说人话：$(gh_fail_label "$lra_kind")。*"
+      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（那 stdout 是空、那**不是**『那筐一个 asset 都没有』）。"
+      echo "::notice:: HTTP 那一档 = ${lra_http:- 未知}、那**那一档** = ${lra_kind:- 未知}、那 curl 自己的码**在**那标记里、那**两档** **不是**同一档。*"
+      echo "::notice:: 那一档说人话：$(gh_fail_label "$lra_kind")。*"
       echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），那**不是** dispatch 那一件能解决的。*"
       miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then
@@ -241,7 +241,7 @@ for id in "${PIECES[@]}"; do
       miss_stock=$((miss_stock+1))
     elif printf "%s\n" "$others" | grep -qxF "$asset"; then
 
-      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，那**这一次**逐字**没取到**。"
+      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，那**这一次** **没取到**。"
       echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），那**不是**『没固化过』、也**不是**『旧产物』。*"
       printf "%s\n" "$others" | sed "s/^/::notice::   /"
       miss_read=$((miss_read+1))
@@ -283,43 +283,43 @@ for id in "${PIECES[@]}"; do
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! tar xzf "$SRC" -C "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产逐字是那 gzip（那头四字节 $MAGIC），那 tar xzf 逐字**读不通**。"
+      echo "::error title=$id 解包失败::那资产是那 gzip（那头四字节 $MAGIC），那 tar xzf**读不通**。"
       missing=$((missing+1)); continue
     fi
 
     INNER=""
     if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
       echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
-      echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
+      echo "::error:: 而那按内容挑挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     cp -f "$INNER" "$ASSETS/$id.zip"
-    printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 gzip，那内层取出来）\n" "$id" "$asset" "$id"
+    printf "  ✓ %-9s %s → %s.zip（那资产是那 gzip，那内层取出来）\n" "$id" "$asset" "$id"
   elif [ "$SRC_FMT" = "zip" ] || [ "$SRC_FMT" = "zip64" ]; then
 
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! unzip -q -o "$SRC" -d "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产逐字是那 zip（头四字节 $MAGIC），那 unzip 逐字**读不通**。"
+      echo "::error title=$id 解包失败::那资产是那 zip（头四字节 $MAGIC），那 unzip**读不通**。"
       missing=$((missing+1)); continue
     fi
 
     INNER=""
     if ! INNER="$(fmt_pick_piece "$SRC" "$STAGE/$id/unpacked" "$id" 2>"$STAGE/$id/pick.err")"; then
       echo "::error title=$id 挑不出那一颗件::$(tr '\n' ' ' < "$STAGE/$id/pick.err")"
-      echo "::error:: 而那按内容挑逐字挑不出、按 C-05 不猜、不取第一个。"
+      echo "::error:: 而那按内容挑挑不出、按 C-05 不猜、不取第一个。"
       missing=$((missing+1)); continue
     fi
     if [ "$INNER" = "$SRC" ]; then
 
-      printf "  ✓ %-9s %s → %s.zip（那资产逐字**就是**那一颗件）\n" "$id" "$asset" "$id"
+      printf "  ✓ %-9s %s → %s.zip（那资产**就是**那一颗件）\n" "$id" "$asset" "$id"
     else
       cp -f "$INNER" "$ASSETS/$id.zip"
-      printf "  ✓ %-9s %s → %s.zip（那资产逐字是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
+      printf "  ✓ %-9s %s → %s.zip（那资产是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
     fi
   else
 
-    echo "::error title=$id 容器形态不认::那资产逐字是那 $SRC_FMT（头四字节 $MAGIC），既不是 zip 也不是 gzip。"
+    echo "::error title=$id 容器形态不认::那资产是那 $SRC_FMT（头四字节 $MAGIC），既不是 zip 也不是 gzip。"
     echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），那**不是** dispatch 能解决的。"
     missing=$((missing+1)); continue
   fi
@@ -339,7 +339,7 @@ for id in "${PIECES[@]}"; do
   if [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ] && [ -n "$_cur_run" ] && [ "$_pkg_run" = "$_cur_run" ]; then
 
     _want_sha="${GITHUB_SHA:-}"
-    _want_src="GITHUB_SHA（件包逐字就是这一趟产的那一件）"
+    _want_src="GITHUB_SHA（件包就是这一趟产的那一件）"
   elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
 
     _want_sha="$(run_head_sha_of "$_pkg_run")"
@@ -347,21 +347,21 @@ for id in "${PIECES[@]}"; do
   fi
   if [ -n "$_want_sha" ]; then
     if [ "$_pkg_sha" != "$_want_sha" ]; then
-      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 逐字是 ${_pkg_sha:0:12}、产出它的那一次构建逐字是 ${_want_sha:0:12}"
+      echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 是 ${_pkg_sha:0:12}、产出它的那一次构建是 ${_want_sha:0:12}"
       echo "::error:: （那**旧字节不能冒充新代码的产物**、那**不**许拿那旧的那一份凑）"
-      echo "::error:: 处置：dispatch 那一件重新固化（新的指纹逐字**才**是当前这份代码的）。"
+      echo "::error:: 处置：dispatch 那一件重新固化（新的指纹**才**是当前这份代码的）。"
       miss_stale=$((miss_stale+1)); missing=$((missing+1))
       rm -rf "${STAGE:?}/$id"
       continue
     fi
-    echo "[ok] $id 那件自己的 buildSha 逐字与那产出它的那一次构建一致（$_want_src）"
+    echo "[ok] $id 那件自己的 buildSha 与那产出它的那一次构建一致（$_want_src）"
   elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
 
-    echo "[ok] $id 那件逐字**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
+    echo "[ok] $id 那件**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
   else
 
-    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA 逐字**没有**、产物自带的 buildRun 逐字**也**没有"
-    echo "::notice:: （那**判据**逐字**答不出**、它逐字**不**判成「那不是当前这份」、按 C-05 报缺）"
+    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA**没有**、产物自带的 buildRun**也**没有"
+    echo "::notice:: （那**判据** **答不出**、它**不**判成「那不是当前这份」、按 C-05 报缺）"
   fi
 
   meta_json="$STAGE/$id/peek.json"

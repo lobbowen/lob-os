@@ -208,7 +208,7 @@ object SupplyProvisioner {
             c, "container-form", true,
             "容器形态 " + form,
             "文件=" + pkg.name + " 档位=" + form + " 头四字节=" + magic +
-                " （一档逐字是「这一份实际上是什么容器」）",
+                " （一档是「这一份实际上是什么容器」）",
         )
     }
 
@@ -371,8 +371,8 @@ object SupplyProvisioner {
         val bytes = buf.toByteArray()
         if (bytes.size > ENTRY_READ_MAX_BYTES) {
             throw IllegalStateException(
-                "那一个条目逐字太大：" + name + " 逐字 = " + bytes.size +
-                    " 字节、读法逐字[supply.unzip]逐字只许 " + ENTRY_READ_MAX_BYTES +
+                "那一个条目太大：" + name + "  = " + bytes.size +
+                    " 字节、读法[supply.unzip]只许 " + ENTRY_READ_MAX_BYTES +
                     "（按 C-05 报缺、**不**整读进那堆）"
             )
         }

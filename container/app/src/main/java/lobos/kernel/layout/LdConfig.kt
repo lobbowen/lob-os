@@ -20,12 +20,12 @@ object LdConfig {
             it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ")
         }
         val out = StringBuilder()
-        out.append("软链记录逐字共 ").append(log.size)
+        out.append("软链记录共 ").append(log.size)
             .append(" 行（完整清单可由重跑 ldconfig 再生，不落盘）\n")
         out.append("前 ").append(LOG_HEAD_LINES).append(" 条：\n")
         for (l in log.take(LOG_HEAD_LINES)) out.append(l).append('\n')
         if (decisive.isNotEmpty()) {
-            out.append("判定相关那几行（多提供者与歧义，逐字共 ")
+            out.append("判定相关那几行（多提供者与歧义，共 ")
                 .append(decisive.size).append(" 行）：\n")
             for (l in decisive.take(LOG_HEAD_LINES)) out.append(l).append('\n')
         }
@@ -105,9 +105,9 @@ object LdConfig {
             if (!landed.ok) unresolved += landed.detail
             log += landed.log
             log += "kind2 " + soname + " 共 " + cands.size +
-                " 处提供（字节逐字相同）指向 " + first.first +
+                " 处提供（字节相同）指向 " + first.first +
                 "；而「无害」不该靠「恰好扫到了哪一个」"
-            log += "note " + soname + " 共 " + cands.size + " 处提供（字节逐字相同）指向 " +
+            log += "note " + soname + " 共 " + cands.size + " 处提供（字节相同）指向 " +
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
         }            }
         }

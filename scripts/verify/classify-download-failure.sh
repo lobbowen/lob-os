@@ -45,7 +45,7 @@ report() {
   kind="$(classify_download_failure "$evid")"
   http="$(http_of "$evid")"
   printf '== %s ==\n' "$f"
-  printf '  响应体逐字=%s\n' "${evid:-（空）}"
+  printf '  响应体=%s\n' "${evid:-（空）}"
   printf '  HTTP 那一档=%s\n' "$http"
   printf '  那一档=%s\n' "$kind"
   printf '\n'
@@ -91,15 +91,15 @@ if [ "${1:-}" = "--selftest" ]; then
   check "$W/empty.txt" unknown
   check "$W/500.txt" unknown
   echo ""
-  echo "== HTTP 那一档逐字从响应体取 =="
+  echo "== HTTP 那一档从响应体取 =="
   for f in "$W/503.txt" "$W/404.txt" "$W/500.txt"; do
     printf '  %-12s HTTP=%s\n' "$(basename "$f")" "$(http_of "$(tr -d '\r' < "$f" | head -5)")"
   done
   echo ""
-  echo "== 阳性对照：那一族判别逐字能区分（不是全落 unknown）=="
+  echo "== 阳性对照：那一族判别能区分（不是全落 unknown）=="
   for f in "$W"/*.txt; do printf '  %-12s -> %s\n' "$(basename "$f")" "$(classify_download_failure "$(tr -d '\r' < "$f" | head -5)")"; done
   echo ""
-  echo "== 响应头那一档（判据逐字落在请求上）=="
+  echo "== 响应头那一档（判据落在请求上）=="
   printf 'HTTP/1.1 403 Forbidden\r\nx-ratelimit-limit: 5000\r\nx-ratelimit-remaining: 0\r\nretry-after: 60\r\n' > "$W/h-rl.txt"
   printf 'HTTP/1.1 404 Not Found\r\nx-github-request-id: ABC:123\r\n' > "$W/h-404.txt"
   printf 'HTTP/1.1 200 OK\r\nx-ratelimit-limit: 5000\r\nx-ratelimit-remaining: 4307\r\n' > "$W/h-ok.txt"

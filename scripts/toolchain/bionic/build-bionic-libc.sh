@@ -59,7 +59,7 @@ done
 
 INC+=(-isystem "$RES" -isystem "$SYS" -isystem "$ASM")
 
-echo "[build-bionic-libc] 那 atomic 那一族逐字用那 INC_DIR/atomic-shim.h（三步）"
+echo "[build-bionic-libc] 那 atomic 那一族用那 INC_DIR/atomic-shim.h（三步）"
 
 OBJS=()
 OK=0
@@ -81,7 +81,7 @@ for s in "$SRC"/libc/bionic/*.cpp "$SRC"/libc/bionic/*.c; do
   fi
 done
 echo "[build-bionic-libc] 编过 $OK 个、编不过 $FAIL 个"
-[ "$FAIL" -eq 0 ] || { echo "[build-bionic-libc] 还有编不过的、产物逐字不出来" >&2; exit 1; }
+[ "$FAIL" -eq 0 ] || { echo "[build-bionic-libc] 还有编不过的、产物不出来" >&2; exit 1; }
 
 echo "[build-bionic-libc] 链接那产物"
 "${CLANG}" -nostdlib -shared -fPIC -O1 -w -o "$OUT" "${OBJS[@]}"

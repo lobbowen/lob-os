@@ -49,7 +49,7 @@ for t in "$CMAKE" "$NINJA"; do
 
     die "缺工具" \
       "$t 没有 —— 编 LLVM 要 cmake + ninja（runner 预装；缺了请 sudo apt-get install -y cmake ninja-build）；
-      那**它**逐字**要**在**那 PATH **上面**、那 CMake 逐字**只**在**那 PATH **上面**找**它**"
+      那**它** **要**在**那 PATH **上面**、那 CMake**只**在**那 PATH **上面**找**它**"
   fi
 done
 
@@ -92,7 +92,7 @@ mkdir -p "$WORK"
 SRC="$WORK/llvm-src"
 if [ ! -d "$SRC/llvm" ]; then
   TGZ="$WORK/llvm.src.tar.xz"
-  note "取 LLVM 源码（走仓内唯一入口，sha256 逐字节校验）"
+  note "取 LLVM 源码（走仓内唯一入口，sha256 节校验）"
   bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin llvm "$TGZ" \
     || die "取 LLVM 源码失败" "钉值/来源见 scripts/component-sources.json 的 llvm 键"
   command -v xz >/dev/null 2>&1 || command -v unxz >/dev/null 2>&1 || die "无 xz" \
@@ -353,25 +353,25 @@ const names = fs.readdirSync(dir).filter((n) => {
 const bin = {};
 for (const n of names) bin[n] = "bin/" + n;
 //  缺陷名（C-102）**那一行 delete 删的是一个不存在的键、它那行注释所假定的形状也不成立** ——
-//    而旧版那一行逐字是 `delete bin[entry];`、那 entry 逐字传的是件名那一格（llvm）、
-// 那 bin 映射的键逐字是**件内那些程序名**（clang / clang++ / ld.lld / llvm-ar …）、
-// 里面**没有**件名那一键、那 delete 逐字**什么也没删**（01 §1.3 逐字核过这一点）。
-// 旧版那一行注释逐字说「本名（键 == 件名）不重复声明」——个「键 == 件名」的形状
-//      逐字**不成立**（件名是 llvm、键是程序名、它们逐字不是同一个东西）。
+//    而旧版那一行是 `delete bin[entry];`、那 entry 传的是件名那一格（llvm）、
+// 那 bin 映射的键是**件内那些程序名**（clang / clang++ / ld.lld / llvm-ar …）、
+// 里面**没有**件名那一键、那 delete**什么也没删**（01 §1.3 核过这一点）。
+// 旧版那一行注释说「本名（键 == 件名）不重复声明」——个「键 == 件名」的形状
+//     **不成立**（件名是 llvm、键是程序名、它们不是同一个东西）。
 delete bin[entry];
-//**这一行必须逐字是 no-op、且必须继续是 no-op**：它要防的是「把**件名**当成别名重复声明」，
-// 件名 llvm 逐字**不在**那 bin 映射里（那 bin 映射的键逐字是程序名）、
-// 所以 no-op 恰好是对的（一句 delete 逐字防的东西压根没发生过）。
-//**不许**把它改成「删那个值逐字等于仓内声明的入口的那一键」（是 01 §5.1 第 3 条形式乙那一半）：
-//01 §4.1 逐字裁「bin 是对象时、必须存在一个键、其值逐字等于 declaredEntry」，
-//llvm 那一件逐字就是 bin["clang"] = "bin/clang"、那 declaredEntry 逐字是 bin/clang；
-// 两段**互斥**：删了 bin["clang"]、发侧逐字算出来的 entryKeys 逐字**为空**
-// 一格**必判红**（Lead 本机实跑两支：保持现状逐字 entryKeys=["clang"] 通过；
-// 删 bin["clang"] 逐字 entryKeys=[] 判红）。
+//**这一行必须是 no-op、且必须继续是 no-op**：它要防的是「把**件名**当成别名重复声明」，
+// 件名 llvm**不在**那 bin 映射里（那 bin 映射的键是程序名）、
+// 所以 no-op 恰好是对的（一句 delete 防的东西压根没发生过）。
+//**不许**把它改成「删那个值等于仓内声明的入口的那一键」（是 01 §5.1 第 3 条形式乙那一半）：
+//01 §4.1 裁「bin 是对象时、必须存在一个键、其值等于 declaredEntry」，
+//llvm 那一件就是 bin["clang"] = "bin/clang"、那 declaredEntry 是 bin/clang；
+// 两段**互斥**：删了 bin["clang"]、发侧算出来的 entryKeys**为空**
+// 一格**必判红**（Lead 本机实跑两支：保持现状entryKeys=["clang"] 通过；
+// 删 bin["clang"] entryKeys=[] 判红）。
 // 那**入口那一键**为什么**不进别名集合**：=> 那由**两侧各自**排除
 //    （=> 发侧 publish-component-manifest.js:89 按键名跳 entryBase、=> 装侧 ProgramInstallPipeline.kt:1212 同口径），
 //**不在生成侧删键**（按 C-103 那两边各答一件事、按 C-135 那不是同一问）。
-// 件名那一格（name）逐字从 $TOOL 派生、不再另写一个字面（01 §4.3 逐字：
+// 件名那一格（name）从 $TOOL 派生、不再另写一个字面（01 §4.3 ：
 //    「两处都要落在同一个字面上、否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」）。
 fs.writeFileSync(path.join(dir, "..", "package.json"),
   JSON.stringify({ name: tool, bin }, null, 2) + "\n");

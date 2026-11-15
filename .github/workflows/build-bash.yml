@@ -102,19 +102,19 @@ jobs:
           gh release upload "$TAG" "dist/$ASSET" "dist/$ASSET.sha256"             --repo "${{ github.repository }}" --clobber
           echo "[ok] 包=$(basename "$PKG")  上传名=$ASSET → $TAG"
 
-      # 缺陷名（C-102）**那一族逐字没有一道「固化产物与当前代码一致」的检查** ——
-      # 旧版逐字**没有**任何一处逐字核「那一份逐字是不是这一份代码造出来的」，
-      #**后果**逐字是：改了一个 recipe固化产物逐字全是旧的
-      # 守卫逐字**在取件那一趟**才发现根因逐字在**几百行日志里**。
-      #**正解**：**固化这一趟跑完之后**逐字核一次（守卫逐字**早**知道）。
-      # 判据逐字是那**构建标识**那一族（不是「那文件头字节」）：
-      # buildSha（产出它的那一次构建的代码 sha）逐字**等于**那 pin 那一族记的那一件。
+      # 缺陷名（C-102）**那一族没有一道「固化产物与当前代码一致」的检查** ——
+      # 旧版**没有**任何一处核「那一份是不是这一份代码造出来的」，
+      #**后果**是：改了一个 recipe 固化产物全是旧的
+      # 守卫**在取件那一趟**才发现根因在**几百行日志里**。
+      #**正解**：**固化这一趟跑完之后**核一次（守卫**早**知道）。
+      # 判据是那**构建标识**那一族（不是「那文件头字节」）：
+      # buildSha（产出它的那一次构建的代码 sha）**等于**那 pin 那一族记的那一件。
       - name: 固化产物与当前代码一致（构建标识那一族）
         if: steps.reuse.outputs.hit != 'yes'
         run: |
           set -euo pipefail
-          #pin 那一族逐字记的是那**当前**这一份代码编出来的那一件
-          # （它逐字由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
+          #pin 那一族记的是那**当前**这一份代码编出来的那一件
+          # （它由 scripts/publish/generate-native-capabilities-pin.js 重生成）。
           bash scripts/verify/check-frozen-freshness.sh "dist/${{ steps.uwkey.outputs.asset }}"
       - name: 失败现场（Job Summary，不裁剪）
         if: always()

@@ -73,7 +73,7 @@ class HostControlActivity : Activity() {
         val crossAppArg = EditText(this).apply { hint = "给它的参数（包名 / 坐标）" }
         val crossApp = Button(this).apply { text = "走那跨 app 边界那一族（产品入口，真实执行）" }
 
-        val memProbe = Button(this).apply { text = "核那堆逐字与那还活着的那几处整读（真实执行）" }
+        val memProbe = Button(this).apply { text = "核那堆与那还活着的那几处整读（真实执行）" }
 
         val listApps = Button(this).apply { text = "看那仓内清单声明过的那几件（产品入口，真实执行）" }
 

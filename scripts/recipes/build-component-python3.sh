@@ -75,7 +75,7 @@ SRC_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version $SRC
 SRC="$WORK/$SRC_KEY-src"
 if [ ! -d "$SRC" ]; then
   TGZ="$WORK/$SRC_KEY.tgz"
-  note "取 CPython $SRC_VER 源码（仓内唯一入口，sha256 逐字节校验）"
+  note "取 CPython $SRC_VER 源码（仓内唯一入口，sha256 节校验）"
   bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin $SRC_KEY "$TGZ" || die "取源码失败" "钉值见 component-sources.json"
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 || die "解包失败" "$TGZ"

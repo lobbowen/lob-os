@@ -179,9 +179,9 @@ object PieceScan {
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true, "那扫描成本那一档",
             lobos.services.reg.ScanCost.describe(ctx) +
-                " （**重建索引**那一族逐字走这一档、**内容指纹**逐字" +
+                " （**重建索引**那一族走这一档、**内容指纹**" +
                 (if (withContentFingerprint) "算" else "跳过") +
-                "、**扫描**逐字仍然扫、**缺件**那一族逐字仍然答）",
+                "、**扫描**仍然扫、**缺件**那一族仍然答）",
         )
 
         val traverseFiles = lobos.services.reg.ScanCost.traverseFiles(ctx)
@@ -192,12 +192,12 @@ object PieceScan {
 
         RuntimeDiagnostics.append(
             ctx, "scan-cost", true,
-            "那一次扫描逐字耗时 " + scanMs + "ms",
+            "那一次扫描耗时 " + scanMs + "ms",
             "遍历=" + (if (traverseFiles) "做" else "不做") +
                 " 内容指纹=" + (if (withContentFingerprint) "算" else "跳过") +
                 " 件数=" + found.size +
-                " （**两档逐字分开**、档二逐字答「那遍历本身」、" +
-                "档一逐字答「那内容指纹算不算」；**两档逐字不并**）",
+                " （**两档分开**、档二答「那遍历本身」、" +
+                "档一答「那内容指纹算不算」；**两档不并**）",
         )
         if (found.isEmpty()) return 0
         val cur = ProgramIndex.all(ctx).associateBy { it.id }
@@ -210,10 +210,10 @@ object PieceScan {
             if (prev != null && prev.role.isNotBlank() && f.role.isNotBlank() && prev.role != f.role) {
                 RuntimeDiagnostics.append(
                     ctx, "registry-role", false,
-                    "那登记那一格与那扫描结果逐字不一致",
+                    "那登记那一格与那扫描结果不一致",
                     "件=" + f.id + " 登记=" + prev.role + " 扫描=" + f.role +
-                        " （扫描结果逐字**赢**、旧值逐字**不**顶上来；" +
-                        "这**两份实际**逐字不一致那一族归 03 另立、它逐字是 C-998 那一族的**邻族**）",
+                        " （扫描结果**赢**、旧值**不**顶上来；" +
+                        "这**两份实际**不一致那一族归 03 另立、它是 C-998 那一族的**邻族**）",
                 )
             }
             val entry = (prev ?: ProgramIndex.empty(f.id, Level.PIECE)).edited(

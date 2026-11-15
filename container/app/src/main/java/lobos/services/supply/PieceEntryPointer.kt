@@ -189,8 +189,8 @@ object PieceEntryPointer {
                 " 指针条数=" + count +
                 " 指针=" + names.joinToString(",") +
                 " 有库形态项=" + hasLibraryItems +
-                " （一档逐字答的是「**这一件的库形态那几项**：它逐字有几条库链、那一档是什么形态」" +
-                "；档名逐字是 single / chain0 / multi / 空 / no-library）",
+                " （一档答的是「**这一件的库形态那几项**：它有几条库链、那一档是什么形态」" +
+                "；档名是 single / chain0 / multi / 空 / no-library）",
         )
     }
 

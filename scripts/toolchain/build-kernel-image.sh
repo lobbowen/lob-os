@@ -17,8 +17,8 @@ JOBS="${JOBS:-$(nproc)}"
 die() { echo "::error title=$1::$(printf '%s\n' "${@:2}")" >&2; exit 1; }
 note() { echo "[kernel-image] $*"; }
 
-[ -d "$KERNEL_SRC" ] || die "缺内核源码" "$KERNEL_SRC 不在（内核源码逐字在仓外，按 C-105 报缺）"
-[ -f "$BUSYBOX_BIN" ] || die "缺静态 busybox" "$BUSYBOX_BIN 不在（那 initramfs 那一层逐字要那静态的那一个，按 C-105 报缺）"
+[ -d "$KERNEL_SRC" ] || die "缺内核源码" "$KERNEL_SRC 不在（内核源码在仓外，按 C-105 报缺）"
+[ -f "$BUSYBOX_BIN" ] || die "缺静态 busybox" "$BUSYBOX_BIN 不在（那 initramfs 那一层要那静态的那一个，按 C-105 报缺）"
 
 COMMIT="$(git -C "$KERNEL_SRC" rev-parse HEAD)"
 TREE="$(git -C "$KERNEL_SRC" rev-parse "HEAD^{tree}")"
@@ -61,7 +61,7 @@ for A in rootfs.squashfs rootfs.erofs; do
     cp "$ROOTFS_DIR/$A" "$IRFS_STAGE/$A"
     note "initramfs 那一层：$A（$(( $(stat -c %s "$IRFS_STAGE/$A") / 1024 )) KiB）"
   else
-    note "initramfs 那一层：没有那 $A（系统层逐字**挂不上**、按 C-105 报缺）"
+    note "initramfs 那一层：没有那 $A（系统层**挂不上**、按 C-105 报缺）"
   fi
 done
 note "initramfs 那一层：bin/busybox（静态）+ init"
@@ -71,7 +71,7 @@ python3 "$ROOT/scripts/initramfs/mkinitramfs.py" "$IRFS_STAGE" "$OUT/initramfs.c
 
 if command -v readelf >/dev/null 2>&1; then
   if readelf -W -l "$IRFS_STAGE/bin/busybox" 2>/dev/null | grep -q INTERP; then
-    die "那静态的判定没过" "$IRFS_STAGE/bin/busybox 有 PT_INTERP它逐字是动态的那一族、那 initramfs 那一层逐字要那静态的那一个"
+    die "那静态的判定没过" "$IRFS_STAGE/bin/busybox 有 PT_INTERP 它是动态的那一族、那 initramfs 那一层要那静态的那一个"
   fi
   note "静态判定：有那静态的那一个（无 PT_INTERP）"
 else
@@ -84,7 +84,7 @@ if [ -n "$DTS" ]; then
   cp "$DTS" "$OUT/"
   note "设备树（附带）：$(basename "$DTS")"
 else
-  note "设备树：逐字**不在**这**一支**（那 **Image** 逐字不等**它**、那**起得来**那一件逐字**要**它**）"
+  note "设备树：**不在**这**一支**（那 **Image**不等**它**、那**起得来**那一件**要**它**）"
 fi
 
 CROSS="${CROSS:-aarch64-linux-android-}"
@@ -117,7 +117,7 @@ cat > "$OUT/kernel-image-meta.json" << METAEOF
   "version": "$KVER",
   "commit": "$COMMIT",
   "tree": "$TREE",
-  "pinNote": "归档那一族逐字每次换那字节、它不作那钉值来源、钉值逐字用那 tree 对象与那 commit 那两个数"
+  "pinNote": "归档那一族每次换那字节、它不作那钉值来源、钉值用那 tree 对象与那 commit 那两个数"
 }
 METAEOF
 note "钉值已带进产物：kernel-image-meta.json（tree=$TREE commit=$COMMIT version=$KVER）"

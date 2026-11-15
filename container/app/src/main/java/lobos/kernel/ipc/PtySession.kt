@@ -131,7 +131,7 @@ object PtySession {
                 host.note(
                     "PTY 写入落到已关的会话",
                     "sid=" + sid + " 字节=" + data.size +
-                        " —— 送不进去（会话已结束），而调用方逐字以为送进去了",
+                        " —— 送不进去（会话已结束），而调用方以为送进去了",
                 )
                 return false
             }
@@ -350,7 +350,7 @@ object PtySession {
                 android.system.Os.open(slave, android.system.OsConstants.O_RDWR, 0)
             }.getOrNull()
             if (slaveFd == null) {
-                throw IllegalStateException("那从设备逐字开不了：" + slave + "（按 C-05 报缺）")
+                throw IllegalStateException("那从设备开不了：" + slave + "（按 C-05 报缺）")
             }
             runCatching { android.system.Os.close(slaveFd) }
 
@@ -388,7 +388,7 @@ object PtySession {
             }.onFailure { e ->
                 runCatching {
                     lobos.services.log.RuntimeDiagnostics.append(
-                        c, "pty", false, "那会话逐字登记后刷新 files/dev 失败",
+                        c, "pty", false, "那会话登记后刷新 files/dev 失败",
                         e.javaClass.name + ": " + (e.message ?: ""),
                     )
                 }
@@ -409,8 +409,8 @@ object PtySession {
             if (pid <= 0) {
 
                 lobos.services.log.RuntimeDiagnostics.append(
-                    ctx, "ledger", false, "PTY 会话那进程逐字取不到 pid",
-                    "sid=" + session.sid + " （账本那一行逐字**没有**记、按 C-05 报缺）",
+                    ctx, "ledger", false, "PTY 会话那进程取不到 pid",
+                    "sid=" + session.sid + " （账本那一行**没有**记、按 C-05 报缺）",
                 )
                 return
             }
@@ -423,20 +423,20 @@ object PtySession {
             val recorded = lobos.kernel.proc.ProcessLedger.begin(ctx, programId, generation, pid)
             lobos.services.log.RuntimeDiagnostics.append(
                 ctx, "ledger", recorded != null,
-                "PTY 会话那进程逐字已记账",
+                "PTY 会话那进程已记账",
                 if (recorded != null) {
                     "program=" + recorded.programId + " gen=" + recorded.generation +
                         " pid=" + recorded.pid + " starttime=" + recorded.starttime +
                         " startedAt=" + recorded.startedAt
-                } else "账本那一行逐字**没有**记成（按 C-05 报缺）",
+                } else "账本那一行**没有**记成（按 C-05 报缺）",
             )
             } catch (e: Throwable) {
 
                 runCatching {
                     lobos.services.log.RuntimeDiagnostics.append(
-                        ctx, "ledger", false, "PTY 会话那进程逐字记不进账本",
+                        ctx, "ledger", false, "PTY 会话那进程记不进账本",
                         "sid=" + session.sid + " " + e.javaClass.name + ": " + (e.message ?: "") +
-                            "（一格逐字**没有**中断、会话逐字**仍然**活着）",
+                            "（一格**没有**中断、会话**仍然**活着）",
                     )
                 }
             }
@@ -512,8 +512,8 @@ object PtySession {
                               ((b5.toInt() and 0xFF) shl 16) or ((b6.toInt() and 0xFF) shl 24)
 
                     if (len > MAX_FRAME_BYTES) {
-                        val msg = "那帧长度逐字超上限：len=" + len + "、上限=" + MAX_FRAME_BYTES +
-                            "（帧通道逐字**错位**了、**流**逐字**不能**逐字重新同步）"
+                        val msg = "那帧长度超上限：len=" + len + "、上限=" + MAX_FRAME_BYTES +
+                            "（帧通道**错位**了、**流** **不能**重新同步）"
                         lastError = msg
                         synchronized(diag) {
                             diag.append(msg).append(10.toChar())
@@ -637,7 +637,7 @@ object PtySession {
         ctx?.let {
             KernelHooks.report(
                 it, "pty", false, "PTY 的C 侧报错",
-                "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号逐字**照样**还了",
+                "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号**照样**还了",
             )
         }
     }
@@ -668,7 +668,7 @@ object PtySession {
             runCatching { t.join(READER_JOIN_MS) }
             if (t.isAlive) {
 
-                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（它逐字是 daemon、进程退出时会被杀掉）")
+                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（它是 daemon、进程退出时会被杀掉）")
             }
         }
     }
@@ -890,7 +890,7 @@ object PtySession {
                 }, "lobos-pty-exit-watch").apply { isDaemon = true; start() }
             }
 
-            val droppedNote = if (dropped > 0L) "（超出上限那一截逐字丢了 $dropped 字节）" else ""
+            val droppedNote = if (dropped > 0L) "（超出上限那一截丢了 $dropped 字节）" else ""
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 s.close()
                 return Result(false, -1, buf.toString(Charsets.UTF_8.name()), "超时 ${timeoutMs}ms$droppedNote", completed = false)

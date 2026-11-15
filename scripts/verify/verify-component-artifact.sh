@@ -63,7 +63,7 @@ judge_shape() {
 
 if [ -z "$ENTRY" ]; then
 
-  echo "[$TOOL] 这一件没有入口（entry 合法地是空）—— 而那别名逐字在 $ROOT/dist/package.json 那 bin 映射里"
+  echo "[$TOOL] 这一件没有入口（entry 合法地是空）—— 而那别名在 $ROOT/dist/package.json 那 bin 映射里"
   [ -f "$ROOT/dist/package.json" ] || { echo "::error title=缺别名映射::$TOOL 没有 package.json —— 而那一件要靠它声明别名"; exit 1; }
 else
   judge_shape "$ENTRY" "入口"

@@ -40,7 +40,7 @@ MAKE_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version $TO
 SRC="$WORK/$TOOL-src"
 if [ ! -d "$SRC" ]; then
   TGZ="$WORK/$TOOL.tar.gz"
-  note "取 $TOOL $MAKE_VER 源码（走仓内唯一入口，sha256 逐字节校验）"
+  note "取 $TOOL $MAKE_VER 源码（走仓内唯一入口，sha256 节校验）"
   bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin $TOOL "$TGZ" || die "取源码失败" "钉值见 component-sources.json 的 $TOOL 键"
   rm -rf "$SRC" && mkdir -p "$SRC"
   tar xzf "$TGZ" -C "$SRC" --strip-components=1 \

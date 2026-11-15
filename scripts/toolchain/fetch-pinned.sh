@@ -43,13 +43,13 @@ if [ "${1:-}" = "--pin" ]; then
     if (!/^[0-9a-f]{64}$/.test(String(s.sha256))) { console.error("键 " + process.argv[2] + " 的 sha256 不是 64 位小写十六进制: " + String(s.sha256)); process.exit(1); }
     if (!s.version || !String(s.version).trim()) { console.error("键 " + process.argv[2] + " 没有 version 格"); process.exit(1); }
     if (!Array.isArray(s.urls) || s.urls.length === 0) { console.error("键 " + process.argv[2] + " 的 urls 是空的"); process.exit(1); }
-    //  缺陷名（C-102）**那 sha256 那一格**逐字**记**的是那**内容**那一个数、那**它**逐字**比**的是那**下载**下来**那一个** tar。
-    // 那**成因**：那 tar 那**字节**逐字**每次**换（那**它**们**逐字是**那**两**件**事**：「那**tar**是**什么**」与「那**内容**是**什么**」）。
-    // 那**后果**逐字那 `--pin` 那一族逐字**永远红**（那**它**们**逐字是**那**两**件**事**：「那**红**的是**什么**」与「那**为什么**」））。
-    // 那**处置**：那**内容**那一个数逐字**另**一**格**记**（那 contentSha256 **那一格**）、
-    // 那**它**逐字**两**个**读法**都**留**着**（那**它们**逐字是**那**两**件**事**：「那**读**的**是**什么**」与「那**比**的**是**什么**」）。
+    //  缺陷名（C-102）**那 sha256 那一格** **记**的是那**内容**那一个数、那**它** **比**的是那**下载**下来**那一个** tar。
+    // 那**成因**：那 tar 那**字节** **每次**换（那**它**们**是**那**两**件**事**：「那**tar**是**什么**」与「那**内容**是**什么**」）。
+    // 那**后果**那 `--pin` 那一族**永远红**（那**它**们**是**那**两**件**事**：「那**红**的是**什么**」与「那**为什么**」））。
+    // 那**处置**：那**内容**那一个数**另**一**格**记**（那 contentSha256 **那一格**）、
+    // 那**它** **两**个**读法**都**留**着**（那**它们**是**那**两**件**事**：「那**读**的**是**什么**」与「那**比**的**是**什么**」）。
     const cs = String(s.contentSha256 || "").trim();
-    // 那**内容**那一个数逐字**走**那**自己**那一行（那**它**逐字**不**跟**那 urls **混**在**一**起**）。
+    // 那**内容**那一个数**走**那**自己**那一行（那**它** **不**跟**那 urls **混**在**一**起**）。
     process.stdout.write(String(s.sha256) + "\n" + String(s.version) + "\n" + cs + "\n" + s.urls.join("\n") + "\n");
   ' "$TABLE" "$KEY")"; then
     die "钉值表这一格读不通：$KEY"
@@ -173,7 +173,7 @@ if [ "${#URLS[@]}" -gt 1 ]; then
       printf '%b' "$_paths" > "$TMP/kernel-files.paths"
       python3 scripts/toolchain/kernel-files-tar.py "$_stage" "$TMP/kernel-files.paths" > "$f"
     else
-      echo "[fetch-pinned] 逐文件那一族要合成那确定性 tar、那 python3 逐字**没有**"
+      echo "[fetch-pinned] 逐文件那一族要合成那确定性 tar、那 python3**没有**"
       exit 1
     fi
     got="$(sha256sum "$f" | cut -d' ' -f1)"
@@ -221,7 +221,7 @@ for url in "${URLS[@]}"; do
       echo "[fetch-pinned] 来源 $url 的内容不合钉值：实得 $cgot（期望 $CONTENT_WANT）—— 这不是同一批内容，换下一条"
       continue
     fi
-    echo "[fetch-pinned] 内容钉值校验通过：$url（内容 $cgot；那 tar 那字节逐字每次换、那**它**逐字**不**钉**它**）"
+    echo "[fetch-pinned] 内容钉值校验通过：$url（内容 $cgot；那 tar 那字节每次换、那**它** **不**钉**它**）"
   elif [ "$got" != "$WANT" ]; then
     echo "[fetch-pinned] 来源 $url 不合钉值：实得 $got（期望 $WANT）—— 这不是同一批字节，换下一条"
     continue

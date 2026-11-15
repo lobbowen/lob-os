@@ -35,11 +35,11 @@ for g in d.get('denominators') or []:
     groups[g['key']] = g
 for need in ('bareName', 'symbolLoad', 'excluded'):
     if need not in groups:
-        missing.append('那分母清单里逐字**没有**那 %s **那一族**' % need)
+        missing.append('那分母清单里**没有**那 %s **那一族**' % need)
         continue
     g = groups[need]
     if g.get('count') != len(g.get('set') or []):
-        bad.append('%s 那一族的 count 逐字对不上（清单记 %s、实际 %d）' % (need, g.get('count'), len(g.get('set') or [])))
+        bad.append('%s 那一族的 count 对不上（清单记 %s、实际 %d）' % (need, g.get('count'), len(g.get('set') or [])))
 
 RULED = {
 
@@ -57,7 +57,7 @@ for key, ruled in RULED.items():
     if got_set != want_set:
         only_got = [x for x in got_set if x not in want_set]
         only_want = [x for x in want_set if x not in got_set]
-        bad.append('%s 那一族逐字**与**那裁定**不一致**（多**出**的 = %s、那**缺**的 = %s）'
+        bad.append('%s 那一族**与**那裁定**不一致**（多**出**的 = %s、那**缺**的 = %s）'
                    % (key, only_got, only_want))
 
 items = d.get('items') or []
@@ -66,7 +66,7 @@ for it in items:
     k = it.get('id')
     seen.add(k)
     if not it.get('provenance'):
-        missing.append('%s 逐字**没有**出处' % k)
+        missing.append('%s**没有**出处' % k)
         continue
     for prov in it['provenance']:
         ok = False
@@ -79,40 +79,40 @@ for it in items:
                         got = srcs[k].get(field)
                         ok = (str(got) == want)
                         if not ok:
-                            bad.append('%s 的出处逐字对不上（清单记 %s、实际 %s）' % (k, want, got))
+                            bad.append('%s 的出处对不上（清单记 %s、实际 %s）' % (k, want, got))
                 if '.piece = ' in prov:
                     want = prov.rsplit(' = ', 1)[1].strip()
                     got = srcs[k].get('piece')
                     ok = (str(got).lower() == want.lower())
                     if not ok:
-                        bad.append('%s 的出处逐字对不上（清单记 piece = %s、实际 %s）' % (k, want, got))
+                        bad.append('%s 的出处对不上（清单记 piece = %s、实际 %s）' % (k, want, got))
         elif 'piece-criteria.json' in prov:
             ok = (k in cp)
         elif 'program-manifest.json' in prov:
 
             ok = True
         if not ok:
-            bad.append('%s 的出处逐字读不回那一条：%s' % (k, prov[:70]))
+            bad.append('%s 的出处读不回那一条：%s' % (k, prov[:70]))
 
 for key, g in groups.items():
     for k in (g.get('set') or []):
         if k not in seen:
-            bad.append('%s 逐字**在**那 %s **那一族**的 set **里面**、它**不**在**那 items **里面**' % (k, key))
+            bad.append('%s**在**那 %s **那一族**的 set **里面**、它**不**在**那 items **里面**' % (k, key))
 
 apps = d.get('applets') or []
 sed_in_items = any(it.get('id') == 'sed' for it in items)
 if sed_in_items:
-    bad.append('那 sed 逐字**被**当成**另**一件**件**记**进**那 items **里面**、它**算**在**那 busybox **那**一件**里面**')
+    bad.append('那 sed**被**当成**另**一件**件**记**进**那 items **里面**、它**算**在**那 busybox **那**一件**里面**')
 if not any(a.get('name') == 'sed' and a.get('belongsTo') == 'busybox' for a in apps):
-    missing.append('那 sed 逐字**没有**被标成**那 busybox **的**一个 applet')
+    missing.append('那 sed**没有**被标成**那 busybox **的**一个 applet')
 
 for it in items:
     if it.get('denominator') == 'excluded':
         if not it.get('excludedReason'):
-            missing.append('%s 逐字**标**成**不**进**、它**没有**那**为什么**' % it.get('id'))
+            missing.append('%s**标**成**不**进**、它**没有**那**为什么**' % it.get('id'))
 
 if os.path.abspath(data_path) == os.path.abspath(readings_path):
-    bad.append('那分母清单逐字**跟**那读数**同一**个文件**、那**两个**逐字**不**是同一件**')
+    bad.append('那分母清单**跟**那读数**同一**个文件**、那**两个** **不**是同一件**')
 if not os.path.isfile(readings_path):
     missing.append('那读数那一件不在: %s' % readings_path)
 

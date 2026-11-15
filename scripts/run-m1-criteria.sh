@@ -10,7 +10,7 @@ DIR="${1:-$ROOT/work/kernel-image}"
 TSV="${2:-/home/bowen/LOBOS/lob-os-team/07/runs/app-restart-100-20261027-e.tsv}"
 OUT="${M1_OUT:-$ROOT/work/m1-readings.json}"
 
-command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上逐字**没有**那个 node（判据逐字**要**它**才**跑得动）"; exit 2; }
+command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上**没有**那个 node（判据**要**它**才**跑得动）"; exit 2; }
 
 export LOBOS_ROOT="$ROOT"
 export LOBOS_KERNEL_IMAGE_DIR="$DIR"

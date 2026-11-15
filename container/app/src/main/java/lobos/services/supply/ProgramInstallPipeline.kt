@@ -363,7 +363,7 @@ object ProgramInstallPipeline {
             ?: return null to LandFailure(
                 "entry-system-role-unknown",
                 "产物那一份形态说明里没有那系统角色 —— 报缺，不猜" +
-                    "（它逐字该从那 component-meta.json 派生、按 C-05 不猜填）",
+                    "（它该从那 component-meta.json 派生、按 C-05 不猜填）",
             )
         return Landed(entryDst, entryRole, shape.kind, moved, "", probe) to null
     }
@@ -735,7 +735,7 @@ object ProgramInstallPipeline {
         RuntimeDiagnostics.append(
             context, "ota", globalRebuilt.isSuccess,
             "件换完之后全局那一层重建",
-            spec.programId + "@" + safeVer + " usr/bin 与 usr/lib 逐字**跟**那换掉之后**的**那版本**对得上**"
+            spec.programId + "@" + safeVer + " usr/bin 与 usr/lib**跟**那换掉之后**的**那版本**对得上**"
         )
         lobos.services.log.Journal.note(
             context, "package", true, "系统组件已安装",

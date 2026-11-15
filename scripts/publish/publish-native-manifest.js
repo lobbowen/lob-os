@@ -91,7 +91,7 @@ function pinTable() {
     }
     return byId;
   } catch (e) {
-    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格逐字**要有**它、按 C-05 报缺。');
+    bad('读不了 ' + PIN + '：' + e.message + ' —— 而那「source=ota」那一格**要有**它、按 C-05 报缺。');
     return new Map();
   }
 }
@@ -229,13 +229,13 @@ function main() {
         
         
         console.error('  [pin-not-in-zip] ' + e.id + '：pin 记录里有它（zip=' + zipInPin + '），' +
-          '一份件包里逐字**没有**它（按后缀匹配的那旧版逐字**会**命中别的那一条）' +
-          '那 source 逐字留在 apk。');
+          '一份件包里**没有**它（按后缀匹配的那旧版**会**命中别的那一条）' +
+          '那 source 留在 apk。');
       }
     } else {
       
 
-      console.error('  [no-pin] ' + e.id + '：pin 记录里逐字没有它那 source 逐字是 apk（随 APK 走）。');
+      console.error('  [no-pin] ' + e.id + '：pin 记录里没有它那 source 是 apk（随 APK 走）。');
     }
     components.push(c);
   }

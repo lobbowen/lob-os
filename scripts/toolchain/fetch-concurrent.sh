@@ -12,9 +12,9 @@ PARTDIR="$(mktemp -d)"
 trap 'rm -rf "$PARTDIR"' EXIT
 
 case "$EXPECT" in
-  ''|*[!0-9]*) echo "报缺：那期望字节数逐字不是一个数：$EXPECT" >&2; exit 2 ;;
+  ''|*[!0-9]*) echo "报缺：那期望字节数不是一个数：$EXPECT" >&2; exit 2 ;;
 esac
-[ "$EXPECT" -gt 0 ] || { echo "报缺：那期望字节数逐字不是正数：$EXPECT" >&2; exit 2; }
+[ "$EXPECT" -gt 0 ] || { echo "报缺：那期望字节数不是正数：$EXPECT" >&2; exit 2; }
 
 nchunks=$(( (EXPECT + CHUNK - 1) / CHUNK ))
 
@@ -40,7 +40,7 @@ for f in "$PARTDIR"/part.*; do
   got=$((got + $(stat -c %s "$f" 2>/dev/null || echo 0)))
 done
 if [ "$got" != "$EXPECT" ]; then
-  echo "报缺：那取下来的字节数逐字 = $got、期望值逐字 = $EXPECT（按 C-05 报缺）" >&2
+  echo "报缺：那取下来的字节数 = $got、期望值 = $EXPECT（按 C-05 报缺）" >&2
   exit 1
 fi
 
@@ -52,13 +52,13 @@ done
 case "$(head -c 2 "$DST" | od -An -tx1 | tr -d ' \n')" in
   504b)
     unzip -t "$DST" >/dev/null 2>&1 || {
-      echo "报缺：那 unzip -t 逐字**不过**（取回来的逐字**不完整**）" >&2
+      echo "报缺：那 unzip -t**不过**（取回来的**不完整**）" >&2
       exit 1
     }
-    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT；那 unzip -t 逐字**过**"
+    echo "  [ok] 那 got == expect  = $EXPECT；那 unzip -t**过**"
     ;;
   *)
-    echo "  [ok] 那 got 逐字 == expect 逐字 = $EXPECT；那**不是** zip、那 unzip -t 那一格逐字**不**判"
+    echo "  [ok] 那 got == expect  = $EXPECT；那**不是** zip、那 unzip -t 那一格**不**判"
     ;;
 esac
 exit 0

@@ -40,7 +40,7 @@ object SysDev {
         if (bad != null) {
             val (path, fault) = bad
             val diag = "节点不合声明：" + path + " —— " + faultName(fault) +
-                "（它逐字**不**只报「失败」、它逐字报出那一类是哪一类）"
+                "（它**不**只报「失败」、它报出那一类是哪一类）"
             System.err.println(diag)
             runCatching {
                 lobos.services.log.RuntimeDiagnostics.append(ctx, "sysdev", false, diag, "")
@@ -92,14 +92,14 @@ object SysDev {
         if (!d.isDirectory && !d.mkdirs()) {
             throw IllegalStateException(
                 "建不了那 exec 目录：" + d.absolutePath +
-                    "（它逐字**不成**、按 C-05 报缺、**不**往下写）"
+                    "（它**不成**、按 C-05 报缺、**不**往下写）"
             )
         }
 
         val f = File(d, "shell.exec")
         if (f.isDirectory) {
             throw IllegalStateException(
-                "那 shell.exec 逐字已经是一个目录：" + f.absolutePath +
+                "那 shell.exec 已经是一个目录：" + f.absolutePath +
                     "（是那「类型错」那一类、按 C-05 报缺）"
             )
         }
@@ -306,8 +306,8 @@ object SysDev {
         if (actual.isBlank()) {
 
             System.err.println(
-                "那实际权限逐字读不到：" + d.path +
-                    "（**读不到**逐字**不**等于那**合声明**、按 C-05 报缺）"
+                "那实际权限读不到：" + d.path +
+                    "（**读不到** **不**等于那**合声明**、按 C-05 报缺）"
             )
             return null
         }
@@ -319,7 +319,7 @@ object SysDev {
     }
 
     fun modeDiffOf(path: String): String {
-        val r = rootOfPath(path) ?: return "（那实际权限逐字读不到）"
+        val r = rootOfPath(path) ?: return "（那实际权限读不到）"
         val actual = actualModeOf(r)
         val declared = NODE_DECLARATION.firstOrNull { it.path == path }?.mode.orEmpty()
         return modeDiff(actual, declared)
@@ -331,9 +331,9 @@ object SysDev {
     }
 
     fun modeDiff(actual: String, declared: String): String {
-        if (actual.isBlank()) return "（那实际权限逐字读不到）"
-        if (declared.isBlank()) return "（那声明权限逐字没有）"
-        if (actual.length < 9 || declared.length < 9) return "（那权限逐字形状不对）"
+        if (actual.isBlank()) return "（那实际权限读不到）"
+        if (declared.isBlank()) return "（那声明权限没有）"
+        if (actual.length < 9 || declared.length < 9) return "（那权限形状不对）"
         val names = arrayOf("owner", "group", "others")
         val out = mutableListOf<String>()
         for (g in 0..2) {
@@ -349,7 +349,7 @@ object SysDev {
                 }
             }
         }
-        return if (out.isEmpty()) "（那权限逐字**一样**）" else out.joinToString("、")
+        return if (out.isEmpty()) "（那权限**一样**）" else out.joinToString("、")
     }
 
     private fun isWiderThan(actual: String, declared: String): Boolean {
@@ -415,8 +415,8 @@ object SysDev {
 
     private fun modeWriteFailed(path: String) {
         System.err.println(
-            "那权限逐字写不上去：" + path +
-                "（**盘上**逐字**还是**那**原来**的那一档、按 C-05 报缺）"
+            "那权限写不上去：" + path +
+                "（**盘上** **还是**那**原来**的那一档、按 C-05 报缺）"
         )
     }
 

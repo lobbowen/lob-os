@@ -10,7 +10,7 @@ process.env.LOBOS_ROOT = ROOT;
 process.env.M0_IMAGE_DIR = DIR;
 
 const cpath = path.join(ROOT, 'scripts/m0-criteria.json');
-if (!fs.existsSync(cpath)) { console.error('报缺：那判据库逐字不在 ' + cpath); process.exit(2); }
+if (!fs.existsSync(cpath)) { console.error('报缺：那判据库不在 ' + cpath); process.exit(2); }
 const d = JSON.parse(fs.readFileSync(cpath, 'utf8'));
 const keys = Object.keys(d).filter(k => k !== '$note' && d[k] && d[k].node);
 

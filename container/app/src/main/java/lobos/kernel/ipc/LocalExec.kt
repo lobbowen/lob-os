@@ -25,7 +25,7 @@ object LocalExec {
 
     private fun droppedNote(outDropped: Long, errDropped: Long): String? {
         if (outDropped <= 0L && errDropped <= 0L) return null
-        return "那输出逐字超了上限、**丢**的一截逐字 = stdout " + outDropped +
+        return "那输出超了上限、**丢**的一截 = stdout " + outDropped +
             " 字节、stderr " + errDropped + " 字节、按 C-05 报缺"
     }
 

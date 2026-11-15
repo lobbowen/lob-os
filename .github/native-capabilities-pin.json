@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车逐字比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
+  "note": "本文件是生成物，不要手改。本文件由 scripts/publish/generate-native-capabilities-pin.js 从当前已发布的 base 筐件产物重新生成。每一条 pin 的 sha256 是下载 GitHub Release 上那一份 asset 后本地实算，并与同一 release 的 .sha256 边车比对通过；files 里每一格 sha256 是从 zip 里把那份字节取出来实算的。本文件不是可发布的清单（projection, not a publishable manifest），也不含任何签名。generatedAt 是生成时刻：每一次运行都会写出一个新的时间戳，所以这个文件每跑一次就变一次。diff 里出现 generatedAt 一行的变化属于正常，其余任何字段的变化才需要人去看。",
   "generatedBy": "scripts/publish/generate-native-capabilities-pin.js",
   "generatedAt": "2026-10-31T12:02:46.628Z",
   "generatedAtNote": "generatedAt 是生成时刻，每次运行都会变 —— 这个文件是生成物，不要手改。",
@@ -13,7 +13,7 @@
       "scripts/toolchain/cache-key.sh asset <id>（asset 名）"
     ],
     "artifactsFrom": "GitHub Releases（lobbowen/lob-os），每个 base-<id> tag 下的 <asset> 与 <asset>.sha256 边车",
-    "sha256Provenance": "边车给出的 sha256 与本地对下载字节实算的 sha256 逐字相同（两值都记在每条 pin 的 sidecarSha256 与 realSha256 里）；逐文件 sha256 由 zip 里的真实字节实算得到。",
+    "sha256Provenance": "边车给出的 sha256 与本地对下载字节实算的 sha256 相同（两值都记在每条 pin 的 sidecarSha256 与 realSha256 里）；逐文件 sha256 由 zip 里的真实字节实算得到。",
     "reader": {
       "file": "scripts/publish/publish-native-manifest.js",
       "pinPathLine": 28,

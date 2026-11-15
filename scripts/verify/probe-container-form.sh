@@ -102,7 +102,7 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
       done
       ;;
     *)
-      echo "  外层=不是容器（那这一份逐字就是那件包本身）" ;;
+      echo "  外层=不是容器（那这一份就是那件包本身）" ;;
   esac
   echo ""
   return 0

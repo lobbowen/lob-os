@@ -17,7 +17,7 @@ object NotifyRoute {
         runCatching {
             lobos.services.log.RuntimeDiagnostics.append(
                 ctx, ROUTE, true,
-                "那发通知逐字[" + route + "]逐字发了",
+                "那发通知[" + route + "]发了",
                 "id=" + notificationId +
                     " kind=" + kind +
                     (if (detail.isBlank()) "" else " " + detail),

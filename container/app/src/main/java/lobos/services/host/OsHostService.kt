@@ -238,7 +238,7 @@ class OsHostService : Service() {
             runCatching {
 
                 lobos.kernel.fs.NotifyRoute.note(
-                    this, "host.notify", NOTIF_ID, "前台", "（内容**变了**才逐字重发）",
+                    this, "host.notify", NOTIF_ID, "前台", "（内容**变了**才重发）",
                 )
                 (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
                     .notify(NOTIF_ID, buildHostNotification(text))

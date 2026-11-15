@@ -98,8 +98,8 @@ object ServiceRegistry {
                     }
                     .getOrNull()
                     ?: throw IllegalStateException(
-                        "渲染 files/dev 失败（ render 逐字**答不出**那目录、" +
-                            "一族逐字**要**重起）"
+                        "渲染 files/dev 失败（ render**答不出**那目录、" +
+                            "一族**要**重起）"
                     )
             }
         )

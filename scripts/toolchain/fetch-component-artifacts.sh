@@ -22,8 +22,8 @@ mkdir -p "$DIST"
 
 rm -f "$DIST"/component-*.zip 2>/dev/null || true
 if compgen -G "$DIST"/component-*.zip > /dev/null 2>&1; then
-  echo "::error title=旧件清不掉::那 dist 里逐字还有那旧件、那**名与实**逐字**核不过**"
-  echo "        请手工清掉 $DIST/component-*.zip 逐字再跑这一趟（按 C-05 报缺）。"
+  echo "::error title=旧件清不掉::那 dist 里还有那旧件、那**名与实** **核不过**"
+  echo "        请手工清掉 $DIST/component-*.zip 再跑这一趟（按 C-05 报缺）。"
   exit 1
 fi
 
@@ -131,10 +131,10 @@ for t in $COMPONENTS; do
 
     _direct_ok=0
     if printf '%s' "$DL_EVID" | grep -qi 'path traversal'; then
-      echo "::notice:: 那客户端（gh）逐字自己拒了：那**真因**逐字是那 artifact 逐字太大"
-      echo "::notice:: （那 zip64 逐字那中央目录逐字写着那个 absurd uncompressed size、"
-      echo "::notice::那 gh 逐字把它**判**成路径穿越）。那**服务端**那四档逐字**都不是**。"
-      echo "::notice::现在逐字**绕开**那 gh 逐字自己下（那**直连**那 artifact API）。"
+      echo "::notice:: 那客户端（gh）自己拒了：那**真因**是那 artifact 太大"
+      echo "::notice:: （那 zip64 那中央目录写着那个 absurd uncompressed size、"
+      echo "::notice::那 gh 把它**判**成路径穿越）。那**服务端**那四档**都不是**。"
+      echo "::notice::现在**绕开**那 gh 自己下（那**直连**那 artifact API）。"
       _aid="$(gh api "repos/$REPO/actions/runs/$picked/artifacts?per_page=100" \
               --jq "[.artifacts[] | select(.name == \"$ART\" and .expired_at == null)][0].id" 2>/dev/null || true)"
       _aurl="https://api.github.com/repos/$REPO/actions/artifacts/$_aid/zip"
@@ -157,13 +157,13 @@ for t in $COMPONENTS; do
                 _found="$(find "$_adir" -maxdepth 2 -name 'component-*.zip' -type f | head -1)"
                 if [ -n "$_found" ]; then
                   cp -f "$_found" "$DIST/$(basename "$_found")"
-                  echo "::notice::直连逐字**成**了、件逐字 = $(basename "$_found")"
+                  echo "::notice::直连**成**了、件 = $(basename "$_found")"
                   _direct_ok=1
                 else
                   echo "::warning title=$t 直连里没有那件包::按 C-05 报缺"
                 fi
               else
-                echo "::warning title=$t 直连的 artifact 逐字解不开::按 C-05 报缺"
+                echo "::warning title=$t 直连的 artifact 解不开::按 C-05 报缺"
               fi
               rm -rf "$_adir"
             fi
@@ -174,7 +174,7 @@ for t in $COMPONENTS; do
           rm -f "$DIST/.artifact-direct.zip"
         fi
       else
-        echo "::warning title=$t 那个 artifact 逐字读不到 id::按 C-05 报缺"
+        echo "::warning title=$t 那个 artifact 读不到 id::按 C-05 报缺"
       fi
     fi
 
@@ -194,19 +194,19 @@ for t in $COMPONENTS; do
     [ -n "$DL_HTTP" ] || DL_HTTP="none"
     rm -f "$DIST/.gh-dl.err"
     echo "::warning title=$t 下载被拒（$DL_KIND）::run $picked 的 $ART 没能下下来 —— HTTP $DL_HTTP、档位 $DL_KIND。"
-    echo "::notice:: 那响应体逐字是：${DL_EVID:-（空）}"
-    echo "::notice:: 那响应头那一档逐字是：${DL_HDR_KIND}（判据逐字落在**请求**上）"
+    echo "::notice:: 那响应体是：${DL_EVID:-（空）}"
+    echo "::notice:: 那响应头那一档是：${DL_HDR_KIND}（判据落在**请求**上）"
     case "$DL_KIND" in
       ratelimit) echo "::notice:: 那一档是**服务端限流**（不是这一件的问题、是配额那一族）。*" ;;
-      auth)      echo "::notice:: 那一档是**鉴权不对**（令牌逐字没被认、不是这一件的问题）。*" ;;
+      auth)      echo "::notice:: 那一档是**鉴权不对**（令牌没被认、不是这一件的问题）。*" ;;
       notfound)  echo "::notice:: 那一档是**资源不在**（那 artifact 已删或已过保留期、不是这一件的问题）。*" ;;
-      *)         echo "::notice:: 那一档是**成因未知**（响应体逐字没给出可判的那一档、按 C-05 不猜）。*" ;;
+      *)         echo "::notice:: 那一档是**成因未知**（响应体没给出可判的那一档、按 C-05 不猜）。*" ;;
     esac
     if [ "$_direct_ok" = "1" ]; then
-      echo "::notice::那**直连**逐字**成**了、这一件逐字**不**进那缺件表。"
+      echo "::notice::那**直连** **成**了、这一件**不**进那缺件表。"
       rm -f "$DIST/.gh-dl.err"
     else
-      echo "::notice:: 本次清单不含这一件 —— 而它逐字**进**那显式缺件表（不会静默消失）。*"
+      echo "::notice:: 本次清单不含这一件 —— 而它**进**那显式缺件表（不会静默消失）。*"
 
       miss_row "$t" "missing-$DL_KIND" "run $picked 下载被拒（HTTP $DL_HTTP / $DL_KIND）" \
         "$(missing_form_of "$DIST/.gh-dl-partial")"
@@ -260,7 +260,7 @@ try {
 ' "$_picked")"
       if [ -z "$_build_sha" ]; then
 
-        echo "::warning title=$t 构建标识读不到::那件包里逐字**没有** component-meta.json 的 buildSha 那一格（无法判定那一件是不是当前这份）"
+        echo "::warning title=$t 构建标识读不到::那件包里**没有** component-meta.json 的 buildSha 那一格（无法判定那一件是不是当前这份）"
         miss_row "$t" "missing-contract" "件包里读不到 buildSha（无法判定那一件是不是当前这份）" \
           "$(missing_form_of "$_picked")"
         rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
@@ -269,9 +269,9 @@ try {
       fi
       if [ "$_build_sha" != "$RUN_HEAD" ]; then
 
-        echo "::warning title=$t 那件不是那一趟产的::那件自己的 buildSha 逐字是 ${_build_sha:0:12}、那 run $picked 的 head 逐字是 ${RUN_HEAD:0:12}"
-        echo "::notice::件包里的字节逐字**不是**那一趟产的、那**旧字节不进清单**。"
-        miss_row "$t" "missing-contract" "件自己的 buildSha 逐字不是那一趟产的（${_build_sha:0:12} ≠ run $picked 的 ${RUN_HEAD:0:12}）" \
+        echo "::warning title=$t 那件不是那一趟产的::那件自己的 buildSha 是 ${_build_sha:0:12}、那 run $picked 的 head 是 ${RUN_HEAD:0:12}"
+        echo "::notice::件包里的字节**不是**那一趟产的、那**旧字节不进清单**。"
+        miss_row "$t" "missing-contract" "件自己的 buildSha 不是那一趟产的（${_build_sha:0:12} ≠ run $picked 的 ${RUN_HEAD:0:12}）" \
           "$(missing_form_of "$_picked")"
         rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
         missed=$((missed+1)); miss_unknown=$((miss_unknown+1))
@@ -281,14 +281,14 @@ try {
       _dst="$DIST/component-$t-$_ver-$_sha-android-arm64.zip"
 
       if [ "$_picked" = "$_dst" ]; then
-        echo "::notice:: $t 那一颗逐字**已经在**那个路径上（不拷、那 cp 逐字会报 are the same file）。"
+        echo "::notice:: $t 那一颗**已经在**那个路径上（不拷、那 cp 会报 are the same file）。"
       else
         cp -f "$_picked" "$_dst"
       fi
     else
       echo "::warning title=$t 挑不出那一颗件::$(tr '\n' ' ' < "$DIST/.pick-$t.err")"
-      echo "::notice:: 那期望形态=$_form（头四字节 $_magic）、按内容挑逐字挑不出（按 C-05 不猜、不取第一个）。"
-      miss_row "$t" "missing-contract" "artifact 里的容器逐字挑不出那一颗件（形态=$_form、头四字节 $_magic）" \
+      echo "::notice:: 那期望形态=$_form（头四字节 $_magic）、按内容挑挑不出（按 C-05 不猜、不取第一个）。"
+      miss_row "$t" "missing-contract" "artifact 里的容器挑不出那一颗件（形态=$_form、头四字节 $_magic）" \
         "$(missing_form_of "$_cand")"
       rm -f "$DIST/component-$t-"*.zip 2>/dev/null || true
       missed=$((missed+1))
@@ -327,9 +327,9 @@ if [ "$missed" -gt 0 ]; then
     [ -n "$mt" ] || continue
     echo "  · $mt  [$mkind] $mwhy"
   done < "$MISS_TSV"
-  echo "::notice title=本轮有缺件::上面那几件逐字**进**了那份显式缺件表、它们逐字**没有**静默从清单里消失。"
-  echo "::notice:: 而那机器可读的那一份逐字是 $MISS_JSON（逐件、逐档、逐字原话）。*"
-  echo "::notice:: 而那清单（work/declared.json）逐字**只含取到的那些件** —— 而那缺的几件**不在**它里面。*"
+  echo "::notice title=本轮有缺件::上面那几件**进**了那份显式缺件表、它们**没有**静默从清单里消失。"
+  echo "::notice:: 而那机器可读的那一份是 $MISS_JSON（逐件、逐档、原话）。*"
+  echo "::notice:: 而那清单（work/declared.json）**只含取到的那些件** —— 而那缺的几件**不在**它里面。*"
 fi
 if [ "$got" -eq 0 ]; then
   echo "::error title=一件也没取到::清单投影会把「没有件」和「清单为空」混为一谈，这里先停"

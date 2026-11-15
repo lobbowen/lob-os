@@ -25,10 +25,10 @@ process.stdout.write(ids.join(" "));
   read -r -a PIECES < /tmp/.lobos-pieces.$$
   rm -f /tmp/.lobos-pieces.$$
 fi
-[ ${#PIECES[@]} -ge 1 ] || die "那九件逐字读不到" "而那 pin 记录逐字读不到、按 C-05 报缺"
+[ ${#PIECES[@]} -ge 1 ] || die "那九件读不到" "而那 pin 记录读不到、按 C-05 报缺"
 
 if [ ! -x "$CACHE_KEY" ] && [ ! -f "$CACHE_KEY" ]; then
-  die "cache-key.sh 读不到：$CACHE_KEY" "而那一格逐字要那指纹算据、算据逐字不在"
+  die "cache-key.sh 读不到：$CACHE_KEY" "而那一格要那指纹算据、算据不在"
 fi
 
 publishedAssetNames() {
@@ -63,7 +63,7 @@ for p in "${PIECES[@]}"; do
   cur_src="$(printf '%s' "$cur_asset" | grep -o 'src[0-9a-f]*' | head -1)"
   if [ -z "$cur_src" ]; then
     echo "--- $p ---"
-    echo "   [缺] 那当前指纹逐字算不出来（按 C-05 报缺、不猜）"
+    echo "   [缺] 那当前指纹算不出来（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "--- $p ---"
@@ -74,8 +74,8 @@ for p in "${PIECES[@]}"; do
 
   if printf '%s\n' "$published" | sed 's/%2B/+/g' | grep -Fxq "$(printf '%s' "$cur_asset" | sed 's/%2B/+/g')"; then
     echo "   当前资产名在 Release 上：${cur_asset}"
-    echo "这一格逐字**答的是**「那当前这一份逐字有没有被发布出去」、答案逐字是「有」"
-    echo "   [绿] 那当前资产名逐字**在** Release 上（它逐字**不需要**重新固化）"
+    echo "这一格**答的是**「那当前这一份有没有被发布出去」、答案是「有」"
+    echo "   [绿] 那当前资产名**在** Release 上（它**不需要**重新固化）"
     continue
   fi
 
@@ -83,28 +83,28 @@ for p in "${PIECES[@]}"; do
     echo "   当前资产名在 Release 上：${cur_asset:-(算不出)}"
     echo "   来源：Release 上那一份读不到（按 C-05 报缺、不猜）"
     if [ -z "${GITHUB_TOKEN:-}" ]; then
-      echo "   [缺] 那 Release 上那一份逐字读不到（那 token 逐字是空的）"
-      echo "这一格逐字**只能**在 CI 里判（那 CI 那一族逐字有那 token）"
+      echo "   [缺] 那 Release 上那一份读不到（那 token 是空的）"
+      echo "这一格**只能**在 CI 里判（那 CI 那一族有那 token）"
       rc_all=1; continue
     fi
-    echo "   [缺] 那 Release 上那一份逐字读不到（按 C-05 报缺、不猜）"
-    echo "那 pin 记录逐字是那**上一次**固化那一份的、它逐字**不**当判据"
+    echo "   [缺] 那 Release 上那一份读不到（按 C-05 报缺、不猜）"
+    echo "那 pin 记录是那**上一次**固化那一份的、它**不**当判据"
     rc_all=1; continue
   fi
 
   echo "   当前资产名：${cur_asset}"
-  echo "   Release 上逐字有的那几份："
+  echo "   Release 上有的那几份："
   printf '%s\n' "$published" | sed 's/^/        /' | head -8
-  echo "   [红] 那当前资产名逐字**不**在 Release 上（这一件逐字**要**发布出去）"
+  echo "   [红] 那当前资产名**不**在 Release 上（这一件**要**发布出去）"
   rc_all=1
   continue
 done
 
 echo ""
 if [ "$rc_all" = "0" ]; then
-  echo "当前那几份逐字**都**在 Release 上（它们逐字**不用**再发布）"
+  echo "当前那几份**都**在 Release 上（它们**不用**再发布）"
 else
-  echo "有那几件逐字**当前那一份不**在 Release 上（它们逐字**要**发布出去）"
+  echo "有那几件**当前那一份不**在 Release 上（它们**要**发布出去）"
   echo "那**发布那一族**归 06、那**规范那一层**归 04"
 fi
 echo ""

@@ -111,9 +111,9 @@ jobs:
               console.log("[crypto] "+k+": crypto="+cv+" openssl="+ov+" => "+(same?"同":"不同"));
               if(!same) bad=1;
             }
-            if(bad){console.error("::error title=crypto 与 openssl 不是同一次构建::那两格 buildSha 与 buildRun 必须逐字相同");process.exit(1);}
+            if(bad){console.error("::error title=crypto 与 openssl 不是同一次构建::那两格 buildSha 与 buildRun 必须相同");process.exit(1);}
           '
-          echo "[ok] crypto 与 openssl 是同一次构建（buildSha 与 buildRun 两格逐字相同）"
+          echo "[ok] crypto 与 openssl 是同一次构建（buildSha 与 buildRun 两格相同）"
 
       - name: 失败现场（Job Summary，不裁剪）
         if: always()

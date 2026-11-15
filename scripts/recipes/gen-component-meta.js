@@ -324,7 +324,7 @@ function isCommandInterpreter(computed, id) {
   } catch (e) {
     
     console.error('::warning title=期望声明读不到::' + path.join(ROOT, 'scripts', 'verify', 'expected-behaviour.json')
-      + ' 读不到（一件逐字**不**判成 shell、按 C-05 报缺）');
+      + ' 读不到（一件**不**判成 shell、按 C-05 报缺）');
     return false;
   }
   const piece = decl && decl.pieces && decl.pieces[id];

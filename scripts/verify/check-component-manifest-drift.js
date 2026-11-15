@@ -156,8 +156,8 @@ function gate(online, onlineRevisionRaw, firstPublish) {
 
           console.log('[gate] ' + t.name + '@' + t.version + ' 换了字节，但**那 recipe 指纹也换了**'
             + '（线上 ' + oldFp + ' → 本次 ' + newFp + '）'
-            + ' ——那**recipe 变了**逐字**换**了字节逐字**是**那合法的**那一种**、那**版本号**逐字**没变**'
-            + '（那**上游源码**逐字**没变**）');
+            + ' ——那**recipe 变了** **换**了字节**是**那合法的**那一种**、那**版本号** **没变**'
+            + '（那**上游源码** **没变**）');
         } else {
           
           reds.push(t.name + '@' + t.version + ' 换了字节：线上 sha ' + String(got.sha256).slice(0, 12)
@@ -165,7 +165,7 @@ function gate(online, onlineRevisionRaw, firstPublish) {
             + '… —— 件按内容寻址命名，所以这**不会**盖掉旧对象（设备按 sha 命中与否自己会重下， integrity 不破）；'
             + '破的是口径：同一个号在两份清单里指向两批源码，凡按号说话的证据（债表、真机读数）从此失去所指。'
             + '同一版本号只许一批字节：要么让构建可复现（源码钉值 + 归档内 mtime + 工具链），要么提升件的版本'
-            + (oldFp && newFp ? '（那**指纹**逐字**一样**：' + oldFp + '、那 recipe 逐字**没变**）' : ''));
+            + (oldFp && newFp ? '（那**指纹** **一样**：' + oldFp + '、那 recipe**没变**）' : ''));
         }
       }
     }

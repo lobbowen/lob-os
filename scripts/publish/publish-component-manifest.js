@@ -139,28 +139,28 @@ function innerZipOf(file, wantPiece) {
   if (outerId) {
     if (outerId === wantPiece) return file;   
     throw new Error(
-      '件 ' + file + ' 的**外层自己**就是那一颗件、它的 id 逐字是 ' + outerId +
+      '件 ' + file + ' 的**外层自己**就是那一颗件、它的 id 是 ' + outerId +
       '（要的是 ' + wantPiece + '）—— 判红'
     );
   }
   const picked = innerZipCandidates(file);
   if (!picked.length) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，里面逐字**没有**一个含 component-meta.json 的件包' +
-      '（按内容挑逐字挑不出、按 C-05 不猜、不取第一个）。'
+      '件 ' + file + ' 的外层解开之后，里面**没有**一个含 component-meta.json 的件包' +
+      '（按内容挑挑不出、按 C-05 不猜、不取第一个）。'
     );
   }
   const hit = wantPiece ? picked.filter((c) => c.id === wantPiece) : picked;
   if (hit.length === 0) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，里面逐字**没有** id=' + wantPiece + ' 的那一个件包' +
-      '（候选逐字是 ' + picked.map((c) => c.id).join(', ') + '）。'
+      '件 ' + file + ' 的外层解开之后，里面**没有** id=' + wantPiece + ' 的那一个件包' +
+      '（候选是 ' + picked.map((c) => c.id).join(', ') + '）。'
     );
   }
   if (hit.length > 1) {
     throw new Error(
-      '件 ' + file + ' 的外层解开之后，里面逐字有 **' + hit.length + '** 个 id=' + wantPiece +
-      ' 的件包（01 裁的规则逐字「多过一个候选都判红、不取第一个」）。'
+      '件 ' + file + ' 的外层解开之后，里面有 **' + hit.length + '** 个 id=' + wantPiece +
+      ' 的件包（01 裁的规则「多过一个候选都判红、不取第一个」）。'
     );
   }
   return hit[0].path;
@@ -170,8 +170,8 @@ function pieceText(zipPath, rel) {
   const form = containerFormOf(zipPath);
   if (form !== 'zip' && form !== 'zip64') {
     throw new Error(
-      '件 ' + zipPath + ' 的容器形态逐字是 ' + form + ' —— 而这一格逐字要读件内那一个 package.json，' +
-      '形态逐字不对（不是 zip 容器、解不开）。'
+      '件 ' + zipPath + ' 的容器形态是 ' + form + ' —— 而这一格要读件内那一个 package.json，' +
+      '形态不对（不是 zip 容器、解不开）。'
     );
   }
   if (!pieceNames(zipPath).includes(rel)) return null;
@@ -237,7 +237,7 @@ function aliasesOf(name, zipPath, declaredEntry) {
   const entryBase = String(declaredEntry).split('/').pop();
   const entryKeys = Object.keys(bin).filter((k) => bin[k] === declaredEntry);
   if (!entryKeys.length) {
-    throw new Error('件 ' + name + ' 的 package.json bin 映射里没有任何一项逐字指向仓内声明的入口 ' + declaredEntry +
+    throw new Error('件 ' + name + ' 的 package.json bin 映射里没有任何一项指向仓内声明的入口 ' + declaredEntry +
       '（这一件声明过的键: ' + Object.keys(bin).sort().join(', ') + '）—— 入口只能有一个真相（scripts/registry/read-component-entry.sh 那条纪律）');
   }
   const names = pieceNames(zipPath);
@@ -359,7 +359,7 @@ function revisionForManifest() {
     
 
     if (DECLARED_ONLY) {
-      console.error('::notice title=缺 revision::--declared-only 那一档逐字不要求 revision（一趟逐字不是发布轮）');
+      console.error('::notice title=缺 revision::--declared-only 那一档不要求 revision（一趟不是发布轮）');
       return 0;
     }
     throw new Error('LOBOS_COMPONENT_REVISION 必须是正整数（它来自发布 tag `component-<channel>-<revision>`），读到: ' + (raw || '空'));

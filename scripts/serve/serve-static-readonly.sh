@@ -14,7 +14,7 @@ say "   目录：$DIR"
 say "   地址：http://$HOST:$PORT/"
 
 if [ ! -d "$DIR" ]; then
-  say "::error title=目录不存在::$DIR 不在（一格逐字报缺、不猜）"
+  say "::error title=目录不存在::$DIR 不在（一格报缺、不猜）"
   exit 1
 fi
 

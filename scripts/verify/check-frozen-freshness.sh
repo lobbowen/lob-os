@@ -10,7 +10,7 @@ die() { echo "[error] $1" >&2; shift; for l in "$@"; do echo "        $l" >&2; d
 usage() {
   echo "用法: bash $0 [--pin <pin 记录>] <件包zip>..."
   echo "  例: bash $0 dist/component-bash-*.zip"
-  echo "  退出码: 0=每一份逐字都与当前那一份代码一致；1=有那一份不是；2=参数/环境错误"
+  echo "  退出码: 0=每一份都与当前那一份代码一致；1=有那一份不是；2=参数/ 环境错误"
 }
 
 PINS=""
@@ -22,11 +22,11 @@ while [ $# -gt 0 ]; do
     *) break ;;
   esac
 done
-[ $# -ge 1 ] || { usage >&2; die "至少要给一个件包" "那一格逐字要核的是「那一份逐字是不是这一份代码造出来的」"; }
+[ $# -ge 1 ] || { usage >&2; die "至少要给一个件包" "那一格要核的是「那一份是不是这一份代码造出来的」"; }
 
 HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 if [ -z "$HEAD_SHA" ]; then
-  die "读不到 HEAD" "那一格逐字要比当前那一份代码、当前那一份逐字读不到"
+  die "读不到 HEAD" "那一格要比当前那一份代码、当前那一份读不到"
 fi
 HEAD_SHORT="${HEAD_SHA:0:12}"
 
@@ -40,13 +40,13 @@ for zip in "$@"; do
   name="$(basename "$zip")"
   echo "--- $name ---"
   if [ ! -f "$zip" ]; then
-    echo "   [缺] 那一件逐字**不在**（按 C-05 报缺、不猜）"
+    echo "   [缺] 那一件**不在**（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
 
   meta="$(unzip -p "$zip" component-meta.json 2>/dev/null)"
   if [ -z "$meta" ]; then
-    echo "   [缺] 那产物里逐字**没有** component-meta.json（按 C-05 报缺）"
+    echo "   [缺] 那产物里**没有** component-meta.json（按 C-05 报缺）"
     rc_all=1; continue
   fi
   build_sha="$(printf '%s' "$meta" | node -e '
@@ -58,7 +58,7 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
   try{process.stdout.write(String(JSON.parse(d).buildRun||""))}catch(e){process.stdout.write("")}
 })')"
   if [ -z "$build_sha" ]; then
-    echo "   [缺] 那产物里逐字**没有** buildSha 那一格（按 C-05 报缺、不猜）"
+    echo "   [缺] 那产物里**没有** buildSha 那一格（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "   构建标识：buildSha=$build_sha buildRun=$build_run"
@@ -75,9 +75,9 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
   elif [ -n "$build_run" ] && [ "$build_run" != "local" ]; then
 
     echo "   期望值来源：$want_src"
-    echo "   那产物逐字是那 buildRun=$build_run 那一次构建造出来的"
-    echo "一格逐字**自洽**（它逐字**不**依赖那陈旧的 pin 记录）"
-    echo "   [绿] 那产物逐字**是**它自己带的那一次构建造出来的"
+    echo "   那产物是那 buildRun=$build_run 那一次构建造出来的"
+    echo "一格**自洽**（它**不**依赖那陈旧的 pin 记录）"
+    echo "   [绿] 那产物**是**它自己带的那一次构建造出来的"
     continue
   else
 
@@ -101,31 +101,31 @@ for (const k of Object.keys(pins)) {
 }
 process.stdout.write(hit?String(hit.buildSha||""):"");
 ' "$PIN" "$name" 2>/dev/null)"
-    echo "   期望值来源：pin 记录（不在 CI 里、那 GITHUB_SHA 逐字是空的、产物自带的 buildRun 逐字也没有）"
-    echo "那 pin 记录逐字是那**上一次**固化那一份的、它逐字**只**当提示、**不**当判据"
+    echo "   期望值来源：pin 记录（不在 CI 里、那 GITHUB_SHA 是空的、产物自带的 buildRun 也没有）"
+    echo "那 pin 记录是那**上一次**固化那一份的、它**只**当提示、**不**当判据"
   fi
   if [ -z "$want_sha" ]; then
-    echo "   [缺] 那期望值逐字读不到（按 C-05 报缺、不猜）"
+    echo "   [缺] 那期望值读不到（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
   echo "   期望 buildSha=$want_sha"
 
   if [ "$build_sha" = "$want_sha" ]; then
-    echo "   [绿] 那产物逐字**是**这一份代码造出来的"
+    echo "   [绿] 那产物**是**这一份代码造出来的"
   else
-    echo "   [红] 那产物逐字**不是**这一份代码造出来的"
+    echo "   [红] 那产物**不是**这一份代码造出来的"
     echo "        事实：产物 buildSha=${build_sha:0:12} ≠ 期望 ${want_sha:0:12}"
     echo "        事实：当前 HEAD=${HEAD_SHORT}"
-    echo "这一件逐字**要重新固化**（固化那一族归 06）"
+    echo "这一件**要重新固化**（固化那一族归 06）"
     rc_all=1
   fi
 done
 
 echo ""
 if [ "$rc_all" = "0" ]; then
-  echo "每一份逐字都与当前那一份代码一致"
+  echo "每一份都与当前那一份代码一致"
 else
-  echo "有那一份逐字**不是**当前那一份代码造出来的（要重新固化）"
+  echo "有那一份**不是**当前那一份代码造出来的（要重新固化）"
 fi
 echo ""
 echo "退出码=$rc_all"

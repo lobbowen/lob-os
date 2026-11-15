@@ -52,7 +52,7 @@ class TerminalSession private constructor(
 
             val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
                 ?: throw IllegalStateException(
-                    "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它逐字是那 APK 里那一份）",
+                    "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它是那 APK 里那一份）",
                 )
 
             val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv

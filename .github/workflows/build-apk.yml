@@ -28,11 +28,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    # 缺陷名（C-102）**那 workflow 逐字没有 permissions 那一块**、GITHUB_TOKEN
-    # 逐字**默认**拿的是那仓的**默认**权限（一档**按仓设置**变、**不可控**）。
-    # 取件那一格逐字**要**用那 GITHUB_TOKEN 去读 Release 清单、**只要**读。
-    #**处置**：job 逐字**显式**给那 contents: read。
-    #**不碰**那两处 APK_PUBLISH_TOKEN（:78 与那 :475 逐字是**发布**那一族的身份、
+    # 缺陷名（C-102）**那 workflow 没有 permissions 那一块**、GITHUB_TOKEN
+    #**默认**拿的是那仓的**默认**权限（一档**按仓设置**变、**不可控**）。
+    # 取件那一格**要**用那 GITHUB_TOKEN 去读 Release 清单、**只要**读。
+    #**处置**：job**显式**给那 contents: read。
+    #**不碰**那两处 APK_PUBLISH_TOKEN（:78 与那 :475 是**发布**那一族的身份、
     #**不是**取件的身份、**不合并**）。
     permissions:
       contents: read
@@ -115,7 +115,7 @@ jobs:
           pass() { echo "- [ok] $1" >> "$SUMMARY"; }
           echo '## 发布轮前置校验' >> "$SUMMARY"
 
-          # (1) tag 与 version.json 必须逐字一致 —— 否则要编完 APK 才报
+          # (1) tag 与 version.json 必须一致 —— 否则要编完 APK 才报
           [ -f version.json ] || { echo "::error title=发布前置::工作区里没有 version.json"; exit 1; }
           NAME_VER="$(jq -r '.shell.versionName' version.json)"
           CODE="$(jq -r '.shell.versionCode' version.json)"
@@ -239,40 +239,40 @@ jobs:
           rm -rf "$DST"
           mkdir -p "$DST/usr/lib/aarch64-linux-android"
           cp -a "$SRC/usr/include" "$DST/usr/include"
-          #**架构**那**一族**的头逐字**也**要**并**进去**（asm/types.h 逐字**在**那
+          #**架构**那**一族**的头**也**要**并**进去**（asm/types.h**在**那
           # usr/include/aarch64-linux-android/asm/ **那一族**、**顶层**的**那个**里面**没有**它**）。
           if [ -d "$SRC/usr/include/aarch64-linux-android" ]; then
             cp -a "$SRC/usr/include/aarch64-linux-android/." "$DST/usr/include/"
           fi
-          #**库**逐字**要**按**那 NDK **那一族**的**层次**摆**（crtbegin_so.o 与那 crtend_so.o
-          # 逐字**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、**顶层**的**那个**里面**没有**它们**）。
+          #**库** **要**按**那 NDK **那一族**的**层次**摆**（crtbegin_so.o 与那 crtend_so.o
+          #**在**那 usr/lib/aarch64-linux-android/<API>/ **那一族**、**顶层**的**那个**里面**没有**它们**）。
           cp -a "$SRC"/usr/lib/aarch64-linux-android/. "$DST/usr/lib/aarch64-linux-android/" 2>/dev/null || true
-          # 缺陷名（C-102）**那 sysroot **那一族**逐字**把**那 NDK **那一族**的**全部**搬**进去**了**
-          #**后果**逐字libc.a 逐字 = **26672138** 字节、libc++_static.a 逐字 = **24518858** 字节、
-          #**整个**的**那一份**逐字 = **125 M**、APK **那一份**逐字**涨**那**一百**多 M、
-          #**它**们**逐字是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
+          # 缺陷名（C-102）**那 sysroot **那一族** **把**那 NDK **那一族**的**全部**搬**进去**了**
+          #**后果**libc.a  = **26672138** 字节、libc++_static.a  = **24518858** 字节、
+          #**整个**的**那一份** = **125 M**、APK **那一份** **涨**那**一百**多 M、
+          #**它**们**是**那**两**件**事**：「那**材料在位**」与「那 APK **多**大**」）。
           #**处置**：**<API>/** **那些**子目录**只**留**那**目标** API **那一个**、
-          #**它**们**逐字是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
+          #**它**们**是**那**两**件**事**：「那**层次**是**什么**」与「那**大小**是**什么**」）。
           for _d in "$DST/usr/lib/aarch64-linux-android/"*/; do
             _b="$(basename "$_d")"
             case "$_b" in
-              #**目标三元组**逐字**是**那 aarch64-linux-android35、**它**逐字**要**那 **35** **那一个**
-              # **子目录**（**clang** 逐字**按**那**目标**的**API**找**那 crt **那一族**）。
+              #**目标三元组** **是**那 aarch64-linux-android35、**它** **要**那 **35** **那一个**
+              # **子目录**（**clang** **按**那**目标**的**API**找**那 crt **那一族**）。
               [0-9]*) [ "$_b" = "35" ] || rm -rf "$_d" ;;
             esac
           done
-          #libc.a 与那 libc++_static.a 逐字**不**要**（**它**们**逐字是**那**两**件**事**：
-          # 「那**链接**要**什么**」与「那**静态库**是**什么**」）、**处置**逐字**不合并**。
+          #libc.a 与那 libc++_static.a**不**要**（**它**们**是**那**两**件**事**：
+          # 「那**链接**要**什么**」与「那**静态库**是**什么**」）、**处置** **不合并**。
           rm -f "$DST/usr/lib/aarch64-linux-android/libc.a" "$DST/usr/lib/aarch64-linux-android/libc++_static.a"
-          rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 逐字不在**那 sysroot **里面**、**它**逐字**在**那 clang **那工具链**那一族**
-          #clang 逐字**编**的**那**时候逐字**从**那**工具链**那一族**找**那 libunwind.a**、
-          #**它**逐字**在**那 APK **外面**、**它**逐字**进不去**那**设备**
-          #**后果**逐字llvm **那一格**逐字**编**一个 .so **不过**、
-          # 而那**错**逐字 = 那「ld.lld: error: unable to find library -l:libunwind.a」。
-          #**处置**：**工具链**那一族逐字**也**拷**进**那 sysroot **那 lib/ **里面**、
-          #**它**逐字**跟**那 sysroot **一起**进**那 APK**（**它**们**逐字是**那**两**件**事**：
+          rm -f "$DST/usr/lib/libFuzzer.a" "$DST/usr/lib/libomp.a" "$DST/usr/lib/libomp.so"          #  缺陷名（C-102）**那 libunwind.a 不在**那 sysroot **里面**、**它** **在**那 clang **那工具链**那一族**
+          #clang**编**的**那**时候**从**那**工具链**那一族**找**那 libunwind.a**、
+          #**它** **在**那 APK **外面**、**它** **进不去**那**设备**
+          #**后果**llvm **那一格** **编**一个 .so **不过**、
+          # 而那**错** = 那「ld.lld: error: unable to find library -l:libunwind.a」。
+          #**处置**：**工具链**那一族**也**拷**进**那 sysroot **那 lib/ **里面**、
+          #**它** **跟**那 sysroot **一起**进**那 APK**（**它**们**是**那**两**件**事**：
           # 「那**头文件与库**」与「那**工具链**自己的**库**」）。
-          # 按 C-104：**它**们逐字**不是**那同一件内容的两条取法、**处置**逐字**不合并**。
+          # 按 C-104：**它**们**不是**那同一件内容的两条取法、**处置** **不合并**。
           TOOLLIB="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
           if [ -n "$TOOLLIB" ]; then
             cp -a "$TOOLLIB"/. "$DST/usr/lib/" 2>/dev/null || true
@@ -293,11 +293,11 @@ jobs:
       # 这个事实藏起来 —— 构建变慢、变脆，还说不清为什么。
       - name: 取件（从 Release 取 base 筐的固化产物）
         env:
-          # 缺陷名（C-102）**那一格逐字没有令牌**、脚本那一格逐字**要**读 Release 清单、
-          #**没有身份**就**匿名**读、匿名读逐字 60 次/小时、症状逐字是 403 限流。
-          #**处置**：**令牌**逐字**在这一格**给（step 逐字**必须**有 env，
-          #job 逐字**没有**那一个、**不放**在 job 那一层）。
-          #**身份**：secrets.GITHUB_TOKEN 逐字是那**只读**的身份（contents: read）、
+          # 缺陷名（C-102）**那一格没有令牌**、脚本那一格**要**读 Release 清单、
+          #**没有身份**就**匿名**读、匿名读60 次/ 小时、症状是 403 限流。
+          #**处置**：**令牌** **在这一格**给（step**必须**有 env，
+          #job**没有**那一个、**不放**在 job 那一层）。
+          #**身份**：secrets.GITHUB_TOKEN 是那**只读**的身份（contents: read）、
           #**不是**那 APK_PUBLISH_TOKEN（**不是**这一格的身份）。
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -385,15 +385,15 @@ jobs:
             VARIANT=debug
           fi
           echo "[gradle] 本轮构建变体：$VARIANT（RELEASE_ROUND=${RELEASE_ROUND}）"
-          # 缺陷名（C-102）**那 variant 逐字**只**在**那 gradle **那一句**的**后**面**写**、
-          #gradle **那一句**逐字**红**了**就**走**不到**那**一行**、
-          #**outputs.variant** 逐字**是**那**空**的、
-          #step 21 与那 step 25 与那 step 28 逐字**就**拿到**那**空段**
-          # （路径逐字 = 「container/app/build/outputs/apk//*.apk」）、
-          #**症状**逐字**是**那「No files were found with the provided path」。
-          #**处置**：variant 逐字**先**写**出去**（它逐字**不依赖**那 gradle **的**成败**）、
-          #gradle **那一句**逐字**还**写**一遍**（**它**逐字**一样**、**它**逐字**不**是**第二条路**）。
-          # 按 C-102：它治**的**是「那**变量**逐字**没带上**」那一层、**根因**逐字**是**那 gradle **那一句**红**了**。
+          # 缺陷名（C-102）**那 variant**只**在**那 gradle **那一句**的**后**面**写**、
+          #gradle **那一句** **红**了**就**走**不到**那**一行**、
+          #**outputs.variant** **是**那**空**的、
+          #step 21 与那 step 25 与那 step 28**就**拿到**那**空段**
+          # （路径 = 「container/app/build/outputs/apk//*.apk」）、
+          #**症状** **是**那「No files were found with the provided path」。
+          #**处置**：variant**先**写**出去**（它**不依赖**那 gradle **的**成败**）、
+          #gradle **那一句** **还**写**一遍**（**它** **一样**、**它** **不**是**第二条路**）。
+          # 按 C-102：它治**的**是「那**变量** **没带上**」那一层、**根因** **是**那 gradle **那一句**红**了**。
           echo "variant=$VARIANT" >> "$GITHUB_OUTPUT"
 
           # 清掉上一次构建残留的 packaged_res ——

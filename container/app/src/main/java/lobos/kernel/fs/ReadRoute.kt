@@ -21,8 +21,8 @@ object ReadRoute {
         if (size > maxBytes) {
             note(ctx, route, file, size, maxBytes, false)
             throw IllegalStateException(
-                "那一份逐字太大：" + file.absolutePath + " 逐字 = " + size +
-                    " 字节、读法逐字[" + route + "]逐字只许 " + maxBytes +
+                "那一份太大：" + file.absolutePath + "  = " + size +
+                    " 字节、读法[" + route + "]只许 " + maxBytes +
                     "（按 C-05 报缺、**不**整读进那堆）"
             )
         }
@@ -45,11 +45,11 @@ object ReadRoute {
         runCatching {
             lobos.services.log.RuntimeDiagnostics.append(
                 ctx, ROUTE, ok,
-                "那读法逐字[" + route + "]逐字读了那一份",
+                "那读法[" + route + "]读了那一份",
                 "file=" + file.absolutePath +
                     " bytes=" + size +
                     " limit=" + maxBytes +
-                    (if (ok) "" else "（**超限**逐字**没有**被读）"),
+                    (if (ok) "" else "（**超限** **没有**被读）"),
             )
         }
     }

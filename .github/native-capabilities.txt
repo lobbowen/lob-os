@@ -23,15 +23,15 @@
 # soft 上游配方有不确定性 —— 缺件只降级（不判红），不陪葬其它能力
 
 # --- upstream ---
-# bash 那一件**不再提供 libbash.so** —— 而那一列逐字是「**这一件提供的那个字节名**」。
-# 而 06 归档那一件逐字："programs":["bin/bash"]、逐字 "libraries":[]、逐字 "derivedLinks":[]
-# 件包里逐字有 bin/bash、逐字**没有** libbash.so
-#pin 重生成逐字报「档位表第二列逐字是 libbash.so，件包里逐字**命中不到**它」
-# 该写它逐字真提供的那一个（是 bin/bash）。
-# （这与 jq 那一件同一形状、也与 01 裁的 S606-01 §9.1 逐字对 llvm 那一件的裁同一形状。）
+# bash 那一件**不再提供 libbash.so** —— 而那一列是「**这一件提供的那个字节名**」。
+# 而 06 归档那一件："programs":["bin/bash"]、"libraries":[]、"derivedLinks":[]
+# 件包里有 bin/bash、**没有** libbash.so
+#pin 重生成报「档位表第二列是 libbash.so，件包里**命中不到**它」
+# 该写它真提供的那一个（是 bin/bash）。
+# （这与 jq 那一件同一形状、也与 01 裁的 S606-01 §9.1 对 llvm 那一件的裁同一形状。）
 upstream bin/bash bash
-# ripgrep 那一件逐字同形：而 06 归档那一件逐字 "programs":["bin/rg"]、逐字 "libraries":[]
-# 它逐字提供的是 bin/rg、**不是** liblobosrg.so。
+# ripgrep 那一件同形：而 06 归档那一件"programs":["bin/rg"]、"libraries":[]
+# 它提供的是 bin/rg、**不是** liblobosrg.so。
 upstream bin/rg ripgrep
 upstream libbusybox.so busybox
 upstream libz.so zlib

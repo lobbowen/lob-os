@@ -49,11 +49,11 @@ if [ "$BS_VER_TABLE" != "$BUSYBOX_VER" ]; then
     "构建脚本写的是 $BUSYBOX_VER，钉值表是 $BS_VER_TABLE。两处必须一致，否则钉的 sha256 与要编的版本对不上。"
 fi
 TGZ="$WORK/busybox.tar.bz2"
-note "取源码 $BUSYBOX_VER（sha256 由钉值表逐字节校验）"
+note "取源码 $BUSYBOX_VER（sha256 由钉值表节校验）"
 
 BUSYBOX_SHA="$(node -e 'const t=require(process.argv[1]);process.stdout.write(t.sources.busybox.sha256)' "$ROOT_DIR/scripts/component-sources.json")"
 if [ -f "$TGZ" ] && [ "$(sha256sum "$TGZ" | cut -d" " -f1)" = "$BUSYBOX_SHA" ]; then
-  note "源码 $BUSYBOX_VER 就位（落点那一份逐字过了那钉值，直接用）"
+  note "源码 $BUSYBOX_VER 就位（落点那一份过了那钉值，直接用）"
 else
 if ! bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin busybox "$TGZ"; then  die "取源码失败或 sha256 不符" \
     "钉值与来源见 scripts/component-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
@@ -238,10 +238,10 @@ if [ "$BUSYBOX_STATIC" = "1" ]; then
   ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
   [ "$ETYPE" = "EXEC" ] || die "不是静态产物" "e_type=$ETYPE —— 而那**静态**的**那一个**必须**是**那 ET_EXEC"
   NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
-  [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那**静态**的**那一个**逐字**不**能**有**那**动态**依赖"
+  [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那**静态**的**那一个** **不**能**有**那**动态**依赖"
 
   INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP' || true)
-  [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那**静态**的**那一个**逐字**不**能**要**那 **linker64**"
+  [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那**静态**的**那一个** **不**能**要**那 **linker64**"
   echo "[$TOOL] 形态：e_type=$ETYPE、静态（无 PT_INTERP、NEEDED=$NEEDED 项）"
 else
   ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')

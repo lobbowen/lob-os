@@ -46,7 +46,7 @@ missing = []
 for key, path, got in (('defconfig', defc, def_sha), ('kconfig', kcfg, kcfg_sha)):
     want = d['source'][key]['sha256']
     if want != got:
-        bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (key, want[:16], got[:16]))
+        bad.append('%s 的 sha256 对不上（清单记 %s、实际 %s）' % (key, want[:16], got[:16]))
 
 for e in d['defconfigEntries']:
     n = e['line']
@@ -57,7 +57,7 @@ for e in d['defconfigEntries']:
     if actual.startswith('# '):
         actual = actual[2:]
     if actual != e['text']:
-        bad.append('defconfig :%d 逐字对不上（清单记 %s、实际 %s）' % (n, e['text'][:60], actual[:60]))
+        bad.append('defconfig :%d 对不上（清单记 %s、实际 %s）' % (n, e['text'][:60], actual[:60]))
 
 for e in d['kconfigSections']:
     n = e['line']
@@ -65,7 +65,7 @@ for e in d['kconfigSections']:
         bad.append('kconfig 段行号越界: %d' % n)
         continue
     if kl[n - 1].rstrip() != e['text']:
-        bad.append('kconfig :%d 逐字对不上（清单记 %s、实际 %s）' % (n, e['text'][:60], kl[n - 1].rstrip()[:60]))
+        bad.append('kconfig :%d 对不上（清单记 %s、实际 %s）' % (n, e['text'][:60], kl[n - 1].rstrip()[:60]))
 
 for e in d['kconfigMenus']:
     n = e['line']
@@ -73,29 +73,29 @@ for e in d['kconfigMenus']:
         bad.append('kconfig menu 段行号越界: %d' % n)
         continue
     if kl[n - 1].rstrip() != e['text']:
-        bad.append('kconfig menu :%d 逐字对不上' % n)
+        bad.append('kconfig menu :%d 对不上' % n)
 
 t = d['kconfigTail']
 n = t['line']
 if n < 1 or n > len(kl):
     bad.append('kconfigTail 行号越界: %d' % n)
 elif kl[n - 1].rstrip() != t['text']:
-    bad.append('kconfigTail :%d 逐字对不上（清单记 %s、实际 %s）' % (n, t['text'], kl[n - 1].rstrip()))
+    bad.append('kconfigTail :%d 对不上（清单记 %s、实际 %s）' % (n, t['text'], kl[n - 1].rstrip()))
 
 for m in d.get('missingReferences') or []:
     p = os.path.join(kb, m['ref'])
     if not os.path.isfile(p):
-        missing.append('%s 逐字**不**在**那仓内**（那 %s 逐字引它、按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s**不**在**那仓内**（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(data_path)))
 for m in d.get('referencedFiles') or []:
     p = os.path.join(ROOTDIR, m['path'])
     if not os.path.isfile(p):
-        missing.append('%s 逐字**不**在**那仓内**（那 %s 逐字引它、按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s**不**在**那仓内**（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
         continue
     got = hashlib.sha256(open(p, 'rb').read()).hexdigest()
     if m.get('sha256') and got != m['sha256']:
-        bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (m['ref'], m['sha256'][:16], got[:16]))
+        bad.append('%s 的 sha256 对不上（清单记 %s、实际 %s）' % (m['ref'], m['sha256'][:16], got[:16]))
 
 up = d.get('upstream') or {}
 def diff_lines(a, b):
@@ -115,34 +115,34 @@ for key in ('initKconfig', 'gkiDefconfig'):
     lb = os.path.join(ROOTDIR, e['upstreamPath'])
     for f in (la, lb):
         if not os.path.isfile(f):
-            missing.append('%s 逐字**不**在**那仓内**' % f)
+            missing.append('%s**不**在**那仓内**' % f)
             break
     else:
         got = diff_lines(la, lb)
         if got != e['diffLines']:
-            bad.append('%s 的差集逐字对不上（清单记 %d、实际 %d）' % (key, e['diffLines'], got))
+            bad.append('%s 的差集对不上（清单记 %d、实际 %d）' % (key, e['diffLines'], got))
 
 kv = d.get('kernelVersion') or {}
 if not kv.get('value'):
-    missing.append('那内核版本号逐字还没有（按 C-105 不猜填、取逐字不归 01、取逐字归 06）')
+    missing.append('那内核版本号还没有（按 C-105 不猜填、取不归 01、取归 06）')
 
 for r in d.get('referenceDocs') or []:
     if r.get('isKernelData'):
         if r.get('status') == '未核':
-            missing.append('%s 逐字**是**那内核的**数据**、它**还**没**进**那仓**内**、按 C-105 报缺' % r['file'])
+            missing.append('%s**是**那内核的**数据**、它**还**没**进**那仓**内**、按 C-105 报缺' % r['file'])
         else:
 
             p2 = os.path.join(ROOTDIR, r.get('path') or ('docs/kernel-baseline/' + r['file']))
             if not os.path.isfile(p2):
-                missing.append('%s 逐字**不**在**那仓内**' % r['file'])
+                missing.append('%s**不**在**那仓内**' % r['file'])
             else:
                 got2 = hashlib.sha256(open(p2, 'rb').read()).hexdigest()
                 if r.get('sha256') and got2 != r['sha256']:
-                    bad.append('%s 的 sha256 逐字对不上（清单记 %s、实际 %s）' % (r['file'], r['sha256'][:16], got2[:16]))
+                    bad.append('%s 的 sha256 对不上（清单记 %s、实际 %s）' % (r['file'], r['sha256'][:16], got2[:16]))
     elif r.get('file', '').endswith('.html'):
 
         if r.get('isKernelData'):
-            bad.append('网页材料 %s 逐字被标成内核数据' % r['file'])
+            bad.append('网页材料 %s 被标成内核数据' % r['file'])
 
 n_def = len(d['defconfigEntries'])
 n_cfg = len(d['kconfigSections'])
