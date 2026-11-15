@@ -21,6 +21,11 @@ sealed class AssetStatus {
         val mismatched: List<String>,
     ) : AssetStatus()
 
+    data class MissingFromPiece(
+        val exe: PieceScan.Found,
+        val path: String,
+        val pieceListing: String,
+    ) : AssetStatus()
     data class Ready(
         val exe: PieceScan.Found,
         val path: String,
@@ -74,6 +79,10 @@ data class PrepareReport(val entries: List<Pair<PieceScan.Found, AssetStatus>>) 
                     o.put("status", "ready")
                     o.put("path", st.path)
                 }
+                is AssetStatus.MissingFromPiece -> {
+                    o.put("status", "missing_from_piece")
+                    o.put("path", st.path)
+                }
                 is AssetStatus.MissingFromLib -> {
                     o.put("status", "missing_from_lib")
                     o.put("path", st.path)
@@ -121,6 +130,8 @@ data class PrepareReport(val entries: List<Pair<PieceScan.Found, AssetStatus>>) 
         when (st) {
             is AssetStatus.Ready ->
                 "$tag ${exe.entry.substringAfterLast("/", "")} —— 就位"
+            is AssetStatus.MissingFromPiece ->
+                "件没落位：${st.path} —— 落位目录里没有入口文件（查装件是否成功）"
             is AssetStatus.MissingFromLib ->
                 "$tag ${exe.entry.substringAfterLast("/", "")} —— ✗ 不在 nativeLibraryDir。" +
                     if (st.inApk) "APK 内有该条目 → 安装期未解压（查 extractNativeLibs / useLegacyPackaging）"
@@ -175,6 +186,7 @@ object PieceProvisioner {
         )
         return report
     }
+    private val SYSTEM_LIB_DIRS = listOf("/system/lib64", "/system/lib", "/apex/com.android.runtime/lib64/bionic")
     private fun verifyInternal(
         ctx: Context,
         exe: PieceScan.Found,
@@ -182,25 +194,63 @@ object PieceProvisioner {
         listing: String,
         apkLibNames: Set<String>,
     ): AssetStatus {
-        val name = exe.entry.substringAfterLast("/", "")
-        val f = File(libDir, name)
-
-        if (!f.exists()) {
-            val inApk = apkLibNames.contains(name)
-            return AssetStatus.MissingFromLib(exe, f.absolutePath, inApk, listing)
-        }
-
-        val needed = lobos.kernel.elf.ElfFacts.read(f)?.needed.orEmpty()
-        for (dep in needed) {
-            if (!File(libDir, dep).exists()) {
-                return AssetStatus.MissingDependency(exe, dep, listing)
+        val entryRel = exe.entry.substringAfterLast("/", "")
+        if (entryRel.isNotBlank()) {
+            val f = File(exe.dir, exe.entry)
+            if (!f.isFile) {
+                return AssetStatus.MissingFromPiece(exe, f.absolutePath, resolveListing(exe.dir))
             }
+            if (!f.canExecute()) {
+                return AssetStatus.NotExecutable(exe, f.absolutePath, null, "件落位了，但入口没有执行位")
+            }
+            val missing = missingDeps(ctx, f, exe.dir)
+            if (missing.isNotEmpty()) {
+                return AssetStatus.MissingDependency(exe, missing.first(), resolveListing(exe.dir))
+            }
+            return AssetStatus.Ready(exe, f.absolutePath)
         }
-
-        if (!f.canRead() || f.length() == 0L) {
-            return AssetStatus.NotExecutable(exe, f.absolutePath, null, "文件存在但不可读或长度为 0")
+        val libs = runCatching {
+            File(exe.dir, "lib").listFiles()?.filter { it.isFile } ?: emptyList()
+        }.getOrDefault(emptyList())
+        if (libs.isEmpty()) {
+            return AssetStatus.MissingFromPiece(exe, File(exe.dir, "lib").absolutePath, resolveListing(exe.dir))
         }
-        return AssetStatus.Ready(exe, f.absolutePath)
+        val bad = libs.mapNotNull { missingDeps(ctx, it, exe.dir).firstOrNull() }
+        if (bad.isNotEmpty()) {
+            return AssetStatus.MissingDependency(exe, bad.first(), resolveListing(exe.dir))
+        }
+        return AssetStatus.Ready(exe, File(exe.dir, "lib").absolutePath)
+    }
+    private fun missingDeps(ctx: Context, f: File, dir: File): List<String> {
+        val needed = lobos.kernel.elf.ElfFacts.read(f)?.needed.orEmpty()
+        if (needed.isEmpty()) return emptyList()
+        val here = File(dir, "lib")
+        val out = ArrayList<String>()
+        for (dep in needed) {
+            val found = File(here, dep).isFile || File(dir, dep).isFile || linkerCanFind(ctx, dep)
+            if (!found) out.add(dep)
+        }
+        return out
+    }
+    private fun linkerCanFind(ctx: Context, name: String): Boolean {
+        for (d in SYSTEM_LIB_DIRS) {
+            if (File(d, name).exists()) return true
+        }
+        val jni = ctx.applicationInfo.nativeLibraryDir
+        if (jni != null && File(jni, name).exists()) return true
+        runCatching {
+            val usrLib = lobos.kernel.layout.SystemDirs.lib(ctx)
+            if (usrLib != null && File(usrLib, name).exists()) return true
+        }
+        return false
+    }
+    private fun resolveListing(dir: File): String {
+        val top = runCatching { dir.listFiles()?.sortedBy { it.name } ?: emptyList() }.getOrDefault(emptyList())
+        return buildString {
+            appendLine("件落位目录=${dir.absolutePath}")
+            appendLine("顶层条目数=${top.size}")
+            top.take(24).forEach { appendLine("${it.name}  ${if (it.isDirectory) "目录" else it.length().toString() + " 字节"}") }
+        }
     }
 
     private fun parseErrno(msg: String?): Int? {

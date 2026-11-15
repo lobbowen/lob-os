@@ -486,6 +486,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private fun describeStatus(st: AssetStatus): String = when (st) {
         is AssetStatus.Ready -> "就位"
+        is AssetStatus.MissingFromPiece ->
+            "件没落位：${st.path} —— 落位目录里没有入口文件（查装件是否成功）"
         is AssetStatus.MissingFromLib ->
             if (st.inApk)
                 "APK 里有但没解压出来（查 jniLibs 与 extractNativeLibs）"
