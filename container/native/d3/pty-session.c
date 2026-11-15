@@ -17,6 +17,11 @@
 
 #define FRAME_MAX (64 * 1024)
 #define MAX_SESSIONS 8
+/* F_OPEN 尾部可选的 winsize 后缀：magic(4) + rows(2) + cols(2)，小端。
+ * 有 magic 才取（新宿主发的）；没有就按老格式解析（老宿主发的），winsize 留空。
+ * 这样新旧混装时退化成「尺寸这一格空着」，而不是「尺寸是垃圾」。 */
+#define OPEN_WS_MAGIC 0x57534F4Cu
+#define OPEN_WS_TAIL 8u
 
 enum {
   FRAME_OPEN = 1,
@@ -308,6 +313,21 @@ static void session_close(int sid) {
   memset(&g_sessions[sid], 0, sizeof(session));
 }
 
+static int open_tail_ws(const char *blob, uint32_t len, struct winsize *ws) {
+  if (len < OPEN_WS_TAIL) return 0;
+  uint32_t magic = 0;
+  memcpy(&magic, blob + len - OPEN_WS_TAIL, 4);
+  if (magic != OPEN_WS_MAGIC) return 0;
+  uint16_t rows = 0, cols = 0;
+  memcpy(&rows, blob + len - OPEN_WS_TAIL + 4, 2);
+  memcpy(&cols, blob + len - OPEN_WS_TAIL + 6, 2);
+  ws->ws_row = rows;
+  ws->ws_col = cols;
+  ws->ws_xpixel = 0;
+  ws->ws_ypixel = 0;
+  return 1;
+}
+
 static int parse_argv(const char *blob, uint32_t len, char ***out) {
   int argc = 1;
   for (uint32_t i = 0; i < len; i++) {
@@ -436,9 +456,17 @@ int main(void) {
             break;
           }
 
+          struct winsize openws;
+          memset(&openws, 0, sizeof(openws));
+          int hasOpenWs = open_tail_ws(payload, h.length, &openws);
+          uint32_t argvLen = hasOpenWs ? (h.length - OPEN_WS_TAIL) : h.length;
           char **argv = NULL;
-          int argc = parse_argv(payload, h.length, &argv);
+          int argc = parse_argv(payload, argvLen, &argv);
           if (argc <= 0 || !argv) { free(payload); send_error(out_fd, "OPEN 的 argv 为空"); break; }
+          if (hasOpenWs) {
+            memcpy(&g_sessions[slot].pending_ws, &openws, sizeof(openws));
+            g_sessions[slot].pending_winsize = 1;
+          }
           if (session_open(out_fd, (uint8_t)slot, argv, argc) != 0) {
             send_error(out_fd, strerror(errno));
             for (int i = 0; i < argc; i++) free(argv[i]);

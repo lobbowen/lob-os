@@ -27,6 +27,7 @@ object PtySession {
     private const val F_WINSIZE = 5
     private const val F_CLOSE = 6
     private const val F_EXITED = 7
+    private val OPEN_WS_MAGIC = byteArrayOf(0x4C, 0x4F, 0x53, 0x57)
     private const val F_EXIT = 8
     private const val F_ERROR = 9
     private const val F_NOTE = 10
@@ -296,6 +297,9 @@ object PtySession {
                 blob.write(a.toByteArray(Charsets.UTF_8))
                 blob.write(0)
             }
+            blob.write(OPEN_WS_MAGIC)
+            blob.write(rows and 0xFF); blob.write((rows shr 8) and 0xFF)
+            blob.write(cols and 0xFF); blob.write((cols shr 8) and 0xFF)
             send(F_OPEN, sid, blob.toByteArray())
             if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
                 ready.remove(sid)
