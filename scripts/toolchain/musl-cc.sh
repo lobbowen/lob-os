@@ -48,11 +48,31 @@ done
 [ "$SHARED" = 1 ] && MODE=shared
 [ "$COMPILE_ONLY" = 1 ] && MODE=obj
 
+OUT_NAME=""
+PREV=""
+for a in "$@"; do
+  [ "$PREV" = "-o" ] && OUT_NAME="$(basename "$a")"
+  PREV="$a"
+done
+
+VERSIONED_LIB=0
+case "$OUT_NAME" in
+  lib*.so.[0-9]*) VERSIONED_LIB=1 ;;
+esac
+
 SONAME_ARGS=()
-if [ "$SHARED" = 1 ]; then
-  [ -n "${LOBOS_SONAME:-}" ] || die "共享库缺 SONAME" \
-    "按契约每个共享库必须带 SONAME；用 LOBOS_SONAME=libfoo.so.1 传给本脚本"
-  SONAME_ARGS=("-Wl,-soname,${LOBOS_SONAME}")
+if [ "$SHARED" = 1 ] && [ "$VERSIONED_LIB" = 1 ]; then
+  HAS_SONAME=0
+  for a in "$@"; do
+    case "$a" in
+      -Wl,-soname*|-soname*|--soname*|-h) HAS_SONAME=1 ;;
+    esac
+  done
+  if [ "$HAS_SONAME" = 0 ]; then
+    [ -n "${LOBOS_SONAME:-}" ] || die "共享库缺 SONAME" \
+      "带版本号的共享库必须有身份：调用方给 -Wl,-soname，或用 LOBOS_SONAME=libfoo.so.1（$OUT_NAME）"
+    SONAME_ARGS=("-Wl,-soname,${LOBOS_SONAME}")
+  fi
 fi
 
 INTERP_ARGS=()
