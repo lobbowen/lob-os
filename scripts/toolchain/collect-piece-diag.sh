@@ -51,7 +51,7 @@ mkdir -p "$(dirname "$FILE")"
 
   for lg in work/kernel-compat/cc-*.log work/"$ID"/*.log; do
     [ -f "$lg" ] || continue
-    echo "**$lg**"
+    echo "$lg"
     echo ""
     echo '```'
     tail -25 "$lg"

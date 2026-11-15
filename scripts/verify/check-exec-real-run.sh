@@ -27,10 +27,10 @@ sys.stdout.write('RC:' + str(p.returncode) + '\n')
       code="$(printf '%s' "$marked" | sed -n 's/^RC://p' | head -1)"
       CAPTURE="两个流分开（内存·python3）"
     else
-      CAPTURE="**合并流，只判退出码**"
+      CAPTURE="合并流，只判退出码"
     fi
   else
-    CAPTURE="**合并流，只判退出码**"
+    CAPTURE="合并流，只判退出码"
   fi
   if [ -z "${code:-}" ]; then
     local both
@@ -54,7 +54,7 @@ CTL="$SAMPLE_DIR/shebang.sh"
 say "== 阳性对照（依 C-108：要有一件已经能跑的那一件）=="
 say "   对照那一件是：$CTL"
 if [ ! -f "$CTL" ]; then
-  say "   [error] 对照那一件读不到（一格报缺、整道检查**不可信**）"
+  say "   [error] 对照那一件读不到（一格报缺、整道检查不可信）"
   exit 1
 fi
 
@@ -69,12 +69,12 @@ ctl_rc2="$OUT_RC"
 say "   第一次：退出码=$ctl_rc1 stdout=$ctl_so1"
 say "   第二次：退出码=$ctl_rc2"
 if [ "$ctl_rc1" != "0" ] || [ "$ctl_rc2" != "0" ] || [ "$ctl_rc1" != "$ctl_rc2" ]; then
-  say "   [error] 对照那一件跑不出它自己那行为、**或**那两次退出码不一致"
-  say "一格意味着这一道检查**不可信**（依 C-108）"
+  say "   [error] 对照那一件跑不出它自己那行为、或那两次退出码不一致"
+  say "一格意味着这一道检查不可信（依 C-108）"
   exit 1
 fi
-say "对照那一件**跑得出**它自己那行为、两次退出码**一致**"
-say "这一道检查**可信**"
+say "对照那一件跑得出它自己那行为、两次退出码一致"
+say "这一道检查可信"
 say ""
 
 say "== 那期望行为声明（它是那一份数据、它逐件一条）=="
@@ -101,7 +101,6 @@ for(const id of ids){
   const v=pieces[id]||{};
   const kind=v.kind;
   if(kind==="library"){
-    // 那**库**那一族**没有**程序入口它们用 expectPresent 那一族判
     if(!v.expectPresent){ console.log("BAD|"+id+"|库那一族没有 expectPresent 那一格（按 C-05 报缺）"); bad++; }
     if(v.args!==null && v.args!==undefined){ console.log("BAD|"+id+"|库那一族不该有 args（它没有程序入口）"); bad++; }
     continue;
@@ -123,10 +122,10 @@ else
   printf '%s\n' "$DECL_CHECK" | grep '^BAD|' | sed 's/^/   [红] /'
   say "   那声明$DECL_N 件、形状不合 $DECL_BAD 处"
   if [ "$DECL_BAD" != "0" ]; then
-    say "一份声明**不自洽**（逐件真跑归设备侧那一道）"
+    say "一份声明不自洽（逐件真跑归设备侧那一道）"
     rc_all=1
   else
-    say "   [绿] 那一份声明**自洽**（逐件真跑归设备侧那一道、归 07）"
+    say "   [绿] 那一份声明自洽（逐件真跑归设备侧那一道、归 07）"
   fi
 fi
 say ""
@@ -158,15 +157,10 @@ for(const id of Object.keys(pieces)){
   if(!meta){ console.log("BAD|"+id+"|那归档那一份里读不出 component-meta.json（按 C-05 报缺）"); bad++; continue; }
   checked++;
   const v=pieces[id];
-  // 那**形态**对得上（那 program / library 那一族）
   if(v.kind && meta.role && v.kind!==meta.role){
-    // 那**shell** 那一族是 program 那一边的一个子类（它不是一个新形态）
     const shellish=(v.kind==="program"&&meta.role==="shell")||(v.kind==="library"&&meta.role==="library");
     if(!shellish){ console.log("BAD|"+id+"|声明 kind="+v.kind+" 而那产物 role="+meta.role+"（两者对不上）"); bad++; }
   }
-  // 那**版本**对得上：那**版本那一档**的期望（那 `--version` 那一档）
-  //**含**那产物的版本号；那**别**的期望（那 jq 那一档是「真跑一段 JSON」）
-  //**不含**版本、它**不许**被这样判（一条是**另一问**）。
   const ver=String(meta.version||"");
   const verArgs=Array.isArray(v.args)?v.args:[];
   const isVersionProbe=verArgs.indexOf("--version")>=0||verArgs.indexOf("version")>=0;
@@ -181,10 +175,10 @@ console.log("COUNT|"+checked+"|"+bad);
   printf '%s\n' "$ARCH" | grep '^BAD|' | sed 's/^/   [红] /'
   say "   那归档核了 $ARCH_N 件、对不上 $ARCH_BAD 处"
   if [ "$ARCH_BAD" != "0" ]; then
-    say "一份声明与那产物**对不上**（那**手写**那一族缺一个**产出者**）"
+    say "一份声明与那产物对不上（那手写那一族缺一个产出者）"
     rc_all=1
   else
-    say "   [绿] 那一份声明与那归档那九件**对得上**"
+    say "   [绿] 那一份声明与那归档那九件对得上"
   fi
 fi
 say ""
@@ -199,12 +193,12 @@ check_runnable() {
   say "   事实：$note"
   if [ ! -f "$ent" ]; then
 
-    say "   [缺] 这一件**没有样本**（按 C-05 报缺、不猜填）"
+    say "   [缺] 这一件没有样本（按 C-05 报缺、不猜填）"
     say "        事实：无此路径 $ent"
     return 2
   fi
   if [ ! -x "$ent" ]; then
-    say "   [缺] 这一件**没有执行位**（它跑不了、按 C-05 报缺）"
+    say "   [缺] 这一件没有执行位（它跑不了、按 C-05 报缺）"
     say "        事实：$ent 的权限位没有 x"
     return 2
   fi
@@ -228,7 +222,7 @@ check_runnable() {
   if [ -n "$want_out" ]; then
     case "$so" in
       *"$want_out"*) : ;;
-      *) say " [红] 跑不出它自己那行为：stdout**不含** '$want_out'（实得：$so）"
+      *) say " [红] 跑不出它自己那行为：stdout不含 '$want_out'（实得：$so）"
          return 1 ;;
     esac
   fi
@@ -245,7 +239,7 @@ if check_runnable "Shebang 那一档（是那件自己的行为）" "$SB_TMP" "h
 else
   r=$?
   [ "$r" = "1" ] && rc_all=1
-  [ "$r" = "2" ] && say "那 Shebang 那一档**记缺**（不判红）"
+  [ "$r" = "2" ] && say "那 Shebang 那一档记缺（不判红）"
 fi
 
 for pair in "ELF-DYN:elf-dyn" "ELF-EXEC:elf-exec"; do
@@ -253,10 +247,10 @@ for pair in "ELF-DYN:elf-dyn" "ELF-EXEC:elf-exec"; do
   ent="$SAMPLE_DIR/$sample"
   say ""
   say "--- $label 那一档 ---"
-  say "   事实：仓内那一份是 **256 字节的头**、那**没有程序头**、它**跑不了**"
-  say "        事实：而那真件是 aarch64（本机是 $(uname -m)、那**架构对不上**）"
-  say "   [缺] 这一件**测不了**（按 C-05 报缺、不猜填）"
-  say "那**真跑**那一格要**设备侧**（承载是 arm64、一格归 07）"
+  say "   事实：仓内那一份是 256 字节的头、那没有程序头、它跑不了"
+  say "        事实：而那真件是 aarch64（本机是 $(uname -m)、那架构对不上）"
+  say "   [缺] 这一件测不了（按 C-05 报缺、不猜填）"
+  say "那真跑那一格要设备侧（承载是 arm64、一格归 07）"
 done
 
 say ""
@@ -264,7 +258,7 @@ say "== (乙) 那一档测不了的那一档（PE）记缺 =="
 PE_DIR="$ROOT/container/app/src/main/assets/win32"
 say "   仓内那真 PE 样本在：$PE_DIR"
 if [ ! -d "$PE_DIR" ]; then
-  say "   [缺] 那真 PE 样本**没有**（按 C-05 报缺）"
+  say "   [缺] 那真 PE 样本没有（按 C-05 报缺）"
 else
   for p in "$PE_DIR"/*.exe; do
     [ -f "$p" ] || continue
@@ -278,27 +272,27 @@ else
   done
 fi
 say ""
-say "一格**测不了**，成因是那两件："
-say "      (1) 仓内**没有 Win32 那一族的系统面**"
+say "一格测不了，成因是那两件："
+say "      (1) 仓内没有 Win32 那一族的系统面"
 say "          （两份要的是 KERNEL32 / USER32 / ADVAPI32、那 Win32 语义）"
-say "      (2) 而那 PE 那一族**没有执行原语**"
-say "          （那 PeLoader.kt 自己写着「本文件**不执行** x86/x86-64 指令」）"
-say "缺的是 **Win32 执行原语**，那**不是**缺判据、也**不是**缺样本"
-say "      （仓内**有**真 PE 样本、那 plink-arm64.exe 是 PE32+ ARM64、"
-say "那**架构对得上**、它**要** Win32 ABI）"
-say "那**架构对得上也不等于能跑**"
-say "那**不**许写成「跑不起来」（是**推论**、不是**读数**）"
-say "那**真跑**那一格要**设备侧**那一次真跑（一格归 07）"
+say "      (2) 而那 PE 那一族没有执行原语"
+say "          （那 PeLoader.kt 自己写着「本文件不执行 x86/x86-64 指令」）"
+say "缺的是 Win32 执行原语，那不是缺判据、也不是缺样本"
+say "      （仓内有真 PE 样本、那 plink-arm64.exe 是 PE32+ ARM64、"
+say "那架构对得上、它要 Win32 ABI）"
+say "那架构对得上也不等于能跑"
+say "那不许写成「跑不起来」（是推论、不是读数）"
+say "那真跑那一格要设备侧那一次真跑（一格归 07）"
 
 say ""
 say "== 结论 =="
 if [ "$rc_all" = "0" ]; then
-  say "能跑的那几档**跑得出**它自己那行为、退出码正确"
+  say "能跑的那几档跑得出它自己那行为、退出码正确"
 else
-  say "能跑的那几档里**有**跑不出的（已判红）"
+  say "能跑的那几档里有跑不出的（已判红）"
 fi
-say "测不了的那一档**记缺 + 成因**（按 C-05 报缺、按 C-126 写「测不了」）"
-say "那**不**许把「测不了」写成「跑不起来」（是**推论**、不是**读数**）"
+say "测不了的那一档记缺 + 成因（按 C-05 报缺、按 C-126 写「测不了」）"
+say "那不许把「测不了」写成「跑不起来」（是推论、不是读数）"
 say ""
 say "退出码=$rc_all"
 exit $rc_all

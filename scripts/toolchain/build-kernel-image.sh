@@ -40,7 +40,7 @@ if [ -d "$BUSYBOX_LINK_DIR" ]; then
     ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
   done
 else
-  note "initramfs 那一层：bin/busybox（静态）+ init（那 applet 软链**没有**、按 C-105 报缺）"
+  note "initramfs 那一层：bin/busybox（静态）+ init（那 applet 软链没有、按 C-105 报缺）"
 fi
 
 if [ -d "$BUSYBOX_LINK_DIR" ]; then
@@ -49,7 +49,7 @@ if [ -d "$BUSYBOX_LINK_DIR" ]; then
     ln -sf busybox "$IRFS_STAGE/bin/$(basename "$_l")"
   done
 else
-  note "initramfs 那一层：bin/busybox（静态）+ init（那 applet 软链**没有**、按 C-105 报缺）"
+  note "initramfs 那一层：bin/busybox（静态）+ init（那 applet 软链没有、按 C-105 报缺）"
 fi
 chmod 0755 "$IRFS_STAGE/bin/busybox"
 cp "$ROOT/scripts/initramfs/lobos-init" "$IRFS_STAGE/init"
@@ -61,7 +61,7 @@ for A in rootfs.squashfs rootfs.erofs; do
     cp "$ROOTFS_DIR/$A" "$IRFS_STAGE/$A"
     note "initramfs 那一层：$A（$(( $(stat -c %s "$IRFS_STAGE/$A") / 1024 )) KiB）"
   else
-    note "initramfs 那一层：没有那 $A（系统层**挂不上**、按 C-105 报缺）"
+    note "initramfs 那一层：没有那 $A（系统层挂不上、按 C-105 报缺）"
   fi
 done
 note "initramfs 那一层：bin/busybox（静态）+ init"
@@ -84,7 +84,7 @@ if [ -n "$DTS" ]; then
   cp "$DTS" "$OUT/"
   note "设备树（附带）：$(basename "$DTS")"
 else
-  note "设备树：**不在**这**一支**（那 **Image**不等**它**、那**起得来**那一件**要**它**）"
+  note "设备树：不在这一支（那 Image不等它、那起得来那一件要它）"
 fi
 
 CROSS="${CROSS:-aarch64-linux-android-}"

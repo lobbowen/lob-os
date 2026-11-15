@@ -100,7 +100,7 @@ if [ -n "$GOT_LLVM" ]; then
   if [ "$SRC" = "clang --version" ] && [ -n "$GOT_REV" ]; then
     echo "::warning title=版本来源退化::这一版 clang 带修订号 r$GOT_REV，" \
       "但没读到 clang_source_info.md —— 下面的 $GOT_LLVM 来自 \`clang --version\` 的 git 版本串，" \
-      "**不足以证明与要编的 llvmorg-<ver> 同源**。" \
+      "不足以证明与要编的 llvmorg-<ver> 同源。" \
       "请在 runner 上读 $NDK/toolchains/llvm/prebuilt/*/clang_source_info.md 确认。"
   fi
 fi
@@ -112,7 +112,7 @@ if [ -z "$WANT_LLVM" ]; then
     "阶段1c 要编的 clang 必须与 sysroot 同源，否则头文件与编译器假设会对不上。" \
   "坏在哪：无法判定编出来的东西能否在真机运行 —— 真机上若与 sysroot 不同源，会报大量与代码无关的头文件/内建错误。"
     "填 $GOT_LLVM（实测值），或填它的前缀（如 ${GOT_LLVM%%.*}）——" \
-    "**不要**把 sources.llvm.version 填到这一格，那是另一件事。"
+    "不要把 sources.llvm.version 填到这一格，那是另一件事。"
 fi
 WANT_MAJOR="${WANT_LLVM%%.*}"
 GOT_MAJOR="${GOT_LLVM%%.*}"
@@ -129,7 +129,7 @@ DEGRADED=0
 
 echo "[ok] NDK $GOT_NDK / LLVM $GOT_LLVM 与钉值一致（ndkVersion=$WANT_NDK llvmVersion=$WANT_LLVM）"
 if [ "$DEGRADED" = 1 ]; then
-  echo "[ndk-llvm] 版本号对上了，但**同源尚未坐实**（见上面那条 warning）"
+  echo "[ndk-llvm] 版本号对上了，但同源尚未坐实（见上面那条 warning）"
   echo "[ndk-llvm] 要坐实：在 runner 上读 $NDK/toolchains/llvm/prebuilt/*/clang_source_info.md"
   exit 2
 fi

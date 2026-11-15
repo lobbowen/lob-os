@@ -30,7 +30,7 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
       if [ -n "$OUTER_ID" ]; then
-        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）那**外层自己就是那一颗件**"
+        echo "  外层自己含component-meta.json=是（id=$OUTER_ID）那外层自己就是那一颗件"
       else
         echo "  外层自己含component-meta.json=否走「外层套内层」那一档"
       fi
@@ -58,7 +58,7 @@ let d = ""; process.stdin.on("data", c => d += c); process.stdin.on("end", () =>
   try { process.stdout.write(String(JSON.parse(d).id || "")); } catch (e) { process.stdout.write(""); }
 });')"
         if [ -n "$OUTER_ID" ]; then
-          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）那**外层自己就是那一颗件**"
+          echo "  外层自己含component-meta.json=是（id=$OUTER_ID）那外层自己就是那一颗件"
         else
           echo "  外层自己含component-meta.json=否走「外层套内层」那一档"
         fi

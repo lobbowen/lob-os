@@ -82,7 +82,7 @@ if [ "$WANT_MAJOR" = "$PIN_MAJOR" ]; then
 else
   die "钉的 LLVM 源码与 NDK 内置的不是同一条 release 线" \
     "钉的是 $PINNED_LLVM（$PIN_MAJOR.x 线），NDK 内置 $WANT_LLVM（$WANT_MAJOR.x 线）。" \
-    "编出来的 clang 会与 sysroot 的头文件假设错位，而且**不报错**。" \
+    "编出来的 clang 会与 sysroot 的头文件假设错位，而且不报错。" \
     "按 NDK 的那条线重钉（sha256 由工具取，不必下载）：" \
     "  node scripts/registry/pin-github-release.js --repo llvm/llvm-project --tag llvmorg-$WANT_MAJOR.1.0 --key llvm --match '^llvm-project-.*[.]src[.]tar[.]xz$'"
 fi
@@ -239,8 +239,8 @@ cmake --build "$BUILD" -j"$JOBS" \
        echo "  构建里的 bin（交叉产物）：$(ls "$BUILD"/bin 2>/dev/null | head -5 | tr '\n' ' ' || echo '（不存在）')"; \
        echo "  失败时用到的 tblgen："; \
        grep -oE '[^ ]*llvm[a-z-]*-tblgen[^ ]*' "$WORK/build.log" 2>/dev/null | sort -u | head -4 | sed 's/^/    /' || true; \
-       echo; echo "首次失败是**预期内**的：交叉编译 LLVM 到 Bionic 需要打补丁（Termux 级别的量）。"; \
-       echo "按上面的 error 行定位缺什么，**不要**放宽这里的判据 —— 放宽换来的是「编出来了但在设备上跑不了」。"; \
+       echo; echo "首次失败是预期内的：交叉编译 LLVM 到 Bionic 需要打补丁（Termux 级别的量）。"; \
+       echo "按上面的 error 行定位缺什么，不要放宽这里的判据 —— 放宽换来的是「编出来了但在设备上跑不了」。"; \
        exit 1; }
 
 cmake --install "$BUILD" > "$WORK/install.log" 2>&1 \
@@ -352,27 +352,7 @@ const names = fs.readdirSync(dir).filter((n) => {
 }).sort();
 const bin = {};
 for (const n of names) bin[n] = "bin/" + n;
-//  缺陷名（C-102）**那一行 delete 删的是一个不存在的键、它那行注释所假定的形状也不成立** ——
-//    而旧版那一行是 `delete bin[entry];`、那 entry 传的是件名那一格（llvm）、
-// 那 bin 映射的键是**件内那些程序名**（clang / clang++ / ld.lld / llvm-ar …）、
-// 里面**没有**件名那一键、那 delete**什么也没删**（01 §1.3 核过这一点）。
-// 旧版那一行注释说「本名（键 == 件名）不重复声明」——个「键 == 件名」的形状
-//     **不成立**（件名是 llvm、键是程序名、它们不是同一个东西）。
 delete bin[entry];
-//**这一行必须是 no-op、且必须继续是 no-op**：它要防的是「把**件名**当成别名重复声明」，
-// 件名 llvm**不在**那 bin 映射里（那 bin 映射的键是程序名）、
-// 所以 no-op 恰好是对的（一句 delete 防的东西压根没发生过）。
-//**不许**把它改成「删那个值等于仓内声明的入口的那一键」（是 01 §5.1 第 3 条形式乙那一半）：
-//01 §4.1 裁「bin 是对象时、必须存在一个键、其值等于 declaredEntry」，
-//llvm 那一件就是 bin["clang"] = "bin/clang"、那 declaredEntry 是 bin/clang；
-// 两段**互斥**：删了 bin["clang"]、发侧算出来的 entryKeys**为空**
-// 一格**必判红**（Lead 本机实跑两支：保持现状entryKeys=["clang"] 通过；
-// 删 bin["clang"] entryKeys=[] 判红）。
-// 那**入口那一键**为什么**不进别名集合**：=> 那由**两侧各自**排除
-//    （=> 发侧 publish-component-manifest.js:89 按键名跳 entryBase、=> 装侧 ProgramInstallPipeline.kt:1212 同口径），
-//**不在生成侧删键**（按 C-103 那两边各答一件事、按 C-135 那不是同一问）。
-// 件名那一格（name）从 $TOOL 派生、不再另写一个字面（01 §4.3 ：
-//    「两处都要落在同一个字面上、否则 :539 的 name 与 :10 的 TOOL 还会再分叉一次」）。
 fs.writeFileSync(path.join(dir, "..", "package.json"),
   JSON.stringify({ name: tool, bin }, null, 2) + "\n");
 console.log("[ok] package.json 声明别名 " + Object.keys(bin).length + " 个");

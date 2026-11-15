@@ -19,7 +19,7 @@ GH_TOKEN_VALUE="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 if [ -z "$GH_TOKEN_VALUE" ] && [ "$PRINT_PIECES_ONLY" -eq 0 ]; then
   echo "::error title=缺令牌::取件要读 GitHub 的 Release 清单，而那匿名读只有 60 次/小时"
   echo "::error:: 给 GH_TOKEN 或 GITHUB_TOKEN（build-apk.yml 那一格是 secrets.GITHUB_TOKEN）"
-  echo "::error:: 这一格不猜 —— 没有身份就不读，**不**静默匿名。"
+  echo "::error:: 这一格不猜 —— 没有身份就不读，不静默匿名。"
   exit 1
 fi
 export GH_TOKEN="$GH_TOKEN_VALUE"
@@ -230,24 +230,24 @@ for id in "${PIECES[@]}"; do
     fi
     if [ "$lra_rc" -ne 0 ]; then
 
-      echo "::notice title=$id 清单读失败::Release $tag 那一份**没读到**（那 stdout 是空、那**不是**『那筐一个 asset 都没有』）。"
-      echo "::notice:: HTTP 那一档 = ${lra_http:- 未知}、那**那一档** = ${lra_kind:- 未知}、那 curl 自己的码**在**那标记里、那**两档** **不是**同一档。*"
+      echo "::notice title=$id 清单读失败::Release $tag 那一份没读到（那 stdout 是空、那不是『那筐一个 asset 都没有』）。"
+      echo "::notice:: HTTP 那一档 = ${lra_http:- 未知}、那那一档 = ${lra_kind:- 未知}、那 curl 自己的码在那标记里、那两档 不是同一档。*"
       echo "::notice:: 那一档说人话：$(gh_fail_label "$lra_kind")。*"
-      echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），那**不是** dispatch 那一件能解决的。*"
+      echo "::notice:: 处置：先查那一次读（token / 限流 / 端点），那不是 dispatch 那一件能解决的。*"
       miss_read=$((miss_read+1))
     elif [ -z "$others" ]; then
-      echo "::notice title=$id 缺货::Release $tag **一个 asset 都没有** —— 这一件从来没固化过，或固化被删了。"
+      echo "::notice title=$id 缺货::Release $tag 一个 asset 都没有 —— 这一件从来没固化过，或固化被删了。"
       echo "::notice:: 处置：dispatch 那一件即可。*"
       miss_stock=$((miss_stock+1))
     elif printf "%s\n" "$others" | grep -qxF "$asset"; then
 
-      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里**有** $asset，那**这一次** **没取到**。"
-      echo "::notice:: 处置：那是**取件**那一族的问题（限流 / 鉴权 / 传输 / 空文件），那**不是**『没固化过』、也**不是**『旧产物』。*"
+      echo "::notice title=$id 在筐里但这一次没取到::Release $tag 里有 $asset，那这一次 没取到。"
+      echo "::notice:: 处置：那是取件那一族的问题（限流 / 鉴权 / 传输 / 空文件），那不是『没固化过』、也不是『旧产物』。*"
       printf "%s\n" "$others" | sed "s/^/::notice::   /"
       miss_read=$((miss_read+1))
     else
-      echo "::notice title=$id 旧产物拦住了::Release $tag 里有 asset，但**没有一个叫 $asset** —— 那说明这一件改过 recipe，"
-      echo "::notice:: 而固化产物还是旧的。**旧产物不能冒充新代码的产物**，所以这里必须拦。"
+      echo "::notice title=$id 旧产物拦住了::Release $tag 里有 asset，但没有一个叫 $asset —— 那说明这一件改过 recipe，"
+      echo "::notice:: 而固化产物还是旧的。旧产物不能冒充新代码的产物，所以这里必须拦。"
       echo "::notice:: 该 tag 下现有的 asset 名字："
       printf "%s\n" "$others" | sed "s/^/::notice::   /"
       echo "::notice:: 处置：dispatch 那一件重新固化（同名不同内容会被覆盖）。*"
@@ -266,7 +266,7 @@ for id in "${PIECES[@]}"; do
     fi
     printf "  · %-9s sha256 已核（%s…）\n" "$id" "${got:0:12}"
   else
-    echo "::notice title=$id 无伴随摘要::Release 上没有 $asset.sha256 —— 这一件**没被校验过**（ 而取件必须核字节数与声明一致）"
+    echo "::notice title=$id 无伴随摘要::Release 上没有 $asset.sha256 —— 这一件没被校验过（ 而取件必须核字节数与声明一致）"
   fi
 
   SRC="$STAGE/$id/$asset"
@@ -283,7 +283,7 @@ for id in "${PIECES[@]}"; do
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! tar xzf "$SRC" -C "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产是那 gzip（那头四字节 $MAGIC），那 tar xzf**读不通**。"
+      echo "::error title=$id 解包失败::那资产是那 gzip（那头四字节 $MAGIC），那 tar xzf读不通。"
       missing=$((missing+1)); continue
     fi
 
@@ -300,7 +300,7 @@ for id in "${PIECES[@]}"; do
     rm -rf "$STAGE/$id/unpacked"
     mkdir -p "$STAGE/$id/unpacked"
     if ! unzip -q -o "$SRC" -d "$STAGE/$id/unpacked" 2>/dev/null; then
-      echo "::error title=$id 解包失败::那资产是那 zip（头四字节 $MAGIC），那 unzip**读不通**。"
+      echo "::error title=$id 解包失败::那资产是那 zip（头四字节 $MAGIC），那 unzip读不通。"
       missing=$((missing+1)); continue
     fi
 
@@ -312,7 +312,7 @@ for id in "${PIECES[@]}"; do
     fi
     if [ "$INNER" = "$SRC" ]; then
 
-      printf "  ✓ %-9s %s → %s.zip（那资产**就是**那一颗件）\n" "$id" "$asset" "$id"
+      printf "  ✓ %-9s %s → %s.zip（那资产就是那一颗件）\n" "$id" "$asset" "$id"
     else
       cp -f "$INNER" "$ASSETS/$id.zip"
       printf "  ✓ %-9s %s → %s.zip（那资产是那 zip 套内层，那内层取出来）\n" "$id" "$asset" "$id"
@@ -320,7 +320,7 @@ for id in "${PIECES[@]}"; do
   else
 
     echo "::error title=$id 容器形态不认::那资产是那 $SRC_FMT（头四字节 $MAGIC），既不是 zip 也不是 gzip。"
-    echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），那**不是** dispatch 能解决的。"
+    echo "::error:: 处置：先核那一份的容器形态（scripts/verify/probe-container-form.sh），那不是 dispatch 能解决的。"
     missing=$((missing+1)); continue
   fi
 
@@ -348,8 +348,8 @@ for id in "${PIECES[@]}"; do
   if [ -n "$_want_sha" ]; then
     if [ "$_pkg_sha" != "$_want_sha" ]; then
       echo "::error title=$id 不是当前这份代码产的::那件自己的 buildSha 是 ${_pkg_sha:0:12}、产出它的那一次构建是 ${_want_sha:0:12}"
-      echo "::error:: （那**旧字节不能冒充新代码的产物**、那**不**许拿那旧的那一份凑）"
-      echo "::error:: 处置：dispatch 那一件重新固化（新的指纹**才**是当前这份代码的）。"
+      echo "::error:: （那旧字节不能冒充新代码的产物、那不许拿那旧的那一份凑）"
+      echo "::error:: 处置：dispatch 那一件重新固化（新的指纹才是当前这份代码的）。"
       miss_stale=$((miss_stale+1)); missing=$((missing+1))
       rm -rf "${STAGE:?}/$id"
       continue
@@ -357,11 +357,11 @@ for id in "${PIECES[@]}"; do
     echo "[ok] $id 那件自己的 buildSha 与那产出它的那一次构建一致（$_want_src）"
   elif [ -n "$_pkg_run" ] && [ "$_pkg_run" != "local" ]; then
 
-    echo "[ok] $id 那件**是**它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
+    echo "[ok] $id 那件是它自己带的那一次构建造出来的（buildRun=$_pkg_run）"
   else
 
-    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA**没有**、产物自带的 buildRun**也**没有"
-    echo "::notice:: （那**判据** **答不出**、它**不**判成「那不是当前这份」、按 C-05 报缺）"
+    echo "::notice title=$id 那期望值读不到::那 GITHUB_SHA没有、产物自带的 buildRun也没有"
+    echo "::notice:: （那判据 答不出、它不判成「那不是当前这份」、按 C-05 报缺）"
   fi
 
   meta_json="$STAGE/$id/peek.json"
@@ -409,13 +409,13 @@ if [ "$missing" -gt 0 ]; then
   echo ""
   echo "::error title=取件不全::$missing / ${#PIECES[@]} 个件取不到（缺货 $miss_stock · 旧产物 $miss_stale · 清单读失败 $miss_read）"
   if [ "$miss_stock" -gt 0 ]; then
-    echo "::error::  **缺货**（该 tag 一个 asset 都没有）→ dispatch 那一件即可"
+    echo "::error::  缺货（该 tag 一个 asset 都没有）→ dispatch 那一件即可"
   fi
   if [ "$miss_read" -gt 0 ]; then
-    echo "::error::  **清单读失败**（那一份**没读到**）→ 先查那一次读（token / 限流 / 端点），**不是** dispatch 能解决的"
+    echo "::error::  清单读失败（那一份没读到）→ 先查那一次读（token / 限流 / 端点），不是 dispatch 能解决的"
   fi
   if [ "$miss_stale" -gt 0 ]; then
-    echo "::error::  **旧产物**（有 asset 但名字对不上 = 改过 recipe 指纹变了）→ 必须 dispatch 重新固化，"
+    echo "::error::  旧产物（有 asset 但名字对不上 = 改过 recipe 指纹变了）→ 必须 dispatch 重新固化，"
     echo "::error::  否则会取到旧包、打出 APK、CI 全绿，而那个产物里没有本次改动的任何东西"
   fi
   echo "[fetch] 已取到 $ok 个。缺的那几个要单独构建，别在 APK 里编 —— 见 RELEASE-POLICY.md"

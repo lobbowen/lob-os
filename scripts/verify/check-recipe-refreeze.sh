@@ -74,8 +74,8 @@ for p in "${PIECES[@]}"; do
 
   if printf '%s\n' "$published" | sed 's/%2B/+/g' | grep -Fxq "$(printf '%s' "$cur_asset" | sed 's/%2B/+/g')"; then
     echo "   当前资产名在 Release 上：${cur_asset}"
-    echo "这一格**答的是**「那当前这一份有没有被发布出去」、答案是「有」"
-    echo "   [绿] 那当前资产名**在** Release 上（它**不需要**重新固化）"
+    echo "这一格答的是「那当前这一份有没有被发布出去」、答案是「有」"
+    echo "   [绿] 那当前资产名在 Release 上（它不需要重新固化）"
     continue
   fi
 
@@ -84,28 +84,28 @@ for p in "${PIECES[@]}"; do
     echo "   来源：Release 上那一份读不到（按 C-05 报缺、不猜）"
     if [ -z "${GITHUB_TOKEN:-}" ]; then
       echo "   [缺] 那 Release 上那一份读不到（那 token 是空的）"
-      echo "这一格**只能**在 CI 里判（那 CI 那一族有那 token）"
+      echo "这一格只能在 CI 里判（那 CI 那一族有那 token）"
       rc_all=1; continue
     fi
     echo "   [缺] 那 Release 上那一份读不到（按 C-05 报缺、不猜）"
-    echo "那 pin 记录是那**上一次**固化那一份的、它**不**当判据"
+    echo "那 pin 记录是那上一次固化那一份的、它不当判据"
     rc_all=1; continue
   fi
 
   echo "   当前资产名：${cur_asset}"
   echo "   Release 上有的那几份："
   printf '%s\n' "$published" | sed 's/^/        /' | head -8
-  echo "   [红] 那当前资产名**不**在 Release 上（这一件**要**发布出去）"
+  echo "   [红] 那当前资产名不在 Release 上（这一件要发布出去）"
   rc_all=1
   continue
 done
 
 echo ""
 if [ "$rc_all" = "0" ]; then
-  echo "当前那几份**都**在 Release 上（它们**不用**再发布）"
+  echo "当前那几份都在 Release 上（它们不用再发布）"
 else
-  echo "有那几件**当前那一份不**在 Release 上（它们**要**发布出去）"
-  echo "那**发布那一族**归 06、那**规范那一层**归 04"
+  echo "有那几件当前那一份不在 Release 上（它们要发布出去）"
+  echo "那发布那一族归 06、那规范那一层归 04"
 fi
 echo ""
 echo "退出码=$rc_all"

@@ -21,7 +21,7 @@ if [ -z "$MKSQUASHFS" ]; then
 fi
 if [ -z "$MKSQUASHFS" ]; then
 
-  echo "::notice title=宿主上没有 mksquashfs::那系统层**要**那 squashfs 归档、工具**没有**它"
+  echo "::notice title=宿主上没有 mksquashfs::那系统层要那 squashfs 归档、工具没有它"
   mkdir -p "$OUT/system" "$OUT/workdir"
   cat > "$OUT/rootfs-shape.json" <<JSON
 {
@@ -38,10 +38,10 @@ if [ -z "$MKSQUASHFS" ]; then
     "path": "workdir",
     "property": "可写"
   },
-  "note": "那**系统层** **要**那 mksquashfs **做**、那**宿主**上**没有**它"
+  "note": "那系统层 要那 mksquashfs 做、那宿主上没有它"
 }
 JSON
-  echo "[ok] $OUT（那两样的**形状**已落；那系统层那归档**报缺**）"
+  echo "[ok] $OUT（那两样的形状已落；那系统层那归档报缺）"
   exit 0
 fi
 
@@ -68,13 +68,13 @@ if [ -d "$M3_STAGE" ]; then
     note "busybox 本体已进那 usr/bin 那一层"
   fi
 
-    note "llvm 那一族已从那 dist 复制进那归档（那**软链** **不**再指**那宿主**）"
+    note "llvm 那一族已从那 dist 复制进那归档（那软链 不再指那宿主）"
   fi
 
   LLVM_SRC="${LLVM_SRC:-$ROOT/dist}"
   if [ ! -f "$LLVM_SRC/bin/clang-21" ] && [ -f "$STAGE/usr/bin/clang-21" ]; then
     LLVM_SRC="$STAGE"
-    note "那 dist 底下没有那 clang-21（那**它** **已经**被**清掉**）、那**来源** **改**用那**上**一次**编**留**的**那一份**"
+    note "那 dist 底下没有那 clang-21（那它 已经被清掉）、那来源 改用那上一次编留的那一份"
   fi
   if [ -d "$LLVM_SRC/bin" ] && [ -f "$LLVM_SRC/bin/clang-21" ]; then
     mkdir -p "$STAGE/usr/bin" "$STAGE/usr/lib"
@@ -88,7 +88,7 @@ if [ -d "$M3_STAGE" ]; then
       mkdir -p "$STAGE/usr/lib/clang"
       cp -a "$LLVM_SRC/lib/clang/." "$STAGE/usr/lib/clang/" 2>/dev/null || true
     fi
-    note "llvm 那一族已从那 dist 复制进那归档（那**软链** **不**再指**那宿主**）"
+    note "llvm 那一族已从那 dist 复制进那归档（那软链 不再指那宿主）"
   fi
 
   if [ -d "$M3_STAGE/usr/bin" ]; then
@@ -120,7 +120,7 @@ if [ -d "$M3_STAGE" ]; then
       note "busybox 本体已进那 usr/bin 那一层"
     fi
   else
-    note "没有那 M3 暂存（$M3_STAGE）那 M3 那一族**装不进来**（按 C-105 报缺）"
+    note "没有那 M3 暂存（$M3_STAGE）那 M3 那一族装不进来（按 C-105 报缺）"
   fi
 
 note "装那系统层（squashfs，用 $MKSQUASHFS）"
@@ -148,7 +148,7 @@ cat > "$OUT/rootfs-shape.json" <<JSON
     "path": "workdir",
     "property": "可写"
   },
-  "note": "那**两样** **不能并成一个文件**、那**系统层** **是**那**归档**、那**可写层** **是**那**目录**、按 C-104**不合并**"
+  "note": "那两样 不能并成一个文件、那系统层 是那归档、那可写层 是那目录、按 C-104不合并"
 }
 JSON
 

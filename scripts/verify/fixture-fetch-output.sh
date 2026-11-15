@@ -52,7 +52,7 @@ miss_row "npm"     "missing-auth"    "run 123 下载被拒（HTTP 401 / auth）"
 miss_row "cmake2"  "missing-notfound" "run 123 下载被拒（HTTP 404 / notfound）" "未知|无|-1"
 miss_row "make2"   "missing-unknown" "run 123 下载被拒（HTTP 500 / unknown）" "未知|无|-1"
 miss_row "npm2"    "missing-contract" "artifact 里没有符合命名契约的 zip" "zip|504b0304|4"
-say "  那缺件表（它是**四列**）："
+say "  那缺件表（它是四列）："
 cat "$MISS_TSV" | sed 's/^/    /'
 say ""
 say "  那机器可读的那一份："
@@ -62,7 +62,7 @@ for (const x of a) console.log("    " + x.piece + "  kind=" + x.kind + "  form="
 ' "$W/.fetch-missing.json"
 
 say ""
-say "== 格 (3) 那档位**取自枚举**、不散文（按 01 的 S606-02）=="
+say "== 格 (3) 那档位取自枚举、不散文（按 01 的 S606-02）=="
 node -e '
 const ALLOWED = new Set(["missing-ratelimit","missing-auth","missing-notfound","missing-unknown","missing-norun","missing-contract"]);
 const a=require(process.argv[1]);
@@ -80,16 +80,15 @@ say "== 格 (4) 阳性对照：那四档判别能分开（不是全落 unknown�
 bash scripts/verify/classify-download-failure.sh --selftest 2>&1 | grep -E '^  (503|401|404|403|empty|500)\.txt' | sed 's/^/  /'
 
 say ""
-say "== 格 (5) 那件**进**那显式缺件表（不静默从清单里消失）=="
+say "== 格 (5) 那件进那显式缺件表（不静默从清单里消失）=="
 node -e '
-// 反例：清单里**有**那缺件表里的某一件两格**矛盾**要判红。
 const miss=require(process.argv[1]);
 const man=[{name:"cmake"},{name:"git"},{name:"llvm"}];
 const inMan=new Set(man.map(t=>t.name));
 let conflict=0;
 for (const m of miss) if (inMan.has(m.piece)) { console.log("    矛盾：" + m.piece); conflict++; }
 console.log("    矛盾条数=" + conflict);
-console.log("缺的几件**不在**那清单里两格**对得上**（投影侧不留占位是对的）");
+console.log("缺的几件不在那清单里两格对得上（投影侧不留占位是对的）");
 ' "$W/.fetch-missing.json"
 
 say ""

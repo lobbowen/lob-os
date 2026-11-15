@@ -33,12 +33,12 @@ if [ ! -x "$ADB" ]; then
   exit 2
 fi
 if ! command -v node >/dev/null 2>&1; then
-  echo "报缺：那宿主上**没有**那个 node（判据**要**它**才**跑得动）"
+  echo "报缺：那宿主上没有那个 node（判据要它才跑得动）"
   exit 2
 fi
 
 if ! "$ADB" -s "$DEV" shell "run-as $PKG echo ok" >/dev/null 2>&1; then
-  echo "报缺：那设备**不**通（那**装**与**那**取件**都**是**那设备侧**的**实施**、本脚本**不**动**那设备**）"
+  echo "报缺：那设备不通（那装与那取件都是那设备侧的实施、本脚本不动那设备）"
   exit 2
 fi
 
@@ -127,8 +127,8 @@ if os.environ.get('LOBOS_DEBUG'):
 if os.environ.get('LOBOS_DEBUG'):
     print('[debug] child_ld len=' + str(len(child_ld)) + ' child_path len=' + str(len(child_path)))
 if not child_ld:
-    print('报缺：那设备上那 runtime.json **里面**的**那** env **快照** **取不到**'
-          '（那**应用**给**它**的**孩子**的**那**一条**路径**就**取不到**、**不猜填**）')
+    print('报缺：那设备上那 runtime.json 里面的那 env 快照 取不到'
+          '（那应用给它的孩子的那一条路径就取不到、不猜填）')
 
 def run_criterion(code, criterion_env=None):
 
@@ -187,7 +187,7 @@ def run_criterion(code, criterion_env=None):
     if rc is None:
         detail = (rr.stderr or '').strip()
         if 'inaccessible or not found' in detail or 'not found' in detail:
-            detail = '那设备上**没有**那个 node（判据**要**设备**上的**那** node）'
+            detail = '那设备上没有那个 node（判据要设备上的那 node）'
         return None, (out + detail).strip()
     return rc, out.replace(chr(13) + chr(10), chr(10)).strip()
 
@@ -220,23 +220,23 @@ passed = sum(1 for r in results if r['status'] == '过')
 failed = sum(1 for r in results if r['status'] == '不过')
 
 doc = {
-    '$note': 'M0′ 真判据的读数。逐件的过/ 不过**是**那逐条跑出来的结果、那 M 与 N**是**那重算出来的、手写的结论**不**算。',
+    '$note': 'M0′ 真判据的读数。逐件的过/ 不过是那逐条跑出来的结果、那 M 与 N是那重算出来的、手写的结论不算。',
     'family': 'M0′ 真判据（用户态件那一族）',
-    'notFamily': '那内核可信起点那一族（是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、两者**不**是同一件、两者**不**能合成一件）',
+    'notFamily': '那内核可信起点那一族（是 docs/m0-kernel-baseline.json 与那 check-m0-kernel-baseline.sh、两者不是同一件、两者不能合成一件）',
     'takenAt': now,
-    'runner': '那宿主跑那个 node、目标经 adb 在那设备上跑（判据的 node 字段**不**用改）',
+    'runner': '那宿主跑那个 node、目标经 adb 在那设备上跑（判据的 node 字段不用改）',
 
     'threshold': {'value': 0.55, 'status': '已核',
                   'kind': 'M/N 大于等于 0.55',
                   'version': '那仓内那 version.json  = 那 versionName 0.0.6 / 那 versionCode 6',
-                  'reason': '那 M0prime 真判据是那 M/N 比率、那**它** **是**那**下限**（那**它** **不**是**那**目标**）、那**它** **随版本递增**（那**它** **只**能**往**上**走**不能**往**下**走**）',
-                  'baseline': '那取数时刻 = 那 takenAt、那 M/N  = 那 M0prime 那一格的 M 与 N（那**它** **是**那**重算**出来**的**）、按 C-274 与按 C-203 那一族',
-                  'provenance': '那 **0.55** 那一档**是**那**设计选择**那一族**的**选择**、那**它** **由**那 lead 与那 04 **一起**定**（那**它** **不**在**那**上游官方流程**里**）、那**它** **不能**冒充**那**上游**的**（那 C-519 那一族**仍**未过**、按 C-105 **报缺**）',
-                  'note': '那阈值**不**是**那读数**（那 M/N ** **是**那读数**）、那**旧**的**那一句** = 「那阈值**没有**出处（那 03 那边**按 C-122 标**过**一句**「这个阈值是经验值，它没有出处」**—— 而那**那一句** **是**那**另一个**阈值**、**不**是**这**一个**）、按 C-105 报缺」——那**旧**的**那一句**按 **留档不删**、它**在**那**上面**那一句**里面**'},
+                  'reason': '那 M0prime 真判据是那 M/N 比率、那它 是那下限（那它 不是那目标）、那它 随版本递增（那它 只能往上走不能往下走）',
+                  'baseline': '那取数时刻 = 那 takenAt、那 M/N  = 那 M0prime 那一格的 M 与 N（那它 是那重算出来的）、按 C-274 与按 C-203 那一族',
+                  'provenance': '那 0.55 那一档是那设计选择那一族的选择、那它 由那 lead 与那 04 一起定（那它 不在那上游官方流程里）、那它 不能冒充那上游的（那 C-519 那一族仍未过、按 C-105 报缺）',
+                  'note': '那阈值不是那读数（那 M/N  是那读数）、那旧的那一句 = 「那阈值没有出处（那 03 那边按 C-122 标过一句「这个阈值是经验值，它没有出处」—— 而那那一句 是那另一个阈值、不是这一个）、按 C-105 报缺」——那旧的那一句按 留档不删、它在那上面那一句里面'},
     'M0prime': {
         'set': m0p_set,
 
-        'setSource': '那 docs/m0prime-denominator.json（分母清单**是**那**定义**、读数**跟着**它**走**）',
+        'setSource': '那 docs/m0prime-denominator.json（分母清单是那定义、读数跟着它走）',
         'rule': '那有可执行入口的用户态件（判据对象是 (件, entry) 那一对）',
         'M': m0p_passed,
         'N': len(m0p_results),
@@ -255,7 +255,7 @@ doc = {
         'M': passed,
         'N': len(results),
         'failed': failed,
-        'note': '那采集那一层跑的那全部（分母是**那表**里带那 node 字段的件数、它**不**是**那 M0prime 的**分母**）'
+        'note': '那采集那一层跑的那全部（分母是那表里带那 node 字段的件数、它不是那 M0prime 的分母）'
     },
     'M': m0p_passed,
     'N': len(m0p_results),
@@ -278,7 +278,7 @@ if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != 
             'collectedM': (_prev.get('collected') or {}).get('M'),
             'collectedN': (_prev.get('collected') or {}).get('N'),
             'notPassed': [p.get('id') for p in (_prev.get('pieces') or []) if p.get('status') != '过'],
-            'note': '那**前**一**版**的**读数**（它**是**那**那一个**时点**的**事实**、它**不**覆盖**那**这一版**）',
+            'note': '那前一版的读数（它是那那一个时点的事实、它不覆盖那这一版）',
         })
         doc['history'] = _hist
     else:
@@ -286,7 +286,7 @@ if isinstance(_prev, dict) and _prev.get('takenAt') and _prev.get('takenAt') != 
         _hist = (_prev.get('history') or []) if isinstance(_prev, dict) else []
         if _hist:
             doc['history'] = _hist
-        print('[warn] 而那**前**一**版**N=' + str(_prev_N) + '、那**它** **不**等于**那分母**的**条数**（=' + str(_full_expected) + '）、那**它** **不**进**那历史**')
+        print('[warn] 而那前一版N=' + str(_prev_N) + '、那它 不等于那分母的条数（=' + str(_full_expected) + '）、那它 不进那历史')
 io.open(out_path, 'w', encoding='utf-8').write(json.dumps(doc, ensure_ascii=False, indent=2) + chr(10))
 print('M0prime M=%d N=%d（不过 %d）、采集那一族 M=%d N=%d、取数时刻 %s'
       % (m0p_passed, len(m0p_results), m0p_failed, passed, len(results), now))

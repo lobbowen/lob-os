@@ -52,13 +52,13 @@ done
 case "$(head -c 2 "$DST" | od -An -tx1 | tr -d ' \n')" in
   504b)
     unzip -t "$DST" >/dev/null 2>&1 || {
-      echo "报缺：那 unzip -t**不过**（取回来的**不完整**）" >&2
+      echo "报缺：那 unzip -t不过（取回来的不完整）" >&2
       exit 1
     }
-    echo "  [ok] 那 got == expect  = $EXPECT；那 unzip -t**过**"
+    echo "  [ok] 那 got == expect  = $EXPECT；那 unzip -t过"
     ;;
   *)
-    echo "  [ok] 那 got == expect  = $EXPECT；那**不是** zip、那 unzip -t 那一格**不**判"
+    echo "  [ok] 那 got == expect  = $EXPECT；那不是 zip、那 unzip -t 那一格不判"
     ;;
 esac
 exit 0

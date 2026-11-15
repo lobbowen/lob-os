@@ -29,8 +29,6 @@ old = """#if V8_LIBC_GLIBC || V8_LIBC_BSD || V8_LIBC_UCLIBC || V8_OS_SOLARIS
 
 new = """#if V8_LIBC_GLIBC || V8_LIBC_BSD || V8_LIBC_UCLIBC || V8_OS_SOLARIS
 
-// [android-container patch] bionic libc has no <execinfo.h>/backtrace();
-// force-disable the execinfo path to avoid 'use of undeclared identifier backtrace'.
 
 if old in s:
     s = s.replace(old, new, 1)

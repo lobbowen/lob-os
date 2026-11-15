@@ -27,7 +27,7 @@ for f in native-manifest.json native-manifest.json.sig; do
 done
 
 say ""
-say "   起服务（那**只读**、那 Ctrl-C 停）："
+say "   起服务（那只读、那 Ctrl-C 停）："
 say "   设备侧怎么够到它（那 adb reverse 那一条由 07 执行、设备写入只归 07）："
 say "     adb reverse tcp:$PORT tcp:$PORT"
 say "     然后在设备上把「更新清单 URL」填成 http://127.0.0.1:$PORT/native-manifest.json"

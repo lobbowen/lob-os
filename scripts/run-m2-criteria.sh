@@ -6,7 +6,7 @@ export LC_ALL=C
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
-command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上**没有**那个 node（判据**要**它**才**跑得动）"; exit 2; }
+command -v node >/dev/null 2>&1 || { echo "报缺：那宿主上没有那个 node（判据要它才跑得动）"; exit 2; }
 
 export LOBOS_ROOT="$ROOT"
 export M2_ROOTFS_DIR="${1:-$ROOT/work/rootfs}"

@@ -46,7 +46,7 @@ echo "[openssl] 版本头在位"
 
 SSL="$OUT_DIR/lib/libssl-lobos.so"
 [ -f "$SSL" ] || SSL="$(ls "$OUT_DIR"/lib/libssl.so* 2>/dev/null | head -1)"
-[ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（改名**后**的**那一个**）"
+[ -n "$SSL" ] && [ -f "$SSL" ] || die "openssl 没产出 libssl" "$OUT_DIR/lib 下没有 libssl*（改名后的那一个）"
 
   OPENSSL_BINS=""
   [ -e "$OUT_DIR/bin/openssl" ] && OPENSSL_BINS="openssl"

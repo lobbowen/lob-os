@@ -192,6 +192,6 @@ rm -rf "$OUT/share" && mkdir -p "$OUT/share"
 
 printf '%s' "$CMAKE_VER" > "$OUT/$TOOL.version"
 echo "[ok] $OUT/bin/$TOOL $(stat -c%s "$OUT/bin/$TOOL") 字节（动态、依赖闭环、16KB 对齐、aarch64）"
-echo "[ok] cmake 模块目录 → $OUT/share/cmake-$CMAKE_MM（缺它 cmake 就是空壳；那**名字** **要**是**那上游**找**的**那个**）"
+echo "[ok] cmake 模块目录 → $OUT/share/cmake-$CMAKE_MM（缺它 cmake 就是空壳；那名字 要是那上游找的那个）"
 echo "[$TOOL] 落位：组件通道 → files/programs/$TOOL/<版本>/"
 echo "[$TOOL] 判据要真跑一次 cmake（起得来不等于能 configure 东西）"

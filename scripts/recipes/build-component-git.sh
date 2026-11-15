@@ -47,7 +47,7 @@ echo "[git] 诊断：PATH 含 TC ? $(case ":$PATH:" in *":$TC_DIR:"*) echo 是;;
 if command -v aarch64-linux-android35-clang >/dev/null 2>&1; then
   echo "[git] 诊断：裸名可解析 → $(command -v aarch64-linux-android35-clang)"
 else
-  echo "[git] 诊断：裸名**不可解析** → 报错 127 就是这个原因"
+  echo "[git] 诊断：裸名不可解析 → 报错 127 就是这个原因"
   ls "$TC_DIR"/aarch64-linux-android35-clang 2>&1 | sed "s/^/[git] 诊断：  /"
 fi
 echo "[git] 诊断：Makefile 里 legacy-dso-legacyprov.o 那条规则用哪个编译器变量："

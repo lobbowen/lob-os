@@ -10,12 +10,12 @@ TOOL="${1:?需要工具名}"
 VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
 
 if [ -z "$VER" ]; then
-  echo "::notice:: 那 dist/${TOOL}.version 不在（那**复用**命中了、编译被跳过了）"
-  echo "::notice::版本号**改从**那钉值表取（它是那件自己的版本、**不**是「本轮编的」那个事实）"
+  echo "::notice:: 那 dist/${TOOL}.version 不在（那复用命中了、编译被跳过了）"
+  echo "::notice::版本号改从那钉值表取（它是那件自己的版本、不是「本轮编的」那个事实）"
   VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
   if [ -n "$VER" ]; then
     printf '%s' "$VER" > "dist/${TOOL}.version"
-    echo "::notice::版本号 = $VER（从那钉值表取到、它**写回**了那一份）"
+    echo "::notice::版本号 = $VER（从那钉值表取到、它写回了那一份）"
   fi
 fi
 [ -n "$VER" ] || { echo "::error title=缺版本号::dist/${TOOL}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
@@ -53,7 +53,7 @@ if [ -n "${PC_TARGET_SEGMENT:-}" ]; then
   _decl_seg="$(bash "$ROOT_DIR/scripts/toolchain/pc-target.sh" product-segment 2>/dev/null || true)"
   if [ -n "$_decl_seg" ] && [ "$_decl_seg" != "$TARGET_SEGMENT" ]; then
     echo "::error title=那产物名那目标段与那声明不等::产物名那目标段=$TARGET_SEGMENT、声明=$_decl_seg"
-    echo "::error::一档是「承载形态」、按 C-05 报缺、那**不**猜"
+    echo "::error::一档是「承载形态」、按 C-05 报缺、那不猜"
     exit 1
   fi
 fi

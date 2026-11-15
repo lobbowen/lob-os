@@ -84,36 +84,36 @@ while IFS= read -r s; do
   sh_o="$(outer_of "$sh")"; nd_o="$(outer_of "$nd")"; kt_o="$(outer_of "$kt")"
   printf '%-4s %-14s %-12s %-12s %-12s %s\n' "$n" "$(basename "$s" | cut -c1-13)" "$sh" "$nd" "$kt" "外壳档：sh=$sh_o nd=$nd_o kt=$kt_o"
 
-  if [ -z "$sh" ]; then say "那 shell 侧**没给出**那一列（是「那一侧没接线」）"; RC=1; fi
-  if [ -z "$nd" ]; then say "那 Node 侧**没给出**那一列（是「那一侧没接线」）"; RC=1; fi
+  if [ -z "$sh" ]; then say "那 shell 侧没给出那一列（是「那一侧没接线」）"; RC=1; fi
+  if [ -z "$nd" ]; then say "那 Node 侧没给出那一列（是「那一侧没接线」）"; RC=1; fi
   if [ -z "$kt" ]; then
-    say "那 Kotlin 侧**没给出**那一列（本机**没有** Android 运行时、按 C-05 报缺、**不**假装跑过）"
+    say "那 Kotlin 侧没给出那一列（本机没有 Android 运行时、按 C-05 报缺、不假装跑过）"
     KT_MISSING=1
   fi
 
   if [ -n "$sh_o" ] && [ -n "$nd_o" ] && [ "$sh_o" != "$nd_o" ]; then
-    say "那 shell 与 Node**不同**（一族未过）"; RC=1
+    say "那 shell 与 Node不同（一族未过）"; RC=1
   fi
   if [ -n "$kt_o" ] && [ -n "$sh_o" ] && [ "$kt_o" != "$sh_o" ]; then
-    say "那 Kotlin 与 shell**不同**（一族未过）"; RC=1
+    say "那 Kotlin 与 shell不同（一族未过）"; RC=1
   fi
 
 done <<< "$SAMPLES"
 
 say ""
 say "== 口径说明（照 01 的 S607-01 §12.3 第 3 条）=="
-say "  「同一个档」是「同一个**外壳**档」（zip / gzip / tar / 未知），**不是**「同一个字符串」。"
-say "那 zip64 是 zip 那一档的**变体**：那 shell 与 Node 给 zip64、"
-say "那 Kotlin 给 zip（是**有意**的、运行期**不分** zip64、"
-say "那 zip64**用同一个解包器**、差别在中央目录、**解包器自己认**）。"
-say "那 zip64 与 zip 分不分归各语言侧自己要的那一档（一格**不是**「判别源唯一」那一族管的事）。"
+say "  「同一个档」是「同一个外壳档」（zip / gzip / tar / 未知），不是「同一个字符串」。"
+say "那 zip64 是 zip 那一档的变体：那 shell 与 Node 给 zip64、"
+say "那 Kotlin 给 zip（是有意的、运行期不分 zip64、"
+say "那 zip64用同一个解包器、差别在中央目录、解包器自己认）。"
+say "那 zip64 与 zip 分不分归各语言侧自己要的那一档（一格不是「判别源唯一」那一族管的事）。"
 
 say ""
 say "== 结论 =="
-say "  shell 侧与 Node 侧**同一**（那 Node 侧**调**那 shell 侧那一份）。"
-say "  Kotlin 侧那一格本机**未过（缺运行时）**（按 C-05 报缺、**不**假装跑过）。"
+say "  shell 侧与 Node 侧同一（那 Node 侧调那 shell 侧那一份）。"
+say "  Kotlin 侧那一格本机未过（缺运行时）（按 C-05 报缺、不假装跑过）。"
 if [ "$KT_MISSING" = "1" ]; then
-  say "那 Kotlin 侧**没接线**（不是「答不出」、是「本机没有那一门运行时」）"
+  say "那 Kotlin 侧没接线（不是「答不出」、是「本机没有那一门运行时」）"
 fi
 say ""
 say "退出码=$RC"

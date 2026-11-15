@@ -56,7 +56,7 @@ if [ -f "$TGZ" ] && [ "$(sha256sum "$TGZ" | cut -d" " -f1)" = "$BUSYBOX_SHA" ]; 
   note "源码 $BUSYBOX_VER 就位（落点那一份过了那钉值，直接用）"
 else
 if ! bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin busybox "$TGZ"; then  die "取源码失败或 sha256 不符" \
-    "钉值与来源见 scripts/component-sources.json 的 sources.busybox。**不要**改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
+    "钉值与来源见 scripts/component-sources.json 的 sources.busybox。不要改成不校验的下载 —— 那样编出来的 busybox 错了没人知道。"
 fi
 fi
 if ! tar xjf "$TGZ" -C "$WORK"; then
@@ -236,12 +236,12 @@ note "$INFO"
 if [ "$BUSYBOX_STATIC" = "1" ]; then
 
   ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')
-  [ "$ETYPE" = "EXEC" ] || die "不是静态产物" "e_type=$ETYPE —— 而那**静态**的**那一个**必须**是**那 ET_EXEC"
+  [ "$ETYPE" = "EXEC" ] || die "不是静态产物" "e_type=$ETYPE —— 而那静态的那一个必须是那 ET_EXEC"
   NEEDED=$("$LLVM_READELF" -W -d "$BB" 2>/dev/null | awk '/NEEDED/ {gsub(/[\[\]]/,"",$NF); print $NF}' | wc -l)
-  [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那**静态**的**那一个** **不**能**有**那**动态**依赖"
+  [ "$NEEDED" -eq 0 ] || die "静态产物却有依赖" "NEEDED=$NEEDED 项 —— 而那静态的那一个 不能有那动态依赖"
 
   INTERP=$("$LLVM_READELF" -W -l "$BB" 2>/dev/null | grep -c 'INTERP' || true)
-  [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那**静态**的**那一个** **不**能**要**那 **linker64**"
+  [ "$INTERP" -eq 0 ] || die "静态产物却有 PT_INTERP" "INTERP 行数=$INTERP —— 而那静态的那一个 不能要那 linker64"
   echo "[$TOOL] 形态：e_type=$ETYPE、静态（无 PT_INTERP、NEEDED=$NEEDED 项）"
 else
   ETYPE=$("$LLVM_READELF" -W -h "$BB" 2>/dev/null | awk '/^  Type:/ {print $2}')

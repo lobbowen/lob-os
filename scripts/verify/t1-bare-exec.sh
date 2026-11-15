@@ -70,7 +70,7 @@ for name in "$@"; do
     se=" 两个流不可分（无 python3 捕获）  —— 这一支只判退出码，"
     se="$se 不可用它判「它说了什么」"
   fi
-  if [ "$SPLIT" = "1" ]; then CAP="两个流分开（内存·python3）"; elif [ "$SPLIT" = "2" ]; then CAP="两个流分开（三次纯 shell 执行）"; else CAP="**合并流，只判退出码**"; fi
+  if [ "$SPLIT" = "1" ]; then CAP="两个流分开（内存·python3）"; elif [ "$SPLIT" = "2" ]; then CAP="两个流分开（三次纯 shell 执行）"; else CAP="合并流，只判退出码"; fi
   echo "  捕获方式：$CAP"
   code2=-1
   se2=""

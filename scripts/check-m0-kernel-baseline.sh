@@ -85,13 +85,13 @@ elif kl[n - 1].rstrip() != t['text']:
 for m in d.get('missingReferences') or []:
     p = os.path.join(kb, m['ref'])
     if not os.path.isfile(p):
-        missing.append('%s**不**在**那仓内**（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s不在那仓内（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
 
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(data_path)))
 for m in d.get('referencedFiles') or []:
     p = os.path.join(ROOTDIR, m['path'])
     if not os.path.isfile(p):
-        missing.append('%s**不**在**那仓内**（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
+        missing.append('%s不在那仓内（那 %s 引它、按 C-105 报缺）' % (m['ref'], m['from']))
         continue
     got = hashlib.sha256(open(p, 'rb').read()).hexdigest()
     if m.get('sha256') and got != m['sha256']:
@@ -115,7 +115,7 @@ for key in ('initKconfig', 'gkiDefconfig'):
     lb = os.path.join(ROOTDIR, e['upstreamPath'])
     for f in (la, lb):
         if not os.path.isfile(f):
-            missing.append('%s**不**在**那仓内**' % f)
+            missing.append('%s不在那仓内' % f)
             break
     else:
         got = diff_lines(la, lb)
@@ -129,12 +129,12 @@ if not kv.get('value'):
 for r in d.get('referenceDocs') or []:
     if r.get('isKernelData'):
         if r.get('status') == '未核':
-            missing.append('%s**是**那内核的**数据**、它**还**没**进**那仓**内**、按 C-105 报缺' % r['file'])
+            missing.append('%s是那内核的数据、它还没进那仓内、按 C-105 报缺' % r['file'])
         else:
 
             p2 = os.path.join(ROOTDIR, r.get('path') or ('docs/kernel-baseline/' + r['file']))
             if not os.path.isfile(p2):
-                missing.append('%s**不**在**那仓内**' % r['file'])
+                missing.append('%s不在那仓内' % r['file'])
             else:
                 got2 = hashlib.sha256(open(p2, 'rb').read()).hexdigest()
                 if r.get('sha256') and got2 != r['sha256']:

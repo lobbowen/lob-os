@@ -35,7 +35,7 @@ for g in d.get('denominators') or []:
     groups[g['key']] = g
 for need in ('bareName', 'symbolLoad', 'excluded'):
     if need not in groups:
-        missing.append('那分母清单里**没有**那 %s **那一族**' % need)
+        missing.append('那分母清单里没有那 %s 那一族' % need)
         continue
     g = groups[need]
     if g.get('count') != len(g.get('set') or []):
@@ -57,7 +57,7 @@ for key, ruled in RULED.items():
     if got_set != want_set:
         only_got = [x for x in got_set if x not in want_set]
         only_want = [x for x in want_set if x not in got_set]
-        bad.append('%s 那一族**与**那裁定**不一致**（多**出**的 = %s、那**缺**的 = %s）'
+        bad.append('%s 那一族与那裁定不一致（多出的 = %s、那缺的 = %s）'
                    % (key, only_got, only_want))
 
 items = d.get('items') or []
@@ -66,7 +66,7 @@ for it in items:
     k = it.get('id')
     seen.add(k)
     if not it.get('provenance'):
-        missing.append('%s**没有**出处' % k)
+        missing.append('%s没有出处' % k)
         continue
     for prov in it['provenance']:
         ok = False
@@ -97,22 +97,22 @@ for it in items:
 for key, g in groups.items():
     for k in (g.get('set') or []):
         if k not in seen:
-            bad.append('%s**在**那 %s **那一族**的 set **里面**、它**不**在**那 items **里面**' % (k, key))
+            bad.append('%s在那 %s 那一族的 set 里面、它不在那 items 里面' % (k, key))
 
 apps = d.get('applets') or []
 sed_in_items = any(it.get('id') == 'sed' for it in items)
 if sed_in_items:
-    bad.append('那 sed**被**当成**另**一件**件**记**进**那 items **里面**、它**算**在**那 busybox **那**一件**里面**')
+    bad.append('那 sed被当成另一件件记进那 items 里面、它算在那 busybox 那一件里面')
 if not any(a.get('name') == 'sed' and a.get('belongsTo') == 'busybox' for a in apps):
-    missing.append('那 sed**没有**被标成**那 busybox **的**一个 applet')
+    missing.append('那 sed没有被标成那 busybox 的一个 applet')
 
 for it in items:
     if it.get('denominator') == 'excluded':
         if not it.get('excludedReason'):
-            missing.append('%s**标**成**不**进**、它**没有**那**为什么**' % it.get('id'))
+            missing.append('%s标成不进、它没有那为什么' % it.get('id'))
 
 if os.path.abspath(data_path) == os.path.abspath(readings_path):
-    bad.append('那分母清单**跟**那读数**同一**个文件**、那**两个** **不**是同一件**')
+    bad.append('那分母清单跟那读数同一个文件、那两个 不是同一件')
 if not os.path.isfile(readings_path):
     missing.append('那读数那一件不在: %s' % readings_path)
 

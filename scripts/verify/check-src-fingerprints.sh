@@ -35,10 +35,10 @@ for t in "${TOOLS[@]}"; do
     npm)     own="scripts/recipes/build-component-npm.sh" ;;
     pnpm)    own="scripts/recipes/build-component-pnpm.sh" ;;
     llvm) own="scripts/recipes/build-component-llvmtoolchain.sh" ;;
-    *) echo "::error title=本条不认这个件名::$t —— 而它是新加的，本条那一族要**同步**加它"; BAD=$((BAD+1)); continue ;;
+    *) echo "::error title=本条不认这个件名::$t —— 而它是新加的，本条那一族要同步加它"; BAD=$((BAD+1)); continue ;;
   esac
   if [ -z "$own" ]; then
-    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=这一件没有自己的 SRC_FILES::$t —— 而它落 *) 那一行、意味着它的指纹只由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
 
@@ -46,7 +46,7 @@ for t in "${TOOLS[@]}"; do
   ownhash="$(git ls-files $own 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
 
   if ! grep -qE "^  $t\) +SRC_FILES=\"" scripts/toolchain/cache-key.sh; then
-    echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、意味着它的指纹**只**由 PKG_MECH 算出来"
+    echo "::error title=case 里没有这一件自己的条目::$t —— 而它在 *) 那一行、意味着它的指纹只由 PKG_MECH 算出来"
     BAD=$((BAD+1)); continue
   fi
 

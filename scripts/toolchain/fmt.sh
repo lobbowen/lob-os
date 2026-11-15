@@ -41,8 +41,6 @@ try {
     process.stdout.write("zip32"); process.exit(0);
   }
   const loc = e >= 20 ? tail.readUInt32LE(e - 20) : 0;
-  // 那**定位器不在位**时（哨兵在位、定位器坏了）
-  //01 裁的 S607-01-CONTAINER-FORM-RULING.md「**那一档必须单独报、不许当 zip 处理**」。
   process.stdout.write(loc === 0x07064b50 ? "zip64" : "zip64-sentinel-no-locator");
 } catch (e) {
   process.stdout.write("unreadable");
@@ -183,7 +181,7 @@ let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () =>
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**外层自己**就是那一颗件、它的 id 是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那外层自己就是那一颗件、它的 id 是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   else
@@ -198,7 +196,7 @@ let d = ""; process.stdin.on("data", x => d += x); process.stdin.on("end", () =>
         printf '%s\n' "$f"
         return 0
       fi
-      echo "那**解开处自己**就是那一颗件、它的 id 是 $outer_id（要的是 $want）—— 判红" >&2
+      echo "那解开处自己就是那一颗件、它的 id 是 $outer_id（要的是 $want）—— 判红" >&2
       return 1
     fi
   fi

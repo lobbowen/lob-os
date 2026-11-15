@@ -29,11 +29,11 @@ CPIO_MAGIC="$(head -c 6 "$CPIO")"
 if [ "$CPIO_MAGIC" = "070701" ]; then
   note "判据过：那归档是那 newc 那一族（070701）"
 else
-  die "那归档**不**对" "$CPIO 的头是 $CPIO_MAGIC、内核**只**收那 newc 那一族"
+  die "那归档不对" "$CPIO 的头是 $CPIO_MAGIC、内核只收那 newc 那一族"
 fi
 OUT_MAGIC="$(od -An -tx1 -N2 "$OUT" | tr -d ' ')"
 note "装完：$OUT（$(stat -c%s "$OUT") 字节、头 $OUT_MAGIC、归档 $CPIO_MAGIC）"
 
 if [ "$OUT_MAGIC" != "1f8b08" ] && [ "$OUT_MAGIC" = "" ]; then
-  die "那镜像**读**不**出**" "$OUT 的头读不出来"
+  die "那镜像读不出" "$OUT 的头读不出来"
 fi

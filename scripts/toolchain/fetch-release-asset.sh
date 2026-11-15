@@ -73,7 +73,7 @@ if [ "$PARTS_ONLY" = "1" ]; then
   });
 ' 2>/dev/null)"
   if [ -z "$_po_url" ]; then
-    echo "  [miss] Release $TAG 里没有 $ASSET.parts.txt（这一件**没有**分片、按 C-05 报缺）"
+    echo "  [miss] Release $TAG 里没有 $ASSET.parts.txt（这一件没有分片、按 C-05 报缺）"
     exit 1
   fi
   curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" -o "$DEST/$_po_name" "$_po_url" 2>/dev/null || {
@@ -81,16 +81,16 @@ if [ "$PARTS_ONLY" = "1" ]; then
     exit 1
   }
   [ -s "$DEST/$_po_name" ] || { echo "  [miss] 那分片清单 $ASSET.parts.txt 是空的"; exit 1; }
-  echo "  [parts] 那 $ASSET**只取**那几块（它**不**下那完整那一份）"
+  echo "  [parts] 那 $ASSET只取那几块（它不下那完整那一份）"
 fi
 if [ "$PARTS_ONLY" = "1" ]; then
   :
 elif [ -n "${EXPECT_BYTES:-}" ] && [ "$EXPECT_BYTES" -gt 0 ] 2>/dev/null; then
   if bash "$HERE/fetch-concurrent.sh" "$URL" "$DEST/$ASSET" "$EXPECT_BYTES"; then
-    echo "  [fetch] 那 $ASSET**小片并发**地下来了（那 got == expect  = $EXPECT_BYTES）"
+    echo "  [fetch] 那 $ASSET小片并发地下来了（那 got == expect  = $EXPECT_BYTES）"
   else
 
-    echo "  [fetch] 那小片并发那一路**不成**、回退到那整份那一路（性能那一格**不**算）"
+    echo "  [fetch] 那小片并发那一路不成、回退到那整份那一路（性能那一格不算）"
     curl -fsSL --retry 3 --retry-delay 2 "${HDR[@]}" \
       -o "$DEST/$ASSET" "$URL" 2>/dev/null || {
       echo "  [miss] 下载 $ASSET 失败"
@@ -117,7 +117,7 @@ fi
 
 PARTS_TXT="$DEST/$ASSET.parts.txt"
 if [ -s "$PARTS_TXT" ]; then
-  echo "  [parts] 那 $ASSET**被拆**了、那**它**们**是**那**几块**"
+  echo "  [parts] 那 $ASSET被拆了、那它们是那几块"
 
   : > "$DEST/$ASSET.parts"
   while read -r _pf; do
@@ -151,7 +151,7 @@ if [ -s "$PARTS_TXT" ]; then
   done < "$DEST/$ASSET.parts"
 
   if [ "$PARTS_ONLY" = "1" ]; then
-    echo "  [parts] 那 $ASSET**只取**那几块（它**不**拼）"
+    echo "  [parts] 那 $ASSET只取那几块（它不拼）"
     exit 0
   fi
   : > "$DEST/$ASSET.joined"
@@ -160,6 +160,6 @@ if [ -s "$PARTS_TXT" ]; then
     cat "$DEST/$_pn" >> "$DEST/$ASSET.joined"
   done < "$DEST/$ASSET.parts"
   mv "$DEST/$ASSET.joined" "$DEST/$ASSET"
-  echo "  [parts] 那 $ASSET**拼**回来了、字节数 = $(stat -c %s "$DEST/$ASSET")"
+  echo "  [parts] 那 $ASSET拼回来了、字节数 = $(stat -c %s "$DEST/$ASSET")"
 fi
 exit 0

@@ -13,7 +13,7 @@ if [ -n "${PC_TARGET_TRIPLE:-}" ]; then
   _decl_host="$(bash scripts/toolchain/pc-target.sh host-flag 2>/dev/null || true)"
   if [ -n "$_decl_host" ] && [ "$_decl_host" != "$TARGET_HOST" ]; then
     echo "[bash] 那 --host= 那一格 = $TARGET_HOST、声明 = $_decl_host"
-    echo "[bash]一档是「目标三元组」、按 C-05 报缺、那**不**猜"
+    echo "[bash]一档是「目标三元组」、按 C-05 报缺、那不猜"
     exit 1
   fi
 fi

@@ -113,10 +113,10 @@ DUMP_ERR="$($ADB -s "$DEV" shell "uiautomator dump /sdcard/uidump.xml 2>&1; echo
 
 if printf '%s\n' "$DUMP_ERR" | grep -q 'null root node returned by UiTestAutomationBridge'; then
   echo "[error] 设备回了这一句原文：ERROR: null root node returned by UiTestAutomationBridge" >&2
-  echo "屏幕是灭的、唤醒那一格**没满足**。" >&2
-  echo "唤醒是**设备写入**、只归 07；两条命令是：" >&2
+  echo "屏幕是灭的、唤醒那一格没满足。" >&2
+  echo "唤醒是设备写入、只归 07；两条命令是：" >&2
   printf '%s\n' "$WAKE_CMDS" | sed 's/^/          /' >&2
-  echo "唤醒之后**重跑**本工具、时它会拿到树。" >&2
+  echo "唤醒之后重跑本工具、时它会拿到树。" >&2
   exit 3
 fi
 
@@ -131,7 +131,7 @@ printf '%s\n' "$XML" > "$DUMP_OUT"
 echo "[dump] 控件树字节数=$(stat -c%s "$DUMP_OUT")"
 
 if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
-  echo "[node] 那一格**在**树里：$ACTIVITY"
+  echo "[node] 那一格在树里：$ACTIVITY"
 
   BOUNDS="$(printf '%s\n' "$XML" | grep -o 'resource-id="[^"]*"[^>]*bounds="\[[0-9,]*\]\[[0-9,]*\]"' | head -1)"
   if [ -n "$BOUNDS" ]; then
@@ -148,8 +148,8 @@ if printf '%s\n' "$XML" | grep -q "$ACTIVITY"; then
   exit 0
 fi
 
-echo "[error] 树取到了，但那一格**不在**树里：$ACTIVITY" >&2
-echo "这与「屏幕黑」是**两件**事、要分开确认（依 I-32）。" >&2
+echo "[error] 树取到了，但那一格不在树里：$ACTIVITY" >&2
+echo "这与「屏幕黑」是两件事、要分开确认（依 I-32）。" >&2
 echo "先看 [focus] 那一行：焦点在别处、要先把那个 Activity 叫起来。" >&2
 if [ -n "$OUT" ]; then
   cp "$DUMP_OUT" "$OUT"

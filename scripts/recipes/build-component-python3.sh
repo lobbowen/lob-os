@@ -59,7 +59,7 @@ else
   HOST_PY_VER="（没找到 $PY_WANT）"
 fi
 [ -n "$HOST_PY" ] || die "找不到 $PY_WANT 的宿主 python" \
-  "要编 CPython $CPY_VER，它的构建脚本必须由**同 major.minor 的** $PY_WANT 跑" \
+  "要编 CPython $CPY_VER，它的构建脚本必须由同 major.minor 的 $PY_WANT 跑" \
   "（CPython 的 configure 要求两者相等，不是「≥下限」）。" \
   "runner 自带 $PY_WANT 但它在 Cached Tools 里、通常不在 PATH。先查它在哪：" \
   "  ls -d /opt/hostedtoolcache/Python/$PY_WANT.*/x64/bin/ 2>/dev/null" \
