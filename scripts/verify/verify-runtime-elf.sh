@@ -78,7 +78,6 @@ fi
 if [ -z "${EXEC_SET// /}" ]; then
   echo "[note] 清单的「可执行资产本体」段为空（node 由控制面板下发，APK 内没有可执行件）—— 只校验依赖库段。"
 fi
-echo "== 校验器: $READELF  目录: $DIR =="
 echo "   系统库白名单: $DEPS_FILE（$(printf '%s' "$SYSTEM_LIBS" | wc -w) 项）"
 echo "   可执行资产: $EXEC_SET"
 

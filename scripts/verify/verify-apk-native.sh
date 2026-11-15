@@ -70,8 +70,6 @@ note_degraded() {
   DEGRADED="$DEGRADED $1"
 }
 
-echo "== APK: $APK ($(stat -c%s "$APK") 字节, ABI=$ABI) =="
-echo "--- lib/ 下的条目 ---"
 if [ "$REPORT" = "1" ]; then
   found=0
   for e in "${LIST[@]}"; do
@@ -84,7 +82,6 @@ elif ! has_prefix 'lib/'; then
 fi
 
 echo
-echo "--- legacy 程序资产（必须为空）---"
 if has_prefix 'assets/kernel'; then
   if [ "$REPORT" = "1" ]; then
     echo "  [FAIL] 含 assets/kernel —— ADR-0005 规定 Program 不随 APK 分发"
@@ -99,13 +96,11 @@ else
 fi
 
 echo
-echo "--- 小体积原生件（已退役：改走标准件包）---"
 
 echo "  （本段已退役，见下方 assets/pieces/ 那一节）"
 echo
 
 echo
-echo "--- npm 归口（必须为空）---"
 if has_prefix 'assets/npm/'; then
   if [ "$REPORT" = "1" ]; then
     echo "  [FAIL] 含 assets/npm —— npm 只由 C 层清单投放（scripts/recipes/build-component-npm.sh）"
@@ -120,7 +115,6 @@ else
 fi
 
 echo
-echo "--- native-assets.txt 逐资产 ---"
 ASSETS="$(grep -v '^[[:space:]]*#' "$ROOT/.github/native-assets.txt" | grep -v '^[[:space:]]*$' | tr -d '\r' || true)"
 if [ -z "$ASSETS" ]; then
   if [ "$REPORT" = "1" ]; then
@@ -206,7 +200,6 @@ echo "  预装件包 $PIECE_N 个，该取的件 $WANT_N 个"
 [ "$PIECE_BAD" = "0" ] || MISSING="$MISSING piece-pack($PIECE_BAD)"
 
 echo
-echo "--- 压缩方式（Stored=未压缩 / Defl=压缩）---"
 unzip -v "$APK" | awk '$NF ~ /lib\// {print "  " $NF "  " $2 "  " $3 "  " $4}' || true
 
 if [ "$REPORT" = "1" ]; then

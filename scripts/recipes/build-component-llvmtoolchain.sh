@@ -257,7 +257,6 @@ for b in $NEED_BIN; do
 done
 [ -z "$MISS" ] || die "产物不全" "缺:$MISS —— 不能交付一半的工具链（那样会在某个时刻突然找不到某个工具）"
 
-echo "== 形态自检 =="
 BAD=""
 for b in clang ld.lld llvm-ar llvm-strip; do
   f="$STAGE/prefix/bin/$b"

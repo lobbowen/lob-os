@@ -37,7 +37,6 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
     *.so|*.so.*) : ;;
     *) echo "=== Makefile 里的库名取证 ==="
        sed -n '/^STATICLIB[[:space:]]*=/p;/^SHAREDLIB/p' Makefile | sed -n '1,6p'
-       echo "--- configure.log 末尾 ---"; tail -15 "$WORK/configure.log"
        die "zlib 退回静态了" "Makefile 里 SHAREDLIBV 是空的：'$LIB_SO'（传了 LDSHARED 仍失败，看上面 configure.log）"
   esac
   echo "[zlib] 共享库目标 = $LIB_SO"
@@ -53,7 +52,6 @@ tar xzf "$ROOT_DIR/work/zlib.tar.gz" -C "$WORK/src" --strip-components=1
     SO_N=$((SO_N + 1))
   done
   [ "$SO_N" -gt 0 ] || {
-    echo "=== zlib 源码树里没有 libz.so* 的取证 ==="
     ls -la "$WORK/src"/libz* 2>/dev/null || echo "（没有 libz*）"
     echo "--- build.log 末尾 ---"; tail -20 "$WORK/build.log" 2>/dev/null
     die "zlib 没编出共享库" "源码树里没有 libz.so*（改了 Makefile 也没用？）"

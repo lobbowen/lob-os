@@ -16,7 +16,6 @@ trap cleanup EXIT
 probe_one() {
   local f="$1"
   local magic fmt entries inner n_entries
-  echo "== $f =="
   [ -s "$f" ] || { echo "  空文件（或读不到）"; return 1; }
   magic="$(fmt_magic "$f")"
   fmt="$(fmt_of "$f")"

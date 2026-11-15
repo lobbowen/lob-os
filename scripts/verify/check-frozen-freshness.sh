@@ -30,7 +30,6 @@ if [ -z "$HEAD_SHA" ]; then
 fi
 HEAD_SHORT="${HEAD_SHA:0:12}"
 
-echo "== 那固化产物与当前代码一致那一格 =="
 echo "   当前 HEAD：$HEAD_SHA"
 echo "   pin 记录：$PIN"
 echo ""
@@ -38,7 +37,6 @@ echo ""
 rc_all=0
 for zip in "$@"; do
   name="$(basename "$zip")"
-  echo "--- $name ---"
   if [ ! -f "$zip" ]; then
     echo "   [缺] 那一件不在（按 C-05 报缺、不猜）"
     rc_all=1; continue

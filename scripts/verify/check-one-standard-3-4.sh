@@ -9,12 +9,10 @@ PASS=0
 FAIL=0
 FAILED=()
 
-echo "=============================================================="
 echo " ONE-STANDARD 第三节 3.4 四格检查"
 echo " 判据源: docs/spec/ONE-STANDARD.md 第三节 3.4"
 echo " 范围  : $SCOPE  (.kt 文件数: $KT_TOTAL)"
 echo " 用法  : bash scripts/verify/check-one-standard-3-4.sh"
-echo "=============================================================="
 echo ""
 
 HEAD_SHA=""
@@ -40,7 +38,6 @@ fi
 DIRTY_LINES="$(git -C "$ROOT" status --porcelain 2>/dev/null | grep -cE '^( M|M |A | D|D |R |\?\?)' || true)"
 DIRTY_SCOPE="$(git -C "$ROOT" status --porcelain 2>/dev/null | grep -cE "^ ?[MADRCU?]{1,2} $SCOPE" || true)"
 
-echo "---- 这次读数对应哪一份代码 ----"
 if [ -n "$HEAD_SHORT" ]; then
   echo " HEAD        : $HEAD_SHORT"
   echo " HEAD 全长   : $HEAD_SHA"
@@ -91,10 +88,8 @@ classify() {
 check_cell() {
   local idx="$1" name="$2" basis="$3" pat="$4" ctrl="$5"
   local out ctl line body
-  echo "--------------------------------------------------------------"
 echo "[格 $idx] $name"
 echo "  判读依据: $basis"
-echo "  命令    : grep -rnE '$pat' --include=*.kt $SCOPE"
 echo "  期望    : 零命中"
 echo ""
   ctl="$(grep -rnE "$ctrl" --include=*.kt "$SCOPE" 2>/dev/null | wc -l | tr -d " ")"
@@ -165,14 +160,11 @@ check_cell 4 "运行期不自算查找表" "违反第四节" \
   'ld\.so\.cache|ld\.so\.conf|LdSoCache|ldSoCache|searchPath|LibrarySearch|buildLookup' \
   'SupervisorPool'
 
-echo "=============================================================="
 echo " 总判定: 过 $PASS 格 / 未过 $FAIL 格"
 if [ "$FAIL" -gt 0 ]; then
   echo " 未过的格:"
   for c in "${FAILED[@]}"; do echo "   - $c"; done
-echo "=============================================================="
   exit 1
 fi
 echo " 未过的格: 无"
-echo "=============================================================="
 exit 0

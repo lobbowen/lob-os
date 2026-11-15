@@ -112,17 +112,11 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
     -DBUILD_TESTING=OFF \
     > "$WORK/configure.log" 2>&1 \
     || { echo "=== cmake configure 失败取证 ==="
-         echo "--- toolchain=$ANDROID_TOOLCHAIN sysroot=${SYSROOT_DIR:-（无）} ---"
-         echo "--- configure.log 末 50 行 ---"; tail -50 "$WORK/configure.log"
-         echo "--- CMake 认定的编译器与 sysroot（从 CMakeCache.txt 取，不看日志措辞）---"
          grep -E '^CMAKE_(C|CXX)_COMPILER:|^CMAKE_SYSROOT:|^CMAKE_CXX_FLAGS' "$BUILD/CMakeCache.txt" 2>/dev/null | head -8 || echo "  （CMakeCache.txt 还不存在，说明失败在 cache 生成之前）"
          exit 1; }
   cmake --build "$BUILD" -j"$JOBS" --target cmake > "$WORK/build.log" 2>&1 \
     || { echo "=== cmake 编译失败取证 ==="
-         echo "--- error 行 ---"
          grep -nE "error:|Error [0-9]+$|undefined (symbol|reference)" "$WORK/build.log" | head -25 || true
-         echo "--- build.log 末 40 行 ---"; tail -40 "$WORK/build.log"
-         echo "--- CMake 检出的关键变量（决定条件编译分支的依据）---"
          for f in "$WORK/configure.log" "$BUILD/CMakeCache.txt"; do
            if [ -f "$f" ]; then
              HIT="$(grep -iE 'CPU_AFFINITY|HAVE_SCHED|UV__|_GNU_SOURCE' "$f" 2>/dev/null | head -12 || true)"
@@ -135,10 +129,8 @@ note "宿主 cmake：$HOST_CMAKE_VER；交叉编（NDK toolchain）"
              echo "  [$f] 不存在"
            fi
          done
-         echo "--- 实际用的编译命令（取 core.c 那一条）---"
          CMD="$(grep -m1 -oE '[^ ]*clang[^ ]* .*core\.c[^ ]*' "$WORK/build.log" 2>/dev/null | head -c 500 || true)"
          if [ -n "$CMD" ]; then echo "$CMD"; else echo "  build.log 里没有 core.c 的命令行（gmake 默认不打完整命令，加 VERBOSE=1 再看）"; fi
-         echo "--- 编译器预定义宏里有没有 __linux__（libuv 的 UV__CPU_AFFINITY_SUPPORTED 靠它，Bionic 不提供 cpu_set_t）---"
          printf '#include <stdio.h>\nint main(void){return 0;}\n' > "$WORK/macro.c"
          if "$CC" -dM -E "$WORK/macro.c" 2>/dev/null > "$WORK/macros.txt"; then
            HIT="$(grep -E '^#define (__linux__|__ANDROID__|__BIONIC__|ANDROID|__ANDROID_API__|__ANDROID_MIN_SDK_VERSION__)' "$WORK/macros.txt" || true)"
@@ -155,7 +147,6 @@ note "cmake 交叉编完成"
 
 BIN="$INST/bin/cmake"
 [ -x "$BIN" ] || {
-  echo "=== 找 cmake 可执行 ==="
   find "$INST" -maxdepth 3 -name cmake -type f 2>/dev/null | head -5
   die "没产出 cmake" "$BIN 不存在"
 }

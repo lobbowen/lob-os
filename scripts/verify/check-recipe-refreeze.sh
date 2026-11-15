@@ -51,7 +51,6 @@ let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
 })' 2>/dev/null | grep -E 'src[0-9a-f]+' || true
 }
 
-echo "== 那「recipe 指纹变了要重新固化」那一格 =="
 echo "   算据：scripts/toolchain/cache-key.sh"
 echo "   当前 HEAD：$(git -C "$ROOT" rev-parse HEAD 2>/dev/null | cut -c1-12)"
 echo ""
@@ -62,11 +61,9 @@ for p in "${PIECES[@]}"; do
   cur_asset="$(bash "$CACHE_KEY" asset "$p" 2>/dev/null || true)"
   cur_src="$(printf '%s' "$cur_asset" | grep -o 'src[0-9a-f]*' | head -1)"
   if [ -z "$cur_src" ]; then
-    echo "--- $p ---"
     echo "   [缺] 那当前指纹算不出来（按 C-05 报缺、不猜）"
     rc_all=1; continue
   fi
-  echo "--- $p ---"
   echo "   当前指纹：$cur_src"
   echo "   当前资产名：${cur_asset:-(读不到)}"
 

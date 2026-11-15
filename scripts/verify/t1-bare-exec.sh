@@ -12,7 +12,6 @@ ENT_PREFIX="${LO_ENT_PREFIX:-}"
 rc_all=0
 
 for name in "$@"; do
-  echo "=== $name"
   ent="$BIN/$ENT_PREFIX$name"
   if [ ! -e "$ent" ]; then
     echo "  问一 落位在不在：不在（$ent 不存在）"

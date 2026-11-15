@@ -139,9 +139,7 @@ for cand in "$BUILD"/python3.* "$BUILD"/python; do
   BIN="$cand"; break
 done
 [ -n "$BIN" ] || {
-  echo "=== build 下的候选（找 ^python）==="
   ls -la "$BUILD" 2>/dev/null | grep -E 'python' | head -8 || echo "  build 目录读不出来"
-  echo "=== Makefile 里的产物名 ==="
   grep -E '^(EXENAME|BUILDPYTHON)' "$BUILD/Makefile" 2>/dev/null | head -4
   die "没产出解释器" "既没有 python3.* 也没有 python（都必须是 ELF）。交叉编译时 CPython 的 LDVERSION 为空，产物就叫 python —— 这是既定形态，不是编坏了。"
 }

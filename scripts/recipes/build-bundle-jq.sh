@@ -38,7 +38,6 @@ elif [ -f "$WORK/src/.libs/jq" ]; then
 elif [ -f "$OUT_DIR/bin/jq" ]; then
   :
 else
-  echo "=== jq 产物查找的取证 ==="
   ls -la "$WORK/src/.libs" 2>/dev/null | head -15 || echo "（没有 .libs/）"
   find "$WORK/src" -maxdepth 2 -name jq -type f 2>/dev/null | head -5
 fi
@@ -46,11 +45,8 @@ fi
 SO="$OUT_DIR/bin/jq"
 if [ ! -f "$SO" ]; then
 
-  echo "=== jq 源码树（make 之后）==="
   ls -la "$WORK/src" 2>/dev/null | head -20
-  echo "=== jq 的构建日志 ==="
   [ -f "$WORK/build.log" ] && tail -30 "$WORK/build.log" || echo "（没有 build.log —— make 可能压根没跑）"
-  echo "=== configure 日志末尾 ==="
   [ -f "$WORK/configure.log" ] && tail -20 "$WORK/configure.log" || echo "（没有 configure.log）"
   die "jq 没产出" "$SO 不存在（上面是取证输出）"
 fi

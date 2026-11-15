@@ -319,10 +319,7 @@ try {
   got=$((got+1))
 done
 
-echo "---- 取件汇总：取到 $got 件 · 缺 $missed 件 · 原生跳过 $skipped 件"
 if [ "$missed" -gt 0 ]; then
-  echo "---- 缺件分档：限流 $miss_ratelimit · 鉴权 $miss_auth · 资源不在 $miss_notfound · 成因未知 $miss_unknown · 没有活着的成功 run $miss_norun"
-  echo "---- 缺件逐条（那一件、那一档、那一档的原话）："
   while IFS="$(printf '\t')" read -r mt mkind mwhy; do
     [ -n "$mt" ] || continue
     echo "  · $mt  [$mkind] $mwhy"

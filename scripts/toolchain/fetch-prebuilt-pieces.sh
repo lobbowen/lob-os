@@ -382,7 +382,6 @@ done
 
 if [ -n "${GEN_ROWS:-}" ]; then
   echo ""
-  echo "--- 这一批件的构建标识（buildSha = 同一份代码 / buildRun = 哪一次流水线）---"
   printf '%s' "$GEN_ROWS" | while IFS='|' read -r gid gsha grun; do
     printf "  %-9s buildSha=%-42s buildRun=%s\n" "$gid" "${gsha:-(没有)}" "${grun:-(没有)}"
   done

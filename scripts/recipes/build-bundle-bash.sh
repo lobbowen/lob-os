@@ -65,7 +65,6 @@ STUB
   make -j4 bash \
     CFLAGS_FOR_BUILD="-std=gnu89 -O2 -Wno-error=implicit-function-declaration -Wno-error=int-conversion" \
     > $WORK/bash-make.log 2>&1 || {
-    echo "=== make 失败取证 ==="
     grep -nE "error:|Error [0-9]+$|undefined symbol" $WORK/bash-make.log | head -40 || true
     tail -120 $WORK/bash-make.log
     exit 1
