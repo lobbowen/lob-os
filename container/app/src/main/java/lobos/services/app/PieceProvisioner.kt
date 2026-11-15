@@ -163,13 +163,32 @@ object PieceProvisioner {
             emptySet()
         }
 
+        val unverified = ArrayList<String>()
         val entries = PieceScan.scan(ctx).map { f ->
             val st = verifyInternal(ctx, f, libDir, listing, apkLibNames)
             val final = if (st is AssetStatus.Ready) {
                 val v = PieceScan.verify(ctx, f.id)
-                if (!v.ok) AssetStatus.Mismatched(f.id, f.entry, v.mismatched) else st
+                when {
+                    v.ok -> st
+                    v.unverifiable -> {
+                        unverified.add(f.id)
+                        st
+                    }
+                    v.mismatched.isEmpty() -> {
+                        unverified.add(f.id)
+                        st
+                    }
+                    else -> AssetStatus.Mismatched(f.id, f.entry, v.mismatched)
+                }
             } else st
             f to final
+        }
+        if (unverified.isNotEmpty()) {
+            RuntimeDiagnostics.append(
+                ctx, "native-assets", true,
+                "内容指纹未核（登记里没有 files 表）" + unverified.size + " 件",
+                unverified.joinToString(",") + " —— 这不算不符；改判据或补登记再核",
+            )
         }
         val report = PrepareReport(entries)
 

@@ -137,6 +137,22 @@ object PieceScan {
         return ""
     }
 
+    private fun filesFromShape(verDir: File, base: String): List<UnitEntry.FileRec> {
+        val shape = File(verDir, "piece-shape.json")
+        if (!shape.isFile) return emptyList()
+        val parsed = runCatching { org.json.JSONObject(shape.readText()) }.getOrNull() ?: return emptyList()
+        val arr = parsed.optJSONArray("files") ?: return emptyList()
+        val out = ArrayList<UnitEntry.FileRec>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val path = o.optString("path", "")
+            val sha = o.optString("sha256", "")
+            if (path.isBlank() || sha.isBlank()) continue
+            val abs = File(base, path).absolutePath
+            out.add(UnitEntry.FileRec(abs, sha))
+        }
+        return out
+    }
     private fun filesOf(
         verDir: File,
         withContentFingerprint: Boolean,
@@ -145,8 +161,7 @@ object PieceScan {
         val base = verDir.absolutePath
         val out = mutableListOf<UnitEntry.FileRec>()
         if (!traverseFiles) {
-
-            return out
+            return filesFromShape(verDir, base)
         }
         verDir.walkTopDown().forEach { f ->
             if (!f.isFile) return@forEach
@@ -259,12 +274,17 @@ object PieceScan {
         return changed + removed
     }
 
-    data class Verdict(val ok: Boolean, val checked: Int, val mismatched: List<String>)
+    data class Verdict(
+        val ok: Boolean,
+        val checked: Int,
+        val mismatched: List<String>,
+        val unverifiable: Boolean = false,
+    )
 
     fun verify(ctx: Context, id: String): Verdict {
         val e = ProgramIndex.get(ctx, id)?.takeIf { ProgramIndex.isPiece(ctx, id) } ?: return Verdict(false, 0, emptyList())
         if (e.stateDir.isBlank()) return Verdict(false, 0, emptyList())
-        if (e.files.isEmpty()) return Verdict(false, 0, emptyList())
+        if (e.files.isEmpty()) return Verdict(false, 0, emptyList(), unverifiable = true)
 
         val base = landedPieceDir(ctx, id)
             ?: return Verdict(false, 0, listOf("找不到落位目录：" + e.stateDir + "/<版本>"))
