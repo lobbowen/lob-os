@@ -17,9 +17,6 @@
 
 #define FRAME_MAX (64 * 1024)
 #define MAX_SESSIONS 8
-/* F_OPEN 尾部可选的 winsize 后缀：magic(4) + rows(2) + cols(2)，小端。
- * 有 magic 才取（新宿主发的）；没有就按老格式解析（老宿主发的），winsize 留空。
- * 这样新旧混装时退化成「尺寸这一格空着」，而不是「尺寸是垃圾」。 */
 #define OPEN_WS_MAGIC 0x57534F4Cu
 #define OPEN_WS_TAIL 8u
 
