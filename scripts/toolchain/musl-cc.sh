@@ -64,7 +64,7 @@ COMMON=(--target=aarch64-linux-musl "--sysroot=$SYSROOT" "-fuse-ld=$TC/ld.lld")
 
 case "$MODE" in
   obj)
-    exec "$TC/clang" "${COMMON[@]}" "$@"
+    exec "$TC/clang" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "$@"
     ;;
   shared)
     exec "$TC/clang" "${COMMON[@]}" -nostdlib "$SYSROOT/usr/lib/crti.o" \
