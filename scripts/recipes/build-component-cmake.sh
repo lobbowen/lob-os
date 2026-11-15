@@ -70,7 +70,7 @@ elif patch -R -p1 -d "$SRC" -i "$PATCH_FILE" --dry-run >/dev/null 2>&1; then
 
   note "libuv 补丁已在此源码树里（缓存复用，不重复打）"
 else
-  die "libuv 补丁打不上" "为什么需要它：clang 的 Android target 预定义 __linux__（实测 __linux__/__ANDROID__/__BIONIC__ 都是 1），Bionic 的 <sched.h> 不提供 cpu_set_t/CPU_SETSIZE/sched_getaffinity，libuv 只看 __linux__ 于是编不过（core.c:1683）。改法同 Termux 的 libuv 补丁。不选 -U__linux__ 是因为那全局生效，libcurl/zstd/c-ares 也可能依赖它。CMake $GOT_VER 的 Utilities/cmlibuv/src/unix/internal.h 与补丁不匹配 —— 补丁是按 $CMAKE_VER 写的。换 CMake 版本时要一起更新 patches/ 下这个文件。"
+  die "libuv 补丁打不上" "Bionic 无 cpu_set_t，libuv 编不过 —— 见 patches 里的 libuv 补丁"
 fi
 
 LF_SRC="$ROOT_DIR/patches/cmake-cmlibarchive-contrib"
@@ -82,7 +82,7 @@ if command -v sha256sum >/dev/null 2>&1; then
 fi
 mkdir -p "$SRC/Utilities/cmlibarchive/contrib/android/include"
 cp -f "$LF_SRC/android_lf.h" "$SRC/Utilities/cmlibarchive/contrib/android/include/android_lf.h"
-note "android_lf.h 已就位 —— CMake 只搬了 cmlibarchive/libarchive 子目录、没带 contrib/，但它 CMakeLists（原样搬自 libarchive 上游）第 8-10 行写着 include_directories(\${PROJECT_SOURCE_DIR}/contrib/android/include)，而 archive.h:121 在 __ANDROID__ 时要 include 它。补上那行 include 才成立。"
+note "android_lf.h 已就位"
 
 BUILD="$WORK/build"
 INST="$WORK/_inst"

@@ -471,9 +471,6 @@ echo "    检测到可用内存: ${MEM_MB:-未知} MB   CPU: ${CPU_JOBS} 核"
 echo "    按 3.5GB/编译进程 + 2GB 余量 → 内存上限 -j${MEM_JOBS}"
 echo "    最终使用: make $LDFLAGS_TARGET_OVERRIDE -j${JOBS}（并行度可用 NODE_BUILD_JOBS 覆盖）"
 echo "    预期: host+target 合计约 6800 个编译单元，耗时以小时计。"
-echo "    注: 这里刻意不用满 CPU —— 编译 V8 是内存瓶颈而非 CPU 瓶颈，"
-echo "        并发放大后峰值内存会撞穿 runner 限额，导致进程被 OOM 杀掉，"
-echo "        表现是「任务在远早于超时的时刻突然消失、连收尾步骤都没记录」。"
 (
   while true; do
     sleep 120
