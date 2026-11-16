@@ -22,50 +22,69 @@
   "pieces": {
     "bash": {
       "kind": "program",
-      "args": ["--version"],
+      "args": [
+        "--version"
+      ],
       "expectStdoutContains": "GNU bash, version 5.2.15(1)-release (aarch64-unknown-linux-android)",
       "expectExit": 0,
       "source": "那 07 本轮当场定的、它与那 06 归档那件包的 component-meta.json version=5.2.15**一致**。",
-      "interpreterArgs": ["-c", "echo hello-shell-role"],
+      "interpreterArgs": [
+        "-c",
+        "echo hello-shell-role"
+      ],
       "interpreterExpectStdoutContains": "hello-shell-role",
       "interpreterExpectExit": 0,
       "interpreterNote": "那**这一档**是那 01 裁的 S615-01 §3.1**格一与格三**那个判据：它是「`-c` 跑一条命令」那一档。它**与**那上面那 args**两件**（上面那**版本**那一档、这一档**执行命令**那一档）按 C-105 那**不合并**。"
     },
     "busybox": {
       "kind": "program",
-      "args": ["--version"],
+      "args": [
+        "--version"
+      ],
       "expectStdoutContains": "BusyBox v1.36.1",
       "expectExit": 0,
       "source": "那 07 本轮当场定的、它与那 06 归档那件包的 component-meta.json version=1.36.1**一致**。",
-      "interpreterArgs": ["-c", "echo hello-shell-role"],
+      "interpreterArgs": [
+        "-c",
+        "echo hello-shell-role"
+      ],
       "interpreterExpectStdoutContains": "hello-shell-role",
       "interpreterExpectExit": 0,
       "interpreterNote": "那**这一档**是那 01 裁的 S615-01 §3.1**格一与格三**那个判据：它是「`-c` 跑一条命令」那一档。那 busybox 那一件是**多调用**那一族（它有 29 条软链）、它**认得** `-c`（那 busybox applet 那一族）。"
     },
     "jq": {
       "kind": "program",
-      "args": ["-n", "{ \"a\": 1 }"],
+      "args": [
+        "-n",
+        "{ \"a\": 1 }"
+      ],
       "expectStdoutContains": "{ \"a\": 1 }",
       "expectExit": 0,
       "source": "那 07 本轮当场定的（那 jq 那一件**不是**只看 --version、它**真跑一段 JSON**）。"
     },
     "openssl": {
       "kind": "program",
-      "args": ["version"],
+      "args": [
+        "version"
+      ],
       "expectStdoutContains": "OpenSSL 3.6.3 9 Jun 2026",
       "expectExit": 0,
       "source": "那 07 本轮当场定的、它与那 06 归档那件包的 component-meta.json version=3.6.3**一致**。"
     },
     "ripgrep": {
       "kind": "program",
-      "args": ["--version"],
+      "args": [
+        "--version"
+      ],
       "expectStdoutContains": "ripgrep 14.1.1",
       "expectExit": 0,
       "source": "那 07 本轮当场定的、它与那 06 归档那件包的 component-meta.json version=14.1.1**一致**。"
     },
     "git": {
       "kind": "program",
-      "args": ["--version"],
+      "args": [
+        "--version"
+      ],
       "expectStdoutContains": "git version 2.55.0",
       "expectExit": 0,
       "source": "那 07 本轮当场定的、它与那 06 归档那件包的 component-meta.json version=2.55.0**一致**。",
@@ -97,6 +116,38 @@
       "expectPresent": "curl-present",
       "source": "那 07 本轮当场定的。",
       "note": "三个**库**那一族**没有**程序入口它们**不能**这样跑它们用「那库在不在、那符号在不在」那一族判。"
+    },
+    "bash-musl": {
+      "kind": "program",
+      "args": [
+        "--version"
+      ],
+      "expectStdoutContains": "GNU bash, version 5.2.15(1)-release (aarch64-unknown-linux-musl)",
+      "expectExit": 0,
+      "source": "musl 变体的实测串（设备上由我们的加载器启动后读到）：aarch64-unknown-linux-musl。",
+      "interpreterArgs": [
+        "-c",
+        "echo hello-shell-role"
+      ],
+      "interpreterExpectStdoutContains": "hello-shell-role",
+      "interpreterExpectExit": 0,
+      "interpreterNote": "那**这一档**是那 01 裁的 S615-01 §3.1**格一与格三**那个判据：它是「`-c` 跑一条命令」那一档。它**与**那上面那 args**两件**（上面那**版本**那一档、这一档**执行命令**那一档）按 C-105 那**不合并**。"
+    },
+    "busybox-musl": {
+      "kind": "program",
+      "args": [
+        "--version"
+      ],
+      "expectStdoutContains": "BusyBox v1.36.1",
+      "expectExit": 0,
+      "source": "musl 变体沿用同一版本声明（BusyBox v1.36.1），入口按 sources.busybox-musl.entryName=sh。",
+      "interpreterArgs": [
+        "-c",
+        "echo hello-shell-role"
+      ],
+      "interpreterExpectStdoutContains": "hello-shell-role",
+      "interpreterExpectExit": 0,
+      "interpreterNote": "那**这一档**是那 01 裁的 S615-01 §3.1**格一与格三**那个判据：它是「`-c` 跑一条命令」那一档。那 busybox 那一件是**多调用**那一族（它有 29 条软链）、它**认得** `-c`（那 busybox applet 那一族）。"
     }
   }
 }
