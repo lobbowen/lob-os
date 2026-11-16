@@ -64,6 +64,15 @@ case "$OUT_NAME" in
   lib*.so.[0-9]*) VERSIONED_LIB=1 ;;
 esac
 
+CXX_INC=()
+if [ "${LOBOS_CXX:-0}" = "1" ]; then
+  CXX_DIR="$(ls -d "$SYSROOT"/usr/include/c++/*/ 2>/dev/null | head -1)"
+  if [ -n "$CXX_DIR" ]; then
+    CXX_INC=(-stdlib=libstdc++ "-isystem" "${CXX_DIR%/}" "-isystem" "${CXX_DIR%/}/aarch64-alpine-linux-musl")
+    [ -d "${CXX_DIR%/}/backward" ] && CXX_INC+=("-isystem" "${CXX_DIR%/}/backward")
+  fi
+fi
+
 SONAME_ARGS=()
 if [ "$SHARED" = 1 ] && [ "$VERSIONED_LIB" = 1 ]; then
   HAS_SONAME=0
@@ -91,10 +100,22 @@ case "$MODE" in
     exec "$TC/clang" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "$@"
     ;;
   shared)
+    if [ "${LOBOS_CXX:-0}" = "1" ]; then
+      exec "$TC/clang++" "${COMMON[@]}" "${CXX_INC[@]}" -nostdlib "$SYSROOT/usr/lib/crti.o" \
+        "$SYSROOT/usr/lib/crtbeginS.o" "${SONAME_ARGS[@]}" "$@" \
+        "$SYSROOT/usr/lib/crtendS.o" "$SYSROOT/usr/lib/crtn.o" \
+        -lc -lstdc++ -lgcc_s -lm "$BUILTINS"
+    fi
     exec "$TC/clang" "${COMMON[@]}" -nostdlib "$SYSROOT/usr/lib/crti.o" \
       "${SONAME_ARGS[@]}" "$@" "$SYSROOT/usr/lib/crtn.o" -lc "$BUILTINS"
     ;;
   *)
+    if [ "${LOBOS_CXX:-0}" = "1" ]; then
+      exec "$TC/clang++" "${COMMON[@]}" "${CXX_INC[@]}" -nostdlib "$SYSROOT/usr/lib/crt1.o" \
+        "$SYSROOT/usr/lib/crti.o" "$SYSROOT/usr/lib/crtbeginS.o" \
+        "${INTERP_ARGS[@]}" "$@" "$SYSROOT/usr/lib/crtendS.o" "$SYSROOT/usr/lib/crtn.o" \
+        -lc -lstdc++ -lgcc_s -lm "$BUILTINS"
+    fi
     exec "$TC/clang" "${COMMON[@]}" -nostdlib "$SYSROOT/usr/lib/crt1.o" \
       "${INTERP_ARGS[@]}" "$@" -lc "$BUILTINS"
     ;;

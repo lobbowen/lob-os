@@ -222,6 +222,39 @@ build_busybox() {
   SCOPE="bin"
 }
 
+build_cmake() {
+  local ver; ver="$(ver_of cmake)"
+  fetch_src cmake
+  local TC_F="$W/musl-toolchain.cmake"
+  cat > "$TC_F" <<CMK
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(CMAKE_C_COMPILER "$CC")
+set(CMAKE_CXX_COMPILER "$ROOT_DIR/scripts/toolchain/musl-cxx.sh")
+set(CMAKE_SYSROOT "$SYSROOT")
+set(CMAKE_FIND_ROOT_PATH "$SYSROOT")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+CMK
+  rm -rf "$OUT" "$W/build"; mkdir -p "$OUT" "$W/build"
+  (
+    cd "$W/build"
+    cmake -S "$SRC" -B "$W/build" -DCMAKE_TOOLCHAIN_FILE="$TC_F" \
+      -DCMAKE_INSTALL_PREFIX="$OUT" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+      >/dev/null 2>&1
+    cmake --build "$W/build" -j"$(nproc)" --target cmake >/dev/null 2>&1
+    cmake --build "$W/build" --target install >/dev/null 2>&1
+  ) || die "cmake 编不出来" "$W/build/CMakeCache.txt 与 build 日志"
+  [ -x "$OUT/bin/cmake" ] || die "cmake 没产出可执行文件" "$OUT/bin"
+  mkdir -p "$STAGE/bin"
+  cp "$OUT/bin/cmake" "$STAGE/bin/cmake" 2>/dev/null || true
+  [ -x "$STAGE/bin/cmake" ] || find "$OUT" -maxdepth 3 -name cmake -type f -exec cp {} "$STAGE/bin/cmake" \; 2>/dev/null || true
+  [ -x "$STAGE/bin/cmake" ] || die "cmake 落位失败" "$OUT"
+  SCOPE="bin"
+}
+
 build_git() {
   need_prefix zlib
   need_prefix openssl
@@ -334,7 +367,8 @@ case "$ID" in
   pkgconf) build_pkgconf ;;
   sqlite)  build_sqlite ;;
   git)     build_git ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  cmake)   build_cmake ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"

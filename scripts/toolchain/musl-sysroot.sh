@@ -52,7 +52,7 @@ cp -a "$DIST/musl/lib/ld-musl-aarch64.so.1" "$SYSROOT/lib/"
 
 GCDIR="$(find "$DIST/gcc/usr/lib/gcc" -maxdepth 2 -type d -name '14*' 2>/dev/null | head -1)"
 if [ -n "$GCDIR" ]; then
-  for f in crtbeginS.o crtendS.o crtbegin.o crtend.o; do
+  for f in crtbeginS.o crtendS.o crtbegin.o crtend.o libgcc.a libgcc_eh.a; do
     [ -f "$GCDIR/$f" ] && cp -a "$GCDIR/$f" "$SYSROOT/usr/lib/"
   done
   for f in crtbeginS.o crtendS.o; do
@@ -62,6 +62,11 @@ fi
 for l in "$DIST/libgcc/usr/lib/libgcc_s.so"* "$DIST/libstdc++/usr/lib/libstdc++.so"*; do
   [ -e "$l" ] && cp -a "$l" "$SYSROOT/usr/lib/"
 done
+for l in "$DIST/gcc/usr/lib/libgcc_s.so"*; do
+  [ -e "$l" ] && cp -a "$l" "$SYSROOT/usr/lib/"
+done
+[ -e "$SYSROOT/usr/lib/libm.so" ] || ln -sf libc.so "$SYSROOT/usr/lib/libm.so"
+[ -e "$SYSROOT/usr/lib/libgcc_s.so" ] || die "sysroot 缺 libgcc_s.so" "C++ 链接期需要（libgcc 包里只有 .so.1，.so 在 gcc 包）"
 [ -d "$DIST/libstdc++-dev/usr/include/c++" ] && cp -a "$DIST/libstdc++-dev/usr/include/c++" "$SYSROOT/usr/include/"
 find "$DIST/libstdc++-dev/usr/lib" -maxdepth 1 -name 'libstdc++*' -o -maxdepth 1 -name 'libsupc++*' 2>/dev/null | while read -r f; do cp -a "$f" "$SYSROOT/usr/lib/"; done
 
