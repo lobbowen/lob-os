@@ -76,6 +76,7 @@ class HostControlActivity : Activity() {
         val memProbe = Button(this).apply { text = "核那堆与那还活着的那几处整读（真实执行）" }
 
         val listApps = Button(this).apply { text = "看那仓内清单声明过的那几件（产品入口，真实执行）" }
+        val openHome = Button(this).apply { text = "打开系统界面（状态与已装组件）" }
 
         val terminalOut = TextView(this).apply { text = "（终端还没起）" }
         val terminalInput = EditText(this).apply { hint = "终端里要输入的一行" }
@@ -83,6 +84,9 @@ class HostControlActivity : Activity() {
         val terminalSend = Button(this).apply { text = "把这一行送进那条会话" }
         val terminalClose = Button(this).apply { text = "关掉那条会话" }
 
+        openHome.setOnClickListener {
+            runCatching { startActivity(android.content.Intent(this, SystemHomeActivity::class.java)) }
+        }
         refresh.setOnClickListener { loadPieces() }
         update.setOnClickListener {
             update.isEnabled = false

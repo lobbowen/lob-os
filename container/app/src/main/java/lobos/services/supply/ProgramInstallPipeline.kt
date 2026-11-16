@@ -450,7 +450,11 @@ object ProgramInstallPipeline {
 
     enum class Shape { APPLICATION, COMPONENT }
 
-    fun install(context: Context, spec: Spec): Result {
+    fun install(context: Context, spec: Spec): Result = InstallGuard.serialized {
+        installLocked(context, spec)
+    }
+
+    private fun installLocked(context: Context, spec: Spec): Result {
         if (spec.programId.isBlank()) {
             return Result(
                 false, null, "manifest-id-missing",
@@ -462,6 +466,11 @@ object ProgramInstallPipeline {
         }
         if (spec.zip.length() == 0L) {
             return Result(false, null, "zip-empty", "候选包是空文件: ${spec.zip.absolutePath}")
+        }
+        val spaceNeed = spec.zip.length() * 3L
+        val spaceDir = spec.storeRoot ?: context.filesDir
+        InstallGuard.ensureSpace(spaceDir, spaceNeed)?.let {
+            return Result(false, null, "no-space", it)
         }
 
         val manifest: JSONObject? = spec.manifestText?.let {
@@ -547,6 +556,14 @@ object ProgramInstallPipeline {
             "id=" + spec.programId + " version=" + version +
                 " 来源=" + spec.from.label +
                 " dir=" + dir.absolutePath,
+        )
+        InstallGuard.record(
+            context = context,
+            id = spec.programId,
+            version = version,
+            bytes = spec.zip.length(),
+            source = spec.from.label,
+            level = "PROGRAM",
         )
         return Result(true, version, null, "已登记 " + spec.programId + "@" + version, base.nodeVerifyOutput)
     }
@@ -741,6 +758,14 @@ object ProgramInstallPipeline {
             context, "package", true, "系统组件已安装",
             "id=" + spec.programId + " version=" + safeVer +
                 " 来源=" + spec.from.label + " dir=" + dest.absolutePath,
+        )
+        InstallGuard.record(
+            context = context,
+            id = spec.programId,
+            version = safeVer,
+            bytes = spec.zip.length(),
+            source = spec.from.label,
+            level = "PIECE",
         )
         return Result(true, safeVer, null, "")
     }

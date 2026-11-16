@@ -73,6 +73,14 @@ object PieceUpdater {
         ctx: Context,
         manifestUrl: String,
         dryRun: Boolean = false,
+    ): JSONObject = InstallGuard.serialized {
+        checkAndUpdateLocked(ctx, manifestUrl, dryRun)
+    }
+
+    private fun checkAndUpdateLocked(
+        ctx: Context,
+        manifestUrl: String,
+        dryRun: Boolean = false,
     ): JSONObject {
         val res = JSONObject()
         val nativeName = SupplyProvisioner.manifestNameOf(ctx, "native") ?: MANIFEST_NAME
@@ -390,7 +398,13 @@ object PieceUpdater {
         )
     }
 
-    fun rollback(ctx: Context, id: String): Pair<Boolean, String?> {
+    fun rollback(ctx: Context, id: String): Pair<Boolean, String?> = InstallGuard.serialized {
+        val r = rollbackLocked(ctx, id)
+        if (r.first) InstallGuard.forget(ctx, id)
+        r
+    }
+
+    private fun rollbackLocked(ctx: Context, id: String): Pair<Boolean, String?> {
         val status = rollbackStatus(ctx, id)
         if (!status.eligible) {
             return false to (status.reason + "：" + status.detail)
