@@ -2,37 +2,40 @@ package lobos.services.app
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import lobos.services.reg.ProgramIndex
+import kotlin.concurrent.thread
+import lobos.services.supply.Cleanup
 import lobos.services.supply.InstallGuard
+import lobos.services.supply.SystemState
 
 class SystemHomeActivity : Activity() {
     private lateinit var body: LinearLayout
+    private var lastFreed = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#0d1117"))
-            setPadding(dp(20), dp(24), dp(20), dp(24))
         }
-        root.addView(TextView(this).apply {
-            text = "系统状态"
-            setTextColor(Color.parseColor("#e6edf3"))
-            textSize = 22f
-            setTypeface(Typeface.DEFAULT_BOLD)
-        })
         body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(this).apply { addView(body) },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        val scroll = ScrollView(this).apply {
+            addView(body)
+            setPadding(dp(20), dp(20), dp(20), dp(12))
+        }
+        root.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(tabBar())
         setContentView(root)
         render()
     }
@@ -42,76 +45,117 @@ class SystemHomeActivity : Activity() {
         render()
     }
 
+    private fun tabBar(): LinearLayout {
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#161b22"))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+        }
+        val tabs: List<Pair<String, Class<*>?>> = listOf(
+            "首页" to null,
+            "组件" to SystemComponentsActivity::class.java,
+            "空间" to SystemSpaceActivity::class.java,
+            "我的" to SystemAboutActivity::class.java,
+        )
+        for ((label, target) in tabs) {
+            val b = Button(this).apply {
+                text = label
+                textSize = 12f
+                isEnabled = target != null
+                if (target != null) setOnClickListener {
+                    runCatching { startActivity(Intent(this@SystemHomeActivity, target)) }
+                }
+            }
+            bar.addView(b, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        return bar
+    }
+
     private fun render() {
         body.removeAllViews()
-        val facts = gather(this)
-        body.addView(line(facts.verdict, if (facts.ok) "#3fb950" else "#d29922", big = true))
-        body.addView(line(facts.verdictWhy, "#8b949e"))
-        body.addView(gap())
-        body.addView(card("已装组件", facts.installedCount.toString() + " 个"))
-        body.addView(card("占用空间", InstallGuard.human(facts.usedBytes)))
-        body.addView(card("位置", facts.root))
-        body.addView(gap())
-        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        nav.addView(Button(this).apply {
-            text = "组件"
+        val rep = SystemState.evaluate(this)
+
+        body.addView(StatusRing(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(170), dp(170)).apply {
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                topMargin = dp(4)
+            }
+            setReport(rep.tierLabel(), rep.headline)
+        })
+        for (r in rep.reasons.take(3)) body.addView(line("· " + r, "#8b949e"))
+
+        body.addView(space(10))
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        actions.addView(Button(this).apply {
+            text = "一键体检"
             setOnClickListener {
-                runCatching {
-                    startActivity(android.content.Intent(this@SystemHomeActivity, SystemComponentsActivity::class.java))
+                isEnabled = false
+                thread(name = "lobos-check") {
+                    val fresh = SystemState.evaluate(this)
+                    runOnUiThread {
+                        isEnabled = true
+                        render()
+                        android.widget.Toast.makeText(
+                            this@SystemHomeActivity,
+                            fresh.headline + "：" + fresh.reasons.firstOrNull().orEmpty(),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 }
             }
-        })
-        nav.addView(Button(this).apply {
-            text = "恢复"
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        actions.addView(Button(this).apply {
+            text = "清理空间"
             setOnClickListener {
-                runCatching {
-                    startActivity(android.content.Intent(this@SystemHomeActivity, SystemRecoveryActivity::class.java))
+                isEnabled = false
+                thread(name = "lobos-clean") {
+                    val r = Cleanup.run(this)
+                    runOnUiThread {
+                        isEnabled = true
+                        lastFreed = r.first
+                        render()
+                    }
                 }
             }
-        })
-        nav.addView(Button(this).apply {
-            text = "调试"
-            setOnClickListener {
-                runCatching {
-                    startActivity(android.content.Intent(this@SystemHomeActivity, HostControlActivity::class.java))
-                }
-            }
-        })
-        body.addView(nav)
-        body.addView(line("组件明细", "#e6edf3", big = true))
-        if (facts.rows.isEmpty()) {
-            body.addView(line("还没有安装任何组件", "#8b949e"))
-        } else {
-            for (r in facts.rows) body.addView(row(r))
-        }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        body.addView(actions)
+        if (lastFreed >= 0) body.addView(line("已清理 " + InstallGuard.human(lastFreed), "#3fb950"))
+
+        body.addView(space(12))
+        body.addView(card(
+            "空间",
+            "已用 " + InstallGuard.human(rep.usedBytes) + " · 可用 " + InstallGuard.human(rep.freeBytes),
+            if (rep.reclaimableBytes > 0) "可清理 " + InstallGuard.human(rep.reclaimableBytes) else "暂无可清理",
+            SystemSpaceActivity::class.java,
+        ))
+        body.addView(card(
+            "组件",
+            "已装 " + rep.installedCount + " 个",
+            if (rep.upgradableCount > 0) rep.upgradableCount.toString() + " 个可更新" else "都已是最新",
+            SystemComponentsActivity::class.java,
+        ))
+        body.addView(card(
+            "故障",
+            if (rep.failedRecent > 0) "最近 " + rep.failedRecent + " 次失败" else "最近无异常",
+            "查看与修复",
+            SystemRecoveryActivity::class.java,
+        ))
     }
 
-    private fun row(r: Row): View {
+    private fun card(title: String, main: String, sub: String, target: Class<*>?): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setPadding(dp(16), dp(14), dp(16), dp(14))
             setBackgroundColor(Color.parseColor("#161b22"))
+            if (target != null) setOnClickListener {
+                runCatching { startActivity(Intent(this@SystemHomeActivity, target)) }
+            }
         }
-        box.addView(line(r.id, "#e6edf3", bold = true))
-        box.addView(line(r.detail, "#8b949e"))
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        lp.bottomMargin = dp(8)
-        box.layoutParams = lp
-        return box
-    }
-
-    private fun card(title: String, value: String): View {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            setBackgroundColor(Color.parseColor("#161b22"))
-        }
-        box.addView(line(title, "#8b949e"))
-        box.addView(line(value, "#e6edf3", big = true))
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        lp.bottomMargin = dp(8)
+        box.addView(line(title, "#e6edf3", bold = true))
+        box.addView(line(main, "#c9d1d9"))
+        if (sub.isNotBlank()) box.addView(line(sub, "#8b949e"))
+        val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        lp.bottomMargin = dp(10)
         box.layoutParams = lp
         return box
     }
@@ -125,55 +169,52 @@ class SystemHomeActivity : Activity() {
             setPadding(0, dp(4), 0, dp(4))
         }
 
-    private fun gap(): View = View(this).apply {
-        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12))
+    private fun space(v: Int): View = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(v))
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    data class Row(val id: String, val detail: String)
+    class StatusRing(ctx: Context) : View(ctx) {
+        private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 14f
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val big = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        private val sub = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+        }
+        private var label = "正常"
+        private var headline = ""
 
-    data class Facts(
-        val ok: Boolean,
-        val verdict: String,
-        val verdictWhy: String,
-        val installedCount: Int,
-        val usedBytes: Long,
-        val root: String,
-        val rows: List<Row>,
-    )
+        fun setReport(tier: String, head: String) {
+            label = tier
+            headline = head
+            invalidate()
+        }
 
-    companion object {
-        fun gather(ctx: Context): Facts {
-            val ledger = InstallGuard.all(ctx)
-            val index = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
-            val rows = LinkedHashMap<String, Row>()
-            for (e in index) {
-                val id = e.id
-                val meta = ledger[id]
-                val ver = meta?.optString("version")?.takeIf { it.isNotBlank() }
-                    ?: e.version.takeIf { it.isNotBlank() }
-                    ?: "未知版本"
-                val bytes = meta?.optLong("bytes", 0L) ?: 0L
-                val detail = "v" + ver + (if (bytes > 0) " · " + InstallGuard.human(bytes) else "")
-                rows[id] = Row(id, detail)
+        override fun onDraw(canvas: Canvas) {
+            val cx = width / 2f
+            val cy = height / 2f
+            val r = minOf(width, height) / 2f - 20f
+            arc.color = Color.parseColor("#21262d")
+            canvas.drawCircle(cx, cy, r, arc)
+            arc.color = when {
+                label.contains("正常") -> Color.parseColor("#3fb950")
+                label.contains("注意") -> Color.parseColor("#d29922")
+                else -> Color.parseColor("#f85149")
             }
-            for ((id, meta) in ledger) {
-                if (rows.containsKey(id)) continue
-                val ver = meta.optString("version").takeIf { it.isNotBlank() } ?: "未知版本"
-                rows[id] = Row(id, "v" + ver + " · 未在索引里")
-            }
-            val used = rows.keys.sumOf { ledger[it]?.optLong("bytes", 0L) ?: 0L }
-            val root = runCatching { lobos.kernel.layout.SystemDirs.opt(ctx).absolutePath }
-                .getOrDefault(ctx.filesDir.absolutePath)
-            val ok = rows.isNotEmpty()
-            val verdict = if (ok) "运行正常" else "尚未安装组件"
-            val why = if (ok) {
-                "系统件与组件已登记 " + rows.size + " 个"
-            } else {
-                "先安装基础组件，系统才能提供服务"
-            }
-            return Facts(ok, verdict, why, rows.size, used, root, rows.values.toList())
+            canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), -90f, 270f, false, arc)
+            big.color = Color.parseColor("#e6edf3")
+            big.textSize = 32f
+            canvas.drawText(label, cx, cy + 6f, big)
+            sub.color = Color.parseColor("#8b949e")
+            sub.textSize = 13f
+            canvas.drawText(headline, cx, cy + 32f, sub)
         }
     }
 }

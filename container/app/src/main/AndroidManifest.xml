@@ -129,6 +129,14 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.SystemSpaceActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".services.app.SystemAboutActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".services.app.HostControlActivity"
             android:exported="false" />
 

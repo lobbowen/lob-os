@@ -33,8 +33,33 @@ class SystemComponentsActivity : Activity() {
         body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(ScrollView(this).apply { addView(body) },
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(tabBar())
         setContentView(root)
         render()
+    }
+
+    private fun tabBar(): LinearLayout {
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#161b22"))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+        }
+        for ((label, target) in listOf<Pair<String, Class<*>?>>(
+            "首页" to SystemHomeActivity::class.java,
+            "组件" to null,
+            "空间" to SystemSpaceActivity::class.java,
+            "我的" to SystemAboutActivity::class.java,
+        )) {
+            bar.addView(android.widget.Button(this).apply {
+                text = label
+                textSize = 12f
+                isEnabled = target != null
+                if (target != null) setOnClickListener {
+                    runCatching { startActivity(android.content.Intent(this@SystemComponentsActivity, target)) }
+                }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        return bar
     }
 
     private fun render() {

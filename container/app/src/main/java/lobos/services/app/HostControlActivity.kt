@@ -52,8 +52,6 @@ class HostControlActivity : Activity() {
         val refresh = Button(this).apply { text = "刷新件列表" }
         val update = Button(this).apply { text = "更新系统件（真实执行）" }
         val rollback = Button(this).apply { text = "回滚系统件到 APK 原件" }
-        val peSample = Button(this).apply { text = "加载 PE L2 样本（ARM64）" }
-        val peSample32 = Button(this).apply { text = "加载 PE L2 样本（i386）" }
 
         val cmdField = EditText(this).apply { hint = "要跑的命令（在 LOB-OS 自己那一份 Linux 里跑）" }
         val exec = Button(this).apply { text = "在 LOB-OS 里跑这条命令（真实执行）" }
@@ -199,12 +197,6 @@ class HostControlActivity : Activity() {
             ).toString()
             result.text = r
         }
-        peSample.setOnClickListener {
-            result.text = HostControlService.loadPeSample(this, "win32/plink-arm64.exe").toString()
-        }
-        peSample32.setOnClickListener {
-            result.text = HostControlService.loadPeSample(this, "win32/plink.exe").toString()
-        }
 
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -232,8 +224,6 @@ class HostControlActivity : Activity() {
         content.addView(request)
         content.addView(update)
         content.addView(rollback)
-        content.addView(peSample)
-        content.addView(peSample32)
         content.addView(cmdField)
         content.addView(exec)
         content.addView(directPath)
