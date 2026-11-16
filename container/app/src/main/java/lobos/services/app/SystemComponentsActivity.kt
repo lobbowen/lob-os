@@ -24,10 +24,10 @@ class SystemComponentsActivity : Activity() {
             "组件",
             "已安装与可安装",
             listOf(
-                Triple("◉", "首页", SystemComponentsActivity::class.java),
-                Triple("▣", "组件", null),
-                Triple("▤", "空间", SystemSpaceActivity::class.java),
-                Triple("☰", "我的", SystemAboutActivity::class.java),
+                Triple("home", "首页", SystemComponentsActivity::class.java),
+                Triple("grid", "组件", null),
+                Triple("disk", "空间", SystemSpaceActivity::class.java),
+                Triple("user", "我的", SystemAboutActivity::class.java),
             ),
             1,
         )

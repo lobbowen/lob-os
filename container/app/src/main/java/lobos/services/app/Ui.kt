@@ -136,6 +136,65 @@ object Ui {
         }
     }
 
+
+    enum class Icon { HOME, GRID, DISK, USER }
+
+    fun icon(ctx: Context, type: Icon, color: String, sizeDp: Int = 20): View = IconView(ctx, type, color, sizeDp)
+
+    class IconView(ctx: Context, private val type: Icon, color: String, sizeDp: Int) : View(ctx) {
+        private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(ctx, 1.6f).toFloat()
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            this.color = Color.parseColor(color)
+        }
+
+        init {
+            layoutParams = LinearLayout.LayoutParams(dp(ctx, sizeDp), dp(ctx, sizeDp))
+        }
+
+        fun setTint(c: String) {
+            stroke.color = Color.parseColor(c)
+            invalidate()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            val p = stroke.strokeWidth
+            when (type) {
+                Icon.HOME -> {
+                    val path = android.graphics.Path()
+                    path.moveTo(w * 0.5f, p)
+                    path.lineTo(w - p, h * 0.45f)
+                    path.lineTo(w - p, h - p)
+                    path.lineTo(p, h - p)
+                    path.lineTo(p, h * 0.45f)
+                    path.close()
+                    canvas.drawPath(path, stroke)
+                }
+                Icon.GRID -> {
+                    val d = w * 0.18f
+                    canvas.drawRoundRect(p, p, w / 2 - d, h / 2 - d, d, d, stroke)
+                    canvas.drawRoundRect(w / 2 + d, p, w - p, h / 2 - d, d, d, stroke)
+                    canvas.drawRoundRect(p, h / 2 + d, w / 2 - d, h - p, d, d, stroke)
+                    canvas.drawRoundRect(w / 2 + d, h / 2 + d, w - p, h - p, d, d, stroke)
+                }
+                Icon.DISK -> {
+                    canvas.drawOval(p, p, w - p, h * 0.42f, stroke)
+                    canvas.drawLine(p, h * 0.21f, p, h * 0.79f, stroke)
+                    canvas.drawLine(w - p, h * 0.21f, w - p, h * 0.79f, stroke)
+                    canvas.drawArc(RectF(p, h * 0.58f, w - p, h - p), 0f, 180f, false, stroke)
+                }
+                Icon.USER -> {
+                    canvas.drawCircle(w / 2f, h * 0.32f, h * 0.22f, stroke)
+                    canvas.drawArc(RectF(p, h * 0.6f, w - p, h * 1.3f), 180f, 180f, false, stroke)
+                }
+            }
+        }
+    }
+
     fun bottomNav(
         ctx: Context,
         items: List<Triple<String, String, Class<*>?>>,
@@ -152,19 +211,22 @@ object Ui {
         }
         for ((i, item) in items.withIndex()) {
             val (glyph, label, target) = item
+            val selected = i == current
+            val color = if (selected) ACCENT else TEXT3
+            val iconType = when (glyph) {
+                "home" -> Icon.HOME
+                "grid" -> Icon.GRID
+                "disk" -> Icon.DISK
+                else -> Icon.USER
+            }
             val cell = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(ctx, 4), dp(ctx, 4), dp(ctx, 4), dp(ctx, 4))
-                val selected = i == current
-                val color = if (selected) ACCENT else TEXT3
-                addView(text(ctx, glyph, color, 18f).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(0, 0, 0, 0)
-                })
+                setPadding(dp(ctx, 4), dp(ctx, 5), dp(ctx, 4), dp(ctx, 3))
+                addView(icon(ctx, iconType, color, 20))
                 addView(text(ctx, label, color, 11f).apply {
                     gravity = Gravity.CENTER
-                    setPadding(0, 0, 0, 0)
+                    setPadding(0, dp(ctx, 1), 0, 0)
                 })
                 if (target != null && !selected) {
                     isClickable = true

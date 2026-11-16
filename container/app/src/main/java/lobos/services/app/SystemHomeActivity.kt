@@ -28,10 +28,10 @@ class SystemHomeActivity : Activity() {
             "系统管家",
             "组件、空间与修复都在这里",
             listOf(
-                Triple("◉", "首页", null),
-                Triple("▣", "组件", SystemComponentsActivity::class.java),
-                Triple("▤", "空间", SystemSpaceActivity::class.java),
-                Triple("☰", "我的", SystemAboutActivity::class.java),
+                Triple("home", "首页", null),
+                Triple("grid", "组件", SystemComponentsActivity::class.java),
+                Triple("disk", "空间", SystemSpaceActivity::class.java),
+                Triple("user", "我的", SystemAboutActivity::class.java),
             ),
             0,
         )
@@ -211,10 +211,31 @@ class SystemHomeActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
         }
         private var phase: RuntimeState.Phase = RuntimeState.Phase.UNKNOWN
+        private var angle = 0f
+        private val ticker = object : Runnable {
+            override fun run() {
+                angle = (angle + 6f) % 360f
+                invalidate()
+                if (phase == RuntimeState.Phase.BOOTING) postDelayed(this, 16L)
+            }
+        }
 
         fun setPhase(p: RuntimeState.Phase) {
+            val wasBooting = phase == RuntimeState.Phase.BOOTING
             phase = p
+            if (p == RuntimeState.Phase.BOOTING && !wasBooting) {
+                isClickable = true
+                setOnClickListener { }
+                post(ticker)
+            } else if (p != RuntimeState.Phase.BOOTING) {
+                removeCallbacks(ticker)
+            }
             invalidate()
+        }
+
+        override fun onDetachedFromWindow() {
+            super.onDetachedFromWindow()
+            removeCallbacks(ticker)
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -232,11 +253,12 @@ class SystemHomeActivity : Activity() {
                 }
             )
             val sweep = when (phase) {
-                RuntimeState.Phase.BOOTING -> 90f
+                RuntimeState.Phase.BOOTING -> 70f
                 RuntimeState.Phase.STOPPED -> 0f
                 else -> 360f
             }
-            if (sweep > 0f) canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), -90f, sweep, false, arc)
+            val start = if (phase == RuntimeState.Phase.BOOTING) angle - 90f else -90f
+            if (sweep > 0f) canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), start, sweep, false, arc)
             big.color = Color.parseColor(Ui.TEXT)
             big.textSize = 30f
             canvas.drawText(

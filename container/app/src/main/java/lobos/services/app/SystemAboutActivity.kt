@@ -22,10 +22,10 @@ class SystemAboutActivity : Activity() {
             "我的",
             "版本与工程师入口",
             listOf(
-                Triple("◉", "首页", SystemHomeActivity::class.java),
-                Triple("▣", "组件", SystemComponentsActivity::class.java),
-                Triple("▤", "空间", SystemSpaceActivity::class.java),
-                Triple("☰", "我的", null),
+                Triple("home", "首页", SystemHomeActivity::class.java),
+                Triple("grid", "组件", SystemComponentsActivity::class.java),
+                Triple("disk", "空间", SystemSpaceActivity::class.java),
+                Triple("user", "我的", null),
             ),
             3,
         )
