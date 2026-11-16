@@ -222,6 +222,51 @@ build_busybox() {
   SCOPE="bin"
 }
 
+build_python() {
+  need_prefix zlib
+  need_prefix openssl
+  local ver; ver="$(ver_of python)"
+  fetch_src python
+  local Z="$ROOT_DIR/work/musl-zlib/out" O="$ROOT_DIR/work/musl-openssl/out"
+  local HOSTPY="$W/hostpy/bin/python3"
+  if [ ! -x "$HOSTPY" ]; then
+    local HP="$W/hostpy"
+    rm -rf "$W/hostbuild" "$HP"
+    mkdir -p "$W/hostbuild"
+    (
+      cd "$W/hostbuild"
+      "$SRC/configure" --prefix="$HP" --without-ensurepip > "$W/host-configure.log" 2>&1
+      make -j"$(nproc)" > "$W/host-build.log" 2>&1
+      make install > "$W/host-install.log" 2>&1
+    ) || die "宿主 python $ver 编不出来" "日志 $W/host-build.log"
+    [ -x "$HOSTPY" ] || die "宿主 python 没产出" "$HP"
+  fi
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  (
+    cd "$SRC"
+    CC="$CC" CXX="$ROOT_DIR/scripts/toolchain/musl-cxx.sh" AR="$AR" RANLIB="$TC/llvm-ranlib" \
+      ./configure --host=aarch64-linux-musl --build=x86_64-pc-linux-gnu \
+        --prefix="$OUT" --with-build-python="$HOSTPY" --without-ensurepip \
+        --with-openssl="$O" --with-zlib="$Z" \
+        CPPFLAGS="-I$O/include -I$Z/include" LDFLAGS="-L$O/lib -L$Z/lib" \
+        ac_cv_buggy_getaddrinfo=no ac_cv_file__dev_ptmx=no ac_cv_file__dev_ptc=no \
+        ac_cv_func_getaddrinfo=yes \
+        PKG_CONFIG_LIBDIR="$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig" \
+        PKG_CONFIG_SYSROOT_DIR="$SYSROOT" \
+        > "$W/configure.log" 2>&1
+    make -j"$(nproc)" > "$W/build.log" 2>&1
+    make install > "$W/install.log" 2>&1
+  ) || die "python 编不出来" "日志 $W/build.log 与 $W/configure.log"
+  [ -x "$OUT/bin/python3" ] || die "python 没产出可执行文件" "$OUT/bin"
+  mkdir -p "$STAGE/bin" "$STAGE/lib"
+  cp "$OUT/bin/python$ver" "$STAGE/bin/python3" 2>/dev/null || cp "$OUT/bin/python3" "$STAGE/bin/python3"
+  PYLIB="$(ls -d "$OUT"/lib/python3.*/ 2>/dev/null | head -1)"
+  [ -n "$PYLIB" ] || die "python 没装出标准库" "$OUT/lib"
+  cp -a "${PYLIB%/}" "$STAGE/lib/"
+  [ -d "$STAGE/lib/$(basename "${PYLIB%/}")/lib-dynload" ] || die "python 标准库缺 lib-dynload" "$STAGE/lib"
+  SCOPE="bin lib"
+}
+
 build_cmake() {
   local ver; ver="$(ver_of cmake)"
   fetch_src cmake
@@ -370,7 +415,8 @@ case "$ID" in
   sqlite)  build_sqlite ;;
   git)     build_git ;;
   cmake)   build_cmake ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  python)  build_python ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake python（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"
