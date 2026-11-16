@@ -34,8 +34,11 @@ tar xzf "$DIST/linux-headers.apk" --warning=no-unknown-keyword -C "$DIST/linux-h
 rm -rf "$SYSROOT/usr/include" "$SYSROOT/usr/lib"
 cp -a "$DIST/musl-dev/usr/include" "$SYSROOT/usr/"
 cp -a "$DIST/musl-dev/usr/lib" "$SYSROOT/usr/"
-for d in linux asm asm-generic; do
-  [ -d "$DIST/linux-headers/usr/include/$d" ] && cp -a "$DIST/linux-headers/usr/include/$d" "$SYSROOT/usr/include/"
+for src_dir in "$DIST"/linux-headers/usr/include/*; do
+  [ -d "$src_dir" ] || continue
+  name="$(basename "$src_dir")"
+  [ -e "$SYSROOT/usr/include/$name" ] && continue
+  cp -a "$src_dir" "$SYSROOT/usr/include/"
 done
 cp -a "$DIST/musl/lib/ld-musl-aarch64.so.1" "$SYSROOT/lib/"
 

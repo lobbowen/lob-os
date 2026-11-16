@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export LC_ALL=C
-HERE="$(dirname "$0")"
+HERE="$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")"
 ROOT_DIR="$(cd "$HERE/../.." && pwd)"
 
 die() {
