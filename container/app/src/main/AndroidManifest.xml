@@ -137,6 +137,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.SystemCheckActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".services.app.HostControlActivity"
             android:exported="false" />
 

@@ -96,23 +96,9 @@ class SystemHomeActivity : Activity() {
         body.addView(Ui.verticalGap(host, 12))
 
         val actions = LinearLayout(host).apply { orientation = LinearLayout.HORIZONTAL }
-        actions.addView(Ui.primaryButton(host, if (checking) "检查中…" else "一键体检") {
-            if (checking) return@primaryButton
-            checking = true
-            render()
-            thread(name = "lobos-check") {
-                val fresh = SystemState.evaluate(host)
-                runOnUiThread {
-                    checking = false
-                    lastCheckAt = System.currentTimeMillis()
-                    render()
-                    android.widget.Toast.makeText(
-                        host,
-                        fresh.headline + "：" + fresh.reasons.firstOrNull().orEmpty(),
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
-                }
-            }
+        actions.addView(Ui.primaryButton(host, "一键体检") {
+            lastCheckAt = System.currentTimeMillis()
+            runCatching { startActivity(android.content.Intent(host, SystemCheckActivity::class.java)) }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
             rightMargin = Ui.dp(host, 8)
         })
