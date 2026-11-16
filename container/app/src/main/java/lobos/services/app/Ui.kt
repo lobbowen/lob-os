@@ -122,15 +122,17 @@ object Ui {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(ctx, dp))
     }
 
+    fun systemBarHeight(ctx: Context, name: String, fallbackDp: Int): Int {
+        val resId = ctx.resources.getIdentifier(name, "dimen", "android")
+        return if (resId > 0) ctx.resources.getDimensionPixelSize(resId) else dp(ctx, fallbackDp)
+    }
+
     fun applyInsets(root: View, ctx: Context, bottomNav: View? = null) {
-        val w = ctx as? android.app.Activity ?: return
-        root.setOnApplyWindowInsetsListener { v, insets ->
-            val top = insets.systemWindowInsetTop
-            val bottom = insets.systemWindowInsetBottom
-            v.setPadding(0, top, 0, 0)
-            bottomNav?.setPadding(0, 0, 0, bottom)
-            v.requestApplyInsets()
-            insets
+        val top = systemBarHeight(ctx, "status_bar_height", 24)
+        root.setPadding(0, top, 0, 0)
+        if (bottomNav != null) {
+            val bottom = systemBarHeight(ctx, "navigation_bar_height", 0)
+            bottomNav.setPadding(0, 0, 0, bottom)
         }
     }
 

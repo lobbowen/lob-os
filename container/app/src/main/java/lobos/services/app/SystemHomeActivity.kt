@@ -59,6 +59,13 @@ class SystemHomeActivity : Activity() {
     }
 
     private fun render() {
+        runCatching { renderInner() }.onFailure {
+            body.removeAllViews()
+            body.addView(Ui.text(this, "界面渲染出错：" + (it.message ?: it.javaClass.simpleName), Ui.ERR, 13f))
+        }
+    }
+
+    private fun renderInner() {
         val host = this
         body.removeAllViews()
         val rep = SystemState.evaluate(host)
