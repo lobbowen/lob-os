@@ -52,8 +52,17 @@ fetch_src() {
   local key="$1"
   rm -rf "$SRC"; mkdir -p "$SRC"
   local t="$W/src.tar"
-  bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$key" "$t" >/dev/null \
-    || die "源码取不到" "钉值见 scripts/component-sources.json 的 sources.$key"
+  local want
+  want="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['sources'][sys.argv[2]]['sha256'])" \
+    "$ROOT_DIR/scripts/component-sources.json" "$key" 2>/dev/null || true)"
+  local have=""
+  [ -s "$t" ] && have="$(sha256sum "$t" | cut -d' ' -f1)"
+  if [ -n "$want" ] && [ "$have" = "$want" ]; then
+    echo "[$ID] 复用已校验的源码 $(basename "$t")"
+  else
+    bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$key" "$t" >/dev/null \
+      || die "源码取不到" "钉值见 scripts/component-sources.json 的 sources.$key"
+  fi
   case "$t" in
     *) unzip -q -o "$t" -d "$SRC" >/dev/null 2>&1 && {
          local inner; inner="$(find "$SRC" -maxdepth 1 -mindepth 1 -type d | head -1)"
@@ -213,6 +222,37 @@ build_busybox() {
   SCOPE="bin"
 }
 
+build_git() {
+  need_prefix zlib
+  need_prefix openssl
+  need_prefix curl
+  local ver; ver="$(ver_of git)"
+  fetch_src git
+  local Z="$ROOT_DIR/work/musl-zlib/out" O="$ROOT_DIR/work/musl-openssl/out" C="$ROOT_DIR/work/musl-curl/out"
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  (
+    cd "$SRC"
+    local MK=(
+      "CC=$CC" "AR=$AR" "RANLIB=$TC/llvm-ranlib" "PTHREAD_LIBS=" "NO_RUST=1"
+      "CURLDIR=$C" "OPENSSLDIR=$O" "ZLIB_PATH=$Z"
+      "uname_S=Linux" "uname_M=aarch64"
+      "prefix=$OUT" "gitexecdir=$OUT/libexec/git-core" "template_dir=$OUT/share/git-core/templates"
+      "NO_GETTEXT=1" "NO_ICONV=1" "NO_TCLTK=1" "NO_PYTHON=1" "NO_PERL=1" "NO_REGEX=NeedsStartEnd" "NO_EXPAT=1"
+      "NO_INSTALL_HARDLINKS=1" "NO_RUST=1" "INSTALL_SYMLINKS=1"
+      "CFLAGS=-O2 -I$Z/include -I$O/include -I$C/include"
+      "CURL_LIBCURL=-L$C/lib -L$O/lib -L$Z/lib -lcurl -lssl -lcrypto -lz"
+    )
+    make -j"$(nproc)" "${MK[@]}" >/dev/null 2>&1
+    make "${MK[@]}" install >/dev/null 2>&1
+  ) || die "git 编不出来" "$SRC"
+  [ -x "$OUT/bin/git" ] || die "git 没产出可执行文件" "$OUT/bin"
+  [ -d "$OUT/libexec/git-core" ] || die "缺 libexec/git-core" "$OUT"
+  mkdir -p "$STAGE/bin" "$STAGE/libexec"
+  cp "$OUT/bin/git" "$STAGE/bin/git"
+  cp -a "$OUT/libexec/git-core" "$STAGE/libexec/"
+  SCOPE="bin libexec"
+}
+
 build_make() {
   local ver; ver="$(ver_of make)"
   fetch_src make
@@ -293,7 +333,8 @@ case "$ID" in
   make)    build_make ;;
   pkgconf) build_pkgconf ;;
   sqlite)  build_sqlite ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  git)     build_git ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"
