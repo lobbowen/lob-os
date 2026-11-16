@@ -281,7 +281,24 @@ object Ui {
         (metrics.bounds.width() / activity.resources.displayMetrics.density).toInt()
     }.getOrDefault(activity.resources.configuration.screenWidthDp)
 
-    fun expanded(activity: android.app.Activity): Boolean = windowWidthDp(activity) >= 600
+    enum class WidthClass { COMPACT, MEDIUM, EXPANDED }
+
+    fun widthClass(activity: android.app.Activity): WidthClass {
+        val dp = windowWidthDp(activity)
+        return when {
+            dp < 600 -> WidthClass.COMPACT
+            dp < 840 -> WidthClass.MEDIUM
+            else -> WidthClass.EXPANDED
+        }
+    }
+
+    fun expanded(activity: android.app.Activity): Boolean = widthClass(activity) != WidthClass.COMPACT
+
+    fun contentMaxWidthDp(activity: android.app.Activity): Int = when (widthClass(activity)) {
+        WidthClass.COMPACT -> 760
+        WidthClass.MEDIUM -> 900
+        WidthClass.EXPANDED -> 1120
+    }
 
     fun scaffold(
         activity: android.app.Activity,
@@ -301,7 +318,7 @@ object Ui {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             addView(body, LinearLayout.LayoutParams(
-                dp(activity, 760), LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(activity, contentMaxWidthDp(activity)), LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
         }
         val scroll = android.widget.ScrollView(activity).apply {

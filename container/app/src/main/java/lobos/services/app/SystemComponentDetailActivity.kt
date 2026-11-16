@@ -213,4 +213,10 @@ class SystemComponentDetailActivity : Activity() {
             )
         }
     }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        render()
+    }
+
 }

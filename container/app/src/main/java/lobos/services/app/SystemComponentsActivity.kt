@@ -150,4 +150,10 @@ class SystemComponentsActivity : Activity() {
             return Facts(installed, available)
         }
     }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        render()
+    }
+
 }
