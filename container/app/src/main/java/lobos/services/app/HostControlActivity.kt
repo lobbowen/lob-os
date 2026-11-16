@@ -217,6 +217,13 @@ class HostControlActivity : Activity() {
         }
 
         content.addView(TextView(this).apply { text = "LOB-OS 管理" })
+        content.addView(openHome)
+        val homeHint = TextView(this).apply {
+            text = "上面这个是产品界面：系统状态、已装组件、安装与恢复。下面是调试用的东西。"
+            setTextColor(0xFF8B949E.toInt())
+            textSize = 12f
+        }
+        content.addView(homeHint)
         content.addView(idHint)
         content.addView(spinner)
         content.addView(detail)
