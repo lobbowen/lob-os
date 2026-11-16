@@ -31,9 +31,10 @@ object SystemState {
         val index = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
         val installed = index.size
         val noRecord = index.count { !ledger.containsKey(it.id) }
+        val dayAgo = System.currentTimeMillis() - 24L * 3600 * 1000
         val failedRecent = runCatching {
-            RuntimeDiagnostics.events(ctx, 200)
-                .count { it.level == RuntimeDiagnostics.Level.FAIL }
+            RuntimeDiagnostics.events(ctx, 400)
+                .count { it.level == RuntimeDiagnostics.Level.FAIL && it.atMs >= dayAgo }
         }.getOrDefault(0)
         val free = InstallGuard.freeBytes(ctx.filesDir)
         val used = ledger.values.sumOf { it.optLong("bytes", 0L) }
@@ -50,7 +51,7 @@ object SystemState {
         val reasons = ArrayList<String>()
         if (installed == 0) reasons.add("还没有安装任何组件")
         if (noRecord > 0) reasons.add(noRecord.toString() + " 个组件缺少安装记录")
-        if (failedRecent > 0) reasons.add("最近有 " + failedRecent + " 次失败记录")
+        if (failedRecent > 0) reasons.add("最近 24 小时有 " + failedRecent + " 次失败")
         if (free in 1L..(256L * 1024 * 1024)) reasons.add("可用空间偏少：" + InstallGuard.human(free))
         if (reclaim > 0) reasons.add("可清理 " + InstallGuard.human(reclaim))
 

@@ -124,12 +124,19 @@ class SystemHomeActivity : Activity() {
                 gravity = android.view.Gravity.CENTER_HORIZONTAL
             })
         }
+        body.addView(Ui.verticalGap(host, 12))
+        val powerLabel = when (phase) {
+            RuntimeState.Phase.RUNNING -> "停止系统"
+            RuntimeState.Phase.BOOTING -> "启动中…"
+            else -> "启动系统"
+        }
+        body.addView(Ui.primaryButton(host, powerLabel) {
+            if (phase != RuntimeState.Phase.BOOTING) showPower(phase)
+        })
+        body.addView(Ui.verticalGap(host, 10))
         body.addView(Ui.verticalGap(host, 8))
 
-        for (r in rep.reasons.take(3)) {
-            body.addView(Ui.text(host, "· " + r, Ui.TEXT2, 13f))
-        }
-        body.addView(Ui.verticalGap(host, 12))
+        body.addView(Ui.verticalGap(host, 10))
 
         val actions = LinearLayout(host).apply { orientation = LinearLayout.HORIZONTAL }
         actions.addView(Ui.primaryButton(host, "一键体检") {

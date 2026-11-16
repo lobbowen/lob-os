@@ -144,7 +144,7 @@ object Ui {
     class IconView(ctx: Context, private val type: Icon, color: String, sizeDp: Int) : View(ctx) {
         private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = dp(ctx, 1.6f).toFloat()
+            strokeWidth = dp(ctx, 1.8f).toFloat()
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             this.color = Color.parseColor(color)
@@ -162,34 +162,40 @@ object Ui {
         override fun onDraw(canvas: Canvas) {
             val w = width.toFloat()
             val h = height.toFloat()
-            val p = stroke.strokeWidth
+            val p = stroke.strokeWidth / 2f + 1f
             when (type) {
                 Icon.HOME -> {
-                    val path = android.graphics.Path()
-                    path.moveTo(w * 0.5f, p)
-                    path.lineTo(w - p, h * 0.45f)
-                    path.lineTo(w - p, h - p)
-                    path.lineTo(p, h - p)
-                    path.lineTo(p, h * 0.45f)
-                    path.close()
-                    canvas.drawPath(path, stroke)
+                    val roof = android.graphics.Path().apply {
+                        moveTo(p, h * 0.46f)
+                        lineTo(w * 0.5f, p)
+                        lineTo(w - p, h * 0.46f)
+                    }
+                    canvas.drawPath(roof, stroke)
+                    canvas.drawRoundRect(p, h * 0.44f, w - p, h - p, dp(context, 3).toFloat(), dp(context, 3).toFloat(), stroke)
                 }
                 Icon.GRID -> {
-                    val d = w * 0.18f
-                    canvas.drawRoundRect(p, p, w / 2 - d, h / 2 - d, d, d, stroke)
-                    canvas.drawRoundRect(w / 2 + d, p, w - p, h / 2 - d, d, d, stroke)
-                    canvas.drawRoundRect(p, h / 2 + d, w / 2 - d, h - p, d, d, stroke)
-                    canvas.drawRoundRect(w / 2 + d, h / 2 + d, w - p, h - p, d, d, stroke)
+                    val r = dp(context, 3).toFloat()
+                    val gap = w * 0.10f
+                    val s1 = (w - 3 * gap) / 2f
+                    canvas.drawRoundRect(p, p, p + s1, p + s1, r, r, stroke)
+                    canvas.drawRoundRect(p + s1 + gap, p, w - p, p + s1, r, r, stroke)
+                    canvas.drawRoundRect(p, p + s1 + gap, p + s1, h - p, r, r, stroke)
+                    canvas.drawRoundRect(p + s1 + gap, p + s1 + gap, w - p, h - p, r, r, stroke)
                 }
                 Icon.DISK -> {
-                    canvas.drawOval(p, p, w - p, h * 0.42f, stroke)
-                    canvas.drawLine(p, h * 0.21f, p, h * 0.79f, stroke)
-                    canvas.drawLine(w - p, h * 0.21f, w - p, h * 0.79f, stroke)
-                    canvas.drawArc(RectF(p, h * 0.58f, w - p, h - p), 0f, 180f, false, stroke)
+                    val ry = h * 0.13f
+                    canvas.drawOval(p, p, w - p, p + ry * 2, stroke)
+                    canvas.drawLine(p, p + ry, p, h - p - ry, stroke)
+                    canvas.drawLine(w - p, p + ry, w - p, h - p - ry, stroke)
+                    canvas.drawArc(RectF(p, h - p - ry * 2, w - p, h - p), 0f, 180f, false, stroke)
                 }
                 Icon.USER -> {
-                    canvas.drawCircle(w / 2f, h * 0.32f, h * 0.22f, stroke)
-                    canvas.drawArc(RectF(p, h * 0.6f, w - p, h * 1.3f), 180f, 180f, false, stroke)
+                    canvas.drawCircle(w / 2f, h * 0.30f, w * 0.20f, stroke)
+                    val body = android.graphics.Path().apply {
+                        moveTo(w * 0.18f, h - p)
+                        cubicTo(w * 0.20f, h * 0.56f, w * 0.80f, h * 0.56f, w * 0.82f, h - p)
+                    }
+                    canvas.drawPath(body, stroke)
                 }
             }
         }

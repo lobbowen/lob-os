@@ -25,6 +25,11 @@
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-feature android:name="android.hardware.ram.normal" android:required="false" />
 
+    <supports-screens
+        android:resizeable="true"
+        android:largeScreens="true"
+        android:xlargeScreens="true" />
+
     <application
         android:name=".services.host.OsApplication"
         android:allowBackup="false"
@@ -35,7 +40,9 @@
         tools:targetApi="34"
         tools:ignore="UnusedAttribute"
         android:extractNativeLibs="true"
-        android:largeHeap="true">
+        android:largeHeap="true"
+        android:resizeableActivity="true"
+        >
 
         <service
             android:name=".services.host.OsHostService"

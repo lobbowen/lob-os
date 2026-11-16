@@ -72,6 +72,7 @@ object Cleanup {
 
     fun dirSize(dir: File): Long {
         if (!dir.exists()) return 0L
+        if (isSymlink(dir)) return 0L
         if (dir.isFile) return runCatching { dir.length() }.getOrDefault(0L)
         var total = 0L
         val stack = ArrayDeque<File>()
@@ -80,9 +81,15 @@ object Cleanup {
             val d = stack.removeLast()
             val kids = runCatching { d.listFiles() }.getOrNull() ?: continue
             for (k in kids) {
+                if (isSymlink(k)) continue
                 if (k.isDirectory) stack.addLast(k) else total += runCatching { k.length() }.getOrDefault(0L)
             }
         }
         return total
     }
+
+    private fun isSymlink(f: File): Boolean = runCatching {
+        val st = android.system.Os.lstat(f.absolutePath)
+        (st.st_mode and android.system.OsConstants.S_IFMT) == android.system.OsConstants.S_IFLNK
+    }.getOrDefault(false)
 }
