@@ -44,12 +44,7 @@ object Ui {
     }
 
     fun pressable(ctx: Context, fill: String, radiusDp: Int = 16, stroke: String? = null): Drawable {
-        val bg = rounded(ctx, fill, radiusDp, stroke)
-        return RippleDrawable(
-            android.content.res.ColorStateList.valueOf(Color.parseColor("#33FFFFFF")),
-            bg,
-            null as Drawable?,
-        )
+        return rounded(ctx, fill, radiusDp, stroke)
     }
 
     fun text(
@@ -82,29 +77,31 @@ object Ui {
         return box
     }
 
-    fun primaryButton(ctx: Context, label: String, onClick: () -> Unit): Button =
-        Button(ctx).apply {
-            text = label
-            isAllCaps = false
-            textSize = 15f
-            setTextColor(Color.parseColor("#0B0F14"))
-            background = pressable(ctx, ACCENT, 12)
-            setOnClickListener { onClick() }
-            minHeight = dp(ctx, 44)
-            setPadding(dp(ctx, 16), 0, dp(ctx, 16), 0)
-        }
+    fun primaryButton(ctx: Context, label: String, onClick: () -> Unit): TextView =
+        buttonView(ctx, label, "#0B0F14", ACCENT, null, onClick)
 
-    fun outlineButton(ctx: Context, label: String, onClick: () -> Unit): Button =
-        Button(ctx).apply {
-            text = label
-            isAllCaps = false
-            textSize = 15f
-            setTextColor(Color.parseColor(TEXT))
-            background = pressable(ctx, SURFACE2, 12, STROKE)
-            setOnClickListener { onClick() }
-            minHeight = dp(ctx, 44)
-            setPadding(dp(ctx, 16), 0, dp(ctx, 16), 0)
-        }
+    fun outlineButton(ctx: Context, label: String, onClick: () -> Unit): TextView =
+        buttonView(ctx, label, TEXT, SURFACE2, STROKE, onClick)
+
+    private fun buttonView(
+        ctx: Context,
+        label: String,
+        textColor: String,
+        fill: String,
+        stroke: String?,
+        onClick: () -> Unit,
+    ): TextView = TextView(ctx).apply {
+        text = label
+        gravity = Gravity.CENTER
+        textSize = 15f
+        setTypeface(Typeface.DEFAULT_BOLD)
+        setTextColor(Color.parseColor(textColor))
+        background = pressable(ctx, fill, 12, stroke)
+        isClickable = true
+        setOnClickListener { onClick() }
+        minimumHeight = dp(ctx, 48)
+        setPadding(dp(ctx, 16), dp(ctx, 12), dp(ctx, 16), dp(ctx, 12))
+    }
 
     fun topBar(ctx: Context, title: String, subtitle: String? = null): LinearLayout {
         val bar = LinearLayout(ctx).apply {
