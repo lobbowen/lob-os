@@ -97,6 +97,9 @@ COMMON=(--target=aarch64-linux-musl "--sysroot=$SYSROOT" "-fuse-ld=$TC/ld.lld")
 
 case "$MODE" in
   obj)
+    if [ "${LOBOS_CXX:-0}" = "1" ]; then
+      exec "$TC/clang++" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "${CXX_INC[@]}" "$@"
+    fi
     exec "$TC/clang" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "$@"
     ;;
   shared)

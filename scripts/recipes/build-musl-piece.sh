@@ -234,8 +234,8 @@ set(CMAKE_CXX_COMPILER "$ROOT_DIR/scripts/toolchain/musl-cxx.sh")
 set(CMAKE_SYSROOT "$SYSROOT")
 set(CMAKE_FIND_ROOT_PATH "$SYSROOT")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 CMK
   rm -rf "$OUT" "$W/build"; mkdir -p "$OUT" "$W/build"
@@ -243,10 +243,12 @@ CMK
     cd "$W/build"
     cmake -S "$SRC" -B "$W/build" -DCMAKE_TOOLCHAIN_FILE="$TC_F" \
       -DCMAKE_INSTALL_PREFIX="$OUT" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-      >/dev/null 2>&1
-    cmake --build "$W/build" -j"$(nproc)" --target cmake >/dev/null 2>&1
-    cmake --build "$W/build" --target install >/dev/null 2>&1
-  ) || die "cmake 编不出来" "$W/build/CMakeCache.txt 与 build 日志"
+      -DOPENSSL_ROOT_DIR="$ROOT_DIR/work/musl-openssl/out" \
+      -DZLIB_ROOT="$ROOT_DIR/work/musl-zlib/out" \
+      > "$W/configure.log" 2>&1
+    cmake --build "$W/build" -j"$(nproc)" --target cmake > "$W/build.log" 2>&1
+    cmake --build "$W/build" --target install > "$W/install.log" 2>&1
+  ) || die "cmake 编不出来" "日志在 $W/configure.log 与 $W/build.log"
   [ -x "$OUT/bin/cmake" ] || die "cmake 没产出可执行文件" "$OUT/bin"
   mkdir -p "$STAGE/bin"
   cp "$OUT/bin/cmake" "$STAGE/bin/cmake" 2>/dev/null || true
