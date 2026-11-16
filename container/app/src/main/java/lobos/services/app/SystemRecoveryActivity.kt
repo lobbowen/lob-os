@@ -39,6 +39,7 @@ class SystemRecoveryActivity : Activity() {
     }
 
     private fun render() {
+        val host = this
         body.removeAllViews()
         val f = Facts.of(this)
         body.addView(line(f.headline, if (f.ok) "#3fb950" else "#d29922", big = true, bold = true))
@@ -58,7 +59,7 @@ class SystemRecoveryActivity : Activity() {
             setOnClickListener {
                 isEnabled = false
                 thread(name = "lobos-repair") {
-                    runCatching { LdConfig.run(this) }
+                    runCatching { LdConfig.run(host) }
                     runOnUiThread {
                         isEnabled = true
                         render()
