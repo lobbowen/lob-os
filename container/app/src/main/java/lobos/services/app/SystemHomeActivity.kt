@@ -73,7 +73,8 @@ class SystemHomeActivity : Activity() {
 
     private fun render() {
         body.removeAllViews()
-        val rep = SystemState.evaluate(this)
+        val host = this
+        val rep = SystemState.evaluate(host)
 
         body.addView(StatusRing(this).apply {
             layoutParams = LinearLayout.LayoutParams(dp(170), dp(170)).apply {
@@ -91,7 +92,7 @@ class SystemHomeActivity : Activity() {
             setOnClickListener {
                 isEnabled = false
                 thread(name = "lobos-check") {
-                    val fresh = SystemState.evaluate(this)
+                    val fresh = SystemState.evaluate(host)
                     runOnUiThread {
                         isEnabled = true
                         render()
@@ -109,7 +110,7 @@ class SystemHomeActivity : Activity() {
             setOnClickListener {
                 isEnabled = false
                 thread(name = "lobos-clean") {
-                    val r = Cleanup.run(this)
+                    val r = Cleanup.run(host)
                     runOnUiThread {
                         isEnabled = true
                         lastFreed = r.first

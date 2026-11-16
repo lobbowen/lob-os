@@ -61,10 +61,11 @@ class SystemSpaceActivity : Activity() {
 
     private fun render() {
         body.removeAllViews()
+        val host = this
         val free = InstallGuard.freeBytes(filesDir)
-        val ledger = InstallGuard.all(this)
+        val ledger = InstallGuard.all(host)
         val used = ledger.values.sumOf { it.optLong("bytes", 0L) }
-        val items = Cleanup.scan(this)
+        val items = Cleanup.scan(host)
         val reclaim = items.sumOf { it.bytes }
 
         body.addView(line("空间", "#e6edf3", big = true, bold = true))
@@ -84,7 +85,7 @@ class SystemSpaceActivity : Activity() {
                 setOnClickListener {
                     isEnabled = false
                     thread(name = "lobos-clean2") {
-                        val r = Cleanup.run(this)
+                        val r = Cleanup.run(host)
                         runOnUiThread {
                             isEnabled = true
                             lastFreed = r.first
@@ -99,7 +100,7 @@ class SystemSpaceActivity : Activity() {
         body.addView(space(12))
         body.addView(line("组件占用", "#e6edf3", bold = true))
         val rows = ArrayList<Pair<String, Long>>()
-        for (e in runCatching { ProgramIndex.all(this) }.getOrDefault(emptyList())) {
+        for (e in runCatching { ProgramIndex.all(host) }.getOrDefault(emptyList())) {
             rows.add(e.id to (ledger[e.id]?.optLong("bytes", 0L) ?: 0L))
         }
         if (rows.isEmpty()) body.addView(line("还没有安装组件", "#8b949e"))
