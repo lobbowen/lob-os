@@ -141,6 +141,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.SystemComponentDetailActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".services.app.HostControlActivity"
             android:exported="false" />
 
