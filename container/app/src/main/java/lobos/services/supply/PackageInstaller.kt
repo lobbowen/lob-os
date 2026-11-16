@@ -17,13 +17,13 @@ import lobos.services.reg.Level
 object PackageInstaller {
 
     @Synchronized
-    fun install(ctx: Context, name: String, version: String?): JSONObject {
+    fun install(ctx: Context, name: String, version: String?, depth: Int = 0): JSONObject {
         val entry = CatalogClient.entryFor(ctx, name)
             ?: return fail(ctx, name, "目录里没有这个包（先 os.catalog.refresh）")
         val url = entry.optString("url", "")
         val want = entry.optString("sha256", "")
         if (url.isBlank() || want.isBlank()) return fail(ctx, name, "目录项缺 url/sha256")
-        val gate = runtimeGate(ctx, entry)
+        val gate = runtimeGate(ctx, entry, depth)
         if (gate != null) return fail(ctx, name, gate)
         val kind = entry.optString("kind", "").trim().uppercase()
         val zipTmp = File(ctx.cacheDir, name + ".pkg.zip.part")
@@ -146,23 +146,41 @@ object PackageInstaller {
         return out.filter { ProgramIndex.safeSegment(it) != null }.distinct()
     }
 
-    private fun runtimeGate(ctx: Context, entry: JSONObject): String? {
+    private fun runtimeGate(ctx: Context, entry: JSONObject, depth: Int = 0): String? {
         val req = entry.optJSONObject("requires") ?: entry.optJSONObject("runtime") ?: return null
         val runtime = req.optString("name", "").trim()
         if (runtime.isBlank()) return null
         val range = req.optString("range", "").trim()
-        val installed = ProgramIndex.all(ctx)
-            .firstOrNull { it.id == runtime && it.levelOf(ctx) == Level.PIECE }
-            ?.let { installedVersion(ctx, runtime) ?: it.version }
-            ?.takeIf { it.isNotBlank() }
-        if (installed == null) {
-            return "需要先安装运行时 " + runtime + (if (range.isBlank()) "" else "（" + range + "）")
+        var installed = currentRuntime(ctx, runtime)
+        if (installed != null && range.isNotBlank() && !VersionRange.satisfies(installed, range)) {
+            return "运行时 " + runtime + " 版本不满足 " + range + "（当前 " + installed + "）"
         }
-        if (range.isNotBlank() && !VersionRange.satisfies(installed, range)) {
+        if (installed == null) {
+            if (depth >= 2) {
+                return "需要先安装运行时 " + runtime +
+                    (if (range.isBlank()) "" else "（" + range + "）") +
+                    "；自动安装没有继续下去（层级太深），请先单独安装 " + runtime
+            }
+            val dep = runCatching { install(ctx, runtime, null, depth + 1) }.getOrNull()
+            if (dep == null || !dep.optBoolean("ok", false)) {
+                val why = dep?.optString("detail", "")?.takeIf { it.isNotBlank() } ?: "自动安装失败"
+                return "需要运行时 " + runtime + "，自动安装没成功：" + why + "。可以先单独安装 " + runtime + " 再重试。"
+            }
+            installed = currentRuntime(ctx, runtime)
+            if (installed == null) {
+                return "运行时 " + runtime + " 自动安装后仍读不到，请重试或先单独安装它。"
+            }
+        }
+        if (range.isNotBlank() && !VersionRange.satisfies(installed!!, range)) {
             return "运行时 " + runtime + " 版本不满足 " + range + "（当前 " + installed + "）"
         }
         return null
     }
+
+    private fun currentRuntime(ctx: Context, runtime: String): String? = ProgramIndex.all(ctx)
+        .firstOrNull { it.id == runtime && it.levelOf(ctx) == Level.PIECE }
+        ?.let { installedVersion(ctx, runtime) ?: it.version }
+        ?.takeIf { it.isNotBlank() }
 
     private fun fail(ctx: Context, name: String, why: String): JSONObject {
         RuntimeDiagnostics.append(ctx, "package", false, "包安装失败: " + name, why)

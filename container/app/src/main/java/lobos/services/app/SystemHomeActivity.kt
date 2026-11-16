@@ -52,6 +52,16 @@ class SystemHomeActivity : Activity() {
         body.addView(card("占用空间", InstallGuard.human(facts.usedBytes)))
         body.addView(card("位置", facts.root))
         body.addView(gap())
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        nav.addView(Button(this).apply {
+            text = "组件"
+            setOnClickListener {
+                runCatching {
+                    startActivity(android.content.Intent(this@SystemHomeActivity, SystemComponentsActivity::class.java))
+                }
+            }
+        })
+        body.addView(nav)
         body.addView(line("组件明细", "#e6edf3", big = true))
         if (facts.rows.isEmpty()) {
             body.addView(line("还没有安装任何组件", "#8b949e"))
