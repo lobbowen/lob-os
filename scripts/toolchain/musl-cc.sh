@@ -36,6 +36,10 @@ TC="$NDK/toolchains/llvm/prebuilt/${HOST_OS}-x86_64/bin"
 [ -x "$TC/clang" ] || die "NDK 里没有 clang" "$TC/clang"
 [ -x "$TC/ld.lld" ] || die "NDK 里没有 ld.lld" "$TC/ld.lld"
 
+BUILTINS="$(ls -1 "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/libclang_rt.builtins-aarch64-android.a 2>/dev/null | head -1)"
+[ -n "$BUILTINS" ] || die "找不到编译器内建库" \
+  "musl 不提供 __trunctfdf2 这类内建函数；需要 NDK 的 libclang_rt.builtins-aarch64-android.a"
+
 MODE=exe
 SHARED=0
 COMPILE_ONLY=0
@@ -88,10 +92,10 @@ case "$MODE" in
     ;;
   shared)
     exec "$TC/clang" "${COMMON[@]}" -nostdlib "$SYSROOT/usr/lib/crti.o" \
-      "${SONAME_ARGS[@]}" "$@" "$SYSROOT/usr/lib/crtn.o" -lc
+      "${SONAME_ARGS[@]}" "$@" "$SYSROOT/usr/lib/crtn.o" -lc "$BUILTINS"
     ;;
   *)
     exec "$TC/clang" "${COMMON[@]}" -nostdlib "$SYSROOT/usr/lib/crt1.o" \
-      "${INTERP_ARGS[@]}" "$@" -lc
+      "${INTERP_ARGS[@]}" "$@" -lc "$BUILTINS"
     ;;
 esac
