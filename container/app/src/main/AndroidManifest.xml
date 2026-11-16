@@ -121,6 +121,14 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.SystemInstallActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".services.app.SystemRecoveryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".services.app.HostControlActivity"
             android:exported="false" />
 

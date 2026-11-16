@@ -61,6 +61,14 @@ class SystemHomeActivity : Activity() {
                 }
             }
         })
+        nav.addView(Button(this).apply {
+            text = "恢复"
+            setOnClickListener {
+                runCatching {
+                    startActivity(android.content.Intent(this@SystemHomeActivity, SystemRecoveryActivity::class.java))
+                }
+            }
+        })
         body.addView(nav)
         body.addView(line("组件明细", "#e6edf3", big = true))
         if (facts.rows.isEmpty()) {

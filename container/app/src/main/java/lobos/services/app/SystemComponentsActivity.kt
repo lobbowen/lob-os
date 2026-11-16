@@ -63,6 +63,13 @@ class SystemComponentsActivity : Activity() {
             setPadding(dp(14), dp(12), dp(14), dp(12))
             setBackgroundColor(Color.parseColor("#161b22"))
         }
+        if (r.installable) {
+            box.setOnClickListener {
+                runCatching {
+                    startActivity(SystemInstallActivity.intentOf(this, r.name))
+                }
+            }
+        }
         box.addView(line(r.name + "  " + r.version, "#e6edf3", bold = true))
         if (r.detail.isNotBlank()) box.addView(line(r.detail, "#8b949e"))
         if (r.needs.isNotBlank()) box.addView(line(r.needs, "#d29922"))
@@ -93,6 +100,7 @@ class SystemComponentsActivity : Activity() {
         val version: String,
         val detail: String,
         val needs: String,
+        val installable: Boolean = false,
     )
 
     data class Facts(val installed: List<Row>, val available: List<Row>)
@@ -144,7 +152,7 @@ class SystemComponentsActivity : Activity() {
                         append("已装有新版")
                     }
                 }
-                available.add(Row(name, "v" + ver, detail, needs))
+                available.add(Row(name, "v" + ver, detail, needs, installable = true))
             }
             return Facts(installed.values.toList(), available)
         }

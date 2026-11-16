@@ -23,14 +23,27 @@ object PackageInstaller {
         val url = entry.optString("url", "")
         val want = entry.optString("sha256", "")
         if (url.isBlank() || want.isBlank()) return fail(ctx, name, "目录项缺 url/sha256")
+        InstallProgress.stage(name, InstallProgress.Stage.QUEUED)
         val gate = runtimeGate(ctx, entry, depth)
-        if (gate != null) return fail(ctx, name, gate)
+        if (gate != null) {
+            InstallProgress.failed(name, gate)
+            return fail(ctx, name, gate)
+        }
         val kind = entry.optString("kind", "").trim().uppercase()
         val zipTmp = File(ctx.cacheDir, name + ".pkg.zip.part")
+        InstallProgress.stage(name, InstallProgress.Stage.DOWNLOAD)
         runCatching { SupplyProvisioner.httpGetToFile(url, zipTmp) }
-            .onFailure { return fail(ctx, name, "下载失败：" + url + "（" + (it.message ?: it.javaClass.simpleName) + "）") }
+            .onFailure {
+                InstallProgress.failed(name, "下载失败")
+                return fail(ctx, name, "下载失败：" + url + "（" + (it.message ?: it.javaClass.simpleName) + "）")
+            }
+        InstallProgress.stage(name, InstallProgress.Stage.VERIFY)
         val got = SupplyProvisioner.sha256HexFile(zipTmp)
-        if (got != want) return fail(ctx, name, "sha256 不符：" + got.take(12) + " != " + want.take(12))
+        if (got != want) {
+            InstallProgress.failed(name, "内容与清单不符")
+            return fail(ctx, name, "sha256 不符：" + got.take(12) + " != " + want.take(12))
+        }
+        InstallProgress.stage(name, InstallProgress.Stage.LAND)
 
         val entryRel = entry.optString("entry", "bin/" + name)
         val isApplication = kind == "APPLICATION" || kind == "APP"
@@ -49,11 +62,16 @@ object PackageInstaller {
             ),
         )
         runCatching { zipTmp.delete() }
-        if (!r.ok) return fail(ctx, name, "原因=${r.reason}；${r.detail}")
+        if (!r.ok) {
+            InstallProgress.failed(name, r.detail.ifBlank { r.reason ?: "落位失败" })
+            return fail(ctx, name, "原因=${r.reason}；${r.detail}")
+        }
+        InstallProgress.stage(name, InstallProgress.Stage.LINK)
 
         val ver = r.version?.takeIf { it.isNotBlank() }
         if (ver == null) return fail(ctx, name, "原因=version-missing；清单里没有 version —— 不用空版本落位，否则目录形状与正常的 <根>/<版本> 不同，之后会被读成「未安装」")
         val dest = File(ProgramManager.stateDirOf(ctx, name), ver)
+        InstallProgress.done(name, ver)
         return JSONObject().apply {
             put("ok", true)
             put("name", name)
