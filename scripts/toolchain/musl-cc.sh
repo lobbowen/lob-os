@@ -40,6 +40,13 @@ BUILTINS="$(ls -1 "$NDK"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/libcla
 [ -n "$BUILTINS" ] || die "找不到编译器内建库" \
   "musl 不提供 __trunctfdf2 这类内建函数；需要 NDK 的 libclang_rt.builtins-aarch64-android.a"
 
+PASSTHROUGH=0
+for a in "$@"; do
+  case "$a" in
+    -v|--version|-dumpmachine|-print-*|-E|-M|-MM|-fsyntax-only) PASSTHROUGH=1 ;;
+  esac
+done
+
 MODE=exe
 SHARED=0
 COMPILE_ONLY=0
@@ -58,6 +65,10 @@ for a in "$@"; do
   [ "$PREV" = "-o" ] && OUT_NAME="$(basename "$a")"
   PREV="$a"
 done
+
+case "$OUT_NAME" in
+  *.o) MODE=obj ;;
+esac
 
 VERSIONED_LIB=0
 case "$OUT_NAME" in
@@ -94,6 +105,13 @@ if [ -n "${LOBOS_MUSL_INTERP:-}" ]; then
 fi
 
 COMMON=(--target=aarch64-linux-musl "--sysroot=$SYSROOT" "-fuse-ld=$TC/ld.lld")
+
+if [ "$PASSTHROUGH" = 1 ]; then
+  if [ "${LOBOS_CXX:-0}" = "1" ]; then
+    exec "$TC/clang++" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "$@"
+  fi
+  exec "$TC/clang" --target=aarch64-linux-musl "--sysroot=$SYSROOT" "$@"
+fi
 
 case "$MODE" in
   obj)

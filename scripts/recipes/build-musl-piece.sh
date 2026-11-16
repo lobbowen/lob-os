@@ -222,6 +222,31 @@ build_busybox() {
   SCOPE="bin"
 }
 
+build_node() {
+  need_prefix zlib
+  need_prefix openssl
+  local ver; ver="$(ver_of node)"
+  fetch_src node
+  local Z="$ROOT_DIR/work/musl-zlib/out" O="$ROOT_DIR/work/musl-openssl/out"
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  (
+    cd "$SRC"
+    CC="$CC" CXX="$ROOT_DIR/scripts/toolchain/musl-cxx.sh" AR="$AR" \
+      CC_host=gcc CXX_host=g++ LINK_host=g++ \
+      ./configure --dest-cpu=arm64 --dest-os=linux --prefix="$OUT" --cross-compiling \
+        --shared-openssl --shared-openssl-includes="$O/include" --shared-openssl-libpath="$O/lib" \
+        --shared-zlib --shared-zlib-includes="$Z/include" --shared-zlib-libpath="$Z/lib" \
+        --without-npm --without-corepack --without-intl \
+        > "$W/configure.log" 2>&1
+    make -j"$(nproc)" CC_host=gcc CXX_host=g++ LINK_host=g++ > "$W/build.log" 2>&1
+    make install CC_host=gcc CXX_host=g++ LINK_host=g++ > "$W/install.log" 2>&1
+  ) || die "node 编不出来" "日志在 $W/configure.log 与 $W/build.log"
+  [ -x "$OUT/bin/node" ] || die "node 没产出可执行文件" "$OUT/bin"
+  mkdir -p "$STAGE/bin"
+  cp "$OUT/bin/node" "$STAGE/bin/node"
+  SCOPE="bin"
+}
+
 build_python() {
   need_prefix zlib
   need_prefix openssl
@@ -416,7 +441,8 @@ case "$ID" in
   git)     build_git ;;
   cmake)   build_cmake ;;
   python)  build_python ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake python（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  node)    build_node ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake python node（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"
