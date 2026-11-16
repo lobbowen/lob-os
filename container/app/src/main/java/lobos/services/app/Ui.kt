@@ -307,6 +307,7 @@ object Ui {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor(BG))
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         }
         val bar = topBar(activity, title, subtitle)
         root.addView(bar)
@@ -315,7 +316,7 @@ object Ui {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             addView(body, LinearLayout.LayoutParams(
-                dp(activity, contentMaxWidthDp(activity)), LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
         }
         val scroll = android.widget.ScrollView(activity).apply {
