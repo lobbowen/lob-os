@@ -135,6 +135,7 @@ fun nativeAssetNames(): List<String> {
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.window:window:1.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     // 件包是 tar.gz —— Android 只有 zip 的公开 API（java.util.zip.ZipFile），
     // 没有 tar。commons-compress 是解 tar 的标准选择。

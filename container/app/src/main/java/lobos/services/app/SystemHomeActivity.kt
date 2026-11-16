@@ -103,6 +103,46 @@ class SystemHomeActivity : Activity() {
     private fun renderInner() {
         val host = this
         body.removeAllViews()
+        if (Ui.expanded(host)) body.addView(twoPane(host)) else body.addView(onePane(host))
+    }
+
+    private fun twoPane(host: Activity): View {
+        val row = LinearLayout(host).apply { orientation = LinearLayout.HORIZONTAL }
+        val left = LinearLayout(host).apply { orientation = LinearLayout.VERTICAL }
+        val right = LinearLayout(host).apply { orientation = LinearLayout.VERTICAL }
+        buildStatusPane(host, left)
+        buildCards(host, right)
+        row.addView(left, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            rightMargin = Ui.dp(host, 16)
+        })
+        row.addView(right, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        return row
+    }
+
+    private fun onePane(host: Activity): View {
+        val col = LinearLayout(host).apply { orientation = LinearLayout.VERTICAL }
+        buildStatusPane(host, col)
+        buildCards(host, col)
+        return col
+    }
+
+    private fun buildStatusPane(host: Activity, into: LinearLayout) {
+        val saved = body
+        body = into
+        renderStatus()
+        body = saved
+    }
+
+    private fun buildCards(host: Activity, into: LinearLayout) {
+        val saved = body
+        body = into
+        renderCards()
+        body = saved
+    }
+
+    private fun renderStatus() {
+        val host = this
+        val rep = SystemState.evaluate(host)
         val rep = SystemState.evaluate(host)
 
         val phase = lobos.services.supervise.RuntimeState.phase
@@ -159,7 +199,11 @@ class SystemHomeActivity : Activity() {
             body.addView(Ui.text(host, "已清理 " + InstallGuard.human(lastFreed), Ui.OK, 13f))
         }
         body.addView(Ui.verticalGap(host, 16))
+    }
 
+    private fun renderCards() {
+        val host = this
+        val rep = SystemState.evaluate(host)
         val dataBytes = if (dataDirBytes >= 0) dataDirBytes else rep.usedBytes
         body.addView(card(
             host,

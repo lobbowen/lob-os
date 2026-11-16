@@ -121,34 +121,58 @@
         -->
         <activity
             android:name=".services.app.SystemHomeActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemComponentsActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemInstallActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemRecoveryActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemSpaceActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemAboutActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemCheckActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity
             android:name=".services.app.SystemComponentDetailActivity"
+                        android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
             android:exported="false" />
 
         <activity

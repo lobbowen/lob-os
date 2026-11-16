@@ -275,6 +275,14 @@ object Ui {
         }
     }
 
+    fun windowWidthDp(activity: android.app.Activity): Int = runCatching {
+        val metrics = androidx.window.layout.WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(activity)
+        (metrics.bounds.width() / activity.resources.displayMetrics.density).toInt()
+    }.getOrDefault(activity.resources.configuration.screenWidthDp)
+
+    fun expanded(activity: android.app.Activity): Boolean = windowWidthDp(activity) >= 600
+
     fun scaffold(
         activity: android.app.Activity,
         title: String,
@@ -289,9 +297,16 @@ object Ui {
         val bar = topBar(activity, title, subtitle)
         root.addView(bar)
         val body = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        val holder = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(body, LinearLayout.LayoutParams(
+                dp(activity, 760), LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
         val scroll = android.widget.ScrollView(activity).apply {
             isFillViewport = true
-            addView(body, android.widget.FrameLayout.LayoutParams(
+            addView(holder, android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
             ))
