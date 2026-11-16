@@ -143,7 +143,6 @@ class SystemHomeActivity : Activity() {
     private fun renderStatus() {
         val host = this
         val rep = SystemState.evaluate(host)
-        val rep = SystemState.evaluate(host)
 
         val phase = lobos.services.supervise.RuntimeState.phase
         body.addView(Ring(host).apply {
