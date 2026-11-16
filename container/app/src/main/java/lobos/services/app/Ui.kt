@@ -147,7 +147,7 @@ object Ui {
     class IconView(ctx: Context, private val type: Icon, color: String, sizeDp: Int) : View(ctx) {
         private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = dp(ctx, 1.8f).toFloat()
+            strokeWidth = 1.8f * ctx.resources.displayMetrics.density
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             this.color = Color.parseColor(color)
