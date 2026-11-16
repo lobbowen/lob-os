@@ -71,11 +71,13 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     fun requestStop() {
         keepRunning = false
+        RuntimeState.mark(RuntimeState.Phase.STOPPED, "已按要求停止")
         try { reapProgramTree("外部请求停止") } catch (_: Throwable) { }
     }
 
     fun requestStart() {
         keepRunning = true
+        RuntimeState.mark(RuntimeState.Phase.BOOTING, "正在启动")
         quarantineReset = true
         scheduleBootLoop()
     }
@@ -107,6 +109,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     @Synchronized
     private fun scheduleBootLoop() {
         if (bootLoopActive) return
+        if (RuntimeState.phase != RuntimeState.Phase.RUNNING) {
+            RuntimeState.mark(RuntimeState.Phase.BOOTING, "正在启动")
+        }
         bootLoopActive = true
         bootExec.execute {
             try {
@@ -124,6 +129,17 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             acquireBriefWakeLock(60_000L)
             val outcome = try { bootProgramOnce() } finally { releaseWakeLock() }
             val bootOk = SupervisorPolicy.bootSucceeded(outcome)
+            if (bootOk) {
+                RuntimeState.mark(RuntimeState.Phase.RUNNING, "程序已启动")
+            } else {
+                RuntimeState.mark(
+                    RuntimeState.Phase.FAILED,
+                    when (outcome) {
+                        SupervisorPolicy.BootOutcome.NO_PROGRAM -> "没有可启动的程序"
+                        else -> "启动失败"
+                    },
+                )
+            }
             var bornAt = 0L
             var failStreak = 0
             if (bootOk) {

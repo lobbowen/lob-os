@@ -14,11 +14,10 @@ import kotlin.concurrent.thread
 import lobos.services.supply.Cleanup
 import lobos.services.supply.InstallGuard
 import lobos.services.supply.SystemState
+import lobos.services.supervise.RuntimeState
 
 class SystemHomeActivity : Activity() {
     private lateinit var body: LinearLayout
-    private var checking = false
-    private var lastCheckAt = 0L
     private var lastFreed = -1L
     private var dataDirBytes = -1L
 
@@ -47,6 +46,42 @@ class SystemHomeActivity : Activity() {
         measureDataDir()
     }
 
+    private fun runLine(phase: RuntimeState.Phase): String = when (phase) {
+        RuntimeState.Phase.RUNNING -> "系统正在运行，点环可以停止"
+        RuntimeState.Phase.BOOTING -> "正在启动，请稍候"
+        RuntimeState.Phase.STOPPED -> "系统已停止，点环可以启动"
+        RuntimeState.Phase.FAILED -> "启动没有成功，点环可以重试"
+        RuntimeState.Phase.UNKNOWN -> "点环可以启动系统"
+    }
+
+    private fun showPower(phase: RuntimeState.Phase) {
+        val host = this
+        val running = phase == RuntimeState.Phase.RUNNING || phase == RuntimeState.Phase.BOOTING
+        val title = if (running) "停止系统" else "启动系统"
+        val message = if (running) {
+            "停止后所有组件都会停下，已安装的东西不会删除。"
+        } else {
+            "启动会按已安装的组件拉起系统运行环境。"
+        }
+        android.app.AlertDialog.Builder(host)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(title) { _, _ ->
+                val action = if (running) RuntimeState.Phase.STOPPED else RuntimeState.Phase.BOOTING
+                RuntimeState.mark(action, if (running) "正在停止" else "正在启动")
+                runCatching {
+                    val svc = android.content.Intent(host, lobos.services.host.OsHostService::class.java)
+                    svc.action = if (running) "lobos.action.STOP_RUNTIME" else "lobos.action.START_RUNTIME"
+                    host.startService(svc)
+                }
+                host.runOnUiThread {
+                    host.render()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     private fun measureDataDir() {
         val host = this
         thread(name = "lobos-size") {
@@ -70,24 +105,25 @@ class SystemHomeActivity : Activity() {
         body.removeAllViews()
         val rep = SystemState.evaluate(host)
 
+        val phase = lobos.services.supervise.RuntimeState.phase
         body.addView(Ring(host).apply {
-            layoutParams = LinearLayout.LayoutParams(Ui.dp(host, 150), Ui.dp(host, 150)).apply {
+            layoutParams = LinearLayout.LayoutParams(Ui.dp(host, 168), Ui.dp(host, 168)).apply {
                 gravity = android.view.Gravity.CENTER_HORIZONTAL
                 topMargin = Ui.dp(host, 6)
             }
-            setTier(rep.tier)
-            setBusy(checking)
+            setPhase(phase)
+            setOnClickListener { showPower(phase) }
         })
 
-        body.addView(Ui.text(host, rep.headline, Ui.TEXT, 19f, bold = true).apply {
+        val stateDetail = lobos.services.supervise.RuntimeState.detail
+        body.addView(Ui.text(host, runLine(phase), Ui.TEXT2, 15f).apply {
             gravity = android.view.Gravity.CENTER_HORIZONTAL
         })
-        body.addView(Ui.text(
-            host,
-            if (checking) "正在检查…" else if (lastCheckAt > 0) "刚刚检查过" else "已按当前状态检查",
-            Ui.TEXT2,
-            13f,
-        ).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL })
+        if (stateDetail.isNotBlank()) {
+            body.addView(Ui.text(host, stateDetail, Ui.TEXT3, 13f).apply {
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+            })
+        }
         body.addView(Ui.verticalGap(host, 8))
 
         for (r in rep.reasons.take(3)) {
@@ -97,7 +133,6 @@ class SystemHomeActivity : Activity() {
 
         val actions = LinearLayout(host).apply { orientation = LinearLayout.HORIZONTAL }
         actions.addView(Ui.primaryButton(host, "一键体检") {
-            lastCheckAt = System.currentTimeMillis()
             runCatching { startActivity(android.content.Intent(host, SystemCheckActivity::class.java)) }
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
             rightMargin = Ui.dp(host, 8)
@@ -163,59 +198,57 @@ class SystemHomeActivity : Activity() {
     class Ring(ctx: Context) : View(ctx) {
         private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 10f
+            strokeWidth = 14f
             color = Color.parseColor(Ui.SURFACE2)
         }
         private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 10f
+            strokeWidth = 14f
             strokeCap = Paint.Cap.ROUND
         }
         private val big = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
-        private val small = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textAlign = Paint.Align.CENTER
-        }
-        private var tier: SystemState.Tier = SystemState.Tier.OK
-        private var busy = false
+        private var phase: RuntimeState.Phase = RuntimeState.Phase.UNKNOWN
 
-        fun setTier(t: SystemState.Tier) {
-            tier = t
-            invalidate()
-        }
-
-        fun setBusy(b: Boolean) {
-            busy = b
+        fun setPhase(p: RuntimeState.Phase) {
+            phase = p
             invalidate()
         }
 
         override fun onDraw(canvas: Canvas) {
             val cx = width / 2f
             val cy = height / 2f
-            val r = minOf(width, height) / 2f - 12f
+            val r = minOf(width, height) / 2f - 16f
             canvas.drawCircle(cx, cy, r, track)
             arc.color = Color.parseColor(
-                when (tier) {
-                    SystemState.Tier.OK -> Ui.OK
-                    SystemState.Tier.ATTENTION -> Ui.WARN
-                    SystemState.Tier.REPAIR -> Ui.ERR
+                when (phase) {
+                    RuntimeState.Phase.RUNNING -> Ui.OK
+                    RuntimeState.Phase.BOOTING -> Ui.ACCENT
+                    RuntimeState.Phase.STOPPED -> Ui.TEXT3
+                    RuntimeState.Phase.FAILED -> Ui.ERR
+                    RuntimeState.Phase.UNKNOWN -> Ui.TEXT3
                 }
             )
-            canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), -90f, 360f, false, arc)
-            val label = when {
-                busy -> "检查中"
-                tier == SystemState.Tier.OK -> "正常"
-                tier == SystemState.Tier.ATTENTION -> "需注意"
-                else -> "需处理"
+            val sweep = when (phase) {
+                RuntimeState.Phase.BOOTING -> 90f
+                RuntimeState.Phase.STOPPED -> 0f
+                else -> 360f
             }
+            if (sweep > 0f) canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), -90f, sweep, false, arc)
             big.color = Color.parseColor(Ui.TEXT)
-            big.textSize = 28f
-            canvas.drawText(label, cx, cy + 6f, big)
-            small.color = Color.parseColor(Ui.TEXT2)
-            small.textSize = 12f
-            canvas.drawText(if (busy) "请稍候" else "系统自检", cx, cy + 28f, small)
+            big.textSize = 30f
+            canvas.drawText(
+                when (phase) {
+                    RuntimeState.Phase.RUNNING -> "运行中"
+                    RuntimeState.Phase.BOOTING -> "启动中"
+                    RuntimeState.Phase.STOPPED -> "已停止"
+                    RuntimeState.Phase.FAILED -> "异常"
+                    RuntimeState.Phase.UNKNOWN -> "未启动"
+                },
+                cx, cy + 10f, big,
+            )
         }
     }
 }
