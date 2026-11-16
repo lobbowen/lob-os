@@ -55,7 +55,14 @@ fetch_src() {
   bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$key" "$t" >/dev/null \
     || die "源码取不到" "钉值见 scripts/component-sources.json 的 sources.$key"
   case "$t" in
-    *) tar xf "$t" -C "$SRC" --strip-components=1 2>/dev/null || {
+    *) unzip -q -o "$t" -d "$SRC" >/dev/null 2>&1 && {
+         local inner; inner="$(find "$SRC" -maxdepth 1 -mindepth 1 -type d | head -1)"
+         if [ -n "$inner" ] && [ "$(find "$SRC" -maxdepth 1 -mindepth 1 | wc -l)" = "1" ]; then
+           ( cd "$SRC" && shopt -s dotglob && mv "$inner"/* . 2>/dev/null; rm -rf "$inner" )
+         fi
+         rm -f "$t"; return 0
+       } 2>/dev/null || true
+       tar xf "$t" -C "$SRC" --strip-components=1 2>/dev/null || {
          rm -rf "$SRC"; mkdir -p "$SRC"
          tar xjf "$t" -C "$SRC" --strip-components=1 2>/dev/null || {
            rm -rf "$SRC"; mkdir -p "$SRC"
@@ -206,6 +213,58 @@ build_busybox() {
   SCOPE="bin"
 }
 
+build_make() {
+  local ver; ver="$(ver_of make)"
+  fetch_src make
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  (
+    cd "$SRC"
+    CC="$CC" AR="$AR" RANLIB="$TC/llvm-ranlib" ./configure --host=aarch64-linux-musl       --build=x86_64-pc-linux-gnu --prefix="$OUT" --disable-nls >/dev/null 2>&1
+    make -j"$(nproc)" >/dev/null 2>&1
+    make install >/dev/null 2>&1
+  ) || die "make 编不出来" "$SRC"
+  [ -x "$OUT/bin/make" ] || die "make 没产出可执行文件" "$OUT/bin"
+  mkdir -p "$STAGE/bin"
+  cp "$OUT/bin/make" "$STAGE/bin/make"
+  SCOPE="bin"
+}
+
+build_pkgconf() {
+  local ver; ver="$(ver_of pkgconf)"
+  fetch_src pkgconf
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  (
+    cd "$SRC"
+    CC="$CC" ./configure --host=aarch64-linux-musl --build=x86_64-pc-linux-gnu \
+      --prefix="$OUT" >/dev/null 2>&1
+    make -j"$(nproc)" >/dev/null 2>&1
+    make install >/dev/null 2>&1
+  ) || die "pkgconf 编不出来" "$SRC"
+  local bin="$OUT/bin/pkgconf"
+  [ -x "$bin" ] || bin="$OUT/bin/pkg-config"
+  [ -x "$bin" ] || die "pkgconf 没产出可执行文件" "$OUT/bin"
+  mkdir -p "$STAGE/bin" "$STAGE/lib"
+  cp "$bin" "$STAGE/bin/pkg-config"
+  cp -P "$OUT/lib/libpkgconf.so"* "$STAGE/lib/" 2>/dev/null || true
+  SCOPE="lib bin"
+}
+
+build_sqlite() {
+  local ver; ver="$(ver_of sqlite)"
+  fetch_src sqlite
+  local sd
+  sd="$(find "$SRC" -maxdepth 1 -type d -name 'sqlite-amalgamation-*' | head -1)"
+  [ -n "$sd" ] || sd="$SRC"
+  [ -f "$sd/sqlite3.c" ] || die "sqlite 源码里没有 sqlite3.c" "$sd"
+  rm -rf "$OUT"; mkdir -p "$OUT/bin"
+  CC="$CC" "$CC" -O2 -DNDEBUG -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_FTS5 \
+    -DSQLITE_ENABLE_JSON1 -o "$OUT/bin/sqlite3" "$sd/shell.c" "$sd/sqlite3.c" -lm -ldl \
+    || die "sqlite 编不出来" "$sd"
+  mkdir -p "$STAGE/bin"
+  cp "$OUT/bin/sqlite3" "$STAGE/bin/sqlite3"
+  SCOPE="bin"
+}
+
 build_jq() {
   local ver; ver="$(ver_of jq)"
   fetch_src jq
@@ -231,7 +290,10 @@ case "$ID" in
   bash)    build_bash ;;
   busybox) build_busybox ;;
   jq)      build_jq ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  make)    build_make ;;
+  pkgconf) build_pkgconf ;;
+  sqlite)  build_sqlite ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"
