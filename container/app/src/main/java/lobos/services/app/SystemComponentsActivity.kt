@@ -114,7 +114,7 @@ class SystemComponentsActivity : Activity() {
                 val bytes = meta?.optLong("bytes", 0L) ?: 0L
                 val sub = buildString {
                     append("v").append(ver)
-                    if (bytes > 0) append(" · ").append(InstallGuard.human(bytes))
+                    if (bytes > 0) append(" · 已占 ").append(InstallGuard.human(bytes))
                 }
                 val noRecord = meta == null
                 installed.add(Row(e.id, sub, if (noRecord) "缺记录" else "", noRecord, true))
@@ -135,11 +135,17 @@ class SystemComponentsActivity : Activity() {
                 val req = e.optJSONObject("requires")?.optString("name", "").orEmpty()
                 val sub = buildString {
                     append("v").append(if (ver.isBlank()) "未知" else ver)
-                    if (size > 0) append(" · ").append(InstallGuard.human(size))
+                    if (size > 0) append(" · 下载 ").append(InstallGuard.human(size))
                     if (req.isNotBlank()) append(" · 需要 ").append(req)
                 }
                 val up = e.optBoolean("upgradable", false)
-                available.add(Row(name, sub, if (up) "可更新" else "", up, false))
+                val heavy = size >= 200L * 1024 * 1024
+                val status = when {
+                    heavy -> "体积很大"
+                    up -> "可更新"
+                    else -> ""
+                }
+                available.add(Row(name, sub, status, heavy || up, false))
             }
             return Facts(installed, available)
         }

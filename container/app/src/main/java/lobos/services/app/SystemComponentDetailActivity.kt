@@ -17,6 +17,8 @@ class SystemComponentDetailActivity : Activity() {
     private lateinit var body: LinearLayout
     private var name: String = ""
     private var busy = false
+    private var measuredBytes = -1L
+    private var measuring = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,15 +52,21 @@ class SystemComponentDetailActivity : Activity() {
             return
         }
         val facts = gather(host, name)
+        if (facts.installed && !measuring && measuredBytes < 0) measureInstalled(host, name)
         body.addView(Ui.text(host, facts.name, Ui.TEXT, 20f, bold = true))
         body.addView(Ui.text(host, facts.stateLine, if (facts.installed) Ui.OK else Ui.ACCENT, 13f, bold = true))
         body.addView(Ui.verticalGap(host, 12))
 
         body.addView(infoRow("版本", facts.version))
-        body.addView(infoRow("大小", facts.size))
+        body.addView(infoRow("下载大小", facts.downloadSize))
+        body.addView(infoRow("安装后大小",
+            if (measuredBytes > 0) InstallGuard.human(measuredBytes) else facts.installedSize))
         body.addView(infoRow("依赖", facts.requires))
         body.addView(infoRow("安装时间", facts.installedAt))
         body.addView(infoRow("位置", facts.path))
+        if (facts.heavy) {
+            body.addView(Ui.text(host, "这一件体积很大，装之前先确认有足够空间；不需要就别装。", Ui.WARN, 13f))
+        }
         body.addView(Ui.verticalGap(host, 16))
 
         val snap = InstallProgress.current()
@@ -106,6 +114,20 @@ class SystemComponentDetailActivity : Activity() {
         }
     }
 
+    private fun measureInstalled(host: Activity, name: String) {
+        val dir = java.io.File(lobos.kernel.layout.SystemDirs.opt(host), name)
+        if (!dir.exists()) return
+        measuring = true
+        thread(name = "lobos-piece-size") {
+            val n = lobos.services.supply.Cleanup.dirSize(dir)
+            runOnUiThread {
+                measuredBytes = n
+                measuring = false
+                render()
+            }
+        }
+    }
+
     private fun startInstall(host: Activity, name: String) {
         if (busy) return
         busy = true
@@ -142,7 +164,9 @@ class SystemComponentDetailActivity : Activity() {
         val installed: Boolean,
         val stateLine: String,
         val version: String,
-        val size: String,
+        val downloadSize: String,
+        val installedSize: String,
+        val heavy: Boolean,
         val requires: String,
         val installedAt: String,
         val path: String,
@@ -163,7 +187,8 @@ class SystemComponentDetailActivity : Activity() {
             val version = meta?.optString("version")?.takeIf { it.isNotBlank() }
                 ?: entry?.optString("version")?.takeIf { it.isNotBlank() }
                 ?: idx?.version?.takeIf { it.isNotBlank() } ?: ""
-            val bytes = meta?.optLong("bytes", 0L) ?: entry?.optLong("size", 0L) ?: 0L
+            val download = entry?.optLong("size", 0L) ?: 0L
+            val real = 0L
             val at = meta?.optLong("installedAt", 0L) ?: 0L
             val time = if (at > 0) java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date(at)) else ""
@@ -178,7 +203,10 @@ class SystemComponentDetailActivity : Activity() {
                 installed = installed,
                 stateLine = stateLine,
                 version = version,
-                size = if (bytes > 0) InstallGuard.human(bytes) else "",
+                downloadSize = if (download > 0) InstallGuard.human(download) else "未知",
+                installedSize = if (real > 0) InstallGuard.human(real)
+                    else if (installed) "计算中…" else "装好后显示",
+                heavy = download >= 200L * 1024 * 1024 || real >= 1024L * 1024 * 1024,
                 requires = req,
                 installedAt = time,
                 path = idx?.stateDir ?: "",
