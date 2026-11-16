@@ -95,13 +95,7 @@ class SystemInstallActivity : Activity() {
     }
 
     private fun line(text: String, color: String, big: Boolean = false, bold: Boolean = false): TextView =
-        TextView(this).apply {
-            this.text = text
-            setTextColor(Color.parseColor(color))
-            textSize = if (big) 17f else 14f
-            if (bold) setTypeface(Typeface.DEFAULT_BOLD)
-            setPadding(0, dp(4), 0, dp(4))
-        }
+        Ui.text(this, text, Ui.TEXT2, if (big) 17f else 14f, bold)
 
     private fun space(): android.view.View = android.view.View(this).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12))

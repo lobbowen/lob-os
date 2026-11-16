@@ -12,6 +12,7 @@ object SystemState {
         val headline: String,
         val reasons: List<String>,
         val installedCount: Int,
+        val noRecordCount: Int,
         val upgradableCount: Int,
         val failedRecent: Int,
         val freeBytes: Long,
@@ -65,6 +66,6 @@ object SystemState {
             Tier.REPAIR -> "需要处理一下"
         }
         if (reasons.isEmpty()) reasons.add("组件齐全、库链接可用、空间充足")
-        return Report(tier, headline, reasons, installed, up, failedRecent, free, used, reclaim)
+        return Report(tier, headline, reasons, installed, noRecord, up, failedRecent, free, used, reclaim)
     }
 }

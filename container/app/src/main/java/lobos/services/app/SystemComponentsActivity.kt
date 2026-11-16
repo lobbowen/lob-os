@@ -19,48 +19,22 @@ class SystemComponentsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#0d1117"))
-            setPadding(dp(20), dp(24), dp(20), dp(24))
-        }
-        root.addView(TextView(this).apply {
-            text = "组件"
-            setTextColor(Color.parseColor("#e6edf3"))
-            textSize = 22f
-            setTypeface(Typeface.DEFAULT_BOLD)
-        })
-        body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(this).apply { addView(body) },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(tabBar())
-        setContentView(root)
+        val (b, _) = Ui.scaffold(
+            this,
+            "组件",
+            "已安装与可安装",
+            listOf(
+                Triple("◉", "首页", SystemComponentsActivity::class.java),
+                Triple("▣", "组件", null),
+                Triple("▤", "空间", SystemSpaceActivity::class.java),
+                Triple("☰", "我的", SystemAboutActivity::class.java),
+            ),
+            1,
+        )
+        body = b
         render()
     }
 
-    private fun tabBar(): LinearLayout {
-        val bar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#161b22"))
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-        }
-        for ((label, target) in listOf<Pair<String, Class<*>?>>(
-            "首页" to SystemHomeActivity::class.java,
-            "组件" to null,
-            "空间" to SystemSpaceActivity::class.java,
-            "我的" to SystemAboutActivity::class.java,
-        )) {
-            bar.addView(android.widget.Button(this).apply {
-                text = label
-                textSize = 12f
-                isEnabled = target != null
-                if (target != null) setOnClickListener {
-                    runCatching { startActivity(android.content.Intent(this@SystemComponentsActivity, target)) }
-                }
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        }
-        return bar
-    }
 
     private fun render() {
         body.removeAllViews()
@@ -106,13 +80,7 @@ class SystemComponentsActivity : Activity() {
     }
 
     private fun line(text: String, color: String, big: Boolean = false, bold: Boolean = false): TextView =
-        TextView(this).apply {
-            this.text = text
-            setTextColor(Color.parseColor(color))
-            textSize = if (big) 17f else 14f
-            if (bold) setTypeface(Typeface.DEFAULT_BOLD)
-            setPadding(0, dp(4), 0, dp(4))
-        }
+        Ui.text(this, text, Ui.TEXT2, if (big) 17f else 14f, bold)
 
     private fun space(): android.view.View = android.view.View(this).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(14))
