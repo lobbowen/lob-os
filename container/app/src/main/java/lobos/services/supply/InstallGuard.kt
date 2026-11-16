@@ -55,7 +55,7 @@ object InstallGuard {
     }
 
     fun record(
-        ctx: Context,
+        context: Context,
         id: String,
         version: String,
         bytes: Long,
@@ -63,7 +63,7 @@ object InstallGuard {
         level: String,
     ) {
         if (id.isBlank()) return
-        val ledger = readLedger(ctx)
+        val ledger = readLedger(context)
         val row = JSONObject().apply {
             put("version", version)
             put("bytes", bytes)
@@ -72,7 +72,7 @@ object InstallGuard {
             put("installedAt", System.currentTimeMillis())
         }
         ledger.put(id, row)
-        writeLedger(ctx, ledger)
+        writeLedger(context, ledger)
     }
 
     fun forget(ctx: Context, id: String) {
