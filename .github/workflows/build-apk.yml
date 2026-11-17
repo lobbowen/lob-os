@@ -227,6 +227,15 @@ jobs:
           echo "[sysroot] 就位 $DST（include $(ls "$DST/usr/include" | wc -l) 项 · lib $(ls "$DST/usr/lib" | wc -l) 项）"
           du -sh "$DST"
 
+      - name: 放置 musl 运行时到 assets（自带加载器 · 不是件）
+        run: |
+          set -euo pipefail
+          bash scripts/toolchain/musl-runtime-assets.sh
+          DST=container/app/src/main/assets/musl
+          [ -f "$DST/ld-musl-aarch64.so.1" ] || { echo "::error title=musl 加载器没就位::$DST"; exit 1; }
+          [ -f "$DST/libc.musl-aarch64.so.1" ] || { echo "::error title=musl libc 没就位::$DST"; exit 1; }
+          echo "[musl-runtime] APK 自带加载器与 libc（$(du -sh "$DST" | cut -f1)）"
+
       - name: 取件（从 Release 取 base 筐的固化产物）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
