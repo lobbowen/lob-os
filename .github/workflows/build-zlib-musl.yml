@@ -30,8 +30,8 @@ jobs:
       - name: 定位 NDK（比对钉值 + 验证 clang 真能跑）
         run: bash scripts/toolchain/locate-ndk.sh
 
-      - name: 构建 musl sysroot（本库编译的基础）
-        run: bash scripts/toolchain/musl-sysroot.sh
+      - name: 构建最小 musl sysroot（纯 C 件，不含 C++）
+        run: bash scripts/toolchain/musl-sysroot-min.sh
 
       - name: 算本件的固化标识（musl ABI）
         id: uwkey
@@ -61,6 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           export LOBOS_NDK="$(cd "$(dirname "$CC")/../../../../.." && pwd)"
+          export LOBOS_MUSL_SYSROOT="$PWD/work/musl-sysroot-min"
           bash scripts/recipes/build-musl-piece.sh zlib
           mkdir -p dist
           cp -f work/component-zlib-musl-*.zip dist/component-zlib.zip
