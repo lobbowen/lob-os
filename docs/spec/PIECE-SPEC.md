@@ -79,6 +79,8 @@ target / sysroot / 解释器注入点 / 补丁矩阵 / 静态件白名单 / buil
 verify-runtime-elf.sh 对 musl 件加例外（现把 PT_INTERP 写死 linker64 会误判）。
 设备侧必须验三个场景：系统启动、直接执行、嵌套 exec；另测非 user 0 场景（边界外，但需登记）。
 件的 RUNPATH 含构建机绝对路径（如 /home/bowen/...）为禁止形态，必须判红。
+判断件的 ABI 必须读 ELF 的 INTERP 段真实内容（readelf -l 的 INTERP 行 / file 的 interpreter 字段），
+禁止用 readelf -p .interp 后 grep：静态件无 .interp 段时该读法会误报为 bionic（已发生过，见 MEMORY）。
 
 ### 条款十 发布与回滚
 
