@@ -78,63 +78,12 @@ object ExecEntry {
         return Shape.Unknown
     }
 
-    private fun elfInterp(entry: File): String? = runCatching {
-        val raf = java.io.RandomAccessFile(entry, "r")
-        raf.use { f ->
-            val head = ByteArray(4096)
-            val n = f.read(head)
-            if (n < 64) return@use null
-            if ((head[0].toInt() and 0xFF) != ELF_MAGIC) return@use null
-            val ePhoff = (head[32].toInt() and 0xFF) or ((head[33].toInt() and 0xFF) shl 8) or
-                ((head[34].toInt() and 0xFF) shl 16) or ((head[35].toInt() and 0xFF) shl 24)
-            val ePhentsize = (head[54].toInt() and 0xFF) or ((head[55].toInt() and 0xFF) shl 8)
-            val ePhnum = (head[56].toInt() and 0xFF) or ((head[57].toInt() and 0xFF) shl 8)
-            for (i in 0 until ePhnum) {
-                val off = ePhoff + i * ePhentsize
-                if (off + 32 > n) break
-                val pType = (head[off].toInt() and 0xFF) or ((head[off + 1].toInt() and 0xFF) shl 8) or
-                    ((head[off + 2].toInt() and 0xFF) shl 16) or ((head[off + 3].toInt() and 0xFF) shl 24)
-                if (pType != 3) continue
-                val pOffset = (head[off + 8].toInt() and 0xFF) or ((head[off + 9].toInt() and 0xFF) shl 8) or
-                    ((head[off + 10].toInt() and 0xFF) shl 16) or ((head[off + 11].toInt() and 0xFF) shl 24)
-                val pFilesz = (head[off + 32].toInt() and 0xFF) or ((head[off + 33].toInt() and 0xFF) shl 8) or
-                    ((head[off + 34].toInt() and 0xFF) shl 16) or ((head[off + 35].toInt() and 0xFF) shl 24)
-                val b = ByteArray(pFilesz.coerceAtMost(512))
-                f.seek(pOffset.toLong())
-                f.readFully(b)
-                val str = String(b, Charsets.UTF_8).substringBefore('\u0000')
-                if (str.isNotBlank()) return@use str
-            }
-            null
-        }
-    }.getOrNull()
-
-    private fun muslLinker(entry: File): File? {
-        var dir: File? = entry.absoluteFile.parentFile
-        while (dir != null) {
-            val candidate = File(dir, "usr/lib/ld-musl-aarch64.so.1")
-            if (candidate.isFile) return candidate
-            dir = dir.parentFile
-        }
-        return null
-    }
-
-    fun linkerFor(entry: File): String {
-        val interp = elfInterp(entry).orEmpty()
-        if (interp.contains("musl")) {
-            muslLinker(entry)?.let { return it.absolutePath }
-        }
-        return SYSTEM_LINKER
-    }
-
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
         is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)
 
-        is Shape.Elf -> {
-            val linker = linkerFor(entry)
-            if (entry.absolutePath == linker) listOf(entry.absolutePath) + args.drop(1)
-            else listOf(linker, entry.absolutePath) + args.drop(1)
-        }
+        is Shape.Elf ->
+            if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)
+            else listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args

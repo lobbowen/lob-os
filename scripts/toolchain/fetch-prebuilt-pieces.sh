@@ -13,9 +13,6 @@ REPO="${GITHUB_REPOSITORY:-lobbowen/lob-os}"
 PRINT_PIECES_ONLY=0
 for _arg in "${@:-}"; do
   [ "$_arg" = "--print-pieces" ] && PRINT_PIECES_ONLY=1
-  case "$_arg" in
-    --abi=*) export LOBOS_ABI="${_arg#--abi=}" ;;
-  esac
 done
 
 GH_TOKEN_VALUE="${GH_TOKEN:-${GITHUB_TOKEN:-}}"

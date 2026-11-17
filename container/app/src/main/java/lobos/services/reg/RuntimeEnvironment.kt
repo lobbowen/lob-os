@@ -55,7 +55,7 @@ object RuntimeEnvironment {
 
         put("PREFIX", root.prefixRoot.absolutePath)
 
-        put("LD_LIBRARY_PATH", joinPath(root.prefixLib.absolutePath, pieceLibDirs(ctx), root.nativeLibDir, inheritedLd))
+        put("LD_LIBRARY_PATH", joinPath(root.prefixLib.absolutePath, root.nativeLibDir, pieceLibDirs(ctx), inheritedLd))
         put(
             "PATH",
             joinPath(

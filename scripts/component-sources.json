@@ -371,62 +371,6 @@
         "https://android.googlesource.com/platform/system/core/+archive/refs/heads/android15-release/libutils.tar.gz"
       ],
       "piece": false
-    },
-    "musl": {
-      "version": "1.2.5-r12",
-      "sha256": "f37e73d41880bbc653b771c7d8962c8739bff773503f5155c14fab1bd7c4d52f",
-      "urls": [
-        "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/musl-1.2.5-r12.apk"
-      ]
-    },
-    "musl-dev": {
-      "version": "1.2.5-r12",
-      "sha256": "638945ad611696b7be27f46c4839a3f487ccd1479b648dfe5e2bc87c4710d587",
-      "urls": [
-        "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/musl-dev-1.2.5-r12.apk"
-      ]
-    },
-    "linux-headers": {
-      "version": "6.6-r1",
-      "sha256": "fa3a64b62ca02bbaab15a1d81f8b5b9b528eea3d80c6e1557262c60e4de48903",
-      "urls": [
-        "https://mirrors.aliyun.com/alpine/v3.21/main/aarch64/linux-headers-6.6-r1.apk",
-        "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/linux-headers-6.6-r1.apk"
-      ]
-    },
-    "busybox-musl": {
-      "entryName": "sh",
-      "version": "",
-      "sha256": "",
-      "urls": []
-    },
-    "gcc": {
-      "version": "14.2.0-r4",
-      "sha256": "f9fa19072d1f1a4f72631f3fd090a85a48b95fa08b2062630ea96813275e130f",
-      "urls": [
-        "https://mirrors.aliyun.com/alpine/v3.21/main/aarch64/gcc-14.2.0-r4.apk"
-      ]
-    },
-    "libgcc": {
-      "version": "14.2.0-r4",
-      "sha256": "7cfdc00f102d3b98fe563b31e7a59a7b7ab61850c1751915f34e419e83ef2653",
-      "urls": [
-        "https://mirrors.aliyun.com/alpine/v3.21/main/aarch64/libgcc-14.2.0-r4.apk"
-      ]
-    },
-    "libstdc++": {
-      "version": "14.2.0-r4",
-      "sha256": "93dded5af4e42ca59a2e981ffc5acc59c5d7110cec4adaeb15b84dc224526b63",
-      "urls": [
-        "https://mirrors.aliyun.com/alpine/v3.21/main/aarch64/libstdc++-14.2.0-r4.apk"
-      ]
-    },
-    "libstdc++-dev": {
-      "version": "14.2.0-r4",
-      "sha256": "b347c2689cb1815510419dd68918c20649f48b0a7e665fea4cd8155dfa7adc9c",
-      "urls": [
-        "https://mirrors.aliyun.com/alpine/v3.21/main/aarch64/libstdc++-dev-14.2.0-r4.apk"
-      ]
     }
   },
   "$comment-llvm": "阶段1c（编 clang/lld/binutils）要用的 LLVM 源码。sha256 是 2026-10-07 实测下载 llvm-project-23.1.3.src.tar.xz 后算的（GitHub API 报的 latest）。**版本尚未与 NDK 对齐**：「23.1.3」是 latest，不是按 NDK 内置的 LLVM 挑的 —— NDK 的版本号（29.x）与其内置 LLVM 的版本号是两件事，从前者推不出后者。因此这一格是**待校验**的：scripts/verify/verify-ndk-llvm.sh 会问 NDK 自己它的 LLVM 版本并与 llvmVersion 比对；两者对不上时不能直接编（编出来的 clang 与 sysroot 的头文件假设会错位，且不报错），必须先按 NDK 报的版本重钉本键（连同 sha256 一起重测）。判据先于实现：llvmVersion 空着时 verify-ndk-llvm.sh 会判红并在报错里带出实际版本号，填进去才能往下走。"

@@ -164,8 +164,7 @@ Residency（运行观测）  <- ProcessLedger，看哪些进程活着
 `/var/lib/dpkg/status` 里没有的，就是"未安装"，即使文件系统上还留着目录。
 
 设备实测差异的 4 个目录：
-- node / python：10 月底的**旧 bionic 件**，有版本目录但无注册、无引用
-  （我们新编的 musl 版是另一回事，体积与时间都不同）
+- node / python：10 月底的旧件，有版本目录但无注册、无引用
 - rootfs / sysroot：10 月底的系统内部目录（rootfs-shape.json / workdir / usr），无引用
 
 正确处置：
