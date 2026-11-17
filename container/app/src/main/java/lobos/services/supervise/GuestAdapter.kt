@@ -50,6 +50,10 @@ object GuestAdapter {
                 put("LOBOS_PROGRAM_ID", i.programId)
                 put("LOBOS_PROGRAM_GENERATION", i.generation.toString())
                 putAll(i.declaredEnv)
+                val libexec = java.io.File(i.programDir, "libexec/git-core")
+                if (libexec.isDirectory) put("GIT_EXEC_PATH", libexec.absolutePath)
+                val templates = java.io.File(i.programDir, "share/git-core/templates")
+                if (templates.isDirectory) put("GIT_TEMPLATE_DIR", templates.absolutePath)
                 val envName = i.httpEnv
                 val port = i.httpPort
                 if (envName != null && envName.isNotBlank() && port != null) {
