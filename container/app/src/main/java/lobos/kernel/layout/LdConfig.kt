@@ -17,8 +17,7 @@ object LdConfig {
     private fun summarizeLog(log: List<String>): String {
         if (log.isEmpty()) return "（没有软链记录）\n"
         val decisive = log.filter {
-            it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ") ||
-                it.startsWith("candidate libz") || it.startsWith("lib  libz")
+            it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ")
         }
         val out = StringBuilder()
         out.append("软链记录共 ").append(log.size)
@@ -81,9 +80,10 @@ object LdConfig {
                 binInstalled += exe.name
                 if (linkTo(exe, dst)) linked++ else unresolved += exe.absolutePath + " → " + dst.absolutePath
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
+            }
+        }
 
         for ((soname, cands) in sonameCandidates) {
-            log += "candidate " + soname + " n=" + cands.size + " files=" + cands.joinToString(",") { it.second.name }
             if (cands.size == 1) {
                 val so = cands[0].second
                 val landed = SonameChain.land(so, usrLib)
@@ -112,7 +112,6 @@ object LdConfig {
                 "；而「无害」不该靠「恰好扫到了哪一个」"
             log += "note " + soname + " 共 " + cands.size + " 处提供（字节相同）指向 " +
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
-        }            }
         }
 
         val sysenv = SysEnv.write(ctx)
