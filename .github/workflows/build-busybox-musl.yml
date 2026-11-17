@@ -64,7 +64,7 @@ jobs:
           export LOBOS_MUSL_SYSROOT="$PWD/work/musl-sysroot-min"
           bash scripts/recipes/build-musl-piece.sh busybox
           mkdir -p dist
-          cp -f work/component-busybox-musl-*.zip dist/component-busybox.zip
+          cp -f work/component-busybox-*.zip dist/component-busybox.zip
 
       - name: 诊断 busybox 架构（失败时定位）
         if: always()

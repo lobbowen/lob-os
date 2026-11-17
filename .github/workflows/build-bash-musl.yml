@@ -64,7 +64,7 @@ jobs:
           export LOBOS_MUSL_SYSROOT="$PWD/work/musl-sysroot-min"
           bash scripts/recipes/build-musl-piece.sh bash
           mkdir -p dist
-          cp -f work/component-bash-musl-*.zip dist/component-bash.zip
+          cp -f work/component-bash-*.zip dist/component-bash.zip
 
       - name: 验形态（包自描述：库还是程序）
         if: steps.reuse.outputs.hit != 'yes'
