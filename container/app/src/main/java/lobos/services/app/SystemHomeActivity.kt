@@ -104,7 +104,10 @@ class SystemHomeActivity : Activity() {
             setOnClickListener { showPower(host, phase) }
         })
 
-        val residency = runCatching { ResidencyStatus.snapshot() }.getOrNull()
+        val residency = runCatching {
+            val f = java.io.File(lobos.kernel.layout.SystemDirs.run(host), "residency.json")
+            if (f.isFile) org.json.JSONObject(f.readText()) else ResidencyStatus.snapshot()
+        }.getOrNull()
         val line = Ui.text(host, runLine(phase), Ui.TEXT2, 14f).apply {
             gravity = android.view.Gravity.CENTER_HORIZONTAL
         }
@@ -113,9 +116,9 @@ class SystemHomeActivity : Activity() {
             snap.interrupted?.let { append(it) }
             residency?.let { r ->
                 if (isNotEmpty()) append("\n")
-                append(r.installedPrograms).append(" 个已装 · ")
-                    .append(r.programsRunning).append(" 个在运行")
-                if (r.frozen) append(" · 已冻结")
+                append(r.optInt("installedPrograms", 0)).append(" 个已装 · ")
+                    .append(r.optInt("programsRunning", 0)).append(" 个在运行")
+                if (r.optBoolean("frozen", false)) append(" · 已冻结")
             }
         }
         if (detail.isNotBlank()) {
