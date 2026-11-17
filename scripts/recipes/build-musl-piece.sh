@@ -453,7 +453,10 @@ ENTRY=""
 [ -f "$STAGE/bin/$ID" ] && ENTRY="bin/$ID"
 [ -z "$ENTRY" ] && [ -f "$STAGE/bin/libbusybox.so" ] && ENTRY="bin/libbusybox.so"
 
-node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$PIECE_ID" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" >/dev/null 2>&1 \
+BUILD_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+BUILD_RUN="${GITHUB_RUN_ID:-local}"
+node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$PIECE_ID" "$VER" "$STAGE/component-meta.json" \
+  --payload "$STAGE" --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" >/dev/null 2>&1 \
   || die "meta 生成失败" "$STAGE"
 
 ENTRY="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('entry',''))" "$STAGE/component-meta.json" 2>/dev/null || true)"
