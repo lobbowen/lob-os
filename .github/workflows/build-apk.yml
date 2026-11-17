@@ -241,7 +241,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          bash scripts/toolchain/fetch-prebuilt-pieces.sh
+          bash scripts/toolchain/fetch-prebuilt-pieces.sh --abi=musl
 
       - name: 编内核的兼容性垫片（内核的一部分，不是件）
         run: |
@@ -254,7 +254,7 @@ jobs:
         run: |
           set -euo pipefail
           N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          WANT_N=$(bash scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null || echo "")
+          WANT_N=$(bash scripts/toolchain/fetch-prebuilt-pieces.sh --abi=musl --print-pieces 2>/dev/null || echo "")
           if [ -z "$WANT_N" ]; then
             echo "::error title=读不出该取的件数::而这一格不能猜 —— --print-pieces 没给出件数（脚本路径 scripts/toolchain/fetch-prebuilt-pieces.sh），报缺，不填一个看起来对的值"
             exit 1
