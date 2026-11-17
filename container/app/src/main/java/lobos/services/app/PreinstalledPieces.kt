@@ -474,7 +474,7 @@ val derived = refreshDerivedLinks(ctx, id, version)
 
                     stateDir = stateDir,
                     enabled = true,
-                    desired = lobos.services.reg.Desired.RUNNING,
+                    desired = lobos.services.reg.Desired.STOPPED,
 
                     libName = if (entry.isNotBlank()) entry.substringAfterLast("/") else libFileNameOf(verDir),
 

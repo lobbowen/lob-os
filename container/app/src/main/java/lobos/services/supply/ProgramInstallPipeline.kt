@@ -530,9 +530,8 @@ object ProgramInstallPipeline {
                       httpPort = declared?.http?.port ?: 0,
                       httpHealth = declared?.http?.health ?: "",
                       desired = when {
-                          baseEntry.desired == lobos.services.reg.Desired.STOPPED && declared?.resident == true ->
-                              lobos.services.reg.Desired.RUNNING
-                          reg == null -> lobos.services.reg.Desired.RUNNING
+                          (declared?.http?.port ?: 0) > 0 -> lobos.services.reg.Desired.RUNNING
+                          reg == null -> lobos.services.reg.Desired.STOPPED
                           else -> baseEntry.desired
                       },
                       uiPackage = "",
@@ -725,7 +724,7 @@ object ProgramInstallPipeline {
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
 
-                      desired = lobos.services.reg.Desired.RUNNING,
+                      desired = if (isProgram) lobos.services.reg.Desired.STOPPED else base.desired,
                 ),
             )
         }

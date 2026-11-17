@@ -1,7 +1,5 @@
 package lobos.services.host
 
-import lobos.services.reg.ResidencyStatus
-
 enum class OsPhase {
     BOOTING,
 
@@ -35,21 +33,7 @@ data class OsSnapshot(
 object OsPhaseRule {
 
     fun degraded(facts: OsFacts): Boolean =
-        !facts.controlPlaneUp || noProgram() || noneRunning()
-
-    private fun noProgram(): Boolean {
-        val reasons = runCatching { ResidencyStatus.snapshot().optJSONArray("degradedReasons") }.getOrNull()
-            ?: return false
-        val all = (0 until reasons.length()).map { reasons.optString(it) }
-        return all.contains(ResidencyPolicy.REASON_NO_PROGRAM)
-    }
-
-    private fun noneRunning(): Boolean {
-        val reasons = runCatching { ResidencyStatus.snapshot().optJSONArray("degradedReasons") }.getOrNull()
-            ?: return false
-        val all = (0 until reasons.length()).map { reasons.optString(it) }
-        return all.contains(ResidencyPolicy.REASON_NONE_RUNNING)
-    }
+        !facts.readingsCollected || !facts.controlPlaneUp
 
     fun next(prev: OsPhase, facts: OsFacts): OsPhase? = when {
         !facts.readingsCollected -> null
@@ -60,9 +44,8 @@ object OsPhaseRule {
     }
 
     fun reason(next: OsPhase, facts: OsFacts): String = when {
+        !facts.readingsCollected -> "自检读数还没齐"
         !facts.controlPlaneUp -> "控制面不在线"
-        noProgram() -> "未安装任何程序"
-        noneRunning() -> "没有程序在运行"
-        else -> "读数恢复"
+        else -> "控制面就绪"
     }
 }

@@ -35,6 +35,8 @@ object ProgramRegistry {
         val note: String? = null,
     ) {
         val startable: Boolean get() = invalid == null
+
+        val isService: Boolean get() = http != null && resident
     }
 
     fun programRoot(ctx: Context): File = SystemDirs.opt(ctx)
