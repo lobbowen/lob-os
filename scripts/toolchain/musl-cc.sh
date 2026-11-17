@@ -100,8 +100,11 @@ if [ "$SHARED" = 1 ] && [ "$VERSIONED_LIB" = 1 ]; then
 fi
 
 INTERP_ARGS=()
-if [ -n "${LOBOS_MUSL_INTERP:-}" ]; then
-  INTERP_ARGS=("-Wl,--dynamic-linker=${LOBOS_MUSL_INTERP}")
+IS_STATIC=0
+for a in "$@"; do [ "$a" = "-static" ] && IS_STATIC=1; done
+if [ "$SHARED" != 1 ] && [ "$IS_STATIC" != 1 ]; then
+  interp="${LOBOS_MUSL_INTERP:-/data/data/lobos.os/files/usr/lib/ld-musl-aarch64.so.1}"
+  INTERP_ARGS=("-Wl,--dynamic-linker=${interp}")
 fi
 
 COMMON=(--target=aarch64-linux-musl "--sysroot=$SYSROOT" "-fuse-ld=$TC/ld.lld")
