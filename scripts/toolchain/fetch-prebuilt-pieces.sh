@@ -96,9 +96,6 @@ gh_fail_label() {
 }
 
 PIECES=(bash busybox crypto curl git jq openssl ripgrep zlib)
-if [ "${LOBOS_ABI:-base}" = "musl" ]; then
-  PIECES=(bash busybox crypto curl git jq openssl zlib)
-fi
 
 fetch_asset() {
   local tag="$1" asset="$2" dir="$3" url fa_err
