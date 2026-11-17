@@ -1,8 +1,6 @@
 package lobos.services.supply
 
-import android.content.Context
 import android.os.StatFs
-import org.json.JSONObject
 import java.io.File
 
 object InstallGuard {
@@ -30,69 +28,5 @@ object InstallGuard {
         if (mb < 1.0) return "不到 1MB"
         if (mb < 1024.0) return String.format("%.1fMB", mb)
         return String.format("%.2fGB", mb / 1024.0)
-    }
-
-    private fun ledgerFile(ctx: Context): File =
-        File(lobos.kernel.layout.SystemDirs.etc(ctx), "installed.json")
-
-    private fun readLedger(ctx: Context): JSONObject {
-        val f = ledgerFile(ctx)
-        if (!f.isFile) return JSONObject()
-        return runCatching { JSONObject(f.readText()) }.getOrDefault(JSONObject())
-    }
-
-    private fun writeLedger(ctx: Context, obj: JSONObject) {
-        val f = ledgerFile(ctx)
-        runCatching {
-            f.parentFile?.mkdirs()
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            tmp.writeText(obj.toString(2))
-            if (!tmp.renameTo(f)) {
-                f.writeText(obj.toString(2))
-                tmp.delete()
-            }
-        }
-    }
-
-    fun record(
-        context: Context,
-        id: String,
-        version: String,
-        bytes: Long,
-        source: String,
-        level: String,
-    ) {
-        if (id.isBlank()) return
-        val ledger = readLedger(context)
-        val row = JSONObject().apply {
-            put("version", version)
-            put("bytes", bytes)
-            put("source", source)
-            put("level", level)
-            put("installedAt", System.currentTimeMillis())
-        }
-        ledger.put(id, row)
-        writeLedger(context, ledger)
-    }
-
-    fun forget(ctx: Context, id: String) {
-        if (id.isBlank()) return
-        val ledger = readLedger(ctx)
-        if (!ledger.has(id)) return
-        ledger.remove(id)
-        writeLedger(ctx, ledger)
-    }
-
-    fun read(ctx: Context, id: String): JSONObject? =
-        readLedger(ctx).optJSONObject(id)
-
-    fun all(ctx: Context): Map<String, JSONObject> {
-        val ledger = readLedger(ctx)
-        val out = LinkedHashMap<String, JSONObject>()
-        for (k in ledger.keys()) {
-            val v = ledger.optJSONObject(k) ?: continue
-            out[k] = v
-        }
-        return out
     }
 }

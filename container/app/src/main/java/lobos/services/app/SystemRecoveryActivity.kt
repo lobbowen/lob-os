@@ -90,15 +90,14 @@ class SystemRecoveryActivity : Activity() {
     ) {
         companion object {
             fun of(ctx: Context): Facts {
-                val ledger = InstallGuard.all(ctx)
                 val index = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
                 val pieces = index.size
-                val unknown = index.count { !ledger.containsKey(it.id) }
+                val bad = index.count { it.invalid != null }
                 val free = InstallGuard.freeBytes(ctx.filesDir)
                 val ok = pieces > 0
                 val headline = if (ok) "系统可运行" else "系统还不完整"
                 val why = if (ok) {
-                    "已登记 " + pieces + " 个组件" + (if (unknown > 0) "（其中 " + unknown + " 个没有安装记录）" else "")
+                    "已登记 " + pieces + " 个组件" + (if (bad > 0) "（" + bad + " 个配置异常）" else "")
                 } else {
                     "还没有登记任何组件，先装基础组件"
                 }

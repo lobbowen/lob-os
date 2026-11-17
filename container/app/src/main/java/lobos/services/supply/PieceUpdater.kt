@@ -399,9 +399,7 @@ object PieceUpdater {
     }
 
     fun rollback(ctx: Context, id: String): Pair<Boolean, String?> = InstallGuard.serialized {
-        val r = rollbackLocked(ctx, id)
-        if (r.first) InstallGuard.forget(ctx, id)
-        r
+        rollbackLocked(ctx, id)
     }
 
     private fun rollbackLocked(ctx: Context, id: String): Pair<Boolean, String?> {

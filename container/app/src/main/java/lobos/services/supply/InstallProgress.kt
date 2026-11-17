@@ -1,8 +1,5 @@
 package lobos.services.supply
 
-import android.content.Context
-import org.json.JSONObject
-
 object InstallProgress {
     enum class Stage {
         IDLE, QUEUED, DOWNLOAD, VERIFY, LAND, LINK, DONE, FAILED
@@ -42,6 +39,4 @@ object InstallProgress {
         Stage.DONE -> "完成"
         Stage.FAILED -> "失败"
     }
-
-    fun recent(ctx: Context): List<JSONObject> = InstallGuard.all(ctx).values.toList()
 }

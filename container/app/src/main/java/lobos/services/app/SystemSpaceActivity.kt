@@ -42,8 +42,7 @@ class SystemSpaceActivity : Activity() {
         body.removeAllViews()
         val host = this
         val free = InstallGuard.freeBytes(filesDir)
-        val ledger = InstallGuard.all(host)
-        val used = ledger.values.sumOf { it.optLong("bytes", 0L) }
+        val used = runCatching { lobos.services.supply.Cleanup.dirSize(filesDir) }.getOrDefault(0L)
         val items = Cleanup.scan(host)
         val reclaim = items.sumOf { it.bytes }
 
@@ -78,14 +77,9 @@ class SystemSpaceActivity : Activity() {
 
         body.addView(space(12))
         body.addView(line("组件占用", "#e6edf3", bold = true))
-        val rows = ArrayList<Pair<String, Long>>()
-        for (e in runCatching { ProgramIndex.all(host) }.getOrDefault(emptyList())) {
-            rows.add(e.id to (ledger[e.id]?.optLong("bytes", 0L) ?: 0L))
-        }
-        if (rows.isEmpty()) body.addView(line("还没有安装组件", "#8b949e"))
-        for ((id, b) in rows.sortedByDescending { it.second }) {
-            body.addView(line(id + "  " + InstallGuard.human(b), "#c9d1d9"))
-        }
+        val ids = runCatching { ProgramIndex.all(host) }.getOrDefault(emptyList()).map { it.id }
+        if (ids.isEmpty()) body.addView(line("还没有安装组件", "#8b949e"))
+        for (id in ids.sorted()) body.addView(line(id, "#c9d1d9"))
     }
 
     private fun line(text: String, color: String, big: Boolean = false, bold: Boolean = false): TextView =

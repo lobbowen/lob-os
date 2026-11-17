@@ -179,25 +179,17 @@ class SystemComponentDetailActivity : Activity() {
             Intent(ctx, SystemComponentDetailActivity::class.java).putExtra(EXTRA_NAME, name)
 
         fun gather(ctx: Context, name: String): Facts {
-            val meta = InstallGuard.read(ctx, name)
             val entry: JSONObject? = runCatching { CatalogClient.entryFor(ctx, name) }.getOrNull()
             val idx = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
                 .firstOrNull { it.id == name }
-            val installed = meta != null || idx != null
-            val version = meta?.optString("version")?.takeIf { it.isNotBlank() }
-                ?: entry?.optString("version")?.takeIf { it.isNotBlank() }
+            val installed = idx != null
+            val version = entry?.optString("version")?.takeIf { it.isNotBlank() }
                 ?: idx?.version?.takeIf { it.isNotBlank() } ?: ""
             val download = entry?.optLong("size", 0L) ?: 0L
             val real = 0L
-            val at = meta?.optLong("installedAt", 0L) ?: 0L
-            val time = if (at > 0) java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-                .format(java.util.Date(at)) else ""
+            val time = ""
             val req = entry?.optJSONObject("requires")?.optString("name", "").orEmpty()
-            val stateLine = when {
-                meta != null -> "已安装"
-                idx != null -> "已安装（缺安装记录，建议重装一次补上）"
-                else -> "未安装"
-            }
+            val stateLine = if (idx != null) "已安装" else "未安装"
             return Facts(
                 name = name,
                 installed = installed,

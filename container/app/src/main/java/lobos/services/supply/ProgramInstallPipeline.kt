@@ -556,14 +556,6 @@ object ProgramInstallPipeline {
                 " 来源=" + spec.from.label +
                 " dir=" + dir.absolutePath,
         )
-        InstallGuard.record(
-            context = context,
-            id = spec.programId,
-            version = version,
-            bytes = spec.zip.length(),
-            source = spec.from.label,
-            level = "PROGRAM",
-        )
         return Result(true, version, null, "已登记 " + spec.programId + "@" + version, base.nodeVerifyOutput)
     }
 
@@ -757,14 +749,6 @@ object ProgramInstallPipeline {
             context, "package", true, "系统组件已安装",
             "id=" + spec.programId + " version=" + safeVer +
                 " 来源=" + spec.from.label + " dir=" + dest.absolutePath,
-        )
-        InstallGuard.record(
-            context = context,
-            id = spec.programId,
-            version = safeVer,
-            bytes = spec.zip.length(),
-            source = spec.from.label,
-            level = "PIECE",
         )
         return Result(true, safeVer, null, "")
     }
