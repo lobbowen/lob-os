@@ -29,6 +29,7 @@ jobs:
     permissions:
       contents: read
     env:
+      LOBOS_ABI: musl
       RELEASE_ROUND: ${{ startsWith(github.ref, 'refs/tags/os-release-') }}
       RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/os-release-') && github.ref_name }}
     steps:
