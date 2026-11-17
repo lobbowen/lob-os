@@ -449,7 +449,7 @@ esac
 VER="$(ver_of "$ID")"
 [ -n "$VER" ] || VER="$(ver_of openssl)"
 
-PIECE_ID="$ID$([ "$SUFFIX" = "none" ] && echo "" || echo "-$SUFFIX")"
+PIECE_ID="$ID"
 ENTRY=""
 [ -f "$STAGE/bin/$ID" ] && ENTRY="bin/$ID"
 [ -z "$ENTRY" ] && [ -f "$STAGE/bin/libbusybox.so" ] && ENTRY="bin/libbusybox.so"

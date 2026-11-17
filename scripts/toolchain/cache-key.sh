@@ -145,6 +145,10 @@ if [ -n "$SRC_FILES" ] && [ -d "$ROOT_DIR/.git" ]; then
 fi
 [ -n "$SRC_HASH" ] || SRC_HASH="nosrc"
 
+if [ "${LOBOS_ABI:-base}" = "musl" ] && [ -d "$ROOT_DIR/.git" ]; then
+  SRC_HASH="$(cd "$ROOT_DIR" && git ls-files scripts/recipes/build-musl-piece.sh scripts/toolchain/musl-cc.sh 2>/dev/null | while read -r f; do git show "HEAD:$f" 2>/dev/null | python3 "$STRIP" "$f" 2>/dev/null | sha256sum; done | sha256sum | cut -c1-12)"
+fi
+
 ESS="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const s=JSON.parse(d).sources||{};const e=s[process.argv[1]]||{};process.stdout.write(e.essential===true?"1":"0")}catch(x){process.stdout.write("0")}})' "$TOOL" < "$ROOT_DIR/scripts/component-sources.json" 2>/dev/null || echo 0)"
 if [ "$ESS" = "1" ]; then
   SRC_HASH="$(printf '%s\nessential=1\n' "$SRC_HASH" | sha256sum | cut -c1-12)"
