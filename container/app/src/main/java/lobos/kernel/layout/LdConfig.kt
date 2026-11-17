@@ -60,6 +60,7 @@ object LdConfig {
 
             File(root, "lib").listFiles()?.sortedBy { it.name }?.forEach { so ->
                 if (!so.isFile) return@forEach
+                if (java.nio.file.Files.isSymbolicLink(so.toPath())) return@forEach
                 sonameCandidates.computeIfAbsent(so.name) { ArrayList() }
 
                     .add(Triple(e.id, so, SonameChain.contentDigest(so)))
