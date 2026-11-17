@@ -64,7 +64,7 @@ fetch_src() {
       || die "源码取不到" "钉值见 scripts/component-sources.json 的 sources.$key"
   fi
   case "$t" in
-    *) unzip -q -o "$t" -d "$SRC" >/dev/null 2>&1 && {
+    *) unzip -q -o "$t" -d "$SRC" >>"$W/build.log" 2>&1 && {
          local inner; inner="$(find "$SRC" -maxdepth 1 -mindepth 1 -type d | head -1)"
          if [ -n "$inner" ] && [ "$(find "$SRC" -maxdepth 1 -mindepth 1 | wc -l)" = "1" ]; then
            ( cd "$SRC" && shopt -s dotglob && mv "$inner"/* . 2>/dev/null; rm -rf "$inner" )
@@ -89,11 +89,11 @@ build_zlib() {
   rm -rf "$OUT"; mkdir -p "$OUT/lib" "$OUT/include"
   (
     cd "$SRC"
-    CC="$CC" CFLAGS="-O2 -fPIC" ./configure --prefix="$OUT" >/dev/null 2>&1
-    make -j"$(nproc)" libz.a >/dev/null 2>&1
+    CC="$CC" CFLAGS="-O2 -fPIC" ./configure --prefix="$OUT" >>"$W/build.log" 2>&1
+    make -j"$(nproc)" libz.a >>"$W/build.log" 2>&1
     LOBOS_SONAME="libz.so.1" make LDSHARED="$CC -shared" \
       SHAREDLIB=libz.so SHAREDLIBV="libz.so.$ver" SHAREDLIBM=libz.so.1 \
-      "libz.so.$ver" >/dev/null 2>&1
+      "libz.so.$ver" >>"$W/build.log" 2>&1
   ) || die "zlib 编不出来" "$SRC"
   cp "$SRC/libz.so.$ver" "$OUT/lib/"
   ( cd "$OUT/lib" && ln -sf "libz.so.$ver" libz.so.1 && ln -sf "libz.so.$ver" libz.so )
@@ -110,9 +110,9 @@ build_openssl() {
   (
     cd "$SRC"
     CC="$CC" AR="$AR" ./Configure linux-aarch64 shared no-tests no-ui-console \
-      --prefix="$OUT" --openssldir="$OUT/ssl" >/dev/null 2>&1
-    make -j"$(nproc)" >/dev/null 2>&1
-    make install_sw >/dev/null 2>&1
+      --prefix="$OUT" --openssldir="$OUT/ssl" >>"$W/build.log" 2>&1
+    make -j"$(nproc)" >>"$W/build.log" 2>&1
+    make install_sw >>"$W/build.log" 2>&1
   ) || die "openssl 编不出来" "$SRC"
   [ -f "$OUT/lib/libcrypto.so.3" ] || die "openssl 没产出 libcrypto" "$OUT/lib"
   mkdir -p "$STAGE/lib" "$STAGE/bin"
@@ -147,9 +147,9 @@ build_curl() {
       ./configure --host=aarch64-linux-musl --prefix="$OUT" --enable-shared --disable-static \
         --with-ssl="$O" --with-zlib="$Z" --disable-ldap --disable-ldaps \
         --without-libpsl --without-brotli --without-zstd --disable-ftp --disable-rtsp \
-        --without-libidn2 >/dev/null 2>&1
-    make -j"$(nproc)" >/dev/null 2>&1
-    make install >/dev/null 2>&1
+        --without-libidn2 >>"$W/build.log" 2>&1
+    make -j"$(nproc)" >>"$W/build.log" 2>&1
+    make install >>"$W/build.log" 2>&1
   ) || die "curl 编不出来" "$SRC"
   mkdir -p "$STAGE/lib"
   cp -P "$OUT/lib/libcurl.so"* "$STAGE/lib/"
@@ -168,8 +168,8 @@ build_bash() {
       LDFLAGS="-Wl,--allow-multiple-definition" \
       bash_cv_getcwd_malloc=yes bash_cv_func_sigsetjmp=present \
       bash_cv_printf_a_format=yes bash_cv_dev_fd_standard=yes bash_cv_unusable_rtsigs=no \
-      >/dev/null 2>&1
-    make -j"$(nproc)" bash CFLAGS_FOR_BUILD="-std=gnu89 -O2" >/dev/null 2>&1
+      >>"$W/build.log" 2>&1
+    make -j"$(nproc)" bash CFLAGS_FOR_BUILD="-std=gnu89 -O2" >>"$W/build.log" 2>&1
   ) || die "bash 编不出来" "$SRC"
   mkdir -p "$STAGE/bin"
   cp "$SRC/bash" "$STAGE/bin/bash"
@@ -191,19 +191,19 @@ build_busybox() {
   local INS="$W/install"
   (
     cd "$SRC"
-    make defconfig >/dev/null 2>&1
+    make defconfig >>"$W/build.log" 2>&1
     for k in ASH_INTERNAL_GLOB TEST1 BUSYBOX; do
       grep -q "^CONFIG_${k}=y" .config || sed -i "s/^# CONFIG_${k} is not set/CONFIG_${k}=y/" .config
     done
     sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config || true
-    make clean >/dev/null 2>&1 || true
+    make clean >>"$W/build.log" 2>&1 || true
     rm -f busybox busybox_unstripped
     PATH="$XT:$PATH" make CROSS_COMPILE=aarch64-linux-musl- \
       LDFLAGS="-Wl,--allow-multiple-definition" HOSTCC=gcc HOSTCFLAGS="-O2" >"$W/build.log" 2>&1
     rm -rf "$INS"
     PATH="$XT:$PATH" make CROSS_COMPILE=aarch64-linux-musl- \
       LDFLAGS="-Wl,--allow-multiple-definition" \
-      CONFIG_PREFIX="$INS" install >/dev/null 2>&1
+      CONFIG_PREFIX="$INS" install >>"$W/build.log" 2>&1
   ) || die "busybox 编不出来" "$SRC"
   "$READELF" -h "$SRC/busybox" 2>/dev/null | grep -qi 'AArch64' \
     || die "busybox 编成了别的架构" "产物不是 AArch64（说明构建没用上我们的工具链）：$SRC/busybox"
@@ -347,8 +347,8 @@ build_git() {
       "CFLAGS=-O2 -I$Z/include -I$O/include -I$C/include"
       "CURL_LIBCURL=-L$C/lib -L$O/lib -L$Z/lib -lcurl -lssl -lcrypto -lz"
     )
-    make -j"$(nproc)" "${MK[@]}" >/dev/null 2>&1
-    make "${MK[@]}" install >/dev/null 2>&1
+    make -j"$(nproc)" "${MK[@]}" >>"$W/build.log" 2>&1
+    make "${MK[@]}" install >>"$W/build.log" 2>&1
   ) || die "git 编不出来" "$SRC"
   [ -x "$OUT/bin/git" ] || die "git 没产出可执行文件" "$OUT/bin"
   [ -d "$OUT/libexec/git-core" ] || die "缺 libexec/git-core" "$OUT"
@@ -364,9 +364,9 @@ build_make() {
   rm -rf "$OUT"; mkdir -p "$OUT"
   (
     cd "$SRC"
-    CC="$CC" AR="$AR" RANLIB="$TC/llvm-ranlib" ./configure --host=aarch64-linux-musl       --build=x86_64-pc-linux-gnu --prefix="$OUT" --disable-nls >/dev/null 2>&1
-    make -j"$(nproc)" >/dev/null 2>&1
-    make install >/dev/null 2>&1
+    CC="$CC" AR="$AR" RANLIB="$TC/llvm-ranlib" ./configure --host=aarch64-linux-musl       --build=x86_64-pc-linux-gnu --prefix="$OUT" --disable-nls >>"$W/build.log" 2>&1
+    make -j"$(nproc)" >>"$W/build.log" 2>&1
+    make install >>"$W/build.log" 2>&1
   ) || die "make 编不出来" "$SRC"
   [ -x "$OUT/bin/make" ] || die "make 没产出可执行文件" "$OUT/bin"
   mkdir -p "$STAGE/bin"
@@ -381,9 +381,9 @@ build_pkgconf() {
   (
     cd "$SRC"
     CC="$CC" ./configure --host=aarch64-linux-musl --build=x86_64-pc-linux-gnu \
-      --prefix="$OUT" >/dev/null 2>&1
-    make -j"$(nproc)" >/dev/null 2>&1
-    make install >/dev/null 2>&1
+      --prefix="$OUT" >>"$W/build.log" 2>&1
+    make -j"$(nproc)" >>"$W/build.log" 2>&1
+    make install >>"$W/build.log" 2>&1
   ) || die "pkgconf 编不出来" "$SRC"
   local bin="$OUT/bin/pkgconf"
   [ -x "$bin" ] || bin="$OUT/bin/pkg-config"
@@ -418,8 +418,8 @@ build_jq() {
     cd "$SRC"
     CC="$CC" ./configure --host=aarch64-linux-musl --build=x86_64-pc-linux-gnu \
       --prefix="$OUT" --disable-maintainer-mode --with-oniguruma=builtin \
-      >/dev/null 2>&1
-    make -j"$(nproc)" LDFLAGS="-static" >/dev/null 2>&1
+      >>"$W/build.log" 2>&1
+    make -j"$(nproc)" LDFLAGS="-static" >>"$W/build.log" 2>&1
   ) || die "jq 编不出来" "$SRC"
   [ -f "$SRC/jq" ] || die "jq 没产出可执行文件" "$SRC"
   mkdir -p "$STAGE/bin"
@@ -456,14 +456,14 @@ ENTRY=""
 BUILD_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
 BUILD_RUN="${GITHUB_RUN_ID:-local}"
 node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" "$PIECE_ID" "$VER" "$STAGE/component-meta.json" \
-  --payload "$STAGE" --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" >/dev/null 2>&1 \
+  --payload "$STAGE" --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" >>"$W/build.log" 2>&1 \
   || die "meta 生成失败" "$STAGE"
 
 ENTRY="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('entry',''))" "$STAGE/component-meta.json" 2>/dev/null || true)"
 
 LLVM_READELF="$READELF" bash -c \
   "source '$ROOT_DIR/scripts/toolchain/elf-form.sh'; cd '$STAGE'; elf_write_shape '$PIECE_ID' '$ENTRY' '$STAGE' '$STAGE/piece-shape.json' '$VER' $SCOPE" \
-  >/dev/null 2>&1 || die "shape 生成失败" "$STAGE"
+  >>"$W/build.log" 2>&1 || die "shape 生成失败" "$STAGE"
 
 PKG="$OUTPKG/component-$PIECE_ID-$VER.zip"
 rm -f "$PKG"

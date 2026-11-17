@@ -100,6 +100,13 @@ jobs:
         if: always()
         run: bash scripts/toolchain/collect-piece-diag.sh crypto
 
+      - name: 上传构建日志（诊断用）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: work/*/build.log
+
       - name: 上传失败现场（Summary 在 API 上不好取回，artifact 才拿得到）
         if: always()
         uses: actions/upload-artifact@v4
