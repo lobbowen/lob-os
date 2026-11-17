@@ -34,8 +34,29 @@ object PreinstalledPieces {
         return r
     }
 
+    private fun installMuslRuntime(ctx: Context) {
+        val dst = lobos.kernel.layout.SystemDirs.lib(ctx)
+        if (!dst.isDirectory && !dst.mkdirs()) return
+        for (name in listOf("ld-musl-aarch64.so.1", "libc.musl-aarch64.so.1")) {
+            val target = java.io.File(dst, name)
+            if (target.isFile && target.length() > 0L) continue
+            runCatching {
+                ctx.assets.open("musl/$name").use { input ->
+                    val tmp = java.io.File(dst, name + ".tmp")
+                    tmp.outputStream().use { out -> input.copyTo(out) }
+                    if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
+                }
+                target.setExecutable(true)
+            }.onFailure {
+                RuntimeDiagnostics.append(ctx, "prefix", false, "musl 运行时落位失败 " + name,
+                    it.javaClass.simpleName + ": " + it.message)
+            }
+        }
+    }
+
     fun installAll(ctx: Context): List<String> {
         trace(ctx, "进入", "thread=" + Thread.currentThread().name)
+        installMuslRuntime(ctx)
         val names = runCatching { ctx.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
             .also { trace(ctx, "assets.list", "结果 " + (it.getOrNull()?.size ?: -1) + " 项，异常=" + (it.exceptionOrNull()?.javaClass?.simpleName ?: "无")) }
             .getOrDefault(emptyList())

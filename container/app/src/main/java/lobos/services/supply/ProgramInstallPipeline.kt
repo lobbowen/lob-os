@@ -189,7 +189,7 @@ object ProgramInstallPipeline {
 
     fun landByShape(dest: File, shape: PieceShape.Piece, declaredEntry: String, diagnostic: Boolean = false): Pair<Landed?, LandFailure?> {
 
-        val map = LinkedHashMap<String, String>()
+        val map = LinkedHashMap<String, Pair<String, String>>()
         for (fs in shape.files) {
             val dir = PieceShape.dirForRole(fs.role)
                 ?: return null to LandFailure(
@@ -197,14 +197,14 @@ object ProgramInstallPipeline {
                     "产物声明的 " + fs.path + " 形态是 \"" + fs.role + "\"（认不出）—— 报缺，不猜它该落哪",
                 )
             val target = dir + "/" + fs.path.substringAfterLast('/')
-            val clash = map.entries.firstOrNull { it.value == target && it.key != fs.path }
-            if (clash != null) {
+            val clash = map.entries.firstOrNull { it.value.first == target && it.key != fs.path }
+            if (clash != null && clash.value.second != fs.sha256) {
                 return null to LandFailure(
                     "shape-landing-clash",
-                    "落位目标重名：" + fs.path + " 与 " + clash.key + " 都要落到 " + target,
+                    "落位目标重名且内容不同：" + fs.path + " 与 " + clash.key + " 都要落到 " + target,
                 )
             }
-            map[fs.path] = target
+            map[fs.path] = target to fs.sha256
         }
         if (map.isEmpty()) {
             return null to LandFailure(
@@ -271,7 +271,7 @@ object ProgramInstallPipeline {
             if (raw.startsWith("/")) continue
             val resolved = normalizeRel(src.substringBeforeLast('/', "") + "/" + raw)
                 ?: continue
-            val newTarget = map[resolved] ?: continue
+            val newTarget = map[resolved]?.first ?: continue
             val newLink = relativeRel(dst.substringBeforeLast('/', ""), newTarget) ?: continue
             if (newLink == raw) continue
             runCatching { d.delete() }
@@ -329,7 +329,7 @@ object ProgramInstallPipeline {
 
         for (fs in shape.files) {
             if (fs.mode.isBlank()) continue
-            val dst = map[fs.path] ?: continue
+            val dst = map[fs.path]?.first ?: continue
             val f = File(dest, dst)
             if (!f.isFile) continue
             val m = runCatching { fs.mode.toInt(8) }.getOrNull() ?: continue
@@ -353,7 +353,7 @@ object ProgramInstallPipeline {
             val libName = libFile?.path?.substringAfterLast('/') ?: ""
             return Landed("", libRole, shape.kind, moved, libName, probe) to null
         }
-        val entryDst = map[entrySrc]
+        val entryDst = map[entrySrc]?.first
             ?: return null to LandFailure(
                 "entry-not-in-shape",
                 "清单声明的入口 " + entrySrc + " 不在产物声明的落位集合里 —— 报缺，不猜另一个",
