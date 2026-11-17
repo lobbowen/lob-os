@@ -160,12 +160,23 @@ case "$TOOL" in
     ;;
 esac
 DEPS_STR="$DEPS_STR-src$SRC_HASH$FORM_TAG"
+if [ "${LOBOS_ABI:-base}" = "musl" ]; then
+  DEPS_STR="$DEPS_STR-abi_musl"
+fi
 
 BUCKET="$(bucket_for "$TOOL")"
+ABI_TAG=""
+if [ "${LOBOS_ABI:-base}" = "musl" ]; then
+  ABI_TAG="-musl"
+fi
 
 case "$KIND" in
   tag)
-    echo "$BUCKET-$TOOL"
+    if [ -n "$ABI_TAG" ]; then
+      echo "musl-$TOOL"
+    else
+      echo "$BUCKET-$TOOL"
+    fi
     ;;
   deps-list)
 
