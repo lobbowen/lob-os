@@ -114,3 +114,23 @@ CI 验证通过（run 44052647023，加载器 723480 字节）。
 这不是"再修一个界面"或"再补一个件"，而是**构建体系的整体迁移**：
 20 个 workflow、4 个核心脚本、build-apk 取件链路。
 按上面 6 步走，每步可独立验证，失败可回滚到 bionic。
+
+
+---
+
+## 8 实施中踩的坑（已修，留作规范）
+
+1. **件的 id 不带 ABI 后缀**：曾把 musl 件的 component-meta.json id 写成 `bash-musl`，
+   build-apk 取件校验按 `bash` 找，判红「外层自己就是那一颗件」。
+   标准：id 就是件名，ABI 由 tag（musl-<tool>）与 asset（带 abi_musl）区分，不进 id。
+2. **cache-key 的 SRC_HASH 必须用构建脚本**：musl 模式若仍按 bionic 脚本算 hash，
+   asset 名不变 → 复用旧坏件。已改：musl 模式用 build-musl-piece.sh + musl-cc.sh 算。
+3. **纯 C 件用最小 sysroot（musl + musl-dev + linux-headers）**：全套 sysroot 含 gcc 包，
+   CI 取 gcc 钉值失败；busybox 需要内核头（linux/kd.h），min sysroot 必须含 linux-headers。
+4. **busybox 编与装合并为一次 make install**：分两步时 install 触发重链，偶发用宿主 gcc 编成 x86。
+5. **架构断言要先读值到变量再判断**：管道里重复读文件有竞态（诊断显示 aarch64 但断言失败），
+   改成 'machine=$("$READELF" -h ... | grep -i machine)' 后稳定。
+6. **buildSha 必须写进 meta**：固化一致性校验要求，build-musl-piece.sh 给 gen-component-meta
+   传 --build-sha / --build-run。
+7. **musl 加载器二进制不入库**：由 CI 按钉值生成（assets/musl 在 gitignore），
+   手工二进制入库会与钉值不一致。
