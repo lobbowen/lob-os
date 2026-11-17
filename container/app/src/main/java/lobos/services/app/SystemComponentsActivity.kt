@@ -111,12 +111,18 @@ class SystemComponentsActivity : Activity() {
             else -> role
         }
 
-        private fun stateLabel(active: String, sub: String, load: String): String {
+        private fun stateLabel(active: String, sub: String, load: String, desired: String): String {
             if (load != "LOADED") return when (load) {
                 "NOT_FOUND" -> "未找到"
                 "BAD_SETTING" -> "配置有误"
                 "ERROR" -> "装载异常"
                 else -> "装载异常"
+            }
+            if (desired == "STOPPED") {
+                return when (sub) {
+                    "RUNNING" -> "运行中"
+                    else -> "未运行"
+                }
             }
             return when (sub) {
                 "RUNNING" -> "运行中"
@@ -124,7 +130,7 @@ class SystemComponentsActivity : Activity() {
                 "STOPPING" -> "停止中"
                 "FAILED" -> "运行失败"
                 "DEGRADED" -> "状态异常"
-                "DEAD" -> "已停止"
+                "DEAD" -> "未运行"
                 "NA" -> when (active) {
                     "ACTIVE" -> "已就位"
                     "FAILED" -> "异常"
@@ -144,15 +150,18 @@ class SystemComponentsActivity : Activity() {
         fun gather(ctx: Context): Facts {
             val installed = ArrayList<Row>()
             val statuses = runCatching { ProgramStatusHub.snapshot(ctx) }.getOrDefault(emptyList())
-            for (s in statuses) {
+            val installedIds = runCatching { lobos.services.reg.ProgramRegistry.listIds(ctx) }
+                .getOrDefault(emptyList()).toSet()
+            for (s in statuses.filter { installedIds.contains(it.id) }) {
                 val ver = s.version?.takeIf { it.isNotBlank() } ?: "未知版本"
                 val sub = buildString {
                     append("v").append(ver)
                     if (s.role.isNotBlank()) append(" · ").append(roleLabel(s.role))
                 }
-                val stateLabel = stateLabel(s.active.name, s.sub.name, s.load.name)
-                val bad = s.load.name != "LOADED" || s.active.name == "FAILED" ||
-                    s.sub.name == "FAILED" || s.sub.name == "DEGRADED"
+                val stateLabel = stateLabel(s.active.name, s.sub.name, s.load.name, s.desired.name)
+                val bad = s.load.name != "LOADED" ||
+                    (s.desired.name == "RUNNING" && (s.active.name == "FAILED" ||
+                        s.sub.name == "FAILED" || s.sub.name == "DEGRADED"))
                 installed.add(Row(s.id, sub, stateLabel, bad, true))
             }
             val available = ArrayList<Row>()
