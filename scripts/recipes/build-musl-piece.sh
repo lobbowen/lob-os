@@ -380,7 +380,7 @@ build_ripgrep() {
   rustc --print target-libdir --target "$target" >/dev/null 2>&1 \
     || die "rust 的 musl target 没装好" "$target"
 
-  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$TC/clang"
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$ROOT_DIR/scripts/toolchain/musl-rust-ld.sh"
 
   rm -rf "$W/rgbin"
   cargo install --locked --version "$ver" ripgrep --target "$target" --root "$W/rgbin" \
