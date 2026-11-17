@@ -380,6 +380,8 @@ build_ripgrep() {
   rustc --print target-libdir --target "$target" >/dev/null 2>&1 \
     || die "rust 的 musl target 没装好" "$target"
 
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$TC/clang"
+
   rm -rf "$W/rgbin"
   cargo install --locked --version "$ver" ripgrep --target "$target" --root "$W/rgbin" \
     >>"$W/build.log" 2>&1 || { tail -40 "$W/build.log" >&2; die "ripgrep 编译失败" "$W/build.log"; }
