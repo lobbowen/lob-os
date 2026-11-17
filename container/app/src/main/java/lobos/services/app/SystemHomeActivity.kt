@@ -14,7 +14,9 @@ import kotlin.concurrent.thread
 import lobos.services.supply.Cleanup
 import lobos.services.supply.InstallGuard
 import lobos.services.supply.SystemState
-import lobos.services.supervise.RuntimeState
+import lobos.services.host.OsInit
+import lobos.services.host.OsPhase
+import lobos.services.reg.ResidencyStatus
 
 class SystemHomeActivity : Activity() {
     private lateinit var container: LinearLayout
@@ -89,7 +91,8 @@ class SystemHomeActivity : Activity() {
 
     private fun buildStatus(host: Activity): LinearLayout {
         val col = LinearLayout(host).apply { orientation = LinearLayout.VERTICAL }
-        val phase = RuntimeState.phase
+        val snap = OsInit.snapshot(host)
+        val phase = snap.phase
         val rep = SystemState.evaluate(host)
 
         col.addView(Ring(host).apply {
@@ -101,25 +104,34 @@ class SystemHomeActivity : Activity() {
             setOnClickListener { showPower(host, phase) }
         })
 
+        val residency = runCatching { ResidencyStatus.snapshot() }.getOrNull()
         val line = Ui.text(host, runLine(phase), Ui.TEXT2, 14f).apply {
             gravity = android.view.Gravity.CENTER_HORIZONTAL
         }
         col.addView(line)
-        val detail = RuntimeState.detail
+        val detail = buildString {
+            snap.interrupted?.let { append(it) }
+            residency?.let { r ->
+                if (isNotEmpty()) append("\n")
+                append(r.installedPrograms).append(" 个已装 · ")
+                    .append(r.programsRunning).append(" 个在运行")
+                if (r.frozen) append(" · 已冻结")
+            }
+        }
         if (detail.isNotBlank()) {
-            col.addView(Ui.text(host, detail, Ui.TEXT3, 12f).apply {
+            col.addView(Ui.text(host, detail, Ui.TEXT3, 11f).apply {
                 gravity = android.view.Gravity.CENTER_HORIZONTAL
             })
         }
         col.addView(Ui.verticalGap(host, 10))
 
         val powerLabel = when (phase) {
-            RuntimeState.Phase.RUNNING -> "停止系统"
-            RuntimeState.Phase.BOOTING -> "启动中…"
+            OsPhase.RUNNING -> "停止系统"
+            OsPhase.BOOTING -> "启动中…"
             else -> "启动系统"
         }
         col.addView(Ui.primaryButton(host, powerLabel) {
-            if (phase != RuntimeState.Phase.BOOTING) showPower(host, phase)
+            if (phase != OsPhase.BOOTING) showPower(host, phase)
         })
         col.addView(Ui.verticalGap(host, 8))
 
@@ -175,16 +187,15 @@ class SystemHomeActivity : Activity() {
         return box
     }
 
-    private fun runLine(phase: RuntimeState.Phase): String = when (phase) {
-        RuntimeState.Phase.RUNNING -> "系统正在运行，点环可以停止"
-        RuntimeState.Phase.BOOTING -> "正在启动，请稍候"
-        RuntimeState.Phase.STOPPED -> "系统已停止，点环可以启动"
-        RuntimeState.Phase.FAILED -> "启动没有成功，点环可以重试"
-        RuntimeState.Phase.UNKNOWN -> "点环可以启动系统"
+    private fun runLine(phase: OsPhase): String = when (phase) {
+        OsPhase.RUNNING -> "系统正在运行，点环可以停止"
+        OsPhase.BOOTING -> "正在启动，请稍候"
+        OsPhase.DEGRADED -> "系统已降级，点环可以重新启动"
+        OsPhase.STOPPING -> "正在停止，请稍候"
     }
 
-    private fun showPower(host: Activity, phase: RuntimeState.Phase) {
-        val running = phase == RuntimeState.Phase.RUNNING || phase == RuntimeState.Phase.BOOTING
+    private fun showPower(host: Activity, phase: OsPhase) {
+        val running = phase == OsPhase.RUNNING || phase == OsPhase.BOOTING
         val title = if (running) "停止系统" else "启动系统"
         val message = if (running) "停止后所有组件都会停下，已安装的东西不会删除。"
         else "启动会按已安装的组件拉起系统运行环境。"
@@ -192,13 +203,10 @@ class SystemHomeActivity : Activity() {
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(title) { _, _ ->
-                RuntimeState.mark(
-                    if (running) RuntimeState.Phase.STOPPED else RuntimeState.Phase.BOOTING,
-                    if (running) "正在停止" else "正在启动",
-                )
                 runCatching {
                     val svc = android.content.Intent(host, lobos.services.host.OsHostService::class.java)
-                    svc.action = if (running) "lobos.action.STOP_RUNTIME" else "lobos.action.START_RUNTIME"
+                    svc.action = if (running) lobos.services.supervise.InstanceHost.ACTION_STOP_RUNTIME
+                                 else lobos.services.supervise.InstanceHost.ACTION_START_RUNTIME
                     host.startService(svc)
                 }
                 render()
@@ -217,35 +225,28 @@ class SystemHomeActivity : Activity() {
         private val big = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
         }
-        private var phase = RuntimeState.Phase.UNKNOWN
+        private var phase = OsPhase.BOOTING
 
-        fun setPhase(p: RuntimeState.Phase) { phase = p; invalidate() }
+        fun setPhase(p: OsPhase) { phase = p; invalidate() }
 
         override fun onDraw(canvas: Canvas) {
             val cx = width / 2f; val cy = height / 2f
             val r = minOf(width, height) / 2f - 12f
             canvas.drawCircle(cx, cy, r, track)
             arc.color = Color.parseColor(when (phase) {
-                RuntimeState.Phase.RUNNING -> Ui.OK
-                RuntimeState.Phase.BOOTING -> Ui.ACCENT
-                RuntimeState.Phase.STOPPED -> Ui.TEXT3
-                RuntimeState.Phase.FAILED -> Ui.ERR
-                RuntimeState.Phase.UNKNOWN -> Ui.TEXT3
+                OsPhase.RUNNING -> Ui.OK
+                OsPhase.BOOTING -> Ui.ACCENT
+                OsPhase.DEGRADED -> Ui.WARN
+                OsPhase.STOPPING -> Ui.TEXT3
             })
             val sweep = when (phase) {
-                RuntimeState.Phase.STOPPED -> 0f
+                OsPhase.STOPPING -> 0f
                 else -> 360f
             }
             if (sweep > 0f) canvas.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), -90f, sweep, false, arc)
             big.color = Color.parseColor(Ui.TEXT)
             big.textSize = 30f
-            canvas.drawText(when (phase) {
-                RuntimeState.Phase.RUNNING -> "运行中"
-                RuntimeState.Phase.BOOTING -> "启动中"
-                RuntimeState.Phase.STOPPED -> "已停止"
-                RuntimeState.Phase.FAILED -> "异常"
-                RuntimeState.Phase.UNKNOWN -> "未启动"
-            }, cx, cy + 10f, big)
+            canvas.drawText(phase.label, cx, cy + 10f, big)
         }
     }
 }

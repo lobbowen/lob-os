@@ -261,6 +261,12 @@ object PieceProvisioner {
             val usrLib = lobos.kernel.layout.SystemDirs.lib(ctx)
             if (usrLib != null && File(usrLib, name).exists()) return true
         }
+        runCatching {
+            val joined = lobos.services.reg.RuntimeEnvironment.pieceLibDirs(ctx)
+            for (p in joined.split(':')) {
+                if (p.isNotBlank() && File(p, name).exists()) return true
+            }
+        }
         return false
     }
     private fun resolveListing(dir: File): String {
