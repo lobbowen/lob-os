@@ -66,6 +66,16 @@ jobs:
           mkdir -p dist
           cp -f work/component-busybox-musl-*.zip dist/component-busybox.zip
 
+      - name: 诊断 busybox 架构（失败时定位）
+        if: always()
+        run: |
+          echo "=== file busybox ==="
+          file work/musl-busybox/src/busybox 2>/dev/null || echo "(无产物)"
+          echo "=== readelf Machine ==="
+          "${LLVM_READELF:-llvm-readelf}" -h work/musl-busybox/src/busybox 2>/dev/null | grep -i machine || true
+          echo "=== build.log 链接相关 ==="
+          grep -nE 'gcc|musl-cc|ld|CROSS|busybox_unstripped' work/musl-busybox/build.log 2>/dev/null | tail -15 || true
+
       - name: 验形态（包自描述：库还是程序）
         if: steps.reuse.outputs.hit != 'yes'
         run: |
