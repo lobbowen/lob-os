@@ -198,9 +198,11 @@ object ProgramInstallPipeline {
                 )
             val target = dir + "/" + fs.path.substringAfterLast('/')
             val clash = map.entries.firstOrNull { it.value == target && it.key != fs.path }
-            val clashSameContent = clash != null &&
-                shape.files.firstOrNull { it.path == clash.key }?.sha256 == fs.sha256
-            if (clash != null && !clashSameContent) {
+            if (clash != null) {
+                val clashSha = shape.files.firstOrNull { it.path == clash.key }?.sha256
+                if (clashSha == fs.sha256) {
+                    continue
+                }
                 return null to LandFailure(
                     "shape-landing-clash",
                     "落位目标重名且内容不同：" + fs.path + " 与 " + clash.key + " 都要落到 " + target,
