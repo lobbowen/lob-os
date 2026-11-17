@@ -150,8 +150,8 @@ class SystemComponentsActivity : Activity() {
         fun gather(ctx: Context): Facts {
             val installed = ArrayList<Row>()
             val statuses = runCatching { ProgramStatusHub.snapshot(ctx) }.getOrDefault(emptyList())
-            val installedIds = runCatching { lobos.services.reg.ProgramRegistry.listIds(ctx) }
-                .getOrDefault(emptyList()).toSet()
+            val installedIds = runCatching { lobos.services.reg.ProgramIndex.all(ctx) }
+                .getOrDefault(emptyList()).map { it.id }.toSet()
             for (s in statuses.filter { installedIds.contains(it.id) }) {
                 val ver = s.version?.takeIf { it.isNotBlank() } ?: "未知版本"
                 val sub = buildString {

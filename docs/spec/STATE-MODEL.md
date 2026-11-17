@@ -130,3 +130,25 @@ Residency（运行观测）  <- ProcessLedger，看哪些进程活着
 2. 组件屏改用 `UnitState.loadOf/activeOf/subOf` 显示真实状态
 3. 首页状态环与详情已接真实 OsPhase / Residency，保持不变
 4. 用设备实测：每个组件显示真实状态，不再有「缺记录」
+
+
+---
+
+## 7 补充：状态语义要按件的角色区分（设备验证后补）
+
+设备验证发现：git（desired=STOPPED、上次 exitCode=1）被显示成「运行失败」——
+这是把「常驻服务的退出语义」套到了「按需工具」身上。
+
+规矩：
+
+| 角色 | 状态该表达什么 | 不该表达什么 |
+|---|---|---|
+| 工具（shell / program，desired=STOPPED） | **可用/不可用**（装载在不在、能不能执行） | 运行/停止/失败（工具跑完就退，退出码非0很正常） |
+| 服务（service / desired=RUNNING） | 运行中 / 启动中 / 失败 | —— |
+
+实现：显示层按 desired 区分——desired=STOPPED 的单元只显示「运行中/未运行」，
+不拿 exitCode 判失败；只有 desired=RUNNING 的才把 FAILED/DEGRADED 标为异常。
+**UnitState 核心判定不改**（它记录客观事实），只在呈现层按架构语义解释。
+
+另：已装件数用 ProgramRegistry.listIds 白名单，不把运行中的内部 programId
+（ProgramStatusHub.snapshot 会额外带上）算进「已安装」。
