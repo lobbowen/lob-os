@@ -17,7 +17,8 @@ object LdConfig {
     private fun summarizeLog(log: List<String>): String {
         if (log.isEmpty()) return "（没有软链记录）\n"
         val decisive = log.filter {
-            it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ")
+            it.startsWith("kind2 ") || it.startsWith("kind3 ") || it.startsWith("ambiguous ") ||
+                it.startsWith("candidate libz") || it.startsWith("lib  libz")
         }
         val out = StringBuilder()
         out.append("软链记录共 ").append(log.size)
@@ -82,6 +83,7 @@ object LdConfig {
                 log += "bin  " + exe.name + " → " + dst.name + "   " + exe.absolutePath
 
         for ((soname, cands) in sonameCandidates) {
+            log += "candidate " + soname + " n=" + cands.size + " files=" + cands.joinToString(",") { it.second.name }
             if (cands.size == 1) {
                 val so = cands[0].second
                 val landed = SonameChain.land(so, usrLib)
