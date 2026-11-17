@@ -116,8 +116,8 @@ object SonameChain {
     fun put(link: File, target: File): Int {
         val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
         if (isLink) {
-            val targetReal = runCatching { target.toRealPath() }.getOrNull()
-            val curReal = runCatching { link.toRealPath() }.getOrNull()
+            val targetReal = runCatching { target.toPath().toRealPath().toFile() }.getOrNull()
+            val curReal = runCatching { link.toPath().toRealPath().toFile() }.getOrNull()
             if (targetReal != null && curReal == targetReal) {
                 return 0
             }
