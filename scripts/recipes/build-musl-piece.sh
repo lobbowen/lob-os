@@ -359,6 +359,37 @@ build_git() {
   SCOPE="bin libexec"
 }
 
+build_ripgrep() {
+  local ver; ver="$(ver_of ripgrep)"
+  [ -n "$ver" ] || die "ripgrep 没钉版本" "component-sources.json 的 sources.ripgrep.version"
+
+  if ! command -v cargo >/dev/null 2>&1; then
+    curl -fsSL --max-time 600 https://sh.rustup.rs -o "$W/rustup.sh" >>"$W/build.log" 2>&1 \
+      || die "rustup 下载失败" "$W/build.log"
+    sh "$W/rustup.sh" -y --profile minimal --default-toolchain stable >>"$W/build.log" 2>&1 \
+      || die "rustup 安装失败" "$W/build.log"
+    export PATH="$HOME/.cargo/bin:$PATH"
+  fi
+  command -v cargo >/dev/null 2>&1 || die "PATH 里没有 cargo" "$PATH"
+
+  local target=aarch64-unknown-linux-musl
+  rustup target add "$target" >>"$W/build.log" 2>&1 || true
+
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$CC"
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-C target-feature=+crt-static"
+
+  rm -rf "$W/rgbin"
+  cargo install --locked --version "$ver" ripgrep --target "$target" --root "$W/rgbin" \
+    >>"$W/build.log" 2>&1 || { tail -40 "$W/build.log" >&2; die "ripgrep 编译失败" "$W/build.log"; }
+
+  local rgbin="$W/rgbin/bin/rg"
+  [ -x "$rgbin" ] || die "ripgrep 没产出 rg" "$W/rgbin/bin"
+  mkdir -p "$STAGE/bin"
+  cp "$rgbin" "$STAGE/bin/rg"
+  chmod 0755 "$STAGE/bin/rg"
+  SCOPE="bin"
+}
+
 build_make() {
   local ver; ver="$(ver_of make)"
   fetch_src make
@@ -440,10 +471,11 @@ case "$ID" in
   pkgconf) build_pkgconf ;;
   sqlite)  build_sqlite ;;
   git)     build_git ;;
+  ripgrep) build_ripgrep ;;
   cmake)   build_cmake ;;
   python)  build_python ;;
   node)    build_node ;;
-  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git cmake python node（在 $HERE/build-musl-piece.sh 里加分支）" ;;
+  *) die "这一件还没有 musl 构建分支" "现有：zlib openssl crypto curl bash busybox jq make pkgconf sqlite git ripgrep cmake python node（在 $HERE/build-musl-piece.sh 里加分支）" ;;
 esac
 
 VER="$(ver_of "$ID")"
