@@ -152,3 +152,38 @@ Residency（运行观测）  <- ProcessLedger，看哪些进程活着
 
 另：已装件数用 ProgramRegistry.listIds 白名单，不把运行中的内部 programId
 （ProgramStatusHub.snapshot 会额外带上）算进「已安装」。
+
+
+---
+
+## 8 两个遗留问题的标准答案（不需要人工决策）
+
+### 8.1 files/opt 下有 20 个目录、注册表只有 16 条
+
+按标准系统（dpkg/rpm）逻辑：**包数据库是唯一真相源**。
+`/var/lib/dpkg/status` 里没有的，就是"未安装"，即使文件系统上还留着目录。
+
+设备实测差异的 4 个目录：
+- node / python：10 月底的**旧 bionic 件**，有版本目录但无注册、无引用
+  （我们新编的 musl 版是另一回事，体积与时间都不同）
+- rootfs / sysroot：10 月底的系统内部目录（rootfs-shape.json / workdir / usr），无引用
+
+正确处置：
+1. 界面已按注册表显示 16 个（已做）—— 与标准一致
+2. 这 4 个目录是**孤儿数据**，留着无害（不占状态、不显示、无引用）
+3. **不引入自动删除机制**：标准包管理器（dpkg/rpm）不会自动删除 /opt 下的未知目录，
+   orphan 清理需要明确规则，误删风险大于收益。确需回收空间时，走显式的清理操作
+   （Cleanup 里已有"可清理项"框架），由用户确认后删，不自动执行。
+
+### 8.2 工具件显示什么状态
+
+按标准系统逻辑：**工具没有"运行状态"，只有 service 才有**。
+systemd 不会对 /usr/bin/git 问 status；只有 service unit 才有 active/inactive。
+
+正确表达：
+- 工具（shell/program，desired=STOPPED）：显示「未运行」= 可用但未执行。
+  这是准确表达 —— 工具按需执行，跑完就退，不存在"应该常驻"的语义。
+- 服务（desired=RUNNING）：才显示运行中/启动中/失败。
+
+已按此实现（stateLabel 按 desired 区分）。不需要改成"可用"——
+"未运行"就是标准系统里工具的准确状态，改了反而引入非标准语义。
