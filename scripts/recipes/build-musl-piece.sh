@@ -20,7 +20,9 @@ TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
 [ -x "$TC/clang" ] || die "NDK 里没有 clang" "$TC/clang"
 
 SYSROOT="${LOBOS_MUSL_SYSROOT:-$ROOT_DIR/work/musl-sysroot}"
-[ -f "$SYSROOT/usr/lib/crt1.o" ] || die "musl sysroot 没就位" "先跑 scripts/toolchain/musl-sysroot.sh"
+if [ "$ID" != "ripgrep" ]; then
+  [ -f "$SYSROOT/usr/lib/crt1.o" ] || die "musl sysroot 没就位" "先跑 scripts/toolchain/musl-sysroot.sh"
+fi
 
 CC="$ROOT_DIR/scripts/toolchain/musl-cc.sh"
 AR="$TC/llvm-ar"
@@ -375,8 +377,8 @@ build_ripgrep() {
   local target=aarch64-unknown-linux-musl
   rustup target add "$target" >>"$W/build.log" 2>&1 || true
 
-  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$CC"
-  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-C target-feature=+crt-static"
+  rustc --print target-libdir --target "$target" >/dev/null 2>&1 \
+    || die "rust 的 musl target 没装好" "$target"
 
   rm -rf "$W/rgbin"
   cargo install --locked --version "$ver" ripgrep --target "$target" --root "$W/rgbin" \
