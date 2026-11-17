@@ -198,8 +198,8 @@ build_busybox() {
     sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config || true
     make clean >/dev/null 2>&1 || true
     rm -f busybox busybox_unstripped
-    PATH="$XT:$PATH" make -j"$(nproc)" CROSS_COMPILE=aarch64-linux-musl- \
-      LDFLAGS="-Wl,--allow-multiple-definition" HOSTCC=gcc HOSTCFLAGS="-O2" >/dev/null 2>&1
+    PATH="$XT:$PATH" make CROSS_COMPILE=aarch64-linux-musl- \
+      LDFLAGS="-Wl,--allow-multiple-definition" HOSTCC=gcc HOSTCFLAGS="-O2" >"$W/build.log" 2>&1
     rm -rf "$INS"
     PATH="$XT:$PATH" make CROSS_COMPILE=aarch64-linux-musl- \
       LDFLAGS="-Wl,--allow-multiple-definition" \
