@@ -170,9 +170,8 @@ class SystemHomeActivity : Activity() {
         col.addView(Ui.verticalGap(host, 8))
         col.addView(infoCard(host, "组件",
             "已装 " + rep.installedCount + " 个",
-            if (rep.noRecordCount > 0) rep.noRecordCount.toString() + " 个缺安装记录"
-            else if (rep.upgradableCount > 0) rep.upgradableCount.toString() + " 个可更新"
-            else "都是最新",
+            if (rep.upgradableCount > 0) rep.upgradableCount.toString() + " 个可更新"
+            else "查看状态",
             SystemComponentsActivity::class.java))
         col.addView(Ui.verticalGap(host, 8))
         col.addView(infoCard(host, "故障与修复",

@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
 import org.json.JSONArray
-import lobos.services.reg.ProgramIndex
+import lobos.services.reg.ProgramStatusHub
 import lobos.services.supply.CatalogClient
 import lobos.services.supply.InstallGuard
 
@@ -103,25 +103,57 @@ class SystemComponentsActivity : Activity() {
     data class Facts(val installed: List<Row>, val available: List<Row>)
 
     companion object {
+        private fun roleLabel(role: String): String = when (role) {
+            "shell" -> "命令环境"
+            "library" -> "库"
+            "service" -> "服务"
+            "program" -> "程序"
+            else -> role
+        }
+
+        private fun stateLabel(active: String, sub: String, load: String): String {
+            if (load != "LOADED") return when (load) {
+                "NOT_FOUND" -> "未找到"
+                "BAD_SETTING" -> "配置有误"
+                "ERROR" -> "装载异常"
+                else -> "装载异常"
+            }
+            return when (sub) {
+                "RUNNING" -> "运行中"
+                "STARTING" -> "启动中"
+                "STOPPING" -> "停止中"
+                "FAILED" -> "运行失败"
+                "DEGRADED" -> "状态异常"
+                "DEAD" -> "已停止"
+                "NA" -> when (active) {
+                    "ACTIVE" -> "已就位"
+                    "FAILED" -> "异常"
+                    else -> "就绪"
+                }
+                else -> when (active) {
+                    "ACTIVE" -> "已启用"
+                    "INACTIVE" -> "未运行"
+                    "ACTIVATING" -> "启动中"
+                    "DEACTIVATING" -> "停止中"
+                    "FAILED" -> "异常"
+                    else -> active
+                }
+            }
+        }
+
         fun gather(ctx: Context): Facts {
-            val ledger = InstallGuard.all(ctx)
             val installed = ArrayList<Row>()
-            val index = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
-            for (e in index) {
-                val meta = ledger[e.id]
-                val ver = meta?.optString("version")?.takeIf { it.isNotBlank() }
-                    ?: e.version.takeIf { it.isNotBlank() } ?: "未知"
-                val bytes = meta?.optLong("bytes", 0L) ?: 0L
+            val statuses = runCatching { ProgramStatusHub.snapshot(ctx) }.getOrDefault(emptyList())
+            for (s in statuses) {
+                val ver = s.version?.takeIf { it.isNotBlank() } ?: "未知版本"
                 val sub = buildString {
                     append("v").append(ver)
-                    if (bytes > 0) append(" · 已占 ").append(InstallGuard.human(bytes))
+                    if (s.role.isNotBlank()) append(" · ").append(roleLabel(s.role))
                 }
-                val noRecord = meta == null
-                installed.add(Row(e.id, sub, if (noRecord) "缺记录" else "", noRecord, true))
-            }
-            for ((id, meta) in ledger) {
-                if (index.any { it.id == id }) continue
-                installed.add(Row(id, "v" + meta.optString("version", "未知"), "不在索引里", true, true))
+                val stateLabel = stateLabel(s.active.name, s.sub.name, s.load.name)
+                val bad = s.load.name != "LOADED" || s.active.name == "FAILED" ||
+                    s.sub.name == "FAILED" || s.sub.name == "DEGRADED"
+                installed.add(Row(s.id, sub, stateLabel, bad, true))
             }
             val available = ArrayList<Row>()
             val entries: JSONArray = runCatching { CatalogClient.entries(ctx) }.getOrDefault(JSONArray())

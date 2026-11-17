@@ -22,27 +22,26 @@ object HealthCheck {
 
     fun run(ctx: Context): Result {
         val items = ArrayList<Item>()
-        val ledger = InstallGuard.all(ctx)
-        val index = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
+        val statuses = runCatching { lobos.services.reg.ProgramStatusHub.snapshot(ctx) }.getOrDefault(emptyList())
 
-        val installedOk = index.isNotEmpty()
+        val installedOk = statuses.isNotEmpty()
         items.add(Item(
             "组件就位",
             installedOk,
-            if (installedOk) "已登记 " + index.size + " 个组件"
+            if (installedOk) "已登记 " + statuses.size + " 个组件"
             else "还没有任何组件，系统无法提供服务",
             if (installedOk) Action.NONE else Action.COMPONENTS,
             if (installedOk) "" else "去安装",
         ))
 
-        val noRecord = index.count { !ledger.containsKey(it.id) }
+        val bad = statuses.filter { it.load.name != "LOADED" || it.sub.name == "FAILED" || it.sub.name == "DEGRADED" }
         items.add(Item(
-            "安装记录",
-            noRecord == 0,
-            if (noRecord == 0) "每个组件都有安装记录"
-            else noRecord.toString() + " 个组件缺少安装记录（重装一次即可补上）",
-            if (noRecord == 0) Action.NONE else Action.COMPONENTS,
-            if (noRecord == 0) "" else "查看组件",
+            "组件装载",
+            bad.isEmpty(),
+            if (bad.isEmpty()) "所有组件装载正常"
+            else bad.joinToString("、") { it.id } + " 状态异常",
+            if (bad.isEmpty()) Action.NONE else Action.COMPONENTS,
+            if (bad.isEmpty()) "" else "查看组件",
         ))
 
         val free = InstallGuard.freeBytes(ctx.filesDir)
