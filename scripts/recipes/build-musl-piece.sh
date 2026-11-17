@@ -203,8 +203,11 @@ build_busybox() {
       LDFLAGS="-Wl,--allow-multiple-definition" HOSTCC=gcc HOSTCFLAGS="-O2" \
       CONFIG_PREFIX="$INS" install >>"$W/build.log" 2>&1
   ) || die "busybox 编不出来" "$SRC"
-  "$READELF" -h "$SRC/busybox" 2>/dev/null | grep -qi 'AArch64' \
-    || die "busybox 编成了别的架构" "产物不是 AArch64（说明构建没用上我们的工具链）：$SRC/busybox"
+  local arch_line
+  arch_line="$("$READELF" -h "$SRC/busybox" 2>&1 | grep -i machine || true)"
+  echo "[arch] readelf=$READELF machine='$arch_line'" >>"$W/build.log"
+  echo "$arch_line" | grep -qi 'AArch64' \
+    || die "busybox 编成了别的架构" "readelf=$READELF machine='$arch_line'；产物：$SRC/busybox"
   mkdir -p "$STAGE/bin"
   cp "$SRC/busybox" "$STAGE/bin/libbusybox.so"
   chmod 0755 "$STAGE/bin/libbusybox.so"
