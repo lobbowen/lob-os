@@ -82,10 +82,19 @@ class SystemInstallActivity : Activity() {
 
         when {
             plan.installed -> {
-                body.addView(Ui.primaryButton(host, "已安装") {
-                    Toast.makeText(host, plan.title + " 已就位", Toast.LENGTH_SHORT).show()
+                body.addView(Ui.text(host, "已安装 · 当前 " + plan.currentVersion, Ui.OK, 13f))
+                body.addView(Ui.verticalGap(host, 8))
+                body.addView(Ui.outlineButton(host, "重新安装") { beginInstall(plan.name) })
+                body.addView(Ui.verticalGap(host, 8))
+                body.addView(Ui.outlineButton(host, "卸载") {
+                    thread(name = "lobos-uninstall") {
+                        val ok = runCatching { lobos.services.supply.PackageInstaller.uninstall(host, plan.name) }.getOrDefault(false)
+                        runOnUiThread {
+                            Toast.makeText(host, if (ok) "已卸载" else "卸载失败（可能是基础组件）", Toast.LENGTH_SHORT).show()
+                            render()
+                        }
+                    }
                 })
-                body.addView(Ui.text(host, "当前 " + plan.currentVersion, Ui.OK, 13f))
             }
             !plan.canStart -> {
                 body.addView(Ui.primaryButton(host, "空间不足") { })
