@@ -166,13 +166,22 @@ case "$NEEDED" in
 esac
 note "NEEDED: ${NEEDED:-（无）}"
 
-BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
-      | while read -r a; do
-          case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
-          d=$((a))
-          if [ "$d" -eq 0 ]; then continue; fi
-          if [ $(( d % 16384 )) -ne 0 ]; then printf ' %s' "$a"; fi
-        done)"
+BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null \
+      | python3 -c '
+import sys
+segs = []
+for line in sys.stdin:
+    p = line.split()
+    if not p or p[0] != "LOAD":
+        continue
+    try:
+        v = int(p[-1], 16)
+    except ValueError:
+        continue
+    if v and v % 16384:
+        segs.append(p[-1])
+print(" ".join(segs))
+')"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
