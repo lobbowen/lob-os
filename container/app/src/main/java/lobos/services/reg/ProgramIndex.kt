@@ -29,6 +29,7 @@ data class UnitEntry(
         val files: List<FileRec> = emptyList(),
 
         val requires: List<String> = emptyList(),
+        val runtimeBindings: Map<String, lobos.services.supply.RuntimeBinding> = emptyMap(),
         val after: List<String> = emptyList(),
         val conflicts: List<String> = emptyList(),
 
@@ -137,6 +138,9 @@ object ProgramIndex {
         }
 
         put("requires", JSONArray(e.requires))
+        put("runtimeBindings", JSONObject().apply {
+            for ((k, v) in e.runtimeBindings) put(k, v.toJson())
+        })
         put("after", JSONArray(e.after))
         put("conflicts", JSONArray(e.conflicts))
 
@@ -148,7 +152,7 @@ object ProgramIndex {
         put("httpPort", e.httpPort)
         put("httpHealth", e.httpHealth)
         put("capabilities", JSONArray(e.capabilities))
-        put("env", JSONObject(e.env.toMap()).toString())
+        put("env", JSONObject(e.env.toMap()))
 
         put("uiPackage", e.uiPackage)
         put("uiName", e.uiName)
@@ -193,6 +197,14 @@ object ProgramIndex {
                 }
             } ?: emptyList(),
             requires = strArray("requires"),
+            runtimeBindings = runCatching {
+                val rb = o.optJSONObject("runtimeBindings")
+                val out = LinkedHashMap<String, lobos.services.supply.RuntimeBinding>()
+                if (rb != null) for (k in rb.keys()) {
+                    lobos.services.supply.RuntimeBinding.fromJson(rb.optJSONObject(k))?.let { out[k] = it }
+                }
+                out
+            }.getOrDefault(emptyMap()),
             after = strArray("after"),
             conflicts = strArray("conflicts"),
             resident = o.optBoolean("resident", false),
@@ -203,9 +215,14 @@ object ProgramIndex {
             httpPort = o.optInt("httpPort", 0),
             httpHealth = o.optString("httpHealth", ""),
             capabilities = strArray("capabilities"),
-            env = o.optJSONObject("env")?.let { m ->
-                m.keys().asSequence().associateWith { k -> m.optString(k, "") }
-            } ?: emptyMap(),
+            env = runCatching {
+                o.optJSONObject("env")?.let { m ->
+                    m.keys().asSequence().associateWith { k -> m.optString(k, "") }
+                } ?: o.optString("env", "").takeIf { it.isNotBlank() }?.let { raw ->
+                    val m = JSONObject(raw)
+                    m.keys().asSequence().associateWith { k -> m.optString(k, "") }
+                } ?: emptyMap()
+            }.getOrDefault(emptyMap()),
             uiPackage = o.optString("uiPackage", ""),
             uiName = o.optString("uiName", ""),
             uiIcon = o.optString("uiIcon", ""),
@@ -228,7 +245,9 @@ object ProgramIndex {
         for (v in f.listFiles() ?: return false) {
             val m = File(v, "component-meta.json")
             if (!m.isFile) continue
-            val a = runCatching { JSONObject(m.readText()).optJSONArray("roles") }.getOrNull() ?: continue
+            val meta = runCatching { JSONObject(m.readText()) }.getOrNull() ?: continue
+            if (meta.optString("role", "") == role) return true
+            val a = runCatching { meta.optJSONArray("roles") }.getOrNull() ?: continue
             for (i in 0 until a.length()) if (a.optString(i) == role) return true
         }
         return false

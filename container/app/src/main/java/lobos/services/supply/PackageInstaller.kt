@@ -205,28 +205,26 @@ object PackageInstaller {
         val runtime = req.optString("name", "").trim()
         if (runtime.isBlank()) return null
         val range = req.optString("range", "").trim()
-        var installed = currentRuntime(ctx, runtime)
-        if (installed != null && range.isNotBlank() && !VersionRange.satisfies(installed, range)) {
-            return "运行时 " + runtime + " 版本不满足 " + range + "（当前 " + installed + "）"
+        val packageName = entry.optString("name", "").ifBlank { entry.optString("id", "") }
+
+        val installed = RuntimeResolver.installedVersions(ctx, runtime)
+        val compatible = installed.filter { range.isBlank() || VersionRange.satisfies(it, range) }
+        if (compatible.isNotEmpty()) return null
+
+        if (depth >= 2) {
+            return "运行时 " + runtime + (if (range.isBlank()) "" else "（需要 " + range + "）") +
+                "：已装 " + installed.size + " 个版本均不满足；请先安装兼容版本"
         }
-        if (installed == null) {
-            if (depth >= 2) {
-                return "需要先安装运行时 " + runtime +
-                    (if (range.isBlank()) "" else "（" + range + "）") +
-                    "；自动安装没有继续下去（层级太深），请先单独安装 " + runtime
-            }
-            val dep = runCatching { install(ctx, runtime, null, depth + 1) }.getOrNull()
-            if (dep == null || !dep.optBoolean("ok", false)) {
-                val why = dep?.optString("detail", "")?.takeIf { it.isNotBlank() } ?: "自动安装失败"
-                return "需要运行时 " + runtime + "，自动安装没成功：" + why + "。可以先单独安装 " + runtime + " 再重试。"
-            }
-            installed = currentRuntime(ctx, runtime)
-            if (installed == null) {
-                return "运行时 " + runtime + " 自动安装后仍读不到，请重试或先单独安装它。"
-            }
+        val dep = runCatching { install(ctx, runtime, null, depth + 1) }.getOrNull()
+        if (dep == null || !dep.optBoolean("ok", false)) {
+            val why = dep?.optString("detail", "")?.takeIf { it.isNotBlank() } ?: "自动安装失败"
+            return "需要运行时 " + runtime + (if (range.isBlank()) "" else "（" + range + "）") +
+                "；已装版本均不满足，自动安装也没成功：" + why
         }
-        if (range.isNotBlank() && !VersionRange.satisfies(installed!!, range)) {
-            return "运行时 " + runtime + " 版本不满足 " + range + "（当前 " + installed + "）"
+        val after = RuntimeResolver.installedVersions(ctx, runtime)
+            .filter { range.isBlank() || VersionRange.satisfies(it, range) }
+        if (after.isEmpty()) {
+            return "运行时 " + runtime + " 自动安装后仍无满足 " + range + " 的版本，请检查已装版本。"
         }
         return null
     }

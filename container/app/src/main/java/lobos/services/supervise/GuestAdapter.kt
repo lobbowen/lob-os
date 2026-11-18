@@ -30,6 +30,34 @@ object GuestAdapter {
 
     const val BRIDGE_SOCKET = "lobos_hostbridge"
 
+    private fun applyRuntimeBindings(env: MutableMap<String, String>, i: ProgramInputs) {
+        if (i.programId.isBlank()) return
+        val bindings = runCatching {
+            lobos.services.reg.ProgramIndex.get(i.ctx, i.programId)?.runtimeBindings
+        }.getOrNull() ?: return
+        if (bindings.isEmpty()) return
+        val opt = java.io.File(i.ctx.filesDir, "opt")
+        val bins = ArrayList<String>()
+        val libs = ArrayList<String>()
+        for ((runtime, binding) in bindings) {
+            val ver = binding.resolved
+            if (runtime.isBlank() || ver.isBlank()) continue
+            val base = java.io.File(java.io.File(opt, runtime), ver)
+            val bin = java.io.File(base, "bin")
+            val lib = java.io.File(base, "lib")
+            if (bin.isDirectory) bins.add(bin.absolutePath)
+            if (lib.isDirectory) libs.add(lib.absolutePath)
+        }
+        if (bins.isNotEmpty()) {
+            val cur = env["PATH"] ?: ""
+            env["PATH"] = (bins + listOf(cur)).filter { it.isNotBlank() }.joinToString(":")
+        }
+        if (libs.isNotEmpty()) {
+            val cur = env["LD_LIBRARY_PATH"] ?: ""
+            env["LD_LIBRARY_PATH"] = (libs + listOf(cur)).filter { it.isNotBlank() }.joinToString(":")
+        }
+    }
+
     fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan {
 
         val entryArgv = requireNotNull(
@@ -42,6 +70,7 @@ object GuestAdapter {
             cwd = i.programDir,
             env = buildMap {
                 putAll(lobos.services.reg.RuntimeEnvironment.treeRootEnv(i.ctx, i.root, inheritedPath))
+                applyRuntimeBindings(this, i)
                 put("LOBOS_BRIDGE_SOCKET", BRIDGE_SOCKET)
                 if (!i.sessionToken.isNullOrBlank()) put("LOBOS_SESSION_TOKEN", i.sessionToken)
                 put("LOBOS_PERMISSION_MODE", "danger-full-access")

@@ -185,3 +185,49 @@ ProgramIndex 条目（新增 runtimeBindings）：
 - Android 原生是否有类似 application-specific runtime 选择机制：未单独取证
 - native exec-path.c 之外是否有其它按应用版本逻辑：仓内零命中，不排除外部 patch
 - 三版本同时安装时 LdConfig 对同名 SONAME 的歧义判定：需实测
+
+
+---
+
+## 9 实施中查实的三块地基（必须先修，否则上面全是空中楼阁）
+
+调查（linux-architect）实读代码发现三处与本文假设冲突的地基问题，逐条记录并定处置：
+
+### 9.1 「运行时」角色今天读不出来
+
+`ProgramIndex.declaresRole()`（ProgramIndex.kt:242-250）读的是 component-meta.json 的
+`roles` 数组，但该数组在 commit 1ea91856 被删除（理由：自报字段不可信）。
+实读真件 component-meta.json 只有单值 `role`（如 "program"），无 `roles`。
+结论：`programRuntime()` 今天恒返空，"运行时"角色无法被机械识别。
+
+处置：`declaresRole` 改为读单值 `role`，并新增一个"运行时"声明判据。
+不复活 roles 数组（它是被有意删掉的自报字段）。判别形式：
+"这一件是不是运行时"必须落在 component-meta.json 的一个机器可读字段上。
+具体形态（role 扩多值 vs 另起 kind:runtime）由规范裁决，本文先记判别形式。
+
+### 9.2 构建侧今天是"三个独立件名"，与本文"一件名多版本"冲突
+
+当前构建把 3.14/3.12/3.11 做成三个钉值键（python / python-3.12 / python-3.11），
+tag 分别是 rt-python / rt-python-3.12 / rt-python-3.11 —— 即三个件名，
+落位在 opt/python/、opt/python-3.12/、opt/python-3.11/。
+而本文的 Resolver / activate / requires 版本区间全部假设"一件名 python + opt/python/<ver>/"。
+
+处置（按用户已定的产品语义"默认最高版 + 应用可选 + requires 版本区间"）：
+统一到"一件名 python + 多版本目录 opt/python/<ver>/"。
+构建侧改：三个版本共用件名 python，版本差异进 versions[] 与目录名，
+不进件名。这样 requires 的"名 + 版本区间"、Resolver、activate 才自洽。
+"承认三个件名 + 扩展 activate 认后缀"那条路不采用——它会让 VersionRange 语义失效。
+
+### 9.3 一份声明里的回退链
+
+照 asdf（版本有序列表，首选 + 回退），应用声明可带有序版本列表；
+解析层先满足首选，不满足按声明里的回退项，最后才报缺。
+该形态进 §4 数据模型的 requires 结构（range 扩为有序候选）。
+
+### 9.4 调查保留的范围问题（本文的处置）
+
+- 一件能否同时装多版本：数据结构允许（opt/<id>/ 下多版本目录），
+  本文按"允许"设计，并用设备实测确认。
+- Android 原生是否有 application-specific runtime 选择机制：未取证，
+  不影响本文（我们要新做这一层）。
+- native exec-path.c 之外是否有按应用版本逻辑：仓内零命中，不混入本文。

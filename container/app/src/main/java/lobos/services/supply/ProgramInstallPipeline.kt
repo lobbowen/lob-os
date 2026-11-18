@@ -718,6 +718,9 @@ object ProgramInstallPipeline {
                       assetEntry = if (isLibrary) "" else entryRel,
                       role = role,
                       requires = meta.requires(),
+                      runtimeBindings = lobos.services.supply.RuntimeResolver.resolve(
+                          context, spec.programId, meta.requires(),
+                      ),
                       required = meta.requiredOr(false),
                       invalid = base.invalid,
 
