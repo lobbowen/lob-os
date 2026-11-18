@@ -200,6 +200,11 @@ for lib in ffi ssl crypto sqlite3 bz2 lzma zstd; do
     cp -a "$src" "$OUT/lib/" 2>/dev/null || true
   done
 done
+LDLIB="$(grep -oE 'LDLIBRARY=[^ ]+' "$BUILD/Makefile" 2>/dev/null | head -1 | cut -d= -f2)"
+if [ "$LDLIB" = "libpython${SRC_VER%.*}.a" ]; then
+  ln -sf ../bin/"$TOOL" "$OUT/lib/$LDLIB"
+  note "静态 python：lib/$LDLIB -> bin/$TOOL（供 ctypes.PyDLL 加载主程序符号）"
+fi
 N_SHARED=$(find "$OUT/lib" -maxdepth 1 -name '*.so*' 2>/dev/null | wc -l)
 note "共享库随件: lib/（$N_SHARED 项 —— libffi/ssl/crypto/sqlite3/bz2/lzma/zstd）"
 
