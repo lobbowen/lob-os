@@ -54,9 +54,11 @@ for (const e of out) {
   }
 }
 
+const DEFERRED = new Set(['llvm']);
+
 const withBucket = process.argv.includes('--buckets');
 if (withBucket) {
-  for (const [name, bucket] of seen) process.stdout.write(name + '\t' + bucket + '\n');
+  for (const [name, bucket] of seen) if (!DEFERRED.has(name)) process.stdout.write(name + '\t' + bucket + '\n');
 } else {
-  for (const [name] of seen) process.stdout.write(name + '\n');
+  for (const [name] of seen) if (!DEFERRED.has(name)) process.stdout.write(name + '\n');
 }
