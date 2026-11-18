@@ -51,7 +51,7 @@ jobs:
         slot: ${{ inputs.slot != '' && fromJSON(format('["{0}"]', inputs.slot)) || fromJSON('["python","python-3.12","python-3.11"]') }}
     env:
       SLOT: ${{ matrix.slot }}
-      PY_SLOT: ${{ matrix.slot == 'python' && '' || matrix.slot }}
+      PY_SLOT: ${{ matrix.slot == 'python' && '' || (matrix.slot == 'python-3.12' && '3.12' || '3.11') }}
       BUILD_KEY: ${{ matrix.slot }}
     timeout-minutes: 60
     steps:
