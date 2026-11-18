@@ -182,6 +182,7 @@ for line in sys.stdin:
         segs.append(p[-1])
 print(" ".join(segs))
 ')"
+note "16KB 对齐检查 BAD='$BAD'（空即合格）"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
