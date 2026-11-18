@@ -127,6 +127,8 @@ jobs:
           OUT: dist/$BUILD_KEY
         run: bash scripts/recipes/build-component-python3.sh
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
+        env:
+          OUT: dist/$BUILD_KEY
         run: bash scripts/verify/verify-component-artifact.sh "$BUILD_KEY"
       - name: 打包 + sha256
         run: OUT="dist/$BUILD_KEY" bash scripts/recipes/package-component.sh "$BUILD_KEY"
