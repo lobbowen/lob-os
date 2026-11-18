@@ -116,6 +116,8 @@ object RuntimeEnvironment {
                 if (!verDir.isDirectory) continue
                 val lib = File(verDir, "lib")
                 if (lib.isDirectory) dirs.add(lib.absolutePath)
+                val bin = File(verDir, "bin")
+                if (bin.isDirectory) dirs.add(bin.absolutePath)
             }
         }
         return dirs.joinToString(":")
