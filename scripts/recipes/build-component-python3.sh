@@ -200,7 +200,7 @@ for lib in ffi ssl crypto sqlite3 bz2 lzma zstd; do
     cp -a "$src" "$OUT/lib/" 2>/dev/null || true
   done
 done
-LDLIB="$(grep -oE 'LDLIBRARY=[^ ]+' "$BUILD/Makefile" 2>/dev/null | head -1 | cut -d= -f2)"
+LDLIB="$({ grep -oE 'LDLIBRARY=[[:space:]]*[^ ]+' "$BUILD/Makefile" 2>/dev/null || true; } | head -1 | sed 's/.*=[[:space:]]*//')"
 if [ "$LDLIB" = "libpython${SRC_VER%.*}.a" ]; then
   ln -sf ../bin/"$TOOL" "$OUT/lib/$LDLIB"
   note "静态 python：lib/$LDLIB -> bin/$TOOL"
