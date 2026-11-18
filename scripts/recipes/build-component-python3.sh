@@ -166,23 +166,13 @@ case "$NEEDED" in
 esac
 note "NEEDED: ${NEEDED:-（无）}"
 
-BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null \
-      | python3 -c '
-import sys
-segs = []
-for line in sys.stdin:
-    p = line.split()
-    if not p or p[0] != "LOAD":
-        continue
-    try:
-        v = int(p[-1], 16)
-    except ValueError:
-        continue
-    if v and v % 16384:
-        segs.append(p[-1])
-print(" ".join(segs))
-')"
-note "16KB 对齐检查 BAD='$BAD'（空即合格）"
+BAD="$("$LLVM_READELF" -W -l "$OUT/bin/$TOOL" 2>/dev/null | awk '/^[[:space:]]*LOAD/{print $NF}' \
+      | while read -r a; do
+          case "$a" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
+          d=$((a))
+          if [ "$d" -eq 0 ]; then continue; fi
+          if [ $(( d % 16384 )) -ne 0 ]; then printf ' %s' "$a"; fi
+        done)"
 [ -z "$BAD" ] || die "16KB 对齐不合格" "这些 LOAD 段：$BAD"
 
 make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
@@ -213,7 +203,7 @@ done
 LDLIB="$(grep -oE 'LDLIBRARY=[^ ]+' "$BUILD/Makefile" 2>/dev/null | head -1 | cut -d= -f2)"
 if [ "$LDLIB" = "libpython${SRC_VER%.*}.a" ]; then
   ln -sf ../bin/"$TOOL" "$OUT/lib/$LDLIB"
-  note "静态 python：lib/$LDLIB -> bin/$TOOL（供 ctypes.PyDLL 加载主程序符号）"
+  note "静态 python：lib/$LDLIB -> bin/$TOOL"
 fi
 N_SHARED=$(find "$OUT/lib" -maxdepth 1 -name '*.so*' 2>/dev/null | wc -l)
 note "共享库随件: lib/（$N_SHARED 项 —— libffi/ssl/crypto/sqlite3/bz2/lzma/zstd）"
