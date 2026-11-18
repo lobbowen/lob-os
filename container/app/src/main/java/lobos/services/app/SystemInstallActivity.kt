@@ -58,9 +58,16 @@ class SystemInstallActivity : Activity() {
 
         if (plan.versions.isNotEmpty()) {
             val vcard = Ui.card(host)
-            vcard.addView(Ui.text(host, "可选版本", Ui.TEXT, 14f, bold = true))
+            vcard.addView(Ui.text(host, "版本", Ui.TEXT, 14f, bold = true))
             for (v in plan.versions) {
-                vcard.addView(Ui.text(host, "  · " + v, Ui.TEXT2, 13f))
+                val isCurrent = v == plan.currentVersion
+                val isInstalled = plan.installedVersions.contains(v)
+                val label = if (isCurrent) "$v  ·  当前" else if (isInstalled) "$v  ·  已装" else "$v  ·  未安装"
+                val color = if (isCurrent) Ui.OK else if (isInstalled) Ui.ACCENT else Ui.TEXT3
+                vcard.addView(Ui.text(host, "  · $label", color, 13f))
+                if (isInstalled && !isCurrent) {
+                    vcard.addView(Ui.outlineButton(host, "切换到 $v") { beginActivate(plan.name, v) })
+                }
             }
             body.addView(vcard)
             body.addView(Ui.verticalGap(host, 12))
@@ -129,6 +136,23 @@ class SystemInstallActivity : Activity() {
         }
     }
 
+    private fun beginActivate(name: String, version: String) {
+        if (name.isBlank() || version.isBlank()) return
+        val host = this
+        busy = true
+        render()
+        thread(name = "lobos-activate") {
+            val r = runCatching { lobos.services.supply.PackageInstaller.activate(host, name, version) }.getOrNull()
+            val ok = r?.optBoolean("ok", false) == true
+            val msg = if (ok) "已切换到 $version" else "切换失败：" + (r?.optString("detail", "") ?: "未知原因")
+            runOnUiThread {
+                busy = false
+                Toast.makeText(host, msg, Toast.LENGTH_SHORT).show()
+                render()
+            }
+        }
+    }
+
     private fun beginInstall(name: String) {
         if (name.isBlank()) return
         busy = true
@@ -150,15 +174,16 @@ class SystemInstallActivity : Activity() {
         val canStart: Boolean,
         val installed: Boolean,
         val currentVersion: String,
+        val installedVersions: List<String>,
     ) {
         companion object {
             fun of(ctx: Context, name: String): Plan {
                 if (name.isBlank()) {
-                    return Plan("", "没有选中应用", "从商店里选一个再进来。", "", "", emptyList(), false, false, "")
+                    return Plan("", "没有选中应用", "从商店里选一个再进来。", "", "", emptyList(), false, false, "", emptyList())
                 }
                 val entry: JSONObject? = runCatching { CatalogClient.entryFor(ctx, name) }.getOrNull()
                 if (entry == null) {
-                    return Plan(name, name, "清单里没有这个应用。", "", "先刷新一次可用清单。", emptyList(), false, false, "")
+                    return Plan(name, name, "清单里没有这个应用。", "", "先刷新一次可用清单。", emptyList(), false, false, "", emptyList())
                 }
                 val versions = ArrayList<String>()
                 entry.optJSONArray("versions")?.let { arr ->
@@ -190,7 +215,11 @@ class SystemInstallActivity : Activity() {
                 val idx = runCatching { ProgramIndex.all(ctx).firstOrNull { it.id == name } }.getOrNull()
                 val installed = idx != null
                 val currentVersion = idx?.version.orEmpty().ifBlank { "—" }
-                return Plan(name, name, summary, depsLine, spaceLine, versions, canStart, installed, currentVersion)
+                val installedVersions = runCatching {
+                    lobos.services.supply.ProgramDir(ctx, name, lobos.services.reg.ProgramManager.stateDirOf(ctx, name))
+                        .installedVersions()
+                }.getOrDefault(emptyList())
+                return Plan(name, name, summary, depsLine, spaceLine, versions, canStart, installed, currentVersion, installedVersions)
             }
         }
     }

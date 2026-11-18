@@ -85,6 +85,42 @@ object PackageInstaller {
         runCatching { ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name)).currentVersion() }
             .getOrNull()
 
+    @Synchronized
+    fun activate(ctx: Context, name: String, version: String): JSONObject {
+        val pd = ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name))
+        if (version.isBlank()) return fail(ctx, name, "激活失败：版本为空")
+        if (version !in pd.installedVersions()) {
+            return fail(ctx, name, "激活失败：版本 $version 未安装（已装 " +
+                pd.installedVersions().joinToString(",") + "）")
+        }
+        val dest = pd.programDir(version)
+        val metaFile = File(dest, "component-meta.json")
+        val meta = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
+            ?: return fail(ctx, name, "激活失败：目标版本没有 component-meta.json")
+        val entryRel = meta.optString("entry", "").takeIf { it.isNotBlank() }
+            ?: return fail(ctx, name, "激活失败：目标版本没有 entry")
+
+        val bin = PrefixProvisioner.binDir(ctx)
+        val target = File(dest, entryRel)
+        for (linkName in linkNames(entryRel, meta.optJSONArray("aliases"))) {
+            val link = File(bin, linkName)
+            runCatching {
+                if (link.exists() || java.nio.file.Files.isSymbolicLink(link.toPath())) link.delete()
+                java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
+            }.onFailure {
+                return fail(ctx, name, "激活失败：重建入口 $linkName 失败（${it.message ?: it.javaClass.simpleName}）")
+            }
+        }
+        pd.setCurrentVersion(version)
+        lobos.kernel.layout.LdConfig.run(ctx)
+        Journal.note(ctx, "package", true, "已激活版本", "name=$name version=$version")
+        return JSONObject().apply {
+            put("ok", true)
+            put("name", name)
+            put("version", version)
+        }
+    }
+
     fun ownsPackageRollback(ctx: Context, name: String): Boolean {
 
         return ProgramManager.relStateDir(ctx, name).isNotBlank()
