@@ -1,10 +1,15 @@
 name: Build Component · python3（运行时筐）
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '只编某个槽位（留空编全部：python / python-3.12 / python-3.11）'
+        required: false
+        default: ''
 
 concurrency:
-  group: python3-${{ github.ref }}
+  group: python3-${{ github.ref }}-${{ inputs.slot }}
   cancel-in-progress: true
 
 permissions:
@@ -40,6 +45,14 @@ jobs:
   build:
     needs: resolve
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: ${{ inputs.slot != '' && fromJSON(format('["{0}"]', inputs.slot)) || fromJSON('["python","python-3.12","python-3.11"]') }}
+    env:
+      SLOT: ${{ matrix.slot }}
+      PY_SLOT: ${{ matrix.slot == 'python' && '' || matrix.slot }}
+      BUILD_KEY: ${{ matrix.slot }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +69,7 @@ jobs:
       - name: 把宿主 CPython 放进 PATH（仅 python3 件真正需要）
         run: |
           set -uo pipefail
-          WANT="$(bash scripts/toolchain/fetch-pinned.sh --src-version python 2>/dev/null || true)"
+          WANT="$(bash scripts/toolchain/fetch-pinned.sh --src-version "$BUILD_KEY" 2>/dev/null || true)"
           WANT="${WANT%.*}"
           [ -n "$WANT" ] || exit 0
           for d in /opt/hostedtoolcache/Python/$WANT.*/x64/bin; do
@@ -65,11 +78,16 @@ jobs:
             echo "[python] 已把 $d 加入 PATH"
             exit 0
           done
-          echo "::notice title=未找到宿主 python$WANT::runner 的 Cached Tools 里没有 $WANT。python3 件会自己判红并说明怎么修（可传 BUILD_PYTHON=…）。"
+          echo "::notice title=未找到宿主 python$WANT::用 setup-python 补装 $WANT"
+      - name: 确保宿主 CPython $WANT 可用
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.slot == 'python' && '3.14' || (matrix.slot == 'python-3.12' && '3.12' || '3.11') }}
+          allow-prereleases: true
       - name: 算本件的固化标识（key / tag / asset）
         id: uwkey
         run: |
-          bash scripts/toolchain/piece-key.sh python
+          bash scripts/toolchain/piece-key.sh "$BUILD_KEY"
       - name: 已发布就复用（不重编）
         id: reuse
         env:
@@ -83,10 +101,10 @@ jobs:
                   --pattern "$ASSET" --dir dist >/dev/null 2>&1 \
              && [ -f "dist/$ASSET" ]; then
             echo "[ok] 预制品已存在，直接复用：$ASSET（tag=$TAG）"
-            mv "dist/$ASSET" "dist/component-python3.zip"
-            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-python3.zip.sha256" || true
-            rm -f dist/component-python-*.zip
-            bash scripts/toolchain/unpack-piece.sh "dist/component-python3.zip" dist
+            mv "dist/$ASSET" "dist/component-$BUILD_KEY.zip"
+            [ -f "dist/$ASSET.sha256" ] && mv "dist/$ASSET.sha256" "dist/component-$BUILD_KEY.zip.sha256" || true
+            rm -f "dist/component-$BUILD_KEY.zip"
+            bash scripts/toolchain/unpack-piece.sh "dist/component-$BUILD_KEY.zip" dist
             ls -la dist/ | sed 's/^/  /'
             echo "hit=yes" >> "$GITHUB_OUTPUT"
           else
@@ -98,24 +116,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            work/python
-            dist/component-python3.zip
+            work/$BUILD_KEY
+            dist/component-$BUILD_KEY.zip
           key: ${{ steps.uwkey.outputs.key }}
       - name: 产出 python3 件（仅在需要编时）
         if: steps.reuse.outputs.hit != 'yes'
+        env:
+          PY_SLOT: ${{ env.PY_SLOT }}
+          PY_VERSION: ${{ matrix.slot == 'python' && '3.14.8' || (matrix.slot == 'python-3.12' && '3.12.10' || '3.11.13') }}
+          OUT: dist/$BUILD_KEY
         run: bash scripts/recipes/build-component-python3.sh
       - name: 件形态校验（aarch64 动态件 / 解释器入口形状）
-        run: bash scripts/verify/verify-component-artifact.sh python
+        run: bash scripts/verify/verify-component-artifact.sh "$BUILD_KEY"
       - name: 打包 + sha256
-        run: bash scripts/recipes/package-component.sh python
+        run: OUT="dist/$BUILD_KEY" bash scripts/recipes/package-component.sh "$BUILD_KEY"
       - name: 存回编译中间产物（供下一轮增量编）
         if: always()
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: |
-            work/python
-            dist/component-python3.zip
+            work/$BUILD_KEY
+            dist/component-$BUILD_KEY.zip
           key: ${{ steps.uwkey.outputs.key }}
 
       - name: 发布本件预制品到 Release（编过就留，后轮直接复用）
@@ -126,7 +148,7 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.uwkey.outputs.tag }}"
           ASSET="${{ steps.uwkey.outputs.asset }}"
-          PW="work/pw-python3"
+          PW="work/pw-$BUILD_KEY"
           rm -rf "$PW" && mkdir -p "$PW"
           tar czf "$PW/$ASSET" -C dist --exclude '*.tar.gz' --exclude '*.version' --exclude 'SHA256SUMS' .
           ( cd "$PW" && sha256sum "$ASSET" > "$ASSET.sha256" )
@@ -169,29 +191,15 @@ jobs:
             echo "::error title=对象存储未配置::发布轮需要 secrets QINIU_AK / QINIU_SK / QINIU_BUCKET"
             exit 1
           fi
-          for f in dist/component-python3-*.zip; do
+          for f in dist/$BUILD_KEY/component-*.zip; do
             [ -f "$f" ] || { echo "::error title=没有件可发::$f"; exit 1; }
             QINIU_PUBLIC_BASE="$(node -p "JSON.parse(require('fs').readFileSync('container/app/src/main/assets/supply/channel.json','utf8')).baseUrl")" \
               node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
           done
-      - name: 只把本轮编的那一颗装进 artifact（清掉上一轮留下的）
-        run: |
-          set -euo pipefail
-          mapfile -t _all < <(compgen -G "dist/component-python-*.zip" || true)
-          if [ "${#_all[@]}" -gt 1 ]; then
-            _keep=""
-            for _f in "${_all[@]}"; do
-              if [ -z "$_keep" ] || [ "$_f" -nt "$_keep" ]; then _keep="$_f"; fi
-            done
-            echo "[notice] 那 dist 里有 ${#_all[@]} 颗同族件、**留**最新那一颗：$_keep"
-            for _f in "${_all[@]}"; do
-              [ "$_f" = "$_keep" ] && continue
-              echo "[notice]**旧件**清掉：$_f"
-              rm -f "$_f"
-            done
-          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: component-python
-          path: dist/component-python-*.zip
+          name: component-$BUILD_KEY
+          path: |
+            dist/$BUILD_KEY/component-*.zip
+            dist/component-$BUILD_KEY.zip
           retention-days: 30

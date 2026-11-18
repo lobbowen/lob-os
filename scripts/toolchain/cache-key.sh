@@ -36,7 +36,7 @@ deps_for() {
       openssl)    echo "zlib" ;;
       crypto)     echo "openssl" ;;
       git)        echo "curl openssl zlib" ;;
-      python)     echo "openssl zlib" ;;
+      python|python-3.12|python-3.11) echo "openssl zlib" ;;
       node)       echo "" ;;
 
       bash|ripgrep|busybox|jq|sqlite|npm|pnpm|llvm|make|cmake|pkgconf) echo "" ;;
@@ -53,7 +53,7 @@ bucket_for() {
       bash|ripgrep|busybox|jq)                             echo "base" ;;
       curl|zlib|openssl|crypto)                            echo "base" ;;
 
-      node|python)echo "rt" ;;
+      node|python|python-3.12|python-3.11)echo "rt" ;;
 
       git|sqlite|npm|pnpm|llvm|make|cmake|pkgconf)        echo "tool" ;;
 
@@ -123,7 +123,7 @@ case "$TOOL" in
   git)     SRC_FILES="scripts/recipes/build-component-git.sh scripts/patches/git-runpath-origins.patch" ;;
 
   node)    SRC_FILES="" ;;
-  python)  SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
+  python|python-3.12|python-3.11) SRC_FILES="scripts/recipes/build-component-python3.sh" ;;
   sqlite)  SRC_FILES="scripts/recipes/build-component-sqlite3.sh" ;;
 
   pkgconf) SRC_FILES="scripts/recipes/build-component-pkg-config.sh" ;;

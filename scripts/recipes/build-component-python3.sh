@@ -13,18 +13,18 @@ SRC_KEY="python"
 OUT="${OUT:-dist}"
 case "$OUT" in /*) ;; *) OUT="$ROOT_DIR/$OUT" ;; esac
 
-PY_SLOT="${PY_SLOT:-}"
-if [ -n "$PY_SLOT" ]; then
-  SRC_KEY="python-$PY_SLOT"
-  [ -n "${PY_VERSION:-}" ] || die "缺 PY_VERSION" "给了 PY_SLOT=$PY_SLOT 就必须同时给 PY_VERSION（钉值表的 key 是 $SRC_KEY）"
-fi
-
 die() {
   local title="$1"; shift
   echo "::error title=$title::$(printf '%s\n' "$@")"
   exit 1
 }
 note() { echo "[$TOOL] $*"; }
+
+PY_SLOT="${PY_SLOT:-}"
+if [ -n "$PY_SLOT" ]; then
+  SRC_KEY="python-$PY_SLOT"
+  [ -n "${PY_VERSION:-}" ] || die "缺 PY_VERSION" "给了 PY_SLOT=$PY_SLOT 就必须同时给 PY_VERSION（钉值表的 key 是 $SRC_KEY）"
+fi
 
 [ -n "${CC:-}" ] || die "缺 CC" "需要 NDK 的 clang"
 TC="$(dirname "$CC")"
@@ -43,8 +43,8 @@ if [ ! -f "$PYDEPS/lib/pkgconfig/libffi.pc" ]; then
     || die "python 依赖库没就位" "$PYDEPS"
 fi
 
-CPY_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version python 2>/dev/null || true)"
-[ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.python.version"
+CPY_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$SRC_KEY" 2>/dev/null || true)"
+[ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.$SRC_KEY.version"
 PY_WANT="${CPY_VER%.*}"
 
 HOST_PY="${BUILD_PYTHON:-}"
