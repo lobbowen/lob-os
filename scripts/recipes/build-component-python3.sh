@@ -117,9 +117,9 @@ rm -rf "$BUILD" "$PREFIX" && mkdir -p "$BUILD/_no_pc" "$PREFIX"
     PKG_CONFIG_LIBDIR="$PYDEPS/lib/pkgconfig" \
     PKG_CONFIG_PATH= \
     CPPFLAGS="-D__ANDROID_API__=$API -I$PYDEPS/include" \
-    LDFLAGS="-L$PYDEPS/lib" \
     CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
-    CFLAGS="-O2" \
+    CFLAGS="-O2 -fPIC" \
+    LDFLAGS="-L$PYDEPS/lib -fPIC" \
     > "$WORK/configure.log" 2>&1 \
     || { echo "=== configure 失败取证（末 50 行）==="; tail -50 "$WORK/configure.log"; exit 1; }
 )
