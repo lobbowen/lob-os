@@ -21,11 +21,12 @@ class SystemComponentsActivity : Activity() {
             "已安装与可安装",
             listOf(
                 Triple("home", "首页", SystemHomeActivity::class.java),
+                Triple("store", "商店", SystemStoreActivity::class.java),
                 Triple("grid", "组件", null),
                 Triple("disk", "空间", SystemSpaceActivity::class.java),
                 Triple("user", "我的", SystemAboutActivity::class.java),
             ),
-            1,
+            2,
         )
         body = b
         render()

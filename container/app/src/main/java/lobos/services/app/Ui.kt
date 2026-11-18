@@ -137,7 +137,7 @@ object Ui {
     }
 
 
-    enum class Icon { HOME, GRID, DISK, USER }
+    enum class Icon { HOME, GRID, DISK, USER, SHOP }
 
     fun icon(ctx: Context, type: Icon, color: String, sizeDp: Int = 20): View = IconView(ctx, type, color, sizeDp)
 
@@ -197,6 +197,15 @@ object Ui {
                     }
                     canvas.drawPath(body, stroke)
                 }
+                Icon.SHOP -> {
+                    val r = dp(context, 2).toFloat()
+                    canvas.drawRoundRect(p, h * 0.36f, w - p, h - p, r, r, stroke)
+                    val handle = android.graphics.Path().apply {
+                        moveTo(w * 0.34f, h * 0.36f)
+                        cubicTo(w * 0.34f, h * 0.14f, w * 0.66f, h * 0.14f, w * 0.66f, h * 0.36f)
+                    }
+                    canvas.drawPath(handle, stroke)
+                }
             }
         }
     }
@@ -223,6 +232,7 @@ object Ui {
                 "home" -> Icon.HOME
                 "grid" -> Icon.GRID
                 "disk" -> Icon.DISK
+                "store" -> Icon.SHOP
                 else -> Icon.USER
             }
             val cell = LinearLayout(ctx).apply {

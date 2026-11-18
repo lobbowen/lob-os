@@ -27,11 +27,12 @@ class SystemSpaceActivity : Activity() {
             "占用与可清理",
             listOf(
                 Triple("home", "首页", SystemHomeActivity::class.java),
+                Triple("store", "商店", SystemStoreActivity::class.java),
                 Triple("grid", "组件", null),
                 Triple("disk", "空间", SystemSpaceActivity::class.java),
                 Triple("user", "我的", SystemAboutActivity::class.java),
             ),
-            2,
+            3,
         )
         body = b
         render()

@@ -31,6 +31,7 @@ class SystemHomeActivity : Activity() {
             "组件、空间与修复都在这里",
             listOf(
                 Triple("home", "首页", null),
+                Triple("store", "商店", SystemStoreActivity::class.java),
                 Triple("grid", "组件", SystemComponentsActivity::class.java),
                 Triple("disk", "空间", SystemSpaceActivity::class.java),
                 Triple("user", "我的", SystemAboutActivity::class.java),
