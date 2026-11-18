@@ -37,6 +37,12 @@ for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
 done
 command -v make >/dev/null 2>&1 || die "缺 make" "CPython 的构建靠 make 驱动（缺了请 apt-get install make）"
 
+PYDEPS="${LOBOS_PYDEPS:-$ROOT_DIR/work/python-deps}"
+if [ ! -f "$PYDEPS/lib/pkgconfig/libffi.pc" ]; then
+  bash "$ROOT_DIR/scripts/toolchain/prepare-python-deps.sh" "$PYDEPS" \
+    || die "python 依赖库没就位" "$PYDEPS"
+fi
+
 CPY_VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version python 2>/dev/null || true)"
 [ -n "$CPY_VER" ] || die "拿不到 CPython 版本" "钉值表里没有 sources.python.version"
 PY_WANT="${CPY_VER%.*}"
@@ -106,9 +112,10 @@ rm -rf "$BUILD" "$PREFIX" && mkdir -p "$BUILD/_no_pc" "$PREFIX"
     ac_cv_file__dev_ptmx=no \
     ac_cv_file__dev_ptc=no \
     ac_cv_file__dev_tty=no \
-    PKG_CONFIG_LIBDIR="$BUILD/_no_pc" \
+    PKG_CONFIG_LIBDIR="$PYDEPS/lib/pkgconfig" \
     PKG_CONFIG_PATH= \
-    CPPFLAGS="-D__ANDROID_API__=$API" \
+    CPPFLAGS="-D__ANDROID_API__=$API -I$PYDEPS/include" \
+    LDFLAGS="-L$PYDEPS/lib" \
     CC="$CC" AR="$LLVM_AR" RANLIB="$LLVM_RANLIB" \
     CFLAGS="-O2" \
     > "$WORK/configure.log" 2>&1 \
@@ -185,6 +192,16 @@ if [ -n "$PY_SLOT" ]; then LIBROOT="lib/$PY_SLOT"; fi
 rm -rf "$OUT/lib"
 mkdir -p "$OUT/$LIBROOT"
 cp -a "$PYDIR" "$OUT/$LIBROOT/python${SRC_VER%.*}" || die "拷贝标准库失败" "$PYDIR"
+
+mkdir -p "$OUT/lib"
+for lib in ffi ssl crypto sqlite3 bz2 lzma zstd; do
+  for src in "$PYDEPS"/lib/lib${lib}.so*; do
+    [ -e "$src" ] || continue
+    cp -a "$src" "$OUT/lib/" 2>/dev/null || true
+  done
+done
+N_SHARED=$(find "$OUT/lib" -maxdepth 1 -name '*.so*' 2>/dev/null | wc -l)
+note "共享库随件: lib/（$N_SHARED 项 —— libffi/ssl/crypto/sqlite3/bz2/lzma/zstd）"
 
 N_LIB=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -type f | wc -l)
 N_EXT=$(find "$OUT/$LIBROOT/python${SRC_VER%.*}" -name '*.so' 2>/dev/null | wc -l)
