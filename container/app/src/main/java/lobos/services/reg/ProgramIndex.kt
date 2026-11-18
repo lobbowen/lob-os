@@ -247,6 +247,7 @@ object ProgramIndex {
             if (!m.isFile) continue
             val meta = runCatching { JSONObject(m.readText()) }.getOrNull() ?: continue
             if (meta.optString("role", "") == role) return true
+            if (meta.optString("kind", "") == role) return true
             val a = runCatching { meta.optJSONArray("roles") }.getOrNull() ?: continue
             for (i in 0 until a.length()) if (a.optString(i) == role) return true
         }

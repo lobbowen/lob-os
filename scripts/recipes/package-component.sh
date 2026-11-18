@@ -6,6 +6,7 @@ cd "$HERE/../.."
 ROOT_DIR=$(pwd)
 
 TOOL="${1:?需要工具名}"
+PKG_NAME="${PKG_NAME:-$TOOL}"
 
 VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
 
@@ -32,12 +33,12 @@ rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '
 BUILD_SHA="${GITHUB_SHA:-local}"
 BUILD_RUN="${GITHUB_RUN_ID:-local}"
 node "$ROOT_DIR/scripts/recipes/gen-component-meta.js" \
-  "$TOOL" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
+  "$PKG_NAME" "$VER" "$STAGE/component-meta.json" --payload "$STAGE" \
   --build-sha="$BUILD_SHA" --build-run="$BUILD_RUN" \
   || { echo "::error title=$TOOL 说明生成失败"; exit 1; }
 
 source "$ROOT_DIR/scripts/toolchain/elf-form.sh"
-elf_write_shape "$TOOL" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib \
+elf_write_shape "$PKG_NAME" "$ENTRY" "$STAGE" "$STAGE/piece-shape.json" "$VER" bin lib \
   || { echo "::error title=$TOOL 形态算不出来::构建期必须能判形态（readelf 缺失）"; exit 1; }
 
 find "$STAGE" -exec touch -h -t 198001010000.00 {} +
@@ -56,7 +57,7 @@ if [ -n "${PC_TARGET_SEGMENT:-}" ]; then
     exit 1
   fi
 fi
-ZIP="dist/component-${TOOL}-${VER}-${SHA}-${TARGET_SEGMENT}.zip"
+ZIP="dist/component-${PKG_NAME}-${VER}-${SHA}-${TARGET_SEGMENT}.zip"
 mv "$RAW" "$ZIP"
 NAME=$(basename "$ZIP")
 cd dist

@@ -391,6 +391,7 @@ const meta = {
   role: computed.role === 'program' && isCommandInterpreter(computed, id) ? 'shell' : (computed.role || ''),
   requires: deps,
   essential: src.essential === true,
+  kind: src.kind || '',
   source: Array.isArray(src.urls) && src.urls.length ? src.urls[0] : '',
   sourceSha256: src.sha256 || '',
 };
