@@ -97,7 +97,7 @@ class SystemStoreActivity : Activity() {
                 if (name.isBlank()) continue
                 val versions = e.optJSONArray("versions")
                 val count = versions?.length() ?: 0
-                val version = if (count > 0) versions?.optJSONObject(count - 1)?.optString("version", "") else e.optString("version", "")
+                val version: String = if (count > 0) (versions?.optJSONObject(count - 1)?.optString("version", "") ?: "") else e.optString("version", "")
                 val size = e.optLong("size", 0L)
                 val sub = buildString {
                     append("v").append(version.ifBlank { "?" })
