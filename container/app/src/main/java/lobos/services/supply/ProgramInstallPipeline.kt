@@ -109,7 +109,7 @@ object ProgramInstallPipeline {
         fun landedRel(piece: Piece, rel: String): String? {
             val role = piece.roleOf(rel) ?: return null
             val dir = dirForRole(role) ?: return null
-            return if (role == ROLE_LIBRARY && rel.count('/') > 1) rel
+            return if (role == ROLE_LIBRARY && rel.count { it == '/' } > 1) rel
             else dir + "/" + rel.substringAfterLast('/')
         }
 
@@ -197,7 +197,7 @@ object ProgramInstallPipeline {
                     "shape-form-unknown",
                     "产物声明的 " + fs.path + " 形态是 \"" + fs.role + "\"（认不出）—— 报缺，不猜它该落哪",
                 )
-            val target = if (fs.role == ROLE_LIBRARY && fs.path.count('/') > 1) {
+            val target = if (fs.role == ROLE_LIBRARY && fs.path.count { it == '/' } > 1) {
                 fs.path
             } else {
                 dir + "/" + fs.path.substringAfterLast('/')
