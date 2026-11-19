@@ -92,7 +92,7 @@ for t in $COMPONENTS; do
     for pair in $RELEASE_TAGS; do
       _tag="${pair%%:*}"
       _key="${pair#*:}"
-      _asset="$({ curl -sSL -H "Accept: application/vnd.github+json" \
+      _asset="$({ curl -sSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/$REPO/releases/tags/$_tag" 2>/dev/null || true; \
         } | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const a=(JSON.parse(d).assets||[]).filter(x=>x.name.endsWith(".zip"));process.stdout.write(a.length?a[0].name:"")}catch(e){}})')"
       if [ -z "$_asset" ]; then echo "::warning title=$t 槽位 Release 无 asset::$_tag"; continue; fi
