@@ -56,6 +56,13 @@ object GuestAdapter {
             val cur = env["LD_LIBRARY_PATH"] ?: ""
             env["LD_LIBRARY_PATH"] = (libs + listOf(cur)).filter { it.isNotBlank() }.joinToString(":")
         }
+        for ((runtime, binding) in bindings) {
+            if (runtime != "python") continue
+            val ver = binding.resolved
+            if (ver.isBlank()) continue
+            val base = java.io.File(java.io.File(opt, runtime), ver)
+            if (base.isDirectory) env["PYTHONHOME"] = base.absolutePath
+        }
     }
 
     fun programPlan(i: ProgramInputs, inheritedPath: String?): BootPlan {

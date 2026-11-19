@@ -54,3 +54,5 @@ __pycache__/
 
 # musl 运行时由 CI 按钉值生成，不入库
 container/app/src/main/assets/musl/
+
+dist-python/

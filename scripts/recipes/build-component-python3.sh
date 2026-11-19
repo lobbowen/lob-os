@@ -190,7 +190,6 @@ make -C "$BUILD" install > "$WORK/install.log" 2>&1 \
 
 PYDIR="$PREFIX/lib/python${SRC_VER%.*}"
 LIBROOT="lib"
-if [ -n "$PY_SLOT" ]; then LIBROOT="lib/$PY_SLOT"; fi
 [ -d "$PYDIR" ] || {
   echo "=== $PREFIX/lib 下有什么 ==="; ls -d "$PREFIX"/lib/* 2>/dev/null | head -5
   die "找不到安装后的标准库目录" \

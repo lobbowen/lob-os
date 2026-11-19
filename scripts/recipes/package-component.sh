@@ -7,14 +7,15 @@ ROOT_DIR=$(pwd)
 
 TOOL="${1:?需要工具名}"
 PKG_NAME="${PKG_NAME:-$TOOL}"
+DIST="${OUT:-dist}"
 
-VER=$(cat "dist/${PKG_NAME}.version" 2>/dev/null || true)
+VER=$(cat "$DIST/${PKG_NAME}.version" 2>/dev/null || true)
 
 if [ -z "$VER" ]; then
   echo "::notice:: 那 dist/${PKG_NAME}.version 不在（那复用命中了、编译被跳过了）"
   VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
   if [ -n "$VER" ]; then
-    printf '%s' "$VER" > "dist/${PKG_NAME}.version"
+    printf '%s' "$VER" > "$DIST/${PKG_NAME}.version"
     echo "::notice::版本号 = $VER（从那钉值表取到、它写回了那一份）"
   fi
 fi
@@ -25,9 +26,9 @@ ENTRY=$(bash "$ROOT_DIR/scripts/registry/read-component-entry.sh" "$TOOL")
 
 PINNED=$(node -e 'const t=require(process.argv[1]);const s=(t.sources||{})[process.argv[2]]||{};process.stdout.write(String(s.version||""))' "$ROOT_DIR/scripts/component-sources.json" "$TOOL")
 [ -z "$PINNED" ] || [ "$PINNED" = "$VER" ] || { echo "::error title=版本号两处不一致::钉值表 component-sources.json 写的是 $PINNED，而本产物那份写的是 $VER"; exit 1; }
-[ -f "dist/$ENTRY" ] || { echo "::error title=缺件::dist/$ENTRY 不在（清单入口声明=$ENTRY），先构建"; exit 1; }
+[ -f "$DIST/$ENTRY" ] || { echo "::error title=缺件::dist/$ENTRY 不在（清单入口声明=$ENTRY），先构建"; exit 1; }
 STAGE=$(mktemp -d)
-cp -a dist/. "$STAGE/"
+cp -a "$DIST"/. "$STAGE/"
 rm -f "$STAGE"/*.version "$STAGE"/SHA256SUMS $(find "$STAGE" -maxdepth 1 -name '*.zip') 2>/dev/null || true
 
 BUILD_SHA="${GITHUB_SHA:-local}"
@@ -57,12 +58,10 @@ if [ -n "${PC_TARGET_SEGMENT:-}" ]; then
     exit 1
   fi
 fi
-ZIP="dist/component-${PKG_NAME}-${VER}-${SHA}-${TARGET_SEGMENT}.zip"
+ZIP="$DIST/component-${PKG_NAME}-${VER}-${SHA}-${TARGET_SEGMENT}.zip"
 mv "$RAW" "$ZIP"
 NAME=$(basename "$ZIP")
-cd dist
-sha256sum "$NAME" >> SHA256SUMS
-cd ..
+( cd "$DIST" && sha256sum "$NAME" >> SHA256SUMS )
 echo "[ok] $ZIP"
 sha256sum "$ZIP"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then

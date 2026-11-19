@@ -11,7 +11,7 @@ QINIU_ENV="${HOME}/.config/lobos-qiniu.env"
 
 NDK="${NDK:-/home/bowen/ndk-acquire/android-ndk-r30}"
 TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-export CC="$CC:-$TC/aarch64-linux-android35-clang"
+export CC="${CC:-$TC/aarch64-linux-android35-clang}"
 export CXX="${CXX:-$TC/aarch64-linux-android35-clang++}"
 
 PRIVATE_KEY="${LOBOS_PRIVATE_KEY:-/home/bowen/LOBOS/keys-offline-backup/ota-private.pem}"
@@ -62,20 +62,28 @@ build_one() {
   PKG_NAME="$tool" bash scripts/recipes/package-component.sh "$tool"
 }
 
+POUT="dist-python"
 build_python_versions() {
+  rm -rf "$POUT"
   note "构建 python 3.14.8"
-  OUT=dist bash scripts/recipes/build-component-python3.sh
-  PKG_NAME=python OUT=dist bash scripts/recipes/package-component.sh python
+  OUT="$POUT" bash scripts/recipes/build-component-python3.sh
+  PKG_NAME=python OUT="$POUT" bash scripts/recipes/package-component.sh python
+  rm -rf "$POUT"; mkdir -p "$POUT"
 
   note "构建 python 3.12.10"
-  PY_SLOT=3.12 PY_VERSION=3.12.10 BUILD_PYTHON="$PYTHON_312" OUT=dist \
+  PY_SLOT=3.12 PY_VERSION=3.12.10 BUILD_PYTHON="$PYTHON_312" OUT="$POUT" \
     bash scripts/recipes/build-component-python3.sh
-  PKG_NAME=python OUT=dist bash scripts/recipes/package-component.sh python-3.12
+  PKG_NAME=python OUT="$POUT" bash scripts/recipes/package-component.sh python-3.12
+  rm -rf "$POUT"; mkdir -p "$POUT"
 
   note "构建 python 3.11.13"
-  PY_SLOT=3.11 PY_VERSION=3.11.13 BUILD_PYTHON="$PYTHON_311" OUT=dist \
+  PY_SLOT=3.11 PY_VERSION=3.11.13 BUILD_PYTHON="$PYTHON_311" OUT="$POUT" \
     bash scripts/recipes/build-component-python3.sh
-  PKG_NAME=python OUT=dist bash scripts/recipes/package-component.sh python-3.11
+  PKG_NAME=python OUT="$POUT" bash scripts/recipes/package-component.sh python-3.11
+
+  note "收集 python 件到 dist（先清掉从 CDN 拉回的同名旧件，避免 versions[] 重复）"
+  rm -f dist/component-python-*.zip
+  cp -f "$POUT"/component-python-*.zip dist/
 }
 
 note "清理 dist"
