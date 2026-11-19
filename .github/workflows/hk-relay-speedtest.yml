@@ -13,6 +13,21 @@ jobs:
       - name: 安装 sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
+      - name: 香港机装新版 node（系统 node v12 太老，upload-qiniu 需要 v18+）
+        env:
+          HK_HOST: 103.247.28.83
+          HK_PASS: ${{ secrets.HK_SSH_PASS }}
+        run: |
+          sshpass -p "$HK_PASS" ssh -o StrictHostKeyChecking=no root@$HK_HOST '
+            mkdir -p /opt/hk-node
+            if [ ! -x /opt/hk-node/node ]; then
+              curl -sSL https://nodejs.org/dist/v18.20.4/node-v18.20.4-linux-x64.tar.xz -o /tmp/node.tar.xz
+              tar xf /tmp/node.tar.xz -C /opt/hk-node --strip-components=1 node-v18.20.4-linux-x64/bin/node
+              rm -f /tmp/node.tar.xz
+            fi
+            /opt/hk-node/node -v
+          ' 2>&1 | sed 's/^/  香港机node: /'
+
       - name: 部署测试脚本到香港机
         env:
           HK_HOST: 103.247.28.83
@@ -43,7 +58,7 @@ jobs:
 
           echo "[3] 香港上传到七牛（真实 upload-qiniu.js，测吞吐）"
           START=$(date +%s)
-          node /tmp/hk-relay/upload-qiniu.js "$PIECE" "component/$(basename "$PIECE")" --cache-control=31536000 2>&1 | tail -5
+          /opt/hk-node/node /tmp/hk-relay/upload-qiniu.js "$PIECE" "component/$(basename "$PIECE")" --cache-control=31536000 2>&1 | tail -5
           END=$(date +%s)
           echo "  上传耗时 $((END-START)) 秒，件大小 $(stat -c%s "$PIECE") 字节"
 
@@ -55,7 +70,7 @@ jobs:
           # 上传必要脚本到香港机
           sshpass -p "$HK_PASS" ssh -o StrictHostKeyChecking=no root@$HK_HOST 'mkdir -p /tmp/hk-relay/scripts/publish /tmp/hk-relay/scripts/toolchain' >/dev/null 2>&1
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no /tmp/hk_speedtest.sh root@$HK_HOST:/tmp/hk_speedtest.sh >/dev/null 2>&1
-          sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/publish/upload-qiniu.js root@$HK_HOST:/tmp/hk-relay/scripts/publish/ >/dev/null 2>&1
+          sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/publish/upload-qiniu.js root@$HK_HOST:/tmp/hk-relay/upload-qiniu.js >/dev/null 2>&1
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/toolchain/unpack-piece.sh root@$HK_HOST:/tmp/hk-relay/scripts/toolchain/ >/dev/null 2>&1
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/toolchain/fmt.sh root@$HK_HOST:/tmp/hk-relay/scripts/toolchain/ >/dev/null 2>&1
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/toolchain/cache-key.sh root@$HK_HOST:/tmp/hk-relay/scripts/toolchain/ >/dev/null 2>&1
