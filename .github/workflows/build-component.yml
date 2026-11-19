@@ -233,6 +233,11 @@ jobs:
             fi
             node scripts/publish/upload-qiniu.js "$_cdn_file" "component/$_cdn_name" --cache-control=31536000
             _cdn_n=$((_cdn_n + 1))
+            _cdn_is_multi="$(awk -v id="$_cdn_id" '$1==id{c++}END{print (c>1?1:0)}' work/cdn-ids.txt 2>/dev/null || echo 0)"
+            if [ "$_cdn_is_multi" = "1" ]; then
+              echo "[cdn] $_cdn_id 多版本件，整包已传，跳过分片（分片只给单版本大件）"
+              continue
+            fi
             _cdn_tag="$(bash scripts/toolchain/cache-key.sh tag "$_cdn_id" 2>/dev/null | tail -1 || true)"
             _cdn_asset="$(bash scripts/toolchain/cache-key.sh asset "$_cdn_id" 2>/dev/null | tail -1 || true)"
             if [ -n "$_cdn_tag" ] && [ -n "$_cdn_asset" ]; then
