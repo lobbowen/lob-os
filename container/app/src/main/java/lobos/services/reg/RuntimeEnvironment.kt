@@ -1,5 +1,6 @@
 package lobos.services.reg
 
+import lobos.kernel.layout.SystemDirs
 import android.content.Context
 import java.io.File
 import lobos.services.log.RuntimeDiagnostics
@@ -54,6 +55,14 @@ object RuntimeEnvironment {
         put("TERM", "xterm")
 
         put("PREFIX", root.prefixRoot.absolutePath)
+
+        val pythonVer = runCatching {
+            ProgramIndex.all(ctx).firstOrNull { it.id == "python" }?.version
+        }.getOrNull()
+        if (!pythonVer.isNullOrBlank()) {
+            val home = java.io.File(java.io.File(SystemDirs.opt(ctx), "python"), pythonVer)
+            if (home.isDirectory) put("PYTHONHOME", home.absolutePath)
+        }
 
         put("LD_LIBRARY_PATH", joinPath(pieceLibDirs(ctx), root.prefixLib.absolutePath, root.nativeLibDir, inheritedLd))
         put(
