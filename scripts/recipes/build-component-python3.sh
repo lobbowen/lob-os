@@ -37,6 +37,12 @@ for t in "$LLVM_AR" "$LLVM_RANLIB" "$LLVM_READELF"; do
 done
 command -v make >/dev/null 2>&1 || die "缺 make" "CPython 的构建靠 make 驱动（缺了请 apt-get install make）"
 
+TOOLBIN="$ROOT_DIR/work/.toolbin"
+mkdir -p "$TOOLBIN"
+ln -sf "$LLVM_READELF" "$TOOLBIN/aarch64-linux-android-readelf"
+ln -sf "$TC/clang" "$TOOLBIN/aarch64-linux-android-gcc"
+export PATH="$TOOLBIN:$PATH"
+
 PYDEPS="${LOBOS_PYDEPS:-$ROOT_DIR/work/python-deps}"
 if [ ! -f "$PYDEPS/lib/pkgconfig/libffi.pc" ]; then
   bash "$ROOT_DIR/scripts/toolchain/prepare-python-deps.sh" "$PYDEPS" \
