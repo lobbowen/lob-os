@@ -247,3 +247,22 @@ APK 构建也完成本地化（不再依赖 GitHub Actions 取件）：
 至此全链路本地化完成：
 件构建（python 三版本 + 9 base 件）-> APK 构建 -> 签名 -> 上传七牛 -> 设备商店
 -> 安装指定版本 -> 多版本共存 -> 切换，全部不经 GitHub，全部实测通过。
+
+---
+
+## 十一、切换生效的结构级验证（2026-11-20）
+
+设备切换验证不只看商店详情页 UI，还交叉验证了组件页（读 ProgramIndex 注册表真相）：
+- 商店详情页：装 3.11 再装 3.14，两版本共存，当前 3.14；点"切换到 3.11"后当前变 3.11。
+- 组件页（SystemComponentsActivity，直接读 ProgramIndex）：切换后显示
+  `python  v3.11.13 · 程序`，与详情页一致。
+
+这证明 activate() 的 setCurrentVersion 确实改了注册表里的当前版本（ProgramIndex.version），
+不是只改了 UI 状态。加上多版本目录都在 opt/python/<ver>/（空间页显示"旧版本组件 253MB"
+佐证两份 python 都在），切换的结构闭环成立。
+
+限于 release 包不可调试（run-as 被拒）、production build 无 adb root，
+无法从文件系统层直接读 usr/bin/python3 软链指向；执行路由层
+（GuestAdapter.applyRuntimeBindings 按 LOBOS_PROGRAM_ID 注入对应版本 bin/lib）
+为编译期验证。完整的"应用声明版本约束→解析→执行"端到端需要一个真实客侧应用，
+列为下一个工作单元。
