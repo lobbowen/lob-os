@@ -127,6 +127,10 @@ object PackageInstaller {
             }
         }
         pd.setCurrentVersion(version)
+        runCatching {
+            val idx = ProgramIndex.get(ctx, name) ?: return@runCatching
+            ProgramIndex.upsert(ctx, idx.edited(version = version, enabled = true))
+        }
         lobos.kernel.layout.LdConfig.run(ctx)
         Journal.note(ctx, "package", true, "已激活版本", "name=$name version=$version")
         return JSONObject().apply {
