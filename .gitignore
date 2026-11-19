@@ -56,3 +56,5 @@ __pycache__/
 container/app/src/main/assets/musl/
 
 dist-python/
+
+backup/
