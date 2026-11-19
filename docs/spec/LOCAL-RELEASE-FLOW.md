@@ -156,3 +156,25 @@ node scripts/publish/upload-qiniu.js release/component-manifest.json.sig \
   国内服务器 103.236.89.42（配置够），但它连 python.org 不通，源码/依赖要从本地传过去。
 - 私钥在本机，要注意保管（chmod 600，不进 git）。
 - revision 单调由本地文件维护，需保证不回退。
+
+---
+
+## 七、本地构建发布实测通过（2026-11-20）
+
+最小验证：本地从零编译 python 3.11.13 并上传七牛，全程不经 GitHub。
+
+前置就绪：
+- 配对私钥：/home/bowen/LOBOS/keys-offline-backup/ota-private.pem（已验证与 APK 公钥配对）
+- NDK：/home/bowen/ndk-acquire/android-ndk-r30（30.0.16248370，与钉值一致）
+- 宿主 python 3.11/3.12：用 uv 15 秒装好（构建脚本要求宿主同 major.minor）
+- 源码缓存：/tmp/Python-3.11.13.tgz 与 3.12.10.tgz 已在本地（python.org 直连仅 38KB/s，
+  必须用本地缓存，构建脚本检测 SRC 目录存在即跳过下载）
+
+实测结果：
+1. 本地编译 python 3.11.13：成功（解释器 18MB、67 扩展模块、17 C 库、aarch64 无 glibc）
+2. PKG_NAME=python 打包：component-python-3.11.13-c33b3d362d55-android-arm64.zip
+   （件内 id=python、version=3.11.13、kind=runtime，正确）
+3. 本地上传七牛：84MB 用 38 秒（对比 CI 跨境 30-100 分钟）
+
+结论：本地构建发布闭环成立，跨境瓶颈消除。下一步固化 local-release.sh。
+注意：打包必须传 PKG_NAME=python，否则件内 id 变成 python-3.11，清单无法聚合。
