@@ -1,0 +1,144 @@
+# 件分发基础设施：自建服务方案
+
+背景：发布时上传极慢（每块 4MB 间隔 2-4 分钟，500MB 要 4+ 小时）。
+定位证据：本机（国内）到七牛上传节点延迟 11ms，而 GitHub Actions runner（海外）
+到七牛（国内）每块 4MB 耗时 3 分钟。瓶颈是**海外 CI 到国内对象存储的跨境链路**，
+不是七牛本身慢，也不是代码 bug。
+
+目标：让 CI 产出的件能以可接受速度到达设备能下载的公开地址，且支持断点续传。
+
+---
+
+## 一、先明确需求（下载侧契约，不能破）
+
+`ResumableDownloader.kt` 要求源站支持：
+- HTTP Range 请求（`Range: bytes=<offset>-`）
+- 响应 206 + Content-Range / Content-Length
+- 全量 GET 返回 200 + Content-Length
+- sha256 校验（客户端已有，源站只需提供正确字节）
+- HTTPS（清单 url 是 https，Android 明文 HTTP 受限）
+
+清单 url 形态：`https://<baseUrl>/component/<文件名>`，
+baseUrl 来自 channel.json（当前 `https://lobcdn.zll.ink`）。
+换源站只要改 baseUrl 与清单生成的 COMPONENT_BASE_URL，不动客户端。
+
+---
+
+## 二、三种方案
+
+### 方案一：自建对象存储源站（治本，但要一台国内服务器）
+
+架构：
+- 一台国内云服务器（有公网 IP、带宽足够）
+- 装 MinIO（S3 兼容）或纯 Nginx 静态文件服务
+- 域名 + TLS（letsencrypt）
+- CI 通过 S3 API 或 rsync/scp 上传
+
+上传链路对比：
+- 现状：海外 GitHub runner -> 七牛国内上传节点（跨境，慢）
+- 自建：海外 GitHub runner -> 自建国内服务器（同样跨境，未必更快！）
+
+关键判断：**自建国内服务器不解决跨境上传慢**——因为 CI 还是在海外，
+到国内服务器的跨境链路一样慢。除非把构建也搬到国内。
+
+### 方案二：CI 产物先到海外对象存储，再回源同步（推荐）
+
+架构：
+- 构建 workflow 把件传到**海外对象存储**（GitHub Releases 本身就是，或 Cloudflare R2）
+  —— 海外到海外，快
+- 国内源站（自建 Nginx 或 CDN）从海外对象存储**回源拉取**
+  —— 回源是"国内主动拉"，可以走 CDN 回源优化，或定时同步
+- 设备从国内源站下载（快）
+
+但这里有个更简单的现实：**件已经固化在 GitHub Release 了**（rt-python 等 tag）。
+Release asset 上传到 GitHub（海外）本来就快（构建 workflow 里完成）。
+慢的只是"从 GitHub Release 搬到七牛 CDN"这一步。
+
+所以方案二的简化版：
+- 不把件主动上传到七牛
+- 改清单 url 直接指向一个能代理 GitHub Release 的国内镜像/CDN
+- 或者：一台国内小服务器做反向代理，按需从 GitHub Release 拉取并缓存
+
+### 方案三：云厂商 CDN 回源 GitHub Release（最省事，如果可行）
+
+- Cloudflare / 又拍云 / 七牛 都支持"回源到自定义源站"
+- 源站填 GitHub Release 的 raw 下载 URL
+- 第一次请求时 CDN 从 GitHub 拉，之后缓存
+- CI 完全不做上传，只更新清单
+
+限制：GitHub Release 大文件（>100MB）下载可能有限制；回源成功率/速度要实测。
+
+---
+
+## 三、推荐
+
+分两步走：
+
+### 第一步（立即缓解，不改架构）：把构建搬到国内或加上传缓存
+
+具体：在 GitHub Actions 之外，用一台国内机器定期从 GitHub Release 增量拉取
+新 asset，上传到七牛。国内到七牛 11ms，上传 500MB 只要几分钟。
+CI 只负责构建+固化到 Release，不再直接传七牛。
+
+这是最小改动：CI workflow 里删掉"发布件包到对象存储"步骤，
+加一个国内侧的同步脚本（cron 或手动触发），从 Release 拉 -> 传七牛。
+
+优点：不改清单格式、不改客户端、不改下载域名。
+缺点：多一个国内同步环节。
+
+### 第二步（治本，如果需要）：自建源站 + DNS 切换
+
+如果长期要看自建服务：
+- 国内服务器 + Nginx 静态服务（或 MinIO）
+- 上传：国内机器从 GitHub Release 拉取（快，因为 Release 在海外但国内拉取单连接，
+  或用代理加速），存到本地
+- 下载：nginx 开 `Accept-Ranges`，配 HTTPS
+- 切 baseUrl：channel.json 的 baseUrl 改到新域名，重新签名清单
+- 灰度：先用一个测试 channel 验证，再切正式
+
+---
+
+## 四、自建服务的最小可行配置（nginx）
+
+```
+server {
+    listen 443 ssl http2;
+    server_name pieces.<domain>;
+
+    root /data/pieces;              # component/ 目录放件包
+    ssl_certificate ...;
+    ssl_certificate_key ...;
+
+    location /component/ {
+        types { } default_type application/octet-stream;
+        add_header Accept-Ranges bytes;
+        try_files $uri =404;
+    }
+}
+```
+
+必须满足：
+- `Accept-Ranges: bytes`（ResumableDownloader 靠 Range 断点）
+- 206 响应正确（nginx 静态文件默认支持 Range）
+- HTTPS + 有效证书
+- 文件权限可读
+
+同步脚本（国内机器）：
+```
+# 从 GitHub Release 拉三个 python asset
+gh release download rt-python --repo lobbowen/lob-os --dir /data/pieces/.incoming
+# 解 gzip 容器得到 component-*.zip，放进 /data/pieces/component/
+```
+复用现有 `unpack-piece.sh` 做解包与 sha 校验。
+
+---
+
+## 五、代价与风险
+
+- 自建服务器要运维：磁盘（件包累计可能几十 GB）、带宽、证书续期、可用性
+- 跨境拉取 GitHub Release 可能也不稳定（但有缓存，只需拉一次）
+- 切 baseUrl 要重新签名所有清单（客户端校验公钥已固定，签名私钥不变即可）
+- 单点：自建源站没有 CDN 分发，多地访问延迟可能不均
+
+结论：如果只是为了解决"发布慢"，**第一步（国内同步机）足够**，不用自建完整源站。
+自建源站是长期去七牛依赖时才做。
