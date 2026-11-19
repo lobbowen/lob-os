@@ -5,13 +5,15 @@ set -euo pipefail
 
 TOOL="${1:?需要工具名}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+DIST_DIR="${OUT:-$ROOT/dist}"
+case "$DIST_DIR" in /*) ;; *) DIST_DIR="$ROOT/$DIST_DIR" ;; esac
 ENTRY=$(bash "$ROOT/scripts/registry/read-component-entry.sh" "$TOOL")
 
 STATIC_LIST=""
 
 judge_shape() {
   local rel="$1" label="$2"
-  local BIN="$ROOT/dist/$rel"
+  local BIN="$DIST_DIR/$rel"
   if [ ! -f "$BIN" ]; then
     echo "::error title=缺产物::$label dist/$rel 没产出"; exit 1
   fi
@@ -66,7 +68,7 @@ judge_shape() {
 if [ -z "$ENTRY" ]; then
 
   echo "[$TOOL] 这一件没有入口（entry 合法地是空）—— 而那别名在 $ROOT/dist/package.json 那 bin 映射里"
-  [ -f "$ROOT/dist/package.json" ] || { echo "::error title=缺别名映射::$TOOL 没有 package.json —— 而那一件要靠它声明别名"; exit 1; }
+  [ -f "$DIST_DIR/package.json" ] || { echo "::error title=缺别名映射::$TOOL 没有 package.json —— 而那一件要靠它声明别名"; exit 1; }
 else
   judge_shape "$ENTRY" "入口"
 fi

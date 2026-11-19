@@ -10,6 +10,8 @@ if [ "${1:-}" = "--why" ]; then
   shift
 fi
 key="${1:?usage: read-component-entry.sh [--why] <件名>}"
+DIST_DIR="${OUT:-$ROOT/dist}"
+case "$DIST_DIR" in /*) ;; *) DIST_DIR="$ROOT/$DIST_DIR" ;; esac
 
 why_pure_library() { printf 'pure-library\n'; }
 why_entry_empty()  { printf 'entry-empty\n'; }
@@ -22,17 +24,17 @@ why_say() {
   exit 0
 }
 
-if [ -d "$ROOT/dist" ]; then
-  e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$ROOT/dist" 2>/dev/null || true)"
+if [ -d "$DIST_DIR" ]; then
+  e="$(node "$ROOT/scripts/recipes/gen-component-meta.js" --print-entry "$key" "$DIST_DIR" 2>/dev/null || true)"
   if [ -n "$e" ]; then why_say "$(why_found)"; printf '%s\n' "$e"; exit 0; fi
 
-  if [ -d "$ROOT/dist/lib" ] || [ -d "$ROOT/dist/bin" ]; then
+  if [ -d "$DIST_DIR/lib" ] || [ -d "$DIST_DIR/bin" ]; then
     why_say "$(why_pure_library)"
     printf '\n'; exit 0
   fi
 fi
 
-for z in "$ROOT"/dist/component-"$key"-*.zip; do
+for z in "$DIST_DIR"/component-"$key"-*.zip; do
   [ -f "$z" ] || continue
   e="$(unzip -p "$z" component-meta.json 2>/dev/null | node -e '
     let d = "";
