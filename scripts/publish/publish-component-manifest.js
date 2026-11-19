@@ -291,13 +291,20 @@ function sha256File(file) {
   return h.digest('hex');
 }
 
+function zipMeta(zipPath) {
+  try {
+    const out = require('child_process').execFileSync('unzip', ['-p', zipPath, 'component-meta.json'], { maxBuffer: 4 * 1024 * 1024 });
+    return JSON.parse(out.toString('utf8'));
+  } catch (e) { return null; }
+}
+
 function toolsFromDist() {
   if (!fs.existsSync(DIST)) throw new Error('dist 目录不存在: ' + DIST);
   const grouped = new Map();
   for (const f of fs.readdirSync(DIST)) {
     const m = /^component-([a-z0-9-]+)-([0-9][^-]*)-([0-9a-f]{12})-android-arm64\.zip$/.exec(f);
     if (!m) continue;
-    const name = m[1];
+    let name = m[1];
     const ver = m[2];
     const claimed = m[3];
     const zipPath = path.join(DIST, f);
@@ -306,7 +313,9 @@ function toolsFromDist() {
     const digest = sha256File(zipPath);
     const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
-    const entry = entryOf(name);
+    const inner = zipMeta(zipPath);
+    if (inner && inner.id) name = String(inner.id);
+    const entry = inner && inner.entry ? String(inner.entry) : entryOf(name);
     const recipeFp = recipeFingerprintOf(name);
     const item = {
       version: ver,
