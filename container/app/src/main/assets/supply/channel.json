@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "baseUrl": "https://lobcdn.zll.ink",
+  "baseUrl": "https://lobcdn.zll.ink/official",
   "channel": "canary",
   "manifests": {
     "program": {

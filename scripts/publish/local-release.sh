@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 本地发布：构建件 -> 打包 -> 签名清单 -> 上传七牛。不经 GitHub。
-# 用法: bash scripts/publish/local-release.sh [--revision N] [--all]
+# 用法: bash scripts/publish/local-release.sh [--root official|testing] [--revision N] [--all]
+# 正式目录 official 只放验证过的可用件；测试目录 testing 可清空。见 EXECUTION-POLICY.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -23,14 +24,16 @@ QINIU_SK="${QINIU_SK:-}"
 QINIU_BUCKET="${QINIU_BUCKET:-lobos}"
 QINIU_PUBLIC_BASE="${QINIU_PUBLIC_BASE:-https://lobcdn.zll.ink}"
 CHANNEL="${CHANNEL:-canary}"
-BASE_URL="${QINIU_PUBLIC_BASE}"
+CDN_ROOT="${CDN_ROOT:-official}"
+BASE_URL="${QINIU_PUBLIC_BASE}/${CDN_ROOT}"
 
-REV_FILE="work/local-revision"
+REV_FILE="work/local-revision-${CDN_ROOT}"
 ALL=0
 REV=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --revision) REV="$2"; shift 2 ;;
+    --root) CDN_ROOT="$2"; BASE_URL="${QINIU_PUBLIC_BASE}/${CDN_ROOT}"; REV_FILE="work/local-revision-${CDN_ROOT}"; shift 2 ;;
     --all) ALL=1; shift ;;
     *) echo "未知参数: $1"; exit 2 ;;
   esac
@@ -132,7 +135,8 @@ note "清单投影与对账"
 node scripts/publish/publish-component-manifest.js dist --project > work/declared.json
 node scripts/publish/publish-component-manifest.js dist --declared-only > work/declared-side.json
 
-note "签名清单 revision=$REV"
+note "签名清单 revision=$REV root=$CDN_ROOT"
+export COMPONENT_BASE_URL="$BASE_URL"
 LOBOS_COMPONENT_REVISION="$REV" \
   node scripts/publish/publish-component-manifest.js dist release "$PRIVATE_KEY" "$CHANNEL"
 LOBOS_COMPONENT_REVISION="$REV" node scripts/publish/publish-native-manifest.js "" release "$PRIVATE_KEY" "$CHANNEL"
@@ -142,17 +146,17 @@ export QINIU_AK QINIU_SK QINIU_BUCKET QINIU_PUBLIC_BASE
 for f in dist/component-*.zip; do
   [ -f "$f" ] || continue
   note "上传 $(basename "$f")"
-  node scripts/publish/upload-qiniu.js "$f" "component/$(basename "$f")" --cache-control=31536000
+  node scripts/publish/upload-qiniu.js "$f" "${CDN_ROOT}/component/$(basename "$f")" --cache-control=31536000
 done
 
 note "上传清单到七牛"
 node scripts/publish/upload-qiniu.js release/component-manifest.json \
-  "component-$CHANNEL/component-manifest.json" --cache-control=60
+  "${CDN_ROOT}/component-$CHANNEL/component-manifest.json" --cache-control=60
 node scripts/publish/upload-qiniu.js release/component-manifest.json.sig \
-  "component-$CHANNEL/component-manifest.json.sig" --cache-control=60
+  "${CDN_ROOT}/component-$CHANNEL/component-manifest.json.sig" --cache-control=60
 node scripts/publish/upload-qiniu.js release/native-manifest.json \
-  "component-$CHANNEL/native-manifest.json" --cache-control=60
+  "${CDN_ROOT}/component-$CHANNEL/native-manifest.json" --cache-control=60
 node scripts/publish/upload-qiniu.js release/native-manifest.json.sig \
-  "component-$CHANNEL/native-manifest.json.sig" --cache-control=60
+  "${CDN_ROOT}/component-$CHANNEL/native-manifest.json.sig" --cache-control=60
 
-note "完成：revision=$REV 已发布到 $BASE_URL/component-$CHANNEL/"
+note "完成：revision=$REV 已发布到 $BASE_URL/component-$CHANNEL/（root=$CDN_ROOT）"

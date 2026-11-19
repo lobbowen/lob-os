@@ -290,6 +290,10 @@ elf_write_shape() {
     role="$(elf_role_of_form "$form")"
     [ "$role" = "unknown" ] && continue
     dir="${rel%%/*}"
+    # shebang 脚本若不在 bin/ 下（如 python stdlib 的 lib/pythonX.Y/*.py），
+    # 是随目录整体复制的数据，不是需要拍平到 bin 的程序入口。
+    # 让它们进 shape 会被落位逻辑按 basename 拍到 bin/，破坏 stdlib 目录结构。
+    if [ "$form" = "$ELF_FORM_SHEBANG" ] && [ "$dir" != "bin" ]; then continue; fi
     [ "$dir" = "bin" ] && n_bin=$((n_bin+1))
     [ "$dir" = "lib" ] && n_libdir=$((n_libdir+1))
 

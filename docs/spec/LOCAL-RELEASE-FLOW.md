@@ -333,3 +333,30 @@ FINAL_OK 3.11.13，base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全模块可用。
 
 至此可调试版本暴露的 3 个真 bug（stdlib 槽位路径 / PYTHONHOME / 切换不同步）
 全部修复并实测闭环。
+
+---
+
+## 十四、bug4 + 正式目录建立（2026-11-20）
+
+### bug4：stdlib .py 被 shape 误判 program
+可调试版 + 从 official 走完整安装流程才暴露：安装后报 No module named base64。
+根因：带 shebang 的 .py 被 elf-form 判 shebang->program，进 shape 后落位拍平到 bin/。
+修：shape 生成时 shebang 且 dir!=bin 的文件 skip（数据由目录复制保留）。
+设备验证：SHAPE_FIX_OK 3.11.13，全模块可用。
+
+### 正式目录落地
+- 按 EXECUTION-POLICY.md 建立 /official/（正式）与 /testing/（测试，可清空）双目录。
+- channel.json baseUrl 指向 /official/，local-release.sh 支持 --root official|testing。
+- 本地备份 backup/verified/component/ 放已验证件（七牛清空后可原样恢复）。
+- 七牛 official 从干净桶重建：revision 1（9件，python 3.11 初版）、
+  revision 2（shape 修复版 python 7cba8c0e）。
+- 设备走完整正式流程验证：刷 revision2 清单 -> official 下载安装
+  -> SHAPE_FIX_OK，CURRENT/软链一致。
+
+### 可调试版本累计发现并修复的真 bug（共4个）
+1. stdlib 路径被 PY_SLOT 污染（lib/3.11/）
+2. PYTHONHOME 未注入
+3. activate 只写 CURRENT 没更新 ProgramIndex（切换不生效）
+4. .py 被 shape 误判 program（stdlib 拍平到 bin/）
+
+全部经设备直接执行验证。release 盲测一个都发现不了。
