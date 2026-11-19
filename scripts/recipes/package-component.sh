@@ -8,17 +8,17 @@ ROOT_DIR=$(pwd)
 TOOL="${1:?需要工具名}"
 PKG_NAME="${PKG_NAME:-$TOOL}"
 
-VER=$(cat "dist/${TOOL}.version" 2>/dev/null || true)
+VER=$(cat "dist/${PKG_NAME}.version" 2>/dev/null || true)
 
 if [ -z "$VER" ]; then
-  echo "::notice:: 那 dist/${TOOL}.version 不在（那复用命中了、编译被跳过了）"
+  echo "::notice:: 那 dist/${PKG_NAME}.version 不在（那复用命中了、编译被跳过了）"
   VER="$(bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --src-version "$TOOL" 2>/dev/null || true)"
   if [ -n "$VER" ]; then
-    printf '%s' "$VER" > "dist/${TOOL}.version"
+    printf '%s' "$VER" > "dist/${PKG_NAME}.version"
     echo "::notice::版本号 = $VER（从那钉值表取到、它写回了那一份）"
   fi
 fi
-[ -n "$VER" ] || { echo "::error title=缺版本号::dist/${TOOL}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
+[ -n "$VER" ] || { echo "::error title=缺版本号::dist/${PKG_NAME}.version 不在或为空 —— 不编值（这一版没有版本号就无法判断哪个包是本轮编的）；先跑产出它的 recipe"; exit 1; }
 RAW="work/.component-${TOOL}-raw.zip"
 mkdir -p "$(dirname "$RAW")"
 ENTRY=$(bash "$ROOT_DIR/scripts/registry/read-component-entry.sh" "$TOOL")
