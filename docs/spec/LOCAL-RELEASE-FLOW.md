@@ -224,3 +224,26 @@ bash scripts/publish/local-release.sh --revision 22  # 指定 revision
 版本切换的运行时生效（Resolver 绑定 + 应用级路由）已编译通过并随 APK 装机，
 设备侧"装第二个版本并切换"的完整运行时验证留待装应用时验证（需要客侧应用声明
 runtime 版本依赖）。
+
+---
+
+## 十、APK 全本地化构建 + 多版本切换端到端验收（2026-11-20）
+
+APK 构建也完成本地化（不再依赖 GitHub Actions 取件）：
+- 本地装 Android SDK（cmdline-tools/platform-35/build-tools 35.0.0）+ Gradle 9.6 + 用系统 JDK21
+- 本地从源码重编 9 个 base 件（scripts/toolchain/build-base-pieces-local.sh），
+  归集到 assets/pieces/<id>.zip。crypto 从 openssl 产物拆 libcrypto；git 用 package-component 打包。
+- 本地 gradle assembleRelease 产出 app-release.apk（76MB，本地 keystore 签名 2429d2b7）
+- 关键坑：base 件编完必须立即归集（后续脚本会清 dist）；git 编完要单独 package-component；
+  bundle 脚本依赖顺序（zlib 在 curl/git 之前）；需 export LLVM_STRIP/AR/RANLIB/READELF。
+
+设备验收（f0942f56，卸载旧包装本地 APK，因签名不同）：
+- 本地 APK 装好，系统 RUNNING，商店刷新后显示 python 三版本
+- 详情页三版本各有独立"安装 v"按钮（PackageInstaller.install 按版本取 url/sha256/entry）
+- 装 3.11.13 → 显示"已安装·当前 3.11.13"
+- 再装 3.14.8 → 两版本共存，当前变 3.14.8，3.11.13 显示"切换到"按钮
+- 点切换 → 当前切回 3.11.13，3.14.8 变"切换到"
+
+至此全链路本地化完成：
+件构建（python 三版本 + 9 base 件）-> APK 构建 -> 签名 -> 上传七牛 -> 设备商店
+-> 安装指定版本 -> 多版本共存 -> 切换，全部不经 GitHub，全部实测通过。
