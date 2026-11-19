@@ -67,6 +67,8 @@ class SystemInstallActivity : Activity() {
                 vcard.addView(Ui.text(host, "  · $label", color, 13f))
                 if (isInstalled && !isCurrent) {
                     vcard.addView(Ui.outlineButton(host, "切换到 $v") { beginActivate(plan.name, v) })
+                } else if (!isInstalled) {
+                    vcard.addView(Ui.outlineButton(host, "安装 $v") { beginInstall(plan.name, v) })
                 }
             }
             body.addView(vcard)
@@ -153,12 +155,12 @@ class SystemInstallActivity : Activity() {
         }
     }
 
-    private fun beginInstall(name: String) {
+    private fun beginInstall(name: String, version: String? = null) {
         if (name.isBlank()) return
         busy = true
         render()
         thread(name = "lobos-install") {
-            runCatching { PackageInstaller.install(this, name, null) }
+            runCatching { PackageInstaller.install(this, name, version) }
                 .onFailure { InstallProgress.failed(name, it.message ?: it.javaClass.simpleName) }
             runOnUiThread { busy = false; render() }
         }

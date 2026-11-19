@@ -20,8 +20,24 @@ object PackageInstaller {
     fun install(ctx: Context, name: String, version: String?, depth: Int = 0): JSONObject {
         val entry = CatalogClient.entryFor(ctx, name)
             ?: return fail(ctx, name, "目录里没有这个包（先 os.catalog.refresh）")
-        val url = entry.optString("url", "")
-        val want = entry.optString("sha256", "")
+        var url = entry.optString("url", "")
+        var want = entry.optString("sha256", "")
+        var entryRel = entry.optString("entry", "bin/" + name)
+
+        if (!version.isNullOrBlank()) {
+            val versions = entry.optJSONArray("versions")
+            var picked: org.json.JSONObject? = null
+            if (versions != null) for (i in 0 until versions.length()) {
+                val v = versions.optJSONObject(i) ?: continue
+                if (v.optString("version", "") == version) { picked = v; break }
+            }
+            if (picked == null) {
+                return fail(ctx, name, "版本 $version 不在可用清单里")
+            }
+            url = picked.optString("url", "").ifBlank { url }
+            want = picked.optString("sha256", "").ifBlank { want }
+            entryRel = picked.optString("entry", "").ifBlank { entryRel }
+        }
         if (url.isBlank() || want.isBlank()) return fail(ctx, name, "目录项缺 url/sha256")
         InstallProgress.stage(name, InstallProgress.Stage.QUEUED)
         val gate = runtimeGate(ctx, entry, depth)
@@ -45,7 +61,6 @@ object PackageInstaller {
         }
         InstallProgress.stage(name, InstallProgress.Stage.LAND)
 
-        val entryRel = entry.optString("entry", "bin/" + name)
         val isApplication = kind == "APPLICATION" || kind == "APP"
         val r = ProgramInstallPipeline.install(
             ctx,
