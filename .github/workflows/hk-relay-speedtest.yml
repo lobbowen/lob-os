@@ -40,7 +40,8 @@ jobs:
           cat > /tmp/hk_speedtest.sh <<'SCRIPT'
           set -e
           cd /tmp
-          export QINIU_AK="$1" QINIU_SK="$2" QINIU_BUCKET="$3"
+          source /tmp/hk-relay/.env 2>/dev/null || true
+          export QINIU_AK QINIU_SK QINIU_BUCKET
           export QINIU_PUBLIC_BASE="https://lobcdn.zll.ink"
 
           echo "[1] 香港机从 GitHub 下载一个小件（python 3.11 asset，先下 20MB）"
@@ -76,7 +77,16 @@ jobs:
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/toolchain/fmt.sh root@$HK_HOST:/tmp/hk-relay/scripts/toolchain/ >/dev/null 2>&1
           sshpass -p "$HK_PASS" scp -o StrictHostKeyChecking=no scripts/toolchain/cache-key.sh root@$HK_HOST:/tmp/hk-relay/scripts/toolchain/ >/dev/null 2>&1
 
+          echo "=== 部署凭证到香港机（600 权限，测完删除）==="
+          sshpass -p "$HK_PASS" ssh -o StrictHostKeyChecking=no root@$HK_HOST \
+            "cat > /tmp/hk-relay/.env <<ENVEOF
+          QINIU_AK=$QINIU_AK
+          QINIU_SK=$QINIU_SK
+          QINIU_BUCKET=$QINIU_BUCKET
+          ENVEOF
+          chmod 600 /tmp/hk-relay/.env" >/dev/null 2>&1
+
           echo "=== 香港机测速开始 ==="
           sshpass -p "$HK_PASS" ssh -o StrictHostKeyChecking=no root@$HK_HOST \
-            'bash /tmp/hk_speedtest.sh "$QINIU_AK" "$QINIU_SK" "$QINIU_BUCKET"' 2>&1
+            'bash /tmp/hk_speedtest.sh' 2>&1
           echo "=== 香港机测速结束 ==="
