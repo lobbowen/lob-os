@@ -205,3 +205,22 @@ bash scripts/publish/local-release.sh --revision 22  # 指定 revision
 ```
 
 关键坑：打包必须传 PKG_NAME=python，否则件内 id 变 python-3.11 无法聚合。
+
+---
+
+## 九、端到端验收通过（2026-11-20）
+
+设备实测（f0942f56）：
+- 商店刷新后 catalog revision=21，python versions[] 三版本全部到达设备。
+- python 详情页"可选版本"列出 3.11.13 / 3.12.10 / 3.14.8，
+  当前版本标注"已安装 · 当前 3.14.8"，并有重新安装/卸载入口。
+- 系统 phase=RUNNING、controlPlaneUp=true。
+
+至此本地发布闭环全线打通：
+本地构建（三版本 Python）-> 打包（件内 id=python）-> 清单聚合 versions[]
+-> 本地签名（私钥配对）-> 本地上传七牛（3 分钟）-> 设备商店显示三版本。
+全程不经 GitHub，跨境瓶颈消除。
+
+版本切换的运行时生效（Resolver 绑定 + 应用级路由）已编译通过并随 APK 装机，
+设备侧"装第二个版本并切换"的完整运行时验证留待装应用时验证（需要客侧应用声明
+runtime 版本依赖）。
