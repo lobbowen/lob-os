@@ -360,3 +360,18 @@ FINAL_OK 3.11.13，base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全模块可用。
 4. .py 被 shape 误判 program（stdlib 拍平到 bin/）
 
 全部经设备直接执行验证。release 盲测一个都发现不了。
+
+---
+
+## 十五、python 三版本正式目录齐全（2026-11-20）
+
+按修复后构建链重编 3.12.10(93c05e19) 与 3.14.8(9c5fdc47)：
+- 两者 shape 里 .py 条目=0（bug4 修复生效）
+- 设备解包执行验证：V312_OK 3.12.10 / V314_OK 3.14.8，全模块可用
+- 入本地备份 backup/verified/component/（现 11 件：8 选装 + python 三版本）
+
+official revision 3 发布：三版本齐全。设备刷清单见
+['3.11.13','3.12.10','3.14.8']；从 official 正常安装 3.12 →
+OFFICIAL_312_OK 3.12.10；已装目录 3.11.13 + 3.12.10 共存。
+
+正式目录 /official/ 现在只含验证过的可用件，三版本发布链路全线打通。
