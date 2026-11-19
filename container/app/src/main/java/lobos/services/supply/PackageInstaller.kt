@@ -11,6 +11,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import lobos.services.reg.PortBroker
 import lobos.services.reg.ProgramIndex
+import lobos.services.reg.edited
 import lobos.services.reg.ProgramManager
 import lobos.services.reg.Level
 

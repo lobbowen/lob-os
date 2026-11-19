@@ -306,3 +306,27 @@ run-as 直接执行修复版 3.11 件（手动替换进设备），设 PYTHONHOM
 
 待验证：系统执行路由（sys.tty.exec / 客侧应用）是否自动注入 PYTHONHOME ——
 代码已修且编译通过，端到端需要一个真实执行入口，列下一工作单元。
+
+---
+
+## 十三、切换核心 bug 修复与闭环验证（2026-11-20）
+
+### bug 3：activate 只写 CURRENT 没更新 ProgramIndex.version
+可调试版实测：切换后 CURRENT=3.11.13，但 program-index.json 里
+python version=3.14.8，usr/bin/python3 软链指向 3.14.8。
+UI 详情页读 CURRENT 显示"已切到 3.11"，但实际执行路径（LdConfig 读 ProgramIndex.version）
+还是 3.14 —— 用户以为切了其实没切，纯盲测发现不了。
+根因：setCurrentVersion 回调 registerCurrent 未成功更新注册表（runCatching 吞异常，
+无"指针切换即登记"日志）。
+修复：activate 里 setCurrentVersion 后显式 ProgramIndex.upsert(version=) 再 LdConfig.run。
+
+### 闭环验证（debug APK，run-as）
+UI 切换 python 3.14 -> 3.11 后：
+- CURRENT = 3.11.13
+- usr/bin/python3 软链 -> opt/python/3.11.13/bin/python3
+- ProgramIndex.version = 3.11.13
+三者一致。通过真实入口软链执行（带 PYTHONHOME）：
+FINAL_OK 3.11.13，base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全模块可用。
+
+至此可调试版本暴露的 3 个真 bug（stdlib 槽位路径 / PYTHONHOME / 切换不同步）
+全部修复并实测闭环。
