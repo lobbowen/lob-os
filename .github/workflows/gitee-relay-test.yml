@@ -8,25 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: 测海外 CI -> Gitee 连通与推送速度
+      - name: 测海外 CI git push 到 Gitee 速度
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          echo "=== CI -> Gitee 连通 ==="
-          curl -sS -m 15 -o /dev/null -w "  gitee.com HTTP %{http_code}\n" https://gitee.com 2>/dev/null
+          echo "=== 克隆测试仓库 ==="
+          git clone "https://bowen7778:${GITEE_TOKEN}@gitee.com/bowen7778/lobos-relay-test.git" /tmp/gitee-repo 2>&1 | tail -2
+          cd /tmp/gitee-repo
+          git config user.email "test@lobos.local"
+          git config user.name "test"
 
-          echo "=== CI 生成 5MB 测试文件并通过 Gitee API 上传 ==="
-          dd if=/dev/zero of=/tmp/test5m.bin bs=1M count=5 2>/dev/null
-          B64=$(base64 -w0 /tmp/test5m.bin)
+          echo "=== 生成 20MB 测试文件 ==="
+          dd if=/dev/urandom of=test-20m.bin bs=1M count=20 2>/dev/null
+          ls -l test-20m.bin | awk '{print "  "$5" 字节"}'
+
+          echo "=== git push 到 Gitee（计时）==="
+          git add test-20m.bin
+          git commit -q -m "speed test 20MB"
           START=$(date +%s)
-          RESP=$(curl -sS -m 180 -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"access_token\":\"$GITEE_TOKEN\",\"content\":\"$B64\",\"message\":\"speed test\"}" \
-            "https://gitee.com/api/v5/repos/bowen7778/lobos-relay-test/contents/test-5m.bin" 2>&1)
+          git push origin master 2>&1 | tail -3
           END=$(date +%s)
-          echo "  上传耗时 $((END-START)) 秒"
-          echo "$RESP" | head -c 200
-          echo
-          echo "=== 验证文件是否到达 ==="
-          curl -sS -m 30 -o /dev/null -w "  下载 HTTP %{http_code}, %{size_download} 字节\n" \
-            "https://gitee.com/bowen7778/lobos-relay-test/raw/master/test-5m.bin" 2>/dev/null
+          echo "  push 耗时 $((END-START)) 秒"
