@@ -114,6 +114,7 @@ rm -rf "$BUILD" "$PREFIX" && mkdir -p "$BUILD/_no_pc" "$PREFIX"
     ac_cv_file__dev_tty=no \
     ac_cv_working_getaddrinfo=yes \
     ac_cv_buggy_getaddrinfo=no \
+    ac_cv_prog_ac_ct_READELF=readelf \
     PKG_CONFIG_LIBDIR="$PYDEPS/lib/pkgconfig" \
     PKG_CONFIG_PATH= \
     CPPFLAGS="-D__ANDROID_API__=$API -I$PYDEPS/include" \
