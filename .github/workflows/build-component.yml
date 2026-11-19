@@ -197,7 +197,14 @@ jobs:
           const tools = m.tools || [];
           //**名字** **从**那清单**指向**的那一个**取**
           // （URL 是那 `publish-component-manifest.js:353` `BASE + "/component/" + f`）
-          const names = tools.map(t => String(t.url || "").split("/").pop()).filter(Boolean);
+          const names = [];
+          for (const t of tools) {
+            const vs = Array.isArray(t.versions) && t.versions.length ? t.versions : [t];
+            for (const v of vs) {
+              const n = String(v.url || "").split("/").pop();
+              if (n) names.push(n);
+            }
+          }
           if (!names.length) {
             console.error("::error title=清单里没有件::那清单没有 tools 那一族、件包**没**有名字可发");
             process.exit(1);
@@ -205,7 +212,11 @@ jobs:
           fs.writeFileSync("work/cdn-pieces.txt", names.join("\n") + "\n");
           //**件名** **也** **记**下来（**分片** **要**那**件名**才**取得到**）
           // （清单那 `name` 那一格**就是**那**件名**）
-          const ids = tools.map(t => String(t.name || "")).filter(Boolean);
+          const ids = [];
+          for (const t of tools) {
+            const vs = Array.isArray(t.versions) && t.versions.length ? t.versions : [t];
+            for (const v of vs) ids.push(String(t.name || ""));
+          }
           fs.writeFileSync("work/cdn-ids.txt", ids.join("\n") + "\n");
           '
           _cdn_n=0

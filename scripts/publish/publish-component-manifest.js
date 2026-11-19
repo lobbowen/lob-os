@@ -293,7 +293,7 @@ function sha256File(file) {
 
 function toolsFromDist() {
   if (!fs.existsSync(DIST)) throw new Error('dist 目录不存在: ' + DIST);
-  const out = [];
+  const grouped = new Map();
   for (const f of fs.readdirSync(DIST)) {
     const m = /^component-([a-z0-9-]+)-([0-9][^-]*)-([0-9a-f]{12})-android-arm64\.zip$/.exec(f);
     if (!m) continue;
@@ -307,21 +307,38 @@ function toolsFromDist() {
     const real = digest.slice(0, 12);
     if (real !== claimed) throw new Error('文件名里的内容哈希与实际不符: ' + f + '（名 ' + claimed + ' vs 实 ' + real + '）');
     const entry = entryOf(name);
-    
-    
-    
-    
-    
-
     const recipeFp = recipeFingerprintOf(name);
-    out.push({
-      name, provider: 'zip', version: ver,
+    const item = {
+      version: ver,
       url: BASE + '/component/' + f,
       sha256: digest,
-      
       recipeFingerprint: recipeFp,
       entry,
       aliases: aliasesOf(name, zipPath, entry),
+    };
+    if (!grouped.has(name)) grouped.set(name, []);
+    grouped.get(name).push(item);
+  }
+
+  const out = [];
+  const cmp = (a, b) => {
+    const pa = String(a.version).replace(/^v/, '').split(/[.\-+]/).map(x => parseInt(x, 10) || 0);
+    const pb = String(b.version).replace(/^v/, '').split(/[.\-+]/).map(x => parseInt(x, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length, 3); i++) {
+      const x = pa[i] || 0, y = pb[i] || 0;
+      if (x !== y) return x > y ? 1 : -1;
+    }
+    return 0;
+  };
+  for (const [name, versions] of grouped) {
+    versions.sort(cmp);
+    const def = versions[versions.length - 1];
+    out.push({
+      name, provider: 'zip', version: def.version,
+      url: def.url, sha256: def.sha256,
+      recipeFingerprint: def.recipeFingerprint,
+      entry: def.entry, aliases: def.aliases,
+      versions: versions.map((v, i) => Object.assign({ default: i === versions.length - 1 }, v)),
     });
   }
   return out;
