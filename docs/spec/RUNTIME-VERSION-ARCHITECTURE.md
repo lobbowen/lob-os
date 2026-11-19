@@ -231,3 +231,36 @@ tag 分别是 rt-python / rt-python-3.12 / rt-python-3.11 —— 即三个件名
 - Android 原生是否有 application-specific runtime 选择机制：未取证，
   不影响本文（我们要新做这一层）。
 - native exec-path.c 之外是否有按应用版本逻辑：仓内零命中，不混入本文。
+
+---
+
+## 10 构建槽位与发布件的分离（ tenth 节，实施中定）
+
+问题：3.14/3.12/3.11 是同一个"发布件 python"的三个"构建槽位"，
+但我把槽位名（python-3.12/3.11）登记成独立件（bucket=rt），导致 fetch
+按件名找 build-11.yml（不存在）而失败。
+
+### 判别式
+
+凡一格要答"这是个什么"，必须分清两个问题：
+1. **构建槽位**：为了产出不同版本而存在的构建维度（python-3.12 是一个槽位，
+   对应 build-python3.yml 的一次 matrix run，产出 rt-python-3.12 tag 的 asset）
+2. **发布件**：清单里用户可见的可安装单元（python 是一件，有三个版本）
+
+**槽位不是件**。槽位不进 bucket_for / 不作为独立件被 fetch / 不在清单里单独出现。
+槽位通过"件名 + 版本"与发布件关联：python 件的三个版本分别由三个槽位产出。
+
+### 链路修正（一次性，不逐点补丁）
+
+1. cache-key.sh：python-3.12/3.11 从 bucket_for 移除（它们不是独立发布件）。
+   但 tag/asset/key 计算仍要支持槽位（构建 workflow 用），所以 deps_for/SRC_FILES
+   保留槽位登记，只从 bucket_for 移除。
+2. fetch-component-artifacts.sh：对 python 件，从 build-python3.yml 的最近成功
+   runs 取**所有版本**的 asset（不只一个 tag），聚合成该件的多个版本条目。
+   具体：件名 python → workflow build-python3.yml → 该 workflow 最近 N 个成功 run
+   → 每个 run 的 asset → 按件内 id 都是 python → 多版本。
+3. publish-component-manifest.js：已按件内 id 聚合 versions[]（保留）。
+4. 清单/CDN：已展开 versions[].url（保留）。
+
+这样：槽位只在构建期存在（产出不同 tag 的 asset），发布期只有一个件 python，
+fetch 从该件 workflow 的多个 run 取多个版本，清单聚合成 versions[]。

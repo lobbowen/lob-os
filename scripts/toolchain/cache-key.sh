@@ -53,7 +53,7 @@ bucket_for() {
       bash|ripgrep|busybox|jq)                             echo "base" ;;
       curl|zlib|openssl|crypto)                            echo "base" ;;
 
-      node|python|python-3.12|python-3.11)echo "rt" ;;
+      node|python)echo "rt" ;;
 
       git|sqlite|npm|pnpm|llvm|make|cmake|pkgconf)        echo "tool" ;;
 

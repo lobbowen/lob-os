@@ -79,6 +79,40 @@ for t in $COMPONENTS; do
     *" $t "*) echo -e "$t\tskipped-native\t随 APK 内置，不在控制面板清单里"; skipped=$((skipped+1)); continue ;;
   esac
 
+  RELEASE_TAGS="$(node -e '
+    const fs = require("fs");
+    try {
+      const s = JSON.parse(fs.readFileSync(process.argv[1], "utf8")).sources[process.argv[2]] || {};
+      const rt = s.releaseTags || [];
+      process.stdout.write(rt.map(x => x.tag + ":" + x.key).join(" "));
+    } catch (e) {}
+  ' "$ROOT_DIR/scripts/component-sources.json" "$t" 2>/dev/null || true)"
+  if [ -n "$RELEASE_TAGS" ]; then
+    got=0
+    for pair in $RELEASE_TAGS; do
+      _tag="${pair%%:*}"
+      _key="${pair#*:}"
+      _asset="$(bash "$ROOT_DIR/scripts/toolchain/cache-key.sh" asset "$_key" 2>/dev/null | tail -1 || true)"
+      if [ -z "$_asset" ]; then echo "::warning title=$t 槽位 asset 算不出::$_key"; continue; fi
+      if bash "$ROOT_DIR/scripts/toolchain/fetch-release-asset.sh" "$_tag" "$_asset" "$DIST" >/dev/null 2>&1; then
+        _inner_name="$(unzip -p "$DIST/$_asset" component-meta.json 2>/dev/null | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})')"
+        _inner_ver="$(unzip -p "$DIST/$_asset" component-meta.json 2>/dev/null | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})')"
+        [ -n "$_inner_name" ] && [ -n "$_inner_ver" ] || { echo "::warning title=$t 件内标识读不到::$_asset"; continue; }
+        _sha12="$(sha256sum "$DIST/$_asset" | cut -c1-12)"
+        _canon="component-$_inner_name-$_inner_ver-$_sha12-android-arm64.zip"
+        [ "$_asset" = "$_canon" ] || mv -f "$DIST/$_asset" "$DIST/$_canon"
+        got=$((got+1))
+        echo -e "$t\trelease\t已取 $_tag -> $_canon"
+      else
+        echo "::warning title=$t Release 取件失败::$_tag / $_asset"
+      fi
+    done
+    if [ "$got" -gt 0 ]; then
+      skipped=$((skipped+1))
+      continue
+    fi
+  fi
+
   case "$t" in
     ripgrep) WF="build-rg.yml" ;;
     pkgconf) WF="build-pkg-config.yml" ;;
