@@ -178,3 +178,30 @@ node scripts/publish/upload-qiniu.js release/component-manifest.json.sig \
 
 结论：本地构建发布闭环成立，跨境瓶颈消除。下一步固化 local-release.sh。
 注意：打包必须传 PKG_NAME=python，否则件内 id 变成 python-3.11，清单无法聚合。
+
+---
+
+## 八、本地发布已固化并首次执行成功（2026-11-20）
+
+脚本：`scripts/publish/local-release.sh`（chmod +x），一条命令完成构建到上传。
+凭证：`~/.config/lobos-qiniu.env`（600，不进 git）；私钥用本地配对备份。
+revision 计数：`work/local-revision`（gitignore，本地状态，当前 21）。
+
+首次正式发布（revision 21）实测：
+- dist 集齐 9 件（python 三版本 3.11.13/3.12.10/3.14.8 本地新编，
+  其他 8 件从 CDN 14ms 拉回复用字节），清单正确聚合成 python versions[] 三版本。
+- 清单签名自检通过（私钥与 APK 公钥配对）。
+- 全部上传（3 新 python 件 + 8 已有件 + 4 清单）耗时 168 秒，全部回读 ok。
+- CDN revision 21，python 三版本均 HTTP 200，默认 3.14.8。
+
+对比：CI 跨境发布 100 分钟且反复失败；本地发布 3 分钟成功。跨境瓶颈彻底消除。
+
+用法：
+```
+source ~/.config/lobos-qiniu.env
+bash scripts/publish/local-release.sh            # 增量：python 三版本本地编，其余从 CDN 复用
+bash scripts/publish/local-release.sh --all      # 全量：所有件本地重编
+bash scripts/publish/local-release.sh --revision 22  # 指定 revision
+```
+
+关键坑：打包必须传 PKG_NAME=python，否则件内 id 变 python-3.11 无法聚合。
