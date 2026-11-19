@@ -266,3 +266,43 @@ APK 构建也完成本地化（不再依赖 GitHub Actions 取件）：
 （GuestAdapter.applyRuntimeBindings 按 LOBOS_PROGRAM_ID 注入对应版本 bin/lib）
 为编译期验证。完整的"应用声明版本约束→解析→执行"端到端需要一个真实客侧应用，
 列为下一个工作单元。
+
+---
+
+## 十二、可调试版本暴露的真 bug（2026-11-20）
+
+按用户要求产出可调试版本（assembleDebug + 同 keystore 签名，覆盖安装保留数据，
+run-as 可用），在设备上直接执行 python，发现 release 盲测完全看不到的两个真 bug：
+
+### bug 1：stdlib 路径被构建槽位污染
+现象：装好的 python 3.11/3.12 执行 `python3 -c "..."` 报
+`ModuleNotFoundError: No module named 'encodings'`；直接 `python3 --version` 能过（不需要 stdlib）。
+根因：build-component-python3.sh 里 `PY_SLOT` 非空时 `LIBROOT="lib/$PY_SLOT"`，
+标准库落到 `lib/3.11/python3.11/`，而 CPython 按 sys.path 找 `lib/python3.11/`。
+验证：run-as 建软链 `lib/python3.11 -> lib/3.11/python3.11` 后 encodings 找到。
+修复：LIBROOT 恒为 "lib"，槽位只影响 WORK 目录与 asset 名，不进件内路径。
+
+### bug 2：PYTHONHOME 未注入
+现象：即使 stdlib 路径正确，sys.prefix 仍是构建机路径
+`/home/bowen/.../work/python-3.11-3.11/_inst`（configure --prefix 编进去的），
+设备上不存在。
+根因：系统只设 `$PREFIX`，CPython 不认它，只认 `$PYTHONHOME`。
+验证：run-as 设 `PYTHONHOME=<件目录>` 后 sys.prefix 正确。
+修复：两处注入 —— GuestAdapter.applyRuntimeBindings（应用级绑定）+ RuntimeEnvironment.treeRootEnv
+（系统级默认，按 ProgramIndex 里 python 当前版本）。
+
+### 终极验证（可调试版实测）
+run-as 直接执行修复版 3.11 件（手动替换进设备），设 PYTHONHOME：
+`FULL_OK 3.11.13` —— base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全部 import 成功。
+
+### 连带修复
+- package-component.sh：OUT 参数化后 sha256sum 硬编码 cd dist 的路径 bug
+- local-release.sh：CC 变量 `${}` 笔误；python 构建独立 OUT 避免与 base 件互相污染；
+  收集前清掉旧 python 件避免 versions[] 重复
+- gitignore：dist-python/ 中间产物
+
+这些 bug 在 release 包（run-as 被拒、adb root 不可用）上只能看到 UI 状态"当前 3.11.13"，
+无法执行验证，是纯盲测。可调试版本一次就暴露了。
+
+待验证：系统执行路由（sys.tty.exec / 客侧应用）是否自动注入 PYTHONHOME ——
+代码已修且编译通过，端到端需要一个真实执行入口，列下一工作单元。
