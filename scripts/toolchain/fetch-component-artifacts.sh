@@ -92,19 +92,21 @@ for t in $COMPONENTS; do
     for pair in $RELEASE_TAGS; do
       _tag="${pair%%:*}"
       _key="${pair#*:}"
-      _asset="$(curl -fsSL -H "Accept: application/vnd.github+json" \
-        "https://api.github.com/repos/$REPO/releases/tags/$_tag" 2>/dev/null \
-        | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const a=(JSON.parse(d).assets||[]).filter(x=>x.name.endsWith(".zip"));process.stdout.write(a.length?a[0].name:"")}catch(e){}})')"
+      _asset="$({ curl -sSL -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/$REPO/releases/tags/$_tag" 2>/dev/null || true; \
+        } | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const a=(JSON.parse(d).assets||[]).filter(x=>x.name.endsWith(".zip"));process.stdout.write(a.length?a[0].name:"")}catch(e){}})')"
       if [ -z "$_asset" ]; then echo "::warning title=$t 槽位 Release 无 asset::$_tag"; continue; fi
       if bash "$ROOT_DIR/scripts/toolchain/fetch-release-asset.sh" "$_tag" "$_asset" "$DIST" >/dev/null 2>&1; then
-        _inner_name="$(unzip -p "$DIST/$_asset" component-meta.json 2>/dev/null | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})')"
-        _inner_ver="$(unzip -p "$DIST/$_asset" component-meta.json 2>/dev/null | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})')"
-        [ -n "$_inner_name" ] && [ -n "$_inner_ver" ] || { echo "::warning title=$t 件内标识读不到::$_asset"; continue; }
-        _sha12="$(sha256sum "$DIST/$_asset" | cut -c1-12)"
-        _canon="component-$_inner_name-$_inner_ver-$_sha12-android-arm64.zip"
-        [ "$_asset" = "$_canon" ] || mv -f "$DIST/$_asset" "$DIST/$_canon"
-        got=$((got+1))
-        echo -e "$t\trelease\t已取 $_tag -> $_canon"
+        _before="$(ls "$DIST"/component-*.zip 2>/dev/null | wc -l)"
+        bash "$ROOT_DIR/scripts/toolchain/unpack-piece.sh" "$DIST/$_asset" "$DIST" >/dev/null 2>&1 || true
+        rm -f "$DIST/$_asset"
+        _after="$(ls "$DIST"/component-*.zip 2>/dev/null | wc -l)"
+        if [ "$_after" -gt "$_before" ]; then
+          got=$((got+1))
+          echo -e "$t\trelease\t已取并解包 $_tag"
+        else
+          echo "::warning title=$t 解包后无件::$_tag / $_asset"
+        fi
       else
         echo "::warning title=$t Release 取件失败::$_tag / $_asset"
       fi
