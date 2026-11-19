@@ -1,5 +1,8 @@
 # 本地发布流程（不经过 GitHub）
 
+> 执行行为约束见 `docs/spec/EXECUTION-POLICY.md`，本流程的每一步都受其约束：
+> 未验证产物不留存、七牛只传正式可用内容、测试走可清空测试目录、本地留可用备份。
+
 目标：把件从"GitHub Actions 构建 + 跨境上传"彻底改为"本地构建 + 本地传七牛"。
 件从出生就在国内，直接 14ms 上传七牛，消除跨境瓶颈。
 不再 push GitHub tag、不再走 build-python3.yml / build-component.yml、不再用 Release 中转。
