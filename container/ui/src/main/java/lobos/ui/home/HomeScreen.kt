@@ -15,6 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Dataset
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,11 +56,11 @@ sealed interface HomeEvent {
 }
 
 private val entries = listOf(
-    "terminal" to "终端",
-    "components" to "组件",
-    "space" to "空间",
-    "apps" to "应用",
-    "more" to "更多",
+    Triple("terminal", "终端", Icons.Filled.Terminal),
+    Triple("components", "组件", Icons.Filled.Dataset),
+    Triple("space", "空间", Icons.Filled.Storage),
+    Triple("apps", "应用", Icons.Filled.Apps),
+    Triple("more", "更多", Icons.Filled.MoreHoriz),
 )
 
 @Composable
@@ -121,13 +128,13 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
                 }
             }
             Row(Modifier.fillMaxWidth().height(86.dp), verticalAlignment = Alignment.CenterVertically) {
-                entries.forEach { (key, label) ->
+                entries.forEach { (key, label, icon) ->
                     Column(
                         Modifier.weight(1f).height(86.dp).clickable { onEvent(HomeEvent.OpenEntry(key)) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text("▦", color = cs.onSurface, fontSize = 26.sp)
+                        Icon(icon, contentDescription = label, modifier = Modifier.size(27.dp), tint = cs.onSurface)
                         Spacer(Modifier.size(8.dp))
                         Text(label, color = cs.onSurface, fontSize = 13.sp)
                     }
