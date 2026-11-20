@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  body { background:#dfe3e8; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','PingFang SC',sans-serif; }
+  .stage { padding:34px; display:flex; gap:40px; flex-wrap:wrap; }
+  .col { width:430px; }
+  .cap { font-size:12px; color:#6b7280; margin-bottom:10px; font-weight:600; }
+  .phone { width:430px; height:932px; background:#f7f8fa; border-radius:52px; padding:12px; box-shadow:0 24px 60px rgba(20,30,50,.18),0 0 0 1px rgba(255,255,255,.6) inset; }
+  .scr { width:100%; height:100%; background:#f7f8fa; border-radius:41px; overflow:hidden; display:flex; flex-direction:column; }
+  .stat { height:54px; padding:0 30px; display:flex; align-items:center; justify-content:space-between; font-size:16px; font-weight:600; color:#111318; flex-shrink:0; }
+  .stat .r { font-size:13px; }
+
+  .head { padding:8px 24px 0; flex-shrink:0; }
+  .back { color:#007aff; font-size:15px; display:flex; align-items:center; gap:4px; margin-bottom:12px; }
+  .title { font-size:34px; font-weight:680; letter-spacing:-.04em; color:#101216; }
+  .sub { font-size:13px; color:#8b929d; margin-top:6px; }
+
+  .seg { display:flex; margin:20px 18px 0; background:#e9edf1; border-radius:14px; padding:4px; flex-shrink:0; }
+  .seg div { flex:1; text-align:center; font-size:12px; font-weight:600; color:#7a828d; padding:9px 0; border-radius:10px; }
+  .seg div.on { background:#fff; color:#161920; box-shadow:0 2px 7px rgba(30,50,90,.08); }
+
+  .body { flex:1; overflow:hidden; padding:0 18px; }
+  .group { margin-top:22px; }
+  .glabel { font-size:11px; font-weight:650; color:#9aa1ac; letter-spacing:.1em; text-transform:uppercase; margin:0 6px 10px; }
+
+  .card { background:#fff; border-radius:20px; box-shadow:0 4px 16px rgba(30,50,90,.06),0 0 0 1px rgba(30,50,90,.03) inset; overflow:hidden; }
+  .row { display:flex; align-items:center; gap:13px; padding:14px 16px; border-bottom:1px solid #f0f2f5; }
+  .row:last-child { border-bottom:none; }
+  .ico { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; background:#f0f3f7; color:#4a5461; }
+  .ico.blue { background:#eaf2ff; color:#2f6fd9; }
+  .ico.green { background:#e9f7ee; color:#249a55; }
+  .ico.purple { background:#f1ecfb; color:#7a4fd0; }
+  .b { flex:1; }
+  .t { font-size:15px; font-weight:600; color:#161920; }
+  .s { font-size:12px; color:#9aa1ac; margin-top:3px; }
+  .tag { font-size:11px; font-weight:600; padding:4px 9px; border-radius:14px; background:#eef1f4; color:#6b7280; white-space:nowrap; }
+  .tag.on { background:#e9f7ee; color:#249a55; }
+  .tag.add { color:#007aff; background:#eef5ff; }
+  .chev { color:#c4cad2; font-size:18px; }
+
+  .vcard { background:#fff; border-radius:18px; padding:14px 16px; margin-bottom:9px; box-shadow:0 3px 12px rgba(30,50,90,.05); border:1px solid #eef0f4; }
+  .vcard.cur { border-color:#007aff; background:#f5f9ff; }
+  .vt { display:flex; justify-content:space-between; align-items:center; }
+  .vn { font-size:16px; font-weight:650; }
+  .vs { font-size:11px; color:#9aa1ac; margin-top:4px; }
+  .vbtn { font-size:12px; font-weight:600; color:#007aff; padding:7px 14px; border:1px solid #cfe0ff; border-radius:9px; }
+  .vbtn.now { color:#9aa1ac; border-color:#e5e8ec; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<div class="col"><div class="cap">组件 · 主页（运行库/运行时/工具/功能组件统一入口）</div><div class="phone"><div class="scr">
+  <div class="stat"><span>17:21</span><span class="r">◷ 5G ▂100%</span></div>
+  <div class="head"><div class="back">‹ 返回</div><div class="title">组件</div><div class="sub">运行库 · 运行时 · 工具 · 功能组件</div></div>
+  <div class="seg"><div class="on">已安装</div><div>可安装</div><div>全部</div></div>
+  <div class="body">
+    <div class="group"><div class="glabel">运行时</div>
+      <div class="card">
+        <div class="row"><div class="ico blue">Py</div><div class="b"><div class="t">Python</div><div class="s">3.14.8 · 3 个版本 · 100 MB</div></div><span class="tag on">使用中</span><span class="chev">›</span></div>
+        <div class="row"><div class="ico">Js</div><div class="b"><div class="t">Node.js</div><div class="s">v24.21.0 · 未安装</div></div><span class="tag add">安装</span></div>
+        <div class="row"><div class="ico">Go</div><div class="b"><div class="t">Go</div><div class="s">未安装</div></div><span class="tag add">安装</span></div>
+      </div>
+    </div>
+    <div class="group"><div class="glabel">工具</div>
+      <div class="card">
+        <div class="row"><div class="ico green">Cm</div><div class="b"><div class="t">CMake</div><div class="s">4.4.4 · 已安装</div></div><span class="tag">已装</span></div>
+        <div class="row"><div class="ico green">Gt</div><div class="b"><div class="t">Git</div><div class="s">2.55.0 · 已安装</div></div><span class="tag">已装</span></div>
+        <div class="row"><div class="ico purple">Sq</div><div class="b"><div class="t">SQLite</div><div class="s">3.53.4 · 已安装</div></div><span class="tag">已装</span></div>
+      </div>
+    </div>
+    <div class="group"><div class="glabel">基础库（随 APK）</div>
+      <div class="card"><div class="row"><div class="ico">◇</div><div class="b"><div class="t">libssl · libcrypto · libc++</div><div class="s">系统共享库 · ldconfig 管理</div></div><span class="chev">›</span></div></div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="col"><div class="cap">组件 · Python 详情（多版本切换）</div><div class="phone"><div class="scr">
+  <div class="stat"><span>17:21</span><span class="r">◷ 5G ▂100%</span></div>
+  <div class="head"><div class="back">‹ 组件</div><div class="title">Python</div><div class="sub">运行时 · 3 个版本 · 100 MB</div></div>
+  <div class="body" style="padding-top:12px">
+    <div class="group" style="margin-top:6px"><div class="glabel">版本</div>
+      <div class="vcard cur"><div class="vt"><div><div class="vn">3.14.8</div><div class="vs">当前激活 · 默认</div></div><span class="vbtn now">使用中</span></div></div>
+      <div class="vcard"><div class="vt"><div><div class="vn">3.12.10</div><div class="vs">已安装 · 88 MB</div></div><span class="vbtn">切换</span></div></div>
+      <div class="vcard"><div class="vt"><div><div class="vn">3.11.13</div><div class="vs">已安装 · 84 MB</div></div><span class="vbtn">切换</span></div></div>
+    </div>
+    <div class="group"><div class="glabel">依赖</div>
+      <div class="card">
+        <div class="row"><div class="ico green">✓</div><div class="b"><div class="t">openssl</div><div class="s">3.6.3 · 已就位</div></div></div>
+        <div class="row"><div class="ico green">✓</div><div class="b"><div class="t">zlib</div><div class="s">1.3.2 · 已就位</div></div></div>
+      </div>
+    </div>
+    <div class="group"><div class="glabel">能力</div>
+      <div class="card"><div class="row"><div class="b"><div class="t">扩展模块</div><div class="s">ctypes · ssl · sqlite3 · bz2 · lzma · hashlib</div></div></div></div>
+    </div>
+  </div>
+</div></div></div>
+
+</div>
+</body>
+</html>

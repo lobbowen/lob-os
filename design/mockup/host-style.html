@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  body { background:#e5eaef; color:#1a1a1a; font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans SC',sans-serif; }
+  .page { padding:32px; display:flex; gap:28px; align-items:flex-start; flex-wrap:wrap; }
+  .phone { width:420px; height:900px; background:#f2f4f7; border-radius:0; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 6px 24px rgba(0,0,0,.1); position:relative; }
+  .cap { font-size:12px; color:#555; margin-bottom:8px; font-weight:600; }
+
+  .statusbar { height:48px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; font-size:16px; font-weight:600; }
+  .statusbar .icons { font-size:13px; letter-spacing:1px; }
+  .topbar { height:64px; padding:0 18px; display:flex; align-items:center; gap:12px; }
+  .back { font-size:30px; color:#111; font-weight:300; }
+  .online { display:flex; align-items:center; gap:7px; background:#1c1c1e; color:#fff; padding:8px 15px; border-radius:20px; font-size:14px; font-weight:600; white-space:nowrap; }
+  .online .d { width:9px; height:9px; border-radius:50%; background:#32d74b; }
+  .host-title { font-size:25px; font-weight:650; letter-spacing:-.02em; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .more { font-size:24px; color:#333; }
+
+  .preview { margin:6px 16px 0; height:330px; border-radius:16px; overflow:hidden; position:relative;
+    background:linear-gradient(135deg,#007aff 0%,#1e5bff 50%,#0a2b8c 100%); }
+  .preview::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at 70% 45%,rgba(255,255,255,.18),transparent 45%), linear-gradient(160deg,transparent 60%,rgba(0,0,0,.35)); }
+  .winlogo { position:absolute; right:52px; top:96px; width:110px; height:104px;
+    background:linear-gradient(90deg,#66d9ff 0%,#4aa8ff 50%,#2f7fff 100%);
+    clip-path:polygon(0 0,47% 0,47% 47%,0 47%,0 0,53% 0,100% 0,100% 47%,53% 47%,53% 0,0 53%,47% 53%,47% 100%,0 100%,0 53%,53% 53%,53% 100%,100% 100%,100% 53%,53% 53%); opacity:.85; }
+  .enter { position:absolute; bottom:36px; left:0; right:0; text-align:center; color:#fff; font-size:20px; font-weight:600; }
+
+  .actions { margin:12px 16px 0; background:#fff; border-radius:16px; height:104px; display:flex; align-items:center; padding:10px 6px; }
+  .act { flex:1; display:flex; flex-direction:column; align-items:center; gap:11px; }
+  .act .ic { width:30px; height:30px; display:flex; align-items:center; justify-content:center; }
+  .act span { font-size:14px; color:#1a1a1a; }
+
+  .quick { padding:28px 18px 0; }
+  .quick-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .quick-title { font-size:24px; font-weight:650; letter-spacing:-.02em; }
+  .manage { background:#e2e6ea; color:#3a3a3c; padding:9px 15px; border-radius:18px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .apps { display:flex; gap:22px; }
+  .app { width:74px; text-align:center; }
+  .app-ic { width:68px; height:68px; border-radius:16px; background:linear-gradient(135deg,#4d8dff,#2b5fd9); display:flex; align-items:center; justify-content:center; color:#fff; font-size:26px; font-weight:700; margin-bottom:11px; }
+  .app-ic.add { background:#e2e6ea; color:#8e8e93; font-size:40px; font-weight:300; }
+  .app-name { font-size:14px; color:#2a2a2c; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .section-title { font-size:22px; font-weight:650; padding:26px 18px 12px; }
+  .list-card { margin:0 16px; background:#fff; border-radius:16px; overflow:hidden; }
+  .li { display:flex; align-items:center; gap:13px; padding:14px 16px; border-bottom:1px solid #f0f0f2; }
+  .li:last-child { border:none; }
+  .li-ic { width:34px; height:34px; border-radius:9px; background:#eef2f6; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; }
+  .li-b { flex:1; }
+  .li-t { font-size:15px; font-weight:600; }
+  .li-s { font-size:12px; color:#8e8e93; margin-top:3px; }
+  .li-v { font-size:13px; color:#007aff; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div><div class="cap">1 · 主机首页（完全对齐你给的界面结构）</div><div class="phone">
+  <div class="statusbar"><span>17:21</span><span class="icons">◷ bluetooth 5G 5G wifi 43</span></div>
+  <div class="topbar">
+    <span class="back">‹</span>
+    <span class="online"><span class="d"></span>在线</span>
+    <span class="host-title">LOBOS-AGENT-OS</span>
+    <span class="more">⋮</span>
+  </div>
+  <div class="preview"><div class="winlogo"></div><div class="enter">进入桌面 ›</div></div>
+  <div class="actions">
+    <div class="act"><div class="ic">⿱</div><span>应用商店</span></div>
+    <div class="act"><div class="ic">▦</div><span>运行时</span></div>
+    <div class="act"><div class="ic">›_</div><span>终端</span></div>
+    <div class="act"><div class="ic">▦</div><span>更多</span></div>
+  </div>
+  <div class="quick">
+    <div class="quick-head"><span class="quick-title">快速启动</span><span class="manage">⊞ 应用管理</span></div>
+    <div class="apps">
+      <div class="app"><div class="app-ic">Py</div><div class="app-name">Python</div></div>
+      <div class="app"><div class="app-ic">Js</div><div class="app-name">Node.js</div></div>
+      <div class="app"><div class="app-ic add">+</div><div class="app-name">添加应用</div></div>
+    </div>
+  </div>
+</div></div>
+
+<div><div class="cap">2 · 应用管理（点"应用管理"后）</div><div class="phone">
+  <div class="statusbar"><span>17:21</span><span class="icons">◷ bluetooth 5G 5G wifi 43</span></div>
+  <div class="topbar"><span class="back">‹</span><span class="host-title">应用管理</span><span class="more">⊕</span></div>
+  <div class="section-title">运行时</div>
+  <div class="list-card">
+    <div class="li"><div class="li-ic" style="background:#eaf3ff;color:#2b6fd9">Py</div><div class="li-b"><div class="li-t">Python</div><div class="li-s">3.14.8 · 3 个版本</div></div><div class="li-v">切换 ›</div></div>
+    <div class="li"><div class="li-ic">Js</div><div class="li-b"><div class="li-t">Node.js</div><div class="li-s">未安装 · v24.21.0</div></div><div class="li-v">安装</div></div>
+    <div class="li"><div class="li-ic">Go</div><div class="li-b"><div class="li-t">Go</div><div class="li-s">未安装</div></div><div class="li-v">安装</div></div>
+  </div>
+  <div class="section-title">工具</div>
+  <div class="list-card">
+    <div class="li"><div class="li-ic">Cm</div><div class="li-b"><div class="li-t">CMake</div><div class="li-s">v4.4.4 · 已安装</div></div></div>
+    <div class="li"><div class="li-ic">Gt</div><div class="li-b"><div class="li-t">Git</div><div class="li-s">v2.55.0 · 已安装</div></div></div>
+  </div>
+</div></div>
+
+<div><div class="cap">3 · Python 版本管理</div><div class="phone">
+  <div class="statusbar"><span>17:21</span><span class="icons">◷ bluetooth 5G 5G wifi 43</span></div>
+  <div class="topbar"><span class="back">‹</span><span class="host-title">Python</span><span class="more">⋮</span></div>
+  <div class="preview" style="height:200px;background:linear-gradient(135deg,#4d8dff,#2b5fd9)"><div class="enter" style="bottom:22px">3.14.8 · 当前版本</div></div>
+  <div class="section-title">版本</div>
+  <div class="list-card">
+    <div class="li" style="background:#f5f9ff"><div class="li-ic" style="background:#eaf3ff;color:#2b6fd9">✓</div><div class="li-b"><div class="li-t">3.14.8</div><div class="li-s">当前激活</div></div><div class="li-v">使用中</div></div>
+    <div class="li"><div class="li-ic">3.12</div><div class="li-b"><div class="li-t">3.12.10</div><div class="li-s">已安装</div></div><div class="li-v">切换 ›</div></div>
+    <div class="li"><div class="li-ic">3.11</div><div class="li-b"><div class="li-t">3.11.13</div><div class="li-s">已安装</div></div><div class="li-v">切换 ›</div></div>
+  </div>
+  <div class="section-title">信息</div>
+  <div class="list-card">
+    <div class="li"><div class="li-b"><div class="li-t">依赖</div></div><div class="li-s">openssl · zlib · libffi</div></div>
+    <div class="li"><div class="li-b"><div class="li-t">大小</div></div><div class="li-s">100 MB</div></div>
+  </div>
+</div></div>
+
+</div>
+</body>
+</html>
