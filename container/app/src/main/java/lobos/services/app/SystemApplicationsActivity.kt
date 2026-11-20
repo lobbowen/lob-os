@@ -3,12 +3,9 @@ package lobos.services.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import lobos.ui.apps.AppsEvent
+import lobos.ui.apps.AppsScreen
+import lobos.ui.apps.AppsUiState
 import lobos.ui.theme.LobosTheme
 
 class SystemApplicationsActivity : AppCompatActivity() {
@@ -16,9 +13,12 @@ class SystemApplicationsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             LobosTheme {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("应用", style = MaterialTheme.typography.headlineLarge)
-                }
+                AppsScreen(
+                    state = AppsUiState.Ready(apps = emptyList()),
+                    onEvent = { event ->
+                        if (event is AppsEvent.AddApp) Unit
+                    },
+                )
             }
         }
     }

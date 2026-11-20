@@ -1,100 +1,36 @@
 package lobos.services.app
 
-import android.app.Activity
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import kotlin.concurrent.thread
-import lobos.services.reg.ProgramIndex
-import lobos.services.supply.Cleanup
-import lobos.services.supply.InstallGuard
+import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.ViewModelProvider
+import lobos.ui.space.SpaceEvent
+import lobos.ui.space.SpaceScreen
+import lobos.ui.theme.LobosTheme
 
-class SystemSpaceActivity : Activity() {
-    private lateinit var body: LinearLayout
-    private var lastFreed = -1L
+class SystemSpaceActivity : AppCompatActivity() {
+    private lateinit var vm: SpaceViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val (b, _) = Ui.scaffold(
-            this,
-            "空间",
-            "占用与可清理",
-            listOf(
-                Triple("home", "首页", SystemHomeActivity::class.java),
-                Triple("store", "商店", SystemStoreActivity::class.java),
-                Triple("grid", "组件", null),
-                Triple("disk", "空间", SystemSpaceActivity::class.java),
-                Triple("user", "我的", SystemAboutActivity::class.java),
-            ),
-            3,
-        )
-        body = b
-        render()
-    }
-
-
-    private fun render() {
-        body.removeAllViews()
-        val host = this
-        val free = InstallGuard.freeBytes(filesDir)
-        val used = runCatching { lobos.services.supply.Cleanup.dirSize(filesDir) }.getOrDefault(0L)
-        val items = Cleanup.scan(host)
-        val reclaim = items.sumOf { it.bytes }
-
-        body.addView(line("空间", "#e6edf3", big = true, bold = true))
-        body.addView(line("可用 " + InstallGuard.human(free) + " · 组件占用 " + InstallGuard.human(used), "#8b949e"))
-        body.addView(space(10))
-
-        body.addView(line("可清理", "#e6edf3", bold = true))
-        if (items.isEmpty()) {
-            body.addView(line("暂无可清理的内容", "#8b949e"))
-        } else {
-            for (it in items) {
-                body.addView(line(it.label + "  " + InstallGuard.human(it.bytes), "#c9d1d9"))
-            }
-            body.addView(space(6))
-            body.addView(Button(this).apply {
-                text = "清理（约 " + InstallGuard.human(reclaim) + "）"
-                setOnClickListener {
-                    isEnabled = false
-                    thread(name = "lobos-clean2") {
-                        val r = Cleanup.run(host)
-                        runOnUiThread {
-                            isEnabled = true
-                            lastFreed = r.first
-                            render()
-                        }
+        vm = ViewModelProvider(this)[SpaceViewModel::class.java]
+        setContent {
+            LobosTheme {
+                val state by vm.state.collectAsState()
+                SpaceScreen(state = state, onEvent = { event ->
+                    when (event) {
+                        is SpaceEvent.Clean -> vm.onEvent(this, event)
+                        is SpaceEvent.OpenDir -> Unit
                     }
-                }
-            })
+                })
+            }
         }
-        if (lastFreed >= 0) body.addView(line("已清理 " + InstallGuard.human(lastFreed), "#3fb950"))
-
-        body.addView(space(12))
-        body.addView(line("组件占用", "#e6edf3", bold = true))
-        val ids = runCatching { ProgramIndex.all(host) }.getOrDefault(emptyList()).map { it.id }
-        if (ids.isEmpty()) body.addView(line("还没有安装组件", "#8b949e"))
-        for (id in ids.sorted()) body.addView(line(id, "#c9d1d9"))
     }
 
-    private fun line(text: String, color: String, big: Boolean = false, bold: Boolean = false): TextView =
-        Ui.text(this, text, Ui.TEXT2, if (big) 17f else 14f, bold)
-
-    private fun space(v: Int): View = View(this).apply {
-        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(v))
+    override fun onResume() {
+        super.onResume()
+        if (::vm.isInitialized) vm.load(this)
     }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-        super.onConfigurationChanged(newConfig)
-        render()
-    }
-
 }
