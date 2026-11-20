@@ -13,25 +13,28 @@ import lobos.services.reg.UnitEntry
 import lobos.services.supply.PackageInstaller
 import lobos.services.supply.ProgramDir
 import lobos.ui.components.ComponentItem
+import lobos.ui.components.ComponentDetail
 import lobos.ui.components.ComponentsEvent
 import lobos.ui.components.ComponentsUiState
+import lobos.ui.components.VersionItem
 
 class ComponentsViewModel : ViewModel() {
     private val _state = MutableStateFlow<ComponentsUiState>(ComponentsUiState.Loading)
     val state: StateFlow<ComponentsUiState> = _state
     private var filter = 0
-    private var currentId: String? = null
+    private var detailId: String? = null
 
     fun load(ctx: Context) {
-        viewModelScope.launch { _state.value = withContext(Dispatchers.IO) { gather(ctx, filter) } }
+        viewModelScope.launch { _state.value = withContext(Dispatchers.IO) { gather(ctx, filter, detailId) } }
     }
 
     fun onEvent(ctx: Context, event: ComponentsEvent) {
         when (event) {
             is ComponentsEvent.Filter -> { filter = event.idx; load(ctx) }
-            is ComponentsEvent.OpenDetail -> { currentId = event.id }
+            is ComponentsEvent.OpenDetail -> { detailId = event.id; load(ctx) }
+            ComponentsEvent.Back -> { detailId = null; load(ctx) }
             is ComponentsEvent.SwitchVersion -> {
-                val id = currentId ?: return
+                val id = detailId ?: return
                 viewModelScope.launch {
                     withContext(Dispatchers.IO) { runCatching { PackageInstaller.activate(ctx, id, event.version) } }
                     load(ctx)
@@ -51,7 +54,7 @@ class ComponentsViewModel : ViewModel() {
         private val TOOL_IDS = setOf("cmake", "git", "make", "rg", "jq", "curl", "sqlite", "npm", "pnpm", "pkgconf", "bash", "busybox")
         private val LIB_IDS = setOf("openssl", "zlib", "libffi", "crypto", "libcxx")
 
-        fun gather(ctx: Context, filter: Int): ComponentsUiState {
+        fun gather(ctx: Context, filter: Int, detailId: String? = null): ComponentsUiState {
             val programs = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
             fun item(p: UnitEntry): ComponentItem {
                 val id = p.id
@@ -76,7 +79,25 @@ class ComponentsViewModel : ViewModel() {
             if (filter != 1 && runtime.none { it.id == "python" }) {
                 runtime.add(0, ComponentItem("python", "Python", "运行时 · 未安装", "未装", false, kind = "runtime"))
             }
-            return ComponentsUiState.Ready(runtime, tools, libraries, filter)
+            val detail = detailId?.let { id -> buildDetail(ctx, id, programs) }
+            return ComponentsUiState.Ready(runtime, tools, libraries, filter, detail)
+        }
+
+        private fun buildDetail(ctx: Context, id: String, programs: List<UnitEntry>): ComponentDetail {
+            val dir = ProgramDir(ctx, id)
+            val current = runCatching { dir.currentVersion() }.getOrNull()
+            val versions = runCatching { dir.installedVersions() }.getOrDefault(emptyList())
+                .sortedByDescending { it }
+                .map { v -> VersionItem(v, if (v == current) "当前激活 · 默认" else "已安装", v == current) }
+            val entry = programs.firstOrNull { it.id == id }
+            val deps = entry?.requires?.toList().orEmpty()
+            val caps = buildString {
+                entry?.capabilities?.let {
+                    if (it.isNotEmpty()) append(it.joinToString(" · "))
+                }
+                if (isEmpty()) append("命令与运行时环境")
+            }
+            return ComponentDetail(id, id, versions, deps, caps)
         }
     }
 }

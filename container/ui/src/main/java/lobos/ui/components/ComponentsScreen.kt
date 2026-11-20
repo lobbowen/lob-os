@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
@@ -30,6 +31,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,7 +66,21 @@ fun ComponentsScreen(
             ) {
                 Text(state.msg, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
-            is ComponentsUiState.Ready -> ComponentsReady(state, onEvent)
+            is ComponentsUiState.Ready -> {
+                val detail = state.detail
+                if (detail != null) {
+                    ComponentDetailScreen(
+                        name = detail.name,
+                        versions = detail.versions,
+                        deps = detail.deps,
+                        capabilities = detail.capabilities,
+                        onEvent = onEvent,
+                        onBack = { onEvent(ComponentsEvent.Back) },
+                    )
+                } else {
+                    ComponentsReady(state, onEvent)
+                }
+            }
         }
     }
 }
@@ -272,6 +288,7 @@ fun ComponentDetailScreen(
     capabilities: String,
     onEvent: (ComponentsEvent) -> Unit,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     LazyColumn(
@@ -279,6 +296,14 @@ fun ComponentDetailScreen(
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 28.dp),
     ) {
         item(key = "header") {
+            if (onBack != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = cs.primary)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
             Text(name, style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
             Spacer(Modifier.height(6.dp))
             Text("版本管理 · 依赖与能力", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)

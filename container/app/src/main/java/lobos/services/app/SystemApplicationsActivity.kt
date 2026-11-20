@@ -1,6 +1,7 @@
 package lobos.services.app
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import lobos.ui.apps.AppsEvent
@@ -16,7 +17,13 @@ class SystemApplicationsActivity : AppCompatActivity() {
                 AppsScreen(
                     state = AppsUiState.Ready(apps = emptyList()),
                     onEvent = { event ->
-                        if (event is AppsEvent.AddApp) Unit
+                        if (event is AppsEvent.AddApp) {
+                            Toast.makeText(
+                                this@SystemApplicationsActivity,
+                                "应用系统尚未就绪，系统底座完成后才能安装社区应用",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     },
                 )
             }
