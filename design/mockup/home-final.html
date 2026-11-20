@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+  body { background:#dfe3e8; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','PingFang SC',sans-serif; }
+  .stage { padding:34px; display:flex; gap:40px; flex-wrap:wrap; }
+  .col { width:430px; }
+  .cap { font-size:12px; color:#6b7280; margin-bottom:10px; font-weight:600; letter-spacing:.01em; }
+  .phone { width:430px; height:932px; background:#f7f8fa; border-radius:52px; padding:12px;
+    box-shadow:0 24px 60px rgba(20,30,50,.18),0 2px 8px rgba(20,30,50,.08),0 0 0 1px rgba(255,255,255,.6) inset; }
+  .scr { width:100%; height:100%; background:#f7f8fa; border-radius:41px; overflow:hidden; display:flex; flex-direction:column; }
+
+  .stat { height:54px; padding:0 30px; display:flex; align-items:center; justify-content:space-between; font-size:16px; font-weight:600; color:#111318; flex-shrink:0; }
+  .stat .r { display:flex; align-items:center; gap:6px; font-size:13px; }
+
+  /* 一体化主面板：浅色、柔和、通透 */
+  .panel { margin:6px 18px 0; border-radius:30px; overflow:hidden; flex-shrink:0;
+    background:linear-gradient(165deg,#ffffff 0%,#fbfcfe 55%,#f4f7fb 100%);
+    box-shadow:0 8px 28px rgba(30,50,90,.08),0 1px 2px rgba(30,50,90,.05),0 0 0 1px rgba(30,50,90,.04) inset; position:relative; }
+  .glow { position:absolute; width:260px; height:260px; right:-70px; top:-110px; border-radius:50%;
+    background:radial-gradient(circle,rgba(90,150,255,.20),rgba(90,150,255,0) 68%); pointer-events:none; }
+  .glow2 { position:absolute; width:200px; height:200px; left:-80px; bottom:-90px; border-radius:50%;
+    background:radial-gradient(circle,rgba(120,200,255,.14),transparent 70%); pointer-events:none; }
+  .pad { position:relative; padding:26px 26px 0; }
+
+  .toprow { display:flex; align-items:center; justify-content:space-between; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .mark { width:34px; height:34px; border-radius:11px; background:linear-gradient(145deg,#1d1f24,#343841); display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px; font-weight:750; box-shadow:0 3px 8px rgba(20,25,40,.18); }
+  .bname { font-size:13px; font-weight:700; letter-spacing:.16em; color:#16181d; }
+  .tright { display:flex; align-items:center; gap:9px; }
+  .online { display:flex; align-items:center; gap:7px; background:#15171c; color:#fff; padding:8px 14px; border-radius:22px; font-size:12px; font-weight:600; box-shadow:0 3px 10px rgba(20,25,40,.16); }
+  .online i { width:7px; height:7px; border-radius:50%; background:#5ee08a; box-shadow:0 0 0 3px rgba(94,224,138,.18); }
+  .power { width:34px; height:34px; border-radius:50%; border:1px solid #e2e5ea; background:#fff; color:#3a3f47; display:flex; align-items:center; justify-content:center; font-size:14px; box-shadow:0 2px 6px rgba(20,30,50,.06); }
+
+  .status { margin-top:30px; }
+  .kicker { font-size:11px; font-weight:650; color:#9aa1ac; letter-spacing:.12em; text-transform:uppercase; }
+  .title { font-size:42px; font-weight:680; letter-spacing:-.045em; margin-top:7px; color:#101216; line-height:1.05; }
+  .desc { font-size:13px; color:#8b929d; margin-top:10px; }
+  .ringline { display:flex; align-items:center; gap:10px; margin-top:18px; }
+  .pulse { width:9px; height:9px; border-radius:50%; background:#5ee08a; box-shadow:0 0 0 6px rgba(94,224,138,.14); }
+  .ringtxt { font-size:12px; color:#5b6470; }
+
+  .metrics { display:flex; margin-top:28px; padding:20px 0 24px; border-top:1px solid #edf0f4; }
+  .m { flex:1; }
+  .m + .m { border-left:1px solid #edf0f4; }
+  .m .v { font-size:22px; font-weight:650; letter-spacing:-.02em; color:#161920; font-variant-numeric:tabular-nums; }
+  .m .l { font-size:10px; color:#9aa1ac; margin-top:6px; }
+
+  /* 功能入口：一体化扁平条，细线分隔，参考图的形态 */
+  .funcs { display:flex; height:86px; align-items:center; margin:0; background:#fff; }
+  .f { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; height:100%; position:relative; }
+  .f + .f::before { content:''; position:absolute; left:0; top:22px; bottom:22px; width:1px; background:#eceef1; }
+  .fic { width:30px; height:30px; display:flex; align-items:center; justify-content:center; color:#2b313a; }
+  .fic svg { width:27px; height:27px; }
+  .f .fl { font-size:13px; font-weight:500; color:#2b313a; }
+
+  /* 快速启动 */
+  .quick { flex:1; padding:0 22px; }
+  .qh { display:flex; align-items:flex-start; justify-content:space-between; margin:26px 4px 0; }
+  .qt { font-size:26px; font-weight:680; letter-spacing:-.035em; color:#101216; }
+  .qs { font-size:12px; color:#9aa1ac; margin-top:5px; }
+  .add { background:#fff; border:1px solid #e8ebef; color:#3a414b; font-size:12px; font-weight:600; padding:9px 15px; border-radius:20px; box-shadow:0 2px 8px rgba(30,50,90,.05); }
+  .empty { margin-top:22px; height:190px; border:1.5px dashed #d5dae1; border-radius:22px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; background:rgba(255,255,255,.45); }
+  .eic { width:56px; height:56px; border-radius:17px; background:#fff; box-shadow:0 3px 10px rgba(30,50,90,.07); color:#a3abb5; font-size:30px; font-weight:300; display:flex; align-items:center; justify-content:center; }
+  .et { font-size:14px; font-weight:600; color:#5b6470; }
+  .es { font-size:12px; color:#a0a7b1; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="col">
+<div class="cap">第一屏 · 精致浅色 · 一体化面板 · 柔和材质 · 主流质感</div>
+<div class="phone"><div class="scr">
+
+  <div class="stat"><span>17:21</span><span class="r">◷  5G  ▂100%</span></div>
+
+  <div class="panel">
+    <div class="glow"></div><div class="glow2"></div>
+    <div class="pad">
+      <div class="toprow">
+        <div class="brand"><div class="mark">L</div><span class="bname">LOBOS</span></div>
+        <div class="tright"><div class="online"><i></i>在线</div><div class="power">⏻</div></div>
+      </div>
+      <div class="status">
+        <div class="kicker">SYSTEM STATUS</div>
+        <div class="title">运行中</div>
+        <div class="desc">控制面在线 · 已稳定运行 6 小时 12 分</div>
+        <div class="ringline"><span class="pulse"></span><span class="ringtxt">一切正常，无需干预</span></div>
+      </div>
+      <div class="metrics">
+        <div class="m"><div class="v">12%</div><div class="l">内存</div></div>
+        <div class="m"><div class="v">3</div><div class="l">运行时版本</div></div>
+        <div class="m"><div class="v">10</div><div class="l">已装组件</div></div>
+        <div class="m"><div class="v">0</div><div class="l">活跃实例</div></div>
+      </div>
+    </div>
+    <div class="funcs">
+      <div class="f"><div class="fic"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="22" height="18" rx="3"/><path d="M8 11l3 3-3 3M14 17h6"/></svg></div><div class="fl">终端</div></div>
+      <div class="f"><div class="fic"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="8" height="8" rx="1.5"/><rect x="16" y="4" width="8" height="8" rx="1.5"/><rect x="4" y="16" width="8" height="8" rx="1.5"/><rect x="16" y="16" width="8" height="8" rx="1.5"/></svg></div><div class="fl">组件</div></div>
+      <div class="f"><div class="fic"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="14" cy="7" rx="9" ry="3.2"/><path d="M5 7v7c0 1.8 4 3.2 9 3.2s9-1.4 9-3.2V7M5 14v7c0 1.8 4 3.2 9 3.2s9-1.4 9-3.2v-7"/></svg></div><div class="fl">空间</div></div>
+      <div class="f"><div class="fic"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="20" height="18" rx="3"/><circle cx="10" cy="11" r="2"/><circle cx="18" cy="11" r="2"/><path d="M9 18h10"/></svg></div><div class="fl">应用</div></div>
+      <div class="f"><div class="fic"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="14" r="1.4"/><circle cx="14" cy="14" r="1.4"/><circle cx="21" cy="14" r="1.4"/></svg></div><div class="fl">更多</div></div>
+    </div>
+  </div>
+
+  <div class="quick">
+    <div class="qh"><div><div class="qt">快速启动</div><div class="qs">添加应用后，可在这里直接启动</div></div><span class="add">+ 添加应用</span></div>
+    <div class="empty"><div class="eic">+</div><div class="et">还没有应用</div><div class="es">开发者社区的应用安装后会出现在这里</div></div>
+  </div>
+
+</div></div>
+</div>
+</div>
+</body>
+</html>
