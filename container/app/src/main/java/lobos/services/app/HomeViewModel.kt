@@ -29,7 +29,7 @@ class HomeViewModel : ViewModel() {
 
     companion object {
         fun gather(ctx: Context): HomeUiState {
-            val running = runCatching { OsInit.snapshot(ctx).phase.name == "RUNNING" }.getOrDefault(false)
+            val running = lobos.services.power.KernelPower.state(ctx) == lobos.services.power.KernelPower.State.RUNNING
             val programs = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
             val versions = runCatching {
                 ProgramDir(ctx, "python").installedVersions().size

@@ -8,9 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
-import lobos.services.host.OsHostService
-import lobos.services.host.OsInit
-import lobos.services.supervise.InstanceHost
 import lobos.ui.home.HomeEvent
 import lobos.ui.home.HomeScreen
 import lobos.ui.home.HomeUiState
@@ -59,7 +56,7 @@ class SystemHomeActivity : AppCompatActivity() {
     private fun showPowerDialog() {
         val running = when (val s = vm.state.value) {
             is HomeUiState.Ready -> s.running
-            else -> OsInit.current(this) == lobos.services.host.OsPhase.RUNNING
+            else -> !lobos.services.power.KernelPower.isHalted(this)
         }
         val title = if (running) "停止系统" else "启动系统"
         val message = if (running) "停止后所有组件都会停下，已安装的东西不会删除。"
@@ -68,10 +65,11 @@ class SystemHomeActivity : AppCompatActivity() {
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(title) { _, _ ->
-                val svc = Intent(this, OsHostService::class.java)
-                svc.action = if (running) InstanceHost.ACTION_STOP_RUNTIME else InstanceHost.ACTION_START_RUNTIME
-                runCatching { startService(svc) }
-                vm.load(this)
+                if (running) lobos.services.power.KernelPower.shutdown(this)
+                else lobos.services.power.KernelPower.boot(this)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    if (!isFinishing && !isDestroyed) vm.load(this)
+                }, 500L)
             }
             .setNegativeButton("取消", null)
             .show()

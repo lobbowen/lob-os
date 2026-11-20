@@ -292,3 +292,29 @@ LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行�
   绕开 shebang 与 app_data_file 直接 exec 两道墙；无 wrapper 脚本的 shebang 问题。
 - 设备实测：交互 shell 里 python3 --version=Python 3.12.10、git --version=2.55.0。
 - 排除 library 件与 bash/sh（避免递归）；集成为动态生成，装/卸后重进终端即刷新。
+
+---
+
+## 十一、系统电源管理原语 KernelPower（2026-11-21）
+
+用户指出：对标 Linux，关机/开机/重启是系统基础能力，此前缺失。
+澄清语义：APP 是管理界面（常驻），内核是它托管的类 Linux 运行时（可启停）。
+启停针对内核，APP 管理界面始终在。
+
+### 实现
+- `lobos.services.power.KernelPower`：系统电源状态机，持久化到
+  files/var/lib/power-state.json（state=RUNNING/HALTED）。
+  - shutdown：写 HALTED + OsPhase.STOPPING + 触发监督池停所有程序
+  - boot：写 RUNNING + OsPhase.RUNNING + 触发监督池按 desired 恢复
+  - reboot：shutdown + 延迟 1500ms boot
+- `SupervisorPool.sync()` 开头检查 KernelPower.isHalted：HALTED 时停掉所有
+  supervisor 且不拉起（desired 不被篡改，开机后按原 desired 自然恢复）。
+- `OsHostService.ACTION_SYNC_POOL`：让电源动作触发即时同步，不等 15s tick。
+- 首页电源按钮二元（运行中=关机，停机=开机）；"更多"页电源分组含关机/开机/重启。
+- HomeViewModel.running 改读 KernelPower 状态为权威。
+
+### 设备实测（debug APK）
+- 关机：power-state=HALTED、程序进程全停、APP PID 不变、首页"已停止"
+- 开机：power-state=RUNNING、首页"运行中"
+- 重启：journal 记录 shutdown(HALTED) -> reboot(1500ms) -> boot(RUNNING)，APP 全程在
+- assembleDebug + UI test 编译通过

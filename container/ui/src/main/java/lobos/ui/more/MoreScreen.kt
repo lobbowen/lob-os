@@ -23,6 +23,9 @@ import androidx.compose.material.icons.filled.Api
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +51,14 @@ private data class MoreItem(
 private data class MoreGroup(val title: String, val items: List<MoreItem>)
 
 private val groups = listOf(
+    MoreGroup(
+        title = "电源",
+        items = listOf(
+            MoreItem("shutdown", "关机", "停止内核运行时，管理界面保留", Icons.Filled.PowerSettingsNew),
+            MoreItem("boot", "开机", "启动内核运行时，恢复程序", Icons.Filled.PlayArrow),
+            MoreItem("reboot", "重启", "关机后立即开机", Icons.Filled.RestartAlt),
+        ),
+    ),
     MoreGroup(
         title = "系统",
         items = listOf(

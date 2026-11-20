@@ -117,7 +117,17 @@ class SupervisorPool(private val host: Service) {
 
     fun sync() {
         syncServices()
-            drainJobs()
+        if (lobos.services.power.KernelPower.isHalted(host)) {
+            if (supervisors.isNotEmpty()) {
+                for (id in supervisors.keys.toList()) {
+                    val s = supervisors.remove(id)
+                    try { s?.shutdown() } catch (_: Throwable) {}
+                }
+                Journal.note(host, "supervisor-pool", null, "系统已关机，停止全部程序监督", null)
+            }
+            return
+        }
+        drainJobs()
         val all = wantedPrograms()
         val wanted = if (all.size <= MAX_RUNNING) all else all.take(MAX_RUNNING)
         if (all.size > MAX_RUNNING) {
@@ -199,6 +209,13 @@ class SupervisorPool(private val host: Service) {
 
     companion object {
         const val MAX_RUNNING = 12
+
+        fun requestSync(ctx: android.content.Context) {
+            val intent = Intent(ctx, lobos.services.host.OsHostService::class.java).apply {
+                action = lobos.services.host.OsHostService.ACTION_SYNC_POOL
+            }
+            runCatching { ctx.startService(intent) }
+        }
 
         const val MAX_SERVICE_ROUNDS = 8
 

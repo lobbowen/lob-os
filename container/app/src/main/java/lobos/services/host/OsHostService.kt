@@ -59,6 +59,12 @@ class OsHostService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
+        if (intent?.action == ACTION_SYNC_POOL) {
+            handler?.post { runCatching { pool?.sync() } }
+                ?: runCatching { pool?.sync() }
+            return START_STICKY
+        }
+
         ResidencyAudit.auditPreviousExit(this)
 
         val born = !birthDone
@@ -383,6 +389,7 @@ class OsHostService : Service() {
     companion object {
         const val TAG = "OsHostService"
         private const val NOTIF_ID = 1004
+        const val ACTION_SYNC_POOL = "lobos.action.SYNC_POOL"
 
         @Volatile private var lastNotifiedText: String? = null
         private const val REQ_OPEN = 41
