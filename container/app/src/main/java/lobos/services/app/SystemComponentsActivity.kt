@@ -19,12 +19,7 @@ class SystemComponentsActivity : AppCompatActivity() {
         setContent {
             LobosTheme {
                 val state by vm.state.collectAsState()
-                ComponentsScreen(state = state, onEvent = { event ->
-                    when (event) {
-                        is ComponentsEvent.Filter -> vm.onEvent(this, event)
-                        else -> Unit
-                    }
-                })
+                ComponentsScreen(state = state, onEvent = { event -> vm.onEvent(this, event) })
             }
         }
     }

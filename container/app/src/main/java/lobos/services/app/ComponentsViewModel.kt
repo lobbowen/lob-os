@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lobos.services.reg.ProgramIndex
-import lobos.services.supply.ProgramDir
 import lobos.services.reg.UnitEntry
-import lobos.services.supply.InstallGuard
+import lobos.services.supply.PackageInstaller
+import lobos.services.supply.ProgramDir
 import lobos.ui.components.ComponentItem
 import lobos.ui.components.ComponentsEvent
 import lobos.ui.components.ComponentsUiState
@@ -20,6 +20,7 @@ class ComponentsViewModel : ViewModel() {
     private val _state = MutableStateFlow<ComponentsUiState>(ComponentsUiState.Loading)
     val state: StateFlow<ComponentsUiState> = _state
     private var filter = 0
+    private var currentId: String? = null
 
     fun load(ctx: Context) {
         viewModelScope.launch { _state.value = withContext(Dispatchers.IO) { gather(ctx, filter) } }
@@ -28,7 +29,20 @@ class ComponentsViewModel : ViewModel() {
     fun onEvent(ctx: Context, event: ComponentsEvent) {
         when (event) {
             is ComponentsEvent.Filter -> { filter = event.idx; load(ctx) }
-            else -> Unit
+            is ComponentsEvent.OpenDetail -> { currentId = event.id }
+            is ComponentsEvent.SwitchVersion -> {
+                val id = currentId ?: return
+                viewModelScope.launch {
+                    withContext(Dispatchers.IO) { runCatching { PackageInstaller.activate(ctx, id, event.version) } }
+                    load(ctx)
+                }
+            }
+            is ComponentsEvent.Install -> {
+                viewModelScope.launch {
+                    withContext(Dispatchers.IO) { runCatching { PackageInstaller.install(ctx, event.id, null) } }
+                    load(ctx)
+                }
+            }
         }
     }
 
@@ -59,8 +73,8 @@ class ComponentsViewModel : ViewModel() {
             val runtime = all.filter { it.kind == "runtime" }.toMutableList()
             val tools = all.filter { it.kind == "tool" }.toMutableList()
             val libraries = all.filter { it.kind == "library" }.toMutableList()
-            if (filter != 1) {
-                if (runtime.none { it.id == "python" }) runtime.add(0, ComponentItem("python", "Python", "运行时 · 未安装", "未装", false, kind = "runtime"))
+            if (filter != 1 && runtime.none { it.id == "python" }) {
+                runtime.add(0, ComponentItem("python", "Python", "运行时 · 未安装", "未装", false, kind = "runtime"))
             }
             return ComponentsUiState.Ready(runtime, tools, libraries, filter)
         }
