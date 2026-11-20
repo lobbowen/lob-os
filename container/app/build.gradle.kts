@@ -1,10 +1,11 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "lobos"
-    compileSdk = 35
+    compileSdk = 37
     buildToolsVersion = "35.0.0"
 
     val verJson = groovy.json.JsonSlurper().parse(rootProject.file("version.json")) as Map<*, *>
@@ -133,6 +134,15 @@ fun nativeAssetNames(): List<String> {
 }
 
 dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.window:window:1.3.0")

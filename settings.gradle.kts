@@ -26,3 +26,5 @@ dependencyResolutionManagement {
 rootProject.name = "LobOS"
 include(":app")
 project(":app").projectDir = file("container/app")
+include(":ui")
+project(":ui").projectDir = file("container/ui")
