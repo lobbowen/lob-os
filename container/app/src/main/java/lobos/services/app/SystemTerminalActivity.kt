@@ -39,6 +39,7 @@ class SystemTerminalActivity : AppCompatActivity() {
     }
 
     private fun startSession(onOutput: (List<String>) -> Unit) {
+        TerminalProfile.ensureBashrc(this)
         TerminalSessions.close(SESSION_ID)
         runCatching { TerminalSessions.open(this, SESSION_ID) }
             .onSuccess { t ->

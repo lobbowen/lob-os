@@ -270,3 +270,25 @@ LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行�
 
 实现要求：Compose + Material 3；保持定稿视觉语言；每屏 Preview + UI test；
 按 15 条设计感清单验收。功能入口：终端/组件/空间/应用/更多。
+
+---
+
+## 十、交互式终端与 EACCES（2026-11-20）
+
+### 事实链
+- librivospty.so 是宿主底座（PIE 可执行），随 APK 内置，不是可安装件；
+  build-kernel-compat.sh 编到 jniLibs，本轮补齐（此前 APK 一直缺失）。
+- Android 10+ SELinux W^X：app 域不能直接 exec app_data_file 里的 ELF。
+  bash 作为 PTY 会话初始程序能跑，是因为 PtySession.spawnOnSlave 用 ExecEntry 套了
+  /system/bin/linker64；shell 内部 exec 的 python3/git 没经 ExecEntry，故 Permission denied。
+- 环境不对会报"找不到前缀/.so"，不是 EACCES，二者要分开。
+
+### 方案（已设备验证）
+- 终端用 TerminalSession 交互式 shell（open/write/resize/close）。
+- TerminalProfile.ensureBashrc 在每次会话启动前，遍历已装 program/multi-command 件，
+  对每个 ET_DYN ELF 入口生成 shell function：`name() { linker64 <realpath> "$@"; }`，
+  python 额外注入 PYTHONHOME/LD_LIBRARY_PATH；写 files/.bashrc，bash -i 自动 source。
+- shell function 在当前 shell 内展开，内部只有 linker64（系统文件，允许 exec），
+  绕开 shebang 与 app_data_file 直接 exec 两道墙；无 wrapper 脚本的 shebang 问题。
+- 设备实测：交互 shell 里 python3 --version=Python 3.12.10、git --version=2.55.0。
+- 排除 library 件与 bash/sh（避免递归）；集成为动态生成，装/卸后重进终端即刷新。
