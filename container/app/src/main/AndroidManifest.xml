@@ -204,6 +204,12 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.MainActivity"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation" />
+
+        <activity
             android:name=".services.app.QuickAppLaunchActivity"
             android:exported="true"
             android:label="@string/app_name"
