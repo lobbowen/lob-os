@@ -35,10 +35,7 @@ class QuickAppLaunchActivity : AppCompatActivity() {
             return
         }
         if (id.isNullOrBlank()) {
-            startActivity(
-                android.content.Intent(this, MainActivity::class.java)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            startActivity(android.content.Intent(this, MainActivity::class.java))
             finish()
             return
         }
