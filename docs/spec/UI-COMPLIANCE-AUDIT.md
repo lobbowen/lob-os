@@ -84,3 +84,30 @@ startActivity 后返回栈靠系统默认行为，各 Activity 可能被重复�
 - Activity 堆叠的长期稳定性只观察到重复实例，未做长时间压力测试。
 - Compose 屏的 48dp 热区：uiautomator 只识别文字，实际 clickable 范围需看源码确认，
   但从用户体感和坐标测试看，热区确实偏小。
+
+---
+
+## 十二、整改补记：架构升级与结论修正（2026-11-21）
+
+### 已执行：方案 B 单 Activity + Navigation 3
+- 13 Activity -> 1 MainActivity + NavDisplay（navigation3 1.2.2）
+- Destination 密封类 + mutableStateListOf backStack + entryProvider
+- 系统返回由 NavDisplay.onBack 统一 pop
+- 组件详情从"内部状态+startActivity 双机制"改为独立 destination（P0 根治）
+- More 分流 check/diagnosis 到 destination，新增 SimpleScreen(TopAppBar+Up)
+
+### 真机压力测试结论（多轮进出）
+- 5 入口逐个进出：全部进对屏、返回回首页
+- 组件->详情->系统返回：正确回列表（P0 修复）
+- topResumed 始终是唯一 MainActivity（单 task 单 Activity）
+- 进程数 1、0 崩溃、无 Activity 实例泄漏
+
+### 结论修正
+- 原 P1"48dp 热区不达标"是误判：uiautomator 抓的是文字 bounds，
+  实际 clickable 挂在整格 Column（65x86dp），热区达标。
+- 原 P0"返回乱"确为真实问题，已由 Navigation 3 统一栈根治。
+
+### 遗留
+- 旧 13 Activity 源码仍注册但无外部入口可达（死代码，未删以免影响程序快捷启动/deep link）。
+- TopAppBar：主屏保留已确认的沉浸式大标题设计（首页明确要求无标题栏），
+  仅二级屏（体检/诊断）用 SimpleScreen 的 TopAppBar+Up。规范统一与设计稿的取舍已记录。
