@@ -1,5 +1,8 @@
 package lobos.services.app
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +51,9 @@ fun LobosNavHost(modifier: Modifier = Modifier) {
             backStack = backStack,
             modifier = modifier.fillMaxSize(),
             onBack = pop,
+            transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+            popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+            predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = { key -> NavEntry(key) { Route(key, backStack, pop) } },
         )
     }
