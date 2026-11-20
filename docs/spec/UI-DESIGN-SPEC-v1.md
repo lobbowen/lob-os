@@ -1,0 +1,226 @@
+# LobOS UI 设计规范 v1（设计先行）
+
+本规范是 UI 的唯一设计真相。先定设计、再写代码；任何界面实现必须能追溯到本文。
+目标：产品级设计感 + 跟手交互。基于 Material 3 Expressive + Android 16 视觉语言，
+结合 Agent OS（系统级常驻、运行时/组件管理）的产品定位。
+
+---
+
+## 一、产品定位与设计关键词
+
+LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行时（python/node/go）、
+组件与系统状态。它不是普通 App，是"系统管家 + 应用商店"的融合体。
+
+设计关键词：**沉稳的系统感 + 克制的活力 + 明确的状态**。
+- 沉稳：深色为底、层次清晰，像系统设置而非消费级 App。
+- 活力：关键操作（停止系统、安装、版本切换）用有生命力的色彩与物理动效，但不花哨。
+- 明确：运行中/已安装/失败等状态一眼可辨，用色、形、动效三重编码。
+
+---
+
+## 二、设计语言（Material 3 Expressive 落地）
+
+### 2.1 色彩
+- 使用 MaterialTheme colorScheme，动态颜色（Android 12+ 跟随壁纸）默认开启。
+- 亮色/暗色两套：系统应用以暗色为主场景，亮色完整支持。
+- 语义色（不硬编码，走 colorScheme 扩展）：
+  - 运行中/成功：primary（暗色下用绿色系，如 dynamo 亮绿）
+  - 警告/空间紧张：error 容器色
+  - 已安装：tertiary 或 success
+  - 未安装：outline 色 + 下载图标
+- 高度表达：M3 用色调叠加（surfaceContainer / surfaceContainerHigh），不用重阴影。
+- 禁止：自造十六进制颜色、GitHub Dark 式硬编码。全面改为 colorScheme token。
+
+### 2.2 字体排版（Material 3 type scale）
+- 大标题（系统管家/应用商店）：displaySmall 或 headlineMedium，粗体。
+- 区块标题（版本/依赖/空间）：titleMedium，medium 字重。
+- 正文：bodyMedium。
+- 辅助信息（版本号/状态描述）：bodySmall，onSurfaceVariant。
+- 数值（空间大小/版本数）：用 tabular figures 对齐。
+
+### 2.3 形状与容器
+- 卡片：M3 Card，shape = large（16dp）或 extraLarge（24dp），hero 卡用 extraLarge。
+- 按钮：M3 Button/FilledTonalButton/OutlinedButton，全宽主操作用 FilledButton。
+- 列表项：ListItem 或自定义 Card，高度 ≥ 72dp（触摸友好）。
+- 间距节奏：8dp 基准，卡片间距 12dp，区块间距 24dp，页面边距 16dp。
+
+### 2.4 动效（M3 motion springs，物理感）
+- 导航切屏：spring，位置/形状变化用 spatial spring，轻快不拖沓。
+- 状态切换（运行中↔停止、安装进度）：spring，有轻微回弹（expressive）。
+- 列表项进入：渐进式 stagger，每项间隔 30-50ms，总时长可控。
+- 关键原则：动效可中断、可重定向，按阻尼/刚度而非固定时长。
+- hero moment 全 App 只留 2 个（见 2.6），其余动效克制。
+
+### 2.5 图标
+- 全部用 Material Icons（material-icons-extended），不再自绘 Canvas 图标。
+- 状态图标语义固定：已安装=CheckCircle，未安装=FileDownload，运行中=PlayCircle/电源，
+  停止=StopCircle，商店=ShoppingBag，组件=Apps，空间=Storage，我的=Person。
+
+### 2.6 Hero moments（全 App 只 2 个）
+1. 首页控制环：系统运行状态的环形指示器，点击启动/停止，带物理回弹与颜色过渡。
+2. 详情页版本切换：选中版本时的卡片强调 + 确认动效，是全 App 最有"手感"的交互。
+
+其余所有页面保持克制一致，不再制造第二个视觉焦点。
+
+---
+
+## 三、交互与跟手规范（根治"点不动/延迟"）
+
+这一节是硬性标准，所有屏幕必须满足。
+
+### 3.1 点击热区
+- 任何可点击元素最小 48x48dp（Material 触摸目标标准）。
+- 底部导航每项点击区覆盖整格（不是只点图标）。
+- 卡片整块可点，ripple 覆盖整卡。
+- 用户反馈"点不动"的根因之一就是热区太小/坐标漂移——本规范从尺寸上根治。
+
+### 3.2 状态驱动，不手动重建
+- 按钮 enabled/onClick/颜色全部由 UiState 派生，禁止 removeAllViews 全量重建。
+- 点击后立即给视觉反馈（ripple + 状态变化），不等异步结果才响应。
+- 异步操作：立即进入"处理中"state（按钮转圈/禁用+进度），完成后更新 state。
+
+### 3.3 反馈时序
+- 点击 → 0ms：ripple 立即响应（系统保证）。
+- 点击 → <100ms：UI state 变化（如按钮变"安装中"）。
+- 异步完成：state 更新，动效过渡，不闪烁。
+- 失败：错误态就地显示（snackbar 或内联），不跳页、不丢上下文。
+
+### 3.4 防重复点击
+- 处理中的操作（安装/切换/刷新）按钮置 disabled 或显示进度，防止连点堆积。
+- 事件处理幂等（ViewModel 侧去重）。
+
+### 3.5 列表与滚动
+- 用 LazyColumn/LazyVerticalGrid，稳定 key，滚动位置在 state 变化时保持。
+- 折叠屏：内屏单列、外屏双列（WindowSizeClass），布局切换有动效。
+
+---
+
+## 四、信息架构与导航
+
+5 个主 tab：首页 / 商店 / 组件 / 空间 / 我的。
+- 首页（SystemHome）：系统总控 + 概况 + 故障入口。
+- 商店（SystemStore）：选装件列表 → 详情（SystemInstall）。
+- 组件（SystemComponents）：已装组件列表 → 组件详情（SystemComponentDetail）。
+- 空间（SystemSpace）：空间占用与清理。
+- 我的（SystemAbout）：关于/诊断/导出。
+辅助页：SystemCheck（体检）、SystemRecovery（修复）、HostControl（宿主控制，不放主导航）。
+
+导航统一底部 NavigationBar（Compose），每项是标准 48dp+ 热区，选中态用 primary 色 + 指示条。
+
+---
+
+## 五、11 屏逐屏设计稿
+
+### 5.1 首页 SystemHome（hero moment 1）
+目标：一眼看系统状态，一键控制，快速进入概况与修复。
+布局（折叠屏：内屏上下、外屏左右分栏）：
+- 顶部：大标题"系统管家" headlineMedium + 副标题 bodyMedium。
+- 主区（左/上）：控制环——直径 ~200dp 的圆形进度指示器，中心大字"运行中/已停止"，
+  环色 primary（运行）/error（停止）。点击整环 = 启停（hero moment：颜色过渡 + 弹性缩放）。
+  环下小字：运行时长 + 常驻状态；异常时显示中断原因（可点展开）。
+- 次区（右/下）：概况卡片组（M3 Card，large shape）：
+  - 空间卡：图标 Storage + "空间" + 占用/可用（tabular figures）+ 可清理量。
+  - 组件卡：图标 Apps + "组件" + 已装数量 + "查看状态 ›"。
+  - 故障卡：图标 Build + "故障与修复" + 最近24h失败次数 + "进入处理 ›"。
+- 主操作（FilledButton，全宽）：停止系统/启动系统（与控制环同状态）。
+- 次操作（两个并排 OutlinedButton）：一键体检 / 清理空间。
+状态：RUNNING / STOPPED / DEGRADED（降级时环色变 error + 顶部提示条）。
+热区：控制环整圆可点（≥200dp）、每张卡整卡可点、按钮全宽。
+
+### 5.2 商店 SystemStore
+目标：浏览/安装选装件（含多版本运行时）。
+布局：
+- 顶部：标题"全部应用" headlineSmall + 刷新 IconButton（48dp，refreshing 时转圈）。
+- 列表（LazyColumn，key=name）：每项 M3 Card（≥72dp），左侧状态图标
+  （已装 CheckCircle/primary，未装 FileDownload/outline），中间应用名 titleMedium +
+  版本/多版本数/大小 bodySmall（onSurfaceVariant），右侧箭头。整卡可点 → 详情。
+- 已装项排在未装前（与现状一致），用分隔小标题"已安装/可安装"。
+- 空态：插画区 + "还没有取到应用清单" + 刷新按钮（FilledTonal）。
+- 错误态：错误文案 + 重试按钮，就地显示。
+状态：Loading（居中进度）/ Ready(有数据/空)/ Error。
+（本屏已实现 Compose，按此稿 review 视觉与热区。）
+
+### 5.3 详情 SystemInstall（hero moment 2 + 最高交互密度）
+目标：查看某件详情，选版本安装/切换/卸载。
+布局：
+- 顶部 hero 卡（extraLarge shape）：应用图标 + 名称 headlineSmall + 版本 bodyMedium。
+- 版本卡（本屏核心）：标题"版本"，逐项列出所有版本：
+  - 当前版本：高亮容器（primaryContainer）+ "当前"徽标（AssistChip）。
+  - 已装非当前：显示"切换到 vX" OutlinedButton（48dp+）。
+  - 未装：显示"安装 vX" FilledTonalButton。
+  - 版本切换的确认动效 = hero moment 2（卡片强调 + spring 过渡）。
+- 依赖卡：标题"依赖"，列出依赖运行时 + 版本区间；满足/缺失状态图标。
+- 空间卡：标题"空间"，需要/可用（tabular figures），不足时 error 色提示。
+- 底部主操作：安装/重新安装（FilledButton 全宽）、卸载（OutlinedButton，error 色文字）。
+状态：安装进度四阶段（DOWNLOAD/VERIFY/LAND/LINK）用 LinearProgressIndicator + 阶段文案，
+处理中按钮禁用防连点。
+热区：每个版本操作按钮 ≥48dp；切换/安装互斥显示。
+
+### 5.4 组件 SystemComponents
+目标：列出已装与可装组件，分类展示。
+布局：标题"组件" + 分组（已装 / 可装，带计数）——每组 M3 Card 列表，
+每项图标 + 名称 + 版本 + 状态徽标 + 箭头，整卡可点 → 组件详情。
+顶部可用搜索/筛选（搜索 IconButton，后续版本）。
+
+### 5.5 组件详情 SystemComponentDetail
+目标：单个组件的体积、依赖、安装/回滚与进度。
+布局：hero 卡（名称+版本+角色）+ 能力/依赖卡 + 体积卡 + 进度卡（安装/回滚时显示四阶段）
++ 操作区（安装/回滚/卸载）。大件（>阈值）用 warning 色提示空间。
+
+### 5.6 空间 SystemSpace
+目标：展示空间占用与可清理项，执行清理。
+布局：顶部大数字卡（占用/可用/总计，tabular figures）+ 环形或条形占用可视化 +
+可清理项列表（旧版本组件/缓存，各带大小与"清理"按钮）+ 清理确认对话框。
+
+### 5.7 体检 SystemCheck
+目标：一键体检并展示结果清单。
+布局：顶部"一键体检" FilledButton + 结果统计卡（通过 N 项/未通过 N 项，大数字）+
+结果列表（每项：状态图标 + 标题 + 详情，M3 ListItem）。检查中显示进度。
+
+### 5.8 修复 SystemRecovery
+目标：故障修复入口与状态。
+布局：故障摘要卡 + 修复动作列表（每项说明 + 执行按钮）+ 操作历史。
+（当前较简，按此稿补齐结构。）
+
+### 5.9 关于 SystemAbout
+目标：版本信息、诊断导出、系统身份。
+布局：应用标识卡（名称/版本/Git SHA）+ 诊断卡（导出日志按钮）+ 状态信息卡。
+分组用 ListItem + Divider，克制。
+
+### 5.10 HostControl HostControlActivity
+目标：宿主能力控制（最复杂，最后迁）。
+布局：按能力分组的卡片列表，每组含状态与操作；保留现有 15 处交互的语义，
+统一为 M3 组件与 48dp 热区。此屏风险最高，ComposeView 可回退 View。
+
+### 5.11 QuickAppLaunch QuickAppLaunchActivity
+无 UI（intent 转发/执行入口），不参与设计。
+
+---
+
+## 六、设计到组件的映射（给前端）
+
+- 大标题 → Text(style=MaterialTheme.typography.headlineMedium)
+- 卡片 → M3 Card / ElevatedCard（shape large/extraLarge）
+- 主按钮 → FilledButton；次按钮 → OutlinedButton；图标按钮 → IconButton(48dp)
+- 状态徽标 → AssistChip / Badge
+- 进度 → LinearProgressIndicator / CircularProgressIndicator
+- 列表 → LazyColumn + ListItem / 自定义 Card
+- 导航 → NavigationBar（5 项，选中态 primary + 指示条）
+- 动效 → animate*AsState + spring（expressive）
+- 图标 → Icons.Filled/Outlined（material-icons-extended）
+
+验收：每个屏幕实现必须附 Preview（覆盖主要状态）+ UI test（点击热区与事件），
+与本文布局稿对照。
+
+---
+
+## 七、评审要点（请用户确认）
+
+1. 视觉方向：沉稳系统感 + 克制活力 + 明确状态，是否符合预期？
+2. 两个 hero moment（首页控制环 / 版本切换）是否认可？
+3. 亮色/暗色以暗色为主、动态颜色默认开，是否接受？
+4. 5 tab 导航结构是否保持？
+5. 11 屏逐屏布局是否有要调整的？
+
+确认后，实施顺序：先按本稿重做商店/详情的视觉（已 Compose 化的直接改），
+再逐屏迁移其余，每屏以本稿为验收标准。
