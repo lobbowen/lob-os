@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lobos.services.reg.ProgramIndex
+import lobos.services.supply.ProgramDir
 import lobos.services.reg.UnitEntry
 import lobos.services.supply.InstallGuard
 import lobos.ui.components.ComponentItem
@@ -40,6 +41,8 @@ class ComponentsViewModel : ViewModel() {
             val programs = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
             fun item(p: UnitEntry): ComponentItem {
                 val id = p.id
+                val activeVer = runCatching { ProgramDir(ctx, id).currentVersion() }.getOrNull()
+                val shownVer = activeVer ?: p.version
                 val kind = when {
                     RUNTIME_IDS.any { id.startsWith(it) } -> "runtime"
                     TOOL_IDS.any { id.startsWith(it) } -> "tool"
@@ -47,8 +50,9 @@ class ComponentsViewModel : ViewModel() {
                     else -> "tool"
                 }
                 return ComponentItem(
-                    id = id, name = id, detail = "${p.version} · $kind",
-                    status = "已装", installed = true, inUse = false, kind = kind,
+                    id = id, name = id, detail = "$shownVer · $kind",
+                    status = if (activeVer != null) "使用中" else "已装",
+                    installed = true, inUse = activeVer != null, kind = kind,
                 )
             }
             val all = programs.map { item(it) }
