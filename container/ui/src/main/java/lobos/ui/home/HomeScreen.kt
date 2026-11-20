@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Dataset
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Icon
@@ -77,7 +79,7 @@ fun HomeScreen(state: HomeUiState, onEvent: (HomeEvent) -> Unit, modifier: Modif
 private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
     val panelShape = RoundedCornerShape(30.dp)
-    Column(modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+    Column(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -107,7 +109,7 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
                 Spacer(Modifier.size(9.dp))
                 Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).border(1.dp, cs.outline)
                     .clickable { onEvent(HomeEvent.TogglePower) }, contentAlignment = Alignment.Center) {
-                    Text("⏻", color = cs.onSurfaceVariant, fontSize = 14.sp)
+                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "电源", modifier = Modifier.size(16.dp), tint = cs.onSurfaceVariant)
                 }
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {

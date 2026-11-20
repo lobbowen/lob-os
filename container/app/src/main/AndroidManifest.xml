@@ -137,6 +137,20 @@
             android:exported="false" />
 
         <activity
+            android:name=".services.app.SystemTerminalActivity"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
+            android:exported="false" />
+
+        <activity
+            android:name=".services.app.SystemApplicationsActivity"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|uiMode|keyboardHidden|navigation"
+            android:exported="false" />
+
+        <activity
             android:name=".services.app.SystemStoreActivity"
             android:resizeableActivity="true"
             android:screenOrientation="unspecified"

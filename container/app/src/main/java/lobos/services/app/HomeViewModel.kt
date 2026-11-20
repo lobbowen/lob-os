@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lobos.services.host.OsInit
 import lobos.services.reg.ProgramIndex
+import lobos.services.reg.ResidencyStatus
 import lobos.services.supply.ProgramDir
 import lobos.services.supply.SystemState
 import lobos.ui.home.HomeEvent
@@ -34,6 +35,13 @@ class HomeViewModel : ViewModel() {
                 ProgramDir(ctx, "python").installedVersions().size
             }.getOrDefault(0)
             val report = runCatching { SystemState.evaluate(ctx) }.getOrNull()
+            val uptimeMs = runCatching {
+                ResidencyStatus.snapshot().optLong("uptimeMs", 0L)
+            }.getOrDefault(0L)
+            val uptime = if (uptimeMs > 0) {
+                val mins = uptimeMs / 60000
+                "${mins / 60}h ${mins % 60}m"
+            } else "—"
             val metrics = listOf(
                 HomeMetric(report?.failedRecent?.toString() ?: "—", "近期失败"),
                 HomeMetric(versions.toString(), "运行时版本"),
@@ -41,7 +49,7 @@ class HomeViewModel : ViewModel() {
                 HomeMetric("—", "活跃实例"),
             )
             return HomeUiState.Ready(
-                running = running, uptime = "—", online = running,
+                running = running, uptime = uptime, online = running,
                 metrics = metrics, apps = emptyList(),
             )
         }
