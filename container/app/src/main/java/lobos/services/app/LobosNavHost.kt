@@ -35,6 +35,8 @@ sealed interface Destination {
     data object Space : Destination
     data object Apps : Destination
     data object More : Destination
+    data object Check : Destination
+    data object Recovery : Destination
 }
 
 @Composable
@@ -115,8 +117,18 @@ private fun Route(key: Destination, backStack: MutableList<Destination>, pop: ()
         Destination.More -> {
             val ctx = LocalContext.current
             MoreScreen(state = MoreUiState.Ready, onEvent = { e ->
-                if (e is MoreEvent.Open) powerAction(ctx, e.itemKey)
+                if (e is MoreEvent.Open) {
+                    when (e.itemKey) {
+                        "check" -> backStack.add(Destination.Check)
+                        "diagnosis" -> backStack.add(Destination.Recovery)
+                        else -> powerAction(ctx, e.itemKey)
+                    }
+                }
             })
+        }
+        Destination.Check, Destination.Recovery -> {
+            val title = if (key is Destination.Check) "系统体检" else "故障诊断"
+            lobos.ui.nav.SimpleScreen(title = title, onBack = pop)
         }
     }
 }
