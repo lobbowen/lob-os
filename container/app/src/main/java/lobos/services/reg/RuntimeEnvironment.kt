@@ -57,7 +57,7 @@ object RuntimeEnvironment {
         put("PREFIX", root.prefixRoot.absolutePath)
 
         val pythonVer = runCatching {
-            ProgramIndex.all(ctx).firstOrNull { it.id == "python" }?.version
+            lobos.services.supply.ProgramDir(ctx, "python").currentVersion()
         }.getOrNull()
         if (!pythonVer.isNullOrBlank()) {
             val home = java.io.File(java.io.File(SystemDirs.opt(ctx), "python"), pythonVer)
