@@ -348,3 +348,30 @@ LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行�
 - pid 传递验证：清日志重开终端，账本记录 "PTY 会话那进程已记账
   program=linker64 pid=29513"，nativePid 正确传到 Java（program 名显示
   linker64 是因 ExecEntry 用 linker64 加载 bash，pid 即最终 shell 进程）
+
+---
+
+## 十三、真终端模拟器重构（2026-11-21）
+
+用户指出终端"假"：伪造提示符 lobos@os:~$ + 独立输入框 + 日志列表 +
+"正在启动终端会话"占位残留。从架构层重构为标准终端模拟器。
+
+### 根因
+旧模型把输入从 PTY 剥出来做成独立 UI 控件、提示符是 UI 画的；
+PTY 输出只当日志逐行 Append。不是终端模拟器，是"命令输入框+日志显示"。
+
+### 架构重构
+- TerminalBuffer(:ui)：解析 PTY 字节流的终端缓冲区，处理 \r \n \b \t、
+  CSI（SGR 颜色）与 OSC 转义序列的标准状态机，维护行+光标+样式
+- TerminalRuntime(app 单例)：进程级持有 buffer 与会话状态，Compose 只订阅快照；
+  会话不随重组丢失（输入法弹出/窗口变化不再清空）
+- TerminalScreen：渲染 buffer（按 StyledChar 颜色/bold），内容贴底；
+  透明 TextField 仅作键盘入口，用户输入原样写 PTY，回显/提示符全部来自 shell；
+  删除伪造提示符与假快捷命令区
+- TerminalUiState.Ready(screen,connected) / TerminalEvent.Input(bytes)
+
+### 设备实测（debug APK）
+- 进屏即见 shell 提示符 bash-5.2$，无"正在启动"占位
+- 弹键盘时内容保持贴底、不消失
+- 输入 echo hi -> shell 回显 `echo hi` -> 输出 `hi` -> 新提示符，全链路来自 shell
+- 0 崩溃

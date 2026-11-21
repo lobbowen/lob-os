@@ -14,38 +14,22 @@ import lobos.ui.terminal.TerminalUiState
 @Composable
 fun TerminalRoute() {
     val ctx = LocalContext.current
-    var lines by remember { mutableStateOf(listOf("正在启动终端会话…")) }
+    var tick by remember { mutableStateOf(0) }
 
-    fun start() {
-        TerminalProfile.ensureBashrc(ctx)
-        TerminalSessions.close("nav-terminal")
-        runCatching { TerminalSessions.open(ctx, "nav-terminal") }
-            .onSuccess { t ->
-                t.onOutput = { d ->
-                    val text = String(d, Charsets.UTF_8)
-                    val split = text.replace("\r\n", "\n").split("\n").filter { it.isNotEmpty() }
-                    if (split.isNotEmpty()) lines = lines + split
-                }
-                t.onClosed = { status, signal ->
-                    lines = lines + "[会话退出 status=$status signal=$signal]"
-                }
-                t.resize(24, 80)
-            }
-            .onFailure { e -> lines = lines + "终端启动失败：${e.javaClass.simpleName}: ${e.message}" }
+    val listener: () -> Unit = remember { { tick++; Unit } }
+    DisposableEffect(listener) {
+        TerminalRuntime.subscribe(listener)
+        onDispose { TerminalRuntime.unsubscribe(listener) }
     }
 
     DisposableEffect(Unit) {
-        start()
-        onDispose { TerminalSessions.close("nav-terminal") }
+        TerminalRuntime.ensure(ctx)
+        onDispose { Unit }
     }
 
+    @Suppress("UNUSED_VARIABLE") val r = tick
     TerminalScreen(
-        state = TerminalUiState.Ready(lines = lines),
-        onEvent = { e ->
-            if (e is TerminalEvent.Submit) {
-                val t = TerminalSessions.get("nav-terminal")
-                if (t != null && t.alive) t.write(e.cmd + "\n") else start()
-            }
-        },
+        state = TerminalUiState.Ready(screen = TerminalRuntime.buffer.snapshot, connected = TerminalRuntime.connected),
+        onEvent = { e -> if (e is TerminalEvent.Input) TerminalRuntime.input(e.bytes) },
     )
 }
