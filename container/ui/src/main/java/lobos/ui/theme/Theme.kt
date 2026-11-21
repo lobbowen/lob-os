@@ -18,7 +18,7 @@ private val LightScheme = lightColorScheme(
     onPrimary = Color.White,
     primaryContainer = Color(0xFFDCEBFF),
     onPrimaryContainer = Color(0xFF0A477F),
-    secondary = Color(0xFF525C6B),
+    secondary = Color(0xFF5F6773),
     onSecondary = Color.White,
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF111318),
@@ -81,7 +81,7 @@ data class LobosPalette(
 )
 
 private val LightPalette = LobosPalette(
-    success = Color(0xFF248A3D),
+    success = Color(0xFF1B7F4B),
     brandMark = Color(0xFFFFFFFF),
     terminalBg = Color(0xFF141821),
     terminalBorder = Color(0xFF2A303C),
