@@ -1,5 +1,7 @@
 package lobos.ui.more
 
+import lobos.ui.theme.Spacing
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,21 +90,21 @@ fun MoreScreen(
             .fillMaxSize()
             .background(cs.background)
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
     ) {
         Text("更多", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(Spacing.sm))
         Text("系统信息与诊断", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+            contentPadding = PaddingValues(bottom = Spacing.xxl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxl),
         ) {
             groups.forEach { group ->
                 item(key = group.title) {
                     Text(group.title, style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
-                    Spacer(Modifier.height(9.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     GroupCard(group.items, onEvent)
                 }
             }
@@ -115,13 +117,13 @@ private fun GroupCard(items: List<MoreItem>, onEvent: (MoreEvent) -> Unit) {
     val cs = MaterialTheme.colorScheme
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Spacing.xl),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Spacing.xs),
     ) {
         items.forEachIndexed { index, item ->
             if (index > 0) {
-                Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
+                Box(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg).height(1.dp).background(cs.outlineVariant))
             }
             MoreRow(item = item, onClick = { onEvent(MoreEvent.Open(item.key)) })
         }
@@ -134,29 +136,29 @@ private fun MoreRow(item: MoreItem, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .heightIn(min = Spacing.giant)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(38.dp).background(cs.primaryContainer, RoundedCornerShape(12.dp)),
+            modifier = Modifier.size(Spacing.huge).background(cs.primaryContainer, RoundedCornerShape(Spacing.md)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(item.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(19.dp))
+            Icon(item.icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(Spacing.xl))
         }
-        Spacer(Modifier.size(13.dp))
+        Spacer(Modifier.size(Spacing.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(item.title, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
         }
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(Spacing.sm))
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
             contentDescription = null,
             tint = cs.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(Spacing.lg),
         )
     }
 }

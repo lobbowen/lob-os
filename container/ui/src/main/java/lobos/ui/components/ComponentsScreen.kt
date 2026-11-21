@@ -1,5 +1,7 @@
 package lobos.ui.components
 
+import lobos.ui.theme.Spacing
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,7 +62,7 @@ fun ComponentsScreen(
                 CircularProgressIndicator()
             }
             is ComponentsUiState.Error -> Column(
-                Modifier.fillMaxSize().padding(32.dp),
+                Modifier.fillMaxSize().padding(Spacing.xxxl),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -105,28 +107,28 @@ private fun ComponentsReady(state: ComponentsUiState.Ready, onEvent: (Components
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(start = Spacing.xl, end = Spacing.xl, top = Spacing.xxl, bottom = Spacing.xxxl),
     ) {
         item(key = "header") {
             Text("组件", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text(
                 "运行库 · 运行时 · 工具 · 功能组件",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Spacing.xl))
         }
         item(key = "filter") {
             SegmentedFilter(selected = filter, onEvent = onEvent)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.xxl))
         }
         sections.forEach { section ->
             item(key = section.title) {
                 SectionLabel(section.title)
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 ComponentGroup(section.items, onEvent)
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(Spacing.xxl))
             }
         }
         if (sections.isEmpty()) {
@@ -136,7 +138,7 @@ private fun ComponentsReady(state: ComponentsUiState.Ready, onEvent: (Components
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.giant),
                 )
             }
         }
@@ -147,20 +149,20 @@ private fun ComponentsReady(state: ComponentsUiState.Ready, onEvent: (Components
 private fun SegmentedFilter(selected: Int, onEvent: (ComponentsEvent) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val labels = listOf("已安装", "可安装", "全部")
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(Spacing.lg)
     Row(
-        modifier = Modifier.fillMaxWidth().height(52.dp).clip(shape).background(cs.surfaceVariant).padding(3.dp),
+        modifier = Modifier.fillMaxWidth().height(Spacing.giant).clip(shape).background(cs.surfaceVariant).padding(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         labels.forEachIndexed { index, label ->
             val active = index == selected
-            val tabShape = RoundedCornerShape(11.dp)
+            val tabShape = RoundedCornerShape(Spacing.md)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .height(46.dp)
-                    .then(if (active) Modifier.shadow(3.dp, tabShape) else Modifier)
+                    .height(Spacing.giant)
+                    .then(if (active) Modifier.shadow(Spacing.xs, tabShape) else Modifier)
                     .clip(tabShape)
                     .background(if (active) Color.White else Color.Transparent)
                     .clickable { onEvent(ComponentsEvent.Filter(index)) },
@@ -186,13 +188,13 @@ private fun ComponentGroup(items: List<ComponentItem>, onEvent: (ComponentsEvent
     val cs = MaterialTheme.colorScheme
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Spacing.xl),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Spacing.xs),
     ) {
         items.forEachIndexed { index, item ->
             if (index > 0) {
-                Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
+                Box(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg).height(1.dp).background(cs.outlineVariant))
             }
             ComponentRow(item = item, onClick = { onEvent(ComponentsEvent.OpenDetail(item.id)) })
         }
@@ -203,34 +205,34 @@ private fun ComponentGroup(items: List<ComponentItem>, onEvent: (ComponentsEvent
 private fun ComponentRow(item: ComponentItem, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).clickable(onClick = onClick).padding(14.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.giant).clickable(onClick = onClick).padding(Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val iconColor = componentAccent(item)
         Box(
-            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(iconColor.second),
+            modifier = Modifier.size(Spacing.huge).clip(RoundedCornerShape(Spacing.md)).background(iconColor.second),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(componentIcon(item), contentDescription = null, tint = iconColor.first, modifier = Modifier.size(19.dp))
+            Icon(componentIcon(item), contentDescription = null, tint = iconColor.first, modifier = Modifier.size(Spacing.xl))
         }
-        Spacer(Modifier.size(13.dp))
+        Spacer(Modifier.size(Spacing.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(item.name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(
                 item.detail,
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = cs.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.size(10.dp))
+        Spacer(Modifier.size(Spacing.md))
         StatusPill(item)
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(Spacing.sm))
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
             contentDescription = null,
             tint = cs.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(Spacing.lg),
         )
     }
 }
@@ -255,7 +257,7 @@ private fun StatusPill(item: ComponentItem) {
         else -> cs.primaryContainer
     }
     Box(
-        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(bg).padding(horizontal = 11.dp, vertical = 6.dp),
+        modifier = Modifier.clip(RoundedCornerShape(Spacing.xl)).background(bg).padding(horizontal = Spacing.md, vertical = Spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium, color = fg)
@@ -293,7 +295,7 @@ fun ComponentDetailScreen(
     val cs = MaterialTheme.colorScheme
     LazyColumn(
         modifier = modifier.fillMaxSize().background(cs.background).statusBarsPadding(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(start = Spacing.xl, end = Spacing.xl, top = Spacing.xxl, bottom = Spacing.xxxl),
     ) {
         item(key = "header") {
             if (onBack != null) {
@@ -302,62 +304,62 @@ fun ComponentDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = cs.primary)
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
             }
             Text(name, style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text("版本管理 · 依赖与能力", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(Spacing.xxl))
         }
         item(key = "versions") {
             SectionLabel("版本")
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(Spacing.xl),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = Spacing.xs),
             ) {
                 versions.forEachIndexed { index, version ->
                     if (index > 0) {
-                        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
+                        Box(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg).height(1.dp).background(cs.outlineVariant))
                     }
                     VersionRow(version = version, onSwitch = { onEvent(ComponentsEvent.SwitchVersion(version.version)) })
                 }
             }
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(Spacing.xxl))
         }
         if (deps.isNotEmpty()) {
             item(key = "deps") {
                 SectionLabel("依赖")
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 InfoCard {
                     deps.forEachIndexed { index, dep ->
                         if (index > 0) {
-                            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
+                            Box(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg).height(1.dp).background(cs.outlineVariant))
                         }
                         Row(
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.giant).padding(horizontal = Spacing.lg, vertical = Spacing.md),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = LobosColors.success, modifier = Modifier.size(17.dp))
-                            Spacer(Modifier.size(12.dp))
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = LobosColors.success, modifier = Modifier.size(Spacing.lg))
+                            Spacer(Modifier.size(Spacing.md))
                             Text(dep, style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"), color = cs.onSurface)
                         }
                     }
                 }
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(Spacing.xxl))
             }
         }
         item(key = "capabilities") {
             SectionLabel("能力")
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(Spacing.sm))
             InfoCard {
                 Text(
                     capabilities,
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurface,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
                 )
             }
         }
@@ -368,9 +370,9 @@ fun ComponentDetailScreen(
 private fun InfoCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Spacing.xl),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Spacing.xs),
         content = content,
     )
 }
@@ -378,19 +380,19 @@ private fun InfoCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun VersionRow(version: VersionItem, onSwitch: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(Spacing.md)
     val background = if (version.active) cs.primaryContainer else Color.White
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
             .then(if (version.active) Modifier.border(1.5.dp, cs.primary, shape) else Modifier)
             .clip(shape)
             .background(background),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp).padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.giant).padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -399,7 +401,7 @@ private fun VersionRow(version: VersionItem, onSwitch: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                     color = if (version.active) cs.onPrimaryContainer else cs.onSurface,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(
                     version.detail,
                     style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
@@ -410,8 +412,8 @@ private fun VersionRow(version: VersionItem, onSwitch: () -> Unit) {
                 Text("使用中", style = MaterialTheme.typography.labelMedium, color = cs.primary)
             } else {
                 Box(
-                    modifier = Modifier.height(48.dp).clip(RoundedCornerShape(14.dp)).background(cs.primaryContainer)
-                        .clickable(onClick = onSwitch).padding(horizontal = 16.dp),
+                    modifier = Modifier.height(Spacing.giant).clip(RoundedCornerShape(Spacing.lg)).background(cs.primaryContainer)
+                        .clickable(onClick = onSwitch).padding(horizontal = Spacing.lg),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("切换", style = MaterialTheme.typography.labelLarge, color = cs.primary)

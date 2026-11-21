@@ -1,5 +1,7 @@
 package lobos.ui.apps
 
+import lobos.ui.theme.Spacing
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -58,12 +60,12 @@ private fun AppsReady(state: AppsUiState.Ready, onEvent: (AppsEvent) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
     ) {
         Text("应用", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(Spacing.sm))
         Text("开发者社区提供的应用", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(Spacing.xl))
         if (state.apps.isEmpty()) {
             EmptyApps(onEvent)
         } else {
@@ -72,20 +74,20 @@ private fun AppsReady(state: AppsUiState.Ready, onEvent: (AppsEvent) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = Spacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 items(state.apps, key = { it }) { app ->
                     AppCard(app)
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.lg))
         Button(
             onClick = { onEvent(AppsEvent.AddApp) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = RoundedCornerShape(15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.giant),
+            shape = RoundedCornerShape(Spacing.lg),
         ) {
             Text("+ 添加应用", style = MaterialTheme.typography.titleMedium)
         }
@@ -95,7 +97,7 @@ private fun AppsReady(state: AppsUiState.Ready, onEvent: (AppsEvent) -> Unit) {
 @Composable
 private fun EmptyApps(onEvent: (AppsEvent) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val emptyShape = RoundedCornerShape(22.dp)
+    val emptyShape = RoundedCornerShape(Spacing.xxl)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -106,26 +108,26 @@ private fun EmptyApps(onEvent: (AppsEvent) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xxxl, vertical = Spacing.xxxl),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .size(Spacing.giant)
+                    .clip(RoundedCornerShape(Spacing.xl))
                     .background(cs.surface),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Filled.Apps,
                     contentDescription = null,
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(Spacing.xxxl),
                     tint = cs.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Spacing.lg))
             Text("还没有应用", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text(
                 text = "应用由开发者社区创建并安装到系统，系统建设完成后，应用将在这里出现",
                 style = MaterialTheme.typography.bodySmall,
@@ -140,23 +142,23 @@ private fun EmptyApps(onEvent: (AppsEvent) -> Unit) {
 private fun AppCard(name: String) {
     val cs = MaterialTheme.colorScheme
     Card(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.lg),
+        shape = RoundedCornerShape(Spacing.xl),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Spacing.xs),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(Spacing.lg),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
-                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer),
+                modifier = Modifier.size(Spacing.huge).clip(RoundedCornerShape(Spacing.md)).background(cs.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Apps, contentDescription = null, tint = cs.primary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Apps, contentDescription = null, tint = cs.primary, modifier = Modifier.size(Spacing.xl))
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Spacing.md))
             Text(name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface, textAlign = TextAlign.Center)
         }
     }
@@ -169,10 +171,10 @@ private fun AppsError(message: String, onEvent: (AppsEvent) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
     ) {
         Text("应用", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(Spacing.sm))
         Text("开发者社区提供的应用", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
         Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             Text(
@@ -184,8 +186,8 @@ private fun AppsError(message: String, onEvent: (AppsEvent) -> Unit) {
         }
         Button(
             onClick = { onEvent(AppsEvent.AddApp) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = RoundedCornerShape(15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = Spacing.giant),
+            shape = RoundedCornerShape(Spacing.lg),
         ) {
             Text("+ 添加应用", style = MaterialTheme.typography.titleMedium)
         }

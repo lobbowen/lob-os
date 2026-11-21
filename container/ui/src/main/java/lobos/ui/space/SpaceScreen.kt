@@ -1,5 +1,7 @@
 package lobos.ui.space
 
+import lobos.ui.theme.Spacing
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -31,7 +33,7 @@ import lobos.ui.theme.LobosTheme
 @Composable
 fun SpaceScreen(state: SpaceUiState, onEvent: (SpaceEvent) -> Unit, modifier: Modifier = Modifier) {
     when (state) {
-        is SpaceUiState.Error -> Box(modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+        is SpaceUiState.Error -> Box(modifier.fillMaxWidth().height(Spacing.lg), contentAlignment = Alignment.Center) {
             Text(state.message, color = MaterialTheme.colorScheme.error)
         }
         is SpaceUiState.Ready -> SpaceReady(state, onEvent, modifier)
@@ -41,28 +43,28 @@ fun SpaceScreen(state: SpaceUiState, onEvent: (SpaceEvent) -> Unit, modifier: Mo
 @Composable
 private fun SpaceReady(state: SpaceUiState.Ready, onEvent: (SpaceEvent) -> Unit, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
-    Column(modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
-        Spacer(Modifier.height(8.dp))
+    Column(modifier.fillMaxWidth().padding(horizontal = Spacing.xl)) {
+        Spacer(Modifier.height(Spacing.sm))
         Text("空间", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
         Text("系统文件管理", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.lg))
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(cs.surface)
-                .shadow(6.dp, RoundedCornerShape(20.dp)).padding(20.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(Spacing.xl)).background(cs.surface)
+                .shadow(Spacing.sm, RoundedCornerShape(Spacing.xl)).padding(Spacing.xl),
         ) {
             Text("已占用", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(state.used, style = MaterialTheme.typography.displayLarge, color = cs.onSurface)
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Spacing.lg))
             LinearProgressIndicator(
                 progress = { state.usedRatio.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(6.dp)),
+                modifier = Modifier.fillMaxWidth().height(Spacing.md).clip(RoundedCornerShape(Spacing.sm)),
                 color = cs.primary,
                 trackColor = cs.surfaceVariant,
             )
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Spacing.lg))
             Row {
                 Text("已用 ${state.used}", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
                 Text("可用 ${state.free}", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -70,29 +72,29 @@ private fun SpaceReady(state: SpaceUiState.Ready, onEvent: (SpaceEvent) -> Unit,
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.lg))
         Text(state.path, style = MaterialTheme.typography.bodySmall, color = cs.primary)
 
-        Spacer(Modifier.height(8.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(cs.surface)
-            .shadow(6.dp, RoundedCornerShape(20.dp))) {
+        Spacer(Modifier.height(Spacing.sm))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(Spacing.xl)).background(cs.surface)
+            .shadow(Spacing.sm, RoundedCornerShape(Spacing.xl))) {
             state.dirs.forEachIndexed { i, d ->
                 Row(
                     Modifier.fillMaxWidth().clickable { onEvent(SpaceEvent.OpenDir(d.name)) }
-                        .padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+                        .padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(cs.primaryContainer),
+                    Box(Modifier.size(Spacing.huge).clip(RoundedCornerShape(Spacing.sm)).background(cs.primaryContainer),
                         contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(18.dp), tint = cs.primary)
+                        Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(Spacing.xl), tint = cs.primary)
                     }
-                    Spacer(Modifier.size(12.dp))
+                    Spacer(Modifier.size(Spacing.md))
                     Column(Modifier.weight(1f)) {
                         Text(d.name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
                         Text(d.desc, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                     }
                     Text(d.size, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 }
-                if (i < state.dirs.size - 1) Box(Modifier.fillMaxWidth().height(1.dp).padding(horizontal = 14.dp).background(cs.outlineVariant))
+                if (i < state.dirs.size - 1) Box(Modifier.fillMaxWidth().height(1.dp).padding(horizontal = Spacing.lg).background(cs.outlineVariant))
             }
         }
     }
