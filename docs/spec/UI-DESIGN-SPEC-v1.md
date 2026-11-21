@@ -345,3 +345,6 @@ LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行�
 - child 日志出现 "exec 即将做" + "signal 已做"（之前止于 dup2）
 - 终端干净启动 bash-5.2$ 提示符，无 job control 报错
 - 0 崩溃；exit 后会话正常结束，无卡死
+- pid 传递验证：清日志重开终端，账本记录 "PTY 会话那进程已记账
+  program=linker64 pid=29513"，nativePid 正确传到 Java（program 名显示
+  linker64 是因 ExecEntry 用 linker64 加载 bash，pid 即最终 shell 进程）
