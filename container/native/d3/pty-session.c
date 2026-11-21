@@ -254,11 +254,6 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         close(master);
 
         {
-
-          for (;;) pause();
-        }
-        _exit(0);
-        {
             char tb[512];
             int tn = snprintf(tb, sizeof tb,
                 "child: exec 即将做 argv[0]=%s argv[1]=%s slave=%s argc=%d",
@@ -473,11 +468,15 @@ int main(void) {
           struct winsize ws;
           memset(&ws, 0, sizeof(ws));
           ioctl(g_sessions[slot].master, TIOCGWINSZ, &ws);
-          uint8_t reply[sizeof(g_sessions[slot].slave) + 8];
+          uint8_t reply[sizeof(g_sessions[slot].slave) + 12];
           uint32_t n = (uint32_t)strlen(g_sessions[slot].slave) + 1;
           memcpy(reply, g_sessions[slot].slave, n);
           memcpy(reply + n, &ws, sizeof(ws));
-          send_frame(out_fd, FRAME_READY, (uint8_t)slot, reply, n + (uint32_t)sizeof(ws));
+          {
+            uint32_t child_pid = (uint32_t) g_sessions[slot].pid;
+            memcpy(reply + n + sizeof(ws), &child_pid, sizeof(child_pid));
+          }
+          send_frame(out_fd, FRAME_READY, (uint8_t)slot, reply, n + (uint32_t)sizeof(ws) + 4);
           { char m[96];
             snprintf(m, sizeof m, "会话 %u 就绪 从设备=%s",
                      (unsigned)slot, g_sessions[slot].slave);

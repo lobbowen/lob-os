@@ -318,3 +318,30 @@ LobOS 是一个运行在 Android 上的 Agent OS，用户在这里管理运行�
 - 开机：power-state=RUNNING、首页"运行中"
 - 重启：journal 记录 shutdown(HALTED) -> reboot(1500ms) -> boot(RUNNING)，APP 全程在
 - assembleDebug + UI test 编译通过
+
+---
+
+## 十二、PTY 子进程模型根治（2026-11-21）
+
+用户要求终端标准稳定、不打补丁。从架构层修复 PTY。
+
+### 根因（三 bug 同源）
+- `pty-session.c` 的 child 在 setsid/TIOCSCTTY/dup2 后有 `for(;;) pause()` 死循环，
+  导致后面的 execv 成死代码——native 从未真正 exec shell（诊断日志止于 dup2，
+  无 "exec 即将做"）。真正的 shell 由 Java 侧 spawnOnSlave（ProcessBuilder）另起，
+  没有 controlling terminal，故 bash -i 报 job control 错误。
+- 同时 native child（pause 空转）和 Java 进程抢同一 slave，双进程模型导致
+  runToCompletion 退出检测 -1（Java 等自己那个进程，native 退出信号被覆盖）。
+
+### 架构修复（单一标准 PTY 模型）
+- 删 native 死循环 → child 正确 execv（session leader + controlling tty）
+- FRAME_READY 协议加 4 字节 child pid（slave\\0 + winsize8 + pid4）
+- Java onReady 解析 nativePid；recordInLedger 用 nativePid（不再从 Process.toString 抠 pid）
+- 删 Java spawnOnSlave（59 行重复 spawn）→ 程序只由 native child exec
+- 删 Java exit-watch + onExited 里的 process.isAlive 判断 → 退出完全靠 native
+  waitpid + FRAME_EXITED 的权威 status/signal
+
+### 设备实测
+- child 日志出现 "exec 即将做" + "signal 已做"（之前止于 dup2）
+- 终端干净启动 bash-5.2$ 提示符，无 job control 报错
+- 0 崩溃；exit 后会话正常结束，无卡死

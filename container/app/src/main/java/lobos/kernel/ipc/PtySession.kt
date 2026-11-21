@@ -119,6 +119,9 @@ object PtySession {
 
         @Volatile var process: Process? = null
 
+        @Volatile var nativePid: Int = -1
+            internal set
+
         @Volatile var programId: String = ""
 
         internal fun recordExit(status: Int, signal: Int) {
@@ -318,67 +321,10 @@ object PtySession {
 
             val c0 = ctx
                 ?: throw IllegalStateException("宿主侧没有那上下文 —— 报缺，不猜")
-            spawnOnSlave(c0, s, argv)
+            ProductSessions.put("product-" + sid, s)
+            recordInLedger(c0, s, argv)
+            notifyRegistered(c0)
             return s
-        }
-
-        private fun spawnOnSlave(ctx: Context, session: Session, argv: List<String>) {
-            val slave = session.slavePath
-            if (slave.isBlank()) {
-                throw IllegalStateException("会话 ${session.sid} 没有那从设备 —— 报缺，不猜")
-            }
-            val slaveFile = java.io.File(slave)
-            if (!slaveFile.exists()) {
-                throw IllegalStateException("会话 ${session.sid} 的从设备不在：$slave —— 报缺，不猜")
-            }
-            val first = java.io.File(argv[0])
-
-            val shaped = lobos.kernel.proc.ExecEntry.argv(first, argv)
-                ?: throw lobos.kernel.proc.ProcessSupervisor.NotExecutable(first)
-            val pb = ProcessBuilder(shaped)
-
-            val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
-                ctx,
-                lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
-                null,
-            )
-            pb.environment().clear()
-            for ((k, v) in view) pb.environment()[k] = v
-            pb.environment().remove("LD_PRELOAD")
-
-            val slaveFd = runCatching {
-                android.system.Os.open(slave, android.system.OsConstants.O_RDWR, 0)
-            }.getOrNull()
-            if (slaveFd == null) {
-                throw IllegalStateException("那从设备开不了：" + slave + "（按 C-05 报缺）")
-            }
-            runCatching { android.system.Os.close(slaveFd) }
-
-            pb.redirectInput(slaveFile)
-            pb.redirectOutput(slaveFile)
-            pb.redirectError(slaveFile)
-            val proc = pb.start()
-            session.process = proc
-
-            ProductSessions.put("product-" + session.sid, session)
-
-            notifyRegistered(ctx)
-            recordInLedger(ctx, session, proc, argv)
-
-            val pid0 = runCatching {
-                Regex("""pid=(\d+)""").find(proc.toString())?.groupValues?.get(1)?.toIntOrNull() ?: -1
-            }.getOrDefault(-1)
-            if (pid0 > 0) {
-                Thread({
-
-                    runCatching { lobos.kernel.proc.ProcessLedger.end(ctx, pid0) }
-                    runCatching { proc.waitFor() }
-
-                    runCatching { session.close() }
-
-                    runCatching { ProductSessions.remove("product-" + session.sid) }
-                }, "lobos-pty-ledger-clean").apply { isDaemon = true; start() }
-            }
         }
 
         private fun notifyRegistered(ctx: Context) {
@@ -398,19 +344,16 @@ object PtySession {
         private fun recordInLedger(
             ctx: Context,
             session: Session,
-            proc: Process,
             argv: List<String>,
         ) {
             try {
 
-            val pid = runCatching {
-                Regex("""pid=(\d+)""").find(proc.toString())?.groupValues?.get(1)?.toIntOrNull() ?: -1
-            }.getOrDefault(-1)
+            val pid = session.nativePid
             if (pid <= 0) {
 
                 lobos.services.log.RuntimeDiagnostics.append(
-                    ctx, "ledger", false, "PTY 会话那进程取不到 pid",
-                    "sid=" + session.sid + " （账本那一行**没有**记、按 C-05 报缺）",
+                    ctx, "ledger", false, "PTY 会话宿主没报子进程 pid",
+                    "sid=" + session.sid + "（账本那一行没有记，按 C-05 报缺）",
                 )
                 return
             }
@@ -568,15 +511,21 @@ object PtySession {
             val nul = payload.indexOf(0)
             if (nul < 0) { lastError = "READY 帧没有 slave 路径"; ready.remove(sid)?.countDown(); return }
             val slave = String(payload, 0, nul, Charsets.UTF_8)
-            val rows: Int
-            val cols: Int
+            var rows = DEFAULT_ROWS
+            var cols = DEFAULT_COLS
+            var pid = -1
             if (payload.size >= nul + 1 + 8) {
                 val b = java.nio.ByteBuffer.wrap(payload, nul + 1, 8)
                 b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                 rows = b.short.toInt() and 0xFFFF
                 cols = b.short.toInt() and 0xFFFF
-            } else { rows = DEFAULT_ROWS; cols = DEFAULT_COLS }
-            sessions[sid] = Session(this, sid, slave, rows, cols)
+            }
+            if (payload.size >= nul + 1 + 12) {
+                val pb = java.nio.ByteBuffer.wrap(payload, nul + 1 + 8, 4)
+                pb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                pid = pb.int
+            }
+            sessions[sid] = Session(this, sid, slave, rows, cols).also { it.nativePid = pid }
 
             sessions[sid]?.onReadyFrameArrived()
             ready.remove(sid)?.countDown()
@@ -601,14 +550,9 @@ object PtySession {
                 signal = b.int
             }
 
-            val stillAlive = s?.process?.isAlive == true
-            if (!stillAlive) {
-                s?.recordExit(status, signal)
-
-                s?.releaseNativeSlot()
-
-                s?.markClosed()
-            }
+            s?.recordExit(status, signal)
+            s?.releaseNativeSlot()
+            s?.markClosed()
             try { s?.onExit?.invoke(status, signal) }
             catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
         }
@@ -880,15 +824,6 @@ object PtySession {
                 }
             }
             s.onExit = { _, _ -> done.countDown() }
-
-            s.process?.let { proc ->
-                Thread({
-                    val st = runCatching { proc.waitFor() }.getOrNull()
-                    runCatching {
-                        s.onExit?.invoke(st ?: 0, 0)
-                    }
-                }, "lobos-pty-exit-watch").apply { isDaemon = true; start() }
-            }
 
             val droppedNote = if (dropped > 0L) "（超出上限那一截丢了 $dropped 字节）" else ""
             if (!done.await(timeoutMs, TimeUnit.MILLISECONDS)) {
