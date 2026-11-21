@@ -94,17 +94,16 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
             ) {
                 Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(cs.onSurface),
                     contentAlignment = Alignment.Center) {
-                    Text("L", color = cs.surface, fontWeight = FontWeight(750), fontSize = 16.sp)
+                    Text("L", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = cs.surface)
                 }
                 Spacer(Modifier.size(9.dp))
-                Text("LOBOS", fontWeight = FontWeight(700), color = cs.onSurface,
-                    fontSize = 13.sp, letterSpacing = 2.sp)
+                Text("LOBOS", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp), color = cs.onSurface)
                 Spacer(Modifier.weight(1f))
                 Row(Modifier.clip(RoundedCornerShape(22.dp)).background(cs.onSurface)
                     .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(Color(0xFF5EE08A)))
+                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(lobos.ui.theme.LobosColors.success))
                     Spacer(Modifier.size(7.dp))
-                    Text(if (state.online) "在线" else "离线", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight(600))
+                    Text(if (state.online) "在线" else "离线", style = MaterialTheme.typography.labelMedium, color = Color.White)
                 }
                 Spacer(Modifier.size(9.dp))
                 Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).border(1.dp, cs.outline)
@@ -138,7 +137,7 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
                     ) {
                         Icon(icon, contentDescription = label, modifier = Modifier.size(27.dp), tint = cs.onSurface)
                         Spacer(Modifier.size(8.dp))
-                        Text(label, color = cs.onSurface, fontSize = 13.sp)
+                        Text(label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
                     }
                 }
             }
@@ -160,7 +159,7 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)).background(cs.surfaceVariant),
                     contentAlignment = Alignment.Center) {
-                    Text("+", color = cs.onSurfaceVariant, fontSize = 30.sp, fontWeight = FontWeight(300))
+                    Text("+", style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light), color = cs.onSurfaceVariant)
                 }
                 Spacer(Modifier.size(11.dp))
                 Text("还没有应用", style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)

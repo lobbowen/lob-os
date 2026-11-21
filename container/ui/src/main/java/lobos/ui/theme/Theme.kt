@@ -1,6 +1,5 @@
 package lobos.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -10,63 +9,106 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF007AFF),
+    primary = Color(0xFF0B6BCB),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFEFF5FF),
-    onPrimaryContainer = Color(0xFF1D4E9E),
-    secondary = Color(0xFF5B6470),
-    surface = Color(0xFFF7F8FA),
-    onSurface = Color(0xFF101216),
-    surfaceVariant = Color(0xFFF0F2F5),
-    onSurfaceVariant = Color(0xFF8B929D),
-    outline = Color(0xFFE2E5EA),
-    outlineVariant = Color(0xFFEDF0F4),
-    background = Color(0xFFEEF1F4),
-    onBackground = Color(0xFF101216),
+    primaryContainer = Color(0xFFDCEBFF),
+    onPrimaryContainer = Color(0xFF0A477F),
+    secondary = Color(0xFF525C6B),
+    onSecondary = Color.White,
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF111318),
+    surfaceVariant = Color(0xFFEFF1F5),
+    onSurfaceVariant = Color(0xFF5F6773),
+    outline = Color(0xFFDADDE3),
+    outlineVariant = Color(0xFFE8EAEF),
+    background = Color(0xFFF5F6F8),
+    onBackground = Color(0xFF111318),
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = Color(0xFF6AA9FF),
+    primary = Color(0xFF8AB4F8),
     onPrimary = Color(0xFF0A1530),
     primaryContainer = Color(0xFF1B2B4A),
-    onPrimaryContainer = Color(0xFFB8D4FF),
-    secondary = Color(0xFFA0A7B1),
-    surface = Color(0xFF121418),
+    onPrimaryContainer = Color(0xFFC6DBFF),
+    secondary = Color(0xFFA8B0BD),
+    onSecondary = Color(0xFF111318),
+    surface = Color(0xFF141619),
     onSurface = Color(0xFFF2F4F7),
-    surfaceVariant = Color(0xFF1C1F24),
-    onSurfaceVariant = Color(0xFF9AA1AC),
-    outline = Color(0xFF2A2E35),
-    outlineVariant = Color(0xFF22262C),
-    background = Color(0xFF0E1013),
+    surfaceVariant = Color(0xFF1E2126),
+    onSurfaceVariant = Color(0xFFA0A8B4),
+    outline = Color(0xFF303640),
+    outlineVariant = Color(0xFF262B33),
+    background = Color(0xFF0D0F12),
     onBackground = Color(0xFFF2F4F7),
 )
 
+private val Mono = FontFamily.Monospace
+
 private val LobosTypography = Typography(
-    displayLarge = TextStyle(fontSize = 42.sp, fontWeight = FontWeight(680), letterSpacing = (-1.8).sp, lineHeight = 46.sp),
-    headlineLarge = TextStyle(fontSize = 34.sp, fontWeight = FontWeight(680), letterSpacing = (-1.2).sp),
-    headlineMedium = TextStyle(fontSize = 26.sp, fontWeight = FontWeight(680), letterSpacing = (-0.9).sp),
-    titleLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight(600)),
-    titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight(600)),
-    bodyLarge = TextStyle(fontSize = 16.sp, fontWeight = FontWeight(400)),
-    bodyMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight(500)),
-    bodySmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight(400)),
-    labelLarge = TextStyle(fontSize = 13.sp, fontWeight = FontWeight(600)),
-    labelMedium = TextStyle(fontSize = 11.sp, fontWeight = FontWeight(650), letterSpacing = 0.8.sp),
-    labelSmall = TextStyle(fontSize = 10.sp, fontWeight = FontWeight(650), letterSpacing = 1.1.sp),
+    displayLarge = TextStyle(fontSize = 36.sp, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp, lineHeight = 44.sp),
+    displayMedium = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp, lineHeight = 40.sp),
+    displaySmall = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Normal, lineHeight = 36.sp),
+    headlineLarge = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Normal, lineHeight = 32.sp),
+    headlineMedium = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium, lineHeight = 28.sp),
+    headlineSmall = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp),
+    titleLarge = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 22.sp),
+    titleMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, letterSpacing = 0.1.sp),
+    titleSmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp, letterSpacing = 0.1.sp),
+    bodyLarge = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 24.sp, letterSpacing = 0.5.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, letterSpacing = 0.25.sp),
+    bodySmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, letterSpacing = 0.4.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, letterSpacing = 0.1.sp),
+    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp, letterSpacing = 0.5.sp),
+    labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp, letterSpacing = 0.5.sp),
 )
 
-private val LightSuccess = Color(0xFF249A55)
-private val DarkSuccess = Color(0xFF5EE08A)
+val MonoTextStyle: TextStyle = TextStyle(fontFamily = Mono, fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.Normal)
 
-val LocalLobosSuccessColor = staticCompositionLocalOf { LightSuccess }
+data class LobosPalette(
+    val success: Color,
+    val brandMark: Color,
+    val terminalBg: Color,
+    val terminalBorder: Color,
+    val terminalDivider: Color,
+    val terminalText: Color,
+    val terminalMuted: Color,
+    val terminalPrompt: Color,
+)
+
+private val LightPalette = LobosPalette(
+    success = Color(0xFF248A3D),
+    brandMark = Color(0xFFFFFFFF),
+    terminalBg = Color(0xFF141821),
+    terminalBorder = Color(0xFF2A303C),
+    terminalDivider = Color(0xFF242A35),
+    terminalText = Color(0xFFE6EAF2),
+    terminalMuted = Color(0xFF8B93A1),
+    terminalPrompt = Color(0xFF6AA9FF),
+)
+
+private val DarkPalette = LobosPalette(
+    success = Color(0xFF5EE08A),
+    brandMark = Color(0xFFF2F4F7),
+    terminalBg = Color(0xFF0E1013),
+    terminalBorder = Color(0xFF2A303C),
+    terminalDivider = Color(0xFF242A35),
+    terminalText = Color(0xFFE6EAF2),
+    terminalMuted = Color(0xFF8B93A1),
+    terminalPrompt = Color(0xFF6AA9FF),
+)
+
+val LocalLobosPalette = staticCompositionLocalOf { LightPalette }
 
 object LobosColors {
+    val current: LobosPalette
+        @Composable @ReadOnlyComposable get() = LocalLobosPalette.current
     val success: Color
-        @Composable @ReadOnlyComposable get() = LocalLobosSuccessColor.current
+        @Composable @ReadOnlyComposable get() = current.success
 }
 
 @Composable
@@ -76,7 +118,8 @@ fun LobosTheme(
     content: @Composable () -> Unit,
 ) {
     val scheme = if (darkTheme) DarkScheme else LightScheme
-    androidx.compose.runtime.CompositionLocalProvider(LocalLobosSuccessColor provides if (darkTheme) DarkSuccess else LightSuccess) {
+    val palette = if (darkTheme) DarkPalette else LightPalette
+    androidx.compose.runtime.CompositionLocalProvider(LocalLobosPalette provides palette) {
         MaterialTheme(colorScheme = scheme, typography = LobosTypography, content = content)
     }
 }
