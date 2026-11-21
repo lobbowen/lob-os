@@ -1,7 +1,5 @@
 package lobos.ui.nav
 
-import lobos.ui.theme.Spacing
-
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -37,7 +35,7 @@ fun SimpleScreen(title: String, onBack: () -> Unit, modifier: Modifier = Modifie
             title,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(pad).padding(Spacing.xl),
+            modifier = Modifier.padding(pad).padding(20.dp),
         )
     }
 }

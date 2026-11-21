@@ -37,8 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lobos.ui.components.UiState
 import lobos.ui.theme.LobosTheme
-import lobos.ui.theme.Radius
-import lobos.ui.theme.Spacing
 
 data class HomeMetric(val value: String, val label: String)
 
@@ -80,117 +78,90 @@ fun HomeScreen(state: HomeUiState, onEvent: (HomeEvent) -> Unit, modifier: Modif
 @Composable
 private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
-    val panelShape = RoundedCornerShape(Radius.xxl)
-    Column(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Spacing.lg)) {
+    val panelShape = RoundedCornerShape(30.dp)
+    Column(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(Spacing.sm, panelShape)
+                .shadow(10.dp, panelShape)
                 .clip(panelShape)
                 .background(cs.surface)
                 .border(1.dp, cs.outlineVariant, panelShape),
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.size(Spacing.xxxl).clip(RoundedCornerShape(Radius.md)).background(cs.onSurface),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(cs.onSurface),
+                    contentAlignment = Alignment.Center) {
                     Text("L", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = cs.surface)
                 }
-                Spacer(Modifier.size(Spacing.sm))
+                Spacer(Modifier.size(9.dp))
                 Text("LOBOS", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp), color = cs.onSurface)
                 Spacer(Modifier.weight(1f))
-                Row(
-                    Modifier.clip(RoundedCornerShape(Radius.xl)).background(cs.primaryContainer)
-                        .padding(horizontal = Spacing.md, vertical = Spacing.xs),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.size(Spacing.sm).clip(RoundedCornerShape(50)).background(lobos.ui.theme.LobosColors.success))
-                    Spacer(Modifier.size(Spacing.xs))
-                    Text(
-                        if (state.online) "在线" else "离线",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = cs.onPrimaryContainer,
-                    )
+                Row(Modifier.clip(RoundedCornerShape(22.dp)).background(cs.onSurface)
+                    .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(lobos.ui.theme.LobosColors.success))
+                    Spacer(Modifier.size(7.dp))
+                    Text(if (state.online) "在线" else "离线", style = MaterialTheme.typography.labelMedium, color = Color.White)
                 }
-                Spacer(Modifier.size(Spacing.sm))
-                Box(
-                    Modifier.size(Spacing.xxxl).clip(RoundedCornerShape(50)).border(1.dp, cs.outline)
-                        .clickable { onEvent(HomeEvent.TogglePower) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "电源", modifier = Modifier.size(Spacing.lg), tint = cs.onSurfaceVariant)
+                Spacer(Modifier.size(9.dp))
+                Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).border(1.dp, cs.outline)
+                    .clickable { onEvent(HomeEvent.TogglePower) }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "电源", modifier = Modifier.size(16.dp), tint = cs.onSurfaceVariant)
                 }
             }
-
-            Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.xl)) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        if (state.running) "运行中" else "已停止",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = cs.onSurface,
-                    )
-                    Spacer(Modifier.size(Spacing.sm))
-                    Text(
-                        "控制面在线 · ${state.uptime}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cs.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = Spacing.xs),
-                    )
-                }
-                Spacer(Modifier.height(Spacing.md))
-            }
-
-            Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.xl, vertical = Spacing.md)) {
-                state.metrics.forEachIndexed { i, m ->
-                    if (i > 0) Box(Modifier.width(1.dp).height(Spacing.xxl).background(cs.outlineVariant))
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(m.value, style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
-                        Spacer(Modifier.size(Spacing.xs))
-                        Text(m.label, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                Spacer(Modifier.height(16.dp))
+                Text("SYSTEM STATUS", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                Text(if (state.running) "运行中" else "已停止", style = MaterialTheme.typography.displayLarge, color = cs.onSurface)
+                Text("控制面在线 · 已稳定运行 ${state.uptime}", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                Spacer(Modifier.height(18.dp))
+                Row(Modifier.fillMaxWidth().padding(vertical = 18.dp)) {
+                    state.metrics.forEachIndexed { i, m ->
+                        if (i > 0) Box(Modifier.width(1.dp).height(34.dp).background(cs.outlineVariant))
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(m.value, style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
+                            Spacer(Modifier.size(5.dp))
+                            Text(m.label, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                        }
                     }
                 }
             }
-
-            Row(Modifier.fillMaxWidth().height(Spacing.giant), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(86.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { (key, label, icon) ->
                     Column(
-                        Modifier.weight(1f).height(Spacing.giant).clickable { onEvent(HomeEvent.OpenEntry(key)) },
+                        Modifier.weight(1f).height(86.dp).clickable { onEvent(HomeEvent.OpenEntry(key)) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(icon, contentDescription = label, modifier = Modifier.size(Spacing.xxl), tint = cs.onSurface)
-                        Spacer(Modifier.size(Spacing.xs))
+                        Icon(icon, contentDescription = label, modifier = Modifier.size(27.dp), tint = cs.onSurface)
+                        Spacer(Modifier.size(8.dp))
                         Text(label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(Spacing.xl))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(26.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("快速启动", style = MaterialTheme.typography.headlineMedium, color = cs.onSurface)
                 Text("添加应用后，可在这里直接启动", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
         }
-        Spacer(Modifier.height(Spacing.lg))
+        Spacer(Modifier.height(20.dp))
         Box(
-            Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(Radius.xxl))
-                .border(1.5.dp, cs.outlineVariant, RoundedCornerShape(Radius.xxl))
+            Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(22.dp))
+                .border(1.5.dp, cs.outlineVariant, RoundedCornerShape(22.dp))
                 .background(cs.surface.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier.size(Spacing.giant).clip(RoundedCornerShape(Radius.lg)).background(cs.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Box(Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)).background(cs.surfaceVariant),
+                    contentAlignment = Alignment.Center) {
                     Text("+", style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Light), color = cs.onSurfaceVariant)
                 }
-                Spacer(Modifier.size(Spacing.md))
+                Spacer(Modifier.size(11.dp))
                 Text("还没有应用", style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)
                 Text("开发者社区的应用安装后会出现在这里", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
             }
