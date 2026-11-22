@@ -422,3 +422,28 @@ PTY 输出只当日志逐行 Append。不是终端模拟器，是"命令输入�
 - brand.md 是色彩/字体的唯一数值源，代码以它为准
 - 间距/尺寸是独立体系，禁止用脚本批量映射（历史教训：破坏在线徽标与图标比例）
 - 视觉改动由专业角色按规范执行，Lead 不再凭感觉改
+
+---
+
+## 十六、状态栏规范与系统运行状态区（2026-11-22）
+
+用户指出：状态栏图标被覆盖变白（信号/电量/时间丢失）、顶部状态区信息粘连、
+指标语义像应用商店而非系统进程管理器。
+
+### 状态栏规范（Android 原生 edge-to-edge）
+- themes.xml：statusBarColor 透明 + windowLightStatusBar=true（深色图标）+
+  navigationBar 透明 + windowLightNavigationBar=true
+- MainActivity：enableEdgeToEdge()（替代 setDecorFitsSystemWindows(true)，
+  后者导致系统留白+代码 statusBarsPadding 重复）
+- 各屏顶层容器各用一次 statusBarsPadding（edge-to-edge 下正确）
+
+### 顶部状态区重做（进程管理器语义）
+- 去掉冗余的 SYSTEM STATUS 标签与超大 36sp 标题
+- 状态行：运行中(20sp) + 控制面在线·时长，同一行、12dp 间距，不粘连
+- 指标行改为真实系统运行状态：内存占用(JVM堆)/线程数/活跃会话(PTY)/已装组件
+  （替换掉"近期失败/运行时版本"等应用商店语义）
+- HomeViewModel.gather 用 Runtime + Thread.activeCount + PtySession.activeSessions 取真值
+
+### 设备验证
+- 状态栏时间/信号/5G/电量深色可见，不再被白色覆盖
+- 状态行与说明有间距不粘连、指标语义为系统运行状态、面板顶部无浪费空间、0崩溃

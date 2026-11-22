@@ -112,21 +112,24 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
                 }
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (state.running) "运行中" else "已停止", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
+                    Spacer(Modifier.size(12.dp))
+                    Text("控制面在线 · ${state.uptime}", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                }
                 Spacer(Modifier.height(16.dp))
-                Text("SYSTEM STATUS", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
-                Text(if (state.running) "运行中" else "已停止", style = MaterialTheme.typography.displayLarge, color = cs.onSurface)
-                Text("控制面在线 · 已稳定运行 ${state.uptime}", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth().padding(vertical = 18.dp)) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     state.metrics.forEachIndexed { i, m ->
-                        if (i > 0) Box(Modifier.width(1.dp).height(34.dp).background(cs.outlineVariant))
+                        if (i > 0) Box(Modifier.width(1.dp).height(32.dp).background(cs.outlineVariant))
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(m.value, style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
-                            Spacer(Modifier.size(5.dp))
+                            Text(m.value, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+                            Spacer(Modifier.size(6.dp))
                             Text(m.label, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
                         }
                     }
                 }
+                Spacer(Modifier.height(8.dp))
             }
             Row(Modifier.fillMaxWidth().height(86.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { (key, label, icon) ->
