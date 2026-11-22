@@ -117,6 +117,18 @@ private fun ComponentsReady(state: ComponentsUiState.Ready, onEvent: (Components
             )
             Spacer(Modifier.height(20.dp))
         }
+        state.notice?.takeIf { it.isNotBlank() }?.let { notice ->
+            item(key = "notice") {
+                Text(
+                    notice,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (notice.startsWith("安装失败")) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(20.dp))
+            }
+        }
         item(key = "filter") {
             SegmentedFilter(selected = filter, onEvent = onEvent)
             Spacer(Modifier.height(24.dp))
@@ -194,7 +206,13 @@ private fun ComponentGroup(items: List<ComponentItem>, onEvent: (ComponentsEvent
             if (index > 0) {
                 Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
             }
-            ComponentRow(item = item, onClick = { onEvent(ComponentsEvent.OpenDetail(item.id)) })
+            ComponentRow(
+                item = item,
+                onClick = {
+                    if (item.installed) onEvent(ComponentsEvent.OpenDetail(item.id))
+                    else onEvent(ComponentsEvent.Install(item.id))
+                },
+            )
         }
     }
 }

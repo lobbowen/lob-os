@@ -28,6 +28,7 @@ sealed interface ComponentsUiState : UiState {
         val libraries: List<ComponentItem>,
         val filter: Int = 0,
         val detail: ComponentDetail? = null,
+        val notice: String? = null,
     ) : ComponentsUiState
     data class Error(val msg: String) : ComponentsUiState
 }

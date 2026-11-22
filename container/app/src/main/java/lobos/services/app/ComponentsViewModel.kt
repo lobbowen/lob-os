@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lobos.services.reg.ProgramIndex
+import lobos.services.supply.CatalogClient
+import lobos.services.supply.InstallProgress
+import org.json.JSONObject
 import lobos.services.reg.UnitEntry
 import lobos.services.supply.PackageInstaller
 import lobos.services.supply.ProgramDir
@@ -23,9 +26,15 @@ class ComponentsViewModel : ViewModel() {
     val state: StateFlow<ComponentsUiState> = _state
     private var filter = 0
     private var detailId: String? = null
+    private var notice: String? = null
 
     fun load(ctx: Context) {
-        viewModelScope.launch { _state.value = withContext(Dispatchers.IO) { gather(ctx, filter, detailId) } }
+        viewModelScope.launch {
+            _state.value = withContext(Dispatchers.IO) {
+                runCatching { CatalogClient.refresh(ctx, false) }
+                gather(ctx, filter, detailId, notice)
+            }
+        }
     }
 
     fun onEvent(ctx: Context, event: ComponentsEvent) {
@@ -41,8 +50,18 @@ class ComponentsViewModel : ViewModel() {
                 }
             }
             is ComponentsEvent.Install -> {
+                notice = "正在安装 ${event.id}…"
+                load(ctx)
                 viewModelScope.launch {
-                    withContext(Dispatchers.IO) { runCatching { PackageInstaller.install(ctx, event.id, null) } }
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching { PackageInstaller.install(ctx, event.id, null) }.getOrNull()
+                    }
+                    val prog = InstallProgress.current()
+                    notice = when {
+                        result?.optBoolean("ok") == true -> "已安装 ${event.id} ${result.optString("version", "")}".trim()
+                        prog.stage == InstallProgress.Stage.FAILED -> "安装失败：${prog.detail.ifBlank { result?.optString("error", "未知原因") ?: "未知原因" }}"
+                        else -> "安装未完成：${result?.optString("error", prog.detail) ?: prog.detail}"
+                    }
                     load(ctx)
                 }
             }
@@ -54,7 +73,7 @@ class ComponentsViewModel : ViewModel() {
         private val TOOL_IDS = setOf("cmake", "git", "make", "rg", "jq", "curl", "sqlite", "npm", "pnpm", "pkgconf", "bash", "busybox")
         private val LIB_IDS = setOf("openssl", "zlib", "libffi", "crypto", "libcxx")
 
-        fun gather(ctx: Context, filter: Int, detailId: String? = null): ComponentsUiState {
+        fun gather(ctx: Context, filter: Int, detailId: String? = null, note: String? = null): ComponentsUiState {
             val programs = runCatching { ProgramIndex.all(ctx) }.getOrDefault(emptyList())
             fun item(p: UnitEntry): ComponentItem {
                 val id = p.id
@@ -72,15 +91,41 @@ class ComponentsViewModel : ViewModel() {
                     installed = true, inUse = activeVer != null, kind = kind,
                 )
             }
-            val all = programs.map { item(it) }
+            val all = programs.map { item(it) }.toMutableList()
+            val installedIds = programs.map { it.id }.toSet()
+
+            val catalog = runCatching { CatalogClient.entries(ctx) }.getOrDefault(org.json.JSONArray())
+            for (i in 0 until catalog.length()) {
+                val e = catalog.optJSONObject(i) ?: continue
+                val id = e.optString("name").ifBlank { continue }
+                if (id in installedIds) continue
+                val ver = e.optString("version").ifBlank {
+                    e.optJSONArray("versions")?.optJSONObject(0)?.optString("version", "") ?: ""
+                }
+                val size = e.optLong("size", 0L)
+                val detailText = buildString {
+                    if (ver.isNotBlank()) append("v").append(ver)
+                    val kindTag = when (e.optString("kind")) {
+                        "runtime", "program" -> "运行时"
+                        else -> "工具"
+                    }
+                    if (isNotEmpty()) append(" · ").append(kindTag)
+                    if (size > 0) append(" · ").append(lobos.services.supply.InstallGuard.human(size))
+                }
+                all.add(ComponentItem(id, id, detailText, "未装", false, kind = kindOf(id)))
+            }
+
             val runtime = all.filter { it.kind == "runtime" }.toMutableList()
             val tools = all.filter { it.kind == "tool" }.toMutableList()
             val libraries = all.filter { it.kind == "library" }.toMutableList()
-            if (filter != 1 && runtime.none { it.id == "python" }) {
-                runtime.add(0, ComponentItem("python", "Python", "运行时 · 未安装", "未装", false, kind = "runtime"))
-            }
             val detail = detailId?.let { id -> buildDetail(ctx, id, programs) }
-            return ComponentsUiState.Ready(runtime, tools, libraries, filter, detail)
+            return ComponentsUiState.Ready(runtime, tools, libraries, filter, detail, note)
+        }
+
+        private fun kindOf(id: String): String = when {
+            RUNTIME_IDS.any { id.startsWith(it) } -> "runtime"
+            LIB_IDS.any { id.startsWith(it) } -> "library"
+            else -> "tool"
         }
 
         private fun buildDetail(ctx: Context, id: String, programs: List<UnitEntry>): ComponentDetail {

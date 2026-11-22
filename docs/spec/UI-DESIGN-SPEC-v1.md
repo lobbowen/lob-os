@@ -447,3 +447,29 @@ PTY 输出只当日志逐行 Append。不是终端模拟器，是"命令输入�
 ### 设备验证
 - 状态栏时间/信号/5G/电量深色可见，不再被白色覆盖
 - 状态行与说明有间距不粘连、指标语义为系统运行状态、面板顶部无浪费空间、0崩溃
+
+---
+
+## 十七、组件商城安装闭环（2026-11-23）
+
+用户指出：组件页无法安装，可安装列表只有硬编码的假 python，看不到已生产上传的件。
+
+### 根因（三处断裂）
+- ComponentsViewModel.gather 只从 ProgramIndex.all()（已安装）取数，唯一"未装"项是
+  硬编码的假 python，从没读 CatalogClient 目录
+- 组件页 load 从不 refresh catalog（设备缓存丢失后目录为空）
+- ComponentsScreen 所有 ComponentRow 点击都是 OpenDetail，ComponentsEvent.Install
+  契约里定义了却从未被 UI 触发 —— 安装按钮是纯视觉，点了没反应
+
+### 修复
+- load 先 CatalogClient.refresh(ctx,false)：从签名 CDN 清单拉可安装件（9 个：
+  cmake/git/make/node/npm/pkgconf/pnpm/python/sqlite）
+- gather 读 CatalogClient.entries()，把目录中未安装的件按 id 分类加入 runtime/tools/libraries
+- ComponentsUiState.Ready 加 notice 字段；Install 时显示"正在安装 X…"，
+  完成后读 InstallProgress 显示"已安装 X 版本"/"安装失败"反馈
+- ComponentRow 点击：已装 -> OpenDetail，未装 -> Install（安装按钮语义落地）
+
+### 设备实测
+- 可安装列表显示真实件：node v24.21.0/python v3.14.8/cmake v4.4.4/make/npm/pkgconf 等
+- 点 cmake -> "正在安装 cmake…" -> "已安装 cmake 4.4.4"；
+  files/opt/cmake 目录真实生成；cmake 从可安装消失、出现在已安装列表；0 崩溃
