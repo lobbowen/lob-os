@@ -112,34 +112,47 @@ private fun HomeReady(state: HomeUiState.Ready, onEvent: (HomeEvent) -> Unit, mo
                 }
             }
             Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-                Spacer(Modifier.height(14.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (state.running) "运行中" else "已停止", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
-                    Spacer(Modifier.size(12.dp))
-                    Text("控制面在线 · ${state.uptime}", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                }
                 Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    state.metrics.forEachIndexed { i, m ->
-                        if (i > 0) Box(Modifier.width(1.dp).height(32.dp).background(cs.outlineVariant))
-                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(m.value, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-                            Spacer(Modifier.size(6.dp))
-                            Text(m.label, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(cs.surfaceVariant)
+                        .clip(RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(lobos.ui.theme.LobosColors.success))
+                            Spacer(Modifier.size(8.dp))
+                            Text(if (state.running) "运行中" else "已停止", style = MaterialTheme.typography.titleMedium)
+                        }
+                        Spacer(Modifier.size(4.dp))
+                        Text("控制面在线 · ${state.uptime}", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.size(16.dp))
+                    Box(Modifier.width(1.dp).height(32.dp).background(cs.outlineVariant))
+                    Row(Modifier.weight(1f)) {
+                        state.metrics.forEachIndexed { i, m ->
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(m.value, style = MaterialTheme.typography.titleMedium)
+                                Spacer(Modifier.size(4.dp))
+                                Text(m.label, style = MaterialTheme.typography.labelSmall)
+                            }
+                            if (i < state.metrics.lastIndex) Box(Modifier.width(1.dp).height(28.dp).background(cs.outlineVariant))
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            Row(Modifier.fillMaxWidth().height(86.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(72.dp), verticalAlignment = Alignment.CenterVertically) {
                 entries.forEach { (key, label, icon) ->
                     Column(
-                        Modifier.weight(1f).height(86.dp).clickable { onEvent(HomeEvent.OpenEntry(key)) },
+                        Modifier.weight(1f).height(72.dp).clickable { onEvent(HomeEvent.OpenEntry(key)) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(icon, contentDescription = label, modifier = Modifier.size(27.dp), tint = cs.onSurface)
-                        Spacer(Modifier.size(8.dp))
+                        Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp), tint = cs.onSurface)
+                        Spacer(Modifier.size(6.dp))
                         Text(label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
                     }
                 }
