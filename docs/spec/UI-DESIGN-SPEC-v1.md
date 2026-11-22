@@ -473,3 +473,30 @@ PTY 输出只当日志逐行 Append。不是终端模拟器，是"命令输入�
 - 可安装列表显示真实件：node v24.21.0/python v3.14.8/cmake v4.4.4/make/npm/pkgconf 等
 - 点 cmake -> "正在安装 cmake…" -> "已安装 cmake 4.4.4"；
   files/opt/cmake 目录真实生成；cmake 从可安装消失、出现在已安装列表；0 崩溃
+
+---
+
+## 十八、组件商城交互细节完善（2026-11-23）
+
+用户指出分类标签错误、安装无状态、失败提示、多版本切换缺失。系统完善。
+
+### 修复
+- 分类标签：catalog 所有件 kind 都是 component/layout=toolset，无可靠分类字段，
+  改按语义名单(kindOf)：python/node/go=运行时、openssl/zlib等=库、其余=工具；
+  列表 detail 与分组统一用 kindLabel，node/python 正确显示"运行时"
+- 安装状态：VM 用 coroutine 轮询 InstallProgress(200ms)，notice 显示
+  排队/下载/校验/落位/接入各阶段；安装中禁止并发
+- 失败信息具体化：区分 ok/failed/未完成，失败时显示 InstallProgress.detail 或 result.error
+- 多版本：VersionItem 加 installed 字段(使用中/已装可切换/可安装三态)；
+  ComponentDetail.installed 标识整体是否装；详情页合并"已装版本+catalog所有版本"，
+  未装版本给"安装"按钮(Install(id,version))、已装给"切换"(SwitchVersion)；
+  Install 事件带 version 参数
+- ComponentDetailScreen(专业前端按契约实现)：VersionRow 三态、未装组件显示"安装最新版本"、
+  header 下显示 notice
+
+### 设备实测
+- node/python 显示"运行时"，分类正确
+- python 详情：3.14.8/3.12.10/3.11.13 三版本，各状态正确(使用中/安装/切换)
+- 装 3.12.10、3.11.13 均成功，可互相切换，CURRENT 正确指向
+- 装 cmake 成功、从可安装消失、进已安装
+- 0 崩溃。安装瞬间抓到 staging 中间态属正常瞬态，落位后消失

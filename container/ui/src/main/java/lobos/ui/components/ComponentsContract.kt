@@ -10,7 +10,12 @@ data class ComponentItem(
     val kind: String = "runtime",
 )
 
-data class VersionItem(val version: String, val detail: String, val active: Boolean)
+data class VersionItem(
+    val version: String,
+    val detail: String,
+    val active: Boolean,
+    val installed: Boolean = true,
+)
 
 data class ComponentDetail(
     val id: String,
@@ -18,6 +23,7 @@ data class ComponentDetail(
     val versions: List<VersionItem>,
     val deps: List<String>,
     val capabilities: String,
+    val installed: Boolean = true,
 )
 
 sealed interface ComponentsUiState : UiState {
@@ -35,7 +41,7 @@ sealed interface ComponentsUiState : UiState {
 
 sealed interface ComponentsEvent {
     data class OpenDetail(val id: String) : ComponentsEvent
-    data class Install(val id: String) : ComponentsEvent
+    data class Install(val id: String, val version: String? = null) : ComponentsEvent
     data class SwitchVersion(val version: String) : ComponentsEvent
     data class Filter(val idx: Int) : ComponentsEvent
     data object Back : ComponentsEvent

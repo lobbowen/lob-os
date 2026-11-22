@@ -74,6 +74,8 @@ fun ComponentsScreen(
                         versions = detail.versions,
                         deps = detail.deps,
                         capabilities = detail.capabilities,
+                        installed = detail.installed,
+                        notice = state.notice,
                         onEvent = onEvent,
                         onBack = { onEvent(ComponentsEvent.Back) },
                     )
@@ -304,6 +306,8 @@ fun ComponentDetailScreen(
     versions: List<VersionItem>,
     deps: List<String>,
     capabilities: String,
+    installed: Boolean = true,
+    notice: String? = null,
     onEvent: (ComponentsEvent) -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
@@ -325,11 +329,35 @@ fun ComponentDetailScreen(
             Text(name, style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
             Spacer(Modifier.height(6.dp))
             Text("版本管理 · 依赖与能力", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+            notice?.takeIf { it.isNotBlank() }?.let { message ->
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (message.startsWith("安装失败")) cs.error else cs.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.height(22.dp))
         }
         item(key = "versions") {
             SectionLabel("版本")
             Spacer(Modifier.height(9.dp))
+            if (!installed) {
+                versions.firstOrNull()?.version?.let { latestVersion ->
+                    Box(
+                        modifier = Modifier
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(cs.primaryContainer)
+                            .clickable { onEvent(ComponentsEvent.Install(name, latestVersion)) }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("安装 $latestVersion", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -340,7 +368,11 @@ fun ComponentDetailScreen(
                     if (index > 0) {
                         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(cs.outlineVariant))
                     }
-                    VersionRow(version = version, onSwitch = { onEvent(ComponentsEvent.SwitchVersion(version.version)) })
+                    VersionRow(
+                        version = version,
+                        onSwitch = { onEvent(ComponentsEvent.SwitchVersion(version.version)) },
+                        onInstall = { onEvent(ComponentsEvent.Install(name, version.version)) },
+                    )
                 }
             }
             Spacer(Modifier.height(22.dp))
@@ -394,7 +426,7 @@ private fun InfoCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun VersionRow(version: VersionItem, onSwitch: () -> Unit) {
+private fun VersionRow(version: VersionItem, onSwitch: () -> Unit, onInstall: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(12.dp)
     val background = if (version.active) cs.primaryContainer else Color.White
@@ -428,11 +460,15 @@ private fun VersionRow(version: VersionItem, onSwitch: () -> Unit) {
                 Text("使用中", style = MaterialTheme.typography.labelMedium, color = cs.primary)
             } else {
                 Box(
-                    modifier = Modifier.height(48.dp).clip(RoundedCornerShape(14.dp)).background(cs.primaryContainer)
-                        .clickable(onClick = onSwitch).padding(horizontal = 16.dp),
+                    modifier = Modifier.height(44.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer)
+                        .clickable(onClick = if (version.installed) onSwitch else onInstall).padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("切换", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                    Text(
+                        if (version.installed) "切换" else "安装",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = cs.primary,
+                    )
                 }
             }
         }
