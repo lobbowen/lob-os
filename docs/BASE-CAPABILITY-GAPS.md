@@ -357,3 +357,36 @@ PtySession 全部尝试改动已回退，稳定版 APK 装机验证终端恢复
 （"在 LobOS 中运行命令" + 2 linker64 进程）。工作区干净。
 通配能力的稳定入口仍是 glibc-run（验收 A/D 通过）；
 验收 B/C 是下一阶段课题（需重新设计 hook 与 PTY 启动的协作关系），非当前缺陷。
+
+---
+
+## 2026-11-24 第十二轮：核心链路实证成立，障碍精确定位在 PTY 启动形态
+
+### 决定性正向实验
+在 app 进程环境里，让 bash 带 LD_PRELOAD=liblobosposix.so +
+LOBOS_GLIBC_LOADER/LIBDIR，然后 bash -c '敲 glibc 程序路径'：
+```
+CORE_ROUTE_OK
+RC=0
+diag: d1.exec-path glibc->guest-loader /data/user/0/lobos.os/files/core
+```
+**结论：验收 B 的核心机制成立**——bash 进程带 hook 时，用户敲的 glibc 程序
+execve 被 exec-path.c 拦截、自动路由到 guest loader、正常执行。
+反向判据：同一 bash 跑 bionic 命令（echo/id）照常，未受影响。
+
+### 障碍精确落点（不是机制不可行，是 PTY 形态）
+PTY child 用 `execv(argv[0]=/system/bin/linker64, [linker64, bash, ...])` 启动交互
+shell——这是 linker64 **显式加载** bash，不经过动态链接器的 LD_PRELOAD 处理。
+所以交互 shell 进程里没有我们的 hook，用户在里面敲命令的 execve 不被拦截。
+- 核心机制（bash 带 hook）：已实证成立
+- PTY 交互 shell 带 hook：被 linker64 显式加载挡住（LD_PRELOAD 对显式加载无效）
+
+### 下一阶段的精确课题
+不再是"能不能做"（核心已证可行），而是"怎么让 PTY 的交互 shell 带 hook"：
+- 方案：让 pty-session.c 的 child exec 走正常动态链接（去掉显式 linker64 前缀，
+  让 bash 的 PT_INTERP 自己加载），使 LD_PRELOAD 生效；需同步处理 exec-path
+  对 bash 的 ET_DYN 改写（避免双重 linker64）。这是有明确边界的工程问题。
+
+### 交付状态（不变）
+所有 PtySession 尝试改动已回退，稳定版终端验证恢复。
+通配能力稳定入口 glibc-run 已交付；核心链路本轮实证为下一阶段铺平了路。
