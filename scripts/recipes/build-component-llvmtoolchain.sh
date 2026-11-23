@@ -284,21 +284,53 @@ rm -rf "$TOOLDIR" "$OUT/lib"
 mkdir -p "$TOOLDIR" "$OUT/lib"
 cp -a "$STAGE/prefix/bin/." "$TOOLDIR/"
 
-if [ -d "$STAGE/prefix/lib" ]; then
-  cp -a "$STAGE/prefix/lib/." "$OUT/lib/"
-fi
+# 只交付编译器所需工具：NEED_BIN 及其软链指向的真实本体。
+# 其余（bugpoint/clang-repl/opt/llc 等）是开发 LLVM 本身用的，不属编译工具链交付面。
+KEEP_BIN="$NEED_BIN clang-21 lld llvm-objcopy"
+for f in "$TOOLDIR"/*; do
+  b="$(basename "$f")"
+  case " $KEEP_BIN " in *" $b "*) ;; *) rm -rf "$f" ;; esac
+done
+
+# strip 符号表（项目既有规范，见 build-component-make/cmake/pkg-config）：
+# 未 strip 时 clang-21 单个 1.3G，strip 后约百分之一；架构与 PT_INTERP 不变。
+for f in "$TOOLDIR"/*; do
+  [ -f "$f" ] || continue
+  [ -L "$f" ] && continue
+  "$LLVM_STRIP" --strip-unneeded "$f" 2>/dev/null || true
+done
+
+note "bin 精简为 $(ls "$TOOLDIR" | wc -l) 个工具（NEED_BIN + 本体），已 strip"
+
+# 编译器静态链接了 LLVM，只依赖系统 libc/libm/libdl；libclang*.so/libLTO.so 等
+# 是给第三方程序用的开发库，不属"编译工具链"交付面 —— 不拷，避免组件膨胀到 8G。
+# 后面 NSDK_CLANGRES 那段会把 NDK 同源的 lib/clang/<ver>/lib（builtins/libunwind）并入。
+mkdir -p "$OUT/lib/clang"
 
 NSDK_CLANGRES="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/* 2>/dev/null | head -1 || true)"
 if [ -n "$NSDK_CLANGRES" ] && [ -d "$NSDK_CLANGRES/lib" ]; then
   _cv="$(basename "$NSDK_CLANGRES")"
-  mkdir -p "$OUT/lib/clang/$_cv/lib"
-  cp -a "$NSDK_CLANGRES/lib/." "$OUT/lib/clang/$_cv/lib/" 2>/dev/null || true
-
   _triple="aarch64-unknown-linux-android$API"
-  mkdir -p "$OUT/lib/clang/$_cv/lib/$_triple"
-  cp -a "$NSDK_CLANGRES/lib/linux/aarch64/." "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
-  cp -a "$NSDK_CLANGRES/lib/linux/libclang_rt."* "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
-  echo "[llvm] 资源目录已并入（libunwind.a 与那 libclang_rt 在那里，三元组 $_triple）"
+  mkdir -p "$OUT/lib/clang/$_cv/include" "$OUT/lib/clang/$_cv/lib/$_triple"
+
+  # 内置头文件（stddef/stdarg 等）—— 编译器按 lib/clang/<ver>/include 找
+  cp -a "$NSDK_CLANGRES/include/." "$OUT/lib/clang/$_cv/include/" 2>/dev/null || true
+
+  # 只取 aarch64 的静态运行时库（libunwind/libatomic 等）：compiler-rt 按
+  # lib/clang/<ver>/lib/<triple>/ 找。不拷 lldb-server/.so/其它架构 —— 那些是
+  # 可执行文件，会被装侧当成 bin 别名建链，多架构同名=lldb-server 冲突（实测）。
+  for _a in "$NSDK_CLANGRES"/lib/linux/aarch64/*.a; do
+    [ -f "$_a" ] && cp -a "$_a" "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
+  done
+  for _rt in "$NSDK_CLANGRES"/lib/linux/libclang_rt.*-aarch64-android.a; do
+    [ -f "$_rt" ] && cp -a "$_rt" "$OUT/lib/clang/$_cv/lib/$_triple/" 2>/dev/null || true
+  done
+  # clang 按 lib/<triple>/libclang_rt.builtins.a 找（无后缀），而 NDK 文件名带
+  # -aarch64-android 后缀；建别名，否则链接期报 builtins 找不到。
+  if [ -f "$OUT/lib/clang/$_cv/lib/$_triple/libclang_rt.builtins-aarch64-android.a" ]; then
+    ln -sf libclang_rt.builtins-aarch64-android.a "$OUT/lib/clang/$_cv/lib/$_triple/libclang_rt.builtins.a"
+  fi
+  echo "[llvm] 资源目录已并入（内置头 + aarch64 静态运行时库 → $_triple）"
 fi
 
 NSDK_SR="${NSDK_SR:-$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/sysroot 2>/dev/null | head -1 || true)}"
@@ -325,12 +357,22 @@ if [ -n "$NSDK_SR" ] && [ -d "$NSDK_SR" ]; then
   rm -f "$OUT/sysroot/usr/lib/aarch64-linux-android/libc.a" "$OUT/sysroot/usr/lib/aarch64-linux-android/libc++_static.a"
   NSDK_TOOLLIB="$(ls -d "$NDK_ROOT"/toolchains/llvm/prebuilt/*/lib/clang/*/lib/linux/aarch64 2>/dev/null | head -1 || true)"
   if [ -n "$NSDK_TOOLLIB" ] && [ -d "$NSDK_TOOLLIB" ]; then
-    cp -a "$NSDK_TOOLLIB"/. "$OUT/sysroot/usr/lib/" 2>/dev/null || true
-    echo "[sysroot] 工具链库已并入（libunwind.a 在那里）"
+    # 只拷静态运行时库；同目录的 lldb-server 是无扩展名可执行文件，
+    # 会被装侧当 bin 别名建链，与 lib/clang/<ver>/lib/<triple>/ 那份同名冲突。
+    for _a in "$NSDK_TOOLLIB"/*.a; do
+      [ -f "$_a" ] && cp -a "$_a" "$OUT/sysroot/usr/lib/" 2>/dev/null || true
+    done
+    echo "[sysroot] 工具链静态库已并入（libunwind.a 在那里）"
   else
     echo "::error title=找不到 clang 工具链库::libunwind.a 在那里，编 C++ 会失败（NDK_ROOT=$NDK_ROOT）"
     exit 1
   fi
+  # bionic 没有独立的 libutil（forkpty 在 libc 里）。node-pty 等模块的 binding.gyp
+  # 写 -lutil，在设备上链接会找不到；提供一个空的 libutil.a 满足链接参数（符号由 libc 供给）。
+  printf 'int lobos_libutil_compat(void){return 0;}\n' > "$WORK/util-stub.c"
+  "$CC" --target=aarch64-linux-android$API -c "$WORK/util-stub.c" -o "$WORK/util-stub.o"
+  "$LLVM_AR" rcs "$OUT/sysroot/usr/lib/libutil.a" "$WORK/util-stub.o"
+  echo "[sysroot] 空 libutil.a 已建（bionic 无独立 libutil，供 -lutil 链接）"
   echo "[sysroot] 就位 $OUT/sysroot"
 else
   echo "::error title=找不到 NDK sysroot::编任何 C/C++ 都要它（NDK_ROOT=$NDK_ROOT）"

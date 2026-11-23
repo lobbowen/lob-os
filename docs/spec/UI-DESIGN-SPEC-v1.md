@@ -835,3 +835,31 @@ lib 7.8G，总计 31G。CI/规范里当前无 strip 步骤 —— llvm 组件从
 打包前需要决策：strip 策略（在 recipe 加 strip 属改构建规范，需确认）、
 或组件拆分（只保留 NEED_BIN 八个工具，去掉 bugpoint 等开发期工具）。
 不擅自改构建规范，等定方向。
+
+---
+
+## 三十一、llvm 组件正式发布 + 设备编译闭环（2026-11-23）
+
+第三十节跑通 recipe 后，解决产物问题并走完发布与验证：
+
+### recipe 构建规范改进（build-component-llvmtoolchain.sh）
+- bin 只交付 NEED_BIN 8 工具 + 3 本体（clang-21/lld/llvm-objcopy），去掉 bugpoint 等 96 个开发期工具
+- 对交付工具 strip：clang-21 1.38G→94MB、lld 882M→55MB（项目既有 strip 规范，见 make/cmake/pkg-config recipe）
+- lib 只保留 lib/clang（内置头 + aarch64 静态运行时库），去掉 libclang*.so/libLTO.so 开发库
+- 内置头从 NDK clang 资源拷；只拷 aarch64 的 .a（不拷 lldb-server 等可执行，避免装侧别名冲突）
+- builtins 建无后缀别名（libclang_rt.builtins.a → ...-aarch64-android.a），否则链接期找不到
+- sysroot 提供空 libutil.a（bionic 无独立 libutil，供 node-pty 等 -lutil 链接）
+
+### 组件产物
+component-llvm-21.1.0-e1e2475db011-android-arm64.zip，91MB（从 31G 降到 91MB）。
+entry=bin/clang，11 别名，形态 self-describe 验证通过。
+
+### 发布与设备验证
+- testing 三轮验证：首装成功；v2 修 lldb-server 别名冲突；v3 内置 builtins 别名+libutil
+- official 发布成功：https://lobcdn.zll.ink/official/component/component-llvm-21.1.0-e1e2475db011-android-arm64.zip
+- 设备从 testing 装 llvm 21.1.0 成功
+- **最终闭环**：只设标准环境变量（CC/CXX 指向组件 clang，--target=aarch64-linux-android35，
+  NODE_OPTIONS shim 补 getuid），不手工补任何文件，node-gyp 在设备上完整编译 node-pty
+  成功（gyp info ok，COPY pty.node），加载成功（PTY_OK fork,open,resize,process）。
+
+目标达成：aarch64 编译器已做成标准可安装组件，设备具备 Node 原生模块编译能力。
