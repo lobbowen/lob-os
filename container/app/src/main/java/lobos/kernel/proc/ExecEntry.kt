@@ -2,10 +2,19 @@ package lobos.kernel.proc
 
 import java.io.File
 import java.nio.file.Files
+import lobos.kernel.elf.ElfFacts
 
 object ExecEntry {
 
     const val SYSTEM_LINKER = "/system/bin/linker64"
+
+    // glibc guest 运行时的 loader/lib 路径。由 RuntimeEnvironment.treeRootEnv 在
+    // app 进程内设置（argv() 是 app 进程调用的，System.getenv 读不到注入给子进程的值）。
+    @Volatile private var guestLoader: String? = null
+    @Volatile private var guestLibDir: String? = null
+    fun configureGlibcGuest(loader: String?, libDir: String?) {
+        guestLoader = loader; guestLibDir = libDir
+    }
 
     sealed class Shape {
         object Elf : Shape()
@@ -81,15 +90,31 @@ object ExecEntry {
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
         is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)
 
-        is Shape.Elf ->
+        is Shape.Elf -> glibcGuestArgv(entry, args) ?: run {
             if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)
             else listOf(SYSTEM_LINKER, entry.absolutePath) + args.drop(1)
+        }
         is Shape.Shebang ->
             if (s.flags == null) listOf(s.interp, entry.absolutePath) + args
             else listOf(s.interp, s.flags, entry.absolutePath) + args
 
         is Shape.Pe -> null
         is Shape.Unknown -> null
+    }
+
+    /**
+     * glibc guest 路由：判据只落在 PT_INTERP（不用 e_type/DT_NEEDED——那会误伤 bionic）。
+     * PT_INTERP 含 ld-linux 且 RuntimeEnvironment 递来了 loader 路径时，
+     * 改写成 [guest-loader, --library-path, <libdir>, <程序>, 原参数...]。
+     * 否则返回 null（走调用方原有 bionic 分支）。
+     */
+    private fun glibcGuestArgv(entry: File, args: List<String>): List<String>? {
+        val interp = runCatching { ElfFacts.read(entry)?.interp }.getOrNull() ?: return null
+        if (!interp.contains("ld-linux")) return null
+        val loader = guestLoader ?: System.getenv("LOBOS_GLIBC_LOADER") ?: return null
+        val libdir = guestLibDir ?: System.getenv("LOBOS_GLIBC_LIBDIR") ?: return null
+        if (!File(loader).isFile) return null
+        return listOf(loader, "--library-path", libdir, entry.absolutePath) + args.drop(1)
     }
 
     fun describe(entry: File): String = when (val s = detect(entry)) {

@@ -253,3 +253,39 @@ loader(ld-linux-aarch64.so.1) 在 lib/ 下落位后无 x 位（安装器按库�
 两处 chmod 改用 helper。重打包后 piece-shape 里 loader mode=755，回归 cmake 通过。
 
 重发布 official：component-glibc-runtime-2.41.12-d1c1b333a11f-android-arm64.zip。
+
+---
+
+## 2026-11-24 第九轮：guest 路由实现尝试 + 关键架构 bug 修复
+
+### 修复的严重 bug（必须保留）
+LdConfig.kt 把**每个组件**的 lib/*.so 经 SonameChain 建链到全局 PREFIX/usr/lib。
+glibc-runtime 装了之后，它的 libc.so.6/libdl.so.2 等被链到 usr/lib，
+覆盖 bionic SONAME 语义 → 所有 bionic 程序（bash/node）启动即崩。
+修复：LdConfig 遍历时排除 glibc-runtime（它的库只经 --library-path 给 guest loader）。
+实测：修复前装组件后终端"宿主进程已退出"，修复后 PTY 恢复正常、usr/lib 污染链=0。
+
+### guest 路由实现（保留为基础设施，验收 B 未达成）
+- exec-path.c 新增 read_interp()（读 PT_INTERP），guest 分支：PT_INTERP 含 ld-linux
+  且环境有 LOBOS_GLIBC_LOADER 时，改写成 loader --library-path <libdir> <程序>；
+  guest 进程去掉 bionic LD_PRELOAD（glibc loader 加载不了 bionic so）。
+- Kotlin ExecEntry.glibcGuestArgv 同判据（PT_INTERP），RuntimeEnvironment 注入
+  LOBOS_GLIBC_LOADER/LIBDIR + configureGlibcGuest（argv 是 app 进程调用的）。
+- 判据只落 PT_INTERP，不落 e_type/DT_NEEDED（后者会误伤 bionic）。
+
+### 验收 B 未达成（如实，Android 沙箱硬约束）
+终端里直接敲 glibc 程序路径 → 仍 Permission denied、guest 路由记录 0。
+根因：PTY 宿主用 /system/bin/linker64 显式启动 bash，LD_PRELOAD 对 linker64
+显式加载的 ELF 不生效 → bash 进程里没有 exec-path hook → 用户命令的 execve
+不被拦截；同时内核按 PT_INTERP=/lib/ld-linux 找解释器，app 无权建 /lib。
+实测 PtySession script 里 export LD_PRELOAD 也无效（已回退该改动）。
+
+### 当前可用形态
+显式入口 `glibc-run <glibc程序>`（验收 A/D 已过，通配成立）是唯一稳定路径。
+完全无感的"直接敲路径自动路由"在免 root app 下需改 shell 或系统特权，不在当前范围。
+验收 C（uid=0）需 glibc 编译的 guest 侧 hook，同样不在当前范围。
+
+### 结论
+通配 Linux 用户态**功能已成立**（echo/cat 等 glibc 程序经 glibc-run 零配置运行），
+系统组件已正式发布 official；本轮修掉了一个会让系统崩溃的架构 bug（LdConfig 污染）。
+"无感直接执行"是 Android 沙箱下的下一阶段课题，不是当前交付 blocker。

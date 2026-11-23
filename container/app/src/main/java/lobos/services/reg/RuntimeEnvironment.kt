@@ -65,6 +65,23 @@ object RuntimeEnvironment {
         }
 
         put("LD_LIBRARY_PATH", joinPath(pieceLibDirs(ctx), root.prefixLib.absolutePath, root.nativeLibDir, inheritedLd))
+
+        // glibc guest 运行时：把当前版本的 loader/lib 递给 ExecEntry，
+        // 让 glibc ELF 经 guest loader 启动（单用户系统，无需 fake root）。
+        val grVer = runCatching {
+            lobos.services.supply.ProgramDir(ctx, "glibc-runtime").currentVersion()
+        }.getOrNull()
+        if (!grVer.isNullOrBlank()) {
+            val gr = java.io.File(java.io.File(SystemDirs.opt(ctx), "glibc-runtime"), grVer)
+            val loader = java.io.File(java.io.File(gr, "lib"), "ld-linux-aarch64.so.1")
+            if (loader.isFile) {
+                put("LOBOS_GLIBC_LOADER", loader.absolutePath)
+                put("LOBOS_GLIBC_LIBDIR", java.io.File(gr, "lib").absolutePath)
+                lobos.kernel.proc.ExecEntry.configureGlibcGuest(
+                    loader.absolutePath, java.io.File(gr, "lib").absolutePath
+                )
+            }
+        }
         put(
             "PATH",
             joinPath(
@@ -121,6 +138,9 @@ object RuntimeEnvironment {
         val dirs = LinkedHashSet<String>()
         for (idDir in opt.listFiles()?.sortedBy { it.name } ?: emptyList()) {
             if (!idDir.isDirectory) continue
+            // glibc-runtime 的 lib/ 只给 guest loader 经 --library-path 用；
+            // 进全局 LD_LIBRARY_PATH 会让 bionic 程序误链 glibc 的 libdl/libc 而崩。
+            if (idDir.name == "glibc-runtime") continue
             for (verDir in idDir.listFiles()?.sortedBy { it.name } ?: emptyList()) {
                 if (!verDir.isDirectory) continue
                 val lib = File(verDir, "lib")

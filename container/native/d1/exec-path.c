@@ -153,6 +153,49 @@ static int read_etype(const char *path, int *type) {
     return 1;
 }
 
+/* 读 ELF 的 PT_INTERP 字符串（程序头 p_type==3），判 glibc/bionic 的唯一依据。
+   bionic 程序写 /system/bin/linker64；glibc 程序写 /lib/ld-linux-*.so.1。 */
+static int read_interp(const char *path, char *out, size_t cap) {
+    if (!path || cap < 2) return 0;
+    out[0] = 0;
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    unsigned char h[64];
+    ssize_t hn = read(fd, h, sizeof h);
+    if (hn < (ssize_t)sizeof h || h[0] != 0x7f || h[1] != 'E' || h[2] != 'L' || h[3] != 'F') {
+        close(fd); return 0;
+    }
+    unsigned long long phoff = 0, shoff = 0;
+    unsigned int phentsize = 0, phnum = 0;
+    for (int i = 0; i < 8; i++) phoff |= ((unsigned long long)h[0x20 + i]) << (8 * i);
+    phentsize = (unsigned int)h[0x36] | ((unsigned int)h[0x37] << 8);
+    phnum = (unsigned int)h[0x38] | ((unsigned int)h[0x39] << 8);
+    (void)shoff;
+    if (phoff == 0 || phentsize < 56 || phnum == 0 || phnum > 4096) { close(fd); return 0; }
+    if (lseek(fd, (off_t)phoff, SEEK_SET) < 0) { close(fd); return 0; }
+    for (unsigned int i = 0; i < phnum; i++) {
+        unsigned char p[56];
+        if (read(fd, p, sizeof p) != (ssize_t)sizeof p) { close(fd); return 0; }
+        unsigned int type = (unsigned int)p[0] | ((unsigned int)p[1] << 8) |
+                            ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
+        if (type != 3) continue; /* PT_INTERP */
+        unsigned long long off = 0, fsz = 0;
+        for (int k = 0; k < 8; k++) {
+            off |= ((unsigned long long)p[8 + k]) << (8 * k);
+            fsz |= ((unsigned long long)p[32 + k]) << (8 * k);
+        }
+        if (fsz == 0 || fsz > 4096 || fsz >= cap) { close(fd); return 0; }
+        if (lseek(fd, (off_t)off, SEEK_SET) < 0) { close(fd); return 0; }
+        ssize_t n = read(fd, out, (size_t)fsz);
+        close(fd);
+        if (n <= 0) { out[0] = 0; return 0; }
+        out[n < (ssize_t)cap ? n : (ssize_t)(cap - 1)] = 0;
+        return 1;
+    }
+    close(fd);
+    return 0;
+}
+
 static const char *dynstr_at(const char *path, unsigned long long off) {
     static __thread char buf[256];
     int fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -406,6 +449,48 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
       int et = 0;
       int ac = 0;
       while (argv && argv[ac]) ac++;
+
+      /* glibc guest：判据只落在 PT_INTERP（bionic 与 glibc 的 e_type 同为 ET_DYN，
+         不能用它判）。PT_INTERP 含 ld-linux 且环境递来了 guest loader 时，
+         改写成 loader --library-path <libdir> <程序> <原参数...>。
+         loader 自己无 PT_INTERP，不会递归进这里。 */
+      char interp[256];
+      if (read_interp(path, interp, sizeof interp) && strstr(interp, "ld-linux") != 0) {
+          int envc = 0;
+          while (envp && envp[envc]) envc++;
+          const char *loader = getenv("LOBOS_GLIBC_LOADER");
+          const char *libdir = getenv("LOBOS_GLIBC_LIBDIR");
+          if (loader && libdir && loader[0] == '/' && libdir[0] == '/') {
+              char **ga = (char **)malloc((ac + 4) * sizeof(char *));
+              if (!ga) { errno = ENOMEM; return -1; }
+              ga[0] = (char *)loader;
+              ga[1] = "--library-path";
+              ga[2] = (char *)libdir;
+              ga[3] = (char *)path;
+              for (int k = 1; k < ac; k++) ga[3 + k] = argv[k];
+              ga[3 + ac] = 0;
+              lobos_compat_report("d1.exec-path", "glibc->guest-loader", path);
+              /* guest 进程由 glibc loader 加载，不能带 bionic 的 LD_PRELOAD hook
+                 （那是 bionic ELF，glibc loader 加载不了）；env 里去掉它。 */
+              {
+                  char **ge = (char **)malloc((envc + 1) * sizeof(char *));
+                  if (ge) {
+                      int gj = 0;
+                      for (int ei = 0; ei < envc; ei++) {
+                          if (strncmp(envp[ei], "LD_PRELOAD=", 11) == 0) continue;
+                          ge[gj++] = envp[ei];
+                      }
+                      ge[gj] = 0;
+                      real_execve(loader, ga, ge);
+                      free(ge);
+                  } else {
+                      real_execve(loader, ga, envp);
+                  }
+              }
+              { int e = errno; free(ga); errno = e; }
+              return -1;
+          }
+      }
 
       if (read_etype(path, &et) && et == 3 &&
           !(path && strcmp(path, LOBOS_SYSTEM_LINKER) == 0)) {

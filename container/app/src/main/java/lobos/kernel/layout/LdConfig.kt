@@ -51,6 +51,10 @@ object LdConfig {
         val binInstalled = mutableListOf<String>()
 
         for (e in idx) {
+            // glibc-runtime 是完整 Linux 用户态底座：它的 libc/libdl/libm 只给
+            // guest loader 经 --library-path 用。建链到全局 usr/lib 会覆盖 bionic
+            // 的 SONAME 语义，让所有 bionic 程序（bash/node）启动即崩。
+            if (e.id == "glibc-runtime") continue
             val p = File(opt, e.id)
             val ver = e.version.takeIf { it.isNotBlank() }
                 ?: p.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }?.name
