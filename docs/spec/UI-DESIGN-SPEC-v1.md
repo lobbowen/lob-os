@@ -996,3 +996,30 @@ node_modules/.bin/dsh 不在终端 PATH，且 dsh 是 #!/usr/bin/env node 脚本
 
 注：id/echo 显示 command not found 是精简 shell 的 PATH 问题，与终端交互无关；
 输出正确显示即证明链路通。
+
+---
+
+## 三十七、终端外部命令无输出根因：exec-path argv[0] 重复（2026-11-24）
+
+用户指出终端里 dsh/node 命令有回显无输出。三个 subagent 并行排查排除了
+TTY 分支、stderr/PTY fd、cwd 只读、buffer 过滤等假设（PTY fd0/1/2 全接 slave，
+dsh --version 无 isTTY 分支，stdout 直出版本号）。
+
+### 真正根因（native d1/exec-path.c）
+execve hook 对 ET_DYN ELF（node）改写成 linker64 启动时：
+- 原代码：na[0]=linker64, na[1]=path, na[2+k]=argv[k]（k 从 0 起）
+- 结果：`linker64 node node -v` —— argv[0] 被重复，node 把第二个路径当脚本参数，
+  静默失败（exit 1 无输出）。走 .bashrc 的 dsh()/node() 直接 exec node 时全中招；
+  显式 `linker64 node dsh --version`（argv 正确）则正常显示版本号。
+- 修复：循环从 k=1 起、`na[1+k]=argv[k]`（na[1]=path 已充当 node 的 argv[0]）。
+
+### 修复与验证
+- 改 container/native/d1/exec-path.c，build-kernel-compat.sh 用 NDK 重编
+  liblobosposix.so + librivospty.so，重编 APK 装机
+- run-as 验证：新 hook 下直接 exec node -v=v24.21.0、node dsh --version=0.2.2-rc.5、
+  execPath 仍是 node 路径（不破坏 npm/cnoke）
+- 真机终端 UI 实测（截图）：输入 `node -v`->v24.21.0；输入 `dsh --version`->0.2.2-rc.5，
+  均在输出区正确显示
+
+结论：终端交互与 PTY 链路本来就正常，外部命令无输出是 compat hook 的 argv 改写缺陷。
+此修复同时满足"命令能显示输出"和"node execPath 正确"两个原本冲突的需求。

@@ -413,8 +413,8 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
           if (!na) { errno = ENOMEM; return -1; }
           na[0] = (char *)LOBOS_SYSTEM_LINKER;
           na[1] = (char *)path;
-          for (int k2 = 0; k2 < ac; k2++) na[2 + k2] = argv[k2];
-          na[2 + ac] = 0;
+          for (int k2 = 1; k2 < ac; k2++) na[1 + k2] = argv[k2];
+          na[1 + ac] = 0;
           lobos_compat_report("d1.exec-path", "ET_DYN->linker64", path);
           real_execve(LOBOS_SYSTEM_LINKER, na, envp);
           { int e = errno; free(na); errno = e; }
