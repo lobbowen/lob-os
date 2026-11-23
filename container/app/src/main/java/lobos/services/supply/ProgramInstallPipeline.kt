@@ -451,6 +451,7 @@ object ProgramInstallPipeline {
         val expectedVersion: String? = null,
         val expectedEntryRel: String? = null,
         val storeRoot: File? = null,
+        val activate: Boolean = true,
     )
 
     enum class Shape { APPLICATION, COMPONENT }
@@ -735,9 +736,13 @@ object ProgramInstallPipeline {
             )
         }
         val pd = ProgramDir(context, spec.programId, dir)
-        runCatching { pd.setCurrentVersion(safeVer) }
-        if (pd.currentVersion() != safeVer) {
-            return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
+        val existingCurrent = runCatching { pd.currentVersion() }.getOrNull()
+        val shouldActivate = spec.activate || existingCurrent == null
+        if (shouldActivate) {
+            runCatching { pd.setCurrentVersion(safeVer) }
+            if (pd.currentVersion() != safeVer) {
+                return Result(false, safeVer, "current-not-committed", "CURRENT 落位失败（安装未提交）")
+            }
         }
 
         val globalRebuilt = runCatching {

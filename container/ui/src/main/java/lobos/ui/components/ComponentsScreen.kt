@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,7 @@ fun ComponentsScreen(
                         notice = state.notice,
                         onEvent = onEvent,
                         onBack = { onEvent(ComponentsEvent.Back) },
+                        onUninstallComponent = { onEvent(ComponentsEvent.Uninstall(detail.id)) },
                     )
                 } else {
                     ComponentsReady(state, onEvent)
@@ -311,6 +313,7 @@ fun ComponentDetailScreen(
     onEvent: (ComponentsEvent) -> Unit,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    onUninstallComponent: (() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     LazyColumn(
@@ -329,6 +332,11 @@ fun ComponentDetailScreen(
             Text(name, style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
             Spacer(Modifier.height(6.dp))
             Text("版本管理 · 依赖与能力", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+            if (onUninstallComponent != null) {
+                TextButton(onClick = onUninstallComponent) {
+                    Text("卸载组件", style = MaterialTheme.typography.labelLarge, color = cs.error)
+                }
+            }
             notice?.takeIf { it.isNotBlank() }?.let { message ->
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -372,6 +380,7 @@ fun ComponentDetailScreen(
                         version = version,
                         onSwitch = { onEvent(ComponentsEvent.SwitchVersion(version.version)) },
                         onInstall = { onEvent(ComponentsEvent.Install(name, version.version)) },
+                        onUninstall = { onEvent(ComponentsEvent.UninstallVersion(name, version.version)) },
                     )
                 }
             }
@@ -426,7 +435,12 @@ private fun InfoCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun VersionRow(version: VersionItem, onSwitch: () -> Unit, onInstall: () -> Unit) {
+private fun VersionRow(
+    version: VersionItem,
+    onSwitch: () -> Unit,
+    onInstall: () -> Unit,
+    onUninstall: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(12.dp)
     val background = if (version.active) cs.primaryContainer else Color.White
@@ -456,19 +470,34 @@ private fun VersionRow(version: VersionItem, onSwitch: () -> Unit, onInstall: ()
                     color = cs.onSurfaceVariant,
                 )
             }
-            if (version.active) {
-                Text("使用中", style = MaterialTheme.typography.labelMedium, color = cs.primary)
-            } else {
-                Box(
-                    modifier = Modifier.height(44.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer)
-                        .clickable(onClick = if (version.installed) onSwitch else onInstall).padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        if (version.installed) "切换" else "安装",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = cs.primary,
-                    )
+            when {
+                version.active -> Text("使用中", style = MaterialTheme.typography.labelMedium, color = cs.primary)
+                version.installed -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier.height(44.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer)
+                                .clickable(onClick = onSwitch).padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("切换", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                        }
+                        Box(
+                            modifier = Modifier.height(44.dp).clip(shape).border(1.dp, cs.outline, shape)
+                                .clickable(onClick = onUninstall).padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("卸载", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+                        }
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier.height(44.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer)
+                            .clickable(onClick = onInstall).padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("安装", style = MaterialTheme.typography.labelLarge, color = cs.primary)
+                    }
                 }
             }
         }

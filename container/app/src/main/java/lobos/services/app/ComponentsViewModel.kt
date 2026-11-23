@@ -59,6 +59,20 @@ class ComponentsViewModel : ViewModel() {
                 }
             }
             is ComponentsEvent.Install -> install(ctx, event.id, event.version)
+            is ComponentsEvent.UninstallVersion -> viewModelScope.launch {
+                val r = withContext(Dispatchers.IO) {
+                    runCatching { PackageInstaller.uninstallVersion(ctx, event.id, event.version) }.getOrNull()
+                }
+                notice = if (r?.optBoolean("ok") == true) "已卸载版本 ${event.id} ${event.version}"
+                         else "卸载失败：${r?.optString("error", "未知原因") ?: "未知原因"}"
+                load(ctx)
+            }
+            is ComponentsEvent.Uninstall -> viewModelScope.launch {
+                val r = withContext(Dispatchers.IO) { runCatching { PackageInstaller.uninstall(ctx, event.id) }.getOrDefault(false) }
+                notice = if (r) "已卸载组件 ${event.id}" else "卸载失败：${event.id}"
+                if (r) detailId = null
+                load(ctx)
+            }
         }
     }
 
@@ -79,7 +93,7 @@ class ComponentsViewModel : ViewModel() {
                 }
             }
             val result = withContext(Dispatchers.IO) {
-                runCatching { PackageInstaller.install(ctx, id, version) }.getOrNull()
+                runCatching { PackageInstaller.install(ctx, id, version, activate = false) }.getOrNull()
             }
             progressJob.cancel()
             installing = false

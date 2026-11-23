@@ -500,3 +500,30 @@ PTY 输出只当日志逐行 Append。不是终端模拟器，是"命令输入�
 - 装 3.12.10、3.11.13 均成功，可互相切换，CURRENT 正确指向
 - 装 cmake 成功、从可安装消失、进已安装
 - 0 崩溃。安装瞬间抓到 staging 中间态属正常瞬态，落位后消失
+
+---
+
+## 十九、版本管理语义分离（安装/激活/卸载）
+
+用户指出只管安装没有卸载、多版本逻辑混乱。按标准包管理语义架构级分离。
+
+### 根因
+ProgramInstallPipeline.installComponent 落位后无条件 pd.setCurrentVersion(safeVer)，
+导致"安装即激活"，无法做到逐一版本安装而保持当前版本不变。
+PackageInstaller 只有按 name 卸载整个组件，没有按版本卸载。
+
+### 架构修复
+- Spec 增加 activate:Boolean=true；installComponent 按 shouldActivate=activate||首次安装
+  决定是否 setCurrentVersion；系统件/OTA/PieceUpdater 走默认 true（装完即用，行为不变），
+  组件商城传 false（安装不自动切换）
+- PackageInstaller.install 增加 activate 参数透传；组件商城 install(activate=false)
+- 新增 uninstallVersion(name,version)：删该版本目录；拒绝卸载使用中版本/最后一个版本
+  （给出明确原因）；使用中不可卸载所以无需自动切换 CURRENT
+- 契约加 UninstallVersion(id,version)/Uninstall(id) 事件
+- ViewModel 接两个卸载事件 + notice 反馈
+- ComponentDetailScreen(专业前端按契约)：使用中无按钮、已装未激活显示切换+卸载、
+  未装显示安装；header 提供卸载组件入口
+
+### 设备验证
+编译通过、装机成功。设备被 OPPO"建议关闭开发者选项/USB调试"安全提醒遮挡、
+focus=null，UI 点测受阻，未能在设备侧完成交互验收。

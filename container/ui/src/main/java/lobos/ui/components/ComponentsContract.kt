@@ -42,6 +42,8 @@ sealed interface ComponentsUiState : UiState {
 sealed interface ComponentsEvent {
     data class OpenDetail(val id: String) : ComponentsEvent
     data class Install(val id: String, val version: String? = null) : ComponentsEvent
+    data class UninstallVersion(val id: String, val version: String) : ComponentsEvent
+    data class Uninstall(val id: String) : ComponentsEvent
     data class SwitchVersion(val version: String) : ComponentsEvent
     data class Filter(val idx: Int) : ComponentsEvent
     data object Back : ComponentsEvent

@@ -18,7 +18,7 @@ import lobos.services.reg.Level
 object PackageInstaller {
 
     @Synchronized
-    fun install(ctx: Context, name: String, version: String?, depth: Int = 0): JSONObject {
+    fun install(ctx: Context, name: String, version: String?, depth: Int = 0, activate: Boolean = true): JSONObject {
         val entry = CatalogClient.entryFor(ctx, name)
             ?: return fail(ctx, name, "目录里没有这个包（先 os.catalog.refresh）")
         var url = entry.optString("url", "")
@@ -75,6 +75,7 @@ object PackageInstaller {
                     ?: entry.optString("version", "").takeIf { it.isNotBlank() }
                     ?: got.take(12),
                 expectedEntryRel = entryRel,
+                activate = activate,
             ),
         )
         runCatching { zipTmp.delete() }
@@ -168,6 +169,22 @@ object PackageInstaller {
         }
         Journal.note(ctx, "package", true, "回退到 APK 基线", "name=" + name)
         return true
+    }
+
+    fun uninstallVersion(ctx: Context, name: String, version: String): JSONObject {
+        val pd = ProgramDir(ctx, name, ProgramManager.stateDirOf(ctx, name))
+        val installed = pd.installedVersions()
+        if (version !in installed) return fail(ctx, name, "版本 $version 未安装（已装 ${installed.joinToString(",")}）")
+        val current = runCatching { pd.currentVersion() }.getOrNull()
+        if (version == current) return fail(ctx, name, "版本 $version 正在使用，不能卸载；请先切换到其它版本")
+        if (installed.size <= 1) return fail(ctx, name, "这是最后一个版本，请用卸载组件而不是卸载版本")
+        val target = pd.programDir(version)
+        val removed = runCatching { target.deleteRecursively() }.getOrDefault(false)
+        if (!removed || target.exists()) return fail(ctx, name, "版本 $version 目录删除失败（目录仍在）")
+        Journal.note(ctx, "package", true, "已卸载版本", "name=" + name + " version=" + version)
+        return JSONObject().apply {
+            put("ok", true); put("name", name); put("version", version); put("remaining", installed.filter { it != version })
+        }
     }
 
     fun uninstall(ctx: Context, name: String): Boolean {
