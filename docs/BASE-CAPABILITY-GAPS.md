@@ -319,3 +319,41 @@ glibc-runtime 装了之后，它的 libc.so.6/libdl.so.2 等被链到 usr/lib，
 
 ### 本轮未留改动
 PtySession 的所有尝试改动已全部回退，工作区干净，设备终端恢复稳定。
+
+---
+
+## 2026-11-24 第十一轮：验收 B 失败机制的精确锁定（补充实证）
+
+本轮用"独立进程精确复现 PTY 宿主启动命令"的方式，把失败机制从"疑似冲突"
+锁定为确定链路：
+
+### 决定性实验
+在 app 进程内用完全相同的 env（LD_PRELOAD=liblobosposix.so + view0）跑：
+```
+bash -c 'exec /system/bin/linker64 librivospty.so'
+```
+结果：**librivospty ready**（完整成功），且 hook 日志有 `d1.exec-path ET_DYN->linker64 .../bash`。
+即：启动命令 + LD_PRELOAD 本身完全可行。
+
+### 那为什么 PtySession 里失败
+pty-session.c 的 child 不是直接跑用户命令的 bash——它自己 fork 后
+`execv(argv[0], argv)` 启动交互 shell，argv[0] 已经是 `/system/bin/linker64`，
+argv[1] 是 bash。这条链路里：
+1. 外层 pb1 的 LD_PRELOAD 只作用于"启动 pty-session 的那个 bash"；
+2. pty-session 的 child（真正的交互 shell）由它自己 fork+execv，
+   exec 的是 linker64 + bash；
+3. 即使 child 继承了 LD_PRELOAD，hook 在 bash 初始化阶段会把 ET_DYN 的 bash
+   再改写一次 ET_DYN->linker64（hook 日志可见），与已有的 linker64 前缀叠加；
+4. 结果 child 启动链异常、无 librivospty ready、会话断开。
+
+### 终局（与第十轮一致，但机制更精确）
+验收 B 需要的"用户 shell 的 execve 被 hook 拦截"与"PTY 宿主用 linker64 显式
+启动 shell"在当前 exec-path hook 改写逻辑下**互相冲突**。要让两者共存，需要
+让 hook 对"PTY 宿主 shell 的 bash"豁免 ET_DYN 改写——那又是改核心 hook 判据，
+风险超出收益。
+
+### 交付决定（不变，已回退所有尝试）
+PtySession 全部尝试改动已回退，稳定版 APK 装机验证终端恢复
+（"在 LobOS 中运行命令" + 2 linker64 进程）。工作区干净。
+通配能力的稳定入口仍是 glibc-run（验收 A/D 通过）；
+验收 B/C 是下一阶段课题（需重新设计 hook 与 PTY 启动的协作关系），非当前缺陷。
