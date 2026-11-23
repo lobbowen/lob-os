@@ -554,3 +554,38 @@ env 注入、script 调整、pb1.env 各种组合均无法让 preload 在 linker
 ### 状态
 所有尝试改动回退，稳定版 APK 恢复、终端正常、工作区干净。
 验证方法论沉淀：改 native 后必须 kill -9 PTY 宿主链（否则测 deleted 旧 so）。
+
+---
+
+## 2026-11-24 第十八轮：sh 桥接方案实证失败（native launcher 路线的预演）
+
+### 尝试
+不写完整 native launcher，先用 /system/bin/sh 作桥验证核心：
+1. openSession 传 /system/bin/sh -c "exec bash -i"（不经 ExecEntry 的 linker64 前缀）
+2. host() 另起一层 sh -c 桥，prelude export LD_PRELOAD + LOBOS_PRELOAD_ACTIVE=1
+3. exec-path.c ET_DYN 分支加豁免：LOBOS_PRELOAD_ACTIVE=1 时不套 linker64
+
+### 实证结果（每层都测了，全失败）
+- 关键隔离实验：/system/bin/sh -c 正常 exec app bash 时，d1.exec-path hook **确实命中**
+  （基线 1 条日志 → 跑完 3 条），证明 sh 桥能激活 preload
+- 但接入 PTY 后：pty child exec 的是 /system/bin/sh -c（child_note argv[0]=/system/bin/sh），
+  最终交互 shell 仍是 linker64 bash -i，且 hook 日志 0 条
+- child bash 的 env 里 LOBOS_PRELOAD_ACTIVE=1 与 LD_PRELOAD 都在，豁免标志传到了
+- 但 exec-path hook 在交互 bash 里仍未 interpose（无 ET_DYN、无 glibc 日志），
+  终端敲 glibc 程序仍 Permission denied
+
+### 结论
+sh 桥接在独立实验里能激活 hook，但接入 PTY 后，hook 仍未进入最终交互 shell。
+ExecEntry 的二次 shaping（Host.start 对 argv[0] 再加 linker64）与 pty-session.c child
+的 exec 链共同作用，使"preload 活跃"这条路径无法稳定建立。这不是单点 bug，
+是整条启动链的设计问题。
+
+### 终局判断（lead）
+验收 B 需要重构 PTY 的整条 shell 启动链（Java exec -> pty-session child -> 交互 shell），
+让 preload 在每一层都正确传递且 hook 不被二次改写。这是完整 native launcher 工程
+（不是 sh 微调），且本轮预演表明即便写了 launcher 也要同时解决 ExecEntry 二次 shaping。
+在当前交付已稳定、收益/风险比不佳的前提下，停止投入。
+
+### 状态
+所有尝试改动回退，稳定版 native + APK 恢复，终端实测正常。
+工作区干净、official 锚、设备清理完成。通配能力稳定入口 glibc-run 不变。
