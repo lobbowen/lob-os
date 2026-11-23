@@ -154,3 +154,28 @@ DSH_FLOCK_NATIVE=/data/user/0/lobos.os/files/usr/lib/liblobosflock.so
 这一个实例验证了方案 A 的核心假设：
 "系统能力供给"这件事，在架构上可以收敛成一份"应用→环境变量/原生件"的契约注入。
 flock 这条契约零成本（已有库+一个变量），是第一步落地的最佳样例。
+
+---
+
+## 2026-11-24 第五轮：DSH_FLOCK_NATIVE 补齐方案终极实测（修正一处推断）
+
+### 修正
+上一轮说"用 createRequire 加载 .so"是推断，不完整。实测发现：
+- `require('/.../liblobosflock.so')` → Invalid or unexpected token
+  （node 的 require 按扩展名判断，.so 被当 JS 解析）
+- 但 Dsh 官方 flock-shim.js:39-51 对非 .js 路径用的是 **`process.dlopen(mod, p)`**，
+  它不依赖扩展名约定
+
+### 终极实测（设备真机）
+```
+process.dlopen({exports:{}}, '/data/user/0/lobos.os/files/usr/lib/liblobosflock.so')
+→ DLOPEN_OK tryLock function
+→ 调用 tryLock(fd, cb) → TRYLOCK_CB ERR=0   (errno 0 = 加锁成功)
+```
+即：我们的 liblobosflock.so 用官方 shim 的加载路径能真正完成 flock(2) 排他锁。
+
+### 结论（升级为实证）
+flock 系统能力缺口补齐 = 注入 `DSH_FLOCK_NATIVE` 指向我们的 .so（路径原样，
+无需改成 .node），官方 shim 用 process.dlopen 加载、tryLock 实测可用。
+这是整个排查里第一个"零改动、纯环境注入"即可补齐的系统能力缺口，
+是兼容契约层第一步落地的最佳最小样例。
