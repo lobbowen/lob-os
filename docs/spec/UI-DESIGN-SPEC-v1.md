@@ -863,3 +863,26 @@ entry=bin/clang，11 别名，形态 self-describe 验证通过。
   成功（gyp info ok，COPY pty.node），加载成功（PTY_OK fork,open,resize,process）。
 
 目标达成：aarch64 编译器已做成标准可安装组件，设备具备 Node 原生模块编译能力。
+
+---
+
+## 三十二、Node 编译环境产品化：终端自动注入（2026-11-23）
+
+第三十一节达成"设备能编译"，本节补齐"npm install 开箱即用"。
+
+### TerminalProfile 扩展（终端环境归 TerminalProfile）
+- 生成 `$files/.node-posix-shim.js`：Android node 缺 getuid/getgid/getgroups，
+  shim 补任意值（验证过 uid=1 即可——交付件有 o+x 位，isexe 的 mod&o 分支先命中，与真实 uid 无关）
+- 检测 llvm 组件（ProgramDir("llvm")，不硬编码版本）后，在 .bashrc 注入：
+  - NODE_OPTIONS=--require=<shim>
+  - PYTHON=<base>/usr/bin/python3
+  - PATH 前置 <base>/usr/bin（node-gyp 的 which 要 make/python3 的真实路径）
+  - CC/CXX=linker64 <llvm clang> --target=aarch64-linux-android35 -resource-dir=... --sysroot=... -B ...
+  - LD_LIBRARY_PATH 含 node 版本根/llvm/sysLib
+
+### 最终验证（经 .bashrc 自动环境，不手工设任何环境变量）
+ENV: CC=ok CXX=ok PYTHON=ok NODE_OPTIONS=ok
+node-gyp configure ok → build ok → COPY Release/pty.node；
+加载成功 PTY_OK fork,open,resize,process。
+
+目标达成：终端里 Node 原生编译环境自动就位，无需手工注入。
