@@ -804,6 +804,13 @@ scripts/recipes/build-component-llvmtoolchain.sh + .github/workflows/build-llvmt
   后台持续下载中。下载完 → sha256 校验 → 解包 → host-tblgen → 交叉编 clang/lld →
   package-component.sh 打包。长任务，待续。
 
+### 更新（同日 21:47）
+- 用 16 线程并行 Range 下载解决慢速：3 分钟下完 159MB，sha256 与钉值一致
+- fetch-pinned 不复用本地文件（总是重新下载），改为手动解包到 work/llvm/llvm-src，
+  recipe 检测到源码树存在就跳过下载
+- 重跑 recipe 成功进入编译：同源校验通过 → host tblgen 编好 → 正在用 NDK clang++
+  交叉编 LLVM 各库（8 作业），构建目录 968M。这是几十分钟长任务，后台进行中。
+
 ### 正确方向
 组件化不是我另写 recipe，而是跑通这个已有 recipe → package-component.sh 打包 →
 testing 发布 → 设备验证安装。产出 llvm 组件后，node-gyp 设备编译用同源 clang，
