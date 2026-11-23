@@ -65,6 +65,27 @@ elf_role_of_form() {
 elf_form_is_program() { case "$1" in "$ELF_FORM_EXEC"|"$ELF_FORM_DYN_INTERP"|"$ELF_FORM_SHEBANG") return 0 ;; *) return 1 ;; esac; }
 elf_form_is_library() { [ "$1" = "$ELF_FORM_DYN_PLAIN" ]; }
 
+# 动态加载器（ld-linux/ld-musl 等）形态是 ET_DYN 无 PT_INTERP，按 role 算 library，
+# 但它必须可执行（它就是 guest 程序的 PT_INTERP）——不能被降权到 0644。
+elf_is_runtime_loader() {
+  case "$(basename "$1")" in
+    ld-linux*|ld-musl*|ld64.so.*|ld.so.*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+elf_apply_mode() {
+  local f="$1" role="$2"
+  if elf_is_runtime_loader "$f"; then
+    chmod 0755 "$f" 2>/dev/null || true
+    return
+  fi
+  case "$role" in
+    program) chmod 0755 "$f" 2>/dev/null || true ;;
+    library) chmod 0644 "$f" 2>/dev/null || true ;;
+  esac
+}
+
 elf_soname() {
   local f="$1" re
   re="$(elf_readelf)" || return 0
@@ -240,10 +261,7 @@ elf_write_shape() {
     [ -n "$real" ] && [ -f "$real" ] || continue
     form="$(elf_form "$real")"
     role="$(elf_role_of_form "$form")"
-    case "$role" in
-      program) chmod 0755 "$real" 2>/dev/null || true ;;
-      library) chmod 0644 "$real" 2>/dev/null || true ;;
-    esac
+    elf_apply_mode "$real" "$role"
   done
 
   for rel in $rels; do
@@ -252,10 +270,7 @@ elf_write_shape() {
     [ -n "$real" ] && [ -f "$real" ] || continue
     form="$(elf_form "$real")"
     role="$(elf_role_of_form "$form")"
-    case "$role" in
-      program) chmod 0755 "$real" 2>/dev/null || true ;;
-      library) chmod 0644 "$real" 2>/dev/null || true ;;
-    esac
+    elf_apply_mode "$real" "$role"
   done
 
   rels=""

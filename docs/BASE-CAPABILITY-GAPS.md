@@ -239,3 +239,17 @@ loader(ld-linux-aarch64.so.1) 在 lib/ 下落位后无 x 位（安装器按库�
 ### 结论
 "通配 Linux 适配层"从设计走到了真机可用：任意 glibc 程序经 guest loader +
 路径/uid 适配即可运行，零应用专属配置。这是 LobOS 的 Linux 用户态第一块可运行基础。
+
+---
+
+## 2026-11-24 第八轮：loader 可执行位产品化修复
+
+问题：glibc-runtime 安装后 ld-linux-aarch64.so.1 是 0644（无 x 位），
+因为 elf-form.sh:245/257 对 role=library 一律 chmod 0644，
+而 loader 是 ET_DYN 无 PT_INTERP 被判 library——但它必须可执行（它是 guest 程序的解释器）。
+
+修复：elf-form.sh 新增 elf_is_runtime_loader() + elf_apply_mode()，
+文件名匹配 ld-linux*/ld-musl*/ld64.so.*/ld.so.* 的动态加载器即使 role=library 也保持 0755。
+两处 chmod 改用 helper。重打包后 piece-shape 里 loader mode=755，回归 cmake 通过。
+
+重发布 official：component-glibc-runtime-2.41.12-d1c1b333a11f-android-arm64.zip。
