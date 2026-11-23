@@ -660,3 +660,25 @@ scripts/toolchain/node-native/build.sh + README.md：
 ### 结论
 通用工具链是本次核心成果，可复用编译任何 binding.gyp 模块。
 Dsh 的 node-pty 原生能力已可用；koffi 3.1.1 是剩余具体障碍，需适配 cnoke 交叉编译。
+
+---
+
+## 二十四、koffi 3.1.1 编译探查：源码级 bionic 不兼容（2026-11-23）
+
+用 cnoke 交叉编译 koffi 3.1.1（Dsh 依赖）：
+- cnoke 支持标准 cmake 交叉编译：设 CC/CXX 为 NDK clang + -d CMAKE_TOOLCHAIN_FILE=
+  NDK/android.toolchain.cmake + ANDROID_ABI=arm64-v8a + ANDROID_PLATFORM=android-24，
+  configure 成功（CMake 识别 NDK Clang 21）
+- build 失败在 koffi 源码 lib/native/base/base.cc：
+  1. statx()：bionic 只有 struct statx 定义、无 statx() 函数（glibc 专有）
+  2. posix_spawn 系列：bionic 有但 koffi 的 unix 分支没 include spawn.h/没定义适配宏
+
+定性：这不是工具链问题（工具链已建成并验证能编 node-pty），是 koffi 3.1.1 源码
+对 bionic 的 API 不兼容。解决需改 koffi C++ 源码（Android 分支用 stat/lstat 替代 statx、
+include spawn.h），即维护一个源码 fork —— 属打补丁范畴，未擅自执行，等用户决定。
+
+cnoke 交叉编译命令（可复用于其它 cnoke 模块）：
+  CC/CXX=NDK aarch64-linux-android24-clang(++)
+  node cnoke.cjs configure -P . -D src/koffi --release -t android_arm64 \
+    -d CMAKE_TOOLCHAIN_FILE=<ndk>/build/cmake/android.toolchain.cmake \
+    -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-24
