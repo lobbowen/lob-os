@@ -754,3 +754,30 @@ include_next 找不到内置 stddef.h。这是 sysroot/内置头搜索路径组�
 ### 结论
 "环境具备标准编译能力"的根因链已完整定位（编译器/Python/make/uid-shim/头文件），
 4/5 环节已实证打通，剩 C++ include_next 一处路径配置。全程未改 node/node-gyp/模块源码。
+
+---
+
+## 二十八、设备侧标准编译能力闭环（2026-11-23）
+
+第二十七节后补齐全链，在设备上用 node-gyp 完整编译 node-pty 成功（gyp info ok，
+COPY Release/pty.node），加载成功（PTY_LOADED fork,open,resize,process）。全程无主机参与编译。
+
+### 完整根因链与对应解法（全部在设备环境层，未改 node/node-gyp/模块源码）
+1. 编译器：termux aarch64 clang 21，用 linker64 加载（app_data_file 上 ELF 不能直接 exec）
+2. Python：PYTHON 指向 linker64 + python3，node-gyp configure 通过
+3. which/isexe 失效：Android node 缺 process.getuid/getgid/getgroups，isexe checkMode 抛错，
+   node-gyp build 找不到 make。解法：NODE_OPTIONS=--require=<shim> 补三个函数。
+4. 头文件：termux ndk-sysroot 的 usr/include + clang 内置头 lib/clang/21/include
+5. -resource-dir：clang 用 linker64 加载时找不到自己的资源目录，显式 -resource-dir 指向内置头
+6. 链接器：termux lld（ld.lld）
+7. 运行时库：libclang_rt.builtins（放 clang 资源目录对应 ABI 子目录）、libunwind.a、
+   crtbegin/crtend_so.o（sysroot/usr/lib）、空 libutil.a（aarch64 编译）、termux libc++_shared.so
+
+### 最终 CC/CXX 形态（设备侧）
+CC="/system/bin/linker64 <clang> -resource-dir=<clang资源目录> --sysroot=<sysroot> -B <bin目录>"
+CXX 同理用 clang++。配合 NODE_OPTIONS shim + PYTHON + LD_LIBRARY_PATH。
+
+### 结论
+"环境具备标准编译能力"完整实现：设备上 npm install 触发 node-gyp 时，只要注入这套环境
+（编译器组件 + shim + 环境变量），就能像标准 Linux 一样自动编译任意 Node 原生模块。
+本轮用 node-pty 验证闭环。此前主机侧 prebuild 方案不再是唯一路径。
