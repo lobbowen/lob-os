@@ -154,6 +154,24 @@ object TerminalProfile {
                 }
             }
         }
+        // npm 全局 bin（用户 npm install -g 的 CLI）：里面的入口是 #!/usr/bin/env node
+        // 脚本，Android 没有 /usr/bin/env，不能直接 exec；用 bash 函数包成 node <脚本>。
+        val globalBin = File(base, "usr/local/bin")
+        if (globalBin.isDirectory) {
+            val nv = runCatching {
+                val cur = runCatching { ProgramDir(ctx, "node").currentVersion() }.getOrNull()
+                cur ?: runCatching { ProgramDir(ctx, "node").installedVersions().singleOrNull() }.getOrNull()
+            }.getOrNull()
+            val nh = nv?.let { File(File(base, "opt/node"), it).absolutePath }
+            if (nh != null && File(nh, "bin/node").isFile) {
+                val nb = File(File(nh, "bin"), "node").absolutePath
+                val nlp = "$nh:$nh/lib:$nh/bin:$sysLib"
+                for (f in globalBin.listFiles().orEmpty()) {
+                    if (!f.isFile || !seen.add(f.name)) continue
+                    sb.appendLine("${f.name}() { LD_LIBRARY_PATH=$nlp $nb ${f.absolutePath} \"\$@\"; }")
+                }
+            }
+        }
         appendNodeBuildEnv(ctx, sb, base, sysLib)
         return sb.toString()
     }
@@ -185,6 +203,9 @@ object TerminalProfile {
         // CMake 检测宿主 Android 时从 $PREFIX/include/android/api-level.h 读 API 级别；
         // 不给会在 app 沙箱里解析成 /include/... 而失败。
         sb.appendLine("export PREFIX=\"$sysroot/usr\"")
+        // PREFIX 被 CMake 占用，但 npm 也用它当全局安装前缀；显式给 npm 自己的前缀，
+        // 避免 npm -g 把包装进 llvm sysroot。
+        sb.appendLine("export npm_config_prefix=\"$base/usr/local\"")
         val nodeHome = runCatching {
             val nv = runCatching { ProgramDir(ctx, "node").currentVersion() }.getOrNull()
                 ?: runCatching { ProgramDir(ctx, "node").installedVersions().singleOrNull() }.getOrNull()

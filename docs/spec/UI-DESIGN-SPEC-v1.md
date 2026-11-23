@@ -939,3 +939,29 @@ npm install node-pty@1.1.0 -> added 2 packages，NPM_EXIT=0
 - 原生模块加载：koffi=function pty=function（NATIVE_EXIT 0）
 
 结论：Dsh 在 LobOS 设备上完整安装并可运行，原生模块由设备工具链现场编译。
+
+---
+
+## 三十五、终端 dsh 命令可用（全局安装 + wrapper，2026-11-24）
+
+用户指出：只验证 node bin.js 不算，终端敲 dsh 没反应。确实——本地项目安装的
+node_modules/.bin/dsh 不在终端 PATH，且 dsh 是 #!/usr/bin/env node 脚本
+（Android 无 /usr/bin/env，不能直接 exec）。
+
+### 根因与修复（TerminalProfile）
+1. PREFIX 冲突：第三十四节为 CMake 注入 PREFIX，但 npm 也用 PREFIX 当全局前缀，
+   导致 npm -g 把包装进 llvm sysroot。加 npm_config_prefix=<base>/usr/local 显式固定。
+2. 全局 bin 扫描：TerminalProfile 扫描 <base>/usr/local/bin（npm -g 的 CLI 入口），
+   为每个 shebang 脚本生成 bash 函数 wrapper：`name() { LD_LIBRARY_PATH=... node <脚本> "$@"; }`。
+   这就是终端能敲 dsh 的关键——本地 .bin 不算，全局装才有 PATH 入口。
+3. npm 11 正确语法：`npm install -g <pkg> --allow-scripts=<pkg1,pkg2,...>` 一次性允许
+   生命周期脚本（approve 命令对 -g 无效）。
+
+### 最终实测（终端直接敲 dsh 命令）
+前提：npm install -g @deepseek-ai/dsh --allow-scripts=koffi,node-pty,...（全自动环境）
+- usr/local/bin/dsh 就位，TerminalProfile 生成 dsh() wrapper
+- 终端 `dsh --version` = 0.2.2-rc.5（DSH_CMD_EXIT=0）
+- 终端 `dsh --help` = 正常 usage
+- 全局安装原生模块 koffi=function pty=function（GLOBAL_NATIVE_OK）
+
+结论：终端里 dsh 命令可用；Dsh 走标准 npm 全局安装，不靠手工塞文件。
