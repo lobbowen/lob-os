@@ -634,3 +634,29 @@ Dsh 本体已用 --ignore-scripts 装成并能运行（--version=0.2.2-rc.5、--
 - Dsh 完整原生依赖链：在 Android 上不可构建（node-pty 等无 android 预编译 + node-gyp 缺）
 - koffi 单一障碍已用标准 PATH 注入解决，但不足以让 Dsh 全量原生功能可用
 - 这是上游 Node 生态对 Android 平台支持不足，非 LobOS 客户端缺陷
+
+---
+
+## 二十三、Node 原生模块交叉编译工具链建成（2026-11-23）
+
+用户要求砸资源建平台能力，让所有 Node 原生模块能在 LobOS 上编译。
+
+### 建成：通用交叉编译工具链
+scripts/toolchain/node-native/build.sh + README.md：
+- 主机 node-gyp + NDK r30 + API24 交叉编译 arm64 .node
+- 三个关键点：API>=23(bionic forkpty/openpty)、空 libutil.a 满足 -lutil 链接
+  (符号在 libc)、node headers(NAPI 跨小版本兼容)
+- 实测：node-pty 1.1.0 从零编译成功，产物 95K，设备 node 加载成功
+  （loaded fork,open,resize,process）
+
+### Dsh 原生依赖补齐（部分）
+- Dsh 用 --ignore-scripts 装成（666 包）+ 顶层/嵌套 node-pty 都补上预编译 pty.node
+  + 显式 koffi 平台包
+- 实测：dsh --version=0.2.2-rc.5；node-pty 加载成功(spawn 可用)
+- koffi：Dsh 依赖 3.1.1，其 android-arm64 预编译包不存在(404)，
+  3.3.8 预编译与 3.1.1 版本不匹配(Mismatched native Koffi modules)。
+  koffi 3.1.1 用 cnoke.cjs 自研 cmake 构建体系(非 node-gyp)，需单独适配。
+
+### 结论
+通用工具链是本次核心成果，可复用编译任何 binding.gyp 模块。
+Dsh 的 node-pty 原生能力已可用；koffi 3.1.1 是剩余具体障碍，需适配 cnoke 交叉编译。
