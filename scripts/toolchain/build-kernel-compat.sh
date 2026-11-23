@@ -72,6 +72,18 @@ else
   echo "  - flock 需要 node 头文件（NODE_INCLUDE_DIR 未给），不随包带" >&2
 fi
 
+# glibc guest loader：必须放在 app 域可 exec 的 nativeLibraryDir，
+# 否则 app_data_file 上的 loader 被 SELinux 拒 exec（EACCES）。
+# 从 glibc-runtime 组件的 recipe 产物复制；缺则明确报缺，不猜。
+GLIBC_LOADER_SRC="$ROOT/dist-glibc-runtime/lib/ld-linux-aarch64.so.1"
+if [ -f "$GLIBC_LOADER_SRC" ]; then
+  cp -f "$GLIBC_LOADER_SRC" "$OUT/libglibc-loader.so"
+  chmod 644 "$OUT/libglibc-loader.so"
+  echo "  ✓ glibc-loader → libglibc-loader.so"
+else
+  echo "  - glibc loader 未产（先跑 build-component-glibc-runtime.sh），本次 APK 不含" >&2
+fi
+
 find "$OUT" -maxdepth 1 -type f \( -name 'liblobos*.so' -o -name 'librivospty.so' \) \
   -exec chmod 644 {} + 2>/dev/null || true
 

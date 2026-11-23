@@ -685,7 +685,12 @@ object PtySession {
             for ((k0, v0) in view0) {
                 pb1.environment()[k0] = v0
             }
-            pb1.environment().remove("LD_PRELOAD")
+            // linker64 显式加载 bash 实测能处理 LD_PRELOAD（compat log 铁证）。
+            // 让交互 shell 带 exec-path hook，用户命令的 execve 被拦截、
+            // 路由到 nativeLibraryDir 里可 exec 的 glibc loader。
+            val compatEnvSo = java.io.File(ctx.filesDir, "usr/lib/liblobosposix.so")
+            if (compatEnvSo.isFile) pb1.environment()["LD_PRELOAD"] = compatEnvSo.absolutePath
+            else pb1.environment().remove("LD_PRELOAD")
             KernelHooks.report(
                 ctx, "pty", true,
                 "宿主启动形态",

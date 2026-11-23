@@ -73,7 +73,12 @@ object RuntimeEnvironment {
         }.getOrNull()
         if (!grVer.isNullOrBlank()) {
             val gr = java.io.File(java.io.File(SystemDirs.opt(ctx), "glibc-runtime"), grVer)
-            val loader = java.io.File(java.io.File(gr, "lib"), "ld-linux-aarch64.so.1")
+            // loader 必须在 app 域可 exec 的位置：app_data_file 上的 ELF 被 SELinux
+            // 拒 exec（EACCES），APK 的 nativeLibraryDir 可 exec。loader 作为
+            // prebuilt native lib（libglibc-loader.so）随 APK 分发。
+            val nativeLoader = java.io.File(ctx.applicationInfo.nativeLibraryDir, "libglibc-loader.so")
+            val loader = if (nativeLoader.isFile) nativeLoader
+                         else java.io.File(java.io.File(gr, "lib"), "ld-linux-aarch64.so.1")
             if (loader.isFile) {
                 put("LOBOS_GLIBC_LOADER", loader.absolutePath)
                 put("LOBOS_GLIBC_LIBDIR", java.io.File(gr, "lib").absolutePath)

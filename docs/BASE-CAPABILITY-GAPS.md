@@ -622,3 +622,35 @@ ExecEntry 的二次 shaping（Host.start 对 argv[0] 再加 linker64）与 pty-s
 ### 状态
 所有尝试改动回退，稳定版 native + APK 恢复、终端正常、通配 STABLE_OK。
 工作区干净、official 锚、设备清理完成。
+
+---
+
+## 2026-11-24 第二十轮：架构修复——loader 入 nativeLibraryDir（重大进展）
+
+### 关键突破链条（本轮实证）
+1. 推翻旧结论"linker64 显式加载不处理 LD_PRELOAD"：查对日志（LOBOS_COMPAT_LOG=
+   compat-degrade.log，不是 diag.jsonl）后，铁证显示 linker64 bash + LD_PRELOAD
+   完全能工作（preload loaded + glibc->guest-loader + 程序输出）。
+   此前多轮"hook 不 interpose"的结论都是查错日志文件导致的误判。
+2. 找到 EACCES 的真正来源：pty child execv(app_data_file 上的 bash/loader) 被
+   SELinux 拒绝（untrusted_app 域不能 exec app_data_file 上的 ELF）；
+   但 app 域能 exec 自己 nativeLibraryDir 里的 ELF（实测 run-as 域执行
+   nativeLib 里的 so 得到 Segmentation fault 而非 Permission denied，说明 exec 通过）。
+
+### 架构修复（已实现，保留）
+- 把 glibc loader 作为 prebuilt native lib（libglibc-loader.so）随 APK 分发：
+  build-kernel-compat.sh 从 dist-glibc-runtime/lib/ld-linux-aarch64.so.1 复制到 jniLibs
+- RuntimeEnvironment 把 LOBOS_GLIBC_LOADER 指向 nativeLibraryDir 的可 exec loader
+- PtySession 给宿主 env 设 LD_PRELOAD，让 hook 进交互 shell
+- 这样 hook 路由在 PTY 域首次成功：compat log 出现 glibc->guest-loader
+
+### 剩余障碍（终局，系统级边界）
+loader 成功 exec 后，glibc 程序被 SIGSYS(31) 杀死——app 域 seccomp 过滤了
+glibc 初始化所需的 syscall（bionic 程序不调所以能跑）。run-as shell 域无此限制、
+同一 loader 跑同一程序成功（CLEANENV_OK）。这是未 root Android 的固有限制，
+需系统级 seccomp policy 改动（如系统级兼容层），超出 app 沙箱能力。
+
+### 状态
+架构修复保留（未破坏现有能力：bionic 命令正常、glibc-run FINAL_GR_OK、终端正常）。
+所有临时诊断代码（exec-trace、guest-preexec、guest-exec-fail）已移除。
+验收 B（终端直接跑 glibc 程序）仍受 SIGSYS 限制，是系统级下一阶段课题。
