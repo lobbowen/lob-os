@@ -21,7 +21,9 @@ class TerminalBuffer(private val maxLines: Int = 500) {
     val snapshot: List<TerminalLine>
         get() = buildList {
             addAll(lines)
-            add(TerminalLine(current.toList()))
+            // 只在当前行有内容时才追加；否则末尾空行会被自动滚动顶到顶部，
+            // 让整屏看起来是空白（输出其实都在上面）。
+            if (current.isNotEmpty()) add(TerminalLine(current.toList()))
         }
 
     fun feed(bytes: ByteArray) {

@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,6 +106,10 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
                 itemsIndexed(state.screen, key = { i, _ -> i }) { _, line ->
                     Text(text = renderLine(line, pal.terminalText), style = MonoTextStyle)
                 }
+            }
+            // 输出增长时跟随到最后一行（snapshot 末尾不再有多余空行）。
+            LaunchedEffect(state.screen.size, state.screen.lastOrNull()?.text) {
+                if (state.screen.isNotEmpty()) listState.scrollToItem(state.screen.size - 1)
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(pal.terminalDivider))
             // 命令行：TextField 持有真实输入文本并可见，输入法 composition 正常工作。
