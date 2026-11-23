@@ -16,6 +16,33 @@ object TerminalProfile {
         val text = build(ctx)
         runCatching { out.writeText(text) }
         ensureNodePosixShim(ctx)
+        ensureNodeGypEntry(ctx)
+    }
+
+    private fun ensureNodeGypEntry(ctx: Context) {
+        val nv = runCatching {
+            val cur = runCatching { ProgramDir(ctx, "node").currentVersion() }.getOrNull()
+            cur ?: runCatching { ProgramDir(ctx, "node").installedVersions().singleOrNull() }.getOrNull()
+        }.getOrNull() ?: return
+        val node = File(File(File(ctx.filesDir, "opt/node"), nv), "bin/node").absolutePath
+        val gypPath = runCatching {
+            val npmv = runCatching { ProgramDir(ctx, "npm").currentVersion() }.getOrNull()
+                ?: runCatching { ProgramDir(ctx, "npm").installedVersions().singleOrNull() }.getOrNull()
+            if (npmv == null) null
+            else File(File(File(File(ctx.filesDir, "opt/npm"), npmv), "node_modules/node-gyp/bin"), "node-gyp.js").absolutePath
+        }.getOrNull() ?: return
+        val sysLib = File(ctx.filesDir, "usr/lib").absolutePath
+        val nodeHome = File(File(ctx.filesDir, "opt/node"), nv).absolutePath
+        val text = buildString {
+            appendLine("#!/system/bin/sh")
+            appendLine("export LD_LIBRARY_PATH=$nodeHome:$sysLib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}")
+            appendLine("exec $LINKER $node $gypPath \"\$@\"")
+        }
+        runCatching {
+            val out = File(File(ctx.filesDir, "usr/bin"), "node-gyp")
+            out.writeText(text)
+            out.setExecutable(true)
+        }
     }
 
     private fun ensureNodePosixShim(ctx: Context) {
@@ -119,6 +146,8 @@ object TerminalProfile {
         sb.appendLine("export NODE_OPTIONS=\"--require=$base/.node-posix-shim.js\"")
         // node-gyp configure 要 Python；指向 usr/bin 的 python3 入口（which 靠上面的 shim 能找到）。
         sb.appendLine("export PYTHON=\"$base/usr/bin/python3\"")
+        // /tmp 在 app 沙箱不可写；node-gyp 要 TMPDIR 建临时目录。
+        sb.appendLine("export TMPDIR=\"$base/.tmp\"")
         // clang 从 NDK 源码交叉编出、无默认 triple；显式给 target + 资源目录 + sysroot + 链接器搜索路径。
         val extra = "--target=$target -resource-dir=$resource --sysroot=$sysroot -B $bin"
         sb.appendLine("export CC=\"$LINKER ${clang.absolutePath} $extra\"")
@@ -128,6 +157,12 @@ object TerminalProfile {
                 ?: runCatching { ProgramDir(ctx, "node").installedVersions().singleOrNull() }.getOrNull()
             if (nv == null) null else File(File(base, "opt/node"), nv).absolutePath
         }.getOrNull()
+        // node-gyp 默认联网下载 headers，下载到的那份在 Android 上带 android_ndk_path 变量会失败；
+        // 指向它自己的缓存目录（已有同源 headers），configure 走本地路径。
+        val nodeVer = nodeHome?.let { File(it).name }
+        if (nodeVer != null) {
+            sb.appendLine("export npm_config_nodedir=\"$base/.cache/node-gyp/$nodeVer\"")
+        }
         // clang 自带 libc++ 在 llvmHome/lib；node 需要在自己的版本根找 libc++；
         // make/python 等在 usr/lib。三者都进全局 LD，覆盖终端里所有子进程。
         val ldParts = listOfNotNull(nodeHome, llvmHome, sysLib).joinToString(":")

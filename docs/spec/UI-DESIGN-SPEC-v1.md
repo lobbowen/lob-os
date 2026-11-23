@@ -886,3 +886,26 @@ node-gyp configure ok → build ok → COPY Release/pty.node；
 加载成功 PTY_OK fork,open,resize,process。
 
 目标达成：终端里 Node 原生编译环境自动就位，无需手工注入。
+
+---
+
+## 三十三、npm install 端到端自动编译闭环（2026-11-24）
+
+第三十二节产品化后，补齐真实 npm install 链路的三个系统缺口（均在 TerminalProfile）：
+1. node-gyp 可执行入口：npm 自带 shim 的 shebang 是 /usr/bin/env sh（Android 无此路径，EACCES）；
+   ensureNodeGypEntry 生成 usr/bin/node-gyp（#!/system/bin/sh + linker64 node + node-gyp.js，
+   路径从 ProgramIndex 的 node/npm 版本发现，不硬编码）
+2. TMPDIR=<base>/.tmp：/tmp 在 app 沙箱不可写，node-gyp mkdtemp 需要它
+3. npm_config_nodedir=<base>/.cache/node-gyp/<node版本>：node-gyp 默认联网下载 headers，
+   下载那份在 Android 带 android_ndk_path 变量导致 configure 失败；指向它自己的缓存目录走本地
+
+npm 11 的 install-scripts approve 机制：需 npm install-scripts approve --all 才跑生命周期脚本。
+
+### 最终端到端验证（真实 npm install，全程不手工设环境变量）
+ENV: CC/NODE_OPTIONS/TMPDIR/NODEDIR 全部 ok（由 .bashrc 自动注入）
+npm install node-pty@1.1.0 -> added 2 packages，NPM_EXIT=0
+产物：build/config.gypi + Makefile + pty.target.mk + Release/pty.node（96576 字节）
+确认非预编译复制（prebuilds 无 android 文件）
+加载：E2E_PTY_OK function
+
+目标达成：终端里真实 npm install 能自动编译 Node 原生模块。
