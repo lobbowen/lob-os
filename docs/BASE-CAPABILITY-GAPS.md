@@ -1,0 +1,79 @@
+# LobOS 基础能力缺口清单
+
+目标：Android 上全量级类 Linux 系统，比 Linux 更轻、更稳、性能更好，
+具备 Linux 全部基础能力。本清单记录实证发现的能力缺口，持续更新。
+
+## 调查方法
+以真实命令在真机终端 UI 运行 → 抓全报错 → 逐层定位（应用层/系统层/内核层）。
+
+---
+
+## 2026-11-24：`dsh web` 启动失败
+
+### 现象（真机终端 UI 实证）
+`dsh web` → `dsh: fatal uncaught exception: host preparation failed:
+No usable native binding found for node-addon-require-builtin-android-arm64 (auto)`
+
+### 完整报错的三条加载路径全失败
+1. optional-package：`node-addon-require-builtin-android-arm64` 不存在
+2. local-build：`build/nodeabi/node-v137-android-arm64/require_builtin.node` 不存在
+3. local-build：`build/napi/napi-v9-android-arm64/require_builtin.node` 不存在
+
+### 分层定性
+- **这是应用层兼容性问题，不是 Linux 系统基础能力缺失。**
+  NARB（node-addon-require-builtin）是 Dsh 私有模块，用于 require Node 内部模块，
+  标准 Linux 上没有这个东西。它的原生二进制官方只发 darwin/win32/linux glibc|musl，
+  没发 android-arm64；发布版 npm 包故意不带源码、fail closed（README 明说）。
+- Dsh 官方 Android kernel 项目（dsh-mob/dsh-android-kernel）对此有专门适配层：
+  `src/guard/native/require-builtin-shim.js`（JS 垫片，spawn 前由 guard 幂等投放），
+  以及 flock-shim（对应真系统能力 flock(2)，走 APK 的 libdshflock.so）。
+- LobOS 当前是**裸跑 Dsh**（终端直接 `dsh web`），绕过了官方 Android kernel guard，
+  所以没有这些适配，原生模块加载失败。
+
+### 系统侧已具备的能力
+- `liblobosflock.so`（真 flock(2) 的 native bridge）已在 APK + `files/usr/lib`，
+  但 `DSH_FLOCK_NATIVE` 环境变量没注入——**能力在，没暴露给应用**。
+- clang/sysroot/node-gyp 编译能力已具备（前序工作），但 NARB 上游不给源码，
+  无法在设备上编译 —— 这不是我们环境的问题。
+
+### 结论与方向（待决策）
+两条路：
+A. 走 Dsh 官方 Android kernel guard/supervisor 启动（它负责投放 shim + 注入契约）——
+   代价是引入一个 Node 常驻 supervisor，与 LobOS 自身进程管理可能重叠。
+B. LobOS 侧在启动 Dsh 时提供"容器契约"（runtime.json + DSH_* 环境变量 + shim 自愈）——
+   等价实现 guard 的职责，但不引入完整 supervisor。
+
+这与用户"不打补丁、要架构级"的要求有张力：NARB 的 JS 垫片本质是官方的兼容性适配，
+不是我们发明的补丁。需要用户裁定方向后再实施。
+
+---
+
+## 追加实证（2026-11-24 第二轮）：打通 NARB 的完整条件
+
+对 `dsh web` 的 NARB 缺口做了逐层实验，确认完整启动链需要的两项适配：
+
+### 实验 1：投放官方 NARB shim
+把 `dsh-mob/dsh-android-kernel/src/guard/native/require-builtin-shim.js`
+用其 `ensureShim(root)` 投放到设备的 Dsh 安装树（status: applied）。
+报错从"无原生绑定"前进到下一层，证明 shim 生效。
+
+### 实验 2：shim 需要 --expose-internals
+投放 shim 后报：`narb-js-shim: node started without --expose-internals,
+cannot load internal module internal/modules/esm/loader`。
+在 NODE_OPTIONS 里加 `--expose-internals` 后，`dsh web --port 9110`
+运行 15 秒无错误输出、被 timeout 以 SIGTERM(EXIT=9) 终止 —— 说明 host preparation
+阶段已通过，不再有原生模块/内部模块加载失败。
+
+### 结论：NARB 缺口的完整补齐条件（均为 Dsh 官方 Android 契约）
+1. NARB JS shim 投放（官方 guard 在 spawn 前幂等执行）
+2. node 启动带 --expose-internals（NODE_OPTIONS 或启动参数）
+
+这两项都不是补丁式临时处理，而是 dsh-mob 容器引擎 boot.js 明确注入的
+"容器契约"的一部分（见 container-engine/src/boot.js、runtime-contract.js）。
+
+### 仍未验证 / 后续
+- dsh web 常驻 HTTP 服务未验证到返回响应（timeout 杀进程后端口未留）。
+  可能还需要 profile 配置（dsh web 默认 profile 在设备上不存在）。
+  这属于 Dsh 应用层配置，不是系统基础能力。
+- DSH_FLOCK_NATIVE 环境变量仍未注入——liblobosflock.so 在设备上，
+  但没暴露给应用，是明确的系统能力暴露缺口。
