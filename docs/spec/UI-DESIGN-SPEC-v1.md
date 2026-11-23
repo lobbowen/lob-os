@@ -569,7 +569,19 @@ PackageInstaller 只有按 name 卸载整个组件，没有按版本卸载。
 - Dsh 包本身确认可获取：registry.npmjs.org 上 @deepseek-ai/dsh 公开，latest 0.2.2-rc.5
 - IME（百度输入法）对 adb input text 有重复字符干扰，测试输入需重试核对，非 app bug
 
-### 结论
-装齐所有件：除 pnpm（产物缺文件）外全部已装。
-用 pnpm 装 Dsh：不可行（pnpm 产物缺 piece-shape.json）。
-用 npm 装 Dsh：未验证成功（终端里 npm 静默，根因待查）。
+### 最终结论（第二轮定位后）
+装齐所有件：catalog 9 件，除 pnpm（产物缺 piece-shape.json，生产侧缺陷）外全部已装。
+
+用 pnpm 装 Dsh：不可行（pnpm 装不上）。
+
+用 npm 装 Dsh：成功。终端里 npm 静默是错觉（它在后台慢慢下载、默认输出少），
+npm 本体可用。用 run-as + bash 执行同一套 wrapper 命令：
+- 首次 npm install 失败：tar ENOENT 竞态 + koffi 依赖 install 脚本裸调 node（sh 找不到）EXIT=127
+- 用 --ignore-scripts --maxsockets 1 --fetch-retries 5 重试：added 664 packages in 2m，EXIT=0
+
+Dsh 运行：成功。node lib/bin.js --version -> 0.2.2-rc.5；--help 输出完整帮助、EXIT=0。
+设备上无 profile 配置（DSH_HOME/profiles 不存在），boot 实际应用需另配 profile，
+不在"能否装上/运行"验证范围。
+
+IME 说明：百度输入法对 adb input text 有重复字符干扰（diag.sh->diaag.sh），
+真人手打不受影响；终端里长命令输入用 run-as 脚本绕过 IME 完成验收。
