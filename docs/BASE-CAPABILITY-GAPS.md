@@ -77,3 +77,47 @@ cannot load internal module internal/modules/esm/loader`。
   这属于 Dsh 应用层配置，不是系统基础能力。
 - DSH_FLOCK_NATIVE 环境变量仍未注入——liblobosflock.so 在设备上，
   但没暴露给应用，是明确的系统能力暴露缺口。
+
+---
+
+## 2026-11-24 第三轮：Dsh 依赖树原生模块全景盘点（只读实证）
+
+目标是"知道环境缺什么"。把 Dsh 依赖树里全部原生模块盘一遍，按缺口性质分三类。
+
+### 全景数据（设备上 find/grep 实测）
+已产出 .node 的节点：
+- koffi：build/koffi/android_arm64/koffi.node（我们设备编译的，可用）
+- node-pty：build/Release/pty.node（有效 aarch64 ET_DYN ELF，我们编译的）
+- node-pty：prebuilds 有 darwin/win32/linux-arm64/linux-x64，**无 android**
+- frame-forwarding（libreoffice-kit）：prebuilds 只有 darwin/win32，**无 android/linux**
+
+带源码可编译的（binding.gyp / src/*.c）：
+- node-pty（binding.gyp）、sharp（binding.gyp）
+- @deepseek-ai/node-addon-system：src/flock.c + src/main.c（真系统能力：flock/landlock）
+
+无源码、fail-closed 的家族：
+- node-addon-require-builtin（NARB）+ node-addon-native-custom-loader
+- 官方只发 darwin/win32/linux glibc|musl，发布版不带源码
+
+### 三类缺口定性
+1. **有源码、可设备编译**：node-pty/sharp/node-addon-system。
+   这类是方案A的直接对象——clang/sysroot/node-gyp 已具备，能产出 android-arm64 件。
+   node-addon-system README 明确区分 glibc/musl 平台包，印证 ABI 差异真实存在。
+2. **有预编译但无 android**：frame-forwarding（libreoffice-kit）。
+   只能靠上游发 android 件，或它本身是可选功能（libreoffice 在 Android 上大概率不适用）。
+3. **无源码 fail-closed**：NARB。上游设计就是 JS shim 兜底，
+   属于"应用 Android 适配"，不是系统能力缺失。
+
+### 系统侧明确缺口（能力在但没暴露）
+- liblobosflock.so 已在 APK + files/usr/lib（12KB，真 flock(2) bridge），
+  但 DSH_FLOCK_NATIVE 等环境变量未注入，node-addon-system 不知道去哪找。
+- 这与 NARB 不同：flock 是真 POSIX 基础能力，补齐它属于系统职责。
+
+### 结论
+"dsh web 起不来"是三类缺口的叠加，其中：
+- 真系统能力缺口：DSH_FLOCK_NATIVE 未注入（1 项，明确、可补）
+- 可编译供给缺口：几个原生模块需设备编译（能力具备，缺的是系统化供给）
+- 应用适配缺口：NARB（官方 shim，非系统职责）
+
+兼容层方案A的覆盖面由此确定：优先解决"有源码可编译"这一类，
+它们既有真实系统能力（flock）又有现成编译链路，投入产出比最高。
