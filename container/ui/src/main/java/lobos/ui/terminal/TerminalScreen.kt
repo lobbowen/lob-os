@@ -69,6 +69,11 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
     val shape = RoundedCornerShape(20.dp)
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
+    fun submit() {
+        val line = input
+        if (line.isNotEmpty()) onEvent(TerminalEvent.Input(line + "\n"))
+        input = ""
+    }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 18.dp, vertical = 20.dp)) {
         Text("终端", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
@@ -102,32 +107,33 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
                 }
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(pal.terminalDivider))
-            TextField(
-                value = input,
-                onValueChange = { v ->
-                    if (v.length > input.length) onEvent(TerminalEvent.Input(v.drop(input.length)))
-                    else if (v.length < input.length) repeat(input.length - v.length) { onEvent(TerminalEvent.Input("\b")) }
-                    input = ""
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 8.dp),
-                singleLine = true,
-                textStyle = MonoTextStyle.copy(color = Color.Transparent),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = { onEvent(TerminalEvent.Input("\n")); input = "" },
-                    onSend = { onEvent(TerminalEvent.Input("\n")); input = "" },
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = Color.Transparent,
-                    focusedTextColor = Color.Transparent,
-                    unfocusedTextColor = Color.Transparent,
-                ),
-                placeholder = { Text("点此输入命令", style = MonoTextStyle, color = pal.terminalMuted.copy(alpha = 0.6f)) },
-            )
+            // 命令行：TextField 持有真实输入文本并可见，输入法 composition 正常工作。
+            // 打字只更新本地文本；回车时把整行送给 PTY（shell 负责回显与执行）。
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("$ ", style = MonoTextStyle, color = pal.terminalText)
+                TextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    singleLine = true,
+                    textStyle = MonoTextStyle.copy(color = pal.terminalText),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { submit() },
+                        onSend = { submit() },
+                    ),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = pal.terminalText,
+                        focusedTextColor = pal.terminalText,
+                        unfocusedTextColor = pal.terminalText,
+                    ),
+                    placeholder = { Text("输入命令", style = MonoTextStyle, color = pal.terminalMuted.copy(alpha = 0.6f)) },
+                )
+            }
         }
     }
 }

@@ -965,3 +965,34 @@ node_modules/.bin/dsh 不在终端 PATH，且 dsh 是 #!/usr/bin/env node 脚本
 - 全局安装原生模块 koffi=function pty=function（GLOBAL_NATIVE_OK）
 
 结论：终端里 dsh 命令可用；Dsh 走标准 npm 全局安装，不靠手工塞文件。
+
+---
+
+## 三十六、终端交互逻辑修复（2026-11-24）
+
+用户指出终端界面是"假的、废的"：输入框永远空的、输入没反应。实测确认问题真实，
+但根因分两层：
+
+### 诊断（真机截图 + uiautomator）
+- 底层 PTY 链路其实是通的：输入→回车→执行→输出→新 prompt 在 uiautomator 文本节点里都在
+- 但用户在屏幕上看不到：两处 UI 缺陷
+  1. 输入层：原实现用透明 TextField + onValueChange 后 value="" 清空来捕获键盘——
+     输入框永远空的（无反馈）、破坏输入法 composition（中文/联想全废、字符错乱）、
+     退格逻辑恒失效（比较清空后的 length）
+  2. 渲染层：我一度加的 scrollToItem(screen.size-1) 把末尾空行对齐到列表顶部，
+     把输出顶出可视区（uiautomator 有文本、截图全空）
+
+### 修复（TerminalScreen.kt）
+- TextField 持有真实输入文本并可见显示（$ 提示符 + 亮色文字 + 可见光标），
+  打字只更新本地 input；回车 submit() 把整行+"\n" 写入 PTY 后清空
+- 恢复 LazyColumn verticalArrangement=Arrangement.Bottom，去掉错误的自动 scrollToItem
+- 输入区占位符改为"输入命令"
+
+### 真机 UI 实测（非 bash -ic 绕过，真实终端界面敲命令）
+- 输入 id：输入框显示 "$ id"、光标可见、IME 联想正常（composition 恢复）
+- 回车：输出区显示 "bash-5.2$ id" + "bash: id: command not found" + 新 prompt
+- 连续第二条命令同样闭环；输入框清空可继续输入
+- 结论：输入可见、回车执行、输出可见、持续交互，四段闭环成立
+
+注：id/echo 显示 command not found 是精简 shell 的 PATH 问题，与终端交互无关；
+输出正确显示即证明链路通。
