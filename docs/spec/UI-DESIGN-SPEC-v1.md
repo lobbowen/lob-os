@@ -815,3 +815,23 @@ scripts/recipes/build-component-llvmtoolchain.sh + .github/workflows/build-llvmt
 组件化不是我另写 recipe，而是跑通这个已有 recipe → package-component.sh 打包 →
 testing 发布 → 设备验证安装。产出 llvm 组件后，node-gyp 设备编译用同源 clang，
 不会有手工 termux 方案的版本错配问题。
+
+---
+
+## 三十、LLVM 组件 recipe 本地完整跑通（2026-11-23）
+
+项目正规 build-component-llvmtoolchain.sh 在本地完整跑通：
+- 16 线程并行下载 llvm-project 21.1.0 源码（159MB，sha256 与钉值一致）
+- 手动解包（fetch-pinned 不复用本地文件，recipe 检测源码树存在即跳过下载）
+- 同源校验通过（NDK 30/LLVM 21.0.0 ↔ 钉值）
+- host tblgen 编好 → NDK clang++ 交叉编 LLVM 各库（8 作业，约 40 分钟）→ cmake install
+- 产出 dist-llvm/：bin 107 工具（clang/ld.lld/llvm-ar 等，AArch64 ET_DYN）、
+  lib 7.8G、sysroot 62M、package.json 107 别名、llvm.version 21.1.0
+- 产物只依赖 libc/libm/libdl（同源构建的干净依赖，无 termux 版本错配问题）
+
+### 新发现的问题（待决策）
+产物未 strip：bin 24G（每个工具是独立大 ELF，bugpoint 563MB、c-index-test 685MB），
+lib 7.8G，总计 31G。CI/规范里当前无 strip 步骤 —— llvm 组件从没成功发布过可能与此有关。
+打包前需要决策：strip 策略（在 recipe 加 strip 属改构建规范，需确认）、
+或组件拆分（只保留 NEED_BIN 八个工具，去掉 bugpoint 等开发期工具）。
+不擅自改构建规范，等定方向。
