@@ -121,3 +121,36 @@ cannot load internal module internal/modules/esm/loader`。
 
 兼容层方案A的覆盖面由此确定：优先解决"有源码可编译"这一类，
 它们既有真实系统能力（flock）又有现成编译链路，投入产出比最高。
+
+---
+
+## 2026-11-24 第四轮：DSH_FLOCK_NATIVE 缺口的补齐方案（只读实证）
+
+### 决定性发现：能力完全兼容，只差一个环境变量
+把 Dsh 官方 `native/flock/flock.c` 与 LobOS `container/native/d2/flock.c` 逐行对照：
+- 两者同源（差异仅 20 行 provenance/注释）
+- 都导出 N-API 标准入口 `napi_register_module_v1`
+- 都 `napi_set_named_property(exports, "tryLock", ...)`
+- LobOS 编出的 liblobosflock.so 实测含 `tryLock`/`try_lock` 字符串
+
+Dsh 官方 flock-shim.js 的加载逻辑（第 39-51 行）：
+```
+p = process.env.DSH_FLOCK_NATIVE
+nativeState = createRequire(import.meta.url)(p)
+if (nativeState.tryLock is function) → 走真 flock(2)
+```
+即：它 dlopen 环境变量指向的 .so，期待导出 tryLock —— 与我们的库逐字匹配。
+
+### 结论
+flock 系统能力缺口的补齐 = **注入一个环境变量**：
+```
+DSH_FLOCK_NATIVE=/data/user/0/lobos.os/files/usr/lib/liblobosflock.so
+```
+不需要重编任何 native 库、不需要改 Dsh、不需要补丁。
+这是"能力已在、暴露缺失"的最典型案例，也是兼容契约层最该做的第一件事：
+把系统已有的能力，用应用期待的环境变量契约递过去。
+
+### 对兼容层设计的意义
+这一个实例验证了方案 A 的核心假设：
+"系统能力供给"这件事，在架构上可以收敛成一份"应用→环境变量/原生件"的契约注入。
+flock 这条契约零成本（已有库+一个变量），是第一步落地的最佳样例。
