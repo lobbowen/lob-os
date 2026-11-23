@@ -490,3 +490,42 @@ guest 分支不触发的原因收窄到 exec-path.c 的 `read_interp(path, inter
 interp 内容），在真机 PTY 域跑一次即可确认 read_interp 失败的具体原因
 （open 被拒 / 路径重定向 / ELF 头读取错位），然后针对性修——这是有明确诊断点的工程，
 不再是盲试。
+
+---
+
+## 2026-11-24 第十六轮：贯穿性根因发现——PTY 宿主常驻 + so 版本陈旧
+
+### 决定性发现（解释了此前所有"改了没生效"）
+- PTY 宿主进程（linker64 librivospty.so + linker64 bash -i）是**常驻独立进程**，
+  跨 app force-stop / 重装 APK **不会重启**，一直用启动时映射的 liblobosposix.so。
+- 多次重编 native 后，maps 里显示 `liblobosposix.so (deleted)` —— 宿主用的是
+  被覆盖前的**旧 so**，我加的诊断日志/guest 路由代码根本没在运行的进程里！
+- 显式 `kill -9 <PTY宿主链>` 后再进终端，新 bash 映射的 so 才无 `(deleted)`、
+  才是新版本。这是验证方法的前提，此前所有 rounds 都漏了这一步。
+
+### 新 so 生效后的精确实测（推翻多个旧假设）
+1. hook 确实在 PTY bash 里映射（新 so 非 deleted）
+2. LOBOS_GLIBC_LOADER/LIBDIR 在 view0/env 里
+3. 但加的 `diag-guest-gate` 日志**一次都没出现**，exec-path.c 的 execve hook
+   **没有被 bash 的 execve 调用触发**
+4. 根因：hook 是通过 librivospty.so 的 **DT_NEEDED** 链加载进 bash 的，
+   DT_NEEDED 库的符号只对加载它的 ELF 可见，**interpose 不到 bash 自己的 execve**；
+   只有 LD_PRELOAD 才能全局 interpose
+5. pb1.env 设 LD_PRELOAD 后，终端 env 里仍无 LD_PRELOAD——
+   因为 PTY 用 `linker64` 显式加载 bash，**linker64 显式加载不处理 LD_PRELOAD**
+   （独立实验能成功，是因为外层 shell 先处理了 preload 再 exec linker64）
+
+### 结论（三重枷锁，都是架构级）
+- DT_NEEDED hook interpose 不到 bash execve
+- linker64 显式加载不处理 LD_PRELOAD
+- PTY 宿主常驻导致 so 更新不生效（验证陷阱）
+
+单靠 env 注入 / PtySession 微调都无法突破。稳定交付形态不变
+（glibc-run 显式入口），所有尝试改动已回退。
+
+### 下一阶段（三个明确课题，都需独立工程）
+1. 验证时必须先 kill -9 PTY 宿主链，否则测的是旧 so（方法论，立即采纳）
+2. 让 hook 经 LD_PRELOAD 进入 bash：需在外层 shell 处理 preload 的形态下
+   启动 PTY（native launcher），而非 linker64 显式加载
+3. 或放弃 execve interpose，走 native launcher 自己做 guest 路由
+
