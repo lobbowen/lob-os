@@ -60,18 +60,26 @@ if [ "$KIND" = "library" ] || [ "$KIND" = "mixed" ]; then
     real="$(readlink -f "$so")"
     [ -f "$real" ] || continue
 
-    f="$(elf_form "$real")"
-    if [ "$f" != "dyn-plain" ]; then
-      bad "程序形态的字节在库目录下" "lib/$(basename "$so") 的形态是 $f（程序形态）—— 它该落 bin/（形态决定目录），不是 lib/"
-      continue
-    fi
     base="$(basename "$so")"
     root="$(elf_chain_root "$base")"
     chain="$(elf_chain_names "$W/lib" "$root")"
     n="$(printf '%s' "$chain" | wc -w)"
-    say "lib/$base 的链：$chain（$n 段）"
-
     soname="$(elf_soname "$real")"
+
+    f="$(elf_form "$real")"
+    if [ "$f" != "dyn-plain" ]; then
+      # 系统基础库特例：glibc 的 libc.so.6 是 dyn-interp（GNU 故意做成可执行
+      # 以直接打印版本），但它有 DT_SONAME 且落在 SONAME 链里——语义是共享库，
+      # 不是"放错位置的程序"。判据：dyn-interp 且有合法 SONAME 链 => 算库。
+      if [ "$f" = "dyn-interp" ] && [ -n "$soname" ] && \
+         case " $chain " in *" $soname "*) true ;; *) false ;; esac; then
+        say "lib/$base 形态=$f 但有合法 SONAME 链（$chain）=> 按系统库认定"
+      else
+        bad "程序形态的字节在库目录下" "lib/$(basename "$so") 的形态是 $f（程序形态）—— 它该落 bin/（形态决定目录），不是 lib/"
+        continue
+      fi
+    fi
+    say "lib/$base 的链：$chain（$n 段）"
     if [ -z "$soname" ]; then
 
       bad "SONAME 读不到" "lib/$base 那份字节没有 DT_SONAME —— 它自述的 SONAME 是什么读不出来，报缺（不替它编）"

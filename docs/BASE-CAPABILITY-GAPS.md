@@ -195,11 +195,13 @@ flock 系统能力缺口补齐 = 注入 `DSH_FLOCK_NATIVE` 指向我们的 .so�
   - glibc-run launcher 跑 echo → LAUNCHER_OK
   - **验收D（通配判据）：未见过的纯 glibc 程序 cat，零配置直接跑 → 输出正确，EXIT=0**
 
-### 未通过：piece-shape 形态门禁
-verify-piece-shape.sh 要求 lib/*.so 全是 dyn-plain（无 PT_INTERP），
+### 形态门禁：已修正规范盲区并通过
+verify-piece-shape.sh 原要求 lib/*.so 全是 dyn-plain（无 PT_INTERP），
 但 glibc 的 libc.so.6 客观上是 dyn-interp（GNU 故意做成可执行以打印版本），
-elf-form 自动建的 libc.so 链接解析到它 → 被判"程序形态字节在库目录"。
-这是项目形态规范对"系统基础库"的盲区（普通库无 PT_INTERP，glibc 是例外）。
+elf-form 自动建的 libc.so 链接解析到它 → 被误判"程序形态字节在库目录"。
+判据本身自相矛盾（一边 SONAME 链自洽认它是库，一边形态判它是程序）。
+修正：dyn-interp 且有合法 DT_SONAME 链的按系统库认定（精确特例，非放宽）。
+回归验证 cmake 正常组件不受影响；glibc-runtime 形态门禁通过。
 
 ### 下一步（待决策）
 1. 形态规范扩展：对 SONAME 链里的官方系统库豁免 dyn-interp 判定（需规范维护者确认），
