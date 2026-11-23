@@ -425,3 +425,38 @@ detail=java.io.IOException: Cannot run program ".../usr/bin/bash": error=13, Per
 工作区干净、official 锚、设备清理完成。
 通配能力稳定入口 glibc-run 已交付（验收 A/D 通过）；
 核心路由机制已实证成立；验收 B/C 的下一阶段路径明确（native launcher）。
+
+---
+
+## 2026-11-24 第十四轮：PtySession env 注入路线的穷尽与教训（未突破，回退）
+
+### 本轮实证（都做过，后续不要重复）
+1. **PTY child 精确形态可路由**：独立进程跑
+   `LD_PRELOAD=hook LOBOS_GLIBC_* linker64 bash -c '<glibc程序>'` →
+   `CHILD_FORM_ROUTE_OK`，diag 有 `glibc->guest-loader`。证明"linker64 显式加载 bash
+   时 LD_PRELOAD 生效"——推翻第十三轮"linker64 不走 LD_PRELOAD"的结论。
+2. **PtySession pb1.env 设 LD_PRELOAD + LOBOS_GLIBC_***（保留 ExecEntry.argv 的
+   linker64 前缀、不动 script、pb0[3]→lastOrNull）→ PTY 能正常启动（shell 在），
+   但终端 env 里 LD_PRELOAD 不在、用户敲 glibc 程序仍 Permission denied、路由 0。
+3. **TerminalProfile 在 .bashrc 里 export LD_PRELOAD** → bash 确实 source .bashrc
+   （type dsh 显示函数体），但交互 shell 的 env 里仍看不到 LD_PRELOAD。
+   bash 对 LD_PRELOAD 的 startup 处理（可能主动从导出环境移除）是未解现象。
+4. 多轮"改 PtySession 启动形态"的尝试（直接 exec bash / 改 script 顺序 / 加豁免标志）
+   都导致 PTY 宿主崩溃（Java error=13 或双重 linker64），已全部回退。
+
+### 结论
+源码级 env 注入（pb1.env / .bashrc 两条路）都无法让交互 shell 稳定带 hook。
+这是 bash startup 与 PTY 启动链共同作用的边界，不是单点 bug。
+继续在 PtySession/TerminalProfile 上试错收益为零。
+
+### 唯一剩余的可行方向（下一阶段，需独立工程）
+新写一个 native ELF launcher 作为 PTY child 的 shell：
+- 由 Java 用 linker64 显式启动它（Java exec 允许的路径）
+- 它内部构造 execve(".bashrc 已 export 的 bash") 时显式带 LD_PRELOAD + LOBOS_GLIBC_*
+- 在 exec 前由它自己做 guest 判定（读 PT_INTERP），把 glibc 程序路由到 guest loader
+完全绕开"环境变量能否传进交互 shell"的问题，因为路由逻辑在 launcher 里而非 shell 里。
+这是边界清晰的独立 native 组件开发，不属于当前交付。
+
+### 交付状态
+所有 PtySession/TerminalProfile/native 尝试改动全部回退，稳定版 APK 恢复。
+工作区干净、official 锚、设备清理终端稳定。通配能力稳定入口 glibc-run 不变。
