@@ -211,3 +211,31 @@ elf-form 自动建的 libc.so 链接解析到它 → 被误判"程序形态字�
 
 结论：通配能力在真机上功能已成立（cat 零配置跑通）；
 剩下是产品化门禁和 hook 自动路由，不是方案可行性问题。
+
+---
+
+## 2026-11-24 第七轮：glibc-runtime 正式发布安装 + 通配终验
+
+### 完成的完整管线（真机实证）
+recipe → 钉值(2.41.12，Debian版本符规范化) → package-component(1.4MB) →
+形态门禁修正 → 签名 → testing CDN → 组件页安装 → 正式组件跑 glibc 程序。
+
+### 两个规范修正（都是判据盲区，非放宽）
+1. verify-piece-shape.sh：dyn-interp + 合法SONAME链 = 系统库（libc.so.6 特例）
+2. elf-form.sh：lib/ 下 dyn-interp 且有DT_SONAME → role=library
+   （否则 libc 被分类到 programs，PackageInstaller 落位时拍平导致 libc.so.6 缺失）
+两处修正回归 cmake 正常组件通过。
+
+### 终验（正式安装组件 files/opt/glibc-runtime/2.41.12）
+- loader 直接跑 echo → FORMAL_ECHO_OK
+- glibc-run launcher 跑 echo → FORMAL_LAUNCHER_OK
+- **通配判据：未见过的 glibc 程序 cat，零配置直接跑 → formal-cat-final，EXIT=0**
+
+### 遗留一处产品化问题
+loader(ld-linux-aarch64.so.1) 在 lib/ 下落位后无 x 位（安装器按库处理），
+需 chmod 755 才能 exec。修法：recipe 把 loader 也放 bin/ 或在形态清单标 x 位。
+功能本身不受影响（chmod 后全通）。
+
+### 结论
+"通配 Linux 适配层"从设计走到了真机可用：任意 glibc 程序经 guest loader +
+路径/uid 适配即可运行，零应用专属配置。这是 LobOS 的 Linux 用户态第一块可运行基础。

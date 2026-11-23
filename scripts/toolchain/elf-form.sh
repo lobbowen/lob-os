@@ -290,6 +290,14 @@ elf_write_shape() {
     role="$(elf_role_of_form "$form")"
     [ "$role" = "unknown" ] && continue
     dir="${rel%%/*}"
+    # 系统基础库特例（与 verify-piece-shape.sh 同一判据）：glibc 的 libc.so.6
+    # 是 dyn-interp（GNU 故意做成可执行以直接打印版本），但它在 lib/ 下且
+    # 有 DT_SONAME——语义是共享库，不是落位该拍到 bin/ 的程序入口。
+    # 不修正会让 libc 被当 program，落位时被拍平、动态链接器找不到 libc.so.6。
+    if [ "$role" = program ] && [ "$form" = "$ELF_FORM_DYN_INTERP" ] && [ "$dir" = lib ]; then
+      _sn="$(elf_soname "$real")"
+      [ -n "$_sn" ] && role=library
+    fi
     # shebang 脚本若不在 bin/ 下（如 python stdlib 的 lib/pythonX.Y/*.py），
     # 是随目录整体复制的数据，不是需要拍平到 bin 的程序入口。
     # 让它们进 shape 会被落位逻辑按 basename 拍到 bin/，破坏 stdlib 目录结构。
