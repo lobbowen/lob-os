@@ -390,3 +390,38 @@ shell——这是 linker64 **显式加载** bash，不经过动态链接器的 L
 ### 交付状态（不变）
 所有 PtySession 尝试改动已回退，稳定版终端验证恢复。
 通配能力稳定入口 glibc-run 已交付；核心链路本轮实证为下一阶段铺平了路。
+
+---
+
+## 2026-11-24 第十三轮：验收 B 障碍的最终根因（Java exec 限制，实证）
+
+### 决定性日志
+改 PtySession 为"直接 exec bash"后，diag 明确报：
+```
+stage=service level=FAIL message="PTY 宿主就位失败"
+detail=java.io.IOException: Cannot run program ".../usr/bin/bash": error=13, Permission denied
+```
+同时 SELinux audit 显示 `granted { execute } for name="bash"`。
+
+### 结论（最终根因）
+- native 层 execv（linker64 显式加载 ELF）被 SELinux 允许 → 这是 PTY 必须用
+  `linker64` 前缀的原因（不是历史遗留，是 Java exec 的硬限制）
+- Java ProcessBuilder 直接 exec app_data_file 上的 ELF → error=13（即便 SELinux
+  execute granted，Java 的 execve 路径仍被拒）
+- linker64 显式加载的 ELF 不走动态链接器的 LD_PRELOAD → hook 进不了交互 shell
+
+三个事实叠加，构成验收 B 在当前架构下的确定性闭环障碍。
+
+### 下一阶段的明确路径（不再是"能不能做"）
+核心机制已证可行（第十二轮 CORE_ROUTE_OK：bash 带 hook → 自动路由 glibc 程序）。
+要让 PTY 交互 shell 带 hook，需引入一个 **native ELF launcher**：
+- 由 Java ProcessBuilder 启动它（linker64 显式加载，Java 允许的路径）
+- 它内部以"带 LD_PRELOAD 的动态链接"方式加载 bash，使 hook 进入 shell
+- exec-path hook 对这种 shell 豁免 ET_DYN 改写（第十三轮尝试的豁免标志思路可用）
+这是一次独立的 native 组件开发，边界清晰，风险可控，不属于当前交付。
+
+### 交付状态（最终）
+所有 PtySession/native 尝试改动全部回退，稳定版 APK 已装机验证终端恢复。
+工作区干净、official 锚、设备清理完成。
+通配能力稳定入口 glibc-run 已交付（验收 A/D 通过）；
+核心路由机制已实证成立；验收 B/C 的下一阶段路径明确（native launcher）。
