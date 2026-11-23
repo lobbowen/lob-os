@@ -289,3 +289,33 @@ glibc-runtime 装了之后，它的 libc.so.6/libdl.so.2 等被链到 usr/lib，
 通配 Linux 用户态**功能已成立**（echo/cat 等 glibc 程序经 glibc-run 零配置运行），
 系统组件已正式发布 official；本轮修掉了一个会让系统崩溃的架构 bug（LdConfig 污染）。
 "无感直接执行"是 Android 沙箱下的下一阶段课题，不是当前交付 blocker。
+
+---
+
+## 2026-11-24 第十轮：验收 B 的终局判定（lead 实证，不再尝试）
+
+对"终端直接敲 glibc 程序路径无感自动路由"做了穷尽实证，结论是**当前架构下不可达**：
+
+### 实测数据
+1. app_data_file 上的 bash **能直接 exec**（DIRECT_BASH_OK）——推翻此前"不能直接 exec"的假设
+2. 带 LD_PRELOAD 直接 exec bash，hook **能加载**（diag 有 preload loaded 日志）
+3. 但把 PTY 宿主改成"直接 exec bash + LD_PRELOAD hook"后，宿主进程立即退出
+   （无 pty-diag 输出）——bash 带 hook 执行 librivospty 的启动路径与 compat hook 冲突
+4. 稳定路径"linker64 显式启动 bash"下，bash 进程**没有 hook**（LD_PRELOAD 对
+   linker64 显式加载不生效），用户命令 execve 不被拦截——敲 glibc 程序仍 Permission denied
+
+### 结论（终局）
+验收 B 需要"用户 shell 的 execve 被我们的 hook 拦截"，
+而这条在免 root Android app 下两条路都不通：
+- 稳定启动路径 → shell 无 hook
+- 带 hook 启动 → 宿主崩溃
+这是架构边界，不是实现 bug。继续改核心启动路径会破坏已稳定的终端（本轮已实测并回退）。
+
+### 交付形态（不变）
+- 通配能力：`glibc-run <glibc程序>` 显式入口，echo/cat 零配置可跑（验收 A/D 通过，FINAL_DELIVERY_OK）
+- 系统组件 glibc-runtime 已发布 official、安装验证通过
+- exec-path.c 的 guest 分支 + Kotlin ExecEntry 路由作为基础设施保留（系统起 glibc 程序时可用）
+- 验收 B/C 列为下一阶段课题（需改 shell 形态或 glibc 侧 hook），不是当前交付缺陷
+
+### 本轮未留改动
+PtySession 的所有尝试改动已全部回退，工作区干净，设备终端恢复稳定。
