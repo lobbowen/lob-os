@@ -529,3 +529,28 @@ interp 内容），在真机 PTY 域跑一次即可确认 read_interp 失败的�
    启动 PTY（native launcher），而非 linker64 显式加载
 3. 或放弃 execve interpose，走 native launcher 自己做 guest 路由
 
+
+---
+
+## 2026-11-24 第十七轮：LD_PRELOAD 假设证伪——environ 有但 preload 未激活
+
+### 实证
+1. 独立实验证伪"bash -i 消耗 LD_PRELOAD"：bash -i 内部 env 仍能看到 LD_PRELOAD，
+   且带 preload 时 hook 正常拦截 execve（d1.exec-path 日志逐条命中）。
+2. pb1.environment() 设 LD_PRELOAD + kill 旧 PTY 宿主后：
+   PTY child bash（pid 2585）的 /proc/<pid>/environ **确实含 LD_PRELOAD**。
+3. 但 exec-path hook 的 diag 日志仍 0 次、终端敲 glibc 程序仍 Permission denied。
+4. 结论：PTY 用 `linker64 bash -i` 显式加载 bash。linker64 显式加载时，
+   environ 里的 LD_PRELOAD **字符串在，但 preload 机制没被激活**
+   （bash maps 里的 hook 来自 librivospty 的 DT_NEEDED 链，不是 preload interpose）。
+   独立实验成功是因为走正常动态链接器加载 bash，preload 被真正处理。
+
+### 终局（不再试错）
+这是 exec-path hook + PTY linker64 显式加载 + 免 root 沙箱三者的确定性边界。
+env 注入、script 调整、pb1.env 各种组合均无法让 preload 在 linker64 显式加载路径生效。
+唯一剩余路径是 native launcher（自己构造带 preload 的加载链或自己做路由），
+属独立工程。稳定交付形态不变。
+
+### 状态
+所有尝试改动回退，稳定版 APK 恢复、终端正常、工作区干净。
+验证方法论沉淀：改 native 后必须 kill -9 PTY 宿主链（否则测 deleted 旧 so）。
