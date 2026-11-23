@@ -7,23 +7,36 @@ MODULE_DIR="${1:?用法: build-cnoke.sh <包目录> <源码目录如src/koffi> [
 SRC_DIR="${2:-src/koffi}"
 OUT="${3:-}"
 NDK="${ANDROID_NDK:?请先设置 ANDROID_NDK}"
-API="${ANDROID_API:-24}"
+API="${ANDROID_API:-28}"
 
 TC="$NDK/build/cmake/android.toolchain.cmake"
 [ -f "$TC" ] || { echo "缺 NDK toolchain: $TC" >&2; exit 1; }
 [ -f "$MODULE_DIR/cnoke.cjs" ] || { echo "缺 cnoke.cjs: $MODULE_DIR" >&2; exit 1; }
 
+HERE="$(cd "$(dirname "$0")" && pwd)"
 TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
 export CC="$TOOLCHAIN/aarch64-linux-android${API}-clang"
 export CXX="$TOOLCHAIN/aarch64-linux-android${API}-clang++"
 
+# bionic compat: statx() 实现 + spawn.h 声明注入 + 允许 N-API 未定义符号（运行时由 node 解析）
+COMPAT="$(mktemp -d)"
+trap 'rm -rf "$COMPAT"' EXIT
+"$CC" -c "$HERE/compat/statx.c" -o "$COMPAT/statx.o"
+"$TOOLCHAIN/llvm-ar" rcs "$COMPAT/libcompat.a" "$COMPAT/statx.o"
+CHDR="$HERE/compat/lobos-android-compat.h"
+LFLAGS="$COMPAT/libcompat.a -Wl,--allow-shlib-undefined -Wl,--unresolved-symbols=ignore-all"
+
 COMMON_ARGS=(configure -P "$MODULE_DIR" -D "$SRC_DIR" --release -t android_arm64
-  -d CMAKE_TOOLCHAIN_FILE="$TC" -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-${API})
+  -d CMAKE_TOOLCHAIN_FILE="$TC" -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-${API}
+  -d "CMAKE_CXX_FLAGS=-include $CHDR" -d "CMAKE_C_FLAGS=-include $CHDR"
+  -d "CMAKE_SHARED_LINKER_FLAGS=$LFLAGS")
 
 cd "$MODULE_DIR"
 node cnoke.cjs "${COMMON_ARGS[@]}"
 node cnoke.cjs build -P "$MODULE_DIR" -D "$SRC_DIR" --release -t android_arm64 \
-  -d CMAKE_TOOLCHAIN_FILE="$TC" -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-${API}
+  -d CMAKE_TOOLCHAIN_FILE="$TC" -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-${API} \
+  -d "CMAKE_CXX_FLAGS=-include $CHDR" -d "CMAKE_C_FLAGS=-include $CHDR" \
+  -d "CMAKE_SHARED_LINKER_FLAGS=$LFLAGS"
 
 NODE_FILE="$(find build -name '*.node' | head -1)"
 [ -n "$NODE_FILE" ] || { echo "编译未产出 .node" >&2; exit 1; }

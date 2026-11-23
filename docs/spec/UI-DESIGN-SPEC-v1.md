@@ -682,3 +682,25 @@ cnoke 交叉编译命令（可复用于其它 cnoke 模块）：
   node cnoke.cjs configure -P . -D src/koffi --release -t android_arm64 \
     -d CMAKE_TOOLCHAIN_FILE=<ndk>/build/cmake/android.toolchain.cmake \
     -d ANDROID_ABI=arm64-v8a -d ANDROID_PLATFORM=android-24
+
+---
+
+## 二十五、koffi 3.1.1 编译成功：工具链层 bionic compat（2026-11-23）
+
+上一节定性为源码不兼容，本轮找到不改源码的解法（全部在工具链层）：
+- statx()：写 compat/statx.c（fstatat 实现，填充 struct statx），compat 头注入函数声明
+- posix_spawn 系列：bionic API 28+ 才有，ANDROID_API 从 24 提到 28
+- N-API 符号 undefined：链接加 --allow-shlib-undefined + --unresolved-symbols=ignore-all
+  （N-API 运行时由 node 进程解析，本就不该链接期解析）
+
+build-cnoke.sh 内置上述逻辑，从头编译 koffi 3.1.1 成功（[100%] Built target koffi，koffi.node 1.3M），
+编译出的 .node 只依赖 libc/libm/libdl，无 libc++ 依赖。
+
+设备最终验证：
+- dsh --version = 0.2.2-rc.5
+- node-pty: function（spawn 可用）
+- koffi: OK（k.load("libc.so") 成功）
+- 全程未改 koffi 源码、未改 Dsh 包内容，全部通过工具链层 compat 与 npm 配置解决。
+
+Dsh 原生依赖链问题闭环。Node 原生模块工具链现覆盖 node-gyp 型与 cnoke 型，
+具备 bionic compat（libutil/statx/API 级别/N-API），为平台长期资产。
