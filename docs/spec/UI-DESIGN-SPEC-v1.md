@@ -540,3 +540,36 @@ PackageInstaller 只有按 name 卸载整个组件，没有按版本卸载。
   notice"已卸载组件 pnpm"、pnpm 出现在可安装列表(v12.7.0[安装])、0 崩溃
 - 使用中版本无卸载按钮（UI 保护）；后端拒绝删 CURRENT/最后一个版本
 - 全程 0 崩溃
+
+---
+
+## 二十、功能验收发现与终端运行时补全（2026-11-23，未完成）
+
+用户要求：装齐所有件 + 终端用 pnpm 装 Dsh 并运行。验收结论如下。
+
+### 装齐所有件
+- catalog 9 件，设备上已装 16 件（含历史累积），唯一缺 pnpm
+- pnpm 安装失败："产物没带形态说明 piece-shape.json"。查 CDN zip 确认 pnpm 产物
+  只有 component-meta.json/bin/pnpm，**没有 piece-shape.json**；对比 cmake 有。
+  这是生产/发布侧缺陷，客户端按"报缺不猜"正确拒绝——不是客户端 bug
+
+### 终端运行时补全（TerminalProfile，架构级通用规则）
+- 发现 node 直接跑失败：缺 libc++_shared.so 符号。node 版本根自带 libc++_shared.so，
+  但没 CURRENT 指针导致 TerminalProfile 跳过、无 wrapper
+- 修复 TerminalProfile：1) 无 CURRENT 时若有唯一已装版本则 fallback 用它；
+  2) 通用规则：版本根自带 .so 的件，wrapper 注入 LD_LIBRARY_PATH；
+  3) JS 脚本入口(.js)生成 `node <script>` wrapper 并建 -cli.js 别名(npm/npx)
+- 设备实测：node -v -> v24.21.0 成功；npm wrapper 生成且带 LD_LIBRARY_PATH；
+  run-as 直接跑 npm-cli.js -v -> 11.19.0 成功；bash 函数方式跑也成功
+
+### 未解决（如实记录）
+- **终端里 `npm -v` / `npm` 静默无输出**（既不报错也不输出），但同样的 wrapper 命令
+  用 run-as + bash 函数跑正常。疑与终端 bash 会话环境（native PTY child 的 env）有关，
+  根因未定位。因此 **Dsh 未在终端装成、未运行**
+- Dsh 包本身确认可获取：registry.npmjs.org 上 @deepseek-ai/dsh 公开，latest 0.2.2-rc.5
+- IME（百度输入法）对 adb input text 有重复字符干扰，测试输入需重试核对，非 app bug
+
+### 结论
+装齐所有件：除 pnpm（产物缺文件）外全部已装。
+用 pnpm 装 Dsh：不可行（pnpm 产物缺 piece-shape.json）。
+用 npm 装 Dsh：未验证成功（终端里 npm 静默，根因待查）。
