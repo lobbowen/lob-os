@@ -704,3 +704,26 @@ build-cnoke.sh 内置上述逻辑，从头编译 koffi 3.1.1 成功（[100%] Bui
 
 Dsh 原生依赖链问题闭环。Node 原生模块工具链现覆盖 node-gyp 型与 cnoke 型，
 具备 bionic compat（libutil/statx/API 级别/N-API），为平台长期资产。
+
+---
+
+## 二十六、设备侧原生编译能力可行性验证（2026-11-23）
+
+用户指出：标准 Linux 上 npm install 时 node-gyp 调系统编译器自动编译原生模块，
+这是 Node 原生能力；我们环境缺这个能力。主机侧脚本不是解法，要在系统内具备编译能力。
+
+### 关键实证：aarch64 clang 能在 LobOS 设备上运行并编译
+- 来源：termux aarch64 原生包（USTC 镜像，官方 CDN 太慢）
+- clang 21.1.8（clang-21 二进制 121KB + libLLVM.so 128MB + libclang-cpp.so 60MB）
+- 设备上用 /system/bin/linker64 加载（app_data_file 上 ELF 不能直接 exec）
+- 依赖闭包（递归解析）：libffi/libz/libzstd 用 LobOS 已有的 symlink 提供；
+  libxml2/libiconv 从 termux 装；libc++_shared.so 必须用 termux 同版本
+  （混用 LobOS 自己的会 __libcpp_verbose_abort 符号不匹配）
+- 实测：clang-21 --version = clang version 21.1.8 Target aarch64-unknown-linux-android24；
+  编译空 C 文件成功（EXIT=0，产出 600 字节 .o）
+
+### 结论（形态澄清）
+主机侧 scripts/toolchain/node-native/ 只是构建脚本，不进 APK/设备，不是系统能力。
+真正让"环境具备标准编译能力"的形态是把编译器做成 LobOS 可安装组件
+（类似 node/python），让 node-gyp 在设备上能调它。本轮验证了可行性前提
+（clang 能在 bionic/app_data_file 上跑并编译），组件化工程尚未实施。
