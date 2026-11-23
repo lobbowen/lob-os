@@ -332,10 +332,8 @@ fun ComponentDetailScreen(
             Text(name, style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
             Spacer(Modifier.height(6.dp))
             Text("版本管理 · 依赖与能力", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-            if (onUninstallComponent != null) {
-                TextButton(onClick = onUninstallComponent) {
-                    Text("卸载组件", style = MaterialTheme.typography.labelLarge, color = cs.error)
-                }
+            TextButton(onClick = { onEvent(ComponentsEvent.Uninstall(name)) }) {
+                Text("卸载组件", style = MaterialTheme.typography.labelLarge, color = cs.error)
             }
             notice?.takeIf { it.isNotBlank() }?.let { message ->
                 Spacer(Modifier.height(6.dp))

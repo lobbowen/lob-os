@@ -532,5 +532,11 @@ PackageInstaller 只有按 name 卸载整个组件，没有按版本卸载。
   （安装不自动切换，核心语义验证通过）
 - 手动切换 3.14.8 -> CURRENT=3.14.8、入口软链指向 3.14.8、UI 变"当前激活使用中"
 - 使用中版本无卸载按钮（UI 保护）；后端 uninstallVersion 也拒绝删 CURRENT/最后一个版本
-- 卸载整个组件为破坏性操作（会移除 python 影响系统），未实际执行，代码路径与入口已确认
-- 0 崩溃
+卸载整个组件（用非关键的 pnpm 实测，可从 catalog 恢复）：
+- 发现并修复真实 bug：前端用可选 lambda onUninstallComponent 运行时为 null 导致
+  "卸载组件"按钮不显示/点击无效；改为详情屏直接用 onEvent(Uninstall(name))，
+  按钮无条件渲染
+- 点"卸载组件" -> files/opt/pnpm 目录删除、ProgramIndex 索引移除(grep=0)、
+  notice"已卸载组件 pnpm"、pnpm 出现在可安装列表(v12.7.0[安装])、0 崩溃
+- 使用中版本无卸载按钮（UI 保护）；后端拒绝删 CURRENT/最后一个版本
+- 全程 0 崩溃
