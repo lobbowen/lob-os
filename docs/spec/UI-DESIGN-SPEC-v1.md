@@ -799,7 +799,10 @@ scripts/recipes/build-component-llvmtoolchain.sh + .github/workflows/build-llvmt
   钉的源码 21.1.0（同 21.x 线，recipe 校验接受）
 - 前置就绪：cmake 4.2.3、ninja 1.13.2（pip --break-system-packages 装）、CC=NDK clang
 - 启动 recipe 构建：正在走 fetch-pinned 下载 llvm-project-21.1.0.src.tar.xz（sha256 校验）
-- 构建未完成（源码下载中），待下一轮跟进
+- 构建未完：llvm-project-21.1.0.src.tar.xz 总 159MB，GitHub 到本环境下载极慢
+  （约 4MB/分钟），已用 curl -C - 断点续传（脚本 /tmp/dl-llvm.sh，60 段），
+  后台持续下载中。下载完 → sha256 校验 → 解包 → host-tblgen → 交叉编 clang/lld →
+  package-component.sh 打包。长任务，待续。
 
 ### 正确方向
 组件化不是我另写 recipe，而是跑通这个已有 recipe → package-component.sh 打包 →
