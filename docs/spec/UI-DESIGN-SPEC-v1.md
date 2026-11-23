@@ -609,3 +609,28 @@ Dsh 依赖 koffi 的 install 脚本硬编码裸调 `node`，Android 子 shell �
 Dsh 本体已用 --ignore-scripts 装成并能运行（--version=0.2.2-rc.5、--help 正常），
 但 koffi 原生模块未构建，依赖它的 Dsh 功能未验证。此障碍属 Node 生态与 Android 运行时
 的深层兼容问题，需另立方案，不在本次修复范围。
+
+---
+
+## 二十二、Dsh 原生依赖链平台兼容探查（2026-11-23，部分达成）
+
+用户要求让 koffi 原生模块能构建。探查结论：
+
+### 已解决：koffi 的 "sh: node not found"
+- 根因：npm lifecycle 脚本用系统 sh 执行，PATH 里没有 node（node 只在 bash wrapper 中）
+- 标准解法（非补丁）：启动 npm 时注入 `PATH=$NODEHOME/bin:$PATH` +
+  `LD_LIBRARY_PATH=$NODEHOME:...`，npm 脚本继承后 `sh -c "node -v"` 成功
+- 显式安装 `@koromix/koffi-android-arm64`（npm 的 optional 平台过滤漏掉了它）
+- 实测：PATH 注入后 koffi install 脚本通过（不再报 node not found）
+
+### 未解决：node-pty 平台不支持
+- 下一个原生依赖 node-pty 的 install 是 `node scripts/prebuild.js || node-gyp rebuild`
+- 它无 android-arm64 预编译包（prebuilds/android-arm64 不存在），
+  fallback 到 node-gyp 源码编译，但此 npm 安装的 node-gyp 残缺（No such file）
+- Dsh 依赖树里还有更多原生模块，逐个对抗上游设计不可持续，停止
+
+### 最终状态
+- Dsh 本体：`--ignore-scripts` 可装，--version=0.2.2-rc.5、--help 正常
+- Dsh 完整原生依赖链：在 Android 上不可构建（node-pty 等无 android 预编译 + node-gyp 缺）
+- koffi 单一障碍已用标准 PATH 注入解决，但不足以让 Dsh 全量原生功能可用
+- 这是上游 Node 生态对 Android 平台支持不足，非 LobOS 客户端缺陷
