@@ -585,3 +585,27 @@ Dsh 运行：成功。node lib/bin.js --version -> 0.2.2-rc.5；--help 输出完
 
 IME 说明：百度输入法对 adb input text 有重复字符干扰（diag.sh->diaag.sh），
 真人手打不受影响；终端里长命令输入用 run-as 脚本绕过 IME 完成验收。
+
+---
+
+## 二十一、pnpm 件修复与正式发布（2026-11-23）
+
+验收发现 pnpm 装不上：CDN 产物缺 piece-shape.json。根因是 build-component-pnpm.sh
+只产出裸 bin/pnpm，历史上被单独跑 recipe 未走 package-component.sh 打包即上传。
+
+### 修复（按 EXECUTION-POLICY 正规流程）
+- 用 build-component-pnpm.sh 重建 + package-component.sh 打包，产出带 piece-shape.json 的
+  component-pnpm-12.7.0-9cc7fadbceb6-android-arm64.zip
+- verify-piece-shape.sh 本地验证通过（kind=program entryForm=dyn-interp）
+- 上传 testing 根 + 签名 manifest；设备切 testing 锚（debug APK）验证：
+  catalog 拉到新 pnpm、安装成功（"已安装 pnpm 12.7.0"、bin/pnpm 落位）
+- 通过后上传 official 根 + 签名 manifest；恢复 official 锚重编 APK
+- 新 zip 落入 backup/verified/component/；旧坏件（461bab，无 shape）从备份清理
+- 设备测试残留（失败安装的 pnpm 半成品目录+索引）清理
+
+### 仍存障碍（Dsh 完整可用性）
+Dsh 依赖 koffi 的 install 脚本硬编码裸调 `node`，Android 子 shell 的 PATH 里没有 node
+（node 只在 bash wrapper 里），导致原生 FFI 构建失败 EXIT=127。
+Dsh 本体已用 --ignore-scripts 装成并能运行（--version=0.2.2-rc.5、--help 正常），
+但 koffi 原生模块未构建，依赖它的 Dsh 功能未验证。此障碍属 Node 生态与 Android 运行时
+的深层兼容问题，需另立方案，不在本次修复范围。
