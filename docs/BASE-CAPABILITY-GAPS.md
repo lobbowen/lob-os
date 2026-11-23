@@ -589,3 +589,36 @@ ExecEntry 的二次 shaping（Host.start 对 argv[0] 再加 linker64）与 pty-s
 ### 状态
 所有尝试改动回退，稳定版 native + APK 恢复，终端实测正常。
 工作区干净、official 锚、设备清理完成。通配能力稳定入口 glibc-run 不变。
+
+---
+
+## 2026-11-24 第十九轮：决定性突破与二元困境的最终确认
+
+### 决定性突破（hook 完全能在 PTY 域工作）
+给 exec-path.c 加临时 exec-trace（无条件记录每次 execve 调用）+ 恢复
+"openSession 原样传 bash（无 linker64 前缀）"+ pb1.env 设 LD_PRELOAD 后：
+- 独立实验 `bash -i -c '外部程序'` 带 LD_PRELOAD -> exec-trace 记录到程序路径，
+  hook 的 execve interpose 确实工作（推翻此前"hook 不 interpose bash"的结论）
+- PTY 配置下 compat-degrade.log 出现了 `d1.exec-path glibc->guest-loader .../final1`
+  ——hook 在 PTY 域拦截了用户命令并路由到 guest loader，这是历史首次
+
+### 致命阻碍（二元困境，实测确凿）
+- 方案 A（openSession 原样传 bash，child execv(app 的 bash)）：
+  pty-session.c child 报 `line 190 execv 失败：Permission denied(13)`
+  ——native  fork+execv app_data_file 上的 ELF 被 SELinux 拒绝，
+  交互 shell 根本起不来
+- 方案 B（ExecEntry 加 linker64 前缀，child execv(linker64 bash)）：
+  shell 能起来，但 linker64 显式加载的 bash 不处理 LD_PRELOAD，hook 不进 shell
+- 我实测过：hook 自己用 real_execve(bash) 也会被 EACCES（同一个 SELinux 规则），
+  所以"hook 拦截后改写成直接 exec bash"这条路同样被堵
+
+### 最终判断
+验收 B 的障碍不是 hook 能力（本轮铁证 hook 能拦能路由），
+而是 pty child 无法直接 exec app_data_file 的 shell（SELinux EACCES），
+只能经 linker64（丢 preload）。这是免 root Android app 的确定边界。
+要突破必须让交互 shell 本身成为系统可 exec 的 ELF（如安装到 /system 或
+用系统 shell 承载），超出 app 沙箱能力。
+
+### 状态
+所有尝试改动回退，稳定版 native + APK 恢复、终端正常、通配 STABLE_OK。
+工作区干净、official 锚、设备清理完成。
