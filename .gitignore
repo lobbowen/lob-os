@@ -57,5 +57,6 @@ container/app/src/main/assets/musl/
 
 dist-python/
 dist-llvm/
+dist-glibc-runtime/
 
 backup/

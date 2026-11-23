@@ -179,3 +179,33 @@ flock 系统能力缺口补齐 = 注入 `DSH_FLOCK_NATIVE` 指向我们的 .so�
 无需改成 .node），官方 shim 用 process.dlopen 加载、tryLock 实测可用。
 这是整个排查里第一个"零改动、纯环境注入"即可补齐的系统能力缺口，
 是兼容契约层第一步落地的最佳最小样例。
+
+---
+
+## 2026-11-24 第六轮：glibc-runtime 组件实施（功能通，形态门禁待解）
+
+### 已完成（实证）
+- 钉值：component-sources.json 加 glibc-runtime（Debian libc6 2.41-12+deb13u5 arm64，sha256 钉值）
+- recipe：build-component-glibc-runtime.sh，fetch-pinned 取 deb → ar/tar 解 →
+  落位 loader + libc/libm/libpthread/libdl/nss（12 个库，3.6MB）+ bin/glibc-run launcher
+- 打包：component-glibc-runtime-2.41-12+deb13u5-c6e69ff2b22e-android-arm64.zip（1.4MB），
+  entry=bin/glibc-run（shebang，elf-form 认）
+- 设备功能验证（正式组件 zip 解压）：
+  - loader 直接跑 echo → FUNCTION_OK
+  - glibc-run launcher 跑 echo → LAUNCHER_OK
+  - **验收D（通配判据）：未见过的纯 glibc 程序 cat，零配置直接跑 → 输出正确，EXIT=0**
+
+### 未通过：piece-shape 形态门禁
+verify-piece-shape.sh 要求 lib/*.so 全是 dyn-plain（无 PT_INTERP），
+但 glibc 的 libc.so.6 客观上是 dyn-interp（GNU 故意做成可执行以打印版本），
+elf-form 自动建的 libc.so 链接解析到它 → 被判"程序形态字节在库目录"。
+这是项目形态规范对"系统基础库"的盲区（普通库无 PT_INTERP，glibc 是例外）。
+
+### 下一步（待决策）
+1. 形态规范扩展：对 SONAME 链里的官方系统库豁免 dyn-interp 判定（需规范维护者确认），
+   或 glibc-runtime 用独立形态判定路径。
+2. 门禁过后走正式 testing 发布 + PackageInstaller 安装验证。
+3. 验收 B（exec hook 自动路由）和 C（getuid=0）需 d1 hook guest 模式，另做。
+
+结论：通配能力在真机上功能已成立（cat 零配置跑通）；
+剩下是产品化门禁和 hook 自动路由，不是方案可行性问题。

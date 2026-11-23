@@ -5,6 +5,16 @@
   "ndkVersion": "30.0.16248370",
   "llvmVersion": "21.0.0",
   "sources": {
+    "glibc-runtime": {
+      "version": "2.41-12+deb13u5",
+      "sha256": "0966fc3da1a26cc57647c68b5736f791b6e7eb498173a7993f63b6c89b4ed4f5",
+      "urls": [
+        "https://deb.debian.org/debian/pool/main/g/glibc/libc6_2.41-12+deb13u5_arm64.deb",
+        "https://mirrors.tuna.tsinghua.edu.cn/debian/pool/main/g/glibc/libc6_2.41-12+deb13u5_arm64.deb"
+      ],
+      "$comment": "LobOS Linux 用户态底座：Debian aarch64 官方 libc6 包，含 ld-linux-aarch64.so.1 + libc/libm/libpthread/libdl + nss 库。单用户系统，无需 fake root/proot。sha256 钉 deb 字节，recipe 解 ar+tar 取核心 so。入口 bin/glibc-run 是 shebang launcher，经 guest loader 启动任意 glibc 程序。",
+      "entryName": "glibc-run"
+    },
     "bash": {
       "version": "5.2.15",
       "sha256": "13720965b5f4fc3a0d4b61dd37e7565c741da9a5be24edc2ae00182fc1b3588c",
