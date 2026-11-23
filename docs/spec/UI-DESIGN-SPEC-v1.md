@@ -781,3 +781,27 @@ CXX 同理用 clang++。配合 NODE_OPTIONS shim + PYTHON + LD_LIBRARY_PATH。
 "环境具备标准编译能力"完整实现：设备上 npm install 触发 node-gyp 时，只要注入这套环境
 （编译器组件 + shim + 环境变量），就能像标准 Linux 一样自动编译任意 Node 原生模块。
 本轮用 node-pty 验证闭环。此前主机侧 prebuild 方案不再是唯一路径。
+
+---
+
+## 二十九、发现项目正规 LLVM 组件 recipe（2026-11-23）
+
+设备侧编译环境手工验证闭环后（第二十八节），发现项目本来就有架构级方案：
+scripts/recipes/build-component-llvmtoolchain.sh + .github/workflows/build-llvmtoolchain.yml。
+它用 NDK 同源的 llvm-project 源码（PROJECTS=clang;lld）交叉编译出 clang/lld，
+并用 NDK sysroot + 工具链库（libunwind 等）组装完整组件 —— 正是我手工用 termux 包
+拼凑的那套，但同源构建，无版本错配（termux 混版本导致 include_next/libc++ 不匹配）。
+
+此前走 termux 手工包是弯路：没先查项目已有基础设施。
+
+### 本轮进展
+- 同源校验通过：NDK 30 / LLVM 21.0.0 与钉值 llvmVersion=21.0.0 一致；
+  钉的源码 21.1.0（同 21.x 线，recipe 校验接受）
+- 前置就绪：cmake 4.2.3、ninja 1.13.2（pip --break-system-packages 装）、CC=NDK clang
+- 启动 recipe 构建：正在走 fetch-pinned 下载 llvm-project-21.1.0.src.tar.xz（sha256 校验）
+- 构建未完成（源码下载中），待下一轮跟进
+
+### 正确方向
+组件化不是我另写 recipe，而是跑通这个已有 recipe → package-component.sh 打包 →
+testing 发布 → 设备验证安装。产出 llvm 组件后，node-gyp 设备编译用同源 clang，
+不会有手工 termux 方案的版本错配问题。
