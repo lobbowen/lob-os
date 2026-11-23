@@ -909,3 +909,33 @@ npm install node-pty@1.1.0 -> added 2 packages，NPM_EXIT=0
 加载：E2E_PTY_OK function
 
 目标达成：终端里真实 npm install 能自动编译 Node 原生模块。
+
+---
+
+## 三十四、Dsh 完整安装运行实测（2026-11-24）
+
+用户要求实测 Dsh 安装运行（此前只有 --ignore-scripts 半成品）。本轮在设备上完整跑通。
+
+### 过程中发现并修复的产品化缺口（均在 TerminalProfile）
+1. node wrapper 用 linker64 启动导致 process.execPath=linker64：cnoke 据此推导
+   NODE_JS_EXECPATH 把 trampolines.cjs 当 ELF 读（bad ELF magic 23212f75='#!/u'）。
+   改为 node 直接 exec（node 在 app_data_file 可直接执行，只要 LD_LIBRARY_PATH 对），
+   node-gyp 入口同样改直接 exec。
+2. cmake 不认复合 CC 字符串（koffi 用 cnoke 直接调 cmake）：
+   新增 cc-wrap/cxx-wrap（#!/system/bin/sh 单路径 wrapper，内部带全部参数），
+   CC/CXX 指向 wrapper —— node-gyp/make 与 cmake 一套环境同时满足。
+3. CMake 检测宿主 Android 时从 $PREFIX/include/android/api-level.h 读 API 级别，
+   空 PREFIX 解析成 /include/... 失败：注入 PREFIX=<llvm sysroot>/usr。
+
+### npm 11 install-scripts allowScripts 机制
+默认不跑生命周期脚本；`npm install-scripts approve --all` 未真正批准全部，
+需按包名 `approve koffi node-pty <pkg>` 才生效。
+
+### 最终实测（全自动环境，不手工设任何环境变量）
+- npm install @deepseek-ai/dsh（664 包）→ approve 原生包 → reinstall 触发生命周期
+- koffi.node（1.1MB，cnoke 现场编译）+ node-pty pty.node（100KB，node-gyp 现场编译）就位
+- dsh --version = 0.2.2-rc.5（EXIT 0）
+- dsh --help 正常（EXIT 0）
+- 原生模块加载：koffi=function pty=function（NATIVE_EXIT 0）
+
+结论：Dsh 在 LobOS 设备上完整安装并可运行，原生模块由设备工具链现场编译。

@@ -17,6 +17,30 @@ object TerminalProfile {
         runCatching { out.writeText(text) }
         ensureNodePosixShim(ctx)
         ensureNodeGypEntry(ctx)
+        ensureCompilerWrappers(ctx)
+    }
+
+    private fun ensureCompilerWrappers(ctx: Context) {
+        val llvmv = runCatching {
+            val cur = runCatching { ProgramDir(ctx, "llvm").currentVersion() }.getOrNull()
+            cur ?: runCatching { ProgramDir(ctx, "llvm").installedVersions().singleOrNull() }.getOrNull()
+        }.getOrNull() ?: return
+        val home = File(File(ctx.filesDir, "opt/llvm"), llvmv).absolutePath
+        val clang = File(File(home, "bin"), "clang-21").absolutePath
+        val clangPp = File(File(home, "bin"), "clang++").absolutePath
+        if (!File(clang).isFile) return
+        val extra = "--target=aarch64-linux-android35 -resource-dir=$home/lib/clang/21 " +
+            "--sysroot=$home/sysroot -B $home/bin"
+        val ld = "$home/lib:${ctx.filesDir.absolutePath}/usr/lib"
+        val binDir = File(ctx.filesDir, "usr/bin")
+        for ((name, exe) in listOf("cc-wrap" to clang, "cxx-wrap" to clangPp)) {
+            val text = "#!/system/bin/sh\nexport LD_LIBRARY_PATH=$ld\nexec $exe $extra \"$@\"\n"
+            runCatching {
+                val out = File(binDir, name)
+                out.writeText(text)
+                out.setExecutable(true)
+            }
+        }
     }
 
     private fun ensureNodeGypEntry(ctx: Context) {
@@ -36,7 +60,7 @@ object TerminalProfile {
         val text = buildString {
             appendLine("#!/system/bin/sh")
             appendLine("export LD_LIBRARY_PATH=$nodeHome:$sysLib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}")
-            appendLine("exec $LINKER $node $gypPath \"\$@\"")
+            appendLine("exec $node $gypPath \"\$@\"")
         }
         runCatching {
             val out = File(File(ctx.filesDir, "usr/bin"), "node-gyp")
@@ -81,6 +105,9 @@ object TerminalProfile {
             val files = binDir.listFiles()?.toList().orEmpty()
             val verHome = binDir.parentFile?.absolutePath ?: continue
             val isPython = e.id == "python"
+            // node 必须直接 exec（不能用 linker64）：否则 process.execPath 变成 linker64，
+            // cnoke 等构建工具据此推导 NODE_JS_EXECPATH 会把 .cjs 当 ELF 读而失败。
+            val isNode = e.id == "node"
             val hasBundledSo = runCatching {
                 File(verHome).listFiles()?.any { it.isFile && it.name.endsWith(".so") } == true
             }.getOrDefault(false)
@@ -102,6 +129,9 @@ object TerminalProfile {
                     ExecEntry.detect(f) is ExecEntry.Shape.Elf -> when {
                         isPython -> sb.appendLine(
                             "$name() { PYTHONHOME=$verHome LD_LIBRARY_PATH=$libPath $LINKER $path \"\$@\"; }"
+                        )
+                        isNode -> sb.appendLine(
+                            "$name() { LD_LIBRARY_PATH=$libPath $path \"\$@\"; }"
                         )
                         hasBundledSo -> sb.appendLine(
                             "$name() { LD_LIBRARY_PATH=$libPath $LINKER $path \"\$@\"; }"
@@ -148,10 +178,13 @@ object TerminalProfile {
         sb.appendLine("export PYTHON=\"$base/usr/bin/python3\"")
         // /tmp 在 app 沙箱不可写；node-gyp 要 TMPDIR 建临时目录。
         sb.appendLine("export TMPDIR=\"$base/.tmp\"")
-        // clang 从 NDK 源码交叉编出、无默认 triple；显式给 target + 资源目录 + sysroot + 链接器搜索路径。
-        val extra = "--target=$target -resource-dir=$resource --sysroot=$sysroot -B $bin"
-        sb.appendLine("export CC=\"$LINKER ${clang.absolutePath} $extra\"")
-        sb.appendLine("export CXX=\"$LINKER ${clangPp.absolutePath} $extra\"")
+        // CC/CXX 指向单路径 wrapper（内部带全部参数）：node-gyp/make 当命令串用、
+        // cmake 当可执行路径用（复合字符串 cmake 不认），一套环境同时满足两者。
+        sb.appendLine("export CC=\"$base/usr/bin/cc-wrap\"")
+        sb.appendLine("export CXX=\"$base/usr/bin/cxx-wrap\"")
+        // CMake 检测宿主 Android 时从 $PREFIX/include/android/api-level.h 读 API 级别；
+        // 不给会在 app 沙箱里解析成 /include/... 而失败。
+        sb.appendLine("export PREFIX=\"$sysroot/usr\"")
         val nodeHome = runCatching {
             val nv = runCatching { ProgramDir(ctx, "node").currentVersion() }.getOrNull()
                 ?: runCatching { ProgramDir(ctx, "node").installedVersions().singleOrNull() }.getOrNull()
