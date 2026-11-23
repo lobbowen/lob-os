@@ -727,3 +727,30 @@ Dsh 原生依赖链问题闭环。Node 原生模块工具链现覆盖 node-gyp �
 真正让"环境具备标准编译能力"的形态是把编译器做成 LobOS 可安装组件
 （类似 node/python），让 node-gyp 在设备上能调它。本轮验证了可行性前提
 （clang 能在 bionic/app_data_file 上跑并编译），组件化工程尚未实施。
+
+---
+
+## 二十七、设备侧编译环境根因链完整定位（2026-11-23）
+
+用户指出：标准 Linux 上 npm install 自动调编译器是 Node 原生能力，我们环境缺这个能力。
+本轮在设备上逐步实证，定位了完整根因链：
+
+### 已逐项打通（实证）
+1. aarch64 clang 能用 linker64 在 bionic/app_data_file 上运行并编译（前节已验证）
+2. node-gyp configure 需要 PYTHON：设 PYTHON=linker64+python3 后 configure 成功
+3. node-gyp build 用 which/isexe 找 make 失败：
+   根因是 Android node 缺 process.getuid/getgid/getgroups（全 undefined），
+   isexe 的 checkMode 拿不到 uid/gid 抛错 -> which 判定所有文件不可执行
+   解法：NODE_OPTIONS=--require=<shim>，shim 给 process 补这三个函数。
+   实测 shim 后 which 找到 make/python3，build 阶段不再报 not found。
+4. C 编译需要头文件：termux ndk-sysroot + clang 内置头（lib/clang/21/include）已就位。
+
+### 剩余障碍
+C++ 编译时 c++/v1/stddef.h 的 #include_next <stddef.h> 断链：
+--sysroot 把 termux c++/v1 加入搜索路径，但 clang 内置头目录优先级排在其后，
+include_next 找不到内置 stddef.h。这是 sysroot/内置头搜索路径组合问题，
+需要正确的 -isystem 顺序或让 clang 用自带 C++ 头，正在收敛，未盲目打补丁。
+
+### 结论
+"环境具备标准编译能力"的根因链已完整定位（编译器/Python/make/uid-shim/头文件），
+4/5 环节已实证打通，剩 C++ include_next 一处路径配置。全程未改 node/node-gyp/模块源码。
