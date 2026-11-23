@@ -460,3 +460,33 @@ detail=java.io.IOException: Cannot run program ".../usr/bin/bash": error=13, Per
 ### 交付状态
 所有 PtySession/TerminalProfile/native 尝试改动全部回退，稳定版 APK 恢复。
 工作区干净、official 锚、设备清理终端稳定。通配能力稳定入口 glibc-run 不变。
+
+---
+
+## 2026-11-24 第十五轮：诊断收窄到 read_interp（env 假设被推翻）
+
+### 决定性观测
+稳定版 PTY 下（未加任何 env 注入）：
+- 交互 bash 进程 `/proc/<pid>/maps` 里 hook 映射数 = 4 → **hook 确实在 PTY shell 里**
+  （由 librivospty.so 的 DT_NEEDED 链加载，不需要 LD_PRELOAD）
+- 终端 env 显示 LOBOS_GLIBC_LOADER/LIBDIR 存在（RuntimeEnvironment 注入）
+- 但终端敲 glibc 程序 → Permission denied、guest 路由记录 0
+
+### 结论（推翻第十四轮假设）
+"env 没传进来"是错的——hook 在、LOBOS_GLIBC_* 也在。
+guest 分支不触发的原因收窄到 exec-path.c 的 `read_interp(path, interp, ...)`：
+- 同一函数在独立进程（run-as/shell 域）能读到 glibc ELF 的 PT_INTERP 并触发路由
+  （第十四轮 CHILD_FORM_ROUTE_OK）
+- 在 PTY 交互 bash（untrusted_app 域）里读同一个 app_data_file 程序却没触发
+- 差异是 SELinux 域 / bash -i 启动上下文对 open()（且 open 被 open-fallback hook）的影响
+
+### 最终状态
+按 goal 约束（30 分钟内无法定位到可安全修复的单点则停），停止 PtySession/env 试错。
+所有尝试改动已回退，工作区干净、稳定版 APK 在设备上、终端正常、测试残留清理完成。
+通配能力稳定入口 glibc-run 不变。
+
+### 下一阶段（诊断已足够精确）
+在 exec-path.c 的 guest 判定处加一条 compat-report（记录 read_interp 返回值与
+interp 内容），在真机 PTY 域跑一次即可确认 read_interp 失败的具体原因
+（open 被拒 / 路径重定向 / ELF 头读取错位），然后针对性修——这是有明确诊断点的工程，
+不再是盲试。
