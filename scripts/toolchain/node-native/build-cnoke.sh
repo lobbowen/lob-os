@@ -3,8 +3,8 @@ set -euo pipefail
 
 # cnoke.cjs 自研构建体系的模块（非 node-gyp）交叉编译到 Android arm64
 # 用法: ANDROID_NDK=<ndk> build-cnoke.sh <模块目录> <cnoke源码子目录> [输出.node]
-MODULE_DIR="${1:?用法: build-cnoke.sh <包目录> <源码目录如src/koffi> [输出.node]}"
-SRC_DIR="${2:-src/koffi}"
+MODULE_DIR="${1:?用法: build-cnoke.sh <包目录> <源码目录相对包根> [输出.node]}"
+SRC_DIR="${2:?用法: build-cnoke.sh <包目录> <源码目录相对包根> [输出.node]}"
 OUT="${3:-}"
 NDK="${ANDROID_NDK:?请先设置 ANDROID_NDK}"
 API="${ANDROID_API:-28}"
