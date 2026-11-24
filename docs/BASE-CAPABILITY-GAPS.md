@@ -1260,3 +1260,38 @@ loader 的 handler。这是**一次性的二进制 patch**，patch 一次所有 
 官方 glibc node + 官方 linux-arm64 addon + 组件补 C++ 库 + loader handler 已被
 证明各自全部有效；唯一缺口是 node 覆盖 handler，一次性 patch 解决。
 整个 node 生态之后与真实 linux arm64 一致，所有 npm 原生模块免重编。
+
+---
+
+## patch libc __sigaction 尝试（未采用，记录风险）
+
+### 思路
+既然 V8 初始化覆盖 loader 的 SIGSYS handler，可在 libc.so.6 的 __sigaction
+入口 patch：signum==31 时直接返回0（不覆盖），其余走原逻辑。一次 patch
+让所有 glibc 程序都无法覆盖 loader handler，整类问题解决。
+
+### 实现与失败
+- __sigaction 在 libc.so.6 偏移 0x385a0，原3条指令
+  (paciasp; sub sp,#0x50; adrp x4,...) 替换为 b 到 .eh_frame 代码洞。
+- cave 逻辑：cmp w0,#31 / b.ne replay / mov w0,#0; ret / replay原3条+跳回。
+- 反汇编验证字节码正确（b.ne 编码用汇编器确认 0x54000061）。
+- 真机 app 域：node 脚本报 **Bus error**。
+
+### 失败根因（明确）
+两个 bug 任一即可致命：
+1. ADRP 是 PC 相对寻址，在 cave(0x17a2b8) 重放算出的地址与在原入口
+   (0x385a8) 不同 -> 非法地址。
+2. SIGSYS 分支直接 ret 未恢复 prologue 的栈(sub sp,#0x50 + stp x29,x30 + paciasp)
+   -> 栈不平衡 + PAC 未恢复。
+
+### 结论：不采用快速 patch
+这条路能走通但需正确处理栈平衡和 PC 相对指令重放（把判断点放在
+prologue 之后、且恢复栈与 PAC），风险高且收益仅是"避免 node 覆盖 handler"。
+已在真机验证恢复原 libc 后系统正常。
+
+### 最终状态（不变）
+产品 loader/so/libc 全部为已验证版本，交付稳定。
+零编译大方向（官方 glibc node + 官方 addon + 组件补 C++ 库）各组件已验证有效；
+剩余 node 覆盖 SIGSYS handler 是一次性工程（正规做法：patch node 源码里
+V8 的 signal 初始化逻辑或重装 handler，而非运行时二进制 patch libc），
+需要整块时间做，不影响当前交付。
