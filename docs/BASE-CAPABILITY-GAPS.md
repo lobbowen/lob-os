@@ -1557,3 +1557,32 @@ seccomp SIGSYS → 此时 loader 在 _dl_start 装的 handler 已被移除/绕�
 ### 产品状态
 所有诊断 patch 回退，产品 loader 恢复 8680a1c5，节点恢复 bionic，
 验收 B 与核心 dsh 完成，工作区干净，终端稳定。
+
+---
+
+## 最后一批 strace 铁证（推翻若干猜测，锁定 clone3）
+
+用真 strace 在 shell 域追踪 glibc node 脚本：
+- node 完整初始化**大量调用 clone3**（CLONE_THREAD，每次 = 成功 tid）与
+  set_robust_list（每个新线程一次，= 0）。二者是 V8 线程创建路径。
+- Node 对 SIGSYS 只做 `rt_sigaction(SIGSYS, NULL, ...)` 查询、读到 SIG_DFL——
+  没有把 SIGSYS 设为自己的 handler。
+- seccomp-sim2 单独 TRAP clone3(435) + node + tunable → Bad system call；
+  不 TRAP clone3 时带正确 tunable → 脚本成功（输出 T）。
+  即：**clone3 被 TRAP 是 node 脚本失败的充分条件**。
+
+### 对前几轮结论的修正
+- 前一轮"set_robust_list(99) 是直接 syscall"的证据（pthread_create 修复后
+  CREATE=0）成立但不完整——真正让 node 脚本失败的是 clone3。
+- "handler 在子线程 SIGSYS 时不存在"的证据（日志 0 字节）仍成立。
+- SIGSYS loader 的 handler 在 sim2 TRAP clone3 下也救不活 pthreadprobe——
+  handler 返回 -ENOSYS 未触发 glibc clone_internal 的 fallback 到 clone。
+
+### 最终技术状态（诚实）
+根因链：node 脚本 → V8 线程创建 → clone3 → app 域 seccomp TRAP →
+SIGSYS handler 此时已不在（或返回值/PC 恢复不能让 glibc fallback）→ signal 31。
+解法仍在 loader/handler 层（让 clone3 的 TRAP 正确 fallback 到 clone），
+是明确的一点，但当前 handler 实现尚未做到。
+
+产品状态：loader 8680a1c5 / node bionic / 终端稳定 / 验收 B 与核心 dsh 完成 /
+工作区干净。
