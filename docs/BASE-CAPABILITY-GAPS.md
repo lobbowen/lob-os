@@ -693,3 +693,33 @@ glibc 会 fallback 到非 rseq 路径），推进 PC 越过 svc #0。
 - build-kernel-compat.sh 纳入编译
 - 真机验证：终端直接敲 glibc 程序不再 SIGSYS
 
+
+---
+
+## 2026-11-24 第二十二轮：SIGSYS handler 实质推进与当前边界
+
+### 完成的工作（可复现）
+1. 建立无 root 的 aarch64 glibc 交叉工具链获取方式：apt-get download
+   gcc-15-aarch64-linux-gnu / libc6-dev-arm64-cross / linux-libc-dev-arm64-cross /
+   libgcc-s1-arm64-cross / libc6-arm64-cross，dpkg-deb -x 到 /tmp 本地前缀
+2. 用该工具链按 cortex 原版（标准 sigaction + memset）编译出标准 glibc ABI
+   的 SIGSYS handler so（NEEDED libc.so.6），产物可编译可复现
+3. 固化为 scripts/toolchain/build-guest-sigsys.sh + container/native/guest-sigsys/sigsys.c
+4. 完成集成框架：RuntimeEnvironment 注入 LOBOS_GUEST_SIGSYS、exec-path.c guest
+   分支把 so 经 --preload/LD_PRELOAD 传给 glibc loader、build-kernel-compat.sh 带入
+
+### 关键实证
+- glibc loader 确实加载 preload so（LD_DEBUG=libs 显示 calling init）
+- 但 app 域（untrusted_app, Seccomp=2）下程序仍 `Bad system call RC=159`，
+  SIGSYS handler 没能兜住；freestanding raw-syscall 版和 glibc 标准版都试过
+
+### 当前边界（如实）
+验收 B（终端直接敲 glibc 程序）仍未通过。已排除：路径、loader exec 权限、
+env 传递、so 加载——这些都已打通。剩下的是 SIGSYS handler 生效时机/完整性：
+cortex 完整方案还包括 hook sigaction/rt_sigaction/signal/sigprocmask 防止 guest
+覆盖 handler、以及 constructor(101) 更早加载，这些尚未全部移植。
+这是明确的、有权威参考的后续工程，不是不可解。
+
+### 交付状态（未退化）
+集成改动保留：终端正常（BIONIC_FINAL_OK）、glibc-run 通配正常（FINAL_OK）、
+official 锚。所有改动已提交。SIGSYS so 用 glibc 工具链构建，可复现。

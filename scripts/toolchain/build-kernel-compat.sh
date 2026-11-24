@@ -84,6 +84,7 @@ else
   echo "  - glibc loader 未产（先跑 build-component-glibc-runtime.sh），本次 APK 不含" >&2
 fi
 
+
 find "$OUT" -maxdepth 1 -type f \( -name 'liblobos*.so' -o -name 'librivospty.so' \) \
   -exec chmod 644 {} + 2>/dev/null || true
 

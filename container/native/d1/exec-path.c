@@ -461,14 +461,21 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
           const char *loader = getenv("LOBOS_GLIBC_LOADER");
           const char *libdir = getenv("LOBOS_GLIBC_LIBDIR");
           if (loader && libdir && loader[0] == '/' && libdir[0] == '/') {
-              char **ga = (char **)malloc((ac + 4) * sizeof(char *));
+              /* glibc guest 的 SIGSYS handler（freestanding so）经 loader 的
+                 --preload 注入；Android seccomp 拦 rseq 等 syscall 时靠它兜住。 */
+              const char *sigsys = getenv("LOBOS_GUEST_SIGSYS");
+              int has_sigsys = (sigsys && sigsys[0] == '/') ? 1 : 0;
+              int extra = has_sigsys ? 2 : 0;
+              char **ga = (char **)malloc((ac + 4 + extra) * sizeof(char *));
               if (!ga) { errno = ENOMEM; return -1; }
-              ga[0] = (char *)loader;
-              ga[1] = "--library-path";
-              ga[2] = (char *)libdir;
-              ga[3] = (char *)path;
-              for (int k = 1; k < ac; k++) ga[3 + k] = argv[k];
-              ga[3 + ac] = 0;
+              int gi = 0;
+              ga[gi++] = (char *)loader;
+              ga[gi++] = "--library-path";
+              ga[gi++] = (char *)libdir;
+              if (has_sigsys) { ga[gi++] = "--preload"; ga[gi++] = (char *)sigsys; }
+              ga[gi++] = (char *)path;
+              for (int k = 1; k < ac; k++) ga[gi++] = argv[k];
+              ga[gi] = 0;
               lobos_compat_report("d1.exec-path", "glibc->guest-loader", path);
               /* guest 进程由 glibc loader 加载，不能带 bionic 的 LD_PRELOAD hook
                  （那是 bionic ELF，glibc loader 加载不了）；env 里去掉它。 */
