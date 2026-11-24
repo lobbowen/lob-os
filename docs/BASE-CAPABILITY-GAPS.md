@@ -654,3 +654,42 @@ glibc 初始化所需的 syscall（bionic 程序不调所以能跑）。run-as s
 架构修复保留（未破坏现有能力：bionic 命令正常、glibc-run FINAL_GR_OK、终端正常）。
 所有临时诊断代码（exec-trace、guest-preexec、guest-exec-fail）已移除。
 验收 B（终端直接跑 glibc 程序）仍受 SIGSYS 限制，是系统级下一阶段课题。
+
+---
+
+## 2026-11-24 第二十一轮：SIGSYS 根因与"谁配合"的权威结论
+
+### 关键纠正：不需要系统配合，app 侧 SIGSYS handler 即可
+调研同类纯用户态方案（无 proot）得到权威结论：
+- DroidDeck nativeguest（LD_PRELOAD hook 直接跑 glibc rootfs）README 明确写：
+  "answers the system calls Android's seccomp policy kills a process for (SIGSYS handler).
+   There is no tracer." 来源 https://github.com/Droid-Deck/DroidDeck
+- ssfuisu/cortex（libcortex-hook，DroidDeck 的上游）给出完整实现：
+  - syscalls.c：列出 Android seccomp 用 SIGSYS 拦的 syscall 集合
+  - signals.c：SIGSYS handler 从 siginfo->si_syscall 取 syscall 号，
+    把返回值写回 ucontext 的 x0，并按需跳过 svc #0 指令，让被拦 syscall
+    "假成功"或返回 ENOSYS，程序继续跑而不死
+
+### 我们设备上的确切障碍
+- app 进程 Seccomp=2（filter），PTY/glibc 程序在此域被 SIGSYS(31) 杀
+- glibc 2.41 启动时调用 rseq（arm64 syscall 293）；Android seccomp 拦 rseq
+- cortex 的列表里 rseq(293) 明确在列：unshare/add_key/request_key/keyctl/
+  setns/seccomp/bpf/rseq + 所有 424-511 新 syscall（含 epoll_pwait2=424），
+  另有 uid/gid/set_robust_list 类模拟假成功
+- 我们当前 liblobosposix.so 完全没有 SIGSYS handler（grep 命中 0）——这就是缺的最后一块
+
+### 结论
+之前说"需要系统级 seccomp policy 配合、app 做不到"是错的。
+正确做法：在 liblobosposix.so 里装 SIGSYS handler（SA_SIGINFO），
+拦截被 seccomp TRAP 的 syscall，返回 -ENOSYS 或 0（rseq 返回 ENOSYS 即可，
+glibc 会 fallback 到非 rseq 路径），推进 PC 越过 svc #0。
+这是纯 app 侧 LD_PRELOAD 能做的，无需 root/系统镜像/SELinux 改动。
+
+### 下一阶段（明确工程）
+把 cortex syscalls.c + signals.c 的原理移植到 container/native/d1/：
+- 新增 sigsys.c：constructor(101) 装 SIGSYS handler；按 si_syscall 处理；
+  aarch64 下写回 x0 + 判断/推进 pc 越过 svc #0
+- 同时 hook sigaction/rt_sigaction/signal/sigprocmask 防止被 guest 程序覆盖/屏蔽
+- build-kernel-compat.sh 纳入编译
+- 真机验证：终端直接敲 glibc 程序不再 SIGSYS
+
