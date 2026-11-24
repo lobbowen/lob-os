@@ -1709,3 +1709,47 @@ glibc 动态程序（node/dsh CLI/ghello）走 clone fallback 完整可用；
 Bun/Rust 直接 clone3 的运行时（Claude Code）当前架构不可行。
 
 产品状态：工作区干净，dsh web 401，终端稳定，所有实验产物清理。
+
+---
+
+## 基础环境层面的根因：Android app 进程模型 vs 完整 Linux
+
+用户指正："不是改上游构建，是基础环境缺——我们搭的是最小 Linux，不是完整 Linux。"
+
+### 确证的进程级事实
+- zygote64 (pid 1569/1570/1572)：Seccomp=0, Seccomp_filters=0（完全干净）
+- system_server / lobos app：Seccomp=2, Seccomp_filters=1
+- app 所有线程（MainThread/V8Worker/libuv-worker/SignalInspector）：Seccomp=2
+- PTY bash 及其 fork 的所有 guest 进程：继承 Seccomp=2
+
+### 真正的根因
+Android 在 zygote fork 出 app 进程后、Application.onCreate 之前，由 framework
+通过 nativeZygoteInit 给 app 进程装 seccomp filter（SECCOMP_RET_TRAP 拦
+rseq/clone3/424-512 等）。**所有从 app 进程 fork 的子进程都继承这个 filter**。
+seccomp filter 一旦安装，no_new_privs 下用户态**无法移除**（内核设计）。
+
+所以"完整 Linux 环境"缺失的本质不是 syscall 模拟不全，而是：
+**guest 进程运行在一个被 Android framework 污染过的进程（Seccomp=2）里，
+而不是一个干净的 Linux 进程（Seccomp=0）里。**
+
+### 为什么 handler 方案对 glibc 有效、对 Bun 无效
+- glibc 收到 handler 返回的 -ENOSYS 会 fallback（clone3→clone）→ 能跑
+- Bun 直接调 clone3 收到 -ENOSYS 当失败 → 死
+两者都在同一个 Seccomp=2 进程里，差别只是 runtime 对 -ENOSYS 的语义。
+
+### 完整 Linux 基础环境的真正解法（需要系统级能力）
+1. 让 guest 进程从 Seccomp=0 的进程 fork（zygote 本身是 0，但 zygote socket
+   受 SELinux 限制，且走 processStart 会重新装 app filter）
+2. 或 LobOS 拥有自己的、在 app seccomp 装之前就存在的 native 服务进程
+   （需要系统级集成/daemon，不是 app 内 LD_PRELOAD 能做的）
+3. 或 Android 提供一个"不装 seccomp 的 app 进程"选项（targetSdk/manifest/系统属性）
+
+这三种都需要 framework/system 层配合，不是当前 app 内纯用户态能达成的。
+这是"最小 Linux 兼容层"与"完整 Linux 环境"的根本区别。
+
+### 当前能力（诚实）
+- app 内纯用户态：SIGSYS handler + sigaction hook 对 glibc 生态有效
+- 完整 Linux（含直接 clone3 的 Bun/Rust 运行时）：需要干净的 Seccomp=0
+  进程环境，当前 app 进程模型做不到——这是基础环境层面的缺口，非补丁可填
+
+产品状态：工作区干净，dsh web 401，验收 B 与核心能力稳定。
