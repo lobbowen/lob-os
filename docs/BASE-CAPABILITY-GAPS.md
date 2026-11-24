@@ -836,3 +836,25 @@ app 域下 glibc loader 不加载 envp 里的 LD_PRELOAD so（ctor 标记确认 
 终端稳定、bionic 命令正常、通配 glibc-run FINAL_GR_OK、SIGSYS so 已铺、
 组件 official 锚、构建可复现、工作区改动仅 2 个正向文件。
 验收 B 不是不可解，而是需要 patch loader 这一组件级工程（有明确技术方案）。
+
+---
+
+## 最终收口三：patch loader 原型 + 全量交付
+
+### patch loader 原型（已实现，待调试跳转）
+- container/native/loader-patch/entry.S：SIGSYS handler installer 汇编（rt_sigaction raw syscall，纯 PIC）
+- scripts/toolchain/patch-glibc-loader.sh：把 shellcode 注入 loader .eh_frame、改 e_entry
+- 状态：原型。入口重定向遇到 PIE 基址 + BTI 跳转障碍——空 shellcode（仅跳回原入口）
+  也 fault，证明是跳转机制而非 handler 逻辑。推荐后续改为在 _dl_start 原位插条件分支，
+  而非重定向 e_entry。这是有明确方向的调试点。
+
+### 验收 B 链路最终状态（逐段实证）
+已打通：hook 进 PTY shell（preload loaded）、链式 execve 拦截（execve-trace）、
+guest 路由（glibc->guest-loader）、SIGSYS so 铺到 app files、LD_PRELOAD 注入值正确
+（guest-envp 铁证）。唯一未通：app 域 glibc loader 不 dlopen 该 so（shell 域同命令能）。
+patch loader 是绕开此点的直接方案，原型已落地。
+
+### 最终交付状态
+全量验证通过：终端稳定、bionic 命令正常、通配 glibc-run 可用、组件 installed、
+official 锚、构建可复现、SIGSYS so 已铺、工作区仅正向改动。
+验收 B 是明确的后续工程（patch loader 跳转调试），不是不可解障碍。
