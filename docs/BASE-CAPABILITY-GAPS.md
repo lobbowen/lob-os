@@ -1360,3 +1360,33 @@ node script.js 死"的真正差别（脚本执行触发完整初始化 -> 线程
 ### 交付不受影响
 产品件全部恢复为已验证版本，终端与验收 B 稳定。本节仅修正调查记录的准确性，
 不引入新的产品改动。
+
+---
+
+## dsh web 进展（本轮）：核心 dsh 已在终端正常工作，web profile 缺 ESM 内部模块
+
+### 决定性进展
+- 补齐官方 `node-addon-require-builtin-linux-arm64-gnu` 件（放到 loader 期望的
+  android-arm64 目录名下）后，真机终端 `dsh --version` -> `0.2.2-rc.5` 成功。
+- 这推翻"两套 libc 不能共存"的臆断：**官方 glibc NARB .node 在 bionic node
+  里能直接加载**（NAPI ABI 稳定，符号解析由 linker64 统一处理）。
+- 即核心 dsh CLI 已零编译直接兼容。
+
+### dsh web 剩余缺口（具体、局部）
+`dsh web` 失败在 cordis-plugin-loader 的 requireInternal：
+```
+requireInternal("internal/modules/esm/loader")?.getOrInitializeCascadedLoader()
+```
+它先试普通 `require`（需 --expose-internals），失败才用 NARB.requireBuiltin。
+错误 requireStack 指向 cordis-plugin-loader → NARB → custom-loader，
+MODULE_NOT_FOUND。NODE_OPTIONS=--expose-internals 设置了仍未通过——
+bionic node 的内部 ESM 模块路径/可用性与 dsh web 期待的不一致。
+
+### 定性
+这是 dsh web profile 特有的 ESM 内部模块依赖点，不是通用 Linux 兼容问题。
+核心 dsh（CLI、--version、host preparation）已零编译正常运行。
+要跑 dsh web 需补 `internal/modules/esm/loader`（或让 bionic node 暴露它），
+是 dsh web 专项适配，独立且局部。
+
+### 交付不变
+产品件全部恢复为已验证版本，终端稳定，验收 B 完成。
