@@ -131,7 +131,11 @@ object TerminalProfile {
                             "$name() { PYTHONHOME=$verHome LD_LIBRARY_PATH=$libPath $LINKER $path \"\$@\"; }"
                         )
                         isNode -> sb.appendLine(
-                            "$name() { LD_LIBRARY_PATH=$libPath $path \"\$@\"; }"
+                            // --expose-internals 让依赖 Node 内部模块的 CLI（dsh/cordis 等）
+                            // 能直接 require("internal/*")，无需私有 native addon；
+                            // NODE_OPTIONS 里放这个 flag 会被 bionic node 拒绝（RC=9），
+                            // 必须走命令行参数。
+                            "$name() { LD_LIBRARY_PATH=$libPath $path --expose-internals \"\$@\"; }"
                         )
                         hasBundledSo -> sb.appendLine(
                             "$name() { LD_LIBRARY_PATH=$libPath $LINKER $path \"\$@\"; }"

@@ -1586,3 +1586,37 @@ SIGSYS handler 此时已不在（或返回值/PC 恢复不能让 glibc fallback�
 
 产品状态：loader 8680a1c5 / node bionic / 终端稳定 / 验收 B 与核心 dsh 完成 /
 工作区干净。
+
+---
+
+## 最终解决：dsh web 完整跑通（通用 Node 内部模块适配）
+
+### 铁证（真机终端，产品化路径，零特殊命令）
+```
+$ dsh web
+dsh web: http://127.0.0.1:3080/?token=...
+curl http://127.0.0.1:3080/ -> HTTP 401（服务活着、正常鉴权）
+```
+用户敲 `dsh web` 即起服务。几十轮追求的目标达成。
+
+### 正解（推翻 glibc node 死路）
+根因是"Node 内部模块可达性 + 私有 addon 无 android 件"，不是 libc。
+按华为云权威方案（require-builtin → 纯 JS 替身）做两步通用适配：
+1. **纯 JS shim**：把 node-addon-require-builtin 的 index.js 换成几行 JS
+   （requireBuiltin(id){return require(id)}）。脚本 scripts/compat/apply-node-addon-js-shim.sh
+   幂等应用。无平台件、零编译、对所有 Node CLI 通用。
+2. **--expose-internals 命令行注入**：NODE_OPTIONS 放该 flag 被 node 拒绝（RC=9），
+   必须在命令行层。hook 的 exec_with（shebang env node 路径）检测 disp0=="node"
+   自动插入该参数；TerminalProfile 的 node shell 函数同步加。幂等。
+
+### 为什么之前走偏
+一直以为要 glibc node 配 glibc addon，实际 bionic node + JS shim 才是正解：
+- glibc node 在 app 域脚本执行触发 clone3 seccomp SIGSYS（铁证），是死路。
+- bionic node 一直能跑脚本；只要补上内部模块可达性（expose）+ addon 替身即可。
+- 用户质疑"上游有 arm64 兼容"是对的——只是解法不是换 libc，是替身+flag。
+
+### 产品状态
+exec-path.c（两处 expose 注入）、TerminalProfile.kt（node wrapper expose）、
+apply-node-addon-js-shim.sh（JS 替身脚本）为本次改动。
+glibc node 组件改造保留为可选实验模式（默认 bionic），不影响交付。
+验收 B 与核心 dsh 保持完成，工作区干净。
