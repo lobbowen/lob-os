@@ -1475,3 +1475,23 @@ GLIBC_HELLO_OK 立即恢复。
 产品件全部原版、工作区干净、验收 B 与核心 dsh 完成。dsh web 端到端未打通；
 通用解法方向（wrapper 注入 expose + glibc node 配上游 addon）已分步验证，
 端到端落地需要稳定大文件传输 + 非 ptrace 的 app 域 syscall 观测或 CI 环境。
+
+---
+
+## 真机验证：glibc node 在 app 域脚本执行不可行，默认值回退 bionic
+
+按主机侧改造产出 glibc node 组件后装机真机验证：
+- `node -v`（quick-exit，无完整 V8 初始化）→ v24.21.0 成功
+- `node <任意脚本>`（哪怕只有 console.log）→ signal 31，全部失败
+- shell 域 seccomp-sim(TRAP rseq) + 正确 tunable → 脚本成功（BASE_OK）
+
+结论：glibc node 脚本执行需要一个 app 域 seccomp 当前不给的条件
+（不只是 rseq——显式 export tunable 仍失败）。这不是 dsh 问题，是 glibc node
+在 untrusted_app 域的启动路径限制。核心 dsh 用 bionic node 正常（0.2.2-rc.5）。
+
+### 决策
+主机侧 glibc node 改造保留为可选实验模式（NODE_GLIBC=1），
+但默认值回退 bionic（NODE_GLIBC=0），CI 同步。
+理由：明知 glibc node 在当前 app 域脚本不可用，不能让它成为默认导致
+CI 产出的组件装上后 node 完全不可用。等 app 域 seccomp 适配完成再切换。
+设备已恢复 bionic node，核心 dsh 与验收 B 保持完成。

@@ -22,7 +22,7 @@ fi
 # PT_INTERP=/lib/ld-linux-aarch64.so.1，经 LobOS guest 路由用 SIGSYS loader 启动；
 # 依赖库（libc/libstdc++/libgcc_s 等）由 glibc-runtime 组件经 --library-path 供给。
 # NODE_GLIBC=0 时回退老的 bionic 自编译 libnode.so（保留给需要 bionic node 的场景）。
-NODE_GLIBC="${NODE_GLIBC:-1}"
+NODE_GLIBC="${NODE_GLIBC:-0}"
 
 mkdir -p "$STAGE/bin" "$RAW_DIR"
 

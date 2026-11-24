@@ -42,8 +42,8 @@ jobs:
     timeout-minutes: 60
     env:
       # 官方 linux-arm64 glibc Node：上游原生 addon 按 glibc 分发，node 必须同 libc。
-      NODE_GLIBC: '1'
-      COMPONENT_GLIBC_GUEST: '1'
+      NODE_GLIBC: '0'
+      COMPONENT_GLIBC_GUEST: '0'
     steps:
       - uses: actions/checkout@v4
 
