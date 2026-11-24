@@ -1620,3 +1620,32 @@ exec-path.c（两处 expose 注入）、TerminalProfile.kt（node wrapper expose
 apply-node-addon-js-shim.sh（JS 替身脚本）为本次改动。
 glibc node 组件改造保留为可选实验模式（默认 bionic），不影响交付。
 验收 B 与核心 dsh 保持完成，工作区干净。
+
+---
+
+## 关键定位：SIGSYS 发生在 loader 早期，LD_PRELOAD ctor 太晚
+
+用带 handler 写标记 + ctor 写标记的通用 so 做决定性诊断：
+- ghello（glibc 动态，走 guest 路由，有 tunable 关 rseq）：so 的 ctor 标记出现
+  （CTOR 写入）——证明 LD_PRELOAD 注入**有效**，so 被加载了
+- claude 完整模式（-p/--help/交互，RC=159 SIGSYS）：handler 写标记**完全没有**——
+  SIGSYS 在 so 的 ctor(101) 装 handler **之前**就发生了
+
+结论：claude 触发的 SIGSYS 发生在 glibc loader 启动最早期（LD_PRELOAD so 被
+加载和 ctor 执行之前）。因此 cortex 的 constructor(101) 方案对此无效——
+需要把完整 SIGSYS handler + sigaction 族 hook 直接编进 glibc loader 的
+`_dl_start` 最早期（早于 libc init、早于任何 LD_PRELOAD ctor）。
+
+这是"完全隐藏 Android"的最后一层，位置已精确定位：
+- 不是 addon / 平台识别（已解决）
+- 不是 LD_PRELOAD 注入机制（已证有效，ctor 出现）
+- 是 handler 安装时机：必须在 loader `_dl_start`，不能靠 so ctor
+
+### 已固化资产（供最后一步使用）
+- container/native/guest-sigsys/sigsys-universal.c：完整 cortex handler +
+  sigaction 族 hook 源码（已验证编译通过）
+- glibc 源码工具链：work/glibc-build/（glibc-2.41 + tc 交叉工具链）
+- rtld.c 早期 handler 安装点：_dl_start 的 bootstrap_map.l_relocated = 1 之后
+
+### 产品状态
+所有诊断恢复，产品 so 68624，工作区干净，终端/dsh web/验收 B 稳定。
