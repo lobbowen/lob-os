@@ -961,3 +961,35 @@ Android seccomp 的 si_code=1、rseq=293 与 cortex 文档一致。
 ### 交付状态（稳定）
 终端稳定、bionic 正常、通配 glibc-run FINAL_OK、official 锚、构建可复现、
 patched loader 原型与 selftest 证据全部留在仓库/文档。
+
+---
+
+## 决定性突破：SIGSYS 根因与有效解法（seccomp-sim 铁证）
+
+### seccomp 模拟器（seccomp-sim.c）实证
+用自编译静态 launcher 装 filter（TRAP rseq=293）后 exec loader，精确复现 app 域环境：
+- 原版 loader 无 tunable → `Bad system call` RC=159
+- 原版 loader + `GLIBC_TUNABLES=glibc.pthread.rseq=0` → **成功** RC=0
+- 原版 loader + tunable + 官方 glibc sigsys so → **成功** RC=0
+- 原版 loader + tunable + **bionic hook 的 LD_PRELOAD** → `version LIBC not found` 失败
+
+### 根因（100% 确认）
+1. Android seccomp 对 rseq(293) 发 SIGSYS；glibc 2.41 启动必调 rseq → 死
+2. 官方 tunable `glibc.pthread.rseq=0` 可让 glibc 跳过 rseq（seccomp-sim 铁证）
+3. guest 进程若混入 bionic hook 的 LD_PRELOAD，glibc loader 加载 bionic so 失败
+
+### 已实施的修复（保留在代码里）
+- exec-path.c guest 分支：强制注入 `GLIBC_TUNABLES=glibc.pthread.rseq=0`，
+  过滤掉 envp 里的 bionic LD_PRELOAD，只注入 glibc 编译的 sigsys so
+- RuntimeEnvironment：优先用 nativeLibraryDir 的官方原版 loader（可 exec）
+- build-kernel-compat.sh：nativeLib loader 用官方原版（不经 patch）
+- LOBOS_HOOK_SO 链式传递：hook 经 execve 传给子进程
+
+### 仍未攻克（精确边界）
+终端里 bash 的 execve 经 LD_PRELOAD interpose 不稳定：PTY bash 由 linker64 显式
+加载时，DT_NEEDED 链带来的 hook 不 interpose bash 自己的 execve，导致用户命令
+不经 guest 路由。seccomp-sim 已证明只要路由发生、组合就有效。
+最后一步：让 hook 稳定进入 PTY 交互 shell（native launcher 或 pty-session.c 改造）。
+
+### 交付状态
+终端稳定、bionic 正常、通配 glibc-run FINAL_OK、official 锚、构建可复现、工作区干净。

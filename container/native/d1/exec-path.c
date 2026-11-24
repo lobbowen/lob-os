@@ -458,8 +458,10 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
       if (read_interp(path, interp, sizeof interp) && strstr(interp, "ld-linux") != 0) {
           int envc = 0;
           while (envp && envp[envc]) envc++;
-          const char *loader = getenv("LOBOS_GLIBC_LOADER");
-          const char *libdir = getenv("LOBOS_GLIBC_LIBDIR");
+            const char *loader_env = getenv("LOBOS_GLIBC_LOADER");
+            const char *libdir = getenv("LOBOS_GLIBC_LIBDIR");
+            const char *loader = loader_env;
+
           if (loader && libdir && loader[0] == '/' && libdir[0] == '/') {
               /* glibc guest 的 SIGSYS handler（freestanding so）经 loader 的
                  --preload 注入；Android seccomp 拦 rseq 等 syscall 时靠它兜住。 */
@@ -483,6 +485,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                       int gj = 0;
                       for (int ei = 0; ei < envc; ei++) {
                           if (strncmp(envp[ei], "LD_PRELOAD=", 11) == 0) continue;
+                          if (strncmp(envp[ei], "GLIBC_TUNABLES=", 15) == 0) continue;
                           ge[gj++] = envp[ei];
                       }
                         if (has_sigsys) {
@@ -490,6 +493,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                             snprintf(sigpre, sizeof sigpre, "LD_PRELOAD=%s", sigsys);
                             ge[gj++] = sigpre;
                         }
+                      ge[gj++] = "GLIBC_TUNABLES=glibc.pthread.rseq=0"; /* seccomp: skip rseq */
                       ge[gj] = 0;
                       real_execve(loader, ga, ge);
                       free(ge);
