@@ -1753,3 +1753,31 @@ seccomp filter 一旦安装，no_new_privs 下用户态**无法移除**（内核
   进程环境，当前 app 进程模型做不到——这是基础环境层面的缺口，非补丁可填
 
 产品状态：工作区干净，dsh web 401，验收 B 与核心能力稳定。
+
+---
+
+## 最终确证（产品loader对照实验）：杀死claude的是clone3，不是rseq
+
+用产品 loader（8680a1c5，含 _dl_start handler）+ 原版可靠的 seccomp-sim
+（只 TRAP 单个 syscall）做对照：
+- TRAP rseq(293) + 产品loader + claude -p → **正常**（Not logged in）
+- TRAP clone3(435) + 产品loader + claude -p → **Bad system call**
+
+确证：产品 loader 的 handler 能救 rseq，救不了 clone3。
+app 域真实 seccomp 拦死 claude 的 syscall 是 **clone3**（rseq 已被 handler 兜住）。
+
+为什么 node 能跑、Bun 不能：
+- node（glibc）线程创建：clone3 被拦返回 ENOSYS → glibc fallback 到 clone(220) → 成功
+- Bun（自带 runtime）线程创建：直接 clone3，收到 ENOSYS 当失败 → 退出 159
+
+clone3 需要真实成功（返回合法 tid 并建线程），SIGSYS handler 无法模拟；
+handler 内再调 clone3 仍被同一 filter 拦。这是无 ptrace 架构下的真实硬边界。
+
+### app域wrapper方案的工程细节（也验证了）
+- loader 是 ET_DYN 解释器本身，exec-path 曾把它二次改写成 linker64（PHDR错误）
+  → 已在 exec-path.c 加 loader 路径豁免（basename 含 ld-linux/libglibc-loader）
+- 全局 LD_PRELOAD=bionic hook so 会被 glibc loader 加载导致 LIBC 版本冲突
+  → guest 启动需 unset LD_PRELOAD
+这两个工程点已验证，但都绕不过 clone3 的根本限制。
+
+产品状态：工作区干净，核心能力稳定。

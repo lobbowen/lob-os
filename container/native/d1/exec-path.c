@@ -466,6 +466,14 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
   if (!real_execve) { errno = ENOSYS; return -1; }
   if (!path) { errno = ENOENT; return -1; }
 
+  /* glibc loader 是解释器本身（ET_DYN，无 PT_INTERP）：显式执行它时
+     不能再被 ET_DYN->linker64 分支改写（那产生 PHDR 错误）。直接放行。 */
+  {
+    const char *lb = base_name(path);
+    if (lb && (strstr(lb, "ld-linux") != 0 || strstr(lb, "libglibc-loader") != 0))
+      return real_execve(path, argv, envp);
+  }
+
   if (parse_shebang(path, buf, sizeof buf, tok, 8, &ntok)) {
     const char *interp = tok[0];
     const char *disp0 = base_name(interp);
