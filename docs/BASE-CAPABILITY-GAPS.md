@@ -1426,3 +1426,30 @@ app 域 glibc node 还差 seccomp syscall 适配（clone3 线索，工具未可�
 ### 产品状态
 TerminalProfile 的 NODE_OPTIONS 改动已回退（对 bionic node 无效），shim 恢复原版，
 所有实验残留清理，工作区干净。核心 dsh CLI 与验收 B 保持完成。
+
+---
+
+## app 域 ptrace 受限的铁证（本轮，strace arm64 实测）
+
+装好 arm64 strace（+ 匹配 glibc2.41 的 libtinfo6_6.4，避免 GLIBC_2.42 依赖），
+把它作为 glibc 程序经 guest 路由放进 app 域：
+- `strace -V` 在 app 域终端正常输出版本 -> strace 二进制本身能跑（guest loader 加载成功）。
+- `strace -f -e trace=none -o out node t.js` -> `Unexpected wait status 0x1f:
+  Inappropriate ioctl for device`，追踪输出为空。
+
+结论：untrusted_app 域的 ptrace/wait 受限，strace 无法可靠追踪子进程。
+这从实测侧印证了产品方向"不用 ptrace"的正确性——也说明"靠 strace 抓 app 域
+node 的 SIGSYS"这条路在本架构下走不通。
+
+### 本轮净得
+- 可靠 syscall 数据（shell 域 glibc node）：set_robust_list=0、rseq=-1 ENOSYS
+  （优雅降级）、大量 futex、无 clone/clone3 -> 推翻此前 clone3 猜测。
+- app 域 ptrace 受限的实测证据。
+- 自制 seccomp 工具（sim2 / seccomp-fork）多次出现 BPF 偏移 bug，不可作根因依据。
+
+### 最终诚实状态（不变）
+dsh web 端到端未打通；核心 dsh 与验收 B 完成。
+通用解法方向（node wrapper 注入 --expose-internals + 官方 glibc node 配上游 addon）
+已分步验证，端到端落地需要：稳定的大文件传输通道 + 非 ptrace 的 app 域 syscall
+观测手段（或 CI 完整构建环境）。当前环境两者都不具备，不宜继续自动试探。
+产品件全部原版，工作区干净。
