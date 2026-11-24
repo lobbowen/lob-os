@@ -1680,3 +1680,32 @@ glibc node 组件改造保留为可选实验模式（默认 bionic），不影�
 ### 产品状态
 产品件全部恢复，工作区干净，终端/dsh web/验收 B 稳定。此边界为真实技术限制，
 不是工具误判。已如实记录，不再声称 Claude Code 完整可用。
+
+---
+
+## 真 strace 确证：claude 完整执行 = clone3 + set_robust_list（Bun 直接调）
+
+把 claude 官方 native binary（397MB）导出到 local/tmp，用真 strace 追踪
+`-p` 完整执行的 syscall（shell 域无 seccomp，观察程序真实行为）：
+```
+set_robust_list(...) = 0
+rseq(...) = -1 ENOSYS        (glibc loader 兜住，正常)
+clone3({CLONE_THREAD|...} => {tid}) = <合法 tid>   (大量, 每次成功)
+```
+铁证：claude 完整初始化创建大量线程，**直接用 clone3**（不是 clone、
+不是 glibc pthread_create），每次 clone3 成功返回合法 tid。
+
+结合上一轮 SigCgt 铁证（handler 确实装上），app 域失败的完整机制确定：
+- clone3(435) 被 Android seccomp TRAP → handler 返回 -ENOSYS
+- glibc 收到 -ENOSYS 会 fallback 到 clone → 所以 node/ghello 能跑
+- **Bun 直接调 clone3，收到 -ENOSYS 当失败 → 进程退出 RC=159**
+- clone3→clone 无法在 handler 机械转换（clone3 子进程从 stack 执行，
+  clone 需要 fn 指针，语义不同）
+- handler 内再调 clone3 仍被同一 seccomp filter 拦
+- 唯一出路 SECCOMP_RET_TRACE + ptrace（产品方向禁止）或上游换用 clone
+
+结论升级为 syscall 级确证：这是无 ptrace 架构下的真实硬边界，非工具误判。
+glibc 动态程序（node/dsh CLI/ghello）走 clone fallback 完整可用；
+Bun/Rust 直接 clone3 的运行时（Claude Code）当前架构不可行。
+
+产品状态：工作区干净，dsh web 401，终端稳定，所有实验产物清理。
