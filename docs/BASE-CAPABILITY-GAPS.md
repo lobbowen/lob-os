@@ -1812,3 +1812,33 @@ signal/sigprocmask 正是这个原因——我们只移植了 handler，没移�
 sigaction hook，不是 clone3 本身不可救。
 
 产品状态：工作区干净，核心能力稳定。此结论为对照实验确证。
+
+---
+
+## 诊断工具的观察者效应（最终方法论约束）
+
+多次尝试给 handler 加诊断（写 fd/stderr）都导致程序行为改变甚至直接死：
+- 带 raw write 的诊断 loader：连原本能过的 TRAP rseq 都变成 Bad system call
+- 带写文件的诊断 so：handler 标记不出现（可能是 write 本身破坏 SIGSYS 上下文）
+这是典型的观察者效应——SIGSYS handler 上下文极其脆弱，任何额外 syscall
+都会改变行为。**结论：所有"handler 里插桩"的诊断结果都不可信。**
+
+### 唯一可信的事实（未被诊断污染）
+1. 产品 loader（8680a1c5，无插桩）+ TRAP rseq + claude → 成功（Not logged in）
+2. 产品 loader + TRAP clone3 + claude → Bad system call
+3. 通用 so sigaction hook 有效（hooktest：SigCgt bit30 在 sigaction(SIGSYS,SIG_DFL) 后保留）
+4. 通用 so（带hook）+ TRAP clone3 + glibc pthreadprobe → 仍死（矛盾点）
+5. /proc SigCgt 证明 handler 装上；strace 证明 claude 用 clone3；node worker 在 app 域能跑
+
+事实4与"hook有效+handler有效"矛盾——最可能是 glibc 对该构建的 clone3
+fallback 行为与预期不同，或 sim-clone3 工具有 BPF 偏差。由于诊断工具
+本身不可信（观察者效应），无法在此环境彻底区分。
+
+### 最终诚实状态
+- 已确证：rseq 被产品 loader handler 救住；clone3 是 claude 失败的相关 syscall
+- 未确证：clone3 失败是 handler 逻辑 bug / glibc fallback 缺失 / 工具偏差
+- 通用能力：glibc 动态程序（node/dsh/验收B）稳定可用；Bun 类运行时端到端未打通
+- 产品状态：工作区干净，dsh web 401，所有诊断产物清理，产品件原版
+
+后续若继续：必须用**不改 handler 的观测**（如内核 perf/BPF trace、外部 strace），
+禁止在 SIGSYS handler 内插桩。
