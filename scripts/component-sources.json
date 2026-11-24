@@ -15,6 +15,24 @@
       "$comment": "LobOS Linux 用户态底座：Debian aarch64 官方 libc6 包，含 ld-linux-aarch64.so.1 + libc/libm/libpthread/libdl + nss 库。单用户系统，无需 fake root/proot。sha256 钉 deb 字节，recipe 解 ar+tar 取核心 so。入口 bin/glibc-run 是 shebang launcher，经 guest loader 启动任意 glibc 程序。",
       "entryName": "glibc-run"
     },
+      "glibc-libstdcxx": {
+        "version": "14.2.0-19",
+        "sha256": "6669b0c52a2e7c6af9adfdabce3ff6e286065cdfbc7b85280862b5f799daebee",
+        "urls": [
+          "https://mirrors.tuna.tsinghua.edu.cn/debian/pool/main/g/gcc-14/libstdc++6_14.2.0-19_arm64.deb",
+          "https://deb.debian.org/debian/pool/main/g/gcc-14/libstdc++6_14.2.0-19_arm64.deb"
+        ],
+        "$comment": "glibc 程序的 C++ 运行库 libstdc++.so.6.0.35。官方 linux-arm64 Node addon（NARB 等）NEEDED libstdc++.so.6，随 glibc-runtime 分发供 guest loader --library-path 解析。Debian trixie 同源（glibc 2.41）。"
+      },
+      "glibc-libgcc-s1": {
+        "version": "14.2.0-19",
+        "sha256": "1108bc87879833d6d9a145f22a4a15cddb34e065b4b5f4b97bee586adbac2851",
+        "urls": [
+          "https://mirrors.tuna.tsinghua.edu.cn/debian/pool/main/g/gcc-14/libgcc-s1_14.2.0-19_arm64.deb",
+          "https://deb.debian.org/debian/pool/main/g/gcc-14/libgcc-s1_14.2.0-19_arm64.deb"
+        ],
+        "$comment": "glibc 程序的 libgcc_s.so.1，与 libstdc++6 配套，供官方 linux-arm64 Node addon 解析 NEEDED。"
+      },
     "bash": {
       "version": "5.2.15",
       "sha256": "13720965b5f4fc3a0d4b61dd37e7565c741da9a5be24edc2ae00182fc1b3588c",
@@ -173,6 +191,15 @@
         "https://mirror.nju.edu.cn/gnu/make/make-4.4.1.tar.gz"
       ]
     },
+      "node-glibc-tarball": {
+        "version": "24.21.0",
+        "sha256": "6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2",
+        "urls": [
+          "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-arm64.tar.xz",
+          "https://npmmirror.com/mirrors/node/v24.21.0/node-v24.21.0-linux-arm64.tar.xz"
+        ],
+        "$comment": "官方 linux-arm64 glibc Node 运行时。上游按 glibc 分发原生 addon（NARB/koffi/sharp），node 必须同 libc 才能 dlopen .node。PT_INTERP=/lib/ld-linux-aarch64.so.1，经 LobOS guest 路由用 SIGSYS loader 启动。sha 钉 tarball 字节。"
+      },
     "node": {
       "version": "24.21.0",
       "prebuilt": true,

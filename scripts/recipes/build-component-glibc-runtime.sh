@@ -54,6 +54,25 @@ for so in $KEEP; do
   if [ -f "$SRC/$so" ]; then cp -f "$SRC/$so" "$DIST/lib/$so"; else echo "  [warn] 缺 $so（跳过）"; fi
 done
 
+# C++ 运行库：官方 linux-arm64 Node addon（NARB 等）NEEDED libstdc++.so.6 /
+# libgcc_s.so.1。Debian trixie 同源，按钉值表逐字节校验后解出 aarch64 .so。
+# 走 --library-path 给 guest loader，不进全局 LD_LIBRARY_PATH（见 RuntimeEnvironment 注释）。
+for pin in glibc-libstdcxx glibc-libgcc-s1; do
+  DEB_CXX="$ROOT_DIR/work/glibc-runtime/$pin.deb"
+  bash "$ROOT_DIR/scripts/toolchain/fetch-pinned.sh" --pin "$pin" "$DEB_CXX" \
+    || die "取 $pin 失败" "fetch-pinned --pin $pin 没通过（钉值/来源见 component-sources.json）"
+  U="$ROOT_DIR/work/glibc-runtime/u-$pin"
+  rm -rf "$U" && mkdir -p "$U"
+  ( cd "$U" && ar x "$DEB_CXX" ) || die "$pin 解 ar 失败" "$DEB_CXX"
+  DT_CXX=$(find "$U" -maxdepth 1 -name 'data.tar.*' | head -1)
+  [ -n "$DT_CXX" ] || die "$pin 无 data.tar" "$DEB_CXX 解出的 ar 里没有 data.tar.*"
+  tar xf "$DT_CXX" -C "$U" || die "$pin 解 data.tar 失败" "$DT_CXX"
+  for so in libstdc++.so.6 libgcc_s.so.1; do
+    FOUND=$(find "$U" -type f -name "$so*" ! -name '*gdb.py' | head -1)
+    if [ -n "$FOUND" ]; then cp -f "$FOUND" "$DIST/lib/$so"; echo "  [cxx] $so <- $pin"; fi
+  done
+done
+
 # 4. 版本文件（package-component.sh 要求）
 printf '%s\n' "$VER" > "$DIST/glibc-runtime.version"
 

@@ -94,10 +94,21 @@ chain_head() {
 MISSING=""
 SELF_DEPS=""
 NO_JUDGE=""
+  GLIBC_GUEST_DEPS=""
+  # glibc guest flavor 件（官方 linux-arm64 node 等）：版本化 glibc 库由 glibc-runtime
+  # 组件经 guest loader --library-path 供给；不塞件自己 lib/（会污染全局 LD_LIBRARY_PATH
+  # 让 bionic 程序误链）。仅当显式声明 COMPONENT_GLIBC_GUEST=1 且命中精确清单才豁免。
+  GLIBC_LIBS_WHITELIST=" libc.so.6 libm.so.6 libdl.so.2 libpthread.so.0 librt.so.1 libgcc_s.so.1 libstdc++.so.6 ld-linux-aarch64.so.1 "
 for lib in $NEEDED; do
   [ "$lib" = "$(basename "$FILE")" ] && continue
   ch="$(chain_head "$lib")"
   case "$SYSTEM_LIBS" in *" $lib "*) continue ;; esac
+    if [ "${COMPONENT_GLIBC_GUEST:-0}" = "1" ]; then
+      case " $GLIBC_LIBS_WHITELIST " in *" $lib "*)
+        GLIBC_GUEST_DEPS="$GLIBC_GUEST_DEPS $lib"
+        continue ;;
+      esac
+    fi
 
   if [ -n "${APK_LIBS// /}" ]; then
     case " $APK_LIBS " in *" $ch "*) continue ;; esac
