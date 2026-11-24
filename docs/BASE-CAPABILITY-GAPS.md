@@ -1169,3 +1169,31 @@ bionic node 的 dlopen 无法加载 glibc .node（两套 libc，dlopen 用 bioni
 零编译直接兼容的方向正确：node 换成官方 glibc 件 + addon 用上游预编件，
 shell 域全通、app 域 node 本体全通。剩下的是 app 域 dlopen 时的 SIGSYS
 时序问题（handler 被 Node 覆盖），是统一的一次性基础设施工作，不是逐软件重编。
+
+---
+
+## 进一步收窄：app 域 dlopen 本身可用，SIGSYS 来自 node 运行时
+
+### 新铁证
+1. seccomp-sim2（可 TRAP 任意 syscall 集合）验证：
+   - TRAP rseq(293) + `GLIBC_TUNABLES=rseq=0` + glibc node dlopen 官方 NARB → DLOPEN_OK napi-v9
+   - 追加 TRAP set_robust_list(99)/futex(98) 仍成功（rseq tunable 足够）
+2. 自编译 dlprobe（glibc，自带 SIGSYS handler 打印 si_syscall）在 **app 域真机终端**
+   dlopen 官方 NARB .node → `DLOPEN_FAIL undefined symbol: napi_create_error`
+   （符号解析失败属预期，dlprobe 非 node 无 NAPI 符号）——**无 SIGSYS、无崩溃**。
+   证明：glibc .node 在 app 域可以被 dlopen，之前的 signal 31 不是 dlopen 本身触发。
+
+### 结论（问题范围收窄到 node 运行时）
+app 域 `node dl.js` 的 signal 31 来自 node/V8 运行时在某处触发 seccomp TRAP，
+且 loader 早期装的 SIGSYS handler 已被 node 初始化覆盖。
+不是 .node 兼容性问题——用官方 glibc node + 官方 linux-arm64 addon 的路径正确。
+剩余工作：让 SIGSYS handler 在 node 初始化后仍然存在（一次性基础设施）：
+- 方案A：给官方 node 打一个小 patch，V8 初始化后重装 handler（Node 是预编 glibc 件，
+  二进制 patch 或 --require 预加载 glibc .so 均可，一次性）
+- 方案B：确认 node -v 成功而 dl.js 失败的精确触发点（node 内部 rseq 调用时机），
+  可能只需在 require 前用 native addon 重装 handler
+
+### 零编译大方向不变
+官方 glibc node（预编）+ 官方 linux-arm64-gnu addon（预编）兼容链路已在
+shell 域端到端验证通过；app 域 node 本体已验证可跑。剩下的是 app 域
+运行时 SIGSYS handler 时序，一次性基础设施，不需要为任何软件重新编译。
