@@ -16,6 +16,7 @@ object TerminalProfile {
         val text = build(ctx)
         runCatching { out.writeText(text) }
         ensureNodePosixShim(ctx)
+        ensureNodeAddonShims(ctx)
         ensureNodeGypEntry(ctx)
         ensureCompilerWrappers(ctx)
     }
@@ -79,6 +80,65 @@ object TerminalProfile {
             appendLine("if (typeof process.getgroups !== 'function') process.getgroups = () => [1];")
         }
         runCatching { shim.writeText(text) }
+    }
+
+    /**
+     * 通用 Node 原生 addon 适配：把 node-addon-require-builtin 的入口替换为
+     * 纯 JS 替身。该 addon 只做 requireBuiltin(id)=require(id)（取 Node 内部模块），
+     * 上游无 android 平台件、且 glibc .node 无法在 bionic node 里加载；配合
+     * --expose-internals（见 exec-path.c / node wrapper）几行 JS 即可等价实现。
+     * 零编译、对所有依赖该 addon 的 Node CLI（dsh 及同类）通用。
+     * 每次终端启动执行、幂等：重装 dsh 后自动重新应用，不靠手工补丁。
+     */
+    private fun ensureNodeAddonShims(ctx: Context) {
+        val shim = """
+            'use strict';
+            // LobOS JS fallback for node-addon-require-builtin.
+            // Requires --expose-internals (added by LobOS node wrapper / exec hook).
+            function requireBuiltin(id) { return require(id); }
+            function isAllowedInternalId() { return true; }
+            function getNativeBindingInfo() {
+              return { mode: 'js-shim', product: 'require-builtin', backend: 'napi', abi: 'napi-v9' };
+            }
+            var api = { requireBuiltin: requireBuiltin, isAllowedInternalId: isAllowedInternalId,
+                        getNativeBindingInfo: getNativeBindingInfo };
+            api.default = api;
+            module.exports = api;
+        """.trimIndent()
+        val marker = "// lobos-js-shim-v1"
+        val nmRoot = File(File(ctx.filesDir, "usr/local/lib"), "node_modules")
+        runCatching {
+            // 递归找所有 node-addon-require-builtin/lib/index.js（含嵌套 node_modules）
+            walkNodeModules(nmRoot, "node-addon-require-builtin")
+                .forEach { pkg ->
+                    val idx = File(File(pkg, "lib"), "index.js")
+                    if (!idx.isFile) return@forEach
+                    val cur = runCatching { idx.readText() }.getOrNull() ?: return@forEach
+                    if (cur.contains(marker)) return@forEach      // 已替身，幂等
+                    val orig = File(idx.parentFile, "index.js.lobos-orig")
+                    if (!orig.exists()) runCatching { idx.copyTo(orig, overwrite = true) }
+                    runCatching { idx.writeText("$marker\n$shim\n") }
+                }
+        }
+    }
+
+    private fun walkNodeModules(root: File, pkgName: String): List<File> {
+        if (!root.isDirectory) return emptyList()
+        val out = mutableListOf<File>()
+        val stack = ArrayDeque<Pair<File, Int>>()
+        stack.add(root to 0)
+        var guard = 0
+        // 有限深度（npm 嵌套 node_modules 可能很深）；只找名为 pkgName 的目录。
+        while (stack.isNotEmpty() && guard++ < 8192) {
+            val (dir, depth) = stack.removeLast()
+            if (depth > 10) continue
+            val direct = File(dir, pkgName)
+            if (direct.isDirectory) out.add(direct)
+            dir.listFiles()?.forEach { child ->
+                if (child.isDirectory) stack.add(child to (depth + 1))
+            }
+        }
+        return out
     }
 
     private fun build(ctx: Context): String {
