@@ -1781,3 +1781,34 @@ handler 内再调 clone3 仍被同一 filter 拦。这是无 ptrace 架构下的
 这两个工程点已验证，但都绕不过 clone3 的根本限制。
 
 产品状态：工作区干净，核心能力稳定。
+
+---
+
+## 纠正并收敛：连 glibc 的 clone3 fallback 都救不了——handler 缺 sigaction hook
+
+决定性对照（产品loader 8680a1c5 + TRAP clone3 + **glibc** pthreadprobe）：
+- 无seccomp → PTHREAD_CREATE r=0（正常）
+- 产品loader + TRAP clone3 → Bad system call（**glibc 也没 fallback 成功**）
+
+这纠正了"clone3失败是Bun特有"的推断——glibc 程序在 clone3 被 TRAP 时也死。
+
+真正原因：产品 loader 的 `_dl_start` handler **没有 sigaction 族 hook**。
+glibc/Bun 在线程初始化早期调用 sigaction 覆盖了 handler；后续 clone3 的
+SIGSYS 回到 SIG_DFL → 进程死。cortex 原版必须 hook sigaction/rt_sigaction/
+signal/sigprocmask 正是这个原因——我们只移植了 handler，没移植 hook。
+
+### 完整解法（明确，未完成的最后一块）
+把 cortex 的 sigaction 族 hook 编进 glibc loader（或保证通用 so 的 hook
+在 loader handler 之后、glibc 线程初始化之前生效）。这样：
+- loader _dl_start 早期装 handler（够早）
+- sigaction hook 防止 glibc/Bun 覆盖（保住 handler）
+- handler 对 clone3 返回 -ENOSYS → glibc fallback 到 clone（真实创建线程）
+这是可实现的——通用 so（sigsys-universal.c）已有完整 hook，只是时机/加载
+路径未打通。不是架构死路，是工程收尾。
+
+### 之前"clone3不可模拟"结论的纠正
+上一轮"clone3需真实成功无法模拟"下早了——glibc fallback 到 clone 就是
+真实成功路径，只要 handler 保住（不被覆盖）就能走通。真正缺的是
+sigaction hook，不是 clone3 本身不可救。
+
+产品状态：工作区干净，核心能力稳定。此结论为对照实验确证。
