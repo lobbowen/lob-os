@@ -1649,3 +1649,34 @@ glibc node 组件改造保留为可选实验模式（默认 bionic），不影�
 
 ### 产品状态
 所有诊断恢复，产品 so 68624，工作区干净，终端/dsh web/验收 B 稳定。
+
+---
+
+## 根本边界确认：Bun/Rust 二进制直接调 clone3，无法模拟
+
+用 /proc/self/status 的 SigCgt 铁证：glibc guest 程序 `SigCgt=0x40000000`（bit
+30 = 信号31 SIGSYS）——handler **确实装上了**。所以之前的"handler 没装"推断错误。
+
+那为什么 claude 完整模式仍 SIGSYS 死：
+- Claude Code 官方 native binary 是 **Bun/Rust 编译**（strings 见 bun_sema/rustc），
+  不是 glibc 动态链接的普通程序
+- Bun 直接发 syscall（clone3 创建线程等），**不走 glibc wrapper**
+- handler 把被拦 syscall 返回 -ENOSYS（cortex 设计给 glibc fallback 用），
+  但 Bun 收到 -ENOSYS 当作失败直接退出（RC=159），不会像 glibc 那样 fallback 到 clone
+
+这是真实的根本限制：要让 Bun 的 clone3 真正成功，handler 必须模拟出真实的
+线程创建（返回合法 tid 并建立线程）——这无法在 SIGSYS handler 里做到；
+而 handler 内再调 clone3 仍会被同一个 seccomp filter 拦。
+唯一出路是 SECCOMP_RET_TRACE + ptrace 或上游提供不调 clone3 的构建——
+前者产品方向禁止 ptrace，后者取决于上游。
+
+### 通用能力边界（最终、诚实）
+- glibc 动态链接程序（node、ghello、dsh 的 CLI 等）：handler + sigaction hook
+  完整覆盖，能跑
+- **Bun/Rust 等直接发 syscall 的运行时（Claude Code）：clone3 等被 Android
+  seccomp 拦且需真实成功，无法用 SIGSYS handler 模拟——当前架构下不可行**
+- `--version` 能跑只是快速路径不触发 clone3，不代表兼容
+
+### 产品状态
+产品件全部恢复，工作区干净，终端/dsh web/验收 B 稳定。此边界为真实技术限制，
+不是工具误判。已如实记录，不再声称 Claude Code 完整可用。
