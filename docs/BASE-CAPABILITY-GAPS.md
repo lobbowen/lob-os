@@ -903,3 +903,28 @@ patch loader 导出的 sigaction 符号（或在其 .dynsym 里重定向），
 patched loader 已落地（shell 域 PATCH5_OK）、构建可复现；
 诊断代码已移除；终端稳定、通配 CLEAN_OK、组件 official 锚。
 验收 B 的唯一剩余点：patched loader 需补 sigaction interpose 防止 handler 被覆盖。
+
+---
+
+## 最终诊断：tombstone 揭示崩溃真因
+
+抓 Android tombstone（debuggerd）得到决定性证据：
+- Cmdline: `/system/bin/linker64 <nativeLib>/libglibc-loader.so --library-path ... <程序>`
+- signal 6 (SIGABRT), backtrace:
+  `#00 __dl_abort` ← `#01 __linker_init_post_relocation` ← `__dl___linker_init` ← `_start`
+  **全部在 /apex/com.android.runtime/bin/linker64（bionic linker）**
+
+结论：glibc loader（ld-linux-aarch64.so.1）被 **bionic linker64 当作 ET_DYN 显式加载**，
+bionic linker 无法正确处理 glibc loader 的重定位 → abort。
+这就是终端 "Unknown signal 31" 的真正底层原因——不是（或不只是）SIGSYS，
+而是 exec 路由把 glibc loader 交给了 bionic linker64。
+
+### 为什么（明确 bug）
+guest 分支 execve(loader=patched) 时，loader 是 ET_DYN 无 PT_INTERP 的 ELF。
+内核对无 PT_INTERP 的 ET_DYN 直接跳入口运行——本应成功（shell 域 PATCH5_OK 证明）。
+但 app 域观察到 loader 被 bionic linker64 加载，说明 exec 的 argv[0]/路径在某个环节
+被改写成了 linker64 + loader。需精确核对 guest 分支 real_execve 的实参与 compat log。
+
+### 最后一步（明确）
+确保 guest 分支 real_execve 的第一个参数是 patched loader 本身（不是 linker64），
+即绕过所有 ET_DYN 改写。这是单个参数核对/修复点，有 tombstone 铁证指引。
