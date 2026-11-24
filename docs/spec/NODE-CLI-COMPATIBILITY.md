@@ -112,3 +112,43 @@ curl http://127.0.0.1:3080/ -> 401（服务活着、鉴权正常）
 5. 终端敲 `dsh web` → 打印 URL、监听 3080、curl 返回 401。
 
 结论：标准化成立。重装后无需任何手工操作，一次成功。
+
+## 9. 通用性验证：Claude Code（@anthropic-ai/claude-code）安装实测
+
+按你的要求装了另一个完全无关的 Node CLI —— Claude Code，验证标准化边界。
+
+### 结果
+- **安装：成功**。npm 配国内源（registry.npmmirror.com）后
+  `npm install -g @anthropic-ai/claude-code` 正常（`added 1 package`），
+  `claude` 命令出现在 usr/local/bin。说明我们的 npm/prefix 环境没问题。
+- **CLI 框架：就绪**。node + --expose-internals 机制正常（dsh web 全程未受影响，
+  装完 Claude 后重启仍 401）。
+- **运行：卡在上游没发 android 原生二进制**。手动跑 postinstall 得到明确报错：
+  ```
+  Native binaries for linux-arm64-android are not available on this release channel.
+  Available: darwin-arm64, darwin-x64, linux-x64, linux-arm64, ... (无 android)
+  ```
+  npm 上 `@anthropic-ai/claude-code-linux-arm64-android` 包确实不存在；
+  只有 `linux-arm64`（glibc）包。
+
+### 这个结果说明了什么（通用性的精确边界）
+我们的标准化解决的是**「上游有 JS 等价实现、只是没 android native 件」**这一类——
+dsh 的 require-builtin 就是（功能=require(id)，几行 JS），所以能零编译救活。
+
+Claude Code 属于另一类：**核心本身就是原生二进制**（不是可 JS 替代的薄封装），
+且上游没发 android 件。这类不是兼容层能凭空补出来的——除非上游发布 android 件，
+或用 glibc node 加载它的 linux-arm64 二进制（但 glibc node 在 app 域脚本执行
+会触发 clone3 SIGSYS，是已验证的死路）。
+
+### 结论
+标准化是通用且有边界的，不是万能：
+- 对「addon 有 JS 等价实现」类产品（dsh 及同类依赖 require-builtin 的）→ 一次性成功
+- 对「核心是原生二进制且上游没发 android 件」类产品（Claude Code）→ 安装成功、
+  CLI 框架就绪，但要等上游发 android 件或走原生编译，属于产品方发布矩阵问题。
+
+### 环境备注
+npm 默认官方源在国内网络不通，需先配：
+```
+npm config set registry https://registry.npmmirror.com
+```
+这是网络环境问题，建议写入 LobOS 终端首次启动的默认配置（待办）。
