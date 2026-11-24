@@ -1052,3 +1052,43 @@ sigsys so 经 LD_PRELOAD 加载，其 constructor 在 libc.so.6 初始化完成�
 hook 进入 PTY shell、拦截用户命令、guest 路由全部成功（铁证齐备）。
 剩 libc 初始化 SIGSYS 一个点，有明确源码级解法。
 终端稳定、bionic 正常、通配可用、official 锚、构建可复现。
+
+---
+
+## 架构结论：让 Linux 软件不用重新编译的通用机制
+
+### 问题定性
+"Linux 软件在 LobOS 上要重新编译"是个误解，真正需要处理的只有
+**按平台/架构分发的原生插件**（如 Node .node addon、Python wheel、
+native helper），软件本体（脚本/解释型/ELF）不需要重编。
+根因：`process.platform` 在 Android 是 `android`，多数包的平台矩阵只有
+linux/darwin/win32，于是走"不支持"分支。这是**分发矩阵问题**，不是软件问题。
+
+### 通用解法（四类，按优先级）
+权威参考：华为云《在 Android 上跑 Node 服务：四个缺失的原生模块》
+https://bbs.huaweicloud.com/blogs/531805 —— 四类缺失四种解法：
+1. 上游新版已修（koffi 3.2.x 用 raw syscall 替 glibc statx）→ **升级**，零编译
+2. 有 wasm/纯 JS 兜底（sharp 加 @img/sharp-wasm32）→ **加依赖**，零编译
+3. 有源码无平台包（flock：bionic 有 flock(2)）→ **本地编译一次**，随包分发
+4. 无二进制无源码的入口模块（require-builtin）→ **纯 JS 替身**
+   （--expose-internals 下 requireBuiltin(id)=require(id) 几行 JS），零编译
+
+### 决策树（遇到"不支持此平台"）
+1. optionalDependencies / 平台矩阵里有没有 android 条目
+2. 上游最新版有没有修（CHANGELOG / issue）
+3. 有没有纯 JS / wasm 兜底路径
+4. 源码在不在（能编则本地编一次）
+优先级：升级 > 加依赖 > 本地编译 > 替身。
+
+### LobOS 应做成系统能力（不是逐软件补丁）
+- 平台别名层：让平台探测命中我们发布的 android 件或 linux 兼容视图
+- 绑定供应器：按 包名+ABI 提供 已验证组件 / JS 替身 / wasm 兜底，
+  走与 glibc-runtime 相同的钉值→签名→CDN→安装管线
+- 决策树自动化：上述四步按序尝试，全失败才报缺
+- exitWhen：上游发布 android 件后自动撤除替身
+
+### dsh web 的定位
+NARB（node-addon-require-builtin）属于第 4 类——纯 JS 替身是正解，
+上游文章实测 --expose-internals 下 5 个内部模块全部可用。
+这不是 LobOS 终端或 Linux 兼容层的缺陷，是 dsh 上游分发矩阵缺
+android-arm64；用替身或让上游补件即可，不需要重编 dsh。
