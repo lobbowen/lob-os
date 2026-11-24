@@ -1227,3 +1227,36 @@ glibc loader 作为主程序被 exec（raw_execve(loader,...)）时，
 确保 node/V8 不覆盖 SIGSYS（确认 V8 信号处理范围），
 或经 NAPI addon 在 node init 后重装（一次性基础设施）。
 不需要为任何软件重新编译。
+
+---
+
+## 决定性验证：loader handler 完全有效，SIGSYS 来自 node 覆盖 handler
+
+### 铁证（stdio 探针，app 域真机）
+1. 自装 handler 探针：SIGACTION_RC=0 / HANDLER_RAN / AFTER_RSEQ ret=-1，跑通
+2. **不装 handler 探针（SIGACTION_RC=-99，只靠 loader）**：
+   `BEFORE_RSEQ` → `AFTER_RSEQ ret=-1`，**完整跑通，无 signal 31**
+   证明 glibc loader 在 _dl_start 装的 SIGSYS handler 在 app 域完全有效，
+   能把 rseq 兜成 -ENOSYS，程序正常继续。
+
+### 校正前一轮的误判
+上一轮"自包含探针 signal 31、stdio 版跑通"的差别是：raw-write 版探针
+在 sigaction 之前就因某个原因死了（可能 stdio 初始化触发的另一个 syscall），
+不是 handler 问题。stdio 版证明整条机制通。
+
+### 最终根因（唯一）
+官方 glibc node 在启动早期（V8 signal handler 初始化）**覆盖了 loader 装的
+SIGSYS handler**，之后 node 脚本执行触发 seccomp TRAP 时无 handler → signal 31。
+`--require` 注入点太晚（pre.js 未加载就死），sigsys so LD_PRELOAD 不生效
+（前一轮已证）。
+
+### 唯一剩余解法（一次性，非逐软件）
+patch 官方 node 二进制：让 V8 初始化不覆盖 SIGSYS，或在 V8 初始化后重装
+loader 的 handler。这是**一次性的二进制 patch**，patch 一次所有 node 程序受益。
+与此前 patch glibc loader 同一类工作，有成熟技术（PC 相对分支 + 代码洞）。
+不需要为任何软件重新编译。
+
+### 零编译方向最终确认
+官方 glibc node + 官方 linux-arm64 addon + 组件补 C++ 库 + loader handler 已被
+证明各自全部有效；唯一缺口是 node 覆盖 handler，一次性 patch 解决。
+整个 node 生态之后与真实 linux arm64 一致，所有 npm 原生模块免重编。
