@@ -12,9 +12,15 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-SRC="$ROOT/container/native/guest-sigsys/sigsys.c"
+# 通用版（cortex signals.c+syscalls.c 移植）：SIGSYS handler + sigaction 族 hook，
+# 兜住 Android seccomp 拦的全部 syscall（424-512 含 clone3、rseq、uid 族等），
+# 且防止 guest 程序覆盖/屏蔽 handler。这是所有 glibc 原生程序的通用底座。
+SRC="$ROOT/container/native/guest-sigsys/sigsys-universal.c"
 OUT="$ROOT/container/app/src/main/jniLibs/arm64-v8a/libguest-sigsys.so"
-TC="${GLIBC_TC_PREFIX:-/tmp/glibc-toolchain/root}"
+# 工具链优先稳定目录（/tmp 会被周期清理），回退旧路径
+TC_DEFAULT="$ROOT/work/glibc-build/tc"
+[ -x "$TC_DEFAULT/usr/bin/aarch64-linux-gnu-gcc-15" ] || TC_DEFAULT="/tmp/glibc-toolchain/root"
+TC="${GLIBC_TC_PREFIX:-$TC_DEFAULT}"
 
 if [ ! -x "$TC/usr/bin/aarch64-linux-gnu-gcc-15" ]; then
   echo "[sigsys] glibc cross toolchain 不在 $TC，跳过（见 docs 第十一轮获取方式）" >&2

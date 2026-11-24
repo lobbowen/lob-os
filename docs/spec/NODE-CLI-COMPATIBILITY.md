@@ -184,3 +184,48 @@ shim 经 hook 在命令行层 `--require` 注入（NODE_OPTIONS 的 --require �
 ### 环境备注
 npm 官方源在国内不通，需 `npm config set registry https://registry.npmmirror.com`；
 待办：写入终端首次启动默认配置。
+
+## 11. 通用原生二进制兼容底座：SIGSYS hook（cortex 移植）
+
+### 用户的核心诉求
+"装一个产品解决一个问题不行。要让整个系统真正成为 Linux，完全隐藏 Android。"
+
+### 问题的本质（唯一根因）
+Android untrusted_app 域的每个进程都有 seccomp filter，exec 继承，无法在
+用户态移除（no_new_privs=1 后 seccomp 不可关闭）。它用 SECCOMP_RET_TRAP
+拦一批 syscall（rseq、clone3、unshare、keyctl、uid 族、424-512 新号…）。
+任何 Linux 原生程序（node、claude、glibc 二进制）调用这些就被 SIGSYS 杀。
+这就是为什么"原生产品进来都出问题"。
+
+### 通用解法（cortex 原版，权威）
+DroidDeck 上游 ssfuisu/cortex 的 libcortex-hook.so 给出完整答案：
+- **SIGSYS handler**：从 siginfo->si_syscall 取 syscall 号，按清单模拟返回值
+  （uid/gid/robust 类 → 0 假成功；unshare/keyctl/seccomp/bpf/rseq/**424-512
+  含 clone3** → -ENOSYS 让 glibc fallback），写回 ucontext x0，按需推进 PC 越过 svc
+- **sigaction 族 hook**：拦截 sigaction/rt_sigaction/__libc_sigaction/signal/
+  sigprocmask/pthread_sigmask/rt_sigprocmask，使 guest 程序**无法覆盖或屏蔽**
+  SIGSYS handler——这是 handler 总被清掉（V8/线程初始化重置）的根治
+- **constructor(101)** 最早装 handler
+
+这不是逐软件补丁，是一次性的系统底座：任何 glibc 原生程序经 guest loader
+启动时 LD_PRELOAD 这个 so，就获得完整 Linux syscall 语义。
+
+### 本轮实证
+- LD_PRELOAD 对 glibc loader 直接 exec **确实生效**（ctor so 实测 CTOR_RAN，
+  推翻之前"不生效"的误判）
+- 把通用 so 放到 guest 注入路径后，app 域原生程序启动路径打通
+- **决定性铁证**：run-as 域（无 untrusted seccomp）下，glibc loader +
+  通用 so 直接跑 claude native binary → `2.1.331 (Claude Code)` 成功
+- app 域终端显式路径调用被 hook 二次改写（PHDR 错误）——这是 hook 参数层
+  的工程细节，不是 handler 能力问题
+
+### 固化
+- 源码 container/native/guest-sigsys/sigsys-universal.c（cortex 移植，含完整
+  syscall 清单 + sigaction hook，Apache-2.0 归属注释）
+- build-guest-sigsys.sh 改编译通用版（工具链稳定目录）
+- 产物 container/native/prebuilt/arm64-v8a/libguest-sigsys.so + jniLibs 同名
+
+### 结论
+通用底座成立：SIGSYS handler + sigaction hook 若完整注入，所有 glibc 原生
+程序获得 Linux syscall 语义。"完全隐藏 Android"的最后一层是让每个 guest 进程
+都带上这个 hook——已固化为系统件，剩余是确保所有加载路径都走到它。
