@@ -1495,3 +1495,34 @@ GLIBC_HELLO_OK 立即恢复。
 理由：明知 glibc node 在当前 app 域脚本不可用，不能让它成为默认导致
 CI 产出的组件装上后 node 完全不可用。等 app 域 seccomp 适配完成再切换。
 设备已恢复 bionic node，核心 dsh 与验收 B 保持完成。
+
+---
+
+## 接近根因：app 域 SIGSYS 的线程场景与 set_robust_list
+
+### 本轮铁证（glibc 动态程序经 guest 路由在 app 域跑）
+- appscan（自装 SIGSYS handler 的 glibc 动态程序）扫描：rseq(293) 与
+  set_robust_list(99) 确实被 app 域 seccomp TRAP；openat(257)/sched_*
+  的 TRAPPED 判定是 g_hit 异步残留误报（openprobe 实测 openat 完全正常）。
+- **pthread_create 程序**：未修 handler 时直接 signal 31；
+  loader handler 对 set_robust_list(99) 返回 0 后 → `PTHREAD_CREATE r=0`
+  （线程创建成功）。证实 99 是 pthread_create 失败的直接 syscall。
+- 但线程创建后仍 signal 31（子线程退出阶段），且把 handler 改成"所有 SIGSYS
+  返回 0"依然死 —— 说明第二阶段失败不是"没兜住值"，而是
+  **handler 在多线程 SIGSYS 场景下 PC 恢复/执行流有问题**（svc 布局不同，
+  或子线程 ucontext 处理不同）。
+
+### 根因收敛（从未如此接近）
+glibc node 脚本 / dsh web 死因链：完整 V8 初始化 → 创建线程 →
+set_robust_list(99) TRAP（已证，返回0可救 pthread_create）→
+子线程退出阶段另一次 SIGSYS 未被正确恢复（PC 推进问题）。
+
+### 决策
+本轮诊断 patch（set_robust_list→0、全返回0）均已回退，产品 loader 恢复
+8680a1c5，验收 B 与核心 dsh 保持完成。剩余工作是**多线程 SIGSYS 的
+PC 恢复**——这是明确、局部、可在源码层解决的点，但需要专门调试
+（确认子线程 faulting svc 的指令布局，调整 PC 推进逻辑）。
+不是架构问题，不是"要重编所有软件"。
+
+### 产品状态
+工作区干净，设备 loader/节点全部产品版，终端稳定。
