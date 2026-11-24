@@ -89,7 +89,12 @@ object RuntimeEnvironment {
                 put("LOBOS_GLIBC_LIBDIR", java.io.File(gr, "lib").absolutePath)
                 // glibc guest 的 SIGSYS handler（freestanding so）：Android seccomp
                 // 用 SIGSYS 拦 rseq(293) 等 syscall，没它 glibc 程序启动即 SIGSYS(31)。
-                val sigsysSo = java.io.File(ctx.applicationInfo.nativeLibraryDir, "libguest-sigsys.so")
+                // SIGSYS handler so：优先用组件安装到 files/opt 的版本（app_data_file
+                // 可读可 dlopen），fallback 到 nativeLibraryDir。glibc loader 在
+                // untrusted_app 域 dlopen nativeLibraryDir 的 so 可能被 SELinux 拒。
+                val sigsysSo = java.io.File(ctx.filesDir, "usr/lib/libguest-sigsys.so")
+                    .takeIf { it.isFile }
+                    ?: java.io.File(ctx.applicationInfo.nativeLibraryDir, "libguest-sigsys.so")
                 if (sigsysSo.isFile) put("LOBOS_GUEST_SIGSYS", sigsysSo.absolutePath)
                 lobos.kernel.proc.ExecEntry.configureGlibcGuest(
                     loader.absolutePath, java.io.File(gr, "lib").absolutePath

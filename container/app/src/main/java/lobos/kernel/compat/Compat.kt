@@ -9,6 +9,7 @@ object Compat {
     const val LIB_POSIX = "liblobosposix.so"
     const val LIB_PTYSESSION = "librivospty.so"
     const val LIB_FLOCK = "liblobosflock.so"
+    const val LIB_GUEST_SIGSYS = "libguest-sigsys.so"
 
     fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
 
@@ -108,7 +109,7 @@ object Compat {
         return true
     }
 
-    fun managedComponents(): List<String> = listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK)
+    fun managedComponents(): List<String> = listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK, LIB_GUEST_SIGSYS)
 
     fun otaInstalled(ctx: Context, name: String): Boolean {
         val f = libDir(ctx).resolve(name)

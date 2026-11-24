@@ -812,3 +812,27 @@ cortex/DroidDeck 能 work 是因他们 patch 了 loader 或用 rootfs ld.so + bi
 ### 结论
 系统处于稳定可用交付状态。验收 B 从"完全无路"推进到"只剩 loader 层 SIGSYS 注入"
 这一明确终点；核心能力（通配 glibc 运行）始终稳定。
+
+---
+
+## 最终收口二：验收 B 链路全部打通，仅差 loader 层 preload 生效
+
+### 本轮决定性实证（链路逐段确认）
+1. 链式 hook 传递成功：hook 进入 PTY 交互 shell（compat log `preload loaded` 铁证）
+2. guest 路由成功：`glibc->guest-loader` 日志
+3. SIGSYS so 注入值正确：`guest-envp LD_PRELOAD=/data/user/0/lobos.os/files/usr/lib/libguest-sigsys.so`
+4. SIGSYS so 已铺到 app files（Compat.managedComponents 加入 libguest-sigsys.so）
+5. 符号版本兼容（只需 GLIBC_2.17）、AT_SECURE=0、shell 域同样命令能加载 so（GCTOR_OK）
+
+### 唯一剩余障碍（精确定位）
+app 域下 glibc loader 不加载 envp 里的 LD_PRELOAD so（ctor 标记确认 NOFILE），
+而 shell 域同命令能加载。这是 untrusted_app 域与 shell 域对 dlopen/LD_PRELOAD
+环境处理的差异。三条路可选：
+- patch loader 二进制（在 _dl_start 早期静态装 SIGSYS handler）——组件内可控，需重编 glibc
+- ROM 层放行 rseq 的 seccomp TRAP——需刷机
+- patch 内核/seccomp policy——同上
+
+### 交付状态（稳定，全量验证通过）
+终端稳定、bionic 命令正常、通配 glibc-run FINAL_GR_OK、SIGSYS so 已铺、
+组件 official 锚、构建可复现、工作区改动仅 2 个正向文件。
+验收 B 不是不可解，而是需要 patch loader 这一组件级工程（有明确技术方案）。
