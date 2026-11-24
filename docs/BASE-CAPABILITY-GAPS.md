@@ -1842,3 +1842,24 @@ fallback 行为与预期不同，或 sim-clone3 工具有 BPF 偏差。由于诊
 
 后续若继续：必须用**不改 handler 的观测**（如内核 perf/BPF trace、外部 strace），
 禁止在 SIGSYS handler 内插桩。
+
+---
+
+## 观测能力边界（外部 tracing 也不可用）
+
+为遵守"禁止 handler 内插桩"，查了设备可用的外部观测手段：
+- simpleperf 有（但主要采样，非 syscall trace）
+- atrace 有（ftrace 前端）
+- /sys/kernel/tracing 存在但 shell 域**只读**（context=u:r:shell:s0）
+- available_events 空、perf_event_paranoid=-1 但无写权限
+- BPF kallsyms 无、bpftrace/perf/strace 无
+
+结论：当前非 root、shell 域权限下，既不能在 handler 内插桩（观察者效应），
+也不能用内核 tracing 从外部观测 SIGSYS。**clone3 矛盾的最终诊断需要：
+root 设备 / 可写 ftrace / 内核 BPF 权限 / 或产品侧提供的诊断通道。**
+
+这是观测能力边界，不是方案问题。所有可操作方向（handler 移植、sigaction
+hook、LD_PRELOAD、loader 早期 handler、平台伪装、JS 替身、国内源）都已
+做完并验证；剩余需要更强的系统级观测或产品级能力。
+
+产品状态：工作区干净，dsh web 401，终端稳定，产品件原版，验收 B 完成。
