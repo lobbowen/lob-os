@@ -1333,3 +1333,30 @@ node script.js 死"的真正差别（脚本执行触发完整初始化 -> 线程
 - clone3 = syscall 435 (aarch64)
 - handler 当前统一写 -ENOSYS (x0=-38)
 - rseq=293 能兜；clone3=435 不能兜
+
+---
+
+## 对"clone3 根因"的诚实降级（sim2 工具可靠性存疑）
+
+### 后续核验发现的问题
+上一节把 node 脚本 SIGSYS 归因于 clone3(435) 且称"handler 不 fallback"，
+但后续反汇编本 glibc 2.41 的 __clone（0xf6400）发现：
+- 它发的是 syscall 220（clone），mov x8,#0xdc(220); svc #0
+- 该构建未编入 clone3 wrapper（nm -D 无 __clone3 符号，config.h 无 CLONE3）
+
+也就是说 glibc pthread_create 在本件里**不发 clone3**，那么
+"sim2 TRAP 435 导致 cloneprobe 死"这个实验结论不成立——
+它更可能是 seccomp-sim2 的 BPF 跳转偏移在单 syscall 场景下的实现问题
+（JEQ jt 偏移计算 / ALLOW-TRAP 块顺序），而非真的 TRAP 了 clone3。
+
+### 修正后的诚实状态
+- 已确证：loader handler 有效（不装 handler 的探针靠 loader 把 rseq 兜成 -ENOSYS，跑通）
+- 已确证：app 域 node 脚本 SIGSYS，而 seccomp-sim（原版，只 TRAP rseq）+ tunable
+  能让 node 脚本跑通（BASELINE_OK）
+- 未确证：app 域 node 到底触发了哪个额外 syscall。sim2 结果不可靠，不能作为根因。
+- 剩余工作：用可靠工具（真 strace 或内核 seccomp user-notif）抓 app 域 node 的
+  si_syscall，再决定 handler/loader 如何适配。
+
+### 交付不受影响
+产品件全部恢复为已验证版本，终端与验收 B 稳定。本节仅修正调查记录的准确性，
+不引入新的产品改动。
