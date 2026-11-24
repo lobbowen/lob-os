@@ -1092,3 +1092,47 @@ NARB（node-addon-require-builtin）属于第 4 类——纯 JS 替身是正解�
 上游文章实测 --expose-internals 下 5 个内部模块全部可用。
 这不是 LobOS 终端或 Linux 兼容层的缺陷，是 dsh 上游分发矩阵缺
 android-arm64；用替身或让上游补件即可，不需要重编 dsh。
+
+---
+
+## 决定性更正：dsh arm64 兼容的根因是 node 运行时 libc 不匹配（非上游缺件）
+
+### 用户质疑（正确）
+"dsh 上游肯定有 arm64 兼容，如果 LobOS 跟真实 linux arm64 一样，dsh 肯定有，
+要么装错了" —— 实测证实这个判断正确。
+
+### 铁证
+1. npm registry 确认官方件存在：
+   node-addon-require-builtin-linux-arm64-gnu@0.1.10
+   （optionalDependencies 明确列出 linux-arm64-gnu / linux-arm64-musl）
+2. 官方 .node 是标准 glibc aarch64 ELF：NEEDED libstdc++.so.6 / libgcc_s.so.1 /
+   libc.so.6 / libm.so.6 / libdl.so.2 / libpthread.so.0
+3. 关键验证（local/tmp，shell 域）：
+   - 官方 glibc node (node-v24.21.0-linux-arm64.tar.xz, sha 6ad1325e...) 经
+     我们的 glibc loader 跑通：v24.21.0
+   - 官方 glibc node 加载官方 NARB .node 成功：
+     NARB_LOADED function function {"mode":"napi","product":"require-builtin",
+     "backend":"napi","abi":"napi-v9"}
+
+### 真正根因
+LobOS 当前 node 组件是 bionic 自编译（Node Runtime workflow 用 NDK 编 libnode.so），
+而 dsh 生态的 native addon（NARB/koffi/sharp/flock）全是 glibc 预编。
+bionic node 的 dlopen 无法加载 glibc .node（两套 libc，dlopen 用 bionic linker，
+不会用 glibc libc.so.6 满足依赖）。之前所有 shim 尝试都是在这个错误前提下打转。
+
+### 解法（零编译，直接兼容）
+把 node 组件从 bionic 自编译换成 nodejs.org 官方 linux-arm64 glibc 预编包：
+- node-v24.21.0-linux-arm64.tar.xz（ sha256 6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2 ）
+- PT_INTERP=/lib/ld-linux-aarch64.so.1，经路径 hook 解析到我们的 glibc loader
+- native addon 全部用上游官方 linux-arm64-gnu 件
+- glibc-runtime 组件需补 libstdc++.so.6 / libgcc_s.so.1（从 libstdc++6/libgcc-s1
+  arm64-cross deb 提取，均为 aarch64 glibc ELF）
+这样整个 node 生态与真实 linux arm64 完全一致，所有上游预编件直接可用，
+不需要为任何软件重新编译。
+
+### 待落地（组件切换，走正式管线）
+1. build-component-node.sh 改取官方 linux-arm64 tarball（保留自编译 bionic 作 fallback）
+2. build-component-glibc-runtime.sh 的 KEEP 清单补 libstdc++.so.6 / libgcc_s.so.1
+3. 钉值表 component-sources.json 增加 node 官方 tarball sha + C++ 库来源 sha
+4. dsh 安装改用官方 linux-arm64-gnu addon 件（去掉 android-arm64 shim）
+5. 全量真机验证 dsh web
