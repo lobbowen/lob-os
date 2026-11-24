@@ -1136,3 +1136,36 @@ bionic node 的 dlopen 无法加载 glibc .node（两套 libc，dlopen 用 bioni
 3. 钉值表 component-sources.json 增加 node 官方 tarball sha + C++ 库来源 sha
 4. dsh 安装改用官方 linux-arm64-gnu addon 件（去掉 android-arm64 shim）
 5. 全量真机验证 dsh web
+
+---
+
+## 零编译兼容链路验证结果（node 换 glibc 官方件）
+
+### 已验证成功
+1. 官方 glibc node（node-v24.21.0-linux-arm64.tar.xz）经 SIGSYS loader 跑通：v24.21.0
+2. **app 域真机终端直接敲** `/files/onew/bin/node -v` → v24.21.0
+   compat: `glibc->guest-loader .../onew/bin/node`（与验收 B 同一机制，零特殊命令）
+3. shell 域：官方 glibc node 加载官方 NARB .node 成功：
+   NARB_LOADED function function {"mode":"napi","product":"require-builtin",
+   "backend":"napi","abi":"napi-v9"}
+
+### 新发现的边界（app 域 dlopen .node 时 SIGSYS）
+- app 域用 glibc node 跑 `node <脚本>` 加载 .node → signal 31（Unknown signal 31）
+- shell 域同样组合成功，差别是 app 域 seccomp
+- 原因：node 启动时会重置 SIGSYS 信号处理（Node 初始化自己的 signal handler，
+  覆盖 loader 在 _dl_start 早期装的 handler）；之后 dlopen .node 时其 C++ 静态
+  初始化触发 seccomp TRAP（libstdc++ 初始化里的 syscall），无 handler 兜 → 死。
+
+### 下一步（明确）
+让 SIGSYS handler 在 node 重置信号后仍然存在。两条路：
+1. 在 node 启动后（执行用户脚本前）经 --require 预加载一个模块重装 handler，
+   用 glibc 编译（与 node 同 libc），Node 的 process.on 无法兜 SIGSYS，必须
+   native sigaction；可用官方 NAPI 件形态自己产一个小 addon（一次性，非逐软件）。
+2. 更彻底：glibc loader 装的 handler 用 SA_RESETHAND=0 且防止 Node 覆盖——
+   需确认 Node Initializer 对 SIGSYS 的处理，若它只对已知信号装 handler，
+   可让 handler 装在 Node 未碰的信号号或用 seccomp 用户通知（user notif）。
+
+### 结论不变
+零编译直接兼容的方向正确：node 换成官方 glibc 件 + addon 用上游预编件，
+shell 域全通、app 域 node 本体全通。剩下的是 app 域 dlopen 时的 SIGSYS
+时序问题（handler 被 Node 覆盖），是统一的一次性基础设施工作，不是逐软件重编。
