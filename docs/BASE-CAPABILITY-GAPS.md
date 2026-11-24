@@ -1390,3 +1390,39 @@ bionic node 的内部 ESM 模块路径/可用性与 dsh web 期待的不一致�
 
 ### 交付不变
 产品件全部恢复为已验证版本，终端稳定，验收 B 完成。
+
+---
+
+## 通用问题定论：Node 原生 addon 的平台/库解析（本轮系统调查）
+
+用户要求按通用问题（非 dsh 单一）调查清楚。结论如下，均真机铁证。
+
+### 内部模块可达性（cordis 类通用需求）
+- bionic node 不带 --expose-internals 时，require("internal/modules/esm/loader")
+  MODULE_NOT_FOUND（dsh web 的直接失败点）。
+- 命令行 --expose-internals -> 内部模块全部可达（getOrInitializeCascadedLoader 等）。
+- **NODE_OPTIONS=--expose-internals 对 bionic node 无效（RC=9，node 拒绝）**。
+- 通用解法：node wrapper 把 --expose-internals 作为命令行参数注入（已验证 wrapper
+  能让内部模块可达）。这不是 dsh 专有，任何依赖 Node 内部模块的 CLI 都需要。
+
+### 原生 addon（.node）加载
+- 官方 linux-arm64-gnu .node 是 glibc ELF，NEEDED libdl.so.2/libstdc++.so.6/
+  libgcc_s.so.1/libm.so.6/libc.so.6/ld-linux-aarch64.so.1。
+- bionic node 的 linker64 dlopen 它时按序报缺这些库；把它们逐一放进 LD_LIBRARY_PATH
+  后：缺 glibc loader -> 加上后 **Segmentation fault**。
+- 定论：**glibc .node 无法在 bionic node 进程里加载**（两套 libc 同进程冲突），
+  不是路径问题。dsh --version 成功只是没触发 NARB 加载路径。
+- 通用解法：**node 运行时必须与 addon 同 libc**——用官方 glibc node 配上游
+  linux-arm64 addon。这已在 shell 域端到端验证（官方 node 加载官方 NARB 成功）。
+
+### 通用结论（回答"是否单一项"）
+这是通用问题，影响所有"上游按 glibc-linux 分发原生 addon、依赖 Node 内部模块"的
+Node CLI（dsh 只是一个实例）。通用解法两步，均一次性基础设施：
+1. node wrapper 注入 --expose-internals（内部模块可达）
+2. node 换成官方 glibc 版（与上游 addon 同 libc，加载即通）
+app 域 glibc node 还差 seccomp syscall 适配（clone3 线索，工具未可靠确证），
+是一次性 loader/handler 适配，patch 一次全体受益。
+
+### 产品状态
+TerminalProfile 的 NODE_OPTIONS 改动已回退（对 bionic node 无效），shim 恢复原版，
+所有实验残留清理，工作区干净。核心 dsh CLI 与验收 B 保持完成。
