@@ -99,3 +99,16 @@ curl http://127.0.0.1:3080/ -> 401（服务活着、鉴权正常）
 - [ ] `node -e "require('internal/modules/esm/loader')"` 可用（expose 生效）
 - [ ] `dsh web` 打印 URL，`curl localhost:3080` 返回 401
 - [ ] 重装 dsh 后重启终端，上述仍成立（幂等自动应用）
+
+## 8. 完整卸载重装验证记录（2026-11-25）
+
+按"卸载→重装→一次性成功"做了端到端验证：
+1. 把 dsh 的 NARB index.js 恢复为 npm 原件（872 字节，`"use strict"` 开头），
+   删除所有 lobos 手工痕迹（备份/临时脚本），模拟全新 dsh 安装。
+2. `pm uninstall -k lobos.os`（保留 data 里的 dsh/npm 环境——那是用户应用数据，
+   不是 APK 的一部分）。
+3. 重装 APK（含机制 A/B/C），启动 app、进终端。
+4. 验证 NARB index.js 首行自动变成 `// lobos-js-shim-v1`（ensure 自动替身生效）。
+5. 终端敲 `dsh web` → 打印 URL、监听 3080、curl 返回 401。
+
+结论：标准化成立。重装后无需任何手工操作，一次成功。
