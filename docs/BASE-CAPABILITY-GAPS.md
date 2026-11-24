@@ -1526,3 +1526,34 @@ PC 恢复**——这是明确、局部、可在源码层解决的点，但需要
 
 ### 产品状态
 工作区干净，设备 loader/节点全部产品版，终端稳定。
+
+---
+
+## 最终根因确定：子线程 SIGSYS 时 loader handler 已被移除/绕过
+
+决定性实验：在 loader 的 `_dl_start` 里预 openat 日志文件（得到 fd），
+handler 触发时用 raw write 把 si_syscall 写入该 fd。部署后跑 pthreadprobe：
+- 日志文件成功创建（0 字节）→ `_dl_start` 的 openat 成功
+- SIGSYS 确实发生（终端 signal 31）
+- **日志文件仍是 0 字节 → handler 根本没被调用**
+
+结论：子线程退出阶段的 SIGSYS 发生时，loader 装的 SIGSYS handler 已不在
+（或被信号掩码屏蔽、或被 V8/线程初始化重置为 SIG_DFL）。这解释了之前
+"所有 SIGSYS 返回 0 也死"——不是返回值问题，是 handler 根本没执行。
+
+### 最终根因链（完整）
+glibc node 脚本 / dsh web：完整 V8 初始化 → 建线程 → 子线程退出阶段触发
+seccomp SIGSYS → 此时 loader 在 _dl_start 装的 handler 已被移除/绕过 →
+默认处置 signal 31 → 进程死。`node -v` 无线程初始化故不受影响。
+
+### 解法（明确，一次性基础设施）
+需要在线程创建后仍保有 SIGSYS handler。loader 早期 handler 生命周期不足。
+正解：让 handler 在 V8/node 初始化之后仍存在——例如
+- 由 node wrapper（`--require` 一个 glibc 原生 addon）在 node init 后重装 handler；
+  之前 --require addon 尝试失败是因为预加载时机/参数注入路径问题，方向仍成立；
+- 或 glibc loader 把 handler 装在不会被线程继承时重置的机制上（需查 V8 信号初始化）。
+这是 node 生态一次性适配，不是重编软件。
+
+### 产品状态
+所有诊断 patch 回退，产品 loader 恢复 8680a1c5，节点恢复 bionic，
+验收 B 与核心 dsh 完成，工作区干净，终端稳定。
