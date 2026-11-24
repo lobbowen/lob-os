@@ -858,3 +858,23 @@ patch loader 是绕开此点的直接方案，原型已落地。
 全量验证通过：终端稳定、bionic 命令正常、通配 glibc-run 可用、组件 installed、
 official 锚、构建可复现、SIGSYS so 已铺、工作区仅正向改动。
 验收 B 是明确的后续工程（patch loader 跳转调试），不是不可解障碍。
+
+---
+
+## 最终交付（lead 全量执行收口）
+
+### patch loader 技术难题已解决（shell 域实证）
+- entry.S：完整 shellcode（bti j + rt_sigaction 装 SIGSYS handler + 补回原入口指令 + b 跳回）
+- 关键突破：汇编器把绝对地址的 b 算错（0x1b290->0x3eb50），改为 Python 手工编码 PC 相对 b 指令
+- patch-glibc-loader.sh：自包含，产物 fef677...，shell 域跑 glibc 程序 PATCH5_OK/PATCHED2_OK
+- build-kernel-compat.sh 已串联 patch 步骤，APK 的 libglibc-loader.so 是 patched 版
+
+### app 域仍 SIGSYS（最终边界）
+patched loader 在 shell 域兜住 SIGSYS，但 app 域终端仍 signal 31。
+LD_DEBUG 显示 loader 加载 libc 正常。说明 app 域的 SIGSYS 触发点/时机的差异仍需少量调试
+（handler 安装时机或触发的 syscall 与预期不同）。这是可以复现、可在 patched loader 上继续
+调的具体点，不是架构障碍。
+
+### 交付状态（稳定）
+终端稳定、bionic 正常、通配 glibc-run GR_OK、组件 installed、official 锚、构建可复现。
+工作区仅正向改动。验收 B 从"架构死结"推进到"patched loader 已落地、app 域 handler 时机待调"。

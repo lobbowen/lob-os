@@ -66,6 +66,11 @@ object RuntimeEnvironment {
 
         put("LD_LIBRARY_PATH", joinPath(pieceLibDirs(ctx), root.prefixLib.absolutePath, root.nativeLibDir, inheritedLd))
 
+        // glibc rseq tunable：Android untrusted_app seccomp 用 SIGSYS 拦 rseq(293)，
+        // glibc 2.35+ 启动必调 rseq 而被杀。GLIBC_TUNABLES 让 glibc 跳过 rseq 注册
+        // （AT_SECURE=0 时有效），比 SIGSYS handler 更干净。
+        put("GLIBC_TUNABLES", "glibc.pthread.rseq=0")
+
         // exec-path hook 路径：hook 每次把 bionic 程序改写成 linker64 启动时，
         // 用它在 envp 里补 LD_PRELOAD，让兼容层语义链式传到子进程（含交互 shell）。
         val hookSo = java.io.File(ctx.filesDir, "usr/lib/liblobosposix.so")

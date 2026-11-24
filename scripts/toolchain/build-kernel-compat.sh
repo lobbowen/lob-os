@@ -80,6 +80,13 @@ if [ -f "$GLIBC_LOADER_SRC" ]; then
   cp -f "$GLIBC_LOADER_SRC" "$OUT/libglibc-loader.so"
   chmod 644 "$OUT/libglibc-loader.so"
   echo "  ✓ glibc-loader → libglibc-loader.so"
+  # patch loader：在最早期装 SIGSYS handler，兜住 Android seccomp 对 rseq 的 SIGSYS
+  if [ -x "$ROOT/scripts/toolchain/patch-glibc-loader.sh" ]; then
+    GLIBC_TC_PREFIX="${GLIBC_TC_PREFIX:-/tmp/glibc-toolchain/root}" \
+      bash "$ROOT/scripts/toolchain/patch-glibc-loader.sh" "$OUT/libglibc-loader.so" >/dev/null 2>&1 \
+      && echo "  ✓ glibc-loader patched (SIGSYS handler)" \
+      || echo "  - glibc-loader patch 失败（用未 patch 版）" >&2
+  fi
 else
   echo "  - glibc loader 未产（先跑 build-component-glibc-runtime.sh），本次 APK 不含" >&2
 fi
