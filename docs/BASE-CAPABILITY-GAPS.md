@@ -1453,3 +1453,25 @@ dsh web 端到端未打通；核心 dsh 与验收 B 完成。
 已分步验证，端到端落地需要：稳定的大文件传输通道 + 非 ptrace 的 app 域 syscall
 观测手段（或 CI 完整构建环境）。当前环境两者都不具备，不宜继续自动试探。
 产品件全部原版，工作区干净。
+
+---
+
+## 本轮：loader handler 插桩的脆弱性与诊断结论
+
+尝试在 _dl_start 的 SIGSYS handler 里加 raw syscall 诊断（openat 写文件 / write stderr），
+两种插桩都导致程序 signal 31（连原本正常的 ghello 都死），恢复干净 handler 后
+GLIBC_HELLO_OK 立即恢复。
+
+### 结论
+1. _dl_start 的 handler 执行上下文极其脆弱：任何额外 raw syscall（openat/write）
+   或寄存器约束不当都会破坏早期环境。这本身解释了为什么"在 handler 里做更多事"
+   不是可行方向——handler 必须保持最小（写 x0=-ENOSYS + 推进 PC）。
+2. 因此"扩展 loader handler 来兜更多 syscall"的路不可行；剩余问题（dsh web 的
+   glibc node 脚本 SIGSYS）必须在 handler 之外解决（换运行时/组件级适配）。
+3. 每次源码 patch 必须完整恢复；本轮已恢复产品 loader（8680a1c5），
+   验收 B 真机复验 GLIBC_HELLO_OK。
+
+### 最终诚实状态（未变）
+产品件全部原版、工作区干净、验收 B 与核心 dsh 完成。dsh web 端到端未打通；
+通用解法方向（wrapper 注入 expose + glibc node 配上游 addon）已分步验证，
+端到端落地需要稳定大文件传输 + 非 ptrace 的 app 域 syscall 观测或 CI 环境。
