@@ -1295,3 +1295,41 @@ prologue 之后、且恢复栈与 PAC），风险高且收益仅是"避免 node 
 剩余 node 覆盖 SIGSYS handler 是一次性工程（正规做法：patch node 源码里
 V8 的 signal 初始化逻辑或重装 handler，而非运行时二进制 patch libc），
 需要整块时间做，不影响当前交付。
+
+---
+
+## 最终根因确定：node 脚本死在 clone3，不是 handler 被覆盖
+
+### 决定性对照实验（seccomp-sim2 + cloneprobe，pthread_create 触发 clone3）
+| 组合 | 结果 |
+|---|---|
+| SIGSYS loader + TRAP rseq(293) + 无 tunable | CLONE_OK r=0（handler 兜住 rseq，线程创建成功） |
+| SIGSYS loader + TRAP clone3(435) | Bad system call（死） |
+| 原版 loader + TRAP clone3 + tunable | Bad system call（死） |
+
+### 根因（100% 确定，推翻前几轮"node 覆盖 handler"的猜测）
+node 完整初始化（执行脚本，区别于 `node -v`）调用 pthread_create，
+glibc 2.41 用 **clone3(435)** 创建线程。Android untrusted_app seccomp TRAP clone3。
+SIGSYS handler 虽然把返回值写成 -ENOSYS，但 **glibc 的 clone3 调用点不会像 rseq
+那样优雅 fallback**——返回后执行流失败，进程以 signal 31 / Bad system call 死。
+rseq 的 -ENOSYS 能被 glibc 优雅降级，clone3 不能。这就是"node -v 活、
+node script.js 死"的真正差别（脚本执行触发完整初始化 -> 线程 -> clone3）。
+
+### 之前误判的纠正
+- 不是 sigsys so 没加载的问题（那个确实是死的，但不是 node 死因）
+- 不是 node 覆盖 handler（handler 在探针里证明有效，rseq 能兜）
+- 是 **clone3 的 SIGSYS 无法被 -ENOSYS 兜住**
+
+### 解法（明确，零重编）
+让 pthread_create 不走 clone3，或让 clone3 的 SIGSYS 正确 fallback：
+1. 查 glibc clone3 wrapper 对 -ENOSYS 的 fallback 条件；
+   可能 handler 需要返回 -EINVAL（glibc 也 fallback）而非 -ENOSYS。
+2. 或让 loader handler 对 clone3 特殊处理（PC 推进 / 返回值调整）。
+3. 或降低 glibc 线程创建路径（环境变量/ tunable 若有）。
+这是一次性 loader/handler 层适配，patch 一次全体 glibc 程序（含 node）受益。
+不需要为任何软件重新编译。
+
+### 关键数据
+- clone3 = syscall 435 (aarch64)
+- handler 当前统一写 -ENOSYS (x0=-38)
+- rseq=293 能兜；clone3=435 不能兜
