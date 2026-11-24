@@ -1022,3 +1022,33 @@ guest 路由后 glibc loader 执行仍失败（signal 31 / PHDR error）：
 ### 交付状态
 终端稳定（hooked bash 可交互）、bionic 正常、通配 glibc-run 可用、
 hook 拦截用户命令成功、official 锚、构建可复现。
+
+---
+
+## 决定性诊断：SIGSYS 发生在 libc.so.6 初始化，不是 rseq
+
+LD_DEBUG=libs 真机铁证：
+```
+find library=libc.so.6 [0]; searching
+search path=.../glibc-runtime/2.41.12/lib (--library-path)
+trying file=.../libc.so.6
+Unknown signal 31
+```
+guest loader 成功 exec、成功定位 libc.so.6，在**加载/初始化 libc.so.6 时**触发 SIGSYS。
+rseq tunable 已注入（seccomp-sim 证明对 rseq 有效），说明触发的是**另一个 syscall**
+（glibc libc 初始化会调 set_robust_list 等 cortex syscalls.c 列出的 syscall）。
+
+### 为什么 sigsys so 没兜住
+sigsys so 经 LD_PRELOAD 加载，其 constructor 在 libc.so.6 初始化完成后才跑，
+而 SIGSYS 发生在 libc 初始化中途——**时序太晚**。
+
+### 最终解法（明确工程）
+把 SIGSYS handler 静态编进 glibc loader（Debian 源码 elf/dl-start.c 的 _dl_start
+最早期用 glibc sigaction 装 handler，cortex signals.c 逻辑），
+交叉编译替换组件 loader。这样 handler 在 libc 初始化前就位，兜住所有 seccomp TRAP。
+源码已下载校验（glibc_2.41.orig.tar.xz sha256 匹配官方），工具链已就绪。
+
+### 交付状态
+hook 进入 PTY shell、拦截用户命令、guest 路由全部成功（铁证齐备）。
+剩 libc 初始化 SIGSYS 一个点，有明确源码级解法。
+终端稳定、bionic 正常、通配可用、official 锚、构建可复现。
