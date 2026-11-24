@@ -1197,3 +1197,33 @@ app 域 `node dl.js` 的 signal 31 来自 node/V8 运行时在某处触发 secco
 官方 glibc node（预编）+ 官方 linux-arm64-gnu addon（预编）兼容链路已在
 shell 域端到端验证通过；app 域 node 本体已验证可跑。剩下的是 app 域
 运行时 SIGSYS handler 时序，一次性基础设施，不需要为任何软件重新编译。
+
+---
+
+## 隐藏 bug 揭穿：guest 的 LD_PRELOAD sigsys so 从未真正加载
+
+### 铁证（诊断版 sigsys so，ctor 用 raw write 打标记）
+- 给 libguest-sigsys.so 的 constructor 加 `write(2, "SIGSYS_SO_CTOR_RAN")`
+  和写 sigsys-log；部署到 LOBOS_GUEST_SIGSYS 指向的路径。
+- app 域终端跑 glibc node 脚本：终端无 CTOR 标记，sigsys-log 空（连 CTOR 都没有）。
+- shell 域直接 `LD_PRELOAD=... libguest-sigsys.so ld-linux ... node -v`：
+  同样无 CTOR 标记。
+
+### 结论
+glibc loader 作为主程序被 exec（raw_execve(loader,...)）时，
+通过环境变量 LD_PRELOAD 指定的 so **没有被加载**。
+所以几十轮来 guest 路由里 sigsys so 机制一直是死的——
+真正兜 SIGSYS 的只有源码编译进 loader 的 handler（_dl_start 装的）。
+
+### 这解释了所有矛盾
+- 为什么 selftest（自包含 handler + 主动 syscall）成功：handler 在程序内直接装。
+- 为什么 sigsys so 测试"没 ctor"：LD_PRELOAD 对直接 exec 的 glibc loader 无效。
+- 为什么 node -v 成功而 node script.js 失败：
+  node 完整初始化时触发 seccomp TRAP，loader handler 若被 V8 覆盖则无人兜。
+
+### 剩余唯一工作（明确）
+让 SIGSYS handler 在 node 完整初始化后仍存活。sigsys so 路线要改：
+不是 LD_PRELOAD 注入，而是在 glibc loader 装好 handler 后，
+确保 node/V8 不覆盖 SIGSYS（确认 V8 信号处理范围），
+或经 NAPI addon 在 node init 后重装（一次性基础设施）。
+不需要为任何软件重新编译。
