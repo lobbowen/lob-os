@@ -78,6 +78,9 @@ object TerminalProfile {
             appendLine("if (typeof process.getuid !== 'function') process.getuid = () => 1;")
             appendLine("if (typeof process.getgid !== 'function') process.getgid = () => 1;")
             appendLine("if (typeof process.getgroups !== 'function') process.getgroups = () => [1];")
+            // LobOS 是 Linux 兼容环境：让 Node 生态按标准 linux-arm64 解析平台包，
+            // 而不是走没有预编件的 android 分支（Claude Code 等据此选 native 包）。
+            appendLine("try { if (process.platform === 'android') Object.defineProperty(process, 'platform', { value: 'linux', configurable: true }); } catch (e) {}")
         }
         runCatching { shim.writeText(text) }
     }

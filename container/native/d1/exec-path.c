@@ -11,6 +11,10 @@
 
 extern char **environ;
 
+/* Node 通用预加载 shim（platform 伪装为 linux + getuid 等 POSIX 垫片）。
+   由 TerminalProfile.ensureNodePosixShim 生成，每次终端启动刷新。 */
+#define LOBOS_NODE_SHIM_PATH "/data/user/0/lobos.os/files/.node-posix-shim.js"
+
 static int (*real_execve)(const char *, char *const[], char *const[]);
 static int (*real_access)(const char *, int);
 
@@ -394,7 +398,7 @@ static int parse_shebang(const char *file, char *buf, size_t n, char *tok[], int
 }
 
 static int exec_with(const char *exe, const char *script, char *const argv[], char *const envp[], const char *disp0, char *shebangArgs[], int nShebang) {
-  size_t extra = (size_t)nShebang, argc = 1 + extra + 1 + 1 /*expose room*/, i, k = 0;
+  size_t extra = (size_t)nShebang, argc = 1 + extra + 1 + 2 /*expose+require*/, i, k = 0;
   char **nargv;
   if (argv) for (i = 1; argv[i]; i++) argc++;
   nargv = (char **)malloc((argc + 1) * sizeof(char *));
@@ -410,7 +414,11 @@ static int exec_with(const char *exe, const char *script, char *const argv[], ch
     if (argv) for (int z = 1; argv[z]; z++)
       if (strcmp(argv[z], "--expose-internals") == 0) { add_ei = 0; break; }
   }
-  if (add_ei) nargv[k++] = (char *)"--expose-internals";
+  if (add_ei) {
+    nargv[k++] = (char *)"--expose-internals";
+    nargv[k++] = (char *)"--require";
+    nargv[k++] = (char *)LOBOS_NODE_SHIM_PATH;
+  }
   nargv[k++] = (char *)script;
   if (argv) for (i = 1; argv[i]; i++) nargv[k++] = argv[i];
   nargv[k] = NULL;
@@ -438,14 +446,16 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
         if (strcmp(argv[i], "--expose-internals") == 0) { already = 1; break; }
       if (!already) {
         int ac0 = 0; while (argv[ac0]) ac0++;
-        char **na = (char **)malloc((size_t)(ac0 + 2) * sizeof(char *));
+        char **na = (char **)malloc((size_t)(ac0 + 4) * sizeof(char *));
         if (na) {
           int k = 0;
           na[k++] = (char *)path;
           na[k++] = (char *)"--expose-internals";
+          na[k++] = (char *)"--require";
+          na[k++] = (char *)LOBOS_NODE_SHIM_PATH;
           for (int i = 1; i < ac0; i++) na[k++] = argv[i];
           na[k] = 0;
-          argv = na;  /* 后续所有分支用带 expose 的 argv */
+          argv = na;  /* 后续所有分支用带 expose+shim 的 argv */
         }
       }
     }

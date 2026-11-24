@@ -152,3 +152,35 @@ npm 默认官方源在国内网络不通，需先配：
 npm config set registry https://registry.npmmirror.com
 ```
 这是网络环境问题，建议写入 LobOS 终端首次启动的默认配置（待办）。
+
+## 10. Linux 平台伪装（platform=linux + glibcVersionRuntime）
+
+你的指正："我们是真正的 Linux 系统，为什么要带 android？装 Claude 应该直接装
+linux 版本。"——完全正确，已固化为系统能力：
+
+### 机制（在 node 启动 shim 里，TerminalProfile.ensureNodePosixShim 生成）
+- `process.platform === 'android'` → 伪装为 `'linux'`
+- `process.report.getReport().header.glibcVersionRuntime` 缺失 → 补 `'2.41'`
+
+shim 经 hook 在命令行层 `--require` 注入（NODE_OPTIONS 的 --require 在 exec
+改写时会丢，已验证），与 `--expose-internals` 同一机制（exec-path.c 两处注入）。
+
+### Claude Code 验证结果（2026-11-25）
+按 Linux 环境重装 Claude Code：
+1. platform=linux + glibc=2.41 生效（shim 验证输出确认）
+2. `npm install -g` 正常（国内源），platform 包正确解析为 `linux-arm64`（非 musl）
+3. 手动装 `@anthropic-ai/claude-code-linux-arm64@2.1.331` 平台包成功
+4. postinstall 把 native binary 拷到 bin/claude.exe（397MB ELF，magic 正确）
+5. `claude --version` 执行了但无输出——native glibc 二进制经 guest 路由执行时
+   静默失败（与 glibc node 的 clone3 SIGSYS 同类问题，属原生二进制在
+   Android seccomp 下运行的层面，非平台选择问题）
+
+### 边界结论（再精确）
+- 平台识别层：已完全解决（node 生态按标准 linux-arm64 glibc 解析，不再走 android 分支）
+- JS 类 CLI（dsh 及同类）：端到端成功（dsh web 401）
+- 原生二进制类 CLI（Claude 的 397MB glibc binary）：安装/平台包/二进制就位，
+  但执行卡在 glibc 原生程序在 app 域 seccomp 的运行层面，待后续适配
+
+### 环境备注
+npm 官方源在国内不通，需 `npm config set registry https://registry.npmmirror.com`；
+待办：写入终端首次启动默认配置。
