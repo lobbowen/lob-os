@@ -928,3 +928,36 @@ guest 分支 execve(loader=patched) 时，loader 是 ET_DYN 无 PT_INTERP 的 EL
 ### 最后一步（明确）
 确保 guest 分支 real_execve 的第一个参数是 patched loader 本身（不是 linker64），
 即绕过所有 ET_DYN 改写。这是单个参数核对/修复点，有 tombstone 铁证指引。
+
+---
+
+## 决定性验证：handler 机制 100% 正确（selftest）
+
+写一个自包含 C 程序（selftest）：装 SIGSYS handler（写回 -ENOSYS + 推进 PC），
+装 seccomp filter（TRAP rseq=293），主动触发 rseq。
+shell 域实测输出：
+  C00000001 N00000125   (si_code=1 SYS_SECCOMP, si_syscall=0x125=293)
+  sigaction=0 seccomp=0
+  after rseq ret=-38 hit=1   (handler 触发，返回 ENOSYS，程序继续)
+RC=0。
+
+结论：SIGSYS handler 的判据、写回值、PC 推进逻辑全部正确。
+Android seccomp 的 si_code=1、rseq=293 与 cortex 文档一致。
+
+### 唯一剩余问题（已精确定位）
+问题不在 handler 逻辑，而在"如何把 handler 送进 glibc 程序进程且在 rseq 之前装好、不被 exec 清空"：
+- LD_PRELOAD so：内核 exec loader 时不处理（loader 是被 exec 的程序）
+- patched loader 手工汇编 handler：app 域被 bionic linker64 加载（tombstone）或被覆盖
+- exec 任何 wrapper：清空 handler
+
+### 最后一步（确定性工程）
+用 Debian glibc **源码**重新编译 ld-linux：在 `elf/dl-start.c` 的 `_dl_start()` 最早期
+用 glibc 自己的 sigaction() 装 handler（cortex signals.c 逻辑），
+而非手工汇编注入。这样 handler 由 loader 自身在重定位完成后、rseq 之前装好，
+不依赖任何 LD_PRELOAD/exec，且是 glibc ABI 原生兼容。
+构建：apt source glibc → 打 dl-start.c patch → 交叉编译 → 替换组件 loader。
+这是有明确输入输出的工程，handler 逻辑已被 selftest 验证正确。
+
+### 交付状态（稳定）
+终端稳定、bionic 正常、通配 glibc-run FINAL_OK、official 锚、构建可复现、
+patched loader 原型与 selftest 证据全部留在仓库/文档。
