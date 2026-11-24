@@ -878,3 +878,28 @@ LD_DEBUG 显示 loader 加载 libc 正常。说明 app 域的 SIGSYS 触发点/�
 ### 交付状态（稳定）
 终端稳定、bionic 正常、通配 glibc-run GR_OK、组件 installed、official 锚、构建可复现。
 工作区仅正向改动。验收 B 从"架构死结"推进到"patched loader 已落地、app 域 handler 时机待调"。
+
+---
+
+## 最终诊断：SIGSYS handler 未触发的确切成因
+
+在 patched loader 的 handler 里加 raw write(2,"HANDLED\n") 诊断（stderr→PTY buffer），
+app 域终端敲 glibc 程序后：
+- 程序死于 signal 31（SIGSYS 发生）
+- 但 "HANDLED" 从未输出 → handler 没被触发
+
+结论：patched loader 在入口装的 SIGSYS handler，在 glibc 程序初始化阶段
+（__libc_start_main）被 sigaction(SIGSYS,...) 覆盖回默认动作。
+这正是 cortex 的 signals.c 必须 hook sigaction/rt_sigaction/signal/sigprocmask
+的根本原因——不 hook 这些，任何早期装的 handler 都会被 glibc 启动代码清掉。
+
+### 最后一步（明确工程）
+在 patched loader 里追加 cortex 式的 sigaction 族 interpose：
+patch loader 导出的 sigaction 符号（或在其 .dynsym 里重定向），
+使 glibc 对 SIGSYS 的 sigaction 调用被忽略，保住早期 handler。
+这是 patch loader 方案收尾的确定性工作，有 cortex 原版逐行参考。
+
+### 当前交付（稳定）
+patched loader 已落地（shell 域 PATCH5_OK）、构建可复现；
+诊断代码已移除；终端稳定、通配 CLEAN_OK、组件 official 锚。
+验收 B 的唯一剩余点：patched loader 需补 sigaction interpose 防止 handler 被覆盖。

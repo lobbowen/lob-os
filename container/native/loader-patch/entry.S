@@ -35,9 +35,7 @@ _start:
     b       0x1b290
     .balign 16
 sigsys_handler:
-    ldr     x3, [x1, #8]
-    cmp     x3, #1
-    b.ne    1f
+    /* handle every SIGSYS unconditionally (Android seccomp si_code may differ) */
     ldr     x3, [x1, #24]
     movn    x4, #37
     mov     x6, #184
