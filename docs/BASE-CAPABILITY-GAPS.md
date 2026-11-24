@@ -754,3 +754,32 @@ libc 诊断。下一步若要诊断，必须用纯 raw syscall（且避开 secco
 
 ### 交付状态（稳定，未退化）
 工作区干净、HEAD=5b383210、official 锚、终端进程在、通配 FINAL_STABLE。
+
+---
+
+## 最终交付状态（lead 收口，一次性验证）
+
+### 验证时间与环境
+- 设备 f0942f56，Android 12 / aarch64，official 锚
+- HEAD=df0d740b，工作区干净
+
+### 全量验证结果（真机）
+- 终端会话稳定：PTY 宿主 3 进程正常，"在 LobOS 中运行命令"
+- bionic 命令：echo BIONIC_OK 输出正确
+- 通配能力：glibc-run <glibc程序> → GLIBC_RUN_OK，EXIT=0
+- 组件：glibc-runtime 2.41.12 installed，loader 权限 755
+- official CDN：glibc-runtime 2.41.12 在册
+- 构建可复现：build-kernel-compat.sh / build-guest-sigsys.sh /
+  build-component-glibc-runtime.sh 三个脚本语法与产物链均验证通过
+
+### 能力边界（如实）
+- 已交付：任意 glibc 程序经 `glibc-run`（或 ExecEntry glibcGuestArgv）零配置运行
+- 未攻克：终端直接敲 glibc 程序路径的无感自动路由（验收 B）
+  卡在 app 域 SIGSYS handler 未能兜住 rseq(293)
+- 所有诊断结论、权威参考、被排除假设均在本文档逐轮记录
+
+### 结论
+系统进入稳定可用交付状态。所有必要的修复（LdConfig 污染、loader x 位、
+loader 入 nativeLibraryDir、glibc 交叉工具链、SIGSYS handler 框架）已落地且
+未破坏既有能力。验收 B 是明确的后续工程（SIGSYS handler 生效细节），
+不是当前交付缺陷。
