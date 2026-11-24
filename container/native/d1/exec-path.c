@@ -14,6 +14,13 @@ extern char **environ;
 static int (*real_execve)(const char *, char *const[], char *const[]);
 static int (*real_access)(const char *, int);
 
+/* raw execve syscall，绕过 PLT/dlsym（guest loader 无 PT_INTERP，
+   必须直接执行，不能被 ET_DYN 分支再套 linker64）。 */
+#include <sys/syscall.h>
+static int raw_execve(const char *p, char *const a[], char *const e[]) {
+    return (int)syscall(__NR_execve, p, a, e);
+}
+
 static void bind_real(void) {
   if (!real_execve) real_execve = (int (*)(const char *, char *const[], char *const[]))dlsym(RTLD_NEXT, "execve");
   if (!real_access) real_access = (int (*)(const char *, int))dlsym(RTLD_NEXT, "access");
@@ -495,10 +502,10 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                         }
                       ge[gj++] = "GLIBC_TUNABLES=glibc.pthread.rseq=0"; /* seccomp: skip rseq */
                       ge[gj] = 0;
-                      real_execve(loader, ga, ge);
+                      raw_execve(loader, ga, ge);
                       free(ge);
                   } else {
-                      real_execve(loader, ga, envp);
+                      raw_execve(loader, ga, envp);
                   }
               }
               { int e = errno; free(ga); errno = e; }

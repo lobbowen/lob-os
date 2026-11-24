@@ -993,3 +993,32 @@ patched loader 原型与 selftest 证据全部留在仓库/文档。
 
 ### 交付状态
 终端稳定、bionic 正常、通配 glibc-run FINAL_OK、official 锚、构建可复现、工作区干净。
+
+---
+
+## 决定性突破：hook 首次进入 PTY 交互 shell 并拦截用户命令
+
+### hooked bash 方案（已实施，核心成功）
+把交互 shell 换成重链接的 bash（DT_NEEDED 含 liblobosposix.so）：
+- work/bash 用 clang 重链接，加 -llobosposix → bash_hooked
+- 打包为 APK native lib（liblobosbash.so），app 域可 exec、走 PT_INTERP
+- pty-session.c child 用 hooked bash 替换 argv[1]
+- build-kernel-compat.sh 自动复制 bash_hooked
+
+### 铁证（真机）
+PTY shell 进程 = `linker64 .../lib/arm64/liblobosbash.so -i`（hooked bash 生效）
+终端敲 glibc 程序后 compat log：
+  `d1.exec-path glibc->guest-loader .../libghello.so`
+**hook 首次在真实终端里拦截到用户命令并触发 guest 路由**（几十轮来的核心突破）。
+shell 域单独验证：hooked bash 执行 id/echo 时 hook 逐条拦截（ET_DYN->linker64）。
+
+### 唯一剩余（精确）
+guest 路由后 glibc loader 执行仍失败（signal 31 / PHDR error）：
+- seccomp-sim 铁证：官方 loader + rseq tunable 在模拟 seccomp 下成功
+- app 域：额外的 seccomp/环境差异导致 loader 启动失败，tunable 未生效
+这是 glibc loader 在 untrusted_app 域的启动细节问题，可用 seccomp-sim 逐 syscall 排查，
+不是 hook/路由问题（后者已完全打通）。
+
+### 交付状态
+终端稳定（hooked bash 可交互）、bionic 正常、通配 glibc-run 可用、
+hook 拦截用户命令成功、official 锚、构建可复现。

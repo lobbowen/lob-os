@@ -85,6 +85,17 @@ else
 fi
 
 
+# hooked bash：DT_NEEDED 带 liblobosposix.so，使 hook 随 bash 进入 PTY 交互 shell。
+# 从项目自建 bash（work/bash）产物复制。
+BASH_SRC="$ROOT/work/bash/bash-5.2.15/bash_hooked"
+if [ -f "$BASH_SRC" ]; then
+  cp -f "$BASH_SRC" "$OUT/liblobosbash.so"
+  chmod 644 "$OUT/liblobosbash.so"
+  echo "  ✓ hooked-bash → liblobosbash.so"
+else
+  echo "  - hooked bash 未产（先重链接 work/bash，见 docs），跳过" >&2
+fi
+
 find "$OUT" -maxdepth 1 -type f \( -name 'liblobos*.so' -o -name 'librivospty.so' \) \
   -exec chmod 644 {} + 2>/dev/null || true
 

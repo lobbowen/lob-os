@@ -74,7 +74,11 @@ object RuntimeEnvironment {
         // exec-path hook 路径：hook 每次把 bionic 程序改写成 linker64 启动时，
         // 用它在 envp 里补 LD_PRELOAD，让兼容层语义链式传到子进程（含交互 shell）。
         val hookSo = java.io.File(ctx.filesDir, "usr/lib/liblobosposix.so")
-        if (hookSo.isFile) put("LOBOS_HOOK_SO", hookSo.absolutePath)
+        if (hookSo.isFile) {
+            put("LOBOS_HOOK_SO", hookSo.absolutePath)
+            val nativeBash = java.io.File(ctx.applicationInfo.nativeLibraryDir, "liblobosbash.so")
+            if (nativeBash.isFile) put("LOBOS_PTY_SHELL", nativeBash.absolutePath)
+        }
 
         // glibc guest 运行时：把当前版本的 loader/lib 递给 ExecEntry，
         // 让 glibc ELF 经 guest loader 启动（单用户系统，无需 fake root）。
