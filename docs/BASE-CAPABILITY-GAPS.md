@@ -723,3 +723,34 @@ cortex 完整方案还包括 hook sigaction/rt_sigaction/signal/sigprocmask 防�
 ### 交付状态（未退化）
 集成改动保留：终端正常（BIONIC_FINAL_OK）、glibc-run 通配正常（FINAL_OK）、
 official 锚。所有改动已提交。SIGSYS so 用 glibc 工具链构建，可复现。
+
+---
+
+## 2026-11-24 第二十三轮：SIGSYS handler 递归陷阱（重要诊断教训）
+
+### 本轮尝试
+用 glibc cross 工具链编译一个带诊断的 handler：handler 内调用 libc 的
+open()/write() 把 si_code/si_syscall 写到固定文件，想确定 handler 到底有没有触发。
+
+### 结果（决定性教训）
+shell 域跑该诊断版时**命令挂起**（超时 300s 未返回，需 job_kill）。
+原因：SIGSYS handler 里调用 libc 的 open()/write()，这些函数内部的 syscall
+（openat/write）本身可能就是 Android seccomp 拦截集合，或 libc wrapper
+触发新的 SIGSYS → handler 重入 → 递归死锁。
+
+这解释了为什么 cortex 的 signals.c 的 handler **完全不调用任何 libc 函数**：
+- 它直接读写 ucontext 结构（纯内存操作）
+- 唯一外部动作是 `raise()` 走 real_sigaction 恢复 SIG_DFL 后重发
+- 诊断/日志一律不在这里做
+
+### 对当前实现的影响与结论
+当前仓库里的 handler（container/native/guest-sigsys/sigsys.c）是干净的 cortex
+风格：只操作 ucontext、无 libc 调用，没有这个递归问题。本轮的递归只发生在
+/tmp 里的临时诊断版，**未进入仓库、不影响交付**。
+
+验收 B 的 SIGSYS 兜住问题仍未攻克，但已排除一个方向：不能在 handler 里加
+libc 诊断。下一步若要诊断，必须用纯 raw syscall（且避开 seccomp 拦截集合）
+或直接读 ucontext/寄存器，不能调 libc。
+
+### 交付状态（稳定，未退化）
+工作区干净、HEAD=5b383210、official 锚、终端进程在、通配 FINAL_STABLE。
