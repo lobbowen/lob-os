@@ -80,6 +80,13 @@ if [ -f "$GLIBC_LOADER_SRC" ]; then
   cp -f "$GLIBC_LOADER_SRC" "$OUT/libglibc-loader.so"
   chmod 644 "$OUT/libglibc-loader.so"
   echo "  ✓ glibc-loader → libglibc-loader.so"
+  # 优先用源码编译的带 SIGSYS handler 的 loader（组件内可控，兜住 seccomp TRAP）
+  SIGSYS_LD="$ROOT/container/native/prebuilt/arm64-v8a/libglibc-loader.so"
+  if [ -f "$SIGSYS_LD" ]; then
+    cp -f "$SIGSYS_LD" "$OUT/libglibc-loader.so"
+    chmod 644 "$OUT/libglibc-loader.so"
+    echo "  ✓ glibc-loader → sigsys-handler 版"
+  fi
 else
   echo "  - glibc loader 未产（先跑 build-component-glibc-runtime.sh），本次 APK 不含" >&2
 fi
@@ -87,7 +94,7 @@ fi
 
 # hooked bash：DT_NEEDED 带 liblobosposix.so，使 hook 随 bash 进入 PTY 交互 shell。
 # 从项目自建 bash（work/bash）产物复制。
-BASH_SRC="$ROOT/work/bash/bash-5.2.15/bash_hooked"
+BASH_SRC="$ROOT/container/native/prebuilt/arm64-v8a/liblobosbash.so"
 if [ -f "$BASH_SRC" ]; then
   cp -f "$BASH_SRC" "$OUT/liblobosbash.so"
   chmod 644 "$OUT/liblobosbash.so"
