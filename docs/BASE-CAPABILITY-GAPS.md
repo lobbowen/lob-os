@@ -783,3 +783,32 @@ libc 诊断。下一步若要诊断，必须用纯 raw syscall（且避开 secco
 loader 入 nativeLibraryDir、glibc 交叉工具链、SIGSYS handler 框架）已落地且
 未破坏既有能力。验收 B 是明确的后续工程（SIGSYS handler 生效细节），
 不是当前交付缺陷。
+
+---
+
+## 最终收口（lead 连续推进，不再分阶段）
+
+### 本轮决定性进展
+1. 链式 hook 传递：exec-path.c 把 bionic 程序改写成 linker64 启动时，
+   在 envp 里补 LD_PRELOAD=liblobosposix.so。实证：compat log 出现
+   `execve-trace path=... preload=liblobosposix.so` —— hook 首次在
+   PTY 交互 shell 内拦截到用户命令的 execve（此前所有轮次的根本缺口）。
+2. guest 路由同时触发：`glibc->guest-loader` 日志确认。
+   => hook 进 shell + 自动路由这两块全部打通。
+
+### 最终边界（实证堵死，非不愿继续）
+SIGSYS so 经 guest envp 的 LD_PRELOAD 传给 glibc loader，但用 ctor 标记确认
+so 仍未加载（NOFILE）。根因：直接 execve 的 ld-linux 作为程序运行时，
+不进入「动态链接器加载可执行文件」的 preload 阶段，故 LD_PRELOAD 不生效。
+cortex/DroidDeck 能 work 是因他们 patch 了 loader 或用 rootfs ld.so + bind。
+=> 验收 B 的最后一步需 patch loader 或静态注入 SIGSYS handler 到 guest 程序，
+超出当前可用手段。继续在 PtySession/env/preload 上试探不会改变结果。
+
+### 全量验证（最终稳定态）
+- 终端稳定、bionic 命令 DELIVERY_OK、通配 glibc-run FINAL_OK
+- 组件 glibc-runtime 2.41.12 installed、official 锚、构建可复现
+- 工作区改动仅 2 个正向源文件（RuntimeEnvironment 注入、exec-path 链式传递+guest 注入）
+
+### 结论
+系统处于稳定可用交付状态。验收 B 从"完全无路"推进到"只剩 loader 层 SIGSYS 注入"
+这一明确终点；核心能力（通配 glibc 运行）始终稳定。

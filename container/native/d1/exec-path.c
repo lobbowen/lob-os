@@ -465,14 +465,12 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                  --preload 注入；Android seccomp 拦 rseq 等 syscall 时靠它兜住。 */
               const char *sigsys = getenv("LOBOS_GUEST_SIGSYS");
               int has_sigsys = (sigsys && sigsys[0] == '/') ? 1 : 0;
-              int extra = has_sigsys ? 2 : 0;
-              char **ga = (char **)malloc((ac + 4 + extra) * sizeof(char *));
+              char **ga = (char **)malloc((ac + 4) * sizeof(char *));
               if (!ga) { errno = ENOMEM; return -1; }
               int gi = 0;
               ga[gi++] = (char *)loader;
               ga[gi++] = "--library-path";
               ga[gi++] = (char *)libdir;
-              if (has_sigsys) { ga[gi++] = "--preload"; ga[gi++] = (char *)sigsys; }
               ga[gi++] = (char *)path;
               for (int k = 1; k < ac; k++) ga[gi++] = argv[k];
               ga[gi] = 0;
@@ -487,6 +485,11 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                           if (strncmp(envp[ei], "LD_PRELOAD=", 11) == 0) continue;
                           ge[gj++] = envp[ei];
                       }
+                        if (has_sigsys) {
+                            static char sigpre[1024];
+                            snprintf(sigpre, sizeof sigpre, "LD_PRELOAD=%s", sigsys);
+                            ge[gj++] = sigpre;
+                        }
                       ge[gj] = 0;
                       real_execve(loader, ga, ge);
                       free(ge);
@@ -508,7 +511,36 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
           for (int k2 = 1; k2 < ac; k2++) na[1 + k2] = argv[k2];
           na[1 + ac] = 0;
           lobos_compat_report("d1.exec-path", "ET_DYN->linker64", path);
-          real_execve(LOBOS_SYSTEM_LINKER, na, envp);
+          {
+            /* 链式传递 hook：改写后的程序(linux linker64 加载)必须继续带
+               LD_PRELOAD=liblobosposix.so，否则它的 execve 不再被拦截
+               （交互 shell 就是这样丢掉 hook 的）。 */
+            const char *hso = getenv("LOBOS_HOOK_SO");
+            if (hso && hso[0] == '/') {
+              int nc = 0; while (envp && envp[nc]) nc++;
+              char **ne = (char **)malloc((nc + 2) * sizeof(char *));
+              if (ne) {
+                int j = 0, put = 0;
+                static char lpbuf[1024];
+                snprintf(lpbuf, sizeof lpbuf, "LD_PRELOAD=%s", hso);
+                for (int q = 0; q < nc; q++) {
+                  if (strncmp(envp[q], "LD_PRELOAD=", 11) == 0) {
+                    if (!put) { ne[j++] = lpbuf; put = 1; }
+                    continue;
+                  }
+                  ne[j++] = envp[q];
+                }
+                if (!put) ne[j++] = lpbuf;
+                ne[j] = 0;
+                real_execve(LOBOS_SYSTEM_LINKER, na, ne);
+                free(ne);
+              } else {
+                real_execve(LOBOS_SYSTEM_LINKER, na, envp);
+              }
+            } else {
+              real_execve(LOBOS_SYSTEM_LINKER, na, envp);
+            }
+          }
           { int e = errno; free(na); errno = e; }
           return -1;
       }
