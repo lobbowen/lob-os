@@ -2187,3 +2187,25 @@ Bun的handler处理不了某syscall。下一步:阻止Bun覆盖loader handler
 (loader export sigaction符号interpose,或让通用so的sigaction hook更早生效)。
 
 这是几十轮来第一次用不污染行为的方法(waitpid退出码)抓到确切syscall号并修复。
+
+---
+
+## 修99后的新边界：Bun用raw rt_sigaction覆盖handler,用户态hook拦不住
+
+正式99修复版(1c57bec9)装机后waitpid仍是SIGSYS31。分析:
+- diag-exit在handler最开头仍抓到99,但那是因为诊断版本身在判断前就exit
+- 正式版修99后仍SIGSYS,且diag放else分支时抓不到——说明SIGSYS不再进loader handler
+- strace早证实Bun会rt_sigaction(SIGSYS,自己的handler)覆盖
+- 通用so有sigaction/rt_sigaction hook,但拦不住Bun——推断Bun走raw syscall
+  SYS_rt_sigaction(134),绕过所有PLT/LD_PRELOAD符号hook
+
+这是cortex方案对纯静态Go/Bun运行时的已知限制:runtime自带SIGSYS handler,
+覆盖后按自己的语义处理TRAP,收到ENOSYS/无法处理就退出。
+用户态无法阻止raw rt_sigaction覆盖,除非改seccomp filter(需系统级)。
+
+已固化的真实成果:
+- diag-exit(waitpid读退出码)是不污染行为的可靠诊断法,抓到syscall=99
+- loader handler修复99/96/233返回0(commit 04599e27)
+- 这修复了Bun线程trampoline的set_robust_list,让claude跑得更远
+
+产品状态:工作区干净,核心能力稳定。
