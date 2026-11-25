@@ -2276,3 +2276,18 @@ sigaction/rt_sigaction/signal/sigprocmask hook+424-511返回ENOSYS。
 bun issue场景是Termux(宽松seccomp),其SIGSYS(openat2/fchmodat2)发生在bun
 启动后(install阶段),延迟重装来得及;我们的SIGSYS在启动更早阶段,来不及。
 产品已恢复干净so(69048,无diag),工作区干净。
+
+---
+
+## 关键发现：glibc make缓存导致99修复多次丢失
+
+决定性:之前所有"99修复后仍抓到99"的根因是glibc makefile的rtld.os缓存——
+改了rtld.c后普通make不重编rtld.os,ld.so一直是旧的(无99修复)。
+必须 rm -f elf/rtld.os elf/ld.so 后 make 才真正重编。
+强制重编后:ld.so=311467f5,反汇编确认 cmp x1,#0x63(99)存在,
+99/96/233返回0、172/178返回4242。
+真机装机(311467f5)验证:claude -p仍SIGSYS31——99修复真实生效后仍未解决。
+另发现claude.exe动态符号有 UND syscall@GLIBC_2.17,按bun#39060评论尝试
+LD_PRELOAD interpose syscall()对437/452等返回ENOSYS——同样无效(SIGSYS31),
+说明claude启动早期不走glibc syscall wrapper(raw svc或bun内部syscall)。
+产品so恢复干净(69048),源码无实验改动。
