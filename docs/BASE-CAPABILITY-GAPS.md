@@ -1897,3 +1897,37 @@ shell 域用 sim 只 TRAP clone3/rseq 时新 libc 都能过，app 域还死说�
 - 设备组件已临时替换为验证版（libc.so.6=10681896）
 - 工作区干净（源码改动需整理为正式patch）
 
+
+---
+
+## 首次可靠的 app 域真实 syscall 实测（非 sim、非插桩）
+
+写了一个不改 handler 的探测程序（只调 syscall 看返回值），经 guest 路由在
+app 域真实 seccomp 下运行，拿到确切数据：
+- getpid(39) / gettid(186) / rseq(293) → -ENOSYS（被 TRAP，handler 返回）
+- madvise(233) / prlimit64(261) / getrandom(278) / statx(291) → 正常
+- set_tid_address(100) / set_robust_list(99) / get_robust_list(96) → 正常
+- clone3(435) → -EINVAL（我们自研 libc 已不调它；直调只返回参数错误，非 TRAP）
+- clone(220) → 成功
+- futex → 正常（WAKE=0, WAIT=-1/EAGAIN 符合预期）
+
+这是第一个可靠的"app 域到底拦什么"的清单，纠正了此前基于 sim 的多个推断。
+
+### pthread 路径精确定位
+另一个诊断程序（pthread_create + join）在 app 域的输出：
+```
+getpid=14851  gettid=14851
+pthread_create r=0 errno=0     ← 线程创建成功
+（随后死于 SIGSYS，没有 join 输出）
+```
+strace（shell 域成功路径）对比：clone3 -> set_robust_list(子) -> futex WAIT ->
+exit(子) -> futex 返回。app 域 clone3 已禁用走 clone、futex/set_robust_list
+都正常，故死锁在子线程退出或 join 的更细路径。注意 getpid/gettid 显示的是
+真实值 14851 而非 handler 合成的 4242，说明该程序路径与预期不同，需继续查。
+
+### 可靠方向（每个都有实测支撑，不再靠 sim/插桩）
+1. 自研 libc 禁用 clone3（已固化，shell 域铁证线程创建成功）
+2. handler 对 getpid/gettid 合成值、madvise 返回 0（已实现在 loader）
+3. 剩余：pthread join/退出路径，需继续用真实 syscall 探测收敛
+
+产品状态：工作区干净，dsh web 401，核心能力稳定。
