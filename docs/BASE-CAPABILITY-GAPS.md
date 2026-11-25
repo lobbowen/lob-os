@@ -1968,3 +1968,31 @@ clone(220) 之后、worker 第一条指令之前的 glibc 线程 trampoline 阶�
 - 不是 loader/libc 路径错误（maps 确认正确）
 
 产品状态：工作区干净，dsh web 401，核心能力稳定。
+
+---
+
+## 真实tid方案验证结果：无效，卡点收窄到clone(220)线程trampoline
+
+把 handler 的 getpid/gettid 合成值从固定 4242 改为 raw getppid(172) 真实 pid
+（loader sha b18cb5a7），app 域 ptd5 复测：
+```
+main: pthread_create r=0
+（worker 仍从未进入，RC=159）
+```
+真实 tid 也不能救——排除"固定 tid 导致 TLS 缓存错误"假设。
+
+### 当前最可能的卡点（所有其他都已实测排除）
+clone(220) 相对 clone3(435) 的子线程启动语义差异：
+- clone 的子线程从调用点返回（fork 语义），clone3 从 stack 指定入口开始
+- glibc __clone_internal_fallback 用 clone(220) 模拟 clone3 时，需要正确设置
+  child_tid/TLS；若参数转换有偏差，子线程 trampoline 启动即 SIGSYS
+- 这与 Bun/go 等直接 clone3 的运行时不同——那些是 runtime 自己处理
+
+### 已实测排除清单
+worker代码、clone3、futex、set_robust_list、madvise、loader/libc路径、
+固定tid、真实tid、getpid/gettid/rseq返回语义
+
+### 下一步（需谨慎）
+深入 glibc __clone_internal_fallback 的 clone(220) 参数转换，或在 handler
+里对 clone3 做真实模拟（返回合法 tid）——后者需要内核线程支持，风险高。
+当前产品能力不受影响（node/dsh/验收B/glibc单线程程序全正常）。
