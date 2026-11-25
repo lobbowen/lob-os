@@ -2291,3 +2291,26 @@ bun issue场景是Termux(宽松seccomp),其SIGSYS(openat2/fchmodat2)发生在bun
 LD_PRELOAD interpose syscall()对437/452等返回ENOSYS——同样无效(SIGSYS31),
 说明claude启动早期不走glibc syscall wrapper(raw svc或bun内部syscall)。
 产品so恢复干净(69048),源码无实验改动。
+
+---
+
+## 诊断方法学再修正：si_code=0说明SIGSYS非seccomp,"99"可能是误读
+
+用loader handler编码si_code<<8|si_syscall的diag,结果packed=99(0x63),
+即si_code=0(SI_USER)而非1(SYS_SECCOMP)。这说明SIGSYS不是seccomp发的,
+而是进程/kill发的。对SI_USER信号,si_syscall字段无效,读出的"99"可能是
+si_pid或union中其它字段——之前"syscall=99"的解读可能是错的。
+若真如此,所有基于"99=set_robust_list"的修复都建立在误读上。
+但99修复反汇编确认已编入(311467f5),实际行为未变——与"99本就不是syscall"一致。
+产品恢复正式版,源码无diag。这是诊断方法的根本性反思。
+
+---
+
+## 诊断最终澄清
+
+纯si_code诊断:exit=201→si_code=1(SYS_SECCOMP),确认SIGSYS来自seccomp,
+syscall=99(set_robust_list)是真被TRAP的,99修复方向正确(已编入311467f5)。
+但修99后diag抓不到下一个syscall(exit码非我们编码的300+nr),说明后续SIGSYS
+不进loader handler(Bun覆盖后自己处理)。
+诊断过程中多次因打包编码算错、make缓存、run-as变量展开等问题误判,已全部纠正。
+产品恢复正式版311467f5,源码无diag。
