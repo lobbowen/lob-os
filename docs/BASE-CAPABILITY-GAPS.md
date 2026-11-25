@@ -2151,3 +2151,20 @@ Bun自带SIGSYS handler(Bun自己的seccomp处理),app域framework filter + Bun 
 的交互是当前唯一未解点。strace铁证:Bun会主动覆盖SIGSYS handler。
 
 产品状态:设备已恢复原始稳定loader(8680a1c5),工作区干净。
+
+---
+
+## strace全syscall清单 + 逐个TRAP测试结论
+
+strace抓claude -p成功路径全部syscall(5473行),去重得完整清单:
+bind/connect/socket/sendto/recvmsg/setsockopt/epoll_*/inotify_*/prctl/
+getcwd/readlinkat/faccessat/statx/newfstatat/fstat/madvise/mprotect/clone/
+futex/set_robust_list/set_tid_address/rseq/getpid/gettid等70+种。
+
+逐个TRAP测试(simone)显示Claude对基础syscall的ENOSYS极敏感:
+readlinkat(67)/getcwd(79)/fstat(80)/syscall134 等被TRAP会失败。
+但app域probe4实测这些号全部正常——矛盾仍在:app域claude -p死159,
+但app域逐个syscall探测全正常,shell域完整成功。
+
+设备已恢复原始稳定loader(8680a1c5),所有内核态handler实验产物回退。
+工作区干净。结论:当前权限下无法解释app域exec claude的SIGSYS来源。
