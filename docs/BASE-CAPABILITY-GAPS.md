@@ -1996,3 +1996,29 @@ worker代码、clone3、futex、set_robust_list、madvise、loader/libc路径、
 深入 glibc __clone_internal_fallback 的 clone(220) 参数转换，或在 handler
 里对 clone3 做真实模拟（返回合法 tid）——后者需要内核线程支持，风险高。
 当前产品能力不受影响（node/dsh/验收B/glibc单线程程序全正常）。
+
+---
+
+## 关键矛盾：handler 编进 loader 但探测显示 getpid 仍返回 -ENOSYS
+
+反汇编确认产品 loader（b18cb5a7）的 lobos_sigsys_handler 确实包含：
+- cmp x1,#0x27 (getpid 39) / ccmp x1,#0xba (gettid 186)
+- 命中后 INLINE_SYSCALL_CALL(getppid) 取真实 pid 写回 x0
+- else 分支 mov x0,#-38 (ENOSYS)
+
+但 app 域 sysprobe 里 syscall(39)/syscall(186) 仍返回 -ENOSYS。
+唯一解释：sysprobe 进程用的不是这个带 handler 的 loader，或 handler 被覆盖。
+而 ptd4 的 maps 明确显示用 nativeLib 产品 loader + 自研 libc——两个程序路径
+可能不同（sysprobe 脚本没 unset LD_PRELOAD，ptd4 也是，但结果不同）。
+
+另外 shell 域 sim 同时 TRAP getpid/gettid/rseq + 产品 loader + 自研 libc +
+pthreaddiag2 → pthread_join r=0 rv=42 全部成功。同样的 syscall 集合，
+shell 域成功、app 域失败——差别只剩：
+- app 域 filter 是 framework 装的（可能有我们不知道的额外动作）
+- 或 app 域 guest 进程实际用的 loader/handler 与 maps 显示不一致
+
+这是当前最尖锐的矛盾点，需要能同时看"进程用的 loader + handler 是否触发 +
+所有 SIGSYS"的可靠手段。handler 内插桩不可用（观察者效应），外部 tracing
+无权限——仍受限于观测能力。
+
+产品状态：工作区干净，核心能力稳定。clone3 已禁用并固化（最有价值的成果）。
