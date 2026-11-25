@@ -540,7 +540,10 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
               /* guest 进程由 glibc loader 加载，不能带 bionic 的 LD_PRELOAD hook
                  （那是 bionic ELF，glibc loader 加载不了）；env 里去掉它。 */
               {
-                  char **ge = (char **)malloc((envc + 1) * sizeof(char *));
+                  /* 原 env 过滤 LD_PRELOAD/GLIBC_TUNABLES 后还会加回 sigpre 和
+                     GLIBC_TUNABLES 两项；若原 env 没有这两项，envc+1 会堆溢出，
+                     导致 LD_PRELOAD=sigsys 落空、guest 程序失去 SIGSYS handler。 */
+                  char **ge = (char **)malloc((size_t)(envc + 4) * sizeof(char *));
                   if (ge) {
                       int gj = 0;
                       for (int ei = 0; ei < envc; ei++) {
