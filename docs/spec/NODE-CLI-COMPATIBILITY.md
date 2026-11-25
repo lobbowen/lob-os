@@ -262,3 +262,29 @@ RC=0
 系统现在是完整 Linux 视图：Node 生态按 linux-arm64 glibc 解析，
 原生 glibc 二进制经通用 SIGSYS hook 获得完整 syscall 语义。
 装产品不需要逐个适配——一次性底座覆盖全部。
+
+## 11. Claude Code 界面落地：官方 musl 版二进制 + patched musl loader
+
+### 根因与正解（外部资料 + 真机实测）
+glibc 版 `@anthropic-ai/claude-code-linux-arm64`（397MB）在 app 域原生执行
+各类 syscall 兼容问题无解（几十轮验证）。参考 Termux-Claude-Code 项目
+(https://github.com/Ryovx/Termux-Claude-Code) 与 bun#39060，正解是：
+- 用官方 **`linux-arm64-musl`** 二进制（380MB，PT_INTERP=/lib/ld-musl-aarch64.so.1）
+- 用 patched musl loader（Ryovx/Musl-on-Termux，支持 MUSL_ON_TERMUX=1 的 DNS 处理）
+- launcher: unset LD_PRELOAD + MUSL_ON_TERMUX=1 + musl loader --library-path + 二进制
+
+### 落地（已固化为标准系统能力）
+- `libmusl-ld.so`、`libmusl-c.so`（patched musl loader/libc）随 APK 放 nativeLibraryDir
+- `libclaude-musl.so`（380MB 官方 musl 版二进制）**不入 git**（超 GitHub 100MB
+  限制），作为外部组件由 component-sources/`@anthropic-ai/claude-code-linux-arm64-musl`
+  npm 包在构建/装机阶段提供，放 nativeLibraryDir
+- exec-path.c 的动态链接器豁免加 `ld-musl`/`musl-ld`/`libmusl`，避免 musl loader
+  被 ET_DYN->linker64 改写（那报 "Could not find a PHDR"）
+- TerminalProfile 生成 claude()：`unset LD_PRELOAD; MUSL_ON_TERMUX=1; exec musl-loader
+  --library-path <nativeDir> <nativeDir>/libclaude-musl.so "$@"`
+
+### 实测结果（重装 APK 后端到端）
+- `claude -p hi` → `Not logged in · Please run /login`（完整初始化成功，SIGSYS 消失）
+- `claude` 交互 → TUI 界面显示 `Welcome to Claude Code v2.1.331`，随后报
+  `Failed to connect to api.anthropic.com: 403`（网络/地区问题，非系统兼容）
+- 结论：**Claude Code 界面在 LobOS 终端正常显示**，系统兼容层达标。

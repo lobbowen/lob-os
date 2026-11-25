@@ -233,16 +233,21 @@ object TerminalProfile {
             if (nh != null && File(nh, "bin/node").isFile) {
                 val nb = File(File(nh, "bin"), "node").absolutePath
                 val nlp = "$nh:$nh/lib:$nh/bin:$sysLib"
+                // Claude Code 官方 musl 版：glibc 版在 app 域被 Android seccomp
+                // 干扰；官方 linux-arm64-musl + patched musl loader 实测完整启动。
+                val nativeDir = ctx.applicationInfo.nativeLibraryDir
+                val muslBin = File(nativeDir, "libclaude-musl.so")
+                val muslLoader = File(nativeDir, "libmusl-ld.so")
                 for (f in globalBin.listFiles().orEmpty()) {
                     if (!f.isFile || !seen.add(f.name)) continue
-                    /* ELF原生bin(如Claude的claude.exe)直接exec走guest路由;只有node脚本才用node跑。
-                       否则 node 读 .exe 报 ERR_UNKNOWN_FILE_EXTENSION 界面起不来。 */
                     val target = try { java.nio.file.Files.readSymbolicLink(f.toPath()).let { link ->
                         val r = if (link.isAbsolute) link else java.io.File(f.parentFile, link.toString()).toPath()
                         r.normalize().toFile()
                     }.let { if (it.isFile) it else f } } catch (_: Exception) { f }
                     val shape = ExecEntry.detect(target)
-                    if (shape is ExecEntry.Shape.Elf || shape is ExecEntry.Shape.Exec) {
+                    if (f.name == "claude" && muslBin.isFile && muslLoader.isFile) {
+                        sb.appendLine("${f.name}() { (unset LD_PRELOAD; MUSL_ON_TERMUX=1 TMPDIR=$base/.tmp exec ${muslLoader.absolutePath} --library-path $nativeDir ${muslBin.absolutePath} \"\$@\"); }")
+                    } else if (shape is ExecEntry.Shape.Elf || shape is ExecEntry.Shape.Exec) {
                         sb.appendLine("${f.name}() { ${target.absolutePath} \"\$@\"; }")
                     } else {
                         sb.appendLine("${f.name}() { LD_LIBRARY_PATH=$nlp $nb ${f.absolutePath} \"\$@\"; }")
