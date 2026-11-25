@@ -2339,3 +2339,19 @@ filter(极简1指令,自检已证明filter在loader成功安装),app域跑claude
 下一步:用allowlist逐步放开"必须成功"的syscall(read/write/mmap/futex/clone等),
 定位是哪个ENOSYS触发abort。这是明确的、可二分的方向。
 产品恢复正式版311467f5。
+
+---
+
+## 决定性推翻：app域seccomp根本没TRAP这些syscall(几十轮假设错误)
+
+用Python ctypes在app域逐个fork测试424-511全部范围+99/293/172/178/98/96等
+所有关键syscall:没有任何一个收到SIGSYS(31),全部正常返回。
+A/B测试:不装filter时syscall(99)直接ret=0 errno=0,不是SIGSYS。
+这推翻了几十轮的基础假设——Android app seccomp没有TRAP这些syscall。
+之前diag抓到的"99=set_robust_list被TRAP"是si_syscall字段误读。
+
+真正结论:claude的SIGSYS31不是Android seccomp发的,而是Bun/Claude runtime
+自己触发的(自身sandbox/seccomp机制在非标准LobOS环境下误触发)。
+问题不在seccomp兼容层,在Claude自身sandbox与LobOS的不兼容。
+下一步:查Claude sandbox禁用方式,而非继续调seccomp filter。
+产品恢复正式版,所有实验清除。
