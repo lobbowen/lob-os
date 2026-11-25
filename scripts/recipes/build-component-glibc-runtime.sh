@@ -54,6 +54,19 @@ for so in $KEEP; do
   if [ -f "$SRC/$so" ]; then cp -f "$SRC/$so" "$DIST/lib/$so"; else echo "  [warn] 缺 $so（跳过）"; fi
 done
 
+# LobOS 自研 libc.so.6：官方 Debian glibc 在 aarch64 上 __ASSUME_CLONE3=1，
+# pthread_create 直接发 clone3(435)，被 Android seccomp TRAP -> 线程创建失败。
+# 用我们 cross-build 的 glibc（patch 见 scripts/patches/glibc-2.41/no-clone3.patch.md），
+# __clone3_internal 恒返回 ENOSYS，__clone_internal fallback 到 clone(220)（guest 可用）。
+LOBOS_LIBC="$ROOT_DIR/container/native/prebuilt/arm64-v8a/glibc/libc.so.6"
+if [ -f "$LOBOS_LIBC" ]; then
+  cp -f "$LOBOS_LIBC" "$DIST/lib/libc.so.6"
+  chmod 644 "$DIST/lib/libc.so.6"
+  echo "[glibc] 用 LobOS 自研 libc.so.6（无 clone3，fallback 到 clone）"
+else
+  echo "[warn] LobOS 自研 libc 不在（$LOBOS_LIBC）——用官方 deb 的 libc，clone3 会被 Android seccomp 拦" >&2
+fi
+
 # C++ 运行库：官方 linux-arm64 Node addon（NARB 等）NEEDED libstdc++.so.6 /
 # libgcc_s.so.1。Debian trixie 同源，按钉值表逐字节校验后解出 aarch64 .so。
 # 走 --library-path 给 guest loader，不进全局 LD_LIBRARY_PATH（见 RuntimeEnvironment 注释）。

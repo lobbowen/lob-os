@@ -1863,3 +1863,37 @@ hook、LD_PRELOAD、loader 早期 handler、平台伪装、JS 替身、国内源
 做完并验证；剩余需要更强的系统级观测或产品级能力。
 
 产品状态：工作区干净，dsh web 401，终端稳定，产品件原版，验收 B 完成。
+
+---
+
+## 重大突破：自研 glibc 彻底禁用 clone3（系统层解决）
+
+用户指正核心："Android 只是硬件层，能力来自我们自研内核/系统，不该在 Android 边界找解法。"
+
+### 解法（100%在我们自己的系统层，无需root）
+在自研 glibc 源码 `sysdeps/unix/sysv/linux/clone-internal.c` 的
+`__clone3_internal` 里，直接 `__set_errno(ENOSYS); return -1;`
+——永不调用 clone3(435)，强制 `__clone_internal` fallback 到 clone(220)。
+
+配合 aarch64/kernel-features.h 里 `__ASSUME_CLONE3=0`。
+
+### 铁证（shell域，产品loader+我们重编的libc）
+- 原 Debian libc + TRAP clone3 + pthreadprobe → Bad system call
+- **我们重编的无clone3 libc + TRAP clone3 + pthreadprobe → PTHREAD_CREATE r=0, JOIN rv=42**
+- 无clone3 libc + TRAP rseq → 同样成功（handler有效）
+
+这证明：在 Android seccomp TRAP clone3 的环境下，我们的系统层 libc
+通过走 clone(220) 让线程创建完全正常。这是"造我们自己的 Linux 环境"的
+正确路径——逐 syscall 在我们自己的 libc/loader 里消解 Android 限制。
+
+### 剩余（app域 claude 仍 RC=159）
+app 域真实 seccomp 可能还 TRAP 其它 syscall（不止 clone3/rseq）。
+shell 域用 sim 只 TRAP clone3/rseq 时新 libc 都能过，app 域还死说明
+有别的 syscall。下一步用同样方法逐个消解——但都在我们自己的系统层做。
+
+### 固化状态
+- glibc 源码改动：work/glibc-build/glibc-2.41/{clone-internal.c, aarch64/kernel-features.h}
+- 重编产物：work/glibc-build/build/libc.so (10681896, 无clone3调用)
+- 设备组件已临时替换为验证版（libc.so.6=10681896）
+- 工作区干净（源码改动需整理为正式patch）
+
