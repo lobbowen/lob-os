@@ -235,7 +235,18 @@ object TerminalProfile {
                 val nlp = "$nh:$nh/lib:$nh/bin:$sysLib"
                 for (f in globalBin.listFiles().orEmpty()) {
                     if (!f.isFile || !seen.add(f.name)) continue
-                    sb.appendLine("${f.name}() { LD_LIBRARY_PATH=$nlp $nb ${f.absolutePath} \"\$@\"; }")
+                    /* ELF原生bin(如Claude的claude.exe)直接exec走guest路由;只有node脚本才用node跑。
+                       否则 node 读 .exe 报 ERR_UNKNOWN_FILE_EXTENSION 界面起不来。 */
+                    val target = try { java.nio.file.Files.readSymbolicLink(f.toPath()).let { link ->
+                        val r = if (link.isAbsolute) link else java.io.File(f.parentFile, link.toString()).toPath()
+                        r.normalize().toFile()
+                    }.let { if (it.isFile) it else f } } catch (_: Exception) { f }
+                    val shape = ExecEntry.detect(target)
+                    if (shape is ExecEntry.Shape.Elf || shape is ExecEntry.Shape.Exec) {
+                        sb.appendLine("${f.name}() { ${target.absolutePath} \"\$@\"; }")
+                    } else {
+                        sb.appendLine("${f.name}() { LD_LIBRARY_PATH=$nlp $nb ${f.absolutePath} \"\$@\"; }")
+                    }
                 }
             }
         }
