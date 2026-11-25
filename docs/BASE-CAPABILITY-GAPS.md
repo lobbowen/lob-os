@@ -2130,3 +2130,24 @@ app handler 未装（已装 bit30）、clone3（已禁）、syscall 号（已修
 app 域 framework filter 下做不到——这是当前唯一未解点。
 
 产品状态：工作区干净，核心能力稳定。
+
+---
+
+## 决定性：Bun自己装SIGSYS handler，逐个TRAP测试揭示基础syscall全的关键
+
+strace追踪shell域claude完整执行(-p成功)发现：
+- loader装 rt_sigaction(SIGSYS,0x7bb4825fc0,SA_RESTART|SA_SIGINFO)
+- **Bun随后覆盖它**: rt_sigaction(SIGSYS,0x8eb0740,SA_ONSTACK|SA_RESTART|SA_SIGINFO)
+- 线程用clone(220)(禁clone3生效),set_robust_list,futex全正常
+- 无SIGSYS,claude完整跑到Not logged in
+
+逐个TRAP测试(simone)显示claude对基础syscall的ENOSYS极敏感:
+openat(56)/close(57)/read(63)/write(64)被TRAP→loader加载失败;
+clone(220)/set_robust_list(99)/futex(98)被TRAP→线程/同步失败;
+但app域probe4实测这些syscall全部正常——故app域SIGSYS不是这些基础号。
+
+矛盾:app域probe测所有Claude syscall正常,shell域完整成功,但app域claude -p仍159。
+Bun自带SIGSYS handler(Bun自己的seccomp处理),app域framework filter + Bun handler
+的交互是当前唯一未解点。strace铁证:Bun会主动覆盖SIGSYS handler。
+
+产品状态:设备已恢复原始稳定loader(8680a1c5),工作区干净。
