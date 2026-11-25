@@ -1,11 +1,13 @@
 #define _GNU_SOURCE
-/* LobOS universal SIGSYS compatibility hook.
- * Ported from ssfuisu/cortex (Apache-2.0) signals.c + syscalls.c:
- *  - SIGSYS handler emulates Android-seccomp-blocked syscalls so native
- *    glibc binaries (node, claude, any ELF) run as on a normal Linux.
- *  - Hooks the sigaction/signal/sigprocmask family so guest programs cannot
- *    replace or mask our handler (the root cause of handler being lost).
- * This is the generic, one-time system fix; no per-product patching.
+/* LobOS universal SIGSYS compatibility hook for guest glibc/Bun binaries.
+ * Combines:
+ *  - cortex (Apache-2.0) syscall semantics (synthetic success / -ENOSYS),
+ *  - the proven bun Android LD_PRELOAD shim pattern (oven-sh/bun#39060):
+ *    save previous handler, chain non-target signals, and REINSTALL our
+ *    handler from a short-lived pthread AFTER the runtime has started
+ *    (Bun/Go runtimes install their own SIGSYS handler during startup).
+ *  - sigaction family interposition that pretends to succeed without letting
+ *    the guest replace our handler.
  */
 #include <signal.h>
 #include <string.h>
@@ -13,28 +15,41 @@
 #include <stdint.h>
 #include <limits.h>
 #include <dlfcn.h>
-#include <execinfo.h>
 #include <ucontext.h>
 #include <sys/syscall.h>
+#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
 
 #ifndef SYS_SECCOMP
 #define SYS_SECCOMP 1
 #endif
 
-/* ---- syscalls.c: which TRAPped syscalls get fake success vs -ENOSYS ---- */
-static int is_sigsys_synthetic_success_syscall(int nr) {
+typedef int (*sigaction_fn)(int, const struct sigaction *, struct sigaction *);
+
+static sigaction_fn real_sigaction_fn = NULL;
+static struct sigaction previous_sigsys;
+static int have_previous = 0;
+
+static sigaction_fn get_real_sigaction(void) {
+    if (!real_sigaction_fn) {
+        real_sigaction_fn = (sigaction_fn)dlsym(RTLD_NEXT, "sigaction");
+        if (!real_sigaction_fn)
+            real_sigaction_fn = (sigaction_fn)dlsym(RTLD_DEFAULT, "sigaction");
+    }
+    return real_sigaction_fn;
+}
+
+static void install_sigsys_handler(void);
+
+/* Synthetic-success syscalls (fake success 0 is always safe). */
+static int synth_ok(int nr) {
     switch (nr) {
 #ifdef __NR_setuid
     case __NR_setuid:
 #endif
 #ifdef __NR_setgid
     case __NR_setgid:
-#endif
-#ifdef __NR_setreuid
-    case __NR_setreuid:
-#endif
-#ifdef __NR_setregid
-    case __NR_setregid:
 #endif
 #ifdef __NR_setresuid
     case __NR_setresuid:
@@ -58,94 +73,100 @@ static int is_sigsys_synthetic_success_syscall(int nr) {
     case __NR_get_robust_list:
 #endif
 #ifdef __NR_madvise
-    case __NR_madvise:   /* memory advice: fake success is always safe */
+    case __NR_madvise:
 #endif
         return 1;
-    default:
-        return 0;
     }
-}
-
-static int is_handled_sigsys_syscall(int nr) {
-    if (is_sigsys_synthetic_success_syscall(nr)) return 1;
-    /* Unified Linux 5.1+ syscalls (includes clone3=435, epoll_pwait2, ...) */
-    if (nr >= 424 && nr < 512) return 1;
-#if defined(__aarch64__)
-    if (nr == 97  /* unshare */ || nr == 217 /* add_key */ ||
-        nr == 218 /* request_key */ || nr == 219 /* keyctl */ ||
-        nr == 268 /* setns */ || nr == 277 /* seccomp */ ||
-        nr == 280 /* bpf */ || nr == 293 /* rseq */) return 1;
-#endif
     return 0;
 }
 
-/* ---- signals.c: handler + sigaction family hooks ---- */
-static int (*get_real_sigaction(void))(int, const struct sigaction *, struct sigaction *) {
-    static int (*real_sigaction)(int, const struct sigaction *, struct sigaction *) = NULL;
-    if (!real_sigaction) {
-        real_sigaction = (int (*)(int, const struct sigaction *, struct sigaction *))dlsym(RTLD_NEXT, "sigaction");
-        if (!real_sigaction)
-            real_sigaction = (int (*)(int, const struct sigaction *, struct sigaction *))dlsym(RTLD_DEFAULT, "sigaction");
-    }
-    return real_sigaction;
-}
-
-static void cortex_sigsys_handler(int sig, siginfo_t *info, void *ctx) {
-    if (!ctx || !info) return;
-    if (info->si_code != SYS_SECCOMP) {
-        int (*real_sig)(int, const struct sigaction *, struct sigaction *) = get_real_sigaction();
-        if (real_sig) {
-            struct sigaction dfl; memset(&dfl, 0, sizeof dfl);
-            dfl.sa_handler = SIG_DFL; sigemptyset(&dfl.sa_mask);
-            real_sig(sig, &dfl, NULL);
+static void lobos_sigsys_handler(int sig, siginfo_t *info, void *ctx) {
+    /* Non-seccomp SIGSYS: chain to the previous handler like the bun shim. */
+    if (!info || info->si_code != SYS_SECCOMP) {
+        if (have_previous) {
+            if (previous_sigsys.sa_flags & SA_SIGINFO) {
+                if (previous_sigsys.sa_sigaction)
+                    previous_sigsys.sa_sigaction(sig, info, ctx);
+                return;
+            }
+            if (previous_sigsys.sa_handler == SIG_IGN) return;
+            if (previous_sigsys.sa_handler && previous_sigsys.sa_handler != SIG_DFL) {
+                previous_sigsys.sa_handler(sig);
+                return;
+            }
+        }
+        sigaction_fn rs = get_real_sigaction();
+        if (rs) {
+            struct sigaction d; memset(&d, 0, sizeof d);
+            d.sa_handler = SIG_DFL; sigemptyset(&d.sa_mask);
+            rs(sig, &d, NULL);
         }
         raise(sig);
         return;
     }
-    ucontext_t *uc = (ucontext_t *)ctx;
-    int nr = info->si_syscall;
-    /* Unknown/TRAPped syscall: -ENOSYS (glibc falls back). Known handled ones
-       that aren't synthetic-success also get -ENOSYS. Everything is emulated. */
-    long ret = is_sigsys_synthetic_success_syscall(nr) ? 0 : -ENOSYS;
-#if defined(__aarch64__)
-    /* LobOS: Android seccomp TRAPs getpid(172)/gettid(178). Return a stable
-       synthetic pid so caller TLS/tid caches stay valid (matches the glibc
-       loader's early handler). Never call getppid here — it can recurse. */
-    if (nr == 172 || nr == 178) ret = 4242;
-#endif
 
+    ucontext_t *uc = (ucontext_t *)ctx;
+    if (!uc) return;
+    int nr = info->si_syscall;
+    long ret = synth_ok(nr) ? 0 : -ENOSYS;
 #if defined(__aarch64__)
+    /* getpid=172/gettid=178: stable synthetic pid avoids TLS cache corruption.
+       Bun Android blockers (openat2=437, fchmodat2=452, close_range=436,
+       epoll_pwait2=441) are all in 424-511 -> -ENOSYS so Bun uses its
+       existing ENOSYS fallbacks (proven by oven-sh/bun#39060). */
+    if (nr == 172 || nr == 178) ret = 4242;
     uc->uc_mcontext.regs[0] = (unsigned long)ret;
     if (uc->uc_mcontext.pc >= 4) {
         uint32_t at = 0, prev = 0;
         memcpy(&at, (const void *)uc->uc_mcontext.pc, sizeof at);
         memcpy(&prev, (const void *)(uc->uc_mcontext.pc - 4), sizeof prev);
-        int at_svc = ((at & 0xffe0001fU) == 0xd4000001U);
-        int prev_svc = ((prev & 0xffe0001fU) == 0xd4000001U);
-        if (at_svc && !prev_svc) uc->uc_mcontext.pc += 4;
+        int a = (at & 0xffe0001fU) == 0xd4000001U;
+        int p = (prev & 0xffe0001fU) == 0xd4000001U;
+        if (a && !p) uc->uc_mcontext.pc += 4;
     }
+#else
+    (void)nr;
 #endif
-    (void)is_handled_sigsys_syscall; /* all SIGSYS are handled uniformly */
 }
 
-__attribute__((constructor(101))) static void install_sigsys(void) {
-    int (*real_sig)(int, const struct sigaction *, struct sigaction *) = get_real_sigaction();
-    if (!real_sig) return;
+static void install_sigsys_handler(void) {
+    sigaction_fn rs = get_real_sigaction();
+    if (!rs) return;
     struct sigaction sa; memset(&sa, 0, sizeof sa);
-    sa.sa_sigaction = cortex_sigsys_handler;
+    sa.sa_sigaction = lobos_sigsys_handler;
     sa.sa_flags = SA_SIGINFO | SA_RESTART;
     sigemptyset(&sa.sa_mask);
-    real_sig(SIGSYS, &sa, NULL);
+    /* Save what was installed before (loader handler or runtime handler), so
+       non-target SIGSYS can be chained rather than killing the process. */
+    rs(SIGSYS, &sa, &previous_sigsys);
+    have_previous = 1;
 }
 
-/* Hooks: prevent guest from replacing/masking our handler. */
+/* Reinstall after the runtime has finished installing its own handler. */
+static void *reinstall_after_startup(void *arg) {
+    (void)arg;
+    struct timespec d = { .tv_sec = 0, .tv_nsec = 100 * 1000 * 1000 };
+    nanosleep(&d, NULL);
+    install_sigsys_handler();
+    return NULL;
+}
+
+__attribute__((constructor(101)))
+static void preload_init(void) {
+    install_sigsys_handler();
+    pthread_t th;
+    if (pthread_create(&th, NULL, reinstall_after_startup, NULL) == 0)
+        pthread_detach(th);
+}
+
+/* Interpose sigaction family: pretend success, never let guest replace ours. */
 int sigaction(int sig, const struct sigaction *act, struct sigaction *old) {
-    int (*rs)(int, const struct sigaction *, struct sigaction *) = get_real_sigaction();
-    if (!rs) return -1;
+    sigaction_fn rs = get_real_sigaction();
+    if (!rs) { errno = ENOSYS; return -1; }
     if (sig == SIGSYS) {
-        if (act && act->sa_sigaction == cortex_sigsys_handler) return rs(sig, act, old);
-        if (old) { memset(old, 0, sizeof *old); old->sa_sigaction = cortex_sigsys_handler; old->sa_flags = SA_SIGINFO | SA_RESTART; }
-        return 0;
+        if (act && act->sa_sigaction == lobos_sigsys_handler) return rs(sig, act, old);
+        if (old) { memset(old, 0, sizeof *old); old->sa_sigaction = lobos_sigsys_handler; old->sa_flags = SA_SIGINFO | SA_RESTART; }
+        return 0; /* pretend success */
     }
     return rs(sig, act, old);
 }
@@ -158,8 +179,8 @@ int rt_sigaction(int sig, const struct sigaction *act, struct sigaction *old, si
     static int (*orig)(int, const struct sigaction *, struct sigaction *, size_t) = NULL;
     if (!orig) orig = (int (*)(int, const struct sigaction *, struct sigaction *, size_t))dlsym(RTLD_NEXT, "rt_sigaction");
     if (sig == SIGSYS) {
-        if (act && act->sa_sigaction == cortex_sigsys_handler) return orig ? orig(sig, act, old, n) : 0;
-        if (old) { memset(old, 0, sizeof *old); old->sa_sigaction = cortex_sigsys_handler; old->sa_flags = SA_SIGINFO | SA_RESTART; }
+        if (act && act->sa_sigaction == lobos_sigsys_handler) return orig ? orig(sig, act, old, n) : 0;
+        if (old) { memset(old, 0, sizeof *old); old->sa_sigaction = lobos_sigsys_handler; old->sa_flags = SA_SIGINFO | SA_RESTART; }
         return 0;
     }
     return orig ? orig(sig, act, old, n) : -1;
@@ -169,7 +190,7 @@ typedef void (*sighandler_t)(int);
 sighandler_t signal(int sig, sighandler_t h) {
     static sighandler_t (*orig)(int, sighandler_t) = NULL;
     if (!orig) orig = (sighandler_t (*)(int, sighandler_t))dlsym(RTLD_NEXT, "signal");
-    if (sig == SIGSYS) return (sighandler_t)cortex_sigsys_handler;
+    if (sig == SIGSYS) return (sighandler_t)lobos_sigsys_handler;
     return orig ? orig(sig, h) : NULL;
 }
 

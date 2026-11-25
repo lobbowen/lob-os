@@ -2239,3 +2239,27 @@ claude是唯一需要glibc guest路径的CLI,受Android app seccomp限制。
 根因是glibc程序在app域的seccomp下需要完整syscall模拟,而bionic程序不需要。
 
 这不是CLI安装问题(装的都是正确CLI版),是glibc兼容层在app域的架构限制。
+
+---
+
+## 外部资料研究：bun官方issue #39060的Android SIGSYS方案
+
+搜索到oven-sh/bun#39060(Nature Termux Android16上bun install SIGSYS):
+- 根因:Android seccomp TRAP openat2(437)/fchmodat2(452)/close_range(436)/
+  epoll_pwait2(441),Bun直接发这些syscall被SIGSYS杀(159)
+- 官方验证有效的LD_PRELOAD shim三要素:
+  1) SIGSYS handler对这些syscall返回-ENOSYS,Bun有fallback
+  2) 保存previous handler,非目标SIGSYS链式转发(不kill)
+  3) pthread延迟100ms重装handler——因为Bun启动时会装自己的SIGSYS handler,
+     必须等它装完后再装回shim的
+  4) sigaction hook假装成功但不真装,阻止guest替换
+
+URL: https://github.com/oven-sh/bun/issues/39060
+
+我们已按此方案重写通用so(sigsys-universal.c):延迟重装线程+previous链式转发+
+sigaction/rt_sigaction/signal/sigprocmask hook+424-511返回ENOSYS。
+但app域实测仍SIGSYS31,且diag证明SIGSYS没进通用so handler(marker证明so加载了)。
+差别:bun issue是Termux(宽松seccomp),我们是untrusted_app(严格framework filter)。
+我们的致命SIGSYS发生在启动极早期(<100ms延迟重装之前)或Bun raw syscall覆盖后。
+
+产品状态:源码/产物干净(69048,无diag无marker),设备已部署。
