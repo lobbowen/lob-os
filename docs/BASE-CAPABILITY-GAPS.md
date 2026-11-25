@@ -2022,3 +2022,35 @@ shell 域成功、app 域失败——差别只剩：
 无权限——仍受限于观测能力。
 
 产品状态：工作区干净，核心能力稳定。clone3 已禁用并固化（最有价值的成果）。
+
+---
+
+## 根本性bug修正：handler用了错误的x86 syscall号
+
+反汇编 + 头文件确认：aarch64 上 getpid=172 / getppid=173 / gettid=178 /
+rseq=293 / madvise=233；而 loader handler 和探测程序此前硬编码的是
+x86 号 39(getpid)/186(gettid)——大错。这意味着此前"getpid/gettid 被 TRAP"
+的探测其实在探测无关 syscall，handler 也从没真正处理过 getpid/gettid。
+
+### 修正后（正确号 172/178 + 固定 pid 4242）
+shell 域 sima64（TRAP 172/178/293，正确号）+ 修正 loader（sha dfa6b78b）
++ 自研无clone3 libc + pthreaddiag2：
+```
+getpid=4242  gettid=4242
+pthread_create r=0
+pthread_join r=0 rv=42        ← 完整成功
+```
+这是迄今最强的正面结果：正确 syscall 号 + handler 合成 pid +
+无 clone3 libc，三个手段结合让 TRAP getpid/gettid/rseq 下线程完整跑通。
+
+### 仍存差异（诚实）
+同样修正版 loader 装机后，app 域 ptd5/claude 仍 159——shell sim 成功、
+app 失败。差别只剩 app framework 真实 filter 的未知动作，或 app guest
+路径与显式 loader 路径的细微差异。需要能看 app 域 handler 触发的可靠手段。
+
+### 固化
+- loader handler 改用正确 aarch64 号 172/178/233，getpid/gettid 返回固定
+  4242（handler 内不调任何 syscall，避免递归 TRAP 风险）
+- 这是本轮最有价值成果：一个真实、可复现、已修正的 syscall 号 bug
+
+产品状态：工作区干净，核心能力稳定，dsh web 401。
