@@ -2263,3 +2263,16 @@ sigaction/rt_sigaction/signal/sigprocmask hook+424-511返回ENOSYS。
 我们的致命SIGSYS发生在启动极早期(<100ms延迟重装之前)或Bun raw syscall覆盖后。
 
 产品状态:源码/产物干净(69048,无diag无marker),设备已部署。
+
+---
+
+## 严格确证：bun官方shim方案so对claude启动早期无效
+
+按oven-sh/bun#39060完整重写通用so(延迟重装+previous链式转发+sigaction hook),
+正确部署(设备so=69048,marker证明ctor执行),在handler最开头加diag-exit验证:
+结果waitpid=sig=True/31(而非exit=True/Nr)——SIGSYS完全没进通用so handler。
+确证:claude的致命SIGSYS发生在so ctor装handler之前的loader极早期,或由Bun
+自己的handler处理。LD_PRELOAD通用so这条路对claude启动早期无效。
+bun issue场景是Termux(宽松seccomp),其SIGSYS(openat2/fchmodat2)发生在bun
+启动后(install阶段),延迟重装来得及;我们的SIGSYS在启动更早阶段,来不及。
+产品已恢复干净so(69048,无diag),工作区干净。
