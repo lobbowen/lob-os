@@ -44,6 +44,7 @@ CFLAGS="-O2 -fPIC"
   container/native/d1/tmp-paths.c \
   container/native/d1/lobos-env.c \
     container/native/d1/exec-path.c \
+    container/native/d1/app-sigsys.c \
   -ldl \
   -o "$WORK/liblobosposix.so" 2>"$WORK/cc-posix.log" \
   || { echo "!! posix 编不出来" >&2; tail -20 "$WORK/cc-posix.log" >&2; exit 1; }

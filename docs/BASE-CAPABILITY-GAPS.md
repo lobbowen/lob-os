@@ -2107,3 +2107,26 @@ Claude完整初始化需要的其它syscall（线程已解决，剩网络/文件
 - 核心能力（dsh web/验收B/终端/--version）稳定
 
 产品状态：工作区干净，dsh web 401，所有系统层修复已固化。
+
+---
+
+## app进程级SIGSYS handler已装上（SigCgt bit30）但exec后失效
+
+把 cortex 精简版 SIGSYS handler + sigaction hook 编进 liblobosposix.so 的
+constructor(101)，raw rt_sigaction 安装（绕过 dlsym 依赖）。装机后实测：
+app 主进程 SigCgt=0x...400084f8，bit30=1 —— handler 成功装进 app 进程。
+这是重要进展：系统级（app 进程）handler 第一次真正装上。
+
+但终端敲 claude 仍 SIGSYS 159。根因明确：Linux execve 会把所有已 catch 的
+signal handler 重置为 SIG_DFL。app 主进程的 handler 在 exec claude 时丢失。
+新程序只能靠自己的动态链接器（glibc loader _dl_start）重装——而那条路径
+在 shell 域成功、app 域失败，差别锁定 app framework seccomp 的未知动作。
+
+已排除：符号链接（真实 binary 路径 -p 也 159）、loader 路径（env 指向有效）、
+app handler 未装（已装 bit30）、clone3（已禁）、syscall 号（已修正）。
+
+结论：系统级 handler 已装（重要进展），但 exec 重置 signal 是内核语义，
+必须每个新程序在 exec 后第一时间重装 handler。shell 域我们的 loader 做到了，
+app 域 framework filter 下做不到——这是当前唯一未解点。
+
+产品状态：工作区干净，核心能力稳定。
