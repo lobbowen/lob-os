@@ -2223,3 +2223,19 @@ Bun的handler处理不了某syscall。下一步:阻止Bun覆盖loader handler
 绕过通用so的sigaction/rt_sigaction PLT hook(ctor已证明so加载了但拦不住)。
 这是cortex方案对纯静态Bun/Go的架构限制:runtime自带handler覆盖后无法用
 用户态符号hook阻止。产品已恢复正式版(1c57bec9),源码无diag残留。
+
+---
+
+## 关键对比：能跑的CLI都是bionic/node,唯独claude是glibc ELF
+
+实测各类CLI:node(v24.21.0)/git(2.55.0)/jq(1.8.2)/python(3.11.13)都能启动。
+ELF分析:
+- git(能跑):ET_DYN + PT_INTERP=/system/bin/linker64 + NEEDED libdl/libz/libc(bionic)
+- claude(不能):ET_EXEC + PT_INTERP=/lib/ld-linux-aarch64.so.1 + NEEDED libc.so.6(glibc)
+
+所以"其他CLI能跑"是因为它们是bionic原生或node脚本,不走glibc兼容层。
+claude是唯一需要glibc guest路径的CLI,受Android app seccomp限制。
+用户的质疑(整体逻辑有问题)在"为什么只有glibc程序跑不了"这点上成立——
+根因是glibc程序在app域的seccomp下需要完整syscall模拟,而bionic程序不需要。
+
+这不是CLI安装问题(装的都是正确CLI版),是glibc兼容层在app域的架构限制。
