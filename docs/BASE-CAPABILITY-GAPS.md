@@ -2326,3 +2326,16 @@ exit=2——证明filter在loader里成功安装且syscall99被覆盖为fake-suc
 别的syscall被TRAP,且发生在filter安装覆盖不到处或产生连锁失败。
 filter机制本身完全可行(exit=2铁证),问题是需要覆盖的syscall集合/时机。
 产品恢复正式版311467f5,源码无diag无自检。
+
+---
+
+## 重大转折：全ENOSYS filter把SIGSYS(31)变成SIGTRAP(5)
+
+资源内核loader的_dl_start装一条"所有syscall返回ERRNO(ENOSYS)"的seccomp
+filter(极简1指令,自检已证明filter在loader成功安装),app域跑claude:
+结果从 sig=True/31 变成 sig=True/5(SIGTRAP)——SIGSYS彻底消失!
+意义:seccomp filter时机/机制完全正确,SIGSYS来源100%是Android TRAP的syscall。
+变成SIGTRAP说明某个syscall返回ENOSYS后Bun/glibc触发abort/assert。
+下一步:用allowlist逐步放开"必须成功"的syscall(read/write/mmap/futex/clone等),
+定位是哪个ENOSYS触发abort。这是明确的、可二分的方向。
+产品恢复正式版311467f5。
