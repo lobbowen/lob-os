@@ -2209,3 +2209,17 @@ Bun的handler处理不了某syscall。下一步:阻止Bun覆盖loader handler
 - 这修复了Bun线程trampoline的set_robust_list,让claude跑得更远
 
 产品状态:工作区干净,核心能力稳定。
+
+---
+
+## 严格确证：修99后SIGSYS不进loader handler(Bun覆盖handler)
+
+之前"修99后diag仍抓到99"是diag-exit位于判断链之前+make缓存误导。
+本轮严格重做:备份源码,只在else分支(未处理syscall)加diag-exit,
+全量make并逐字节确认(fc4a6de3,反汇编有mov x8,#94),APK确认为diag版。
+结果:waitpid显示raw=31 sig=True/31,diag未抓到——SIGSYS完全没进loader handler。
+确证:修99(和172/178/96/233)后,Bun已用它自己的SIGSYS handler覆盖了loader的,
+后续SIGSYS由Bun handler处理失败致死。Bun大概率走raw SYS_rt_sigaction,
+绕过通用so的sigaction/rt_sigaction PLT hook(ctor已证明so加载了但拦不住)。
+这是cortex方案对纯静态Bun/Go的架构限制:runtime自带handler覆盖后无法用
+用户态符号hook阻止。产品已恢复正式版(1c57bec9),源码无diag残留。
