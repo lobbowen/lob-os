@@ -88,7 +88,11 @@ object ExecEntry {
     }
 
     fun argv(entry: File, args: List<String>): List<String>? = when (val s = detect(entry)) {
-        is Shape.Exec -> listOf(entry.absolutePath) + args.drop(1)
+        /* ET_EXEC 也可能带 PT_INTERP=ld-linux（Bun/Claude 官方原生二进制即如此）。
+           必须与 ET_DYN 一样走 glibc guest loader；否则内核按 PT_INTERP 找
+           /lib/ld-linux-aarch64.so.1 系统路径，guest 的 handler 与库路径全丢，
+           原生程序一进初始化就 SIGSYS。 */
+        is Shape.Exec -> glibcGuestArgv(entry, args) ?: (listOf(entry.absolutePath) + args.drop(1))
 
         is Shape.Elf -> glibcGuestArgv(entry, args) ?: run {
             if (entry.absolutePath == SYSTEM_LINKER) listOf(entry.absolutePath) + args.drop(1)
