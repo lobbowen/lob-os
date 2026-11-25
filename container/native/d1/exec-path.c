@@ -466,11 +466,14 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
   if (!real_execve) { errno = ENOSYS; return -1; }
   if (!path) { errno = ENOENT; return -1; }
 
-  /* glibc loader 是解释器本身（ET_DYN，无 PT_INTERP）：显式执行它时
-     不能再被 ET_DYN->linker64 分支改写（那产生 PHDR 错误）。直接放行。 */
+  /* 动态链接器本身（ET_DYN，无 PT_INTERP）：显式执行它时不能再被
+     ET_DYN->linker64 分支改写（那产生 "Could not find a PHDR"）。直接放行。
+     musl/ld-musl 是 Claude Code 官方 musl 版的解释器，必须一并豁免。 */
   {
     const char *lb = base_name(path);
-    if (lb && (strstr(lb, "ld-linux") != 0 || strstr(lb, "libglibc-loader") != 0))
+    if (lb && (strstr(lb, "ld-linux") != 0 || strstr(lb, "libglibc-loader") != 0 ||
+               strstr(lb, "ld-musl") != 0 || strstr(lb, "musl-ld") != 0 ||
+               strstr(lb, "libmusl") != 0))
       return real_execve(path, argv, envp);
   }
 
