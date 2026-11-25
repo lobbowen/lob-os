@@ -107,6 +107,12 @@ static void cortex_sigsys_handler(int sig, siginfo_t *info, void *ctx) {
     /* Unknown/TRAPped syscall: -ENOSYS (glibc falls back). Known handled ones
        that aren't synthetic-success also get -ENOSYS. Everything is emulated. */
     long ret = is_sigsys_synthetic_success_syscall(nr) ? 0 : -ENOSYS;
+#if defined(__aarch64__)
+    /* LobOS: Android seccomp TRAPs getpid(172)/gettid(178). Return a stable
+       synthetic pid so caller TLS/tid caches stay valid (matches the glibc
+       loader's early handler). Never call getppid here — it can recurse. */
+    if (nr == 172 || nr == 178) ret = 4242;
+#endif
 
 #if defined(__aarch64__)
     uc->uc_mcontext.regs[0] = (unsigned long)ret;

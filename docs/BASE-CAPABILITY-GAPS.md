@@ -2054,3 +2054,32 @@ app 失败。差别只剩 app framework 真实 filter 的未知动作，或 app 
 - 这是本轮最有价值成果：一个真实、可复现、已修正的 syscall 号 bug
 
 产品状态：工作区干净，核心能力稳定，dsh web 401。
+
+---
+
+## 通用so与loader handler对齐：getpid/gettid在两处都返回4242
+
+发现通用 so 的 ctor 会覆盖 loader 早期 handler，且两处对 getpid/gettid 的
+处理不一致：loader 返回 4242，通用 so 返回 -ENOSYS。shell 域对照确认：
+- 无通用so: getpid=4242 gettid=4242 pthread完整成功
+- 带旧通用so: getpid=-1 gettid=-1（ctor覆盖handler导致）
+修复通用 so（aarch64 getpid172/gettid178 返回4242）后，带 so 场景也恢复
+getpid=4242 + pthread完整成功。已固化并重编 so。
+
+### 但 app 域仍失败（关键结论）
+shell 域两个场景（有/无通用so）pthread 都完整成功；app 域装机同样代码
+仍 159，pthread_create r=0 但 worker 不进。这确认：
+差别不在我们的 loader/libc/so 代码（全部对齐且 shell 实测成功），
+而在 app 域 framework seccomp filter 的某个未知动作，或 guest 进程
+在 app 域的实际执行路径与 shell 显式 loader 路径不同。
+
+### 已完成且可复现的系统层修复（全部固化）
+1. 自研 glibc 禁用 clone3 -> clone(220) fallback（shell 铁证线程创建成功）
+2. loader handler 正确 aarch64 syscall 号（172/178/233）
+3. getpid/gettid 返回稳定 4242（loader + 通用 so 一致）
+4. madvise synthetic success
+5. guest env 溢出修复
+
+这些让 shell 域完整模拟 app seccomp（TRAP getpid/gettid/rseq）时，
+pthread_create + join 全程成功。app 域剩余差异需要能观测 framework
+filter 真实行为的手段（当前 shell 域权限不具备）。产品核心能力稳定。
