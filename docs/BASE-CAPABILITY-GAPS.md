@@ -2168,3 +2168,22 @@ readlinkat(67)/getcwd(79)/fstat(80)/syscall134 等被TRAP会失败。
 
 设备已恢复原始稳定loader(8680a1c5),所有内核态handler实验产物回退。
 工作区干净。结论:当前权限下无法解释app域exec claude的SIGSYS来源。
+
+---
+
+## 铁证突破：diag-exit抓到SIGSYS syscall=99(set_robust_list),已针对性修复
+
+用"handler里raw exit(si_syscall)"的诊断loader(waitpid读退出码),在app域抓到
+claude第一次SIGSYS的syscall号=99(arm64 set_robust_list):
+  raw=25344 exit=True/99 sig=False/-1
+根因明确:Bun线程trampoline在clone后调set_robust_list(99),Android seccomp TRAP,
+loader早期handler对它返回-ENOSYS,Bun当致命错误->进程死。
+cortex原版对set_robust_list/get_robust_list是synthetic success返回0。
+
+修复:loader handler对99/96/233返回0(连同172/178返回4242)。正式loader
+sha=1c57bec9。验证中又发现:修99后claude跑更远,但变成SIGSYS31且diag没抓到
+——推测Bun此时已装自己的SIGSYS handler(strace早证实Bun会覆盖handler),
+Bun的handler处理不了某syscall。下一步:阻止Bun覆盖loader handler
+(loader export sigaction符号interpose,或让通用so的sigaction hook更早生效)。
+
+这是几十轮来第一次用不污染行为的方法(waitpid退出码)抓到确切syscall号并修复。
