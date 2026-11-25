@@ -57,6 +57,9 @@ static int is_sigsys_synthetic_success_syscall(int nr) {
 #ifdef __NR_get_robust_list
     case __NR_get_robust_list:
 #endif
+#ifdef __NR_madvise
+    case __NR_madvise:   /* memory advice: fake success is always safe */
+#endif
         return 1;
     default:
         return 0;
