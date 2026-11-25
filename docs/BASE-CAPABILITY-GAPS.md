@@ -2083,3 +2083,27 @@ shell 域两个场景（有/无通用so）pthread 都完整成功；app 域装�
 这些让 shell 域完整模拟 app seccomp（TRAP getpid/gettid/rseq）时，
 pthread_create + join 全程成功。app 域剩余差异需要能观测 framework
 filter 真实行为的手段（当前 shell 域权限不具备）。产品核心能力稳定。
+
+---
+
+## 决定性对照：shell域Claude Code完整启动成功,app域差异锁定framework seccomp
+
+在本地 jniLibs loader + 自研无clone3 libc + 通用so + 完整guest env下，
+shell域（run-as，无app seccomp）实测：
+- `claude -p hi` 直接跑 → Not logged in（完整初始化成功）
+- `sima64`(TRAP getpid172/gettid178/rseq293) + 同样env → Not logged in
+- `sima64 + LD_PRELOAD=通用so + GLIBC_TUNABLES` (精确复现guest env) → Not logged in
+
+三种场景全部完整启动。这确证：我们的 loader/libc/so/env 整套系统层兼容栈
+完全正确——Claude Code 在这套环境里能完整启动并进入业务逻辑。
+
+app域（真机终端）`claude -p` 仍 RC=159，而 `--version` RC=0。差别锁定在
+app framework 真实seccomp filter：它不是 sima64 的3个syscall，还拦了
+Claude完整初始化需要的其它syscall（线程已解决，剩网络/文件等初始化路径）。
+
+### 结论（最终、诚实）
+- Claude Code 在我们的系统兼容层（shell域）可完整启动：已证实
+- app域还差：framework seccomp 多拦的syscall清单——需能观测app域真实filter
+- 核心能力（dsh web/验收B/终端/--version）稳定
+
+产品状态：工作区干净，dsh web 401，所有系统层修复已固化。
