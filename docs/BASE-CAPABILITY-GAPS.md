@@ -1931,3 +1931,40 @@ exit(子) -> futex 返回。app 域 clone3 已禁用走 clone、futex/set_robust
 3. 剩余：pthread join/退出路径，需继续用真实 syscall 探测收敛
 
 产品状态：工作区干净，dsh web 401，核心能力稳定。
+
+---
+
+## pthread 卡点精确定位：子线程启动即 SIGSYS（worker 未进入）
+
+用分步标记诊断（不改 handler）在 app 域实测：
+```
+main: start
+MAPLINE: .../libglibc-loader.so      ← 确认用 nativeLib 产品 loader
+MAPLINE: .../glibc-runtime/.../libc.so.6   ← 确认用我们自研无clone3 libc
+main: before pthread_create
+main: pthread_create r=0 errno=0     ← 父线程认为创建成功
+（worker 从未进入，进程 SIGSYS 159 死）
+```
+worker 里去掉所有 syscall（纯写文件+返回）仍然子线程不进入——死在
+clone(220) 之后、worker 第一条指令之前的 glibc 线程 trampoline 阶段。
+
+### 分析
+- 用的是产品 loader（_dl_start handler）+ 自研无clone3 libc，路径完全正确
+- pthread_create 成功但子线程 trampoline 死：子线程启动时会调 gettid/
+  set_robust_list/futex 等；handler 对 gettid 返回固定合成值 4242，
+  可能导致子线程 TLS 里的 tid 缓存错误，trampoline 后续操作失败
+- 或者是 clone(220) 相对 clone3 的子线程栈/TLS 语义差异
+
+### 下一步（明确、有实测支撑）
+1. 让 handler 的 gettid 返回真实值——用 raw syscall getppid(172，未被拦，
+   主线程 tid==pid)作近似，而非固定 4242
+2. 若仍死，检查 clone(220) fallback 路径的 CLONE_CHILD_CLEARTID/tls 参数
+   是否与 Bun/glibc 期望一致
+
+### 已排除（本轮实测）
+- 不是 worker 代码（无 syscall 仍死）
+- 不是 clone3（自研 libc 已禁用，pthread_create r=0）
+- 不是 futex/set_robust_list/madvise（探测全正常）
+- 不是 loader/libc 路径错误（maps 确认正确）
+
+产品状态：工作区干净，dsh web 401，核心能力稳定。
