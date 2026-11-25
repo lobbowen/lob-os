@@ -2314,3 +2314,15 @@ syscall=99(set_robust_list)是真被TRAP的,99修复方向正确(已编入311467
 不进loader handler(Bun覆盖后自己处理)。
 诊断过程中多次因打包编码算错、make缓存、run-as变量展开等问题误判,已全部纠正。
 产品恢复正式版311467f5,源码无diag。
+
+---
+
+## 决定性：seccomp filter机制在loader里生效，但99非唯一阻塞
+
+自检loader(_dl_start装极简4指令filter+调syscall99+exit结果)实测app域
+exit=2——证明filter在loader里成功安装且syscall99被覆盖为fake-success,
+无SIGSYS。这是用户态能做到的最强干预,已确凿生效。
+但正式极简99-filter/完整filter装机后claude仍SIGSYS31——说明99之后还有
+别的syscall被TRAP,且发生在filter安装覆盖不到处或产生连锁失败。
+filter机制本身完全可行(exit=2铁证),问题是需要覆盖的syscall集合/时机。
+产品恢复正式版311467f5,源码无diag无自检。
