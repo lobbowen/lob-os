@@ -7,6 +7,13 @@
 
 这些是 2026-11-26 全项目整理后确立的纪律，后续工作必须遵守。
 
+### 0. 根本原则：APK 是载体，APK 下是独立系统
+- Android 环境是硬件层，APK 是我们在该环境里的安装载体——这是不可逃避的现实，不是缺陷
+- 目标不是在 APK 之外另造系统，而是在这一个 APK 之内做出**完整的、自成体系的 LobOS**
+- 因此：系统机制层要尽量独立于 Android 语义；对 Android 的依赖只允许出现在宿适配面，
+  并通过 SPI 向系统层提供能力。判断依据永远是"APK 内的系统是否自成体系"，
+  不是"是否脱离 APK"
+
 ### 1. 工作区与工程位置
 - 唯一工作区：`/home/bowen/LOBOS/work/`
 - 唯一 git 工程：`/home/bowen/LOBOS/work/lob-os/`
@@ -35,11 +42,13 @@
 - 构建产物、缓存、解压树都可再生，不入 git
 - 大文件一旦误入未推送的历史，先 reset 再重提，不要硬推（会卡死）
 
-### 4. 分层纪律
-- 依赖方向单向：宿主 → 应用 → 系统服务 → 内核 → native 垫片
-- `kernel/` 不得依赖 `services/device/api/android`（SPI 在 `kernel/spi/` 定义，宿主实现）
-- 系统本体（kernel/system）目标是提升为 `container/` 下与 app 平级的顶层模块，
-  不再埋在 `app/src/main/java/lobos/` 里（见 ARCHITECTURE-REFACTOR-PLAN）
+### 4. 分层纪律（在单一 APK 内）
+- 依赖方向单向：宿主适配 → 应用 → 系统服务 → 系统机制 → native 垫片
+- 系统机制层（现 `kernel/` 包）不得 import `services/device/api`；
+  对 Android 的依赖必须收敛到宿适配面，通过 `kernel/spi/` 的 SPI 提供能力
+- 逻辑独立性靠**包结构 + SPI + 校验脚本**保证，不靠物理拆成 Gradle module。
+  APK 内可以是单一 app module，但系统机制层要像独立系统一样自洽：
+  不认识业务词、不直接拿 Android Context、能力由宿主注入（见 DEEP-ARCHITECTURE-AUDIT）
 - 新增跨层能力走 SPI，不直接 import 上层
 
 ### 5. 规范文档纪律

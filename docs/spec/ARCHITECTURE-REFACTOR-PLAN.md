@@ -93,8 +93,11 @@ container/
     contract/       ← lobos-config.h / syscall-api.md
 ```
 
-**过渡期策略**：不立即拆 Gradle module（风险高），先在 app 模块内按新包结构重组，
-用编译期依赖检查（脚本 grep import）保证分层。稳定后再物理拆 module。
+**结构策略（按用户理念修正）**：APK 是安装载体，LobOS 是这一个 APK 下的独立系统。
+因此**不做物理 Gradle module 拆分**（与 APK 载体冲突），全部逻辑分层都在 app module 内
+用包结构 + SPI + 编译期依赖检查实现。系统独立性靠"自成体系的机制层 + Android 依赖
+只出现在宿适配面"保证，不靠把代码搬出 app module。上面的目录树是**逻辑分层示意**，
+物理落点仍是 `container/app/src/main/java/lobos/`。
 
 ## 四、迁移路径（按风险递增，每步可验证）
 

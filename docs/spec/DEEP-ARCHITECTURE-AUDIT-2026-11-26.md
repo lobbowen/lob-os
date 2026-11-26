@@ -135,16 +135,24 @@ Parcel 落盘；且 device 通过 `KernelHooks.ensureHost` 反向触 host，host
    SIGSYS handler（app-sigsys + guest-sigsys 两套）。
 6. **展示文案侵入机制层**：中文诊断串/加粗标记写进 kernel/native 返回值。
 
-## 二、按"用户理念"评估（Android 是硬件层，LOBOS 是系统本体）
+## 二、按"用户理念"评估（Android 是硬件层，LOBOS 是 APK 下的独立系统）
+
+先纠正一个审计判断偏差：用户明确澄清——**系统本体以 Android APK 为安装载体是既定现实，
+不是缺陷**。我们安装在 Android 环境里，APK 就是我们的"硬件驱动/安装包"；目标不是脱离
+APK，而是在这个 APK 壳下做成一套完整的独立系统。所以"系统仍是 APK"不计为问题；
+真正的问题是 APK 之内的系统是否自成体系、是否只在必要处才依赖 Android 宿主能力。
+之前的报告把 APK 载体列为"理念不到位"，这个判断作废，以下为修正后的评估。
 
 当前架构在理念上仍未到位的地方：
-1. **系统本体仍是 Android APK**：所有 kernel/services Kotlin 都在 `container/app` 的
-   Android 工程里，`:kernel`/`:system` 独立模块目标未做。系统"寄生"在 app 进程里，
-   没有自己的地址空间、特权边界、命名空间。
-2. **"内核"没有内核能力**：无进程隔离（ProcessBuilder）、无资源调度（只有 TTL 心跳）、
-   无系统调用式稳定接口（SPI 是全局定位器）、无内核态状态（JSON + 内存 Map）。
-3. **Android 依赖没有真正切断**：阶段 1 只切了 services，Context/Os/Log 仍在 kernel 25 处。
-   这一步不做，系统就还是"带 Android 依赖的库"，不是独立本体。
+1. **系统层级的命名与身份不清**：`kernel` 层实际是 userspace runtime shim（翻译
+   dpkg/ldconfig、/proc、PTY、journaling），不是有特权边界的内核。在 APK 下做独立系统，
+   这不要求造真内核，但要求把"系统机制层"和"Android 宿主适配层"分清楚、各自叫对名字。
+2. **系统机制层缺少系统该有的能力抽象**：进程隔离/资源调度/稳定接口/状态边界这些，
+   在 APK 下可以用用户态方式实现（不需要内核态），但当前几乎缺位：进程用 ProcessBuilder、
+   调度只有 TTL 心跳、接口是全局服务定位器、状态是 JSON + 内存 Map。
+3. **对 Android 的依赖没有收敛到"硬件适配面"**：阶段 1 只切了 services，
+   Context/Os/Log 仍在 kernel 机制层 25 处。目标不是"零 Android"（APK 下不可能也不必要），
+   而是"所有 Android 依赖只出现在宿主适配层，系统机制层通过 SPI 拿能力"。
 4. **规范与代码脱节**：写的四层架构、SPI、契约，代码只实现了"import 层面"的一部分。
    继续按现在的规范文档迭代，会不断产生"文档说一套做一套"的漂移。
 
