@@ -12,9 +12,9 @@ object PathGuard {
         SystemDirs.vardir(),
         SystemDirs.run(),
         SystemDirs.opt(),
-        File(ctx.filesDir, "adb"),
-        File(ctx.filesDir, "program-verify.js"),
-        File(ctx.filesDir, "runtime.json"),
+        File(lobos.kernel.spi.KernelServices.paths().rootDir, "adb"),
+        File(lobos.kernel.spi.KernelServices.paths().rootDir, "program-verify.js"),
+        File(lobos.kernel.spi.KernelServices.paths().rootDir, "runtime.json"),
     )
 
     fun rejection(ctx: Context, path: String?): String? {

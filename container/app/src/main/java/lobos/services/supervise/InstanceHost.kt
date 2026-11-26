@@ -54,7 +54,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
     private var healthPath = "/status"
     private var currentGeneration = 0L
 
-    private val libSearchPath: String get() = LibPath.searchPath(this)
+    private val libSearchPath: String get() = LibPath.searchPath()
 
     fun start() {
         scheduleBootLoop()
@@ -427,7 +427,6 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 getenv("PATH"),
             )
             val spawned = ProcessSupervisor.spawn(
-                this,
                 command = plan.command,
                 cwd = plan.cwd,
                 env = plan.env,

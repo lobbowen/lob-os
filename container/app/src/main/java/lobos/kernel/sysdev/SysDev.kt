@@ -10,7 +10,7 @@ import lobos.kernel.proc.ProcessLedger
 
 object SysDev {
 
-    fun root(ctx: Context): File = File(ctx.filesDir, "dev")
+    fun root(ctx: Context): File = File(lobos.kernel.spi.KernelServices.paths().rootDir, "dev")
 
     fun render(ctx: Context): File? {
         val root = root(ctx)

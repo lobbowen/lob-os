@@ -72,7 +72,6 @@ object LocalExec {
     ): Outcome {
         return try {
             val s = ProcessSupervisor.spawn(
-                ctx,
                 command = argv,
                 cwd = cwd,
                 env = env.takeIf { it.isNotEmpty() },

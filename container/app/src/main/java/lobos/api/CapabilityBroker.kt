@@ -1284,7 +1284,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                   put("assets", report.toJson().optJSONArray("assets") ?: JSONArray())
                   put("failedRequired", JSONArray(report.failedRequired.map { it.first.id }))
                   put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
-                  put("libSearchPath", LibPath.searchPath(this@CapabilityBroker))
+                  put("libSearchPath", LibPath.searchPath())
               }
           },
         "notif.post" to MethodDef(listOf("base"), true) { p, _programId ->

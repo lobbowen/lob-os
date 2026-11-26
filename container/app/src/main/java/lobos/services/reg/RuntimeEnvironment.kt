@@ -178,7 +178,7 @@ object RuntimeEnvironment {
 
     fun libSearchPath(ctx: Context): String {
         val dirs = LinkedHashSet<String>()
-        dirs.add(LibPath.searchPath(ctx))
+        dirs.add(LibPath.searchPath())
         return dirs.filter { File(it).isDirectory }.joinToString(":")
       }
 

@@ -1,6 +1,5 @@
 package lobos.kernel.proc
 
-import android.content.Context
 import java.io.File
 
 object ProcessSupervisor {
@@ -32,7 +31,6 @@ object ProcessSupervisor {
     )
 
     fun spawn(
-        ctx: Context,
         command: List<String>,
         cwd: File? = null,
         env: Map<String, String>? = null,

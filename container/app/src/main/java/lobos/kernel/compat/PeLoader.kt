@@ -29,7 +29,7 @@ class PeLoader private constructor(
         }
 
         fun load(ctx: Context, executable: File): PeLoader {
-            val dirs = lobos.kernel.mm.LibPath.searchPath(ctx)
+            val dirs = lobos.kernel.mm.LibPath.searchPath()
                 .split(File.pathSeparator)
                 .filter { it.isNotBlank() }
                 .map(::File)

@@ -229,10 +229,10 @@ object StateFiles {
         sweep(SystemDirs.run())
         sweep(SystemDirs.etc())
         sweep(SystemDirs.opt())
-        sweep(ctx.filesDir)
+        sweep(lobos.kernel.spi.KernelServices.paths().rootDir)
 
         for (sub in arrayOf("usr/lib", "usr/bin")) {
-            val d = File(ctx.filesDir, sub)
+            val d = File(lobos.kernel.spi.KernelServices.paths().rootDir, sub)
             val links = d.listFiles()?.filter { java.nio.file.Files.isSymbolicLink(it.toPath()) } ?: continue
             for (l in links) {
                 val alive = runCatching {
