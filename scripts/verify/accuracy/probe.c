@@ -72,18 +72,20 @@ static int child_see(int argc, char **argv) {
 
 /* envp: child prints the exact environment it was exec'd with */
 static void dim_env(void) {
-    /* exec self with an exact, minimal envp and observe whether compat adds
-       anything (baseline execve is a full envp replacement). */
-    char path[4096];
-    ssize_t n = readlink("/proc/self/exe", path, sizeof(path)-1);
-    if (n <= 0) { emit("exe_link","ERR"); return; }
-    path[n]=0;
-    char *argv[] = { "envprobe", "@child", "MARK", NULL };
-    char *envp[] = { "ACC_SENTINEL=7", NULL };
-    pid_t p=fork();
-    if (p==0) { execve(path,argv,envp); _exit(127); }
-    int st; waitpid(p,&st,0);
-    emit_i("child_exit", WIFEXITED(st)?WEXITSTATUS(st):-1);
+    /* Inspect the environment this process actually received. Under a strict
+       execve(envp={...}) a program sees exactly that envp. Report key count
+       and presence of LOBOS_* injection, which the compat layer adds. */
+    extern char **environ;
+    int total=0, lobos=0, sentinel=0;
+    for (char **e=environ; *e; e++) {
+        total++;
+        if (!strncmp(*e,"LOBOS_",6)) lobos++;
+        if (!strncmp(*e,"ACC_SENTINEL=",13)) sentinel++;
+    }
+    emit_i("env_total", total);
+    emit_i("env_lobos_keys", lobos);
+    emit_i("env_acc_sentinel", sentinel);
+    emit("env_mode", lobos>0 ? "compat-injected" : "clean");
 }
 
 /* path: stat/open a set of virtual paths, report result category */

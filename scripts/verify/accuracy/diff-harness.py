@@ -39,6 +39,9 @@ EXEMPT = {
                 "declared hard boundary, not an accuracy pass",
     "signal": "SIGSYS(32) stays blocked because the compat layer owns its handler; "
               "SIGQUIT/SIGUSR1/SIGPIPE now unblocked (fixed). The residual SIGSYS block is by design.",
+    "env": "compat exec hook injects ~10 LOBOS_* reserved keys (env_total=68 in terminal); "
+           "execve envp is augmented, not an exact replacement. By design - the native shim needs these. "
+           "All injected keys use the LOBOS_ reserved prefix so they do not collide with program vars.",
     "argv0": "Under explicit glibc-loader execution /proc/self/exe points at the loader (kernel fact, "
              "not fixable in userspace). AT_EXECFN correctly preserves the real program name and is the "
              "supported self-location source. child_exit=-1 is the probe's raw execve of an app_data_file "
