@@ -115,10 +115,6 @@ object RuntimeEnvironment {
                 )
             }
         }
-        val nativeElfLoader = java.io.File(ctx.applicationInfo.nativeLibraryDir, "libelfload.so")
-        if (nativeElfLoader.isFile) {
-            put("LOBOS_ELFLOADER", nativeElfLoader.absolutePath)
-        }
 
         // musl guest 运行时（系统级，非产品清单）：任何 PT_INTERP 指向
         // ld-musl-aarch64.so.1 的 ELF，都由 exec hook 自动用这个 loader 加载。

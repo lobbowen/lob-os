@@ -95,15 +95,6 @@ fi
 # 让放在虚拟磁盘（app_data_file，无 exec 位）上的静态 ELF 也能被加载执行。
 # 必须放 nativeLibraryDir（apk_data_file，可 exec），且加载到高位 0x60000000
 # 避免与目标 ELF 的常规加载地址（0x400000）重叠。
-"$CC" -O2 -static -Wl,--image-base=0x60000000 \
-  -o "$WORK/libelfload.so" \
-  container/native/d1/lobos-elfload.c \
-  2>"$WORK/cc-elfload.log" \
-  || { echo "!! elfload 编不出来" >&2; tail -20 "$WORK/cc-elfload.log" >&2; exit 1; }
-so_ok "$WORK/libelfload.so" 2000
-cp -f "$WORK/libelfload.so" "$OUT/libelfload.so"
-chmod 644 "$OUT/libelfload.so"
-echo "  ✓ elfload      → libelfload.so"
 
 
 # hooked bash：DT_NEEDED 带 liblobosposix.so，使 hook 随 bash 进入 PTY 交互 shell。

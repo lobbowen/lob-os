@@ -700,26 +700,10 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
         { int e = errno; free(ce); errno = e; }
       }
     }
-    int rc = real_execve(path, argv, envp);
-    if (rc == -1 && errno == EACCES) {
-      const char *loader = getenv("LOBOS_ELFLOADER");
-      if (loader && loader[0] == '/' && is_static_elf) {
-        /* 无 PT_INTERP 的 ELF = 静态；用加载器 exec：loader <path> <args...> */
-        int ac2 = 0; while (argv && argv[ac2]) ac2++;
-        char **la = (char **)malloc((size_t)(ac2 + 2) * sizeof(char *));
-        if (la) {
-          int j = 0;
-          la[j++] = (char *)loader;
-          la[j++] = (char *)path;
-          for (int k = 1; k < ac2; k++) la[j++] = argv[k];
-          la[j] = 0;
-          lobos_compat_report("d1.exec-path", "EACCES->elfload", path);
-          real_execve(loader, la, envp);
-          { int e = errno; free(la); errno = e; }
-        }
-      }
-    }
-    return rc;
+      /* No userland ELF fallback: it broke /proc/self/exe (self-locating
+         programs like codex failed). Static ELFs use raw_execve above;
+         a genuine EACCES is returned as-is. */
+      return real_execve(path, argv, envp);
   }
 }
 
