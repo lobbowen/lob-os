@@ -18,41 +18,10 @@ object ServiceRegistry {
     fun decls(ctx: Context): List<SvcDecl> {
         val out = ArrayList<SvcDecl>()
 
-        val pieceIds = runCatching { lobos.services.app.PreinstalledPieces.pieceIds(ctx) }
-            .getOrDefault(emptyList())
-        for (pid in pieceIds) {
-            out.add(
-                decl("piece-" + pid, ArrayList<String>()) { c ->
-                    runCatching { lobos.services.app.PreinstalledPieces.installOneById(c, pid) }
-                        .onFailure { e ->
-                            RuntimeDiagnostics.append(
-                                c, "prefix", false, "预装件装置过程中出错 " + pid,
-                                e.javaClass.name + ": " + (e.message ?: ""),
-                            )
-                        }
-                }
-            )
-        }
-
-        val processShaped = pieceIds.filter { pid ->
-            runCatching {
-                lobos.services.supply.PieceScan.roleFromDisk(ctx, pid) !=
-                    lobos.services.supply.PieceScan.LIBRARY
-            }.getOrDefault(true)
-        }
+        // V1 piece/prefix provisioning removed: programs come from the
+        // Ubuntu rootfs via apt/npm, not from bundled piece zips.
         out.add(
-            decl("prefix", processShaped.map { "piece-" + it }) { ctx ->
-                runCatching { lobos.services.app.PreinstalledPieces.installAll(ctx) }
-                    .onFailure { e ->
-                        RuntimeDiagnostics.append(
-                            ctx, "prefix", false, "预装件装置过程中出错",
-                            e.javaClass.name + ": " + (e.message ?: ""),
-                        )
-                    }
-            }
-        )
-        out.add(
-            decl("view", listOf("prefix")) { ctx ->
+            decl("view", emptyList()) { ctx ->
                 val ready = lobos.system.UbuntuSystem.isReady(ctx)
                 RuntimeDiagnostics.append(
                     ctx, "sysview", ready,

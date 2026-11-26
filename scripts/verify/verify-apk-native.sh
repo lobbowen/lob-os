@@ -99,7 +99,7 @@ fi
 
 echo
 
-v "  （本段已退役，见下方 assets/pieces/ 那一节）"
+v "  （本段已退役）"
 echo
 
 echo
@@ -132,75 +132,6 @@ for a in $ASSETS; do
 done
 
 echo
-v "--- 预装件包（assets/pieces/<id>.zip）· 装配器只读包 ---"
-
-PIECE_BAD=0
-PIECE_N=0
-W="$(mktemp -d)"
-trap 'rm -rf "$W"' EXIT
-for p in $(printf '%s\n' "${LIST[@]}" | grep '^assets/pieces/.*\.zip$'); do
-  name="$(basename "$p")"
-  id="${name%%.zip}"
-  PIECE_N=$((PIECE_N + 1))
-
-  if ! has_exact "$p"; then
-    echo "[error] 清单里有 $p 但 APK 里没有"
-    PIECE_BAD=$((PIECE_BAD + 1)); continue
-  fi
-
-  rm -rf "${W:?}/x"; mkdir -p "$W/x"
-  unzip -qq -o "$APK" "$p" -d "$W" 2>/dev/null
-  pkg="$W/$p"
-  if ! unzip -qq -o "$pkg" -d "$W/x" 2>/dev/null; then
-    echo "[error] $id 的包解不开"
-    PIECE_BAD=$((PIECE_BAD + 1)); continue
-  fi
-
-  if [ ! -f "$W/x/component-meta.json" ]; then
-    echo "[error] $id 的包里没有 component-meta.json（装配器靠它认这件是什么）"
-    PIECE_BAD=$((PIECE_BAD + 1)); continue
-  fi
-
-  mid="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).id||""))}catch(e){}})' < "$W/x/component-meta.json")"
-  mver="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).version||""))}catch(e){}})' < "$W/x/component-meta.json")"
-  ment="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).entry||""))}catch(e){}})' < "$W/x/component-meta.json")"
-
-  [ "$mid" = "$id" ] || { echo "[error] $id 的说明里 id=$mid 对不上"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
-  [ -n "$mver" ] || { echo "[error] $id 的说明里没有 version"; PIECE_BAD=$((PIECE_BAD + 1)); continue; }
-
-  mkind=""
-  if [ -f "$W/x/piece-shape.json" ]; then
-    mkind="$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).kind||""))}catch(e){}})' < "$W/x/piece-shape.json")"
-  fi
-  if [ -z "$ment" ] && [ "$mkind" != "library" ]; then
-    echo "[error] $id 的说明里没有 entry（而它的形态是 ${mkind:-未知}）"
-    PIECE_BAD=$((PIECE_BAD + 1)); continue
-  fi
-  if [ -z "$ment" ]; then
-    echo "  · $id 是纯库件（kind=library）=> 没有程序那一侧 => entry 合法地是空"
-  fi
-
-  if [ -n "$ment" ] && [ ! -f "$W/x/$ment" ] && [ ! -L "$W/x/$ment" ]; then
-    echo "[error] $id 的包里没有 entry 指的文件 $ment"
-    PIECE_BAD=$((PIECE_BAD + 1)); continue
-  fi
-
-  printf "  ✓ %-9s %-12s entry=%s\n" "$id" "$mver" "$ment"
-done
-
-pieces_rc=0
-WANT_N="$(bash "$ROOT/scripts/toolchain/fetch-prebuilt-pieces.sh" --print-pieces 2>/dev/null)" || pieces_rc=$?
-if [ "$pieces_rc" != "0" ] || [ -z "$WANT_N" ]; then
-  echo "[error] 读不出该取几件（fetch-prebuilt-pieces.sh --print-pieces，rc=$pieces_rc）—— 这一格不能猜，缺字段就报缺，不填看起来对的值"
-  exit 1
-fi
-if [ "$PIECE_N" != "$WANT_N" ]; then
-  echo "[error] 预装件包 $PIECE_N 个，该取的件有 $WANT_N 个"
-  PIECE_BAD=$((PIECE_BAD + 1))
-fi
-v "  预装件包 $PIECE_N 个，该取的件 $WANT_N 个"
-[ "$PIECE_BAD" = "0" ] || MISSING="$MISSING piece-pack($PIECE_BAD)"
-
 echo
 unzip -v "$APK" | awk '$NF ~ /lib\// {print "  " $NF "  " $2 "  " $3 "  " $4}' || true
 
@@ -221,4 +152,4 @@ if [ -n "$MISSING" ]; then
   echo "    app/build.gradle.kts 的 jniLibs 配置与各 Stage 步骤。"
   exit 1
 fi
-echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（资产与 npm 全在包里，件走 assets/pieces/）')
+echo "==> [ok] APK 原生件审计通过"$([ -n "$DEGRADED" ] && printf '（软降级:%s —— 能力未实现，不判红）' "$DEGRADED" || printf '（程序由系统盘 apt/npm 提供）')

@@ -232,7 +232,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          bash scripts/toolchain/fetch-prebuilt-pieces.sh
 
       - name: 编内核的兼容性垫片（内核的一部分，不是件）
         run: |
@@ -244,16 +243,6 @@ jobs:
       - name: 核对取到的件
         run: |
           set -euo pipefail
-          N=$(ls container/app/src/main/assets/pieces/*.zip 2>/dev/null | wc -l)
-          WANT_N=$(bash scripts/toolchain/fetch-prebuilt-pieces.sh --print-pieces 2>/dev/null || echo "")
-          if [ -z "$WANT_N" ]; then
-            echo "::error title=读不出该取的件数::而这一格不能猜 —— --print-pieces 没给出件数（脚本路径 scripts/toolchain/fetch-prebuilt-pieces.sh），报缺，不填一个看起来对的值"
-            exit 1
-          fi
-          [ "$N" = "$WANT_N" ] || { echo "::error title=取件数不对::要 $WANT_N 个（钉值表算的），实际 $N 个"; ls -la container/app/src/main/assets/pieces/; exit 1; }
-          echo "  件数 $N 与钉值表一致（$WANT_N）—— 而它不是硬编码的"
-          echo "件包（assets/pieces/，启动时装配器解包安装）："
-          ls -la container/app/src/main/assets/pieces/
 
       - name: 原生件形态与依赖闭环（jniLibs/*.so）
         run: |
@@ -453,13 +442,11 @@ jobs:
 
           cp -f /tmp/gradle-build.log "$D/" 2>/dev/null || true
           cp -f /tmp/verify.log "$D/" 2>/dev/null || true
-          ls -la container/app/src/main/assets/pieces/ > "$D/pieces.txt" 2>/dev/null || true
           find container/app/src/main/assets -type f 2>/dev/null | sort > "$D/assets-tree.txt"
           find container/app/build/intermediates/assets -type f 2>/dev/null | sort | head -40 > "$D/assets-merged.txt" || true
             { echo "## 源目录字节数（对照用）"; find container/app/src/main/assets -type f -printf "%10s  %p\n" 2>/dev/null | sort -k2; } > "$D/src-bytes.txt" || true
-          ls -la container/app/src/main/assets/pieces/ >> "$D/assets-tree.txt" 2>/dev/null || true
             APKX=$(ls container/app/build/outputs/apk/*/*.apk 2>/dev/null | head -1)
-            if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; zipinfo -l "$APKX" 2>/dev/null | grep -E "assets/(pieces|jssdk)" > "$D/apk-pieces-bytes.txt" || true; fi
+            if [ -n "$APKX" ]; then zipinfo -1 "$APKX" 2>/dev/null | grep "^assets/" | sort > "$D/apk-assets.txt" || true; fi
           ls -la container/app/src/main/jniLibs/arm64-v8a/ > "$D/jniLibs.txt" 2>/dev/null || true
           ls -la dist/ > "$D/dist.txt" 2>/dev/null || true
 
@@ -470,7 +457,6 @@ jobs:
           echo "- node: $(node --version 2>/dev/null)" >> "$D/env.txt"
           echo "- CC: ${CC:-（空）}" >> "$D/env.txt"
           echo "- 取件到的件包:" >> "$D/env.txt"
-          ls container/app/src/main/assets/pieces/ 2>/dev/null | sed 's/^/    /' >> "$D/env.txt"
 
           ls -laR "$D" 2>/dev/null | head -40
 

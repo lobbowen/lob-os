@@ -18,10 +18,6 @@ import androidx.navigation3.ui.NavDisplay
 import lobos.ui.apps.AppsEvent
 import lobos.ui.apps.AppsScreen
 import lobos.ui.apps.AppsUiState
-import lobos.ui.components.ComponentsEvent
-import lobos.ui.components.ComponentsScreen
-import lobos.ui.components.ComponentDetailScreen
-import lobos.ui.components.ComponentsUiState
 import lobos.ui.home.HomeEvent
 import lobos.ui.home.HomeScreen
 import lobos.ui.more.MoreEvent
@@ -33,8 +29,6 @@ import lobos.ui.theme.LobosTheme
 sealed interface Destination {
     data object Home : Destination
     data object Terminal : Destination
-    data object Components : Destination
-    data class ComponentDetail(val id: String) : Destination
     data object Space : Destination
     data object Apps : Destination
     data object More : Destination
@@ -71,7 +65,6 @@ private fun Route(key: Destination, backStack: MutableList<Destination>, pop: ()
                 if (e is HomeEvent.OpenEntry) {
                     val d = when (e.key) {
                         "terminal" -> Destination.Terminal
-                        "components" -> Destination.Components
                         "space" -> Destination.Space
                         "apps" -> Destination.Apps
                         "more" -> Destination.More
@@ -82,31 +75,6 @@ private fun Route(key: Destination, backStack: MutableList<Destination>, pop: ()
             })
         }
         Destination.Terminal -> TerminalRoute()
-        Destination.Components -> {
-            val ctx = LocalContext.current
-            val vm: ComponentsViewModel = viewModel()
-            val state by vm.state.collectAsState()
-            LaunchedEffect(Unit) { vm.onEvent(ctx, ComponentsEvent.Back); vm.load(ctx) }
-            ComponentsScreen(state = state, onEvent = { e ->
-                if (e is ComponentsEvent.OpenDetail) backStack.add(Destination.ComponentDetail(e.id))
-                else vm.onEvent(ctx, e)
-            })
-        }
-        is Destination.ComponentDetail -> {
-            val ctx = LocalContext.current
-            val vm: ComponentsViewModel = viewModel()
-            val state by vm.state.collectAsState()
-            LaunchedEffect(key.id) { vm.onEvent(ctx, ComponentsEvent.OpenDetail(key.id)) }
-            val detail = (state as? ComponentsUiState.Ready)?.detail
-            ComponentDetailScreen(
-                name = detail?.name ?: key.id,
-                versions = detail?.versions ?: emptyList(),
-                deps = detail?.deps ?: emptyList(),
-                capabilities = detail?.capabilities ?: "",
-                onEvent = { e -> vm.onEvent(ctx, e) },
-                onBack = pop,
-            )
-        }
         Destination.Space -> {
             val ctx = LocalContext.current
             val vm: SpaceViewModel = viewModel()

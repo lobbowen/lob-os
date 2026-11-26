@@ -59,7 +59,6 @@ sealed interface HomeEvent {
 
 private val entries = listOf(
     Triple("terminal", "终端", Icons.Filled.Terminal),
-    Triple("components", "组件", Icons.Filled.Dataset),
     Triple("space", "空间", Icons.Filled.Storage),
     Triple("apps", "应用", Icons.Filled.Apps),
     Triple("more", "更多", Icons.Filled.MoreHoriz),
