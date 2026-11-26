@@ -600,7 +600,7 @@ IME 说明：百度输入法对 adb input text 有重复字符干扰（diag.sh->
 - 上传 testing 根 + 签名 manifest；设备切 testing 锚（debug APK）验证：
   catalog 拉到新 pnpm、安装成功（"已安装 pnpm 12.7.0"、bin/pnpm 落位）
 - 通过后上传 official 根 + 签名 manifest；恢复 official 锚重编 APK
-- 新 zip 落入 backup/verified/component/；旧坏件（461bab，无 shape）从备份清理
+- 新 zip 落入 verified-components/；旧坏件（461bab，无 shape）从备份清理
 - 设备测试残留（失败安装的 pnpm 半成品目录+索引）清理
 
 ### 仍存障碍（Dsh 完整可用性）

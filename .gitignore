@@ -60,3 +60,4 @@ dist-llvm/
 dist-glibc-runtime/
 
 backup/
+verified-components/

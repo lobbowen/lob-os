@@ -2,8 +2,18 @@
 
 ## 一、一句话回答：工程在哪
 
-**唯一的真实工程在 `/home/bowen/LOBOS/work/lob-os/`**（git 仓库，452 个跟踪文件）。
-工作根已清理，不再有一堆历史备份目录干扰。
+**唯一的真实工程在 `/home/bowen/LOBOS/work/lob-os/`**（git 仓库，456 个跟踪文件）。
+工作区 `/home/bowen/LOBOS/work/` 清理后只有三个顶层目录：`lob-os/`（工程）、
+`external-materials/`（外部素材）、`archive/`（早期资料归档）。
+工作根 `/home/bowen/LOBOS/` 也不再有历史备份目录。
+
+### 工作区层（`/home/bowen/LOBOS/work/`）
+
+见 `work/README.md`。三个目录：
+- `lob-os/` — 本工程（唯一活跃 git 仓库）
+- `external-materials/` — 外部素材库（AOSP/kernel/firmware/upstream，1.6G）
+- `archive/` — 早期散落资料的归档（early-docs/early-assets/ndk-scripts/dsh-diag），
+  2026-11-26 从 work/ 根目录收敛，保留历史可追溯，日常不需进入
 
 ## 二、清理后的工作根
 
@@ -49,20 +59,32 @@
 
 ## 四、工程本体（`/home/bowen/LOBOS/work/lob-os/`）
 
-git 跟踪 452 文件：
+git 跟踪 452 文件。**按行为逻辑归类，同类放一起**：
 
-| 目录 | 内容 |
-|---|---|
-| `container/app` | Android 宿主 + kernel/services Kotlin 代码 |
-| `container/ui` | Compose UI |
-| `container/native` | C 垫片 |
-| `scripts` | 构建/组件/校验脚本 |
-| `docs` | 规范/审计/地图 |
-| `.github` | CI |
+| 行为类别 | 目录 | 职责 | 性质 |
+|---|---|---|---|
+| 产品源码 | `container/app` | Android 宿主 + kernel/services Kotlin | git 跟踪 |
+| 产品源码 | `container/ui` | Compose UI | git 跟踪 |
+| 产品源码 | `container/native` | C 系统垫片 | git 跟踪 |
+| 构建逻辑 | `scripts/` | toolchain/recipes/verify/publish | git 跟踪（145） |
+| 构建输入 | `work/` | 组件源码工作区（tarball + 解压树 + 中间产物） | 不跟踪，可再生 |
+| 构建产物 | `verified-components/` | 已验证组件 zip（原 backup/，8件跟踪） | 组件资产 |
+| 构建产物 | `dist-glibc-runtime/` | glibc 组件产物 | 不跟踪 |
+| 发布签名 | `keys/` `release/` | keystore + manifest/sig | 不跟踪，敏感 |
+| 规范文档 | `docs/` `design/` `brand/` | 规范/审计/设计稿/品牌 | git 跟踪 |
+| 编译补丁 | `patches/` | 上游补丁 | git 跟踪 |
+| CI | `.github/` | 工作流 | git 跟踪 |
 
-工程内仍保留的占用：
-- `work/` 6.2G — 组件源码工作区（保留）
-- `backup/` 351M — 工程内备份（尚未清理，需进一步确认）
+**关键区分（不再混淆）**：
+- `work/` = 构建的**输入和中间态**（源码工作区，可再生）
+- `verified-components/` `dist-glibc-runtime/` = 构建的**成品资产**
+- `keys/` `release/` = 发布的**签名材料**
+- 三类都是"构建/发布链路"，但行为不同，所以分三个目录，不再混在一起
+
+工程内占用（清理后）：
+- `work/` 5.6G — 源码工作区；已删有 tarball 的解压树（git-src/openssl/curl/zlib），
+  需要时用 `scripts/toolchain/restore-source-trees.sh` 恢复
+- `verified-components/` 351M — 已验证组件资产，不是垃圾
 
 ## 五、给新人的最短路径
 
@@ -82,7 +104,7 @@ git 跟踪 452 文件：
 
 ## 七、待办（未执行，需确认）
 
-1. 工程内 `backup/`（351M）评估是否清理
+1. `verified-components/`（351M）是已验证组件资产，不是垃圾；不要清理
 2. `lob-os-team/ARCHIVE-AREA` 评估归档价值
 3. `work/` 内组件源码工作区——如需进一步省空间，可按组件逐个归档，但**不能整体删**
 4. 顶层 `*.md` 交接文档（HANDOVER 系列）评估归档

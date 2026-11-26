@@ -347,7 +347,7 @@ FINAL_OK 3.11.13，base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全模块可用。
 ### 正式目录落地
 - 按 EXECUTION-POLICY.md 建立 /official/（正式）与 /testing/（测试，可清空）双目录。
 - channel.json baseUrl 指向 /official/，local-release.sh 支持 --root official|testing。
-- 本地备份 backup/verified/component/ 放已验证件（七牛清空后可原样恢复）。
+- 本地备份 verified-components/ 放已验证件（七牛清空后可原样恢复）。
 - 七牛 official 从干净桶重建：revision 1（9件，python 3.11 初版）、
   revision 2（shape 修复版 python 7cba8c0e）。
 - 设备走完整正式流程验证：刷 revision2 清单 -> official 下载安装
@@ -368,7 +368,7 @@ FINAL_OK 3.11.13，base64/ssl/sqlite3/bz2/lzma/hashlib/ctypes 全模块可用。
 按修复后构建链重编 3.12.10(93c05e19) 与 3.14.8(9c5fdc47)：
 - 两者 shape 里 .py 条目=0（bug4 修复生效）
 - 设备解包执行验证：V312_OK 3.12.10 / V314_OK 3.14.8，全模块可用
-- 入本地备份 backup/verified/component/（现 11 件：8 选装 + python 三版本）
+- 入本地备份 verified-components/（现 11 件：8 选装 + python 三版本）
 
 official revision 3 发布：三版本齐全。设备刷清单见
 ['3.11.13','3.12.10','3.14.8']；从 official 正常安装 3.12 →

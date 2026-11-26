@@ -114,7 +114,7 @@ docs/
 
 `design/` `backup/` `patches/` `brand/` 逐一评估：
 - `design/` → 若是设计稿，归 `docs/design/`
-- `backup/` → 移出主仓（归档或 .gitignore）
+- `backup/` 已改名为 `verified-components/`（已验证组件资产，非备份）
 - `patches/` → 归 `scripts/patches/`（已有）
 - `brand/` → 若是品牌资源，归 `assets/brand/` 或 `docs/brand/`
 
