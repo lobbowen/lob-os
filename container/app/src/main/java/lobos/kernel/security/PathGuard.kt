@@ -3,6 +3,16 @@ package lobos.kernel.security
 import java.io.File
 import lobos.kernel.layout.SystemDirs
 
+/**
+ * Capability-bridge path policy, NOT a system-wide integrity boundary.
+ *
+ * This only guards the explicit fs.* bridge methods. A guest is a same-uid
+ * process and can reach the same files via its own libc open(), which bypasses
+ * this check (and bypasses LD_PRELOAD hooks entirely for static ELFs). Therefore
+ * we must not claim "system state is protected" in the rejection text -- that
+ * would be a false guarantee. The accurate statement is that the bridge itself
+ * declines to touch system directories.
+ */
 object PathGuard {
 
     fun integrityRoots(): List<File> = listOf(
@@ -23,7 +33,7 @@ object PathGuard {
         for (root in integrityRoots()) {
             val canon = runCatching { root.canonicalFile }.getOrNull() ?: continue
             if (target == canon || target.path.startsWith(canon.path + "/")) {
-                return "系统状态受完整性保护（S3）：" + canon.path
+                return "能力桥不允许访问系统目录：" + canon.path
             }
         }
         return null
