@@ -223,3 +223,32 @@ APK，而是在这个 APK 壳下做成一套完整的独立系统。所以"系�
 1. 批量改 Kotlin 函数签名+调用方不可靠（具名参数/多行/位置混具名），一律逐个处理
 2. 审计的启发式标记（出现两次/行数大）必须逐项读代码复核，不能直接当债务修
 3. 每次改动编译验证 + 总校验 + 端到端回归，不假设"应该没问题"
+
+## 附录2：Context 签名清理结果（2026-11-26）
+
+经 7 轮逐个清理，kernel 层 `import android.content.Context` 从 25 降到 5。
+所有清理均逐个函数确认 + 编译验证，未用批量（批量两次均因参数错位失败而 reset）。
+
+### 已清理（20 个文件）
+路径/日志/门面类：SystemDirs（PathProvider SPI）、Compat、PackageVerifier、PrefixProvisioner、
+LdConfig、EntryLinks、SysEnv、PathGuard、PieceInspect、PeLoader、ProcessSupervisor、LibPath、
+NotifyRoute/ReadRoute（null 门闩改 enabled:Boolean）、KernelHooks 等。
+真实 Android 能力使用（filesDir/assets/applicationInfo/getSystemService）已全部清零，
+都改走 PathProvider/KernelServices SPI。
+
+### 剩余 5 个是强连通链，需整组重设计（非逐个可清理）
+`LocalExec` / `PtySession` / `SysDev` / `ProcessLedger` / `SessionRegistry`
+互相传递 Context，构成进程/会话运行时子系统。尝试单独删 SysDev 的 ctx 时，
+因它调用 `PtySession.activeSessions(ctx)` 和 `ProcessLedger.list(ctx)` 而编译失败。
+
+这 5 个中的 Context 承载三个角色：
+1. 宿主句柄（PtySession.Host 构造）
+2. 日志门闩（`ctx?.let { logger() }`）
+3. ProcessLedger/SessionRegistry 的会话归属参数
+
+彻底清理要把 Host 的 Context 依赖 redesign 成 PathProvider + 显式日志开关 +
+ProcessLedger 去 Context，涉及约 43 处外部调用，是一个独立架构重构任务。
+在中止前不做，避免为"消掉 5 个 import"而引入大范围回归风险。
+
+判断标准：真实 Android 能力依赖已清零（目标达成）；剩余是链式签名残留，
+不影响系统层的实际独立性。
