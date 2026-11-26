@@ -61,3 +61,7 @@ dist-glibc-runtime/
 
 backup/
 verified-components/
+
+# Ubuntu 系统盘镜像（106MB，>50MB 不入库）：从 Ubuntu 24.04 minimal
+# cloudimg 生成，构建时置于此处；生成方法见 docs/spec/SYSTEM-DISK-BAKED.md
+container/app/src/main/assets/system/systemdisk.bin

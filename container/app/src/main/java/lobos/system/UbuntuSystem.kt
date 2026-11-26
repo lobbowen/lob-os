@@ -14,7 +14,7 @@ import java.io.File
 object UbuntuSystem {
 
     /** Where the Ubuntu rootfs lives (downloaded on demand, not in APK). */
-    fun root(ctx: Context): File = File(ctx.filesDir, "ubuntu")
+    fun root(ctx: Context): File = RootfsInstaller.root(ctx)
 
     /** Native engine libs: Android can only exec from nativeLibraryDir. */
     private fun nativeLib(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
@@ -34,12 +34,19 @@ object UbuntuSystem {
     /** Whether the system is ready to run programs. */
     fun isReady(ctx: Context): Boolean {
         val r = root(ctx)
-        return r.isDirectory &&
+        return RootfsInstaller.isInstalled(ctx) &&
+            r.isDirectory &&
             File(r, "bin/bash").exists() &&
             loader(r).exists() &&
             launcher(ctx).exists() &&
             shim(ctx).exists()
     }
+
+    /** Ensure the bundled system disk is installed (first boot). */
+    fun ensureReady(ctx: Context): Boolean = runCatching {
+        RootfsInstaller.install(ctx)
+        isReady(ctx)
+    }.getOrDefault(false)
 
     /**
      * Build the environment for a fastroot execution. The caller puts these

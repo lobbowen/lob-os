@@ -25,6 +25,19 @@ class OsApplication : Application() {
         super.onCreate()
 
         runCatching { lobos.services.reg.BuildIdentity.write(this) }
+        // V2: unpack the bundled Ubuntu system disk on first boot (background).
+        // Everything else (services/terminal) checks UbuntuSystem.isReady().
+        Thread {
+            runCatching { lobos.system.RootfsInstaller.install(this) }
+                .onFailure { e ->
+                    runCatching {
+                        java.io.File(filesDir, "rootfs-error.txt").writeText(
+                            e.javaClass.name + ": " + (e.message ?: "") + "\n" +
+                            e.stackTraceToString().take(3000))
+                    }
+                    RuntimeDiagnostics.append(this, "rootfs", false, "系统盘安装失败", e.message ?: "")
+                }
+        }.apply { isDaemon = true; name = "lobos-rootfs-install"; start() }
         createChannels()
         lobos.host.Foreground.attach(this)
         initQuickAppRuntime()

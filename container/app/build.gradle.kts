@@ -15,7 +15,7 @@ android {
     val appBridgeProtocol = (shellVer["bridgeProtocol"] as Number).toInt()
 
     androidResources {
-        noCompress += listOf("gz", "tar", "tar.gz")
+        noCompress += listOf("gz", "tar", "tar.gz", "xz", "bin")
     }
 
     defaultConfig {
