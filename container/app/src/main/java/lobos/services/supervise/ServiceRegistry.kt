@@ -77,7 +77,7 @@ object ServiceRegistry {
         )
         out.add(
             decl("pty", listOf("view")) { ctx ->
-                runCatching { lobos.kernel.ipc.PtySession.ensureHost(ctx) }
+                runCatching { lobos.kernel.ipc.PtySession.ensureHost() }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(
                             ctx, "service", false, "PTY 宿主就位失败",
@@ -89,7 +89,7 @@ object ServiceRegistry {
         out.add(
             decl("sysdev", listOf("view")) { ctx ->
 
-                runCatching { lobos.kernel.sysdev.SysDev.render(ctx) }
+                runCatching { lobos.kernel.sysdev.SysDev.render() }
                     .onFailure { e ->
                         RuntimeDiagnostics.append(
                             ctx, "sysdev", false, "渲染 files/dev 失败",

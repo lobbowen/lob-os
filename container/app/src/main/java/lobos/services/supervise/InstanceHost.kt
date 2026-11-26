@@ -404,7 +404,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
             val kernelDir = programDir!!
             val kernelEntry = entry!!
-            currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(this, spec?.id ?: "")
+            currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(spec?.id ?: "")
 
             reapOrphanKernel()
             val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
@@ -452,9 +452,9 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 reapProgramTree("宿主回收进程树")
                 return SupervisorPolicy.BootOutcome.FAILED
             }
-            val recorded = lobos.kernel.proc.ProcessLedger.begin(this, programId, currentGeneration, launchedPid)
+            val recorded = lobos.kernel.proc.ProcessLedger.begin(programId, currentGeneration, launchedPid)
             if (launchedPid > 0 && !sessionToken.isNullOrBlank()) {
-                lobos.kernel.proc.SessionRegistry.bindPid(this, sessionToken, launchedPid)
+                lobos.kernel.proc.SessionRegistry.bindPid(sessionToken, launchedPid)
             }
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
@@ -534,7 +534,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
 
     private fun reapProgramTree(reason: String) {
         val e = runCatching {
-            lobos.kernel.proc.ProcessLedger.list(this)
+            lobos.kernel.proc.ProcessLedger.list()
                 .firstOrNull { it.programId == programId && it.generation == currentGeneration }
         }.getOrNull()
         val pid = e?.pid ?: -1
@@ -554,34 +554,34 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             )
         }
         try { nodeProcess?.destroy() } catch (_: Throwable) {}
-        if (pid > 0) runCatching { lobos.kernel.proc.ProcessLedger.end(this, pid) }
+        if (pid > 0) runCatching { lobos.kernel.proc.ProcessLedger.end(pid) }
     }
 
     private fun reapOrphanKernel() {
         reapProgramTree("宿主回收进程树")
         RuntimeDiagnostics.clearNodeStderr(this)
 
-        val owned = lobos.kernel.proc.ProcessLedger.liveOwned(this)
+        val owned = lobos.kernel.proc.ProcessLedger.liveOwned()
             .filter { it.generation < currentGeneration }
-        val reused = lobos.kernel.proc.ProcessLedger.pidReused(this)
-        val gone = lobos.kernel.proc.ProcessLedger.gone(this)
+        val reused = lobos.kernel.proc.ProcessLedger.pidReused()
+        val gone = lobos.kernel.proc.ProcessLedger.gone()
         for (e in owned) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "回收上世遗留进程",
                 "pid=" + e.pid + " starttime=" + e.starttime + " program=" + e.programId + " gen=" + e.generation
             )
             stopProcessTree(e.pid)
-            lobos.kernel.proc.ProcessLedger.end(this, e.pid)
+            lobos.kernel.proc.ProcessLedger.end(e.pid)
         }
         for (e in reused) {
             RuntimeDiagnostics.append(
                 this, "reap", null, "账本 pid 已被复用：不杀",
                 "pid=" + e.pid + " ledgerStart=" + e.starttime + " nowStart=" + lobos.kernel.proc.ProcessLedger.starttimeOf(e.pid)
             )
-            lobos.kernel.proc.ProcessLedger.end(this, e.pid)
+            lobos.kernel.proc.ProcessLedger.end(e.pid)
         }
         if (gone.isNotEmpty()) {
-            gone.forEach { lobos.kernel.proc.ProcessLedger.end(this, it.pid) }
+            gone.forEach { lobos.kernel.proc.ProcessLedger.end(it.pid) }
             RuntimeDiagnostics.append(this, "reap", null, "账本清理已消失进程", gone.joinToString(",") { it.pid.toString() })
         }
     }
@@ -669,7 +669,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                             if (code == 0) "" else "退出码 " + code,
                         )
                     }
-            lobos.kernel.proc.ProcessLedger.end(this, watchedPid)
+            lobos.kernel.proc.ProcessLedger.end(watchedPid)
         reapAfterExit("程序退出后清理后代")
 
                     runCatching {

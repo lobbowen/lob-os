@@ -87,7 +87,7 @@ object ProgramStatusHub {
         val installed = ProgramRegistry.listIds(ctx)
         val out = mutableListOf<ProgramStatus>()
 
-        val live = ProcessLedger.liveOwned(ctx)
+        val live = ProcessLedger.liveOwned()
         val liveIds = live.map { it.programId }.toSet()
         val entries = ProgramIndex.all(ctx)
         for (id in installed) {
@@ -102,7 +102,7 @@ object ProgramStatusHub {
     private fun exitHint(active: UnitState.Active, unit: UnitEntry?): String =
         if (active == UnitState.Active.FAILED) " 退出码=" + (unit?.exitCode ?: -1) else ""
 
-    fun statusOf(ctx: Context, id: String): ProgramStatus = statusOf(ctx, id, ProcessLedger.liveOwned(ctx))
+    fun statusOf(ctx: Context, id: String): ProgramStatus = statusOf(ctx, id, ProcessLedger.liveOwned())
 
     fun statusOf(ctx: Context, id: String, live: List<ProcessLedger.Entry>): ProgramStatus =
         statusOf(ctx, id, live, ProgramIndex.all(ctx))
@@ -117,7 +117,7 @@ object ProgramStatusHub {
         val spec = ProgramRegistry.spec(ctx, id)
 
         val running = live
-            .any { it.programId == id && ProcessLedger.isLive(it, ProcessLedger.entryPathOf(ctx, id)) }
+            .any { it.programId == id && ProcessLedger.isLive(it, ProcessLedger.entryPathOf(id)) }
         val detail = healthDetail[id] ?: ""
         val desired = entry?.desired ?: Desired.STOPPED
         val installed = spec != null || entry != null

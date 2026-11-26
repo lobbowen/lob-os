@@ -1,6 +1,5 @@
 package lobos.kernel.proc
 
-import android.content.Context
 
 import java.io.File
 import org.json.JSONArray
@@ -12,7 +11,7 @@ object ProcessLedger {
 
     private const val SIGTERM = 15
 
-    private fun dir(ctx: Context): File = SystemDirs.run()
+    private fun dir(): File = SystemDirs.run()
     private const val FILE = "process-ledger.json"
     private const val SCHEMA = 2
 
@@ -24,14 +23,14 @@ object ProcessLedger {
         val startedAt: Long = 0L,
     )
 
-    private fun file(ctx: Context): File {
-        val d = dir(ctx)
+    private fun file(): File {
+        val d = dir()
         d.mkdirs()
         return File(d, FILE)
     }
 
-    private fun read(ctx: Context): JSONObject {
-        val f = file(ctx)
+    private fun read(): JSONObject {
+        val f = file()
         if (!f.isFile) return JSONObject()
         return try {
             JSONObject(f.readText())
@@ -44,10 +43,10 @@ object ProcessLedger {
         }
     }
 
-    private fun write(ctx: Context, obj: JSONObject) {
+    private fun write(obj: JSONObject) {
         runCatching {
             obj.put("schema", SCHEMA)
-            StateFiles.writeAtomic(file(ctx), obj.toString(2))
+            StateFiles.writeAtomic(file(), obj.toString(2))
         }
     }
 
@@ -160,8 +159,8 @@ object ProcessLedger {
 
     @Synchronized
 
-    fun list(ctx: Context): List<Entry> {
-        val arr = read(ctx).optJSONArray("entries") ?: return emptyList()
+    fun list(): List<Entry> {
+        val arr = read().optJSONArray("entries") ?: return emptyList()
         return (0 until arr.length()).mapNotNull { i ->
             val o = arr.optJSONObject(i) ?: return@mapNotNull null
             Entry(
@@ -175,7 +174,7 @@ object ProcessLedger {
     }
 
     @Synchronized
-    private fun persist(ctx: Context, entries: List<Entry>) {
+    private fun persist(entries: List<Entry>) {
         val arr = JSONArray()
         for (e in entries) {
             arr.put(JSONObject().apply {
@@ -186,17 +185,17 @@ object ProcessLedger {
                 put("startedAt", e.startedAt)
             })
         }
-        write(ctx, read(ctx).put("entries", arr))
+        write(read().put("entries", arr))
     }
 
     @Synchronized
-    fun nextGeneration(ctx: Context, programId: String): Long {
-        val max = list(ctx).filter { it.programId == programId }.maxOfOrNull { it.generation } ?: 0L
+    fun nextGeneration(programId: String): Long {
+        val max = list().filter { it.programId == programId }.maxOfOrNull { it.generation } ?: 0L
         return max + 1
     }
 
     @Synchronized
-    fun begin(ctx: Context, programId: String, generation: Long, pid: Int): Entry? {
+    fun begin(programId: String, generation: Long, pid: Int): Entry? {
         val st = starttimeOf(pid)
         val e = Entry(
             programId = programId,
@@ -205,33 +204,33 @@ object ProcessLedger {
             starttime = st,
             startedAt = System.currentTimeMillis(),
         )
-        persist(ctx, list(ctx).filterNot { it.pid == pid } + e)
+        persist(list().filterNot { it.pid == pid } + e)
         return e
     }
 
     @Synchronized
-    fun end(ctx: Context, pid: Int) {
+    fun end(pid: Int) {
         if (pid <= 0) return
-        val cur = list(ctx)
+        val cur = list()
         val kept = cur.filterNot { it.pid == pid }
-        if (kept.size != cur.size) persist(ctx, kept)
+        if (kept.size != cur.size) persist(kept)
     }
 
-    fun entryPathOf(ctx: Context, programId: String): String? = runCatching {
+    fun entryPathOf(programId: String): String? = runCatching {
         val spec = lobos.kernel.spi.KernelServices.programs().spec(programId) ?: return@runCatching null
         spec.entryFile.takeIf { it.isFile }?.absolutePath
     }.getOrNull()
 
     @Synchronized
-    fun liveOwned(ctx: Context): List<Entry> =
-        list(ctx).filter { isLive(e = it, entryPath = entryPathOf(ctx, it.programId)) }
+    fun liveOwned(): List<Entry> =
+        list().filter { isLive(e = it, entryPath = entryPathOf(it.programId)) }
 
     fun isLive(e: Entry, entryPath: String?): Boolean =
         if (e.starttime > 0) isOwnedAlive(e.pid, e.starttime)
         else entryPath != null && isOwnedAliveByCmdline(e.pid, entryPath)
 
-    fun pidReused(ctx: Context): List<Entry> =
-        list(ctx).filter { it.pid > 0 && starttimeOf(it.pid) > 0 && !isOwnedAlive(it.pid, it.starttime) }
+    fun pidReused(): List<Entry> =
+        list().filter { it.pid > 0 && starttimeOf(it.pid) > 0 && !isOwnedAlive(it.pid, it.starttime) }
 
-    fun gone(ctx: Context): List<Entry> = list(ctx).filter { starttimeOf(it.pid) <= 0 }
+    fun gone(): List<Entry> = list().filter { starttimeOf(it.pid) <= 0 }
 }

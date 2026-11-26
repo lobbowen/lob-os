@@ -1,6 +1,5 @@
 package lobos.kernel.ipc
 
-import android.content.Context
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -238,7 +237,7 @@ object PtySession {
         }
     }
 
-    class Host internal constructor(pb: ProcessBuilder, private val ctx: Context? = null) : AutoCloseable {
+    class Host internal constructor(pb: ProcessBuilder, ) : AutoCloseable {
 
         companion object {
 
@@ -258,14 +257,11 @@ object PtySession {
                         if (diag.length > 8192) diag.setLength(0)
                     }
 
-                    val c = ctx
-                    if (c != null) {
                         runCatching {
                             lobos.kernel.spi.KernelServices.logger().log("pty-diag", false, "PTY 宿主诊断输出",
                                 "行=" + line,
                             )
                         }
-                    }
                 }
             } catch (_: Exception) {
             }
@@ -316,22 +312,19 @@ object PtySession {
             s.programId = argv.firstOrNull()?.let { basenameOf(it) } ?: ""
             if (rows != s.initialRows || cols != s.initialCols) s.resize(rows, cols)
 
-            val c0 = ctx
-                ?: throw IllegalStateException("宿主侧没有那上下文 —— 报缺，不猜")
             ProductSessions.put("product-" + sid, s)
-            recordInLedger(c0, s, argv)
-            notifyRegistered(c0)
+            recordInLedger(s, argv)
+            notifyRegistered()
             return s
         }
 
-        private fun notifyRegistered(ctx: Context) {
+        private fun notifyRegistered() {
             /* No direct SysDev dependency: virtual /dev is rendered by
                ServiceRegistry on state changes; SysDev reads session state
                itself when rendering. This breaks the PtySession<->SysDev cycle. */
         }
 
         private fun recordInLedger(
-            ctx: Context,
             session: Session,
             argv: List<String>,
         ) {
@@ -350,8 +343,8 @@ object PtySession {
                 argv.firstOrNull()?.let { basenameOf(it) } ?: ("pty-" + session.sid)
             }
 
-            val generation = lobos.kernel.proc.ProcessLedger.nextGeneration(ctx, programId)
-            val recorded = lobos.kernel.proc.ProcessLedger.begin(ctx, programId, generation, pid)
+            val generation = lobos.kernel.proc.ProcessLedger.nextGeneration(programId)
+            val recorded = lobos.kernel.proc.ProcessLedger.begin(programId, generation, pid)
             lobos.kernel.spi.KernelServices.logger().log("ledger", recorded != null,
                 "PTY 会话那进程已记账",
                 if (recorded != null) {
@@ -448,7 +441,7 @@ object PtySession {
                             diag.append(msg).append(10.toChar())
                             if (diag.length > 8192) diag.setLength(0)
                         }
-                        ctx?.let { lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 宿主读帧长度超上限", msg) }
+                        lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 宿主读帧长度超上限", msg)
                         break
                     }
                     val payload = if (len > 0) {
@@ -466,18 +459,14 @@ object PtySession {
                             while (n > 0 && payload[n - 1] == 0.toByte()) n--
                             lastError = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("ERROR: ").append(lastError).append('\n') }
-                            ctx?.let {
-                                lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 的C 侧报错", lastError)
-                            }
+                            lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 的C 侧报错", lastError)
                         }
                         F_NOTE -> {
                             var n = payload.size
                             while (n > 0 && payload[n - 1] == 0.toByte()) n--
                             val note = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("NOTE: ").append(note).append(10.toChar()) }
-                            ctx?.let {
-                                lobos.kernel.spi.KernelServices.logger().log("pty", true, "PTY 宿主自述", note)
-                            }
+                            lobos.kernel.spi.KernelServices.logger().log("pty", true, "PTY 宿主自述", note)
                         }
                         else -> lobos.kernel.spi.KernelServices.logger().log("pty",null,"忽略未知帧 kind=$kind sid=$sid len=$len",null)
                     }
@@ -564,17 +553,13 @@ object PtySession {
     }
 
     internal fun reportSlotNotFreed(sid: Int) {
-        ctx?.let {
-            lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 的C 侧报错",
+        lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 的C 侧报错",
                 "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号**照样**还了",
             )
-        }
     }
 
     internal fun note(message: String, detail: String) {
-        ctx?.let {
-            lobos.kernel.spi.KernelServices.logger().log("pty", true, message, detail)
-        }
+        lobos.kernel.spi.KernelServices.logger().log("pty", true, message, detail)
     }
 
     fun diagnostics(): String = synchronized(diag) { diag.toString() }
@@ -608,7 +593,6 @@ object PtySession {
     private val nativeRefreshed = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun openSession(
-        ctx: Context,
         bin: java.io.File,
         argv: List<String>,
         rows: Int = DEFAULT_ROWS,
@@ -628,10 +612,10 @@ object PtySession {
             }
             shaped
         }
-        return host(ctx, bin).start(effArgv, rows, cols, timeoutMs)
+        return host(bin).start(effArgv, rows, cols, timeoutMs)
     }
 
-    private fun host(ctx: Context, bin: java.io.File): Host {
+    private fun host(bin: java.io.File): Host {
         host?.let { return it }
         synchronized(hostLock) {
             host?.let { return it }
@@ -681,7 +665,7 @@ object PtySession {
                     "\nview=" + view0.keys.joinToString(",") +
                     "\nscript=" + (if (sh != null) pb0[3] else "未走 shell")
             )
-            val h = Host(pb1, ctx)
+            val h = Host(pb1)
             host = h
             lobos.kernel.spi.KernelServices.logger().log("pty", true, "PTY 会话宿主就位",
             bin.absolutePath + " （常驻；shell.exec 与终端共用）")
@@ -729,7 +713,7 @@ object PtySession {
         }
     }
 
-    fun activeSessions(ctx: Context): List<Session> {
+    fun activeSessions(): List<Session> {
         val native = runCatching {
             val h = host
             if (h == null) emptyList() else h.activeSessions()
@@ -745,19 +729,18 @@ object PtySession {
         return out
     }
 
-    fun ensureHost(ctx: Context): Boolean {
+    fun ensureHost(): Boolean {
         val bin = lobos.kernel.compat.Compat.ptyHost()
         if (bin == null) {
             lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 宿主就位失败", "内核构件缺失（librivospty 不在系统库）",
             )
             return false
         }
-        host(ctx, bin)
+        host(bin)
         return true
     }
 
     fun runToCompletion(
-        ctx: Context,
         bin: java.io.File,
         argv: List<String>,
         env: Map<String, String> = emptyMap(),
@@ -783,7 +766,7 @@ object PtySession {
             )
         }
         val h = try {
-            if (env.isEmpty() && cwd == null) host(ctx, bin) else dedicatedHost(ctx, bin, env, cwd)
+            if (env.isEmpty() && cwd == null) host(bin) else dedicatedHost(bin, env, cwd)
         } catch (e: Throwable) {
             return Result(false, -1, "", e.message ?: e.javaClass.simpleName, completed = false)
         }
@@ -844,13 +827,13 @@ object PtySession {
         val completed: Boolean = ok || exitCode != -1,
     )
 
-    private fun dedicatedHost(ctx: Context, bin: java.io.File, env: Map<String, String>, cwd: File?): Host {
+    private fun dedicatedHost(bin: java.io.File, env: Map<String, String>, cwd: File?): Host {
         val checked = locateBin(bin)
         val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, listOf(checked.absolutePath))
         val pb = ProcessBuilder(if (hostArgv != null) hostArgv else listOf(checked.absolutePath))
         pb.environment().remove("LD_PRELOAD")
         if (cwd != null) pb.directory(cwd)
         if (env.isNotEmpty()) pb.environment().putAll(env)
-        return Host(pb, ctx)
+        return Host(pb)
     }
 }

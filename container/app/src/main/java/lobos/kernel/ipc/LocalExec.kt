@@ -1,6 +1,5 @@
 package lobos.kernel.ipc
 
-import android.content.Context
 import java.io.File
 import lobos.kernel.proc.ProcessSupervisor
 
@@ -30,7 +29,6 @@ object LocalExec {
     }
 
     fun run(
-        ctx: Context,
         argv: List<String>,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
@@ -41,7 +39,7 @@ object LocalExec {
 
         val ptyBin = lobos.kernel.compat.Compat.ptyHost()
         if (preferPty && ptyBin != null) {
-            val r = PtySession.runToCompletion(ctx, ptyBin, argv, env, cwd, timeoutMs)
+            val r = PtySession.runToCompletion(ptyBin, argv, env, cwd, timeoutMs)
             if (r.completed) {
                 return Outcome(
                     ok = r.ok,
@@ -53,18 +51,17 @@ object LocalExec {
                 )
             }
             val ptyWhy = r.error ?: "PTY 执行失败"
-            val plain = runPlain(ctx, argv, env, cwd, timeoutMs)
+            val plain = runPlain(argv, env, cwd, timeoutMs)
             if (plain.ok) return plain.copy(via = Via.PLAIN, error = "PTY 不可用（$ptyWhy），已用无 PTY 通路")
             return Outcome(
                 false, -1, plain.stdout, plain.stderr, Via.PLAIN,
                 "PTY 不可用（$ptyWhy）；无 PTY 通路也失败：${plain.error ?: plain.stderr.take(200)}",
             )
         }
-        return runPlain(ctx, argv, env, cwd, timeoutMs)
+        return runPlain(argv, env, cwd, timeoutMs)
     }
 
     fun runPlain(
-        ctx: Context,
         argv: List<String>,
         env: Map<String, String> = emptyMap(),
         cwd: File? = null,
@@ -139,7 +136,6 @@ object LocalExec {
     }
 
     fun runShell(
-        ctx: Context,
         command: String,
         shellBin: File,
         env: Map<String, String> = emptyMap(),
@@ -155,6 +151,6 @@ object LocalExec {
                     "（那会让命令在另一套语义下跑）。底座不完整。",
             )
         }
-        return run(ctx, listOf(shellBin.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
+        return run(listOf(shellBin.absolutePath, "-c", command), env, cwd, timeoutMs, preferPty)
     }
 }

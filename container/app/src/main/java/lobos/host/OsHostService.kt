@@ -275,11 +275,11 @@ class OsHostService : Service() {
         val a11yConnected = a11y == ServiceState.BOUND
 
         val liveEntries = runCatching {
-            lobos.kernel.proc.ProcessLedger.liveOwned(this)
+            lobos.kernel.proc.ProcessLedger.liveOwned()
         }.getOrDefault(emptyList())
         val runningIds = liveEntries.map { it.programId }.distinct()
         val ledgerAll = runCatching {
-            lobos.kernel.proc.ProcessLedger.list(this)
+            lobos.kernel.proc.ProcessLedger.list()
         }.getOrDefault(emptyList())
         val runningPids = liveEntries.map { it.pid }
         val installedList = runCatching {

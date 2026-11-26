@@ -94,13 +94,13 @@ object StateFiles {
         }
     }
 
-    fun writeFailures(ctx: android.content.Context): List<String> =
+    fun writeFailures(): List<String> =
         runCatching {
             val f = File(SystemDirs.log(), FAILED_FILE)
             if (!f.isFile) emptyList() else f.readText().split("\n").filter { it.isNotBlank() }
         }.getOrDefault(emptyList())
 
-    fun writeFailureCount(ctx: android.content.Context): Int = writeFailures(ctx).size
+    fun writeFailureCount(): Int = writeFailures().size
 
     fun readJson(file: File): JSONObject? =
         runCatching { JSONObject(file.readText()) }.getOrNull()
@@ -212,7 +212,7 @@ object StateFiles {
         }
     }
 
-    fun cleanTemps(ctx: android.content.Context, minAgeMs: Long): List<String> {
+    fun cleanTemps(minAgeMs: Long): List<String> {
         val out = mutableListOf<String>()
         val now = System.currentTimeMillis()
         fun sweep(d: File) {
@@ -245,10 +245,10 @@ object StateFiles {
         return out
     }
 
-    fun cleanParts(ctx: android.content.Context, minAgeMs: Long): List<String> {
+    fun cleanParts(minAgeMs: Long): List<String> {
         val out = mutableListOf<String>()
         val now = System.currentTimeMillis()
-        val kids = ctx.cacheDir.listFiles() ?: return out
+        val kids = lobos.kernel.spi.KernelServices.paths().cacheDir.listFiles() ?: return out
         for (f in kids) {
             if (!f.isFile) continue
             val name = f.name

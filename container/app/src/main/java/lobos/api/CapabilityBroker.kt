@@ -157,7 +157,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     @Synchronized
     fun beginSession(programId: String, generation: Long): String {
-        val token = lobos.kernel.proc.SessionRegistry.issue(this, programId, generation)
+        val token = lobos.kernel.proc.SessionRegistry.issue(programId, generation)
         val name = lobos.kernel.proc.SessionRegistry.socketName(token)
         if (running && !servers.containsKey(name)) listenLoop(name)
         return token
@@ -167,13 +167,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     fun endSession(token: String) {
         val name = lobos.kernel.proc.SessionRegistry.socketName(token)
         servers.remove(name)?.let { runCatching { it.close() } }
-        lobos.kernel.proc.SessionRegistry.remove(this, token)
+        lobos.kernel.proc.SessionRegistry.remove(token)
     }
 
     private fun sessionOfSocket(socketName: String): lobos.kernel.proc.SessionRegistry.Session? {
-        val s = lobos.kernel.proc.SessionRegistry.list(this)
+        val s = lobos.kernel.proc.SessionRegistry.list()
             .firstOrNull { lobos.kernel.proc.SessionRegistry.socketName(it.token) == socketName } ?: return null
-        return lobos.kernel.proc.SessionRegistry.verify(this, s.token)
+        return lobos.kernel.proc.SessionRegistry.verify(s.token)
     }
 
     private class SessionHolder(val socketName: String) {
@@ -342,7 +342,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             audit("bridge.handshake", params, false, "该连接已激活会话（不允许重复握手）", session)
             return error(id, CODE_SESSION_MISSING, "该连接已完成握手：会话不允许重复激活")
         }
-        if (!lobos.kernel.proc.SessionRegistry.claim(this, session.token)) {
+        if (!lobos.kernel.proc.SessionRegistry.claim(session.token)) {
             audit("bridge.handshake", params, false, "会话已被占用（一次性激活）", session)
             return error(id, CODE_SESSION_MISSING, "会话已被占用：每个会话只允许激活一次")
         }
@@ -1149,7 +1149,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         },
         "sys.tty.list" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
         val arr = JSONArray()
-        for (one in lobos.kernel.ipc.PtySession.activeSessions(this@CapabilityBroker)) {
+        for (one in lobos.kernel.ipc.PtySession.activeSessions()) {
             arr.put(JSONObject().put("sid", one.sid).put("slave", one.slavePath))
         }
         JSONObject().put("sessions", arr).put("count", arr.length())
@@ -1163,9 +1163,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
 
         val argv = shapedArgv(sh, cmd)
-        val r = lobos.kernel.ipc.LocalExec.run(
-            this@CapabilityBroker,
-            argv,
+        val r = lobos.kernel.ipc.LocalExec.run(argv,
             timeoutMs = p.optLong("timeoutMs", 10_000L),
             preferPty = !p.optBoolean("noPty", false),
         )
@@ -1234,7 +1232,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             lobos.services.reg.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
                 put("notices", lobos.host.ProgramNotificationHub.listJson())
                 put("noticeGroups", lobos.host.ProgramNotificationHub.groupsJson())
-                put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount(this@CapabilityBroker))
+                put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount())
             }
         },
         "os.accessibility.state" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
@@ -1712,8 +1710,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (id != INSTALLER_ID && !lobos.services.reg.ProgramRegistry.listIds(this).contains(id)) {
             return localFail("程序不在册，不得发起能力调用: $id")
         }
-        val token = lobos.kernel.proc.SessionRegistry.issue(this, id, 0L)
-        val session = lobos.kernel.proc.SessionRegistry.list(this).firstOrNull { it.token == token }
+        val token = lobos.kernel.proc.SessionRegistry.issue(id, 0L)
+        val session = lobos.kernel.proc.SessionRegistry.list().firstOrNull { it.token == token }
             ?: return localFail("会话签发后读不回来: $id")
         val holder = SessionHolder(lobos.kernel.proc.SessionRegistry.socketName(token))
         holder.session = session
@@ -1758,7 +1756,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         fun prepareSession(ctx: Context, programId: String, generation: Long): String {
             val b = live
             return if (b != null) b.beginSession(programId, generation)
-            else lobos.kernel.proc.SessionRegistry.issue(ctx, programId, generation)
+            else lobos.kernel.proc.SessionRegistry.issue(programId, generation)
         }
         const val CODE_CAPABILITY_MISSING = -32001
         const val CODE_INVALID_PARAM = -32602

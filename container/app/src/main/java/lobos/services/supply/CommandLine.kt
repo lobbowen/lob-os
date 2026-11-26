@@ -27,9 +27,7 @@ object CommandLine {
         val hit = resolve(ctx, line) ?: return lobos.kernel.ipc.LocalExec.Outcome(
             false, -1, "", "", lobos.kernel.ipc.LocalExec.Via.PLAIN, "usr/bin 下没有这个名字",
         )
-        return lobos.kernel.ipc.LocalExec.run(
-            ctx,
-            listOf(hit.path, "--version"),
+        return lobos.kernel.ipc.LocalExec.run(listOf(hit.path, "--version"),
             emptyMap(),
             null,
             timeoutMs,

@@ -39,7 +39,7 @@ class HomeViewModel : ViewModel() {
             val heapUsedMb = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024)
             val threadCount = Thread.activeCount()
             val sessions = runCatching {
-                lobos.kernel.ipc.PtySession.activeSessions(ctx).size
+                lobos.kernel.ipc.PtySession.activeSessions().size
             }.getOrDefault(0)
             val metrics = listOf(
                 HomeMetric("$heapUsedMb MB", "内存占用"),

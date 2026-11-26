@@ -1,6 +1,5 @@
 package lobos.kernel.proc
 
-import android.content.Context
 import java.io.File
 import java.security.SecureRandom
 import org.json.JSONArray
@@ -10,7 +9,7 @@ import lobos.kernel.fs.StateFiles
 
 object SessionRegistry {
 
-    private fun dir(ctx: Context): File = SystemDirs.run()
+    private fun dir(): File = SystemDirs.run()
     private const val FILE = "sessions.json"
     private const val SCHEMA = 1
     private const val GRACE_MS = 20_000L
@@ -29,25 +28,25 @@ object SessionRegistry {
 
     private val rng = SecureRandom()
 
-    private fun file(ctx: Context): File {
-        val d = dir(ctx)
+    private fun file(): File {
+        val d = dir()
         d.mkdirs()
         return File(d, FILE)
     }
 
-    private fun read(ctx: Context): JSONObject =
-        runCatching { JSONObject(file(ctx).readText()) }.getOrDefault(JSONObject())
+    private fun read(): JSONObject =
+        runCatching { JSONObject(file().readText()) }.getOrDefault(JSONObject())
 
-    private fun write(ctx: Context, obj: JSONObject) {
+    private fun write(obj: JSONObject) {
         runCatching {
             obj.put("schema", SCHEMA)
-            StateFiles.writeAtomic(file(ctx), obj.toString(2))
+            StateFiles.writeAtomic(file(), obj.toString(2))
         }
     }
 
     @Synchronized
-    fun list(ctx: Context): List<Session> {
-        val arr = read(ctx).optJSONArray("sessions") ?: return emptyList()
+    fun list(): List<Session> {
+        val arr = read().optJSONArray("sessions") ?: return emptyList()
         return (0 until arr.length()).mapNotNull { i ->
             val o = arr.optJSONObject(i) ?: return@mapNotNull null
             Session(
@@ -64,7 +63,7 @@ object SessionRegistry {
     }
 
     @Synchronized
-    private fun persist(ctx: Context, sessions: List<Session>) {
+    private fun persist(sessions: List<Session>) {
         val arr = JSONArray()
         for (s in sessions) {
             arr.put(JSONObject().apply {
@@ -78,7 +77,7 @@ object SessionRegistry {
                 put("claimedAt", s.claimedAt)
             })
         }
-        write(ctx, read(ctx).put("sessions", arr))
+        write(read().put("sessions", arr))
     }
 
     private fun newToken(): String {
@@ -88,7 +87,7 @@ object SessionRegistry {
     }
 
     @Synchronized
-    fun issue(ctx: Context, programId: String, generation: Long): String {
+    fun issue(programId: String, generation: Long): String {
         val token = newToken()
         val s = Session(
             id = programId + "#" + generation,
@@ -99,16 +98,16 @@ object SessionRegistry {
             starttime = -1L,
             issuedAt = System.currentTimeMillis(),
         )
-        persist(ctx, list(ctx).filterNot { it.programId == programId && it.generation == generation } + s)
+        persist(list().filterNot { it.programId == programId && it.generation == generation } + s)
         return token
     }
 
     @Synchronized
-    fun bindPid(ctx: Context, token: String, pid: Int): Session? {
-        val cur = list(ctx)
+    fun bindPid(token: String, pid: Int): Session? {
+        val cur = list()
         val st = ProcessLedger.starttimeOf(pid)
         var out: Session? = null
-        persist(ctx, cur.map {
+        persist(cur.map {
             if (it.token == token) {
                 val upd = it.copy(pid = pid, starttime = st)
                 out = upd
@@ -118,9 +117,9 @@ object SessionRegistry {
         return out
     }
 
-    fun verify(ctx: Context, token: String?): Session? {
+    fun verify(token: String?): Session? {
         if (token.isNullOrBlank()) return null
-        val s = list(ctx).firstOrNull { it.token == token } ?: return null
+        val s = list().firstOrNull { it.token == token } ?: return null
         if (s.pid <= 0) {
             return if (System.currentTimeMillis() - s.issuedAt <= GRACE_MS) s else null
         }
@@ -128,22 +127,22 @@ object SessionRegistry {
     }
 
     @Synchronized
-    fun clear(ctx: Context) = persist(ctx, emptyList())
+    fun clear() = persist(emptyList())
 
     /** Remove a single token (used when a management session ends). */
-    fun remove(ctx: Context, token: String) {
-        val kept = list(ctx).filterNot { it.token == token }
-        persist(ctx, kept)
+    fun remove(token: String) {
+        val kept = list().filterNot { it.token == token }
+        persist(kept)
     }
 
     fun socketName(token: String): String = BASE_SOCKET + "." + token.take(16)
 
     @Synchronized
-    fun claim(ctx: Context, token: String): Boolean {
-        val cur = list(ctx)
+    fun claim(token: String): Boolean {
+        val cur = list()
         val s = cur.firstOrNull { it.token == token } ?: return false
         if (s.claimedAt > 0L) return false
-        persist(ctx, cur.map { if (it.token == token) it.copy(claimedAt = System.currentTimeMillis()) else it })
+        persist(cur.map { if (it.token == token) it.copy(claimedAt = System.currentTimeMillis()) else it })
         return true
     }
 

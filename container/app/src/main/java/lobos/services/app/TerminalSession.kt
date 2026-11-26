@@ -56,7 +56,7 @@ class TerminalSession private constructor(
                 )
 
             val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv
-            val s = lobos.kernel.ipc.PtySession.openSession(ctx, ptyBin, effArgv, rows, cols, timeoutMs)
+            val s = lobos.kernel.ipc.PtySession.openSession(ptyBin, effArgv, rows, cols, timeoutMs)
             val t = TerminalSession(s, System.currentTimeMillis())
 
             s.onData = { d -> t.onOutput?.invoke(d) }

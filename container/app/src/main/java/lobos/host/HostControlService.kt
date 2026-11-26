@@ -77,7 +77,7 @@ object HostControlService {
             var mgmtToken: String? = null
         return try {
             mgmtToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(app, mgmtToken!!, android.os.Process.myPid())
+            SessionRegistry.bindPid(mgmtToken!!, android.os.Process.myPid())
             val client = ControlClient(
                 socketName = SessionRegistry.socketName(mgmtToken!!), sessionToken = mgmtToken!!,
                 protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
@@ -139,9 +139,7 @@ object HostControlService {
             return failure(method, "exec-direct", "那一件不在：" + path + "（按 C-05 报缺）")
         }
 
-        val r = lobos.kernel.ipc.LocalExec.run(
-            context,
-            listOf(target.absolutePath) + args,
+        val r = lobos.kernel.ipc.LocalExec.run(listOf(target.absolutePath) + args,
             timeoutMs = timeoutMs,
             preferPty = false,
         )
@@ -159,7 +157,7 @@ object HostControlService {
 
     fun verifyDeviceNodes(context: Context): JSONObject {
         val method = "sysdev.verify"
-        val root = lobos.kernel.sysdev.SysDev.root(context)
+        val root = lobos.kernel.sysdev.SysDev.root()
         if (!root.isDirectory) {
             return failure(method, "sysdev-verify", "那设备节点目录不在：" + root.absolutePath + "（按 C-05 报缺）")
         }
@@ -658,7 +656,7 @@ object HostControlService {
             var rbToken: String? = null
         return try {
             rbToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(app, rbToken!!, android.os.Process.myPid())
+            SessionRegistry.bindPid(rbToken!!, android.os.Process.myPid())
             val client = ControlClient(
                 socketName = SessionRegistry.socketName(rbToken!!),
                 sessionToken = rbToken!!,

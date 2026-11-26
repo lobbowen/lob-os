@@ -46,8 +46,8 @@ object BootReconciler {
     }
 
     fun run(ctx: Context): Report {
-        val temps = StateFiles.cleanTemps(ctx, TMP_MIN_AGE_MS)
-        val parts = StateFiles.cleanParts(ctx, PART_MAX_AGE_MS)
+        val temps = StateFiles.cleanTemps(TMP_MIN_AGE_MS)
+        val parts = StateFiles.cleanParts(PART_MAX_AGE_MS)
         val abandoned = TaskRegistry.abandonRunning(ctx, "boot-reconcile")
         val notRunning = reconcileNotRunning(ctx)
         val cleared = mutableListOf<String>()

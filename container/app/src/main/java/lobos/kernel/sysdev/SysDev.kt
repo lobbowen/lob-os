@@ -1,6 +1,5 @@
 package lobos.kernel.sysdev
 
-import android.content.Context
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
@@ -10,15 +9,15 @@ import lobos.kernel.proc.ProcessLedger
 
 object SysDev {
 
-    fun root(ctx: Context): File = File(lobos.kernel.spi.KernelServices.paths().rootDir, "dev")
+    fun root(): File = File(lobos.kernel.spi.KernelServices.paths().rootDir, "dev")
 
-    fun render(ctx: Context): File? {
-        val root = root(ctx)
+    fun render(): File? {
+        val root = root()
         currentRoot = root
 
         val current = verifyNodes(root)
 
-        val sessionsNow = sessionSignature(ctx)
+        val sessionsNow = sessionSignature()
         val lastSig = lastRenderedSessionSignature
         if (current == null && root.isDirectory && sessionsNow == lastSig) {
 
@@ -27,11 +26,11 @@ object SysDev {
         val r = runCatching {
             wipe(root)
             root.mkdirs()
-            ttyDir(ctx, root)
+            ttyDir(root)
             execNode(root)
-            indexJson(ctx, root)
+            indexJson(root)
             applyDeclaredModes(root)
-            indexJson(ctx, root)
+            indexJson(root)
             root
         }.getOrNull() ?: return null
         lastRenderedSessionSignature = sessionsNow
@@ -56,10 +55,10 @@ object SysDev {
         d.listFiles()?.forEach { it.deleteRecursively() }
     }
 
-    private fun ttyDir(ctx: Context, r: File) {
+    private fun ttyDir(r: File) {
         val pts = File(r, "tty/pts").apply { mkdirs() }
         val rows = JSONArray()
-        for (s in PtySession.activeSessions(ctx)) {
+        for (s in PtySession.activeSessions()) {
             val n = String.format("%03d", s.sid)
 
             val sessionDir = File(pts, n)
@@ -111,15 +110,15 @@ object SysDev {
         )
     }
 
-    private fun indexJson(ctx: Context, r: File) {
+    private fun indexJson(r: File) {
         val o = JSONObject()
         val tty = JSONArray()
-        for (s in PtySession.activeSessions(ctx)) {
+        for (s in PtySession.activeSessions()) {
             tty.put(JSONObject().put("sid", s.sid).put("slave", s.slavePath))
         }
         o.put("tty", tty)
         o.put("programs", JSONArray().apply {
-            for (e in ProcessLedger.list(ctx)) {
+            for (e in ProcessLedger.list()) {
                 put(JSONObject().put("programId", e.programId).put("pid", e.pid))
             }
         })
@@ -364,9 +363,9 @@ object SysDev {
         return false
     }
 
-    private fun sessionSignature(ctx: Context): String =
+    private fun sessionSignature(): String =
         runCatching {
-            PtySession.activeSessions(ctx).joinToString(";") { "${it.sid}:${it.slavePath}" }
+            PtySession.activeSessions().joinToString(";") { "${it.sid}:${it.slavePath}" }
         }.getOrDefault("")
 
     @Volatile private var lastRenderedSessionSignature: String? = null
