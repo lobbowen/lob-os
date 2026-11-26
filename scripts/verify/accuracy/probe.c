@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <sched.h>
+#include <sys/auxv.h>
 
 static void emit(const char *k, const char *v) {
     printf("%s=%s\n", k, v ? v : "(null)");
@@ -35,11 +36,19 @@ static void dim_argv0(void) {
     if (n <= 0) { emit("exe_link", "ERR"); return; }
     path[n] = 0;
     emit("exe_link", strstr(path, "probe") ? "probe" : path);
+    /* AT_EXECFN is the kernel-provided original executable name; a loader
+       preserves it even when /proc/self/exe points at the loader. This is the
+       correct self-location source under an explicit-loader execution. */
+    const char *execfn = (const char *)getauxval(AT_EXECFN);
+    emit("at_execfn", execfn ? (strstr(execfn,"probe") ? "probe" : execfn) : "(null)");
     char *argv[] = { "SENTINEL_ARGV0", "@child", "MARK", NULL };
     char *envp[] = { "ACC_SENTINEL=7", NULL };
     pid_t p = fork();
     if (p == 0) {
-        execve(path, argv, envp);
+        /* Re-exec via AT_EXECFN when it names a real file; /proc/self/exe
+           would point at the loader under explicit-loader execution. */
+        const char *target = (execfn && execfn[0]=='/') ? execfn : path;
+        execve(target, argv, envp);
         _exit(127);
     }
     int st; waitpid(p, &st, 0);

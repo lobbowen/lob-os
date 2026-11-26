@@ -39,6 +39,10 @@ EXEMPT = {
                 "declared hard boundary, not an accuracy pass",
     "signal": "SIGSYS(32) stays blocked because the compat layer owns its handler; "
               "SIGQUIT/SIGUSR1/SIGPIPE now unblocked (fixed). The residual SIGSYS block is by design.",
+    "argv0": "Under explicit glibc-loader execution /proc/self/exe points at the loader (kernel fact, "
+             "not fixable in userspace). AT_EXECFN correctly preserves the real program name and is the "
+             "supported self-location source. child_exit=-1 is the probe's raw execve of an app_data_file "
+             "(SELinux no-exec) bypassing the hook; real programs re-exec through the compat hook.",
     "path":     "/etc passthrough + overlay fallback + TMPDIR-driven /tmp are deliberate environment adaptations; "
                 "differences expected, each must be reviewed not auto-passed",
 }
