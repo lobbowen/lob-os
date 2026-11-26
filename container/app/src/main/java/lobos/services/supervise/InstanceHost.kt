@@ -396,7 +396,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             writeRuntimeJson(
                 nodePath = nodeBin?.absolutePath ?: "",
                 nodeBinDir = nodeBin?.parentFile?.absolutePath ?: "",
-                prefix = PrefixProvisioner.root(this).absolutePath,
+                prefix = PrefixProvisioner.root().absolutePath,
                 minNode = nodeBin?.let { lobos.services.reg.InstalledRuntime.versionOf(this, InstalledRuntime.programRuntime(this).id) } ?: "",
                 envSnapshot = treeEnv,
             )

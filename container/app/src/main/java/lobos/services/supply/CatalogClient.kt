@@ -175,7 +175,7 @@ object CatalogClient {
             }
             val facilityVersion = runCatching { ProgramManager.currentVersion(ctx, name) }.getOrNull() ?: ""
             val entryRel = e.optString("entry", "bin/" + name)
-            val bin = File(PrefixProvisioner.binDir(ctx), entryRel.substringAfterLast("/"))
+            val bin = File(PrefixProvisioner.binDir(), entryRel.substringAfterLast("/"))
             val installed = haveSha.isNotBlank() || facilityVersion.isNotBlank() || bin.isFile
             val up = installed && wantSha.isNotBlank() && haveSha.isNotBlank() && haveSha != wantSha
             if (up) upgradable += 1

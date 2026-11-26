@@ -688,8 +688,8 @@ object ProgramInstallPipeline {
             return Result(
                 false, safeVer, "entry-link-failed",
                 "件已落位但入口软链建不起来（" +
-                    (if (role == ROLE_LIBRARY) lobos.kernel.layout.PrefixProvisioner.libDir(context).absolutePath
-                     else lobos.kernel.layout.PrefixProvisioner.binDir(context).absolutePath) + "/" +
+                    (if (role == ROLE_LIBRARY) lobos.kernel.layout.PrefixProvisioner.libDir().absolutePath
+                     else lobos.kernel.layout.PrefixProvisioner.binDir().absolutePath) + "/" +
                     entryRel.substringAfterLast("/") + "）—— 装了个没人调得动的件；" +
                     "看 SELinux 是否允许该目录建链，或落位目录是否可写",
             )
@@ -922,7 +922,7 @@ object ProgramInstallPipeline {
         val out = HashMap<String, File>()
         val dirs = buildList {
             add(File(context.applicationInfo.nativeLibraryDir))
-            add(lobos.kernel.layout.PrefixProvisioner.libDir(context))
+            add(lobos.kernel.layout.PrefixProvisioner.libDir())
             runCatching {
                 lobos.services.reg.ProgramRegistry.listIds(context).forEach { id ->
                     runCatching { add(lobos.services.reg.ProgramManager.stateDirOf(context, id)) }
@@ -972,8 +972,8 @@ object ProgramInstallPipeline {
 
         val primary = entryRel.substringAfterLast("/")
         val dir = when (role) {
-            ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(context)
-            ROLE_LIBRARY -> lobos.kernel.layout.PrefixProvisioner.libDir(context)
+            ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir()
+            ROLE_LIBRARY -> lobos.kernel.layout.PrefixProvisioner.libDir()
             else -> {
                 RuntimeDiagnostics.append(
                     context, "linkEntry", false, "入口形态认不出，报缺",

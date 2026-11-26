@@ -15,7 +15,7 @@ object ShellEntry {
     private fun linkOf(e: UnitEntry, ctx: Context): File? {
         val name = e.assetEntry.substringAfterLast('/')
         if (name.isBlank()) return null
-        val f = File(PrefixProvisioner.binDir(ctx), name)
+        val f = File(PrefixProvisioner.binDir(), name)
         return f.takeIf { it.isFile }
     }
 

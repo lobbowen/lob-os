@@ -117,7 +117,7 @@ object PackageInstaller {
         val entryRel = meta.optString("entry", "").takeIf { it.isNotBlank() }
             ?: return fail(ctx, name, "激活失败：目标版本没有 entry")
 
-        val bin = PrefixProvisioner.binDir(ctx)
+        val bin = PrefixProvisioner.binDir()
         val target = File(dest, entryRel)
         for (linkName in linkNames(entryRel, meta.optJSONArray("aliases"))) {
             val link = File(bin, linkName)
@@ -209,7 +209,7 @@ object PackageInstaller {
         val entry = CatalogClient.entryFor(ctx, name)
         val entryRel = entry?.optString("entry", "") ?: ""
         if (entryRel.isNotBlank()) {
-            val bin = PrefixProvisioner.binDir(ctx)
+            val bin = PrefixProvisioner.binDir()
             for (linkName in linkNames(entryRel, entry?.optJSONArray("aliases"))) {
                 val link = File(bin, linkName)
                 runCatching {

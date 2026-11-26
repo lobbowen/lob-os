@@ -100,8 +100,8 @@ object PreinstalledPieces {
                 if (items.isEmpty()) continue
                 val dir = ProgramInstallPipeline.PieceShape.dirForRole(r) ?: continue
                 val abs = when (r) {
-                    ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir(ctx).absolutePath
-                    else -> lobos.kernel.layout.PrefixProvisioner.libDir(ctx).absolutePath
+                    ProgramInstallPipeline.ROLE_PROGRAM -> lobos.kernel.layout.PrefixProvisioner.binDir().absolutePath
+                    else -> lobos.kernel.layout.PrefixProvisioner.libDir().absolutePath
                 }
 
                 val picked = ProgramInstallPipeline.PieceShape.pointerLayerOf(shapeHere, r, verDir)

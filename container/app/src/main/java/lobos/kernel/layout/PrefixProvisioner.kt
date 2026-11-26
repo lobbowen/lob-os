@@ -2,7 +2,6 @@ package lobos.kernel.layout
 
 import lobos.kernel.KernelHooks
 
-import android.content.Context
 import java.io.File
 import lobos.kernel.elf.ExecBits
 
@@ -13,19 +12,19 @@ object PrefixProvisioner {
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
-    fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr()
-    fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin()
-    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib()
+    fun root(): File = lobos.kernel.layout.SystemDirs.usr()
+    fun binDir(): File = lobos.kernel.layout.SystemDirs.bin()
+    fun libDir(): File = lobos.kernel.layout.SystemDirs.lib()
 
-    fun includeDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.include()
+    fun includeDir(): File = lobos.kernel.layout.SystemDirs.include()
 
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 
-    fun caBundle(ctx: Context): File = caBundleAt(root(ctx))
-    fun provision(ctx: Context): List<String> {
+    fun caBundle(): File = caBundleAt(root())
+    fun provision(): List<String> {
         val ready = mutableListOf<String>()
-        linkHeadersInclude(ctx)?.let { ready += it }
-        val caDst = caBundle(ctx)
+        linkHeadersInclude()?.let { ready += it }
+        val caDst = caBundle()
         try {
             caDst.parentFile?.mkdirs()
             val caText = lobos.kernel.spi.KernelServices.paths().assetText(CA_BUNDLE_ASSET)
@@ -36,9 +35,9 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         return ready
     }
 
-    private fun linkHeadersInclude(ctx: Context): List<String> {
-        val headersRoot = headersIncludeDir(ctx) ?: return emptyList()
-        val link = includeDir(ctx)
+    private fun linkHeadersInclude(): List<String> {
+        val headersRoot = headersIncludeDir() ?: return emptyList()
+        val link = includeDir()
         return try {
             link.parentFile?.mkdirs()
             val cur = runCatching { link.toPath().toRealPath() }.getOrNull()
@@ -57,8 +56,8 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         }
     }
 
-    fun headersIncludeDir(ctx: Context): File? = try {
-        libDir(ctx).listFiles()?.asSequence()
+    fun headersIncludeDir(): File? = try {
+        libDir().listFiles()?.asSequence()
             ?.filter { it.isDirectory }
             ?.firstOrNull { version ->
                 File(version, "include").isDirectory

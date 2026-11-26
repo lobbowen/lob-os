@@ -97,7 +97,7 @@ object PieceEntryPointer {
                         Located(
                             role = ProgramInstallPipeline.ROLE_PROGRAM,
                             name = name,
-                            pointer = File(PrefixProvisioner.binDir(ctx), name),
+                            pointer = File(PrefixProvisioner.binDir(), name),
                             landedRel = dir + "/" + name,
                             detail = "程序形态：入口指针按产物那一份 files[] 里 role=program 那一项定位（usr/bin/" + name + "）",
                             tier = "no-library",
@@ -136,7 +136,7 @@ object PieceEntryPointer {
                     Located(
                         role = ProgramInstallPipeline.ROLE_PROGRAM,
                         name = pname,
-                        pointer = File(PrefixProvisioner.binDir(ctx), pname),
+                        pointer = File(PrefixProvisioner.binDir(), pname),
                         landedRel = pdir + "/" + pname,
                         detail = "程序形态：入口指针按产物那一份 files[] 里 role=program 那一项定位（usr/bin/" + pname + "）",
 
@@ -154,7 +154,7 @@ object PieceEntryPointer {
                 Located(
                     role = role,
                     name = base,
-                    pointer = File(PrefixProvisioner.libDir(ctx), base),
+                    pointer = File(PrefixProvisioner.libDir(), base),
                     landedRel = landed,
                     detail = "库形态：入口指针按落位目录 " + ProgramInstallPipeline.SHAPE_NAME +
                         " 里 files[] 的库形态那一条（软链层、 basename 等于 chain[0]）定位（usr/lib/" + base + "）",

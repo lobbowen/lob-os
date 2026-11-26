@@ -167,9 +167,9 @@ object RuntimeEnvironment {
         home = ctx.filesDir,
         tmpDir = ctx.cacheDir,
         nativeLibDir = libSearchPath(ctx),
-        prefixRoot = PrefixProvisioner.root(ctx),
-        prefixBin = PrefixProvisioner.binDir(ctx),
-        prefixLib = PrefixProvisioner.libDir(ctx),
+        prefixRoot = PrefixProvisioner.root(),
+        prefixBin = PrefixProvisioner.binDir(),
+        prefixLib = PrefixProvisioner.libDir(),
     )
 
     fun libSearchPath(ctx: Context): String {
@@ -201,7 +201,7 @@ object RuntimeEnvironment {
         cached?.takeIf { it.complete }?.let { s ->
             RuntimeDiagnostics.append(
                 ctx, "prefix", true, "\$PREFIX 件全部就位（本进程已装配）",
-                PrefixProvisioner.root(ctx).absolutePath + " 已有=" + s.prefixReady.joinToString()
+                PrefixProvisioner.root().absolutePath + " 已有=" + s.prefixReady.joinToString()
             )
             return s
         }
@@ -212,7 +212,7 @@ object RuntimeEnvironment {
     }
 
     private fun assemble(ctx: Context): Snapshot {
-        val provisioned = PrefixProvisioner.provision(ctx)
+        val provisioned = PrefixProvisioner.provision()
 
         val withContentFingerprint = ScanCost.withContentFingerprint(ctx)
         val found = PieceScan.scan(ctx, withContentFingerprint).filter { it.role != PieceScan.HEADERS }
