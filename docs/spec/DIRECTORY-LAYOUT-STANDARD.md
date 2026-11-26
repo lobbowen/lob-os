@@ -4,8 +4,17 @@
 
 ## 一、规范目的
 
-目录是新人理解项目的第一入口。当前问题不是"层级深"（Kotlin 最多 4 层，合理），
-而是**分类标准不统一、职责边界模糊、一个目录塞太多不同职责的东西**：
+目录是新人理解项目的第一入口。当前有两类问题，其中第一类是根本性的：
+
+**问题A（根本）：系统本体没有独立位置，被埋在 Android app 肚子里。**
+核心系统代码（kernel 29 文件 / services 97 文件）当前位于
+`container/app/src/main/java/lobos/` —— 要穿过 `container/app/src/main/java/lobos`
+五层 Android 工程壳才碰到系统本体。Gradle 当前只有 `:app` 和 `:ui` 两个模块，
+**没有独立的 kernel/system 模块**。这传递了一个错误信号：LOBOS 系统只是
+Android app 的一个子目录，而不是与 app 并列的本体。必须把系统本体提升为
+顶层 Gradle 模块，让它和 app 平级。
+
+**问题B（次要）：职责边界模糊。**
 - `services/app` 22 个文件混了 Activity / NavHost / ViewModel / 终端 / 程序组 / bashrc 生成
 - `services` 整个包 97 文件（占 70%），成为"什么都往里塞"的垃圾桶
 - `api` 层混了 Android TileService / ContextWrapper / 纯数据 / 客户端
@@ -14,35 +23,57 @@
 
 ## 二、核心原则
 
+0. **系统本体与 Android app 平级，不埋在 app 里** —— kernel/system 是顶层
+   Gradle 模块，Android app 只是宿主，依赖它们而不是包含它们。这是最重要的一条。
 1. **按职责分层，不按产品/功能堆砌** —— 目录回答"这是哪一层"，文件名回答"具体是什么"
 2. **一个目录一个职责** —— 超过 15 个文件必须考虑再分
-3. **层级上限 4 层** —— `lobos/<层>/<域>/<文件>`，不再深挖
+3. **模块内部层级 ≤ 4 段** —— `lobos/<层>/<域>/<文件>`；这是模块内的逻辑路径，
+   不含 `container/<module>/src/main/java` 这类 Gradle 固定前缀（那不是我们的设计）
 4. **Android 宿主适配单独隔离** —— `android.*` 依赖只允许在 host/device 层
 5. **名字自解释** —— 目录名用名词（kernel/services/host/ui），不用缩写或产品名
 
-## 三、目标目录结构（Kotlin 源码）
+## 三、目标目录结构（顶层模块视角）
+
+系统本体与宿主 app 平级，都是顶层 Gradle 模块：
 
 ```
-container/app/src/main/java/lobos/
-  kernel/                    L1 系统内核（不依赖Android/上层）
-    spi/                     内核SPI契约（KernelServices等）
-    ipc/ fs/ proc/ elf/      机制类（进程/文件/ELF）
-    layout/ compat/ crypto/  子系统
-  system/                    L2 系统服务（原services的系统本体）
-    supply/                  组件供应与安装
-    registry/                程序注册与状态（原reg）
-    supervise/               进程监管
-    log/ power/ perm/        系统基础服务
-  host/                      L4 Android宿主适配（唯一允许android.*）
-    Application / Service / Receiver
-    device/                  Android系统能力适配（原device层迁入）
-    adapters/                SPI宿主实现（KernelHostAdapters）
-  app/                       L3 应用层（程序管理、终端会话、快捷应用）
-    program/                 程序组与快捷应用
-    terminal/                终端profile/session/runtime
-  ui/                        纯Compose UI（独立module，已存在）
-  api/                       对外能力门面（只做路由，不含Android组件）
+container/
+  kernel/                    Gradle 模块 :kernel —— L1 系统内核（LOBOS 本体）
+    src/main/java/lobos/kernel/
+      spi/                   内核SPI契约（KernelServices等）
+      ipc/ fs/ proc/ elf/    机制类（进程/文件/ELF）
+      layout/ compat/ crypto/ 子系统
+    build.gradle.kts         com.android.library（暂时依赖android API，见下）
+
+  system/                    Gradle 模块 :system —— L2 系统服务
+    src/main/java/lobos/system/
+      supply/ registry/ supervise/ log/ power/ perm/
+    build.gradle.kts         依赖 :kernel
+
+  app/                       Gradle 模块 :app —— L4 Android 宿主（只有一个薄壳）
+    src/main/java/lobos/app/
+      MainActivity / host/ device/ adapters/
+    src/main/AndroidManifest.xml
+    build.gradle.kts         依赖 :kernel / :system / :ui
+
+  ui/                        Gradle 模块 :ui —— 纯 Compose UI（已存在）
+
+  native/                    C/C++ 系统垫片（独立目录，已是顶层）
 ```
+
+关键点：
+- **系统本体（`kernel/` `system/`）不再是 `app/src/main/java/lobos/` 的子目录**，
+  而是在 `container/` 下与 `app/` 平级的独立模块。
+- `app/` 变薄：只保留 Android 入口（Activity/Service/Receiver）和 SPI 适配器，
+  是"宿主"而不是"系统的容器"。
+- 新人打开 `container/`，第一眼就看到 kernel/system/app/ui/native 五个并列模块，
+  立刻理解"这是系统 + 一个 Android 宿主"。
+
+### 为什么暂时还是 Android library 而不是 pure Kotlin
+kernel 层当前有 4 类 Android API 依赖（Context 20 / Log 2 / Os 2 / OsConstants 1）。
+在阶段 1.5 用 KernelContext 抽象切断前，`:kernel` 先用 `com.android.library`
+（和 :ui 一样），等 android 依赖清零后再改 pure Kotlin 模块。这不影响
+"顶层独立模块"这个结构性目标——模块独立性先于依赖纯净度。
 
 ### 关键调整（对应当前混乱点）
 
@@ -97,17 +128,29 @@ docs/
 
 ## 七、迁移策略（关键：低风险）
 
-**目录调整会改变 package 声明，风险高**。采用渐进策略：
-1. **阶段 A（立即，零风险）**：写规范文档 + 校验脚本，不改任何文件
-2. **阶段 B（低风险）**：只调整**文件名明显错配**的少数文件（如 StatusTileService 从 api→host）
-3. **阶段 C（中风险）**：按目标结构迁移整个目录，用工具批量改 package 声明
-4. **阶段 D（验证）**：编译 + 端到端回归
+**把 kernel/system 提成独立模块 + 改 package 是高风险操作**（涉及 126 个文件、
+Gradle 配置、Manifest、所有 import）。采用渐进策略：
 
-本阶段先做 A，把规范立起来；B/C 需逐个评估编译影响后执行。
+1. **阶段 A（已完成，零风险）**：立规范文档 + 校验脚本，不改任何文件
+2. **阶段 B（先做，中风险，最高价值）**：新建 `:kernel` 模块，把
+   `app/src/main/java/lobos/kernel/` 整体移入 `container/kernel/`，package 保持
+   `lobos.kernel.*` 不变（源码根从 app 的 java 换成 kernel 模块的 java，
+   package 与相对路径都不变，只有物理位置变）。同步改 settings.gradle.kts
+   和 app 的 dependency。这一步直接解决"系统本体埋在 app 里"的根本问题。
+3. **阶段 C（中风险）**：同样方式新建 `:system` 模块，迁入 services 的系统本体
+4. **阶段 D（高风险）**：模块内部按目标结构重组 package（kernel 内分层、
+   services 拆分），配合阶段 1.5 的 KernelContext 切断 android 依赖
+5. **阶段 E（低风险）**：api/app/host 的职责错配文件归位
+6. **每阶段验证**：编译 + verify-layer-deps.sh + verify-directory-layout.sh +
+   端到端回归（claude/codex/dsh/终端）
+
+**阶段 B 是关键**：它不改变任何 package 名、不改任何 import、不改类名，
+只是把 kernel 的物理位置从 app 肚子裡搬到顶层模块。对代码零侵入，
+但对"项目结构的直观性"是质变——新人打开 container/ 就看到 kernel 与 app 平级。
 
 ## 八、不做的事
 
 - 不为"好看"而改目录——每次调整必须有明确的职责理由
-- 不一次性大规模移动（会制造巨大 diff 和合并冲突）
-- 不改任何类名/API（只改目录和 package）
+- 不一次性大规模重组（先搬物理位置，package 重组放后面独立阶段）
+- 不改任何类名/对外 API
 - 不破坏现有构建脚本的路径引用
