@@ -159,48 +159,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return declared.contains(id)
     }
 
-    private fun packagesAction(p: JSONObject): JSONObject {
-        val name = p.optString("name", "").trim()
-        val action = p.optString("action", "").trim()
-        if (ProgramIndex.safeSegment(name) == null) {
-            throw BridgeError(CODE_INVALID_PARAM, "包名非法（只接受字母数字与 . _ -）：" + name.take(40))
-        }
-        if (name.isBlank() || action.isBlank()) {
-            throw BridgeError(CODE_INVALID_PARAM, "需要 name 与 action（install|upgrade|enable|disable|uninstall|rollback）")
-        }
-        return when (action) {
-            "enable", "disable" -> JSONObject().apply {
-                put("ok", ProgramManager.setEnabled(this@CapabilityBroker, name, action == "enable"))
-            }
-            "uninstall" -> {
-                if (ProgramIndex.isPiece(this@CapabilityBroker, name)) {
-                    throw BridgeError(
-                        CODE_POLICY_DENIED,
-                        "系统基础环境不可卸载（可升级、可回退到 APK 基线）：" + name,
-                    )
-                }
-                JSONObject().apply { put("ok", PackageInstaller.uninstall(this@CapabilityBroker, name)) }
-            }
-            "rollback" -> {
-
-                if (!PackageInstaller.ownsPackageRollback(this@CapabilityBroker, name)) {
-                    throw BridgeError(
-                        CODE_POLICY_DENIED,
-                        "这一件不在包回退这一族（只有控制面板清单里那些件才归它管）：" + name +
-                            "（正式系统件的回退走 lobos.sys.native.rollback，两族不混用）",
-                    )
-                }
-                JSONObject().apply { put("ok", PackageInstaller.rollbackToBaseline(this@CapabilityBroker, name)) }
-            }
-            "install", "upgrade" -> PackageInstaller.install(
-                this@CapabilityBroker, name, p.optString("version", "").takeIf { it.isNotBlank() },
-            )
-            else -> throw BridgeError(CODE_INVALID_PARAM, "未知 action：" + action)
-        }
-    }
-
-    private fun deviceCapabilities(): Set<String> = setOf(BRIDGE_BASE)
-
     private fun audit(
         method: String,
         params: JSONObject,
@@ -279,18 +237,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         OsAccessibilityService.instance
             ?: throw BridgeError(CODE_CAPABILITY_MISSING, "无障碍服务未连接（请在系统设置中开启 Lob OS 无障碍服务）")
 
-    private fun programJson(e: UnitEntry): JSONObject = JSONObject().apply {
-        put("id", e.id)
-        put("name", e.id)
-        put("version", e.version.ifBlank { JSONObject.NULL })
-        put("role", e.role)
-        put("phase", e.desired.name.lowercase(Locale.US))
-    }
-
-    private fun programsJson(): JSONArray = JSONArray().apply {
-        ProgramIndex.byLevel(this@CapabilityBroker, Level.PROGRAM).forEach { put(programJson(it)) }
-    }
-
     private fun journalJson(e: Journal.Event): JSONObject = JSONObject().apply {
         put("seq", e.seq)
         put("ts", e.atMs)
@@ -298,20 +244,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         put("source", "os")
         put("data", e.detail)
         put("internal", false)
-    }
-
-    private fun toHost(action: String) {
-        val i = Intent(this, OsHostService::class.java).setAction(action)
-
-        lobos.host.OsHostService.ensureRunning(this, action)
-    }
-
-    private fun instanceJson(e: UnitEntry): JSONObject = JSONObject().apply {
-        put("id", e.id)
-        put("kind", "program")
-        put("name", e.id)
-        put("desired", e.desired.name.lowercase(Locale.US))
-        put("phase", e.desired.name.lowercase(Locale.US))
     }
 
     private fun taskJson(x: TaskRegistry.Task): JSONObject = JSONObject().apply {
@@ -322,67 +254,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         put("startedAt", x.startedAt)
         put("detail", x.detail)
         if (x.endedAt != null) put("endedAt", x.endedAt)
-    }
-
-    private fun startProgramJob(kind: String, target: String): JSONObject {
-        if (target.isBlank()) {
-            throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
-        }
-        val id = TaskRegistry.start(this@CapabilityBroker, kind)
-        Thread {
-            try {
-                TaskRegistry.update(this@CapabilityBroker, id, "running", 10, "检查远端 program-manifest.json")
-                val out = ProgramOtaUpdater.checkAndUpdate(
-                    this@CapabilityBroker,
-                    ProgramDir(this@CapabilityBroker, target),
-                    checkOnly = false,
-                )
-                val ok = out.updated || !out.available
-                TaskRegistry.finish(this@CapabilityBroker, id, ok, out.detail)
-                Journal.append(this@CapabilityBroker, "appmgr", null, kind + "：" + out.detail)
-            } catch (e: Throwable) {
-                TaskRegistry.finish(this@CapabilityBroker, id, false, e::class.java.simpleName + ": " + e.message)
-            }
-        }.start()
-        return JSONObject().apply { put("ok", true); put("accepted", true); put("taskId", id) }
-    }
-
-    private fun startUninstallJob(target: String): JSONObject {
-        val id = TaskRegistry.start(this@CapabilityBroker, "uninstall")
-        Thread {
-            try {
-                if (target.isBlank()) throw BridgeError(CODE_INVALID_PARAM, "必须显式指定程序 id：宿主不接受「默认程序」")
-                val km = ProgramDir(this@CapabilityBroker, target)
-                val cur = km.currentVersion()
-                val removable = km.installedVersions().filter { it != cur }
-                if (removable.isEmpty()) {
-                    TaskRegistry.finish(
-                        this@CapabilityBroker, id, false,
-                        "拒绝卸载：仅存 1 个版本（" + (cur ?: "无") + "），删掉就没有可运行程序",
-                    )
-                    Journal.note(
-                        this@CapabilityBroker, "appmgr", false, "uninstall 被拒：保护最后可用版本",
-                        "current=" + (cur ?: "无"),
-                    )
-                    return@Thread
-                }
-                TaskRegistry.update(this@CapabilityBroker, id, "running", 30, "清理 " + removable.size + " 个非当前版本")
-                var removed = 0
-                removable.forEach { v -> if (runCatching { km.programDir(v).deleteRecursively() }.getOrDefault(false)) removed++ }
-                val stale = km.sweepStaleStaging().first
-                TaskRegistry.finish(
-                    this@CapabilityBroker, id, true,
-                    "已卸载 " + removed + " 个非当前版本（保留 " + (cur ?: "无") + "），清扫暂存 " + stale.size + " 个",
-                )
-                Journal.append(
-                    this@CapabilityBroker, "appmgr", null,
-                    "uninstall：移除 " + removed + " 个非当前版本，current 未动",
-                )
-            } catch (e: Throwable) {
-                TaskRegistry.finish(this@CapabilityBroker, id, false, e::class.java.simpleName + ": " + e.message)
-            }
-        }.start()
-        return JSONObject().apply { put("ok", true); put("accepted", true); put("taskId", id) }
     }
 
     private val OS_METHODS: Map<String, MethodDef> = mapOf(
@@ -400,7 +271,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                     put("readingsCollected", s.facts.readingsCollected)
                     put("controlPlaneUp", s.facts.controlPlaneUp)
                 })
-                put("programs", programsJson())
+                put("programs", org.json.JSONArray())
             }
         },
         "os.journal.read" to MethodDef(listOf("base"), false) { p, _programId ->
