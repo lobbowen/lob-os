@@ -21,7 +21,7 @@ object TerminalRuntime {
     fun ensure(ctx: Context) {
         val existing = TerminalSessions.get(SESSION_ID)
         if (existing != null && existing.alive) return
-        TerminalProfile.ensureBashrc(ctx)
+        // V2 terminal runs Ubuntu bash from the rootfs; no V1 profile shims.
         TerminalSessions.close(SESSION_ID)
         buffer.feed(("lobos terminal · " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date()) + "\n").toByteArray(Charsets.UTF_8))

@@ -12,10 +12,6 @@
 
 extern char **environ;
 
-/* Node 通用预加载 shim（platform 伪装为 linux + getuid 等 POSIX 垫片）。
-   由 TerminalProfile.ensureNodePosixShim 生成，每次终端启动刷新。 */
-#define LOBOS_NODE_SHIM_PATH "/data/user/0/lobos.os/files/.node-posix-shim.js"
-
 static int (*real_execve)(const char *, char *const[], char *const[]);
 static int (*real_access)(const char *, int);
 
@@ -399,27 +395,13 @@ static int parse_shebang(const char *file, char *buf, size_t n, char *tok[], int
 }
 
 static int exec_with(const char *exe, const char *script, char *const argv[], char *const envp[], const char *disp0, char *shebangArgs[], int nShebang) {
-  size_t extra = (size_t)nShebang, argc = 1 + extra + 1 + 2 /*expose+require*/, i, k = 0;
+  size_t extra = (size_t)nShebang, argc = 1 + extra + 1, i, k = 0;
   char **nargv;
   if (argv) for (i = 1; argv[i]; i++) argc++;
   nargv = (char **)malloc((argc + 1) * sizeof(char *));
   if (!nargv) { errno = ENOMEM; return -1; }
   nargv[k++] = (char *)disp0;
   for (i = 0; i < extra; i++) nargv[k++] = shebangArgs[i];
-  /* shebang #!/usr/bin/env node → 给 node 注入 --expose-internals，
-     让依赖 Node 内部模块的 CLI（dsh/cordis 等）无需私有 native addon。
-     NODE_OPTIONS 放这个 flag 会被 node 拒绝，必须命令行层注入。幂等。 */
-  int add_ei = 0;
-  if (disp0 && strcmp(disp0, "node") == 0) {
-    add_ei = 1;
-    if (argv) for (int z = 1; argv[z]; z++)
-      if (strcmp(argv[z], "--expose-internals") == 0) { add_ei = 0; break; }
-  }
-  if (add_ei) {
-    nargv[k++] = (char *)"--expose-internals";
-    nargv[k++] = (char *)"--require";
-    nargv[k++] = (char *)LOBOS_NODE_SHIM_PATH;
-  }
   nargv[k++] = (char *)script;
   if (argv) for (i = 1; argv[i]; i++) nargv[k++] = argv[i];
   nargv[k] = NULL;
@@ -434,33 +416,6 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
     char **merged = env_merge_sys(envp);
     if (!merged) return -1;
     envp = merged;
-  }
-  /* node 生态通用适配：让所有 node 启动（含 shebang `#!/usr/bin/env node`、
-     npm 内部调用）都带 --expose-internals，使依赖 Node 内部模块的 CLI
-     （dsh/cordis 等）无需私有 native addon。NODE_OPTIONS 放这个 flag 会被
-     node 拒绝（RC=9），必须在命令行参数层注入。幂等：已带则不重复。
-     只针对 basename=="node"，且路径含 /node（避免误伤同名普通程序）。 */
-  if (path && argv) {
-    const char *bn = base_name(path);
-    if (bn && strcmp(bn, "node") == 0 && strstr(path, "/node") != 0) {
-      int already = 0;
-      for (int i = 1; argv[i]; i++)
-        if (strcmp(argv[i], "--expose-internals") == 0) { already = 1; break; }
-      if (!already) {
-        int ac0 = 0; while (argv[ac0]) ac0++;
-        char **na = (char **)malloc((size_t)(ac0 + 4) * sizeof(char *));
-        if (na) {
-          int k = 0;
-          na[k++] = (char *)path;
-          na[k++] = (char *)"--expose-internals";
-          na[k++] = (char *)"--require";
-          na[k++] = (char *)LOBOS_NODE_SHIM_PATH;
-          for (int i = 1; i < ac0; i++) na[k++] = argv[i];
-          na[k] = 0;
-          argv = na;  /* 后续所有分支用带 expose+shim 的 argv */
-        }
-      }
-    }
   }
   char buf[512]; char *tok[8]; int ntok = 0;
   char resolved[1024];
