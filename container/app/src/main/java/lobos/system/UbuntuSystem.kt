@@ -58,6 +58,10 @@ object UbuntuSystem {
             // Pass through the phone's pseudo filesystems; fastroot maps the
             // rest of / from the rootfs.
             "FR_BINDS" to "/proc=/proc:/dev=/dev:/sys=/sys",
+            // Standard Linux PATH so installed tools (claude/codex/node) are
+            // directly runnable from the Ubuntu shell by name.
+            "PATH" to "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+            "HOME" to "/root",
         )
     }
 
