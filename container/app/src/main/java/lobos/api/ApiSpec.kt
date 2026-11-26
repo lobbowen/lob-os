@@ -84,6 +84,8 @@ object ApiSpec {
         "ui.globalAction" to "lobos.sys.ui.globalAction",
         "ui.events" to "lobos.sys.ui.events",
         "ui.dropEvents" to "lobos.sys.ui.dropEvents",
+        "sys.ubuntu.exec" to "lobos.sys.shell.exec",
+        "sys.ubuntu.status" to "lobos.sys.info",
         "sys.tty.exec" to "lobos.sys.shell.exec",
         "sys.tty.list" to "lobos.sys.tty.list",
         "fs.read" to "lobos.sys.fs.read",

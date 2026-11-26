@@ -1155,6 +1155,30 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         JSONObject().put("sessions", arr).put("count", arr.length())
     },
 
+    "sys.ubuntu.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, _programId ->
+        /* V2: run a command inside the Ubuntu rootfs via fastroot. */
+        val program = p.optString("program", "/bin/bash")
+        val args = p.optJSONArray("args")?.let { arr ->
+            (0 until arr.length()).map { arr.optString(it) }
+        } ?: emptyList()
+        val cmd = p.optString("cmd", "")
+        val finalArgs = if (cmd.isNotBlank()) listOf("-c", cmd) else args
+        val r = lobos.system.SystemExec.run(
+            this@CapabilityBroker, program, finalArgs,
+            timeoutMs = p.optLong("timeoutMs", 30_000L),
+        )
+        JSONObject().apply {
+            put("ok", r.ok); put("exitCode", r.exitCode)
+            put("stdout", r.stdout); put("stderr", r.stderr)
+            r.error?.let { put("error", it) }
+        }
+    },
+    "sys.ubuntu.status" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _ ->
+        JSONObject().apply {
+            put("ready", lobos.system.UbuntuSystem.isReady(this@CapabilityBroker))
+            put("root", lobos.system.UbuntuSystem.root(this@CapabilityBroker).absolutePath)
+        }
+    },
     "sys.tty.exec" to MethodDef(listOf(ApiSpec.GROUP_SYS), true) { p, programId ->
         val cmd = p.optString("cmd", "")
         if (cmd.isBlank()) {
