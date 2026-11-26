@@ -81,3 +81,43 @@ github.com/spizganed/fastroot）证明了：在无 root 的 Android 应用进程
 这是正确的方向，但工作量是"系统内核级重构"，不是"接个组件"。当前产物（so+脚本）
 是起点不是成品；so 暂不入 git（避免半成品被误认为可用），构建脚本可复现。
 所有验证临时文件已从设备清理。
+
+
+## 突破：fastroot 实际跑通了（2026-11-26 21:35）
+
+之前 5 次"失败"是**终端 UI dump 累积的历史文本误导**——用 run-as 直接跑并把
+stdout 重定向到文件后，发现程序 exit 0 成功执行。
+
+验证方法（关键：不要从 UI dump 读结果，它累积历史文本）：
+```
+env -u LD_PRELOAD -u LD_LIBRARY_PATH \
+  FR_KEXEC=0 FR_ROOT=<root> FR_SHIM=<nativeLib>/libfr-shim.so \
+  FR_LIBPATH=<root>/usr/lib/aarch64-linux-gnu:<root>/usr/lib FR_EXE=/usr/bin/paths \
+  <nativeLib>/libfr-launch.so \
+  <root>/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 \
+  --library-path $L --preload <shim> <root>/usr/bin/paths
+```
+
+结果（glibc paths probe stdout）：
+```
+open+read 18        <- 读 /etc/os-release 得到 18 字节（rootfs 内容 ID=test/VERSION=1）
+stat 0              <- /etc stat 成功
+access 0            <- /etc/passwd 可访问
+cwd ok
+readlink 14
+fopen (nil)         <- /nonexistent 正确返回 NULL
+exit 0
+```
+
+FR_TRACE 确认程序发出的系统调用：`openat(/etc/os-release)`、`newfstatat(/etc)`、
+`access(/etc/passwd)`、`readlink(/proc/self/exe)`、`openat(/nonexistent)`。
+全部是虚拟路径，翻译到 rootfs。
+
+**结论**：fastroot 在无 root 的 LobOS APK 进程里成功运行 glibc 程序并实现了
+虚拟根路径翻译。这证明 chroot/bind/fake root/多 uid/硬链接//proc 这些"内核能力"
+可以用用户态 syscall 补丁实现——不是做不到，是之前的 LD_PRELOAD 路径做不到。
+
+下一步（现在有坚实起点）：
+1. 用真正的 Debian/Ubuntu rootfs 跑 fastroot 的 compat.sh（174 项）
+2. 测 fake root / uid / chroot / 硬链接 / /proc 这些我们缺的能力
+3. 评估迁移方案：fastroot 替换 exec/VFS/chroot/uid，保留我们的上层能力
