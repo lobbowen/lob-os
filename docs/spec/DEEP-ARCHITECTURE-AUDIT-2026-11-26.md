@@ -179,3 +179,47 @@ APK，而是在这个 APK 壳下做成一套完整的独立系统。所以"系�
 - 所有结论来自静态逐文件阅读 + import/调用计数 + 文档交叉核对，未在真机跑运行时验证
 - 严重程度是工程判断，不是用户决策；是否修、何时修由用户定
 - 本报告不修改任何代码，仅作为下一步工作的依据
+
+## 附录：审计项复核与处置结果（2026-11-26 实施后）
+
+本轮按审计优先级实施了 P0/P1 修复，并逐项复核了原审计结论。结果分三类：
+
+### 一、已实际修复（12 项）
+- session 泄漏（HostControlService.update/rollback 新增 endSession 释放）
+- hostAlive 不复位（onDestroy 复位）
+- RUNNING 早于组件就绪（transition 移入 FIFO handler 内、ensureComponents 之后）
+- /tmp 虚拟根目标分裂（vfs-root 读 TMPDIR）
+- open-fallback 返回 HOME fd 语义错误（移除回退，EACCES 原样返回）
+- Native ABI 隐式契约（契约文档 + 一致性校验，11 键全一致）
+- elfload 死路径（删除，它破坏 /proc/self/exe）
+- elf↔proc 环、PtySession↔SysDev 环（切断）
+- 日志双通道（统一到 KernelServices.logger 单一通道）
+- 死代码清理（LobosEnv + native lobos-env.c、isUsable、LdConfig 不可达代码、未用参数/import 等）
+
+### 二、经复核为启发式误报（不修改代码）
+原审计按"出现两次/行数大"等启发式标记，逐项读代码后确认不是问题：
+- **BOOTING→RUNNING"非法跃变"**：`transition` 是显式强制切换（启动流程用），
+  `refresh` 才走 `OsPhaseRule.next` 校验。两者职责不同，不是 bug。
+- **SIGSYS 双 handler**：app-sigsys.c 服务 bionic app 进程，guest-sigsys.c 服务
+  glibc guest 进程——不同进程域的适配，不是重复实现。
+- **glibc 判据双份**：Kotlin ExecEntry（给 ProcessBuilder 构造 argv）与 C exec-path
+  （libc execve hook 路由）是两个执行入口，判据都是查 "ld-linux" 子串，一致。
+- **ProductSessions"双会话表"**：主 `sessions`(sid→Session) 是协议层，
+  `ProductSessions`(key→Session) 是应用层按程序管理，职责不同且都在用。
+- **展示文案侵入机制层**：中文在诊断日志 message/错误 reason 字段里，
+  这些是给人看的诊断信息，不是程序依赖的结构化数据，可接受。
+- **PeLoader/PtySession/CapabilityBroker"上帝对象"**：逐读后确认是高内聚单职责
+  （PE 解析+模型 / PTY 会话生命周期 / 能力门面），行数大源于方法多而非职责纠缠。
+  按行数拆分是 cosmetic，风险（大 diff、回归）> 收益，不做。
+
+### 三、剩余真债（明确处理原则）
+- **kernel 14 个 Context 签名残留**：函数体已不真正使用 Android 能力，仅签名
+  链传递。需逐条理解语义后切断，不能用脚本批量改（两次批量尝试均因具名参数/
+  多行格式误伤编译而 reset）。后续逐个函数处理，每次编译验证。
+- **Context 全清零目标**：host 外 android import 从 109 降到 76，剩余含
+  services/app 等真正需要 Android 的业务文件（不属于系统层债）。
+
+### 经验教训（写入规范）
+1. 批量改 Kotlin 函数签名+调用方不可靠（具名参数/多行/位置混具名），一律逐个处理
+2. 审计的启发式标记（出现两次/行数大）必须逐项读代码复核，不能直接当债务修
+3. 每次改动编译验证 + 总校验 + 端到端回归，不假设"应该没问题"
