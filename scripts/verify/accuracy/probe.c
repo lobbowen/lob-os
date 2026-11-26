@@ -184,6 +184,7 @@ int main(int argc, char **argv) {
         emit_i("statx_rc", r);
         emit_i("statx_errno", r<0 ? errno : 0);
         if (r==0) emit_i("statx_size", (long)sx.stx_size);
+        emit("lobos_vroot", getenv("LOBOS_VROOT") ? getenv("LOBOS_VROOT") : "(null)");
         struct stat st;
         int r2 = stat("/usr/bin/bash", &st);
         emit_i("stat_rc", r2);
