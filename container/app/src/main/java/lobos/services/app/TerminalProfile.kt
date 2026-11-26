@@ -2,6 +2,7 @@ package lobos.services.app
 
 import android.content.Context
 import lobos.kernel.proc.ExecEntry
+import lobos.kernel.proc.NativeCliRegistry
 import lobos.services.reg.ProgramIndex
 import lobos.services.supply.ProgramDir
 import lobos.services.supply.PieceScan
@@ -12,6 +13,7 @@ object TerminalProfile {
     private const val LINKER = "/system/bin/linker64"
 
     fun ensureBashrc(ctx: Context) {
+        NativeCliRegistry.ensureManifest(ctx)
         val out = File(ctx.filesDir, ".bashrc")
         val text = build(ctx)
         runCatching { out.writeText(text) }
@@ -233,21 +235,22 @@ object TerminalProfile {
             if (nh != null && File(nh, "bin/node").isFile) {
                 val nb = File(File(nh, "bin"), "node").absolutePath
                 val nlp = "$nh:$nh/lib:$nh/bin:$sysLib"
-                // Claude Code 官方 musl 版：glibc 版在 app 域被 Android seccomp
-                // 干扰；官方 linux-arm64-musl + patched musl loader 实测完整启动。
-                val nativeDir = ctx.applicationInfo.nativeLibraryDir
-                val muslBin = File(nativeDir, "libclaude-musl.so")
-                val muslLoader = File(nativeDir, "libmusl-ld.so")
+                // 通用原生 CLI：由 usr/lib/native-cli.json 清单声明，内核层
+                // NativeCliRegistry 统一生成启动函数，系统不认识具体产品名。
+                val nativeCli = NativeCliRegistry.entries(ctx).associateBy { it.name }
                 for (f in globalBin.listFiles().orEmpty()) {
                     if (!f.isFile || !seen.add(f.name)) continue
+                    val nativeEntry = nativeCli[f.name]
+                    if (nativeEntry != null) {
+                        sb.appendLine(NativeCliRegistry.shellFunction(nativeEntry))
+                        continue
+                    }
                     val target = try { java.nio.file.Files.readSymbolicLink(f.toPath()).let { link ->
                         val r = if (link.isAbsolute) link else java.io.File(f.parentFile, link.toString()).toPath()
                         r.normalize().toFile()
                     }.let { if (it.isFile) it else f } } catch (_: Exception) { f }
                     val shape = ExecEntry.detect(target)
-                    if (f.name == "claude" && muslBin.isFile && muslLoader.isFile) {
-                        sb.appendLine("${f.name}() { (unset LD_PRELOAD; MUSL_ON_TERMUX=1 TMPDIR=$base/.tmp exec ${muslLoader.absolutePath} --library-path $nativeDir ${muslBin.absolutePath} \"\$@\"); }")
-                    } else if (shape is ExecEntry.Shape.Elf || shape is ExecEntry.Shape.Exec) {
+                    if (shape is ExecEntry.Shape.Elf || shape is ExecEntry.Shape.Exec) {
                         sb.appendLine("${f.name}() { ${target.absolutePath} \"\$@\"; }")
                     } else {
                         sb.appendLine("${f.name}() { LD_LIBRARY_PATH=$nlp $nb ${f.absolutePath} \"\$@\"; }")

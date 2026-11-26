@@ -288,3 +288,40 @@ glibc 版 `@anthropic-ai/claude-code-linux-arm64`（397MB）在 app 域原生执
 - `claude` 交互 → TUI 界面显示 `Welcome to Claude Code v2.1.331`，随后报
   `Failed to connect to api.anthropic.com: 403`（网络/地区问题，非系统兼容）
 - 结论：**Claude Code 界面在 LobOS 终端正常显示**，系统兼容层达标。
+
+## 12. 通用原生 CLI 机制（系统能力，非逐产品适配）
+
+### 原则
+原生 CLI 的 linux aarch64 产物分两类，系统统一支撑，代码不认识任何产品名：
+- **musl 动态二进制**（如 Claude Code 官方 musl 版）：用 patched musl loader 启动
+- **musl 静态二进制**（如 Codex CLI 的 vendor 产物）：直接 exec
+
+二者都以 `nativeLibraryDir` 内的 `.so` 形态分发（绕开 app_data_file 的 noexec），
+由一份数据清单声明如何启动。新增 CLI 只加数据，不改代码。
+
+### 机制
+- `lobos.kernel.proc.NativeCliRegistry`（内核层）读 `assets/sysconfig/native-cli.json`，
+  为每条命令生成 shell wrapper：unset LD_PRELOAD、可选 loader + --library-path、
+  命令专属 env。
+- TerminalProfile 生成 .bashrc 时统一调用 registry，不含任何命令名硬编码。
+- 约定兜底：`lib<name>-musl.so` 自动注册为 `<name>`（musl loader + MUSL_ON_TERMUX）。
+- 清单占位符：`@nativeLib`/`@tmp`/`@files` 在运行时展开，避免写死路径。
+
+### 清单（数据层，可含产品名）
+`assets/sysconfig/native-cli.json` 的 `commands` 每项声明 binary、loader、
+libraryPath、env。claude 与 codex 的差异全在这份数据里。
+
+### 二进制分发
+380MB 级二进制不入 git（超 GitHub 100MB 限制），由 component-sources 钉值
+（claude-musl-binary / claude-musl-runtime），构建阶段下载放 nativeLibraryDir。
+小体积 musl loader 可入 git。
+
+### 实测（重装 APK 后端到端）
+- `claude -p hi` -> Not logged in · Please run /login
+- `claude` -> Welcome to Claude Code v2.1.331 TUI（后续 403 是网络/地区）
+- `codex --version` -> codex-cli 0.172.0
+三者均由同一 NativeCliRegistry 机制生成入口，无逐产品代码。
+
+### exec-path 配套
+动态链接器本身（ld-linux / libglibc-loader / ld-musl / libmusl）显式执行时
+豁免 ET_DYN->linker64 改写，否则 musl loader 报 "Could not find a PHDR"。
