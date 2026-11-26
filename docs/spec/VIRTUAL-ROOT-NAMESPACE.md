@@ -202,3 +202,45 @@ SELinux noexec），且目标是无 PT_INTERP 的静态 ELF，自动改写为
 结论：动态链接（glibc/musl 两大主流）已完全通用；pure static / static-pie
 是罕见边界，且真实产品（Claude/Codex/Debian 全系）均不走这条。elfload 的
 load-bias 改动对 ET_EXEC 无影响（bias=0），为将来支持 static-pie 留了基础。
+
+## 15. Codex "no complete local package" 根因（2026-11-26）
+
+用户要求验证标准安装 Codex 的启动。发现标准 `codex` 报
+"no complete local package" / "Could not find home directory"。
+按用户指正"标准成熟产品出问题一定是系统问题"，定位到精确 root cause：
+
+### 决定性对比
+- run-as 域（untrusted_app 之外的 runas_app，能内核 exec app_data）：
+  codex `doctor` 显示 `install method: other (package .../vendor/aarch64-unknown-
+  linux-musl, bin .../bin, resources .../codex-resources, path .../codex-path)`，
+  `executable = .../vendor/.../bin/codex`（/proc/self/exe 正确），包结构完整识别。
+- app 域（untrusted_app）：app_data_file 被 SELinux noexec，exec hook 的
+  EACCES 兜底把 codex 交给 libelfload.so 做 userland 加载。此时
+  `/proc/self/exe = .../lib/arm64/libelfload.so`（codex doctor 实测），
+  codex 靠 /proc/self/exe 自定位包根目录 -> 定位到 nativeLib -> 找不到
+  codex-package.json -> "no complete local package"。
+
+### 结论
+产品与安装包完全正常（run-as 域验证通过）。问题是 untrusted_app 的
+SELinux noexec 迫使用 userland ELF 加载器，而 /proc/self/exe 由内核维护、
+无法在用户态伪造——elfload 加载的程序自定位必然失败。这是 userland 加载
+方案的固有边界，也是"虚拟磁盘"对自定位程序（codex 用 /proc/self/exe
+找资源）的唯一未解点。
+
+### 已修的一部分
+elfload 原先只传 LOBOS_LOADER=1 一个环境变量，导致 codex 读不到 HOME 报
+"Could not find home directory"。已修为继承加载器进程的完整 environ
+（HOME/PATH/CODEX_HOME/...），该错误消失，TUI 能渲染到
+">_ OpenAI Codex (v0.172.0) loading"。这是真实系统基础环境缺陷，已修复。
+
+### 剩余边界的系统级解法
+要让自定位程序（codex）在 app 域正常，必须让它经内核 exec 且
+/proc/self/exe 指向真实二进制。两条路：
+1. app 进程获得 exec app_data_file 的能力（SELinux 策略/内核层）——
+   这是用户所说"自研内核层"要提供的执行环境能力。
+2. 把二进制放到 APK nativeLibraryDir（apk_data_file 可 exec），但
+   /proc/self/exe 指向 nativeLib，同样找不到包资源；除非把包资源
+   (codex-package.json/codex-resources/codex-path) 也随 APK 放到
+   nativeLib 对应布局——每条产品仍要打包资源，不够通用。
+本质：noexec + /proc/self/exe 不可伪造，是 untrusted_app 下自定位
+原生程序的硬边界。

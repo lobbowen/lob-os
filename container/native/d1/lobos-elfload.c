@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 /* LobOS userland ELF loader: map a static ET_EXEC from an unexecutable disk,
    build a proper initial stack (argc/argv/envp/auxv), jump to entry. */
+extern char **environ;
 typedef unsigned char u8;
 typedef unsigned long ul;
 static ul rd(const u8*p,int n){ul v=0;for(int i=0;i<n;i++)v|=(ul)p[i]<<(8*i);return v;}
@@ -98,13 +99,15 @@ int main(int argc, char** argv){
     }
   }
   ul rnd[2]={0x123456789abcdef0UL,0xfedcba9876543210UL};
-  const char* envp[]={ "LOBOS_LOADER=1", NULL };
   const char* gargv0=path;
   ul arg_addr[16]; int nargs=argc-2; if(nargs>15)nargs=15; if(nargs<0)nargs=0;
-  ul env_addr[1]; int nenv=1;
+  /* inherit the loader process environment (HOME/PATH/CODEX_HOME/...) so
+     guest programs see the same environment as a normal exec would. */
+  ul env_addr[128]; int nenv=0;
+  if(environ) for(; environ[nenv] && nenv<128; nenv++){}
     sp-=16; memcpy((void*)sp,rnd,16); ul at_random=sp;
   for(int i=0;i<nargs;i++){size_t L=strlen(argv[i+2])+1;sp-=L;memcpy((void*)sp,argv[i+2],L);arg_addr[i]=sp;}
-  for(int i=0;i<nenv;i++){size_t L=strlen(envp[i])+1;sp-=L;memcpy((void*)sp,envp[i],L);env_addr[i]=sp;}
+  for(int i=0;i<nenv;i++){size_t L=strlen(environ[i])+1;sp-=L;memcpy((void*)sp,environ[i],L);env_addr[i]=sp;}
   size_t l0=strlen(gargv0)+1; sp-=l0; memcpy((void*)sp,gargv0,l0); ul argv0_addr=sp;
   sp&=~0xfUL;
   /* append the target-specific auxv entries after the inherited ones */
