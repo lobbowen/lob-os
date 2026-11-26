@@ -130,6 +130,12 @@ object SessionRegistry {
     @Synchronized
     fun clear(ctx: Context) = persist(ctx, emptyList())
 
+    /** Remove a single token (used when a management session ends). */
+    fun remove(ctx: Context, token: String) {
+        val kept = list(ctx).filterNot { it.token == token }
+        persist(ctx, kept)
+    }
+
     fun socketName(token: String): String = BASE_SOCKET + "." + token.take(16)
 
     @Synchronized

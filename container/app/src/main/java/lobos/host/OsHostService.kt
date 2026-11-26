@@ -325,6 +325,7 @@ class OsHostService : Service() {
         val teardownStep = { step: String ->
             RuntimeDiagnostics.append(this, "host", true, "宿主拆解进度: " + step, "onDestroy 已走到=" + step)
         }
+        hostAlive = false
         runCatching { OsInit.transition(this, OsPhase.STOPPING, "宿主被销毁", ResidencyAudit.interruption(this)) }
         teardownStep("已写宿主被销毁")
         handler?.removeCallbacksAndMessages(null)

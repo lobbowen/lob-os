@@ -74,11 +74,12 @@ object HostControlService {
         if (url.isBlank()) return failure(method, correlatedId, "manifestUrl 为空")
         val broker = lobos.api.CapabilityBroker.live()
             ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
+            var mgmtToken: String? = null
         return try {
-            val token = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(app, token, android.os.Process.myPid())
+            mgmtToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
+            SessionRegistry.bindPid(app, mgmtToken!!, android.os.Process.myPid())
             val client = ControlClient(
-                socketName = SessionRegistry.socketName(token), sessionToken = token,
+                socketName = SessionRegistry.socketName(mgmtToken!!), sessionToken = mgmtToken!!,
                 protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
             )
             val result = client.update(url, correlatedId, dryRun)
@@ -88,6 +89,7 @@ object HostControlService {
             }
         } catch (e: Throwable) { failure(method, correlatedId, e.message ?: e.javaClass.simpleName) }
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
+              .also { mgmtToken?.let { t -> broker.endSession(t) } }
     }
 
     data class PeSample(val asset: String, val sha256: String, val label: String)
@@ -653,12 +655,13 @@ object HostControlService {
         if (selectedBase != "apk") return failure(method, correlatedId, "base 只接受 apk")
         val broker = lobos.api.CapabilityBroker.live()
             ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
+            var rbToken: String? = null
         return try {
-            val token = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(app, token, android.os.Process.myPid())
+            rbToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
+            SessionRegistry.bindPid(app, rbToken!!, android.os.Process.myPid())
             val client = ControlClient(
-                socketName = SessionRegistry.socketName(token),
-                sessionToken = token,
+                socketName = SessionRegistry.socketName(rbToken!!),
+                sessionToken = rbToken!!,
                 protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
             )
             val result = client.rollback(pieceId, selectedBase, correlatedId, dryRun)
@@ -684,7 +687,7 @@ object HostControlService {
                 "requestId=" + correlatedId + " id=" + pieceId + " base=" + selectedBase +
                     " dryRun=" + dryRun + " response=" + response,
             )
-        }
+        }.also { rbToken?.let { t -> broker.endSession(t) } }
     }
 
     private val CROSS_APP_METHODS = listOf("app.launch", "app.listInstalled", "ui.tap")

@@ -163,6 +163,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return token
     }
 
+    /** End a session: close its UDS server and drop the token. */
+    fun endSession(token: String) {
+        val name = lobos.kernel.proc.SessionRegistry.socketName(token)
+        servers.remove(name)?.let { runCatching { it.close() } }
+        lobos.kernel.proc.SessionRegistry.remove(this, token)
+    }
+
     private fun sessionOfSocket(socketName: String): lobos.kernel.proc.SessionRegistry.Session? {
         val s = lobos.kernel.proc.SessionRegistry.list(this)
             .firstOrNull { lobos.kernel.proc.SessionRegistry.socketName(it.token) == socketName } ?: return null
