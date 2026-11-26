@@ -1,4 +1,6 @@
-package lobos.services.app
+package lobos.host
+
+import lobos.services.app.LobosNavHost
 
 import android.os.Bundle
 import androidx.activity.compose.setContent

@@ -1,4 +1,6 @@
-package lobos.services.app
+package lobos.host
+
+import lobos.services.app.QuickAppHost
 
 import android.content.Context
 import android.content.Intent

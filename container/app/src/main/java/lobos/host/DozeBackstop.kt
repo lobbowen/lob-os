@@ -1,4 +1,6 @@
-package lobos.services.power
+package lobos.host
+
+import lobos.host.DozeBackstopReceiver
 
 import android.app.AlarmManager
 import android.app.PendingIntent

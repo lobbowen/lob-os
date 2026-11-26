@@ -1,4 +1,5 @@
-package lobos.services.reg
+package lobos.host
+import lobos.services.reg.ProgramIndex
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

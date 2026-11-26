@@ -211,8 +211,8 @@ class SupervisorPool(private val host: Service) {
         const val MAX_RUNNING = 12
 
         fun requestSync(ctx: android.content.Context) {
-            val intent = Intent(ctx, lobos.services.host.OsHostService::class.java).apply {
-                action = lobos.services.host.OsHostService.ACTION_SYNC_POOL
+            val intent = Intent(ctx, lobos.host.OsHostService::class.java).apply {
+                action = lobos.host.OsHostService.ACTION_SYNC_POOL
             }
             runCatching { ctx.startService(intent) }
         }

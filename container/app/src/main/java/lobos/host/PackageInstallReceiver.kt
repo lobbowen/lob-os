@@ -1,4 +1,4 @@
-package lobos.services.host
+package lobos.host
 
 import android.content.BroadcastReceiver
 import android.content.Context

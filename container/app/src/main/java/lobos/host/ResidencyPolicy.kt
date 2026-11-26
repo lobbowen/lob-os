@@ -1,4 +1,4 @@
-package lobos.services.host
+package lobos.host
 
 object ResidencyPolicy {
 

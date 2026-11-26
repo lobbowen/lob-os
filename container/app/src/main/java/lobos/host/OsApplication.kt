@@ -1,4 +1,4 @@
-package lobos.services.host
+package lobos.host
 
 import android.app.Application
 import android.app.NotificationChannel
@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
-import lobos.services.app.Foreground
+import lobos.host.Foreground
 import lobos.services.app.QuickAppHost
 import lobos.services.log.RuntimeDiagnostics
 import lobos.kernel.KernelHooks
@@ -26,7 +26,7 @@ class OsApplication : Application() {
 
         runCatching { lobos.services.reg.BuildIdentity.write(this) }
         createChannels()
-        lobos.services.app.Foreground.attach(this)
+        lobos.host.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHostAdapters.register(this)
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
@@ -38,7 +38,7 @@ class OsApplication : Application() {
             ResidencyStatus.recordWake()
             RuntimeDiagnostics.append(
                 this, "doze", null, "兜底投递：确保 OS 宿主在",
-                "自唤醒间隔=" + lobos.services.power.DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）"
+                "自唤醒间隔=" + lobos.host.DozeBackstop.WAKE_BACKSTOP_MS + "ms（now=" + nowMs + "）"
             )
         }
 

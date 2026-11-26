@@ -4,7 +4,7 @@ import android.content.Context
 import java.io.File
 import lobos.services.log.RuntimeDiagnostics
 import lobos.services.log.Journal
-import lobos.services.app.DesktopIcons
+import lobos.host.DesktopIcons
 import lobos.kernel.elf.ExecBits
 import lobos.kernel.layout.PrefixProvisioner
 import org.json.JSONArray
@@ -218,7 +218,7 @@ object PackageInstaller {
             }
         }
         ProgramIndex.remove(ctx, name)
-        lobos.services.app.DesktopIcons.withdrawNow(ctx, name)
+        lobos.host.DesktopIcons.withdrawNow(ctx, name)
         PortBroker.release(ctx, name)
         Journal.note(ctx, "package", removed, "包已卸载", "name=" + name)
         return removed

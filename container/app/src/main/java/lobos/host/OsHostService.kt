@@ -1,4 +1,4 @@
-package lobos.services.host
+package lobos.host
 
 import android.app.Notification
 import android.app.PendingIntent
@@ -19,7 +19,7 @@ import lobos.host.device.ScreenCaptureController
 import lobos.services.log.Journal
 import lobos.services.log.KillAudit
 import lobos.kernel.proc.ProcessLedger
-import lobos.services.power.DozeBackstop
+import lobos.host.DozeBackstop
 import lobos.services.power.PowerHostHooks
 import lobos.services.supply.ProgramDir
 import lobos.services.reg.ResidencyStatus
@@ -114,7 +114,7 @@ class OsHostService : Service() {
                         "；已登记程序数=" + lobos.services.reg.ProgramIndex.all(this).count { it.levelOf(this) == lobos.services.reg.Level.PROGRAM },
                 )
             }
-            lobos.services.power.DozeBackstop.schedule(this)
+            lobos.host.DozeBackstop.schedule(this)
             RuntimeDiagnostics.append(
                 this, "host", true, "Lob OS 宿主就位（单进程 / 单前台服务）",
                 "组件：SupervisorPool + CapabilityBroker + ScreenCaptureController；节拍 " + TICK_MS + "ms",
@@ -204,8 +204,8 @@ class OsHostService : Service() {
             runCatching { pool?.sync() }
             runCatching { lobos.services.app.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
-            if (!lobos.services.power.DozeBackstop.armedRecently(nowWall)) {
-                val armed = lobos.services.power.DozeBackstop.schedule(this)
+            if (!lobos.host.DozeBackstop.armedRecently(nowWall)) {
+                val armed = lobos.host.DozeBackstop.schedule(this)
                 lobos.services.log.Journal.note(
                     this, "doze", armed, "兜底闹钟未按期投递：已重挂",
                     "armed=" + armed + "（看门狗每拍校验布防）",
@@ -255,7 +255,7 @@ class OsHostService : Service() {
 
     private fun currentNotificationText(): String {
         val status = lobos.services.reg.ProgramStatusHub.summaryLine(this)
-        val progNotice = lobos.services.reg.ProgramNotificationHub.summaryLine()
+        val progNotice = lobos.host.ProgramNotificationHub.summaryLine()
         return listOfNotNull(status, progNotice).joinToString("　")
     }
 
@@ -354,7 +354,7 @@ class OsHostService : Service() {
         buildNotification(text)
 
     private fun entryActivity(): Class<*> =
-        lobos.services.app.QuickAppLaunchActivity::class.java
+        lobos.host.QuickAppLaunchActivity::class.java
 
     private fun buildNotification(text: String): Notification {
         val pi = PendingIntent.getActivity(
@@ -368,7 +368,7 @@ class OsHostService : Service() {
             items += n.id + " · " + n.active.name.lowercase() +
                 if (n.aliveMs > 0) " · " + (n.aliveMs / 3600000) + "h" + ((n.aliveMs / 60000) % 60) + "m" else ""
         }
-        val notices = lobos.services.reg.ProgramNotificationHub.list()
+        val notices = lobos.host.ProgramNotificationHub.list()
         for (n in notices.take(5)) items += n.title + "：" + n.text
         if (items.isNotEmpty()) {
             summary.setSummaryText(text)
@@ -378,7 +378,7 @@ class OsHostService : Service() {
             .setContentTitle("Lob OS 常驻")
             .setContentText(text)
             .setStyle(summary)
-            .setGroup(lobos.services.reg.ProgramNotificationHub.GROUP_PARENT)
+            .setGroup(lobos.host.ProgramNotificationHub.GROUP_PARENT)
             .setSubText(text)
             .setSmallIcon(R.drawable.ic_lobos_logo)
             .setOngoing(true)

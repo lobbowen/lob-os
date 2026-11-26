@@ -1,4 +1,6 @@
 package lobos.services.app
+import lobos.host.DesktopIcons
+import lobos.host.Foreground
 
 import android.content.Context
 import java.io.File

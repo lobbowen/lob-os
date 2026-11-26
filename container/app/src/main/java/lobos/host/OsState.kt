@@ -1,4 +1,4 @@
-package lobos.services.host
+package lobos.host
 
 enum class OsPhase {
     BOOTING,

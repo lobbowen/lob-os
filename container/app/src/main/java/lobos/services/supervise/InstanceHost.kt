@@ -14,9 +14,9 @@ import java.net.URL
 import java.util.concurrent.Executors
 import lobos.services.log.RuntimeDiagnostics
 import lobos.api.CapabilityBroker
-import lobos.services.host.OsHostService
+import lobos.host.OsHostService
 import lobos.services.log.Journal
-import lobos.services.host.BootReconciler
+import lobos.host.BootReconciler
 import lobos.services.supply.PieceScan
 import lobos.kernel.proc.ProcessLedger
 import lobos.services.supply.ProgramDir
@@ -280,7 +280,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             if (!stagingSwept) {
                 stagingSwept = true
                 val rep = try {
-                    lobos.services.host.BootReconciler.run(this)
+                    lobos.host.BootReconciler.run(this)
                 } catch (e: Throwable) {
                     RuntimeDiagnostics.append(this, "boot", false, "启动对账异常", err(e))
                     null

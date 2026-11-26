@@ -1,4 +1,7 @@
-package lobos.services.power
+package lobos.host
+
+import lobos.host.DozeBackstop
+import lobos.services.power.PowerHostHooks
 
 import android.content.BroadcastReceiver
 import android.content.Context

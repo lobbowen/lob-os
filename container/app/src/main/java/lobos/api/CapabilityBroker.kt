@@ -30,13 +30,13 @@ import lobos.host.device.DeviceOwnerState
 import lobos.host.device.ScreenCaptureController
 import lobos.host.device.AccessibilityServiceState
 import lobos.host.device.OsAccessibilityService
-import lobos.services.host.OsHostService
+import lobos.host.OsHostService
 import lobos.services.log.Journal
 import lobos.services.supply.CatalogClient
 import lobos.services.reg.Desired
 import lobos.services.reg.Level
-import lobos.services.host.OsInit
-import lobos.services.host.OsPhase
+import lobos.host.OsInit
+import lobos.host.OsPhase
 import lobos.services.supply.PackageInstaller
 import lobos.kernel.security.PathGuard
 import lobos.services.reg.PortBroker
@@ -529,7 +529,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     private fun toHost(action: String) {
         val i = Intent(this, OsHostService::class.java).setAction(action)
 
-        lobos.services.host.OsHostService.ensureRunning(this, action)
+        lobos.host.OsHostService.ensureRunning(this, action)
     }
 
     private fun instanceJson(e: UnitEntry): JSONObject = JSONObject().apply {
@@ -1190,7 +1190,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             if (programId.isBlank()) {
                 throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
             }
-            val n = lobos.services.reg.ProgramNotificationHub.publish(
+            val n = lobos.host.ProgramNotificationHub.publish(
                 this@CapabilityBroker,
                 programId,
                 p.optString("title", ""),
@@ -1215,18 +1215,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
             JSONObject().apply {
                 put("ok", true)
-                put("cleared", lobos.services.reg.ProgramNotificationHub.clear(this@CapabilityBroker, target))
+                put("cleared", lobos.host.ProgramNotificationHub.clear(this@CapabilityBroker, target))
             }
         },
         "os.notif.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
-                put("notices", lobos.services.reg.ProgramNotificationHub.listJson())
+                put("notices", lobos.host.ProgramNotificationHub.listJson())
             }
         },
         "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
             lobos.services.reg.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
-                put("notices", lobos.services.reg.ProgramNotificationHub.listJson())
-                put("noticeGroups", lobos.services.reg.ProgramNotificationHub.groupsJson())
+                put("notices", lobos.host.ProgramNotificationHub.listJson())
+                put("noticeGroups", lobos.host.ProgramNotificationHub.groupsJson())
                 put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount(this@CapabilityBroker))
             }
         },

@@ -1,11 +1,11 @@
-package lobos.api
+package lobos.host
 
 import android.graphics.drawable.Icon
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import lobos.R
-import lobos.services.host.OsInit
-import lobos.services.host.OsHostService
+import lobos.host.OsInit
+import lobos.host.OsHostService
 
 class StatusTileService : TileService() {
 

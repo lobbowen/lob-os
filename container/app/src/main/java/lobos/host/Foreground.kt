@@ -1,4 +1,6 @@
-package lobos.services.app
+package lobos.host
+import lobos.services.app.ProgramGroup
+import lobos.host.QuickAppLaunchActivity
 
 import android.app.Activity
 import android.app.Application

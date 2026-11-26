@@ -2,8 +2,8 @@ package lobos.services.power
 
 import android.content.Context
 import lobos.kernel.fs.StateFiles
-import lobos.services.host.OsInit
-import lobos.services.host.OsPhase
+import lobos.host.OsInit
+import lobos.host.OsPhase
 import lobos.services.log.Journal
 import java.io.File
 

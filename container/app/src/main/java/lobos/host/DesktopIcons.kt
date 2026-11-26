@@ -1,4 +1,5 @@
-package lobos.services.app
+package lobos.host
+import lobos.host.QuickAppLaunchActivity
 
 import android.content.Context
 import android.content.pm.ShortcutInfo
