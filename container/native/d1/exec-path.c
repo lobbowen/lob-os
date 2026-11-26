@@ -665,7 +665,34 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
           return -1;
       }
   }
-  return real_execve(path, argv, envp);
+  /* 最后一步：正常 exec。若目标在虚拟磁盘（app_data_file）上被 SELinux
+     noexec 拒绝（EACCES），且它是静态 ELF（无 PT_INTERP、内核 exec 必需
+     exec 位），改用我们自己的 userland ELF 加载器加载——目标只需可读。
+     这是"虚拟磁盘"的通用加载兜底，与具体程序无关。 */
+  {
+    int rc = real_execve(path, argv, envp);
+    if (rc == -1 && errno == EACCES) {
+      const char *loader = getenv("LOBOS_ELFLOADER");
+      char interp2[256];
+      if (loader && loader[0] == '/' &&
+          !(read_interp(path, interp2, sizeof interp2) && interp2[0])) {
+        /* 无 PT_INTERP 的 ELF = 静态；用加载器 exec：loader <path> <args...> */
+        int ac2 = 0; while (argv && argv[ac2]) ac2++;
+        char **la = (char **)malloc((size_t)(ac2 + 2) * sizeof(char *));
+        if (la) {
+          int j = 0;
+          la[j++] = (char *)loader;
+          la[j++] = (char *)path;
+          for (int k = 1; k < ac2; k++) la[j++] = argv[k];
+          la[j] = 0;
+          lobos_compat_report("d1.exec-path", "EACCES->elfload", path);
+          real_execve(loader, la, envp);
+          { int e = errno; free(la); errno = e; }
+        }
+      }
+    }
+    return rc;
+  }
 }
 
 int execv(const char *path, char *const argv[]) { return execve(path, argv, environ); }

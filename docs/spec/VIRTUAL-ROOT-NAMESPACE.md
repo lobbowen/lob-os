@@ -141,3 +141,41 @@ termux-app issue #5185），不是虚拟根或任何用户态 hook 能消除的�
 加载一切二进制（动态靠 PT_DYNAMIC、静态靠 mmap LOAD + 正确入口约定），
 目标文件只需可读，彻底绕开 noexec。需要继续攻的是静态 ELF 的入口/auxv
 约定（等价于实现一个小型 userland exec）。
+
+## 13. 虚拟磁盘闭环：自研 userland ELF 加载器（2026-11-26 完成）
+
+### 突破
+上一节留的"静态 ELF 无法加载"已攻克。`container/native/d1/lobos-elfload.c`
+实现了完整的 userland ELF 加载器：
+- 读 ELF 程序头，mmap 所有 PT_LOAD 段（vaddr 用 p_memsz 覆盖 BSS）
+- 对 PF_X 段 mprotect(PROT_READ|PROT_EXEC)（Android W^X 下 RW 页不可执行，
+  这是早先 segfault 的根因）
+- 构造标准初始栈（argc/argv/envp/auxv：AT_PAGESZ/AT_PHDR/AT_PHNUM/
+  AT_ENTRY/AT_RANDOM 等）
+- 切换 sp 并跳转到 entry
+
+编译为 `libelfload.so` 放 nativeLibraryDir，`--image-base=0x60000000`
+避免与目标常规加载地址（0x400000）重叠。
+
+### 集成（通用，零产品判断）
+exec-path.c 末尾：real_execve 若返回 EACCES（虚拟磁盘 app_data_file 被
+SELinux noexec），且目标是无 PT_INTERP 的静态 ELF，自动改写为
+`[LOBOS_ELFLOADER, <path>, args...]`。LOBOS_ELFLOADER 由 RuntimeEnvironment
+注入（指向 nativeLib 的 libelfload.so）。
+
+### 实测（端到端）
+- 314MB 纯静态 Codex（无 PT_INTERP/无 PT_DYNAMIC），放虚拟磁盘
+  `files/usr/bin/codex-static` 权限 444（无 exec 位），终端敲命令 ->
+  `codex-cli 0.172.0`。exec hook 自动兜底 EACCES -> elfload 加载。
+- claude 无回归（动态 musl 版走 musl loader 路径）。
+
+### 意义
+"虚拟磁盘"闭环成立：任何 ELF（静态/动态）放进我们的磁盘只需可读，
+加载由系统完成，Android noexec 被彻底绕过。这是通用的系统能力，
+新增程序装进标准路径即可，零适配、零登记。这正是用户说的
+"把安卓给的路径打成空间概念、做成系统内唯一磁盘逻辑"的落地。
+
+### 边界
+- glibc 静态程序的完整启动（需要更多 auxv 精确值）未完全验证；musl 静态
+  （Claude/Codex 等现代 CLI 实际所用）已验证。
+- 前代调试中发现：裸 _start 无需栈也能加载；glibc 静态需要完整 auxv。
