@@ -700,7 +700,6 @@ object PtySession {
         return bin
     }
 
-    fun isUsable(bin: java.io.File): Boolean = bin.isFile
 
     object ProductSessions {
         private val lock = Any()
