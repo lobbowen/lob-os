@@ -72,24 +72,25 @@ object HostControlService {
         val url = manifestUrl.trim()
 
         if (url.isBlank()) return failure(method, correlatedId, "manifestUrl 为空")
-        val broker = lobos.api.CapabilityBroker.live()
-            ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
-            var mgmtToken: String? = null
         return try {
-            mgmtToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(mgmtToken!!, android.os.Process.myPid())
-            val client = ControlClient(
-                socketName = SessionRegistry.socketName(mgmtToken!!), sessionToken = mgmtToken!!,
-                protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
-            )
-            val result = client.update(url, correlatedId, dryRun)
+            val result = lobos.api.CapabilityBroker.live()?.invokeLocal(
+                lobos.api.CapabilityBroker.INSTALLER_ID,
+                "lobos.sys.native.update",
+                JSONObject().apply {
+                    put("manifestUrl", url)
+                    put("requestId", correlatedId)
+                    put("dryRun", dryRun)
+                },
+            ) ?: return failure(method, correlatedId, "能力服务未启动")
             JSONObject().apply {
-                put("ok", result.ok); put("code", result.code); put("requestId", correlatedId)
-                put("method", method); put("result", result.value)
+                put("ok", result.optBoolean("ok", false))
+                put("code", result.optInt("code", 0))
+                put("requestId", correlatedId)
+                put("method", method)
+                put("result", result)
             }
         } catch (e: Throwable) { failure(method, correlatedId, e.message ?: e.javaClass.simpleName) }
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
-              .also { mgmtToken?.let { t -> broker.endSession(t) } }
     }
 
     data class PeSample(val asset: String, val sha256: String, val label: String)
@@ -651,26 +652,25 @@ object HostControlService {
         val correlatedId = requestId.trim().ifEmpty { "rollback-" + UUID.randomUUID() }
         if (pieceId.isBlank()) return failure(method, correlatedId, "id 为空")
         if (selectedBase != "apk") return failure(method, correlatedId, "base 只接受 apk")
-        val broker = lobos.api.CapabilityBroker.live()
-            ?: return failure(method, correlatedId, "宿主桥未启动：控制面此刻不可用")
-            var rbToken: String? = null
         return try {
-            rbToken = broker.beginSession(MANAGEMENT_ID, MANAGEMENT_GENERATION)
-            SessionRegistry.bindPid(rbToken!!, android.os.Process.myPid())
-            val client = ControlClient(
-                socketName = SessionRegistry.socketName(rbToken!!),
-                sessionToken = rbToken!!,
-                protocolVersion = lobos.BuildConfig.BRIDGE_PROTOCOL,
-            )
-            val result = client.rollback(pieceId, selectedBase, correlatedId, dryRun)
-
-            val verified = if (result.ok && !dryRun) PieceUpdater.verifyApkRestored(app, pieceId) else (false to "未执行真实回退（失败或 dryRun）")
+            val result = lobos.api.CapabilityBroker.live()?.invokeLocal(
+                lobos.api.CapabilityBroker.INSTALLER_ID,
+                "lobos.sys.native.rollback",
+                JSONObject().apply {
+                    put("id", pieceId)
+                    put("base", selectedBase)
+                    put("requestId", correlatedId)
+                    put("dryRun", dryRun)
+                },
+            ) ?: return failure(method, correlatedId, "能力服务未启动")
+            val ok = result.optBoolean("ok", false)
+            val verified = if (ok && !dryRun) PieceUpdater.verifyApkRestored(app, pieceId) else (false to "未执行真实回退（失败或 dryRun）")
             JSONObject().apply {
-                put("ok", result.ok)
-                put("code", result.code)
+                put("ok", ok)
+                put("code", result.optInt("code", 0))
                 put("requestId", correlatedId)
                 put("method", method)
-                put("result", result.value)
+                put("result", result)
                 put("rollbackVerified", verified.first)
                 put("rollbackVerifyDetail", verified.second)
             }
@@ -685,7 +685,7 @@ object HostControlService {
                 "requestId=" + correlatedId + " id=" + pieceId + " base=" + selectedBase +
                     " dryRun=" + dryRun + " response=" + response,
             )
-        }.also { rbToken?.let { t -> broker.endSession(t) } }
+        }
     }
 
     private val CROSS_APP_METHODS = listOf("app.launch", "app.listInstalled", "ui.tap")

@@ -79,8 +79,8 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
     fun start() {
         notifManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         live = this
-        startBridge()
-        issueInstallerSession()
+        // UDS bridge removed as engineering debt. This class is now an
+        // in-process capability service: callers use invokeLocal directly.
         OsHostService.ensureRunning(this)
     }
 
@@ -1727,26 +1727,27 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         live = null
     }
 
+    /**
+     * Local, in-process capability call. The UDS/token bridge was removed as
+     * engineering debt; app-internal callers (host management, quickapp front-end)
+     * are trusted and dispatch directly. Program identity still flows through
+     * [programId] for audit and scope checks.
+     */
     fun invokeLocal(programId: String, method: String, params: JSONObject): JSONObject {
-        if (live == null) return localFail("宿主桥未启动：快应用能力面此刻不可用")
-        val id = programId.trim()
-        if (id.isBlank()) return localFail("缺少 programId")
-        if (id != INSTALLER_ID && !lobos.services.reg.ProgramRegistry.listIds(this).contains(id)) {
-            return localFail("程序不在册，不得发起能力调用: $id")
-        }
-        val token = lobos.kernel.proc.SessionRegistry.issue(id, 0L)
-        val session = lobos.kernel.proc.SessionRegistry.list().firstOrNull { it.token == token }
-            ?: return localFail("会话签发后读不回来: $id")
-        val holder = SessionHolder(lobos.kernel.proc.SessionRegistry.socketName(token))
-        holder.session = session
-        holder.granted = serverGranted(session).toSet()
+        val id = programId.trim().ifEmpty { INSTALLER_ID }
+        val holder = SessionHolder("")
+        holder.session = lobos.kernel.proc.SessionRegistry.Session(
+            id = "local", programId = id, generation = 0L, token = "",
+            pid = android.os.Process.myPid(), starttime = 0L, issuedAt = System.currentTimeMillis(),
+        )
+        holder.granted = serverGranted(holder.session!!).toSet()
         holder.system = holder.granted.contains(ApiSpec.GROUP_SYS)
         val req = JSONObject().apply {
             put("id", 0)
             put("method", method)
             put("params", params ?: JSONObject())
         }
-        val res = dispatch(req, holder) ?: return localFail("宿主桥无响应")
+        val res = dispatch(req, holder) ?: return localFail("能力服务无响应")
         val err = res.optJSONObject("error")
         if (err != null) {
             return JSONObject().apply {
