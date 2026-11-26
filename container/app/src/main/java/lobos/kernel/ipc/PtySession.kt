@@ -325,16 +325,9 @@ object PtySession {
         }
 
         private fun notifyRegistered(ctx: Context) {
-            val c = ctx ?: return
-            runCatching {
-                lobos.kernel.sysdev.SysDev.render(c)
-            }.onFailure { e ->
-                runCatching {
-                    lobos.kernel.spi.KernelServices.logger().log("pty", false, "那会话登记后刷新 files/dev 失败",
-                        e.javaClass.name + ": " + (e.message ?: ""),
-                    )
-                }
-            }
+            /* No direct SysDev dependency: virtual /dev is rendered by
+               ServiceRegistry on state changes; SysDev reads session state
+               itself when rendering. This breaks the PtySession<->SysDev cycle. */
         }
 
         private fun recordInLedger(

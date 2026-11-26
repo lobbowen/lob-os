@@ -121,6 +121,13 @@ object ExecEntry {
         return listOf(loader, "--library-path", libdir, entry.absolutePath) + args.drop(1)
     }
 
+    /** Whether a file has a runnable shape and the exec bit (used by layout checks). */
+    fun isRunnable(file: File): Boolean {
+        if (!file.isFile) return false
+        if (detect(file) == Shape.Unknown) return false
+        return file.canExecute()
+    }
+
     fun describe(entry: File): String = when (val s = detect(entry)) {
         is Shape.Elf -> "ELF 动态可执行文件（ET_DYN），经 " + SYSTEM_LINKER + " 驱动"
         is Shape.Exec -> "ELF 静态可执行文件（ET_EXEC），直接 exec，不经 linker"

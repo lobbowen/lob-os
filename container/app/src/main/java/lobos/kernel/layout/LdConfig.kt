@@ -70,7 +70,7 @@ object LdConfig {
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
                 if (!exe.isFile) return@forEach
-                if (!lobos.kernel.elf.ExecBits.isRunnable(exe)) return@forEach
+                if (!lobos.kernel.proc.ExecEntry.isRunnable(exe)) return@forEach
                 val dst = File(usrBin, exe.name)
                 val prev = claimed[exe.name]
                 if (prev != null) {
