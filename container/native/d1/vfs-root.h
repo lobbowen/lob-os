@@ -64,6 +64,33 @@ static inline const char *lobos_vfs_translate(const char *path, char *out, size_
 
     if (lobos_vfs_passthrough(path)) return path;
 
+    /* /tmp must agree with $TMPDIR (set by RuntimeEnvironment to ctx.cacheDir).
+       Hardcoding $VROOT/.tmp here split the two views. Honor TMPDIR when it is
+       an absolute path; only fall back to $VROOT/.tmp if TMPDIR is absent. */
+    if (strncmp(path, "/tmp", 4) == 0 && (path[4] == '/' || path[4] == '\0')) {
+        const char *tmpdir = getenv("TMPDIR");
+        if (tmpdir != 0 && tmpdir[0] == '/') {
+            size_t tl = strlen(tmpdir);
+            size_t rest = strlen(path + 4);
+            if (tl + rest + 1 <= cap) {
+                memcpy(out, tmpdir, tl);
+                memcpy(out + tl, path + 4, rest + 1);
+                return out;
+            }
+        }
+        /* fallback: map to $VROOT/.tmp */
+        static const char tmp_suffix[] = "/.tmp";
+        size_t tn = sizeof(tmp_suffix) - 1;
+        size_t rest = strlen(path + 4);
+        if (vr + tn + rest + 1 <= cap) {
+            memcpy(out, vroot, vr);
+            memcpy(out + vr, tmp_suffix, tn);
+            memcpy(out + vr + tn, path + 4, rest + 1);
+            return out;
+        }
+        return path;
+    }
+
     /* Map the standard tree. usr-merge for /lib /bin /sbin. */
     const char *sub = 0;      /* suffix after the matched standard prefix */
     char merged_buf[8];
@@ -78,7 +105,6 @@ static inline const char *lobos_vfs_translate(const char *path, char *out, size_
            resolv.conf, zoneinfo) must stay visible to programs, and LobOS's
            own /etc files are consumed via explicit absolute paths already.
            Mapping it broke cat /etc/passwd. */
-        { "/tmp",  4, "/.tmp",   5, 0 },
         { "/var",  4, "/var",    4, 1 },
         { "/opt",  4, "/opt",    4, 1 },
         { "/lib64",6, "/usr/lib",8, 1 },
