@@ -39,3 +39,33 @@
 - 桥整层删除（用户已选"整层删除、调用点本地直调"）：CapabilityBroker/UDS/
   token/SessionRegistry/ApiSpec、宿主 OTA/exec、快应用 invoke、程序 env 注入。
   快应用重新定位为安卓层应用前端（见 QUICKAPP-STRATEGIC-POSITION.md）。
+
+## 补充修正：/tmp 是架构问题，不是 Go 特例（2026-11-27）
+
+用户指出 Go 的 `/tmp` 失败是典型系统架构问题，不是特例——任何用临时目录的
+程序（go run、编译器、构建工具、包管理器）都会中招。已按架构层修复。
+
+### 根因链（三层）
+
+1. 内置 asset `systemdisk.bin` 里 `/tmp` 的 tar mode 是 **0775**（不是标准 1777）
+2. `RootfsInstaller` 解压目录条目时只 `mkdirs()`，**完全没有应用 tar 里的目录
+   mode**——所以连 0775 都没保留，实际落成 app 默认的 0700
+3. fastroot 的 fake-root 进程在 0700/0775 的 `/tmp` 下无法为其他身份创建工作
+   目录（`go run` 报 `mkdir /tmp/go-buildXXX: permission denied`）
+
+### 架构层修复（RootfsInstaller.kt）
+
+- 新增 `applyMode()`：解压时对每个目录条目应用 tar 里的 POSIX mode
+- 对标准临时目录（`tmp`、`var/tmp`）**强制 0777**，不信任镜像里的 0775——
+  这是系统盘对用户程序的明确契约：临时目录对任何程序可写
+- 验证：系统盘重建后 `/tmp` 与 `/var/tmp` 均从 `drwx------`/`drwxrwxr-x`
+  变为 `drwxrwxrwx`
+
+### 含义
+
+这不是给 Go 打补丁。修复后所有依赖标准临时目录语义的程序都受益。
+之前把它当"Go 特例、用 GOTMPDIR 绕开"是错的——按用户要求回到了架构层。
+
+注：本轮环境重建时 apt update 因测试环境残留（NAT 路径随 APK 重装变化 +
+minimal 镜像缺 /etc/apt/apt.conf.d）未重跑通完整的 `go run`，但 `/tmp` 权限
+根因已修复并经文件系统验证。上一轮已验证 Go 1.22.2 可 apt 安装并 `go version`。

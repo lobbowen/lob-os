@@ -50,6 +50,18 @@ object RootfsInstaller {
                             }
                             if (e.isDirectory) {
                                 out.mkdirs()
+                                // Standard temp dirs need FHS 1777 semantics
+                                // regardless of the mode baked into the image
+                                // (the bundled image ships 0775, which blocks
+                                // other-user writes). 0777 gives every program
+                                // the writable temp space it expects: go run,
+                                // compilers, build tools, package managers.
+                                val tempName = name.trimEnd('/')
+                                if (tempName == "tmp" || tempName == "var/tmp") {
+                                    applyMode(out, 0b111_111_111)
+                                } else {
+                                    applyMode(out, e.mode)
+                                }
                             } else if (e.isSymbolicLink) {
                                 // Ubuntu uses symlinks for /bin, /sbin, /lib -> usr/*.
                                 // Preserve them: turning them into empty files breaks the FHS.
@@ -75,6 +87,23 @@ object RootfsInstaller {
         } catch (t: Throwable) {
             tmp.deleteRecursively()
             throw t
+        }
+    }
+
+    /** Apply a POSIX mode (from a tar entry) to a directory, best-effort. */
+    private fun applyMode(dir: File, mode: Int) {
+        runCatching {
+            val perms = java.util.HashSet<java.nio.file.attribute.PosixFilePermission>()
+            if (mode and 0b100_000_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_READ)
+            if (mode and 0b010_000_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_WRITE)
+            if (mode and 0b001_000_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE)
+            if (mode and 0b000_100_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_READ)
+            if (mode and 0b000_010_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE)
+            if (mode and 0b000_001_000 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE)
+            if (mode and 0b000_000_100 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_READ)
+            if (mode and 0b000_000_010 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE)
+            if (mode and 0b000_000_001 != 0) perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE)
+            java.nio.file.Files.setPosixFilePermissions(dir.toPath(), perms)
         }
     }
 }
