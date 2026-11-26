@@ -78,18 +78,26 @@ int main(int argc, char** argv){
 
   ul stk_top=0x70008000UL; /* top of the 64 KiB stack region */
   ul sp=stk_top;
-  /* auxv, built in reverse then pushed so order is ascending in memory */
-  /* We push in reverse order: last aux entry must be AT_NULL at highest addr.
-     Build an array then push from end to start so memory order is natural. */
-  struct { ul tag, val; } aux[] = {
-    {AT_PAGESZ, 4096}, {AT_PHDR, min+phoff}, {AT_PHENT, phentsz},
-    {AT_PHNUM, phnum}, {AT_ENTRY, entry}, {AT_BASE, 0},
-    {AT_HWCAP, 0}, {AT_NULL, 0},
-  };
-  int naux=sizeof(aux)/sizeof(aux[0]);
-  /* random 16 bytes for AT_RANDOM */
+  /* Inherit the real auxv from /proc/self/auxv and override only the entries
+     that describe the loaded ELF. glibc's static startup uses AT_HWCAP for
+     IFUNC selection — hardcoding 0 makes it pick wrong instructions and crash. */
+  struct { ul tag, val; } av[80];
+  int nav = 0;
+  {
+    int afd = open("/proc/self/auxv", O_RDONLY);
+    struct { ul t, v; } raw;
+    if (afd >= 0) {
+      while (nav < 70 && read(afd, &raw, sizeof raw) == sizeof raw) {
+        if (raw.t == 0) break; /* AT_NULL */
+        /* skip entries we must replace */
+        if (raw.t == AT_PHDR || raw.t == AT_PHENT || raw.t == AT_PHNUM ||
+            raw.t == AT_ENTRY || raw.t == AT_BASE || raw.t == AT_RANDOM) continue;
+        av[nav].tag = raw.t; av[nav].val = raw.v; nav++;
+      }
+      close(afd);
+    }
+  }
   ul rnd[2]={0x123456789abcdef0UL,0xfedcba9876543210UL};
-  /* push AT_RANDOM before NULL: insert before final NULL */
   const char* envp[]={ "LOBOS_LOADER=1", NULL };
   const char* gargv0=path;
   ul arg_addr[16]; int nargs=argc-2; if(nargs>15)nargs=15; if(nargs<0)nargs=0;
@@ -99,11 +107,14 @@ int main(int argc, char** argv){
   for(int i=0;i<nenv;i++){size_t L=strlen(envp[i])+1;sp-=L;memcpy((void*)sp,envp[i],L);env_addr[i]=sp;}
   size_t l0=strlen(gargv0)+1; sp-=l0; memcpy((void*)sp,gargv0,l0); ul argv0_addr=sp;
   sp&=~0xfUL;
-  struct { ul tag, val; } av[] = {
-    {AT_PAGESZ,4096},{AT_PHDR,min+phoff},{AT_PHENT,phentsz},{AT_PHNUM,phnum},
-    {AT_ENTRY,entry},{AT_BASE,0},{AT_HWCAP,0},{AT_RANDOM,at_random},{AT_NULL,0},
-  };
-  int nav=sizeof(av)/sizeof(av[0]);
+  /* append the target-specific auxv entries after the inherited ones */
+  av[nav].tag=AT_PHDR;  av[nav].val=min+phoff;            nav++;
+  av[nav].tag=AT_PHENT; av[nav].val=phentsz;              nav++;
+  av[nav].tag=AT_PHNUM; av[nav].val=phnum;                nav++;
+  av[nav].tag=AT_ENTRY; av[nav].val=entry;                nav++;
+  av[nav].tag=AT_BASE;  av[nav].val=0;                    nav++;
+  av[nav].tag=AT_RANDOM;av[nav].val=at_random;            nav++;
+  av[nav].tag=AT_NULL;  av[nav].val=0;                    nav++;
   for(int i=nav-1;i>=0;i--){PUSH(sp,av[i].val);PUSH(sp,av[i].tag);}
   PUSH(sp,0);
   for(int i=nenv-1;i>=0;i--)PUSH(sp,env_addr[i]);
