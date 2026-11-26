@@ -2,6 +2,7 @@ package lobos.ui.terminal
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -119,7 +120,7 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
                 TextField(
                     value = input,
                     onValueChange = { input = it },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     singleLine = true,
                     textStyle = MonoTextStyle.copy(color = pal.terminalText),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
@@ -137,7 +138,16 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
                         unfocusedTextColor = pal.terminalText,
                     ),
                     placeholder = { Text("输入命令", style = MonoTextStyle, color = pal.terminalMuted.copy(alpha = 0.6f)) },
-                )
+                    )
+                    // Control keys straight to the PTY as raw bytes for job control.
+                    for (ctrl in listOf("^C" to "\u0003", "^Z" to "\u001a", "^D" to "\u0004")) {
+                        Text(
+                            ctrl.first,
+                            style = MonoTextStyle.copy(color = pal.terminalText),
+                            modifier = Modifier.padding(start = 8.dp).size(40.dp, 52.dp)
+                                .clickable { onEvent(TerminalEvent.Input(ctrl.second.toString())) },
+                        )
+                    }
             }
         }
     }
