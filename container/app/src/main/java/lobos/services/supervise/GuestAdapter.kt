@@ -78,8 +78,8 @@ object GuestAdapter {
             env = buildMap {
                 putAll(lobos.services.reg.RuntimeEnvironment.treeRootEnv(i.ctx, i.root, inheritedPath))
                 applyRuntimeBindings(this, i)
-                put("LOBOS_BRIDGE_SOCKET", BRIDGE_SOCKET)
-                if (!i.sessionToken.isNullOrBlank()) put("LOBOS_SESSION_TOKEN", i.sessionToken)
+                // Bridge removed: no LOBOS_BRIDGE_SOCKET / LOBOS_SESSION_TOKEN.
+                // Program identity (not bridge credential) still flows here.
                 put("LOBOS_PERMISSION_MODE", "danger-full-access")
                 put("LOBOS_OWN_SESSION", "1")
                 i.flockSo?.let { put("LOBOS_FLOCK_SO", it.absolutePath) }

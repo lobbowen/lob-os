@@ -407,7 +407,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
             currentGeneration = lobos.kernel.proc.ProcessLedger.nextGeneration(spec?.id ?: "")
 
             reapOrphanKernel()
-            val sessionToken = lobos.api.CapabilityBroker.prepareSession(this, spec?.id ?: "", currentGeneration)
+            // Bridge removed: no session token is issued for guest programs.
+            val sessionToken: String? = null
             val plan = GuestAdapter.programPlan(
                 GuestAdapter.ProgramInputs(
                     ctx = host,
@@ -453,9 +454,8 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                 return SupervisorPolicy.BootOutcome.FAILED
             }
             val recorded = lobos.kernel.proc.ProcessLedger.begin(programId, currentGeneration, launchedPid)
-            if (launchedPid > 0 && !sessionToken.isNullOrBlank()) {
-                lobos.kernel.proc.SessionRegistry.bindPid(sessionToken, launchedPid)
-            }
+            // Bridge removed: no session-token bindPid. Program ownership is
+            // tracked by ProcessLedger alone.
             RuntimeDiagnostics.append(
                 this, "ledger", recorded != null, "进程归属已记账",
                 if (recorded != null) {
