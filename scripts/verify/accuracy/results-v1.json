@@ -1,0 +1,185 @@
+{
+  "targets": [
+    "host",
+    "android"
+  ],
+  "exempt": {
+    "identity": "single Android uid + seccomp SIGSYS fake getpid: identity is a simulated value by design; declared hard boundary, not an accuracy pass",
+    "path": "/etc passthrough + overlay fallback + TMPDIR-driven /tmp are deliberate environment adaptations; differences expected, each must be reviewed not auto-passed"
+  },
+  "cases": {
+    "argv0": {
+      "host": {
+        "stdout": "C_ARGV0=SENTINEL_ARGV0\nC_ARGC=3\nC_ENV_TOTAL=1\nC_ENV_SENTINEL=ACC_SENTINEL=7\nargv0=(unset)\nexe_link=probe\nchild_exit=0\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "C_ARGV0=SENTINEL_ARGV0\nC_ARGC=3\nC_ENV_TOTAL=1\nC_ENV_SENTINEL=ACC_SENTINEL=7\nargv0=(unset)\nexe_link=probe\nchild_exit=0\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "env": {
+      "host": {
+        "stdout": "C_ARGV0=envprobe\nC_ARGC=3\nC_ENV_TOTAL=1\nC_ENV_SENTINEL=ACC_SENTINEL=7\nchild_exit=0\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "C_ARGV0=envprobe\nC_ARGC=3\nC_ENV_TOTAL=1\nC_ENV_SENTINEL=ACC_SENTINEL=7\nchild_exit=0\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "path": {
+      "host": {
+        "stdout": "stat[/tmp/acc-probe]=ERR:errno=2\nstat[/lib/x]=ERR:errno=2\nstat[/usr/lib/x]=ERR:errno=2\nstat[/etc/passwd]=OK:mode=644:nlink=1\nstat[/bin/sh]=OK:mode=755:nlink=1\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "stat[/tmp/acc-probe]=ERR:errno=2\nstat[/lib/x]=ERR:errno=2\nstat[/usr/lib/x]=ERR:errno=2\nstat[/etc/passwd]=OK:mode=644:nlink=1\nstat[/bin/sh]=OK:mode=755:nlink=1\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "identity": {
+      "host": {
+        "stdout": "getpid=443770\ngetuid=1000\ngetgid=1000\nproc_self=443770\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "getpid=31948\ngetuid=10168\ngetgid=10168\nproc_self=31948\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "signal": {
+      "host": {
+        "stdout": "sigaction_usr1=0\nusr1_handler_ran=1\nsigaction_sigsys=0\nsigsys_handler_is_ours=yes\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "sigaction_usr1=0\nusr1_handler_ran=1\nsigaction_sigsys=0\nsigsys_handler_is_ours=yes\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "exit:ok": {
+      "host": {
+        "stdout": "",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "exit:42": {
+      "host": {
+        "stdout": "",
+        "stderr": "",
+        "exit": 42,
+        "signal": null
+      },
+      "android": {
+        "stdout": "",
+        "stderr": "",
+        "exit": 42,
+        "signal": null
+      }
+    },
+    "exit:sigterm": {
+      "host": {
+        "stdout": "child_signaled=15\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      },
+      "android": {
+        "stdout": "child_signaled=15\n",
+        "stderr": "",
+        "exit": 0,
+        "signal": null
+      }
+    },
+    "exit:enoent": {
+      "host": {
+        "stdout": "execl_errno=2\n",
+        "stderr": "",
+        "exit": 9,
+        "signal": null
+      },
+      "android": {
+        "stdout": "execl_errno=2\n",
+        "stderr": "",
+        "exit": 9,
+        "signal": null
+      }
+    }
+  },
+  "findings": [
+    {
+      "case": "argv0",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "env",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "path",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "identity",
+      "target": "android",
+      "verdict": "EXEMPT"
+    },
+    {
+      "case": "signal",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "exit:ok",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "exit:42",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "exit:sigterm",
+      "target": "android",
+      "verdict": "MATCH"
+    },
+    {
+      "case": "exit:enoent",
+      "target": "android",
+      "verdict": "MATCH"
+    }
+  ]
+}
