@@ -26,10 +26,10 @@ import java.util.concurrent.Executors
 import lobos.BuildConfig
 import lobos.R
 import lobos.services.log.RuntimeDiagnostics
-import lobos.device.DeviceOwnerState
-import lobos.device.ScreenCaptureController
-import lobos.device.AccessibilityServiceState
-import lobos.device.OsAccessibilityService
+import lobos.host.device.DeviceOwnerState
+import lobos.host.device.ScreenCaptureController
+import lobos.host.device.AccessibilityServiceState
+import lobos.host.device.OsAccessibilityService
 import lobos.services.host.OsHostService
 import lobos.services.log.Journal
 import lobos.services.supply.CatalogClient
@@ -51,7 +51,7 @@ import lobos.services.supervise.TaskRegistry
 import lobos.services.reg.UnitEntry
 import lobos.services.supply.ProgramInstaller
 import lobos.services.supply.ProgramOtaUpdater
-import lobos.device.NotificationStore
+import lobos.host.device.NotificationStore
 import lobos.services.perm.PermissionLedger
 import lobos.services.perm.PermissionRoles
 import lobos.services.app.DriverRegistry
@@ -1020,7 +1020,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
         "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val owner = runCatching {
-                lobos.device.DeviceOwnerState.measure(this@CapabilityBroker)
+                lobos.host.device.DeviceOwnerState.measure(this@CapabilityBroker)
             }.getOrNull()
             JSONObject().apply {
                 put("platform", "android")

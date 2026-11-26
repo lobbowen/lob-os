@@ -82,7 +82,7 @@
             android:exported="false" />
 
         <service
-            android:name=".device.OsNotificationListenerService"
+            android:name=".host.device.OsNotificationListenerService"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -91,7 +91,7 @@
         </service>
 
         <service
-            android:name=".device.OsAccessibilityService"
+            android:name=".host.device.OsAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -108,7 +108,7 @@
             android:exported="false" />
 
         <service
-            android:name=".device.ScreenCaptureService"
+            android:name=".host.device.ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 

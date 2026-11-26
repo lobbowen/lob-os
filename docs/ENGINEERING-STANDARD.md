@@ -61,9 +61,10 @@
 
 ### 必读（动手前）
 1. `docs/PATH-MAP-CURRENT.md` — 本地工程地图（目录在哪、什么在哪）
-2. `docs/spec/DIRECTORY-LAYOUT-STANDARD.md` — 目录结构与命名规范
-3. `docs/spec/ARCHITECTURE-AUDIT.md` — 架构审计（现状问题）
-4. `docs/spec/ARCHITECTURE-REFACTOR-PLAN.md` — 重构方案（分阶段路径）
+2. `docs/spec/LAYER-BOUNDARY.md` — 宿适配 vs 系统本体的分层边界判据（最重要的一条架构边界）
+3. `docs/spec/DIRECTORY-LAYOUT-STANDARD.md` — 目录结构与命名规范
+4. `docs/spec/ARCHITECTURE-AUDIT.md` — 架构审计（现状问题）
+5. `docs/spec/ARCHITECTURE-REFACTOR-PLAN.md` — 重构方案（分阶段路径）
 
 ### 系统能力规范
 - `docs/spec/ONE-STANDARD.md` — 安装与运行唯一标准（不入库，按 spec/README.md 管）

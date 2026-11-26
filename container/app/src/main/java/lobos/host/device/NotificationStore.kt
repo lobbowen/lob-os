@@ -1,4 +1,4 @@
-package lobos.device
+package lobos.host.device
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import java.util.concurrent.ConcurrentLinkedDeque
