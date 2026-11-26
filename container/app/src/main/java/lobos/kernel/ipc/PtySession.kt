@@ -1,7 +1,6 @@
 package lobos.kernel.ipc
 
 import android.content.Context
-import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -79,7 +78,7 @@ object PtySession {
         internal fun deliver(data: ByteArray) {
             val cb = onData
             if (cb != null) {
-                try { cb.invoke(data) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+                try { cb.invoke(data) } catch (e: Exception) { lobos.kernel.spi.KernelServices.logger().log("pty",false,"DATA 回调异常", e.toString()) }
                 return
             }
 
@@ -103,7 +102,7 @@ object PtySession {
                 val b = pending.toByteArray(); pending.reset(); b
             }
             if (drained.isEmpty()) return
-            try { cb.invoke(drained) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+            try { cb.invoke(drained) } catch (e: Exception) { lobos.kernel.spi.KernelServices.logger().log("pty",false,"DATA 回调异常", e.toString()) }
         }
 
         internal fun pendingDroppedBytes(): Long = synchronized(pendingLock) { pendingDropped }
@@ -421,7 +420,7 @@ object PtySession {
                     toHost.flush()
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "发帧失败 kind=$kind sid=$sid", e)
+                lobos.kernel.spi.KernelServices.logger().log("pty",false,"发帧失败 kind=$kind sid=$sid", e.toString())
                 lastError = e.message ?: e.javaClass.simpleName
             }
         }
@@ -487,12 +486,12 @@ object PtySession {
                                 KernelHooks.report(it, "pty", true, "PTY 宿主自述", note)
                             }
                         }
-                        else -> Log.d(TAG, "忽略未知帧 kind=$kind sid=$sid len=$len")
+                        else -> lobos.kernel.spi.KernelServices.logger().log("pty",null,"忽略未知帧 kind=$kind sid=$sid len=$len",null)
                     }
                 }
             } catch (e: EOFException) {
             } catch (e: Exception) {
-                Log.w(TAG, "读帧线程异常", e)
+                lobos.kernel.spi.KernelServices.logger().log("pty",false,"读帧线程异常", e.toString())
             } finally {
 
                 for (s in sessions.values) s.markClosed()
@@ -527,7 +526,7 @@ object PtySession {
 
         private fun onData(sid: Int, payload: ByteArray) {
 
-            try { sessions[sid]?.deliver(payload) } catch (e: Exception) { Log.w(TAG, "DATA 回调异常", e) }
+            try { sessions[sid]?.deliver(payload) } catch (e: Exception) { lobos.kernel.spi.KernelServices.logger().log("pty",false,"DATA 回调异常", e.toString()) }
         }
 
         private fun onExited(sid: Int, payload: ByteArray) {
@@ -548,7 +547,7 @@ object PtySession {
             s?.releaseNativeSlot()
             s?.markClosed()
             try { s?.onExit?.invoke(status, signal) }
-            catch (e: Exception) { Log.w(TAG, "EXITED 回调异常", e) }
+            catch (e: Exception) { lobos.kernel.spi.KernelServices.logger().log("pty",false,"EXITED 回调异常", e.toString()) }
         }
 
     fun activeSessions(): List<Session> = sessions.values.toList()
@@ -606,7 +605,7 @@ object PtySession {
             runCatching { t.join(READER_JOIN_MS) }
             if (t.isAlive) {
 
-                Log.w(TAG, "PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（它是 daemon、进程退出时会被杀掉）")
+                lobos.kernel.spi.KernelServices.logger().log("pty",null,"PTY 线程 $name 在 ${READER_JOIN_MS}ms 内没停（它是 daemon、进程退出时会被杀掉）",null)
             }
         }
     }
@@ -632,7 +631,7 @@ object PtySession {
             val shaped = lobos.kernel.proc.ExecEntry.argv(first, argv)
             if (shaped == null) {
                 val diag = lobos.kernel.proc.ProcessSupervisor.enoexecDiagnostic(first)
-                System.err.println(diag)
+                lobos.kernel.spi.KernelServices.logger().log("pty",null,diag,null)
                 throw lobos.kernel.proc.ProcessSupervisor.NotExecutable(first)
             }
             shaped
@@ -784,7 +783,7 @@ object PtySession {
 
         if (effArgv == null) {
             val diag = lobos.kernel.proc.ProcessSupervisor.enoexecDiagnostic(first)
-            System.err.println(diag)
+            lobos.kernel.spi.KernelServices.logger().log("pty",null,diag,null)
             return Result(
                 false,
                 lobos.kernel.proc.ProcessSupervisor.ENOEXEC_EXIT_CODE,

@@ -41,7 +41,7 @@ object SysDev {
             val (path, fault) = bad
             val diag = "节点不合声明：" + path + " —— " + faultName(fault) +
                 "（它**不**只报「失败」、它报出那一类是哪一类）"
-            System.err.println(diag)
+            lobos.kernel.spi.KernelServices.logger().log("sysdev",null,diag,null)
             runCatching {
                 lobos.kernel.spi.KernelServices.logger().log("sysdev", false, diag, "")
             }
@@ -305,10 +305,9 @@ object SysDev {
         val actual = actualModeOf(target)
         if (actual.isBlank()) {
 
-            System.err.println(
-                "那实际权限读不到：" + d.path +
+            lobos.kernel.spi.KernelServices.logger().log("sysdev",null,"那实际权限读不到：" + d.path +
                     "（**读不到** **不**等于那**合声明**、按 C-05 报缺）"
-            )
+            ,null)
             return null
         }
         if (d.mode.isNotBlank() && isWiderThan(actual, d.mode)) {
@@ -414,10 +413,9 @@ object SysDev {
     }
 
     private fun modeWriteFailed(path: String) {
-        System.err.println(
-            "那权限写不上去：" + path +
+        lobos.kernel.spi.KernelServices.logger().log("sysdev",null,"那权限写不上去：" + path +
                 "（**盘上** **还是**那**原来**的那一档、按 C-05 报缺）"
-        )
+        ,null)
     }
 
     private fun setModeOf(f: File, mode: String): Boolean = runCatching {

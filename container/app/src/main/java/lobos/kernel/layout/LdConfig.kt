@@ -1,7 +1,6 @@
 package lobos.kernel.layout
 
 import android.content.Context
-import android.util.Log
 import java.io.File
 import lobos.kernel.elf.ElfFacts
 
@@ -145,13 +144,13 @@ object LdConfig {
         val selfCheck = lobos.kernel.spi.KernelServices.diagnostics().selfCheck(items)
         lobos.kernel.spi.KernelServices.logger().log("selfcheck", missingBins.isEmpty(), selfCheck, null)
         if (missingBins.isEmpty()) {
-            Log.i(TAG, "selfcheck 通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items))
+            lobos.kernel.spi.KernelServices.logger().log("ldconfig",true,"selfcheck 通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items),null)
         } else {
-            Log.w(TAG, "selfcheck 未通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items))
+            lobos.kernel.spi.KernelServices.logger().log("ldconfig",false,"selfcheck 未通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items),null)
         }
         if (unresolved.isNotEmpty()) {
-            Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
-            for (u in unresolved) Log.w(TAG, "  " + u)
+            lobos.kernel.spi.KernelServices.logger().log("ldconfig",null,"ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）",null)
+            for (u in unresolved) lobos.kernel.spi.KernelServices.logger().log("ldconfig",null,"  " + u,null)
         }
         return linked
     }

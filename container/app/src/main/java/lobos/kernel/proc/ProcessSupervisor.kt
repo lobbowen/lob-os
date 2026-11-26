@@ -47,9 +47,9 @@ object ProcessSupervisor {
         if (real == null) {
             val diag = enoexecDiagnostic(first)
 
-            System.err.println(diag)
+            lobos.kernel.spi.KernelServices.logger().log("proc",null,diag,null)
             runCatching {
-                android.util.Log.w("ProcessSupervisor", diag)
+                lobos.kernel.spi.KernelServices.logger().log("proc",false,diag,null)
             }
             throw NotExecutable(first)
         }
