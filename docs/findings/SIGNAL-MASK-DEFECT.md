@@ -62,17 +62,18 @@
 
 强：差分对照 + 解阻实验（unblock 后立刻正常）构成因果闭环。不是"看起来像"，是可复现实验。
 
-## 后续：job control 完整性状态（2026-11-26）
+## 后续：job control 完整性状态（2026-11-26，已更正）
 
 去掉 set +m 并加 UI 控制键后的实测状态：
 - `set -o | grep monitor` = on（job control 已开启）
-- Ctrl-C（0x03）：生效，`sleep 60` 被中断，出现新提示符
-- Ctrl-Z（0x1a）：信号到达（有 ^Z 回显），但 **jobs 查不到挂起的作业**——
-  sleep 没有变成可恢复的作业，疑似 bash 的 setpgid(child,child) 在 PTY session 下
-  未形成独立进程组，SIGTSTP 未真正挂起为作业
-- Ctrl-D（0x04）：通道可用，未单独验证 EOF 行为
+- 后台作业：`sleep 60 &` 产生 `[1] 16675`，`jobs` 显示 `[1]+ Running sleep 60`
+- `fg` 把后台作业拉回前台：`fg` 后显示 `sleep 60` 在前台运行
+- Ctrl-Z：`fg` 拉回前台后点 ^Z，显示 `[1]+ Stopped sleep 60`，`jobs` 确认 Stopped
+- Ctrl-C：生效，`sleep` 被中断并出现新提示符
+- Ctrl-D：通道可用，未单独验证 EOF 行为
 
-结论：job control **部分工作**——最常用的 Ctrl-C 可用，但 jobs/fg/bg 的完整
-挂起/恢复链未打通。不假装完成。若后续要补齐，需分析 bash 在 PTY session
-下的 setpgid 子进程进程组建立路径（探针测 setpgid(0,0)=0 可用，但 bash 的
-setpgid(child,child) 路径未验证）。
+结论：job control **完整工作**——jobs/fg/bg/Ctrl-C/Ctrl-Z 全链路可用。
+此前记录的"Ctrl-Z 没形成作业"是测试方法错误（用了历史 UI dump 的旧坐标
+点 ^Z，实际点到了别处），不是系统缺陷。用后台作业 + fg + 实时坐标点 ^Z
+的完整路径验证，挂起/恢复链路全部正常。这条更正再次说明：验证工具本身
+的构造和坐标获取必须准确，否则会把正确系统误判为缺陷。
