@@ -185,10 +185,30 @@ int main(int argc, char **argv) {
         emit_i("statx_errno", r<0 ? errno : 0);
         if (r==0) emit_i("statx_size", (long)sx.stx_size);
         emit("lobos_vroot", getenv("LOBOS_VROOT") ? getenv("LOBOS_VROOT") : "(null)");
+        /* Layered diagnosis: is failure in translation, absolute-path stat,
+           or symlink resolution? Each rung is a different code path. */
         struct stat st;
-        int r2 = stat("/usr/bin/bash", &st);
-        emit_i("stat_rc", r2);
-        emit_i("stat_errno", r2<0 ? errno : 0);
+        const char *vr = getenv("LOBOS_VROOT");
+        char abspath[1024], linktarget[1024];
+        int r2 = stat("/usr/bin/bash", &st);           /* full hook path */
+        emit_i("stat_virtual_rc", r2);
+        emit_i("stat_virtual_errno", r2<0 ? errno : 0);
+        if (vr) {
+            snprintf(abspath,sizeof abspath,"%s/usr/bin/bash",vr);
+            int r3 = stat(abspath,&st);                /* translated absolute, passthrough */
+            emit_i("stat_abs_rc", r3);
+            emit_i("stat_abs_errno", r3<0 ? errno : 0);
+            char rl[512]; ssize_t n=readlink(abspath,rl,sizeof rl-1);
+            if(n>0){rl[n]=0; snprintf(linktarget,sizeof linktarget,"%s",rl);
+                emit("readlink_abs", "ok");
+                int r4=stat(linktarget,&st);           /* symlink target, passthrough */
+                emit_i("stat_target_rc", r4);
+                emit_i("stat_target_errno", r4<0 ? errno : 0);
+            } else emit("readlink_abs", "ERR");
+        }
+        char rl2[512]; ssize_t n2=readlink("/usr/bin/bash",rl2,sizeof rl2-1);
+        if(n2>0){rl2[n2]=0; emit("readlink_virtual", strstr(rl2,"/data/")?"realpath":"virtual");}
+        else emit("readlink_virtual","ERR");
         emit("statx_vs_stat", (r==0)==(r2==0) ? "consistent" : "MISMATCH");
     }
     else if (!strcmp(d,"jobctl")) {
