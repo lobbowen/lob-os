@@ -21,10 +21,8 @@ import lobos.services.log.KillAudit
 import lobos.kernel.proc.ProcessLedger
 import lobos.host.DozeBackstop
 import lobos.services.power.PowerHostHooks
-import lobos.services.supply.ProgramDir
 import lobos.services.reg.ResidencyStatus
 import lobos.services.perm.PermissionLedger
-import lobos.services.supervise.SupervisorPool
 import lobos.host.device.AccessibilityServiceState
 import lobos.host.device.ServiceState
 
@@ -39,7 +37,6 @@ class OsHostService : Service() {
     private var tickThread: HandlerThread? = null
     private var tickHandler: Handler? = null
     private var lastNotifyMs = 0L
-    private var pool: lobos.services.supervise.SupervisorPool? = null
     private var broker: CapabilityBroker? = null
     private var capture: ScreenCaptureController? = null
 
@@ -59,8 +56,6 @@ class OsHostService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         if (intent?.action == ACTION_SYNC_POOL) {
-            handler?.post { runCatching { pool?.sync() } }
-                ?: runCatching { pool?.sync() }
             return START_STICKY
         }
 
@@ -106,31 +101,15 @@ class OsHostService : Service() {
         if (born) {
 
             tickHandler?.post(tick)
-            runCatching {
-                val ver = lobos.services.reg.ProgramRegistry.listIds(this)
-                    .mapNotNull { ProgramDir(this, it).currentVersion() }
-                    .singleOrNull()
-                RuntimeDiagnostics.append(
-                    this, "host", true, "宿主不替任何应用决定生死（I1）",
-                    "程序表由宿主程序存储拥有；此处只观测：current=" + (ver ?: "无") +
-                        "；已登记程序数=" + lobos.services.reg.ProgramIndex.all(this).count { it.levelOf(this) == lobos.services.reg.Level.PROGRAM },
-                )
-            }
+            RuntimeDiagnostics.append(
+                this, "host", true, "宿主不替任何应用决定生死（I1）",
+                "程序由 Ubuntu 系统盘 apt/npm 管理",
+            )
             lobos.host.DozeBackstop.schedule(this)
             RuntimeDiagnostics.append(
                 this, "host", true, "Lob OS 宿主就位（单进程 / 单前台服务）",
-                "组件：SupervisorPool + CapabilityBroker + ScreenCaptureController；节拍 " + TICK_MS + "ms",
+                "组件：CapabilityBroker + ScreenCaptureController；节拍 " + TICK_MS + "ms",
             )
-            handler?.post {
-                try {
-                    lobos.services.reg.RuntimeEnvironment.ensure(this)
-                } catch (e: Throwable) {
-                    RuntimeDiagnostics.append(
-                        this, "prefix", false, "运行环境装配异常（\$PREFIX 内状态未知）",
-                        "${e::class.java.simpleName}: ${e.message}"
-                    )
-                }
-            }
         }
         return START_STICKY
     }
@@ -179,12 +158,6 @@ class OsHostService : Service() {
         } catch (t: Throwable) {
             RuntimeDiagnostics.append(this, "capture", false, "截屏组件异常", t::class.java.simpleName + ": " + t.message)
         }
-        try {
-            val p = pool ?: lobos.services.supervise.SupervisorPool(this).also { pool = it; it.start() }
-            p.onHostStart(intent)
-        } catch (t: Throwable) {
-            RuntimeDiagnostics.append(this, "runtime", false, "运行时实例组件异常", t::class.java.simpleName + ": " + t.message)
-        }
     }
 
     private val tick: Runnable = Runnable {
@@ -203,7 +176,6 @@ class OsHostService : Service() {
             val a11y = AccessibilityServiceState.state(this)
             publishResidency(gap, a11y)
             refreshStatusNotice(now, a11y)
-            runCatching { pool?.sync() }
             val nowWall = System.currentTimeMillis()
             if (!lobos.host.DozeBackstop.armedRecently(nowWall)) {
                 val armed = lobos.host.DozeBackstop.schedule(this)
@@ -254,11 +226,7 @@ class OsHostService : Service() {
 
     }
 
-    private fun currentNotificationText(): String {
-        val status = lobos.services.reg.ProgramStatusHub.summaryLine(this)
-        val progNotice = lobos.host.ProgramNotificationHub.summaryLine()
-        return listOfNotNull(status, progNotice).joinToString("　")
-    }
+    private fun currentNotificationText(): String = "Ubuntu 系统盘 · 常驻"
 
     private var ledgerRegisteredAtMs: Long = 0L
 
@@ -280,11 +248,8 @@ class OsHostService : Service() {
             lobos.kernel.proc.ProcessLedger.list()
         }.getOrDefault(emptyList())
         val runningPids = liveEntries.map { it.pid }
-        val installedList = runCatching {
-            lobos.services.reg.ProgramRegistry.list(this).filter { it.startable }
-        }.getOrDefault(emptyList())
-        val installed = installedList.size
-        val installedIds = installedList.map { it.id }
+        val installed = 0
+        val installedIds = emptyList<String>()
         val reasons = ResidencyPolicy.degradedReasons(
             programsRunning = runningIds.size,
             installedPrograms = installed,
@@ -339,13 +304,10 @@ class OsHostService : Service() {
         handler = null
         tickThread = null
         tickHandler = null
-        try { pool?.shutdown() } catch (_: Throwable) {}
-        teardownStep("已关监督池")
         try { broker?.shutdown() } catch (_: Throwable) {}
         teardownStep("已关能力中介")
         try { capture?.shutdown() } catch (_: Throwable) {}
         teardownStep("已关截屏")
-        pool = null
         broker = null
         capture = null
         super.onDestroy()
@@ -356,7 +318,7 @@ class OsHostService : Service() {
         buildNotification(text)
 
     private fun entryActivity(): Class<*> =
-        lobos.host.QuickAppLaunchActivity::class.java
+        lobos.host.MainActivity::class.java
 
     private fun buildNotification(text: String): Notification {
         val pi = PendingIntent.getActivity(
@@ -366,12 +328,6 @@ class OsHostService : Service() {
         )
         val summary = androidx.core.app.NotificationCompat.InboxStyle().setBigContentTitle("Lob OS")
         val items = mutableListOf<String>()
-        for (n in lobos.services.reg.ProgramStatusHub.snapshot(this).take(6)) {
-            items += n.id + " · " + n.active.name.lowercase() +
-                if (n.aliveMs > 0) " · " + (n.aliveMs / 3600000) + "h" + ((n.aliveMs / 60000) % 60) + "m" else ""
-        }
-        val notices = lobos.host.ProgramNotificationHub.list()
-        for (n in notices.take(5)) items += n.title + "：" + n.text
         if (items.isNotEmpty()) {
             summary.setSummaryText(text)
             for (line in items) summary.addLine(line)
@@ -380,7 +336,6 @@ class OsHostService : Service() {
             .setContentTitle("Lob OS 常驻")
             .setContentText(text)
             .setStyle(summary)
-            .setGroup(lobos.host.ProgramNotificationHub.GROUP_PARENT)
             .setSubText(text)
             .setSmallIcon(R.drawable.ic_lobos_logo)
             .setOngoing(true)

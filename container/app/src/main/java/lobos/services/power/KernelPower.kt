@@ -35,7 +35,6 @@ object KernelPower {
         write(ctx, State.HALTED)
         OsInit.transition(ctx, OsPhase.STOPPING, "系统关机（内核已停，管理界面保留）", null)
         Journal.note(ctx, "power", true, "shutdown", "内核进入 HALTED，程序由监督池停止")
-        lobos.services.supervise.SupervisorPool.requestSync(ctx)
         return true
     }
 
@@ -43,7 +42,6 @@ object KernelPower {
         write(ctx, State.RUNNING)
         OsInit.transition(ctx, OsPhase.RUNNING, "系统开机（内核恢复）", null)
         Journal.note(ctx, "power", true, "boot", "内核进入 RUNNING，按程序 desired 恢复")
-        lobos.services.supervise.SupervisorPool.requestSync(ctx)
         return true
     }
 

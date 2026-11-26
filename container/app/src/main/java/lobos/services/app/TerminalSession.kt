@@ -62,9 +62,7 @@ class TerminalSession private constructor(
                     "FR_EXE" to "/bin/bash",
                 ), true)
             } else {
-                val sh = lobos.services.supply.ShellEntry.require(ctx)
-                Triple(if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv,
-                    emptyMap<String, String>(), false)
+                  throw IllegalStateException("Ubuntu 系统盘未就绪，终端不可用")
             }
             val s = lobos.kernel.ipc.PtySession.openSession(
                 ptyBin, effArgv, rows, cols, timeoutMs,

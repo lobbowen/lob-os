@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import lobos.host.Foreground
-import lobos.services.app.QuickAppHost
 import lobos.services.log.RuntimeDiagnostics
 import lobos.kernel.KernelHooks
 import lobos.services.power.PowerHostHooks
@@ -74,10 +73,6 @@ class OsApplication : Application() {
                 it.javaClass.name + ": " + (it.message ?: "")
             )
         }.onSuccess {
-            runCatching { lobos.services.app.QuickAppHost.registerCapabilities(this) }
-                .onFailure {
-                    RuntimeDiagnostics.append(this, "quickapp", false, "能力模块注册失败", it.javaClass.name + ": " + (it.message ?: ""))
-                }
             RuntimeDiagnostics.append(this, "quickapp", true, "快应用运行时已就绪", "dimina 初始化完成；能力桥 extBridge(module=lobos)")
         }
     }

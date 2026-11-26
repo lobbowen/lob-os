@@ -26,35 +26,16 @@ import lobos.host.device.AccessibilityServiceState
 import lobos.host.device.OsAccessibilityService
 import lobos.host.OsHostService
 import lobos.services.log.Journal
-import lobos.services.supply.CatalogClient
-import lobos.services.reg.Desired
-import lobos.services.reg.Level
+import lobos.services.supervise.TaskRegistry
 import lobos.host.OsInit
 import lobos.host.OsPhase
-import lobos.services.supply.PackageInstaller
 import lobos.kernel.security.PathGuard
-import lobos.services.reg.PortBroker
-import lobos.services.supply.ProgramDir
-import lobos.services.reg.ProgramIndex
-import lobos.services.reg.ProgramManager
-import lobos.services.reg.ProgramSettings
-import lobos.services.supply.RegistryStore
 import lobos.kernel.proc.SessionRegistry
 import lobos.kernel.fs.StateFiles
-import lobos.services.supervise.TaskRegistry
-import lobos.services.reg.UnitEntry
-import lobos.services.supply.ProgramInstaller
-import lobos.services.supply.ProgramOtaUpdater
 import lobos.host.device.NotificationStore
 import lobos.services.perm.PermissionLedger
 import lobos.services.perm.PermissionRoles
-import lobos.services.app.PieceProvisioner
-import lobos.services.app.PrepareReport
-import lobos.services.supervise.GuestAdapter
-import lobos.services.supervise.InstanceHost
 import lobos.kernel.ipc.LocalExec
-import lobos.services.supply.PieceUpdater
-import lobos.services.supply.ShellEntry
 import org.json.JSONArray
 import org.json.JSONObject
 import lobos.kernel.mm.LibPath
@@ -143,21 +124,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         return setOf(BRIDGE_BASE) + declaredCapabilities(id)
     }
 
-    private fun declaredCapabilities(programId: String): Set<String> {
-        val id = programId.trim()
-        if (id.isBlank()) return emptySet()
-        return runCatching { lobos.services.reg.ProgramIndex.get(this, id)?.capabilities.orEmpty() }
-            .getOrDefault(emptySet())
-            .toSet()
-    }
+    private fun declaredCapabilities(programId: String): Set<String> = emptySet()
 
-    private fun isProgramSession(session: lobos.kernel.proc.SessionRegistry.Session): Boolean {
-        val id = session.programId.trim()
-        if (id.isBlank()) return false
-        val declared = lobos.services.reg.ProgramRegistry.listIds(this)
-        if (declared.isEmpty()) return true
-        return declared.contains(id)
-    }
+    private fun isProgramSession(session: lobos.kernel.proc.SessionRegistry.Session): Boolean = true
 
     private fun audit(
         method: String,
@@ -199,16 +168,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             put("error", JSONObject().apply { put("code", code); put("message", message) })
         }
 
-    fun declaredPackages(): List<String> {
-        val out = sortedSetOf<String>()
-        runCatching {
-            for (e in lobos.services.reg.ProgramIndex.all(this)) {
-                val pkg = e.uiPackage.trim()
-                if (pkg.isNotBlank()) out.add(pkg)
-            }
-        }
-        return out.toList()
-    }
+    fun declaredPackages(): List<String> = emptyList()
 
     private fun requireOurCarrier(): OsAccessibilityService {
         val a11y = requireA11y()
@@ -427,14 +387,13 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         if (cmd.isBlank()) {
             throw BridgeError(CODE_INVALID_PARAM, "cmd 不能为空")
         }
-        val sh = lobos.services.supply.ShellEntry.require(this@CapabilityBroker)
-
-        val argv = shapedArgv(sh, cmd)
-        val r = lobos.kernel.ipc.LocalExec.run(argv,
-            timeoutMs = p.optLong("timeoutMs", 10_000L),
-            preferPty = !p.optBoolean("noPty", false),
-        )
-        execAsJson(r)
+        val r = lobos.system.SystemExec.run(this@CapabilityBroker, "/bin/sh",
+            listOf("-c", cmd), timeoutMs = p.optLong("timeoutMs", 10_000L))
+        JSONObject().apply {
+            put("ok", r.ok); put("exitCode", r.exitCode)
+            put("stdout", r.stdout); put("stderr", r.stderr)
+            r.error?.let { put("error", it) }
+        }
     },
     "os.permissions.ledger" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { p, _programId ->
             val snap = lobos.services.perm.PermissionLedger.register(this@CapabilityBroker)
@@ -458,27 +417,9 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-        "os.notif.publish" to MethodDef(listOf("base"), true) { p, programId ->
-            if (programId.isBlank()) {
-                throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
-            }
-            val n = lobos.host.ProgramNotificationHub.publish(
-                this@CapabilityBroker,
-                programId,
-                p.optString("title", ""),
-                p.optString("text", ""),
-                p.optBoolean("ongoing", true),
-                p.optBoolean("silent", true),
-                p.optString("group", "").ifBlank { null },
-                p.optString("groupLabel", "").ifBlank { null },
-                p.optString("subText", "").ifBlank { null },
-                if (p.has("progress")) p.optInt("progress", -1) else null,
-            )
-            JSONObject().apply {
-                put("ok", true)
-                put("programId", n.programId)
-                put("atMs", n.atMs)
-            }
+        "os.notif.publish" to MethodDef(listOf("base"), true) { _, programId ->
+            if (programId.isBlank()) throw BridgeError(CODE_CAPABILITY_MISSING, "只有程序会话才能投递通知")
+            JSONObject().apply { put("ok", false); put("reason", "V1 program notifications removed") }
         },
         "os.notif.clear" to MethodDef(listOf("base"), true) { p, programId ->
             val target = p.optString("programId", "").ifBlank { programId }
@@ -487,18 +428,18 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
             JSONObject().apply {
                 put("ok", true)
-                put("cleared", lobos.host.ProgramNotificationHub.clear(this@CapabilityBroker, target))
+                put("cleared", false)
             }
         },
         "os.notif.list" to MethodDef(listOf("base"), false) { _, _programId ->
             JSONObject().apply {
-                put("notices", lobos.host.ProgramNotificationHub.listJson())
+                put("notices", org.json.JSONArray())
             }
         },
         "os.host.status" to MethodDef(listOf(ApiSpec.GROUP_SYS), false) { _, _programId ->
-            lobos.services.reg.ProgramStatusHub.toJson(this@CapabilityBroker).apply {
-                put("notices", lobos.host.ProgramNotificationHub.listJson())
-                put("noticeGroups", lobos.host.ProgramNotificationHub.groupsJson())
+            JSONObject().apply {
+                put("notices", org.json.JSONArray())
+                put("noticeGroups", org.json.JSONObject())
                 put("writeFailures", lobos.kernel.fs.StateFiles.writeFailureCount())
             }
         },
@@ -549,12 +490,11 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 })
             }
         },
-          "sys.nativeAssets" to MethodDef(listOf("base"), false) { p, _programId ->
-              val report = PieceProvisioner.prepare(this)
+          "sys.nativeAssets" to MethodDef(listOf("base"), false) { _, _programId ->
               JSONObject().apply {
-                  put("allRequiredReady", report.allRequiredReady)
-                  put("assets", report.toJson().optJSONArray("assets") ?: JSONArray())
-                  put("failedRequired", JSONArray(report.failedRequired.map { it.first.id }))
+                  put("allRequiredReady", true)
+                  put("assets", JSONArray())
+                  put("failedRequired", JSONArray())
                   put("nativeLibraryDir", applicationInfo.nativeLibraryDir)
                   put("libSearchPath", LibPath.searchPath())
               }
@@ -953,7 +893,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
     companion object {
         const val TAG = "CapabilityBroker"
-        const val SOCKET_NAME = GuestAdapter.BRIDGE_SOCKET
+        const val SOCKET_NAME = "lobos_hostbridge"
 
         const val BRIDGE_BASE = "base"
 
