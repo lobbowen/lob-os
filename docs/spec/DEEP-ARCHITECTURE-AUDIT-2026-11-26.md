@@ -236,19 +236,25 @@ NotifyRoute/ReadRoute（null 门闩改 enabled:Boolean）、KernelHooks 等。
 真实 Android 能力使用（filesDir/assets/applicationInfo/getSystemService）已全部清零，
 都改走 PathProvider/KernelServices SPI。
 
-### 剩余 5 个是强连通链，需整组重设计（非逐个可清理）
+### 强连通链的整组重构（已完成）
 `LocalExec` / `PtySession` / `SysDev` / `ProcessLedger` / `SessionRegistry`
-互相传递 Context，构成进程/会话运行时子系统。尝试单独删 SysDev 的 ctx 时，
-因它调用 `PtySession.activeSessions(ctx)` 和 `ProcessLedger.list(ctx)` 而编译失败。
+曾互相传递 Context，构成进程/会话运行时子系统。逐个删会断链编译失败
+（单独删 SysDev 的 ctx 时因它调用 `PtySession.activeSessions(ctx)` 和
+`ProcessLedger.list(ctx)` 而失败）。最终以整组 redesign 完成：
 
-这 5 个中的 Context 承载三个角色：
-1. 宿主句柄（PtySession.Host 构造）
-2. 日志门闩（`ctx?.let { logger() }`）
-3. ProcessLedger/SessionRegistry 的会话归属参数
+这 5 个中的 Context 只承载三个角色，无一真正需要 Android 能力：
+1. 纯传递（`dir(ctx)=SystemDirs.run()` 等，函数体不读 ctx）
+2. 日志门闩（`ctx?.let { logger() }`）改为无条件记日志
+3. PtySession.Host 的上下文字段、ProcessLedger/SessionRegistry 的会话归属参数
 
-彻底清理要把 Host 的 Context 依赖 redesign 成 PathProvider + 显式日志开关 +
-ProcessLedger 去 Context，涉及约 43 处外部调用，是一个独立架构重构任务。
-在中止前不做，避免为"消掉 5 个 import"而引入大范围回归风险。
+整组处理：5 文件所有函数的 ctx 参数删除（签名+内部调用）；Host 去掉 ctx 字段；
+pty-diag 恒假门闩改无条件日志；c0 宿主上下文门槛删除；外部调用用严格白名单
+（只删第一参数是 ctx/context/this/app 形态的，不碰 token/root/fault 等合法参数）。
+StateFiles 的 Context 全限定名也一并清理（cacheDir 改 KernelServices.paths()）。
 
-判断标准：真实 Android 能力依赖已清零（目标达成）；剩余是链式签名残留，
-不影响系统层的实际独立性。
+最终结果：kernel 层 Context 引用（import + 全限定名）从 25 降到 **0**，完整清零。
+保留 `android.system.Os`/`OsConstants`（fs 层底层系统调用封装，属于合理利用 Android
+提供的 libc 接口，与应用上下文 Context 性质不同，不算机制层的应用耦合）。
+
+验证：编译 BUILD SUCCESSFUL、总校验 OK、终端 PTY 实测执行命令成功（echo 回显）、
+official 锚 intact。判断标准达成：系统机制层不再依赖任何 Android 应用上下文。
