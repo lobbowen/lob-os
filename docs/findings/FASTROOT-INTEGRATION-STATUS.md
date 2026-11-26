@@ -165,3 +165,29 @@ fastroot 在 LobOS APK 进程里连续跑通 3 个 glibc probe，验证了：
 （现有 probe 需要预置测试文件）。
 
 所有验证临时文件已清理。
+
+
+## 第四轮验证：fake root uid=0 成功（2026-11-26 21:45）
+
+最小 glibc probe（打印 getuid/geteuid/getgid/getegid）经 fastroot 启动：
+```
+getuid=0 geteuid=0 getgid=0 getegid=0
+rc=0
+```
+
+对照：不经 fastroot 直接 exec 同一程序 → `exec failed: No such file`
+（app_data_file 不可 exec，正是 fastroot launcher 用 mmap 加载解决的核心问题）。
+
+**意义**：这是真正的 fake root，通过 syscall 补丁实现，不是我们现在的
+SIGSYS 假成功（getpid 固定 4242）或 node shim 填 1。uid 视图统一为 root，
+setuid/chown 等语义可以基于 xattr 存储实现（fastroot 已实现）。
+"多 uid/CAP_SYS_ADMIN 做不到"被进一步证伪——是 LD_PRELOAD 路线做不到。
+
+至此已验证 fastroot 四项核心能力：
+1. 虚拟根路径翻译（读到 rootfs 内容）
+2. /proc/self/exe + AT_EXECFN 虚拟路径
+3. `..` 逃逸钳制
+4. fake root uid/gid=0
+
+未专项验证（需预置测试文件或完整 rootfs）：chroot 切换、硬链接、/proc 合成内容、
+SysV IPC、compat.sh 174 项。
