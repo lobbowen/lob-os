@@ -42,15 +42,39 @@ github.com/spizganed/fastroot）证明了：在无 root 的 Android 应用进程
 - 可能需要一个真正的 Debian/Ubuntu rootfs（而非我们拼凑的最小 rootfs），
   因为 fastroot 假设标准 FHS 布局（/usr/lib/aarch64-linux-gnu 等）
 
-## 下一步（明确，不是模糊待办）
+## 第二轮尝试（2026-11-26，严格按 termux wrapper 格式）
 
-1. 拉一个最小 aarch64 Debian rootfs（deb.debian.org 可达，用 proot-distro 的
-   ubuntu rootfs tarball 或 debootstrap），放到设备 filesDir
-2. 用 `FR_KEXEC=0` 老路径先跑通（shim 先加载，逻辑更简单），再切 kexec
-3. 开 `FR_ERRS`/`FR_TRACE` 看 loader 路径解析，定位 libc 找不到的具体原因
-4. 跑通后跑 fastroot 的 `compat.sh`（174 项）评估与真实 Linux 的语义差距
-5. 再制定迁移方案：哪些用 fastroot 替换（exec/VFS/chroot/uid），
-   哪些保留（我们的能力门面/包管理/node shim/musl/claude 路径）
+读 `termux/fastroot-proot` 和 `translate.c:650` 后，严格按其启动契约重试：
+- FR_LIBPATH = `$ROOT/usr/lib/aarch64-linux-gnu:$ROOT/usr/lib`（真实绝对路径）
+- LD = `$ROOT/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1`
+- program = `$ROOT/usr/bin/paths`（glibc 编译的 probe）
+- FR_EXE = `/usr/bin/paths`
+- 把 libc.so.6 等从软链改为真实文件复制（排除软链解析假设）
+
+结果仍报 `libc.so.6: cannot open shared object file`。5 次不同参数组合
+（真实路径/虚拟路径/root 内 ld/软链/真实文件）均失败。
+
+## 最终判断
+
+-fastroot 是正确方向，但启动契约比 README 字面复杂得多（kexec 默认路径的
+ loader 映射时机、FR_LIBPATH 双重语义、对完整 FHS rootfs 的假设）。
+- 我们拼凑的最小 rootfs（从 glibc runtime + probe 凑的）不满足它的假设；
+  真正跑通需要**完整的 aarch64 Debian/Ubuntu rootfs**（deb.debian.org 可达，
+  用 proot-distro 的 ubuntu rootfs tarball），加上它的 debug 工具
+  （`FR_ERRS`/`FR_TRACE`/`FR_DEBUG`）系统调试，而不是继续拼凑参数。
+- 这是需要**专门调试周期**的系统工程，不是当前上下文能安全完成的增量。
+  继续盲试参数不负责任，已停止。
+
+## 下一步（需要专门立项）
+
+1. 拉完整 aarch64 Ubuntu rootfs tarball（proot-distro 用的那种），放设备 filesDir
+2. 用 fastroot 的 `FR_KEXEC=0` 老路径先跑通（逻辑比 kexec 简单）
+3. 开 `FR_ERRS`/`FR_TRACE` 看 loader 实际打开路径，定位 libc 问题
+4. 跑 `compat.sh`（174 项）评估语义差距
+5. 再定迁移方案：fastroot 替换哪些（exec/VFS/chroot/uid），
+   保留哪些（能力门面/包管理/node shim/musl/claude 路径）
+
+当前 so 产物可重建（build-fastroot.sh），不入 git；验证临时文件已从设备清理。
 
 ## 判断
 
