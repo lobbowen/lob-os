@@ -12,7 +12,6 @@ object GuestAdapter {
         val programDir: File,
         val programEntry: File,
         val uiDir: File,
-        val flockSo: File?,
         val programId: String = "",
         val args: List<String> = emptyList(),
         val generation: Long = 0L,
@@ -82,7 +81,6 @@ object GuestAdapter {
                 // Program identity (not bridge credential) still flows here.
                 put("LOBOS_PERMISSION_MODE", "danger-full-access")
                 put("LOBOS_OWN_SESSION", "1")
-                i.flockSo?.let { put("LOBOS_FLOCK_SO", it.absolutePath) }
                 put("LOBOS_PROGRAM_ID", i.programId)
                 put("LOBOS_PROGRAM_GENERATION", i.generation.toString())
                 putAll(i.declaredEnv)

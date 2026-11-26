@@ -177,7 +177,6 @@ object ApiSpec {
         put("errorCodes", ERROR_CODES)
         put("rules", org.json.JSONArray().apply {
             put("方法名 lobos.<层>.<域>.<动作>，小驼峰；未带命名空间前缀的短名视为弃用别名")
-            put("握手须携带 LOBOS_SESSION_TOKEN；会话一次性，不可重放")
             put("能力组在握手时由服务端按实测证据授予，客户端不可自述")
             put("缺能力组返 CODE_CAPABILITY_MISSING；参数非法返 CODE_INVALID_PARAM")
             put("同名方法不得跨层：lobos.sys.* 不对程序开放，仅宿主与面板可用")

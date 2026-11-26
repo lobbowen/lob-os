@@ -4,10 +4,7 @@ import java.io.File
 
 object Compat {
 
-    const val LIB_POSIX = "liblobosposix.so"
     const val LIB_PTYSESSION = "librivospty.so"
-    const val LIB_FLOCK = "liblobosflock.so"
-    const val LIB_GUEST_SIGSYS = "libguest-sigsys.so"
 
     private fun libDir(): File = lobos.kernel.layout.SystemDirs.lib()
     private fun apkLibDir(): File = lobos.kernel.spi.KernelServices.paths().nativeLibDir
@@ -105,7 +102,7 @@ object Compat {
         return true
     }
 
-    fun managedComponents(): List<String> = listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK, LIB_GUEST_SIGSYS)
+    fun managedComponents(): List<String> = emptyList() // V1 so set removed
 
     fun otaInstalled(name: String): Boolean {
         val f = libDir().resolve(name)
@@ -143,5 +140,4 @@ object Compat {
         val native = apkLibDir().resolve(LIB_PTYSESSION)
         return if (native.isFile) native else null
     }
-    fun flockLib(): File? = null // V1 flock bridge removed; system disk has real flock(2)
 }
