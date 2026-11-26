@@ -24,7 +24,6 @@ import lobos.services.power.PowerHostHooks
 import lobos.services.supply.ProgramDir
 import lobos.services.reg.ResidencyStatus
 import lobos.services.perm.PermissionLedger
-import lobos.services.app.DriverRegistry
 import lobos.services.supervise.SupervisorPool
 import lobos.host.device.AccessibilityServiceState
 import lobos.host.device.ServiceState
@@ -205,7 +204,6 @@ class OsHostService : Service() {
             publishResidency(gap, a11y)
             refreshStatusNotice(now, a11y)
             runCatching { pool?.sync() }
-            runCatching { lobos.services.app.DriverRegistry.ingest(this) }
             val nowWall = System.currentTimeMillis()
             if (!lobos.host.DozeBackstop.armedRecently(nowWall)) {
                 val armed = lobos.host.DozeBackstop.schedule(this)

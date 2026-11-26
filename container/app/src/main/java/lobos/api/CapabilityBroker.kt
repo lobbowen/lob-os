@@ -48,7 +48,6 @@ import lobos.services.supply.ProgramOtaUpdater
 import lobos.host.device.NotificationStore
 import lobos.services.perm.PermissionLedger
 import lobos.services.perm.PermissionRoles
-import lobos.services.app.DriverRegistry
 import lobos.services.app.PieceProvisioner
 import lobos.services.app.PrepareReport
 import lobos.services.supervise.GuestAdapter
@@ -790,10 +789,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 put("updateAvailable", latest.isNotBlank() && latest != cur)
             }
         },
-        "os.compat.status" to MethodDef(listOf("base"), false) { _, _programId ->
-            lobos.services.app.DriverRegistry.report(this@CapabilityBroker)
-        },
-
         "os.env.status" to MethodDef(listOf("base"), false) { _, _programId ->
             val owner = runCatching {
                 lobos.host.device.DeviceOwnerState.measure(this@CapabilityBroker)

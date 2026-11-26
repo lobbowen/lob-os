@@ -238,8 +238,8 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/toolchain/locate-ndk.sh
-          bash scripts/toolchain/build-kernel-compat.sh
-          echo "::warning title=垫片编译::build-kernel-compat.sh 返回非零，日志已留在 work/kernel-compat/cc-*.log"
+          bash scripts/toolchain/build-pty-host.sh
+          echo "::warning title=PTY宿主编译::build-pty-host.sh 返回非零，终端将不可用"
 
       - name: 核对取到的件
         run: |

@@ -656,16 +656,8 @@ object PtySession {
                 pb1.environment()[k0] = v0
             }
             for ((k, v) in extraEnv) pb1.environment()[k] = v
-            // linker64 显式加载 bash 实测能处理 LD_PRELOAD（compat log 铁证）。
-            // 让交互 shell 带 exec-path hook，用户命令的 execve 被拦截、
-            // 路由到 nativeLibraryDir 里可 exec 的 glibc loader。
-            // Legacy path needs the bionic exec hook. Fastroot (FR_ROOT set)
-            // runs a glibc guest that cannot load bionic libs -- keep its env.
-            if (!pb1.environment().containsKey("FR_ROOT")) {
-                val compatEnvSo = java.io.File(lobos.kernel.layout.SystemDirs.lib(), "liblobosposix.so")
-                if (compatEnvSo.isFile) pb1.environment()["LD_PRELOAD"] = compatEnvSo.absolutePath
-                else pb1.environment().remove("LD_PRELOAD")
-            }
+            // V1 bionic exec-hook fallback removed: the Ubuntu system disk is a
+            // hard prerequisite; fastroot carries its own env and needs no LD_PRELOAD.
             lobos.kernel.spi.KernelServices.logger().log("pty", true,
                 "宿主启动形态",
                 "shell=" + (sh?.absolutePath ?: "无") +

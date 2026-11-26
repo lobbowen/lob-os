@@ -4,7 +4,6 @@ import lobos.kernel.layout.SystemDirs
 import android.content.Context
 import java.io.File
 import lobos.services.log.RuntimeDiagnostics
-import lobos.services.app.DriverRegistry
 import lobos.services.app.PieceProvisioner
 import lobos.kernel.layout.PrefixProvisioner
 import lobos.services.supply.CatalogClient
@@ -74,51 +73,9 @@ object RuntimeEnvironment {
         // （AT_SECURE=0 时有效），比 SIGSYS handler 更干净。
         put("GLIBC_TUNABLES", "glibc.pthread.rseq=0")
 
-        // exec-path hook 路径：hook 每次把 bionic 程序改写成 linker64 启动时，
-        // 用它在 envp 里补 LD_PRELOAD，让兼容层语义链式传到子进程（含交互 shell）。
-        val hookSo = java.io.File(ctx.filesDir, "usr/lib/liblobosposix.so")
-        if (hookSo.isFile) {
-            put("LOBOS_HOOK_SO", hookSo.absolutePath)
-            val nativeBash = java.io.File(ctx.applicationInfo.nativeLibraryDir, "liblobosbash.so")
-            if (nativeBash.isFile) put("LOBOS_PTY_SHELL", nativeBash.absolutePath)
-        }
-
-        // glibc guest 运行时：把当前版本的 loader/lib 递给 ExecEntry，
-        // 让 glibc ELF 经 guest loader 启动（单用户系统，无需 fake root）。
-        val grVer = runCatching {
-            lobos.services.supply.ProgramDir(ctx, "glibc-runtime").currentVersion()
-        }.getOrNull()
-        if (!grVer.isNullOrBlank()) {
-            val gr = java.io.File(java.io.File(SystemDirs.opt(), "glibc-runtime"), grVer)
-            // loader 必须在 app 域可 exec 的位置：app_data_file 上的 ELF 被 SELinux
-            // 拒 exec（EACCES），APK 的 nativeLibraryDir 可 exec。loader 作为
-            // prebuilt native lib（libglibc-loader.so）随 APK 分发。
-            // nativeLib 可 exec（系统 ELF 位置）；内容是官方原版 loader。
-            // 组件里的副本只作备份（app_data_file 不能直接 exec）。
-            val nativeLoader = java.io.File(ctx.applicationInfo.nativeLibraryDir, "libglibc-loader.so")
-            val componentLoader = java.io.File(java.io.File(gr, "lib"), "ld-linux-aarch64.so.1")
-            val loader = if (nativeLoader.isFile) nativeLoader else componentLoader
-            if (loader.isFile) {
-                put("LOBOS_GLIBC_LOADER", loader.absolutePath)
-                put("LOBOS_GLIBC_LIBDIR", java.io.File(gr, "lib").absolutePath)
-                // glibc guest 的 SIGSYS handler（freestanding so）：Android seccomp
-                // 用 SIGSYS 拦 rseq(293) 等 syscall，没它 glibc 程序启动即 SIGSYS(31)。
-                // SIGSYS handler so：优先用组件安装到 files/opt 的版本（app_data_file
-                // 可读可 dlopen），fallback 到 nativeLibraryDir。glibc loader 在
-                // untrusted_app 域 dlopen nativeLibraryDir 的 so 可能被 SELinux 拒。
-                val sigsysSo = java.io.File(ctx.filesDir, "usr/lib/libguest-sigsys.so")
-                    .takeIf { it.isFile }
-                    ?: java.io.File(ctx.applicationInfo.nativeLibraryDir, "libguest-sigsys.so")
-                if (sigsysSo.isFile) put("LOBOS_GUEST_SIGSYS", sigsysSo.absolutePath)
-                /* glibc-flavoured VFS hook: bionic liblobosposix.so cannot be
-                   loaded by glibc guests, so guest path syscalls need their own. */
-                val vfsSo = java.io.File(ctx.applicationInfo.nativeLibraryDir, "liblobos-vfs-glibc.so")
-                if (vfsSo.isFile) put("LOBOS_VFS_SO", vfsSo.absolutePath)
-                lobos.kernel.proc.ExecEntry.configureGlibcGuest(
-                    loader.absolutePath, java.io.File(gr, "lib").absolutePath
-                )
-            }
-        }
+        // V1 glibc-guest / SIGSYS / VFS-hook / LD_PRELOAD chain removed.
+        // Programs now run in the Ubuntu rootfs via fastroot, which uses the
+        // rootfs' own loader and GLIBC_TUNABLES above.
 
         put(
             "PATH",
@@ -128,12 +85,6 @@ object RuntimeEnvironment {
                 inheritedPath,
             )
         )
-        val posix = lobos.kernel.compat.Compat.lib(lobos.kernel.compat.Compat.LIB_POSIX)
-        if (posix != null) {
-            put("LD_PRELOAD", posix.absolutePath)
-            put("LOBOS_SYSTEM_LINKER", "/system/bin/linker64")
-            put("LOBOS_COMPAT_LOG", lobos.services.app.DriverRegistry.degradeLog(ctx).absolutePath)
-        }
         val caDirs = listOf(
             "/apex/com.android.conscrypt/cacerts",
             "/system/etc/security/cacerts",

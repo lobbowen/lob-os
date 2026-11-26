@@ -58,7 +58,7 @@ if [ -n "$ONLY" ]; then
   echo "[caps] 只编指定件：$ONLY"
 else
 
-bash scripts/toolchain/build-kernel-compat.sh || die "垫片编不出来" "内核缺了兼容层，程序跑不出 Linux 语义"
+bash scripts/toolchain/build-pty-host.sh || die "PTY宿主编不出来" "终端将不可用"
 
   echo "[caps] 逐件编译（7 个脚本，各产 component-meta.json 并落位）"
 fi

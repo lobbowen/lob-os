@@ -62,11 +62,6 @@ class TerminalSession private constructor(
                 val base = lobos.system.UbuntuSystem.launchArgv(ctx, "/bin/bash", listOf("-i"))
                 Triple(base, lobos.system.UbuntuSystem.environment(ctx) + mapOf(
                     "FR_EXE" to "/bin/bash",
-                    // Disable the legacy hooked-shell rewrite in pty-session.c:
-                    // it would replace our fastroot argv[1..] with the old bash.
-                    "LOBOS_PTY_SHELL" to "",
-                    // bionic LD_PRELOAD cannot be loaded by the glibc guest.
-                    "LD_PRELOAD" to "",
                 ), true)
             } else {
                 val sh = lobos.services.supply.ShellEntry.require(ctx)

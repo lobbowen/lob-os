@@ -53,26 +53,12 @@ object ServiceRegistry {
         )
         out.add(
             decl("view", listOf("prefix")) { ctx ->
-                runCatching { lobos.services.reg.RuntimeEnvironment.ensure(ctx) }
-                    .onSuccess { snap ->
-                        val linked = lobos.kernel.compat.Compat.linkInto()
-                        val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
-                        val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
-                        val needs = listOf("libcurl.so", "libssl.so", "libcrypto.so", "libz.so.1")
-                            .joinToString(" ") { it.substringBefore('.') + "=" +
-                                lobos.kernel.compat.PieceInspect.needed(it).replace(' ', '_').take(70) }
-                        RuntimeDiagnostics.append(
-                            ctx, "sysview", view.isNotEmpty(),
-                            "系统视图 " + view.size + " 项；垫片入库 " + linked + "；件内依赖 " + needs,
-                            view.entries.joinToString(" | ") { it.key + "=" + it.value.take(70) },
-                        )
-                    }
-                    .onFailure { e ->
-                        RuntimeDiagnostics.append(
-                            ctx, "view", false, "算系统视图失败",
-                            e.javaClass.name + ": " + (e.message ?: ""),
-                        )
-                    }
+                val ready = lobos.system.UbuntuSystem.isReady(ctx)
+                RuntimeDiagnostics.append(
+                    ctx, "sysview", ready,
+                    "Ubuntu 系统盘 " + (if (ready) "就绪" else "未就绪"),
+                    "root=" + lobos.system.UbuntuSystem.root(ctx).absolutePath,
+                )
             }
         )
         // V2: no eager PTY host here. The host process carries fastroot env

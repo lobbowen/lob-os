@@ -22,7 +22,6 @@ run() {
 
 run "分层依赖" scripts/verify/verify-layer-deps.sh
 run "目录结构" scripts/verify/verify-directory-layout.sh
-run "Native ABI契约" scripts/verify/verify-native-config.sh
 run "official 锚" scripts/verify/verify-ota-anchor.sh
 
 echo "== 结果 =="

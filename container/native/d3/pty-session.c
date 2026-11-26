@@ -267,25 +267,8 @@ static int session_open(int out_fd, uint8_t sid, char *const argv[], int argc) {
         signal(SIGHUP, SIG_DFL);
         child_note("child: signal 已做");
 
-        {
-            const char *hooked = getenv("LOBOS_PTY_SHELL");
-            if (hooked && hooked[0] == '/' && argc >= 2) {
-                /* hooked bash 的 DT_NEEDED 需要 nativeLib 在搜索路径里 */
-                const char *libpath = getenv("LD_LIBRARY_PATH");
-                if (libpath && strstr(libpath, "/lib/arm64") == NULL) {
-                    char nl[2048];
-                    snprintf(nl, sizeof nl, "%s:%s", hooked, libpath);
-                    /* 取 hooked 的目录作为 lib 路径 */
-                    char dir[1024]; snprintf(dir, sizeof dir, "%s", hooked);
-                    char *slash = strrchr(dir, '/'); if (slash) *slash = 0;
-                    snprintf(nl, sizeof nl, "%s:%s", dir, libpath);
-                    setenv("LD_LIBRARY_PATH", nl, 1);
-                }
-                char *hargv[] = { argv[0], (char *)hooked, argc > 2 ? argv[2] : NULL, NULL };
-                execv(argv[0], hargv);
-                { char eb[256]; snprintf(eb,sizeof eb,"child: hooked exec失败 errno=%d",errno); child_note(eb); }
-            }
-        }
+        // V1 hooked-shell rewrite removed. The terminal passes the full
+        // fastroot launcher argv; execv it directly.
         execv(argv[0], argv);
         child_fail(ctl, 190, "execv 失败");
         close(out_fd);
