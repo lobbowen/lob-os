@@ -233,3 +233,45 @@ apt 本身工作正常（rc=0）。
 - compat.sh 174 项：在 Ubuntu rootfs 里跑 fastroot 的完整测试套件
 - 与 LobOS 上层整合：服务管理/包管理/能力门面如何操作这个 Ubuntu rootfs
 - APK 分发：373MB rootfs 不能随 APK 内置（太大），需要做按需下载/增量更新机制
+
+
+## 最终里程碑：完整 Linux 包管理闭环成功（2026-11-26 22:00）
+
+在 Ubuntu rootfs + fastroot 上完成完整闭环：
+
+1. **apt update**：配 `/etc/resolv.conf`（8.8.8.8/1.1.1.1）解决 DNS；
+   `-o APT::Get::AllowUnauthenticated=true` 绕过缺 gpgv 的签名验证；
+   下载 15 个 Packages 索引（含 universe 15.3MB）→ rc=0
+2. **apt install cowsay**：下载 deb、解析依赖、解压落盘；
+   `cowsay` 落到 `/usr/games/cowsay`（rc=100 仅因 libc-bin post-install 的
+   ldconfig 写 /etc/ld.so.cache~ 遇只读——收尾错误，包本体已装上）
+3. **执行装上的包**：cowsay 是 Perl 脚本，用 Ubuntu 的 `/usr/bin/perl`
+   经 fastroot 启动执行：
+```
+   _____________________________
+  < Hello from Ubuntu in LobOS! >
+   -----------------------------
+          \   ^__^
+           \  (oo)\_______
+              (__)\       )\/\
+                  ||----w |
+                  ||     ||
+```
+
+**这证明完整的 Linux 生态在 LobOS APK 里工作**：apt 包管理 + 依赖解析 +
+deb 解压 + 脚本解释器 + 程序执行。用户目标"Linux 能跑的我们都能跑"在
+Ubuntu rootfs 直接当系统盘 + fastroot 当执行引擎的路径上走通了。
+
+### 关键操作细节（可复现）
+- apt 进程用 run-as 启动后，中断命令不会杀掉设备侧进程——残留 apt 会持有
+  `/var/lib/apt/lists/lock`。必须用 `pkill -9 -f ld-linux` 清掉残留再重跑。
+- apt-get 是畸形路径下 ELF，launcher 用 mmap 加载；cowsay 是脚本，必须用
+  perl 解释器作为 ELF program 启动。
+- FR_BINDS=/proc=/proc:/dev=/dev:/sys=/sys 透传宿主伪文件系统。
+
+### 待完成
+- ldconfig 只读问题：让 fastroot 把 /etc/ld.so.cache 写重定向到 rootfs 可写区
+- gpgv：apt install gpgv 后启用正规签名验证
+- compat.sh 174 项完整测试
+- 与 LobOS 上层整合（服务/能力门面/包管理 UI）
+- APK 分发：373MB rootfs 按需下载机制
