@@ -5,25 +5,6 @@
   "ndkVersion": "30.0.16248370",
   "llvmVersion": "21.0.0",
   "sources": {
-    "claude-musl-binary": {
-      "version": "2.1.331",
-      "sha256": "6d887cba461c59097e62395562f303a0bd08e80795b827431ff556e67534a80f",
-      "urls": [
-        "https://registry.npmmirror.com/@anthropic-ai/claude-code-linux-arm64-musl/-/claude-code-linux-arm64-musl-2.1.331.tgz",
-        "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64-musl/-/claude-code-linux-arm64-musl-2.1.331.tgz"
-      ],
-      "$comment": "Claude Code 官方 linux-arm64-musl 原生二进制(tgz, 解出 package/claude 380MB)。glibc 版在 app 域有 SIGSYS 兼容问题; musl 版配 patched musl loader 实测完整启动并显示 TUI。sha 钉 tgz 字节。不入 git(超 100MB), recipe 下载后放 nativeLibraryDir/libclaude-musl.so。",
-      "entryName": "libclaude-musl.so"
-    },
-    "claude-musl-runtime": {
-      "version": "1.2.6-termux",
-      "sha256": "e4f456187a54f6fbbcda31026354728262b5acfce11642eaca2df88722c9870b",
-      "urls": [
-        "https://github.com/Ryovx/Musl-on-Termux/releases/download/v1.2.6-termux/musl-on-termux-aarch64.zip"
-      ],
-      "$comment": "patched musl loader (Ryovx/Musl-on-Termux): ld-musl-aarch64.so.1 + libc, 支持 MUSL_ON_TERMUX=1 读 resolv.conf。解出 ld-musl-aarch64.so.1 放 nativeLibraryDir/libmusl-ld.so。",
-      "entryName": "libmusl-ld.so"
-    },
     "glibc-runtime": {
       "version": "2.41.12",
       "sha256": "0966fc3da1a26cc57647c68b5736f791b6e7eb498173a7993f63b6c89b4ed4f5",

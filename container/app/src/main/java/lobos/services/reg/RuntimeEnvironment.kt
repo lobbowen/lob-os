@@ -120,17 +120,6 @@ object RuntimeEnvironment {
             }
         }
 
-        // musl guest 运行时（系统级，非产品清单）：任何 PT_INTERP 指向
-        // ld-musl-aarch64.so.1 的 ELF，都由 exec hook 自动用这个 loader 加载。
-        // 与 glibc 同理：loader 本身放 nativeLibraryDir 才能被 exec；目标 ELF
-        // 只需可读（走 loader 加载，不走内核 exec），可留在组件/PATH 里。
-        val nativeMuslLoader = java.io.File(ctx.applicationInfo.nativeLibraryDir, "libmusl-ld.so")
-        if (nativeMuslLoader.isFile) {
-            put("LOBOS_MUSL_LOADER", nativeMuslLoader.absolutePath)
-            put("LOBOS_MUSL_LIBDIR", ctx.applicationInfo.nativeLibraryDir)
-            put("MUSL_ON_TERMUX", "1")
-        }
-
         put(
             "PATH",
             joinPath(

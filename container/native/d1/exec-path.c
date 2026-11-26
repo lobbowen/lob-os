@@ -478,13 +478,11 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
   }
 
   /* 动态链接器本身（ET_DYN，无 PT_INTERP）：显式执行它时不能再被
-     ET_DYN->linker64 分支改写（那产生 "Could not find a PHDR"）。直接放行。
-     musl/ld-musl 是 Claude Code 官方 musl 版的解释器，必须一并豁免。 */
+     ET_DYN->linker64 分支改写（那产生 "Could not find a PHDR"）。直接放行。 */
   {
     const char *lb = base_name(path);
     if (lb && (strstr(lb, "ld-linux") != 0 || strstr(lb, "libglibc-loader") != 0 ||
-               strstr(lb, "ld-musl") != 0 || strstr(lb, "musl-ld") != 0 ||
-               strstr(lb, "libmusl") != 0))
+               0))
       return real_execve(path, argv, envp);
   }
 
@@ -531,43 +529,6 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
       char interp[256];
       int have_interp = read_interp(path, interp, sizeof interp);
 
-      /* musl guest（系统级通用语义，无产品登记表）：PT_INTERP 指向 ld-musl
-         的 ELF，由系统 musl loader 加载。目标 ELF 只需可读——这正是内核加载
-         ET_DYN 的语义，只是这个 Android 用户态没有 /lib/ld-musl，由我们补上。
-         loader 自身在豁免名单里（上面 libmusl/ld-musl），不会递归。 */
-      if (have_interp && strstr(interp, "ld-musl") != 0) {
-          const char *mloader = getenv("LOBOS_MUSL_LOADER");
-          const char *mlibdir = getenv("LOBOS_MUSL_LIBDIR");
-          if (mloader && mlibdir && mloader[0] == '/' && mlibdir[0] == '/') {
-              char **ma = (char **)malloc((size_t)(ac + 4) * sizeof(char *));
-              if (!ma) { errno = ENOMEM; return -1; }
-              int mi = 0;
-              ma[mi++] = (char *)mloader;
-              ma[mi++] = "--library-path";
-              ma[mi++] = (char *)mlibdir;
-              ma[mi++] = (char *)path;
-              for (int k = 1; k < ac; k++) ma[mi++] = argv[k];
-              ma[mi] = 0;
-              lobos_compat_report("d1.exec-path", "musl->loader", path);
-              /* 过滤 bionic 的 LD_PRELOAD hook（musl loader 加载不了 bionic so）。 */
-              int mec = 0; while (envp && envp[mec]) mec++;
-              char **me = (char **)malloc((size_t)(mec + 2) * sizeof(char *));
-              if (me) {
-                  int mj = 0;
-                  for (int ei = 0; ei < mec; ei++) {
-                      if (strncmp(envp[ei], "LD_PRELOAD=", 11) == 0) continue;
-                      me[mj++] = envp[ei];
-                  }
-                  me[mj] = 0;
-                  raw_execve(mloader, ma, me);
-                  free(me);
-              } else {
-                  raw_execve(mloader, ma, envp);
-              }
-              { int e = errno; free(ma); errno = e; }
-              return -1;
-          }
-      }
 
       if (have_interp && strstr(interp, "ld-linux") != 0) {
           int envc = 0;
