@@ -9,20 +9,20 @@
 
 ```
 /home/bowen/LOBOS/
-├── work/                        <- 主工作区
-│   ├── lob-os/                  <- 【真实工程】git 仓库，当前 HEAD
-│   ├── external-materials/      <- 外部素材库（1.6G，参考用）
-│   ├── assets/ docs/ scripts/   <- 旧工作副本（非工程，保留参考）
-│   └── dsh-diag-*.sh/py         <- 早期诊断脚本
-├── bin/                         <- dsh 工具脚本（4个，保留）
-├── dsh-home/                    <- 【当前会话活跃】DSH_HOME，含凭据，绝不动
-├── dsh-plugins/                 <- DSH 插件
-├── keys-offline-backup/         <- 密钥离线备份（敏感，保留）
-├── lob-os-team/                 <- 团队协作目录 + ARCHIVE-AREA（291M，保留）
-├── manifest/                    <- 含 keystore 备份（敏感，保留）
-├── *.md                         <- 交接/规范文档（HANDOVER/README 等）
-├── dsh-lan-gateway.mjs          <- DSH LAN 网关
-└── start-*.sh                   <- DSH 启动脚本
+  work/                        <- 主工作区
+    lob-os/                    <- 【真实工程】git 仓库，当前 HEAD
+    external-materials/        <- 外部素材库（1.6G，参考用）
+    assets/ docs/ scripts/     <- 旧工作副本（非工程，保留参考）
+    dsh-diag-*.sh/py           <- 早期诊断脚本
+  bin/                         <- dsh 工具脚本（4个，保留）
+  dsh-home/                    <- 【当前会话活跃】DSH_HOME，含凭据，绝不动
+  dsh-plugins/                 <- DSH 插件
+  keys-offline-backup/         <- 密钥离线备份（敏感，保留）
+  lob-os-team/                 <- 团队协作目录 + ARCHIVE-AREA（291M，保留）
+  manifest/                    <- 含 keystore 备份（敏感，保留）
+  *.md                         <- 交接/规范文档（HANDOVER/README 等）
+  dsh-lan-gateway.mjs          <- DSH LAN 网关
+  start-*.sh                   <- DSH 启动脚本
 ```
 
 ## 三、本次清理动作（已执行，用户授权）
