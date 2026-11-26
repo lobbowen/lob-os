@@ -1,13 +1,13 @@
 package lobos.services.app
 
 import android.content.Context
-import lobos.ui.terminal.TerminalBuffer
+
 
 object TerminalRuntime {
 
     const val SESSION_ID = "ui-terminal"
 
-    val buffer = TerminalBuffer()
+    val buffer = TerminalBufferV2()
     var connected: Boolean = false
         private set
 

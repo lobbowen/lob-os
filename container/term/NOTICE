@@ -1,0 +1,9 @@
+mtty-term
+Copyright (C) 2026 spizganed. https://github.com/spizganed
+
+This product is the terminal core of mtty. A copy or a changed version keeps this NOTICE file.
+A changed version that has a README or an About screen says that it is based on mtty-term by spizganed.
+The Apache License 2.0 gives no right to the names "mtty" and "mtty-term" (section 6): a fork has its own name.
+
+src/main/kotlin/com/spizganed/mtty/term/BoxTable.kt is made from the Unicode Character Database, under the
+Unicode License v3 (https://www.unicode.org/license.txt).

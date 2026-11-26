@@ -135,6 +135,7 @@ fun nativeAssetNames(): List<String> {
 
 dependencies {
     implementation(project(":ui"))
+    implementation(project(":term"))
     implementation("androidx.navigation3:navigation3-runtime:1.2.2")
     implementation("androidx.navigation3:navigation3-ui:1.2.2")
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
