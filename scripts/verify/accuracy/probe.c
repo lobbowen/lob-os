@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sched.h>
 #include <sys/auxv.h>
+#include <linux/stat.h>
 
 static void emit(const char *k, const char *v) {
     printf("%s=%s\n", k, v ? v : "(null)");
@@ -124,7 +125,7 @@ static void dim_signal(void) {
     struct sigaction verify; memset(&verify,0,sizeof verify);
     sigaction(SIGUSR1, NULL, &verify);
     emit_i("getpid_libc", (long)getpid());
-    emit_i("gettid_libc", (long)syscall(186)); /* SYS_gettid on aarch64 = 186 */
+    emit_i("gettid_libc", (long)gettid());
     emit("usr1_handler_installed", verify.sa_handler==on_usr1 ? "yes":"no");
     sigset_t mask, pmask; sigemptyset(&mask); sigaddset(&mask, SIGUSR1);
     int blocked = sigprocmask(SIG_BLOCK, NULL, &pmask);
@@ -174,6 +175,21 @@ int main(int argc, char **argv) {
     else if (!strcmp(d,"path")) dim_path();
     else if (!strcmp(d,"identity")) dim_identity();
     else if (!strcmp(d,"signal")) dim_signal();
+    else if (!strcmp(d,"statx")) {
+        /* statx() must go through the same vfs translation as stat(). Compare
+           statx("/tmp/...") vs stat("/tmp/...") results. */
+        struct statx sx; memset(&sx,0,sizeof sx);
+        int r = statx(AT_FDCWD, "/usr/bin/bash", 0,
+                      STATX_BASIC_STATS, &sx);
+        emit_i("statx_rc", r);
+        emit_i("statx_errno", r<0 ? errno : 0);
+        if (r==0) emit_i("statx_size", (long)sx.stx_size);
+        struct stat st;
+        int r2 = stat("/usr/bin/bash", &st);
+        emit_i("stat_rc", r2);
+        emit_i("stat_errno", r2<0 ? errno : 0);
+        emit("statx_vs_stat", (r==0)==(r2==0) ? "consistent" : "MISMATCH");
+    }
     else if (!strcmp(d,"jobctl")) {
         /* Probe whether process-group / terminal control syscalls work in this domain. */
         emit_i("getpgrp", (long)getpgrp());
