@@ -116,7 +116,7 @@ object LdConfig {
                 first.first + "；而「无害」不该靠「恰好扫到了哪一个」"
         }
 
-        val sysenv = SysEnv.write(ctx)
+        val sysenv = SysEnv.write()
 
         lobos.kernel.spi.KernelServices.logger().log("ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +

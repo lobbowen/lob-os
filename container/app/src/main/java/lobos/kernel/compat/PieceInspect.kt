@@ -1,6 +1,5 @@
 package lobos.kernel.compat
 
-import android.content.Context
 import java.io.File
 
 object PieceInspect {
@@ -18,7 +17,7 @@ object PieceInspect {
         return ok
     }
 
-    fun needed(ctx: Context, libName: String): String {
+    fun needed(libName: String): String {
         if (!bind()) return "垫片未装上"
         val f: File = Compat.lib(libName) ?: return "系统库里没有 $libName"
         if (!f.isFile) return "$libName 不是普通文件"

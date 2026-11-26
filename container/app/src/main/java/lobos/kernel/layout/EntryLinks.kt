@@ -1,12 +1,11 @@
 package lobos.kernel.layout
 
-import android.content.Context
 import java.io.File
 import java.nio.file.Files
 
 object EntryLinks {
 
-    fun purge(context: Context, dest: File): Int {
+    fun purge(dest: File): Int {
         val roots = listOf(
             SystemDirs.bin(),
             SystemDirs.lib(),

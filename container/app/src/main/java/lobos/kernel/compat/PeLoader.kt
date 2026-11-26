@@ -1,6 +1,5 @@
 package lobos.kernel.compat
 
-import android.content.Context
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -26,14 +25,6 @@ class PeLoader private constructor(
             val resolver = DependencyResolver(librarySearchPath)
             val dependencies = resolver.resolve(executableImage.imports)
             return PeLoader(executableImage, dependencies)
-        }
-
-        fun load(ctx: Context, executable: File): PeLoader {
-            val dirs = lobos.kernel.mm.LibPath.searchPath()
-                .split(File.pathSeparator)
-                .filter { it.isNotBlank() }
-                .map(::File)
-            return load(executable, dirs)
         }
 
         fun parse(bytes: ByteArray): PeProcessImage = parseImage(bytes)

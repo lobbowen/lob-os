@@ -1,6 +1,5 @@
 package lobos.kernel.layout
 
-import android.content.Context
 import java.io.File
 
 object SysEnv {
@@ -11,10 +10,10 @@ object SysEnv {
 
     fun keys(): List<String> = listOf(ENV_POINTER) + lobos.kernel.spi.KernelServices.env().reservedKeys.sorted()
 
-    fun file(ctx: Context): File = File(SystemDirs.etc(), FILE)
+    fun file(): File = File(SystemDirs.etc(), FILE)
 
-    fun write(ctx: Context): Int {
-        val f = file(ctx)
+    fun write(): Int {
+        val f = file()
         f.parentFile?.mkdirs()
         f.writeText(buildString {
             append("# 系统视图里要合并进子进程的键\n")

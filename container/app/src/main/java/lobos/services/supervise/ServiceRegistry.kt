@@ -60,7 +60,7 @@ object ServiceRegistry {
                         val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
                         val needs = listOf("libcurl.so", "libssl.so", "libcrypto.so", "libz.so.1")
                             .joinToString(" ") { it.substringBefore('.') + "=" +
-                                lobos.kernel.compat.PieceInspect.needed(ctx, it).replace(' ', '_').take(70) }
+                                lobos.kernel.compat.PieceInspect.needed(it).replace(' ', '_').take(70) }
                         RuntimeDiagnostics.append(
                             ctx, "sysview", view.isNotEmpty(),
                             "系统视图 " + view.size + " 项；垫片入库 " + linked + "；件内依赖 " + needs,
