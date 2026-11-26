@@ -240,14 +240,11 @@ class OsHostService : Service() {
     private fun publishResidency(gapMs: Long, a11y: ServiceState) {
         val a11yConnected = a11y == ServiceState.BOUND
 
-        val liveEntries = runCatching {
-            lobos.kernel.proc.ProcessLedger.liveOwned()
-        }.getOrDefault(emptyList())
-        val runningIds = liveEntries.map { it.programId }.distinct()
+          val runningIds = emptyList<String>()
         val ledgerAll = runCatching {
             lobos.kernel.proc.ProcessLedger.list()
         }.getOrDefault(emptyList())
-        val runningPids = liveEntries.map { it.pid }
+        val runningPids = emptyList<Int>()
         val installed = 0
         val installedIds = emptyList<String>()
         val reasons = ResidencyPolicy.degradedReasons(

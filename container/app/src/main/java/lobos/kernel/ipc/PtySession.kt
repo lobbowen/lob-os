@@ -625,31 +625,8 @@ object PtySession {
             val raw = listOf(checked.absolutePath)
             val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, raw) ?: raw
             val view0 = lobos.kernel.spi.KernelServices.env().childEnv()
-            val sh = lobos.kernel.spi.KernelServices.shell().resolve()
-            val pb0 = if (sh != null) {
-                val script = StringBuilder()
-                for ((k0, v0) in view0) {
-                    // extraEnv overrides (fastroot) must not be re-exported by
-                    // the script from the stale legacy view.
-                    if (extraEnv.containsKey(k0)) continue
-                    script.append("export ").append(k0).append("=")
-                        .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
-                }
-                script.append("exec ").append(hostArgv.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" })
-
-                val shArgv = lobos.kernel.proc.ExecEntry.argv(
-                    sh, listOf(sh.absolutePath, "-c", script.toString()),
-                )
-
-                shArgv ?: listOf(
-                    lobos.kernel.proc.ExecEntry.SYSTEM_LINKER,
-                    sh.absolutePath,
-                    "-c",
-                    script.toString(),
-                )
-            } else {
-                hostArgv
-            }
+              // V2: PTY host runs argv directly (fastroot launcher); no legacy shell wrapper.
+              val pb0 = hostArgv
             val pb1 = ProcessBuilder(pb0)
 
             for ((k0, v0) in view0) {
@@ -660,12 +637,11 @@ object PtySession {
             // hard prerequisite; fastroot carries its own env and needs no LD_PRELOAD.
             lobos.kernel.spi.KernelServices.logger().log("pty", true,
                 "宿主启动形态",
-                "shell=" + (sh?.absolutePath ?: "无") +
+                "host=" + checked.absolutePath +
                     "\nbin=" + checked.absolutePath +
                     "\nhostArgv=" + hostArgv.joinToString(" | ") +
                     "\nlaunch=" + pb1.command().joinToString(" | ") +
-                    "\nview=" + view0.keys.joinToString(",") +
-                    "\nscript=" + (if (sh != null) pb0[3] else "未走 shell")
+                    "\nview=" + view0.keys.joinToString(",")
             )
             val h = Host(pb1)
             host = h

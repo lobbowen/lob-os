@@ -9,17 +9,17 @@ import java.io.File
  * without depending on lobos.services.*. The host registers concrete adapters
  * at bootstrap; kernel code talks only to these interfaces.
  *
- * This is the single seam that breaks the kernel -> services reverse dependency.
+ * V1 ProgramQuery / ShellLookup were removed: programs come from the Ubuntu
+ * rootfs via apt/npm and the terminal uses UbuntuSystem directly.
  */
 
-/** Build the environment view for a child process (replaces RuntimeEnvironment). */
+/** Build the environment view for a child process. */
 interface EnvProvider {
     val reservedKeys: List<String>
-    /** Full child-process environment map; caller ctx is opaque to the kernel. */
     fun childEnv(inheritedPath: String? = null, inheritedLd: String? = null): Map<String, String>
 }
 
-/** System paths provided by the host (replaces Context.filesDir everywhere). */
+/** System paths provided by the host. */
 interface PathProvider {
     val rootDir: File
     val cacheDir: File
@@ -27,33 +27,12 @@ interface PathProvider {
     fun assetText(path: String): String?
 }
 
-/** Structured logging sink (replaces kernel -> services.log.RuntimeDiagnostics). */
+/** Structured logging sink. */
 fun interface KernelLogger {
     fun log(stage: String, ok: Boolean?, message: String, detail: String?)
 }
 
-/** Read-only view of installed programs (replaces ProgramIndex / ProgramRegistry queries). */
-interface ProgramQuery {
-    data class Unit(
-        val programId: String,
-        val role: String,
-        val version: String,
-        val stateDir: String,
-        val assetEntry: String,
-    )
-    fun all(): List<Unit>
-    fun spec(programId: String): ProgramSpec?
-    data class ProgramSpec(val entry: String, val version: String, val entryFile: java.io.File)
-    /** Declared bin paths for a program derived from its installed shape. */
-    fun declaredBins(programId: String): List<String>
-}
-
-/** Locate the active shell binary (replaces services.supply.ShellEntry). */
-fun interface ShellLookup {
-    fun resolve(): File?
-}
-
-/** Diagnostics helpers used by layout/elf checks (replaces SelfCheckReport / SupplySha). */
+/** Diagnostics helpers used by layout/elf checks. */
 interface SystemDiagnostics {
     data class Item(val name: String, val ok: Boolean?, val title: String, val detail: String = "")
     fun selfCheck(items: List<Item>): String
@@ -61,54 +40,34 @@ interface SystemDiagnostics {
     fun sha256(file: File): String
 }
 
-/**
- * Aggregate service locator. Registered once by the host via KernelHooks.
- * Each field has a safe no-op default so kernel code never NPEs if a host
- * has not registered a provider yet.
- */
 object KernelServices {
     @Volatile private var logger: KernelLogger? = null
-    @Volatile private var programs: ProgramQuery? = null
-    @Volatile private var shell: ShellLookup? = null
     @Volatile private var diagnostics: SystemDiagnostics? = null
     @Volatile private var env: EnvProvider? = null
     @Volatile private var paths: PathProvider? = null
 
     fun register(
         logger: KernelLogger? = null,
-        programs: ProgramQuery? = null,
-        shell: ShellLookup? = null,
         diagnostics: SystemDiagnostics? = null,
         env: EnvProvider? = null,
         paths: PathProvider? = null,
     ) {
         if (logger != null) this.logger = logger
-        if (programs != null) this.programs = programs
-        if (shell != null) this.shell = shell
         if (diagnostics != null) this.diagnostics = diagnostics
         if (env != null) this.env = env
         if (paths != null) this.paths = paths
     }
 
     fun clear() {
-        logger = null; programs = null; shell = null; diagnostics = null; env = null; paths = null
+        logger = null; diagnostics = null; env = null; paths = null
     }
 
     fun env(): EnvProvider = env ?: EMPTY_ENV
     fun paths(): PathProvider = paths ?: throw IllegalStateException("PathProvider not registered")
-
     fun logger(): KernelLogger = logger ?: NOOP_LOGGER
-    fun programs(): ProgramQuery = programs ?: EMPTY_PROGRAMS
-    fun shell(): ShellLookup = shell ?: EMPTY_SHELL
     fun diagnostics(): SystemDiagnostics = diagnostics ?: NOOP_DIAGNOSTICS
 
     private val NOOP_LOGGER = KernelLogger { _, _, _, _ -> }
-    private val EMPTY_PROGRAMS = object : ProgramQuery {
-        override fun all() = emptyList<ProgramQuery.Unit>()
-        override fun spec(programId: String) = null
-        override fun declaredBins(programId: String) = emptyList<String>()
-    }
-    private val EMPTY_SHELL = ShellLookup { null }
     private val EMPTY_ENV = object : EnvProvider {
         override val reservedKeys = emptyList<String>()
         override fun childEnv(inheritedPath: String?, inheritedLd: String?) = emptyMap<String, String>()

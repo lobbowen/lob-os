@@ -216,21 +216,5 @@ object ProcessLedger {
         if (kept.size != cur.size) persist(kept)
     }
 
-    fun entryPathOf(programId: String): String? = runCatching {
-        val spec = lobos.kernel.spi.KernelServices.programs().spec(programId) ?: return@runCatching null
-        spec.entryFile.takeIf { it.isFile }?.absolutePath
-    }.getOrNull()
-
-    @Synchronized
-    fun liveOwned(): List<Entry> =
-        list().filter { isLive(e = it, entryPath = entryPathOf(it.programId)) }
-
-    fun isLive(e: Entry, entryPath: String?): Boolean =
-        if (e.starttime > 0) isOwnedAlive(e.pid, e.starttime)
-        else entryPath != null && isOwnedAliveByCmdline(e.pid, entryPath)
-
-    fun pidReused(): List<Entry> =
-        list().filter { it.pid > 0 && starttimeOf(it.pid) > 0 && !isOwnedAlive(it.pid, it.starttime) }
-
-    fun gone(): List<Entry> = list().filter { starttimeOf(it.pid) <= 0 }
+    fun entryPathOf(programId: String): String? = null // V1 program registry removed
 }
