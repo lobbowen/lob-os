@@ -110,6 +110,10 @@ object RuntimeEnvironment {
                     .takeIf { it.isFile }
                     ?: java.io.File(ctx.applicationInfo.nativeLibraryDir, "libguest-sigsys.so")
                 if (sigsysSo.isFile) put("LOBOS_GUEST_SIGSYS", sigsysSo.absolutePath)
+                /* glibc-flavoured VFS hook: bionic liblobosposix.so cannot be
+                   loaded by glibc guests, so guest path syscalls need their own. */
+                val vfsSo = java.io.File(ctx.applicationInfo.nativeLibraryDir, "liblobos-vfs-glibc.so")
+                if (vfsSo.isFile) put("LOBOS_VFS_SO", vfsSo.absolutePath)
                 lobos.kernel.proc.ExecEntry.configureGlibcGuest(
                     loader.absolutePath, java.io.File(gr, "lib").absolutePath
                 )

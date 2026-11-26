@@ -581,6 +581,8 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                  --preload 注入；Android seccomp 拦 rseq 等 syscall 时靠它兜住。 */
               const char *sigsys = getenv("LOBOS_GUEST_SIGSYS");
               int has_sigsys = (sigsys && sigsys[0] == '/') ? 1 : 0;
+              const char *vfsso = getenv("LOBOS_VFS_SO");
+              int has_vfs = (vfsso && vfsso[0] == '/') ? 1 : 0;
               char **ga = (char **)malloc((ac + 4) * sizeof(char *));
               if (!ga) { errno = ENOMEM; return -1; }
               int gi = 0;
@@ -605,10 +607,14 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
                           if (strncmp(envp[ei], "GLIBC_TUNABLES=", 15) == 0) continue;
                           ge[gj++] = envp[ei];
                       }
-                        if (has_sigsys) {
-                            static char sigpre[1024];
-                            snprintf(sigpre, sizeof sigpre, "LD_PRELOAD=%s", sigsys);
-                            ge[gj++] = sigpre;
+                        if (has_sigsys || has_vfs) {
+                            /* glibc LD_PRELOAD accepts a space-separated list.
+                               VFS hook first so path translation applies broadly. */
+                            static char sigpre[2048];
+                            int pn = snprintf(sigpre, sizeof sigpre, "LD_PRELOAD=");
+                            if (has_vfs) pn += snprintf(sigpre+pn, sizeof sigpre-pn, "%s ", vfsso);
+                            if (has_sigsys) pn += snprintf(sigpre+pn, sizeof sigpre-pn, "%s", sigsys);
+                            if (pn > 10 && pn < (int)sizeof sigpre) ge[gj++] = sigpre;
                         }
                       ge[gj++] = "GLIBC_TUNABLES=glibc.pthread.rseq=0"; /* seccomp: skip rseq */
                       ge[gj] = 0;
