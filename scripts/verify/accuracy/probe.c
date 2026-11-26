@@ -163,6 +163,16 @@ int main(int argc, char **argv) {
     else if (!strcmp(d,"path")) dim_path();
     else if (!strcmp(d,"identity")) dim_identity();
     else if (!strcmp(d,"signal")) dim_signal();
+    else if (!strcmp(d,"jobctl")) {
+        /* Probe whether process-group / terminal control syscalls work in this domain. */
+        emit_i("getpgrp", (long)getpgrp());
+        emit_i("getpid", (long)getpid());
+        int r1 = setpgid(0, 0);
+        emit_i("setpgid_self", r1);
+        if (r1==0) emit_i("getpgrp_after", (long)getpgrp());
+        emit_i("tcgetpgrp_0", (long)tcgetpgrp(0));
+        emit_i("isatty_0", isatty(0));
+    }
     else if (!strcmp(d,"exit")) dim_exit(argc>2?argv[2]:"ok");
     else { fprintf(stderr,"unknown dim %s\n", d); return 2; }
     return 0;

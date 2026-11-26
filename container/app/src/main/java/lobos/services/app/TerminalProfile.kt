@@ -150,7 +150,7 @@ object TerminalProfile {
 
     private fun build(ctx: Context): String {
         val sb = StringBuilder()
-        sb.appendLine("set +m")
+        // job control enabled: blocking signals here would leak a bad mask to every child
         sb.appendLine("export TERM=xterm")
         sb.appendLine("export LANG=C.UTF-8")
         // node-gyp 用 which 找 make/python3 的可执行文件，需 usr/bin（wrapper 之外还要真实路径）。

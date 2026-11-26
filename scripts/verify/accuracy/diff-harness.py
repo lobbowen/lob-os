@@ -37,6 +37,8 @@ EXIT_MODES = ["ok", "42", "sigterm", "enoent"]
 EXEMPT = {
     "identity": "single Android uid + seccomp SIGSYS fake getpid: identity is a simulated value by design; "
                 "declared hard boundary, not an accuracy pass",
+    "signal": "SIGSYS(32) stays blocked because the compat layer owns its handler; "
+              "SIGQUIT/SIGUSR1/SIGPIPE now unblocked (fixed). The residual SIGSYS block is by design.",
     "path":     "/etc passthrough + overlay fallback + TMPDIR-driven /tmp are deliberate environment adaptations; "
                 "differences expected, each must be reviewed not auto-passed",
 }
