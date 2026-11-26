@@ -110,9 +110,33 @@ static void dim_signal(void) {
     struct sigaction sa, old;
     memset(&sa,0,sizeof sa); sa.sa_handler=on_usr1; sigemptyset(&sa.sa_mask);
     int r1 = sigaction(SIGUSR1, &sa, &old);
+    struct sigaction verify; memset(&verify,0,sizeof verify);
+    sigaction(SIGUSR1, NULL, &verify);
+    emit_i("getpid_libc", (long)getpid());
+    emit_i("gettid_libc", (long)syscall(186)); /* SYS_gettid on aarch64 = 186 */
+    emit("usr1_handler_installed", verify.sa_handler==on_usr1 ? "yes":"no");
+    sigset_t mask, pmask; sigemptyset(&mask); sigaddset(&mask, SIGUSR1);
+    int blocked = sigprocmask(SIG_BLOCK, NULL, &pmask);
+    emit_i("sigprocmask_rc", blocked);
+    emit("usr1_blocked", sigismember(&pmask, SIGUSR1)?"yes":"no");
+    int nb=0; for(int sg=1; sg<64; sg++) if(sigismember(&pmask,sg)==1) nb++;
+    emit_i("blocked_signal_count", nb);
+    { char bl[128]={0}; int k=0; for(int sg=1; sg<64; sg++) if(sigismember(&pmask,sg)==1) k+=snprintf(bl+k,sizeof(bl)-k,"%s%d",k?",":"",sg); emit("blocked_signals",bl); }
+    /* Primary observation: does raise work with the inherited mask? */
+    got_usr1 = 0;
     raise(SIGUSR1);
     emit_i("sigaction_usr1", r1);
     emit_i("usr1_handler_ran", got_usr1);
+    /* Diagnostic only: unblock then retry, to prove the mask is the cause. */
+    sigset_t ub; sigemptyset(&ub); sigaddset(&ub, SIGUSR1);
+    sigprocmask(SIG_UNBLOCK, &ub, NULL);
+    got_usr1 = 0;
+    raise(SIGUSR1);
+    emit_i("usr1_after_unblock", got_usr1);
+    /* Control: send via kill(getpid()) directly; resets flag first. */
+    got_usr1 = 0;
+    kill(getpid(), SIGUSR1);
+    emit_i("usr1_via_kill", got_usr1);
     memset(&sa,0,sizeof sa); sa.sa_handler=on_sys; sigemptyset(&sa.sa_mask);
     int r2 = sigaction(SIGSYS, &sa, NULL);
     struct sigaction now; memset(&now,0,sizeof now);
