@@ -16,12 +16,8 @@
 | `LOBOS_GLIBC_LIBDIR` | RuntimeEnvironment | exec-path.c | glibc 库目录 | 走默认 |
 | `LOBOS_GUEST_SIGSYS` | RuntimeEnvironment | exec-path.c | SIGSYS handler so | 不注入 |
 | `LOBOS_VFS_SO` | RuntimeEnvironment | exec-path.c | glibc VFS hook so | 路径翻译失效 |
-| `LOBOS_MUSL_LOADER` | RuntimeEnvironment | exec-path.c | musl loader | 走默认 |
-| `LOBOS_MUSL_LIBDIR` | RuntimeEnvironment | exec-path.c | musl 库目录 | 走默认 |
 | `LOBOS_COMPAT_LOG` | RuntimeEnvironment | compat-report.h | 降级日志路径 | 不记日志 |
 | `LOBOS_OWN_SESSION` | Kotlin 会话层 | link-interpose.c | 本会话标识 | link 降级为 copy |
-
-另：`MUSL_ON_TERMUX=1`（patched musl loader 的 DNS 行为开关），由 Kotlin 写、musl loader 读。
 
 ## 规则
 
