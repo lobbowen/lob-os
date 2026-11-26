@@ -103,3 +103,41 @@ npm CLI 在 install 时选官方 `*-musl` 平台包（glibc 包在 app 域跑不
 - `cat /etc/passwd` -> 读到真实系统（/etc 不映射，无回归）
 - musl 二进制经 exec hook 按 PT_INTERP 自动路由 -> 正常运行
 - node 下 `glibcVersionRuntime=undefined`（detectMusl 判定 musl）
+
+## 12. 决定性边界：虚拟磁盘的加载语义（2026-11-26 实测）
+
+用户指出"静态 ELF 的 noexec 是最大问题，根因是没有完整磁盘空间概念"。
+系统排查确认这是对的，并定位到精确的加载语义边界：
+
+### 事实链
+1. app 进程 context=untrusted_app，files/ 标签=app_data_file，被 SELinux noexec；
+   nativeLibraryDir 标签=apk_data_file，可 exec。app 无 CAP_MAC_ADMIN，无法
+   改自己文件的标签。所有可写位置（files/、/data/local/tmp、/sdcard）在 app 域
+   exec 静态 ELF 全部 Permission denied（实测）。
+2. 唯一出路 = 不靠内核 exec，由 loader 加载 ELF（目标只需可读）。Termux
+   termux-exec 就是这么做的：LD_PRELOAD 把 execve 改写成
+   `/system/bin/linker64 <program>`（见 GoT linkerexec 文档与 termux-exec 源码）。
+3. **但 linker64 只接受 ET_DYN/PIE**：实测 linker64 加载 ET_EXEC 报
+   "unexpected e_type: 2"；把 e_type 强行改成 3 后报 ".dynamic section not found"。
+   即：能被 loader 加载的充要条件是 ELF 有 PT_DYNAMIC（动态链接），与 e_type 无关。
+4. 真实二进制分两类：
+   - Claude musl 版：INTERP=ld-musl + 有 PT_DYNAMIC -> musl loader 加载成功（已验证）
+   - Codex：纯静态，只有 LOAD 段，无 INTERP 无 PT_DYNAMIC -> 无法被任何 loader 加载
+
+### 结论
+"虚拟磁盘 + 我们的 loader 加载一切 ELF"对**动态链接 ELF**完全成立（这就是
+Linux 加载语义，目标只需可读，noexec 无关）；对**纯静态 ELF**在 non-root
+Android 上不成立——它没有动态段，必须由内核 exec，而内核拒绝 app 磁盘上的
+文件。这是 Android W^X/SELinux 的硬约束（Termux 在 API 29+ 同样受限，见
+termux-app issue #5185），不是虚拟根或任何用户态 hook 能消除的。
+
+### 自研 ELF 加载器实测（下一步方向，未闭环）
+写了一个最小 ELF64 加载器（读程序头 -> mmap PT_LOAD -> 跳入口），验证
+"自己的加载器加载纯静态 ELF、目标只需可读"这条路的机制：
+- 能正确读出 entry/phnum、mmap LOAD 段（机制本身成立）
+- 但直接跳入口时，glibc 静态启动代码需要完整 auxv/栈布局，裸入口 _start
+  也 segfault（mmap 地址/权限或入口约定未对齐）——加载器实现未闭环。
+这是"虚拟磁盘"最能走向通用的方向：一个我们自己的加载器，按 ELF 程序头
+加载一切二进制（动态靠 PT_DYNAMIC、静态靠 mmap LOAD + 正确入口约定），
+目标文件只需可读，彻底绕开 noexec。需要继续攻的是静态 ELF 的入口/auxv
+约定（等价于实现一个小型 userland exec）。
