@@ -75,17 +75,11 @@ object ServiceRegistry {
                     }
             }
         )
-        out.add(
-            decl("pty", listOf("view")) { ctx ->
-                runCatching { lobos.kernel.ipc.PtySession.ensureHost() }
-                    .onFailure { e ->
-                        RuntimeDiagnostics.append(
-                            ctx, "service", false, "PTY 宿主就位失败",
-                            e.javaClass.name + ": " + (e.message ?: ""),
-                        )
-                    }
-            }
-        )
+        // V2: no eager PTY host here. The host process carries fastroot env
+        // (FR_ROOT/FR_SHIM/...) and is a singleton in PtySession; pre-starting
+        // it without that env would freeze a V1 host that the terminal's
+        // fastroot session then cannot join. TerminalSession creates it on
+        // demand with the right environment.
         out.add(
             decl("sysdev", listOf("view")) { ctx ->
 

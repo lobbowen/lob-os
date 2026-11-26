@@ -63,8 +63,9 @@ object UbuntuSystem {
             "FR_SHIM" to shim(ctx).absolutePath,
             "FR_LIBPATH" to libraryPath(r),
             // Pass through the phone's pseudo filesystems; fastroot maps the
-            // rest of / from the rootfs.
-            "FR_BINDS" to "/proc=/proc:/dev=/dev:/sys=/sys",
+            // rest of / from the rootfs. fastroot parses FR_BINDS with ';'
+            // (patch.c: strchr(bi, ';')), NOT ':'.
+            "FR_BINDS" to "/proc=/proc;/dev=/dev;/sys=/sys",
             // Standard Linux PATH so installed tools (claude/codex/node) are
             // directly runnable from the Ubuntu shell by name.
             "PATH" to "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",

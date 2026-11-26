@@ -6,9 +6,10 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 
 /**
- * Installs the baked-in Ubuntu rootfs (assets/system/ubuntu-rootfs.tar) into
+ * Installs the baked-in Ubuntu rootfs (assets/system/systemdisk.bin) into
  * app_data on first boot. The rootfs IS the system disk — not an optional
- * download — so this runs synchronously at startup and is a hard requirement.
+ * download — so this runs on a background thread at startup and is a hard
+ * requirement (see OsApplication.onCreate).
  *
  * Source rootfs: Ubuntu 24.04 minimal cloudimg, release-20261124,
  * SHA256 e1d9307663b7f4409f71574450a5694178694e51971413e7bab52b45e1173a7c.

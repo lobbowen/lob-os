@@ -35,11 +35,14 @@ object SystemExec {
     ): Outcome {
         if (!UbuntuSystem.isReady(ctx)) {
             return Outcome(false, -1, "", "",
-                "Ubuntu 系统未就绪：rootfs 或 fastroot 引擎缺失（需先下载系统盘）")
+                "系统盘未就绪：检查内置 asset 解压与 fastroot native 库")
         }
         return try {
             val argv = UbuntuSystem.launchArgv(ctx, program, args)
             val pb = ProcessBuilder(argv)
+            // Merge stderr into stdout before reading: reading two pipes
+            // sequentially can deadlock when the child fills the second pipe.
+            pb.redirectErrorStream(true)
             // Fastroot needs a clean environment; only FR_* vars plus caller extras.
             pb.environment().clear()
             pb.environment().putAll(UbuntuSystem.environment(ctx))
@@ -47,13 +50,12 @@ object SystemExec {
             pb.environment().putAll(env)
             val p = pb.start()
             val out = p.inputStream.bufferedReader().use { it.readText() }
-            val err = p.errorStream.bufferedReader().use { it.readText() }
             val done = p.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
             if (!done) {
                 p.destroyForcibly()
-                Outcome(false, -1, out, err, "命令超时 ${timeoutMs}ms")
+                Outcome(false, -1, out, "", "命令超时 ${timeoutMs}ms")
             } else {
-                Outcome(p.exitValue() == 0, p.exitValue(), out, err)
+                Outcome(p.exitValue() == 0, p.exitValue(), out, "")
             }
         } catch (t: Throwable) {
             Outcome(false, -1, "", "", t.javaClass.simpleName + ": " + (t.message ?: ""))
