@@ -121,3 +121,47 @@ FR_TRACE 确认程序发出的系统调用：`openat(/etc/os-release)`、`newfst
 1. 用真正的 Debian/Ubuntu rootfs 跑 fastroot 的 compat.sh（174 项）
 2. 测 fake root / uid / chroot / 硬链接 / /proc 这些我们缺的能力
 3. 评估迁移方案：fastroot 替换 exec/VFS/chroot/uid，保留我们的上层能力
+
+
+## 第三轮验证：多个 glibc probe 全部跑通（2026-11-26 21:40）
+
+用最小 rootfs（glibc runtime 复制成 FHS 布局）+ 统一 runner
+（`FR_KEXEC=0`，stdout 重定向到文件，不读 UI dump），连续跑通三个 glibc probe：
+
+### paths probe
+```
+open+read 18     <- 读到 rootfs 的 /etc/os-release (ID=test, 18 字节)
+stat 0 / access 0 / cwd ok / readlink 14 / fopen(nil) / exit 0
+```
+证明路径翻译到 rootfs（不是 Android 真实 /etc）。
+
+### exe probe
+```
+argc=1 [.../fr-root/usr/bin/exe]
+exe=/usr/bin/exe          <- /proc/self/exe 被翻译成虚拟路径
+execfn=/usr/bin/exe       <- AT_EXECFN 也是虚拟路径
+readlink /usr/bin/ls=-1   <- 不存在文件正确返回
+rc=0
+```
+关键：之前我们做不到的 `/proc/self/exe` 指向 loader 问题，fastroot 原生解决——
+程序看到的是自己的虚拟路径而非 launcher/loader。
+
+### links probe
+```
+open /data/../etc/hello -> -1   <- .. 没逃逸到真实 /data
+exe /usr/bin/links              <- 虚拟路径
+rc=0
+```
+
+### 结论
+fastroot 在 LobOS APK 进程里连续跑通 3 个 glibc probe，验证了：
+- 虚拟根路径翻译（读到 rootfs 内容）
+- /proc/self/exe + AT_EXECFN 虚拟路径（我们旧路径的痛点）
+- `..` 逃逸钳制
+- 程序正常执行退出
+
+这些是 LD_PRELOAD 路线做不到的准确性。fastroot 作为 Linux 语义引擎的方向
+得到进一步确认。fake root uid/chroot/硬链接的专项 probe 待完整 rootfs 后测
+（现有 probe 需要预置测试文件）。
+
+所有验证临时文件已清理。
