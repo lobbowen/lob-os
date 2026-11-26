@@ -8,7 +8,7 @@ import lobos.kernel.layout.SystemDirs
 
 object ProgramSettings {
 
-    private fun file(ctx: Context) = File(SystemDirs.libvar(ctx), "program-settings.json")
+    private fun file(ctx: Context) = File(SystemDirs.libvar(), "program-settings.json")
 
     @Synchronized
     fun read(ctx: Context): JSONObject = runCatching {

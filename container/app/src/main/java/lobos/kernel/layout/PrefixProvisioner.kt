@@ -14,11 +14,11 @@ object PrefixProvisioner {
 const val CA_BUNDLE_NAME = "ca-bundle.pem"
 private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
 
-    fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr(ctx)
-    fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin(ctx)
-    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
+    fun root(ctx: Context): File = lobos.kernel.layout.SystemDirs.usr()
+    fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin()
+    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib()
 
-    fun includeDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.include(ctx)
+    fun includeDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.include()
 
     fun caBundleAt(root: File): File = File(root, CA_BUNDLE_NAME)
 

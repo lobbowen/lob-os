@@ -32,10 +32,10 @@ object LdConfig {
     }
 
     fun run(ctx: Context): Int {
-        val opt = SystemDirs.opt(ctx)
-        val usrBin = SystemDirs.bin(ctx)
-        val usrLib = SystemDirs.lib(ctx)
-        val etc = SystemDirs.etc(ctx)
+        val opt = SystemDirs.opt()
+        val usrBin = SystemDirs.bin()
+        val usrLib = SystemDirs.lib()
+        val etc = SystemDirs.etc()
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
         val idx = lobos.kernel.spi.KernelServices.programs().all()
@@ -160,14 +160,14 @@ object LdConfig {
         SonameChain.put(link, target) >= 0
     fun landedIds(ctx: Context): List<String> {
         val out = sortedSetOf<String>()
-        SystemDirs.lib(ctx).listFiles()?.forEach { out += it.name }
-        SystemDirs.bin(ctx).listFiles()?.forEach { out += it.name }
+        SystemDirs.lib().listFiles()?.forEach { out += it.name }
+        SystemDirs.bin().listFiles()?.forEach { out += it.name }
         return out.toList()
     }
 
     fun entryLinkOwners(ctx: Context): Map<String, List<String>> {
         val out = mutableMapOf<String, MutableList<String>>()
-        val roots = listOf(SystemDirs.lib(ctx), SystemDirs.bin(ctx))
+        val roots = listOf(SystemDirs.lib(), SystemDirs.bin())
         for (r in roots) {
             r.listFiles()?.forEach { l ->
                 val t = runCatching { l.canonicalPath }.getOrNull() ?: return@forEach
@@ -191,7 +191,7 @@ object LdConfig {
             }
             return out.distinct()
         }
-        val opt = lobos.kernel.layout.SystemDirs.opt(ctx)
+        val opt = lobos.kernel.layout.SystemDirs.opt()
         val base = File(opt, pieceId)
         val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
 

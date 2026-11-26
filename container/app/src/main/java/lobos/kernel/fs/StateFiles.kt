@@ -96,7 +96,7 @@ object StateFiles {
 
     fun writeFailures(ctx: android.content.Context): List<String> =
         runCatching {
-            val f = File(SystemDirs.log(ctx), FAILED_FILE)
+            val f = File(SystemDirs.log(), FAILED_FILE)
             if (!f.isFile) emptyList() else f.readText().split("\n").filter { it.isNotBlank() }
         }.getOrDefault(emptyList())
 
@@ -224,11 +224,11 @@ object StateFiles {
                 if (f.delete()) out.add(f.absolutePath)
             }
         }
-        sweep(SystemDirs.libvar(ctx))
-        sweep(SystemDirs.log(ctx))
-        sweep(SystemDirs.run(ctx))
-        sweep(SystemDirs.etc(ctx))
-        sweep(SystemDirs.opt(ctx))
+        sweep(SystemDirs.libvar())
+        sweep(SystemDirs.log())
+        sweep(SystemDirs.run())
+        sweep(SystemDirs.etc())
+        sweep(SystemDirs.opt())
         sweep(ctx.filesDir)
 
         for (sub in arrayOf("usr/lib", "usr/bin")) {

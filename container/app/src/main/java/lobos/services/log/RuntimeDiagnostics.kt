@@ -38,10 +38,10 @@ object RuntimeDiagnostics {
 
     private val tsFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
-    fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), FILE)
-    fun stderrFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), STDERR_FILE)
+    fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(), FILE)
+    fun stderrFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(), STDERR_FILE)
     private fun structFile(ctx: Context): File {
-        val d = lobos.kernel.layout.SystemDirs.log(ctx)
+        val d = lobos.kernel.layout.SystemDirs.log()
         d.mkdirs()
         return File(d, STRUCT_FILE)
     }

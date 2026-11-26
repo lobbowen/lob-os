@@ -42,7 +42,7 @@ object PieceOriginStore {
         val otaTargetPath: String get() = otaSlots.firstOrNull { it.complete }?.targetPath.orEmpty()
     }
 
-    private fun file(ctx: Context): File = File(SystemDirs.etc(ctx), FILE)
+    private fun file(ctx: Context): File = File(SystemDirs.etc(), FILE)
 
     private fun read(ctx: Context): JSONObject =
         runCatching { JSONObject(file(ctx).readText()) }.getOrDefault(JSONObject())

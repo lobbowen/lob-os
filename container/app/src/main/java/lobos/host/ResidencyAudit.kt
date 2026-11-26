@@ -25,7 +25,7 @@ object ResidencyAudit {
 
     private val timeFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
 
-    private fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), FILE)
+    private fun file(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(), FILE)
 
     private fun bootBasisMs(): Long = System.currentTimeMillis() - SystemClock.elapsedRealtime()
 

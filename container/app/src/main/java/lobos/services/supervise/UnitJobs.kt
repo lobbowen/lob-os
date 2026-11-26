@@ -24,7 +24,7 @@ object UnitJobs {
     }
 
     private fun file(ctx: Context): File =
-        SystemDirs.run(ctx).let { File(it, "unit-jobs.json") }
+        SystemDirs.run().let { File(it, "unit-jobs.json") }
 
     fun enqueue(ctx: Context, job: Job): Verdict {
         val pending = read(ctx)

@@ -68,12 +68,12 @@ object DriverRegistry {
     )
 
     private fun ledgerFile(ctx: Context): File {
-        val d = SystemDirs.libvar(ctx)
+        val d = SystemDirs.libvar()
         d.mkdirs()
         return File(d, "compat-degradations.json")
     }
 
-    fun degradeLog(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(ctx), "compat-degrade.log")
+    fun degradeLog(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.log(), "compat-degrade.log")
 
     fun degradations(ctx: Context): List<Entry> {
         val root = StateFiles.readJson(ledgerFile(ctx)) ?: return emptyList()

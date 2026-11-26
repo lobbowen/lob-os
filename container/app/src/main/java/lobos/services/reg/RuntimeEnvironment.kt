@@ -63,7 +63,7 @@ object RuntimeEnvironment {
             lobos.services.supply.ProgramDir(ctx, "python").currentVersion()
         }.getOrNull()
         if (!pythonVer.isNullOrBlank()) {
-            val home = java.io.File(java.io.File(SystemDirs.opt(ctx), "python"), pythonVer)
+            val home = java.io.File(java.io.File(SystemDirs.opt(), "python"), pythonVer)
             if (home.isDirectory) put("PYTHONHOME", home.absolutePath)
         }
 
@@ -89,7 +89,7 @@ object RuntimeEnvironment {
             lobos.services.supply.ProgramDir(ctx, "glibc-runtime").currentVersion()
         }.getOrNull()
         if (!grVer.isNullOrBlank()) {
-            val gr = java.io.File(java.io.File(SystemDirs.opt(ctx), "glibc-runtime"), grVer)
+            val gr = java.io.File(java.io.File(SystemDirs.opt(), "glibc-runtime"), grVer)
             // loader 必须在 app 域可 exec 的位置：app_data_file 上的 ELF 被 SELinux
             // 拒 exec（EACCES），APK 的 nativeLibraryDir 可 exec。loader 作为
             // prebuilt native lib（libglibc-loader.so）随 APK 分发。
@@ -234,7 +234,7 @@ object RuntimeEnvironment {
             if (absent.isEmpty() && missing.isEmpty())
                 "\$PREFIX 件全部就位（" + packagedIds.size + " 件）"
             else "\$PREFIX 缺件：" + (absent + missing).joinToString(","),
-            "落位根=" + lobos.kernel.layout.SystemDirs.opt(ctx).absolutePath +
+            "落位根=" + lobos.kernel.layout.SystemDirs.opt().absolutePath +
                 "  已落位=" + landedIds.size + "（" + landedIds.joinToString(",") + "）" +
                 "  包里有=" + packagedIds.size + "（" + packagedIds.joinToString(",") + "）" +
                 "  provision=" + provisioned.joinToString(",")

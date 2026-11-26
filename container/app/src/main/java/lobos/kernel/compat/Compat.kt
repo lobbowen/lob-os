@@ -10,7 +10,7 @@ object Compat {
     const val LIB_FLOCK = "liblobosflock.so"
     const val LIB_GUEST_SIGSYS = "libguest-sigsys.so"
 
-    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib(ctx)
+    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib()
 
     private fun apkLibDir(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
 

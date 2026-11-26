@@ -40,7 +40,7 @@ object PieceScan {
         withContentFingerprint: Boolean = true,
         traverseFiles: Boolean = true,
     ): List<Found> {
-        val lib = SystemDirs.opt(ctx)
+        val lib = SystemDirs.opt()
         val kids = lib.listFiles() ?: return emptyList()
         val out = mutableListOf<Found>()
         for (pieceDir in kids) {
@@ -123,7 +123,7 @@ object PieceScan {
     private fun relativeStateDir(ctx: Context, dir: File): String {
 
         val filesRoot = ctx.filesDir.canonicalFile.path
-        val optRoot = SystemDirs.opt(ctx).canonicalFile.path
+        val optRoot = SystemDirs.opt().canonicalFile.path
         val d = runCatching { dir.canonicalFile.path }.getOrDefault(dir.absolutePath)
         if (d.startsWith(optRoot + File.separator)) {
 
@@ -250,7 +250,7 @@ object PieceScan {
         val foundIds = found.map { it.id }.toSet()
 
         val optRootIds: Set<String> = runCatching {
-            SystemDirs.opt(ctx).listFiles()
+            SystemDirs.opt().listFiles()
                 ?.filter { it.isDirectory }
                 ?.map { it.name }
                 ?.toSet()
@@ -330,7 +330,7 @@ object PieceScan {
     fun landedPieceDir(ctx: Context, id: String): File? {
         val seg = id.replace("/", "")
         if (seg.isBlank()) return null
-        val base = SystemDirs.opt(ctx).resolve(seg)
+        val base = SystemDirs.opt().resolve(seg)
         if (!base.isDirectory) return null
         val vers = base.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }
             ?: return null

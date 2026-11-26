@@ -5,5 +5,5 @@ import lobos.kernel.layout.SystemDirs
 
 object LibPath {
 
-    fun searchPath(ctx: Context): String = SystemDirs.lib(ctx).absolutePath
+    fun searchPath(ctx: Context): String = SystemDirs.lib().absolutePath
 }

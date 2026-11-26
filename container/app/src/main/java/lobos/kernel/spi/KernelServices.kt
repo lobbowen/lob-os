@@ -19,6 +19,14 @@ interface EnvProvider {
     fun childEnv(inheritedPath: String? = null, inheritedLd: String? = null): Map<String, String>
 }
 
+/** System paths provided by the host (replaces Context.filesDir everywhere). */
+interface PathProvider {
+    val rootDir: File
+    val cacheDir: File
+    val nativeLibDir: File
+    fun assetText(path: String): String?
+}
+
 /** Structured logging sink (replaces kernel -> services.log.RuntimeDiagnostics). */
 fun interface KernelLogger {
     fun log(stage: String, ok: Boolean?, message: String, detail: String?)
@@ -64,6 +72,7 @@ object KernelServices {
     @Volatile private var shell: ShellLookup? = null
     @Volatile private var diagnostics: SystemDiagnostics? = null
     @Volatile private var env: EnvProvider? = null
+    @Volatile private var paths: PathProvider? = null
 
     fun register(
         logger: KernelLogger? = null,
@@ -71,19 +80,22 @@ object KernelServices {
         shell: ShellLookup? = null,
         diagnostics: SystemDiagnostics? = null,
         env: EnvProvider? = null,
+        paths: PathProvider? = null,
     ) {
         if (logger != null) this.logger = logger
         if (programs != null) this.programs = programs
         if (shell != null) this.shell = shell
         if (diagnostics != null) this.diagnostics = diagnostics
         if (env != null) this.env = env
+        if (paths != null) this.paths = paths
     }
 
     fun clear() {
-        logger = null; programs = null; shell = null; diagnostics = null; env = null
+        logger = null; programs = null; shell = null; diagnostics = null; env = null; paths = null
     }
 
     fun env(): EnvProvider = env ?: EMPTY_ENV
+    fun paths(): PathProvider = paths ?: throw IllegalStateException("PathProvider not registered")
 
     fun logger(): KernelLogger = logger ?: NOOP_LOGGER
     fun programs(): ProgramQuery = programs ?: EMPTY_PROGRAMS

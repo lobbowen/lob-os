@@ -258,7 +258,7 @@ object PieceProvisioner {
         val jni = ctx.applicationInfo.nativeLibraryDir
         if (jni != null && File(jni, name).exists()) return true
         runCatching {
-            val usrLib = lobos.kernel.layout.SystemDirs.lib(ctx)
+            val usrLib = lobos.kernel.layout.SystemDirs.lib()
             if (usrLib != null && File(usrLib, name).exists()) return true
         }
         runCatching {

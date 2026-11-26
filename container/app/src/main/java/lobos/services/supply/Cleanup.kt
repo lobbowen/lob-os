@@ -25,7 +25,7 @@ object Cleanup {
         }
 
         val oldVers = ArrayList<File>()
-        val opt = runCatching { lobos.kernel.layout.SystemDirs.opt(ctx) }.getOrNull()
+        val opt = runCatching { lobos.kernel.layout.SystemDirs.opt() }.getOrNull()
         if (opt != null && opt.isDirectory) {
             opt.listFiles()?.forEach { piece ->
                 if (!piece.isDirectory) return@forEach

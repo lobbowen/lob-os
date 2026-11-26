@@ -23,14 +23,14 @@ object SupplyProvisioner {
 
     private const val SYMLINK_HEAD_MAX = 4096
 
-    fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc(ctx)
+    fun etcDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.etc()
 
     fun versionDir(ctx: Context, id: String, version: String): File =
         File(pieceDir(ctx, id), version)
 
-    fun pieceDir(ctx: Context, id: String): File = lobos.kernel.layout.SystemDirs.pieceDir(ctx, id)
+    fun pieceDir(ctx: Context, id: String): File = lobos.kernel.layout.SystemDirs.pieceDir(id)
 
-    fun entryLink(ctx: Context, name: String): File = lobos.kernel.layout.SystemDirs.bin(ctx).let { File(it, name) }
+    fun entryLink(ctx: Context, name: String): File = lobos.kernel.layout.SystemDirs.bin().let { File(it, name) }
 
     private fun selectedFile(ctx: Context): File = File(etcDir(ctx), "installed.json")
 

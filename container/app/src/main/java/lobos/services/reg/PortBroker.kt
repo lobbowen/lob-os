@@ -8,7 +8,7 @@ import lobos.kernel.layout.SystemDirs
 
 object PortBroker {
 
-    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
+    private fun dir(ctx: Context): File = SystemDirs.run()
     private const val FILE = "ports.json"
     const val RANGE_START = 41000
     const val RANGE_END = 50999

@@ -31,7 +31,7 @@ object ScanCost {
         }.getOrDefault(true)
     }
 
-    fun configFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.etc(ctx), CONFIG_NAME)
+    fun configFile(ctx: Context): File = File(lobos.kernel.layout.SystemDirs.etc(), CONFIG_NAME)
 
     fun describe(ctx: Context): String {
         val on = withContentFingerprint(ctx)

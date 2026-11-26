@@ -11,7 +11,7 @@ object SysEnv {
 
     fun keys(): List<String> = listOf(ENV_POINTER) + lobos.kernel.spi.KernelServices.env().reservedKeys.sorted()
 
-    fun file(ctx: Context): File = File(SystemDirs.etc(ctx), FILE)
+    fun file(ctx: Context): File = File(SystemDirs.etc(), FILE)
 
     fun write(ctx: Context): Int {
         val f = file(ctx)

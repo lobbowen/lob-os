@@ -143,6 +143,6 @@ object CompatSemantics {
         put("absent", ITEMS.count { it.absent })
             put("items", arr)
         }
-        lobos.kernel.fs.StateFiles.writeJson(File(SystemDirs.libvar(ctx), "compat-semantics.json"), o)
+        lobos.kernel.fs.StateFiles.writeJson(File(SystemDirs.libvar(), "compat-semantics.json"), o)
     }
 }

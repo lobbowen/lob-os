@@ -26,6 +26,14 @@ object KernelHostAdapters {
     fun register(app: Context) {
         val ctx = app.applicationContext
         KernelServices.register(
+            paths = object : lobos.kernel.spi.PathProvider {
+                override val rootDir: File = ctx.filesDir
+                override val cacheDir: File = ctx.cacheDir
+                override val nativeLibDir: File = File(ctx.applicationInfo.nativeLibraryDir)
+                override fun assetText(path: String): String? = runCatching {
+                    ctx.assets.open(path).bufferedReader().use { it.readText() }
+                }.getOrNull()
+            },
             logger = lobos.kernel.spi.KernelLogger { stage, ok, msg, detail ->
                 RuntimeDiagnostics.append(ctx, stage, ok, msg, detail ?: "")
             },
@@ -36,7 +44,7 @@ object KernelHostAdapters {
                         ProgramQuery.ProgramSpec(it.entry, it.version, it.entryFile)
                     }
                 override fun declaredBins(programId: String): List<String> {
-                    val base = File(lobos.kernel.layout.SystemDirs.opt(ctx), programId)
+                    val base = File(lobos.kernel.layout.SystemDirs.opt(), programId)
                     val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }
                         ?: return emptyList()
                     val shape = ProgramInstallPipeline.PieceShape.read(verDir) ?: return emptyList()

@@ -44,7 +44,7 @@ object PieceEntryPointer {
     }
 
     private fun pieceRoot(ctx: Context, id: String): File =
-        lobos.kernel.layout.SystemDirs.pieceDir(ctx, id)
+        lobos.kernel.layout.SystemDirs.pieceDir(id)
 
     fun shapeOf(ctx: Context, pe: UnitEntry): ProgramInstallPipeline.PieceShape.Piece? {
         verDirOf(ctx, pe)?.let { dir ->

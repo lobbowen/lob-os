@@ -12,7 +12,7 @@ object ProcessLedger {
 
     private const val SIGTERM = 15
 
-    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
+    private fun dir(ctx: Context): File = SystemDirs.run()
     private const val FILE = "process-ledger.json"
     private const val SCHEMA = 2
 

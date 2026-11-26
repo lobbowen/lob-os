@@ -81,7 +81,7 @@ object ProgramIndex {
         "shell", "multi-command", "library", "headers", "entry-unusable",
     )
 
-    private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
+    private fun dir(ctx: Context): File = SystemDirs.libvar()
     private const val FILE = "program-index.json"
     private const val SCHEMA = 1
 

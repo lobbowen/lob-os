@@ -47,7 +47,7 @@ object ProgramOtaUpdater {
     )
 
     fun loadConfig(context: Context): Config? {
-        val devCfg = File(lobos.kernel.layout.SystemDirs.etc(context), "channel.json")
+        val devCfg = File(lobos.kernel.layout.SystemDirs.etc(), "channel.json")
         if (devCfg.isFile) {
             val fromDevice = parseConfig(readTextOrNull(devCfg))
             if (fromDevice != null) {
@@ -253,7 +253,7 @@ object ProgramOtaUpdater {
 
     private fun stateFile(context: Context, cfg: Config, programId: String): File {
         val slug = (cfg.channel + "-" + programId).replace(Regex("[^A-Za-z0-9._-]"), "_")
-        return File(lobos.kernel.layout.SystemDirs.run(context), "ota-state-" + slug + ".json")
+        return File(lobos.kernel.layout.SystemDirs.run(), "ota-state-" + slug + ".json")
     }
 
     fun promotePendingSequence(context: Context, cfg: Config, programId: String) {
@@ -297,7 +297,7 @@ object ProgramOtaUpdater {
     }
 
     private fun installId(context: Context): String {
-        val f = File(SystemDirs.etc(context), "install-id.json")
+        val f = File(SystemDirs.etc(), "install-id.json")
         val st = try {
             if (f.isFile) JSONObject(f.readText()) else JSONObject()
         } catch (_: Throwable) { JSONObject() }

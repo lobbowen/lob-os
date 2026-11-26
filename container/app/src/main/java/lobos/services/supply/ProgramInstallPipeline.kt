@@ -818,7 +818,7 @@ object ProgramInstallPipeline {
         }
         val jni = context.applicationInfo.nativeLibraryDir
         if (jni != null && File(jni, name).exists()) return true
-        val usrLib = SystemDirs.lib(context)
+        val usrLib = SystemDirs.lib()
         if (usrLib != null && File(usrLib, name).exists()) return true
         return false
     }

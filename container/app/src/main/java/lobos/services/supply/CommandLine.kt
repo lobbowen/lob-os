@@ -11,7 +11,7 @@ object CommandLine {
         val known: Boolean,
     )
 
-    private fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin(ctx)
+    private fun binDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.bin()
 
     fun resolve(ctx: Context, token: String): Hit? {
         val t = token.trim()

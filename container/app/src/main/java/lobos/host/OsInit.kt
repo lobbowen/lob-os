@@ -12,7 +12,7 @@ import lobos.services.supply.PieceScan
 
 object OsInit {
 
-    private fun dir(ctx: Context): File = SystemDirs.libvar(ctx)
+    private fun dir(ctx: Context): File = SystemDirs.libvar()
     private const val FILE = "state.json"
 
     @Volatile
@@ -65,11 +65,11 @@ object OsInit {
     fun beginLife(ctx: Context, interrupted: String?): OsSnapshot {
         val stalled = snapshot(ctx).phase
         interruptedThisLife = interrupted
-        SystemDirs.ensureAll(ctx)
+        SystemDirs.ensureAll()
         val scanned = PieceScan.rebuild(ctx)
 
   runCatching { lobos.services.app.ProgramGroup.reconcile(ctx) }
-        val swept = SystemDirs.clearRunVolatile(ctx)
+        val swept = SystemDirs.clearRunVolatile()
         val snap = OsSnapshot(OsPhase.BOOTING, OsFacts(), interrupted, System.currentTimeMillis())
         write(ctx, snap, OsPhase.BOOTING, null)
         Journal.append(

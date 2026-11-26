@@ -86,7 +86,7 @@ object Journal {
     @Volatile private var seq = 0L
 
     private fun file(ctx: Context): File {
-        val d = File(lobos.kernel.layout.SystemDirs.log(ctx), DIR)
+        val d = File(lobos.kernel.layout.SystemDirs.log(), DIR)
         d.mkdirs()
         return File(d, FILE)
     }

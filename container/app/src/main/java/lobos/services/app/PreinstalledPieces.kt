@@ -90,7 +90,7 @@ object PreinstalledPieces {
         id: String,
         version: String,
     ): DerivedCheck {
-        val verDir = File(SystemDirs.pieceDir(ctx, id), version)
+        val verDir = File(SystemDirs.pieceDir(id), version)
 
         val shapeHere = ProgramInstallPipeline.PieceShape.read(verDir)
         val targets = ArrayList<Triple<String, String, String>>()
@@ -206,7 +206,7 @@ object PreinstalledPieces {
         } else {
 
             val verDirForRole = File(
-                SystemDirs.pieceDir(ctx, id),
+                SystemDirs.pieceDir(id),
                 lobos.services.reg.ProgramIndex.safeSegment(version)
                     ?: return fail(ctx, id, "版本号非法 " + version),
             )
@@ -225,7 +225,7 @@ object PreinstalledPieces {
                 ?: return fail(ctx, id, "入口 " + entry + " 的形态认不出（role=" + entryRole + "）—— 报缺，不猜")
         }
 
-        val verDir = File(SystemDirs.pieceDir(ctx, id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
+        val verDir = File(SystemDirs.pieceDir(id), lobos.services.reg.ProgramIndex.safeSegment(version) ?: return fail(ctx, id, "版本号非法 " + version))
 
         val landedPresent = if (landedEntry.isBlank()) {
             val libDir = File(verDir, ProgramInstallPipeline.PieceShape.dirForRole(ProgramInstallPipeline.ROLE_LIBRARY) ?: "lib")

@@ -29,7 +29,7 @@ class ProgramDir(
     )
 
     private val programRoot =
-        storeRoot ?: File(lobos.kernel.layout.SystemDirs.opt(context), programId)
+        storeRoot ?: File(lobos.kernel.layout.SystemDirs.opt(), programId)
 
     fun currentVersion(): String? = store.currentVersion()
 

@@ -39,7 +39,7 @@ object ProgramRegistry {
         val isService: Boolean get() = http != null && resident
     }
 
-    fun programRoot(ctx: Context): File = SystemDirs.opt(ctx)
+    fun programRoot(ctx: Context): File = SystemDirs.opt()
 
     fun listIds(ctx: Context): List<String> =
         programRoot(ctx).listFiles()

@@ -123,8 +123,8 @@ object SysDev {
                 put(JSONObject().put("programId", e.programId).put("pid", e.pid))
             }
         })
-        o.put("lib", SystemDirs.lib(ctx).absolutePath)
-        o.put("bin", SystemDirs.bin(ctx).absolutePath)
+        o.put("lib", SystemDirs.lib().absolutePath)
+        o.put("bin", SystemDirs.bin().absolutePath)
 
         o.put("nodes", nodeKinds(r, "index.json"))
 

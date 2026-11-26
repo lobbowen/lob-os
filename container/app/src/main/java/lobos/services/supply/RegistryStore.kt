@@ -9,7 +9,7 @@ import lobos.kernel.layout.SystemDirs
 
 object RegistryStore {
 
-    private fun file(ctx: Context) = File(SystemDirs.libvar(ctx), "registry.json")
+    private fun file(ctx: Context) = File(SystemDirs.libvar(), "registry.json")
 
     @Synchronized
     private fun read(ctx: Context): JSONObject = runCatching {

@@ -32,7 +32,7 @@ object PermissionLedger {
     const val SCHEMA_KEY = "schema"
     const val ATTEMPTS = "attempts"
 
-    fun file(ctx: Context) = java.io.File(SystemDirs.libvar(ctx), FILE)
+    fun file(ctx: Context) = java.io.File(SystemDirs.libvar(), FILE)
 
     fun write(ctx: Context, snap: LedgerSnapshot) {
         StateFiles.writeJson(file(ctx), JSONObject().apply {

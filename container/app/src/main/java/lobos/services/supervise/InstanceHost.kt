@@ -793,7 +793,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
         minNode: String,
         envSnapshot: Map<String, String> = emptyMap(),
     ) {
-        val dir = SystemDirs.run(this).let { File(it, "proc") }
+        val dir = SystemDirs.run().let { File(it, "proc") }
         dir.mkdirs()
         val obj = JSONObject().apply {
             put("schema", 3)

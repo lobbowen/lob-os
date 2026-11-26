@@ -10,7 +10,7 @@ object BuildIdentity {
 
     const val FILE = "build-identity.json"
 
-    fun file(ctx: Context): File = File(SystemDirs.libvar(ctx), FILE)
+    fun file(ctx: Context): File = File(SystemDirs.libvar(), FILE)
 
     fun write(ctx: Context): Boolean {
         val o = JSONObject().apply {

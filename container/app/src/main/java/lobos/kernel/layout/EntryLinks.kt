@@ -8,9 +8,9 @@ object EntryLinks {
 
     fun purge(context: Context, pieceId: String, dest: File): Int {
         val roots = listOf(
-            SystemDirs.bin(context),
-            SystemDirs.lib(context),
-            SystemDirs.include(context),
+            SystemDirs.bin(),
+            SystemDirs.lib(),
+            SystemDirs.include(),
         )
         val destReal = runCatching { dest.canonicalFile.path }.getOrDefault(dest.absolutePath)
         var n = 0

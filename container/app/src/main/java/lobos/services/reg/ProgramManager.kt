@@ -82,7 +82,7 @@ object ProgramManager {
     }
 
     fun infraSourceFile(ctx: Context, e: UnitEntry): File =
-        SystemDirs.opt(ctx).let { File(it, e.id) }
+        SystemDirs.opt().let { File(it, e.id) }
 
     fun levelOf(ctx: Context, id: String): Level =
         ProgramIndex.get(ctx, id)?.levelOf(ctx) ?: Level.PIECE
@@ -124,7 +124,7 @@ object ProgramManager {
     @Synchronized
     fun reconcile(ctx: Context) {
         val snap = snapshot(ctx)
-        val stateFile = File(ProgramIndex.file(ctx).parentFile ?: SystemDirs.libvar(ctx), "program-state.json")
+        val stateFile = File(ProgramIndex.file(ctx).parentFile ?: SystemDirs.libvar(), "program-state.json")
         StateFiles.writeJson(
             stateFile,
             JSONObject().apply {
@@ -147,7 +147,7 @@ object ProgramManager {
 
     fun assemble(ctx: Context) {
         val enabled = ProgramIndex.all(ctx).filter { it.enabled }
-        val usr = SystemDirs.usr(ctx)
+        val usr = SystemDirs.usr()
         usr.mkdirs()
         StateFiles.writeJson(File(usr, "facilities.json"), JSONObject().apply {
             put("updatedAt", System.currentTimeMillis())

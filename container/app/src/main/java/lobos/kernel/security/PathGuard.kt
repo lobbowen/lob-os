@@ -7,11 +7,11 @@ import lobos.kernel.layout.SystemDirs
 object PathGuard {
 
     fun integrityRoots(ctx: Context): List<File> = listOf(
-        SystemDirs.etc(ctx),
-        SystemDirs.usr(ctx),
-        SystemDirs.vardir(ctx),
-        SystemDirs.run(ctx),
-        SystemDirs.opt(ctx),
+        SystemDirs.etc(),
+        SystemDirs.usr(),
+        SystemDirs.vardir(),
+        SystemDirs.run(),
+        SystemDirs.opt(),
         File(ctx.filesDir, "adb"),
         File(ctx.filesDir, "program-verify.js"),
         File(ctx.filesDir, "runtime.json"),

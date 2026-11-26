@@ -10,7 +10,7 @@ import lobos.kernel.fs.StateFiles
 
 object SessionRegistry {
 
-    private fun dir(ctx: Context): File = SystemDirs.run(ctx)
+    private fun dir(ctx: Context): File = SystemDirs.run()
     private const val FILE = "sessions.json"
     private const val SCHEMA = 1
     private const val GRACE_MS = 20_000L

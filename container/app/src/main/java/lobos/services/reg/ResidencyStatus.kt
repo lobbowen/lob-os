@@ -55,7 +55,7 @@ object ResidencyStatus {
 
     fun persist(ctx: android.content.Context) {
         runCatching {
-            val d = SystemDirs.run(ctx)
+            val d = SystemDirs.run()
             d.mkdirs()
             StateFiles.writeAtomic(File(d, "residency.json"), last.toString())
         }
@@ -63,7 +63,7 @@ object ResidencyStatus {
 
     fun restore(ctx: android.content.Context) {
         runCatching {
-            val f = File(SystemDirs.run(ctx), "residency.json")
+            val f = File(SystemDirs.run(), "residency.json")
             if (f.isFile) last = JSONObject(f.readText())
         }
     }
