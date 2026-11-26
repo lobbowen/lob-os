@@ -65,7 +65,6 @@ object ProgramInstaller {
             )
         }
         val verify = PackageVerifier.verify(
-            context = context,
             zip = zip,
             expectedSha256 = manifest?.optString("sha256", "")?.ifBlank { null },
             externalManifest = manifestFile?.takeIf { it.isFile }

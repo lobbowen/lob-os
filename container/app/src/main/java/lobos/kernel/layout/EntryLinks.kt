@@ -6,7 +6,7 @@ import java.nio.file.Files
 
 object EntryLinks {
 
-    fun purge(context: Context, pieceId: String, dest: File): Int {
+    fun purge(context: Context, dest: File): Int {
         val roots = listOf(
             SystemDirs.bin(),
             SystemDirs.lib(),

@@ -1,6 +1,5 @@
 package lobos.kernel.crypto
 
-import android.content.Context
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,7 +19,6 @@ object PackageVerifier {
     private const val MAX_UNZIP = 64L * 1024 * 1024
 
     fun verify(
-        context: Context,
         zip: File,
         expectedSha256: String?,
         externalManifest: JSONObject?,

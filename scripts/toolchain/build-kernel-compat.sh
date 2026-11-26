@@ -42,7 +42,6 @@ CFLAGS="-O2 -fPIC"
   container/native/d1/link-interpose.c \
   container/native/d1/open-fallback.c \
   container/native/d1/tmp-paths.c \
-  container/native/d1/lobos-env.c \
     container/native/d1/exec-path.c \
     container/native/d1/app-sigsys.c \
   -ldl \

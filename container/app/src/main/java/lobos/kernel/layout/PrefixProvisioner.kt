@@ -3,7 +3,6 @@ package lobos.kernel.layout
 import lobos.kernel.KernelHooks
 
 import android.content.Context
-import android.system.Os
 import java.io.File
 import lobos.kernel.elf.ExecBits
 

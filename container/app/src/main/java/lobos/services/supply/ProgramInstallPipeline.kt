@@ -951,7 +951,7 @@ object ProgramInstallPipeline {
         programId: String,
         role: String,
     ): Boolean {
-        val purged = lobos.kernel.layout.EntryLinks.purge(context, programId, dest)
+        val purged = lobos.kernel.layout.EntryLinks.purge(context, dest)
         if (purged > 0) {
             RuntimeDiagnostics.append(
                 context, "linkEntry", true, programId + " 清掉旧入口软链 " + purged + " 条",

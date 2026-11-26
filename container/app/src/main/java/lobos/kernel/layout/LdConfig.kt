@@ -200,6 +200,5 @@ object LdConfig {
             .filter { it.isNotEmpty() }
             .distinct()
             .sorted()
-        return File(verDir, "bin").listFiles()?.map { it.name }?.sorted() ?: emptyList()
     }
 }
