@@ -191,3 +191,45 @@ setuid/chown 等语义可以基于 xattr 存储实现（fastroot 已实现）。
 
 未专项验证（需预置测试文件或完整 rootfs）：chroot 切换、硬链接、/proc 合成内容、
 SysV IPC、compat.sh 174 项。
+
+
+## 里程碑：完整 Ubuntu 24.04 rootfs 在 APK 里跑通（2026-11-26 21:50）
+
+按用户指示"不要拆解 Ubuntu rootfs，直接拿它当内核"：
+- 从 USTC 国内镜像下载**最新** `release-20261124` 的
+  `ubuntu-24.04-minimal-cloudimg-arm64-root.tar.xz`（71MB，官方 SHA256 校验通过，
+  4.8 秒下完——对比国外源 10 分钟才 3MB）
+- 用 python tarfile（filter='tar'）在设备 filesDir 解压成 `/ubuntu`（369MB，13486 文件）
+- 用 fastroot launcher 直接启动 Ubuntu 的 `/bin/bash`
+
+结果（完整 Linux 环境）：
+```
+uid=0(root) gid=0(root) groups=0(root)          <- fake root
+PRETTY_NAME="Ubuntu 24.04.5 LTS"                 <- 真实 Ubuntu os-release
+ls /usr/bin -> aa-enabled, apport, addpart...    <- 完整 Ubuntu 命令集
+uname -a -> Linux 5.10 aarch64 GNU/Linux
+which python3 -> /usr/bin/python3                <- Ubuntu 自带 python
+```
+
+进一步验证 `apt-get update`：完整运行（解析源、发 HTTP、读包列表），
+仅因 DNS（ports.ubuntu.com 解析失败，fake NETLINK/resolv.conf 待配）失败，
+apt 本身工作正常（rc=0）。
+
+**结论**：Ubuntu rootfs + fastroot 在 LobOS APK 里构成了一个完整的 Linux 系统。
+这验证了产品的终极目标——"Linux 能跑的我们都能跑"——在用户态可行的路径上
+走通了地基。不再拆解 rootfs 成我们的组件格式，而是**直接把 Ubuntu rootfs 当系统盘**。
+
+### 传输方法（可复现，避开 tar 兼容坑）
+1. USTC 镜像下载 xz（国内极快）
+2. 本地 `tar xf` 解压到 work/external/ubuntu-rootfs（设备节点 mknod 失败可忽略）
+3. 本地 `tar cf work/external/ubuntu-arm64-root.tar -C work/external/ubuntu-rootfs .`（裸 tar）
+4. `adb push` 裸 tar 到 /data/local/tmp（115MB/s，3 秒）
+5. 设备 python 标准库 `tarfile.open('r:')` + `filter='tar'` 解压
+   （设备的 python 无 lzma 模块，不能直接读 xz；busybox tar 不支持 GNU 长名 typeflag 0x4c）
+
+### 待完成（下一阶段）
+- apt DNS：给 rootfs 配 /etc/resolv.conf 或让 fastroot fake NETLINK 转发 DNS
+- apt install 实测：装一个小包，验证依赖解析+解压+落盘
+- compat.sh 174 项：在 Ubuntu rootfs 里跑 fastroot 的完整测试套件
+- 与 LobOS 上层整合：服务管理/包管理/能力门面如何操作这个 Ubuntu rootfs
+- APK 分发：373MB rootfs 不能随 APK 内置（太大），需要做按需下载/增量更新机制
