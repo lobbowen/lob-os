@@ -43,7 +43,7 @@ object SysDev {
                 "（它**不**只报「失败」、它报出那一类是哪一类）"
             System.err.println(diag)
             runCatching {
-                lobos.services.log.RuntimeDiagnostics.append(ctx, "sysdev", false, diag, "")
+                lobos.kernel.spi.KernelServices.logger().log("sysdev", false, diag, "")
             }
 
             return null

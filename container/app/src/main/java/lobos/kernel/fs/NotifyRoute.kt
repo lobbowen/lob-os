@@ -15,8 +15,7 @@ object NotifyRoute {
     ) {
         if (ctx == null) return
         runCatching {
-            lobos.services.log.RuntimeDiagnostics.append(
-                ctx, ROUTE, true,
+            lobos.kernel.spi.KernelServices.logger().log(ROUTE, true,
                 "那发通知[" + route + "]发了",
                 "id=" + notificationId +
                     " kind=" + kind +

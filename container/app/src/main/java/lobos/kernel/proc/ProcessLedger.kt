@@ -219,7 +219,7 @@ object ProcessLedger {
     }
 
     fun entryPathOf(ctx: Context, programId: String): String? = runCatching {
-        val spec = lobos.services.reg.ProgramRegistry.spec(ctx, programId) ?: return@runCatching null
+        val spec = lobos.kernel.spi.KernelServices.programs().spec(programId) ?: return@runCatching null
         spec.entryFile.takeIf { it.isFile }?.absolutePath
     }.getOrNull()
 

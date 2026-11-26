@@ -45,7 +45,7 @@ object SonameChain {
 
     fun contentDigest(f: File): String =
         contentDigestCache.getOrPut(f.absolutePath) {
-            lobos.services.supply.SupplySha.sha256(f)
+            lobos.kernel.spi.KernelServices.diagnostics().sha256(f)
         }
 
     fun plan(target: File): Plan? {

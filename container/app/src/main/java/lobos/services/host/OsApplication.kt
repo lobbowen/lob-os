@@ -28,6 +28,7 @@ class OsApplication : Application() {
         createChannels()
         lobos.services.app.Foreground.attach(this)
         initQuickAppRuntime()
+        KernelHostAdapters.register(this)
         KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         KernelHooks.setReporter { ctx, stage, ok, message, detail ->
             RuntimeDiagnostics.append(ctx, stage, ok, message, detail ?: "")

@@ -2,7 +2,6 @@ package lobos.kernel.layout
 
 import android.content.Context
 import java.io.File
-import lobos.services.reg.RuntimeEnvironment
 
 object SysEnv {
 
@@ -10,7 +9,7 @@ object SysEnv {
 
     const val ENV_POINTER = "LOBOS_SYSENV"
 
-    val KEYS: List<String> = listOf(ENV_POINTER) + RuntimeEnvironment.RESERVED_ENV.sorted()
+    fun keys(): List<String> = listOf(ENV_POINTER) + lobos.kernel.spi.KernelServices.env().reservedKeys.sorted()
 
     fun file(ctx: Context): File = File(SystemDirs.etc(ctx), FILE)
 
@@ -20,9 +19,9 @@ object SysEnv {
         f.writeText(buildString {
             append("# 系统视图里要合并进子进程的键\n")
             append("# 键集由注册表持有：RuntimeEnvironment.RESERVED_ENV + " + ENV_POINTER + "\n")
-            append("# 本文件只列键名，值由 RuntimeEnvironment.treeRootEnv 在起进程时算\n")
-            for (k in KEYS) append(k).append('\n')
+            append("# 本文件只列键名，值由 KernelServices.env().childEnv 在起进程时算\n")
+            for (k in keys()) append(k).append('\n')
         })
-        return KEYS.size
+        return keys().size
     }
 }

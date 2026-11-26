@@ -12,7 +12,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import lobos.kernel.KernelHooks
-import lobos.services.supply.ShellEntry
 
 object PtySession {
 
@@ -263,8 +262,7 @@ object PtySession {
                     val c = ctx
                     if (c != null) {
                         runCatching {
-                            lobos.services.log.RuntimeDiagnostics.append(
-                                c, "pty-diag", false, "PTY 宿主诊断输出",
+                            lobos.kernel.spi.KernelServices.logger().log("pty-diag", false, "PTY 宿主诊断输出",
                                 "行=" + line,
                             )
                         }
@@ -333,8 +331,7 @@ object PtySession {
                 lobos.kernel.sysdev.SysDev.render(c)
             }.onFailure { e ->
                 runCatching {
-                    lobos.services.log.RuntimeDiagnostics.append(
-                        c, "pty", false, "那会话登记后刷新 files/dev 失败",
+                    lobos.kernel.spi.KernelServices.logger().log("pty", false, "那会话登记后刷新 files/dev 失败",
                         e.javaClass.name + ": " + (e.message ?: ""),
                     )
                 }
@@ -351,8 +348,7 @@ object PtySession {
             val pid = session.nativePid
             if (pid <= 0) {
 
-                lobos.services.log.RuntimeDiagnostics.append(
-                    ctx, "ledger", false, "PTY 会话宿主没报子进程 pid",
+                lobos.kernel.spi.KernelServices.logger().log("ledger", false, "PTY 会话宿主没报子进程 pid",
                     "sid=" + session.sid + "（账本那一行没有记，按 C-05 报缺）",
                 )
                 return
@@ -364,8 +360,7 @@ object PtySession {
 
             val generation = lobos.kernel.proc.ProcessLedger.nextGeneration(ctx, programId)
             val recorded = lobos.kernel.proc.ProcessLedger.begin(ctx, programId, generation, pid)
-            lobos.services.log.RuntimeDiagnostics.append(
-                ctx, "ledger", recorded != null,
+            lobos.kernel.spi.KernelServices.logger().log("ledger", recorded != null,
                 "PTY 会话那进程已记账",
                 if (recorded != null) {
                     "program=" + recorded.programId + " gen=" + recorded.generation +
@@ -376,8 +371,7 @@ object PtySession {
             } catch (e: Throwable) {
 
                 runCatching {
-                    lobos.services.log.RuntimeDiagnostics.append(
-                        ctx, "ledger", false, "PTY 会话那进程记不进账本",
+                    lobos.kernel.spi.KernelServices.logger().log("ledger", false, "PTY 会话那进程记不进账本",
                         "sid=" + session.sid + " " + e.javaClass.name + ": " + (e.message ?: "") +
                             "（一格**没有**中断、会话**仍然**活着）",
                     )
@@ -653,12 +647,8 @@ object PtySession {
             val checked = locateBin(bin)
             val raw = listOf(checked.absolutePath)
             val hostArgv = lobos.kernel.proc.ExecEntry.argv(checked, raw) ?: raw
-            val view0 = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
-                ctx,
-                lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
-                null,
-            )
-            val sh = runCatching { lobos.services.supply.ShellEntry.require(ctx) }.getOrNull()
+            val view0 = lobos.kernel.spi.KernelServices.env().childEnv()
+            val sh = lobos.kernel.spi.KernelServices.shell().resolve()
             val pb0 = if (sh != null) {
                 val script = StringBuilder()
                 for ((k0, v0) in view0) {
@@ -769,8 +759,7 @@ object PtySession {
     fun ensureHost(ctx: Context): Boolean {
         val bin = lobos.kernel.compat.Compat.ptyHost(ctx)
         if (bin == null) {
-            lobos.services.log.RuntimeDiagnostics.append(
-                ctx, "pty", false, "PTY 宿主就位失败", "内核构件缺失（librivospty 不在系统库）",
+            lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 宿主就位失败", "内核构件缺失（librivospty 不在系统库）",
             )
             return false
         }

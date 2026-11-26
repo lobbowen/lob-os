@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import java.io.File
 import lobos.kernel.elf.ElfFacts
-import lobos.services.log.RuntimeDiagnostics
 
 object LdConfig {
 
@@ -39,9 +38,9 @@ object LdConfig {
         val etc = SystemDirs.etc(ctx)
         usrBin.mkdirs(); usrLib.mkdirs(); etc.mkdirs()
 
-        val idx = lobos.services.reg.ProgramIndex.all(ctx)
-            .sortedBy { it.id }
-        val pieces = idx.map { File(opt, it.id) }
+        val idx = lobos.kernel.spi.KernelServices.programs().all()
+            .sortedBy { it.programId }
+        val pieces = idx.map { File(opt, it.programId) }
         var linked = 0
         val log = mutableListOf<String>()
         val unresolved = mutableListOf<String>()
@@ -54,8 +53,8 @@ object LdConfig {
             // glibc-runtime 是完整 Linux 用户态底座：它的 libc/libdl/libm 只给
             // guest loader 经 --library-path 用。建链到全局 usr/lib 会覆盖 bionic
             // 的 SONAME 语义，让所有 bionic 程序（bash/node）启动即崩。
-            if (e.id == "glibc-runtime") continue
-            val p = File(opt, e.id)
+            if (e.programId == "glibc-runtime") continue
+            val p = File(opt, e.programId)
             val ver = e.version.takeIf { it.isNotBlank() }
                 ?: p.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }?.name
                 ?: continue
@@ -67,7 +66,7 @@ object LdConfig {
                 if (java.nio.file.Files.isSymbolicLink(so.toPath())) return@forEach
                 sonameCandidates.computeIfAbsent(so.name) { ArrayList() }
 
-                    .add(Triple(e.id, so, SonameChain.contentDigest(so)))
+                    .add(Triple(e.programId, so, SonameChain.contentDigest(so)))
             }
 
             File(root, "bin").listFiles()?.sortedBy { it.name }?.forEach { exe ->
@@ -120,8 +119,7 @@ object LdConfig {
 
         val sysenv = SysEnv.write(ctx)
 
-        RuntimeDiagnostics.append(
-            ctx, "ldconfig", unresolved.isEmpty(),
+        lobos.kernel.spi.KernelServices.logger().log("ldconfig", unresolved.isEmpty(),
             "ldconfig：建了 $linked 条软链（${pieces.size} 个件）" +
                 if (unresolved.isEmpty()) "" else "；${unresolved.size} 条建链失败",
             "usr/lib=" + usrLib.absolutePath + "  usr/bin=" + usrBin.absolutePath +
@@ -135,7 +133,7 @@ object LdConfig {
         val declaredBins = declaredBins(ctx, "")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
         val items = listOf(
-                lobos.services.supply.SelfCheckReport.Item(
+                lobos.kernel.spi.SystemDiagnostics.Item(
                     "usr-bin-entries",
                     missingBins.isEmpty(),
                     "usr/bin 里的命令入口（声明 ${declaredBins.size} · 已建 ${binInstalled.size}）",
@@ -144,12 +142,12 @@ object LdConfig {
                         " —— 这些命令在真机上会是 command not found，而系统其余部分完全正常（无任何症状）",
                 ),
         )
-        val selfCheck = lobos.services.supply.SelfCheckReport.format(items)
-        RuntimeDiagnostics.append(ctx, "selfcheck", missingBins.isEmpty(), selfCheck)
+        val selfCheck = lobos.kernel.spi.KernelServices.diagnostics().selfCheck(items)
+        lobos.kernel.spi.KernelServices.logger().log("selfcheck", missingBins.isEmpty(), selfCheck, null)
         if (missingBins.isEmpty()) {
-            Log.i(TAG, "selfcheck 通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
+            Log.i(TAG, "selfcheck 通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items))
         } else {
-            Log.w(TAG, "selfcheck 未通过：" + lobos.services.supply.SelfCheckReport.verdict(items))
+            Log.w(TAG, "selfcheck 未通过：" + lobos.kernel.spi.KernelServices.diagnostics().selfCheckVerdict(items))
         }
         if (unresolved.isNotEmpty()) {
             Log.w(TAG, "ldconfig 有 " + unresolved.size + " 条未解决（详见 diag.jsonl 的 ldconfig 记录）")
@@ -187,9 +185,9 @@ object LdConfig {
     fun declaredBins(ctx: Context, pieceId: String): List<String> {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
-            for (e in lobos.services.reg.ProgramIndex.all(ctx)) {
+            for (e in lobos.kernel.spi.KernelServices.programs().all()) {
 
-                out += declaredBins(ctx, e.id)
+                out += declaredBins(ctx, e.programId)
             }
             return out.distinct()
         }
@@ -197,24 +195,12 @@ object LdConfig {
         val base = File(opt, pieceId)
         val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name } ?: return emptyList()
 
-        val shape = lobos.services.supply.ProgramInstallPipeline.PieceShape.read(verDir)
-        if (shape != null && shape.derivedLinks.isNotEmpty()) {
-            return shape.derivedLinks
-                .filter { it.startsWith("bin/") }
-                .map { it.substringAfterLast('/') }
-                .filter { it.isNotEmpty() }
-                .distinct()
-                .sorted()
-        }
-
-        if (shape != null) {
-            return shape.files
-                .filter { it.role == lobos.services.supply.ProgramInstallPipeline.ROLE_PROGRAM }
-                .map { it.path.substringAfterLast('/') }
-                .filter { it.isNotEmpty() }
-                .distinct()
-                .sorted()
-        }
+        return lobos.kernel.spi.KernelServices.programs().declaredBins(pieceId)
+            .filter { it.startsWith("bin/") }
+            .map { it.substringAfterLast('/') }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
         return File(verDir, "bin").listFiles()?.map { it.name }?.sorted() ?: emptyList()
     }
 }

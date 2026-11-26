@@ -2,7 +2,6 @@ package lobos.kernel.compat
 
 import android.content.Context
 import java.io.File
-import lobos.services.log.RuntimeDiagnostics
 
 object Compat {
 
@@ -137,7 +136,7 @@ object Compat {
             trace.append(name).append(if (done) ":已重铺; " else ":重铺失败; ")
             if (done) n++
         }
-        RuntimeDiagnostics.append(ctx, "sysview", n > 0, "垫片重铺明细", "共 " + n + " 个；" + trace)
+        lobos.kernel.spi.KernelServices.logger().log("sysview", n > 0, "垫片重铺明细", "共 " + n + " 个；" + trace)
         return n
     }
 

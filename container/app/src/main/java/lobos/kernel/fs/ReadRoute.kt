@@ -43,8 +43,7 @@ object ReadRoute {
         if (ok) remember(route, file.absolutePath, size)
         if (ctx == null) return
         runCatching {
-            lobos.services.log.RuntimeDiagnostics.append(
-                ctx, ROUTE, ok,
+            lobos.kernel.spi.KernelServices.logger().log(ROUTE, ok,
                 "那读法[" + route + "]读了那一份",
                 "file=" + file.absolutePath +
                     " bytes=" + size +

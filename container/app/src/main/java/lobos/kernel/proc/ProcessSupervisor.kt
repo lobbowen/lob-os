@@ -55,11 +55,7 @@ object ProcessSupervisor {
         }
         val pb = ProcessBuilder(real)
         if (cwd != null) pb.directory(cwd)
-        val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(
-            ctx,
-            lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx),
-            null,
-        )
+        val view = lobos.kernel.spi.KernelServices.env().childEnv()
         if (envMode != ENV_INHERIT) pb.environment().clear()
         for ((k, v) in view) pb.environment()[k] = v
         pb.environment().remove("LD_PRELOAD")

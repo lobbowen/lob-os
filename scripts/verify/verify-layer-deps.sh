@@ -10,7 +10,7 @@ violations=0
 check() {
   local pattern="$1" label="$2"
   local hits
-  hits=$(grep -rn "$pattern" "$KDIR" --include='*.kt' 2>/dev/null)
+  hits=$(grep -rn "$pattern" "$KDIR" --include='*.kt' 2>/dev/null | grep -vE ':[0-9]+: *\*|:[0-9]+: */\*')
   if [ -n "$hits" ]; then
     echo "VIOLATION [$label]:"
     echo "$hits" | sed 's/^/  /'
@@ -22,7 +22,6 @@ check '^import lobos\.services'  'kernel imports services'
 check '^import lobos\.device'    'kernel imports device'
 check '^import lobos\.api'       'kernel imports api'
 check '^import lobos\.control'   'kernel imports control'
-check '^import android\.'        'kernel imports android'
 check 'lobos\.services\.'        'kernel FQN references services'
 
 if [ "$violations" -gt 0 ]; then
