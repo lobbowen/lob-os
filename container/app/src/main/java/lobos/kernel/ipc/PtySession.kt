@@ -455,7 +455,7 @@ object PtySession {
                             diag.append(msg).append(10.toChar())
                             if (diag.length > 8192) diag.setLength(0)
                         }
-                        ctx?.let { KernelHooks.report(it, "pty", false, "PTY 宿主读帧长度超上限", msg) }
+                        ctx?.let { KernelHooks.report("pty", false, "PTY 宿主读帧长度超上限", msg) }
                         break
                     }
                     val payload = if (len > 0) {
@@ -474,7 +474,7 @@ object PtySession {
                             lastError = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("ERROR: ").append(lastError).append('\n') }
                             ctx?.let {
-                                KernelHooks.report(it, "pty", false, "PTY 的C 侧报错", lastError)
+                                KernelHooks.report("pty", false, "PTY 的C 侧报错", lastError)
                             }
                         }
                         F_NOTE -> {
@@ -483,7 +483,7 @@ object PtySession {
                             val note = String(payload, 0, n, Charsets.UTF_8)
                             synchronized(diag) { diag.append("NOTE: ").append(note).append(10.toChar()) }
                             ctx?.let {
-                                KernelHooks.report(it, "pty", true, "PTY 宿主自述", note)
+                                KernelHooks.report("pty", true, "PTY 宿主自述", note)
                             }
                         }
                         else -> lobos.kernel.spi.KernelServices.logger().log("pty",null,"忽略未知帧 kind=$kind sid=$sid len=$len",null)
@@ -572,8 +572,7 @@ object PtySession {
 
     internal fun reportSlotNotFreed(sid: Int) {
         ctx?.let {
-            KernelHooks.report(
-                it, "pty", false, "PTY 的C 侧报错",
+            KernelHooks.report("pty", false, "PTY 的C 侧报错",
                 "槽 $sid 在 ${SLOT_FREED_TIMEOUT_MS}ms 内没回报已空，一号**照样**还了",
             )
         }
@@ -581,7 +580,7 @@ object PtySession {
 
     internal fun note(message: String, detail: String) {
         ctx?.let {
-            KernelHooks.report(it, "pty", true, message, detail)
+            KernelHooks.report("pty", true, message, detail)
         }
     }
 
@@ -680,8 +679,7 @@ object PtySession {
             val compatEnvSo = java.io.File(lobos.kernel.layout.SystemDirs.lib(), "liblobosposix.so")
             if (compatEnvSo.isFile) pb1.environment()["LD_PRELOAD"] = compatEnvSo.absolutePath
             else pb1.environment().remove("LD_PRELOAD")
-            KernelHooks.report(
-                ctx, "pty", true,
+            KernelHooks.report("pty", true,
                 "宿主启动形态",
                 "shell=" + (sh?.absolutePath ?: "无") +
                     "\nbin=" + checked.absolutePath +
@@ -692,7 +690,7 @@ object PtySession {
             )
             val h = Host(pb1, ctx)
             host = h
-            KernelHooks.report(ctx, "pty", true, "PTY 会话宿主就位",
+            KernelHooks.report("pty", true, "PTY 会话宿主就位",
             bin.absolutePath + " （常驻；shell.exec 与终端共用）")
             return h
         }
@@ -756,7 +754,7 @@ object PtySession {
     }
 
     fun ensureHost(ctx: Context): Boolean {
-        val bin = lobos.kernel.compat.Compat.ptyHost(ctx)
+        val bin = lobos.kernel.compat.Compat.ptyHost()
         if (bin == null) {
             lobos.kernel.spi.KernelServices.logger().log("pty", false, "PTY 宿主就位失败", "内核构件缺失（librivospty 不在系统库）",
             )

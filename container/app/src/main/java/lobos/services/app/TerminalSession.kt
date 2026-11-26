@@ -50,7 +50,7 @@ class TerminalSession private constructor(
 
             val sh = lobos.services.supply.ShellEntry.require(ctx)
 
-            val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
+            val ptyBin = lobos.kernel.compat.Compat.ptyHost()
                 ?: throw IllegalStateException(
                     "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它是那 APK 里那一份）",
                 )

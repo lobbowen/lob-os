@@ -29,9 +29,9 @@ private const val CA_BUNDLE_ASSET = "ca-bundle.pem"
         val caDst = caBundle(ctx)
         try {
             caDst.parentFile?.mkdirs()
-            ctx.assets.open(CA_BUNDLE_ASSET).use { input ->
-                caDst.outputStream().use { out -> input.copyTo(out) }
-            }
+            val caText = lobos.kernel.spi.KernelServices.paths().assetText(CA_BUNDLE_ASSET)
+                ?: throw java.io.IOException("asset not found: $CA_BUNDLE_ASSET")
+            caDst.writeText(caText)
             ready += CA_BUNDLE_NAME
         } catch (_: Exception) { caDst.delete() }
         return ready

@@ -20,7 +20,7 @@ object PieceInspect {
 
     fun needed(ctx: Context, libName: String): String {
         if (!bind()) return "垫片未装上"
-        val f: File = Compat.lib(ctx, libName) ?: return "系统库里没有 $libName"
+        val f: File = Compat.lib(libName) ?: return "系统库里没有 $libName"
         if (!f.isFile) return "$libName 不是普通文件"
         if (!f.canRead()) return "$libName 读不了"
         val r = runCatching { nativeNeeded(f.absolutePath) }

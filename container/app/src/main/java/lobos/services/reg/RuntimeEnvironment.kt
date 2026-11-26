@@ -139,7 +139,7 @@ object RuntimeEnvironment {
                 inheritedPath,
             )
         )
-        val posix = lobos.kernel.compat.Compat.lib(ctx, lobos.kernel.compat.Compat.LIB_POSIX)
+        val posix = lobos.kernel.compat.Compat.lib(lobos.kernel.compat.Compat.LIB_POSIX)
         if (posix != null) {
             put("LD_PRELOAD", posix.absolutePath)
             put("LOBOS_SYSTEM_LINKER", "/system/bin/linker64")

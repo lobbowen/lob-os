@@ -94,8 +94,7 @@ object AccessibilityServiceState {
         val issued = wrote
         val st = state(ctx)
         val bound = st == ServiceState.BOUND
-        KernelHooks.report(
-            ctx, "accessibility", bound,
+        KernelHooks.report("accessibility", bound,
             if (bound) "无障碍服务已就位（自动化可用）" else "无障碍服务未就位：" + st,
             how + "；timeout=" + timeoutMs + "ms",
         )
@@ -128,8 +127,7 @@ object AccessibilityServiceState {
         val how = if (wrote) "本机写 secure 设置成功"
         else "本机无 WRITE_SECURE_SETTINGS：请到系统「无障碍」页手动关闭"
         val st = state(ctx)
-        KernelHooks.report(
-            ctx, "accessibility", st == ServiceState.UNBOUND,
+        KernelHooks.report("accessibility", st == ServiceState.UNBOUND,
             if (st == ServiceState.UNBOUND) "无障碍服务已停用" else "无障碍服务停用未生效：" + st,
             how,
         )

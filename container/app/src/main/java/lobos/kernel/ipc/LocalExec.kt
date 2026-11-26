@@ -39,7 +39,7 @@ object LocalExec {
     ): Outcome {
         if (argv.isEmpty()) return Outcome(false, -1, "", "", Via.PLAIN, "argv 为空")
 
-        val ptyBin = lobos.kernel.compat.Compat.ptyHost(ctx)
+        val ptyBin = lobos.kernel.compat.Compat.ptyHost()
         if (preferPty && ptyBin != null) {
             val r = PtySession.runToCompletion(ctx, ptyBin, argv, env, cwd, timeoutMs)
             if (r.completed) {

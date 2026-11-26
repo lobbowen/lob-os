@@ -1,41 +1,28 @@
 package lobos.kernel
 
-import android.content.Context
-
+/**
+ * Host lifecycle hooks. The host captures its own Context in the registered
+ * callbacks — kernel code never passes Android Context here.
+ */
 object KernelHooks {
 
     @Volatile
-    private var ensurer: ((Context) -> Unit)? = null
+    private var ensurer: (() -> Unit)? = null
 
     @Volatile
-    private var reporter: ((Context, String, Boolean?, String, String?) -> Unit)? = null
+    private var reporter: ((String, Boolean?, String, String?) -> Unit)? = null
 
-    fun setEnsurer(block: (Context) -> Unit) {
-        ensurer = block
+    fun setEnsurer(block: () -> Unit) { ensurer = block }
+
+    fun setReporter(block: (String, Boolean?, String, String?) -> Unit) { reporter = block }
+
+    fun clear() { ensurer = null; reporter = null }
+
+    fun ensureHost() {
+        runCatching { ensurer?.invoke() }
     }
 
-    fun setReporter(block: (Context, String, Boolean?, String, String?) -> Unit) {
-        reporter = block
-    }
-
-    fun clear() {
-        ensurer = null
-        reporter = null
-    }
-
-    fun ensureHost(ctx: Context) {
-        val r = ensurer ?: return
-        runCatching { r(ctx.applicationContext) }
-    }
-
-    fun report(
-        ctx: Context,
-        stage: String,
-        ok: Boolean?,
-        message: String,
-        detail: String? = null,
-    ) {
-        val r = reporter ?: return
-        runCatching { r(ctx.applicationContext, stage, ok, message, detail) }
+    fun report(stage: String, ok: Boolean?, message: String, detail: String? = null) {
+        runCatching { reporter?.invoke(stage, ok, message, detail) }
     }
 }

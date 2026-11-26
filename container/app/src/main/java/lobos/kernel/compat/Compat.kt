@@ -1,6 +1,5 @@
 package lobos.kernel.compat
 
-import android.content.Context
 import java.io.File
 
 object Compat {
@@ -10,19 +9,18 @@ object Compat {
     const val LIB_FLOCK = "liblobosflock.so"
     const val LIB_GUEST_SIGSYS = "libguest-sigsys.so"
 
-    fun libDir(ctx: Context): File = lobos.kernel.layout.SystemDirs.lib()
+    private fun libDir(): File = lobos.kernel.layout.SystemDirs.lib()
+    private fun apkLibDir(): File = lobos.kernel.spi.KernelServices.paths().nativeLibDir
 
-    private fun apkLibDir(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
-
-    fun lib(ctx: Context, name: String): File? {
-        val p = libDir(ctx).resolve(name)
+    fun lib(name: String): File? {
+        val p = libDir().resolve(name)
         if (p.isFile) return p
-        return apkLibDir(ctx).resolve(name).takeIf { it.isFile }
+        return apkLibDir().resolve(name).takeIf { it.isFile }
     }
 
-    private fun permOf(ctx: Context, name: String, mode: String?): String {
+    private fun permOf(name: String, mode: String?): String {
         if (mode != null && mode.isNotBlank()) return mode
-        val cur = libDir(ctx).resolve(name)
+        val cur = libDir().resolve(name)
         val curPerm = runCatching {
             java.nio.file.Files.getPosixFilePermissions(cur.toPath())
         }.getOrNull()
@@ -35,7 +33,7 @@ object Compat {
             withX.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE)
             return java.nio.file.attribute.PosixFilePermissions.toString(withX)
         }
-        val ap = apkLibDir(ctx).resolve(name)
+        val ap = apkLibDir().resolve(name)
         val apPerm = runCatching {
             java.nio.file.Files.getPosixFilePermissions(ap.toPath())
         }.getOrNull()
@@ -44,14 +42,13 @@ object Compat {
     }
 
     fun installOtaStreaming(
-        ctx: Context,
         name: String,
         src: File,
         expectedSha256: String,
         mode: String? = null,
     ): Boolean {
-        val dst = libDir(ctx)
-        val expectedPerm = permOf(ctx, name, mode)
+        val dst = libDir()
+        val expectedPerm = permOf(name, mode)
         if (!dst.isDirectory && !dst.mkdirs()) return false
         val tmp = dst.resolve(name + ".new")
         val got = runCatching { lobos.kernel.crypto.Crypto.sha256HexFile(src) }.getOrNull() ?: return false
@@ -79,9 +76,9 @@ object Compat {
         return true
     }
 
-    fun installOta(ctx: Context, name: String, bytes: ByteArray, expectedSha256: String, mode: String? = null): Boolean {
-        val dst = libDir(ctx)
-        val expectedPerm = permOf(ctx, name, mode)
+    fun installOta(name: String, bytes: ByteArray, expectedSha256: String, mode: String? = null): Boolean {
+        val dst = libDir()
+        val expectedPerm = permOf(name, mode)
         if (!dst.isDirectory && !dst.mkdirs()) return false
         val tmp = dst.resolve(name + ".new")
         val got = java.security.MessageDigest.getInstance("SHA-256")
@@ -110,18 +107,18 @@ object Compat {
 
     fun managedComponents(): List<String> = listOf(LIB_POSIX, LIB_PTYSESSION, LIB_FLOCK, LIB_GUEST_SIGSYS)
 
-    fun otaInstalled(ctx: Context, name: String): Boolean {
-        val f = libDir(ctx).resolve(name)
+    fun otaInstalled(name: String): Boolean {
+        val f = libDir().resolve(name)
         return f.isFile && !java.nio.file.Files.isSymbolicLink(f.toPath())
     }
 
-    fun linkInto(ctx: Context): Int {
-        val dst = libDir(ctx)
+    fun linkInto(): Int {
+        val dst = libDir()
         if (!dst.isDirectory && !dst.mkdirs()) return 0
         var n = 0
         val trace = StringBuilder()
         for (name in managedComponents()) {
-            val src = apkLibDir(ctx).resolve(name)
+            val src = apkLibDir().resolve(name)
             if (!src.isFile) { trace.append(name).append(":apk没有; "); continue }
             val link = dst.resolve(name)
             val isLink = java.nio.file.Files.isSymbolicLink(link.toPath())
@@ -132,7 +129,7 @@ object Compat {
                 if (have == sha) { trace.append(name).append(":一致; "); continue }
                 trace.append(name).append(":不一致apk=").append(sha.take(12)).append(" 盘上=").append((have ?: "读失败").take(12)).append("; ")
             }
-            val done = installOtaStreaming(ctx, name, src, sha, null)
+            val done = installOtaStreaming(name, src, sha, null)
             trace.append(name).append(if (done) ":已重铺; " else ":重铺失败; ")
             if (done) n++
         }
@@ -140,8 +137,6 @@ object Compat {
         return n
     }
 
-    fun ptyHost(ctx: Context): File? = lib(ctx, LIB_PTYSESSION)
-
-    fun flockLib(ctx: Context): File? = lib(ctx, LIB_FLOCK)
-
+    fun ptyHost(): File? = lib(LIB_PTYSESSION)
+    fun flockLib(): File? = lib(LIB_FLOCK)
 }

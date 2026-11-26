@@ -57,7 +57,7 @@ object ProgramInstaller {
             )
         }
 
-        val pubPem = PackageVerifier.publicKeyPem(context)
+        val pubPem = PackageVerifier.publicKeyPem()
         if (pubPem.isNullOrBlank()) {
             return InstallResult(
                 false, null, source, "public-key-missing",

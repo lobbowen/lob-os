@@ -55,7 +55,7 @@ object ServiceRegistry {
             decl("view", listOf("prefix")) { ctx ->
                 runCatching { lobos.services.reg.RuntimeEnvironment.ensure(ctx) }
                     .onSuccess { snap ->
-                        val linked = lobos.kernel.compat.Compat.linkInto(ctx)
+                        val linked = lobos.kernel.compat.Compat.linkInto()
                         val root = lobos.services.reg.RuntimeEnvironment.treeRootFor(ctx)
                         val view = lobos.services.reg.RuntimeEnvironment.treeRootEnv(ctx, root, null)
                         val needs = listOf("libcurl.so", "libssl.so", "libcrypto.so", "libz.so.1")

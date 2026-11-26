@@ -29,9 +29,9 @@ class OsApplication : Application() {
         lobos.host.Foreground.attach(this)
         initQuickAppRuntime()
         KernelHostAdapters.register(this)
-        KernelHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
-        KernelHooks.setReporter { ctx, stage, ok, message, detail ->
-            RuntimeDiagnostics.append(ctx, stage, ok, message, detail ?: "")
+        KernelHooks.setEnsurer { OsHostService.ensureRunning(this) }
+        KernelHooks.setReporter { stage, ok, message, detail ->
+            RuntimeDiagnostics.append(this, stage, ok, message, detail ?: "")
         }
         PowerHostHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         PowerHostHooks.setWakeObserver { nowMs ->

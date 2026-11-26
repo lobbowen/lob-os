@@ -155,7 +155,7 @@ object DriverRegistry {
         var missing = 0
         for (d in DRIVERS) {
             val present = d.assetId == null ||
-                lobos.kernel.compat.Compat.lib(ctx, d.assetId) != null
+                lobos.kernel.compat.Compat.lib(d.assetId) != null
             if (!present) missing += 1
             drivers.put(JSONObject().apply {
                 put("id", d.id)
@@ -196,6 +196,6 @@ object DriverRegistry {
     }
     private fun entryOf(ctx: Context, libName: String?): String {
         if (libName.isNullOrBlank()) return ""
-        return if (lobos.kernel.compat.Compat.lib(ctx, libName) != null) "" else "缺失"
+        return if (lobos.kernel.compat.Compat.lib(libName) != null) "" else "缺失"
     }
 }

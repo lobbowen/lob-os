@@ -1,6 +1,7 @@
 package lobos.kernel.crypto
 
 import android.content.Context
+
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -161,10 +162,9 @@ object PackageVerifier {
 
     private fun verifyEd25519(pubPem: String, data: ByteArray, sigB64: String): Boolean =
         Crypto.verifyEd25519(
-            pubPem, data, runCatching { android.util.Base64.decode(sigB64, android.util.Base64.DEFAULT) }.getOrElse { return false },
+            pubPem, data, runCatching { java.util.Base64.getDecoder().decode(sigB64) }.getOrElse { return false },
         )
 
-    fun publicKeyPem(context: Context): String? = runCatching {
-        context.assets.open("supply/component-public.pem").use { it.readBytes().toString(Charsets.UTF_8) }
-    }.getOrNull()
+    fun publicKeyPem(): String? =
+        lobos.kernel.spi.KernelServices.paths().assetText("supply/component-public.pem")
 }

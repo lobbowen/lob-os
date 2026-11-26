@@ -416,7 +416,7 @@ class InstanceHost(private val host: Service, val programId: String) : ContextWr
                     programDir = kernelDir,
                     programEntry = kernelEntry,
                     uiDir = File(kernelDir, "ui/dist"),
-                    flockSo = lobos.kernel.compat.Compat.flockLib(this),
+                    flockSo = lobos.kernel.compat.Compat.flockLib(),
                     programId = spec?.id ?: "",
                     args = argsOverride ?: (spec?.args ?: emptyList()),
                     httpPort = resolvedPort,
