@@ -99,9 +99,12 @@ class OsHostService : Service() {
 
         handler?.post {
             ensureComponents(intent)
+            /* RUNNING after components ready (FIFO handler ordering). */
+            if (born) {
+            OsInit.transition(this@OsHostService, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this@OsHostService))
+            }
         }
         if (born) {
-            OsInit.transition(this, OsPhase.RUNNING, "宿主组件就绪", ResidencyAudit.interruption(this))
 
             tickHandler?.post(tick)
             runCatching {
