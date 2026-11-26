@@ -63,3 +63,29 @@ fastroot 的 mkdir ENOENT 边界。下一步应选其一：
 3. 评估 mtty 官方 App 是否也复现（确认是否 fastroot 上游已知问题）
 
 不假装完成：claude/codex 按标准安装尚未成功，问题已精确定位到 mkdir ENOENT。
+
+
+## 补充定位（2026-11-26 23:50）：mkdir 本身正确，问题在 npm 特定路径
+
+对问题 3 做了受控实验，推翻了之前"fastroot mkdir bug"的假设：
+
+用同一个 node v18.19.1 在 fastroot 里直接调用：
+```
+fs.mkdirSync('/usr')                    -> EEXIST（正确）
+fs.mkdirSync('/usr', {recursive:true})  -> OK
+fs.mkdirSync('/usr/local/lib/node_modules', {recursive:true}) -> OK
+fs.mkdirSync('/a/b/c', {recursive:true}) -> OK
+```
+说明 fastroot 的 mkdir/mkdirat 和 walk 缓存**都正确**，之前的假设错误。
+
+但 npm-cli.js 执行 `install -g` 时报 `mkdir /usr ENOENT`（debug log:
+`verbose cwd /`, `command:install Completed in 4ms`——极早期失败）。
+同样的 node 二进制、同样的 /usr、recursive mkdir 在 node -e 里 OK——
+差异在 npm 自身的 fs 包装（graceful-fs）或 install 命令的 prefix 解析路径。
+
+这不是 fastroot 的问题，也不是我们架构的问题——是 Ubuntu 24.04 的
+npm 9.2.0 在 fastroot 的 fake-root 环境下的特定兼容问题。
+
+尚未解决，但范围已精确缩小到 npm 自身。下一步若继续：
+- 用 npm 的 --logs 或直接读 npm-cli 的 reify 代码定位它为何对已存在 /usr 报 ENOENT
+- 或接受 npm install -g 不可用，用 tarball 解包方式安装 claude（偏离标准但可行）
