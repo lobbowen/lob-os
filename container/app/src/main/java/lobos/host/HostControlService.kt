@@ -5,60 +5,23 @@ import java.util.UUID
 import java.io.File
 import lobos.kernel.compat.PeLoader
 import lobos.services.log.RuntimeDiagnostics
-import lobos.services.supply.PieceOriginStore
-import lobos.services.supply.PieceUpdater
 import org.json.JSONArray
 import org.json.JSONObject
 
 object HostControlService {
 
-    fun pieces(context: Context): JSONArray {
-        val app = context.applicationContext
-        val origins = PieceOriginStore.all(app).associateBy { it.id }
-        val arr = JSONArray()
-        for (s in PieceUpdater.states(app)) {
-            val o = origins[s.id]
+    // V1 piece OTA removed: programs come from Ubuntu rootfs via apt/npm.
+    fun pieces(context: Context): JSONArray = JSONArray()
 
-            val status = PieceUpdater.rollbackStatus(app, s.id)
-            arr.put(JSONObject().apply {
-                put("id", s.id)
-                put("installedVersion", s.installedVersion ?: JSONObject.NULL)
-
-                put("updated", s.updated)
-                put("origin", o?.active ?: "")
-                put("apkVersion", o?.apkVersion ?: "")
-                put("apkTarget", o?.apkEntryPath ?: "")
-                put("otaVersion", o?.otaVersion ?: "")
-                put("otaTarget", o?.otaEntryPath ?: "")
-                put("hasApkOriginal", o?.hasApkOriginal == true)
-                put("hasOta", o?.hasOta == true)
-                put("rollbackEligible", status.eligible)
-                put("rollbackReason", status.reason)
-                put("rollbackDetail", status.detail)
-                put("rollbackFailureClass", status.failureClass)
-                put("rollbackRole", status.role)
-                put("entryPointer", status.entryPath)
-            })
-        }
-        return arr
+    fun rollbackJudgement(context: Context, id: String): JSONObject = JSONObject().apply {
+        put("rollbackEligible", false)
+        put("rollbackReason", "V1 OTA removed")
     }
 
-    fun rollbackJudgement(context: Context, id: String): PieceUpdater.RollbackStatus {
-        val app = context.applicationContext
-        return PieceUpdater.rollbackStatus(app, id.trim())
-    }
-
-    fun pieceEligibility(context: Context, id: String): JSONObject {
-        val app = context.applicationContext
-        val j = rollbackJudgement(app, id)
-        return JSONObject().apply {
-            put("id", id.trim())
-            put("rollbackEligible", j.eligible)
-            put("rollbackReason", j.reason)
-            put("rollbackDetail", j.detail)
-            put("entryPointer", j.entryPath)
-            put("apkTarget", j.apkTarget)
-        }
+    fun pieceEligibility(context: Context, id: String): JSONObject = JSONObject().apply {
+        put("id", id.trim())
+        put("rollbackEligible", false)
+        put("rollbackReason", "V1 OTA removed")
     }
 
     fun update(context: Context, manifestUrl: String, requestId: String, dryRun: Boolean): JSONObject {
@@ -660,7 +623,7 @@ object HostControlService {
                 },
             ) ?: return failure(method, correlatedId, "能力服务未启动")
             val ok = result.optBoolean("ok", false)
-            val verified = if (ok && !dryRun) PieceUpdater.verifyApkRestored(app, pieceId) else (false to "未执行真实回退（失败或 dryRun）")
+            val verified = false to "V1 OTA 回退已移除；程序由 Ubuntu apt/npm 管理"
             JSONObject().apply {
                 put("ok", ok)
                 put("code", result.optInt("code", 0))

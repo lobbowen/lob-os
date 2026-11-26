@@ -3,12 +3,8 @@ package lobos.host
 import android.content.Context
 import java.io.File
 import lobos.services.log.Journal
-import lobos.services.app.ProgramGroup
 import org.json.JSONObject
 import lobos.kernel.layout.SystemDirs
-import lobos.services.reg.ProgramStatusHub
-import lobos.services.reg.UnitState
-import lobos.services.supply.PieceScan
 
 object OsInit {
 
@@ -38,9 +34,7 @@ object OsInit {
             controlPlaneUp = f.optBoolean("controlPlaneUp"),
         )
         return OsSnapshot(
-            phase = phase,
-            facts = facts,
-            interrupted = interruptedThisLife,
+            phase = phase, facts = facts, interrupted = interruptedThisLife,
             atMs = obj.optLong("at", 0L),
         )
     }
@@ -66,9 +60,6 @@ object OsInit {
         val stalled = snapshot(ctx).phase
         interruptedThisLife = interrupted
         SystemDirs.ensureAll()
-        val scanned = PieceScan.rebuild(ctx)
-
-  runCatching { lobos.services.app.ProgramGroup.reconcile(ctx) }
         val swept = SystemDirs.clearRunVolatile()
         val snap = OsSnapshot(OsPhase.BOOTING, OsFacts(), interrupted, System.currentTimeMillis())
         write(ctx, snap, OsPhase.BOOTING, null)
@@ -76,9 +67,6 @@ object OsInit {
             ctx, "os-phase", null,
             "宿主出生：本世从 BOOTING 起算（上世停在 " + stalled.name + "，那份读数不继承）",
         )
-        if (scanned > 0) {
-            Journal.append(ctx, "os-run", null, "索引已从落位重建：$scanned 项")
-        }
         if (swept > 0) {
             Journal.append(ctx, "os-run", null, "已清 /run：$swept 项（本次启动不继承上世运行态）")
         }
@@ -102,17 +90,13 @@ object OsInit {
         val now = System.currentTimeMillis()
         interruptedThisLife = interrupted
         val snap = prev.copy(
-            phase = next ?: prev.phase,
-            facts = facts,
-            interrupted = interrupted,
+            phase = next ?: prev.phase, facts = facts, interrupted = interrupted,
             atMs = if (next != null) now else prev.atMs,
         )
         write(ctx, snap, prev.phase, next?.let { OsPhaseRule.reason(it, facts) })
         if (next != null) {
-            Journal.append(
-                ctx, "os-phase", null,
-                prev.phase.name + " -> " + next.name + "（" + OsPhaseRule.reason(next, facts) + "）",
-            )
+            Journal.append(ctx, "os-phase", null,
+                prev.phase.name + " -> " + next.name + "（" + OsPhaseRule.reason(next, facts) + "）")
         }
         return snap
     }
@@ -125,9 +109,7 @@ object OsInit {
             s.facts.controlPlaneUp -> "运行时在线"
             else -> "运行时未响应"
         }
-        val programs = ProgramStatusHub.snapshot(ctx)
-        val running = programs.count { it.active == UnitState.Active.ACTIVE }
         val prefix = s.interrupted?.let { it + " · " } ?: ""
-        return prefix + "Lob OS · " + s.phase.label + " · " + runtime +
-            " · " + running + "/" + programs.size + " 个程序在跑"
-    }}
+        return prefix + "Lob OS · " + s.phase.label + " · " + runtime + " · Ubuntu 系统盘"
+    }
+}

@@ -2,24 +2,16 @@ package lobos.host
 
 import android.content.Context
 import java.io.File
+import java.security.MessageDigest
 import lobos.kernel.spi.KernelServices
 import lobos.kernel.spi.EnvProvider
-import lobos.kernel.spi.ProgramQuery
-import lobos.kernel.spi.ShellLookup
 import lobos.kernel.spi.SystemDiagnostics
 import lobos.services.log.RuntimeDiagnostics
-import lobos.services.reg.ProgramIndex
-import lobos.services.reg.ProgramRegistry
-import lobos.services.reg.RuntimeEnvironment
-import lobos.services.reg.UnitEntry
-import lobos.services.supply.ProgramInstallPipeline
-import lobos.services.supply.ShellEntry
-import lobos.services.supply.SupplySha
 
 /**
- * Host-side adapters implementing the kernel SPI. Registered once from
- * OsApplication.onCreate. This is the ONLY place where kernel SPI meets
- * services — kernel code itself never imports services.
+ * Host-side kernel SPI adapters. Registered once from OsApplication.onCreate.
+ * V1 program/shell providers removed: programs come from Ubuntu rootfs via
+ * apt/npm, and the terminal uses UbuntuSystem directly.
  */
 object KernelHostAdapters {
 
@@ -37,47 +29,26 @@ object KernelHostAdapters {
             logger = lobos.kernel.spi.KernelLogger { stage, ok, msg, detail ->
                 RuntimeDiagnostics.append(ctx, stage, ok, msg, detail ?: "")
             },
-            programs = object : ProgramQuery {
-                override fun all(): List<ProgramQuery.Unit> = ProgramIndex.all(ctx).map { it.toUnit() }
-                override fun spec(programId: String): ProgramQuery.ProgramSpec? =
-                    ProgramRegistry.spec(ctx, programId)?.let {
-                        ProgramQuery.ProgramSpec(it.entry, it.version, it.entryFile)
-                    }
-                override fun declaredBins(programId: String): List<String> {
-                    val base = File(lobos.kernel.layout.SystemDirs.opt(), programId)
-                    val verDir = base.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }
-                        ?: return emptyList()
-                    val shape = ProgramInstallPipeline.PieceShape.read(verDir) ?: return emptyList()
-                    val bins = shape.derivedLinks.filter { it.startsWith("bin/") }
-                    if (bins.isNotEmpty()) return bins
-                    return shape.files.filter { it.role == ProgramInstallPipeline.ROLE_PROGRAM }
-                        .map { it.path }
-                }
-            },
-            shell = ShellLookup { ShellEntry.require(ctx) },
             diagnostics = object : SystemDiagnostics {
                 override fun selfCheck(items: List<SystemDiagnostics.Item>): String =
-                    lobos.services.supply.SelfCheckReport.format(items.map {
-                        lobos.services.supply.SelfCheckReport.Item(it.name, it.ok, it.title, it.detail)
-                    })
+                    items.joinToString("\n") { "${it.name}: ${it.ok} ${it.title} ${it.detail}" }
                 override fun selfCheckVerdict(items: List<SystemDiagnostics.Item>): String =
-                    lobos.services.supply.SelfCheckReport.verdict(items.map {
-                        lobos.services.supply.SelfCheckReport.Item(it.name, it.ok, it.title, it.detail)
-                    })
-                override fun sha256(file: File): String = SupplySha.sha256(file)
+                    if (items.all { it.ok != false }) "OK" else "FAIL"
+                override fun sha256(file: File): String = runCatching {
+                    val md = MessageDigest.getInstance("SHA-256")
+                    file.inputStream().use { input ->
+                        val buf = ByteArray(8192)
+                        var n: Int
+                        while (input.read(buf).also { n = it } > 0) md.update(buf, 0, n)
+                    }
+                    md.digest().joinToString("") { "%02x".format(it) }
+                }.getOrDefault("")
             },
             env = object : EnvProvider {
-                override val reservedKeys: List<String> = RuntimeEnvironment.RESERVED_ENV.toList()
+                override val reservedKeys: List<String> = listOf("FR_ROOT", "FR_SHIM", "FR_LIBPATH", "FR_KEXEC", "FR_EXE")
                 override fun childEnv(inheritedPath: String?, inheritedLd: String?): Map<String, String> =
-                    RuntimeEnvironment.treeRootEnv(
-                        ctx, RuntimeEnvironment.treeRootFor(ctx), inheritedPath, inheritedLd
-                    )
+                    lobos.system.UbuntuSystem.environment(ctx)
             },
         )
     }
-
-    private fun UnitEntry.toUnit() = ProgramQuery.Unit(
-        programId = id, role = role, version = version,
-        stateDir = stateDir, assetEntry = assetEntry,
-    )
 }
