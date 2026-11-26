@@ -110,3 +110,21 @@ host 干净 env 基线是 0。这是对兼容层的设计性注入（exec hook �
 但需明确记录：**LobOS 的 execve envp 不是精确替换，而是被增强**。标准 Linux 下
 execve(path,argv,{A=1}) 子进程只看到 A=1；LobOS 会额外注入系统变量。
 依赖"envp 精确透传"做测试/沙箱的程序行为会不同。标 EXEMPT（设计性），不是通过。
+
+## glibc guest VFS hook 补齐（2026-11-26）
+
+四层诊断确认的缺口已补齐：
+- 根因：bionic liblobosposix.so 依赖 bionic libc.so，glibc guest 加载不了；
+  原先 glibc guest 只有 exec 时翻译，运行时 stat/open 无 VFS hook。
+- 补齐：`build-glibc-vfs-hook.sh` 用 glibc cross toolchain 编出
+  `liblobos-vfs-glibc.so`（依赖 libc.so.6，导出 open/stat/fstatat/readlink/mkdir/rename 等），
+  RuntimeEnvironment 注入 `LOBOS_VFS_SO`，exec-path glibc 分支把它与 sigsys so
+  一起放进 LD_PRELOAD（vfs 在前，沿用 bionic LD_PRELOAD 过滤）。
+- 差分基准确认：虚拟路径 `/usr/bin/bash` 的 stat 从 ENOENT 变为成功，
+  readlink 走 hook（realpath）。
+- 产品回归：终端 echo / node --version 正常。
+
+验证注意：glibc 程序在 app_data 无法直接 exec（SELinux），需经 glibc loader。
+手动验证时必须模拟 exec-path 的 env 过滤（清 bionic LD_PRELOAD），
+否则 bionic hook 会被 glibc loader 误加载报 "version LIBC not found"。
+真实产品路径由 exec-path 自动处理，不受此影响。
