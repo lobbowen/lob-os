@@ -81,6 +81,10 @@ object TerminalProfile {
             // LobOS 是 Linux 兼容环境：让 Node 生态按标准 linux-arm64 解析平台包，
             // 而不是走没有预编件的 android 分支（Claude Code 等据此选 native 包）。
             appendLine("try { if (process.platform === 'android') Object.defineProperty(process, 'platform', { value: 'linux', configurable: true }); } catch (e) {}")
+            // LobOS 用户态底座是 musl 语义。让 Node 安装器(detectMusl 检查
+            // process.report.header.glibcVersionRuntime === undefined)选官方 *-musl
+            // 平台包，而非在 app 域跑不起来的 glibc 包。系统级 ABI 声明，通用。
+            appendLine("try { var _r = process.report && process.report.getReport && process.report.getReport(); if (_r && _r.header) { delete _r.header.glibcVersionRuntime; } if (process.report && process.report.getReport) { var _og = process.report.getReport; process.report.getReport = function(){ var r = _og.call(process.report); try { delete r.header.glibcVersionRuntime; } catch(e) {} return r; }; } } catch (e) {}")
         }
         runCatching { shim.writeText(text) }
     }

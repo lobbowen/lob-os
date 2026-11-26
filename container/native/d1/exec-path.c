@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <jni.h>
 #include "compat-report.h"
+#include "vfs-root.h"
 
 extern char **environ;
 
@@ -465,6 +466,15 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
   bind_real();
   if (!real_execve) { errno = ENOSYS; return -1; }
   if (!path) { errno = ENOENT; return -1; }
+
+  /* 用户态虚拟根：程序用标准 Linux 路径 exec（/usr/bin/x 等）时，
+     先翻译成沙箱真实路径，后续所有分支(read_interp/shebang/loader)用真实路径。
+     argv[0] 保持程序传入值（程序看到的标准路径不变）。 */
+  {
+    char vpbuf[1024];
+    const char *vp = lobos_vfs_translate(path, vpbuf, sizeof vpbuf);
+    if (vp != path) path = vp;
+  }
 
   /* 动态链接器本身（ET_DYN，无 PT_INTERP）：显式执行它时不能再被
      ET_DYN->linker64 分支改写（那产生 "Could not find a PHDR"）。直接放行。

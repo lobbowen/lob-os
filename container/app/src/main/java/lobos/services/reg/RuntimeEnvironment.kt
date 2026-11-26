@@ -55,6 +55,9 @@ object RuntimeEnvironment {
         put("TERM", "xterm")
 
         put("PREFIX", root.prefixRoot.absolutePath)
+        // 用户态虚拟根：程序看到标准 Linux 路径(/usr /lib /etc /tmp)，
+        // libc 路径 hook 按 LOBOS_VROOT 一次性映射到沙箱真实位置。
+        put("LOBOS_VROOT", ctx.filesDir.absolutePath)
 
         val pythonVer = runCatching {
             lobos.services.supply.ProgramDir(ctx, "python").currentVersion()
