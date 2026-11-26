@@ -49,9 +49,7 @@ class TerminalSession private constructor(
         ): TerminalSession {
 
             val ptyBin = lobos.kernel.compat.Compat.ptyHost()
-                ?: throw IllegalStateException(
-                    "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它是那 APK 里那一份）",
-                )
+                ?: throw IllegalStateException("PTY 宿主不在（librivospty 缺失）")
 
             // V2: if Ubuntu rootfs + fastroot engine are ready, run the real
             // Ubuntu bash inside the PTY. PTY host execv()s argv[0] (the

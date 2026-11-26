@@ -137,6 +137,11 @@ object Compat {
         return n
     }
 
-    fun ptyHost(): File? = lib(LIB_PTYSESSION)
-    fun flockLib(): File? = lib(LIB_FLOCK)
+    // V2: the PTY host is APK-bundled in nativeLibraryDir (exec-able). The old
+    // files/usr/lib copy was a V1 staging link that carried a stale build.
+    fun ptyHost(): File? {
+        val native = apkLibDir().resolve(LIB_PTYSESSION)
+        return if (native.isFile) native else null
+    }
+    fun flockLib(): File? = null // V1 flock bridge removed; system disk has real flock(2)
 }
