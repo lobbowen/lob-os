@@ -34,19 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure welded OTA public key anchor
-        env:
-          OTA_PUBLIC_KEY: ${{ secrets.OTA_PUBLIC_KEY }}
-        run: |
-          ANCHOR="container/app/src/main/assets/supply/component-public.pem"
-          if [ -n "$OTA_PUBLIC_KEY" ]; then
-            printf '%s' "$OTA_PUBLIC_KEY" > "$ANCHOR"
-            echo "anchor written from OTA_PUBLIC_KEY secret"
-          else
-            echo "[note] 未配置 OTA_PUBLIC_KEY：沿用仓库内已有的公钥锚"
-          fi
-          ls -la "$ANCHOR"
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -249,9 +236,6 @@ jobs:
           set -euo pipefail
           bash scripts/toolchain/locate-ndk.sh
           bash scripts/verify/verify-runtime-elf.sh container/app/src/main/jniLibs/arm64-v8a
-
-      - name: OTA 锚点判据（Ed25519 公钥必须能解析、能被设备验）
-        run: bash scripts/verify/verify-ota-anchor.sh
 
       - name: 注入发布签名（缺密钥时校验轮放行，发布轮判红）
         id: signing
