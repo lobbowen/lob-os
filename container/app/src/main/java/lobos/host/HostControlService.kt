@@ -4,8 +4,6 @@ import android.content.Context
 import java.util.UUID
 import java.io.File
 import lobos.kernel.compat.PeLoader
-import lobos.control.ControlClient
-import lobos.kernel.proc.SessionRegistry
 import lobos.services.log.RuntimeDiagnostics
 import lobos.services.supply.PieceOriginStore
 import lobos.services.supply.PieceUpdater
@@ -13,8 +11,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object HostControlService {
-    const val MANAGEMENT_ID = "lobos.installer"
-    const val MANAGEMENT_GENERATION = 1L
 
     fun pieces(context: Context): JSONArray {
         val app = context.applicationContext

@@ -170,7 +170,7 @@ class OsHostService : Service() {
 
         try {
             val b = broker ?: CapabilityBroker(this).also { broker = it; it.start() }
-            b.onHostStart(intent)
+            @Suppress("UNUSED_VARIABLE") val unusedIntent = intent
         } catch (t: Throwable) {
             RuntimeDiagnostics.append(this, "bridge", false, "能力桥组件异常", t::class.java.simpleName + ": " + t.message)
         }

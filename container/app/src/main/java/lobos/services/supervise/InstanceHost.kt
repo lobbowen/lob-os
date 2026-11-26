@@ -20,7 +20,6 @@ import lobos.host.BootReconciler
 import lobos.services.supply.PieceScan
 import lobos.kernel.proc.ProcessLedger
 import lobos.services.supply.ProgramDir
-import lobos.kernel.proc.SessionRegistry
 import lobos.kernel.fs.StateFiles
 import lobos.kernel.layout.SystemDirs
 import lobos.services.reg.edited

@@ -8,21 +8,15 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.LocalServerSocket
-import android.net.LocalSocket
-import android.net.LocalSocketAddress
 import android.os.Build
 import android.os.Environment
 import android.util.Log
 import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
-import java.io.OutputStream
 import java.io.Reader
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.Executors
 import lobos.BuildConfig
 import lobos.R
 import lobos.services.log.RuntimeDiagnostics
@@ -68,12 +62,8 @@ import lobos.kernel.mm.LibPath
 
 class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
-    private val servers = java.util.concurrent.ConcurrentHashMap<String, LocalServerSocket>()
-    private var running = false
-    private var socketName: String = GuestAdapter.BRIDGE_SOCKET
     @Volatile private var activeConnections = 0
     @Volatile private var installerToken: String = ""
-    private val executor = Executors.newCachedThreadPool()
     private lateinit var notifManager: NotificationManager
 
     fun start() {
@@ -84,98 +74,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         OsHostService.ensureRunning(this)
     }
 
-    fun issueInstallerSession() {
-        if (installerToken.isNotBlank()) return
-        runCatching { beginSession(INSTALLER_ID, INSTALLER_GENERATION) }
-            .onSuccess { installerToken = it }
-            .onFailure { Log.w(TAG, "安装会话签发失败（控制面装不了第一个程序）", it) }
-    }
-
-    fun installerToken(): String = installerToken
-
-    private fun onListenFailed(name: String, e: Throwable) {
-        val addrInUse = e is java.net.BindException && (e.message ?: "").contains("Address already in use")
-        if (addrInUse && socketPresent(name)) {
-            RuntimeDiagnostics.append(
-                this, "bridge", true, "HostBridge 监听沿用既有 socket",
-                "name=" + name + "（上次进程退出时未释放，本进程不重复绑）",
-            )
-            return
-        }
-        RuntimeDiagnostics.append(
-            this, "bridge", false, "HostBridge 监听失败",
-            "name=" + name + " " + e::class.java.simpleName + ": " + e.message,
-        )
-    }
-
-    private fun socketPresent(name: String): Boolean = runCatching {
-        LocalSocket().use { s -> s.connect(LocalSocketAddress(name, LocalSocketAddress.Namespace.ABSTRACT)) }
-        true
-    }.getOrDefault(false)
-
-    fun onHostStart(intent: Intent?) {
-        if (!running) startBridge()
-    }
-
-    private fun startBridge() {
-        if (running) return
-        running = true
-        listenLoop(socketName)
-    }
-
-    @Synchronized
-    private fun listenLoop(name: String) {
-        if (servers.containsKey(name)) return
-        executor.execute {
-            val srv = try {
-                LocalServerSocket(name)
-            } catch (e: Throwable) {
-                onListenFailed(name, e)
-                return@execute
-            }
-            servers[name] = srv
-            RuntimeDiagnostics.append(this, "bridge", true, "HostBridge 监听 UDS（会话名）", "name=" + name)
-            while (running && servers[name] === srv) {
-                val sock = try {
-                    srv.accept()
-                } catch (e: Throwable) {
-
-                    if (running && servers[name] === srv) {
-                        RuntimeDiagnostics.append(
-                            this, "bridge", false, "HostBridge 接受连接失败",
-                            "name=" + name + " " + e::class.java.simpleName + ": " + e.message,
-                        )
-                    }
-                    break
-                }
-                executor.execute { handleConnection(sock, name) }
-            }
-            servers.remove(name)
-            try { srv.close() } catch (_: Throwable) {}
-        }
-    }
-
-    @Synchronized
-    fun beginSession(programId: String, generation: Long): String {
-        val token = lobos.kernel.proc.SessionRegistry.issue(programId, generation)
-        val name = lobos.kernel.proc.SessionRegistry.socketName(token)
-        if (running && !servers.containsKey(name)) listenLoop(name)
-        return token
-    }
-
-    /** End a session: close its UDS server and drop the token. */
-    fun endSession(token: String) {
-        val name = lobos.kernel.proc.SessionRegistry.socketName(token)
-        servers.remove(name)?.let { runCatching { it.close() } }
-        lobos.kernel.proc.SessionRegistry.remove(token)
-    }
-
-    private fun sessionOfSocket(socketName: String): lobos.kernel.proc.SessionRegistry.Session? {
-        val s = lobos.kernel.proc.SessionRegistry.list()
-            .firstOrNull { lobos.kernel.proc.SessionRegistry.socketName(it.token) == socketName } ?: return null
-        return lobos.kernel.proc.SessionRegistry.verify(s.token)
-    }
-
     private class SessionHolder(val socketName: String) {
         @Volatile
         var granted: Set<String> = emptySet()
@@ -184,86 +82,12 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         @Volatile var session: lobos.kernel.proc.SessionRegistry.Session? = null
     }
 
-    private fun handleConnection(sock: LocalSocket, socketName: String) {
-        activeConnections += 1
-        try {
-            if (activeConnections > MAX_CONNECTIONS) {
-                audit("bridge.reject", JSONObject(), false, "并发连接超限: " + activeConnections, null)
-                return
-            }
-            val reader = BufferedReader(InputStreamReader(sock.inputStream))
-            val out = sock.outputStream
-            val holder = SessionHolder(socketName)
-            val sb = StringBuilder()
-            while (running) {
-                val ok = try {
-                    readFrameBounded(reader, MAX_FRAME_CHARS, sb)
-                } catch (e: Throwable) {
-                    audit("bridge.reject", JSONObject(), false, "帧超限或读取失败: " + e.message, null)
-                    false
-                }
-                if (!ok) break
-                val text = sb.toString().trim()
-                if (text.isEmpty()) continue
-                try {
-                    val msg = JSONObject(text)
-                    val resp = try {
-                        dispatch(msg, holder)
-                    } catch (e: Throwable) {
-                        audit("bridge.reject", JSONObject(), false, "分发异常（必定回帧）: " + e.message, holder.session)
-                        error(msg.opt("id"), CODE_INTERNAL, e::class.java.simpleName + ": " + (e.message ?: ""))
-                    }
-                    if (resp != null) writeFrame(out, resp)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "帧解析失败", e)
-                }
-            }
-        } catch (_: Throwable) {
-        } finally {
-            activeConnections -= 1
-            try { sock.close() } catch (_: Throwable) {}
-        }
-    }
-
-    private fun readFrameBounded(r: Reader, cap: Int, out: StringBuilder): Boolean {
-        out.setLength(0)
-        val buf = CharArray(4096)
-        while (true) {
-            val n = r.read(buf)
-            if (n < 0) return out.isNotEmpty()
-            for (i in 0 until n) {
-                val c = buf[i]
-                if (c == '\n') return true
-                if (out.length >= cap) throw IllegalStateException("frame-too-large")
-                out.append(c)
-            }
-        }
-    }
-
-    private fun writeFrame(out: OutputStream, obj: JSONObject) {
-        val text = obj.toString()
-        val frame = if (text.length > MAX_FRAME_CHARS) {
-            audit("bridge.reject", JSONObject(), false, "响应超帧上限: " + text.length, null)
-            error(
-                obj.opt("id"), CODE_POLICY_DENIED,
-                "响应超过帧上限（" + text.length + " > " + MAX_FRAME_CHARS + " 字符）：拒绝发送；请改用分页或落盘后读取",
-            ).toString()
-        } else {
-            text
-        }
-        out.write((frame + "\n").toByteArray(Charsets.UTF_8))
-        out.flush()
-    }
-
     private fun dispatch(msg: JSONObject, holder: SessionHolder): JSONObject? {
         val id = msg.opt("id")
         val method = msg.optString("method", null)
         if (method == null) return null
 
-        if (method == "bridge.handshake") {
-            return handshake(id, msg.optJSONObject("params") ?: JSONObject(), holder)
-        }
-
+        // UDS bridge removed: no bridge.handshake. In-process calls dispatch directly.
         val params = msg.optJSONObject("params") ?: JSONObject()
         val canonical = ApiSpec.canonical(method)
         val short = ApiSpec.shortOf(method)
@@ -310,61 +134,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             Log.e(TAG, "方法执行异常: $method", e)
             return error(id, CODE_INTERNAL, "${e::class.java.simpleName}: ${e.message}")
         }
-    }
-
-    private fun handshake(id: Any?, params: JSONObject, holder: SessionHolder): JSONObject {
-        val clientProtocol = params.optInt("protocol", 0)
-        if (clientProtocol < PROTOCOL_MIN) {
-            audit("bridge.handshake", params, false, "协议不兼容: client=" + clientProtocol, null)
-            return error(
-                id, CODE_PROTOCOL_UNSUPPORTED,
-                "桥协议不兼容：宿主支持 [" + PROTOCOL_MIN + "," + BuildConfig.BRIDGE_PROTOCOL + "]；客户端=" + clientProtocol,
-            )
-        }
-        val negotiated = if (clientProtocol > BuildConfig.BRIDGE_PROTOCOL) BuildConfig.BRIDGE_PROTOCOL else clientProtocol
-        val requires = params.optJSONArray("requires")?.toList() ?: emptyList()
-        val hint = params.optString("program", "").takeIf { it.isNotBlank() }
-        val session = sessionOfSocket(holder.socketName)
-        if (session == null) {
-            audit("bridge.handshake", params, false, "无有效宿主会话", null)
-            return error(id, CODE_SESSION_MISSING, "无有效宿主会话：宿主未签发或会话已失效")
-        }
-        val provided = params.optString("token", "").trim()
-        if (provided.isBlank()) {
-            audit("bridge.handshake", params, false, "缺少会话令牌", null)
-            return error(id, CODE_SESSION_MISSING, "缺少会话令牌：握手必须携带环境变量 LOBOS_SESSION_TOKEN")
-        }
-        if (provided != session.token) {
-            audit("bridge.handshake", params, false, "会话令牌不符", session)
-            return error(id, CODE_SESSION_MISSING, "会话令牌不符：令牌必须来自宿主注入的 LOBOS_SESSION_TOKEN")
-        }
-        if (holder.session != null) {
-            audit("bridge.handshake", params, false, "该连接已激活会话（不允许重复握手）", session)
-            return error(id, CODE_SESSION_MISSING, "该连接已完成握手：会话不允许重复激活")
-        }
-        if (!lobos.kernel.proc.SessionRegistry.claim(session.token)) {
-            audit("bridge.handshake", params, false, "会话已被占用（一次性激活）", session)
-            return error(id, CODE_SESSION_MISSING, "会话已被占用：每个会话只允许激活一次")
-        }
-        holder.session = session
-        val granted = serverGranted(session).toList()
-        holder.granted = granted.toSet()
-        holder.system = granted.contains(ApiSpec.GROUP_SYS)
-        val caps = deviceCapabilities()
-        audit("bridge.handshake", params, true, null, session)
-        return ok(id, JSONObject().apply {
-            put("protocol", negotiated)
-            put("minProtocol", PROTOCOL_MIN)
-            put("maxProtocol", BuildConfig.BRIDGE_PROTOCOL)
-            put("compatible", clientProtocol <= BuildConfig.BRIDGE_PROTOCOL)
-            put("capabilities", JSONArray(caps))
-            put("groups", JSONArray(granted))
-            put("program", session.programId)
-            put("identity", "os-session")
-            put("generation", session.generation)
-            put("programHint", hint ?: JSONObject.NULL)
-            put("authorizedGroups", JSONArray(granted))
-        })
     }
 
     private fun serverGranted(session: lobos.kernel.proc.SessionRegistry.Session): Set<String> {
@@ -1720,12 +1489,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
         }
     }
 
-    fun shutdown() {
-        running = false
-        for ((_, s) in servers) runCatching { s.close() }
-        servers.clear()
-        live = null
-    }
+    fun shutdown() { live = null }
 
     /**
      * Local, in-process capability call. The UDS/token bridge was removed as
@@ -1778,11 +1542,6 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
 
         fun live(): CapabilityBroker? = live
 
-        fun prepareSession(ctx: Context, programId: String, generation: Long): String {
-            val b = live
-            return if (b != null) b.beginSession(programId, generation)
-            else lobos.kernel.proc.SessionRegistry.issue(programId, generation)
-        }
         const val CODE_CAPABILITY_MISSING = -32001
         const val CODE_INVALID_PARAM = -32602
         const val CODE_METHOD_NOT_FOUND = -32601
