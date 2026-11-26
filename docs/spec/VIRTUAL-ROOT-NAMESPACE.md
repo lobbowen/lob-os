@@ -179,3 +179,26 @@ SELinux noexec），且目标是无 PT_INTERP 的静态 ELF，自动改写为
 - glibc 静态程序的完整启动（需要更多 auxv 精确值）未完全验证；musl 静态
   （Claude/Codex 等现代 CLI 实际所用）已验证。
 - 前代调试中发现：裸 _start 无需栈也能加载；glibc 静态需要完整 auxv。
+
+## 14. glibc 主流场景澄清（2026-11-26）
+
+用户指出"glibc 是主流，同理要处理"。重新定位后确认：真正的 glibc 主流
+是**动态链接程序**（ET_DYN/ET_EXEC + PT_INTERP=ld-linux + NEEDED libc.so.6），
+如官方 claude glibc 版、Debian 全系程序。这类程序由 exec-path.c 的 glibc
+分支在 EACCES 兜底之前就处理：读 PT_INTERP=ld-linux -> 用 LOBOS_GLIBC_LOADER
+加载，目标只需可读（与 musl 同理，无需 exec 位）。
+
+实测：Debian coreutils 的 /usr/bin/echo（ET_DYN + ld-linux + libc.so.6）放到
+虚拟磁盘 files/usr/bin/gecho 权限 444，终端敲 `gecho GLIBC_MAIN` ->
+输出 `GLIBC_MAIN`。glibc 主流场景在虚拟磁盘上开箱即用，已通。
+
+分层诊断澄清了罕见边界（不必为此过度投入）：
+- g0 纯裸 syscall / g1 glibc链但自定义_start -> 都能加载（机制没问题）
+- g2 glibc 纯静态(ET_EXEC 无 PT_DYNAMIC) -> Bus error：glibc 2.41 的
+  _dl_relocate_static_pie 访问不存在的 _DYNAMIC
+- g2pie glibc static-pie(ET_DYN + PT_DYNAMIC) -> 需完整自重定位，elfload
+  的简易 bias 映射不足以支撑（AT_BASE/重定位未闭环）
+
+结论：动态链接（glibc/musl 两大主流）已完全通用；pure static / static-pie
+是罕见边界，且真实产品（Claude/Codex/Debian 全系）均不走这条。elfload 的
+load-bias 改动对 ET_EXEC 无影响（bias=0），为将来支持 static-pie 留了基础。
