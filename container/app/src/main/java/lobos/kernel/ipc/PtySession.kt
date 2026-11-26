@@ -598,9 +598,11 @@ object PtySession {
         rows: Int = DEFAULT_ROWS,
         cols: Int = DEFAULT_COLS,
         timeoutMs: Long = 5_000,
+        env: Map<String, String> = emptyMap(),
+        rawArgv: Boolean = false,
     ): Session {
 
-        val effArgv = if (argv.isEmpty()) argv
+        val effArgv = if (rawArgv) argv else if (argv.isEmpty()) argv
         else {
             val first = java.io.File(argv[0])
 
@@ -612,10 +614,10 @@ object PtySession {
             }
             shaped
         }
-        return host(bin).start(effArgv, rows, cols, timeoutMs)
+        return host(bin, env).start(effArgv, rows, cols, timeoutMs)
     }
 
-    private fun host(bin: java.io.File): Host {
+    private fun host(bin: java.io.File, extraEnv: Map<String, String> = emptyMap()): Host {
         host?.let { return it }
         synchronized(hostLock) {
             host?.let { return it }
@@ -627,6 +629,9 @@ object PtySession {
             val pb0 = if (sh != null) {
                 val script = StringBuilder()
                 for ((k0, v0) in view0) {
+                    // extraEnv overrides (fastroot) must not be re-exported by
+                    // the script from the stale legacy view.
+                    if (extraEnv.containsKey(k0)) continue
                     script.append("export ").append(k0).append("=")
                         .append("'").append(v0.replace("'", "'\\''")).append("';").append('\n')
                 }
@@ -650,12 +655,17 @@ object PtySession {
             for ((k0, v0) in view0) {
                 pb1.environment()[k0] = v0
             }
+            for ((k, v) in extraEnv) pb1.environment()[k] = v
             // linker64 显式加载 bash 实测能处理 LD_PRELOAD（compat log 铁证）。
             // 让交互 shell 带 exec-path hook，用户命令的 execve 被拦截、
             // 路由到 nativeLibraryDir 里可 exec 的 glibc loader。
-            val compatEnvSo = java.io.File(lobos.kernel.layout.SystemDirs.lib(), "liblobosposix.so")
-            if (compatEnvSo.isFile) pb1.environment()["LD_PRELOAD"] = compatEnvSo.absolutePath
-            else pb1.environment().remove("LD_PRELOAD")
+            // Legacy path needs the bionic exec hook. Fastroot (FR_ROOT set)
+            // runs a glibc guest that cannot load bionic libs -- keep its env.
+            if (!pb1.environment().containsKey("FR_ROOT")) {
+                val compatEnvSo = java.io.File(lobos.kernel.layout.SystemDirs.lib(), "liblobosposix.so")
+                if (compatEnvSo.isFile) pb1.environment()["LD_PRELOAD"] = compatEnvSo.absolutePath
+                else pb1.environment().remove("LD_PRELOAD")
+            }
             lobos.kernel.spi.KernelServices.logger().log("pty", true,
                 "宿主启动形态",
                 "shell=" + (sh?.absolutePath ?: "无") +

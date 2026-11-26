@@ -94,3 +94,44 @@
 旧 exec hook/VFS 内核才可以安全删除。
 
 **所以正确顺序是**：终端仿真层替换 → PTY 接 fastroot → 产品验证 → 再删旧内核。
+
+## 执行结果：终端真正跑 Ubuntu + fastroot（2026-11-26 23:12）
+
+按决策执行到底，终端现在真正运行在 Ubuntu rootfs + fastroot 上：
+
+### 改动
+- `PtySession.openSession` 加 `env`/`rawArgv` 通道；`host()` 把 extraEnv 并入
+  PTY host 进程环境；脚本 export 循环跳过被 extraEnv 覆盖的键。
+- `TerminalSession.start` 检测 UbuntuSystem.isReady：就绪时用 fastroot launcher
+  argv（launcher + ld.so + --library-path + --preload + /bin/bash -i）启动，
+  并清空 LOBOS_PTY_SHELL（防 PTY host 的旧 hooked-shell 改写 argv）和
+  LD_PRELOAD（bionic hook 不能进 glibc guest）；否则保持旧路径（claude/codex 兼容）。
+- `PtySession` 在 fastroot 模式下不注入 bionic LD_PRELOAD。
+- 输入层 bug 修复：onValueChange 用 lastValue 作增量基准，避免 IME composition
+  重复发送字符；TextField 可见值保持空，shell 回显是唯一文本。
+
+### 设备验证
+- 终端提示符：`root@localhost:/#` —— 真 Ubuntu root shell
+- `cat /etc/os-release`/`id` 等命令正确执行（minimal 镜像缺命令时报
+  "command not found"，符合预期，命令本身送达并被 bash 执行）
+- 逐字符输入干净（id 无重复字符），shell readline 拥有回显
+- Ctrl-C 生效（^C 回显 + 新提示符）
+- VT 渲染（ANSI 颜色 RED/GREEN）仍正常
+
+### 关键诊断过程（3 次失败才定位）
+1. 初次"会话已断开"：诊断发现 PTY host 的 `LOBOS_PTY_SHELL` 机制用旧 bash
+   改写了 fastroot argv → 清空该 env 修复
+2. 二次断开：bionic LD_PRELOAD 被重新注入 PTY host → FR_ROOT 检测跳过注入
+3. 三次断开：shell 脚本层从 view0 重新 export 了 LD_PRELOAD/LOBOS_PTY_SHELL
+   覆盖 extraEnv → 脚本 export 循环跳过 extraEnv 的键
+
+### 意义
+终端这条最关键的 product path 现在走 Ubuntu+fastroot。这解除了"清旧内核"的
+前置条件——但**还不能立刻删**，因为 claude/codex 的 musl 路径仍依赖旧机制
+（TerminalSession 的 else 分支）。等 musl 产品迁移方案确定后再清。
+
+### 待完成
+- claude/codex 在 Ubuntu 终端里的启动路径（目前它们走 nativeLibraryDir 的 musl
+  二进制 + 老 shim，与 Ubuntu rootfs 是两套文件系统；需设计 workspace 互通）
+- vttest/vim/htop 全量 VT 验收
+- bracketed paste / mouse / OSC 52

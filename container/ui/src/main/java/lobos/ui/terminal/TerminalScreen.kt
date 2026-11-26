@@ -80,6 +80,7 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
     val shape = RoundedCornerShape(20.dp)
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
+    var lastValue by remember { mutableStateOf("") }
     fun submit() {
         if (input.isNotEmpty()) { onEvent(TerminalEvent.Input(input + "\n")); input = "" }
         else onEvent(TerminalEvent.Input("\n"))
@@ -152,8 +153,12 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
                 TextField(
                     value = input,
                     onValueChange = { v ->
-                        val tail = if (v.startsWith(input)) v.removePrefix(input) else v
+                        // v is the full IME value; send only the newly appended
+                        // tail. Keep lastValue as baseline; keep the visible
+                        // field empty so the shell's own echo is the only text.
+                        val tail = if (v.startsWith(lastValue)) v.removePrefix(lastValue) else v
                         if (tail.isNotEmpty()) onEvent(TerminalEvent.Input(tail))
+                        lastValue = v
                         input = ""
                     },
                     modifier = Modifier.weight(1f).height(52.dp).onKeyEvent { e ->

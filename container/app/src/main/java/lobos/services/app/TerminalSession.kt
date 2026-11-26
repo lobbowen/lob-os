@@ -48,15 +48,35 @@ class TerminalSession private constructor(
             timeoutMs: Long = 5_000,
         ): TerminalSession {
 
-            val sh = lobos.services.supply.ShellEntry.require(ctx)
-
             val ptyBin = lobos.kernel.compat.Compat.ptyHost()
                 ?: throw IllegalStateException(
                     "PTY 宿主不在（librivospty 缺失）—— 报缺，不猜（它是那 APK 里那一份）",
                 )
 
-            val effArgv = if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv
-            val s = lobos.kernel.ipc.PtySession.openSession(ptyBin, effArgv, rows, cols, timeoutMs)
+            // V2: if Ubuntu rootfs + fastroot engine are ready, run the real
+            // Ubuntu bash inside the PTY. PTY host execv()s argv[0] (the
+            // launcher in nativeLibraryDir), which maps Ubuntu's ld.so + bash
+            // with correct /proc/self/exe. Otherwise keep the legacy path.
+            val ubuntuReady = lobos.system.UbuntuSystem.isReady(ctx)
+            val (effArgv, sessionEnv, rawArgv) = if (ubuntuReady) {
+                val base = lobos.system.UbuntuSystem.launchArgv(ctx, "/bin/bash", listOf("-i"))
+                Triple(base, lobos.system.UbuntuSystem.environment(ctx) + mapOf(
+                    "FR_EXE" to "/bin/bash",
+                    // Disable the legacy hooked-shell rewrite in pty-session.c:
+                    // it would replace our fastroot argv[1..] with the old bash.
+                    "LOBOS_PTY_SHELL" to "",
+                    // bionic LD_PRELOAD cannot be loaded by the glibc guest.
+                    "LD_PRELOAD" to "",
+                ), true)
+            } else {
+                val sh = lobos.services.supply.ShellEntry.require(ctx)
+                Triple(if (argv.isEmpty()) listOf(sh.absolutePath, "-i") else argv,
+                    emptyMap<String, String>(), false)
+            }
+            val s = lobos.kernel.ipc.PtySession.openSession(
+                ptyBin, effArgv, rows, cols, timeoutMs,
+                env = sessionEnv, rawArgv = rawArgv,
+            )
             val t = TerminalSession(s, System.currentTimeMillis())
 
             s.onData = { d -> t.onOutput?.invoke(d) }
