@@ -30,6 +30,11 @@ fun TerminalRoute() {
     @Suppress("UNUSED_VARIABLE") val r = tick
     TerminalScreen(
         state = TerminalUiState.Ready(screen = TerminalRuntime.buffer.snapshot, connected = TerminalRuntime.connected),
-        onEvent = { e -> if (e is TerminalEvent.Input) TerminalRuntime.input(e.bytes) },
+        onEvent = { e ->
+            when (e) {
+                is TerminalEvent.Input -> TerminalRuntime.input(e.bytes)
+                is TerminalEvent.Key -> TerminalRuntime.sendKey(e.key, e.ctrl, e.alt, e.shift)
+            }
+        },
     )
 }

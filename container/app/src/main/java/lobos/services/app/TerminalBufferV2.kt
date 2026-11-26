@@ -2,6 +2,7 @@ package lobos.services.app
 
 import com.spizganed.mtty.term.GhosttyTerminal
 import com.spizganed.mtty.term.Color
+import com.spizganed.mtty.term.TermCore
 import com.spizganed.mtty.term.Style
 import lobos.ui.terminal.StyledChar
 import lobos.ui.terminal.TerminalLine
@@ -20,6 +21,8 @@ class TerminalBufferV2(
     rows: Int = 24,
 ) {
     private val vt = GhosttyTerminal(columns, rows, 2000)
+    /** VT state (cursor/modes) needed by the key encoder. */
+    val core: TermCore get() = vt
 
     fun feed(bytes: ByteArray) = vt.feed(bytes, 0, bytes.size)
 

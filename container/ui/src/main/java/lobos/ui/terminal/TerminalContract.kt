@@ -9,4 +9,11 @@ sealed interface TerminalUiState : UiState {
 
 sealed interface TerminalEvent {
     data class Input(val bytes: String) : TerminalEvent
+    /** A non-text key (arrows, function keys, Tab, Backspace, Escape). */
+    data class Key(
+        val key: String,
+        val ctrl: Boolean = false,
+        val alt: Boolean = false,
+        val shift: Boolean = false,
+    ) : TerminalEvent
 }

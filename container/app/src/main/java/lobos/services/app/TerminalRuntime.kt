@@ -44,6 +44,17 @@ object TerminalRuntime {
         if (t != null && t.alive) t.write(raw)
     }
 
+      /** Encode a hardware key through the VT-aware key encoder and send to PTY. */
+      fun sendKey(name: String, ctrl: Boolean, alt: Boolean, shift: Boolean) {
+          val key = runCatching { com.spizganed.mtty.term.Key.valueOf(name) }.getOrNull() ?: return
+          var mods = 0
+          if (shift) mods = mods or com.spizganed.mtty.term.Keys.SHIFT
+          if (alt) mods = mods or com.spizganed.mtty.term.Keys.ALT
+          if (ctrl) mods = mods or com.spizganed.mtty.term.Keys.CTRL
+          val bytes = com.spizganed.mtty.term.Keys.key(buffer.core, key, mods) ?: return
+          input(bytes)
+      }
+
     fun close() {
         TerminalSessions.close(SESSION_ID)
         connected = false
