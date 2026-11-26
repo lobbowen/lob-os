@@ -289,39 +289,42 @@ glibc 版 `@anthropic-ai/claude-code-linux-arm64`（397MB）在 app 域原生执
   `Failed to connect to api.anthropic.com: 403`（网络/地区问题，非系统兼容）
 - 结论：**Claude Code 界面在 LobOS 终端正常显示**，系统兼容层达标。
 
-## 12. 通用原生 CLI 机制（系统能力，非逐产品适配）
+## 13. 真通用：exec 层按 PT_INTERP 自动路由（内核语义，零清单）
 
-### 原则
-原生 CLI 的 linux aarch64 产物分两类，系统统一支撑，代码不认识任何产品名：
-- **musl 动态二进制**（如 Claude Code 官方 musl 版）：用 patched musl loader 启动
-- **musl 静态二进制**（如 Codex CLI 的 vendor 产物）：直接 exec
+### 用户指正与方向纠正
+第 12 节的 NativeCliRegistry + native-cli.json 清单方案是错的：那是把逐产品
+适配集中成一张登记表，每接一个产品仍要改系统数据。正规 Linux 没有这一层——
+安装包把 ELF 放进 PATH，内核读 ELF 自己的 PT_INTERP 自动选 loader，开箱即用。
+本节撤销清单方案，改为 exec hook 模拟内核语义。
 
-二者都以 `nativeLibraryDir` 内的 `.so` 形态分发（绕开 app_data_file 的 noexec），
-由一份数据清单声明如何启动。新增 CLI 只加数据，不改代码。
+### 核心事实（真机实测）
+- musl loader 加载 app-data 里的 musl ELF：目标只需**读权限**（实测对 444
+  无 exec 位的 musl 二进制，loader 直接跑输出 2.1.331）。这正是内核加载
+  ET_DYN 的语义：exec 的是 loader，目标只是被映射的文件。
+- 静态 ELF 无 PT_INTERP，必须内核直接 exec，需 exec 位；Android untrusted_app
+  下 app_data_file 即使 755 也被 SELinux 拒 exec，只有 nativeLibraryDir 可 exec。
+- memfd_create 可用，但 execveat 被 seccomp 拒(ENOSYS)、execve(/proc/self/fd)
+  被 SELinux 拒(EACCES)——memfd 路线在此环境不通。
 
-### 机制
-- `lobos.kernel.proc.NativeCliRegistry`（内核层）读 `assets/sysconfig/native-cli.json`，
-  为每条命令生成 shell wrapper：unset LD_PRELOAD、可选 loader + --library-path、
-  命令专属 env。
-- TerminalProfile 生成 .bashrc 时统一调用 registry，不含任何命令名硬编码。
-- 约定兜底：`lib<name>-musl.so` 自动注册为 `<name>`（musl loader + MUSL_ON_TERMUX）。
-- 清单占位符：`@nativeLib`/`@tmp`/`@files` 在运行时展开，避免写死路径。
+### 实现（系统级，非产品清单）
+- exec-path.c：execve 读目标 PT_INTERP，按内容自动路由：
+  - 含 ld-musl -> 用 LOBOS_MUSL_LOADER 加载（目标只需可读）
+  - 含 ld-linux -> 用 LOBOS_GLIBC_LOADER 加载（既有逻辑）
+  - bionic/linker64/#! -> 既有逻辑；静态 -> 直接 exec（需 exec 位）
+  - 两种 loader 路由都过滤 bionic 的 LD_PRELOAD hook so。
+- RuntimeEnvironment 注入单一系统级配置：LOBOS_MUSL_LOADER / LOBOS_MUSL_LIBDIR
+  / MUSL_ON_TERMUX（指向系统 musl loader，与产品无关）。
+- TerminalProfile 恢复普通 wrapper（直接 exec 目标），不含任何清单或产品名。
+- 删除 NativeCliRegistry.kt 与 native-cli.json。
 
-### 清单（数据层，可含产品名）
-`assets/sysconfig/native-cli.json` 的 `commands` 每项声明 binary、loader、
-libraryPath、env。claude 与 codex 的差异全在这份数据里。
+### 实测（零清单零产品登记）
+- PATH 目录里放一个 444（不可 exec）的 musl 二进制，终端敲命令名 -> 直接跑通
+  （claude musl 版输出 2.1.331）。证明 exec hook 按 PT_INTERP 自动路由成功。
+- 静态二进制放 PATH 且 444 -> Permission denied（符合 Linux 语义：静态需 exec 位）。
 
-### 二进制分发
-380MB 级二进制不入 git（超 GitHub 100MB 限制），由 component-sources 钉值
-（claude-musl-binary / claude-musl-runtime），构建阶段下载放 nativeLibraryDir。
-小体积 musl loader 可入 git。
-
-### 实测（重装 APK 后端到端）
-- `claude -p hi` -> Not logged in · Please run /login
-- `claude` -> Welcome to Claude Code v2.1.331 TUI（后续 403 是网络/地区）
-- `codex --version` -> codex-cli 0.172.0
-三者均由同一 NativeCliRegistry 机制生成入口，无逐产品代码。
-
-### exec-path 配套
-动态链接器本身（ld-linux / libglibc-loader / ld-musl / libmusl）显式执行时
-豁免 ET_DYN->linker64 改写，否则 musl loader 报 "Could not find a PHDR"。
+### 结构性边界
+Android untrusted_app 下没有"可动态写入且可 exec"的 /usr/bin：app_data_file
+被 SELinux noexec，nativeLibraryDir 只能随 APK 固定。因此：
+- 动态 ELF（musl/glibc）：已完全通用，装到任意可读 PATH 即可，exec hook 自动路由。
+- 静态 ELF：受 noexec 限制，必须随 APK 放 nativeLibraryDir，或由支持 exec 的
+  系统挂载点提供。这是 Android 强加的、真正 Linux 没有的差异，非本层可消除。

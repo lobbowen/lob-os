@@ -2,7 +2,6 @@ package lobos.services.app
 
 import android.content.Context
 import lobos.kernel.proc.ExecEntry
-import lobos.kernel.proc.NativeCliRegistry
 import lobos.services.reg.ProgramIndex
 import lobos.services.supply.ProgramDir
 import lobos.services.supply.PieceScan
@@ -13,7 +12,6 @@ object TerminalProfile {
     private const val LINKER = "/system/bin/linker64"
 
     fun ensureBashrc(ctx: Context) {
-        NativeCliRegistry.ensureManifest(ctx)
         val out = File(ctx.filesDir, ".bashrc")
         val text = build(ctx)
         runCatching { out.writeText(text) }
@@ -235,16 +233,10 @@ object TerminalProfile {
             if (nh != null && File(nh, "bin/node").isFile) {
                 val nb = File(File(nh, "bin"), "node").absolutePath
                 val nlp = "$nh:$nh/lib:$nh/bin:$sysLib"
-                // 通用原生 CLI：由 usr/lib/native-cli.json 清单声明，内核层
-                // NativeCliRegistry 统一生成启动函数，系统不认识具体产品名。
-                val nativeCli = NativeCliRegistry.entries(ctx).associateBy { it.name }
+                // 原生 CLI 统一由 exec hook 按 ELF 自身 PT_INTERP 自动路由
+                // （bionic/glibc/musl/静态），bashrc 只做普通 exec 包装，不含清单。
                 for (f in globalBin.listFiles().orEmpty()) {
                     if (!f.isFile || !seen.add(f.name)) continue
-                    val nativeEntry = nativeCli[f.name]
-                    if (nativeEntry != null) {
-                        sb.appendLine(NativeCliRegistry.shellFunction(nativeEntry))
-                        continue
-                    }
                     val target = try { java.nio.file.Files.readSymbolicLink(f.toPath()).let { link ->
                         val r = if (link.isAbsolute) link else java.io.File(f.parentFile, link.toString()).toPath()
                         r.normalize().toFile()
