@@ -145,7 +145,7 @@ class OsHostService : Service() {
             OsHostService.hostAlive = true
 
             lobos.kernel.fs.NotifyRoute.note(
-                this, "host.startForeground", NOTIF_ID, "前台", "where=" + where,
+                true, "host.startForeground", NOTIF_ID, "前台", "where=" + where,
             )
             startForeground(NOTIF_ID, buildHostNotification())
         } catch (t: Throwable) {
@@ -247,7 +247,7 @@ class OsHostService : Service() {
             runCatching {
 
                 lobos.kernel.fs.NotifyRoute.note(
-                    this, "host.notify", NOTIF_ID, "前台", "（内容**变了**才重发）",
+                    true, "host.notify", NOTIF_ID, "前台", "（内容**变了**才重发）",
                 )
                 (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
                     .notify(NOTIF_ID, buildHostNotification(text))

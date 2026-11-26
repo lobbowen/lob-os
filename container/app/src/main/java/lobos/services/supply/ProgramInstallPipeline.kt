@@ -746,7 +746,7 @@ object ProgramInstallPipeline {
         }
 
         val globalRebuilt = runCatching {
-            lobos.kernel.layout.LdConfig.run(context)
+            lobos.kernel.layout.LdConfig.run()
         }.onFailure {
             RuntimeDiagnostics.append(
                 context, "ota", false, "件换完之后全局那一层重建失败",

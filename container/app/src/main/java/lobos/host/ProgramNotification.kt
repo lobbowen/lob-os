@@ -115,7 +115,7 @@ object ProgramNotificationHub {
                 b.setProgress(100, n.progress, false)
             }
 
-            lobos.kernel.fs.NotifyRoute.note(ctx, "program.notif.post", notifId(safeId), "普通", "program=" + programId)
+            lobos.kernel.fs.NotifyRoute.note(true, "program.notif.post", notifId(safeId), "普通", "program=" + programId)
             nm.notify(notifId(safeId), b.build())
         }
         return n

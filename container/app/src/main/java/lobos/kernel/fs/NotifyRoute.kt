@@ -1,19 +1,18 @@
 package lobos.kernel.fs
 
-import android.content.Context
 
 object NotifyRoute {
 
     const val ROUTE = "notify-route"
 
     fun note(
-        ctx: Context?,
+        enabled: Boolean,
         route: String,
         notificationId: Int,
         kind: String,
         detail: String = "",
     ) {
-        if (ctx == null) return
+        if (!enabled) return
         runCatching {
             lobos.kernel.spi.KernelServices.logger().log(ROUTE, true,
                 "那发通知[" + route + "]发了",

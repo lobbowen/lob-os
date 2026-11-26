@@ -133,7 +133,7 @@ object PackageInstaller {
             val idx = ProgramIndex.get(ctx, name) ?: return@runCatching
             ProgramIndex.upsert(ctx, idx.edited(version = version, enabled = true))
         }
-        lobos.kernel.layout.LdConfig.run(ctx)
+        lobos.kernel.layout.LdConfig.run()
         Journal.note(ctx, "package", true, "已激活版本", "name=$name version=$version")
         return JSONObject().apply {
             put("ok", true)

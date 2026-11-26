@@ -616,7 +616,7 @@ object HostControlService {
             out.parentFile?.mkdirs()
             app.assets.open(asset).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
 
-            val bytes = lobos.kernel.fs.ReadRoute.readAll(app, "pe.sample", out)
+            val bytes = lobos.kernel.fs.ReadRoute.readAll(true, "pe.sample", out)
             val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
             if (actual != sample.sha256) {

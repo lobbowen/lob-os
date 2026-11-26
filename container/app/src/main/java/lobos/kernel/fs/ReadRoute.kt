@@ -1,6 +1,5 @@
 package lobos.kernel.fs
 
-import android.content.Context
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,14 +11,14 @@ object ReadRoute {
     const val ROUTE = "read-route"
 
     fun readAll(
-        ctx: Context?,
+        enabled: Boolean,
         route: String,
         file: File,
         maxBytes: Long = DEFAULT_MAX_BYTES,
     ): ByteArray {
         val size = file.length()
         if (size > maxBytes) {
-            note(ctx, route, file, size, maxBytes, false)
+            note(enabled, route, file, size, maxBytes, false)
             throw IllegalStateException(
                 "那一份太大：" + file.absolutePath + "  = " + size +
                     " 字节、读法[" + route + "]只许 " + maxBytes +
@@ -27,12 +26,12 @@ object ReadRoute {
             )
         }
         val bytes = file.inputStream().use { it.readBytes() }
-        note(ctx, route, file, bytes.size.toLong(), maxBytes, true)
+        note(enabled, route, file, bytes.size.toLong(), maxBytes, true)
         return bytes
     }
 
     fun note(
-        ctx: Context?,
+        enabled: Boolean,
         route: String,
         file: File,
         size: Long,
@@ -41,7 +40,7 @@ object ReadRoute {
     ) {
 
         if (ok) remember(route, file.absolutePath, size)
-        if (ctx == null) return
+        if (!enabled) return
         runCatching {
             lobos.kernel.spi.KernelServices.logger().log(ROUTE, ok,
                 "那读法[" + route + "]读了那一份",

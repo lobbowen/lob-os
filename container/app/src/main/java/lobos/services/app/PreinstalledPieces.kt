@@ -63,7 +63,7 @@ object PreinstalledPieces {
             "已装=" + done.joinToString(",") +
                 if (failed > 0) "  失败=" + failed else "",
         )
-        runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
+        runCatching { lobos.kernel.layout.LdConfig.run() }
             .onFailure {
                 RuntimeDiagnostics.append(
                     ctx, "envprobe", false, "环境探针失败",

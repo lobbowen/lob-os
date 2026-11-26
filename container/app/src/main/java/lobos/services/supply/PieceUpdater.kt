@@ -247,7 +247,7 @@ object PieceUpdater {
                 " 逐件耗时：" + pieceBreakdown,
         )
         if (applied.length() > 0) {
-            runCatching { lobos.kernel.layout.LdConfig.run(ctx) }
+            runCatching { lobos.kernel.layout.LdConfig.run() }
                 .onFailure {
                     RuntimeDiagnostics.append(
                         ctx, "piece-ota", false, "升件后刷新库链失败",

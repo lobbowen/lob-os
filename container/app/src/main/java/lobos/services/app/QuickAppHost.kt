@@ -83,7 +83,7 @@ object QuickAppHost {
                     val name = f.relativeTo(dir).invariantSeparatorsPath
                     zos.putNextEntry(java.util.zip.ZipEntry(name))
 
-                    zos.write(lobos.kernel.fs.ReadRoute.readAll(null, "quickapp.zip", f))
+                    zos.write(lobos.kernel.fs.ReadRoute.readAll(false, "quickapp.zip", f))
                     zos.closeEntry()
                 }
             }

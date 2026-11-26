@@ -97,7 +97,7 @@ object DesktopIcons {
         val f = File(programRoot, iconPath)
         if (!f.isFile || f.length() == 0L) return null
 
-        return decode(lobos.kernel.fs.ReadRoute.readAll(null, "desktop.icon", f)) ?: decodeFile(f)
+        return decode(lobos.kernel.fs.ReadRoute.readAll(false, "desktop.icon", f)) ?: decodeFile(f)
     }
 
     private fun decode(bytes: ByteArray): Bitmap? =

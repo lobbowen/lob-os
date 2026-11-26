@@ -1,6 +1,5 @@
 package lobos.kernel.layout
 
-import android.content.Context
 import java.io.File
 import lobos.kernel.elf.ElfFacts
 
@@ -30,7 +29,7 @@ object LdConfig {
         return out.toString()
     }
 
-    fun run(ctx: Context): Int {
+    fun run(): Int {
         val opt = SystemDirs.opt()
         val usrBin = SystemDirs.bin()
         val usrLib = SystemDirs.lib()
@@ -129,7 +128,7 @@ object LdConfig {
                         "  |  （共 " + unresolved.size + " 条，只记前 " + FAILED_HEAD_LINES + " 条）"
                     else "",
         )
-        val declaredBins = declaredBins(ctx, "")
+        val declaredBins = declaredBins("")
         val missingBins = declaredBins.filterNot { binInstalled.contains(it) }
         val items = listOf(
                 lobos.kernel.spi.SystemDiagnostics.Item(
@@ -157,14 +156,14 @@ object LdConfig {
 
     private fun linkTo(target: File, link: File): Boolean =
         SonameChain.put(link, target) >= 0
-    fun landedIds(ctx: Context): List<String> {
+    fun landedIds(): List<String> {
         val out = sortedSetOf<String>()
         SystemDirs.lib().listFiles()?.forEach { out += it.name }
         SystemDirs.bin().listFiles()?.forEach { out += it.name }
         return out.toList()
     }
 
-    fun entryLinkOwners(ctx: Context): Map<String, List<String>> {
+    fun entryLinkOwners(): Map<String, List<String>> {
         val out = mutableMapOf<String, MutableList<String>>()
         val roots = listOf(SystemDirs.lib(), SystemDirs.bin())
         for (r in roots) {
@@ -181,12 +180,12 @@ object LdConfig {
         return out
     }
 
-    fun declaredBins(ctx: Context, pieceId: String): List<String> {
+    fun declaredBins(pieceId: String): List<String> {
         if (pieceId.isBlank()) {
             val out = mutableListOf<String>()
             for (e in lobos.kernel.spi.KernelServices.programs().all()) {
 
-                out += declaredBins(ctx, e.programId)
+                out += declaredBins(e.programId)
             }
             return out.distinct()
         }

@@ -1309,7 +1309,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             val nid = (10000 + (System.currentTimeMillis() % 55000)).toInt()
 
             lobos.kernel.fs.NotifyRoute.note(
-                this, "bridge.notif.post", nid, "普通",
+                true, "bridge.notif.post", nid, "普通",
                 "id 每次都变 每次**新增**一条",
             )
             notifManager.notify(nid, n.build())
@@ -1468,7 +1468,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             if (p.optBoolean("inline", false)) {
 
                 val bytes = lobos.kernel.fs.ReadRoute.readAll(
-                    this, "ui.screenshot", file,
+                    true, "ui.screenshot", file,
                     lobos.kernel.fs.ReadRoute.DEFAULT_MAX_BYTES * 4,
                 )
                 JSONObject().apply {
@@ -1497,7 +1497,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             )
         },
         "fs.read" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
-            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireReadableFile(p.optString("path", ""))
@@ -1509,7 +1509,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
                 )
             }
 
-            val bytes = lobos.kernel.fs.ReadRoute.readAll(this, "fs.read", f, maxBytes)
+            val bytes = lobos.kernel.fs.ReadRoute.readAll(true, "fs.read", f, maxBytes)
             val encoding = p.optString("encoding", "auto")
             if (encoding == "base64") {
                 JSONObject().apply {
@@ -1536,7 +1536,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.write" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
-            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireWritableFile(p.optString("path", ""))
@@ -1558,7 +1558,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.list" to MethodDef(listOf("manage_external_storage"), false) { p, _programId ->
-            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val path = p.optString("path", "")
@@ -1592,7 +1592,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             }
         },
         "fs.mkdir" to MethodDef(listOf("manage_external_storage"), true) { p, _programId ->
-            lobos.kernel.security.PathGuard.rejection(this@CapabilityBroker, p.optString("path", ""))?.let {
+            lobos.kernel.security.PathGuard.rejection(p.optString("path", ""))?.let {
                 throw BridgeError(CODE_POLICY_DENIED, it)
             }
             val f = requireWritableFile(p.optString("path", ""))
