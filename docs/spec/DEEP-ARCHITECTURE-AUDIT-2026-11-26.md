@@ -2,7 +2,7 @@
 
 方法：5 个独立审计并行逐文件读代码（kernel/services/边界/native/跨层），
 交叉核对文档与实现。本次只读审计，不改代码。
-配套：ARCHITECTURE-AUDIT.md（第一轮静态审计）、ENGINEERING-STANDARD.md（规范）。
+配套：ENGINEERING-STANDARD.md（规范）。本文为 V1 时代历史快照，当前架构见 SYSTEM-DISK-BAKED.md。
 
 ## 零、总结论（先说 hardest truth）
 

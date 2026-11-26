@@ -56,7 +56,7 @@
   对 Android 的依赖必须收敛到宿适配面，通过 `kernel/spi/` 的 SPI 提供能力
 - 逻辑独立性靠**包结构 + SPI + 校验脚本**保证，不靠物理拆成 Gradle module。
   APK 内可以是单一 app module，但系统机制层要像独立系统一样自洽：
-  不认识业务词、不直接拿 Android Context、能力由宿主注入（见 DEEP-ARCHITECTURE-AUDIT）
+  不认识业务词、不直接拿 Android Context、能力由宿主注入
 - 新增跨层能力走 SPI，不直接 import 上层
 
 ### 5. 规范文档纪律
@@ -71,14 +71,15 @@
 1. `docs/PATH-MAP-CURRENT.md` — 本地工程地图（目录在哪、什么在哪）
 2. `docs/spec/LAYER-BOUNDARY.md` — 宿适配 vs 系统本体的分层边界判据（最重要的一条架构边界）
 3. `docs/spec/DIRECTORY-LAYOUT-STANDARD.md` — 目录结构与命名规范
-4. `docs/spec/ARCHITECTURE-AUDIT.md` — 架构审计（现状问题）
-5. `docs/spec/ARCHITECTURE-REFACTOR-PLAN.md` — 重构方案（分阶段路径）
+4. `docs/spec/SYSTEM-DISK-BAKED.md` — 系统盘本体（Ubuntu rootfs 内置）
+5. `docs/spec/TERMINAL-RESEARCH-DECISION.md` — 终端/libghostty-vt 决策
+6. `docs/spec/QUICKAPP-STRATEGIC-POSITION.md` — 快应用生态定位
 
 ### 系统能力规范
 - `docs/spec/ONE-STANDARD.md` — 安装与运行唯一标准（不入库，按 spec/README.md 管）
-- `docs/spec/NODE-CLI-COMPATIBILITY.md` — Node CLI 通用兼容
-- `docs/spec/VIRTUAL-ROOT-NAMESPACE.md` — 用户态虚拟根/ELF 加载
-- `docs/spec/RUNTIME-VERSION-ARCHITECTURE.md` — 运行时版本管理
+- `docs/findings/PRODUCT-INSTALL-RUN-VERIFICATION.md` — 产品标准安装/启动验证
+- `docs/findings/STANDARD-INSTALL-FINDINGS.md` — 标准安装能力实测
+- `docs/findings/FASTROOT-INTEGRATION-STATUS.md` — fastroot 执行引擎验证
 
 ### UI / 交互
 - `docs/spec/UI-STANDARD.md` — 界面规范
@@ -91,9 +92,8 @@
 - `docs/spec/SELF-HOSTED-DISTRIBUTION.md` — 自建分发
 
 ### 历史 / 诊断（只读参考，不作为当前规范）
-- `docs/BASE-CAPABILITY-GAPS.md` — 基础能力缺口诊断档案
 - `docs/spec/UI-CONCEPTS.md` `UI-REFACTOR-PLAN*.md` — UI 演进历史
-- `docs/COMPAT-LAYER-DISCUSSION.md` `NATIVE-LINUX-APPROACH-ANALYSIS.md` — 早期方案讨论
+- `docs/spec/DEEP-ARCHITECTURE-AUDIT-2026-11-26.md` — V1 架构审计快照（带日期）
 
 ## 三、校验
 

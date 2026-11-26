@@ -1,6 +1,6 @@
 # LobOS 分层边界规范（宿适配 vs 系统本体）
 
-配套：ENGINEERING-STANDARD.md（总入口）、DEEP-ARCHITECTURE-AUDIT.md（问题依据）
+配套：ENGINEERING-STANDARD.md（总入口）、DEEP-ARCHITECTURE-AUDIT-2026-11-26.md（历史审计快照）
 
 ## 一、两条边界的定义
 
