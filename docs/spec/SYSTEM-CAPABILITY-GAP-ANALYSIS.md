@@ -76,8 +76,9 @@
 | 能力 | 现状 | 差距/影响 | 难度 |
 |---|---|---|---|
 | 服务模型 | SupervisorPool（最多 12 个 InstanceHost）+ 宿主进程内 lambda 内置服务 | RuntimeState 单例 object，多实例并发最后写入者胜出；非 per-unit 状态 | 低 |
-| 重启策略 | Restart 枚举 ON_FAILURE/ALWAYS/NEVER，但只处理 NEVER | ON_FAILURE/ALWAYS 无语义差异 | 低 |
-| 依赖图 | after 依赖环检测；conflicts 定义但未执行 | 无失败传播/反向 stop 顺序；无 socket activation/FD 传递 | 中 |
+| 按单元停服 | os.instances.action 只派发 start/restart | **显式拒绝 stop，称"宿主尚未具备按程序独立停止的能力"**（CapabilityBroker.kt:857-869）；ACTION_STOP_RUNTIME 已定义但无调用方（InstanceHost.kt:832） | 低 |
+| 重启策略 | Restart 枚举 ON_FAILURE/ALWAYS/NEVER，但只处理 NEVER | ON_FAILURE/ALWAYS 无语义差异、不按退出码区分，正常退出的批任务被无限重启（InstanceHost.kt:233-241） | 低 |
+| 依赖图 | after 依赖环检测；conflicts 定义但未执行 | **UnitEntry.after 字段存在但安装/扫描路径从未填充**（ProgramIndex.kt:33），程序间实际无 after；无失败传播/反向 stop 顺序；无 socket activation/FD 传递 | 中 |
 | daemon/PID文件 | 无标准 daemonize/PID 文件 | 守护进程靠 Android Service 包装，非 Linux 语义 | 中 |
 | kill 审计 | KillAudit 按 Android 包级，不按 programId/generation | 无法回答"哪个 guest unit 被哪个信号杀的" | 低 |
 
@@ -85,10 +86,18 @@
 | 能力 | 现状 | 差距/影响 | 难度 |
 |---|---|---|---|
 | libc/链接器 | glibc + musl 双 loader，PT_INTERP 路由；自带 ldconfig 逻辑 | ld.so.cache/RPATH/RUNPATH 语义靠环境变量模拟；无标准 ldconfig 命令 | 中 |
-| 运行时 | node/bash/git/jq/rg/openssl/curl 已组件化；claude 用官方 musl 版 | 无 python/perl/ruby 通用运行时；版本靠组件钉值非包管理 | 中 |
-| 包管理 | 组件供应体系（component-sources.json + pieces + 验签） | 是"产品预装"不是"系统包管理"：无依赖解析、无 apt/apk 式按需安装 | 高 |
-| 编译工具链 | 设备上有 LLVM sysroot（为 koffi/node-pty 编译） | 无 make/cmake 通用构建入口；编译能力是产品特化非系统服务 | 中 |
-| locale/时区 | LANG=C.UTF-8；/etc/zoneinfo 直通 Android | 无 iconv、无 locale 生成、无系统时区配置 | 中 |
+| 运行时 | bash 5.2.15、node 24.21.0+npm 11.19+pnpm 12.7、python 3.14.8（另钉 3.12.10/3.11.13），一件多版本用 `opt/<id>/<ver>` + CURRENT 指针（`component-sources.json:222-281,446-463`；PackageInstaller.kt:106-224；RuntimeResolver.kt:62-83） | 无 perl/ruby（46 项钉值表零命中）；按应用 PATH 路由未全落地；node 是官方预编二进制经垫片跑非自托管构建 | 中 |
+| 包管理 | 签名 CDN 组件体系（channel.json + CatalogClient.kt:93-126），install/activate/uninstall/rollback/OTA 齐备；requires 字符串数组 + runtimeGate 一次范围解析（PackageInstaller.kt:240-268） | 无 apt/dnf 事务、文件数据库、依赖图闭包/冲突求解；**发布脚本输出 versions[]（publish-component-manifest.js:342-350）但 schema 未声明该字段（确定性不一致）**；预装 10 件 vs 可装 30 件分裂 | 高 |
+| 编译工具链 | 设备上可装 make 4.4.1、cmake 4.4.4、pkgconf 3.0.7、clang/lld 21（llvm-ar/nm/strip），判据为"真编译/configure/查 .pc"，均由 NDK 30 交叉编（component-sources.json:80-87,196-220,266-272） | 无 gcc、无 GNU binutils；clang 默认 target 曾为 unknown 需显式 `--target=aarch64-linux-android35`（piece-criteria.json:357） | 中 |
+| locale/时区 | LANG 硬编码 C.UTF-8、TERM=xterm（RuntimeEnvironment.kt:53-55）；CA bundle 185KB 注入 SSL_CERT_FILE/CURL_CA_BUNDLE/GIT_SSL_CAINFO（:144-155） | 无 tzdata/zoneinfo、无 glibc locale、无 iconv（git 显式 NO_ICONV=1，build-component-git.sh:91）；LANG 不可配；CA 更新依赖 APK 重建；/etc 刻意不映射沙箱（vfs-root.h 注释） | 中 |
+| 组件供应门禁 | 46 项钉值表、预装 10 个 zip、Ed25519 签名发布链、PieceProvisioner ELF 依赖/指纹校验（:155-206） | **运行时/构建器判据全部 required=false**（piece-criteria.json，仅 curl/zlib/openssl/crypto 为 true）——缺件不触发装机门禁，这是"系统薄"的机制性根因；pieces 由散落 piece:true 标志决定（pieces-from-table.js:26-30）；component-sources.json 混装构建钉值/源码 patch/内核/系统件，machine-readable 性差 | 中 |
+
+### 2.8 libc 与动态链接（工具链维度补充）
+| 能力 | 现状 | 差距/影响 | 难度 |
+|---|---|---|---|
+| libc 共存 | bionic/linker64 默认（ExecEntry.kt:9,90-103）；glibc 2.41.12 经 glibc-run 或 PT_INTERP 改写成 `guest-loader --library-path`（:109-122，exec-path.c:575-588）；musl patched loader（RuntimeEnvironment.kt:119-128） | 三套 libc 靠 env/loader 改写共存，不是通用 loader 语义；新 glibc 件放错目录可能覆盖 bionic SONAME 致全局崩溃（LdConfig.kt:50-54 已专门排除） | 显式入口=低 |
+| ldconfig | Kotlin 自实现程序扫描 + SONAME 软链（LdConfig.kt:32-155），SonameChain.kt:51-114 建版本链 | 无 ld.so.conf/ld.so.cache/ldconfig -p 缓存语义（判据自记宿主 linker64 不读 cache，scripts/m0-criteria.json `$loaderSearchOrderFactFamily`）；RUNPATH 靠各件 $ORIGIN 自洽（PieceProvisioner.kt:98-99） | 中 |
+| 无感 exec | 终端直接敲 glibc 路径 | 被判当前架构不可达，稳定入口只有显式 glibc-run（docs/BASE-CAPABILITY-GAPS.md:295-318） | 高/不可行 |
 
 ## 三、无 root 硬边界（代码层补不出来，必须如实声明）
 
@@ -115,6 +124,8 @@
    - setpgid：CompatSemantics.kt:60 断言"无 setpgid 权限"，但给自己的子进程调 setpgid 不需要特权，且无设备侧证据——应实测后再定设计取舍
 3. **TerminalProfile 的 TMPDIR 写死 `$base/.tmp`**，与 RuntimeEnvironment 的 cacheDir 指向不一致（/tmp 分裂修过但 shell profile 这条残留）。
 4. **node shim 路径硬编码**包名/uid，换包名或多用户即断。
+5. **装机门禁形同虚设**：piece-criteria.json 中 node/npm/python/make/cmake/llvm 全部 `required=false`（仅 curl/zlib/openssl/crypto 为 true）——运行时和构建器缺失不会被装机门禁拦住，这是"系统薄"的机制性根因，不是个别件没装。
+6. **发布清单 schema 与脚本不一致**：publish-component-manifest.js:342-350 输出 `versions[]`，但 component-manifest.schema.json 的 publishedTool 未声明该字段——发布产物与契约脱节。
 
 ## 五、补齐方案（分层 + 分阶段）
 
@@ -132,14 +143,26 @@
 - 1.2 标准环境变量：补 USER/LOGNAME/LC_ALL/LC_CTYPE/LC_MESSAGES、显式 HISTFILE/HISTSIZE；SHELL 改显式策略不靠排序
 - 1.3 系统级启动文件：建 /etc/profile、/etc/profile.d/、/etc/bash_completion；终端改 bash -li
 - 1.4 去硬编码：node shim 路径从 env 读；TerminalProfile 的 TMPDIR 读统一来源
-- 验收：标准 shell 脚本（含 awk/find/xargs/which）可直接跑；`id -u`/`whoami` 输出一致；node CLI 在非 lobos.os 包名下也能跑
+- 1.5 装机门禁：把 node/npm/python/make/cmake/llvm 的 required 从 false 改 true（或引入"基础能力"分级，区分必装与可选），让缺件触发门禁
+- 1.6 标准件补齐：加 tzdata/zoneinfo、glibc-locale、libiconv 件并做 vfs 映射；CA 改可 OTA 更新；LANG 可配
+- 1.7 manifest 契约统一：component-manifest.schema.json 补 versions[] 字段声明，与 publish-component-manifest.js 对齐
+- 验收：标准 shell 脚本（含 awk/find/xargs/which）可直接跑；`id -u`/`whoami` 输出一致；node CLI 在非 lobos.os 包名下也能跑；基础运行时缺件会被门禁拦住；按 TZ 名解析时间可用
 
 ### 阶段 2：系统服务（正确性与可控性）
 - 2.1 通用 kill(pid,sig)：同 uid 下补 SIGINT/SIGSTOP/SIGCONT 发送与退出信号透传（128+signo）
 - 2.2 进程树收敛：descendantsOf 改收敛式重复扫；所有 victim kill 前二次校验 starttime 防 PID 复用误杀
-- 2.3 init 状态机：RuntimeState 改 per-program；Restart 三态落实；conflicts 执行；结构化 kill 审计按 programId/generation
-- 2.4 rlimit FD 部分：fork 前设 RLIMIT_NOFILE 并合成 /proc/self/limits
-- 验收：kill -STOP/-CONT 生效；flapping 程序隔离可诊断；FD 限制生效
+- 2.3 init 状态机（按优先级）：
+  - **按程序独立 stop**：ACTION_STOP_RUNTIME 已定义但无调用方，os.instances.action 显式拒绝 stop（"宿主尚未具备按程序独立停止的能力"，CapabilityBroker.kt:857-869）——先补这个最薄的能力
+  - Restart 三态落实：ON_FAILURE 按退出码区分（当前与 ALWAYS 行为相同，正常退出的批任务会被无限重启，InstanceHost.kt:233-241）
+  - 程序间依赖：UnitEntry.after 字段存在但安装/扫描路径从未填充（ProgramIndex.kt:33）——填充并做级联停止/重启
+  - RuntimeState 改 per-program（当前单例 object 最后写入者胜出）；conflicts 执行；结构化 kill 审计按 programId/generation
+  - target/runlevel 用 Kotlin 层仿真（当前只有单一全局 OsPhase）
+- 2.4 按单元日志：stdout 独立持久文件、unit/pid/stream 结构化查询（当前所有程序共用 program-stderr.log，CapabilityBroker.kt:777-789）
+- 2.5 rlimit FD 部分：fork 前设 RLIMIT_NOFILE 并合成 /proc/self/limits
+- 验收：可单独 stop 某程序；正常退出的批任务不被重启；依赖挂掉级联降级；kill -STOP/-CONT 生效
+
+2.x 边界：PID1 级能力（真 init、runlevel、Type=forking、协议级 socket 激活）受 APK 形态限制，
+不在此阶段，需独立 M1 路径（scripts/initramfs/lobos-init 是独立 VM 形态，不启动 APK 栈）。
 
 ### 阶段 3：高级能力（成本高，按需推进）
 - 3.1 作业控制：先实测 setpgid/tcsetpgrp 在 app 域是否可用；可用则改 UI 逐字节输入 + 去 `set +m`，让 Ctrl-C/vim/less 可用；不可用则记录硬边界
@@ -153,13 +176,16 @@
 | 序 | 项 | 收益 | 风险 | 阶段 |
 |---|---|---|---|---|
 | 1 | 身份统一（去 4242、uid 呈现值一致）| 消除确定性错误 | 低-中 | 0.1 |
-| 2 | BusyBox applet 扩充 | 一次覆盖最多脚本 | 低（需重固化）| 1.1 |
-| 3 | 标准环境变量 + 启动文件 | 大量脚本兼容 | 低 | 1.2/1.3 |
-| 4 | 通用 kill + 退出信号透传 | 进程管理能力 | 低 | 2.1 |
-| 5 | 去硬编码（node shim/TMPDIR）| 通用性（换包名/多用户）| 低 | 1.4 |
-| 6 | exec 统一 + VFS 规范化 | 通用语义根 | 高（动执行核心）| 0.2/0.3 |
-| 7 | 进程树收敛 + init 状态机 | 可控性 | 中 | 2.2/2.3 |
-| 8 | 作业控制 | TUI 体验 | 中-高（依赖实测）| 3.1 |
+| 2 | 装机门禁（运行时/构建器 required）| 补上"系统薄"的机制根因 | 低 | 1.5 |
+| 3 | BusyBox applet 扩充 | 一次覆盖最多脚本 | 低（需重固化）| 1.1 |
+| 4 | 标准环境变量 + 启动文件 | 大量脚本兼容 | 低 | 1.2/1.3 |
+| 5 | manifest schema 与 versions[] 对齐 | 发布契约一致（确定性 bug）| 低 | 1.7 |
+| 6 | 通用 kill + 退出信号透传 | 进程管理能力 | 低 | 2.1 |
+| 7 | 去硬编码（node shim/TMPDIR）| 通用性（换包名/多用户）| 低 | 1.4 |
+| 8 | tzdata/locale/iconv 标准件 | 时区/本地化/转码 | 中 | 1.6 |
+| 9 | exec 统一 + VFS 规范化 | 通用语义根 | 高（动执行核心）| 0.2/0.3 |
+| 10 | 进程树收敛 + init 状态机 | 可控性 | 中 | 2.2/2.3 |
+| 11 | 作业控制 | TUI 体验 | 中-高（依赖实测）| 3.1 |
 
 ## 七、与已完成工作的衔接
 
