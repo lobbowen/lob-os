@@ -144,8 +144,8 @@ class OsAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.i(TAG, "OsAccessibilityService 已连接（UI 自动化可用）")
-        KernelHooks.report("accessibility", true, "无障碍服务已连接", "ui_automation 能力可用")
-        KernelHooks.report("accessibility", true,
+        lobos.kernel.spi.KernelServices.logger().log("accessibility", true, "无障碍服务已连接", "ui_automation 能力可用")
+        lobos.kernel.spi.KernelServices.logger().log("accessibility", true,
             "服务已连接：UI 自动化（tap/swipe/inputText/getUiTree/waitFor）可执行",
             "无障碍在本系统里只作自动化执行体，不承担保活职责",
         )
@@ -155,7 +155,7 @@ class OsAccessibilityService : AccessibilityService() {
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         if (instance === this) instance = null
         Log.i(TAG, "OsAccessibilityService 已解绑")
-        KernelHooks.report("accessibility", false,
+        lobos.kernel.spi.KernelServices.logger().log("accessibility", false,
             "服务被解绑：UI 自动化不可用（ui.* 将返回 -32001）",
             "如需恢复请到系统「无障碍」页重新开启；本系统不会静默重挂",
         )

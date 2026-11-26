@@ -30,9 +30,6 @@ class OsApplication : Application() {
         initQuickAppRuntime()
         KernelHostAdapters.register(this)
         KernelHooks.setEnsurer { OsHostService.ensureRunning(this) }
-        KernelHooks.setReporter { stage, ok, message, detail ->
-            RuntimeDiagnostics.append(this, stage, ok, message, detail ?: "")
-        }
         PowerHostHooks.setEnsurer { ctx -> OsHostService.ensureRunning(ctx) }
         PowerHostHooks.setWakeObserver { nowMs ->
             ResidencyStatus.recordWake()
