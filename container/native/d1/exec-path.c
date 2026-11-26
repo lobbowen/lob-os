@@ -429,6 +429,7 @@ static int exec_with(const char *exe, const char *script, char *const argv[], ch
 
 int execve(const char *path, char *const argv[], char *const envp[]) {
 
+  char *const *orig_env = envp;   /* caller's env, before our merge injection */
   if (envp) {
     char **merged = env_merge_sys(envp);
     if (!merged) return -1;
@@ -665,17 +666,44 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
           return -1;
       }
   }
-  /* 最后一步：正常 exec。若目标在虚拟磁盘（app_data_file）上被 SELinux
-     noexec 拒绝（EACCES），且它是静态 ELF（无 PT_INTERP、内核 exec 必需
-     exec 位），改用我们自己的 userland ELF 加载器加载——目标只需可读。
-     这是"虚拟磁盘"的通用加载兜底，与具体程序无关。 */
+  /* 最后一步。
+     结构性要点：app_data 上的 ELF 其实可被内核 exec（raw execve 实测）。
+     之前"noexec"是假象——本 hook 经 env_merge_sys 注入了 bionic 的
+     LD_PRELOAD=liblobosposix.so，foreign/静态 ELF 加载不了这个 so 才失败。
+     因此对无 PT_INTERP 的静态 ELF：用 raw_execve + 去掉 LD_PRELOAD 的
+     clean env 直接放行内核 exec，/proc/self/exe 才会指向真实程序
+     （codex 等自定位包资源的程序依赖这一点）。elfload 只作真失败兜底。 */
   {
+    char interp2[256];
+    int have = read_interp(path, interp2, sizeof interp2);
+    int is_static_elf = 0;
+    if (!have) {
+      int et = 0;
+      if (read_etype(path, &et) && (et == 2 || et == 3)) is_static_elf = 1;
+    }
+    if (is_static_elf) {
+      /* Use the CALLER's env (not our sysenv merge which injects bionic
+         LD_PRELOAD), stripped of any LD_PRELOAD. Foreign static ELFs must be
+         exec'd by the kernel with a clean env so /proc/self/exe is correct. */
+      char *const *src = orig_env ? orig_env : envp;
+      int ec = 0; while (src && src[ec]) ec++;
+      char **ce = (char **)malloc((size_t)(ec + 1) * sizeof(char *));
+      if (ce) {
+        int cj = 0;
+        for (int ei = 0; ei < ec; ei++) {
+          if (strncmp(src[ei], "LD_PRELOAD=", 11) == 0) continue;
+          ce[cj++] = src[ei];
+        }
+        ce[cj] = 0;
+        lobos_compat_report("d1.exec-path", "static->raw-exec", path);
+        raw_execve(path, argv, ce);
+        { int e = errno; free(ce); errno = e; }
+      }
+    }
     int rc = real_execve(path, argv, envp);
     if (rc == -1 && errno == EACCES) {
       const char *loader = getenv("LOBOS_ELFLOADER");
-      char interp2[256];
-      if (loader && loader[0] == '/' &&
-          !(read_interp(path, interp2, sizeof interp2) && interp2[0])) {
+      if (loader && loader[0] == '/' && is_static_elf) {
         /* 无 PT_INTERP 的 ELF = 静态；用加载器 exec：loader <path> <args...> */
         int ac2 = 0; while (argv && argv[ac2]) ac2++;
         char **la = (char **)malloc((size_t)(ac2 + 2) * sizeof(char *));

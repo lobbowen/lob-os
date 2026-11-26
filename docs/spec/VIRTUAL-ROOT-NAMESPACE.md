@@ -244,3 +244,67 @@ elfload 原先只传 LOBOS_LOADER=1 一个环境变量，导致 codex 读不到 
    nativeLib 对应布局——每条产品仍要打包资源，不够通用。
 本质：noexec + /proc/self/exe 不可伪造，是 untrusted_app 下自定位
 原生程序的硬边界。
+
+## 16. 结构性纠错：app_data 其实可内核 exec，elfload 是错误方向（2026-11-26）
+
+用户指出"结构做了一半"，要求从整体加载逻辑反思。做了决定性验证：
+
+### 铁证：raw execve 可内核执行 app_data 的 ELF
+编译一个 raw `syscall(__NR_execve)` 工具（完全绕过 libc/我们的 hook）：
+- run-as 域 `rawexec <app_data的静态codex>` -> 输出 `Error: stdin is not a
+  terminal`（codex 成功启动后检查 TTY 的报错，证明 execve 成功）
+- 对照 `rawexec /system/bin/toybox` -> 正常列出 applet
+- 结论：**app 可执行 app_data 上的 ELF，内核没有 noexec**。
+
+### 之前"noexec"结论的来源
+所有"app_data ELF exec 被拒"的测试都经过 libc execve（我们的 hook）。
+hook 里 env_merge_sys 会注入 `LD_PRELOAD=liblobosposix.so`（bionic so）。
+当目标是非 bionic 的静态/foreign ELF 时，这个 LD_PRELOAD 会造成加载失败，
+表现为 EACCES——我们误判为 SELinux noexec，并造了 elfload 去"绕过"。
+elfload 解决了执行，却破坏了 /proc/self/exe，导致 codex 自定位失败。
+这就是"结构做了一半"：补丁叠加补丁，根因（hook 注入 LD_PRELOAD 到
+foreign ELF）没解决。
+
+### 正确的结构方向
+1. exec hook 对**非 bionic 的原生 ELF**（PT_INTERP=ld-linux/ld-musl，
+   或纯静态 ET_EXEC）应当用 raw execve 放行，**不注入 bionic 的
+   LD_PRELOAD hook**，让内核正确 exec、/proc/self/exe 正确。
+2. bionic 程序（我们的 bash/node 等）才需要 LD_PRELOAD hook 链式传递。
+3. exec-path.c 已有的 musl/glibc loader 分支用了 raw_execve（正确），
+   但纯静态 ET_EXEC 落到末尾 `real_execve(path)` 时带了 hook 注入的 env，
+   这才是 foreign ELF 失败点。应当：对无 PT_INTERP 的 ELF，用 raw_execve
+   直接放行（不经过 real_execve 的 LD_PRELOAD 注入）。
+4. elfload（userland 加载器）可以保留作极端兜底，但**不应当是静态 ELF
+   的主路径**——它会破坏 /proc/self/exe。
+
+### 待验证
+把 exec-path.c 末尾静态 ELF 分支改为 raw_execve 放行（不注入 LD_PRELOAD），
+然后验证标准 `codex` 命令能否完整进 TUI（/proc/self/exe 正确 -> 包定位成功）。
+
+## 17. 结构性纠错落地：静态ELF内核exec放行（2026-11-26）
+
+按用户"结构做了一半"的指正，落地了正确结构：
+
+### 实测推翻的前提
+raw `syscall(__NR_execve)` 直接执行 app_data 的静态ELF成功（codex输出
+"stdin is not a terminal"=启动后TTY检查）。app_data 根本不是内核noexec。
+之前的EACCES是假象：exec hook的env_merge_sys给envp注入bionic的
+LD_PRELOAD=liblobosposix.so，foreign静态ELF加载不了这个so才失败。
+
+### 修复（container/native/d1/exec-path.c）
+execve入口保存调用者原始envp（orig_env）。末尾对无PT_INTERP的静态ELF：
+用raw_execve + 原始envp去掉LD_PRELOAD的clean env直接内核exec，让
+/proc/self/exe指向真实程序。elfload保留为raw exec真失败兜底。
+
+### 实测结果
+- `codex --version` -> codex-cli 0.172.0（标准命令，raw-exec放行生效）
+- `codex --no-daemon` -> 完整交互TUI：
+  "Welcome to Codex, OpenAI's command-line coding agent / Choose how you
+  want to use Codex / 1. Sign in with ChatGPT"
+- 默认 `codex`（启后台daemon）仍报no complete local package：daemon子进程
+  的自定位路径仍未闭环，是最后一块。
+
+### 意义
+这是结构性修复：不再用elfload破坏/proc/self/exe，而是让内核正确exec
+原生ELF。codex主程序TUI已完整可用（--no-daemon），证明虚拟磁盘+正确
+exec结构的通用能力成立。
