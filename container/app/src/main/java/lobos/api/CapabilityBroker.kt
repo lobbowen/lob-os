@@ -101,7 +101,7 @@ class CapabilityBroker(private val host: Service) : ContextWrapper(host) {
             return error(id, CODE_METHOD_NOT_FOUND, "未知方法: $method")
         }
         val session = holder.session
-            ?: return error(id, CODE_SESSION_MISSING, "未建立会话：先做 bridge.handshake")
+            ?: return error(id, CODE_SESSION_MISSING, "无调用方身份：本地能力调用需提供 programId")
         if (ApiSpec.scopeOf(canonical) == ApiSpec.SCOPE_SYSTEM && !holder.system) {
             return error(
                 id, CODE_POLICY_DENIED,

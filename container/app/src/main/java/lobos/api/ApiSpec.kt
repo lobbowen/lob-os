@@ -2,8 +2,9 @@ package lobos.api
 
 object ApiSpec {
 
-    const val TRANSPORT = "lobos-bridge/1"
-    const val ENVELOPE = "jsonrpc-2.0"
+    // UDS bridge removed; capabilities are called in-process only.
+    const val TRANSPORT = "lobos-inprocess/1"
+    const val ENVELOPE = "local-capability/1"
 
     const val NAMESPACE_DEV = "lobos.dev"
     const val NAMESPACE_SYS = "lobos.sys"
