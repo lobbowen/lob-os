@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-None">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LobOS 界面设计稿：终端 / 空间 / 应用</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#111318;--muted:#5F6773;--blue:#0B6BCB;--green:#1B7F4B;
+  --bg:#f7f8fa;--card:#fff;--soft:#f2f4f7;--line:#e8ebef;
+  --tbg:#141619;--tfg:#d8dce3}
+body{background:#e9edf3;display:flex;gap:20px;justify-content:center;padding:24px;flex-wrap:wrap;
+  font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif}
+.phone{width:360px;height:800px;background:var(--bg);border-radius:36px;
+  box-shadow:0 18px 50px rgba(17,19,24,.18);position:relative;overflow:hidden}
+.statusbar{height:32px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-size:11px;font-weight:600;color:var(--ink)}
+.statusbar .icons{font-size:9px;color:var(--muted)}
+.screen{height:calc(100% - 32px - 88px);overflow:auto;padding:6px 16px 14px}
+.title{font-size:20px;font-weight:600;color:var(--ink)}
+.subtitle{font-size:10px;color:var(--muted);margin-top:3px}
+.card{background:var(--card);border-radius:8px;box-shadow:0 5px 16px rgba(17,19,24,.05)}
+/* 底部胶囊导航 */
+.navwrap{position:absolute;left:0;right:0;bottom:0;height:88px;
+  background:linear-gradient(to top,var(--bg) 62%,rgba(247,248,250,0));
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px}
+.nav{width:calc(100% - 24px);height:60px;background:#fff;border-radius:30px;
+  box-shadow:0 10px 26px rgba(17,19,24,.14),0 0 0 1px rgba(17,19,24,.04);
+  display:flex;align-items:center;padding:6px;gap:2px}
+.item{flex:1;height:48px;border-radius:24px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;color:var(--muted)}
+.item .ic{font-size:16px;line-height:1}
+.item .tx{font-size:10px;font-weight:500;white-space:nowrap}
+.item.active{background:var(--blue);color:#fff;box-shadow:0 5px 14px rgba(11,107,203,.25)}
+
+/* 终端屏 */
+.term-app{background:var(--tbg);border-radius:8px;height:calc(100% - 8px);margin-top:0;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 5px 16px rgba(17,19,24,.1)}
+.term-bar{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid #2a2d33}
+.term-bar .d{width:7px;height:7px;border-radius:50%}
+.term-bar .t{flex:1;text-align:right;font-size:9px;color:#8a9099;font-family:monospace}
+.term-body{flex:1;overflow:auto;padding:10px 12px;font-family:monospace;font-size:10px;line-height:1.6;color:var(--tfg)}
+.term-body .cmd{color:#7ec8ff}
+.term-keys{display:flex;gap:3px;padding:7px;border-top:1px solid #2a2d33}
+.term-keys span{flex:1;text-align:center;font-size:8px;color:#c8cdd5;background:#26292f;border-radius:6px;padding:7px 0}
+.term-in{margin:0 7px 7px;padding:8px 10px;background:#26292f;border-radius:6px;font-size:10px;color:#6b7280}
+.term-nav{display:flex;gap:3px;padding:0 7px 7px}
+.term-nav span{flex:1;text-align:center;font-size:11px;color:#c8cdd5;background:#26292f;border-radius:6px;padding:7px 0}
+
+/* 空间屏 */
+.space-used{margin-top:12px;padding:14px}
+.space-used .l{font-size:10px;color:var(--muted)}
+.space-used .v{font-size:32px;font-weight:500;color:var(--ink);margin-top:4px}
+.bar{height:6px;background:var(--soft);border-radius:3px;margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--blue);width:38%}
+.dirlist{margin-top:12px;padding:4px 0}
+.dir{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.dir:last-child{border-bottom:0}
+.dir .di{width:30px;height:30px;border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--blue)}
+.dir .dn{flex:1}
+.dir .dn .a{font-size:12px;font-weight:500;color:var(--ink)}
+.dir .dn .b{font-size:9px;color:var(--muted);margin-top:2px}
+.dir .ds{font-size:10px;color:var(--muted)}
+
+/* 应用屏 */
+.apps-empty{margin-top:14px;padding:28px 16px;text-align:center;min-height:180px}
+.apps-empty .plus{font-size:28px;color:var(--muted);font-weight:300}
+.apps-empty .a{font-size:12px;color:var(--ink);margin-top:10px;font-weight:500}
+.apps-empty .b{font-size:10px;color:#98a0aa;margin-top:5px;line-height:1.6}
+.addbtn{margin-top:12px;padding:11px;text-align:center;font-size:12px;font-weight:500;color:var(--blue);border:1px dashed var(--blue);border-radius:8px}
+
+.label{font-size:11px;font-weight:600;color:var(--ink);margin:0 0 8px}
+</style>
+</head>
+<body>
+
+<!-- 终端 -->
+<div class="phone">
+  <div class="statusbar"><span>16:00</span><span class="icons">Bluetooth 5G 5G Wi-Fi 63</span></div>
+  <div class="screen">
+    <div class="term-app">
+      <div class="term-bar"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="t">bash · aarch64</span></div>
+      <div class="term-body"><span class="cmd">root@localhost:~#</span> echo hello<br>hello<br><span class="cmd">root@localhost:~#</span> python3 -V<br>Python 3.12.3<br><span class="cmd">root@localhost:~#</span> <span style="background:#7ec8ff;width:6px"> </span></div>
+      <div class="term-keys"><span>Ctrl-C</span><span>Ctrl-Z</span><span>Ctrl-D</span><span>Tab</span><span>Esc</span><span>Enter</span></div>
+      <div class="term-in">输入命令…</div>
+      <div class="term-nav"><span>↑</span><span>↓</span><span>←</span><span>→</span><span>Home</span><span>End</span><span>⌫</span><span>Del</span></div>
+    </div>
+  </div>
+  <div class="navwrap"><div class="nav">
+    <div class="item"><div class="ic">⌂</div><div class="tx">首页</div></div>
+    <div class="item active"><div class="ic">⌨</div><div class="tx">终端</div></div>
+    <div class="item"><div class="ic">◫</div><div class="tx">空间</div></div>
+    <div class="item"><div class="ic">▦</div><div class="tx">应用</div></div>
+    <div class="item"><div class="ic">•••</div><div class="tx">更多</div></div>
+  </div></div>
+</div>
+
+<!-- 空间 -->
+<div class="phone">
+  <div class="statusbar"><span>16:00</span><span class="icons">Bluetooth 5G 5G Wi-Fi 63</span></div>
+  <div class="screen">
+    <div class="card space-used">
+      <div class="l">已占用</div><div class="v">603.3 MB</div>
+      <div class="bar"><i></i></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:var(--muted)">
+        <span>已用 603.3 MB</span><span>可用 364 GB</span><span>总计 365 GB</span>
+      </div>
+    </div>
+    <div class="label" style="margin-top:18px">/data/user/0/lobos.os/files</div>
+    <div class="card dirlist">
+      <div class="dir"><div class="di">o</div><div class="dn"><div class="a">opt</div><div class="b">已装组件与运行时</div></div><div class="ds">534 MB</div></div>
+      <div class="dir"><div class="di">u</div><div class="dn"><div class="a">usr</div><div class="b">系统入口与共享库</div></div><div class="ds">48 MB</div></div>
+      <div class="dir"><div class="di">v</div><div class="dn"><div class="a">var</div><div class="b">状态 · 日志 · 清单</div></div><div class="ds">21 MB</div></div>
+      <div class="dir"><div class="di">c</div><div class="dn"><div class="a">cache</div><div class="b">临时文件</div></div><div class="ds">&lt;1 MB</div></div>
+    </div>
+  </div>
+  <div class="navwrap"><div class="nav">
+    <div class="item"><div class="ic">⌂</div><div class="tx">首页</div></div>
+    <div class="item"><div class="ic">⌨</div><div class="tx">终端</div></div>
+    <div class="item active"><div class="ic">◫</div><div class="tx">空间</div></div>
+    <div class="item"><div class="ic">▦</div><div class="tx">应用</div></div>
+    <div class="item"><div class="ic">•••</div><div class="tx">更多</div></div>
+  </div></div>
+</div>
+
+<!-- 应用市场 -->
+<div class="phone">
+  <div class="statusbar"><span>16:00</span><span class="icons">Bluetooth 5G 5G Wi-Fi 63</span></div>
+  <div class="screen">
+    <div class="search" style="background:var(--card);border-radius:8px;padding:10px 12px;font-size:11px;color:#98a0aa;margin-bottom:14px">⌕ 搜索应用</div>
+    <div class="label" style="margin-bottom:8px">推荐</div>
+    <div class="card" style="padding:4px 0">
+      <div class="app-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">
+        <div class="ai" style="width:38px;height:38px;border-radius:8px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">M</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--ink)">Markdown 阅读器</div><div style="font-size:9px;color:var(--muted);margin-top:2px">系统工具 · 1.2 MB</div></div>
+        <div style="font-size:10px;color:#fff;background:var(--blue);border-radius:8px;padding:6px 12px">安装</div>
+      </div>
+      <div class="app-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">
+        <div class="ai" style="width:38px;height:38px;border-radius:8px;background:#6b4fd8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">L</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--ink)">日志查看器</div><div style="font-size:9px;color:var(--muted);margin-top:2px">开发工具 · 820 KB</div></div>
+        <div style="font-size:10px;color:#fff;background:var(--blue);border-radius:8px;padding:6px 12px">安装</div>
+      </div>
+      <div class="app-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">
+        <div class="ai" style="width:38px;height:38px;border-radius:8px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">P</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--ink)">进程面板</div><div style="font-size:9px;color:var(--muted);margin-top:2px">系统工具 · 1.8 MB</div></div>
+        <div style="font-size:10px;color:#fff;background:var(--blue);border-radius:8px;padding:6px 12px">安装</div>
+      </div>
+      <div class="app-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <div class="ai" style="width:38px;height:38px;border-radius:8px;background:#d8830b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">F</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--ink)">文件便签</div><div style="font-size:9px;color:var(--muted);margin-top:2px">效率工具 · 640 KB</div></div>
+        <div style="font-size:10px;color:var(--blue);border:1px solid var(--blue);border-radius:8px;padding:5px 10px">已安装</div>
+      </div>
+    </div>
+  </div>
+  <div class="navwrap"><div class="nav">
+    <div class="item"><div class="ic">⌂</div><div class="tx">首页</div></div>
+    <div class="item"><div class="ic">⌨</div><div class="tx">终端</div></div>
+    <div class="item"><div class="ic">◫</div><div class="tx">空间</div></div>
+    <div class="item active"><div class="ic">▦</div><div class="tx">应用</div></div>
+    <div class="item"><div class="ic">•••</div><div class="tx">更多</div></div>
+  </div></div>
+</div>
+
+</body>
+</html>

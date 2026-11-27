@@ -28,22 +28,19 @@ class HomeViewModel : ViewModel() {
             val uptimeMs = runCatching {
                 lobos.android.services.reg.ResidencyStatus.snapshot().optLong("uptimeMs", 0L)
             }.getOrDefault(0L)
-            val uptime = if (uptimeMs > 0) {
-                val mins = uptimeMs / 60000
-                "${mins / 60}h ${mins % 60}m"
-            } else "—"
+            val uptimeMinutes = uptimeMs / 60000
             val rt = Runtime.getRuntime()
             val heapUsedMb = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024)
             val threadCount = Thread.activeCount()
             val sessions = runCatching { lobos.system.exec.PtySession.activeSessions().size }.getOrDefault(0)
-            val disk = if (lobos.android.systemdisk.UbuntuSystem.isReady(ctx)) "就绪" else "未就绪"
+            val appCount = 0 // app market not wired yet; installed apps count goes here
             return HomeUiState.Ready(
-                running = running, uptime = uptime, online = running,
+                running = running, uptimeMinutes = uptimeMinutes, online = running,
                 metrics = listOf(
-                    HomeMetric("$heapUsedMb MB", "内存占用"),
-                    HomeMetric(threadCount.toString(), "线程"),
-                    HomeMetric(sessions.toString(), "活跃会话"),
-                    HomeMetric(disk, "系统盘"),
+                    HomeMetric("$heapUsedMb MB", "Memory"),
+                    HomeMetric(threadCount.toString(), "Threads"),
+                    HomeMetric(sessions.toString(), "Sessions"),
+                    HomeMetric(appCount.toString(), "Apps"),
                 ),
                 apps = emptyList(),
             )

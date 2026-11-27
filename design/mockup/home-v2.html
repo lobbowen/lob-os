@@ -3,53 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LobOS 首页设计稿 v4（标准尺寸）</title>
+<title>LobOS 首页设计稿 v5</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --ink:#111318;--muted:#5F6773;--blue:#0B6BCB;--green:#1B7F4B;
-  --bg:#f7f8fa;--card:#fff;--soft:#f2f4f7;--line:#e6e9ee;
+  --bg:#f7f8fa;--card:#fff;--soft:#f2f4f7;--line:#e8ebef;
 }
 body{background:#e9edf3;display:flex;gap:28px;justify-content:center;padding:24px;
   font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif}
-/* 标准 Android phone 逻辑视口 360x800 dp */
+/* 标准 Android phone 视口 360x800dp */
 .phone{width:360px;height:800px;background:var(--bg);border-radius:36px;
   box-shadow:0 18px 50px rgba(17,19,24,.18);position:relative;overflow:hidden}
 .statusbar{height:32px;display:flex;align-items:center;justify-content:space-between;
   padding:0 20px;font-size:11px;font-weight:600;color:var(--ink)}
 .statusbar .icons{font-size:9px;color:var(--muted)}
-.screen{height:calc(100% - 32px - 88px);overflow:auto;padding:6px 16px 16px}
+.screen{height:calc(100% - 32px - 88px);overflow:auto;padding:4px 16px 14px}
 
-/* 顶部运行状态：运行时间(大字)+版本(小字)同排, 时长在下方, 绿点徽标右上 */
-.hero{padding:8px 4px 14px}
+/* 顶部：运行时间小标签 + 版本小字同排, 徽标右上; 时长大字中等粗细 */
+.hero{padding:8px 4px 0}
 .hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ot-left{display:flex;align-items:baseline;gap:8px;min-width:0}
-.ot-title{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap}
-.ot-ver{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ot-leftcol{display:flex;align-items:center;min-width:0}
+.ot-label{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap}
 .runbadge{display:flex;align-items:center;gap:6px;background:var(--ink);color:#fff;
   border-radius:18px;padding:6px 10px;flex-shrink:0}
 .runbadge .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
 .runbadge .txt{font-size:11px;font-weight:500}
-.ot-total{font-size:34px;font-weight:700;color:var(--ink);margin-top:6px;line-height:1.1;letter-spacing:-.5px}
-/* 系统概况数值区：无标题, 直接状态栏四宫格 */
-.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
-.ov{background:var(--soft);border-radius:12px;padding:9px 4px;text-align:center}
-.ov .v{font-size:14px;font-weight:700;color:var(--ink);line-height:1.2}
-.ov .l{font-size:9px;color:var(--muted);margin-top:4px}
+.ot-total{margin-top:0;color:var(--ink);white-space:nowrap;text-align:right}
+.ot-total .num{font-size:30px;font-weight:500;letter-spacing:-.3px}
+.ot-total .unit{font-size:14px;font-weight:400;color:var(--ink);margin:0 2px}
+.ot-total .gap{display:inline-block;width:4px}
+
+/* 系统概况：一整块整体, 内部细分隔, 无标题 */
+.overview{margin-top:14px;background:var(--card);border-radius:8px;
+  box-shadow:0 5px 16px rgba(17,19,24,.05);display:flex;padding:12px 4px}
+.ov{flex:1;text-align:center;min-width:0}
+.ov + .ov{border-left:1px solid var(--line)}
+.ov .v{font-size:15px;font-weight:600;color:var(--ink);line-height:1.2;white-space:nowrap}
+.ov .l{font-size:9px;color:var(--muted);margin-top:5px;white-space:nowrap}
 
 /* 快速启动 */
-.qhead{display:flex;justify-content:space-between;align-items:baseline;margin:4px 4px 10px}
+.qhead{display:flex;justify-content:space-between;align-items:baseline;margin:16px 4px 9px}
 .qhead .t{font-size:14px;font-weight:600;color:var(--ink)}
 .qhead .s{font-size:10px;color:var(--muted)}
-.quick{background:var(--card);border-radius:20px;padding:14px;min-height:104px;
-  box-shadow:0 6px 18px rgba(17,19,24,.06);border:1px dashed #cbd2dc;
+.quick{background:var(--card);border-radius:8px;padding:12px;min-height:100px;
+  box-shadow:0 5px 16px rgba(17,19,24,.05);border:1px dashed #cbd2dc;
   display:flex;flex-direction:column;align-items:center;justify-content:center}
-.quick .plus{width:38px;height:38px;border-radius:50%;background:var(--soft);
-  color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:300}
-.quick .q1{font-size:12px;color:var(--ink);margin-top:8px;font-weight:500}
+.quick .plus{width:36px;height:36px;border-radius:50%;background:var(--soft);
+  color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:300}
+.quick .q1{font-size:12px;color:var(--ink);margin-top:7px;font-weight:500}
 .quick .q2{font-size:10px;color:#98a0aa;margin-top:3px}
 
-/* 底部胶囊导航 tray */
+/* 底部胶囊导航 */
 .navwrap{position:absolute;left:0;right:0;bottom:0;height:88px;
   background:linear-gradient(to top,var(--bg) 62%,rgba(247,248,250,0));
   display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px}
@@ -66,8 +71,9 @@ body{background:#e9edf3;display:flex;gap:28px;justify-content:center;padding:24p
 .note h2{font-size:14px;color:var(--ink);margin-bottom:8px}
 .chip{display:inline-block;background:#fff;border-radius:8px;padding:6px 9px;margin:0 5px 6px 0;
   font-size:10px;color:var(--muted);box-shadow:0 2px 8px rgba(17,19,24,.06)}
-/* 自适应：窄屏缩小手机框内的 padding 与字号 */
-@media(max-width:760px){body{flex-direction:column;align-items:center}.note{width:360px}}
+.langbtn{background:var(--ink);color:#fff;border:0;border-radius:8px;padding:7px 12px;
+  font-size:11px;cursor:pointer;margin-bottom:10px}
+@media(max-width:760px){body{flex-direction:column;align-items:center}}
 </style>
 </head>
 <body>
@@ -76,49 +82,58 @@ body{background:#e9edf3;display:flex;gap:28px;justify-content:center;padding:24p
   <div class="screen">
     <div class="hero">
       <div class="hero-top">
-        <div class="ot-left">
-          <div class="ot-title">运行时间</div>
-          <div class="ot-ver">Ubuntu 24.04</div>
+        <div class="ot-leftcol">
+          <div class="runbadge"><span class="dot"></span><span class="txt" data-zh="运行" data-en="Running">运行</span></div>
         </div>
-        <div class="runbadge"><span class="dot"></span><span class="txt">运行</span></div>
+        <div class="ot-total" data-zh-html='<span class="num">0</span><span class="unit">小时</span><span class="num">08</span><span class="unit">分钟</span>' data-en-html='<span class="num">0</span><span class="unit">h</span><span class="gap"></span><span class="num">08</span><span class="unit">m</span>'><span class="num">0</span><span class="unit">小时</span><span class="num">08</span><span class="unit">分钟</span></div>
       </div>
-      <div class="ot-total">0h 08m</div>
     </div>
 
     <div class="overview">
-      <div class="ov"><div class="v">69 MB</div><div class="l">内存占用</div></div>
-      <div class="ov"><div class="v">18</div><div class="l">线程</div></div>
-      <div class="ov"><div class="v">0</div><div class="l">活跃会话</div></div>
-      <div class="ov"><div class="v">0</div><div class="l">应用程序</div></div>
+      <div class="ov"><div class="v">69 MB</div><div class="l" data-zh="内存占用" data-en="Memory">内存占用</div></div>
+      <div class="ov"><div class="v">18</div><div class="l" data-zh="线程" data-en="Threads">线程</div></div>
+      <div class="ov"><div class="v">0</div><div class="l" data-zh="活跃会话" data-en="Sessions">活跃会话</div></div>
+      <div class="ov"><div class="v">0</div><div class="l" data-zh="应用程序" data-en="Apps">应用程序</div></div>
     </div>
 
-    <div class="qhead"><div class="t">快速启动</div><div class="s">添加应用后可一键启动</div></div>
+    <div class="qhead">
+      <div class="t" data-zh="快速启动" data-en="Quick Launch">快速启动</div>
+      <div class="s" data-zh="添加应用后可一键启动" data-en="Add an app to launch instantly">添加应用后可一键启动</div>
+    </div>
     <div class="quick">
       <div class="plus">+</div>
-      <div class="q1">还没有应用</div>
-      <div class="q2">开发者社区的应用安装后会出现在这里</div>
+      <div class="q1" data-zh="还没有应用" data-en="No apps yet">还没有应用</div>
+      <div class="q2" data-zh="安装的应用会出现在这里" data-en="Installed apps appear here">安装的应用会出现在这里</div>
     </div>
   </div>
 
   <div class="navwrap">
     <div class="nav">
-      <div class="item active"><div class="ic">⌂</div><div class="tx">首页</div></div>
-      <div class="item"><div class="ic">⌨</div><div class="tx">终端</div></div>
-      <div class="item"><div class="ic">◫</div><div class="tx">空间</div></div>
-      <div class="item"><div class="ic">▦</div><div class="tx">应用</div></div>
-      <div class="item"><div class="ic">•••</div><div class="tx">更多</div></div>
+      <div class="item active"><div class="ic">⌂</div><div class="tx" data-zh="首页" data-en="Home">首页</div></div>
+      <div class="item"><div class="ic">⌨</div><div class="tx" data-zh="终端" data-en="Terminal">终端</div></div>
+      <div class="item"><div class="ic">◫</div><div class="tx" data-zh="空间" data-en="Space">空间</div></div>
+      <div class="item"><div class="ic">▦</div><div class="tx" data-zh="应用" data-en="Apps">应用</div></div>
+      <div class="item"><div class="ic">•••</div><div class="tx" data-zh="更多" data-en="More">更多</div></div>
     </div>
   </div>
 </div>
 
 <div class="note">
-  <h2>v4 调整</h2>
-  <div class="chip">标准视口 360x800dp</div>
-  <div class="chip">系统概况去标题、保留四宫格</div>
-  <div class="chip">状态栏下接概况数值再快速启动</div>
-  <div class="chip">标题/字号整体缩小</div>
-  <div class="chip">百分比宽度 + @media 自适应</div>
-  <p style="margin-top:10px">运行时间(20) + 版本(11) 同排，时长(34) 下方，绿点运行徽标右上。仅设计稿，不改产品代码。</p>
+  <h2>v5 调整</h2>
+  <button class="langbtn" onclick="toggleLang()">切换语言 / Switch language</button>
+  <div class="chip">时间数字30px/500, 单位14px/400（按参考图比例粗细）</div>
+  <div class="chip">系统概况一整块, 细线分隔, 无标题</div>
+  <div class="chip">间距收紧</div>
+  <div class="chip">中英严格分离, 点击按钮切换</div>
+  <p style="margin-top:10px">专业优化：版本号从首页顶部移除（静态信息不该挤在动态状态区），应归入“更多 > 系统信息”。首页顶部只留运行徽标+时长，视觉更干净。间距统一到 8dp 网格。仅设计稿，不改产品代码。</p>
 </div>
+<script>
+function toggleLang(){
+  var zh=document.body.dataset.lang!=='en';
+  document.body.dataset.lang=zh?'en':'zh';
+  document.querySelectorAll('[data-zh]').forEach(function(e){e.textContent=zh?e.dataset.en:e.dataset.zh});
+  document.querySelectorAll('[data-zh-html]').forEach(function(e){e.innerHTML=zh?e.dataset.enHtml:e.dataset.zhHtml});
+}
+</script>
 </body>
 </html>

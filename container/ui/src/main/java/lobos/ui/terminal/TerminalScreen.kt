@@ -102,14 +102,6 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 14.dp, vertical = 14.dp)) {
-        Text("终端", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            if (state.connected) "在 LobOS 中运行命令" else "会话已断开",
-            style = MaterialTheme.typography.bodySmall,
-            color = cs.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(10.dp))
 
         // 输出区：VT 全部 scrollback + 屏幕，等宽逐行，自动跟随底部
         Column(

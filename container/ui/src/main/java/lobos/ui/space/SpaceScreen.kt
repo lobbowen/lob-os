@@ -43,10 +43,6 @@ private fun SpaceReady(state: SpaceUiState.Ready, onEvent: (SpaceEvent) -> Unit,
     val cs = MaterialTheme.colorScheme
     Column(modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
         Spacer(Modifier.height(8.dp))
-        Text("空间", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Text("系统文件管理", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-
-        Spacer(Modifier.height(16.dp))
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(cs.surface)
                 .shadow(6.dp, RoundedCornerShape(20.dp)).padding(20.dp),

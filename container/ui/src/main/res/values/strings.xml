@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_terminal">Terminal</string>
+    <string name="nav_space">Space</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_more">More</string>
+    <!-- Home -->
+    <string name="home_running">Running</string>
+    <string name="home_stopped">Stopped</string>
+    <string name="home_offline">Offline</string>
+    <string name="home_metric_memory">Memory</string>
+    <string name="home_metric_threads">Threads</string>
+    <string name="home_metric_sessions">Sessions</string>
+    <string name="home_metric_apps">Apps</string>
+    <string name="home_quick_launch">Quick Launch</string>
+    <string name="home_quick_hint">Add an app to launch instantly</string>
+    <string name="home_no_apps">No apps yet</string>
+    <string name="home_no_apps_hint">Installed apps appear here</string>
+    <string name="home_uptime_hours">%1$s hours %2$s min</string>
+    <!-- Space -->
+    <string name="space_used">Used</string>
+    <string name="space_free">Free</string>
+    <string name="space_total">Total</string>
+    <!-- Apps market -->
+    <string name="apps_search">Search apps</string>
+    <string name="apps_recommended">Recommended</string>
+    <string name="apps_install">Install</string>
+    <string name="apps_installed">Installed</string>
+    <!-- Terminal -->
+    <string name="terminal_title">Terminal</string>
+    <string name="terminal_subtitle">Run commands in LobOS</string>
+    <string name="terminal_input_hint">Type a command...</string>
+</resources>

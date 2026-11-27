@@ -90,10 +90,6 @@ fun MoreScreen(
             .statusBarsPadding()
             .padding(horizontal = 18.dp, vertical = 20.dp),
     ) {
-        Text("更多", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
-        Text("系统信息与诊断", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        Spacer(Modifier.height(20.dp))
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(bottom = 24.dp),

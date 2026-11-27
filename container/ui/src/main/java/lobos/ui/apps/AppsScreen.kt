@@ -2,211 +2,102 @@ package lobos.ui.apps
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import lobos.ui.theme.LobosTheme
+import androidx.compose.ui.unit.sp
+import lobos.ui.R
 
+/** App market: search + recommended list with install / installed states. */
 @Composable
-fun AppsScreen(
-    state: AppsUiState,
-    onEvent: (AppsEvent) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        when (state) {
-            is AppsUiState.Ready -> AppsReady(state, onEvent)
-            is AppsUiState.Error -> AppsError(state.msg, onEvent)
-        }
-    }
-}
-
-@Composable
-private fun AppsReady(state: AppsUiState.Ready, onEvent: (AppsEvent) -> Unit) {
+fun AppsScreen(state: AppsUiState, onEvent: (AppsEvent) -> Unit, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
-    ) {
-        Text("应用", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
-        Text("开发者社区提供的应用", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
-        if (state.apps.isEmpty()) {
-            EmptyApps(onEvent)
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.apps, key = { it }) { app ->
-                    AppCard(app)
+    var query by remember { mutableStateOf("") }
+    Column(modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(8.dp))
+        TextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(8.dp)),
+            placeholder = { Text(stringResource(R.string.apps_search), fontSize = 11.sp, color = cs.onSurfaceVariant) },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = cs.surface, unfocusedContainerColor = cs.surface,
+                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+            ),
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(stringResource(R.string.apps_recommended), color = cs.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        when (state) {
+            is AppsUiState.Error -> Text(state.msg, color = cs.error)
+            is AppsUiState.Ready -> {
+                val list = state.apps.filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
+                LazyColumn {
+                    items(list, key = { it.id }) { app -> AppRow(app, onEvent) }
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { onEvent(AppsEvent.AddApp) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = RoundedCornerShape(15.dp),
-        ) {
-            Text("+ 添加应用", style = MaterialTheme.typography.titleMedium)
-        }
     }
 }
 
 @Composable
-private fun EmptyApps(onEvent: (AppsEvent) -> Unit) {
+private fun AppRow(app: AppItem, onEvent: (AppsEvent) -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val emptyShape = RoundedCornerShape(22.dp)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(align = Alignment.CenterVertically)
-            .clip(emptyShape)
-            .background(cs.surface.copy(alpha = 0.5f))
-            .border(1.5.dp, cs.outlineVariant, emptyShape),
-        contentAlignment = Alignment.Center,
+    val shape = RoundedCornerShape(8.dp)
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp).height(64.dp)
+            .clip(shape).background(cs.surface).border(1.dp, cs.outlineVariant, shape)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(cs.surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.Apps,
-                    contentDescription = null,
-                    modifier = Modifier.size(30.dp),
-                    tint = cs.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("还没有应用", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-            Spacer(Modifier.height(8.dp))
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(Color(app.color)), contentAlignment = Alignment.Center) {
+            Text(app.symbol, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.size(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(app.name, color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(2.dp))
+            Text("${app.category} · ${app.size}", color = cs.onSurfaceVariant, fontSize = 9.sp)
+        }
+        if (app.installed) {
             Text(
-                text = "应用由开发者社区创建并安装到系统，系统建设完成后，应用将在这里出现",
-                style = MaterialTheme.typography.bodySmall,
-                color = cs.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+                stringResource(R.string.apps_installed), color = cs.primary, fontSize = 10.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, cs.primary, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+        } else {
+            Text(
+                stringResource(R.string.apps_install), color = cs.onPrimary, fontSize = 10.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(cs.primary)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun AppCard(name: String) {
-    val cs = MaterialTheme.colorScheme
-    Card(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(cs.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Apps, contentDescription = null, tint = cs.primary, modifier = Modifier.size(20.dp))
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(name, style = MaterialTheme.typography.titleMedium, color = cs.onSurface, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun AppsError(message: String, onEvent: (AppsEvent) -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 20.dp),
-    ) {
-        Text("应用", style = MaterialTheme.typography.headlineLarge, color = cs.onSurface)
-        Spacer(Modifier.height(5.dp))
-        Text("开发者社区提供的应用", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.error,
-                textAlign = TextAlign.Center,
-            )
-        }
-        Button(
-            onClick = { onEvent(AppsEvent.AddApp) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = RoundedCornerShape(15.dp),
-        ) {
-            Text("+ 添加应用", style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AppsEmptyPreview() {
-    LobosTheme(dynamicColor = false) {
-        AppsScreen(state = AppsUiState.Ready(emptyList()), onEvent = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AppsReadyPreview() {
-    LobosTheme(dynamicColor = false) {
-        AppsScreen(
-            state = AppsUiState.Ready(listOf("Markdown 阅读器", "日志查看器", "进程面板", "文件便签")),
-            onEvent = {},
-        )
     }
 }

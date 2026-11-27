@@ -5,6 +5,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
+import lobos.ui.apps.AppItem
 import lobos.ui.apps.AppsEvent
 import lobos.ui.apps.AppsScreen
 import lobos.ui.apps.AppsUiState
@@ -24,6 +27,8 @@ import lobos.ui.home.HomeScreen
 import lobos.ui.more.MoreEvent
 import lobos.ui.more.MoreScreen
 import lobos.ui.more.MoreUiState
+import lobos.ui.nav.LobosNavigationBar
+import lobos.ui.nav.LobosTab
 import lobos.ui.space.SpaceScreen
 import lobos.ui.theme.LobosTheme
 
@@ -42,38 +47,58 @@ fun LobosNavHost(modifier: Modifier = Modifier) {
     LobosTheme {
         val backStack = remember { mutableStateListOf<Destination>(Destination.Home) }
         val pop: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
-        NavDisplay(
-            backStack = backStack,
-            modifier = modifier.fillMaxSize(),
-            onBack = pop,
-            transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-            popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-            predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-            entryProvider = { key -> NavEntry(key) { Route(key, backStack, pop) } },
-        )
+        // The selected tab is the top-level destination at the root of the stack.
+        val root = backStack.firstOrNull() ?: Destination.Home
+        val selectedTab = when (root) {
+            Destination.Terminal -> LobosTab.Terminal
+            Destination.Space -> LobosTab.Space
+            Destination.Apps -> LobosTab.Apps
+            Destination.More -> LobosTab.More
+            else -> LobosTab.Home
+        }
+        val selectTab: (LobosTab) -> Unit = { tab ->
+            val dest = when (tab) {
+                LobosTab.Home -> Destination.Home
+                LobosTab.Terminal -> Destination.Terminal
+                LobosTab.Space -> Destination.Space
+                LobosTab.Apps -> Destination.Apps
+                LobosTab.More -> Destination.More
+            }
+            // Tab switch resets the stack to that top-level destination.
+            backStack.clear()
+            backStack.add(dest)
+        }
+        Scaffold(
+            modifier = modifier,
+            bottomBar = { LobosNavigationBar(selected = selectedTab, onSelect = selectTab) },
+        ) { padding ->
+            NavDisplay(
+                backStack = backStack,
+                modifier = Modifier.fillMaxSize().padding(padding),
+                onBack = pop,
+                transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                entryProvider = { key -> NavEntry(key) { Route(key, backStack, pop, selectTab) } },
+            )
+        }
     }
 }
 
 @Composable
-private fun Route(key: Destination, backStack: MutableList<Destination>, pop: () -> Unit) {
+private fun Route(
+    key: Destination,
+    backStack: MutableList<Destination>,
+    pop: () -> Unit,
+    selectTab: (LobosTab) -> Unit,
+) {
     when (key) {
         Destination.Home -> {
             val ctx = LocalContext.current
             val vm: HomeViewModel = viewModel()
             val state by vm.state.collectAsState()
             LaunchedEffect(Unit) { vm.load(ctx) }
-            HomeScreen(state = state, onEvent = { e ->
-                if (e is HomeEvent.OpenEntry) {
-                    val d = when (e.key) {
-                        "terminal" -> Destination.Terminal
-                        "space" -> Destination.Space
-                        "apps" -> Destination.Apps
-                        "more" -> Destination.More
-                        else -> null
-                    }
-                    d?.let { backStack.add(it) }
-                } else vm.onEvent(ctx, e)
-            })
+            HomeScreen(state = state, onEvent = { e -> vm.onEvent(ctx, e) })
         }
         Destination.Terminal -> TerminalRoute()
         Destination.Space -> {
@@ -85,8 +110,18 @@ private fun Route(key: Destination, backStack: MutableList<Destination>, pop: ()
         }
         Destination.Apps -> {
             val ctx = LocalContext.current
-            AppsScreen(state = AppsUiState.Ready(emptyList()), onEvent = { e ->
-                if (e is AppsEvent.AddApp) android.widget.Toast.makeText(ctx, "应用系统尚未就绪", android.widget.Toast.LENGTH_SHORT).show()
+            AppsScreen(state = AppsUiState.Ready(
+                listOf(
+                    AppItem("markdown", "Markdown 阅读器", "系统工具", "1.2 MB", false, "M", 0xFF0B6BCB),
+                    AppItem("logviewer", "日志查看器", "开发工具", "820 KB", false, "L", 0xFF6B4FD8),
+                    AppItem("process", "进程面板", "系统工具", "1.8 MB", false, "P", 0xFF1B7F4B),
+                    AppItem("notes", "文件便签", "效率工具", "640 KB", true, "F", 0xFFD8830B),
+                ),
+            ), onEvent = { e ->
+                when (e) {
+                    is AppsEvent.Install -> android.widget.Toast.makeText(ctx, "应用系统尚未就绪", android.widget.Toast.LENGTH_SHORT).show()
+                    is AppsEvent.AddApp -> android.widget.Toast.makeText(ctx, "应用系统尚未就绪", android.widget.Toast.LENGTH_SHORT).show()
+                }
             })
         }
         Destination.More -> {
