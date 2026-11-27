@@ -39,3 +39,24 @@
 - 不要单独给 claude/codex/dsh 打补丁或用原生 binary 路径绕过（用户明确反对）
 - 不要改 fastroot 上游 C 代码作为常规手段（vendored，风险高）；优先在
   env/cwd/启动参数层解决
+
+## 最终修复（2026-11-27，已解决）
+
+根因锁定为 **cwd 语义不一致**，两处系统层修复：
+
+1. `PtySession.host()`：PTY host 启动时 `pb1.directory(FR_ROOT/root)`，
+   让 bash 及子进程的 cwd 从 app filesDir 改到 rootfs 内。
+2. `UbuntuSystem.environment()`：FR_ROOT 用 `/data/data/<pkg>/...` 规范形式
+   （内核 `/proc/self/cwd` 返回的形式），使 fastroot 的 strip_root 前缀匹配。
+
+修复效果（终端 UI 实测）：
+- node `process.cwd()`：修复前 `/data/user/0/lobos.os`，修复后 `/root`
+- 提示符：`root@localhost:~#`（与 Linux 一致）
+- npm install 完整成功（postinstall 通过，不再需要 --ignore-scripts）
+- 终端直接敲名字启动（系统层生效，非产品补丁）：
+  - `claude --version` → `2.1.332 (Claude Code)`
+  - `codex --version` → `codex-cli 0.172.0`
+  - `dsh --version` → `0.2.2-rc.5` (RC=0)
+
+这说明问题从来不是 shebang 本身，而是 cwd 未虚拟导致 node 模块解析拿到
+真实路径。修复后所有 npm 全局 shebang CLI 与标准 Linux 一致，可直接执行。
