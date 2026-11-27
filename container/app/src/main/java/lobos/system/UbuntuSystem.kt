@@ -59,7 +59,12 @@ object UbuntuSystem {
             // Verified path: the old (non-kexec) engine. kexec needs a complete
             // FHS layout and different loader mapping; not validated yet.
             "FR_KEXEC" to "0",
-            "FR_ROOT" to r.absolutePath,
+            // Android reports cwd via /proc/self/cwd using the canonical
+            // /data/data/<pkg> form, while filesDir is /data/user/0/<pkg>.
+            // fastroot's strip_root matches FR_ROOT as a literal prefix, so
+            // FR_ROOT must use the canonical form or cwd/module paths leak as
+            // real paths ("/data/data/..." ENOENT in npm postinstall).
+            "FR_ROOT" to r.absolutePath.replace("/data/user/0/", "/data/data/"),
             "FR_SHIM" to shim(ctx).absolutePath,
             // fastroot's do_execve() uses FR_LAUNCH to re-map CHILD programs
             // (bash's apt/python/node): the rootfs loader is in app_data and
