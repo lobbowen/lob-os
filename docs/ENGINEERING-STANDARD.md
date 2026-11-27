@@ -76,24 +76,21 @@
 6. `docs/spec/QUICKAPP-STRATEGIC-POSITION.md` — 快应用生态定位
 
 ### 系统能力规范
-- `docs/spec/ONE-STANDARD.md` — 安装与运行唯一标准（不入库，按 spec/README.md 管）
-- `docs/findings/PRODUCT-INSTALL-RUN-VERIFICATION.md` — 产品标准安装/启动验证
+- `docs/findings/PRODUCT-INSTALL-RUN-VERIFICATION.md` — 产品标准安装/启动验证（权威）
 - `docs/findings/STANDARD-INSTALL-FINDINGS.md` — 标准安装能力实测
 - `docs/findings/FASTROOT-INTEGRATION-STATUS.md` — fastroot 执行引擎验证
+- `docs/spec/SYSTEM-DISK-BAKED.md` — 系统盘本体（Ubuntu rootfs 内置，权威）
 
 ### UI / 交互
 - `docs/spec/UI-STANDARD.md` — 界面规范
 - `docs/spec/UI-DESIGN-SPEC-v1.md` — UI 设计
 - `docs/spec/STATE-MODEL.md` — 系统状态
 
-### 发布 / 组件
-- `docs/spec/LOCAL-RELEASE-FLOW.md` — 本地发布流程
-- `docs/spec/ARTIFACT-CLASSIFICATION.md` — 产出物定位
-- `docs/spec/SELF-HOSTED-DISTRIBUTION.md` — 自建分发
-
 ### 历史 / 诊断（只读参考，不作为当前规范）
-- `docs/spec/UI-CONCEPTS.md` `UI-REFACTOR-PLAN*.md` — UI 演进历史
+- `docs/spec/ONE-STANDARD.md` — V1 时代的巨型历史规范（不入库，非当前标准）
+- `docs/spec/UI-CONCEPTS.md` `UI-REFACTOR-PLAN*.md` `UI-COMPLIANCE-AUDIT.md` — UI 演进历史
 - `docs/spec/DEEP-ARCHITECTURE-AUDIT-2026-11-26.md` — V1 架构审计快照（带日期）
+- `docs/spec/ARTIFACT-CLASSIFICATION.md` `docs/spec/COMPONENT-UNINSTALL-CONTRACT.md` — V1 产出物/组件历史
 
 ## 三、校验
 
@@ -104,12 +101,11 @@ bash scripts/verify/verify-engineering-standard.sh   # 总入口：一次跑完�
 # 单项（需要时单独跑）：
 #   verify-layer-deps.sh       分层：kernel 不依赖上层
 #   verify-directory-layout.sh 目录：深度/文件数/包声明
-#   verify-ota-anchor.sh       official 锚
 ```
 注：`verify-apk-native.sh` 等依赖构建产物的校验在有 APK 时单独跑，不放进提交前总校验。
 
 提交前最低要求：编译通过 + 分层/目录校验通过 + 产品三件套回归
-（claude TUI / codex / dsh web）+ official 锚 intact。
+（claude TUI / codex / dsh web）。
 
 ## 四、变更流程
 

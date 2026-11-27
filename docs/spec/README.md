@@ -1,38 +1,26 @@
-# 规范正文的管法（2026-11-13 起）
+# 规范目录说明（2026-11-27）
 
-## 当前版
+## 当前架构规范
 
-`ONE-STANDARD.md` 就在本目录，路径不变，内容是当前有效的规范正文。
-三个校验脚本按这个路径读它，**路径不许改**。
+当前架构是单一线条：APK 内置 Ubuntu rootfs 系统盘 + fastroot 执行引擎 +
+libghostty-vt 终端 + 产品由 apt/npm 标准安装。权威规范见：
 
-## 为什么它不在 git 里
+- `../ENGINEERING-STANDARD.md` — 总入口
+- `SYSTEM-DISK-BAKED.md` — 系统盘本体
+- `TERMINAL-RESEARCH-DECISION.md` — 终端引擎决策
+- `QUICKAPP-STRATEGIC-POSITION.md` — 快应用生态定位
+- `../findings/PRODUCT-INSTALL-RUN-VERIFICATION.md` — 产品安装/启动验证
+- `../findings/FASTROOT-INTEGRATION-STATUS.md` — fastroot 引擎验证
 
-这一个文件在 git 历史里有 **591 个版本、2057 MB 未压缩**，占仓内体积九成。
-每改一次规范，就是一次完整的 9 MB 新 blob 入库。591 次就是 2 GB。
-git 的 delta 压缩能压到 380 MB，再压不下去 —— 因为它每次改动都很密集。
+## 关于 ONE-STANDARD.md
 
-这就是「只增不减」的具体形态：改一行规范，仓里就多 9 MB，永远删不掉。
+`ONE-STANDARD.md` 是 V1 时代（LD_PRELOAD/VFS hook/musl/件体系/桥）的巨型历史
+规范，43884 行，不在 git 里。**它不是当前有效的规范**，不再被任何校验脚本读取。
+仅作为历史存档保留在本地，供需要追溯旧决策时查看；当前规范以上面列出的文件为准。
 
-## 现在怎么管
+## 历史 / 诊断文档
 
-- **仓内留当前版**：供校验脚本读，路径不变
-- **改动存快照**：`/home/bowen/LOBOS/spec-snapshots/ONE-STANDARD-<时间戳>.md`
-- **git 不再累积**：`.gitignore` 里已排除本文件
-
-## 代价（如实说）
-
-放弃了「用 `git log` 回看规范正文每一版」的能力。
-
-换回来的是：仓不再因为规范改动而无限制膨胀。
-历史上那 591 个版本还在（没有重写历史、sha 没变、81 个 tag 全在），
-只是从现在起不再新增。
-
-## 如果要找回某一版
-
-2026-11-13 之前的历史版本仍在 git 里，可以取：
-
-```
-git show <commit>:docs/spec/ONE-STANDARD.md
-```
-
-2026-11-13 之后的版本看快照目录。
+`DEEP-ARCHITECTURE-AUDIT-2026-11-26.md`、`UI-REFACTOR-PLAN*.md`、
+`UI-CONCEPTS.md`、`UI-COMPLIANCE-AUDIT.md`、`ARTIFACT-CLASSIFICATION.md`、
+`COMPONENT-UNINSTALL-CONTRACT.md` 等是 V1 时代或 UI 演进的历史记录，
+只读参考，不作为当前规范。
