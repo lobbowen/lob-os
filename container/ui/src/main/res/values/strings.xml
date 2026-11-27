@@ -20,9 +20,6 @@
     <string name="home_no_apps_hint">Installed apps appear here</string>
     <string name="home_uptime_hours">%1$s hours %2$s min</string>
     <!-- Space -->
-    <string name="space_used">Used</string>
-    <string name="space_free">Free</string>
-    <string name="space_total">Total</string>
     <!-- Apps market -->
     <string name="apps_search">Search apps</string>
     <string name="apps_recommended">Recommended</string>
@@ -34,4 +31,11 @@
     <string name="terminal_input_hint">Type a command...</string>
     <string name="unit_hour">h</string>
     <string name="unit_minute">m</string>
+    <string name="space_used">Used</string>
+    <string name="space_free">Free</string>
+    <string name="space_total">Total</string>
+    <string name="space_root">System disk</string>
+    <string name="space_items">%1$d items</string>
+    <string name="space_folder">Folder</string>
+    <string name="space_file">File</string>
 </resources>

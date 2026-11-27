@@ -17,9 +17,6 @@
     <string name="home_no_apps">还没有应用</string>
     <string name="home_no_apps_hint">安装的应用会出现在这里</string>
     <string name="home_uptime_hours">%1$s小时%2$s分钟</string>
-    <string name="space_used">已用</string>
-    <string name="space_free">可用</string>
-    <string name="space_total">总计</string>
     <string name="apps_search">搜索应用</string>
     <string name="apps_recommended">推荐</string>
     <string name="apps_install">安装</string>
@@ -29,4 +26,11 @@
     <string name="terminal_input_hint">输入命令…</string>
     <string name="unit_hour">小时</string>
     <string name="unit_minute">分钟</string>
+    <string name="space_used">已用</string>
+    <string name="space_free">可用</string>
+    <string name="space_total">总计</string>
+    <string name="space_root">系统盘</string>
+    <string name="space_items">%1$d 项</string>
+    <string name="space_folder">文件夹</string>
+    <string name="space_file">文件</string>
 </resources>

@@ -21,6 +21,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,13 +45,14 @@ import lobos.ui.R
 /** Bottom tab identifier. Mirrors the app's top-level destinations. */
 enum class LobosTab(
     val labelRes: Int,
-    val icon: ImageVector,
+    val outlined: ImageVector,
+    val filled: ImageVector,
 ) {
-    Home(R.string.nav_home, Icons.Filled.Home),
-    Terminal(R.string.nav_terminal, Icons.Filled.Terminal),
-    Space(R.string.nav_space, Icons.Filled.Storage),
-    Apps(R.string.nav_apps, Icons.Filled.Apps),
-    More(R.string.nav_more, Icons.Filled.MoreHoriz),
+    Home(R.string.nav_home, Icons.Outlined.Home, Icons.Filled.Home),
+    Terminal(R.string.nav_terminal, Icons.Outlined.Terminal, Icons.Filled.Terminal),
+    Space(R.string.nav_space, Icons.Outlined.Storage, Icons.Filled.Storage),
+    Apps(R.string.nav_apps, Icons.Outlined.Apps, Icons.Filled.Apps),
+    More(R.string.nav_more, Icons.Outlined.MoreHoriz, Icons.Filled.MoreHoriz),
 }
 
 /**
@@ -88,7 +94,7 @@ fun LobosNavigationBar(
                 val bg = if (isSelected) cs.primary else androidx.compose.ui.graphics.Color.Transparent
                 val fg = if (isSelected) cs.onPrimary else cs.onSurfaceVariant
                 ColumnItem(
-                    icon = tab.icon,
+                    icon = if (isSelected) tab.filled else tab.outlined,
                     label = label,
                     selected = isSelected,
                     colorBg = bg,
