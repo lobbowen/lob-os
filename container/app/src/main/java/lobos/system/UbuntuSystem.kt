@@ -61,6 +61,11 @@ object UbuntuSystem {
             "FR_KEXEC" to "0",
             "FR_ROOT" to r.absolutePath,
             "FR_SHIM" to shim(ctx).absolutePath,
+            // fastroot's do_execve() uses FR_LAUNCH to re-map CHILD programs
+            // (bash's apt/python/node): the rootfs loader is in app_data and
+            // cannot be exec'd directly. Without this only the first program
+            // runs; every child fails with "Permission denied".
+            "FR_LAUNCH" to launcher(ctx).absolutePath,
             "FR_LIBPATH" to libraryPath(r),
             // Pass through the phone's pseudo filesystems; fastroot maps the
             // rest of / from the rootfs. fastroot parses FR_BINDS with ';'
