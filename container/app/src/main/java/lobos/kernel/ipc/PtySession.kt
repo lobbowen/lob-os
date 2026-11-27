@@ -600,6 +600,7 @@ object PtySession {
         timeoutMs: Long = 5_000,
         env: Map<String, String> = emptyMap(),
         rawArgv: Boolean = false,
+        cwd: java.io.File? = null,
     ): Session {
 
         val effArgv = if (rawArgv) argv else if (argv.isEmpty()) argv
@@ -614,10 +615,10 @@ object PtySession {
             }
             shaped
         }
-        return host(bin, env).start(effArgv, rows, cols, timeoutMs)
+        return host(bin, env, cwd).start(effArgv, rows, cols, timeoutMs)
     }
 
-    private fun host(bin: java.io.File, extraEnv: Map<String, String> = emptyMap()): Host {
+    private fun host(bin: java.io.File, extraEnv: Map<String, String> = emptyMap(), hostCwd: java.io.File? = null): Host {
         host?.let { return it }
         synchronized(hostLock) {
             host?.let { return it }
@@ -628,14 +629,11 @@ object PtySession {
               // V2: PTY host runs argv directly (fastroot launcher); no legacy shell wrapper.
               val pb0 = hostArgv
             val pb1 = ProcessBuilder(pb0)
-            // V2: start the PTY host in the system root's cwd (SystemRoot's
-            // single source of truth, delivered as FR_CWD). Guest children
-            // inherit it so getcwd() translates back to "/root"; otherwise
-            // node/python see a real path and npm postinstall breaks.
-            extraEnv["FR_CWD"]?.let { cwdPath ->
-                val cwdDir = java.io.File(cwdPath)
-                if (cwdDir.isDirectory) pb1.directory(cwdDir)
-            }
+            // V2: start the PTY host in the system root's cwd, passed in by
+            // the caller (connect/SystemRoot). Guest children inherit it so
+            // getcwd() translates back to "/root"; node/python otherwise see
+            // a real path and npm postinstall breaks.
+            hostCwd?.let { if (it.isDirectory) pb1.directory(it) }
 
             for ((k0, v0) in view0) {
                 pb1.environment()[k0] = v0

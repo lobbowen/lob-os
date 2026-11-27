@@ -21,6 +21,7 @@ run() {
 }
 
 run "分层依赖" scripts/verify/verify-layer-deps.sh
+run "二层架构" scripts/verify/verify-two-layer.sh
 run "目录结构" scripts/verify/verify-directory-layout.sh
 
 echo "== 结果 =="

@@ -67,6 +67,7 @@ class TerminalSession private constructor(
             val s = lobos.kernel.ipc.PtySession.openSession(
                 ptyBin, effArgv, rows, cols, timeoutMs,
                 env = sessionEnv, rawArgv = rawArgv,
+                cwd = lobos.system.UbuntuSystem.cwdHost(ctx),
             )
             val t = TerminalSession(s, System.currentTimeMillis())
 

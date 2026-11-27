@@ -154,6 +154,6 @@ object Crypto {
         val body = pem.replace("-----BEGIN PUBLIC KEY-----", "")
             .replace("-----END PUBLIC KEY-----", "")
             .replace("\r", "").replace("\n", "").trim()
-        return android.util.Base64.decode(body, android.util.Base64.DEFAULT)
+        return java.util.Base64.getDecoder().decode(body)
     }
 }

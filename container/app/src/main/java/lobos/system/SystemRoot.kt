@@ -56,7 +56,7 @@ interface SystemRoot {
         const val VIRTUAL_CWD = "/root"
         val DEFAULT_RESERVED_KEYS: List<String> = listOf(
             "FR_ROOT", "FR_SHIM", "FR_LIBPATH", "FR_LAUNCH", "FR_KEXEC",
-            "FR_EXE", "FR_BINDS", "FR_CWD",
+            "FR_EXE", "FR_BINDS",
         )
     }
 }
@@ -107,7 +107,6 @@ object DirectorySystemRoot : SystemRoot {
         "FR_LAUNCH" to launcher(ctx).absolutePath,
         "FR_LIBPATH" to libraryPath(ctx),
         "FR_BINDS" to "/proc=/proc;/dev=/dev;/sys=/sys",
-        "FR_CWD" to cwdHost(ctx).absolutePath,
         "PATH" to "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
         "HOME" to SystemRoot.VIRTUAL_CWD,
     )
