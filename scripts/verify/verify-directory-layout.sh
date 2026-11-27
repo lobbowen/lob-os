@@ -38,6 +38,10 @@ for root in ['container/app/src/main/java','container/ui/src/main/java']:
             expected=os.path.relpath(dp,root).replace(os.sep,'.')
             t=open(p,encoding='utf-8').read()
             m=re.search(r'^package\s+([\w.]+)',t,re.M)
+            if 'ghostty' in p.replace(os.sep,'/'):
+                # vendored libghostty-vt: package must stay com.spizganed.mtty.term
+                # because JNI native symbols are bound to that package name.
+                continue
             if m and m.group(1)!=expected:
                 print(f"    {p}: package {m.group(1)} != {expected}")
 PY
