@@ -32,14 +32,17 @@ class TerminalBufferV2(
     val cursorY: Int get() = vt.cursorY
     val isAlt: Boolean get() = vt.isAlt
 
-    /** Screen rows rendered into the existing UI line model.
-     * Trailing blank rows are dropped so the UI does not scroll past the
-     * visible prompt into an empty screen. */
+    /** Full scrollback: history rows followed by current screen rows.
+     * Makes program output (apt logs, --help) visible instead of swallowed by
+     * the VT scrollback. */
     val snapshot: List<TerminalLine>
         get() {
-            val all = (0 until vt.rows).map { y -> renderRow(vt.row(y)) }
-            val last = all.indexOfLast { it.text.trim().isNotEmpty() }
-            return if (last < 0) listOf(all.last()) else all.subList(0, last + 1)
+            val out = ArrayList<TerminalLine>()
+            val hist = if (vt.isAlt) 0 else vt.historySize
+            for (i in -hist until 0) out.add(renderRow(vt.row(i)))
+            for (y in 0 until vt.rows) out.add(renderRow(vt.row(y)))
+            val last = out.indexOfLast { it.text.trim().isNotEmpty() }
+            return if (last < 0) listOf(out.last()) else out.subList(0, last + 1)
         }
 
     private fun renderRow(row: com.spizganed.mtty.term.Row): TerminalLine {
