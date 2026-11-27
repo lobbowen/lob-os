@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -100,11 +103,11 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
         else -> null
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 14.dp)) {
+    Column(Modifier.fillMaxSize().imePadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
 
         // 输出区：VT 全部 scrollback + 屏幕，等宽逐行，自动跟随底部
         Column(
-            Modifier.fillMaxWidth().weight(1f).clip(shape).background(pal.terminalBg)
+            Modifier.fillMaxWidth().weight(1f).heightIn(min = 120.dp).clip(shape).background(pal.terminalBg)
                 .border(1.dp, pal.terminalBorder, shape),
         ) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {

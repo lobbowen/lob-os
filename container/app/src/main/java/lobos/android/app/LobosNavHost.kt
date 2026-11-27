@@ -4,6 +4,7 @@ import lobos.android.terminal.TerminalRoute
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -15,6 +16,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
@@ -45,6 +48,8 @@ sealed interface Destination {
 @Composable
 fun LobosNavHost(modifier: Modifier = Modifier) {
     LobosTheme {
+        val density = LocalDensity.current
+        val imeVisible = WindowInsets.ime.getBottom(density) > 0
         val backStack = remember { mutableStateListOf<Destination>(Destination.Home) }
         val pop: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
         // The selected tab is the top-level destination at the root of the stack.
@@ -70,7 +75,7 @@ fun LobosNavHost(modifier: Modifier = Modifier) {
         }
         Scaffold(
             modifier = modifier,
-            bottomBar = { LobosNavigationBar(selected = selectedTab, onSelect = selectTab) },
+            bottomBar = { if (!imeVisible) LobosNavigationBar(selected = selectedTab, onSelect = selectTab) },
         ) { padding ->
             NavDisplay(
                 backStack = backStack,
