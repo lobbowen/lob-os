@@ -56,31 +56,33 @@
   verify-apk-native/verify-apk-signing/verify-runtime-elf + build-fastroot/build-pty-host/
   build-node-android/cache-ndk/locate-ndk + publish/inject-apk-keystore）
 
-## 二、目标二层架构
+## 二、目标二层架构（2026-11-27 已实施）
+
+用户要求：进来第一层只有 android 与 system 两个目录，下面按模块出子目录。
+现已完成重排，lobos/ 顶层结构：
 
 ```
-container/
-  app/                      # 安卓层 APK
-    src/main/java/lobos/
-      host/                 # 安卓宿主：Application/Service/Activity/适配/保活
-      api/                  # 进程内能力分发（安卓侧 API 契约）
-      ui-bridge/            # services/app 中 UI 业务路由（TerminalRoute/HomeViewModel…）
-      connect/              # 连接点（原 system/）
-        SystemRoot.kt       # 系统盘契约（无 Android 字段的语义中心）
-        SystemExec.kt       # 执行桥
-        RootfsInstaller.kt  # 系统盘安装（依赖 Android assets/filesDir）
-      platform/             # 原 kernel/ 中纯 Linux 语义部分（去掉 Android import）
-    src/main/assets/system/ # 内置系统盘镜像
-  ui/                       # 安卓层 UI（Compose）
-  term/                     # 内核层：VT 仿真（libghostty-vt）
-  native/                   # 内核层原生：pty-session.c（PTY host）
+lobos/
+  android/                   # 安卓层：APK/UI/宿主/适配/系统盘安装
+    host/                    # Application/Service/Activity/Receiver/device设备适配
+    api/                     # 进程内能力分发 CapabilityBroker
+    app/                     # UI业务路由 TerminalRoute/HomeViewModel/SpaceViewModel
+    systemdisk/              # 连接点：RootfsInstaller/SystemRoot/UbuntuSystem/SystemExec
+    services/                # log/perm/power/reg/supervise/supply 安卓侧系统服务
+  system/                    # 内核层：系统本体 + Linux 语义（无 APK/UI 依赖）
+    exec/                    # PTY/进程/loader/ELF/compat 执行引擎
+    fs/                      # 状态文件/读写路由/目录布局
+    core/                    # SPI/KernelHooks/SysDev/PathGuard/LibPath/Heartbeat
+    crypto/                  # 加密工具
+    term/                    # TerminalBufferV2(VT 适配到 UI 行模型)
 ```
 
-**分层规则**：
-- `connect/` 是唯一同时知道 Android 与 Linux 的地方，窄接口
-- `platform/`（内核层）不 import android.*，纯 Linux/文件/进程语义
-- 安卓层不直接操作 rootfs 内部路径，只通过 connect 契约
-- Gradle 模块先保持 :app/:ui/:term（不过度拆分），先做包边界与契约
+AndroidManifest 组件名已同步为 `.android.host.*`。
+分层校验 scripts/verify/verify-two-layer.sh 硬性检查：
+  1. lobos/ 顶层只有 android+system
+  2. system/ 不含 APK/UI/生命周期 Android 依赖
+  3. FR_* 环境仅由 android/systemdisk 构造
+校验已接入总入口 verify-engineering-standard.sh。
 
 ## 三、迁移步骤（每步可编译）
 1. 文档固化（本文）

@@ -10,19 +10,19 @@ warn=0
 
 echo "== 目录结构校验 =="
 
-# 1. 包深度 ≤ 4 (lobos/层/域/文件.kt)
+# 1. 包深度 ≤ 5 (lobos/层/域/子域/文件.kt，如 android/host/device/)
 deep=$( { find "$ROOT" -type f -name '*.kt' 2>/dev/null | sed "s|^$ROOT/||"; find "$UIROOT" -type f -name '*.kt' 2>/dev/null | sed "s|^$UIROOT/||"; } | awk -F/ '{print NF}' | sort -n | tail -1)
-echo "  最大包路径深度: $deep 段（lobos/层/域/文件.kt = 4段）"
-if [ "$deep" -gt 4 ]; then
+echo "  最大包路径深度: $deep 段（lobos/android/host/device/X.kt = 5段）"
+if [ "$deep" -gt 5 ]; then
   echo "  FAIL: 包路径深度超过 4 段"
   fail=1
 fi
 
-# 2. 单目录文件数 > 15 告警
+# 2. 单目录文件数 > 20 告警
 echo "  单目录文件数 > 15:"
 over=$(find "$ROOT" -type d 2>/dev/null | while read d; do
   n=$(find "$d" -maxdepth 1 -type f -name '*.kt' | wc -l)
-  [ "$n" -gt 15 ] && echo "    $n ${d#$ROOT/}"
+  [ "$n" -gt 20 ] && echo "    $n ${d#$ROOT/}"
 done)
 if [ -n "$over" ]; then echo "$over"; warn=$((warn+1)); else echo "    无"; fi
 

@@ -31,7 +31,7 @@
         android:xlargeScreens="true" />
 
     <application
-        android:name=".host.OsApplication"
+        android:name=".android.host.OsApplication"
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
         android:label="@string/app_name"
@@ -48,7 +48,7 @@
             android:value="true" />
 
         <service
-            android:name=".host.OsHostService"
+            android:name=".android.host.OsHostService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -57,7 +57,7 @@
         </service>
 
         <service
-            android:name=".host.StatusTileService"
+            android:name=".android.host.StatusTileService"
             android:exported="true"
             android:icon="@drawable/ic_lobos_logo"
             android:label="@string/app_name"
@@ -68,7 +68,7 @@
         </service>
 
         <receiver
-            android:name=".host.BootReceiver"
+            android:name=".android.host.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -78,11 +78,11 @@
         </receiver>
 
         <receiver
-            android:name=".host.PackageInstallReceiver"
+            android:name=".android.host.PackageInstallReceiver"
             android:exported="false" />
 
         <service
-            android:name=".host.device.OsNotificationListenerService"
+            android:name=".android.host.device.OsNotificationListenerService"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
@@ -91,7 +91,7 @@
         </service>
 
         <service
-            android:name=".host.device.OsAccessibilityService"
+            android:name=".android.host.device.OsAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -104,11 +104,11 @@
 
 
         <receiver
-            android:name=".host.DozeBackstopReceiver"
+            android:name=".android.host.DozeBackstopReceiver"
             android:exported="false" />
 
         <service
-            android:name=".host.device.ScreenCaptureService"
+            android:name=".android.host.device.ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
@@ -124,7 +124,7 @@
         -->
 
         <activity
-            android:name=".host.MainActivity"
+            android:name=".android.host.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:resizeableActivity="true"
@@ -136,7 +136,7 @@
         </activity>
 
         <activity
-            android:name=".host.QuickAppLaunchActivity"
+            android:name=".android.host.QuickAppLaunchActivity"
             android:exported="false"
             android:launchMode="singleTask"
             android:excludeFromRecents="true" />
@@ -145,7 +145,7 @@
              exported 是为了让用户与任意应用能取系统数据（content://lobos.os.files/…）。
              只读：files/ 下有系统自己的状态，写权限放开等于让外部改系统。 -->
         <provider
-            android:name=".host.SystemFilesProvider"
+            android:name=".android.host.SystemFilesProvider"
             android:authorities="lobos.os.files"
             android:exported="true"
             android:grantUriPermissions="true" />

@@ -1,0 +1,18 @@
+package lobos.android.host
+
+import lobos.android.host.DozeBackstop
+import lobos.android.services.power.PowerHostHooks
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+
+class DozeBackstopReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        if (context == null || intent?.action != DozeBackstop.ACTION) return
+        PowerHostHooks.noteWake(System.currentTimeMillis())
+        PowerHostHooks.ensureHost(context)
+        DozeBackstop.schedule(context)
+    }
+}
