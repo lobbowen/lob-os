@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -58,29 +57,29 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
     val cs = MaterialTheme.colorScheme
     val cardShape = RoundedCornerShape(8.dp)
     val statusText = if (state.running) stringResource(R.string.home_running) else stringResource(R.string.home_stopped)
-    Column(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp)) {
+    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(8.dp))
         // Top: running badge on the left, big uptime on the right
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.clip(RoundedCornerShape(18.dp)).background(cs.onSurface)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                Modifier.clip(RoundedCornerShape(22.dp)).background(cs.onSurface)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(LobosColors.success))
-                Spacer(Modifier.size(6.dp))
-                Text(statusText, color = cs.surface, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(LobosColors.success))
+                Spacer(Modifier.size(7.dp))
+                Text(statusText, color = cs.surface, style = MaterialTheme.typography.labelMedium)
             }
             Spacer(Modifier.weight(1f))
             val hours = state.uptimeMinutes / 60
             val mins = state.uptimeMinutes % 60
-            Text(
-                stringResource(R.string.home_uptime_hours, hours.toString(), mins.toString().padStart(2, '0')),
-                color = cs.onSurface,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = (-0.3).sp,
-            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(hours.toString(), color = cs.onSurface, fontSize = 24.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.3).sp)
+                Text(stringResource(R.string.unit_hour), color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(horizontal = 2.dp))
+                Spacer(Modifier.size(4.dp))
+                Text(mins.toString().padStart(2, '0'), color = cs.onSurface, fontSize = 24.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.3).sp)
+                Text(stringResource(R.string.unit_minute), color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(start = 2.dp))
+            }
         }
 
         // One integrated overview card: four stats separated by thin dividers, no title
@@ -92,7 +91,7 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
         ) {
             state.metrics.take(4).forEachIndexed { i, m ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(m.value, color = cs.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(m.value, color = cs.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                     Spacer(Modifier.height(4.dp))
                     Text(localizedLabel(m.label), color = cs.onSurfaceVariant, fontSize = 9.sp, maxLines = 1)
                 }

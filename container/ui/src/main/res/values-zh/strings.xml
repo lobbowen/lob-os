@@ -27,4 +27,6 @@
     <string name="terminal_title">终端</string>
     <string name="terminal_subtitle">在 LobOS 中运行命令</string>
     <string name="terminal_input_hint">输入命令…</string>
+    <string name="unit_hour">小时</string>
+    <string name="unit_minute">分钟</string>
 </resources>

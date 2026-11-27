@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -101,7 +100,7 @@ private fun TerminalReady(state: TerminalUiState.Ready, onEvent: (TerminalEvent)
         else -> null
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 14.dp, vertical = 14.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 14.dp)) {
 
         // 输出区：VT 全部 scrollback + 屏幕，等宽逐行，自动跟随底部
         Column(
