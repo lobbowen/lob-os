@@ -105,7 +105,7 @@ echo
 echo
 if has_prefix 'assets/npm/'; then
   if [ "$REPORT" = "1" ]; then
-    echo "  [FAIL] 含 assets/npm —— npm 只由 C 层清单投放（scripts/recipes/build-component-npm.sh）"
+    echo "  [FAIL] 含 assets/npm —— npm 由 Ubuntu 系统盘 apt/npm 安装，不随 APK 内置"
     zipinfo -1 "$APK" 2>/dev/null | { grep '^assets/npm' || true; } | sed 's/^/    /'
   else
     echo "::error title=APK 里留着 npm::assets/npm 在包内 —— npm 应与 git/curl 同级走 C 层签名清单，随包那份是不随清单更新的第二事实源。"
