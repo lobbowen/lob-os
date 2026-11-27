@@ -3,7 +3,6 @@ package lobos.android.host
 import android.content.Context
 import java.util.UUID
 import java.io.File
-import lobos.system.exec.PeLoader
 import lobos.android.services.log.RuntimeDiagnostics
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,20 +51,6 @@ object HostControlService {
             .also { response -> RuntimeDiagnostics.append(app, "host-control", response.optBoolean("ok", false), "宿主正式管理服务执行更新", "requestId=" + correlatedId + " manifestUrl=" + url + " dryRun=" + dryRun + " response=" + response) }
     }
 
-    data class PeSample(val asset: String, val sha256: String, val label: String)
-
-    val peSamples: List<PeSample> = listOf(
-        PeSample(
-            "win32/plink-arm64.exe",
-            "6824cd69458b58761077ca8d4f6a3ba788fe2596b2344e591f00593e13716354",
-            "PE32+ ARM64",
-        ),
-        PeSample(
-            "win32/plink.exe",
-            "7308e9d356f14aa1f08cab1af363f71a077bf35dcb49e50b363418044758cd1e",
-            "PE32 i386",
-        ),
-    )
 
     fun execCommand(context: Context, cmd: String, timeoutMs: Long = 10_000L): JSONObject {
         val method = "sys.tty.exec"
@@ -563,44 +548,6 @@ object HostControlService {
             put("detail", detail)
         }
 
-    fun loadPeSample(context: Context, asset: String): JSONObject {
-        val app = context.applicationContext
-
-        val method = "lobos.compat.pe.sample"
-        val sample = peSamples.firstOrNull { it.asset == asset }
-            ?: return failure(method, "pe-sample", "没有这一份 PE L2 样本：" + asset)
-        return try {
-            val out = File(app.cacheDir, asset)
-            out.parentFile?.mkdirs()
-            app.assets.open(asset).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
-
-            val bytes = lobos.system.fs.ReadRoute.readAll(true, "pe.sample", out)
-            val actual = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
-                .joinToString("") { "%02x".format(it) }
-            if (actual != sample.sha256) {
-                return failure(method, "pe-sample", "PE L2 样本 sha256 不匹配：" + asset)
-            }
-            val image = PeLoader.parse(bytes)
-            JSONObject().apply {
-                put("ok", true); put("requestId", "pe-sample"); put("asset", asset)
-                put("kind", sample.label)
-                put("bytes", out.length()); put("sha256", actual)
-                put("machine", image.machine); put("machineName", machineName(image.machine))
-                put("pe32Plus", image.pe32Plus)
-                put("entryPoint", image.entryPointRva); put("imageBase", image.imageBase)
-                put("sections", image.sections.size); put("imports", image.imports.size)
-                put("importDlls", image.imports.map { it.dllName })
-            }
-        } catch (e: Throwable) { failure(method, "pe-sample", e.message ?: e.javaClass.simpleName) }
-    }
-
-    private fun machineName(machine: Int): String = when (machine) {
-        0x014c -> "i386"
-        0x8664 -> "x86-64"
-        0xAA64 -> "arm64"
-        0x01c0 -> "arm"
-        else -> "unknown(0x" + machine.toString(16) + ")"
-    }
 
     fun rollback(context: Context, id: String, base: String, requestId: String, dryRun: Boolean): JSONObject {
         val app = context.applicationContext
