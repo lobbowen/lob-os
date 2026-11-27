@@ -2,96 +2,123 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=420,initial-scale=1">
-<title>LobOS 首页设计稿 v1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LobOS 首页设计稿 v4（标准尺寸）</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#e9edf3;display:flex;gap:32px;justify-content:center;padding:32px;font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif}
-.phone{width:420px;height:900px;background:#f7f8fa;border-radius:44px;box-shadow:0 20px 60px rgba(17,19,24,.18);position:relative;overflow:hidden}
-.statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:600;color:#111318}
-.statusbar .icons{font-size:13px;color:#5F6773}
-.scroll{height:calc(100% - 48px - 96px);overflow:auto;padding:8px 20px 20px}
-.brandrow{display:flex;align-items:center;gap:12px;padding:8px 8px 16px}
-.logo{width:44px;height:44px;border-radius:14px;background:#111318;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
-.brandtext .name{font-size:14px;letter-spacing:3px;color:#111318;font-weight:700}
-.brandtext .sub{font-size:11px;color:#5F6773;margin-top:2px}
-.systemcard{background:#fff;border-radius:26px;padding:20px;box-shadow:0 8px 24px rgba(17,19,24,.06)}
-.systop{display:flex;align-items:center;justify-content:space-between}
-.systop .title{font-size:20px;font-weight:600;color:#111318}
-.badge{padding:5px 12px;border-radius:999px;background:#1B7F4B;color:#fff;font-size:12px;font-weight:600}
-.subline{font-size:12px;color:#5F6773;margin-top:5px}
-.metrics{display:flex;gap:8px;margin-top:18px}
-.metric{flex:1;background:#f4f6f9;border-radius:16px;padding:12px 8px;text-align:center}
-.metric .v{font-size:18px;font-weight:700;color:#111318}
-.metric .l{font-size:11px;color:#5F6773;margin-top:3px}
-.sectionhead{display:flex;justify-content:space-between;align-items:baseline;margin:22px 4px 12px}
-.sectionhead .t{font-size:20px;font-weight:600;color:#111318}
-.sectionhead .s{font-size:12px;color:#5F6773}
-.quick{background:#fff;border-radius:26px;padding:18px;box-shadow:0 8px 24px rgba(17,19,24,.06);min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #cbd2dc}
-.quick .plus{width:48px;height:48px;border-radius:50%;background:#f0f3f7;color:#5F6773;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:300}
-.quick .q1{font-size:14px;color:#111318;margin-top:10px;font-weight:500}
-.quick .q2{font-size:11px;color:#8a9099;margin-top:4px}
-.navwrap{position:absolute;left:0;right:0;bottom:0;height:96px;background:linear-gradient(to top,#f7f8fa 58%,rgba(247,248,250,0));display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px}
-.nav{width:388px;height:72px;background:#fff;border-radius:36px;box-shadow:0 12px 32px rgba(17,19,24,.14),0 0 0 1px rgba(17,19,24,.04);display:flex;align-items:center;padding:8px;gap:4px}
-.item{flex:1;height:56px;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#5F6773}
-.item .ic{font-size:19px;line-height:1}
-.item .tx{font-size:11px;font-weight:500}
-.item.active{background:#0B6BCB;color:#fff;box-shadow:0 6px 16px rgba(11,107,203,.25)}
-.caption{font-size:12px;color:#5F6773;margin-top:14px;line-height:1.6}
-.panel{width:420px}
-.panel h2{font-size:15px;color:#111318;margin-bottom:10px}
-.chip{display:inline-block;background:#fff;border-radius:10px;padding:8px 12px;margin:0 6px 8px 0;font-size:12px;color:#5F6773;box-shadow:0 3px 10px rgba(17,19,24,.06)}
+:root{
+  --ink:#111318;--muted:#5F6773;--blue:#0B6BCB;--green:#1B7F4B;
+  --bg:#f7f8fa;--card:#fff;--soft:#f2f4f7;--line:#e6e9ee;
+}
+body{background:#e9edf3;display:flex;gap:28px;justify-content:center;padding:24px;
+  font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif}
+/* 标准 Android phone 逻辑视口 360x800 dp */
+.phone{width:360px;height:800px;background:var(--bg);border-radius:36px;
+  box-shadow:0 18px 50px rgba(17,19,24,.18);position:relative;overflow:hidden}
+.statusbar{height:32px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-size:11px;font-weight:600;color:var(--ink)}
+.statusbar .icons{font-size:9px;color:var(--muted)}
+.screen{height:calc(100% - 32px - 88px);overflow:auto;padding:6px 16px 16px}
+
+/* 顶部运行状态：运行时间(大字)+版本(小字)同排, 时长在下方, 绿点徽标右上 */
+.hero{padding:8px 4px 14px}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ot-left{display:flex;align-items:baseline;gap:8px;min-width:0}
+.ot-title{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap}
+.ot-ver{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.runbadge{display:flex;align-items:center;gap:6px;background:var(--ink);color:#fff;
+  border-radius:18px;padding:6px 10px;flex-shrink:0}
+.runbadge .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.runbadge .txt{font-size:11px;font-weight:500}
+.ot-total{font-size:34px;font-weight:700;color:var(--ink);margin-top:6px;line-height:1.1;letter-spacing:-.5px}
+/* 系统概况数值区：无标题, 直接状态栏四宫格 */
+.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.ov{background:var(--soft);border-radius:12px;padding:9px 4px;text-align:center}
+.ov .v{font-size:14px;font-weight:700;color:var(--ink);line-height:1.2}
+.ov .l{font-size:9px;color:var(--muted);margin-top:4px}
+
+/* 快速启动 */
+.qhead{display:flex;justify-content:space-between;align-items:baseline;margin:4px 4px 10px}
+.qhead .t{font-size:14px;font-weight:600;color:var(--ink)}
+.qhead .s{font-size:10px;color:var(--muted)}
+.quick{background:var(--card);border-radius:20px;padding:14px;min-height:104px;
+  box-shadow:0 6px 18px rgba(17,19,24,.06);border:1px dashed #cbd2dc;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.quick .plus{width:38px;height:38px;border-radius:50%;background:var(--soft);
+  color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:300}
+.quick .q1{font-size:12px;color:var(--ink);margin-top:8px;font-weight:500}
+.quick .q2{font-size:10px;color:#98a0aa;margin-top:3px}
+
+/* 底部胶囊导航 tray */
+.navwrap{position:absolute;left:0;right:0;bottom:0;height:88px;
+  background:linear-gradient(to top,var(--bg) 62%,rgba(247,248,250,0));
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px}
+.nav{width:calc(100% - 24px);max-width:340px;height:60px;background:#fff;
+  border-radius:30px;box-shadow:0 10px 26px rgba(17,19,24,.14),0 0 0 1px rgba(17,19,24,.04);
+  display:flex;align-items:center;padding:6px;gap:2px}
+.item{flex:1;height:48px;border-radius:24px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;color:var(--muted);min-width:0}
+.item .ic{font-size:16px;line-height:1}
+.item .tx{font-size:10px;font-weight:500;white-space:nowrap}
+.item.active{background:var(--blue);color:#fff;box-shadow:0 5px 14px rgba(11,107,203,.25)}
+
+.note{width:360px;font-size:11px;color:var(--muted);line-height:1.8}
+.note h2{font-size:14px;color:var(--ink);margin-bottom:8px}
+.chip{display:inline-block;background:#fff;border-radius:8px;padding:6px 9px;margin:0 5px 6px 0;
+  font-size:10px;color:var(--muted);box-shadow:0 2px 8px rgba(17,19,24,.06)}
+/* 自适应：窄屏缩小手机框内的 padding 与字号 */
+@media(max-width:760px){body{flex-direction:column;align-items:center}.note{width:360px}}
 </style>
 </head>
 <body>
 <div class="phone">
   <div class="statusbar"><span>16:00</span><span class="icons">Bluetooth 5G 5G Wi-Fi 63</span></div>
-  <div class="scroll">
-    <div class="brandrow">
-      <div class="logo">L</div>
-      <div class="brandtext"><div class="name">LOBOS</div><div class="sub">Android 上的 Linux 系统</div></div>
-    </div>
-    <div class="systemcard">
-      <div class="systop"><div class="title">系统状态</div><span class="badge">在线</span></div>
-      <div class="subline">控制面在线 · 0h 0m</div>
-      <div class="subline" style="margin-top:2px">Ubuntu 24.04 · fastroot</div>
-      <div class="metrics">
-        <div class="metric"><div class="v">运行中</div><div class="l">内核</div></div>
-        <div class="metric"><div class="v">366 MB</div><div class="l">系统盘</div></div>
-        <div class="metric"><div class="v">0</div><div class="l">会话</div></div>
+  <div class="screen">
+    <div class="hero">
+      <div class="hero-top">
+        <div class="ot-left">
+          <div class="ot-title">运行时间</div>
+          <div class="ot-ver">Ubuntu 24.04</div>
+        </div>
+        <div class="runbadge"><span class="dot"></span><span class="txt">运行</span></div>
       </div>
+      <div class="ot-total">0h 08m</div>
     </div>
-    <div class="sectionhead"><div class="t">快速启动</div><div class="s">添加应用后可一键启动</div></div>
+
+    <div class="overview">
+      <div class="ov"><div class="v">69 MB</div><div class="l">内存占用</div></div>
+      <div class="ov"><div class="v">18</div><div class="l">线程</div></div>
+      <div class="ov"><div class="v">0</div><div class="l">活跃会话</div></div>
+      <div class="ov"><div class="v">0</div><div class="l">应用程序</div></div>
+    </div>
+
+    <div class="qhead"><div class="t">快速启动</div><div class="s">添加应用后可一键启动</div></div>
     <div class="quick">
       <div class="plus">+</div>
       <div class="q1">还没有应用</div>
       <div class="q2">开发者社区的应用安装后会出现在这里</div>
     </div>
-    <div class="caption">说明：原首页"足迹往下"的多表格区块已去掉；终端 / 空间 / 应用 / 更多 移入底部导航。</div>
   </div>
+
   <div class="navwrap">
     <div class="nav">
-      <div class="item"><div class="ic">⌂</div><div class="tx">首页</div></div>
-      <div class="item active"><div class="ic">⌨</div><div class="tx">终端</div></div>
+      <div class="item active"><div class="ic">⌂</div><div class="tx">首页</div></div>
+      <div class="item"><div class="ic">⌨</div><div class="tx">终端</div></div>
       <div class="item"><div class="ic">◫</div><div class="tx">空间</div></div>
       <div class="item"><div class="ic">▦</div><div class="tx">应用</div></div>
       <div class="item"><div class="ic">•••</div><div class="tx">更多</div></div>
     </div>
   </div>
 </div>
-<div class="panel">
-  <h2>设计说明</h2>
-  <div class="chip">顶部：LOBOS 品牌 + 系统运行状态</div>
-  <div class="chip">中段：仅保留快速启动</div>
-  <div class="chip">删除：足迹/收藏/关注/钱包/推荐表格</div>
-  <div class="chip">底部：整条白色胶囊导航 tray</div>
-  <div class="chip">选中态：蓝色胶囊高亮（参考京东"我的"选中高亮）</div>
-  <div class="chip">导航项：首页 / 终端 / 空间 / 应用 / 更多</div>
-  <p style="color:#5F6773;font-size:12px;line-height:1.7;margin-top:12px">
-    底部导航形态参考京东"我的"页：一整条圆角白色托盘，5 个入口，选中项独立胶囊高亮。<br><br>
-    "圆柱"感先按整体胶囊 tray 方向落地。若要更接近 3D 圆柱/弧面，可在此基础上把 tray 顶部改成连续弧线。<br><br>
-    注意：这是设计图，不改产品代码。
-  </p>
+
+<div class="note">
+  <h2>v4 调整</h2>
+  <div class="chip">标准视口 360x800dp</div>
+  <div class="chip">系统概况去标题、保留四宫格</div>
+  <div class="chip">状态栏下接概况数值再快速启动</div>
+  <div class="chip">标题/字号整体缩小</div>
+  <div class="chip">百分比宽度 + @media 自适应</div>
+  <p style="margin-top:10px">运行时间(20) + 版本(11) 同排，时长(34) 下方，绿点运行徽标右上。仅设计稿，不改产品代码。</p>
 </div>
 </body>
 </html>
