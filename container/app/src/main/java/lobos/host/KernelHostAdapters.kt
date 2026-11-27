@@ -45,7 +45,7 @@ object KernelHostAdapters {
                 }.getOrDefault("")
             },
             env = object : EnvProvider {
-                override val reservedKeys: List<String> = listOf("FR_ROOT", "FR_SHIM", "FR_LIBPATH", "FR_KEXEC", "FR_EXE")
+                override val reservedKeys: List<String> = lobos.system.UbuntuSystem.RESERVED_ENV_KEYS
                 override fun childEnv(inheritedPath: String?, inheritedLd: String?): Map<String, String> =
                     lobos.system.UbuntuSystem.environment(ctx)
             },

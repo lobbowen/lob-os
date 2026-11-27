@@ -628,14 +628,13 @@ object PtySession {
               // V2: PTY host runs argv directly (fastroot launcher); no legacy shell wrapper.
               val pb0 = hostArgv
             val pb1 = ProcessBuilder(pb0)
-            // V2: start the PTY host with cwd inside the rootfs so its children
-            // (bash -> node/python) see a virtual cwd (/root) via fastroot's
-            // getcwd strip_root. Otherwise cwd stays at the app filesDir and
-            // node's process.cwd() returns a real path, breaking npm
-            // postinstall module resolution ("/data/data/..." ENOENT).
-            extraEnv["FR_ROOT"]?.let { rootPath ->
-                val rootDir = java.io.File(rootPath, "root")
-                if (rootDir.isDirectory) pb1.directory(rootDir)
+            // V2: start the PTY host in the system root's cwd (SystemRoot's
+            // single source of truth, delivered as FR_CWD). Guest children
+            // inherit it so getcwd() translates back to "/root"; otherwise
+            // node/python see a real path and npm postinstall breaks.
+            extraEnv["FR_CWD"]?.let { cwdPath ->
+                val cwdDir = java.io.File(cwdPath)
+                if (cwdDir.isDirectory) pb1.directory(cwdDir)
             }
 
             for ((k0, v0) in view0) {
