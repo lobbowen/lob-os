@@ -1,5 +1,5 @@
-package lobos.android.app
-import lobos.system.term.TerminalBufferV2
+package lobos.android.terminal
+import lobos.android.terminal.TerminalBufferV2
 
 import android.content.Context
 

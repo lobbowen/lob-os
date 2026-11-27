@@ -1,4 +1,4 @@
-package lobos.system.term
+package lobos.android.terminal
 
 import com.spizganed.mtty.term.GhosttyTerminal
 import com.spizganed.mtty.term.Color

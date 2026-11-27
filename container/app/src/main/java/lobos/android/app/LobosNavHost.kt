@@ -1,4 +1,5 @@
 package lobos.android.app
+import lobos.android.terminal.TerminalRoute
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition

@@ -1,4 +1,4 @@
-package lobos.android.app
+package lobos.android.terminal
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect

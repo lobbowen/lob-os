@@ -34,7 +34,7 @@ mkdir -p "$OUT" "$WORK"
 
 "$CC" -O2 -fPIE -pie \
   -o "$WORK/librivospty.so" \
-  container/native/d3/pty-session.c \
+  container/term/src/main/c/pty-session.c \
   2>"$WORK/cc-ptysession.log" \
   || { echo "!! ptysession 编不出来" >&2; tail -20 "$WORK/cc-ptysession.log" >&2; exit 1; }
 

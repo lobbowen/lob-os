@@ -1,4 +1,4 @@
-package lobos.android.app
+package lobos.android.terminal
 
 import android.content.Context
 import java.io.File
