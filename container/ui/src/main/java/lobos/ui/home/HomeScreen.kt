@@ -19,9 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import lobos.ui.R
 import lobos.ui.components.UiState
 import lobos.ui.theme.LobosColors
@@ -58,7 +56,7 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
     val cardShape = RoundedCornerShape(8.dp)
     val statusText = if (state.running) stringResource(R.string.home_running) else stringResource(R.string.home_stopped)
     Column(modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(14.dp))
         // Top: running badge on the left, big uptime on the right
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Row(
@@ -73,12 +71,12 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
             Spacer(Modifier.weight(1f))
             val hours = state.uptimeMinutes / 60
             val mins = state.uptimeMinutes % 60
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(hours.toString(), color = cs.onSurface, fontSize = 24.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.3).sp)
-                Text(stringResource(R.string.unit_hour), color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(horizontal = 2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(hours.toString(), color = cs.onSurface, style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.unit_hour), color = cs.onSurface, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 2.dp))
                 Spacer(Modifier.size(4.dp))
-                Text(mins.toString().padStart(2, '0'), color = cs.onSurface, fontSize = 24.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.3).sp)
-                Text(stringResource(R.string.unit_minute), color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(start = 2.dp))
+                Text(mins.toString().padStart(2, '0'), color = cs.onSurface, style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.unit_minute), color = cs.onSurface, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 2.dp))
             }
         }
 
@@ -91,9 +89,9 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
         ) {
             state.metrics.take(4).forEachIndexed { i, m ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(m.value, color = cs.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text(m.value, color = cs.onSurface, style = MaterialTheme.typography.titleLarge, maxLines = 1)
                     Spacer(Modifier.height(4.dp))
-                    Text(localizedLabel(m.label), color = cs.onSurfaceVariant, fontSize = 9.sp, maxLines = 1)
+                    Text(localizedLabel(m.label), color = cs.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                 }
                 if (i < minOf(state.metrics.size, 4) - 1) {
                     Box(Modifier.width(1.dp).height(28.dp).background(cs.outlineVariant))
@@ -102,10 +100,10 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
         }
 
         // Quick launch
-        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 16.dp), verticalAlignment = Alignment.Bottom) {
-            Text(stringResource(R.string.home_quick_launch), color = cs.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.home_quick_launch), color = cs.onSurface, style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.home_quick_hint), color = cs.onSurfaceVariant, fontSize = 10.sp)
+            Text(stringResource(R.string.home_quick_hint), color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         Box(
             Modifier.fillMaxWidth().height(100.dp).padding(top = 9.dp)
@@ -116,11 +114,11 @@ private fun HomeReady(state: HomeUiState.Ready, modifier: Modifier) {
             if (state.apps.isEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).background(cs.surfaceVariant), contentAlignment = Alignment.Center) {
-                        Text("+", color = cs.onSurfaceVariant, fontSize = 22.sp, fontWeight = FontWeight.Light)
+                        Text("+", color = cs.onSurfaceVariant, style = MaterialTheme.typography.displaySmall)
                     }
                     Spacer(Modifier.height(7.dp))
-                    Text(stringResource(R.string.home_no_apps), color = cs.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    Text(stringResource(R.string.home_no_apps_hint), color = cs.onSurfaceVariant, fontSize = 10.sp)
+                    Text(stringResource(R.string.home_no_apps), color = cs.onSurface, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.home_no_apps_hint), color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
